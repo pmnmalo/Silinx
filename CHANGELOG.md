@@ -17,6 +17,12 @@ In detail:
   bar, the Design Summary and the start-up message. The site is published from main after every CI
   run that passed, before the release is tagged, and showed the next version as if it were
   released. A release's build shows the version alone (#135).
+- **A first example, *gates*:** logic gates drawn as a schematic (with its VHDL kept in sync), a
+  4-bit prime-number detector on the switches SW3..SW0: LD0 from NOT, AND and OR gates (the minimal
+  sum of products), LD1 the same function with NAND gates only. Its test bench checks the 16 inputs.
+  Listed first, before blinky, on the Start page, in the New Project wizard and in the browser
+  edition (#140).
+- The Start page could list its commands and examples twice, when drawn twice at once (#141).
 
 ## 15.10.5
 
