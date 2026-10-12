@@ -14,6 +14,10 @@ In detail:
 - Browser edition: when Yosys crashes in the browser (out of memory, rather than an error of the
   design), the synthesis is run once more with Yosys started afresh, and the message says what
   happened (it said "Yosys failed: undefined") (#153).
+- Silinx toolchain, Place & Route: ports with no LOC and no I/O standard (LVCMOS25, the default)
+  when every bank already holds LVCMOS33 pins failed with "not enough pads"; the error now says that
+  the banks' VCCO is the cause, with the ports, each bank's VCCO and I/O standards, and the standard
+  to give them (e.g. `NET "led<4>" IOSTANDARD = LVCMOS33;`) (#128).
 
 ## 15.10.7
 
