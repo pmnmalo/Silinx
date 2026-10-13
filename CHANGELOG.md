@@ -10,6 +10,13 @@ In detail:
 - *Help* ▸ *About* says whether the copy in use counts its use: the site (pmnmalo.github.io/Silinx-ISE)
   counts its visits and what is used with GoatCounter (no cookies, no personal data, linked); the
   application and the downloaded Silinx-ISE.html send nothing (#158).
+- **Dark theme, readable everywhere:** iMPACT's note under *Program FPGA* was light text on a light
+  yellow box; the wizards' summaries and code previews white boxes; the schematic editor's fields
+  white with light text; the Test Bench wizard's drive / expected columns, Symbol Info's pin names
+  and its buttons, the live simulation's bus editor, the tree arrows, iMPACT's, the pin planner's,
+  the board emulator's and the dialogs' grey notes too dark. Their colours are now theme colours with
+  a dark value (the light theme unchanged), and every screen is checked for readable text in both
+  themes (#159).
 
 ## 15.10.8
 
