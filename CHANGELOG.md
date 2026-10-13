@@ -14,6 +14,10 @@ In detail:
 - Browser edition: when Yosys crashes in the browser (out of memory, rather than an error of the
   design), the synthesis is run once more with Yosys started afresh, and the message says what
   happened (it said "Yosys failed: undefined") (#153).
+- The RTL and Technology Schematics in Portuguese: the symbol palette (*<--Todos os Símbolos-->*,
+  the symbols' tooltips), the properties (*Propriedades*, *Módulo …*, *Pinos (5)*, a wire, an I/O
+  marker, a net name), the status bar and the Check panel were partly in English; the schematic
+  editor too (#130).
 
 ## 15.10.7
 
