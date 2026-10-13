@@ -19,13 +19,14 @@ the "What's new" text of its GitHub release.
   Portuguese too (#198).
 - **Simulator:** the Wave window's submenus (*Radix*…) no longer open past the right edge of the window, where their items could not be clicked (#201).
 - **ASM chart editor:** after *Reset route*, the side panel no longer shows a *Reset route* button that does nothing (#202).
-- **VHDL: a pure function that uses what is declared outside it is an error, as in ISE:** a function is
-  pure unless it is declared `impure`, and a pure one that reads or writes a signal, a port, a process's
-  variable or a shared variable declared outside it, or calls an impure function or a procedure that
-  does, is reported at that line, naming the object and where it is declared (*Cannot access signal 's'
-  (line 10) from inside pure function 'f'.*), with its explanation (English and Portuguese) and the fix
-  *Declare the function 'f' impure* (also in its package declaration), offered when no other pure
-  function calls it. Silinx accepted it (#185).
+- **VHDL: a function that is not pure is reported, as XST does for the Spartan-3E:** a function is pure
+  unless it is declared `impure`, and one that reads or writes a signal, a port, a process's variable,
+  a shared variable or a file declared outside it, or calls an impure function or a procedure that
+  does, gets a warning at its `end` saying what it uses and where (*Function f is not pure: it uses
+  signal 's' at line 13. VHDL 87 allowed this; VHDL 93 requires the keyword IMPURE.*), an error when it
+  is written `pure function`; with its explanation (English and Portuguese) and the fix *Declare the
+  function 'f' impure* (also in its package declaration), offered when no other pure function calls
+  it. Silinx accepted it silently (#185).
 
 ## 15.10.12
 
