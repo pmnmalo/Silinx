@@ -53,6 +53,15 @@ In detail:
   lamps a truth table, each with its VHDL kept in sync; the timer is VHDL, the display Verilog; its
   test bench checks the lamps and the display on every clock cycle. It builds with no warning with
   the Silinx toolchain on the four boards' devices and with ISE (#181).
+- **Simulator: a procedure declared in a process uses the process's variables:** it read one of its
+  own parameters in their place and its writes were lost, with no error, so a self-checking test
+  bench counting its errors in a process variable from such a procedure said "OK" of a wrong
+  design. Now a procedure or function declared in a process reads and writes the process's
+  variables, one declared in a procedure those of the procedure (a parameter of the same name
+  still hides them), through waits and recursion, also in synthesis (a procedure; a function that
+  uses them is reported). The traffic test bench counts its errors this way. In Verilog the
+  variables of a task or function that is not `automatic` are now static, as the standard says:
+  they keep their values from one call to the next (#182).
 
 ## 15.10.11
 
