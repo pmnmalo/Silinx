@@ -3,6 +3,15 @@
 What changed in each version of Silinx ISE. The newest version is first. Each section is also
 the "What's new" text of its GitHub release.
 
+## 15.10.12
+
+In detail:
+
+- **A truth table has any number of outputs** (it had at most 4): the table scrolls sideways, the
+  outputs' tabs wrap, each output has its Karnaugh map, its HDL and its circuit; a module of more
+  than 16 output bits is read into a table, and a state diagram's *Create Truth Tables* makes one
+  table of the next-state bits and one of the outputs (#176).
+
 ## 15.10.11
 
 In detail:
