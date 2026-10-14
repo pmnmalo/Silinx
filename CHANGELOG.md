@@ -6,6 +6,9 @@ the "What's new" text of its GitHub release.
 ## 15.10.14
 
 - **Petri nets:** the VHDL of a net without places (just its ports) compiles (#212).
+- **Silinx toolchain, DCMs:** a DCM's RST, PSCLK, PSEN or PSINCDEC tied to 1 is now tied to VCC from its own
+  tile, as ISE ties it, no longer to 0 through the pin's inverter: the DCM tiles' switches from their VCC site
+  are in the bit database, measured on the four devices (#190).
 
 ## 15.10.13
 
