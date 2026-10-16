@@ -195,3 +195,18 @@ test('test bench generator: Z / X only on std_logic inputs, startAtZero without 
     assert.match(generateTestbench({ ...o, startAtZero: true }), /inputs change at the falling edge \(the first at time 0\)/);
   }
 });
+
+// the gates example (a prime detector: both LEDs on for 2, 3, 5, 7, 11, 13) has its stimuli: sw counting 0 … 15,
+// the expected outputs those of an independent model, matched by the simulation
+test('the gates example: its saved stimuli, every value of sw, expected outputs the primes, matched by the simulation', async () => {
+  const fs = await import('node:fs');
+  const pj = JSON.parse(fs.readFileSync(new URL('../examples/gates/silinx.json', import.meta.url), 'utf8'));
+  const dut = src(fs.readFileSync(new URL('../examples/gates/src/gates.vhd', import.meta.url), 'utf8'), 'vhdl', 'gates');
+  const m = pj.stimuli.gates;
+  const prime = n => n > 1 && [...Array(n).keys()].slice(2).every(d => n % d);
+  assert.deepEqual(m.inputs.sw, [...Array(16).keys()].map(n => n.toString(2).padStart(4, '0')));
+  assert.deepEqual(m.expected.led, [...Array(16).keys()].map(n => (prime(n) ? '11' : '00')));
+  const r = runModel(dut, 'gates', m);
+  assert.deepEqual(normalizeStimuli(m, r.ports), m, 'saved as normalised');
+  assert.deepEqual(checkExpected(m, r.valueAt), []);
+});
