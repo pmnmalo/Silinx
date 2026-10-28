@@ -4,6 +4,7 @@
 import { asText } from './synth-open-yosys.js';
 import { criticalDelay, logicLevels, pathEnds } from './synth-open-path.js';
 import { resynthCritical } from './lut-resynth.js';
+import { bddRemap } from './synth-open-bdd.js';
 import {
   DEPTH_ABC, DEPTH_ABC2, DEPTH_ABC2_LUT4, DEPTH_ABC3, DEPTH_ABC_FILE, DEPTH_RULE, DEPTH_SOPB, FOLD_CE_FILE,
   FOLD_CE_MAP, FOLD_CE_MAP_FILE, LUT4_COSTS, LUT4_ONLY, LUT6_MAP, LUT6_MAP_FILE, LUT_LIB, LUT_LIB_FILE, MUXF_MAP,
@@ -15,7 +16,7 @@ import {
 /** { withDepth } of synthesizeOpen (tryDepth(): its current values). */
 export function mountDepth(ctx) {
   const {
-    deepRule, depth, family, run, wide, withAbc9, withResynth, log, normal, quiet, speed, top, tryDepth
+    deepRule, depth, family, run, wide, withAbc9, withBdd, withResynth, log, normal, quiet, speed, top, tryDepth
   } = ctx;
 
   // a mapping (its run's output) and, from the design as it was before its LUT mapping, the depth-oriented
@@ -292,6 +293,24 @@ export function mountDepth(ctx) {
       } catch (e) {
         info.resynth = { kept: false, failed: e.message };
         sayNew(`Warning: the critical path's LUTs could not be made shallower (${e.message}): the netlist chosen before is kept`);
+      }
+    }
+    // the critical path's wide decodes collapsed and mapped again (#1360, core/synth-open-bdd.js; its own limit of LUTs, no
+    // SPEED_RULE.maxLuts): of the netlist chosen of all the others, kept by DEPTH_RULE
+    if (speed && withBdd && !info.muxf?.failed && !info.failed && !info.sopb?.failed && !info.speedFailed && !info.wide?.failed && !info.resynth?.failed) {
+      try {
+        const j0 = chosen[`${top}.json`];
+        const b = await bddRemap(asText(j0) || j0, top, run);
+        const outB = b && await run(['-q', '-p', resynthCommands(top)], { [RESYNTH_FILE]: JSON.stringify(b.json), [SRL_CELLS_FILE]: SRL_CELLS }, () => {});
+        if (outB?.[`${top}.json`]) {
+          const jB = outB[`${top}.json`], cellsB = cellCounts(jB, top);
+          const ns = [criticalDelay(j0, top), criticalDelay(jB, top)], luts = [utilization(cells).luts, utilization(cellsB).luts], sl = [slices(j0), slices(jB)];
+          info.bdd = { rounds: b.rounds, cones: b.cones, ns: ns[1], luts: luts[1], slices: sl[1], kept: keepDepth(ns, luts, DEPTH_RULE, sl) };
+          if (info.bdd.kept) { chosen = { ...chosen, ...outB }; cells = cellsB; }
+        }
+      } catch (e) {
+        info.bdd = { kept: false, failed: e.message };
+        sayNew(`Warning: the critical path's decodes could not be mapped again (${e.message}): the netlist chosen before is kept`);
       }
     }
     return { chosen, cells, info, ns: criticalDelay(chosen[`${top}.json`], top), slices: () => slices(chosen[`${top}.json`]), memories, pool };

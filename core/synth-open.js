@@ -664,7 +664,9 @@ export const synthEffort = impl => (String(impl?.optLevel) === '2' ? 'high' : 'n
  * the mapping with the clock enables that end the critical path folded into D (#653), both from the netlist before the
  * LUT mapping, measured against the netlist chosen of the others, on both efforts (speed: false leaves them out); resynth:
  * { rounds, changed, ns, luts, slices, kept } of the netlist chosen of all of them with its critical LUTs made one level
- * shallower, their fan-out kept (#652, core/lut-resynth.js; resynth: false leaves it out).
+ * shallower, their fan-out kept (#652, core/lut-resynth.js; resynth: false leaves it out); bdd: { rounds, cones, ns, luts,
+ * slices, kept } of that netlist with the critical path's wide decodes collapsed to BDDs and mapped again (#1360,
+ * core/synth-open-bdd.js; bdd: false leaves it out).
  * effort ('high'): 'normal', the synthesis's Optimization Effort Normal (#282), is one Yosys run, the
  * usual mapping alone (beside it the quiet search for the state machines fsm_detect refuses for their users, #652; no
  * other mapping tried: as depth false; but the critical path's remaps, #652, and the mapping with the
@@ -710,7 +712,7 @@ export async function synthesizeOpen(design, options = {}) {
 }
 
 // synthesizeOpen's synthesis but the carry-select candidate (carrySelect: CSEL_RULE when making it)
-async function synthesizeOnce(design, { family = 'spartan3e', run, onLine = () => {}, depth = true, effort = 'high', abc9: withAbc9 = true, deepRule = DEEP_RULE, smallRule = SMALL_RULE, fsm: withFsm = true, speed: withSpeed = true, wide = true, resynth: withResynth = true, lutram: withLutram = true, carrySelect = null } = {}) {
+async function synthesizeOnce(design, { family = 'spartan3e', run, onLine = () => {}, depth = true, effort = 'high', abc9: withAbc9 = true, deepRule = DEEP_RULE, smallRule = SMALL_RULE, fsm: withFsm = true, speed: withSpeed = true, wide = true, resynth: withResynth = true, bdd: withBdd = true, lutram: withLutram = true, carrySelect = null } = {}) {
   const { text, top, warnings, shiftArrays = [] } = toVerilog(design);
   const lut4 = LUT4_FAMILIES.has(YOSYS_FAMILY[family]);
   const normal = effort === 'normal';
@@ -777,7 +779,7 @@ async function synthesizeOnce(design, { family = 'spartan3e', run, onLine = () =
     // its messages said, #652)
     const luts = json ? utilization(cellCounts(json, top)).luts : Infinity;
     if (!deep?.deep && luts <= smallRule.maxLuts) {
-      const both = { family, run, depth, abc9: withAbc9, deepRule, fsm: withFsm, speed: withSpeed, wide, resynth: withResynth, lutram: withLutram, carrySelect };
+      const both = { family, run, depth, abc9: withAbc9, deepRule, fsm: withFsm, speed: withSpeed, wide, resynth: withResynth, bdd: withBdd, lutram: withLutram, carrySelect };
       const linesN = [], linesH = [];
       // (side by side: Yosys runs in workers of their own)
       const [own, high] = await Promise.all([
@@ -793,7 +795,7 @@ async function synthesizeOnce(design, { family = 'spartan3e', run, onLine = () =
   const highMappings = !normal || !!deep?.deep;
   // a mapping (its run's output) and the depth-oriented ones, the faster kept (core/synth-open-depth.js)
   const { withDepth } = mountDepth({
-    deepRule, depth, family, run, wide, withAbc9, withResynth, log, normal, quiet, speed, top, tryDepth: () => tryDepth
+    deepRule, depth, family, run, wide, withAbc9, withBdd, withResynth, log, normal, quiet, speed, top, tryDepth: () => tryDepth
   });
 
   // a design with logic written as gates: its carry chains (adders, comparators: core/carry-chain.js, #77)
