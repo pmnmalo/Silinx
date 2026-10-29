@@ -5,6 +5,8 @@
 // one). A wire takes its new path only when the path is clear and has no more bends and no more crossings than the old
 // one, and fewer of either or a shorter length (a wire that broke a rule, or had a diagonal, takes any clear path): the
 // connections, the netlist and the generated HDL are the same, and the drawing never gets worse by these measures.
+// The crossings first (#1994): a path with fewer crossings is taken even with more bends, the router pricing a
+// crossing above a bend (CROSS); the parallel runs then spaced evenly (core/schbeautify-spacing.js).
 //
 // Isomorphic ES module (browser + Node).
 import { GRID, key, netlist, symbolBox } from './schdoc.js';
@@ -14,6 +16,10 @@ const onGrid = p => p.x % GRID === 0 && p.y % GRID === 0;
 const diagonal = pts => pts.some((a, i) => i + 1 < pts.length && a.x !== pts[i + 1].x && a.y !== pts[i + 1].y);
 const bendsOf = pts => Math.max(0, cleanPath(pts).length - 2);
 const lengthOf = pts => pts.reduce((n, a, i) => n + (i ? Math.abs(a.x - pts[i - 1].x) + Math.abs(a.y - pts[i - 1].y) : 0), 0);
+// (a crossing's cost to the router: above a bend's, 4, so that it bends around a wire rather than across it, #1994)
+const CROSS = 40;
+// a path's measure: its crossings first, then its bends, then its length (#1994)
+const better = (c1, b1, l1, c0, b0, l0) => c1 < c0 || (c1 === c0 && (b1 < b0 || (b1 === b0 && l1 < l0)));
 
 // the inner points of a path's segments, horizontal and vertical (its bends and ends not)
 function inner(pts, f) {
@@ -87,12 +93,12 @@ function reroute(g, w, anchors, maxNodes) {
   const now = anchors.slice(0, -1).map((a, i) => piece(w.points, a, anchors[i + 1]));
   now.forEach(p => g.addWire(p));
   const clear = p => p && !pathViolations(g, p).length;
-  const score = p => bendsOf(p) * 4 + crossingsOf(g, p) * 3 + lengthOf(p) / GRID / 100;
+  const score = p => crossingsOf(g, p) * 100 + bendsOf(p) * 4 + lengthOf(p) / GRID / 100;
   for (let i = 0; i < now.length; i++) {
     g.removeWire(now[i]);
     const a = anchors[i], b = anchors[i + 1];
-    let tries = [routePath(g, a, b, { maxNodes }), routePath(g, b, a, { maxNodes })?.reverse()].filter(clear);
-    if (!tries.length) tries = [0, 1, 2, 3].map(d => routePath(g, a, b, { endDir: d, maxNodes })).filter(clear);
+    let tries = [routePath(g, a, b, { maxNodes, cross: CROSS }), routePath(g, b, a, { maxNodes, cross: CROSS })?.reverse()].filter(clear);
+    if (!tries.length) tries = [0, 1, 2, 3].map(d => routePath(g, a, b, { endDir: d, maxNodes, cross: CROSS })).filter(clear);
     if (tries.length) now[i] = tries.reduce((x, y) => (score(y) < score(x) ? y : x));
     g.addWire(now[i]);
   }
@@ -111,32 +117,44 @@ function nets(doc, modules) {
 // on it, then routed the shortest first. Taken when every piece found a clear path and the sheet has no more bends, no
 // more crossings and no more clashes, and fewer of one of them; otherwise the wires are left as they were. Returns the
 // ids of the wires that changed.
+// The pieces routed in several orders (the shortest first, the longest first, left to right, top to bottom: which wire
+// takes a channel first decides the crossings, #1994), the best routing kept: the fewest crossings, then bends.
+const ORDERS = [(x, y) => x.d - y.d, (x, y) => y.d - x.d, (x, y) => x.mx - y.mx || x.d - y.d, (x, y) => x.my - y.my || x.d - y.d];
 function ripUp(doc, list, modules, maxNodes) {
   const s0 = wireStats(doc, { modules });
-  const g = wireGrid(doc, { modules, skip: new Set(list.map(w => w.id)) });
-  const jobs = [];
-  for (const w of list) {
-    const A = anchorsOf(doc, w);
-    A.forEach(a => g.addWire([a]));
-    A.slice(0, -1).forEach((a, i) => jobs.push({ w, i, a, b: A[i + 1], d: Math.abs(a.x - A[i + 1].x) + Math.abs(a.y - A[i + 1].y) }));
-  }
-  jobs.sort((x, y) => x.d - y.d);
-  const paths = new Map(list.map(w => [w, []]));
-  for (const j of jobs) {
-    const p = routePath(g, j.a, j.b, { maxNodes });
-    if (!p || pathViolations(g, p).length) return [];
-    g.addWire(p);
-    paths.get(j.w)[j.i] = p;
-  }
-  const old = list.map(w => w.points);
-  list.forEach(w => { w.points = cleanPath(paths.get(w).flatMap((p, i) => (i ? p.slice(1) : p))); });
-  const s1 = wireStats(doc, { modules });
   const n = s => Object.values(s.clashes).reduce((a, b) => a + b, 0);
-  if (s1.bends <= s0.bends && s1.crossings <= s0.crossings && n(s1) <= n(s0) && (s1.bends < s0.bends || s1.crossings < s0.crossings || n(s1) < n(s0))) {
-    return list.filter((w, i) => JSON.stringify(w.points) !== JSON.stringify(old[i])).map(w => w.id);
+  const old = list.map(w => w.points);
+  let best = null;
+  for (const order of ORDERS) {
+    const g = wireGrid(doc, { modules, skip: new Set(list.map(w => w.id)) });
+    const jobs = [];
+    for (const [k, w] of list.entries()) {
+      w.points = old[k];
+      const A = anchorsOf(doc, w);
+      A.forEach(a => g.addWire([a]));
+      A.slice(0, -1).forEach((a, i) => { const b = A[i + 1]; jobs.push({ w, i, a, b, d: Math.abs(a.x - b.x) + Math.abs(a.y - b.y), mx: Math.min(a.x, b.x), my: Math.min(a.y, b.y) }); });
+    }
+    jobs.sort(order);
+    const paths = new Map(list.map(w => [w, []]));
+    let ok = true;
+    for (const j of jobs) {
+      const p = routePath(g, j.a, j.b, { maxNodes, cross: CROSS });
+      if (!p || pathViolations(g, p).length) { ok = false; break; }
+      g.addWire(p);
+      paths.get(j.w)[j.i] = p;
+    }
+    if (!ok) continue;
+    list.forEach(w => { w.points = cleanPath(paths.get(w).flatMap((p, i) => (i ? p.slice(1) : p))); });
+    const s1 = wireStats(doc, { modules });
+    if (n(s1) <= n(s0) && (!best || better(s1.crossings, s1.bends, 0, best.s.crossings, best.s.bends, 0))) best = { s: s1, pts: list.map(w => w.points) };
   }
   list.forEach((w, i) => { w.points = old[i]; });
-  return [];
+  if (!best) return [];
+  const s1 = best.s;
+  // (taken when the sheet is better: fewer crossings, or as many and fewer bends, never more clashes)
+  if (!better(s1.crossings, s1.bends, 0, s0.crossings, s0.bends, 0) && !(s1.crossings === s0.crossings && s1.bends === s0.bends && n(s1) < n(s0))) return [];
+  list.forEach((w, i) => { w.points = best.pts[i]; });
+  return list.filter((w, i) => JSON.stringify(w.points) !== JSON.stringify(old[i])).map(w => w.id);
 }
 
 /**
@@ -158,7 +176,7 @@ export function beautifyWires(doc, { modules = {}, only = null, passes = 3, maxN
   for (let pass = 0; pass < passes; pass++) {
     let any = false;
     // the wires with the most bends and crossings first
-    const list = mine().map(w => ({ w, s: bendsOf(w.points) * 4 + crossingsOf(g, w.points) * 3 })).sort((a, b) => b.s - a.s).map(x => x.w);
+    const list = mine().map(w => ({ w, s: crossingsOf(g, w.points) * 100 + bendsOf(w.points) * 4 })).sort((a, b) => b.s - a.s).map(x => x.w);
     for (const w of list) {
       g.removeWire(w.points);
       const anchors = anchorsOf(doc, w), at = new Set(anchors.map(a => key(a.x, a.y)));
@@ -169,7 +187,7 @@ export function beautifyWires(doc, { modules = {}, only = null, passes = 3, maxN
       let take = false;
       if (JSON.stringify(pts) !== JSON.stringify(cleanPath(old)) && !clashes(pts).length) {
         const b0 = bendsOf(old), b1 = bendsOf(pts), c0 = crossingsOf(g, old), c1 = crossingsOf(g, pts);
-        take = bad || (b1 <= b0 && c1 <= c0 && (b1 < b0 || c1 < c0 || lengthOf(pts) < lengthOf(old)));
+        take = bad || better(c1, b1, lengthOf(pts), c0, b0, lengthOf(old));
       }
       if (take) { w.points = pts; changed.add(w.id); any = true; }
       g.addWire(w.points);

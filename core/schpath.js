@@ -120,16 +120,16 @@ class Heap {
  * one leaving / entering the pin or marker there, when there is one); when no path has them, any is taken.
  * Returns the corner points, or null.
  */
-export function routePath(g, S, T, { startDir, endDir, prefer = null, corners = null, maxNodes = 200000 } = {}) {
+export function routePath(g, S, T, { startDir, endDir, prefer = null, corners = null, maxNodes = 200000, cross = COST.cross } = {}) {
   const sd = startDir !== undefined ? startDir : g.side.get(key(S.x, S.y)) ?? null;
   const ed0 = endDir !== undefined ? endDir : g.side.get(key(T.x, T.y));
   const ed = ed0 == null ? null : endDir !== undefined ? ed0 : back(ed0);
-  const o = { prefer, corners, maxNodes };
+  const o = { prefer, corners, maxNodes, cross };
   return astar(g, S, T, sd, ed, o) || (sd != null || ed != null ? astar(g, S, T, null, null, o) : null);
 }
 
 // (prefer: the steps that cost half, corners: the points where a bend costs one step: a path drawn by hand)
-function astar(g, S, T, sd, ed, { prefer, corners, maxNodes }) {
+function astar(g, S, T, sd, ed, { prefer, corners, maxNodes, cross }) {
   if (S.x === T.x && S.y === T.y) return null;
   const D = DIRS();
   const B = g.bounds, M = 10 * GRID;
@@ -170,7 +170,7 @@ function astar(g, S, T, sd, ed, { prefer, corners, maxNodes }) {
         if ((hz && g.h.has(k)) || (!hz && g.v.has(k))) continue;             // along another wire
       }
       const cost = (prefer?.has(stepKey(cur, { x: nx, y: ny })) ? COST.step / 2 : COST.step)
-        + (turning ? (corners?.has(ck) ? COST.step : COST.bend) : 0) + (k !== goal && onWire(k) ? COST.cross : 0)
+        + (turning ? (corners?.has(ck) ? COST.step : COST.bend) : 0) + (k !== goal && onWire(k) ? cross : 0)
         + ((hz ? g.nearH : g.nearV).has(k) ? COST.near : 0) + (g.edge.has(k) ? COST.edge : 0);
       const gg = cur.g + cost, sk = `${k},${d}`;
       if (best.has(sk) && best.get(sk) <= gg) continue;
