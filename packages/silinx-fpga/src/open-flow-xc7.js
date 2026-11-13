@@ -4,8 +4,8 @@
 // nextpnr comes through io.nextpnr.xc7 { run(args, files, onLine) -> files, chipdb(part, log) -> Uint8Array, router? }
 // (nextpnr-xc7-node.js: the package @silinx/nextpnr-himbaechel-xc7; router: 'router2' where memory is plenty, the local
 // server's, else router1's 0.4-0.5 GB); the bit database through io.bitDb() (fpga/xc7/bitdb.js's).
-// The timing is nextpnr's own estimate: optimistic against Vivado's (1.2-1.5 times its Fmax on the same netlist, #3146),
-// so said wherever it is shown, until a model calibrated against Vivado exists.
+// The timing is nextpnr's own estimate, said so wherever it is shown: its chip database's delays fitted to Vivado's (#3516:
+// the cells' and the wire classes', measured by Vivado 2025.2 on the examples' netlists, research/xc7/timing-fit.json).
 import { scriptSynthesis } from './synth-script.js';
 import { XDC } from './xdc.js';
 import { loadChipdb } from './nextpnr-io.js';
@@ -23,7 +23,7 @@ export const XC7_STEPS = [
 ];
 
 /** What the timing of this back end is: nextpnr's estimate, not Vivado's (#3146). */
-export const XC7_TIMING_MODEL = 'nextpnr\'s estimate (optimistic against Vivado, #3146)';
+export const XC7_TIMING_MODEL = 'nextpnr\'s estimate (its delays fitted to Vivado\'s, #3516)';
 
 // the synthesis's resources, from synth_xilinx's cells
 const sum = (counts, re) => Object.entries(counts).reduce((n, [t, k]) => n + (re.test(t) ? k : 0), 0);

@@ -97,7 +97,7 @@ test('xc7: nextpnr\'s timing, its estimate, a clock net named as synthesis left 
   assert.deepEqual(met, { met: true, timingErrors: 0, minPeriodNs: 4.14, maxFreqMHz: 241.55, model: XC7_TIMING_MODEL,
     clocks: [{ clock: 'clk', achieved: 241.55, constraint: 100 }],
     constraints: [{ name: 'clk', constraint: 'create_clock clk: 10.000 ns (100 MHz)', timingErrors: 0, minPeriodNs: 4.14, maxFreqMHz: 241.55 }] });
-  assert.match(XC7_TIMING_MODEL, /^nextpnr's estimate \(optimistic against Vivado/);
+  assert.match(XC7_TIMING_MODEL, /^nextpnr's estimate \(its delays fitted to Vivado's, #3516\)$/);
   // two clocks, one not met; a net with a name of its own kept; two ports of the same frequency: the net's own name
   const two = xc7Timing({ fmax: { pix: { achieved: 20, constraint: 25 }, $x: { achieved: 150, constraint: 100 } } }, [{ net: 'a', mhz: 100 }, { net: 'b', mhz: 100 }]);
   assert.deepEqual([two.met, two.timingErrors, two.maxFreqMHz, two.minPeriodNs, two.clocks.map(c => c.clock)], [false, 1, 20, 50, ['pix', '$x']]);
