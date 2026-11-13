@@ -8,8 +8,11 @@
 //     slack, conns, pads }
 import { netTree, treePath, timingGraph } from '../timing.js';
 import { sliceArcs6, hardArcs6, siteClass } from './timing-arcs.js';
-import { S6_ESTIMATE } from './place-timing.js';
 import { S6_SPEED_3 } from './timing-model.js';
+
+// a connection not routed, between sites (ns): base + perTile x the Manhattan distance in tiles (the estimate of the
+// Spartan-6 placer, #729, removed in #3140: a -3 part's order of magnitude, DS162)
+const S6_ESTIMATE = { base: 0.45, perTile: 0.06 };
 
 /** The classes of a Spartan-6 node, by the name of its first wire. */
 export const CLASSES6 = ['site', 'logicout', 'single', 'double', 'quad', 'logicin', 'fan', 'clock', 'other'];
@@ -95,7 +98,7 @@ const placedPin = (device, inst, pin) => (inst?.placed !== false && inst?.site ?
 
 /**
  * Each connection's delay (timingGraph's conns, ns): the wire model on its routed path; a connection not routed (or
- * not found) by the placer's estimate (fpga/s6/place-timing.js: base + per tile of Manhattan distance).
+ * not found) by an estimate (S6_ESTIMATE: base + per tile of Manhattan distance).
  */
 function connDelaysS6(design, device, tg, model = S6_SPEED_3) {
   const inst = new Map(design.insts.map(i => [i.name, i])), nets = new Map(design.nets.map(n => [n.name, n])), trees = new Map();

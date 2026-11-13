@@ -23,8 +23,6 @@ export const FAMILY_PROFILES = {
     multiplier: 'dsp48a1',
     // the Nexys3's and Atlys's parts, the bit databases in bitdb/s6 (#2103), and nextpnr as its engine (nextpnr-himbaechel-spartan6, #2138, #2137)
     openFlow: { parts: /^xc6slx\d+$/, bitDb: 's6', nextpnr: true },
-    // its Map's choice in Process Properties (#3138): nextpnr's packer (the default since #3140), or Silinx's (impl.s6Map)
-    mapChoice: true,
   },
   artix7: {
     // the Silinx toolchain's 7-series back end (#3146), in the browser edition too (#3143): nextpnr-himbaechel-xc7 (its

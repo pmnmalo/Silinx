@@ -24,7 +24,7 @@ test('every profile is of a known family; a family with none gets an empty, froz
   assert.equal(familyProfile('ice40').clock, undefined);
   assert.equal(familyProfile('ice40').blockRam, undefined);
   // (#2302: the ECP5 offers none of the Xilinx families' wizards, and no programming yet; the iCE40 programs its flash)
-  for (const f of ['ecp5', 'gowin']) for (const k of ['clock', 'blockRam', 'multiplier', 'mapChoice', 'program']) assert.equal(familyProfile(f)[k], undefined, `${f} ${k}`);
+  for (const f of ['ecp5', 'gowin']) for (const k of ['clock', 'blockRam', 'multiplier', 'program']) assert.equal(familyProfile(f)[k], undefined, `${f} ${k}`);
   assert.equal(familyProfile('ice40').program, 'spi-flash');
 });
 
@@ -65,9 +65,8 @@ test('the multiplier: MULT18X18SIO on the Spartan-3E, DSP48A1 on the Spartan-6',
   assert.equal(familyProfile('ice40').multiplier, undefined);
 });
 
-test('the Map\'s choice (#3138, #3447): the Spartan-6\'s alone, as the flow\'s spec.s6Map takes it', () => {
-  assert.deepEqual(Object.keys(FAMILY_PROFILES).filter(f => familyProfile(f).mapChoice), ['spartan6']);
-  for (const f of ['spartan3e', 'ice40', 'artix7', null]) assert.equal(familyProfile(f).mapChoice, undefined, String(f));
+test('#3140 no Map\'s choice: the Spartan-6\'s Map is nextpnr\'s alone, Silinx\'s placer removed', () => {
+  assert.deepEqual(Object.keys(FAMILY_PROFILES).filter(f => 'mapChoice' in familyProfile(f)), []);
 });
 
 test('the open flow: the parts each family\'s Silinx toolchain takes, its bit database, the iCE40\'s own steps', async () => {

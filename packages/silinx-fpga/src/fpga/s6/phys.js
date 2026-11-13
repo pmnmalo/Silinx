@@ -1,6 +1,6 @@
 // Silinx - the Spartan-6 physical design (#729; the plan: research/s6/README.md, #1): a netlist packed by
-// fpga/s6/pack.js turned into the instances of sites the placer places and the nets of site pins the router
-// routes (browser + Node).
+// fpga/s6/pack.js turned into the instances of sites nextpnr places and the nets of site pins it routes (browser +
+// Node).
 //
 // Each packed slice is a SLICEX / SLICEL / SLICEM instance; each I/O buffer an IOB (on the pad of its port's LOC),
 // each BUFG / BUFGMUX a BUFGMUX, each block RAM and DSP48A1 its site. A net is the pin that drives it and the pins of
@@ -28,8 +28,6 @@
 //            global buffer), driver: { inst, pin } | null, loads: [{ inst, pin }] }]
 //   chains: [[inst, bottom to top]]   the carry chains (each link a COUT -> CIN)
 //   lutPins: [inst] -> { A: { o6: [site pin of each LUT input I0 …], o5: […] } … }   (slices)
-//   conns:  [{ src, dst (cells), dstPin, srcInst, dstInst, internal (inside a slice) }]   every connection of
-//            the netlist but the clocks', for the timing estimate (place-timing.js)
 //   cellInst: [cell] -> inst (-1: a constant, a pull)
 //   warnings: [] }
 import { constraintsFor } from '../../constraints.js';
@@ -38,7 +36,7 @@ import { oneBitBusesOf, ucfPortsOf } from '../pack.js';
 import { AND2L, ffKind } from './pack.js';
 import { MEM_TYPE, memConstPins, memInPins, memOutPin, memPositions } from './phys-mem.js';
 
-export class PhysError extends Error {}
+class PhysError extends Error {}
 
 const POS = ['A', 'B', 'C', 'D'];
 const LUT_TYPE = /^(LUT[1-6]|INV|BUF)$/;
@@ -254,7 +252,7 @@ export function physS6(nl, packed, { ucf = null } = {}) {
   };
 
   // ---- the nets
-  const out = [], conns = [];
+  const out = [];
   const power = { vcc: { name: 'GLOBAL_LOGIC1', net: null, power: 'vcc', clock: false, driver: null, loads: [] },
     gnd: { name: 'GLOBAL_LOGIC0', net: null, power: 'gnd', clock: false, driver: null, loads: [] } };
   const addLoad = (net, inst, pin) => { const k = `${inst}:${pin}`; if (!(net.keys ||= new Set()).has(k)) { net.keys.add(k); net.loads.push({ inst, pin }); } };
@@ -269,8 +267,6 @@ export function physS6(nl, packed, { ucf = null } = {}) {
       if (!role.has(l.cell)) continue;
       const pin = inPin(l.cell, l.pin, n), pins = pin === null ? [] : [pin].flat();
       for (const p of pins) addLoad(net, role.get(l.cell).inst, p);
-      // (the connections of the timing estimate: the clocks' left out)
-      if (!net.clock) conns.push({ src: d.ci, dst: l.cell, dstPin: l.pin, srcInst: role.get(d.ci).inst, dstInst: role.get(l.cell).inst, internal: !pins.length });
     }
     if (!net.loads.length) continue;
     const pin = outPin(d.ci, d.pin, n);
@@ -314,5 +310,5 @@ export function physS6(nl, packed, { ucf = null } = {}) {
   if (errors.length) throw new PhysError(`the Spartan-6 design cannot be placed: ${[...new Set(errors)].join('; ')}`);
   for (const net of out) delete net.keys;
   const cellInst = Int32Array.from(cells, (c, ci) => (role.has(ci) ? role.get(ci).inst : -1));
-  return { insts, nets: out, chains: packed.chains.map(ch => ch.slice()), lutPins, conns, cellInst, warnings };
+  return { insts, nets: out, chains: packed.chains.map(ch => ch.slice()), lutPins, cellInst, warnings };
 }

@@ -1,11 +1,9 @@
 // The Spartan-6's Map by nextpnr (#3138, packages/silinx-fpga/src/fpga/s6/nextpnr-pack.js): the netlist's cells by name
 // (the order of the fork's packer, so that Silinx's Map names its sites alike), Yosys's netlist for the fork (each I/O
-// buffer with its port and constraints), and the check that the fork packed the sites of Silinx's Map; the option
-// (s6MapOf) and the flow's netlist sorted only with it (open-flow-backends.js).
+// buffer with its port and constraints), and the check that the fork packed the sites of Silinx's Map.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sortedNetlistText, packInput, packedSites, samePacking } from '../packages/silinx-fpga/src/fpga/s6/nextpnr-pack.js';
-import { s6MapOf } from '../packages/silinx-fpga/src/parts.js';
 import { packS6 } from '../packages/silinx-fpga/src/fpga/s6/pack.js';
 import { physS6 } from '../packages/silinx-fpga/src/fpga/s6/phys.js';
 import { readYosysJson } from '../packages/silinx-fpga/src/fpga/netlist.js';
@@ -65,12 +63,4 @@ test('samePacking: [] when the fork\'s sites are Silinx\'s Map\'s (an IOB of eit
   assert.deepEqual(samePacking(json({ a: 'IOB', s0: 'SLICEL', clk_BUFG: 'BUFGMUX', s1: 'SLICEX' }), phys),
     ['y: not packed by nextpnr', 's0: a SLICEL in nextpnr, a SLICEX in Silinx\'s Map', 's1: packed by nextpnr only']);
   assert.deepEqual(samePacking(json({}), { insts: [] }), []);
-});
-
-test('s6MapOf: nextpnr\'s Map (the default since #3140) unless the project chose Silinx\'s', () => {
-  assert.equal(s6MapOf(undefined), 'nextpnr');
-  assert.equal(s6MapOf({}), 'nextpnr');
-  assert.equal(s6MapOf({ s6Map: 'silinx' }), 'silinx');
-  assert.equal(s6MapOf({ s6Map: 'nextpnr' }), 'nextpnr');
-  assert.equal(s6MapOf({ s6Map: 'SILINX' }), 'nextpnr');
 });

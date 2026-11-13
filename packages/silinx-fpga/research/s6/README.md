@@ -971,8 +971,9 @@ SILINX_ISE_REMOTE_DIR="$(node -p "require(os.homedir() + '/.silinx/config.json')
 node --test --test-name-pattern="for the (nexys3|atlys) with nextpnr's Map" test/ise/examples.test.js
 ```
 
-Since #3140 nextpnr's Map is the default: the ISE tests check it with no variable, and `SILINX_S6_MAP=silinx` gives
-Silinx's Map instead (its checks alone: `--test-name-pattern="for the (nexys3|atlys) with Silinx's Map"`).
+Since #3140 nextpnr's Map is the one Map (Silinx's placer removed): the ISE tests check it with no variable, and
+`SILINX_S6_MAP` is gone; so are `test/examples-nextpnr-s6-pack*.test.js` and `test/s6-nextpnr-parity.test.js`, the
+comparison with Silinx's Map (the examples' open flow on both boards: `test/examples.test.js`).
 
 ## Trying the parts that exist
 
@@ -997,9 +998,7 @@ Silinx toolchain's Spartan-6 bitstream writer reads them there.
 | `night1-remote.sh` | Night 1 on the machine with Docker and ISE (`SILINX_ISE_HOST` on the command line) |
 | `summarize-night1.mjs` | Night 1's results as `measured/night1.json` (counts and observations, no Xilinx file) |
 | `bits6.mjs` | Reads a Spartan-6 `.bit`: its header and the UG380 packets (16-bit words) |
-| `compare-place.mjs` | The placer against ISE's placement of the same netlists (night 1): `measured/place-compare.json` |
-| `place-xdl.mjs` | The examples placed (and with `--route`, routed by nextpnr, #2824) as XDL, for ISE's check |
-| `ise-place-check.sh` | Inside the ISE container: `xdl -xdl2ncd`, `par -k` and `drc` of the placed XDL, `drc` of the routed one |
+| `ise-place-check.sh` | Inside the ISE container: `xdl -xdl2ncd`, `par -k` and `drc` of the placed XDL, `drc` of the routed one (the placer's placements, `place-xdl.mjs` and `compare-place.mjs`: removed with it in #3140) |
 | `summarize-ise-check.mjs` | That check's logs as `measured/ise-check.json` (the messages by id and count) |
 | `ise-format.sh` | Inside the ISE container: the empty designs through bitgen with Silinx's options and their variants (#724) |
 | `gen-lutmap6.mjs` | The LUT map's designs in XDL (`--sample`: a sample of the slices) (#725) |

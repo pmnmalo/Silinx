@@ -652,7 +652,7 @@ default execution mode of a new installation, so students need nothing else for 
 the other boards choose an ISE mode in *Tools ▸ Toolchain Settings ▸ Execution mode*. The
 usual processes then run Silinx's own flow on this machine: *Synthesize - Yosys* (Yosys),
 *Translate* and *Map* (the netlist and the constraints read, then packed into slices and I/O
-sites: by nextpnr on the Spartan-3E, by Silinx on the Spartan-6), *Place & Route* (nextpnr's placement and routing, checked against
+sites: by nextpnr, on the Spartan-6 into the sites of Silinx's packer), *Place & Route* (nextpnr's placement and routing, checked against
 the bit database's routing switches, static timing against the UCF's PERIOD constraints), *Generate Programming File* (`build/<top>.bit`, and
 `build/<top>_prom.bit` for the PROM), with the same console, process icons, Stop and *Design
 Summary* (utilization, timing) as with ISE; *Configure Target Device* programs the board as usual

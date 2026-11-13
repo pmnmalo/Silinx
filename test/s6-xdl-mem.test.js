@@ -1,32 +1,29 @@
-// The SLICEM's distributed RAMs and shift registers in the Spartan-6 placer and XDL writer (#1153,
+// The SLICEM's distributed RAMs and shift registers in the Spartan-6 Map and XDL writer (#1153,
 // packages/silinx-fpga/src/fpga/s6/phys-mem.js, xdl-mem.js): each kind (research/s6/gen-mem6.mjs, one primitive a
 // design) implemented by the Silinx toolchain against the same design implemented by ISE (research/s6/measured/mem.json:
 // the SLICEM's settings and what its pins carry), the contents against the INIT, the packing rules.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { placeS6 } from '../packages/silinx-fpga/src/fpga/s6/place.js';
 import { placedXdlS6 } from '../packages/silinx-fpga/src/fpga/s6/xdl.js';
 import { memContents } from '../packages/silinx-fpga/src/fpga/s6/xdl-mem.js';
 import { checkSlice } from '../packages/silinx-fpga/src/fpga/s6/pack.js';
 import { writeXdl } from '../packages/silinx-fpga/src/xdl.js';
 import { MEM_DESIGNS } from '../packages/silinx-fpga/research/s6/gen-mem6.mjs';
 import { memSummary } from '../packages/silinx-fpga/research/s6/ana-mem6.mjs';
-import { s6Device, s6Example, s6Netlist, s6Phys, s6Verilog } from './s6-lib.mjs';
+import { s6Device, s6Example, s6Netlist, s6Phys, s6Verilog, s6PlaceNextpnr } from './s6-lib.mjs';
 
 const ISE = JSON.parse(fs.readFileSync(new URL('../packages/silinx-fpga/research/s6/measured/mem.json', import.meta.url), 'utf8'));
 const PART = 'xc6slx16csg324-3';
 
-// a design through the Silinx toolchain to its placed XDL: { d (s6Phys's), text }
+// a design through the Silinx toolchain to its placed XDL (packed and placed by nextpnr, #3140): { d (s6PlaceNextpnr's), text }
 async function implement(text) {
-  const nl = await s6Netlist([{ path: 'top.v', lang: 'verilog', text }], 'top');
-  const d = s6Phys(nl);
-  const { device, sites } = s6Device(PART);
-  const r = placeS6(d.phys, sites, { nl, seed: 1 });
-  return { d, text: writeXdl(placedXdlS6(nl, d.packed, d.phys, r, { part: PART, device, name: 'top' })) };
+  const d = await s6PlaceNextpnr(s6Phys(await s6Netlist([{ path: 'top.v', lang: 'verilog', text }], 'top')), PART);
+  const { device } = s6Device(PART);
+  return { d, text: writeXdl(placedXdlS6(d.nl, d.packed, d.phys, d.placement, { part: PART, device, name: 'top' })) };
 }
 
-// the summary with the LUT positions renamed (map: { D: 'A' } …): the positions a cell takes are the placer's choice
+// the summary with the LUT positions renamed (map: { D: 'A' } …): the positions a cell takes are the Map's choice
 const POS_ATTR = /^[A-D](?=[56]LUT|[56]RAMMODE|DI1MUX|OUTMUX|USED|CY0|FF|5FF)/, POS_VALUE = /^[A-D](?=X$|DI1$)/, POS_PIN = /^[A-D](?=\d$|X$|I$|MUX$|Q$|$)/;
 function renamed(sum, map) {
   const r = re => x => x.replace(re, m => map[m]);

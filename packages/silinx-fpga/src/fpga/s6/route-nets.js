@@ -10,7 +10,7 @@ const GENERAL_WIRE = /^((EE|EL|ER|NE|NL|NN|NR|NW|SE|SL|SR|SS|SW|WL|WR|WW)[124][A
 // the sites whose route-throughs any net may take when the design has no instance on them: the I/O logic between a
 // pad and the interconnect (ILOGIC2 D -> FABRICOUT, OLOGIC2 D1 -> OQ, T1 -> TQ), the clock spines' BUFH, as ISE
 // routes them (their XDL_DUMMY instances); a slice's only out of the net's own source (COUT -> DMUX, route.js)
-export const FREE_ROUTETHRU = new Set(['ILOGIC2', 'OLOGIC2', 'BUFH']);
+const FREE_ROUTETHRU = new Set(['ILOGIC2', 'OLOGIC2', 'BUFH']);
 
 const cache = new WeakMap();
 /** The router's view of a device (built once a device): { general, rtSite, rtPins, tieoffs }. */

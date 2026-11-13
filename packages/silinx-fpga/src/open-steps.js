@@ -80,6 +80,3 @@ export function orderOpenSteps(steps, { synthUpToDate = false } = {}) {
  *  'silinx' or 'auto', Process Properties' choice of #2136) moves to it. */
 export const engineOf = () => 'nextpnr';
 
-/** A project's Map of the Spartan-6 (#3138): 'nextpnr' (the fork's packer, which packs and places Yosys's netlist, the
- *  default since its parity, #3139, #3140) or 'silinx' (Silinx's own placement of its Map's sites: impl.s6Map 'silinx'). */
-export const s6MapOf = impl => (impl?.s6Map === 'silinx' ? 'silinx' : 'nextpnr');

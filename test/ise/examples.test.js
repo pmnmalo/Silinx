@@ -9,8 +9,6 @@
 //
 //   SILINX_ISE_TESTS=1 SILINX_ISE_HOST=user@host node --test test/ise/examples.test.js
 //   SILINX_ISE_HOST=local: the image on this machine (the self-hosted runner, .github/workflows/ise.yml)
-//   SILINX_S6_MAP=silinx: the Spartan-6's open flow with Silinx's Map (nextpnr's the default since #3140), e.g. its checks
-//     alone: --test-name-pattern="for the (nexys3|atlys) with Silinx's Map"
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -63,15 +61,9 @@ before(() => {
 const iseWarnings = lines => [...new Set(lines.filter(l => /^WARNING:(Xst|Pack|Map|Par|Place|Route|Timing|PhysDesignRules|LIT|NgdBuild|ConstraintSystem)/.test(l))
   .map(l => l.replace(/\s+/g, ' ').trim()))].sort();
 
-// the Spartan-6's Map in the open flow's checks: nextpnr's packer (the default since its parity, #3139, #3140), or with
-// SILINX_S6_MAP=silinx Silinx's
-const S6_MAP = process.env.SILINX_S6_MAP === 'silinx' ? 'silinx' : null;
-const s6MapName = S6_MAP ? ' with Silinx\'s Map' : '';
-
 // the routed design's check against ISE, on every board (the Spartan-6's, #732, too)
 const checkOpenFlow = (name, t) => {
   const { dir, project } = exampleProject(name, t, path.join(tmp, 'open'));
-  if (S6_MAP && project.device.family === 'spartan6') fs.writeFileSync(path.join(dir, 'silinx.json'), `${JSON.stringify({ ...project, impl: { ...project.impl, s6Map: S6_MAP } }, null, 2)}\n`);
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/check-open-flow.mjs'), dir], { encoding: 'utf8', env: process.env });
   assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
   assert.match(r.stdout, /DRC 0 errors, 0 warnings; xdl2ncd 0 warnings; \.bit vs ISE's bitgen: byte-identical \(CRC on and off\)/);
@@ -93,7 +85,7 @@ const iseBuild = async (name, t, expected = null) => {
 
 for (const name of EXAMPLES) {
   for (const t of S6_EXAMPLES.includes(name) ? S6_TARGETS : []) {
-    test(`example ${name} for the ${targetName(t)}${s6MapName}: Silinx's bitstream is byte-identical to ISE's, ISE's DRC clean`, { skip, timeout: 30 * 60000, todo: KNOWN[`${name}-${targetName(t)}`] }, () => checkOpenFlow(name, t));
+    test(`example ${name} for the ${targetName(t)}: Silinx's bitstream is byte-identical to ISE's, ISE's DRC clean`, { skip, timeout: 30 * 60000, todo: KNOWN[`${name}-${targetName(t)}`] }, () => checkOpenFlow(name, t));
   }
   for (const t of [...TARGETS, ...(S6_EXAMPLES.includes(name) ? S6_TARGETS : [])]) {
     test(`ISE builds example ${name} for the ${targetName(t)}, with the expected warnings`, { skip, timeout: 30 * 60000 }, () => iseBuild(name, t));

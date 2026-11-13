@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-/** The pads of the *IOB_SINGLE tiles by part, as the device's sites give them (fpga/s6/pad-paths.js's inputs, #3169). */
+/** The pads of the *IOB_SINGLE tiles by part, as the device's sites give them (the inputs of fpga/s6/pad-paths.js, removed with the placer in #3140; #3169). */
 export const SINGLE_PADS = { xc6slx16: ['G9', 'F9', 'U11', 'V11'], xc6slx45: ['G9', 'F9', 'R7', 'T7'] };
 
 const v = pad => `// #3169 (gen-padsingle6.mjs): the input on ${pad}, sampled on clk

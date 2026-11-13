@@ -1055,12 +1055,14 @@ uiTest('#2137 open mode: no place and route engine to choose; a project saved wi
   await page.waitFor(async () => !('engine' in (await (await fetch('/api/projects/OpenEngine')).json()).impl), [], { what: 'the engine dropped' });
 }, { timeout: 400000 });
 
-// #3138: a Spartan-6 project's Map in Process Properties, nextpnr's by default since its parity (#3139, #3140) or Silinx's:
-// with nextpnr's, nextpnr packs and places the design (no warning); Silinx's saved, in Portuguese too; a Spartan-3E
-// project has no such field (the #2137 test above)
-uiTest('#3138 #3140 open mode: a Spartan-6 project\'s Map (nextpnr, the default, or Silinx) in Process Properties; nextpnr packs and places it; Portuguese', E, async (page) => {
+// #3140: a Spartan-6 project has no Map field in Process Properties (nextpnr's packer the one Map since Silinx's placer
+// was removed; #3138 offered Silinx's or nextpnr's), in Portuguese neither; a project saved with Silinx's Map is packed and
+// placed by nextpnr, with no warning, and its choice is dropped on OK
+uiTest('#3140 open mode: a Spartan-6 project\'s Process Properties without a Map; one saved with Silinx\'s Map packed and placed by nextpnr; Portuguese', E, async (page) => {
   await env.server.api('PUT', '/api/toolchain', { mode: 'silinx' });
   await makeProject(env, { name: 'OpenS6Map', template: 'blinky', board: 'nexys3' });
+  const pj = await env.server.api('GET', '/api/projects/OpenS6Map');
+  await env.server.api('PUT', '/api/projects/OpenS6Map', { ...pj, impl: { ...pj.impl, s6Map: 'silinx' } });
   await page.openProject('OpenS6Map');
   await reloadToolchain(page);
   if (await page.eval(() => !!document.querySelector('#task-switch .task-btn[data-task="impl"]'))) await page.click('#task-switch .task-btn[data-task="impl"]');
@@ -1069,34 +1071,23 @@ uiTest('#3138 #3140 open mode: a Spartan-6 project\'s Map (nextpnr, the default,
     await page.treeRow('#procs', proc, { right: true, exact: true });
     await page.click('body > .menu-popup .mi', { text: item });
     await page.waitForSelector('.dlg-overlay select');
-    return page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > *')].map((e) => e.tagName === 'SELECT' ? `${[...e.options].map((o) => o.text).join('|')} = ${e.value}` : e.textContent.trim()).filter(Boolean));
+    return page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > *')].map((e) => e.tagName === 'SELECT' ? [...e.options].map((o) => o.text).join('|') : e.textContent.trim()).filter(Boolean));
   };
   const fields = await props();
-  assert.deepEqual(fields.slice(4, 6), ['Map (Spartan-6):', 'nextpnr|Silinx = nextpnr'], fields.join('\n'));
+  assert.deepEqual(fields.slice(0, 4), ['Optimization:', 'Fast|Area|Speed', 'FPGA Start-Up Clock:', 'JTAG Clock|CCLK|User Clock']);
+  assert.ok(!fields.some((f) => /Map|nextpnr|Silinx/.test(f)), fields.join('\n'));
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   const setLang = (l) => page.eval(async (x) => { (await import('/js/i18n.js')).setLanguage(x); }, l);
   await setLang('pt');
   try {
     const pt = await props('Implementar Projeto', 'Propriedades do Processo…');
-    assert.deepEqual(pt.slice(4, 6), ['Mapear (Spartan-6):', 'nextpnr|Silinx = nextpnr'], pt.join('\n'));
+    assert.deepEqual(pt.slice(0, 2), ['Otimização:', 'Rápido|Área|Velocidade']);
+    assert.ok(!pt.some((f) => /Mapear|nextpnr|Silinx/.test(f)), pt.join('\n'));
     await page.dialogButton('Cancelar');
     await page.waitNoDialog();
   } finally { await setLang('en'); }
-  // Silinx's Map chosen and saved, then nextpnr's again: the default, not saved
-  const choose = async (map) => {
-    await props();
-    await page.eval((m) => { const s = document.querySelectorAll('.dlg-overlay select')[2]; s.value = m; s.dispatchEvent(new Event('change', { bubbles: true })); }, map);
-    await page.dialogButton('OK');
-    await page.waitNoDialog();
-  };
-  await choose('silinx');
-  await page.waitFor(async () => (await (await fetch('/api/projects/OpenS6Map')).json()).impl.s6Map === 'silinx', [], { what: 'the Map saved' });
-  assert.deepEqual((await props()).slice(5, 6), ['nextpnr|Silinx = silinx']);
-  await page.dialogButton('Cancel');
-  await page.waitNoDialog();
-  await choose('nextpnr');
-  await page.waitFor(async () => !('s6Map' in (await (await fetch('/api/projects/OpenS6Map')).json()).impl), [], { what: 'the default Map saved' });
+  // the project saved with Silinx's Map: nextpnr packs and places it, with no warning
   const before = (await page.consoleText()).length;
   await page.treeRow('#procs', 'Implement Design', { dbl: true, exact: true });
   await page.waitFor((b) => /Process "Implement Design" (completed successfully|failed)/.test(window.__console().slice(b)), [before], { what: 'Implement Design', timeout: 240000 });
@@ -1104,6 +1095,12 @@ uiTest('#3138 #3140 open mode: a Spartan-6 project\'s Map (nextpnr, the default,
   assert.match(log, /Process "Implement Design" completed successfully/, log.slice(-3000));
   assert.doesNotMatch(log, /WARNING|ERROR/, log.slice(-3000));
   assert.match(log, /Packed and placed \d+ sites by nextpnr in \d/, log.slice(-3000));
+  assert.doesNotMatch(log, /\bPlaced \d+ sites by nextpnr/, log.slice(-3000));
   assert.ok(log.includes('All signals are completely routed.'), log.slice(-3000));
+  // OK in Process Properties: the old choice dropped from the project
+  await props();
+  await page.dialogButton('OK');
+  await page.waitNoDialog();
+  await page.waitFor(async () => !('s6Map' in (await (await fetch('/api/projects/OpenS6Map')).json()).impl), [], { what: 'the Map dropped' });
 }, { timeout: 400000 });
 

@@ -60,17 +60,16 @@ Map and Place & Route have one engine in the application, nextpnr (#2137); a pro
 | Spartan-3E | nextpnr packs the design at Place & Route | nextpnr |
 | Spartan-6 | nextpnr packs the design into the sites of Silinx's packer (`fpga/s6/`) | nextpnr |
 
-On a Spartan-6, nextpnr's Map is the default since its parity (#3138, #3139, #3140): nextpnr packs Yosys's netlist into the
-sites of Silinx's packer and places them, its pads and clocks by its own rules (`fpga/s6/nextpnr-pack.js`); Silinx checks
-the sites are the same, then routes with nextpnr. Process Properties' Map (Spartan-6) can still be Silinx (`impl.s6Map`
-`silinx`, the MCP tool `set_process_properties`'s `s6_map`): nextpnr then places the sites of Silinx's packer, the pads,
-global buffers, block RAMs and DSPs placed by Silinx's rules first; it is removed next (#3140).
+On a Spartan-6, nextpnr packs Yosys's netlist into the sites of Silinx's packer and places them, its pads and clocks by its
+own rules (`fpga/s6/nextpnr-pack.js`, #3138; the one Map since its parity, #3139, #3140); Silinx checks the sites are the
+same, writes their settings, then routes with nextpnr. A project saved with Process Properties' former Map (Spartan-6)
+choice (`impl.s6Map`) is built the same way, the choice dropped.
 
 There is no fallback: where nextpnr cannot start (its chip database not downloaded yet, offline) Place & Route fails,
 saying so. **nextpnr replaced Silinx's placer and router** (decided in #2131; parity in #2135, #2797; removed in #2137, the
-Spartan-3E's placer and router, and #2824, the Spartan-6's router, its placer kept for the sites nextpnr is given fixed:
-pads, global buffers, block RAMs, DSPs; their parts other modules use are in `fpga/device-sites.js`, `fpga/place-common.js`,
-`fpga/route-check.js`, `fpga/clock-reach.js`). The open synthesis counts the slices as nextpnr packs them (`slice-estimate.js`, #2529). The Post-Map model is written
+Spartan-3E's placer and router, #2824, the Spartan-6's router, and #3140, the Spartan-6's placer; their parts other
+modules use are in `fpga/device-sites.js`, `fpga/route-check.js`, `fpga/clock-reach.js`). Silinx's packers stay: the
+Spartan-3E's counts and models nextpnr's packing, the Spartan-6's gives the sites nextpnr packs into and their settings. The open synthesis counts the slices as nextpnr packs them (`slice-estimate.js`, #2529). The Post-Map model is written
 from nextpnr's packing: its routed design without the routing (#2530).
 The micro-architectures live in the fork `pmnmalo/nextpnr-spartan`. What stays Silinx's in any case: the timing, the bitstream
 and their data. nextpnr's routed design is converted to XDL (`fpga/nextpnr-xdl.js`), which those steps read.

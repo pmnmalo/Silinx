@@ -1,9 +1,3 @@
-In short:
-
-- **Spartan-6: nextpnr's Map by default:** on the Nexys3 and the Atlys, nextpnr now packs and places the design by
-  default (Process Properties' Map (Spartan-6): nextpnr, no longer "on trial"); Silinx's Map can still be chosen until it
-  is removed.
-
 In detail:
 
 - **The Spartan-6's Map: nextpnr's packer the default (part of #3140):** after its parity (#3139: the same slices, the

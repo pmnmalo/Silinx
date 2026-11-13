@@ -1,6 +1,6 @@
-// The Spartan-6 designs of the placer's and the routing's tests (#729, #730): a design synthesized for the Spartan-6
-// (the open synthesis, Yosys xc6s), packed, its physical design, on the boards' parts; a placed design routed by
-// nextpnr, as the flow's Place & Route routes it (#2824).
+// The Spartan-6 designs of the Map's, the XDL's, the timing's and the routing's tests (#729, #730): a design synthesized
+// for the Spartan-6 (the open synthesis, Yosys xc6s), packed, its physical design, on the boards' parts; packed and placed
+// by nextpnr (#3138, #3140: Silinx's placer removed) and routed by nextpnr (#2824), as the flow's Place & Route does.
 import { compile, elaborate } from '../core/compile.js';
 import { primitiveSources } from '../core/unisim.js';
 import { synthesizeOpen } from '../core/synth-front.js';
@@ -10,7 +10,8 @@ import { loadDeviceCache } from '../packages/silinx-fpga/src/fpga/device-node.js
 import { packS6 } from '../packages/silinx-fpga/src/fpga/s6/pack.js';
 import { physS6 } from '../packages/silinx-fpga/src/fpga/s6/phys.js';
 import { s6Sites } from '../packages/silinx-fpga/src/fpga/s6/sites.js';
-import { siteNetlist, routedDesignS6 } from '../packages/silinx-fpga/src/fpga/s6/nextpnr.js';
+import { siteNetlist, routedDesignS6, placementOf } from '../packages/silinx-fpga/src/fpga/s6/nextpnr.js';
+import { sortedNetlistText, packInput, samePacking } from '../packages/silinx-fpga/src/fpga/s6/nextpnr-pack.js';
 import { nextpnrS6Node } from '../packages/silinx-fpga/src/nextpnr-s6-node.js';
 import { example, exampleUcf } from './examples-lib.mjs';
 
@@ -34,17 +35,20 @@ export function s6Device(part) {
 
 /** A design synthesized for the Spartan-6, read as the packer reads it (the UNISIM primitives it instantiates
  *  compiled with it, as the flow's front end compiles them). */
+const texts = new WeakMap();   // (a netlist's Yosys JSON and top, for nextpnr's packer)
 export async function s6Netlist(sources, top) {
   const d = elaborate(compile([...primitiveSources(sources), ...sources]), top);
   const r = await synthesizeOpen(d, { family: 'spartan6', run: yosysNode });
-  return readYosysJson(r.files[`${r.top}.json`], { top: r.top });
+  const nl = readYosysJson(r.files[`${r.top}.json`], { top: r.top });
+  texts.set(nl, { text: r.files[`${r.top}.json`], top: r.top });
+  return nl;
 }
 export const s6Verilog = text => s6Netlist([{ path: 'm.v', lang: 'verilog', text }], 'm');
 
-/** A netlist packed and turned into its physical design: { nl, packed, phys }. */
+/** A netlist packed and turned into its physical design: { nl, packed, phys, ucf }. */
 export function s6Phys(nl, ucf = null) {
   const packed = packS6(nl);
-  return { nl, packed, phys: physS6(nl, packed, { ucf }) };
+  return { nl, packed, phys: physS6(nl, packed, { ucf }), ucf };
 }
 
 const netlists = new Map();
@@ -59,22 +63,41 @@ export async function s6Example(name, board) {
 }
 
 let nextpnr = null;
-/** A design the Spartan-6's placer placed (placedXdlS6's, for its part) routed by nextpnr, as the flow's Place & Route
- *  routes the placement it keeps (open-flow-nextpnr-s6.js: its run with --no-place; a pad off a global buffer's
- *  dedicated path GENERAL_OK): the routed design (routedDesignS6's, for writeXdl). nextpnr's ERROR lines in the error. */
-export async function s6RouteNextpnr(placed, part, { seed = 1 } = {}) {
-  const { device, sites } = s6Device(part), name = part.replace(/-\d+$/, '');
+// a run of nextpnr's WebAssembly package on part's chip database: its written design (nextpnr's ERROR lines in the error)
+async function runNextpnr(what, part, input, args) {
+  const name = part.replace(/-\d+$/, '');
   nextpnr ||= nextpnrS6Node();
-  const generalOk = new Set(placed.insts.filter(i => i.placed && sites.pads.has(i.site) && !sites.pads.get(i.site).bufg.length).map(i => i.name));
-  const input = siteNetlist(placed, { top: 'top', generalOk, chains: [], device });
   const lines = [];
   let files;
   try {
-    files = await nextpnr.run(['--device', name, '--chipdb', 'chipdb.bin', '--json', 'design.json', '--write', 'out.json', '--no-place', '--seed', String(seed), '--timing-allow-fail'],
+    files = await nextpnr.run(['--device', name, '--chipdb', 'chipdb.bin', '--json', 'design.json', '--write', 'out.json', ...args, '--timing-allow-fail'],
       { 'design.json': JSON.stringify(input), 'chipdb.bin': await nextpnr.chipdb(name, () => {}) }, l => lines.push(l));
   } catch (e) {
-    throw new Error(`nextpnr's routing failed: ${e?.message ?? lines.filter(l => /^ERROR:/.test(l)).join(' ')}`);
+    throw new Error(`nextpnr's ${what} failed: ${e?.message ?? lines.filter(l => /^ERROR:/.test(l)).join(' ')}`);
   }
   const out = files['out.json'];
-  return routedDesignS6(JSON.parse(typeof out === 'string' ? out : new TextDecoder().decode(out)), placed, device);
+  return JSON.parse(typeof out === 'string' ? out : new TextDecoder().decode(out));
+}
+
+/** A design of s6Netlist's (s6Phys's or s6Example's: { nl, ucf }) packed and placed by nextpnr's Map, as the flow's
+ *  Place & Route does (open-flow-nextpnr-s6.js: the netlist's cells by name, packInput, a run with --no-route, its sites
+ *  Silinx's Map's): { nl, packed, phys, ucf } of the sorted netlist and placement (placementOf's, for placedXdlS6). */
+export async function s6PlaceNextpnr(d, part, { seed = 1 } = {}) {
+  const { text, top } = texts.get(d.nl);
+  const sorted = sortedNetlistText(text), nl = readYosysJson(sorted, { top });
+  const s = s6Phys(nl, d.ucf ?? null);
+  const json = await runNextpnr('packing', part, packInput(sorted, s.phys), ['--no-route', '--seed', String(seed)]);
+  const differ = samePacking(json, s.phys);
+  if (differ.length) throw new Error(`nextpnr's packing differs from Silinx's Map: ${differ.slice(0, 5).join('; ')}`);
+  return { ...s, placement: placementOf(json, s.phys, s6Device(part).device) };
+}
+
+/** A placed design (placedXdlS6's, for its part) routed by nextpnr, as the flow's Place & Route routes the placement it
+ *  keeps (open-flow-nextpnr-s6.js: its run with --no-place; a pad off a global buffer's dedicated path GENERAL_OK): the
+ *  routed design (routedDesignS6's, for writeXdl). nextpnr's ERROR lines in the error. */
+export async function s6RouteNextpnr(placed, part, { seed = 1 } = {}) {
+  const { device, sites } = s6Device(part);
+  const generalOk = new Set(placed.insts.filter(i => i.placed && sites.pads.has(i.site) && !sites.pads.get(i.site).bufg.length).map(i => i.name));
+  const input = siteNetlist(placed, { top: 'top', generalOk, chains: [], device });
+  return routedDesignS6(await runNextpnr('routing', part, input, ['--no-place', '--seed', String(seed)]), placed, device);
 }
