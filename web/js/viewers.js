@@ -24,6 +24,7 @@ import { wcfgFiles } from './sim-wcfg.js';
 import { prefKey } from './prefs.js';
 import { pinsReady } from './pins-check.js';
 import { isName } from '/core/ident.js';
+import { designOnly, shownDiag } from './design-only.js';
 
 // ---- schematic
 // Netlist written by netgen for `step` (postsynth / posttrans / postmap / postpar) with the
@@ -325,8 +326,10 @@ async function saveStimTestbench(mod, inst, m) {
   const dir = String(info?.file || 'src/x').replace(/\/[^/]*$/, '');
   const path = `${dir}/${name}.${lang === 'verilog' ? 'v' : 'vhd'}`;
   const other = wiz.moduleElsewhere(name, path);
-  if (other) return alertDlg(title, `The project already has a module '${other.name}' (${other.file}).`, 'error');
-  if (S.fileTree?.includes(path) && !await confirmDlg(title, `${path} exists. Replace it?`)) return;
+  // (a design project's: the test bench by its name, its HDL file never named, #3891)
+  const named = designOnly() ? `The test bench ${name}` : path;
+  if (other) return alertDlg(title, designOnly() ? `The project already has a module '${other.name}'.` : `The project already has a module '${other.name}' (${other.file}).`, 'error');
+  if (S.fileTree?.includes(path) && !await confirmDlg(title, `${named} exists. Replace it?`)) return;
   let text;
   try {
     const types = Object.fromEntries((info?.portList || []).map(p => [p.name, p.type]));
@@ -338,14 +341,14 @@ async function saveStimTestbench(mod, inst, m) {
   // (a simulation source, whatever its name)
   const f = S.project.files?.find(x => x.path === path);
   if (f && f.role !== 'sim') { f.role = 'sim'; await saveProjectJson(); await reloadProject(); }
-  log(`Save as Test Bench: created ${path} from the stimuli of '${mod}' (${m.cycles} cycle(s)); run Simulate Behavioral Model on ${name} to check the design.`, 'ok');
-  toast(`Test bench ${path} created`, 'ok');
+  log(`Save as Test Bench: created ${designOnly() ? `the test bench ${name}` : path} from the stimuli of '${mod}' (${m.cycles} cycle(s)); run Simulate Behavioral Model on ${name} to check the design.`, 'ok');
+  toast(`Test bench ${designOnly() ? name : path} created`, 'ok');
 }
 
 // Elaboration errors of a design about to be simulated (e.g. a netlist cell without a model, which
 // would run as an empty black box): listed in the console and the Errors tab; true = run anyway.
 async function confirmElabErrors(title, lib, design) {
-  const errs = diagsFor(lib, design).filter(d => (d.severity || 'error') === 'error');
+  const errs = diagsFor(lib, design).map(shownDiag).filter(d => (d.severity || 'error') === 'error');   // (a design project's: its drawings, #3891)
   if (!errs.length) return true;
   setDiagnostics(diagsFor(lib, design));
   for (const d of errs.slice(0, 20)) log(`ERROR: ${d.file ? `${d.file}${d.line ? `:${d.line}` : ''}: ` : ''}${d.message}`, 'err');

@@ -5,6 +5,7 @@ import { S, activateDoc, compileProject, findDoc, flushDoc, openDoc, openFile, s
 import { alertDlg, confirmDlg, dialog, h, popupMenu } from './ui.js';
 import { api } from './api.js';
 import { log, logError } from './console.js';
+import { hdlStatus, hdlWarning } from './design-only.js';
 import { markStale, saveAll } from './processes.js';
 import { removeModule, renderHierarchy, topMenuItem } from './design.js';
 import { renameDialog } from './rename.js';
@@ -45,7 +46,7 @@ export async function openTt(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (!S.syncing) syncHdlFromTt(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+          if (!S.syncing) syncHdlFromTt(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => ed.destroy?.(),
       };
@@ -65,7 +66,7 @@ export async function syncHdlFromTt(ttPath, model) {
   const errs = validateTable(m).filter(x => x.severity === 'error');
   if (errs.length) {
     const why = `the truth table has errors: ${errs.map(x => x.message).join('; ')}`;
-    if (S.outOfSync[target] !== why) log(`WARNING: ${target} not updated: ${why}`, 'warn');
+    if (S.outOfSync[target] !== why) log(hdlWarning(`WARNING: ${target} not updated: ${why}`, ttPath, why), 'warn');
     S.outOfSync[target] = why; staleHdl(target, ttPath, why); refreshSyncBanner(target); refreshTtLink(ttPath);
     return;
   }
@@ -80,7 +81,7 @@ export async function syncHdlFromTt(ttPath, model) {
     const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
     refreshOpenEditor(target, g.code);
     compileProject(); renderHierarchy(); markStale();
-    status(`${target} updated from ${ttPath.split('/').pop()}`);
+    hdlStatus(`${target} updated from ${ttPath.split('/').pop()}`);
   } finally { S.syncing = false; }
 }
 

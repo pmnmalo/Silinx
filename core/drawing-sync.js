@@ -9,10 +9,14 @@
 import { compile } from './compile.js';
 import { attachSymbols, isSymbolFile, modulesFromLibrary } from './schdoc.js';
 import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlPath, modelLanguage, viewHdl } from './view-hdl.js';
+import { isDesignOnly } from './project-kind.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
 const isVerilog = file => /\.s?v$/i.test(file);
+// (a design project's messages name its drawings, never their HDL: none when it is made, its module when it is not, as
+// the interface's, #3891)
+const designProject = async (P, name) => isDesignOnly(await Promise.resolve(P.readProject?.(name)).catch(() => null));
 
 /** The project's modules from its HDL sources (the schematics' module symbols), as the editors read them, with their
  *  symbols of their own (<module>.sym.json, #3755). */
@@ -64,11 +68,11 @@ export async function syncDrawing(P, name, path, modules = null) {
   const r = viewHdl(path, JSON.stringify(m), { modules: mods, linked: () => false });
   if (r.errors.length) {
     const why = r.errors.map(e => e.replace(`${path}: `, '')).join('; ');
-    return { target, written: null, removed: null, stale: why, messages: [`WARNING: ${target} not updated: ${path} has errors: ${why}`] };
+    return { target, written: null, removed: null, stale: why, messages: [await designProject(P, name) ? `WARNING: ${path}: its module is not made again: ${why}` : `WARNING: ${target} not updated: ${path} has errors: ${why}`] };
   }
   if (await P.readFile(name, target) === r.text) return { target, written: null, removed: null, stale: null, messages: [] };
   await P.writeFile(name, target, r.text);
-  return { target, written: target, removed: null, stale: null, messages: [`${target} updated from ${path}`] };
+  return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} updated from ${path}`] };
 }
 
 /** A drawing with no HDL file gets it (#207, #3184), as the interface's adoptDrawnHdl gives it when the project is
@@ -89,7 +93,7 @@ export async function adoptDrawing(P, name, path) {
   if (hdl.some(s => definesModule(s.text, r.module, s.path))) return null;
   await P.writeFile(name, target, r.text);
   await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: target }, null, indent(path)));
-  return { target, written: target, removed: null, stale: null, messages: [`${target} generated from ${path}`] };
+  return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} generated from ${path}`] };
 }
 
 /** The HDL files of the project their drawing cannot make again (errors): [{ target, from, why }] (app.js's

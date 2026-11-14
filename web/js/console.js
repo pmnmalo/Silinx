@@ -7,6 +7,7 @@ import { t, onLanguageChange } from './i18n.js';
 import { hintRow, sevWord } from './diaghelp.js';
 import { S, app } from './app.js';
 import { MESSAGE_LINE } from './tool-descriptors.js';
+import { shownDiag } from './design-only.js';
 
 const $ = id => document.getElementById(id);
 
@@ -92,6 +93,7 @@ export function showConsolePage(page) {
 
 // Diagnostics (Errors / Warnings tabs)
 export function setDiagnostics(diags, { keepConsole = true } = {}) {
+  diags = diags.map(shownDiag);   // (a design project's: its drawings', never its HDL's, #3891)
   // a check replaces its own entries; warnings/errors collected from the console (e.g. a running
   // implementation) are kept unless keepConsole is false, and the open editors' problems (editor-problems.js) always
   S.diags = [...diags, ...S.diags.filter(d => (keepConsole && d.source === 'console') || d.source === 'editor')];

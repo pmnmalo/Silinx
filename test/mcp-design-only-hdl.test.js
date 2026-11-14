@@ -72,3 +72,24 @@ test('list_projects: a design project with no device nor board, its kind', async
   assert.deepEqual(r.data.projects.find(p => p.name === 'l1'), { name: 'l1', top: 'traffic', kind: 'design', board: null, device: null });
   assert.match(r.text.split('\n').find(l => l.startsWith('l2:')), /^l2: top \(none\), no board \(xc3s/);
 });
+
+// (#3891, part 4: the messages)
+test('a design project\'s messages: a drawing made without its HDL named, one with errors its module not made again; Check Design on the drawing', async () => {
+  await designProject('c1');
+  assert.equal((await ok('new_source', { project: 'c1', type: 'schematic', name: 'sh' })).text, 'Created Schematic \'src/sh.sch.json\'.');
+  const bad = JSON.parse(FSM);
+  bad.states[1].name = bad.states[0].name;
+  await ok('write_file', { project: 'c1', path: 'src/traffic.fsm.json', text: JSON.stringify(bad, null, 2) });
+  const chk = await call('check_syntax', { project: 'c1' });
+  assert.equal(chk.text, 'ERROR:Silinx - "" Line 1: top module \'traffic\' not found\nProcess "Check Design" of <traffic> failed (1 error(s), 0 warning(s)).');
+  assert.doesNotMatch(chk.text, /HDL|\.vhd/);
+});
+
+test('a design project\'s test bench and Verify: no language, the test bench by its name; find_in_project without the HDL', async () => {
+  await designProject('c2');
+  await fails('test_bench_wizard', { project: 'c2', module: 'traffic', language: 'verilog' }, 'a design and simulation project has no HDL language (its drawings are its sources)');
+  await fails('verify', { project: 'c2', language: 'verilog' }, 'a design and simulation project has no HDL language (its drawings are its sources)');
+  await ok('new_source', { project: 'c2', type: 'schematic', name: 'sh' });
+  const f = await ok('find_in_project', { project: 'c2', text: 'sh' });
+  assert.ok(f.data.files.length && f.data.files.every(x => !/\.vhd$/.test(x.path)), JSON.stringify(f.data.files.map(x => x.path)));
+});

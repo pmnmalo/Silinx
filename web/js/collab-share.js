@@ -31,6 +31,7 @@ import { followLink, relayUrl, relayAddress, withTop } from '/core/collab-link.j
 import { newHostKey } from '/core/collab-meet.js';
 import { qrBox } from './link-qr.js';
 import { howRow, shareTitle } from './share-how.js';
+import { hdlWarning } from './design-only.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const TRACK_MS = 300;
@@ -361,6 +362,6 @@ async function writeMerged(s, path, { edited = false } = {}) {
   const m = await import('./drawings.js');
   const petri = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromPetri(p, x); };   // (as its save does)
   const sync = { fsm: m.syncHdlFromFsm, tt: m.syncHdlFromTt, asm: m.syncHdlFromAsm, pn: petri, sch: m.syncHdlFromSchematic }[drawingKind(path)];
-  await sync(path, r.model).catch(e => app.log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+  await sync(path, r.model).catch(e => app.log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
   return true;
 }

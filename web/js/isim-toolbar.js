@@ -5,6 +5,7 @@
 import { esc, h } from './dom.js';
 import { ICON, UNITS, parseTime } from './isim.js';
 import { toolbarMenu } from './toolbar-menu.js';
+import { designKind } from './project-kind-flag.js';
 
 /** { btns, rfUnit, rfVal, stimBar } of mountISim (api(): its current values). */
 export function mountToolbar(ctx) {
@@ -53,7 +54,7 @@ export function mountToolbar(ctx) {
   if (stimOpt) {
     sep();
     // with its label, so that drawing stimuli is seen among the icons (#853)
-    addBtn('stim', 'Edit Stimuli: click the waveforms of the inputs (as the HDL Bencher)', () => toggleStim()).append(h('span', { class: 'tb-label', text: 'Edit Stimuli' }));
+    addBtn('stim', designKind() ? 'Edit Stimuli: click the waveforms of the inputs' : 'Edit Stimuli: click the waveforms of the inputs (as the HDL Bencher)', () => toggleStim()).append(h('span', { class: 'tb-label', text: 'Edit Stimuli' }));
     stimBar.innerHTML = `<span class="isim-stim-h">Stimuli</span><button class="btn" data-stim="timing">Timing…</button><button class="btn" data-stim="fill">Fill Expected Outputs</button>`
       + `<button class="btn" data-stim="save">Save as Test Bench…</button><button class="btn" data-stim="stop">Stop Editing</button><span class="isim-stim-st"></span>`;
     tb.after(stimBar);

@@ -54,10 +54,10 @@ test('new_project design_only: no board, no device, no constraints; refused with
 test('a design project: its drawings, Check Syntax, the Test Bench Wizard and the simulation; project_info without HDL', async () => {
   await designProject('d1');
   const tb = await ok('test_bench_wizard', { project: 'd1', module: 'traffic' });
-  assert.match(tb.text, /^Test Bench Wizard: created sim\/tb_traffic\.vhd/);
+  assert.match(tb.text, /^Test Bench Wizard: created the test bench tb_traffic of traffic\.\n/);   // (its HDL file never named, #3891)
   await ok('set_top', { project: 'd1', sim_top: 'tb_traffic' });
   const chk = await ok('check_syntax', { project: 'd1' });
-  assert.equal(chk.text, 'Process "Check Syntax" of <traffic> completed successfully (8 signals, 3 processes).');
+  assert.equal(chk.text, 'Process "Check Design" of <traffic> completed successfully (8 signals, 3 processes).');   // (#3891)
   const sim = await ok('simulate', { project: 'd1', time_ns: 400 });
   // (the core simulates the drawing's HDL, as in any project)
   assert.match(sim.text, /^\[200\.000 ns\] NOTE: TEST PASSED: 8 vector\(s\) \(no expected values\)\nSimulation of <tb_traffic> stopped at 400 ns\.\n/);
@@ -113,7 +113,7 @@ test('set_design_properties: a board makes a design project an FPGA project, des
   assert.match((await ok('project_info', { project: 'd4' })).text, /^d4: top traffic, test bench \(none\), basys2 \(xc3s250ecp132-4\), constraints constraints\/top\.ucf/);
   // (and back: its sources all drawings; the constraints left on the disk)
   const b = await ok('set_design_properties', { project: 'd4', design_only: true });
-  assert.equal(b.text, 'd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project); its HDL is not shown.');
+  assert.equal(b.text, 'd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project).');
   pj = await P.readProject('d4');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   await fails('set_design_properties', { project: 'd4', design_only: true }, 'the project \'d4\' is a design and simulation project already');
