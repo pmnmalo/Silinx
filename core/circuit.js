@@ -3,13 +3,14 @@
 // core/circuit-parts.js; its nets: core/circuit-net.js; its checks: core/circuit-check.js; its simulation:
 // core/circuit-sim.js; its HDL: core/circuit-hdl.js. Isomorphic module (browser + Node).
 import { partDef, LED_COLORS, WIRE_COLORS } from './circuit-parts.js';
+import { isName } from './ident.js';
 
-export const CIRCUIT_FORMAT = 'silinx-circuit';
-export const CIRCUIT_RE = /\.circ\.json$/i;
+const CIRCUIT_FORMAT = 'silinx-circuit';
+const CIRCUIT_RE = /\.circ\.json$/i;
 export const isCircuit = (path) => CIRCUIT_RE.test(String(path || ''));
 
 const int = (v, d = 0) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : d);
-const ident = (s, d) => (/^[A-Za-z][A-Za-z0-9_]*$/.test(String(s ?? '')) ? String(s) : d);
+const ident = (s, d) => (isName(String(s ?? '')) ? String(s) : d);
 
 /** The circuit normalized: every field there, its numbers whole grid steps, the unknown fields dropped. */
 export function normalizeCircuit(m = {}) {
