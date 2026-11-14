@@ -32,6 +32,7 @@ export function mountCircuitEditor(container, opts = {}) {
   let tool = 'select';                  // select | wire | place:<type>
   let view = { tx: 60, ty: 120, k: 1 };
   let drag = null, draft = null, ghost = null, sim = null, fitted = false, destroyed = false;
+  let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
   let hi = 0;
@@ -53,8 +54,9 @@ export function mountCircuitEditor(container, opts = {}) {
   const partsBody = h('div', { class: 'circ-lib' });
   const selSection = h('section', { class: 'asm-section circ-selection' });
   const circBody = h('div', {});
-  const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Properties'),
-    h('section', { class: 'asm-section circ-parts' }, h('h3', {}, 'Parts'), partsBody), selSection,
+  // (the selection's properties first, then the parts library, which is long, then the circuit's)
+  const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Properties'), selSection,
+    h('section', { class: 'asm-section circ-parts' }, h('h3', {}, 'Parts'), partsBody),
     h('section', { class: 'asm-section circ-circuit' }, h('h3', {}, 'Circuit'), circBody));
   mountSideFold({ root, side, key: 'silinx.circuit.props.folded' });
   root.append(toolbar, h('div', { class: 'asm-body' }, h('div', { class: 'asm-main' }, canvasWrap), side), info.el);
@@ -96,15 +98,19 @@ export function mountCircuitEditor(container, opts = {}) {
   function startSim() {
     const errs = checkCircuit(M).filter((d) => d.severity === 'error');
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
+    stopTicks();
     sim = createCircuitSim(M);
     runSim();
+    // (a clock source flips its level every half period, in real time)
+    ticks = M.parts.filter((p) => p.type === 'clock').map((p) => setInterval(() => { if (sim && !destroyed) { sim.set(p.id, !sim.inputs()[p.id]); runSim(); } }, 500 / (p.hz || 1)));
   }
+  function stopTicks() { for (const t of ticks) clearInterval(t); ticks = []; }
   function runSim() {
     const r = sim.run();
     for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
     render();
   }
-  function stopSim() { sim = null; render(); }
+  function stopSim() { stopTicks(); sim = null; render(); }
   function toggleSim() { if (sim) stopSim(); else startSim(); }
 
   // ---------------------------------------------------------------- drawing
@@ -133,7 +139,8 @@ export function mountCircuitEditor(container, opts = {}) {
   }
 
   // ---------------------------------------------------------------- mouse and keys
-  const hit = (e) => { const g = e.target.closest?.('[data-kind]'); return g ? { kind: g.dataset.kind, id: g.dataset.id, input: g.dataset.input } : null; };
+  // (what is under the pointer: a part or a wire, and a switch's, a button's or a DIP lever's input there)
+  const hit = (e) => { const g = e.target.closest?.('[data-kind]'), i = e.target.closest?.('[data-input]'); return g ? { kind: g.dataset.kind, id: g.dataset.id, input: i?.dataset.input, lever: Number(i?.dataset.lever ?? 0) } : null; };
   twoFingerView(svg, {
     cancel: () => { const d = drag; drag = null; if (d?.kind === 'move') { M = normalizeCircuit(JSON.parse(hist[hi])); render(); } },
     pan: (dx, dy) => { view.tx += dx; view.ty += dy; applyView(); },
@@ -145,6 +152,7 @@ export function mountCircuitEditor(container, opts = {}) {
     const w = toWorld(e.clientX, e.clientY), g = toGrid(w), t = hit(e);
     if (sim && t?.input) {
       if (t.input === 'switch') { sim.set(t.id, !sim.inputs()[t.id]); runSim(); }
+      else if (t.input === 'dip') { sim.set(t.id, !sim.inputs()[t.id][t.lever], t.lever); runSim(); }
       else { sim.set(t.id, true); runSim(); drag = { kind: 'press', id: t.id }; }
       return;
     }
@@ -246,6 +254,6 @@ export function mountCircuitEditor(container, opts = {}) {
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
     fit, print, simulating: () => !!sim, toggleSim, sim: () => sim,
     select(ref) { if (!ref?.id || !itemOf(ref.id)) return; sel = { kind: ref.kind || 'part', id: ref.id }; render(); },
-    destroy() { destroyed = true; ro?.disconnect(); offLayout(); container.innerHTML = ''; },
+    destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); container.innerHTML = ''; },
   };
 }
