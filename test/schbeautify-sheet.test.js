@@ -17,7 +17,7 @@ import { routePath, wireGrid } from '../core/schpath.js';
 import { convertModuleToSchematic } from '../core/hdl-to-sch.js';
 import { schematicFromTable } from '../core/logic.js';
 import { importIseSch } from '../core/isesch.js';
-import { example, EXAMPLES } from './examples-lib.mjs';
+import { example, HDL_EXAMPLES as EXAMPLES } from './examples-lib.mjs';   // (not a circuit's, #3901)
 
 const ELK = (await import('elkjs/lib/elk.bundled.js')).default;
 const elk = new ELK();

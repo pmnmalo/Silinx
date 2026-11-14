@@ -18,3 +18,24 @@ export function savedInputs(p) {
   const d = partDef(p.type);
   return (d?.inputs || []).map((x, i) => (x.kind === 'level' ? !!(Array.isArray(p.on) ? p.on[i] : p.on) : false));
 }
+
+// ------------------------------------------------------------------ buses (#3901)
+// a single port's label `name[k]` is bit k of the vector port `name` (a board's LEDs, switches, buttons: led[0]…)
+const BUS_RE = /^([A-Za-z][A-Za-z0-9_]*)\[(\d+)\]$/;
+/** A port's name split: { base, bit } of a bus's bit, else { base: name, bit: null }. */
+export function busOf(name) { const m = BUS_RE.exec(String(name)); return m ? { base: m[1], bit: Number(m[2]) } : { base: String(name), bit: null }; }
+/** A port in an expression of the HDL: a bus's bit `led(0)` (VHDL) / `led[0]` (Verilog), else its name. */
+export function portRef(name, vhdl) { const b = busOf(name); return b.bit == null ? b.base : vhdl ? `${b.base}(${b.bit})` : `${b.base}[${b.bit}]`; }
+/** The module's ports declared: [{ name, dir: 'in' | 'out', width }] (width: a bus's, null a scalar), the buses once, in order. */
+export function portDecls(ports) {
+  const out = [], seen = new Map();
+  for (const [dir, list] of [['in', ports.inputs], ['out', ports.outputs]]) {
+    for (const x of list) {
+      const b = busOf(x.name);
+      if (b.bit == null) { out.push({ name: b.base, dir, width: null }); continue; }
+      if (!seen.has(b.base)) { const d = { name: b.base, dir, width: 0 }; seen.set(b.base, d); out.push(d); }
+      seen.get(b.base).width = Math.max(seen.get(b.base).width, b.bit + 1);
+    }
+  }
+  return out;
+}

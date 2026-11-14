@@ -171,11 +171,11 @@ const c74193 = ic('74193', 'Synchronous 4-bit up/down binary counter, dual clock
   },
   vhdl: { decl: [Q4.vhdl, "signal ck, dir : std_logic := 'X';"], body: ['-- silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'ck <= i_up and i_down;',
     'process (i_up, i_down)', 'begin', '  ' + '-- silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', '  if falling_edge(i_up) or falling_edge(i_down) then dir <= not i_up; end if;', 'end process;',
-    'process (ck, i_clr, i_load_n)', 'begin', "  if i_clr = '1' then q <= \"0000\";", "  -- silinx: ignore sensitivity (an asynchronous load takes the inputs when it starts, as a flip-flop's in synthesis)", "  elsif i_load_n = '0' then q <= i_d & i_c & i_b & i_a;", '  elsif rising_edge(ck) then',
+    '-- silinx: ignore data-as-clock (UP and DOWN are its clocks: the chip\'s)', 'process (ck, i_clr, i_load_n)', 'begin', "  if i_clr = '1' then q <= \"0000\";", "  -- silinx: ignore sensitivity (an asynchronous load takes the inputs when it starts, as a flip-flop's in synthesis)", "  elsif i_load_n = '0' then q <= i_d & i_c & i_b & i_a;", '  elsif rising_edge(ck) then',
     `    if dir = '1' then ${vInc('q', 1)} elsif dir = '0' then ${vInc('q', -1)} else q <= (others => 'X'); end if;`, '  end if;', 'end process;', ...vQ,
     '-- silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'o_co_n <= not (q(0) and q(1) and q(2) and q(3) and (not i_up));', '-- silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'o_bo_n <= not ((not q(0)) and (not q(1)) and (not q(2)) and (not q(3)) and (not i_down));'] },
-  verilog: { decl: [Q4.verilog, "reg dir = 1'bx;", '// silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'wire ck = i_up & i_down;'], body: ['always @(negedge i_up or negedge i_down) dir <= ~i_up;',
-    'always @(posedge ck or posedge i_clr or negedge i_load_n)', "  if (i_clr) q <= 4'd0;", "  else if (!i_load_n) q <= {i_d, i_c, i_b, i_a};",
+  verilog: { decl: [Q4.verilog, "reg dir = 1'bx;", '// silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'wire ck = i_up & i_down;'], body: ['// silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'always @(negedge i_up or negedge i_down) dir <= ~i_up;',
+    '// silinx: ignore data-as-clock (UP and DOWN are its clocks: the chip\'s)', 'always @(posedge ck or posedge i_clr or negedge i_load_n)', "  if (i_clr) q <= 4'd0;", "  else if (!i_load_n) q <= {i_d, i_c, i_b, i_a};",
     "  else q <= (dir === 1'b1) ? q + 4'd1 : (dir === 1'b0) ? q - 4'd1 : 4'bxxxx;", ...gQ, '// silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'assign o_co_n = ~(q[0] & q[1] & q[2] & q[3] & ~i_up);', '// silinx: ignore clock-as-data (UP and DOWN are its clocks and its direction: the chip\'s)', 'assign o_bo_n = ~(~q[0] & ~q[1] & ~q[2] & ~q[3] & ~i_down);'] },
 });
 
@@ -207,9 +207,9 @@ const c74165 = ic('74165', '8-bit parallel in, serial out shift register', 20, [
     } }],
     out: (i, s) => ({ qh: s.r[7], qh_n: nb(s.r[7]) }),
   },
-  vhdl: { decl: [R8.vhdl, "signal ck : std_logic := 'X';"], body: ['ck <= i_clk or i_inh;', 'process (ck, i_shld_n)', 'begin',
+  vhdl: { decl: [R8.vhdl, "signal ck : std_logic := 'X';"], body: ['ck <= i_clk or i_inh;', '-- silinx: ignore data-as-clock (CLK INH stops the clock: the chip\'s)', 'process (ck, i_shld_n)', 'begin',
     "  -- silinx: ignore sensitivity (an asynchronous load takes the inputs when it starts, as a flip-flop's in synthesis)", "  if i_shld_n = '0' then r <= i_h & i_g & i_f & i_e & i_d & i_c & i_b & i_a; elsif rising_edge(ck) then r <= r(6 downto 0) & i_ser; end if;", 'end process;', 'o_qh <= r(7);', 'o_qh_n <= not r(7);'] },
-  verilog: { decl: [R8.verilog, 'wire ck = i_clk | i_inh;'], body: ['always @(posedge ck or negedge i_shld_n) if (!i_shld_n) r <= {i_h, i_g, i_f, i_e, i_d, i_c, i_b, i_a}; else r <= {r[6:0], i_ser};',
+  verilog: { decl: [R8.verilog, 'wire ck = i_clk | i_inh;'], body: ['// silinx: ignore data-as-clock (CLK INH stops the clock: the chip\'s)', 'always @(posedge ck or negedge i_shld_n) if (!i_shld_n) r <= {i_h, i_g, i_f, i_e, i_d, i_c, i_b, i_a}; else r <= {r[6:0], i_ser};',
     'assign o_qh = r[7];', 'assign o_qh_n = ~r[7];'] },
 });
 
@@ -246,6 +246,8 @@ const c74595 = ic('74595', '8-bit shift register with output latches, 3-state', 
     procs: [{ sens: ['rclk'], run(i, p, s) { if (rose(i, p, 'rclk')) s.t = s.r; } },
       { sens: ['srclk', 'srclr_n'], run(i, p, s) { if (i.srclr_n === '0') s.r = toBits(0, 8); else if (rose(i, p, 'srclk')) s.r = [i.ser, ...s.r.slice(0, 7)]; } }],
     out: (i, s) => ({ ...Object.fromEntries(QN.map((n, k) => [n, i.oe_n === '0' ? s.t[k] : i.oe_n === '1' ? 'Z' : 'X'])), qh2: s.r[7] }),
+    // (its three-state outputs, enabled while OE̅ is low: the digital model's, core/circuit-digital.js, #3901)
+    threeState: { enable: 'oe_n', active: '0', outs: QN },
   },
   vhdl: { decl: [R8.vhdl, "signal t : std_logic_vector(7 downto 0) := (others => 'X');"], body: [
     'process (i_srclk, i_srclr_n)', 'begin', "  if i_srclr_n = '0' then r <= (others => '0'); elsif rising_edge(i_srclk) then r <= r(6 downto 0) & i_ser; end if;", 'end process;',

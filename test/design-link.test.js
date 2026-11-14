@@ -32,7 +32,7 @@ const rejects = (p, message) => assert.rejects(p, e => { assert.equal(e.linkErro
 const throws = (f, message) => assert.throws(f, e => { assert.equal(e.linkError, true); assert.equal(e.message, message); return true; });
 
 // the HDL each example's drawings make again (left out of the link), and the link's length
-const LEFT = { gates: ['src/gates.vhd'], traffic: ['src/lamps.vhd', 'src/traffic.vhd'], blinky: ['src/speed_ctrl.vhd'] };
+const LEFT = { gates: ['src/gates.vhd'], breadboard: ['src/breadboard.vhd'], traffic: ['src/lamps.vhd', 'src/traffic.vhd'], blinky: ['src/speed_ctrl.vhd'] };
 
 for (const name of EXAMPLE_ORDER) {
   test(`encodeDesign / decodeDesign: ${name}, every file back byte for byte`, async () => {

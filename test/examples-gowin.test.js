@@ -19,7 +19,7 @@ process.env.SILINX_CONFIG_DIR = path.join(tmp, 'config');
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 // nextpnr's warnings of each example (seed 1): "Failed to route net … using dedicated routing."
-const DEDICATED = { gates: 1, traffic: 1, blinky: 8, pong: 8, stopwatch: 0, clock: 12, vga: 0, isqrt: 1, uart: 0, micro80: 1 };
+const DEDICATED = { gates: 1, breadboard: 2, traffic: 1, blinky: 8, pong: 8, stopwatch: 0, clock: 12, vga: 0, isqrt: 1, uart: 0, micro80: 1 };
 const FALLBACK = /^WARNING:Place - Failed to route net '[^']+' from \S+ to \S+ using dedicated routing\.$/;
 
 test('the examples\' ports on the Tang Nano 9K: every one with a pin', () => {
@@ -30,7 +30,7 @@ test('the examples\' ports on the Tang Nano 9K: every one with a pin', () => {
 describe('the examples on the Gowin\'s board', { concurrency: 2 }, () => {
   for (const name of EXAMPLES) {
     for (const t of GOWIN_TARGETS.map(x => exampleBoard(name, x))) {
-      test(`example ${name} on the ${targetName(t)}: a CST from the board, the Silinx toolchain builds its .fs, Apicula\'s byte for byte`, { timeout: 600000 }, async () => {
+      test(`example ${name} on the ${targetName(t)}: a CST from the board, the Silinx toolchain builds its .fs, Apicula\'s byte for byte`, { timeout: 600000, todo: !REF[name] && 'no Apicula reference recorded for it yet (#3901)' }, async () => {
         const { dir, project } = exampleProject(name, t, tmp);
         assert.match(project.constraints, /\.cst$/);
         const job = await silinxFlow(dir, project, ['synth', 'translate', 'par', 'bitgen']);
@@ -40,9 +40,9 @@ describe('the examples on the Gowin\'s board', { concurrency: 2 }, () => {
         assert.match(log, /Placed and routed by nextpnr-himbaechel-gowin in /);
         assert.ok(fs.existsSync(path.join(dir, 'build', 'open', 'routed.json')));
         // (the routed design Apicula's .fs was made from: when nextpnr or Yosys changes it, the reference is to be made again)
-        assert.equal(sha(fs.readFileSync(path.join(dir, 'build', 'open', 'routed.json'))), REF[name].routed, `${name}: the routed design is not the reference's`);
-        assert.equal(sha(fs.readFileSync(path.join(dir, 'build', `${project.top}.fs`))), REF[name].fs, `${name}: the .fs is not Apicula's`);
-        assert.match(log, new RegExp(`Bitstream: build/${project.top}\\.fs \\(${REF[name].fsBytes} bytes, gowin_pack in `));
+        assert.equal(sha(fs.readFileSync(path.join(dir, 'build', 'open', 'routed.json'))), REF[name]?.routed, `${name}: the routed design is not the reference's`);
+        assert.equal(sha(fs.readFileSync(path.join(dir, 'build', `${project.top}.fs`))), REF[name]?.fs, `${name}: the .fs is not Apicula's`);
+        assert.match(log, new RegExp(`Bitstream: build/${project.top}\\.fs \\(${REF[name]?.fsBytes} bytes, gowin_pack in `));
         const clocked = /create_clock -name clk -period 37\.037 \[get_ports \{clk\}\]/.test(fs.readFileSync(path.join(dir, project.constraints), 'utf8'));
         assert.equal(clocked, name !== 'gates');
         if (clocked) assert.match(log, /Clock clk: [\d.]+ MHz \(met, 27 MHz asked\)/);
