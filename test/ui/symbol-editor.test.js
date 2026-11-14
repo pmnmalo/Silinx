@@ -3,7 +3,7 @@
 // Properties, or dragged there), later on its side (Later ▶), the spacing changed; the main toolbar's Undo undoes one
 // step; saved, the schematic's instance of the module is out of date, Update Symbol draws it with the new symbol, every
 // pin on its net; its toolbar, side panel (folded, remembered; ☰ on a narrow window) and status line as the other
-// editors'; Portuguese. No warnings.
+// editors'; Portuguese. No warnings. Its toolbar's "Edit Symbol" badge and Exit, closing its tab as its × (#3943).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -55,7 +55,7 @@ uiTest('#3755 Edit Symbol: the symbol made and opened; pins moved, by the Proper
   assert.deepEqual(await page.eval((s) => ['zin', 'zout', 'fit'].map((a) => !!document.querySelector(`${s} [data-act=${a}] svg`)), SY), [true, true, true]);
   assert.equal(await page.eval((s) => document.querySelector(`${s} .sy-earlier`).disabled, SY), true, 'no pin selected: Earlier disabled');
   // (Reset to Default a button of the toolbar, no ⋮ menu, #3789)
-  assert.deepEqual(await page.eval((s) => [...document.querySelectorAll(`${s} .sy-toolbar > .asm-group:first-child button`)].map((b) => b.textContent), SY), ['◀ Earlier', 'Later ▶', 'Reset to Default']);
+  assert.deepEqual(await page.eval((s) => [...document.querySelectorAll(`${s} .sy-toolbar > div.asm-group:first-of-type button`)].map((b) => b.textContent), SY), ['◀ Earlier', 'Later ▶', 'Reset to Default']);
   assert.equal(await page.eval((s) => document.querySelector(`${s} .sy-toolbar .tb-menu-btn, ${s} .sy-toolbar [aria-haspopup]`), SY), null, 'no ⋮ menu');
 
   // the clock c selected: its section; to the bottom by its Side
@@ -176,5 +176,82 @@ uiTest('#3755 the Symbol Editor\'s Properties fold and expand, remembered; on a 
   await page.click(btn);
   assert.equal(await shown(), false);
   await page.setViewport(1440, 900);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 120000 });
+
+const SYMFILE = JSON.stringify({ version: 1, kind: 'symbol', module: 'reg1', pins: PORTS.map((q) => ({ name: q.name, side: q.dir === 'out' ? 'E' : 'W' })), spacing: 20, width: null, height: null, title: 'top' });
+const consoleLines = async (page, re) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => re.test(l));
+const open = async (page) => {
+  await page.eval(() => window.SilinxApp.openFile('src/reg1.sym.json'));
+  await page.waitFor((s) => document.querySelector(`${s} .sy-pin`), [SY], { what: 'the Symbol Editor' });
+  await page.eval(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));   // (fitted: its pins in place)
+};
+const later = async (page, pin) => {
+  await page.click(`${SY} .sy-pin[data-pin="${pin}"]`);
+  await page.waitFor((s, p) => document.querySelector(`${s} .sy-pin.sel[data-pin="${p}"]`), [SY, pin], { what: `${pin} selected` });
+  await page.click(`${SY} .sy-later`);
+};
+const isOpen = (page) => page.eval(() => window.Silinx.docs.some((d) => d.path === 'src/reg1.sym.json'));
+
+uiTest('#3943 the Symbol Editor says so: "Edit Symbol" at its toolbar\'s start, as Try it\'s badge; Exit after the zoom closes its tab, saved first, the Close prompt if it cannot be; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'SymExit', top: 'reg1', files: { 'src/reg1.vhd': REG, 'src/reg1.sym.json': SYMFILE } });
+  await page.setViewport(1440, 900);
+  await page.openProject('SymExit');
+  await open(page);
+  // the toolbar: the badge first, then the tools; Exit right after the zoom group
+  const layout = () => page.eval((s) => {
+    const tb = document.querySelector(`${s} .sy-toolbar`), kids = [...tb.children];
+    const badge = tb.querySelector('.lv-badge'), exit = tb.querySelector('.sy-exit'), cs = getComputedStyle(badge), dot = getComputedStyle(badge, '::before');
+    const zoomGroup = tb.querySelector('[data-act=fit]').closest('.asm-group');
+    const exitGroup = exit.closest('.asm-group');
+    return {
+      first: kids[0] === badge, badge: badge.textContent, bold: +cs.fontWeight >= 700, dot: dot.content !== 'none' && dot.borderRadius === '50%',
+      shown: badge.getClientRects().length > 0 && exit.getClientRects().length > 0,
+      afterZoom: kids.indexOf(exitGroup) === kids.indexOf(zoomGroup) + 2 && kids[kids.indexOf(zoomGroup) + 1].classList.contains('asm-sep'),
+      exit: [exit.textContent, exit.title],
+    };
+  }, SY);
+  assert.deepEqual(await layout(), { first: true, badge: 'Edit Symbol', bold: true, dot: true, shown: true, afterZoom: true, exit: ['Exit', 'Close the Symbol Editor (its tab), its changes saved'] });
+  // the same look as the schematic's Try it badge
+  assert.deepEqual(await page.eval(() => window.getComputedStyle(document.querySelector('.sy-toolbar .lv-badge')).paddingLeft), '18px');
+  // Portuguese
+  await setLang(page, 'pt');
+  assert.deepEqual(await page.eval((s) => { const e = document.querySelector(`${s} .sy-exit`); return [document.querySelector(`${s} .sy-badge`).textContent, e.textContent, e.title]; }, SY),
+    ['Editar Símbolo', 'Sair', 'Fechar o Editor de Símbolos (o seu separador), guardadas as suas alterações']);
+  await setLang(page, 'en');
+
+  // Exit, unchanged: the tab closed, no question
+  await page.click(`${SY} .sy-exit`);
+  await page.waitFor(() => !window.Silinx.docs.some((d) => d.path === 'src/reg1.sym.json'), [], { what: 'closed' });
+  assert.equal(await page.dialogCount(), 0);
+
+  // Exit with unsaved changes: saved, then closed
+  await open(page);
+  await later(page, 'd');
+  assert.equal(await page.eval(() => window.Silinx.active.dirty), true, 'changed');
+  assert.deepEqual(await pins(page), ['ce:W', 'd:W', 'c:W', 'q:E']);
+  await page.eval(() => clearTimeout(window.Silinx.active._autosave));
+  await page.click(`${SY} .sy-exit`);
+  await page.waitFor(() => !window.Silinx.docs.some((d) => d.path === 'src/reg1.sym.json'), [], { what: 'saved and closed' });
+  assert.equal(await page.dialogCount(), 0);
+  const file = JSON.parse(await env.server.api('GET', `/api/projects/SymExit/file?path=${encodeURIComponent('src/reg1.sym.json')}`));
+  assert.deepEqual(file.pins.map((q) => q.name), ['ce', 'd', 'c', 'q'], 'its change saved');
+
+  // changes that cannot be saved: the Close prompt of the tab's ×; No keeps it open, Yes closes it
+  await open(page);
+  await later(page, 'd');
+  await page.eval(() => { const d = window.Silinx.active; clearTimeout(d._autosave); d.save = async () => { throw new Error('the disk is full'); }; });
+  await page.click(`${SY} .sy-exit`);
+  await page.waitDialog('Close');
+  assert.match(await page.eval(() => document.querySelector('.dlg-overlay').textContent), /src\/reg1\.sym\.json could not be saved\. Close it and lose the unsaved changes\?/);
+  await page.dialogButton('No');
+  await page.waitNoDialog();
+  assert.equal(await isOpen(page), true, 'kept open');
+  assert.equal(await page.eval(() => window.Silinx.active.dirty), true, 'its changes kept');
+  await page.click(`${SY} .sy-exit`);
+  await page.waitDialog('Close');
+  await page.dialogButton('Yes');
+  await page.waitFor(() => !window.Silinx.docs.some((d) => d.path === 'src/reg1.sym.json'), [], { what: 'closed, its changes lost' });
+  assert.deepEqual(await consoleLines(page, /^(WARNING|ERROR)/), ['ERROR: cannot save src/reg1.sym.json: the disk is full. Your changes are kept and saved as soon as it is possible again.']);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

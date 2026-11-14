@@ -365,8 +365,9 @@
 .sch-editor .se-simbar .btn { padding: 1px 8px; min-width: 0; }
 .sch-editor .se-simbar .btn.on { border-color: #2d7d2d; background: linear-gradient(#d9f7d9, #a8e2a8); }
 .sch-editor .se-simbar select { height: 21px; }
-.sch-editor .lv-badge { font-weight: bold; color: #1b5e1b; padding: 0 4px 0 18px; position: relative; }
-.sch-editor .lv-badge::before { content: ''; position: absolute; left: 4px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: #20c020; box-shadow: 0 0 4px #20c020; }
+/* (the Symbol Editor's "Edit Symbol" at its toolbar's start the same, #3943) */
+:is(.sch-editor, .sym-editor) .lv-badge { font-weight: bold; color: #1b5e1b; padding: 0 4px 0 18px; position: relative; }
+:is(.sch-editor, .sym-editor) .lv-badge::before { content: ''; position: absolute; left: 4px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: #20c020; box-shadow: 0 0 4px #20c020; }
 .sch-editor .lv-sep { width: 1px; height: 18px; background: #a8c8a8; margin: 0 2px; }
 .sch-editor .lv-lbl { color: #555; }
 .sch-editor .lv-clock { display: inline-flex; align-items: center; gap: 3px; padding: 0 4px; border: 1px solid #b8d8b8; border-radius: 3px; background: rgba(255,255,255,.55); }
