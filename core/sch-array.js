@@ -52,3 +52,43 @@ export function sliceOf(name, off, k, w, vhdl) {
   const lo = off + k * w, hi = lo + w - 1;
   return vhdl ? (w === 1 ? `${name}(${lo})` : `${name}(${hi} downto ${lo})`) : (w === 1 ? `${name}[${lo}]` : `${name}[${hi}:${lo}]`);
 }
+
+/** An instance's width (#3950): its number of copies, 1 when it is not named with a range. */
+export const arrayWidth = name => arrayName(name)?.n ?? 1;
+
+/**
+ * An instance's name for a width (#3950, its Properties' Width): { name } (reg(7:0) for 8, reg for 1, its base kept;
+ * the name as it is when its width is already that), or { error } (not an integer from 1 to 1024).
+ */
+export function withArrayWidth(name, width) {
+  const n = Number(width), cur = String(name ?? '').trim();
+  if (!Number.isInteger(n) || n < 1 || n > MAX_COPIES) return { error: `Width ${String(width).trim() || '(empty)'}: a whole number from 1 to ${MAX_COPIES}` };
+  if (n === arrayWidth(cur)) return { name: cur };
+  const base = arrayName(cur)?.base ?? cur;
+  return { name: n === 1 ? base : `${base}(${n - 1}:0)` };
+}
+
+/**
+ * The symbol of an arrayed instance as drawn (#3950): each pin sliced over its copies a bus of N × w bits, its name
+ * with its range, D(7:0), when its side of the box has room; a pin on a net of its own width (nl, the netlist), shared
+ * by the copies, as it is; a pin not connected yet a bus. Its title with the number of copies, REG1bit ×8. The def
+ * itself when it is not an array (its pins' places never change: only their widths and names as drawn).
+ */
+export function arrayedDef(sym, def, nl) {
+  const a = arrayOf(sym);
+  if (!a || !def?.pins) return def;
+  const shared = p => {
+    const net = nl?.pinNet?.get(`${sym.id}/${p.name}`);
+    const connected = !!net && ((net.endpoints?.length || 0) > 1 || net.labels?.length > 0);   // (its own net alone: open)
+    return connected && !net.endpoints.some(e => e.sym === sym.id && e.pin === p.name && e.sliced);
+  };
+  const pins = def.pins.map(p => (shared(p) ? p : { ...p, width: (p.width || 1) * a.n, sliced: true }));
+  // (a name with its range only when the names of every row, left and right, still fit the body: 6.2 px a letter, 3.2
+  // a narrow one, a bracket, a colon; the top and bottom ones when the names of that side fit its width)
+  const label = p => (p.sliced ? `${p.name}(${p.width - 1}:0)` : p.name);
+  const len = p => [...label(p)].reduce((n, c) => n + (/[()[\]:.,;|!il1]/.test(c) ? 3.2 : 6.2), 0) + (p.clock ? 8 : 0);
+  const row = y => pins.filter(p => (p.side === 'W' || p.side === 'E') && p.y === y).reduce((n, p) => n + len(p) + 4, 0);
+  const across = side => pins.filter(p => p.side === side).reduce((n, p) => n + len(p) + 4, 0);
+  const fits = pins.every(p => row(p.y) <= def.body.w) && across('N') <= def.body.w && across('S') <= def.body.w;
+  return { ...def, pins: pins.map(p => (p.sliced && fits ? { ...p, label: label(p) } : p)), title: `${def.title} ×${a.n}`, copies: a.n };
+}
