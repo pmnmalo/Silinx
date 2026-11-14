@@ -15,7 +15,8 @@ export function pointOf(m, at) {
   if (!p) return { error: `'${s}': no part ${r[1]} in the circuit` };
   if (partDef(p.type)?.kind === 'breadboard') {
     const h = partHoles(p).find((x) => x.name.toLowerCase() === r[2].toLowerCase());
-    return h ? [h.x, h.y] : { error: `'${s}': ${p.id} has no hole ${r[2]} (a1 to j30, its rails tp, tn, bn, bp 1 to 30)` };
+    const n = partDef(p.type).cols;   // (a full breadboard's 63, #3974)
+    return h ? [h.x, h.y] : { error: `'${s}': ${p.id} has no hole ${r[2]} (a1 to j${n}, its rails tp, tn, bn, bp 1 to ${n})` };
   }
   const q = partPins(p).find((x) => String(x.n) === r[2] || x.name.toLowerCase() === r[2].toLowerCase());
   return q ? [q.x, q.y] : { error: `'${s}': ${p.id} (${p.type}) has no pin ${r[2]} (its pins: ${partPins(p).map((x) => (String(x.n) === x.name ? x.name : `${x.n} ${x.name}`)).join(', ')})` };

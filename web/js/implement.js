@@ -371,7 +371,8 @@ export async function synthOpen(mod) {
     setStatus('synth-open', 'running');
     log(`\nStarted : "${SYNTH_OPEN}".\n`, 'hdr');
     const family = S.project.device?.family || 'spartan3e';
-    const srcs = S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false));
+    // (as synthesis reads them: no translate_off region, #3901)
+    const srcs = (await import('/core/translate-off.js')).synthesisSources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)));
     const design = elaborate(compile([...primitiveSources(srcs), ...srcs]), mod);
     const [{ synthesizeOpen, synthesisInput }, { synthEffort, synthGoal, synthesizeArea, synthesizeFast }] = await Promise.all([import('/core/synth-front.js'), import('/packages/silinx-fpga/src/index.js')]);
     const { yosysBrowser } = await import('./yosys-client.js');
