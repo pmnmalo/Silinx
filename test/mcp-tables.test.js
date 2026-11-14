@@ -20,7 +20,8 @@ const ok = async (args) => { const r = await call('set_output_logic', args); ass
 const fails = async (args, message) => { const r = await call('set_output_logic', args); assert.equal(r.isError, true, r.text); assert.equal(r.text, `set_output_logic: ${message}`); };
 const read = (project, f) => fs.readFileSync(path.join(P.projectDir(project), f), 'utf8');
 
-before(async () => { tmp = await scratchEnv('silinx-mcp-tables-'); });
+// (the expressions in the text notation, /a.b + c, set as the interface's Settings ▸ Boolean Notation sets it, #3915)
+before(async () => { tmp = await scratchEnv('silinx-mcp-tables-'); assert.equal((await call('set_notation', { notation: 'slash' })).isError, false); });
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 test('set_output_logic: traffic\'s lamps, an output in the canonical SOP: the table as setOutputLogic makes it, its VHDL module made again', async () => {
