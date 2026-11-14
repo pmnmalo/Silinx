@@ -73,7 +73,7 @@ test('the half adder: its truth table in VHDL and in Verilog; the HDL\'s names a
       `${c} Generator   : Silinx circuit editor (edit the circuit, not this file)`, `${c} Parts       : U1 (SN74LS86), U2 (SN74LS08)`,
       `${c} Inputs      : a (S1, '1' while on), b (S2, '1' while on)`, `${c} Outputs     : s (D1, '1' while lit), c (D2, '1' while lit)`]);
     // each IC's entity after the circuit, its delay
-    assert.match(g.code, lang === 'vhdl' ? /entity half_adder_sn74ls86 is[^]*y1 <= \(ttl\(a1\) xor ttl\(b1\)\) after 12 ns when pw else 'Z' after 12 ns;/ : /module half_adder_sn74ls86 \([^]*assign #12 y1 = pw \? \(ttl\(a1\) \^ ttl\(b1\)\) : 1'bz;/);
+    assert.match(g.code, lang === 'vhdl' ? /entity half_adder_sn74ls86 is[^]*y1 <= \(rd\(a1\) xor rd\(b1\)\) after 12 ns when pw else 'Z' after 12 ns;/ : /module half_adder_sn74ls86 \([^]*assign #12 y1 = pw \? \(rd\(a1\) \^ rd\(b1\)\) : 1'bz;/);
     assert.match(g.code, lang === 'vhdl' ? /u_U2 : entity work\.half_adder_sn74ls08 port map \(a1 => n\d+, b1 => n\d+, y1 => n\d+, a2 => 'Z', b2 => 'Z', y2 => open,/ : /half_adder_sn74ls08 u_U2 \(\.a1\(n\d+\), \.b1\(n\d+\), \.y1\(n\d+\), \.a2\(1'bz\), \.b2\(1'bz\), \.y2\(\),/);
   }
   // a label that is a net's name: the net renamed
@@ -102,7 +102,7 @@ test('a button to GND on a floating input, in VHDL and in Verilog: high while re
   const f = normalizeCircuit({ ...m, parts: m.parts.filter((p) => p.id !== 'S1a') });
   for (const lang of LANGS) {
     const g = generateCircuit(f, lang);
-    assert.match(g.code, lang === 'vhdl' ? /n\d+ <= 'Z';   -- floating: a 74LS input reads it high/ : /assign n\d+ = 1'bz;   \/\/ floating: a 74LS input reads it high/);
+    assert.match(g.code, lang === 'vhdl' ? /n\d+ <= 'Z';   -- floating: a 74LS input reads it high, a 4000 input X/ : /assign n\d+ = 1'bz;   \/\/ floating: a 74LS input reads it high, a 4000 input X/);
     assert.deepEqual(checkSyntax(lang, g.code, 'btn'), [], `${lang}: no warnings`);
   }
 });

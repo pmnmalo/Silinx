@@ -1,15 +1,16 @@
 // A circuit's nets (#3897, docs/CIRCUITS.md): its connectivity is geometric, as on the bench. A pin on a breadboard's
 // hole is in that hole's strip (a column's a–e, its f–j, a power rail); a wire joins its two ends, and an end joins the
-// hole, the pins and the other wires' ends on its point; two wires that cross are not joined. A button joins its two
-// nets only while pressed: its nets are kept apart here (core/circuit-sim.js joins them). Isomorphic module.
+// hole, the pins and the other wires' ends on its point; two wires that cross are not joined; a part's pins joined inside
+// it (a display's two commons) are one net. A contact (a button's, a switch's, a DIP switch's levers) joins its two nets
+// only while closed: its nets are kept apart here (core/circuit-sim.js joins them). Isomorphic module.
 import { partDef, partPins, partHoles } from './circuit-parts.js';
 
 const key = (x, y) => `${x},${y}`;
 
 /**
  * The circuit's nets: { nets: [{ pins: [{ part, n, name, dir }], holes: [{ part, name }], wires: [id], points: [key] }],
- * pinNet: Map('U1.3' → net index), at: Map(point key → { pins, holes, ends }) (what is on each point), buttons:
- * [{ part, a, b }] (the nets of a button's two pins) }.
+ * pinNet: Map('U1.3' → net index), at: Map(point key → { pins, holes, ends }) (what is on each point), contacts:
+ * [{ part, a, b, input, when }] (the nets of a contact's two pins, closed while the part's input `input` is `when`) }.
  */
 export function circuitNets(m) {
   const parent = new Map();
@@ -25,6 +26,7 @@ export function circuitNets(m) {
   for (const p of m.parts) {
     for (const q of partPins(p)) { spot(q.x, q.y).pins.push({ part: p.id, n: q.n, name: q.name, dir: q.dir }); join(`p:${key(q.x, q.y)}`, `pin:${p.id}.${q.n}`); }
   }
+  for (const p of m.parts) for (const [x, y] of partDef(p.type)?.bridges || []) join(`pin:${p.id}.${x}`, `pin:${p.id}.${y}`);
   for (const w of m.wires) {
     const a = w.points[0], b = w.points[w.points.length - 1];
     spot(a[0], a[1]).ends.push({ wire: w.id, end: 0 });
@@ -47,8 +49,8 @@ export function circuitNets(m) {
     for (const q of s.pins) { n.pins.push(q); pinNet.set(`${q.part}.${q.n}`, index.get(find(`p:${k}`))); }
     for (const e of s.ends) if (!n.wires.includes(e.wire)) n.wires.push(e.wire);
   }
-  const buttons = m.parts.filter((p) => partDef(p.type)?.type === 'button').map((p) => ({ part: p.id, a: pinNet.get(`${p.id}.1`), b: pinNet.get(`${p.id}.2`) }));
-  return { nets, pinNet, at, buttons };
+  const contacts = m.parts.flatMap((p) => (partDef(p.type)?.contacts || []).map((c) => ({ part: p.id, a: pinNet.get(`${p.id}.${c.a}`), b: pinNet.get(`${p.id}.${c.b}`), input: c.input, when: c.when })));
+  return { nets, pinNet, at, contacts };
 }
 
 /** The supply terminals on a net: { vcc, gnd } (whether a supply's + or − is on it). */
