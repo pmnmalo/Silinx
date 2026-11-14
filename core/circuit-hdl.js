@@ -49,6 +49,7 @@ export function generateCircuit(model, lang, { source } = {}) {
     if (ps.length) L.push('  port (', ps.map((x) => `    ${x}`).join(';\n'), '  );');
     L.push(`end entity ${m.name};`, '', `architecture circuit of ${m.name} is`);
     if (plan.signals.length) L.push(`  signal ${plan.signals.join(', ')} : std_logic := 'X';`);   // (unknown at first: no instant read as floating)
+    if (plan.watched.length) L.push('  -- silinx: ignore unused-signal (watched by a logic probe)', `  signal ${plan.watched.join(', ')} : std_logic := 'X';`);
     L.push('begin');
     for (const [n, e, why] of plan.assigns) L.push(`  ${n} <= ${e};   -- ${why}`);
     for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${plan.inst.get(p.id)} : entity work.${entityOf(m, partDef(p.type))} port map (${icMap(p).map(([a, b]) => `${a} => ${b}`).join(', ')});`);
@@ -57,12 +58,13 @@ export function generateCircuit(model, lang, { source } = {}) {
   } else {
     L.push(`module ${m.name}${ins.length + outs.length ? ` (${[...ins.map((n) => `input ${n}`), ...outs.map((n) => `output ${n}`)].join(', ')})` : ''};`);
     if (plan.signals.length) L.push(`  wire ${plan.signals.join(', ')};`);
+    if (plan.watched.length) L.push('  // silinx: ignore unused-signal (watched by a logic probe)', `  wire ${plan.watched.join(', ')};`);
     for (const [n, e, why] of plan.assigns) L.push(`  assign ${n} = ${e};   // ${why}`);
     for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${entityOf(m, partDef(p.type))} ${plan.inst.get(p.id)} (${icMap(p).map(([a, b]) => `.${a}(${b})`).join(', ')});`);
     for (const [o, a, k] of lamps) L.push(`  assign ${o} = (${a} === 1'b1) && (${k} === 1'b0);`);
     L.push('endmodule');
   }
-  return { filename: `${m.name}.${V ? 'vhd' : 'v'}`, code: L.join('\n') + '\n', module: m.name };
+  return { filename: `${m.name}.${V ? 'vhd' : 'v'}`, code: L.join('\n') + '\n', module: m.name, probes: plan.probes };
 }
 
 /**
@@ -82,9 +84,13 @@ function netPlan(m, V, ports) {
   const pulls = nets.nets.map((net) => [...new Set(net.pins.filter((q) => q.dir === 'weak').map((q) => partDef(typeOf.get(q.part)).pulls[0].value))]);
   const driven = strong.map((s, i) => s || pulls[i].length > 0);
   const read = nets.nets.map((net) => net.pins.some((q) => q.dir === 'in' || ((q.dir === 'vcc' || q.dir === 'gnd') && !isSupply(q))));
+  // (a net a logic probe watches is a signal too, for the waveforms, #3900; one nothing else reads: watched only)
+  const probed = nets.nets.map((net) => net.pins.some((q) => q.dir === 'probe'));
   // (a contact copies a strongly driven net to its other side, a pulled one's too: a pull-down and a button to +)
   const from = (k) => (strong[k.a] && !strong[k.b] ? k.a : strong[k.b] && !strong[k.a] ? k.b : !driven[k.a] && driven[k.b] ? k.b : driven[k.a] && !driven[k.b] ? k.a : null);
   for (const k of nets.contacts) { const f = from(k); if (f != null && read[f === k.a ? k.b : k.a]) read[f] = true; }
+  const watchedOnly = probed.map((p, i) => p && !read[i]);
+  probed.forEach((p, i) => { if (p) read[i] = true; });
   const name = [], drv = [];
   nets.nets.forEach((net, i) => {
     if (!read[i] || (net.pins.length === 1 && !net.wires.length)) return;
@@ -123,6 +129,8 @@ function netPlan(m, V, ports) {
       assigns.push([name[i], V ? `${lit(pv)} when ${drv[i]} = 'Z' else ${drv[i]}` : `(${drv[i]} === 1'bz) ? ${lit(pv)} : ${drv[i]}`, `pulled ${pv === '1' ? 'up' : pv === '0' ? 'down' : 'both ways'}`]);
     } else if (!driven[i] && !targets.has(i)) assigns.push([name[i], Z, 'floating: a 74LS input reads it high, a 4000 input X']);
   });
-  const signals = [...new Set([...name, ...drv].filter(Boolean))];
-  return { signals, assigns, inst, pinNet };
+  const watched = new Set(name.filter((n, i) => n && watchedOnly[i]));
+  const signals = [...new Set([...name, ...drv].filter((n) => n && !watched.has(n)))];
+  const probes = m.parts.filter((p) => p.type === 'probe').map((p) => ({ part: p.id, label: p.label || p.id, signal: name[netOf(p.id, 1)] ?? null }));
+  return { signals, watched: [...watched], assigns, inst, pinNet, probes };
 }

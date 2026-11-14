@@ -120,6 +120,14 @@ as VHDL's `after` and Verilog's `#` on a continuous assignment, so the live simu
   press on a touch screen); the simulation runs until the circuit is quiet. The LEDs light, each pin and wire is
   coloured by its level (0, 1, Z, X), the status line says the simulated time. A circuit still changing after 1 µs of
   simulated time (a ring oscillator, a latch's race) is said to oscillate, in the console, its oscillating nets marked.
+- **The logic probe** shows its tip's level while trying it (H, L, open, X); it is no port of the HDL, but the net it
+  watches is a signal of it (one only a probe watches declared with its reason, no warning).
+- **The waveforms** are SSim's, the waveform viewer of every simulation of Silinx: the circuit's *Waveforms* replays its
+  Try it (each input's change at its simulated time, a clock's ticks moving the time on by its half period) as a test
+  bench of the circuit's generated HDL (`core/circuit-replay.js`), run by the simulator and opened in SSim as the logic
+  analyzer's capture is, its probes' nets first, every net and IC pin of the circuit in its hierarchy; the MCP server's
+  `simulate_drawing` returns the same replay's probes' waves (`waveforms`). The unit tests check that they are the
+  engine's own, time for time.
 - **SSim:** the generated HDL is simulated as any module's (its test bench, the waveforms); the unit tests check that
   the live engine and the HDL simulated by Silinx agree.
 

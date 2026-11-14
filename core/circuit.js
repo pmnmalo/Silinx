@@ -57,7 +57,7 @@ export function newCircuit(name = 'circuit', lang = 'vhdl', { breadboard = true 
 /** A new id for a part of this type (U for an IC, S a switch, B a button, D an LED, BB a breadboard, P a supply), or a wire. */
 export function newId(m, typeOrWire) {
   const d = partDef(typeOrWire);
-  const pfx = typeOrWire === 'wire' ? 'w' : { button: 'B', clock: 'CK', 'seg7-cc': 'DS', 'seg7-ca': 'DS' }[d?.type]
+  const pfx = typeOrWire === 'wire' ? 'w' : { button: 'B', clock: 'CK', 'seg7-cc': 'DS', 'seg7-ca': 'DS', probe: 'LP' }[d?.type]
     || { ic: 'U', input: 'S', output: 'D', breadboard: 'BB', supply: 'P', pull: 'R' }[d?.kind] || 'X';
   const used = new Set([...m.parts.map((p) => p.id.toLowerCase()), ...m.wires.map((w) => w.id.toLowerCase())]);
   let k = 1;

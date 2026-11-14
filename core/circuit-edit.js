@@ -98,7 +98,8 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
   const has = ['label', ...(d?.kind === 'output' ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : [])];
   for (const [k, v] of Object.entries(props)) {
-    if (!has.includes(k) || (k === 'label' && !(d?.inputs || d?.lamps))) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || d?.inputs || d?.lamps).join(', ') || 'none'})`;
+    const named = d?.inputs || d?.lamps || d?.kind === 'probe';   // (a probe's label: its row's name in the waveforms)
+    if (!has.includes(k) || (k === 'label' && !named)) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || named).join(', ') || 'none'})`;
     if (k === 'label') { if (v == null || v === '') delete p.label; else p.label = String(v); }
     else if (k === 'color') { if (!LED_COLORS.includes(v)) return `color: one of ${LED_COLORS.join(', ')}`; p.color = v; }
     else if (k === 'hz') { const hz = Number(v); if (!Number.isFinite(hz) || hz < CLOCK_HZ.min || hz > CLOCK_HZ.max) return `hz: a frequency from ${CLOCK_HZ.min} to ${CLOCK_HZ.max} Hz`; p.hz = hz; }
