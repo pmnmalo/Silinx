@@ -20,7 +20,6 @@ import { mountCompareTicks } from './sch-compare.js';
 import { setMarkerWidth } from '/core/schmarker.js';
 import { instName, renameError } from '/core/schname.js';
 import { arrayName, arrayWidth, withArrayWidth } from '/core/sch-array.js';
-import { logError } from './console.js';
 import { graphicProps } from './sch-graphics.js';
 
 /** { renderProps, openSelected, renamed, joinByName, renameLabel } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
@@ -348,7 +347,8 @@ function arrayWidthField(s, { inp, field, doc }) {
   if (s.type !== 'module') return [];
   const el = inp(arrayWidth(s.name), async v => {
     const r = withArrayWidth(s.name, v), why = r.error || (r.name !== s.name && renameError(doc(), 'sym', s.id, r.name));
-    if (why) { logError(why); return false; }
+    // (the console loaded when it says something: it pulls in the app, which the editor's demo pages do not have, #4011)
+    if (why) { import('./console.js').then(m => m.logError(why)); return false; }
     return r.name !== s.name && (() => { s.name = r.name; });
   }, { type: 'number', min: 1, max: 1024, step: 1 });
   el.dataset.param = 'arrayWidth';
