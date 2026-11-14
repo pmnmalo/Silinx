@@ -8,6 +8,11 @@
       "fs": "291527a564519458aeabe9fee8c052115e71f27f1b16222e9fbea50d42f37f94",
       "fsBytes": 2069320
     },
+    "breadboard": {
+      "routed": "e6610d1eeb5fafb95eb3f70bfd78ec60bd19e750f4f892e41dd75c78ce32e640",
+      "fs": "8d9eb383cdc170fdb8b4dcb5af278eb074f0eca64513a3889762f512423f733f",
+      "fsBytes": 2069320
+    },
     "traffic": {
       "routed": "1a40fe5c0298ea595909c2eb41c53399c3990aedace4d589fc710f3e6bb58ca3",
       "fs": "23372305304c1841050e58430663b3f85390e77d4924a9d5945fb65761377e4a",
