@@ -1,7 +1,7 @@
 // UI: Vivado ML Standard's other 7-series families (#3895): the Spartan-7, the Kintex-7 and the Zynq-7000 in the New Project
 // wizard and Design Properties, marked experimental, their parts listed; their synthesis tool AMD Vivado alone, locked (no
 // Silinx toolchain of theirs), the Artix-7's two choices kept; the project's processes Vivado's, no warning; in Portuguese.
-// Both interfaces.
+// The Arty S7 and the Zybo Z7 (core/boards-vivado.js) among the boards, the Arty S7's pins as an XDC. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -100,6 +100,9 @@ uiTest('#3895 in Portuguese: the Spartan-7 in the New Project wizard, marked exp
     await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Definições do Projeto');
     const r = await pick(page, { fam: 'spartan7', labels: PT });
     assert.deepEqual([r.family, r.parts[0], r.synth, r.synthOff], ['Spartan-7 (experimental)', 'XC7S6', [VIVADO], true]);
+    // (the boards: the Arty S7 and the Zybo Z7 marked as the Basys 3)
+    const boards = await page.eval(() => [...[...document.querySelectorAll('.dlg-overlay label')].find(x => x.textContent === 'Placa de Desenvolvimento:').nextElementSibling.options].map(o => o.textContent));
+    for (const b of ['Digilent Arty S7 (experimental)', 'Digilent Zybo Z7 (experimental)']) assert.ok(boards.includes(b), `${b}: ${boards}`);
     const labels = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].map(l => l.textContent));
     for (const l of Object.values(PT)) assert.ok(labels.includes(l), `${l}: ${labels}`);
     await page.dialogButton('Cancelar');
@@ -107,4 +110,28 @@ uiTest('#3895 in Portuguese: the Spartan-7 in the New Project wizard, marked exp
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
+});
+
+uiTest('#3895 Design Properties: the Arty S7 and the Zybo Z7, experimental; the Arty S7 chosen: its XC7S50, Vivado locked, its pins as an XDC', E, async (page) => {
+  await makeProject(env, { name: 'ArtyPick', board: 'basys3', files: { 'src/top.v': TOP }, top: 'top' });
+  await page.openProject('ArtyPick');
+  await page.menu('Project', 'Design Properties…');
+  await page.waitDialog('Design Properties');
+  const r = await page.eval(() => {
+    const sel = l => [...document.querySelectorAll('.dlg-overlay label')].find(x => x.textContent === l).nextElementSibling;
+    const b = sel('Evaluation Development Board:'), boards = [...b.options].map(o => o.textContent);
+    b.value = 'arty-s7'; b.dispatchEvent(new Event('change'));
+    return { boards, part: sel('Device:').value, pkg: sel('Package:').value, speed: sel('Speed:').value, synth: [...sel('Synthesis Tool:').options].map(o => o.value), synthOff: sel('Synthesis Tool:').disabled };
+  });
+  assert.deepEqual(r.boards.filter(b => /experimental/.test(b)), ['Digilent Basys 3 (experimental)', 'Digilent Nexys A7 (experimental)', 'Digilent Arty S7 (experimental)', 'Digilent Zybo Z7 (experimental)']);
+  assert.deepEqual([r.part, r.pkg, r.speed, r.synth, r.synthOff], ['xc7s50', 'csga324', '-1', ['vivado'], true]);
+  await page.dialogButton('OK');
+  await page.waitDialog('Update Constraints');
+  await page.dialogButton('Yes');
+  await page.waitNoDialog();
+  await page.waitConsole(/top\.xdc regenerated for Digilent Arty S7/);
+  const lines = (await page.consoleText()).split('\n').filter(l => /WARNING|ERROR|Device set|regenerated/.test(l));
+  assert.deepEqual(lines, ['Device set to xc7s50-1-csga324 (board arty-s7).', 'constraints/top.xdc regenerated for Digilent Arty S7: clk, sw, led']);
+  const pj = await page.eval(() => window.Silinx.project);
+  assert.deepEqual([pj.board, pj.device, pj.synthTool], ['arty-s7', { family: 'spartan7', part: 'xc7s50', package: 'csga324', speed: '-1' }, 'vivado']);
 });
