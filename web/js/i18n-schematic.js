@@ -89,8 +89,8 @@ export const SCH_PT = {
   'Add Circle: drag from its centre outwards. It does not change the circuit.': 'Adicionar Círculo: arraste do centro para fora. Não altera o circuito.',
   'Add Arc: drag from its start to its end, then click where it passes. It does not change the circuit.': 'Adicionar Arco: arraste do início ao fim e depois clique por onde ele passa. Não altera o circuito.',
   // the Add I/O Marker tool: on a wire, a pin or empty space (#680)
-  'Add I/O Marker: click a wire end, a pin or empty space to add a port marker (a wire to its tip connects it later).':
-    'Adicionar Marcador de E/S: clique na ponta de um fio, num pino ou num espaço vazio para adicionar um marcador de porto (um fio até à sua ponta liga-o depois).',
+  'Add I/O Marker: click a wire end, a pin or empty space to add a port marker (a wire to its tip connects it later); drag a rectangle to add one to every open pin and wire end in it.':
+    'Adicionar Marcador de E/S: clique na ponta de um fio, num pino ou num espaço vazio para adicionar um marcador de porto (um fio até à sua ponta liga-o depois); arraste um retângulo para adicionar um a cada pino e ponta de fio livres dentro dele.',
   'Input port name': 'Nome do porto de entrada', 'Output port name': 'Nome do porto de saída', 'Bidirectional port name': 'Nome do porto bidirecional',
   'optional, overrides the type derived from the width': 'opcional, substitui o tipo derivado da largura',
   'one per line: name[width] (add "clock" for a clock pin)': 'um por linha: nome[largura] (acrescente "clock" para um pino de relógio)',
@@ -115,7 +115,14 @@ export const SCH_PT = {
   'No device primitives for this device\'s family': 'Nenhuma primitiva para a família deste dispositivo',
 };
 
+const markerAt = at => (/^the wire end at /.test(at) ? at.replace(/^the wire end at (.+)$/, 'na ponta de fio em $1') : `em ${at}`);
 export const SCH_PT_PATTERNS = [
+  // I/O markers added with a rectangle (#4000, core/schmarker-many.js)
+  [/^(\d+) I\/O markers? added: (.+)$/, (m, n, names) => `${n} ${+n === 1 ? 'marcador de E/S adicionado' : 'marcadores de E/S adicionados'}: ${names}`],
+  [/^No I\/O marker added: no open pin or wire end there$/, 'Nenhum marcador de E/S adicionado: nenhum pino ou ponta de fio livre aí'],
+  [/^no I\/O marker on (.+?): (its net already has an I\/O marker|its net already gets a marker) \((.+)\)$/, (m, at, why, n) =>
+    `nenhum marcador de E/S ${markerAt(at)}: ${why === 'its net already gets a marker' ? 'a sua rede já recebe um marcador' : 'a sua rede já tem um marcador de E/S'} (${n})`],
+  [/^no I\/O marker on (.+?): its direction is unknown \(no symbol's pin on its net\)$/, (m, at) => `nenhum marcador de E/S ${markerAt(at)}: a sua direção é desconhecida (nenhum pino de símbolo na sua rede)`],
   // a COMP's connected output unticked (#1555)
   [/^Unticking (\w+) removes the output \1 of (.+) and the wires connected to it\.$/, 'Desmarcar $1 remove a saída $1 de $2 e os fios ligados a ela.'],
   // a name refused by Rename… (core/schname.js, #1546)

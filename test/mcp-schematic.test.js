@@ -136,3 +136,41 @@ test('write_file: a schematic\'s instance with an empty name is given its automa
   assert.equal(again.data.named, undefined);
   assert.doesNotMatch(again.text, /automatic name/);
 });
+
+// add_markers (#4000): the Add I/O Marker tool's rectangle, through core/schmarker-many.js, with the same names and
+// messages: an instance's open pins, then a region's (a wire end of no direction skipped, said); nothing there; the
+// errors (neither or both of instance and region, no such instance)
+test('add_markers: an instance\'s open pins, then a region\'s, named in1, out1… after the names taken; the HDL made again', async () => {
+  await ok('new_project_from_example', { name: 'm', example: 'gates' });
+  await ok('new_source', { project: 'm', type: 'schematic', name: 'many' });
+  const path = 'src/many.sch.json';
+  const doc = JSON.parse((await ok('read_file', { project: 'm', path })).text);
+  doc.symbols = [{ id: 'S1', type: 'and2', x: 200, y: 100, rot: 0, mirror: false, name: 'U1', params: {} }, { id: 'S2', type: 'inv', x: 200, y: 300, rot: 0, mirror: false, name: 'U2', params: { width: 8 } }];
+  doc.ports = [port('P1', 'in1', 'in', 600, 600)];
+  doc.wires = [{ id: 'W1', points: [P(600, 600), P(700, 600)] }, { id: 'W2', points: [P(600, 100), P(700, 100)] }];
+  await ok('write_file', { project: 'm', path, text: JSON.stringify(doc, null, 1) });
+  const r = await ok('add_markers', { project: 'm', path, instance: 'u1' });
+  // (its check's warnings: W2, a wire on nothing, U2's input and in1, open still)
+  assert.equal(r.text, ['3 I/O markers added: in2, in3, out1', 'WARNING: dangling wire not connected to any pin', 'WARNING: input pin I of U2 (inv) is not connected',
+    "WARNING: I/O marker 'in1' is not connected", 'src/many.vhd updated from src/many.sch.json'].join('\n'));
+  assert.deepEqual(r.data.markers, [{ id: 'P2', name: 'in2', dir: 'in', width: 1 }, { id: 'P3', name: 'in3', dir: 'in', width: 1 }, { id: 'P4', name: 'out1', dir: 'out', width: 1 }]);
+  assert.deepEqual(r.data.skipped, []);
+  assert.deepEqual(r.data.diagnostics.map(d => d.message), ['dangling wire not connected to any pin', 'input pin I of U2 (inv) is not connected', "I/O marker 'in1' is not connected"]);
+  assert.equal(r.data.hdl.file, 'src/many.vhd');
+  const g = await ok('add_markers', { project: 'm', path, region: { x: 150, y: 50, w: 600, h: 300 } });
+  assert.deepEqual(g.text.split('\n').slice(0, 3), ['2 I/O markers added: in4(7:0), out2(7:0)',
+    'WARNING: no I/O marker on the wire end at 600, 100: its direction is unknown (no symbol\'s pin on its net)',
+    'WARNING: no I/O marker on the wire end at 700, 100: its direction is unknown (no symbol\'s pin on its net)']);
+  assert.deepEqual(g.data.markers.map(m => [m.name, m.dir, m.width]), [['in4', 'in', 8], ['out2', 'out', 8]]);
+  const hdl = (await ok('read_file', { project: 'm', path: 'src/many.vhd' })).text;
+  assert.match(hdl, /in4 : in std_logic_vector\(7 downto 0\)/);
+  assert.match(hdl, /out2 : out std_logic_vector\(7 downto 0\)/);
+  // a second time: nothing open there, nothing written
+  assert.deepEqual(await ok('add_markers', { project: 'm', path, instance: 'U2' }), { isError: false, text: 'No I/O marker added: no open pin or wire end there',
+    data: { project: 'm', path, markers: [], skipped: [], diagnostics: [] } });
+  for (const [args, msg] of [[{}, 'give either instance or region'], [{ instance: 'U1', region: { x: 0, y: 0, w: 1, h: 1 } }, 'give either instance or region'], [{ instance: 'U9' }, `no instance 'U9' in ${path}`]]) {
+    const e = await call('add_markers', { project: 'm', path, ...args });
+    assert.equal(e.isError, true);
+    assert.match(e.text, new RegExp(msg.replace(/[()]/g, '\\$&')));
+  }
+});

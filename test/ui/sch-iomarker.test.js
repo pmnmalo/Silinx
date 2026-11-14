@@ -36,7 +36,7 @@ uiTest('#680 schematic: I/O markers placed on empty space (the next free name), 
   await page.eval(() => window.SilinxApp.openSch('src/vd.sch.json'));
   await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym`).length === 1, [ED], { what: 'drawn' });
   await page.click(`${ED} .se-btn[data-act=io]`);
-  assert.equal(await hint(page), 'Add I/O Marker: click a wire end, a pin or empty space to add a port marker (a wire to its tip connects it later).');
+  assert.equal(await hint(page), 'Add I/O Marker: click a wire end, a pin or empty space to add a port marker (a wire to its tip connects it later); drag a rectangle to add one to every open pin and wire end in it.');
   // an input on empty space: in1 proposed, Enter keeps it
   await page.click(await at(page, A.x, A.y));
   await page.waitFor(() => document.activeElement?.matches('.se-prompt input'), [], { what: 'port name prompt focused' });
@@ -75,7 +75,7 @@ uiTest('#680 schematic: I/O markers placed on empty space (the next free name), 
   try {
     await page.click(`${ED} .se-btn[data-act=io]`);
     await page.waitFor((ed) => /^Adicionar Marcador de E\/S:/.test(document.querySelector(`${ed} .se-status .hint`).textContent), [ED], { what: 'the hint in Portuguese' });
-    assert.equal(await hint(page), 'Adicionar Marcador de E/S: clique na ponta de um fio, num pino ou num espaço vazio para adicionar um marcador de porto (um fio até à sua ponta liga-o depois).');
+    assert.equal(await hint(page), 'Adicionar Marcador de E/S: clique na ponta de um fio, num pino ou num espaço vazio para adicionar um marcador de porto (um fio até à sua ponta liga-o depois); arraste um retângulo para adicionar um a cada pino e ponta de fio livres dentro dele.');
     await page.click(await at(page, (A.x + Y.x) / 2, A.y + 40));
     await page.waitFor(() => document.activeElement?.matches('.se-prompt input'), [], { what: 'port name prompt focused' });
     await page.waitFor(() => document.querySelector('.se-prompt label')?.textContent === 'Nome do porto de saída', [], { what: 'the prompt in Portuguese' });

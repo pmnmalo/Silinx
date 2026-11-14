@@ -4,6 +4,8 @@
 // written and its HDL file made again, as write_file does.
 // A junction dot moved, as its editor's drag or arrows do (#3806, web/js/sch-junction.js): core/schjunction.js's
 // moveJunction, the same refusal of a short and the same warning.
+// I/O markers on every open pin of an instance or of a region, as the Add I/O Marker tool's rectangle does (#4000):
+// core/schmarker-many.js, the same default names (in1, out1, io1…) and the same messages.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 
@@ -87,6 +89,29 @@ export const SCHEMATIC_TOOLS = [
       const text = sync ? `The junction dot at (${at.x}, ${at.y}) moved to (${to.x}, ${to.y})` : `The junction dot at (${at.x}, ${at.y}) is already there`;
       return { text: [text, ...(r.kept ? [] : [J.CONNECTIONS_CHANGED]), ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, kept: r.kept, ...hdlOf(sync) } };
+    },
+  },
+  {
+    name: 'add_markers', title: 'Add I/O markers to every open pin',
+    description: 'Add an I/O marker to every open end of a schematic (.sch.json), as its Add I/O Marker tool\'s rectangle does: the pins of the instance named instance, or every pin and wire end inside the region, connected to nothing. Each marker takes the direction of its pin (a wire end: of the pins on its net; an output pin there makes it an output; no pin, the end is skipped) and its width (a bus: in1(7:0)), and the next free default name: in1, in2… for an input, out1… for an output, io1… for a bidirectional one, the first number no marker, net name or instance of the drawing takes (any letter case); a wire end on a named net takes that name. The schematic is written and its HDL file made again; the markers added, the ends skipped (and why) and its check\'s errors and warnings said.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), instance: STR('The instance whose open pins get markers (its name: U1).'),
+      region: { type: 'object', properties: { x: { type: 'integer' }, y: { type: 'integer' }, w: { type: 'integer' }, h: { type: 'integer' } }, required: ['x', 'y', 'w', 'h'], additionalProperties: false,
+        description: 'The rectangle whose open pins and wire ends get markers: its left, top, width and height (sheet coordinates).' },
+    }, required: ['project', 'path'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ project: name, path: rel, instance, region }) {
+      if ((instance == null) === (region == null)) throw toolError('give either instance or region');
+      const { doc, modules } = await openSchematic(name, rel);
+      const [M, sd] = await Promise.all([import('../core/schmarker-many.js'), import('../core/schdoc.js')]);
+      if (instance != null && !doc.symbols.some(s => s.name.toLowerCase() === String(instance).trim().toLowerCase())) throw toolError(`no instance '${instance}' in ${rel}`);
+      const plan = M.planMarkers(doc, { modules, ...(region ? { rect: region } : { instance }) });
+      const added = M.addMarkers(doc, plan.markers);
+      const diags = added.length ? sd.netlist(doc, { modules }).diagnostics : [];
+      const sync = added.length ? await saveSchematic(name, rel, doc) : null;
+      return { text: [...M.markersText(plan), ...diags.map(d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}: ${d.message}`), ...(sync?.messages || [])].join('\n'),
+        data: { project: name, path: rel, markers: added.map(({ id, name: n, dir, width }) => ({ id, name: n, dir, width })), skipped: plan.skipped,
+          diagnostics: diags.map(d => ({ severity: d.severity, message: d.message })), ...hdlOf(sync) } };
     },
   },
 ];

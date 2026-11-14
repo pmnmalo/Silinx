@@ -423,6 +423,8 @@ export async function openSch(path) {
         // (its drawing when it has one, as its Design row's double-click, else its HDL, #2046)
         onOpenModule: name => openModuleSource(name),
         onEditSymbol: name => import('./symbol-doc.js').then(m => m.editSymbol(name)),   // (#3755)
+        // (its tools' messages: the markers a rectangle added, #4000)
+        onMessage: text => { const w = /^WARNING: (.*)$/s.exec(text); log(w ? `WARNING: ${path.split('/').pop()}: ${t(w[1])}` : `${path.split('/').pop()}: ${t(text)}`, w ? 'warn' : 'info'); },
       });
       d.schEditor = ed;
       if (following()) ed.setBanner(followNotice(path));

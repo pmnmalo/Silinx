@@ -220,13 +220,13 @@ export function mountSchEditor(container, opts = {}) {
   });
 
   // ---------------- tools (sch-tools.js)
-  const { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick } = mountTools({
+  const { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick, ioBand } = mountTools({
     doc: () => doc, nl: () => nl, sel: () => sel, modules: () => modules, view: () => view, hoverPin: () => hoverPin, destroyed: () => destroyed,
     tool: () => tool, placing: () => placing, wireDraw: () => wireDraw, curve,
     set: (o) => { if ('tool' in o) tool = o.tool; if ('placing' in o) placing = o.placing; if ('wireDraw' in o) wireDraw = o.wireDraw; },
     readOnly, canvas, optBox, container, edit, flash: (...a) => flash(...a), shortNote, nextId, nextInstName,
     promptBox: (...a) => promptBox(...a), renderPalette, render, renderOverlay, renderProps,
-    updateToolbar, updateStatus, joinByName, joinMarker, renamed });
+    updateToolbar, updateStatus, joinByName, joinMarker, renamed, message: text => (opts.onMessage ? opts.onMessage(text) : flash(text, 4000)) });   // (the console's, #2718)
   // a short of two named nets refused (#754, #806): the status line says why
   function shortNote(what, pair) { flash(shortText(what, pair), 6000); }
   // a move or a paste that shorted two named nets (#806): the document as it was before, nothing to undo
@@ -273,7 +273,7 @@ export function mountSchEditor(container, opts = {}) {
   const { finishMove, onMove, onUp } = mountSchMouse({
     junction, segSel, wholeBranch, container, opts, applyMove, applySegMove, applyView, bandRect, bandSelect, beginMove, beginSegMove, canvas, changed, contextMenu, curve,
     cursor: () => cursor, destroyed: () => destroyed, doc: () => doc, drag: () => drag, finishSegMove, finishWire,
-    flash: (...a) => flash(...a), hoverPin: () => hoverPin, ioClick, itemAt, keepConn, live: () => live,
+    flash: (...a) => flash(...a), hoverPin: () => hoverPin, ioBand, ioClick, itemAt, keepConn, live: () => live,
     modules: () => modules, netClick, pinNear, placeAt, propBody, pushUndo, readOnly, refusedShort, render,
     renderOverlay, renderProps, sel: () => sel, setTool, spaceDown: () => spaceDown, startPlace, svg, toSheet, tool: () => tool,
     updateStatus, view: () => view, wireClick, wireDraw: () => wireDraw, zoomAt, setCursor: (v) => { cursor = v; },

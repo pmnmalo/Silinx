@@ -2,7 +2,8 @@
 // marker's name and direction), a symbol placed, a wire drawn (routed square, nudged clear of other wires, pins and
 // bodies, #948, its ends connecting, a short between two named nets refused, #754; curved, #1144: through the points
 // clicked, its rectilinear path routed between its ends), a net name attached to a wire, an I/O marker added (joining a
-// net of its name, #2170); the points a wire can connect to.
+// net of its name, #2170), or one on every open pin and wire end of a rectangle drawn (#4000); the points a wire can
+// connect to.
 // mountTools(ctx) is called by mountSchEditor where this code was.
 import { SYMBOLS, defaultParams, instanceParams, symbolDef, symbolPins, rotSize, freePortName, normalizeDoc, parseNetName, splitWiresAt, renameNet, netShort,
 } from '/core/schdoc.js';
@@ -11,13 +12,14 @@ import { reservedError } from '/core/reserved.js';
 import { nudgeWire, routePath, wireGrid, cleanPath } from '/core/schpath.js';
 import { setCurve } from '/core/schcurve.js';
 import { newMarkerDir, newMarkerSide } from '/core/schmarker.js';
+import { planMarkers, addMarkers, markersText } from '/core/schmarker-many.js';
 import { clone, snap, onSeg, segDist, cleanPts } from './sch-editor.js';
 
-/** { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick } of a
+/** { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick, ioBand } of a
  *  schematic editor (doc(), nl(), sel(), tool(), placing(), wireDraw(), …: its current ones; set({ tool, placing, wireDraw }) changes them). */
 export function mountTools(ctx) {
   const { doc, nl, sel, modules, view, hoverPin, destroyed, tool, placing, wireDraw, curve, set, readOnly, canvas, optBox, container, edit, flash, shortNote,
-    nextId, nextInstName, promptBox, renderPalette, render, renderOverlay, renderProps, updateToolbar, updateStatus, joinByName, joinMarker, renamed } = ctx;
+    nextId, nextInstName, promptBox, renderPalette, render, renderOverlay, renderProps, updateToolbar, updateStatus, joinByName, joinMarker, renamed, message } = ctx;
 
   function setTool(t) {
     if (readOnly && t !== 'select') return;
@@ -196,6 +198,14 @@ export function mountTools(ctx) {
       return;
     }
   }
+  // a rectangle drawn with the tool (#4000): a marker on every open pin and wire end in it, its direction and width
+  // theirs, named in1, out1, io1… (the next free numbers), in one Undo step; the console says what was added and skipped
+  function ioBand(rect) {
+    const plan = planMarkers(doc(), { rect, modules: modules() });
+    if (plan.markers.length) edit(() => { addMarkers(doc(), plan.markers); }, { keepProps: true });
+    else renderOverlay();
+    for (const line of markersText(plan)) message(line);
+  }
 
-  return { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick };
+  return { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick, ioBand };
 }

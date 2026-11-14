@@ -171,7 +171,7 @@ export function mountRender(ctx) {
     select: 'Click to select, drag to move (connected wires follow), drag on empty space to select a region. Double-click a module to open it.',
     wire: 'Add Wire: click to start, click to add a bend, click on a pin/wire or double-click to finish; or draw a stroke from a pin/wire to another. Esc ends the wire.',
     net: 'Add Net Name: type a name, then click a wire to attach it.',
-    io: 'Add I/O Marker: click a wire end, a pin or empty space to add a port marker (a wire to its tip connects it later).',
+    io: 'Add I/O Marker: click a wire end, a pin or empty space to add a port marker (a wire to its tip connects it later); drag a rectangle to add one to every open pin and wire end in it.',
     place: 'Click to place the symbol (Ctrl+R rotate, Ctrl+M mirror). Esc to stop placing.',
     // (the drawings, #2593)
     text: 'Add Text: click where the text goes, then type it (its lines and size in the Properties panel). It does not change the circuit.',

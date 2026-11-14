@@ -15,7 +15,7 @@ import { GRAPHIC_TOOLS, mountSchGraphics } from './sch-graphics.js';
 export function mountSchMouse(ctx) {
   const {
     junction, container, opts, edit, nextId, promptBox, applyMove, applySegMove, applyView, bandRect, bandSelect, beginMove, beginSegMove, canvas, changed, contextMenu, curve,
-    cursor, destroyed, doc, drag, finishSegMove, finishWire, flash, hoverPin, ioClick, itemAt, keepConn, live, modules,
+    cursor, destroyed, doc, drag, finishSegMove, finishWire, flash, hoverPin, ioBand, ioClick, itemAt, keepConn, live, modules,
     netClick, pinNear, placeAt, propBody, pushUndo, readOnly, refusedShort, render, renderOverlay, renderProps, segSel, sel,
     setTool, spaceDown, startPlace, svg, toSheet, tool, updateStatus, view, wireClick, wholeBranch, wireDraw, zoomAt, setCursor, setDoc, setDrag,
     setHoverPin, setSel, setWireDraw
@@ -50,7 +50,8 @@ export function mountSchMouse(ctx) {
     }
     if (GRAPHIC_TOOLS.includes(tool())) { graphics.down(pt); return; }   // (#2593)
     if (tool() === 'net') { netClick(pt); return; }
-    if (tool() === 'io') { ioClick(pt); return; }
+    // (a click: one marker; a rectangle dragged: one on every open end in it, #4000)
+    if (tool() === 'io') { setDrag({ kind: 'band', io: true, start: pt, cur: pt }); return; }
     // (curved, #1144: a handle of the selected wire)
     const kn = !readOnly && e.target.closest?.('[data-knot]');
     if (kn) {
@@ -178,6 +179,11 @@ export function mountSchMouse(ctx) {
     if (d.kind === 'move') {
       if (d.dx || d.dy) finishMove(d);
       else if (d.synth?.length) { doc().wires = doc().wires.filter(w => !d.synth.includes(w.id)); render(); }   // just a click
+      return;
+    }
+    if (d.kind === 'band' && d.io) {
+      const r = bandRect(d);
+      if (r.w < 3 && r.h < 3) { renderOverlay(); ioClick(d.start); } else ioBand(r);
       return;
     }
     if (d.kind === 'band') {
