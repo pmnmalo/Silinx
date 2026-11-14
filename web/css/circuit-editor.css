@@ -79,3 +79,9 @@
 .circuit-editor .circ-seg.unknown, .circuit-editor .circ-bar.unknown { opacity: .6; }
 .circuit-editor .circ-bar { opacity: .18; }
 .circuit-editor .circ-on input { margin-right: 4px; }
+/* a logic probe (#3900): its body coloured by its tip's level while trying it */
+.circuit-editor .circ-probe-body { fill: #3a3a3a; stroke: #222; }
+.circuit-editor .circ-probe-body.lv1 { fill: var(--circ-lv1); }
+.circuit-editor .circ-probe-body.lv0 { fill: var(--circ-lv0); }
+.circuit-editor .circ-probe-body.lvx { fill: var(--circ-lvx); }
+.circuit-editor .circ-probe-text { font: bold 11px var(--asm-mono, monospace); fill: #fff; pointer-events: none; }
