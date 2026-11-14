@@ -63,8 +63,10 @@ export const PROJECT_TOOLS = [
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run() {
-      const projects = (await P.listProjects()).map(p => ({ name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }));
-      return { text: projects.length ? projects.map(p => `${p.name}: top ${p.top || '(none)'}, ${p.board || 'no board'} (${p.device})`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
+      // (a design project's: no board, no device, its kind instead, #3891)
+      const projects = (await P.listProjects()).map(p => (isDesignOnly(p) ? { name: p.name, top: p.top || null, kind: DESIGN_KIND, board: null, device: null }
+        : { name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }));
+      return { text: projects.length ? projects.map(p => `${p.name}: top ${p.top || '(none)'}, ${p.kind ? 'a design and simulation project (no FPGA)' : `${p.board || 'no board'} (${p.device})`}`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
     },
   },
   {

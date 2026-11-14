@@ -91,7 +91,8 @@ test('run_process with the Silinx toolchain on the Basys 3: synth_xilinx, nextpn
   const r = await ok('run_process', { project: 'o3', process: 'bitstream', toolchain: 'silinx' });
   assert.deepEqual([r.data.toolchain, r.data.ok, r.data.errors, r.data.warnings], ['silinx', true, [], []]);
   assert.match(r.text, /\nProcess "bitstream" of <top> completed successfully \(Silinx toolchain\)\.$/);
-  assert.ok(r.data.log.some(l => /^Bitstream: build\/top\.bit \(\d+ bytes, from nextpnr's FASM on Project X-Ray's database\)$/.test(l)), r.data.log.join('\n'));
+  // (compressed: the Basys 3's XDC sets BITSTREAM.GENERAL.COMPRESS, #3876)
+  assert.ok(r.data.log.some(l => /^Bitstream: build\/top\.bit \(\d{6} bytes, compressed, from nextpnr's FASM on Project X-Ray's database\)$/.test(l)), r.data.log.join('\n'));
   assert.ok(fs.existsSync(path.join(P.projectDir('o3'), 'build/top.bit')));
   const par = await ok('get_report', { project: 'o3', report: 'par' });
   assert.match(par.text, /^Place and route \(Silinx toolchain\) of top: all signals are completely routed\.\nTiming constraints: all met; minimum period [\d.]+ ns \([\d.]+ MHz\), nextpnr's estimate \(optimistic against Vivado, #3146\)\.$/);

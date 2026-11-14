@@ -6,6 +6,7 @@
 // none (web/js/app.js fixMissingTops).
 import * as P from './projects.js';
 import { toolError, projectPath, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
+import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
 
 const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
 
@@ -89,6 +90,8 @@ export const SOURCE_TOOLS = [
         return pj;
       });
       const lines = await fixMissingTops(name);
+      // (a design project's: the drawing alone named, its HDL never shown, as the interface's, #3891)
+      if (isDesignOnly(pj0)) return { text: [...lines, `Removed ${file} from the project (the file is kept in the project folder).`].join('\n'), data: { project: name, removed: [file], ...await tops(name), messages: lines } };
       const text = [...lines, hdl ? `Removed ${file} and its HDL file ${hdl} from the project (the files are kept in the project folder).` : `Removed ${file} from the project (the file is kept in the project folder).`];
       return { text: text.join('\n'), data: { project: name, removed: [file, hdl].filter(Boolean), ...await tops(name), messages: lines } };
     },
@@ -154,12 +157,13 @@ export const SOURCE_TOOLS = [
       if (typeof newName !== 'string' || !newName) throw toolError('to: the module\'s new name');
       const R = await import('./rename-module.js');
       const mod = (await R.projectModules(P, name)).find(m => m.name.toLowerCase() === String(oldName).toLowerCase() && m.kind !== 'package');
-      if (!mod) throw toolError(`no module '${oldName}' in the project's HDL files (a drawing with no HDL file: write_file its name)`);
+      const design = isDesignOnly(await P.readProject(name));   // (a design project's: its HDL never named, #3891)
+      if (!mod) throw toolError(design ? `no module '${oldName}' in the project` : `no module '${oldName}' in the project's HDL files (a drawing with no HDL file: write_file its name)`);
       let to = null;
       if (file === undefined) to = R.followingFile(mod.file, mod.name, newName);
       else if (file !== 'keep') to = await sourcePath(name, file, 'renamed');
       let r;
-      try { r = await R.renameModule(P, name, mod.name, newName, { to }); } catch (e) { throw toolError(e.message); }
+      try { r = await R.renameModule(P, name, mod.name, newName, { to, hidden: design ? hdlSideFile : null }); } catch (e) { throw toolError(e.message); }
       return { text: [r.message, ...r.hdl].join('\n'), data: { project: name, module: r.module, file: r.file, changed: r.changed, moved: r.moved.map(([a, b]) => ({ from: a, to: b })), ...await tops(name) } };
     },
   },

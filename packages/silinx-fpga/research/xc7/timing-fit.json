@@ -1375,6 +1375,320 @@
         "max": 283
       }
     },
+    "DSP48E1": {
+      "ALUMODE->CARRYCASCOUT": {
+        "min": 2427,
+        "max": 2427
+      },
+      "ALUMODE->CARRYOUT": {
+        "min": 2074,
+        "max": 2074
+      },
+      "ALUMODE->MULTSIGNOUT": {
+        "min": 2055,
+        "max": 2055
+      },
+      "ALUMODE->PATTERNBDETECT": {
+        "min": 2423,
+        "max": 2423
+      },
+      "ALUMODE->PATTERNDETECT": {
+        "min": 2423,
+        "max": 2423
+      },
+      "ALUMODE->PCOUT": {
+        "min": 2292,
+        "max": 2292
+      },
+      "ALUMODE->P": {
+        "min": 2098,
+        "max": 2098
+      },
+      "A->CARRYCASCOUT": {
+        "min": 4171,
+        "max": 4171
+      },
+      "A->CARRYOUT": {
+        "min": 3818,
+        "max": 3818
+      },
+      "A->MULTSIGNOUT": {
+        "min": 3799,
+        "max": 3799
+      },
+      "A->PATTERNBDETECT": {
+        "min": 4406,
+        "max": 4406
+      },
+      "A->PATTERNDETECT": {
+        "min": 4406,
+        "max": 4406
+      },
+      "A->PCOUT": {
+        "min": 4036,
+        "max": 4036
+      },
+      "A->P": {
+        "min": 3841,
+        "max": 3841
+      },
+      "B->BCOUT": {
+        "min": 735,
+        "max": 735
+      },
+      "B->CARRYCASCOUT": {
+        "min": 3986,
+        "max": 3986
+      },
+      "B->CARRYOUT": {
+        "min": 3633,
+        "max": 3633
+      },
+      "B->MULTSIGNOUT": {
+        "min": 3615,
+        "max": 3615
+      },
+      "B->PATTERNBDETECT": {
+        "min": 4221,
+        "max": 4221
+      },
+      "B->PATTERNDETECT": {
+        "min": 4221,
+        "max": 4221
+      },
+      "B->PCOUT": {
+        "min": 3851,
+        "max": 3851
+      },
+      "B->P": {
+        "min": 3656,
+        "max": 3656
+      },
+      "CARRYCASCIN->CARRYCASCOUT": {
+        "min": 1478,
+        "max": 1478
+      },
+      "CARRYCASCIN->CARRYOUT": {
+        "min": 1124,
+        "max": 1124
+      },
+      "CARRYCASCIN->MULTSIGNOUT": {
+        "min": 1106,
+        "max": 1106
+      },
+      "CARRYCASCIN->PATTERNBDETECT": {
+        "min": 1712,
+        "max": 1712
+      },
+      "CARRYCASCIN->PATTERNDETECT": {
+        "min": 1712,
+        "max": 1712
+      },
+      "CARRYCASCIN->PCOUT": {
+        "min": 1343,
+        "max": 1343
+      },
+      "CARRYCASCIN->P": {
+        "min": 1147,
+        "max": 1147
+      },
+      "CARRYIN->CARRYCASCOUT": {
+        "min": 1746,
+        "max": 1746
+      },
+      "CARRYIN->CARRYOUT": {
+        "min": 1393,
+        "max": 1393
+      },
+      "CARRYIN->MULTSIGNOUT": {
+        "min": 1376,
+        "max": 1376
+      },
+      "CARRYIN->PATTERNBDETECT": {
+        "min": 1982,
+        "max": 1982
+      },
+      "CARRYIN->PATTERNDETECT": {
+        "min": 1982,
+        "max": 1982
+      },
+      "CARRYIN->PCOUT": {
+        "min": 1613,
+        "max": 1613
+      },
+      "CARRYIN->P": {
+        "min": 1416,
+        "max": 1416
+      },
+      "CARRYINSEL->CARRYCASCOUT": {
+        "min": 2241,
+        "max": 2241
+      },
+      "CARRYINSEL->CARRYOUT": {
+        "min": 1888,
+        "max": 1888
+      },
+      "CARRYINSEL->MULTSIGNOUT": {
+        "min": 1870,
+        "max": 1870
+      },
+      "CARRYINSEL->PATTERNBDETECT": {
+        "min": 2476,
+        "max": 2476
+      },
+      "CARRYINSEL->PATTERNDETECT": {
+        "min": 2476,
+        "max": 2476
+      },
+      "CARRYINSEL->PCOUT": {
+        "min": 2106,
+        "max": 2106
+      },
+      "CARRYINSEL->P": {
+        "min": 1910,
+        "max": 1910
+      },
+      "C->CARRYCASCOUT": {
+        "min": 2150,
+        "max": 2150
+      },
+      "C->CARRYOUT": {
+        "min": 1797,
+        "max": 1797
+      },
+      "C->MULTSIGNOUT": {
+        "min": 1779,
+        "max": 1779
+      },
+      "C->PATTERNBDETECT": {
+        "min": 2386,
+        "max": 2386
+      },
+      "C->PATTERNDETECT": {
+        "min": 2386,
+        "max": 2386
+      },
+      "C->PCOUT": {
+        "min": 2016,
+        "max": 2016
+      },
+      "C->P": {
+        "min": 1820,
+        "max": 1820
+      },
+      "INMODE->CARRYCASCOUT": {
+        "min": 4254,
+        "max": 4254
+      },
+      "INMODE->CARRYOUT": {
+        "min": 3900,
+        "max": 3900
+      },
+      "INMODE->MULTSIGNOUT": {
+        "min": 3883,
+        "max": 3883
+      },
+      "INMODE->PATTERNBDETECT": {
+        "min": 4489,
+        "max": 4489
+      },
+      "INMODE->PATTERNDETECT": {
+        "min": 4489,
+        "max": 4489
+      },
+      "INMODE->PCOUT": {
+        "min": 4119,
+        "max": 4119
+      },
+      "INMODE->P": {
+        "min": 3923,
+        "max": 3923
+      },
+      "MULTSIGNIN->CARRYCASCOUT": {
+        "min": 1848,
+        "max": 1848
+      },
+      "MULTSIGNIN->CARRYOUT": {
+        "min": 1494,
+        "max": 1494
+      },
+      "MULTSIGNIN->MULTSIGNOUT": {
+        "min": 1478,
+        "max": 1478
+      },
+      "MULTSIGNIN->PATTERNBDETECT": {
+        "min": 2084,
+        "max": 2084
+      },
+      "MULTSIGNIN->PATTERNDETECT": {
+        "min": 2084,
+        "max": 2084
+      },
+      "MULTSIGNIN->PCOUT": {
+        "min": 1713,
+        "max": 1713
+      },
+      "MULTSIGNIN->P": {
+        "min": 1518,
+        "max": 1518
+      },
+      "OPMODE->CARRYCASCOUT": {
+        "min": 2657,
+        "max": 2657
+      },
+      "OPMODE->CARRYOUT": {
+        "min": 2304,
+        "max": 2304
+      },
+      "OPMODE->MULTSIGNOUT": {
+        "min": 2286,
+        "max": 2286
+      },
+      "OPMODE->PATTERNBDETECT": {
+        "min": 2892,
+        "max": 2892
+      },
+      "OPMODE->PATTERNDETECT": {
+        "min": 2892,
+        "max": 2892
+      },
+      "OPMODE->PCOUT": {
+        "min": 2522,
+        "max": 2522
+      },
+      "OPMODE->P": {
+        "min": 2326,
+        "max": 2326
+      },
+      "PCIN->CARRYCASCOUT": {
+        "min": 1848,
+        "max": 1848
+      },
+      "PCIN->CARRYOUT": {
+        "min": 1494,
+        "max": 1494
+      },
+      "PCIN->MULTSIGNOUT": {
+        "min": 1478,
+        "max": 1478
+      },
+      "PCIN->PATTERNBDETECT": {
+        "min": 2084,
+        "max": 2084
+      },
+      "PCIN->PATTERNDETECT": {
+        "min": 2084,
+        "max": 2084
+      },
+      "PCIN->PCOUT": {
+        "min": 1713,
+        "max": 1713
+      },
+      "PCIN->P": {
+        "min": 1518,
+        "max": 1518
+      }
+    },
     "wires": {
       "base": 0,
       "single": 154.4,

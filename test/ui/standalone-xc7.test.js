@@ -85,7 +85,8 @@ for (const [example, top] of [['blinky', 'top'], ['vga', 'vga']]) {
       /Loading nextpnr and the chip database of xc7a35tcpg236-1 \(WebAssembly, about 6 MB: once, then kept by this browser\)…/,
       new RegExp(`nextpnr-himbaechel \\(xilinx\\) places and routes <${top}> on the xc7a35tcpg236-1 \\(router2\\)\\.`),
       /Clock clk: [\d.]+ MHz \(met, 100 MHz asked; nextpnr's estimate\)/, /=== SILINX STEP bitgen ===/,
-      new RegExp(`Bitstream: build/${top}\\.bit \\(2192100 bytes, from nextpnr's FASM on Project X-Ray's database\\)`),
+      // (compressed: the board's XDC sets BITSTREAM.GENERAL.COMPRESS, #3876)
+      new RegExp(`Bitstream: build/${top}\\.bit \\(\\d{6} bytes, compressed, from nextpnr's FASM on Project X-Ray's database\\)`),
       /=== SILINX DONE ===/, /Process "Generate Programming File" completed successfully/]) assert.match(log, re);
     // no warnings: none in the flow's lines, none in the Errors and Warnings
     assert.deepEqual(log.split('\n').filter((l) => /WARNING|ERROR/.test(l)), []);

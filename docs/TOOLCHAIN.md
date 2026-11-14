@@ -160,6 +160,14 @@ layout `xc7Parts`), fetched into Cache Storage when a project opens; nextpnr rou
 1.3 GB of the browser's memory for the xc7a35t, its `.bit` the server's), router1 again where router2 stops without an error of
 its own, out of memory (`web/js/nextpnr-router-fallback.js`, a warning says so).
 
+Process Properties' Place & Route (7-series) can be the best of 3 seeds (#3825; `impl.xc7Seeds` `3`, the MCP tool
+`set_process_properties`'s `xc7_seeds`; off by default): nextpnr places and routes with seeds 1, 2 and 3, the run with the
+best Fmax (nextpnr's estimate of the slowest clock) kept, a tie to the lowest seed, a failed seed left out; the log, the
+timing report and the report's `par.seeds` say each seed's Fmax and the one kept, and only the kept run's warnings are
+given. About 2.7 % more Fmax on the Basys 3's examples (0.780 → 0.801 of Vivado's), for three Place & Routes: the local
+server runs them at once in worker threads (`runApart`, on a computer of 8 GB and 4 cores or more), the browser edition one
+after another.
+
 Every example builds on the Basys 3 and the Nexys A7 with no warning, each clock at the boards' 100 MHz by nextpnr's
 estimate (#3147, `test/open-flow-xc7-server.test.js`, which holds each build to these numbers: up to 15 % more LUTs, the
 registers within 10 %, the frequency up to 15 % lower). The LUTs are nextpnr's count (each 6LUT and 5LUT, its feed-throughs
@@ -198,8 +206,8 @@ times Vivado's timing of the same netlist (#3516), so it is above Vivado's own f
 geometric mean); stopwatch's 2.2 times, its DSP48E1s timed by nextpnr's stubs (#3875). Vivado accepts every netlist of
 Silinx's: no DRC error, one net with no routable load (RTSTAT-10, a warning), its bitstream written. Two netlist details
 the comparison handles: a port of one bit (`btn(0 downto 0)`) is a scalar in Silinx's netlist, its pin named so in the
-XDC Vivado reads; and Silinx's `.bit` is not compressed where the board's XDC asks for it (BITSTREAM.GENERAL.COMPRESS),
-Vivado's is (#3876).
+XDC Vivado reads; and Silinx's `.bit` was not compressed where the board's XDC asks for it (BITSTREAM.GENERAL.COMPRESS),
+Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3, as Vivado's; the table's run was before).
 
 <!-- xc7-vivado-comparison: begin (scripts/xc7-vivado-compare.mjs --update) -->
 | Board | Example | LUTs: Silinx (+ feed-throughs) | LUTs: Silinx's netlist in Vivado | LUTs: Vivado | Registers: Silinx / Vivado | Slices: Silinx / Vivado | MHz: Silinx | MHz: Silinx's netlist in Vivado | MHz: Vivado | Vivado's DRC on Silinx's netlist |

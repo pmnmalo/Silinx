@@ -7,6 +7,7 @@
 //   an HDL source: its translation (#2711); a test bench: its unit under test; a translation: its source;
 //   a waveform: the module it shows (a test bench: the bench and its unit under test); the RTL / technology schematic
 //     and the C model: their module. The Design Summary and the power report cover the whole project: none (#3310).
+// A design and simulation project's leave out the HDL (a file of the HDL side, a translation, a C source's views, #3891).
 // An entry: { label, id: its document's id, find(): that document when open, open(): makes or opens it }.
 import { S, findDoc, instancesOf, moduleInfo, openFile } from './app.js';
 import { cSequential, isC, openCAsm, openCHdl } from './c-source.js';
@@ -14,6 +15,8 @@ import { openTranslation } from './translation.js';
 import { openTtSchematic } from './drawings-tt.js';
 import { openPetriFsm } from './petri-fsm-doc.js';
 import { openAsmFsm, openCReportDoc, openFsmAsm } from './related-docs.js';
+import { designOnly } from './design-only.js';
+import { hdlSideFile } from '/core/project-kind.js';
 
 const KINDS = { sch: 'Show Schematic Beside', asm: 'Show ASM Chart Beside', fsm: 'Show State Diagram Beside', tt: 'Show Boolean Algebra Beside', pn: 'Show Petri Net Beside' };
 const DRAWING = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
@@ -110,5 +113,6 @@ export function relatedViews(doc) {
     list = isBench(name) ? benchViews(name) : moduleViews(name);
   } else if (['rtl', 'tech', 'cmodel'].includes(kind)) list = moduleViews(rest);
   const seen = new Set([doc.id]);
-  return list.filter((e) => e && !seen.has(e.id) && seen.add(e.id));
+  const shown = (e) => !designOnly() || !(/^(tr|chdl|casm|crep):/.test(e.id) || (e.id.startsWith('file:') && hdlSideFile(e.id.slice(5))));
+  return list.filter((e) => e && shown(e) && !seen.has(e.id) && seen.add(e.id));
 }

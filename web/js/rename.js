@@ -10,6 +10,8 @@ import { isFsm, isTt, syncHdlFromAsm, syncHdlFromFsm, syncHdlFromSchematic, sync
 import { markStale, saveAll } from './processes.js';
 import { reservedError } from '/core/reserved.js';
 import { isName } from '/core/ident.js';
+import { hdlSideFile } from '/core/project-kind.js';
+import { designOnly } from './design-only.js';
 
 // ---- Rename Symbol (F2) in an HDL editor: the name under the cursor, everywhere it means the same
 // object in the file; a port / generic also in the instances of its module in the other files
@@ -50,13 +52,16 @@ export async function renameDialog(file, mod = null) {
   const follow = h('input', { type: 'checkbox', checked: !!modName && base.toLowerCase() === modName.toLowerCase() });
   if (mIn) mIn.addEventListener('input', () => { if (follow.checked) fIn.value = dirOf(file) + mIn.value.trim() + extOf(file); });
   const err = h('div', { class: 'hint', style: { color: 'var(--error-fg)', minHeight: '16px' } });
+  // a design project's drawn module (its HDL file): its name only, the file following it, never shown (#3891)
+  const hidden = !!mIn && designOnly() && hdlSideFile(file);
+  if (hidden) follow.checked = true;
   const r = await dialog({
     title: 'Rename', width: 520,
     body: h('div', {},
       h('div', { class: 'form-grid' },
-        ...(mIn ? [h('label', {}, modName && S.modules.find(m => m.name === modName)?.lang === 'vhdl' ? 'Entity:' : 'Module:'), mIn] : []),
-        h('label', {}, 'File:'), fIn,
-        ...(mIn ? [h('span'), h('label', {}, follow, ' File name follows the module name')] : [])),
+        ...(mIn ? [h('label', {}, !hidden && S.modules.find(m => m.name === modName)?.lang === 'vhdl' ? 'Entity:' : 'Module:'), mIn] : []),
+        ...(hidden ? [] : [h('label', {}, 'File:'), fIn]),
+        ...(mIn && !hidden ? [h('span'), h('label', {}, follow, ' File name follows the module name')] : [])),
       h('div', { class: 'hint', style: { marginTop: '8px' } }, mIn
         ? 'Renaming the module also updates its instances in the other sources, schematics, linked charts and the project top.'
         : 'References to this file in the project (synchronized schematics/charts, constraints) are updated.'),
@@ -164,8 +169,8 @@ async function renameSource(from, to, oldMod, newMod) {
     }
     markStale();
     const parts = [];
-    if (newMod && newMod !== oldMod) parts.push(`module '${oldMod}' renamed to '${newMod}' (${[...changed.keys()].length} file(s) updated)`);
-    for (const [a, b] of moved) parts.push(`${a} → ${b}`);
+    if (newMod && newMod !== oldMod) parts.push(`module '${oldMod}' renamed to '${newMod}' (${[...changed.keys()].filter(p => !designOnly() || !hdlSideFile(p)).length} file(s) updated)`);
+    for (const [a, b] of moved) if (!designOnly() || !hdlSideFile(a)) parts.push(`${a} → ${b}`);   // (a design project's HDL: never named, #3891)
     log(`Rename: ${parts.join('; ')}.`, 'ok');
     for (const p of reopen.reverse()) await openFile(p);
   } catch (e) {

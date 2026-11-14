@@ -3,6 +3,13 @@
 What changed in each version of silinx-fpga, the Silinx toolchain. The newest version is first. Its versions
 are its own (semver, 0.x until its API is stable), apart from Silinx ISE's.
 
+## 0.4.1
+
+In detail:
+
+- The release's publish job prints the npm that publishes and publishes with npm's verbose log, which says why
+  npm's trusted publishing failed to authenticate (ENEEDAUTH on 0.4.0's tag) (#3889).
+
 ## 0.4.0
 
 In short:
