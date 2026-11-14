@@ -8,7 +8,7 @@
 //
 // Breadboards, ICs, switches, buttons, LEDs and the supply on a 0.1 inch grid, wired point to point; a part from the
 // side panel's library placed by a click, moved by a drag, turned (R), deleted (Del); a wire drawn point by point,
-// ended on a pin or a hole. Simulate runs it live (core/circuit-sim.js): a click flips a logic switch, a press holds a
+// ended on a pin or a hole. Try it runs it live (core/circuit-sim.js): a click flips a logic switch, a press holds a
 // button; each pin shows its level, the LEDs light. Its edits: core/circuit-edit.js (the MCP server's edit_circuit's);
 // its problems after every change (`onProblems`) and on Check (`onCheck`), its messages (`onMessage`) in the console.
 import { h, twoFingerView } from './ui.js';
