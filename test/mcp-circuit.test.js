@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay; an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
     '7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017']);
   const one = await ok('circuit_parts', { type: '7486' });
@@ -148,4 +148,18 @@ test('edit_circuit and simulate_drawing with phase 2\'s parts (#3899): a DIP swi
   assert.match(s.text, /^step 0: inputs sw_1=1 sw_2=0 sw_3=0 sw_4=0 clk=1; t = \d+ ns; LEDs hex_a=1 hex_b=0 hex_c=0 [^\n]* tick=1$/m);
   assert.equal((await call('simulate_drawing', { project: 'c', file: P, cycles: [{ sw: 1 }] })).text,
     'simulate_drawing: step 0: \'sw\' is not an input of the circuit (its inputs: sw_1, sw_2, sw_3, sw_4, clk)');
+});
+
+test('simulate_drawing: a circuit\'s logic probes in each step; waveforms: the steps replayed by its HDL, as View Waveforms (#3900)', async () => {
+  await ok('new_source', { project: 'c', type: 'circuit', name: 'probed', language: 'verilog' });
+  const P = 'src/probed.circ.json';
+  const r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'add', type: '7404', at: 'BB1.f5' }, { op: 'wire', from: 'U1.14', to: 'BB1.tp5' }, { op: 'wire', from: 'U1.7', to: 'BB1.bn11' },
+    { op: 'wire', from: 'BB1.tn2', to: 'BB1.bn2', via: [[-2, -3], [-2, 14]] }, { op: 'add', type: 'logic-switch', at: [-6, 9], label: 'a' }, { op: 'wire', from: 'S1.out', to: 'U1.1' },
+    { op: 'add', type: 'probe', at: [6, 20], id: 'LP1' }, { op: 'set', id: 'LP1', label: 'y' }, { op: 'wire', from: 'U1.2', to: 'LP1.tip' }] });
+  assert.deepEqual([r.data.errors, r.data.warnings], [[], []], r.text);
+  const s = await ok('simulate_drawing', { project: 'c', file: P, cycles: [{ a: 1 }, { a: 0 }], waveforms: true });
+  assert.deepEqual(s.text.split('\n'), ['probed.circ.json from time 0, 2 step(s):', 'start: t = 10 ns; LEDs none; probes y=1', 'step 0: inputs a=1; t = 20 ns; LEDs none; probes y=0',
+    'step 1: inputs a=0; t = 30 ns; LEDs none; probes y=1', 'waves of y: X@0 1@10 0@20 1@30']);
+  assert.deepEqual(s.data.steps[0].probes, { y: '0' });
+  assert.deepEqual(s.data.waves, { y: [[0, 'X'], [10, '1'], [20, '0'], [30, '1']] });
 });

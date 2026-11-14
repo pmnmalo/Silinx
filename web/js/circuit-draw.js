@@ -60,7 +60,7 @@ function partSvg(p, selected, { levels, leds, inputs }) {
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
   const xs = pins.map((q) => px(q.x)), ys = pins.map((q) => px(q.y));
   const box = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-  if (drawPart2(g, p, box, { on: inputs ? inputs[p.id] : p.on, lamps: leds?.[p.id] })) { /* (phase 2's parts: circuit-draw-parts.js) */ }
+  if (drawPart2(g, p, box, { on: inputs ? inputs[p.id] : p.on, lamps: leds?.[p.id], level: levels?.(p.id, 1) })) { /* (phase 2's parts: circuit-draw-parts.js) */ }
   else if (d.kind === 'ic') {
     g.append(sv('rect', { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7, rx: 2, class: 'circ-ic-body' }));
     // its notch on pin 1's short side, its name and chip

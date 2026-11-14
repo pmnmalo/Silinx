@@ -15,6 +15,7 @@ import { h, twoFingerView } from './ui.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
+import { partInputs } from '/core/circuit-io.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem, addWire } from '/core/circuit-edit.js';
 import { checkCircuit } from '/core/circuit-check.js';
@@ -33,6 +34,7 @@ export function mountCircuitEditor(container, opts = {}) {
   let view = { tx: 60, ty: 120, k: 1 };
   let drag = null, draft = null, ghost = null, sim = null, fitted = false, destroyed = false;
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
+  let events = [];                      // the inputs' changes of the session: [{ t (ns), port, v }] (View Waveforms replays them)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
   let hi = 0;
@@ -44,7 +46,8 @@ export function mountCircuitEditor(container, opts = {}) {
   const sep = () => h('span', { class: 'asm-sep' });
   const status = (msg, err = false) => { if (msg) opts.onMessage?.(msg, err); };
 
-  const { tools, delBtn, rotBtn, simBtn, resetBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({
+  const { tools, delBtn, rotBtn, simBtn, resetBtn, wavesBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({
+    waves: () => opts.onWaves?.(clone(M), events.slice()),
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
     toggleSim, resetSim: () => { if (sim) startSim(); }, zoomBtn, fit: () => fit(),
   });
@@ -100,11 +103,23 @@ export function mountCircuitEditor(container, opts = {}) {
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
     stopTicks();
     sim = createCircuitSim(M);
+    events = [];
     runSim();
-    // (a clock source flips its level every half period, in real time)
-    ticks = M.parts.filter((p) => p.type === 'clock').map((p) => setInterval(() => { if (sim && !destroyed) { sim.set(p.id, !sim.inputs()[p.id]); runSim(); } }, 500 / (p.hz || 1)));
+    // (a clock source flips its level every half period, in real time; the simulated time moves on by as much)
+    ticks = M.parts.filter((p) => p.type === 'clock').map((p) => setInterval(() => {
+      if (!sim || destroyed) return;
+      sim.advance(5e8 / (p.hz || 1));
+      setInput(p.id, !sim.inputs()[p.id]);
+    }, 500 / (p.hz || 1)));
   }
   function stopTicks() { for (const t of ticks) clearInterval(t); ticks = []; }
+  // one of a part's inputs set while trying it, run, and kept for the waveforms (its port's name, at its simulated time)
+  function setInput(id, v, index = 0) {
+    sim.set(id, v, index);
+    const port = partInputs(M.parts.find((p) => p.id === id))[index]?.port;
+    if (port) events.push({ t: sim.time, port, v: v ? 1 : 0 });
+    runSim();
+  }
   function runSim() {
     const r = sim.run();
     for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
@@ -125,6 +140,7 @@ export function mountCircuitEditor(container, opts = {}) {
     rotBtn.disabled = sel?.kind !== 'part';
     simBtn.classList.toggle('active', !!sim);
     resetBtn.hidden = !sim;
+    wavesBtn.disabled = !events.length && !sim;
     root.classList.toggle('circ-simulating', !!sim);
     info.set([circuitCounts(M), sim ? { text: `t = ${sim.time} ns`, cls: 'circ-time', noI18n: true } : null].filter(Boolean));
     renderSide();
@@ -151,9 +167,9 @@ export function mountCircuitEditor(container, opts = {}) {
     fitted = true;
     const w = toWorld(e.clientX, e.clientY), g = toGrid(w), t = hit(e);
     if (sim && t?.input) {
-      if (t.input === 'switch') { sim.set(t.id, !sim.inputs()[t.id]); runSim(); }
-      else if (t.input === 'dip') { sim.set(t.id, !sim.inputs()[t.id][t.lever], t.lever); runSim(); }
-      else { sim.set(t.id, true); runSim(); drag = { kind: 'press', id: t.id }; }
+      if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);
+      else if (t.input === 'dip') setInput(t.id, !sim.inputs()[t.id][t.lever], t.lever);
+      else { setInput(t.id, true); drag = { kind: 'press', id: t.id }; }
       return;
     }
     if (readOnly && tool !== 'select') setTool('select');
@@ -190,7 +206,7 @@ export function mountCircuitEditor(container, opts = {}) {
   svg.addEventListener('pointerup', () => {
     const d = drag;
     drag = null;
-    if (d?.kind === 'press' && sim) { sim.set(d.id, false); runSim(); }
+    if (d?.kind === 'press' && sim) setInput(d.id, false);
     if (d?.kind === 'move' && d.moved) { const p = M.parts.find((x) => x.id === d.id); M = normalizeCircuit(JSON.parse(hist[hi])); applyEdit(movePart(M, d.id, [p.x, p.y])); }
   });
   svg.addEventListener('dblclick', () => { if (tool === 'wire' && draft) endWire(); });
@@ -252,7 +268,7 @@ export function mountCircuitEditor(container, opts = {}) {
     canCopy: () => false, canPaste: () => false, canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
-    fit, print, simulating: () => !!sim, toggleSim, sim: () => sim,
+    fit, print, simulating: () => !!sim, toggleSim, sim: () => sim, events: () => events.slice(),
     select(ref) { if (!ref?.id || !itemOf(ref.id)) return; sel = { kind: ref.kind || 'part', id: ref.id }; render(); },
     destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); container.innerHTML = ''; },
   };
