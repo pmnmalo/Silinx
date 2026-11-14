@@ -69,6 +69,8 @@ const OTHERS = [
   { type: 'led', title: 'LED', kind: 'output', pins: [pin(1, 'A', 'in', 0, 0), pin(2, 'K', 'in', 1, 0)], lamps: [{ name: null, a: 1, k: 2 }] },
   sevenSeg('seg7-cc', '7-segment display, common cathode', false), sevenSeg('seg7-ca', '7-segment display, common anode', true),
   ledBar(10),
+  // a logic probe (#3900): it shows its tip's level (H, L, open, X) and records it in the waveforms; no port of the HDL
+  { type: 'probe', title: 'Logic probe', kind: 'probe', pins: [pin(1, 'tip', 'probe', 0, 0)] },
 ];
 
 // ------------------------------------------------------------------ the library

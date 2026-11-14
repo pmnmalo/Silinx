@@ -8,7 +8,7 @@ import { statusLine } from './status-line.js';
 
 /** { tools, delBtn, rotBtn, checkBtn, simBtn, resetBtn, zoomLbl, info, toolbar } of mountCircuitEditor. */
 export function mountCircuitToolbar(ctx) {
-  const { root, btn, sep, setTool, deleteSelection, rotateSelection, check, toggleSim, resetSim, zoomBtn, fit } = ctx;
+  const { root, btn, sep, setTool, deleteSelection, rotateSelection, check, toggleSim, resetSim, waves, zoomBtn, fit } = ctx;
   const tools = {
     select: toolIcon('select', 'select', 'Select and move (drag the background to pan, wheel to zoom)', () => setTool('select'), 'circ-tool'),
     wire: toolWide('wire', 'Wire', 'Draw a wire: click its start, its bends, then its end on a pin or a hole (double click or Esc: end it there)', () => setTool('wire'), 'circ-tool'),
@@ -19,6 +19,8 @@ export function mountCircuitToolbar(ctx) {
   const simBtn = toolWide('sim', 'Try it', 'Try it: click a switch to flip it, press a button to hold it; the LEDs and each pin\'s level show the circuit working', () => toggleSim(), 'circ-sim-btn');
   const resetBtn = btn('↺ Reset', 'Start the simulation again from time 0', () => resetSim(), 'circ-reset');
   resetBtn.hidden = true;
+  // (the session replayed in the waveform viewer, SSim, as every simulation: its probes' nets first, #3900)
+  const wavesBtn = btn('〰 Waveforms', 'View the waveforms of this Try it in the simulator (SSim): its inputs as you changed them, the logic probes\' nets first', () => waves(), 'circ-waves');
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
   const info = statusLine();
   const toolbar = h('div', { class: 'asm-toolbar circ-toolbar' },
@@ -26,8 +28,8 @@ export function mountCircuitToolbar(ctx) {
     h('div', { class: 'asm-group' }, rotBtn, delBtn), sep(),
     h('div', { class: 'asm-group' }, ...zoomTools((f) => zoomBtn(f), () => fit()), zoomLbl), sep(),
     h('div', { class: 'asm-group' }, checkBtn), sep(),
-    h('div', { class: 'asm-group' }, simBtn, resetBtn),
+    h('div', { class: 'asm-group' }, simBtn, resetBtn, wavesBtn),
     h('div', { class: 'asm-spacer' }),
     h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Properties', 'Show / hide the properties panel'), { key: PROPS_KEY })));
-  return { tools, delBtn, rotBtn, checkBtn, simBtn, resetBtn, zoomLbl, info, toolbar };
+  return { tools, delBtn, rotBtn, checkBtn, simBtn, resetBtn, wavesBtn, zoomLbl, info, toolbar };
 }
