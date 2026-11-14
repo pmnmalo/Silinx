@@ -120,9 +120,15 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     if (m && !TOLD.test(req.path) && (!['GET', 'HEAD'].includes(req.method) || WRITING_GET.test(req.path))) {
       let name = '';
       try { name = decodeURIComponent(m[1]); } catch { /* a bad name: refused by its route */ }
-      const release = watcher.hold(name, req.get('X-Silinx-Client'));   // (the page that asked: told to the others, #3972)
-      res.once('finish', release);
-      res.once('close', release);
+      // (the page that asked: told to the others, and its request after another page's on the project, #3972)
+      let ended = false;
+      res.once('close', () => { ended = true; });
+      return watcher.acquire(name, req.get('X-Silinx-Client')).then(release => {
+        res.once('finish', release);
+        res.once('close', release);
+        if (ended) release();   // (the page gone while it waited)
+        next();
+      }, next);
     }
     next();
   });

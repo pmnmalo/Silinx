@@ -1441,11 +1441,11 @@ uiTest('#3548 browser edition: no project bundle in the File menu (English, Port
   assert.deepEqual(en.filter((l) => /bundle/i.test(l)), []);
   await openImport(page, 'silinx');
   assert.equal(await page.eval((f) => document.querySelector(f).accept, FILE), '.zip,.json');
-  // (the bundle's line after the Silinx hint: not with Xilinx ISE, #3703)
-  const bundleLine = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .hint')].filter((e) => !e.hidden).map((e) => e.textContent)).then((h) => h.slice(1, 2));
-  assert.deepEqual(await bundleLine(), ['It also opens a project bundle (.silinx.json) made with an earlier version.']);
+  // (no line about a bundle under the Silinx hint, nor with Xilinx ISE, #4003: a bundle opens all the same)
+  const bundleLines = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .hint')].map((e) => e.textContent).filter((t) => /bundle|pacote/i.test(t)));
+  assert.deepEqual(await bundleLines(), []);
   await page.click('.dlg-overlay input[data-field=software-xilinx]');
-  assert.notDeepEqual(await bundleLine(), ['It also opens a project bundle (.silinx.json) made with an earlier version.']);
+  assert.deepEqual(await bundleLines(), []);
   await page.click('.dlg-overlay input[data-field=software-silinx]');
   await page.setFiles(FILE, [file]);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'OldLab', 'the name the file\'s, as a zip\'s');
@@ -1492,7 +1492,7 @@ uiTest('#3548 browser edition: no project bundle in the File menu (English, Port
   assert.equal(pt.length, en.length);
   await page.menu('Ficheiro', imp);
   await page.waitDialog('Importar Projeto');
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .hint')].map((e) => e.textContent)).then((h) => h.slice(1, 2)), ['Também abre um pacote de projeto (.silinx.json) feito com uma versão anterior.']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .hint')].map((e) => e.textContent).filter((t) => /bundle|pacote/i.test(t))), []);
   await page.dialogButton('Cancelar');
 }, { url: () => 'about:blank' });
 
