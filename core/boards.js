@@ -473,7 +473,14 @@ export const BOARDS = [
       { name: 'ps2_clk2', label: 'PS/2 port 2 clock (Y-splitter)', pins: ['U11'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'PS/2' },
       { name: 'ps2_data2', label: 'PS/2 port 2 data (Y-splitter)', pins: ['Y12'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'PS/2' },
       { name: 'aud', label: 'Audio jack AUD_L, AUD_R', pins: ['Y10', 'V10'], dir: 'out', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'Audio' },
-      { name: 'j19_io', label: 'Header J19 J19_IO<1..4>', pins: ['Y18', 'W18', 'V17', 'W17'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'Headers' },
+      // UG334 ch. 15 (figs. 15-3, 15-11, table 15-1): the 6-pin accessory headers J18 and J20, the FX2 connector J17 (its
+      // 40 I/O and 3 clock pins, all full I/O), then J19 (through-hole pads, no connector): in this order the port bits the
+      // board has no pin for (the examples' display: no seven-segment display on the board) go on its headers (#3872)
+      { name: 'j18_io', label: 'Header J18 J18_IO<1..4>', pins: ['AA21', 'AB21', 'AA19', 'AB19'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'Headers' },
+      { name: 'j20_io', label: 'Header J20 J20_IO<1..4>', pins: ['V14', 'V15', 'W16', 'V16'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'Headers' },
+      { name: 'fx2_io', label: 'FX2 connector J17 FX2_IO<1..40>', pins: ['A13', 'B13', 'A14', 'B15', 'A15', 'A16', 'A17', 'B17', 'A18', 'C18', 'A19', 'B19', 'A20', 'B20', 'C19', 'D19', 'D18', 'E17', 'D20', 'D21', 'D22', 'E22', 'F18', 'F19', 'F20', 'E20', 'G20', 'G19', 'H19', 'J18', 'K18', 'K17', 'K19', 'K20', 'L19', 'L18', 'M20', 'M18', 'L20', 'P20'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'fast', group: 'Headers' },
+      { name: 'fx2_clk', label: 'FX2 connector J17 FX2_CLKIN, FX2_CLKOUT, FX2_CLKIO', pins: ['M22', 'L22', 'L21'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'fast', group: 'Headers' },
+      { name: 'j19_io', label: 'Header J19 J19_IO<1..4> (pads)', pins: ['Y18', 'W18', 'V17', 'W17'], dir: 'inout', iostandard: 'LVCMOS33', drive: 8, slew: 'slow', group: 'Headers' },
     ],
   },
   {

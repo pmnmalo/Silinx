@@ -24,6 +24,7 @@ function designOnlyRefusal(tool, args, pj) {
     case 'new_source': return HDL_TYPES.has(args.type) ? M.hdl(args.name || args.type) : args.language !== undefined ? M.language() : null;   // (no Language field there, #3891)
     case 'write_file': case 'add_to_project': return hdl(args.path) ? M.hdl(args.path) : null;
     case 'import_source': { const f = (args.files || []).find(hdl); return f ? M.hdl(f) : null; }
+    case 'export_project': return args.kind === 'xilinx' ? M.ise(pj.name) : null;   // (Export Project offers Silinx's alone, #3891)
     case 'read_file': return hdl(args.path) ? M.hidden(args.path) : null;
     case 'set_source_properties': case 'convert_module': return M.hidden(args.path || args.module);
     case 'related_view': return args.view === 'translation' ? M.hidden(args.path) : null;
