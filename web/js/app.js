@@ -86,6 +86,7 @@ export function compileProject() {
   // the modules of the HDL files, compiled once for the drawings below (#402)
   let hdlModules = null;
   const failedC = [];   // (a C source whose HDL cannot be made: its row and its errors, #2995)
+  S.failedDrawings = [];   // (a drawing whose module cannot be made: Check Syntax says its errors, #3934)
   if (views.length) {
     let mods = {}, lib0 = null;
     try { lib0 = compile(srcs); mods = modulesFromLibrary(lib0, { sources: Object.fromEntries(srcs.map(s => [s.path, s.text])) }); } catch { /* none */ }
@@ -96,7 +97,7 @@ export function compileProject() {
     // (a drawing whose HDL file is gone, deleted or removed from the project, is one without it: #231)
     for (const [f, t] of views) {
       const r = viewHdl(f, t, { modules: mods, linked: hdlInProject, lang: S.project.preferredLanguage, clock: hlsClock(), family: hlsFamily(), hls: S.hls, mults: hlsMults() });
-      if (!r?.text) { if (isC(f)) failedC.push([f, r]); continue; }
+      if (!r?.text) { if (isC(f)) failedC.push([f, r]); else if (r?.errors?.length) S.failedDrawings.push({ path: f, module: r.module, errors: r.errors }); continue; }
       if (!hdlMods.has(String(r.module).toLowerCase())) { S.viewSources.push({ path: f, lang: r.lang, text: r.text, role: 'design', view: true, module: r.module, errors: r.errors.length, lost: r.lost || null, ...(r.sequential ? { sequential: true } : {}) }); continue; }
       const m = !r.errors.length && [...(lib0?.modules.values() || [])].find(x => x.name.toLowerCase() === String(r.module).toLowerCase());
       if (m) S.viewElsewhere[f] = { module: r.module, lang: r.lang, file: m.archFile || m.file, lost: r.lost || null };
