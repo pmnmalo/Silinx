@@ -17,6 +17,7 @@ const { TEST_BENCH_TOOLS } = await import('../server/mcp-test-bench.js');
 const { CONVERT_TOOLS } = await import('../server/mcp-convert.js');
 const { VIEW_TOOLS } = await import('../server/mcp-views.js');
 const { TABLE_TOOLS } = await import('../server/mcp-tables.js');
+const { NOTATION_TOOLS } = await import('../server/mcp-notation.js');
 const { GRADE_TOOLS } = await import('../server/mcp-grade.js');
 const { CHECK_TOOLS } = await import('../server/mcp-check.js');
 const { SCHEMATIC_TOOLS } = await import('../server/mcp-schematic.js');
@@ -59,6 +60,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(CONVERT_TOOLS), ['convert_module', 'convert_drawing']);
   assert.deepEqual(names(VIEW_TOOLS), ['related_view']);
   assert.deepEqual(names(TABLE_TOOLS), ['set_output_logic']);
+  assert.deepEqual(names(NOTATION_TOOLS), ['set_notation']);   // (the Boolean notation, #3915)
   assert.deepEqual(names(CHECK_TOOLS), ['check_drawing']);
   assert.deepEqual(names(FSM_TOOLS), ['set_fsm_outputs', 'set_fsm_look']);   // (a state's or a transition's outputs, #3814; its look, #3883)
   assert.deepEqual(names(SCHEMATIC_TOOLS), ['rearrange_wires', 'rearrange_schematic', 'move_junction', 'add_markers']);
@@ -81,7 +83,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(TIMING_TOOLS), ['timing_paths']);
   assert.deepEqual(names(LAB_TOOLS), ['lab']);   // (the guided labs, #3179)
   assert.deepEqual(names(GRADE_TOOLS), ['grade']);   // (automatic grading, #3192)
-  assert.deepEqual(mcp.TOOLS, [...PROJECT_TOOLS, ...SETTINGS_TOOLS, ...NEW_SOURCE_TOOLS, ...WIZARD_TOOLS, ...CONSTRAINTS_TOOLS, ...TEST_BENCH_TOOLS, ...CONVERT_TOOLS, ...VIEW_TOOLS, ...TABLE_TOOLS, ...CHECK_TOOLS, ...FSM_TOOLS, ...SCHEMATIC_TOOLS, ...SYMBOL_TOOLS, ...SYMBOL_INFO_TOOLS, ...SIMULATE_DRAWING_TOOLS, ...SOURCE_TOOLS, ...FIND_TOOLS, ...TRANSFER_TOOLS, ...LINK_TOOLS, ...GIT_TOOLS, ...COLLAB_TOOLS, ...HDL_TOOLS, ...VERIFY_TOOLS, ...WCFG_TOOLS, ...HLS_TOOLS, ...PROCESS_TOOLS, ...BOARD_TOOLS, ...CAPTURE_TOOLS, ...TIMING_TOOLS, ...LAB_TOOLS, ...GRADE_TOOLS]);
+  assert.deepEqual(mcp.TOOLS, [...PROJECT_TOOLS, ...SETTINGS_TOOLS, ...NEW_SOURCE_TOOLS, ...WIZARD_TOOLS, ...CONSTRAINTS_TOOLS, ...TEST_BENCH_TOOLS, ...CONVERT_TOOLS, ...VIEW_TOOLS, ...TABLE_TOOLS, ...NOTATION_TOOLS, ...CHECK_TOOLS, ...FSM_TOOLS, ...SCHEMATIC_TOOLS, ...SYMBOL_TOOLS, ...SYMBOL_INFO_TOOLS, ...SIMULATE_DRAWING_TOOLS, ...SOURCE_TOOLS, ...FIND_TOOLS, ...TRANSFER_TOOLS, ...LINK_TOOLS, ...GIT_TOOLS, ...COLLAB_TOOLS, ...HDL_TOOLS, ...VERIFY_TOOLS, ...WCFG_TOOLS, ...HLS_TOOLS, ...PROCESS_TOOLS, ...BOARD_TOOLS, ...CAPTURE_TOOLS, ...TIMING_TOOLS, ...LAB_TOOLS, ...GRADE_TOOLS]);
   assert.equal(new Set(names(mcp.TOOLS)).size, mcp.TOOLS.length);
   for (const t of mcp.TOOLS) {
     assert.equal(typeof t.run, 'function', t.name);
