@@ -24,8 +24,8 @@ export const hdlFile = path => HDL_FILE.test(String(path || ''));
 export const DESIGN_ONLY_MESSAGES = {
   hdl: path => `${path}: a design and simulation project has drawings only: choose a board in Design Properties to add HDL sources`,
   hidden: path => `${path}: a design and simulation project does not show its HDL (its drawings are its sources)`,
-  flow: name => `the project '${name}' is a design and simulation project (no FPGA): choose a board in Design Properties to implement, emulate or program it`,
   notation: n => `notation ${n}: a design and simulation project shows no HDL (its drawings are its sources)`,
+  flow: name => `the project '${name}' is a design and simulation project (no FPGA): choose a board in Design Properties to implement, emulate or program it`,
   toDesign: (name, files) => `the project '${name}' cannot become a design and simulation project: its HDL and C sources are not drawings (${files.join(', ')})`,
 };
 
