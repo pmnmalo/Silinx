@@ -53,3 +53,26 @@ export function circuitBench(m, vectors, { ins, outs, ns = 100 }) {
   L.push('    $finish;', '  end', 'endmodule');
   return L.join('\n');
 }
+
+/**
+ * An MSI IC beside nothing (#3900): its pin 1 at (0, 0), the supply at (-20, -20) wired to its VCC and GND, a logic switch
+ * per input (labelled by its port), an LED per output (labelled q_<port>), an open collector output pulled up.
+ */
+export function msiBench(type, { name = 'bench' } = {}) {
+  const d = partDef(type);
+  const m = newCircuit(name, 'vhdl', { breadboard: false });
+  const ic = { id: 'U1', type, x: 0, y: 0 };
+  m.parts.push(ic, { id: 'P1', type: 'supply', x: -20, y: -20 });
+  const pin = new Map(partPins(ic).map((q) => [q.n, [q.x, q.y]]));
+  let w = 0;
+  const W = (...points) => m.wires.push({ id: `w${++w}`, points, color: 'blue' });
+  W([-20, -20], pin.get(d.pins.find((q) => q.dir === 'vcc').n)); W([-20, -19], pin.get(d.pins.find((q) => q.dir === 'gnd').n));
+  d.pins.filter((q) => q.dir === 'in').forEach((q, k) => { m.parts.push({ id: `S${k + 1}`, type: 'logic-switch', x: -40, y: k, label: q.port }); W([-40, k], pin.get(q.n)); });
+  d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').forEach((q, k) => {
+    m.parts.push({ id: `D${k + 1}`, type: 'led', x: 30 + 3 * k, y: 20, label: `q_${q.port}` });
+    W(pin.get(q.n), [30 + 3 * k, 25], [30 + 3 * k, 20]);
+    W([31 + 3 * k, 20], [31 + 3 * k, 18], [-20, -19]);
+    if (q.dir === 'oc') { m.parts.push({ id: `R${k + 1}`, type: 'pull-up', x: 30 + 3 * k, y: 27 }); W([30 + 3 * k, 27], [30 + 3 * k, 20]); }
+  });
+  return normalizeCircuit(m);
+}
