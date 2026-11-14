@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { boardAutoAssign, generateUcf } from '../packages/silinx-fpga/src/parts.js';
+import { S3A_HEADER_BITS, s3aHeaderWarnings } from './s3a-header-warnings.mjs';
 
 const BOARD = {
   name: 'Test board',
@@ -104,23 +105,15 @@ test('#3872 ISE\'s build of the examples on the Spartan-3A Starter Kit: the disp
   assert.deepEqual(pins('fx2_clk'), ['M22', 'L22', 'L21']);
   const all = res.flatMap(r => r.pins);
   assert.equal(new Set(all).size, all.length, 'no pin in two resources');
-  const pool = [0, 1, 2, 3].map(i => `j18_io<${i}>`).concat([0, 1, 2, 3].map(i => `j20_io<${i}>`), [...Array(40).keys()].map(i => `fx2_io<${i}>`));
-  const seg = [0, 1, 2, 3, 4, 5, 6].map(i => `seg<${i}>`), an = [0, 1, 2, 3].map(i => `an<${i}>`);
-  const btn = ['btn<1>', 'btn<2>', 'btn<3>'], sw = ['sw<4>', 'sw<5>', 'sw<6>', 'sw<7>'];
-  const bits = {
-    gates: [], traffic: [...seg, 'dp', ...an], blinky: ['btn<1>', ...seg, 'dp', ...an], pong: [...btn, ...seg, ...an, 'dp'],
-    stopwatch: [...btn, ...seg, 'dp', ...an], clock: [...btn, ...seg, ...an, 'dp'], vga: btn, isqrt: [...sw, ...seg, 'dp', ...an],
-    uart: [...seg, 'dp', ...an], micro80: [...sw, ...seg, 'dp', ...an],
-  };
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-headers-'));
   try {
     const { exampleProject, EXAMPLES } = await import('./examples-lib.mjs');
     const ise = await import('../server/ise.js');
-    assert.deepEqual(Object.keys(bits), EXAMPLES);
+    assert.deepEqual(Object.keys(S3A_HEADER_BITS), EXAMPLES);
     for (const name of EXAMPLES) {
       const { dir, project } = exampleProject(name, { board: 's3a-starter' }, path.join(tmp, name));
       const g = await ise.generateBuild(project, dir);
-      assert.deepEqual(g.warnings, bits[name].map((b, i) => `${b}: the s3a-starter has no pin for it; it is on the header pin ${pool[i]} (the board's constraints)`), name);
+      assert.deepEqual(g.warnings, s3aHeaderWarnings(name), name);
       if (name === 'clock') assert.match(fs.readFileSync(path.join(g.buildDir, 'digital_clock.ucf'), 'utf8'), /^NET "dp"\s+LOC = "A17" /m);
     }
   } finally {
