@@ -27,7 +27,7 @@ function designOnlyRefusal(tool, args, pj) {
     case 'export_project': return args.kind === 'xilinx' ? M.ise(pj.name) : null;   // (Export Project offers Silinx's alone, #3891)
     case 'read_file': return hdl(args.path) ? M.hidden(args.path) : null;
     case 'set_source_properties': case 'convert_module': return M.hidden(args.path || args.module);
-    case 'related_view': return args.view === 'translation' ? M.hidden(args.path) : null;
+    case 'related_view': return args.view === 'translation' ? M.hidden(args.path) : args.view === 'results' && /^(vhdl|verilog)$/.test(args.notation) ? M.notation(args.notation) : null;   // (#3891: the editor's notations)
     default: return null;
   }
 }

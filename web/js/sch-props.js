@@ -118,7 +118,7 @@ export function mountProps(ctx) {
     propBody.append(h('div', { class: 'se-ptitle', text: 'Schematic sheet' }));
     propBody.append(field('Module name', inp(doc().name, v => { doc().name = String(v).trim() || 'schematic'; })));
     if (!designKind()) propBody.append(field('Language', selBox(doc().lang, [['vhdl', 'VHDL'], ['verilog', 'Verilog']], v => { doc().lang = v; setGenLang(v); })));
-    propBody.append(field('Description', ta(doc().description || '', v => { if (String(v).trim()) doc().description = v; else delete doc().description; }, 2), 'shown on the sheet and as a comment in the HDL'));
+    propBody.append(field('Description', ta(doc().description || '', v => { if (String(v).trim()) doc().description = v; else delete doc().description; }, 2), designKind() ? 'shown on the sheet' : 'shown on the sheet and as a comment in the HDL'));   // (a design project's: no HDL, #3891)
     propBody.append(field('Sheet size', h('div', { class: 'se-row' },
       inp(doc().sheet.w, v => { doc().sheet.w = Math.max(400, +v || 1700); }, { type: 'number', step: 100 }),
       h('span', { text: '×' }), inp(doc().sheet.h, v => { doc().sheet.h = Math.max(300, +v || 1100); }, { type: 'number', step: 100 }))));
@@ -132,7 +132,7 @@ export function mountProps(ctx) {
     }, 2), 'one per line: NAME : type := default'));
     sec.append(field('Declarations', ta(hd.decls || '', v => { ensure().decls = v; }, 6), 'signals, types, constants, functions emitted verbatim'));
     if (doc().lang === 'vhdl') sec.append(field('Architecture name', inp(hd.arch || '', v => { ensure().arch = String(v).trim(); }, { placeholder: 'schematic', 'data-no-i18n': '' })));
-    propBody.append(sec);
+    if (!designKind()) propBody.append(sec);   // (no HDL kept with it in a design project, #3891)
     propBody.append(h('div', { class: 'se-note', text: 'Tip: drag symbols from the Symbols panel; double-click a module symbol to open its source.' }));
   }
   // the function of a LUT: its equation and truth table (a collapsed section, opened on demand)
@@ -206,7 +206,7 @@ export function mountProps(ctx) {
         const el = chk(!!S.ff[q], () => { if (t) s.type = t; });
         el.dataset.ff = q;
         if (!t) el.disabled = true;
-        propBody.append(field(label, el, t ? null : 'not with the other inputs chosen (no such Xilinx flip-flop)'));
+        propBody.append(field(label, el, t ? null : designKind() ? 'not with the other inputs chosen' : 'not with the other inputs chosen (no such Xilinx flip-flop)'));
       }
     }
     if (s.type === 'module') {
@@ -220,7 +220,7 @@ export function mountProps(ctx) {
       if (gens.length) {
         const box = h('div', { class: 'se-gens' });
         for (const g of gens) box.append(h('div', { class: 'se-row' }, h('span', { class: 'gn', 'data-no-i18n': '', text: g.name }), inp(s.params.generics?.[g.name] ?? '', x => { s.params.generics ||= {}; if (String(x).trim()) s.params.generics[g.name] = String(x).trim(); else delete s.params.generics[g.name]; }, { placeholder: g.default || '', 'data-no-i18n': '' })));
-        propBody.append(field(m?.lang === 'verilog' || doc().lang === 'verilog' ? 'Parameters' : 'Generics', box, 'empty = module default'));
+        propBody.append(field(designKind() || m?.lang === 'verilog' || doc().lang === 'verilog' ? 'Parameters' : 'Generics', box, 'empty = module default'));   // (a design project's: no VHDL word, #3891)
       }
       // a LUT of a technology schematic: its function from its INIT, on demand
       const lut = /^LUT([1-6])(_[LD])?$/i.exec(s.params.module || '');
@@ -272,7 +272,7 @@ export function mountProps(ctx) {
     })));
     propBody.append(field('Direction', selBox(p.dir, [['in', 'Input'], ['out', 'Output'], ['inout', 'Bidirectional']], v => { p.dir = v; })));
     propBody.append(field('Width', inp(p.width, v => setMarkerWidth(p, v), { type: 'number', min: 1 })));
-    propBody.append(field('HDL type', inp(p.type || '', v => { if (String(v).trim()) p.type = String(v).trim(); else delete p.type; }, { placeholder: doc().lang === 'vhdl' ? (p.width > 1 ? `std_logic_vector(${p.width - 1} downto 0)` : 'std_logic') : (p.width > 1 ? `[${p.width - 1}:0]` : ''), 'data-no-i18n': '' }), 'optional, overrides the type derived from the width'));
+    if (!designKind()) propBody.append(field('HDL type', inp(p.type || '', v => { if (String(v).trim()) p.type = String(v).trim(); else delete p.type; }, { placeholder: doc().lang === 'vhdl' ? (p.width > 1 ? `std_logic_vector(${p.width - 1} downto 0)` : 'std_logic') : (p.width > 1 ? `[${p.width - 1}:0]` : ''), 'data-no-i18n': '' }), 'optional, overrides the type derived from the width'));
     // (no Rotate / Mirror / Delete buttons: the toolbar and Ctrl+R / Ctrl+M / Del do it, #949)
   }
   function labelProps(l) {

@@ -12,6 +12,7 @@ export const TT_PT = {
   'Inputs:': 'Entradas:', 'Outputs:': 'Saídas:',
   'Input names (1 to 6), separated by commas or spaces; the first is the most significant bit of a row': 'Nomes das entradas (1 a 6), separados por vírgulas ou espaços; a primeira é o bit mais significativo de cada linha',
   'Output names (1 or more), separated by commas or spaces': 'Nomes das saídas (1 ou mais), separados por vírgulas ou espaços',
+  'The logic of this output: its module and its schematic in this form': 'A lógica desta saída: o seu módulo e o seu esquemático nesta forma',
   'The HDL logic of this output: its module and its schematic in this form': 'A lógica do HDL desta saída: o seu módulo e o seu esquemático nesta forma',
   'Minimal SOP': 'SdP mínima', 'Minimal POS': 'PdS mínimo',
   'Least number of gates': 'Menor número de portas', 'Least delay': 'Menor atraso',

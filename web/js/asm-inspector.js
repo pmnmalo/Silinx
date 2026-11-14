@@ -3,6 +3,7 @@
 // name, clock and reset, the initial state, the inputs, outputs, registers and generics). mountInspector(ctx) is
 // called by mountAsmEditor where this code was.
 import { h } from './dom.js';
+import { designKind } from './project-kind-flag.js';
 
 /** { renderInspector, renderMachine } of an ASM chart editor (M(), sel(): its current model and selection). */
 export function mountInspector(ctx) {
@@ -172,14 +173,17 @@ export function mountInspector(ctx) {
       '+ register', 'Add an internal register (data path)', () => ({ name: freshName('r', regs.length), width: 8, init: '0' }),
       (l) => { M().registers = l; }));
     const gens = M().generics || [];
-    machineBody.append(table('Generics', 'gens', [['Name'], ['Default', 'Default value (integer)']], gens,
+    machineBody.append(table(designKind() ? 'Parameters' : 'Generics', 'gens', [['Name'], ['Default', 'Default value (integer)']], gens,
       (g, i) => [nameCell(g, `g-n:${i}`),
         h('td', {}, h('input', { class: 'asm-input mono d', value: String(g.default), spellcheck: 'false', title: 'Default value (non-negative integer)',
           oninput: (ev) => { const t = ev.target.value.trim().replace(/_/g, ''); g.default = /^\d+$/.test(t) ? Number(t) : ev.target.value.trim(); commit(`g-d:${i}`); } })),
         removeCell(gens, i, 'g-del')],
-      '+ generic', 'Add an integer generic / parameter', () => ({ name: freshName('N', gens.length + 1), default: 1 }),
+      designKind() ? '+ parameter' : '+ generic', designKind() ? 'Add an integer parameter' : 'Add an integer generic / parameter', () => ({ name: freshName('N', gens.length + 1), default: 1 }),
       (l) => { M().generics = l; }));
-    machineBody.append(h('small', { class: 'asm-fhint' }, 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) ' +
+    // (a design project's: no VHDL or Verilog, #3891)
+    machineBody.append(h('small', { class: 'asm-fhint' }, designKind()
+      ? 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Parameters are integers, usable in expressions (e.g. cnt == N - 1).'
+      : 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) ' +
       'and read them anywhere. Generics are integer VHDL generics / Verilog parameters, usable in expressions (e.g. cnt == N - 1).'));
   }
 
