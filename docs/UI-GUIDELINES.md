@@ -28,9 +28,9 @@ answer here.
 - **What a toolbar says is at its right end**, never between its tools (#2725): the read-only notice and "Not in
   sync with …", after the spacer and the ☰ panels' buttons, before the ⋮ menu (`test/ui/toolbar-info-right.test.js`).
   Nothing else the toolbar says: the rest is the status line's (#2763).
-- **An editor that looks like another says what it is at its toolbar's start** (#3943), the one exception: as the
-  schematic's Try it bar starts with its green "Try it" badge (`.lv-badge`), the Symbol Editor's toolbar starts with
-  "Edit Symbol" (the same badge), not to be taken for the Schematic editor; and an **Exit** button after its zoom
+- **An editor that looks like another says what it is at its toolbar's start** (#3943), the one exception: the
+  Symbol Editor's toolbar starts with "Edit Symbol:", plain text in the toolbar's colour (no badge, no dot, #3991), as
+  the schematic's Try it bar starts with "Try it", not to be taken for the Schematic editor; and an **Exit** button after its zoom
   closes it, as its tab's × (`closeDoc`: its changes saved first, the Close prompt if they cannot be). Not the
   document's name (the tab's): what kind of editor it is.
 - **No Undo, Redo or Print in a document's toolbar**: the main toolbar's, the Edit and File menus' and Ctrl+Z,

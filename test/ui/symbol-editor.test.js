@@ -193,31 +193,35 @@ const later = async (page, pin) => {
 };
 const isOpen = (page) => page.eval(() => window.Silinx.docs.some((d) => d.path === 'src/reg1.sym.json'));
 
-uiTest('#3943 the Symbol Editor says so: "Edit Symbol" at its toolbar\'s start, as Try it\'s badge; Exit after the zoom closes its tab, saved first, the Close prompt if it cannot be; Portuguese', E, async (page) => {
+uiTest('#3943 the Symbol Editor says so: "Edit Symbol:" at its toolbar\'s start, plain text (#3991); Exit after the zoom closes its tab, saved first, the Close prompt if it cannot be; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'SymExit', top: 'reg1', files: { 'src/reg1.vhd': REG, 'src/reg1.sym.json': SYMFILE } });
   await page.setViewport(1440, 900);
   await page.openProject('SymExit');
   await open(page);
-  // the toolbar: the badge first, then the tools; Exit right after the zoom group
+  // the toolbar: "Edit Symbol:" first, plain text in the toolbar's colour, not Try it's green badge (#3991); then the
+  // tools; Exit right after the zoom group
   const layout = () => page.eval((s) => {
     const tb = document.querySelector(`${s} .sy-toolbar`), kids = [...tb.children];
-    const badge = tb.querySelector('.lv-badge'), exit = tb.querySelector('.sy-exit'), cs = getComputedStyle(badge), dot = getComputedStyle(badge, '::before');
+    const badge = tb.querySelector('.sy-badge'), exit = tb.querySelector('.sy-exit'), cs = getComputedStyle(badge), dot = getComputedStyle(badge, '::before');
     const zoomGroup = tb.querySelector('[data-act=fit]').closest('.asm-group');
     const exitGroup = exit.closest('.asm-group');
     return {
-      first: kids[0] === badge, badge: badge.textContent, bold: +cs.fontWeight >= 700, dot: dot.content !== 'none' && dot.borderRadius === '50%',
+      first: kids[0] === badge, badge: badge.textContent, bold: +cs.fontWeight >= 700, dot: dot.content !== 'none' && dot.content !== 'normal',
+      plain: cs.color === getComputedStyle(tb).color && !badge.classList.contains('lv-badge'),
       shown: badge.getClientRects().length > 0 && exit.getClientRects().length > 0,
       afterZoom: kids.indexOf(exitGroup) === kids.indexOf(zoomGroup) + 2 && kids[kids.indexOf(zoomGroup) + 1].classList.contains('asm-sep'),
       exit: [exit.textContent, exit.title],
     };
   }, SY);
-  assert.deepEqual(await layout(), { first: true, badge: 'Edit Symbol', bold: true, dot: true, shown: true, afterZoom: true, exit: ['Exit', 'Close the Symbol Editor (its tab), its changes saved'] });
-  // the same look as the schematic's Try it badge
-  assert.deepEqual(await page.eval(() => window.getComputedStyle(document.querySelector('.sy-toolbar .lv-badge')).paddingLeft), '18px');
+  assert.deepEqual(await layout(), { first: true, badge: 'Edit Symbol:', bold: false, dot: false, plain: true, shown: true, afterZoom: true, exit: ['Exit', 'Close the Symbol Editor (its tab), its changes saved'] });
+  // the dark theme: the toolbar's colour too
+  const theme = await page.eval(() => { const t = document.documentElement.dataset.theme ?? null; document.documentElement.dataset.theme = 'dark'; return t; });
+  assert.deepEqual((({ plain, bold, dot }) => ({ plain, bold, dot }))(await layout()), { plain: true, bold: false, dot: false });
+  await page.eval((t) => { if (t == null) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; }, theme);
   // Portuguese
   await setLang(page, 'pt');
   assert.deepEqual(await page.eval((s) => { const e = document.querySelector(`${s} .sy-exit`); return [document.querySelector(`${s} .sy-badge`).textContent, e.textContent, e.title]; }, SY),
-    ['Editar Símbolo', 'Sair', 'Fechar o Editor de Símbolos (o seu separador), guardadas as suas alterações']);
+    ['Editar Símbolo:', 'Sair', 'Fechar o Editor de Símbolos (o seu separador), guardadas as suas alterações']);
   await setLang(page, 'en');
 
   // Exit, unchanged: the tab closed, no question

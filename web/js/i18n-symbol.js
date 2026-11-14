@@ -1,7 +1,7 @@
 // Portuguese strings of the Symbol Editor (web/js/symbol-editor.js, symbol-side.js, symbol-doc.js, #3755; merged into the
 // dictionary of i18n.js).
 export const SYMBOL_PT = {
-  'Edit Symbol': 'Editar Símbolo',
+  'Edit Symbol': 'Editar Símbolo', 'Edit Symbol:': 'Editar Símbolo:',   // (the menu item; the toolbar's label, #3991)
   'The symbol is up to date': 'O símbolo está atualizado',
   'Its module\'s symbol in the Symbol Editor': 'O símbolo do seu módulo no Editor de Símbolos',   // (a module instance's Update Symbol disabled, #3791)
   // toolbar
