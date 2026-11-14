@@ -65,7 +65,7 @@ uiTest('#3146 Design Properties: the Basys 3\'s synthesis tool, Vivado or Silinx
   await page.eval(() => window.SilinxApp.openSummary());
   await page.waitFor(() => /nextpnr's estimate/.test(document.querySelector('.doc:not([hidden])')?.textContent || ''), [], { what: 'the summary\'s timing' });
   const summary = await page.eval(() => document.querySelector('.doc:not([hidden])').textContent);
-  assert.match(summary, /Timing \(post Place & Route, nextpnr's estimate: optimistic against Vivado\)/);
+  assert.match(summary, /Timing \(post Place & Route, nextpnr's estimate: conservative against Vivado\)/);
   assert.match(summary, /Routed Design \(FASM\)/);
   assert.ok(!/Routed Design \(XDL\)/.test(summary));
 });

@@ -63,16 +63,17 @@ async function run(dir, project, steps = ['synth', 'translate', 'par', 'trce', '
   } catch (e) { return { lines, error: e }; }
 }
 // each example's LUTs, registers and frequency (MHz, nextpnr's estimate, router2) on each board (#3147), measured with
-// @silinx/nextpnr-himbaechel-xc7 0.1.1: a build may have up to 15 % more LUTs, its registers 10 % apart (an example's
-// counters sized from its clock, #3710), its frequency 15 % lower. The LUTs nextpnr's (each 6LUT and 5LUT, the
+// @silinx/nextpnr-himbaechel-xc7 0.3.0 (#3875; stopwatch with the best of 3 seeds, its project's): a build may have up
+// to 15 % more LUTs, its registers 10 % apart (an example's counters sized from its clock, #3710), its frequency 15 %
+// lower (and 100 MHz, the boards' clock, at least). The LUTs nextpnr's (each 6LUT and 5LUT, the
 // feed-throughs included); Vivado's on the same netlists in #3160
 const QUALITY = {
-  basys3: { gates: [1, 0, null], traffic: [87, 58, 213.6], blinky: [101, 130, 241.6], pong: [252, 207, 159.0],
-    stopwatch: [184, 201, 210.6], clock: [149, 158, 268.4], vga: [125, 56, 257.2], isqrt: [72, 86, 282.9],
-    uart: [122, 138, 257.6], micro80: [169, 185, 146.4] },
-  'nexys-a7': { gates: [1, 0, null], traffic: [86, 58, 199.3], blinky: [98, 130, 276.4], pong: [244, 207, 155.9],
-    stopwatch: [184, 201, 225.9], clock: [146, 158, 240.9], vga: [124, 56, 234.2], isqrt: [73, 86, 316.8],
-    uart: [122, 138, 260.0], micro80: [179, 185, 150.1] },
+  basys3: { gates: [1, 0, null], traffic: [79, 60, 142.63], blinky: [93, 134, 158.86],
+    pong: [252, 215, 102.07], stopwatch: [169, 207, 101.21], clock: [141, 164, 132.75], vga: [115, 58, 136.72],
+    isqrt: [69, 87, 154.68], uart: [105, 142, 161.76], micro80: [157, 187, 115.37] },
+  'nexys-a7': { gates: [1, 0, null], traffic: [81, 60, 142.61], blinky: [93, 134, 153.99],
+    pong: [251, 215, 107.42], stopwatch: [170, 207, 100.84], clock: [141, 164, 133.9], vga: [115, 58, 131.8],
+    isqrt: [69, 87, 157.93], uart: [107, 142, 156.27], micro80: [157, 187, 106.19] },
 };
 const warnings = lines => lines.join('\n').split('\n').filter(l => /WARNING|ERROR/.test(l));
 

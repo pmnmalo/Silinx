@@ -42,7 +42,8 @@
   "impl": {
     "optMode": "Speed",
     "optLevel": 1,
-    "startupClk": "JtagClk"
+    "startupClk": "JtagClk",
+    "xc7Seeds": 3
   },
   "preferredLanguage": "vhdl"
 }

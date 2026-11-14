@@ -95,7 +95,7 @@ test('run_process with the Silinx toolchain on the Basys 3: synth_xilinx, nextpn
   assert.ok(r.data.log.some(l => /^Bitstream: build\/top\.bit \(\d{6} bytes, compressed, from nextpnr's FASM on Project X-Ray's database\)$/.test(l)), r.data.log.join('\n'));
   assert.ok(fs.existsSync(path.join(P.projectDir('o3'), 'build/top.bit')));
   const par = await ok('get_report', { project: 'o3', report: 'par' });
-  assert.match(par.text, /^Place and route \(Silinx toolchain\) of top: all signals are completely routed\.\nTiming constraints: all met; minimum period [\d.]+ ns \([\d.]+ MHz\), nextpnr's estimate \(optimistic against Vivado, #3146\)\.$/);
+  assert.match(par.text, /^Place and route \(Silinx toolchain\) of top: all signals are completely routed\.\nTiming constraints: all met; minimum period [\d.]+ ns \([\d.]+ MHz\), nextpnr's estimate \(conservative against Vivado, #3875\)\.$/);
   const map = await ok('get_report', { project: 'o3', report: 'map' });
   assert.match(map.text, /\n {2}Number of bonded IOBs: 27 out of 106 25%\n/);
   const timing = await ok('get_report', { project: 'o3', report: 'timing' });

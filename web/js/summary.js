@@ -77,7 +77,7 @@ export function mountSummary(el) {
     const tm = rep?.timing;
     if (tm) {
       // (#2300: the iCE40's, the ECP5's and the Gowin's timing nextpnr's own analysis)
-      const timingCaption = !open ? 'Timing (post Place & Route)' : tm.model ? 'Timing (post Place & Route, nextpnr\'s estimate: optimistic against Vivado)'
+      const timingCaption = !open ? 'Timing (post Place & Route)' : tm.model ? 'Timing (post Place & Route, nextpnr\'s estimate: conservative against Vivado)'
         : tm.engine === 'nextpnr' ? 'Timing (post Place & Route, nextpnr\'s analysis)' : 'Timing (post Place & Route, Silinx toolchain estimate)';
       page.append(h('table', { class: 'summary-table' }, h('caption', {}, timingCaption),
         h('tr', {}, h('th', {}, 'Timing Constraints'), h('td', { class: tm.met === false ? 'status-bad' : 'status-good' }, tm.met === false ? (open ? `Not met (${tm.timingErrors} constraints)` : vivado ? `Not met (${tm.timingErrors} failing endpoints)` : `Not met (${tm.timingErrors} errors, score ${tm.score})`) : 'All constraints met')),

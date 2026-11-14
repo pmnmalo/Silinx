@@ -142,10 +142,11 @@ const NETLIST_WARNINGS = Object.fromEntries(XC7_TARGETS.map(({ board }) => [`${b
 // nextpnr's packing and timing, or a better Vivado): Silinx's LUTs (nextpnr's count, its feed-throughs too) at most
 // LUTS times Vivado's own flow's (counted Vivado's way: the LUT sites with logic), its LUT sites with nextpnr's
 // feed-throughs (#3160) at most SITES times; Silinx's netlist in Vivado at most NETLIST_LUTS
-// times Vivado's own; Silinx's frequency (nextpnr's estimate) at least FMAX times Vivado's own flow's
-// (nextpnr's estimate is above Vivado's timing on the same netlist, #3516: at most NEXTPNR_OVER times it; stopwatch's
-// DSP48E1s 2.2 times, their arcs nextpnr's stubs, #3875)
-const LUTS = 1.6, SITES = 2.8, NETLIST_LUTS = 1.4, FMAX = 0.9, NEXTPNR_OVER = { stopwatch: 2.3 }, OVER = 1.8;
+// times Vivado's own; Silinx's frequency (nextpnr's estimate) at least FMAX times Vivado's own flow's, and between UNDER
+// and OVER times Vivado's timing of the same netlist (nextpnr-xc7 0.3.0's timing fitted to Vivado's, #3516, the
+// DSP48E1's arcs timed, #3875: nextpnr's estimate no longer above Vivado's, its placement less compact; 0.1.2's was 1.2 to
+// 2.2 times it)
+const LUTS = 1.6, SITES = 2.8, NETLIST_LUTS = 1.4, FMAX = 0.5, UNDER = 0.65, OVER = 1;
 // Vivado's DRC on Silinx's netlist: one net with no routable load (RTSTAT-10, a warning), but on gates; on stopwatch,
 // Vivado's advice on its DSP48E1s (not pipelined: their registers unused, as Yosys maps a product), as on its own
 // synthesis's
@@ -159,11 +160,11 @@ for (const { board } of XC7_TARGETS) test(`the recorded comparison with Vivado o
   assert.equal(results.parts[board], { basys3: 'xc7a35tcpg236-1', 'nexys-a7': 'xc7a100tcsg324-1' }[board]);
   for (const [name, { silinx: s, vivado: v, netlist: n }] of Object.entries(ex)) {
     const clocked = name !== 'gates';
-    // Silinx's open flow: no warning, its clock met (nextpnr's estimate), a .bit (not compressed: the results were recorded
-    // before the open flow's bitgen compressed, #3876)
+    // Silinx's open flow: no warning, its clock met (nextpnr's estimate: 100 MHz, stopwatch with the best of 3 seeds, #3875),
+    // a .bit (compressed as the board's XDC asks, #3876)
     assert.deepEqual(s.warnings, [], name);
     assert.equal(s.met, clocked ? true : null, name);
-    assert.ok(s.bit > 2e6, name);
+    assert.ok(s.bit > 1e5 && s.bit < 1e6, name);
     // Vivado's own flow on the HDL: its warnings the expected ones, routed, met, DRC clean but its advice, a .bit
     assert.equal(v.ok, true, `${name}: ${v.error}`);
     assert.deepEqual(v.warnings, VIVADO_WARNINGS[board][name], name);
@@ -186,7 +187,8 @@ for (const { board } of XC7_TARGETS) test(`the recorded comparison with Vivado o
     assert.ok(n.luts <= Math.max(NETLIST_LUTS * v.luts, 4), `${name}: Silinx's netlist ${n.luts} LUTs in Vivado, Vivado ${v.luts}`);
     if (clocked) {
       assert.ok(s.fmaxMHz >= FMAX * v.fmaxMHz, `${name}: Silinx ${s.fmaxMHz} MHz, Vivado ${v.fmaxMHz}`);
-      assert.ok(s.fmaxMHz <= (NEXTPNR_OVER[name] || OVER) * n.fmaxMHz, `${name}: nextpnr's estimate ${s.fmaxMHz} MHz, Vivado's on the same netlist ${n.fmaxMHz}`);
+      assert.ok(s.fmaxMHz >= 100, `${name}: ${s.fmaxMHz} MHz`);
+      assert.ok(s.fmaxMHz >= UNDER * n.fmaxMHz && s.fmaxMHz <= OVER * n.fmaxMHz, `${name}: nextpnr's estimate ${s.fmaxMHz} MHz, Vivado's on the same netlist ${n.fmaxMHz}`);
     }
     assert.equal(s.fmaxMHz == null, !clocked, name);
   }

@@ -4,8 +4,9 @@
 // nextpnr comes through io.nextpnr.xc7 { run(args, files, onLine) -> files, chipdb(part, log) -> Uint8Array, router? }
 // (nextpnr-xc7-node.js: the package @silinx/nextpnr-himbaechel-xc7; router: 'router2' where memory is plenty, the local
 // server's, else router1's 0.4-0.5 GB); the bit database through io.bitDb() (fpga/xc7/bitdb.js's).
-// The timing is nextpnr's own estimate: optimistic against Vivado's (1.2-1.5 times its Fmax on the same netlist, #3146),
-// so said wherever it is shown, until a model calibrated against Vivado exists.
+// The timing is nextpnr's own estimate, with delays fitted to Vivado's (nextpnr-xc7 0.3.0, #3516, #3875): conservative
+// against Vivado's (0.7-0.95 times its Fmax on the same netlist, nextpnr's placement less compact), so said wherever it
+// is shown.
 // The JTAG's user access (BSCANE2, the logic analyzer's link, #3767): the netlist hands nextpnr a BSCAN on the site of its
 // chain (xc7BscanCells), and the FASM gets the chain's feature, which nextpnr does not write (xc7BscanFeatures).
 import { scriptSynthesis } from './synth-script.js';
@@ -25,7 +26,7 @@ export const XC7_STEPS = [
 ];
 
 /** What the timing of this back end is: nextpnr's estimate, not Vivado's (#3146). */
-export const XC7_TIMING_MODEL = 'nextpnr\'s estimate (optimistic against Vivado, #3146)';
+export const XC7_TIMING_MODEL = 'nextpnr\'s estimate (conservative against Vivado, #3875)';
 
 // the synthesis's resources, from synth_xilinx's cells
 const sum = (counts, re) => Object.entries(counts).reduce((n, [t, k]) => n + (re.test(t) ? k : 0), 0);
@@ -189,7 +190,7 @@ export function xc7SeedsLine(seeds) {
 /** The timing report's text (open/timing.txt). */
 export function xc7TimingText(timing, part, seeds = null) {
   const out = [`Timing of ${part} after Place & Route: ${XC7_TIMING_MODEL}.`,
-    'nextpnr\'s xilinx timing is optimistic: on the same netlist it reports 1.2-1.5 times the maximum frequency Vivado gives; check a design near its limit with Vivado.', '',
+    'nextpnr\'s xilinx timing is conservative: its delays are Vivado\'s, its placement less compact, and on the same netlist it reports 0.7-0.95 times the maximum frequency Vivado gives; Vivado may meet a constraint it misses.', '',
     ...(seeds ? [xc7SeedsLine(seeds), ''] : [])];
   if (!timing) return [...out, 'No clock constrained or timed: no create_clock in the XDC, and no path between flip-flops on a clock.', ''].join('\n');
   for (const c of timing.clocks) out.push(`Clock ${c.clock}: ${c.achieved} MHz (${(1000 / c.achieved).toFixed(3)} ns), constraint ${c.constraint} MHz: ${c.achieved >= c.constraint ? 'met' : 'NOT met'}`);
