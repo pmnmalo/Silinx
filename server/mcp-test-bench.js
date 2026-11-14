@@ -5,6 +5,7 @@
 // Expected from Current Design: a regression test), the test bench reporting each mismatch and TEST PASSED / FAILED.
 import * as P from './projects.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
+import { isDesignOnly } from '../core/project-kind.js';
 
 const NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 const MODES = ['exhaustive', 'random', 'count', 'walking', 'vectors', 'none'];
@@ -126,7 +127,8 @@ export const TEST_BENCH_TOOLS = [
       }
       await P.writeFile(name, path, text);
       const nexp = vectors.filter(x => chk.some(p => x.exp[p.name] && /[01]/.test(x.exp[p.name]))).length;
-      const lines = [`Test Bench Wizard: created ${path} (${lang === 'vhdl' ? 'VHDL' : 'Verilog'}), the test bench ${tbName} of ${uut.name}.`,
+      // (a design project's: the test bench by its name, its HDL never named, as the interface's, #3891)
+      const lines = [isDesignOnly(pj) ? `Test Bench Wizard: created the test bench ${tbName} of ${uut.name}.` : `Test Bench Wizard: created ${path} (${lang === 'vhdl' ? 'VHDL' : 'Verilog'}), the test bench ${tbName} of ${uut.name}.`,
         st.clock ? `Clock: ${st.clock}, ${st.period} ns${mode === 'none' ? '' : ' (sequential test, one vector per clock cycle)'}` : `Combinational test${mode === 'none' ? '' : `, settling time ${st.settle} ns`}`,
         st.reset ? `Reset: ${st.reset}, active '${st.active}' for ${st.cycles} ${st.clock ? 'clock cycle(s)' : 'x 10 ns'}` : 'Reset: none',
         mode === 'none' ? 'Vectors: none — a skeleton: write the stimulus (set the inputs, wait, check the outputs) where the comments show.'

@@ -38,6 +38,6 @@ export async function makeDesignProject(pj) {
   Object.assign(S.project, r.project);
   await app.saveProjectJson();
   await app.reloadProject();
-  app.log(`${pj.name}: a design and simulation project now (no FPGA): no board, no constraints; its HDL is not shown.`, 'info');
+  app.log(`${pj.name}: a design and simulation project now (no FPGA): no board, no constraints.`, 'info');
   return true;
 }

@@ -9,6 +9,7 @@ import { modulesFromLibrary } from '/core/schdoc.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
 import { log, logError } from './console.js';
+import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { editorProblems } from './editor-problems.js';
 import { t, onLanguageChange } from './i18n.js';
 import { reloadProject } from './project.js';
@@ -58,7 +59,7 @@ export async function openAsm(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (!S.syncing) syncHdlFromAsm(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+          if (!S.syncing) syncHdlFromAsm(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { problems.clear(); ed.destroy?.(); },
       };
@@ -79,9 +80,9 @@ export async function syncHdlFromAsm(asmPath, model) {
   if (await drawnHdlLanguage(asmPath, model)) return;
   const { generate, validate } = await import('/core/asm.js');
   const errs = (validate(model) || []).filter(x => x.severity === 'error');
-  if (errs.length) { staleHdl(target, asmPath, `the ASM chart has errors: ${errs.map(x => x.message).join('; ')}`); status(`${target.split('/').pop()} not updated: the chart has ${errs.length} error(s)`); return; }
+  if (errs.length) { staleHdl(target, asmPath, `the ASM chart has errors: ${errs.map(x => x.message).join('; ')}`); hdlStatus(`${target.split('/').pop()} not updated: the chart has ${errs.length} error(s)`); return; }
   let g;
-  try { g = generate(model, /\.v$/i.test(target) ? 'verilog' : 'vhdl'); } catch (e) { staleHdl(target, asmPath, e.message); status(`${target} not updated: ${e.message}`); return; }
+  try { g = generate(model, /\.v$/i.test(target) ? 'verilog' : 'vhdl'); } catch (e) { staleHdl(target, asmPath, e.message); hdlStatus(`${target} not updated: ${e.message}`); return; }
   freshHdl(target);
   const cur = S.sources.find(x => x.path === target)?.text;
   if (cur === g.code) return;
@@ -91,7 +92,7 @@ export async function syncHdlFromAsm(asmPath, model) {
     const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
     refreshOpenEditor(target, g.code);
     compileProject(); renderHierarchy(); markStale();
-    status(`${target} updated from ${asmPath.split('/').pop()}`);
+    hdlStatus(`${target} updated from ${asmPath.split('/').pop()}`);
   } finally { S.syncing = false; }
 }
 
@@ -174,7 +175,7 @@ export async function openFsm(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (!S.syncing) syncHdlFromFsm(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+          if (!S.syncing) syncHdlFromFsm(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { offLang(); problems.clear(); ed.destroy?.(); },
       };
@@ -201,7 +202,7 @@ export async function syncHdlFromFsm(fsmPath, model) {
   const errs = fsmErrors(m);
   if (errs.length) {
     const why = `the state diagram has errors: ${errs.map(x => x.message).join('; ')}`;
-    if (S.outOfSync[target] !== why) log(`WARNING: ${target} not updated: ${why}`, 'warn');
+    if (S.outOfSync[target] !== why) log(hdlWarning(`WARNING: ${target} not updated: ${why}`, fsmPath, why), 'warn');
     S.outOfSync[target] = why; staleHdl(target, fsmPath, why); refreshSyncBanner(target); refreshFsmLink(fsmPath);
     return;
   }
@@ -218,7 +219,7 @@ export async function syncHdlFromFsm(fsmPath, model) {
     const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
     refreshOpenEditor(target, g.code);
     compileProject(); renderHierarchy(); markStale();
-    status(`${target} updated from ${fsmPath.split('/').pop()}`);
+    hdlStatus(`${target} updated from ${fsmPath.split('/').pop()}`);
   } finally { S.syncing = false; }
 }
 
@@ -343,7 +344,7 @@ export async function openPetri(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (m.generatedFile && S.fileTree.includes(m.generatedFile)) await syncHdlFromPetri(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+          if (m.generatedFile && S.fileTree.includes(m.generatedFile)) await syncHdlFromPetri(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { problems.clear(); ed.destroy?.(); },
       };
@@ -429,7 +430,7 @@ export async function openSch(path) {
         save: async () => {
           const m = ed.getDoc();
           await save(m);
-          if (!S.syncing) syncHdlFromSchematic(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+          if (!S.syncing) syncHdlFromSchematic(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => ed.destroy?.() };
     },
@@ -501,7 +502,7 @@ export async function adoptDrawnHdl() {
     if ((S.diskTree || S.fileTree || []).includes(target)) continue;
     if (!await writeDrawnHdl(v.path, target, v.text)) continue;
     // (#231: its HDL file was deleted, or removed from the project and another name is free)
-    log(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(S.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
+    if (!designOnly()) log(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(S.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
     n++;
   }
   return n;
@@ -534,7 +535,12 @@ function linkOpenEditor(path, target) {
 // defines its module already. Found after every load (S.hdlClash: drawing -> drawnHdlClash), said once
 // in the console per opening of the project (never a dialog then), shown on its Design-pane row (a
 // [No HDL] badge, its tip says why) and resolved from its menu, Generate HDL File… (resolveHdlClash).
-export const clashTip = c => (c.kind === 'same'
+// (a design project's: its module named, never its HDL file; Make Module… for Generate HDL File…, #3891)
+const designClash = c => (c.kind === 'same' ? `Not made: another file of the project folder defines its module ${c.module}. Make Module… (right-click) replaces it with the drawing's.`
+  : c.kind === 'removed' ? 'Not made: its module was removed from the project. Make Module… (right-click) makes it again from the drawing.'
+    : c.kind === 'drawn' ? `Not made: its module ${c.module} is the module of ${c.other}. Rename one of them.`
+      : 'Not made: another file of the project folder has its name. Make Module… (right-click) makes it under another name.');
+export const clashTip = c => (designOnly() ? designClash(c) : c.kind === 'same'
   ? `No HDL file: ${c.file} defines its module ${c.module} already. Generate HDL File… (right-click) replaces it with the HDL generated from the drawing.`
   : c.kind === 'removed'
     ? `No HDL file: its HDL file ${c.file} was removed from the project. Generate HDL File… (right-click) makes it again from the drawing.`
@@ -565,7 +571,7 @@ export async function drawnHdlClashes() {
     const key = `${S.project.name}|${v.path}|${c.kind}|${c.file}`;
     if (S.hdlClashWarned?.has(key)) continue;
     (S.hdlClashWarned ||= new Set()).add(key);
-    log(c.kind === 'same'
+    log(designOnly() ? `WARNING: ${v.path}: ${designClash(c)}` : c.kind === 'same'
       ? `WARNING: ${v.path} has no HDL file: ${c.file} exists already and defines its module ${c.module}. Generate HDL File… (its right-click menu in the Design pane) replaces ${c.file} with the HDL generated from it.`
       : c.kind === 'removed'
         ? `WARNING: ${v.path} has no HDL file: its HDL file ${c.file} was removed from the project (it is still in the project folder). Generate HDL File… (its right-click menu in the Design pane) makes it again from ${v.path}; Add to Project (Files) brings it back as it is.`
@@ -575,22 +581,25 @@ export async function drawnHdlClashes() {
   }
 }
 // the menu item of a drawing without its HDL file
-export const clashItem = file => (S.hdlClash?.[file] && S.hdlClash[file].kind !== 'drawn' ? { label: 'Generate HDL File…', action: () => resolveHdlClash(file) } : null);
+export const clashItem = file => (S.hdlClash?.[file] && S.hdlClash[file].kind !== 'drawn' ? { label: designOnly() ? 'Make Module…' : 'Generate HDL File…', action: () => resolveHdlClash(file) } : null);
 // Generate HDL File…: the file that defines its module replaced (once the user says so) or the free
 // name written; the drawing linked to it
 export async function resolveHdlClash(path) {
   const c = S.hdlClash?.[path];
   if (!c || !S.project) return false;
-  if (c.kind === 'drawn') { alertDlg('Generate HDL File', clashTip(c), 'warn'); return false; }
+  const title = designOnly() ? 'Make Module' : 'Generate HDL File';
+  if (c.kind === 'drawn') { alertDlg(title, clashTip(c), 'warn'); return false; }
   const name = path.split('/').pop();
-  if (c.kind === 'same' && !await confirmDlg('Generate HDL File', `${c.file} defines the module ${c.module} already.\n\nReplace it with the HDL generated from ${name}? Its current contents will be lost.`)) return false;
-  if (c.kind === 'removed' && !await confirmDlg('Generate HDL File', `${c.file}, the HDL file of ${name}, was removed from the project.\n\nMake it again from ${name} and put it back in the project? Its current contents will be lost.`)) return false;
+  if (c.kind === 'same' && !await confirmDlg(title, designOnly() ? `Another file of the project folder defines the module ${c.module} already.\n\nReplace it with the module of ${name}? Its current contents will be lost.`
+    : `${c.file} defines the module ${c.module} already.\n\nReplace it with the HDL generated from ${name}? Its current contents will be lost.`)) return false;
+  if (c.kind === 'removed' && !await confirmDlg(title, designOnly() ? `The module of ${name} was removed from the project.\n\nMake it again from ${name} and put it back in the project?`
+    : `${c.file}, the HDL file of ${name}, was removed from the project.\n\nMake it again from ${name} and put it back in the project? Its current contents will be lost.`)) return false;
   const r = viewHdl(path, S.viewTexts?.[path] ?? '', { modules: viewKind(path) === 'sch' ? await schModules() : {}, linked: hdlInProject });
-  if (!r?.text || r.errors.length) { alertDlg('Generate HDL File', `${name} has errors: correct them first.`, 'error'); return false; }
+  if (!r?.text || r.errors.length) { alertDlg(title, `${name} has errors: correct them first.`, 'error'); return false; }
   const target = c.kind === 'same' || c.kind === 'removed' ? c.file : c.free;
   closeDocByPath(target);
   if (!await writeDrawnHdl(path, target, r.text)) return false;
-  log(c.kind === 'same' ? `${target} replaced by the HDL generated from ${path}, linked to it`
+  log(designOnly() ? `${path}: its module made` : c.kind === 'same' ? `${target} replaced by the HDL generated from ${path}, linked to it`
     : c.kind === 'removed' ? `${target} generated again from ${path}, back in the project`
       : `${target} generated from ${path} (${c.target} holds something else)`, 'info');
   await reloadProject(false);
@@ -639,17 +648,17 @@ export async function syncHdlFromSchematic(schPath, doc) {
   const { generateHdl } = await import('/core/schdoc.js');
   let g;
   try { g = generateHdl(doc, { lang: doc.lang, modules: await schModules() }); }
-  catch (e) { log(`WARNING: ${target} not updated from ${schPath}: ${e.message}`, 'warn'); return; }
+  catch (e) { log(hdlWarning(`WARNING: ${target} not updated from ${schPath}: ${e.message}`, schPath, e.message), 'warn'); return; }
   const errs = (g.diagnostics || []).filter(x => x.severity === 'error');
   S.outOfSync ||= {};
   if (errs.length) {
     // show it where the user works: the schematic's Check panel, the HDL editor's banner, the console
     const why = errs.map(x => x.message).join('; ');
-    if (S.outOfSync[target] !== why) log(`WARNING: ${target} not updated: the schematic ${schPath} has ${errs.length} error(s): ${why}`, 'warn');
+    if (S.outOfSync[target] !== why) log(hdlWarning(`WARNING: ${target} not updated: the schematic ${schPath} has ${errs.length} error(s): ${why}`, schPath, `the schematic has ${errs.length} error(s): ${why}`), 'warn');
     S.outOfSync[target] = why; staleHdl(target, schPath, `the schematic has errors: ${why}`);
     findDoc(`sch:${schPath}`)?.schEditor?.check();
     refreshSyncBanner(target);
-    status(`${target.split('/').pop()} not updated: ${why}`);
+    hdlStatus(`${target.split('/').pop()} not updated: ${why}`);
     return;
   }
   freshHdl(target);
@@ -662,7 +671,7 @@ export async function syncHdlFromSchematic(schPath, doc) {
     const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
     refreshOpenEditor(target, g.code);
     compileProject(); renderHierarchy(); markStale();
-    status(`${target} updated from ${schPath.split('/').pop()}`);
+    hdlStatus(`${target} updated from ${schPath.split('/').pop()}`);
   } finally { S.syncing = false; }
 }
 
@@ -782,7 +791,7 @@ export async function setViewAsTop(path) {
   const mod = S.modules.find(m => m.file === path && m.kind !== 'package')?.name || topOfView(path);
   if (mod) {
     await setTop(mod, false);
-    log(`Top module: ${mod} (${path.split('/').pop()}${S.schOwners?.[path] ? `, its HDL ${S.schOwners[path].split('/').pop()} generated from it` : ', no HDL file needed'}).`, 'ok');
+    log(designOnly() ? `Top module: ${mod} (${path.split('/').pop()}).` : `Top module: ${mod} (${path.split('/').pop()}${S.schOwners?.[path] ? `, its HDL ${S.schOwners[path].split('/').pop()} generated from it` : ', no HDL file needed'}).`, 'ok');
     return;
   }
   // it does not make a module (errors in it): say why
