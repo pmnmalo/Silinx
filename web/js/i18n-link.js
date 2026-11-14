@@ -33,11 +33,10 @@ export const LINK_PT = {
   'Your short links: secret gists of your GitHub account, each the project encrypted. A link this browser made can be copied again; deleting one deletes its gist, and the link no longer opens.':
     'As suas ligações curtas: gists secretos da sua conta do GitHub, cada um com o projeto cifrado. Uma ligação feita neste navegador pode ser copiada de novo; apagar uma apaga o seu gist, e a ligação deixa de abrir.',
   'Expires:': 'Expira:', 'Never': 'Nunca', 'In a week': 'Daqui a uma semana', 'In a month': 'Daqui a um mês', 'In six months': 'Daqui a seis meses', 'In a year': 'Daqui a um ano',
-  // a sharing dialog's QR code (#3637, web/js/link-qr.js; 'Enlarge' is the FPGA view's)
+  // a sharing window's QR code (#3637, web/js/link-qr.js)
   // the link hidden (#3995, web/js/link-field.js); a short link made by Generate
   'Hide': 'Ocultar', 'Generate': 'Gerar',
   'Show QR Code': 'Mostrar o Código QR', 'QR Code': 'Código QR', 'QR code of the link': 'Código QR da ligação',
-  'Enlarge the QR code, for a projector': 'Ampliar o código QR, para um projetor',
 };
 
 export const LINK_PT_PATTERNS = [
