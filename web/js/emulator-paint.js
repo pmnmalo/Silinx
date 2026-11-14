@@ -11,6 +11,9 @@ import { lcdText } from '/core/emulate.js';
 const ledColour = (v, red) => (red ? [58 + 197 * v, 27 + 20 * v, 27 + 20 * v] : [27 + 20 * v, 58 + 197 * v, 35 + 40 * v]).map(Math.round);
 // (the status line's rewrites while running: twice a second at most, #1106)
 const STAT_MS = 500;
+/** A count of the status line (its cycles): grouped by commas whatever the browser's locale, 1,246,995,500 (in
+ *  Portuguese by spaces, web/js/i18n.js, #3920). */
+export const countText = (n) => Math.round(n).toLocaleString('en-US');
 
 export function mountEmuPaint(ctx) {
   const {
@@ -50,7 +53,7 @@ export function mountEmuPaint(ctx) {
     if (!powered()) { setStat('Power off'); statAt = -Infinity; return; }
     if (running() && sim.finished !== 'error' && nowMs - statAt < STAT_MS) { logLines(); return; }
     statAt = running() ? nowMs : -Infinity;
-    setStat(`t = ${formatTime(sim.now)} · ${Math.round(sim.now / period).toLocaleString()} cycles${running() ? ` · ${r >= 1000 ? `${(r / 1000).toFixed(1)} kHz` : `${Math.round(r)} Hz`} (${(r * period / 1e10).toFixed(r * period / 1e10 < 1 ? 3 : 1)}% of real time)` : ''}${sim.finished === 'error' ? ' · stopped by an error' : ''}`);
+    setStat(`t = ${formatTime(sim.now)} · ${countText(sim.now / period)} cycles${running() ? ` · ${r >= 1000 ? `${(r / 1000).toFixed(1)} kHz` : `${Math.round(r)} Hz`} (${(r * period / 1e10).toFixed(r * period / 1e10 < 1 ? 3 : 1)}% of real time)` : ''}${sim.finished === 'error' ? ' · stopped by an error' : ''}`);
     logLines();
   }
   // the simulator's messages, new ones into the log

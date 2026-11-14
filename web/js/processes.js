@@ -85,7 +85,7 @@ function selectionProcesses(sel, view) {
     ] },
     { id: 'verify', label: 'Verify Equivalence…', ico: 'process', run: async () => (await import('./verify.js')).verifyProcess(mod) },   // (#3177)
     { id: 'verify-assert', label: 'Verify Assertions…', ico: 'process', run: async () => (await import('./verify.js')).assertProcess(mod) },
-    { id: 'rtl-sim', label: 'View RTL Schematic', ico: 'schematic', run: () => openSchematic(mod) },
+    ...(designOnly() ? [] : [{ id: 'rtl-sim', label: 'View RTL Schematic', ico: 'schematic', run: () => openSchematic(mod) }]),   // (#3891)
     { id: 'tb-wiz', label: 'Create Test Bench (Wizard)…', ico: 'template', run: () => testBench(mod) },
     ...(cp.length || designOnly() ? [] : [{ id: 'cmodel-sim', label: 'View C Model', ico: 'process', run: () => openCModel(mod) }]),   // (#1530; none in a design project, #3780)
   ];

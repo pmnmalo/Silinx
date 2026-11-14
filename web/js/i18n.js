@@ -189,7 +189,7 @@ const PT = {
   'Optimization:': 'Otimização:', 'Fast': 'Rápido',
   'Fast: one mapping and one placement, the quickest build. Area: the smallest circuit, the mappings for speed tried too. Speed: the fastest circuit, every mapping for speed and several placements tried. ISE gets Speed / Normal, Area / High and Speed / High.': 'Rápido: um mapeamento e uma colocação, a compilação mais rápida. Área: o circuito mais pequeno, experimentando também os mapeamentos para velocidade. Velocidade: o circuito mais rápido, experimentando todos os mapeamentos para velocidade e várias colocações. O ISE recebe Speed / Normal, Area / High e Speed / High.',
   'FPGA Start-Up Clock:': 'Relógio de Arranque da FPGA:', 'Speed': 'Velocidade', 'Area': 'Área', 'High': 'Alto', 'Normal': 'Normal',
-  'JTAG Clock': 'Relógio JTAG', 'User Clock': 'Relógio do Utilizador', 'Map (Spartan-6):': 'Mapear (Spartan-6):', 'nextpnr (on trial)': 'nextpnr (em ensaio)', 'Process Properties - Synthesis / Implementation / Bitstream': 'Propriedades do Processo - Síntese / Implementação / Bitstream',
+  'JTAG Clock': 'Relógio JTAG', 'User Clock': 'Relógio do Utilizador', 'Map (Spartan-6):': 'Mapear (Spartan-6):', 'Place & Route (7-series):': 'Posicionar e Encaminhar (série 7):', 'One seed': 'Uma semente', 'Best of 3 seeds (router2)': 'A melhor de 3 sementes (router2)', 'nextpnr (on trial)': 'nextpnr (em ensaio)', 'Process Properties - Synthesis / Implementation / Bitstream': 'Propriedades do Processo - Síntese / Implementação / Bitstream',
   'Execution mode:': 'Modo de execução:', 'Local (Xilinx ISE installed locally)': 'Local (Xilinx ISE instalado localmente)',
   'Docker image with Xilinx ISE': 'Imagem Docker com Xilinx ISE', 'Remote host with Xilinx ISE via SSH': 'Máquina remota com Xilinx ISE por SSH',
   'ISE settings64.sh:': 'settings64.sh do ISE:', 'Docker image:': 'Imagem Docker:', 'Host:': 'Servidor:', 'User:': 'Utilizador:', 'Port:': 'Porto:',
@@ -645,7 +645,7 @@ PT_PATTERNS.unshift(
   [/^(.+) lines a frame: 525 expected$/, '$1 linhas por imagem: esperadas 525'],
   [/^(.+) Hz: 60 Hz expected$/, '$1 Hz: esperado 60 Hz'],
   [/^VSYNC pulse of (.+) lines: 2 expected$/, 'Impulso de VSYNC de $1 linhas: esperadas 2'],
-  [/^t = (.+?) · ([\d,.\s]+) cycles(.*)$/, (m, tm, n, rest) => `t = ${tm} · ${n} ciclos${rest.replace('% of real time)', '% do tempo real)').replace(' · stopped by an error', ' · parado por um erro').replace(' · paused while hidden', ' · em pausa enquanto oculto')}`],
+  [/^t = (.+?) · ([\d,.\s]+) cycles(.*)$/, (m, tm, n, rest) => `t = ${tm} · ${n.replace(/,/g, '\u00a0')} ciclos${rest.replace('% of real time)', '% do tempo real)').replace(' · stopped by an error', ' · parado por um erro').replace(' · paused while hidden', ' · em pausa enquanto oculto')}`],
   [/^(\d+) port bit\(s\) have no LOC on a (.+) resource \(inputs are held at 0\):$/, '$1 bit(s) de porto sem LOC num recurso da $2 (as entradas ficam a 0):'],
   // print dialog
   [/^Print — (.*)$/, 'Imprimir — $1'],
@@ -895,6 +895,8 @@ const textState = new WeakMap();   // text node -> { orig, last }
 const attrState = new WeakMap();   // element -> { [attr]: { orig, last } }
 
 function skipEl(el) { return !el || (el.closest && el.closest(SKIP)); }
+// a text box: its text (the user's) left as it is, its own attributes (placeholder, tip) translated as an input's (#3931)
+const isBox = el => el?.tagName === 'TEXTAREA';
 // a text kept as it is inside an element that says so (data-i18n-keep="Design": the Tasks interface's Design task, not
 // "Projeto" as the Design pane, #1046); other texts there translated as usual
 const kept = (el, text) => el?.closest?.('[data-i18n-keep]')?.dataset.i18nKeep === text.trim();
@@ -910,7 +912,7 @@ function translateText(node) {
 }
 
 function translateAttrs(el) {
-  if (skipEl(el)) return;
+  if (skipEl(isBox(el) ? el.parentElement : el)) return;
   let map = attrState.get(el);
   for (const a of ATTRS) {
     if (!el.hasAttribute(a)) continue;
@@ -927,9 +929,10 @@ function translateTree(root) {
   if (!root) return;
   if (root.nodeType === 3) { translateText(root); return; }
   if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
-  if (root.nodeType === 1) { if (skipEl(root)) return; translateAttrs(root); }
+  if (root.nodeType === 1) { if (isBox(root)) return translateAttrs(root); if (skipEl(root)) return; translateAttrs(root); }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-    acceptNode: n => (n.nodeType === 1 && n.matches?.(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    // (a text box: its attributes, not its text)
+    acceptNode: n => (n.nodeType === 1 && n.matches?.(SKIP) ? (isBox(n) && translateAttrs(n), NodeFilter.FILTER_REJECT) : NodeFilter.FILTER_ACCEPT),
   });
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === 3) translateText(n); else translateAttrs(n);

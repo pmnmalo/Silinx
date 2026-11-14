@@ -30,6 +30,7 @@ export function mountFsmBottom(ctx) {
   }
   function renderPanel() {
     bottom.classList.toggle('try-it', panel() === 'sim');   // (green, as the schematic's Try it, #3798)
+    panelBody.classList.toggle('try-it-body', panel() === 'sim');   // (its body a lighter green, #3924)
     if (panel() !== 'sim') { panelBody.textContent = ''; panelTools.textContent = ''; }
     if (!panel()) return;
     if (panel() === 'tables') return renderTables();

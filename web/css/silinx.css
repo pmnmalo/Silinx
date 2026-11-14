@@ -119,6 +119,9 @@ html[data-theme="dark"] {
   --m-focus: 0 0 0 3px rgba(91, 141, 239, .45);
   /* theme.css's own colours of the pages and dialogs, dark (#159) */
   --note-bg: rgba(227, 179, 65, .12);
+  --try-it-bar: rgba(76, 192, 107, .12);   /* the Try it's bar, lines and body (a darker, muted green), #3798, #3924 */
+  --try-it-line: rgba(76, 192, 107, .35);
+  --try-it-body: #19241e;
   --note-border: rgba(227, 179, 65, .4);
   --code-bg: var(--m-surface-2);
   --frame: var(--m-border);
@@ -556,7 +559,7 @@ html[data-theme="dark"] .sch-editor .se-symdoc .sd-truth td.v1 { color: var(--m-
 html[data-theme="dark"] .sch-editor .se-symdoc .btn.on { background: var(--m-accent-soft); border-color: var(--m-accent); }
 html[data-theme="dark"] .sch-editor .lv-editor { background: var(--m-surface-2); color: var(--m-fg); border-color: rgba(76, 192, 107, .5); }
 html[data-theme="dark"] .sch-editor .se-simbar .btn.on { background: rgba(76, 192, 107, .25); border-color: rgba(76, 192, 107, .6); }
-html[data-theme="dark"] .sch-editor .se-simbar { background: rgba(76, 192, 107, .12); border-color: rgba(76, 192, 107, .35); color: var(--m-fg); }
+html[data-theme="dark"] .sch-editor .se-simbar { color: var(--m-fg); }   /* (its green: --try-it-bar, --try-it-line) */
 html[data-theme="dark"] .sch-editor .lv-badge { color: var(--m-success); }
 html[data-theme="dark"] .sch-editor :is(.lv-lbl, .lv-time) { color: var(--m-muted); }
 html[data-theme="dark"] .sch-editor .lv-clock { background: transparent; border-color: rgba(76, 192, 107, .35); }
