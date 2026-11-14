@@ -89,3 +89,41 @@ test('#3741 ISE\'s build of the examples on the Elbert V2: only an<3> (and the u
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+// (#3872) the Spartan-3A Starter Kit has no seven-segment display: its 6-pin headers J18 and J20 and its FX2 connector
+// (UG334 ch. 15: figs. 15-11, table 15-1) take the display's bits, which J19's 4 pads alone could not (ISE's build of the
+// clock example refused 11 bits); every example's build goes ahead, warning of each bit on a header pin, in this order
+test('#3872 ISE\'s build of the examples on the Spartan-3A Starter Kit: the display on J18, J20 and the FX2 connector, warned', async () => {
+  const dev = await import('../core/devices.js');
+  const res = dev.findBoard('s3a-starter').resources, pins = name => res.find(r => r.name === name).pins;
+  assert.deepEqual(pins('j18_io'), ['AA21', 'AB21', 'AA19', 'AB19']);
+  assert.deepEqual(pins('j20_io'), ['V14', 'V15', 'W16', 'V16']);
+  assert.deepEqual(pins('fx2_io').slice(0, 8), ['A13', 'B13', 'A14', 'B15', 'A15', 'A16', 'A17', 'B17']);
+  assert.equal(pins('fx2_io').length, 40);
+  assert.equal(pins('fx2_io')[39], 'P20');
+  assert.deepEqual(pins('fx2_clk'), ['M22', 'L22', 'L21']);
+  const all = res.flatMap(r => r.pins);
+  assert.equal(new Set(all).size, all.length, 'no pin in two resources');
+  const pool = [0, 1, 2, 3].map(i => `j18_io<${i}>`).concat([0, 1, 2, 3].map(i => `j20_io<${i}>`), [...Array(40).keys()].map(i => `fx2_io<${i}>`));
+  const seg = [0, 1, 2, 3, 4, 5, 6].map(i => `seg<${i}>`), an = [0, 1, 2, 3].map(i => `an<${i}>`);
+  const btn = ['btn<1>', 'btn<2>', 'btn<3>'], sw = ['sw<4>', 'sw<5>', 'sw<6>', 'sw<7>'];
+  const bits = {
+    gates: [], traffic: [...seg, 'dp', ...an], blinky: ['btn<1>', ...seg, 'dp', ...an], pong: [...btn, ...seg, ...an, 'dp'],
+    stopwatch: [...btn, ...seg, 'dp', ...an], clock: [...btn, ...seg, ...an, 'dp'], vga: btn, isqrt: [...sw, ...seg, 'dp', ...an],
+    uart: [...seg, 'dp', ...an], micro80: [...sw, ...seg, 'dp', ...an],
+  };
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-headers-'));
+  try {
+    const { exampleProject, EXAMPLES } = await import('./examples-lib.mjs');
+    const ise = await import('../server/ise.js');
+    assert.deepEqual(Object.keys(bits), EXAMPLES);
+    for (const name of EXAMPLES) {
+      const { dir, project } = exampleProject(name, { board: 's3a-starter' }, path.join(tmp, name));
+      const g = await ise.generateBuild(project, dir);
+      assert.deepEqual(g.warnings, bits[name].map((b, i) => `${b}: the s3a-starter has no pin for it; it is on the header pin ${pool[i]} (the board's constraints)`), name);
+      if (name === 'clock') assert.match(fs.readFileSync(path.join(g.buildDir, 'digital_clock.ucf'), 'utf8'), /^NET "dp"\s+LOC = "A17" /m);
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
