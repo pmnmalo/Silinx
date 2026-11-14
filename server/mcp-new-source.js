@@ -1,6 +1,6 @@
 // The MCP server's New Source (server/mcp.js, #2674), as the interface's New Source wizard makes each type
 // (web/js/new-source.js): a module (its ports), a VHDL package, a test bench of a module, a constraints file, a .mem
-// file, a C or C++ function (Silinx HLS), an empty schematic, state diagram, ASM chart, Petri net or truth table, a
+// file, a C or C++ function (Silinx HLS), an empty schematic, state diagram, ASM chart, Petri net, circuit (a breadboard and its supply, #3897) or truth table, a
 // guided lab (#3179: core/labs.js newLab); from
 // the wizard's own templates (core/templates.js, c-templates.js: they import nothing) and the drawings' models, with
 // its checks: a file name, a name that is not a reserved word, a module or a drawing's HDL file that is not taken. A
@@ -23,12 +23,13 @@ const TYPES = {
   asm: { label: 'Algorithmic State Machine (ASM)', ext: '.asm.json', dir: 'src' },
   petri: { label: 'Petri Net', ext: '.pn.json', dir: 'src' },
   boolean: { label: 'Boolean Algebra', ext: '.bool.json', dir: 'src' },
+  circuit: { label: 'Circuit', ext: '.circ.json', dir: 'src' },
   lab: { label: 'Guided Lab', ext: '.lab.json', dir: 'labs' },
 };
 const NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 const FILE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const ident = n => n.replace(/[^A-Za-z0-9_]/g, '_');
-const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean'];
+const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean', 'circuit'];
 
 // the source's text, as the wizard's Finish writes it
 async function sourceText(type, { file, lang, pj, entity, arch, ports, uut }) {
@@ -47,6 +48,7 @@ async function sourceText(type, { file, lang, pj, entity, arch, ports, uut }) {
     case 'asm': return JSON.stringify((await import('../core/asm.js')).normalizeModel({ name: n, lang }), null, 2);
     case 'fsm': return JSON.stringify((await import('../core/fsm.js')).normalizeFsm({ name: n, lang }), null, 2);
     case 'petri': return JSON.stringify((await import('../core/petri.js')).normalizePetri({ name: n, lang }), null, 2);
+    case 'circuit': return JSON.stringify((await import('../core/circuit.js')).newCircuit(n, lang), null, 2);
     case 'boolean': return JSON.stringify({ ...(await import('../core/logic.js')).newTable(n, ['a', 'b', 'c'], ['f']), lang }, null, 2);
     case 'lab': return `${JSON.stringify((await import('../core/labs.js')).newLab(file, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`;
     default: throw toolError(`type: one of ${Object.keys(TYPES).join(', ')}`);

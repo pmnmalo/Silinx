@@ -54,7 +54,7 @@ test('new_source: a module with its ports and its test bench, in VHDL and in Ver
 
 test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Syntax', async () => {
   for (const [lang, ext] of [['vhdl', 'v'], ['verilog', 'g']]) {
-    for (const [type, label, fileExt] of [['schematic', 'Schematic', 'sch.json'], ['fsm', 'Finite State Machine (FSM)', 'fsm.json'], ['asm', 'Algorithmic State Machine (ASM)', 'asm.json'], ['petri', 'Petri Net', 'pn.json'], ['boolean', 'Boolean Algebra', 'bool.json']]) {
+    for (const [type, label, fileExt] of [['schematic', 'Schematic', 'sch.json'], ['fsm', 'Finite State Machine (FSM)', 'fsm.json'], ['asm', 'Algorithmic State Machine (ASM)', 'asm.json'], ['petri', 'Petri Net', 'pn.json'], ['boolean', 'Boolean Algebra', 'bool.json'], ['circuit', 'Circuit', 'circ.json']]) {
       const r = await ok('new_source', { project: 'p', type, name: `${type}_${ext}`, language: lang });
       // its HDL file, as the interface gives it (#3184): not an empty state diagram's or ASM chart's (no module yet)
       const hdl = ['fsm', 'asm'].includes(type) ? null : `src/${type}_${ext}.${lang === 'vhdl' ? 'vhd' : 'v'}`;
@@ -68,6 +68,8 @@ test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Synta
     }
     assert.equal(await checks(`schematic_${ext}`), `Process "Check Syntax" of <schematic_${ext}> completed successfully (0 signals, 0 processes).`);
     assert.equal(await checks(`petri_${ext}`), `Process "Check Syntax" of <petri_${ext}> completed successfully (2 signals, 1 processes).`);
+    // a circuit (#3897): its breadboard and its supply, no ports
+    assert.equal(await checks(`circuit_${ext}`), `Process "Check Syntax" of <circuit_${ext}> completed successfully (0 signals, 0 processes).`);
     const line = lang === 'vhdl' ? 13 : 9;
     assert.equal(await checks(`boolean_${ext}`), ['a', 'b', 'c'].map(i => `WARNING:Silinx:647 - "src/boolean_${ext}.${lang === 'vhdl' ? 'vhd' : 'v'}" Line ${line}: Input <${i}> is never used.`).join('\n')
       + `\nProcess "Check Syntax" of <boolean_${ext}> completed successfully with 3 warning(s) (4 signals, 1 processes).`);
@@ -140,7 +142,7 @@ test('new_source: the wizard\'s refusals; an existing file not replaced', async 
   await fails({ type: 'test_bench', name: 'tb_x', module: 'nosuch' }, 'no module \'nosuch\' in the project\'s HDL files');
   await fails({ type: 'test_bench', name: 'tb_y' }, 'module: the module the test bench tests (the project has no top)');
   await fails({ type: 'package', name: 'pk', language: 'verilog' }, 'a package is VHDL\'s');
-  await fails({ type: 'netlist', name: 'n' }, 'type: one of module, test_bench, package, constraints, mem, c, cpp, schematic, fsm, asm, petri, boolean, lab');
+  await fails({ type: 'netlist', name: 'n' }, 'type: one of module, test_bench, package, constraints, mem, c, cpp, schematic, fsm, asm, petri, boolean, circuit, lab');
   // a drawing's HDL file taken
   await ok('write_file', { project: 'p', path: 'src/spare.vhd', text: '-- a file\n' });
   await fails({ type: 'asm', name: 'spare' }, 'src/spare.vhd already exists: the HDL generated from the new source would be written there. Choose another name.');

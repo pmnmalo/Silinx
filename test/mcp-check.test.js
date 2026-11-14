@@ -73,7 +73,7 @@ test('check_drawing: an ASM chart (the blinky example\'s, clean), a file that is
   assert.equal((await ok('check_drawing', { project: 'b', file: 'src/speed_ctrl.asm.json' })).text, 'Process "Validate" of speed_ctrl.asm.json completed successfully.');
   const notOne = await call('check_drawing', { project: 'b', file: 'src/blinky.vhd' });
   assert.equal(notOne.isError, true);
-  assert.equal(notOne.text, 'check_drawing: \'src/blinky.vhd\' is not an ASM chart, a state diagram or a Petri net (.asm.json, .fsm.json, .pn.json)');
+  assert.equal(notOne.text, 'check_drawing: \'src/blinky.vhd\' is not an ASM chart, a state diagram, a Petri net or a circuit (.asm.json, .fsm.json, .pn.json, .circ.json)');
   const missing = await call('check_drawing', { project: 'b', file: 'src/none.pn.json' });
   assert.equal(missing.isError, true);
   assert.equal(missing.text, 'check_drawing: no drawing \'src/none.pn.json\' in the project \'b\'');
