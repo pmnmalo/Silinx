@@ -8,7 +8,8 @@
 //   bits, its window moved back by the alias's start) and each type's features with their bits;
 // - readBitFramesXc7 (bitread): the frames the .bit writes, from the FAR it writes FDRI's data at, the address going on
 //   through the part's frames and the fabric's tiles', two frames of padding after each row; word 50's low 13 bits (the
-//   frame's ECC) left out;
+//   frame's ECC) left out; FDRI's last frame held in the frame buffer, which a compressed .bit's MFWR (after a CMD MFW)
+//   writes to the FAR, or with no FAR after FDRI's to that last frame's address (#3876, as Vivado's compressed .bit);
 // - framesToFeatures (bit2fasm): the features whose bits a tile's frames hold (each bit set set, each bit cleared clear),
 //   in the tiles with a bit set; a feature with no bit set (a zero encoding) marked; the bits set no feature explains.
 
@@ -97,7 +98,9 @@ export function tileFeatureBits(index, tileName, key) {
  * The frames a .bit writes (bitread): { frames: Map(frame address → Uint32Array(101), word 50's ECC bits cleared),
  * idcode, header: { a, b, c, d } }. Every frame from the FAR written before FDRI's data, the address going on through
  * the part's frames and the tiles' in order, two frames of padding (zeros) after each row of a block type and half
- * and at the end. Throws for a file with no sync word, no frame data, data past the part's frames or padding not zeros.
+ * and at the end; FDRI's last frame held in the frame buffer, which a compressed .bit's MFWR (after a CMD MFW) writes to
+ * the FAR, or with no FAR after FDRI's to that last frame's address. Throws for a file with
+ * no sync word, no frame data, data past the part's frames or padding not zeros.
  */
 export function readBitFramesXc7(bytes, index) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -114,7 +117,7 @@ export function readBitFramesXc7(bytes, index) {
   if (k + 4 > bytes.length) throw new Error('not a 7-series bitstream: no sync word');
   const order = addressOrder(index);
   const frames = new Map();
-  let far = 0, reg = 0, idcode = null, data = false;
+  let far = 0, reg = 0, idcode = null, data = false, mfw = false, last = null, lastAt = null;
   for (k += 4; k + 4 <= bytes.length;) {
     const h = view.getUint32(k);
     k += 4;
@@ -123,9 +126,21 @@ export function readBitFramesXc7(bytes, index) {
     const op = (h >>> 27) & 3, n = kind === 1 ? h & 0x7ff : h & 0x7ffffff;
     if (kind === 1) reg = (h >>> 13) & 0x3fff;
     if (k + 4 * n > bytes.length) throw new Error('not a 7-series bitstream: a packet past the end of the file');
-    if (op === 2 && reg === 0x01 && n) far = view.getUint32(k + 4 * (n - 1));
+    if (op === 2 && reg === 0x01 && n) { far = view.getUint32(k + 4 * (n - 1)); lastAt = null; }
     if (op === 2 && reg === 0x0c && n) idcode = view.getUint32(k);
-    if (op === 2 && reg === 0x02 && n) { writeFrames(view, k, n, far, order, frames); data = true; }
+    if (op === 2 && reg === 0x04 && n) mfw = view.getUint32(k + 4 * (n - 1)) === 2;
+    if (op === 2 && reg === 0x02 && n) {
+      lastAt = writeFrames(view, k, n, far, order, frames);
+      if (n >= FRAME_WORDS) { last = frameWords(view, k + 4 * (n - FRAME_WORDS)); data = true; }
+    }
+    // (a compressed .bit's: FDRI's last frame copied to the FAR, after a CMD MFW)
+    if (op === 2 && reg === 0x0a && n) {
+      if (!mfw || !last) throw new Error('not a 7-series bitstream: MFWR with no CMD MFW and frame before it');
+      // (the first MFWR, with no FAR after FDRI's: to the address of FDRI's last frame)
+      const to = lastAt ?? far;
+      if (!order.at.has(to)) throw new Error(`MFWR at 0x${to.toString(16)}, not a frame of the part`);
+      frames.set(to, Uint32Array.from(last));
+    }
     k += 4 * n;
   }
   if (!data) throw new Error('not a 7-series bitstream: no frame data');
@@ -147,6 +162,14 @@ function addressOrder(index) {
   return { list, at, rowEnd: i => i === list.length - 1 || (list[i] >>> 17) !== (list[i + 1] >>> 17) };
 }
 
+// a frame's words at byte k, word 50's ECC bits cleared
+function frameWords(view, k) {
+  const f = Uint32Array.from({ length: FRAME_WORDS }, (_, j) => view.getUint32(k + 4 * j));
+  f[ECC_WORD] &= ~ECC_MASK;
+  return f;
+}
+
+// (returns the address of the frame the data ends with, held in the frame buffer; null when it ends with padding)
 function writeFrames(view, k, n, far, order, frames) {
   let i = order.at.get(far);
   if (i === undefined) throw new Error(`FDRI's data starts at 0x${far.toString(16)}, not a frame of the part`);
@@ -154,12 +177,12 @@ function writeFrames(view, k, n, far, order, frames) {
     if (i >= order.list.length) {
       // the last row's padding: zeros only
       for (; w < n; w++) if (view.getUint32(k + 4 * w)) throw new Error('frame data past the part\'s last frame');
-      return;
+      return null;
     }
     if (w + FRAME_WORDS > n) throw new Error(`the frame data ends inside frame 0x${order.list[i].toString(16)}`);
-    const f = Uint32Array.from({ length: FRAME_WORDS }, (_, j) => view.getUint32(k + 4 * (w + j)));
-    f[ECC_WORD] &= ~ECC_MASK;
-    frames.set(order.list[i], f);
+    // (the last frame stays in the frame buffer: an MFWR writes it)
+    if (w + FRAME_WORDS === n) return order.list[i];
+    frames.set(order.list[i], frameWords(view, k + 4 * w));
     w += FRAME_WORDS;
     if (order.rowEnd(i)) {
       for (let j = 0; j < 2 * FRAME_WORDS && w < n; j++, w++) {
@@ -168,6 +191,7 @@ function writeFrames(view, k, n, far, order, frames) {
     }
     i++;
   }
+  return null;
 }
 
 /** The bits set of frames (Map(address → words)), ECC's left out: a Set of bitKey. */

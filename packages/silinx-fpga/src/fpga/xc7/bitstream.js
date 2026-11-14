@@ -111,22 +111,66 @@ export function fdriData(frames, part) {
   return out;
 }
 
-const COR0 = 0x02003fe5;   // ConfigurationOptions0Value: DONE in pipelined, DONE at phase 4, GTS 5, GWE 6, no waits
+/**
+ * FDRI's data written compressed (BITSTREAM.GENERAL.COMPRESS), in the packets of Vivado's compressed .bit (2025.2, read
+ * on the Basys 3's and the Nexys A7's parts), every frame of the layout (fdriLayout's) written once. FDRI's last frame
+ * stays in the frame buffer (UG470's pipeline), which an MFWR writes after a CMD MFW. The frames whose words no other
+ * frame has: in runs within a column, in address order (CMD WCFG, FAR, FDRI's frames and one more, the next frame's
+ * words, left in the buffer); then each set of frames with the same words (the frames of zeros the most): its words into
+ * the buffer at its first frame (FDRI one frame), CMD MFW, 12 NOPs, an MFWR of 8 words (to that first frame), then a FAR
+ * and an MFWR of 4 words for each of the others (two NOPs after each MFWR of the block RAM's frames); a set within a row
+ * of a block type and half.
+ */
+function compressedData(frames, part) {
+  const { at } = fdriLayout(frames.keys(), part), zeros = new Uint32Array(FRAME_WORDS);
+  const list = [...at.keys()], words = a => frames.get(a) || zeros, key = a => words(a).join(',');
+  // (a set's frames in one row of a block type and half, as Vivado's)
+  const sets = new Map(), setOf = a => `${a >>> 17} ${key(a)}`;
+  for (const a of list) { if (!sets.has(setOf(a))) sets.set(setOf(a), []); sets.get(setOf(a)).push(a); }
+  const out = [];
+  const fdri = (a, frameWords) => {
+    const n = frameWords.length * FRAME_WORDS;
+    out.push(...cmd(CMD7.WCFG), NOP, ...write(REG7.FAR, a), NOP, ...(n <= 0x7ff ? [type1(REG7.FDRI, n)] : [type1(REG7.FDRI, 0), ((2 << 29) | (2 << 27) | n) >>> 0]));
+    for (const w of frameWords) out.push(...w);
+  };
+  const column = a => a >>> 7, single = a => sets.get(setOf(a)).length === 1;
+  for (let i = 0; i < list.length;) {
+    if (!single(list[i])) { i++; continue; }
+    let j = i + 1;
+    while (j < list.length && single(list[j]) && column(list[j]) === column(list[i])) j++;
+    fdri(list[i], [...list.slice(i, j).map(words), j < list.length ? words(list[j]) : zeros]);
+    i = j;
+  }
+  for (const [first, ...others] of [...sets.values()].filter(s => s.length > 1)) {
+    fdri(first, [words(first)]);
+    // (two NOPs after each MFWR of the block RAM's frames)
+    const after = farFields(first).block ? nops(2) : [];
+    out.push(...cmd(CMD7.MFW), ...nops(12), type1(REG7.MFWR, 8), ...nops(8).fill(0), ...after);
+    for (const a of others) out.push(...write(REG7.FAR, a), type1(REG7.MFWR, 4), 0, 0, 0, 0, ...after);
+  }
+  return out;
+}
+
+const COR0 = 0x02003fe5;
+// CTL1's bit 12, which Vivado's compressed .bit sets before the frames and clears after LFRM
+const CTL1_MFW = 0x1000;   // ConfigurationOptions0Value: DONE in pipelined, DONE at phase 4, GTS 5, GWE 6, no waits
 
 /**
  * The .bit of a part's frames (Map(frame address → 101 words), as fasmToFrames makes them, or readFramesText's): their
  * ECC set, the part's missing frames added, in xc7frames2bit's packets. db: the part's bit database (its regions and ID
  * code). The header: source (the frames' name, xc7frames2bit's --frm_file), generator, part, and the date (yyyy/mm/dd)
- * and time (hh:mm:ss) of `now` in UTC, or the ones given.
+ * and time (hh:mm:ss) of `now` in UTC, or the ones given. compress: FDRI's data as compressedData writes it (the XDC's
+ * BITSTREAM.GENERAL.COMPRESS TRUE, #3876).
  */
-export function bitstreamXc7(frames, db, { source = 'design.frames', generator = 'silinx-fpga', part = db.part, now = new Date(), date, time } = {}) {
+export function bitstreamXc7(frames, db, { source = 'design.frames', generator = 'silinx-fpga', part = db.part, now = new Date(), date, time, compress = false } = {}) {
   const ecc = new Map([...frames].map(([a, w]) => [a, updateEcc(Uint32Array.from(w))]));
-  const data = fdriData(ecc, partFrames(db.regions));
+  const data = compress ? compressedData(ecc, partFrames(db.regions)) : fdriData(ecc, partFrames(db.regions));
   const before = [NOP, ...write(REG7.TIMER, 0), ...write(REG7.WBSTAR, 0), ...cmd(CMD7.NULL), NOP, ...cmd(CMD7.RCRC), NOP, NOP,
     ...write(REG7.UNKNOWN, 0), ...write(REG7.COR0, COR0), ...write(REG7.COR1, 0), ...write(REG7.IDCODE, db.idcode), ...cmd(CMD7.SWITCH), NOP,
-    ...write(REG7.MASK, 0x401), ...write(REG7.CTL0, 0x501), ...write(REG7.MASK, 0), ...write(REG7.CTL1, 0), ...nops(8),
-    ...write(REG7.FAR, 0), ...cmd(CMD7.WCFG), NOP, type1(REG7.FDRI, 0), ((2 << 29) | (2 << 27) | data.length) >>> 0];
-  const after = [...cmd(CMD7.RCRC), NOP, NOP, ...cmd(CMD7.GRESTORE), NOP, ...cmd(CMD7.LFRM), ...nops(100), ...cmd(CMD7.START), NOP,
+    ...write(REG7.MASK, 0x401), ...write(REG7.CTL0, 0x501), ...write(REG7.MASK, compress ? CTL1_MFW : 0), ...write(REG7.CTL1, compress ? CTL1_MFW : 0), ...nops(8),
+    ...(compress ? [] : [...write(REG7.FAR, 0), ...cmd(CMD7.WCFG), NOP, type1(REG7.FDRI, 0), ((2 << 29) | (2 << 27) | data.length) >>> 0])];
+  const after = [...cmd(CMD7.RCRC), NOP, NOP, ...cmd(CMD7.GRESTORE), NOP, ...cmd(CMD7.LFRM),
+    ...(compress ? [...write(REG7.MASK, CTL1_MFW), ...write(REG7.CTL1, 0)] : []), ...nops(100), ...cmd(CMD7.START), NOP,
     ...write(REG7.FAR, 0x3be0000), ...write(REG7.MASK, 0x501), ...write(REG7.CTL0, 0x501), ...cmd(CMD7.RCRC), NOP, NOP, ...cmd(CMD7.DESYNC), ...nops(400)];
   const sync = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x000000bb, 0x11220044,
     0xffffffff, 0xffffffff, 0xaa995566];
@@ -148,22 +192,52 @@ export function bitstreamXc7(frames, db, { source = 'design.frames', generator =
 
 /**
  * A .bit's frames read back, as bitstreamXc7 lays them out for the part's database: Map(frame address → 101 words),
- * every frame of the fabric's tiles and of the part. An error for a file with no frame data or another layout's.
+ * every frame of the fabric's tiles and of the part. FDRI's data goes from the FAR written before it through the
+ * layout's frames and rows (fdriLayout's; its frames of zeros are no frame's), its last frame held in the frame buffer
+ * (UG470's pipeline: the frames of zeros at the end flush the others); a compressed .bit's (compressedData's, Vivado's)
+ * MFWR writes the frame buffer after a CMD MFW, to the FAR, or with no FAR after FDRI's, to that last frame's address. An error for a file with no frame data, data past the part's
+ * frames or another layout's.
  */
 export function readBitXc7(bytes, db) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let k = 0;
   while (k + 4 <= bytes.length && view.getUint32(k) !== 0xaa995566) k++;
   if (k + 4 > bytes.length) throw new Error('not a 7-series bitstream: no sync word');
-  for (k += 4; k + 4 <= bytes.length; k += 4) {
-    const h = view.getUint32(k);
-    if (h >>> 29 === 1) { k += 4 * (h & 0x7ff); continue; }
-    if (h >>> 29 !== 2) continue;
-    const n = h & 0x7ffffff, addresses = [];
-    for (const name of db.tiles()) for (const b of db.tile(name).blocks.values()) for (let i = 0; i < b.frames; i++) addresses.push(b.base + i);
-    const { at, length } = fdriLayout(addresses, partFrames(db.regions));
-    if (n !== length || k + 4 + n * 4 > bytes.length) throw new Error(`the frame data's ${n} words are not the ${length} of the ${db.part}'s frames`);
-    return new Map([...at].map(([a, w]) => [a, Uint32Array.from({ length: FRAME_WORDS }, (_, i) => view.getUint32(k + 4 + (w + i) * 4))]));
+  const addresses = [];
+  for (const name of db.tiles()) for (const b of db.tile(name).blocks.values()) for (let i = 0; i < b.frames; i++) addresses.push(b.base + i);
+  const { at, length } = fdriLayout(addresses, partFrames(db.regions)), frameAt = new Map([...at].map(([a, w]) => [w, a]));
+  const frames = new Map([...at.keys()].map(a => [a, new Uint32Array(FRAME_WORDS)]));
+  const words = (from, n) => Uint32Array.from({ length: n }, (_, i) => view.getUint32(from + 4 * i));
+  let reg = 0, far = 0, mfw = false, last = null, lastAt = null;
+  for (k += 4; k + 4 <= bytes.length;) {
+    const h = view.getUint32(k), kind = h >>> 29;
+    k += 4;
+    if (kind !== 1 && kind !== 2) continue;
+    const op = (h >>> 27) & 3, n = kind === 1 ? h & 0x7ff : h & 0x7ffffff;
+    if (kind === 1) reg = (h >>> 13) & 0x3fff;
+    if (k + 4 * n > bytes.length) throw new Error('not a 7-series bitstream: a packet past the end of the file');
+    if (op === 2 && n && reg === REG7.FAR) { far = view.getUint32(k + 4 * (n - 1)); lastAt = null; }
+    if (op === 2 && n && reg === REG7.CMD) mfw = view.getUint32(k + 4 * (n - 1)) === CMD7.MFW;
+    if (op === 2 && n && reg === REG7.FDRI) {
+      const start = at.get(far);
+      if (start === undefined) throw new Error(`FDRI's data starts at 0x${far.toString(16)}, not a frame of the ${db.part}`);
+      if (n % FRAME_WORDS || start + n > length) throw new Error(`the frame data's ${n} words are not the ${length} of the ${db.part}'s frames`);
+      for (let j = 0; j < n; j += FRAME_WORDS) {
+        const f = words(k + 4 * j, FRAME_WORDS), a = frameAt.get(start + j);
+        // (the last frame stays in the frame buffer: an MFWR writes it)
+        if (j + FRAME_WORDS === n) { last = f; lastAt = a ?? null; } else if (a !== undefined) frames.set(a, f);
+        else if (f.some(Boolean)) throw new Error(`the frame data's padding at word ${start + j} is not zeros`);
+      }
+    }
+    if (op === 2 && n && reg === REG7.MFWR) {
+      if (!mfw || !last) throw new Error('MFWR written with no CMD MFW and frame before it');
+      // (the first MFWR, with no FAR after FDRI's: to the address of FDRI's last frame)
+      const to = lastAt ?? far;
+      if (!at.has(to)) throw new Error(`MFWR at 0x${to.toString(16)}, not a frame of the ${db.part}`);
+      frames.set(to, Uint32Array.from(last));
+    }
+    k += 4 * n;
   }
-  throw new Error('not a 7-series bitstream: no frame data');
+  if (!last) throw new Error('not a 7-series bitstream: no frame data');
+  return frames;
 }
