@@ -8,7 +8,7 @@ import * as P from './projects.js';
 import { toolError, projectPath, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
 import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
 
-const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
+const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i;
 
 // the tops of a project no longer declared by its sources: the view's one root, else none; the messages of the
 // interface's console
