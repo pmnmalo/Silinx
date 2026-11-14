@@ -265,7 +265,14 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   await treeMenu(page, 1, 'Share Project…');
   assert.equal(await page.waitDialog('Share Project'), 'Share Project');
   assert.deepEqual(await howState(page), ['copy *', 'live']);
-  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how label')].map((l) => l.textContent).join(' | ')), 'Share: | A copy: a link with the project in it | Live: others follow it as you work');
+  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how > label, .dlg-overlay .share-how-choices > label')].map((l) => (l.parentElement.classList.contains('share-how') ? l.textContent : [...l.children].filter((c) => c.tagName === 'SPAN').map((c) => c.textContent).join(' · '))).join(' | ')), 'Share: | A copy · A link with the project in it | Live · Others follow it as you work');
+  // (#3995: the window's explanation first, then the two ways side by side, each one's explanation below its button)
+  assert.deepEqual(await page.eval(() => {
+    const [c, l] = [...document.querySelectorAll('.dlg-overlay .share-how-choices > label')].map((x) => ({ radio: x.querySelector('input').getBoundingClientRect(), note: x.querySelector('.share-how-note').getBoundingClientRect() }));
+    const hint = document.querySelector('.dlg-overlay .dlg-body .hint'), how = document.querySelector('.dlg-overlay .share-how');
+    return [Math.abs(c.radio.top - l.radio.top) < 2, l.radio.left > c.note.left, c.note.top >= c.radio.bottom - 2, l.note.top >= l.radio.bottom - 2, !!(hint.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING), /^A link that opens /.test(hint.textContent)];
+  }), [true, true, true, true, true, true]);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].map((x) => x.textContent)), ['Open in:', 'Module:', 'View:', 'Include the current view: the open tabs, the split, the panels', 'Link:', 'Expires:']);
   assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay .link-out')), 'the copy\'s link');
   await chooseLive(page);
   assert.equal(await page.waitDialog('Share Project'), 'Share Project');
@@ -275,7 +282,7 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   await page.click('.dlg-overlay input[data-field=how-copy]');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .link-out'), [], { what: 'the copy\'s window again' });
   assert.deepEqual(await howState(page), ['copy *', 'live']);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   // the way last chosen kept: Live, then the window opens on it
   await treeMenu(page, 0, 'Share Project…');
@@ -293,7 +300,7 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   await treeMenu(page, 1, 'Share Project…');
   await page.waitDialog('Share Project');
   assert.deepEqual(await howState(page), ['copy *', 'live (disabled: You are following another\'s project: stop following it to share one live.)']);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.eval(async () => { delete (await import('/js/api.js')).api.following; });
   // in Portuguese
@@ -302,7 +309,7 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   assert.ok((await treeMenu(page, 2)).includes('Partilhar Módulo…'));
   await treeMenu(page, 0, 'Partilhar Projeto…');
   await page.waitDialog('Partilhar Projeto');
-  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how label')].map((l) => l.textContent).join(' | ')), 'Partilhar: | Uma cópia: uma ligação com o projeto lá dentro | Em direto: os outros seguem-no enquanto trabalha');
+  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how > label, .dlg-overlay .share-how-choices > label')].map((l) => (l.parentElement.classList.contains('share-how') ? l.textContent : [...l.children].filter((c) => c.tagName === 'SPAN').map((c) => c.textContent).join(' · '))).join(' | ')), 'Partilhar: | Uma cópia · Uma ligação com o projeto lá dentro | Em direto · Os outros seguem-no enquanto trabalha');
   await page.dialogButton('Cancelar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));

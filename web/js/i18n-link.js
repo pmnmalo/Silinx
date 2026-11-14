@@ -4,8 +4,8 @@
 export const LINK_PT = {
   // (one action, a copy or live chosen in its window, #3698)
   'Share Project…': 'Partilhar Projeto…', 'Share Module…': 'Partilhar Módulo…', 'Share Project': 'Partilhar Projeto', 'Share Module': 'Partilhar Módulo',
-  'Share:': 'Partilhar:', 'A copy: a link with the project in it': 'Uma cópia: uma ligação com o projeto lá dentro',
-  'Live: others follow it as you work': 'Em direto: os outros seguem-no enquanto trabalha',
+  'Share:': 'Partilhar:', 'A copy': 'Uma cópia', 'A link with the project in it': 'Uma ligação com o projeto lá dentro',
+  'Others follow it as you work': 'Os outros seguem-no enquanto trabalha',
   'This edition of Silinx does not share a project live.': 'Esta edição do Silinx não partilha um projeto em direto.',
   'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.':
     'Um Silinx aberto a partir de um ficheiro não tem um endereço que os outros possam abrir: abra o Silinx a partir do seu sítio para partilhar um projeto em direto.',
@@ -16,14 +16,14 @@ export const LINK_PT = {
   'Link:': 'Ligação:',
   'The full link: the project inside it (needs nothing, but long)': 'A ligação completa: o projeto dentro dela (não precisa de nada, mas é longa)',
   'A short link: the project encrypted in a secret gist of your GitHub account': 'Uma ligação curta: o projeto cifrado num gist secreto da sua conta do GitHub',
-  'A short link, about 140 characters: the project encrypted in this browser and saved as a secret gist of your GitHub account when you copy it; only the link opens it. Your links are your gists, which you list and delete on GitHub.':
-    'Uma ligação curta, com cerca de 140 carateres: o projeto cifrado neste navegador e guardado num gist secreto da sua conta do GitHub quando a copia; só a ligação o abre. As suas ligações são os seus gists, que lista e apaga no GitHub.',
+  'A short link, about 140 characters: the project encrypted in this browser and saved as a secret gist of your GitHub account when you generate it; only the link opens it. Your links are your gists, which you list and delete on GitHub.':
+    'Uma ligação curta, com cerca de 140 carateres: o projeto cifrado neste navegador e guardado num gist secreto da sua conta do GitHub quando a gera; só a ligação o abre. As suas ligações são os seus gists, que lista e apaga no GitHub.',
   'A short link needs your GitHub sign-in: sign in, or choose the full link.': 'Uma ligação curta precisa da sua sessão no GitHub: inicie-a, ou escolha a ligação completa.',
   'A short link needs a GitHub token on the Silinx server (GH_TOKEN): choose the full link, or start the server with one.': 'Uma ligação curta precisa de um token do GitHub no servidor do Silinx (GH_TOKEN): escolha a ligação completa, ou inicie o servidor com um.',
   'Open in:': 'Abrir em:', 'Open the project only': 'Abrir só o projeto', 'Try it': 'Experimentar', 'Try it (a drawing\'s simulation)': 'Experimentar (a simulação de um desenho)', 'Simulation': 'Simulação', 'Board Emulator': 'Emulador da Placa',
   'Keep Mine': 'Manter o Meu', 'Open': 'Abrir', 'Save and Open': 'Guardar e Abrir',
   'Include the current view: the open tabs, the split, the panels': 'Incluir a vista atual: os separadores abertos, a divisão, os painéis',
-  'Lab:': 'Laboratório:', 'No lab': 'Nenhum laboratório',
+  'Lab:': 'Laboratório:',
   // a short link's expiry (#3629)
   // Short Links… (#3635)
   'Short Links…': 'Ligações Curtas…', 'Short Links': 'Ligações Curtas', 'Manage short links…': 'Gerir as ligações curtas…',
@@ -34,6 +34,8 @@ export const LINK_PT = {
     'As suas ligações curtas: gists secretos da sua conta do GitHub, cada um com o projeto cifrado. Uma ligação feita neste navegador pode ser copiada de novo; apagar uma apaga o seu gist, e a ligação deixa de abrir.',
   'Expires:': 'Expira:', 'Never': 'Nunca', 'In a week': 'Daqui a uma semana', 'In a month': 'Daqui a um mês', 'In six months': 'Daqui a seis meses', 'In a year': 'Daqui a um ano',
   // a sharing dialog's QR code (#3637, web/js/link-qr.js; 'Enlarge' is the FPGA view's)
+  // the link hidden (#3995, web/js/link-field.js); a short link made by Generate
+  'Hide': 'Ocultar', 'Generate': 'Gerar',
   'Show QR Code': 'Mostrar o Código QR', 'QR Code': 'Código QR', 'QR code of the link': 'Código QR da ligação',
   'Enlarge the QR code, for a projector': 'Ampliar o código QR, para um projetor',
 };
@@ -44,6 +46,12 @@ export const LINK_PT_PATTERNS = [
   [/^A link that opens '(.+)' in Silinx, for slides or a message: the whole project is inside the link \(no file to host\)\. Anyone with the link has every file of the project, its comments too\.$/,
     'Uma ligação que abre \'$1\' no Silinx, para diapositivos ou uma mensagem: o projeto inteiro vai dentro da ligação (sem ficheiro para alojar). Quem tiver a ligação tem todos os ficheiros do projeto, também os comentários.'],
   [/^(\d+) characters\.$/, '$1 caracteres.'],
+  [/^The link is (\d+) characters, too long for a QR code$/, 'A ligação tem $1 caracteres, demasiado longa para um código QR'],   // (#3995)
+  // (where a short link is made, #3995)
+  [/^Signed in to GitHub as (\S+); the project is in no GitHub repository\.$/, 'Com sessão no GitHub como $1; o projeto não está em nenhum repositório do GitHub.'],
+  [/^Signed in to GitHub as (\S+); the project is in the repository (\S+) \(private\)\.$/, 'Com sessão no GitHub como $1; o projeto está no repositório $2 (privado).'],
+  [/^Signed in to GitHub as (\S+); the project is in the repository (\S+) \(public\)\.$/, 'Com sessão no GitHub como $1; o projeto está no repositório $2 (público).'],
+  [/^Signed in to GitHub as (\S+); the project is in the repository (\S+) \(not seen with this sign-in\)\.$/, 'Com sessão no GitHub como $1; o projeto está no repositório $2 (não visto com esta sessão).'],
   [/^(\d+) characters: some slide tools cut a link longer than (\d+) \(export the project as a \.zip, host it, and link to it with #open=\)\.$/,
     '$1 caracteres: algumas ferramentas de diapositivos cortam uma ligação com mais de $2 (exporte o projeto como .zip, aloje-o e ligue para ele com #open=).'],
   [/^This link opens a project from another site:\n\n(.+)\n\nOpen it\? Its files are copied into a new project of your workspace; nothing runs until you run it\.$/,

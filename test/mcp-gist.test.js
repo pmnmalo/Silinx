@@ -130,3 +130,20 @@ test('#3994 delete_short_link all: every short link of the account deleted, anot
   assert.deepEqual([...gh.gists.keys()], ['e'.repeat(32)]);
   assert.equal((await ok('delete_short_link', { all: true })).text, '0 short links deleted (every one).');
 });
+
+// #3995: project_link short says where the link is made, as Share Project… does: the token's account, the project's
+// repository (its origin), private or public, or none
+test('#3995 project_link short: the GitHub account and the project\'s repository, private or public', async () => {
+  gh.seed('student/vault', null, { private: true });
+  gh.seed('student/plaza', null);
+  for (const [name, repo] of [['pv', 'vault'], ['pp', 'plaza'], ['pg', 'ghost'], ['pn', null]]) {
+    await ok('new_project_from_example', { name, example: 'gates' });
+    // (the repository set as the interface sets it: the MCP's git_init is limited to config.json's mcp.remotes)
+    if (repo) await (await import('../server/git.js')).gitInit(name, { remote: `https://github.com/student/${repo}` });
+  }
+  const where = async (name) => { const r = await ok('project_link', { project: name, short: true }); return [r.text.split('\n').pop(), r.data.account]; };
+  assert.deepEqual(await where('pv'), ['Signed in to GitHub as student; the project is in the repository student/vault (private).', { login: 'student', repository: 'student/vault', private: true }]);
+  assert.deepEqual(await where('pp'), ['Signed in to GitHub as student; the project is in the repository student/plaza (public).', { login: 'student', repository: 'student/plaza', private: false }]);
+  assert.deepEqual(await where('pg'), ['Signed in to GitHub as student; the project is in the repository student/ghost (not seen with this sign-in).', { login: 'student', repository: 'student/ghost', private: null }]);
+  assert.deepEqual(await where('pn'), ['Signed in to GitHub as student; the project is in no GitHub repository.', { login: 'student', repository: null, private: null }]);
+});

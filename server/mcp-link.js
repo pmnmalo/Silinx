@@ -32,6 +32,9 @@ async function labIds(name) {
   return (await listLabs(await P.fileTree(name), rel => P.readFile(name, rel), { example: name })).labs.map(l => l.id);
 }
 
+// where a short link is made (#3995), the words of Share Project…'s line (web/js/link-copy.js)
+const accountLine = a => `Signed in to GitHub as ${a.login || '?'}; ${!a.repository ? 'the project is in no GitHub repository' : `the project is in the repository ${a.repository} (${a.private === true ? 'private' : a.private === false ? 'public' : 'not seen with this sign-in'})`}.`;
+
 export const LINK_TOOLS = [
   {
     name: 'project_link', title: 'A project\'s link (Share Project…, a copy)',
@@ -71,8 +74,11 @@ export const LINK_TOOLS = [
         let g;
         try { g = await GH.makeGist(e.design, { days }); } catch (err) { throw toolError([err.message, ...(err.hint ? [`Hint: ${err.hint}`] : [])].join('\n')); }
         link = makeLink(url.href, { gist: `${g.id}.${g.key}`, view, top, lab });
+        // (where it is made, as Share Project… says it, #3995: the account, the project's repository, private or public)
+        const where = await GH.shortLinkAccount(name).catch(() => null);
+        const said = where ? `\n${accountLine(where)}` : '';
         const svg = qr ? qrSvg(link) : null;
-        return { text: `${svg ? 'With its QR code (qr, an SVG). ' : ''}The short link of '${name}'${view ? `, opening ${VIEW_NAMES[view]}` : ''}${top ? ` of ${top}` : ''}${lab ? `, with the lab '${lab}'` : ''} (${link.length} characters; the project encrypted in a secret gist${g.url ? `, ${g.url}` : ''}${g.expires ? `; it expires on ${g.expires.slice(0, 10)}` : ''}):\n${link}${g.deleted.length ? `\n${g.deleted.length} expired short link${g.deleted.length > 1 ? 's' : ''} deleted from the account's gists.` : ''}`, data: { project: name, link, length: link.length, view: view || null, top: top || null, ...(lab ? { lab } : {}), left: e.left, warnings: [], gist: g.id, expires: g.expires, deleted: g.deleted, ...(svg ? { qr: svg } : {}) } };
+        return { text: `${svg ? 'With its QR code (qr, an SVG). ' : ''}The short link of '${name}'${view ? `, opening ${VIEW_NAMES[view]}` : ''}${top ? ` of ${top}` : ''}${lab ? `, with the lab '${lab}'` : ''} (${link.length} characters; the project encrypted in a secret gist${g.url ? `, ${g.url}` : ''}${g.expires ? `; it expires on ${g.expires.slice(0, 10)}` : ''}):\n${link}${g.deleted.length ? `\n${g.deleted.length} expired short link${g.deleted.length > 1 ? 's' : ''} deleted from the account's gists.` : ''}${said}`, data: { project: name, link, length: link.length, view: view || null, top: top || null, ...(lab ? { lab } : {}), left: e.left, warnings: [], gist: g.id, expires: g.expires, deleted: g.deleted, account: where, ...(svg ? { qr: svg } : {}) } };
       }
       const warnings = link.length > LINK_LIMITS.slides ? [`WARNING: the link is ${link.length} characters long: some slide tools cut a link longer than ${LINK_LIMITS.slides} (a zip hosted elsewhere makes a short one)`] : [];
       const svg = qr ? qrSvg(link) : null;

@@ -20,6 +20,14 @@ const fakeApi = (page) => page.eval(() => { window.SILINX_GITHUB = { api: `${loc
 // Copy Link run as its menu runs it: its result (the link copied) kept for the test
 const startCopy = (page) => page.eval(() => { window.__copied = import('/js/link-copy.js').then((m) => m.copyLinkDialog()); });
 const copied = (page) => page.eval(() => window.__copied);
+// a short link made (Generate, #3995) and copied (the link's Copy), the window closed
+async function generateAndCopy(page) {
+  await page.click('.dlg-overlay .link-generate');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the short link made' });
+  await page.click('.dlg-overlay .link-copy');
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+}
 const open = (page, hash) => page.eval(async (h) => { const m = await import('/js/link-open.js'); return m.openFromLink(m.linkOptions(h)); }, hash);
 
 uiTest('#3223 Copy Link: the full link or a short one (a secret gist); the short link opened again; a wrong key, a deleted gist', E, async (page) => {
@@ -33,7 +41,17 @@ uiTest('#3223 Copy Link: the full link or a short one (a secret gist); the short
   await page.click('.dlg-overlay input[data-field="short"]');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-info').textContent), /^A short link, about 140 characters: the project encrypted/);
-  await page.dialogButton('Copy Link');
+  // (#3995: not made yet, Show, Copy and Show QR Code disabled, Generate above Show QR Code; the account said, the
+  // project in no repository)
+  const buttons = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`));
+  assert.deepEqual(await buttons(), ['Show (off)', 'Copy (off)', 'Generate', 'Show QR Code (off)']);
+  await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent === 'Signed in to GitHub as student; the project is in no GitHub repository.', [], { what: 'the account said' });
+  await page.click('.dlg-overlay .link-generate');
+  await page.waitConsole(/Share Project: the short link of 'lamp' made \(the project in a secret gist of your GitHub account\)\./);
+  assert.deepEqual(await buttons(), ['Show', 'Copy', 'Generate (off)', 'Show QR Code']);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').type), 'password');
+  await page.click('.dlg-overlay .link-copy');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   const link = await copied(page);
   assert.match(link, /#gist=[0-9a-f]{32}\.[A-Za-z0-9_-]{43}(&ui=[A-Za-z0-9_-]+)?$/);
@@ -72,7 +90,10 @@ uiTest('#3223 Copy Link\'s short link in Portuguese', E, async (page) => {
   assert.deepEqual(await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field="expires"]'); return [s.previousElementSibling.textContent, ...[...s.options].map((o) => o.textContent)]; }),
     ['Expira:', 'Nunca', 'Daqui a uma semana', 'Daqui a um mês', 'Daqui a seis meses', 'Daqui a um ano']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-manage a').textContent), 'Gerir as ligações curtas…');
-  await page.dialogButton('Cancelar');
+  // (#3995: the buttons, the account)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn, .dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Mostrar', 'Copiar', 'Gerar', 'Mostrar o Código QR', 'Fechar']);
+  await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent === 'Com sessão no GitHub como student; o projeto não está em nenhum repositório do GitHub.', [], { what: 'the account said' });
+  await page.dialogButton('Fechar');
   assert.equal(await copied(page), null);
   // Short Links… (#3635): its title, its columns, its buttons
   await page.eval(() => { window.__links = import('/js/short-links.js').then((m) => m.shortLinksDialog()); });
@@ -109,8 +130,7 @@ uiTest('#3629 Copy Link: a short link that expires; an expired one refused; the 
   await page.click('.dlg-overlay input[data-field="short"]');
   assert.deepEqual((await expires()).slice(0, 2), [false, '0']);
   await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field="expires"]'); s.value = '7'; s.dispatchEvent(new Event('change')); });
-  await page.dialogButton('Copy Link');
-  await page.waitNoDialog();
+  await generateAndCopy(page);
   const link = await copied(page);
   const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   await page.waitConsole(new RegExp(`Share Project: the short link of 'dial' copied, ${link.length} characters \\(the project in a secret gist of your GitHub account, until ${date}\\)\\.`));
@@ -141,8 +161,7 @@ uiTest('#3635 Short Links…: listed, the one made here copied again, the expire
   await startCopy(page);
   await page.waitDialog('Share Project');
   await page.click('.dlg-overlay input[data-field="short"]');
-  await page.dialogButton('Copy Link');
-  await page.waitNoDialog();
+  await generateAndCopy(page);
   const link = await copied(page);
   // two made elsewhere: one that never expires, one expired three days ago
   const made = await page.eval(async (t) => {
@@ -228,5 +247,38 @@ uiTest('#3994 Short Links…: every link listed; the header\'s check box selects
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay thead input[data-field="all"]').disabled), true);
   await page.dialogButton('Close');
   await page.waitNoDialog();
+  assert.deepEqual(warnings(page), []);
+}, { timeout: 120000 });
+
+// #3995: a short link chosen, the window says where it is made: the GitHub account signed in, and the project's
+// repository (its origin), private or public; a project in none said so
+uiTest('#3995 Share Project\'s short link: the GitHub account and the project\'s repository, private or public', E, async (page) => {
+  await fakeApi(page);
+  const account = async (name) => {
+    await page.openProject(name);
+    await startCopy(page);
+    await page.waitDialog('Share Project');
+    assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-account').textContent), '');
+    await page.click('.dlg-overlay input[data-field="short"]');
+    const text = await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent || null, [], { what: 'the account said' });
+    // (the full link chosen again: not said)
+    await page.click('.dlg-overlay input[data-field="full"]');
+    assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-account').textContent), '');
+    await page.dialogButton('Close');
+    await page.waitNoDialog();
+    return text;
+  };
+  await page.eval(async () => {
+    const { api } = await import('/js/api.js');
+    for (const [name, repo] of [['shut', 'secret'], ['ajar', 'open'], ['lost', 'gone']]) {
+      await api.createProject({ name, template: 'gates' });
+      await api.gitInit(name, `https://github.com/student/${repo}`);
+    }
+    await api.createProject({ name: 'alone', template: 'gates' });
+  });
+  assert.equal(await account('shut'), 'Signed in to GitHub as student; the project is in the repository student/secret (private).');
+  assert.equal(await account('ajar'), 'Signed in to GitHub as student; the project is in the repository student/open (public).');
+  assert.equal(await account('lost'), 'Signed in to GitHub as student; the project is in the repository student/gone (not seen with this sign-in).');
+  assert.equal(await account('alone'), 'Signed in to GitHub as student; the project is in no GitHub repository.');
   assert.deepEqual(warnings(page), []);
 }, { timeout: 120000 });

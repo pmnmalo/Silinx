@@ -75,7 +75,7 @@ uiTest('#2869 a Petri net: Share Module… chooses Try it; the link opens the ne
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
   const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await openLink(page, new URL(link).hash.slice(1), 'pn=1');
   await linkOpened(page);
@@ -103,7 +103,8 @@ uiTest('#2826 Copy Link…: the project\'s and a module\'s menus, the File menu,
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
   await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = 'simulate'; s.dispatchEvent(new Event('change')); });
   const link = await page.waitFor(() => /&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the simulation\'s link' });
-  await page.dialogButton('Copy Link');
+  await page.click('.dlg-overlay .link-copy');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.waitConsole(/Share Project: the link of 'traffic' \(Simulation, tb_traffic\) copied, \d+ characters\./);
   assert.deepEqual(await consoleWarnings(page), [`WARNING: Share Project: the link is ${link.length} characters long: some slide tools cut a link longer than 2000.`]);
@@ -113,7 +114,7 @@ uiTest('#2826 Copy Link…: the project\'s and a module\'s menus, the File menu,
   await contextMenu(page, row, 'Share Module…');
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=module]').value), 'timer');
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.eval(() => window.SilinxApp.showLeftPage('start'));
   await page.waitFor(() => [...document.querySelectorAll('#start-page .start-btns .btn')].some((b) => b.textContent === 'Open Project…' && b.getClientRects().length), [], { what: 'the Start page' });
@@ -138,7 +139,7 @@ uiTest('#3230 regression, the project\'s Copy Link… with Open the project only
   await page.eval((s, u) => { const m = document.querySelector(s); m.value = 'timer'; m.dispatchEvent(new Event('change')); const c = document.querySelector(u); c.checked = false; c.dispatchEvent(new Event('change')); }, field('module'), field('ui'));
   const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link' });
   assert.match(link, /#design=[A-Za-z0-9_-]+$/);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await openLink(page, new URL(link).hash.slice(1), 'n=1');
   await linkOpened(page);
@@ -157,7 +158,7 @@ uiTest('#2871 regression, Share Module… with Open the project only: the link o
     await page.waitDialog('Share Module');
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), '');
     const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link' });
-    await page.dialogButton('Cancel');
+    await page.dialogButton('Close');
     await page.waitNoDialog();
     return link;
   };
@@ -205,7 +206,8 @@ uiTest('#2878 Copy Link…: the Module list follows Open in: Simulation the test
   assert.deepEqual(await options(), ['inv (top) *']);
   await setView('simulate');
   assert.deepEqual(await options(), ["tb_a (the project's)", 'tb_b *']);
-  await page.dialogButton('Copy Link');
+  await page.click('.dlg-overlay .link-copy');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.waitConsole(/Share Project: the link of 'TwoTb' \(Simulation, tb_b\) copied, \d+ characters\./);
   // the link simulates tb_b, not the project's tb_a
@@ -250,7 +252,7 @@ uiTest('#2883 a test bench\'s Share Module… in the Simulation hierarchy: Simul
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'simulate');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=module]').value), 'tb_b');
   const link = await page.waitFor(() => /&top=tb_b&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'tb_b\'s link' });
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
@@ -258,7 +260,7 @@ uiTest('#2883 a test bench\'s Share Module… in the Simulation hierarchy: Simul
     await benchMenu('Partilhar Módulo…');
     assert.equal(await page.waitDialog('Partilhar Módulo'), 'Partilhar Módulo');
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view] option:checked').textContent), 'Simulação');
-    await page.dialogButton('Cancelar');
+    await page.dialogButton('Fechar');
     await page.waitNoDialog();
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   // the link simulates tb_b
@@ -281,7 +283,7 @@ uiTest('#2884 regression, Board Emulator: the Module list disabled on the top, t
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = ''; v.dispatchEvent(new Event('change')); });
   assert.equal((await state()).disabled, false);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=module]').value), 'timer');
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   // a link that would emulate another module: refused, the reason in the console
   await openLink(page, 'open=example:traffic&top=timer&view=emulate', 'emu=1');
@@ -310,7 +312,7 @@ uiTest('#2876 regression, a schematic named in another case than its module (Gat
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
   const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), '');
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await openLink(page, new URL(link).hash.slice(1), 'case=1');
   await linkOpened(page);
@@ -327,7 +329,7 @@ uiTest('#2882 regression, a C module (Silinx HLS): Share Module… makes its lin
   const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link' });
   assert.match(link, /#design=[A-Za-z0-9_-]+&top=fir(&ui=[A-Za-z0-9_-]+)?$/);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), '');
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await openLink(page, new URL(link).hash.slice(1), 'c=1');
   await linkOpened(page);
@@ -370,7 +372,7 @@ uiTest('#2886 the link carries Silinx\'s view: tabs, the one in front, the split
   const link = await page.waitFor(() => /&ui=[A-Za-z0-9_-]+$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link with its view' });
   await page.eval(() => { const c = document.querySelector('.dlg-overlay input[data-field=ui]'); c.checked = false; c.dispatchEvent(new Event('change')); });
   assert.doesNotMatch(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), /&ui=/);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   // another viewer (a browser of its own): the link opens Silinx as it was
   const p2 = await env.newPage(`${env.server.url}/?view=1${new URL(link).hash}`);
@@ -508,12 +510,13 @@ uiTest('#2826 in Portuguese: Copy Link… and the replace question', E, async (p
   await page.menu('Ficheiro', 'Partilhar Projeto…');
   assert.equal(await page.waitDialog('Partilhar Projeto'), 'Partilhar Projeto');
   const t = await page.eval(() => document.querySelector('.dlg-overlay .dlg-body').innerText);
-  for (const s of ['Abrir em:', 'Abrir só o projeto', 'Experimentar (a simulação de um desenho)', 'Incluir a vista atual: os separadores abertos, a divisão, os painéis', 'Módulo:', 'Placa:', 'Uma ligação que abre \'gates\' no Silinx', 'caracteres']) assert.ok(t.includes(s), `${s} in:\n${t}`);
+  for (const s of ['Abrir em:', 'Abrir só o projeto', 'Experimentar (a simulação de um desenho)', 'Incluir a vista atual: os separadores abertos, a divisão, os painéis', 'Módulo:', 'Vista:', 'Uma cópia', 'Uma ligação com o projeto lá dentro', 'Em direto', 'Os outros seguem-no enquanto trabalha', 'Uma ligação que abre \'gates\' no Silinx', 'caracteres']) assert.ok(t.includes(s), `${s} in:\n${t}`);
+  for (const s of ['Placa:', 'Laboratório:']) assert.ok(!t.includes(s), `${s} (#3995: no Board, no Lab) in:\n${t}`);
   // the simulation's Module list: the test bench, marked the project's (#2878)
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = 'simulate'; v.dispatchEvent(new Event('change')); });
   assert.deepEqual(await page.waitFor(() => { const o = [...document.querySelectorAll('.dlg-overlay select[data-field=module] option')].map((x) => x.textContent); return o.length && o; }, [], { what: 'the test benches' }), ['tb_gates (o do projeto)']);
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Copiar Ligação', 'Cancelar']);
-  await page.dialogButton('Cancelar');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Fechar']);
+  await page.dialogButton('Fechar');
   await writeWs(env, 'gates', 'sim/tb_gates.vhd', '-- mine\n');
   await openLink(page, 'open=example:gates', 'l=pt');
   await page.waitDialog('Abrir a partir de uma Ligação');

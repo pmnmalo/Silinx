@@ -260,7 +260,7 @@ uiTest('#3179 the blinky lab: the board, the clock, the simulation, the speed (a
   assert.doesNotMatch(await page.consoleText(), /ERROR/);
 }, { timeout: 240000 });
 
-uiTest('#3179 the stopwatch lab: the emulator (a step to try), the test bench, the reset moved to SW7 (a wrong pin not ticked); Copy Link… with the lab, and a link that opens it', E, async (page) => {
+uiTest('#3179 the stopwatch lab: the emulator (a step to try), the test bench, the reset moved to SW7 (a wrong pin not ticked); Share Project… with no Lab row, and a link that opens it', E, async (page) => {
   await makeProject(env, { name: 'stopwatch', template: 'stopwatch' });
   await page.setViewport(1366, 768);
   await page.openProject('stopwatch');
@@ -278,27 +278,15 @@ uiTest('#3179 the stopwatch lab: the emulator (a step to try), the test bench, t
   assert.match(await checkStepOf(page, 5, 5), /Step done\.\nEvery step of the lab "The emulator" is done\./);
   assert.equal(await ticks(page), '✓ ✓ ✓ ✓ ✓<');
 
-  // Copy Link…: the lab in front chosen; none, or another
+  // Share Project…: no Lab row (#3995), the link with no lab, even with the lab in front (a link that opens a lab is
+  // the MCP's project_link's)
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
-  const linkOut = () => page.waitFor(() => document.querySelector('.dlg-overlay .link-out')?.value || null, [], { what: 'the link' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay select[data-field=lab] option')].map((o) => `${o.value}:${o.textContent}${o.selected ? ' <' : ''}`)),
-    [':No lab', 'stopwatch-emulator:The emulator <', 'gates-first-steps:First steps', 'traffic-state-machine:A state machine', 'blinky-clock-board:The clock and the board']);
-  assert.match(await linkOut(), /#design=[A-Za-z0-9_-]+(&ui=[A-Za-z0-9_-]+)?&lab=stopwatch-emulator$/);
-  await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=lab]'); s.value = ''; s.dispatchEvent(new Event('change')); });
-  assert.doesNotMatch(await linkOut(), /lab=/);
-  await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=lab]'); s.value = 'stopwatch-emulator'; s.dispatchEvent(new Event('change')); });
-  // in Portuguese: the dialog's labels, the labs' titles in theirs
-  await page.eval(() => import('/js/i18n.js').then((m) => m.setLanguage('pt')));
-  await page.waitFor(() => document.documentElement.lang === 'pt');
-  const labRow = () => page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=lab]'); return [s.previousElementSibling.textContent, ...[...s.options].slice(0, 2).map((o) => o.textContent)]; });
-  await page.waitFor(() => document.querySelector('.dlg-overlay select[data-field=lab]').options[0].textContent === 'Nenhum laboratório', [], { what: 'the dialog in Portuguese' });
-  assert.deepEqual(await labRow(), ['Laboratório:', 'Nenhum laboratório', 'The emulator']);
-  await page.eval(() => import('/js/i18n.js').then((m) => m.setLanguage('en')));
-  await page.waitFor(() => document.documentElement.lang === 'en');
-  await page.dialogButton('Copy Link');
+  const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out')?.value || null, [], { what: 'the link' });
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=lab]')), null);
+  assert.doesNotMatch(link, /lab=/);
+  await page.dialogButton('Close');
   await page.waitNoDialog();
-  await page.waitConsole(/Share Project: the link of 'stopwatch', opening the lab 'stopwatch-emulator' copied, \d+ characters\./);
 
   // a link that opens the example with its lab (the student's project kept: the link's in a project of its own), the lab at its first step
   await page.goto(`${env.server.url}/?l=lab#open=example:stopwatch&lab=stopwatch-emulator`);

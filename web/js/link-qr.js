@@ -8,7 +8,7 @@ import { qrSvg } from '/core/qr.js';
 const image = (svg, cls) => h('img', { class: cls, alt: 'QR code of the link', 'aria-label': 'QR code of the link', src: `data:image/svg+xml,${encodeURIComponent(svg)}` });
 
 /** The enlarged QR code of `link`, in a dialog of its own (over the one that shows it). */
-function enlargeQr(link, title = 'QR Code') {
+export function enlargeQr(link, title = 'QR Code') {
   const svg = qrSvg(link);
   if (!svg) return null;
   return dialog({
