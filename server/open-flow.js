@@ -24,7 +24,7 @@ import fss from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deviceFamily, isIseFamily, backendOf, orderSteps, ICE40_PARTS, ECP5_PARTS, GOWIN_DEVICES, resourcesOf, OPEN_STEPS, orderOpenSteps, synthEffort, synthGoal, findDeviceGraph, shippedDevicePath, buildDeviceCache, devicesDir, SHIPPED_DEVICES_DIR, S3E_DEVICES, s6OpenStatus, DB_DIR, hasBitDb, dbPackages, xc7Parts, XILINX_STEPS } from '../packages/silinx-fpga/src/node.js';
+import { deviceFamily, isIseFamily, vivadoDevice, openFlowDevice, noOpenFlowMessage, backendOf, orderSteps, ICE40_PARTS, ECP5_PARTS, GOWIN_DEVICES, resourcesOf, OPEN_STEPS, orderOpenSteps, synthEffort, synthGoal, findDeviceGraph, shippedDevicePath, buildDeviceCache, devicesDir, SHIPPED_DEVICES_DIR, S3E_DEVICES, s6OpenStatus, DB_DIR, hasBitDb, dbPackages, xc7Parts, XILINX_STEPS } from '../packages/silinx-fpga/src/node.js';
 import { findPart } from './devices.js';
 import { ownPackage, ownPresent } from './nextpnr-ice40-fetch.js';
 import { runCommand } from './jobs.js';
@@ -84,6 +84,8 @@ export function flowHeapMb(totalBytes = os.totalmem(), nodeOptions = process.env
  */
 export function openStatus(device, { dbDir = BIT_DB_DIR } = {}) {
   const out = { available: false, reason: '', part: null, device: null, graph: null, shipped: false, bitDb: false, canBuild: false };
+  // (the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, no bit database of theirs, #3895)
+  if (vivadoDevice(device) && !openFlowDevice(device)) return { ...out, device: String(device.part).toLowerCase(), reason: noOpenFlowMessage(device) };
   if (OWN[deviceFamily(device)]) return { ...out, ...ownStatus(device) };
   if (deviceFamily(device) === 'artix7') return { ...out, ...xc7Status(device) };
   let part;

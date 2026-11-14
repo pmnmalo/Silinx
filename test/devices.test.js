@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 
 const dev = await import('../server/devices.js');
 
-const FAMILY_IDS = ['spartan3', 'spartan3e', 'spartan3a', 'spartan3adsp', 'spartan6', 'virtex4', 'virtex5', 'virtex6', 'artix7', 'kintex7', 'zynq', 'ice40', 'ecp5', 'gowin'];
-// the open toolchain's own families (#2295, #2302, #2303): not ISE's
+const FAMILY_IDS = ['spartan3', 'spartan3e', 'spartan3a', 'spartan3adsp', 'spartan6', 'virtex4', 'virtex5', 'virtex6', 'artix7', 'spartan7', 'kintex7', 'zynq', 'ice40', 'ecp5', 'gowin'];
+// the open toolchain's own families (#2295, #2302, #2303): not ISE's; AMD Vivado's own (#3895): the Spartan-7
 const OPEN_ONLY = ['ice40', 'ecp5', 'gowin'];
+const VIVADO_ONLY = ['spartan7'];
 
 test('families: the ISE 14.7 WebPACK families, with ISE names and I/O standards', () => {
   assert.deepEqual(dev.FAMILIES.map(f => f.id).sort(), [...FAMILY_IDS].sort());
-  for (const f of dev.FAMILIES.filter(x => !OPEN_ONLY.includes(x.id))) {
+  for (const f of dev.FAMILIES.filter(x => !OPEN_ONLY.includes(x.id) && !VIVADO_ONLY.includes(x.id))) {
     assert.equal(f.webpack, true, f.id);
     assert.ok(f.name && f.xiseFamily && f.displayName, f.id);
     assert.ok(Array.isArray(f.ioStandards) && f.ioStandards.length > 5, f.id);
@@ -39,11 +40,13 @@ test('parts: every part has a known family, packages with user I/O and speed gra
     assert.ok(p.slices > 0 && p.luts > 0 && p.ffs > 0 && (p.brams > 0 || p.part === 'ice40lp384'), p.part);
   }
   // WebPACK limits (UG631 Table 2-1): parts outside WebPACK must not be offered.
-  for (const missing of ['xc6slx100', 'xc6slx150t', 'xc3s2000', 'xc3sd3400a', 'xc4vlx40', 'xc5vsx35t', 'xc6vlx130t', 'xc7k325t', 'xc7z015', 'xc7z045'])
+  for (const missing of ['xc6slx100', 'xc6slx150t', 'xc3s2000', 'xc3sd3400a', 'xc4vlx40', 'xc5vsx35t', 'xc6vlx130t', 'xc7k325t', 'xc7z045'])
     assert.equal(dev.findPart(missing), null, missing);
-  // (but the Basys 3's XC7A35T, Vivado's only: the 7-series' experimental family, #3142)
+  // (but the Basys 3's XC7A35T, Vivado's only: the 7-series' experimental family, #3142; and Vivado ML Standard's others, #3895:
+  // the Spartan-7, the Zynq-7000S and the XC7Z015, not ISE 14.7's; the XC7K325T and the XC7Z045 are no free edition's)
   assert.equal(dev.findPart('xc7a35t').webpack, false);
-  assert.deepEqual(dev.PARTS.filter(p => p.webpack === false).map(p => p.part), ['xc7a35t']);
+  assert.deepEqual(dev.PARTS.filter(p => p.webpack === false).map(p => p.part),
+    ['xc7a35t', 'xc7s6', 'xc7s15', 'xc7s25', 'xc7s50', 'xc7s75', 'xc7s100', 'xc7z007s', 'xc7z012s', 'xc7z014s', 'xc7z015']);
   assert.equal(dev.partsOfFamily('spartan6').length, 9);
   assert.equal(dev.partsOfFamily('Spartan3E').length, 5);
   assert.equal(dev.familyOf('xc7a35t'), 'artix7', 'name-based fallback for parts outside the DB');
@@ -85,6 +88,34 @@ test('parts: spot checks against the data sheets', () => {
   assert.equal(p('xc7z020').luts, 53200);
   assert.equal(p('xc7z020').packages.clg484.userIo, 200);
   assert.equal(dev.findPart('XC6SLX9-2CSG324').part, 'xc6slx9');
+});
+
+test('#3895 the Spartan-7 and the Zynq-7000 of Vivado ML Standard: their parts against DS180 / DS190', () => {
+  const p = n => dev.findPart(n), f = dev.findFamily('spartan7');
+  // the Spartan-7: Vivado's (no ISE 14.7 name), the Artix-7's HR SelectIO, every part ML Standard's
+  assert.equal(f.displayName, 'Spartan-7');
+  assert.equal(f.xiseFamily, undefined);
+  assert.equal(f.webpack, false);
+  assert.equal(f.experimental, true);
+  assert.deepEqual(f.ioStandards, dev.findFamily('artix7').ioStandards);
+  assert.deepEqual(dev.partsOfFamily('spartan7').map(x => x.part), ['xc7s6', 'xc7s15', 'xc7s25', 'xc7s50', 'xc7s75', 'xc7s100']);
+  // DS180 Table 2 (cells, slices, BRAM, DSP, CMT) and Table 7 (the packages' I/O)
+  assert.deepEqual([p('xc7s50').logicCells, p('xc7s50').slices, p('xc7s50').luts, p('xc7s50').ffs, p('xc7s50').brams, p('xc7s50').dsp, p('xc7s50').cmts], [52160, 8150, 32600, 65200, 75, 120, 5]);
+  assert.equal(p('xc7s50').packages.csga324.userIo, 210);
+  assert.equal(p('xc7s25').packages.csga324.userIo, 150);
+  assert.equal(p('xc7s6').xadc, undefined, 'no XADC on the XC7S6 / XC7S15');
+  assert.equal(p('xc7s100').packages.fgga676.userIo, 400);
+  assert.deepEqual(p('xc7s50').speeds, ['-1', '-2']);
+  assert.deepEqual(dev.validateDevice({ part: 'xc7s50', package: 'csga324', speed: '-1' }), []);
+  assert.equal(dev.validateDevice({ part: 'xc7s50', package: 'csg324', speed: '-1' }).length, 1, 'the Artix-7\'s package name');
+  assert.equal(dev.familyOf('xc7s50'), 'spartan7');
+  // the Zynq-7000's ML Standard parts ISE 14.7 does not have (DS190 Tables 1, 2)
+  assert.equal(p('xc7z007s').processor, 'single Cortex-A9');
+  assert.equal(p('xc7z007s').luts, 14400);
+  assert.equal(p('xc7z014s').packages.clg400.userIo, 125);
+  assert.equal(p('xc7z015').packages.clg485.gts, 4);
+  for (const n of ['xc7z007s', 'xc7z012s', 'xc7z014s', 'xc7z015']) assert.equal(dev.familyOf(n), 'zynq', n);
+  for (const k of ['cpga196', 'csga225', 'csga324', 'ftgb196', 'fgga484', 'fgga676', 'clg485']) assert.ok(dev.PACKAGES[k], k);
 });
 
 test('validateDevice accepts every family and rejects bad package / speed / part', () => {

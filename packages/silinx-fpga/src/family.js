@@ -13,9 +13,13 @@ export const FAMILY_INFO = {
   virtex6:      { name: 'Virtex-6',           xise: 'Virtex6',                  pm: 'virtex6' },
   // (#1648: an experimental family, its constraints XDC, its flows to come: Vivado #1649, the Silinx toolchain #3146)
   artix7:       { name: 'Artix-7',            xise: 'Artix7',                   pm: 'artix7', experimental: true, constraints: 'xdc', backEnd: 'vivado' },
-  kintex7:      { name: 'Kintex-7',           xise: 'Kintex7',                  pm: 'kintex7' },
+  // (#3895: the 7-series of Vivado ML Standard, the free edition, besides the Artix-7: Vivado's flow, no open toolchain
+  // (openFlow: false, no bit database of their parts); the Spartan-7 is not ISE 14.7's at all; the Virtex-7 is no free
+  // edition's: ISE's as it was)
+  spartan7:     { name: 'Spartan-7',                                            pm: 'spartan7', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFlow: false },
+  kintex7:      { name: 'Kintex-7',           xise: 'Kintex7',                  pm: 'kintex7', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFlow: false },
   virtex7:      { name: 'Virtex-7',           xise: 'Virtex7',                  pm: 'virtex7' },
-  zynq:         { name: 'Zynq-7000',          xise: 'Zynq',                     pm: 'zynq' },
+  zynq:         { name: 'Zynq-7000',          xise: 'Zynq',                     pm: 'zynq', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFlow: false },
   ice40:        { name: 'iCE40', constraints: 'pcf', bitstream: '.bin' },
   // (#2302: Project Trellis's, nextpnr-ecp5 and ecppack; its constraints LPF, its bitstream ecppack's .bit, no Xilinx header)
   ecp5:         { name: 'ECP5', constraints: 'lpf', bitstream: '.bit' },
@@ -35,6 +39,7 @@ export function familyOfPart(part) {
   if (/^xc5v/.test(p)) return 'virtex5';
   if (/^xc6v/.test(p)) return 'virtex6';
   if (/^xc7a/.test(p)) return 'artix7';
+  if (/^xc7s/.test(p)) return 'spartan7';
   if (/^xc7k/.test(p)) return 'kintex7';
   if (/^xc7v/.test(p)) return 'virtex7';
   if (/^xc7z/.test(p)) return 'zynq';
@@ -51,13 +56,19 @@ export function deviceFamily(device) {
 
 /** Does ISE implement this family? The others are the open toolchain's only (#2295). */
 export const isIseFamily = f => !!FAMILY_INFO[f]?.xise;
-/** Is this project device's family one only the open toolchain implements? (An unknown family is not: it stays with ISE's flow.) */
-export const openOnlyDevice = device => { const f = deviceFamily(device); return !!FAMILY_INFO[f] && !isIseFamily(f); };
+/** Is this project device's family one only the open toolchain implements? (An unknown family is not: it stays with ISE's flow;
+ *  nor one Vivado implements, the Spartan-7, #3895.) */
+export const openOnlyDevice = device => { const f = deviceFamily(device); return !!FAMILY_INFO[f] && !isIseFamily(f) && FAMILY_INFO[f].backEnd !== 'vivado'; };
 /** Is this project device's family an experimental one (#1648): its boards and constraints, no flow that runs yet? */
 export const experimentalDevice = device => !!FAMILY_INFO[deviceFamily(device)]?.experimental;
-/** Is this project device's family one AMD Vivado implements (#1649: the Artix-7, on the local server; the other 7-series
- *  families keep ISE 14.7's flow, which implements them)? */
+/** Is this project device's family one AMD Vivado implements (#1649: the Artix-7, on the local server; #3895: the Spartan-7,
+ *  the Kintex-7 and the Zynq-7000, Vivado ML Standard's; the Virtex-7 keeps ISE 14.7's flow)? */
 export const vivadoDevice = device => FAMILY_INFO[deviceFamily(device)]?.backEnd === 'vivado';
+/** Has this project device's family a flow of the Silinx toolchain (#3895: not the 7-series' but the Artix-7's, whose bit
+ *  database Silinx has)? An ISE family's is the Silinx toolchain's Spartan-3E / Spartan-6 one, or its message. */
+export const openFlowDevice = device => FAMILY_INFO[deviceFamily(device)]?.openFlow !== false;
+/** Why the Silinx toolchain does not implement a device of a Vivado-only family (#3895): the interface offers Vivado alone. */
+export const noOpenFlowMessage = device => `the Silinx toolchain has no back end for the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)`;
 /** Why an experimental family's device has no implementation (the interface offers none; a request gets this error). */
 export const noFlowMessage = device => `the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}, an experimental family) has no implementation flow yet: its boards and its XDC constraints only`;
 /** The format of a project device's constraints: 'pcf' (the iCE40's), 'lpf' (the ECP5's, #2302), 'cst' (the Gowin's, #2303), 'xdc' (the 7-series', #3142) or 'ucf'. */

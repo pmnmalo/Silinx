@@ -1,5 +1,5 @@
 // Silinx - the device picker of the New Project and Design Properties dialogs (#405: out of web/js/wizards.js).
-import { experimentalDevice, noFlowMessage, openOnlyDevice, vivadoDevice } from '/packages/silinx-fpga/src/parts.js';
+import { experimentalDevice, noFlowMessage, noOpenFlowMessage, openFlowDevice, openOnlyDevice, vivadoDevice } from '/packages/silinx-fpga/src/parts.js';
 import { api } from './api.js';
 import { h } from './ui.js';
 
@@ -9,10 +9,13 @@ const FAMILY_MARK = ' (experimental)';
 export const boardOptions = db => [['', 'None Specified'], ...db.boards.map(b => [b.id, `${b.name}${experimentalDevice(b.device) ? FAMILY_MARK : ''}`])];
 
 /** The console's warning for a device of an experimental family with no back end here (set_design_properties says the same),
- *  else null: the Artix-7's is AMD Vivado's on the local server (#1649), the Silinx toolchain's in the browser edition (#3143). */
-export const noFlowWarning = device => (experimentalDevice(device) && !vivadoDevice(device) ? `WARNING: ${noFlowMessage(device)}.` : null);
+ *  else null: the Artix-7's is AMD Vivado's on the local server (#1649), the Silinx toolchain's in the browser edition (#3143);
+ *  the Spartan-7's, the Kintex-7's and the Zynq-7000's AMD Vivado's alone (#3895): none in the browser edition. */
+export const noFlowWarning = device => (experimentalDevice(device) && !vivadoDevice(device) ? `WARNING: ${noFlowMessage(device)}.`
+  : vivadoDevice(device) && !openFlowDevice(device) && api.standalone ? `WARNING: ${noOpenFlowMessage(device)}.` : null);
 
-/** The synthesis tools of an Artix-7 project on the local server (#3146): AMD Vivado's flow, or the Silinx toolchain's. */
+/** The synthesis tools of an Artix-7 project on the local server (#3146): AMD Vivado's flow, or the Silinx toolchain's; a
+ *  Vivado-only family's (#3895) the first alone. */
 const VIVADO_TOOLS = [['vivado', 'Vivado (VHDL/Verilog; AMD Vivado 2025.2)'], ['silinx', 'Silinx (VHDL/Verilog; no Vivado needed; on trial)']];
 
 // Cascading Family -> Device -> Package -> Speed selectors over the device database.
@@ -55,7 +58,8 @@ export function devicePicker(db, device) {
     famSel, partSel, pkgSel, spdSel, set,
     // (no ISE for the family; an experimental one: no tool runs it yet, the choice kept 'silinx' and locked, #3142; the
     // Artix-7 on the local server: AMD Vivado, the default, or the Silinx toolchain, on trial, #3146: the list's
-    // choices those two; want: the project's choice, else the list's first, the one selected for the other families)
+    // choices those two, a Vivado-only family's, #3895, Vivado alone and locked; want: the project's choice, else the list's
+    // first, the one selected for the other families)
     lockSynth(sel, want = null) {
       const own = [...sel.options].map(o => [o.value, o.textContent]), first = sel.value;
       const fill = list => {
@@ -66,7 +70,7 @@ export function devicePicker(db, device) {
       };
       (fitSynth = () => {
         const d = { part: partSel.value };
-        if (vivadoDevice(d) && !api.standalone) { fill(VIVADO_TOOLS); sel.disabled = false; return; }
+        if (vivadoDevice(d) && !api.standalone) { const only = !openFlowDevice(d); fill(only ? VIVADO_TOOLS.slice(0, 1) : VIVADO_TOOLS); sel.disabled = only; return; }
         fill(own);
         const o = openOnlyDevice(d) || experimentalDevice(d);
         if (o) sel.value = 'silinx';
