@@ -23,7 +23,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   joins the hole, the pin or the other wires' ends on its point. Two wires that cross without an end in common are not
   joined.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
-  net's: the toolbar (select, wire, rotate, delete, then the zoom, then Check and Simulate, Reset while simulating; printed
+  net's: the toolbar (select, wire, rotate, delete, then the zoom, then Check and Try it, Reset while trying it; printed
   by the main toolbar's Print), the Properties side panel on the right, foldable, over the canvas behind ☰ Properties on a
   narrow screen: the parts library (by category: a click on a part, then on the drawing), the selected part's label,
   colour and pinout, the circuit's name and HDL language; the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
@@ -81,7 +81,7 @@ as VHDL's `after` and Verilog's `#` on a continuous assignment, so the live simu
   starts from a known level and oscillates once enabled).
 - **An IC is powered** when its VCC pin's net is 1 and its GND pin's net is 0; an unpowered IC drives nothing (its
   outputs float).
-- **Live:** Simulate starts it; a click on a logic switch flips it, a press on a button holds it while pressed (a long
+- **Live:** Try it starts it; a click on a logic switch flips it, a press on a button holds it while pressed (a long
   press on a touch screen); the simulation runs until the circuit is quiet. The LEDs light, each pin and wire is
   coloured by its level (0, 1, Z, X), the status line says the simulated time. A circuit still changing after 1 µs of
   simulated time (a ring oscillator, a latch's race) is said to oscillate, in the console, its oscillating nets marked.

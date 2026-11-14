@@ -1,5 +1,5 @@
 // The circuit editor's toolbar (#3897, docs/UI-GUIDELINES.md): the tools (select, wire), Rotate, Delete, the zoom, Check,
-// Simulate (and Reset while simulating), the ☰ Properties toggle (no Print of its own: the main toolbar's prints it); the
+// Try it (and Reset while trying it), the ☰ Properties toggle (no Print of its own: the main toolbar's prints it); the
 // status line of its counts and, while simulating, its time.
 import { h } from './ui.js';
 import { toolIcon, toolWide, zoomTools } from './editor-icons.js';
@@ -16,7 +16,7 @@ export function mountCircuitToolbar(ctx) {
   const rotBtn = toolIcon('rotate', 'rotate', 'Turn the selected part a quarter clockwise (R)', () => rotateSelection(), 'circ-edit');
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
   const checkBtn = toolWide('check', 'Check', 'Check the circuit: short circuits, unpowered ICs, floating inputs, parts and wires that join nothing', () => check(), 'circ-check');
-  const simBtn = toolWide('sim', 'Simulate', 'Simulate the circuit live: click a switch to flip it, press a button to hold it', () => toggleSim(), 'circ-sim-btn');
+  const simBtn = toolWide('sim', 'Try it', 'Try it: click a switch to flip it, press a button to hold it; the LEDs and each pin\'s level show the circuit working', () => toggleSim(), 'circ-sim-btn');
   const resetBtn = btn('↺ Reset', 'Start the simulation again from time 0', () => resetSim(), 'circ-reset');
   resetBtn.hidden = true;
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
