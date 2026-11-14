@@ -173,6 +173,10 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
   const lit = m.parts.filter((p) => partDef(p.type)?.lamps);
   return {
     nets, run, set,
+    /** the simulated time moved on by `ns` (a clock's half period between its ticks), the circuit run meanwhile */
+    advance(ns) { const r = run({ maxNs: ns }); if (r.quiet) time = r.start + ns; return { ...r, time }; },
+    /** each logic probe's tip level: 0, 1, Z (open), X */
+    probes: () => Object.fromEntries(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, levels[netOfPin(p.id, 1)]])),
     get time() { return time; },
     level: (net) => levels[net],
     /** a pin's level ('U1.3', or a part id and a pin number) */
