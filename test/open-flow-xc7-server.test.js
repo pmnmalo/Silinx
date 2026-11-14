@@ -67,10 +67,10 @@ async function run(dir, project, steps = ['synth', 'translate', 'par', 'trce', '
 // counters sized from its clock, #3710), its frequency 15 % lower. The LUTs nextpnr's (each 6LUT and 5LUT, the
 // feed-throughs included); Vivado's on the same netlists in #3160
 const QUALITY = {
-  basys3: { gates: [1, 0, null], traffic: [87, 58, 213.6], blinky: [101, 130, 241.6], pong: [252, 207, 159.0],
+  basys3: { gates: [1, 0, null], breadboard: [4, 6, 655.3], traffic: [87, 58, 213.6], blinky: [101, 130, 241.6], pong: [252, 207, 159.0],
     stopwatch: [184, 201, 210.6], clock: [149, 158, 268.4], vga: [125, 56, 257.2], isqrt: [72, 86, 282.9],
     uart: [122, 138, 257.6], micro80: [169, 185, 146.4] },
-  'nexys-a7': { gates: [1, 0, null], traffic: [86, 58, 199.3], blinky: [98, 130, 276.4], pong: [244, 207, 155.9],
+  'nexys-a7': { gates: [1, 0, null], breadboard: [4, 6, 655.3], traffic: [86, 58, 199.3], blinky: [98, 130, 276.4], pong: [244, 207, 155.9],
     stopwatch: [184, 201, 225.9], clock: [146, 158, 240.9], vga: [124, 56, 234.2], isqrt: [73, 86, 316.8],
     uart: [122, 138, 260.0], micro80: [179, 185, 150.1] },
 };

@@ -9,9 +9,10 @@
 import { partDef } from './circuit-parts.js';
 import { circuitNets } from './circuit-net.js';
 import { normalizeCircuit, circuitPorts } from './circuit.js';
-import { partInputs, partLamps } from './circuit-io.js';
+import { partInputs, partLamps, portRef, portDecls } from './circuit-io.js';
 import { circuitErrors } from './circuit-check.js';
-import { pinPort, icPorts, vhdlIc, verilogIc } from './circuit-hdl-ics.js';
+import { pinPort, icPorts, vhdlIc, verilogIc, vhdlDigital, verilogDigital } from './circuit-hdl-ics.js';
+import { digitalTop } from './circuit-digital.js';
 
 const entityOf = (m, d) => `${m.name}_${d.chip.toLowerCase()}`;
 const isSupply = (q) => q.name === '+' || q.name === '-';
@@ -36,33 +37,50 @@ export function generateCircuit(model, lang, { source } = {}) {
     `${c} Parts       : ${m.parts.filter((p) => partDef(p.type)?.kind === 'ic').map((p) => `${p.id} (${partDef(p.type).chip})`).join(', ') || 'no ICs'}`,
     `${c} Inputs      : ${ports.inputs.map((x) => `${x.name} (${x.part}, '1' while ${WHILE[x.kind]})`).join(', ') || 'none'}`,
     `${c} Outputs     : ${ports.outputs.map((x) => `${x.name} (${x.part}, '1' while lit)`).join(', ') || 'none'}`, rule, '');
-  if (!V) L.push('`timescale 1ns / 1ps', '');
-  for (const d of types) (V ? vhdlIc : verilogIc)(L, entityOf(m, d), d);
+  // two models in one file (#3901): the simulation's (behind `synthesis translate_off`: the simulator reads it, a synthesis
+  // tool does not) and the digital one a synthesis tool builds (core/circuit-digital.js); in VHDL two architectures,
+  // the simulation's analysed last (its default), in Verilog a macro defined behind the fence
+  const OFF = `${c} synthesis translate_off`, ON = `${c} synthesis translate_on`, SIM = `SILINX_SIM_${m.name.toUpperCase()}`;
+  if (!V) L.push('`timescale 1ns / 1ps', '', OFF, `\`define ${SIM}`, ON, '');
+  for (const d of types) {
+    const T = [];
+    (V ? vhdlIc : verilogIc)(T, entityOf(m, d), d);
+    if (!d.model && !d.seq) { L.push(OFF, ...T.slice(0, -1), ON, ''); continue; }   // (a gate IC: the digital body inlines its gates)
+    if (V) {
+      const a = T.findIndex((l) => l.startsWith('architecture model of'));
+      L.push(...T.slice(0, a)); vhdlDigital(L, entityOf(m, d), d); L.push(OFF, ...T.slice(a, -1), ON, '');
+    } else {
+      const h = T.findIndex((l) => l.startsWith('module ')), e = T.lastIndexOf('endmodule');
+      L.push(...T.slice(0, h + 1), `\`ifdef ${SIM}`, ...T.slice(h + 1, e), '`else', ...verilogDigital(d), '`endif', 'endmodule', '');
+    }
+  }
 
-  // the circuit's module
-  const ins = ports.inputs.map((x) => x.name), outs = ports.outputs.map((x) => x.name);
+  // the circuit's module: its ports (a bus's bits one vector, led[0]…), its two bodies
+  const decls = portDecls(ports);
   const icMap = (p) => icPorts(partDef(p.type)).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]);
-  const lamps = m.parts.flatMap((p) => partLamps(p).map((x) => [x.port, plan.pinNet(p.id, x.a), plan.pinNet(p.id, x.k)]));
+  const lamps = m.parts.flatMap((p) => partLamps(p).map((x) => [portRef(x.port, V), plan.pinNet(p.id, x.a), plan.pinNet(p.id, x.k)]));
+  const dig = digitalTop(m, V, (d) => entityOf(m, d));
   if (V) {
     L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${m.name} is`);
-    const ps = [...ins.map((n) => `${n} : in std_logic`), ...outs.map((n) => `${n} : out std_logic`)];
+    const ps = decls.map((x) => `${x.name} : ${x.dir} ${x.width == null ? 'std_logic' : `std_logic_vector(${x.width - 1} downto 0)`}`);
     if (ps.length) L.push('  port (', ps.map((x) => `    ${x}`).join(';\n'), '  );');
-    L.push(`end entity ${m.name};`, '', `architecture circuit of ${m.name} is`);
+    L.push(`end entity ${m.name};`, '', `architecture digital of ${m.name} is`, ...dig.decl.map((x) => `  ${x}`), 'begin', ...dig.body.map((x) => `  ${x}`), 'end architecture digital;', '',
+      OFF, `architecture circuit of ${m.name} is`);
     if (plan.signals.length) L.push(`  signal ${plan.signals.join(', ')} : std_logic := 'X';`);   // (unknown at first: no instant read as floating)
     if (plan.watched.length) L.push('  -- silinx: ignore unused-signal (watched by a logic probe)', `  signal ${plan.watched.join(', ')} : std_logic := 'X';`);
     L.push('begin');
     for (const [n, e, why] of plan.assigns) L.push(`  ${n} <= ${e};   -- ${why}`);
     for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${plan.inst.get(p.id)} : entity work.${entityOf(m, partDef(p.type))} port map (${icMap(p).map(([a, b]) => `${a} => ${b}`).join(', ')});`);
     for (const [o, a, k] of lamps) L.push(`  ${o} <= '1' when to_x01(${a}) = '1' and to_x01(${k}) = '0' else '0';`);
-    L.push('end architecture circuit;');
+    L.push('end architecture circuit;', ON);
   } else {
-    L.push(`module ${m.name}${ins.length + outs.length ? ` (${[...ins.map((n) => `input ${n}`), ...outs.map((n) => `output ${n}`)].join(', ')})` : ''};`);
+    L.push(`module ${m.name}${decls.length ? ` (${decls.map((x) => `${x.dir === 'in' ? 'input' : 'output'} ${x.width == null ? '' : `[${x.width - 1}:0] `}${x.name}`).join(', ')})` : ''};`, `\`ifdef ${SIM}`);
     if (plan.signals.length) L.push(`  wire ${plan.signals.join(', ')};`);
     if (plan.watched.length) L.push('  // silinx: ignore unused-signal (watched by a logic probe)', `  wire ${plan.watched.join(', ')};`);
     for (const [n, e, why] of plan.assigns) L.push(`  assign ${n} = ${e};   // ${why}`);
     for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${entityOf(m, partDef(p.type))} ${plan.inst.get(p.id)} (${icMap(p).map(([a, b]) => `.${a}(${b})`).join(', ')});`);
     for (const [o, a, k] of lamps) L.push(`  assign ${o} = (${a} === 1'b1) && (${k} === 1'b0);`);
-    L.push('endmodule');
+    L.push('`else', ...dig.decl.map((x) => `  ${x}`), ...dig.body.map((x) => `  ${x}`), '`endif', 'endmodule');
   }
   return { filename: `${m.name}.${V ? 'vhd' : 'v'}`, code: L.join('\n') + '\n', module: m.name, probes: plan.probes };
 }
@@ -76,7 +94,7 @@ export function generateCircuit(model, lang, { source } = {}) {
  */
 function netPlan(m, V, ports) {
   const nets = circuitNets(m);
-  const used = new Set([m.name, ...ports.inputs.map((x) => x.name), ...ports.outputs.map((x) => x.name)].map((s) => s.toLowerCase()));
+  const used = new Set([m.name, ...portDecls(ports).map((x) => x.name)].map((s) => s.toLowerCase()));
   for (const d of m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic')) used.add(entityOf(m, d).toLowerCase());
   const fresh = (base) => { let s = base, k = 1; while (used.has(s.toLowerCase())) s = `${base}_${++k}`; used.add(s.toLowerCase()); return s; };
   const typeOf = new Map(m.parts.map((p) => [p.id, p.type]));
@@ -111,11 +129,11 @@ function netPlan(m, V, ports) {
     if (!d) continue;
     if (d.kind === 'supply') { add(netOf(p.id, 1), lit('1'), `${p.id} +`); add(netOf(p.id, 2), lit('0'), `${p.id} −`); }
     const inputs = partInputs(p);
-    for (const s of d.sources || []) add(netOf(p.id, s.pin), inputs[s.input].port, p.id);
+    for (const s of d.sources || []) add(netOf(p.id, s.pin), portRef(inputs[s.input].port, V), p.id);
     for (const ct of nets.contacts.filter((x) => x.part === p.id)) {
       const f = from(ct);   // (both strongly driven: an error of the check; neither driven: nothing to copy)
       if (f == null) continue;
-      const to = f === ct.a ? ct.b : ct.a, port = inputs[ct.input].port;
+      const to = f === ct.a ? ct.b : ct.a, port = portRef(inputs[ct.input].port, V);
       if (name[f]) add(to, V ? `${name[f]} when ${port} = '${ct.when ? 1 : 0}' else 'Z'` : `${ct.when ? port : `!${port}`} ? ${name[f]} : 1'bz`, `${p.id} ${p.type === 'button' ? 'pressed' : ct.when ? 'on' : 'off'}`);
     }
   }

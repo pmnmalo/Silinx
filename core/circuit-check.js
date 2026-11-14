@@ -2,7 +2,7 @@
 // after every change and on Check, the MCP server's check_drawing), each pointing at its part or wire. Isomorphic module.
 import { partDef, partPins } from './circuit-parts.js';
 import { circuitNets, netSupply, netText } from './circuit-net.js';
-import { portName, partInputs, partLamps } from './circuit-io.js';
+import { portName, partInputs, partLamps, busOf } from './circuit-io.js';
 import { isName } from './ident.js';
 import { reservedError } from './reserved.js';
 
@@ -42,7 +42,7 @@ export function checkCircuit(m, nets = circuitNets(m)) {
 
 // the parts: their types, ids, labels and the HDL's names they make (a DIP switch's <label>_1…), each once
 function checkNames(m, { err }) {
-  const ids = new Map(), names = new Map();
+  const ids = new Map(), names = new Map(), buses = new Map();
   if (badName(m.name)) err(`The circuit's name '${m.name}' is not a valid HDL name`, null);
   for (const p of m.parts) {
     if (!partDef(p.type)) err(`${p.id}: no part '${p.type}' in the library`, part(p.id));
@@ -51,12 +51,25 @@ function checkNames(m, { err }) {
     ids.set(p.id.toLowerCase(), p);
     const ports = [...partInputs(p), ...partLamps(p)].map((x) => x.port);
     if (!ports.length) continue;
-    const n = portName(p);
+    // (a bus's bit, led[0]: a single port's label, its base the name checked, #3901)
+    const bus = busOf(portName(p));
+    if (bus.bit != null && ports.length > 1) { err(`${p.id}: its label '${portName(p)}' is a bus's bit: a part of one port only (a switch, a button, a clock, an LED) has one`, part(p.id)); continue; }
+    const n = bus.base;
     if (badName(n) || /__|_$/.test(n)) { err(`${p.id}: its label '${n}' is not a valid HDL name`, part(p.id)); continue; }
     if (n.toLowerCase() === m.name.toLowerCase()) err(`${p.id}: its label '${n}' is the circuit's name`, part(p.id));
+    if (bus.bit != null) { const kind = partInputs(p).length ? 'in' : 'out'; (buses.get(n.toLowerCase()) ?? buses.set(n.toLowerCase(), { name: n, kind, bits: new Map() }).get(n.toLowerCase())).bits.set(bus.bit, { id: p.id, kind }); }
     const clash = ports.find((x) => names.has(x.toLowerCase()));
     if (clash) err(`${p.id}: its label '${n}' is ${names.get(clash.toLowerCase())}'s too${clash === n ? '' : ` (${clash})`}`, part(p.id));
     for (const x of ports) names.set(x.toLowerCase(), p.id);
+  }
+  // a bus: its bits 0 to its last, all inputs or all outputs, its name no scalar port's
+  for (const b of buses.values()) {
+    const ks = [...b.bits.keys()].sort((x, y) => x - y), first = b.bits.get(ks[0]);
+    const gap = ks.findIndex((k, i) => k !== i);
+    if (gap >= 0) err(`The bus ${b.name} has no bit ${gap} (its bits: ${ks.join(', ')}): its bits 0 to ${ks.at(-1)}, each a part's`, part(first.id));
+    const mixed = [...b.bits.values()].find((x) => x.kind !== first.kind);
+    if (mixed) err(`The bus ${b.name}: ${first.id} is an ${first.kind === 'in' ? 'input' : 'output'}, ${mixed.id} an ${mixed.kind === 'in' ? 'input' : 'output'}: a bus is one or the other`, part(mixed.id));
+    if (names.has(b.name.toLowerCase())) err(`The bus ${b.name} is also ${names.get(b.name.toLowerCase())}'s port`, part(first.id));
   }
   return ids;
 }

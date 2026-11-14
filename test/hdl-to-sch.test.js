@@ -11,7 +11,7 @@ import { convertModuleToSchematic, designUnits, moduleUnitRanges } from '../core
 import { schematicFromHdl, generateHdl, normalizeDoc, netlist, modulesFromLibrary, symbolBox, tokenize } from '../core/schdoc.js';
 import { exportIseSch } from '../core/isesch-export.js';
 import fs from 'node:fs';
-import { example, runTestbench, EXAMPLES } from './examples-lib.mjs';
+import { example, runTestbench, HDL_EXAMPLES as EXAMPLES } from './examples-lib.mjs';   // (not a circuit's, #3901)
 import { CASES } from './fixtures/hdl-to-sch-cases.js';
 
 const ELK = (await import('elkjs/lib/elk.bundled.js')).default;

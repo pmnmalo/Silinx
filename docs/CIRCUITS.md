@@ -169,6 +169,52 @@ The circuit's HDL file (VHDL or Verilog, the circuit's language) is one module n
 It is regenerated as every drawing's (on save, after an edit through the MCP server), with its header "generated from
 …, do not edit". The HDL does not flow back into the circuit.
 
+## A circuit on the FPGA
+
+A circuit can be an FPGA project's top (#3901): its switches, buttons and clock the board's, its LEDs the board's LEDs.
+Its HDL file holds two models of it, one for the simulation and one for synthesis, and nothing else changes for the user:
+
+- **the simulation's model**, as above (the chips' delays, `'Z'`, `'X'`, the power), behind
+  `-- synthesis translate_off` … `-- synthesis translate_on`: XST skips it, and so does the Silinx toolchain's front end
+  (`core/translate-off.js`, `flowFrontEnd` of `core/synth-front.js`: those lines blanked, the others where they were, so
+  that the messages keep the file's line numbers);
+- **the digital model** (`core/circuit-digital.js`), which synthesis builds: each net one expression, no `'Z'`, no
+  delay, no power. A gate is inlined (only those whose output is read); an MSI or sequential IC is an instance of its
+  entity's `digital` architecture (`core/circuit-hdl-ics.js`), its registers flip-flops of the FPGA; open collector
+  outputs on one net are ANDed; a contact gives its strong side's level while closed, else the net's default; the
+  default is the pull's level, else `'1'` where an IC's input reads the net (a floating 74LS input reads high), else
+  `'0'` (an LED on an open line is dark); a three-state output (a 74595's) gives its level while enabled, else the net's
+  default; a lamp is its anode and not its cathode. The switches' and the clock's nets are their ports themselves, so
+  that synthesis names the clock's net after its port, as the constraints do.
+
+In VHDL each entity has its `digital` architecture first and the simulation's (an IC's `model`, the top's `circuit`)
+last, inside the fence: the simulator binds the last one analysed, synthesis sees only the first. In Verilog a module
+has one body, chosen by `` `ifdef SILINX_SIM_<NAME> `` (the simulation's) `` `else `` (the digital one): the
+`` `define `` is the fenced line, so the simulator defines it and synthesis does not. A gate IC is only in the simulation's model (its gates are inlined).
+
+**Buses.** A single port's label `name[k]` is bit `k` of the vector port `name`: `led[0]` … `led[5]` make
+`led : out std_logic_vector(5 downto 0)` (`output [5:0] led`), so the board's pin assignment (*I/O Pin Planning*, New
+Project, the UCF) matches them by name as every example's `led`, `sw`, `btn`, `clk`. The check refuses a bus with a bit
+missing (its bits 0 to its last), one with inputs and outputs, one named as a scalar port, and a bus's bit on a part of
+several ports (a DIP switch, a display: their ports are `<label>_<k>`).
+
+**The example** `breadboard` (`examples/breadboard`): 74LS chips on a full breadboard, a button's presses counted by a
+74161 on LD3..LD0 (the button synchronised by a 74164, its rising edge `QA and (QA xor QB)` by a 7486 and a 7408), SW0
+clearing them, and a half adder on SW1, SW2 (LD4, LD5); its test bench runs the simulation's model; the Silinx toolchain
+builds it on every board with no warning.
+
+What differs on the FPGA:
+
+- the clock is the board's (50 MHz on the Basys2), not the circuit's clock source's rate; a button is not debounced
+  by the board (synchronise it with a clocked chip, as the example does);
+- a flip-flop with both an asynchronous preset and an asynchronous clear (7474, 7476, 74112) makes the open synthesis
+  warn ("Complex async reset", Yosys), even when its preset is tied high (#3975); the 74161, 74163, 74164 and 74194 have a
+  clear only; in Verilog the digital model of those flip-flops keeps its level when both are low and one is released
+  (an `always` block sees no release), as XST builds it, where the chip takes the one still low;
+- a board whose buttons or switches are active low (the Mimas V2) reads them inverted: a circuit has no generics
+  (`core/board-generics.js`) to turn them;
+- the power and the shorts are the simulation's only: a circuit with errors has no HDL.
+
 ## The MCP server
 
 What the interface does, the MCP server does (CLAUDE.md, #2674):
@@ -176,7 +222,9 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 - `new_source` type `circuit` (empty, or with a breadboard and a supply);
 - `circuit_parts`: the library, a part's pins, its logic and delay;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
-  rotate, delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label or colour;
+  rotate, delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
+  `led[0]`) or colour;
+- `run_process`: a circuit as a project's top synthesized, implemented and its bitstream made, as any top;
 - `check_drawing`: the circuit's check (its errors and warnings, as the console's);
 - `simulate_drawing`: a sequence of steps, each setting switches and buttons and running until quiet (or a given time),
   answering the LEDs, the nets asked for, the time and the warnings (a short, an oscillation);
@@ -219,7 +267,7 @@ starts there). The file is plain JSON, merged by Silinx's drawing merge as the o
 3. **MSI and sequential ICs:** decoders, multiplexers, adders, comparators, flip-flops, counters, shift registers; a
    logic probe; the nets' waveforms (SSim on the generated HDL from the circuit's toolbar).
 4. **The circuit in the rest of Silinx:** a circuit as an FPGA project's top (its switches and LEDs on the board's),
-   with an example; Convert to Schematic (the ICs as symbols); edited live in a shared project, its git merge; labs and
+   with an example (4a, #3901: the two models, the buses, `breadboard`); Convert to Schematic (the ICs as symbols); edited live in a shared project, its git merge; labs and
    grading; print and export as SVG.
 5. **Sensors, actuators and displays** (digital interfaces, each with its protocol simulated): a rotary encoder, a
    keypad matrix, a buzzer, a servo (PWM), a stepper and its driver, an ultrasonic range sensor, a PIR sensor, a
