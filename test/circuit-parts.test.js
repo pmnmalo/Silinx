@@ -41,7 +41,7 @@ const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed
 const W = (m, id, ...points) => m.wires.push({ id, points, color: 'green' });
 
 test('the ICs\' pinouts are their datasheets\' (NC pins not connected; a 4000\'s VDD and VSS); every IC in the library', () => {
-  assert.deepEqual(Object.keys(PINOUT).sort(), PART_ORDER.filter((t) => PARTS[t].kind === 'ic').sort());
+  assert.deepEqual(Object.keys(PINOUT).sort(), PART_ORDER.filter((t) => PARTS[t].gates).sort(), 'every gate IC (the MSI ICs: circuit-msi.test.js)');
   for (const [type, names] of Object.entries(PINOUT)) {
     const d = PARTS[type];
     assert.deepEqual(d.pins.map((p) => p.name), names, type);
