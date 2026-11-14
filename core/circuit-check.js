@@ -3,8 +3,12 @@
 import { partDef, partPins } from './circuit-parts.js';
 import { circuitNets, netSupply, netText } from './circuit-net.js';
 import { portName, partInputs, partLamps } from './circuit-io.js';
+import { isName } from './ident.js';
+import { reservedError } from './reserved.js';
 
-const RESERVED = /^(abs|access|after|alias|all|and|architecture|array|assert|attribute|begin|block|body|buffer|bus|case|component|configuration|constant|disconnect|downto|else|elsif|end|entity|exit|file|for|function|generate|generic|group|guarded|if|impure|in|inertial|inout|is|label|library|linkage|literal|loop|map|mod|nand|new|next|nor|not|null|of|on|open|or|others|out|package|port|postponed|procedure|process|pure|range|record|register|reject|rem|report|return|rol|ror|select|severity|signal|shared|sla|sll|sra|srl|subtype|then|to|transport|type|unaffected|units|until|use|variable|wait|when|while|with|xnor|xor|always|assign|reg|wire|module|endmodule|input|output|initial|integer|parameter|posedge|negedge|default|endcase|begin|std_logic|ieee)$/i;
+// a name of the HDL: an identifier (core/ident.js), not a reserved word of VHDL or Verilog (core/reserved.js), nor a
+// name the generated VHDL uses itself
+const badName = (n) => !isName(n) || !!reservedError(n) || /^(std_logic|ieee)$/i.test(n);
 const isSupply = (q) => (q.dir === 'vcc' || q.dir === 'gnd') && (q.name === '+' || q.name === '-');
 const pinText = (q) => `${q.part} ${q.name}`;
 const part = (id) => ({ kind: 'part', id });
@@ -39,7 +43,7 @@ export function checkCircuit(m, nets = circuitNets(m)) {
 // the parts: their types, ids, labels and the HDL's names they make (a DIP switch's <label>_1…), each once
 function checkNames(m, { err }) {
   const ids = new Map(), names = new Map();
-  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(m.name) || RESERVED.test(m.name)) err(`The circuit's name '${m.name}' is not a valid HDL name`, null);
+  if (badName(m.name)) err(`The circuit's name '${m.name}' is not a valid HDL name`, null);
   for (const p of m.parts) {
     if (!partDef(p.type)) err(`${p.id}: no part '${p.type}' in the library`, part(p.id));
     if (!p.id) err(`A ${p.type} has no id`, part(p.id));
@@ -48,7 +52,7 @@ function checkNames(m, { err }) {
     const ports = [...partInputs(p), ...partLamps(p)].map((x) => x.port);
     if (!ports.length) continue;
     const n = portName(p);
-    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(n) || /__|_$/.test(n) || RESERVED.test(n)) { err(`${p.id}: its label '${n}' is not a valid HDL name`, part(p.id)); continue; }
+    if (badName(n) || /__|_$/.test(n)) { err(`${p.id}: its label '${n}' is not a valid HDL name`, part(p.id)); continue; }
     if (n.toLowerCase() === m.name.toLowerCase()) err(`${p.id}: its label '${n}' is the circuit's name`, part(p.id));
     const clash = ports.find((x) => names.has(x.toLowerCase()));
     if (clash) err(`${p.id}: its label '${n}' is ${names.get(clash.toLowerCase())}'s too${clash === n ? '' : ` (${clash})`}`, part(p.id));

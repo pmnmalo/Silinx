@@ -11,7 +11,6 @@ export const BB_COLS = 30;
 export const BB_ROWS = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 7, g: 8, h: 9, i: 10, j: 11 };
 /** Its power rails, their y (one strip each along the board; a full one's split in the middle): top +, top −, bottom −, bottom +. */
 export const BB_RAILS = { tp: -4, tn: -3, bn: 14, bp: 15 };
-export const RAIL_LEVEL = { tp: '+', tn: '-', bn: '-', bp: '+' };
 
 /** A breadboard's holes: [{ name: 'a1' | 'tp1', strip, dx, dy }] (strip: one name per strip of holes joined; `split`:
  *  its rails cut after the column `split`, each half a strip of its own). */
@@ -83,7 +82,7 @@ export const CLOCK_HZ = { min: 0.1, max: 50, default: 1 };
 export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : null);
 
 /** A pin's place unturned (dx, dy) turned by `rot` quarter turns clockwise. */
-export function turn(dx, dy, rot = 0) {
+function turn(dx, dy, rot = 0) {
   let x = dx, y = dy;
   for (let k = ((rot % 4) + 4) % 4; k > 0; k--) [x, y] = [-y, x];
   return [x, y];
