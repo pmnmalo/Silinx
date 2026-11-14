@@ -81,7 +81,8 @@ test('a design project\'s messages: a drawing made without its HDL named, one wi
   bad.states[1].name = bad.states[0].name;
   await ok('write_file', { project: 'c1', path: 'src/traffic.fsm.json', text: JSON.stringify(bad, null, 2) });
   const chk = await call('check_syntax', { project: 'c1' });
-  assert.equal(chk.text, 'ERROR:Silinx - "" Line 1: top module \'traffic\' not found\nProcess "Check Design" of <traffic> failed (1 error(s), 0 warning(s)).');
+  // (its errors on the drawing, #3934)
+  assert.equal(chk.text, 'ERROR:Silinx - "src/traffic.fsm.json": its module is not made: Two states are named \'CARS\' (letter case does not count). Fix src/traffic.fsm.json.\nProcess "Check Design" of <traffic> failed (1 error(s), 0 warning(s)).');
   assert.doesNotMatch(chk.text, /HDL|\.vhd/);
 });
 

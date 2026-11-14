@@ -113,6 +113,40 @@ test('place_instance: a 4-bit register from a 1-bit one, reg(3:0), its pins on n
   await fails('place_instance', { project: 'a', path: 'src/top.sch.json', module: 'nobody', x: 0, y: 0 }, /no module 'nobody'/);
 });
 
+test('#3950 place_instance width 4 and set_instance_width: the instance\'s Width, the range of its name; 1 a single one again; the errors said', async () => {
+  await ok('new_project', { name: 'w' });
+  await ok('write_file', { project: 'w', path: 'src/reg1.vhd', text: REG });
+  await ok('write_file', { project: 'w', path: 'src/top.vhd', text: 'entity top is end top;\narchitecture a of top is begin end a;\n' });
+  const marker = (id, n, dir, width, y) => ({ id, name: n, dir, width, x: dir === 'in' ? 100 : 700, y });
+  const doc = { version: 4, name: 'top', lang: 'vhdl', generatedFile: 'src/top.vhd', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [],
+    ports: [marker('P1', 'd', 'in', 8, 100), marker('P2', 'ce', 'in', 1, 200), marker('P3', 'clk', 'in', 1, 300), marker('P4', 'q', 'out', 8, 100)] };
+  await ok('write_file', { project: 'w', path: 'src/top.sch.json', text: JSON.stringify(doc) });
+  const r = await ok('place_instance', { project: 'w', path: 'src/top.sch.json', module: 'reg1', name: 'reg', width: 4, x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' } });
+  assert.equal(r.text.split('\n')[0], 'src/top.sch.json: reg(3:0) (reg1, 4 copies) placed at 300, 200');
+  assert.equal(r.data.copies, 4);
+  // on the 8-bit buses: a width mismatch, until its Width is 8
+  assert.deepEqual(r.data.diagnostics.map(d => d.message), ["width mismatch on net 'd': 8 vs 1 bits", "width mismatch on net 'q': 8 vs 1 bits", "reg(3:0): output q of its 4 copies drives the 8-bit net 'q': connect it to a 4-bit bus"]);
+  const w8 = await ok('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'reg', width: 8 });
+  assert.deepEqual(w8.text.split('\n'), ['src/top.sch.json: reg(3:0) is now reg(7:0) (8 copies)', 'src/top.vhd updated from src/top.sch.json']);
+  assert.deepEqual([w8.data.name, w8.data.copies, w8.data.diagnostics], ['reg(7:0)', 8, []]);
+  const hdl = (await ok('read_file', { project: 'w', path: 'src/top.vhd' })).text;
+  assert.equal((hdl.match(/reg_\d : entity work\.reg1/g) || []).length, 8);
+  assert.match(hdl, /reg_7 : entity work\.reg1\n {4}port map \(\n {6}d => d\(7\),\n {6}ce => ce,\n {6}c => clk,\n {6}q => q\(7\)/);
+  assert.doesNotMatch((await ok('check_syntax', { project: 'w', top: 'top' })).text, /ERROR|WARNING/);
+  // the same width: nothing written; the errors refused as the field refuses them
+  assert.equal((await ok('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'reg(7:0)', width: 8 })).text, 'src/top.sch.json: reg(7:0) already 8 copies');
+  await fails('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'reg', width: 0 }, /Width 0: a whole number from 1 to 1024/);
+  await fails('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'reg', width: 2.5 }, /width: an integer/);
+  await fails('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'nobody', width: 2 }, /no instance 'nobody' in src\/top\.sch\.json/);
+  await fails('place_instance', { project: 'w', path: 'src/top.sch.json', module: 'reg1', name: 'r2', width: 5000, x: 300, y: 600 }, /Width 5000: a whole number from 1 to 1024/);
+  // 1: a single instance again, its base a reserved word refused (reg, Verilog's); another base taken
+  await fails('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'reg', width: 1 }, /reserved word of Verilog/);
+  const p2 = await ok('place_instance', { project: 'w', path: 'src/top.sch.json', module: 'reg1', name: 'r2', width: 2, x: 300, y: 600 });
+  assert.equal(p2.data.name, 'r2(1:0)');
+  const one = await ok('set_instance_width', { project: 'w', path: 'src/top.sch.json', instance: 'r2', width: 1 });
+  assert.equal(one.text.split('\n')[0], 'src/top.sch.json: r2(1:0) is now r2 (a single instance)');
+});
+
 test('#3829 rename_module: its symbol file renamed with it, the module\'s name in it; the instances keep their layout', async () => {
   await ok('new_project', { name: 'r' });
   await ok('write_file', { project: 'r', path: 'src/reg1.vhd', text: REG });

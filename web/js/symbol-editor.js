@@ -2,11 +2,12 @@
 // Symbol Editor edits a .sym: its pins' order and side (left, right, top, bottom: a pin dragged to its new place, or
 // its Side and Position in the Properties), the spacing between the pins, the body's width and height, where the
 // module's name is drawn. The symbol drawn as the schematic draws it (sch-svg.js). Its toolbar (the pin earlier /
-// later, Reset to Default, the zoom, ☰ Properties), its foldable Properties panel and its status line
+// later, Reset to Default, the zoom, Exit, ☰ Properties; "Edit Symbol" at its start, as the schematic's Try it says
+// what it is, #3943: it would look like the schematic editor otherwise), its foldable Properties panel and its status line
 // (the pins, the body's size) are the other editors' (docs/UI-GUIDELINES.md); its messages go to the console
 // (onMessage). Standalone: no app state.
 //
-//   const ed = mountSymbolEditor(container, { symbol, module, readOnly, banner, onChange(symbol), onMessage(text, warn) });
+//   const ed = mountSymbolEditor(container, { symbol, module, readOnly, banner, onChange(symbol), onMessage(text, warn), onExit() });
 //   ed.getSymbol(); ed.setModule(module); ed.select(pinName); ed.undo(); ed.redo(); ed.destroy();
 import { h } from './dom.js';
 import { toolIcon, zoomTools } from './editor-icons.js';
@@ -43,9 +44,13 @@ export function mountSymbolEditor(container, opts = {}) {
   // (Reset to Default in the toolbar, with the tools that change the symbol, #3789)
   const resetBtn = btn('Reset to Default', 'The symbol as Silinx draws it by default: the inputs on the left, the outputs on the right, in the module\'s order', () => reset(), 'sy-reset');
   const editing = h('div', { class: 'asm-group' }, earlier, later, resetBtn);
+  // (Exit: the tab closed, as its ×: its changes saved first, #3943)
+  const exitBtn = opts.onExit ? btn('Exit', 'Close the Symbol Editor (its tab), its changes saved', () => opts.onExit(), 'sy-exit') : null;
   const toolbar = h('div', { class: 'asm-toolbar sy-toolbar' },
+    h('span', { class: 'lv-badge sy-badge' }, 'Edit Symbol'),
     readOnly ? null : editing, readOnly ? null : sep(),
     h('div', { class: 'asm-group' }, ...zoomTools(f => setZoom(zoom * f), () => fit()), zoomLbl),
+    exitBtn ? sep() : null, exitBtn ? h('div', { class: 'asm-group' }, exitBtn) : null,
     h('div', { class: 'asm-spacer' }),
     h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Properties', 'Show / hide the properties panel'), { key: PROPS_KEY })),
     opts.banner || null);

@@ -560,7 +560,7 @@ html[data-theme="dark"] .sch-editor .se-symdoc .btn.on { background: var(--m-acc
 html[data-theme="dark"] .sch-editor .lv-editor { background: var(--m-surface-2); color: var(--m-fg); border-color: rgba(76, 192, 107, .5); }
 html[data-theme="dark"] .sch-editor .se-simbar .btn.on { background: rgba(76, 192, 107, .25); border-color: rgba(76, 192, 107, .6); }
 html[data-theme="dark"] .sch-editor .se-simbar { color: var(--m-fg); }   /* (its green: --try-it-bar, --try-it-line) */
-html[data-theme="dark"] .sch-editor .lv-badge { color: var(--m-success); }
+html[data-theme="dark"] :is(.sch-editor, .sym-editor) .lv-badge { color: var(--m-success); }
 html[data-theme="dark"] .sch-editor :is(.lv-lbl, .lv-time) { color: var(--m-muted); }
 html[data-theme="dark"] .sch-editor .lv-clock { background: transparent; border-color: rgba(76, 192, 107, .35); }
 

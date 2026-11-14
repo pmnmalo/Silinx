@@ -9,6 +9,7 @@ export const SYMBOL_PT = {
   'Move the selected pin one place earlier on its side (up, or left)': 'Mover o pino selecionado um lugar para trás no seu lado (para cima, ou para a esquerda)',
   'Move the selected pin one place later on its side (down, or right)': 'Mover o pino selecionado um lugar para a frente no seu lado (para baixo, ou para a direita)',
   'Reset to Default': 'Repor o Predefinido',
+  'Exit': 'Sair', 'Close the Symbol Editor (its tab), its changes saved': 'Fechar o Editor de Símbolos (o seu separador), guardadas as suas alterações',   // (#3943)
   'Click a pin to select it; drag it to another place or side; ◀ ▶ or the arrow keys move it along its side':
     'Clique num pino para o selecionar; arraste-o para outro lugar ou lado; ◀ ▶ ou as setas movem-no ao longo do seu lado',
   'The symbol as Silinx draws it by default: the inputs on the left, the outputs on the right, in the module\'s order':

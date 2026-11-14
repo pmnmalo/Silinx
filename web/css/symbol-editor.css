@@ -11,3 +11,4 @@
 .sym-editor .sy-svg text { pointer-events: none; }
 .sym-editor .sy-ghost { fill: color-mix(in srgb, var(--se-select) 35%, transparent); stroke: var(--se-select); stroke-width: 1.5; pointer-events: none; }
 .sym-editor .sy-mark { stroke: var(--se-select); stroke-width: 2.5; stroke-dasharray: 4 2; pointer-events: none; }
+.sym-editor .sy-badge { flex: none; white-space: nowrap; align-self: center; }

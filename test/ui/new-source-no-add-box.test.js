@@ -63,6 +63,8 @@ uiTest('New Source: no Add to project checkbox on any type\'s File Name and Loca
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor(() => (window.Silinx.fileTree || []).includes('src/ba1.bool.json'), [], { what: 'src/ba1.bool.json registered' });
+  // (its HDL file registered after it: waited for before silinx.json is read, #3953)
+  await page.waitFor(() => (window.Silinx.project?.files || []).some((f) => f.path === 'src/ba1.vhd'), [], { what: 'src/ba1.vhd in the project' });
   const pj = JSON.parse(await readWs(env, 'NsNoBox', 'silinx.json'));
   assert.ok(pj.files.some((f) => f.path === 'src/ba1.vhd' && f.role === 'design'), JSON.stringify(pj.files));
 });
