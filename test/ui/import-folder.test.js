@@ -33,7 +33,10 @@ uiTest('#3965 Import Project (.zip)…: a Silinx project from its folder, in the
   await fs.mkdir(path.join(dir, 'build'), { recursive: true });
   await fs.writeFile(path.join(dir, 'build', 'top.bit'), 'bits');
   await fs.writeFile(path.join(dir, '.DS_Store'), 'x');
-  const count = src.fileTree.length + 3;   // (its files, silinx.json, build/top.bit, .DS_Store)
+  // (the files the browser's picker gives: its files, silinx.json, build/top.bit and .DS_Store; WebKit's leaves the
+  // hidden ones out itself)
+  const taken = src.fileTree.length + 1;
+  let count;
   const none = path.join(env.tmp, 'no-project');
   await fs.mkdir(none, { recursive: true });
   await fs.writeFile(path.join(none, 'notes.txt'), 'notes\n');
@@ -47,6 +50,10 @@ uiTest('#3965 Import Project (.zip)…: a Silinx project from its folder, in the
   // the Silinx project's folder: Silinx preselected, the name its folder's; a folder of no project, said
   await page.click('.dlg-overlay input[data-field=software-xilinx]');
   await page.setFiles(FOLDER, [dir]);
+  // (Chrome reads the folder after the change event: its files in a moment)
+  await page.waitFor((s) => document.querySelector(s).files.length > 0, [FOLDER], { what: 'the folder\'s files' });
+  count = await page.eval((s) => document.querySelector(s).files.length, FOLDER);
+  assert.ok(count === taken + 2 || count === taken + 1, `${count} file(s) picked`);
   await checked(page, 'silinx');
   await info(page, `Folder 'gates-folder': ${count} file(s), project silinx.json`);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'gates-folder', 'name suggested from the folder');
@@ -64,7 +71,7 @@ uiTest('#3965 Import Project (.zip)…: a Silinx project from its folder, in the
   await page.waitFor(() => window.Silinx.project?.name === 'FromFolder' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
   await page.waitConsole(/Imported Silinx project 'FromFolder' \(\d+ source file\(s\)(, \d+ other file\(s\))?\)\./);
   const text = await page.consoleText();
-  assert.ok(text.includes(`Importing folder 'gates-folder': ${count - 2} file(s), 2 build/hidden file(s) skipped.`), text);
+  assert.ok(text.includes(`Importing folder 'gates-folder': ${taken} file(s), ${count - taken} build/hidden file(s) skipped.`), text);
   assert.deepEqual(text.split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), [], 'no warnings');
   const got = await env.server.api('GET', '/api/projects/FromFolder');
   assert.deepEqual([got.fileTree, got.top, got.board], [src.fileTree, src.top, src.board]);

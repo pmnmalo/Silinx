@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { setupUi, uiTest, waitDownload, ROOT, chromeOnly, BROWSER } from './harness.js';
-import { FILE, exportZip, openImport } from './zip-helpers.js';
+import { FILE, FOLDER, exportZip, openImport } from './zip-helpers.js';
 import { emuNotes } from './emu-notes.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { buildInfo } from '../../scripts/build-info.mjs';
@@ -1387,6 +1387,37 @@ uiTest('#483 browser edition: a hostile zip (paths leaving the project, a broken
     constraints: null, device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, top: 'top', stimuli: {}, impl: { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' }, board: null,
   });
   assert.equal(await page.eval(() => [...document.querySelectorAll('#hier .lbl')].some((e) => /^top\b/.test(e.textContent))), true, 'the top module in the hierarchy');
+  assert.equal(await page.eval(() => document.getElementById('err-count').textContent), '', 'no error');
+}, { url: () => 'about:blank' });
+
+// #3965: the browser edition imports a Silinx project from its folder (the folder picker, as an ISE project's), as the
+// .zip of the same project: its build folder and hidden files left out, no warning; the project as stored, and open
+uiTest('#3965 browser edition: a Silinx project imported from its folder, its build folder and hidden files left out, no warnings', E, async (page) => {
+  const top = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity top is port (a : in std_logic; y : out std_logic); end;\narchitecture rtl of top is begin y <= a; end;\n';
+  const pj = { name: 'Elsewhere', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] };
+  const dir = path.join(env.tmp, 'folder-import');
+  for (const [f, t] of Object.entries({ 'silinx.json': JSON.stringify(pj), 'src/top.vhd': top, 'notes.txt': 'notes\n', 'build/top.bit': 'bits', '.DS_Store': 'x' })) {
+    await fs.mkdir(path.dirname(path.join(dir, f)), { recursive: true });
+    await fs.writeFile(path.join(dir, f), t);
+  }
+  await page.goto(siteUrl);
+  await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
+  await openImport(page, 'xilinx');
+  await page.setFiles(FOLDER, [dir]);
+  // (the folder's software preselected; its name the project's)
+  await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=software-silinx]').checked, [], { what: 'Silinx checked' });
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'folder-import');
+  await page.fill('.dlg-overlay input[type=text]', 'FromFolder');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'FromFolder' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitConsole(/Imported Silinx project 'FromFolder'/);
+  const lines = (await page.consoleText()).split('\n');
+  assert.ok(lines.includes("Imported Silinx project 'FromFolder' (1 source file(s))."), lines.join('\n'));
+  // (build/top.bit, and .DS_Store where the browser's picker gives it: WebKit's leaves hidden files out itself)
+  assert.ok(lines.some((l) => /^Importing folder 'folder-import': 3 file\(s\), [12] build\/hidden file\(s\) skipped\.$/.test(l)), lines.join('\n'));
+  assert.deepEqual(lines.filter((l) => /^(WARNING|ERROR)/.test(l)), [], 'no warnings');
+  const got = await page.eval(() => ({ tree: window.Silinx.diskTree, files: window.Silinx.project.files, top: window.Silinx.project.top, trusted: window.Silinx.project.trusted }));
+  assert.deepEqual(got, { tree: ['notes.txt', 'src/top.vhd'], files: pj.files, top: 'top', trusted: false });
   assert.equal(await page.eval(() => document.getElementById('err-count').textContent), '', 'no error');
 }, { url: () => 'about:blank' });
 
