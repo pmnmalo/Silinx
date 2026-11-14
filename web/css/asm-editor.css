@@ -210,16 +210,23 @@
 .asm-editor .asm-codebar .asm-btn { height: 24px; padding: 0 8px; }
 .asm-editor .asm-code-title { font-family: var(--asm-mono); font-size: 12px; color: var(--asm-muted); }
 /* the Try it panel green, as the schematic's Try it (#3798, sch-editor.css .se-simbar, .lv-badge) */
-.asm-editor .asm-codepanel.try-it > .asm-codebar { background: linear-gradient(#f2fbf2, #dcefdc); border-bottom-color: #8fbf8f; }
-.asm-editor .asm-codepanel.try-it { border-top-color: #8fbf8f; }
-.asm-editor .asm-main.dock-left > .asm-codepanel.try-it { border-right-color: #8fbf8f; }
+.asm-editor .asm-codepanel.try-it > .asm-codebar { background: var(--try-it-bar); border-bottom-color: var(--try-it-line); }
+.asm-editor .asm-codepanel.try-it { border-top-color: var(--try-it-line); }
+.asm-editor .asm-main.dock-left > .asm-codepanel.try-it { border-right-color: var(--try-it-line); }
 .asm-editor .try-it .asm-code-title { position: relative; padding-left: 14px; font-family: inherit; font-weight: bold; color: #1b5e1b; }
 .asm-editor .try-it .asm-code-title::before {
   content: ''; position: absolute; left: 0; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: #20c020; box-shadow: 0 0 4px #20c020;
 }
-html[data-theme="dark"] .asm-editor .asm-codepanel.try-it > .asm-codebar { background: rgba(76, 192, 107, .12); border-bottom-color: rgba(76, 192, 107, .35); }
-html[data-theme="dark"] .asm-editor .asm-codepanel.try-it { border-top-color: rgba(76, 192, 107, .35); }
 html[data-theme="dark"] .asm-editor .try-it .asm-code-title { color: var(--m-success, #4cc06b); }
+/* the Try it's body a lighter green than its bar (#3924): the FSM's, the ASM chart's and the Petri net's panel and the
+   schematic's side panel while it is tried out (one class, web/js/fsm-bottom.js, asm-sim.js, petri-sim.js, sch-props.js) */
+html :is(.asm-editor, .sch-editor) .try-it-body { background: var(--try-it-body); }
+/* (the present state's name, in the highlight's orange, a darker one on it: 5.3:1, WCAG AA) */
+.asm-editor .try-it-body .fsm-sim-state { color: #a84a14; }
+html[data-theme="dark"] .asm-editor .try-it-body .fsm-sim-state { color: var(--asm-sim-hot); }
+/* (an output at 1: white on the full green, 5:1; dark, on a darker green) */
+.asm-editor .try-it-body .fsm-led.on { background: var(--asm-ok); }
+html[data-theme="dark"] .asm-editor .try-it-body .fsm-led.on { background: #2d6b3f; }   /* (6.4:1) */
 .asm-editor .asm-code {
   flex: 1; margin: 0; padding: 10px 12px; overflow: auto; background: var(--asm-bg);
   font: 12px/1.5 var(--asm-mono); color: var(--asm-fg); tab-size: 4; white-space: pre;

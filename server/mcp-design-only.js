@@ -27,6 +27,7 @@ function designOnlyRefusal(tool, args, pj) {
     case 'export_project': return args.kind === 'xilinx' ? M.ise(pj.name) : null;   // (Export Project offers Silinx's alone, #3891)
     case 'read_file': return hdl(args.path) ? M.hidden(args.path) : null;
     case 'set_source_properties': case 'convert_module': return M.hidden(args.path || args.module);
+    case 'verify': case 'test_bench_wizard': return args.language !== undefined ? M.language() : null;   // (no Language field there, #3891)
     case 'related_view': return args.view === 'translation' ? M.hidden(args.path) : null;
     default: return null;
   }
@@ -41,16 +42,25 @@ export async function checkDesignOnly(tool, args) {
   if (why) throw toolError(why);
 }
 
-/** The HDL files a project's drawings generate (their `generatedFile`): the HDL that is no source of the user's own. */
-async function generatedFiles(name) {
-  const out = [];
+/** The HDL files a project's drawings generate (their `generatedFile`), each its drawing's: { hdl: drawing }. */
+async function drawingsOfHdl(name) {
+  const out = {};
   for (const f of (await P.fileTree(name)).filter(f => /\.(sch|asm|tt|bool|fsm|pn)\.json$/.test(f))) {
     try {
       const d = JSON.parse(await fs.readFile(path.join(P.projectDir(name), f), 'utf8'));
-      if (typeof d.generatedFile === 'string') out.push(d.generatedFile);
+      if (typeof d.generatedFile === 'string') out[d.generatedFile] = f;
     } catch { /* unreadable: none */ }
   }
   return out;
+}
+/** The HDL files a project's drawings generate: the HDL that is no source of the user's own. */
+const generatedFiles = async name => Object.keys(await drawingsOfHdl(name));
+
+/** A design project's diagnostics as its interface shows them (web/js/design-only.js shownDiag, #3891): an HDL file's,
+ *  its drawing's (`drawn`: no line, the HDL's lines are not the drawing's), the checker Silinx. */
+export async function designDiags(name, diags) {
+  const of = await drawingsOfHdl(name);
+  return diags.map(d => ({ ...d, ...(hdlSideFile(d.file) && of[d.file] ? { file: of[d.file], line: 0, drawn: true } : {}), tool: !d.tool || d.tool === 'HDLCompiler' ? 'Silinx' : d.tool }));
 }
 
 /** project_info of a design project: its top and test bench, its drawings and other files, no HDL, no device, board or
@@ -72,5 +82,5 @@ export async function makeDesignProject(name, pj, args) {
   if (r.error) throw toolError(r.error);
   await P.updateProject(name, cur => asDesignProject(cur));
   const kept = pj.constraints && await fs.stat(path.join(P.projectDir(name), pj.constraints)).then(() => true, () => false) ? ` (${pj.constraints} left on the disk, out of the project)` : '';
-  return { text: `${name}: a design and simulation project now (no FPGA): no board, no constraints${kept}; its HDL is not shown.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, constraints: null } };
+  return { text: `${name}: a design and simulation project now (no FPGA): no board, no constraints${kept}.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, constraints: null } };
 }

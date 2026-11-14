@@ -71,8 +71,12 @@ test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Synta
     const line = lang === 'vhdl' ? 13 : 9;
     assert.equal(await checks(`boolean_${ext}`), ['a', 'b', 'c'].map(i => `WARNING:Silinx:647 - "src/boolean_${ext}.${lang === 'vhdl' ? 'vhd' : 'v'}" Line ${line}: Input <${i}> is never used.`).join('\n')
       + `\nProcess "Check Syntax" of <boolean_${ext}> completed successfully with 3 warning(s) (4 signals, 1 processes).`);
-    // an empty state diagram or ASM chart: no module until it has a state
-    for (const d of [`fsm_${ext}`, `asm_${ext}`]) assert.equal(await checks(d), `ERROR:HDLCompiler - "" Line 1: top module '${d}' not found\nProcess "Check Syntax" of <${d}> failed (1 error(s), 0 warning(s)).`);
+    // an empty state diagram or ASM chart: no module until it has a state, its errors said on it (#3934)
+    const WHY = { fsm: 'The diagram has no states: double-click the drawing to add one', asm: 'The chart has no states; No initial (reset) state selected' };
+    for (const k of ['fsm', 'asm']) {
+      const d = `${k}_${ext}`;
+      assert.equal(await checks(d), `ERROR:Silinx - "src/${d}.${k}.json": its HDL cannot be made: ${WHY[k]}. Fix src/${d}.${k}.json (its HDL is then made).\nProcess "Check Syntax" of <${d}> failed (1 error(s), 0 warning(s)).`);
+    }
   }
 });
 

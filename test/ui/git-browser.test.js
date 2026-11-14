@@ -342,3 +342,26 @@ uiTest('#3194 GitHub Checks: no check yet, the hint after a push, a check queued
   assert.ok(!page.console.some((c) => c.text.includes(gh.token)));
   assert.deepEqual(warnings(page), []);
 }, { url: () => 'about:blank', timeout: 180000 });
+
+// (#3968) the browser edition opened fresh, no project open, not signed in: the Start page in front, its git group after
+// a line with no click, Sign in with GitHub… first, Initialize Repository… (disabled with no project), Open from
+// Repository… last; in Portuguese too. (A failed first ask of git: the server editions', test/ui/git-start.test.js.)
+const startBox = (page) => page.eval(() => [...document.querySelector('#start-page .start-box').children]
+  .filter((e) => e.matches('.entry, hr') && e.getClientRects().length).map((e) => (e.matches('hr') ? '—' : e.textContent)));
+uiTest('#3968 the browser edition opened fresh: the Start page\'s git group, in order, with no click; Portuguese', E, async (page) => {
+  await boot(page);
+  await page.eval(() => { for (const s of [localStorage, sessionStorage]) s.removeItem('silinx.github-token'); window.SilinxApp.closeProject?.(); });
+  await page.eval(() => localStorage.removeItem('silinx.lastProject'));
+  for (const [lang, expected] of [
+    ['en', ['Import Project (.zip)…', 'Export Project (.zip)…', '—', 'Sign in with GitHub…', 'Initialize Repository…', 'Open from Repository…']],
+    ['pt', ['Importar Projeto (.zip)…', 'Exportar Projeto (.zip)…', '—', 'Iniciar sessão no GitHub…', 'Inicializar Repositório…', 'Abrir do Repositório…']],
+  ]) {
+    await page.eval((l) => (l === 'pt' ? localStorage.setItem('silinx.lang', 'pt') : localStorage.removeItem('silinx.lang')), lang);
+    await boot(page);
+    assert.equal(await page.eval(() => !window.Silinx.project && !document.querySelector('.left-page[data-page=start]').hidden), true, `${lang}: the Start page in front, no project`);
+    await page.waitFor((last) => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === last), [expected.at(-1)], { what: `${lang}: the git group` });
+    assert.deepEqual(await startBox(page), expected, lang);
+  }
+  await page.eval(() => localStorage.removeItem('silinx.lang'));
+  assert.deepEqual(warnings(page), []);
+}, { url: () => 'about:blank', timeout: 180000 });

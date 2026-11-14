@@ -177,7 +177,7 @@ export function renderHierarchy() {
 // why; a click resolves it (Generate HDL File…)
 function clashBadge(f) {
   const c = S.hdlClash?.[f];
-  return c ? { text: 'No HDL', warn: true, title: clashTip(c), open: () => resolveHdlClash(f), context: e => viewContextMenu(e, f) } : null;
+  return c ? { text: designOnly() ? 'Not made' : 'No HDL', warn: true, title: clashTip(c), open: () => resolveHdlClash(f), context: e => viewContextMenu(e, f) } : null;
 }
 
 // the view a module of an HDL file is synchronized with: only the module that drawing makes, not the

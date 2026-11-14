@@ -4,7 +4,7 @@
 // instances: core/schdoc-modsym.js). Its messages in the console.
 import { api } from './api.js';
 import { h } from './dom.js';
-import { S, activateDoc, findDoc, openDoc, setDirty } from './app.js';
+import { S, activateDoc, closeDoc, findDoc, openDoc, setDirty } from './app.js';
 import { log, logError } from './console.js';
 import { schModules } from './drawings.js';
 import { reloadProject } from './project.js';
@@ -56,6 +56,7 @@ export async function openSymbol(path) {
         symbol, module, ...(following() ? { readOnly: true, banner: followNotice() } : {}),
         onChange: () => setDirty(d, true),
         onMessage: (msg, warn) => log(warn ? `WARNING: ${msg}` : msg, warn ? 'warn' : 'info'),
+        onExit: () => closeDoc(d),   // (as the tab's ×: saved first, asked if it cannot be, #3943)
       });
       d.symEditor = ed;
       return {

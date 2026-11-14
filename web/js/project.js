@@ -14,7 +14,7 @@ import { renderProcesses, restoreImplStatus, reservedNameDiags } from './process
 import { projectSaved, renderHierarchy } from './design.js';
 import { prefKey } from './prefs.js';
 import { watchProject, stopWatching } from './project-watch.js';
-import { gitStartItems, hasGit, openFromRepositoryDialog } from './git.js';
+import { gitAvailable, gitStartItems, hasGit, openFromRepositoryDialog } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
 import { isDesignOnly } from '/core/project-kind.js';
@@ -239,7 +239,8 @@ let startRenders = 0;
 export async function renderStartPage() {
   const host = $('start-page');
   const n = ++startRenders;
-  const projects = await api.projects().catch(() => []);
+  // (git's presence asked with the projects: its group drawn with the answer, a failed first ask asked again, #3968)
+  const [projects] = await Promise.all([api.projects().catch(() => []), gitAvailable()]);
   const recentHere = recent().filter(r => projects.some(p => p.name === r));
   // (an export: the open project's, disabled with none; project-zip-dialogs.js loaded when used)
   // (the page is the same whether a project is open or not, so that a late drawing keeps it, #494, #1222: an export

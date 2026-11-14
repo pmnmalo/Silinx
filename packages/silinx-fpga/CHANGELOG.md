@@ -3,6 +3,39 @@
 What changed in each version of silinx-fpga, the Silinx toolchain. The newest version is first. Its versions
 are its own (semver, 0.x until its API is stable), apart from Silinx ISE's.
 
+## 0.4.2
+
+In short:
+
+- **The 7-series' .bit compressed:** `bitstreamXc7(frames, db, { compress: true })` writes the compressed form in the
+  packets of Vivado's, where the XDC sets `BITSTREAM.GENERAL.COMPRESS TRUE` (the Digilent boards' configuration): 270 to
+  350 KB for the examples on the xc7a35t instead of 2.19 MB. The open flow writes it when its constraints ask for it.
+
+In detail:
+
+- **The 7-series' bitgen, a comment (#3913):** in `src/fpga/xc7/bitstream.js`, COR0's comment is back on COR0's line (#3876
+  had left it on `CTL1_MFW`'s). No behaviour changes.
+- **A compressed 7-series bitstream (#3876):** `src/fpga/xc7/bitstream.js` writes every frame once, as Vivado 2025.2's
+  compressed `.bit` does (read on the xc7a35t and the xc7a100t). FDRI's last frame stays in the frame buffer (UG470's
+  pipeline), and a multiple frame write copies it: CMD MFW, 12 NOPs, an MFWR of 8 words to the buffer's own frame, then a
+  FAR and an MFWR of 4 words for each other frame (2 NOPs after each MFWR of the block RAM's frames). The frames whose
+  words no other frame of their row has go in runs within a column, each followed by the next frame's words (left in the
+  buffer); each set of equal frames of a row is copied so; CTL1's bit 12 is set before the frames and cleared after LFRM.
+  Not asked, the `.bit` is as before, Project X-Ray's byte for byte. The open flow's Generate Programming File compresses
+  when the XDC's `BITSTREAM.GENERAL.COMPRESS` is `TRUE` (`report.bit.compressed`; the log's line says so).
+- **The readbacks read it:** `readBitXc7` and `readBitFramesXc7` hold FDRI's last frame in the frame buffer, which an MFWR
+  writes after a CMD MFW, to the FAR or, with no FAR after FDRI's, to that frame's own address (an error with no CMD MFW
+  before it, or for a FAR off the part's frames). Checked with Vivado: its compressed and uncompressed `.bit` of the same
+  design read back to the same frames on both parts; the examples' compressed `.bit` reads back to their frames and its
+  round trip against the FASM is clean.
+- **The 7-series' best of 3 seeds (#3825):** `spec.xc7Seeds: 3` (`xc7SeedsOf(impl)`, open-steps.js) has the 7-series' back
+  end (open-flow-xc7.js) place and route with seeds `spec.seed`, +1 and +2, the best Fmax kept (`xc7BestRun`: a tie to the
+  lowest seed, a failed run left out, null when all failed), the seeds in `report.par.seeds` and `par.seed`, in
+  nextpnr-report.json and in the timing report (`xc7SeedsLine`); only the kept run's `Warning:` lines are logged. The
+  runs go at once through `io.nextpnr.xc7.runApart` when its `parallel` allows three (nextpnr-xc7-node.js: each in a
+  worker thread of its own, nextpnr-xc7-node-worker.js; three on a computer of 8 GB and 4 cores, `xc7Parallel`), else one
+  after another through `run`. nextpnr's `--seed` is now the last of its arguments.
+
 ## 0.4.1
 
 In detail:

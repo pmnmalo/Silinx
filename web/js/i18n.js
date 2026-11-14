@@ -114,6 +114,9 @@ const PT = {
   'Generated from the state diagram': 'Gerado a partir do diagrama de estados', 'Generated from the Boolean algebra': 'Gerado a partir da álgebra booleana',
   'Generated from the Petri net': 'Gerado a partir da rede de Petri',
   // a drawing without its HDL file, a file in the way (#230)
+  'Not made': 'Não gerado', 'Make Module…': 'Gerar Módulo…', 'Make Module': 'Gerar Módulo',
+  'Not made: its module was removed from the project. Make Module… (right-click) makes it again from the drawing.': 'Não gerado: o seu módulo foi retirado do projeto. Gerar Módulo… (botão direito) gera-o de novo a partir do desenho.',
+  'Not made: another file of the project folder has its name. Make Module… (right-click) makes it under another name.': 'Não gerado: outro ficheiro da pasta do projeto tem o seu nome. Gerar Módulo… (botão direito) gera-o com outro nome.',
   'No HDL': 'Sem HDL', 'Its HDL cannot be made: its errors are in the Console': 'O seu HDL não pode ser gerado: os seus erros estão na Consola', 'Generate HDL File…': 'Gerar Ficheiro HDL…', 'Generate HDL File': 'Gerar Ficheiro HDL',
   'Design hierarchy': 'Hierarquia do projeto',
   // toolbar / panels
@@ -275,6 +278,7 @@ const PT = {
   'Specify the value to force the selected signal to.': 'Indique o valor a forçar no sinal selecionado.',
   'Specify the properties of the clock to be applied to the selected signal.': 'Indique as propriedades do relógio a aplicar ao sinal selecionado.',
   // the stimuli drawn on the waveforms (#336)
+  'Edit Stimuli: click the waveforms of the inputs': 'Editar Estímulos: clique nas formas de onda das entradas',
   'Edit Stimuli: click the waveforms of the inputs (as the HDL Bencher)': 'Editar Estímulos: clique nas formas de onda das entradas (como no HDL Bencher)',
   'Edit Stimuli': 'Editar Estímulos', 'Stimuli': 'Estímulos', 'Timing…': 'Temporização…', 'Fill Expected Outputs': 'Preencher Saídas Esperadas', 'Save as Test Bench…': 'Guardar como Bancada de Teste…',
   'Stop Editing': 'Terminar a Edição', 'Stimulus Timing': 'Temporização dos Estímulos', 'None (combinational)': 'Nenhum (combinatório)',
@@ -781,6 +785,11 @@ PT_PATTERNS.push(
   [/^No module '(.+?)' in the project\.$/, "Não há nenhum módulo '$1' no projeto."],
   [/^'(.+?)' is not an HDL module\.$/, "'$1' não é um módulo HDL."],
   // a drawing whose HDL file name is taken (#230): the tip of its [No HDL] badge, Generate HDL File…, the New Source wizards
+  // (a design project's, #3891: its module named, Make Module…)
+  [/^Not made: another file of the project folder defines its module (\S+)\. Make Module… \(right-click\) replaces it with the drawing's\.$/, 'Não gerado: outro ficheiro da pasta do projeto já define o seu módulo $1. Gerar Módulo… (botão direito) substitui-o pelo do desenho.'],
+  [/^Not made: its module (\S+) is the module of (\S+)\. Rename one of them\.$/, 'Não gerado: o seu módulo $1 é o módulo de $2. Mude o nome de um deles.'],
+  [/^Another file of the project folder defines the module (\S+) already\.\n\nReplace it with the module of (\S+)\? Its current contents will be lost\.$/, 'Outro ficheiro da pasta do projeto já define o módulo $1.\n\nSubstituí-lo pelo módulo de $2? O seu conteúdo atual perde-se.'],
+  [/^The module of (\S+) was removed from the project\.\n\nMake it again from (\S+) and put it back in the project\?$/, 'O módulo de $1 foi retirado do projeto.\n\nGerá-lo de novo a partir de $2 e repô-lo no projeto?'],
   [/^No HDL file: (\S+) defines its module (\S+) already\. Generate HDL File… \(right-click\) replaces it with the HDL generated from the drawing\.$/, 'Sem ficheiro HDL: $1 já define o seu módulo $2. Gerar Ficheiro HDL… (botão direito) substitui-o pelo HDL gerado a partir do desenho.'],
   [/^No HDL file: (\S+) holds something else\. Generate HDL File… \(right-click\) writes its HDL to (\S+)\.$/, 'Sem ficheiro HDL: $1 contém outra coisa. Gerar Ficheiro HDL… (botão direito) escreve o seu HDL em $2.'],
   [/^No HDL file: its module (\S+) is the module of (\S+)\. Rename one of them\.$/, 'Sem ficheiro HDL: o seu módulo $1 é o módulo de $2. Mude o nome de um deles.'],
@@ -895,6 +904,8 @@ const textState = new WeakMap();   // text node -> { orig, last }
 const attrState = new WeakMap();   // element -> { [attr]: { orig, last } }
 
 function skipEl(el) { return !el || (el.closest && el.closest(SKIP)); }
+// a text box: its text (the user's) left as it is, its own attributes (placeholder, tip) translated as an input's (#3931)
+const isBox = el => el?.tagName === 'TEXTAREA';
 // a text kept as it is inside an element that says so (data-i18n-keep="Design": the Tasks interface's Design task, not
 // "Projeto" as the Design pane, #1046); other texts there translated as usual
 const kept = (el, text) => el?.closest?.('[data-i18n-keep]')?.dataset.i18nKeep === text.trim();
@@ -910,7 +921,7 @@ function translateText(node) {
 }
 
 function translateAttrs(el) {
-  if (skipEl(el)) return;
+  if (skipEl(isBox(el) ? el.parentElement : el)) return;
   let map = attrState.get(el);
   for (const a of ATTRS) {
     if (!el.hasAttribute(a)) continue;
@@ -927,9 +938,10 @@ function translateTree(root) {
   if (!root) return;
   if (root.nodeType === 3) { translateText(root); return; }
   if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
-  if (root.nodeType === 1) { if (skipEl(root)) return; translateAttrs(root); }
+  if (root.nodeType === 1) { if (isBox(root)) return translateAttrs(root); if (skipEl(root)) return; translateAttrs(root); }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-    acceptNode: n => (n.nodeType === 1 && n.matches?.(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    // (a text box: its attributes, not its text)
+    acceptNode: n => (n.nodeType === 1 && n.matches?.(SKIP) ? (isBox(n) && translateAttrs(n), NodeFilter.FILTER_REJECT) : NodeFilter.FILTER_ACCEPT),
   });
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === 3) translateText(n); else translateAttrs(n);
