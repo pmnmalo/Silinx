@@ -21,22 +21,26 @@ export function halfAdder(lang = 'vhdl') {
 
 /**
  * One IC beside nothing: its pin 1 at (0, 0), the supply at (-20, -20) wired to its VCC and GND (unless `power` is
- * false), a logic switch per gate input (label g<gate><a|b>), an LED per output (g<gate>y) its cathode on GND.
+ * false), a logic switch per gate input (label g<gate><a…h>), an LED per output (g<gate>y) its cathode on GND; an open
+ * collector output pulled up (unless `pullUps` is false).
  */
-export function icBench(type, { power = true, name = 'bench' } = {}) {
+export function icBench(type, { power = true, name = 'bench', pullUps = true } = {}) {
   const d = partDef(type);
   const m = newCircuit(name, 'vhdl', { breadboard: false });
   const ic = { id: 'U1', type, x: 0, y: 0 };
   m.parts.push(ic, { id: 'P1', type: 'supply', x: -20, y: -20 });
   const pin = new Map(partPins(ic).map((q) => [q.n, [q.x, q.y]]));
+  const pv = d.pins.find((q) => q.dir === 'vcc').n, pg = d.pins.find((q) => q.dir === 'gnd').n;
   let w = 0;
   const W = (...points) => m.wires.push({ id: `w${++w}`, points, color: 'blue' });
-  if (power) { W([-20, -20], pin.get(14)); W([-20, -19], pin.get(7)); }
+  if (power) { W([-20, -20], pin.get(pv)); W([-20, -19], pin.get(pg)); }
+  let row = 0;
   d.gates.forEach((g, i) => {
-    g.ins.forEach((n, j) => { const id = `S${i + 1}${'ab'[j]}`; m.parts.push({ id, type: 'logic-switch', x: -40, y: 4 * i + j, label: `g${i + 1}${'ab'[j]}` }); W([-40, 4 * i + j], pin.get(n)); });
+    g.ins.forEach((n, j) => { const id = `S${i + 1}${'abcdefgh'[j]}`; m.parts.push({ id, type: 'logic-switch', x: -40, y: row, label: `g${i + 1}${'abcdefgh'[j]}` }); W([-40, row++], pin.get(n)); });
     m.parts.push({ id: `D${i + 1}`, type: 'led', x: 20 + 3 * i, y: 10, label: `g${i + 1}y` });
     W(pin.get(g.out), [20 + 3 * i, 10]);
     W([21 + 3 * i, 10], [-20, -19]);
+    if (d.oc && pullUps) { m.parts.push({ id: `R${i + 1}`, type: 'pull-up', x: 20 + 3 * i, y: 14 }); W([20 + 3 * i, 14], [20 + 3 * i, 10]); }
   });
   return normalizeCircuit(m);
 }
