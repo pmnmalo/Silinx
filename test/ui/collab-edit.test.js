@@ -71,12 +71,12 @@ uiTest('#3182 an editor edits a text file live with the owner: the same text on 
     await page.eval(async () => { await (await import('/js/api.js')).api.renameFile('Live', 'src/pass1.vhd', 'src/pass2.vhd'); });
     await ep.waitConsole(/^src\/pass1\.vhd was deleted by Ana: closed\.$/m, { timeout: 15000 });
     await ep.waitFor(() => window.SilinxApp.S.fileTree.includes('src/pass2.vhd'), [], { what: 'the renamed file at the editor\'s' });
-    // the owner's presence, in Portuguese: the editor as an editor, Copy Editor Link among its commands
+    // the owner's presence, in Portuguese: the editor as an editor, Copy Editor Link and Add a User… (#3996) among its commands
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     await page.click('.collab-presence .collab-btn');
     await page.waitForSelector('body > .menu-popup');
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi')].map((m) => [m.querySelector('.lbl').textContent, m.querySelector('.sc').textContent])),
-      [['Ana', 'você'], ['Rui', 'editor'], ['Copiar Ligação', ''], ['Copiar Ligação de Editor', ''], ['Parar de Partilhar', '']]);
+      [['Ana', 'você'], ['Rui', 'editor'], ['Copiar Ligação', ''], ['Copiar Ligação de Editor', ''], ['Adicionar um Utilizador…', ''], ['Parar de Partilhar', '']]);
     await page.key('Escape');
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
     // (#3355) the owner's project, trusted, untrusted by the editor's first change written: said once, with its button

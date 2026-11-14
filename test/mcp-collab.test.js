@@ -178,6 +178,13 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   const { link, editLink } = r.data;
   assert.match(editLink, new RegExp(`^${base}/#edit=${parseFollowLink(link).room}\\.[A-Za-z0-9_-]{43}\\.[A-Za-z0-9_-]{129}$`));
   assert.equal(r.text, `Sharing 'trafficEd' live, read only, as Ana. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
+  // (#3996: the viewers' and the editors' links differ, the viewers' with no signing key, nothing of the editors' in it;
+  // both QR codes, as Share Project… shows them)
+  assert.notEqual(link, editLink);
+  assert.equal(parseFollowLink(link).sign, null);
+  assert.ok(!link.includes(parseFollowLink(editLink).sign) && !link.includes('#edit='));
+  const q = await ok('share_project', { project: 'trafficEd', server: base, qr: true });
+  assert.deepEqual([decodeSvg(q.data.qr), decodeSvg(q.data.editQr)], [link, editLink]);
   const l = parseFollowLink(link);
   const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Eva' } });
   await page.ready;

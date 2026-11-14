@@ -25,14 +25,25 @@ export const COLLAB_PT = {
   // (a room the owner's page hosts, #3227: web/js/collab-host.js)
   'Through a relay (a Silinx server that lets this site in); else this page hosts it': 'Através de um retransmissor (um servidor Silinx que deixa entrar este sítio); senão, esta página aloja-o',
   'The relay\'s address:': 'O endereço do retransmissor:', 'Its key (from its administrator):': 'A sua chave (do seu administrador):',
-  'Add a Follower…': 'Adicionar um Seguidor…', 'Add a Follower': 'Adicionar um Seguidor', 'Connect': 'Ligar',
+  // (Add a User…, #3996: web/js/collab-users.js, its code taken: web/js/collab-host.js)
+  'Add a User…': 'Adicionar um Utilizador…', 'Add a User': 'Adicionar um Utilizador', 'Connect': 'Ligar', 'Take a Code…': 'Receber um Código…',
+  'Role:': 'Papel:', 'Viewer': 'Espectador', 'Editor': 'Editor',
+  'Give them the link of their role: they open it in Silinx.': 'Dê-lhe a ligação do seu papel: abre-a no Silinx.',
+  'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.':
+    'Um editor edita os ficheiros de texto e os desenhos consigo, em direto. Dê esta ligação só a quem lhos confia.',
+  'A viewer follows the project live, read only: its files and drawings, the editor you have open and your cursor.':
+    'Um espectador segue o projeto em direto, só de leitura: os ficheiros e os desenhos, o editor que tem aberto e o seu cursor.',
+  'This page hosts the project: a user whose page shows a code sends it to you, and Take a Code… takes it.':
+    'Esta página aloja o projeto: um utilizador cuja página mostra um código envia-lho, e Receber um Código… recebe-o.',
   'Connect to the Owner': 'Ligar ao Dono', 'Copy Code': 'Copiar Código', 'Your code:': 'O seu código:', 'The owner\'s code:': 'O código do dono:',
-  'A follower gets a code when they open the link: paste it here.': 'Um seguidor recebe um código ao abrir a ligação: cole-o aqui.',
-  'Send this code back to the follower: they paste it to connect.': 'Envie este código de volta ao seguidor: ele cola-o para se ligar.',
-  'The owner\'s page shares this project itself. Send them your code (Add a Follower…, in their toolbar), then paste the code they send back.':
-    'A página do dono partilha este projeto ela própria. Envie-lhe o seu código (Adicionar um Seguidor…, na barra de ferramentas dele) e cole depois o código que ele lhe enviar.',
-  'This page hosts it: its followers find it when they open the link, or send you a code, which Add a Follower… takes.':
-    'Esta página aloja-o: os seguidores encontram-na ao abrir a ligação, ou enviam-lhe um código, que Adicionar um Seguidor… recebe.',
+  'A user gets a code when they open the link: paste it here.': 'Um utilizador recebe um código ao abrir a ligação: cole-o aqui.',
+  'Send this code back to them: they paste it to connect.': 'Envie-lhe este código de volta: cola-o para se ligar.',
+  'The owner\'s page shares this project itself. Send them your code (Add a User…, in their toolbar), then paste the code they send back.':
+    'A página do dono partilha este projeto ela própria. Envie-lhe o seu código (Adicionar um Utilizador…, na barra de ferramentas dele) e cole depois o código que ele lhe enviar.',
+  'This page hosts it: its followers find it when they open the link, or send you a code, which Add a User… takes.':
+    'Esta página aloja-o: os seguidores encontram-na ao abrir a ligação, ou enviam-lhe um código, que Adicionar um Utilizador… recebe.',
+  // (the live window, #3996: the name on it, Start Sharing)
+  'Start Sharing': 'Começar a Partilhar', 'Your name first: the others see it.': 'O seu nome primeiro: os outros veem-no.',
   // (the meeting point, #3227: web/js/collab-meet.js)
   'Exchange Codes Instead': 'Trocar Códigos em Vez Disso',
   'Looking for the owner at the meeting point…': 'A procurar o dono no ponto de encontro…',

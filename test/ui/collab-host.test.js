@@ -32,7 +32,7 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   const link = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana', { via: 'host' }); return m.sharedLink(); });
   assert.match(link, /^http:\/\/[^/]+\/#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/);
-  await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code \(Add a Follower…, in the toolbar, takes it\); it lasts while this page is open\.$/m);
+  await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code \(Add a User…, in the toolbar, takes it\); it lasts while this page is open\.$/m);
   // the follower opens the link: their name, then their code
   const fp = await env.newPage(env.server.url);
   try {
@@ -53,24 +53,28 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
     assert.match(code, /^S1\.[A-Za-z0-9_-]+$/);
     assert.deepEqual(await fp.eval(() => [...document.querySelectorAll('.dlg-overlay label, .dlg-overlay .collab-copy, .dlg-overlay .dlg-buttons .btn')].map((e) => e.textContent)),
       ['O seu código:', 'Copiar Código', 'O código do dono:', 'Ligar', 'Cancelar']);
-    // a code that is not one, at the owner's: refused, in the console
-    await page.click('.collab-presence .collab-btn');
-    await page.waitForSelector('body > .menu-popup');
-    await page.click('body > .menu-popup .mi', { text: 'Add a Follower…' });
-    await page.waitDialog('Add a Follower');
-    await page.fill('.dlg-overlay textarea[data-field=code]', 'S1.not-a-code');
-    await page.dialogButton('Connect');
-    await page.waitConsole(/^ERROR: Add a Follower: a follower's code is not of this sharing \(or not whole\): its link may be of an earlier one \(each sharing has a new link\); give them this sharing's link again \(Copy Link\) and paste the code their page then shows, whole\.$/m);
+    // a code that is not one, at the owner's: refused, in the console (Add a User…'s Take a Code…, #3996)
+    const takeCode = async (text) => {
+      await page.click('.collab-presence .collab-btn');
+      await page.waitForSelector('body > .menu-popup');
+      await page.click('body > .menu-popup .mi', { text: 'Add a User…' });
+      await page.waitFor(() => !!document.querySelector('.dlg-overlay input[data-field="user-link"]'), [], { what: 'Add a User' });
+      assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-hosted').textContent), 'This page hosts the project: a user whose page shows a code sends it to you, and Take a Code… takes it.');
+      await page.dialogButton('Take a Code…');
+      await page.waitFor(() => !!document.querySelector('.dlg-overlay textarea[data-field=code]'), [], { what: 'the code\'s field' });
+      await page.fill('.dlg-overlay textarea[data-field=code]', text);
+      await page.dialogButton('Connect');
+    };
+    await takeCode('S1.not-a-code');
+    await page.waitConsole(/^ERROR: Add a User: a follower's code is not of this sharing \(or not whole\): its link may be of an earlier one \(each sharing has a new link\); give them this sharing's link again \(Copy Link\) and paste the code their page then shows, whole\.$/m);
+    await page.dialogButton('Close');
+    await page.waitNoDialog();
     // the follower's code, at the owner's: the answer's code
-    await page.click('.collab-presence .collab-btn');
-    await page.waitForSelector('body > .menu-popup');
-    await page.click('body > .menu-popup .mi', { text: 'Add a Follower…' });
-    await page.waitDialog('Add a Follower');
-    await page.fill('.dlg-overlay textarea[data-field=code]', code);
-    await page.dialogButton('Connect');
+    await takeCode(code);
     const answer = await dialogField(page, 'answer');
     assert.match(answer, /^S1\.[A-Za-z0-9_-]+$/);
-    await page.waitConsole(/^Add a Follower: send your code back to the follower; they are in once they paste it\.$/m);
+    await page.waitConsole(/^Add a User: send your code back to them; they are in once they paste it\.$/m);
+    await page.dialogButton('Close');
     await page.dialogButton('Close');
     await page.waitNoDialog();
     // the answer at the follower's: connected, the project read only, the owner's editor followed
@@ -93,7 +97,7 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
     await fp.waitConsole(/^WARNING: Ana's project "Hosted" is no longer followed \(the owner stopped sharing\): what you see is as it was then\.$/m);
     // the warnings and errors: the follower's end of sharing; the owner's refused code
     assert.deepEqual(await warnings(fp), ['WARNING: Ana\'s project "Hosted" is no longer followed (the owner stopped sharing): what you see is as it was then.']);
-    assert.deepEqual(await warnings(page), [`ERROR: Add a Follower: ${"a follower's code is not of this sharing (or not whole): its link may be of an earlier one (each sharing has a new link); give them this sharing's link again (Copy Link) and paste the code their page then shows, whole"}.`]);
+    assert.deepEqual(await warnings(page), [`ERROR: Add a User: ${"a follower's code is not of this sharing (or not whole): its link may be of an earlier one (each sharing has a new link); give them this sharing's link again (Copy Link) and paste the code their page then shows, whole"}.`]);
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); }
 });

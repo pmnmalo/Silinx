@@ -238,7 +238,11 @@ board or a PROM) without the user's say.
 ### A project shared live (#3181, #3182, #3183, #3355)
 
 Share Project… (and the MCP's `share_project`) shares a project through a relay or the owner's page (#3227), end-to-end encrypted with a key in the
-link's fragment: the relay sees no file. A follower's link reads only. An editor's link writes too: its holder changes
+link's fragment: the relay sees no file. A follower's (a viewer's) link reads only. An editor's link writes too, and
+the two are different links (#3996): the editors' carries the room's signing key, which the viewers' has not and cannot
+be derived from, and the relay or host and every participant apply an edit only when its signature is the room's (a
+viewer who forges one is refused). Share Project… shows each link only when asked (a masked field, Show), and its QR
+code only in a window of its own. An editor's link writes: its holder changes
 the text of the project's text files (HDL, constraints, C / C++, notes) and its drawings (#3183: their states and
 transitions, a table's outputs and cells, merged per field into the drawing's structure, `core/collab-model.js`), signed with the link's key; anything
 else an editor changes (another drawing, the project's settings, a new file) is undone from the owner's disk. An editor's link is a

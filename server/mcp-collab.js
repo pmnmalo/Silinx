@@ -153,7 +153,7 @@ export const COLLAB_TOOLS = [
       name: STR('The name the followers see (default: "MCP agent").'),
       server: STR(`The address of the Silinx server whose relay shares it (default ${DEFAULT_SERVER}).`),
       editors: { type: 'boolean', description: 'start: editors may change its text files and drawings too (the result: an editor\'s link besides the follower\'s; what they change written to the disk, a drawing\'s HDL made again from it, through the import gate, the project untrusted from their first change: Xilinx ISE waits until the user trusts it in the interface).' },
-      qr: { type: 'boolean', description: 'start, status: the follow link\'s QR code too, as the interface shows it (#3637): qr, an SVG (black on white).' },
+      qr: { type: 'boolean', description: 'start, status: the follow link\'s QR code too, as the interface shows it (#3637): qr, an SVG (black on white); with editors, the editors\' link\'s too, editQr (#3996).' },
       key: STR('start: the key of a relay on another computer (its config.json\'s relay.key, #3227), instead of the token of a Silinx server on this one.'),
       top: STR('start: a module of the project the links open on, as Share Module… does, live (#3631): …#follow=…&top=<module>; the project shared as it is.'),
     }, required: ['project'], additionalProperties: false },
@@ -161,6 +161,8 @@ export const COLLAB_TOOLS = [
     async run({ project: name, action = 'start', name: who, server, editors = false, key, top, qr = false }) {
       // (the follow link's QR code, #3637)
       const withQr = link => (qr ? { qr: qrSvg(link) } : {});
+      // (the editors' link's QR code too, as Share Project… shows it, #3996)
+      const withEditQr = link => (qr && link ? { editQr: qrSvg(link) } : {});
       if (!['start', 'status', 'stop'].includes(action)) throw toolError('action: start, status or stop');
       if (top !== undefined && action !== 'start') throw toolError('top: with action start only');
       if (top !== undefined && !MODULE_RE.test(top)) throw toolError(`top: '${String(top).slice(0, 64)}' is not a module name`);
@@ -187,7 +189,7 @@ export const COLLAB_TOOLS = [
       if (problem) throw toolError(`top: ${problem}`);
       const on = l => (l && top !== undefined ? withTop(l, top) : l);
       const at = top !== undefined ? `, opening on ${top}` : '';
-      if (cur && !cur.session.closed()) return { text: `'${name}' is shared already${at}: ${on(cur.link)}`, data: { project: name, shared: true, link: on(cur.link), ...withQr(on(cur.link)), ...(cur.editLink ? { editLink: on(cur.editLink) } : {}), ...(top !== undefined ? { top } : {}), followers: cur.session.peers() } };
+      if (cur && !cur.session.closed()) return { text: `'${name}' is shared already${at}: ${on(cur.link)}`, data: { project: name, shared: true, link: on(cur.link), ...withQr(on(cur.link)), ...(cur.editLink ? { editLink: on(cur.editLink), ...withEditQr(on(cur.editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: cur.session.peers() } };
       const origin = serverOf(server);
       const owner = cleanName(who) || 'MCP agent';
       const doc = projectDoc(), bases = new Map();
@@ -210,8 +212,8 @@ export const COLLAB_TOOLS = [
       const editLink = session.editKey ? followLink(`${origin}/`, session.room, session.key, 'relay', session.editKey) : null;
       shares.set(name, { session, link, editLink, server: origin, off, warnings });
       return {
-        text: `Sharing '${name}' live, read only, as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too:\n${on(editLink)}` : ''}`,
-        data: { project: name, shared: true, link: on(link), ...withQr(on(link)), ...(editLink ? { editLink: on(editLink) } : {}), ...(top !== undefined ? { top } : {}), followers: [] },
+        text: `Sharing '${name}' live, read only, as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too${qr ? ' (its QR code: editQr)' : ''}:\n${on(editLink)}` : ''}`,
+        data: { project: name, shared: true, link: on(link), ...withQr(on(link)), ...(editLink ? { editLink: on(editLink), ...withEditQr(on(editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: [] },
       };
     },
   },
