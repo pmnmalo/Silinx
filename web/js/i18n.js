@@ -408,6 +408,8 @@ const PT = {
   // the Silinx interface (web/js/silinx.js, web/js/palette.js): View ▸ Interface / Theme, header, design flow, command palette
   'Interface': 'Interface', 'ISE style': 'Estilo ISE',   // (Silinx: a proper name, the same, #2451)
   'Theme': 'Tema', 'System': 'Sistema', 'Light': 'Claro', 'Dark': 'Escuro', 'Command Palette…': 'Paleta de Comandos…',
+  // (the notation of the Boolean expressions shown, #3915)
+  'Boolean Notation': 'Notação Booleana', 'Electronics / Engineering': 'Eletrónica / Engenharia', 'Text only': 'Só texto', 'Logic / Set theory': 'Lógica / Teoria de conjuntos',
   'Implement': 'Implementar', 'Emulate': 'Emular', 'Design flow': 'Fluxo de projeto',
   'Check Syntax of the selected module': 'Verificar a sintaxe do módulo selecionado',
   'Simulate Behavioral Model of the selected module': 'Simular o modelo comportamental do módulo selecionado',
