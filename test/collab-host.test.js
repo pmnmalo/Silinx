@@ -68,7 +68,7 @@ test('the owner\'s page hosts the room: the project arrives at two followers, an
   const fol2 = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Eva' }, WebSocket: followerSocket(h) }));
   await fol2.ready;
   await until(() => owner.peers().length === 2 && fol2.peers().length === 2, 'all in');
-  assert.deepEqual(owner.peers().map(p => [p.name, p.role]).sort(), [['Eva', 'follower'], ['Rui', 'follower']]);
+  assert.deepEqual(owner.peers().map(p => [p.name, p.role]).sort(), [['Eva', 'viewer'], ['Rui', 'viewer']]);
   assert.equal(docFile(fol2.doc, 'src/top.vhd'), 'entity top is end entity;\n');
   // one room only: the page's project
   await assert.rejects(shareRoom({ url: 'silinx-host:', doc: owned(), user: { name: 'Bo' }, WebSocket: h.owner }), /shares 1 projects already/);

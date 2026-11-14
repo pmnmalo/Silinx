@@ -55,7 +55,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 test('the tools are listed, with their schemas', () => {
   const byName = Object.fromEntries(TOOLS.map(t => [t.name, t]));
   assert.deepEqual(byName.share_project.inputSchema.required, ['project']);
-  assert.deepEqual(byName.share_project.inputSchema.properties.action.enum, ['start', 'status', 'stop']);
+  assert.deepEqual(byName.share_project.inputSchema.properties.action.enum, ['start', 'status', 'promote', 'demote', 'stop']);
   assert.deepEqual(byName.follow_project.inputSchema.required, ['link']);
   // (an editor's link writes, #3182)
   assert.equal(byName.follow_project.annotations.readOnlyHint, false);
@@ -91,7 +91,7 @@ test('share_project start: a page follows it (the project, its files, the owner\
   fs.writeFileSync(path.join(P.projectDir('traffic'), 'src/timer.vhd'), text);
   await until(() => docFile(page.doc, 'src/timer.vhd') === text, 'the change on disk', 8000);
   const st = await until(async () => { const s = await ok('share_project', { project: 'traffic', action: 'status' }); return s.data.followers.length && s; }, 'the follower in the status');
-  assert.equal(st.text, `'traffic' is shared: ${link}\nFollowers:\nRui (follower)`);
+  assert.equal(st.text, `'traffic' is shared: ${link}\nFollowers:\nRui (viewer)`);
   await ok('share_project', { project: 'traffic', action: 'stop' }).then(s => assert.equal(s.text, 'Stopped sharing \'traffic\': its followers no longer see it.'));
   await until(() => page.closed(), 'the page told');
   assert.equal((await ok('share_project', { project: 'traffic', action: 'status' })).text, '\'traffic\' is not shared.');
@@ -153,7 +153,7 @@ test('#3631 share_project top (Share Module…): the links open on the module; f
 
 test('the errors: a project not shared, a bad action, no project, a bad server, no server there, a broken link, a link of a page\'s host', async () => {
   await fails('share_project', { project: 'traffic', action: 'stop' }, '\'traffic\' is not shared');
-  await fails('share_project', { project: 'traffic', action: 'pause' }, 'action: one of start, status, stop');
+  await fails('share_project', { project: 'traffic', action: 'pause' }, 'action: one of start, status, promote, demote, stop');
   const r = await call('share_project', { project: 'nope', server: base });
   assert.equal(r.isError, true);
   assert.match(r.text, /^share_project: no project 'nope'/);
@@ -170,6 +170,54 @@ test('the errors: a project not shared, a bad action, no project, a bad server, 
   await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host.${'P'.repeat(86)}` }, 'link: a project its owner\'s page hosts (…#follow=….host) is followed in a browser, over WebRTC: open the link in Silinx');
   await fails('follow_project', { link: 'http://x/#design=abc' }, 'link: a link to follow (http(s)://…/#follow=…)');
   await fails('follow_project', { link: `#follow=${'a'.repeat(22)}.${'b'.repeat(43)}` }, 'link: a link to follow (http(s)://…/#follow=…)');
+});
+
+// #3997: share_project promote and demote, as the Sharing menu: a viewer (the MCP's follow_project) made an editor,
+// its write then merged and on the disk; made a viewer again, the editors' link renewed, its write refused; the old
+// editors' link writes nothing that reaches the disk; the refusals
+test('#3997 share_project promote / demote: a viewer an editor, an editor a viewer (the editors\' link renewed)', async () => {
+  await ok('new_project_from_example', { name: 'trafficRole', example: 'traffic' });
+  const r = await ok('share_project', { project: 'trafficRole', name: 'Ana', server: base, editors: true });
+  const { link, editLink: old } = r.data;
+  await ok('follow_project', { link, name: 'Bot' });
+  const timer = await P.readFile('trafficRole', 'src/timer.vhd');
+  await fails('follow_project', { link, write: { path: 'src/timer.vhd', text: 'x' } }, 'write: this link follows only (an editor\'s link, …#edit=…, writes)');
+  // refused: no user, an unknown one, a user with another action, a viewer demoted, an editor promoted
+  await fails('share_project', { project: 'trafficRole', action: 'promote' }, 'user: the name of a participant (share_project status lists them)');
+  await fails('share_project', { project: 'trafficRole', action: 'promote', user: 'Zed' }, 'user: no participant named \'Zed\' (Bot)');
+  await fails('share_project', { project: 'trafficRole', action: 'status', user: 'Bot' }, 'user: with action promote or demote only');
+  await fails('share_project', { project: 'trafficRole', action: 'demote', user: 'Bot' }, 'user: \'Bot\' is a viewer already');
+  await fails('share_project', { project: 'nothere', action: 'promote', user: 'Bot' }, '\'nothere\' is not shared');
+  // promoted: its write merged, on the disk
+  const pr = await ok('share_project', { project: 'trafficRole', action: 'promote', user: 'Bot' });
+  assert.equal(pr.text, '\'Bot\' is an editor of \'trafficRole\' now: they edit its text files and drawings.');
+  assert.deepEqual([pr.data.project, pr.data.user, pr.data.role, pr.data.untrusted.content], ['trafficRole', 'Bot', 'editor', 'the participant\'s name']);
+  await until(async () => (await ok('follow_project', { link })).data.editor, 'Bot an editor');
+  await until(async () => /Bot \(editor\)/.test((await ok('share_project', { project: 'trafficRole', action: 'status' })).text), 'Bot an editor at the owner\'s');
+  await fails('share_project', { project: 'trafficRole', action: 'promote', user: 'Bot' }, 'user: \'Bot\' is an editor already');
+  await ok('follow_project', { link, write: { path: 'src/timer.vhd', text: `-- by Bot\n${timer}` } });
+  await until(async () => (await P.readFile('trafficRole', 'src/timer.vhd')) === `-- by Bot\n${timer}`, 'Bot\'s edit on the disk', 8000);
+  // demoted: the editors' link renewed, Bot's write refused
+  const de = await ok('share_project', { project: 'trafficRole', action: 'demote', user: 'Bot' });
+  const renewed = de.data.editLink;
+  assert.notEqual(renewed, old);
+  assert.equal(parseFollowLink(renewed).room, parseFollowLink(old).room);
+  assert.equal(de.text, `'Bot' is a viewer of 'trafficRole' now. The editors' link was renewed (the old one only follows); the other editors keep editing:\n${renewed}`);
+  assert.equal((await ok('share_project', { project: 'trafficRole' })).data.editLink, renewed);
+  await until(async () => !(await ok('follow_project', { link })).data.editor, 'Bot a viewer');
+  await fails('follow_project', { link, write: { path: 'src/timer.vhd', text: 'x' } }, 'write: this link follows only (an editor\'s link, …#edit=…, writes)');
+  // the old editors' link: what it writes never reaches the disk; the renewed one's does
+  await ok('follow_project', { link: old, name: 'Old', write: { path: 'src/timer.vhd', text: `-- by the old link\n${timer}` } });
+  await new Promise(res => setTimeout(res, 400));
+  assert.equal(await P.readFile('trafficRole', 'src/timer.vhd'), `-- by Bot\n${timer}`);
+  await ok('follow_project', { link: renewed, name: 'New', write: { path: 'src/timer.vhd', text: `-- by the new link\n${timer}` } });
+  await until(async () => (await P.readFile('trafficRole', 'src/timer.vhd')) === `-- by the new link\n${timer}`, 'the new link\'s edit on the disk', 8000);
+  for (const l of [link, old, renewed]) await ok('follow_project', { link: l, stop: true });
+  await ok('share_project', { project: 'trafficRole', action: 'stop' });
+  // a share with no editors
+  await ok('share_project', { project: 'trafficRole', name: 'Ana', server: base });
+  await fails('share_project', { project: 'trafficRole', action: 'promote', user: 'Bot' }, '\'trafficRole\' is shared with no editors (share_project start editors: true)');
+  await ok('share_project', { project: 'trafficRole', action: 'stop' });
 });
 
 test('#3182 editors: share_project gives an editor\'s link; follow_project write merges a text file\'s edit, written to the disk by the owner, seen by a follower; what an editor may not change: refused, or undone from the disk', async () => {
@@ -656,7 +704,7 @@ test('#3835 share_project: its connection to the relay lost, its room resumed; m
     await until(async () => (await ok('share_project', { project: 'trafficRs', action: 'status' })).data.connected, 'back', 10_000);
     await until(() => docFile(page.doc, 'src/timer.vhd') === text, 'the change made meanwhile at the follower\'s', 8000);
     const st = await until(async () => { const r = await ok('share_project', { project: 'trafficRs', action: 'status' }); return r.data.followers.length ? r : null; }, 'Rui in the status again', 20_000);
-    assert.equal(st.text, `'trafficRs' is shared: ${link}\nFollowers:\nRui (follower)`);
+    assert.equal(st.text, `'trafficRs' is shared: ${link}\nFollowers:\nRui (viewer)`);
     assert.deepEqual(st.data.warnings, []);
     assert.equal(page.closed(), false);
     assert.deepEqual(ev, []);   // (the follower: no loss, no error)
