@@ -46,7 +46,7 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
     values: () => sim.inputs, changed: () => update(),
   });
   const insRow = h('div', { class: 'fsm-sim-row' }, h('span', { class: 'asm-label' }, 'Inputs'));
-  const body = h('div', { class: 'fsm-panel-body' }, h('div', { class: 'fsm-sim' },
+  const body = h('div', { class: 'fsm-panel-body try-it-body' }, h('div', { class: 'fsm-sim' },
     h('div', { class: 'fsm-sim-row' }, h('span', { class: 'asm-label' }, 'State'), state, next),
     insRow,
     h('div', { class: 'fsm-sim-row' }, h('span', { class: 'asm-label' }, 'Outputs'), outs),

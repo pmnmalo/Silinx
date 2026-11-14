@@ -24,6 +24,10 @@
   --tab-inactive: linear-gradient(#f6f6f6, #dedede);
   --toolbar-grad: linear-gradient(#fdfdfd, #e6e6e6);
   --menu-bg: #f5f6f7;
+  /* the Try it of the drawings (schematic, FSM, ASM chart, Petri net): its bar, its lines and its body, a lighter green (#3798, #3924) */
+  --try-it-bar: linear-gradient(#f2fbf2, #dcefdc);
+  --try-it-line: #8fbf8f;
+  --try-it-body: #eef8ee;
 
   /* schematic (ISE RTL viewer style) */
   --sch-bg: #ffffff;
