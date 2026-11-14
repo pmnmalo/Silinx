@@ -412,7 +412,7 @@ export async function openCircuit(path) {
     },
   });
 }
-export async function syncHdlFromCircuit(path, m) {
+async function syncHdlFromCircuit(path, m) {
   if (await drawnHdlLanguage(path, m)) return;
   const { generateCircuit } = await import('/core/circuit-hdl.js');
   let g;
