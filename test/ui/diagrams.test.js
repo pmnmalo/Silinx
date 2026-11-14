@@ -633,33 +633,34 @@ uiTest('ASM chart editor: add a state, a decision and a case box, connect them, 
     }
     return JSON.parse(last);
   };
-  const isSel = (id) => page.eval((i) => !!document.querySelector(`.doc:not([hidden]) [data-node="${i}"]`)?.classList.contains('sel'), id);
-  const select = async (id) => {
-    await arrange();
-    for (let k = 0; k < 3 && !await isSel(id); k++) {
-      await page.click(await settled(`[data-node="${id}"]`));
-      await page.waitFor((i) => document.querySelector(`.doc:not([hidden]) [data-node="${i}"]`)?.classList.contains('sel'), [id], { timeout: 3000 }).catch(() => {});
-    }
-    assert.ok(await isSel(id), `node ${id} selected`);
-  };
   const newest = async (type) => (await model()).nodes.filter((n) => n.type === type && !ids0.has(n.id)).map((n) => n.id);
-  // nothing selected: a free state
-  await page.click('.doc:not([hidden]) .asm-canvas', {});
-  await page.key('Escape');
+  // (a point of the drawing's background: no box, arrow or port under it)
+  const blank = () => page.eval((d) => {
+    const r = document.querySelector(`${d} .asm-canvas`).getBoundingClientRect();
+    for (let y = r.top + 30; y < r.bottom - 30; y += 20) for (let x = r.left + 30; x < r.right - 30; x += 20) {
+      const e = document.elementFromPoint(x, y);
+      if (e && e.closest('.asm-canvas') && !e.closest('[data-node],[data-edge],[data-port]')) return { x, y };
+    }
+    return null;
+  }, '.doc:not([hidden])');
+  // the State tool (kept pressed, #3971): a free state where the background is clicked
   await tool('State');
+  await page.click(await blank());
   const [s0] = await newest('state');
-  // with the new state selected: a decision on its exit, then a case box on the decision's 1 exit
-  await tool('Decision');
+  // the Decision tool, a click on the new state: a decision on its exit; the Case tool on the decision: a case box on its 1 exit
+  await arrange(); await tool('Decision'); await page.click(await settled(`[data-node="${s0}"]`));
   const [d0] = await newest('decision');
-  await tool('Case');
+  await arrange(); await tool('Case'); await page.click(await settled(`[data-node="${d0}"]`));
   const [c0] = await newest('case');
   let m = await model();
   assert.ok(m.edges.some((e) => e.from === s0 && e.to === d0 && e.port === 'next'));
   assert.ok(m.edges.some((e) => e.from === d0 && e.to === c0 && e.port === 'true'));
-  // two states on the case exits (one per value of the 1-bit input), one on the decision's 0 exit
-  await select(c0); await tool('State');
-  await select(c0); await tool('State');
-  await select(d0); await tool('State');
+  // the State tool, still pressed after each: two states on the case exits (one per value of the 1-bit input), one on
+  // the decision's 0 exit
+  await tool('State');
+  for (const id of [c0, c0, d0]) { await arrange(); await page.click(await settled(`[data-node="${id}"]`)); }
+  assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .draw-tool.active').textContent), 'State');
+  await page.key('Escape');   // (back to the arrow)
   const added = await newest('state');
   assert.equal(added.length, 4);
   m = await model();

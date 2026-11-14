@@ -66,7 +66,9 @@ uiTest('#2176 New Source without the wizard: the ASM chart empty, its first stat
     ['ERROR:ASM - "src/ctl.asm.json": The chart has no states', 'ERROR:ASM - "src/ctl.asm.json": No initial (reset) state selected']);
   assert.deepEqual(await problems(page), []);
   assert.deepEqual(await logProblems(page), []);
+  // (the State tool, then a click on the drawing, #3971)
   await page.click(`${DOC} .asm-add`);
+  await page.click(await page.eval((d) => { const r = document.querySelector(`${d} .asm-canvas`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, DOC));
   await page.waitFor((d) => document.querySelectorAll(`${d} [data-node]`).length === 1, [DOC], { what: 'the state box' });
   assert.equal(await page.eval(() => window.Silinx.active.asmEditor.getModel().nodes[0].type), 'state');
 }, { timeout: 120000 });

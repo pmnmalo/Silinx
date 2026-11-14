@@ -22,6 +22,7 @@ import { linkModel, linkSnapshot } from './ui.js';
 import { toolbarMenu } from './toolbar-menu.js';
 import { mountSideFold } from './side-fold.js';
 import { toolIcon, toolWide, zoomTools } from './editor-icons.js';
+import { pressTool } from './editor-tools.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
 import {
@@ -149,7 +150,7 @@ export function pathD(pts, r = 7) {
 function readOnlyChrome({ root, toolbar, hide, banner }) {
   root.classList.add('asm-readonly');
   // (the tools that change the chart, the language and encoding, Validate and Code: hidden)
-  for (const g of [...toolbar.querySelectorAll('.asm-add, .asm-danger'), ...hide,
+  for (const g of [...toolbar.querySelectorAll('.draw-tool, .asm-danger'), ...hide,
     ...[...toolbar.querySelectorAll('.asm-btn')].filter((b) => /^(Arrange|Validate)$/.test(b.textContent.trim()))]) g.hidden = true;
   // (at the toolbar's right end, before its ⋮ menu)
   if (banner) toolbar.querySelector(':scope > .tb-more').before(banner);
@@ -197,6 +198,20 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     onErrors: (diags) => { onMessage?.('The chart cannot be simulated: correct its errors first'); onValidate?.(diags); },
   });
 
+  // (the select arrow first, then the add tools, each kept pressed until the arrow, another one or Escape, #3971:
+  // editor-tools.js; a press on the background adds its box there, on a box, on that box's free exit)
+  const addTool = (type, icon, label, title) => btn([h('span', { class: `asm-ico ico-${icon}` }), label], title, () => setTool(type), 'draw-tool asm-add');
+  const tools = {
+    select: toolIcon('select', 'select', 'Select and move (drag the background to pan, wheel to zoom)', () => setTool('select'), 'draw-tool'),
+    state: addTool('state', 'state', 'State', 'Click the drawing to add a state box (rectangle), or a box to add it on its free exit'),
+    decision: addTool('decision', 'decision', 'Decision', 'Click the drawing to add a decision box (diamond), or a box to add it on its free exit'),
+    case: addTool('case', 'case', 'Case', 'Click the drawing to add a case box (multi-way decision on the value of a signal, e.g. opcode), or a box to add it on its free exit'),
+    output: addTool('output', 'output', 'Cond. output', 'Click the drawing to add a conditional output box (oval), or a box to add it on its free exit'),
+    always: addTool('always', 'always', 'Every cycle', 'Click the drawing to add an every-cycle block (logic evaluated on every clock cycle, in parallel with the states)'),
+  };
+  let tool = 'select';
+  function setTool(t) { tool = t; pressTool(tools, t, svg, 'adding'); }
+
   const more = toolbarMenu([
     btn('Arrange', 'Automatic layout (states top-down, every-cycle blocks on the right)', () => autoArrange()),
     snapBtn,
@@ -205,11 +220,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
   ], { title: 'Layout', btnClass: 'asm-btn' });
   const toolbar = h('div', { class: 'asm-toolbar asm-chart-toolbar' },
     h('div', { class: 'asm-group' },
-      btn([h('span', { class: 'asm-ico ico-state' }), 'State'], 'Add state box (rectangle)', () => addNode('state'), 'asm-add'),
-      btn([h('span', { class: 'asm-ico ico-decision' }), 'Decision'], 'Add decision box (diamond)', () => addNode('decision'), 'asm-add'),
-      btn([h('span', { class: 'asm-ico ico-case' }), 'Case'], 'Add case box (multi-way decision on the value of a signal, e.g. opcode)', () => addNode('case'), 'asm-add'),
-      btn([h('span', { class: 'asm-ico ico-output' }), 'Cond. output'], 'Add conditional output box (oval)', () => addNode('output'), 'asm-add'),
-      btn([h('span', { class: 'asm-ico ico-always' }), 'Every cycle'], 'Add an every-cycle block (logic evaluated on every clock cycle, in parallel with the states)', () => addNode('always'), 'asm-add')),
+      ...Object.values(tools)),
     sep(),
     h('div', { class: 'asm-group' }, delBtn),
     sep(),
@@ -365,11 +376,12 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     fitted: () => fitted, flash, gOverlay, nextCaseLabel, nodeById, paste, print, redo, render, renderInspector, root,
     rubber, sel: () => sel, selSection, snapV, spaceDown: () => spaceDown, svg, toWorld, uid, undo, updateToolbar,
     view: () => view, zoomAt, zoomBy, readOnly, setDrag: (v) => { drag = v; }, setSel: (v) => { sel = v; },
-    setFitted: (v) => { fitted = v; }, setSpaceDown: (v) => { spaceDown = v; }
+    setFitted: (v) => { fitted = v; }, setSpaceDown: (v) => { spaceDown = v; }, tool: () => tool, setTool
   });
 
   // ---------------------------------------------------------------------------- init
   const offLayout = onLayoutToggled(svg, () => fit());   // (the documents' room changed: Full View, #3804)
+  setTool('select');
   applyView();
   render();
   renderInspector();

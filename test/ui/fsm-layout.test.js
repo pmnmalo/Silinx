@@ -52,9 +52,11 @@ uiTest('#2729 FSM editor: no hint line; labelled selectors and the zoom in the t
   assert.match(tb[0], /^\d+%$/);   // (the zoom level, the view fitted)
   assert.deepEqual(tb.slice(1), []);
   assert.deepEqual(await status(page), ['7 state(s), 8 transition(s)', 'Moore', 'Encoding: Binary']);
-  // counted again: a state added and undone
+  // counted again: a state added (the State tool, a click on the drawing's corner, #3971) and undone; Escape back to the arrow
   await page.click(`${ED} .asm-btn`, { text: 'State' });
+  await page.click(await page.eval((ed) => { const r = document.querySelector(`${ed} .fsm-canvas`).getBoundingClientRect(); return { x: r.left + 12, y: r.top + 12 }; }, ED));
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-info`).textContent === '8 state(s), 8 transition(s)', [ED], { what: 'a state counted' });
+  await page.key('Escape');
   await page.eval(() => window.Silinx.active.fsmEditor.undo());
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-info`).textContent === '7 state(s), 8 transition(s)', [ED], { what: 'undone' });
   // the encoding changed: in the status line too

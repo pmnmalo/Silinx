@@ -295,8 +295,11 @@ const PT = {
   'Instance': 'Instância', 'Constant': 'Constante', 'Net (driven elsewhere)': 'Ligação (excitada noutro sítio)',
   // ASM editor
   'State': 'Estado', 'Decision': 'Decisão', 'Cond. output': 'Saída cond.', 'Arrange': 'Organizar', 'Fit': 'Ajustar', 'Validate': 'Validar',
-  'Add state box (rectangle)': 'Adicionar caixa de estado (retângulo)', 'Add decision box (diamond)': 'Adicionar caixa de decisão (losango)',
-  'Add conditional output box (oval)': 'Adicionar caixa de saída condicional (oval)', 'Delete selection': 'Apagar seleção',
+  'Click the drawing to add a state box (rectangle), or a box to add it on its free exit': 'Clique no desenho para acrescentar uma caixa de estado (retângulo), ou numa caixa para a acrescentar na sua saída livre',
+  'Click the drawing to add a decision box (diamond), or a box to add it on its free exit': 'Clique no desenho para acrescentar uma caixa de decisão (losango), ou numa caixa para a acrescentar na sua saída livre',
+  'Click the drawing to add a case box (multi-way decision on the value of a signal, e.g. opcode), or a box to add it on its free exit': 'Clique no desenho para acrescentar uma caixa de caso (decisão múltipla pelo valor de um sinal, p. ex. opcode), ou numa caixa para a acrescentar na sua saída livre',
+  'Click the drawing to add a conditional output box (oval), or a box to add it on its free exit': 'Clique no desenho para acrescentar uma caixa de saída condicional (oval), ou numa caixa para a acrescentar na sua saída livre',
+  'This box has no free exit': 'Esta caixa não tem nenhuma saída livre', 'Delete selection': 'Apagar seleção',
   'Toggle snapping to the grid': 'Ativar/desativar alinhamento à grelha',
   'Check the chart for errors': 'Verificar erros no diagrama', 'Check the diagram for errors and warnings': 'Verificar erros e avisos no diagrama',
   'Layout': 'Disposição', 'Selection': 'Seleção', 'Machine': 'Máquina',
@@ -315,7 +318,7 @@ const PT = {
   'Encoding:': 'Codificação:',
   // ASM editor: data path and every-cycle blocks
   'Every cycle': 'Cada ciclo', 'every clock cycle': 'em todos os ciclos de relógio', 'Every-cycle block': 'Bloco de cada ciclo',
-  'Add an every-cycle block (logic evaluated on every clock cycle, in parallel with the states)': 'Adicionar um bloco de cada ciclo (lógica avaliada em todos os ciclos de relógio, em paralelo com os estados)',
+  'Click the drawing to add an every-cycle block (logic evaluated on every clock cycle, in parallel with the states)': 'Clique no desenho para acrescentar um bloco de cada ciclo (lógica avaliada em todos os ciclos de relógio, em paralelo com os estados)',
   'Automatic layout (states top-down, every-cycle blocks on the right)': 'Disposição automática (estados de cima para baixo, blocos de cada ciclo à direita)',
   'Used in the generated code comments.': 'Usado nos comentários do código gerado.',
   'Actions on every cycle (one per line)': 'Ações em cada ciclo (uma por linha)',

@@ -32,6 +32,7 @@ import { mountPetriDraw } from './petri-draw.js';
 import { clone } from '/core/util.js';
 import { printDiagram, svgSnapshot } from './print.js';
 import { mountPetriToolbar } from './petri-toolbar.js';
+import { pressTool } from './editor-tools.js';
 import { petriReadOnlyChrome, lockPetriSide } from './petri-readonly.js';
 import { mountDockPanel } from './dock-panel.js';
 import { onLayoutToggled } from './layout-fit.js';
@@ -113,7 +114,7 @@ export function mountPetriEditor(container, opts = {}) {
   const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
   const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
 
-  function setTool(t) { tool = t; arcFrom = null; for (const [k, b] of Object.entries(tools)) b.classList.toggle('active', k === t); svg.classList.toggle('pn-adding', t !== 'select'); render(); }
+  function setTool(t) { tool = t; arcFrom = null; pressTool(tools, t, svg, 'pn-adding'); render(); }
   function addNode(kind, at) {
     const p = { x: snap(at.x), y: snap(at.y) };
     if (kind === 'place') { const id = newId('p'); M.places.push({ id, name: newName('p', M.places), ...p, tokens: 0, capacity: 1, outputs: {} }); sel = { kind, id }; }

@@ -13,7 +13,7 @@ export const FSM_PT = {
   'Delete the selected state or transition (Del)': 'Apagar o estado ou a transição selecionada (Del)',
   'Tables': 'Tabelas', 'State table, transition table and encoded transition table': 'Tabela de estados, tabela de transições e tabela de transições codificada',
   'Layout and conversion': 'Disposição e conversão', 'Step through the diagram: set the inputs, apply clock edges, see the state and the outputs': 'Percorrer o diagrama passo a passo: definir as entradas, aplicar flancos de relógio, ver o estado e as saídas',
-  'State': 'Estado', 'Add a state (or double-click the drawing)': 'Acrescentar um estado (ou duplo clique no desenho)',
+  'State': 'Estado', 'Click the drawing to add a state (or double-click it)': 'Clique no desenho para acrescentar um estado (ou faça duplo clique nele)',
   'Arrange': 'Organizar', 'Automatic layout of the states': 'Disposição automática dos estados', 'Zoom out': 'Reduzir', 'Zoom in': 'Ampliar',
   'Fit': 'Ajustar',
   'Make an ASM chart (.asm.json) of this state machine': 'Fazer um fluxograma ASM (.asm.json) desta máquina de estados',

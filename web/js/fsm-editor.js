@@ -24,6 +24,7 @@ import { h, linkModel, linkSnapshot } from './ui.js';
 import { menuChoice, setChoice, toolbarMenu } from './toolbar-menu.js';
 import { mountSideFold } from './side-fold.js';
 import { toolIcon, toolWide, zoomTools } from './editor-icons.js';
+import { pressTool } from './editor-tools.js';
 import { sv } from './dom.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
 import {
@@ -77,6 +78,15 @@ function readOnlyChrome({ root, toolbar, banner }) {
   if (banner) toolbar.querySelector('.fsm-link').after(banner);
 }
 
+// the select arrow first, pressed, then the State tool, kept pressed until the arrow, Escape or Try it (#3971: editor-tools.js)
+function fsmTools(btn, setTool) {
+  const tools = {
+    select: toolIcon('select', 'select', 'Select and move (drag the background to pan, wheel to zoom)', () => setTool('select'), 'draw-tool'),
+    state: btn([h('span', { class: 'fsm-ico-state' }), 'State'], 'Click the drawing to add a state (or double-click it)', () => setTool('state'), 'draw-tool asm-wide'),
+  };
+  pressTool(tools, 'select');
+  return tools;
+}
 /** The encodings' names, in the toolbar's select and the status line (#2763). */
 export const FSM_ENCODING_NAMES = { binary: 'Binary', gray: 'Gray', onehot: 'One-hot', enum: 'Enumerated' };
 
@@ -120,14 +130,13 @@ export function mountFsmEditor(container, opts = {}) {
   const checkBtn = toolWide('check', 'Check', 'Check the diagram for errors and warnings', () => { runValidate(); opts.onCheck?.(diags.slice()); }, 'fsm-check');
   const tabBtns = {
     tables: btn('Tables', 'State table, transition table and encoded transition table', () => togglePanel('tables'), 'fsm-tab-btn'),
-    sim: toolWide('sim', 'Try it', 'Step through the diagram: set the inputs, apply clock edges, see the state and the outputs', () => togglePanel('sim'), 'fsm-tab-btn'),
+    sim: toolWide('sim', 'Try it', 'Step through the diagram: set the inputs, apply clock edges, see the state and the outputs', () => { togglePanel('sim'); setTool(tool); }, 'fsm-tab-btn'),
   };
   const linkHost = h('span', { class: 'fsm-link' });
-  const stateBtn = btn([h('span', { class: 'fsm-ico-state' }), 'State'], 'Add a state (or double-click the drawing)', () => addState(), 'asm-wide');
+  const tools = fsmTools(btn, (t) => setTool(t)); let tool = 'select';
   const arrangeBtn = btn('Arrange', 'Automatic layout of the states', () => arrange());
   const toolbar = h('div', { class: 'asm-toolbar fsm-toolbar' },
-    h('div', { class: 'asm-group' },
-      stateBtn),
+    h('div', { class: 'asm-group' }, ...Object.values(tools)),
     sep(),
     h('div', { class: 'asm-group' }, delBtn),
     sep(),
@@ -148,6 +157,7 @@ export function mountFsmEditor(container, opts = {}) {
     linkHost);
   const readOnly = !!opts.readOnly;
   const locked = () => readOnly || panel === 'sim';   // (nothing of the diagram changed, #3793)
+  function setTool(t) { tool = locked() ? 'select' : t; pressTool(tools, tool, svg, 'adding'); }   // (locked: the arrow only)
 
   // ---------------------------------------------------------------------------- canvas
   const svg = sv('svg', { class: 'asm-canvas fsm-canvas' });
@@ -262,7 +272,7 @@ export function mountFsmEditor(container, opts = {}) {
     setM: (v) => { M = v; }, setHist: (v) => { hist = v; }, setHi: (v) => { hi = v; },
     setLastKey: (v) => { lastKey = v; }, setLastT: (v) => { lastT = v; }, setSel: (v) => { sel = v; },
     shared: () => shared, setSharedRef: (v) => { shared = v; }, simGone: () => { if (sim && !stateById(sim.state)) resetSim(); },
-    locked, lockable: () => [stateBtn, arrangeBtn, ...encItems, ...styleItems].filter((b) => b.tagName === 'BUTTON')
+    locked, lockable: () => [tools.state, arrangeBtn, ...encItems, ...styleItems].filter((b) => b.tagName === 'BUTTON')
   });
 
   // (a text typed in place that is not valid: to the console, by the document, #2729, as every message, #2718)
@@ -290,7 +300,7 @@ export function mountFsmEditor(container, opts = {}) {
     editLabel, editState, fit, fitted: () => fitted, gOverlay, gStates, geom, paste, print, readOnly, redo, render,
     renderSide: (...a) => renderSide(...a), root, sel: () => sel, snapV, stateById, svg, toWorld, transById, uid, undo,
     view: () => view, zoomAt, zoomBy, setFitted: (v) => { fitted = v; }, setSel: (v) => { sel = v; },
-    setDrag: (v) => { drag = v; }, locked
+    setDrag: (v) => { drag = v; }, locked, tool: () => (locked() ? 'select' : tool), setTool
   });
 
   // ---------------------------------------------------------------------------- side panel (fsm-side.js)

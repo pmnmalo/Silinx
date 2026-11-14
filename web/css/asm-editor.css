@@ -91,6 +91,8 @@
 .asm-editor .asm-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .asm-editor .asm-canvas-wrap { position: relative; flex: 1; min-height: 120px; }
 .asm-editor .asm-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: default; user-select: none; -webkit-user-select: none; touch-action: none; }
+/* (an add tool on, #3971: the Petri net editor's crosshair) */
+.asm-editor .asm-canvas.adding { cursor: crosshair; }
 .asm-editor .asm-canvas.panning, .asm-editor .asm-canvas.space { cursor: grab; }
 .asm-editor .asm-canvas.panning { cursor: grabbing; }
 .asm-editor .asm-canvas.connecting { cursor: crosshair; }

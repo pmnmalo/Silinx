@@ -67,7 +67,8 @@ export function mountAsmOps(ctx) {
     return i === 1 ? 'every_cycle' : `every_cycle${i}`;
   }
 
-  function addNode(type, at) {
+  // (under: a box's id, #3971: the new box on its free exit, none added (null) when it has none)
+  function addNode(type, at, under) {
     const n = { id: newId({ state: 's', decision: 'd', case: 'c', always: 'a' }[type] || 'o'), type, x: 0, y: 0 };
     if (type === 'state') { n.name = uniqueStateName(); n.actions = []; }
     if (type === 'always') { n.name = uniqueBlockName(); n.actions = []; }
@@ -76,13 +77,14 @@ export function mountAsmOps(ctx) {
     if (type === 'output') n.actions = M().outputs[0] ? [`${M().outputs[0].name} = 1`] : [];
     const s = nodeSize(n);
     let parent = null, port = null;
-    if (!at && sel().nodes.size === 1 && type !== 'always') {
-      parent = nodeById([...sel().nodes][0]);
+    if (under ? type !== 'always' : !at && sel().nodes.size === 1 && type !== 'always') {
+      parent = nodeById(under || [...sel().nodes][0]);
       const ex = exitsOf(parent.id);
       port = parent.type === 'case' ? nextCaseLabel(parent) : (portsOf(parent).find((p) => !ex[p]) || null);
       if (!port) parent = null;
+      if (!parent && under) return null;
     }
-    if (at) { n.x = snapV(at.x); n.y = snapV(at.y); }
+    if (at && !parent) { n.x = snapV(at.x); n.y = snapV(at.y); }
     else if (parent) {
       const pb = box(parent);
       if (port === 'false') {

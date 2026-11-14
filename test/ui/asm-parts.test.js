@@ -96,8 +96,18 @@ uiTest('#405 ASM editor parts: the view, Arrange, a box added and deleted, a box
   assert.equal(await edges(), E0);
   await tool('↶');
   assert.equal(await xy(), xy0);
-  // ---- a state box added: a name of its own, selected; Delete takes it away; undone, redone
+  // ---- a state box added (the State tool, a click on the background, #3971): a name of its own, selected; Delete takes
+  // it away; undone, redone; Escape back to the arrow
   await tool('State');
+  await page.click(await page.eval((d) => {
+    const r = document.querySelector(`${d} .asm-canvas`).getBoundingClientRect();
+    for (let y = r.top + 30; y < r.bottom - 30; y += 20) for (let x = r.left + 30; x < r.right - 30; x += 20) {
+      const e = document.elementFromPoint(x, y);
+      if (e && e.closest('.asm-canvas') && !e.closest('[data-node],[data-edge],[data-port]')) return { x, y };
+    }
+    return null;
+  }, D));
+  await page.waitFor((d) => window.Silinx.active.asmEditor.getModel().nodes.length === 6, [D], { what: 'the box added' });
   let m = await model();
   assert.equal(m.nodes.length, 6);
   const added = m.nodes[5];
@@ -106,6 +116,7 @@ uiTest('#405 ASM editor parts: the view, Arrange, a box added and deleted, a box
   await page.waitFor((d, i) => document.querySelector(`${d} [data-node="${i}"]`)?.classList.contains('sel'), [D, added.id], { what: 'the new box selected' });
   await page.key('Delete');
   assert.equal((await model()).nodes.length, 5);
+  await page.key('Escape');
   await tool('↶');
   assert.equal((await model()).nodes.length, 6);
   await tool('↶');

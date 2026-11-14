@@ -11,8 +11,11 @@ export function mountAsmPointer(ctx) {
   const {
     M, addNode, applyView, commit, connect, copySel, deleteSelection, drag, drawTarget, fit, fitted, flash, gOverlay,
     nextCaseLabel, nodeById, paste, print, redo, render, renderInspector, root, rubber, sel, selSection, snapV,
-    spaceDown, svg, toWorld, uid, undo, updateToolbar, view, zoomAt, zoomBy, readOnly, setDrag, setSel, setFitted, setSpaceDown
+    spaceDown, svg, toWorld, uid, undo, updateToolbar, view, zoomAt, zoomBy, readOnly, setDrag, setSel, setFitted, setSpaceDown,
+    tool = () => 'select', setTool = () => {}
   } = ctx;
+  // (tool(): the toolbar's, #3971: 'select', or the type of box a press adds: on the background there, on a box on its
+  // free exit; a port's press still draws an arrow, an arrow's selects it)
 
   // ---------------------------------------------------------------------------- pointer interaction
   function onPointerDown(ev) {
@@ -29,6 +32,13 @@ export function mountAsmPointer(ctx) {
     const start ={ cx: ev.clientX, cy: ev.clientY, w: toWorld(ev.clientX, ev.clientY) };
     try { svg.setPointerCapture(ev.pointerId); } catch { /* not an active pointer */ }
     const sel0 = sel();
+    const add = tool();
+    if (add !== 'select' && !readOnly && ev.button === 0 && !spaceDown() && !portEl && !edgeEl && !(nodeEl && add === 'always')) {
+      setDrag(null);
+      ev.preventDefault();
+      if (!(nodeEl ? addNode(add, null, nodeEl.dataset.node) : addNode(add, start.w))) flash('This box has no free exit');
+      return;
+    }
     if (ev.button === 1 || spaceDown()) {
       setDrag({ mode: 'pan', start, tx: view().tx, ty: view().ty });
     } else if (portEl && nodeEl && !readOnly) {
@@ -163,7 +173,7 @@ export function mountAsmPointer(ctx) {
       f?.focus(); f?.select?.();
       return;
     }
-    if (ev.target.closest?.('[data-edge]')) return;
+    if (ev.target.closest?.('[data-edge]') || tool() !== 'select') return;   // (an add tool: each press added its box)
     setSel({ nodes: new Set(), edge: null });
     const n = addNode('state', toWorld(ev.clientX, ev.clientY));
     focusInspectorSoon(n);
@@ -194,6 +204,7 @@ export function mountAsmPointer(ctx) {
     if (mod && (k === 'a' || k === 'A')) { setSel({ nodes: new Set(M().nodes.map((n) => n.id)), edge: null }); render(); renderInspector(); updateToolbar(); ev.preventDefault(); return; }
     if (k === 'Escape') {
       if (drag()?.mode === 'connect') { setDrag(null); gOverlay.innerHTML = ''; svg.classList.remove('connecting'); }
+      if (tool() !== 'select') { setTool('select'); return; }   // (back to the arrow, #3971)
       setSel({ nodes: new Set(), edge: null }); render(); renderInspector(); updateToolbar(); return;
     }
     if (!mod && (k === '+' || k === '=')) { zoomBy(1.2); return; }

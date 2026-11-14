@@ -14,9 +14,10 @@ export function mountFsmPointer(ctx) {
     M, addState, addTransition, applyView, closeInline, commit, copySel, deleteSelection, drag, editLabel, editState,
     fit, fitted, gOverlay, gStates, geom, paste, print, redo, render, renderSide, root, sel, snapV, stateById, svg,
     toWorld, transById, uid, undo, view, zoomAt, zoomBy, setFitted, setSel, setDrag, readOnly = false,
-    locked = () => readOnly
+    locked = () => readOnly, tool = () => 'select', setTool = () => {}
   } = ctx;
   // (locked: read-only, or while Try it is open, #3793: selected, panned, zoomed; nothing changed)
+  // (tool(): the toolbar's, #3971: 'select', or 'state', a state added at each press on the background)
 
   // ---------------------------------------------------------------------------- pointer
   const hitState = (w, rim = 0) => {
@@ -50,6 +51,13 @@ export function mountFsmPointer(ctx) {
     setFitted(true);
     const sel0 = sel();
     const onItem = ev.target.closest('[data-state],[data-trans]');
+    if (ev.button === 0 && !onItem && tool() === 'state') {
+      closeInline(true);
+      root.focus({ preventScroll: true });
+      ev.preventDefault();
+      addState(toWorld(ev.clientX, ev.clientY));
+      return;
+    }
     if (ev.button === 1 || (ev.button === 0 && !onItem)) {
       closeInline(true);
       if (sel()) { setSel(null); render(); renderSide(); }
@@ -176,6 +184,7 @@ export function mountFsmPointer(ctx) {
     if (tEl) { editLabel(transById(tEl.dataset.trans)); return; }
     const sEl = ev.target.closest('[data-state]');
     if (sEl) { editState(stateById(sEl.dataset.state)); return; }
+    if (tool() !== 'select') return;   // (each press added its state)
     const s = addState(toWorld(ev.clientX, ev.clientY));
     setTimeout(() => editState(s), 0);
   }
@@ -197,6 +206,7 @@ export function mountFsmPointer(ctx) {
     if (k === '+' || k === '=') zoomBy(1.2);
     else if (k === '-') zoomBy(1 / 1.2);
     else if (k === '0' || k === 'f') fit();
+    else if (k === 'Escape' && tool() !== 'select') setTool('select');   // (back to the arrow, #3971)
     else if (k === 'Escape' && sel()) { setSel(null); render(); renderSide(); }
   }
   twoFingerView(svg, { cancel: cancelDrag, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt });
