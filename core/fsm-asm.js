@@ -8,6 +8,7 @@ import {
   transitionsFrom
 } from './fsm.js';
 import { sortedOutputs } from './fsm-hdl.js';
+import { showCond } from './cond-notation.js';
 
 // ---------------------------------------------------------------------------------------
 // FSM <-> ASM chart
@@ -165,7 +166,7 @@ function outputsOfActions(acts, m, prevOuts = {}) {
  * machine (positions, ids, spelling of conditions and the transitions of every state whose
  * behaviour did not change are kept). Throws if the chart is not a plain state machine.
  */
-export function asmToFsm(asmModel, { previous = null } = {}) {
+export function asmToFsm(asmModel, { previous = null, notation = null } = {}) {
   const asm = normalizeAsm(asmModel);
   const why = [];
   if (asm.registers?.length) why.push(`it has internal registers (${asm.registers.map((r) => r.name).join(', ')})`);
@@ -189,6 +190,8 @@ export function asmToFsm(asmModel, { previous = null } = {}) {
     ...(asm.description || prev?.description ? { description: asm.description || prev.description } : {}),
   });
   const W = (n) => m.inputs.find((i) => i.name === n)?.width ?? 1;
+  // a condition the conversion writes (not one the previous diagram had): in the notation asked for (#3915)
+  const written = (text) => { const q = notation && !isOtherwise(text) ? parseCond(text) : null; return q && !q.error ? showCond(q.ast, notation) : text; };
   const asmStates = asm.nodes.filter((n) => n.type === 'state');
   // state ids: the previous diagram's, else the chart's
   const sid = new Map();
@@ -272,6 +275,7 @@ export function asmToFsm(asmModel, { previous = null } = {}) {
       }
       let text = cands.find((x) => valid(x));
       if (text == null) text = cands[cands.length - 1];
+      if (!prevTs.some((t) => t.cond === text)) text = written(text);
       const pt = prevTs.find((t) => t.to === g.to);
       const tr = { id: pt && !m.transitions.some((x) => x.id === pt.id) ? pt.id : newTid(), from: me, to: g.to, cond: /^(1|true)$/i.test(text) ? '' : text, outputs: g.outs };
       if (pt?.bend != null) tr.bend = pt.bend;
@@ -287,7 +291,7 @@ export function asmToFsm(asmModel, { previous = null } = {}) {
       const q = parseCond(prevStay.cond);
       const ok = !q.error && envs.every((env, i) => covered[i] || evalCond(q.ast, env, W) === fn[i]);
       const pos = stay.paths.length === 1 ? stay.paths[0].conds.filter((c) => !c.neg) : [];
-      const text = ok ? prevStay.cond : (pos.length ? condText(pos, W) : condText(stay.paths[0]?.conds || [], W));
+      const text = ok ? prevStay.cond : written(pos.length ? condText(pos, W) : condText(stay.paths[0]?.conds || [], W));
       push({ id: m.transitions.some((x) => x.id === prevStay.id) ? newTid() : prevStay.id, from: me, to: me, cond: text, outputs: {}, ...(prevStay.angle != null ? { angle: prevStay.angle } : {}) });
     }
   }

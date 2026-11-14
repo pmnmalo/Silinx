@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The MCP server's set_notation (#3915, server/mcp-notation.js): the notation of the Boolean expressions it shows, as
 // the interface's Settings ▸ Boolean Notation; none set, Electronics / Engineering; set (kept in config.json), read
-// back, the same again, refused; related_view's results and set_output_logic in it, or in the one a call names.
+// back, the same again, refused; related_view's results and set_output_logic in it, or in the one a call names; the
+// conditions convert_module, convert_drawing and related_view's state diagram write in it (part 2).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -58,4 +59,35 @@ test('#3915 set_notation: Electronics / Engineering by default; set, kept, read 
   assert.equal(bad.isError, true);
   assert.match(bad.text, /notation/);
   assert.equal(config().notation, 'slash');
+});
+
+test('#3915 the conversions write their conditions in the notation set: convert_module, convert_drawing, related_view', async () => {
+  const { fsmFromHdl, asmToFsm, parseCond, isOtherwise } = await import('../core/fsm.js');
+  const { asmFromHdl } = await import('../core/asm-from-hdl.js');
+  const { showCond } = await import('../core/expr-notation.js');
+  const shown = (text, n) => (isOtherwise(text) ? text : showCond(parseCond(text).ast, n));
+  // the traffic example's controller as a plain HDL module (no drawing it is made from)
+  const vhd = fs.readFileSync(new URL('../examples/traffic/src/traffic.vhd', import.meta.url), 'utf8');
+  await ok('new_project', { name: 'tc' });
+  await ok('write_file', { project: 'tc', path: 'src/traffic.vhd', text: vhd });
+  const read = async (p) => JSON.parse((await ok('read_file', { project: 'tc', path: p })).text);
+  const dec = (a) => a.nodes.filter((x) => x.type === 'decision').map((x) => x.cond);
+  await ok('set_notation', { notation: 'logic' });
+  // the module made a state diagram, then an ASM chart
+  let r = await ok('convert_module', { project: 'tc', module: 'traffic', to: 'fsm' });
+  const conds = (await read(r.data.drawing)).transitions.map((t) => t.cond);
+  assert.deepEqual(conds, fsmFromHdl(vhd, { path: 'traffic.vhd' }).model.transitions.map((t) => shown(t.cond, 'logic')));
+  assert.ok(conds.some((c) => /[¬∧∨]/.test(c)), conds.join(' | '));
+  await ok('delete_file', { project: 'tc', path: r.data.drawing });
+  r = await ok('convert_module', { project: 'tc', module: 'traffic', to: 'asm' });
+  const asm = await read(r.data.drawing);
+  assert.deepEqual(dec(asm), dec(asmFromHdl(vhd, { path: 'traffic.vhd' }).model).map((c) => shown(c, 'logic')));
+  // the ASM chart's state diagram (related_view) and the chart made a state diagram (convert_drawing): in Verilog's
+  await ok('set_notation', { notation: 'verilog' });
+  const want = asmToFsm(asm).transitions.map((t) => shown(t.cond, 'verilog'));
+  assert.ok(want.some((c) => /~|&|\|/.test(c)), want.join(' | '));
+  const view = await ok('related_view', { project: 'tc', path: r.data.drawing, view: 'fsm' });
+  assert.deepEqual(view.data.model.transitions.map((t) => t.cond), want);
+  const made = await ok('convert_drawing', { project: 'tc', path: r.data.drawing, to: 'fsm' });
+  assert.deepEqual((await read(made.data.made[0])).transitions.map((t) => t.cond), want);
 });

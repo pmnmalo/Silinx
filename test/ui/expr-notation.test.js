@@ -95,3 +95,26 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
     assert.deepEqual(await notationMenu(page), [['Eletrónica / Engenharia', false], ['Só texto', false], ['Lógica / Teoria de conjuntos', false], ['VHDL', true], ['Verilog', false]]);
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
 });
+
+// an HDL module converted to a state diagram (its context menu in the Design pane): the conditions written in the
+// Settings' notation (#3915 part 2), shown on the drawing as written
+uiTest('#3915 Convert to State Diagram writes its conditions in the Boolean notation of the Settings', E, async (page) => {
+  const { normalizeFsm, generateFsm, fsmFromHdl, parseCond, isOtherwise } = await import('../../core/fsm.js');
+  const { showCond } = await import('../../core/expr-notation.js');
+  const m = normalizeFsm(JSON.parse(fsm));
+  const vhd = generateFsm(m, 'vhdl').code;
+  await makeProject(env, { name: 'NotationConv', files: { 'src/nt.vhd': vhd } });
+  await page.openProject('NotationConv');
+  await notationMenu(page, 'Electronics / Engineering');
+  await page.treeRow('#hier', 'nt', { right: true, exact: true });
+  await page.waitForSelector('body > .menu-popup');
+  await page.click('body > .menu-popup .mi', { text: 'Convert to State Diagram (FSM)…' });
+  await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/nt.fsm.json', [], { what: 'the state diagram', timeout: 15000 });
+  const conds = () => page.eval(async () => JSON.parse(await (await fetch('/api/projects/NotationConv/file?path=src%2Fnt.fsm.json')).text()).transitions.map((t) => t.cond));
+  const plain = fsmFromHdl(vhd, { path: 'src/nt.vhd' }).model.transitions.map((t) => t.cond);
+  const shown = (n) => plain.map((c) => (isOtherwise(c) ? c : showCond(parseCond(c).ast, n)));
+  assert.deepEqual(await conds(), shown('engineering'));
+  assert.ok((await conds()).some((c) => c.includes(B)), (await conds()).join(' | '));
+  // (its labels on the drawing: the file's, as typed)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), shown('engineering'));
+});

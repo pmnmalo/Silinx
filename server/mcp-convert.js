@@ -5,6 +5,7 @@
 // the Boolean algebra of its next-state and output logic. A file that exists is not replaced.
 import * as P from './projects.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT, projectText } from './mcp-util.js';
+import { notationSetting } from './mcp-notation.js';
 
 const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
 const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '') : 'src');
@@ -81,10 +82,13 @@ export const CONVERT_TOOLS = [
       let r;
       if (to === 'asm') {
         const { asmFromHdl } = await import('../core/asm-from-hdl.js');
-        try { r = asmFromHdl(text, { path: info.file, lang: info.lang, module: info.name }); } catch (e) { throw toolError(`'${info.name}' cannot be shown as an ASM chart: ${e.message}`); }
+        // (the conditions it writes in the notation set_notation set, #3915)
+        const notation = await notationSetting();
+        try { r = asmFromHdl(text, { path: info.file, lang: info.lang, module: info.name, notation }); } catch (e) { throw toolError(`'${info.name}' cannot be shown as an ASM chart: ${e.message}`); }
       } else {
         const { fsmFromHdl } = await import('../core/fsm.js');
-        try { r = fsmFromHdl(text, { path: info.file, module: info.name, lang: info.lang }); } catch (e) { throw toolError(`'${info.name}' cannot be shown as a state diagram: ${e.message}`); }
+        const notation = await notationSetting();
+        try { r = fsmFromHdl(text, { path: info.file, module: info.name, lang: info.lang, notation }); } catch (e) { throw toolError(`'${info.name}' cannot be shown as a state diagram: ${e.message}`); }
       }
       // (its HDL file as it is: an edit of the drawing makes it again)
       await P.writeFile(name, target, JSON.stringify({ ...r.model, generatedFile: info.file }, null, 2));
@@ -120,7 +124,8 @@ export const CONVERT_TOOLS = [
       }
       if (to === 'fsm') {
         let f;
-        try { f = F.asmToFsm(m); } catch (e) { throw toolError(`${rel.split('/').pop()} cannot be shown as a state diagram: ${e.message}`); }
+        const notation = await notationSetting();
+        try { f = F.asmToFsm(m, { notation }); } catch (e) { throw toolError(`${rel.split('/').pop()} cannot be shown as a state diagram: ${e.message}`); }
         const n = await freeName(name, dir, `${m.name || 'fsm'}_fsm`, '.fsm.json');
         f.name = n;
         delete f.generatedFile; delete f.base;

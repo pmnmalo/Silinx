@@ -69,7 +69,7 @@ test('related_view: a Verilog source in VHDL (an if generate\'s branches, #3501)
   const net = newPetri('ctl', 'vhdl');
   await call('write_file', { project: 'p', path: 'src/ctl.pn.json', text: JSON.stringify(net, null, 2) });
   const fsm = await ok({ project: 'p', path: 'src/ctl.pn.json', view: 'fsm' });
-  const want = petriToFsm(net);
+  const want = petriToFsm(net, { notation: 'slash' });   // (the notation set, #3915)
   assert.deepEqual([fsm.data.model, fsm.data.states, fsm.data.truncated], [want.fsm, want.states, !!want.truncated]);
 });
 

@@ -306,7 +306,8 @@ uiTest('State diagram (FSM): step-by-step simulation, Mealy labels, module -> di
   const d = JSON.parse(await readWs(env, 'FsmSim', 'src/seq.fsm.json'));
   assert.equal(d.generatedFile, 'src/seq.vhd');
   assert.equal(d.type, 'mealy');
-  assert.deepEqual(d.transitions.map((t) => [t.cond, t.outputs]), [['x', {}], ['!x', { z: '1' }]]);
+  // (its conditions in the Settings' Boolean notation, the tests' /, #3915)
+  assert.deepEqual(d.transitions.map((t) => [t.cond, t.outputs]), [['x', {}], ['/x', { z: '1' }]]);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/seq.vhd'] === 'src/seq.fsm.json', [], { what: 'linked' });
 });
 

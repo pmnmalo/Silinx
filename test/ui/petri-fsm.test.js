@@ -42,7 +42,7 @@ uiTest('#2696 a Petri net\'s state machine, read-only: its [FSM] badge and comma
   }, ED);
   assert.equal(view.banner, 'Read-only, the state space of the Petri net ctl.pn.json (2 states)');
   assert.deepEqual(view.states, ['idle', 'work']);
-  assert.deepEqual(view.labels.sort(), ['!go', 'go']);
+  assert.deepEqual(view.labels.sort(), ['/go', 'go']);   // (in the Settings' Boolean notation, the tests' /, #3915)
   assert.equal(view.readOnly, true);
   assert.equal(view.problems, false);
   assert.equal(view.hint, null);   // (no hint line, #2729)

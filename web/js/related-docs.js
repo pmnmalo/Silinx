@@ -8,6 +8,7 @@ import { h } from './dom.js';
 import { S, closeDoc, findDoc, openDoc, openFile } from './app.js';
 import { api } from './api.js';
 import { log } from './console.js';
+import { getNotation } from './notation.js';
 
 const base = (p) => p.split('/').pop();
 // a drawing's model: its open editor's (saved or not), else the project's file
@@ -48,7 +49,7 @@ export async function openAsmFsm(path) {
   const { asmToFsm } = await import('/core/fsm.js');
   const pj = S.project.name;
   let m;
-  try { m = asmToFsm(await model(path, 'asm', 'asmEditor')); }
+  try { m = asmToFsm(await model(path, 'asm', 'asmEditor'), { notation: getNotation() }); }   // (#3915)
   catch (e) { log(`ERROR: The state diagram of "${path}": ${base(path)} cannot be shown as a state diagram: ${e.message}`, 'err'); return null; }
   const { mountFsmEditor } = await import('./fsm-editor.js');
   if (S.project?.name !== pj) return null;

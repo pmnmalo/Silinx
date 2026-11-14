@@ -5,6 +5,7 @@ import { h } from './dom.js';
 import { S, closeDoc, findDoc, openDoc } from './app.js';
 import { api } from './api.js';
 import { log } from './console.js';
+import { getNotation } from './notation.js';
 
 export async function openPetriFsm(path) {
   const id = `pnfsm:${path}`;
@@ -15,7 +16,7 @@ export async function openPetriFsm(path) {
   try { net = findDoc(`pn:${path}`)?.petriEditor?.getModel() || JSON.parse(await api.readFile(pj, path)); }
   catch (e) { log(`ERROR: Cannot open ${path}: ${e.message}`, 'err'); return null; }
   const { petriToFsm, MAX_FSM_STATES } = await import('/core/petri-fsm.js');
-  const r = petriToFsm(net);
+  const r = petriToFsm(net, { notation: getNotation() });   // (its conditions in the Settings' notation, #3915)
   if (!r.fsm) { log(`ERROR: The state machine of "${path}": ${r.error}`, 'err'); return null; }
   const { mountFsmEditor } = await import('./fsm-editor.js');
   if (S.project?.name !== pj) return null;   // another project opened meanwhile
