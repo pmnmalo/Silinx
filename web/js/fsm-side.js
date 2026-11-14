@@ -8,6 +8,7 @@ import { h } from './ui.js';
 import { lookFields } from './fsm-look.js';
 import { outputLines } from '/core/fsm.js';
 import { dropOutputValues, outputRows, outputsWhere, renameOutputValues, setOutputValue } from '/core/fsm-outputs.js';
+import { designKind } from './project-kind-flag.js';
 
 /** { renderSide } of an FSM editor (M(), sel(): its current model and selection; setSel(s) selects). */
 export function mountSide(ctx) {
@@ -159,7 +160,7 @@ export function mountSide(ctx) {
       list.push({ name: n, width: 1, ...extra });
       commit(); renderMachine();
     };
-    const desc = h('textarea', { class: 'asm-input', rows: 2, placeholder: 'What the machine does (written in the HDL header)' }, M().description || '');
+    const desc = h('textarea', { class: 'asm-input', rows: 2, placeholder: designKind() ? 'What the machine does' : 'What the machine does (written in the HDL header)' }, M().description || '');
     desc.addEventListener('change', () => { if (desc.value.trim()) M().description = desc.value.trim(); else delete M().description; commit(); });
     machineBody.append(
       field('Module name', name),

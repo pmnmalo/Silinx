@@ -5,6 +5,7 @@ import { PROPS_KEY, SYMBOLS_KEY, panelToggle } from './narrow.js';
 import { h } from './dom.js';
 import { ICON } from './sch-editor.js';
 import { GRAPHIC_LABELS, GRAPHIC_TITLES, GRAPHIC_TOOLS } from './sch-graphics.js';
+import { designKind } from './project-kind-flag.js';
 
 /** { optBox } of mountSchEditor (live(): its current values). */
 export function mountSchToolbar(ctx) {
@@ -21,7 +22,8 @@ export function mountSchToolbar(ctx) {
     h('button', { type: 'button', class: 'se-btn wide', 'data-act': 'rewire', title: 'Rearrange Wires: draw the wires again with few bends and crossings, the symbols, I/O markers and net names where they are; with a selection, only its wires. The connections stay the same', html: `${ICON.rewire}<span>Rearrange Wires</span>` }),
     h('button', { type: 'button', class: 'se-btn wide', 'data-act': 'relayout', title: 'Rearrange Schematic: lay the whole schematic out again, easier to read (the inputs on the left, the outputs on the right, the symbols moved in the order of the signals, the wires with few bends and crossings). The connections stay the same', html: `${ICON.beautify}<span>Rearrange Schematic</span>` }),
     // (Curved wires, how the wires are drawn, before Hop-overs, #1175)
-    h('span', { class: 'se-sep' }), h('label', { class: 'se-curved', title: 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)' },
+    h('span', { class: 'se-sep' }), h('label', { class: 'se-curved', title: designKind() ? 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections and the nets the same)'
+      : 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)' },
       curvedBox, h('span', { text: 'Curved wires' })),
     h('label', { class: 'se-hops', title: 'Draw a small arc where two wires cross without connecting' }, hopsBox, h('span', { text: 'Hop-overs' })),
   );

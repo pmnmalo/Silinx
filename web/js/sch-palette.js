@@ -7,6 +7,7 @@ import { devicePrimitives } from '/core/primitives.js';
 import { naturalCompare } from '/core/hier-order.js';
 import { esc, h } from './dom.js';
 import { popupMenu } from './ui.js';
+import { designKind } from './project-kind-flag.js';
 
 /** { catSel, renderPalette, search, symInfo } of mountSchEditor (device(), doc(), infoItem(), modules(), placing(): its current values). */
 export function mountSchPalette(ctx) {
@@ -25,6 +26,8 @@ export function mountSchPalette(ctx) {
     const items = [];
     for (const [type, S] of Object.entries(SYMBOLS)) {
       if (type === 'module' || S.hidden) continue;
+      // (a design project's: no HDL block, no device primitive, #3891)
+      if (designKind() && (type === 'hdlblock' || S.prim)) continue;
       // (a device primitive: of the project's family only, #791)
       if (S.families && !S.families.includes(device()?.family)) continue;
       // parameterised symbols listed under their Xilinx-style names (D2_4E, DEMUX1_4...), then the generic one
@@ -39,7 +42,7 @@ export function mountSchPalette(ctx) {
     // (not a test bench, #332: a Simulation-only source, or a module without ports, which a schematic cannot connect)
     for (const m of Object.values(modules()).filter(x => !x.block && !x.testbench && x.ports?.length).sort((a, b) => naturalCompare(a.name, b.name))) {
       if (m.name === doc().name) continue;
-      items.push({ type: 'module', cat: 'Project modules', title: m.name, desc: `${m.ports?.length || 0} ports${m.lang ? ` · ${m.lang.toUpperCase()}` : ''}${m.file ? ` · ${m.file}` : ''}`, params: { module: m.name, generics: {} } });
+      items.push({ type: 'module', cat: 'Project modules', title: m.name, desc: designKind() ? `${m.ports?.length || 0} ports` : `${m.ports?.length || 0} ports${m.lang ? ` · ${m.lang.toUpperCase()}` : ''}${m.file ? ` · ${m.file}` : ''}`, params: { module: m.name, generics: {} } });
     }
     return items;
   }

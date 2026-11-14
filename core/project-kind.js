@@ -25,6 +25,7 @@ export const DESIGN_ONLY_MESSAGES = {
   ise: name => `the project '${name}' is a design and simulation project (no FPGA): it is exported as a Silinx project, not as an ISE project`,
   hdl: path => `${path}: a design and simulation project has drawings only: choose a board in Design Properties to add HDL sources`,
   hidden: path => `${path}: a design and simulation project does not show its HDL (its drawings are its sources)`,
+  notation: n => `notation ${n}: a design and simulation project shows no HDL (its drawings are its sources)`,
   flow: name => `the project '${name}' is a design and simulation project (no FPGA): choose a board in Design Properties to implement, emulate or program it`,
   language: () => 'a design and simulation project has no HDL language (its drawings are its sources)',
   toDesign: (name, files) => `the project '${name}' cannot become a design and simulation project: its HDL and C sources are not drawings (${files.join(', ')})`,

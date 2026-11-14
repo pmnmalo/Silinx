@@ -328,8 +328,10 @@ const PT = {
   'Registers': 'Registos', 'Reset (initial) value': 'Valor de reset (inicial)', 'Reset value': 'Valor de reset', '+ register': '+ registo',
   'Add an internal register (data path)': 'Adicionar um registo interno (caminho de dados)', 'Generics': 'Genéricos',
   'Default value (integer)': 'Valor por omissão (inteiro)', 'Default value (non-negative integer)': 'Valor por omissão (inteiro não negativo)',
-  '+ generic': '+ genérico', 'Add an integer generic / parameter': 'Adicionar um genérico / parâmetro inteiro', 'Remove': 'Remover',
+  '+ parameter': '+ parâmetro', 'Add an integer parameter': 'Adicionar um parâmetro inteiro', '+ generic': '+ genérico', 'Add an integer generic / parameter': 'Adicionar um genérico / parâmetro inteiro', 'Remove': 'Remover',
   '+ input': '+ entrada', '+ output': '+ saída', 'Add an input port': 'Adicionar um porto de entrada', 'Add an output port': 'Adicionar um porto de saída',
+  'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Parameters are integers, usable in expressions (e.g. cnt == N - 1).':
+    'Os registos são internos: atribua-os como saídas registadas (o próximo valor no flanco do relógio; mantêm-se nos outros casos) e leia-os em qualquer lado. Os parâmetros são inteiros, usáveis em expressões (p. ex. cnt == N - 1).',
   'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Generics are integer VHDL generics / Verilog parameters, usable in expressions (e.g. cnt == N - 1).': 'Os registos são internos: atribua-os como as saídas registadas (valor seguinte no flanco do relógio, mantêm-se nos outros casos) e leia-os em qualquer lado. Os genéricos são generics VHDL / parameters Verilog inteiros, utilizáveis em expressões (p.ex. cnt == N - 1).',
   'Combinational outputs take their default unless assigned. Registered outputs (Reg) hold their value, reset to the default and can be read in conditions, e.g. cnt = cnt + 1.': 'As saídas combinatórias tomam o valor por omissão quando não atribuídas. As saídas registadas (Reg) mantêm o valor, fazem reset para o valor por omissão e podem ser lidas em condições, p.ex. cnt = cnt + 1.',
   // schematic symbol library: categories, decoders / encoders / demultiplexers
@@ -356,7 +358,7 @@ const PT = {
   'signals, types, constants, functions emitted verbatim': 'sinais, tipos, constantes, funções copiados tal e qual',
   'Tip: drag symbols from the Symbols panel; double-click a module symbol to open its source.': 'Dica: arraste símbolos do painel Símbolos; faça duplo clique num símbolo de módulo para abrir a sua fonte.',
   'HDL kept with the schematic': 'HDL guardado com o esquemático',
-  'More…': 'Mais…', 'Place Symbol': 'Colocar Símbolo', 'Datasheet of the symbol: pins, parameters, truth table, equivalent HDL': 'Folha de características do símbolo: pinos, parâmetros, tabela de verdade, HDL equivalente',
+  'More…': 'Mais…', 'Datasheet of the symbol: pins, parameters, truth table': 'Folha de características do símbolo: pinos, parâmetros, tabela de verdade', 'Place Symbol': 'Colocar Símbolo', 'Datasheet of the symbol: pins, parameters, truth table, equivalent HDL': 'Folha de características do símbolo: pinos, parâmetros, tabela de verdade, HDL equivalente',
   // misc
   'Error': 'Erro', 'Warning': 'Aviso', 'Note': 'Nota', 'Failure': 'Falha', 'Running': 'Em curso', 'Running...': 'Em curso...', 'Other': 'Outro',
   'not available': 'indisponível', 'not found': 'não encontrado', 'see log': 'ver registo',
@@ -726,7 +728,7 @@ Object.assign(PT, {
   'Generics (optional)': 'Genéricos (opcional)', 'Add Generic': 'Adicionar Genérico',
   'Constants given when the module is used, e.g. a width (VHDL generic, Verilog parameter).': 'Constantes dadas quando o módulo é usado, p. ex. uma largura (generic em VHDL, parameter em Verilog).',
   'Preview of the code:': 'Pré-visualização do código:',
-  'shown on the sheet and as a comment in the HDL': 'mostrada na folha e como comentário no HDL',
+  'shown on the sheet': 'mostrada na folha', 'shown on the sheet and as a comment in the HDL': 'mostrada na folha e como comentário no HDL',
   'Add at least one input or output.': 'Adicione pelo menos uma entrada ou saída.',
   'A sequential module needs a clock: add a 1-bit input (e.g. clk) on the previous page.': 'Um módulo sequencial precisa de um relógio: adicione uma entrada de 1 bit (p. ex. clk) na página anterior.',
   'Choose the reset input, or No reset.': 'Escolha a entrada de reset, ou Sem reset.',

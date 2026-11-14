@@ -6,6 +6,7 @@
 // c_synthesis_report's (a C source's).
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
+import { isDesignOnly } from '../core/project-kind.js';
 
 const VIEWS = ['translation', 'asm', 'fsm', 'schematic', 'results'];
 const NOTATIONS = ['slash', 'slash-compact', 'textbook', 'compact', 'ascii', 'vhdl', 'verilog'];
@@ -39,7 +40,7 @@ export const VIEW_TOOLS = [
       if (view === 'results') {
         if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json) has results`);
         if (!NOTATIONS.includes(notation)) throw toolError(`notation: ${NOTATIONS.join(', ')}`);
-        return tableResults(name, rel, json(text, rel), notation);
+        return tableResults(name, rel, json(text, rel), notation, isDesignOnly(await P.readProject(name)));
       }
       if (view === 'schematic') {
         if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json) has a schematic`);
@@ -73,7 +74,7 @@ const reply = (name, rel, view, model, more = {}) => ({ text: JSON.stringify(mod
 
 // a truth table's results, as the editor's results panel shows them (web/js/truthtable.js renderResults, #2927): each
 // output's HDL logic too (#2951), and the minimal solution its SOP and POS use (#2950)
-async function tableResults(name, rel, doc, notation) {
+async function tableResults(name, rel, doc, notation, design = false) {
   const L = await import('../core/logic.js');
   const { canonicalCost } = await import('../core/logic-canon.js');
   const m = L.normalizeTable(doc);
@@ -104,7 +105,7 @@ async function tableResults(name, rel, doc, notation) {
     `Canonical SOP: ${r.minterms}   (${r.canonicalCost.sop.terms} term(s), ${r.canonicalCost.sop.literals} literal(s))`, `  ${r.canonicalSop}`,
     `Canonical POS: ${r.maxterms}   (${r.canonicalCost.pos.terms} term(s), ${r.canonicalCost.pos.literals} literal(s))`, `  ${r.canonicalPos}`,
     ...(r.xor ? [`XOR form: ${r.xor}`] : []), `NAND form: ${r.nand}`, `NOR form: ${r.nor}`,
-    `HDL logic: ${r.hdlLogic.name}: ${r.hdlLogic.expr}   (${r.hdlLogic.what})`, '']);
+    `${design ? 'Logic' : 'HDL logic'}: ${r.hdlLogic.name}: ${r.hdlLogic.expr}   (${r.hdlLogic.what})`, '']);   // (a design project's: no HDL, #3891)
   return { text: lines.join('\n').trimEnd(), data: { project: name, path: rel, view: 'results', notation, inputs: m.inputs, outputs } };
 }
 // the minimal solutions of a form, when it has several (#2928), as the editor's selector says them, the one used marked

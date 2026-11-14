@@ -16,7 +16,8 @@ const GATES_TIP = 'The form with the fewest gates, each symbol one gate whatever
 const DELAY_TIP = 'The form with the fewest gates on its longest path, every gate the same delay';
 // the tick box of a result (#2951): ticked, the output's HDL logic (its module and schematic in that form); `pick()` ticks it
 const HDL_TIP = 'The HDL logic of this output: its module and its schematic in this form';
-const hdlTick = (on, pick) => h('input', { type: 'checkbox', class: 'tt-hdl', checked: on, title: HDL_TIP, onchange: e => { if (e.target.checked) pick(); else e.target.checked = true; } });
+const LOGIC_TIP = 'The logic of this output: its module and its schematic in this form';   // (a design project's: no HDL, #3891)
+const hdlTick = (on, pick) => h('input', { type: 'checkbox', class: 'tt-hdl', checked: on, title: designKind() ? LOGIC_TIP : HDL_TIP, onchange: e => { if (e.target.checked) pick(); else e.target.checked = true; } });
 // a form as a circuit: its gates (each symbol one) and its delay (its longest path, every gate the same delay, #1427)
 function circuit(ast) {
   const c = circuitCost(ast);
