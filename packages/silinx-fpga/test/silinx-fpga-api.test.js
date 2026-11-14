@@ -25,7 +25,7 @@ const API = ['CST', 'ECP5_PARTS', 'ECP5_STEPS', 'FAMILY_INFO', 'FAST_SYNTH', 'GO
   'analyzeTiming', 'asText', 'backAnnotateUcf', 'backendOf', 'betweenPaths', 'bitDbS6', 'bitDbXc7', 'bitIndexXc7', 'bitName', 'bitgen', 'bitstreamExtOf', 'boardAutoAssign', 'boardConstraintsText', 'cellCounts', 'checkRouting', 'checkUcf', 'constraintsExtOf', 'constraintsFormatOf',
   'dbFileNames', 'dbFilesFrom', 'deviceChangeIssues', 'ecp5Io', 'deviceFamily', 'deviceGrid', 'engineOf', 'estimatePower', 'experimentalDevice', 'familyFromXise', 'familyName',
   'familyOfPart', 'fetchBitDbS6', 'fpgaModel', 'framesToFeatures', 'gateAssignments', 'generateUcf', 'gowinIo', 'gowinPack', 'ice40Io', 'instArcs', 'isIseFamily', 'knownRouting', 'loadDevice', 'loadGowinChipdb', 'locsNotOnBoard', 'lutTable', 'makeBitDb',
-  'nextpnrIo', 'noFlowMessage', 'openOnlyDevice', 'orderOpenSteps', 'orderSteps', 'pack', 'paramBits', 'paramInt', 'parseUcf', 'parseXdl', 'parseXdlrc', 'pathHighlight', 'pathsText', 'periodNs', 'powerReport',
+  'nextpnrIo', 'noFlowMessage', 'noOpenFlowMessage', 'openFlowDevice', 'openOnlyDevice', 'orderOpenSteps', 'orderSteps', 'pack', 'paramBits', 'paramInt', 'parseUcf', 'parseXdl', 'parseXdlrc', 'pathHighlight', 'pathsText', 'periodNs', 'powerReport',
   'primitiveInstances', 'readBit', 'readBitFramesXc7', 'readXdc', 'readYosysJson', 'readableBlobs', 'registerBackend', 'resourceCount', 'resourceOfPrimitive', 'resourcesOf',
   'rewriteCarryChains', 'runFlow', 'runYosysOnce', 's6DbNames', 's6MapOf', 's6OpenStatus', 'scriptTopError', 'splitBitPart', 'splitPart', 'synthEffort', 'synthGoal', 'synthesizeArea', 'synthesizeFast',
   'synthesizeVerilog', 'timingPaths', 'timingReport', 'ucfPlacesPins', 'usedOfReport', 'vivadoDevice', 'writeBit', 'writeXdc', 'writeXdl', 'xc7SeedsOf', 'yosysWorkerSource'];
@@ -34,7 +34,7 @@ const NODE = ['DB_DIR', 'S6_DB_DIR', 'SHIPPED_DEVICES_DIR', 'XC7_DB_DIR', 'loadB
 
 const PARTS = ['CST', 'FAMILY_INFO', 'LPF', 'MODEL_VERSION', 'OPEN_CHAIN', 'OPEN_STEPS', 'PCF', 'XDC', 'XILINX_STEPS', 'backAnnotateUcf', 'bitName', 'bitstreamExtOf', 'boardAutoAssign', 'boardConstraintsText', 'checkUcf',
   'constraintsExtOf', 'constraintsFormatOf', 'deviceChangeIssues', 'deviceFamily', 'deviceGrid', 'engineOf', 'experimentalDevice', 'familyFromXise', 'familyName', 'familyOfPart', 'fpgaModel', 'generateUcf',
-  'isIseFamily', 'locsNotOnBoard', 'lutTable', 'noFlowMessage', 'openOnlyDevice', 'orderOpenSteps', 'orderSteps', 'parseUcf', 'parseXdl', 'parseXdlrc', 'periodNs', 'primitiveInstances',
+  'isIseFamily', 'locsNotOnBoard', 'lutTable', 'noFlowMessage', 'noOpenFlowMessage', 'openFlowDevice', 'openOnlyDevice', 'orderOpenSteps', 'orderSteps', 'parseUcf', 'parseXdl', 'parseXdlrc', 'periodNs', 'primitiveInstances',
   'readXdc', 'resourceCount', 'resourceOfPrimitive', 'resourcesOf', 's6MapOf', 'splitBitPart', 'ucfPlacesPins', 'usedOfReport', 'vivadoDevice', 'writeXdc', 'writeXdl', 'xc7SeedsOf'];
 
 test('#1678 the API\'s names, each defined; ./parts: some of them; ./node: all and the loaders', () => {
