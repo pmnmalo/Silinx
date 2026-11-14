@@ -154,12 +154,23 @@ uiTest('#3972 the same project in two tabs: a save in one is told to the other, 
     await other.waitConsole(/src\/a\.vhd: the editor's version kept, written over the disk's\./);
     await page.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor?.getValue() === t, [`${A()}-- tab B\n`], { what: 'A\'s editor reloaded' });
     assert.equal(await readWs(env, 'TwoTabs', 'src/a.vhd'), `${A()}-- tab B\n`);
+    // both tabs save the file at once: whichever is written last, the other tab is told, and both show the disk's text
+    await Promise.all([page, other].map((p, k) => p.eval((t) => {
+      const d = window.SilinxApp.S.docs.find((o) => o.path === 'src/a.vhd');
+      d.editor.setValue(t);
+      clearTimeout(d._autosave);
+      return window.SilinxApp.saveAll();
+    }, `${A()}-- at once ${k}\n`)));
+    for (const p of [page, other]) await p.waitFor(() => !window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty, [], { what: 'saved at once' });
+    const disk = await readWs(env, 'TwoTabs', 'src/a.vhd');
+    assert.match(disk, /-- at once [01]\n$/);
+    for (const p of [page, other]) await p.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.getValue() === t, [disk], { what: 'each editor the disk\'s text' });
     // settled: neither tab told again (the reloads are not saves), nor of its own saves
     const [a0, b0] = [await told(page), await told(other)];
     await new Promise((r) => setTimeout(r, 2000));
     assert.deepEqual([await told(page), await told(other)], [a0, b0]);
     assert.deepEqual(await page.eval(() => window.__console().match(/(?:reloaded|Changed)[^\n]*outside Silinx/g)), null);
-    assert.equal(await editorText(other, 'src/a.vhd'), `${A()}-- tab B\n`);
+    assert.equal(await editorText(other, 'src/a.vhd'), disk);
     assert.deepEqual([warnings(page), warnings(other)], [[], []]);
   } finally { await other.close?.(); }
 });

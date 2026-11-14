@@ -543,7 +543,6 @@ Object.assign(PT, {
   'Its build folder (build) and hidden files are not imported.': 'A sua pasta de compilação (build) e os ficheiros ocultos não são importados.',
   'or .zip file:': 'ou ficheiro .zip:',
   'The folder holds no silinx.json nor .xise: it is not a project Silinx reads.': 'A pasta não tem silinx.json nem .xise: não é um projeto que o Silinx leia.',
-  'It also opens a project bundle (.silinx.json) made with an earlier version.': 'Também abre um pacote de projeto (.silinx.json) feito com uma versão anterior.',
   'Easiest setup on any OS:': 'Configuração mais simples em qualquer sistema operativo:',
   'build the private Docker image with the Silinx kit (docker/ise/README.md):': 'construa a imagem Docker privada com o kit do Silinx (docker/ise/README.md):',
   '(Windows: build-ise-image.ps1). It configures Silinx automatically.': '(Windows: build-ise-image.ps1). Configura o Silinx automaticamente.',

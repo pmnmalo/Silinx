@@ -54,8 +54,10 @@ export function diffScans(before, after) {
  *   subscribe(name, onChange, { client }) -> unsubscribe; onChange({ project, changes, tab }) (tab: another page's)
  *   hold(name, client) -> release: the changes made until release() are this server's own: not told to the page
  *     `client` (the page that asked), told to the project's other pages that name theirs; a hold of no page's, to none
+ *   acquire(name, client) -> Promise<release>: hold(), once the other pages' holds of the project ended and what they
+ *     changed was read (two tabs' requests at once: each one's told to the other, #3972); after `wait` ms, held anyway
  */
-export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan } = {}) {
+export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan, wait = 2000 } = {}) {
   const watched = new Map();   // key -> { name, dir, listeners, snap, holds, writers, timer, inflight, next, wasBusy, resync, releases, ready }
   const NOBODY = Symbol('a hold of no page');
   const keyOf = name => String(name).toLowerCase();   // (case-insensitive file systems: one folder)
@@ -79,7 +81,7 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     if (held || w.wasBusy || w.resync) {
       if (!ran && !w.wasBusy && !w.writers.has(NOBODY)) tell(w, changes, client => client != null && !w.writers.has(client), { tab: true });
       w.wasBusy = held && busy(w.name); w.resync = w.releases !== releases;
-      if (!w.holds && !w.resync && !w.wasBusy && !busy(w.name)) w.writers.clear();   // (all they wrote read and told)
+      if (!w.holds && !w.resync) { w.writers.clear(); wake(w); }   // (all they wrote read, and told unless a run's)
       return;
     }
     w.writers.clear();
@@ -94,7 +96,7 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     const key = keyOf(name);
     let w = watched.get(key);
     if (!w) {
-      w = { name, dir: dirOf(name), listeners: new Map(), snap: new Map(), holds: 0, writers: new Set(), inflight: null, next: null, wasBusy: false, resync: false, releases: 0 };
+      w = { name, dir: dirOf(name), listeners: new Map(), snap: new Map(), holds: 0, writers: new Set(), waiters: [], inflight: null, next: null, wasBusy: false, resync: false, releases: 0 };
       w.ready = scanDir(w.dir).then(s => { w.snap = s; });
       w.timer = setInterval(() => { poll(w, { after: false }).catch(() => {}); }, interval);
       w.timer.unref?.();
@@ -103,8 +105,25 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     w.listeners.set(onChange, client || null);
     return () => {
       w.listeners.delete(onChange);
-      if (!w.listeners.size && watched.get(key) === w) { clearInterval(w.timer); watched.delete(key); }
+      if (!w.listeners.size && watched.get(key) === w) { clearInterval(w.timer); watched.delete(key); wake(w); }
     };
+  }
+
+  const wake = w => { for (const r of w.waiters.splice(0)) r(); };
+  async function acquire(name, client = null) {
+    const key = keyOf(name), w = watched.get(key);
+    const others = () => [...w.writers].some(c => c !== client);
+    const until = Date.now() + wait;
+    // (another page's request on the project: its end waited for, then its changes read and told, so each page's are
+    // told apart; a request of no page waits for none, as before)
+    while (w && client && others() && watched.get(key) === w && Date.now() < until) {
+      if (w.holds) {
+        let timer;
+        await new Promise(r => { w.waiters.push(r); timer = setTimeout(r, until - Date.now()); });
+        clearTimeout(timer);
+      } else await poll(w).catch(() => {});
+    }
+    return hold(name, client);
   }
 
   function hold(name, client = null) {
@@ -113,11 +132,11 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     w.holds++;
     w.writers.add(client || NOBODY);
     let done = false;
-    return () => { if (done) return; done = true; w.holds--; w.resync = true; w.releases++; poll(w).catch(() => {}); };
+    return () => { if (done) return; done = true; w.holds--; w.resync = true; w.releases++; if (!w.holds) wake(w); poll(w).catch(() => {}); };
   }
 
   /** Looks at the project now (the tests; a page told sooner). */
   const check = name => { const w = watched.get(keyOf(name)); return w ? poll(w) : Promise.resolve(); };
   const close = () => { for (const w of watched.values()) clearInterval(w.timer); watched.clear(); };
-  return { subscribe, hold, check, close, watching: name => watched.has(keyOf(name)) };
+  return { subscribe, hold, acquire, check, close, watching: name => watched.has(keyOf(name)) };
 }

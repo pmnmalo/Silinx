@@ -232,7 +232,7 @@ test('#3972 a page\'s request: told to the project\'s other pages, not to it; a 
   release();
   assert.deepEqual(await look(), { a: [{ path: 'src/b.vhd', kind: 'created' }], b: [], anon: [] }, 'B right after A');
   assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'told once');
-  // the two tabs' requests at once: each one's told to neither (as a request of no page)
+  // the two tabs' holds overlapping (hold(), not acquire()): each one's told to neither (as a request of no page)
   const ra = w.hold('p5', 'tab-a'), rb = w.hold('p5', 'tab-b');
   await fs.writeFile(path.join(dir, 'src', 'both.vhd'), '--\n');
   ra(); rb();
@@ -263,6 +263,56 @@ test('#3972 a page\'s request: told to the project\'s other pages, not to it; a 
   const told = [{ path: 'src/mcp.vhd', kind: 'created' }];
   assert.deepEqual(await look(), { a: told, b: told, anon: told });
   w.close();
+});
+
+// #3972: the two tabs' requests at once: the second waits for the first's end and its changes read, so each tab's
+// changes are told to the other; a request of no page waits for none; one waited for longer than `wait`: held anyway.
+test('#3972 acquire: another page\'s request on the project waited for, each one\'s changes told to the other', async () => {
+  const { w, dir, off } = await setup('p6');
+  off();
+  w.close();
+  const watcher = createProjectWatcher({ dirOf: n => path.join(tmp, n), interval: 60_000, wait: 300 });
+  const seen = { a: [], b: [] };
+  watcher.subscribe('p6', ev => seen.a.push(...ev.changes.map(c => c.path)), { client: 'tab-a' });
+  watcher.subscribe('p6', ev => seen.b.push(...ev.changes.map(c => c.path)), { client: 'tab-b' });
+  await watcher.check('p6');
+  const relA = await watcher.acquire('p6', 'tab-a');
+  let relB = null;
+  const b = watcher.acquire('p6', 'tab-b').then(r => { relB = r; });
+  await fs.writeFile(path.join(dir, 'src', 'a1.vhd'), '--\n');
+  await sleep(30);
+  assert.equal(relB, null, 'B waits while A\'s request runs');
+  relA();
+  await b;
+  assert.deepEqual(seen, { a: [], b: ['src/a1.vhd'] }, 'A\'s change read and told to B before B\'s request');
+  await fs.writeFile(path.join(dir, 'src', 'b1.vhd'), '--\n');
+  // (and A's next request, while B's runs, waits in turn)
+  let relA2 = null;
+  const a2 = watcher.acquire('p6', 'tab-a').then(r => { relA2 = r; });
+  await sleep(30);
+  assert.equal(relA2, null);
+  relB();
+  await a2;
+  assert.deepEqual(seen, { a: ['src/b1.vhd'], b: ['src/a1.vhd'] }, 'B\'s told to A');
+  relA2();
+  await watcher.check('p6');
+  // a request of the same page, or of no page: not waited for
+  const r1 = await watcher.acquire('p6', 'tab-a');
+  const t0 = Date.now();
+  (await watcher.acquire('p6', 'tab-a'))();
+  (await watcher.acquire('p6'))();
+  assert.ok(Date.now() - t0 < 100);
+  // waited for longer than `wait` (300 ms here): held anyway, both pages' changes then told to neither
+  const t1 = Date.now();
+  const r2 = await watcher.acquire('p6', 'tab-b');
+  assert.ok(Date.now() - t1 >= 250, 'waited up to `wait`');
+  await fs.writeFile(path.join(dir, 'src', 'late.vhd'), '--\n');
+  r1(); r2();
+  for (const k of Object.keys(seen)) seen[k].length = 0;
+  await watcher.check('p6');
+  await watcher.check('p6');
+  assert.deepEqual(seen, { a: [], b: [] });
+  watcher.close();
 });
 
 test('#3972 the server: a page\'s write (X-Silinx-Client) told to the project\'s other page, not to it', async () => {
@@ -305,6 +355,13 @@ test('#3972 the server: a page\'s write (X-Silinx-Client) told to the project\'s
     // (the source, and the project that lists it now)
     assert.deepEqual(b.flatMap(e => e.changes), [{ path: 'silinx.json', kind: 'changed' }, { path: 'src/a.vhd', kind: 'created' }]);
     assert.ok(b.every(e => e.tab === true), 'said to be another page\'s');
+    // the two tabs' writes at once: each one's told to the other (the second request waited for the first)
+    a.length = 0; b.length = 0;
+    const write = (client, rel) => fetch(`${app.base}/projects/Tabs/file?path=${rel}`, { method: 'PUT', headers: { 'Content-Type': 'text/plain', 'X-Silinx-Client': client }, body: `-- ${rel}\n` });
+    assert.deepEqual((await Promise.all([write('tab-a', 'src/x.vhd'), write('tab-b', 'src/y.vhd')])).map(r => r.status), [200, 200]);
+    await settle();
+    assert.deepEqual(a.flatMap(e => e.changes).filter(c => c.path.startsWith('src/')), [{ path: 'src/y.vhd', kind: 'created' }]);
+    assert.deepEqual(b.flatMap(e => e.changes).filter(c => c.path.startsWith('src/')), [{ path: 'src/x.vhd', kind: 'created' }]);
   } finally {
     ctl.abort();
     await app.close();
