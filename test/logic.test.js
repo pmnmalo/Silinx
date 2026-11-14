@@ -535,8 +535,8 @@ architecture rtl of add2 is begin s <= std_logic_vector(resize(unsigned(a), 3) +
   }
   const cnt = 'module cnt(input clk, output reg q); always @(posedge clk) q <= ~q; endmodule';
   assert.throws(() => truthTableFromModule([{ path: 'cnt.v', text: cnt }], 'cnt'), /sequential/);
-  const big = 'module big(input [8:0] a, output y); assign y = ^a; endmodule';
-  assert.throws(() => truthTableFromModule([{ path: 'big.v', text: big }], 'big'), /9 input bits/);
+  const big = 'module big(input [16:0] a, output y); assign y = ^a; endmodule';
+  assert.throws(() => truthTableFromModule([{ path: 'big.v', text: big }], 'big'), /17 input bits: a truth table takes at most 16/);
   const lat = `library ieee; use ieee.std_logic_1164.all;
 entity lat is port (g, d : in std_logic; q : out std_logic); end lat;
 architecture rtl of lat is begin process (g, d) begin if g = '1' then q <= d; end if; end process; end rtl;`;

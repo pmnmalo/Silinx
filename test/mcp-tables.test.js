@@ -39,7 +39,7 @@ test('set_output_logic: traffic\'s lamps, an output in the canonical SOP: the ta
   assert.match(r.text, /^src\/lamps\.bool\.json: car_y's HDL logic: Canonical SOP: car_y = \/phase2\.\/phase1\.phase0\.\/blink \+ .* {3}\(canonical SOP, \d+ gate\(s\), delay \d+\)/);
   // related_view's results say it
   const v = (await call('related_view', { project: 't', path: 'src/lamps.bool.json', view: 'results' })).data.outputs;
-  assert.deepEqual(v.map(o => [o.output, o.hdlLogic.form, o.hdlLogic.name]), [['car_r', 'sop', 'Minimal SOP'], ['car_y', 'csop', 'Canonical SOP'], ['car_g', 'sop', 'Minimal SOP'], ['walk_r', 'sop', 'Minimal SOP'], ['walk_g', 'sop', 'Minimal SOP']]);
+  assert.deepEqual(v.map(o => [o.output, o.hdlLogic.form, o.hdlLogic.name]), [['car_r', 'sop', 'Karnaugh map SOP'], ['car_y', 'csop', 'Canonical SOP'], ['car_g', 'sop', 'Karnaugh map SOP'], ['walk_r', 'sop', 'Karnaugh map SOP'], ['walk_g', 'sop', 'Karnaugh map SOP']]);
   // back to its minimal SOP: the module committed with the example again
   await ok({ project: 't', path: 'src/lamps.bool.json', output: 'car_y', form: 'sop' });
   assert.equal(read('t', 'src/lamps.vhd'), fs.readFileSync(new URL('../examples/traffic/src/lamps.vhd', import.meta.url), 'utf8'));
@@ -56,14 +56,14 @@ test('set_output_logic: the minimal solution used (a cyclic chart) and the form 
   assert.match(read('c', 'src/cyc.vhd'), /^entity cyc is/m);
   assert.deepEqual(JSON.parse(read('c', 'src/cyc.bool.json')).solutions, { f: { sop: 1 } });
   const v = await call('related_view', { project: 'c', path: 'src/cyc.bool.json', view: 'results' });
-  assert.equal(v.data.outputs[0].minimalSop.used, 1);
-  assert.equal(v.data.outputs[0].minimalSop.expr, 'f = /a./c + /b.c + a.b');
-  assert.ok(v.text.includes(`Minimal SOP: f = /a./c + /b.c + a.b   (3 term(s), 6 literal(s))
+  assert.equal(v.data.outputs[0].kmap.sop.used, 1);
+  assert.equal(v.data.outputs[0].kmap.sop.expr, 'f = /a./c + /b.c + a.b');
+  assert.ok(v.text.includes(`Karnaugh map SOP: f = /a./c + /b.c + a.b   (3 term(s), 6 literal(s))
   2 minimal solutions exist.
   Solution 1 of 2: f = /a./b + b./c + a.c
   Solution 2 of 2: f = /a./c + /b.c + a.b   (used)
 `), v.text);
-  assert.ok(v.text.endsWith('HDL logic: Minimal SOP: f = /a./c + /b.c + a.b   (minimal SOP (solution 2 of 2), 6 literal(s), 7 gate(s), delay 3)'), v.text);
+  assert.ok(v.text.endsWith('HDL logic: Karnaugh map SOP: f = /a./c + /b.c + a.b   (minimal SOP (solution 2 of 2), 6 literal(s), 7 gate(s), delay 3)'), v.text);
   // the solution alone: the form kept
   const s = await ok({ project: 'c', path: 'src/cyc.bool.json', output: 'f', solution: { sop: 0 } });
   assert.deepEqual([s.data.form, s.data.solutions, s.data.expr], ['sop', {}, 'f = /a./b + b./c + a.c']);
@@ -75,7 +75,7 @@ test('set_output_logic refuses: not a table, nothing to set, an output, a form o
   await fails({ project: 'b', path: 'src/top.vhd', output: 'f', form: 'sop' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has outputs');
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r' }, 'form or solution: what to set');
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'f', form: 'sop' }, "src/lamps.bool.json: no output 'f' (outputs: car_r, car_y, car_g, walk_r, walk_g)");
-  await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r', form: 'esop' }, 'form: one of sop, pos, xor, nand, nor, gates, delay, csop, cpos');
+  await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r', form: 'esop' }, 'form: one of sop, pos, qsop, qpos, xor, nand, nor, gates, delay, csop, cpos');
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r', solution: { sop: 3 } }, 'src/lamps.bool.json: solution sop: one minimal solution (0)');
   await fails({ project: 'b', path: 'src/none.bool.json', output: 'f', form: 'sop' }, "no file 'src/none.bool.json' in the project 'b'");
   assert.equal(read('b', 'src/lamps.bool.json'), before, 'nothing written');

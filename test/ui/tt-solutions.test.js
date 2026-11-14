@@ -16,9 +16,9 @@ const E = () => env;
 const T = '.doc:not([hidden]) .tt-editor';
 
 const table = (name, inputs, f, more = {}) => normalizeTable({ ...newTable(name, inputs, ['f']), table: { f }, ...more });
-/** What the editor shows: the minimal SOP's (or POS's) expression, cost, circuit, notes; the map's selector; its groups; the NAND form. */
-const shownOf = (page, f = 'sop') => page.eval((t, f) => {
-  const r = document.querySelector(`${t} .tt-res.tt-${f}`), q = (e, s) => e.querySelector(s)?.textContent ?? null;
+/** What the editor shows: the Karnaugh map's result (its SOP or POS, as clicked, #3939): its expression, cost, circuit, notes; the map's selector; its groups; the NAND form. */
+const shownOf = (page) => page.eval((t) => {
+  const r = document.querySelector(`${t} .tt-res.tt-kmap-res`), q = (e, s) => e.querySelector(s)?.textContent ?? null;
   const k = document.querySelector(`${t} .tt-kmap-host`);
   return {
     expr: q(r, '.tt-expr'), cost: q(r, '.tt-cost'), circuit: q(r, '.tt-circuit'), notes: [...r.querySelectorAll('.tt-note')].map(n => n.textContent),
@@ -26,7 +26,7 @@ const shownOf = (page, f = 'sop') => page.eval((t, f) => {
     groups: [...document.querySelectorAll(`${t} .tt-legend .tt-leg code`)].map(c => c.textContent),
     nand: document.querySelector(`${t} .tt-res.tt-nand .tt-expr`).textContent,
   };
-}, T, f);
+}, T);
 // (centred first: at the column's bottom edge its horizontal scroll bar may cover it)
 const solClick = async (page, which) => {
   await page.eval((t, w) => document.querySelector(`${t} .tt-kmap-host .tt-sol-${w}`).scrollIntoView({ block: 'center' }), T, which);

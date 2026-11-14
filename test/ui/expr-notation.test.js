@@ -1,6 +1,6 @@
 // UI: the notation of the Boolean expressions shown (#3915): Electronics / Engineering when none is set; chosen in the
 // Settings (Settings ▸ Boolean Notation; View ▸ Boolean Notation in the ISE style interface), kept in the browser; the
-// truth table's results and K-map groups in it, its own menu the same setting; a state diagram's transition table in
+// truth table's results and K-map groups in it, its ⋮ menu a notation of its own (#3939, saved with it; the Settings' by default); a state diagram's transition table in
 // it (its drawing's labels as typed), drawn again when it changes; the menu in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -60,21 +60,26 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   const shown = () => page.eval((t) => ({
     canon: document.querySelector(`${t} .tt-canon-sop .tt-expr`).textContent,
     groups: [...document.querySelectorAll(`${t} .tt-leg code`)].map((c) => c.textContent),
-    menu: document.querySelector(`${t} .tt-notation`).value,
+    menu: document.querySelector(`${t} .tt-toolbar .tb-more-menu [aria-checked="true"]`)?.dataset.value,
   }), T);
-  assert.deepEqual(await shown(), { canon: 'f = /a./b.c + /a.b.c + a.b./c', groups: ['/a.c', 'b./c'], menu: 'slash' });
+  assert.deepEqual(await shown(), { canon: 'f = /a./b.c + /a.b.c + a.b./c', groups: ['/a.c', 'b./c'], menu: '' });
 
   // ---- the Settings: Logic / Set theory, kept; the table drawn again
   assert.deepEqual(await notationMenu(page, 'Logic / Set theory'),
     [['Electronics / Engineering', false], ['Text only', true], ['Logic / Set theory', false], ['VHDL', false], ['Verilog', false]]);
-  await page.waitFor((t) => document.querySelector(`${t} .tt-notation`)?.value === 'logic', [T], { what: 'the table in the logic notation' });
-  assert.deepEqual(await shown(), { canon: 'f = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ c ∨ a ∧ b ∧ ¬c', groups: ['¬a ∧ c', 'b ∧ ¬c'], menu: 'logic' });
+  await page.waitFor((t) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent.includes('¬a'), [T], { what: 'the table in the logic notation' });
+  assert.deepEqual(await shown(), { canon: 'f = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ c ∨ a ∧ b ∧ ¬c', groups: ['¬a ∧ c', 'b ∧ ¬c'], menu: '' });
   assert.equal(await page.eval(async () => localStorage.getItem((await import('/js/notation.js')).NOTATION_KEY)), 'logic');
-  // ---- the table's own menu: the same setting (the Settings' item checked)
-  await page.fill(`${T} .tt-notation`, 'engineering');
+  // ---- the table's own notation, in its ⋮ menu (#3939): this table's, saved with it; the Settings' unchanged
+  await page.eval((t) => document.querySelector(`${t} .tt-toolbar .tb-more-menu [data-value="engineering"]`).click(), T);
   await page.waitFor((t, b) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent.includes(`a${b}·b${b}·c`), [T, B], { what: 'the engineering notation' });
   assert.deepEqual(await shown(), { canon: `f = a${B}·b${B}·c + a${B}·b·c + a·b·c${B}`, groups: [`a${B}·c`, `b·c${B}`], menu: 'engineering' });
-  assert.deepEqual((await notationMenu(page)).filter(([, c]) => c), [['Electronics / Engineering', true]]);
+  assert.deepEqual((await notationMenu(page)).filter(([, c]) => c), [['Logic / Set theory', true]]);
+  assert.equal(await page.eval(() => window.Silinx.active.ttEditor.getModel().notation), 'engineering');
+  // the Settings changed again: the table keeps its own
+  await notationMenu(page, 'Text only');
+  assert.deepEqual(await shown(), { canon: `f = a${B}·b${B}·c + a${B}·b·c + a·b·c${B}`, groups: [`a${B}·c`, `b·c${B}`], menu: 'engineering' });
+  await notationMenu(page, 'Electronics / Engineering');
 
   // ---- the state diagram: its transition table in the notation, its labels as typed
   await page.eval(() => window.SilinxApp.openFsm('src/nt.fsm.json'));

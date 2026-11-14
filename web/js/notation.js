@@ -16,7 +16,7 @@ let chosen = null;
 export const getNotation = () => readPref(NOTATION_KEY, NOTATION_IDS, chosen ?? DEFAULT_NOTATION);
 
 /** Choose the notation: kept, and the views that show expressions drawn again. */
-export function setNotation(id) {
+function setNotation(id) {
   if (!NOTATION_IDS.includes(id)) return;
   chosen = id;
   try { globalThis.localStorage?.setItem(NOTATION_KEY, id); } catch { /* storage unavailable: this page only */ }

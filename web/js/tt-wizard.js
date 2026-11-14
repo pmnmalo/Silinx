@@ -9,7 +9,7 @@ import { NAME_RE } from '/core/ident.js';
 import { S, app } from './app.js';
 import { langNote } from './design-only.js';
 
-// a truth table from "name = expression" (#1056): its inputs (the expression's, 1 to 6), its output (the name, else f)
+// a truth table from "name = expression" (#1056): its inputs (the expression's, 1 to 16, #3939), its output (the name, else f)
 // and the output's column; or the error to show
 async function ttFromExpression(text) {
   const { splitEquation, expressionInputs } = await import('/core/ink/expression.js');
