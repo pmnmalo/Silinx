@@ -124,7 +124,7 @@ uiTest('#3780 Design Properties: a board makes a design project an FPGA project,
   const pick = v => page.eval((b) => { const s = [...document.querySelectorAll('.dlg-overlay .form-grid > label')].find(l => l.textContent === 'Evaluation Development Board:').nextElementSibling; s.value = b; s.dispatchEvent(new Event('change')); }, v);
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { board: 'design', first: 'Design and simulation only (no FPGA)', shown: ['Name:', 'Evaluation Development Board:', 'Top Module (implementation):', 'Top-Level Source Type:'] });
+  assert.deepEqual(await dialogFields(), { board: 'design', first: 'Design and simulation only (no FPGA)', shown: ['Name:', 'Evaluation Development Board:', 'Top Module:'] });
   await pick('basys2');
   assert.ok((await dialogFields()).shown.includes('Device:'));
   await page.dialogButton('OK');

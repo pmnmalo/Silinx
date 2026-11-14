@@ -17,6 +17,7 @@ import { wizard, field, select, replaceGuard, closeBeforeReplace } from './wizar
 import { namePage, portEditor } from './modwizard.js';
 import { S, app } from './app.js';
 import { portText, namedPages } from './wizard-util.js';
+import { designOnly, langNote } from './design-only.js';
 
 // the page of the inputs and outputs, the clock and the reset (the Petri Net Wizard's)
 function ioPage(p1, extra = []) {
@@ -134,7 +135,8 @@ export async function fsmWizard({ name = '', location = 'src', lang = null, name
   const L = lang || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
   const p1 = namePage({
     title: 'Name and Language', name, lang: L, loc: location, guard, ext: '.fsm.json', nameLabel: 'State machine (module) name:',
-    hint: 'The wizard creates a state diagram with its inputs, outputs, states and transitions, ready for you to set the outputs of its states; its HDL is generated from it.',
+    hint: designOnly() ? 'The wizard creates a state diagram with its inputs, outputs, states and transitions, ready for you to set the outputs of its states.'   // (no HDL, #3891)
+      : 'The wizard creates a state diagram with its inputs, outputs, states and transitions, ready for you to set the outputs of its states; its HDL is generated from it.',
   });
   // (no Moore / Mealy choice: the kind follows from where the outputs are, #2728)
   const io = ioPage(p1);
@@ -186,7 +188,7 @@ export async function fsmWizard({ name = '', location = 'src', lang = null, name
       summary.textContent = [
         `The wizard will create the state diagram ${p1.path()} and open it in the FSM editor.`,
         '',
-        `Module: ${m.name} (${m.lang === 'vhdl' ? 'VHDL' : 'Verilog'}), ${m.type === 'mealy' ? 'Mealy' : 'Moore'} machine`,
+        `Module: ${m.name}${langNote(m.lang)}, ${m.type === 'mealy' ? 'Mealy' : 'Moore'} machine`,
         ...(tpl.id() === 'empty' ? [] : [`Template: ${tpl.label()}`]),
         `Inputs: ${m.inputs.map(portText).join(', ') || 'none'}`,
         `Outputs: ${m.outputs.map(portText).join(', ') || 'none'}`,
@@ -212,7 +214,8 @@ export async function asmWizard({ name = '', location = 'src', lang = null, name
   const L = lang || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
   const p1 = namePage({
     title: 'Name and Language', name, lang: L, loc: location, guard, ext: '.asm.json', nameLabel: 'ASM chart (module) name:',
-    hint: 'The wizard creates an ASM chart with its inputs, outputs and state boxes, ready for you to add the decisions and the outputs; its HDL is generated from it.',
+    hint: designOnly() ? 'The wizard creates an ASM chart with its inputs, outputs and state boxes, ready for you to add the decisions and the outputs.'   // (no HDL, #3891)
+      : 'The wizard creates an ASM chart with its inputs, outputs and state boxes, ready for you to add the decisions and the outputs; its HDL is generated from it.',
   });
   const io = ioPage(p1);
   const states = ['IDLE', 'RUN'];
@@ -242,7 +245,7 @@ export async function asmWizard({ name = '', location = 'src', lang = null, name
       summary.textContent = [
         `The wizard will create the ASM chart ${p1.path()} and open it in the ASM editor.`,
         '',
-        `Module: ${m.name} (${m.lang === 'vhdl' ? 'VHDL' : 'Verilog'})`,
+        `Module: ${m.name}${langNote(m.lang)}`,
         ...(tpl.id() === 'empty' ? [] : [`Template: ${tpl.label()}`]),
         `Inputs: ${m.inputs.map(portText).join(', ') || 'none'}`,
         `Outputs: ${m.outputs.map(portText).join(', ') || 'none'}`,

@@ -21,7 +21,7 @@ function designOnlyRefusal(tool, args, pj) {
   const hdl = p => (hdlSideFile(p) ? p : null);
   if (FLOW_TOOLS.has(tool)) return M.flow(pj.name);
   switch (tool) {
-    case 'new_source': return HDL_TYPES.has(args.type) ? M.hdl(args.name || args.type) : null;
+    case 'new_source': return HDL_TYPES.has(args.type) ? M.hdl(args.name || args.type) : args.language !== undefined ? M.language() : null;   // (no Language field there, #3891)
     case 'write_file': case 'add_to_project': return hdl(args.path) ? M.hdl(args.path) : null;
     case 'import_source': { const f = (args.files || []).find(hdl); return f ? M.hdl(f) : null; }
     case 'read_file': return hdl(args.path) ? M.hidden(args.path) : null;
