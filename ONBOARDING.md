@@ -133,7 +133,7 @@ web/js/        the Project Navigator: app.js (the shell, Design pane, processes,
                dialogs, long press), narrow.js (tablet portrait)
 server/        the local server: projects, the ISE flow, the Silinx flow, programmers, the MCP server (mcp*.js)
 test/ui/       UI tests on headless Chrome over CDP (harness.js); Firefox / WebKit via Playwright
-examples/      gates, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80: the test designs
+examples/      gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80: the test designs
 research/      synthesis quality, handwriting models; the toolchain's research is in packages/silinx-fpga/research
 docs/          user guides (EN, PT), the project model and API, QUALITY.md (against ISE)
 ```

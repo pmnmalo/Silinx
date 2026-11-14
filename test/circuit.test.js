@@ -307,6 +307,10 @@ test('the edits: a part added on a hole or by its pin, moved, turned, deleted; a
   assert.deepEqual(pointOf(m, 'P1.-'), [-4, -3]);
   assert.deepEqual(pointOf(m, [3, 4]), [3, 4]);
   assert.deepEqual(pointOf(m, 'BB1.k5'), { error: '\'BB1.k5\': BB1 has no hole k5 (a1 to j30, its rails tp, tn, bn, bp 1 to 30)' });
+  // (#3974) a full breadboard's: its 63 columns
+  const full = { ...m, parts: m.parts.map((p) => (p.id === 'BB1' ? { ...p, type: 'breadboard-full' } : p)) };
+  assert.deepEqual(pointOf(full, 'BB1.bn64'), { error: '\'BB1.bn64\': BB1 has no hole bn64 (a1 to j63, its rails tp, tn, bn, bp 1 to 63)' });
+  assert.ok(Array.isArray(pointOf(full, 'BB1.j63')), 'its last hole');
   assert.deepEqual(pointOf(m, 'X9.1'), { error: '\'X9.1\': no part X9 in the circuit' });
   assert.deepEqual(pointOf(m, 'f5'), { error: '\'f5\': a place is a grid point [x, y], a breadboard\'s hole (BB1.f10) or a part\'s pin (U1.3, S1.out)' });
   let r = addPart(m, { type: '7400', at: 'BB1.f5' });

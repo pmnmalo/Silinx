@@ -21,7 +21,7 @@ the code and the lessons learnt.
   - a bug fix: a regression test that fails on the old code.
 - **Tests assert the warnings too**: the exact expected warnings of every flow (Check Syntax,
   simulation, synthesis, implementation, ISE), or an explicit "no warnings", never only "no errors".
-- **The examples are the test designs**: gates, traffic, blinky, pong, stopwatch, clock,
+- **The examples are the test designs**: gates, breadboard, traffic, blinky, pong, stopwatch, clock,
   vga, isqrt, uart, micro80 (`examples/`, in that order). Each must run on every device of the Silinx toolchain
   (Basys2-100/250, Nexys2-500/1200, Nexys3, Atlys: `TARGETS` in `test/examples-lib.mjs`) and build with ISE with no
   warnings (but micro80: XST's warnings on the light8080 core's unused parts, the core kept as it is, #2544). A new

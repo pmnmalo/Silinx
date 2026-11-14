@@ -13,7 +13,7 @@ import { beautifyWires, wireStats } from '../core/schbeautify.js';
 import { spreadChannels, channelStats } from '../core/schchannels.js';
 import { convertModuleToSchematic } from '../core/hdl-to-sch.js';
 import { loadItems } from './schematic-corpus/items.mjs';
-import { example, EXAMPLES } from './examples-lib.mjs';
+import { example, HDL_EXAMPLES as EXAMPLES } from './examples-lib.mjs';   // (not a circuit's, #3901)
 
 const ELK = (await import('elkjs/lib/elk.bundled.js')).default;
 const elk = new ELK();

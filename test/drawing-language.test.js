@@ -1,6 +1,6 @@
 // core/view-hdl.js drawingInLanguage: a drawing in the other language (#220: its editor's HDL language; #1477: the
 // project's Preferred Language changed in Design Properties). The examples' drawings (gates' schematic, traffic's
-// state diagram and truth table, blinky's ASM chart) and a Petri net: each in Verilog, its HDL file .vhd -> .v, the
+// state diagram and truth table, blinky's ASM chart, breadboard's circuit) and a Petri net: each in Verilog, its HDL file .vhd -> .v, the
 // example with that file in place of the VHDL one compiled, elaborated and its test bench passing, with the same
 // warnings; back in VHDL, the HDL shipped with the example.
 import { test } from 'node:test';
@@ -18,6 +18,7 @@ const DRAWINGS = [
   ['traffic', 'src/traffic.fsm.json', 'src/traffic.vhd'],
   ['traffic', 'src/lamps.bool.json', 'src/lamps.vhd'],
   ['blinky', 'src/speed_ctrl.asm.json', 'src/speed_ctrl.vhd'],
+  ['breadboard', 'src/breadboard.circ.json', 'src/breadboard.vhd'],   // (#3901)
 ];
 const read = (ex, f) => fs.readFileSync(path.join(example(ex).dir, f), 'utf8');
 

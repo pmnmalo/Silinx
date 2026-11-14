@@ -12,11 +12,16 @@ import { resolveBoard } from '../server/devices.js';
 import { EXAMPLE_ORDER } from '../core/examples.js';
 import { isCSource, viewHdl } from '../core/view-hdl.js';
 import { topForBoard } from '../core/board-generics.js';
+import { synthesisSources } from '../core/translate-off.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const EXAMPLES = EXAMPLE_ORDER;   // gates, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80
+export const EXAMPLES = EXAMPLE_ORDER;   // gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80
 // the examples of the ISE records made before isqrt (#1966): the Spartan-6's night 1 (packages/silinx-fpga/research/s6/
 // measured), XPower's fit (test/fixtures/power); isqrt, uart (#2537) and micro80 (#2544) are checked against ISE in test/ise/examples.test.js
+// the examples whose HDL is generated from a digital circuit (#3901): the circuit is their drawing, their modules
+// (an entity per IC, two models each) no schematic's; Convert to Schematic of a circuit is #3901's phase 4c
+export const CIRCUIT_EXAMPLES = ['breadboard'];
+export const HDL_EXAMPLES = EXAMPLES.filter(n => !CIRCUIT_EXAMPLES.includes(n));
 export const ISE_RECORDED = EXAMPLES.filter(n => n !== 'isqrt' && n !== 'uart' && n !== 'micro80');
 // the boards (and variants) of the devices of the Silinx toolchain: the examples run on all of them; the Spartan-3E's
 // also through ISE (test/ise/examples.test.js, the power estimates), the Spartan-6's (#732, no variants; the Atlys's
@@ -63,7 +68,9 @@ export function example(name) {
     if (r.errors.length) throw new Error(r.errors.join('; '));
     sources.unshift({ path: `src/${f}.${r.lang === 'vhdl' ? 'vhd' : 'v'}`, lang: r.lang, role: 'design', text: r.text });
   }
-  return { dir, project, sources, design: sources.filter(s => s.role === 'design'), sim: sources.filter(s => s.role === 'sim') };
+  // (design: the sources as synthesis reads them, no translate_off region, as the flow's front end compiles them: a
+  // digital circuit's digital model, its simulation's model behind the fence, #3901; sources: as the simulation reads them)
+  return { dir, project, sources, design: synthesisSources(sources.filter(s => s.role === 'design')), sim: sources.filter(s => s.role === 'sim') };
 }
 
 const ucfPort = p => {
