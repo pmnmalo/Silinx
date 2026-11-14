@@ -109,13 +109,15 @@ test('writeXdc: the ports synthesis removed left out (the spike\'s [Common 17-55
 });
 
 test('constraintsFormatOf: UCF, the iCE40\'s PCF, the 7-series\' XDC; the experimental family and its message', () => {
-  const cases = [['xc3s250e', 'ucf'], ['xc6slx16', 'ucf'], ['ice40up5k', 'pcf'], ['xc7a35t', 'xdc'], ['xc7a100t', 'xdc'], ['xc7k70t', 'ucf'], ['nonsense', 'ucf']];
+  const cases = [['xc3s250e', 'ucf'], ['xc6slx16', 'ucf'], ['ice40up5k', 'pcf'], ['xc7a35t', 'xdc'], ['xc7a100t', 'xdc'], ['nonsense', 'ucf'],
+    // (#3895: Vivado ML Standard's other 7-series, XDC; the Virtex-7 ISE's, UCF)
+    ['xc7s50', 'xdc'], ['xc7k70t', 'xdc'], ['xc7z020', 'xdc'], ['xc7v585t', 'ucf']];
   for (const [part, f] of cases) {
     assert.equal(constraintsFormatOf({ part }), f, part);
     assert.equal(constraintsExtOf({ part }), `.${f}`, part);
   }
   assert.equal(constraintsFormatOf(undefined), 'ucf');
-  assert.deepEqual(['xc3s250e', 'ice40up5k', 'xc7a35t', 'xc7a100t', 'xc7k70t'].map(part => experimentalDevice({ part })), [false, false, true, true, false]);
+  assert.deepEqual(['xc3s250e', 'ice40up5k', 'xc7a35t', 'xc7a100t', 'xc7k70t', 'xc7s50', 'xc7z020', 'xc7v585t'].map(part => experimentalDevice({ part })), [false, false, true, true, true, true, true, false]);
   assert.equal(noFlowMessage({ part: 'xc7a35t' }), 'the XC7A35T (Artix-7, an experimental family) has no implementation flow yet: its boards and its XDC constraints only');
 });
 
