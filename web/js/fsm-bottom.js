@@ -5,6 +5,8 @@
 import { downloadText, h } from './ui.js';
 import { encodedTable, stateTable, stepFsm, toCsv, transitionTable } from '/core/fsm.js';
 import { simInputControls, simTraceTable } from './sim-panel.js';
+import { showCondText } from '/core/expr-notation.js';
+import { getNotation, onNotation } from './notation.js';
 
 /** { renderPanel, resetSim, stopRun, togglePanel } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values). */
 export function mountFsmBottom(ctx) {
@@ -43,7 +45,9 @@ export function mountFsmBottom(ctx) {
     panelTitle.textContent = 'Tables';
     const wrap = h('div', { class: 'fsm-tables' });
     // transition table
+    // (the conditions in the Settings' notation, #3915: the drawing keeps them as typed)
     const tt = transitionTable(M());
+    for (const r of tt.rows) if (!r.stays) r.cond = showCondText(r.cond, getNotation());
     const showCode = M().encoding !== 'enum';
     const t1 = h('table', { class: 'fsm-table fsm-ttable' },
       h('tr', {}, h('th', {}, 'Present state'), showCode ? h('th', {}, 'Code') : null, h('th', {}, 'Input condition'), h('th', {}, 'Next state'), showCode ? h('th', {}, 'Next code') : null, h('th', {}, 'Outputs')),
@@ -82,6 +86,8 @@ export function mountFsmBottom(ctx) {
     }
     panelBody.append(wrap);
   }
+  // (the notation changed: the tables drawn again; the editor closed, no more)
+  const offNotation = onNotation(() => { if (destroyed()) offNotation(); else if (panel() === 'tables') renderPanel(); });
 
   // ---------------------------------------------------------------------------- simulation
   function resetSim() {

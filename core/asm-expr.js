@@ -4,6 +4,8 @@ import {
   bits
 } from './asm.js';
 import { MAX_NESTING } from './util.js';
+import { overlineToSlash } from './overline.js';
+export { overlineToSlash };
 
 // ---------------------------------------------------------------------------------------
 // Expression language: tokenizer + parser
@@ -63,8 +65,8 @@ const T_ID = /[A-Za-z_][A-Za-z0-9_]*/y;
 // (/a) or a postfix apostrophe (a'), OR as ∨ or a plus (a + b, OR but in a comparison's operand: boolPlus). They are
 // the logical operators (&&, ||, !): the same tree, the same HDL, as the C-style form.
 const AND_DOTS = ['.', '\u00b7', '\u22c5'];
-// logic's signs (¬a, a ∧ b, a ∨ b)
-const LOGIC_SIGNS = { '\u00ac': '!', '\u2227': '.', '\u2228': '||' };
+// logic's signs (¬a, a ∧ b, a ∨ b, a ⊕ b)
+const LOGIC_SIGNS = { '\u00ac': '!', '\u2227': '.', '\u2228': '||', '\u2295': '^' };
 // whether a token ends an operand (a postfix apostrophe follows one: a', (a+b)', a[2]')
 const endsOperand = (tk) => tk && (tk.t === 'id' || tk.t === 'lit' || (tk.t === 'op' && [')', ']', "'"].includes(tk.v)));
 
@@ -238,7 +240,8 @@ function makeParser(toks, condMode) {
 export function parseCondition(src) {
   try {
     if (!String(src ?? '').trim()) return { error: 'empty condition' };
-    return { ast: makeParser(tokenize(String(src), true), true).expr() };
+    // (the overbar, a̅, read as /(a): #3915)
+    return { ast: makeParser(tokenize(overlineToSlash(String(src)), true), true).expr() };
   } catch (e) {
     if (e instanceof ExprError) return e.pos == null ? { error: e.message } : { error: e.message, column: e.pos + 1 };
     throw e;
