@@ -2,15 +2,17 @@
 // breadboards or beside them, wired on a 0.1 inch grid. Its model here (normalized, a new one, its ports); its parts:
 // core/circuit-parts.js; its nets: core/circuit-net.js; its checks: core/circuit-check.js; its simulation:
 // core/circuit-sim.js; its HDL: core/circuit-hdl.js. Isomorphic module (browser + Node).
-import { partDef, LED_COLORS, WIRE_COLORS } from './circuit-parts.js';
-import { isName } from './ident.js';
+import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
+import { portName, partInputs, partLamps } from './circuit-io.js';
 
-const CIRCUIT_FORMAT = 'silinx-circuit';
-const CIRCUIT_RE = /\.circ\.json$/i;
+export { portName };
+
+export const CIRCUIT_FORMAT = 'silinx-circuit';
+export const CIRCUIT_RE = /\.circ\.json$/i;
 export const isCircuit = (path) => CIRCUIT_RE.test(String(path || ''));
 
 const int = (v, d = 0) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : d);
-const ident = (s, d) => (isName(String(s ?? '')) ? String(s) : d);
+const ident = (s, d) => (/^[A-Za-z][A-Za-z0-9_]*$/.test(String(s ?? '')) ? String(s) : d);
 
 /** The circuit normalized: every field there, its numbers whole grid steps, the unknown fields dropped. */
 export function normalizeCircuit(m = {}) {
@@ -20,8 +22,14 @@ export function normalizeCircuit(m = {}) {
     if (r) out.rot = r;
     const d = partDef(out.type);
     if (p.label != null && p.label !== '') out.label = String(p.label);
-    if (d?.type === 'logic-switch') out.on = !!p.on;
-    if (d?.type === 'led') out.color = LED_COLORS.includes(p.color) ? p.color : 'red';
+    const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
+    if (levels === 1) out.on = !!p.on;
+    else if (levels > 1) out.on = Array.from({ length: levels }, (_, i) => !!(Array.isArray(p.on) && p.on[i]));
+    if (d?.kind === 'output') out.color = LED_COLORS.includes(p.color) ? p.color : 'red';
+    if (d?.type === 'clock') {
+      const hz = Number(p.hz);
+      out.hz = Number.isFinite(hz) ? Math.min(CLOCK_HZ.max, Math.max(CLOCK_HZ.min, Math.round(hz * 10) / 10)) : CLOCK_HZ.default;
+    }
     return out;
   });
   const wires = (Array.isArray(m.wires) ? m.wires : []).filter((w) => w && Array.isArray(w.points)).map((w) => ({
@@ -48,23 +56,21 @@ export function newCircuit(name = 'circuit', lang = 'vhdl', { breadboard = true 
 /** A new id for a part of this type (U for an IC, S a switch, B a button, D an LED, BB a breadboard, P a supply), or a wire. */
 export function newId(m, typeOrWire) {
   const d = partDef(typeOrWire);
-  const pfx = typeOrWire === 'wire' ? 'w' : { ic: 'U', input: d?.type === 'button' ? 'B' : 'S', output: 'D', breadboard: 'BB', supply: 'P' }[d?.kind] || 'X';
+  const pfx = typeOrWire === 'wire' ? 'w' : { button: 'B', clock: 'CK', 'seg7-cc': 'DS', 'seg7-ca': 'DS' }[d?.type]
+    || { ic: 'U', input: 'S', output: 'D', breadboard: 'BB', supply: 'P', pull: 'R' }[d?.kind] || 'X';
   const used = new Set([...m.parts.map((p) => p.id.toLowerCase()), ...m.wires.map((w) => w.id.toLowerCase())]);
   let k = 1;
   while (used.has(`${pfx}${k}`.toLowerCase())) k++;
   return `${pfx}${k}`;
 }
 
-/** A part's name as the HDL and the messages say it: its label, else its id. */
-export const portName = (p) => p.label || p.id;
-
-/** The circuit's ports: its inputs (logic switches, buttons) and outputs (LEDs), in the parts' order. */
+/** The circuit's ports: its inputs (switches, buttons, DIP switches' levers, clocks) and outputs (LEDs, segments, an
+ *  LED bar's lights), in the parts' order: [{ name, part, type, index, kind }]. */
 export function circuitPorts(m) {
   const ins = [], outs = [];
   for (const p of m.parts) {
-    const t = p.type;
-    if (t === 'logic-switch' || t === 'button') ins.push({ name: portName(p), part: p.id, type: t });
-    else if (t === 'led') outs.push({ name: portName(p), part: p.id, type: t });
+    for (const x of partInputs(p)) ins.push({ name: x.port, part: p.id, type: p.type, index: x.index, kind: x.kind });
+    for (const x of partLamps(p)) outs.push({ name: x.port, part: p.id, type: p.type, index: x.index });
   }
   return { inputs: ins, outputs: outs };
 }
@@ -72,6 +78,6 @@ export function circuitPorts(m) {
 /** The circuit's counts, as its status line says them: "2 ICs · 3 switches · 2 LEDs · 9 wires". */
 export function circuitCounts(m) {
   const n = (f) => m.parts.filter(f).length;
-  const ics = n((p) => partDef(p.type)?.kind === 'ic'), sw = n((p) => partDef(p.type)?.kind === 'input'), leds = n((p) => p.type === 'led');
-  return `${ics} IC(s) · ${sw} switch(es) · ${leds} LED(s) · ${m.wires.length} wire(s)`;
+  const ics = n((p) => partDef(p.type)?.kind === 'ic'), sw = n((p) => partDef(p.type)?.kind === 'input'), leds = n((p) => partDef(p.type)?.kind === 'output');
+  return `${ics} IC(s) · ${sw} input(s) · ${leds} display(s) · ${m.wires.length} wire(s)`;
 }
