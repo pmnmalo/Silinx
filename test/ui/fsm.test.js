@@ -148,7 +148,8 @@ uiTest('State diagram (FSM): New Source, states and transitions drawn and edited
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
   await page.waitForSelector(`${ED} .fsm-ttable`);
   const rows = await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr`)].slice(1).map((r) => [...r.children].map((c) => c.textContent).join('|')), ED);
-  assert.deepEqual(rows, ['S0|00|x|S1|01|', 'S0|00|!x|S0|00|', 'S1|01|x|S2|10|', 'S1|01|!x|S0|00|', 'S2|10|x|S2|10|z=1', 'S2|10|!x|S3|11|z=1', 'S3|11|1|S0|00|z=1']);
+  // (the conditions in the Settings' notation, the tests' /, #3915: !x typed)
+  assert.deepEqual(rows, ['S0|00|x|S1|01|', 'S0|00|/x|S0|00|', 'S1|01|x|S2|10|', 'S1|01|/x|S0|00|', 'S2|10|x|S2|10|z=1', 'S2|10|/x|S3|11|z=1', 'S3|11|1|S0|00|z=1']);
   // state table: columns x = 0 / 1
   const st = await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-stable tr`)].slice(2).map((r) => [...r.children].map((c) => c.textContent).join('|')), ED);
   assert.deepEqual(st, ['S0|00|S0|S1|0', 'S1|01|S0|S2|0', 'S2|10|S3|S2|1', 'S3|11|S0|S0|1']);

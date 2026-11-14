@@ -27,7 +27,8 @@ const fails = async (args, message) => { const r = await call('related_view', ar
 const read = (project, f) => fs.readFileSync(path.join(P.projectDir(project), f), 'utf8');
 const files = (project) => fs.readdirSync(P.projectDir(project), { recursive: true }).sort();
 
-before(async () => { tmp = await scratchEnv('silinx-mcp-views-'); });
+// (the expressions in the text notation, /a.b + c, set as the interface's Settings ▸ Boolean Notation sets it, #3915)
+before(async () => { tmp = await scratchEnv('silinx-mcp-views-'); assert.equal((await call('set_notation', { notation: 'slash' })).isError, false); });
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 test('related_view: traffic\'s translation, ASM chart and table\'s schematic, as the core makes them, nothing written', async () => {
@@ -115,7 +116,7 @@ HDL logic: Least number of gates: z = 0   (least gates: minimal SOP, 0 literal(s
   assert.equal(s.data.outputs[0].canonicalSop, `f = ${formatExpr(canonicalAsts('01X10X10', ['a', 'b', 'c']).sop, 'slash')}`);
   assert.equal(s.data.outputs[0].canonicalPos, 'f = (a + b + c).(/a + b + c).(/a + /b + /c)');
   assert.deepEqual(files('q'), before);
-  await fails({ project: 'q', path: 'src/m.bool.json', view: 'results', notation: 'latex' }, 'notation: one of slash, slash-compact, textbook, compact, ascii, vhdl, verilog');
+  await fails({ project: 'q', path: 'src/m.bool.json', view: 'results', notation: 'latex' }, 'notation: one of engineering, slash, logic, vhdl, verilog, slash-compact, textbook, compact, ascii');
 });
 
 test('related_view results: every minimal solution when there are several (#2928), the one used marked (#2950); one: none listed', async () => {

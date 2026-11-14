@@ -18,7 +18,7 @@
 
 import { VHDL93_WORDS, VERILOG_WORDS } from './reserved.js';
 import { reservedWarning } from './asm.js';
-import { DRAWING_NESTING, DRAWING_NESTING_MESSAGE, deeperThanLimit } from './asm-expr.js';
+import { DRAWING_NESTING, DRAWING_NESTING_MESSAGE, deeperThanLimit, overlineToSlash } from './asm-expr.js';
 import { compile, elaborate, simulate } from './compile.js';
 import { clocksOf, latchGates } from './schematic.js';
 import { tbPorts, generateTestbench, expectedFromTrace } from './testbench.js';
@@ -92,7 +92,7 @@ export function parseExpr(src, opts = {}) {
   const vars = opts.vars ? opts.vars.map(String) : null;
   const byLower = vars ? new Map(vars.map(v => [v.toLowerCase(), v])) : null;
   const single = vars && vars.length > 0 && vars.every(v => v.length === 1);
-  const toks = tokenize(src);
+  const toks = tokenize(overlineToSlash(src));   // (an overbar: /( … ), #3915)
   if (toks.length === 1) throw new LogicError('the expression is empty');
   let k = 0, nest = 0;
   const peek = () => toks[k];

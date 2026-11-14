@@ -458,9 +458,9 @@ end rtl;
     xorCost: document.querySelector(`${t} .tt-xor .tt-cost`)?.textContent ?? null,
     groups: [...document.querySelectorAll(`${t} .tt-leg code`)].map((c) => c.textContent),
   }), T);
-  // the notations: / first, the default
+  // the notations (#3915): the Settings' five, Electronics / Engineering first; / here, the tests' (test/ui/harness.js)
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-notation option`)].map((o) => `${o.value}:${o.textContent}`), T),
-    ['slash:/a.b + c', 'slash-compact:/ab + c', "textbook:a·b' + c", "compact:ab' + c", 'vhdl:VHDL', 'verilog:Verilog']);
+    ['engineering:a\u0305·b + c', 'slash:/a.b + c', 'logic:¬a ∧ b ∨ c', 'vhdl:VHDL', 'verilog:Verilog']);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-notation`).value, T), 'slash');
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-in`).placeholder, T), 'e.g. /a.b + c');
   // s: the sum, a ⊕ b ⊕ c beside its SOP and POS
@@ -487,9 +487,8 @@ end rtl;
   // the other notations, selectable: on the results and the K-map groups
   await page.click(`${T} .tt-tab[data-out=s]`);
   const want = {
-    'slash-compact': ['s = /a/bc + /ab/c + a/b/c + abc', 's = a ⊕ b ⊕ c', ['/a/bc', '/ab/c', 'a/b/c', 'abc']],
-    textbook: ["s = a'·b'·c + a'·b·c' + a·b'·c' + a·b·c", 's = a ⊕ b ⊕ c', ["a'·b'·c", "a'·b·c'", "a·b'·c'", 'a·b·c']],
-    compact: ["s = a'b'c + a'bc' + ab'c' + abc", 's = a ⊕ b ⊕ c', ["a'b'c", "a'bc'", "ab'c'", 'abc']],
+    engineering: ['s = a\u0305·b\u0305·c + a\u0305·b·c\u0305 + a·b\u0305·c\u0305 + a·b·c', 's = a ⊕ b ⊕ c', ['a\u0305·b\u0305·c', 'a\u0305·b·c\u0305', 'a·b\u0305·c\u0305', 'a·b·c']],
+    logic: ['s = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ ¬c ∨ a ∧ ¬b ∧ ¬c ∨ a ∧ b ∧ c', 's = a ⊕ b ⊕ c', ['¬a ∧ ¬b ∧ c', '¬a ∧ b ∧ ¬c', 'a ∧ ¬b ∧ ¬c', 'a ∧ b ∧ c']],
     vhdl: ['s = (not a and not b and c) or (not a and b and not c) or (a and not b and not c) or (a and b and c)', 's = a xor b xor c', ['not a and not b and c', 'not a and b and not c', 'a and not b and not c', 'a and b and c']],
     verilog: ['s = (~a & ~b & c) | (~a & b & ~c) | (a & ~b & ~c) | (a & b & c)', 's = a ^ b ^ c', ['~a & ~b & c', '~a & b & ~c', 'a & ~b & ~c', 'a & b & c']],
   };
