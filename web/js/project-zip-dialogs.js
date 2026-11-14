@@ -94,7 +94,6 @@ export async function importProjectDialog() {
   const name = h('input', { type: 'text', placeholder: 'new project name' });
   const info = h('div', { class: 'hint', style: { minHeight: '16px' } });
   const hint = h('div', { class: 'hint', style: { marginTop: '10px' } });
-  const bundle = h('div', { class: 'hint' }, 'It also opens a project bundle (.silinx.json) made with an earlier version.');
   const [dirLabel] = field('Project folder:', dirInp), fileLabel = h('label', {});
   // the folder's line: its files and its project file (the software's), else what is missing
   const folderInfo = () => {
@@ -107,7 +106,6 @@ export async function importProjectDialog() {
     fileLabel.textContent = ise ? 'or .zip / .xise file(s):' : 'or .zip file:';
     fileInp.multiple = ise;
     fileInp.accept = ise ? ISE_ACCEPT : api.standalone ? '.zip,.json' : '.zip';
-    bundle.hidden = ise || !api.standalone;
     if (dirInp.files.length) folderInfo();
   };
   const row = softwareRow(software, id => { software = id; show(); }, 'import-software');
@@ -138,7 +136,7 @@ export async function importProjectDialog() {
     title: 'Import Project', width: 600,
     body: h('div', {},
       h('div', { class: 'form-grid' }, ...row.el),
-      hint, bundle,
+      hint,
       h('div', { class: 'form-grid', style: { marginTop: '10px' } },
         dirLabel, dirInp, fileLabel, fileInp,
         ...field('Project name:', name)),

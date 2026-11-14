@@ -1,4 +1,4 @@
-// UI: Import Project (.zip)…, a Silinx project from its folder (#3965): the Silinx choice's rows the Xilinx ISE one's
+// UI: Import Project (.zip)…, a Silinx project from its folder (#3965): the Silinx choice's rows an ISE project's
 // (the project folder, or a .zip file, then the project's name), a folder's software preselected (as a zip's), the
 // folder imported as the .zip of the same project (its build folder and hidden files left out, no warning); a folder of
 // no project said; in Portuguese.

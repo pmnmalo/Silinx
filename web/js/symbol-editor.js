@@ -2,8 +2,8 @@
 // Symbol Editor edits a .sym: its pins' order and side (left, right, top, bottom: a pin dragged to its new place, or
 // its Side and Position in the Properties), the spacing between the pins, the body's width and height, where the
 // module's name is drawn. The symbol drawn as the schematic draws it (sch-svg.js). Its toolbar (the pin earlier /
-// later, Reset to Default, the zoom, Exit, ☰ Properties; "Edit Symbol" at its start, as the schematic's Try it says
-// what it is, #3943: it would look like the schematic editor otherwise), its foldable Properties panel and its status line
+// later, Reset to Default, the zoom, Exit, ☰ Properties; "Edit Symbol:" at its start, plain text, saying what it is (#3943,
+// #3991: it would look like the schematic editor otherwise), its foldable Properties panel and its status line
 // (the pins, the body's size) are the other editors' (docs/UI-GUIDELINES.md); its messages go to the console
 // (onMessage). Standalone: no app state.
 //
@@ -47,7 +47,7 @@ export function mountSymbolEditor(container, opts = {}) {
   // (Exit: the tab closed, as its ×: its changes saved first, #3943)
   const exitBtn = opts.onExit ? btn('Exit', 'Close the Symbol Editor (its tab), its changes saved', () => opts.onExit(), 'sy-exit') : null;
   const toolbar = h('div', { class: 'asm-toolbar sy-toolbar' },
-    h('span', { class: 'lv-badge sy-badge' }, 'Edit Symbol'),
+    h('span', { class: 'sy-badge' }, 'Edit Symbol:'),   // (plain text, #3991)
     readOnly ? null : editing, readOnly ? null : sep(),
     h('div', { class: 'asm-group' }, ...zoomTools(f => setZoom(zoom * f), () => fit()), zoomLbl),
     exitBtn ? sep() : null, exitBtn ? h('div', { class: 'asm-group' }, exitBtn) : null,
