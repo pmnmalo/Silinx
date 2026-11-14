@@ -325,7 +325,7 @@ export function mountFsmEditor(container, opts = {}) {
     const L = opts.linkInfo?.();
     // (only when its HDL is not in sync, as the Boolean algebra's: the file in sync unsaid, its name in data-hdl, #2505)
     linkHost.dataset.hdl = L?.file && !L.why ? L.file.split('/').pop() : '';
-    if (!L?.why) return;
+    if (!L?.why || designKind()) return;   // (a design project's HDL never shown, #3891)
     const a = h('a', { onclick: () => opts.onOpenFile?.(L.file) }, L.file.split('/').pop());
     linkHost.append(h('span', { class: 'gen-banner out-of-sync', title: L.why }, 'Not in sync with ', a, ` — ${L.why}`));
   }

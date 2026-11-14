@@ -57,6 +57,7 @@ import { mountSchJunction } from './sch-junction.js';
 import { shortText } from '/core/schjunction.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { clone } from '/core/util.js';
+import { designKind } from './project-kind-flag.js';
 export { clone };   // (core/util.js's)
 
 export const snap = v => Math.round(v / GRID) * GRID;
@@ -168,7 +169,7 @@ export function mountSchEditor(container, opts = {}) {
     if (!it) return;
     const lang = getLanguage();
     const sum = it.type === 'module' ? it.desc : symbolSummary(it.type, { ...defaultParams(it.type), ...it.params }, lang, it.preset || undefined);
-    const more = h('a', { href: '#', class: 'se-syminfo-more', text: 'More…', title: 'Datasheet of the symbol: pins, parameters, truth table, equivalent HDL' });
+    const more = h('a', { href: '#', class: 'se-syminfo-more', text: 'More…', title: designKind() ? 'Datasheet of the symbol: pins, parameters, truth table' : 'Datasheet of the symbol: pins, parameters, truth table, equivalent HDL' });
     more.addEventListener('click', e => { e.preventDefault(); openInfo(itemTarget(it)); });
     symInfo.append(h('b', { 'data-no-i18n': '', text: it.title }), ': ', h('span', { class: 'se-sum', 'data-no-i18n': '', text: sum }), ' ', more);
   }
@@ -176,7 +177,7 @@ export function mountSchEditor(container, opts = {}) {
     const cur = catSel.value || '<all>';
     catSel.innerHTML = '';
     catSel.append(h('option', { value: '<all>', text: '<--All Symbols-->' }));
-    for (const c of SYMBOL_CATEGORIES) catSel.append(h('option', { value: c, text: c }));
+    for (const c of SYMBOL_CATEGORIES) if (!designKind() || c !== 'Device Primitives') catSel.append(h('option', { value: c, text: c }));   // (none in a design project, #3891)
     catSel.value = cur;
   }
   catSel.addEventListener('change', renderPalette);

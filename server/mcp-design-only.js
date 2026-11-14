@@ -26,7 +26,7 @@ function designOnlyRefusal(tool, args, pj) {
     case 'import_source': { const f = (args.files || []).find(hdl); return f ? M.hdl(f) : null; }
     case 'read_file': return hdl(args.path) ? M.hidden(args.path) : null;
     case 'set_source_properties': case 'convert_module': return M.hidden(args.path || args.module);
-    case 'related_view': return args.view === 'translation' ? M.hidden(args.path) : null;
+    case 'related_view': return args.view === 'translation' ? M.hidden(args.path) : args.view === 'results' && /^(vhdl|verilog)$/.test(args.notation) ? M.notation(args.notation) : null;   // (#3891: the editor's notations)
     default: return null;
   }
 }

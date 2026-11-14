@@ -41,7 +41,7 @@ export const FSM_PT = {
   'Module name': 'Nome do módulo', 'Width': 'Largura', 'Default': 'Omissão', 'Remove': 'Remover', 'Inputs': 'Entradas', 'Outputs': 'Saídas',
   '+ Input': '+ Entrada', 'Add an input': 'Acrescentar uma entrada', '+ Output': '+ Saída', 'Add an output': 'Acrescentar uma saída',
   'Clock': 'Relógio', 'Reset signal': 'Sinal de reset', 'Reset level': 'Nível do reset', 'active high': 'ativo a alto', 'active low': 'ativo a baixo',
-  'Synchronous reset': 'Reset síncrono', 'Description': 'Descrição', 'What the machine does (written in the HDL header)': 'O que a máquina faz (escrito no cabeçalho do HDL)',
+  'Synchronous reset': 'Reset síncrono', 'Description': 'Descrição', 'What the machine does': 'O que a máquina faz', 'What the machine does (written in the HDL header)': 'O que a máquina faz (escrito no cabeçalho do HDL)',
   // tables, code
   'Copy': 'Copiar','Export CSV': 'Exportar CSV',
   'Download this table as a CSV file (opens in a spreadsheet)': 'Descarregar esta tabela num ficheiro CSV (abre numa folha de cálculo)',

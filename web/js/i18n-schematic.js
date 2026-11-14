@@ -57,6 +57,8 @@ export const SCH_PT = {
   'Rearrange Schematic: the symbols kept where they were; the wires are already as clear as they can be': 'Reorganizar esquemático: os símbolos ficaram onde estavam; os fios já estão tão claros quanto possível',
   // curved wires (#1144)
   'Curved wires': 'Fios curvos',
+  'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections and the nets the same)': 'Desenhar os fios como curvas suaves de qualquer forma em vez dos cantos retos do desenho técnico (as ligações e as redes iguais)',
+  'not with the other inputs chosen': 'não com as outras entradas escolhidas',
   'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)': 'Desenhar os fios como curvas suaves de qualquer forma em vez dos cantos retos do desenho técnico (as ligações, as redes e o HDL iguais)',
   'Curved wires: click a wire, then drag the wire or its handles to reshape it (double-click a handle to remove it). Drag a symbol to move it, its wires following.':
     'Fios curvos: clique num fio e arraste o fio ou as suas pegas para lhe mudar a forma (duplo clique numa pega remove-a). Arraste um símbolo para o mover, os seus fios acompanham-no.',

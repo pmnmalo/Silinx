@@ -33,6 +33,7 @@ import { t as tr } from './i18n.js';
 import { statusLine } from './status-line.js';
 import { renderTtResults } from './tt-results.js';
 import { ttReadOnlyChrome, lockTt } from './tt-readonly.js';
+import { designKind } from './project-kind-flag.js';
 
 const NEXT = { 0: '1', 1: 'X', X: '0' };
 const COLORS = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd', '#ff7f0e', '#17becf', '#e377c2', '#8c564b', '#bcbd22', '#7f7f7f'];
@@ -313,7 +314,7 @@ export function mountTtEditor(container, opts = {}) {
     const info = opts.linkInfo?.();
     // (only when its HDL is not in sync: the file in sync unsaid, its name in data-hdl, #2047)
     link.dataset.hdl = info?.file && !info.why ? info.file.split('/').pop() : '';
-    if (!info?.why) return;
+    if (!info?.why || designKind()) return;   // (a design project's HDL never shown, #3891)
     link.append(h('span', { class: 'gen-banner out-of-sync' }, 'Not in sync with ',
       h('a', { onclick: () => opts.onOpenFile?.(info.file) }, info.file.split('/').pop()), ` — ${info.why}`));
   }
