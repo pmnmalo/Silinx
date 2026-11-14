@@ -17,7 +17,7 @@ import { mountEmuSerial } from './emulator-serial.js';
 import { uartBit } from '/core/uart.js';
 import { pressHolds } from '/core/emulate-press.js';
 import { mountEmuSide } from './emulator-side.js';
-import { mountEmuPaint } from './emulator-paint.js';
+import { countText, mountEmuPaint } from './emulator-paint.js';
 import { mountEmuToolbar } from './emulator-toolbar.js';
 import { emuPrintView } from './emulator-print.js';
 import { mountEmuModules } from './emulator-modules.js';
@@ -417,7 +417,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
     }
     unschedule();
     schedule();
-    if (held && powered) setStat(`t = ${formatTime(sim.now)} · ${Math.round(sim.now / period).toLocaleString()} cycles · paused while hidden`);
+    if (held && powered) setStat(`t = ${formatTime(sim.now)} · ${countText(sim.now / period)} cycles · paused while hidden`);
     else refresh();
   }
   document.addEventListener('visibilitychange', visibility);

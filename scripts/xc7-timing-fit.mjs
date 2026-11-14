@@ -8,6 +8,9 @@
 //   - the slice's LUTs and flip-flops: fixed stubs (SLICE_LUTX: A1-A6 -> O6 100/125 ps, -> O5 120/150 ps; SLICE_FFX: CK ->
 //     Q 300/350 ps, setup 100 ps): what this fit replaces first (chipdb.SLICE_LUTX, chipdb.SLICE_FFX);
 //   - CARRY4 and the F7/F8 multiplexers (SELMUX2_1): Project X-Ray's timings/slicem.sdf; the block RAMs: BRAM_L.sdf;
+//   - the DSP48E1: not timed at all up to the fork's xc7 0.1.2 (a path through it left out, stopwatch's estimate twice
+//     Vivado's, #3875); after it, one with no register by this fit's arcs (chipdb.DSP48E1: the fork's timing_fit.py
+//     DSP48E1_COMB and DSP48E1_B_BCOUT), a registered one still not timed;
 //   - the routing: each PIP's class (buf|sw_d<delay>_r<res>_c<cap>, from the tile types' JSON: its delay, input
 //     capacitance, output resistance) and each node's (node_c<cap>_c<res>, its wires' summed, an intrinsic delay of 0),
 //     which himbaechel/arch.h getPipDelay turns into a delay (an RC estimate). The wire classes fitted here (an intrinsic
@@ -187,19 +190,22 @@ export function fitWires(groups, classes = CLASSES) {
 /**
  * The fitted table for the fork's chip database (xilinx_gen.py's names, ps as integers: TimingValue(min, max)): the
  * slice's LUT (each A1-A6 to O6, A1-A5 to O5) and flip-flop (CK -> Q, the setups of D, CE, SR), from the cells'
- * statistics (the worst, slow corner, as nextpnr's slow_max); CARRY4's and the F7 multiplexer's (SELMUX2_1) arcs; the wire
- * classes. A value Vivado did not give: null (the stub kept).
+ * statistics (the worst, slow corner, as nextpnr's slow_max); CARRY4's and the F7 multiplexer's (SELMUX2_1) arcs; the
+ * DSP48E1's with no register (its buses by name, every bit the same: A->P, B->BCOUT, #3875); the wire classes. A value
+ * Vivado did not give: null (the stub kept).
  */
 export function chipdbTable(cells, wires) {
   const v = (k) => (cells[k] ? { min: Math.round(cells[k].min), max: Math.round(cells[k].max) } : null);
   const lut = {};
   for (let i = 1; i <= 6; i++) lut[`A${i}`] = { O6: v(`LUT.A${i}.O6`), ...(i <= 5 && { O5: v(`LUT.A${i}.O5`) }) };
   const setup = (p) => v(`FF.setup.${p}`);
-  const arcs = (prefix) => Object.fromEntries(Object.keys(cells).filter((k) => k.startsWith(`${prefix}.`)).map((k) => [k.slice(prefix.length + 1).replace('.', '->'), v(k)]));
+  // (a bus's bits named by the bus: A[29:0] -> A)
+  const arcs = (prefix) => Object.fromEntries(Object.keys(cells).filter((k) => k.startsWith(`${prefix}.`))
+    .map((k) => [k.slice(prefix.length + 1).replace(/\[\d+:\d+\]/g, '').replace('.', '->'), v(k)]));
   return {
     SLICE_LUTX: lut,
     SLICE_FFX: { clkToQ: v('FF.C.Q'), setup: { D: setup('D'), CE: setup('CE'), SR: setup('SR') } },
-    CARRY4: arcs('CARRY4'), SELMUX2_1: arcs('MUXF7'), MUXF8: arcs('MUXF8'),
+    CARRY4: arcs('CARRY4'), SELMUX2_1: arcs('MUXF7'), MUXF8: arcs('MUXF8'), DSP48E1: arcs('DSP48E1'),
     wires: wires ? { base: wires.base, ...wires.classes } : null,
   };
 }

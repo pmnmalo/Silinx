@@ -43,7 +43,7 @@ export function mountProps(ctx) {
     return !!s;
   }
   function renderProps() {
-    if (live()) { live().renderProps(propBody); return; }
+    if (propBody.classList.toggle('try-it-body', !!live())) { live().renderProps(propBody); return; }   // (tried out: the Try it's body, a lighter green, #3924)
     renderPropsInner();
     opts.onSelect?.(selectedModuleSym());
     if (readOnly) propBody.querySelectorAll('input, textarea, select, button').forEach(el => { if (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type === 'text')) el.readOnly = true; else if (!el.classList.contains('ro-ok')) el.disabled = true; });

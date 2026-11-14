@@ -10,6 +10,7 @@ import { prefKey } from './prefs.js';
 import { SOFTWARE, SUPPORTED, projectSoftware } from '/core/project-software.js';
 import { projectNameError, projectNameFrom } from '/core/project-name.js';
 import { askReplaceProject, field, replaceProjectWith, zipFolderSelection } from './wizards.js';
+import { isDesignOnly } from '/core/project-kind.js';
 
 const IMPORT_KEY = prefKey('silinx.import-software'), EXPORT_KEY = prefKey('silinx.export-software');
 const saved = key => { try { const v = localStorage.getItem(key); return SUPPORTED.includes(v) ? v : 'silinx'; } catch { return 'silinx'; } };
@@ -39,17 +40,19 @@ const EXPORT_HINTS = {
 
 export async function exportProjectDialog() {
   if (!S.project) return;
-  let software = saved(EXPORT_KEY);
+  // (a design project's: Silinx's alone, no Xilinx ISE project of its HDL, #3891)
+  const design = isDesignOnly(S.project);
+  let software = design ? 'silinx' : saved(EXPORT_KEY);
   const hint = h('div', { class: 'hint', style: { marginTop: '10px' } });
   const row = softwareRow(software, id => { software = id; hint.textContent = EXPORT_HINTS[id]; }, 'export-software');
   hint.textContent = EXPORT_HINTS[software];
   const r = await dialog({
     title: 'Export Project', width: 560,
-    body: h('div', {}, h('div', { class: 'form-grid' }, ...row.el), hint),
+    body: h('div', {}, design ? null : h('div', { class: 'form-grid' }, ...row.el), hint),
     buttons: [{ label: 'Export', primary: true, value: true }, { label: 'Cancel', value: null }],
   });
   if (!r) return;
-  keep(EXPORT_KEY, software);
+  if (!design) keep(EXPORT_KEY, software);
   await (await import('./menus.js')).exportProjectZip(software);
 }
 

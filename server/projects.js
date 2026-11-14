@@ -115,7 +115,7 @@ export async function listProjects() {
     try {
       const dir = path.join(ws, ent.name);
       const pj = JSON.parse(await fs.readFile(await projectFile(dir), 'utf8'));
-      out.push({ name: ent.name, device: pj.device, top: pj.top, board: pj.board, modified: await lastChange(dir) });
+      out.push({ name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), modified: await lastChange(dir) });
     } catch { /* not a project */ }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));

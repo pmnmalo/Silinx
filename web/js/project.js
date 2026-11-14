@@ -17,6 +17,7 @@ import { watchProject, stopWatching } from './project-watch.js';
 import { gitStartItems, hasGit, openFromRepositoryDialog } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
+import { isDesignOnly } from '/core/project-kind.js';
 
 const $ = id => document.getElementById(id);
 // how long after a project opens the browser edition fetches what Implement needs (#967): after the opening's own work
@@ -68,7 +69,8 @@ async function openProjectNow(name, { startup = false } = {}) {
   }
   await reloadProject();
   await fixMissingTops();   // (a project saved with a top it no longer has, #253)
-  log(`Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
+  // (a design project's: no device, #3891)
+  log(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
   // a project from outside (#2830): what waits for the user's trust, and the button that gives it
   if (!isTrusted(S.project)) log(untrustedNotice(name, S.project), 'info', { action: { label: 'Trust Project', run: () => trustProject(name) } });
   warnReservedNames();
@@ -208,7 +210,7 @@ export function updateTitle() {
   document.querySelector('#titlebar .app-logo').title = `${PRODUCT} ${VERSION_LABEL}`;
   // (the browser tab: the product and its version, no "Project Navigator", #3224)
   document.title = pj ? `${pj.name} — ${PRODUCT} ${VERSION_LABEL}` : `${PRODUCT} ${VERSION_LABEL}`;
-  $('status-device').textContent = pj ? `${pj.device.part}${pj.device.speed}-${pj.device.package}${pj.board ? ` · ${pj.board}` : ''}` : '';
+  $('status-device').textContent = isDesignOnly(pj) ? '' : pj ? `${pj.device.part}${pj.device.speed}-${pj.device.package}${pj.board ? ` · ${pj.board}` : ''}` : '';
 }
 
 function rememberRecent(name) {

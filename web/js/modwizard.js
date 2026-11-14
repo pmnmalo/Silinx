@@ -19,6 +19,7 @@ import { templatePage } from './template-page.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
 import { S, app } from './app.js';
 import { cleanLoc, portText, namedPages } from './wizard-util.js';
+import { designOnly } from './design-only.js';
 
 const LANGS = [['vhdl', 'VHDL'], ['verilog', 'Verilog']];
 const extOf = (lang, sch) => (sch ? '.sch.json' : lang === 'verilog' ? '.v' : '.vhd');
@@ -41,14 +42,15 @@ export function namePage({ title, name, lang, loc, sch, withArch, guard, ext = n
   nameIn.addEventListener('input', sync);
   locIn.addEventListener('input', sync);
   langSel.addEventListener('change', sync);
+  const design = designOnly();   // (a design project's: no language, no HDL, #3891)
   const page = {
-    title,
+    title: design && title === 'Name and Language' ? 'Name' : title,
     render: () => h('div', {},
       h('div', { class: 'hint' }, hint || (sch
         ? 'The wizard creates a schematic with an I/O marker for each input and output, ready for you to place the symbols and wire them.'
         : 'The wizard writes a commented skeleton of the module: its inputs and outputs, and a template of the logic (combinational or sequential).')),
       h('div', { class: 'form-grid', style: { marginTop: '10px' } },
-        ...field(nameLabel || (sch ? 'Schematic (module) name:' : 'Module name:'), nameIn), ...field('Language:', langSel),
+        ...field(nameLabel || (sch ? 'Schematic (module) name:' : 'Module name:'), nameIn), ...(design ? [] : field('Language:', langSel)),
         ...(withArch ? [archLbl, archIn] : []),
         ...field('Location:', locIn), ...field('File:', fileHint)),
       h('label', { style: { display: 'block', marginTop: '10px' } }, 'Description (optional):'), desc),
@@ -111,9 +113,12 @@ export function portEditor(ports, { lang, onChange = () => {}, dirs = ['in', 'ou
   } }, 'Add Port');
   render();
   const node = h('div', {},
+    // (a design project's: no HDL type, #3891)
     h('div', { class: 'hint' }, dirs.includes('inout')
-      ? 'One row per input, output or bidirectional (inout) port. Width 1 is a single bit (std_logic / wire); a width N makes a bus of N bits, numbered N-1 downto 0.'
-      : 'One row per input or output port. Width 1 is a single bit (std_logic / wire); a width N makes a bus of N bits, numbered N-1 downto 0.'),
+      ? (designOnly() ? 'One row per input, output or bidirectional (inout) port. Width 1 is a single bit; a width N makes a bus of N bits, numbered N-1 downto 0.'
+        : 'One row per input, output or bidirectional (inout) port. Width 1 is a single bit (std_logic / wire); a width N makes a bus of N bits, numbered N-1 downto 0.')
+      : designOnly() ? 'One row per input or output port. Width 1 is a single bit; a width N makes a bus of N bits, numbered N-1 downto 0.'
+        : 'One row per input or output port. Width 1 is a single bit (std_logic / wire); a width N makes a bus of N bits, numbered N-1 downto 0.'),
     h('div', { style: { marginTop: '6px', maxHeight: '230px', overflow: 'auto', border: '1px solid var(--frame)' } }, tbl),
     h('div', { style: { marginTop: '6px' } }, addBtn));
   const check = name => {
@@ -319,7 +324,7 @@ export async function schematicWizard({ name = '', location = 'src', lang = null
       summary.textContent = [
         `The wizard will create the schematic ${p1.path()} and open it in the schematic editor.`,
         '',
-        `Module: ${d.name} (its HDL: ${d.lang === 'vhdl' ? 'VHDL' : 'Verilog'})`,
+        designOnly() ? `Module: ${d.name}` : `Module: ${d.name} (its HDL: ${d.lang === 'vhdl' ? 'VHDL' : 'Verilog'})`,
         ...(tpl.id() === 'empty' ? [] : [`Template: ${tpl.label()} (${d.symbols.length} symbol(s), ${d.wires.length} wire(s))`]),
         `Input markers (left edge): ${ins.map(portText).join(', ') || 'none'}`,
         `Output markers (right edge): ${outs.map(portText).join(', ') || 'none'}`,

@@ -208,7 +208,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     topType.disabled = ex;
     if (ex) topType.value = 'hdl';
     const t = TOP_TYPES.find(x => x.id === topType.value);
-    topNote.textContent = !ex ? (t.id === 'hdl' ? '' : `The project starts with ${t.file} (the top module 'top') and its HDL module, generated from it.`)
+    topNote.textContent = !ex ? (t.id === 'hdl' ? '' : isDesign() ? `The project starts with ${t.file} (the top module 'top').` : `The project starts with ${t.file} (the top module 'top') and its HDL module, generated from it.`)
       : tests.includes(tplSel.value) ? 'The test design has its own sources and its test: a test bench (Simulate), or the C program\'s main() (C Simulation).' : 'The example has its own sources.';
     topNote.style.display = topNote.textContent ? '' : 'none';
   };
@@ -331,7 +331,9 @@ export async function openProjectDialog() {
   let chosen = null;
   const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'Project'), h('th', {}, 'Device'), h('th', {}, 'Top'), h('th', {}, 'Board'), h('th', {}, 'Last Used')));
   for (const p of list) {
-    const tr = h('tr', {}, h('td', {}, p.name), h('td', {}, p.device ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, p.top || ''), h('td', {}, p.board || ''),
+    // (a design project's: no device, its kind for a board, #3891)
+    const design = isDesignOnly(p);
+    const tr = h('tr', {}, h('td', {}, p.name), h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, p.top || ''), h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
       h('td', { class: 'pj-used', 'data-no-i18n': '' }, p.used ? dateText(p.used) : ''));
     tr.addEventListener('click', () => { tbl.querySelectorAll('tr').forEach(r => r.classList.remove('sel')); tr.classList.add('sel'); chosen = p.name; });
     tr.addEventListener('dblclick', () => { chosen = p.name; document.querySelector('.dlg .btn.primary')?.click(); });
@@ -451,9 +453,10 @@ export async function sourceProperties(path) {
   if (!f && !own) return;
   // (a design and simulation project: no language, its HDL hidden, #3780)
   const lang = own && !designOnly() && select([['', 'Project Preferred Language'], ['vhdl', 'VHDL'], ['verilog', 'Verilog']], own.choice);
+  const shown = (designOnly() && S.hdlToSch?.[path]) || path;   // (a design project's drawn module: its drawing, #3891)
   const r = await dialog({
-    title: `Source Properties - ${path}`, width: 440,
-    body: h('div', { class: 'form-grid' }, ...field('File:', h('span', {}, path)), ...(designOnly() ? [] : field('Language:', lang || h('span', {}, f.lang)))),
+    title: `Source Properties - ${shown}`, width: 440,
+    body: h('div', { class: 'form-grid' }, ...field('File:', h('span', {}, shown)), ...(designOnly() ? [] : field('Language:', lang || h('span', {}, f.lang)))),
   });
   if (!r || !lang || lang.value === own.choice) return;
   await setSourceLanguage(own.drawing, lang.value);
@@ -487,8 +490,9 @@ export async function projectProperties() {
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),
       ...field('Device:', dp.partSel), ...field('Package:', dp.pkgSel), ...field('Speed:', dp.spdSel),
-      ...field('Top Module (implementation):', h('span', {}, pj.top || '(none)')),
-      ...field('Top-Level Source Type:', h('span', {}, TOP_TYPES.find(t => t.id === (pj.topSourceType || 'hdl'))?.label || 'HDL')),
+      // (a design project's: its top, no implementation; its top's type a drawing's, never HDL, #3891)
+      ...field(isDesignOnly(pj) ? 'Top Module:' : 'Top Module (implementation):', h('span', {}, pj.top || '(none)')),
+      ...(isDesignOnly(pj) && (pj.topSourceType || 'hdl') === 'hdl' ? [] : field('Top-Level Source Type:', h('span', {}, TOP_TYPES.find(t => t.id === (pj.topSourceType || 'hdl'))?.label || 'HDL'))),
       ...field('Synthesis Tool:', synth),
       ...field('Preferred Language:', lang)),
     onOpen: () => syncKind(),
@@ -544,15 +548,18 @@ export async function implProperties() {
   const opt = select([['fast', 'Fast'], ['area', 'Area'], ['speed', 'Speed']], synthGoal(pj.impl));
   const clk = select([['JtagClk', 'JTAG Clock'], ['CCLK', 'CCLK'], ['UserClk', 'User Clock']], pj.impl.startupClk || 'JtagClk');
   // a Spartan-6's Map (#3138): Silinx's, or nextpnr's packer, on trial until its parity (#3139)
-  const { deviceFamily, s6MapOf } = await import('/packages/silinx-fpga/src/parts.js');
+  const { deviceFamily, s6MapOf, xc7SeedsOf } = await import('/packages/silinx-fpga/src/parts.js');
   const { familyProfile } = await import('/core/family-profile.js');
   const map = familyProfile(deviceFamily(pj.device)).mapChoice ? select([['silinx', 'Silinx'], ['nextpnr', 'nextpnr (on trial)']], s6MapOf(pj.impl)) : null;
+  // a 7-series' Place & Route (#3825): one seed, or the best Fmax of 3 seeds
+  const seeds = familyProfile(deviceFamily(pj.device)).seedsChoice ? select([['1', 'One seed'], ['3', 'Best of 3 seeds (router2)']], String(xc7SeedsOf(pj.impl))) : null;
   const r = await dialog({
     title: 'Process Properties - Synthesis / Implementation / Bitstream', width: 520,
     body: h('div', { class: 'form-grid' },
       ...field('Optimization:', opt),
       ...field('FPGA Start-Up Clock:', clk),
       ...(map ? field('Map (Spartan-6):', map) : []),
+      ...(seeds ? field('Place & Route (7-series):', seeds) : []),
       // what each Optimization does (#282, #2470)
       h('div', { class: 'effort-hint', style: { gridColumn: '1 / 3', color: 'var(--grey-3)' } },
         'Fast: one mapping and one placement, the quickest build. Area: the smallest circuit, the mappings for speed tried too. Speed: the fastest circuit, every mapping for speed and several placements tried. ISE gets Speed / Normal, Area / High and Speed / High.'),
@@ -562,8 +569,9 @@ export async function implProperties() {
   pj = await currentProject();   // (#2281)
   if (pj?.name !== pj0.name) return;
   // (a place and route engine saved by an earlier version, #2136: nextpnr, the one engine since #2137)
-  const { engine, s6Map, ...impl } = pj.impl;
-  pj.impl = { ...impl, ...GOAL_IMPL[opt.value], startupClk: clk.value, ...((map ? map.value : s6Map) === 'nextpnr' ? { s6Map: 'nextpnr' } : {}) };
+  const { engine, s6Map, xc7Seeds, ...impl } = pj.impl;
+  pj.impl = { ...impl, ...GOAL_IMPL[opt.value], startupClk: clk.value, ...((map ? map.value : s6Map) === 'nextpnr' ? { s6Map: 'nextpnr' } : {}),
+    ...(xc7SeedsOf({ xc7Seeds: seeds ? +seeds.value : xc7Seeds }) === 3 ? { xc7Seeds: 3 } : {}) };
   await app.saveProjectJson();
 }
 

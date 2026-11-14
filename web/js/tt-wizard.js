@@ -7,6 +7,7 @@ import { reservedError } from '/core/reserved.js';
 import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { NAME_RE } from '/core/ident.js';
 import { S, app } from './app.js';
+import { langNote } from './design-only.js';
 
 // a truth table from "name = expression" (#1056): its inputs (the expression's, 1 to 6), its output (the name, else f)
 // and the output's column; or the error to show
@@ -83,7 +84,7 @@ export async function booleanWizard({ path, name, lang, back = null }) {
     onShow: () => {
       summary.textContent = [
         `The wizard will create the Boolean algebra source ${path} and open it in its editor.`, '',
-        `Module: ${made.name} (${lang === 'verilog' ? 'Verilog' : 'VHDL'})`,
+        `Module: ${made.name}${langNote(lang)}`,
         `Inputs: ${made.inputs.join(', ')}`,
         `Outputs: ${made.outputs.join(', ')}`,
         ...(exprIn.value.trim() ? [`Expression: ${exprIn.value.trim()}`] : []),

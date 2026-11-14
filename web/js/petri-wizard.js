@@ -15,6 +15,7 @@ import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { namePage, portEditor } from './modwizard.js';
 import { S, app } from './app.js';
 import { portText, namedPages } from './wizard-util.js';
+import { designOnly, langNote } from './design-only.js';
 
 
 export async function petriWizard({ name = '', location = 'src', lang = null, named = false, back = null } = {}) {
@@ -23,7 +24,8 @@ export async function petriWizard({ name = '', location = 'src', lang = null, na
   const L = lang || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
   const p1 = namePage({
     title: 'Name and Language', name, lang: L, loc: location, guard, ext: '.pn.json', nameLabel: 'Petri net (module) name:',
-    hint: 'The wizard creates a Petri net with its inputs and outputs declared, ready for you to draw its places, transitions and arcs; its HDL is generated from it.',
+    hint: designOnly() ? 'The wizard creates a Petri net with its inputs and outputs declared, ready for you to draw its places, transitions and arcs.'   // (no HDL, #3891)
+      : 'The wizard creates a Petri net with its inputs and outputs declared, ready for you to draw its places, transitions and arcs; its HDL is generated from it.',
   });
   const ports = [];
   const pe = portEditor(ports, { lang: p1.lang, dirs: ['in', 'out'] });   // only the user's own ports (#2082); the clock and the reset: fields of their own
@@ -61,7 +63,7 @@ export async function petriWizard({ name = '', location = 'src', lang = null, na
       summary.textContent = [
         `The wizard will create the Petri net ${p1.path()} and open it in the Petri net editor.`,
         '',
-        `Module: ${m.name} (${m.lang === 'vhdl' ? 'VHDL' : 'Verilog'})`,
+        `Module: ${m.name}${langNote(m.lang)}`,
         ...(tpl.id() === 'empty' ? [] : [`Template: ${tpl.label()} (${m.places.length} places, ${m.transitions.length} transitions)`]),
         `Inputs: ${m.inputs.map(portText).join(', ') || 'none'}`,
         `Outputs: ${m.outputs.map(portText).join(', ') || 'none'}`,

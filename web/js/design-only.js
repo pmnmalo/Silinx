@@ -16,6 +16,8 @@ const HDL_BADGES = new Set(['VHDL', 'Verilog']);
 export const withoutHdlBadges = badges => (designOnly() ? badges.filter(b => !HDL_BADGES.has(b.text)) : badges);
 /** The files a list shows (the Files tab), the HDL side's (HDL, C, constraints, memory) left out in a design project. */
 export const shownFiles = files => (designOnly() ? files.filter(f => !hdlSideFile(f)) : files);
+/** A module's language after its name (" (VHDL)"), none in a design project (#3891). */
+export const langNote = lang => (designOnly() ? '' : ` (${lang === 'verilog' ? 'Verilog' : 'VHDL'})`);
 /** Check Syntax's name: Check Design in a design project (its sources are drawings). */
 export const checkLabel = (label = 'Check Syntax') => (designOnly() ? 'Check Design' : label);
 /** Whether `path` is refused in the open project (an HDL-side file in a design project): the refusal in the console. */

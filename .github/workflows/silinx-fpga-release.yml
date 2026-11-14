@@ -61,7 +61,8 @@ jobs:
           name: silinx-fpga
           path: out
       # npm 11.21.0 (its dependencies bundled in its tarball): the tarball checked against the integrity pinned here
-      # (npm view npm@11.21.0 dist.integrity), then installed from that file, before the job's token publishes (#3049)
+      # (npm view npm@11.21.0 dist.integrity), then installed from that file, before the job's token publishes (#3049);
+      # the npm that publishes and its verbose log, which says why the OIDC token's exchange failed (#3889)
       - name: Publish
         env:
           NPM_TARBALL: https://registry.npmjs.org/npm/-/npm-11.21.0.tgz
@@ -70,4 +71,5 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/npm.tgz" "$NPM_TARBALL"
           test "sha512-$(openssl dgst -sha512 -binary "$RUNNER_TEMP/npm.tgz" | base64 -w0)" = "$NPM_INTEGRITY" || { echo "::error::$NPM_TARBALL is not the tarball of its pinned integrity"; exit 1; }
           npm install --global "$RUNNER_TEMP/npm.tgz" --ignore-scripts --no-audit --no-fund
-          npm publish ./out/silinx-fpga-*.tgz --provenance --access public --ignore-scripts
+          npm --version
+          npm publish ./out/silinx-fpga-*.tgz --provenance --access public --ignore-scripts --loglevel verbose

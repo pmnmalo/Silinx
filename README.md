@@ -279,6 +279,9 @@ for Xilinx FPGAs supported by ISE 14.7.
   a state, drag from the rim of a state to another (or to itself) to add a transition, double-click
   to edit in place (`S2 / z=1` in a state, `x && !y / z=1` on an arrow), drag a label to bend its
   arrow; properties panel (initial/reset state, Moore outputs, condition, Mealy outputs, priority),
+  conditions in any common notation (`x && !y`, `x & ~y`, `x AND NOT y`, Boolean algebra's `x.y'`, `x·/y`,
+  `x + y`; comparisons `==`, `!=`, `<`, `>=`…) and `else` / `default` / `true` / `1` for the state's otherwise
+  transition, taken when no other one is,
   inputs and outputs (bits and buses, default values), clock, reset (sync/async, active level),
   encoding (binary, gray, one-hot, enumerated), auto-layout, zoom/pan/fit, undo/redo, print / SVG.
   Plain-language checks: unreachable states, states with no exit, overlapping conditions (two

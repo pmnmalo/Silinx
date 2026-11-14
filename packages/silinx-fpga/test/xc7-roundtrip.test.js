@@ -2,7 +2,7 @@
 // and no board, apart from the generator (bitdb.js, frames.js, bitstream.js). The references (test/fixtures/xc7): the
 // FASM of three examples and the .bit Project X-Ray's fasm2frames and xc7frames2bit made of it (the fork's CI). The
 // reference frames (Silinx's fasm2frames on its own index of the database) Project X-Ray's, and the generator's; the
-// round trip (bitread, bit2fasm, compared by bits) clean on Project X-Ray's .bit and Silinx's, the names that differ
+// round trip (bitread, bit2fasm, compared by bits) clean on Project X-Ray's .bit and Silinx's (compressed too, #3876), the names that differ
 // counted; a bit lost, a stray bit, a bit of no feature found; what fasm2frames adds (a bank's STEPDOWN, PUDC_B's
 // pull-up), an alias of shared bits; a .bit that is not one.
 import test from 'node:test';
@@ -15,7 +15,7 @@ import { bitIndexXc7, tileFeatureBits, readBitFramesXc7, framesToFeatures, setBi
 import { fasmKeys, addedFeatures, referenceFrames, roundTrip } from '../src/fpga/xc7/roundtrip.js';
 import { loadBitDbXc7, XC7_DB_DIR } from '../src/fpga/xc7/bitdb-node.js';
 import { fasmToFrames } from '../src/fpga/xc7/frames.js';
-import { bitstreamXc7 } from '../src/fpga/xc7/bitstream.js';
+import { bitstreamXc7, readBitXc7 } from '../src/fpga/xc7/bitstream.js';
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'xc7');
 const gz = f => zlib.gunzipSync(fs.readFileSync(path.join(FIX, f)));
@@ -57,7 +57,9 @@ test('xc7 round trip: the three FASMs\' .bit (Project X-Ray\'s and Silinx\'s) re
   };
   for (const name of DESIGNS) {
     const text = fasmOf(name);
-    for (const [who, bit] of [['Project X-Ray', xrayBit(name)], ['Silinx', silinxBit(text)]]) {
+    // (and Silinx's compressed, #3876: its frames written once, its repeated ones copied with MFWR)
+    const compressed = bitstreamXc7(fasmToFrames(db, text).frames, db, { now: new Date(0), compress: true });
+    for (const [who, bit] of [['Project X-Ray', xrayBit(name)], ['Silinx', silinxBit(text)], ['Silinx, compressed', compressed]]) {
       const r = roundTrip(index, text, readBitFramesXc7(bit, index).frames);
       assert.deepEqual(clean(r), CLEAN, `${name} (${who})`);
       assert.deepEqual(r.counts, { ...COUNTS[name], aliases: 0, added: NONE, extra: 0 }, `${name} (${who})`);
@@ -198,4 +200,60 @@ test('xc7 bitread: a .bit that is not one, its frame data cut, its padding not z
   while (fv.getUint32(p) !== ((1 << 29) | (2 << 27) | (1 << 13) | 1) >>> 0) p += 4;
   fv.setUint32(p + 4, 0x7f);
   assert.throws(() => readBitFramesXc7(far, index), /FDRI's data starts at 0x7f, not a frame of the part/);
+});
+
+// (#3876) a compressed .bit's packets: the words of each (header and data) from the sync word on
+function packets(bit) {
+  const view = new DataView(bit.buffer, bit.byteOffset, bit.byteLength), out = [];
+  let k = 0;
+  while (view.getUint32(k) !== 0xaa995566) k++;
+  for (k += 4; k + 4 <= bit.length;) {
+    const h = view.getUint32(k), n = h >>> 29 === 2 ? h & 0x7ffffff : h >>> 29 === 1 ? h & 0x7ff : 0;
+    out.push({ at: k, reg: (h >>> 13) & 0x3fff, kind: h >>> 29, first: n ? view.getUint32(k + 4) : null });
+    k += 4 + 4 * n;
+  }
+  return out;
+}
+
+test('xc7 bitread of a compressed .bit (#3876): MFWR copies FDRI\'s last frame; MFWR with no CMD MFW, or off the part: errors', () => {
+  const text = 'CLBLL_L_X2Y0.SLICEL_X0.AFF.ZINI\nCLBLL_L_X2Y1.SLICEL_X0.AFF.ZINI';
+  const bit = bitstreamXc7(fasmToFrames(db, text).frames, db, { now: new Date(0), compress: true });
+  const back = readBitFramesXc7(bit, index);
+  assert.deepEqual(back.frames, readBitFramesXc7(silinxBit(text), index).frames);
+  assert.equal(back.frames.size, 5408);
+  // the last CMD MFW turned into a NULL: its MFWRs have no frame to copy
+  const ps = packets(bit), mfw = ps.filter(p => p.reg === 0x04 && p.first === 2).at(-1);
+  const bad = Uint8Array.from(bit);
+  new DataView(bad.buffer).setUint32(mfw.at + 4, 0);
+  assert.throws(() => readBitFramesXc7(bad, index), /MFWR with no CMD MFW and frame before it/);
+  // an MFWR's FAR off the part's frames
+  const last = ps.findLastIndex(p => p.reg === 0x0a), far = ps.slice(0, last).findLast(p => p.reg === 0x01), off = Uint8Array.from(bit);
+  new DataView(off.buffer).setUint32(far.at + 4, 0x3fffffff);
+  assert.throws(() => readBitFramesXc7(off, index), /MFWR at 0x3fffffff, not a frame of the part/);
+});
+
+// a .bit of configuration packets only (the sync word, then the words)
+const packetBit = words => {
+  const out = new Uint8Array(4 * (words.length + 1)), v = new DataView(out.buffer);
+  [0xaa995566, ...words].forEach((w, i) => v.setUint32(4 * i, w >>> 0));
+  return out;
+};
+
+test('xc7 bitread: the frame buffer as Vivado\'s compressed .bit uses it: FDRI\'s last frame written by MFWR only, the first with no FAR to its own address (#3876)', () => {
+  const t1 = (reg, n) => ((1 << 29) | (2 << 27) | (reg << 13) | n) >>> 0, NOP = 0x20000000;
+  const frame = x => Array.from({ length: FRAME_WORDS }, (_, i) => (i === ECC_WORD ? 0 : x + i));
+  const order = [...readBitFramesXc7(silinxBit(''), index).frames.keys()].sort((a, b) => a - b), [a0, a1, a2, , a4, a5, a6] = order;
+  // three frames from a0: a0 and a1 written, the third into the buffer; MFWR with no FAR writes it to a2, then to a5;
+  // two frames from a4: a4 written, the second (another frame's words, as Vivado's) left in the buffer, never written
+  const words = [t1(4, 1), 1, NOP, t1(1, 1), a0, NOP, t1(2, 3 * FRAME_WORDS), ...frame(0x100), ...frame(0x200), ...frame(0x300),
+    t1(4, 1), 2, ...Array(12).fill(NOP), t1(0x0a, 8), 0, 0, 0, 0, 0, 0, 0, 0, t1(1, 1), a5, t1(0x0a, 4), 0, 0, 0, 0,
+    t1(4, 1), 1, NOP, t1(1, 1), a4, NOP, t1(2, 2 * FRAME_WORDS), ...frame(0x400), ...frame(0x500)];
+  const bit = packetBit(words), back = readBitFramesXc7(bit, index).frames, all = readBitXc7(bit, db);
+  const expect = new Map([[a0, 0x100], [a1, 0x200], [a2, 0x300], [a4, 0x400], [a5, 0x300]]);
+  for (const [a, x] of expect) {
+    assert.deepEqual([...back.get(a)], frame(x), `0x${a.toString(16)}`);
+    assert.deepEqual([...all.get(a)], frame(x), `0x${a.toString(16)}`);
+  }
+  assert.deepEqual([back.has(a6), all.get(a6).some(Boolean)], [false, false]);
+  assert.equal(back.size, expect.size);
 });
