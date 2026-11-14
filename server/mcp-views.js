@@ -7,9 +7,12 @@
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { isDesignOnly } from '../core/project-kind.js';
+import { notationSetting } from './mcp-notation.js';
+import { NOTATION_IDS, showExpr } from '../core/expr-notation.js';
 
 const VIEWS = ['translation', 'asm', 'fsm', 'schematic', 'results'];
-const NOTATIONS = ['slash', 'slash-compact', 'textbook', 'compact', 'ascii', 'vhdl', 'verilog'];
+// (Settings ▸ Boolean Notation's, #3915, then the older ones formatExpr has)
+const NOTATIONS = [...NOTATION_IDS, 'slash-compact', 'textbook', 'compact', 'ascii'];
 const base = p => p.split('/').pop();
 
 async function source(name, rel) {
@@ -21,9 +24,9 @@ export const VIEW_TOOLS = [
   {
     name: 'related_view', title: 'A read-only view related to a source',
     description: 'A view the interface shows beside a source, made from it and read-only, nothing written to the project: translation (an HDL source in the other language: VHDL to Verilog, Verilog to VHDL), asm (a state diagram\'s ASM chart, its JSON), fsm (an ASM chart\'s state diagram, or a Petri net\'s state machine: a state per marking, its JSON), schematic (a Boolean algebra / truth table\'s schematic, its JSON), results (a Boolean algebra / truth table\'s results, as its editor shows them, per output: the canonical SOP and POS, the minterm and maxterm lists, the minimal SOP and POS with every minimal solution when there are several (up to 64; the one used marked), each output\'s HDL logic (set_output_logic changes it), the XOR form when simpler, the NAND and NOR forms, the forms of least gates and of least delay). A drawing\'s HDL is read_file\'s, a C source\'s c_generated\'s and c_synthesis_report\'s; convert_drawing makes a drawing a new module.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The source: an HDL file (.vhd, .v), a state diagram (.fsm.json), an ASM chart (.asm.json), a Petri net (.pn.json) or a truth table (.bool.json, .tt.json).'), view: { type: 'string', enum: VIEWS, description: 'The view.' }, notation: { type: 'string', enum: NOTATIONS, description: 'results: the notation of the expressions (default slash, /a.b + c, as the editor\'s).' } }, required: ['project', 'path', 'view'], additionalProperties: false },
+    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The source: an HDL file (.vhd, .v), a state diagram (.fsm.json), an ASM chart (.asm.json), a Petri net (.pn.json) or a truth table (.bool.json, .tt.json).'), view: { type: 'string', enum: VIEWS, description: 'The view.' }, notation: { type: 'string', enum: NOTATIONS, description: 'results: the notation of the expressions (default: the one set_notation set, as the editor\'s Settings ▸ Boolean Notation; engineering, a̅·b + c, when none is).' } }, required: ['project', 'path', 'view'], additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false },
-    async run({ project: name, path: rel, view, notation = 'slash' }) {
+    async run({ project: name, path: rel, view, notation }) {
       await readProject(name);
       if (!VIEWS.includes(view)) throw toolError(`view: ${VIEWS.join(', ')}`);
       const text = await source(name, rel);
@@ -39,6 +42,7 @@ export const VIEW_TOOLS = [
       }
       if (view === 'results') {
         if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json) has results`);
+        if (notation === undefined) notation = await notationSetting();
         if (!NOTATIONS.includes(notation)) throw toolError(`notation: ${NOTATIONS.join(', ')}`);
         return tableResults(name, rel, json(text, rel), notation, isDesignOnly(await P.readProject(name)));
       }
@@ -83,7 +87,7 @@ async function tableResults(name, rel, doc, notation, design = false) {
   const big = m.inputs.length > L.MAX_EDIT_INPUTS ? { maxNodes: 50000 } : {};   // (as the editor: 7–8 inputs kept quick)
   const outputs = m.outputs.map(o => {
     const A = L.analyzeOutput(m, o, big);
-    const ex = ast => `${o} = ${L.formatExpr(ast, notation)}`;
+    const ex = ast => `${o} = ${showExpr(ast, notation)}`;
     // a minimal form (the solution used, `used`) and every minimal solution of it (#2928, #2950); `many`: the cap reached
     const minimal = r => ({ expr: ex(r.ast), terms: r.terms.length, literals: r.literals, used: r.pick, many: r.solutions >= 64,
       solutions: r.alternatives.map(a => ({ expr: ex(a.ast), terms: a.terms.length, literals: a.literals, gates: a.gates })) });

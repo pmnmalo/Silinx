@@ -59,13 +59,13 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
   // the expression under the list: on a line of its own (#3069)
   assert.ok(await page.eval((t) => { const [l, e] = document.querySelectorAll(`${t} .tt-canon-sop code`); return e.getBoundingClientRect().top >= l.getBoundingClientRect().bottom - 1; }, T));
   // another notation: the canonical forms follow it, the lists stay
-  await page.fill(`${T} .tt-notation`, 'textbook');
-  await page.waitFor((t) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent === "f = a'·b'·c + a'·b·c + a·b·c'", [T], { what: 'textbook notation' });
-  assert.deepEqual((await canon(page)).map((r) => r.slice(2)), [["f = a'·b'·c + a'·b·c + a·b·c'", 'f = Σm(1, 3, 6) + d(2, 5)'], ["f = (a + b + c)·(a' + b + c)·(a' + b' + c')", 'f = ΠM(0, 4, 7) · D(2, 5)']]);
+  await page.fill(`${T} .tt-notation`, 'logic');
+  await page.waitFor((t) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent === "f = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ c ∨ a ∧ b ∧ ¬c", [T], { what: 'logic notation' });
+  assert.deepEqual((await canon(page)).map((r) => r.slice(2)), [["f = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ c ∨ a ∧ b ∧ ¬c", 'f = Σm(1, 3, 6) + d(2, 5)'], ["f = (a ∨ b ∨ c) ∧ (¬a ∨ b ∨ c) ∧ (¬a ∨ ¬b ∨ ¬c)", 'f = ΠM(0, 4, 7) · D(2, 5)']]);
   // a constant output: no minterm, the SOP is 0
   await page.click(`${T} .tt-tab[data-out=z]`);
   await page.waitFor((t) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent === 'z = 0', [T], { what: 'output z' });
-  assert.deepEqual((await canon(page)).map((r) => r.slice(2)), [['z = 0', 'z = Σm()'], ["z = (a + b + c)·(a + b + c')·(a + b' + c)·(a + b' + c')·(a' + b + c)·(a' + b + c')·(a' + b' + c)·(a' + b' + c')", 'z = ΠM(0, 1, 2, 3, 4, 5, 6, 7)']]);
+  assert.deepEqual((await canon(page)).map((r) => r.slice(2)), [['z = 0', 'z = Σm()'], ["z = (a ∨ b ∨ c) ∧ (a ∨ b ∨ ¬c) ∧ (a ∨ ¬b ∨ c) ∧ (a ∨ ¬b ∨ ¬c) ∧ (¬a ∨ b ∨ c) ∧ (¬a ∨ b ∨ ¬c) ∧ (¬a ∨ ¬b ∨ c) ∧ (¬a ∨ ¬b ∨ ¬c)", 'z = ΠM(0, 1, 2, 3, 4, 5, 6, 7)']]);
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((t) => document.querySelector(`${t} .tt-canon-sop b`)?.textContent === 'Forma canónica SdP', [T], { what: 'Portuguese' });
@@ -82,6 +82,8 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
     'A SdP mínima só com portas NAND (dupla negação); um inversor é uma NAND com as entradas ligadas, /(a·a)', 'O PdS mínimo só com portas NOR (dupla negação); um inversor é uma NOR com as entradas ligadas, /(a + a)']);
   assert.doesNotMatch(await page.eval((t) => document.querySelector(t).innerText, T), /\b(SOP|POS)\b/, 'no SOP nor POS left');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  // (the notation is the Settings', #3915: chosen for every table; back to /)
+  await page.fill(`${T} .tt-notation`, 'slash');
   // 8 inputs: 255 minterms of 8 literals, one maxterm; the expressions wrap, the panel does not scroll sideways
   await open(page, 'src/w.bool.json');
   const w = await page.eval((t) => {

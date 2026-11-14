@@ -888,6 +888,9 @@ function initScripts({ updateCheck, build, ui }) {
     // SILINX_UI_INTERFACE=ise: run the tests in the ISE style interface (the default is the Silinx one)
     // ui: 'ise': a test of that interface's own parts (its views, its Processes panel: the Silinx interface has none, #1149)
     // (the site's development edition, dev/: its own key, web/js/prefs.js, #1243)
+    // the Boolean expressions in the text notation, /a.b + c, the one the tests were written in (#3915: the default is
+    // Electronics / Engineering, a̅·b + c; test/ui/expr-notation.test.js tests it and the others)
+    "try { var nk = /\\/dev\\//.test(location.pathname) ? 'silinx.dev.notation' : 'silinx.notation'; if (!localStorage.getItem(nk)) localStorage.setItem(nk, 'slash'); } catch (e) {}",
     ...[ui, process.env.SILINX_UI_INTERFACE].filter(Boolean).map((v) => `try { var k = /\\/dev\\//.test(location.pathname) ? 'silinx.dev.ui' : 'silinx.ui'; if (!localStorage.getItem(k)) localStorage.setItem(k, ${JSON.stringify(v)}); } catch (e) {}`),
   ];
 }

@@ -3,13 +3,16 @@
 // when it is cheaper (#435), the NAND-only and NOR-only forms (#694), each with its tick box (its HDL logic, #2951) and
 // the notation of the expressions (#434).
 import { h } from './ui.js';
-import { formatExpr, circuitCost, outputForm, formOf, setOutputLogic } from '/core/logic.js';
+import { circuitCost, outputForm, formOf, setOutputLogic } from '/core/logic.js';
+import { DEFAULT_NOTATION, NOTATIONS, showExpr as formatExpr } from '/core/expr-notation.js';
+import { getNotation } from './notation.js';
 import { canonicalCost } from '/core/logic-canon.js';
 import { designKind } from './project-kind-flag.js';
 
 // (a design and simulation project's, #3780: no HDL)
 const HDL_NOTATIONS = ['vhdl', 'verilog'];
-const NOTATIONS = [['slash', '/a.b + c'], ['slash-compact', '/ab + c'], ['textbook', 'a·b\' + c'], ['compact', 'ab\' + c'], ['vhdl', 'VHDL'], ['verilog', 'Verilog']];
+/** The notation the expressions are shown in: the Settings' (#3915; not an HDL's in a design and simulation project, #3780). */
+export const shownNotation = () => { const n = getNotation(); return designKind() && HDL_NOTATIONS.includes(n) ? DEFAULT_NOTATION : n; };
 
 // the HDL logic of the fewest gates, or of the least delay, among the other forms (#1427)
 const GATES_TIP = 'The form with the fewest gates, each symbol one gate whatever its number of inputs';
@@ -51,8 +54,8 @@ function canonForms(A, out, n, notation, tick) {
 export function renderTtResults(ctx) {
   const { results } = ctx, M = ctx.M(), out = ctx.out(), A = ctx.A(), notation = ctx.notation();
   results.innerHTML = '';
-  const nsel = h('select', { class: 'tt-notation', title: 'Notation of the expressions', onchange: () => { ctx.setNotation(nsel.value); ctx.renderResults(); ctx.renderKmap(); } },
-    ...NOTATIONS.filter(([v]) => !designKind() || !HDL_NOTATIONS.includes(v)).map(([v, l]) => h('option', { value: v, selected: v === notation }, l)));
+  const nsel = h('select', { class: 'tt-notation', title: 'Notation of the expressions', onchange: () => ctx.setNotation(nsel.value) },
+    ...NOTATIONS.filter(([v]) => !designKind() || !HDL_NOTATIONS.includes(v)).map(([v, name, ex]) => h('option', { value: v, selected: v === notation }, HDL_NOTATIONS.includes(v) ? name : ex)));
   // its tick box (#2951): the form ticked, the output's HDL logic (an XOR form not simpler: its minimal SOP's)
   const tick = f => hdlTick((formOf(M, out) === 'xor' && !A.xor ? 'sop' : formOf(M, out)) === f, () => { ctx.setM(setOutputLogic(M, out, { form: f })); ctx.changed(); });
   const form = (label, f, cls) => {

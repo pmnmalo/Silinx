@@ -5,7 +5,8 @@
 // with their lists Σm / ΠM, minimal SOP and POS with their literal and
 // gate counts, the XOR form when it is cheaper (#435), the NAND-only and NOR-only forms (#694), each one's gates and delay
 // as a circuit, and the forms of the fewest gates and of the least delay (#1427).
-// The expressions are written in the notation chosen, by default with / as NOT and . as AND (/a.b + c, #434, #1496); one may be written
+// The expressions are written in the notation of the Settings (Boolean Notation, #3915; a̅·b + c by default; the menu of the
+// results chooses it too), typed in any (/a.b + c, #434, #1496); one may be written
 // by hand (#1056), and the whole table drawn by hand (#1066), both from the Development menu (#1098). Tables read from a
 // module may have up to 8 inputs (no Karnaugh map then). Logic: core/logic.js. The table always has its HDL module,
 // in its language (the project's preferred one), generated from it by the host (app.js), which keeps both in sync,
@@ -23,7 +24,7 @@ import { h, linkModel, linkSnapshot } from './ui.js';
 import { ICON } from './editor-icons.js';
 import { toolbarMenu } from './toolbar-menu.js';
 import {
-  normalizeTable, validateTable, reshapeTable, analyzeOutput, parseExpr, exprColumn, formatExpr,
+  normalizeTable, validateTable, reshapeTable, analyzeOutput, parseExpr, exprColumn,
   kmapLayout, kmapRects, MAX_EDIT_INPUTS, setOutputLogic,
 } from '/core/logic.js';
 import { reservedError } from '/core/reserved.js';
@@ -31,7 +32,9 @@ import { cellText, placeKmap } from './tt-kmap3d.js';
 import { domSnapshot } from './print-view.js';
 import { t as tr } from './i18n.js';
 import { statusLine } from './status-line.js';
-import { renderTtResults } from './tt-results.js';
+import { renderTtResults, shownNotation } from './tt-results.js';
+import { onNotation, setNotation } from './notation.js';
+import { showExpr } from '/core/expr-notation.js';
 import { ttReadOnlyChrome, lockTt } from './tt-readonly.js';
 import { designKind } from './project-kind-flag.js';
 
@@ -83,7 +86,6 @@ export function mountTtEditor(container, opts = {}) {
   let M = normalizeTable(opts.model);
   let out = M.outputs[0];
   let groups = 'sop';            // groups drawn on the K-map: 'sop' (1s) or 'pos' (0s)
-  let notation = 'slash';         // of the expressions shown (#434)
   let destroyed = false;
   const readOnly = !!opts.readOnly;
   // Undo / Redo: snapshots of the table (the notes typed are one step per pause)
@@ -295,7 +297,7 @@ export function mountTtEditor(container, opts = {}) {
     const leg = h('div', { class: 'tt-legend' }, picker || null);
     res.terms.forEach((t, ti) => {
       const one = { ...res, terms: [t] };
-      const text = formatExpr(groups === 'pos' ? clauseAst(one) : termAst(one), notation);
+      const text = showExpr(groups === 'pos' ? clauseAst(one) : termAst(one), shownNotation());
       leg.append(h('div', { class: 'tt-leg' }, h('span', { class: 'tt-swatch', style: { borderColor: COLORS[ti % COLORS.length], background: `${COLORS[ti % COLORS.length]}22` } }), h('code', { 'data-no-i18n': '' }, text),
         h('span', { class: 'tt-leg-cells' }, ` ${groups === 'pos' ? 'M' : 'm'}(${t.minterms.join(', ')})`)));   // (no "essential" mark, #3080)
     });
@@ -306,8 +308,10 @@ export function mountTtEditor(container, opts = {}) {
   const termAst = r => { const lit = l => (l.neg ? { t: 'not', a: { t: 'var', name: M.inputs[l.v] } } : { t: 'var', name: M.inputs[l.v] }); const ls = r.terms[0].literals; return ls.length === 0 ? { t: 'const', v: 1 } : ls.length === 1 ? lit(ls[0]) : { t: 'and', args: ls.map(lit) }; };
   const clauseAst = r => { const lit = l => (l.neg ? { t: 'var', name: M.inputs[l.v] } : { t: 'not', a: { t: 'var', name: M.inputs[l.v] } }); const ls = r.terms[0].literals; return ls.length === 0 ? { t: 'const', v: 0 } : ls.length === 1 ? lit(ls[0]) : { t: 'or', args: ls.map(lit) }; };
 
-  const renderResults = () => { renderTtResults({ results, M: () => M, out: () => out, A: () => A, notation: () => notation, setNotation: v => { notation = v; },
+  const renderResults = () => { renderTtResults({ results, M: () => M, out: () => out, A: () => A, notation: shownNotation, setNotation,
     setM: m => { M = m; }, changed, renderKmap, renderResults }); lockTt(readOnly, results); };
+  // (the notation changed in the Settings or in another table's menu: drawn again, #3915)
+  const offNotation = onNotation(() => { if (!destroyed) { renderResults(); renderKmap(); } });
 
   function renderLink() {
     link.innerHTML = '';
@@ -352,6 +356,6 @@ export function mountTtEditor(container, opts = {}) {
     refreshLink: () => renderLink(),
     select(o) { if (M.outputs.includes(o)) { out = o; render(); } },
     handwritten, handwrittenTable, printView: () => ttPrintView(root, notes, M.name),   // (#1510)
-    destroy() { destroyed = true; more.close(); container.innerHTML = ''; },
+    destroy() { destroyed = true; offNotation(); more.close(); container.innerHTML = ''; },
   };
 }

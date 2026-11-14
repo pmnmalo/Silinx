@@ -52,7 +52,7 @@ async function subMenu(page, menu, item, sub) {
 // the keyboard shortcuts, Tell Us Who You Are; in Portuguese
 uiTest('#1314 the header\'s Settings: About, Interface, Language, Theme, Check for Updates, Keyboard Shortcuts, Tell Us Who You Are; Portuguese', E, async (page) => {
   assert.equal(await page.eval(() => document.getElementById('theme-btn')), null, 'no light / dark switch');
-  assert.deepEqual(await settingsMenu(page), ['About Silinx', 'Interface', 'Language', 'Theme', 'Toolchain Settings (ISE / Programmers)…', 'Check for Updates…', 'Check for Updates at Start-up', 'Keyboard Shortcuts', 'Tell Us Who You Are…']);
+  assert.deepEqual(await settingsMenu(page), ['About Silinx', 'Interface', 'Language', 'Theme', 'Boolean Notation', 'Toolchain Settings (ISE / Programmers)…', 'Check for Updates…', 'Check for Updates at Start-up', 'Keyboard Shortcuts', 'Tell Us Who You Are…']);
   await settingsMenu(page, 'About Silinx');
   await page.waitDialog('About Silinx');
   await page.key('Escape');
@@ -69,7 +69,7 @@ uiTest('#1314 the header\'s Settings: About, Interface, Language, Theme, Check f
   await page.waitFor(() => document.documentElement.dataset.theme === 'light');
   assert.deepEqual(await settingsMenu(page, 'Language', 'Português'), ['English', 'Português']);
   await page.waitFor(() => document.getElementById('settings-btn').title === 'Definições', [], { what: 'Portuguese' });
-  assert.deepEqual(await settingsMenu(page), ['Acerca do Silinx', 'Interface', 'Idioma', 'Tema', 'Definições da Toolchain (ISE / Programadores)…', 'Procurar Atualizações…', 'Procurar Atualizações no Arranque', 'Atalhos de Teclado', 'Diga-nos Quem É…']);
+  assert.deepEqual(await settingsMenu(page), ['Acerca do Silinx', 'Interface', 'Idioma', 'Tema', 'Notação Booleana', 'Definições da Toolchain (ISE / Programadores)…', 'Procurar Atualizações…', 'Procurar Atualizações no Arranque', 'Atalhos de Teclado', 'Diga-nos Quem É…']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // Interface ▸ ISE style: the ISE style interface (no header buttons there), its menus
   await settingsMenu(page, 'Interface', 'ISE style');

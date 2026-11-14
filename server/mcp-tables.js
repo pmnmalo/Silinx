@@ -4,6 +4,7 @@
 // HDL file made again, as write_file does.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
+import { notationSetting } from './mcp-notation.js';
 
 const FORMS_TEXT = 'sop (minimal SOP), pos (minimal POS), xor (the XOR form when simpler, else the minimal SOP), nand, nor (NAND / NOR gates only), gates (the form of least gates), delay (of least delay), csop, cpos (the canonical SOP / POS)';
 
@@ -31,7 +32,9 @@ export const TABLE_TOOLS = [
       const { syncDrawing } = await import('./drawing-sync.js');
       const sync = await syncDrawing(P, name, rel);
       const r = L.outputForm(doc, output), f = L.formOf(doc, output);
-      const expr = `${output} = ${L.formatExpr(r.ast, 'slash')}`;
+      // (in the notation set, #3915)
+      const { showExpr } = await import('../core/expr-notation.js');
+      const expr = `${output} = ${showExpr(r.ast, await notationSetting())}`;
       return { text: [`${rel}: ${output}'s HDL logic: ${L.FORM_NAMES[f]}: ${expr}   (${r.what})`, ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, output, form: f, solutions: doc.solutions?.[output] || {}, expr, what: r.what, ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
