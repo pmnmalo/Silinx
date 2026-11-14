@@ -2,7 +2,8 @@
 // edge from its reset, as its editor's Try it panel steps it, through the same functions: an ASM chart's
 // (core/asm-sim.js: its state, the path taken through its decisions, its Moore and Mealy outputs, its registers, the
 // next state) and a state diagram's (core/fsm.js stepFsm: its state, the transition taken, its outputs, the next state);
-// a schematic's, Try it's live simulation (server/mcp-simulate-schematic.js, #3827). A drawing that cannot be simulated
+// a schematic's, Try it's live simulation (server/mcp-simulate-schematic.js, #3827); a circuit's, its Simulate
+// (server/mcp-simulate-circuit.js, #3897). A drawing that cannot be simulated
 // says why, as the panel does in the console.
 import { clip, toolError, STR, PROJECT, projectText } from './mcp-util.js';
 
@@ -88,15 +89,15 @@ async function simulateFsmFile(m0, cycles, base) {
 export const SIMULATE_DRAWING_TOOLS = [
   {
     name: 'simulate_drawing', title: 'Simulate a drawing (a state machine, a schematic)',
-    description: 'Step an ASM chart (.asm.json) or a state diagram (.fsm.json) clock edge by clock edge from its reset, as its editor\'s Try it panel does: one object of inputs per cycle ({ name: value }, a value a non-negative integer or binary digits; an input not given is 0; an ASM chart\'s reset by its name, not given: inactive). Per cycle, before its clock edge: the state, the inputs, the outputs (Moore and Mealy), an ASM chart\'s registers and the path taken through its decisions and conditional outputs (a state diagram\'s transition), and the next state. Its semantics are the generated HDL\'s. A schematic (.sch.json) is simulated as its editor\'s Try it does, with the project\'s modules: per cycle its input markers set (by name; its clock inputs not given, they are cycled once), then its outputs and every module instance\'s pins (an arrayed instance\'s, reg(3:0), its copies\' values side by side, as on its bus). A drawing with errors is not simulated: its errors are returned.',
+    description: 'Step an ASM chart (.asm.json) or a state diagram (.fsm.json) clock edge by clock edge from its reset, as its editor\'s Try it panel does: one object of inputs per cycle ({ name: value }, a value a non-negative integer or binary digits; an input not given is 0; an ASM chart\'s reset by its name, not given: inactive). Per cycle, before its clock edge: the state, the inputs, the outputs (Moore and Mealy), an ASM chart\'s registers and the path taken through its decisions and conditional outputs (a state diagram\'s transition), and the next state. Its semantics are the generated HDL\'s. A schematic (.sch.json) is simulated as its editor\'s Try it does, with the project\'s modules: per cycle its input markers set (by name; its clock inputs not given, they are cycled once), then its outputs and every module instance\'s pins (an arrayed instance\'s, reg(3:0), its copies\' values side by side, as on its bus). A circuit (.circ.json) is run as its editor\'s Simulate runs it, from time 0 (its switches as saved, its buttons released): per step (an object of cycles) its switches and buttons set by their labels (0 or 1; one not given keeps its place), then the circuit run until it is quiet (at most 1 µs, its gates\' delays): the time, the LEDs, the shorts and an oscillation. A drawing with errors is not simulated: its errors are returned.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, file: STR('The drawing, a path in the project (src/ctl.asm.json).'),
       cycles: { type: 'array', maxItems: MAX_CYCLES, items: { type: 'object', additionalProperties: { type: ['integer', 'string'] } }, description: 'The inputs of each clock cycle, in order, from the reset.' },
     }, required: ['project', 'file', 'cycles'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file, cycles }) {
-      const asm = /\.asm\.json$/i.test(file), fsm = /\.fsm\.json$/i.test(file), sch = /\.sch\.json$/i.test(file);
-      if (!asm && !fsm && !sch) throw toolError(`'${file}' is not an ASM chart, a state diagram or a schematic (.asm.json, .fsm.json, .sch.json)`);
+      const asm = /\.asm\.json$/i.test(file), fsm = /\.fsm\.json$/i.test(file), sch = /\.sch\.json$/i.test(file), circ = /\.circ\.json$/i.test(file);
+      if (!asm && !fsm && !sch && !circ) throw toolError(`'${file}' is not an ASM chart, a state diagram, a schematic or a circuit (.asm.json, .fsm.json, .sch.json, .circ.json)`);
       if (sch) {
         const { simulateSchematicFile } = await import('./mcp-simulate-schematic.js');
         const { lines, rows, warnings } = await simulateSchematicFile(name, file, cycles, file.split('/').pop(), inputsOf);
@@ -106,6 +107,11 @@ export const SIMULATE_DRAWING_TOOLS = [
       const text = await projectText(name, file, `no drawing '${file}' in the project '${name}'`);
       try { m = JSON.parse(text); } catch { throw toolError(`no drawing '${file}' in the project '${name}'`); }
       const base = file.split('/').pop();
+      if (circ) {
+        const { simulateCircuitFile } = await import('./mcp-simulate-circuit.js');
+        const { lines, rows, warnings } = await simulateCircuitFile(m, cycles, base);
+        return { text: clip(lines.join('\n')), data: { project: name, file, kind: 'circuit', warnings, steps: rows }, isError: false };
+      }
       const { lines, rows } = asm ? await simulateAsmFile(m, cycles, base) : await simulateFsmFile(m, cycles, base);
       return { text: clip(lines.join('\n')), data: { project: name, file, kind: asm ? 'asm' : 'fsm', cycles: rows }, isError: false };
     },
