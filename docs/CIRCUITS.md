@@ -31,8 +31,10 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 
 ## The parts library
 
-Each part is a description in `core/circuit-parts*.js`: its pins (number, name, direction: in, out, power, passive),
-its body's drawing, its logic and its timing. One description serves the editor, the simulation, the checks, the
+Each part is a description in `core/circuit-parts.js` (the ICs' tables: `core/circuit-ics.js`): its pins (number, name,
+direction: in, out, open collector, power, passive, weak, not connected), its inputs (a level, a momentary button, a
+clock), its contacts (two pins joined while an input is on or off), its pulls, its lamps (an anode and a cathode), its
+logic and its timing. One description serves the editor, the simulation, the checks, the
 generated HDL and the MCP server.
 
 | Category | Parts | Phase |
@@ -40,7 +42,7 @@ generated HDL and the MCP server.
 | Breadboards | half (30 columns, 400 holes), full (63 columns, 830 holes); two power rails on each side | 1 (half), 2 (full) |
 | Power | supply (+5 V and GND terminals: logic 1 and 0) | 1 |
 | Inputs | logic switch (a slide switch giving 0 or 1, as a trainer kit's), push button (SPST, momentary) | 1 |
-| | SPDT switch, DIP switch (4 / 8), pull-up and pull-down (weak 1 / weak 0), clock source (a frequency, a duty cycle) | 2 |
+| | SPDT slide switch (break before make), DIP switch (4 / 8), pull-up and pull-down (weak 1 / weak 0), clock source (its frequency, 0.1 to 50 Hz, ticking in real time) | 2 |
 | Outputs | LED (anode, cathode; its colour) | 1 |
 | | 7-segment display (common cathode and common anode, with its point), LED bar (10) | 2 |
 | Gates (74xx, as the 74LS) | 7400 NAND, 7404 NOT, 7408 AND, 7432 OR, 7486 XOR | 1 |
@@ -55,8 +57,15 @@ says its own). The 7400, 7408, 7432 and 7486 share one pinout (1A 1, 1B 2, 1Y 3,
 4Y 11, 4A 12, 4B 13); the 7404's six inverters are 1A 1, 1Y 2, …, 4Y 8, 4A 9, 5Y 10, 5A 11, 6Y 12, 6A 13. The 7402's
 outputs come first (1Y 1, 1A 2, 1B 3, …). Each part's pinout is shown in its Properties and on hover over a pin.
 
-**Timing:** a part has its typical propagation delay (the 74LS datasheets': 7400, 7404, 7408: 10 ns; 7486: 12 ns;
-7432: 14 ns), one value for both edges. The delays are inertial (a pulse shorter than the delay does not get through),
+Every 4000 quad 2-input gate shares the 4001's pinout (1A 1, 1B 2, 1Y 3, 2Y 4, 2A 5, 2B 6, VSS 7, 3A 8, 3B 9, 3Y 10, 4Y 11,
+4A 12, 4B 13, VDD 14), not the 7400's. The 7410, 7411 and 7427: 1A 1, 1B 2, 2A 3, 2B 4, 2C 5, 2Y 6, 3Y 8, 3A 9, 3B 10,
+3C 11, 1Y 12, 1C 13; the 7420's pins 3 and 11 and the 7430's 9, 10 and 13 are not connected. A 7-segment display's pins
+are e 1, d 2, COM 3, c 4, DP 5, b 6, a 7, COM 8, f 9, g 10 (its two commons joined inside), its rows 0.6 inch apart; an
+LED bar's anodes are 1 to 10 and its cathodes 20 to 11.
+
+**Timing:** a part has its typical propagation delay (the 74LS datasheets': 7400, 7402, 7404, 7408, 7410, 7411, 7420,
+7427: 10 ns; 7430, 7486: 12 ns; 7432: 14 ns; 7414, 7406: 15 ns; the open collector 7401, 7403, 7405: 17 ns; the 4000s
+at 5 V: 4069 45 ns, 4001, 4011, 4071, 4081 60 ns, 4030 100 ns, 4070 140 ns), one value for both edges. The delays are inertial (a pulse shorter than the delay does not get through),
 as VHDL's `after` and Verilog's `#` on a continuous assignment, so the live simulation and the generated HDL agree.
 
 ## The wiring
@@ -76,6 +85,12 @@ as VHDL's `after` and Verilog's `#` on a continuous assignment, so the live simu
   logic switch), a weak 0 or 1 (a pull-up or pull-down, phase 2), or nothing (Z). Two strong drivers of opposite levels
   are a short circuit: the net is X.
 - **An IC reads its inputs as the real one:** a floating 74LS input reads high, a floating 4000 input reads X.
+- **Open collector outputs** drive a 0 or nothing: several on one net are a wired AND, which a pull-up makes 1 while
+  they are all off (with none, the check warns: the net floats).
+- **Contacts:** a button, a slide switch (its common to A while off, to B while on) and a DIP switch's levers join two
+  nets while closed.
+- **The clock source** is an input like a switch, which Try it flips in real time at its frequency (0.1 to 50 Hz): the
+  gates' nanoseconds settle between its ticks.
 - **At power-on** every IC's output is unknown (X) until its inputs make it known, as in the generated HDL: a latch is X
   until it is set or reset, and a ring of inverters with no gate stays X (a gated one, a NAND enabled by a switch,
   starts from a known level and oscillates once enabled).
@@ -94,10 +109,13 @@ A circuit's Check (and every change, as the other drawings') says in the console
 part or wire:
 
 - **errors:** a short circuit (two outputs, or the supply's two terminals, driving opposite levels on one net: the parts
-  named); an IC not powered or powered the wrong way (its VCC and GND pins' nets); an output driving a supply rail; two
+  named; an open collector output with a totem pole one, or on the + rail; a contact joining the supply's + and − while
+  closed); an IC not powered or powered the wrong way (its VCC and GND pins' nets); an output driving a supply rail; two
   parts on the same holes; a label used twice or not a valid HDL name;
-- **warnings:** an IC input floating (and what it reads: "U1 pin 1 (1A) is floating: a 74LS input reads high"); an LED
-  that can never light (its anode and cathode on the same net, or reversed between the rails); a part or a wire end
+- **warnings:** an IC input floating (and what it reads: "U1 pin 1 (1A) is floating: a 74LS input reads high", "… a
+  CMOS input reads X"; or while a contact is open: "floats while S1 is off"); an open collector output with no pull-up;
+  an LED that can never light (its anode and cathode on the same net, or reversed between the rails), a display's
+  common on the wrong rail; a part or a wire end
   that joins nothing; an IC whose gates are partly unused is not warned (their inputs unwired are the bench's habit),
   but their outputs are left out of the HDL.
 
@@ -105,14 +123,20 @@ part or wire:
 
 The circuit's HDL file (VHDL or Verilog, the circuit's language) is one module named after the circuit:
 
-- its ports: an input per logic switch and button (`'1'` while on or pressed), an output per LED (`'1'` while lit);
+- its ports: an input per logic switch, slide switch, button and clock (`'1'` while on, pressed or high), per DIP switch's
+  lever (`<label>_1` …); an output per LED, per display's segment (`<label>_a` … `<label>_g`, `<label>_dp`) and per LED
+  bar's light (`<label>_1` …), `'1'` while lit;
 - its nets: one signal each (`std_logic`, resolved, in VHDL; a `wire` in Verilog), the supply's as constants;
 - each IC an instance of its own entity, written in the same file and named after the circuit (`<circuit>_sn74ls00`,
   so that two circuits of a project never define the same entity), its gates with their delays and its inputs read as
   the real chip reads them (`'Z'` as `'1'` for a 74LS);
-- a switch or button: an assignment driving its net from the supply's side while closed, `'Z'` while open; one that
-  joins two nets neither of which is the supply's cannot be written as HDL: an error of the HDL's generation;
-- an LED: its output is `anode = '1' and cathode = '0'`.
+- a contact (a button, a slide switch, a DIP lever): an assignment copying its strongly driven side's net to its other
+  side while closed, `'Z'` while open; one between two strongly driven nets is an error of the check;
+- a pulled net (a pull-up or -down): its strong drivers on `<net>_d`, the net `<net>_d`'s level, or the pull's while
+  `<net>_d` is `'Z'`: written so, not as `'H'` / `'L'`, the same in both languages (Silinx's VHDL resolution of the
+  weak values is wrong, #3926; its Verilog has no `pullup`);
+- an open collector output: a `'0'` or `'Z'`; a 4000's input reads `'Z'` as `'X'` (`to_x01`);
+- a lamp (an LED, a segment, a light): its output is `to_x01(anode) = '1' and to_x01(cathode) = '0'`.
 
 It is regenerated as every drawing's (on save, after an edit through the MCP server), with its header "generated from
 …, do not edit". The HDL does not flow back into the circuit.

@@ -104,9 +104,9 @@ test('a breadboard: a column\'s a–e one strip, its f–j another, the rails al
 test('the half adder on its breadboard: no errors, no warnings; its ports, counts, nets; simulated', () => {
   const m = halfAdder();
   assert.deepEqual(checkCircuit(m), []);
-  assert.deepEqual(circuitPorts(m), { inputs: [{ name: 'a', part: 'S1', type: 'logic-switch' }, { name: 'b', part: 'S2', type: 'logic-switch' }],
-    outputs: [{ name: 's', part: 'D1', type: 'led' }, { name: 'c', part: 'D2', type: 'led' }] });
-  assert.equal(circuitCounts(m), '2 IC(s) · 2 switch(es) · 2 LED(s) · 15 wire(s)');
+  assert.deepEqual(circuitPorts(m), { inputs: [{ name: 'a', part: 'S1', type: 'logic-switch', index: 0, kind: 'level' }, { name: 'b', part: 'S2', type: 'logic-switch', index: 0, kind: 'level' }],
+    outputs: [{ name: 's', part: 'D1', type: 'led', index: 0 }, { name: 'c', part: 'D2', type: 'led', index: 0 }] });
+  assert.equal(circuitCounts(m), '2 IC(s) · 2 input(s) · 2 display(s) · 15 wire(s)');
   assert.equal(isCircuit('src/ha.circ.json'), true);
   assert.equal(isCircuit('src/ha.pn.json'), false);
   const sim = createCircuitSim(m);
@@ -124,7 +124,7 @@ test('the half adder on its breadboard: no errors, no warnings; its ports, count
   assert.equal(sim.pin('U2', 3), '1');
   assert.equal(sim.pin('U2.3'), '1');
   assert.deepEqual(sim.shorts(), []);
-  assert.throws(() => sim.set('U1', true), /U1 is not a switch or a button of the circuit/);
+  assert.throws(() => sim.set('U1', true), /U1 is not a switch, a button or a clock of the circuit/);
 });
 
 // three inverters of a 7404 in a row (a → 1A, 1Y → 2A, 2Y → 3A, 3Y → the LED); `loop`: 3Y back to 1A (a ring oscillator)
