@@ -11,24 +11,33 @@ export const CIRCUIT_PT = {
   'Start the simulation again from time 0': 'Recomeçar a simulação no instante 0',
   // side panel
   'Parts': 'Peças', 'Breadboards': 'Placas de ensaio', 'Power': 'Alimentação', 'Inputs': 'Entradas', 'Outputs': 'Saídas', 'Gates (74LS)': 'Portas (74LS)',
-  'Half breadboard': 'Meia placa de ensaio', 'Power supply (+5 V, GND)': 'Fonte de alimentação (+5 V, GND)', 'Logic switch': 'Interruptor lógico',
-  'Push button (momentary, normally open)': 'Botão de pressão (momentâneo, normalmente aberto)', 'LED': 'LED',
-  'Label': 'Etiqueta', 'Colour': 'Cor', 'HDL language': 'Linguagem HDL',
+  'Label': 'Etiqueta', 'Colour': 'Cor', 'HDL language': 'Linguagem HDL', 'Gates (4000)': 'Portas (4000)',
+  'On': 'Ligado', 'Levers on': 'Alavancas ligadas', 'Frequency (Hz)': 'Frequência (Hz)',
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
 };
-const GATE = { NAND: 'NAND', AND: 'AND', OR: 'OR', XOR: 'XOR' };
-const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Power supply (+5 V, GND)': 'Fonte de alimentação (+5 V, GND)', 'Logic switch': 'Interruptor lógico',
-  'Push button (momentary, normally open)': 'Botão de pressão (momentâneo, normalmente aberto)', LED: 'LED', 'Hex inverter': 'Seis inversores' };
-const title = (t) => TITLE[t] ?? t.replace(/^Quad 2-input (NAND|AND|OR|XOR)$/, (m, g) => `Quatro portas ${GATE[g]} de 2 entradas`);
+// the parts' titles (core/circuit-parts.js, core/circuit-ics.js)
+const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
+  'Power supply (+5 V, GND)': 'Fonte de alimentação (+5 V, GND)', 'Logic switch': 'Interruptor lógico',
+  'Push button (momentary, normally open)': 'Botão de pressão (momentâneo, normalmente aberto)', 'Slide switch (SPDT)': 'Comutador deslizante (SPDT)',
+  'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Clock source': 'Fonte de relógio',
+  'Pull-up (a weak 1)': 'Pull-up (um 1 fraco)', 'Pull-down (a weak 0)': 'Pull-down (um 0 fraco)', LED: 'LED',
+  '7-segment display, common cathode': 'Mostrador de 7 segmentos, cátodo comum', '7-segment display, common anode': 'Mostrador de 7 segmentos, ânodo comum',
+  'LED bar (10)': 'Barra de LEDs (10)', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
+  'Hex inverter, open collector': 'Seis inversores, coletor aberto', 'Hex inverter buffer, open collector': 'Seis inversores buffer, coletor aberto' };
+const COUNT = { Quad: ['Quatro portas', 2], Triple: ['Três portas', 3], Dual: ['Duas portas', 4] };
+const GATES = '(?:Quad 2|Triple 3|Dual 4|8)-input (?:NAND|AND|OR|NOR|XOR)(?:, open collector)?';
+const TITLES = `(?:${[...Object.keys(TITLE).map((t) => t.replace(/[()+]/g, '\\$&')), GATES].join('|')})`;
+const title = (t) => TITLE[t] ?? t.replace(/^(?:(Quad|Triple|Dual) \d|8)-input (\w+)(, open collector)?$/, (m, n, g, oc) => `${n ? COUNT[n][0] : 'Uma porta'} ${g} de ${n ? COUNT[n][1] : 8} entradas${oc ? ', coletor aberto' : ''}`);
 export const CIRCUIT_PT_PATTERNS = [
   // the status line's counts (#2763)
   [/^(\d+) IC\(s\) · (\d+) input\(s\) · (\d+) display\(s\) · (\d+) wire\(s\)$/, '$1 CI(s) · $2 entrada(s) · $3 mostrador(es) · $4 fio(s)'],
-  // the library's ICs and their tips
-  [/^(74\d\d) (Quad 2-input (?:NAND|AND|OR|XOR)|Hex inverter)$/, (m, n, t) => `${n} ${title(t)}`],
-  [/^(.+): click it, then the drawing \(Esc: done\)$/, (m, t) => `${title(t)}: clique nela e depois no desenho (Esc: terminar)`],
-  // the selection
-  [/^([A-Za-z]\w*): (Half breadboard|Power supply \(\+5 V, GND\)|Logic switch|Push button \(momentary, normally open\)|LED|Hex inverter|Quad 2-input (?:NAND|AND|OR|XOR))$/, (m, id, t) => `${id}: ${title(t)}`],
-  [/^(SN74LS\d\d): pinout$/, '$1: pinos'], [/^Typical delay (\d+) ns$/, 'Atraso típico de $1 ns'],
-  [/^Input ([A-Za-z]\w*) of the HDL$/, 'Entrada $1 do HDL'], [/^Output ([A-Za-z]\w*) of the HDL$/, 'Saída $1 do HDL'],
-  [/^Wire ([A-Za-z]\w*)$/, 'Fio $1'],
+  // the library's parts and ICs, their tips, the selection's title, a pinout's
+  [new RegExp(`^(\\d{4}) (${TITLES})$`), (m, n, t) => `${n} ${title(t)}`],
+  [new RegExp(`^(${TITLES}): click it, then the drawing \\(Esc: done\\)$`), (m, t) => `${title(t)}: clique nela e depois no desenho (Esc: terminar)`],
+  [new RegExp(`^([A-Za-z]\\w*): (${TITLES})$`), (m, id, t) => `${id}: ${title(t)}`],
+  [new RegExp(`^(${TITLES}): pinout$`), (m, t) => `${title(t)}: pinos`],
+  [new RegExp(`^(${TITLES})$`), (m, t) => title(t)],
+  [/^((?:SN74LS|CD)\d{2,4}B?): pinout$/, '$1: pinos'], [/^Typical delay (\d+) ns(, open collector)?$/, (m, n, oc) => `Atraso típico de ${n} ns${oc ? ', coletor aberto' : ''}`],
+  [/^Input ([A-Za-z]\w*(?:_…)?) of the HDL$/, 'Entrada $1 do HDL'], [/^Output ([A-Za-z]\w*(?:_…)?) of the HDL$/, 'Saída $1 do HDL'],
+  [/^Wire ([A-Za-z]\w*)$/, 'Fio $1'], [/^Lever (\d+)$/, 'Alavanca $1'],
 ];

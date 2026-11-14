@@ -60,3 +60,22 @@
 .circuit-editor .circ-pinout td { padding: 0 4px; }
 .circuit-editor .circ-pinout td.n { color: var(--asm-muted); text-align: center; }
 .circuit-editor .circ-note { font-size: 11px; color: var(--asm-muted); margin-top: 4px; }
+/* phase 2's parts (#3899, circuit-draw-parts.js) */
+.circuit-editor .circ-dip-body { fill: #c62828; stroke: #8e1d1d; }
+.circuit-editor .circ-dip-slot { fill: #f4f4f4; stroke: #999; stroke-width: .6; }
+.circuit-editor .circ-dip-lever { fill: #555; }
+.circuit-editor .circ-dip-lever.on { fill: #222; }
+.circuit-editor.circ-simulating [data-input="dip"] { cursor: pointer; }
+.circuit-editor .circ-clock-wave { fill: none; stroke: var(--asm-muted); stroke-width: 1.4; }
+.circuit-editor .circ-clock-wave.on { stroke: var(--circ-lv1); }
+.circuit-editor .circ-pull-body { fill: #e4d3a8; stroke: #8a7a52; }
+.circuit-editor .circ-pull-text { font: bold 11px var(--asm-mono, monospace); fill: #5c4c24; pointer-events: none; }
+.circuit-editor .circ-seg-body { fill: #1b1b1b; stroke: #444; }
+.circuit-editor line.circ-seg { stroke-linecap: round; opacity: .18; }
+.circuit-editor .circ-seg.lit, .circuit-editor .circ-bar.lit { opacity: 1; }
+.circuit-editor line.circ-seg.circ-led-red { stroke: #ff3b30; } .circuit-editor line.circ-seg.circ-led-green { stroke: #34c759; }
+.circuit-editor line.circ-seg.circ-led-yellow { stroke: #ffcc00; } .circuit-editor line.circ-seg.circ-led-blue { stroke: #2f80ff; }
+.circuit-editor line.circ-seg.circ-led-white { stroke: #f5f5f5; }
+.circuit-editor .circ-seg.unknown, .circuit-editor .circ-bar.unknown { opacity: .6; }
+.circuit-editor .circ-bar { opacity: .18; }
+.circuit-editor .circ-on input { margin-right: 4px; }

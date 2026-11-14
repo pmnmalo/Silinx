@@ -18,6 +18,11 @@ const at = (page, x, y) => page.eval((ed, gx, gy) => {
   const m = document.querySelector(`${ed} .circ-world`).getScreenCTM();
   return { x: m.a * gx * 20 + m.e, y: m.d * gy * 20 + m.f };
 }, ED, x, y);
+// a part of the library picked (scrolled into view first: the library is long)
+async function pick(page, type) {
+  await page.eval((ed, t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"]`).scrollIntoView({ block: 'center' }), ED, type);
+  await page.click(`${ED} .circ-lib-part[data-part="${type}"]`);
+}
 const status = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} .doc-status .ds-f`)].map((f) => f.textContent), ED);
 
 uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire drawn, simulated live, checked, its HDL; Portuguese', E, async (page) => {
@@ -33,7 +38,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'half_adder').querySelector(':scope > .row').querySelectorAll('.badge')].map((b) => b.textContent)), ['Circuit', 'VHDL']);
   assert.match(await page.consoleText(), /src\/half_adder\.vhd generated from src\/half_adder\.circ\.json/);
   // a 7404 from the library, placed by a click on the canvas; Edit ▸ Undo takes it away
-  await page.click(`${ED} .circ-lib-part[data-part="7404"]`);
+  await pick(page, '7404');
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + 40, y: r.top + r.height - 30 }; }, ED);
   await page.click(free);
   await page.waitFor((ed) => /^3 IC/.test(document.querySelector(`${ed} .doc-status .ds-f`).textContent), [ED], { what: 'a 7404 placed' });
@@ -72,7 +77,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-tool`)].some((b) => b.textContent.trim() === 'Fio'), [ED], { what: 'the toolbar in Portuguese' });
   assert.deepEqual(await status(page), ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 16 fio(s)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts h3, ${ed} .circ-lib-title`)].map((e) => e.textContent), ED),
-    ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)']);
+    ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).title, ED), 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"]`).textContent, ED), '7400 Quatro portas NAND de 2 entradas');
@@ -98,9 +103,9 @@ uiTest('Circuit editor: New Source ▸ Circuit makes one with its breadboard and
   const m = JSON.parse(await readWs(env, 'CircNew', 'src/blinker.circ.json'));
   assert.deepEqual(m.parts.map((p) => p.type), ['breadboard-half', 'supply']);
   // a button from the + rail to an LED's anode, its cathode on the − rail: lit while pressed
-  await page.click(`${ED} .circ-lib-part[data-part="button"]`);
+  await pick(page, 'button');
   await page.click(await at(page, 2, 0));
-  await page.click(`${ED} .circ-lib-part[data-part="led"]`);
+  await pick(page, 'led');
   await page.click(await at(page, 5, 2));
   await page.click(`${ED} .circ-tool`, { text: 'Wire' });
   await page.click(await at(page, 2, 1)); await page.click(await at(page, 2, -4));
