@@ -65,20 +65,22 @@ export const SETTINGS_TOOLS = [
       const D = await devices();
       const fams = family ? [D.findFamily(family)].filter(Boolean) : D.FAMILIES;
       if (family && !fams.length) throw toolError(`unknown family '${family}' (${D.FAMILIES.map(f => f.id).join(', ')})`);
-      // (an experimental family's boards and devices, #3142: listed and marked, as the dialogs show them; no flow runs them yet)
-      const R = await parts(), exp = o => (o ? { experimental: true } : {}), mark = o => (o.experimental ? ' [experimental: no implementation flow yet]' : '');
+      // (an experimental family's boards and devices, #3142: listed and marked, as the dialogs show them; the 7-series' flow
+      // AMD Vivado's, #1649, #3895)
+      const R = await parts(), exp = o => (o ? { experimental: true } : {});
+      const mark = (o, device) => (!o.experimental ? '' : R.vivadoDevice(device) ? ' [experimental: AMD Vivado\'s flow]' : ' [experimental: no implementation flow yet]');
       const boards = D.BOARDS.map(b => ({ id: b.id, name: b.name, device: deviceName(D.resolveBoard(b.id).device), ...exp(R.experimentalDevice(b.device)),
         variants: (b.variants || []).map(v => ({ id: v.id, label: v.label, device: deviceName(v.device), ...(v.default ? { default: true } : {}) })) }));
       const families = fams.map(f => ({ id: f.id, name: f.displayName || f.name, ...exp(f.experimental),
         parts: D.partsOfFamily(f.id).map(p => ({ part: p.part, packages: Object.fromEntries(Object.entries(p.packages).map(([k, v]) => [k, v.speeds || p.speeds])) })) }));
-      const text = [...(family ? [] : ['Boards:', ...boards.map(b => `  ${b.id}: ${b.name} (${b.variants.length ? b.variants.map(v => `${v.id} ${v.device}${v.default ? ', the default' : ''}`).join('; ') : b.device})${mark(b)}`), '']),
-        'Devices:', ...families.flatMap(f => [`  ${f.name} (${f.id})${mark(f)}:`, ...f.parts.map(p => `    ${p.part}: ${Object.entries(p.packages).map(([k, s]) => `${k}${s.length ? ` ${s.join(' ')}` : ''}`).join(', ')}`)])];
+      const text = [...(family ? [] : ['Boards:', ...boards.map(b => `  ${b.id}: ${b.name} (${b.variants.length ? b.variants.map(v => `${v.id} ${v.device}${v.default ? ', the default' : ''}`).join('; ') : b.device})${mark(b, D.resolveBoard(b.id).device)}`), '']),
+        'Devices:', ...families.flatMap(f => [`  ${f.name} (${f.id})${mark(f, { family: f.id })}:`, ...f.parts.map(p => `    ${p.part}: ${Object.entries(p.packages).map(([k, s]) => `${k}${s.length ? ` ${s.join(' ')}` : ''}`).join(', ')}`)])];
       return { text: text.join('\n'), data: { ...(family ? {} : { boards }), families } };
     },
   },
   {
     name: 'set_design_properties', title: 'Design Properties',
-    description: 'Change a project\'s target as Design Properties does: its board (its device then the board\'s; none: no board) or its device (part, package, speed), its synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the Artix-7\'s default, its Silinx toolchain on trial) and its Preferred Language (the drawings\' HDL made again in it). A new device is checked against the design first (the primitives its family lacks, the resources it has too few of: warnings). With update_constraints, a new board\'s pins are written into the constraints file for the top\'s ports, as Update Constraints does: its pin locations are replaced.',
+    description: 'Change a project\'s target as Design Properties does: its board (its device then the board\'s; none: no board) or its device (part, package, speed), its synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the 7-series\': the Artix-7\'s default, its Silinx toolchain on trial; the Spartan-7\'s, the Kintex-7\'s and the Zynq-7000\'s only) and its Preferred Language (the drawings\' HDL made again in it). A new device is checked against the design first (the primitives its family lacks, the resources it has too few of: warnings). With update_constraints, a new board\'s pins are written into the constraints file for the top\'s ports, as Update Constraints does: its pin locations are replaced.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, board: STR('The board (list_devices), or none for no board.'), variant: STR('The board\'s variant (list_devices; default: the board\'s default).'),
       part: STR('The device (list_devices), e.g. xc3s500e; with no board.'), package: STR('The device\'s package, e.g. fg320.'), speed: STR('The speed grade, e.g. -4.'),
@@ -139,10 +141,13 @@ export const SETTINGS_TOOLS = [
       // (the Artix-7: AMD Vivado's on this server, #1649)
       const vivado = R.vivadoDevice(next);
       if (experimental && synthTool === 'xst') throw toolError(vivado ? `the ${next.part.toUpperCase()} is implemented by AMD Vivado: no XST` : `${R.noFlowMessage(next)}: no XST`);
-      if (synthTool === 'vivado' && !vivado) throw toolError(`AMD Vivado implements the Artix-7 devices, not the ${next.part.toUpperCase()}`);
+      if (synthTool === 'vivado' && !vivado) throw toolError(`AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the ${next.part.toUpperCase()}`);
+      // (#3895: the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, as the dialog locks it)
+      const vivadoOnly = vivado && !R.openFlowDevice(next);
+      if (vivadoOnly && synthTool === 'silinx') throw toolError(`${R.noOpenFlowMessage(next)}: no Silinx synthesis tool`);
       // (#3146) the Artix-7's synthesis tool: the one given, else the project's when it was one of the Artix-7's, else AMD Vivado;
-      // another family's never Vivado (the project's, from an Artix-7: Silinx)
-      const synthOf = () => (vivado ? { synthTool: synthTool || (R.vivadoDevice(pj.device) && ['vivado', 'silinx'].includes(pj.synthTool) ? pj.synthTool : 'vivado') }
+      // a Vivado-only family's Vivado; another family's never Vivado (the project's, from an Artix-7: Silinx)
+      const synthOf = () => (vivadoOnly ? { synthTool: 'vivado' } : vivado ? { synthTool: synthTool || (R.vivadoDevice(pj.device) && R.openFlowDevice(pj.device) && ['vivado', 'silinx'].includes(pj.synthTool) ? pj.synthTool : 'vivado') }
         : R.openOnlyDevice(next) || experimental ? { synthTool: 'silinx' } : synthTool ? { synthTool } : pj.synthTool === 'vivado' ? { synthTool: 'silinx' } : {});
       const warnings = [];
       const deviceChanged = next.part !== pj.device?.part || next.package !== pj.device?.package;

@@ -10,6 +10,7 @@ import { XC7_STEPS } from '../packages/silinx-fpga/src/open-flow-xc7.js';
 import { ECP5_STEPS } from '../packages/silinx-fpga/src/open-flow-ecp5.js';
 import { GOWIN_STEPS } from '../packages/silinx-fpga/src/open-flow-gowin.js';
 import { familyProfile } from '../core/family-profile.js';
+import { vivadoDevice, openFlowDevice, openOnlyDevice, isIseFamily, noOpenFlowMessage } from '../packages/silinx-fpga/src/parts.js';
 
 const read = f => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const ids = t => t.flatMap(n => [n.id, ...ids(n.children || [])]);
@@ -183,7 +184,7 @@ test('#3142 an experimental family\'s tool: no step, no report, nothing to progr
   // (the Artix-7's in the browser edition: the Silinx toolchain's since #3143, whatever the project's synthesis tool; on the local
   // server it is Vivado's, #1649: no family is left with NO_FLOW, kept for the next experimental one)
   for (const part of ['xc7a35t', 'xc7a100t']) for (const open of [false, true]) assert.equal(toolOf({ part }, open, { standalone: true }), SILINX_XC7, part);
-  assert.equal(toolOf({ part: 'xc7k70t' }, false), ISE, 'another 7-series family: ISE\'s as before');
+  assert.equal(toolOf({ part: 'xc7v585t' }, false), ISE, 'the Virtex-7: ISE\'s as before (no free edition of Vivado has it, #3895)');
   assert.deepEqual([NO_FLOW.steps, NO_FLOW.reports, NO_FLOW.program, NO_FLOW.open], [[], [], null, false]);
   assert.deepEqual(built(NO_FLOW).map(shape), ['summary', 'constraints', 'rtl', 'check', 'emulate']);   // (#3704: Emulate needs no flow)
   assert.deepEqual(NO_FLOW.tasks.map(t => t.id), ['edit', 'sim', 'emu']);
@@ -276,7 +277,7 @@ test('#2311 the mechanism of the disabled process is gone: absent, not disabled'
 
 test('#1649 AMD Vivado on the Artix-7 (the local server): ISE\'s step names, Vivado\'s products and reports, no simulation model; Emulate (#3704); the other families as before', () => {
   for (const part of ['xc7a35t', 'xc7a100t']) assert.equal(toolOf({ part }, false), VIVADO, part);   // (open: the Silinx toolchain's, #3146)
-  for (const part of ['xc7k70t', 'xc7z020']) assert.equal(toolOf({ part }, false), ISE, part);
+  assert.equal(toolOf({ part: 'xc7v585t' }, false), ISE);
   assert.equal(toolOf({ part: 'xc3s250e' }, true, { standalone: false }), SILINX);
   const t = built(VIVADO);
   assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] },
@@ -299,13 +300,29 @@ test('#1649 AMD Vivado on the Artix-7 (the local server): ISE\'s step names, Viv
   assert.deepEqual(find(t, 'bitgen').run(), ['synth', 'translate', 'map', 'par', 'bitgen']);
 });
 
+test('#3895 the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado on the local server whatever the synthesis tool, no flow in the browser edition', () => {
+  for (const part of ['xc7s6', 'xc7s50', 'xc7k70t', 'xc7k160t', 'xc7z007s', 'xc7z010', 'xc7z020']) {
+    for (const open of [false, true]) assert.equal(toolOf({ part }, open), VIVADO, `${part} open=${open}: no Silinx toolchain of theirs`);
+    for (const open of [false, true]) assert.equal(toolOf({ part }, open, { standalone: true }), NO_FLOW, `${part}: none in the browser edition`);
+    assert.equal(toolOf({ part }, false, { designOnly: true }), DESIGN_ONLY, part);
+  }
+  // the light entry's helpers: Vivado's families, the Artix-7 alone with a flow of the Silinx toolchain
+  for (const [part, vivado, open] of [['xc7a35t', true, true], ['xc7s50', true, false], ['xc7k160t', true, false], ['xc7z020', true, false], ['xc7v585t', false, true], ['xc3s250e', false, true], ['ice40up5k', false, true]]) {
+    assert.equal(vivadoDevice({ part }), vivado, part);
+    assert.equal(openFlowDevice({ part }), open, part);
+  }
+  assert.equal(openOnlyDevice({ part: 'xc7s50' }), false, 'the Spartan-7 is not ISE\'s, nor the Silinx toolchain\'s only');
+  assert.equal(isIseFamily('spartan7'), false);
+  assert.equal(noOpenFlowMessage({ part: 'xc7s50' }), 'the Silinx toolchain has no back end for the XC7S50 (Spartan-7): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)');
+});
+
 test('#3146 the Silinx toolchain on the Artix-7 (the project\'s synthesis tool Silinx, the local server): its steps, its reports, the timing nextpnr\'s; no simulation model, no view; Emulate (#3704)', () => {
   for (const part of ['xc7a35t', 'xc7a100t']) {
     assert.equal(toolOf({ part }, true), SILINX_XC7, part);
     assert.equal(toolOf({ part }, true, { standalone: true }), SILINX_XC7, `${part}: in the browser edition too (#3143)`);
     assert.equal(toolOf({ part }, false), VIVADO, `${part}: Vivado's on the local server, the project's synthesis tool not Silinx`);
   }
-  for (const part of ['xc7k70t', 'xc7z020']) assert.equal(toolOf({ part }, true), SILINX, `${part}: not the 7-series back end's`);
+  assert.equal(toolOf({ part: 'xc7v585t' }, true), SILINX, 'the Virtex-7: not the 7-series back end\'s');
   const t = built(SILINX_XC7);
   assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] },
     { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate', { config: SILINX_CONFIG }]);   // (the logic analyzer, #3767)

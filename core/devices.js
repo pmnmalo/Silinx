@@ -230,8 +230,18 @@ export const FAMILIES = [
       'DIFF_SSTL18_I', 'DIFF_SSTL18_II', 'DIFF_SSTL15', 'DIFF_SSTL135', 'DIFF_SSTL12'],
   },
   {
+    // (#3895) Vivado ML Standard's (the free edition), not ISE 14.7's: no xiseFamily
+    id: 'spartan7', name: 'Spartan7', displayName: 'Spartan-7', xiseVerified: false,
+    datasheet: 'DS180 / DS189', webpack: false, vivadoParts: 'all (Vivado ML Standard)',
+    experimental: true,
+    speeds: { '-1': 'Standard', '-2': 'Mid' },
+    note: 'Spartan-7 has only High-Range (1.2V-3.3V) I/O banks, no transceivers. AMD Vivado only (no ISE 14.7). Low-power and automotive grades (-1L, -1Q) are not listed here.',
+    ioStandards: null, // the Artix-7's HR SelectIO; filled below
+  },
+  {
     id: 'kintex7', name: 'Kintex7', displayName: 'Kintex-7', xiseFamily: 'Kintex7', xiseVerified: false,
-    datasheet: 'DS180 / DS182', webpack: true, webpackParts: 'XC7K70T, XC7K160T', bitgen: MODERN_BITGEN,
+    datasheet: 'DS180 / DS182', webpack: true, webpackParts: 'XC7K70T, XC7K160T', vivadoParts: 'XC7K70T, XC7K160T (Vivado ML Standard)', bitgen: MODERN_BITGEN,
+    experimental: true,   // (#3895: AMD Vivado's flow)
     speeds: { '-1': 'Standard', '-2': 'Mid', '-3': 'High performance' },
     note: 'Kintex-7 mixes High-Range (up to 3.3V) and High-Performance (up to 1.8V, DCI) banks; HP-only standards are valid only in HP banks.',
     ioStandards: ['LVTTL', 'LVCMOS33', 'LVCMOS25', 'LVCMOS18', 'LVCMOS15', 'LVCMOS12', 'PCI33_3', 'MOBILE_DDR', 'HSUL_12',
@@ -245,6 +255,8 @@ export const FAMILIES = [
   {
     id: 'zynq', name: 'Zynq', displayName: 'Zynq-7000', xiseFamily: 'Zynq', xiseVerified: false,
     datasheet: 'DS190 / DS187', webpack: true, webpackParts: 'XC7Z010, XC7Z020, XC7Z030 (XC7Z015 is not supported by ISE at all)', bitgen: MODERN_BITGEN,
+    vivadoParts: 'XC7Z007S, XC7Z012S, XC7Z014S, XC7Z010, XC7Z015, XC7Z020, XC7Z030 (Vivado ML Standard)',
+    experimental: true,   // (#3895: AMD Vivado's flow, the programmable logic only: no processing system set up)
     speeds: { '-1': 'Standard', '-2': 'Mid', '-3': 'High performance' },
     note: 'Zynq designs in ISE go through XPS/PlanAhead; the PS (ARM) side needs the processing-system IP. Z-7010/7020 have HR banks only; Z-7030 adds HP banks.',
     ioStandards: null, // Artix-7 (HR) + Kintex-7 (HP) SelectIO; filled below
@@ -254,6 +266,7 @@ export const FAMILIES = [
 FAMILIES.push(ICE40_FAMILY, ECP5_FAMILY, GOWIN_FAMILY);   // (last: the ISE families first in the pickers)
 const famById = Object.fromEntries(FAMILIES.map(f => [f.id, f]));
 famById.spartan3adsp.ioStandards = famById.spartan3a.ioStandards;
+famById.spartan7.ioStandards = famById.artix7.ioStandards;
 famById.zynq.ioStandards = [...new Set([...famById.artix7.ioStandards, ...famById.kintex7.ioStandards, 'I2C', 'SDIO'])];
 
 // Helpers keep the tables below close to the data-sheet layout.
@@ -398,7 +411,30 @@ const NEW_PARTS = [
   modern('kintex7', 'xc7k160t', { cells: 162240, slices: 25350, distKb: 2188, bramSize: 36, brams: 325, dsp: 600, dspType: 'DSP48E1', clock: { cmt: 8, mmcm: 8, pll: 8 }, maxIo: 400, pcie: 1, gtx: 8, xadc: 1,
     packages: { fbg484: pk(285, { hr: 185, hp: 100, gts: 4 }), fbg676: pk(400, { hr: 250, hp: 150, gts: 8 }), ffg676: pk(400, { hr: 250, hp: 150, gts: 8 }) }, speeds: ['-1', '-2', '-3'] }),
 
+  // ---- Spartan-7 (DS180 Tables 2, 7; #3895): Vivado's only (no ISE 14.7), every part Vivado ML Standard's. HR banks only. ----
+  modern('spartan7', 'xc7s6', { cells: 6000, slices: 938, distKb: 70, bramSize: 36, brams: 5, dsp: 10, dspType: 'DSP48E1', clock: { cmt: 2, mmcm: 2, pll: 2 }, maxIo: 100,
+    packages: { cpga196: pk(100), csga225: pk(100), ftgb196: pk(100) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('spartan7', 'xc7s15', { cells: 12800, slices: 2000, distKb: 150, bramSize: 36, brams: 10, dsp: 20, dspType: 'DSP48E1', clock: { cmt: 2, mmcm: 2, pll: 2 }, maxIo: 100,
+    packages: { cpga196: pk(100), csga225: pk(100), ftgb196: pk(100) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('spartan7', 'xc7s25', { cells: 23360, slices: 3650, distKb: 313, bramSize: 36, brams: 45, dsp: 80, dspType: 'DSP48E1', clock: { cmt: 3, mmcm: 3, pll: 3 }, maxIo: 150, xadc: 1,
+    packages: { csga225: pk(150), csga324: pk(150), ftgb196: pk(100) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('spartan7', 'xc7s50', { cells: 52160, slices: 8150, distKb: 600, bramSize: 36, brams: 75, dsp: 120, dspType: 'DSP48E1', clock: { cmt: 5, mmcm: 5, pll: 5 }, maxIo: 250, xadc: 1,
+    packages: { csga324: pk(210), ftgb196: pk(100), fgga484: pk(250) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('spartan7', 'xc7s75', { cells: 76800, slices: 12000, distKb: 832, bramSize: 36, brams: 90, dsp: 140, dspType: 'DSP48E1', clock: { cmt: 8, mmcm: 8, pll: 8 }, maxIo: 400, xadc: 1,
+    packages: { fgga484: pk(338), fgga676: pk(400) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('spartan7', 'xc7s100', { cells: 102400, slices: 16000, distKb: 1100, bramSize: 36, brams: 120, dsp: 160, dspType: 'DSP48E1', clock: { cmt: 8, mmcm: 8, pll: 8 }, maxIo: 400, xadc: 1,
+    packages: { fgga484: pk(338), fgga676: pk(400) }, speeds: ['-1', '-2'], webpack: false }),
+
   // ---- Zynq-7000 (DS190 Tables 1-3, 5, 7). userIo = programmable-logic SelectIO (PS MIO pins listed as psIo). ----
+  // (#3895) the single-core 7000S parts and the XC7Z015: Vivado's only (no ISE 14.7), Vivado ML Standard's
+  modern('zynq', 'xc7z007s', { cells: 23_000, slices: 3600, luts: 14400, ffs: 28800, bramSize: 36, brams: 50, dsp: 66, dspType: 'DSP48E1', clock: { cmt: 2, mmcm: 2, pll: 2 }, maxIo: 100, xadc: 1, processor: 'single Cortex-A9',
+    packages: { clg225: pk(54, { psIo: 84 }), clg400: pk(100, { psIo: 128 }) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('zynq', 'xc7z012s', { cells: 55_000, slices: 8600, luts: 34400, ffs: 68800, bramSize: 36, brams: 72, dsp: 120, dspType: 'DSP48E1', clock: { cmt: 3, mmcm: 3, pll: 3 }, maxIo: 150, pcie: 1, gtp: 4, xadc: 1, processor: 'single Cortex-A9',
+    packages: { clg485: pk(150, { gts: 4, psIo: 128 }) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('zynq', 'xc7z014s', { cells: 65_000, slices: 10150, luts: 40600, ffs: 81200, bramSize: 36, brams: 107, dsp: 170, dspType: 'DSP48E1', clock: { cmt: 4, mmcm: 4, pll: 4 }, maxIo: 200, xadc: 1, processor: 'single Cortex-A9',
+    packages: { clg400: pk(125, { psIo: 128 }), clg484: pk(200, { psIo: 128 }) }, speeds: ['-1', '-2'], webpack: false }),
+  modern('zynq', 'xc7z015', { cells: 74_000, slices: 11550, luts: 46200, ffs: 92400, bramSize: 36, brams: 95, dsp: 160, dspType: 'DSP48E1', clock: { cmt: 3, mmcm: 3, pll: 3 }, maxIo: 150, pcie: 1, gtp: 4, xadc: 1, processor: 'dual Cortex-A9',
+    packages: { clg485: pk(150, { gts: 4, psIo: 128 }) }, speeds: ['-1', '-2', '-3'], webpack: false }),
   modern('zynq', 'xc7z010', { cells: 28_000, slices: 4400, luts: 17600, ffs: 35200, bramSize: 36, brams: 60, dsp: 80, dspType: 'DSP48E1', clock: { cmt: 2, mmcm: 2, pll: 2 }, maxIo: 100, xadc: 1, processor: 'dual Cortex-A9',
     packages: { clg225: pk(54, { psIo: 84 }), clg400: pk(100, { psIo: 128 }) }, speeds: ['-1', '-2', '-3'] }),
   modern('zynq', 'xc7z020', { cells: 85_000, slices: 13300, luts: 53200, ffs: 106400, bramSize: 36, brams: 140, dsp: 220, dspType: 'DSP48E1', clock: { cmt: 4, mmcm: 4, pll: 4 }, maxIo: 200, xadc: 1, processor: 'dual Cortex-A9',
@@ -432,7 +468,10 @@ export const PACKAGES = {
   sbg484: '484-ball Lidless Flip-Chip BGA, 0.8 mm', fbg484: '484-ball Lidless Flip-Chip BGA, 1.0 mm', fbg676: '676-ball Lidless Flip-Chip BGA',
   ffg676: '676-ball Flip-Chip BGA, Pb-free', ffg1156: '1156-ball Flip-Chip BGA, Pb-free',
   clg225: '225-ball Wire-Bond Chip-Scale BGA, 0.8 mm', clg400: '400-ball Wire-Bond Chip-Scale BGA, 0.8 mm', clg484: '484-ball Wire-Bond Chip-Scale BGA, 0.8 mm',
-  sbg485: '485-ball Lidless Flip-Chip BGA, 0.8 mm',
+  sbg485: '485-ball Lidless Flip-Chip BGA, 0.8 mm', clg485: '485-ball Wire-Bond Chip-Scale BGA, 0.8 mm',
+  // (#3895) the Spartan-7's
+  cpga196: '196-ball Chip-Scale BGA, 0.5 mm, Pb-free', csga225: '225-ball Chip-Scale BGA, 0.8 mm, Pb-free', csga324: '324-ball Chip-Scale BGA, 0.8 mm, Pb-free',
+  ftgb196: '196-ball Fine-Pitch Thin BGA, 1.0 mm, Pb-free', fgga484: '484-ball Fine-Pitch BGA, 1.0 mm, Pb-free', fgga676: '676-ball Fine-Pitch BGA, 1.0 mm, Pb-free',
 };
 
 const partIndex = new Map(PARTS.map(p => [p.part, p]));

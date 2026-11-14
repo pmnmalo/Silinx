@@ -1,6 +1,6 @@
 // The Processes panel (#405: out of app.js): the processes of the selected source and what runs them, Check Syntax
 // and the elaboration's diagnostics, and the processes' status kept in the project's build folder.
-import { openOnlyDevice, vivadoDevice } from '/packages/silinx-fpga/src/parts.js';
+import { openFlowDevice, openOnlyDevice, vivadoDevice } from '/packages/silinx-fpga/src/parts.js';
 import { api } from './api.js';
 import { icons, icon } from './icons.js';
 import { h, dialog, popupMenu, longPressMenu } from './ui.js';
@@ -40,8 +40,8 @@ const SUMMARY_PROC = { id: 'summary', label: 'Design Summary/Reports', ico: 'sum
 // in the single-file edition (no server: the Silinx toolchain runs on it)
 // (the browser edition: the Silinx toolchain, unless the project chose XST)
 // (a device of Vivado's, on the local server: AMD Vivado's, #1649, unless the project's synthesis tool is Silinx: the Silinx
-// toolchain's 7-series back end, on trial: the 7-series an experimental family, #3146)
-export const vivadoMode = () => !api.standalone && vivadoDevice(S.project?.device) && S.project?.synthTool !== 'silinx';
+// toolchain's 7-series back end, on trial: the 7-series an experimental family, #3146; a Vivado-only family's, #3895, whatever it says)
+export const vivadoMode = () => !api.standalone && vivadoDevice(S.project?.device) && (S.project?.synthTool !== 'silinx' || !openFlowDevice(S.project?.device));
 export const openMode = () => !vivadoMode() && (openOnlyDevice(S.project?.device) || (S.project?.synthTool ? S.project.synthTool === 'silinx' : api.standalone || S.toolchain?.config?.mode === 'silinx'));
 /** The project's tool (its descriptor, web/js/tool-descriptors.js): what the process tree and the tasks are built from. */
 export const projectTool = () => toolOf(S.project?.device, openMode(), { standalone: api.standalone, designOnly: designOnly() });

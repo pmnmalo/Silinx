@@ -23,11 +23,14 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 
 test('list_devices: the Basys 3 and the Nexys A7, Artix-7 and its XC7A35T, marked experimental; the others not', async () => {
   const all = await ok('list_devices');
-  assert.match(all.text, /\n {2}basys3: Digilent Basys 3 \(xc7a35tcpg236-1\) \[experimental: no implementation flow yet\]\n {2}nexys-a7: Digilent Nexys A7 \(xc7a100tcsg324-1\) \[experimental: no implementation flow yet\]\n/);
-  assert.match(all.text, /\n {2}Artix-7 \(artix7\) \[experimental: no implementation flow yet\]:\n {4}xc7a35t: cpg236 -1 -2 -3, csg324 -1 -2 -3\n {4}xc7a100t: /);
+  // (the 7-series' flow AMD Vivado's, #1649, #3895)
+  assert.match(all.text, /\n {2}basys3: Digilent Basys 3 \(xc7a35tcpg236-1\) \[experimental: AMD Vivado's flow\]\n {2}nexys-a7: Digilent Nexys A7 \(xc7a100tcsg324-1\) \[experimental: AMD Vivado's flow\]\n/);
+  assert.match(all.text, /\n {2}Artix-7 \(artix7\) \[experimental: AMD Vivado's flow\]:\n {4}xc7a35t: cpg236 -1 -2 -3, csg324 -1 -2 -3\n {4}xc7a100t: /);
+  assert.match(all.text, /\n {2}Spartan-7 \(spartan7\) \[experimental: AMD Vivado's flow\]:\n {4}xc7s6: cpga196 -1 -2, csga225 -1 -2, ftgb196 -1 -2\n/);
+  assert.match(all.text, /\n {2}Virtex-6 \(virtex6\):\n/);
   assert.deepEqual(all.data.boards.find(b => b.id === 'basys3'), { id: 'basys3', name: 'Digilent Basys 3', device: 'xc7a35tcpg236-1', experimental: true, variants: [] });
   assert.deepEqual(all.data.boards.filter(b => b.experimental).map(b => b.id), ['basys3', 'nexys-a7']);
-  assert.deepEqual(all.data.families.filter(f => f.experimental).map(f => f.id), ['artix7']);
+  assert.deepEqual(all.data.families.filter(f => f.experimental).map(f => f.id), ['artix7', 'spartan7', 'kintex7', 'zynq']);
   assert.ok(!/basys2.*experimental|Spartan-3E.*experimental/.test(all.text));
   const a7 = await ok('list_devices', { family: 'artix7' });
   assert.deepEqual(a7.data.families.map(f => [f.id, f.experimental]), [['artix7', true]]);
@@ -121,6 +124,35 @@ test('set_design_properties: the Artix-7\'s synthesis tool, vivado or silinx; ru
   assert.equal((await ok('set_design_properties', { project: 'c3', board: 'nexys-a7' })).data.synthTool, 'silinx');
   assert.equal((await ok('set_design_properties', { project: 'c3', synth_tool: 'vivado' })).data.synthTool, 'vivado');
   // (another family: no Vivado; from the Artix-7's Vivado, the Silinx toolchain)
-  await fails('set_design_properties', { project: 'c3', board: 'basys2', synth_tool: 'vivado' }, 'AMD Vivado implements the Artix-7 devices, not the XC3S250E');
+  await fails('set_design_properties', { project: 'c3', board: 'basys2', synth_tool: 'vivado' }, 'AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the XC3S250E');
   assert.equal((await ok('set_design_properties', { project: 'c3', board: 'basys2' })).data.synthTool, 'silinx');
+});
+
+// (#3895, #2674) the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, as Design Properties locks it; run_process
+// runs Vivado whatever the project said, the Silinx toolchain asked for refused with the interface's message
+test('#3895 set_design_properties and run_process on the Spartan-7, the Kintex-7 and the Zynq-7000: Vivado alone', async () => {
+  await ok('new_project_from_example', { name: 's7', example: 'blinky', board: 'basys3' });
+  await ok('set_design_properties', { project: 's7', synth_tool: 'silinx' });
+  // (from the Artix-7's Silinx toolchain: Vivado's; an XDC still; no "no flow" warning)
+  const r = await ok('set_design_properties', { project: 's7', board: 'none', part: 'xc7s50', package: 'csga324', speed: '-1' });
+  assert.equal(r.text, 'Device set to xc7s50-1-csga324; synthesis tool vivado.\nWARNING: check the pin locations in constraints/top.xdc — they must exist on the CSGA324 package.');
+  assert.deepEqual([r.data.synthTool, (await P.readProject('s7')).device], ['vivado', { family: 'spartan7', part: 'xc7s50', package: 'csga324', speed: '-1' }]);
+  assert.equal((await P.readProject('s7')).constraints, 'constraints/top.xdc');
+  await fails('set_design_properties', { project: 's7', synth_tool: 'silinx' }, 'the Silinx toolchain has no back end for the XC7S50 (Spartan-7): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server): no Silinx synthesis tool');
+  await fails('set_design_properties', { project: 's7', synth_tool: 'xst' }, 'the XC7S50 is implemented by AMD Vivado: no XST');
+  assert.equal((await ok('set_design_properties', { project: 's7', synth_tool: 'vivado' })).data.synthTool, 'vivado');
+  // run_process: Vivado's (the project made through the MCP server: not trusted, Vivado's refusal), the Silinx toolchain refused
+  const untrusted = 'project \'s7\' was made through the MCP server (by an assistant): AMD Vivado runs only once you trust it (Trust Project, in the console when the project opens)';
+  await fails('run_process', { project: 's7', process: 'synthesize' }, untrusted);
+  await fails('run_process', { project: 's7', process: 'synthesize', toolchain: 'vivado' }, untrusted);
+  await fails('run_process', { project: 's7', process: 'implement', toolchain: 'silinx' }, 'the Silinx toolchain has no back end for the XC7S50 (Spartan-7): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)');
+  // the Kintex-7 and the Zynq-7000 (ISE 14.7's flow before): Vivado's too
+  for (const [part, pkg, fam] of [['xc7k160t', 'fbg484', 'Kintex-7'], ['xc7z020', 'clg400', 'Zynq-7000'], ['xc7z007s', 'clg225', 'Zynq-7000']]) {
+    const d = await ok('set_design_properties', { project: 's7', part, package: pkg, speed: '-1' });
+    assert.equal(d.text, `Device set to ${part}-1-${pkg}; synthesis tool vivado.\nWARNING: check the pin locations in constraints/top.xdc — they must exist on the ${pkg.toUpperCase()} package.`);
+    await fails('run_process', { project: 's7', process: 'implement', toolchain: 'silinx' }, `the Silinx toolchain has no back end for the ${part.toUpperCase()} (${fam}): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)`);
+  }
+  // (the Virtex-7 is no free edition's: not a device of Silinx's, list_devices's)
+  const v7 = await call('set_design_properties', { project: 's7', part: 'xc7v585t' });
+  assert.equal(v7.isError, true);
 });

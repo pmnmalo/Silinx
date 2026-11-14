@@ -11,7 +11,7 @@ import { detectToolchain, saveConfig, loadConfig } from './toolchain.js';
 import { runImplementation, collectReports, normalizeSteps } from './ise.js';
 import { runVivado, isVivadoDevice, vivadoSteps, collectVivadoReports } from './vivado.js';
 import { DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
-import { deviceFamily, experimentalDevice, noFlowMessage, openOnlyDevice, bitstreamExtOf } from '../packages/silinx-fpga/src/parts.js';
+import { deviceFamily, experimentalDevice, familyName, noFlowMessage, noOpenFlowMessage, openFlowDevice, openOnlyDevice, bitstreamExtOf } from '../packages/silinx-fpga/src/parts.js';
 import { runOpenImplementation, openStatus, openSteps, buildDeviceJob, reportPart } from './open-flow.js';
 import { programJob, scanJob, promJob, readBitInfo, checkBitPart, expectedDevice, parseBitHeader } from './programmer.js';
 import { importXise, importIseSchematics, iseModuleSymbols } from './xise.js';
@@ -122,8 +122,13 @@ export async function startImplementation(name, body = {}) {
   const choice = body.toolchain || ({ silinx: 'silinx', xst: 'ise', vivado: 'vivado' })[project.synthTool];
   // (a 7-series device: Vivado's, #1649, unless the Silinx toolchain is asked for or is the project's synthesis tool: its
   // 7-series back end, on trial, #3146; a toolchain asked for Vivado: its)
-  const vivado = body.toolchain === 'vivado' || (isVivadoDevice(project.device) && !['silinx', 'open', 'ise'].includes(choice));
-  if (body.toolchain === 'vivado' && !isVivadoDevice(project.device)) throw bad(`AMD Vivado implements the Artix-7 devices, not the ${String(project.device?.part || '').toUpperCase()}`);
+  // (a Vivado-only family's, #3895: the Spartan-7, the Kintex-7, the Zynq-7000: Vivado's whatever the project's synthesis tool;
+  // the Silinx toolchain or ISE asked for: an error)
+  const only = isVivadoDevice(project.device) && !openFlowDevice(project.device);
+  if (only && ['silinx', 'open'].includes(body.toolchain)) throw bad(noOpenFlowMessage(project.device));
+  if (only && body.toolchain === 'ise') throw bad(`Xilinx ISE does not implement the ${String(project.device.part).toUpperCase()} here (${familyName(deviceFamily(project.device))}): AMD Vivado does (toolchain: 'vivado')`);
+  const vivado = body.toolchain === 'vivado' || only || (isVivadoDevice(project.device) && !['silinx', 'open', 'ise'].includes(choice));
+  if (body.toolchain === 'vivado' && !isVivadoDevice(project.device)) throw bad(`AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the ${String(project.device?.part || '').toUpperCase()}`);
   if (vivado) {
     try { steps = vivadoSteps(steps); } catch (e) { throw bad(e.message); }
     if (!isTrusted(project)) throw bad(untrustedMessage(name, 'AMD Vivado', project), 403);
