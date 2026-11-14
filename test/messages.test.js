@@ -66,6 +66,7 @@ test('sourceOf: the processes\' headers', () => {
     'Started : "Validate" of ctl.asm.json.': 'check',   // (a chart's, #2730)
     'Started : "Check State Diagram" of ctl.fsm.json.': 'check',   // (#2803)
     'Started : "Check Petri Net" of ctl.pn.json.': 'check',
+    'Started : "Check Circuit" of half_adder.circ.json.': 'check',   // (a circuit's, #3897)
     'Started : "Validate Design Rules".': 'impl',
     'Started : "Translate".': 'impl',
     'Started : "Generate Post-Synthesis Simulation Model".': 'impl',

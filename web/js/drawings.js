@@ -376,6 +376,64 @@ export function petriContextMenu(e, file) {
   ].filter(Boolean), e.clientX, e.clientY);
 }
 
+// ---- digital circuits (.circ.json, #3897): their HDL file made with them (#207), kept in sync with the circuit, one way
+export async function openCircuit(path) {
+  const id = `circ:${path}`;
+  if (findDoc(id)) return activateDoc(findDoc(id));
+  let model;
+  const pj = S.project.name;
+  try { model = JSON.parse(await api.readFile(pj, path)); }
+  catch (e) { logError(`cannot open ${path}: ${e.message}`); return; }
+  const { mountCircuitEditor } = await import('./circuit-editor.js');
+  if (S.project?.name !== pj) return;   // another project opened meanwhile: not its drawing (#1231)
+  openDoc({
+    id, path, title: path.split('/').pop(), icon: 'circuit',
+    create(el, d) {
+      const host = h('div', { class: 'doc-body' });
+      el.append(host);
+      const problems = editorProblems({ file: path, tool: 'Circuit', what: 'Check Circuit', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); } });
+      const ed = mountCircuitEditor(host, {
+        model,
+        onChange: () => setDirty(d, true),
+        onProblems: (diags) => problems.set(diags),
+        onCheck: (diags) => problems.log(diags),
+        onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
+        ...followOnly(path),
+      });
+      d.circuitEditor = ed;
+      return {
+        save: async () => {
+          const m = ed.getModel();
+          await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
+          if (m.generatedFile && S.fileTree.includes(m.generatedFile)) await syncHdlFromCircuit(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+        },
+        destroy: () => { problems.clear(); ed.destroy?.(); },
+      };
+    },
+  });
+}
+export async function syncHdlFromCircuit(path, m) {
+  if (await drawnHdlLanguage(path, m)) return;
+  const { generateCircuit } = await import('/core/circuit-hdl.js');
+  let g;
+  try { g = generateCircuit(m, m.lang, { source: path.split('/').pop() }); } catch (e) { staleHdl(m.generatedFile, path, `the circuit has errors: ${e.message}`); return; }
+  freshHdl(m.generatedFile);
+  if (S.sources.find(x => x.path === m.generatedFile)?.text === g.code) return;
+  await api.writeFile(S.project.name, m.generatedFile, g.code);
+  const src = S.sources.find(x => x.path === m.generatedFile); if (src) src.text = g.code;
+  refreshOpenEditor(m.generatedFile, g.code);
+  compileProject(); markStale();
+}
+export function circuitContextMenu(e, file) {
+  popupMenu([
+    { label: 'Open', action: () => openCircuit(file) },
+    S.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
+    { label: 'Rename…', action: () => renameDialog(file) },
+    clashItem(file),
+    { label: 'Remove from Project', action: () => removeModule(file) },
+  ].filter(Boolean), e.clientX, e.clientY);
+}
+
 export function fsmContextMenu(e, file) {
   popupMenu([
     { label: 'Open', action: () => openFsm(file) },
@@ -446,14 +504,15 @@ export const isAsm = p => /\.asm\.json$/i.test(p || '');
 export const isTt = p => /\.(tt|bool)\.json$/i.test(p || '');
 export const isFsm = p => /\.fsm\.json$/i.test(p || '');
 export const isPn = p => /\.pn\.json$/i.test(p || '');
-export const viewNoun = p => (isAsm(p) ? 'state machine' : isTt(p) ? 'Boolean algebra' : isFsm(p) ? 'state diagram' : isPn(p) ? 'Petri net' : 'schematic');
-export const viewTitle = p => (isAsm(p) ? 'State Machine' : isTt(p) ? 'Boolean Algebra' : isFsm(p) ? 'State Diagram' : isPn(p) ? 'Petri Net' : 'Schematic');
-export const viewIcon = p => (isAsm(p) ? 'asm' : isTt(p) ? 'algebra' : isFsm(p) ? 'fsm' : isPn(p) ? 'petri' : 'schematic');
-export const viewKind = p => (isAsm(p) ? 'asm' : isTt(p) ? 'tt' : isFsm(p) ? 'fsm' : isPn(p) ? 'pn' : 'sch');
-export const viewContextMenu = (e, f) => (isAsm(f) ? asmContextMenu : isTt(f) ? ttContextMenu : isFsm(f) ? fsmContextMenu : isPn(f) ? petriContextMenu : schContextMenu)(e, f);
-export function openView(p) { return isAsm(p) ? openAsm(p) : isTt(p) ? openTt(p) : isFsm(p) ? openFsm(p) : isPn(p) ? openPetri(p) : openSch(p); }
+export const isCirc = p => /\.circ\.json$/i.test(p || '');
+export const viewNoun = p => (isAsm(p) ? 'state machine' : isTt(p) ? 'Boolean algebra' : isFsm(p) ? 'state diagram' : isPn(p) ? 'Petri net' : isCirc(p) ? 'circuit' : 'schematic');
+export const viewTitle = p => (isAsm(p) ? 'State Machine' : isTt(p) ? 'Boolean Algebra' : isFsm(p) ? 'State Diagram' : isPn(p) ? 'Petri Net' : isCirc(p) ? 'Circuit' : 'Schematic');
+export const viewIcon = p => (isAsm(p) ? 'asm' : isTt(p) ? 'algebra' : isFsm(p) ? 'fsm' : isPn(p) ? 'petri' : isCirc(p) ? 'circuit' : 'schematic');
+export const viewKind = p => (isAsm(p) ? 'asm' : isTt(p) ? 'tt' : isFsm(p) ? 'fsm' : isPn(p) ? 'pn' : isCirc(p) ? 'circ' : 'sch');
+export const viewContextMenu = (e, f) => (isAsm(f) ? asmContextMenu : isTt(f) ? ttContextMenu : isFsm(f) ? fsmContextMenu : isPn(f) ? petriContextMenu : isCirc(f) ? circuitContextMenu : schContextMenu)(e, f);
+export function openView(p) { return isAsm(p) ? openAsm(p) : isTt(p) ? openTt(p) : isFsm(p) ? openFsm(p) : isPn(p) ? openPetri(p) : isCirc(p) ? openCircuit(p) : openSch(p); }
 // a view's badge in the Design tree (#207)
-export const viewBadge = p => (isAsm(p) ? 'ASM' : isTt(p) ? 'Algebra' : isFsm(p) ? 'FSM' : isPn(p) ? 'Petri' : 'Schematic');
+export const viewBadge = p => (isAsm(p) ? 'ASM' : isTt(p) ? 'Algebra' : isFsm(p) ? 'FSM' : isPn(p) ? 'Petri' : isCirc(p) ? 'Circuit' : 'Schematic');
 
 // the commands of a module's drawing (the drawing its base, its HDL file generated from it, #220), in the module's menu,
 // on its name and on every badge of its row alike (#2872)
@@ -518,7 +577,7 @@ async function writeDrawnHdl(path, target, hdl) {
   let m;
   try { m = JSON.parse(S.viewTexts[path]); } catch { return false; }
   m.generatedFile = target;
-  const text = JSON.stringify(m, null, isAsm(path) || isTt(path) || isFsm(path) || isPn(path) ? 2 : 1);
+  const text = JSON.stringify(m, null, isAsm(path) || isTt(path) || isFsm(path) || isPn(path) || isCirc(path) ? 2 : 1);
   await api.writeFile(S.project.name, target, hdl);   // (registers the module in the project)
   await api.writeFile(S.project.name, path, text);
   S.viewTexts[path] = text;
@@ -530,7 +589,7 @@ async function writeDrawnHdl(path, target, hdl) {
 // history, selection and view kept (#245: not the whole model again, which reset them)
 function linkOpenEditor(path, target) {
   const d = findDoc(`${viewKind(path)}:${path}`);
-  (d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor)?.setLink(target);
+  (d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor || d?.circuitEditor)?.setLink(target);
 }
 
 // ---- a drawing whose HDL file name is taken (#230)
@@ -802,7 +861,7 @@ export async function setViewAsTop(path) {
   const r = viewHdl(path, S.viewTexts?.[path] ?? await api.readFile(S.project.name, path), { linked: hdlInProject });
   alertDlg('Set as Top Module', r?.errors?.length ? `${path.split('/').pop()} cannot be the top yet:\n${r.errors.slice(0, 8).join('\n')}` : `${path.split('/').pop()} defines no module that can be the top.`, 'error');
 }
-export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn'].includes(S.sel?.type) ? S.sel.file : null);
+export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn', 'circ'].includes(S.sel?.type) ? S.sel.file : null);
 // the module a drawing is (its HDL file's, or its own while it has none): Set or Unset as Top Module (#1220)
 export const drawnTop = path => S.modules.find(m => m.file === path && m.kind !== 'package')?.name || topOfView(path);
 export const topOfView = path => { const gen = S.schOwners?.[path] || path; return S.modules.find(m => m.file === gen && m.kind !== 'package')?.name || null; };

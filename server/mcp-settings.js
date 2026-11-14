@@ -237,7 +237,7 @@ export const SETTINGS_TOOLS = [
       const tree = await P.fileTree(name);
       let drawing = null;
       if (tree.includes(rel) && await S.drawingLanguage(P, name, rel)) drawing = rel;
-      else for (const f of tree.filter(f => /\.(sch|asm|tt|bool|fsm|pn)\.json$/i.test(f))) {
+      else for (const f of tree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
         try { if (JSON.parse(await P.readFile(name, f)).generatedFile === rel && await S.drawingLanguage(P, name, f)) { drawing = f; break; } } catch { /* not a drawing */ }
       }
       if (!drawing) throw toolError(tree.includes(rel) ? `'${rel}' has no language to choose: HDL written by hand, or a drawing made from its HDL` : `no file '${rel}' in the project '${name}'`);

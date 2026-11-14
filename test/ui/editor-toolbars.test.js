@@ -6,6 +6,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { newPetri } from '../../core/petri.js';
+import { halfAdder } from '../circuit-helpers.mjs';
 import { setupUi, uiTest, makeProject } from './harness.js';
 
 let env;
@@ -26,7 +27,7 @@ const look = (page, bar, btn) => page.eval((b, x) => {
 const shot = async (page, name) => { if (process.env.SILINX_SHOTS) await page.screenshot(`${process.env.SILINX_SHOTS}/${name}-${process.env.SILINX_UI_INTERFACE || 'silinx'}.png`); };
 
 uiTest('#2505 the editors\' toolbars and side panels as the Schematic editor\'s', E, async (page) => {
-  await makeProject(env, { name: 'BarsT', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')) } });
+  await makeProject(env, { name: 'BarsT', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')), 'src/half_adder.circ.json': JSON.stringify(halfAdder()) } });
   await makeProject(env, { name: 'BarsB', template: 'blinky' });
   await makeProject(env, { name: 'BarsG', template: 'gates' });
   await page.setViewport(1440, 900);
@@ -38,7 +39,7 @@ uiTest('#2505 the editors\' toolbars and side panels as the Schematic editor\'s'
   const ownHistory = (bar) => page.eval((b) => [...document.querySelectorAll(`${b} button`)].filter((x) => /^(Undo|Redo)$|Print/.test(x.title)).map((x) => x.title), bar);
   assert.deepEqual(await ownHistory(`${D} .se-toolbar`), [], 'the schematic: no Undo or Redo of its own');
   await shot(page, 'schematic');
-  for (const [pj, file, name, bar] of [['BarsT', 'src/traffic.fsm.json', 'fsm', '.fsm-toolbar'], ['BarsT', 'src/net.pn.json', 'petri', '.pn-toolbar'], ['BarsB', 'src/speed_ctrl.asm.json', 'asm', '.asm-chart-toolbar']]) {
+  for (const [pj, file, name, bar] of [['BarsT', 'src/traffic.fsm.json', 'fsm', '.fsm-toolbar'], ['BarsT', 'src/net.pn.json', 'petri', '.pn-toolbar'], ['BarsT', 'src/half_adder.circ.json', 'circuit', '.circ-toolbar'], ['BarsB', 'src/speed_ctrl.asm.json', 'asm', '.asm-chart-toolbar']]) {
     if (await page.eval(() => window.SilinxApp.S.project?.name) !== pj) await page.openProject(pj);
     await open(page, file, name, bar);
     const b = `${D} ${bar}`;
@@ -104,7 +105,7 @@ uiTest('#2505 the Algebra editor: no Undo or Redo of its own, its menu an icon a
 });
 
 uiTest('#2505 the Petri net, FSM and ASM side panels fold to a strip and expand, as the schematic\'s; remembered; Portuguese', E, async (page) => {
-  await makeProject(env, { name: 'BarsF', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')) } });
+  await makeProject(env, { name: 'BarsF', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')), 'src/half_adder.circ.json': JSON.stringify(halfAdder()) } });
   await makeProject(env, { name: 'BarsFB', template: 'blinky' });
   await page.setViewport(1440, 900);
   const state = () => page.eval((d) => {
@@ -112,7 +113,7 @@ uiTest('#2505 the Petri net, FSM and ASM side panels fold to a strip and expand,
     return { folded: e.classList.contains('props-folded'), side: Math.round(e.querySelector('.asm-side').getBoundingClientRect().width), title: b.title,
       expanded: b.getAttribute('aria-expanded'), shown: [...e.querySelectorAll('.asm-side > :not(.asm-cap)')].some((x) => x.getClientRects().length), cap: e.querySelector('.asm-side .asm-cap').textContent };
   }, D);
-  for (const [pj, file, name, bar] of [['BarsF', 'src/traffic.fsm.json', 'fsm', '.fsm-toolbar'], ['BarsF', 'src/net.pn.json', 'petri', '.pn-toolbar'], ['BarsFB', 'src/speed_ctrl.asm.json', 'asm', '.asm-chart-toolbar']]) {
+  for (const [pj, file, name, bar] of [['BarsF', 'src/traffic.fsm.json', 'fsm', '.fsm-toolbar'], ['BarsF', 'src/net.pn.json', 'petri', '.pn-toolbar'], ['BarsF', 'src/half_adder.circ.json', 'circuit', '.circ-toolbar'], ['BarsFB', 'src/speed_ctrl.asm.json', 'asm', '.asm-chart-toolbar']]) {
     if (await page.eval(() => window.SilinxApp.S.project?.name) !== pj) await page.openProject(pj);
     await open(page, file, name, bar);
     const canvas = () => page.eval((d) => Math.round(document.querySelector(`${d} .asm-canvas-wrap`).getBoundingClientRect().width), D);
@@ -140,7 +141,7 @@ uiTest('#2505 the Petri net, FSM and ASM side panels fold to a strip and expand,
 
 // (#2763) every editor's status line: its last line, the Schematic editor's look, what it says; its toolbar says none of it
 uiTest('#2763 the drawing editors\' status line, as the Schematic\'s: their counts and encoding there, not in their toolbars; Portuguese', E, async (page) => {
-  await makeProject(env, { name: 'StatT', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')) } });
+  await makeProject(env, { name: 'StatT', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')), 'src/half_adder.circ.json': JSON.stringify(halfAdder()) } });
   await makeProject(env, { name: 'StatB', template: 'blinky' });
   await makeProject(env, { name: 'StatG', template: 'gates' });
   await page.setViewport(1440, 900);
@@ -157,8 +158,9 @@ uiTest('#2763 the drawing editors\' status line, as the Schematic\'s: their coun
   const want = {
     fsm: ['src/traffic.fsm.json', '.fsm-editor', ['7 state(s), 8 transition(s)', 'Moore', 'Encoding: Binary'], ['7 estado(s), 8 transição(ões)', 'Moore', 'Codificação: Binária']],
     petri: ['src/net.pn.json', '.petri-editor', ['2 places · 2 transitions · 4 arcs', '1 token'], ['2 lugares · 2 transições · 4 arcos', '1 marca']],
+    circuit: ['src/half_adder.circ.json', '.circuit-editor', ['2 IC(s) · 2 switch(es) · 2 LED(s) · 15 wire(s)'], ['2 CI(s) · 2 interruptor(es) · 2 LED(s) · 15 fio(s)']],   // (#3897)
     tt: ['src/lamps.bool.json', '.tt-editor', null, null],
-    asm: ['src/speed_ctrl.asm.json', '.asm-editor:not(.fsm-editor):not(.petri-editor)', null, null],
+    asm: ['src/speed_ctrl.asm.json', '.asm-editor:not(.fsm-editor):not(.petri-editor):not(.circuit-editor)', null, null],
   };
   for (const [name, [file, root, en, pt]] of Object.entries(want)) {
     const pj = name === 'asm' ? 'StatB' : 'StatT';

@@ -13,7 +13,7 @@ import { log } from './console.js';
 import { closeProject, reloadProject } from './project.js';
 import { checkUcfFile } from './implement.js';
 import { asmContextMenu, clashTip, convertToAsm, convertToFsm, convertToSchematic, fsmContextMenu, openAsm, openFsm,
-  isPn, isTt, openPetri, openPetriFsm, openSch, openTt, openTtSchematic, openView, petriContextMenu, resolveHdlClash, schContextMenu, drawingCommands,
+  isPn, isTt, isCirc, openCircuit, circuitContextMenu, openPetri, openPetriFsm, openSch, openTt, openTtSchematic, openView, petriContextMenu, resolveHdlClash, schContextMenu, drawingCommands,
   ttContextMenu, viewBadge, viewContextMenu, viewIcon, viewKind, viewNoun } from './drawings.js';
 import { checkFileSyntax, checkSyntax, markStale, renderProcesses, saveAll } from './processes.js';
 import { openSchematic, runSimulation } from './viewers.js';
@@ -65,7 +65,7 @@ export function renderHierarchy() {
     // "label - module" like ISE; just the name when the instance is labelled with the module name
     const label = instName && instName.toLowerCase() !== String(modName).toLowerCase() ? `${instName} - ${modName}` : modName;
     // a drawn source without an HDL file (#177): the module is the drawing itself
-    const drawn = info && /\.(sch|asm|tt|bool|fsm|pn)\.json$/.test(file) ? file : null;
+    const drawn = info && /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(file) ? file : null;
     const sch = drawn || (info && viewOfModule(info.name, file));
     // an HDL module a wizard wrote from its settings (#793): the wizard is its base, the HDL generated from it
     const wz = !sch && info ? wizardLabelOf(file) : null;
@@ -133,6 +133,10 @@ export function renderHierarchy() {
     const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
+  for (const f of (S.fileTree || []).filter(f => isCirc(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {   // (a circuit, #3897)
+    const it = treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) });
+    it.setLeaf(); devItem.ul.append(it.li);
+  }
   // a C source whose HDL cannot be made (#2995: a C error, a blackbox refused): its row, marked, its errors in the Console;
   // [No HDL] opens the first one's file
   for (const [f, c] of Object.entries(S.cFailed || {})) {
@@ -189,7 +193,7 @@ function clashBadge(f) {
 export function moduleBadges(name) {
   const info = moduleInfo(name);
   if (!info) return [];
-  const drawn = /\.(sch|asm|tt|bool|fsm|pn)\.json$/.test(info.file) ? info.file : null;
+  const drawn = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(info.file) ? info.file : null;
   const sch = drawn || viewOfModule(info.name, info.file);
   const wz = !sch ? wizardLabelOf(info.file) : null;
   if (isC(info.file)) return [{ text: cBadge(info.file), base: true }, ...(cSequential(info.file) ? [{ text: 'ASM' }] : []), { text: info.lang === 'vhdl' ? 'VHDL' : 'Verilog' }];   // (#1531, #1575)
@@ -201,7 +205,7 @@ export function moduleBadges(name) {
 export function openModuleSource(name) {
   const info = moduleInfo(name);
   if (!info) return;
-  const drawn = /\.(sch|asm|tt|bool|fsm|pn)\.json$/.test(info.file) ? info.file : null;
+  const drawn = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(info.file) ? info.file : null;
   const sch = drawn || viewOfModule(info.name, info.file);
   const wz = !sch ? wizardLabelOf(info.file) : null;
   return sch ? openView(sch) : wz ? openWizardModule(info.file) : openFile(info.file, info.line);

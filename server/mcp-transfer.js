@@ -193,7 +193,7 @@ export const TRANSFER_TOOLS = [
       await P.updateProject(name, pj => assignImported(pj, written, role, tree));
       // a drawing: its HDL file made (#3184), as the interface does when it reads the project again
       const { adoptDrawing, syncDrawing } = await import('./drawing-sync.js');
-      for (const f of written.filter(f => /\.(sch|asm|tt|bool|fsm|pn)\.json$/i.test(f))) {
+      for (const f of written.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
         const sync = await syncDrawing(P, name, f) || await adoptDrawing(P, name, f);
         lines.push(...(sync?.messages || []));
       }

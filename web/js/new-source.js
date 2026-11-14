@@ -25,6 +25,7 @@ const SOURCE_TYPES = [
   { id: 'fsm', label: 'Finite State Machine (FSM)', ico: 'fsm', ext: '.fsm.json', dir: 'src', wiz: 'fsm', drawn: true },
   { id: 'asm', label: 'Algorithmic State Machine (ASM)', ico: 'asm', ext: '.asm.json', dir: 'src', wiz: 'asm', drawn: true },
   { id: 'petri', label: 'Petri Net', ico: 'petri', ext: '.pn.json', dir: 'src', wiz: 'petri', drawn: true },
+  { id: 'circuit', label: 'Circuit', ico: 'circuit', ext: '.circ.json', dir: 'src', drawn: true },   // (ICs on a breadboard, #3897)
   { id: 'clkwiz', label: 'Clock Manager (DCM / PLL)', ico: 'template', ext: null, dir: 'src', wiz: 'clock', only: true },
   { id: 'bramwiz', label: 'Block Memory', ico: 'template', ext: null, dir: 'src', wiz: 'memory', only: true },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
@@ -42,7 +43,7 @@ const SOURCE_TYPES = [
   { id: 'vhdl-pkg', label: 'VHDL Package', ico: 'vhdl', ext: '.vhd', dir: 'src', hidden: true },
 ];
 // a design and simulation project's (#3780)
-const DESIGN_TYPES = ['tt', 'sch', 'fsm', 'asm', 'petri', 'lab'];
+const DESIGN_TYPES = ['tt', 'sch', 'fsm', 'asm', 'petri', 'circuit', 'lab'];
 // the constraints files' types: one shown, the device's format's
 const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'xdc'];
 
@@ -273,6 +274,11 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     case 'petri': {
       const { normalizePetri } = await import('/core/petri.js');
       text = JSON.stringify(normalizePetri({ name: n.replace(/[^A-Za-z0-9_]/g, '_'), lang: langSel.value }), null, 2);   // empty (#2176)
+      break;
+    }
+    case 'circuit': {   // (a half breadboard and its supply, #3897)
+      const { newCircuit } = await import('/core/circuit.js');
+      text = JSON.stringify(newCircuit(n.replace(/[^A-Za-z0-9_]/g, '_'), langSel.value), null, 2);
       break;
     }
     case 'tt': {
