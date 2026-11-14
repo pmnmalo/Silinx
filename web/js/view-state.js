@@ -2,7 +2,7 @@
 // one in front, the left pane and the Design view, kept in this browser (per project). app.js keeps exporting what moved.
 import { api } from './api.js';
 import { openCHdl } from './c-source.js';
-import { openAsm, openFsm, openPetri, openSch, openTt, openTtSchematic } from './drawings.js';
+import { openAsm, openCircuit, openFsm, openPetri, openSch, openTt, openTtSchematic } from './drawings.js';
 import { openEmulator, openSchematic, runSimulation } from './viewers.js';
 import { prefKey } from './prefs.js';
 import { restoreSplit, splitKeys } from './split-view.js';
@@ -19,7 +19,7 @@ const inProject = p => S.fileTree?.includes(p);
 const REOPEN = [
   [/^file:(.+)$/, p => inProject(p) && openFile(p)], [/^sch:(.+)$/, p => inProject(p) && openSch(p)],
   [/^asm:(.+)$/, p => inProject(p) && openAsm(p)], [/^tt:(.+)$/, p => inProject(p) && openTt(p)], [/^ttsch:(.+)$/, p => inProject(p) && openTtSchematic(p)],
-  [/^fsm:(.+)$/, p => inProject(p) && openFsm(p)], [/^pn:(.+)$/, p => inProject(p) && openPetri(p)], [/^rtl:(.+)$/, m => moduleInfo(m) && openSchematic(m, { task: null })],
+  [/^fsm:(.+)$/, p => inProject(p) && openFsm(p)], [/^pn:(.+)$/, p => inProject(p) && openPetri(p)], [/^circ:(.+)$/, p => inProject(p) && openCircuit(p)], [/^rtl:(.+)$/, m => moduleInfo(m) && openSchematic(m, { task: null })],
   [/^isim:([^@]+)(?:@(\w+))?$/, async (mod, model) => await reopenable(mod, model) && runSimulation(mod, model || undefined)],
   [/^emulator:([^@]+)(?:@(\w+))?$/, async (mod, model) => await reopenable(mod, model) && openEmulator(mod, { model: model || null })],
   [/^chdl:(.+)$/, p => inProject(p) && openCHdl(p)],   // (a C source's HDL, beside it: #1619)
