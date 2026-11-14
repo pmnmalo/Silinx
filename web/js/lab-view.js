@@ -43,7 +43,7 @@ function projectIo(name) {
 
 const readProgress = async name => { try { return parseProgress(await api.readFile(name, PROGRESS_FILE)); } catch { return {}; } };
 /** The labs the project `name` can run (core/labs.js listLabs): { labs, problems }. */
-export async function projectLabs(name) {
+async function projectLabs(name) {
   const pj = await api.project(name);
   return listLabs(pj.fileTree || [], rel => api.readFile(name, rel), { example: name });
 }
