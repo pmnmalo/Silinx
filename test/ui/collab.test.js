@@ -31,7 +31,7 @@ async function share(page, name, { pt = false } = {}) {
   await page.waitDialog(pt ? 'Partilhar Projeto' : 'Share Project');
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', name);
-  await page.dialogButton(pt ? 'Partilhar' : 'Share');
+  await page.dialogButton(pt ? 'Começar a Partilhar' : 'Start Sharing');
   const link = await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
   await page.dialogButton(pt ? 'Fechar' : 'Close');
   await page.waitNoDialog();
@@ -217,7 +217,7 @@ uiTest('#3716 Share Project in the main toolbar, after Close Project (#3719), no
   await page.waitDialog('Share Project');
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
-  await page.dialogButton('Share');
+  await page.dialogButton('Start Sharing');
   await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -273,14 +273,14 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
     return [Math.abs(c.radio.top - l.radio.top) < 2, l.radio.left > c.note.left, c.note.top >= c.radio.bottom - 2, l.note.top >= l.radio.bottom - 2, !!(hint.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING), /^A link that opens /.test(hint.textContent)];
   }), [true, true, true, true, true, true]);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].map((x) => x.textContent)), ['Open in:', 'Module:', 'View:', 'Include the current view: the open tabs, the split, the panels', 'Link:', 'Expires:']);
-  assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay .link-out')), 'the copy\'s link');
+  assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay select[data-field=view]')), 'the copy\'s link');
   await chooseLive(page);
   assert.equal(await page.waitDialog('Share Project'), 'Share Project');
   assert.deepEqual(await howState(page), ['copy', 'live *']);
-  assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay input[data-field=name]') && !document.querySelector('.dlg-overlay .link-out')), 'the live window');
+  assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay input[data-field=name]') && !document.querySelector('.dlg-overlay select[data-field=view]')), 'the live window');
   assert.equal(await page.eval(() => document.querySelectorAll('.dlg-overlay').length), 1, 'one window');
   await page.click('.dlg-overlay input[data-field=how-copy]');
-  await page.waitFor(() => !!document.querySelector('.dlg-overlay .link-out'), [], { what: 'the copy\'s window again' });
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay select[data-field=view]'), [], { what: 'the copy\'s window again' });
   assert.deepEqual(await howState(page), ['copy *', 'live']);
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -288,12 +288,12 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   await treeMenu(page, 0, 'Share Project…');
   await page.waitDialog('Share Project');
   await chooseLive(page);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   await treeMenu(page, 0, 'Share Project…');
   await page.waitDialog('Share Project');
   assert.deepEqual(await howState(page), ['copy', 'live *']);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   // following another's project: Share Project… there, its copy; Live disabled, its reason its tip
   await page.eval(async () => { (await import('/js/api.js')).api.following = true; });
@@ -310,7 +310,7 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   await treeMenu(page, 0, 'Partilhar Projeto…');
   await page.waitDialog('Partilhar Projeto');
   assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how > label, .dlg-overlay .share-how-choices > label')].map((l) => (l.parentElement.classList.contains('share-how') ? l.textContent : [...l.children].filter((c) => c.tagName === 'SPAN').map((c) => c.textContent).join(' · '))).join(' | ')), 'Partilhar: | Uma cópia · Uma ligação com o projeto lá dentro | Em direto · Os outros seguem-no enquanto trabalha');
-  await page.dialogButton('Cancelar');
+  await page.dialogButton('Fechar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(await consoleWarnings(page), []);
@@ -330,11 +330,11 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
   assert.equal(await page.waitDialog('Share Module'), 'Share Module');
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
-  await page.dialogButton('Share');
+  await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
   assert.match(link, /^http:\/\/[^/]+\/#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=pass1$/);
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=edit-link]').value), /#edit=[^&]+&top=pass1$/);
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-dlg p').textContent), 'Anyone with this link follows "ModShared" live, read only, opening it on pass1, as long as you share it.');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-about').textContent), 'Anyone with this link follows "ModShared" live, read only, opening it on pass1, as long as you share it.');
   await page.dialogButton('Close');
   await page.waitNoDialog();
   assert.equal(await active(page), 'src/pass1.vhd');
@@ -364,7 +364,7 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await treeMenu(page, await rowOf(page, 'pass1'), 'Partilhar Módulo…');
   await page.waitDialog('Partilhar Módulo');
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-dlg p').textContent), 'Quem tiver esta ligação segue "ModShared" em direto, só de leitura, aberto em pass1, enquanto o partilhar.');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-about').textContent), 'Quem tiver esta ligação segue "ModShared" em direto, só de leitura, aberto em pass1, enquanto o partilhar.');
   await page.dialogButton('Fechar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));

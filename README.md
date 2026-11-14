@@ -419,8 +419,9 @@ A link opens Silinx on a design, straight in Try it, the simulation or the board
 or import: **Share Project…** (the project's right-click menu in the Design pane, the Start page, the ISE
 style's File menu) or **Share Module…** (a module's right-click menu) makes it, **A copy** chosen in its window, the view
 and the module chosen, the link hidden until *Show* (*Copy* copies it all the same, *Show QR Code* shows its QR code, as
-large as the window) (its other way, **Live**, shares the project as you work: others follow it with its link, read only,
-or edit it with you). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
+large as the window) (its other way, **Live**, shares the project as you work: your name on the window, *Start Sharing*, then two links in
+the same window, each hidden with its *Show*, *Copy* and *Show QR Code*: the viewers', who follow it read only, and the
+editors', who edit it with you; *Add a User…* gives the link of the role you choose). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead
 (`#gist=…`, about 140 characters, for a chat that refuses a long message), made by *Generate*, the window saying which
 GitHub account is signed in and which repository the project is in (private or public): the project is encrypted in your browser and
