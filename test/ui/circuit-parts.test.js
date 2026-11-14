@@ -59,7 +59,7 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   await page.click(`${ED} .circ-sim-btn`);
   // the library: the 74LS and the 4000 gates; a 4001 placed, its pinout
   const groups = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-group`)].map((g) => [g.querySelector('.circ-lib-title').textContent, g.querySelectorAll('.circ-lib-part').length]), ED);
-  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 4], ['Gates (74LS)', 16], ['Gates (4000)', 7], ['MSI (74LS)', 10]]);
+  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 4], ['Gates (74LS)', 16], ['Gates (4000)', 7], ['MSI (74LS)', 10], ['Sequential (74LS, 4000)', 15]]);
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="4001"]`).scrollIntoView({ block: 'center' }), ED);   // (the library scrolls)
   await page.click(`${ED} .circ-lib-part[data-part="4001"]`);
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + r.width * 0.75, y: r.top + 24 }; }, ED);
@@ -102,8 +102,9 @@ uiTest('Circuit editor, the MSI ICs (#3900): a 7447 from the library\'s MSI grou
   await page.openProject('MsiPj');
   await page.eval(() => window.SilinxApp.openFile('src/m.circ.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7447"]`), [ED], { what: 'the library' });
-  assert.deepEqual(await page.eval((ed) => [...[...document.querySelectorAll(`${ed} .circ-lib-group`)].pop().querySelectorAll('.circ-lib-part')].map((b) => b.dataset.part), ED),
-    ['7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485']);
+  const group = (title) => page.eval((ed, t) => [...[...document.querySelectorAll(`${ed} .circ-lib-group`)].find((g) => g.querySelector('.circ-lib-title').textContent === t).querySelectorAll('.circ-lib-part')].map((b) => b.dataset.part), ED, title);
+  assert.deepEqual(await group('MSI (74LS)'), ['7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485']);
+  assert.deepEqual(await group('Sequential (74LS, 4000)'), ['7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017']);
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7447"]`).scrollIntoView({ block: 'center' }), ED);
   await page.click(`${ED} .circ-lib-part[data-part="7447"]`);
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + r.width * 0.75, y: r.top + 40 }; }, ED);
@@ -115,6 +116,7 @@ uiTest('Circuit editor, the MSI ICs (#3900): a 7447 from the library\'s MSI grou
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-selection h3`).textContent === 'U1: Descodificador BCD para 7 segmentos, coletor aberto, ativo a 0', [ED], { what: 'in Portuguese' });
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="74138"]`).textContent, ED), '74138 Descodificador de 3 para 8 linhas');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="74595"]`).textContent, ED), '74595 Registo de deslocamento de 8 bits com latches de saída, 3 estados');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 90000 });
