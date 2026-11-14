@@ -41,15 +41,16 @@ export async function exchangePath(p, what) {
 }
 
 // a folder's files as a zip's entries ([{ path, data }], its paths relative to dir), the hidden ones left out (an
-// import takes none); at most the zip's limits (core/zip.js ZIP_LIMITS) and MAX_FILES files
-async function folderEntries(dir) {
+// import takes none), and those skip(rel) leaves out (a file's or a folder's path); at most the zip's limits
+// (core/zip.js ZIP_LIMITS) and MAX_FILES files
+async function folderEntries(dir, skip = () => false) {
   const { ZIP_LIMITS } = await import('../core/zip.js');
   const out = [];
   let total = 0;
   const walk = async (sub) => {
     for (const d of await fsp.readdir(path.join(dir, sub), { withFileTypes: true })) {
-      if (d.name.startsWith('.')) continue;
       const rel = sub ? `${sub}/${d.name}` : d.name;
+      if (d.name.startsWith('.') || skip(rel)) continue;
       if (d.isDirectory()) { await walk(rel); continue; }
       if (!d.isFile()) continue;
       if (out.length >= MAX_FILES) throw toolError(`the folder has more than ${MAX_FILES} files: not a project's`);
@@ -90,7 +91,7 @@ export const TRANSFER_TOOLS = [
   },
   {
     name: 'import_project', title: 'Import a project',
-    description: 'Make a new project in the workspace from a project in the exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names), as the File menu\'s Import Project (.zip)… does, the software read from the files: a .zip (a Xilinx ISE project with its .xise, or a Silinx project exported with its silinx.json), an ISE project\'s .xise (its folder\'s files with it: a folder of its own, not the exchange folder\'s root) or a project folder. Its sources, constraints and other files are copied (not ISE\'s own outputs, nor hidden files); returns the files the project lists but were not found, and the import\'s warnings.',
+    description: 'Make a new project in the workspace from a project in the exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names), as the File menu\'s Import Project (.zip)… does, the software read from the files: a .zip (a Xilinx ISE project with its .xise, or a Silinx project exported with its silinx.json), an ISE project\'s .xise (its folder\'s files with it: a folder of its own, not the exchange folder\'s root) or a project folder (an ISE project\'s, with its .xise; a Silinx project\'s, with its silinx.json: imported as its .zip, its build folder left out). Its sources, constraints and other files are copied (not ISE\'s own outputs, nor hidden files); returns the files the project lists but were not found, and the import\'s warnings.',
     inputSchema: { type: 'object', properties: {
       name: STR('The new project\'s name (letters, digits, - and _).'),
       from: STR('The .zip, the .xise or the project folder, in the exchange folder: its name, a path in it, or an absolute path inside it.'),
@@ -109,7 +110,14 @@ export const TRANSFER_TOOLS = [
           : `from: '${from}' is at the exchange folder's root, with whatever else is there: put the ISE project in a folder of its own and import that folder's .xise`);
       }
       let entries;
-      if (st.isDirectory()) entries = await folderEntries(src);
+      // (a Silinx project's folder, its silinx.json at its root and no .xise there: its files as its export's zip, its
+      // build folder left out, #3965, core/project-folder.js)
+      if (st.isDirectory()) {
+        const { projectSoftware } = await import('../core/project-software.js');
+        const { silinxFolderSkips } = await import('../core/project-folder.js');
+        const silinx = projectSoftware(await fsp.readdir(src)) === 'silinx';
+        entries = await folderEntries(src, silinx ? silinxFolderSkips : undefined);
+      }
       else if (xise) {
         // the .xise chosen first: the import takes the first of the shallowest
         const all = await folderEntries(path.dirname(src));

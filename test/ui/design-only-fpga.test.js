@@ -49,7 +49,7 @@ uiTest('#3891 a design project: no Toolchain Settings, no RTL Schematic, the Des
   page.eval(async () => (await import('/js/project-zip-dialogs.js')).exportProjectDialog()).catch(() => {});
   await page.waitDialog('Export Project');
   const exp = await page.eval(() => ({ radios: document.querySelectorAll('.dlg-overlay input[type=radio]').length, hint: document.querySelector('.dlg-overlay .hint').textContent }));
-  assert.deepEqual(exp, { radios: 0, hint: 'The whole Silinx project: silinx.json and every project file (sources, ASM charts, schematics, constraints, simulation files). It opens in Silinx with File ▸ Import Project (.zip)….' });
+  assert.deepEqual(exp, { radios: 0, hint: 'The whole Silinx project: silinx.json and every project file (sources, ASM charts, schematics, constraints, simulation files). It opens in Silinx.' });
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   // a flip-flop's Symbol Info: no Xilinx library equivalents

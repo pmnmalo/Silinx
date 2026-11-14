@@ -18,7 +18,7 @@ export const MESSAGES_PT = {
   'The project has no design modules to test.': 'O projeto não tem módulos de projeto para testar.',
   'The project has no board. Choose one in Project ▸ Design Properties (e.g. Digilent Basys2).':
     'O projeto não tem placa. Escolha uma em Projeto ▸ Propriedades do Projeto (p. ex. Digilent Basys2).',
-  'Select the .zip of the Silinx project.': 'Selecione o .zip do projeto Silinx.',
+  'Select the project folder or the .zip of the Silinx project.': 'Selecione a pasta do projeto ou o .zip do projeto Silinx.',
   // the errors a dialog returns (rename.js, tbwizard.js, tbwizard-vectors.js)
   'Enter a file path inside the project.': 'Escreva um caminho de ficheiro dentro do projeto.',
   'The module name must start with a letter and contain only letters, digits and _.': 'O nome do módulo tem de começar por uma letra e ter só letras, algarismos e _.',

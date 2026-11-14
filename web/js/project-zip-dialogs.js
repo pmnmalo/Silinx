@@ -34,7 +34,7 @@ function softwareRow(id, onChange, group) {
 
 // ------------------------------------------------------------------ Export Project (.zip)…
 const EXPORT_HINTS = {
-  silinx: 'The whole Silinx project: silinx.json and every project file (sources, ASM charts, schematics, constraints, simulation files). It opens in Silinx with File ▸ Import Project (.zip)….',
+  silinx: 'The whole Silinx project: silinx.json and every project file (sources, ASM charts, schematics, constraints, simulation files). It opens in Silinx.',
   xilinx: 'A Xilinx ISE 14.7 project: its .xise and its sources, the schematics as ISE schematics, the other drawings and the C sources as their HDL. It opens in Xilinx ISE.',
 };
 
@@ -57,16 +57,23 @@ export async function exportProjectDialog() {
 }
 
 // ------------------------------------------------------------------ Import Project (.zip)…
-// Silinx: a .zip made with Export Project (.zip)… to Silinx (silinx.json + every project file); in the browser edition
-// also a project bundle (.silinx.json) of its File ▸ Download Project Bundle before #3548, read as such a zip.
+// Both in the same rows (#3965): the project's folder, or a .zip file, then the project's name.
+// Silinx: the project's folder (the folder with its silinx.json: its files but the hidden ones and build/, as its
+// export, core/project-folder.js), or a .zip made with Export Project (.zip)… to Silinx (silinx.json + every project
+// file); in the browser edition also a project bundle (.silinx.json) of its File ▸ Download Project Bundle before
+// #3548, read as such a zip.
 // Xilinx ISE: the project's folder (the folder with its .xise), a .zip of that folder, or a .xise with its sources.
 const ISE_ACCEPT = '.zip,.xise,.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst';
 const IMPORT_HINTS = {
-  silinx: 'Import a whole Silinx project from a .zip made with File ▸ Export Project (.zip)… (silinx.json and every project file: sources, ASM charts, schematics, constraints, simulation files).',
+  silinx: ['Import a whole Silinx project from its folder (the folder with the silinx.json file), or from a .zip of that folder (e.g. one exported with File ▸ Export Project (.zip)…). ',
+    'Its build folder (build) and hidden files are not imported.'],
   xilinx: ['Import an ISE project from its folder (the folder with the .xise file), or from a .zip of that folder (e.g. one exported with File ▸ Export Project (.zip)…). ',
     'ISE output files in the folder (xst, _ngo, netlists, bitstreams, logs) are not imported.'],
 };
 const NOT_A_PROJECT = 'The zip holds no silinx.json nor .xise: it is not a project Silinx reads.';
+const NOT_A_FOLDER = 'The folder holds no silinx.json nor .xise: it is not a project Silinx reads.';
+const PROJECT_FILE = { silinx: f => /^silinx\.json$/i.test(f.name), xilinx: f => /\.xise$/i.test(f.name) };
+const folderName = files => (files[0]?.webkitRelativePath || '').split('/')[0];
 
 /** The software of the files picked (a .xise, a project bundle, a zip's entries), or null. */
 async function pickedSoftware(files) {
@@ -89,14 +96,19 @@ export async function importProjectDialog() {
   const hint = h('div', { class: 'hint', style: { marginTop: '10px' } });
   const bundle = h('div', { class: 'hint' }, 'It also opens a project bundle (.silinx.json) made with an earlier version.');
   const [dirLabel] = field('Project folder:', dirInp), fileLabel = h('label', {});
+  // the folder's line: its files and its project file (the software's), else what is missing
+  const folderInfo = () => {
+    const files = [...dirInp.files], pf = files.find(PROJECT_FILE[software]);
+    info.textContent = files.length ? `Folder '${folderName(files)}': ${files.length} file(s)${pf ? `, project ${pf.name}` : ` — no ${software === 'xilinx' ? '.xise' : 'silinx.json'} found!`}` : '';
+  };
   const show = () => {
     const ise = software === 'xilinx';
     hint.replaceChildren(...[IMPORT_HINTS[software]].flat());
-    fileLabel.textContent = ise ? 'or .zip / .xise file(s):' : '.zip file:';
+    fileLabel.textContent = ise ? 'or .zip / .xise file(s):' : 'or .zip file:';
     fileInp.multiple = ise;
     fileInp.accept = ise ? ISE_ACCEPT : api.standalone ? '.zip,.json' : '.zip';
-    dirLabel.hidden = dirInp.hidden = !ise;
     bundle.hidden = ise || !api.standalone;
+    if (dirInp.files.length) folderInfo();
   };
   const row = softwareRow(software, id => { software = id; show(); }, 'import-software');
   show();
@@ -114,9 +126,13 @@ export async function importProjectDialog() {
   dirInp.addEventListener('change', () => {
     fileInp.value = '';
     const files = [...dirInp.files];
-    const xise = files.find(x => /\.xise$/i.test(x.name));
-    suggest(xise ? xise.name : (files[0]?.webkitRelativePath || '').split('/')[0]);
-    info.textContent = files.length ? `Folder '${(files[0].webkitRelativePath || '').split('/')[0]}': ${files.length} file(s)${xise ? `, project ${xise.name}` : ' — no .xise found!'}` : '';
+    const xise = files.find(PROJECT_FILE.xilinx);
+    suggest(xise ? xise.name : folderName(files));
+    // (the folder's software preselected, as a zip's: its files' paths, core/project-software.js)
+    const found = files.length ? projectSoftware(files.map(f => f.webkitRelativePath || f.name)) : null;
+    if (SUPPORTED.includes(found) && found !== software) row.set(found);
+    else folderInfo();
+    if (files.length && !SUPPORTED.includes(found)) info.textContent = found ? softwareOf(found).reason : NOT_A_FOLDER;
   });
   const r = await dialog({
     title: 'Import Project', width: 600,
@@ -131,7 +147,7 @@ export async function importProjectDialog() {
   });
   if (!r) return;
   keep(IMPORT_KEY, software);
-  return software === 'xilinx' ? importIse([...fileInp.files], dirInp.files, name.value.trim()) : importSilinx(fileInp.files[0], name.value.trim());
+  return software === 'xilinx' ? importIse([...fileInp.files], dirInp.files, name.value.trim()) : importSilinx(fileInp.files[0], dirInp.files, name.value.trim());
 }
 
 async function importIse(files, dirFiles, typed) {
@@ -163,17 +179,23 @@ async function importIse(files, dirFiles, typed) {
   } catch (e) { alertDlg('Import Project', e.message, 'error'); }
 }
 
-async function importSilinx(zf, typed) {
-  if (!zf) return alertDlg('Import Project', 'Select the .zip of the Silinx project.', 'error');
-  const pname = typed || projectNameFrom(zf.name) || 'imported';
+async function importSilinx(zf, dirFiles, typed) {
+  if (!dirFiles.length && !zf) return alertDlg('Import Project', 'Select the project folder or the .zip of the Silinx project.', 'error');
+  const pname = typed || projectNameFrom(zf?.name || folderName(dirFiles)) || 'imported';
   if (projectNameError(pname)) return alertDlg('Import Project', projectNameError(pname), 'error');
   if (!await askReplaceProject(pname)) return;
   try {
-    const res = await replaceProjectWith(pname, () => api.importZip(pname, zf));
+    const res = await replaceProjectWith(pname, async () => {
+      if (!dirFiles.length) return api.importZip(pname, zf);
+      // the folder as its export's zip (#3965): through the same import, its checks and its messages
+      const z = await zipFolderSelection(dirFiles, 'silinx');
+      app.log(`Importing folder '${z.rootName}': ${z.count} file(s)${z.skipped ? `, ${z.skipped} build/hidden file(s) skipped` : ''}.`, 'info');
+      return api.importZip(pname, z.blob);
+    });
     await app.openProject(pname);
     app.showLeftPage('design');
     app.log(`Imported Silinx project '${pname}' (${res?.project?.files?.length ?? 0} source file(s)${res?.extra?.length ? `, ${res.extra.length} other file(s)` : ''}).`, 'ok');
-    if (res?.missing?.length) app.log(`WARNING: files listed in silinx.json but not in the zip: ${res.missing.join(', ')}`, 'warn');
+    if (res?.missing?.length) app.log(`WARNING: files listed in silinx.json but not in the ${dirFiles.length ? 'folder' : 'zip'}: ${res.missing.join(', ')}`, 'warn');
     // (what the import dropped: an entry that would leave the project, a broken silinx.json field, #483)
     for (const w of res?.warnings || []) app.log(`WARNING: ${w}`, 'warn');
   } catch (e) { alertDlg('Import Project', e.message, 'error'); }

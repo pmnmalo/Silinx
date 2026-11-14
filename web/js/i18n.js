@@ -159,8 +159,8 @@ const PT = {
   'Silinx does not read or write an AMD Vivado project (.xpr) yet.': 'O Silinx ainda não lê nem escreve um projeto AMD Vivado (.xpr).',
   'Silinx does not read or write an Intel Quartus project (.qpf, .qsf) yet.': 'O Silinx ainda não lê nem escreve um projeto Intel Quartus (.qpf, .qsf).',
   'The zip holds no silinx.json nor .xise: it is not a project Silinx reads.': 'O zip não tem silinx.json nem .xise: não é um projeto que o Silinx leia.',
-  'The whole Silinx project: silinx.json and every project file (sources, ASM charts, schematics, constraints, simulation files). It opens in Silinx with File ▸ Import Project (.zip)….':
-    'O projeto Silinx completo: o silinx.json e todos os ficheiros do projeto (fontes, diagramas ASM, esquemáticos, restrições, ficheiros de simulação). Abre no Silinx com Ficheiro ▸ Importar Projeto (.zip)….',
+  'The whole Silinx project: silinx.json and every project file (sources, ASM charts, schematics, constraints, simulation files). It opens in Silinx.':
+    'O projeto Silinx completo: o silinx.json e todos os ficheiros do projeto (fontes, diagramas ASM, esquemáticos, restrições, ficheiros de simulação). Abre no Silinx.',
   'A Xilinx ISE 14.7 project: its .xise and its sources, the schematics as ISE schematics, the other drawings and the C sources as their HDL. It opens in Xilinx ISE.':
     'Um projeto Xilinx ISE 14.7: o seu .xise e as suas fontes, os esquemáticos como esquemáticos do ISE, os outros diagramas e as fontes C como o seu HDL. Abre no Xilinx ISE.',
   'Project folder:': 'Pasta do projeto:', 'or .zip / .xise file(s):': 'ou ficheiro(s) .zip / .xise:',
@@ -493,6 +493,7 @@ const PT_PATTERNS = [
   [/^position (\d+)$/, 'posição $1'],
   [/^(\d+) file\(s\) selected$/, '$1 ficheiro(s) selecionado(s)'],
   [/^Folder '(.*)': (\d+) file\(s\), project (.*)$/, "Pasta '$1': $2 ficheiro(s), projeto $3"],
+  [/^Folder '(.*)': (\d+) file\(s\) — no (silinx\.json|\.xise) found!$/, "Pasta '$1': $2 ficheiro(s) — sem $3!"],
   [/^Number of (.+)$/, 'Número de $1'],
   [/^Balanced \((Speed|Area)\)$/, (m, g) => `Equilibrado (${g === 'Speed' ? 'Velocidade' : 'Área'})`],
   [/^Example: (.*)$/, 'Exemplo: $1'],
@@ -532,8 +533,11 @@ Object.assign(PT, {
     'Dica: faça duplo clique num processo no painel Processos para o executar. A simulação corre inteiramente no Silinx; a síntese/implementação requer o Xilinx ISE 14.7 (Definições da Toolchain (a roda dentada da barra de ferramentas)).',
   'Print…': 'Imprimir…', 'Print': 'Imprimir', 'Source': 'Fonte', 'Source (read-only)': 'Fonte (só de leitura)', 'Marker': 'Marcador', 'Time shown': 'Tempo mostrado', 'Simulation time': 'Tempo de simulação', 'project name': 'nome do projeto', 'new project name': 'nome do novo projeto', 'file name': 'nome do ficheiro',
   'Device': 'Dispositivo', 'Top': 'Topo', 'Board': 'Placa', 'Last Used': 'Último uso', '.zip file:': 'Ficheiro .zip:',
-  'Import a whole Silinx project from a .zip made with File ▸ Export Project (.zip)… (silinx.json and every project file: sources, ASM charts, schematics, constraints, simulation files).':
-    'Importe um projeto Silinx completo a partir de um .zip feito com Ficheiro ▸ Exportar Projeto (.zip)… (silinx.json e todos os ficheiros do projeto: fontes, diagramas ASM, esquemáticos, restrições, ficheiros de simulação).',
+  'Import a whole Silinx project from its folder (the folder with the silinx.json file), or from a .zip of that folder (e.g. one exported with File ▸ Export Project (.zip)…).':
+    'Importe um projeto Silinx completo a partir da sua pasta (a pasta com o ficheiro silinx.json), ou de um .zip dessa pasta (p. ex. um exportado com Ficheiro ▸ Exportar Projeto (.zip)…).',
+  'Its build folder (build) and hidden files are not imported.': 'A sua pasta de compilação (build) e os ficheiros ocultos não são importados.',
+  'or .zip file:': 'ou ficheiro .zip:',
+  'The folder holds no silinx.json nor .xise: it is not a project Silinx reads.': 'A pasta não tem silinx.json nem .xise: não é um projeto que o Silinx leia.',
   'It also opens a project bundle (.silinx.json) made with an earlier version.': 'Também abre um pacote de projeto (.silinx.json) feito com uma versão anterior.',
   'Easiest setup on any OS:': 'Configuração mais simples em qualquer sistema operativo:',
   'build the private Docker image with the Silinx kit (docker/ise/README.md):': 'construa a imagem Docker privada com o kit do Silinx (docker/ise/README.md):',

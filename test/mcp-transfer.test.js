@@ -71,6 +71,31 @@ test('export_project / import_project: a Silinx project, its drawings and board 
   assert.deepEqual((await P.readProject('gates_f')).files, (await P.readProject('gates')).files);
 });
 
+// #3965: a Silinx project's folder imported as its .zip: its build folder (Silinx's outputs) and hidden files left out,
+// no warning; the same project as the zip's import; a folder of no project, the import's error
+test('import_project: a Silinx project folder as its .zip, its build folder and hidden files left out', async () => {
+  await ok('new_project_from_example', { name: 'blinky_b', example: 'blinky' });
+  await ok('export_project', { project: 'blinky_b', kind: 'silinx', path: out('blinky_b-silinx.zip') });
+  fs.cpSync(P.projectDir('blinky_b'), out('blinky-folder'), { recursive: true });
+  fs.mkdirSync(out('blinky-folder/build/reports'), { recursive: true });
+  fs.writeFileSync(out('blinky-folder/build/top.bit'), 'bits');
+  fs.writeFileSync(out('blinky-folder/build/reports/top.twr'), 'forged');
+  fs.mkdirSync(out('blinky-folder/.git'));
+  fs.writeFileSync(out('blinky-folder/.git/config'), '[core]\n');
+  const z = await ok('import_project', { name: 'blinky_z', from: 'blinky_b-silinx.zip' });
+  const d = await ok('import_project', { name: 'blinky_d', from: 'blinky-folder' });
+  assert.match(d.text, /^Imported the Silinx project as 'blinky_d': top \S+, test bench \S+, \S+ \(xc3s\S+\), \d+ source\(s\)(, \d+ other file\(s\))?\.$/);
+  assert.equal(d.text, z.text.replace('blinky_z', 'blinky_d'));
+  assert.deepEqual([d.data.kind, d.data.warnings, d.data.missing, d.data.extra], ['silinx', [], [], z.data.extra]);
+  assert.deepEqual(await P.fileTree('blinky_d'), await P.fileTree('blinky_b'));
+  assert.ok(!fs.existsSync(path.join(P.projectDir('blinky_d'), 'build', 'top.bit')));
+  assert.equal((await ok('check_syntax', { project: 'blinky_d' })).text, (await ok('check_syntax', { project: 'blinky_b' })).text);
+  // a folder of no project
+  fs.mkdirSync(out('no-project/src'), { recursive: true });
+  fs.writeFileSync(out('no-project/src/top.vhd'), 'entity top is end;\n');
+  await fails('import_project', { name: 'np', from: 'no-project' }, 'the zip contains no .xise (ISE project) and no silinx.json');
+});
+
 test('import_project: a hostile zip, what is sound imported, what was dropped said', async () => {
   const pj = { top: 'top', files: [{ path: '../evil.vhd', lang: 'vhdl' }, { path: 'src/top.vhd', lang: 'vhdl' }, { path: 'src/gone.vhd', lang: 'vhdl' }], constraints: '../x.ucf' };
   fs.writeFileSync(out('hostile.zip'), await createZip([{ path: 'silinx.json', data: enc(JSON.stringify(pj)) },
