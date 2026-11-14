@@ -645,7 +645,7 @@ PT_PATTERNS.unshift(
   [/^(.+) lines a frame: 525 expected$/, '$1 linhas por imagem: esperadas 525'],
   [/^(.+) Hz: 60 Hz expected$/, '$1 Hz: esperado 60 Hz'],
   [/^VSYNC pulse of (.+) lines: 2 expected$/, 'Impulso de VSYNC de $1 linhas: esperadas 2'],
-  [/^t = (.+?) · ([\d,.\s]+) cycles(.*)$/, (m, tm, n, rest) => `t = ${tm} · ${n} ciclos${rest.replace('% of real time)', '% do tempo real)').replace(' · stopped by an error', ' · parado por um erro').replace(' · paused while hidden', ' · em pausa enquanto oculto')}`],
+  [/^t = (.+?) · ([\d,.\s]+) cycles(.*)$/, (m, tm, n, rest) => `t = ${tm} · ${n.replace(/,/g, '\u00a0')} ciclos${rest.replace('% of real time)', '% do tempo real)').replace(' · stopped by an error', ' · parado por um erro').replace(' · paused while hidden', ' · em pausa enquanto oculto')}`],
   [/^(\d+) port bit\(s\) have no LOC on a (.+) resource \(inputs are held at 0\):$/, '$1 bit(s) de porto sem LOC num recurso da $2 (as entradas ficam a 0):'],
   // print dialog
   [/^Print — (.*)$/, 'Imprimir — $1'],
