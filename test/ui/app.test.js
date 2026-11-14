@@ -2,7 +2,7 @@
 // one only), About, Check for Updates, language switch, keyboard shortcuts.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, makeProject, chromeOnly, BROWSER, PageGoneError, toggleSplitEditor, waitDownload } from './harness.js';
+import { setupUi, uiTest, makeProject, readWs, chromeOnly, BROWSER, PageGoneError, toggleSplitEditor, waitDownload } from './harness.js';
 import { exportZip } from './zip-helpers.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 const IMPORT = process.env.SILINX_UI_INTERFACE === 'ise' ? 'Add Copy of Source' : 'Import Source';   // (#1501)
@@ -1023,4 +1023,53 @@ uiTest('#3952 two tabs on two projects: a reload reopens the tab\'s own project;
     await third.waitFor(() => window.Silinx?.project?.name && document.documentElement.dataset.starting === undefined, [], { what: 'the last project opened in a new tab' });
     assert.equal(await third.eval(() => window.Silinx.project.name), 'TabB');
   } finally { await third.close?.(); }
+}, { skip: chromeOnly });   // (sibling pages)
+
+// #3952: two tabs on two projects do not cross: one tab's save is its project's only, and the other's build runs on
+// its own project, its lines in its own console; neither tab is told of the other's changes nor reloads a document.
+uiTest('#3952 two tabs on two projects: a save in one and a build in the other stay in their own projects and consoles', E, async (page) => {
+  await makeProject(env, { name: 'TabSaveA', template: 'blinky' });
+  await makeProject(env, { name: 'TabSaveB', template: 'blinky' });
+  const src = 'src/top.vhd';
+  const textB = await readWs(env, 'TabSaveB', src);
+  await page.openProject('TabSaveA');
+  const other = await env.newPage(undefined, { sibling: page });
+  try {
+    await other.openProject('TabSaveB');
+    const beforeA = await page.eval(() => window.__console().length);
+    const beforeB = await other.eval(() => window.__console().length);
+    // A: an edit saved
+    await page.eval((p) => window.SilinxApp.openFile(p), src);
+    await page.waitFor((p) => window.Silinx.active?.id === `file:${p}` && window.Silinx.active.editor, [src], { what: 'A\'s source open' });
+    await other.eval((p) => window.SilinxApp.openFile(p), src);
+    await other.waitFor((p) => window.Silinx.active?.id === `file:${p}` && window.Silinx.active.editor, [src], { what: 'B\'s source open' });
+    await page.eval(() => { const ed = window.Silinx.active.editor; ed.setValue(`-- saved in tab A\n${ed.getValue()}`); });
+    await page.eval(() => window.SilinxApp.saveAll());
+    await page.waitFor((p) => !window.SilinxApp.findDoc(`file:${p}`).dirty, [src], { what: 'A\'s save' });
+    assert.match(await readWs(env, 'TabSaveA', src), /^-- saved in tab A\n/);
+    // B: Synthesize, on B's project (its tab in front, as the user's)
+    await env.cdp.send('Target.activateTarget', { targetId: other.targetId });
+    await other.treeRow('#procs', 'Synthesize', { dbl: true });
+    // (no ISE here: its scripts generated in B's build folder, as the project's ISE flow does)
+    await other.waitFor((c) => /Scripts generated in TabSaveB\/build \(ISE not run\)\./.test(window.__console().slice(c)), [beforeB], { what: 'B\'s synthesis', timeout: 120000 });
+    const outB = await other.eval((c) => window.__console().slice(c), beforeB);
+    assert.match(outB, /Silinx implementation: TabSaveB top=top/);
+    assert.equal(await readWs(env, 'TabSaveB', src), textB);   // (A's save not in B's project)
+    assert.ok(await readWs(env, 'TabSaveB', 'build/top.prj'));
+    await assert.rejects(readWs(env, 'TabSaveA', 'build/top.prj'));   // (B's build not in A's project)
+    await new Promise((r) => setTimeout(r, 1500));   // (a change told late would come by now)
+    // each console has its own tab's lines only; each editor its own project's text, unchanged by the other tab
+    const outA = await page.eval((c) => window.__console().slice(c), beforeA);
+    assert.doesNotMatch(outA, /Synthesize|TabSaveB|build|changed on disk/);
+    assert.doesNotMatch(outB, /TabSaveA|changed on disk/);
+    assert.deepEqual(await page.eval(() => window.Silinx.diags.map((d) => d.message)), []);   // (no warnings in A from B's build)
+    // (B's own: ISE not found, its scripts generated; the first's wording the host's)
+    const diagsB = await other.eval(() => window.Silinx.diags.map((d) => d.message));
+    assert.equal(diagsB.length, 2, diagsB.join('\n'));
+    assert.match(diagsB[0], /^Xilinx ISE toolchain not available \(local mode\): /);
+    assert.equal(diagsB[1], 'Scripts generated in TabSaveB/build (ISE not run).');
+    assert.equal(await other.eval((p) => window.SilinxApp.findDoc(`file:${p}`).editor.getValue(), src), textB);
+    assert.match(await page.eval((p) => window.SilinxApp.findDoc(`file:${p}`).editor.getValue(), src), /^-- saved in tab A\n/);
+    assert.deepEqual([await page.eval(() => window.Silinx.project.name), await other.eval(() => window.Silinx.project.name)], ['TabSaveA', 'TabSaveB']);
+  } finally { await other.close?.(); }
 }, { skip: chromeOnly });   // (sibling pages)
