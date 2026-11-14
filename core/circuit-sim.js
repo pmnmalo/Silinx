@@ -40,7 +40,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
       const ic = { part: p, def: d, vcc: netOfPin(p.id, pinOf('vcc')), gnd: netOfPin(p.id, pinOf('gnd')),
         gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
       // (an MSI IC: its model, its inputs and outputs by port, core/circuit-msi.js)
-      if (d.model) {
+      if (d.model || d.seq) {
         ic.ins = d.pins.filter((q) => q.dir === 'in').map((q) => ({ port: q.port, net: netOfPin(p.id, q.n) }));
         ic.outs = d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => ({ port: q.port, oc: q.dir === 'oc', d: addDriver(netOfPin(p.id, q.n), 'X', 's', d.tpd) }));
       }
@@ -81,7 +81,19 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
       const v = on ? gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net]))) : 'Z';
       drive(x.out, ic.def.oc && v === '1' ? 'Z' : v);   // (an open collector: a 0 or nothing)
     }
-    if (ic.def.model) {
+    // (a sequential IC, core/circuit-seq.js: each of its processes run when an input of its sensitivity changed (all at
+    // first), as its HDL's, powered or not; its outputs from its state while powered)
+    if (ic.def.seq) {
+      const q = ic.def.seq;
+      ic.state ||= q.init();
+      const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
+      Object.assign(i, q.derive?.(i));
+      const p = ic.prev || {};
+      for (const pr of q.procs) if (!ic.prev || pr.sens.some((k) => p[k] !== i[k])) pr.run(i, p, ic.state);
+      ic.prev = i;
+      const o = q.out(i, ic.state);
+      for (const x of ic.outs) drive(x.d, !on ? 'Z' : x.oc && o[x.port] === '1' ? 'Z' : o[x.port]);
+    } else if (ic.def.model) {
       const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
       const o = !on ? null : Object.values(i).includes('X') ? 'X' : ic.def.model(Object.fromEntries(Object.entries(i).map(([k, v]) => [k, Number(v)])));
       for (const x of ic.outs) {
