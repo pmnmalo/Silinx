@@ -163,3 +163,20 @@ test('simulate_drawing: a circuit\'s logic probes in each step; waveforms: the s
   assert.deepEqual(s.data.steps[0].probes, { y: '0' });
   assert.deepEqual(s.data.waves, { y: [[0, 'X'], [10, '1'], [20, '0'], [30, '1']] });
 });
+
+test('a circuit as an FPGA top (#3901): the breadboard example synthesized and built by run_process, no warning; a bus label by edit_circuit, a vector port, a bit missing its error', async () => {
+  await ok('new_project_from_example', { name: 'bb', example: 'breadboard' });
+  const run = await ok('run_process', { project: 'bb', process: 'bitstream', toolchain: 'silinx' });
+  assert.deepEqual(run.data.warnings, []);
+  assert.ok(fs.existsSync(path.join(tmp, 'ws', 'bb', 'build', 'breadboard.bit')));
+  // led[6]: a new LED, the bus one bit wider; led[8] without led[7]: refused by the check, the HDL left as it was
+  const at = { project: 'bb', path: 'src/breadboard.circ.json' };
+  const r = await ok('edit_circuit', { ...at, operations: [{ op: 'add', type: 'led', at: [68, 26], id: 'D7', label: 'led[6]' }, { op: 'wire', from: 'D7.A', to: 'BB1.tp58' }, { op: 'wire', from: 'D7.K', to: 'BB1.bn62' }] });
+  assert.deepEqual([r.data.errors, r.data.warnings], [[], []]);
+  const hdl = fs.readFileSync(path.join(tmp, 'ws', 'bb', 'src', 'breadboard.vhd'), 'utf8');
+  assert.match(hdl, /^ {4}led : out std_logic_vector\(6 downto 0\)$/m);
+  assert.match(hdl, /^ {2}led\(6\) <= /m);
+  const bad = await ok('edit_circuit', { ...at, operations: [{ op: 'set', id: 'D7', label: 'led[8]' }] });
+  assert.deepEqual(bad.data.errors, [{ message: 'The bus led has no bit 6 (its bits: 0, 1, 2, 3, 4, 5, 8): its bits 0 to 8, each a part\'s', item: 'D1' }]);
+  assert.equal(fs.readFileSync(path.join(tmp, 'ws', 'bb', 'src', 'breadboard.vhd'), 'utf8'), hdl);
+});

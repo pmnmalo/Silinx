@@ -143,12 +143,12 @@ test('against nextpnr: the packer\'s fixtures (wide multiplexers, flip-flops of 
   }
 });
 
-// the ten examples, each as the open synthesis maps it for the Spartan-3E: the estimate is nextpnr 1.5.2's count, exactly
+// the eleven examples, each as the open synthesis maps it for the Spartan-3E: the estimate is nextpnr 1.5.2's count, exactly
 // (#3389; before it, pong, stopwatch, clock and vga one slice more: a LUT on two chains' selects, copied for one stage,
 // taken by the other). The packing is the device's family's, before placement: one device stands for the Spartan-3E's
 // four (the Spartan-6's netlists, of LUT6s, have no estimate)
 // (#3710, the examples' clock as CLK_HZ: blinky 116, clock 195, vga 121, micro80 148 before)
-const EXAMPLE_SLICES = { gates: 1, traffic: 66, blinky: 118, pong: 224, stopwatch: 192, clock: 214, vga: 123, isqrt: 63, uart: 112, micro80: 146 };
+const EXAMPLE_SLICES = { gates: 1, breadboard: 4, traffic: 66, blinky: 118, pong: 224, stopwatch: 192, clock: 214, vga: 123, isqrt: 63, uart: 112, micro80: 146 };
 for (const names of [EXAMPLES.slice(0, 5), EXAMPLES.slice(5)]) {
   test(`against nextpnr: the examples ${names.join(', ')}`, { timeout: 900000 }, async () => {
     const { synthesizeOpen } = await import('../core/synth-front.js');

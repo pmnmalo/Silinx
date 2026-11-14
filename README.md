@@ -159,7 +159,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   7-segment displays and LED bars wired on a breadboard or beside it, simulated
   live with the gates' delays (*Try it*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
   says the short circuits, the unpowered ICs and the floating inputs; its HDL is generated, one entity per IC; logic probes,
-  and *Waveforms*: the Try it replayed in SSim.
+  and *Waveforms*: the Try it replayed in SSim. A circuit can be an FPGA project's top, its switches and LEDs the board's
+  (`led[0]`, `sw[0]`: a vector port); its HDL's digital model is what synthesis builds (the *breadboard* example).
 - **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–16) and of the
   outputs, or an expression (`F = A·B' + C`) whose variables are the inputs and whose name the output, its column
   filled in.
@@ -653,7 +654,7 @@ npm run build:standalone    # writes dist/Silinx.html (~5 MB)
 ```
 
 One file, no server: open it in a browser or share it. It includes the editor, schematics, ASM
-editor, simulation/SSim, pin planner and ISE project import/export; the examples (*gates*, *traffic*,
+editor, simulation/SSim, pin planner and ISE project import/export; the examples (*gates*, *breadboard*, *traffic*,
 *blinky*, *pong*, *stopwatch*, *clock*, *vga*, *isqrt*, *uart*, *micro80*) are embedded. Projects are stored in the browser (*File ▸ Export / Import Project (.zip)…* to move
 them), or, in Chrome / Edge, in a folder on the disk (*File ▸ Open Workspace Folder…*: the File
 System Access API; each project a folder as the full application writes it, so the same folder opens
@@ -841,6 +842,7 @@ scripts/    adepttool installer/patch, Platform Flash programmer, standalone bui
 examples/   example projects (for the Basys2; each built by the Silinx toolchain on every Basys2, Nexys2, Nexys3, Atlys and
             the iCEBreaker): gates (the first one: logic
             gates drawn as a schematic, a 4-bit prime-number detector with NOT / AND / OR and with NAND gates only),
+            breadboard (74LS chips wired on a breadboard, a digital circuit: a counter of a button's presses and a half adder),
             traffic (a pedestrian crossing: a state diagram, a Boolean algebra, VHDL and a Verilog display),
             blinky (VHDL + Verilog, an ASM chart, its steps counted on the display),
             pong (a game for two, Verilog), stopwatch (VHDL, block RAM and multipliers), clock (Verilog, set

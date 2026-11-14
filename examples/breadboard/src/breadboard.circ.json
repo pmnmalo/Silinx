@@ -1,0 +1,1007 @@
+{
+  "format": "silinx-circuit",
+  "version": 1,
+  "name": "breadboard",
+  "lang": "vhdl",
+  "description": "A press of BTN0 counts once on LD3..LD0: a 74161 counter, its count enabled for one clock by the rising edge of\nthe button, synchronised by a 74164 shift register (QA the button, QB QA a clock later) and detected as QA and\n(QA xor QB) by a 7486 and a 7408. SW0 low clears the counter and the shift register. SW1 and SW2 into a half adder\n(the 7486's and the 7408's other gates): LD4 their sum, LD5 their carry.",
+  "parts": [
+    {
+      "id": "BB1",
+      "type": "breadboard-full",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "P1",
+      "type": "supply",
+      "x": -4,
+      "y": -4
+    },
+    {
+      "id": "U1",
+      "type": "74164",
+      "x": 1,
+      "y": 7
+    },
+    {
+      "id": "U2",
+      "type": "7408",
+      "x": 19,
+      "y": 7
+    },
+    {
+      "id": "U3",
+      "type": "74161",
+      "x": 28,
+      "y": 7
+    },
+    {
+      "id": "U4",
+      "type": "7486",
+      "x": 38,
+      "y": 7
+    },
+    {
+      "id": "CK1",
+      "type": "clock",
+      "x": -12,
+      "y": 22,
+      "label": "clk",
+      "hz": 1
+    },
+    {
+      "id": "B1",
+      "type": "button",
+      "x": -12,
+      "y": 10,
+      "label": "btn[0]"
+    },
+    {
+      "id": "R1",
+      "type": "pull-down",
+      "x": -6,
+      "y": 16
+    },
+    {
+      "id": "S1",
+      "type": "logic-switch",
+      "x": -12,
+      "y": 26,
+      "label": "sw[0]",
+      "on": false
+    },
+    {
+      "id": "S2",
+      "type": "logic-switch",
+      "x": -12,
+      "y": 28,
+      "label": "sw[1]",
+      "on": false
+    },
+    {
+      "id": "S3",
+      "type": "logic-switch",
+      "x": -12,
+      "y": 30,
+      "label": "sw[2]",
+      "on": false
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "x": 50,
+      "y": 26,
+      "label": "led[0]",
+      "color": "red"
+    },
+    {
+      "id": "D2",
+      "type": "led",
+      "x": 53,
+      "y": 26,
+      "label": "led[1]",
+      "color": "red"
+    },
+    {
+      "id": "D3",
+      "type": "led",
+      "x": 56,
+      "y": 26,
+      "label": "led[2]",
+      "color": "red"
+    },
+    {
+      "id": "D4",
+      "type": "led",
+      "x": 59,
+      "y": 26,
+      "label": "led[3]",
+      "color": "red"
+    },
+    {
+      "id": "D5",
+      "type": "led",
+      "x": 62,
+      "y": 26,
+      "label": "led[4]",
+      "color": "red"
+    },
+    {
+      "id": "D6",
+      "type": "led",
+      "x": 65,
+      "y": 26,
+      "label": "led[5]",
+      "color": "red"
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "points": [
+        [
+          -4,
+          -4
+        ],
+        [
+          0,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w2",
+      "points": [
+        [
+          -4,
+          -3
+        ],
+        [
+          0,
+          -3
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w3",
+      "points": [
+        [
+          30,
+          -4
+        ],
+        [
+          31,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w4",
+      "points": [
+        [
+          30,
+          -3
+        ],
+        [
+          31,
+          -3
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w5",
+      "points": [
+        [
+          30,
+          15
+        ],
+        [
+          31,
+          15
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w6",
+      "points": [
+        [
+          30,
+          14
+        ],
+        [
+          31,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w7",
+      "points": [
+        [
+          0,
+          -4
+        ],
+        [
+          -2,
+          -4
+        ],
+        [
+          -2,
+          15
+        ],
+        [
+          0,
+          15
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w8",
+      "points": [
+        [
+          0,
+          -3
+        ],
+        [
+          -1,
+          -3
+        ],
+        [
+          -1,
+          14
+        ],
+        [
+          0,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w9",
+      "points": [
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w10",
+      "points": [
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w11",
+      "points": [
+        [
+          19,
+          4
+        ],
+        [
+          19,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w12",
+      "points": [
+        [
+          25,
+          7
+        ],
+        [
+          25,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w13",
+      "points": [
+        [
+          28,
+          4
+        ],
+        [
+          28,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w14",
+      "points": [
+        [
+          35,
+          7
+        ],
+        [
+          35,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w15",
+      "points": [
+        [
+          38,
+          4
+        ],
+        [
+          38,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w16",
+      "points": [
+        [
+          44,
+          7
+        ],
+        [
+          44,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w17",
+      "points": [
+        [
+          2,
+          7
+        ],
+        [
+          2,
+          15
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w18",
+      "points": [
+        [
+          35,
+          4
+        ],
+        [
+          35,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w19",
+      "points": [
+        [
+          34,
+          4
+        ],
+        [
+          34,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w20",
+      "points": [
+        [
+          30,
+          7
+        ],
+        [
+          30,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w21",
+      "points": [
+        [
+          31,
+          7
+        ],
+        [
+          31,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w22",
+      "points": [
+        [
+          32,
+          7
+        ],
+        [
+          32,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w23",
+      "points": [
+        [
+          33,
+          7
+        ],
+        [
+          33,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w24",
+      "points": [
+        [
+          -12,
+          22
+        ],
+        [
+          -12,
+          18
+        ],
+        [
+          9,
+          18
+        ],
+        [
+          9,
+          -1
+        ],
+        [
+          8,
+          -1
+        ],
+        [
+          7,
+          4
+        ]
+      ],
+      "color": "yellow"
+    },
+    {
+      "id": "w25",
+      "points": [
+        [
+          7,
+          4
+        ],
+        [
+          8,
+          -2
+        ],
+        [
+          30,
+          -2
+        ],
+        [
+          29,
+          7
+        ]
+      ],
+      "color": "yellow"
+    },
+    {
+      "id": "w26",
+      "points": [
+        [
+          -12,
+          10
+        ],
+        [
+          -12,
+          -6
+        ],
+        [
+          -4,
+          -6
+        ],
+        [
+          -4,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w27",
+      "points": [
+        [
+          -9,
+          10
+        ],
+        [
+          -9,
+          12
+        ],
+        [
+          2,
+          12
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "color": "green"
+    },
+    {
+      "id": "w28",
+      "points": [
+        [
+          -6,
+          16
+        ],
+        [
+          -6,
+          13
+        ],
+        [
+          2,
+          13
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "color": "green"
+    },
+    {
+      "id": "w29",
+      "points": [
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          10
+        ],
+        [
+          42,
+          10
+        ],
+        [
+          41,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w30",
+      "points": [
+        [
+          4,
+          7
+        ],
+        [
+          5,
+          11
+        ],
+        [
+          43,
+          11
+        ],
+        [
+          42,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w31",
+      "points": [
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          14
+        ],
+        [
+          20,
+          14
+        ],
+        [
+          19,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w32",
+      "points": [
+        [
+          43,
+          7
+        ],
+        [
+          44,
+          15
+        ],
+        [
+          21,
+          15
+        ],
+        [
+          20,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w33",
+      "points": [
+        [
+          21,
+          7
+        ],
+        [
+          22,
+          16
+        ],
+        [
+          35,
+          16
+        ],
+        [
+          34,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w34",
+      "points": [
+        [
+          -12,
+          26
+        ],
+        [
+          -12,
+          19
+        ],
+        [
+          29,
+          19
+        ],
+        [
+          28,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w35",
+      "points": [
+        [
+          6,
+          4
+        ],
+        [
+          7,
+          -3
+        ],
+        [
+          27,
+          -3
+        ],
+        [
+          27,
+          20
+        ],
+        [
+          29,
+          20
+        ],
+        [
+          28,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w36",
+      "points": [
+        [
+          -12,
+          28
+        ],
+        [
+          39,
+          28
+        ],
+        [
+          38,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w37",
+      "points": [
+        [
+          -12,
+          30
+        ],
+        [
+          40,
+          30
+        ],
+        [
+          39,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w38",
+      "points": [
+        [
+          38,
+          7
+        ],
+        [
+          39,
+          21
+        ],
+        [
+          23,
+          21
+        ],
+        [
+          22,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w39",
+      "points": [
+        [
+          39,
+          7
+        ],
+        [
+          40,
+          22
+        ],
+        [
+          24,
+          22
+        ],
+        [
+          23,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w40",
+      "points": [
+        [
+          30,
+          4
+        ],
+        [
+          50,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w41",
+      "points": [
+        [
+          51,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w42",
+      "points": [
+        [
+          31,
+          4
+        ],
+        [
+          53,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w43",
+      "points": [
+        [
+          54,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w44",
+      "points": [
+        [
+          32,
+          4
+        ],
+        [
+          56,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w45",
+      "points": [
+        [
+          57,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w46",
+      "points": [
+        [
+          33,
+          4
+        ],
+        [
+          59,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w47",
+      "points": [
+        [
+          60,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w48",
+      "points": [
+        [
+          40,
+          7
+        ],
+        [
+          62,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w49",
+      "points": [
+        [
+          63,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w50",
+      "points": [
+        [
+          24,
+          7
+        ],
+        [
+          65,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w51",
+      "points": [
+        [
+          66,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    }
+  ],
+  "generatedFile": "src/breadboard.vhd"
+}
