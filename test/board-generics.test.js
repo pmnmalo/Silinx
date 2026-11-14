@@ -24,9 +24,9 @@ test('#3710 the board\'s values: its clock in Hz (whole kHz), its buttons\' and 
   // (its DIP switches are "dip": the board's Switches, as boardAutoAssign finds them)
   assert.deepEqual(v('elbert-v2'), { CLK_HZ: 12_000_000, BTN_LOW: true, SW_LOW: true, AN_LOW: true });
   assert.deepEqual(v('icebreaker'), { CLK_HZ: 12_000_000, BTN_LOW: false, SW_LOW: false, AN_LOW: true });
-  // (no switches: no SW_LOW; no display: no AN_LOW)
+  // (no switches: no SW_LOW; no display: no AN_LOW; the EDGE's digit enables active high, #3884)
   assert.deepEqual(v('cmod-s6'), { CLK_HZ: 8_000_000, BTN_LOW: false });
-  assert.deepEqual(v('edge-spartan6'), { CLK_HZ: 50_000_000, BTN_LOW: false, SW_LOW: false });
+  assert.deepEqual(v('edge-spartan6'), { CLK_HZ: 50_000_000, BTN_LOW: false, SW_LOW: false, AN_LOW: false });
   assert.deepEqual(boardGenericValues(null), {});
   for (const b of BOARDS) assert.ok(Number.isInteger(v(b.id).CLK_HZ) && v(b.id).CLK_HZ > 0, b.id);
 });
@@ -169,7 +169,8 @@ test('#3884 the digit enables\' level: AN_LOW false where the board says activeH
   assert.equal(boardGenericValues({ resources: EDGE.resources.filter(r => r.name !== 'an') }).AN_LOW, undefined);
   for (const b of BOARDS) {
     const r = resolveBoard(b.id);
-    assert.equal(boardGenericValues(r).AN_LOW, r.resources.some(x => x.name === 'an') ? true : undefined, b.id);
+    const an = r.resources.find(x => x.name === 'an');
+    assert.equal(boardGenericValues(r).AN_LOW, an ? !an.extra?.activeHigh : undefined, b.id);
     // (every board's segments and decimal point are active low: no SEG_LOW needed)
     for (const x of r.resources.filter(x => x.name === 'seg' || x.name === 'dp')) assert.ok(x.extra?.activeLow, `${b.id} ${x.name}`);
   }
