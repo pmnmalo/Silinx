@@ -97,9 +97,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   const typeShownAt = () => { typeShown.textContent = st.label; };
   const pFile = {
     title: 'File Name and Location',
-    render: () => h('div', {},
-      fileGrid,
-      h('label', { style: { display: 'block', marginTop: '12px' } }, h('input', { type: 'checkbox', checked: true, disabled: true }), ' Add to project')),
+    render: () => h('div', {}, fileGrid),   // (a new source is always in the project: no Add to project box, #3890)
     onShow: () => { typeShownAt(); setTimeout(() => fname.focus(), 0); },
     noNext: () => !!st.only,   // a wizard-only type: Wizard
     validate: async () => {
