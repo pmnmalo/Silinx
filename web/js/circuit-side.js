@@ -9,7 +9,7 @@ import { portName } from '/core/circuit.js';
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
-  ['MSI (74LS)', PART_ORDER.filter((t) => PARTS[t].model)]];
+  ['MSI (74LS)', PART_ORDER.filter((t) => PARTS[t].model)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].seq)]];
 
 /** { renderSide } of mountCircuitEditor (M(), sel(), tool(): its current values; setM(m) and commit() an edit; status(msg, err)). */
 export function mountCircuitSide(ctx) {

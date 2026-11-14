@@ -16,7 +16,7 @@ const vec = (names, V) => (V ? names.slice().reverse().map((n) => `i_${n}`).join
 
 // ------------------------------------------------------------------ BCD to 7 segments
 // the segments a–g of 0 to 15 (no tails on 6 and 9, as the 7447's, the 7448's and the 4511's), a the least significant
-const SEG = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7c, 0x07, 0x7f, 0x67, 0x58, 0x4c, 0x62, 0x69, 0x78, 0x00];
+export const SEGMENTS = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7c, 0x07, 0x7f, 0x67, 0x58, 0x4c, 0x62, 0x69, 0x78, 0x00];
 const SEGS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 function bcd7(type, title, low) {
   const out = low ? 'oc' : 'out';
@@ -26,13 +26,13 @@ function bcd7(type, title, low) {
     const sel = vec(['a', 'b', 'c', 'd'], V), on = low ? 0 : 1;
     const put = (word) => SEGS.map((s, k) => (V ? `o_seg_${s} <= '${((word >> k) & 1) ^ (1 - on)}';` : `o_seg_${s} = 1'b${((word >> k) & 1) ^ (1 - on)};`)).join(' ');
     return V ? [`if i_bi_n = '0' then ${put(0)}`, `elsif i_lt_n = '0' then ${put(0x7f)}`, `elsif i_rbi_n = '0' and std_logic_vector'(${sel}) = "0000" then ${put(0)}`, 'else',
-      `  case std_logic_vector'(${sel}) is`, ...SEG.map((w, n) => `    when "${n.toString(2).padStart(4, '0')}" => ${put(w)}`), `    when others => ${put(0)}`, '  end case;', 'end if;']
+      `  case std_logic_vector'(${sel}) is`, ...SEGMENTS.map((w, n) => `    when "${n.toString(2).padStart(4, '0')}" => ${put(w)}`), `    when others => ${put(0)}`, '  end case;', 'end if;']
       : ['if (!i_bi_n) begin ' + put(0) + ' end', `else if (!i_lt_n) begin ${put(0x7f)} end`, `else if (!i_rbi_n && ${sel} == 4'd0) begin ${put(0)} end`, `else case (${sel})`,
-        ...SEG.map((w, n) => `  4'd${n}: begin ${put(w)} end`), 'endcase'];
+        ...SEGMENTS.map((w, n) => `  4'd${n}: begin ${put(w)} end`), 'endcase'];
   };
   return ttl(type, title, 50, pins, { model(i) {
     const d = bits(i, ['a', 'b', 'c', 'd']);
-    const w = !i.bi_n ? 0 : !i.lt_n ? 0x7f : !i.rbi_n && d === 0 ? 0 : SEG[d];
+    const w = !i.bi_n ? 0 : !i.lt_n ? 0x7f : !i.rbi_n && d === 0 ? 0 : SEGMENTS[d];
     return Object.fromEntries(SEGS.map((s, k) => [`seg_${s}`, ((w >> k) & 1) ^ (low ? 1 : 0)]));
   }, vhdl: v(true), verilog: v(false) });
 }
