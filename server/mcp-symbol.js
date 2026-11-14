@@ -5,7 +5,8 @@
 // spacing, the size, the module name's place; Reset to Default), update_symbols (a schematic's instances of out-of-date
 // symbols drawn from their modules' symbols again, their connections kept), place_instance (a module's instance placed
 // in a schematic as its palette places one, named with a range for an arrayed instance, reg(3:0), core/sch-array.js;
-// its pins connected to nets by name, a short wire and a net name each).
+// its pins connected to nets by name, a short wire and a net name each; its width, #3950), set_instance_width (a module
+// instance's Width, as its Properties' field: its copies, the range of its name, #3950).
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { openSchematic, saveSchematic } from './mcp-schematic.js';
@@ -105,28 +106,33 @@ export const SYMBOL_TOOLS = [
   },
   {
     name: 'place_instance', title: 'Place a module\'s instance in a schematic',
-    description: 'Place an instance of a module of the project in a schematic (.sch.json), as its Symbols palette does (with its symbol: its own, Symbol Editor\'s, when it has one): at x, y (on the 10 px grid), turned rot (0, 90, 180, 270), named name (its automatic name inst_n when left out). A name with a range, reg(3:0), makes an arrayed instance, as ISE\'s: that many copies of the module (reg_3 … reg_0 in the HDL); a pin connected to a bus N times its width takes its slice for each copy (D on d(3:0): reg_i\'s D is d(i)), one connected to a net of its width is shared (a clock, an enable). connect: { pin: net name } connects pins to nets by name (a short wire and that net name on it: d(3:0) for a 4-bit bus, the same name as an I/O marker joins it). The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
+    description: 'Place an instance of a module of the project in a schematic (.sch.json), as its Symbols palette does (with its symbol: its own, Symbol Editor\'s, when it has one): at x, y (on the 10 px grid), turned rot (0, 90, 180, 270), named name (its automatic name inst_n when left out). A name with a range, reg(3:0), or a width, makes an arrayed instance, as ISE\'s: that many copies of the module (reg_3 … reg_0 in the HDL); a pin connected to a bus N times its width takes its slice for each copy (D on d(3:0): reg_i\'s D is d(i)), one connected to a net of its width is shared (a clock, an enable). connect: { pin: net name } connects pins to nets by name (a short wire and that net name on it: d(3:0) for a 4-bit bus, the same name as an I/O marker joins it). The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), module: STR('The module (entity) to instantiate.'),
       name: STR('The instance name; with a range, reg(3:0), an arrayed instance.'),
+      width: { type: 'integer', description: 'Its width, as its Properties\' Width: that many copies, the instance named with the range, reg(7:0) for 8 (1: a single instance).' },
       x: { type: 'integer', description: 'Its left (sheet coordinates).' }, y: { type: 'integer', description: 'Its top (sheet coordinates).' },
       rot: { type: 'integer', enum: [0, 90, 180, 270], description: 'Its turn, degrees clockwise.' },
       connect: { type: 'object', additionalProperties: { type: 'string' }, description: 'Pins connected to nets by name: { "d": "d(3:0)", "c": "clk" }.' },
     }, required: ['project', 'path', 'module', 'x', 'y'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async run({ project: name, path: rel, module, name: iname, x, y, rot = 0, connect = {} }) {
+    async run({ project: name, path: rel, module, name: iname, x, y, rot = 0, connect = {}, width }) {
       const { doc, modules } = await openSchematic(name, rel);
-      const [sd, { instName, renameError }, { arrayOf }] = await Promise.all([import('../core/schdoc.js'), import('../core/schname.js'), import('../core/sch-array.js')]);
+      const [sd, { instName, renameError }, { arrayOf, withArrayWidth }] = await Promise.all([import('../core/schdoc.js'), import('../core/schname.js'), import('../core/sch-array.js')]);
       const m = sd.findMod(modules, module);
       if (!m) throw toolError(`no module '${module}' in the project's sources`);
       if (m.name.toLowerCase() === String(doc.name).toLowerCase()) throw toolError(`'${m.name}' is the schematic's own module: it cannot hold an instance of itself`);
       const id = newId(doc.symbols, 'S');
       const sym = { id, type: 'module', x: sd.snap(x), y: sd.snap(y), rot, mirror: false, name: '', params: { ...sd.defaultParams('module'), module: m.name, ...sd.instanceParams(m) } };
       doc.symbols.push(sym);
-      if (iname != null && String(iname).trim()) {
-        const why = renameError(doc, 'sym', id, iname);
+      // (its Width, as its Properties' field: the range of its name, #3950)
+      const given = iname != null && String(iname).trim() ? String(iname).trim() : null;
+      const w = width == null ? { name: given } : withArrayWidth(given ?? instName(doc, id, ''), width);
+      if (w.error) throw toolError(w.error);
+      if (w.name) {
+        const why = renameError(doc, 'sym', id, w.name);
         if (why) throw toolError(why);
-        sym.name = String(iname).trim();
+        sym.name = w.name;
       } else sym.name = instName(doc, id, '');
       const pins = sd.symbolPins(sym, modules);
       for (const [pin, net] of Object.entries(connect)) {
@@ -143,6 +149,32 @@ export const SYMBOL_TOOLS = [
       const arr = arrayOf(sym);
       return { text: [`${rel}: ${sym.name} (${m.name}${arr ? `, ${arr.n} copies` : ''}) placed at ${sym.x}, ${sym.y}`, ...diags.map(d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}: ${d.message}`), ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, id, name: sym.name, copies: arr ? arr.n : 1, diagnostics: diags.map(d => ({ severity: d.severity, message: d.message })), ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
+    },
+  },
+  {
+    name: 'set_instance_width', title: 'Set a module instance\'s width (its copies)',
+    description: 'Set the Width of a module\'s instance in a schematic (.sch.json), as its Properties\' Width field does: that many copies of its module, an arrayed instance, its name given the range (reg becomes reg(7:0) for 8; 1 makes it a single instance again, reg). A pin connected to a bus N times its width takes its slice for each copy, one on a net of its own width is shared by the copies. The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), instance: STR('The instance\'s name (an arrayed one with its range, reg(7:0), or its base, reg).'),
+      width: { type: 'integer', description: 'Its width: its number of copies (1: a single instance).' },
+    }, required: ['project', 'path', 'instance', 'width'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ project: name, path: rel, instance, width }) {
+      const { doc, modules } = await openSchematic(name, rel);
+      const [sd, { renameError }, { arrayName, arrayOf, withArrayWidth }] = await Promise.all([import('../core/schdoc.js'), import('../core/schname.js'), import('../core/sch-array.js')]);
+      const key = String(instance ?? '').trim().toLowerCase();
+      const sym = doc.symbols.find(s => s.name.toLowerCase() === key) || doc.symbols.find(s => (arrayName(s.name)?.base || '').toLowerCase() === key);
+      if (!sym) throw toolError(`no instance '${instance}' in ${rel}`);
+      if (sym.type !== 'module') throw toolError(`${sym.name} is not a module's instance: only a module's instance has a Width`);
+      const r = withArrayWidth(sym.name, width), why = r.error || (r.name !== sym.name && renameError(doc, 'sym', sym.id, r.name));
+      if (why) throw toolError(why);
+      const old = sym.name;
+      sym.name = r.name;
+      const diags = sd.netlist(doc, { modules }).diagnostics;
+      const sync = old !== sym.name ? await saveSchematic(name, rel, doc) : null;
+      const arr = arrayOf(sym);
+      return { text: [`${rel}: ${old === sym.name ? `${sym.name} already ${arr ? `${arr.n} copies` : 'a single instance'}` : `${old} is now ${sym.name} (${arr ? `${arr.n} copies` : 'a single instance'})`}`, ...diags.map(d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}: ${d.message}`), ...(sync?.messages || [])].join('\n'),
+        data: { project: name, path: rel, id: sym.id, name: sym.name, copies: arr ? arr.n : 1, diagnostics: diags.map(d => ({ severity: d.severity, message: d.message })), ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
   },
 ];

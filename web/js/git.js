@@ -23,13 +23,15 @@ import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 
 // ------------------------------------------------------------------ git on this server
-let enabled = null;
-/** Whether this edition has git: the browser edition (GitHub's API), a server whose git is not turned off (SILINX_GIT=off). */
-async function gitAvailable() {
-  if (enabled === null) enabled = await api.gitEnabled().then(r => !!r.enabled, () => false);
-  return enabled;
+let enabled = null, asking = null;
+/** Whether this edition has git: the browser edition (GitHub's API), a server whose git is not turned off (SILINX_GIT=off).
+ *  A request that failed (no token yet, the server not answering yet) is no answer: asked again next time (#3968). */
+export function gitAvailable() {
+  if (enabled !== null) return Promise.resolve(enabled);
+  return (asking ??= api.gitEnabled().then(r => (enabled = !!r.enabled), () => false).finally(() => { asking = null; }));
 }
-/** The last answer of gitAvailable (the menus are drawn synchronously; the first project's opening asks). */
+/** The last answer of gitAvailable (the menus are drawn synchronously; the start-up, the Start page and a project's
+ *  opening ask). */
 export const hasGit = () => enabled === true;
 
 // a failure, in the console: git's line, then its hint
@@ -93,8 +95,12 @@ export function hookGitStatus() {
   addEventListener('silinx:project-opened', () => refreshGitStatus());
   addEventListener('silinx:project-closed', () => { S.git = null; });
   // (git's presence asked once: the Start page and the Teaching page then have Open from Repository…; a project reopened at start-up, which
-  // says no project-opened, gets its status)
-  gitAvailable().then(on => { if (!on) return; renderStartPage(); renderTeachingPage(); if (S.project) refreshGitStatus(); });
+  // says no project-opened, gets its status; a request that failed, asked again a few times, #3968)
+  const ask = wait => gitAvailable().then(on => {
+    if (on) { renderStartPage(); renderTeachingPage(); if (S.project) refreshGitStatus(); }
+    else if (enabled === null && wait <= 8000) setTimeout(() => ask(wait * 2), wait);
+  });
+  ask(500);
 }
 
 // ------------------------------------------------------------------ the commands

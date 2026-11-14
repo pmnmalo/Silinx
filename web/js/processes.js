@@ -24,6 +24,7 @@ import { cProcesses, failedCDiags, isC } from './c-source.js';
 import { openCModel } from './c-model.js';
 import { EXTRA_STEPS, FLOW_PROCS, IMPL_IDS, buildProcesses, simModelsOf, toolOf } from './tool-descriptors.js';
 import { checkLabel, designOnly, shownDiag } from './design-only.js';
+import { failedModule, withDrawingErrors } from '/core/drawing-diags.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -296,7 +297,9 @@ async function checkSyntaxInner(mod, sim, id) {
   const lib = compile(withPrimitives(srcs));
   // (a C source whose HDL cannot be made, #2995: its errors; its module, the top, then not elaborated)
   const cErrs = failedCDiags();
-  const cTop = Object.values(S.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase());
+  // (a drawing whose module cannot be made, #3934: its errors on it, the design needing it; its module, the top, then not
+  // elaborated either)
+  const cTop = Object.values(S.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase()) || failedModule(S.failedDrawings, mod);
   const design = cTop ? null : elaborate(lib, mod);
   // (an HDL file its drawing could not generate again, #303: an error of the file, the drawing's errors in it)
   const stale = srcs.filter(s => S.staleHdl?.[s.path]).map(s => {
@@ -306,10 +309,10 @@ async function checkSyntaxInner(mod, sim, id) {
   });
   // (+ the modules named with a reserved word, #679)
   // (a design project's: its drawings named, #3891)
-  const diags = diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]).map(shownDiag);   // + design checks (core/lint.js)
+  const diags = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), S.failedDrawings, { top: mod, design: designOnly() }).map(shownDiag);   // + design checks (core/lint.js)
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.line || !designOnly() ? `"${d.file}" Line ${d.line}` : `"${d.file}"`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
   if (ne) { log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
   log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
