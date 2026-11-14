@@ -4,7 +4,7 @@
 import { asmLayout } from './asm-from-hdl.js';
 import { MAX_PATHS, exprToString, normalizeModel as normalizeAsm, parseAction, parseCaseChoices } from './asm.js';
 import {
-  clone, condNames, constValue, evalCond, fsmKind, inputCombos, normalizeFsm, parseCond, placeNew, stateById,
+  clone, condNames, constValue, evalCond, fsmKind, inputCombos, isOtherwise, normalizeFsm, parseCond, placeNew, stateById,
   transitionsFrom
 } from './fsm.js';
 import { sortedOutputs } from './fsm-hdl.js';
@@ -35,7 +35,7 @@ export function fsmToAsm(model) {
         edges.push({ id: id('e'), from: o, to: t.to, port: 'next' });
         return o;
       };
-      if (!t.cond) { link(target()); ended = true; break; }
+      if (isOtherwise(t.cond)) { link(target()); ended = true; break; }
       const d = id('d');
       nodes.push({ id: d, type: 'decision', x: 0, y: 0, cond: t.cond });
       link(d);

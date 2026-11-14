@@ -23,7 +23,7 @@ test('#2082 fsmFromSpec: the ports, the states (the first the initial one), the 
   assert.deepEqual(m.inputs, [{ name: 'x', width: 1 }, { name: 'n', width: 4 }]);
   assert.deepEqual(m.outputs, [{ name: 'z', width: 1, default: '0' }, { name: 'q', width: 3, default: '0' }]);
   assert.deepEqual(m.states.map((s) => [s.id, s.name, s.x, s.y]), [['s1', 'IDLE', 120, 160], ['s2', 'A', 320, 160], ['s3', 'B', 520, 160], ['s4', 'C', 720, 160], ['s5', 'D', 120, 360]]);
-  assert.deepEqual(m.transitions.map((t) => [t.id, t.from, t.to, t.cond]), [['t1', 's1', 's2', 'x'], ['t2', 's2', 's1', ''], ['t3', 's5', 's5', '']]);
+  assert.deepEqual(m.transitions.map((t) => [t.id, t.from, t.to, t.cond]), [['t1', 's1', 's2', 'x'], ['t2', 's2', 's1', ''], ['t3', 's5', 's5', '1']]);   // (kept as typed, #3907)
   assert.equal(m.initial, 's1');
 });
 

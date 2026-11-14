@@ -28,11 +28,14 @@ function models() {
       states: [{ id: 'i', name: 'IDLE' }, { id: 'r', name: 'RUN' }, { id: 'w', name: 'WAIT' }, { id: 'l', name: 'LOST' }, { id: 'e', name: 'END' }],
       transitions: [
         { id: 't1', from: 'i', to: 'r', cond: 'go && op != 0', outputs: { z: '1' } }, { id: 't2', from: 'i', to: 'w', cond: 'go' },
-        { id: 't3', from: 'w', to: 'i', cond: '' }, { id: 't4', from: 'w', to: 'r', cond: 'go' }, { id: 't5', from: 'r', to: 'e', cond: 'w == v' },
+        { id: 't3', from: 'w', to: 'i', cond: 'go || !go' }, { id: 't4', from: 'w', to: 'r', cond: 'go' }, { id: 't5', from: 'r', to: 'e', cond: 'w == v' },
         { id: 't6', from: 'r', to: 'l', cond: 'go && !go' }, { id: 't7', from: 'l', to: 'i', cond: '' },
       ],
       initial: 'i',
     }),
+    // two otherwise transitions (#3907)
+    normalizeFsm({ states: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+      transitions: [{ id: 't1', from: 'a', to: 'b', cond: 'else' }, { id: 't2', from: 'a', to: 'a', cond: 'default' }, { id: 't3', from: 'b', to: 'a' }] }),
   ];
 }
 
@@ -43,7 +46,7 @@ test('every validation message of core/fsm.js has a Portuguese translation', () 
   for (const re of [/has no name/, /is not a valid name/, /reserved word/, /used twice/, /the width must be/, /default value 'x' must be a constant/,
     /default value 3 does not fit/, /no states/, /Two states/, /is not an output$/, /must be a constant/, /does not fit in/, /does not exist/,
     /is not valid \(/, /is an output; conditions/, /is not an input/, /never true/, /always taken first/, /cannot be reached/,
-    /has no exit/, /both true when/, /no transition is true when/, /random combinations/, /is never set/, /: 'x' has 1 bit/]) {
+    /has no exit/, /both true when/, /no transition is true when/, /random combinations/, /is never set/, /: 'x' has 1 bit/, /otherwise transitions/]) {
     assert.ok([...msgs].some((x) => re.test(x)), `${re} produced`);
   }
   const missing = [...msgs].filter((x) => t(x) === x);

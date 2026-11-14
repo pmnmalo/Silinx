@@ -2,7 +2,7 @@
 // its states encoded as binary, Gray, one-hot or an enumeration, with the conditions and outputs written.
 import { portExprCoder } from './asm.js';
 import {
-  analyzeFsm, constValue, fsmEncoding, fsmErrors, mask, nameOf, normalizeFsm, pad, stateById, transitionsFrom
+  analyzeFsm, constValue, fsmEncoding, fsmErrors, isOtherwise, mask, nameOf, normalizeFsm, pad, stateById, transitionsFrom
 } from './fsm.js';
 
 // ---------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ export function generateFsm(model, lang, { source } = {}) {
     const chain = [];
     let otherwise = null;
     for (const t of ts(s.id)) {
-      if (!t.cond) { otherwise = t; break; }
+      if (isOtherwise(t.cond)) { otherwise = t; break; }
       chain.push({ cond: coderN.cond(t.cond), t });
     }
     return { chain, otherwise };
@@ -126,7 +126,7 @@ export function generateFsm(model, lang, { source } = {}) {
     const chain = [];
     let otherwise = null;
     for (const t of use) {
-      if (!t.cond) { otherwise = t; break; }
+      if (isOtherwise(t.cond)) { otherwise = t; break; }
       chain.push({ cond: coderO.cond(t.cond), body: mealyLines(t) });
     }
     if (!chain.length) return otherwise ? mealyLines(otherwise) : [];

@@ -113,15 +113,21 @@ export function outputLines(o) {
 }
 
 /** Split a transition label "cond / z=1" into { cond, outputs } (a '/' followed by '=' belongs to the condition);
- *  given the machine's `outputs`, its assignments checked (parseOutputs). */
+ *  given the machine's `outputs`, its assignments checked (parseOutputs). A condition's NOT may be a '/' too (/a,
+ *  a./b, #3907): the label splits at the last '/' after which the machine's outputs are assigned (or nothing is) and
+ *  before which a condition is (or nothing is); a label with no such '/' that is a condition is all condition. */
 export function parseLabel(text, outputs = null) {
   const s = String(text ?? '');
-  let k = -1;
-  for (let i = s.length - 1; i >= 0; i--) if (s[i] === '/' && s[i + 1] !== '=') { k = i; break; }
-  const cond = (k < 0 ? s : s.slice(0, k)).trim();
-  const outs = k < 0 ? '' : s.slice(k + 1);
-  const r = parseOutputs(outs, outputs);
-  return { cond: /^(1|true|always)$/i.test(cond) ? '' : cond, outputs: r.outputs || {}, error: r.error };
+  const slashes = [];
+  for (let i = s.length - 1; i >= 0; i--) if (s[i] === '/' && s[i + 1] !== '=') slashes.push(i);
+  const fits = (k) => {
+    const c = s.slice(0, k).trim(), r = parseOutputs(s.slice(k + 1), outputs);
+    return !r.error && (!c || !parseCond(c).error);
+  };
+  let k = slashes.find(fits) ?? -1;
+  if (k < 0 && slashes.length && parseCond(s.trim()).error) k = slashes[0];
+  const r = parseOutputs(k < 0 ? '' : s.slice(k + 1), outputs);
+  return { cond: (k < 0 ? s : s.slice(0, k)).trim(), outputs: r.outputs || {}, error: r.error };
 }
 
 /** Value of a constant (literal) text, or null. */
@@ -155,7 +161,6 @@ export function normalizeFsm(m) {
   const transitions = arr(src.transitions).map((t, i) => {
     const o = { id: String(t?.id ?? `t${i + 1}`), from: String(t?.from ?? ''), to: String(t?.to ?? ''),
       cond: String(t?.cond ?? '').trim(), outputs: normOutputs(t?.outputs) };
-    if (/^(1|true|always)$/i.test(o.cond)) o.cond = '';
     if (t?.bend != null && Number.isFinite(Number(t.bend))) o.bend = Number(t.bend);
     if (t?.angle != null && Number.isFinite(Number(t.angle))) o.angle = Number(t.angle);
     const st = normalizeStyle('trans', t?.look);
@@ -213,7 +218,11 @@ export const stateById = (m, id) => m.states.find((s) => s.id === id);
 export const nameOf = (m, id) => stateById(m, id)?.name || '?';
 
 /** Transitions leaving state `id`, in priority order. */
-export function transitionsFrom(m, id) { return m.transitions.filter((t) => t.from === id); }
+export function transitionsFrom(m, id) {
+  // (in priority order: the drawing's, the otherwise transition last, wherever it is listed: #3907)
+  const ts = m.transitions.filter((t) => t.from === id);
+  return [...ts.filter((t) => !isOtherwise(t.cond)), ...ts.filter((t) => isOtherwise(t.cond))];
+}
 
 /** States in code order (the initial state first) with their codes: [{ id, name, constName, index, width, code, bits }]. */
 export function fsmEncoding(model) {
@@ -301,11 +310,14 @@ export function condNames(ast, out = new Set()) {
   return out;
 }
 
-/** Parsed condition of a transition: { ast } (null ast = always) or { error }. */
+/** Whether a transition's condition is the state's "otherwise": none, 1, true, always, else, default (#3907; the
+ *  drawing keeps the word as it was typed), taken when no other transition is. */
+export const isOtherwise = (text) => /^\s*(1|true|always|else|default)?\s*$/i.test(String(text ?? ''));
+
+/** Parsed condition of a transition: { ast } (null ast = always) or { error, column }. */
 export function parseCond(text) {
-  const t = String(text ?? '').trim();
-  if (!t || /^(1|true|always)$/i.test(t)) return { ast: null };
-  return parseCondition(t);
+  if (isOtherwise(text)) return { ast: null };
+  return parseCondition(String(text).trim());
 }
 
 // pseudo-random numbers (repeatable)
@@ -424,7 +436,10 @@ export function validateFsm(model) {
     if (!a || !b) { add('error', 'A transition starts or ends at a state that does not exist', ref); continue; }
     const where = `Transition ${a.name || '?'} → ${b.name || '?'}`;
     const p = parseCond(t.cond);
-    if (p.error) { add('error', `${where}: the condition '${t.cond}' is not valid (${p.error})`, ref); }
+    if (p.error) {
+      const col = p.column == null ? '' : `column ${p.column}: `;
+      add('error', `${where}: the condition '${t.cond}' is not valid (${col}${p.error})`, ref);
+    }
     else {
       let ok = true;
       for (const n of condNames(p.ast)) {
@@ -439,6 +454,13 @@ export function validateFsm(model) {
       if (ok) parsed.set(t.id, p.ast);
     }
     checkOutputs(t.outputs, where, ref);
+  }
+  // one otherwise transition per state at most (#3907): else, default, true, 1, none
+  for (const s of m.states) {
+    const others = m.transitions.filter((t) => t.from === s.id && stateById(m, t.to) && isOtherwise(t.cond));
+    if (others.length > 1) {
+      add('error', `State ${s.name || '?'} has ${others.length} otherwise transitions (else, default, true, 1 or no condition), to ${others.map((t) => nameOf(m, t.to)).join(', ')}; a state has one at most`, { state: s.id, transition: others[1].id });
+    }
   }
   const hasErrors = out.some((d) => d.severity === 'error');
   // (a look's values not valid, #3883: drawn with the default look, the HDL not concerned; after hasErrors, the analysis made)
@@ -525,7 +547,8 @@ export function analyzeFsm(model, { parsed = null, widthOf = null } = {}) {
       taken[first]++;
       for (let j = first + 1; j < vals.length; j++) {
         const differs = ts[j].to !== ts[first].to || JSON.stringify(ts[j].outputs) !== JSON.stringify(ts[first].outputs);
-        if (vals[j] && differs) {
+        // (the otherwise transition, last, is the others' fallback: no overlap, #3907)
+        if (vals[j] && differs && !isOtherwise(ts[j].cond)) {
           const key = `${ts[first].id}|${ts[j].id}`;
           if (!overlaps.has(key)) overlaps.set(key, { a: ts[first].id, b: ts[j].id, env });
         }

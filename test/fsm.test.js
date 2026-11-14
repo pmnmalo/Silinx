@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   newFsm, normalizeFsm, validateFsm, analyzeFsm, fsmErrors, parseLabel, parseOutputs, formatOutputs, outputLines, stepFsm, simulateFsm,
   generateFsm, fsmFromHdl, sameFsm, fsmEncoding, transitionTable, stateTable, encodedTable, truthTablesOf, toCsv,
-  fsmToAsm, asmToFsm, autoLayout, evalCond, parseCond, FSM_ENCODINGS, STATE_R,
+  fsmToAsm, asmToFsm, autoLayout, evalCond, parseCond, transitionsFrom, FSM_ENCODINGS, STATE_R,
 } from '../core/fsm.js';
 import { validate as validateAsm, generate as generateAsm } from '../core/asm.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
@@ -93,7 +93,7 @@ test('newFsm: a valid Moore machine; normalizeFsm fills every field', () => {
   const n = normalizeFsm({ states: [{ id: 'q', name: 'Q', outputs: ['z = 1', 'w'] }], transitions: [{ from: 'q', to: 'q', cond: 'true' }] });
   assert.equal(n.initial, 'q');
   assert.deepEqual(n.states[0].outputs, { z: '1', w: '1' });
-  assert.equal(n.transitions[0].cond, '');
+  assert.equal(n.transitions[0].cond, 'true');   // (kept as it was typed, #3907)
   assert.equal(n.encoding, 'binary');
   assert.equal(n.style, '3process');
   assert.deepEqual(n.reset, { name: 'rst', active: 'high', sync: false });
@@ -103,7 +103,7 @@ test('labels: "condition / outputs", output lists', () => {
   assert.deepEqual(parseLabel('x && !y / z=1, w = 2\'b10'), { cond: 'x && !y', outputs: { z: '1', w: "2'b10" }, error: undefined });
   assert.deepEqual(parseLabel('a /= b').cond, 'a /= b');          // VHDL "not equal" is not the separator
   assert.deepEqual(parseLabel('a /= b / z').outputs, { z: '1' });
-  assert.equal(parseLabel('1 / z=1').cond, '');
+  assert.equal(parseLabel('1 / z=1').cond, '1');
   assert.deepEqual(parseLabel('/ z').outputs, { z: '1' });
   assert.deepEqual(parseOutputs('z; y=0\nw := 3').outputs, { z: '1', y: '0', w: '3' });
   assert.ok(parseOutputs('3 = z').error);
@@ -192,7 +192,7 @@ test('validation: names, widths, initial state, expressions and output values (e
   has(/^The name 'state_reg' is used twice/);
   has(/^Two states are named 'a'/);
   has(/^State '2nd' is not a valid name/);
-  has(/^Transition A → a: the condition 'x &&' is not valid \(unexpected end of expression\)$/);
+  has(/^Transition A → a: the condition 'x &&' is not valid \(column 5: unexpected end of expression\)$/);
   has(/^Transition A → 2nd: 'foo' in the condition 'foo' is not an input$/);
   has(/^Transition a → A: 'z' is an output; conditions can only test inputs$/);
   has(/^A transition starts or ends at a state that does not exist$/);
@@ -239,10 +239,16 @@ test('condition analysis: overlapping and incomplete conditions, transitions nev
   const run = an.states.find((s) => s.id === 'r');
   assert.equal(run.stay.count, 0);
   assert.deepEqual(run.overlaps, []);
-  // a transition after an unconditional one is never taken
+  // a transition after one always true is never taken
   const n = mooreBus();
+  n.transitions.find((t) => t.id === 't6').cond = 'go | !go';
   n.transitions.push({ id: 't7', from: 'd', to: 'w', cond: 'go' });
   assert.ok(messages(n, 'warning').includes('Transition DONE → WAIT is never taken: the transitions listed before it are always taken first'));
+  // the otherwise transition (none, else, default, true, 1) is taken last, wherever it is listed (#3907)
+  const o = mooreBus();
+  o.transitions.push({ id: 't7', from: 'd', to: 'w', cond: 'go' });
+  assert.deepEqual(transitionsFrom(o, 'd').map((t) => t.id), ['t7', 't6']);
+  assert.ok(!messages(o, 'warning').some((x) => /never taken/.test(x)));
   // wide inputs: checked on random combinations (info)
   const big = normalizeFsm({ inputs: [{ name: 'a', width: 12 }, { name: 'b', width: 12 }], outputs: [{ name: 'z', width: 1 }],
     states: [{ id: 's', name: 'S', outputs: { z: '1' } }, { id: 't', name: 'T' }],
