@@ -941,7 +941,8 @@ async function boot() {
   renderHierarchy();
   renderProcesses();
   let last = null;
-  try { last = localStorage.getItem(prefKey('silinx.lastProject')); } catch { /* ignore */ }
+  // this tab's project (sessionStorage: a reload reopens it, not another tab's), else the last one used (a new tab)
+  try { last = sessionStorage.getItem(prefKey('silinx.lastProject')) ?? localStorage.getItem(prefKey('silinx.lastProject')); } catch { /* ignore */ }
   const projects = await api.projects().catch(() => []);
   // (a project opened meanwhile, e.g. from the Start page: kept, not replaced by the last one, #2492)
   const asked = projectRequested();

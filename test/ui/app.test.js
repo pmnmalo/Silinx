@@ -1001,3 +1001,26 @@ uiTest('#2027 toolbar: Close Project, between Open Project and Print, closes the
   await page.waitFor((b) => document.querySelector(b).title === 'Fechar Projeto', [btn], { what: 'Fechar Projeto' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
 });
+
+// #3952 regression: the project open was remembered in one localStorage key, every tab's: with project A in one tab and B in
+// another, a reload of A's tab reopened B. Each tab's is now its own (sessionStorage); a new tab opens the last one used.
+uiTest('#3952 two tabs on two projects: a reload reopens the tab\'s own project; a new tab the last one opened', E, async (page) => {
+  await makeProject(env, { name: 'TabA', files: {} });
+  await makeProject(env, { name: 'TabB', files: {} });
+  await page.openProject('TabA');
+  const other = await env.newPage(undefined, { sibling: page });
+  try {
+    await other.openProject('TabB');
+    await page.reload();
+    await page.waitFor(() => window.Silinx?.project?.name && document.documentElement.dataset.starting === undefined, [], { what: 'the tab\'s project reopened' });
+    assert.equal(await page.eval(() => window.Silinx.project.name), 'TabA');
+    await other.reload();
+    await other.waitFor(() => window.Silinx?.project?.name && document.documentElement.dataset.starting === undefined, [], { what: 'the other tab\'s project reopened' });
+    assert.equal(await other.eval(() => window.Silinx.project.name), 'TabB');
+  } finally { await other.close?.(); }
+  const third = await env.newPage(undefined, { sibling: page });
+  try {
+    await third.waitFor(() => window.Silinx?.project?.name && document.documentElement.dataset.starting === undefined, [], { what: 'the last project opened in a new tab' });
+    assert.equal(await third.eval(() => window.Silinx.project.name), 'TabB');
+  } finally { await third.close?.(); }
+}, { skip: chromeOnly });   // (sibling pages)
