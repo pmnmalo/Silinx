@@ -3,8 +3,12 @@
 import { partDef, partPins } from './circuit-parts.js';
 import { circuitNets, netSupply, netText } from './circuit-net.js';
 import { portName } from './circuit.js';
+import { isName } from './ident.js';
+import { reservedError } from './reserved.js';
 
-const RESERVED = /^(abs|access|after|alias|all|and|architecture|array|assert|attribute|begin|block|body|buffer|bus|case|component|configuration|constant|disconnect|downto|else|elsif|end|entity|exit|file|for|function|generate|generic|group|guarded|if|impure|in|inertial|inout|is|label|library|linkage|literal|loop|map|mod|nand|new|next|nor|not|null|of|on|open|or|others|out|package|port|postponed|procedure|process|pure|range|record|register|reject|rem|report|return|rol|ror|select|severity|signal|shared|sla|sll|sra|srl|subtype|then|to|transport|type|unaffected|units|until|use|variable|wait|when|while|with|xnor|xor|always|assign|reg|wire|module|endmodule|input|output|initial|integer|parameter|posedge|negedge|default|endcase|begin|std_logic|ieee)$/i;
+// a name of the HDL: an identifier (core/ident.js), not a reserved word of VHDL or Verilog (core/reserved.js), nor a
+// name the generated VHDL uses itself
+const badName = (n) => !isName(n) || !!reservedError(n) || /^(std_logic|ieee)$/i.test(n);
 
 /** The circuit's problems: [{ severity: 'error' | 'warning', message, ref: { kind: 'part' | 'wire', id } }]. */
 export function checkCircuit(m, nets = circuitNets(m)) {
@@ -15,7 +19,7 @@ export function checkCircuit(m, nets = circuitNets(m)) {
 
   // the parts: their types, ids, labels
   const ids = new Map(), names = new Map();
-  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(m.name) || RESERVED.test(m.name)) err(`The circuit's name '${m.name}' is not a valid HDL name`, null);
+  if (badName(m.name)) err(`The circuit's name '${m.name}' is not a valid HDL name`, null);
   for (const p of m.parts) {
     if (!partDef(p.type)) err(`${p.id}: no part '${p.type}' in the library`, part(p.id));
     if (!p.id) err(`A ${p.type} has no id`, part(p.id));
@@ -24,7 +28,7 @@ export function checkCircuit(m, nets = circuitNets(m)) {
     const t = p.type;
     if (t === 'logic-switch' || t === 'button' || t === 'led') {
       const n = portName(p);
-      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(n) || /__|_$/.test(n) || RESERVED.test(n)) err(`${p.id}: its label '${n}' is not a valid HDL name`, part(p.id));
+      if (badName(n) || /__|_$/.test(n)) err(`${p.id}: its label '${n}' is not a valid HDL name`, part(p.id));
       else if (names.has(n.toLowerCase())) err(`${p.id}: its label '${n}' is ${names.get(n.toLowerCase())}'s too`, part(p.id));
       else if (n.toLowerCase() === m.name.toLowerCase()) err(`${p.id}: its label '${n}' is the circuit's name`, part(p.id));
       names.set(n.toLowerCase(), p.id);
