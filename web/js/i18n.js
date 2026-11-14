@@ -17,6 +17,7 @@ import { LINT_PT } from './i18n-lint.js';
 import { EDITOR_PT, EDITOR_PT_PATTERNS } from './i18n-editor.js';
 import { FSM_PT, FSM_PT_PATTERNS } from './i18n-fsm.js';
 import { PETRI_PT, PETRI_PT_PATTERNS } from './i18n-petri.js';
+import { CIRCUIT_PT, CIRCUIT_PT_PATTERNS } from './i18n-circuit.js';
 import { SYMBOL_PT, SYMBOL_PT_PATTERNS } from './i18n-symbol.js';
 import { FPGA_PT, FPGA_PT_PATTERNS } from './i18n-fpga.js';
 import { SCH_PT, SCH_PT_PATTERNS } from './i18n-schematic.js';
@@ -835,6 +836,8 @@ for (const [k, v] of Object.entries(FSM_PT)) if (!(k in PT)) PT[k] = v;   // FSM
 PT_PATTERNS.unshift(...FSM_PT_PATTERNS);
 for (const [k, v] of Object.entries(PETRI_PT)) if (!(k in PT)) PT[k] = v;   // Petri net editor
 PT_PATTERNS.unshift(...PETRI_PT_PATTERNS);
+for (const [k, v] of Object.entries(CIRCUIT_PT)) if (!(k in PT)) PT[k] = v;   // digital circuit editor (#3897)
+PT_PATTERNS.unshift(...CIRCUIT_PT_PATTERNS);
 for (const [k, v] of Object.entries(SYMBOL_PT)) if (!(k in PT)) PT[k] = v;   // Symbol Editor (#3755)
 PT_PATTERNS.unshift(...SYMBOL_PT_PATTERNS);
 for (const [k, v] of Object.entries(FPGA_PT)) if (!(k in PT)) PT[k] = v;   // View Implemented Design (FPGA)

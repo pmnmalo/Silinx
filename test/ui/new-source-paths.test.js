@@ -20,6 +20,7 @@ const TYPES = {
   'Finite State Machine (FSM)': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.fsm.json' },   // (its wizard: #2082)
   'Algorithmic State Machine (ASM)': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.asm.json' },
   'Petri Net': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.pn.json' },
+  'Circuit': { pages: ['File Name and Location', 'Summary'], file: 'src/NAME.circ.json' },   // (#3897)
   'Clock Manager (DCM / PLL)': { pages: ['File Name and Location'], wiz: true, only: true },
   'Block Memory': { pages: ['File Name and Location'], wiz: true, only: true },
   'Test Bench': { pages: ['File Name and Location', 'Associate Source', 'Summary'], wiz: true, file: 'sim/NAME.vhd' },
