@@ -38,9 +38,14 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
     if (d.kind === 'ic') {
       const pinOf = (dir) => d.pins.find((q) => q.dir === dir).n;
       const ic = { part: p, def: d, vcc: netOfPin(p.id, pinOf('vcc')), gnd: netOfPin(p.id, pinOf('gnd')),
-        gates: d.gates.map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
+        gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
+      // (an MSI IC: its model, its inputs and outputs by port, core/circuit-msi.js)
+      if (d.model) {
+        ic.ins = d.pins.filter((q) => q.dir === 'in').map((q) => ({ port: q.port, net: netOfPin(p.id, q.n) }));
+        ic.outs = d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => ({ port: q.port, oc: q.dir === 'oc', d: addDriver(netOfPin(p.id, q.n), 'X', 's', d.tpd) }));
+      }
       ics.push(ic);
-      for (const net of [ic.vcc, ic.gnd, ...ic.gates.flatMap((x) => x.ins)]) readers[net].add(ic);
+      for (const net of [ic.vcc, ic.gnd, ...ic.gates.flatMap((x) => x.ins), ...(ic.ins || []).map((x) => x.net)]) readers[net].add(ic);
     }
   }
   const closed = (c) => state.get(c.part)[c.input] === c.when;
@@ -75,6 +80,14 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
     for (const x of ic.gates) {
       const v = on ? gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net]))) : 'Z';
       drive(x.out, ic.def.oc && v === '1' ? 'Z' : v);   // (an open collector: a 0 or nothing)
+    }
+    if (ic.def.model) {
+      const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
+      const o = !on ? null : Object.values(i).includes('X') ? 'X' : ic.def.model(Object.fromEntries(Object.entries(i).map(([k, v]) => [k, Number(v)])));
+      for (const x of ic.outs) {
+        const v = !on ? 'Z' : o === 'X' ? 'X' : String(o[x.port]);
+        drive(x.d, x.oc && v === '1' ? 'Z' : v);
+      }
     }
   }
   // an output's new value, after its delay (inertial: a pending change to another value is cancelled)

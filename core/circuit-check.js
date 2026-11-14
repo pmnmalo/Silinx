@@ -106,8 +106,11 @@ function checkIc(p, d, nets, { driven, via, typeOf }, { err, warn }) {
   else if (!vcc.vcc || !gnd.gnd) err(`${p.id} (${d.type}) is not powered: ${[!vcc.vcc && `${V} is not on the supply's +`, !gnd.gnd && `${G} is not on the supply's −`].filter(Boolean).join(' and ')}`, part(p.id));
   const pins = partPins(p);
   const reads = d.family === 'ttl' ? 'a 74LS input reads high' : 'a CMOS input reads X';
-  for (const g of d.gates) {
-    if (netOf(g.out).pins.length < 2 && !netOf(g.out).wires.length) continue;
+  // (an MSI IC's inputs all, once one of its outputs is used)
+  const used = (n) => netOf(n).pins.length > 1 || netOf(n).wires.length > 0;
+  const groups = d.gates || (d.pins.some((q) => (q.dir === 'out' || q.dir === 'oc') && used(q.n)) ? [{ ins: d.pins.filter((q) => q.dir === 'in').map((q) => q.n), out: null }] : []);
+  for (const g of groups) {
+    if (g.out != null && !used(g.out)) continue;
     for (const n of g.ins) {
       const k = nets.pinNet.get(`${p.id}.${n}`);
       if (driven[k]) continue;
