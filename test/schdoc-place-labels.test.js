@@ -11,7 +11,7 @@ import { key, netlist, schematicFromHdl, modulesFromLibrary } from '../core/schd
 import { netLabels } from '../core/schdoc-place.js';
 import { segPoints, wireGrid } from '../core/schpath.js';
 import { convertModuleToSchematic } from '../core/hdl-to-sch.js';
-import { example, EXAMPLES } from './examples-lib.mjs';
+import { example, HDL_EXAMPLES as EXAMPLES } from './examples-lib.mjs';   // (not a circuit's, #3901)
 
 const ELK = (await import('elkjs/lib/elk.bundled.js')).default;
 const elk = new ELK();

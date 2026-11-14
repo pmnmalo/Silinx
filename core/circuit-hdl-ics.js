@@ -106,3 +106,42 @@ function vhdlSeq(L, d, ins, outs, vcc, gnd) {
   for (const p of outs) L.push(`  ${pinPort(p)} <= o_${pinPort(p)} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`);
   L.push('end architecture model;', '');
 }
+
+// ------------------------------------------------------------------ an MSI or sequential IC's digital architecture (#3901)
+// what synthesis builds (core/circuit-digital.js instances it): its inputs as they are, its body, its outputs while
+// powered (vcc and not gnd: the supply's constants), no delay; `anyx` false (a register is never unknown there)
+const isPort = (p) => p.dir === 'in';
+// a line of a sequential IC's model with its inputs' i_<port> read as the ports themselves
+const portsRead = (l, ins) => ins.reduce((s, p) => s.replace(new RegExp(`\\bi_${pinPort(p)}\\b`, 'g'), pinPort(p)), l);
+// its three-state outputs driven, a disabled one high (no three-state inside an FPGA: the top takes their enable and
+// gives their net its own level then, core/circuit-digital.js)
+const driven = (l, d, V) => {
+  const e = d.seq.threeState?.enable;
+  if (!e) return l;
+  return V ? l.replace(new RegExp(` else 'Z' when i_${e} = '[01]' else 'X';$`), " else '1';") : l.replace(new RegExp(`\\(i_${e} === 1'b[01]\\) \\? 1'bz : 1'bx;$`), "1'b1;");
+};
+
+/** The VHDL digital architecture of an MSI or sequential IC's entity, its lines pushed on L. */
+export function vhdlDigital(L, name, d) {
+  const ins = d.pins.filter(isPort), outs = d.pins.filter(isOut);
+  const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
+  L.push(`architecture digital of ${name} is`, '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    return false;', '  end function anyx;',
+    `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`);
+  // (a sequential IC's body reads its ports themselves: no copy of its clock, whose net synthesis then names after it)
+  if (d.seq) L.push(...d.vhdl.decl.map((v) => `  ${portsRead(v.replace(/ := (\(others => 'X'\)|'X')/, ''), ins)}`), 'begin', ...d.vhdl.body.map((l) => `  ${portsRead(driven(l, d, true), ins)}`));
+  else L.push('begin', `  process (${ins.map(pinPort).join(', ')})`, `    variable ${ins.map((p) => `i_${pinPort(p)}`).join(', ')} : std_logic;`, ...(d.vars?.vhdl || []).map((v) => `    ${v}`),
+    '  begin', ...ins.map((p) => `    i_${pinPort(p)} := ${pinPort(p)};`), ...d.vhdl.map((l) => `    ${l}`), '  end process;');
+  for (const p of outs) L.push(`  ${pinPort(p)} <= o_${pinPort(p)} and ${vcc} and not ${gnd};`);
+  L.push('end architecture digital;', '');
+}
+
+/** The Verilog digital body of an MSI or sequential IC's module (after its `else). */
+export function verilogDigital(d) {
+  const ins = d.pins.filter(isPort), outs = d.pins.filter(isOut);
+  const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
+  const L = [];
+  if (d.seq) L.push(`  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`, ...d.verilog.decl.map((v) => `  ${portsRead(v.replace(/ = (\d+'[bh]x+|1'bx)/g, ''), ins)}`), ...d.verilog.body.map((l) => `  ${portsRead(driven(l, d, false), ins)}`));
+  else L.push(...ins.map((p) => `  wire i_${pinPort(p)} = ${pinPort(p)};`), `  reg ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`, '  always @* begin', ...d.verilog.map((l) => `    ${l}`), '  end');
+  for (const p of outs) L.push(`  assign ${pinPort(p)} = o_${pinPort(p)} & ${vcc} & ~${gnd};`);
+  return L;
+}

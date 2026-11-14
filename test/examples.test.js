@@ -1,4 +1,4 @@
-// The example projects (examples/gates, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80), which also test Silinx's workflows end to
+// The example projects (examples/gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80), which also test Silinx's workflows end to
 // end on every device of the Silinx toolchain (Basys2-100 / 250, Nexys2-500 / 1200): each example's
 // sources read with no error or warning and no design-check message, its self-checking testbench
 // passes in Silinx's simulator with no warning, the UCF it ships is the one Silinx's board pin
@@ -70,7 +70,7 @@ describe('the examples on every board', { concurrency: 2 }, () => {
 // (#2517) the examples on the iCEBreaker: the display and the switches on its Pmods, vga on its PmodVGA; the ports the
 // board has no pin for (5 LEDs, 3 buttons, the PmodSWT's 4 switches), each warned, by Silinx and by nextpnr
 const LEDS = ['led[5]', 'led[6]', 'led[7]'];
-const ICE40_NO_PIN = { gates: [], traffic: LEDS, blinky: LEDS, pong: ['btn[3]', ...LEDS], stopwatch: ['btn[3]', ...LEDS], clock: ['btn[3]', ...LEDS],
+const ICE40_NO_PIN = { gates: [], breadboard: ['led[5]'], traffic: LEDS, blinky: LEDS, pong: ['btn[3]', ...LEDS], stopwatch: ['btn[3]', ...LEDS], clock: ['btn[3]', ...LEDS],
   vga: ['sw', 'btn[3]'], isqrt: ['sw[4]', 'sw[5]', 'sw[6]', 'sw[7]'], uart: LEDS, micro80: ['sw[4]', 'sw[5]', 'sw[6]', 'sw[7]', ...LEDS] };
 describe('the examples on the iCE40\'s board', { concurrency: 2 }, () => {
   for (const name of EXAMPLES) {

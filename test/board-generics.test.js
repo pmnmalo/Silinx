@@ -73,14 +73,15 @@ test('#3710 the top\'s file, by its entity or module; none for a name no file de
 const widths = (des, names) => Object.fromEntries(names.map(n => [n, des.signals.find(s => s.path === `${des.top.name}.${n}`)?.t?.w]));
 
 test('#3710 every clocked example\'s top for the Mimas V2 and the Nexys3: the board\'s values, elaborated with no error or warning', () => {
-  // (isqrt and micro80 have switches only, uart a button only; gates, a combinational schematic, none of them)
+  // (isqrt and micro80 have switches only, uart a button only; gates, a combinational schematic, and breadboard, a
+  // circuit of 74LS chips, none of them)
   const ALL = ['CLK_HZ', 'BTN_LOW', 'SW_LOW'];
   const MIMAS = { traffic: ALL, blinky: ALL, pong: ALL, stopwatch: ALL, clock: ALL, vga: ALL, isqrt: ['CLK_HZ', 'SW_LOW'], uart: ['CLK_HZ', 'BTN_LOW'], micro80: ['CLK_HZ', 'SW_LOW'] };
   for (const name of EXAMPLES) {
     const ex = example(name);
     for (const board of ['mimas-v2', 'nexys3']) {
       const top = topForBoard(ex.design, ex.project.top, resolveBoard(board));
-      if (name === 'gates') { assert.equal(top, null, `${name} on ${board}`); continue; }
+      if (name === 'gates' || name === 'breadboard') { assert.equal(top, null, `${name} on ${board}`); continue; }
       assert.deepEqual(top.changed, board === 'nexys3' ? ['CLK_HZ'] : MIMAS[name], `${name} on ${board}`);
       const sources = ex.design.map(s => (s.path === top.path ? { ...s, text: top.text } : s));
       const lib = compile(sources);

@@ -87,7 +87,7 @@ test('folder: a project from each example is the server\'s, file for file', asyn
     await P.createProject({ name, template: t });
     assert.deepEqual(under(await dump(root), name), sorted(diskTree(P.projectDir(name))), t);
   }
-  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'clock', 'gates', 'isqrt', 'micro80', 'pong', 'stopwatch', 'traffic', 'uart', 'vga']);
+  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'isqrt', 'micro80', 'pong', 'stopwatch', 'traffic', 'uart', 'vga']);
 });
 
 // (#3710) an example made for another board (the Mimas V2: 100 MHz, its buttons and switches active low): its top's
@@ -102,7 +102,7 @@ test('folder: a project from each example for the Mimas V2: its top\'s generics 
     const pj = EXAMPLES[t].json, changed = Object.keys(EXAMPLES[t].files).filter(f => mine[f] !== EXAMPLES[t].files[f]);
     // (the browser edition writes the board's constraints when the project opens: the UCF aside)
     for (const f of Object.keys(EXAMPLES[t].files).filter(f => f !== pj.constraints)) assert.equal(mine[f], server[f], `${t}: ${f}`);
-    if (t === 'gates') { assert.deepEqual(changed, [], t); continue; }
+    if (t === 'gates' || t === 'breadboard') { assert.deepEqual(changed, [], t); continue; }   // (no generics: a schematic, a circuit)
     assert.equal(changed.length, 1, `${t}: ${changed}`);
     assert.match(mine[changed[0]], /CLK_HZ\s*(?::\s*integer\s*:=\s*100_000_000|=\s*100000000)/, t);
   }
