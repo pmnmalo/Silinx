@@ -22,7 +22,7 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Power supply (+5 V, 
 const title = (t) => TITLE[t] ?? t.replace(/^Quad 2-input (NAND|AND|OR|XOR)$/, (m, g) => `Quatro portas ${GATE[g]} de 2 entradas`);
 export const CIRCUIT_PT_PATTERNS = [
   // the status line's counts (#2763)
-  [/^(\d+) IC\(s\) · (\d+) switch\(es\) · (\d+) LED\(s\) · (\d+) wire\(s\)$/, '$1 CI(s) · $2 interruptor(es) · $3 LED(s) · $4 fio(s)'],
+  [/^(\d+) IC\(s\) · (\d+) input\(s\) · (\d+) display\(s\) · (\d+) wire\(s\)$/, '$1 CI(s) · $2 entrada(s) · $3 mostrador(es) · $4 fio(s)'],
   // the library's ICs and their tips
   [/^(74\d\d) (Quad 2-input (?:NAND|AND|OR|XOR)|Hex inverter)$/, (m, n, t) => `${n} ${title(t)}`],
   [/^(.+): click it, then the drawing \(Esc: done\)$/, (m, t) => `${title(t)}: clique nela e depois no desenho (Esc: terminar)`],

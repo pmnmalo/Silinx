@@ -1,7 +1,7 @@
 // A circuit's edits (#3897, docs/CIRCUITS.md), the editor's and the MCP server's edit_circuit's: one function each, the
 // same checks and messages. A place is a grid point [x, y], a breadboard's hole ('BB1.f10'), or a part's pin ('U1.3',
 // 'S1.out', 'D1.A'). Each edit returns { model } (a new one) or { error }. Isomorphic module.
-import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS } from './circuit-parts.js';
+import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
 import { normalizeCircuit, newId } from './circuit.js';
 import { clone } from './util.js';
 
@@ -87,16 +87,25 @@ export function addWire(m, { from, to, via = [], color = 'blue', id } = {}) {
   return r.error ? r : { ...r, id: wid };
 }
 
-/** A part's properties set: its label (a switch's, a button's, an LED's: its port's name), an LED's colour, a switch's position as saved. */
+/**
+ * A part's properties set: its label (its ports' name), an LED's or a display's colour, a switch's position as saved (`on`:
+ * a DIP switch's list of its levers, or { lever: k, on }), a clock's frequency (`hz`, in real time).
+ */
 export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const d = partDef(p.type);
+  const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
+  const has = ['label', ...(d?.kind === 'output' ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : [])];
   for (const [k, v] of Object.entries(props)) {
+    if (!has.includes(k) || (k === 'label' && !(d?.inputs || d?.lamps))) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || d?.inputs || d?.lamps).join(', ') || 'none'})`;
     if (k === 'label') { if (v == null || v === '') delete p.label; else p.label = String(v); }
-    else if (k === 'color' && d?.type === 'led') { if (!LED_COLORS.includes(v)) return `color: one of ${LED_COLORS.join(', ')}`; p.color = v; }
-    else if (k === 'on' && d?.type === 'logic-switch') p.on = !!v;
-    else return `${p.id} (${p.type}) has no property '${k}'${d?.type === 'led' ? ' (label, color)' : d?.type === 'logic-switch' ? ' (label, on)' : ' (label)'}`;
+    else if (k === 'color') { if (!LED_COLORS.includes(v)) return `color: one of ${LED_COLORS.join(', ')}`; p.color = v; }
+    else if (k === 'hz') { const hz = Number(v); if (!Number.isFinite(hz) || hz < CLOCK_HZ.min || hz > CLOCK_HZ.max) return `hz: a frequency from ${CLOCK_HZ.min} to ${CLOCK_HZ.max} Hz`; p.hz = hz; }
+    else if (levels === 1) p.on = !!v;
+    else if (Array.isArray(v)) { if (v.length !== levels) return `on: a list of ${levels} levers' positions`; p.on = v.map(Boolean); }
+    else if (v && typeof v === 'object' && Number.isInteger(v.lever) && v.lever >= 1 && v.lever <= levels) { p.on = [...(p.on || [])]; p.on[v.lever - 1] = !!v.on; }
+    else return `on: a list of ${levels} levers' positions, or { lever: 1 to ${levels}, on }`;
   }
   return null;
 });

@@ -18,7 +18,7 @@ async function apply(E, m, op) {
     case 'delete': { const r = E.deleteItem(m, op.id); return r.error ? r : { model: r.model, line: `${op.id} deleted` }; }
     case 'wire': { const r = E.addWire(m, op); return r.error ? r : { model: r.model, line: `${r.id} wired from ${JSON.stringify(op.from)} to ${JSON.stringify(op.to)}` }; }
     case 'set': {
-      const props = Object.fromEntries(['label', 'color', 'on'].filter((k) => k in op).map((k) => [k, op[k]]));
+      const props = Object.fromEntries(['label', 'color', 'on', 'hz'].filter((k) => k in op).map((k) => [k, op[k]]));
       const r = E.setPartProps(m, op.id, props);
       return r.error ? r : { model: r.model, line: `${op.id}: ${Object.entries(props).map(([k, v]) => `${k} ${JSON.stringify(v)}`).join(', ')}` };
     }
@@ -43,7 +43,7 @@ export const CIRCUIT_TOOLS = [
   },
   {
     name: 'edit_circuit', title: 'Edit a digital circuit',
-    description: 'Edit a circuit (.circ.json) as its editor does, by a list of operations applied in order (one refused: nothing written, the reason given): { op: "add", type, at, rot (quarter turns clockwise), label, id } (a part, its pin 1 at the place; a breadboard: its hole a1), { op: "move", id, at }, { op: "rotate", id, by }, { op: "delete", id } (a part or a wire; a part\'s wires stay), { op: "wire", from, to, via: [[x, y]…], color, id } (a wire between two places; its ends join the holes, pins and wire ends on their points), { op: "set", id, label, color, on } (a switch\'s, a button\'s or an LED\'s label is its port\'s name; an LED\'s colour; a logic switch\'s position as saved). A place: a grid point [x, y], a hole (BB1.f10) or a pin (U1.3). The circuit is written, its HDL file made again, and its check\'s errors and warnings returned. The parts: circuit_parts.',
+    description: 'Edit a circuit (.circ.json) as its editor does, by a list of operations applied in order (one refused: nothing written, the reason given): { op: "add", type, at, rot (quarter turns clockwise), label, id } (a part, its pin 1 at the place; a breadboard: its hole a1), { op: "move", id, at }, { op: "rotate", id, by }, { op: "delete", id } (a part or a wire; a part\'s wires stay), { op: "wire", from, to, via: [[x, y]…], color, id } (a wire between two places; its ends join the holes, pins and wire ends on their points), { op: "set", id, label, color, on, hz } (a switch\'s, a button\'s, a clock\'s, an LED\'s or a display\'s label is its ports\' name, <label>_<k> for each of several: a DIP switch\'s levers, a display\'s segments a–g and dp, an LED bar\'s 1–10; an LED\'s or a display\'s colour; a switch\'s position as saved, a DIP switch\'s a list or { lever, on }; a clock\'s frequency in Hz, its live rate). A place: a grid point [x, y], a hole (BB1.f10) or a pin (U1.3). The circuit is written, its HDL file made again, and its check\'s errors and warnings returned. The parts: circuit_parts.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The circuit: a .circ.json file of the project.'),
       operations: { type: 'array', maxItems: 200, items: { type: 'object', properties: { op: { type: 'string', enum: OPS }, at: POINT, from: POINT, to: POINT } }, description: 'The operations, in order.' },
