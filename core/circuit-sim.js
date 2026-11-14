@@ -152,7 +152,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
 }
 
 /**
- * A run's messages, as the console says them (the editor's Simulate, the MCP server's simulate_drawing): the shorts
+ * A run's messages, as the console says them (the editor's Try it, the MCP server's simulate_drawing): the shorts
  * (the nets two outputs drive opposite ways) and an oscillation (the nets still changing after SETTLE_NS).
  */
 export function runMessages(sim, r) {
