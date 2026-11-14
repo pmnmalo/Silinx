@@ -65,6 +65,13 @@ read that user's files has the server too.
   container runs with no network, no capability, no way to gain privileges and a bound on its processes
   (`--network none --cap-drop ALL --security-opt no-new-privileges --pids-limit`), and a memory limit
   when the configuration sets one (`docker.memory`).
+- Open in VS Code (#4017, `server/open-editor.js`): the server starts the user's editor on a project's file, spawned
+  without a shell, with an argument array (the project's folder, `--goto`, the file and a line number). The program is
+  config.json's `editor` only (a known editor, found on PATH or where it is installed, or an absolute path; a setting
+  the API cannot change, `FILE_ONLY`), never the request's; the file is one of the project's by the file routes'
+  checks (its path confined, also through its links; no hidden file or folder; an existing file), the line a whole
+  number. Only a request from this computer (its address a loopback one) is answered: a server reached from another
+  computer would open the editor on its own screen. `"editor": "off"` (or `SILINX_EDITOR=off`) turns it off.
 - Git (#3195, `server/git.js`): the system's git is spawned with an argument array, never through a shell, with a
   timeout and no prompt (`GIT_TERMINAL_PROMPT=0`, ssh in batch mode). No hook of a repository runs (`core.hooksPath`
   is an empty folder of Silinx's), nor a repository's fsmonitor; no symbolic link is checked out; only https and ssh

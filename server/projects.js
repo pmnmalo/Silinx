@@ -407,7 +407,7 @@ export async function isProjectFileAt(dir, full) {
 // A hidden file or folder (.git/hooks, .vscode, .env) is no part of a project (#3036): no file route reads, writes, renames
 // or deletes one (#3354), by its name or once its symbolic links are followed; a short (8.3) name, or a path the system
 // names a hidden one, too (paths.js hiddenName, nativeRealOf). verb: what the route does ('read', 'written'…)
-function refuseHidden(dir, rel0, full, verb) {
+export function refuseHidden(dir, rel0, full, verb) {
   const hidden = [relKey(dir, full), relKey(realOf(dir), realOf(full)), relKey(nativeRealOf(dir), nativeRealOf(full))].flatMap(k => k.split('/')).find(hiddenName);
   if (hidden) throw new HttpError(400, `'${rel0}': not ${verb}: hidden file or folder ('${hidden}')`);
 }

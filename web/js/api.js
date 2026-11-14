@@ -94,6 +94,9 @@ export const api = {
   gistList: () => req('GET', '/api/gists'),   // (#3635: the short links of the server's token)
   gistDelete: ({ ids = [], expired = false } = {}) => req('POST', '/api/gists/delete', { ids, expired }).then(r => r.deleted),
   gistSave: (design, days = 0) => req('POST', '/api/gist', { design, ...(days ? { expires_days: days } : {}) }),
+  // Open in VS Code (#4017, the server edition: server/open-editor.js): whether a page here can, and a file opened
+  editorInfo: () => req('GET', '/api/editor'),
+  openInEditor: (name, path = null, line = null) => req('POST', '/api/editor/open', { project: name, ...(path ? { path } : {}), ...(line ? { line } : {}) }),
   // git (#3195, the server editions: server/git-routes.js)
   gitEnabled: () => req('GET', '/api/git'),
   gitClone: (url, name = null) => req('POST', '/api/git/clone', { url, ...(name ? { name } : {}) }),

@@ -38,6 +38,7 @@ import { renameSymbolIn } from './rename.js';
 import { writeClip, readClip, noteCopy, canPasteText } from './clipboard.js';
 import { prefKey } from './prefs.js';
 import { keepCursor, keptCursor } from './doc-cursor.js';
+import { docEditorItems } from './open-editor.js';
 import { mountSplit, placeSplit, splitClosed, splitItems, tabInSight, tabTip } from './split-view.js';
 import { closeAllDocs, restoreViewState, saveViewState, viewKept } from './view-state.js';
 import { following, followNotice, editsHere } from './collab-state.js';
@@ -339,6 +340,8 @@ function docTab(doc) {
       { label: 'Close Others', action: () => S.docs.filter(d => d !== doc).forEach(closeDoc) },
       { label: 'Close All', action: () => [...S.docs].forEach(closeDoc) },
       ...splitItems(doc),   // (two documents side by side, #1619)
+      // (a text file in the user's editor, at the cursor's line, #4017)
+      ...docEditorItems(doc),
     ], e.clientX, e.clientY);
   });
   longPressMenu(tab);
