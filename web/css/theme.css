@@ -24,10 +24,6 @@
   --tab-inactive: linear-gradient(#f6f6f6, #dedede);
   --toolbar-grad: linear-gradient(#fdfdfd, #e6e6e6);
   --menu-bg: #f5f6f7;
-  /* the Try it of the drawings (schematic, FSM, ASM chart, Petri net): its bar, its lines and its body, a lighter green (#3798, #3924) */
-  --try-it-bar: linear-gradient(#f2fbf2, #dcefdc);
-  --try-it-line: #8fbf8f;
-  --try-it-body: #eef8ee;
 
   /* schematic (ISE RTL viewer style) */
   --sch-bg: #ffffff;
@@ -57,6 +53,9 @@
      written in the code, so that no light patch or dark text is left in the dark theme (#159) */
   --note-bg: #fffbe6;       /* a tip, e.g. iMPACT's notes */
   --note-border: #e6d690;
+  --try-it-bar: linear-gradient(#f2fbf2, #dcefdc);   /* the drawings' Try it: its bar, its lines, its body a lighter green (#3798, #3924) */
+  --try-it-line: #8fbf8f;
+  --try-it-body: #eef8ee;
   --code-bg: #ffffff;       /* the code / summary a wizard shows */
   --frame: #cccccc;         /* the frame of a code box, of a list or table in a dialog */
   --frame-light: #dddddd;
