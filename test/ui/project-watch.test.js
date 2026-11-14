@@ -114,3 +114,52 @@ uiTest('#2843 a run made outside the page: the processes\' marks and the Design 
   assert.equal(saved?.status?.synth, 'ok');
   assert.deepEqual(warnings(page), []);
 });
+
+// #3972 regression: with the same project in two tabs, a save in one was not told to the other (every request of a page
+// was taken as known to every page), whose next save replaced it, unasked. Now told to the other tab, as another
+// process's change is: an editor with no changes of its own reloaded; one with changes, which to keep asked (in
+// Portuguese too); the tab that saved not told back, and the two tabs not telling each other over and over.
+uiTest('#3972 the same project in two tabs: a save in one is told to the other, its editor reloaded or which to keep asked; in Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'TwoTabs', top: 'a', files: { 'src/a.vhd': A() } });
+  const other = await env.newPage(undefined, { sibling: page });
+  try {
+    for (const p of [page, other]) {
+      await p.openProject('TwoTabs');
+      await p.eval(() => window.SilinxApp.openFile('src/a.vhd'));
+      await p.waitFor(() => !!window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor, [], { what: 'the editor' });
+    }
+    const told = (p) => p.eval(() => window.__console().match(/in another tab/g)?.length || 0);
+    // A saves: B's editor, with no changes of its own, shows it, clean
+    await page.eval((t) => { window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.setValue(t); }, `${A()}-- tab A\n`);
+    await page.waitFor(() => !window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty, [], { what: 'A saved' });
+    await other.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor?.getValue() === t, [`${A()}-- tab A\n`], { what: 'B\'s editor reloaded' });
+    await other.waitConsole(/src\/a\.vhd reloaded: changed in another tab\./);
+    await other.waitConsole(/Changed in another tab: src\/a\.vhd\./);
+    assert.equal(await other.eval(() => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty), false);
+    // B edits, not saved yet, and A saves again: B asked which to keep, in Portuguese
+    await other.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+    try {
+      assert.equal(await editUnsaved(other, 'src/a.vhd', `${A()}-- tab B\n`), true);
+      await page.eval((t) => { window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.setValue(t); }, `${A()}-- tab A again\n`);
+      await page.waitFor(() => !window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty, [], { what: 'A saved again' });
+      assert.equal(await other.waitDialog('Ficheiro Alterado no Disco'), 'Ficheiro Alterado no Disco');
+      assert.match(await other.eval(() => document.querySelector('.dlg-overlay .dlg-body').textContent), /src\/a\.vhd.*Este ficheiro foi alterado noutro separador e tem alterações no editor ainda não guardadas\.\s*Que versão mantém\?/);
+      await other.dialogButton('Manter a do Editor');
+      await other.waitNoDialog();
+    } finally {
+      await other.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+    }
+    // B's kept and written: on disk, and told to A, whose editor reloads it
+    await other.waitFor(() => !window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty, [], { what: 'B saved' });
+    await other.waitConsole(/src\/a\.vhd: the editor's version kept, written over the disk's\./);
+    await page.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor?.getValue() === t, [`${A()}-- tab B\n`], { what: 'A\'s editor reloaded' });
+    assert.equal(await readWs(env, 'TwoTabs', 'src/a.vhd'), `${A()}-- tab B\n`);
+    // settled: neither tab told again (the reloads are not saves), nor of its own saves
+    const [a0, b0] = [await told(page), await told(other)];
+    await new Promise((r) => setTimeout(r, 2000));
+    assert.deepEqual([await told(page), await told(other)], [a0, b0]);
+    assert.deepEqual(await page.eval(() => window.__console().match(/(?:reloaded|Changed)[^\n]*outside Silinx/g)), null);
+    assert.equal(await editorText(other, 'src/a.vhd'), `${A()}-- tab B\n`);
+    assert.deepEqual([warnings(page), warnings(other)], [[], []]);
+  } finally { await other.close?.(); }
+});

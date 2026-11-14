@@ -22,7 +22,10 @@ const READY = (async () => {
   const token = await tokenOf(m[1], m[2], fetch);
   if (token) { TOKEN = token; store.set(token); }
 })();
-const auth = (headers = {}) => (TOKEN ? { ...headers, 'X-Silinx-Token': TOKEN } : headers);
+// this page (a tab, until it is closed or reloaded): its own writes are not told back to it, but to the project's
+// other pages (#3972)
+const CLIENT = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+const auth = (headers = {}) => ({ ...headers, 'X-Silinx-Client': CLIENT, ...(TOKEN ? { 'X-Silinx-Token': TOKEN } : {}) });
 const authed = async (headers = {}) => { await READY; return auth(headers); };
 
 /** The token an address gives (null when refused or the server is not reached): a one-time code exchanged for it

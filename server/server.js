@@ -120,7 +120,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     if (m && !TOLD.test(req.path) && (!['GET', 'HEAD'].includes(req.method) || WRITING_GET.test(req.path))) {
       let name = '';
       try { name = decodeURIComponent(m[1]); } catch { /* a bad name: refused by its route */ }
-      const release = watcher.hold(name);
+      const release = watcher.hold(name, req.get('X-Silinx-Client'));   // (the page that asked: told to the others, #3972)
       res.once('finish', release);
       res.once('close', release);
     }
@@ -215,7 +215,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     await P.readProject(req.params.p);   // (a project that does not exist: its error, as JSON)
     res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
     res.write(': watching\n\n');
-    const off = watcher.subscribe(req.params.p, ev => res.write(`data: ${JSON.stringify(ev)}\n\n`));
+    const off = watcher.subscribe(req.params.p, ev => res.write(`data: ${JSON.stringify(ev)}\n\n`), { client: req.get('X-Silinx-Client') });
     const beat = setInterval(() => res.write(': \n\n'), 25_000);
     beat.unref?.();
     res.on('close', () => { clearInterval(beat); off(); });

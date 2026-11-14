@@ -206,3 +206,108 @@ test('the server: GET /api/projects/:p/events tells another process\'s changes, 
     await fs.rm(scratch, { recursive: true, force: true });
   }
 });
+
+// #3972 regression: a page's request was known to every page, so another tab on the same project was never told what
+// it changed (and that tab's next save replaced it). It is known to the page that asked only.
+test('#3972 a page\'s request: told to the project\'s other pages, not to it; a request of no page, and a run, to none', async () => {
+  const { w, dir, state, off } = await setup('p5');
+  off();
+  const seen = { a: [], b: [], anon: [] };
+  w.subscribe('p5', ev => seen.a.push(...ev.changes), { client: 'tab-a' });
+  w.subscribe('p5', ev => seen.b.push(...ev.changes), { client: 'tab-b' });
+  w.subscribe('p5', ev => seen.anon.push(...ev.changes));   // (a page that names none: as before)
+  const look = async () => { for (const k of Object.keys(seen)) seen[k].length = 0; await w.check('p5'); return { ...seen }; };
+  await w.check('p5');
+  // tab A's save: told to B, while it runs and once it ended (by one look only)
+  let release = w.hold('p5', 'tab-a');
+  await fs.writeFile(path.join(dir, 'src', 'a.vhd'), '--\n');
+  assert.deepEqual(await look(), { a: [], b: [{ path: 'src/a.vhd', kind: 'created' }], anon: [] }, 'held by A');
+  await tick();
+  await fs.writeFile(path.join(dir, 'src', 'a.vhd'), '-- more\n');
+  release();
+  assert.deepEqual(await look(), { a: [], b: [{ path: 'src/a.vhd', kind: 'changed' }], anon: [] }, 'released: its last write');
+  // tab B's save right after (A's read and told: A no longer a writer): told to A
+  release = w.hold('p5', 'tab-b');
+  await fs.writeFile(path.join(dir, 'src', 'b.vhd'), '--\n');
+  release();
+  assert.deepEqual(await look(), { a: [{ path: 'src/b.vhd', kind: 'created' }], b: [], anon: [] }, 'B right after A');
+  assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'told once');
+  // the two tabs' requests at once: each one's told to neither (as a request of no page)
+  const ra = w.hold('p5', 'tab-a'), rb = w.hold('p5', 'tab-b');
+  await fs.writeFile(path.join(dir, 'src', 'both.vhd'), '--\n');
+  ra(); rb();
+  assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'both held');
+  // tab B's save after: told to A
+  await w.check('p5');
+  release = w.hold('p5', 'tab-b');
+  await fs.rm(path.join(dir, 'src', 'a.vhd'));
+  release();
+  assert.deepEqual(await look(), { a: [{ path: 'src/a.vhd', kind: 'deleted' }], b: [], anon: [] });
+  // a request that names no page: told to none, as before
+  await w.check('p5');
+  release = w.hold('p5');
+  await fs.writeFile(path.join(dir, 'src', 'anon.vhd'), '--\n');
+  release();
+  assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'a request of no page');
+  // tab A's request during a run: the run's files are its own, told to none
+  await w.check('p5');
+  state.busy = true;
+  release = w.hold('p5', 'tab-a');
+  await fs.writeFile(path.join(dir, 'build', 'reports.json'), '{}');
+  release();
+  assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'during a run');
+  state.busy = false;
+  assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'the run ended');
+  // another process's change after all this: told to every page
+  await fs.writeFile(path.join(dir, 'src', 'mcp.vhd'), '--\n');
+  const told = [{ path: 'src/mcp.vhd', kind: 'created' }];
+  assert.deepEqual(await look(), { a: told, b: told, anon: told });
+  w.close();
+});
+
+test('#3972 the server: a page\'s write (X-Silinx-Client) told to the project\'s other page, not to it', async () => {
+  const scratch = await scratchEnv('silinx-watch-tabs-');
+  const app = await startApp();
+  const ctl = new AbortController();
+  try {
+    assert.equal((await app.call('POST', '/projects', { name: 'Tabs' })).status, 200);
+    const listen = async (client) => {
+      const r = await fetch(`${app.base}/projects/Tabs/events`, { signal: ctl.signal, headers: { 'X-Silinx-Client': client } });
+      assert.equal(r.status, 200);
+      const events = [];
+      (async () => {
+        const reader = r.body.getReader(), dec = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          let chunk;
+          try { chunk = await reader.read(); } catch { return; }
+          if (chunk.done) return;
+          buf += dec.decode(chunk.value, { stream: true });
+          let k;
+          while ((k = buf.indexOf('\n\n')) >= 0) {
+            const data = buf.slice(0, k).split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6)).join('\n');
+            buf = buf.slice(k + 2);
+            if (data) events.push(JSON.parse(data));
+          }
+        }
+      })();
+      return events;
+    };
+    const watcher = app.app.locals.watcher;
+    const a = await listen('tab-a'), b = await listen('tab-b');
+    await sleep(50);
+    await watcher.check('Tabs');
+    const settle = async () => { await watcher.check('Tabs'); await watcher.check('Tabs'); await sleep(50); };
+    const put = await fetch(`${app.base}/projects/Tabs/file?path=src/a.vhd`, { method: 'PUT', headers: { 'Content-Type': 'text/plain', 'X-Silinx-Client': 'tab-a' }, body: 'entity a is end;\n' });
+    assert.equal(put.status, 200);
+    await settle();
+    assert.deepEqual(a, [], 'not told to the page that wrote it');
+    // (the source, and the project that lists it now)
+    assert.deepEqual(b.flatMap(e => e.changes), [{ path: 'silinx.json', kind: 'changed' }, { path: 'src/a.vhd', kind: 'created' }]);
+    assert.ok(b.every(e => e.tab === true), 'said to be another page\'s');
+  } finally {
+    ctl.abort();
+    await app.close();
+    await fs.rm(scratch, { recursive: true, force: true });
+  }
+});

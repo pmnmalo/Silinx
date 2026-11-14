@@ -6,7 +6,8 @@
 // time; a poll, the same on every system, where fs.watch is not), the build's outputs aside but its summary
 // (build/reports.json) and the processes' marks (build/silinx-status.json). The changes this server makes itself
 // (the page's own requests, its runs) are not told: while one of them runs the project is held, and once it ends
-// what it changed is taken as known, silently.
+// what it changed is taken as known, silently. A request that names its page (X-Silinx-Client, #3972) is known to
+// that page only: what it changed is told to the project's other pages (another tab on the same project).
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -50,11 +51,13 @@ export function diffScans(before, after) {
 /**
  * A watcher of the projects: dirOf(name) is a project's folder; busy(name), whether this server runs something
  * in it now (a run: its changes are its own).
- *   subscribe(name, onChange) -> unsubscribe; onChange({ project, changes })
- *   hold(name) -> release: the changes made until release() are this server's own (not told)
+ *   subscribe(name, onChange, { client }) -> unsubscribe; onChange({ project, changes, tab }) (tab: another page's)
+ *   hold(name, client) -> release: the changes made until release() are this server's own: not told to the page
+ *     `client` (the page that asked), told to the project's other pages that name theirs; a hold of no page's, to none
  */
 export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan } = {}) {
-  const watched = new Map();   // key -> { name, dir, listeners, snap, holds, timer, inflight, next, wasBusy, resync, releases, ready }
+  const watched = new Map();   // key -> { name, dir, listeners, snap, holds, writers, timer, inflight, next, wasBusy, resync, releases, ready }
+  const NOBODY = Symbol('a hold of no page');
   const keyOf = name => String(name).toLowerCase();   // (case-insensitive file systems: one folder)
 
   // one look at a time; asked while one runs (a release, a check): another one after it (the timer's: skipped)
@@ -65,38 +68,50 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
   }
   async function look(w) {
     await w.ready;
-    const heldBefore = w.holds > 0 || busy(w.name), releases = w.releases;
+    const ranBefore = busy(w.name), heldBefore = w.holds > 0 || ranBefore, releases = w.releases;
     const now = await scanDir(w.dir);
-    const held = heldBefore || w.holds > 0 || busy(w.name);   // (held during the scan: its files may be our own)
-    // held, or just released by a run: what changed is known, not told; released during the scan, the scan may have
-    // read the folder before the request's writes: the next look too (#2913)
-    if (held || w.wasBusy || w.resync) { w.snap = now; w.wasBusy = held && busy(w.name); w.resync = w.releases !== releases; return; }
+    const ran = ranBefore || busy(w.name), held = heldBefore || w.holds > 0 || ran;   // (held during the scan: its files may be our own)
     const changes = diffScans(w.snap, now);
     w.snap = now;
-    if (changes.length) for (const fn of [...w.listeners]) { try { fn({ project: w.name, changes }); } catch { /* a listener's own error */ } }
+    // held, or just released by a run: what changed is known, not told; released during the scan, the scan may have
+    // read the folder before the request's writes: the next look too (#2913). The requests' changes are told to the
+    // pages that did not ask (#3972); a run's to none
+    if (held || w.wasBusy || w.resync) {
+      if (!ran && !w.wasBusy && !w.writers.has(NOBODY)) tell(w, changes, client => client != null && !w.writers.has(client), { tab: true });
+      w.wasBusy = held && busy(w.name); w.resync = w.releases !== releases;
+      if (!w.holds && !w.resync && !w.wasBusy && !busy(w.name)) w.writers.clear();   // (all they wrote read and told)
+      return;
+    }
+    w.writers.clear();
+    tell(w, changes, () => true);
+  }
+  function tell(w, changes, told, by = {}) {
+    if (!changes.length) return;
+    for (const [fn, client] of [...w.listeners]) if (told(client)) { try { fn({ project: w.name, changes, ...by }); } catch { /* a listener's own error */ } }
   }
 
-  function subscribe(name, onChange) {
+  function subscribe(name, onChange, { client = null } = {}) {
     const key = keyOf(name);
     let w = watched.get(key);
     if (!w) {
-      w = { name, dir: dirOf(name), listeners: new Set(), snap: new Map(), holds: 0, inflight: null, next: null, wasBusy: false, resync: false, releases: 0 };
+      w = { name, dir: dirOf(name), listeners: new Map(), snap: new Map(), holds: 0, writers: new Set(), inflight: null, next: null, wasBusy: false, resync: false, releases: 0 };
       w.ready = scanDir(w.dir).then(s => { w.snap = s; });
       w.timer = setInterval(() => { poll(w, { after: false }).catch(() => {}); }, interval);
       w.timer.unref?.();
       watched.set(key, w);
     }
-    w.listeners.add(onChange);
+    w.listeners.set(onChange, client || null);
     return () => {
       w.listeners.delete(onChange);
       if (!w.listeners.size && watched.get(key) === w) { clearInterval(w.timer); watched.delete(key); }
     };
   }
 
-  function hold(name) {
+  function hold(name, client = null) {
     const w = watched.get(keyOf(name));
     if (!w) return () => {};
     w.holds++;
+    w.writers.add(client || NOBODY);
     let done = false;
     return () => { if (done) return; done = true; w.holds--; w.resync = true; w.releases++; poll(w).catch(() => {}); };
   }
