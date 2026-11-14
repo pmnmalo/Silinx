@@ -289,7 +289,7 @@ export function undeclaredBlackboxes(hls, sources) {
  *  (the headers, the descriptions' files); null when it has none. read(path) gives a file's text. */
 export async function blackboxesIn(paths, read) {
   const blackboxes = [], headers = {};
-  for (const f of paths.filter((p) => /\.json$/i.test(p) && !/\.(sch|asm|fsm|tt|bool|pn)\.json$/i.test(p) && !/^build\//.test(p))) {
+  for (const f of paths.filter((p) => /\.json$/i.test(p) && !/\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i.test(p) && !/^build\//.test(p))) {
     let text, j;
     try { text = await read(f); j = JSON.parse(text); } catch { continue; }
     if (isObject(j) && 'c_function_name' in j && 'rtl_top_module_name' in j) blackboxes.push({ file: f, text });

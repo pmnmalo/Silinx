@@ -43,7 +43,7 @@ export async function checkDesignOnly(tool, args) {
 /** The HDL files a project's drawings generate (their `generatedFile`): the HDL that is no source of the user's own. */
 async function generatedFiles(name) {
   const out = [];
-  for (const f of (await P.fileTree(name)).filter(f => /\.(sch|asm|tt|bool|fsm|pn)\.json$/.test(f))) {
+  for (const f of (await P.fileTree(name)).filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(f))) {
     try {
       const d = JSON.parse(await fs.readFile(path.join(P.projectDir(name), f), 'utf8'));
       if (typeof d.generatedFile === 'string') out.push(d.generatedFile);
