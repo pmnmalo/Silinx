@@ -19,6 +19,8 @@ export const EDITOR_PT = {
   'File Changed on Disk': 'Ficheiro Alterado no Disco', 'Which version do you keep?': 'Que versão mantém?',
   'This file was changed outside Silinx, and it has changes in the editor not saved yet.': 'Este ficheiro foi alterado fora do Silinx e tem alterações no editor ainda não guardadas.',
   'This file was deleted outside Silinx, and it has changes in the editor not saved yet.': 'Este ficheiro foi apagado fora do Silinx e tem alterações no editor ainda não guardadas.',
+  'This file was changed in another tab, and it has changes in the editor not saved yet.': 'Este ficheiro foi alterado noutro separador e tem alterações no editor ainda não guardadas.',
+  'This file was deleted in another tab, and it has changes in the editor not saved yet.': 'Este ficheiro foi apagado noutro separador e tem alterações no editor ainda não guardadas.',
   'Keep the Editor\'s': 'Manter a do Editor', 'Load from Disk': 'Carregar do Disco', 'Close It': 'Fechá-lo',
   'Fix:': 'Corrigir:', 'No quick fix here.': 'Não há aqui nenhuma correção rápida.', 'Quick fix of an error': 'Correção rápida de um erro', 'Quick Fix…': 'Correção Rápida…',
 };

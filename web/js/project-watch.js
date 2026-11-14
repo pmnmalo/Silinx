@@ -42,8 +42,9 @@ async function listen(name, signal) {
 }
 
 /** The changes another process made in the open project, shown: { project, changes: [{ path, kind }] } (by: the
- *  owner of a project followed, #3181, whose changes they are). */
-export async function applyChanges({ project, changes = [], by = null }) {
+ *  owner of a project followed, #3181, whose changes they are; tab: another page's of this server, #3972). */
+export async function applyChanges({ project, changes = [], by = null, tab = false }) {
+  const where = tab && !by ? 'in another tab' : null;
   if (!S.project || S.project.name !== project || !changes.length) return;
   if (!by) dispatchEvent(new CustomEvent('silinx:disk-changes', { detail: { project, changes } }));   // (a project shared: read again, #3181)
   let files = changes.filter(c => !c.path.startsWith('build/'));
@@ -51,8 +52,8 @@ export async function applyChanges({ project, changes = [], by = null }) {
   if (by) files = (await Promise.all(files.map(async c => (c.kind === 'changed' && await shownLive(c.path) ? null : c)))).filter(Boolean);
   const run = changes.some(c => c.path === REPORTS);
   if (files.length) {
-    log(`${by ? `Changed by ${by}` : 'Changed outside Silinx'}: ${files.map(c => `${c.path}${c.kind === 'changed' ? '' : ` (${c.kind})`}`).join(', ')}.`, 'info');
-    for (const c of files) for (const d of S.docs.filter(o => docPath(o) === c.path)) await reloadDoc(d, c, by);
+    log(`${by ? `Changed by ${by}` : where ? `Changed ${where}` : 'Changed outside Silinx'}: ${files.map(c => `${c.path}${c.kind === 'changed' ? '' : ` (${c.kind})`}`).join(', ')}.`, 'info');
+    for (const c of files) for (const d of S.docs.filter(o => docPath(o) === c.path)) await reloadDoc(d, c, by, where);
     await reloadProject();
   }
   if (by) return;   // (a project followed: its runs are its owner's, not shared)
@@ -75,7 +76,7 @@ async function shownLive(path) {
 }
 
 // an open document whose file changed on disk: reloaded, or the user asked when it has changes of its own
-async function reloadDoc(d, { path, kind }, by = null) {
+async function reloadDoc(d, { path, kind }, by = null, where = null) {
   const gone = kind === 'deleted';
   let text = null;
   if (!gone) { try { text = await api.readFile(S.project.name, path); } catch { return; } }
@@ -86,11 +87,11 @@ async function reloadDoc(d, { path, kind }, by = null) {
     const save = d.save;
     d.save = null;
     let keep;
-    try { keep = await askKeep(path, gone); } finally { d.save = save; }
+    try { keep = await askKeep(path, gone, where); } finally { d.save = save; }
     if (keep) { log(`${path}: the editor's version kept${gone ? ', written again' : ', written over the disk\'s'}.`, 'warn'); await flushDoc(d); return; }
     d.dirty = false;
   }
-  if (gone) { log(by ? `${path} was deleted by ${by}: closed.` : `${path} was deleted outside Silinx: closed.`, 'warn'); await closeDoc(d); return; }
+  if (gone) { log(by ? `${path} was deleted by ${by}: closed.` : `${path} was deleted ${where || 'outside Silinx'}: closed.`, 'warn'); await closeDoc(d); return; }
   if (d.editor) {
     d.editor.setValue(text);
     d.editor.markClean();
@@ -103,18 +104,17 @@ async function reloadDoc(d, { path, kind }, by = null) {
     await openFile(path);
     if (front && S.docs.includes(front)) activateDoc(front);
   }
-  log(by ? `${path} reloaded: changed by ${by}.` : `${path} reloaded: changed outside Silinx.`, 'info');
+  log(by ? `${path} reloaded: changed by ${by}.` : `${path} reloaded: changed ${where || 'outside Silinx'}.`, 'info');
 }
 
 /** Changed in the editor and on disk (deleted there): true, keep the editor's (closed: kept too, the user's work). */
-async function askKeep(path, gone) {
+async function askKeep(path, gone, where = null) {
   const v = await dialog({
     title: 'File Changed on Disk',
     className: 'disk-change-dlg',
     body: h('div', {},
       h('p', {}, h('code', { 'data-no-i18n': '' }, path)),
-      h('p', {}, gone ? 'This file was deleted outside Silinx, and it has changes in the editor not saved yet.'
-        : 'This file was changed outside Silinx, and it has changes in the editor not saved yet.'),
+      h('p', {}, `This file was ${gone ? 'deleted' : 'changed'} ${where || 'outside Silinx'}, and it has changes in the editor not saved yet.`),
       h('p', {}, 'Which version do you keep?')),
     buttons: [
       { label: 'Keep the Editor\'s', value: 'editor', primary: true },

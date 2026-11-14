@@ -94,7 +94,8 @@ export async function viewSourcesOf(name, project, sim, failed = null) {
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role || 'design'));
   let drawn = [];
   try { drawn = await viewSources(project, P.projectDir(name), hdl); } catch { /* none */ }
-  if (failed) failed.push(...drawn.filter(v => !v.text && /\.(c|cpp|cc|cxx)$/i.test(v.path)));
+  // (a C source whose HDL cannot be made, #2995, and a drawing whose module cannot be, #3934)
+  if (failed) failed.push(...drawn.filter(v => !v.text && (/\.(c|cpp|cc|cxx)$/i.test(v.path) || v.errors?.length)));
   drawn = drawn.filter(v => v.text);
   return [...hdl, ...drawn.map(v => ({ path: v.path, lang: v.lang, text: v.text, role: 'design' }))];
 }
@@ -115,7 +116,12 @@ export async function elaborateView(name, { top, sim = false, lint = true } = {}
   const srcs = await viewSourcesOf(name, project, sim, failed);
   const lib = compile([...primitiveSources(srcs), ...srcs]);
   // (a C source whose HDL cannot be made, #2995: its errors, as the Design pane's; its module, the top, then not elaborated)
-  const cErrs = failed.flatMap(v => (v.diagnostics || []).map(d => ({ ...d, tool: 'SilinxC' })));
+  const isC = v => /\.(c|cpp|cc|cxx)$/i.test(v.path);
+  const cErrs = failed.filter(isC).flatMap(v => (v.diagnostics || []).map(d => ({ ...d, tool: 'SilinxC' })));
+  // (a drawing whose module cannot be made: its errors on it, the design needing it; its module, the top, not elaborated,
+  // #3934)
+  const { withDrawingErrors } = await import('../core/drawing-diags.js');
+  const { isDesignOnly } = await import('../core/project-kind.js');
   const cTop = failed.some(v => String(v.module || '').toLowerCase() === String(mod).toLowerCase());
   // (a blackbox no C source declares, #3022: a warning of its description, as the interface's Check Syntax)
   const { blackboxesIn, undeclaredBlackboxes } = await import('../core/c-blackbox.js');
@@ -134,8 +140,8 @@ export async function elaborateView(name, { top, sim = false, lint = true } = {}
   const stale = (await staleDrawings(P, name)).filter(s => inView.has(s.target)).map(({ target, from, why }) => ({ severity: 'error', file: target, line: 1, col: 1, tool: 'Silinx',
     message: `${target} is not up to date: ${from} cannot generate it, ${why}. Fix ${from} (its HDL is then generated again).` }));
   const seen = new Set();
-  const diags = [...lib.errors, ...(design?.diags || []), ...extra, ...stale, ...cErrs, ...bbWarn]
-    .filter(d => { const k = `${d.file}:${d.line}:${d.message}`; if (seen.has(k)) return false; seen.add(k); return true; })
+  const diags = withDrawingErrors([...lib.errors, ...(design?.diags || []), ...extra, ...stale, ...cErrs, ...bbWarn]
+    .filter(d => { const k = `${d.file}:${d.line}:${d.message}`; if (seen.has(k)) return false; seen.add(k); return true; }), failed.filter(v => !isC(v)), { top: mod, design: isDesignOnly(project) })
     .map(d => ({ ...d, tool: d.tool || 'HDLCompiler' }));
   return { project, srcs, lib, design, top: mod, diags };
 }

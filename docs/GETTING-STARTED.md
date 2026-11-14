@@ -141,7 +141,7 @@ A black window (the Silinx server) opens and then your browser shows Silinx at
 - Your projects are saved as normal folders in **`Silinx-projects`** in your user folder
   (Windows: `C:\Users\<you>\Silinx-projects`, macOS: `/Users/<you>/Silinx-projects`).
   You can copy them, back them up, or zip them to hand in.
-- **File ▸ Export Project (.zip)…** starts with the software it goes to: **Xilinx ISE** produces a zip that opens in Xilinx ISE 14.7; **Silinx** saves the whole Silinx project (ASM charts and schematics included), reopened with **File ▸ Import Project (.zip)…** (which recognises the zip's software). AMD Vivado and Intel Quartus are shown disabled: Silinx does not read or write their projects yet. An imported project came from outside: it runs Xilinx ISE and programs a board only once you press **Trust Project** in the console, where it says so when the project opens.
+- **File ▸ Export Project (.zip)…** starts with the software it goes to: **Xilinx ISE** produces a zip that opens in Xilinx ISE 14.7; **Silinx** saves the whole Silinx project (ASM charts and schematics included), reopened with **File ▸ Import Project (.zip)…** (which recognises the zip's software); a Silinx project's folder (the one with its silinx.json) imports there too, as an ISE project's does. AMD Vivado and Intel Quartus are shown disabled: Silinx does not read or write their projects yet. An imported project came from outside: it runs Xilinx ISE and programs a board only once you press **Trust Project** in the console, where it says so when the project opens.
 
 ### Updating Silinx
 

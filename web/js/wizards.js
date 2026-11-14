@@ -22,6 +22,7 @@ import { prefKey } from './prefs.js';
 import { safeReleaseUrl } from './release-url.js';
 import { NAME_RE } from '/core/ident.js';
 import { projectNameError, projectNameFrom, sameProject } from '/core/project-name.js';
+import { silinxFolderError, silinxFolderSkips } from '/core/project-folder.js';
 
 // Device used when no evaluation board is selected.
 const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
@@ -351,19 +352,23 @@ export async function openProjectDialog() {
 const ISE_OUTPUT_DIRS = /(^|\/)(xst|_ngo|_xmsgs|iseconfig|isim|xlnx_auto_0_xdb|planAhead_run_\d+|ipcore_dir\/tmp|build|\.Xil)\//i;
 const ISE_OUTPUT_FILES = /\.(ngc|ngd|ncd|ngr|ngm|pcf|bld|map|mrp|par|pad|twr|twx|xpi|unroutes|bgn|drc|bit|bin|mcs|prm|syr|lso|xrpt|xwbt|ptwx|cmd_log|stx|gise|wdb|exe|log|html|xml)$/i;
 
-// Zip the files picked from a folder (<input webkitdirectory>), relative to that folder.
-export async function zipFolderSelection(fileList) { // exported for tests
+// Zip the files picked from a folder (<input webkitdirectory>), relative to that folder: an ISE project's (its outputs
+// left out), or a Silinx project's (software 'silinx': its hidden files and its build folder left out, as its export's
+// zip, core/project-folder.js, #3965).
+export async function zipFolderSelection(fileList, software = 'xilinx') { // exported for tests
   const { createZip, browserCodec } = await import('/core/zip.js');
   const files = [...fileList];
   const rootName = (files[0]?.webkitRelativePath || '').split('/')[0];
+  const silinx = software === 'silinx';
   const entries = [];
   let skipped = 0;
   for (const f of files) {
     const rel = (f.webkitRelativePath || f.name).split('/').slice(1).join('/') || f.name;
-    if (ISE_OUTPUT_DIRS.test(rel) || ISE_OUTPUT_FILES.test(rel) || f.size > 20 * 1024 * 1024 || /(^|\/)\./.test(rel)) { skipped++; continue; }
+    if (silinx ? silinxFolderSkips(rel) : ISE_OUTPUT_DIRS.test(rel) || ISE_OUTPUT_FILES.test(rel) || f.size > 20 * 1024 * 1024 || /(^|\/)\./.test(rel)) { skipped++; continue; }
     entries.push({ path: rel, data: new Uint8Array(await f.arrayBuffer()) });
   }
-  if (!entries.some(e => /\.xise$/i.test(e.path))) throw new Error(`no .xise project file in the folder '${rootName}'`);
+  if (silinx) { const e = silinxFolderError(entries.map(x => x.path), rootName); if (e) throw new Error(e); }
+  else if (!entries.some(e => /\.xise$/i.test(e.path))) throw new Error(`no .xise project file in the folder '${rootName}'`);
   const zip = await createZip(entries, browserCodec());
   return { blob: new Blob([zip], { type: 'application/zip' }), rootName, count: entries.length, skipped };
 }

@@ -147,7 +147,7 @@ Abre-se uma janela preta (o servidor do Silinx) e depois o browser mostra o Sili
 - Os projetos ficam em pastas normais em **`Silinx-projects`**, na sua pasta de utilizador
   (Windows: `C:\Users\<você>\Silinx-projects`, macOS: `/Users/<você>/Silinx-projects`).
   Pode copiá-los, fazer cópias de segurança, ou comprimi-los para entregar.
-- **File ▸ Export Project (.zip)…** começa pelo software de destino: **Xilinx ISE** cria um zip que abre no Xilinx ISE 14.7; **Silinx** guarda o projeto Silinx completo (com os diagramas ASM e esquemáticos), que se reabre com **File ▸ Import Project (.zip)…** (que reconhece o software do zip). AMD Vivado e Intel Quartus aparecem desativados: o Silinx ainda não lê nem escreve os seus projetos. Um projeto importado veio de fora: só corre o Xilinx ISE e só programa uma placa depois de carregar em **Confiar no Projeto** (Trust Project) na consola, que o diz quando o projeto abre.
+- **File ▸ Export Project (.zip)…** começa pelo software de destino: **Xilinx ISE** cria um zip que abre no Xilinx ISE 14.7; **Silinx** guarda o projeto Silinx completo (com os diagramas ASM e esquemáticos), que se reabre com **File ▸ Import Project (.zip)…** (que reconhece o software do zip); a pasta de um projeto Silinx (a que tem o seu silinx.json) também se importa aí, como a de um projeto ISE. AMD Vivado e Intel Quartus aparecem desativados: o Silinx ainda não lê nem escreve os seus projetos. Um projeto importado veio de fora: só corre o Xilinx ISE e só programa uma placa depois de carregar em **Confiar no Projeto** (Trust Project) na consola, que o diz quando o projeto abre.
 - A interface abre em português quando o browser está em português; muda-se em **Definições (⚙) ▸ Idioma** (na interface
   Estilo ISE, **View ▸ Language**).
 

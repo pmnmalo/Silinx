@@ -837,7 +837,7 @@ uiTest('#3703 Import / Export Project (.zip)…: the Software row, the zip\'s so
   const silinxZip = await waitDownload(page, 'SoftSrc-silinx.zip');
   await page.waitConsole(/Exported SoftSrc-silinx\.zip: the whole Silinx project/);
 
-  // the import: the software of the zip picked preselected, the ISE project's folder row with it
+  // the import: the software of the zip picked preselected, the project's folder row for both (#3965)
   const { createZip } = await import('../../core/zip.js');
   const zlib = await import('node:zlib');
   const codec = { deflate: (d) => zlib.deflateRawSync(d), inflate: (d, l) => zlib.inflateRawSync(d, { maxOutputLength: l }) };
@@ -849,15 +849,15 @@ uiTest('#3703 Import / Export Project (.zip)…: the Software row, the zip\'s so
   await page.menu('File', 'Import Project (.zip)…');
   await page.waitDialog('Import Project');
   assert.deepEqual(await row(), ['Silinx (checked)', 'Xilinx ISE', VIVADO, QUARTUS]);
-  assert.equal(await folderShown(), false);
+  assert.equal(await folderShown(), true);
   await page.setFiles(FILE, [iseZip]);
   await checked('xilinx');
   assert.equal(await folderShown(), true);
   assert.match(await hint(), /^Import an ISE project from its folder/);
   await page.setFiles(FILE, [silinxZip]);
   await checked('silinx');
-  assert.equal(await folderShown(), false);
-  assert.match(await hint(), /^Import a whole Silinx project from a \.zip made with File ▸ Export Project \(\.zip\)…/);
+  assert.equal(await folderShown(), true);
+  assert.match(await hint(), /^Import a whole Silinx project from its folder \(the folder with the silinx\.json file\), or from a \.zip of that folder/);
   // a Vivado project's zip, a zip of no project: said under the fields, the choice unchanged
   await page.setFiles(FILE, [vivado]);
   await info('Silinx does not read or write an AMD Vivado project (.xpr) yet.');
