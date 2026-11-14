@@ -9,10 +9,10 @@ import { writeClip } from './clipboard.js';
 import { linkField } from './link-field.js';
 import { withTop } from '/core/collab-link.js';
 
-export const ROLES = Object.freeze(['viewer', 'editor']);
+const ROLES = Object.freeze(['viewer', 'editor']);
 
 /** The link of a role (`module`: opening on it, #3631). */
-export const roleLink = (share, role, module = null) => {
+const roleLink = (share, role, module = null) => {
   const l = role === 'editor' ? share.editLink : share.link;
   return module ? withTop(l, module) : l;
 };

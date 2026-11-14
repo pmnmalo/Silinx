@@ -410,16 +410,7 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .collab-badge.owner { outline: 2px solid currentColor; outline-offset: -1px; }
 .collab-btn { width: auto; padding: 0 8px; white-space: nowrap; }
 .collab-dlg p { margin: 0 0 10px; }
-/* a sharing dialog's QR code (#3637): black on white in either theme, beside its link; enlarged, as large as the window */
-.link-out-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
-.link-out-row > textarea { flex: 1 1 260px; min-width: 0; }
-.collab-link-row { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 10px; }
-.collab-link-row > div:first-child { align-self: stretch; }
-.qr-box { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.qr-box:empty { display: none; }
-.qr-show { padding: 0; border: 1px solid #b9c3d0; background: #fff; cursor: zoom-in; line-height: 0; }
-.qr-img { width: 128px; height: 128px; image-rendering: pixelated; }
-.qr-enlarge { font-size: 11px; }
+/* a sharing window's QR code (#3637): black on white in either theme, as large as the window (#3995: shown when asked) */
 /* a sharing window's link, hidden (#3995: web/js/link-field.js): the masked field, its buttons in a column beside it;
    the Share: row's two ways side by side, each one's explanation below its button */
 .link-field { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
