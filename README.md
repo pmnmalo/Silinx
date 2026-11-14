@@ -158,7 +158,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   ones too, and 4000 gates, their datasheets' pinouts), switches (logic, slide, DIP), push buttons, a clock, pull-ups, LEDs,
   7-segment displays and LED bars wired on a breadboard or beside it, simulated
   live with the gates' delays (*Try it*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
-  says the short circuits, the unpowered ICs and the floating inputs; its HDL is generated, one entity per IC.
+  says the short circuits, the unpowered ICs and the floating inputs; its HDL is generated, one entity per IC; logic probes,
+  and *Waveforms*: the Try it replayed in SSim.
 - **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–16) and of the
   outputs, or an expression (`F = A·B' + C`) whose variables are the inputs and whose name the output, its column
   filled in.
