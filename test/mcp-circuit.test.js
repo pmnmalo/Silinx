@@ -27,7 +27,8 @@ test('circuit_parts: the library, one part with its pins, gates and delay; an un
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock', 'pull-up', 'pull-down',
     'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
-    '4001', '4011', '4030', '4069', '4070', '4071', '4081', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485']);
+    '4001', '4011', '4030', '4069', '4070', '4071', '4081', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
+    '7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017']);
   const one = await ok('circuit_parts', { type: '7486' });
   assert.equal(one.text, '7486: Quad 2-input XOR (SN74LS86, 12 ns); pins 1 1A in, 2 1B in, 3 1Y out, 4 2A in, 5 2B in, 6 2Y out, 7 GND gnd, 8 3Y out, 9 3A in, 10 3B in, 11 4Y out, 12 4A in, 13 4B in, 14 VCC vcc; gates xor (1, 2) → 3; xor (4, 5) → 6; xor (9, 10) → 8; xor (12, 13) → 11');
   assert.deepEqual(one.data.parts[0].pins[0], { n: 1, name: '1A', dir: 'in', dx: 0, dy: 0 });

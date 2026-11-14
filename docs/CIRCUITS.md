@@ -71,6 +71,18 @@ or nothing). The 7447 drives a common anode display (open collector, active low)
 outputs modelled as totem pole, its pull-ups inside); their BI̅/RBO̅ pin is an input (BI̅), RBO̅ not modelled. The 7483's
 VCC is pin 5 and its GND pin 12.
 
+**The sequential ICs** (`core/circuit-seq.js`: the 7474, 7476, 74112, 7490, 7493, 74161, 74163, 74191, 74193, 74164,
+74165, 74194, 74595, 4511 and 4017) are written three times the same way, in the clocked style a synthesis tool reads: the
+engine's processes, each run when an input of its sensitivity changes (an asynchronous control first, else its clock's
+edge, from 0 to 1 or 1 to 0), and their VHDL processes and Verilog always blocks; their registers are unknown (X) at
+power-on, until a clear, a load or a clock makes them known. Two choices of that style, said here: an asynchronous load
+(the 74165's SH/LD̅, the 74191's and the 74193's LOAD̅) takes the inputs when it starts, not while it is held (the chips
+follow them); releasing one of two asynchronous controls both active (a 7474's PRE̅ and CLR̅, the 7490's R0 and R9, the
+74193's CLR and LOAD̅: not stable on the chips) is seen by VHDL and the engine, not by Verilog's edges. The 74193 counts
+on the rising edge of UP and DOWN ANDed, up when UP was the last to fall; the 4017 on CLK's rising edge only (not on CLK
+INH's falling edge). Their generated HDL is clean of Check Syntax's warnings, the few the chips' own structure raises (a
+clock read through the IC's input, a latch, a clock used as data) silenced with their reason (`silinx: ignore`).
+
 **Timing:** a part has its typical propagation delay (the 74LS datasheets': 7400, 7402, 7404, 7408, 7410, 7411, 7420,
 7427: 10 ns; 7430, 7486: 12 ns; 7432: 14 ns; 7414, 7406: 15 ns; the open collector 7401, 7403, 7405: 17 ns; the 4000s
 at 5 V: 4069 45 ns, 4001, 4011, 4071, 4081 60 ns, 4030 100 ns, 4070 140 ns), one value for both edges. The delays are inertial (a pulse shorter than the delay does not get through),

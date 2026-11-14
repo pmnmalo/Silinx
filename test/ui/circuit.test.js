@@ -77,7 +77,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-tool`)].some((b) => b.textContent.trim() === 'Fio'), [ED], { what: 'the toolbar in Portuguese' });
   assert.deepEqual(await status(page), ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 16 fio(s)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts h3, ${ed} .circ-lib-title`)].map((e) => e.textContent), ED),
-    ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS)']);
+    ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS)', 'Sequenciais (74LS, 4000)']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).title, ED), 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"]`).textContent, ED), '7400 Quatro portas NAND de 2 entradas');
