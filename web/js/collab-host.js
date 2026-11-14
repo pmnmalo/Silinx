@@ -1,9 +1,9 @@
 // A shared project hosted by the owner's page (#3227, the browser edition, which has no server; on a server edition,
 // when the owner asks for it): the room in the page (core/collab-loop.js), the followers over WebRTC (collab-rtc.js),
 // each connected by two codes exchanged by hand: the follower's, which they get when they open the link, and the
-// owner's answer to it (Add a Follower…). Every message in the console.
+// owner's answer to it (Add a User…'s Take a Code…, #3996). Every message in the console.
 //   hostRoom() -> { hosted, WebSocket }: the room of a share (collab-share.js startSharing), the owner's socket to it
-//   addFollowerDialog(share): a follower's code taken, the answer's shown; the follower in the room once connected
+//   addCodeDialog(share): a follower's code taken, the answer's shown; the follower in the room once connected
 //   hostSocket(link): the follower's side (the meeting point first, collab-meet.js), its code shown and the owner's
 //                   asked; a WebSocket class for followRoom
 import { h, dialog } from './ui.js';
@@ -21,27 +21,27 @@ export function hostRoom() {
   return { hosted, WebSocket: hosted.owner };
 }
 
-/** Add a Follower…: their code (got when they opened the link) taken; the answer's code shown, for them. */
-export async function addFollowerDialog(share) {
+/** Add a User…'s Take a Code…: their code (got when they opened the link) taken; the answer's code shown, for them. */
+export async function addCodeDialog(share) {
   const input = codeField(undefined, 'code');
   const code = await dialog({
-    title: 'Add a Follower',
+    title: 'Add a User',
     body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'A follower gets a code when they open the link: paste it here.'),
+      h('p', {}, 'A user gets a code when they open the link: paste it here.'),
       input),
     buttons: [{ label: 'Connect', primary: true, value: () => input.value.trim() }, { label: 'Cancel', value: null }],
     onOpen: () => setTimeout(() => input.focus(), 0),
   });
   if (!code || !share.hosted) return null;
   let ans;
-  try { ans = await ownerAnswer({ key: share.session.key, room: share.session.room, code }); } catch (e) { app.log(`ERROR: Add a Follower: ${e.message}.`, 'err'); return null; }
+  try { ans = await ownerAnswer({ key: share.session.key, room: share.session.room, code }); } catch (e) { app.log(`ERROR: Add a User: ${e.message}.`, 'err'); return null; }
   ans.channel.then(dc => { if (share.hosted) share.hosted.follower(channelEnd(dc, ans.pc)); else ans.close(); },
-    e => app.log(`WARNING: Add a Follower: ${e.message}.`, 'warn'));
-  app.log('Add a Follower: send your code back to the follower; they are in once they paste it.', 'info');
+    e => app.log(`WARNING: Add a User: ${e.message}.`, 'warn'));
+  app.log('Add a User: send your code back to them; they are in once they paste it.', 'info');
   await dialog({
-    title: 'Add a Follower',
+    title: 'Add a User',
     body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'Send this code back to the follower: they paste it to connect.'),
+      h('p', {}, 'Send this code back to them: they paste it to connect.'),
       codeField(ans.code, 'answer'), copyButton(ans.code, 'Your code')),
     buttons: [{ label: 'Close', primary: true, value: true }],
   });
@@ -61,7 +61,7 @@ export async function hostSocket(link) {
   const code = await dialog({
     title: 'Connect to the Owner',
     body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'The owner\'s page shares this project itself. Send them your code (Add a Follower…, in their toolbar), then paste the code they send back.'),
+      h('p', {}, 'The owner\'s page shares this project itself. Send them your code (Add a User…, in their toolbar), then paste the code they send back.'),
       h('label', {}, 'Your code:'), codeField(offer.code, 'code'), copyButton(offer.code, 'Your code'),
       h('label', {}, 'The owner\'s code:'), answer),
     buttons: [{ label: 'Connect', primary: true, value: () => answer.value.trim() }, { label: 'Cancel', value: null }],

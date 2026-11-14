@@ -602,7 +602,7 @@ uiTest('standalone edition (file://) in a user\'s browser (Chrome without --allo
 }, { url: () => 'about:blank', timeout: 300000 });
 
 // #418: the Board Emulator in the browser edition compiles the design with the site's Yosys (its assets)
-uiTest('#3227 browser edition: Share Project… hosts the room in the page (its link …#follow=<room>.<key>.host.<owner\'s key>), Add a Follower… among its commands', E, async (page) => {
+uiTest('#3227 browser edition: Share Project… hosts the room in the page (its link …#follow=<room>.<key>.host.<owner\'s key>), Add a User… among its commands', E, async (page) => {
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
@@ -625,10 +625,11 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   // (a relay of the site's, #3227: none in a build without SILINX_SITE_RELAYS, so no such choice; this page hosts it)
   assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay .collab-relay')), false);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
-  await page.dialogButton('Share');
+  await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
   assert.ok(link.startsWith(siteUrl) && /#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/.test(link), link);
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Copy Link', 'Copy Editor Link', 'Add a Follower…', 'Stop Sharing', 'Close']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Start Sharing', 'Stop Sharing', 'Add a User…', 'Close']);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-hosted').hidden), false);
   await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code/m);
   // (the meeting point's Trystero in the site's bundle, #3227)
   assert.ok((await fs.readFile(path.join(site, 'index.html'), 'utf8')).includes('Trystero'), 'Trystero bundled');
@@ -648,6 +649,10 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   } finally { await fp.close(); }
   await page.dialogButton('Stop Sharing');
   await page.waitConsole(/^Stopped sharing "WebShare": its followers no longer see it\.$/m);
+  // (the window kept, #3996: Start Sharing again offered)
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-links').hidden), true);
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
   assert.doesNotMatch(await page.consoleText(), /^(WARNING|ERROR)/m);
 }, { url: () => 'about:blank', timeout: 120000 });
 
