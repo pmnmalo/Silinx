@@ -48,7 +48,7 @@ export function generateCircuit(model, lang, { source } = {}) {
     const ps = [...ins.map((n) => `${n} : in std_logic`), ...outs.map((n) => `${n} : out std_logic`)];
     if (ps.length) L.push('  port (', ps.map((x) => `    ${x}`).join(';\n'), '  );');
     L.push(`end entity ${m.name};`, '', `architecture circuit of ${m.name} is`);
-    if (plan.signals.length) L.push(`  signal ${plan.signals.join(', ')} : std_logic := 'Z';`);
+    if (plan.signals.length) L.push(`  signal ${plan.signals.join(', ')} : std_logic := 'X';`);   // (unknown at first: no instant read as floating)
     L.push('begin');
     for (const [n, e, why] of plan.assigns) L.push(`  ${n} <= ${e};   -- ${why}`);
     for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${plan.inst.get(p.id)} : entity work.${entityOf(m, partDef(p.type))} port map (${icMap(p).map(([a, b]) => `${a} => ${b}`).join(', ')});`);
