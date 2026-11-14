@@ -94,7 +94,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   example's `speed_ctrl.asm.json` (button synchronisers + debouncers + speed FSM + step divider).
 - **Board emulator** (*Emulate on Board ▸ Emulate Behavioral Model (RTL)*): the design runs on a drawing of the real kit
   (Digilent Basys2, Nexys2, Nexys3, Atlys, Basys 3 and Nexys A7, Spartan-3E Starter Kit, 1BitSquared iCEBreaker; a generic panel
-  for the other boards: the ULX3S, the Tang Nano 9K…),
+  for the other boards: the ULX3S, the Tang Nano 9K, the Arty S7, the Zybo Z7…),
   wired by the constraints (UCF, XDC, PCF, LPF or CST): click the slide switches, press the buttons, watch the LEDs and the
   multiplexed 7-segment display (persistence of vision), at a chosen clock rate, with a watch list
   of internal signals. It works without ISE and in the standalone edition. Two engines: the design
@@ -761,6 +761,12 @@ in a mode of its own, `vivado` in `~/.silinx/config.json` (`PUT /api/toolchain`)
   Vivado on this Linux or Windows machine (`settings`: its `settings64.sh`, else found).
 - Under x86 emulation (an Apple-silicon Mac) an example takes 2 to 10 minutes from synthesis to bitstream.
 - The board is programmed with openFPGALoader (`-b basys3`). Vivado runs on the local server only, not in the browser.
+
+The other 7-series families of Vivado ML Standard are Vivado's too (#3895), with no flow of the Silinx toolchain: the
+**Spartan-7** (XC7S6 to XC7S100; the Digilent **Arty S7**-50 and -25), the **Zynq-7000** (XC7Z007S to XC7Z030; the
+Digilent **Zybo Z7**-20 and -10: its programmable logic only, the .bit over JTAG, no processing system set up) and the
+**Kintex-7** (XC7K70T, XC7K160T; no board). Their Synthesis Tool is Vivado alone. The examples' display, LEDs and
+switches these boards lack are on their Pmods. The Virtex-7 is no free edition's: ISE 14.7's flow.
 
 ## Programming the board
 

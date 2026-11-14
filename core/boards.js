@@ -3,6 +3,7 @@
 import { FAMILY } from './boards-family.js';
 import { ULX3S_BOARDS } from './boards-ulx3s.js';
 import { TANGNANO9K_BOARDS } from './boards-tangnano9k.js';
+import { VIVADO_BOARDS } from './boards-vivado.js';
 
 // ---------------------------------------------------------------------------------------------
 // Boards
@@ -693,6 +694,8 @@ export const BOARDS = [
       { name: 'jd', label: 'Pmod JD (JD1-4, JD7-10)', pins: ['H4', 'H1', 'G1', 'G3', 'H2', 'G4', 'G2', 'F3'], dir: 'inout', iostandard: 'LVCMOS33', group: 'Pmod' },
     ],
   },
+  // (#3895) the Spartan-7's and the Zynq-7000's: the Arty S7, the Zybo Z7 (boards-vivado.js)
+  ...VIVADO_BOARDS,
   {
     // (#2468) the iCE40's first board; the PCF names the pins by the package's balls/pins (SG48: 1..48). The RGB LED (39..41)
     // is on the SB_RGBA_DRV's own pins and the SPI flash (12..17) configures the FPGA: neither is a resource here.
