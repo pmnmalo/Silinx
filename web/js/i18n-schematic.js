@@ -5,6 +5,8 @@ export const SCH_PT = {
   // Rename… of the right-click menu (#1546)
   'Rename Instance': 'Mudar o Nome da Instância', 'Rename I/O Marker': 'Mudar o Nome do Marcador de E/S', 'Rename Net Name': 'Mudar o Nome da Rede',
   'Type a name.': 'Escreva um nome.', 'Duplicate': 'Duplicar',
+  // an instance's Width, its copies (#3950)
+  'copies of the module: its pins on buses N times as wide': 'cópias do módulo: os seus pinos em barramentos N vezes mais largos',
   // a module's symbol out of date (#1183)
   'Update Symbol': 'Atualizar Símbolo',
   // palette
@@ -158,6 +160,8 @@ export const SCH_PT_PATTERNS = [
   [/^The symbol is out of date: module '(.+)' changed its ports \((.+)\)\.$/, (m, mod, what) => `O símbolo está desatualizado: o módulo '${mod}' mudou os seus portos (${what
     .replace(/\badded\b/g, 'acrescentados').replace(/\bremoved\b/g, 'removidos').replace(/\bdirection changed\b/g, 'direção mudada')}).`],
   [/^Update All \((\d+)\)$/, 'Atualizar Todos ($1)'],
+  // an instance's Width (#3950)
+  [/^Width (.+): a whole number from 1 to (\d+)$/, 'Largura $1: um número inteiro de 1 a $2'],
   [/^Symbol updated; not connected any more: (.+)$/, 'Símbolo atualizado; já não ligados: $1'],
   [/^Symbol updated \((.+)\), its connections kept$/, 'Símbolo atualizado ($1), as suas ligações mantidas'],
   // the bar of the RTL / Technology Schematic (web/js/app.js): the source of the module, the status bar

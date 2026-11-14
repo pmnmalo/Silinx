@@ -7,6 +7,7 @@ import { esc } from './dom.js';
 import { symbolSvg, portSvg, hopPath, inLineRuns, wireRun } from './sch-svg.js';
 import { snap } from './sch-editor.js';
 import { graphicSvg } from '/core/schgraphics.js';
+import { arrayedDef } from '/core/sch-array.js';
 import { GRAPHIC_TOOLS, graphicGhost } from './sch-graphics.js';
 
 /** { renderSheet, render, renderOverlay, updateToolbar, updateStatus } of a schematic editor (state(): its current
@@ -98,7 +99,7 @@ export function mountRender(ctx) {
     // symbols
     for (const s of doc.symbols) {
       let def;
-      try { def = symbolDef(s, modules); } catch { continue; }
+      try { def = arrayedDef(s, symbolDef(s, modules), nl); } catch { continue; }   // (an arrayed instance: its sliced pins buses, #3950)
       const tapped = s.type === 'slice' ? nl?.pinNet.get(`${s.id}/I`) : null;
       // (a module's instance out of date: its module's ports changed, #1183)
       const cls = `${sel.has(`sym:${s.id}`) ? ' sel' : ''}${s.type === 'module' && symbolDiff(s, modules) ? ' stale' : ''}`;

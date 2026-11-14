@@ -18,8 +18,9 @@ import { clone, snap, KEYS } from './sch-editor.js';
 import { mountMultiProps } from './sch-multi.js';
 import { mountCompareTicks } from './sch-compare.js';
 import { setMarkerWidth } from '/core/schmarker.js';
-import { instName } from '/core/schname.js';
-import { arrayName } from '/core/sch-array.js';
+import { instName, renameError } from '/core/schname.js';
+import { arrayName, arrayWidth, withArrayWidth } from '/core/sch-array.js';
+import { logError } from './console.js';
 import { graphicProps } from './sch-graphics.js';
 
 /** { renderProps, openSelected, renamed, joinByName, renameLabel } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
@@ -159,7 +160,7 @@ export function mountProps(ctx) {
     propBody.append(h('div', { class: 'se-ptitle', text: title }), h('div', { class: 'se-note se-sum', 'data-no-i18n': '', text: sum }),
       h('div', { class: 'se-pbtns' }, h('button', { class: 'btn ro-ok se-infobtn', type: 'button', text: 'Symbol Info…', title: 'Symbol Info (F1)', onclick: () => openInfo(infoTarget()) })));
     // (cleared: a fresh automatic name, inst_n, not drawn, #3300)
-    propBody.append(field('Instance name', inp(s.name, v => { s.name = String(v).trim() ? newName(v, s.name, s.type === 'module' && arrayName(v)) : instName(doc(), s.id, ''); })));   // (reg(3:0): an arrayed instance, #3755)
+    propBody.append(field('Instance name', inp(s.name, v => { s.name = String(v).trim() ? newName(v, s.name, s.type === 'module' && arrayName(v)) : instName(doc(), s.id, ''); })), ...arrayWidthField(s, { inp, field, doc }));   // (reg(3:0): an arrayed instance, #3755; its Width, #3950)
     for (const p of symbolParams(s)) {
       const v = s.params[p.name];
       let el;
@@ -339,4 +340,17 @@ function tapIndex(s, p, inp, flash) {
     s.params[p.name] = n;
   }, { type: 'number', ...(p.name === 'msb' ? { min: other() } : { min: 0, max: other() }) });
   return el;
+}
+
+// a module's instance's Width (#3950): its copies, the range of its name, reg(7:0) for 8 (the name its one source); a
+// width not a whole number from 1 to 1024, or a name refused, an error in the console. [] for another symbol.
+function arrayWidthField(s, { inp, field, doc }) {
+  if (s.type !== 'module') return [];
+  const el = inp(arrayWidth(s.name), async v => {
+    const r = withArrayWidth(s.name, v), why = r.error || (r.name !== s.name && renameError(doc(), 'sym', s.id, r.name));
+    if (why) { logError(why); return false; }
+    return r.name !== s.name && (() => { s.name = r.name; });
+  }, { type: 'number', min: 1, max: 1024, step: 1 });
+  el.dataset.param = 'arrayWidth';
+  return [field('Width', el, 'copies of the module: its pins on buses N times as wide')];
 }

@@ -255,7 +255,9 @@ function textsSvg(sym, def, ctx = {}) {
     const tt = def.shape === 'hdl' ? (sym.params.title || 'HDL') : def.title;
     const top = cx(def.body.x + def.body.w / 2, def.titleY ?? def.body.y + 11);   // (its place of a symbol of its own, #3755)
     const rot = sym.rot === 90 || sym.rot === 270;
-    s += `<text class="stitle${def.shape === 'hdl' ? ' hdl' : ''}" x="${rot ? center.x : top.x}" y="${rot ? center.y : top.y + 3}" text-anchor="middle">${esc(tt)}</text>`;
+    // (an arrayed instance's: its copies, REG1bit ×8, squeezed to its body when longer, #3950)
+    const room = (rot ? def.body.h : def.body.w) - 8, fit = def.copies && tt.length * 7 > room ? ` textLength="${r1(room)}" lengthAdjust="spacingAndGlyphs"` : '';
+    s += `<text class="stitle${def.shape === 'hdl' ? ' hdl' : ''}${def.copies ? ' array' : ''}" x="${rot ? center.x : top.x}" y="${rot ? center.y : top.y + 3}" text-anchor="middle"${fit}>${esc(tt)}</text>`;
   } else if (def.shape === 'ff') {
     // type name in the bottom corner away from the inputs (turned 90/270: the centre of the body)
     const turned = sym.rot === 90 || sym.rot === 270;
@@ -334,7 +336,8 @@ function textsSvg(sym, def, ctx = {}) {
     // (each pin's own side, not turned, says which one it is; the turned side, where its name goes, #1134)
     const pins = symbolPins(sym, null, def);
     // (a multiplexer a bit, #2081: each row's names as the one-bit one's, its row the bit: D0_1 is 0)
-    const label = p => { const n = def.rows > 1 ? p.name.replace(/_\d+$/, '') : p.name; return def.shape === 'mux' && n.startsWith('D') ? n.slice(1) : n; };
+    // (an arrayed instance's sliced pin: its name with its range, D(7:0), #3950)
+    const label = p => { if (p.label) return p.label; const n = def.rows > 1 ? p.name.replace(/_\d+$/, '') : p.name; return def.shape === 'mux' && n.startsWith('D') ? n.slice(1) : n; };
     const vertical = verticalNames(pins.filter((p, i) => !(def.shape === 'mux' && def.pins[i].side === 'E')), label);
     for (const [i, p] of pins.entries()) {
       const own = def.pins[i].side;
