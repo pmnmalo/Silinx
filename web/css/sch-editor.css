@@ -359,7 +359,7 @@
 /* ------------------------------------------------------------------ live simulation (sch-live.js) */
 .sch-editor .se-simbar {
   flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; padding: 3px 6px; min-height: 28px;
-  background: linear-gradient(#f2fbf2, #dcefdc); border-bottom: 1px solid #8fbf8f; font-size: 12px; color: #000;
+  background: var(--try-it-bar); border-bottom: 1px solid var(--try-it-line); font-size: 12px; color: #000;
 }
 .sch-editor .se-simbar[hidden] { display: none; }
 .sch-editor .se-simbar .btn { padding: 1px 8px; min-width: 0; }

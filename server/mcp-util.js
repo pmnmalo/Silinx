@@ -99,7 +99,7 @@ export async function viewSourcesOf(name, project, sim, failed = null) {
   return [...hdl, ...drawn.map(v => ({ path: v.path, lang: v.lang, text: v.text, role: 'design' }))];
 }
 
-export const diagLine = d => `${d.severity === 'error' ? 'ERROR' : d.severity === 'info' ? 'INFO' : 'WARNING'}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`;
+export const diagLine = d => `${d.severity === 'error' ? 'ERROR' : d.severity === 'info' ? 'INFO' : 'WARNING'}:${d.tool || 'HDLCompiler'} - "${d.file}"${d.drawn ? '' : ` Line ${d.line}`}: ${d.message}`;   // (drawn: a design project's drawing's, #3891)
 export const diagJson = d => ({ severity: d.severity, file: d.file, line: d.line, col: d.col ?? null, tool: d.tool || 'HDLCompiler', message: d.message, ...(d.check ? { check: d.check } : {}) });
 
 // compile and elaborate a view of a project: { lib, design, top, diags } (the design checks included; lint: their lint

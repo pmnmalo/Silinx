@@ -5,6 +5,7 @@
 // write_file writes, through the import gate (#2830).
 import * as P from './projects.js';
 import { toolError, clip, readProject, STR, PROJECT } from './mcp-util.js';
+import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
 
 const LISTED = 500;   // (the results listed at most, in the text and in the structured content)
 
@@ -20,6 +21,7 @@ async function projectTexts(name, pj) {
   }
   const out = [];
   for (const { path, drawing } of findPaths(tree, pj.files || [], pj.constraints)) {
+    if (!drawing && isDesignOnly(pj) && hdlSideFile(path)) continue;   // (a design project's HDL never searched, as the interface's, #3891)
     const text = await read(path);
     if (text != null) out.push({ path, text, drawing, ...(drawing ? {} : { generated: generated.has(path) }) });
   }

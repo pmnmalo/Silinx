@@ -23,7 +23,7 @@ import { openEmulator, openSchematic, openTechSchematic, runSimulation } from '.
 import { cProcesses, failedCDiags, isC } from './c-source.js';
 import { openCModel } from './c-model.js';
 import { EXTRA_STEPS, FLOW_PROCS, IMPL_IDS, buildProcesses, simModelsOf, toolOf } from './tool-descriptors.js';
-import { checkLabel, designOnly } from './design-only.js';
+import { checkLabel, designOnly, shownDiag } from './design-only.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -301,17 +301,19 @@ async function checkSyntaxInner(mod, sim, id) {
   // (an HDL file its drawing could not generate again, #303: an error of the file, the drawing's errors in it)
   const stale = srcs.filter(s => S.staleHdl?.[s.path]).map(s => {
     const { from, why } = S.staleHdl[s.path];
-    return { severity: 'error', file: s.path, line: 1, col: 1, tool: 'Silinx', message: `${s.path} is not up to date: ${from} cannot generate it, ${why}. Fix ${from} (its HDL is then generated again).` };
+    return { severity: 'error', file: s.path, line: 1, col: 1, tool: 'Silinx', message: designOnly() ? `${from}: its module is not up to date: ${why}. Fix ${from}.`   // (#3891)
+      : `${s.path} is not up to date: ${from} cannot generate it, ${why}. Fix ${from} (its HDL is then generated again).` };
   });
   // (+ the modules named with a reserved word, #679)
-  const diags = diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]);   // + design checks (core/lint.js)
+  // (a design project's: its drawings named, #3891)
+  const diags = diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]).map(shownDiag);   // + design checks (core/lint.js)
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.line || !designOnly() ? `"${d.file}" Line ${d.line}` : `"${d.file}"`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
-  if (ne) { log(`\nProcess "Check Syntax" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
-  log(`Elaborating top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
-  log(`\nProcess "Check Syntax" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
+  if (ne) { log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
+  log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
+  log(`\nProcess "${checkLabel()}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
   setStatus(id, nw ? 'warn' : 'ok');
   return true;
 }

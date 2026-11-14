@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, clip, elaborateView, diagLine, diagJson, STR, PROJECT } from './mcp-util.js';
+import { isDesignOnly } from '../core/project-kind.js';
+import { designDiags } from './mcp-design-only.js';
 import { parseTime, parseValue } from '../core/ssim-values.js';
 import { findSignalIn, injectForceIn } from '../core/ssim-forces.js';
 import { deviceFamily, experimentalDevice, familyName, openOnlyDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
@@ -142,12 +144,17 @@ export const HDL_TOOLS = [
       lint: { type: 'boolean', description: 'The design checks\' lint warnings, as Edit ▸ Design Checks (Lint Warnings) (default true, the interface\'s default).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, top, simulation = false, lint = true }) {
-      const { design, top: mod, diags } = await elaborateView(name, { top, sim: simulation, lint });
+      const view = await elaborateView(name, { top, sim: simulation, lint });
+      const { design, top: mod } = view;
+      // (a design project's: its drawings named, Check Design, as the interface's, #3891)
+      const kind = isDesignOnly(await P.readProject(name));
+      const diags = kind ? await designDiags(name, view.diags) : view.diags;
+      const proc = kind ? 'Check Design' : 'Check Syntax';
       const errors = diags.filter(d => d.severity === 'error'), warnings = diags.filter(d => d.severity !== 'error');
       const ok = !errors.length && !!design?.top;
       const lines = [...diags.map(diagLine),
-        ok ? `Process "Check Syntax" of <${mod}> completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''} (${design.signals.length} signals, ${design.procs.length} processes).`
-          : `Process "Check Syntax" of <${mod}> failed (${errors.length} error(s), ${warnings.length} warning(s)).`];
+        ok ? `Process "${proc}" of <${mod}> completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''} (${design.signals.length} signals, ${design.procs.length} processes).`
+          : `Process "${proc}" of <${mod}> failed (${errors.length} error(s), ${warnings.length} warning(s)).`];
       // (a failure's lines quote the design's names and files: the project's own text, #3681)
       return { untrusted: ok ? undefined : FAILED, text: lines.join('\n'), data: { project: name, top: mod, ok, errors: errors.map(diagJson), warnings: warnings.map(diagJson) }, isError: false };
     },

@@ -19,6 +19,8 @@ import { applyChanges } from './project-watch.js';
 import { commitText, pushText, pullText, cloneText, initText } from '/core/git-messages.js';
 import { checksLines } from '/core/github-checks.js';
 import { checkUrl, nameFromRepo } from '/core/github-url.js';
+import { designOnly } from './design-only.js';
+import { hdlSideFile } from '/core/project-kind.js';
 
 // ------------------------------------------------------------------ git on this server
 let enabled = null;
@@ -142,7 +144,8 @@ async function commitDialog() {
   const msg = h('textarea', { class: 'git-message', rows: 4, style: { width: '100%' } });
   // (Compare: the file against the last commit, #3197; the dialog closed for it)
   let compare = null, closeIt = null;
-  const list = h('ul', { class: 'git-changes' }, ...s.files.map(f => h('li', { 'data-state': f.state }, h('span', { 'data-no-i18n': '' }, f.path), ` (${STATE[f.state]}) `,
+  // (a design project's HDL committed with its drawings, never listed, #3891)
+  const list = h('ul', { class: 'git-changes' }, ...s.files.filter(f => !designOnly() || !hdlSideFile(f.path)).map(f => h('li', { 'data-state': f.state }, h('span', { 'data-no-i18n': '' }, f.path), ` (${STATE[f.state]}) `,
     h('a', { href: '#', class: 'git-compare', 'data-path': f.path, onclick: e => { e.preventDefault(); compare = f.path; closeIt?.(); } }, 'Compare'))));
   const err = fieldError('git-message-error');
   msg.addEventListener('input', () => { err.textContent = ''; });
@@ -198,7 +201,7 @@ async function gitPull({ resolve = null } = {}) {
   try {
     const p = await api.gitPull(name, resolve ? { resolve } : {});
     log(pullText(p), 'ok');
-    for (const f of p.resolved || []) log(`${f}: merged by its objects, its HDL made again.`, 'info');
+    for (const f of p.resolved || []) log(designOnly() ? `${f}: merged by its objects.` : `${f}: merged by its objects, its HDL made again.`, 'info');
     for (const w of p.warnings || []) log(`WARNING: ${w}`, 'warn');
     // (the server's watcher tells the page what changed; the browser edition has none: its open documents told here)
     if (!p.upToDate && S.project?.name === name) {

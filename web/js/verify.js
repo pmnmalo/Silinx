@@ -15,6 +15,7 @@ import { log, logInfo } from './console.js';
 import { inView } from './design.js';
 import { saveAll, setStatus } from './processes.js';
 import { runSimulation } from './viewers.js';
+import { designOnly } from './design-only.js';
 
 // the reference proposed for a module: one named after it (<m>_ref, ref_<m>, <m>_reference, <m>_golden), else the last one chosen
 const REF_NAMES = m => [`${m}_ref`, `ref_${m}`, `${m}_reference`, `${m}_golden`].map(n => n.toLowerCase());
@@ -119,7 +120,8 @@ async function verifyInner(mod, { reference = null, depth, timeLimit }) {
   const r = reference ? await verifyEquivalence(srcs, { top: mod, reference, depth, timeLimit, run }) : await verifyAssertions(srcs, { top: mod, depth, timeLimit, run });
   const tb = benchName(r.top);
   const bench = r.status === 'failed' ? await writeBench(tb, `sim/${tb}.${r.lang === 'vhdl' ? 'vhd' : 'v'}`, () => counterexampleBench(r, { name: tb })) : null;
-  for (const m of (reference ? verifyMessages : assertMessages)(r, { bench })) log(m.text, m.kind === 'info' ? undefined : m.kind);
+  // (a design project's: the test bench by its name, its HDL file never named, #3891)
+  for (const m of (reference ? verifyMessages : assertMessages)(r, { bench: bench && designOnly() ? tb : bench })) log(m.text, m.kind === 'info' ? undefined : m.kind);
   setStatus(id, r.status === 'proved' && !r.warnings.length ? 'ok' : r.status === 'proved' || r.status === 'bounded' || (r.status === 'timeout' && r.checked) ? 'warn' : 'err');
   // the counterexample replayed: the waveform viewer shows it, the console the same difference
   if (bench) await runSimulation(tb);
@@ -134,7 +136,7 @@ export async function writeBench(tb, bench, text) {
   const mine = S.sources.find(s => s.path === bench);
   const other = S.modules.find(m => m.name.toLowerCase() === tb.toLowerCase() && !isVerifyBench(S.sources.find(x => x.path === m.file)?.text));
   if ((mine && !isVerifyBench(mine.text)) || other) {
-    log(`WARNING:Verify - the counterexample's test bench is not written: ${other ? `a module named '${tb}' already exists (${other.file})` : `${bench} exists and is not a test bench of Verify`}.`, 'warn');
+    log(`WARNING:Verify - the counterexample's test bench is not written: ${other ? `a module named '${tb}' already exists${designOnly() ? '' : ` (${other.file})`}` : `${designOnly() ? `the test bench ${tb}` : bench} exists and is not a test bench of Verify`}.`, 'warn');
     return null;
   }
   // (an earlier one in the other language, the MCP server's: replaced by this one)
