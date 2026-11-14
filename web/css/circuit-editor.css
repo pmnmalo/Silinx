@@ -1,0 +1,62 @@
+/* The digital circuit editor (web/js/circuit-editor.js, #3897): the shared look of asm-editor.css, its own drawing.
+   Light and dark through the editors' variables. */
+.circuit-editor {
+  --circ-board: color-mix(in srgb, var(--asm-panel) 70%, #e9dfc4 30%);
+  --circ-board-edge: color-mix(in srgb, var(--asm-border) 70%, #a89b78 30%);
+  --circ-hole: color-mix(in srgb, var(--asm-fg) 55%, transparent);
+  --circ-lv1: #e0352b; --circ-lv0: #2f6fd6; --circ-lvz: #9a9a9a; --circ-lvx: #e8a317;
+}
+.circuit-editor .circ-canvas { background: var(--asm-bg); }
+.circuit-editor .circ-canvas.circ-adding { cursor: crosshair; }
+.circuit-editor .circ-bb-body { fill: var(--circ-board); stroke: var(--circ-board-edge); stroke-width: 1.2; }
+.circuit-editor .circ-bb-channel { fill: color-mix(in srgb, var(--circ-board) 80%, #000 20%); opacity: .35; }
+.circuit-editor .circ-hole { fill: var(--circ-hole); }
+.circuit-editor .circ-bb-label { font: 9px var(--asm-mono, monospace); fill: var(--asm-muted); }
+.circuit-editor .circ-rail-plus { stroke: #d33; stroke-width: 1.5; }
+.circuit-editor .circ-rail-minus { stroke: #36c; stroke-width: 1.5; }
+.circuit-editor polyline.circ-wire { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.circuit-editor .circ-wire-hit { fill: none; stroke: transparent; stroke-width: 12; }
+.circuit-editor .circ-wire-end { stroke: none; }
+.circuit-editor polyline.circ-draft { stroke: var(--asm-accent); stroke-dasharray: 4 3; }
+.circuit-editor .circ-w-red { stroke: #d32f2f; fill: #d32f2f; }
+.circuit-editor .circ-w-black { stroke: #333; fill: #333; }
+.circuit-editor .circ-w-blue { stroke: #1e63c4; fill: #1e63c4; }
+.circuit-editor .circ-w-green { stroke: #2e8b3d; fill: #2e8b3d; }
+.circuit-editor .circ-w-yellow { stroke: #d8b400; fill: #d8b400; }
+.circuit-editor .circ-w-orange { stroke: #e57a1d; fill: #e57a1d; }
+.circuit-editor .circ-w-white { stroke: #ddd; fill: #ddd; }
+.circuit-editor .circ-w-purple { stroke: #7d3cb5; fill: #7d3cb5; }
+.circuit-editor .circ-ic-body { fill: #1d1d1f; stroke: #444; }
+.circuit-editor .circ-ic-notch { fill: #555; }
+.circuit-editor .circ-ic-text { font: bold 10px var(--asm-mono, monospace); fill: #eee; pointer-events: none; }
+.circuit-editor .circ-pin { fill: #c9c9c9; stroke: #666; stroke-width: .8; }
+.circuit-editor .circ-pin.lv1 { fill: var(--circ-lv1); }
+.circuit-editor .circ-pin.lv0 { fill: var(--circ-lv0); }
+.circuit-editor .circ-pin.lvz { fill: var(--circ-lvz); }
+.circuit-editor .circ-pin.lvx { fill: var(--circ-lvx); }
+.circuit-editor .circ-sw-body, .circuit-editor .circ-btn-body, .circuit-editor .circ-supply-body { fill: var(--asm-panel); stroke: var(--asm-border); stroke-width: 1.2; }
+.circuit-editor .circ-sw-knob { fill: #888; }
+.circuit-editor .circ-sw-knob.on { fill: var(--asm-accent); }
+.circuit-editor .circ-btn-cap { fill: #444; stroke: #222; }
+.circuit-editor .circ-btn-cap.down { fill: var(--asm-accent); }
+.circuit-editor .circ-label, .circuit-editor .circ-supply-text { font: 10px var(--asm-mono, monospace); fill: var(--asm-fg); }
+.circuit-editor .circ-led { stroke: #555; stroke-width: 1; opacity: .45; }
+.circuit-editor .circ-led.lit { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+.circuit-editor .circ-led.unknown { opacity: .8; stroke: var(--circ-lvx); stroke-width: 2; }
+.circuit-editor .circ-led-red { fill: #ff3b30; color: #ff3b30; }
+.circuit-editor .circ-led-green { fill: #34c759; color: #34c759; }
+.circuit-editor .circ-led-yellow { fill: #ffcc00; color: #ffcc00; }
+.circuit-editor .circ-led-blue { fill: #2f80ff; color: #2f80ff; }
+.circuit-editor .circ-led-white { fill: #f5f5f5; color: #f5f5f5; }
+.circuit-editor .circ-sel > :first-child { stroke: var(--asm-accent); stroke-width: 2.4; }
+.circuit-editor .circ-wire-g.circ-sel .circ-wire { stroke-width: 5; }
+.circuit-editor .circ-ghost { opacity: .45; pointer-events: none; }
+.circuit-editor.circ-simulating [data-input] { cursor: pointer; }
+.circuit-editor .circ-lib-group { margin-bottom: 6px; }
+.circuit-editor .circ-lib-title { font-size: 11px; color: var(--asm-muted); margin: 4px 0 2px; }
+.circuit-editor .circ-lib-part { display: block; width: 100%; text-align: left; margin: 1px 0; }
+.circuit-editor .circ-lib-part.active { outline: 2px solid var(--asm-accent); }
+.circuit-editor .circ-pinout table { border-collapse: collapse; font: 11px var(--asm-mono, monospace); }
+.circuit-editor .circ-pinout td { padding: 0 4px; }
+.circuit-editor .circ-pinout td.n { color: var(--asm-muted); text-align: center; }
+.circuit-editor .circ-note { font-size: 11px; color: var(--asm-muted); margin-top: 4px; }

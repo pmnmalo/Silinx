@@ -14,7 +14,7 @@ import { editorOf } from './collab-drawing.js';
 
 const REPORTS = 'build/reports.json', STATUS = 'build/silinx-status.json';
 // (a drawing's document: its path in its id, as app.js's docPath)
-const docPath = d => d.path || (/^(file|sch|asm|tt|fsm|pn):/.test(String(d.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
+const docPath = d => d.path || (/^(file|sch|asm|tt|fsm|pn|circ):/.test(String(d.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 let watching = null;   // { name, ctl }

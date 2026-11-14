@@ -11,7 +11,7 @@ import { syncDrawing } from './drawing-sync.js';
 import { isName } from '../core/ident.js';
 import { isSymbolFile, renameSymbolFile } from '../core/symbol-layout.js';
 
-const VIEW = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
+const VIEW = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i;
 const extOf = p => (VIEW.exec(p) || /\.[^./]+$/.exec(p) || [''])[0];
 const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 const baseOf = p => p.slice(dirOf(p).length, p.length - extOf(p).length);

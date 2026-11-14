@@ -41,6 +41,7 @@ function diagramPrint(d) {
   if (d.fsmEditor) return () => d.fsmEditor.print();
   if (d.schEditor) return () => d.schEditor.print(`Schematic ${d.path || ''}`.trim());
   if (d.petriEditor?.print) return () => d.petriEditor.print();
+  if (d.circuitEditor?.print) return () => d.circuitEditor.print();   // (a circuit, #3897)
   if (d.viewer?.print) return () => d.viewer.print(d.title);
   return null;
 }

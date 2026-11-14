@@ -22,11 +22,12 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 - **Connectivity is geometric**, as on the bench: a pin that lands on a breadboard's hole is in that hole; a wire's end
   joins the hole, the pin or the other wires' ends on its point. Two wires that cross without an end in common are not
   joined.
-- **The editor** follows docs/UI-GUIDELINES.md, as the Petri net's: the toolbar (select, wire, delete, rotate, then the
-  zoom, then Check and Simulate; the ⋮ menu: export, print), the Properties side panel on the right (the selected part's
-  label, colour, its pinout; the circuit's name and language), the parts library as the Symbols panel of the schematic
-  (on the left, foldable, its categories), the status line (its counts: "3 ICs · 4 switches · 2 LEDs · 17 wires"; the
-  simulated time, "t = 120 ns"), every message in the console.
+- **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
+  net's: the toolbar (select, wire, rotate, delete, then the zoom, then Check and Simulate, Reset while simulating; printed
+  by the main toolbar's Print), the Properties side panel on the right, foldable, over the canvas behind ☰ Properties on a
+  narrow screen: the parts library (by category: a click on a part, then on the drawing), the selected part's label,
+  colour and pinout, the circuit's name and HDL language; the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
+  · 15 wire(s)"; while simulating, "t = 24 ns"); every message in the console.
 
 ## The parts library
 
@@ -156,7 +157,8 @@ starts there). The file is plain JSON, merged by Silinx's drawing merge as the o
 ## The phases
 
 1. **The first slice** (#3898): first the model, the simulation, the checks, the HDL and the MCP tools (`core/circuit*.js`,
-   `server/mcp-circuit.js`), then the document and its editor, the half breadboard, the supply, the logic switch and the push
+   `server/mcp-circuit.js`), then the document and its editor (a followed shared project shows it read-only; its live
+   editing in a shared project is phase 4), the half breadboard, the supply, the logic switch and the push
    button, the LED, the 7400, 7404, 7408, 7432 and 7486; the nets, the checks, the live simulation with delays, the
    generated HDL (VHDL and Verilog), the Design pane's row, New Source, the MCP tools; Portuguese.
 2. **More parts:** the full breadboard, the SPDT and DIP switches, pull-up and pull-down, the clock source (a

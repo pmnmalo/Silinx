@@ -38,7 +38,7 @@ export function renameSymbolIn(d, lang, path) {
 }
 
 // ---- rename a source (file and/or the module it defines), updating everything that refers to it
-const extOf = p => (/\.(sch|asm|tt|bool|fsm|pn)\.json$/i.exec(p) || /\.[^./]+$/.exec(p) || [''])[0];
+const extOf = p => (/\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.exec(p) || /\.[^./]+$/.exec(p) || [''])[0];
 const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 
 export async function renameDialog(file, mod = null) {
@@ -91,7 +91,7 @@ async function renameSource(from, to, oldMod, newMod) {
   const changed = new Map();                      // path -> new text
   const moved = new Map();                        // old path -> new path
   const views = {};                               // .sch.json / .asm.json -> parsed
-  for (const f of S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn)\.json$/i.test(f))) {
+  for (const f of S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
     try { views[f] = JSON.parse(await api.readFile(pj.name, f)); } catch { /* skip */ }
   }
   S.syncing = true;
