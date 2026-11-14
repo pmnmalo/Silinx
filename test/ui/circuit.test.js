@@ -1,6 +1,6 @@
 // UI: the digital circuit editor (web/js/circuit-editor.js, #3897, #3898): a half adder on its breadboard opened, its
 // Design row ([Circuit] [VHDL]), its status line; a 7404 placed from the parts library and undone (Edit ▸ Undo); a wire
-// drawn between two holes; Simulate: a click on a switch lights an LED after the gates' delays; Check in the console; its
+// drawn between two holes; Try it: a click on a switch lights an LED after the gates' delays; Check in the console; its
 // HDL file made on save; in Portuguese. No warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -47,7 +47,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   await page.click(await at(page, 7, 0));
   await page.waitFor((ed) => /16 wire/.test(document.querySelector(`${ed} .doc-status`).textContent), [ED], { what: 'a wire drawn' });
   await page.click(`${ED} [data-act=select]`);
-  // Simulate: S1 (a) on, the XOR's LED (s) lights; the time in the status line
+  // Try it: S1 (a) on, the XOR's LED (s) lights; the time in the status line
   await page.click(`${ED} .circ-sim-btn`);
   await page.waitFor((ed) => document.querySelector(`${ed}.circ-simulating`) || document.querySelector(ed).classList.contains('circ-simulating'), [ED], { what: 'simulating' });
   assert.deepEqual(await status(page), ['2 IC(s) · 2 switch(es) · 2 LED(s) · 16 wire(s)', 't = 12 ns']);
@@ -73,7 +73,8 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   assert.deepEqual(await status(page), ['2 CI(s) · 2 interruptor(es) · 2 LED(s) · 16 fio(s)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts h3, ${ed} .circ-lib-title`)].map((e) => e.textContent), ED),
     ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)']);
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Simular');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).title, ED), 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"]`).textContent, ED), '7400 Quatro portas NAND de 2 entradas');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
