@@ -895,6 +895,8 @@ const textState = new WeakMap();   // text node -> { orig, last }
 const attrState = new WeakMap();   // element -> { [attr]: { orig, last } }
 
 function skipEl(el) { return !el || (el.closest && el.closest(SKIP)); }
+// a text box: its text (the user's) left as it is, its own attributes (placeholder, tip) translated as an input's (#3931)
+const isBox = el => el?.tagName === 'TEXTAREA';
 // a text kept as it is inside an element that says so (data-i18n-keep="Design": the Tasks interface's Design task, not
 // "Projeto" as the Design pane, #1046); other texts there translated as usual
 const kept = (el, text) => el?.closest?.('[data-i18n-keep]')?.dataset.i18nKeep === text.trim();
@@ -910,7 +912,7 @@ function translateText(node) {
 }
 
 function translateAttrs(el) {
-  if (skipEl(el)) return;
+  if (skipEl(isBox(el) ? el.parentElement : el)) return;
   let map = attrState.get(el);
   for (const a of ATTRS) {
     if (!el.hasAttribute(a)) continue;
@@ -927,9 +929,10 @@ function translateTree(root) {
   if (!root) return;
   if (root.nodeType === 3) { translateText(root); return; }
   if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
-  if (root.nodeType === 1) { if (skipEl(root)) return; translateAttrs(root); }
+  if (root.nodeType === 1) { if (isBox(root)) return translateAttrs(root); if (skipEl(root)) return; translateAttrs(root); }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-    acceptNode: n => (n.nodeType === 1 && n.matches?.(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    // (a text box: its attributes, not its text)
+    acceptNode: n => (n.nodeType === 1 && n.matches?.(SKIP) ? (isBox(n) && translateAttrs(n), NodeFilter.FILTER_REJECT) : NodeFilter.FILTER_ACCEPT),
   });
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === 3) translateText(n); else translateAttrs(n);
