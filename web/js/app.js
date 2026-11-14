@@ -733,7 +733,8 @@ export function renderFilesPage() {
   const host = $('files-page');
   host.innerHTML = '';
   if (!S.project) return;
-  const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'File Name'), h('th', {}, 'Association'), h('th', {}, 'Language')));
+  const lang = !designOnly();   // (a design project's: no Language column, #3891)
+  const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'File Name'), h('th', {}, 'Association'), lang ? h('th', {}, 'Language') : null));
   // files sorted by path, each folder as a row of its own (right-click: rename / delete the folder)
   const reg = new Map(S.project.files.map(f => [f.path, f]));
   const inProject = new Set(S.fileTree);
@@ -746,14 +747,14 @@ export function renderFilesPage() {
       if (shown.has(dir)) continue;
       shown.add(dir);
       tbl.append(h('tr', { class: 'folder-row', 'data-folder': dir, oncontextmenu: e => { e.preventDefault(); folderContextMenu(e, dir); } },
-        h('td', { style: { fontWeight: 'bold', paddingLeft: `${4 + (i - 1) * 14}px` } }, icon('folder'), `${parts[i - 1]}/`), h('td', {}), h('td', {})));
+        h('td', { style: { fontWeight: 'bold', paddingLeft: `${4 + (i - 1) * 14}px` } }, icon('folder'), `${parts[i - 1]}/`), h('td', {}), lang ? h('td', {}) : null));
     }
     const f = reg.get(path);
     const pad = { paddingLeft: `${4 + (parts.length - 1) * 14}px` };
     tbl.append(h('tr', { 'data-file': path, ondblclick: () => openFile(path), oncontextmenu: e => { e.preventDefault(); fileContextMenu(e, path); } },
       h('td', { style: pad }, path),
       h('td', {}, !inProject.has(path) ? 'Not in project' : f ? (f.role === 'sim' ? 'Simulation' : f.role === 'impl' ? 'Implementation' : 'All') : path === S.project.constraints ? 'Implementation' : '—'),
-      h('td', {}, f ? f.lang : path.split('.').pop())));
+      lang ? h('td', {}, f ? f.lang : path.split('.').pop()) : null));
   }
   longPressMenu(tbl);   // (each row's menu, on touch)
   host.append(tbl);

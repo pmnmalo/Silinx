@@ -448,9 +448,8 @@ uiTest('#918 board emulator: its status line whole at every window width (a row 
       await page.eval(async () => { (await import('/js/narrow.js')).setDrawer(false, { remember: false }); });
       await page.eval(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const st = await page.eval(() => {
-        // (in the Tasks interface right below the board, #1022, which keeps its size, #1021: scrolled to on a short area)
-        const e = document.querySelector('.doc:not([hidden]) .emu .stat');
-        if (e.parentNode.classList.contains('emu-board-wrap')) e.scrollIntoView({ block: 'center', inline: 'nearest' });
+        // (the emulator's status line, its last line, in both interfaces, #2763, #3920)
+        const e = document.querySelector('.doc:not([hidden]) .emu > .doc-status > .stat');
         const r = e.getBoundingClientRect();
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         return { whole: r.width > 0 && e.scrollWidth <= e.clientWidth + 1, inside: r.left >= 0 && r.right <= innerWidth, seen: !!hit && e.contains(hit) };

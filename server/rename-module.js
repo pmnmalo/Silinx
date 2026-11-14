@@ -33,7 +33,7 @@ export const followingFile = (file, oldName, newName) => (eq(baseOf(file), oldNa
  * Rename the module `oldName` to `newName`, and its file to `to` (null: kept). Errors: Error with `rename: true`
  * (the dialog's messages). Returns { module: newName, file, changed: [paths written], moved: [[from, to]], message, hdl }.
  */
-export async function renameModule(P, name, oldName, newName, { to = null } = {}) {
+export async function renameModule(P, name, oldName, newName, { to = null, hidden = null } = {}) {
   const fail = message => Object.assign(new Error(message), { rename: true });
   const mods = await projectModules(P, name);
   const mod = mods.find(m => eq(m.name, oldName) && m.kind !== 'package');
@@ -114,7 +114,9 @@ export async function renameModule(P, name, oldName, newName, { to = null } = {}
     }
   }
   const parts = [];
-  if (newName !== oldName) parts.push(`module '${oldName}' renamed to '${newName}' (${changed.size} file(s) updated)`);
-  for (const [a, b] of moved) parts.push(`${a} → ${b}`);
+  // (`hidden`: the files not named, a design project's HDL, #3891)
+  const shown = p => !hidden?.(p);
+  if (newName !== oldName) parts.push(`module '${oldName}' renamed to '${newName}' (${[...changed.keys()].filter(shown).length} file(s) updated)`);
+  for (const [a, b] of moved) if (shown(a)) parts.push(`${a} → ${b}`);
   return { module: newName, file: moved.get(from) || from, changed: [...changed.keys()].map(p => moved.get(p) || p), moved: [...moved], message: parts.length ? `Rename: ${parts.join('; ')}.` : 'Rename: nothing to rename.', hdl };
 }

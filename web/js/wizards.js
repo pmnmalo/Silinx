@@ -208,7 +208,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     topType.disabled = ex;
     if (ex) topType.value = 'hdl';
     const t = TOP_TYPES.find(x => x.id === topType.value);
-    topNote.textContent = !ex ? (t.id === 'hdl' ? '' : `The project starts with ${t.file} (the top module 'top') and its HDL module, generated from it.`)
+    topNote.textContent = !ex ? (t.id === 'hdl' ? '' : isDesign() ? `The project starts with ${t.file} (the top module 'top').` : `The project starts with ${t.file} (the top module 'top') and its HDL module, generated from it.`)
       : tests.includes(tplSel.value) ? 'The test design has its own sources and its test: a test bench (Simulate), or the C program\'s main() (C Simulation).' : 'The example has its own sources.';
     topNote.style.display = topNote.textContent ? '' : 'none';
   };
@@ -331,7 +331,9 @@ export async function openProjectDialog() {
   let chosen = null;
   const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'Project'), h('th', {}, 'Device'), h('th', {}, 'Top'), h('th', {}, 'Board'), h('th', {}, 'Last Used')));
   for (const p of list) {
-    const tr = h('tr', {}, h('td', {}, p.name), h('td', {}, p.device ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, p.top || ''), h('td', {}, p.board || ''),
+    // (a design project's: no device, its kind for a board, #3891)
+    const design = isDesignOnly(p);
+    const tr = h('tr', {}, h('td', {}, p.name), h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, p.top || ''), h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
       h('td', { class: 'pj-used', 'data-no-i18n': '' }, p.used ? dateText(p.used) : ''));
     tr.addEventListener('click', () => { tbl.querySelectorAll('tr').forEach(r => r.classList.remove('sel')); tr.classList.add('sel'); chosen = p.name; });
     tr.addEventListener('dblclick', () => { chosen = p.name; document.querySelector('.dlg .btn.primary')?.click(); });
@@ -451,9 +453,10 @@ export async function sourceProperties(path) {
   if (!f && !own) return;
   // (a design and simulation project: no language, its HDL hidden, #3780)
   const lang = own && !designOnly() && select([['', 'Project Preferred Language'], ['vhdl', 'VHDL'], ['verilog', 'Verilog']], own.choice);
+  const shown = (designOnly() && S.hdlToSch?.[path]) || path;   // (a design project's drawn module: its drawing, #3891)
   const r = await dialog({
-    title: `Source Properties - ${path}`, width: 440,
-    body: h('div', { class: 'form-grid' }, ...field('File:', h('span', {}, path)), ...(designOnly() ? [] : field('Language:', lang || h('span', {}, f.lang)))),
+    title: `Source Properties - ${shown}`, width: 440,
+    body: h('div', { class: 'form-grid' }, ...field('File:', h('span', {}, shown)), ...(designOnly() ? [] : field('Language:', lang || h('span', {}, f.lang)))),
   });
   if (!r || !lang || lang.value === own.choice) return;
   await setSourceLanguage(own.drawing, lang.value);
@@ -487,8 +490,9 @@ export async function projectProperties() {
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),
       ...field('Device:', dp.partSel), ...field('Package:', dp.pkgSel), ...field('Speed:', dp.spdSel),
-      ...field('Top Module (implementation):', h('span', {}, pj.top || '(none)')),
-      ...field('Top-Level Source Type:', h('span', {}, TOP_TYPES.find(t => t.id === (pj.topSourceType || 'hdl'))?.label || 'HDL')),
+      // (a design project's: its top, no implementation; its top's type a drawing's, never HDL, #3891)
+      ...field(isDesignOnly(pj) ? 'Top Module:' : 'Top Module (implementation):', h('span', {}, pj.top || '(none)')),
+      ...(isDesignOnly(pj) && (pj.topSourceType || 'hdl') === 'hdl' ? [] : field('Top-Level Source Type:', h('span', {}, TOP_TYPES.find(t => t.id === (pj.topSourceType || 'hdl'))?.label || 'HDL'))),
       ...field('Synthesis Tool:', synth),
       ...field('Preferred Language:', lang)),
     onOpen: () => syncKind(),

@@ -103,6 +103,7 @@ export const FSM_PT_PATTERNS = [
   [/^Output '(.*)': the default value (.*) does not fit in (\d+) bit\(s\)$/, "Saída '$1': o valor por omissão $2 não cabe em $3 bit(s)"],
   [/^The diagram has no states: double-click the drawing to add one$/, 'O diagrama não tem estados: faça duplo clique no desenho para acrescentar um'],
   [/^Two states are named '(.*)' \(letter case does not count\)$/, "Há dois estados chamados '$1' (maiúsculas e minúsculas não contam)"],
+  [/^State (.+) has (\d+) otherwise transitions \(else, default, true, 1 or no condition\), to (.+); a state has one at most$/, 'O estado $1 tem $2 transições "caso contrário" (else, default, true, 1 ou sem condição), para $3; um estado tem uma, no máximo'],
   [/^The initial \(reset\) state is not set$/, 'O estado inicial (de reset) não está definido'],
   [/^(State .+|Transition .+ → .+): '(.*)' is not an output$/, (m, w, o) => `${where(w)}: '${o}' não é uma saída`],
   [/^(State .+|Transition .+ → .+): the value '(.*)' of (\S+) must be a constant \(e\.g\. 0, 1, 4'b1010, 5\)$/, (m, w, v, o) => `${where(w)}: o valor '${v}' de ${o} tem de ser uma constante (p.ex. 0, 1, 4'b1010, 5)`],
