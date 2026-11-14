@@ -22,6 +22,7 @@ export const hdlFile = path => HDL_FILE.test(String(path || ''));
 
 /** The messages (the interface's console and dialogs and the MCP server's results say the same). */
 export const DESIGN_ONLY_MESSAGES = {
+  ise: name => `the project '${name}' is a design and simulation project (no FPGA): it is exported as a Silinx project, not as a Xilinx ISE one`,
   hdl: path => `${path}: a design and simulation project has drawings only: choose a board in Design Properties to add HDL sources`,
   hidden: path => `${path}: a design and simulation project does not show its HDL (its drawings are its sources)`,
   flow: name => `the project '${name}' is a design and simulation project (no FPGA): choose a board in Design Properties to implement, emulate or program it`,
