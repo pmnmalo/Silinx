@@ -64,6 +64,13 @@ Every 4000 quad 2-input gate shares the 4001's pinout (1A 1, 1B 2, 1Y 3, 2Y 4, 2
 are e 1, d 2, COM 3, c 4, DP 5, b 6, a 7, COM 8, f 9, g 10 (its two commons joined inside), its rows 0.6 inch apart; an
 LED bar's anodes are 1 to 10 and its cathodes 20 to 11.
 
+**The MSI ICs** (`core/circuit-msi.js`) are described by their pins (an active low pin's name barred, as its datasheet's,
+its port `<name>_n`), a model (its outputs from its inputs) and their HDL bodies, written into one wrapper (the inputs read
+as a 74LS reads them, an unknown input making every output X, the outputs after the IC's delay, open collector ones a 0
+or nothing). The 7447 drives a common anode display (open collector, active low), the 7448 a common cathode one (its
+outputs modelled as totem pole, its pull-ups inside); their BI̅/RBO̅ pin is an input (BI̅), RBO̅ not modelled. The 7483's
+VCC is pin 5 and its GND pin 12.
+
 **Timing:** a part has its typical propagation delay (the 74LS datasheets': 7400, 7402, 7404, 7408, 7410, 7411, 7420,
 7427: 10 ns; 7430, 7486: 12 ns; 7432: 14 ns; 7414, 7406: 15 ns; the open collector 7401, 7403, 7405: 17 ns; the 4000s
 at 5 V: 4069 45 ns, 4001, 4011, 4071, 4081 60 ns, 4030 100 ns, 4070 140 ns), one value for both edges. The delays are inertial (a pulse shorter than the delay does not get through),
