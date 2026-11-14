@@ -9,7 +9,7 @@
 //   their awareness (who they are, what they look at) goes through, marked with the client id they joined with (#3360:
 //   a follower's awareness speaks for that follower only, never for the owner nor another); and, when the owner lets editors in (its open
 //   gives the room's public key, #3182), an editor's edits whose signature is the room's (core/collab-sign.js),
-//   each sender's in its order;
+//   each sender's in its order; the owner's rekey (#3997: an editor demoted) makes another key the room's;
 // - followers per room, rooms per host, the time to the first message;
 // - a room ends with its owner: at once when it stops sharing; its connection lost, after `limits.grace` (#3835: 0, at
 //   once, but on the relay), in which the owner resumes it with the secret its open was answered with (`resume`, a
@@ -106,7 +106,14 @@ export function collabRooms({ limits = ROOM_LIMITS } = {}) {
       const r = rooms.get(me.room);
       if (!r || (me.role === 'owner' && r.owner !== ws)) return;
       if (me.role === 'owner') {
-        if (!binary) { let msg = null; try { msg = JSON.parse(String(data)); } catch { /* ignored */ } if (msg?.type === 'close') closeRoom(me.room, 'the owner stopped sharing'); return; }
+        if (!binary) {
+          let msg = null;
+          try { msg = JSON.parse(String(data)); } catch { /* ignored */ }
+          if (msg?.type === 'close') closeRoom(me.room, 'the owner stopped sharing');
+          // (#3997: the editors' key renewed, an editor demoted: the old key's edits refused from now)
+          else if (msg?.type === 'rekey' && r.verify && PUB_RE.test(String(msg.editors))) { r.verify = verifierOf(msg.editors); r.verify.catch(() => {}); }
+          return;
+        }
         // (a frame for one follower: to it only, its mark taken off; to no one when it has left, #3529)
         if (data[0] === KIND.to) {
           const to = senderOf(new Uint8Array(data), KIND.to);

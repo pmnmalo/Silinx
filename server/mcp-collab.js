@@ -30,7 +30,7 @@ import { qrSvg } from '../core/qr.js';
 export const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
 const shares = new Map();    // project -> { session, link, server, off }
-const follows = new Map();   // room:role -> { session, link }
+const follows = new Map();   // room:role (an editor's: its key too) -> { session, link }
 
 const WebSocketImpl = async () => globalThis.WebSocket || (await import('ws')).WebSocket;
 const cleanName = n => String(n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -143,13 +143,34 @@ function drawingWrites(name, doc, owner, warn, bases) {
 
 const peerLines = peers => (peers.length ? peers.map(p => `${p.name} (${p.role})${p.view ? `: ${p.view.path}${p.view.line !== null ? ` line ${p.view.line + 1}` : ''}` : ''}`).join('\n') : 'nobody');
 
+const ACTIONS = ['start', 'status', 'promote', 'demote', 'stop'];
+// a participant made an editor (promote) or a viewer (demote), as the Sharing menu does (#3997): the editors' key given
+// to them, or renewed, the share's editors' link with it
+async function setRole(name, cur, action, user) {
+  if (!cur || cur.session.closed()) throw toolError(`'${name}' is not shared`);
+  if (!cur.editLink) throw toolError(`'${name}' is shared with no editors (share_project start editors: true)`);
+  if (!user) throw toolError('user: the name of a participant (share_project status lists them)');
+  const peers = cur.session.peers().filter(p => p.role !== 'owner');
+  const them = peers.filter(p => p.name === user);
+  if (!them.length) throw toolError(`user: no participant named '${user}' (${peers.map(p => p.name).join(', ') || 'nobody'})`);
+  if (them.length > 1) throw toolError(`user: ${them.length} participants are named '${user}'`);
+  const [p] = them;
+  if (action === 'promote' && p.role === 'editor') throw toolError(`user: '${user}' is an editor already`);
+  if (action === 'demote' && p.role !== 'editor') throw toolError(`user: '${user}' is a viewer already`);
+  try { await cur.session[action](p.client); } catch (e) { throw toolError(e.message); }
+  if (action === 'promote') return { text: `'${user}' is an editor of '${name}' now: they edit its text files and drawings.`, data: { project: name, user, role: 'editor' }, untrusted: 'the participant\'s name' };
+  cur.editLink = followLink(`${cur.server}/`, cur.session.room, cur.session.key, 'relay', cur.session.editKey);
+  return { text: `'${user}' is a viewer of '${name}' now. The editors' link was renewed (the old one only follows); the other editors keep editing:\n${cur.editLink}`, data: { project: name, user, role: 'viewer', editLink: cur.editLink }, untrusted: 'the participant\'s name' };
+}
+
 export const COLLAB_TOOLS = [
   {
     name: 'share_project', title: 'Share a project live (read only)',
-    description: 'Share a project of the workspace live, read only, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it (in Silinx, or follow_project), its files and drawings as they change on disk; status, who follows it and what they look at; stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile; its followers get what changed once it is back).',
+    description: 'Share a project of the workspace live, read only, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it (in Silinx, or follow_project), its files and drawings as they change on disk; status, who follows it (each a viewer or an editor) and what they look at; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile; its followers get what changed once it is back).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
-      action: { type: 'string', enum: ['start', 'status', 'stop'], description: 'start (default), status or stop.' },
+      action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'stop'], description: 'start (default), status, promote, demote or stop.' },
+      user: STR('promote, demote: the participant, by the name status lists (a share with editors only).'),
       name: STR('The name the followers see (default: "MCP agent").'),
       server: STR(`The address of the Silinx server whose relay shares it (default ${DEFAULT_SERVER}).`),
       editors: { type: 'boolean', description: 'start: editors may change its text files and drawings too (the result: an editor\'s link besides the follower\'s; what they change written to the disk, a drawing\'s HDL made again from it, through the import gate, the project untrusted from their first change: Xilinx ISE waits until the user trusts it in the interface).' },
@@ -158,12 +179,13 @@ export const COLLAB_TOOLS = [
       top: STR('start: a module of the project the links open on, as Share Module… does, live (#3631): …#follow=…&top=<module>; the project shared as it is.'),
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async run({ project: name, action = 'start', name: who, server, editors = false, key, top, qr = false }) {
+    async run({ project: name, action = 'start', name: who, server, editors = false, key, top, qr = false, user }) {
       // (the follow link's QR code, #3637)
       const withQr = link => (qr ? { qr: qrSvg(link) } : {});
       // (the editors' link's QR code too, as Share Project… shows it, #3996)
       const withEditQr = link => (qr && link ? { editQr: qrSvg(link) } : {});
-      if (!['start', 'status', 'stop'].includes(action)) throw toolError('action: start, status or stop');
+      if (!ACTIONS.includes(action)) throw toolError('action: start, status, promote, demote or stop');
+      if (user !== undefined && action !== 'promote' && action !== 'demote') throw toolError('user: with action promote or demote only');
       if (top !== undefined && action !== 'start') throw toolError('top: with action start only');
       if (top !== undefined && !MODULE_RE.test(top)) throw toolError(`top: '${String(top).slice(0, 64)}' is not a module name`);
       const cur = shares.get(name);
@@ -174,6 +196,7 @@ export const COLLAB_TOOLS = [
         await cur.session.close();
         return { text: `Stopped sharing '${name}': its followers no longer see it.`, data: { project: name, shared: false } };
       }
+      if (action === 'promote' || action === 'demote') return setRole(name, cur, action, user);
       if (action === 'status') {
         if (!cur || cur.session.closed()) { if (cur) { shares.delete(name); cur.off(); } return { text: `'${name}' is not shared.`, data: { project: name, shared: false } }; }
         const peers = cur.session.peers();
@@ -236,7 +259,8 @@ export const COLLAB_TOOLS = [
       if (l.via === 'host') throw toolError('link: a project its owner\'s page hosts (…#follow=….host) is followed in a browser, over WebRTC: open the link in Silinx');
       // (through the relay the link names, #3227, else the link's own Silinx)
       const origin = serverOf(l.relay || l.base, 'link');
-      const slot = `${l.room}:${l.sign ? 'edit' : 'follow'}`;   // (a room followed and edited: two participants)
+      // (a room followed and edited: two participants; an editors' link renewed, #3997: another one, its key its own)
+      const slot = `${l.room}:${l.sign ? `edit.${l.sign}` : 'follow'}`;
       let cur = follows.get(slot);
       if (cur?.session.closed()) { follows.delete(slot); cur = null; }
       if (stop) {

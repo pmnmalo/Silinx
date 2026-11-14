@@ -1,6 +1,6 @@
 // Who is in a shared project (#3181), at the right end of the main toolbar (the Silinx interface's top bar, before
 // Search commands and files, #3315): a round badge per participant (their initial, in their colour; their name and
-// role its tip), the owner's first, then a button: the owner's "Sharing", a follower's "Following <owner>" (or "Follow
+// role its tip: owner, editor or viewer, #3997), the owner's first, then a button: the owner's "Sharing", a follower's "Following <owner>" (or "Follow
 // <owner>" when they browse alone), its menu the participants and the commands (the link, stop sharing; follow, stop
 // following). Shown in both interfaces, while the project is shared.
 import { h, popupMenu } from './ui.js';
@@ -46,6 +46,6 @@ export function renderPresence({ label = '', me = null, peers = [] } = {}) {
 
 function menuItems(all) {
   // (a name is the participant's, not translated; their role beside it)
-  const people = all.map(p => ({ label: p.name, raw: true, shortcut: p.me ? 'you' : p.role === 'owner' ? 'owner' : p.role === 'editor' ? 'editor' : 'follower', disabled: true }));
+  const people = all.map(p => ({ label: p.name, raw: true, shortcut: p.me ? 'you' : p.role === 'owner' ? 'owner' : p.role === 'editor' ? 'editor' : 'viewer', disabled: true }));
   return [...people, '-', ...commands()];
 }

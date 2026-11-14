@@ -162,7 +162,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
     ? await shareRoom({ url: 'silinx-host:', WebSocket: host.WebSocket, doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) })
     : await shareRoom({ url: relayUrl(other || location.href, 'share'), token: other ? relay.key || null : await api.collabToken(), doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) });
   const base = location.origin + location.pathname, pub = hostKey?.pub ?? null;
-  share = { name, project, session, doc, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
+  share = { name, project, session, doc, base, via, other, pub, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share, offFiles = watchDoc(doc, ev => onEdits(s0, ev)), offDrawings = watchDrawings(s0);
@@ -207,7 +207,21 @@ export const editorsLink = () => share?.editLink || null;
 const copyLink = (link = share.link) => { writeClip('text', link); app.log('Shared project\'s link copied: whoever opens it follows it live, read only.', 'ok'); };
 const copyEditorLink = (editLink = share.editLink) => { writeClip('text', editLink); app.log('Shared project\'s editors\' link copied: whoever opens it edits its text files and drawings with you.', 'ok'); };
 const addUser = (module = null) => { const s = share; if (s) import('./collab-users.js').then(m => m.addUserDialog(s, module)); };
+// a participant made an editor or a viewer (#3997): the editors' key given to them, or renewed (the link with it)
+async function setRole(peer, role) {
+  const s = share;
+  if (!s) return;
+  try {
+    if (role === 'editor') await s.session.promote(peer.client);
+    else { await s.session.demote(peer.client); s.editLink = followLink(s.base, s.session.room, s.session.key, s.via, s.session.editKey, s.other, s.pub); }
+  } catch (e) { app.log(`ERROR: Sharing: ${e.message}.`, 'err'); return; }
+  app.log(role === 'editor' ? `${peer.name} is an editor now: they edit the project's text files and drawings with you.` : `${peer.name} is a viewer now: the editors' link was renewed (the old one only follows); your other editors keep editing.`, 'ok');
+}
+const roleItems = () => (share?.session.editKey ? share.session.peers().filter(p => p.role !== 'owner').map(p => (p.role === 'editor'
+  ? { label: `Make ${p.name} a Viewer`, action: () => setRole(p, 'viewer') }
+  : { label: `Make ${p.name} an Editor`, action: () => setRole(p, 'editor') })) : []);
 const commands = () => [
+  ...roleItems(), ...(roleItems().length ? ['-'] : []),
   { label: 'Copy Link', action: () => copyLink() },
   { label: 'Copy Editor Link', action: () => copyEditorLink() },
   { label: 'Add a User…', action: () => addUser() },
