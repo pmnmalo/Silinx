@@ -47,8 +47,8 @@ export const settingsItems = () => [
   '-',
   interfaceMenu(), languageMenu(), themeMenu(),
   '-',
-  { label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() },
-  '-',
+  // (a design project's: no toolchain, #3891)
+  ...flowOnly({ label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() }, '-'),
   { label: 'Check for Updates…', action: () => wiz.checkUpdatesDialog() },
   updateAtStartItem(),
   '-',
@@ -107,10 +107,10 @@ export function setupMenus() {
       { label: 'Find in Project…', icon: icon('find'), action: () => openFindInProject(), shortcut: 'Ctrl+Shift+F', disabled: () => !S.project },   // (#1430)
       { label: 'Go to Line…', action: () => S.active?.editor?.exec('jumpToLine'), shortcut: 'Ctrl+G', disabled: () => !S.active?.editor },
       '-',
-      { label: 'Design Checks (Lint Warnings)', checked: lintEnabled(), action: () => { setLintEnabled(!lintEnabled()); toast(lintEnabled() ? 'Design checks on: Check Syntax and the editor show the lint warnings' : 'Design checks off: only errors are shown'); for (const d of S.docs) d.liveCheck?.(); } },
+      { label: 'Design Checks (Lint Warnings)', checked: lintEnabled(), action: () => { setLintEnabled(!lintEnabled()); toast(lintEnabled() ? (designOnly() ? 'Design checks on: Check Design and the editor show the lint warnings' : 'Design checks on: Check Syntax and the editor show the lint warnings') : 'Design checks off: only errors are shown'); for (const d of S.docs) d.liveCheck?.(); } },
     ] },
     { label: 'View', items: () => [
-      { label: 'Implementation', checked: S.view === 'impl', action: () => setView('impl') },
+      { label: designOnly() ? 'Design' : 'Implementation', checked: S.view === 'impl', action: () => setView('impl') },   // (a design project's: no implementation, #3891)
       { label: 'Simulation', checked: S.view === 'sim', action: () => setView('sim') },
       '-',
       // (a design and simulation project, #3780: no flow, no board, no HDL: their items left out, web/js/design-only.js)
@@ -158,10 +158,11 @@ export function setupMenus() {
       ...flowOnly({ label: 'I/O Pin Planning', icon: icon('pins'), action: () => openPinPlanner(S.sel?.module), disabled: hasPj },
         { label: 'iMPACT (Configure Target Device)', icon: icon('impact'), action: () => openImpact() },
         { label: 'Board Emulator', icon: icon('board'), action: () => openEmulator(S.project.top), disabled: hasPj }),
-      { label: 'RTL Schematic', icon: icon('schematic'), action: () => S.sel?.module && openSchematic(S.sel.module), disabled: () => !S.sel?.module },
-      ...flowOnly({ label: 'Implemented Design (FPGA View)', icon: icon('chip'), action: () => openFpgaView(), disabled: () => !S.project?.top }),
-      '-',
-      { label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() },
+      // (a design project's: no RTL schematic nor toolchain, #3891)
+      ...flowOnly({ label: 'RTL Schematic', icon: icon('schematic'), action: () => S.sel?.module && openSchematic(S.sel.module), disabled: () => !S.sel?.module },
+        { label: 'Implemented Design (FPGA View)', icon: icon('chip'), action: () => openFpgaView(), disabled: () => !S.project?.top },
+        '-',
+        { label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() }),
     ] },
     { label: 'Window', items: () => [
       ...S.docs.map(d => ({ label: d.title, checked: d === S.active, action: () => activateDoc(d) })),
@@ -250,7 +251,10 @@ export function refreshSteps() {
     b.hidden = FLOW_STEPS.includes(b.dataset.step) && designOnly();
     if (b.dataset.step === 'check') b.title = `${checkLabel()} of the selected module`;
   }
-  for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=run], [data-cmd=impact])')) b.hidden = designOnly();
+  for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=run], [data-cmd=impact], [data-cmd=gear])')) b.hidden = designOnly();   // (the gear: the toolchain's, #3891)
+  // (the Design pane's view: Design for Implementation in a design project, #3891)
+  const impl = document.querySelector('#view-switch input[value=impl], input[name=view][value=impl]')?.parentElement;
+  if (impl?.lastChild?.nodeType === 3) impl.lastChild.textContent = designOnly() ? 'Design' : 'Implementation';
   for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=cut], [data-cmd=copy], [data-cmd=paste], [data-cmd=undo], [data-cmd=redo], [data-cmd=print], [data-cmd=share], [data-cmd=closeProject])')) b.disabled = !b._enabled();
 }
 

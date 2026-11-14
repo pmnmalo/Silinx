@@ -13,6 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, readProject, diagLine, STR, PROJECT } from './mcp-util.js';
+import { isDesignOnly } from '../core/project-kind.js';
 
 const KINDS = { xilinx: 'a Xilinx ISE project', silinx: 'a Silinx project' };
 const MAX_FILES = 5000;
@@ -67,12 +68,13 @@ export const TRANSFER_TOOLS = [
     name: 'export_project', title: 'Export a project (.zip)',
     description: 'Write a project as a .zip into the exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names), as the File menu\'s Export Project (.zip)… does, kind being the software chosen in its window: xilinx (Xilinx ISE: its .xise, its sources, the schematics as ISE schematics, a C source as its HDL; no Silinx-only file) or silinx (Silinx: the whole project, silinx.json and every file, for Import Project (.zip)…). No AMD Vivado nor Intel Quartus project yet. The file must not exist: an export never replaces one.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, kind: { type: 'string', enum: Object.keys(KINDS), description: 'xilinx (default) or silinx.' },
+      project: PROJECT, kind: { type: 'string', enum: Object.keys(KINDS), description: 'xilinx (default) or silinx (a design and simulation project: silinx alone, its default).' },
       path: STR('The .zip to write, in the exchange folder: its name (e.g. traffic.zip), a path in it, or an absolute path inside it; a file that does not exist yet.'),
     }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ project: name, kind = 'xilinx', path: to }) {
-      await readProject(name);
+    async run({ project: name, kind: given, path: to }) {
+      const pj = await readProject(name);
+      const kind = given ?? (isDesignOnly(pj) ? 'silinx' : 'xilinx');   // (a design project's: Silinx's, #3891)
       if (!KINDS[kind]) throw toolError(`kind: one of ${Object.keys(KINDS).join(', ')}`);
       const file = await exchangePath(to, 'path');
       if (!/\.zip$/i.test(file)) throw toolError(`path: '${to}' is not a .zip`);

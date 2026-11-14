@@ -10,8 +10,8 @@
 //   Constraints) and Emulate on Board with its models, as in Implement: the task's side panel, as Implement's
 //   (web/js/tasks.js, #1399).
 // - The emulator's own bar stays its controls (Model, Engine, Run, Step, Power cycle, Clock), right under the task's
-//   bar; its status (the emulated time and rate) is right below the board, in place of the board's line (#1022); its
-//   Messages box is in the message centre (#798).
+//   bar; its status (the emulated time and rate) in its status line, its last line, as every document's and as in the
+//   ISE style interface (#2763, #3920: no longer below the board, #1022); its Messages box is in the message centre (#798).
 // boardZoom has no DOM and is unit tested (test/tasks.test.js).
 
 export const MAX_ZOOM = 1.5, MIN_ZOOM = 0.7;   // (smaller on a tablet, but not below 0.7: its labels kept legible, #1999)
@@ -27,25 +27,16 @@ export function boardZoom(room, board) {
 }
 
 const shown = el => !!el && el.getClientRects().length > 0;
-/** The emulator's status (t = … ns · … cycles · … kHz (…% of real time)) right below the board in the Tasks interface,
- *  in place of the board's line (hidden by web/css/tasks.css); in the emulator's status line in the others (#1022, #2763). */
-function placeStat(emu, wrap) {
-  const stat = emu.querySelector(':scope > .doc-status > .stat, .emu-board-wrap > .stat'), bar = emu.querySelector(':scope > .doc-status');
-  if (!stat || !bar) return;
-  if (document.documentElement.dataset.layout === 'tasks') { if (stat.parentNode !== wrap) wrap.append(stat); }
-  else if (stat.parentNode !== bar) bar.append(stat);
-}
 /** Zooms each open emulator's board to its room (`on`: the Tasks interface's Emulate; else its own size). */
 export function fitBoard(on) {
   for (const emu of document.querySelectorAll('#workspace .doc .emu')) {
     const wrap = emu.querySelector('.emu-board-wrap');
     if (!wrap) continue;
-    placeStat(emu, wrap);
     wrap.style.zoom = '';
     if (!on || !shown(emu)) continue;
-    const main = emu.querySelector('.emu-main'), bar = emu.querySelector('.emu-bar');
+    const main = emu.querySelector('.emu-main'), bar = emu.querySelector('.emu-bar'), line = emu.querySelector(':scope > .doc-status');
     // (the board's area, the side panel at its right or over it, #2666, #2713: the VGA monitor wraps below the board)
-    const h = emu.clientHeight - (bar?.offsetHeight || 0) - 2 * GAP, board = { w: wrap.offsetWidth, h: wrap.offsetHeight };
+    const h = emu.clientHeight - (bar?.offsetHeight || 0) - (line?.offsetHeight || 0) - 2 * GAP, board = { w: wrap.offsetWidth, h: wrap.offsetHeight };
     wrap.style.zoom = String(boardZoom({ w: main.clientWidth - 2 * GAP - BAR, h }, board));
   }
 }

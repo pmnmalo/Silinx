@@ -331,7 +331,7 @@ function moduleContextMenu(e, mod, file) {
     { label: 'Open', action: () => openModuleSource(mod) },
     { label: 'Rename…', action: () => renameDialog(file, mod) },
     { label: checkLabel(), action: () => checkSyntax(mod, isSimView) },
-    { label: 'View RTL Schematic', action: () => openSchematic(mod) },
+    designOnly() ? null : { label: 'View RTL Schematic', action: () => openSchematic(mod) },   // (none in a design project, #3891)
     // (its symbol in the schematics, the Symbol Editor's: its pins' order and sides, #3755)
     { label: 'Edit Symbol', action: () => import('./symbol-doc.js').then(m => m.editSymbol(mod)) },
     // (its equivalence with a reference module, #3177: the Silinx interface's way to it, the ISE style's Processes too)

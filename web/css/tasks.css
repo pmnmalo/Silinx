@@ -139,8 +139,6 @@ html[data-layout="tasks"][data-console="folded"] #mc-cmd { display: none; }
 html[data-layout="tasks"] .isim-title { display: none; }
 /* no status line ("Ready … Sim Time"): the time is where the waves are, the state in the message centre (#1017) */
 html[data-layout="tasks"] .isim-status { display: none; }
-/* nor the emulator's: its time right below the board (web/js/tasks-emu.js placeStat, #1022, #2763) */
-html[data-layout="tasks"] .emu > .doc-status { display: none; }
 /* the toolbar's icons in the wave window's line (web/js/tasks-sim.js placeSimToolbar), not its name ("Default.wcfg") and
    the cursor's text: the waves get the toolbar's height (#1026) */
 html[data-layout="tasks"] .isim-wavewin > .caption :is(.isim-wcfg, .isim-cursor-info, .spacer) { display: none; }
@@ -205,11 +203,6 @@ html[data-layout="tasks"] .isim-toolbar .isim-model { height: var(--m-tool-h); m
    short, below it, the board's area scrolling; the task's side panel its Processes, as Implement's (#1399) */
 html[data-layout="tasks"] .emu-main { flex-wrap: wrap; align-items: flex-start; }
 html[data-layout="tasks"] .emu-board-wrap { flex: none; }
-
-/* the emulator's status right below the board (moved there by tasks-emu.js), in place of the board's line (#1022) */
-html[data-layout="tasks"] .emu-board-note { display: none; }
-html[data-layout="tasks"] .emu-board-wrap > .stat { align-self: flex-start; color: var(--grey-3); font: 11px var(--mono, monospace);
-  font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------ Implement (#802, web/js/tasks-impl.js) */
 /* its side panel: the top's Processes (ISE's names and states), not the tree */

@@ -181,7 +181,7 @@ export function openSymbolInfo(opts) {
       // (a design and simulation project's: no HDL shown, #3891)
       side.append(pt, h('div', { class: 'sd-note', text: T(designKind() ? 'Change the parameters to see the tables update (the placed symbol is not changed).' : 'Change the parameters to see the tables and the HDL update (the placed symbol is not changed).', lang) }));
     }
-    if (d.xilinx.length) side.append(h('div', { class: 'sd-xil' }, h('div', { class: 'sd-h4', text: T('Xilinx library equivalents', lang) }), h('div', { class: 'sd-xnames', text: d.xilinx.join(', ') })));
+    if (d.xilinx.length && !designKind()) side.append(h('div', { class: 'sd-xil' }, h('div', { class: 'sd-h4', text: T('Xilinx library equivalents', lang) }), h('div', { class: 'sd-xnames', text: d.xilinx.join(', ') })));
     const main = h('div', { class: 'sd-main' });
     main.append(h('h3', { text: T('Description', lang) }), ...d.text.map(t => h('p', { text: t })));
     if (d.formula) main.append(h('div', { class: 'sd-formula' }, h('span', { text: `${T('Formula', lang)}: ` }), h('code', { text: d.formula })));
