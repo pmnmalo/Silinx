@@ -11,7 +11,7 @@ import { partDef, gateValue, readInput } from './circuit-parts.js';
 import { circuitNets, netText } from './circuit-net.js';
 import { savedInputs, partLamps } from './circuit-io.js';
 
-export const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
+const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
 
 /**
  * A circuit's simulation, at time 0 with its switches as saved and its buttons released (run() settles it).
