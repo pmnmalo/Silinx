@@ -1,4 +1,4 @@
-// Silinx logic - the Quine-McCluskey minimisation of a truth table's column (#3939), any number of inputs: its prime
+// Silinx logic - the Quine-McCluskey minimisation of a truth table's column (#3939; a table has up to 16 inputs): its prime
 // implicants (the columns of the combined implicants), its chart (the primes that cover each minterm), its essential
 // primes and the cover of the rest (Petrick's method's minimum, found by branch and bound). Bounded by work, never by
 // time (the same table always gives the same result): past `maxImplicants` implicants, a cover heuristic (each minterm
