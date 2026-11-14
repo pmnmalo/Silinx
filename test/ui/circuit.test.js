@@ -27,7 +27,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   await page.eval(() => window.SilinxApp.openFile('src/half_adder.circ.json'));
   await page.waitFor((ed) => window.Silinx.active?.id === 'circ:src/half_adder.circ.json' && document.querySelector(ed), [ED], { what: 'the circuit editor' });
   await page.waitFor((ed) => /15 wire/.test(document.querySelector(`${ed} .doc-status`)?.textContent), [ED], { what: 'its counts' });
-  assert.deepEqual(await status(page), ['2 IC(s) · 2 switch(es) · 2 LED(s) · 15 wire(s)']);
+  assert.deepEqual(await status(page), ['2 IC(s) · 2 input(s) · 2 display(s) · 15 wire(s)']);
   // its Design row: the circuit's badge first, its HDL's last (made with it, as every drawing's)
   await page.waitFor(() => [...document.querySelectorAll('#hier .lbl')].some((e) => e.textContent === 'half_adder'), [], { what: 'half_adder in the hierarchy' });
   assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'half_adder').querySelector(':scope > .row').querySelectorAll('.badge')].map((b) => b.textContent)), ['Circuit', 'VHDL']);
@@ -50,13 +50,13 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   // Try it: S1 (a) on, the XOR's LED (s) lights; the time in the status line
   await page.click(`${ED} .circ-sim-btn`);
   await page.waitFor((ed) => document.querySelector(`${ed}.circ-simulating`) || document.querySelector(ed).classList.contains('circ-simulating'), [ED], { what: 'simulating' });
-  assert.deepEqual(await status(page), ['2 IC(s) · 2 switch(es) · 2 LED(s) · 16 wire(s)', 't = 12 ns']);
+  assert.deepEqual(await status(page), ['2 IC(s) · 2 input(s) · 2 display(s) · 16 wire(s)', 't = 12 ns']);
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} .circ-led.lit`).length, ED), 0);
   const sw = await page.eval((ed) => { const r = document.querySelector(`${ed} [data-id=S1] .circ-sw-body`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, ED);
   await page.click(sw);
   await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-led.lit`).length === 1, [ED], { what: 'the LED s lit' });
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-led.lit`).closest('[data-id]').dataset.id, ED), 'D1');
-  assert.deepEqual(await status(page), ['2 IC(s) · 2 switch(es) · 2 LED(s) · 16 wire(s)', 't = 24 ns']);
+  assert.deepEqual(await status(page), ['2 IC(s) · 2 input(s) · 2 display(s) · 16 wire(s)', 't = 24 ns']);
   await page.click(`${ED} .circ-sim-btn`);
   await page.waitFor((ed) => !document.querySelector(ed).classList.contains('circ-simulating'), [ED], { what: 'stopped' });
   // Check: in the console (the wire drawn reaches the XOR's 4Y on a8: its gate used, its inputs 4A and 4B floating)
@@ -70,7 +70,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-tool`)].some((b) => b.textContent.trim() === 'Fio'), [ED], { what: 'the toolbar in Portuguese' });
-  assert.deepEqual(await status(page), ['2 CI(s) · 2 interruptor(es) · 2 LED(s) · 16 fio(s)']);
+  assert.deepEqual(await status(page), ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 16 fio(s)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts h3, ${ed} .circ-lib-title`)].map((e) => e.textContent), ED),
     ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
@@ -94,7 +94,7 @@ uiTest('Circuit editor: New Source ▸ Circuit makes one with its breadboard and
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor((ed) => window.Silinx.active?.id === 'circ:src/blinker.circ.json' && document.querySelector(ed), [ED], { what: 'the new circuit opened' });
-  assert.deepEqual(await status(page), ['0 IC(s) · 0 switch(es) · 0 LED(s) · 2 wire(s)']);
+  assert.deepEqual(await status(page), ['0 IC(s) · 0 input(s) · 0 display(s) · 2 wire(s)']);
   const m = JSON.parse(await readWs(env, 'CircNew', 'src/blinker.circ.json'));
   assert.deepEqual(m.parts.map((p) => p.type), ['breadboard-half', 'supply']);
   // a button from the + rail to an LED's anode, its cathode on the − rail: lit while pressed
