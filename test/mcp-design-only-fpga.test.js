@@ -1,5 +1,5 @@
 // The MCP server in a design and simulation project without FPGA tools (#3891, after #3780): export_project makes a
-// Silinx project of it (its default there) and refuses a Xilinx ISE one, as Export Project offers Silinx's alone. An
+// Silinx project of it (its default there) and refuses an ISE project, as Export Project offers Silinx's alone. An
 // FPGA project's default stays Xilinx ISE's.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,11 +34,11 @@ async function designProject(name) {
 }
 
 
-test('export_project in a design project: a Silinx project by default, a Xilinx ISE one refused; an FPGA project\'s default ISE\'s', async () => {
+test('export_project in a design project: a Silinx project by default, an ISE project refused; an FPGA project\'s default ISE\'s', async () => {
   await designProject('e1');
   const r = await ok('export_project', { project: 'e1', path: 'e1.zip' });
   assert.equal(r.data.kind, 'silinx', JSON.stringify(r.data));
-  await fails('export_project', { project: 'e1', kind: 'xilinx', path: 'e1-ise.zip' }, 'the project \'e1\' is a design and simulation project (no FPGA): it is exported as a Silinx project, not as a Xilinx ISE one');
+  await fails('export_project', { project: 'e1', kind: 'xilinx', path: 'e1-ise.zip' }, 'the project \'e1\' is a design and simulation project (no FPGA): it is exported as a Silinx project, not as an ISE project');
   await ok('new_project', { name: 'e2', board: 'basys2' });
   await ok('write_file', { project: 'e2', path: 'src/traffic.fsm.json', text: FSM });
   await ok('set_top', { project: 'e2', top: 'traffic' });
