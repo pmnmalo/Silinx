@@ -6,6 +6,7 @@
 // With a property: a state diagram's or an ASM chart's property, as its Verify Property… proves it (core/verify-props.js).
 import * as P from './projects.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
+import { isDesignOnly } from '../core/project-kind.js';
 
 // a check that failed or could not run (#3681): its messages, and a counterexample's replay, quote the design's names
 // and files and what it prints: the project's own text
@@ -48,6 +49,7 @@ export const VERIFY_TOOLS = [
         : a.reference ? await V.verifyEquivalence(srcs, { top, reference: a.reference, depth, timeLimit, run: yosysNode })
           : await A.verifyAssertions(srcs, { top, depth, timeLimit, run: yosysNode });
       let bench = null, replay = [];
+      const design = isDesignOnly(pj);   // (a design project's: the test bench by its name, its HDL never named, #3891)
       const pb = a.property && r.status === 'failed' ? Pr.propertyBench(r) : null;
       if (r.status === 'failed' && a.test_bench !== false) {
         // (a property's: in the drawing's language, the drawing's HDL with the property in the same file)
@@ -57,10 +59,10 @@ export const VERIFY_TOOLS = [
         // (a file of that path, or a module of that name, of the user's: left as it is)
         const all = await P.readSources(name);
         const mine = all.find(s => s.path === bench);
-        if (mine && !V.isVerifyBench(mine.text)) throw toolError(`${bench} exists and is not a test bench of Verify: rename it, or give test_bench false`);
+        if (mine && !V.isVerifyBench(mine.text)) throw toolError(`${design ? `the test bench ${tb}` : bench} exists and is not a test bench of Verify: rename it, or give test_bench false`);
         const { compile } = await import('../core/compile.js');
         const other = [...compile(all.filter(s => !s.missing && !V.isVerifyBench(s.text) && (s.lang === 'vhdl' || s.lang === 'verilog'))).modules.values()].find(m => m.name.toLowerCase() === tb.toLowerCase());
-        if (other) throw toolError(`A module named '${tb}' already exists (${other.file}): rename it, or give test_bench false`);
+        if (other) throw toolError(`A module named '${tb}' already exists${design ? '' : ` (${other.file})`}: rename it, or give test_bench false`);
         const text = pb ? pb.text : counterexampleBench(r, { name: tb, lang });
         // (the earlier one in the other language: replaced by this one, two modules of one name otherwise)
         const twin = all.find(s => s.path === `sim/${tb}.${lang === 'vhdl' ? 'v' : 'vhd'}` && V.isVerifyBench(s.text));
@@ -71,7 +73,8 @@ export const VERIFY_TOOLS = [
         const { primitiveSources } = await import('../core/unisim.js');
         const tbSrc = { path: bench, lang, text, role: 'sim' };
         const s = simulate([...primitiveSources([...srcs, tbSrc]), ...srcs, tbSrc], tb, { until: 1e15 });
-        replay = s.errors.length ? s.errors.slice(0, 3).map(e => `ERROR: ${e.file}:${e.line} ${e.message}`) : s.sim.log.map(l => l.text);
+        replay = s.errors.length ? s.errors.slice(0, 3).map(e => `ERROR: ${design ? '' : `${e.file}:${e.line} `}${e.message}`) : s.sim.log.map(l => l.text);
+        if (design) bench = tb;
       }
       const messages = a.property ? Pr.propertyMessages(r, { bench }) : a.reference ? V.verifyMessages(r, { bench }) : A.assertMessages(r, { bench });
       const lines = messages.map(m => m.text.trim()).filter(Boolean);

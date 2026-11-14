@@ -9,6 +9,8 @@ import { api } from './api.js';
 import { S, app, findDoc, openDoc, openFile, setDirty } from './app.js';
 import { logInfo } from './console.js';
 import { findPattern, findPaths, findInProject, replaceInText } from '/core/find.js';
+import { designOnly } from './design-only.js';
+import { hdlSideFile } from '/core/project-kind.js';
 
 /** The project's texts to search: [{ path, text, drawing, generated }], the open editors' as they are. */
 async function projectTexts() {
@@ -17,6 +19,7 @@ async function projectTexts() {
   const out = [];
   for (const { path, drawing } of findPaths(S.fileTree || [], pj.files || [], pj.constraints)) {
     if (drawing) { const t = S.viewTexts?.[path]; if (t != null) out.push({ path, text: t, drawing: true }); continue; }
+    if (designOnly() && hdlSideFile(path)) continue;   // (a design project's HDL never searched nor shown, #3891)
     const ed = findDoc(`file:${path}`)?.editor;
     let text = ed ? ed.getValue() : S.sources.find(s => s.path === path)?.text;
     if (text == null) { try { text = await api.readFile(pj.name, path); } catch { continue; } }

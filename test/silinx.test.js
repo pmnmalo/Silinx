@@ -255,8 +255,8 @@ test('theme.css: the pages\' own colours have a dark value; no colour written in
   const css = fs.readFileSync(path.join(ROOT, 'web/css/silinx.css'), 'utf8');
   const own = theme.slice(theme.indexOf('--note-bg:'), theme.indexOf('}', theme.indexOf('--note-bg:')));
   const vars = [...own.matchAll(/(--[\w-]+):/g)].map((m) => m[1]);
-  assert.deepEqual(vars, ['--note-bg', '--note-border', '--code-bg', '--frame', '--frame-light', '--frame-lighter', '--field-bg', '--field-fg', '--field-border',
-    '--field-bad-bg', '--pin-name', '--drive-bg', '--release-bg', '--expected-bg', '--grey-1', '--grey-2', '--grey-3', '--grey-4', '--grey-5', '--grey-6', '--grey-7',
+  assert.deepEqual(vars, ['--note-bg', '--note-border', '--try-it-bar', '--try-it-line', '--try-it-body', '--code-bg', '--frame', '--frame-light', '--frame-lighter',
+    '--field-bg', '--field-fg', '--field-border', '--field-bad-bg', '--pin-name', '--drive-bg', '--release-bg', '--expected-bg', '--grey-1', '--grey-2', '--grey-3', '--grey-4', '--grey-5', '--grey-6', '--grey-7',
     '--error-fg', '--error-fg-2', '--log-error', '--log-warning']);
   const start = css.indexOf('html[data-theme="dark"] {');
   const dark = css.slice(start, css.indexOf('}', start));
