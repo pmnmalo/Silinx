@@ -1,5 +1,5 @@
 // Portuguese strings of the HDL editor's refactoring and quick fixes (merged into the dictionary of
-// i18n.js): Rename Symbol (F2), the titles of the quick fixes of core/quickfix.js ("Fix: …").
+// i18n.js): Rename Symbol (F2), the titles of the quick fixes of core/quickfix.js ("Fix: …"); Open in VS Code (#4017).
 
 const KIND_PT = {
   'entity': 'entidade', 'architecture': 'arquitetura', 'package': 'pacote', 'configuration': 'configuração', 'component': 'componente', 'module': 'módulo',
@@ -59,6 +59,11 @@ export const EDITOR_PHRASES_PT = {
 };
 
 export const EDITOR_PT_PATTERNS = [
+  // Open in VS Code (#4017, web/js/open-editor.js): the menus' items and the console's lines
+  [/^Open in (VS Code|VS Code Insiders|VSCodium|Cursor|[\w .+-]+)$/, 'Abrir no $1'],
+  [/^Open Folder in (.+)$/, 'Abrir a Pasta no $1'],
+  [/^Opened (.+) in (VS Code|VS Code Insiders|VSCodium|Cursor)\.$/, '$1 aberto no $2.'],
+  [/^Cannot open (.+) in (VS Code|VS Code Insiders|VSCodium|Cursor): (.+)$/, 'Não é possível abrir $1 no $2: $3'],
   [/^Ln (\d+), Col (\d+)$/, 'Lin $1, Col $2'],   // (the status line's, #2763)
   [/^Fix: (.+)$/, (m, x) => `Corrigir: ${fixPt(x)}`],
   ...FIX_PT,

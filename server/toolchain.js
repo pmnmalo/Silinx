@@ -112,7 +112,7 @@ export async function loadConfig() {
 
 /** The settings that name a program to run or its arguments: set in config.json (or with the
  *  command line) only, never through the API (Toolchain Settings does not show them). */
-export const FILE_ONLY = ['docker.command', 'docker.extraArgs', 'ssh.sshArgs', 'ssh.identity', 'ssh.earlierDirs', 'paths', 'relay', 'mcp'];
+export const FILE_ONLY = ['docker.command', 'docker.extraArgs', 'ssh.sshArgs', 'ssh.identity', 'ssh.earlierDirs', 'paths', 'relay', 'mcp', 'editor'];
 // the earlier build folders on the ssh host remembered (their files came from projects and stay there, #3407)
 const EARLIER_DIRS = 100;
 

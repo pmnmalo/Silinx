@@ -23,6 +23,8 @@ import { cBadge, cBadges, cSequential, isC } from './c-source.js';
 import { translationBadge } from './translation.js';
 import { gitMark, gitMenuItems, gitStartItems, hasGit } from './git.js';
 import { checkLabel, designOnly, shownFiles, withoutHdlBadges } from './design-only.js';
+import { editorItem, projectEditorItem } from './open-editor.js';
+import { hdlSideFile } from '/core/project-kind.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -329,6 +331,8 @@ function moduleContextMenu(e, mod, file) {
     isSimView ? null : topMenuItem(mod, () => setTop(mod, false)),
     // (what a double-click opens: its drawing, else its HDL, #2872)
     { label: 'Open', action: () => openModuleSource(mod) },
+    // (its HDL or C in the user's editor, #4017: not a drawing's, which the drawing makes)
+    S.hdlToSch?.[file] || designOnly() ? null : editorItem(file),
     { label: 'Rename…', action: () => renameDialog(file, mod) },
     { label: checkLabel(), action: () => checkSyntax(mod, isSimView) },
     designOnly() ? null : { label: 'View RTL Schematic', action: () => openSchematic(mod) },   // (none in a design project, #3891)
@@ -359,18 +363,22 @@ function moduleContextMenu(e, mod, file) {
     { label: 'Source Properties…', action: () => wiz.sourceProperties(file) },
   ].filter(Boolean), e.clientX, e.clientY);
 }
+// a file the user's editor opens as text (#4017): not a drawing, a symbol, an image, a design project's HDL
+const textFile = file => !/\.(json|png|jpe?g|gif|bmp|svg|pdf|zip|bit|bin|wcfg|xise)$/i.test(file) && !(designOnly() && hdlSideFile(file));
 export function fileContextMenu(e, file) {
   if (!S.fileTree.includes(file)) {   // a file of the folder that is not in the project
     popupMenu([
       { label: 'Add to Project', action: () => addToProject(file).then(added => added !== false && log(`${file} added to the project.`, 'ok')) },
       { label: 'Open', action: () => openFile(file) },
+      textFile(file) ? editorItem(file) : null,
       '-',
       { label: 'Delete File…', action: () => deleteFile(file) },
-    ], e.clientX, e.clientY);
+    ].filter(Boolean), e.clientX, e.clientY);
     return;
   }
   popupMenu([
     { label: 'Open', action: () => openFile(file) },
+    textFile(file) ? editorItem(file) : null,   // (#4017)
     { label: 'Rename…', action: () => renameDialog(file) },
     /\.(vhdl?|v|sv|c)$/i.test(file) && !designOnly() ? { label: 'Check Syntax', action: () => checkFileSyntax(file) } : null,   // (.c: Silinx HLS, #1524)
     /\.(ucf|pcf|lpf|cst|xdc)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
@@ -425,6 +433,7 @@ function projectContextMenu(e) {
   popupMenu([
     { label: 'New Source…', action: () => wiz.newSourceWizard() },
     { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog() },
+    projectEditorItem(),   // (its folder in the user's editor, #4017)
     '-',
     { label: 'Design Properties…', action: () => wiz.projectProperties() },
     { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()) },   // (a copy, #2826, or live, #3479: chosen in its window, #3698)

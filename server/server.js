@@ -245,6 +245,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // automatic grading's synthesis tests (#3216)
   const { registerGradeRoutes } = await import('./grade-routes.js');
   registerGradeRoutes(api, { wrap, projects: P });
+  // Open in VS Code (#4017): a project's file in the user's editor, on this computer only
+  const { registerEditorRoutes } = await import('./open-editor.js');
+  registerEditorRoutes(api, { wrap });
 
   app.use('/api', api);
   // an error no route answered (a bad body, a bad address): its message, never a stack trace with the server's paths

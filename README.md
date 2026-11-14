@@ -442,6 +442,19 @@ Share Project… includes Silinx as it is when the link is copied (**Include the
 front, the split and, in the Silinx interface, the task, the side panel, the messages and a maximized document; the
 link opens it so, for that page only (the viewer's own layout is not changed).
 
+### Editing in VS Code
+
+On your computer, with Silinx's server (`silinx serve`, the launchers), a project's text files open in VS Code:
+**Open in VS Code** in a source's right-click menu in the Design pane (an HDL module, a C / C++ source of Silinx HLS) and
+the Files page (constraints, any text file), and in its tab's menu, at the cursor's line; **Open Folder in VS Code** in
+the project's menu opens its folder. What is saved there shows in Silinx at once; a file with changes not saved in
+Silinx asks which version to keep. A drawing's HDL is not offered (the drawing makes it). Silinx runs the editor's
+command (`code`, found on PATH or where VS Code is installed), or opens its `vscode://` link when there is none. Another
+editor of the family is chosen in `~/.silinx/config.json`: `"editor": "code-insiders"` (VS Code Insiders), `"codium"`
+(VSCodium), `"cursor"` (Cursor), a program's absolute path (with VS Code's command line), or `"off"` (also
+`SILINX_EDITOR=off`). It is not in the browser edition, nor for a page on another computer than the server's: the
+editor would open on the server's screen.
+
 ### A project on GitHub (git, a GitHub Classroom assignment)
 
 On your computer or a Silinx server, a project can live in a GitHub repository, through the system's git:
@@ -572,7 +585,8 @@ can be moved back),
 `export_project` and `import_project` (a Xilinx ISE or a Silinx project, as a .zip; a .xise or a project folder too;
 only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `import_source` (files of the exchange
 folder copied into a project, as *Import Source* / *Add Copy of Source* / *Import Test Bench*), `find_in_project` (*Find in
-Project*: every source's lines and every drawing's texts; its Replace All), `project_link` and `open_link` (a project's
+Project*: every source's lines and every drawing's texts; its Replace All), `open_in_editor` (*Open in VS Code*: a file at a
+line, or the project's folder, in the user's editor on this computer), `project_link` and `open_link` (a project's
 link, the project inside it, opening Try it, the simulation or the board emulator, for slides; a project made from such a link
 or from an example's, one that differs never replaced), `check_syntax` (the errors and warnings of *Check Syntax*, the design checks included; their lint warnings left out as with
 *Edit ▸ Design Checks* off),

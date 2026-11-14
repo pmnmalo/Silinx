@@ -151,8 +151,9 @@ export async function startSilinxServer(tmp) {
   };
   for (const d of [env.SILINX_WORKSPACE, env.SILINX_CONFIG_DIR, env.HOME]) await fsp.mkdir(d, { recursive: true });
   // an ISE mode (no ISE here: not available), what most tests' Processes expect; a new installation
-  // starts in the Silinx toolchain (#27): its tests set it, or remove this file
-  await fsp.writeFile(path.join(env.SILINX_CONFIG_DIR, 'config.json'), '{ "mode": "local" }\n');
+  // starts in the Silinx toolchain (#27): its tests set it, or remove this file. Open in VS Code off (#4017): no test
+  // starts the user's own editor; its test (open-editor.test.js) names a fake one
+  await fsp.writeFile(path.join(env.SILINX_CONFIG_DIR, 'config.json'), '{ "mode": "local", "editor": "off" }\n');
   const proc = spawn(process.execPath, [path.join(ROOT, 'test/ui/serve.js')], { env, stdio: ['pipe', 'pipe', 'pipe'], cwd: tmp });
   let out = '', err = '';
   proc.stderr.on('data', (d) => { err = (err + d).slice(-4000); });
