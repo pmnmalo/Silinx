@@ -4,11 +4,11 @@
 // the MCP server. Digital only: a pin carries a logic level; the supply is VCC = 1 and GND = 0. Isomorphic module.
 
 // ------------------------------------------------------------------ the breadboard
-const BB_COLS = 30;
+export const BB_COLS = 30;
 /** The rows of a breadboard's two halves (a–e above the channel, f–j below), their y from hole a1. */
-const BB_ROWS = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 7, g: 8, h: 9, i: 10, j: 11 };
+export const BB_ROWS = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 7, g: 8, h: 9, i: 10, j: 11 };
 /** Its power rails, their y (one strip each, along the whole board): top +, top −, bottom −, bottom +. */
-const BB_RAILS = { tp: -4, tn: -3, bn: 14, bp: 15 };
+export const BB_RAILS = { tp: -4, tn: -3, bn: 14, bp: 15 };
 
 /** A breadboard's holes: [{ name: 'a1' | 'tp1', strip, dx, dy }] (strip: one name per strip of holes joined). */
 export function breadboardHoles(cols = BB_COLS) {
