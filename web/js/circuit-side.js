@@ -7,7 +7,7 @@ import { setPartProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
-  ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10']],
+  ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
   ['MSI (74LS)', PART_ORDER.filter((t) => PARTS[t].model)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].seq)]];
 
@@ -29,7 +29,7 @@ export function mountCircuitSide(ctx) {
     if (p) {
       const d = partDef(p.type);
       const kids = [h('h3', {}, `${p.id}: ${d?.title ?? p.type}`)];
-      if (d?.inputs || d?.lamps) {
+      if (d?.inputs || d?.lamps || d?.kind === 'probe') {
         const inp = h('input', { type: 'text', class: 'circ-label-in', value: p.label || '', placeholder: p.id, spellcheck: 'false' });
         inp.addEventListener('change', () => apply(setPartProps(M(), p.id, { label: inp.value.trim() })));
         kids.push(field('Label', inp));

@@ -10,7 +10,7 @@ const P = 20;
 const label = (x, y, text) => sv('text', { x, y, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, text);
 
 /** The body of a phase 2 part, appended to g; false when the part is not one of them. */
-export function drawPart2(g, p, box, { on, lamps }) {
+export function drawPart2(g, p, box, { on, lamps, level }) {
   const w = box.x1 - box.x0, cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
   switch (p.type) {
     case 'spdt': {
@@ -59,6 +59,14 @@ export function drawPart2(g, p, box, { on, lamps }) {
       const s = Array.isArray(lamps) ? lamps : [];
       for (let k = 0; k < 10; k++) g.append(sv('rect', { x: box.x0 + k * P - P * 0.3, y: box.y0 + P * 0.6, width: P * 0.6, height: box.y1 - box.y0 - P * 1.2, rx: 1, class: `circ-bar circ-led-${p.color || 'red'}${s[k] === 'on' ? ' lit' : s[k] === 'x' ? ' unknown' : ''}` }));
       g.append(label(cx, box.y0 - P * 0.5, portName(p)));
+      return true;
+    }
+    case 'probe': {
+      // (a logic probe: its pen, its tip's level H / L / open / X while trying it, #3900)
+      const txt = { 1: 'H', 0: 'L', Z: '–', X: 'X' }[level] ?? '';
+      g.append(sv('rect', { x: box.x0 - P * 0.35, y: box.y0 - P * 2.6, width: P * 0.7, height: P * 2.2, rx: 3, class: `circ-probe-body${level ? ` lv${{ 1: '1', 0: '0', Z: 'z', X: 'x' }[level]}` : ''}` }),
+        sv('text', { x: box.x0, y: box.y0 - P * 1.25, 'text-anchor': 'middle', class: 'circ-probe-text', 'data-no-i18n': 'true' }, txt),
+        label(box.x0, box.y0 - P * 2.85, p.label || p.id));
       return true;
     }
     default: return false;
