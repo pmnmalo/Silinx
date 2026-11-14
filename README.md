@@ -424,7 +424,9 @@ style's File menu) or **Share Module…** (a module's right-click menu) makes it
 and the module chosen, the link hidden until *Show* (*Copy* copies it all the same, *Show QR Code* shows its QR code, as
 large as the window) (its other way, **Live**, shares the project as you work: your name on the window, *Start Sharing*, then two links in
 the same window, each hidden with its *Show*, *Copy* and *Show QR Code*: the viewers', who follow it read only, and the
-editors', who edit it with you; *Add a User…* gives the link of the role you choose). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
+editors', who edit it with you; *Add a User…* gives the link of the role you choose; the toolbar's Sharing menu lists who is in, each a viewer or an
+editor, and makes a viewer an editor or an editor a viewer, which renews the editors' link: the old one then only
+follows, the other editors keep editing). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead
 (`#gist=…`, about 140 characters, for a chat that refuses a long message), made by *Generate*, the window saying which
 GitHub account is signed in and which repository the project is in (private or public): the project is encrypted in your browser and
