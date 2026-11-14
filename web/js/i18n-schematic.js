@@ -7,6 +7,8 @@ export const SCH_PT = {
   'Type a name.': 'Escreva um nome.', 'Duplicate': 'Duplicar',
   // an instance's Width, its copies (#3950)
   'copies of the module: its pins on buses N times as wide': 'cópias do módulo: os seus pinos em barramentos N vezes mais largos',
+  // an arrayed instance's Shared pins (#3966)
+  'Shared pins': 'Pinos partilhados', 'ticked: one pin for every copy, its net as wide as the pin': 'marcado: um só pino para todas as cópias, a sua rede da largura do pino',
   // a module's symbol out of date (#1183)
   'Update Symbol': 'Atualizar Símbolo',
   // palette
