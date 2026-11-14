@@ -12,7 +12,7 @@ export const COLLAB_PT = {
   'Stop Sharing': 'Parar de Partilhar', 'Stop Following': 'Deixar de Seguir', 'Sharing': 'A partilhar',
   'Not shared any more': 'Já não partilhado', 'Shared project': 'Projeto partilhado',
   'Shared project: who is in it, and its commands': 'Projeto partilhado: quem está nele, e os seus comandos',
-  'Your name, as they see it:': 'O seu nome, como o veem:', 'you': 'você', 'owner': 'dono', 'follower': 'seguidor',
+  'Your name, as they see it:': 'O seu nome, como o veem:', 'you': 'você', 'owner': 'dono', 'follower': 'seguidor', 'viewer': 'espectador',
   'Others follow this project live with its link, read only: its files and drawings as they change, the editor you have open and your cursor. Its builds are not shared.':
     'Outros seguem este projeto em direto com a sua ligação, só de leitura: os ficheiros e os desenhos à medida que mudam, o editor que tem aberto e o seu cursor. As compilações não são partilhadas.',
   'This link follows a project someone shares: you see its files and drawings as they change, read only, and where its owner is.':
@@ -65,4 +65,6 @@ export const COLLAB_PT_PATTERNS = [
   [/^Follow ([^."():]+)$/, 'Seguir $1'],
   [/^Reconnecting to ([^."():]+)…$/, 'A religar a $1…'],   // (#3835)
   [/^Reconnecting…$/, 'A religar…'],   // (#3835: the owner's)
+  // (a participant's role, #3997: the owner's Sharing menu)
+  [/^Make (.+) an Editor$/, 'Tornar $1 Editor'], [/^Make (.+) a Viewer$/, 'Tornar $1 Espectador'],
 ];

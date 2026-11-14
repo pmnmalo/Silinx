@@ -242,7 +242,10 @@ link's fragment: the relay sees no file. A follower's (a viewer's) link reads on
 the two are different links (#3996): the editors' carries the room's signing key, which the viewers' has not and cannot
 be derived from, and the relay or host and every participant apply an edit only when its signature is the room's (a
 viewer who forges one is refused). Share Project… shows each link only when asked (a masked field, Show), and its QR
-code only in a window of its own. An editor's link writes: its holder changes
+code only in a window of its own. The owner changes a participant's role (#3997): a viewer made an editor is sent the
+signing key alone (a frame the room gives to that participant only); an editor made a viewer renews the room's signing
+key (the room and every participant told the new public key, the other editors given its private half): the old key's
+edits, the demoted participant's and the old editors' link's, are refused from then. An editor's link writes: its holder changes
 the text of the project's text files (HDL, constraints, C / C++, notes) and its drawings (#3183: their states and
 transitions, a table's outputs and cells, merged per field into the drawing's structure, `core/collab-model.js`), signed with the link's key; anything
 else an editor changes (another drawing, the project's settings, a new file) is undone from the owner's disk. An editor's link is a

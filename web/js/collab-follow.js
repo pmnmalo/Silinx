@@ -11,17 +11,18 @@
 // A connection to a relay lost is made again on its own (#3835), and one to a room its owner's page hosts, through the
 // meeting point, when the owner was found there (not when the codes were exchanged by hand): "Reconnecting to
 // <owner>…" in the toolbar meanwhile, the loss and the return in the console (an editor's changes made meanwhile sent
-// once it is back).
+// once it is back). Its role changed by the owner (#3997: made an editor, or a viewer again): said in the console, its
+// open documents opened again, editable or read only.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { S, app, activateDoc } from './app.js';
+import { S, app, activateDoc, closeDoc } from './app.js';
 import { collab, editsDrawingHere } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { followApi } from './collab-follow-api.js';
 import { NAME_KEY, cleanName, relaysHere, notHere } from './collab-share.js';
 import { docProject } from '/core/collab-doc.js';
-import { keepBound } from './collab-bind.js';
-import { keepDrawingsBound } from './collab-drawing.js';
+import { keepBound, unbindAll } from './collab-bind.js';
+import { keepDrawingsBound, unbindDrawings } from './collab-drawing.js';
 import { gateEdit } from '/core/collab-doc.js';
 import { drawingText } from '/core/collab-model.js';
 import { followRoom, colorOf } from '/core/collab-client.js';
@@ -127,7 +128,7 @@ function draw() {
   if (!fol) return;
   const closed = fol.session.closed(), lost = !closed && !fol.session.connected();
   const label = closed ? 'Not shared any more' : lost ? `Reconnecting to ${collab.owner}…` : fol.following ? `Following ${collab.owner}` : `Follow ${collab.owner}`;
-  renderPresence({ label, me: { name: fol.name, role: 'follower', color: colorOf(fol.session.doc.clientID), me: true }, peers: closed || lost ? [] : fol.session.peers() });
+  renderPresence({ label, me: { name: fol.name, role: fol.session.editor ? 'editor' : 'viewer', color: colorOf(fol.session.doc.clientID), me: true }, peers: closed || lost ? [] : fol.session.peers() });
 }
 
 function onEvent(ev) {
@@ -139,7 +140,32 @@ function onEvent(ev) {
     for (const d of S.docs) d.editor?.setPeers?.([]);
   } else if (ev.type === 'online') { app.log(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
   else if (ev.type === 'closed') { app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn'); draw(); for (const d of S.docs) d.editor?.setPeers?.([]); }
+  else if (ev.type === 'role') roleChanged(ev);
   else if (ev.type === 'error') app.log(`${ev.fatal ? 'ERROR' : 'WARNING'}: Follow a shared project: ${ev.message}.`, ev.fatal ? 'err' : 'warn');
+}
+
+// the owner's word of this participant's role (#3997): an editor (the key renewed: nothing changes here) or a viewer;
+// the open documents opened again, editable or read only, the one in front kept in front
+async function roleChanged(ev) {
+  if (ev.renewed) return;
+  const editor = ev.role === 'editor';
+  if (collab.editor === editor) return;
+  collab.editor = editor;
+  app.log(editor ? `${collab.owner} made you an editor: you edit the project's text files and drawings with them.` : `${collab.owner} made you a viewer: you follow the project, read only.`, 'info');
+  unbindAll(fol.bound);
+  unbindDrawings(fol.drawn);
+  const open = [];
+  for (const d of [...S.docs]) {
+    const p = docPath(d);
+    if (!p) continue;
+    if (S.active === d) open.push(p); else open.unshift(p);
+    d.dirty = false;
+    await closeDoc(d);
+  }
+  for (const p of open) await app.openFile(p).catch(() => {});
+  fol.drivenKey = null;
+  draw();
+  track();
 }
 
 // a drawing's merged model through the import gate (#3361): refused, not shown, said once

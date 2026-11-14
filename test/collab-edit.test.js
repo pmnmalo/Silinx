@@ -146,7 +146,7 @@ async function edits(t) {
   assert.equal(ed.closed(), false);
   // the presence: the editor as an editor
   await until(() => owner.peers().length === 3, 'all in');
-  assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Bo', 'editor'], ['Eva', 'follower'], ['Rui', 'editor']]);   // (as they say)
+  assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Bo', 'editor'], ['Eva', 'viewer'], ['Rui', 'editor']]);   // (as they say; a follower a viewer, #3997)
   // a follower's own update (its link reads only): refused, applied nowhere
   const forged = new Y.Doc();
   Y.applyUpdate(forged, Y.encodeStateAsUpdate(fol.doc));
@@ -183,6 +183,78 @@ test('an editor in a room the owner\'s page hosts: the same', async () => {
     o => shareRoom({ url: 'silinx-host:', WebSocket: h.owner, ...o }),
     o => followRoom({ url: 'silinx-host:', WebSocket: function S() { const { client, room } = socketPair(); h.follower(room); return client; }, ...o }));
   await edits(t);
+});
+
+// #3997: a participant's role changed by the owner: a viewer promoted (the editors' key given to it alone: its edits
+// then reach everyone); an editor demoted (the room's signing key renewed: the demoted one a viewer again, its key, the
+// old one, refused by the room and by every participant, as the old editors' link's; another editor given the new key,
+// its edits through); the owner's editKey the new one; a share with no editors refuses both
+async function roles(open, join) {
+  const doc = owned();
+  const owner = keep(await open({ doc, user: { name: 'Ana' }, editors: true }));
+  const events = { eva: [], rui: [], bo: [] };
+  const on = k => e => { if (e.type === 'role' || e.type === 'error') events[k].push(e.type === 'role' ? `${e.role}${e.renewed ? ' (renewed)' : ''}` : e.message); };
+  const old = owner.editKey;
+  const eva = keep(await join({ room: owner.room, key: owner.key, user: { name: 'Eva' }, onEvent: on('eva') }));
+  const rui = keep(await join({ room: owner.room, key: owner.key, sign: old, user: { name: 'Rui' }, onEvent: on('rui') }));
+  const bo = keep(await join({ room: owner.room, key: owner.key, sign: old, user: { name: 'Bo' }, onEvent: on('bo') }));
+  await Promise.all([eva.ready, rui.ready, bo.ready]);
+  await until(() => owner.peers().length === 3, 'all in');
+  const client = n => owner.peers().find(p => p.name === n).client;
+  // promoted: Eva an editor, her edit at everyone's
+  await owner.promote(client('Eva'));
+  await until(() => eva.editor, 'Eva an editor');
+  assert.deepEqual(events.eva, ['editor']);
+  assert.equal(eva.sign(), old);
+  await until(() => owner.peers().find(p => p.name === 'Eva').role === 'editor', 'Eva an editor at the owner\'s');
+  editFile(eva.doc, 'src/top.vhd', 'entity top is -- Eva\nend;\n');
+  for (const d of [doc, rui.doc, bo.doc]) await until(() => docFile(d, 'src/top.vhd') === 'entity top is -- Eva\nend;\n', 'Eva\'s edit');
+  // demoted: Rui a viewer, the key renewed; Eva and Bo given the new one
+  const renewed = await owner.demote(client('Rui'));
+  assert.match(renewed, SIGN_RE);
+  assert.notEqual(renewed, old);
+  assert.equal(owner.editKey, renewed);
+  await until(() => !rui.editor && eva.sign() === renewed && bo.sign() === renewed, 'the roles at everyone\'s');
+  assert.deepEqual([events.rui, events.eva, events.bo], [['viewer'], ['editor', 'editor (renewed)'], ['editor (renewed)']]);
+  await until(() => owner.peers().find(p => p.name === 'Rui').role === 'viewer', 'Rui a viewer at the owner\'s');
+  // Bo's edit, with the new key: through
+  editFile(bo.doc, 'src/top.ucf', 'NET "clk" LOC = "C8"; -- Bo\n');
+  for (const d of [doc, rui.doc, eva.doc]) await until(() => docFile(d, 'src/top.ucf') === 'NET "clk" LOC = "C8"; -- Bo\n', 'Bo\'s edit');
+  // the old editors' link (a new page with it): its edits refused by the room, applied nowhere
+  const errs = [];
+  const stale = keep(await join({ room: owner.room, key: owner.key, sign: old, user: { name: 'Old' }, onEvent: e => { if (e.type === 'error') errs.push(e.message); } }));
+  await stale.ready;
+  editFile(stale.doc, 'src/top.vhd', '-- the old link\n');
+  await until(() => errs.length, 'the old key refused');
+  assert.deepEqual([...new Set(errs)], ['read only: this link cannot change the shared project (not an editor\'s)']);
+  await sleep(50);
+  for (const d of [doc, rui.doc, eva.doc, bo.doc]) assert.equal(docFile(d, 'src/top.vhd'), 'entity top is -- Eva\nend;\n');
+  // Rui, a viewer: nothing of his sent
+  editFile(rui.doc, 'src/top.vhd', '-- Rui, a viewer now\n');
+  await sleep(100);
+  assert.equal(docFile(doc, 'src/top.vhd'), 'entity top is -- Eva\nend;\n');
+  // refused: the owner itself, a client not in the room
+  await assert.rejects(owner.promote(424242), /no such participant/);
+  await assert.rejects(owner.demote(doc.clientID), /no such participant/);
+  await owner.close();
+  // a share with no editors: neither
+  const plain = keep(await open({ doc: owned(), user: { name: 'Ana' } }));
+  await assert.rejects(plain.promote(1), /this project is shared with no editors/);
+  await assert.rejects(plain.demote(1), /this project is shared with no editors/);
+  await plain.close();
+}
+
+test('#3997 roles on the server\'s relay: a viewer promoted, an editor demoted (the key renewed, the old refused)', async () => {
+  await roles(
+    o => shareRoom({ url: relayUrl(base, 'share'), token: 'the-token', ...o }),
+    o => followRoom({ url: relayUrl(base, 'follow'), ...o }));
+});
+
+test('#3997 roles in a room the owner\'s page hosts: the same', async () => {
+  const h = hostedRooms();
+  await roles(
+    o => shareRoom({ url: 'silinx-host:', WebSocket: h.owner, ...o }),
+    o => followRoom({ url: 'silinx-host:', WebSocket: function S() { const { client, room } = socketPair(); h.follower(room); return client; }, ...o }));
 });
 
 test('#3527 regression: an editor\'s change of another part than the files and the drawings, or past the total a follower takes: refused at the owner\'s, said, applied nowhere', async () => {

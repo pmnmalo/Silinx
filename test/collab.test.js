@@ -182,12 +182,12 @@ test('two participants on the server\'s relay: the project arrives, an edit arri
   assert.deepEqual(o, { client: doc.clientID, name: 'Ana', color: colorOf(doc.clientID), role: 'owner', view: { path: 'src/top.vhd', line: 0, ch: 7 } });
   fol.setView({ path: 'src/top.ucf', line: 0, ch: 0 });
   await until(() => owner.peers()[0]?.view?.path === 'src/top.ucf', 'the follower\'s view');
-  assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Rui', 'follower']]);
+  assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Rui', 'viewer']]);
   // a second follower sees the owner and the first
   const fol2 = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Eva' } });
   await fol2.ready;
   await until(() => fol2.peers().length === 2, 'Eva sees both');
-  assert.deepEqual(fol2.peers().map(p => [p.name, p.role]), [['Ana', 'owner'], ['Rui', 'follower']]);
+  assert.deepEqual(fol2.peers().map(p => [p.name, p.role]), [['Ana', 'owner'], ['Rui', 'viewer']]);
   assert.equal(docFile(fol2.doc, 'src/top.vhd'), 'entity top is end entity;\n');
   // one leaves: the others are told
   await fol2.close();
@@ -216,7 +216,7 @@ test('read only: a follower\'s edit is refused by the relay and never reaches th
   // (a follower calling itself the owner is still a follower)
   fol.awareness.setLocalStateField('role', 'owner');
   await sleep(100);
-  assert.deepEqual(owner.peers().map(p => p.role), ['follower']);
+  assert.deepEqual(owner.peers().map(p => p.role), ['viewer']);
   await owner.close();
 });
 
@@ -245,9 +245,9 @@ test('a follower\'s awareness speaks for that follower only (#3360): the owner\'
   await sleep(100);
   // the owner is still Ana, where she is; no ghost; Eva's own state and the owner's in her page unchanged
   assert.deepEqual(eva.owner(), { client: doc.clientID, name: 'Ana', color: colorOf(doc.clientID), role: 'owner', view: { path: 'src/top.vhd', line: 3, ch: 0 } });
-  assert.deepEqual(eva.peers().map(p => [p.name, p.role]), [['Ana', 'owner'], ['Rui 2', 'follower']]);
+  assert.deepEqual(eva.peers().map(p => [p.name, p.role]), [['Ana', 'owner'], ['Rui 2', 'viewer']]);
   assert.deepEqual(eva.awareness.getLocalState().user, { name: 'Eva' });
-  assert.deepEqual(owner.peers().map(p => [p.name, p.role]).sort(), [['Eva', 'follower'], ['Rui 2', 'follower']]);
+  assert.deepEqual(owner.peers().map(p => [p.name, p.role]).sort(), [['Eva', 'viewer'], ['Rui 2', 'viewer']]);
   assert.deepEqual(owner.awareness.getLocalState(), { user: { name: 'Ana' }, role: 'owner', view: { path: 'src/top.vhd', line: 3, ch: 0 } });
   // (a raw follower joining with the owner's client id: refused)
   const raw = new WebSocket(furl(), [SUBPROTOCOL]);
