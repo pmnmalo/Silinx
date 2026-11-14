@@ -1,5 +1,5 @@
 // The HDL of a source drawn as a schematic (.sch.json), an ASM chart (.asm.json), a state diagram
-// (.fsm.json), a Boolean algebra (.bool.json, .tt.json before #2065) or a Petri net (.pn.json) that has no HDL file of its own (#177): made in memory when
+// (.fsm.json), a Boolean algebra (.bool.json, .tt.json before #2065), a Petri net (.pn.json) or a circuit (.circ.json, #3897) that has no HDL file of its own (#177): made in memory when
 // the project is compiled, simulated or implemented, so that such a source is a module of the
 // project like an HDL one (it can be the top, be instanced, be synthesized) without a file.
 // A source kept in sync with an HDL file (its generatedFile) is that file: nothing here, unless that
@@ -12,8 +12,11 @@ import { generateFsm, fsmErrors, normalizeFsm } from './fsm.js';
 import { generateTableHdl, validateTable, normalizeTable } from './logic.js';
 import { generatePetri, petriErrors, normalizePetri } from './petri.js';
 import { cToHdl } from './c-hdl.js';
+import { generateCircuit } from './circuit-hdl.js';
+import { normalizeCircuit } from './circuit.js';
+import { circuitErrors } from './circuit-check.js';
 
-export const VIEW_RE = /\.(sch|asm|fsm|tt|bool|pn)\.json$/i;
+export const VIEW_RE = /\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i;
 export const isView = path => VIEW_RE.test(String(path || ''));
 // a C source (Silinx HLS, #1531): its HDL made here from its top function (core/c-hdl.js), as a drawn source's
 // (C++ too, #1590: .cpp, .cc, .cxx)
@@ -80,6 +83,14 @@ function drawnHdl(path, m, modules) {
       const errs = petriErrors(n).map(x => `${path}: ${x.message}`);
       if (errs.length) return { path, lang, text: '', module: n.name || null, errors: errs };
       return out(generatePetri(n, lang, { source: path.split('/').pop() }).code);
+    }
+    if (kind === 'circ') {
+      const n = normalizeCircuit(m);
+      const errs = circuitErrors(n).map(x => `${path}: ${x.message}`);
+      if (errs.length) return { path, lang, text: '', module: n.name || null, errors: errs };
+      // (its module the circuit's, written after its ICs' entities)
+      const g = generateCircuit(n, lang, { source: path.split('/').pop() });
+      return { path, lang, text: g.code, module: g.module, errors: [] };
     }
     const t = normalizeTable(m);
     const errs = (validateTable(t) || []).filter(x => x.severity !== 'warning').map(x => `${path}: ${x.message}`);
