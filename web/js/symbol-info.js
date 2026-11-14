@@ -12,6 +12,7 @@ import { symbolDoc, presetOf, modeQText, T } from '/core/symdocs.js';
 import { truthTable } from '/core/symtables.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
 import { esc, h } from './dom.js';
+import { designKind } from './project-kind-flag.js';
 
 
 export function openSymbolInfo(opts) {
@@ -177,7 +178,8 @@ export function openSymbolInfo(opts) {
     if (d.params.length) {
       const pt = h('div', { class: 'sd-params' });
       for (const p of d.params) pt.append(h('label', { class: 'sd-param' }, h('span', { text: p.label }), paramInput(p, lang)));
-      side.append(pt, h('div', { class: 'sd-note', text: T('Change the parameters to see the tables and the HDL update (the placed symbol is not changed).', lang) }));
+      // (a design and simulation project's: no HDL shown, #3891)
+      side.append(pt, h('div', { class: 'sd-note', text: T(designKind() ? 'Change the parameters to see the tables update (the placed symbol is not changed).' : 'Change the parameters to see the tables and the HDL update (the placed symbol is not changed).', lang) }));
     }
     if (d.xilinx.length) side.append(h('div', { class: 'sd-xil' }, h('div', { class: 'sd-h4', text: T('Xilinx library equivalents', lang) }), h('div', { class: 'sd-xnames', text: d.xilinx.join(', ') })));
     const main = h('div', { class: 'sd-main' });
@@ -209,7 +211,7 @@ export function openSymbolInfo(opts) {
         box.dataset.table = tt.kind;
       }, 0);
     } else ttBox.remove();
-    const hd = hdlEl(d, lang);
+    const hd = !designKind() && hdlEl(d, lang);   // (none in a design and simulation project, #3891)
     if (hd) main.append(h('h3', { text: T('Equivalent HDL', lang) }), hd);
     const body = h('div', { class: 'sd-body' }, side, main);
     box.append(body);

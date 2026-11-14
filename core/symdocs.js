@@ -63,6 +63,7 @@ const UI = {
   'The table cannot be computed:': 'Não é possível calcular a tabela:',
   'Computing…': 'A calcular…',
   'Open a symbol from the palette or select a placed symbol.': 'Abra um símbolo da paleta ou selecione um símbolo colocado.',
+  'Change the parameters to see the tables update (the placed symbol is not changed).': 'Altere os parâmetros para ver as tabelas atualizarem (o símbolo colocado não é alterado).',
   'Change the parameters to see the tables and the HDL update (the placed symbol is not changed).': 'Altere os parâmetros para ver as tabelas e o HDL atualizarem (o símbolo colocado não é alterado).',
   'Used as': 'Usado como',
   'Priority': 'Prioridade',
