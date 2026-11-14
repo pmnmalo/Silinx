@@ -158,7 +158,7 @@ uiTest('#2763 the drawing editors\' status line, as the Schematic\'s: their coun
   const want = {
     fsm: ['src/traffic.fsm.json', '.fsm-editor', ['7 state(s), 8 transition(s)', 'Moore', 'Encoding: Binary'], ['7 estado(s), 8 transição(ões)', 'Moore', 'Codificação: Binária']],
     petri: ['src/net.pn.json', '.petri-editor', ['2 places · 2 transitions · 4 arcs', '1 token'], ['2 lugares · 2 transições · 4 arcos', '1 marca']],
-    circuit: ['src/half_adder.circ.json', '.circuit-editor', ['2 IC(s) · 2 switch(es) · 2 LED(s) · 15 wire(s)'], ['2 CI(s) · 2 interruptor(es) · 2 LED(s) · 15 fio(s)']],   // (#3897)
+    circuit: ['src/half_adder.circ.json', '.circuit-editor', ['2 IC(s) · 2 input(s) · 2 display(s) · 15 wire(s)'], ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 15 fio(s)']],   // (#3897)
     tt: ['src/lamps.bool.json', '.tt-editor', null, null],
     asm: ['src/speed_ctrl.asm.json', '.asm-editor:not(.fsm-editor):not(.petri-editor):not(.circuit-editor)', null, null],
   };

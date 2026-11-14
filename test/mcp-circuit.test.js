@@ -25,12 +25,16 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 
 test('circuit_parts: the library, one part with its pins, gates and delay; an unknown part', async () => {
   const all = await ok('circuit_parts', {});
-  assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'supply', 'logic-switch', 'button', 'led', '7400', '7404', '7408', '7432', '7486']);
+  assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock', 'pull-up', 'pull-down',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    '4001', '4011', '4030', '4069', '4070', '4071', '4081']);
   const one = await ok('circuit_parts', { type: '7486' });
   assert.equal(one.text, '7486: Quad 2-input XOR (SN74LS86, 12 ns); pins 1 1A in, 2 1B in, 3 1Y out, 4 2A in, 5 2B in, 6 2Y out, 7 GND gnd, 8 3Y out, 9 3A in, 10 3B in, 11 4Y out, 12 4A in, 13 4B in, 14 VCC vcc; gates xor (1, 2) → 3; xor (4, 5) → 6; xor (9, 10) → 8; xor (12, 13) → 11');
   assert.deepEqual(one.data.parts[0].pins[0], { n: 1, name: '1A', dir: 'in', dx: 0, dy: 0 });
   assert.equal((await ok('circuit_parts', { type: 'led' })).text, 'led: LED; pins 1 A in, 2 K in');
-  await fails('circuit_parts', { type: '555' }, 'no part \'555\' (the parts: breadboard-half, supply, logic-switch, button, led, 7400, 7404, 7408, 7432, 7486)');
+  assert.equal((await ok('circuit_parts', { type: '7403' })).data.parts[0].openCollector, true);
+  assert.match((await ok('circuit_parts', { type: '4001' })).text, /^4001: Quad 2-input NOR \(CD4001B, 60 ns\); pins 1 1A in, 2 1B in, 3 1Y out, 4 2Y out, [^]* 7 VSS gnd, [^]* 14 VDD vcc; gates nor \(1, 2\) → 3; nor \(5, 6\) → 4;/);
+  await fails('circuit_parts', { type: '555' }, `no part '555' (the parts: ${all.data.parts.map((p) => p.type).join(', ')})`);
 });
 
 test('edit_circuit: a half adder built on New Source\'s breadboard, its HDL made again; check_drawing; a refused operation writes nothing', async () => {
@@ -79,7 +83,7 @@ test('simulate_drawing: a circuit\'s steps, its switches by their labels, its LE
     'step 2: inputs a=0 b=1; t = 48 ns; LEDs s=1 c=0 D3=0', 'step 3: inputs a=0 b=0; t = 60 ns; LEDs s=0 c=0 D3=0'].join('\n'), 'D3 off: its 7404\'s 1A floats (high), 1Y is 0');
   assert.deepEqual(r.data.steps[1], { step: 1, time: 36, quiet: true, inputs: { a: 1, b: 1 }, leds: { s: 0, c: 1, D3: 0 } });
   assert.deepEqual(r.data.warnings, []);
-  assert.equal((await sim([{ x: 1 }])).text, 'simulate_drawing: step 0: \'x\' is not a switch or a button of the circuit (its inputs: a, b)');
+  assert.equal((await sim([{ x: 1 }])).text, 'simulate_drawing: step 0: \'x\' is not an input of the circuit (its inputs: a, b)');
   assert.equal((await sim([{ a: 2 }])).text, 'simulate_drawing: step 0: a = 2: 0 or 1');
   assert.equal((await sim([[]])).text, 'simulate_drawing: cycles[0]: an object');
   // a circuit with errors is not simulated
@@ -110,4 +114,33 @@ test('simulate_drawing: a gated ring oscillator says it oscillates; a short whil
   assert.equal(s.data.steps[0].quiet, false);
   assert.match(lines[4], /^step 1: inputs en=0; t = \d+ ns; LEDs blink=1$/);
   assert.equal(s.data.steps[1].quiet, true);
+});
+
+test('edit_circuit and simulate_drawing with phase 2\'s parts (#3899): a DIP switch\'s levers by their ports, a clock\'s frequency, a display\'s segments', async () => {
+  await ok('new_source', { project: 'c', type: 'circuit', name: 'panel', language: 'vhdl' });
+  const P = 'src/panel.circ.json';
+  // a DIP switch of 4 across the channel at f3 (its pins 1–4 on row f, columns 3–6; 8–5 on row e): levers 1 and 2 from
+  // the bottom + rail (joined to the top one) to a common cathode display's segments a and b, beside the breadboard; a
+  // clock on an LED
+  const r = await ok('edit_circuit', { project: 'c', path: P, operations: [
+    { op: 'add', type: 'dip-4', at: 'BB1.f3', id: 'S1', label: 'sw' },
+    { op: 'wire', from: 'BB1.j3', to: 'BB1.bp3' }, { op: 'wire', from: 'BB1.j4', to: 'BB1.bp4' }, { op: 'wire', from: 'BB1.bp1', to: 'BB1.tp1', via: [[-2, 15], [-2, -4]] },
+    { op: 'add', type: 'seg7-cc', at: [40, 9], id: 'DS1', label: 'hex' },
+    { op: 'wire', from: 'BB1.a3', to: 'DS1.a' }, { op: 'wire', from: 'BB1.a4', to: 'DS1.b' }, { op: 'wire', from: 'DS1.3', to: 'BB1.tn20' },
+    { op: 'add', type: 'clock', at: [-8, 20], id: 'CK1', label: 'clk' }, { op: 'set', id: 'CK1', hz: 4 },
+    { op: 'add', type: 'led', at: [0, 20], id: 'D1', label: 'tick' }, { op: 'wire', from: 'CK1.out', to: 'D1.A' }, { op: 'wire', from: 'D1.K', to: 'BB1.tn2', via: [[1, 18], [-4, 18], [-4, -3]] },
+    { op: 'set', id: 'S1', on: { lever: 1, on: true } },
+  ] });
+  assert.deepEqual([r.data.errors, r.data.warnings], [[], []], r.text);
+  const m = JSON.parse(read(P));
+  assert.deepEqual(m.parts.find((p) => p.id === 'S1').on, [true, false, false, false]);
+  assert.equal(m.parts.find((p) => p.id === 'CK1').hz, 4);
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'CK1', hz: 100 }] }, 'operation 0 (set): hz: a frequency from 0.1 to 50 Hz (nothing written)');
+  const s = await ok('simulate_drawing', { project: 'c', file: P, cycles: [{ clk: 1 }, { sw_2: 1, clk: 0 }, { sw_1: 0 }] });
+  const lit = (row) => Object.entries(row.leds).filter(([, v]) => v).map(([k]) => k);
+  assert.deepEqual(s.data.steps.map(lit), [['hex_a', 'tick'], ['hex_a', 'hex_b'], ['hex_b']]);
+  assert.deepEqual(s.data.steps[1].inputs, { sw_1: 1, sw_2: 1, sw_3: 0, sw_4: 0, clk: 0 });
+  assert.match(s.text, /^step 0: inputs sw_1=1 sw_2=0 sw_3=0 sw_4=0 clk=1; t = \d+ ns; LEDs hex_a=1 hex_b=0 hex_c=0 [^\n]* tick=1$/m);
+  assert.equal((await call('simulate_drawing', { project: 'c', file: P, cycles: [{ sw: 1 }] })).text,
+    'simulate_drawing: step 0: \'sw\' is not an input of the circuit (its inputs: sw_1, sw_2, sw_3, sw_4, clk)');
 });
