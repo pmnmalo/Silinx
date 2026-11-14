@@ -1,8 +1,10 @@
-// UI: the QR code of the sharing dialogs' links (#3637, web/js/link-qr.js, core/qr.js): Share Project…'s full link
-// (decoded back: the link shown), enlarged in a dialog of its own; the short link's (#3223) once Show QR Code makes it,
-// the one Copy Link then copies (no second gist); a link too long for a QR code (an example's full link): none, a line
-// in the console suggesting the short link (information: the dialog's default, no warning); the labels in Portuguese (Share Project
-// Live…'s: link-qr-live.test.js). Both interfaces; the exact warnings.
+// UI: the QR code of the sharing dialogs' links (#3637, web/js/link-qr.js, core/qr.js) and the link hidden (#3995,
+// web/js/link-field.js): Share Project…'s full link, masked until Show, its QR code only by Show QR Code (decoded back:
+// the link), as large as the window, no small one in the window; the short link's (#3223) once Generate has made it
+// (Show QR Code disabled before), the one Copy then copies (no second gist); a link too long for a QR code (an
+// example's full link): Show QR Code disabled, its reason its tip, a line in the console suggesting the short link
+// (information: the dialog's default, no warning); the labels in Portuguese (Share Project Live…'s:
+// link-qr-live.test.js). Both interfaces; the exact warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
@@ -30,7 +32,12 @@ const qrOf = async (page, sel) => {
 };
 const gists = (page) => page.eval(async (t) => (await (await fetch('/fake-github/gists', { headers: { Authorization: `Bearer ${t}` } })).json()).length, TOKEN);
 
-uiTest('#3637 Share Project: the full link\'s QR code, enlarged; the short link\'s, made by Show QR Code, the one copied', E, async (page) => {
+const state = (page) => page.eval(() => {
+  const o = document.querySelector('.dlg-overlay .link-out');
+  return { type: o.type, buttons: [...document.querySelectorAll('.dlg-overlay .link-buttons .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`), small: document.querySelectorAll('.dlg-overlay .qr-img, .dlg-overlay .qr-box').length };
+});
+
+uiTest('#3637 #3995 Share Project: the full link hidden, Show and Copy; its QR code by Show QR Code; the short link\'s once generated, the one copied', E, async (page) => {
   await fakeApi(page);
   await make(page, 'qrlamp');
   await page.openProject('qrlamp');
@@ -38,82 +45,93 @@ uiTest('#3637 Share Project: the full link\'s QR code, enlarged; the short link\
   await page.waitDialog('Share Project');
   const link = await page.eval(() => document.querySelector('.dlg-overlay .link-out').value);
   assert.ok(link.length <= QR_MAX_BYTES, `${link.length}`);
-  const small = await qrOf(page, '.dlg-overlay .qr-box .qr-img');
-  assert.equal(small.text, link);
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .qr-show').title), 'Enlarge the QR code, for a projector');
-  // enlarged (Enlarge, or a click on it): a dialog of its own, over the other
-  await page.click('.dlg-overlay .qr-enlarge');
-  await page.waitDialog('QR Code');
+  // hidden, no small QR code; Show shows it, Hide hides it again
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Show', 'Copy', 'Show QR Code'], small: 0 });
+  await page.click('.dlg-overlay .link-show');
+  assert.deepEqual(await state(page), { type: 'text', buttons: ['Hide', 'Copy', 'Show QR Code'], small: 0 });
+  await page.click('.dlg-overlay .link-show');
+  assert.equal((await state(page)).type, 'password');
+  // Show QR Code: a dialog of its own, over the other, as large as the window
+  await page.click('.dlg-overlay .link-qr');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .qr-large-img'), [], { what: 'the QR code shown' });
   const large = await qrOf(page, '.dlg-overlay .qr-large-img');
   assert.equal(large.text, link);
-  assert.ok(large.width > 2.5 * small.width, `${large.width} vs ${small.width}`);
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay:last-child .qr-large-link')?.textContent ?? [...document.querySelectorAll('.qr-large-link')].pop().textContent), link);
-  await page.dialogButton('Close');
-  await page.waitDialog('Share Project');
-  await page.click('.dlg-overlay .qr-show');
-  await page.waitDialog('QR Code');
-  await page.dialogButton('Close');
-  await page.waitDialog('Share Project');
-  // another link (the current view left out): the QR follows the link shown
+  assert.ok(large.width > 300, `${large.width}`);
+  assert.equal([...await page.eval(() => [...document.querySelectorAll('.qr-large-link')].map((e) => e.textContent))].pop(), link);
+  await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.dlg-buttons .btn').click());
+  await page.waitFor(() => !document.querySelector('.qr-large-img'), [], { what: 'the QR code closed' });
+  // copied without showing it
+  await page.click('.dlg-overlay .link-copy');
+  await page.waitConsole(new RegExp(`Share Project: the link of 'qrlamp' copied, ${link.length} characters\\.`));
+  // another link (the current view left out): the QR code follows it
   await page.click('.dlg-overlay input[data-field="ui"]');
   const bare = await page.eval(() => document.querySelector('.dlg-overlay .link-out').value);
   assert.notEqual(bare, link);
-  assert.equal((await qrOf(page, '.dlg-overlay .qr-box .qr-img')).text, bare);
-  // the short link: no QR until it is made; Show QR Code makes it, shows it and its QR enlarged
+  await page.click('.dlg-overlay .link-qr');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .qr-large-img'), [], { what: 'the QR code shown' });
+  assert.equal((await qrOf(page, '.dlg-overlay .qr-large-img')).text, bare);
+  await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.dlg-buttons .btn').click());
+  await page.waitFor(() => !document.querySelector('.qr-large-img'), [], { what: 'the QR code closed' });
+  // the short link: nothing until Generate (Show QR Code disabled); Generate makes it once
   await page.click('.dlg-overlay input[data-field="short"]');
-  assert.equal(await qrOf(page, '.dlg-overlay .qr-box .qr-img'), null);
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .qr-make').textContent), 'Show QR Code');
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Show (off)', 'Copy (off)', 'Generate', 'Show QR Code (off)'], small: 0 });
   const before = await gists(page);
-  await page.click('.dlg-overlay .qr-make');
-  await page.waitDialog('QR Code');
+  await page.click('.dlg-overlay .link-generate');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the short link made' });
   const shortLink = await page.eval(() => document.querySelector('.dlg-overlay .link-out').value);
   assert.match(shortLink, /#gist=[0-9a-f]{32}\.[A-Za-z0-9_-]{43}/);
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Show', 'Copy', 'Generate (off)', 'Show QR Code'], small: 0 });
+  await page.click('.dlg-overlay .link-qr');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .qr-large-img'), [], { what: 'the QR code shown' });
   assert.equal((await qrOf(page, '.dlg-overlay .qr-large-img')).text, shortLink);
+  await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.dlg-buttons .btn').click());
+  await page.waitFor(() => !document.querySelector('.qr-large-img'), [], { what: 'the QR code closed' });
+  // Copy copies that one: no second gist; Close, the window's one button
+  await page.click('.dlg-overlay .link-copy');
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay').querySelectorAll('.dlg-buttons .btn')].map((b) => b.textContent)), ['Close']);
   await page.dialogButton('Close');
-  await page.waitDialog('Share Project');
-  assert.equal((await qrOf(page, '.dlg-overlay .qr-box .qr-img')).text, shortLink);
-  // Copy Link copies that one: no second gist
-  await page.dialogButton('Copy Link');
   await page.waitNoDialog();
   assert.equal(await copied(page), shortLink);
   assert.equal(await gists(page), before + 1);
   assert.deepEqual(await warnings(page), []);
 }, { timeout: 120000 });
 
-uiTest('#3637 Share Project: a link too long for a QR code: none, a line in the console suggesting the short link', E, async (page) => {
+uiTest('#3637 Share Project: a link too long for a QR code: Show QR Code disabled, a line in the console suggesting the short link', E, async (page) => {
   await make(page, 'qrbig', 'gates');
   await page.openProject('qrbig');
   await startCopy(page);
   await page.waitDialog('Share Project');
   const n = await page.eval(() => document.querySelector('.dlg-overlay .link-out').value.length);
   assert.ok(n > QR_MAX_BYTES, `${n}`);
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .qr-box').children.length), 0);
+  assert.deepEqual(await page.eval(() => { const b = document.querySelector('.dlg-overlay .link-qr'); return [b.disabled, b.title]; }), [true, `The link is ${n} characters, too long for a QR code`]);
   const said = `Share Project: the link of 'qrbig' is ${n} characters, too long for a QR code (at most ${QR_MAX_BYTES}): the short link has one.`;
   await page.waitConsole(new RegExp(said.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   // (said once: the link made again, the same)
   await page.click('.dlg-overlay input[data-field="ui"]');
   await page.click('.dlg-overlay input[data-field="short"]');
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .qr-make')?.textContent), 'Show QR Code');
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
-  assert.equal((await page.consoleText()).split('\n').filter((l) => l.includes('too long for a QR code')).length, 1);
+  assert.equal((await page.consoleText()).split('\n').filter((l) => l.includes('too long for a QR code (at most')).length, 1);
   assert.deepEqual(await warnings(page), []);
 }, { timeout: 120000 });
 
-uiTest('#3637 the QR code\'s labels in Portuguese', E, async (page) => {
+uiTest('#3637 #3995 the link\'s buttons and the QR code\'s labels in Portuguese', E, async (page) => {
   await make(page, 'qrluz');
   await page.openProject('qrluz');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await startCopy(page);
   await page.waitDialog('Partilhar Projeto');
-  assert.deepEqual(await page.eval(() => { const b = document.querySelector('.dlg-overlay .qr-show'); return [b.title, b.querySelector('img').getAttribute('aria-label'), document.querySelector('.dlg-overlay .qr-enlarge').textContent]; }),
-    ['Ampliar o código QR, para um projetor', 'Código QR da ligação', 'Ampliar']);
-  await page.click('.dlg-overlay .qr-enlarge');
+  assert.deepEqual((await state(page)).buttons, ['Mostrar', 'Copiar', 'Mostrar o Código QR']);
+  await page.click('.dlg-overlay .link-show');
+  assert.deepEqual((await state(page)).buttons, ['Ocultar', 'Copiar', 'Mostrar o Código QR']);
+  await page.click('.dlg-overlay .link-qr');
   await page.waitDialog('Código QR');
+  assert.equal(await page.eval(() => document.querySelector('.qr-large-img').getAttribute('aria-label')), 'Código QR da ligação');
   await page.dialogButton('Fechar');
+  await page.waitDialog('Partilhar Projeto');
   await page.click('.dlg-overlay input[data-field="short"]');
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .qr-make').textContent), 'Mostrar o Código QR');
-  await page.dialogButton('Cancelar');
+  assert.deepEqual((await state(page)).buttons, ['Mostrar (off)', 'Copiar (off)', 'Gerar', 'Mostrar o Código QR (off)']);
+  await page.dialogButton('Fechar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(await warnings(page), []);

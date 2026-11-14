@@ -23,6 +23,9 @@ export function registerGitRoutes(api) {
     if (typeof d !== 'string' || !d) throw Object.assign(new Error('design: the encoded design (Share Project\'s)'), { status: 400 });
     return GH.makeGist(d, { days });   // (an expiry, #3629: checked by core/gist-link.js expiryDate)
   }).then(({ id, key, expires, deleted }) => res.json({ id, key, expires, deleted: deleted.length }), err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}) })));
+  // where they are made (#3995): the token's account, the project's repository and whether it is private
+  api.get('/gist/account', (req, res) => GH.shortLinkAccount(typeof req.query.project === 'string' && req.query.project ? req.query.project : null)
+    .then(out => res.json(out), err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}) })));
   // the token's short links (#3635): listed; deleted, given ids or the expired ones
   api.get('/gists', route(() => GH.listShortLinks()));
   api.post('/gists/delete', route(req => GH.deleteShortLinks({ ids: Array.isArray(body(req).ids) ? body(req).ids.map(String) : [], expired: body(req).expired === true }).then(deleted => ({ deleted }))));

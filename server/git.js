@@ -214,6 +214,13 @@ async function broughtUntrusted(repo, had) {
 }
 
 // ------------------------------------------------------------------ the commands
+/** The project's GitHub repository, its origin's: 'owner/repo', or null (not a repository, or no origin; #3995). */
+export async function gitRemote(name) {
+  const repo = await repoOf(name);
+  if (!repo) return null;
+  try { const r = await origin(repo.dir); return `${r.owner}/${r.repo}`; } catch { return null; }
+}
+
 /** The project's changes: { repository, root, branch, upstream, ahead, behind, files: [{ path, state }] }, the state
  *  'modified', 'new', 'deleted' or 'conflict'; the paths the project's. Not a repository: { repository: false }. */
 export async function gitStatus(name) {

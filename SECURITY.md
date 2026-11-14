@@ -295,8 +295,10 @@ What it cannot do:
   or zip (not an example) is an imported one (trust, above): Xilinx ISE and programming a board or a PROM wait for
   its Trust Project.
 
-Privacy: a `#design=` link holds the whole project, its comments too (a student's name in a header): Copy Link…
-says so. A broken link, a design that does not decode, a zip that cannot be fetched, or a view the design does not
+Privacy: a `#design=` link holds the whole project, its comments too (a student's name in a header): Share Project…
+says so first, and shows the link only when asked (a masked field and its Show button, #3995: not read off a projected
+screen); a short link's window names the GitHub account that keeps the gist and the project's repository, private or
+public. A broken link, a design that does not decode, a zip that cannot be fetched, or a view the design does not
 have is an error in the console, the workspace as it was.
 
 ### Live sharing (#3181, #3182, #3227, #3361)

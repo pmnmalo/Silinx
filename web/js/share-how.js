@@ -6,6 +6,7 @@ import { api } from './api.js';
 import { h } from './ui.js';
 import { S } from './app.js';
 import { prefKey } from './prefs.js';
+import { getLanguage } from './i18n.js';
 
 const HOW_KEY = prefKey('silinx.share-how');
 const HOWS = Object.freeze(['copy', 'live']);
@@ -43,16 +44,18 @@ async function openHow(how, opts) {
 export function howRow(how, { module = null, view = null, close }) {
   let wanted = null;
   const live = liveProblem(module);
-  const radio = (value, label) => {
+  // (side by side, each one's explanation on the line below its button, #3995)
+  const radio = (value, label, note) => {
     const r = h('input', { type: 'radio', name: 'share-how', value, 'data-field': `how-${value}`, checked: value === how, disabled: value === 'live' && !!live });
     r.addEventListener('change', () => { if (r.checked && value !== how) { wanted = value; close(); } });
-    return h('label', { class: `share-how-${value}`, title: value === 'live' && live ? live : '' }, r, h('span', {}, label));
+    return h('label', { class: `share-how-${value}`, title: value === 'live' && live ? live : '' }, r, label, h('span', { class: 'share-how-note' }, note));
   };
   const el = h('div', { class: 'share-how' },
     h('label', {}, 'Share:'),
     h('div', { class: 'share-how-choices' },
-      radio('copy', 'A copy: a link with the project in it'), h('br'),
-      radio('live', 'Live: others follow it as you work')));
+      radio('copy', h('span', {}, 'A copy'), 'A link with the project in it'),
+      // ('Live' is the Petri net's liveness elsewhere, Viva: this one's word given here)
+      radio('live', h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Em direto' : 'Live'), 'Others follow it as you work')));
   return {
     el,
     get wanted() { return wanted; },

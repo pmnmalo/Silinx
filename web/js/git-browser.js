@@ -124,6 +124,11 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
       const { id, key, expires, deleted } = await saveGist(githubClient({ fetch: (...a) => globalThis.fetch(...a), token, api: githubSettings().api }), design, { days });
       return { id, key, expires, deleted: deleted.length };
     },
+    // (#3995: where they are made: the account, the project's repository and whether it is private)
+    gistAccount: async (name = null) => {
+      const { gistAccount } = await import('../../core/gist-link.js');
+      return gistAccount(githubClient({ fetch: (...a) => globalThis.fetch(...a), token, api: githubSettings().api }), name ? await backend().remote(name).catch(() => null) : null);
+    },
     // (#3635: the short links of the signed-in user, listed and deleted)
     gistList: async () => {
       const { listGists } = await import('../../core/gist-link.js');

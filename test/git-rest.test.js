@@ -320,3 +320,11 @@ test('pull merges a drawing changed on both sides by its objects (#3197): at onc
   assert.equal(t(JSON.parse(mem.P.get('traffic')[FSM]), 't1').cond, 'night or req');
   assert.deepEqual((await git.status('traffic')).files, []);
 });
+
+// #3995: the project's repository (where Share Project… says a short link is made): its meta's, or none
+test('#3995 remote: the repository of a project opened from GitHub, owner/repo; none for a project in none', async () => {
+  const { git } = setup();
+  await git.clone({ url: 'https://github.com/pmalo/gates' });
+  assert.equal(await git.remote('gates'), 'pmalo/gates');
+  assert.equal(await git.remote('elsewhere'), null);
+});

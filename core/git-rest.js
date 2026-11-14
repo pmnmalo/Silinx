@@ -312,5 +312,11 @@ export function restGit({ client, projects, meta }) {
     return { project: name, remote: `${m.owner}/${m.repo}`, ...await commitChecks(client, { owner: m.owner, repo: m.repo, ref: m.commit }) };
   }
 
-  return { status, clone, init, commit, push, pull, log, show, checks };
+  /** The project's repository on GitHub, 'owner/repo', or null: not in one (#3995: where a short link is made). */
+  async function remote(name) {
+    const m = await meta.get(name);
+    return m ? `${m.owner}/${m.repo}` : null;
+  }
+
+  return { status, clone, init, commit, push, pull, log, show, checks, remote };
 }

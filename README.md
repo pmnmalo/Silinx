@@ -409,8 +409,8 @@ they are), ticking it in the Steps panel, or giving its hint and the reasons in 
 on the gates example, "A state machine" on traffic, "The clock and the board" on blinky and "The emulator" on stopwatch
 (in English and Portuguese); a teacher writes a lab as a `labs/<name>.lab.json` file of a project (*New Source ▸
 Guided Lab* starts one from a template; its format: `core/labs.js`), checked as it is edited (each save, and its Check
-Syntax, say its problems), and shares it with the project. A link opens a lab beside the project (`lab=<its id>`: *Share Project*'s
-Lab, e.g. `…/Silinx/#open=example:stopwatch&lab=stopwatch-emulator`). The progress is the project's
+Syntax, say its problems), and shares it with the project. A link opens a lab beside the project (`lab=<its id>`, e.g.
+`…/Silinx/#open=example:stopwatch&lab=stopwatch-emulator`; the MCP's `project_link` adds it to a project's link). The progress is the project's
 (`labs/progress.json`): a lab resumes where it was left.
 
 ### A design in a link (for lecture slides)
@@ -418,10 +418,12 @@ Lab, e.g. `…/Silinx/#open=example:stopwatch&lab=stopwatch-emulator`). The prog
 A link opens Silinx on a design, straight in Try it, the simulation or the board emulator, with no project to create
 or import: **Share Project…** (the project's right-click menu in the Design pane, the Start page, the ISE
 style's File menu) or **Share Module…** (a module's right-click menu) makes it, **A copy** chosen in its window, the view
-and the module chosen (its other way, **Live**, shares the project as you work: others follow it with its link, read only,
+and the module chosen, the link hidden until *Show* (*Copy* copies it all the same, *Show QR Code* shows its QR code, as
+large as the window) (its other way, **Live**, shares the project as you work: others follow it with its link, read only,
 or edit it with you). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead
-(`#gist=…`, about 140 characters, for a chat that refuses a long message): the project is encrypted in your browser and
+(`#gist=…`, about 140 characters, for a chat that refuses a long message), made by *Generate*, the window saying which
+GitHub account is signed in and which repository the project is in (private or public): the project is encrypted in your browser and
 saved as a secret gist of your GitHub account (the browser edition's Sign in with GitHub…; a server's `GH_TOKEN`), and
 the key is in the link, so GitHub keeps only what it cannot read; opening it needs no sign-in, and your links are your
 gists, which you list and delete on GitHub. A short link may expire (*Expires:* a week, a month, six months or a

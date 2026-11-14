@@ -156,6 +156,17 @@ async function readCapped(r, max) {
   return new TextDecoder().decode(bytes);
 }
 
+/** Where a short link is made (#3995): the signed-in account's login, and the project's repository ('owner/repo', or
+ *  null: in none) with whether it is private (null: GitHub did not say, the repository not seen with this sign-in)
+ *  -> { login, repository, private }. */
+export async function gistAccount(client, repository = null) {
+  const me = await client.request('GET', '/user');
+  let priv = null;
+  const [owner, repo] = String(repository || '').split('/');
+  if (owner && repo) { try { const r = await client.request('GET', client.repo(owner, repo)); priv = typeof r?.private === 'boolean' ? r.private : null; } catch { priv = null; } }
+  return { login: String(me?.login || '') || null, repository: owner && repo ? `${owner}/${repo}` : null, private: priv };
+}
+
 /** The design of a short link's gist, read through GitHub's API with no sign-in (fetch: the page's, credentials omitted). */
 export async function loadGist({ id, key }, { fetch: f = globalThis.fetch, api = 'https://api.github.com', now = Date.now() } = {}) {
   let r;

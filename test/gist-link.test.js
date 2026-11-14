@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { encryptDesign, decryptDesign, saveGist, loadGist, parseGistRef, expiryDate, deleteExpiredGists, listGists, deleteGists, EXPIRY_DAYS, GIST_FILE, GIST_FORMAT, GIST_MAX, GIST_ANSWER_MAX } from '../core/gist-link.js';
+import { encryptDesign, decryptDesign, saveGist, loadGist, parseGistRef, expiryDate, deleteExpiredGists, listGists, deleteGists, gistAccount, EXPIRY_DAYS, GIST_FILE, GIST_FORMAT, GIST_MAX, GIST_ANSWER_MAX } from '../core/gist-link.js';
 import { LINK_LIMITS, encodeDesign, decodeDesign, makeLink, parseLink } from '../core/design-link.js';
 import { githubClient } from '../core/github-api.js';
 import { fakeGitHub } from './fake-github.mjs';
@@ -255,4 +255,18 @@ test('#3635 listGists: the user\'s Silinx gists only, the newest first, made, ex
   assert.deepEqual([...gh.gists.keys()].sort(), [c.id, 'd'.repeat(32), 'e'.repeat(32), 'f'.repeat(32)].sort());
   // signed out: GitHub's refusal
   await assert.rejects(listGists(githubClient({ fetch: gh.fetch, token: () => null })), { message: 'GitHub refused the sign-in (Requires authentication)' });
+});
+
+// #3995: where a short link is made: the signed-in account's login, the project's repository and whether it is
+// private (GitHub's answer), null when GitHub does not show it; no repository, none asked; a bad token refused
+test('#3995 gistAccount: the account, the repository private or public, unseen, none', async () => {
+  const gh = fakeGitHub();
+  gh.seed('student/vault', null, { private: true });
+  gh.seed('student/plaza', null);
+  const client = githubClient({ fetch: gh.fetch, token: () => gh.token });
+  assert.deepEqual(await gistAccount(client, 'student/vault'), { login: 'student', repository: 'student/vault', private: true });
+  assert.deepEqual(await gistAccount(client, 'student/plaza'), { login: 'student', repository: 'student/plaza', private: false });
+  assert.deepEqual(await gistAccount(client, 'student/ghost'), { login: 'student', repository: 'student/ghost', private: null });
+  for (const none of [null, '', 'nobody']) assert.deepEqual(await gistAccount(client, none), { login: 'student', repository: null, private: null });
+  await assert.rejects(gistAccount(githubClient({ fetch: gh.fetch, token: () => 'gho_wrong' }), 'student/plaza'), /Bad credentials|refused|401/i);
 });
