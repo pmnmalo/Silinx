@@ -7,6 +7,7 @@
 import { sv } from './dom.js';
 import { partDef, partPins, partHoles, BB_COLS, BB_ROWS, BB_RAILS } from '/core/circuit-parts.js';
 import { portName } from '/core/circuit.js';
+import { drawPart2 } from './circuit-draw-parts.js';
 
 export const P = 20;   // pixels per grid step
 const px = (v) => v * P;
@@ -30,7 +31,12 @@ function breadboardSvg(p, selected) {
     sv('rect', { x: x0, y: y0, width: w, height: hgt, rx: 6, class: 'circ-bb-body' }),
     sv('rect', { x: x0 + 6, y: px(p.y + BB_ROWS.e) + P * 0.5, width: w - 12, height: px(BB_ROWS.f - BB_ROWS.e) - P, class: 'circ-bb-channel' }));
   // the rails' lines: red the +, blue the −
-  for (const [r, y] of Object.entries(BB_RAILS)) g.append(sv('line', { x1: x0 + 8, x2: x0 + w - 8, y1: px(p.y + y) + (r === 'tp' || r === 'bn' ? -P / 2 : P / 2), y2: px(p.y + y) + (r === 'tp' || r === 'bn' ? -P / 2 : P / 2), class: r.endsWith('p') ? 'circ-rail-plus' : 'circ-rail-minus' }));
+  // (a full breadboard's rails split after its column `split`: two lines each)
+  const spans = d.split ? [[x0 + 8, px(p.x + d.split - 1) + P / 2 - 4], [px(p.x + d.split) - P / 2 + 4, x0 + w - 8]] : [[x0 + 8, x0 + w - 8]];
+  for (const [r, y] of Object.entries(BB_RAILS)) {
+    const ly = px(p.y + y) + (r === 'tp' || r === 'bn' ? -P / 2 : P / 2);
+    for (const [a, b] of spans) g.append(sv('line', { x1: a, x2: b, y1: ly, y2: ly, class: r.endsWith('p') ? 'circ-rail-plus' : 'circ-rail-minus' }));
+  }
   for (const hle of partHoles(p)) g.append(sv('rect', { x: px(hle.x) - 3.5, y: px(hle.y) - 3.5, width: 7, height: 7, rx: 1.5, class: 'circ-hole' }));
   // the rows' letters and every fifth column's number
   for (const [r, y] of Object.entries(BB_ROWS)) g.append(sv('text', { x: x0 + P / 2, y: px(p.y + y) + 3.5, class: 'circ-bb-label' }, r));
@@ -54,7 +60,8 @@ function partSvg(p, selected, { levels, leds, inputs }) {
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
   const xs = pins.map((q) => px(q.x)), ys = pins.map((q) => px(q.y));
   const box = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-  if (d.kind === 'ic') {
+  if (drawPart2(g, p, box, { on: inputs ? inputs[p.id] : p.on, lamps: leds?.[p.id] })) { /* (phase 2's parts: circuit-draw-parts.js) */ }
+  else if (d.kind === 'ic') {
     g.append(sv('rect', { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7, rx: 2, class: 'circ-ic-body' }));
     // its notch on pin 1's short side, its name and chip
     const p1 = pins[0], p14 = pins[pins.length - 1];
@@ -75,7 +82,7 @@ function partSvg(p, selected, { levels, leds, inputs }) {
       sv('circle', { cx: (box.x0 + box.x1) / 2, cy: box.y0, r: P * 0.55, class: `circ-btn-cap${down ? ' down' : ''}` }),
       sv('text', { x: (box.x0 + box.x1) / 2, y: box.y0 - P * 1, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));
   } else if (d.type === 'led') {
-    const st = leds?.[p.id];
+    const st = leds?.[p.id];   // (on, off, x)
     const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
     g.append(sv('circle', { cx, cy: cy - P * 0.6, r: P * 0.55, class: `circ-led circ-led-${p.color || 'red'}${st === 'on' ? ' lit' : st === 'x' ? ' unknown' : ''}` }),
       sv('text', { x: cx, y: cy - P * 1.35, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));

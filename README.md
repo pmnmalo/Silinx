@@ -154,8 +154,9 @@ for Xilinx FPGAs supported by ISE 14.7.
   with that name, location and language, and its *< Back* on the first page goes back to New Source to change them;
   *Wizard >* is disabled for a type that has none, and *Next >* for a type that has only the wizard (Clock Manager,
   Block Memory).
-- **Digital circuits** (*New Source ▸ Circuit*, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (the 7400, 7404, 7408, 7432
-  and 7486, their datasheets' pinouts), logic switches, push buttons and LEDs wired on a breadboard or beside it, simulated
+- **Digital circuits** (*New Source ▸ Circuit*, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (74LS gates, open collector
+  ones too, and 4000 gates, their datasheets' pinouts), switches (logic, slide, DIP), push buttons, a clock, pull-ups, LEDs,
+  7-segment displays and LED bars wired on a breadboard or beside it, simulated
   live with the gates' delays (*Try it*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
   says the short circuits, the unpowered ICs and the floating inputs; its HDL is generated, one entity per IC.
 - **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–16) and of the
