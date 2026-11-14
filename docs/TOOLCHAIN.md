@@ -198,8 +198,8 @@ times Vivado's timing of the same netlist (#3516), so it is above Vivado's own f
 geometric mean); stopwatch's 2.2 times, its DSP48E1s timed by nextpnr's stubs (#3875). Vivado accepts every netlist of
 Silinx's: no DRC error, one net with no routable load (RTSTAT-10, a warning), its bitstream written. Two netlist details
 the comparison handles: a port of one bit (`btn(0 downto 0)`) is a scalar in Silinx's netlist, its pin named so in the
-XDC Vivado reads; and Silinx's `.bit` is not compressed where the board's XDC asks for it (BITSTREAM.GENERAL.COMPRESS),
-Vivado's is (#3876).
+XDC Vivado reads; and Silinx's `.bit` was not compressed where the board's XDC asks for it (BITSTREAM.GENERAL.COMPRESS),
+Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3, as Vivado's; the table's run was before).
 
 <!-- xc7-vivado-comparison: begin (scripts/xc7-vivado-compare.mjs --update) -->
 | Board | Example | LUTs: Silinx (+ feed-throughs) | LUTs: Silinx's netlist in Vivado | LUTs: Vivado | Registers: Silinx / Vivado | Slices: Silinx / Vivado | MHz: Silinx | MHz: Silinx's netlist in Vivado | MHz: Vivado | Vivado's DRC on Silinx's netlist |

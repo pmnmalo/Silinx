@@ -49,6 +49,10 @@ export const PETRI_PT = {
   'Petri net (module) name:': 'Nome da rede de Petri (módulo):',
   'The wizard creates a Petri net with its inputs and outputs declared, ready for you to draw its places, transitions and arcs; its HDL is generated from it.':
     'O assistente cria uma rede de Petri com as entradas e saídas declaradas, pronta para desenhar os lugares, as transições e os arcos; o HDL é gerado a partir dela.',
+  'The wizard creates a Petri net with its inputs and outputs declared, ready for you to draw its places, transitions and arcs.':
+    'O assistente cria uma rede de Petri com as entradas e saídas declaradas, pronta para desenhar os lugares, as transições e os arcos.',
+  'One row per input or output port. Width 1 is a single bit; a width N makes a bus of N bits, numbered N-1 downto 0.':
+    'Uma linha por porto de entrada ou de saída. Largura 1 é um só bit; uma largura N faz um barramento de N bits, numerados de N-1 a 0.',
   'One row per input or output port. Width 1 is a single bit (std_logic / wire); a width N makes a bus of N bits, numbered N-1 downto 0.':
     'Uma linha por porto de entrada ou de saída. Largura 1 é um só bit (std_logic / wire); uma largura N faz um barramento de N bits, numerados de N-1 a 0.',
   'Reset (synchronous, to the initial marking):': 'Reset (síncrono, para a marcação inicial):',

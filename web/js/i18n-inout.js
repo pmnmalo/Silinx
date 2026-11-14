@@ -5,6 +5,8 @@ export const IO_PT = {
   'bidirectional': 'bidirecional',
   'bidirectional = inout: a tri-state port the module can drive or release (Z), and read':
     'bidirecional = inout: um porto tri-state que o módulo pode atuar ou libertar (Z), e ler',
+  'One row per input, output or bidirectional (inout) port. Width 1 is a single bit; a width N makes a bus of N bits, numbered N-1 downto 0.':
+    'Uma linha por entrada, saída ou porto bidirecional (inout). Largura 1 é um só bit; uma largura N faz um barramento de N bits, numerados de N-1 a 0.',
   'One row per input, output or bidirectional (inout) port. Width 1 is a single bit (std_logic / wire); a width N makes a bus of N bits, numbered N-1 downto 0.':
     'Uma linha por entrada, saída ou porto bidirecional (inout). Largura 1 é um só bit (std_logic / wire); uma largura N faz um barramento de N bits, numerados de N-1 a 0.',
   // Test Bench Wizard (web/js/tbwizard.js)

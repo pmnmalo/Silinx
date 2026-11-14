@@ -20,6 +20,7 @@ import { spawnSync } from 'node:child_process';
 import { EXAMPLES, S6_EXAMPLES, S3E_TARGETS as TARGETS, S6_TARGETS, ROOT, targetName, exampleProject } from '../examples-lib.mjs';
 import { iseExamplesConfig } from '../ise-examples-config.mjs';
 import { micro80S3eWarnings, MICRO80_S6_WARNINGS } from '../ise-micro80-warnings.mjs';
+import { s3aHeaderWarnings } from '../s3a-header-warnings.mjs';
 
 const IMAGE = process.env.SILINX_ISE_IMAGE || 'xilinx/ise:14.7';
 const enabled = process.env.SILINX_ISE_TESTS === '1';
@@ -132,3 +133,12 @@ test('ISE builds example clock for the s3-starter, with the expected warnings', 
   const job = await iseBuild('clock', { board: 's3-starter' }, []);
   assert.deepEqual(job.lines.filter(l => /^WARNING: /.test(l)), []);
 });
+
+// (#3872) the examples on the Spartan-3A Starter Kit, an XC3S700A (a Spartan-3A, ISE only): the board has no display, its
+// bits on the headers J18, J20 and the FX2 connector; ISE's warnings the examples' own, Silinx's one per bit on a header
+for (const name of EXAMPLES) {
+  test(`ISE builds example ${name} for the s3a-starter, with the expected warnings`, { skip, timeout: 30 * 60000 }, async () => {
+    const job = await iseBuild(name, { board: 's3a-starter' });
+    assert.deepEqual(job.lines.filter(l => /^WARNING: /.test(l)), s3aHeaderWarnings(name).map(w => `WARNING: ${w}`));
+  });
+}

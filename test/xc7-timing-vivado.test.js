@@ -6,7 +6,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sexpr, timescalePs, parseSdf, parseTimingPaths, parseRoutes, connections, wireClass, lutBelPin, nextpnrPathSplit } from '../scripts/xc7-timing-parse.mjs';
-import { cellSamples, cellStats, wireSamples, groupWires, mergeCellStats, mergeGroups, nnls, fitWires, chipdbTable, compareFmax, fitMeasurement, CLASSES } from '../scripts/xc7-timing-fit.mjs';
+import fs from 'node:fs';
+import { cellSamples, cellStats, wireSamples, groupWires, mergeCellStats, mergeGroups, nnls, fitWires, chipdbTable, compareFmax, fitMeasurement, CLASSES, MEASURED, FITTED } from '../scripts/xc7-timing-fit.mjs';
 import { edifScript, measureTcl, runSh, selectDesigns, nameFilter, designNumbers, mergeMeasurement, keepsRun, jobContainers, BOARDS, OUTPUTS } from '../scripts/xc7-timing-vivado.mjs';
 import { parseTimingSummary } from '../server/vivado-reports.js';
 
@@ -256,19 +257,70 @@ test('#3516 the fit: non-negative least squares recovers known wire-class delays
 test('#3516 the chip database\'s table (xilinx_gen.py\'s cells: the stubs replaced) and the Fmax comparison', () => {
   const cells = { 'LUT.A1.O6': { n: 4, min: 90, mean: 100, max: 105.4 }, 'LUT.A6.O6': { n: 1, min: 40, mean: 40, max: 43 }, 'LUT.A2.O5': { n: 1, min: 120, mean: 120, max: 120 },
     'FF.C.Q': { n: 9, min: 456, mean: 456, max: 456 }, 'FF.setup.D': { n: 2, min: 47, mean: 55, max: 62 }, 'CARRY4.CI.CO3': { n: 3, min: 114, mean: 114, max: 114 },
-    'MUXF7.S.O': { n: 1, min: 296, mean: 296, max: 296 } };
+    'MUXF7.S.O': { n: 1, min: 296, mean: 296, max: 296 }, 'DSP48E1.A[29:0].P[47:0]': { n: 3, min: 3841, mean: 3841, max: 3841 },
+    'DSP48E1.CARRYIN.CARRYCASCOUT': { n: 3, min: 1746, mean: 1746, max: 1746 } };
   const t = chipdbTable(cells, { base: 150, classes: { single: 120, long: null } });
   assert.deepEqual(t.SLICE_LUTX.A1, { O6: { min: 90, max: 105 }, O5: null });
   assert.deepEqual(t.SLICE_LUTX.A6, { O6: { min: 40, max: 43 } });
   assert.deepEqual(t.SLICE_LUTX.A2.O5, { min: 120, max: 120 });
   assert.deepEqual(t.SLICE_FFX, { clkToQ: { min: 456, max: 456 }, setup: { D: { min: 47, max: 62 }, CE: null, SR: null } });
   assert.deepEqual([t.CARRY4, t.SELMUX2_1, t.MUXF8], [{ 'CI->CO3': { min: 114, max: 114 } }, { 'S->O': { min: 296, max: 296 } }, {}]);
+  // the DSP48E1's arcs by bus (#3875: A[29:0] -> A)
+  assert.deepEqual(t.DSP48E1, { 'A->P': { min: 3841, max: 3841 }, 'CARRYIN->CARRYCASCOUT': { min: 1746, max: 1746 } });
+  assert.deepEqual(chipdbTable({}, null).DSP48E1, {});
   assert.deepEqual(t.wires, { base: 150, single: 120, long: null });
   assert.equal(chipdbTable({}, null).wires, null);
   const f = compareFmax({ basys3: { blinky: { vivado: { fmaxMHz: 200, logicNs: 2, routeNs: 3 }, nextpnr: { fmaxMHz: 260, logicNs: 1.6, routeNs: 2.2 } },
     gates: { vivado: { fmaxMHz: null }, nextpnr: { fmaxMHz: null } } } });
   assert.deepEqual(f.rows, [{ board: 'basys3', name: 'blinky', vivado: 200, nextpnr: 260, ratio: 1.3 }, { board: 'basys3', name: 'gates', vivado: null, nextpnr: null, ratio: null }]);
   assert.deepEqual([f.logicScale, f.routeScale], [1.25, 1.364]);
+});
+
+// The fork's DSP48E1 with no register (pmnmalo/nextpnr-spartan, himbaechel/uarch/xilinx/gen/timing_fit.py, its
+// DSP48E1_COMB and DSP48E1_B_BCOUT, after xc7 0.1.2), ps: its inputs' arcs to its outputs
+const FORK_DSP48E1_COMB = {
+  A: { P: 3841, PCOUT: 4036, CARRYOUT: 3818, CARRYCASCOUT: 4171, MULTSIGNOUT: 3799, PATTERNDETECT: 4406, PATTERNBDETECT: 4406 },
+  B: { P: 3656, PCOUT: 3851, CARRYOUT: 3633, CARRYCASCOUT: 3986, MULTSIGNOUT: 3615, PATTERNDETECT: 4221, PATTERNBDETECT: 4221 },
+  C: { P: 1820, PCOUT: 2016, CARRYOUT: 1797, CARRYCASCOUT: 2150, MULTSIGNOUT: 1779, PATTERNDETECT: 2386, PATTERNBDETECT: 2386 },
+  ALUMODE: { P: 2098, PCOUT: 2292, CARRYOUT: 2074, CARRYCASCOUT: 2427, MULTSIGNOUT: 2055, PATTERNDETECT: 2423, PATTERNBDETECT: 2423 },
+  CARRYIN: { P: 1416, PCOUT: 1613, CARRYOUT: 1393, CARRYCASCOUT: 1746, MULTSIGNOUT: 1376, PATTERNDETECT: 1982, PATTERNBDETECT: 1982 },
+  CARRYINSEL: { P: 1910, PCOUT: 2106, CARRYOUT: 1888, CARRYCASCOUT: 2241, MULTSIGNOUT: 1870, PATTERNDETECT: 2476, PATTERNBDETECT: 2476 },
+  INMODE: { P: 3923, PCOUT: 4119, CARRYOUT: 3900, CARRYCASCOUT: 4254, MULTSIGNOUT: 3883, PATTERNDETECT: 4489, PATTERNBDETECT: 4489 },
+  OPMODE: { P: 2326, PCOUT: 2522, CARRYOUT: 2304, CARRYCASCOUT: 2657, MULTSIGNOUT: 2286, PATTERNDETECT: 2892, PATTERNBDETECT: 2892 },
+  PCIN: { P: 1518, PCOUT: 1713, CARRYOUT: 1494, CARRYCASCOUT: 1848, MULTSIGNOUT: 1478, PATTERNDETECT: 2084, PATTERNBDETECT: 2084 },
+  CARRYCASCIN: { P: 1147, PCOUT: 1343, CARRYOUT: 1124, CARRYCASCOUT: 1478, MULTSIGNOUT: 1106, PATTERNDETECT: 1712, PATTERNBDETECT: 1712 },
+  MULTSIGNIN: { P: 1518, PCOUT: 1713, CARRYOUT: 1494, CARRYCASCOUT: 1848, MULTSIGNOUT: 1478, PATTERNDETECT: 2084, PATTERNBDETECT: 2084 },
+};
+
+test('#3875 the DSP48E1\'s arcs: Vivado\'s on stopwatch, the fork\'s table; nextpnr\'s critical path short of Vivado\'s by them', () => {
+  const measured = JSON.parse(fs.readFileSync(MEASURED, 'utf8'));
+  const fit = fitMeasurement(measured);
+  // the recorded fit is the measurement's (timing-fit.json written by this script from vivado-timing.json)
+  assert.deepEqual(JSON.parse(fs.readFileSync(FITTED, 'utf8')).chipdb, JSON.parse(JSON.stringify(fit.chipdb)));
+  // Vivado gave each arc one delay (the slow corner's), the same on stopwatch's three DSP48E1s: the fork's table
+  const dsp = fit.chipdb.DSP48E1;
+  const table = {};
+  for (const [arc, d] of Object.entries(dsp)) {
+    assert.equal(d.min, d.max, arc);
+    const [from, to] = arc.split('->');
+    if (to !== 'BCOUT') (table[from] ||= {})[to] = d.max;
+  }
+  assert.deepEqual(table, FORK_DSP48E1_COMB);
+  assert.deepEqual(dsp['B->BCOUT'], { min: 735, max: 735 });
+  assert.equal(Object.keys(dsp).length, 11 * 7 + 1);
+  // stopwatch, the same netlist (Basys 3): Vivado's critical path 6.669 ns of logic, nextpnr's (xc7 0.1.2, the DSP48E1
+  // not timed) 1.983 ns, its estimate twice Vivado's; the A -> P arc it left out makes up the difference within 15 %
+  const sw = measured.examples.basys3.stopwatch;
+  assert.equal(sw.sameNetlist, true);
+  assert.deepEqual([sw.vivado.fmaxMHz, sw.vivado.logicNs, sw.nextpnr.fmaxMHz, sw.nextpnr.logicNs], [107.388, 6.669, 210.61, 1.983]);
+  assert.ok(sw.nextpnr.fmaxMHz / sw.vivado.fmaxMHz > 1.9);
+  const withDsp = sw.nextpnr.logicNs + dsp['A->P'].max / 1000;
+  assert.ok(Math.abs(withDsp - sw.vivado.logicNs) <= 0.15 * sw.vivado.logicNs, `${withDsp} ns against ${sw.vivado.logicNs}`);
+  // and the Fmax that logic gives with nextpnr's routing (2.765 ns) is within the gap of the examples with no DSP48E1
+  // (#3516: nextpnr's routing faster than Vivado's), no longer an exception
+  const others = fit.fmax.rows.filter((r) => r.ratio !== null && r.name !== 'stopwatch').map((r) => r.ratio);
+  const ratio = 1000 / (withDsp + sw.nextpnr.routeNs) / sw.vivado.fmaxMHz;
+  assert.deepEqual([+ratio.toFixed(3), Math.min(...others), Math.max(...others)], [1.084, 1.13, 1.554]);
 });
 
 test('#3516 the Vivado run: the EDIF\'s Yosys commands, measure.tcl, run.sh; the designs; a design\'s numbers; the file\'s merge', () => {

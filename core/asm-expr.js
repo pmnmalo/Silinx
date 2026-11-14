@@ -12,7 +12,8 @@ import { MAX_NESTING } from './util.js';
 const OPS = ['&&', '||', '==', '!=', '/=', '<<', '>>', '<=', '>=', ':=', '<', '>', '!', '~', '&', '|', '^', '+', '-', '(', ')', '[', ']', ':', '='];
 const WORD_OPS = { and: '&&', or: '||', not: '!', xor: '^' };
 
-class ExprError extends Error {}
+// (pos: the offending character's index in the text, when known: the error's column)
+class ExprError extends Error { constructor(msg, pos) { super(msg); this.pos = pos; } }
 
 // The deepest a drawing's expression nests (#3559: an ASM chart's, a state diagram's, a Petri net's condition or action,
 // a truth table's expression): parentheses, unary operators, and the operators of a chain (a & b & c: each one a level).
@@ -58,7 +59,16 @@ const T_BITS = /"([01_]*)"/y;
 const T_BADBITS = /"[^"]*"?/y;
 const T_ID = /[A-Za-z_][A-Za-z0-9_]*/y;
 
-function tokenize(src) {
+// A condition's Boolean-algebra notations (#3907): AND as a point, a middle dot or ∧ (a.b, a·b), NOT as ¬, a prefix slash
+// (/a) or a postfix apostrophe (a'), OR as ∨ or a plus (a + b, OR but in a comparison's operand: boolPlus). They are
+// the logical operators (&&, ||, !): the same tree, the same HDL, as the C-style form.
+const AND_DOTS = ['.', '\u00b7', '\u22c5'];
+// logic's signs (¬a, a ∧ b, a ∨ b)
+const LOGIC_SIGNS = { '\u00ac': '!', '\u2227': '.', '\u2228': '||' };
+// whether a token ends an operand (a postfix apostrophe follows one: a', (a+b)', a[2]')
+const endsOperand = (tk) => tk && (tk.t === 'id' || tk.t === 'lit' || (tk.t === 'op' && [')', ']', "'"].includes(tk.v)));
+
+function tokenize(src, cond = false) {
   const toks = [];
   let i = 0;
   const at = (re) => { re.lastIndex = i; return re.exec(src); };
@@ -66,7 +76,22 @@ function tokenize(src) {
     const c = src[i];
     if (/\s/.test(c)) { i++; continue; }
     let m;
-    if ((m = at(T_BIT))) {
+    if (cond && c === "'" && endsOperand(toks[toks.length - 1])) {
+      toks.push({ t: 'op', v: "'", pos: i });
+      m = [c];
+    } else if (cond && AND_DOTS.includes(c)) {
+      if (c === '.' && /\d/.test(src[i - 1] ?? '') && /\d/.test(src[i + 1] ?? '')) {
+        throw new ExprError(`a condition has no real numbers ('.' is AND: a.b)`, i);
+      }
+      toks.push({ t: 'op', v: '.', pos: i });
+      m = [c];
+    } else if (cond && LOGIC_SIGNS[c]) {
+      toks.push({ t: 'op', v: LOGIC_SIGNS[c], pos: i });
+      m = [c];
+    } else if (cond && c === '/' && src[i + 1] !== '=') {
+      toks.push({ t: 'op', v: '/', pos: i });
+      m = [c];
+    } else if ((m = at(T_BIT))) {
       toks.push({ t: 'lit', v: { k: 'lit', v: BigInt(m[1]), w: 1, base: 'b' }, pos: i });
     } else if ((m = at(T_BASED))) {
       toks.push({ t: 'lit', v: parseBased(m[1], m[2], m[3], m[0]), pos: i });
@@ -89,14 +114,39 @@ function tokenize(src) {
       else toks.push({ t: 'id', v: m[0], pos: i });
     } else {
       const op = OPS.find((o) => src.startsWith(o, i));
-      if (!op) throw new ExprError(`unexpected character '${c}'`);
+      if (!op) throw new ExprError(cond && c === "'" ? "unexpected ' (NOT after an operand: a')" : `unexpected character '${c}'`, i);
       toks.push({ t: 'op', v: op, pos: i });
       m = [op];
     }
     i += m[0].length;
   }
   toks.push({ t: 'eof', v: '', pos: src.length });
+  if (cond) boolPlus(toks);
   return toks;
+}
+
+// A condition's `+` (#3907): OR (Boolean algebra's a + b), but addition in a comparison's or a shift's operand
+// (count + 1 >= max, (a + b) == c), as in the HDL. A token span between two logical operators (&&, ||, &, |, ^, AND's
+// point) adds when it holds a comparison or a shift, or lies in a parenthesis that does; an OR `+` is marked `or`.
+const SPLITS = new Set(['&&', '||', '&', '|', '^', '.']);
+const ARITH = new Set(['==', '!=', '/=', '=', '<', '>', '<=', '>=', '<<', '>>']);
+function boolPlus(toks) {
+  const spans = [{ cmp: false, parent: -1 }];
+  const frames = [0];        // per open parenthesis: the span it lies in
+  let cur = 0;
+  const plus = [];           // [token, span]
+  for (const tk of toks) {
+    if (tk.t !== 'op') continue;
+    if (tk.v === '(' || tk.v === '[') { frames.push(cur); spans.push({ cmp: false, parent: cur }); cur = spans.length - 1; }
+    else if (tk.v === ')' || tk.v === ']') { if (frames.length > 1) cur = frames.pop(); }
+    else if (SPLITS.has(tk.v)) { spans.push({ cmp: false, parent: spans[cur].parent }); cur = spans.length - 1; }
+    else if (ARITH.has(tk.v)) spans[cur].cmp = true;
+    else if (tk.v === '+') plus.push([tk, cur]);
+  }
+  // (a parenthesis' spans come after the span it lies in)
+  const arith = [];
+  spans.forEach((sp, k) => { arith[k] = sp.cmp || (sp.parent >= 0 && arith[sp.parent]); });
+  for (const [tk, k] of plus) if (!arith[k]) tk.or = true;
 }
 
 const BIN_LEVELS = [['||'], ['&&'], ['|'], ['^'], ['&'], ['==', '!='], ['<', '>', '<=', '>='], ['<<', '>>'], ['+', '-']];
@@ -106,16 +156,27 @@ function makeParser(toks, condMode) {
   const peek = () => toks[p];
   const opv = (tk) => {
     if (tk.t !== 'op') return null;
+    if (tk.v === '.') return '&&';
+    if (tk.or) return '||';
     if (condMode && tk.v === '=') return '==';
     if (tk.v === '/=') return '!=';
     return tk.v;
   };
   const expect = (v) => {
     const tk = toks[p];
-    if (opv(tk) !== v) throw new ExprError(`expected '${v}' ${tk.t === 'eof' ? 'at end' : `near '${tk.v}'`}`);
+    if (opv(tk) !== v) throw new ExprError(`expected '${v}' ${tk.t === 'eof' ? 'at end' : `near '${tk.v}'`}`, tk.pos);
     p++;
   };
+  // an operand and its postfix NOTs (a', a'': #3907)
   function primary() {
+    let e = operand();
+    while (peek().t === 'op' && peek().v === "'") {
+      p++;
+      e = { k: 'un', op: '!', a: e };
+    }
+    return e;
+  }
+  function operand() {
     const tk = toks[p];
     if (tk.t === 'lit') { p++; return tk.v; }
     if (tk.t === 'id') {
@@ -127,7 +188,7 @@ function makeParser(toks, condMode) {
       const close = open === '[' ? ']' : ')';
       const idx = () => {
         const n = toks[p];
-        if (n.t !== 'lit' || n.v.w != null) throw new ExprError(`bit index of '${tk.v}' must be a decimal number`);
+        if (n.t !== 'lit' || n.v.w != null) throw new ExprError(`bit index of '${tk.v}' must be a decimal number`, n.pos);
         p++;
         return Number(n.v.v);
       };
@@ -139,13 +200,15 @@ function makeParser(toks, condMode) {
       if (lo > hi) throw new ExprError(`slice ${tk.v}[${hi}:${lo}]: the left index must be the higher one`);
       return { k: 'sel', name: tk.v, hi, lo };
     }
-    const o = opv(tk);
+    const o = opv(tk) === '/' ? '!' : opv(tk);   // (a condition's prefix slash: NOT, #3907)
     if ((o === '(' || o === '!' || o === '~' || o === '-') && ++nest > DRAWING_NESTING) throw new ExprError(DRAWING_NESTING_MESSAGE);
     if (o === '(') { p++; const e = binary(0); expect(')'); nest--; return e; }
     if (o === '!' || o === '~' || o === '-') { p++; const e = { k: 'un', op: o, a: primary() }; nest--; return e; }
-    if (tk.t === 'eof') throw new ExprError('unexpected end of expression');
-    throw new ExprError(`unexpected '${tk.v}'`);
+    if (tk.t === 'eof') throw new ExprError('unexpected end of expression', tk.pos);
+    throw new ExprError(unexpected(tk), tk.pos);
   }
+  const unexpected = (tk) => (tk.v === '/' ? "unexpected '/' (a condition has no division: '/' before an operand is NOT, /a)"
+    : tk.v === "'" ? "unexpected ' (NOT after an operand: a')" : `unexpected '${tk.v}'`);
   function binary(level) {
     if (level >= BIN_LEVELS.length) return primary();
     let a = binary(level + 1);
@@ -159,7 +222,11 @@ function makeParser(toks, condMode) {
   return {
     expr() {
       const e = binary(0);
-      if (peek().t !== 'eof') throw new ExprError(`unexpected '${peek().v}'`);
+      if (peek().t !== 'eof') {
+        const tk = peek();
+        // two operands side by side (a b, a'b): not an AND, names having several letters (#3907)
+        throw new ExprError(tk.t === 'id' || tk.t === 'lit' || opv(tk) === '(' ? `unexpected '${tk.v}' (an operator missing before it: a && b, a.b)` : unexpected(tk), tk.pos);
+      }
       if (deeperThanLimit(e, operands)) throw new ExprError(DRAWING_NESTING_MESSAGE);
       return e;
     },
@@ -167,13 +234,13 @@ function makeParser(toks, condMode) {
   };
 }
 
-/** Parse a condition. Returns { ast } or { error }. */
+/** Parse a condition. Returns { ast } or { error, column } (column: 1 for the text's first character, when known). */
 export function parseCondition(src) {
   try {
     if (!String(src ?? '').trim()) return { error: 'empty condition' };
-    return { ast: makeParser(tokenize(String(src)), true).expr() };
+    return { ast: makeParser(tokenize(String(src), true), true).expr() };
   } catch (e) {
-    if (e instanceof ExprError) return { error: e.message };
+    if (e instanceof ExprError) return e.pos == null ? { error: e.message } : { error: e.message, column: e.pos + 1 };
     throw e;
   }
 }

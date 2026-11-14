@@ -19,7 +19,7 @@ import { runImpl, stopProcesses } from './implement.js';
 import { setViewAsTop, topOfView, viewSel } from './drawings.js';
 import { checkSyntax, projectTool, runProcess, saveAll, topConfirmed } from './processes.js';
 import { hasTask } from './tool-descriptors.js';
-import { checkLabel, designOnly, flowOnly } from './design-only.js';
+import { checkLabel, designOnly, flowOnly, shownFiles } from './design-only.js';
 import { addFromFolderDialog, setTop, unsetTop } from './design.js';
 import { openEmulator, openSchematic, runSimulation } from './viewers.js';
 import { printActive, printable } from './print-doc.js';
@@ -256,7 +256,8 @@ export function refreshSteps() {
 
 // Command palette: every enabled menu command and every project file
 export function showPalette() {
-  const files = S.project ? [...new Set(S.project.files.map(f => f.path))].sort().map(path => ({ path, open: () => openFile(path) })) : [];
+  // (a design project's: a drawn module's drawing for its HDL file, the rest of the HDL side left out, #3891)
+  const files = S.project ? shownFiles([...new Set(S.project.files.map(f => (designOnly() && S.hdlToSch?.[f.path]) || f.path))]).sort().map(path => ({ path, open: () => openFile(path) })) : [];
   return openPalette({ commands: menuCommands(S.menus), files });
 }
 

@@ -262,9 +262,11 @@ function mountXc7(ctx) {
       throw new StepError(`the routed design's FASM cannot be written as a bitstream: ${e.message}`, [], '');
     }
     // (the header's part as Vivado and ISE write it, 7a35tcpg236: the programmer's check of the board's device reads it)
-    const bytes = bitstreamXc7(frames, db, { source: top, generator: 'silinx-fpga', part: `${String(spec.device).replace(/^xc/, '')}${spec.pkg}` });
-    report.bit = { path: io.write(`${top}.bit`, bytes), size: bytes.length };
-    log(`Bitstream: build/${top}.bit (${bytes.length} bytes, from nextpnr's FASM on Project X-Ray's database)`);
+    // (the XDC's BITSTREAM.GENERAL.COMPRESS, the Digilent boards' configuration: repeated frames written once, #3876)
+    const compress = /^true$/i.test(constraints()?.config?.['BITSTREAM.GENERAL.COMPRESS'] ?? '');
+    const bytes = bitstreamXc7(frames, db, { source: top, generator: 'silinx-fpga', part: `${String(spec.device).replace(/^xc/, '')}${spec.pkg}`, compress });
+    report.bit = { path: io.write(`${top}.bit`, bytes), size: bytes.length, compressed: compress };
+    log(`Bitstream: build/${top}.bit (${bytes.length} bytes${compress ? ', compressed' : ''}, from nextpnr's FASM on Project X-Ray's database)`);
   }
 
   return { steps: { translate: ctx.readNetlist, par: runPar, trce: runTiming, bitgen: runBitgen } };

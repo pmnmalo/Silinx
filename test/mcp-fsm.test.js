@@ -4,7 +4,8 @@
 // does not have refused (nothing written), a transition's (the machine Mealy), the same values again (nothing written),
 // a state or a transition not there, a file that is not a state diagram. set_fsm_look (#3883): a state's and a
 // transition's look set (the HDL unchanged), the same again (nothing written), a value refused (nothing written), back
-// to the default (no look in the file), Check's error on a look not valid written by write_file.
+// to the default (no look in the file), Check's error on a look not valid written by write_file. A state diagram whose
+// conditions are in every notation of the logic operators (#3907), written by write_file: check_drawing, simulate_drawing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -117,4 +118,35 @@ test('#3883 a look not valid written by write_file: Check\'s error (check_drawin
   m.states.find(s => s.name === 'WALK').look = { fill: '#00aa00' };
   await ok('write_file', { project: 't', path: PATH, text: JSON.stringify(m, null, 2) });
   assert.doesNotMatch((await call('check_drawing', { project: 't', file: PATH })).text, /look|colour|ERROR|WARNING/);
+});
+
+// A --t1--> B, A --t2--> C, B --t3--> A, B --t4--> C, C --t5--> A, its conditions as given (#3907)
+const notations = (name, conds) => ({
+  name, lang: 'verilog', inputs: [{ name: 'a', width: 1 }, { name: 'b', width: 1 }], outputs: [{ name: 'z', width: 2, default: '0' }],
+  states: [{ id: 'a', name: 'A', x: 0, y: 0 }, { id: 'b', name: 'B', x: 200, y: 0, outputs: { z: '1' } }, { id: 'c', name: 'C', x: 200, y: 200, outputs: { z: '2' } }],
+  transitions: [['a', 'b'], ['a', 'c'], ['b', 'a'], ['b', 'c'], ['c', 'a']].map(([from, to], i) => ({ id: `t${i + 1}`, from, to, cond: conds[i] })),
+  initial: 'a',
+});
+
+test('#3907 a state diagram written in every notation of the logic operators: checked with no problem, simulated as its C-style form; the errors', async () => {
+  await ok('new_project', { name: 'nn' });
+  const typed = ["a.b'", '/a + b', 'else', 'a AND b', 'default'];
+  await ok('write_file', { project: 'nn', path: 'src/nn.fsm.json', text: JSON.stringify(notations('nn', typed), null, 2) });
+  await ok('write_file', { project: 'nn', path: 'src/cs.fsm.json', text: JSON.stringify(notations('cs', ['a && !b', '!a || b', '', 'a && b', '']), null, 2) });
+  const check = async (f) => (await call('check_drawing', { project: 'nn', file: f })).text;
+  assert.doesNotMatch(await check('src/nn.fsm.json'), /ERROR|WARNING/);
+  // kept as typed
+  assert.deepEqual(JSON.parse((await ok('read_file', { project: 'nn', path: 'src/nn.fsm.json' })).text).transitions.map((t) => t.cond), typed);
+  // simulated as the C-style form
+  const cycles = [{ a: 1 }, { a: 1, b: 1 }, {}, { b: 1 }, {}, { a: 1 }, {}, { a: 1, b: 1 }, { b: 1 }];
+  const run = async (f) => (await ok('simulate_drawing', { project: 'nn', file: f, cycles })).data.cycles.map((c) => [c.state, c.outputs.z, c.next]);
+  const want = await run('src/cs.fsm.json');
+  assert.deepEqual(await run('src/nn.fsm.json'), want);
+  assert.deepEqual(want.map((c) => c[0]), ['A', 'B', 'C', 'A', 'C', 'A', 'B', 'A', 'C']);
+  // a malformed condition: its column; two otherwise transitions from B
+  await ok('write_file', { project: 'nn', path: 'src/nn.fsm.json', text: JSON.stringify(notations('nn', ['a.b c', '/a + b', 'else', 'true', 'default']), null, 2) });
+  assert.equal(await check('src/nn.fsm.json'), [
+    "ERROR: Transition A → B: the condition 'a.b c' is not valid (column 5: unexpected 'c' (an operator missing before it: a && b, a.b))",
+    'ERROR: State B has 2 otherwise transitions (else, default, true, 1 or no condition), to A, C; a state has one at most',
+    'Process "Check State Diagram" of nn.fsm.json failed (2 error(s), 0 warning(s)).'].join('\n'));
 });

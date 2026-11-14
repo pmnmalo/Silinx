@@ -79,11 +79,72 @@ test('xc7 bitstream: the header\'s defaults (silinx-fpga, the date and time in U
   assert.throws(() => readBitXc7(new Uint8Array(8), db), /no sync word/);
 });
 
+// (#3876) a .bit's configuration packets from the sync word on: { reg, kind, n, first (its first data word) }
+function packetsOf(bit) {
+  const view = new DataView(bit.buffer, bit.byteOffset, bit.byteLength), out = [];
+  let k = 0, reg = 0;
+  while (view.getUint32(k) !== 0xaa995566) k++;
+  for (k += 4; k + 4 <= bit.length;) {
+    const h = view.getUint32(k), kind = h >>> 29, n = kind === 2 ? h & 0x7ffffff : kind === 1 ? h & 0x7ff : 0;
+    if (kind === 1) reg = (h >>> 13) & 0x3fff;
+    out.push({ at: k, reg, kind, n, first: n ? view.getUint32(k + 4) : null });
+    k += 4 + 4 * n;
+  }
+  return out;
+}
+
+test('xc7 bitstream compressed (BITSTREAM.GENERAL.COMPRESS, #3876): the examples\' frames read back the same, each frame written once, Vivado\'s packets', () => {
+  for (const name of DESIGNS) {
+    const { frames } = fasmToFrames(db, gz(`${name}.fasm.gz`).toString('utf8'));
+    const plain = bitstreamXc7(frames, db, { now: new Date(0) }), bit = bitstreamXc7(frames, db, { now: new Date(0), compress: true });
+    // not asked: the .bit as before (Project X-Ray's, the test above)
+    assert.ok(Buffer.from(bitstreamXc7(frames, db, { now: new Date(0), compress: false })).equals(Buffer.from(plain)), name);
+    assert.deepEqual(readBitXc7(bit, db), readBitXc7(plain, db), name);
+    // FDRI's frames written but its last (left in the frame buffer), each MFWR one frame: the 5408 frames written once;
+    // a CMD MFW for each set of frames with the same words, its first MFWR 8 words (to the buffer's frame), the others 4
+    const ps = packetsOf(bit), fdri = ps.filter(p => p.reg === 0x02 && p.n), mfwr = ps.filter(p => p.reg === 0x0a);
+    assert.ok(fdri.every(p => p.n % FRAME_WORDS === 0 && (p.kind === 2) === (p.n > 0x7ff)), name);
+    assert.equal(fdri.reduce((n, p) => n + p.n / FRAME_WORDS - 1, 0) + mfwr.length, 5408, name);
+    const sets = ps.filter(p => p.reg === 0x04 && p.first === 2).length;
+    assert.deepEqual([mfwr.filter(p => p.n === 8).length, mfwr.filter(p => p.n === 4).length + sets], [sets, mfwr.length], name);
+    assert.ok(mfwr.every(p => p.first === 0) && sets >= 6, name);
+    // CTL1's bit 12 set before the frames and cleared after LFRM, as Vivado's compressed .bit
+    assert.deepEqual(ps.filter(p => p.reg === 0x18).map(p => p.first), [0x1000, 0], name);
+    assert.deepEqual(packetsOf(plain).filter(p => p.reg === 0x18).map(p => p.first), [0], name);
+    // about Vivado's size (300 KB on the xc7a35t), against 2.19 MB
+    assert.ok(bit.length < plain.length / 6 && bit.length > 200000, `${name}: ${bit.length} bytes`);
+    assert.equal(bitDataLength(bit), bit.length - bitDataAt(bit), name);
+  }
+});
+
+test('xc7 bitstream compressed: an empty design (its frames all zeros) a frame copied to every frame of each row, on both parts; MFWR with no CMD MFW an error', () => {
+  for (const [part, n, rows] of [[PART, 5408, 6], ['xc7a100tcsg324-1', 9448, 8]]) {
+    const d = loadBitDbXc7(part), bit = bitstreamXc7(fasmToFrames(d, '').frames, d, { compress: true });
+    const ps = packetsOf(bit), fdri = ps.filter(p => p.reg === 0x02 && p.n);
+    assert.deepEqual([fdri.length, fdri.every(p => p.n === FRAME_WORDS), ps.filter(p => p.reg === 0x0a).length], [rows, true, n], part);
+    const back = readBitXc7(bit, d);
+    assert.equal(back.size, n);
+    assert.ok([...back.values()].every(w => w.every(x => x === 0)), part);
+    // (a FAR and an MFWR, 7 words, for each frame; two NOPs more for the block RAM's)
+    assert.ok(bit.length < n * 36 + 4000, `${part}: ${bit.length} bytes`);
+  }
+  const bit = bitstreamXc7(fasmToFrames(db, '').frames, db, { compress: true }), bad = Uint8Array.from(bit);
+  const mfw = packetsOf(bit).find(p => p.reg === 0x04 && p.first === 2);
+  new DataView(bad.buffer).setUint32(mfw.at + 4, 0);
+  assert.throws(() => readBitXc7(bad, db), /MFWR written with no CMD MFW and frame before it/);
+});
+
 // the length field of a .bit's configuration data (its key 'e')
 function bitDataLength(bytes) {
   let k = 13;
   while (bytes[k] !== 0x65) k += 3 + ((bytes[k + 1] << 8) | bytes[k + 2]);
   return ((bytes[k + 1] << 24) | (bytes[k + 2] << 16) | (bytes[k + 3] << 8) | bytes[k + 4]) >>> 0;
+}
+// where the configuration data starts (after the field e's length)
+function bitDataAt(bytes) {
+  let k = 13;
+  while (bytes[k] !== 0x65) k += 3 + ((bytes[k + 1] << 8) | bytes[k + 2]);
+  return k + 5;
 }
 
 test('xc7 bitstream: the xc7a100t\'s (the Nexys A7\'s) database and an empty design\'s .bit, its length UG470\'s', () => {

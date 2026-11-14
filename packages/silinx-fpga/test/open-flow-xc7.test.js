@@ -157,9 +157,24 @@ test('xc7: Generate Programming File of the reference FASM: the configuration da
     // (the header: the design and the part as Vivado writes them, the date and time of the run)
     assert.deepEqual([bit.header.a, bit.header.b, ref.header.a, ref.header.b], ['blinky;Generator=silinx-fpga', '7a35tcpg236', `build/${name}.frames;Generator=xc7frames2bit`, PART]);
     assert.match(`${bit.header.c} ${bit.header.d}`, /^\d{4}\/\d\d\/\d\d \d\d:\d\d:\d\d$/);
-    assert.deepEqual(report.bit, { path: 'build/blinky.bit', size: written['blinky.bit'].length });
+    assert.deepEqual(report.bit, { path: 'build/blinky.bit', size: written['blinky.bit'].length, compressed: false });
     assert.deepEqual(lines, [`Bitstream: build/blinky.bit (${written['blinky.bit'].length} bytes, from nextpnr's FASM on Project X-Ray's database)`]);
     assert.ok(readBitXc7(written['blinky.bit'], loadBitDbXc7(PART)).size > 0);
+  }
+});
+
+test('xc7: Generate Programming File with the XDC\'s BITSTREAM.GENERAL.COMPRESS TRUE (the Digilent boards\'): the .bit compressed, its frames the same (#3876)', () => {
+  const fasm = { 'open/routed.fasm': gz('blinky.fasm.gz').toString('utf8') };
+  const plain = mounted(fasm);
+  plain.steps.bitgen();
+  for (const [value, compressed] of [['TRUE', true], ['true', true], ['FALSE', false]]) {
+    const { steps, lines, report, written } = mounted(fasm, { ctx: { constraints: () => ({ config: { 'BITSTREAM.GENERAL.COMPRESS': value } }) } });
+    steps.bitgen();
+    const bit = written['blinky.bit'];
+    assert.deepEqual(report.bit, { path: 'build/blinky.bit', size: bit.length, compressed }, value);
+    assert.deepEqual(lines, [`Bitstream: build/blinky.bit (${bit.length} bytes${compressed ? ', compressed' : ''}, from nextpnr's FASM on Project X-Ray's database)`]);
+    assert.ok(compressed ? bit.length < 400000 : bit.length === plain.written['blinky.bit'].length, `${value}: ${bit.length} bytes`);
+    assert.deepEqual(readBitXc7(bit, loadBitDbXc7(PART)), readBitXc7(plain.written['blinky.bit'], loadBitDbXc7(PART)), value);
   }
 });
 

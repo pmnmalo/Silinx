@@ -159,8 +159,8 @@ for (const { board } of XC7_TARGETS) test(`the recorded comparison with Vivado o
   assert.equal(results.parts[board], { basys3: 'xc7a35tcpg236-1', 'nexys-a7': 'xc7a100tcsg324-1' }[board]);
   for (const [name, { silinx: s, vivado: v, netlist: n }] of Object.entries(ex)) {
     const clocked = name !== 'gates';
-    // Silinx's open flow: no warning, its clock met (nextpnr's estimate), a .bit (not compressed: the open flow's bitgen
-    // does not compress)
+    // Silinx's open flow: no warning, its clock met (nextpnr's estimate), a .bit (not compressed: the results were recorded
+    // before the open flow's bitgen compressed, #3876)
     assert.deepEqual(s.warnings, [], name);
     assert.equal(s.met, clocked ? true : null, name);
     assert.ok(s.bit > 2e6, name);
