@@ -89,7 +89,8 @@ const BITGEN = {
 const options = ut => [...ut.matchAll(/^-g (\w+):(\S+)$/gm)].map(m => [m[1], m[2]]);
 
 test('#3869 every bitgen option Silinx writes is one the family\'s bitgen takes, with a value it lists', () => {
-  const ise = FAMILIES.filter(f => !['ice40', 'ecp5', 'gowin'].includes(f.id)).map(f => f.id);
+  // (ISE's families: not the open toolchain's, nor the Spartan-7, Vivado's only, #3895)
+  const ise = FAMILIES.filter(f => !['ice40', 'ecp5', 'gowin', 'spartan7'].includes(f.id)).map(f => f.id);
   assert.deepEqual(ise.filter(id => !BITGEN[id]), []);
   for (const family of ise) {
     const takes = Object.fromEntries(Object.entries(BITGEN[family]).map(([k, v]) => [k.toLowerCase(), v.split(' ')]));

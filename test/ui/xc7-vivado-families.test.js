@@ -78,6 +78,7 @@ uiTest('#3895 Design Properties: a Basys 3 project to the Zynq-7000\'s XC7Z020: 
   await page.dialogButton('OK');
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project.device?.part === 'xc7z020', [], { what: 'the device set' });
+  await page.waitConsole(/Device set to xc7z020-1-clg400\./);
   const pj = await page.eval(() => window.Silinx.project);
   assert.deepEqual([pj.device, pj.synthTool, pj.board ?? null], [{ family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, 'vivado', null]);
   const lines = (await page.consoleText()).split('\n').filter(l => /WARNING|ERROR|Device set/.test(l));
