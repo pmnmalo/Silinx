@@ -199,39 +199,41 @@ checks the recorded results (`test/xc7-vivado-comparison.json`): Vivado builds e
 this table is the results'. The LUTs: the LUT sites with logic (Vivado's count), Silinx's with nextpnr's feed-throughs
 in parentheses (#3160).
 
-What it shows (Vivado 2025.2, the examples together): Silinx's open flow takes about the LUTs Vivado does (1,308 against
-1,267 on the Basys 3; up to 1.4 times on pong and clock, 0.6 times on micro80), and as
-many again in feed-throughs; Silinx's synthesis placed by Vivado takes fewer (1,162). nextpnr's frequency estimate is 1.2–1.75
-times Vivado's timing of the same netlist (#3516), so it is above Vivado's own flow's on every example (1.25 times, the
-geometric mean); stopwatch's 2.2 times, its DSP48E1s timed by nextpnr's stubs (#3875). Vivado accepts every netlist of
+What it shows (Vivado 2025.2, the examples together; the open flow's columns with nextpnr-xc7 0.3.0, #3875): Silinx's open
+flow takes fewer LUTs than Vivado does (1,181 against 1,267 on the Basys 3; up to 1.3 times on pong, 0.5 times on micro80),
+and about half as many again in feed-throughs; Silinx's synthesis placed by Vivado takes 1,162. nextpnr's frequency
+estimate, its delays fitted to Vivado's (#3516) and the DSP48E1 timed, is 0.7–0.95 times Vivado's timing of the same
+netlist (nextpnr's placement less compact than Vivado's), 0.74 times Vivado's own flow's (the geometric mean): every
+example still meets the boards' 100 MHz on it, stopwatch with the best of 3 seeds. With nextpnr-xc7 0.1.2 it was 1.2–1.75
+times Vivado's on the same netlist, stopwatch's 2.2 times (its DSP48E1s not timed). Vivado accepts every netlist of
 Silinx's: no DRC error, one net with no routable load (RTSTAT-10, a warning), its bitstream written. Two netlist details
 the comparison handles: a port of one bit (`btn(0 downto 0)`) is a scalar in Silinx's netlist, its pin named so in the
 XDC Vivado reads; and Silinx's `.bit` was not compressed where the board's XDC asks for it (BITSTREAM.GENERAL.COMPRESS),
-Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3, as Vivado's; the table's run was before).
+Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3, as Vivado's).
 
 <!-- xc7-vivado-comparison: begin (scripts/xc7-vivado-compare.mjs --update) -->
 | Board | Example | LUTs: Silinx (+ feed-throughs) | LUTs: Silinx's netlist in Vivado | LUTs: Vivado | Registers: Silinx / Vivado | Slices: Silinx / Vivado | MHz: Silinx | MHz: Silinx's netlist in Vivado | MHz: Vivado | Vivado's DRC on Silinx's netlist |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Basys 3 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean |
-| Basys 3 | traffic | 84 (+20) | 85 | 75 | 60 / 60 | 41 / 28 | 218 | 187 | 174 | RTSTAT-10 |
-| Basys 3 | blinky | 106 (+94) | 95 | 99 | 134 / 134 | 78 / 55 | 256 | 194 | 220 | RTSTAT-10 |
-| Basys 3 | pong | 275 (+152) | 245 | 198 | 215 / 215 | 150 / 109 | 155 | 132 | 143 | RTSTAT-10 |
-| Basys 3 | stopwatch | 182 (+154) | 162 | 143 | 207 / 195 | 130 / 90 | 230 | 107 | 124 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 |
-| Basys 3 | clock | 158 (+140) | 128 | 118 | 164 / 164 | 115 / 75 | 232 | 160 | 199 | RTSTAT-10 |
-| Basys 3 | vga | 126 (+50) | 110 | 134 | 58 / 63 | 69 / 49 | 239 | 157 | 163 | RTSTAT-10 |
-| Basys 3 | isqrt | 74 (+40) | 66 | 57 | 87 / 88 | 51 / 33 | 296 | 203 | 269 | RTSTAT-10 |
-| Basys 3 | uart | 123 (+53) | 116 | 135 | 142 / 150 | 77 / 66 | 267 | 195 | 222 | RTSTAT-10 |
-| Basys 3 | micro80 | 179 (+73) | 154 | 307 | 187 / 216 | 112 / 118 | 150 | 129 | 136 | RTSTAT-10 |
+| Basys 3 | traffic | 79 (+16) | 85 | 75 | 60 / 60 | 38 / 28 | 143 | 187 | 174 | RTSTAT-10 |
+| Basys 3 | blinky | 93 (+84) | 95 | 99 | 134 / 134 | 76 / 55 | 159 | 194 | 220 | RTSTAT-10 |
+| Basys 3 | pong | 252 (+137) | 245 | 198 | 215 / 215 | 143 / 109 | 102 | 132 | 143 | RTSTAT-10 |
+| Basys 3 | stopwatch | 169 (+132) | 162 | 143 | 207 / 195 | 128 / 90 | 101 | 107 | 124 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 |
+| Basys 3 | clock | 141 (+142) | 128 | 118 | 164 / 164 | 120 / 75 | 133 | 160 | 199 | RTSTAT-10 |
+| Basys 3 | vga | 115 (+46) | 110 | 134 | 58 / 63 | 58 / 49 | 137 | 157 | 163 | RTSTAT-10 |
+| Basys 3 | isqrt | 69 (+28) | 66 | 57 | 87 / 88 | 67 / 33 | 155 | 203 | 269 | RTSTAT-10 |
+| Basys 3 | uart | 105 (+41) | 116 | 135 | 142 / 150 | 76 / 66 | 162 | 195 | 222 | RTSTAT-10 |
+| Basys 3 | micro80 | 157 (+53) | 154 | 307 | 187 / 216 | 103 / 118 | 115 | 129 | 136 | RTSTAT-10 |
 | Nexys A7 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean |
-| Nexys A7 | traffic | 86 (+23) | 85 | 75 | 60 / 60 | 44 / 29 | 221 | 170 | 195 | RTSTAT-10 |
-| Nexys A7 | blinky | 103 (+93) | 95 | 99 | 134 / 134 | 78 / 52 | 275 | 185 | 232 | RTSTAT-10 |
-| Nexys A7 | pong | 275 (+141) | 245 | 198 | 215 / 215 | 139 / 101 | 162 | 127 | 153 | RTSTAT-10 |
-| Nexys A7 | stopwatch | 189 (+140) | 161 | 143 | 207 / 195 | 128 / 82 | 209 | 109 | 121 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 |
-| Nexys A7 | clock | 165 (+127) | 129 | 117 | 164 / 164 | 111 / 71 | 245 | 158 | 206 | RTSTAT-10 |
-| Nexys A7 | vga | 127 (+49) | 110 | 134 | 58 / 63 | 64 / 43 | 269 | 155 | 170 | RTSTAT-10 |
-| Nexys A7 | isqrt | 73 (+38) | 67 | 56 | 87 / 88 | 57 / 32 | 297 | 223 | 218 | RTSTAT-10 |
-| Nexys A7 | uart | 122 (+52) | 117 | 135 | 142 / 150 | 68 / 58 | 254 | 194 | 199 | RTSTAT-10 |
-| Nexys A7 | micro80 | 173 (+64) | 154 | 307 | 187 / 216 | 104 / 112 | 167 | 123 | 133 | RTSTAT-10 |
+| Nexys A7 | traffic | 81 (+15) | 85 | 75 | 60 / 60 | 43 / 29 | 143 | 170 | 195 | RTSTAT-10 |
+| Nexys A7 | blinky | 93 (+87) | 95 | 99 | 134 / 134 | 82 / 52 | 154 | 185 | 232 | RTSTAT-10 |
+| Nexys A7 | pong | 251 (+141) | 245 | 198 | 215 / 215 | 146 / 101 | 107 | 127 | 153 | RTSTAT-10 |
+| Nexys A7 | stopwatch | 170 (+133) | 161 | 143 | 207 / 195 | 135 / 82 | 101 | 109 | 121 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 |
+| Nexys A7 | clock | 141 (+136) | 129 | 117 | 164 / 164 | 112 / 71 | 134 | 158 | 206 | RTSTAT-10 |
+| Nexys A7 | vga | 115 (+49) | 110 | 134 | 58 / 63 | 62 / 43 | 132 | 155 | 170 | RTSTAT-10 |
+| Nexys A7 | isqrt | 69 (+29) | 67 | 56 | 87 / 88 | 58 / 32 | 158 | 223 | 218 | RTSTAT-10 |
+| Nexys A7 | uart | 107 (+41) | 117 | 135 | 142 / 150 | 81 / 58 | 156 | 194 | 199 | RTSTAT-10 |
+| Nexys A7 | micro80 | 157 (+51) | 154 | 307 | 187 / 216 | 96 / 112 | 106 | 123 | 133 | RTSTAT-10 |
 <!-- xc7-vivado-comparison: end -->
 
 And around the flow, one issue each: the boards and examples (#2297), the primitives' simulation models

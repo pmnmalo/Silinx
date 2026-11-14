@@ -99,7 +99,7 @@ test('xc7: nextpnr\'s timing, its estimate, a clock net named as synthesis left 
   assert.deepEqual(met, { met: true, timingErrors: 0, minPeriodNs: 4.14, maxFreqMHz: 241.55, model: XC7_TIMING_MODEL,
     clocks: [{ clock: 'clk', achieved: 241.55, constraint: 100 }],
     constraints: [{ name: 'clk', constraint: 'create_clock clk: 10.000 ns (100 MHz)', timingErrors: 0, minPeriodNs: 4.14, maxFreqMHz: 241.55 }] });
-  assert.match(XC7_TIMING_MODEL, /^nextpnr's estimate \(optimistic against Vivado/);
+  assert.match(XC7_TIMING_MODEL, /^nextpnr's estimate \(conservative against Vivado/);
   // two clocks, one not met; a net with a name of its own kept; two ports of the same frequency: the net's own name
   const two = xc7Timing({ fmax: { pix: { achieved: 20, constraint: 25 }, $x: { achieved: 150, constraint: 100 } } }, [{ net: 'a', mhz: 100 }, { net: 'b', mhz: 100 }]);
   assert.deepEqual([two.met, two.timingErrors, two.maxFreqMHz, two.minPeriodNs, two.clocks.map(c => c.clock)], [false, 1, 20, 50, ['pix', '$x']]);
@@ -107,7 +107,7 @@ test('xc7: nextpnr\'s timing, its estimate, a clock net named as synthesis left 
   assert.equal(xc7Timing({}), null);
   const text = xc7TimingText(two, PART);
   assert.match(text, /^Timing of xc7a35tcpg236-1 after Place & Route: nextpnr's estimate/);
-  assert.match(text, /1\.2-1\.5 times the maximum frequency Vivado gives/);
+  assert.match(text, /0\.7-0\.95 times the maximum frequency Vivado gives; Vivado may meet a constraint it misses/);
   assert.match(text, /Clock pix: 20 MHz \(50\.000 ns\), constraint 25 MHz: NOT met\n/);
   assert.match(text, /1 constraint\(s\) not met \(nextpnr's estimate\)\./);
   assert.match(xc7TimingText(null, PART), /No clock constrained or timed/);
