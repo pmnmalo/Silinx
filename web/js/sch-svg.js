@@ -256,8 +256,8 @@ function textsSvg(sym, def, ctx = {}) {
     const top = cx(def.body.x + def.body.w / 2, def.titleY ?? def.body.y + 11);   // (its place of a symbol of its own, #3755)
     const rot = sym.rot === 90 || sym.rot === 270;
     // (an arrayed instance's: its copies, REG1bit ×8, squeezed to its body when longer, #3950)
-    const room = (rot ? def.body.h : def.body.w) - 8, fit = def.copies && tt.length * 7 > room ? ` textLength="${r1(room)}" lengthAdjust="spacingAndGlyphs"` : '';
-    s += `<text class="stitle${def.shape === 'hdl' ? ' hdl' : ''}${def.copies ? ' array' : ''}" x="${rot ? center.x : top.x}" y="${rot ? center.y : top.y + 3}" text-anchor="middle"${fit}>${esc(tt)}</text>`;
+    const room = (rot ? def.body.h : def.body.w) - 8, squeeze = def.copies && tt.length * 7 > room;
+    s += `<text class="stitle${def.shape === 'hdl' ? ' hdl' : ''}${def.copies ? ' array' : ''}" x="${rot ? center.x : top.x}" y="${rot ? center.y : top.y + 3}" text-anchor="middle"${squeeze ? ` textLength="${r1(room)}" lengthAdjust="spacingAndGlyphs"` : ''}>${esc(tt)}</text>`;
   } else if (def.shape === 'ff') {
     // type name in the bottom corner away from the inputs (turned 90/270: the centre of the body)
     const turned = sym.rot === 90 || sym.rot === 270;
