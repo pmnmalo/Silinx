@@ -1,5 +1,5 @@
 // The MCP server's simulate_drawing of a digital circuit (server/mcp-simulate-drawing.js, #3897, docs/CIRCUITS.md), as
-// its editor's Simulate runs it (core/circuit-sim.js): from time 0, its switches as saved and its buttons released;
+// its editor's Try it runs it (core/circuit-sim.js): from time 0, its switches as saved and its buttons released;
 // per step, its switches and buttons set by their labels (one not given keeps its place, as on the bench), then the
 // circuit run until it is quiet (at most 1 µs); the LEDs, the time, the shorts and an oscillation, as the console says.
 import { toolError } from './mcp-util.js';

@@ -156,7 +156,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   Block Memory).
 - **Digital circuits** (*New Source ▸ Circuit*, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (the 7400, 7404, 7408, 7432
   and 7486, their datasheets' pinouts), logic switches, push buttons and LEDs wired on a breadboard or beside it, simulated
-  live with the gates' delays (*Simulate*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
+  live with the gates' delays (*Try it*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
   says the short circuits, the unpowered ICs and the floating inputs; its HDL is generated, one entity per IC.
 - **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–16) and of the
   outputs, or an expression (`F = A·B' + C`) whose variables are the inputs and whose name the output, its column
