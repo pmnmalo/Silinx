@@ -151,9 +151,9 @@ function compressedData(frames, part) {
   return out;
 }
 
-const COR0 = 0x02003fe5;
+const COR0 = 0x02003fe5;   // ConfigurationOptions0Value: DONE in pipelined, DONE at phase 4, GTS 5, GWE 6, no waits
 // CTL1's bit 12, which Vivado's compressed .bit sets before the frames and clears after LFRM
-const CTL1_MFW = 0x1000;   // ConfigurationOptions0Value: DONE in pipelined, DONE at phase 4, GTS 5, GWE 6, no waits
+const CTL1_MFW = 0x1000;
 
 /**
  * The .bit of a part's frames (Map(frame address → 101 words), as fasmToFrames makes them, or readFramesText's): their
