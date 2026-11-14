@@ -169,19 +169,24 @@ export const LINK_TOOLS = [
   },
   {
     name: 'delete_short_link', title: 'Short Links (delete)',
-    description: 'Delete short links of the account of the server\'s token (GH_TOKEN), as Short Links…\'s Delete Selected and Delete Expired do: gists (their ids, from short_links), or the expired ones (expired: true); only Silinx\'s gists of the account, any other id refused before anything is deleted. A deleted link no longer opens.',
+    description: 'Delete short links of the account of the server\'s token (GH_TOKEN), as Short Links…\'s Delete Selected and Delete Expired do: gists (their ids, from short_links), the expired ones (expired: true), or every one (all: true, its header\'s check box then Delete Selected, #3994); only Silinx\'s gists of the account, any other id refused before anything is deleted. A deleted link no longer opens.',
     inputSchema: { type: 'object', properties: {
       gists: { type: 'array', items: { type: 'string' }, description: 'The gists\' ids (short_links).' },
       expired: { type: 'boolean', description: 'Delete every expired short link instead.' },
+      all: { type: 'boolean', description: 'Delete every short link of the account instead.' },
     }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
-    async run({ gists = [], expired = false }) {
-      if (!expired && !gists.length) throw toolError('give gists (their ids: short_links) or expired: true');
-      if (expired && gists.length) throw toolError('give gists or expired: true, not both');
+    async run({ gists = [], expired = false, all = false }) {
+      if ([gists.length > 0, expired, all].filter(Boolean).length > 1) throw toolError('give one of gists, expired: true or all: true');
+      if (!expired && !all && !gists.length) throw toolError('give gists (their ids: short_links), expired: true or all: true');
       const GH = await import('./git-github.js');
       let deleted;
-      try { deleted = await GH.deleteShortLinks({ ids: gists, expired }); } catch (err) { throw toolError([err.message, ...(err.hint ? [`Hint: ${err.hint}`] : [])].join('\n')); }
-      return { text: `${deleted.length} short link${deleted.length === 1 ? '' : 's'} deleted${expired ? ' (the expired ones)' : ''}${deleted.length ? `: ${deleted.join(', ')}` : ''}.`, data: { deleted } };
+      try {
+        // (every one: the account's listed first, as the header's check box selects the rows listed)
+        const ids = all ? (await GH.listShortLinks()).map(g => g.id) : gists;
+        deleted = all && !ids.length ? [] : await GH.deleteShortLinks({ ids, expired });
+      } catch (err) { throw toolError([err.message, ...(err.hint ? [`Hint: ${err.hint}`] : [])].join('\n')); }
+      return { text: `${deleted.length} short link${deleted.length === 1 ? '' : 's'} deleted${expired ? ' (the expired ones)' : all ? ' (every one)' : ''}${deleted.length ? `: ${deleted.join(', ')}` : ''}.`, data: { deleted } };
     },
   },
 ];

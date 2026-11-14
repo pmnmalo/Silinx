@@ -3,7 +3,8 @@
 // expires (#3629) or never, its gist on GitHub. This browser remembers the links it made (the project, the link: the key
 // is only in the link, GitHub never has it), so that those rows show the project and can be copied again; a gist made
 // elsewhere is said to be. Delete Selected and Delete Expired delete them on GitHub (only Silinx's gists of the account),
-// each said in the console. The links are kept where the sign-in is (localStorage; at file:, this tab only: #3530).
+// each said in the console; every link is listed, the window's list as long as they are (#3994), the header's check box
+// selecting or unselecting them all. The links are kept where the sign-in is (localStorage; at file:, this tab only: #3530).
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { app } from './app.js';
@@ -44,12 +45,15 @@ export async function shortLinksDialog() {
   const rows = h('tbody');
   const note = h('div', { class: 'hint short-links-count' });
   const picked = new Set();
+  // (the header's check box: every link selected or none; some, indeterminate, #3994)
+  const all = h('input', { type: 'checkbox', 'data-field': 'all', title: 'Select or unselect every short link', onchange: e => { picked.clear(); if (e.target.checked) for (const g of list) picked.add(g.id); draw(); } });
+  const drawAll = () => { all.checked = list.length > 0 && picked.size === list.length; all.indeterminate = picked.size > 0 && picked.size < list.length; all.disabled = !list.length; };
   const draw = () => {
     const mine = new Map(rememberedLinks().map(r => [r.id, r]));
     note.textContent = list.length ? `${plural(list.length)} of your GitHub account, the newest first; ${list.filter(g => g.expired).length} expired.` : 'No short link in your GitHub account.';
     rows.replaceChildren(...list.map(g => {
       const r = mine.get(g.id);
-      const box = h('input', { type: 'checkbox', checked: picked.has(g.id), onchange: e => { if (e.target.checked) picked.add(g.id); else picked.delete(g.id); } });
+      const box = h('input', { type: 'checkbox', checked: picked.has(g.id), onchange: e => { if (e.target.checked) picked.add(g.id); else picked.delete(g.id); drawAll(); } });
       return h('tr', { 'data-gist': g.id, class: g.expired ? 'expired' : '' },
         h('td', {}, box),
         r ? h('td', { class: 'short-project', 'data-no-i18n': '' }, r.project) : h('td', { class: 'short-project hint' }, 'Made in another browser'),
@@ -60,6 +64,7 @@ export async function shortLinksDialog() {
           r ? ' ' : '',
           h('a', { href: g.url, class: 'short-gist', target: '_blank', rel: 'noopener noreferrer' }, 'Gist')));
     }));
+    drawAll();
   };
   draw();
   const remove = async which => {
@@ -77,10 +82,10 @@ export async function shortLinksDialog() {
     body: h('div', {},
       h('div', { class: 'hint' }, 'Your short links: secret gists of your GitHub account, each the project encrypted. A link this browser made can be copied again; deleting one deletes its gist, and the link no longer opens.'),
       note,
-      h('div', { style: { maxHeight: '360px', overflow: 'auto', marginTop: '8px' } },
-        h('table', { class: 'grid short-links' },
-          h('thead', {}, h('tr', {}, h('th'), h('th', {}, 'Project'), h('th', {}, 'Made'), h('th', {}, 'Expires'), h('th'))),
-          rows))),
+      // (every row in the window, which scrolls as a whole when they are more than it holds, #3994)
+      h('table', { class: 'grid short-links', style: { marginTop: '8px' } },
+        h('thead', {}, h('tr', {}, h('th', {}, all), h('th', {}, 'Project'), h('th', {}, 'Made'), h('th', {}, 'Expires'), h('th'))),
+        rows)),
     buttons: [
       { label: 'Delete Selected', validate: () => (picked.size ? remove({ ids: [...picked] }) : false) },
       { label: 'Delete Expired', validate: () => (list.some(g => g.expired) ? remove({ expired: true }) : false) },

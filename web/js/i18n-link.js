@@ -28,6 +28,7 @@ export const LINK_PT = {
   // Short Links… (#3635)
   'Short Links…': 'Ligações Curtas…', 'Short Links': 'Ligações Curtas', 'Manage short links…': 'Gerir as ligações curtas…',
   'Made in another browser': 'Feita noutro navegador', 'Made': 'Feita', 'Expires': 'Expira', 'Gist': 'Gist',
+  'Select or unselect every short link': 'Selecionar ou desmarcar todas as ligações curtas',
   'Delete Selected': 'Apagar as Selecionadas', 'Delete Expired': 'Apagar as Expiradas', 'No short link in your GitHub account.': 'Nenhuma ligação curta na sua conta do GitHub.',
   'Your short links: secret gists of your GitHub account, each the project encrypted. A link this browser made can be copied again; deleting one deletes its gist, and the link no longer opens.':
     'As suas ligações curtas: gists secretos da sua conta do GitHub, cada um com o projeto cifrado. Uma ligação feita neste navegador pode ser copiada de novo; apagar uma apaga o seu gist, e a ligação deixa de abrir.',

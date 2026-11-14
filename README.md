@@ -427,7 +427,7 @@ the key is in the link, so GitHub keeps only what it cannot read; opening it nee
 gists, which you list and delete on GitHub. A short link may expire (*Expires:* a week, a month, six months or a
 year; never by default): opened after its date it is refused, and making a short link deletes your expired ones. *File ▸ Short Links…* lists
 your short links (when each was made, when it expires), copies again those this browser made, and deletes the ones you
-choose, or the expired ones. Some slide tools cut a link longer than about 2
+choose (the header's check box selects them all), or the expired ones. Some slide tools cut a link longer than about 2
 000 characters: a larger project goes as a zip hosted elsewhere (*Export Project (.zip)…* to Silinx, then
 `…/Silinx/#open=https://…/lecture3.zip&view=simulate`), and an example by its name
 (`…/Silinx/#open=example:gates&view=try`; `#open=example:traffic&top=traffic&view=try` its state diagram). `view=`

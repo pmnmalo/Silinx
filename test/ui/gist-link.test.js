@@ -79,6 +79,8 @@ uiTest('#3223 Copy Link\'s short link in Portuguese', E, async (page) => {
   await page.waitDialog('Ligações Curtas');
   assert.deepEqual(await page.eval(() => [[...document.querySelectorAll('.dlg-overlay table.short-links thead th')].map((t) => t.textContent), [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)]),
     [['', 'Projeto', 'Feita', 'Expira', ''], ['Apagar as Selecionadas', 'Apagar as Expiradas', 'Fechar']]);
+  // (the header's check box, #3994)
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay table.short-links thead input[data-field="all"]').title), 'Selecionar ou desmarcar todas as ligações curtas');
   await page.dialogButton('Fechar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
@@ -178,6 +180,52 @@ uiTest('#3635 Short Links…: listed, the one made here copied again, the expire
   await page.click('.dlg-overlay .link-manage a');
   await page.waitDialog('Short Links');
   assert.equal(await copied(page), null);
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  assert.deepEqual(warnings(page), []);
+}, { timeout: 120000 });
+
+// #3994: Short Links… lists every link, not a box of a few rows (sixteen here, each row inside the window's visible
+// part, the window not scrolled); the header's check box selects every one, unselects them, is indeterminate when some
+// are; every one selected, Delete Selected deletes them all
+uiTest('#3994 Short Links…: every link listed; the header\'s check box selects or unselects them all', E, async (page) => {
+  await fakeApi(page);
+  await page.eval(async (t) => {
+    const { api } = await import('/js/api.js');
+    const ids = (await api.gistList()).map((g) => g.id);
+    if (ids.length) await api.gistDelete({ ids });
+    localStorage.removeItem('silinx.short-links');
+    const { saveGist } = await import('/core/gist-link.js');
+    const { githubClient } = await import('/core/github-api.js');
+    const client = githubClient({ fetch: (...a) => fetch(...a), token: () => t, api: `${location.origin}/fake-github` });
+    for (let i = 0; i < 16; i++) await saveGist(client, `d${i}`);
+  }, TOKEN);
+  await page.eval(() => { window.__links = import('/js/short-links.js').then((m) => m.shortLinksDialog()); });
+  await page.waitDialog('Short Links');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .short-links-count').textContent), '16 short links of your GitHub account, the newest first; 0 expired.');
+  // (every row seen: inside the window's body, which needs no scrolling)
+  assert.deepEqual(await page.eval(() => {
+    const body = document.querySelector('.dlg-overlay .dlg-body'), b = body.getBoundingClientRect();
+    const rows = [...body.querySelectorAll('table.short-links tbody tr')];
+    return [rows.length, rows.filter((r) => { const x = r.getBoundingClientRect(); return x.top >= b.top && x.bottom <= b.bottom + 1; }).length, body.scrollHeight <= body.clientHeight + 1];
+  }), [16, 16, true]);
+  const boxes = () => page.eval(() => { const a = document.querySelector('.dlg-overlay thead input[data-field="all"]'); return [a.checked, a.indeterminate, [...document.querySelectorAll('.dlg-overlay tbody input[type=checkbox]')].filter((c) => c.checked).length]; });
+  assert.deepEqual(await boxes(), [false, false, 0]);
+  await page.click('.dlg-overlay thead input[data-field="all"]');
+  assert.deepEqual(await boxes(), [true, false, 16]);
+  await page.click('.dlg-overlay tbody tr:first-child input[type=checkbox]');
+  assert.deepEqual(await boxes(), [false, true, 15]);
+  await page.click('.dlg-overlay thead input[data-field="all"]');
+  assert.deepEqual(await boxes(), [true, false, 16]);
+  await page.click('.dlg-overlay thead input[data-field="all"]');
+  assert.deepEqual(await boxes(), [false, false, 0]);
+  await page.click('.dlg-overlay thead input[data-field="all"]');
+  await page.dialogButton('Delete Selected');
+  await page.waitConsole(/Short Links: 16 short links deleted from your gists\./);
+  await page.waitFor(() => !document.querySelector('.dlg-overlay table.short-links tbody tr'), [], { what: 'every link gone' });
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .short-links-count').textContent), 'No short link in your GitHub account.');
+  assert.deepEqual(await boxes(), [false, false, 0]);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay thead input[data-field="all"]').disabled), true);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   assert.deepEqual(warnings(page), []);

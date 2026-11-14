@@ -99,8 +99,9 @@ test('#3635 short_links and delete_short_link: the account\'s short links listed
     `${live.id}: made ${today}, expires ${day(live.expires)} (https://gist.github.com/student/${live.id})`].join('\n'));
   assert.deepEqual(r.data.links.map((g) => [g.id, g.expired]), [[old.id, true], [live.id, false]]);
   // refused: nothing given, both given, another gist (nothing deleted)
-  assert.equal((await call('delete_short_link', {})).text, 'delete_short_link: give gists (their ids: short_links) or expired: true');
-  assert.equal((await call('delete_short_link', { gists: [live.id], expired: true })).text, 'delete_short_link: give gists or expired: true, not both');
+  assert.equal((await call('delete_short_link', {})).text, 'delete_short_link: give gists (their ids: short_links), expired: true or all: true');
+  assert.equal((await call('delete_short_link', { gists: [live.id], expired: true })).text, 'delete_short_link: give one of gists, expired: true or all: true');
+  assert.equal((await call('delete_short_link', { expired: true, all: true })).text, 'delete_short_link: give one of gists, expired: true or all: true');
   assert.equal((await call('delete_short_link', { gists: [live.id, 'e'.repeat(32)] })).text, `delete_short_link: '${'e'.repeat(32)}' is not a short link of your GitHub account`);
   assert.ok(gh.gists.has(live.id));
   assert.equal((await ok('delete_short_link', { expired: true })).text, `1 short link deleted (the expired ones): ${old.id}.`);
@@ -111,4 +112,21 @@ test('#3635 short_links and delete_short_link: the account\'s short links listed
   try {
     assert.equal((await call('short_links')).text, 'short_links: the short links need a GitHub token on this server\nHint: Set GH_TOKEN before starting Silinx (with GitHub\'s command line: GH_TOKEN=$(gh auth token)); Silinx never stores it.');
   } finally { process.env.GH_TOKEN = gh.token; }
+});
+
+// #3994: delete_short_link all: true, the header's check box of Short Links… then Delete Selected: every short link of
+// the account deleted, another gist kept; none left, nothing deleted
+test('#3994 delete_short_link all: every short link of the account deleted, another gist kept', async () => {
+  const { saveGist } = await import('../core/gist-link.js');
+  const { githubClient } = await import('../core/github-api.js');
+  for (const id of [...gh.gists.keys()]) gh.gists.delete(id);
+  const client = githubClient({ fetch: gh.fetch, token: () => gh.token });
+  const made = [];
+  for (let i = 0; i < 12; i++) made.push((await saveGist(client, `d${i}`, { days: i % 2 ? 30 : 0 })).id);
+  gh.gists.set('e'.repeat(32), { public: false, owner: 'student', description: 'notes', files: { 'n.md': { filename: 'n.md', content: 'x' } } });
+  const r = await ok('delete_short_link', { all: true });
+  assert.deepEqual(new Set(r.data.deleted), new Set(made));
+  assert.match(r.text, /^12 short links deleted \(every one\): /);
+  assert.deepEqual([...gh.gists.keys()], ['e'.repeat(32)]);
+  assert.equal((await ok('delete_short_link', { all: true })).text, '0 short links deleted (every one).');
 });
