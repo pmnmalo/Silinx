@@ -1,4 +1,4 @@
-// Import Project (.zip)… and Export Project (.zip)… (#3703): one action each, the software the project comes from or
+// Import Project… and Export Project (.zip)… (#3703): one action each, the software the project comes from or
 // goes to chosen in its window, its first row (Software:): Silinx (the whole project: silinx.json and every file) or
 // Xilinx ISE (its .xise and its sources); AMD Vivado and Intel Quartus disabled, their reason their tip
 // (core/project-software.js). The import preselects the software of the zip or the files picked; the choice last made
@@ -56,7 +56,7 @@ export async function exportProjectDialog() {
   await (await import('./menus.js')).exportProjectZip(software);
 }
 
-// ------------------------------------------------------------------ Import Project (.zip)…
+// ------------------------------------------------------------------ Import Project…
 // Both in the same rows (#3965): the project's folder, or a .zip file, then the project's name.
 // Silinx: the project's folder (the folder with its silinx.json: its files but the hidden ones and build/, as its
 // export, core/project-folder.js), or a .zip made with Export Project (.zip)… to Silinx (silinx.json + every project

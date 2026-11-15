@@ -107,7 +107,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.waitConsole(/Browser edition: projects are stored in this browser/);
   // File menu: a project moved with the Silinx zip, no project bundle (#3548; one import and one export, #3703)
   const file = (await page.openMenu('File')).map((i) => i.label);
-  assert.ok(file.includes('Import Project (.zip)…') && file.includes('Export Project (.zip)…'), file.join(' | '));
+  assert.ok(file.includes('Import Project…') && file.includes('Export Project (.zip)…'), file.join(' | '));
   assert.deepEqual(file.filter((l) => /Silinx Project|Xilinx ISE Project/.test(l)), []);
   assert.deepEqual(file.filter((l) => /bundle/i.test(l)), []);
   await page.closeMenus();
@@ -1442,7 +1442,7 @@ uiTest('#3548 browser edition: no project bundle in the File menu (English, Port
   await page.goto(siteUrl);
   await boot();
   const en = await fileMenu();
-  assert.ok(en.includes('Import Project (.zip)…') && en.includes('Export Project (.zip)…'), en.join(' | '));
+  assert.ok(en.includes('Import Project…') && en.includes('Export Project (.zip)…'), en.join(' | '));
   assert.deepEqual(en.filter((l) => /bundle/i.test(l)), []);
   await openImport(page, 'silinx');
   assert.equal(await page.eval((f) => document.querySelector(f).accept, FILE), '.zip,.json');
@@ -1491,7 +1491,7 @@ uiTest('#3548 browser edition: no project bundle in the File menu (English, Port
   const pt = await fileMenu('Ficheiro');
   // (translated where the menu bar is shown, the ISE style interface's: the Silinx one's items are its definition's)
   const shown = await page.eval(() => !!document.querySelector('#menubar .item')?.getClientRects().length);
-  const [imp, exp] = shown ? ['Importar Projeto (.zip)…', 'Exportar Projeto (.zip)…'] : ['Import Project (.zip)…', 'Export Project (.zip)…'];
+  const [imp, exp] = shown ? ['Importar Projeto…', 'Exportar Projeto (.zip)…'] : ['Import Project…', 'Export Project (.zip)…'];
   assert.ok(pt.includes(imp) && pt.includes(exp), pt.join(' | '));
   assert.deepEqual(pt.filter((l) => /bundle|pacote/i.test(l)), []);
   assert.equal(pt.length, en.length);

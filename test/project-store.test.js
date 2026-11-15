@@ -624,7 +624,7 @@ test('#2894 a link round trip of every example with constraints in the browser\'
 });
 
 // #3548: an old project bundle (.silinx.json, the browser edition's File ▸ Download Project Bundle before) read as a
-// Silinx zip's entries, through the import gate and projectFromZip, by Import Project (.zip)… (api-local.js importZip)
+// Silinx zip's entries, through the import gate and projectFromZip, by Import Project… (api-local.js importZip)
 const oldBundle = (p) => JSON.stringify({ format: 'silinx-bundle', version: 1, project: p.json, files: p.files }, null, 1);   // (as exportBundle wrote it)
 test('#3548 an old bundle of every example: the same project as its own (description, every file), no warnings', async () => {
   const store = browserStore(memStorage()), ops = projectOps(() => store, EXAMPLES);

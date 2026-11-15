@@ -64,7 +64,7 @@ uiTest('#3538 New Project wizard: the server\'s name rule and message, in Portug
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
 
-uiTest('#3538 Import Project (.zip)…, Silinx and Xilinx ISE: the name suggested from 2026-lab.zip is p_2026-lab, and the project is made', E, async (page) => {
+uiTest('#3538 Import Project…, Silinx and Xilinx ISE: the name suggested from 2026-lab.zip is p_2026-lab, and the project is made', E, async (page) => {
   await makeProject(env, { name: 'NameSrc', template: 'blinky', board: 'basys2' });
   await page.openProject('NameSrc');
   await exportZip(page, 'silinx');

@@ -1,4 +1,4 @@
-// A Silinx project imported from its folder (#3965): Import Project (.zip)…'s Project folder: row (web/js/wizards.js
+// A Silinx project imported from its folder (#3965): Import Project…'s Project folder: row (web/js/wizards.js
 // zipFolderSelection) and the MCP server's import_project (server/mcp-transfer.js) take a folder's files as the .zip
 // Export Project (.zip)… makes of the same project (server/project-zip.js exportProjectZip: silinx.json and the
 // project's file tree, server/projects.js walk): every file but the hidden ones and the project's build folder (build/,

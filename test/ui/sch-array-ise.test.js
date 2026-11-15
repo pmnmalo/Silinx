@@ -1,6 +1,6 @@
 // UI (#3828): a schematic with an arrayed instance (reg(3:0) of a 1-bit register) drawn with its module's symbol of its
 // own (Q on the left, D on the top, the clock at the bottom) exported by File ▸ Export Project (.zip)… to Xilinx ISE
-// (its .sch, the module's .sym with the pins on their sides; no .sym.json) and imported back by Import Project (.zip)…:
+// (its .sch, the module's .sym with the pins on their sides; no .sym.json) and imported back by Import Project…:
 // the instance arrayed, drawn with the symbol, not out of date, the module's .sym.json made; Check Schematic clean; in
 // both interfaces. No warnings.
 import { before, after } from 'node:test';

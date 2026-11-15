@@ -53,7 +53,7 @@ const PT = {
   'File': 'Ficheiro', 'Edit': 'Editar', 'View': 'Ver', 'Project': 'Projeto', 'Process': 'Processo', 'Tools': 'Ferramentas',
   'Window': 'Janela', 'Help': 'Ajuda', 'Language': 'Idioma',
   'New Project…': 'Novo Projeto…', 'Open Project…': 'Abrir Projeto…', 'Close Project': 'Fechar Projeto', 'Trust Project': 'Confiar no Projeto', 'Check Design': 'Verificar Projeto', 'Show the waveform': 'Mostrar a forma de onda', 'Open the HDL here, in Simulation': 'Abrir o HDL aqui, na Simulação',
-  'Import Project (.zip)…': 'Importar Projeto (.zip)…', 'Export Project (.zip)…': 'Exportar Projeto (.zip)…',
+  'Import Project…': 'Importar Projeto…', 'Export Project (.zip)…': 'Exportar Projeto (.zip)…',
   // the browser edition: where the projects are kept (in the browser storage, or in a folder on the disk)
   'Open Workspace Folder…': 'Abrir Pasta de Trabalho…', 'Open Workspace Folder': 'Abrir Pasta de Trabalho',
   'Copy Browser Projects to the Folder': 'Copiar os Projetos do Navegador para a Pasta', 'Use Browser Storage': 'Usar o Armazenamento do Navegador',
@@ -154,7 +154,7 @@ const PT = {
   'Synthesis Tool:': 'Ferramenta de Síntese:', 'Silinx (VHDL/Verilog; no ISE needed)': 'Silinx (VHDL/Verilog; sem o ISE)', 'XST (VHDL/Verilog; Xilinx ISE)': 'XST (VHDL/Verilog; Xilinx ISE)', 'Vivado (VHDL/Verilog; AMD Vivado 2025.2)': 'Vivado (VHDL/Verilog; AMD Vivado 2025.2)', 'Silinx (VHDL/Verilog; no Vivado needed; on trial)': 'Silinx (VHDL/Verilog; sem o Vivado; em ensaio)', 'SSim (VHDL/Verilog; Silinx Simulator)': 'SSim (VHDL/Verilog; Simulador Silinx)', 'Simulator:': 'Simulador:', 'Preferred Language:': 'Linguagem Preferida:',
   'VHDL Source Analysis Standard:': 'Norma de Análise VHDL:', 'None Specified': 'Nenhuma', 'All': 'Todas',
   'No projects found in the workspace.': 'Não foram encontrados projetos na pasta de trabalho.',
-  // Import Project (.zip)… and Export Project (.zip)…: the software chosen in the window (#3703)
+  // Import Project… and Export Project (.zip)…: the software chosen in the window (#3703)
   'Import Project': 'Importar Projeto', 'Export Project': 'Exportar Projeto', 'Project name:': 'Nome do projeto:',
   'Software:': 'Programa:', 'AMD Vivado (not yet)': 'AMD Vivado (ainda não)', 'Intel Quartus (not yet)': 'Intel Quartus (ainda não)',
   'Silinx does not read or write an AMD Vivado project (.xpr) yet.': 'O Silinx ainda não lê nem escreve um projeto AMD Vivado (.xpr).',

@@ -257,7 +257,7 @@ export async function renderStartPage() {
     // the import and the export, as the File menu has them (#1216; the software chosen in their window, #3703); a line,
     // then the sharing and the git entries in one group (#3699)
     h('div', { class: 'start-box' }, h('h3', {}, 'Project Commands'),
-      ...[['Import Project (.zip)…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command),
+      ...[['Import Project…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command),
       // (the git group after a line, where there is git; Share Project…: the main toolbar's and the File menu's, #3716)
       ...(git => (git.length ? [h('hr', { class: 'start-sep' }), ...git] : []))([
         // (Sign in with GitHub…, the browser edition's, first; Initialize Repository…, the open project's, disabled with

@@ -68,7 +68,7 @@ export function setupMenus() {
       { label: 'Open Project…', icon: icon('open'), action: () => wiz.openProjectDialog() },
       '-',
       // (the software, Silinx or Xilinx ISE, chosen in the window, #3703)
-      { label: 'Import Project (.zip)…', action: () => import('./project-zip-dialogs.js').then(m => m.importProjectDialog()) },
+      { label: 'Import Project…', action: () => import('./project-zip-dialogs.js').then(m => m.importProjectDialog()) },
       { label: 'Export Project (.zip)…', action: () => import('./project-zip-dialogs.js').then(m => m.exportProjectDialog()), disabled: hasPj },
       // (a copy, #2826, or live, #3181: chosen in its window, #3698)
       { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()), disabled: hasPj },
