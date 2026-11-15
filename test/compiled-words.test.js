@@ -173,7 +173,7 @@ async function same(design, label) {
 // (chains, registers made words, cells before and after)
 const EXPECTED = {
   gates: { chains: 0, registers: 0, cells: [1, 1] },
-  breadboard: { chains: 0, registers: 0, cells: [19, 19] },
+  breadboard: { chains: 0, registers: 0, cells: [20, 20] },
   traffic: { chains: 2, registers: 2, cells: [312, 156] },
   blinky: { chains: 5, registers: 5, cells: [635, 341] },
   pong: { chains: 7, registers: 7, cells: [1106, 581] },
@@ -188,7 +188,7 @@ const EXPECTED = {
 // cells before and after; the registers wordLevel made again of the flip-flops the tables feed)
 const TABLES = {
   gates: [0, { tables: 0, inputs: 12, words: 0, outputs: 0, cells: [1, 1] }, 0],
-  breadboard: [0, { tables: 1, inputs: 12, words: 64, outputs: 5, cells: [19, 9] }, 1],
+  breadboard: [0, { tables: 1, inputs: 12, words: 64, outputs: 5, cells: [20, 9] }, 1],
   traffic: [5, { tables: 13, inputs: 12, words: 14816, outputs: 43, cells: [144, 56] }, 5],
   blinky: [6, { tables: 27, inputs: 12, words: 23928, outputs: 63, cells: [329, 144] }, 8],
   pong: [10, { tables: 58, inputs: 10, words: 23984, outputs: 150, cells: [548, 286] }, 6],

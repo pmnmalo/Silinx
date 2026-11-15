@@ -33,6 +33,7 @@ const KNOWN = {};
 // the warnings ISE gives on each example (the same on every device, the Spartan-6's too, #2321): XST, map, par
 const ISE_WARNINGS = {
   gates: [],
+  breadboard: [],   // (every output of its chips read, #4020)
   traffic: [],
   blinky: [],
   pong: [],

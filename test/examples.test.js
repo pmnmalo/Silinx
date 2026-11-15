@@ -70,7 +70,7 @@ describe('the examples on every board', { concurrency: 2 }, () => {
 // (#2517) the examples on the iCEBreaker: the display and the switches on its Pmods, vga on its PmodVGA; the ports the
 // board has no pin for (5 LEDs, 3 buttons, the PmodSWT's 4 switches), each warned, by Silinx and by nextpnr
 const LEDS = ['led[5]', 'led[6]', 'led[7]'];
-const ICE40_NO_PIN = { gates: [], breadboard: ['led[5]'], traffic: LEDS, blinky: LEDS, pong: ['btn[3]', ...LEDS], stopwatch: ['btn[3]', ...LEDS], clock: ['btn[3]', ...LEDS],
+const ICE40_NO_PIN = { gates: [], breadboard: LEDS, traffic: LEDS, blinky: LEDS, pong: ['btn[3]', ...LEDS], stopwatch: ['btn[3]', ...LEDS], clock: ['btn[3]', ...LEDS],
   vga: ['sw', 'btn[3]'], isqrt: ['sw[4]', 'sw[5]', 'sw[6]', 'sw[7]'], uart: LEDS, micro80: ['sw[4]', 'sw[5]', 'sw[6]', 'sw[7]', ...LEDS] };
 describe('the examples on the iCE40\'s board', { concurrency: 2 }, () => {
   for (const name of EXAMPLES) {

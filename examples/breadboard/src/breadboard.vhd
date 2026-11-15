@@ -1,72 +1,70 @@
 --==============================================================================
 -- Entity      : breadboard
 -- Description : the digital circuit breadboard.circ.json
---               A press of BTN0 counts once on LD3..LD0: a 74161 counter, its count enabled for one clock by the rising edge of
---               the button, synchronised by a 74164 shift register (QA the button, QB QA a clock later) and detected as QA and
---               (QA xor QB) by a 7486 and a 7408. SW0 low clears the counter and the shift register. SW1 and SW2 into a half adder
---               (the 7486's and the 7408's other gates): LD4 their sum, LD5 their carry.
+--               A press of BTN0 counts once on LD3..LD0, up to 15: a 74161 counter, its count enabled for one clock by the rising
+--               edge of the button. A 74194 shift register synchronises the button with the clock (QA the button, QB QA a clock later,
+--               QC QB a clock later, QD QC; LD4..LD7 show them), the edge QB and not QC, as QB and (QB xor QC), by a 7486 and a 7408;
+--               their other gates stop the count at 15 (the 74161's RCO): edge and (edge xor RCO). SW0 low clears the counter and the
+--               shift register.
 -- Generator   : Silinx circuit editor (edit the circuit, not this file)
--- Parts       : U1 (SN74LS164), U2 (SN74LS08), U3 (SN74LS161), U4 (SN74LS86)
--- Inputs      : clk (CK1, '1' while high), btn[0] (B1, '1' while pressed), sw[0] (S1, '1' while on), sw[1] (S2, '1' while on), sw[2] (S3, '1' while on)
--- Outputs     : led[0] (D1, '1' while lit), led[1] (D2, '1' while lit), led[2] (D3, '1' while lit), led[3] (D4, '1' while lit), led[4] (D5, '1' while lit), led[5] (D6, '1' while lit)
+-- Parts       : U1 (SN74LS194), U2 (SN74LS08), U3 (SN74LS161), U4 (SN74LS86)
+-- Inputs      : clk (CK1, '1' while high), btn[0] (B1, '1' while pressed), sw[0] (S1, '1' while on)
+-- Outputs     : led[0] (D1, '1' while lit), led[1] (D2, '1' while lit), led[2] (D3, '1' while lit), led[3] (D4, '1' while lit), led[4] (D5, '1' while lit), led[5] (D6, '1' while lit), led[6] (D7, '1' while lit), led[7] (D8, '1' while lit)
 --==============================================================================
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- SN74LS164: 8-bit serial in, parallel out shift register (typical delay 20 ns)
-entity breadboard_sn74ls164 is
+-- SN74LS194: 4-bit bidirectional universal shift register (typical delay 20 ns)
+entity breadboard_sn74ls194 is
   port (
+    clr_n : in std_logic;
+    sr : in std_logic;
     a : in std_logic;
     b : in std_logic;
-    qa : out std_logic := 'X';
-    qb : out std_logic := 'X';
-    qc : out std_logic := 'X';
-    qd : out std_logic := 'X';
+    c : in std_logic;
+    d : in std_logic;
+    sl : in std_logic;
     gnd : in std_logic;
+    s0 : in std_logic;
+    s1 : in std_logic;
     clk : in std_logic;
-    clr_n : in std_logic;
-    qe : out std_logic := 'X';
-    qf : out std_logic := 'X';
-    qg : out std_logic := 'X';
-    qh : out std_logic := 'X';
+    qd : out std_logic := 'X';
+    qc : out std_logic := 'X';
+    qb : out std_logic := 'X';
+    qa : out std_logic := 'X';
     vcc : in std_logic
   );
-end entity breadboard_sn74ls164;
+end entity breadboard_sn74ls194;
 
-architecture digital of breadboard_sn74ls164 is
+architecture digital of breadboard_sn74ls194 is
   function anyx(v : std_logic_vector) return boolean is
   begin
     return false;
   end function anyx;
-  signal o_qa, o_qb, o_qc, o_qd, o_qe, o_qf, o_qg, o_qh : std_logic;
-  signal r : std_logic_vector(7 downto 0);
+  signal o_qd, o_qc, o_qb, o_qa : std_logic;
+  signal q : std_logic_vector(3 downto 0);
 begin
   process (clk, clr_n)
   begin
-    if clr_n = '0' then r <= (others => '0'); elsif rising_edge(clk) then r <= r(6 downto 0) & (a and b); end if;
+    if clr_n = '0' then q <= "0000";
+    elsif rising_edge(clk) then
+      case std_logic_vector'(s1 & s0) is when "00" => null; when "01" => q <= q(2 downto 0) & sr; when "10" => q <= sl & q(3 downto 1); when "11" => q <= d & c & b & a; when others => q <= (others => 'X'); end case;
+    end if;
   end process;
-  o_qa <= r(0);
-  o_qb <= r(1);
-  o_qc <= r(2);
-  o_qd <= r(3);
-  o_qe <= r(4);
-  o_qf <= r(5);
-  o_qg <= r(6);
-  o_qh <= r(7);
-  qa <= o_qa and vcc and not gnd;
-  qb <= o_qb and vcc and not gnd;
-  qc <= o_qc and vcc and not gnd;
+  o_qa <= q(0);
+  o_qb <= q(1);
+  o_qc <= q(2);
+  o_qd <= q(3);
   qd <= o_qd and vcc and not gnd;
-  qe <= o_qe and vcc and not gnd;
-  qf <= o_qf and vcc and not gnd;
-  qg <= o_qg and vcc and not gnd;
-  qh <= o_qh and vcc and not gnd;
+  qc <= o_qc and vcc and not gnd;
+  qb <= o_qb and vcc and not gnd;
+  qa <= o_qa and vcc and not gnd;
 end architecture digital;
 
 -- synthesis translate_off
-architecture model of breadboard_sn74ls164 is
+architecture model of breadboard_sn74ls194 is
   -- a 74LS input reads a floating (Z) level high
   function rd(s : std_logic) return std_logic is
   begin
@@ -84,37 +82,38 @@ architecture model of breadboard_sn74ls164 is
     end loop;
     return false;
   end function anyx;
-  signal i_a, i_b, i_clk, i_clr_n : std_logic := 'X';
-  signal o_qa, o_qb, o_qc, o_qd, o_qe, o_qf, o_qg, o_qh : std_logic := 'X';
-  signal r : std_logic_vector(7 downto 0) := (others => 'X');
+  signal i_clr_n, i_sr, i_a, i_b, i_c, i_d, i_sl, i_s0, i_s1, i_clk : std_logic := 'X';
+  signal o_qd, o_qc, o_qb, o_qa : std_logic := 'X';
+  signal q : std_logic_vector(3 downto 0) := (others => 'X');
   signal pw : boolean;
 begin
   pw <= vcc = '1' and gnd = '0';
+  i_clr_n <= rd(clr_n);
+  i_sr <= rd(sr);
   i_a <= rd(a);
   i_b <= rd(b);
+  i_c <= rd(c);
+  i_d <= rd(d);
+  i_sl <= rd(sl);
+  i_s0 <= rd(s0);
+  i_s1 <= rd(s1);
   i_clk <= rd(clk);
-  i_clr_n <= rd(clr_n);
   -- silinx: ignore data-as-clock (the IC's pins read as the chip reads them)
   process (i_clk, i_clr_n)
   begin
-    if i_clr_n = '0' then r <= (others => '0'); elsif rising_edge(i_clk) then r <= r(6 downto 0) & (i_a and i_b); end if;
+    if i_clr_n = '0' then q <= "0000";
+    elsif rising_edge(i_clk) then
+      case std_logic_vector'(i_s1 & i_s0) is when "00" => null; when "01" => q <= q(2 downto 0) & i_sr; when "10" => q <= i_sl & q(3 downto 1); when "11" => q <= i_d & i_c & i_b & i_a; when others => q <= (others => 'X'); end case;
+    end if;
   end process;
-  o_qa <= r(0);
-  o_qb <= r(1);
-  o_qc <= r(2);
-  o_qd <= r(3);
-  o_qe <= r(4);
-  o_qf <= r(5);
-  o_qg <= r(6);
-  o_qh <= r(7);
-  qa <= o_qa after 20 ns when pw else 'Z' after 20 ns;
-  qb <= o_qb after 20 ns when pw else 'Z' after 20 ns;
-  qc <= o_qc after 20 ns when pw else 'Z' after 20 ns;
+  o_qa <= q(0);
+  o_qb <= q(1);
+  o_qc <= q(2);
+  o_qd <= q(3);
   qd <= o_qd after 20 ns when pw else 'Z' after 20 ns;
-  qe <= o_qe after 20 ns when pw else 'Z' after 20 ns;
-  qf <= o_qf after 20 ns when pw else 'Z' after 20 ns;
-  qg <= o_qg after 20 ns when pw else 'Z' after 20 ns;
-  qh <= o_qh after 20 ns when pw else 'Z' after 20 ns;
+  qc <= o_qc after 20 ns when pw else 'Z' after 20 ns;
+  qb <= o_qb after 20 ns when pw else 'Z' after 20 ns;
+  qa <= o_qa after 20 ns when pw else 'Z' after 20 ns;
 end architecture model;
 -- synthesis translate_on
 
@@ -327,58 +326,63 @@ entity breadboard is
   port (
     clk : in std_logic;
     btn : in std_logic_vector(0 downto 0);
-    sw : in std_logic_vector(2 downto 0);
-    led : out std_logic_vector(5 downto 0)
+    sw : in std_logic_vector(0 downto 0);
+    led : out std_logic_vector(7 downto 0)
   );
 end entity breadboard;
 
 architecture digital of breadboard is
-  signal n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, d_U1_qa, d_U1_qb, d_U3_qa, d_U3_qb, d_U3_qc, d_U3_qd : std_logic;
+  signal n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16, d_U1_qa, d_U1_qb, d_U1_qc, d_U1_qd, d_U3_qa, d_U3_qb, d_U3_qc, d_U3_qd, d_U3_rco : std_logic;
 begin
   n1 <= d_U3_qa;
   n2 <= '0';
   n3 <= d_U3_qb;
   n4 <= d_U3_qc;
   n5 <= d_U3_qd;
-  n6 <= (sw(1) xor sw(2));
-  n7 <= (sw(1) and sw(2));
-  n8 <= n9 when btn(0) = '1' else '0';
-  n9 <= '1';
-  n10 <= (n11 and n12);
-  n11 <= d_U1_qa;
-  n12 <= (n11 xor n13);
-  n13 <= d_U1_qb;
-  d_U1 : entity work.breadboard_sn74ls164 port map (a => n8, b => n9, clk => clk, clr_n => sw(0), qa => d_U1_qa, qb => d_U1_qb, qc => open, qd => open, qe => open, qf => open, qg => open, qh => open, vcc => '1', gnd => '0');
-  d_U3 : entity work.breadboard_sn74ls161 port map (clr_n => sw(0), clk => clk, a => n2, b => n2, c => n2, d => n2, enp => n10, load_n => n9, ent => n9, qd => d_U3_qd, qc => d_U3_qc, qb => d_U3_qb, qa => d_U3_qa, rco => open, vcc => '1', gnd => '0');
+  n6 <= d_U1_qa;
+  n7 <= d_U1_qb;
+  n8 <= d_U1_qc;
+  n9 <= d_U1_qd;
+  n10 <= n11 when btn(0) = '1' else '0';
+  n11 <= '1';
+  n12 <= (n13 and n14);
+  n13 <= (n7 and n15);
+  n14 <= (n13 xor n16);
+  n15 <= (n7 xor n8);
+  n16 <= d_U3_rco;
+  d_U1 : entity work.breadboard_sn74ls194 port map (clr_n => sw(0), sr => n10, a => n2, b => n2, c => n2, d => n2, sl => n2, s0 => n11, s1 => n2, clk => clk, qd => d_U1_qd, qc => d_U1_qc, qb => d_U1_qb, qa => d_U1_qa, vcc => '1', gnd => '0');
+  d_U3 : entity work.breadboard_sn74ls161 port map (clr_n => sw(0), clk => clk, a => n2, b => n2, c => n2, d => n2, enp => n12, load_n => n11, ent => n11, qd => d_U3_qd, qc => d_U3_qc, qb => d_U3_qb, qa => d_U3_qa, rco => d_U3_rco, vcc => '1', gnd => '0');
   led(0) <= n1 and not n2;
   led(1) <= n3 and not n2;
   led(2) <= n4 and not n2;
   led(3) <= n5 and not n2;
   led(4) <= n6 and not n2;
   led(5) <= n7 and not n2;
+  led(6) <= n8 and not n2;
+  led(7) <= n9 and not n2;
 end architecture digital;
 
 -- synthesis translate_off
 architecture circuit of breadboard is
-  signal n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n3_d : std_logic := 'X';
+  signal n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n18, n5_d : std_logic := 'X';
 begin
   n1 <= '1';   -- P1 +
   n2 <= '0';   -- P1 −
-  n7 <= clk;   -- CK1
-  n3_d <= n1 when btn(0) = '1' else 'Z';   -- B1 pressed
-  n6 <= sw(0);   -- S1
-  n10 <= sw(1);   -- S2
-  n11 <= sw(2);   -- S3
-  n3 <= '0' when n3_d = 'Z' else n3_d;   -- pulled down
-  u_U1 : entity work.breadboard_sn74ls164 port map (a => n3, b => n1, qa => n4, qb => n5, qc => open, qd => open, gnd => n2, clk => n7, clr_n => n6, qe => open, qf => open, qg => open, qh => open, vcc => n1);
-  u_U2 : entity work.breadboard_sn74ls08 port map (a1 => n4, b1 => n8, y1 => n9, a2 => n10, b2 => n11, y2 => n12, gnd => n2, y3 => open, a3 => 'Z', b3 => 'Z', y4 => open, a4 => 'Z', b4 => 'Z', vcc => n1);
-  u_U3 : entity work.breadboard_sn74ls161 port map (clr_n => n6, clk => n7, a => n2, b => n2, c => n2, d => n2, enp => n9, gnd => n2, load_n => n1, ent => n1, qd => n16, qc => n15, qb => n14, qa => n13, rco => open, vcc => n1);
-  u_U4 : entity work.breadboard_sn74ls86 port map (a1 => n10, b1 => n11, y1 => n17, a2 => n4, b2 => n5, y2 => n8, gnd => n2, y3 => open, a3 => 'Z', b3 => 'Z', y4 => open, a4 => 'Z', b4 => 'Z', vcc => n1);
-  led(0) <= '1' when to_x01(n13) = '1' and to_x01(n2) = '0' else '0';
-  led(1) <= '1' when to_x01(n14) = '1' and to_x01(n2) = '0' else '0';
-  led(2) <= '1' when to_x01(n15) = '1' and to_x01(n2) = '0' else '0';
-  led(3) <= '1' when to_x01(n16) = '1' and to_x01(n2) = '0' else '0';
-  led(4) <= '1' when to_x01(n17) = '1' and to_x01(n2) = '0' else '0';
-  led(5) <= '1' when to_x01(n12) = '1' and to_x01(n2) = '0' else '0';
+  n9 <= clk;   -- CK1
+  n5_d <= n1 when btn(0) = '1' else 'Z';   -- B1 pressed
+  n3 <= sw(0);   -- S1
+  n5 <= '0' when n5_d = 'Z' else n5_d;   -- pulled down
+  u_U1 : entity work.breadboard_sn74ls194 port map (clr_n => n3, sr => n5, a => n2, b => n2, c => n2, d => n2, sl => n2, gnd => n2, s0 => n1, s1 => n2, clk => n9, qd => n8, qc => n7, qb => n6, qa => n4, vcc => n1);
+  u_U2 : entity work.breadboard_sn74ls08 port map (a1 => n6, b1 => n10, y1 => n11, a2 => n11, b2 => n12, y2 => n13, gnd => n2, y3 => open, a3 => 'Z', b3 => 'Z', y4 => open, a4 => 'Z', b4 => 'Z', vcc => n1);
+  u_U3 : entity work.breadboard_sn74ls161 port map (clr_n => n3, clk => n9, a => n2, b => n2, c => n2, d => n2, enp => n13, gnd => n2, load_n => n1, ent => n1, qd => n18, qc => n17, qb => n16, qa => n15, rco => n14, vcc => n1);
+  u_U4 : entity work.breadboard_sn74ls86 port map (a1 => n6, b1 => n7, y1 => n10, a2 => n11, b2 => n14, y2 => n12, gnd => n2, y3 => open, a3 => 'Z', b3 => 'Z', y4 => open, a4 => 'Z', b4 => 'Z', vcc => n1);
+  led(0) <= '1' when to_x01(n15) = '1' and to_x01(n2) = '0' else '0';
+  led(1) <= '1' when to_x01(n16) = '1' and to_x01(n2) = '0' else '0';
+  led(2) <= '1' when to_x01(n17) = '1' and to_x01(n2) = '0' else '0';
+  led(3) <= '1' when to_x01(n18) = '1' and to_x01(n2) = '0' else '0';
+  led(4) <= '1' when to_x01(n4) = '1' and to_x01(n2) = '0' else '0';
+  led(5) <= '1' when to_x01(n6) = '1' and to_x01(n2) = '0' else '0';
+  led(6) <= '1' when to_x01(n7) = '1' and to_x01(n2) = '0' else '0';
+  led(7) <= '1' when to_x01(n8) = '1' and to_x01(n2) = '0' else '0';
 end architecture circuit;
 -- synthesis translate_on
