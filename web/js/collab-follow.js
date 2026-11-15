@@ -12,7 +12,10 @@
 // meeting point, when the owner was found there (not when the codes were exchanged by hand): "Reconnecting to
 // <owner>…" in the toolbar meanwhile, the loss and the return in the console (an editor's changes made meanwhile sent
 // once it is back). Its role changed by the owner (#3997: made an editor, or a viewer again): said in the console, its
-// open documents opened again, editable or read only.
+// open documents opened again, editable or read only. The owner's activity followed too (#4002, collab-activity.js):
+// the documents it has open (a simulation run again here, from the same files), the one in front, the split, the left
+// pane's page, the Design view, the task, the Design pane's rows expanded and selected; the follower's own action there
+// is browsing alone.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { S, app, activateDoc, closeDoc } from './app.js';
@@ -27,10 +30,13 @@ import { gateEdit } from '/core/collab-doc.js';
 import { drawingText } from '/core/collab-model.js';
 import { followRoom, colorOf } from '/core/collab-client.js';
 import { parseFollowLink, relayUrl } from '/core/collab-link.js';
+import { followActivity, followState, watchOwnActions } from './collab-activity.js';
+import { viewKeyOf } from './view-state.js';
 
 const TRACK_MS = 300, ARRIVE_MS = 20_000;
-let fol = null;   // { name, session, following, driven (the owner's view last followed), mine (the follower's), top (a module's link's
-                  //   module, opened once the project is, #3631) }
+let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
+                  //   once the project is, #3631), act (the owner's activity put on the page, #4002), front (the
+                  //   document in front, as this page left it: another one brought there is the follower's) }
 
 const d0 = p => S.docs.find(x => x.path === p && x.editor?.view);
 const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
@@ -71,14 +77,15 @@ export async function startFollowing(hash = location.hash) {
     await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ARRIVE_MS))]);
   } catch (e) { session?.close(); app.log(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
   const { project, owner } = docProject(session.doc);
-  fol = { name, session, following: true, driven: null, mine: null, bound: new Map(), drawn: new Map(), top: link.top || null };
+  fol = { name, session, following: true, driven: null, bound: new Map(), drawn: new Map(), top: link.top || null, act: followState(), front: undefined };
   Object.assign(collab, { role: 'follower', owner: owner || session.owner()?.name || '?', project: project.name, session, editor: session.editor });
   Object.assign(api, followApi(api, session.doc, { warn: text => app.log(`WARNING: Follow a shared project: ${text}.`, 'warn') }));
   setPresenceCommands(commands);
+  watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
   setInterval(track, TRACK_MS);
   draw();
   if (session.editor) app.log(`Editing ${collab.owner}'s project "${project.name}" with them: its text files and drawings change as you all edit them (Following ${collab.owner}, in the toolbar).`, 'ok');
-  else app.log(`Following ${collab.owner}'s project "${project.name}", read only: their changes appear as they make them, and their open editor while you follow them (Following ${collab.owner}, in the toolbar).`, 'ok');
+  else app.log(`Following ${collab.owner}'s project "${project.name}", read only: their changes appear as they make them, and what they do (their documents, views and selection) while you follow them (Following ${collab.owner}, in the toolbar).`, 'ok');
   return project.name;
 }
 
@@ -90,7 +97,7 @@ export async function openFollowedTop() {
   fol.top = null;
   fol.following = false;   // (the owner's view not brought to the front meanwhile)
   await (await import('./link-open.js')).showModule(top, true);
-  app.log(`Browsing alone on ${top}, the link's module (Follow ${collab.owner}, in the toolbar, follows ${collab.owner}'s editor).`, 'info');
+  app.log(`Browsing alone on ${top}, the link's module (Follow ${collab.owner}, in the toolbar, follows ${collab.owner} again).`, 'info');
   draw();
 }
 
@@ -113,7 +120,8 @@ function setFollowing(on) {
   fol.following = on;
   fol.driven = null;
   fol.drivenKey = null;   // (the owner's view brought to the front again, even unchanged since: #3631)
-  app.log(on ? `Following ${collab.owner}'s editor.` : `Browsing alone: ${collab.owner}'s editor is no longer followed (Follow ${collab.owner}, in the toolbar, follows it again).`, 'info');
+  fol.act.forget();   // (and the owner's whole activity, #4002)
+  app.log(on ? `Following ${collab.owner}: their documents, views and selection.` : `Browsing alone: ${collab.owner} is no longer followed (Follow ${collab.owner}, in the toolbar, follows them again).`, 'info');
   draw();
   track();
 }
@@ -133,7 +141,7 @@ function draw() {
 
 function onEvent(ev) {
   if (!fol) return;
-  if (ev.type === 'peers') { draw(); track(); }
+  if (ev.type === 'peers' || ev.type === 'activity') { draw(); track(); }
   else if (ev.type === 'offline') {
     app.log(`WARNING: The connection to ${collab.owner}'s project "${collab.project}" was lost: reconnecting${collab.editor ? ' (your changes meanwhile are sent once it is back)' : ' (what you see is as it was then until it is back)'}.`, 'warn');
     draw();
@@ -150,6 +158,7 @@ async function roleChanged(ev) {
   if (ev.renewed) return;
   const editor = ev.role === 'editor';
   if (collab.editor === editor) return;
+  fol.front = undefined;   // (its documents reopened here: not the follower's own)
   collab.editor = editor;
   app.log(editor ? `${collab.owner} made you an editor: you edit the project's text files and drawings with them.` : `${collab.owner} made you a viewer: you follow the project, read only.`, 'info');
   unbindAll(fol.bound);
@@ -164,6 +173,7 @@ async function roleChanged(ev) {
   }
   for (const p of open) await app.openFile(p).catch(() => {});
   fol.drivenKey = null;
+  fol.front = undefined;
   draw();
   track();
 }
@@ -188,7 +198,9 @@ async function track() {
     const v = owner?.view;
     const mine = docPath(S.active);
     // (another document brought to the front by the follower: they browse alone)
-    if (fol.following && fol.driven && mine !== fol.driven.path && mine !== fol.mine) setFollowing(false);
+    if (fol.following && fol.front !== undefined && viewKeyOf(S.active) !== fol.front) setFollowing(false);
+    // (the owner's activity, #4002: its documents, the one in front, its views, its selection)
+    if (fol.following && S.project?.name === collab.project) await followActivity(fol.act, ch => fol.session.activity(ch));
     if (fol.following && v?.path && S.project?.name === collab.project) {
       const key = JSON.stringify(v);
       if (fol.drivenKey !== key) {
@@ -200,12 +212,13 @@ async function track() {
         fol.driven = v;
       }
     }
-    fol.mine = docPath(S.active);
+    fol.front = viewKeyOf(S.active);
     // (the open text editors, live, #3182: an editor's own files to edit, the others read only)
     keepBound(fol.bound, S.docs, fol.session.doc.getMap('files'), p => !!d0(p) && api.shown(p));
     // (an editor's drawings edited live, #3183: a merged model shown once it passes the import gate, as any file, #3361)
     keepDrawingsBound(fol.drawn, S.docs, fol.session.doc, editsDrawingHere, { say: text => app.log(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
-    fol.session.setView(fol.mine ? { path: fol.mine, line: S.active?.editor?.getCursor?.().line ?? null, ch: S.active?.editor?.getCursor?.().ch ?? null } : null);
+    const here = docPath(S.active);
+    fol.session.setView(here ? { path: here, line: S.active?.editor?.getCursor?.().line ?? null, ch: S.active?.editor?.getCursor?.().ch ?? null } : null);
     const peers = fol.session.peers();
     for (const d of S.docs) {
       if (!d.editor?.setPeers) continue;

@@ -10,8 +10,9 @@ import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
 import { closable } from './server-close.js';
 import * as Y from 'yjs';
-import { followRoom } from '../core/collab-client.js';
-import { docFile, docProject } from '../core/collab-doc.js';
+import { followRoom, shareRoom } from '../core/collab-client.js';
+import { encodeUi } from '../core/design-link.js';
+import { docFile, docProject, projectDoc, publishProject } from '../core/collab-doc.js';
 import { parseFollowLink, relayUrl, followLink } from '../core/collab-link.js';
 import { drawingModel, putDrawing } from '../core/collab-model.js';
 import { normalizeFsm, generateFsm } from '../core/fsm.js';
@@ -107,6 +108,7 @@ test('follow_project: an MCP client follows the MCP\'s share (two participants),
   assert.equal(f.data.project, 'blinky');
   assert.deepEqual(f.data.participants.map(p => [p.name, p.role]), [['Ana', 'owner']]);
   assert.equal(f.data.ownerView, null);
+  assert.equal(f.data.ownerActivity, null, 'an owner of no interface: no activity (#4002)');
   assert.equal(f.data.untrusted.content, 'the shared project\'s files and names');   // (#3363: the names its participants chose)
   assert.equal(f.text, `Following Ana's project 'blinky' (read only).\nFiles: ${files.join(', ')}\nIn it:\nAna (owner)`);
   const path0 = files.find(x => x.endsWith('.ucf'));
@@ -500,6 +502,34 @@ test('#3183 a schematic edited live: a page moves a symbol while the MCP client 
   await ed.close();
   await ok('follow_project', { link: editLink, stop: true });
   await ok('share_project', { project: 'gatesSch', action: 'stop' });
+});
+
+test('#4002 follow_project gives the owner\'s activity: its open documents and the one in front, its view, its task, its Design pane\'s selection; as it changes; what is not one left out', async () => {
+  // (an owner's page, as web/js/collab-activity.js publishes it)
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'act', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' }, fileTree: ['src/top.vhd'] }, files: { 'src/top.vhd': 'entity top is end;\n' }, owner: 'Ana' });
+  const owner = await shareRoom({ url: relayUrl(`${base}/`, 'share'), token: 'tok-mcp', doc, user: { name: 'Ana' } });
+  try {
+    owner.publish('ui', encodeUi({ open: ['file:src/top.vhd', 'isim:tb'], active: 'isim:tb', page: 'design', view: 'sim', split: null }, { task: 'sim', side: true, console: true, max: false }));
+    owner.publish('design', { sel: 'm:tb', open: [['m:tb', true], [7, true]] });
+    const link = followLink(`${base}/`, owner.room, owner.key);
+    const f = await ok('follow_project', { link, name: 'Bot' });
+    assert.deepEqual(f.data.ownerActivity, {
+      view: { open: ['file:src/top.vhd', 'isim:tb'], active: 'isim:tb', split: null, page: 'design', view: 'sim' },
+      layout: { task: 'sim', side: true, console: true, max: false },
+      design: { sel: 'm:tb', open: [['m:tb', true]] },
+    });
+    assert.equal(f.text, ["Following Ana's project 'act' (read only).", 'Files: src/top.vhd', 'In it:\nAna (owner)',
+      'The owner is in the Simulate task, the Simulation view, the design page.', 'Their open documents: file:src/top.vhd, isim:tb (in front).',
+      'Selected in their Design pane: m:tb.'].join('\n'));
+    // (as it changes; a value that is no view left out)
+    owner.publish('ui', encodeUi({ open: ['file:src/top.vhd'], active: 'file:src/top.vhd', page: 'files', view: 'impl', split: null }));
+    owner.publish('design', 'not one');
+    const g = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerActivity?.view?.view === 'impl' && r; }, 'the activity changed');
+    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null });
+    assert.match(g.text, /\nThe owner is in the Implementation view, the files page\.\nTheir open documents: file:src\/top\.vhd \(in front\)\.$/);
+    await ok('follow_project', { link, stop: true });
+  } finally { await owner.close(); }
 });
 
 test('#3227 through a relay on another computer: share_project with its key; follow_project of a site\'s link that names the relay', async () => {
