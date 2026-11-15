@@ -512,6 +512,8 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
   try {
     owner.publish('ui', encodeUi({ open: ['file:src/top.vhd', 'isim:tb'], active: 'isim:tb', page: 'design', view: 'sim', split: null }, { task: 'sim', side: true, console: true, max: false }));
     owner.publish('design', { sel: 'm:tb', open: [['m:tb', true], [7, true]] });
+    // (#4002 part 3: an open simulation)
+    owner.publish('sim', { docs: { 'isim:tb': { now: 1000000, stim: null, forces: [], view: { rows: [{ kind: 'sig', path: 'tb.a', radix: 'default', expanded: false }, { kind: 'sig', path: 'tb.y', radix: 'hex', expanded: false }], cursor: 250000, markers: [], t0: 0, scale: 1000, fit: true, curInst: 'tb' } } } });
     const link = followLink(`${base}/`, owner.room, owner.key);
     const f = await ok('follow_project', { link, name: 'Bot' });
     assert.deepEqual(f.data.ownerActivity, {
@@ -519,15 +521,17 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
       layout: { task: 'sim', side: true, console: true, max: false },
       design: { sel: 'm:tb', open: [['m:tb', true]] },
       runs: null,
+      sim: { docs: { 'isim:tb': { now: 1000000, stim: null, forces: [], view: { rows: [{ kind: 'sig', path: 'tb.a', radix: 'default', expanded: false }, { kind: 'sig', path: 'tb.y', radix: 'hex', expanded: false }], cursor: 250000, markers: [], t0: 0, scale: 1000, fit: true, curInst: 'tb' } } } },
     });
     assert.equal(f.text, ["Following Ana's project 'act' (read only).", 'Files: src/top.vhd', 'In it:\nAna (owner)',
       'The owner is in the Simulate task, the Simulation view, the design page.', 'Their open documents: file:src/top.vhd, isim:tb (in front).',
-      'Selected in their Design pane: m:tb.'].join('\n'));
+      'Selected in their Design pane: m:tb.', 'Their simulation tb: run to 1000 ns, the cursor at 250 ns, 2 signal(s) shown.'].join('\n'));
     // (as it changes; a value that is no view left out)
     owner.publish('ui', encodeUi({ open: ['file:src/top.vhd'], active: 'file:src/top.vhd', page: 'files', view: 'impl', split: null }));
     owner.publish('design', 'not one');
+    owner.publish('sim', { docs: [] });
     const g = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerActivity?.view?.view === 'impl' && r; }, 'the activity changed');
-    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null, runs: null });
+    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null, runs: null, sim: null });
     assert.match(g.text, /\nThe owner is in the Implementation view, the files page\.\nTheir open documents: file:src\/top\.vhd \(in front\)\.$/);
     await ok('follow_project', { link, stop: true });
   } finally { await owner.close(); }

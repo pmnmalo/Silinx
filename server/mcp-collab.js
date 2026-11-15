@@ -14,7 +14,7 @@
 // result says so meanwhile (connected: false), a write merged then and sent once it is back; a share's, its room resumed
 // on the relay (its status: connected: false meanwhile). follow_project gives the owner's activity too (#4002): where its
 // page is (its open documents, the one in front, its Design view, its task) and its Design pane's selection, the
-// processes it runs (their marks, the end of the run's log); a project share_project shares sends the runs run_process
+// processes it runs (their marks, the end of the run's log), its simulations (their time, view and forces); a project share_project shares sends the runs run_process
 // makes of it (sharedRun).
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -31,6 +31,7 @@ import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
 import { runsActivity, followedRuns, runLines } from '../core/collab-runs.js';
+import { followedSim, simLines } from '../core/collab-sim.js';
 
 export const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
@@ -247,7 +248,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#follow=… of Share Project… or share_project), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor, and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#follow=… of Share Project… or share_project), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor, and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
@@ -310,6 +311,7 @@ export const COLLAB_TOOLS = [
         ...(cur.session.connected() ? [] : ['The connection to the relay was lost: reconnecting (what this shows is as it was then).']),
         ...activityLines(ch => cur.session.activity(ch)),
         ...runLines(cur.session.activity('runs')),
+        ...simLines(cur.session.activity('sim')),
         ...(write !== undefined ? [`Wrote ${write.path} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`] : []),
         ...(text !== null ? [`${path}:`, text] : []),
         ...(check ? check.lines : []),
@@ -324,8 +326,9 @@ export const COLLAB_TOOLS = [
 // (the runs: { id, status, from, lines, summary }, the run's last lines only, its log's end)
 function ownerActivity(session) {
   const ui = followedUi(session.activity('ui')), design = followedDesign(session.activity('design')), runs = followedRuns(session.activity('runs'));
-  if (!ui && !design && !runs) return null;
-  return { view: ui?.view ?? null, layout: ui?.layout ?? null, design, runs };
+  const sim = followedSim(session.activity('sim'));
+  if (!ui && !design && !runs && !sim) return null;
+  return { view: ui?.view ?? null, layout: ui?.layout ?? null, design, runs, sim };
 }
 
 /** A run of run_process on a project this MCP server shares (#4002): sent to its followers as a page sends its runs

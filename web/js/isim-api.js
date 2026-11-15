@@ -101,6 +101,8 @@ export function mountApi(ctx) {
     exportVCD: () => exportVCD(),
     wcfg: () => wcfgText(), setWcfg: (text, name) => applyWcfg(text, name), saveWcfg, loadWcfg,
     get state() { return st; },
+    /** The time the simulation has reached (ps; #4002: a shared project's viewer runs its own to it). */
+    get now() { return sim.now; },
   };
 
   function exportVCD() {
