@@ -9,7 +9,7 @@ import { mountSideFold } from './side-fold.js';
 import { PARTS, PART_ORDER, partPins, partHoles } from '/core/circuit-parts.js';
 import { drawCircuit, P } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
-import { bodySvg, r1 } from './sch-svg.js';
+import { symbolPreview } from './sch-palette.js';
 
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
@@ -21,7 +21,7 @@ const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decod
   7483: 'add', 74283: 'add', 7485: 'compare', 7474: 'fdcp', 7476: 'fjkcp', 74112: 'fjkcp', 7490: 'counter', 7493: 'counter', 74161: 'counter',
   74163: 'counter', 74191: 'counter', 74193: 'counter', 4017: 'counter', 74164: 'register', 74165: 'register', 74194: 'register', 74595: 'register' };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */
-export function symbolOfPart(type) {
+function symbolOfPart(type) {
   const d = PARTS[type];
   if (d?.gates) {
     const { fn, ins } = d.gates[0];
@@ -30,13 +30,10 @@ export function symbolOfPart(type) {
   }
   return BLOCK[type] || null;
 }
-// the schematic's symbol, as its Symbols panel draws it
-function symbolPreview(type) {
+// the schematic's symbol, as its Symbols panel draws it (its texts and tips left out)
+function symbolPreviewOf(type) {
   const sym = { id: 'pv', type, x: 0, y: 0, rot: 0, mirror: false, name: '', params: defaultParams(type) };
-  const def = symbolDef(sym, {});
-  const sc = Math.min(1, (W - 8) / def.w, (H - 8) / def.h), ox = (W - def.w * sc) / 2, oy = (H - def.h * sc) / 2;
-  const s = sv('svg', { class: 'circ-pv circ-pv-sym', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
-  s.innerHTML = `<g transform="translate(${r1(ox)},${r1(oy)}) scale(${r1(sc * 100) / 100})">${bodySvg(sym, def)}</g>`;
+  const s = symbolPreview(sym, symbolDef(sym, {}), { W, H, cls: 'circ-pv circ-pv-sym' });
   for (const x of s.querySelectorAll('text, title')) x.remove();
   return s;
 }
@@ -45,7 +42,7 @@ function symbolPreview(type) {
 const previews = new Map();
 function preview(type) {
   if (previews.has(type)) return previews.get(type).cloneNode(true);
-  if (symbolOfPart(type)) { previews.set(type, symbolPreview(symbolOfPart(type))); return previews.get(type).cloneNode(true); }
+  if (symbolOfPart(type)) { previews.set(type, symbolPreviewOf(symbolOfPart(type))); return previews.get(type).cloneNode(true); }
   const p = { id: 'X', type, x: 0, y: 0 };
   const xs = [], ys = [];
   for (const q of [...partPins(p), ...partHoles(p)]) { xs.push(q.x); ys.push(q.y); }

@@ -5,9 +5,19 @@ import { SYMBOLS, SYMBOL_CATEGORIES, defaultParams, symbolDef } from '/core/schd
 import { bodySvg, r1 } from './sch-svg.js';
 import { devicePrimitives } from '/core/primitives.js';
 import { naturalCompare } from '/core/hier-order.js';
-import { esc, h } from './dom.js';
+import { h, sv } from './dom.js';
 import { popupMenu } from './ui.js';
 import { designKind } from './project-kind-flag.js';
+
+/** A symbol's drawing, small (the Symbols panel's, the circuit editor's Parts panel's, #4062): an <svg> W × H of class
+ *  cls, the symbol (sym, its def: core/schdoc.js symbolDef) scaled down to fit, centred. */
+export function symbolPreview(sym, def, { W = 54, H = 34, cls = 'se-pv' } = {}) {
+  const pad = 4, sc = Math.min(1, (W - 2 * pad) / def.w, (H - 2 * pad) / def.h);
+  const ox = (W - def.w * sc) / 2, oy = (H - def.h * sc) / 2;
+  const s = sv('svg', { class: cls, viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+  s.innerHTML = `<g transform="translate(${r1(ox)},${r1(oy)}) scale(${r1(sc * 100) / 100})">${bodySvg(sym, def)}</g>`;
+  return s;
+}
 
 /** { catSel, renderPalette, search, symInfo } of mountSchEditor (device(), doc(), infoItem(), modules(), placing(): its current values). */
 export function mountSchPalette(ctx) {
@@ -48,11 +58,7 @@ export function mountSchPalette(ctx) {
   }
   function previewSvg(it) {
     const sym = { id: 'pv', type: it.type, x: 0, y: 0, rot: 0, mirror: false, name: '', params: { ...defaultParams(it.type), ...it.params } };
-    const def = symbolDef(sym, modules());
-    const pad = 4, W = 54, H = 34;
-    const sc = Math.min(1, (W - 2 * pad) / def.w, (H - 2 * pad) / def.h);
-    const ox = (W - def.w * sc) / 2, oy = (H - def.h * sc) / 2;
-    return `<svg class="se-pv" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><g transform="translate(${r1(ox)},${r1(oy)}) scale(${r1(sc * 100) / 100})">${bodySvg(sym, def)}</g></svg>`;
+    return symbolPreview(sym, symbolDef(sym, modules()));
   }
   function renderPalette() {
     const q = search.value.trim().toLowerCase();
@@ -72,8 +78,7 @@ export function mountSchPalette(ctx) {
         const row = h('div', {
           class: `se-symrow${placing() && placing().type === it.type && (placing().preset || null) === (it.preset || null) && (it.type !== 'module' || placing().params.module === it.params.module) ? ' active' : ''}`,
           draggable: 'true', title: it.desc,
-          html: `${previewSvg(it)}<span class="nm" data-no-i18n>${esc(it.title)}</span>`,
-        });
+        }, previewSvg(it), h('span', { class: 'nm', 'data-no-i18n': true, text: it.title }));
         row.addEventListener('click', () => { setInfoItem(it); startPlace(it); showSymInfo(it); });
         // (on a tablet, a long press: no menu, its browser's nor ours; with a mouse, the right click's, #1990)
         row.addEventListener('pointerdown', e => { row.pointerType = e.pointerType; });
