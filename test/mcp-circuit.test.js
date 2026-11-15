@@ -169,14 +169,14 @@ test('a circuit as an FPGA top (#3901): the breadboard example synthesized and b
   const run = await ok('run_process', { project: 'bb', process: 'bitstream', toolchain: 'silinx' });
   assert.deepEqual(run.data.warnings, []);
   assert.ok(fs.existsSync(path.join(tmp, 'ws', 'bb', 'build', 'breadboard.bit')));
-  // led[6]: a new LED, the bus one bit wider; led[8] without led[7]: refused by the check, the HDL left as it was
+  // led[8]: a new LED, the bus one bit wider; led[10] without led[9]: refused by the check, the HDL left as it was
   const at = { project: 'bb', path: 'src/breadboard.circ.json' };
-  const r = await ok('edit_circuit', { ...at, operations: [{ op: 'add', type: 'led', at: [68, 26], id: 'D7', label: 'led[6]' }, { op: 'wire', from: 'D7.A', to: 'BB1.tp58' }, { op: 'wire', from: 'D7.K', to: 'BB1.bn62' }] });
+  const r = await ok('edit_circuit', { ...at, operations: [{ op: 'add', type: 'led', at: [74, 26], id: 'D9', label: 'led[8]' }, { op: 'wire', from: 'D9.A', to: 'BB1.tp58' }, { op: 'wire', from: 'D9.K', to: 'BB1.bn62' }] });
   assert.deepEqual([r.data.errors, r.data.warnings], [[], []]);
   const hdl = fs.readFileSync(path.join(tmp, 'ws', 'bb', 'src', 'breadboard.vhd'), 'utf8');
-  assert.match(hdl, /^ {4}led : out std_logic_vector\(6 downto 0\)$/m);
-  assert.match(hdl, /^ {2}led\(6\) <= /m);
-  const bad = await ok('edit_circuit', { ...at, operations: [{ op: 'set', id: 'D7', label: 'led[8]' }] });
-  assert.deepEqual(bad.data.errors, [{ message: 'The bus led has no bit 6 (its bits: 0, 1, 2, 3, 4, 5, 8): its bits 0 to 8, each a part\'s', item: 'D1' }]);
+  assert.match(hdl, /^ {4}led : out std_logic_vector\(8 downto 0\)$/m);
+  assert.match(hdl, /^ {2}led\(8\) <= /m);
+  const bad = await ok('edit_circuit', { ...at, operations: [{ op: 'set', id: 'D9', label: 'led[10]' }] });
+  assert.deepEqual(bad.data.errors, [{ message: 'The bus led has no bit 8 (its bits: 0, 1, 2, 3, 4, 5, 6, 7, 10): its bits 0 to 10, each a part\'s', item: 'D1' }]);
   assert.equal(fs.readFileSync(path.join(tmp, 'ws', 'bb', 'src', 'breadboard.vhd'), 'utf8'), hdl);
 });
