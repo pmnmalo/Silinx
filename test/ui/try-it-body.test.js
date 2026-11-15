@@ -1,7 +1,8 @@
 // UI (#3924): the Try it's body a lighter green than its bar, in every drawing editor that has one: the panel of the state
-// diagram (FSM), the ASM chart and the Petri net, and the schematic's side panel while it is tried out; in both interfaces
+// diagram (FSM), the ASM chart and the Petri net, and the schematic's and the circuit's side panels while they are tried out (the
+// circuit's Try it has no bar of its own: its toolbar's Try it pressed, #3897); in both interfaces
 // and both themes (dark: a darker, muted green), its text readable (WCAG AA, 4.5:1); the FSM's Tables, the Petri net's
-// Analysis and the schematic's Properties, outside Try it, not green. No message in the console.
+// Analysis and the schematic's and the circuit's Properties, outside Try it, not green. No message in the console.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -9,6 +10,7 @@ import { newFsm } from '../../core/fsm.js';
 import { newModel } from '../../core/asm.js';
 import { newPetri } from '../../core/petri.js';
 import { newDoc } from '../../core/schdoc.js';
+import { newCircuit } from '../../core/circuit.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -28,6 +30,7 @@ const EDITORS = [
   { kind: 'asm', file: 'src/c.asm.json', model: newModel('c'), panel: '.asm-simpanel', bar: '.asm-codebar', body: '.fsm-panel-body' },
   { kind: 'petri', file: 'src/n.pn.json', model: newPetri('n'), panel: '.pn-panel', bar: '.asm-codebar', body: '.pn-panel-body', api: 'petriEditor', other: 'analysis' },
   { kind: 'sch', file: 'src/s.sch.json', model: schematic(), panel: '.sch-editor', bar: '.se-simbar', body: '.se-props' },
+  { kind: 'circ', file: 'src/b.circ.json', model: newCircuit('b'), panel: '.circuit-editor', bar: null, body: '.asm-side' },
 ];
 
 /** The bar's and the body's backgrounds (the body's as painted: blended over what is behind it) and the lowest contrast
@@ -47,7 +50,7 @@ const look = (page, ed) => page.eval((doc, p, b, y) => {
   };
   const lum = (c) => { const [r, g, bl] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * bl; };
   const contrast = (a, c) => { const [l1, l2] = [lum(a), lum(c)].sort((x, z) => z - x); return (l1 + 0.05) / (l2 + 0.05); };
-  const root = document.querySelector(`${doc} ${p}`), bar = root.querySelector(y), body = root.querySelector(b), bs = getComputedStyle(body), ys = getComputedStyle(bar);
+  const root = document.querySelector(`${doc} ${p}`), bar = y && root.querySelector(y), body = root.querySelector(b), bs = getComputedStyle(body), ys = bar ? getComputedStyle(bar) : {};
   let low = Infinity, what = '';
   for (const el of [body, ...body.querySelectorAll('*')]) {
     if (el.matches(':disabled') || !el.getClientRects().length || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
@@ -59,7 +62,7 @@ const look = (page, ed) => page.eval((doc, p, b, y) => {
 const messages = (page) => page.eval(() => ['#console-errors', '#console-warnings'].map((s) => [...document.querySelectorAll(`${s} .diag`)].map((r) => r.textContent)));
 const green = ([r, g, b]) => g > r && g > b;
 
-uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, Petri net and schematic editors, light and dark', E, async (page) => {
+uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, Petri net, schematic and circuit editors, light and dark', E, async (page) => {
   await page.setViewport(1600, 900);
   await makeProject(env, { name: 'TryBody', top: '', files: Object.fromEntries(EDITORS.map((e) => [e.file, JSON.stringify(e.model, null, 2)])) });
   await page.openProject('TryBody');
@@ -71,6 +74,11 @@ uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, P
       assert.equal((await look(page, ed)).cls, false, 'sch: the Properties, outside Try it, not the Try it\'s body');
       await page.click(`${DOC} .se-btn[data-act=sim]`);
       await page.waitFor((doc) => document.querySelector(`${doc} .sch-editor`)?.classList.contains('sim-mode'), [DOC], { what: 'the schematic\'s Try it' });
+    } else if (ed.kind === 'circ') {
+      await page.waitFor((doc) => window.Silinx.active?.id === 'circ:src/b.circ.json' && document.querySelector(`${doc} .circuit-editor .asm-side`), [DOC], { what: 'the circuit editor' });
+      assert.equal((await look(page, ed)).cls, false, 'circ: the Properties, outside Try it, not the Try it\'s body');
+      await page.click(`${DOC} .circ-toolbar .asm-btn`, { text: 'Try it' });
+      await page.waitFor((doc) => document.querySelector(`${doc} .circuit-editor`)?.classList.contains('circ-simulating'), [DOC], { what: 'the circuit\'s Try it' });
     } else {
       await page.waitFor((doc) => document.querySelector(`${doc} .asm-toolbar`), [DOC], { what: `the ${ed.kind} editor` });
       await page.click(`${DOC} .asm-toolbar .asm-btn`, { text: 'Try it' });
@@ -79,13 +87,13 @@ uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, P
     // light: the body #eef8ee, lighter than the bar's gradient's mid point (#e7f5e7), its text AA
     let l = await look(page, ed);
     assert.equal(l.body, 'rgb(238, 248, 238)', `${ed.kind}: ${JSON.stringify(l)}`);
-    assert.equal(l.barImage, 'linear-gradient(rgb(242, 251, 242), rgb(220, 239, 220))', `${ed.kind} bar`);
+    if (ed.bar) assert.equal(l.barImage, 'linear-gradient(rgb(242, 251, 242), rgb(220, 239, 220))', `${ed.kind} bar`);
     assert.ok(l.cls && l.low >= 4.5, `${ed.kind} light, contrast ${l.low} (${l.what})`);
     // dark: a darker, muted green (#19241e) than the bar's, its text AA
     await page.eval(() => { document.documentElement.dataset.theme = 'dark'; });
     l = await look(page, ed);
     assert.equal(l.body, 'rgb(25, 36, 30)', `${ed.kind} dark: ${JSON.stringify(l)}`);
-    assert.equal(l.barColor, 'rgba(76, 192, 107, 0.12)', `${ed.kind} dark bar`);
+    if (ed.bar) assert.equal(l.barColor, 'rgba(76, 192, 107, 0.12)', `${ed.kind} dark bar`);
     assert.ok(green(l.painted) && l.painted.reduce((s, v) => s + v) < 3 * 80, `${ed.kind} dark: a dark green ${l.painted}`);
     assert.ok(l.low >= 4.5, `${ed.kind} dark, contrast ${l.low} (${l.what})`);
     await page.eval(() => { document.documentElement.dataset.theme = 'light'; });
@@ -103,6 +111,13 @@ uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, P
       await page.waitFor((doc) => !document.querySelector(`${doc} .sch-editor`).classList.contains('sim-mode'), [DOC], { what: 'Try it stopped' });
       l = await look(page, ed);
       assert.ok(!l.cls && l.body !== 'rgb(238, 248, 238)', `sch after Stop: ${JSON.stringify(l)}`);
+    }
+    // the circuit's Try it stopped (its toolbar's Try it again): its Properties plain again
+    if (ed.kind === 'circ') {
+      await page.click(`${DOC} .circ-toolbar .asm-btn`, { text: 'Try it' });
+      await page.waitFor((doc) => !document.querySelector(`${doc} .circuit-editor`).classList.contains('circ-simulating'), [DOC], { what: 'Try it stopped' });
+      l = await look(page, ed);
+      assert.ok(!l.cls && l.body !== 'rgb(238, 248, 238)', `circ after Stop: ${JSON.stringify(l)}`);
     }
   }
   assert.deepEqual(await messages(page), before0);

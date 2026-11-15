@@ -142,6 +142,7 @@ export function mountCircuitEditor(container, opts = {}) {
     resetBtn.hidden = !sim;
     wavesBtn.disabled = !events.length && !sim;
     root.classList.toggle('circ-simulating', !!sim);
+    side.classList.toggle('try-it-body', !!sim);   // (tried out: its Properties the Try it's body, a lighter green, #3924)
     info.set([circuitCounts(M), sim ? { text: `t = ${sim.time} ns`, cls: 'circ-time', noI18n: true } : null].filter(Boolean));
     renderSide();
   }
