@@ -81,14 +81,14 @@ export function mountTools(ctx) {
   }
   // the wire under pt: { w, i (its segment) } or, curved (#1144), { w, at (the point of its path answering pt) }
   function wireNear(pt, tol = 5 / Math.max(0.3, view().s)) {
-    if (curve.curved()) return curve.wireAt(pt, tol);
+    if (curve.free()) return curve.wireAt(pt, tol);
     for (const w of doc().wires) for (let i = 0; i + 1 < w.points.length; i++) if (segDist(pt, w.points[i], w.points[i + 1]) <= tol) return { w, i };
     return null;
   }
   function snapPoint(pt) { const p = hoverPin() || null; return p ? { x: p.x, y: p.y } : { x: snap(pt.x), y: snap(pt.y) }; }
   // orthogonal route from a to b
   function routeTo(a, b, wd) {
-    if (a.x === b.x || a.y === b.y || curve.curved()) return [b];   // (curved, #1144: the point itself)
+    if (a.x === b.x || a.y === b.y || curve.free()) return [b];   // (curved, #1144: the point itself)
     let first = 'h';
     const pts = wd.pts;
     if (pts.length >= 2) { const p = pts[pts.length - 2]; first = p.y === a.y ? 'v' : 'h'; }
@@ -107,7 +107,7 @@ export function mountTools(ctx) {
   function finishWire() {
     if (!wireDraw()) return;
     // (curved, #1144: the points drawn through kept as the wire's own curve)
-    let knots = wireDraw().knots || (curve.curved() ? wireDraw().pts.filter((p, i, a) => !i || p.x !== a[i - 1].x || p.y !== a[i - 1].y) : null);
+    let knots = wireDraw().knots || (curve.free() ? wireDraw().pts.filter((p, i, a) => !i || p.x !== a[i - 1].x || p.y !== a[i - 1].y) : null);
     // (nudged onto a clear path where it would run along another wire, over a pin or through a body, #948)
     const pts = knots ? curvedPath(knots) : nudgeWire(doc(), cleanPts(wireDraw().pts), { modules: modules() });
     if (knots && knots.length < 2) knots = null;
@@ -127,7 +127,7 @@ export function mountTools(ctx) {
   }
   function wireClick(pt, dbl) {
     // (curved, #1144: on a wire's curve, the point of its path answering it)
-    const cw = curve.curved() && !hoverPin() ? curve.wireAt(pt) : null;
+    const cw = curve.free() && !hoverPin() ? curve.wireAt(pt) : null;
     const p = cw ? cw.at : snapPoint(pt);
     if (!wireDraw()) {
       const near = pinNear(pt);
@@ -168,7 +168,7 @@ export function mountTools(ctx) {
   async function ioClick(pt) {
     const near = pinNear(pt);
     // (curved, #1144: on a wire's curve, at the point of its path answering it)
-    const cw = !near && curve.curved() ? curve.wireAt(pt) : null;
+    const cw = !near && curve.free() ? curve.wireAt(pt) : null;
     const p = near ? { x: near.x, y: near.y } : cw ? cw.at : { x: snap(pt.x), y: snap(pt.y) };
     if (near?.port) { flash('There is already an I/O marker here'); return; }
     let width = 1, suggest = '';

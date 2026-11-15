@@ -140,13 +140,13 @@ export function mountSchEditor(container, opts = {}) {
   const segSel = mountSchSegSel({ doc: () => doc, nl: () => nl, sel: () => sel, wholeBranch });   // (the wire segment selected, #2211; the network of wires, #2228)
   const btn = (act, icon, title) => h('button', { type: 'button', class: 'se-btn', 'data-act': act, title, html: ICON[icon] });
   const sep = () => h('span', { class: 'se-sep' });
-  // Curved wires (#1144, sch-curve.js): the schematic drawn with curves (saved with it), or the technical drawing
+  // Wires (#1144, #4081, sch-curve.js): the schematic drawn Direct, Orthogonal (the technical drawing) or Curved (saved with it)
   const curve = mountSchCurve({ doc: () => doc, sel: () => sel, oneWire: segSel.oneWire, view: () => view, live: () => live, readOnly, edit: (...a) => edit(...a), render: (...a) => render(...a), renderProps: (...a) => renderProps(...a), snapshot: (...a) => snapshot(...a), pushUndo: (...a) => pushUndo(...a), changed: (...a) => changed(...a), contentG: () => contentG });
   // (the toolbar's buttons and their clicks: sch-toolbar.js)
   // Rearrange Wires / Rearrange Schematic (#1481, #1730, sch-beautify.js)
   const { rearrangeWires, rearrangeSheet } = mountSchBeautify({ doc: () => doc, edit: (...a) => edit(...a), fit: (...a) => fit(...a), flash: (...a) => flash(...a), modules: () => modules, sel: () => sel, snapshot: (...a) => snapshot(...a) });
   const { optBox } = mountSchToolbar({
-    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, curvedBox: curve.box, deleteSel: (...a) => deleteSel(...a), enterSim: (...a) => enterSim(...a),
+    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems: curve.items, deleteSel: (...a) => deleteSel(...a), enterSim: (...a) => enterSim(...a),
     fit: (...a) => fit(...a), hopsBox, keepBox,
     leaveSim: (...a) => leaveSim(...a), live: () => live, mirrorSel: (...a) => mirrorSel(...a), mirrorVSel: (...a) => mirrorVSel(...a), namesBox,
     readOnly, rotateSel: (...a) => rotateSel(...a),
@@ -259,7 +259,7 @@ export function mountSchEditor(container, opts = {}) {
     if (!add) sel.clear();
     for (const s of doc.symbols) { const b = symbolBox(s, modules); if (b.x >= r.x && b.y >= r.y && b.x + b.w <= r.x + r.w && b.y + b.h <= r.y + r.h) sel.add(`sym:${s.id}`); }
     for (const p of doc.ports) { const b = portBox(p); if (rectsTouch(b, r) && inside(p, r)) sel.add(`port:${p.id}`); }
-    for (const w of doc.wires) if (curve.curved() ? curve.inBand(w, r) : w.points.every(p => inside(p, r))) sel.add(`wire:${w.id}`);
+    for (const w of doc.wires) if (curve.free() ? curve.inBand(w, r) : w.points.every(p => inside(p, r))) sel.add(`wire:${w.id}`);
     for (const l of doc.labels) if (inside(l, r)) sel.add(`label:${l.id}`);
   }
 

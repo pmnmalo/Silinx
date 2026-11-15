@@ -21,6 +21,7 @@ import { setMarkerWidth } from '/core/schmarker.js';
 import { instName, renameError } from '/core/schname.js';
 import { arrayName, arrayOf, arrayWidth, withArrayWidth, sharedPins } from '/core/sch-array.js';
 import { graphicProps } from './sch-graphics.js';
+import { isFreeStyle } from '/core/wire-style.js';
 
 /** { renderProps, openSelected, renamed, joinByName, renameLabel } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
 export function mountProps(ctx) {
@@ -294,8 +295,8 @@ export function mountProps(ctx) {
   function wireProps(w) {
     const n = nl()?.wireNet.get(w.id);
     propBody.append(h('div', { class: 'se-ptitle', text: `Wire${n ? ` · net ${n.name}` : ''}` }));
-    // (its own curve, #1144: dropped, the curve derived from its path again)
-    if (Array.isArray(w.curve) && doc().wireStyle === 'curved') {
+    // (its own curve, #1144: dropped, the curve derived from its path again; drawn Direct, #4081, a straight line)
+    if (Array.isArray(w.curve) && isFreeStyle(doc())) {
       propBody.append(h('div', { class: 'se-pbtns' }, h('button', { class: 'btn', type: 'button', text: 'Reset curve', title: 'Drop this wire\'s own curve: drawn again from its rectilinear path', onclick: () => edit(() => { delete doc().wires.find(x => x.id === w.id)?.curve; }) })));
     }
     if (n) propBody.append(field('Rename net', inp(n.auto ? '' : n.name, async v => {

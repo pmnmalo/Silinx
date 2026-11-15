@@ -1,6 +1,6 @@
 // UI: read-only documents. The HDL generated from a drawing (#1176) has Undo and Redo greyed out, in the toolbar and
 // the Edit menu, while Find and Check Syntax stay (#1192). A truth table's schematic, a read-only view, says where it
-// comes from at the end of its toolbar, as the generated HDL does, and has Curved wires (#1193).
+// comes from at the end of its toolbar, as the generated HDL does, and has the Wires choice (#1193, #4081).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -40,7 +40,7 @@ uiTest('#1192 a read-only document (the HDL generated from a drawing): Undo and 
   await page.waitFor(() => window.Silinx.active?.schEditor && !document.querySelector('#toolbar .tb-btn[data-cmd=undo]').disabled, [], { what: 'Undo enabled' });
 });
 
-uiTest('#1193 a truth table\'s schematic: "Read-only, generated from …" at the end of its toolbar; Curved wires, the view only', E, async (page) => {
+uiTest('#1193 a truth table\'s schematic: "Read-only, generated from …" at the end of its toolbar; the Wires choice, the view only', E, async (page) => {
   await makeProject(env, { name: 'RoTt', files: ttFiles() });
   await page.openProject('RoTt');
   await page.eval(() => window.SilinxApp.openTtSchematic('src/maj.tt.json'));
@@ -48,7 +48,7 @@ uiTest('#1193 a truth table\'s schematic: "Read-only, generated from …" at the
   const bar = await page.eval(() => {
     const tb = document.querySelector('.doc:not([hidden]) .se-toolbar'), b = tb.querySelector('.se-banner');
     return { text: b.textContent, last: [...tb.children].filter((e) => e.getClientRects().length).at(-1) === b, above: !!document.querySelector('.doc:not([hidden]) .tt-sch-bar'),
-      curved: !!tb.querySelector('.se-curved') };
+      curved: !!tb.querySelector('.se-wires') };
   });
   assert.deepEqual(bar, { text: 'Read-only, generated from maj.tt.json', last: true, above: false, curved: true });
   // the editing tools hidden (Undo / Redo among them, after Add I/O Marker since #1696): no separator first, doubled or last
@@ -56,12 +56,12 @@ uiTest('#1193 a truth table\'s schematic: "Read-only, generated from …" at the
     .map((e) => (e.classList.contains('se-sep') ? '|' : e.dataset.act || e.className.split(' ')[0])));
   assert.ok(!['undo', 'redo', 'rotate'].some((a) => shown.includes(a)), shown.join(' '));
   assert.ok(shown[0] !== '|' && !shown.some((e, i) => e === '|' && shown[i + 1] === '|'), shown.join(' '));
-  // Curved wires: the wires drawn as curves, the schematic (generated) not changed
+  // Wires ▸ Curved: the wires drawn as curves, the schematic (generated) not changed
   // (the curves: paths with Bézier segments; the hop-overs' paths are arcs)
   const curves = () => page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) svg .wire .wline')].filter((l) => /[CQ]/.test(l.getAttribute('d') || '')).length);
   assert.equal(await curves(page), 0);
   await page.click('.doc:not([hidden]) .se-btn[data-act=more]');
-  await page.click('.doc:not([hidden]) .se-curved input');
+  await page.click('.doc:not([hidden]) .se-wires [data-value=curved]');
   await page.waitFor(() => [...document.querySelectorAll('.doc:not([hidden]) svg .wire .wline')].some((l) => /[CQ]/.test(l.getAttribute('d') || '')), [], { what: 'curves' });
   assert.equal(await page.eval(() => window.Silinx.active.viewer.getDoc().wireStyle), undefined);
   // the link opens the table; in Portuguese

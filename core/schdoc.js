@@ -15,7 +15,7 @@
 //     hdl?:    { lang, context, generics: [{ name, type, default }], decls, arch },  // verbatim HDL
 //     generatedFile?: 'src/name.vhd',
 //     description?: 'text',                 // shown on the sheet, a comment in the generated HDL
-//     wireStyle?: 'curved',                 // the wires drawn as curves (#1144); else the technical drawing
+//     wireStyle?: 'direct' | 'curved',      // the wires drawn straight (#4081) or as curves (#1144); else orthogonal (core/wire-style.js)
 //     graphics?: [{ id, kind, ... }] }      // drawings with no function: text, lines, … (#2593, core/schgraphics.js)
 //
 // (x, y) of a symbol is the top-left corner of its (rotated) bounding box; rotation is clockwise.
@@ -28,6 +28,7 @@ import { VHDL93_WORDS, VERILOG_WORDS, reservedError } from './reserved.js';
 import { BLOCK_MARK, blockMarkOf, declaredIn, generateHdl, isBlockSymbol } from './schdoc-hdl.js';
 import { mergeNetWires } from './schdoc-place.js';
 import { normalizeCurve, splitCurve } from './schcurve.js';
+import { normalizeWireStyle } from './wire-style.js';
 import { normalizeGraphic } from './schgraphics.js';
 import { moveTaps, widenBuffers, widenJoins, widenMuxes } from './schdoc-upgrade.js';
 import { symbolDiff } from './schdoc-modsym.js';
@@ -177,8 +178,8 @@ export function normalizeDoc(d, { modules } = {}) {
         .map(g => { const o = { ...g, name: String(g.name) }; for (const k of ['type', 'default']) if (o[k] != null) o[k] = asText(o[k], ''); return o; });
     }
   }
-  // (drawn with curves, #1144; else the technical drawing)
-  if (doc.wireStyle !== 'curved') delete doc.wireStyle;
+  // (drawn straight, #4081, or with curves, #1144; else the technical drawing)
+  normalizeWireStyle(doc);
   delete doc.importDiagnostics;
   // (a document of version 2 whose module symbols are not known yet stays at version 2, converted when they are:
   // its multiplexers then too)
@@ -667,7 +668,7 @@ export function splitWiresAt(doc, pts, ids = null) {
       if (w.bus) t.bus = true;
       // (its own curve shared between the two, #1144)
       const hc = { points: head };
-      splitCurve(w, hc, t, p);
+      splitCurve(w, hc, t, p, doc.wireStyle);
       w.points = head;
       if (hc.curve) w.curve = hc.curve;
       doc.wires.splice(j + 1, 0, t);

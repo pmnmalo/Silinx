@@ -52,7 +52,8 @@ const getDoc = page => page.eval(() => window.Silinx.active.schEditor.getDoc());
 // the wires as drawn: [id, 'poly' | the path's d]
 const drawn = page => page.eval((ed) => [...document.querySelectorAll(`${ed} svg .wire`)].map((g) => { const l = g.querySelector('.wline'); return [g.dataset.id, l.tagName === 'polyline' ? 'poly' : l.getAttribute('d')]; }), ED);
 const handles = page => page.eval((ed) => [...document.querySelectorAll(`${ed} svg .chandle .cdot`)].map((c) => ({ x: +c.getAttribute("cx"), y: +c.getAttribute("cy") })), ED);
-const box = page => page.eval((ed) => document.querySelector(`${ed} .se-curved input`).checked, ED);
+// the ⋮ menu's Wires choice (#4081): the style with its ✓
+const box = page => page.eval((ed) => document.querySelector(`${ed} .se-wires [aria-checked=true]`)?.dataset.value, ED);
 const segDist = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy); };
 const near = (a, b, tol = 1.5) => Math.hypot(a.x - b.x, a.y - b.y) <= tol;
 
@@ -92,11 +93,11 @@ const wave = (a, b, n = 16, amp = 40) => Array.from({ length: n + 1 }, (_, i) =>
 // Curved wires ticked (by a click or a tap): the schematic's style, every wire a curve as core/schcurve.js draws it
 async function tick(page, how = 'click') {
   await openMenu(page);
-  await page[how](`${ED} .se-curved input`);
+  await page[how](`${ED} .se-wires [data-value=curved]`);
   await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wireStyle === 'curved', [], { what: 'curved' });
   const d = await getDoc(page);
   assert.deepEqual(await drawn(page), d.wires.map(w => [w.id, curveD(w)]), 'every wire drawn as its curve');
-  assert.equal(await box(page), true);
+  assert.equal(await box(page), 'curved');
 }
 // a wire drawn by a stroke between two points: its rectilinear path the router's, its curve through the stroke
 async function strokeWire(page, how, from, to) {
@@ -128,9 +129,9 @@ async function strokeWire(page, how, from, to) {
 
 uiTest('#1144 schematic: Curved wires by the mouse: ticked, handles dragged, a curve grabbed, a knot removed, wires drawn by clicks and by a stroke; the nets and HDL the same; unticked, saved, printed, in Portuguese', E, async (page) => {
   await open(page, 'CurvedMouse');
-  const label = () => page.eval((ed) => { const l = document.querySelector(`${ed} .se-curved`); return [l.textContent.trim(), l.title]; }, ED);
-  assert.deepEqual(await label(), ['Curved wires', 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)']);
-  assert.equal(await box(page), false, 'the technical drawing by default');
+  const label = () => page.eval((ed) => { const l = document.querySelector(`${ed} .se-wires`); return [[...l.children].map((e) => e.textContent.replace('✓', '').trim()), l.title]; }, ED);
+  assert.deepEqual(await label(), [['Wires', 'Direct', 'Orthogonal', 'Curved'], 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections, the nets and the HDL the same)']);
+  assert.equal(await box(page), 'orthogonal', 'the technical drawing by default');
   assert.deepEqual((await drawn(page)).map(x => x[1]), ['poly', 'poly', 'poly']);
   // ticked: W3 a curve rounding its two bends; Undo: square again; Redo: curved
   await tick(page);
@@ -138,10 +139,10 @@ uiTest('#1144 schematic: Curved wires by the mouse: ticked, handles dragged, a c
   await page.click(`#toolbar [data-cmd=undo]`);
   await page.waitFor(() => !window.Silinx.active.schEditor.getDoc().wireStyle, [], { what: 'undone' });
   assert.deepEqual((await drawn(page)).map(x => x[1]), ['poly', 'poly', 'poly']);
-  assert.equal(await box(page), false, 'the box follows Undo');
+  assert.equal(await box(page), 'orthogonal', 'the ✓ follows Undo');
   await page.click(`#toolbar [data-cmd=redo]`);
   await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wireStyle === 'curved', [], { what: 'redone' });
-  assert.equal(await box(page), true);
+  assert.equal(await box(page), 'curved');
 
   // W3 selected by a click on its curve: its two handles (the derived knots); one dragged to (200, 40)
   const w3 = (await getDoc(page)).wires.find(w => w.id === 'W3');
@@ -221,14 +222,14 @@ uiTest('#1144 schematic: Curved wires by the mouse: ticked, handles dragged, a c
   await page.key('Escape');
   await page.waitNoDialog();
 
-  // unticked: the technical drawing, the curves kept in the document; saved: opened again as it was left
+  // Orthogonal: the technical drawing, the curves kept in the document; saved: opened again as it was left
   await openMenu(page);
-  await page.click(`${ED} .se-curved input`);
+  await page.click(`${ED} .se-wires [data-value=orthogonal]`);
   await page.waitFor(() => !window.Silinx.active.schEditor.getDoc().wireStyle, [], { what: 'rectilinear' });
   assert.deepEqual((await drawn(page)).map(x => x[1]), dNow.wires.map(() => 'poly'));
   assert.deepEqual((await getDoc(page)).wires.map(x => x.curve), dNow.wires.map(x => x.curve), 'the curves kept');
   await openMenu(page);
-  await page.click(`${ED} .se-curved input`);
+  await page.click(`${ED} .se-wires [data-value=curved]`);
   await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wireStyle === 'curved', [], { what: 'curved' });
   await page.eval(() => new Promise((r) => setTimeout(r, 800)));   // (saved: the editor's change, a moment later)
   await page.eval(() => { const x = window.SilinxApp.findDoc('sch:src/curved.sch.json'); if (x) window.SilinxApp.closeDoc(x); });
@@ -236,13 +237,13 @@ uiTest('#1144 schematic: Curved wires by the mouse: ticked, handles dragged, a c
   await page.eval(() => window.SilinxApp.openSch('src/curved.sch.json'));
   await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym`).length === 3, [ED], { what: 'opened again' });
   assert.deepEqual(await getDoc(page), dNow, 'saved with its style and its curves');
-  assert.equal(await box(page), true);
+  assert.equal(await box(page), 'curved');
   assert.deepEqual(await drawn(page), dNow.wires.map(x => [x.id, curveD(x)]));
 
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor((ed) => document.querySelector(`${ed} .se-curved`)?.textContent.trim() === 'Fios curvos', [ED], { what: 'Portuguese' });
-  assert.deepEqual(await label(), ['Fios curvos', 'Desenhar os fios como curvas suaves de qualquer forma em vez dos cantos retos do desenho técnico (as ligações, as redes e o HDL iguais)']);
+  await page.waitFor((ed) => document.querySelector(`${ed} .se-wires [data-value=curved]`)?.textContent.replace('✓', '').trim() === 'Curvo', [ED], { what: 'Portuguese' });
+  assert.deepEqual(await label(), [['Fios', 'Direto', 'Ortogonal', 'Curvo'], 'Como os fios são desenhados: a direito de ponta a ponta, as linhas horizontais e verticais do desenho técnico, ou curvas suaves de qualquer forma (as ligações, as redes e o HDL os mesmos)']);
   await page.hover(await at(page, P(200, 450)));
   assert.match(await page.eval((ed) => document.querySelector(`${ed} .hint`).textContent, ED), /^Fios curvos: clique num fio e arraste o fio ou as suas pegas/);
   await page.click(await at(page, curvePointAt(dNow.wires.find(x => x.id === 'W3'), 0.3)));
@@ -295,7 +296,7 @@ uiTest('#1144 Tasks ▸ Design: Curved wires in Portuguese, a stroke by a finger
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await open(page, 'CurvedTasks');
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .se-curved`).textContent.trim(), ED), 'Fios curvos');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .se-wires [data-value=curved]`).textContent.replace('✓', '').trim(), ED), 'Curvo');
   await tick(page);
   await page.click(`${ED} .se-btn[data-act=wire]`);
   await page.hover(await at(page, P(200, 450)));
@@ -363,16 +364,16 @@ uiTest('#1163 schematic: Curved wires hop where they cross (Hop-overs ticked); o
 // (a symbol that is not an input selected by a click) stay enabled, the circuit still running
 uiTest('#1175 Curved wires before Hop-overs; in Try it, Curved wires and Symbol Info enabled', E, async (page) => {
   await open(page, 'CurvedTry');
-  const order = await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).children].map((e) => e.className.match(/se-(curved|hops)/)?.[1] || e.dataset.act).filter(Boolean), ED);
-  assert.deepEqual(order, ['rewire', 'relayout', 'curved', 'hops']);
+  const order = await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).children].map((e) => e.className.match(/se-(wires|hops)/)?.[1] || e.dataset.act).filter(Boolean), ED);
+  assert.deepEqual(order, ['rewire', 'relayout', 'wires', 'hops']);
   await page.click(`${ED} .se-btn[data-act=sim]`);
   await page.waitFor((ed) => document.querySelector(ed).classList.contains('sim-mode') && window.Silinx.active.schEditor.isLive?.() !== false, [ED], { what: 'Try it' });
   // (not greyed out by Try it: it takes clicks)
   const usable = (sel) => page.eval((ed, s) => getComputedStyle(document.querySelector(`${ed} ${s}`)).pointerEvents !== 'none', ED, sel);
-  assert.deepEqual([await usable('.se-curved'), await usable('.se-btn[data-act=more]'), await usable('.se-btn[data-act=rotate]')], [true, true, false]);
+  assert.deepEqual([await usable('.se-wires'), await usable('.se-btn[data-act=more]'), await usable('.se-btn[data-act=rotate]')], [true, true, false]);
   // Curved wires ticked in Try it: the wires drawn as curves, the schematic says so, Try it still on
   await openMenu(page);
-  await page.click(`${ED} .se-curved input`);
+  await page.click(`${ED} .se-wires [data-value=curved]`);
   await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wireStyle === 'curved', [], { what: 'curved' });
   assert.ok((await drawn(page)).some(([, d]) => d !== 'poly'), 'a curve drawn');
   assert.ok(await page.eval((ed) => document.querySelector(ed).classList.contains('sim-mode'), ED));

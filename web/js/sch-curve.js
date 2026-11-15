@@ -1,87 +1,92 @@
-// The schematic editor's curved wires (#1144, core/schcurve.js): with Curved wires ticked (the schematic's wireStyle),
-// every wire drawn as a smooth curve between its ends: its own curve when it has one, else one derived from its
+// The schematic editor's curved wires (#1144, core/schcurve.js): the ⋮ menu's Wires choice (#4081, core/wire-style.js:
+// Direct, Orthogonal, Curved, the schematic's wireStyle); Curved, every wire drawn as a smooth curve between its ends: its own curve when it has one, else one derived from its
 // rectilinear path, hopping where they cross (#1163); the net names and bus names on the curves; a wire's curve found
 // under the pointer (the point of its rectilinear path answering it: where a wire ends on it, or a name or a marker is
 // put, connects); the selected wire's handles (its knots), dragged to reshape it, a press on the curve itself grabbing
 // it there, a double click on a handle removing it (redrawn in place while dragged: the element under the finger
 // kept, so that its touch sequence ends where it began); a wire drawn by clicks or by a stroke keeping the points it
-// was drawn through.
+// was drawn through. Direct, the same with straight lines between its knots (a straight line from end to end when it
+// has no curve of its own).
 // mountSchCurve(ctx) is called by mountSchEditor.
 import {
-  isCurved, curveD, curveHopD, curveCrossings, curveKnots, curveNearest, curvePointAt, curveToPath, pathFraction, sampleCurve, setCurve,
+  curveD, curveHopD, curveCrossings, curveKnots, curveNearest, curvePointAt, curveToPath, pathFraction, sampleCurve, setCurve,
 } from '/core/schcurve.js';
 import { GRID } from '/core/schdoc.js';
-import { esc, h } from './dom.js';
+import { WIRE_STYLES, WIRE_STYLE_TITLE, setWireStyle, wireStyleOf } from '/core/wire-style.js';
+import { esc } from './dom.js';
+import { menuChoice, setChoice } from './toolbar-menu.js';
 import { clone, onSeg } from './sch-editor.js';
 
-/** { box, curved, setCurved, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot,
+/** { items, style, free, setStyle, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot,
  *  cancelKnot, removeKnot } of a schematic editor (doc(), sel(), view(): its current ones). */
 export function mountSchCurve(ctx) {
   const { doc, sel, oneWire, view, live, readOnly, edit, render, renderProps, snapshot, pushUndo, changed, contentG } = ctx;
-  // (a read-only view, #1193: drawn with curves or not by the viewer's choice, the schematic untouched)
-  let viewCurved = null;
-  const curved = () => (readOnly && viewCurved !== null ? viewCurved : isCurved(doc()));
-  // the toolbar's Curved wires (sch-toolbar.js), kept as the schematic is by updateToolbar
-  const box = h('input', { type: 'checkbox', checked: curved() });
-  box.addEventListener('change', () => { setCurved(box.checked); box.checked = curved(); });
-  // Curved wires ticked or not: an edit of the schematic (saved with it, undone by Undo)
-  function setCurved(on) {
-    if (on === curved()) return;
-    if (readOnly) { viewCurved = on; render(); return; }
-    const set = () => { if (on) doc().wireStyle = 'curved'; else delete doc().wireStyle; };
+  // (a read-only view, #1193: drawn in the viewer's choice of style, the schematic untouched)
+  let viewStyle = null;
+  const style = () => (readOnly && viewStyle !== null ? viewStyle : wireStyleOf(doc()));
+  // drawn through the wires' knots (Direct or Curved), not along their rectilinear paths
+  const free = () => style() !== 'orthogonal';
+  const curved = () => style() === 'curved';
+  // the ⋮ menu's Wires (sch-toolbar.js), its ✓ kept as the schematic is by updateToolbar (an Undo, #4081)
+  const items = menuChoice(WIRE_STYLE_TITLE, WIRE_STYLES.map(s => ({ value: s.id, label: s.label })), { value: style(), onChange: s => { setStyle(s); setChoice(items, style()); } });
+  // a style chosen: an edit of the schematic (saved with it, undone by Undo)
+  function setStyle(s) {
+    if (s === style()) return;
+    if (readOnly) { viewStyle = s; render(); return; }
+    const set = () => setWireStyle(doc(), s);
     // (in Try it too, where nothing else is edited: how the wires are drawn, not what they connect, #1175)
     if (live?.() && !readOnly) { const before = snapshot(); set(); pushUndo(before); changed(); render(); return; }
     edit(set);
   }
-  // a wire's line as an SVG path (curved), or null (the technical drawing: its polyline)
-  const wireD = w => (curved() ? curveD(w) : null);
+  // a wire's line as an SVG path (Direct or Curved), or null (the technical drawing: its polyline)
+  const wireD = w => (free() ? curveD(w, style()) : null);
   // hop-overs on the curves (#1163): wire id -> the lengths along its curve where it hops; its path with them
   function hops() {
     const m = new Map();
-    for (const c of curveCrossings(doc())) { let l = m.get(c.wire); if (!l) m.set(c.wire, l = []); l.push(c.s); }
+    for (const c of curveCrossings({ ...doc(), wireStyle: style() })) { let l = m.get(c.wire); if (!l) m.set(c.wire, l = []); l.push(c.s); }
     return m;
   }
-  const hopD = (w, s) => curveHopD(w, s);
+  const hopD = (w, s) => curveHopD(w, s, 16, style());
   // the wire being drawn through the points pts (its ends the first and the last)
   function previewD(pts) {
     if (pts.length < 2) return '';
     const w = { points: [pts[0], pts[pts.length - 1]] };
-    return curveD(setCurve(w, pts.slice(1, -1)));
+    return curveD(setCurve(w, pts.slice(1, -1)), style());
   }
   // the wire whose curve is within tol of pt: { w, at (the point of its rectilinear path answering pt), d }, or null
   function wireAt(pt, tol = 5 / Math.max(0.3, view().s)) {
     let best = null;
     for (const w of doc().wires) {
-      const n = curveNearest(w, pt);
+      const n = curveNearest(w, pt, style());
       if (n.d <= tol && (!best || n.d < best.d)) best = { w, d: n.d, f: n.f };
     }
-    return best && { w: best.w, d: best.d, at: curveToPath(best.w, pt, GRID) };
+    return best && { w: best.w, d: best.d, at: curveToPath(best.w, pt, GRID, style()) };
   }
   // where a net name is drawn: on its wire's curve (at the same fraction of its length), or where it is
   function labelAt(l) {
-    if (!curved()) return l;
+    if (!free()) return l;
     const w = doc().wires.find(x => x.points.some((q, i) => i + 1 < x.points.length && onSeg(l, q, x.points[i + 1])));
     if (!w) return l;
-    const p = curvePointAt(w, pathFraction(w, l));
+    const p = curvePointAt(w, pathFraction(w, l), style());
     return { x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 };
   }
   // where a bus's or a net's name is written along a curved wire: near its start, above the curve (or null when short)
   function wireText(w) {
-    const S = sampleCurve(w, 8);
+    const S = sampleCurve(w, 8, style());
     let len = 0;
     for (let i = 1; i < S.length; i++) len += Math.hypot(S[i].x - S[i - 1].x, S[i].y - S[i - 1].y);
     if (len < 30) return null;
-    const p = curvePointAt(w, 0.25);
+    const p = curvePointAt(w, 0.25, style());
     return { x: Math.round(p.x) + 4, y: Math.round(p.y) - 5 };
   }
   // the selected wire's handles (one wire or its network selected, the wire clicked; editable): a dot on each of its knots between its ends
   function handlesSvg() {
-    if (!curved() || readOnly || !oneWire()) return '';
+    if (!free() || readOnly || !oneWire()) return '';
     const k = [...sel()][0];
     if (!k.startsWith('wire:')) return '';
     const w = doc().wires.find(x => x.id === k.slice(5));
     if (!w) return '';
-    return curveKnots(w).slice(1, -1).map((p, i) => handleSvg(w, i, p)).join('');
+    return curveKnots(w, style()).slice(1, -1).map((p, i) => handleSvg(w, i, p)).join('');
   }
   function handleSvg(w, i, p) {
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
@@ -91,11 +96,11 @@ export function mountSchCurve(ctx) {
   // a wire reshaped while dragged: its curve and its handles moved in place (the one under the finger not replaced:
   // a touch whose element is removed ends elsewhere, and a browser may then lose the next tap's click)
   function redraw(w) {
-    const root = contentG?.(), d = curveD(w);
+    const root = contentG?.(), d = curveD(w, style());
     if (!root) { render(); return; }
     const g = [...root.querySelectorAll('g.wire')].find(e => e.dataset.id === w.id);
     for (const e of g ? g.querySelectorAll('.whit, .wline') : []) e.setAttribute('d', d);
-    const K = curveKnots(w).slice(1, -1), hs = [...root.querySelectorAll('.chandle')].filter(e => e.dataset.wire === w.id);
+    const K = curveKnots(w, style()).slice(1, -1), hs = [...root.querySelectorAll('.chandle')].filter(e => e.dataset.wire === w.id);
     K.forEach((p, i) => {
       if (!hs[i]) { root.insertAdjacentHTML('beforeend', handleSvg(w, i, p)); return; }
       hs[i].dataset.knot = i;
@@ -104,7 +109,7 @@ export function mountSchCurve(ctx) {
     for (const e of hs.slice(K.length)) e.remove();
   }
   // a wire within the selection band r (all of its curve)
-  const inBand = (w, r) => sampleCurve(w, 6).every(p => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+  const inBand = (w, r) => sampleCurve(w, 6, style()).every(p => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
 
   // ---------------- reshaping: a handle dragged (knot i), or the curve grabbed at pt (a knot added there once it moves)
   function beginKnot(id, i, pt) {
@@ -116,10 +121,10 @@ export function mountSchCurve(ctx) {
     const w = doc().wires.find(x => x.id === d.id);
     if (!w) return;
     if (!d.moved && Math.hypot(pt.x - d.start.x, pt.y - d.start.y) < 2 / Math.max(0.3, view().s)) return;
-    const K = curveKnots(w).slice(1, -1);
+    const K = curveKnots(w, style()).slice(1, -1);
     if (d.i == null) {
       // (the knot inserted where the curve was grabbed: between the knots before and after it along the curve)
-      const S = sampleCurve(w), f = nearestF(S, d.grab), fk = K.map(p => nearestF(S, p));
+      const S = sampleCurve(w, 16, style()), f = nearestF(S, d.grab), fk = K.map(p => nearestF(S, p));
       d.i = fk.filter(x => x < f).length;
       K.splice(d.i, 0, { ...d.grab });
     }
@@ -144,12 +149,12 @@ export function mountSchCurve(ctx) {
     edit(() => {
       const w = doc().wires.find(x => x.id === id);
       if (!w) return;
-      const K = curveKnots(w).slice(1, -1);
+      const K = curveKnots(w, style()).slice(1, -1);
       K.splice(i, 1);
       setCurve(w, K);
     }, { keepProps: true });
   }
   const nearestF = (S, p) => { let bi = 0, bd = Infinity; S.forEach((q, i) => { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; bi = i; } }); return bi / (S.length - 1); };
 
-  return { box, curved, setCurved, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot, cancelKnot, removeKnot };
+  return { items, style, free, curved, setStyle, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot, cancelKnot, removeKnot };
 }

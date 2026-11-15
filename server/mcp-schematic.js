@@ -6,6 +6,8 @@
 // moveJunction, the same refusal of a short and the same warning.
 // I/O markers on every open pin of an instance or of a region, as the Add I/O Marker tool's rectangle does (#4000):
 // core/schmarker-many.js, the same default names (in1, out1, io1…) and the same messages.
+// How its wires are drawn (#4081), as its editor's ⋮ menu's Wires does: core/wire-style.js's setWireStyle, Direct,
+// Orthogonal or Curved, the look only (what the wires connect and the HDL the same).
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 
@@ -112,6 +114,25 @@ export const SCHEMATIC_TOOLS = [
       return { text: [...M.markersText(plan), ...diags.map(d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}: ${d.message}`), ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, markers: added.map(({ id, name: n, dir, width }) => ({ id, name: n, dir, width })), skipped: plan.skipped,
           diagnostics: diags.map(d => ({ severity: d.severity, message: d.message })), ...hdlOf(sync) } };
+    },
+  },
+  {
+    name: 'set_wire_style', title: 'Set how a schematic\'s wires are drawn',
+    description: 'How the wires of a schematic (.sch.json) are drawn, as its editor\'s ⋮ menu\'s Wires does: direct (a straight line from end to end, or through the wire\'s own points), orthogonal (horizontal and vertical lines, the technical drawing, the default) or curved (smooth curves). The look only: each wire keeps its rectilinear path, so what it connects, the nets and the HDL are the same; an undoable edit in the editor.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'),
+      style: { type: 'string', enum: ['direct', 'orthogonal', 'curved'], description: 'How the wires are drawn.' },
+    }, required: ['project', 'path', 'style'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ project: name, path: rel, style }) {
+      const W = await import('../core/wire-style.js');
+      if (!W.isWireStyle(style)) throw toolError(`unknown wire style '${style}': ${W.WIRE_STYLES.map(x => x.id).join(', ')}`);
+      const { doc } = await openSchematic(name, rel);
+      const label = W.WIRE_STYLES.find(x => x.id === style).label;
+      if (W.wireStyleOf(doc) === style) return { text: `${rel}: the wires are already drawn ${label}`, data: { project: name, path: rel, style, changed: false } };
+      W.setWireStyle(doc, style);
+      const sync = await saveSchematic(name, rel, doc);
+      return { text: [`${rel}: the wires drawn ${label}`, ...(sync?.messages || [])].join('\n'), data: { project: name, path: rel, style, changed: true, ...hdlOf(sync) } };
     },
   },
 ];

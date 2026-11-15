@@ -49,6 +49,9 @@
 .sch-editor :is(.se-more-menu, .se-gfx-menu) .se-btn { justify-content: flex-start; }
 .sch-editor .se-more-menu .se-sep { width: auto; height: 1px; margin: 2px 0; box-shadow: none; }
 .sch-editor .se-more-menu label { min-height: 22px; }
+/* the Wires choice (#4081): its title and its three options, as a toolbar menu's choice (toolbar-menu.js menuChoice) */
+.sch-editor .se-more-menu .se-wires { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-size: 11px; }
+.sch-editor .se-more-menu .se-wires .tb-menu-item { white-space: nowrap; text-align: left; }
 /* Add Graphics' menu (#2593): under its button */
 .sch-editor .se-gfx { position: relative; display: inline-flex; }
 .sch-editor .se-gfx-menu { right: auto; left: 0; }

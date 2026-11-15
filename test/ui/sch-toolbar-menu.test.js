@@ -1,4 +1,4 @@
-// UI (#2208, #2209): the schematic toolbar's menu (Rearrange Wires, Rearrange Schematic, Curved wires, Hop-overs), its
+// UI (#2208, #2209): the schematic toolbar's menu (Rearrange Wires, Rearrange Schematic, Wires: Direct, Orthogonal, Curved, #4081, Hop-overs), its
 // button always at the right of the first line, whatever wraps; no Symbol Info button; Mirror Vertical, the symbols and
 // the I/O markers flipped as seen on the sheet, whatever their turn.
 import { before, after } from 'node:test';
@@ -33,8 +33,8 @@ const getDoc = (page) => page.eval(() => window.Silinx.active.schEditor.getDoc()
 uiTest('#2208 schematic toolbar: the menu at the right of the first line holds the four operations; no Symbol Info button; in Portuguese', E, async (page) => {
   await open(page, 'MenuPj');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .se-toolbar [data-act=info]`), ED), null);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).querySelectorAll('button, label')].map((e) => e.textContent.trim()), ED),
-    ['Rearrange Wires', 'Rearrange Schematic', 'Curved wires', 'Hop-overs']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).querySelectorAll('button, label, .tb-menu-title')].map((e) => e.textContent.replace('✓', '').trim()), ED),
+    ['Rearrange Wires', 'Rearrange Schematic', 'Wires', 'Direct', 'Orthogonal', 'Curved', 'Hop-overs']);
   // first line, right edge: also with the toolbar so narrow that it wraps
   const place = () => page.eval((ed) => {
     const tb = document.querySelector(`${ed} .se-toolbar`), r = tb.getBoundingClientRect(), b = document.querySelector(`${ed} .se-btn[data-act=more]`).getBoundingClientRect();
@@ -108,7 +108,7 @@ uiTest('#2209 schematic: Mirror Vertical and Mirror Horizontal flip a symbol as 
   assert.equal((await getDoc(page)).ports[1].side, before2, 'W stays');
 });
 
-uiTest('#2208 #2209 a read-only schematic: Curved wires and Hop-overs in the menu, no Rearrange, no Mirror Vertical', E, async (page) => {
+uiTest('#2208 #2209 a read-only schematic: Wires and Hop-overs in the menu, no Rearrange, no Mirror Vertical', E, async (page) => {
   await makeProject(env, { name: 'RoMenu', files: { 'src/flip.sch.json': JSON.stringify(design()) } });
   await page.openProject('RoMenu');
   const shown = await page.eval(async () => {
@@ -119,7 +119,7 @@ uiTest('#2208 #2209 a read-only schematic: Curved wires and Hop-overs in the men
     const ed = mountSchEditor(host, { readOnly: true });
     host.querySelector('.se-btn[data-act=more]').click();
     const vis = (s) => !!host.querySelector(s).getClientRects().length;
-    const r = ['.se-btn[data-act=more]', '.se-curved', '.se-hops', '[data-act=rewire]', '[data-act=relayout]', '[data-act=mirrorv]'].map(vis);
+    const r = ['.se-btn[data-act=more]', '.se-wires', '.se-hops', '[data-act=rewire]', '[data-act=relayout]', '[data-act=mirrorv]'].map(vis);
     host.querySelector('.se-btn[data-act=more]').click();
     ed.destroy(); host.remove();
     return r;

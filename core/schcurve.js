@@ -11,6 +11,10 @@
 //                                    straight line. Without one, the curve is derived from the rectilinear path (its
 //                                    bends rounded, the wire leaving its ends along its first and last segments).
 // The curve is a Catmull-Rom spline through its knots (the ends and the points between), drawn as cubic Béziers.
+// Drawn Direct (doc.wireStyle 'direct', #4081, core/wire-style.js), the same knots joined by straight lines: the
+// wire's own curve's points, or none (a straight line from end to end); its rectilinear path kept as it is, hidden,
+// what the wire connects. The functions that draw take that style, `st` (the schematic's wireStyle: 'direct', else
+// the curve).
 // Plain functions of the document, no editor state (web/js/sch-curve.js draws and edits them).
 
 const r1 = v => Math.round(v * 10) / 10;
@@ -20,8 +24,8 @@ const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t 
 /** The most knots a wire's own curve keeps. */
 export const MAX_KNOTS = 64;
 
-/** Whether the schematic is drawn with curves. */
-export const isCurved = doc => doc?.wireStyle === 'curved';
+// (drawn Direct: straight lines between the knots, #4081)
+const direct = st => st === 'direct';
 
 // the frame of a wire's ends: its origin, its axis (to the last end) and its normal (unit, to the axis's left)
 function frame(a, b) {
@@ -72,14 +76,16 @@ export function derivedKnots(P) {
   }
   return out;
 }
-/** The knots the wire's curve passes through: its ends and its own curve's points, or those derived from its path. */
-export function curveKnots(w) {
+/** The knots the wire's curve passes through: its ends and its own curve's points, or those derived from its path
+ *  (drawn Direct: none, a straight line, #4081). */
+export function curveKnots(w, st) {
   const [a, b] = ends(w);
-  return [a, ...(curveAbs(w) || derivedKnots(w.points)), b];
+  return [a, ...(curveAbs(w) || (direct(st) ? [] : derivedKnots(w.points))), b];
 }
-/** The wire's curve as cubic Béziers [[p0, c1, c2, p3], ...]. */
-export function curveBeziers(w) {
-  const Q = curveKnots(w), m = Q.length - 1, own = Array.isArray(w.curve);
+/** The wire's curve as cubic Béziers [[p0, c1, c2, p3], ...] (drawn Direct: its straight lines, as Béziers). */
+export function curveBeziers(w, st) {
+  const Q = curveKnots(w, st), m = Q.length - 1, own = Array.isArray(w.curve);
+  if (direct(st)) return Q.slice(1).map((q, i) => [Q[i], lerp(Q[i], q, 1 / 3), lerp(Q[i], q, 2 / 3), q]);
   if (m === 1) return [[Q[0], lerp(Q[0], Q[1], 1 / 3), lerp(Q[0], Q[1], 2 / 3), Q[1]]];
   // the tangents: Catmull-Rom's inside; at the ends towards the next knot, or (a derived curve) along the path's
   // first and last segments, so that the wire leaves a pin straight as in the technical drawing
@@ -100,9 +106,11 @@ export function curveBeziers(w) {
   }
   return out;
 }
-/** The wire's curve as an SVG path ('M… C…', or 'M… L…' for a straight one). */
-export function curveD(w) {
-  const B = curveBeziers(w), p = q => `${r1(q.x)},${r1(q.y)}`;
+/** The wire's curve as an SVG path ('M… C…', or 'M… L…' for a straight one; drawn Direct, 'M… L… L…'). */
+export function curveD(w, st) {
+  const p = q => `${r1(q.x)},${r1(q.y)}`;
+  if (direct(st)) { const K = curveKnots(w, st); return `M${p(K[0])}` + K.slice(1).map(q => ` L${p(q)}`).join(''); }
+  const B = curveBeziers(w);
   if (B.length === 1 && !Array.isArray(w.curve) && w.points.length === 2) return `M${p(B[0][0])} L${p(B[0][3])}`;
   return `M${p(B[0][0])}` + B.map(([, c1, c2, e]) => ` C${p(c1)} ${p(c2)} ${p(e)}`).join('');
 }
@@ -110,8 +118,9 @@ const bez = ([p0, c1, c2, p3], t) => {
   const s = 1 - t, a = s * s * s, b = 3 * s * s * t, c = 3 * s * t * t, d = t * t * t;
   return { x: a * p0.x + b * c1.x + c * c2.x + d * p3.x, y: a * p0.y + b * c1.y + c * c2.y + d * p3.y };
 };
-/** The curve as a polyline (`n` steps per Bézier). */
-export function sampleCurve(w, n = 16) {
+/** The curve as a polyline (`n` steps per Bézier; drawn Direct, its knots). */
+export function sampleCurve(w, n = 16, st) {
+  if (direct(st)) return curveKnots(w, st).map(q => ({ x: q.x, y: q.y }));
   const out = [];
   for (const B of curveBeziers(w)) for (let i = out.length ? 1 : 0; i <= n; i++) out.push(bez(B, i / n));
   return out;
@@ -144,17 +153,17 @@ function pointAt(pts, f) {
   return { ...pts[0] };
 }
 /** The point of the wire's curve nearest p: { d (its distance), f (its fraction of the curve's length), q (the point) }. */
-export const curveNearest = (w, p) => nearest(sampleCurve(w), p);
+export const curveNearest = (w, p, st) => nearest(sampleCurve(w, 16, st), p);
 /** The point at the fraction f of the curve's length / of the rectilinear path's. */
-export const curvePointAt = (w, f) => pointAt(sampleCurve(w), f);
+export const curvePointAt = (w, f, st) => pointAt(sampleCurve(w, 16, st), f);
 export const pathPointAt = (w, f) => pointAt(w.points, f);
 /** The fraction of the rectilinear path's length at its point p (the nearest). */
 export const pathFraction = (w, p) => nearest(w.points, p).f;
 
 /** The point of the wire's rectilinear path (on the grid, of `grid` px) answering the point p of its curve: the same
  *  fraction of their lengths. Where a wire ended on a curve, or a net name or a marker put on it, connects (#678). */
-export function curveToPath(w, p, grid = 10) {
-  const q = pathPointAt(w, curveNearest(w, p).f);
+export function curveToPath(w, p, grid = 10, st) {
+  const q = pathPointAt(w, curveNearest(w, p, st).f);
   const P = w.points;
   let best = null, bd = Infinity;
   for (let i = 0; i + 1 < P.length; i++) {
@@ -168,9 +177,9 @@ export function curveToPath(w, p, grid = 10) {
 
 /** A wire split at p (its rectilinear path's point) into head and tail (their `points` set, #678): its own curve's
  *  knots shared between them at the same fraction of its length, each kept where it was on the sheet. */
-export function splitCurve(w, head, tail, p) {
+export function splitCurve(w, head, tail, p, st) {
   if (!Array.isArray(w.curve)) return;
-  const f = pathFraction(w, p), K = curveAbs(w), S = sampleCurve(w);
+  const f = pathFraction(w, p), K = curveAbs(w), S = sampleCurve(w, 16, st);
   const fk = K.map(k => nearest(S, k).f);
   setCurve(head, K.filter((k, i) => fk[i] < f));
   setCurve(tail, K.filter((k, i) => fk[i] > f));
@@ -199,8 +208,8 @@ export function simplify(pts, tol) {
 /** The radius of a hop (sheet px), as the technical drawing's (#692). */
 const HOP_R = 5;
 // a curve as a polyline and its cumulative lengths, its bounding box
-function track(w, n) {
-  const S = sampleCurve(w, n), L = lengths(S);
+function track(w, n, st) {
+  const S = sampleCurve(w, n, st), L = lengths(S);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of S) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
   return { w, S, L, box: { x0, y0, x1, y1 } };
@@ -216,7 +225,7 @@ function cross(a, b, c, d) {
  *  horizontal of the two there, as the horizontal one in the technical drawing, #692) and the length along its
  *  curve. Not within a hop of either wire's end (a pin, a junction, a wire ended on another). A view only. */
 export function curveCrossings(doc, n = 12) {
-  const T = doc.wires.map(w => track(w, n)), out = [], near = HOP_R + 2;
+  const T = doc.wires.map(w => track(w, n, doc.wireStyle)), out = [], near = HOP_R + 2;
   const nearEnd = (k, s) => s < near || T[k].L[T[k].L.length - 1] - s < near;
   for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) {
     const A = T[i], B = T[j];
@@ -236,8 +245,8 @@ export function curveCrossings(doc, n = 12) {
 }
 /** The wire's curve as an SVG path with a hop (an arc of HOP_R) at each length s along it (curveCrossings's): the
  *  curve as a fine polyline, the arc bulging up (to the left going down). Hops overlapping another or an end left out. */
-export function curveHopD(w, hops, n = 16) {
-  const S = sampleCurve(w, n), L = lengths(S), tot = L[L.length - 1], p = q => `${r1(q.x)},${r1(q.y)}`;
+export function curveHopD(w, hops, n = 16, st) {
+  const S = sampleCurve(w, n, st), L = lengths(S), tot = L[L.length - 1], p = q => `${r1(q.x)},${r1(q.y)}`;
   const at = s => pointAt(S, s / tot);
   let d = `M${p(S[0])}`, k = 1, last = 0;
   for (const s of [...hops].sort((a, b) => a - b)) {

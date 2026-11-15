@@ -1,6 +1,6 @@
 // The schematic editor's toolbar (#405: out of mountSchEditor in sch-editor.js): its tools and buttons (Select, Wire,
 // Net Name, I/O Marker, Rotate, Mirror Horizontal / Vertical (#2209), Delete, the zooms, Keep connections, Select whole branch (#2211), Names, Check, Try it, the panels on a narrow
-// screen; the menu at the right of the first line, #2208: Rearrange Wires / Rearrange Schematic (#1481, #1506, #1730), Curved wires (#1144), Hop-overs), the editing ones hidden when read-only, and their clicks.
+// screen; the menu at the right of the first line, #2208: Rearrange Wires / Rearrange Schematic (#1481, #1506, #1730), Wires: Direct, Orthogonal, Curved (#1144, #4081), Hop-overs), the editing ones hidden when read-only, and their clicks.
 import { PROPS_KEY, SYMBOLS_KEY, panelToggle } from './narrow.js';
 import { h } from './dom.js';
 import { ICON } from './sch-editor.js';
@@ -10,7 +10,7 @@ import { designKind } from './project-kind-flag.js';
 /** { optBox } of mountSchEditor (live(): its current values). */
 export function mountSchToolbar(ctx) {
   const {
-    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, curvedBox, deleteSel, enterSim, fit, hopsBox, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
+    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems, deleteSel, enterSim, fit, hopsBox, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
     readOnly, rotateSel, runCheck, sep, setTool, tb, zoomAt
   } = ctx;
 
@@ -21,10 +21,10 @@ export function mountSchToolbar(ctx) {
     // (#1730: the wires only, the symbols where they are; or the whole schematic, its symbols moved where needed)
     h('button', { type: 'button', class: 'se-btn wide', 'data-act': 'rewire', title: 'Rearrange Wires: draw the wires again with few bends and crossings, the symbols, I/O markers and net names where they are; with a selection, only its wires. The connections stay the same', html: `${ICON.rewire}<span>Rearrange Wires</span>` }),
     h('button', { type: 'button', class: 'se-btn wide', 'data-act': 'relayout', title: 'Rearrange Schematic: lay the whole schematic out again, easier to read (the inputs on the left, the outputs on the right, the symbols moved in the order of the signals, the wires with few bends and crossings). The connections stay the same', html: `${ICON.beautify}<span>Rearrange Schematic</span>` }),
-    // (Curved wires, how the wires are drawn, before Hop-overs, #1175)
-    h('span', { class: 'se-sep' }), h('label', { class: 'se-curved', title: designKind() ? 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections and the nets the same)'
-      : 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)' },
-      curvedBox, h('span', { text: 'Curved wires' })),
+    // (Wires, how the wires are drawn: Direct, Orthogonal, Curved, #4081; before Hop-overs, #1175)
+    h('span', { class: 'se-sep' }), h('div', { class: 'se-wires', role: 'group', title: designKind() ? 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections and the nets the same)'
+      : 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections, the nets and the HDL the same)' },
+      ...wireItems),
     h('label', { class: 'se-hops', title: 'Draw a small arc where two wires cross without connecting' }, hopsBox, h('span', { text: 'Hop-overs' })),
   );
   const moreBtn = h('button', { type: 'button', class: 'se-btn', 'data-act': 'more', title: 'Wires and layout', 'aria-haspopup': 'true', 'aria-expanded': 'false', html: ICON.more });

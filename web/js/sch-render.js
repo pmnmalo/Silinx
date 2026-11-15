@@ -9,6 +9,7 @@ import { snap } from './sch-editor.js';
 import { graphicSvg } from '/core/schgraphics.js';
 import { arrayedDef } from '/core/sch-array.js';
 import { GRAPHIC_TOOLS, graphicGhost } from './sch-graphics.js';
+import { setChoice } from './toolbar-menu.js';
 
 /** { renderSheet, render, renderOverlay, updateToolbar, updateStatus } of a schematic editor (state(): its current
  *  document, netlist, selection, tool, … at the time of the call; refreshNetlist() computes the netlist again). */
@@ -41,10 +42,10 @@ export function mountRender(ctx) {
     if (nl) for (const [wid, n] of nl.wireNet) busW.set(wid, n.width);
     // wires (Hop-overs: the crossings of each, by segment, #692)
     let hops = null;
-    const cv = curve, curved = cv.curved();
-    // (curved wires, #1144: their hops where their curves cross, #1163)
-    const curveHops = showHops && curved ? cv.hops() : null;
-    if (showHops && !curved) {
+    const cv = curve, free = cv.free();
+    // (curved wires, #1144, or Direct, #4081: their hops where their curves cross, #1163)
+    const curveHops = showHops && free ? cv.hops() : null;
+    if (showHops && !free) {
       hops = new Map();
       for (const c of wireCrossings(doc)) { let m = hops.get(c.wire); if (!m) hops.set(c.wire, m = new Map()); let l = m.get(c.seg); if (!l) m.set(c.seg, l = []); l.push(c.x); }
     }
@@ -75,7 +76,7 @@ export function mountRender(ctx) {
         if (runNamed.has(run.get(w.id))) continue;
         runNamed.add(run.get(w.id));
         const txt = `<text class="busname${named ? '' : ' netname'}" x="%X" y="%Y" text-anchor="start">${esc(n.width > 1 ? `${n.name}(${n.width - 1}:0)` : n.name)}</text>`;
-        if (curved) {
+        if (free) {
           const at = cv.wireText(w);
           if (!at) continue;
           if (!named) once.add(n.id);
@@ -142,7 +143,7 @@ export function mountRender(ctx) {
     if (tool === 'wire' && wireDraw) {
       const pts = [...wireDraw.pts, ...routeTo(wireDraw.pts[wireDraw.pts.length - 1], snapPoint(cursor), wireDraw)];
       // (curved, #1144: the curve through the points clicked)
-      if (curve.curved()) s += `<path class="wire-preview" d="${curve.previewD(pts)}"/>`;
+      if (curve.free()) s += `<path class="wire-preview" d="${curve.previewD(pts)}"/>`;
       else s += `<polyline class="wire-preview" points="${pts.map(p => `${p.x},${p.y}`).join(' ')}"/>`;
     }
     // a freehand stroke (#1052): its ink trail
@@ -158,7 +159,7 @@ export function mountRender(ctx) {
   }
   function updateToolbar() {
     const { live, tool, sel, doc } = state();
-    curve.box.checked = doc.wireStyle === 'curved';
+    setChoice(curve.items, curve.style());   // (the Wires choice's ✓: an Undo, #4081)
     tb.querySelectorAll('[data-act]').forEach(b => b.classList.toggle('on', live ? b.dataset.act === 'sim' : b.dataset.act === tool || (b.dataset.act === 'graphics' && GRAPHIC_TOOLS.includes(tool))));
     const any = sel.size > 0;
     tb.querySelector('[data-act="delete"]').disabled = !any;
@@ -185,10 +186,15 @@ export function mountRender(ctx) {
     select: 'Curved wires: click a wire, then drag the wire or its handles to reshape it (double-click a handle to remove it). Drag a symbol to move it, its wires following.',
     wire: 'Add Wire (curved): click to start, click to add points the curve passes through, click on a pin/wire or double-click to finish; or draw a stroke of any shape from a pin/wire to another.',
   };
+  // (Direct wires, #4081: straight lines through their points)
+  const DIRECT_HINT = {
+    select: 'Direct wires: click a wire, then drag the wire or its handles to bend it (double-click a handle to remove it). Drag a symbol to move it, its wires following.',
+    wire: 'Add Wire (direct): click to start, click to add points the wire passes through, click on a pin/wire or double-click to finish; or draw a stroke from a pin/wire to another.',
+  };
   function updateStatus() {
     const { doc, nl, live, tool, cursor, view } = state();
     const n = doc.symbols.length;
-    const tip = live ? 'Try it: click the inputs (switches, bus values, clocks), hover a wire or pin to see its value, drag to pan. Esc stops.' : readOnly ? 'Read-only view. Drag on empty space to select, double-click a module to open it, wheel to zoom.' : ((doc.wireStyle === 'curved' && CURVED_HINT[tool]) || TOOL_HINT[tool] || '');
+    const tip = live ? 'Try it: click the inputs (switches, bus values, clocks), hover a wire or pin to see its value, drag to pan. Esc stops.' : readOnly ? 'Read-only view. Drag on empty space to select, double-click a module to open it, wheel to zoom.' : ((doc.wireStyle === 'curved' && CURVED_HINT[tool]) || (doc.wireStyle === 'direct' && DIRECT_HINT[tool]) || TOOL_HINT[tool] || '');
     // (its errors and warnings are the console's, #2784)
     status.set([`${n} symbol${n === 1 ? '' : 's'}, ${nl ? nl.nets.length : 0} nets`, { text: `X ${snap(cursor.x)} Y ${snap(cursor.y)}`, cls: 'xy' },
       { text: `${Math.round(view.s * 100)}%`, cls: 'zoom' }], tip);

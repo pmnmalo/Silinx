@@ -83,13 +83,13 @@ export function mountSchMouse(ctx) {
       const fresh = !sel().has(k) || (it.kind === 'wire' && segSel.oneWire() && [...sel()].join() !== [...next].join());
       if (fresh) setSel(next);
       // (Select whole branch off, #2211: the segment clicked; the wire's properties the same)
-      const segChanged = it.kind === 'wire' && !readOnly && !wholeBranch() && !curve.curved() && sel().size === 1 ? segSel.pick(it.id, pt) : segSel.clear();
+      const segChanged = it.kind === 'wire' && !readOnly && !wholeBranch() && !curve.free() && sel().size === 1 ? segSel.pick(it.id, pt) : segSel.clear();
       if (fresh || segChanged) render();
       if (fresh) renderProps();
       if (e.detail >= 2) return;            // handled by the dblclick listener
       // one wire or its network, Keep connections: the segment under the pointer is dragged, the rest stays (#688)
       // (curved, #1144: one wire, its curve grabbed where pressed)
-      if (!readOnly && it.kind === 'wire' && curve.curved() && segSel.oneWire()) { setDrag({ ...curve.beginKnot(it.id, null, pt), sel0 }); return; }
+      if (!readOnly && it.kind === 'wire' && curve.free() && segSel.oneWire()) { setDrag({ ...curve.beginKnot(it.id, null, pt), sel0 }); return; }
       if (!readOnly && it.kind === 'wire' && keepConn() && segSel.oneWire()) { const sd = beginSegMove(it.id, pt); if (sd) { setDrag({ ...sd, sel0 }); return; } }
       if (!readOnly) setDrag({ ...beginMove({ x: snap(pt.x), y: snap(pt.y) }), sel0 });
       return;

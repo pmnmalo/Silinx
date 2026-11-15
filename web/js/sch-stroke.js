@@ -22,7 +22,7 @@ export function mountStroke(ctx) {
     const tol = 12 / Math.max(0.3, view().s);
     const p = pinNear(pt, tol);
     if (p) return { x: p.x, y: p.y };
-    if (curve().curved()) return curve().wireAt(pt, tol)?.at || null;   // (on a curve, #1144)
+    if (curve().free()) return curve().wireAt(pt, tol)?.at || null;   // (on a curve, #1144)
     const clamp = (v, a, b) => Math.max(Math.min(a, b), Math.min(Math.max(a, b), v));
     let best = null, bd = tol;
     for (const w of doc().wires) for (let i = 0; i + 1 < w.points.length; i++) {
@@ -51,7 +51,7 @@ export function mountStroke(ctx) {
     if (!d.inking) return;
     const to = endAt(pt), from = d.from;
     if (!to || (to.x === from.x && to.y === from.y)) { renderOverlay(); return; }
-    if (curve().curved()) {
+    if (curve().free()) {
       // (curved, #1144: the stroke's points, simplified, between the two ends; the path routed by finishWire)
       const near = 4 / Math.max(0.3, view().s), far = q => Math.hypot(q.x - from.x, q.y - from.y) > near && Math.hypot(q.x - to.x, q.y - to.y) > near;
       const mid = simplify(d.ink, 3 / Math.max(0.3, view().s)).slice(1, -1).filter(far);

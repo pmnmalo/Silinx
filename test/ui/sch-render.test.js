@@ -122,7 +122,7 @@ uiTest('#405 schematic drawing: the overlay of each tool (a symbol placed, a wir
   assert.deepEqual(out.band, [['band'], '30']);
 });
 
-uiTest('#1144 schematic drawing: Curved wires: each wire its curve (core/schcurve.js), no hops, the net name on the curve, the selected wire\'s handles, the box ticked, the curve previewed', E, async (page) => {
+uiTest('#1144 schematic drawing: Curved wires: each wire its curve (core/schcurve.js), no hops, the net name on the curve, the selected wire\'s handles, the Wires choice\'s ✓ (#4081), the curve previewed; Direct: straight lines', E, async (page) => {
   await page.eval(MOUNT);
   const out = await page.eval(async () => {
     const C = await import('/core/schcurve.js');
@@ -134,7 +134,8 @@ uiTest('#1144 schematic drawing: Curved wires: each wire its curve (core/schcurv
     r.render();
     o.wires = q('.se-content g[data-kind=wire]').map((g) => [g.dataset.id, g.querySelector('.wline').tagName, g.querySelector('.wline').getAttribute('d') === C.curveD(st.doc.wires.find((w) => w.id === g.dataset.id)), g.querySelector('.whit').getAttribute('d') === g.querySelector('.wline').getAttribute('d')]);
     o.handles = q('.se-content .chandle .cdot').map((c) => [+c.getAttribute('cx'), +c.getAttribute('cy')]);
-    o.box = curve.box.checked;
+    const ticked = () => curve.items.find((i) => i.getAttribute?.('aria-checked') === 'true')?.dataset.value;
+    o.box = ticked();
     // the net name L1 at W3's end (300, 500): on the curve's end, the same point
     o.label = q('.se-content g[data-kind=label] .lpt').map((c) => [+c.getAttribute('cx'), +c.getAttribute('cy')]);
     // a net name in the middle of W3's path: drawn on its curve, at the same fraction of its length
@@ -146,17 +147,26 @@ uiTest('#1144 schematic drawing: Curved wires: each wire its curve (core/schcurv
     r.renderOverlay();
     // (the points drawn and the route to the cursor, this test's routeTo: a corner)
     o.preview = q('.wire-preview').map((e) => [e.tagName, e.getAttribute('d') === curve.previewD([{ x: 0, y: 0 }, { x: 40, y: -30 }, { x: 120, y: -30 }, { x: 120, y: 0 }])]);
-    // unticked: polylines, no handles, the box unticked
-    delete st.doc.wireStyle; st.tool = 'select'; st.wireDraw = null;
+    // Direct (#4081): straight lines through the same knots, the same handles, the net name on the line, the ✓ there
+    st.tool = 'select'; st.wireDraw = null;
+    st.doc.wireStyle = 'direct';
     r.render();
-    o.plain = [q('.se-content .wline').map((e) => e.tagName), q('.se-content .chandle').length, curve.box.checked];
+    const W3 = st.doc.wires.find((w) => w.id === 'W3'), md = C.curvePointAt(W3, 0.5, 'direct');
+    o.direct = [q('.se-content g[data-kind=wire] .wline').map((l) => l.getAttribute('d') === C.curveD(st.doc.wires.find((w) => w.id === l.parentElement.dataset.id), 'direct')),
+      q('.se-content .chandle .cdot').map((c) => [+c.getAttribute('cx'), +c.getAttribute('cy')]), C.curveD(W3, 'direct').split(' L').length,
+      q('.se-content g[data-kind=label] .lpt').map((c) => Math.hypot(+c.getAttribute('cx') - md.x, +c.getAttribute('cy') - md.y) < 0.2), ticked()];
+    // Orthogonal: polylines, no handles, the ✓ there
+    delete st.doc.wireStyle;
+    r.render();
+    o.plain = [q('.se-content .wline').map((e) => e.tagName), q('.se-content .chandle').length, ticked()];
     return o;
   });
   assert.deepEqual(out.wires, [['W1', 'path', true, true], ['W2', 'path', true, true], ['W3', 'path', true, true]]);
   assert.deepEqual(out.handles, [[200, 450]]);
-  assert.equal(out.box, true);
+  assert.equal(out.box, 'curved');
   assert.deepEqual(out.label, [[300, 500]]);
   assert.deepEqual(out.mid, [true]);
   assert.deepEqual(out.preview, [['path', true]]);
-  assert.deepEqual(out.plain, [['polyline', 'polyline', 'polyline'], 0, false]);
+  assert.deepEqual(out.direct, [[true, true, true], [[200, 450]], 3, [true], 'direct']);
+  assert.deepEqual(out.plain, [['polyline', 'polyline', 'polyline'], 0, 'orthogonal']);
 });

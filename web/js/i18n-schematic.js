@@ -59,11 +59,18 @@ export const SCH_PT = {
   'Rearrange Wires: no wire in the selection': 'Reorganizar fios: nenhum fio na seleção',
   'Rearrange Wires: the wires are already as clear as they can be': 'Reorganizar fios: os fios já estão tão claros quanto possível',
   'Rearrange Schematic: the symbols kept where they were; the wires are already as clear as they can be': 'Reorganizar esquemático: os símbolos ficaram onde estavam; os fios já estão tão claros quanto possível',
-  // curved wires (#1144)
-  'Curved wires': 'Fios curvos',
-  'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections and the nets the same)': 'Desenhar os fios como curvas suaves de qualquer forma em vez dos cantos retos do desenho técnico (as ligações e as redes iguais)',
+  // the wires' style (#4081, core/wire-style.js): the ⋮ menu's Wires
+  'Wires': 'Fios', 'Direct': 'Direto', 'Orthogonal': 'Ortogonal', 'Curved': 'Curvo',
+  'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections and the nets the same)':
+    'Como os fios são desenhados: a direito de ponta a ponta, as linhas horizontais e verticais do desenho técnico, ou curvas suaves de qualquer forma (as ligações e as redes as mesmas)',
+  'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections, the nets and the HDL the same)':
+    'Como os fios são desenhados: a direito de ponta a ponta, as linhas horizontais e verticais do desenho técnico, ou curvas suaves de qualquer forma (as ligações, as redes e o HDL os mesmos)',
+  'Direct wires: click a wire, then drag the wire or its handles to bend it (double-click a handle to remove it). Drag a symbol to move it, its wires following.':
+    'Fios diretos: clique num fio e arraste o fio ou as suas pegas para o dobrar (duplo clique numa pega remove-a). Arraste um símbolo para o mover, os seus fios acompanham-no.',
+  'Add Wire (direct): click to start, click to add points the wire passes through, click on a pin/wire or double-click to finish; or draw a stroke from a pin/wire to another.':
+    'Adicionar Fio (direto): clique para começar, clique para juntar pontos por onde o fio passa, clique num pino/fio ou faça duplo clique para terminar; ou desenhe um traço de um pino/fio a outro.',
+  // curved wires (#1144): their hints
   'not with the other inputs chosen': 'não com as outras entradas escolhidas',
-  'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)': 'Desenhar os fios como curvas suaves de qualquer forma em vez dos cantos retos do desenho técnico (as ligações, as redes e o HDL iguais)',
   'Curved wires: click a wire, then drag the wire or its handles to reshape it (double-click a handle to remove it). Drag a symbol to move it, its wires following.':
     'Fios curvos: clique num fio e arraste o fio ou as suas pegas para lhe mudar a forma (duplo clique numa pega remove-a). Arraste um símbolo para o mover, os seus fios acompanham-no.',
   'Add Wire (curved): click to start, click to add points the curve passes through, click on a pin/wire or double-click to finish; or draw a stroke of any shape from a pin/wire to another.':

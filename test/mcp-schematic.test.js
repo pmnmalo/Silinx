@@ -2,7 +2,7 @@
 // Rearrange Wires and Rearrange Schematic, as its editor's menu does them, with the same messages: the gates example's
 // schematic (its HDL file the same: the connections did not change), a channel of two wires crossing twice (no crossing,
 // spread evenly), a selection (the wires of a marker), a selection with no wire, a second time (nothing to do), a file
-// that is not a schematic or not there.
+// that is not a schematic or not there. set_wire_style (#4081): how its wires are drawn, the HDL the same.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -173,4 +173,35 @@ test('add_markers: an instance\'s open pins, then a region\'s, named in1, out1â€
     assert.equal(e.isError, true);
     assert.match(e.text, new RegExp(msg.replace(/[()]/g, '\\$&')));
   }
+});
+
+// how a schematic's wires are drawn (#4081), as its editor's â‹® menu's Wires: the file's wireStyle, the HDL the same
+test('set_wire_style: direct, curved, orthogonal (the field dropped, as an older file), a second time nothing; the HDL the same; refusals', async () => {
+  await ok('new_project_from_example', { name: 'ws', example: 'gates' });
+  const sch = async () => JSON.parse((await ok('read_file', { project: 'ws', path: 'src/gates.sch.json' })).text);
+  const hdl0 = (await ok('read_file', { project: 'ws', path: 'src/gates.vhd' })).text, points0 = (await sch()).wires.map(w => w.points);
+  assert.equal('wireStyle' in await sch(), false, 'the example: orthogonal');
+  assert.deepEqual(await ok('set_wire_style', { project: 'ws', path: 'src/gates.sch.json', style: 'orthogonal' }), { isError: false,
+    text: 'src/gates.sch.json: the wires are already drawn Orthogonal', data: { project: 'ws', path: 'src/gates.sch.json', style: 'orthogonal', changed: false } });
+  for (const [style, label] of [['direct', 'Direct'], ['curved', 'Curved']]) {
+    const r = await ok('set_wire_style', { project: 'ws', path: 'src/gates.sch.json', style });
+    assert.deepEqual(r, { isError: false, text: `src/gates.sch.json: the wires drawn ${label}`,
+      data: { project: 'ws', path: 'src/gates.sch.json', style, changed: true, hdl: { file: 'src/gates.vhd', written: false } } });
+    assert.equal((await sch()).wireStyle, style);
+    assert.deepEqual((await sch()).wires.map(w => w.points), points0, `${style}: the wires' paths the same`);
+    assert.equal((await ok('read_file', { project: 'ws', path: 'src/gates.vhd' })).text, hdl0, `${style}: the HDL the same`);
+    assert.equal((await ok('set_wire_style', { project: 'ws', path: 'src/gates.sch.json', style })).text, `src/gates.sch.json: the wires are already drawn ${label}`);
+  }
+  assert.equal((await ok('set_wire_style', { project: 'ws', path: 'src/gates.sch.json', style: 'orthogonal' })).text, 'src/gates.sch.json: the wires drawn Orthogonal');
+  assert.equal('wireStyle' in await sch(), false, 'orthogonal: no field, as an older file');
+  for (const [args, msg] of [
+    [{ path: 'src/gates.sch.json', style: 'zigzag' }, /^set_wire_style: style: one of direct, orthogonal, curved$/],
+    [{ path: 'src/gates.vhd', style: 'direct' }, /src\/gates\.vhd: not a schematic \(\.sch\.json\)/],
+    [{ path: 'src/none.sch.json', style: 'direct' }, /no file 'src\/none\.sch\.json' in the project 'ws'/],
+  ]) {
+    const e = await call('set_wire_style', { project: 'ws', ...args });
+    assert.equal(e.isError, true, e.text);
+    assert.match(e.text, msg);
+  }
+  assert.equal((await ok('read_file', { project: 'ws', path: 'src/gates.vhd' })).text, hdl0);
 });
