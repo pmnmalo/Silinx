@@ -32,7 +32,7 @@ export async function addUserDialog(share, module = null, role = 'viewer') {
   };
   const draw = () => {
     field.set(roleLink(share, chosen, module));
-    note.textContent = chosen === 'editor' ? 'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.' : 'A viewer follows the project live, read only: its files and drawings, the editor you have open and your cursor.';
+    note.textContent = chosen === 'editor' ? 'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.' : 'A viewer follows the project live, read only: its files and drawings, and what you do (your documents and cursor, your views, simulations, emulators and runs).';
   };
   draw();
   await dialog({

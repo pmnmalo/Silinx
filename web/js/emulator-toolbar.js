@@ -21,7 +21,7 @@ export function mountEmuToolbar(ctx) {
   const runBtn = h('button', { class: 'btn', onclick: () => setRunning(!running()) }, '▶ Run');
   const stepBtn = h('button', { class: 'btn', title: 'Advance one clock cycle', onclick: () => step() }, '⏭ Step');
   const resetBtn = h('button', { class: 'btn', title: 'Power-cycle the board: restart the design from time 0', onclick: () => powerCycle() }, '⟲ Power cycle');
-  const speedSel = h('select', { title: 'Emulated clock rate', onchange: (e) => { setSpeed(e.target.value === 'max' || e.target.value === 'real' ? e.target.value : Number(e.target.value)); } },
+  const speedSel = h('select', { class: 'emu-speed', title: 'Emulated clock rate', onchange: (e) => { setSpeed(e.target.value === 'max' || e.target.value === 'real' ? e.target.value : Number(e.target.value)); } },
     ...SPEEDS.map(([v, l]) => h('option', { value: v, selected: v === speed() }, l)));
   // (its time and speed: in its status line, #2763; t = … ns · … cycles · … kHz, written by the emulator)
   const line = statusLine(), stat = h('span', { class: 'stat ds-f' });

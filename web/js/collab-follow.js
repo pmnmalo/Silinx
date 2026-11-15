@@ -62,7 +62,7 @@ export async function startFollowing(hash = location.hash) {
   const name = await dialog({
     title: 'Follow a Shared Project',
     body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'This link follows a project someone shares: you see its files and drawings as they change, read only, and where its owner is.'),
+      h('p', {}, 'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).'),
       link.relay ? h('p', {}, `Through the relay at ${new URL(link.relay).host}.`) : null,
       servers ? h('p', { class: 'collab-servers' }, servers) : null,
       h('label', {}, 'Your name, as they see it:'), input),

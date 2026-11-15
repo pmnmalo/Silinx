@@ -343,6 +343,14 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   counted as the updates arrive; an update that adds a part no shared project has (a root other than `meta`,
   `project`, `files`, `drawings`: `core/collab-roots.js`) is not applied, and the room is left. Nothing a follower receives is written to the
   disk.
+- **The owner's activity** (#4002, `core/collab-activity.js`): what the owner does, not its files: where it is (its
+  documents, views, task and selection), its runs (the processes' marks, the run's console lines, the Design Summary,
+  the reports it opens), its simulations and its Board Emulators (their time, view, forces, inputs). Only the owner's
+  frames carry it: the room refuses a follower's or an editor's (read only), and a page reads only what the room did
+  not mark as another participant's. A follower checks every value as untrusted input (the view through a design
+  link's checks, the others by theirs; 1 MB a value, 16 channels). The owner's home folder and the ISE host it reaches
+  over SSH are replaced in the lines and reports it sends. A follower's page replays the simulations and the
+  emulators itself, from the files it already has: nothing runs on the server for it.
 - **An editor** (an editor's link, `#edit=…`) changes the project's text files and drawings. At the owner's, an edit
   that changes another part of the document (the project's settings, its meta, a root of its own), builds on changes
   the owner does not have, or would take the document past 64 MB is refused before it is applied, said as a warning
