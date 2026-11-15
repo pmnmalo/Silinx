@@ -29,8 +29,9 @@ const LINGER_MS = 1000;   // (a connection the owner's page ends, kept that long
 export const MEET_MS = 15_000;
 /** Trystero's application id (its topics' namespace). */
 export const APP_ID = 'silinx-collab';
-/** The public WebTorrent trackers (Trystero's own list; the pages' CSP lets them in: server/csp.js). */
-export const TRACKERS = Object.freeze(['wss://open.ftorrent.com', 'wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.btorrent.xyz', 'wss://tracker.files.fm:7073/announce']);
+/** The public WebTorrent trackers (Trystero's own list but tracker.btorrent.xyz, whose name is 127.0.0.1's, a dead one:
+ *  #4197; the pages' CSP lets them in: server/csp.js). */
+export const TRACKERS = Object.freeze(['wss://open.ftorrent.com', 'wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.files.fm:7073/announce']);
 
 const proofText = (room, peer, owner, follower) => new TextEncoder().encode(`silinx-collab:host:${room}:${peer}:${owner}:${follower}`);
 

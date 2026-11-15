@@ -2,6 +2,7 @@ In short:
 
 - **Live sharing from the browser:** opening the link finds the owner for every follower, not only the first one. The
   second and later followers (often in Firefox or Safari) used to miss the owner and fall back to exchanging codes.
+  The dead tracker `tracker.btorrent.xyz` is no longer contacted.
 
 In detail:
 
@@ -18,3 +19,13 @@ In detail:
   the fix, four followers in turn (Chrome, Firefox, Chrome, Firefox) each found the owner in under a second. Tests:
   collab-meet (offersOnly: an offer refused, an answer and a rollback taken; the follower's join with it, the owner's
   without it); UI collab-meet (on the browser's own RTCPeerConnection, both interfaces).
+- **The dead tracker dropped (#4197):** `tracker.btorrent.xyz`, from Trystero's own list, resolves to 127.0.0.1, so every
+  page at the meeting point failed to connect to it and logged an error each time it tried again. `TRACKERS`
+  (`core/collab-meet.js`) now lists the four other trackers, and so do the pages' CSP (`server/csp.js`) and the follow
+  dialog's line naming the public servers. Tests: collab-meet (the list; Trystero's list without it), static-editions
+  (the CSP's sources), UI collab-follow-gate (the dialog's line).
+- **What still uses peer-to-peer links:** nothing needed two followers to connect to each other. Only the owner's page
+  (`meetAsHost`) and a follower's (`meetOwner`, also used when it reconnects) join the meeting point, and a follower
+  already ignored every peer but the one that proves it is the owner. Editors' edits go through the owner's room (a
+  star around the owner's page, core/collab-loop.js), and the codes exchanged by hand use a connection of their own
+  (web/js/collab-rtc.js), not the meeting point.

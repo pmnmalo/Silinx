@@ -235,7 +235,9 @@ test('Trystero\'s adapter: the package loads, its trackers are the CSP\'s; its c
   const tr = await import('@trystero-p2p/torrent');
   assert.equal(typeof tr.joinRoom, 'function');
   assert.match(tr.selfId, /^[A-Za-z0-9]{20}$/);
-  assert.deepEqual(TRACKERS, tr.defaultRelayUrls);
+  // (Trystero's own list but the dead tracker.btorrent.xyz, #4197: its name is 127.0.0.1's)
+  assert.deepEqual(TRACKERS, tr.defaultRelayUrls.filter(u => u !== 'wss://tracker.btorrent.xyz'));
+  assert.equal(tr.defaultRelayUrls.length, TRACKERS.length + 1, 'Trystero\'s list has the dead tracker still');
   // a joinRoom of the test's
   const calls = [], sent = [];
   const pc = { closed: false, localDescription: { sdp: 'a=fingerprint:sha-256 aa:bb\r\n' }, remoteDescription: { sdp: 'a=fingerprint:sha-256 cc:dd\r\n' }, close() { this.closed = true; } };
@@ -304,6 +306,14 @@ test('#4197 a follower\'s connections answer no offer: an offer refused, an answ
   assert.ok(new configs[0].rtcPolyfill({}) instanceof FakePC);
   await assert.rejects(new configs[0].rtcPolyfill({}).setRemoteDescription({ type: 'offer' }), /answers no offer/);
   assert.equal('rtcPolyfill' in configs[1], false, 'the owner\'s: the browser\'s connections');
+});
+
+test('#4197 the trackers: four, each a wss: address of its own, the dead tracker.btorrent.xyz not among them', () => {
+  assert.deepEqual(TRACKERS, ['wss://open.ftorrent.com', 'wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.files.fm:7073/announce']);
+  assert.ok(Object.isFrozen(TRACKERS));
+  assert.equal(new Set(TRACKERS.map(u => new URL(u).host)).size, TRACKERS.length);
+  assert.ok(TRACKERS.every(u => new URL(u).protocol === 'wss:'));
+  assert.ok(!TRACKERS.some(u => new URL(u).host === 'tracker.btorrent.xyz'));
 });
 
 test('#4197 at the meeting point the follower joins answering no offer, the owner answering', async () => {

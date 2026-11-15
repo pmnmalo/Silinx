@@ -63,7 +63,7 @@ uiTest('#3361 the follow dialog of a room the owner\'s page hosts names the publ
     await page.eval(async (lang) => { localStorage.setItem('silinx.lang', lang); localStorage.removeItem((await import('/js/collab-meet.js')).MEETING_KEY); }, pt ? 'pt' : 'en');
     await page.goto(`${new URL(link).origin}/?f=${pt ? 2 : 1}${new URL(link).hash}`);
     await page.waitDialog(pt ? 'Seguir um Projeto Partilhado' : 'Follow a Shared Project');
-    const trackers = 'open.ftorrent.com, tracker.webtorrent.dev, tracker.openwebtorrent.com, tracker.btorrent.xyz, tracker.files.fm:7073';
+    const trackers = 'open.ftorrent.com, tracker.webtorrent.dev, tracker.openwebtorrent.com, tracker.files.fm:7073';
     assert.equal(await servers(), pt
       ? `Esta página liga-se a servidores públicos, que veem o seu endereço IP: os rastreadores WebTorrent ${trackers} (para encontrar o dono) e o servidor STUN stun.l.google.com:19302.`
       : `This page connects to public servers, which see your IP address: the WebTorrent trackers ${trackers} (to find its owner) and the STUN server stun.l.google.com:19302.`);

@@ -24,7 +24,7 @@ test('#487 scriptHash / inlineScriptHashes: SHA-256 in base64 of each inline scr
 test('#487 contentSecurityPolicy: the server\'s header and a page\'s <meta> (no frame-ancestors), extra origins', () => {
   const header = directives(contentSecurityPolicy({ hashes: ["'sha256-x'"] }));
   // (a shared project's meeting point, #3227: the WebTorrent trackers' origins, with no path)
-  assert.deepEqual(TRACKER_SOURCES, ['wss://open.ftorrent.com', 'wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.btorrent.xyz', 'wss://tracker.files.fm:7073']);
+  assert.deepEqual(TRACKER_SOURCES, ['wss://open.ftorrent.com', 'wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.files.fm:7073']);
   assert.deepEqual(header, {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", "'sha256-x'"],
