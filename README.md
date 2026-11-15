@@ -22,7 +22,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   import/export (`.zip` with the `.xise` and all files; a Silinx project from its `.zip` or its folder, the one with
   its `silinx.json`, #3965). Its *Project Kind* (New Project, Design Properties, #4103) is an FPGA design or a design
   and simulation project (no FPGA): no board, no constraints, no HDL shown, its Implementation view called Design
-  (#3891); Design Properties also changes the *Top-Level Source Type*, Petri Net, Circuit, C and C++ among them (#4105).
+  (#3891); Design Properties also changes the *Top-Level Source Type*, Petri Net, Digital Electronic Circuit, C and C++ among them (#4105).
 - **HDL editor**: syntax highlighting, context-aware auto-complete (signals, ports, constants,
   project modules, `numeric_std` functions, `$system` tasks), *Language Templates*, live errors,
   type tooltips, *go to definition* (Ctrl/Cmd+click, F12), *Rename Symbol* (F2: a signal, port,
@@ -154,9 +154,9 @@ for Xilinx FPGAs supported by ISE 14.7.
   or `z`). The generated vectors (exhaustive, random, counting, walking) come in pairs: the bench
   drives the port like an input, then releases it (`Z`) with the same inputs so that the value the
   design drives is checked; any row can be changed by hand.
-- **New Source types**: *Boolean Algebra*, *Module (HDL)* (the ISE Define Module page: language, entity/module and
+- **New Source types**: *Boolean Algebra*, *Digital Electronic Circuit*, *Module (HDL)* (the ISE Define Module page: language, entity/module and
   architecture names, a port table), *Schematic* (a blank sheet), *Finite State Machine (FSM)*, *Algorithmic State
-  Machine (ASM)*, *Petri Net*, *Circuit*, *Clock Manager (DCM / PLL)*, *Block Memory*, *Test Bench*, *Implementation
+  Machine (ASM)*, *Petri Net*, *Clock Manager (DCM / PLL)*, *Block Memory*, *Test Bench*, *Implementation
   Constraints File*, *Memory Initialization File (.mem)*, *C Function (HLS)*, *C++ Function (HLS)*. Page 2 is the same for every type: the file name, the
   location and the language (VHDL / Verilog, the project's preferred language by default), with the buttons
   *Wizard > | < Back | Next > | Cancel*: *Next >* makes the plain source, *Wizard >* opens the type's wizard (Boolean
@@ -164,7 +164,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   with that name, location and language, and its *< Back* on the first page goes back to New Source to change them;
   *Wizard >* is disabled for a type that has none, and *Next >* for a type that has only the wizard (Clock Manager,
   Block Memory).
-- **Digital circuits** (*New Source ▸ Circuit*, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (74LS gates, open collector
+- **Digital circuits** (*New Source ▸ Digital Electronic Circuit*, its wizard's typical assemblies; a new project's top, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (74LS gates, open collector
   ones too, and 4000 gates; the MSI ICs, 7447 / 7448, 74138 / 74139, 74151 / 74153 / 74157, 7483 / 74283, 7485; the
   sequential ones, 7474, 7476, 74112, counters 7490 to 74193 and 4017, shift registers 74164 to 74595, the 4511, #3900:
   their datasheets' pinouts), switches (logic, slide, DIP), push buttons, a clock, pull-ups, LEDs,

@@ -98,7 +98,7 @@ uiTest('#3780 a design project: its HDL opened is its drawing, an HDL file added
   page.eval(async () => (await import('/js/new-source.js')).newSourceWizard()).catch(() => {});
   await page.waitDialog('New Source');
   const types = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .src-types .st')].map(e => e.lastChild.textContent));
-  assert.deepEqual(types, ['Boolean Algebra', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Circuit', 'Guided Lab']);
+  assert.deepEqual(types, ['Boolean Algebra', 'Digital Electronic Circuit', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Guided Lab']);
   await page.dialogButton('Next >');
   const labels = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].map(l => l.textContent));
   assert.deepEqual(labels, ['Source type:', 'File name:', 'Location:']);

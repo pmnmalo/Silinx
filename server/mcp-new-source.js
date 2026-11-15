@@ -24,7 +24,7 @@ const TYPES = {
   asm: { label: 'Algorithmic State Machine (ASM)', ext: '.asm.json', dir: 'src' },
   petri: { label: 'Petri Net', ext: '.pn.json', dir: 'src' },
   boolean: { label: 'Boolean Algebra', ext: '.bool.json', dir: 'src' },
-  circuit: { label: 'Circuit', ext: '.circ.json', dir: 'src' },
+  circuit: { label: 'Digital Electronic Circuit', ext: '.circ.json', dir: 'src' },   // (New Source's name, #4061)
   lab: { label: 'Guided Lab', ext: '.lab.json', dir: 'labs' },
 };
 const NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -33,7 +33,7 @@ const ident = n => n.replace(/[^A-Za-z0-9_]/g, '_');
 const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean', 'circuit'];
 
 // the source's text, as the wizard's Finish writes it
-async function sourceText(type, { file, lang, pj, entity, arch, ports, uut }) {
+async function sourceText(type, { file, lang, pj, entity, arch, ports, uut, template }) {
   const T = await import('../core/templates.js');
   const n = ident(file);
   switch (type) {
@@ -49,7 +49,9 @@ async function sourceText(type, { file, lang, pj, entity, arch, ports, uut }) {
     case 'asm': return JSON.stringify((await import('../core/asm.js')).normalizeModel({ name: n, lang }), null, 2);
     case 'fsm': return JSON.stringify((await import('../core/fsm.js')).normalizeFsm({ name: n, lang }), null, 2);
     case 'petri': return JSON.stringify((await import('../core/petri.js')).normalizePetri({ name: n, lang }), null, 2);
-    case 'circuit': return JSON.stringify((await import('../core/circuit.js')).newCircuit(n, lang), null, 2);
+    // (the Digital Electronic Circuit Wizard's assembly, #4061; none: a half breadboard and its supply, as New Source's)
+    case 'circuit': return JSON.stringify(template ? (await import('../core/circuit-templates.js')).circuitTemplate(template.id, template.params, { name: n, lang })
+      : (await import('../core/circuit.js')).newCircuit(n, lang), null, 2);
     case 'boolean': return JSON.stringify({ ...(await import('../core/logic.js')).newTable(n, ['a', 'b', 'c'], ['f']), lang }, null, 2);
     case 'lab': return `${JSON.stringify((await import('../core/labs.js')).newLab(file, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`;
     default: throw toolError(`type: one of ${Object.keys(TYPES).join(', ')}`);
@@ -73,7 +75,7 @@ function portsOf(list) {
 export const NEW_SOURCE_TOOLS = [
   {
     name: 'new_source', title: 'New Source',
-    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (a test bench of a module of the project), package (a VHDL package), constraints (the device\'s format: UCF, the iCE40\'s PCF, the ECP5\'s LPF, the Gowin\'s CST, the 7-series\' XDC), mem, c or cpp (a C / C++ function for Silinx HLS), or an empty drawing: schematic, fsm, asm, petri, boolean (a truth table), circuit (a digital circuit), or lab (a guided lab, labs/<name>.lab.json: a template of its steps to edit, then the lab tool runs it). In VHDL or Verilog (default: the project\'s Preferred Language). It is written from the wizard\'s templates (a header with the date), added to the project; then edit it with write_file. A file that exists is not replaced.',
+    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (a test bench of a module of the project), package (a VHDL package), constraints (the device\'s format: UCF, the iCE40\'s PCF, the ECP5\'s LPF, the Gowin\'s CST, the 7-series\' XDC), mem, c or cpp (a C / C++ function for Silinx HLS), or an empty drawing: schematic, fsm, asm, petri, boolean (a truth table), circuit (a digital electronic circuit: a half breadboard and its supply, or the Digital Electronic Circuit Wizard\'s assembly, template), or lab (a guided lab, labs/<name>.lab.json: a template of its steps to edit, then the lab tool runs it). In VHDL or Verilog (default: the project\'s Preferred Language). It is written from the wizard\'s templates (a header with the date), added to the project; then edit it with write_file. A file that exists is not replaced.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, type: { type: 'string', enum: Object.keys(TYPES), description: 'The source\'s type.' },
       name: STR('Its file name, without the extension (letters, digits, _ and -; a letter first).'),
@@ -81,10 +83,12 @@ export const NEW_SOURCE_TOOLS = [
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (a module, a test bench, a drawing).' },
       module: STR('A module: its name (default: the file name). A test bench: the module it tests (default: the project\'s top).'),
       architecture: STR('A VHDL module: its architecture\'s name (default Behavioral).'),
+      template: { type: 'string', enum: ['boards', 'io', 'empty'], description: 'A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]), empty (no part). Default: a half breadboard and its supply.' },
+      template_params: { type: 'object', description: 'The assembly\'s parameters: boards { n: 1–4, size: half | full }; io { n: 1–8 switches, m: 1–8 LEDs }.' },
       ports: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, dir: { type: 'string', enum: ['in', 'out', 'inout'] }, msb: { type: 'integer' }, lsb: { type: 'integer' } }, required: ['name'] }, description: 'A module: its ports (a bus with msb and lsb; default: clk and rst).' },
     }, required: ['project', 'type', 'name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ project: name, type, name: file, location, language, module, architecture, ports: portList }) {
+    async run({ project: name, type, name: file, location, language, module, architecture, ports: portList, template, template_params: tparams }) {
       const pj = await readProject(name);
       const t = TYPES[type];
       if (!t) throw toolError(`type: one of ${Object.keys(TYPES).join(', ')}`);
@@ -142,6 +146,16 @@ export const NEW_SOURCE_TOOLS = [
         const { uutInfo } = await import('../core/uut-info.js');
         opts.uut = uutInfo({ name: m.name, lang: m.lang, mod: m });
       } else if (module !== undefined && type !== 'module') throw toolError('module: a module\'s name, or the module a test bench tests');
+      if (template !== undefined || tparams !== undefined) {
+        if (type !== 'circuit') throw toolError('template and template_params: a circuit\'s');
+        const C = await import('../core/chart-templates.js');
+        const id = template ?? 'boards';
+        if (!['boards', 'io', 'empty'].includes(id)) throw toolError('template: boards, io or empty');
+        const params = { ...C.templateDefaults('circuit', id), ...(tparams || {}) };
+        const e = C.templateError('circuit', id, params);
+        if (e) throw toolError(e);
+        opts.template = { id, params };
+      }
       const text = await sourceText(type, opts);
       const noConstraints = !pj.constraints || !tree.includes(pj.constraints);
       try { await P.writeFile(name, rel, text); } catch (e) { throw toolError(e.message); }

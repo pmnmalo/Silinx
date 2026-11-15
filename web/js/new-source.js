@@ -20,12 +20,13 @@ const SOURCE_TYPES = [
   // ext null: VHDL or Verilog, the language of the File Name and Location page (the extension follows it)
   // wiz: the wizard the Wizard > button opens (#958); only: no plain source, Next > disabled
   { id: 'tt', label: 'Boolean Algebra', ico: 'algebra', ext: '.bool.json', dir: 'src', wiz: 'boolean' },
+  // (ICs on a breadboard, #3897; second, its wizard's typical assemblies, #4061)
+  { id: 'circuit', label: 'Digital Electronic Circuit', ico: 'circuit', ext: '.circ.json', dir: 'src', wiz: 'circuit', drawn: true },
   { id: 'hdl', label: 'Module (HDL)', ico: 'vhdl', ext: null, dir: 'src', wiz: 'module' },
   { id: 'sch', label: 'Schematic', ico: 'schematic', ext: '.sch.json', dir: 'src', wiz: 'schematic', drawn: true },
   { id: 'fsm', label: 'Finite State Machine (FSM)', ico: 'fsm', ext: '.fsm.json', dir: 'src', wiz: 'fsm', drawn: true },
   { id: 'asm', label: 'Algorithmic State Machine (ASM)', ico: 'asm', ext: '.asm.json', dir: 'src', wiz: 'asm', drawn: true },
   { id: 'petri', label: 'Petri Net', ico: 'petri', ext: '.pn.json', dir: 'src', wiz: 'petri', drawn: true },
-  { id: 'circuit', label: 'Circuit', ico: 'circuit', ext: '.circ.json', dir: 'src', drawn: true },   // (ICs on a breadboard, #3897)
   { id: 'clkwiz', label: 'Clock Manager (DCM / PLL)', ico: 'template', ext: null, dir: 'src', wiz: 'clock', only: true },
   { id: 'bramwiz', label: 'Block Memory', ico: 'template', ext: null, dir: 'src', wiz: 'memory', only: true },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
@@ -43,7 +44,7 @@ const SOURCE_TYPES = [
   { id: 'vhdl-pkg', label: 'VHDL Package', ico: 'vhdl', ext: '.vhd', dir: 'src', hidden: true },
 ];
 // a design and simulation project's (#3780)
-const DESIGN_TYPES = ['tt', 'sch', 'fsm', 'asm', 'petri', 'circuit', 'lab'];
+const DESIGN_TYPES = ['tt', 'circuit', 'sch', 'fsm', 'asm', 'petri', 'lab'];
 // the constraints files' types: one shown, the device's format's
 const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'xdc'];
 
@@ -312,6 +313,7 @@ async function openWizard(wiz, { name, location, lang, ext, back }) {
     case 'module': return (await import('./modwizard.js')).moduleWizard(o);
     case 'schematic': return (await import('./modwizard.js')).schematicWizard(o);
     case 'petri': return (await import('./petri-wizard.js')).petriWizard(o);
+    case 'circuit': return (await import('./circuit-wizard.js')).circuitWizard(o);
     case 'fsm': return (await import('./chart-wizards.js')).fsmWizard(o);
     case 'asm': return (await import('./chart-wizards.js')).asmWizard(o);
     case 'ucf': return (await import('./ucf-wizard.js')).ucfWizard({ path: `${location}/${name}${ext}`, back });

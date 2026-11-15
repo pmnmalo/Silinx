@@ -993,9 +993,9 @@ uiTest('#2981 a project the MCP server made waits for the user\'s trust too: the
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
 });
 
-uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth Table starts the project with that top and its synchronized HDL', E, async (page) => {
+uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth Table / Digital Electronic Circuit (#4061) starts the project with that top', E, async (page) => {
   const cases = [['sch', 'top.sch.json', 'vhdl', 'Schematic'], ['fsm', 'top.fsm.json', 'verilog', 'Finite State Machine (FSM)'],
-    ['asm', 'top.asm.json', 'vhdl', 'Algorithmic State Machine (ASM)'], ['tt', 'top.bool.json', 'verilog', 'Boolean Algebra']];
+    ['asm', 'top.asm.json', 'vhdl', 'Algorithmic State Machine (ASM)'], ['tt', 'top.bool.json', 'verilog', 'Boolean Algebra'], ['circuit', 'top.circ.json', 'vhdl', 'Digital Electronic Circuit']];
   for (const [type, file, lang, label] of cases) {
     const name = `Top_${type}`;
     const r = await newProject(page, { name, lang, top: type });
@@ -1012,7 +1012,7 @@ uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth 
     await page.waitFor((f) => [...document.querySelectorAll('#hier .row')].some((r) => r.textContent.includes(`(${f})`)), [file], { what: `hierarchy shows ${file}` });
     await page.waitFor((f) => String(window.Silinx.active?.id || '').endsWith(`src/${f}`), [file], { what: `${file} editor open` });
   }
-  // an example: the type stays HDL (the example has its own sources)
+  // an example: the type stays HDL (the example has its own sources); the types (#4105), the circuit's named as New Source's (#4061)
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
@@ -1020,6 +1020,8 @@ uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth 
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
   assert.deepEqual(await page.eval(() => { const s = document.querySelectorAll('.dlg-overlay .wiz-main select')[6]; return [s.value, s.disabled]; }), ['hdl', true]);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select')[6].options].map((o) => o.textContent)),
+    ['HDL', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Boolean Algebra', 'Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)']);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
 });
