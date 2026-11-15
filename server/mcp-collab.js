@@ -31,6 +31,7 @@ import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
 import { selectionWords } from '../core/collab-select.js';
+import { followedCopy, copyName } from '../core/collab-keep.js';
 import { runsActivity, followedRuns, runLines, redact, redactAll } from '../core/collab-runs.js';
 import { ownerSecrets } from './owner-secrets.js';
 import { followedSim, simLines } from '../core/collab-sim.js';
@@ -254,16 +255,17 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave; keep (with stop, or once following ended: the owner stopped sharing, the connection lost for good) keeps a copy of the project as it was in the workspace, untrusted, as the interface\'s Keep a Copy (#4198). Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
       name: STR('The name the owner sees (default: "MCP agent").'),
       write: { type: 'object', description: 'With an editor\'s link (…#edit=…): a text file\'s new text, merged into the shared project as this participant\'s edit (HDL, constraints, C / C++, notes); or a state diagram\'s (.fsm.json), a truth table\'s (.bool.json), an ASM chart\'s (.asm.json), a Petri net\'s (.pn.json) or a schematic\'s (.sch.json) new JSON, merged with the others\' changes per object (a state, a transition, an output and its cells, a box, a link, a place, an arc, a symbol, a wire) and per field (its Check given after the merge, but a truth table\'s and a schematic\'s: check_syntax). Other drawings: not.', properties: { path: STR('The file.'), text: STR('Its new text.') }, required: ['path', 'text'], additionalProperties: false },
       stop: { type: 'boolean', description: 'Stop following it.' },
+      keep: { type: 'boolean', description: 'With stop, or once following ended (the owner stopped sharing, the connection lost for good): keep a copy of the project as the room has it (its files, its drawings as merged), a project of the workspace under a free name, imported and untrusted as the interface\'s Keep a Copy does (#4198); then left.' },
     }, required: ['link'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async run({ link, path, name: who, write, stop = false }) {
+    async run({ link, path, name: who, write, stop = false, keep = false }) {
       let l;
       try { l = parseFollowLink(link); } catch (e) { throw toolError(e.message); }
       if (!l || !l.base) throw toolError('link: a link to follow (http(s)://…/#view=…)');
@@ -274,6 +276,18 @@ export const COLLAB_TOOLS = [
       // (a room followed and edited: two participants; an editors' link renewed, #3997: another one, its key its own)
       const slot = `${l.room}:${l.sign ? `edit.${l.sign}` : 'follow'}`;
       let cur = follows.get(slot);
+      // (following ended, #4198: its project kept until a copy is kept or it is left)
+      if (keep) {
+        if (!cur) throw toolError('keep: this link is not followed');
+        if (!cur.session.closed() && !stop) throw toolError('keep: with stop (a copy is kept once following ends)');
+        follows.delete(slot);
+        if (!cur.session.closed()) await cur.session.close();
+        return keptCopy(cur.session.doc);
+      }
+      if (cur?.session.closed() && !stop && path === undefined && write === undefined) {
+        const { project, owner } = docProject(cur.session.doc);
+        return { text: `Following ${owner}'s project '${project?.name}' ended: it is saved nowhere. follow_project keep: true keeps a copy of it in the workspace (untrusted); stop: true leaves it.`, data: { following: false, ended: true, owner, project: project?.name ?? null }, untrusted: 'the shared project\'s name' };
+      }
       if (cur?.session.closed()) { follows.delete(slot); cur = null; }
       if (stop) {
         if (!cur) throw toolError('this link is not followed');
@@ -327,6 +341,19 @@ export const COLLAB_TOOLS = [
     },
   },
 ];
+
+// a copy of a project followed kept (#4198, core/collab-keep.js): a project of the workspace under a free name, through
+// the import gate and the zip import's own function (server/project-zip.js), untrusted
+async function keptCopy(doc) {
+  const copy = followedCopy(doc);
+  const name = copyName(copy.name, (await P.listProjects()).map(p => p.name));
+  const { gateEntries } = await import('../core/import-gate.js');
+  const { importProjectEntries } = await import('./project-zip.js');
+  let r;
+  try { r = await importProjectEntries(P, name, gateEntries(copy.entries), toolError); } catch (e) { if (e.toolError) throw e; throw toolError(`keep: ${e.message}`); }
+  const warns = r.warnings?.length ? `\nWarnings:\n${r.warnings.join('\n')}` : '';
+  return { text: `Kept a copy of ${copy.owner}'s project '${copy.name}' as the project '${name}' of the workspace (untrusted, as any project from someone else); stopped following.${warns}`, data: { following: false, kept: name, project: copy.name, files: copy.entries.map(e => e.path), warnings: r.warnings || [] }, untrusted: 'the shared project\'s names and files' };
+}
 
 // the owner's activity (#4002), as a follower's page takes it: { view: { open, active, split, page, view }, layout: {
 // task, … } | null, design: { sel, open } | null } (null: none yet, an owner of no interface: share_project's)

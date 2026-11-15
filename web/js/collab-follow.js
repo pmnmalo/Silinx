@@ -32,6 +32,7 @@ import { followRoom, colorOf } from '/core/collab-client.js';
 import { parseFollowLink, relayUrl } from '/core/collab-link.js';
 import { followActivity, followState, watchOwnActions } from './collab-activity.js';
 import { viewKeyOf } from './view-state.js';
+import { watchLeave, canKeep, keepCopy, followEnded } from './collab-leave.js';
 import { selectionOfDoc, showPeerSelection } from './collab-select-draw.js';
 import { selectionAt } from '/core/collab-select.js';
 import { openReport } from './collab-runs.js';
@@ -84,8 +85,10 @@ export async function startFollowing(hash = location.hash) {
   const { project, owner } = docProject(session.doc);
   fol = { name, session, following: true, driven: null, bound: new Map(), drawn: new Map(), top: link.top || null, act: followState(), front: undefined };
   Object.assign(collab, { role: 'follower', owner: owner || session.owner()?.name || '?', project: project.name, session, editor: session.editor });
+  const real = { ...api };   // (its own backend, for a copy kept once following ends, #4198)
   Object.assign(api, followApi(api, session.doc, { warn: text => app.log(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
   setPresenceCommands(commands);
+  watchLeave(session, real);
   watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
   setInterval(track, TRACK_MS);
   draw();
@@ -120,6 +123,7 @@ export function followPasted() {
 const commands = () => [
   fol?.session && !fol.session.closed() ? { label: `Follow ${collab.owner}`, checked: fol.following, action: () => setFollowing(!fol.following) } : null,
   fol?.session && !fol.session.closed() ? { label: 'Stop Following', action: () => stopFollowing() } : null,
+  canKeep() ? { label: 'Keep a Copy', action: () => keepCopy() } : null,   // (following ended, #4198)
 ].filter(Boolean);
 
 function setFollowing(on) {
@@ -154,7 +158,7 @@ function onEvent(ev) {
     draw();
     clearShown();
   } else if (ev.type === 'online') { app.log(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
-  else if (ev.type === 'closed') { app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn'); draw(); clearShown(); }
+  else if (ev.type === 'closed') { app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn'); draw(); clearShown(); ended(); }
   else if (ev.type === 'role') roleChanged(ev);
   else if (ev.type === 'error') app.log(`${ev.fatal ? 'ERROR' : 'WARNING'}: Follow a shared project: ${ev.message}.`, ev.fatal ? 'err' : 'warn');
 }
@@ -165,9 +169,22 @@ async function roleChanged(ev) {
   if (ev.renewed) return;
   const editor = ev.role === 'editor';
   if (collab.editor === editor) return;
-  fol.front = undefined;   // (its documents reopened here: not the follower's own)
   collab.editor = editor;
   app.log(editor ? `${collab.owner} made you an editor: you edit the project's text files and drawings with them.` : `${collab.owner} made you a viewer: you follow the project, read only.`, 'info');
+  await reopenDocs();
+  fol.drivenKey = null;
+  fol.front = undefined;
+  draw();
+  track();
+}
+
+// the others' carets and the owner's selection, no longer shown (the connection lost, the sharing ended)
+const clearShown = () => { for (const d of S.docs) { d.editor?.setPeers?.([]); showPeerSelection(d, []); } };
+
+// the open documents opened again (an editor's role changed, #3997; following ended, #4198: read only), the one in front
+// kept in front; not the follower's own documents
+async function reopenDocs() {
+  fol.front = undefined;
   unbindAll(fol.bound);
   unbindDrawings(fol.drawn);
   const open = [];
@@ -179,14 +196,13 @@ async function roleChanged(ev) {
     await closeDoc(d);
   }
   for (const p of open) await app.openFile(p).catch(() => {});
-  fol.drivenKey = null;
-  fol.front = undefined;
-  draw();
-  track();
 }
 
-// the others' carets and the owner's selection, no longer shown (the connection lost, the sharing ended)
-const clearShown = () => { for (const d of S.docs) { d.editor?.setPeers?.([]); showPeerSelection(d, []); } };
+// following ended (#4198): nothing left editable (an editor's documents opened again, read only), a copy offered
+async function ended() {
+  if (collab.editor) { collab.editor = false; await reopenDocs(); }
+  followEnded();
+}
 
 // a drawing's merged model through the import gate (#3361): refused, not shown, said once
 const refusedDrawings = new Set();

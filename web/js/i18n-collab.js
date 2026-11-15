@@ -10,6 +10,10 @@ export const COLLAB_PT = {
     'Esta ligação segue um projeto que alguém partilha. Os seus documentos abertos têm alterações ainda não guardadas: guardá-las e depois segui-lo?',
   'Save and Follow': 'Guardar e Seguir',
   'Stop Sharing': 'Parar de Partilhar', 'Stop Following': 'Deixar de Seguir', 'Sharing': 'A partilhar',
+  // (following ended, #4198: web/js/collab-leave.js)
+  'Keep a Copy': 'Guardar uma Cópia', 'Close Without Keeping': 'Fechar sem Guardar',
+  'You changed this project, which is no longer shared, and it is saved nowhere. Keep a copy of it as a project of yours?':
+    'Alterou este projeto, que já não é partilhado, e não está guardado em lado nenhum. Guardar uma cópia dele como um projeto seu?',
   'Not shared any more': 'Já não partilhado', 'Shared project': 'Projeto partilhado',
   'Shared project: who is in it, and its commands': 'Projeto partilhado: quem está nele, e os seus comandos',
   'Your name, as they see it:': 'O seu nome, como o veem:', 'you': 'você', 'owner': 'dono', 'follower': 'seguidor', 'viewer': 'espectador',

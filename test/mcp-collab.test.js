@@ -595,6 +595,37 @@ test('#4192 follow_project gives the owner\'s selection with their view: a text 
   } finally { await owner.close(); }
 });
 
+test('#4198 follow_project keep: a copy of the project followed kept in the workspace, untrusted, under a free name; once the owner stopped (said, then kept), or with stop; keep alone refused while following', async () => {
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'kept', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' }, fileTree: ['src/top.vhd'] }, files: { 'src/top.vhd': 'entity top is end;\n' }, owner: 'Ana' });
+  let owner = await shareRoom({ url: relayUrl(`${base}/`, 'share'), token: 'tok-mcp', doc, user: { name: 'Ana' } });
+  let link = followLink(`${base}/`, owner.room, owner.key);
+  await ok('follow_project', { link, name: 'Bot' });
+  const refused = await call('follow_project', { link, keep: true });
+  assert.equal(refused.isError, true);
+  assert.match(refused.text, /keep: with stop \(a copy is kept once following ends\)/);
+  // the owner stops: said, the project kept until a copy is kept or it is left
+  await owner.close();
+  const ended = await until(async () => { const r = await call('follow_project', { link }); return r.data?.ended && r; }, 'following ended');
+  assert.equal(ended.text, "Following Ana's project 'kept' ended: it is saved nowhere. follow_project keep: true keeps a copy of it in the workspace (untrusted); stop: true leaves it.");
+  const k = await ok('follow_project', { link, keep: true });
+  assert.equal(k.text, "Kept a copy of Ana's project 'kept' as the project 'kept' of the workspace (untrusted, as any project from someone else); stopped following.");
+  assert.deepEqual([k.data.kept, k.data.files], ['kept', ['silinx.json', 'src/top.vhd']]);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(process.env.SILINX_WORKSPACE, 'kept', 'silinx.json'), 'utf8')).trusted, false, 'untrusted');
+  assert.equal(fs.readFileSync(path.join(process.env.SILINX_WORKSPACE, 'kept', 'src/top.vhd'), 'utf8'), 'entity top is end;\n');
+  // left: the link no longer followed
+  assert.equal((await call('follow_project', { link, keep: true })).isError, true);
+  // while following: stop with keep, under a free name (the first copy kept)
+  owner = await shareRoom({ url: relayUrl(`${base}/`, 'share'), token: 'tok-mcp', doc, user: { name: 'Ana' } });
+  try {
+    link = followLink(`${base}/`, owner.room, owner.key);
+    await ok('follow_project', { link, name: 'Bot' });
+    const k2 = await ok('follow_project', { link, stop: true, keep: true });
+    assert.equal(k2.data.kept, 'kept_2');
+    assert.equal(k2.data.following, false);
+  } finally { await owner.close(); }
+});
+
 test('#4002 a project share_project shares: its run_process runs reach follow_project (the marks, the end of the log, the Design Summary); a project not shared sends nothing', async () => {
   await ok('new_project_from_example', { name: 'gatesRun', example: 'gates' });
   const { data: { link } } = await ok('share_project', { project: 'gatesRun', name: 'Ana', server: base });

@@ -57,6 +57,8 @@ export function closeProject() { return inOrder(closeProjectNow); }
 
 async function openProjectNow(name, { startup = false } = {}) {
   if (blockedByRun('Open Project')) return;
+  // (a project followed whose following ended, #4198: its changes kept or not, as the user says, before it closes)
+  if (api.following && !await (await import('./collab-leave.js')).leaveFollowed()) return;
   if (!await closeAllDocs()) return;   // (the documents of the project left are kept as they were)
   resetProjectState();
   try {
@@ -192,6 +194,8 @@ export async function refreshBlackboxes(path) {
 
 async function closeProjectNow() {
   if (blockedByRun('Close Project')) return;
+  // (a project followed whose following ended, #4198: its changes kept or not, as the user says, before it closes)
+  if (api.following && !await (await import('./collab-leave.js')).leaveFollowed()) return;
   if (!await closeAllDocs()) return;
   stopWatching();
   S.project = null; S.lib = null; S.sources = []; S.modules = [];
