@@ -13,7 +13,7 @@ export const TT_PT = {
   'Output names (1 or more), separated by commas or spaces': 'Nomes das saídas (1 ou mais), separados por vírgulas ou espaços',
   'The logic of this output: its module and its schematic in this form': 'A lógica desta saída: o seu módulo e o seu esquemático nesta forma',
   'The HDL logic of this output: its module and its schematic in this form': 'A lógica do HDL desta saída: o seu módulo e o seu esquemático nesta forma',
-  'Least number of gates': 'Menor número de portas', 'Least delay': 'Menor atraso',
+  'Least gates': 'Menos portas', 'Least delay': 'Menor atraso',
   // the maps in 3D (#1407)
   'Reset view': 'Repor a vista', 'Drag (or the arrow keys) to turn the maps': 'Arraste (ou use as setas) para rodar os mapas',
   'The maps stacked in depth: a group across maps seen as one box': 'Os mapas empilhados em profundidade: um grupo que atravessa mapas visto como uma só caixa',

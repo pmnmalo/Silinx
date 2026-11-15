@@ -1,5 +1,5 @@
 // UI: the HDL logic of each output (#2951): no HDL logic menu in the toolbar; a tick box on each result (Canonical SOP and
-// POS, the Karnaugh map's and Quine-McCluskey's (#3939), XOR, NAND and NOR forms, Least number of gates, Least delay), the one ticked the output's form
+// POS, the Karnaugh map's and Quine-McCluskey's (#3939), XOR, NAND and NOR forms, Least gates, Least delay), the one ticked the output's form
 // in its HDL module; a new table in least gates; each output its own; a tick box ticked stays so; Undo; a table saved
 // before in one form opens with it ticked on every output, its module unchanged; in Portuguese.
 import { before, after } from 'node:test';

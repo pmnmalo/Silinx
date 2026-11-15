@@ -80,7 +80,7 @@ test('related_view: a truth table\'s results, as its editor shows them: the cano
   const r = await ok({ project: 'q', path: 'src/m.bool.json', view: 'results', notation: 'textbook' });
   // (the editor's order, #3065, #3939: the circuit's two choices, the Karnaugh map's and Quine-McCluskey's, the canonical ones (their list, then their
   // expression, #3069; their terms and literals, #3072), XOR, NAND, NOR)
-  assert.equal(r.text, `Least number of gates: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
+  assert.equal(r.text, `Least gates: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
 Least delay: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
 Karnaugh map SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)
 Karnaugh map POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s); gates: 1 AND2, 1 OR2, 1 OR2B2)
@@ -97,9 +97,9 @@ Canonical POS: f = ΠM(0, 4, 7) · D(2, 5)   (3 term(s), 9 literal(s); gates: 1 
 XOR form: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
 NAND form: f = (((a·a)'·c)'·(b·(c·c)')')'   (2 term(s), 4 literal(s); gates: 5 NAND2)
 NOR form: f = ((b + c)' + ((a + a)' + (c + c)')')'   (2 term(s), 4 literal(s); gates: 5 NOR2)
-HDL logic: Least number of gates: f = c ⊕ a·b   (least gates: XOR form, 3 literal(s), 2 gate(s), delay 2)
+HDL logic: Least gates: f = c ⊕ a·b   (least gates: XOR form, 3 literal(s), 2 gate(s), delay 2)
 
-Least number of gates: z = 0   (0 term(s), 0 literal(s); gates: none)
+Least gates: z = 0   (0 term(s), 0 literal(s); gates: none)
 Least delay: z = 0   (0 term(s), 0 literal(s); gates: none)
 Karnaugh map SOP: z = 0   (0 term(s), 0 literal(s); gates: none)
 Karnaugh map POS: z = 0   (0 term(s), 0 literal(s); gates: none)
@@ -115,7 +115,7 @@ Canonical POS: z = ΠM(0, 1, 2, 3, 4, 5, 6, 7)   (8 term(s), 24 literal(s); gate
   z = (a + b + c)·(a + b + c')·(a + b' + c)·(a + b' + c')·(a' + b + c)·(a' + b + c')·(a' + b' + c)·(a' + b' + c')
 NAND form: z = 0   (0 term(s), 0 literal(s); gates: none)
 NOR form: z = 0   (0 term(s), 0 literal(s); gates: none)
-HDL logic: Least number of gates: z = 0   (least gates: minimal SOP, 0 literal(s), 0 gate(s), delay 0)`);
+HDL logic: Least gates: z = 0   (least gates: minimal SOP, 0 literal(s), 0 gate(s), delay 0)`);
   assert.deepEqual([r.data.view, r.data.notation, r.data.inputs, r.data.outputs.map(o => o.output)], ['results', 'textbook', ['a', 'b', 'c'], ['f', 'z']]);
   // the canonical forms' terms, literals and gates, as the editor's (#3072)
   assert.deepEqual(r.data.outputs[0].canonicalCost, {

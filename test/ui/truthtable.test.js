@@ -85,7 +85,7 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
   // no Check my answer, no My expression (#694); the NAND and NOR forms below the minimal ones
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => c.textContent), T), ['Truth table', 'Notes', 'Expressions']);   // (the map under its result, no caption of its own, #4057)
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} .tt-mine-in, ${t} .tt-mine-out`).length, T), 0);
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least number of gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);   // (the first two: #1427; in this order: #3065)
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);   // (the first two: #1427; in this order: #3065)
   // no list of the essential prime implicants below them (#705), nor an "essential" mark in the K-map's legend (#3080)
   assert.deepEqual(await page.eval((t) => [document.querySelectorAll(`${t} .tt-ess-list`).length, /Essential prime implicants/.test(document.querySelector(t).textContent)], T), [0, false]);
   assert.deepEqual(await page.eval((t) => [document.querySelectorAll(`${t} .tt-legend .tt-leg`).length > 0, /essential/i.test(document.querySelector(`${t} .tt-legend`).textContent)], T), [true, false]);
@@ -483,7 +483,7 @@ end rtl;
   assert.deepEqual((await texts()).groups, ['a + b + c', 'a + /b + /c', '/a + b + /c', '/a + /b + c']);
   await groupsOf(page, T, 'sop');
   // below the XOR form, the NAND and NOR forms (#694), then those of the fewest gates and of the least delay (#1427)
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least number of gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);
   // co: the carry a·b + c·(a ⊕ b), 5 literals against 6
   await page.click(`${T} .tt-tab[data-out=co]`);
   let x = await texts();
@@ -614,7 +614,7 @@ uiTest('#1120 Truth Table: solid lines between the row number, the inputs and th
 
 // #1427: the HDL logic of the fewest gates or of the least delay; every form's gates and delay as a circuit, and those
 // two forms with theirs; the module in the form chosen; in Portuguese
-uiTest('#1427 Truth Table: Least number of gates and Least delay, every form\'s gates and delay; the HDL in the one chosen; Portuguese', E, async (page) => {
+uiTest('#1427 Truth Table: Least gates and Least delay, every form\'s gates and delay; the HDL in the one chosen; Portuguese', E, async (page) => {
   const fa = { version: 1, name: 'fa', inputs: ['a', 'b', 'c'], outputs: ['s', 'co'], table: { s: '01101001', co: '00010111' }, exprs: {}, notes: '', form: 'sop', lang: 'vhdl' };
   await makeProject(env, { name: 'TtCost', files: { 'src/fa.bool.json': JSON.stringify(fa, null, 2) } });
   await page.openProject('TtCost');
@@ -630,7 +630,7 @@ uiTest('#1427 Truth Table: Least number of gates and Least delay, every form\'s 
   assert.deepEqual(await page.eval((t) => ['gates', 'delay'].map((g) => { const r = document.querySelector(`${t} .tt-${g}`), e = r.querySelector('.tt-expr');
     return [r.querySelector('b').textContent, e.textContent, e.closest('.tt-expr-box') === r.firstElementChild.lastElementChild, r.querySelectorAll('.tt-best-form').length,
       [...r.children].slice(1).map((c) => `${c.className}: ${c.textContent}`)]; }), T),
-    [['Least number of gates', 's = a ⊕ b ⊕ c', true, 0, ['tt-cost: 1 term(s), 3 literal(s); gates: 1 XOR3', 'tt-circuit: As a circuit: 1 gate(s), delay 1']],
+    [['Least gates', 's = a ⊕ b ⊕ c', true, 0, ['tt-cost: 1 term(s), 3 literal(s); gates: 1 XOR3', 'tt-circuit: As a circuit: 1 gate(s), delay 1']],
       ['Least delay', 's = a ⊕ b ⊕ c', true, 0, ['tt-cost: 1 term(s), 3 literal(s); gates: 1 XOR3', 'tt-circuit: As a circuit: 1 gate(s), delay 1']]]);
   // the module in the form of the fewest gates: s its XOR, co its minimal SOP; it simulates to the table
   await tickForm(page, 'gates', ['co', 's']);
@@ -641,7 +641,7 @@ uiTest('#1427 Truth Table: Least number of gates and Least delay, every form\'s 
   assert.deepEqual(simTable(vhd, 'fa.vhd', 'fa'), fa.table);
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor((t) => document.querySelector(`${t} .tt-gates b`)?.textContent === 'Menor número de portas', [T], { what: 'Portuguese' });
+  await page.waitFor((t) => document.querySelector(`${t} .tt-gates b`)?.textContent === 'Menos portas', [T], { what: 'Portuguese' });
   assert.deepEqual(await page.eval((t) => [document.querySelector(`${t} .tt-delay b`).textContent, document.querySelector(`${t} .tt-xor .tt-circuit`).textContent], T),
     ['Menor atraso', 'Como circuito: 1 porta(s), atraso 1']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));

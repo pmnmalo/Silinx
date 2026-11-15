@@ -11,7 +11,7 @@ import { FORMS, LogicError, MAX_KMAP_INPUTS, minimize, normalizeTable } from './
 import { NOTATION_IDS } from './expr-notation.js';
 
 /** The forms' names, as the editor's results name them. */
-export const FORM_NAMES = { sop: 'Karnaugh map SOP', pos: 'Karnaugh map POS', xor: 'XOR form', nand: 'NAND form', nor: 'NOR form', gates: 'Least number of gates', delay: 'Least delay', csop: 'Canonical SOP', cpos: 'Canonical POS',
+export const FORM_NAMES = { sop: 'Karnaugh map SOP', pos: 'Karnaugh map POS', xor: 'XOR form', nand: 'NAND form', nor: 'NOR form', gates: 'Least gates', delay: 'Least delay', csop: 'Canonical SOP', cpos: 'Canonical POS',
   qsop: 'Quine-McCluskey SOP', qpos: 'Quine-McCluskey POS' };   // (sop, pos: the minimal ones, the K-map's; past 6 inputs, Quine-McCluskey's, #3939)
 /** A form's name in a table (the minimal SOP and POS past the Karnaugh maps' inputs: Quine-McCluskey's, #3939). */
 export const formName = (doc, f) => FORM_NAMES[doc.inputs.length > MAX_KMAP_INPUTS && (f === 'sop' || f === 'pos') ? `q${f}` : f] || FORM_NAMES.sop;

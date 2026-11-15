@@ -115,7 +115,7 @@ async function tableResults(name, rel, doc, notation, design = false) {
   });
   const lines = outputs.flatMap(r => [   // (the editor's order, #3065)
     // (the function, then its terms, literals and gates by type, #4091)
-    `Least number of gates: ${r.leastGates.expr}   (${r.leastGates.cost})`, `Least delay: ${r.leastDelay.expr}   (${r.leastDelay.cost})`,
+    `Least gates: ${r.leastGates.expr}   (${r.leastGates.cost})`, `Least delay: ${r.leastDelay.expr}   (${r.leastDelay.cost})`,
     // (then the Karnaugh map's, up to 6 inputs, and Quine-McCluskey's, #3939)
     ...(r.kmap ? ['sop', 'pos'].flatMap(k => [`Karnaugh map ${k.toUpperCase()}: ${r.kmap[k].expr}   (${r.kmap[k].cost})`, ...solutionLines(r.kmap[k])])
       : [`Karnaugh map: none for more than ${L.MAX_KMAP_INPUTS} inputs (it has ${n}): the simplified function is Quine-McCluskey's.`]),

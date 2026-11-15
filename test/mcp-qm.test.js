@@ -47,7 +47,7 @@ test('related_view: 7 inputs: no Karnaugh map, Quine-McCluskey\'s; 16 inputs: no
   assert.equal(r.data.outputs[0].kmap, null);
   assert.ok(r.text.includes(`Karnaugh map: none for more than 6 inputs (it has 7): the simplified function is Quine-McCluskey's.
 Quine-McCluskey SOP: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)`), r.text);
-  assert.ok(r.text.includes('Least number of gates: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)'), r.text);
+  assert.ok(r.text.includes('Least gates: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)'), r.text);
   let seed = 3, col = '';
   for (let i = 0; i < 2 ** 16; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; col += seed >> 16 & 1 ? '1' : '0'; }
   await ok('write_file', { project: 'q', path: 'src/big.bool.json', text: JSON.stringify({ ...newTable('big', ins(16), ['f']), table: { f: col }, form: 'qsop' }) });

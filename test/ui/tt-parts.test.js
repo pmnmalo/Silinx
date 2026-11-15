@@ -73,7 +73,7 @@ uiTest('#3218 #3939 truth table editor parts: the results, their notation and th
   // the least gates' and least delay's rows: the tick box, the label, its expression (no form's name, #4091); its cost, its circuit
   assert.deepEqual(await ev((t) => ['gates', 'delay'].map((g) => { const r = document.querySelector(`${t} .tt-results > .tt-${g}`), [line, ...rest] = r.children;
     return [[...line.childNodes].map((n) => n.nodeType === 3 ? n.textContent : n.matches('input.tt-hdl, label') ? 'tick' : n.className || n.tagName.toLowerCase()), line.textContent, r.querySelectorAll('.tt-best-form').length, rest.map((c) => c.className)]; })), [
-    [['tick', 'b', ': ', 'tt-expr-box'], 'Least number of gates: f = b.c + a.c + a.b', 0, ['tt-cost', 'tt-circuit']],
+    [['tick', 'b', ': ', 'tt-expr-box'], 'Least gates: f = b.c + a.c + a.b', 0, ['tt-cost', 'tt-circuit']],
     [['tick', 'b', ': ', 'tt-expr-box'], 'Least delay: f = b.c + a.c + a.b', 0, ['tt-cost', 'tt-circuit']]]);
   // the captions: no Expression over the function's field, the results' Expressions (#4093)
   assert.deepEqual(await ev((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => `${c.className}: ${c.textContent}`)),

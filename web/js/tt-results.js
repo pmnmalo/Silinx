@@ -122,7 +122,7 @@ export function renderTtResults(ctx) {
   const best = (goal, label, tip) => bestForm(M, out, goal, label, tip, notation, tick);
   results.append(
     // (the circuit's two choices first, then the K-map's and Quine-McCluskey's, the canonical ones after them, #3065, #3939)
-    best('gates', 'Least number of gates', GATES_TIP), best('delay', 'Least delay', DELAY_TIP),
+    best('gates', 'Least gates', GATES_TIP), best('delay', 'Least delay', DELAY_TIP),
     ...(n <= MAX_KMAP_INPUTS ? [kmap()] : []), qm,
     canonForms(A, out, notation, tick),
     ...(xorForm ? [xorForm] : []),
