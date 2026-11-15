@@ -22,6 +22,37 @@ export const CIRCUIT_PT = {
   'Label': 'Etiqueta', 'Colour': 'Cor', 'Gates (4000)': 'Portas (4000)', 'MSI (74LS)': 'MSI (74LS)', 'Sequential (74LS, 4000)': 'Sequenciais (74LS, 4000)',
   'On': 'Ligado', 'Levers on': 'Alavancas ligadas', 'Frequency (Hz)': 'Frequência (Hz)',
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
+  // a part's details (#4126, core/circuit-part-info.js)
+  'Part info': 'Informação da peça', 'Chip': 'Circuito integrado', 'Family': 'Família', 'Package': 'Encapsulamento', 'Supply': 'Alimentação', 'Logic': 'Lógica',
+  'Typical delay': 'Atraso típico', 'Open collector': 'Coletor aberto', 'An input left open': 'Uma entrada deixada no ar',
+  'Reads 1 (a TTL input)': 'Lê 1 (uma entrada TTL)', 'Reads X (unknown): connect every CMOS input': 'Lê X (desconhecido): ligue todas as entradas CMOS',
+  'input': 'entrada', 'output': 'saída', 'open-collector output': 'saída de coletor aberto', 'supply +5 V': 'alimentação +5 V', 'supply GND': 'alimentação GND',
+  'not connected': 'não ligado', 'contact': 'contacto', 'weak output': 'saída fraca', 'tip': 'ponta',
+  'Plug the parts into its holes: the five holes a–e of a column are joined, and f–j; each rail along its edges is joined along the board, for +5 V and GND.':
+    'Encaixe as peças nos seus furos: os cinco furos a–e de uma coluna estão ligados, e f–j; cada linha ao longo das suas margens está ligada ao longo da placa, para +5 V e GND.',
+  'Plug the parts into its holes: the five holes a–e of a column are joined, and f–j; each rail along its edges is joined along half the board, cut in the middle.':
+    'Encaixe as peças nos seus furos: os cinco furos a–e de uma coluna estão ligados, e f–j; cada linha ao longo das suas margens está ligada ao longo de metade da placa, cortada ao meio.',
+  'Gives +5 V (a logic 1) on its + terminal and GND (a logic 0) on its − terminal: wire them to the breadboard\'s rails.':
+    'Dá +5 V (um 1 lógico) no seu terminal + e GND (um 0 lógico) no seu terminal −: ligue-os às linhas de alimentação da placa de ensaio.',
+  'Drives its output to 1 or 0, as it is set: click it while trying the circuit. An input of the HDL.':
+    'Põe a sua saída a 1 ou a 0, conforme a posição: clique nele ao experimentar o circuito. Uma entrada do HDL.',
+  'Joins its two pins while it is pressed (momentary, normally open): with a pull-up or a pull-down, it gives a 0 or a 1. An input of the HDL.':
+    'Liga os seus dois pinos enquanto está premido (momentâneo, normalmente aberto): com um pull-up ou um pull-down, dá um 0 ou um 1. Uma entrada do HDL.',
+  'Joins its middle pin C to A or to B, as it is set. An input of the HDL.': 'Liga o seu pino do meio C a A ou a B, conforme a posição. Uma entrada do HDL.',
+  'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.':
+    'Uma fila de interruptores, cada um a ligar o seu pino ao oposto enquanto está ligado. Entradas do HDL.',
+  'Drives its output to 1 and 0 in turn, at its frequency. An input of the HDL.': 'Põe a sua saída a 1 e a 0 alternadamente, à sua frequência. Uma entrada do HDL.',
+  'A weak 1 (a resistor to +5 V): its net reads 1 unless something drives it to 0.': 'Um 1 fraco (uma resistência para +5 V): a sua rede lê 1 a menos que algo a ponha a 0.',
+  'A weak 0 (a resistor to GND): its net reads 0 unless something drives it to 1.': 'Um 0 fraco (uma resistência para GND): a sua rede lê 0 a menos que algo a ponha a 1.',
+  'Lights while its anode A is at 1 and its cathode K at 0. An output of the HDL.': 'Acende enquanto o seu ânodo A está a 1 e o seu cátodo K a 0. Uma saída do HDL.',
+  'Seven segments a–g and a point DP, each an LED; common cathode: a segment lights while its pin is at 1 and COM at 0. Outputs of the HDL.':
+    'Sete segmentos a–g e um ponto DP, cada um um LED; cátodo comum: um segmento acende enquanto o seu pino está a 1 e COM a 0. Saídas do HDL.',
+  'Seven segments a–g and a point DP, each an LED; common anode: a segment lights while its pin is at 0 and COM at 1. Outputs of the HDL.':
+    'Sete segmentos a–g e um ponto DP, cada um um LED; ânodo comum: um segmento acende enquanto o seu pino está a 0 e COM a 1. Saídas do HDL.',
+  'Ten LEDs side by side, each lighting while its anode is at 1 and its cathode at 0. Outputs of the HDL.':
+    'Dez LEDs lado a lado, cada um aceso enquanto o seu ânodo está a 1 e o seu cátodo a 0. Saídas do HDL.',
+  'Shows the level of the net its tip touches: H (1), L (0), – (open) or X (unknown). Not a port of the HDL.':
+    'Mostra o nível da rede em que a sua ponta toca: H (1), L (0), – (no ar) ou X (desconhecido). Não é uma porta do HDL.',
 };
 // the parts' titles (core/circuit-parts.js, core/circuit-ics.js)
 const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
@@ -66,7 +97,7 @@ export const CIRCUIT_PT_PATTERNS = [
   [new RegExp(`^([A-Za-z]\\w*): (${TITLES})$`), (m, id, t) => `${id}: ${title(t)}`],
   [new RegExp(`^(${TITLES}): pinout$`), (m, t) => `${title(t)}: pinos`],
   [new RegExp(`^(${TITLES})$`), (m, t) => title(t)],
-  [/^((?:SN74LS|CD)\d{2,4}B?): pinout$/, '$1: pinos'], [/^Typical delay (\d+) ns(, open collector)?$/, (m, n, oc) => `Atraso típico de ${n} ns${oc ? ', coletor aberto' : ''}`],
+  [/^((?:SN74LS|CD)\d{2,4}B?): pinout$/, '$1: pinos'],
   [/^Input ([A-Za-z]\w*(?:_…)?) of the HDL$/, 'Entrada $1 do HDL'], [/^Output ([A-Za-z]\w*(?:_…)?) of the HDL$/, 'Saída $1 do HDL'],
   [/^Wire ([A-Za-z]\w*)$/, 'Fio $1'], [/^Lever (\d+)$/, 'Alavanca $1'],
 ];

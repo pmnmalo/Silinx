@@ -39,7 +39,7 @@ async function apply(E, m, op) {
 export const CIRCUIT_TOOLS = [
   {
     name: 'circuit_parts', title: 'The parts of a digital circuit',
-    description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, pull, output, probe, ic), its pins (number, name, direction: in, out, vcc, gnd, pass, weak, probe, oc, nc; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns). A breadboard\'s holes: a1 to j30 (a full one\'s to j63; a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30 (a full one\'s to 63, split after 31).',
+    description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, pull, output, probe, ic), its pins (number, name, direction: in, out, vcc, gnd, pass, weak, probe, oc, nc; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns). Given one part\'s type: its details too (info: what it does, an IC\'s family, package, supply pins, logic, delay, open-collector outputs, how an input left open reads; each pin\'s role), as the editor\'s Part info. A breadboard\'s holes: a1 to j30 (a full one\'s to j63; a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30 (a full one\'s to 63, split after 31).',
     inputSchema: { type: 'object', properties: { type: STR('One part\'s type (7400, led…); default: every part.') }, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ type } = {}) {
@@ -48,7 +48,13 @@ export const CIRCUIT_TOOLS = [
       const list = type == null ? all : all.filter((p) => p.type === String(type));
       if (!list.length) throw toolError(`no part '${type}' (the parts: ${all.map((p) => p.type).join(', ')})`);
       const text = list.map((p) => `${p.type}: ${p.title}${p.chip ? ` (${p.chip}, ${p.tpd} ns)` : ''}${p.pins.length ? `; pins ${p.pins.map((q) => `${q.n} ${q.name} ${q.dir}`).join(', ')}` : ''}${p.gates ? `; gates ${p.gates.join('; ')}` : ''}`);
-      return { text: text.join('\n'), data: { parts: list } };
+      if (type == null) return { text: text.join('\n'), data: { parts: list } };
+      // (one part: its details too, as the editor's Part info, #4126)
+      const info = (await import('../core/circuit-part-info.js')).partInfo(String(type));
+      const lines = [info.about, info.chip && `Chip ${info.chip}, ${info.family}, ${info.package}; supply ${info.power}`, ...(info.logic || []),
+        info.delay && `Typical delay ${info.delay} ns`, info.openCollector && 'Outputs: open collector', info.openInput && `An input left open reads ${info.openInput}`,
+        `Pins: ${info.pins.map((q) => `${q.n} ${q.name} (${q.role})`).join(', ')}`].filter(Boolean);
+      return { text: [text[0], ...lines].join('\n'), data: { parts: list, info } };
     },
   },
   {

@@ -12,7 +12,7 @@ import { runVectors, seededRandom, randomRows } from '../core/grade-sim.js';
 import { textReport, csvReport } from '../core/grade-report.js';
 import { compile, elaborate } from '../core/compile.js';
 import { CHECKS } from '../core/labs-check.js';
-import { COUNTER_V, COUNTER_VHD, VECTORS, PORTS, counterExercise, hdl, trafficExercise, drawing } from './grade-fixtures.mjs';
+import { COUNTER_V, COUNTER_VHD, VECTORS, PORTS, counterExercise, hdl, trafficExercise, drawing, breadboardExercise, circuit } from './grade-fixtures.mjs';
 
 async function grade(ex, sub, opts = {}) {
   const vectors = Object.fromEntries(ex.tests.filter(t => t.kind === 'reference').map(t => [t.id, referenceVectors(ex, t)]));
@@ -38,7 +38,7 @@ test('#3192 the exercise: a right one has no problem; each kind of wrong one say
     'e.exercise.json: port z: "dir": in, out or inout',
     'e.exercise.json: port z: "width": a whole number from 1 to 1024',
     'e.exercise.json: "allow.languages": a list of vhdl, verilog',
-    'e.exercise.json: "allow.drawings": a list of sch, asm, fsm, tt, pn',
+    'e.exercise.json: "allow.drawings": a list of sch, asm, fsm, tt, pn, circ',
     'e.exercise.json: "allow.primitives": true or false',
     'e.exercise.json: "limits.seconds": a number from 0 to 600',
     'e.exercise.json: "limits": no limit \'cpu\' (simNs, steps, seconds, memoryMb)',
@@ -161,6 +161,18 @@ test('#3192 Accepted: the traffic example\'s state machine as a drawing, its HDL
   assert.deepEqual(s.sources.map(x => [x.path, x.lang, x.drawing]), [['src/traffic.vhd', 'vhdl', 'src/traffic.fsm.json']]);
   assert.match(s.sources[0].text, /entity traffic is/);
   assert.deepEqual([...s.used.drawings], ['fsm']);
+});
+
+test('#4118 Accepted: the breadboard example\'s circuit, its HDL made again from it; refused only by an allow.drawings without circ', async () => {
+  const r = await grade(breadboardExercise(), circuit());
+  assert.deepEqual([r.verdict, r.points, r.design], ['AC', 10, { verdict: null, messages: [], warnings: [] }]);
+  assert.deepEqual(messages(r), { random: [] });
+  const s = submissionSources(circuit());
+  assert.deepEqual(s.sources.map(x => [x.path, x.lang, x.drawing]), [['src/breadboard.vhd', 'vhdl', 'src/breadboard.circ.json']]);
+  assert.deepEqual([...s.used.drawings], ['circ']);
+  assert.deepEqual(exerciseProblems(breadboardExercise({ allow: { drawings: ['circ'] } })), []);
+  const no = await grade(breadboardExercise({ allow: { drawings: ['sch', 'fsm'] } }), circuit());
+  assert.deepEqual([no.verdict, verdicts(no), no.design.messages], ['IE', { random: 'IE' }, ['a drawing of kind \'circ\' is not allowed in this exercise']]);
 });
 
 test('#3192 Wrong Answer: the first difference (its cycle, signal, expected and obtained, the rows around it); a test bench\'s assertion', async () => {

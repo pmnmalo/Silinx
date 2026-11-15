@@ -38,7 +38,7 @@ export const TEST_KINDS = ['vectors', 'reference', 'testbench', 'synthesis', 'eq
  *  grading does not run: its synthesis test does, #3329); NOT_GRADED, why a check is not one of them. */
 export const GRADE_CHECKS = Object.keys(CHECKS).filter(k => k !== 'process');
 export const NOT_GRADED = { process: 'a process check is a guided lab\'s: grading runs its own synthesis test ("kind": "synthesis")' };
-export const DRAWINGS = ['sch', 'asm', 'fsm', 'tt', 'pn'];
+export const DRAWINGS = ['sch', 'asm', 'fsm', 'tt', 'pn', 'circ'];
 export const LANGUAGES = ['vhdl', 'verilog'];
 /** The limits when the exercise does not give them: simulated time (ns, a test bench's), simulation steps, the
  *  wall-clock seconds of a test, the heap of a submission's worker (MB). */

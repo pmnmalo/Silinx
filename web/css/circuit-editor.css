@@ -88,6 +88,13 @@
 .circuit-editor .circ-pinout table { border-collapse: collapse; font: 11px var(--asm-mono, monospace); }
 .circuit-editor .circ-pinout td { padding: 0 4px; }
 .circuit-editor .circ-pinout td.n { color: var(--asm-muted); text-align: center; }
+/* the selected part's details (#4126) */
+.circuit-editor .circ-info { margin-top: 8px; }
+.circuit-editor .circ-info table { border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+.circuit-editor .circ-info th { text-align: left; font-weight: normal; color: var(--asm-muted); padding: 1px 8px 1px 0; vertical-align: top; white-space: nowrap; }
+.circuit-editor .circ-info td { padding: 1px 4px 1px 0; vertical-align: top; }
+.circuit-editor .circ-info-rows td div, .circuit-editor .circ-info-pins td:nth-child(2) { font-family: var(--asm-mono, monospace); }
+.circuit-editor .circ-info-pins td.n { color: var(--asm-muted); text-align: right; }
 .circuit-editor .circ-note { font-size: 11px; color: var(--asm-muted); margin-top: 4px; }
 /* phase 2's parts (#3899, circuit-draw-parts.js) */
 .circuit-editor .circ-dip-body { fill: #c62828; stroke: #8e1d1d; }

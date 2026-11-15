@@ -29,7 +29,7 @@ A file's text can be written inside the exercise (`{ "path", "text" }`) or kept 
     { "name": "clk", "dir": "in", "width": 1 }, { "name": "rst", "dir": "in", "width": 1 },
     { "name": "en", "dir": "in", "width": 1 }, { "name": "q", "dir": "out", "width": 4 }
   ],
-  "allow": { "languages": ["vhdl", "verilog"], "drawings": ["fsm", "asm", "sch", "tt", "pn"], "primitives": true },
+  "allow": { "languages": ["vhdl", "verilog"], "drawings": ["fsm", "asm", "sch", "tt", "pn", "circ"], "primitives": true },
   "limits": { "simNs": 1000000, "steps": 5000000, "seconds": 10, "memoryMb": 256 },
   "reference": { "files": [{ "path": "ref/counter4.vhd", "file": "ref/counter4.vhd" }] },
   "tests": [

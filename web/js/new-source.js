@@ -11,7 +11,7 @@ import { S, app } from './app.js';
 import { isView } from '/core/view-hdl.js';
 import { reservedError } from '/core/reserved.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
-import { NAME_RE, FILE_RE } from '/core/ident.js';
+import { NAME_RE, FILE_RE, sourceBase } from '/core/ident.js';
 import { cTemplate, cppTemplate } from './c-templates.js';
 import { designOnly } from './design-only.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
@@ -84,7 +84,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     validate: () => null,
   };
   // the file name and the location; Wizard (#958) opens the type's wizard with them (it asks the rest on its pages)
-  const nameOf = () => fname.value.trim().replace(/\.(vhd|vhdl|v|ucf|pcf|lpf|cst|xdc|mem|asm\.json|tt\.json|bool\.json|sch\.json|fsm\.json|pn\.json|lab\.json)$/i, '');
+  const nameOf = () => sourceBase(fname.value);
   const fileError = () => {
     if (!FILE_RE.test(nameOf())) return 'Enter a valid file name (letters, digits, _ and -).';
     if (!/^[A-Za-z0-9_/-]+$/.test(loc.value.trim())) return 'Invalid location.';
@@ -211,7 +211,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     title: 'Summary',
     render: () => summary,
     onShow: () => {
-      const n = fname.value.trim().replace(/\.(vhd|vhdl|v|ucf|pcf|lpf|cst|xdc|mem|asm\.json|tt\.json|bool\.json|sch\.json)$/i, '');
+      const n = nameOf();
       const lg = langSel.value === 'verilog' ? 'Verilog' : 'VHDL';
       summary.textContent = `Project Navigator will create a new skeleton source with the following specifications.\n\nAdd to Project: Yes\nSource Directory: ${loc.value}\nSource Type: ${st.label}${st.ext ? '' : ` (${lg})`}\nSource Name: ${n}${extOf(st)}\n` +
         (st.id === 'hdl' ? `\nEntity name: ${entName.value}\n${langSel.value === 'vhdl' ? `Architecture name: ${archName.value}\n` : ''}\nPort Definitions:\n${ports.map(p => `    ${p.name.padEnd(12)} ${p.bus ? `Bus[${p.msb}:${p.lsb}]` : 'Pin'.padEnd(8)}  ${p.dir}`).join('\n')}` : '') +

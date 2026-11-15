@@ -349,6 +349,23 @@ uiTest('Algebra from Module: a vector adder read into a table (exhaustive simula
   await page.click(`${T} .tt-menu-item`, { text: 'Algebra from Module…' });
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tb-more-menu`).hidden, T), true);
   await page.waitDialog('Algebra from Module');
+  // its hint: the real limit, the editor's (MAX_EDIT_INPUTS, 16), in English and in Portuguese (#4117)
+  const hint = () => page.eval(() => document.querySelector('.dlg-overlay .hint').textContent);
+  assert.equal(await hint(), 'Combinational module (at most 16 input bits): its truth table is computed by simulating every input combination.');
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
+  const setLang = (l) => page.eval(async (y) => { (await import('/js/i18n.js')).setLanguage(y); }, l);
+  await setLang('pt');
+  await page.click(`${T} .tb-more-btn`);
+  await page.click(`${T} .tt-menu-item`, { text: 'Álgebra de um Módulo…' });
+  await page.waitDialog('Álgebra de um Módulo');
+  assert.equal(await hint(), 'Módulo combinatório (no máximo 16 bits de entrada): a tabela de verdade é calculada simulando todas as combinações das entradas.');
+  await page.dialogButton('Cancelar');
+  await page.waitNoDialog();
+  await setLang('en');
+  await page.click(`${T} .tb-more-btn`);
+  await page.click(`${T} .tt-menu-item`, { text: 'Algebra from Module…' });
+  await page.waitDialog('Algebra from Module');
   await page.dialogButton('OK');
   await page.waitDialog('Algebra from Module');
   await page.dialogButton('Yes');

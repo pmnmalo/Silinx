@@ -1,8 +1,9 @@
 # Working on Silinx
 
 Silinx is an ISE-like FPGA IDE for teaching digital systems (Spartan-3E boards: Basys2,
-Nexys2). It runs in the browser or as a local server, with its own open toolchain (Yosys WASM,
-pack, place, route, bitgen) and optionally Xilinx ISE 14.7. These are the project's rules for
+Nexys2; also the Spartan-6, iCE40, ECP5, Gowin and 7-series boards, and design and simulation projects with no FPGA).
+It runs in the browser or as a local server, with its own open toolchain (Yosys WASM, pack, place, route, bitgen) and
+optionally Xilinx ISE 14.7 and AMD Vivado. These are the project's rules for
 anyone changing it, people and AI agents alike. The README and docs/ describe the product;
 [ONBOARDING.md](ONBOARDING.md) adds the setup, how several Claude sessions work together, a map of
 the code and the lessons learnt.
@@ -23,8 +24,9 @@ the code and the lessons learnt.
   simulation, synthesis, implementation, ISE), or an explicit "no warnings", never only "no errors".
 - **The examples are the test designs**: gates, breadboard, traffic, blinky, pong, stopwatch, clock,
   vga, isqrt, uart, micro80 (`examples/`, in that order). Each must run on every device of the Silinx toolchain
-  (Basys2-100/250, Nexys2-500/1200, Nexys3, Atlys: `TARGETS` in `test/examples-lib.mjs`) and build with ISE with no
-  warnings (but micro80: XST's warnings on the light8080 core's unused parts, the core kept as it is, #2544). A new
+  (Basys2-100/250, Nexys2-500/1200, Nexys3, Atlys: `TARGETS` in `test/examples-lib.mjs`; the iCE40's, ECP5's, Gowin's
+  and 7-series' boards: `ICE40_TARGETS`, `ECP5_TARGETS`, `GOWIN_TARGETS`, `XC7_TARGETS`; Vivado's: `VIVADO_TARGETS`)
+  and build with ISE with no warnings (but micro80: XST's warnings on the light8080 core's unused parts, the core kept as it is, #2544). A new
   source style or
   feature should be exercised by an example where it fits.
 - **ISE is the oracle** for the open toolchain: byte-identical `.bit` and a clean DRC
@@ -35,12 +37,12 @@ the code and the lessons learnt.
 - Write code that reads like the code around it: its comment density, naming and idiom.
 - Shell output: print only what is needed (the summary, the failures: `tail`, `grep`, `--quiet`); never whole logs,
   test runs or JSON, which ride along on every later call of the session (#1849).
-- **Small modules and functions** (#405): a source file (`core/`, `web/js/`, `server/`, `scripts/`) stays under
+- **Small modules and functions** (#405): a source file (`core/`, `web/js/`, `server/`, `scripts/`, the packages'
+  `src/`) stays under
   1000 lines and a function under 300; one module per concern (an editor's panel, its drawing, its tools; a
   compiler's expressions, its statements). A change that would take a file or a function past the limit splits it
-  first, in a pull request of its own. `test/code-size.test.js` enforces it: the files and functions over the limit
-  today are listed there, a new one fails, and an entry leaves the list once it is under the limit (the list only
-  shrinks). Do not grow a listed one: split the part you work on.
+  first, in a pull request of its own. `test/code-size.test.js` enforces it: a file or a function over the limit fails
+  (its lists of exceptions, `BIG_FILES` and `BIG_FUNCTIONS`, are empty since every one was split, and they stay so).
 - **Splitting** (the way #405 did it):
   - move code as it is, in a pull request that changes no behaviour (no fixes or renames mixed in);
   - a section of a mount function becomes `mountX(ctx)` in a module of its own, called where the code was, so the
@@ -54,7 +56,8 @@ the code and the lessons learnt.
     functions); shared helpers go in a small module of their own rather than into a cycle;
   - the new module gets its own test (mounted alone, or on real designs), and core moves are checked against
     main's module on the repository's corpus (every HDL file, schematic, chart) with the same output;
-  - a module that holds interface labels (`text: '…'`) joins the list of files `test/web-i18n.test.js` scans.
+  - a module that holds interface labels (`text: '…'`) has them translated: `test/web-i18n.test.js` scans every
+    `web/js` file (the git-tracked ones, for its unused translations: add the new file before running it).
 - **The interface's rules** are in [docs/UI-GUIDELINES.md](docs/UI-GUIDELINES.md): read them before changing an editor or a
   view. Among them: no bar above an editor's or viewer's toolbar (its name is the tab's), a read-only notice at the right
   end of the toolbar, no Undo / Redo / Print in a document's toolbar (the main toolbar's), every side panel foldable
@@ -70,8 +73,8 @@ the code and the lessons learnt.
   `server/` first (a move, as below). Only what is the view alone stays out (zoom, layout, theme, language, tabs);
   a file the user picks in the interface is one of the MCP's exchange folder (`SILINX_MCP_FOLDER`).
 - The Design pane shows one row per module: its drawing (schematic, ASM, FSM, truth table, Petri
-  net) is the base and its HDL file is always generated from it; the badges show the drawing first,
-  `[VHDL]` / `[Verilog]` last.
+  net, circuit) is the base and its HDL file is always generated from it; the badges show the drawing first,
+  `[VHDL]` / `[Verilog]` last (none in a design and simulation project, #3891).
 - Never commit Xilinx files: ISE itself, its Docker image, or ISE's raw outputs (`.bit`, `.ncd`,
   `.xdl`, `.xdlrc`, logs). The routing graphs in `packages/silinx-fpga/devices/` are shipped for the supported
   boards only.

@@ -45,7 +45,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   category, each folded or open, each part with its drawing, an IC's the schematic's symbol of its gate or its block; a
   click on a part, then on the drawing; foldable, over the canvas behind ☰ Parts on a narrow screen), the Properties side
   panel on the right, foldable, over the canvas behind ☰ Properties on a narrow screen: the selected part's label,
-  colour, pinout, a switch's position as saved (a DIP switch's levers), a clock's frequency; the circuit's name (its HDL
+  colour, pinout and Part info, a switch's position as saved (a DIP switch's levers), a clock's frequency; the circuit's name (its HDL
   language in the ⋮ menu, as every drawing's, #4063: Preferred Language, VHDL or Verilog); the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
   · 15 wire(s)"; while simulating, "t = 24 ns"); every message in the console.
 
@@ -75,7 +75,9 @@ generated HDL and the MCP server.
 along its lower row, 8 to 14 right to left along its upper row, VCC on 14 and GND on 7 (the 7400 family's; each part
 says its own). The 7400, 7408, 7432 and 7486 share one pinout (1A 1, 1B 2, 1Y 3, 2A 4, 2B 5, 2Y 6, 3Y 8, 3A 9, 3B 10,
 4Y 11, 4A 12, 4B 13); the 7404's six inverters are 1A 1, 1Y 2, …, 4Y 8, 4A 9, 5Y 10, 5A 11, 6Y 12, 6A 13. The 7402's
-outputs come first (1Y 1, 1A 2, 1B 3, …). Each part's pinout is shown in its Properties and on hover over a pin.
+outputs come first (1Y 1, 1A 2, 1B 3, …). Each part's pinout is shown in its Properties and on hover over a pin; under it,
+its **Part info** (#4126): what the part does, an IC's chip, family, package, supply pins, logic (1Y = NAND(1A, 1B)…),
+typical delay, open-collector outputs and how an input left open reads (a TTL input 1, a CMOS one X); each pin's role.
 
 Every 4000 quad 2-input gate shares the 4001's pinout (1A 1, 1B 2, 1Y 3, 2Y 4, 2A 5, 2B 6, VSS 7, 3A 8, 3B 9, 3Y 10, 4Y 11,
 4A 12, 4B 13, VDD 14), not the 7400's. The 7410, 7411 and 7427: 1A 1, 1B 2, 2A 3, 2B 4, 2C 5, 2Y 6, 3Y 8, 3A 9, 3B 10,
@@ -237,7 +239,7 @@ What differs on the FPGA:
 What the interface does, the MCP server does (CLAUDE.md, #2674):
 
 - `new_source` type `circuit` (empty, or with a breadboard and a supply);
-- `circuit_parts`: the library, a part's pins, its logic and delay;
+- `circuit_parts`: the library, a part's pins, its logic and delay; one part's Part info too;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
   rotate (a breadboard with its parts; `keep: false`, the editor's Keep connections off), copy (the editor's Copy and
   Paste), wires (curved or straight, the editor's Curved wires), delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
