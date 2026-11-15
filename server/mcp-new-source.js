@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
+import { sourceBase } from '../core/ident.js';
 
 const TYPES = {
   module: { label: 'Module (HDL)', ext: null, dir: 'src' },
@@ -89,7 +90,7 @@ export const NEW_SOURCE_TOOLS = [
       if (!t) throw toolError(`type: one of ${Object.keys(TYPES).join(', ')}`);
       const { reservedError } = await import('../core/reserved.js');
       const { constraintsExtOf } = await import('../packages/silinx-fpga/src/parts.js');
-      file = String(file || '').trim().replace(/\.(vhd|vhdl|v|ucf|pcf|lpf|cst|xdc|mem|c|cpp|asm\.json|tt\.json|bool\.json|sch\.json|fsm\.json|pn\.json|lab\.json)$/i, '');
+      file = sourceBase(file);
       if (!FILE_RE.test(file)) throw toolError('Enter a valid file name (letters, digits, _ and -).');
       const loc = String(location ?? t.dir).trim().replace(/\/+$/, '');
       if (!/^[A-Za-z0-9_/-]+$/.test(loc) || loc.split('/').some(s => !s || s.startsWith('.'))) throw toolError('Invalid location.');
