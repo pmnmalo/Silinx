@@ -67,7 +67,7 @@ uiTest('#3181 share and follow: the follower sees the project, the owner\'s edit
     await fp.waitFor(() => window.Silinx.active.editor.getCursor().line === 9, [], { what: 'the owner\'s cursor' });
     assert.deepEqual(await fp.eval(() => window.Silinx.active.editor.getCursor()), { line: 9, ch: 2 });
     assert.equal(await fp.eval(() => window.Silinx.active.editor.getValue()), TOP);
-    await fp.waitConsole(/^Following Ana's project "Shared", read only: their changes appear as they make them, and their open editor while you follow them \(Following Ana, in the toolbar\)\.$/m);
+    await fp.waitConsole(/^Following Ana's project "Shared", read only: their changes appear as they make them, and what they do \(their documents, views and selection\) while you follow them \(Following Ana, in the toolbar\)\.$/m);
     // read only: the notice at the right end of the toolbar, an edit refused
     assert.equal(await fp.eval(() => window.Silinx.active.el.querySelector('.editor-bar > .gen-banner.read-only:last-child')?.textContent), 'Read-only, following Ana\'s project');
     assert.equal(await fp.eval(() => window.Silinx.active.editor.readOnly()), true);
@@ -92,7 +92,7 @@ uiTest('#3181 share and follow: the follower sees the project, the owner\'s edit
     await page.eval(() => window.SilinxApp.openFile('src/pass1.vhd'));
     await fp.waitFor(() => window.Silinx.active?.path === 'src/pass1.vhd', [], { what: 'the owner\'s new editor followed' });
     await fp.eval(() => window.SilinxApp.openFile('src/top.vhd'));
-    await fp.waitConsole(/^Browsing alone: Ana's editor is no longer followed \(Follow Ana, in the toolbar, follows it again\)\.$/m);
+    await fp.waitConsole(/^Browsing alone: Ana is no longer followed \(Follow Ana, in the toolbar, follows them again\)\.$/m);
     assert.equal(await fp.eval(() => document.querySelector('.collab-presence .collab-btn').textContent), 'Follow Ana');
     await page.eval(() => window.Silinx.active.editor.setCursor({ line: 5, ch: 0 }));
     await new Promise((r) => setTimeout(r, 600));
@@ -104,7 +104,7 @@ uiTest('#3181 share and follow: the follower sees the project, the owner\'s edit
       [['Ana', 'owner'], ['Rui', 'you'], ['Follow Ana', ''], ['Stop Following', '']]);
     await fp.click('body > .menu-popup .mi', { text: 'Follow Ana' });
     await fp.waitFor(() => window.Silinx.active?.path === 'src/pass1.vhd', [], { what: 'following again' });
-    await fp.waitConsole(/^Following Ana's editor\.$/m);
+    await fp.waitConsole(/^Following Ana: their documents, views and selection\.$/m);
     // Stop Sharing, from the owner's presence menu: the follower told, the project left as it was, read only
     await page.click('.collab-presence .collab-btn');
     await page.waitForSelector('body > .menu-popup');
@@ -344,7 +344,7 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
   const fp = await follow(link, 'Rui');
   try {
     await fp.waitFor(() => window.Silinx.active?.path === 'src/pass1.vhd', [], { what: 'the link\'s module' });
-    await fp.waitConsole(/^Browsing alone on pass1, the link's module \(Follow Ana, in the toolbar, follows Ana's editor\)\.$/m);
+    await fp.waitConsole(/^Browsing alone on pass1, the link's module \(Follow Ana, in the toolbar, follows Ana again\)\.$/m);
     assert.equal(await fp.eval(() => document.querySelector('.collab-presence .collab-btn').textContent), 'Follow Ana');
     await new Promise((r) => setTimeout(r, 1500));   // (a few of the follower's rounds: not brought to the owner's)
     assert.equal(await active(fp), 'src/pass1.vhd');
@@ -352,7 +352,7 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
     await fp.waitForSelector('body > .menu-popup');
     await fp.click('body > .menu-popup .mi', { text: 'Follow Ana' });
     await fp.waitFor(() => window.Silinx.active?.path === 'src/top.vhd', [], { what: 'the owner\'s editor followed' });
-    await fp.waitConsole(/^Following Ana's editor\.$/m);
+    await fp.waitConsole(/^Following Ana: their documents, views and selection\.$/m);
   } finally { await fp.close(); }
   // asked again while shared: that module's links at once
   await treeMenu(page, await rowOf(page, 'top'), 'Share Module…');

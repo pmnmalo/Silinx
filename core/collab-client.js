@@ -24,7 +24,11 @@
 //                                    participant, in a KIND.to frame, of its role: { role: 'editor', sign } (the
 //                                    editors' signing key: a viewer promoted, or an editor given the key renewed) or
 //                                    { role: 'viewer' } (an editor demoted); the owner's { type: 'rekey', editors }
-//                                    tells the room the editors' new public key, the old one's edits refused from then)
+//                                    tells the room the editors' new public key, the old one's edits refused from then),
+//                                    KIND.activity (#4002: the owner's activity, { ch, v }: what it does by channel,
+//                                    core/collab-activity.js; each channel's latest value sent again, for it only, to
+//                                    a follower that joins; the room forwards none of a follower's, as any frame of
+//                                    theirs but their awareness and an editor's signed edit)
 // The relay never reads them: a hosted one, for the browser edition, can be the same.
 import * as Y from 'yjs';
 import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwarenessStates } from 'y-protocols/awareness';
@@ -33,10 +37,11 @@ import * as decoding from 'lib0/decoding';
 import { newKey, keyOf, seal, unseal } from './collab-crypto.js';
 import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE } from './collab-sign.js';
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
+import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 
 export const PROTOCOL = 4;   // (2: an editor's signed edits, #3182; 3: a follower's awareness marked with its sender, #3360; 4: the owner's frame for one follower, #3529)
 export const SUBPROTOCOL = 'silinx-collab';   // (the WebSockets', server/collab-relay.js's)
-export const KIND = Object.freeze({ update: 1, awareness: 2, edit: 3, from: 4, to: 5, role: 6 });
+export const KIND = Object.freeze({ update: 1, awareness: 2, edit: 3, from: 4, to: 5, role: 6, activity: 7 });
 
 /** A follower's frame as the room forwards it (#3360): marked with the client id it joined with. */
 export function fromFrame(client, frame) {
@@ -200,6 +205,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   };
   const awareness = new Awareness(doc);
   awareness.setLocalState({ user, role: 'owner', view: null });
+  const activity = activityStore();   // (#4002: the owner's activity, each channel's latest value)
   let p = null, room = null, resume = null, cur = null;
   let ended = null, stopped = false, lostAt = null, timer = null;   // (why it ended; close() called; since when lost)
   // a frame for one follower, on the connection `c` (a join's answer: on the connection it came on)
@@ -211,6 +217,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
       if (!Number.isSafeInteger(client) || client < 0 || client > 0xFFFFFFFF) return;
       await sendTo(c, client, KIND.update, Y.encodeStateAsUpdate(doc));
       await sendTo(c, client, KIND.awareness, encodeAwarenessUpdate(awareness, [...awareness.getStates().keys()]));
+      for (const [ch, v] of activity.all()) await sendTo(c, client, KIND.activity, activityBytes(ch, v));
     } else if (msg.type === 'leave') removeAwarenessStates(awareness, [Number(msg.client)], 'relay');
     else if (msg.type === 'closed') c.closedReason = msg.reason;
     else if (msg.type === 'error') onEvent({ type: 'error', message: String(msg.message || '') });
@@ -309,6 +316,14 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   };
   return {
     ...p, key: text, ...roles,
+    /** The owner's activity on a channel (#4002): sent to every follower when it changed, kept for those who join.
+     *  Throws when the channel's name or the value's size is not one; false: unchanged (or past the channels' number). */
+    publish: (ch, value) => {
+      const bytes = activityBytes(ch, value);
+      if (ended || !activity.set(ch, value)) return false;
+      p.send(KIND.activity, bytes);
+      return true;
+    },
     /** An editor link's key (with `editors`; renewed by a demotion, #3997). */
     get editKey() { return signer?.text || null; },
     closed: () => ended !== null,
@@ -333,7 +348,8 @@ export const RECONNECT = Object.freeze({ delays: [1000, 2000, 4000, 8000, 15_000
 const REFUSED = [1003, 1008, 1009];
 
 /** A follower joins a room with its link's key: { doc (the project, as it arrives), ready (resolves once it has
- *  arrived), peers(), owner(), setView(), connected(), close() }. Read only: nothing it does reaches the owner but its
+ *  arrived), peers(), owner(), setView(), activity(ch) (the owner's, #4002: an event { type: 'activity', ch } when a
+ *  channel's value changed), connected(), close() }. Read only: nothing it does reaches the owner but its
  *  view. With `sign` (an editor link's key, #3182), an editor: what changes in its document (core/collab-doc.js
  *  editFile) is sent, signed, to everyone. A room whose document passes `limits` (its files, their total size:
  *  core/collab-doc.js FOLLOW_LIMITS, #3361; its bytes, a root of no shared project's, #3527) is left at once: an error
@@ -350,6 +366,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   const doc = new Y.Doc();
   const awareness = new Awareness(doc);
   awareness.setLocalState({ user, role: signer ? 'editor' : 'follower', view: null });
+  const activity = activityStore();   // (#4002: the owner's activity as it arrives)
   // (the room's public key, from the owner's document: an editor's edit checked with it)
   let verifier = null, verifierPub = null;
   const verifierOfDoc = async () => {
@@ -426,6 +443,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
     }
     else if (m.kind === KIND.awareness) applyAwarenessFrom(awareness, m.bytes);   // (the owner's: who is in)
     else if (m.kind === KIND.role) await roleIn(m.bytes);
+    else if (m.kind === KIND.activity) { const a = activityOf(m.bytes); if (a && activity.set(a.ch, a.v)) onEvent({ type: 'activity', ch: a.ch }); }
   };
   // (#3997: the owner's word of this participant's role: an editor, with the editors' key (a viewer promoted, or the key
   // renewed: what of its own changes the owner may lack sent again, signed with the new one), or a viewer again)
@@ -526,6 +544,8 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
     get editor() { return !!signer; },
     /** The editors' key it signs with (null: a viewer). */
     sign: () => (signer ? signText : null),
+    /** The owner's activity on a channel, as it last arrived (#4002; null: none yet): untrusted, checked by its reader. */
+    activity: ch => activity.get(ch),
     owner: () => p.peers().find(x => x.role === 'owner') || null,
     closed: () => ended !== null,
     /** Joined now (false: its connection lost, being made again, or the session ended). */

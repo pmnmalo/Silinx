@@ -32,6 +32,7 @@ import { newHostKey } from '/core/collab-meet.js';
 import { linkField } from './link-field.js';
 import { howRow, shareTitle } from './share-how.js';
 import { hdlWarning } from './design-only.js';
+import { publishActivity } from './collab-activity.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const TRACK_MS = 300;
@@ -250,7 +251,8 @@ function onEvent(ev) {
   else if (ev.type === 'error') app.log(`WARNING: Share Project: ${ev.message}.`, 'warn');
 }
 
-// the editor in front and its cursor, for the followers; another project opened: sharing stops
+// the editor in front and its cursor, and the owner's activity (#4002), for the followers; another project opened:
+// sharing stops
 function track() {
   if (!share) return;
   if (S.project?.name !== share.project) { stopSharing(`Stopped sharing "${share.project}": another project was opened.`); return; }
@@ -259,6 +261,7 @@ function track() {
   const d = S.active, path = d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
   const c = path && d.editor?.getCursor ? d.editor.getCursor() : null;
   share.session.setView(path ? { path, line: c?.line ?? null, ch: c?.ch ?? null } : null);
+  publishActivity(share.session);   // (#4002: where it is, its Design pane)
   // (the followers' cursors, in the text editors they look at)
   const peers = share.session.peers();
   for (const o of S.docs) o.editor?.setPeers?.(peers.filter(x => x.view?.path === o.path && x.view.line !== null).map(x => ({ name: x.name, color: x.color, line: x.view.line, ch: x.view.ch ?? 0 })));

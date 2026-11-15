@@ -33,6 +33,15 @@ async function reopenable(mod, model) {
   return !!(rep?.simModels?.[model] && rep.top === S.project.top);
 }
 const reopenKey = d => d.reopen || d.id;
+/** A document's key as a view state has it (`file:<path>`, `isim:<module>`, `summary`…). */
+export const viewKeyOf = d => (d ? reopenKey(d) : null);
+/** A document of a view state opened (#4002: a followed owner's): false when it is of no kind REOPEN opens, or does not
+ *  open in this project. */
+export async function reopenDoc(id) {
+  const [re, open] = REOPEN.find(([r]) => r.test(id)) || [];
+  if (!re) return false;
+  try { return (await open(...re.exec(id).slice(1))) !== false; } catch { return false; }
+}
 let keepView = false;   // while documents are closed or reopened together (a project closed, restored)
 // whether the view state is kept as it is now (documents closed or reopened together): read by the document opening
 export const viewKept = () => keepView;

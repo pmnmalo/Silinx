@@ -12,7 +12,8 @@
 // from it; follow_project reads one as merged (and its Check), and writes one as this participant's edit, merged per
 // object and per field with the others' (core/collab-model.js). A follow's connection lost is made again (#3835): its
 // result says so meanwhile (connected: false), a write merged then and sent once it is back; a share's, its room resumed
-// on the relay (its status: connected: false meanwhile).
+// on the relay (its status: connected: false meanwhile). follow_project gives the owner's activity too (#4002): where its
+// page is (its open documents, the one in front, its Design view, its task) and its Design pane's selection.
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import * as P from './projects.js';
@@ -26,6 +27,7 @@ import { shareRoom, followRoom } from '../core/collab-client.js';
 import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-link.js';
 import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
+import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
 
 export const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
@@ -242,7 +244,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#follow=… of Share Project… or share_project), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor; path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#follow=… of Share Project… or share_project), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor, and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
@@ -303,14 +305,23 @@ export const COLLAB_TOOLS = [
         `In it:\n${peerLines(peers)}`,
         // (its connection lost, being made again, #3835: what it shows as it was then; a write sent once it is back)
         ...(cur.session.connected() ? [] : ['The connection to the relay was lost: reconnecting (what this shows is as it was then).']),
+        ...activityLines(ch => cur.session.activity(ch)),
         ...(write !== undefined ? [`Wrote ${write.path} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`] : []),
         ...(text !== null ? [`${path}:`, text] : []),
         ...(check ? check.lines : []),
       ];
-      return { text: lines.join('\n'), data: { following: true, connected: cur.session.connected(), editor: cur.session.editor, owner, project: project?.name ?? null, files: fileTree, participants: peers, ownerView: view, ...(l.top ? { top: l.top } : {}), ...(text !== null ? { path, text } : {}), ...(check ? { check: { errors: check.errors, warnings: check.warnings } } : {}) }, untrusted: text !== null ? `the shared project's files, names and the file ${path}` : 'the shared project\'s files and names' };
+      return { text: lines.join('\n'), data: { following: true, connected: cur.session.connected(), editor: cur.session.editor, owner, project: project?.name ?? null, files: fileTree, participants: peers, ownerView: view, ownerActivity: ownerActivity(cur.session), ...(l.top ? { top: l.top } : {}), ...(text !== null ? { path, text } : {}), ...(check ? { check: { errors: check.errors, warnings: check.warnings } } : {}) }, untrusted: text !== null ? `the shared project's files, names and the file ${path}` : 'the shared project\'s files and names' };
     },
   },
 ];
+
+// the owner's activity (#4002), as a follower's page takes it: { view: { open, active, split, page, view }, layout: {
+// task, … } | null, design: { sel, open } | null } (null: none yet, an owner of no interface: share_project's)
+function ownerActivity(session) {
+  const ui = followedUi(session.activity('ui')), design = followedDesign(session.activity('design'));
+  if (!ui && !design) return null;
+  return { view: ui?.view ?? null, layout: ui?.layout ?? null, design };
+}
 
 // an editor's write (#3182, #3183): a text file's text (core/collab-doc.js editFile), or a drawing's JSON merged
 // into its structure as this participant's edit (its new objects' ids its own), what it leaves dangling pruned
