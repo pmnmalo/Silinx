@@ -17,13 +17,14 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
-const TYPES = ['Boolean Algebra', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Circuit',
+// (the digital electronic circuit second, #4061)
+const TYPES = ['Boolean Algebra', 'Digital Electronic Circuit', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net',
   'Clock Manager (DCM / PLL)', 'Block Memory', 'Test Bench', 'Implementation Constraints File', 'Memory Initialization File (.mem)', 'Guided Lab',
   'C Function (HLS)', 'C++ Function (HLS)'];
 // each type: its wizard's dialog (null: none), only a wizard (Next > disabled)
 const WIZARD = {
   'Boolean Algebra': 'Boolean Algebra Wizard', 'Module (HDL)': 'Module Wizard', 'Schematic': 'Schematic Wizard', 'Finite State Machine (FSM)': 'FSM Wizard',
-  'Algorithmic State Machine (ASM)': 'ASM Wizard', 'Petri Net': 'Petri Net Wizard',
+  'Algorithmic State Machine (ASM)': 'ASM Wizard', 'Petri Net': 'Petri Net Wizard', 'Digital Electronic Circuit': 'Digital Electronic Circuit Wizard',
   'Clock Manager (DCM / PLL)': 'Clocking Wizard', 'Block Memory': 'Block Memory', 'Test Bench': 'Test Bench Wizard',
   'Implementation Constraints File': 'UCF Wizard',
 };
@@ -32,7 +33,7 @@ const STEPS = {
   'Boolean Algebra Wizard': ['Inputs and Outputs', 'Summary'],
   'Module Wizard': ['Inputs and Outputs', 'Kind of Logic', 'Summary'], 'Schematic Wizard': ['Template', 'Inputs and Outputs', 'Summary'],
   'FSM Wizard': ['Template', 'Inputs and Outputs', 'States and Transitions', 'Summary'], 'ASM Wizard': ['Template', 'Inputs and Outputs', 'States', 'Summary'],
-  'Petri Net Wizard': ['Template', 'Inputs and Outputs', 'Summary'], 'Clocking Wizard': ['Input Clock', 'Output Clocks', 'Summary'], 'Block Memory': ['Memory', 'Summary'],
+  'Petri Net Wizard': ['Template', 'Inputs and Outputs', 'Summary'], 'Digital Electronic Circuit Wizard': ['Template', 'Summary'], 'Clocking Wizard': ['Input Clock', 'Output Clocks', 'Summary'], 'Block Memory': ['Memory', 'Summary'],
   'Test Bench Wizard': ['Unit Under Test', 'Clock and Reset', 'Input Vectors', 'Vectors and Expected Outputs', 'Summary'], 'UCF Wizard': ['Ports and Pins', 'Summary'],
 };
 // the File Name and Location page: the same for every type (#2140)

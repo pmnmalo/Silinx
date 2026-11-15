@@ -11,7 +11,7 @@ export const TOP_TYPES = [
   { id: 'asm', label: 'Algorithmic State Machine (ASM)', file: 'src/top.asm.json' },
   { id: 'tt', label: 'Boolean Algebra', file: 'src/top.bool.json' },
   { id: 'petri', label: 'Petri Net', file: 'src/top.pn.json' },
-  { id: 'circuit', label: 'Circuit', file: 'src/top.circ.json' },
+  { id: 'circuit', label: 'Digital Electronic Circuit', file: 'src/top.circ.json' },
   { id: 'c', label: 'C Function (HLS)', file: 'src/top.c' },
   { id: 'cpp', label: 'C++ Function (HLS)', file: 'src/top.cpp' },
 ];

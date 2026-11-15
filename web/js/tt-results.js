@@ -9,6 +9,7 @@ import { menuChoice } from './toolbar-menu.js';
 import { getNotation } from './notation.js';
 import { designKind } from './project-kind-flag.js';
 import { kindSwitch, qmResult, showButton } from './tt-qm.js';
+import { MAX_NODES, litsOf, part, sizeOf } from '/core/expr-part.js';
 import { drawBarsIn } from './overbar.js';
 
 // (a design and simulation project's, #3780: no HDL)
@@ -31,23 +32,7 @@ const DELAY_TIP = 'The form with the fewest gates on its longest path, every gat
 const HDL_TIP = 'The HDL logic of this output: its module and its schematic in this form';
 const LOGIC_TIP = 'The logic of this output: its module and its schematic in this form';   // (a design project's: no HDL, #3891)
 const hdlTick = (on, pick) => h('input', { type: 'checkbox', class: 'tt-hdl', checked: on, title: designKind() ? LOGIC_TIP : HDL_TIP, onchange: e => { if (e.target.checked) pick(); else e.target.checked = true; } });
-// an output's expression (#3939): a large table's (its text would be megabytes, a NAND form's tree the most) shown in
-// part, its first MAX_NODES operators and literals as written, '…' for the rest, and how many literals it has in all.
-// (A one-input NAND or NOR is written with its input twice, /(x.x): its input counted twice.)
-const MAX_NODES = 10000;   // (an 8-input canonical SOP in full: 255 terms, about 3300)
-const tied = a => (a.t === 'nand' || a.t === 'nor') && a.args.length === 1;
-const sizeOf = a => 1 + (a.a ? sizeOf(a.a) : 0) + (a.args ? a.args.reduce((k, x) => k + sizeOf(x), 0) * (tied(a) ? 2 : 1) : 0);
-const litsOf = a => (a.t === 'var' ? 1 : (a.a ? litsOf(a.a) : 0) + (a.args ? a.args.reduce((k, x) => k + litsOf(x), 0) : 0));
-function part(a, left) {
-  const rest = { t: 'var', name: '…' };
-  if (left.n-- <= 0) return rest;
-  if (a.a) return { ...a, a: part(a.a, left) };
-  if (!a.args) return a;
-  const args = [], was = left.n;
-  for (const x of a.args) { if (left.n <= 0) { args.push(rest); break; } args.push(part(x, left)); }
-  if (tied(a)) left.n -= was - left.n;
-  return { ...a, args };
-}
+// an output's expression (#3939): a large table's shown in part (core/expr-part.js)
 function exprCode(out, ast, notation) {
   const cut = sizeOf(ast) > MAX_NODES;
   return h('span', { class: 'tt-expr-box' }, h('code', { class: 'tt-expr', 'data-no-i18n': '' }, `${out} = ${formatExpr(cut ? part(ast, { n: MAX_NODES }) : ast, notation)}`),

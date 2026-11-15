@@ -356,9 +356,9 @@ function moduleContextMenu(e, mod, file) {
       { label: 'Convert to State Diagram (FSM)…', action: () => convertToFsm(mod) },
     ]),
     isSimView ? { label: 'Simulate Behavioral Model', action: () => runSimulation(mod) } : null,
-    // (a schematic's, a state diagram's, a Petri net's or an ASM chart's module: its Try it or simulation, #2826, #2869, #2881)
+    // (a schematic's, a state diagram's, a Petri net's, an ASM chart's or a circuit's module: its Try it or simulation, #2826, #2869, #2881, #4119)
     // (a copy, or live opening on this module, #3631: chosen in its window, #3698)
-    { label: 'Share Module…', action: () => import('./share-how.js').then(m => m.shareDialog({ module: mod, view: /\.(sch|fsm|pn|asm)\.json$/i.test(S.hdlToSch?.[file] || file) ? 'try' : null })) },
+    { label: 'Share Module…', action: () => import('./share-how.js').then(m => m.shareDialog({ module: mod, view: /\.(sch|fsm|pn|asm|circ)\.json$/i.test(S.hdlToSch?.[file] || file) ? 'try' : null })) },
     '-',
     { label: 'New Source…', action: () => wiz.newSourceWizard() },
     { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog() },

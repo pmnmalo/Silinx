@@ -2,6 +2,9 @@
 // chart's ports and its states (an FSM's transitions too), or the whole of an ASM chart or a Petri net, laid out for
 // the editor; the wizard's next pages edit them before the chart is made (core/chart-wizard.js).
 
+// (the Digital Electronic Circuit Wizard's, #4061: core/circuit-templates.js)
+import { CIRCUIT_TEMPLATES } from './circuit-templates.js';
+
 // a parameter: n / m a number (min, max, default), pattern a bit string, overlap a choice, type Moore / Mealy
 const N = (label, def, min, max) => ({ key: 'n', label, def, min, max });
 const PATTERN = { key: 'pattern', label: 'Pattern (bits):', def: '1011' };
@@ -64,9 +67,9 @@ export const SCH_TEMPLATES = [
   { id: 'fulladder', label: 'Full adder (gates)', text: 'One bit added with XOR, AND and OR gates: s = a xor b xor ci, co = a and b, or (a xor b) and ci.' },
 ];
 
-const LISTS = { fsm: FSM_TEMPLATES, asm: ASM_TEMPLATES, petri: PETRI_TEMPLATES, sch: SCH_TEMPLATES };
+const LISTS = { fsm: FSM_TEMPLATES, asm: ASM_TEMPLATES, petri: PETRI_TEMPLATES, sch: SCH_TEMPLATES, circuit: CIRCUIT_TEMPLATES };
 
-/** The template `id` of a kind (fsm, asm, petri, sch), the first one (empty) if unknown. */
+/** The template `id` of a kind (fsm, asm, petri, sch, circuit), the first one if unknown. */
 export const templateOf = (kind, id) => LISTS[kind].find(t => t.id === id) || LISTS[kind][0];
 /** A template's parameters at their defaults: { key: value }. */
 export const templateDefaults = (kind, id) => Object.fromEntries((templateOf(kind, id).params || []).map(p => [p.key, p.def]));

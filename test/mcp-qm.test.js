@@ -57,6 +57,16 @@ Quine-McCluskey SOP: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s); gates: 2 AN
   assert.deepEqual([q.exact, q.method, q.columns], [false, 'heuristic', null]);
   assert.match(b.text, /\nQuine-McCluskey SOP: f = .+   \(\d+ term\(s\), \d+ literal\(s\); gates: (?:\d+ [A-Z0-9]+, )*\d+ [A-Z0-9]+; not proven minimal\)\n  \d+ prime implicant\(s\)\n/);
   assert.match(b.text, /HDL logic: Quine-McCluskey SOP: f = .+   \(Quine-McCluskey SOP \(not proven minimal\), \d+ literal\(s\), \d+ gate\(s\), delay \d+\)$/);
+  // (#4150: every expression shown in part, as the editor's, in each notation: the Electronics one's bars too; it was
+  // hundreds of megabytes, out of memory in the Electronics notation)
+  for (const notation of ['engineering', 'slash']) {
+    await ok('set_notation', { notation });
+    const t1 = Date.now(), e = await results('q', 'src/big.bool.json');
+    assert.ok(Date.now() - t1 < 15000, `${notation}: ${Date.now() - t1} ms`);
+    assert.ok(e.text.length < 4e6, `${notation}: ${e.text.length} characters`);
+    assert.match(e.text, /\nNAND form: f = .+ \(shown in part: \d+ literal\(s\) in all\)   \(\d+ term\(s\)/);
+  }
+  await ok('set_notation', { notation: 'slash' });
 });
 
 test('set_output_logic: Quine-McCluskey\'s POS (qpos), the VHDL module made again in it, related_view saying it', async () => {

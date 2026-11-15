@@ -260,7 +260,7 @@ test('viewProblem / tryDrawing: Try it is a schematic\'s, a state diagram\'s or 
   for (const m of ['t', 'h', 'bad', 'nothere']) assert.equal(tryDrawing(files, m), null, m);
   assert.ok(TRY_DRAWING.test('x.PN.JSON') && TRY_DRAWING.test('x.asm.json') && !TRY_DRAWING.test('x.bool.json'));
   for (const top of [undefined, 'm', 'n', 'a']) assert.equal(viewProblem(pj, files, { view: 'try', top }), null, top);
-  for (const top of ['t', 'h']) assert.equal(viewProblem(pj, files, { view: 'try', top }), `Try it: '${top}' is not a schematic, a state diagram, a Petri net or an ASM chart`);
+  for (const top of ['t', 'h']) assert.equal(viewProblem(pj, files, { view: 'try', top }), `Try it: '${top}' is not a schematic, a state diagram, a Petri net, an ASM chart or a circuit`);
   assert.equal(viewProblem({ ...pj, top: '' }, files, { view: 'try' }), 'Try it: the design has no top module (give top)');
   assert.equal(viewProblem(pj, files, { view: 'try', top: 'zz' }), 'the design has no module \'zz\'');
   assert.equal(viewProblem(pj, files, { view: 'simulate' }), null);
@@ -278,6 +278,22 @@ test('freeName: the first free <name>_N (#2875), the case ignored, within 64 cha
   const long = 'a'.repeat(64);
   assert.equal(freeName(long, [long]), `${'a'.repeat(62)}_2`);
   assert.equal(freeName(long, [long, `${'a'.repeat(62)}_2`]).length, 64);
+});
+
+test('#4119 regression: Try it is a circuit\'s too (the breadboard example\'s, by its name or its HDL\'s module, whatever the case)', () => {
+  const dir = path.join(ROOT, 'breadboard');
+  const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
+  const project = JSON.parse(read('silinx.json'));
+  const files = { 'src/breadboard.circ.json': read('src/breadboard.circ.json'), 'src/breadboard.vhd': read('src/breadboard.vhd'), 'sim/tb_breadboard.vhd': read('sim/tb_breadboard.vhd') };
+  assert.ok(TRY_DRAWING.test('src/breadboard.circ.json') && TRY_DRAWING.test('x.CIRC.JSON'));
+  assert.equal(tryDrawing(files, 'breadboard'), 'src/breadboard.circ.json');
+  assert.equal(tryDrawing(files, 'BREADBOARD'), 'src/breadboard.circ.json');
+  const { name, ...unnamed } = JSON.parse(files['src/breadboard.circ.json']);
+  assert.equal(name, 'breadboard');
+  assert.equal(tryDrawing({ ...files, 'src/breadboard.circ.json': JSON.stringify(unnamed) }, 'breadboard'), 'src/breadboard.circ.json');   // (by its HDL's module)
+  assert.equal(viewProblem(project, files, { view: 'try' }), null);
+  assert.equal(viewProblem(project, files, { view: 'try', top: 'breadboard' }), null);
+  assert.equal(viewProblem(project, files, { view: 'try', top: 'tb_breadboard' }), '\'tb_breadboard\' is a test bench: a link opens it in the simulation');
 });
 
 test('#2876 regression: Try it finds a drawing whose name differs in case from its module\'s (VHDL\'s lower case), or by its generated HDL\'s module', () => {
@@ -327,7 +343,7 @@ test('#2882 regression: a C source\'s module (its top function\'s) is one of the
   assert.equal(viewProblem(project, files, { top: 'fir' }), null);
   assert.equal(viewProblem(project, files, { top: 'FIR' }), null);
   assert.equal(viewProblem(project, files, { view: 'emulate', top: 'fir' }), null);
-  assert.equal(viewProblem(project, files, { view: 'try', top: 'fir' }), 'Try it: \'fir\' is not a schematic, a state diagram, a Petri net or an ASM chart');
+  assert.equal(viewProblem(project, files, { view: 'try', top: 'fir' }), 'Try it: \'fir\' is not a schematic, a state diagram, a Petri net, an ASM chart or a circuit');
   assert.equal(viewProblem(project, files, { top: 'broken' }), 'the design has no module \'broken\'');
 });
 
