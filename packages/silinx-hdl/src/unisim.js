@@ -830,6 +830,9 @@ let PRIM_NAMES = null, SIMPRIM_NAMES = null;   // the UNISIM primitives' names (
 const entityNames = (text) => new Set([...text.matchAll(/^entity\s+(\w+)\s+is\b/gim)].map((m) => m[1].toUpperCase()));
 const primNames = () => (PRIM_NAMES ??= entityNames(UNISIM_VHDL));
 const simprimNames = () => (SIMPRIM_NAMES ??= entityNames(SIMPRIM_VHDL));
+/** True if `name` is a UNISIM primitive's (BUFG, RAMB16_S9, DCM_SP …; any case, as VHDL's names are): an instance of it is
+ *  the device's, not a module of the project (the Design pane's row, #4188). */
+export const isUnisimPrimitive = (name) => primNames().has(String(name || '').toUpperCase());
 const isVerilog = (s) => s.lang ? s.lang === 'verilog' : /\.(v|vh|sv)$/i.test(String(s.path || ''));
 const stripVlogComments = (t) => String(t || '').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/.*$/gm, '');
 

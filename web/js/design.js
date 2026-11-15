@@ -7,6 +7,7 @@ import { h, alertDlg, confirmDlg, dialog, popupMenu, toast, longPressMenu } from
 import * as wiz from './wizards.js';
 import { drawnModule } from '/core/view-hdl.js';
 import { hierarchyOrder, instanceOrder } from '/core/hier-order.js';
+import { isUnisimPrimitive } from '/core/unisim.js';
 import { S, addToProject, closeDoc, fixMissingTops, instancesOf, moduleInfo, openFile, projectUndo, syncFpgaView,
   viewRoots } from './app.js';
 import { log } from './console.js';
@@ -60,6 +61,9 @@ export function renderHierarchy() {
   const roots = hierarchyOrder(viewRoots(sim), topName);
   const addModule = (parentUl, modName, instName, depth, path) => {
     const info = moduleInfo(modName);
+    // a device primitive (#4188): the device's, a leaf, not a module missing from the project
+    const prim = !info && isUnisimPrimitive(modName);
+    if (prim) modName = String(modName).toUpperCase();
     const isTop = !instName && isTopName(modName);   // (the root's row only: the top's instances are plain rows, #2877)
     const file = info?.file || '?';
     // "label - module" like ISE; just the name when the instance is labelled with the module name
@@ -91,7 +95,7 @@ export function renderHierarchy() {
     ].filter(Boolean);
     badges.splice(0, badges.length, ...withoutHdlBadges(badges));   // (no HDL in a design project, #3780)
     const it = treeItem({
-      label, meta: info ? `(${(sch || file).split('/').pop()})` : '(missing)', ico: isTop ? 'moduleTop' : sch ? viewIcon(sch) : cSrc ? 'file' : info ? (info.lang === 'vhdl' ? 'vhdl' : 'verilog') : 'err',
+      label, meta: info ? `(${(sch || file).split('/').pop()})` : prim ? '(primitive)' : '(missing)', ico: isTop ? 'moduleTop' : sch ? viewIcon(sch) : cSrc ? 'file' : info ? (info.lang === 'vhdl' ? 'vhdl' : 'verilog') : prim ? 'chip' : 'err',
       cls: isTop ? 'top-mod' : '', key: `m:${path}`, open: depth < 2, badges, module: modName, mark: info ? gitMark([sch, file]) : null,
       onSelect: () => select(drawn ? { type: viewKind(drawn), file: drawn, module: modName, path, instName } : { type: 'module', module: modName, file, path, instName, sch, wizard: wz }),
       // (a design project's test bench, its HDL hidden: simulated, #3780)

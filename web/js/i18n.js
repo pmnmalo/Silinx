@@ -231,7 +231,7 @@ const PT = {
   'Another operation is running': 'Outra operação está em curso', 'Scan finished.': 'Scan concluído.',
   // (the open families' Configure Target Device, #2298: web/js/i18n-program.js)
   'Program Flash': 'Programar Flash',
-  '(no board)': '(sem placa)', '(no top module)': '(sem módulo de topo)', 'No top module: set one in the Design pane first.': 'Sem módulo de topo: defina-o primeiro no painel Design.',
+  '(no board)': '(sem placa)', '(missing)': '(em falta)', '(primitive)': '(primitiva)', '(no top module)': '(sem módulo de topo)', 'No top module: set one in the Design pane first.': 'Sem módulo de topo: defina-o primeiro no painel Design.',
   'Not yet tested on a real board.': 'Ainda não testado numa placa real.', 'No board selected: choose one in Design Properties.': 'Nenhuma placa selecionada: escolha uma nas Propriedades do Projeto.',
   // editor
   'Templates ▾': 'Modelos ▾', 'Find (Ctrl+F)': 'Procurar (Ctrl+F)', 'Auto-complete': 'Completar automaticamente',
