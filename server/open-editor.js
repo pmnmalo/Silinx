@@ -20,7 +20,7 @@ export const EDITORS = {
   codium: { label: 'VSCodium', scheme: 'vscodium', cli: 'codium', app: 'VSCodium.app', win: 'VSCodium/VSCodium.exe', linux: ['/usr/share/codium/bin/codium', '/snap/bin/codium'] },
   cursor: { label: 'Cursor', scheme: 'cursor', cli: 'cursor', app: 'Cursor.app', win: 'cursor/Cursor.exe', linux: ['/usr/share/cursor/bin/cursor'] },
 };
-export const DEFAULT_EDITOR = 'code';
+const DEFAULT_EDITOR = 'code';
 
 /** config.json's `editor` read: { off } when turned off ("off", false, or SILINX_EDITOR=off); { id, ...EDITORS[id] } for a
  *  known editor; { program, label } for a program's absolute path (a VS Code-like command line); an unknown value, the
@@ -75,7 +75,7 @@ export function editorAvailability({ remote, ed, found }) {
 /** A project's file (`rel`), or the project's folder (no `rel`), as a path to open: confined to the project, no hidden
  *  file or folder (projects.js's checks), an existing file; not the HDL of a design and simulation project, which its
  *  interface does not show (#3780). Throws an HttpError. */
-export async function editorTarget(project, rel) {
+async function editorTarget(project, rel) {
   const dir = P.projectDir(project);
   const pj = await P.readProject(project);   // (no such project: its 404)
   if (rel == null || rel === '') return { dir, full: null };
