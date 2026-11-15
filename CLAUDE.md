@@ -89,11 +89,17 @@ the code and the lessons learnt.
   machine. To check a fix against load, use `SILINX_UI_THROTTLE` on one or two processes.
 - **CI runs at a release, and nightly on `main` when it changed** (#607, #3423): not on pull requests nor on pushes
   to `main`; a failed job of the nightly run is an issue, fixed in the next change. Push the branch and
-  open a pull request (`gh pr create`, its description saying `Fixes #N`). A pull request runs the whole test
+  open a pull request as a draft (`gh pr create --draft`, its description saying `Fixes #N`), and mark it ready
+  (`gh pr ready <N>`) when it is done: a draft runs no test and fails `related-tests`, so it cannot merge (#4166).
+  A pull request runs the whole test
   file of every module it changes (`.github/workflows/pr-tests.yml`, `scripts/related-tests.mjs`, #637: the
   unit test files that import a changed file, directly or through a test helper; for a module no test imports, those of its importers, up to the modules tests import, #3544; a changed test; the UI test
   of a changed page script; for a data file (the bit database, a device description, an example), the tests of
-  the modules that read it and of their importers, #772; and always the repository-wide tests, `REPO_WIDE`, #3461); `main` requires its check, `related-tests`. Before pushing, run the same files
+  the modules that read it and of their importers, #772; and always the repository-wide tests, `REPO_WIDE`, #3461);
+  a hub (`HUBS` in the script, #4166: web/js's modules imported by 15 page scripts or more, `i18n.js`, `app.js`,
+  `ui.js`, `drawings.js`…) selects only its own UI test, not those of its importers nor those that name it, which
+  are the nightly's (its unit tests as any module's); at most 6 parts of a pull request run at once
+  (`max-parallel`, #4166). `main` requires its check, `related-tests`. Before pushing, run the same files
   locally: `node scripts/related-tests.mjs origin/main HEAD`.
 - **Merging is the maintainer's** (#1872): the maintainer, or a session the maintainer runs, merges a pull request
   when `related-tests` is green, into `main` (rebased, fast-forward, no merge commit; rebase the branch first if

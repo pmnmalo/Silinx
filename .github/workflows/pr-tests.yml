@@ -5,8 +5,11 @@ name: PR tests
 # helper; a changed test file; the UI test of a changed page script; and the repository-wide tests, REPO_WIDE, #3461), in parts of about the same time: as many
 # as their measured time needs (test/timings.json, about 20 minutes each, #1982), one for a small change, none
 # when no test is related. main requires related-tests, green when every part passed (or there was none).
+# A draft runs no test (#4166): its related-tests fails at once, so that it cannot merge, and the tests run when it is
+# marked ready (gh pr ready) and on every push after; a pull request turned back into a draft fails it again.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 permissions:
   contents: read
 # a newer push to the pull request cancels its run still going
@@ -16,6 +19,7 @@ concurrency:
 jobs:
   # how many parts (#1982): a change of most of the repository ran 35 minutes and more in each of three parts
   plan:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -39,6 +43,10 @@ jobs:
     if: needs.plan.outputs.parts != '0'
     strategy:
       fail-fast: false
+      # at most 6 parts of a pull request at once (#4166): the account's runners are about 20, and a big change's 15
+      # parts took most of them; the parts stay planned at 20 minutes, under their limit (6 parts of the whole suite's
+      # ~350 minutes would be 58 each)
+      max-parallel: 6
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     runs-on: ubuntu-latest
@@ -67,5 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - if: github.event.pull_request.draft
+        run: echo "::error::a draft pull request runs no test (#4166): mark it ready, gh pr ready" && exit 1
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1

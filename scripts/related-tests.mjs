@@ -19,6 +19,12 @@
 // translators', the HLS's, the simulator's parts) counts through its importers, up to the modules a test imports
 // (untestedReach). And always the repository's checks (REPO_WIDE, #3461): the
 // tests that scan the whole repository, which a pull request can break with a file none of them imports.
+// The hubs (HUBS, #4166: the page scripts most of the others import, web/js/i18n.js, app.js, ui.js, drawings.js…)
+// select fewer UI tests: a hub's change selects only its own UI test (test/ui/<name>.test.js, when the hub itself
+// changed); the UI tests that import a hub or name it ('/js/i18n.js': 202 of them), and those of the page scripts that
+// import a hub (or a hub that only re-exports a changed module: web/js/drawings.js of drawings-tt.js) are the
+// nightly's, which runs them all. A changed page script that is no hub selects its importers' UI tests as before, and
+// the unit tests are selected the same for a hub and any other module.
 //
 //   node scripts/related-tests.mjs <base> <head> [--shard i/n] [--list | --plan] [node --test options …]
 //   → runs node --test with those options on the unit tests, then (one at a time) on the UI tests; --list
@@ -129,7 +135,20 @@ function untestedReach(files, deps, ch, isTest, inTests, reexports = () => false
   return [...out];
 }
 
-export function relatedTests(files, changed) {
+/** The hubs (#4166): web/js's shared modules, each imported by 15 page scripts or more (2026-11-15: ui.js 123, dom.js
+ *  82, app.js 77, api.js 61, console.js 40, prefs.js 33, wizards.js 25, processes.js 24, i18n.js 23, design-only.js 23,
+ *  drawings.js 19, design.js 18, icons.js 17, clipboard.js 17, narrow.js 15, toolbar-menu.js 15), whose change selected
+ *  dozens of UI tests or hundreds (i18n.js 202, app.js 37). Not hubs, though as imported: the editors whose importers
+ *  are their own panels (sch-editor.js, isim.js, emulator-pcb.js: their UI tests are the editor's), and core/'s and
+ *  the packages' modules (the UI tests that import core/schdoc.js test it). relatedTests' UI selection reads it. */
+export const HUBS = ['ui', 'dom', 'app', 'api', 'console', 'prefs', 'wizards', 'processes', 'i18n', 'design-only',
+  'drawings', 'design', 'icons', 'clipboard', 'narrow', 'toolbar-menu'].map((n) => `web/js/${n}.js`);
+
+/** The page scripts that import each hub, at least (HUBS; test/related-tests.test.js checks it on the repository). */
+export const HUB_IMPORTERS = 15;
+
+export function relatedTests(files, changed, { hubs = HUBS } = {}) {
+  const hub = f => hubs.includes(f);
   // (a page script's absolute import, as the server serves it: /core/… the repository's core/, /js/… web/js/, #2093)
   const resolve = (from, spec) => (spec.startsWith('/') ? (spec.startsWith('/js/') ? `web${spec}` : spec.slice(1))
     : path.posix.normalize(path.posix.join(path.posix.dirname(from), spec)));
@@ -169,14 +188,16 @@ export function relatedTests(files, changed) {
   for (const f of Object.keys(files)) {
     if (isUnit(f) && (ch.has(f) || deps[f].some(d => touched.has(d)))) unit.add(f);
     // (a UI test that imports a changed module, as its sheet's newDoc of core/schdoc.js, #2093)
-    if (isUi(f) && (ch.has(f) || deps[f].some(d => ch.has(d) && !inTests(d)))) ui.add(f);
+    // (not a hub's, #4166: core/ is no hub)
+    if (isUi(f) && (ch.has(f) || deps[f].some(d => ch.has(d) && !inTests(d) && !hub(d)))) ui.add(f);
   }
   // a test that names a changed file it reads ('CLAUDE.md', '.github/workflows/ci.yml', 'ci.yml')
   const quoted = n => new RegExp(`['"\`/]${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"\`]`);
+  // (a hub's name in a UI test is its import in the page, import('/js/i18n.js'): no UI test of it, #4166)
   for (const f of changed) {
     const names = [quoted(f), quoted(path.posix.basename(f))];
     for (const [t, text] of Object.entries(files))
-      if ((isUnit(t) || isUi(t)) && t !== f && names.some(r => r.test(text))) (isUnit(t) ? unit : ui).add(t);
+      if ((isUnit(t) || (isUi(t) && !hub(f))) && t !== f && names.some(r => r.test(text))) (isUnit(t) ? unit : ui).add(t);
   }
   // the size of every source (#405): a source changed may have grown past the limit
   if (files['test/code-size.test.js'] != null && changed.some(f => /^(core|packages\/silinx-(?:fpga|hdl)\/src|web\/js|server|scripts)\/.+\.m?js$/.test(f))) unit.add('test/code-size.test.js');
@@ -187,12 +208,13 @@ export function relatedTests(files, changed) {
     if (!/\.m?js$/.test(f) || inTests(f)) continue;
     const name = path.posix.basename(f).replace(/\.m?js$/, '');
     for (const dir of UNIT_DIRS) if (files[`${dir}/${name}.test.js`] != null) unit.add(`${dir}/${name}.test.js`);
-    if (f.startsWith('web/js/') && files[`test/ui/${name}.test.js`] != null) ui.add(`test/ui/${name}.test.js`);
+    // (a hub's own UI test when it changed itself, not when it only re-exports a changed module, #4166)
+    if (f.startsWith('web/js/') && files[`test/ui/${name}.test.js`] != null && (!hub(f) || changed.includes(f))) ui.add(`test/ui/${name}.test.js`);
   }
   // the UI test of a page script that imports a changed module (web/js/sch-props.js of core/schdoc.js: a symbol's new
-  // parameter in its properties, #2093)
+  // parameter in its properties, #2093); not of a hub, which most page scripts import (#4166)
   for (const f of Object.keys(files)) {
-    if (!/^web\/js\/[^/]+\.m?js$/.test(f) || !deps[f].some(d => ch.has(d))) continue;
+    if (!/^web\/js\/[^/]+\.m?js$/.test(f) || !deps[f].some(d => ch.has(d) && !hub(d))) continue;
     const t = `test/ui/${path.posix.basename(f).replace(/\.m?js$/, '')}.test.js`;
     if (files[t] != null) ui.add(t);
   }

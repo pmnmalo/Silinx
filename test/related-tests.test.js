@@ -8,7 +8,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readTimings } from '../scripts/test-shard.mjs';
-import { imports, dataPaths, relatedTests, reexportsOnly, reexported, pageImports, shardOf, planShards, PART_MINUTES, MAX_PARTS, sources, REPO_WIDE, withRepoWide, UNTESTED_DEPTH } from '../scripts/related-tests.mjs';
+import { imports, dataPaths, relatedTests, reexportsOnly, reexported, pageImports, shardOf, planShards, PART_MINUTES, MAX_PARTS, sources, REPO_WIDE, withRepoWide, UNTESTED_DEPTH, HUBS, HUB_IMPORTERS } from '../scripts/related-tests.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -356,18 +356,101 @@ test('#3461 related tests: the repository\'s checks, for every change — each o
 
 test('PR tests: every pull request, its parts planned (#1982), the related-tests verdict main requires', () => {
   const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
-  assert.match(yml, /^on:\n {2}pull_request:\npermissions:\n {2}contents: read\n/m);
+  assert.match(yml, /^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]\npermissions:\n {2}contents: read\n/m);
   assert.match(yml, /^concurrency:\n {2}group: pr-tests-\$\{\{ github\.ref \}\}\n {2}cancel-in-progress: true\n/m);
   assert.equal(yml.match(/^ {4}runs-on: .*$/gm).join('\n'), Array(3).fill('    runs-on: ubuntu-latest').join('\n'), "GitHub's runner, never the self-hosted one");
   // the plan: the parts the related tests need, as the job's outputs
-  assert.match(yml, /\n {2}plan:\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}outputs:\n {6}parts: \$\{\{ steps\.plan\.outputs\.parts \}\}\n {6}shards: \$\{\{ steps\.plan\.outputs\.shards \}\}\n/);
+  assert.match(yml, /\n {2}plan:\n {4}if: \$\{\{ !github\.event\.pull_request\.draft \}\}\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}outputs:\n {6}parts: \$\{\{ steps\.plan\.outputs\.parts \}\}\n {6}shards: \$\{\{ steps\.plan\.outputs\.shards \}\}\n/);
   assert.match(yml, /- id: plan\n\s+run: node scripts\/related-tests\.mjs "origin\/\$BASE" HEAD --plan >> "\$GITHUB_OUTPUT"\n\s+env:\n\s+BASE: \$\{\{ github\.base_ref \}\}\n/);
   // the parts: one job each, none when no test is related; a part's limit well past its planned 20 minutes
-  assert.match(yml, /\n {2}tests:\n {4}needs: \[plan\]\n {4}if: needs\.plan\.outputs\.parts != '0'\n {4}strategy:\n {6}fail-fast: false\n {6}matrix:\n {8}shard: \$\{\{ fromJSON\(needs\.plan\.outputs\.shards\) \}\}\n {4}runs-on: ubuntu-latest\n {4}# [^\n]*#1982\)\n {4}timeout-minutes: 60\n {4}name: tests \(\$\{\{ matrix\.shard \}\}\/\$\{\{ needs\.plan\.outputs\.parts \}\}\)\n/);
+  assert.match(yml, /\n {2}tests:\n {4}needs: \[plan\]\n {4}if: needs\.plan\.outputs\.parts != '0'\n {4}strategy:\n {6}fail-fast: false\n(?: {6}#[^\n]*\n)+ {6}max-parallel: 6\n {6}matrix:\n {8}shard: \$\{\{ fromJSON\(needs\.plan\.outputs\.shards\) \}\}\n {4}runs-on: ubuntu-latest\n {4}# [^\n]*#1982\)\n {4}timeout-minutes: 60\n {4}name: tests \(\$\{\{ matrix\.shard \}\}\/\$\{\{ needs\.plan\.outputs\.parts \}\}\)\n/);
   assert.match(yml, /fetch-depth: 0\n\s+- uses: \.\/\.github\/actions\/setup\n\s+- run: >-\n\s+node scripts\/related-tests\.mjs "origin\/\$BASE" HEAD --shard "\$SHARD\/\$PARTS"\n\s+--test-reporter=tap --test-reporter-destination=stdout\n\s+env:\n\s+BASE: \$\{\{ github\.base_ref \}\}\n\s+SHARD: \$\{\{ matrix\.shard \}\}\n\s+PARTS: \$\{\{ needs\.plan\.outputs\.parts \}\}\n/);
   // the verdict: a failed plan or part fails it, no part passes it
   assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[plan, tests\]\n[\s\S]*- if: contains\(needs\.\*\.result, 'failure'\) \|\| contains\(needs\.\*\.result, 'cancelled'\)\n\s+run: exit 1\n/);
   for (const f of ['CLAUDE.md', 'ONBOARDING.md']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /related-tests/, f);
+});
+
+test('#4166 PR tests: a draft runs no test and fails the check main requires; at most 6 parts at once, each under its limit', () => {
+  const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
+  // a draft: no plan (so no part), and the verdict fails first, never green nor missing (an admin's merge would pass it)
+  assert.match(yml, /\n {2}plan:\n {4}if: \$\{\{ !github\.event\.pull_request\.draft \}\}\n/);
+  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[plan, tests\]\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}steps:\n {6}- if: github\.event\.pull_request\.draft\n {8}run: echo "::error::[^"\n]*gh pr ready" && exit 1\n {6}- if: contains\(needs\.\*\.result, 'failure'\)/);
+  // marked ready, the tests run; turned back into a draft, the check fails again; no other trigger, no pull_request_target
+  assert.match(yml, /types: \[[^\]]*\bready_for_review\b[^\]]*\bconverted_to_draft\b[^\]]*\]/);
+  assert.doesNotMatch(yml, /pull_request_target|workflow_dispatch|\n {2}push:/);
+  // the workflow's security as it was: read-only contents, no credentials kept, actions pinned by their commit
+  assert.match(yml, /^permissions:\n {2}contents: read\n(?! )/m);
+  assert.equal(yml.match(/persist-credentials: false/g).length, 2);
+  for (const u of yml.match(/uses: [^\s]+/g)) assert.match(u, /^uses: (?:\.\/\.github\/actions\/setup|[\w-]+\/[\w-]+@[0-9a-f]{40})$/, u);
+  // the cap: max-parallel rather than fewer, longer parts, which the whole suite would take past the part's 60 minutes
+  const parallel = Number(yml.match(/max-parallel: (\d+)/)[1]);
+  assert.equal(parallel, 6);
+  const timings = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/timings.json'), 'utf8'));
+  const all = { unit: Object.keys(timings).filter((f) => !f.startsWith('test/ui/')), ui: Object.keys(timings).filter((f) => f.startsWith('test/ui/')) };
+  const limit = Number(yml.match(/\n {2}tests:[\s\S]*?timeout-minutes: (\d+)/)[1]);
+  assert.ok(planShards(all, timings, { max: parallel }).minutes / parallel > limit * 0.75, 'six parts of the whole suite would near the limit');
+  const plan = planShards(all, timings);
+  assert.ok(plan.minutes / plan.n < limit / 2, `${plan.minutes} / ${plan.n}`);
+  // the sessions open their pull request as a draft and mark it ready when it is done
+  for (const f of ['CLAUDE.md', 'ONBOARDING.md']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /gh pr ready/, f);
+});
+
+test('#4166 related tests: a hub selects its own UI test only; the UI tests that import it, name it or test its importers are the nightly\'s; the unit tests as before', () => {
+  const files = {
+    'web/js/hub.js': "export { part } from './part.js';\nexport const h = 1;",
+    'web/js/part.js': 'export const part = 1;',
+    'web/js/ed.js': "import { h } from './hub.js';",
+    'web/js/panel.js': "import { e } from './ed.js';",
+    'web/js/solo.js': "import { part } from './part.js';",
+    'test/hub.test.js': "import { h } from '../web/js/hub.js';",
+    'test/names.test.js': "const HUB = 'web/js/hub.js';",
+    'test/ui/harness.js': '',
+    'test/ui/hub.test.js': "import { uiTest } from './harness.js';",
+    'test/ui/ed.test.js': "import { uiTest } from './harness.js';",
+    'test/ui/panel.test.js': "import { uiTest } from './harness.js';",
+    'test/ui/solo.test.js': "import { uiTest } from './harness.js';",
+    'test/ui/lang.test.js': "await page.eval(async () => (await import('/js/hub.js')).h);",
+    'test/ui/direct.test.js': "import { h } from '../../web/js/hub.js';",
+  };
+  const hubs = ['web/js/hub.js'];
+  // no hub (the selection before #4166): the hub's importers', the tests that import it or name it
+  assert.deepEqual(relatedTests(files, ['web/js/hub.js'], { hubs: [] }).ui, ['test/ui/direct.test.js', 'test/ui/ed.test.js', 'test/ui/hub.test.js', 'test/ui/lang.test.js']);
+  // a hub: its own UI test, the unit tests the same (the one that imports it, the one that names it)
+  const changedHub = relatedTests(files, ['web/js/hub.js'], { hubs });
+  assert.deepEqual(changedHub, { unit: ['test/hub.test.js', 'test/names.test.js'], ui: ['test/ui/hub.test.js'] });
+  assert.deepEqual(changedHub.unit, relatedTests(files, ['web/js/hub.js'], { hubs: [] }).unit);
+  // a module the hub re-exports: the UI tests of its importers (the hub's own among them), not of the hub's importers
+  assert.deepEqual(relatedTests(files, ['web/js/part.js'], { hubs: [] }).ui, ['test/ui/direct.test.js', 'test/ui/ed.test.js', 'test/ui/hub.test.js', 'test/ui/solo.test.js']);
+  assert.deepEqual(relatedTests(files, ['web/js/part.js'], { hubs }), { unit: ['test/hub.test.js'], ui: ['test/ui/hub.test.js', 'test/ui/solo.test.js'] });
+  // a page script that is no hub: its own UI test and its importers', as before
+  assert.deepEqual(relatedTests(files, ['web/js/ed.js'], { hubs }).ui, ['test/ui/ed.test.js', 'test/ui/panel.test.js']);
+  // a hub and a page script: each one's; a changed UI test still runs
+  assert.deepEqual(relatedTests(files, ['web/js/hub.js', 'web/js/ed.js', 'test/ui/lang.test.js'], { hubs }).ui, ['test/ui/ed.test.js', 'test/ui/hub.test.js', 'test/ui/lang.test.js', 'test/ui/panel.test.js']);
+  // a hub with no UI test of its name: none
+  const { 'test/ui/hub.test.js': _, ...noOwn } = files;
+  assert.deepEqual(relatedTests(noOwn, ['web/js/hub.js'], { hubs }).ui, []);
+});
+
+test('#4166 related tests: the repository — every hub imported by HUB_IMPORTERS page scripts or more; i18n.js, app.js and PR 4160\'s change select a few UI tests', () => {
+  const files = sources();
+  assert.equal(new Set(HUBS).size, HUBS.length);
+  for (const h of HUBS) {
+    assert.ok(files[h] != null, h);
+    // (its imports as relatedTests reads them: relative, import() of a literal, a page script's /js/…)
+    const deps = (f) => [...imports(files[f]).map((s) => path.posix.join('web/js', s)), ...pageImports(files[f]).map((s) => `web${s}`)];
+    const importers = Object.keys(files).filter((f) => /^web\/js\/[^/]+\.m?js$/.test(f) && deps(f).includes(h));
+    assert.ok(importers.length >= HUB_IMPORTERS, `${h}: ${importers.length}`);
+  }
+  // web/js/i18n.js selected 202 UI tests (each one names it: import('/js/i18n.js')), app.js 37, before #4166
+  const i18n = relatedTests(files, ['web/js/i18n.js']);
+  assert.ok(i18n.ui.length <= 2, i18n.ui.join(' '));
+  assert.deepEqual(i18n.unit, relatedTests(files, ['web/js/i18n.js'], { hubs: [] }).unit);
+  assert.deepEqual(relatedTests(files, ['web/js/app.js']).ui, ['test/ui/app.test.js']);
+  // PR 4160's: 14 UI tests before, the tests of the page scripts it changed and of their importers now
+  const pr = relatedTests(files, ['web/js/drawing-lang-menu.js', 'web/js/drawings-tt.js', 'web/js/drawings.js', 'test/ui/drawing-language-menu.test.js']);
+  for (const t of ['test/ui/drawing-language-menu.test.js', 'test/ui/related-views.test.js']) assert.ok(pr.ui.includes(t), t);
+  assert.ok(pr.ui.length <= 8, pr.ui.join(' '));
+  assert.ok(!pr.ui.includes('test/ui/app.test.js'), 'app.js imports the hub drawings.js: the nightly\'s');
 });
 
 test('#2093 related tests: through a module re-exporting names of a changed one; a UI test importing a changed module; a page script\'s absolute imports', () => {
