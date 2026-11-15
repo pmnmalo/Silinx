@@ -34,8 +34,8 @@ uiTest('#2140 Boolean Algebra Wizard: the inputs and outputs named (Verilog), ba
   await page.fill('.dlg-overlay .tw-expr', '');
   assert.deepEqual(await page.eval(() => ['.tw-inputs', '.tw-outputs'].map((s) => document.querySelector(`.dlg-overlay ${s}`).disabled)), [false, false]);
   // the names: refused with their messages
-  await page.fill('.dlg-overlay .tw-inputs', 'a b c d e f g');
-  await refused(page, 'Inputs: 1 to 6 (there are 7).');
+  await page.fill('.dlg-overlay .tw-inputs', 'a b c d e f g h i j k l m n o p q');
+  await refused(page, 'Inputs: 1 to 16 (there are 17).');   // (#3939: 16)
   await page.fill('.dlg-overlay .tw-inputs', 'a, 2b');
   await refused(page, "'2b' is not a valid name.");
   await page.fill('.dlg-overlay .tw-inputs', 'a, B');
@@ -112,7 +112,7 @@ uiTest('#2140 Portuguese: the Boolean Algebra Wizard\'s pages and messages trans
   };
   await newSourceWizardOf(page, 'Boolean Algebra', 'pt_tt', 'Boolean Algebra Wizard');
   await compare('Inputs and Outputs');
-  for (const [field, value, re] of [['.tw-inputs', 'a 2b', /não é um nome válido/], ['.tw-inputs', 'a b c d e f g', /^Entradas: 1 a 6 \(há 7\)\.$/], ['.tw-inputs', 'a, a', /usado duas vezes/]]) {
+  for (const [field, value, re] of [['.tw-inputs', 'a 2b', /não é um nome válido/], ['.tw-inputs', 'a b c d e f g h i j k l m n o p q', /^Entradas: 1 a 16 \(há 17\)\.$/], ['.tw-inputs', 'a, a', /usado duas vezes/]]) {
     await page.fill(`.dlg-overlay ${field}`, value);
     await page.dialogButton('Next >');
     await setLang('pt');

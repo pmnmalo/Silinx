@@ -30,7 +30,7 @@ test('#3915 set_notation: Electronics / Engineering by default; set, kept, read 
   // f = /a.b + c: its minimal SOP
   const t = normalizeTable({ ...newTable('f1', ['a', 'b', 'c'], ['f']), table: { f: '01110101' } });
   await ok('write_file', { project: 'n', path: 'src/f1.bool.json', text: JSON.stringify(t, null, 2) });
-  const sop = async (args = {}) => (await ok('related_view', { project: 'n', path: 'src/f1.bool.json', view: 'results', ...args })).data.outputs[0].minimalSop;
+  const sop = async (args = {}) => (await ok('related_view', { project: 'n', path: 'src/f1.bool.json', view: 'results', ...args })).data.outputs[0].kmap.sop;
   // none set: the default
   assert.deepEqual(await ok('set_notation', {}), { isError: false, text: `Boolean notation: Electronics / Engineering (a${B}·b + c)`, data: { notation: 'engineering' } });
   assert.equal(config().notation, undefined);

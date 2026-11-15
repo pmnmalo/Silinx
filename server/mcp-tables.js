@@ -6,7 +6,7 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { notationSetting } from './mcp-notation.js';
 
-const FORMS_TEXT = 'sop (minimal SOP), pos (minimal POS), xor (the XOR form when simpler, else the minimal SOP), nand, nor (NAND / NOR gates only), gates (the form of least gates), delay (of least delay), csop, cpos (the canonical SOP / POS)';
+const FORMS_TEXT = 'sop, pos (the minimal SOP / POS: the Karnaugh map\'s; past 6 inputs, Quine-McCluskey\'s), qsop, qpos (Quine-McCluskey\'s SOP / POS), xor (the XOR form when simpler, else the minimal SOP), nand, nor (NAND / NOR gates only), gates (the form of least gates), delay (of least delay), csop, cpos (the canonical SOP / POS)';
 
 export const TABLE_TOOLS = [
   {
@@ -14,7 +14,7 @@ export const TABLE_TOOLS = [
     description: `Set what a Boolean algebra / truth table (.bool.json, .tt.json) generates for one output, as its editor's tick box on a result and its Karnaugh map's solution selector do: its HDL logic, the form of its expression in the table's HDL module and schematic (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses when it has several ({ "sop": k } or { "pos": k }, k from 0 as related_view's results list them). The table is written and its HDL file made again. Returns the output's expression in its HDL.`,
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The truth table: a .bool.json or .tt.json file of the project.'), output: STR('The output\'s name.'),
-      form: { type: 'string', enum: ['sop', 'pos', 'xor', 'nand', 'nor', 'gates', 'delay', 'csop', 'cpos'], description: 'The output\'s HDL logic.' },
+      form: { type: 'string', enum: ['sop', 'pos', 'qsop', 'qpos', 'xor', 'nand', 'nor', 'gates', 'delay', 'csop', 'cpos'], description: 'The output\'s HDL logic.' },
       solution: { type: 'object', properties: { sop: { type: 'integer', minimum: 0 }, pos: { type: 'integer', minimum: 0 } }, additionalProperties: false, description: 'The minimal solution used, from 0: { "sop": k } and / or { "pos": k }.' },
     }, required: ['project', 'path', 'output'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
@@ -34,8 +34,8 @@ export const TABLE_TOOLS = [
       const r = L.outputForm(doc, output), f = L.formOf(doc, output);
       // (in the notation set, #3915)
       const { showExpr } = await import('../core/expr-notation.js');
-      const expr = `${output} = ${showExpr(r.ast, await notationSetting())}`;
-      return { text: [`${rel}: ${output}'s HDL logic: ${L.FORM_NAMES[f]}: ${expr}   (${r.what})`, ...(sync?.messages || [])].join('\n'),
+      const expr = `${output} = ${showExpr(r.ast, doc.notation || await notationSetting())}`;   // (the table's own, #3939)
+      return { text: [`${rel}: ${output}'s HDL logic: ${L.formName(doc, f)}: ${expr}   (${r.what})`, ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, output, form: f, solutions: doc.solutions?.[output] || {}, expr, what: r.what, ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
   },

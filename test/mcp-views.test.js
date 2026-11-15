@@ -78,12 +78,18 @@ test('related_view: a truth table\'s results, as its editor shows them: the cano
   await call('write_file', { project: 'q', path: 'src/m.bool.json', text: JSON.stringify({ ...newTable('m', ['a', 'b', 'c'], ['f', 'z']), table: { f: '01X10X10', z: '00000000' } }) });
   const before = files('q');
   const r = await ok({ project: 'q', path: 'src/m.bool.json', view: 'results', notation: 'textbook' });
-  // (the editor's order, #3065: the circuit's two choices, the minimal forms, the canonical ones (their list, then their
+  // (the editor's order, #3065, #3939: the circuit's two choices, the Karnaugh map's and Quine-McCluskey's, the canonical ones (their list, then their
   // expression, #3069; their terms and literals, #3072), XOR, NAND, NOR)
   assert.equal(r.text, `Least number of gates: XOR form: f = c ⊕ a·b
 Least delay: XOR form: f = c ⊕ a·b
-Minimal SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s))
-Minimal POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s))
+Karnaugh map SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s))
+Karnaugh map POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s))
+Quine-McCluskey SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s))
+  Prime implicants: 0-1 a'·c, -01 b'·c, 01- a'·b, -10 b·c'
+  Essential: b·c'
+Quine-McCluskey POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s))
+  Prime implicants of the 0s: 0-0 a + c, -00 b + c, 10- a' + b, 1-1 a' + c'
+  Essential: a' + c'
 Canonical SOP: f = Σm(1, 3, 6) + d(2, 5)   (3 term(s), 9 literal(s))
   f = a'·b'·c + a'·b·c + a·b·c'
 Canonical POS: f = ΠM(0, 4, 7) · D(2, 5)   (3 term(s), 9 literal(s))
@@ -93,10 +99,16 @@ NAND form: f = (((a·a)'·c)'·(b·(c·c)')')'
 NOR form: f = ((b + c)' + ((a + a)' + (c + c)')')'
 HDL logic: Least number of gates: f = c ⊕ a·b   (least gates: XOR form, 3 literal(s), 2 gate(s), delay 2)
 
-Least number of gates: Minimal SOP: z = 0
-Least delay: Minimal SOP: z = 0
-Minimal SOP: z = 0   (0 term(s), 0 literal(s))
-Minimal POS: z = 0   (1 term(s), 0 literal(s))
+Least number of gates: Karnaugh map SOP: z = 0
+Least delay: Karnaugh map SOP: z = 0
+Karnaugh map SOP: z = 0   (0 term(s), 0 literal(s))
+Karnaugh map POS: z = 0   (1 term(s), 0 literal(s))
+Quine-McCluskey SOP: z = 0   (0 term(s), 0 literal(s))
+  Prime implicants: none
+  Essential: none
+Quine-McCluskey POS: z = 0   (1 term(s), 0 literal(s))
+  Prime implicants of the 0s: --- 0
+  Essential: 0
 Canonical SOP: z = Σm()   (0 term(s), 0 literal(s))
   z = 0
 Canonical POS: z = ΠM(0, 1, 2, 3, 4, 5, 6, 7)   (8 term(s), 24 literal(s))
@@ -125,23 +137,23 @@ test('related_view results: every minimal solution when there are several (#2928
   const doc = { ...newTable('cyc', ['a', 'b', 'c'], ['f']), table: { f: '11100111' } };
   await call('write_file', { project: 'sol', path: 'src/cyc.bool.json', text: JSON.stringify(doc) });
   const r = await ok({ project: 'sol', path: 'src/cyc.bool.json', view: 'results' });
-  const A = analyzeOutput(normalizeTable(doc), 'f'), sop = r.data.outputs[0].minimalSop, pos = r.data.outputs[0].minimalPos;
+  const A = analyzeOutput(normalizeTable(doc), 'f'), sop = r.data.outputs[0].kmap.sop, pos = r.data.outputs[0].kmap.pos;
   assert.deepEqual(sop.solutions.map(x => x.expr), A.sop.alternatives.map(a => `f = ${formatExpr(a.ast, 'slash')}`));
   assert.deepEqual(sop.solutions.map(x => x.expr), ['f = /a./b + b./c + a.c', 'f = /a./c + /b.c + a.b']);
   assert.equal(sop.expr, sop.solutions[0].expr);
   assert.deepEqual(sop.solutions.map(x => [x.terms, x.literals, x.gates]), A.sop.alternatives.map(a => [3, 6, a.gates]));
   assert.deepEqual([sop.many, pos.many, pos.solutions.length, pos.solutions[0].expr], [false, false, 1, pos.expr]);
-  assert.ok(r.text.includes(`Minimal SOP: f = /a./b + b./c + a.c   (3 term(s), 6 literal(s))
+  assert.ok(r.text.includes(`Karnaugh map SOP: f = /a./b + b./c + a.c   (3 term(s), 6 literal(s))
   2 minimal solutions exist.
   Solution 1 of 2: f = /a./b + b./c + a.c   (used)
   Solution 2 of 2: f = /a./c + /b.c + a.b
-Minimal POS: `), r.text);
-  assert.doesNotMatch(r.text.slice(r.text.indexOf('Minimal POS')), /minimal solutions|Solution \d/);
+Karnaugh map POS: `), r.text);
+  assert.doesNotMatch(r.text.slice(r.text.indexOf('Karnaugh map POS')), /minimal solutions|Solution \d/);
   // the cap: the first 64
   const many = { ...newTable('many', ['a', 'b', 'c', 'd', 'e'], ['f']), table: { f: '0X1X1X1X1101XXX0X11XX0X0X1X0011X' } };
   await call('write_file', { project: 'sol', path: 'src/many.bool.json', text: JSON.stringify(many) });
   const m = await ok({ project: 'sol', path: 'src/many.bool.json', view: 'results' });
-  const ms = m.data.outputs[0].minimalSop;
+  const ms = m.data.outputs[0].kmap.sop;
   assert.deepEqual([ms.many, ms.solutions.length, new Set(ms.solutions.map(x => x.expr)).size], [true, 64, 64]);
   assert.match(m.text, /\n {2}Many minimal solutions exist; the first 64 can be browsed\.\n {2}Solution 1 of 64: f = [^\n]+\n[\s\S]*\n {2}Solution 64 of 64: f = /);
 });

@@ -154,7 +154,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   with that name, location and language, and its *< Back* on the first page goes back to New Source to change them;
   *Wizard >* is disabled for a type that has none, and *Next >* for a type that has only the wizard (Clock Manager,
   Block Memory).
-- **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–6) and of the
+- **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–16) and of the
   outputs, or an expression (`F = A·B' + C`) whose variables are the inputs and whose name the output, its column
   filled in.
 - **Templates** of the FSM, ASM and Petri net wizards (their first page, *Template*; `core/chart-templates.js`): they
@@ -224,16 +224,20 @@ for Xilinx FPGAs supported by ISE 14.7.
   from outside (click: Z → 0 → 1; a bus opens the value editor, *Z* releases it) — the circuit
   drives it through tri-state buffers (BUFE / BUFT) or a module symbol with an inout port.
 - **Boolean Algebra / Karnaugh Map** (it was Truth Table; *Tools ▸ Boolean Algebra / Karnaugh Map…*, New Source ▸
-  *Boolean Algebra (.bool.json)*): name 1–6 inputs and any number of outputs, click the cells (0 → 1 → X don't care)
+  *Boolean Algebra (.bool.json)*): name 1–16 inputs (a table of more than 256 rows scrolls in its own box, its rows drawn as they
+  come into view; a very long expression shown in part) and any number of outputs, click the cells (0 → 1 → X don't care)
   or type an expression per output (`ab' + c`, `a·b + c`, `/a.b + a./b`, `~a & b`,
   `(a and not b) or c`, `a ^ b`, `¬a ∧ b`, `a̅·b`…), the expressions shown in the notation of *Settings ▸ Boolean Notation*
-  (*View ▸* in the ISE style interface; also in the results' menu): Electronics / Engineering (`a̅·b + c`, the default),
+  (*View ▸* in the ISE style interface), or the table's own, chosen in its toolbar's ⋮ menu and saved with it: Electronics / Engineering (`a̅·b + c`, the default),
   text only (`/a.b + c`), logic (`¬a ∧ b ∨ c`), VHDL or Verilog — a state diagram's tables and the conditions a
-  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output: the Karnaugh map (Gray order; the variables MSB → LSB by columns then rows, or by rows then
+  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output: the Karnaugh map (up to 6 inputs: past that the console says there is none; Gray order; the variables MSB → LSB by columns then rows, or by rows then
   columns, chosen beside the map; 5–6 inputs as two/four 4×4 maps, the most significant picking the map) with the groups of the minimal SOP
   (1s) or POS (0s) drawn as coloured rounded rectangles, wrap-around groups split at the edges;
-  then the results, in this order: the least gates and the least delay; minimal SOP and POS (Quine–McCluskey + exact cover, don't cares used,
-  essential prime implicants marked; several minimal solutions browsed with *◀ Solution k of N ▶* beside the map, the one chosen used);
+  then the results, in this order: the least gates and the least delay; the *Karnaugh map*'s simplified function, its minimal SOP or POS,
+  whichever of *SOP* / *POS* is clicked (the map's groups the same; several minimal solutions browsed with *◀ Solution k of N ▶* beside the
+  map, the one chosen used); *Quine-McCluskey*'s, SOP or POS, for any number of inputs, with its *Steps* when ticked (the columns of the
+  implicants combined, the prime implicant chart, the essential prime implicants, the cover: Petrick's method's minimum), exact while it is
+  bounded, past that a cover heuristic (the console says it is not proven minimal);
   the canonical SOP and POS, each with its Σm / ΠM list beside its name and in full under it (the sum of the minterms, the product of the
   maxterms); each with its terms, literals and gates and its circuit (SdP / PdS in Portuguese). Each table's map can also be shown in 3D
   (3 inputs on a cylinder, 4 on a torus). After them come the *XOR form*, when it is simpler than both (fewer literals, or as many and fewer
@@ -244,7 +248,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   (double negation: `/(/(a.b)./(c.d))`), with their gate counts. The expressions are written with `/` as NOT and `.` as AND (`/a.b + c`, `/(a + b)`), or, chosen, as
   `/ab + c`, `a·b' + c`, `ab' + c`, VHDL or Verilog; each reads back as typed. A tick box on
   each result picks that output's logic in the module and the schematic (its *HDL logic*; the least gates' by default):
-  the least gates or delay, the minimal SOP or POS, the canonical SOP or POS, the XOR form where it is simpler
+  the least gates or delay, the Karnaugh map's SOP or POS, Quine-McCluskey's SOP or POS, the canonical SOP or POS, the XOR form where it is simpler
   (`xor` / `xnor`, `^` / `~^`), NAND gates only (`a nand b`, `~(a & b)`), NOR gates only. The table always has its HDL module, made with it in the project's
   preferred language, kept in sync with the table both ways (like ASM charts: editing the table
   rewrites it; editing and saving the HDL updates the table by exhaustive simulation, don't cares

@@ -1,5 +1,5 @@
 // UI: the HDL logic of each output (#2951): no HDL logic menu in the toolbar; a tick box on each result (Canonical SOP and
-// POS, Minimal SOP and POS, XOR, NAND and NOR forms, Least number of gates, Least delay), the one ticked the output's form
+// POS, the Karnaugh map's and Quine-McCluskey's (#3939), XOR, NAND and NOR forms, Least number of gates, Least delay), the one ticked the output's form
 // in its HDL module; a new table in least gates; each output its own; a tick box ticked stays so; Undo; a table saved
 // before in one form opens with it ticked on every output, its module unchanged; in Portuguese.
 import { before, after } from 'node:test';
@@ -40,7 +40,7 @@ uiTest('#2951 the HDL logic of each output: a tick box on each result, least gat
   // no HDL logic in the toolbar
   assert.equal(await page.eval((t) => [document.querySelector(`${t} .tt-form`), [...document.querySelectorAll(`${t} .tt-toolbar label`)].find((l) => /HDL/.test(l.textContent))].filter(Boolean).length, T), 0);
   // a tick box on every result; least gates ticked
-  assert.deepEqual((await ticks(page)).map(([r]) => r), ['tt-gates', 'tt-delay', 'tt-sop', 'tt-pos', 'canon-sop', 'canon-pos', 'tt-xor', 'tt-nand', 'tt-nor']);   // (the majority's XOR form simpler; the order: #3065)
+  assert.deepEqual((await ticks(page)).map(([r]) => r), ['tt-gates', 'tt-delay', 'tt-kmap-res', 'tt-qm', 'canon-sop', 'canon-pos', 'tt-xor', 'tt-nand', 'tt-nor']);   // (the majority's XOR form simpler; the order: #3065, #3939)
   assert.deepEqual(await ticked(page), ['tt-gates']);
   // the canonical SOP of f: the table and its module follow; the others keep least gates
   await tick(page, '.tt-canon-sop');
@@ -71,11 +71,12 @@ uiTest('#2951 the HDL logic of each output: a tick box on each result, least gat
   const tip = await page.eval((t) => document.querySelector(`${t} .tt-hdl`).title, T);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.equal(tip, 'A lógica do HDL desta saída: o seu módulo e o seu esquemático nesta forma');
-  // a table saved before, in minimal POS: ticked on each output; its module unchanged
+  // a table saved before, in minimal POS: the Karnaugh map's, shown in POS and ticked on each output; its module unchanged
   await open(page, 'src/old.bool.json');
-  assert.deepEqual(await ticked(page), ['tt-pos']);
+  const kmapKind = () => page.eval((t) => [...document.querySelectorAll(`${t} .tt-kmap-res .tt-kind.active`)].map((b) => b.textContent), T);
+  assert.deepEqual([await ticked(page), await kmapKind()], [['tt-kmap-res'], ['POS']]);
   await page.click(`${T} .tt-tab[data-out=z]`);
-  assert.deepEqual(await ticked(page), ['tt-pos']);
+  assert.deepEqual([await ticked(page), await kmapKind()], [['tt-kmap-res'], ['POS']]);
   assert.equal(await readWs(env, 'TtHdl', 'src/old.vhd'), oldVhd);
   assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR/);
 });

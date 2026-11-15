@@ -456,7 +456,8 @@ test('encoded transition table (binary and gray) and the truth tables of the nex
   assert.deepEqual(many.tables.map((x) => [x.suffix, x.doc.outputs]), [['next', ['d1', 'd0']], ['out', ['busy', 'sel_1', 'sel_0', 'led_2', 'led_1', 'led_0']]]);
   assert.equal(many.tables[1].doc.table.led_0, '0'.repeat(many.tables[1].doc.table.busy.length));
   const wide = { ...m, inputs: [...m.inputs, { name: 'k', width: 2 }] };
-  assert.equal(truthTablesOf(wide).error, 'A truth table has at most 6 inputs; this machine needs 7 (2 state bit(s) + 5 input bit(s))');
+  // (7 inputs: a truth table of up to 16, #3939)
+  assert.deepEqual(truthTablesOf(wide).tables.map((x) => x.doc.inputs.length), [7, 7]);
   // names of state bits avoid the input names
   const q = normalizeFsm({ inputs: [{ name: 'q0', width: 1 }], outputs: [{ name: 'z', width: 1 }], states: [{ id: 'a', name: 'A', outputs: { z: '1' } }, { id: 'b', name: 'B' }], transitions: [{ from: 'a', to: 'b', cond: 'q0' }, { from: 'b', to: 'a', cond: '!q0' }], initial: 'a' });
   assert.deepEqual(encodedTable(q).stateBits, ['qq0']);

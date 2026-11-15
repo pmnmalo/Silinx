@@ -56,7 +56,7 @@ const LEFT = {
   'core/hdl-c-expr.js': 'CMP REDUCE',
   'core/hdl-c.js': 'CModelError',
   'core/hls-fft-hdl.js': 'fftHdl',
-  'core/logic.js': 'TT_VERSION MAX_INPUTS evalExpr normColumn',
+  'core/logic.js': 'TT_VERSION evalExpr',
   'server/mcp-collab.js': 'DEFAULT_SERVER',
   'server/mcp-grade.js': 'topPorts',
   'server/mcp-hdl.js': 'SIM_MODELS',

@@ -505,3 +505,15 @@ test('a schematic\'s generated HDL: identical from both sides\' merged schematic
   assert.equal(byId(smodel(a).symbols, 'S7').name, 'inv_a');
   assert.equal(smodel(a).description, 'by Ana');
 });
+
+test('#3939 a truth table of more than 8 inputs and its own notation, edited live: put and read back the same (it was cut to 8 inputs\' rows)', () => {
+  const doc = new Y.Doc();
+  const inputs = Array.from({ length: 10 }, (_, i) => `x${i}`);
+  const col = Array.from({ length: 1024 }, (_, r) => '01X'[(r * 7 + (r >> 3)) % 3]).join('');
+  const m = normalizeTable({ name: 'wide', inputs, outputs: ['f'], table: { f: col }, notation: 'logic', forms: { f: 'qpos' } });
+  putDrawing(doc, 'src/wide.bool.json', m);
+  const back = drawingModel(doc, 'src/wide.bool.json').model;
+  assert.equal(back.table.f, col);
+  assert.equal(back.notation, 'logic');
+  assert.deepEqual(back, m);
+});

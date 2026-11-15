@@ -141,3 +141,23 @@ html[data-theme="dark"] .tt-ks-v.vX { fill: #e0a040; }
 /* read only (a shared project followed, #3181: tt-readonly.js): what changes the table hidden, its cells not clickable */
 .tt-editor.tt-readonly [hidden] { display: none; }
 .tt-editor.tt-readonly .tt-table td.tt-cell, .tt-editor.tt-readonly .tt-kmap .tt-kcell rect { cursor: default; }
+/* a large table (#3939): its own scroll box, its rows of one height (web/js/tt-rows.js's ROW_H), its header kept in view */
+.tt-table-scroll { max-height: 70vh; overflow: auto; }
+.tt-table.tt-virtual tr { height: 20px; }
+.tt-table.tt-virtual thead th { position: sticky; top: 0; z-index: 1; }
+.tt-table .tt-spacer td { padding: 0; border: none; }
+/* the K-map's and Quine-McCluskey's SOP | POS (#3939), Quine-McCluskey's steps */
+.tt-kinds { display: inline-flex; margin: 0 4px; }
+.tt-kind { padding: 0 6px; border: 1px solid var(--border, #999); background: var(--panel, #fff); color: var(--fg, #000); cursor: pointer; font-size: inherit; }
+.tt-kind + .tt-kind { border-left: none; }
+.tt-kind.active { background: #c9dbfb; font-weight: bold; }
+.tt-qm-steps { margin: 4px 0 2px 18px; }
+.tt-qm-cap { font-weight: bold; margin: 6px 0 2px; }
+.tt-qm-cols { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.tt-qm-col, .tt-qm-chart { border-collapse: collapse; font-family: var(--mono, monospace); }
+.tt-qm-col td, .tt-qm-col th, .tt-qm-chart td, .tt-qm-chart th { border: 1px solid var(--border-light, #ccc); padding: 0 5px; }
+.tt-qm-col tr.tt-qm-group td { border-top: 2px solid var(--border, #999); }
+.tt-qm-chart th:first-child { text-align: left; white-space: nowrap; }
+.tt-qm-chart td { text-align: center; min-width: 18px; }
+.tt-qm-chart tr.tt-qm-ess th { color: var(--title-fg, #15428b); }
+html[data-theme="dark"] .tt-kind.active { background: #2b3f63; }
