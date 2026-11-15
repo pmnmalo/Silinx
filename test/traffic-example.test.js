@@ -1,4 +1,4 @@
-// The traffic example (examples/traffic, the second example): a pedestrian crossing. Its controller
+// The traffic example (examples/traffic, the third example): a pedestrian crossing. Its controller
 // is a state diagram (src/traffic.fsm.json, a Moore machine) and its lamps a truth table
 // (src/lamps.bool.json), each with its VHDL kept in sync (src/traffic.vhd, src/lamps.vhd); the timer
 // and the top are plain VHDL, the display the clock example's Verilog. The drawn sources are clean
@@ -24,8 +24,8 @@ const fsmCode = (m) => generateFsm(m, 'vhdl', { source: 'traffic.fsm.json' }).co
 const ttCode = (t) => generateTableHdl(t, 'vhdl', { source: 'lamps.bool.json' }).code;
 const PHASES = ['CARS', 'CARS_YELLOW', 'ALL_RED', 'WALK', 'WALK_END', 'ALL_RED_2', 'NIGHT'];
 
-test('traffic: the second example, after gates', () => {
-  assert.deepEqual(EXAMPLES.slice(0, 3), ['gates', 'traffic', 'blinky']);
+test('traffic: the third example, after gates and breadboard (#3901)', () => {
+  assert.deepEqual(EXAMPLES.slice(0, 4), ['gates', 'breadboard', 'traffic', 'blinky']);
 });
 
 test('traffic: the project (top top, test bench tb_traffic, Basys2, VHDL), its sources', () => {

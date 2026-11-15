@@ -216,7 +216,7 @@ uiTest('Example gates (New Project…): the schematic of the gates, synchronized
   assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR/);
 });
 
-uiTest('Example traffic (New Project…), the second example: the state diagram and the truth table, synchronized with their VHDL; the test bench: Simulation finished OK', E, async (page) => {
+uiTest('Example traffic (New Project…), the third example: the state diagram and the truth table, synchronized with their VHDL; the test bench: Simulation finished OK', E, async (page) => {
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.waitForSelector('#start-page .start-box');
   await newFromExample(page, 'traffic');
