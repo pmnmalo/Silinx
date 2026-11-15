@@ -79,7 +79,7 @@ test('a design project: the flow\'s tools refused', async () => {
   await fails('run_process', { project: 'd2', process: 'implement' }, FLOW('d2'));
   await fails('set_design_properties', { project: 'd2', preferred_language: 'verilog' }, FLOW('d2'));
   await fails('set_design_properties', { project: 'd2', board: 'none' }, FLOW('d2'));
-  await fails('set_design_properties', { project: 'd2', design_only: false }, 'the project \'d2\' is a design and simulation project: give a board (or a device) to make it an FPGA project');
+  // (design_only false: kind fpga's deprecated alias, an FPGA project with no board then: test/mcp-project-kind.test.js, #4103)
 });
 
 test('a design project: the HDL\'s files and actions refused, the drawings\' kept', async () => {

@@ -85,7 +85,7 @@ uiTest('Undo / Redo: Rename (module and file, the instances), Design Properties,
   // Design Properties: the board
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  await page.fill('.dlg-overlay select', 'basys2', { index: 0 });
+  await page.fill('.dlg-overlay select', 'basys2', { index: 1 });   // (the board: after the Project Kind, #4103)
   await page.dialogButton('OK');
   // (the constraints are board specific: not regenerated here)
   await page.waitDialog('Update Constraints');

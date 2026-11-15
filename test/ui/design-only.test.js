@@ -112,21 +112,24 @@ uiTest('#3780 a design project: its HDL opened is its drawing, an HDL file added
   await page.waitNoDialog();
 });
 
-uiTest('#3780 Design Properties: a board makes a design project an FPGA project, and back; refused with HDL of its own', E, async (page) => {
+uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project an FPGA project, and back; refused with HDL of its own', E, async (page) => {
   await makeProject(env, { name: 'DrawnBoth', kind: 'design', files: { 'src/traffic.fsm.json': FSM }, top: 'traffic' });
   await page.openProject('DrawnBoth');
   await page.waitFor(() => window.Silinx.modules.some(m => m.name === 'traffic'), [], { what: 'its module' });
+  // (its Project Kind, its board list: no "no FPGA" entry there, #4103)
   const dialogFields = () => page.eval(() => {
     const labels = [...document.querySelectorAll('.dlg-overlay .form-grid > label')];
-    const board = labels.find(l => l.textContent === 'Evaluation Development Board:').nextElementSibling;
-    return { board: board.value, first: board.options[0].textContent, shown: labels.filter(l => l.style.display !== 'none').map(l => l.textContent) };
+    const sel = t => labels.find(l => l.textContent === t).nextElementSibling;
+    return { kind: sel('Project Kind:').value, kinds: [...sel('Project Kind:').options].map(o => o.textContent), board: sel('Evaluation Development Board:').value,
+      boards: [...sel('Evaluation Development Board:').options].map(o => o.value).filter(v => v === 'design' || v === ''), shown: labels.filter(l => l.style.display !== 'none').map(l => l.textContent) };
   });
-  const pick = v => page.eval((b) => { const s = [...document.querySelectorAll('.dlg-overlay .form-grid > label')].find(l => l.textContent === 'Evaluation Development Board:').nextElementSibling; s.value = b; s.dispatchEvent(new Event('change')); }, v);
+  const choose = (field, v) => page.eval((f, b) => { const s = [...document.querySelectorAll('.dlg-overlay .form-grid > label')].find(l => l.textContent === f).nextElementSibling; s.value = b; s.dispatchEvent(new Event('change')); }, field, v);
+  const pick = v => (v === 'design' ? choose('Project Kind:', 'design') : choose('Project Kind:', 'fpga').then(() => choose('Evaluation Development Board:', v)));
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { board: 'design', first: 'Design and simulation only (no FPGA)', shown: ['Name:', 'Evaluation Development Board:', 'Top Module:'] });
+  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['FPGA design (a board and a device)', 'Design and simulation only (no FPGA)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top Module:'] });
   await pick('basys2');
-  assert.ok((await dialogFields()).shown.includes('Device:'));
+  assert.ok((await dialogFields()).shown.includes('Device:') && (await dialogFields()).shown.includes('Evaluation Development Board:'));
   await page.dialogButton('OK');
   await page.waitDialog('Update Constraints');
   await page.dialogButton('No');

@@ -10,7 +10,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { topForBoardText } from '../core/board-generics.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT, deviceName } from './mcp-util.js';
-import { DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
+import { DESIGN_KIND, DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
 import { makeDesignProject } from './mcp-design-only.js';
 
 // the project's kind dropped when a design and simulation project is given a board or a device (#3780)
@@ -87,22 +87,27 @@ export const SETTINGS_TOOLS = [
       synth_tool: { type: 'string', enum: SYNTH_TOOLS, description: 'The synthesis tool.' },
       preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The Preferred Language: the drawings\' HDL (the drawings with no language of their own) made again in it.' },
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
-      design_only: { type: 'boolean', description: 'true: make the project a design and simulation project (no board, no constraints, its HDL hidden), as Design Properties\' "Design and simulation only (no FPGA)"; refused when it has HDL or C sources of its own. A design and simulation project becomes an FPGA project with a board (or a device).' },
+      kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design makes it a design and simulation project (no FPGA: no board, no constraints, its HDL hidden), refused when it has HDL or C sources of its own; fpga makes a design and simulation project an FPGA project (with board, or a device; else no board, the default device).' },
+      design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design, false kind fpga.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run(args) {
       const { project: name, board, variant, part, package: pkg, speed, synth_tool: synthTool, preferred_language: language, update_constraints: constraints = false } = args;
       let pj = await readProject(name);
-      // (a design and simulation project, #3780: made one; or one given a board or a device, an FPGA project then)
-      if (args.design_only === true) return makeDesignProject(name, pj, args);
+      // (the project's kind, #3780, #4103: kind, or design_only its deprecated alias; a design and simulation project made
+      // one; or made an FPGA project by kind fpga, a board or a device)
+      if (args.kind !== undefined && args.design_only !== undefined) throw toolError('give kind, not design_only too (design_only is kind\'s deprecated alias)');
+      const kind = args.kind ?? (args.design_only === true ? DESIGN_KIND : args.design_only === false ? 'fpga' : undefined);
+      if (kind !== undefined && !['fpga', DESIGN_KIND].includes(kind)) throw toolError('kind: fpga or design');
+      if (kind === DESIGN_KIND) return makeDesignProject(name, pj, args);
       const fromDesign = isDesignOnly(pj);
+      if (kind === 'fpga' && !fromDesign && [board, variant, part, pkg, speed, synthTool, language].every(x => x === undefined)) throw toolError(`the project '${name}' is an FPGA project already`);
       if (fromDesign) {
-        if (args.design_only === false && !(board && board !== 'none') && !part) throw toolError(`the project '${name}' is a design and simulation project: give a board (or a device) to make it an FPGA project`);
-        if (!(board && board !== 'none') && !part) throw toolError(DESIGN_ONLY_MESSAGES.flow(name));
+        if (kind !== 'fpga' && !(board && board !== 'none') && !part) throw toolError(DESIGN_ONLY_MESSAGES.flow(name));
         pj = { ...pj, board: null, constraints: null };
       }
       const D = await devices(), R = await parts();
-      if (board === undefined && variant === undefined && part === undefined && pkg === undefined && speed === undefined && synthTool === undefined && language === undefined) throw toolError('give board, part, package, speed, synth_tool or preferred_language');
+      if (kind === undefined && board === undefined && variant === undefined && part === undefined && pkg === undefined && speed === undefined && synthTool === undefined && language === undefined) throw toolError('give board, part, package, speed, synth_tool or preferred_language');
       if (language !== undefined && !['vhdl', 'verilog'].includes(language)) throw toolError('preferred_language: vhdl or verilog');
       if (board && board !== 'none' && (part || pkg || speed)) throw toolError('give a board or a device (part, package, speed), not both: a board\'s device is its own');
       let nextBoard = pj.board || null, next = { ...pj.device };

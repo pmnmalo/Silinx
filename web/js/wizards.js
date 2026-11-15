@@ -13,7 +13,7 @@ import { reservedNameDiags } from './processes.js';
 import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
-import { KIND_OPTIONS, kindBoardOptions, kindFields, makeDesignProject } from './project-kind-ui.js';
+import { KIND_OPTIONS, kindFields, makeDesignProject } from './project-kind-ui.js';
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
 import { designOnly, refusedHere } from './design-only.js';
 import { byLastUsed } from './project-store.js';
@@ -473,25 +473,27 @@ export async function projectProperties() {
   if (!db) return alertDlg("Design Properties", "The device database could not be loaded (is the Silinx server running?).", "error");
   const pj0 = S.project;
   let pj = pj0;
-  // (the board list's first choice: a design and simulation project, both ways, #3780)
-  const boardSel = select(kindBoardOptions(boardOptions(db)), isDesignOnly(pj) ? DESIGN_KIND : pj.board || '');
+  // (the project's kind, New Project's choice: a design and simulation project, both ways, #3780, #4103)
+  const kindSel = select(KIND_OPTIONS, isDesignOnly(pj) ? DESIGN_KIND : 'fpga');
+  const boardSel = select(boardOptions(db), pj.board || '');
   const dp = devicePicker(db, pj.device);
   dp.disable(!!pj.board);
   const lang = select([['vhdl', 'VHDL'], ['verilog', 'Verilog']], pj.preferredLanguage || 'vhdl');
   // a project from before the setting follows Toolchain Settings
   const synth = select(SYNTH_TOOLS, pj.synthTool || (S.toolchain?.config?.mode === 'silinx' ? 'silinx' : 'xst'));
   dp.lockSynth(synth, pj.synthTool);
-  const syncKind = kindFields(() => boardSel.value === DESIGN_KIND, [dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang]);
+  const syncKind = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang]);
+  kindSel.addEventListener('change', syncKind);
   boardSel.addEventListener('change', () => {
     const b = db.boards.find(x => x.id === boardSel.value);
     if (b) dp.set(b.device);
     dp.disable(!!b);
-    syncKind();
   });
   const r = await dialog({
     title: 'Design Properties', width: 520,
     body: h('div', { class: 'form-grid' },
       ...field('Name:', h('span', {}, pj.name)),
+      ...field('Project Kind:', kindSel),
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),
       ...field('Device:', dp.partSel), ...field('Package:', dp.pkgSel), ...field('Speed:', dp.spdSel),
@@ -507,7 +509,7 @@ export async function projectProperties() {
   pj = await currentProject();
   if (pj?.name !== pj0.name) return;
   // a design and simulation project made (#3780), or one given a board or a device: an FPGA project then
-  if (boardSel.value === DESIGN_KIND) return isDesignOnly(pj) || makeDesignProject(pj);
+  if (kindSel.value === DESIGN_KIND) return isDesignOnly(pj) || makeDesignProject(pj);
   const fromDesign = isDesignOnly(pj);
   // a new device: the design checked against it first, the user told (#796)
   const next = dp.value();

@@ -23,7 +23,7 @@ uiTest('#3710 Design Properties: on the Mimas V2, the clock\'s top gets the boar
   assert.equal(await top(), EXAMPLE);
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  await page.fill('.dlg-overlay select', 'mimas-v2', { index: 0 });
+  await page.fill('.dlg-overlay select', 'mimas-v2', { index: 1 });   // (the board: after the Project Kind, #4103)
   await page.dialogButton('OK');
   await page.waitDialog('Update Constraints');
   await page.dialogButton('No');

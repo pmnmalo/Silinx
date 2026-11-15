@@ -90,11 +90,14 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (basys2, nexys2; default: the Basys2-250\'s device, no board). Then write its sources with write_file (a test bench in sim/) and choose its top module and test bench with set_top. With design_only, a design and simulation project, as New Project\'s "Design and simulation only (no FPGA)": no board, no device, no constraints; its sources are drawings (new_source), simulated with test_bench_wizard and simulate; no implementation, emulation or programming, and its HDL is not shown (set_design_properties with a board makes it an FPGA project).',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board: basys2 or nexys2.'), variant: STR('The board\'s variant: 100 or 250 for the Basys2, 500 or 1200 for the Nexys2.'), design_only: { type: 'boolean', description: 'A design and simulation project: drawings and simulation only, no board (default false).' } }, required: ['name'], additionalProperties: false },
+    description: 'Make a new empty project in the workspace for a board (basys2, nexys2; default: the Basys2-250\'s device, no board). Then write its sources with write_file (a test bench in sim/) and choose its top module and test bench with set_top. With kind design, a design and simulation project, as New Project\'s "Design and simulation only (no FPGA)": no board, no device, no constraints; its sources are drawings (new_source), simulated with test_bench_wizard and simulate; no implementation, emulation or programming, and its HDL is not shown (set_design_properties with a board makes it an FPGA project).',
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board: basys2 or nexys2.'), variant: STR('The board\'s variant: 100 or 250 for the Basys2, 500 or 1200 for the Nexys2.'), kind: { type: 'string', enum: ['fpga', 'design'], description: 'Its kind, as New Project\'s Project Kind: fpga (default), or design, a design and simulation project: drawings and simulation only, no board.' }, design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, design_only: designOnly = false }) {
-      if (designOnly && (board || variant)) throw toolError('a design and simulation project has no board: give design_only or a board, not both');
+    async run({ name, board, variant, kind: given, design_only: alias }) {
+      // (its kind, #4103: design_only its deprecated alias)
+      if (given !== undefined && alias !== undefined) throw toolError('give kind, not design_only too (design_only is kind\'s deprecated alias)');
+      const designOnly = (given ?? (alias ? DESIGN_KIND : 'fpga')) === DESIGN_KIND;
+      if (designOnly && (board || variant)) throw toolError(`a design and simulation project has no board: give ${given !== undefined ? 'kind design' : 'design_only'} or a board, not both`);
       let device;
       if (board || variant) ({ board, device } = await boardDevice(board, variant));
       try { await P.createProject({ name, device, board, kind: designOnly ? DESIGN_KIND : null, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }

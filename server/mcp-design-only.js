@@ -77,7 +77,7 @@ export function designProjectInfo(name, pj, tree) {
 export async function makeDesignProject(name, pj, args) {
   if (isDesignOnly(pj)) throw toolError(`the project '${name}' is a design and simulation project already`);
   const other = ['board', 'variant', 'part', 'package', 'speed', 'synth_tool', 'preferred_language', 'update_constraints'].filter(k => args[k] !== undefined);
-  if (other.length) throw toolError(`design_only: a design and simulation project has no ${other.join(', ')}`);
+  if (other.length) throw toolError(`${args.kind !== undefined ? 'kind' : 'design_only'}: a design and simulation project has no ${other.join(', ')}`);
   const r = toDesignProject(pj, await generatedFiles(name));
   if (r.error) throw toolError(r.error);
   await P.updateProject(name, cur => asDesignProject(cur));
