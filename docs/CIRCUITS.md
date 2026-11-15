@@ -32,8 +32,9 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   and f–j, each power rail), each gate IC's gates in its body (IEC boxes, &, ≥1, =1, 1, a bubble on an inverting one)
   joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire.
 - **How the wires are drawn** (#4064, the ⋮ menu, as the schematic's): **Curved wires** (the circuit's `wireStyle`,
-  saved with it: each wire a smooth curve through its bends, as a jumper wire) and **Hop-overs** (remembered, on by
-  default: a small arc where a wire crosses one drawn before it without joining it); `core/circuit-wires.js`. The look
+  saved with it: each wire a smooth curve through its bends, as a jumper wire) and **Wire crossings** (#4101, a
+  choice as the schematic's, remembered): **Hop-overs** (the default: a small arc where a wire crosses one drawn before
+  it without joining it) or **Plain crossings** (the wires straight across each other); `core/circuit-wires.js`. The look
   only: the connections are the same.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
   net's: the toolbar (select, wire, rotate, delete, then the zoom, Keep connections, then Check and Try it; while trying it, the Try it bar above the canvas, as the schematic's, its Reset and Stop, #4067; printed

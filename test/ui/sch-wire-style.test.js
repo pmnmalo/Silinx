@@ -53,7 +53,7 @@ uiTest('#4081 schematic: the ⋮ menu\'s Wires: Direct, Orthogonal, Curved; Undo
   await page.eval(() => window.SilinxApp.openSch('src/ws.sch.json'));
   await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym`).length === 3, [ED], { what: 'drawn' });
   const TIP = 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections, the nets and the HDL the same)';
-  // the choice, after Rearrange and before Hop-overs; Orthogonal (an older file: no wireStyle) ticked
+  // the choice, after Rearrange and before Wire crossings (#4101); Orthogonal (an older file: no wireStyle) ticked
   assert.deepEqual(await choice(page), { items: ['Wires', 'Direct', '*Orthogonal', 'Curved'], roles: ['menuitemradio', 'menuitemradio', 'menuitemradio'], title: TIP });
   assert.deepEqual((await drawn(page)).map((x) => x[1]), ['poly', 'poly', 'poly']);
   const doc0 = await getDoc(page);

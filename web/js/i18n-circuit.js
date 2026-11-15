@@ -5,8 +5,7 @@ export const CIRCUIT_PT = {
   // toolbar
   'Wire': 'Fio', 'Show inside': 'Mostrar o interior', 'Wires': 'Fios', 'Curved wires': 'Fios curvos',
   'Show what is inside the parts: the gates of each IC and its pins\' names, the strips of holes joined in each breadboard': 'Mostrar o interior das peças: as portas de cada CI e os nomes dos seus pinos, as tiras de furos ligados de cada placa de ensaio',
-  'Draw the wires as smooth curves through their bends, as jumper wires (the connections the same)': 'Desenhar os fios como curvas suaves pelas suas dobras, como fios de ligação (as ligações as mesmas)',
-  'Draw a small arc where two wires cross without joining': 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem', 'Stop trying it out and go back to editing the circuit (Esc)': 'Parar de experimentar e voltar a editar o circuito (Esc)',
+  'Draw the wires as smooth curves through their bends, as jumper wires (the connections the same)': 'Desenhar os fios como curvas suaves pelas suas dobras, como fios de ligação (as ligações as mesmas)', 'Stop trying it out and go back to editing the circuit (Esc)': 'Parar de experimentar e voltar a editar o circuito (Esc)',
   'Draw a wire: click its start, its bends, then its end on a pin or a hole (double click or Esc: end it there)': 'Desenhar um fio: clique no início, nas dobras e no fim, num pino ou num furo (duplo clique ou Esc: acaba aí)',
   'Turn the selected part a quarter clockwise (R)': 'Rodar a peça selecionada um quarto de volta no sentido dos ponteiros do relógio (R)',
   'Check the circuit: short circuits, unpowered ICs, floating inputs, parts and wires that join nothing': 'Verificar o circuito: curto-circuitos, CIs sem alimentação, entradas no ar, peças e fios que não ligam nada',

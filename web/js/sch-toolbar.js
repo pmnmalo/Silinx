@@ -1,6 +1,6 @@
 // The schematic editor's toolbar (#405: out of mountSchEditor in sch-editor.js): its tools and buttons (Select, Wire,
 // Net Name, I/O Marker, Rotate, Mirror Horizontal / Vertical (#2209), Delete, the zooms, Keep connections, Select whole branch (#2211), Names, Check, Try it, the panels on a narrow
-// screen; the menu at the right of the first line, #2208: Rearrange Wires / Rearrange Schematic (#1481, #1506, #1730), Wires: Direct, Orthogonal, Curved (#1144, #4081), Hop-overs), the editing ones hidden when read-only, and their clicks.
+// screen; the menu at the right of the first line, #2208: Rearrange Wires / Rearrange Schematic (#1481, #1506, #1730), Wires: Direct, Orthogonal, Curved (#1144, #4081), Wire crossings: Hop-overs, Plain crossings (#4101)), the editing ones hidden when read-only, and their clicks.
 import { PROPS_KEY, SYMBOLS_KEY, panelToggle } from './narrow.js';
 import { h } from './dom.js';
 import { ICON } from './sch-editor.js';
@@ -10,7 +10,7 @@ import { designKind } from './project-kind-flag.js';
 /** { optBox } of mountSchEditor (live(): its current values). */
 export function mountSchToolbar(ctx) {
   const {
-    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems, deleteSel, enterSim, fit, hopsBox, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
+    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems, deleteSel, enterSim, fit, hopsItems, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
     readOnly, rotateSel, runCheck, sep, setTool, tb, zoomAt
   } = ctx;
 
@@ -25,7 +25,8 @@ export function mountSchToolbar(ctx) {
     h('span', { class: 'se-sep' }), h('div', { class: 'se-wires', role: 'group', title: designKind() ? 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections and the nets the same)'
       : 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections, the nets and the HDL the same)' },
       ...wireItems),
-    h('label', { class: 'se-hops', title: 'Draw a small arc where two wires cross without connecting' }, hopsBox, h('span', { text: 'Hop-overs' })),
+    // (Wire crossings: Hop-overs, Plain crossings, a choice as Wires, #4101)
+    h('div', { class: 'se-crossings', role: 'group' }, ...hopsItems),
   );
   const moreBtn = h('button', { type: 'button', class: 'se-btn', 'data-act': 'more', title: 'Wires and layout', 'aria-haspopup': 'true', 'aria-expanded': 'false', html: ICON.more });
   const more = h('span', { class: 'se-more' }, moreBtn, moreMenu);

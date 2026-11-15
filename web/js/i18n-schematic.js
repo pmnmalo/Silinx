@@ -45,6 +45,9 @@ export const SCH_PT = {
   'Names': 'Nomes', 'Clock enable (CE)': 'Habilitação do relógio (CE)', 'Asynchronous clear (CLR)': 'Limpeza assíncrona (CLR)', 'Asynchronous preset (PRE)': 'Preset assíncrono (PRE)', 'Synchronous reset (R)': 'Reset síncrono (R)', 'Synchronous set (S)': 'Set síncrono (S)', 'not with the other inputs chosen (no such Xilinx flip-flop)': 'não com as outras entradas escolhidas (não há esse flip-flop Xilinx)', 'Show the name of every instance and every net (the automatic ones too)': 'Mostrar o nome de todas as instâncias e de todas as redes (também os automáticos)',
   // a net name another net has (#689)
   'Hop-overs': 'Saltos', 'Draw a small arc where two wires cross without connecting': 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem',
+  // (#4101: Wire crossings, a choice)
+  'Wire crossings': 'Cruzamentos de fios', 'Plain crossings': 'Cruzamentos simples', 'How two wires that cross without connecting are drawn': 'Como se desenham dois fios que se cruzam sem se ligarem',
+  'Draw two wires that cross without connecting straight across each other (a connection has its dot)': 'Desenhar dois fios que se cruzam sem se ligarem a direito, um sobre o outro (uma ligação tem o seu ponto)',
   'Wires and layout': 'Fios e disposição',
   'Select whole branch': 'Selecionar todo o ramo',
   'A click on a wire selects the whole network of wires of its signal; not ticked, only the straight segment clicked': 'Um clique num fio seleciona toda a rede de fios do seu sinal; sem visto, apenas o segmento reto clicado',

@@ -1,6 +1,7 @@
 // UI (#692): Hop-overs: where two wires cross without connecting, the horizontal one hops over the other
-// with a small arc; a T-junction keeps its dot; on by default (#756), turned off remembered; its label in
-// Portuguese; printed as drawn; a view only (the document, its nets and its HDL the same).
+// with a small arc; a T-junction keeps its dot; on by default (#756), Plain crossings remembered; the ⋮ menu's
+// choice Wire crossings: Hop-overs, Plain crossings (#4101), its labels in Portuguese; printed as drawn; a view only
+// (the document, its nets and its HDL the same).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, waitDownload } from './harness.js';
@@ -14,8 +15,17 @@ const ED = '.doc:not([hidden]) .sch-editor';
 // the toolbar's menu opened (#2208), if it is not
 const openMenu = (page) => page.eval((ed) => { const b = document.querySelector(`${ed} .se-btn[data-act=more]`); if (b.getAttribute('aria-expanded') !== 'true') b.click(); }, ED);
 const P = (x, y) => ({ x, y });
+// the choice Wire crossings (#4101): its title, its items (✓ on the chosen one: *), their tips
+const choice = (page) => page.eval((ed) => {
+  const g = document.querySelector(`${ed} .se-more-menu .se-crossings`), head = g.querySelector('.tb-menu-title');
+  const items = [...g.querySelectorAll('.tb-menu-item')];
+  return { title: [head.textContent, head.title], items: items.map((b) => `${b.getAttribute('aria-checked') === 'true' ? '*' : ''}${b.lastChild.textContent}`),
+    roles: items.map((b) => b.getAttribute('role')), values: items.map((b) => b.dataset.value), tips: items.map((b) => b.title) };
+}, ED);
+const pick = (page, v) => page.click(`${ED} .se-crossings [data-value=${v}]`);
+const TIPS = ['Draw a small arc where two wires cross without connecting', 'Draw two wires that cross without connecting straight across each other (a connection has its dot)'];
 
-uiTest('#692 #756 schematic: Hop-overs (on by default) draws an arc where two wires cross, a T keeps its dot; printed; off remembered; in Portuguese; the document the same', E, async (page) => {
+uiTest('#692 #756 #4101 schematic: Wire crossings: Hop-overs (on by default) draws an arc where two wires cross, a T keeps its dot; printed; Plain crossings remembered; in Portuguese; the document the same', E, async (page) => {
   const doc = newDoc('hops', 'vhdl');
   doc.ports.push({ id: 'P1', name: 'a', dir: 'in', width: 1, x: 100, y: 200 }, { id: 'P2', name: 'y', dir: 'out', width: 1, x: 400, y: 200 },
     { id: 'P3', name: 'b', dir: 'in', width: 1, x: 250, y: 100 }, { id: 'P4', name: 'z', dir: 'out', width: 1, x: 250, y: 300 },
@@ -44,10 +54,9 @@ uiTest('#692 #756 schematic: Hop-overs (on by default) draws an arc where two wi
   };
   // on by default (#756, nothing remembered): W1 hops over W2 at (250, 200); the T a dot, not a hop
   assert.deepEqual(await view(), HOP);
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .se-hops input`).checked, ED), true, 'ticked');
+  assert.deepEqual(await choice(page), { title: ['Wire crossings', 'How two wires that cross without connecting are drawn'], items: ['*Hop-overs', 'Plain crossings'],
+    roles: ['menuitemradio', 'menuitemradio'], values: ['hops', 'plain'], tips: TIPS }, 'Hop-overs ticked');
   assert.equal(await page.eval(() => localStorage.getItem('xl.sch.hops')), null, 'nothing stored');
-  const label = () => page.eval((ed) => { const l = document.querySelector(`${ed} .se-hops`); return [l.textContent.trim(), l.title]; }, ED);
-  assert.deepEqual(await label(), ['Hop-overs', 'Draw a small arc where two wires cross without connecting']);
   assert.equal(await getDoc(), doc0, 'the document the same');
   // printed: the SVG saved from the print preview has the arc and the T's dot
   await page.menu('File', 'Print…');
@@ -61,23 +70,31 @@ uiTest('#692 #756 schematic: Hop-overs (on by default) draws an arc where two wi
   await page.waitNoDialog();
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor((ed) => document.querySelector(`${ed} .se-hops`)?.textContent.trim() === 'Saltos', [ED], { what: 'Portuguese' });
-  assert.deepEqual(await label(), ['Saltos', 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem']);
+  await page.waitFor((ed) => document.querySelector(`${ed} .se-crossings [data-value=hops]`)?.lastChild.textContent === 'Saltos', [ED], { what: 'Portuguese' });
+  assert.deepEqual(await choice(page), { title: ['Cruzamentos de fios', 'Como se desenham dois fios que se cruzam sem se ligarem'], items: ['*Saltos', 'Cruzamentos simples'],
+    roles: ['menuitemradio', 'menuitemradio'], values: ['hops', 'plain'],
+    tips: ['Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem', 'Desenhar dois fios que se cruzam sem se ligarem a direito, um sobre o outro (uma ligação tem o seu ponto)'] });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
-  // off: plain lines, remembered (the schematic opened again: still off)
+  // Plain crossings: plain lines, its ✓, remembered (the schematic opened again: still plain)
   await openMenu(page);
-  await page.click(`${ED} .se-hops input`);
+  await pick(page, 'plain');
   await page.waitFor((ed) => !document.querySelector(`${ed} svg .wire path.wline`), [ED], { what: 'no hops' });
+  assert.deepEqual((await choice(page)).items, ['Hop-overs', '*Plain crossings']);
   assert.equal(await page.eval(() => localStorage.getItem('xl.sch.hops')), '0');
   assert.equal(await getDoc(), doc0);
   await reopen();
-  assert.deepEqual(await view(), PLAIN, 'off remembered');
-  // on again
+  assert.deepEqual(await view(), PLAIN, 'Plain crossings remembered');
+  assert.deepEqual((await choice(page)).items, ['Hop-overs', '*Plain crossings']);
+  // Plain crossings chosen again: nothing changes; Hop-overs again
   await openMenu(page);
-  await page.click(`${ED} .se-hops input`);
+  await pick(page, 'plain');
+  assert.deepEqual(await view(), PLAIN);
+  await pick(page, 'hops');
   await page.waitFor((ed) => document.querySelector(`${ed} svg .wire path.wline`), [ED], { what: 'the hop drawn' });
   assert.deepEqual(await view(), HOP);
+  assert.deepEqual((await choice(page)).items, ['*Hop-overs', 'Plain crossings']);
   assert.equal(await page.eval(() => localStorage.getItem('xl.sch.hops')), '1', 'remembered');
   assert.equal(await getDoc(), doc0, 'the document the same');
   await page.eval(() => { try { localStorage.removeItem('xl.sch.hops'); } catch { /* none */ } });
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), [], 'no warnings');
 });

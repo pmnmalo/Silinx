@@ -50,8 +50,9 @@
 .sch-editor .se-more-menu .se-sep { width: auto; height: 1px; margin: 2px 0; box-shadow: none; }
 .sch-editor .se-more-menu label { min-height: 22px; }
 /* the Wires choice (#4081): its title and its three options, as a toolbar menu's choice (toolbar-menu.js menuChoice) */
-.sch-editor .se-more-menu .se-wires { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-size: 11px; }
-.sch-editor .se-more-menu .se-wires .tb-menu-item { white-space: nowrap; text-align: left; }
+/* (Wires and Wire crossings, two choices alike, #4101) */
+.sch-editor .se-more-menu :is(.se-wires, .se-crossings) { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-size: 11px; }
+.sch-editor .se-more-menu :is(.se-wires, .se-crossings) .tb-menu-item { white-space: nowrap; text-align: left; }
 /* Add Graphics' menu (#2593): under its button */
 .sch-editor .se-gfx { position: relative; display: inline-flex; }
 .sch-editor .se-gfx-menu { right: auto; left: 0; }
@@ -351,7 +352,7 @@
 .sch-editor.read-only .se-toolbar [data-act="rotate"], .sch-editor.read-only .se-toolbar [data-act="mirror"], .sch-editor.read-only .se-toolbar [data-act="mirrorv"], .sch-editor.read-only .se-toolbar [data-act="delete"],
 .sch-editor.read-only .se-toolbar [data-act="rewire"], .sch-editor.read-only .se-toolbar [data-act="relayout"], .sch-editor.read-only .se-more-menu .se-sep { display: none; }
 
-.sch-editor .se-keep, .sch-editor .se-branch, .sch-editor .se-names, .sch-editor .se-hops, .sch-editor .se-curved { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }
+.sch-editor .se-keep, .sch-editor .se-branch, .sch-editor .se-names, .sch-editor .se-curved { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }
 .sch-editor.read-only .se-keep, .sch-editor.read-only .se-branch { display: none; }
 /* a read-only view's note at the end of its toolbar, as the generated HDL's (#1193) */
 .sch-editor .se-toolbar .gen-banner { padding: 1px 8px; background: #fff4ce; border: 1px solid #e6d690; border-radius: 3px; color: #5a4a00; white-space: nowrap; }

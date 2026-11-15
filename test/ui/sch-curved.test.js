@@ -315,7 +315,7 @@ uiTest('#1144 Tasks ▸ Design: Curved wires in Portuguese, a stroke by a finger
   assert.deepEqual(warnings(page), []);
 }, { skip: chromeOnly, build: DEV });
 
-uiTest('#1163 schematic: Curved wires hop where they cross (Hop-overs ticked); off, plain curves; printed as drawn; the document the same', E, async (page) => {
+uiTest('#1163 schematic: Curved wires hop where they cross (Hop-overs chosen); Plain crossings, plain curves; printed as drawn; the document the same', E, async (page) => {
   // a -> y bowed up through (250, 180), crossed by b -> z straight down x = 250
   const doc = newDoc('hops', 'vhdl');
   doc.wireStyle = 'curved';
@@ -345,13 +345,13 @@ uiTest('#1163 schematic: Curved wires hop where they cross (Hop-overs ticked); o
   assert.ok(svg.includes(`d="${HOP[0][1]}"`), 'the hop printed');
   await page.key('Escape');
   await page.waitNoDialog();
-  // Hop-overs off: plain curves; on again: the hop
+  // Plain crossings (#4101): plain curves; Hop-overs again: the hop
   await openMenu(page);
-  await page.click(`${ED} .se-hops input`);
+  await page.click(`${ED} .se-crossings [data-value=plain]`);
   await page.waitFor((ed) => !/ A5,5/.test(document.querySelector(`${ed} g.wire[data-id="W1"] .wline`).getAttribute('d')), [ED], { what: 'no hop' });
   assert.deepEqual(await drawn(page), d0.wires.map(w => [w.id, curveD(w)]));
   await openMenu(page);
-  await page.click(`${ED} .se-hops input`);
+  await page.click(`${ED} .se-crossings [data-value=hops]`);
   await page.waitFor((ed) => / A5,5/.test(document.querySelector(`${ed} g.wire[data-id="W1"] .wline`).getAttribute('d')), [ED], { what: 'the hop' });
   assert.deepEqual(await drawn(page), HOP);
   assert.deepEqual(await getDoc(page), d0, 'the document the same');
@@ -360,12 +360,12 @@ uiTest('#1163 schematic: Curved wires hop where they cross (Hop-overs ticked); o
   assert.deepEqual(warnings(page), []);
 });
 
-// #1175: the toolbar's Curved wires before Hop-overs; in Try it, Curved wires (how the wires are drawn) and Symbol Info
+// #1175: the toolbar's Curved wires before Hop-overs (the Wire crossings choice, #4101); in Try it, Curved wires (how the wires are drawn) and Symbol Info
 // (a symbol that is not an input selected by a click) stay enabled, the circuit still running
 uiTest('#1175 Curved wires before Hop-overs; in Try it, Curved wires and Symbol Info enabled', E, async (page) => {
   await open(page, 'CurvedTry');
-  const order = await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).children].map((e) => e.className.match(/se-(wires|hops)/)?.[1] || e.dataset.act).filter(Boolean), ED);
-  assert.deepEqual(order, ['rewire', 'relayout', 'wires', 'hops']);
+  const order = await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).children].map((e) => e.className.match(/se-(wires|crossings)/)?.[1] || e.dataset.act).filter(Boolean), ED);
+  assert.deepEqual(order, ['rewire', 'relayout', 'wires', 'crossings']);
   await page.click(`${ED} .se-btn[data-act=sim]`);
   await page.waitFor((ed) => document.querySelector(ed).classList.contains('sim-mode') && window.Silinx.active.schEditor.isLive?.() !== false, [ED], { what: 'Try it' });
   // (not greyed out by Try it: it takes clicks)
