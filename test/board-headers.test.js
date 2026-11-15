@@ -80,7 +80,7 @@ test('#3741 ISE\'s build of the examples on the Elbert V2: only an<3> (and the u
     const { exampleProject, EXAMPLES } = await import('./examples-lib.mjs');
     const ise = await import('../server/ise.js');
     const on = (bit, pin) => `${bit}: the elbert-v2 has no pin for it; it is on the header pin io_p1<${pin}> (the board's constraints)`;
-    const expected = { gates: [], vga: [], uart: [on('rx', 0), on('tx', 1), on('an<3>', 2)] };
+    const expected = { gates: [], breadboard: [], vga: [], uart: [on('rx', 0), on('tx', 1), on('an<3>', 2)] };
     for (const name of EXAMPLES) {
       const { dir, project } = exampleProject(name, { board: 'elbert-v2' }, path.join(tmp, name));
       const g = await ise.generateBuild(project, dir);
