@@ -25,6 +25,8 @@ export {
 };
 import { openPetriFsm } from './petri-fsm-doc.js';
 import { languageMenu } from './drawing-lang-menu.js';
+import { refreshCircuitSchematic } from './drawings-circ-sch.js';
+export { openCircuitSchematic } from './drawings-circ-sch.js';
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
@@ -397,7 +399,7 @@ export async function openCircuit(path) {
       const problems = editorProblems({ file: path, tool: 'Circuit', what: 'Check Circuit', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); } });
       const ed = mountCircuitEditor(host, {
         model, menuItems: langMenu(path),
-        onChange: () => setDirty(d, true),
+        onChange: (m) => { setDirty(d, true); refreshCircuitSchematic(path, m); },   // (its schematic, when open, follows: #4069)
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
