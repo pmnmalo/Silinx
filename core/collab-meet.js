@@ -11,7 +11,8 @@
 // nothing and takes nothing from it. Over the owner's connection go the room's messages, as over a data channel: sealed
 // frames and the control's JSON (core/collab-client.js); the owner's page attaches each follower as a socket of its
 // room (core/collab-loop.js hostedRooms().follower, with a follower's frame limit).
-//   A meeting point: { join({ topic, password, maxReceive, accept(id, bytes) }) -> Promise<a meeting> }, a meeting:
+//   A meeting point: { join({ topic, password, maxReceive, accept(id, bytes), answers }) -> Promise<a meeting> }
+//   (answers: false, a follower's: its connections answer no offer, only the owner's do, #4197), a meeting:
 //   { self, onPeer(f(id)), onLeave(f(id)), onData(f(id, data: string | Uint8Array)), send(id, data), binding(id) ->
 //   Promise<{ local, remote }> (the connection's two fingerprints, this side's first), drop(id), leave() }
 //   meetAsHost({ meeting, room, key, hostKey, attach }) -> { leave() }    meetOwner({ meeting, room, key, host, ms })
@@ -115,7 +116,7 @@ export async function meetOwner({ meeting: point, room, key, host, ms = MEET_MS,
   let owner = null, ws = null;
   const tried = new Set();   // (the peers whose first message was taken: the owner's proof, or ignored for good)
   const m = await point.join({
-    topic: await meetTopic(room), password: key, maxReceive,
+    topic: await meetTopic(room), password: key, maxReceive, answers: false,
     // (from the owner, anything; from another peer, its first message only, as small as a proof)
     accept: (id, bytes) => id === owner || (!owner && !tried.has(id) && bytes <= 1 + SIG + 8),
   });
@@ -191,12 +192,29 @@ export function channelMeeting(name = 'silinx-meet') {
   };
 }
 
-/** Trystero's meeting point (its joinRoom and selfId: @trystero-p2p/torrent's), its trackers and WebRTC's settings.
- *  The room's messages go as one action: a string or bytes, marked by a first byte. */
-export function trysteroMeeting({ joinRoom, selfId, trackers = TRACKERS, rtcConfig } = {}) {
+/** A WebRTC connection class whose connections answer no offer (a follower's at the meeting point, #4197): they still
+ *  make offers, which the owner answers. Every page that has the link is in the room, and a tracker hands a new
+ *  follower's offer to one peer of the room at random, for each tracker; when a follower already in it answered too, its
+ *  answer could come first, the owner's own lost; Trystero then ignores that follower's new offers for 23 s, and
+ *  after the first two seconds a follower announces only every two minutes (the trackers' interval): the owner was
+ *  not found. Only the owner answering, a follower's offer that reaches another follower stays its, for the next
+ *  tracker or announce. */
+export function offersOnly(PC) {
+  return class OffersOnly extends PC {
+    setRemoteDescription(d, ...rest) {
+      if (d?.type === 'offer') return Promise.reject(new Error('a follower answers no offer at the meeting point'));
+      return super.setRemoteDescription(d, ...rest);
+    }
+  };
+}
+
+/** Trystero's meeting point (its joinRoom and selfId: @trystero-p2p/torrent's), its trackers and WebRTC's settings
+ *  (`RTC`: the connections' class, the browser's RTCPeerConnection). The room's messages go as one action: a string or
+ *  bytes, marked by a first byte; a join with `answers: false` (a follower's) answers no offer (offersOnly). */
+export function trysteroMeeting({ joinRoom, selfId, trackers = TRACKERS, rtcConfig, RTC = globalThis.RTCPeerConnection } = {}) {
   return {
-    async join({ topic, password, maxReceive = 16 << 20, accept = () => true }) {
-      const room = joinRoom({ appId: APP_ID, password, relayConfig: { urls: [...trackers] }, rtcConfig, maxReceiveBytes: maxReceive + 1 }, topic);
+    async join({ topic, password, maxReceive = 16 << 20, accept = () => true, answers = true }) {
+      const room = joinRoom({ appId: APP_ID, password, relayConfig: { urls: [...trackers] }, rtcConfig, maxReceiveBytes: maxReceive + 1, ...(answers ? {} : { rtcPolyfill: offersOnly(RTC) }) }, topic);
       const on = { peer: () => {}, leave: () => {}, data: () => {} };
       const dropped = new Set();
       const act = room.makeAction('frame', {

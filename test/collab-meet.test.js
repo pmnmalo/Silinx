@@ -4,10 +4,11 @@
 // peer, another connection, another room or by another key refused; the project arriving at two followers through it;
 // an impostor with the link (posing as the owner, or replaying the owner's proof of its own) ignored, sent nothing; no
 // owner, or the follower's own choice: the codes then (MEET_MS). And Trystero's adapter: it loads, its trackers are the
-// CSP's, and its calls are wired (a joinRoom of the test's).
+// CSP's, and its calls are wired (a joinRoom of the test's); a follower's connections answer no offer, only the owner's
+// do (#4197: a second follower's offer answered first by the first follower, the owner never found).
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { meetTopic, newHostKey, hostVerifier, hostProof, checkProof, fingerprintOf, meetAsHost, meetOwner, channelMeeting, trysteroMeeting, TRACKERS, APP_ID, MEET_MS } from '../core/collab-meet.js';
+import { meetTopic, newHostKey, hostVerifier, hostProof, checkProof, fingerprintOf, meetAsHost, meetOwner, channelMeeting, trysteroMeeting, offersOnly, TRACKERS, APP_ID, MEET_MS } from '../core/collab-meet.js';
 import { hostedRooms, FOLLOWER_JOIN } from '../core/collab-loop.js';
 import { shareRoom, followRoom } from '../core/collab-client.js';
 import { projectDoc, publishProject, putFile, docFile, docProject } from '../core/collab-doc.js';
@@ -275,4 +276,43 @@ test('Trystero\'s adapter: the package loads, its trackers are the CSP\'s; its c
   assert.deepEqual(ev, [['peer', 'p1'], ['data', 'p1', 'ok'], ['data', 'p1', [5]], ['leave', 'p1']]);
   assert.deepEqual(accepted, [['p1', 4], ['p1', 49]]);
   assert.deepEqual(calls.at(-1), ['leave']);
+});
+
+// (a WebRTC connection of the test's: its descriptions recorded)
+class FakePC {
+  constructor(cfg) { this.cfg = cfg; this.set = []; }
+  async setRemoteDescription(d, ...rest) { this.set.push([d.type, ...rest]); return 'set'; }
+}
+
+test('#4197 a follower\'s connections answer no offer: an offer refused, an answer taken; the owner\'s answer every offer', async () => {
+  const PC = offersOnly(FakePC);
+  const pc = new PC({ iceServers: [] });
+  assert.ok(pc instanceof FakePC);
+  assert.deepEqual(pc.cfg, { iceServers: [] });
+  await assert.rejects(pc.setRemoteDescription({ type: 'offer', sdp: 'v=0' }), /^Error: a follower answers no offer at the meeting point$/);
+  assert.equal(await pc.setRemoteDescription({ type: 'answer', sdp: 'v=0' }, 'more'), 'set');
+  assert.equal(await pc.setRemoteDescription({ type: 'rollback' }), 'set');
+  await assert.rejects(pc.setRemoteDescription({ type: 'offer', sdp: 'v=0' }));
+  assert.deepEqual(pc.set, [['answer', 'more'], ['rollback']], 'no offer reached the connection');
+  // Trystero's joins: a follower's (answers: false) with its connections' class, the owner's with the browser's own
+  const configs = [];
+  const room = { makeAction: () => ({ send: async () => {} }), getPeers: () => ({}), leave: async () => {} };
+  const meet = trysteroMeeting({ joinRoom: config => { configs.push(config); return room; }, selfId: 'me', rtcConfig: { iceServers: [] }, RTC: FakePC });
+  await meet.join({ topic: 'T', password: 'K', answers: false });
+  await meet.join({ topic: 'T', password: 'K' });
+  assert.equal(typeof configs[0].rtcPolyfill, 'function');
+  assert.ok(new configs[0].rtcPolyfill({}) instanceof FakePC);
+  await assert.rejects(new configs[0].rtcPolyfill({}).setRemoteDescription({ type: 'offer' }), /answers no offer/);
+  assert.equal('rtcPolyfill' in configs[1], false, 'the owner\'s: the browser\'s connections');
+});
+
+test('#4197 at the meeting point the follower joins answering no offer, the owner answering', async () => {
+  const joins = [];
+  const base = point();
+  const meeting = { join: o => { joins.push(o.answers); return base.join(o); } };
+  const { session, hk, at } = await owner(meeting);
+  const Ws = await meetOwner({ meeting, room: session.room, key: session.key, host: hk.pub, ms: 2000 });
+  new Ws().close();
+  assert.deepEqual(joins, [undefined, false]);
+  await at.leave();
 });

@@ -6,7 +6,8 @@
 // The meeting point is the tests' own, between the pages of one browser context (core/collab-meet.js channelMeeting:
 // a BroadcastChannel), never the public trackers. The second follower in Portuguese. And a follower's connection to
 // the owner lost (#3835): "Reconnecting to Ana…" meanwhile, the owner found again at the meeting point, the owner's
-// change made meanwhile arriving, each seeing the other again. No warnings but those asserted.
+// change made meanwhile arriving, each seeing the other again. And a follower's connections answer no offer, on the
+// browser's own WebRTC (#4197: only the owner's do). No warnings but those asserted.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -147,3 +148,30 @@ uiTest('#3835 a follower\'s connection to the owner\'s page lost: Reconnecting t
   await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
   assert.deepEqual(await warnings(page), []);
 }, { timeout: 120000 });
+
+uiTest('#4197 a follower\'s connections at the meeting point answer no offer, on this browser\'s own WebRTC: an offer refused, an answer taken', E, async (page) => {
+  const r = await page.eval(async () => {
+    const { offersOnly } = await import('/core/collab-meet.js');
+    const PC = offersOnly(RTCPeerConnection);
+    const owner = new RTCPeerConnection({ iceServers: [] });
+    owner.createDataChannel('o');
+    const offer = await owner.createOffer();
+    const follower = new PC({ iceServers: [] });
+    let refused = null;
+    try { await follower.setRemoteDescription(offer); } catch (e) { refused = e.message; }
+    // (the follower's own offer, answered by the owner's page)
+    const mine = new PC({ iceServers: [] });
+    mine.createDataChannel('f');
+    await mine.setLocalDescription(await mine.createOffer());
+    const ans = new RTCPeerConnection({ iceServers: [] });
+    await ans.setRemoteDescription(mine.localDescription);
+    await ans.setLocalDescription(await ans.createAnswer());
+    await mine.setRemoteDescription(ans.localDescription);
+    const out = { refused, isPC: follower instanceof RTCPeerConnection, follower: follower.signalingState, mine: mine.signalingState, remote: mine.remoteDescription?.type };
+    for (const pc of [owner, follower, mine, ans]) pc.close();
+    return out;
+  });
+  assert.deepEqual(r, { refused: 'a follower answers no offer at the meeting point', isPC: true, follower: 'stable', mine: 'stable', remote: 'answer' });
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+});
