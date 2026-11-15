@@ -5,7 +5,7 @@
 // again, the page's own, from the same files), those the owner closes closed (of those it opened, not the follower's
 // own), the same one in front, the same view, page and task, the same rows expanded and selected. What the follower
 // does on its own there (a row selected or expanded, another page, view or task) is browsing alone (onOwn), as bringing
-// another document to the front is (web/js/collab-follow.js).
+// another document to the front is (web/js/collab-follow.js). The processes the owner runs: collab-runs.js.
 import { S, activateDoc, closeDoc, setView, showLeftPage } from './app.js';
 import { renderHierarchy } from './design.js';
 import { currentViewState, reopenDoc, viewKeyOf } from './view-state.js';
@@ -13,14 +13,23 @@ import { restoreSplit } from './split-view.js';
 import { applyLayout, layoutNow } from './tasks.js';
 import { encodeUi } from '/core/design-link.js';
 import { designActivity, followedDesign, followedUi } from '/core/collab-channels.js';
+import { followRuns, openReport, runsPublisher } from './collab-runs.js';
 
-/** The owner's page: its activity sent (each channel only when it changed: core/collab-client.js publish). */
-export function publishActivity(session) {
-  if (!S.project) return;
-  try {
-    session.publish('ui', encodeUi(currentViewState(), layoutNow()));
-    session.publish('design', designActivity(S.selKey, S.treeOpen));
-  } catch { /* (too large: not sent, the followers keep the last one) */ }
+/** The owner's page: its activity sent (each channel only when it changed: core/collab-client.js publish), by
+ *  publish() in its sharing's tracking; stop() at its end. */
+export function ownerActivity(session) {
+  const runs = runsPublisher(session);
+  return {
+    publish() {
+      if (!S.project) return;
+      runs.publish();   // (its reports before its view: a report open there is known when the view comes)
+      try {
+        session.publish('ui', encodeUi(currentViewState(), layoutNow()));
+        session.publish('design', designActivity(S.selKey, S.treeOpen));
+      } catch { /* (too large: not sent, the followers keep the last one) */ }
+    },
+    stop: () => runs.stop(),
+  };
 }
 
 /** A follower's state of the owner's activity: { applied: { ui, design } (what was last put on the page), opened (the
@@ -33,11 +42,12 @@ export function followState() {
 
 /** The owner's activity put on the follower's page (`get`: the session's activity), what changed since the last time. */
 export async function followActivity(st, get) {
+  if (await followRuns(st, get)) st.applied.ui = null;   // (its reports changed: a report the owner has open may open now)
   const ui = get('ui'), uiKey = JSON.stringify(ui);
   if (ui !== null && st.applied.ui !== uiKey) {
     st.applied.ui = uiKey;
     const u = followedUi(ui);
-    if (u) { await applyUi(st, u); st.applied.design = null; }   // (a view changed: its selection put again)
+    if (u) { await applyUi(st, u, get); st.applied.design = null; }   // (a view changed: its selection put again)
   }
   const design = get('design'), designKey = JSON.stringify(design);
   if (design !== null && st.applied.design !== designKey) {
@@ -47,11 +57,11 @@ export async function followActivity(st, get) {
   }
 }
 
-async function applyUi(st, { view: v, layout }) {
+async function applyUi(st, { view: v, layout }, get) {
   if (v.view && v.view !== S.view) setView(v.view);
   if (v.page && v.page !== S.leftPage) showLeftPage(v.page);
   const have = new Set(S.docs.map(viewKeyOf));
-  for (const id of v.open) if (!have.has(id) && await reopenDoc(id)) st.opened.add(id);
+  for (const id of v.open) if (!have.has(id) && (await openReport(id, get) || await reopenDoc(id))) st.opened.add(id);
   for (const d of [...S.docs]) {
     const k = viewKeyOf(d);
     if (st.opened.has(k) && !v.open.includes(k)) { st.opened.delete(k); await closeDoc(d); }

@@ -11,6 +11,11 @@ import { shownDiag } from './design-only.js';
 
 const $ = id => document.getElementById(id);
 
+const lineWatchers = new Set();
+/** Calls fn(line, class) for each line the console shows from now on (#4002: a shared project's runs, for its
+ *  followers); returns the function that stops it. */
+export function onLogLine(fn) { lineWatchers.add(fn); return () => lineWatchers.delete(fn); }
+
 // action: { label, run }, a button at the end of the (last) line: what the line asks of the user (Trust Project, #2830);
 // it is disabled once run
 export function log(text, cls = '', { diag = true, action = null } = {}) {
@@ -19,6 +24,7 @@ export function log(text, cls = '', { diag = true, action = null } = {}) {
   for (const line of String(text).split('\n')) {
     el.append(h('div', { class: `ln ${cls}` }, line));
     if (diag) consoleMessage(line, cls);
+    for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }
   if (action) {
     const b = h('button', { type: 'button', class: 'btn ln-action', onclick: async () => { b.disabled = true; try { await action.run(); } catch (e) { b.disabled = false; log(`ERROR: ${e.message}`, 'err'); } } }, t(action.label));
