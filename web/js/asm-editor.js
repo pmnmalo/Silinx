@@ -19,7 +19,7 @@
 // to onValidate, as Validate's).
 
 import { linkModel, linkSnapshot } from './ui.js';
-import { toolbarMenu } from './toolbar-menu.js';
+import { menuChoice, setChoice, toolbarMenu } from './toolbar-menu.js';
 import { mountSideFold } from './side-fold.js';
 import { toolIcon, toolWide, zoomTools } from './editor-icons.js';
 import { pressTool } from './editor-tools.js';
@@ -156,7 +156,7 @@ function readOnlyChrome({ root, toolbar, hide, banner }) {
   if (banner) toolbar.querySelector(':scope > .tb-more').before(banner);
 }
 const lockSide = (readOnly, side) => { if (readOnly) for (const x of side.querySelectorAll('input, textarea, select, button:not(.asm-fold)')) x.disabled = true; };
-/** The encodings' names, in the toolbar's select and the status line (#2763). */
+/** The encodings' names, in the ⋮ menu's Encoding choice (#4055) and the status line (#2763). */
 export const ENCODING_NAMES = { binary: 'Binary', gray: 'Gray', onehot: 'One-hot', enum: 'Enum / auto' };
 export function mountAsmEditor(container, { model, onChange, onProblems, onValidate, onMessage, onVerify, readOnly = false, banner } = {}) {
   const uid = `asm${++instanceCounter}`;
@@ -182,8 +182,11 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
   const btn = (label, title, onclick, cls = '') => h('button', { type: 'button', class: `asm-btn ${cls}`, title, onclick }, label);
   const sep = () => h('span', { class: 'asm-sep' });
 
-  const encSel = h('select', { class: 'asm-select', title: 'State encoding', onchange: () => { M.encoding = encSel.value; commit('enc'); } },
-    ...ENCODINGS.map((e) => h('option', { value: e }, ENCODING_NAMES[e])));
+  // (the state encoding, rarely changed: a choice of the ⋮ menu, as the state diagram's, #3289; encSel.value = … moves
+  // its ✓; the encoding stays in the status line, #2763)
+  const encItems = menuChoice('Encoding', ENCODINGS.map((e) => ({ value: e, label: ENCODING_NAMES[e] })),
+    { value: M.encoding, title: 'State encoding', onChange: (v) => { M.encoding = v; commit('enc'); } });
+  const encSel = { set value(v) { setChoice(encItems, v); } };
   const snapBtn = btn('# Snap', 'Toggle snapping to the grid', () => { snap = !snap; snapBtn.classList.toggle('on', snap); });
   snapBtn.classList.add('on');
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
@@ -217,6 +220,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     snapBtn,
     // (Verify Property, #3177: web/js/verify-props.js)
     ...(onVerify ? [btn('Verify Property…', 'Prove a property of the chart\'s state machine: a state never reached, a state reached, outputs never 1 together', () => onVerify(normalizeModel(M)))] : []),
+    ...encItems,
   ], { title: 'Layout', btnClass: 'asm-btn' });
   const toolbar = h('div', { class: 'asm-toolbar asm-chart-toolbar' },
     h('div', { class: 'asm-group' },
@@ -225,8 +229,6 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     h('div', { class: 'asm-group' }, delBtn),
     sep(),
     h('div', { class: 'asm-group' }, ...zoomTools((f) => zoomBy(f), () => fit()), zoomLbl),
-    sep(),
-    h('div', { class: 'asm-group asm-encoding' }, h('span', { class: 'asm-tb-label' }, 'Encoding:'), encSel),
     sep(),
     h('div', { class: 'asm-group' }, toolWide('check', 'Validate', 'Check the chart for errors', () => { runValidate(); onValidate?.(diags.slice()); }), simBtn),
     h('div', { class: 'asm-spacer' }),
@@ -280,7 +282,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
   mountSideFold({ root, side, key: 'silinx.asm.props.folded' });
 
   root.append(toolbar, h('div', { class: 'asm-body' }, mainCol, side), status.el);
-  if (readOnly) readOnlyChrome({ root, toolbar, hide: [more.el, toolbar.querySelector('.asm-encoding')], banner });
+  if (readOnly) readOnlyChrome({ root, toolbar, hide: [more.el], banner });
 
   // ---------------------------------------------------------------------------- model ops (asm-ops.js)
   const {
