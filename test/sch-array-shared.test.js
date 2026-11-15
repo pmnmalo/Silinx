@@ -1,7 +1,8 @@
 // An arrayed instance's pins marked shared (#3966, params.shared, its Properties' Shared pins): a marked pin never sliced
 // whatever its net (core/sch-array.js sliceArrayed, netlist()), drawn a single pin (arrayedDef) even when open, its name
-// matched whatever its case; on a net of another width an error of its own (no width mismatch); a marked output an
-// error; sharedList, the MCP's names; a REG1bit(7:0) with C and CE marked, its HDL the unmarked one's, compiled,
+// matched whatever its case; on a net of another width an error of its own (no width mismatch); only an input marked
+// (#4053: the MCP's output refused, a mark left on an output ignored, the output by its net's width); sharedList,
+// the MCP's names; a REG1bit(7:0) with C and CE marked, its HDL the unmarked one's, compiled,
 // elaborated and simulated in VHDL and in Verilog with no warnings.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,9 +73,12 @@ test('#3966 sharedPins / sharedList: the names lower case, any case; the MCP\'s 
   assert.deepEqual(sharedList(pins, []), { names: [] });
   assert.deepEqual(sharedList(pins, [' ce ']), { names: ['CE'] });
   assert.deepEqual(sharedList(pins, ['C', 'x', 'y']), { error: 'Shared pins: no pin x, y (its pins: D, CE, C, Q)' });
+  // only an input (#4053)
+  assert.deepEqual(sharedList(pins, ['C', 'q']), { error: 'Shared pins: Q not an input: only an input is shared by the copies' });
+  assert.deepEqual(sharedList([...pins, P('B', 'inout')], ['b', 'Q']), { error: 'Shared pins: Q, B not inputs: only an input is shared by the copies' });
 });
 
-test('#3966 sliceArrayed: a pin marked shared never sliced; on a net of another width misfit; a marked output in error', () => {
+test('#3966 sliceArrayed: a pin marked shared never sliced; on a net of another width misfit; an output not sliced in error', () => {
   const pin = (o) => ({ kind: 'pin', dir: 'in', width: 1, arr: 8, ...o });
   const a = pin({ shared: true });
   assert.deepEqual([sliceArrayed([a], [8]), a.sliced, a.misfit], [[a], undefined, true], 'on an 8-bit marker');
@@ -83,7 +87,7 @@ test('#3966 sliceArrayed: a pin marked shared never sliced; on a net of another 
   const c = pin({ shared: true }), q = pin({ dir: 'out' });
   assert.deepEqual([sliceArrayed([c, q], []), q.sliced, q.width, c.misfit], [[c], true, 8, true], 'with a sliced output: the output 8 bits, the shared pin 1');
   const o = pin({ dir: 'out', shared: true });
-  assert.deepEqual([sliceArrayed([o], []), o.sliced, o.misfit], [[o], undefined, true], 'an output marked shared');
+  assert.deepEqual([sliceArrayed([o], []), o.sliced, o.misfit], [[o], undefined, undefined], 'an output flagged shared (netlist() never does, #4053): a shared output\'s error');
   const open = pin({ shared: true });
   assert.deepEqual([sliceArrayed([open], []), open.misfit], [[], undefined], 'alone on its net');
 });
@@ -103,18 +107,21 @@ test('#3966 netlist and drawing: C and CE marked shared on 1-bit nets as before;
   assert.deepEqual([msgs(nl1), nl1.nets.some(n => n.endpoints.some(e => e.shared))], [[], false]);
 });
 
-test('#3966 the errors: a marked pin on a bus (no width mismatch, drawn a single pin), a marked output, each said once', () => {
+test('#3966 #4053 the errors: a marked pin on a bus (no width mismatch, drawn a single pin), said once; a mark on an output ignored', () => {
   const bus = sheet('reg(7:0)', { D: 8, CE: 8, C: 1, Q: 8 }, ['CE', 'C']), nl = netlist(bus, { modules: MODS });
   assert.deepEqual(msgs(nl), ["reg(7:0): pin CE is shared by its 8 copies, but its net 'n_CE' is 8 bits wide: connect it to a 1-bit net, or untick it in Shared pins"]);
   assert.deepEqual(nl.diagnostics[0].ref, { kind: 'symbol', id: 'U', pin: 'CE' });
   assert.deepEqual(drawn(bus, nl), ['D8 D(7:0)', 'CE1', 'C1', 'Q8 Q(7:0)']);
   // unmarked, the same sheet: CE sliced, no error (today's rule)
   assert.deepEqual(msgs(netlist(sheet('reg(7:0)', { D: 8, CE: 8, C: 1, Q: 8 }), { modules: MODS })), []);
-  for (const qw of [8, 1]) {
-    const out = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: qw }, ['q']), nlo = netlist(out, { modules: MODS });
-    assert.deepEqual(msgs(nlo), ["reg(7:0): output Q is marked shared, but each of its 8 copies would drive the net 'n_Q': untick it in Shared pins and connect it to a 8-bit bus"], `Q on ${qw} bits`);
-    assert.deepEqual(drawn(out, nlo), ['D8 D(7:0)', 'CE1', 'C1', 'Q1']);
-  }
+  // a mark left on the output Q (a file written before #4053): ignored, Q by its net's width (sliced on 8 bits, a
+  // shared output's error on 1)
+  const out = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 }, ['q']), nlo = netlist(out, { modules: MODS });
+  assert.deepEqual([msgs(nlo), drawn(out, nlo)], [[], ['D8 D(7:0)', 'CE1', 'C1', 'Q8 Q(7:0)']]);
+  assert.equal(generateHdl(out, { modules: MODS }).code, generateHdl(sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 }), { modules: MODS }).code, 'its HDL the unmarked one\'s');
+  const out1 = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 1 }, ['Q']);
+  assert.deepEqual(msgs(netlist(out1, { modules: MODS })), ["reg(7:0): output Q of its 8 copies drives the 1-bit net 'n_Q': connect it to a 8-bit bus"]);
+  assert.deepEqual(arrayedDef(out1.symbols[0], symbolDef(out1.symbols[0], MODS), null).pins.map(p => p.width), [8, 8, 8, 8], 'drawn a bus, as an unmarked one');
   // an error: no HDL generated from it (as any other)
   assert.ok(generateHdl(bus, { modules: MODS }).diagnostics.some(d => d.severity === 'error' && /pin CE is shared/.test(d.message)));
 });

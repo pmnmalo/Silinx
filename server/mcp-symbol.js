@@ -111,7 +111,7 @@ export const SYMBOL_TOOLS = [
       project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), module: STR('The module (entity) to instantiate.'),
       name: STR('The instance name; with a range, reg(3:0), an arrayed instance.'),
       width: { type: 'integer', description: 'Its width, as its Properties\' Width: that many copies, the instance named with the range, reg(7:0) for 8 (1: a single instance).' },
-      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s, #3966), as its Properties\' tick boxes: each shared by every copy whatever its net (a single pin, not sliced in the HDL; its net the pin\'s own width); [] none.' },
+      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s, #3966), as its Properties\' tick boxes: its inputs only (#4053), each shared by every copy whatever its net (a single pin, not sliced in the HDL; its net the pin\'s own width); [] none.' },
       x: { type: 'integer', description: 'Its left (sheet coordinates).' }, y: { type: 'integer', description: 'Its top (sheet coordinates).' },
       rot: { type: 'integer', enum: [0, 90, 180, 270], description: 'Its turn, degrees clockwise.' },
       connect: { type: 'object', additionalProperties: { type: 'string' }, description: 'Pins connected to nets by name: { "d": "d(3:0)", "c": "clk" }.' },
@@ -155,11 +155,11 @@ export const SYMBOL_TOOLS = [
   },
   {
     name: 'set_instance_width', title: 'Set a module instance\'s width (its copies) and shared pins',
-    description: 'Set the Width of a module\'s instance in a schematic (.sch.json), as its Properties\' Width field does: that many copies of its module, an arrayed instance, its name given the range (reg becomes reg(7:0) for 8; 1 makes it a single instance again, reg). A pin connected to a bus N times its width takes its slice for each copy, one on a net of its own width is shared by the copies; shared: its Shared pins, as its Properties\' tick boxes (each shared by every copy whatever its net; [] none). Either width or shared, or both. The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
+    description: 'Set the Width of a module\'s instance in a schematic (.sch.json), as its Properties\' Width field does: that many copies of its module, an arrayed instance, its name given the range (reg becomes reg(7:0) for 8; 1 makes it a single instance again, reg). A pin connected to a bus N times its width takes its slice for each copy, one on a net of its own width is shared by the copies; shared: its Shared pins, as its Properties\' tick boxes (its inputs only, each shared by every copy whatever its net; [] none). Either width or shared, or both. The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), instance: STR('The instance\'s name (an arrayed one with its range, reg(7:0), or its base, reg).'),
       width: { type: 'integer', description: 'Its width: its number of copies (1: a single instance).' },
-      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s, #3966), as its Properties\' tick boxes: each shared by every copy whatever its net (a single pin, not sliced in the HDL; its net the pin\'s own width); [] none.' },
+      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s, #3966), as its Properties\' tick boxes: its inputs only (#4053), each shared by every copy whatever its net (a single pin, not sliced in the HDL; its net the pin\'s own width); [] none.' },
     }, required: ['project', 'path', 'instance'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, instance, width, shared }) {
