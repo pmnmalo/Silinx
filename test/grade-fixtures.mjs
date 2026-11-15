@@ -1,5 +1,6 @@
 // The grading tests' exercise and hand-written submissions (#3192): a 4-bit counter with a synchronous reset and an
-// enable, right and wrong in Verilog and VHDL; the traffic example's state machine as a drawing.
+// enable, right and wrong in Verilog and VHDL; the traffic example's state machine as a drawing; the breadboard
+// example's circuit.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -102,4 +103,25 @@ export function drawing(edit = m => m) {
   const m = edit(JSON.parse(TRAFFIC_FSM));
   return { project: { name: 'student', top: 'traffic', files: [{ path: 'src/traffic.vhd', lang: 'vhdl', role: 'design' }] },
     files: { 'src/traffic.fsm.json': JSON.stringify(m), 'src/traffic.vhd': '-- stale: made again from the drawing\n' } };
+}
+
+// ---------------------------------------------------------------- the breadboard example's circuit (#4118)
+const BREADBOARD = path.join(ROOT, 'examples/breadboard');
+export const BREADBOARD_CIRC = fs.readFileSync(path.join(BREADBOARD, 'src/breadboard.circ.json'), 'utf8');
+export const BREADBOARD_VHD = fs.readFileSync(path.join(BREADBOARD, 'src/breadboard.vhd'), 'utf8');
+
+export function breadboardExercise(extra = {}) {
+  return {
+    silinxExercise: 1, id: 'breadboard', title: { en: 'Counting presses', pt: 'Contar toques' }, top: 'breadboard',
+    ports: [{ name: 'clk', dir: 'in', width: 1 }, { name: 'btn', dir: 'in', width: 1 }, { name: 'sw', dir: 'in', width: 1 }, { name: 'led', dir: 'out', width: 8 }],
+    reference: { files: [{ path: 'ref/breadboard.vhd', text: BREADBOARD_VHD }] },
+    tests: [{ id: 'random', visible: true, points: 10, kind: 'reference', clock: 'clk', cycles: 100, seed: 3, hold: { sw: ['1', '1'] } }],
+    ...extra,
+  };
+}
+
+/** The breadboard's circuit (its HDL file made from it again). */
+export function circuit() {
+  return { project: { name: 'student', top: 'breadboard', files: [{ path: 'src/breadboard.vhd', lang: 'vhdl', role: 'design' }] },
+    files: { 'src/breadboard.circ.json': BREADBOARD_CIRC, 'src/breadboard.vhd': '-- stale: made again from the circuit\n' } };
 }
