@@ -21,11 +21,17 @@ answer here.
   commands used now and then (layout, conversion, export, analysis), its place kept free whatever wraps (#2208,
   #2331). A drawing's ⋮ menu ends with its HDL language (#4063, `web/js/drawing-lang-menu.js`: Preferred Language,
   VHDL, Verilog), none in a design project.
+- **A drawing editor's tools** (#3971): its select arrow is the toolbar's first tool and the default one; an add tool
+  stays on (pressed, a crosshair) and adds at each click until another tool, the arrow or Esc (`web/js/editor-tools.js`,
+  the state diagram's, the ASM chart's and the Petri net's).
 - **A ⋮ menu holds menu items, never form fields** (#2846): no `<select>`, input or check box in it. A choice is a
   section title and its options, checkable items with a ✓ on the current one (`menuChoice`); a setting on or off is one
   checkable item (`menuCheck`); an option that can't be chosen is disabled, its reason its tip. They are
   `toolbar-menu.js`'s, styled in one place for every viewer, with the hover and the keys (↑ ↓ Home End Esc) of every ⋮
   menu: no menu styles of a viewer's own.
+- **How a document is drawn or encoded is a choice of its ⋮ menu** (`menuChoice`), never a select of its toolbar: the
+  ASM chart's Encoding (#4055), the schematic's Wires: Direct, Orthogonal or Curved (#4081), Wire crossings: Hop-overs
+  or Plain crossings in the schematic's, the RTL's and the circuit's menus (`web/js/wire-crossings.js`, #4101).
 - **What a toolbar says is at its right end**, never between its tools (#2725): the read-only notice and "Not in
   sync with …", after the spacer and the ☰ panels' buttons, before the ⋮ menu (`test/ui/toolbar-info-right.test.js`).
   Nothing else the toolbar says: the rest is the status line's (#2763).
@@ -38,15 +44,20 @@ answer here.
   Ctrl+Y, Ctrl+P act on the document in front (#2505, #2514).
 - **The side panels** are all alike (see below).
 - **Its view is its own** (#3074): what a document shows and how is kept in its editor, one per open document: a
-  check box of its options (the Karnaugh map's 3D), a choice (SOP / POS groups, the variables' order), a turn, a zoom,
+  check box of its options (the Karnaugh map's 3D), a choice (the variables' order), Show K-map, a turn, a zoom,
   a scroll. Never in a module's variable shared by every open document: one document's change would reach the others
   only when they are drawn again (a click on a cell), their check box then saying the opposite of what they show. A
   setting remembered for every document (the schematic's options, a panel folded) is read when an editor opens; the
   editor's box and what it shows always agree. A UI test opens two documents, changes one, and checks the other
   unchanged, also after an edit in it.
+- **What a result shows more of is a Show … / Hide … button** (#4057, `showButton` of `web/js/tt-qm.js`: Show K-map,
+  Show Steps), never a check box: a check box in a result list says one thing, the output's HDL logic.
 - **No hint line** under the document (#2735): what the mouse does is in the tools' tips and the Help (the Schematic
   editor's tool tip at the left of its status line, as it was); the zoom is the zoom tools'; a status message is the
   console's.
+- **Try it** (#3924, #4067): a schematic or a circuit tried out shows a green Try it bar above its canvas, with its
+  Reset and Stop (Esc too); in every drawing editor the side panel takes the Try it's lighter green while it runs
+  (`.try-it-body`, `--try-it-body`; `test/ui/try-it-body.test.js`).
 
 ## The status line
 
@@ -70,9 +81,9 @@ Every document's side panel (the editors' Properties, the schematic's Symbols, I
 Board Emulator's, the implemented design's) behaves as the Schematic editor's Properties, with the same code; a new
 panel uses it rather than its own:
 
-- **Where:** on the right of the canvas (the schematic's Symbols on the left), the same width in every editor; its
-  caption (`.asm-cap`) first, its name ("Properties", "Board Resources"), then its fields as the Properties' (titles,
-  labels, inputs).
+- **Where:** on the right of the canvas (the schematic's Symbols and the circuit editor's Parts on the left, #4062),
+  the same width in every editor; its caption (`.asm-cap`) first, its name ("Properties", "Board Resources"), then
+  its fields as the Properties' (titles, labels, inputs).
 - **Foldable:** a button at the right of its caption folds it to a thin strip with its name down the side; a click
   on the strip expands it again. Folded or not is remembered per editor (`mountSideFold` of `web/js/side-fold.js`, its
   key `silinx.<editor>.props.folded`) (#2505).
@@ -85,6 +96,12 @@ panel uses it rather than its own:
   panel never moves below or above the canvas (#266).
 - **Read-only:** shown, its fields disabled, its buttons hidden.
 - **Tests:** a UI test folds and expands it, reloads (the fold kept), and opens and closes it on a narrow window.
+
+## A movable divider
+
+A divider between two parts of a document (a truth table and its expressions, #4099) is ui.js's `splitter`, as the main
+window's panels: dragged by the mouse or a finger, ← → from the keyboard when focused (its tip says so), its width
+remembered for the next document opened (`web/js/tt-divider.js`).
 
 ## A read-only view
 
@@ -108,6 +125,8 @@ viewer of its own:
 - One row per module: its drawing's badge first (the base, which opens it), the views made from it next (`[FSM]` of a
   Petri net, `[ASM]` of a C source), its HDL last (`[VHDL]` / `[Verilog]`). A badge's right-click opens the module's
   commands, which also hold every view its badges open.
+- A design and simulation project shows no HDL (#3891, `web/js/design-only.js`): no `[VHDL]` / `[Verilog]` badges, no
+  Show VHDL / Verilog Beside.
 
 ## Messages
 
