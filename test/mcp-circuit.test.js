@@ -23,21 +23,26 @@ const ok = async (name, args) => { const r = await call(name, args); assert.equa
 const fails = async (name, args, text) => { const r = await call(name, args); assert.equal(r.isError, true, r.text); assert.equal(r.text, `${name}: ${text}`); return r; };
 const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 
-test('circuit_parts: the library, one part with its pins, gates and delay; an unknown part', async () => {
+test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock', 'pull-up', 'pull-down',
     'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
     '7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017']);
   const one = await ok('circuit_parts', { type: '7486' });
-  assert.equal(one.text, '7486: Quad 2-input XOR (SN74LS86, 12 ns); pins 1 1A in, 2 1B in, 3 1Y out, 4 2A in, 5 2B in, 6 2Y out, 7 GND gnd, 8 3Y out, 9 3A in, 10 3B in, 11 4Y out, 12 4A in, 13 4B in, 14 VCC vcc; gates xor (1, 2) → 3; xor (4, 5) → 6; xor (9, 10) → 8; xor (12, 13) → 11');
+  assert.equal(one.text.split('\n')[0], '7486: Quad 2-input XOR (SN74LS86, 12 ns); pins 1 1A in, 2 1B in, 3 1Y out, 4 2A in, 5 2B in, 6 2Y out, 7 GND gnd, 8 3Y out, 9 3A in, 10 3B in, 11 4Y out, 12 4A in, 13 4B in, 14 VCC vcc; gates xor (1, 2) → 3; xor (4, 5) → 6; xor (9, 10) → 8; xor (12, 13) → 11');
   assert.deepEqual(one.data.parts[0].pins[0], { n: 1, name: '1A', dir: 'in', dx: 0, dy: 0 });
-  assert.equal((await ok('circuit_parts', { type: 'led' })).text, 'led: LED; pins 1 A in, 2 K in');
+  // its details too (#4126), as the editor's Part info
+  assert.deepEqual(one.text.split('\n').slice(1), ['Chip SN74LS86, 74LS (TTL), DIP-14; supply VCC 14, GND 7', '1Y = XOR(1A, 1B)', '2Y = XOR(2A, 2B)', '3Y = XOR(3A, 3B)', '4Y = XOR(4A, 4B)',
+    'Typical delay 12 ns', 'An input left open reads 1', 'Pins: 1 1A (input), 2 1B (input), 3 1Y (output), 4 2A (input), 5 2B (input), 6 2Y (output), 7 GND (supply GND), 8 3Y (output), 9 3A (input), 10 3B (input), 11 4Y (output), 12 4A (input), 13 4B (input), 14 VCC (supply +5 V)']);
+  assert.equal(one.data.info.package, 'DIP-14');
+  assert.equal((await ok('circuit_parts', {})).data.info, undefined, 'the whole library: no details');
+  assert.deepEqual((await ok('circuit_parts', { type: 'led' })).text.split('\n'), ['led: LED; pins 1 A in, 2 K in', 'Lights while its anode A is at 1 and its cathode K at 0. An output of the HDL.', 'Pins: 1 A (input), 2 K (input)']);
   assert.equal((await ok('circuit_parts', { type: '7403' })).data.parts[0].openCollector, true);
   // an MSI IC (#3900): its function, its pins by their datasheet's names
   const msi = await ok('circuit_parts', { type: '74138' });
   assert.equal(msi.data.parts[0].function, '3-to-8 line decoder');
-  assert.match(msi.text, /^74138: 3-to-8 line decoder \(SN74LS138, 22 ns\); pins 1 A in, 2 B in, 3 C in, 4 G2A\u0305 in, [^]* 16 VCC vcc$/);
+  assert.match(msi.text.split('\n')[0], /^74138: 3-to-8 line decoder \(SN74LS138, 22 ns\); pins 1 A in, 2 B in, 3 C in, 4 G2A\u0305 in, [^]* 16 VCC vcc$/);
   assert.match((await ok('circuit_parts', { type: '4001' })).text, /^4001: Quad 2-input NOR \(CD4001B, 60 ns\); pins 1 1A in, 2 1B in, 3 1Y out, 4 2Y out, [^]* 7 VSS gnd, [^]* 14 VDD vcc; gates nor \(1, 2\) → 3; nor \(5, 6\) → 4;/);
   await fails('circuit_parts', { type: '555' }, `no part '555' (the parts: ${all.data.parts.map((p) => p.type).join(', ')})`);
 });
