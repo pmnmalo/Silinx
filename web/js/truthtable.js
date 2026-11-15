@@ -40,7 +40,7 @@ import { renderTtTable } from './tt-rows.js';
 import { onNotation } from './notation.js';
 import { showExpr } from '/core/expr-notation.js';
 import { ttReadOnlyChrome, lockTt } from './tt-readonly.js';
-import { designKind } from './project-kind-flag.js';
+import { renderTtLink } from './tt-link.js';
 
 const NEXT = { 0: '1', 1: 'X', X: '0' };
 const COLORS = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd', '#ff7f0e', '#17becf', '#e377c2', '#8c564b', '#bcbd22', '#7f7f7f'];
@@ -333,15 +333,7 @@ export function mountTtEditor(container, opts = {}) {
   // (the notation changed in the Settings: drawn again, #3915)
   const offNotation = onNotation(() => { if (!destroyed) { renderResults(); renderKmap(); } });
 
-  function renderLink() {
-    link.innerHTML = '';
-    const info = opts.linkInfo?.();
-    // (only when its HDL is not in sync: the file in sync unsaid, its name in data-hdl, #2047)
-    link.dataset.hdl = info?.file && !info.why ? info.file.split('/').pop() : '';
-    if (!info?.why || designKind()) return;   // (a design project's HDL never shown, #3891)
-    link.append(h('span', { class: 'gen-banner out-of-sync' }, 'Not in sync with ',
-      h('a', { onclick: () => opts.onOpenFile?.(info.file) }, info.file.split('/').pop()), ` — ${info.why}`));
-  }
+  const renderLink = () => renderTtLink(link, opts);   // (its HDL link's banner: tt-link.js, #4194)
 
   function render() {
     if (destroyed) return;
