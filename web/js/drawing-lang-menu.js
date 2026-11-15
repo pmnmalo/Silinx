@@ -1,5 +1,6 @@
-// A drawing's HDL language in its editor's ⋮ menu (#4063): the schematic's, the state diagram's, the ASM chart's, the
-// Petri net's and the circuit's (not the Boolean algebra's, whose Notation lists VHDL and Verilog too, #4159); Preferred Language (the project's, Design Properties: the drawing
+// A drawing's HDL language in its editor's ⋮ menu (#4063): the schematic's, the state diagram's, the ASM chart's and the
+// Petri net's (not the Boolean algebra's, whose Notation lists VHDL and Verilog too, #4159, nor the circuit's, #4168:
+// their Source Properties choose it); Preferred Language (the project's, Design Properties: the drawing
 // follows it), VHDL or Verilog, the ✓ on the drawing's. The same choice as Source Properties' (drawings-lang.js
 // setSourceLanguage, the project's sourceLanguage): its HDL file made again in that language. None in a design and
 // simulation project (no HDL, #3780).

@@ -398,7 +398,7 @@ export async function openCircuit(path) {
       el.append(host);
       const problems = editorProblems({ file: path, tool: 'Circuit', what: 'Check Circuit', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); } });
       const ed = mountCircuitEditor(host, {
-        model, menuItems: langMenu(path),
+        model,   // (its ⋮ menu: no HDL Language, #4168: Source Properties choose it)
         onChange: (m) => { setDirty(d, true); refreshCircuitSchematic(path, m); },   // (its schematic, when open, follows: #4069)
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),

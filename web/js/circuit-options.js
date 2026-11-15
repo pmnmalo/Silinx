@@ -2,7 +2,7 @@
 // inside (#4060, off by default), remembered; its ⋮ menu (#4064, #4080): Wires, Direct, Orthogonal or Curved (the
 // circuit's wireStyle, core/wire-style.js as the schematic's, Direct its default; an edit, Undo takes it back; disabled
 // read-only) and Wire crossings: Hop-overs or Plain crossings (#4101; remembered, hop-overs by default, as the
-// schematic's); the items the editor is given (`menuItems`: its HDL's language, #4063).
+// schematic's). No HDL Language (#4168: its Source Properties choose it).
 import { h } from './ui.js';
 import { menuCheck, menuChoice, setChoice, toolbarMenu } from './toolbar-menu.js';
 import { setWireStyle } from '/core/circuit-edit.js';
@@ -14,7 +14,7 @@ const setPref = (key, on) => { try { localStorage.setItem(key, on ? '1' : '0'); 
 
 /** { keepBox, insideBox, more, keep(), inside(), hops(), sync() } of mountCircuitEditor (M(): its model; applyEdit(r)
  *  an edit; render()). sync(): the menu's ✓ as the circuit is (an undo). */
-export function mountCircuitOptions({ M, readOnly, applyEdit, render, menuItems = [] }) {
+export function mountCircuitOptions({ M, readOnly, applyEdit, render }) {
   let keepOn = pref('silinx.circuit.keep', true), insideOn = pref('silinx.circuit.inside', false), hopsOn = pref('silinx.circuit.hops', true);
   const keepBox = h('input', { type: 'checkbox', class: 'circ-keep-in', checked: keepOn });
   keepBox.addEventListener('change', () => { keepOn = keepBox.checked; setPref('silinx.circuit.keep', keepOn); });
@@ -26,9 +26,8 @@ export function mountCircuitOptions({ M, readOnly, applyEdit, render, menuItems 
   const wiresItems = menuChoice(WIRE_STYLE_TITLE, WIRE_STYLES.map((s) => ({ value: s.id, label: s.label, title: TITLES[s.id] })),
     { value: style(), onChange: (v) => applyEdit(setWireStyle(M(), v)) });
   if (readOnly) for (const it of wiresItems) if (it.tagName === 'BUTTON') it.disabled = true;
-  // (Wire crossings: Hop-overs, Plain crossings, a choice as the schematic's, #4101; and its HDL's language, #4063:
-  // drawing-lang-menu.js)
+  // (Wire crossings: Hop-overs, Plain crossings, a choice as the schematic's, #4101)
   const crossings = crossingsChoice(hopsOn, (on) => { hopsOn = on; setPref('silinx.circuit.hops', on); render(); });
-  const more = toolbarMenu([...wiresItems, ...crossings, ...menuItems], { title: menuItems.length ? 'Wires and language' : 'Wires', btnClass: 'asm-btn' });
+  const more = toolbarMenu([...wiresItems, ...crossings], { title: 'Wires', btnClass: 'asm-btn' });
   return { keepBox, insideBox, more, keep: () => keepOn, inside: () => insideOn, hops: () => hopsOn, sync: () => setChoice(wiresItems, style()) };
 }

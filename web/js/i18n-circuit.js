@@ -14,7 +14,7 @@ export const CIRCUIT_PT = {
   'A half breadboard and its supply, N logic switches in row a (their columns the inputs sw[0]…) and M LEDs in row h, their cathodes on the − rail (their anodes\' columns the outputs led[0]…): the chips go in between.': 'Meia placa de ensaio e a sua fonte, N interruptores lógicos na fila a (as suas colunas as entradas sw[0]…) e M LEDs na fila h, os cátodos na linha − (as colunas dos ânodos as saídas led[0]…): os chips vão no meio.',
   'Nothing, not even a breadboard: place your own parts.': 'Nada, nem sequer uma placa de ensaio: coloque as suas peças.',
   // toolbar
-  'Wires and language': 'Fios e linguagem', 'HDL Language': 'Linguagem HDL', 'Preferred Language': 'Linguagem Preferida',
+  'HDL Language': 'Linguagem HDL', 'Preferred Language': 'Linguagem Preferida',
   'The project\'s Preferred Language (Design Properties): the drawing\'s HDL follows it': 'A Linguagem Preferida do projeto (Propriedades do Projeto): o HDL do desenho acompanha-a',
   'The drawing\'s HDL in VHDL, whatever the project\'s Preferred Language': 'O HDL do desenho em VHDL, seja qual for a Linguagem Preferida do projeto',
   'The drawing\'s HDL in Verilog, whatever the project\'s Preferred Language': 'O HDL do desenho em Verilog, seja qual for a Linguagem Preferida do projeto',
