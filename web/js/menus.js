@@ -6,6 +6,7 @@ import { h, alertDlg, menuBar, toast, runAction } from './ui.js';
 import * as wiz from './wizards.js';
 import { setLanguage, getLanguage, LOCALES } from './i18n.js';
 import { notationMenu } from './notation.js';
+import { symbolsMenu } from './symbol-standard.js';
 import { lintEnabled, setLintEnabled } from './diaghelp.js';
 import { INTERFACES, INTERFACE_NAMES, getInterface, setInterface, getTheme, setTheme, menuCommands } from './silinx.js';
 import { openPalette } from './palette.js';
@@ -46,7 +47,7 @@ const updateAtStartItem = () => ({ label: 'Check for Updates at Start-up', check
 export const settingsItems = () => [
   { label: 'About Silinx', icon: icon('help'), action: () => wiz.aboutDialog() },
   '-',
-  interfaceMenu(), languageMenu(), themeMenu(), notationMenu(),
+  interfaceMenu(), languageMenu(), themeMenu(), notationMenu(), symbolsMenu(),
   '-',
   // (a design project's: no toolchain, #3891)
   ...flowOnly({ label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() }, '-'),
@@ -122,7 +123,7 @@ export function setupMenus() {
       // (the document in front's related views, as its tab's menu, #2834)
       ...besideItems(S.active),
       '-',
-      languageMenu(), interfaceMenu(), themeMenu(), notationMenu(),
+      languageMenu(), interfaceMenu(), themeMenu(), notationMenu(), symbolsMenu(),
       '-',
       { label: 'Command Palette…', action: () => showPalette(), shortcut: 'Ctrl+K' },
     ].filter(Boolean) },

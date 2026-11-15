@@ -58,6 +58,7 @@ import { shortText } from '/core/schjunction.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { clone } from '/core/util.js';
 import { designKind } from './project-kind-flag.js';
+import { onSymbolStandard } from './symbol-standard.js';
 export { clone };   // (core/util.js's)
 
 export const snap = v => Math.round(v / GRID) * GRID;
@@ -332,6 +333,7 @@ export function mountSchEditor(container, opts = {}) {
   }
   // the side panel, the messages or the document maximized toggled: Full View (#1203)
   const offLayout = onLayoutToggled(canvas, () => fit());
+  const offSymbols = onSymbolStandard(() => { if (!destroyed) { renderPalette(); render(); } });   // (Settings ▸ Schematic Symbols, #4113)
 
   // ---------------- init
   renderSheet();
@@ -385,7 +387,7 @@ export function mountSchEditor(container, opts = {}) {
     symbolInfo: target => openInfo(target || infoTarget()),
     get symbolInfoDialog() { return infoDlg; },
     destroy() {
-      infoDlg?.close(); offLang(); offLayout();
+      infoDlg?.close(); offLang(); offLayout(); offSymbols();
       live?.destroy(); live = null;
       destroyed = true;
       clearTimeout(changeTimer);

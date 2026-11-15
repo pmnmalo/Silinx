@@ -3,6 +3,8 @@
 // over the wires it crosses (#692) and its runs in line (#678). Plain functions of the document, no editor state.
 import { symbolBox, symbolPins, xform, portBox, portSide, symbolTypeName } from '/core/schdoc.js';
 import { esc } from './dom.js';
+import { iecGate } from '/core/symbol-standard.js';
+import { getSymbolStandard } from './symbol-standard.js';
 
 export const SVGNS = 'http://www.w3.org/2000/svg';
 export const r1 = v => Math.round(v * 10) / 10;
@@ -10,8 +12,10 @@ export const r1 = v => Math.round(v * 10) / 10;
 // ------------------------------------------------------------------ symbol drawing (local coordinates)
 function lead(x1, y1, x2, y2, bus) { return `<line class="pin${bus ? ' bus' : ''}" x1="${r1(x1)}" y1="${r1(y1)}" x2="${r1(x2)}" y2="${r1(y2)}"/>`; }
 
-// a gate's input lead ends at its body: the AND's straight back (x 20), the OR's / XOR's curved one
-function gateInputEnd(def, y) {
+// a gate's input lead ends at its body: the AND's straight back (x 20), the OR's / XOR's curved one; an IEC box's left
+// side (x 20, #4113)
+function gateInputEnd(def, y, std = getSymbolStandard()) {
+  if (std === 'iec') return 20;
   const gh = def.gh || def.h, base = def.gate.replace(/^n(?=and|or)/, '').replace(/^xn/, 'x'), t = (y % gh) / gh;   // (a gate a bit: its own, #2079)
   return base === 'or' ? 20 + 24 * t * (1 - t) : base === 'xor' ? 14 + 24 * t * (1 - t) : 20;
 }
@@ -24,7 +28,8 @@ function muxEnable(p, bh, n) {
     + ys.map(y => lead(10, y, 20, y, false) + (y !== p.y ? `<circle class="gate pdot" cx="10" cy="${y}" r="2"/>` : '')).join('');
 }
 
-export function bodySvg(sym, def) {
+// std: the standard the gates, inverters and buffers are drawn in (core/symbol-standard.js; the viewer's, #4113)
+export function bodySvg(sym, def, std = getSymbolStandard()) {
   const pins = def.pins;
   const bus = p => (p.width || 1) > 1;
   let s = '';
@@ -39,6 +44,13 @@ export function bodySvg(sym, def) {
       for (let r = 0; r < (def.rows || 1); r++) {
         // (each row's top, middle and bottom: numbers, #1443)
         const yt = r1(r * gh), ym = r1(r * gh + gh / 2), yb = r1(r * gh + gh);
+        if (std === 'iec') {
+          // (a box from the AND's back to its tip, its bubble where the AND's is: its qualifier is textsSvg's, upright)
+          const { rect: b, bubble } = iecGate(g, { x: 20, y: +yt, w: 40, h: gh });
+          s += `<rect class="gate" x="${b.x}" y="${b.y}" width="${b.w}" height="${r1(b.h)}"/>`;
+          if (bubble) s += `<circle class="gate" cx="${bubble.cx}" cy="${+ym}" r="${bubble.r}"/>`;
+          continue;
+        }
         if (!isOr) s += `<path class="gate" d="M20,${+yt} H40 A20,${gh / 2} 0 0 1 40,${+yb} H20 Z"/>`;
         else {
           s += `<path class="gate" d="M20,${+yt} Q48,${+yt} 60,${+ym} Q48,${+yb} 20,${+yb} Q32,${+ym} 20,${+yt} Z"/>`;
@@ -51,7 +63,7 @@ export function bodySvg(sym, def) {
           const x0 = def.bubble ? 66 : 60;
           s += lead(x0, p.y, p.x, p.y, bus(p));
         } else {
-          const xe = gateInputEnd(def, p.y);
+          const xe = gateInputEnd(def, p.y, std);
           if (p.inv) {
             // inverted input (ANDnBk...): bubble between the pin lead and the body, as ISE draws it
             s += lead(0, p.y, xe - 8, p.y, bus(p)) + `<circle class="gate bubble" cx="${r1(xe - 4)}" cy="${p.y}" r="4"/>`;
@@ -66,7 +78,8 @@ export function bodySvg(sym, def) {
       const n = def.rows || 1, tip = 20 + def.body.w;
       for (let k = 0; k < n; k++) {
         const y = 20 * k;
-        s += `<path class="gate" d="M20,${y} L${tip},${y + 10} L20,${y + 20} Z"/>`;
+        s += std === 'iec' ? `<rect class="gate" x="20" y="${y}" width="${def.body.w}" height="20"/>`   // (#4113)
+          : `<path class="gate" d="M20,${y} L${tip},${y + 10} L20,${y + 20} Z"/>`;
         if (def.shape === 'inv') s += `<circle class="gate" cx="${tip + 3}" cy="${y + 10}" r="3"/>`;
         s += lead(0, y + 10, 20, y + 10, bus(pins[k])) + lead(def.shape === 'inv' ? tip + 6 : tip, y + 10, 80, y + 10, bus(pins[n + k]));
       }
@@ -206,6 +219,17 @@ function typeInside(sym, def, name) {
   }
   return s;
 }
+// an IEC gate's, inverter's or buffer's qualifier (&, ≥1, =1, 1) in each row's box, upright (#4113)
+function iecQualifiers(sym, def) {
+  const n = def.rows || 1, pitch = def.gh || def.body.h / n, fn = def.shape === 'gate' ? def.gate : def.shape;
+  let s = '';
+  for (let r = 0; r < n; r++) {
+    const { text } = iecGate(fn, { x: def.body.x, y: def.body.y + r * pitch, w: def.body.w, h: pitch });
+    const c = xform(sym, def, text.x, text.y - 3);
+    s += `<text class="stype iec" x="${r1(c.x)}" y="${r1(c.y + 3)}" text-anchor="middle">${esc(text.label)}</text>`;
+  }
+  return s;
+}
 const AUTO_NAME = /^(XLXI_\d+|inst_\d+|U\d+)$/;
 // a pin's name inside the body, past its lead and clock triangle (L px from the pin's end); on the top or the bottom
 // side, upright, or turned to read upwards (vertical: names that would not fit 20 px apart, as ISE turns them, #1134);
@@ -309,7 +333,9 @@ function textsSvg(sym, def, ctx = {}) {
     if ((o.width || 1) > 1) s += pinWidth(o);
   } else if (def.shape === 'gate' || def.shape === 'inv' || def.shape === 'buf') {
     // the type (AND2, OR3B1, INV…) inside the symbol (#2041), else under it, as ISE draws it (#172)
-    s += typeInside(sym, def, symbolTypeName(sym)) ?? typeUnder(sym, def, box, center, symbolTypeName(sym));
+    // (IEC 60617-12, #4113: each row's box says its qualifier, upright, and the type goes under it)
+    if ((ctx.std ?? getSymbolStandard()) === 'iec') s += iecQualifiers(sym, def) + typeUnder(sym, def, box, center, symbolTypeName(sym));
+    else s += typeInside(sym, def, symbolTypeName(sym)) ?? typeUnder(sym, def, box, center, symbolTypeName(sym));
   } else if (def.shape === 'tbuf') {
     // (its type, BUFE / BUFT8…, inside its triangle, #2068; BUFE4…'s one-bit BUFE inside each, #2122)
     s += typeInside(sym, def, def.rows > 1 ? def.title.replace(/\d+$/, '') : def.title) ?? typeUnder(sym, def, box, center, def.title);
@@ -318,7 +344,7 @@ function textsSvg(sym, def, ctx = {}) {
     // a gate wider than a bit: the width on each bus pin's lead, as the other symbols, nothing in its shape (#1486)
     for (const [i, p] of symbolPins(sym, null, def).entries()) {
       const lp = def.pins[i];
-      if ((p.width || 1) > 1) s += pinWidth(p, lp.inv ? Math.min(10, (gateInputEnd(def, lp.y) - 8) / 2) : 10);
+      if ((p.width || 1) > 1) s += pinWidth(p, lp.inv ? Math.min(10, (gateInputEnd(def, lp.y, ctx.std) - 8) / 2) : 10);
     }
   }
   if (def.shape === 'lib' || def.shape === 'demux' || def.shape === 'ff') {
@@ -364,19 +390,19 @@ function matrixOf(sym, def) {
   return `matrix(${a.x - o.x},${a.y - o.y},${b.x - o.x},${b.y - o.y},${o.x},${o.y})`;
 }
 
-// ctx: { busName } (a bus tap: the name of the bus it taps, #174)
+// ctx: { busName } (a bus tap: the name of the bus it taps, #174), std (the standard of its gates, #4113: the viewer's)
 export function symbolSvg(sym, def, cls = '', ctx = {}) {
   const box = symbolBox(sym, null, def);
   return `<g class="sym${cls}" data-kind="sym" data-id="${esc(sym.id)}">`
     + `<rect class="hitbox" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/>`
-    + `<g transform="${matrixOf(sym, def)}">${bodySvg(sym, def)}</g>${textsSvg(sym, def, ctx)}</g>`;
+    + `<g transform="${matrixOf(sym, def)}">${bodySvg(sym, def, ctx.std)}</g>${textsSvg(sym, def, ctx)}</g>`;
 }
 
 /**
  * Standalone SVG drawing of a symbol at its parameters (Symbol Info datasheets): the editor drawing
  * plus the pin names of the symbols that do not show them (gates, inverters, arithmetic outputs).
  */
-export function symbolDrawingSvg(symIn, def, { scale = 1.6 } = {}) {
+export function symbolDrawingSvg(symIn, def, { scale = 1.6, std } = {}) {
   const sym = { ...symIn, x: 0, y: 0, rot: 0, mirror: false, name: '' };
   const labelled = ['lib', 'demux', 'ff', 'module', 'hdl', 'mux'].includes(def.shape);
   let extra = '';
@@ -389,7 +415,7 @@ export function symbolDrawingSvg(symIn, def, { scale = 1.6 } = {}) {
   }
   const m = 34, w = def.w + 2 * m, hh = def.h + 2 * 22;
   return `<svg class="se-svg sd-svg" xmlns="${SVGNS}" viewBox="${-m} -22 ${w} ${hh}" width="${Math.round(w * scale)}" height="${Math.round(hh * scale)}">`
-    + `<g class="sym">${bodySvg(sym, def)}${textsSvg(sym, def)}${extra}</g></svg>`;
+    + `<g class="sym">${bodySvg(sym, def, std)}${textsSvg(sym, def, { std })}${extra}</g></svg>`;
 }
 
 export function portSvg(p, cls = '') {

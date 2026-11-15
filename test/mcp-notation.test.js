@@ -91,3 +91,21 @@ test('#3915 the conversions write their conditions in the notation set: convert_
   const made = await ok('convert_drawing', { project: 'tc', path: r.data.drawing, to: 'fsm' });
   assert.deepEqual((await read(made.data.made[0])).transitions.map((t) => t.cond), want);
 });
+
+test('#4113 set_schematic_symbols: IEEE Std 91-1984 by default; IEC 60617-12 set, kept, read back; the same again; refused', async () => {
+  assert.deepEqual(await ok('set_schematic_symbols', {}), { isError: false, text: 'Schematic symbols: IEEE Std 91-1984 (distinctive shapes)', data: { symbols: 'ieee' } });
+  assert.equal(config().symbols, undefined);
+  assert.deepEqual(await ok('set_schematic_symbols', { symbols: 'iec' }), { isError: false, text: 'Schematic symbols: IEC 60617-12 (rectangular)', data: { symbols: 'iec' } });
+  assert.equal(config().symbols, 'iec');
+  assert.deepEqual((await ok('set_schematic_symbols', {})).data, { symbols: 'iec' });
+  assert.deepEqual(await ok('set_schematic_symbols', { symbols: 'iec' }), { isError: false, text: 'Schematic symbols: already IEC 60617-12 (rectangular)', data: { symbols: 'iec' } });
+  // (the notation kept apart)
+  const n = config().notation;
+  assert.deepEqual(await ok('set_schematic_symbols', { symbols: 'ieee' }), { isError: false, text: 'Schematic symbols: IEEE Std 91-1984 (distinctive shapes)', data: { symbols: 'ieee' } });
+  assert.equal(config().symbols, 'ieee');
+  assert.equal(config().notation, n);
+  const bad = await call('set_schematic_symbols', { symbols: 'ansi' });
+  assert.equal(bad.isError, true);
+  assert.match(bad.text, /symbols/);
+  assert.equal(config().symbols, 'ieee');
+});

@@ -5,15 +5,24 @@
 // (related_view's results and state diagrams, set_output_logic) and the conversions (convert_module, convert_drawing:
 // the conditions they write, #3915 part 2) use it, or the notation a call names. A truth table may have its own
 // (#3939: its `notation`, as its editor's ⋮ menu sets it), which set_notation reads, sets or clears with its path.
+// set_schematic_symbols (#4113) is its sibling: Settings ▸ Schematic Symbols, the standard the gates are drawn in,
+// kept in config.json (`symbols`); a view's preference only, which no file, netlist or HDL depends on.
 import * as P from './projects.js';
 import { loadConfig, saveConfig } from './toolchain.js';
 import { toolError, readProject, projectText, PROJECT, STR } from './mcp-util.js';
 import { NOTATIONS, NOTATION_IDS, notationOf } from '../core/expr-notation.js';
+import { SYMBOL_STANDARDS, SYMBOL_STANDARD_IDS, symbolStandardOf } from '../core/symbol-standard.js';
 
 /** The notation set (config.json's), the default when none is. */
 export async function notationSetting() {
   return notationOf((await loadConfig()).notation);
 }
+
+/** The standard of the schematics' gates set (config.json's), the default when none is. */
+async function symbolStandardSetting() {
+  return symbolStandardOf((await loadConfig()).symbols);
+}
+const standardName = (id) => SYMBOL_STANDARDS.find(([x]) => x === id)[1];
 
 const LIST = NOTATIONS.map(([id, name, ex]) => `${id} (${name}: ${ex})`).join(', ');
 
@@ -33,6 +42,20 @@ export const NOTATION_TOOLS = [
       if (notation === was) return { text: `Boolean notation: already ${name(was)}`, data: { notation } };
       await saveConfig({ notation });
       return { text: `Boolean notation: ${name(notation)}`, data: { notation } };
+    },
+  },
+  {
+    name: 'set_schematic_symbols', title: 'Schematic Symbols',
+    description: `The standard the schematics' logic gates, inverters and buffers are drawn in: ${SYMBOL_STANDARDS.map(([id, n]) => `${id} (${n})`).join(', ')}; the first the default. IEC: a rectangle with its qualifier (& AND, ≥1 OR, =1 XOR, 1 an inverter or a buffer), a negation as a bubble. As the interface's Settings ▸ Schematic Symbols, for this MCP server (kept in its configuration). The look only: the pins stay where they are, and the schematic's file, its netlist, its HDL and its ISE export are the same in both. Without symbols: the one set.`,
+    inputSchema: { type: 'object', properties: { symbols: { type: 'string', enum: [...SYMBOL_STANDARD_IDS], description: 'The standard to set.' } }, additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ symbols } = {}) {
+      const was = await symbolStandardSetting();
+      if (symbols === undefined) return { text: `Schematic symbols: ${standardName(was)}`, data: { symbols: was } };
+      if (!SYMBOL_STANDARD_IDS.includes(symbols)) throw toolError(`symbols: ${SYMBOL_STANDARD_IDS.join(', ')}`);
+      if (symbols === was) return { text: `Schematic symbols: already ${standardName(was)}`, data: { symbols } };
+      await saveConfig({ symbols });
+      return { text: `Schematic symbols: ${standardName(symbols)}`, data: { symbols } };
     },
   },
 ];
