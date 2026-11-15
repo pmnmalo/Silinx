@@ -20,6 +20,7 @@
   "designs/srl": [],
   "designs/tristate": [],
   "examples/blinky": [],
+  "examples/breadboard": [],
   "examples/clock": [],
   "examples/gates": [],
   "examples/isqrt": [],
