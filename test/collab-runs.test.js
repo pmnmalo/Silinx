@@ -7,11 +7,12 @@ import assert from 'node:assert/strict';
 import { RUN_LIMITS, runSecrets, redact, runsActivity, followedRuns, reportsActivity, followedReports, reportPath, runLines } from '../core/collab-runs.js';
 
 test('redact: the ISE host reached over SSH and the home folder of the configuration replaced, longest first; nothing without them', () => {
-  const s = runSecrets({ config: { ssh: { user: 'ana', host: 'ise.example.org' } }, configPath: '/Users/ana/Library/Application Support/Silinx/config.json' });
-  assert.deepEqual(s, [['ise.example.org', '<ISE host>'], ['ana@ise.example.org', '<ISE host>'], ['/Users/ana', '~']].sort((a, b) => b[0].length - a[0].length));
-  assert.equal(redact('ssh ana@ise.example.org: /Users/ana/ws/p/build/top.syr on ise.example.org', s), 'ssh <ISE host>: ~/ws/p/build/top.syr on <ISE host>');
-  assert.deepEqual(runSecrets({ configPath: 'C:\\Users\\Rui\\AppData\\silinx\\config.json' }), [['C:\\Users\\Rui', '~']]);
-  assert.deepEqual(runSecrets({ configPath: '/home/rui/.config/silinx/config.json' }), [['/home/rui', '~']]);
+  const s = runSecrets({ config: { ssh: { user: 'user', host: 'server' } }, configPath: '/Users/user/Library/Application Support/Silinx/config.json' });
+  assert.deepEqual(s.map(([k]) => k).sort(), ['/Users/user', 'server', 'user@server'].sort());
+  assert.deepEqual(s.map(([k]) => k.length), [...s.map(([k]) => k.length)].sort((a, b) => b - a), 'longest first');
+  assert.equal(redact('ssh user@server: /Users/user/ws/p/build/top.syr on server', s), 'ssh <ISE host>: ~/ws/p/build/top.syr on <ISE host>');
+  assert.deepEqual(runSecrets({ configPath: 'C:\\Users\\user\\AppData\\silinx\\config.json' }), [['C:\\Users\\user', '~']]);
+  assert.deepEqual(runSecrets({ configPath: '/home/user/.config/silinx/config.json' }), [['/home/user', '~']]);
   assert.deepEqual(runSecrets(null), []);
   assert.equal(redact('nothing to hide', []), 'nothing to hide');
 });
