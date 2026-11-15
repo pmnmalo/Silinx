@@ -2,7 +2,7 @@
 // editor's texts with names in them) have Portuguese translations (web/js/i18n-fsm.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeFsm, validateFsm, encodedTable, truthTablesOf } from '../core/fsm.js';
+import { normalizeFsm, validateFsm, encodedTable } from '../core/fsm.js';
 
 Object.defineProperty(globalThis, 'localStorage', { value: { getItem: (k) => (k === 'silinx.lang' ? 'pt' : null), setItem() {}, removeItem() {} }, configurable: true, writable: true });
 const { t, LOCALES } = await import('../web/js/i18n.js');
@@ -64,7 +64,9 @@ test('every validation message of core/fsm.js has a Portuguese translation', () 
 
 test('table messages, editor texts with names and the out-of-sync reasons are translated; the dictionary does not change other translations', () => {
   const m = models()[3];
-  for (const s of [encodedTable({ ...m, encoding: 'onehot' }).error, encodedTable(m).error, truthTablesOf(normalizeFsm({ inputs: [{ name: 'a', width: 6 }], states: [{ id: 's', name: 'S' }, { id: 'q', name: 'Q' }] })).error,
+  for (const s of [encodedTable({ ...m, encoding: 'onehot' }).error, encodedTable(m).error,
+    // (a machine's table past a truth table's 16 inputs, #3939: 11 state bits, more than 1024 states)
+    'A truth table has at most 16 inputs; this machine needs 17 (11 state bit(s) + 6 input bit(s))',
     '5 state(s), 7 transition(s)', 'The diagram has 2 error(s): see Problems', 'Code: 01 (binary)', 'Transitions out of S0 (the first true condition is taken)',
     'Priority 1 of 2 in S0', 'Next state, for the inputs x y_1', 'Outputs z w', 'q1 q0: present state (flip-flop outputs), d1 d0: next state (D flip-flop inputs). Unused codes: X (don\'t care).',
     'next clock edge → S1', 'no transition is true: stays in S0', "— the diagram cannot show it: process at line 40 is not part of the state machine (it drives 'cnt')",
