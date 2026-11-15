@@ -11,6 +11,7 @@ import { drawPart2 } from './circuit-draw-parts.js';
 import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
 import { wireStyleOf } from '/core/wire-style.js';
+import { routeOrthogonal } from '/core/circuit-route.js';
 
 export const P = 20;   // pixels per grid step
 const px = (v) => v * P;
@@ -25,12 +26,20 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs 
   const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { style: wireStyleOf(m, 'direct'), hops });
   for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
   for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs, inside }));
-  if (draft?.length) g.append(sv('polyline', { class: 'circ-wire circ-draft', points: draft.map(([x, y]) => `${px(x)},${px(y)}`).join(' ') }));
+  if (draft?.length >= 2) g.append(draftSvg(m, draft));
   if (ghost) { const e = partSvg(ghost, false, {}); e.classList.add('circ-ghost'); g.append(e); }
   return g;
 }
 
 // (turned, #4065: drawn unturned, then turned about its hole a1)
+/** The wire being drawn through the grid points pts (A, the clicks, the pointer), as it will be made in the circuit's
+ *  style (#4083): straight, routed orthogonally (core/circuit-route.js) or curved. */
+export function draftSvg(m, pts) {
+  const style = wireStyleOf(m, 'direct');
+  const at = style === 'orthogonal' ? routeOrthogonal(m, pts).points : pts;
+  return sv('path', { class: 'circ-wire circ-draft', d: wirePaths([{ id: 'draft', pts: at.map(([x, y]) => [px(x), px(y)]) }], { style: style === 'curved' ? 'curved' : 'direct' }).draft });
+}
+
 function breadboardSvg(turned, selected, inside) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type), cols = d.cols || BB_COLS;
   const x0 = px(p.x) - P, y0 = px(p.y + BB_RAILS.tp) - P, w = px(cols + 1), hgt = px(BB_RAILS.bp - BB_RAILS.tp + 2);

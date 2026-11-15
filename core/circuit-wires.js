@@ -1,7 +1,7 @@
 // How a circuit's wires are drawn (#4064, #4080, docs/CIRCUITS.md; the circuit's wireStyle, as the schematic's): Direct,
 // straight from point to point (the default; the styles core/wire-style.js's); Orthogonal, horizontal and vertical
-// segments (a slanted step turned into a horizontal then a vertical one); Curved, a smooth curve through the points, as a jumper wire bends (a Catmull-Rom
-// spline, as cubic Béziers); with
+// segments (a slanted step turned into a horizontal then a vertical one); Curved, a smooth curve through the points, as a
+// jumper wire bends (a Catmull-Rom spline, as cubic Béziers; two points, a sag between them, #4083); with
 // Hop-overs, a small arc where a wire crosses one drawn before it without joining it (never at an end: a wire's end on
 // another's point is no crossing). The look only: the connections are the same (core/circuit-net.js). Points are
 // pixels [x, y]. Isomorphic module, no imports.
@@ -14,9 +14,13 @@ function bezier(pts, i) {
   return [p1, [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6], p2];
 }
 
-/** The SVG path of a smooth curve through the points pts (two points: a straight line). */
+// a curve of two points (#4083): a jumper wire's sag, its middle a fifth of its length off the line (to its right)
+const SAG = 0.2;
+const sagControl = ([ax, ay], [bx, by]) => [(ax + bx) / 2 - (by - ay) * SAG, (ay + by) / 2 + (bx - ax) * SAG];
+
+/** The SVG path of a smooth curve through the points pts (two points: a sag between them, as a jumper wire). */
 export function curveD(pts) {
-  if (pts.length < 3) return `M${pts.map(([x, y]) => `${x},${y}`).join(' L')}`;
+  if (pts.length < 3) { const c = sagControl(pts[0], pts[1]); return `M${pts[0][0]},${pts[0][1]} Q${c[0]},${c[1]} ${pts[1][0]},${pts[1][1]}`; }
   let d = `M${pts[0][0]},${pts[0][1]}`;
   for (let i = 0; i + 1 < pts.length; i++) { const [, a, b, c] = bezier(pts, i); d += ` C${a[0]},${a[1]} ${b[0]},${b[1]} ${c[0]},${c[1]}`; }
   return d;
@@ -24,7 +28,10 @@ export function curveD(pts) {
 
 /** The curve through pts as a polyline (each segment in SAMPLES pieces): its crossings and hops are found on it. */
 export function curvePoints(pts) {
-  if (pts.length < 3) return pts.map((p) => [...p]);
+  if (pts.length < 3) {
+    const [a, b] = pts, c = sagControl(a, b);
+    return Array.from({ length: SAMPLES + 1 }, (_, k) => { const t = k / SAMPLES, u = 1 - t; return [0, 1].map((j) => u * u * a[j] + 2 * u * t * c[j] + t * t * b[j]); });
+  }
   const out = [[...pts[0]]];
   for (let i = 0; i + 1 < pts.length; i++) {
     const [p, a, b, c] = bezier(pts, i);

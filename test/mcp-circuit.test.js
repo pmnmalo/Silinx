@@ -108,6 +108,11 @@ test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a 
   assert.equal(m().wireStyle, 'curved');
   await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'orthogonal' }] });
   assert.equal(m().wireStyle, 'orthogonal');
+  // (#4083) a wire from A to B in the circuit's style: routed, its route said; a boxed-in pin's drawn straight, said
+  r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wire', from: 'BB1.a3', to: 'BB1.a8', id: 'wj' }] });
+  assert.equal(r.text.split('\n')[0], 'wj wired from "BB1.a3" to "BB1.a8", routed [[0,2],[1,2],[1,7],[0,7]]');   // (the board turned above: over its gap beside row a)
+  assert.deepEqual(m().wires.find((w) => w.id === 'wj').points, [[0, 2], [1, 2], [1, 7], [0, 7]]);
+  await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'delete', id: 'wj' }] });
   await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'direct' }] });
   assert.equal(m().wireStyle, undefined);
   await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'wavy' }] }, 'operation 0 (wires): style: direct, orthogonal, curved (nothing written)');

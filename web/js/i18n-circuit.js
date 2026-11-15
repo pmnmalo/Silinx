@@ -24,7 +24,7 @@ export const CIRCUIT_PT = {
   'Each wire a straight line from point to point': 'Cada fio uma linha reta de ponto a ponto', 'Each wire of horizontal and vertical segments': 'Cada fio de segmentos horizontais e verticais',
   'Each wire a smooth curve through its bends, as a jumper wire': 'Cada fio uma curva suave pelas suas dobras, como um fio de ligação',
   'Stop trying it out and go back to editing the circuit (Esc)': 'Parar de experimentar e voltar a editar o circuito (Esc)',
-  'Draw a wire: click its start, its bends, then its end on a pin or a hole (double click or Esc: end it there)': 'Desenhar um fio: clique no início, nas dobras e no fim, num pino ou num furo (duplo clique ou Esc: acaba aí)',
+  'Draw a wire: click its start on a pin or a hole, then its end (the points between: where it goes through); it is made in the ⋮ menu\'s wire style, routed when Orthogonal (double click or Esc: end it there)': 'Desenhar um fio: clique no início, num pino ou num furo, e depois no fim (os pontos entre eles: por onde passa); é feito no estilo de fios do menu ⋮, encaminhado quando Ortogonal (duplo clique ou Esc: acaba aí)',
   'Turn the selected part a quarter clockwise (R)': 'Rodar a peça selecionada um quarto de volta no sentido dos ponteiros do relógio (R)',
   'Check the circuit: short circuits, unpowered ICs, floating inputs, parts and wires that join nothing': 'Verificar o circuito: curto-circuitos, CIs sem alimentação, entradas no ar, peças e fios que não ligam nada',
   'Try it: click a switch to flip it, press a button to hold it; the LEDs and each pin\'s level show the circuit working': 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar',

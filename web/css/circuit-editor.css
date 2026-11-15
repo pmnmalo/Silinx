@@ -17,7 +17,7 @@
 .circuit-editor :is(polyline, path).circ-wire { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
 .circuit-editor .circ-wire-hit { fill: none; stroke: transparent; stroke-width: 12; }
 .circuit-editor .circ-wire-end { stroke: none; }
-.circuit-editor polyline.circ-draft { stroke: var(--asm-accent); stroke-dasharray: 4 3; }
+.circuit-editor :is(polyline, path).circ-draft { stroke: var(--asm-accent); stroke-dasharray: 4 3; }
 .circuit-editor .circ-w-red { stroke: #d32f2f; fill: #d32f2f; }
 .circuit-editor .circ-w-black { stroke: #333; fill: #333; }
 .circuit-editor .circ-w-blue { stroke: #1e63c4; fill: #1e63c4; }

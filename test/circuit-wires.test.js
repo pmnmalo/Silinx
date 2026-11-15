@@ -9,8 +9,10 @@ import { normalizeCircuit } from '../core/circuit.js';
 import { setWireStyle } from '../core/circuit-edit.js';
 import { halfAdder } from './circuit-helpers.mjs';
 
-test('a curve through a wire\'s bends: it passes its ends and bends; two points a straight line', () => {
-  assert.equal(curveD([[0, 0], [40, 0]]), 'M0,0 L40,0');
+test('a curve through a wire\'s bends: it passes its ends and bends; two points a sag (#4083)', () => {
+  assert.equal(curveD([[0, 0], [40, 0]]), 'M0,0 Q20,8 40,0');
+  const sag = curvePoints([[0, 0], [40, 0]]);
+  assert.deepEqual([sag[0], sag[5], sag[10]], [[0, 0], [20, 4], [40, 0]]);
   const pts = [[0, 0], [40, 0], [40, 40], [80, 40]];
   const d = curveD(pts);
   assert.match(d, /^M0,0 C[^C]+ C[^C]+ C[^C]+$/);
