@@ -54,6 +54,7 @@ import {
   assignsOnEveryPath, caseLabels, ctxSens, makeTreeBuilder, mergeTrees, resolveTree, selfWidth, widthKey,
 } from './asm-trees.js';
 import { mountTextCandidates } from './asm-candidates.js';
+import { showCond } from './cond-notation.js';
 export { sameAsmStructure } from './asm-same.js';
 
 // the layout (#405: asm-layout.js), still exported from here
@@ -362,7 +363,7 @@ export function conv(e, A, X) {
 // Text of conditions and actions (prefer the spelling of the header / previous chart)
 // ---------------------------------------------------------------------------------------
 
-function makeTexts(A, lang) {
+function makeTexts(A, lang, notation = null) {
   const W = A.asmWidth;
   const wOf = (n) => (A.genericSet.has(n) || A.generics.some((g) => A.orig(g.name) === n) ? 32 : W(n));
   const strictCond = (ast) => (lang === 'vhdl' ? exprToString(widthKey(simpLogical(ast, true, W), wOf)) : exprToString(ast));
@@ -397,7 +398,8 @@ function makeTexts(A, lang) {
       if (p.error) continue;
       if (strictCond(negCond(p.ast)) === key) return { text: c, swap: true };
     }
-    return { text: exprToString(ast), swap: false };
+    // (a condition of its own: in the notation asked for, #3915; none, the neutral text)
+    return { text: notation ? showCond(ast, notation) : exprToString(ast), swap: false };
   };
   const actionMatches = (act, text) => {
     const p = parseAction(text);
@@ -436,7 +438,7 @@ function langOf(path, source) {
  * Extract the ASM chart of the state machine in `source`.
  * Returns { model, warnings }; throws an Error explaining why the module is not a pure FSM.
  */
-export function asmFromHdl(source, { path = '', module = null, lang = null, previous = null } = {}) {
+export function asmFromHdl(source, { path = '', module = null, lang = null, previous = null, notation = null } = {}) {
   source = String(source ?? '');
   lang = lang || langOf(path, source);
   if (lang !== 'vhdl' && lang !== 'verilog') fail(`unsupported language '${lang}'`);
@@ -531,7 +533,7 @@ export function asmFromHdl(source, { path = '', module = null, lang = null, prev
     outputs.push({ name, width: info.width, default: defText, registered: info.registered });
   }
 
-  const TX = makeTexts(A, lang);
+  const TX = makeTexts(A, lang, notation);
 
   // ---- nodes and edges -----------------------------------------------------------------
   const nodes = [], edges = [];

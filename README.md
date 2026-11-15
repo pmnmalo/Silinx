@@ -228,7 +228,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   or type an expression per output (`ab' + c`, `a·b + c`, `/a.b + a./b`, `~a & b`,
   `(a and not b) or c`, `a ^ b`, `¬a ∧ b`, `a̅·b`…), the expressions shown in the notation of *Settings ▸ Boolean Notation*
   (*View ▸* in the ISE style interface; also in the results' menu): Electronics / Engineering (`a̅·b + c`, the default),
-  text only (`/a.b + c`), logic (`¬a ∧ b ∨ c`), VHDL or Verilog — a state diagram's tables too. For each output: the Karnaugh map (Gray order; the variables MSB → LSB by columns then rows, or by rows then
+  text only (`/a.b + c`), logic (`¬a ∧ b ∨ c`), VHDL or Verilog — a state diagram's tables and the conditions a
+  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output: the Karnaugh map (Gray order; the variables MSB → LSB by columns then rows, or by rows then
   columns, chosen beside the map; 5–6 inputs as two/four 4×4 maps, the most significant picking the map) with the groups of the minimal SOP
   (1s) or POS (0s) drawn as coloured rounded rectangles, wrap-around groups split at the edges;
   then the results, in this order: the least gates and the least delay; minimal SOP and POS (Quine–McCluskey + exact cover, don't cares used,

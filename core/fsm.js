@@ -838,12 +838,12 @@ export function placeNew(m, prev) {
  * core/asm-from-hdl.js): { model, warnings }. Throws an Error (in plain language) when the module
  * is not a plain state machine. `previous`: the diagram the HDL was generated from.
  */
-export function fsmFromHdl(source, { path = '', module = null, lang = null, previous = null } = {}) {
+export function fsmFromHdl(source, { path = '', module = null, lang = null, previous = null, notation = null } = {}) {
   const prev = previous ? normalizeFsm(previous) : null;
   let prevAsm = null;
   if (prev && !fsmErrors(prev).length) { try { prevAsm = fsmToAsm(prev); } catch { prevAsm = null; } }
-  const r = asmFromHdl(source, { path, module, lang, previous: prevAsm });
-  const model = asmToFsm(r.model, { previous: prev });
+  const r = asmFromHdl(source, { path, module, lang, previous: prevAsm, notation });
+  const model = asmToFsm(r.model, { previous: prev, notation });
   model.lang = r.model.lang;
   if (prev?.generatedFile) model.generatedFile = prev.generatedFile;
   if (prev?.base) model.base = prev.base;

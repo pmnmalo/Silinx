@@ -10,6 +10,7 @@ import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlI
   openFile, setDirty, status } from './app.js';
 import { log, logError } from './console.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
+import { getNotation } from './notation.js';
 import { editorProblems } from './editor-problems.js';
 import { t, onLanguageChange } from './i18n.js';
 import { reloadProject } from './project.js';
@@ -100,7 +101,8 @@ async function asmFromHdlFile(hdlPath, opts = {}) {
   let mod;
   try { mod = await import('/core/asm-from-hdl.js'); } catch { throw new Error('HDL to state machine conversion is not available in this version'); }
   const text = S.sources.find(x => x.path === hdlPath)?.text ?? await api.readFile(S.project.name, hdlPath);
-  return mod.asmFromHdl(text, { path: hdlPath, lang: /\.v$/i.test(hdlPath) ? 'verilog' : 'vhdl', ...opts });
+  // (the conditions it writes in the Settings' Boolean notation, #3915)
+  return mod.asmFromHdl(text, { path: hdlPath, lang: /\.v$/i.test(hdlPath) ? 'verilog' : 'vhdl', notation: getNotation(), ...opts });
 }
 
 // HDL module -> ASM chart, linked to the HDL file (the chart becomes the base).
@@ -231,7 +233,7 @@ async function fsmFromHdlFile(hdlPath, old) {
   const { fsmFromHdl, normalizeFsm } = await import('/core/fsm.js');
   const text = S.sources.find(x => x.path === hdlPath)?.text ?? await api.readFile(S.project.name, hdlPath);
   let r;
-  try { r = fsmFromHdl(text, { path: hdlPath, module: mod.name, lang: /\.v$/i.test(hdlPath) ? 'verilog' : 'vhdl', previous: old }); }
+  try { r = fsmFromHdl(text, { path: hdlPath, module: mod.name, lang: /\.v$/i.test(hdlPath) ? 'verilog' : 'vhdl', previous: old, notation: getNotation() }); }
   catch (e) { throw new Error(`the diagram cannot show it: ${e.message}`); }
   return { model: normalizeFsm({ ...r.model, generatedFile: hdlPath }), warnings: r.warnings };
 }
@@ -244,7 +246,7 @@ export async function convertToFsm(mod) {
   const { fsmFromHdl } = await import('/core/fsm.js');
   const text = S.sources.find(x => x.path === info.file)?.text ?? await api.readFile(S.project.name, info.file);
   let r;
-  try { r = fsmFromHdl(text, { path: info.file, module: mod, lang: info.lang }); }
+  try { r = fsmFromHdl(text, { path: info.file, module: mod, lang: info.lang, notation: getNotation() }); }
   catch (e) { alertDlg('Convert to State Diagram', `'${mod}' cannot be shown as a state diagram:\n\n${e.message}`, 'error'); return; }
   const target = `${fsmDir(info.file)}/${mod}.fsm.json`;
   if (S.fileTree.includes(target) && !await confirmDlg('Convert to State Diagram', `${target} already exists. Overwrite it?`)) return;
@@ -279,7 +281,7 @@ async function asmToFsmDiagram(asmPath) {
   let asm;
   try { asm = JSON.parse(await api.readFile(S.project.name, asmPath)); } catch (e) { logError(`cannot open ${asmPath}: ${e.message}`); return; }
   let m;
-  try { m = asmToFsm(asm); }
+  try { m = asmToFsm(asm, { notation: getNotation() }); }
   catch (e) { alertDlg('Convert to State Diagram', `${asmPath.split('/').pop()} cannot be shown as a state diagram:\n\n${e.message}`, 'error'); return; }
   const dir = fsmDir(asmPath);
   const name = freeName(dir, `${asm.name || 'fsm'}_fsm`, '.fsm.json');

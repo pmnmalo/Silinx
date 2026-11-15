@@ -64,13 +64,13 @@ export const VIEW_TOOLS = [
       }
       if (/\.pn\.json$/i.test(rel)) {
         const { petriToFsm } = await import('../core/petri-fsm.js');
-        const r = petriToFsm(json(text, rel));
+        const r = petriToFsm(json(text, rel), { notation: notation ?? await notationSetting() });   // (#3915)
         if (!r.fsm) throw toolError(`the state machine of ${base(rel)}: ${r.error}`);
         return reply(name, rel, view, r.fsm, { states: r.states, truncated: !!r.truncated });
       }
       if (!/\.asm\.json$/i.test(rel)) throw toolError(`${rel}: an ASM chart (.asm.json) or a Petri net (.pn.json) has a state diagram`);
       const { asmToFsm } = await import('../core/fsm.js');
-      try { return reply(name, rel, view, asmToFsm(json(text, rel))); } catch (e) { if (e.toolError) throw e; throw toolError(`${base(rel)} cannot be shown as a state diagram: ${e.message}`); }
+      try { return reply(name, rel, view, asmToFsm(json(text, rel), { notation: notation ?? await notationSetting() })); } catch (e) { if (e.toolError) throw e; throw toolError(`${base(rel)} cannot be shown as a state diagram: ${e.message}`); }
     },
   },
 ];
