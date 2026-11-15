@@ -18,6 +18,7 @@ import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
 import { partInputs } from '/core/circuit-io.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem, addWire } from '/core/circuit-edit.js';
+import { mountCircuitClip } from './circuit-clip.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { clone } from '/core/util.js';
@@ -46,7 +47,13 @@ export function mountCircuitEditor(container, opts = {}) {
   const sep = () => h('span', { class: 'asm-sep' });
   const status = (msg, err = false) => { if (msg) opts.onMessage?.(msg, err); };
 
-  const { tools, delBtn, rotBtn, simBtn, resetBtn, wavesBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({
+  // Keep connections (#4059): remembered, on by default
+  const KEEP_KEY = 'silinx.circuit.keep';
+  let keepOn = true;
+  try { keepOn = localStorage.getItem(KEEP_KEY) !== '0'; } catch { /* no storage */ }
+  const keepBox = h('input', { type: 'checkbox', class: 'circ-keep-in', checked: keepOn });
+  keepBox.addEventListener('change', () => { keepOn = keepBox.checked; try { localStorage.setItem(KEEP_KEY, keepOn ? '1' : '0'); } catch { /* no storage */ } });
+  const { tools, delBtn, rotBtn, simBtn, resetBtn, wavesBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox,
     waves: () => opts.onWaves?.(clone(M), events.slice()),
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
     toggleSim, resetSim: () => { if (sim) startSim(); }, zoomBtn, fit: () => fit(),
@@ -66,6 +73,7 @@ export function mountCircuitEditor(container, opts = {}) {
   if (readOnly) {
     root.classList.add('asm-readonly');
     for (const g of [tools.select.parentElement, tools.select.parentElement.nextElementSibling, rotBtn.parentElement, rotBtn.parentElement.nextElementSibling]) g.hidden = true;
+    for (const g of [keepBox.closest('.asm-group')]) { g.hidden = true; g.nextElementSibling.hidden = true; }
     for (const g of [toolbar.querySelector('.circ-check').parentElement]) g.hidden = true;
     if (opts.banner) toolbar.append(opts.banner);
   }
@@ -95,7 +103,9 @@ export function mountCircuitEditor(container, opts = {}) {
     render();
   }
   function deleteSelection() { if (!sel || readOnly) return; const id = sel.id; sel = null; applyEdit(deleteItem(M, id)); }
-  function rotateSelection() { if (sel?.kind === 'part' && !readOnly) applyEdit(rotatePart(M, sel.id)); }
+  // (any part, a breadboard with the parts on it, #4065; its wires' ends with it while Keep connections, #4059)
+  function rotateSelection() { if (sel?.kind === 'part' && !readOnly) applyEdit(rotatePart(M, sel.id, 1, { keep: keepOn })); }
+  const clip = mountCircuitClip({ M: () => M, sel: () => sel, setSel: (s) => { sel = s; }, readOnly, applyEdit });
 
   // ---------------------------------------------------------------- the live simulation
   function startSim() {
@@ -185,7 +195,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (t) {
       sel = { kind: t.kind, id: t.id };
       const p = M.parts.find((x) => x.id === t.id);
-      if (p && !readOnly) drag = { kind: 'move', id: p.id, dx: g[0] - p.x, dy: g[1] - p.y, moved: false };
+      if (p && !readOnly) drag = { kind: 'move', id: p.id, dx: g[0] - p.x, dy: g[1] - p.y, at: [p.x, p.y], base: M, moved: false };
     } else {
       sel = null;
       drag = { kind: 'pan', x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
@@ -200,15 +210,19 @@ export function mountCircuitEditor(container, opts = {}) {
     if (!drag) return;
     if (drag.kind === 'pan') { view.tx = drag.tx + e.clientX - drag.x; view.ty = drag.ty + e.clientY - drag.y; applyView(); }
     else if (drag.kind === 'move') {
-      const p = M.parts.find((x) => x.id === drag.id), nx = g[0] - drag.dx, ny = g[1] - drag.dy;
-      if (p && (p.x !== nx || p.y !== ny)) { p.x = nx; p.y = ny; drag.moved = true; render(); }
+      // (shown as it will be: a breadboard with the parts on it, the wires' ends with them while Keep connections, #4059)
+      const nx = g[0] - drag.dx, ny = g[1] - drag.dy, p = M.parts.find((x) => x.id === drag.id);
+      if (p && (p.x !== nx || p.y !== ny)) {
+        const r = movePart(drag.base, drag.id, [nx, ny], { keep: keepOn });
+        if (!r.error) { M = r.model; drag.moved = nx !== drag.at[0] || ny !== drag.at[1]; render(); }
+      }
     }
   });
   svg.addEventListener('pointerup', () => {
     const d = drag;
     drag = null;
     if (d?.kind === 'press' && sim) setInput(d.id, false);
-    if (d?.kind === 'move' && d.moved) { const p = M.parts.find((x) => x.id === d.id); M = normalizeCircuit(JSON.parse(hist[hi])); applyEdit(movePart(M, d.id, [p.x, p.y])); }
+    if (d?.kind === 'move') { if (d.moved) commit(); else { M = d.base; render(); } }
   });
   svg.addEventListener('dblclick', () => { if (tool === 'wire' && draft) endWire(); });
   function zoomAt(f, cx, cy) {
@@ -223,10 +237,12 @@ export function mountCircuitEditor(container, opts = {}) {
   root.addEventListener('keydown', (e) => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-    if (readOnly && (mod ? /^[zy]$/.test(k) : /^(Delete|Backspace|r)$/i.test(e.key))) return;
+    if (readOnly && (mod ? /^[zyxv]$/.test(k) : /^(Delete|Backspace|r)$/i.test(e.key))) return;
     if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); undo(); }
     else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); e.stopPropagation(); redo(); }
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); }
+    else if (mod && (k === 'c' || k === 'x')) { if (sel?.kind === 'part') { e.preventDefault(); clip.copy(k === 'x'); } }
+    else if (mod && k === 'v' && !readOnly) clip.pasteKey();
     else if (e.key === 'Escape') { if (tool === 'wire' && draft?.length >= 2) endWire(); else setTool('select'); }
     else if (!mod && k === 'r') rotateSelection();
     else if (!mod && (k === '+' || k === '=')) zoomBtn(1.25);
@@ -266,7 +282,9 @@ export function mountCircuitEditor(container, opts = {}) {
     getModel: () => clone(M),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },
     undo, redo, canUndo: () => hi > 0, canRedo: () => hi < hist.length - 1,
-    canCopy: () => false, canPaste: () => false, canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
+    // (Cut, Copy and Paste, #4066: circuit-clip.js)
+    copy: () => clip.copy(), cut: () => clip.copy(true), paste: () => clip.paste(),
+    canCopy: () => sel?.kind === 'part', canPaste: () => !readOnly && clip.has(), canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
     fit, print, simulating: () => !!sim, toggleSim, sim: () => sim, events: () => events.slice(),

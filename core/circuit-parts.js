@@ -99,11 +99,11 @@ export function partPins(part) {
   return d.pins.map((p) => { const [dx, dy] = turn(p.dx, p.dy, part.rot || 0); return { n: p.n, name: p.name, dir: p.dir, x: part.x + dx, y: part.y + dy }; });
 }
 
-/** A breadboard part's holes on the grid: [{ name, strip, x, y }] (none for any other part). */
+/** A breadboard part's holes on the grid, turned with it (#4065): [{ name, strip, x, y }] (none for any other part). */
 export function partHoles(part) {
   const d = partDef(part.type);
   if (d?.kind !== 'breadboard') return [];
-  return breadboardHoles(d.cols, d.split).map((h) => ({ name: h.name, strip: h.strip, x: part.x + h.dx, y: part.y + h.dy }));
+  return breadboardHoles(d.cols, d.split).map((h) => { const [dx, dy] = turn(h.dx, h.dy, part.rot || 0); return { name: h.name, strip: h.strip, x: part.x + dx, y: part.y + dy }; });
 }
 
 // ------------------------------------------------------------------ the gates' logic (0, 1, X)

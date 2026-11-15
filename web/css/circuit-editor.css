@@ -85,3 +85,5 @@
 .circuit-editor .circ-probe-body.lv0 { fill: var(--circ-lv0); }
 .circuit-editor .circ-probe-body.lvx { fill: var(--circ-lvx); }
 .circuit-editor .circ-probe-text { font: bold 11px var(--asm-mono, monospace); fill: #fff; pointer-events: none; }
+/* Keep connections (#4059), as the schematic's */
+.circuit-editor .circ-keep { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }

@@ -7,14 +7,22 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 
 const POINT = { description: 'A place: a grid point [x, y] (0.1 inch steps), a breadboard\'s hole (BB1.f10, BB1.tp3) or a part\'s pin (U1.3, S1.out, D1.A).' };
-const OPS = ['add', 'move', 'rotate', 'delete', 'wire', 'set'];
+const OPS = ['add', 'move', 'rotate', 'copy', 'delete', 'wire', 'set'];
 
 /** One operation applied: { model, line } or { error }. */
 async function apply(E, m, op) {
   switch (op?.op) {
     case 'add': { const r = E.addPart(m, op); return r.error ? r : { model: r.model, line: `${r.id} (${op.type}) added` }; }
-    case 'move': { const r = E.movePart(m, op.id, op.at); return r.error ? r : { model: r.model, line: `${op.id} moved` }; }
-    case 'rotate': { const r = E.rotatePart(m, op.id, op.by ?? 1); return r.error ? r : { model: r.model, line: `${op.id} turned` }; }
+    // (a breadboard with the parts on it; the wires' ends with the part unless keep is false, as the editor's Keep connections, #4059)
+    case 'move': { const r = E.movePart(m, op.id, op.at, { keep: op.keep !== false }); return r.error ? r : { model: r.model, line: `${op.id} moved` }; }
+    case 'rotate': { const r = E.rotatePart(m, op.id, op.by ?? 1, { keep: op.keep !== false }); return r.error ? r : { model: r.model, line: `${op.id} turned` }; }
+    // (the editor's Copy and Paste, #4066)
+    case 'copy': {
+      const clip = E.copyParts(m, op.id);
+      if (clip.error) return clip;
+      const r = E.pasteParts(m, clip, op.by ?? [2, 2]);
+      return r.error ? r : { model: r.model, line: `${op.id} copied: ${r.ids.join(', ')}` };
+    }
     case 'delete': { const r = E.deleteItem(m, op.id); return r.error ? r : { model: r.model, line: `${op.id} deleted` }; }
     case 'wire': { const r = E.addWire(m, op); return r.error ? r : { model: r.model, line: `${r.id} wired from ${JSON.stringify(op.from)} to ${JSON.stringify(op.to)}` }; }
     case 'set': {
@@ -43,7 +51,7 @@ export const CIRCUIT_TOOLS = [
   },
   {
     name: 'edit_circuit', title: 'Edit a digital circuit',
-    description: 'Edit a circuit (.circ.json) as its editor does, by a list of operations applied in order (one refused: nothing written, the reason given): { op: "add", type, at, rot (quarter turns clockwise), label, id } (a part, its pin 1 at the place; a breadboard: its hole a1), { op: "move", id, at }, { op: "rotate", id, by }, { op: "delete", id } (a part or a wire; a part\'s wires stay), { op: "wire", from, to, via: [[x, y]…], color, id } (a wire between two places; its ends join the holes, pins and wire ends on their points), { op: "set", id, label, color, on, hz } (a switch\'s, a button\'s, a clock\'s, an LED\'s or a display\'s label is its ports\' name, <label>_<k> for each of several: a DIP switch\'s levers, a display\'s segments a–g and dp, an LED bar\'s 1–10; a single port\'s label name[k] its bit k of the vector port name, as a board\'s led[0], sw[0], btn[0] for an FPGA project\'s top, its bits 0 to the last; an LED\'s or a display\'s colour; a switch\'s position as saved, a DIP switch\'s a list or { lever, on }; a clock\'s frequency in Hz, its live rate). A place: a grid point [x, y], a hole (BB1.f10) or a pin (U1.3). The circuit is written, its HDL file made again, and its check\'s errors and warnings returned. The parts: circuit_parts.',
+    description: 'Edit a circuit (.circ.json) as its editor does, by a list of operations applied in order (one refused: nothing written, the reason given): { op: "add", type, at, rot (quarter turns clockwise), label, id } (a part, its pin 1 at the place; a breadboard: its hole a1), { op: "move", id, at, keep }, { op: "rotate", id, by, keep } (a breadboard with the parts plugged into it; the wires\' ends on the part\'s pins and holes follow it unless keep is false), { op: "copy", id, by: [dx, dy] } (the part, a breadboard with its parts and the wires between them, copied by dx, dy grid steps, default [2, 2], new ids), { op: "delete", id } (a part or a wire; a part\'s wires stay), { op: "wire", from, to, via: [[x, y]…], color, id } (a wire between two places; its ends join the holes, pins and wire ends on their points), { op: "set", id, label, color, on, hz } (a switch\'s, a button\'s, a clock\'s, an LED\'s or a display\'s label is its ports\' name, <label>_<k> for each of several: a DIP switch\'s levers, a display\'s segments a–g and dp, an LED bar\'s 1–10; a single port\'s label name[k] its bit k of the vector port name, as a board\'s led[0], sw[0], btn[0] for an FPGA project\'s top, its bits 0 to the last; an LED\'s or a display\'s colour; a switch\'s position as saved, a DIP switch\'s a list or { lever, on }; a clock\'s frequency in Hz, its live rate). A place: a grid point [x, y], a hole (BB1.f10) or a pin (U1.3). The circuit is written, its HDL file made again, and its check\'s errors and warnings returned. The parts: circuit_parts.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The circuit: a .circ.json file of the project.'),
       operations: { type: 'array', maxItems: 200, items: { type: 'object', properties: { op: { type: 'string', enum: OPS }, at: POINT, from: POINT, to: POINT } }, description: 'The operations, in order.' },

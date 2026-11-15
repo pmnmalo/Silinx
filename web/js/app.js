@@ -299,7 +299,7 @@ const clipEditor = d => {
   if (f) return fieldClip(f);
   if (!d) return null;
   if (d.editor) return textClip(d.editor);
-  const x = d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor;
+  const x = d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor;
   return x?.copy ? x : null;
 };
 export const canCopyAny = () => !!clipEditor(S.active)?.canCopy();

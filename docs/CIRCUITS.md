@@ -22,6 +22,12 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 - **Connectivity is geometric**, as on the bench: a pin that lands on a breadboard's hole is in that hole; a wire's end
   joins the hole, the pin or the other wires' ends on its point. Two wires that cross without an end in common are not
   joined.
+- **Moving and turning** (#4059, #4065): a breadboard moved or turned carries the parts plugged into it (a pin in one of
+  its holes) and the wires between them; with **Keep connections** (the toolbar's, as the schematic's: remembered, on by
+  default) the ends of the other wires on the moved pins and holes follow them, not ticked they stay where they are. Every
+  part turns a quarter clockwise (R), a breadboard too; there is no mirror. **Cut, Copy and Paste** (#4066) copy the
+  selected part (a breadboard with the parts on it and the wires between them), pasted 2 steps right and down, new ids
+  given, a label another part has left out.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
   net's: the toolbar (select, wire, rotate, delete, then the zoom, then Check and Try it, Reset while trying it; printed
   by the main toolbar's Print), the Properties side panel on the right, foldable, over the canvas behind ☰ Properties on a
@@ -224,7 +230,8 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 - `new_source` type `circuit` (empty, or with a breadboard and a supply);
 - `circuit_parts`: the library, a part's pins, its logic and delay;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
-  rotate, delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
+  rotate (a breadboard with its parts; `keep: false`, the editor's Keep connections off), copy (the editor's Copy and
+  Paste), delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
   `led[0]`) or colour;
 - `run_process`: a circuit as a project's top synthesized, implemented and its bitstream made, as any top;
 - `check_drawing`: the circuit's check (its errors and warnings, as the console's);

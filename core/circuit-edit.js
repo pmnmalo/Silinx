@@ -36,31 +36,85 @@ export function addPart(m, { type, at, rot = 0, label, id } = {}) {
     pid = id || newId(c, type);
     if (partIn(c, pid) || c.wires.some((w) => w.id.toLowerCase() === pid.toLowerCase())) return `${pid}: the circuit has a part or a wire named so`;
     const p = { id: pid, type, x: pt[0], y: pt[1], ...(rot ? { rot } : {}), ...(label ? { label } : {}) };
-    if (d.kind === 'breadboard' && rot) return 'a breadboard is not turned';
     c.parts.push(p);
     return null;
   });
   return r.error ? r : { ...r, id: pid };
 }
 
-/** A part moved: its pin 1 to `at`. */
-export const movePart = (m, id, at) => edit(m, (c) => {
+// ------------------------------------------------------------------ moves that keep the connections (#4059, #4065)
+// a part and what it carries: a breadboard's, the parts with a pin in one of its holes
+function carried(c, p) {
+  if (partDef(p.type)?.kind !== 'breadboard') return [p];
+  const holes = new Set(partHoles(p).map((q) => `${q.x},${q.y}`));
+  return [p, ...c.parts.filter((x) => x !== p && partDef(x.type)?.kind !== 'breadboard' && partPins(x).some((q) => holes.has(`${q.x},${q.y}`)))];
+}
+// the parts `ps` moved by f (a grid point's new place), `rot` quarter turns more; the wires' ends on their pins and holes
+// follow when `keep` (a wire with both ends there moved whole, its bends too, kept or not: it goes with them)
+function carry(c, ps, f, rot, keep) {
+  const on = new Set(ps.flatMap((p) => [...partPins(p), ...partHoles(p)]).map((q) => `${q.x},${q.y}`));
+  for (const p of ps) { [p.x, p.y] = f([p.x, p.y]); if (rot) p.rot = (((p.rot || 0) + rot) % 4 + 4) % 4; }
+  for (const w of c.wires) {
+    const ends = [w.points[0], w.points[w.points.length - 1]].map(([x, y]) => on.has(`${x},${y}`));
+    if (ends[0] && ends[1]) w.points = w.points.map(f);
+    else if (keep && ends[0]) w.points[0] = f(w.points[0]);
+    else if (keep && ends[1]) w.points[w.points.length - 1] = f(w.points[w.points.length - 1]);
+  }
+}
+
+/** A part moved: its pin 1 to `at`; a breadboard with the parts on it; `keep` (default): its wires' ends with it. */
+export const movePart = (m, id, at, { keep = true } = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const pt = pointOf(c, at);
   if (pt.error) return pt.error;
-  [p.x, p.y] = pt;
+  const dx = pt[0] - p.x, dy = pt[1] - p.y;
+  carry(c, carried(c, p), ([x, y]) => [x + dx, y + dy], 0, keep);
   return null;
 });
 
-/** A part turned a quarter clockwise (`by` quarter turns), about its pin 1. */
-export const rotatePart = (m, id, by = 1) => edit(m, (c) => {
+/** A part turned a quarter clockwise (`by` quarter turns), about its pin 1; a breadboard with the parts on it; `keep`
+ *  (default): its wires' ends with it. */
+export const rotatePart = (m, id, by = 1, { keep = true } = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
-  if (partDef(p.type)?.kind === 'breadboard') return 'a breadboard is not turned';
-  p.rot = (((p.rot || 0) + by) % 4 + 4) % 4;
+  const k = ((by % 4) + 4) % 4, ox = p.x, oy = p.y;
+  const f = ([x, y]) => { let dx = x - ox, dy = y - oy; for (let i = 0; i < k; i++) [dx, dy] = [-dy, dx]; return [ox + dx, oy + dy]; };
+  carry(c, carried(c, p), f, k, keep);
   return null;
 });
+
+// ------------------------------------------------------------------ copy and paste (#4066)
+/** What a copy of the part `id` holds: { parts, wires } (a breadboard's: the parts on it and the wires between them). */
+export function copyParts(m, id) {
+  const c = clone(normalizeCircuit(m)), p = partIn(c, id);
+  if (!p) return { error: `no part ${id} in the circuit` };
+  const ps = carried(c, p);
+  const on = new Set(ps.flatMap((x) => [...partPins(x), ...partHoles(x)]).map((q) => `${q.x},${q.y}`));
+  const wires = c.wires.filter((w) => [w.points[0], w.points[w.points.length - 1]].every(([x, y]) => on.has(`${x},${y}`)));
+  return { parts: ps, wires };
+}
+
+/** A copy pasted, moved by [dx, dy] (default: 2 steps right and down), each part and wire a new id, a label taken left
+ *  out: { model, ids }. */
+export function pasteParts(m, clip, by = [2, 2]) {
+  if (!Array.isArray(clip?.parts) || !clip.parts.length) return { error: 'nothing to paste' };
+  const ids = [];
+  const r = edit(m, (c) => {
+    if (!Array.isArray(by) || by.length !== 2 || !by.every(Number.isInteger)) return 'by: a move [dx, dy] in grid steps';
+    for (const q of clip.parts) {
+      if (!partDef(q.type)) return `no part '${q.type}' in the library`;
+      const p = { ...clone(q), id: newId(c, q.type), x: q.x + by[0], y: q.y + by[1] };
+      // (a label another part has left out: its ports named by its id)
+      if (p.label && c.parts.some((x) => String(x.label ?? '').toLowerCase() === p.label.toLowerCase())) delete p.label;
+      c.parts.push(p);
+      ids.push(p.id);
+    }
+    for (const w of clip.wires || []) c.wires.push({ ...clone(w), id: newId(c, 'wire'), points: w.points.map(([x, y]) => [x + by[0], y + by[1]]) });
+    return null;
+  });
+  return r.error ? r : { ...r, ids };
+}
 
 /** A part or a wire deleted (a part's wires stay, as on the bench). */
 export const deleteItem = (m, id) => edit(m, (c) => {

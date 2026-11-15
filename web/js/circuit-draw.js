@@ -24,10 +24,11 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs 
   return g;
 }
 
-function breadboardSvg(p, selected) {
-  const d = partDef(p.type), cols = d.cols || BB_COLS;
+// (turned, #4065: drawn unturned, then turned about its hole a1)
+function breadboardSvg(turned, selected) {
+  const p = { ...turned, rot: 0 }, d = partDef(p.type), cols = d.cols || BB_COLS;
   const x0 = px(p.x) - P, y0 = px(p.y + BB_RAILS.tp) - P, w = px(cols + 1), hgt = px(BB_RAILS.bp - BB_RAILS.tp + 2);
-  const g = sv('g', { class: `circ-bb${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id },
+  const g = sv('g', { class: `circ-bb${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id, ...(turned.rot ? { transform: `rotate(${90 * turned.rot} ${px(p.x)} ${px(p.y)})` } : {}) },
     sv('rect', { x: x0, y: y0, width: w, height: hgt, rx: 6, class: 'circ-bb-body' }),
     sv('rect', { x: x0 + 6, y: px(p.y + BB_ROWS.e) + P * 0.5, width: w - 12, height: px(BB_ROWS.f - BB_ROWS.e) - P, class: 'circ-bb-channel' }));
   // the rails' lines: red the +, blue the −

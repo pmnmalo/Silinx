@@ -1,4 +1,5 @@
-// The circuit editor's toolbar (#3897, docs/UI-GUIDELINES.md): the tools (select, wire), Rotate, Delete, the zoom, Check,
+// The circuit editor's toolbar (#3897, docs/UI-GUIDELINES.md): the tools (select, wire), Rotate, Delete, the zoom, Keep
+// connections (#4059, as the schematic's: remembered, on by default), Check,
 // Try it (and Reset while trying it), the ☰ Properties toggle (no Print of its own: the main toolbar's prints it); the
 // status line of its counts and, while simulating, its time.
 import { h } from './ui.js';
@@ -8,7 +9,7 @@ import { statusLine } from './status-line.js';
 
 /** { tools, delBtn, rotBtn, checkBtn, simBtn, resetBtn, zoomLbl, info, toolbar } of mountCircuitEditor. */
 export function mountCircuitToolbar(ctx) {
-  const { root, btn, sep, setTool, deleteSelection, rotateSelection, check, toggleSim, resetSim, waves, zoomBtn, fit } = ctx;
+  const { root, btn, sep, setTool, deleteSelection, rotateSelection, check, toggleSim, resetSim, waves, zoomBtn, fit, keepBox } = ctx;
   const tools = {
     select: toolIcon('select', 'select', 'Select and move (drag the background to pan, wheel to zoom)', () => setTool('select'), 'circ-tool'),
     wire: toolWide('wire', 'Wire', 'Draw a wire: click its start, its bends, then its end on a pin or a hole (double click or Esc: end it there)', () => setTool('wire'), 'circ-tool'),
@@ -27,6 +28,8 @@ export function mountCircuitToolbar(ctx) {
     h('div', { class: 'asm-group' }, ...Object.values(tools)), sep(),
     h('div', { class: 'asm-group' }, rotBtn, delBtn), sep(),
     h('div', { class: 'asm-group' }, ...zoomTools((f) => zoomBtn(f), () => fit()), zoomLbl), sep(),
+    h('div', { class: 'asm-group circ-keep-group' }, h('label', { class: 'circ-keep', title: 'Moving or turning a part: its wires\' ends follow its pins and holes, or stay where they are (a breadboard always carries the parts on it)' },
+      keepBox, h('span', {}, 'Keep connections'))), sep(),
     h('div', { class: 'asm-group' }, checkBtn), sep(),
     h('div', { class: 'asm-group' }, simBtn, resetBtn, wavesBtn),
     h('div', { class: 'asm-spacer' }),
