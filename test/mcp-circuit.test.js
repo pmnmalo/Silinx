@@ -111,6 +111,22 @@ test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a 
   await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'wavy' }] }, 'operation 0 (wires): style: curved or straight (nothing written)');
 });
 
+test('edit_circuit: a wire\'s colour set, as its Properties\' Colour (#4121); an unknown wire, colour or property refused, nothing written', async () => {
+  const P = 'src/colours.circ.json', m = () => JSON.parse(read(P));
+  await ok('write_file', { project: 'c', path: P, text: JSON.stringify({ ...halfAdder(), name: 'colours' }, null, 2) });
+  const r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'ws', color: 'yellow' }, { op: 'set', id: 'WB1', color: 'purple' }] });
+  assert.deepEqual(r.text.split('\n').slice(0, 2), ['ws: color "yellow"', 'WB1: color "purple"']);
+  assert.deepEqual([r.data.errors, r.data.warnings], [[], []]);
+  assert.deepEqual([m().wires.find((w) => w.id === 'ws').color, m().wires.find((w) => w.id === 'wb1').color], ['yellow', 'purple']);
+  // the other wires as they were, the points too
+  assert.deepEqual(m().wires.map((w) => ({ ...w, color: ['ws', 'wb1'].includes(w.id) ? 'x' : w.color })), halfAdder().wires.map((w) => ({ ...w, color: ['ws', 'wb1'].includes(w.id) ? 'x' : w.color })));
+  const before = read(P);
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'ws', color: 'pink' }] }, 'operation 0 (set): color: one of red, black, blue, green, yellow, orange, white, purple (nothing written)');
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'ws', label: 'x' }] }, 'operation 0 (set): wire ws has no property \'label\' (color) (nothing written)');
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'w99', color: 'red' }] }, 'operation 0 (set): no part or wire w99 in the circuit (nothing written)');
+  assert.equal(read(P), before);
+});
+
 test('simulate_drawing: a circuit\'s steps, its switches by their labels, its LEDs and time; a floating input; its refusals', async () => {
   const sim = (cycles) => call('simulate_drawing', { project: 'c', file: 'src/half_adder.circ.json', cycles });
   const r = await sim([{ a: 1 }, { b: 1 }, { a: 0 }, { b: '0' }]);

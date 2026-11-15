@@ -243,7 +243,7 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
   rotate (a breadboard with its parts; `keep: false`, the editor's Keep connections off), copy (the editor's Copy and
   Paste), wires (curved or straight, the editor's Curved wires), delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
-  `led[0]`) or colour;
+  `led[0]`) or colour, a wire's colour;
 - `run_process`: a circuit as a project's top synthesized, implemented and its bitstream made, as any top;
 - `check_drawing`: the circuit's check (its errors and warnings, as the console's);
 - `simulate_drawing`: a sequence of steps, each setting switches and buttons and running until quiet (or a given time),

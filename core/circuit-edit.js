@@ -166,6 +166,26 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   return null;
 });
 
+/** A wire's properties set (#4121): its colour, as its Properties' Colour. */
+export const setWireProps = (m, id, props = {}) => edit(m, (c) => {
+  const w = c.wires.find((x) => x.id.toLowerCase() === String(id ?? '').toLowerCase());
+  if (!w) return `no wire ${id} in the circuit`;
+  for (const [k, v] of Object.entries(props)) {
+    if (k !== 'color') return `wire ${w.id} has no property '${k}' (color)`;
+    if (!WIRE_COLORS.includes(v)) return `color: one of ${WIRE_COLORS.join(', ')}`;
+    w.color = v;
+  }
+  return null;
+});
+
+/** A part's or a wire's properties set (edit_circuit's set): setPartProps' or setWireProps'. */
+export function setProps(m, id, props = {}) {
+  const c = normalizeCircuit(m);
+  if (partIn(c, id)) return setPartProps(m, id, props);
+  if (c.wires.some((w) => w.id.toLowerCase() === String(id ?? '').toLowerCase())) return setWireProps(m, id, props);
+  return { error: `no part or wire ${id} in the circuit` };
+}
+
 /** How the circuit's wires are drawn (#4064): 'curved' (smooth curves through their bends) or 'straight'. */
 export const setWireStyle = (m, style) => edit(m, (c) => {
   if (style !== 'curved' && style !== 'straight') return 'style: curved or straight';
