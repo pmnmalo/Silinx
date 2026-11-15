@@ -6,6 +6,7 @@
 import { S } from './app.js';
 import { followedSim, simActivity, simDocActivity, stimKey } from '/core/collab-sim.js';
 
+const FIRST_RUN_MS = 3000;
 const ssims = () => S.docs.filter(d => /^isim:/.test(d.id) && d.view?.getState);
 
 /** The owner's `sim` value: its open simulations. */
@@ -20,8 +21,10 @@ export async function followSim(st, get) {
   for (const d of ssims()) {
     const o = s.docs[d.id], api = d.view;
     if (!o || api.state?.running) continue;
-    const mine = st.sims.get(d) || {};
+    const mine = st.sims.get(d) || { seen: Date.now() };
     st.sims.set(d, mine);
+    // (its own first run, at its opening, waited for: not run on before it, then past the owner's time)
+    if (!mine.ran) { if (api.now === 0 && Date.now() - mine.seen < FIRST_RUN_MS) continue; mine.ran = true; }
     // (the owner's drawn stimuli changed: the simulation run again here, as the owner's own was)
     if (mine.stim !== undefined && mine.stim !== o.stim) { await rerun(d.id); continue; }
     mine.stim = o.stim;
