@@ -4,7 +4,8 @@
 // Show, Show QR Code) with its QR code by Show QR Code only (#3637, decoded back: the link; no small one in the window);
 // Stop Sharing keeps the window, Start Sharing again; no Add a User… in it: the toolbar's Sharing menu's (Viewer or
 // Editor, that role's link by Generate), and its Copy View Link; Share Module…'s links (#3631, opening on the module);
-// the labels in Portuguese. A server with its relay. Both interfaces; no warnings.
+// the labels in Portuguese; Show shows the whole link, wrapped (#4190), on a phone too. A server with its relay. Both
+// interfaces; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
@@ -165,5 +166,56 @@ uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s
     await page.waitNoDialog();
     await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+  assert.deepEqual(await warnings(page), []);
+}, { timeout: 120000 });
+
+// each link field's box as it looks: the box shown (the masked one, or the whole link's), its text, its height and its
+// buttons', and whether all of its text is in view (nothing cut off, across or down)
+const boxes = (page) => page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-field')].map((f) => {
+  const [b] = [...f.querySelectorAll('.link-out, .link-full')].filter((e) => !e.hidden && e.getClientRects().length);
+  return { cls: b.className, type: b.type, text: b.value, height: b.getBoundingClientRect().height, buttons: f.querySelector('.link-buttons').getBoundingClientRect().height, whole: b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight };
+}));
+
+uiTest('#4190 Share Project and Share Module: Show shows the whole link, wrapped, the box as tall as it needs; Hide brings back the masked box, as tall as its buttons; on a phone too', E, async (page) => {
+  await make(page, 'linkbox', 'gates');
+  await page.openProject('linkbox');
+  await page.eval(() => localStorage.setItem('silinx.collab.name', 'Teacher'));
+  try {
+    for (const [width, module] of [[1400, null], [375, null], [375, 'gates']]) {
+      await page.setViewport(width, 900);
+      await page.eval((m) => { window.__shared = import('/js/collab-share.js').then((x) => x.shareProjectDialog(m ? { module: m } : {})); }, module);
+      await page.waitDialog(module ? 'Share Module' : 'Share Project');
+      if (await page.eval(() => !document.querySelector('.dlg-overlay .dlg-buttons .btn.primary')?.textContent.startsWith('Close'))) {
+        await page.dialogButton('Start Sharing');
+        await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
+      }
+      const links = [];
+      for (const f of ['link', 'edit-link']) {
+        if (!await page.eval((x) => document.querySelector(`.dlg-overlay input[data-field="${x}"]`).value, f)) await gen(page, f);
+        links.push(await page.eval((x) => document.querySelector(`.dlg-overlay input[data-field="${x}"]`).value, f));
+      }
+      const what = `${module ? 'Share Module' : 'Share Project'}, ${width} px`;
+      // hidden: the masked box, as tall as its buttons
+      for (const b of await boxes(page)) {
+        assert.deepEqual([b.cls, b.type], ['link-out', 'password'], what);
+        assert.ok(Math.abs(b.height - b.buttons) < 2, `${what}: ${b.height} vs ${b.buttons}`);
+      }
+      // shown: the whole link, nothing cut off, at least as tall as the buttons
+      for (const f of ['link', 'edit-link']) await page.click(`.dlg-overlay .link-field:has([data-field="${f}"]) .link-show`);
+      const shown = await boxes(page);
+      assert.deepEqual(shown.map((b) => [b.cls, b.text, b.whole]), links.map((l) => ['link-full', l, true]), what);
+      for (const b of shown) assert.ok(b.height >= b.buttons - 1, `${what}: ${b.height} vs ${b.buttons}`);
+      assert.equal(await page.eval(() => document.documentElement.scrollWidth <= innerWidth), true, `${what}: no horizontal scroll`);
+      // hidden again: the masked box back, as tall as its buttons
+      for (const f of ['link', 'edit-link']) await page.click(`.dlg-overlay .link-field:has([data-field="${f}"]) .link-show`);
+      for (const b of await boxes(page)) {
+        assert.deepEqual([b.cls, b.type, b.text], ['link-out', 'password', b.text], what);
+        assert.ok(Math.abs(b.height - b.buttons) < 2, `${what}: ${b.height} vs ${b.buttons}`);
+      }
+      await page.dialogButton('Close');
+      await page.waitNoDialog();
+    }
+    await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
+  } finally { await page.setViewport(1400, 900); }
   assert.deepEqual(await warnings(page), []);
 }, { timeout: 120000 });

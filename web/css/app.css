@@ -415,6 +415,8 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
    the Share: row's two ways side by side, each one's explanation below its button */
 .link-field { display: flex; gap: 8px; align-items: stretch; margin-top: 12px; }
 .link-field > .link-out { flex: 1 1 auto; min-width: 0; height: auto; font: 11px var(--mono, monospace); }   /* (as tall as its buttons, #4073) */
+.link-field > .link-full { flex: 1 1 auto; min-width: 0; height: auto; resize: none; overflow: hidden; font: 11px/1.5 var(--mono, monospace); word-break: break-all; }   /* (shown: the whole link, wrapped, #4190) */
+.link-field > [hidden] { display: none; }
 .link-buttons { display: flex; flex-direction: column; gap: 4px; flex: none; min-width: 120px; }
 .link-buttons > .btn { width: 100%; }
 .share-how { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 10px 0; }

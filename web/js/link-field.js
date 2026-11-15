@@ -1,5 +1,6 @@
 // A sharing window's link (#3995, #3996, #4073): made by Generate only, then hidden, a masked box as tall as its
-// buttons; Copy copies it, shown or not; Show shows it (Hide hides it again); its QR code only when asked, Show QR Code,
+// buttons; Copy copies it, shown or not; Show shows it whole, wrapped over as many lines as it takes (#4190: a box of
+// its own, read only, in place of the masked one; Hide hides it again, the masked box back); its QR code only when asked, Show QR Code,
 // as large as the window allows (link-qr.js enlargeQr): no small QR code in the window. A link not made yet disables
 // the three; one longer than a QR code holds disables Show QR Code, its reason its tip.
 import { h } from './ui.js';
@@ -13,11 +14,21 @@ import { qrSvg } from '/core/qr.js';
 export function linkField({ field = 'link', onCopy, generate, title = 'QR Code' } = {}) {
   let link = null, shown = false, busy = false;
   const input = h('input', { type: 'password', readonly: '', class: 'link-out', 'data-field': field, 'data-no-i18n': '', autocomplete: 'off', spellcheck: false });
+  const full = h('textarea', { class: 'link-full', readonly: '', rows: 1, 'data-no-i18n': '', autocomplete: 'off', spellcheck: false, hidden: true });
+  // shown: at least as tall as its text, wrapped at the window's width (measured unstretched; again when the width
+  // changes: a narrow screen turned), and as its buttons, as the row stretches it
+  const fit = () => {
+    if (full.hidden) return;
+    Object.assign(full.style, { alignSelf: 'flex-start', minHeight: '0' });
+    const h = full.scrollHeight + full.offsetHeight - full.clientHeight;
+    Object.assign(full.style, { alignSelf: '', minHeight: `${h}px` });
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(full);
   const make = h('button', { class: 'btn link-generate', type: 'button', onclick: async () => {
     if (busy || link) return;
     busy = true; draw();
     try { const l = await generate(); if (l) link = l; } finally { busy = false; }
-    input.value = link || '';
+    input.value = full.value = link || '';
     draw();
   } }, 'Generate');
   const copy = h('button', { class: 'btn link-copy', type: 'button', onclick: () => { if (link) onCopy(link); } }, 'Copy');
@@ -25,6 +36,9 @@ export function linkField({ field = 'link', onCopy, generate, title = 'QR Code' 
   const qrButton = h('button', { class: 'btn link-qr', type: 'button', onclick: () => { if (link) enlargeQr(link, title); } }, 'Show QR Code');
   const draw = () => {
     input.type = shown && link ? 'text' : 'password';
+    input.hidden = !!(shown && link);
+    full.hidden = !input.hidden;
+    fit();
     show.textContent = shown && link ? 'Hide' : 'Show';
     make.disabled = busy || !!link;
     for (const b of [show, copy]) b.disabled = !link;
@@ -34,8 +48,8 @@ export function linkField({ field = 'link', onCopy, generate, title = 'QR Code' 
   };
   draw();
   return {
-    el: h('div', { class: 'link-field' }, input, h('div', { class: 'link-buttons' }, make, copy, show, qrButton)),
+    el: h('div', { class: 'link-field' }, input, full, h('div', { class: 'link-buttons' }, make, copy, show, qrButton)),
     get link() { return link; },
-    set(l) { link = l || null; input.value = link || ''; draw(); },
+    set(l) { link = l || null; input.value = full.value = link || ''; draw(); },
   };
 }
