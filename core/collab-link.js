@@ -1,14 +1,15 @@
 // A shared project's link (#3181): the address of Silinx that serves the relay, and in its fragment the room and its
-// key (core/collab-crypto.js); the fragment never reaches a server. A room the owner's page hosts (#3227, the browser
+// key (core/collab-crypto.js); the fragment never reaches a server. A viewer's says `view=` (#4073; `follow=`, the links
+// made before, still opens). A room the owner's page hosts (#3227, the browser
 // edition: no relay) says so, `.host`: the follower's page reaches it over WebRTC (web/js/collab-host.js).
-//   <Silinx's address>/#follow=<room>.<key>        <Silinx's address>/#follow=<room>.<key>.host
+//   <Silinx's address>/#view=<room>.<key>        <Silinx's address>/#view=<room>.<key>.host
 // An editor's link (#3182) also carries the room's signing key (core/collab-sign.js): its changes are the room's.
 //   <Silinx's address>/#edit=<room>.<key>.<signing key>[.host]
 // A room on another Silinx's relay (#3227: the browser edition through a relay in its settings) says which:
-//   <Silinx's address>/#follow=<room>.<key>&relay=<the relay's address, its origin, http(s)>
+//   <Silinx's address>/#view=<room>.<key>&relay=<the relay's address, its origin, http(s)>
 // A hosted room found at the public meeting point (core/collab-meet.js) carries the owner's public key after `.host`,
-// which tells the owner from the other pages that have the link: …#follow=<room>.<key>.host.<owner's key>.
-// A module's link (#3631, Share Module…) names the module its follower opens on, last: …#follow=…&top=<module>.
+// which tells the owner from the other pages that have the link: …#view=<room>.<key>.host.<owner's key>.
+// A module's link (#3631, Share Module…) names the module its follower opens on, last: …#view=…&top=<module>.
 import { KEY_RE } from './collab-crypto.js';
 import { SIGN_RE, PUB_RE } from './collab-sign.js';
 import { MODULE_RE } from './design-link.js';
@@ -48,7 +49,7 @@ export function followLink(base, room, key, via = 'relay', sign = null, relay = 
   if (relay !== null && (!r || via !== 'relay')) throw new Error(`not a relay's address: ${relay}`);
   if (host !== null && (via !== 'host' || !PUB_RE.test(host))) throw new Error('not an owner\'s key of a hosted room');
   const u = new URL(base);
-  u.hash = `${sign ? 'edit' : 'follow'}=${room}.${key}${sign ? `.${sign}` : ''}${via === 'host' ? '.host' : ''}${host ? `.${host}` : ''}${r ? `&relay=${encodeURIComponent(r)}` : ''}`;
+  u.hash = `${sign ? 'edit' : 'view'}=${room}.${key}${sign ? `.${sign}` : ''}${via === 'host' ? '.host' : ''}${host ? `.${host}` : ''}${r ? `&relay=${encodeURIComponent(r)}` : ''}`;
   u.search = '';
   return u.href;
 }
@@ -70,8 +71,8 @@ export function parseFollowLink(text) {
   const s = String(text || '').trim();
   const at = s.indexOf('#');
   const hash = at >= 0 ? s.slice(at + 1) : '';
-  if (!/^(follow|edit)=/.test(hash)) return null;
-  const m = /^(follow|edit)=([^.&]+)\.([^.&]+)(?:\.([^.&]+))??(\.host(?:\.([^.&]+))?)?(?:&relay=([^&]+))?(?:&top=([^&]+))?$/.exec(hash);
+  if (!/^(view|follow|edit)=/.test(hash)) return null;
+  const m = /^(view|follow|edit)=([^.&]+)\.([^.&]+)(?:\.([^.&]+))??(\.host(?:\.([^.&]+))?)?(?:&relay=([^&]+))?(?:&top=([^&]+))?$/.exec(hash);
   const sign = m?.[1] === 'edit' ? m[4] : null;
   let relay = null;
   if (m?.[7] !== undefined) { try { relay = relayAddress(decodeURIComponent(m[7])); } catch { relay = null; } }

@@ -36,19 +36,24 @@ uiTest('#3223 Copy Link: the full link or a short one (a secret gist); the short
   await page.openProject('lamp');
   await startCopy(page);
   await page.waitDialog('Share Project');
-  // the full link, as before; then the short one: made when it is copied
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), /#design=[A-Za-z0-9_-]+/);
+  // (#4073: the two forms' labels)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-forms label')].map((l) => l.textContent)),
+    ['Full link: the project inside it (needs nothing, but long)', 'Short link: the project encrypted in a secret gist of your GitHub account']);
+  // the full link, made by Generate (#4073: none before); then the short one, made by Generate too
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
+  await page.click('.dlg-overlay .link-generate');
+  assert.match(await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the full link' }), /#design=[A-Za-z0-9_-]+/);
   await page.click('.dlg-overlay input[data-field="short"]');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-info').textContent), /^A short link, about 140 characters: the project encrypted/);
-  // (#3995: not made yet, Show, Copy and Show QR Code disabled, Generate above Show QR Code; the account said, the
-  // project in no repository)
+  // (#3995, #4073: not made yet, Copy, Show and Show QR Code disabled, Generate first; the account said, the project in
+  // no repository)
   const buttons = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`));
-  assert.deepEqual(await buttons(), ['Show (off)', 'Copy (off)', 'Generate', 'Show QR Code (off)']);
+  assert.deepEqual(await buttons(), ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
   await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent === 'Signed in to GitHub as student; the project is in no GitHub repository.', [], { what: 'the account said' });
   await page.click('.dlg-overlay .link-generate');
   await page.waitConsole(/Share Project: the short link of 'lamp' made \(the project in a secret gist of your GitHub account\)\./);
-  assert.deepEqual(await buttons(), ['Show', 'Copy', 'Generate (off)', 'Show QR Code']);
+  assert.deepEqual(await buttons(), ['Generate (off)', 'Copy', 'Show', 'Show QR Code']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').type), 'password');
   await page.click('.dlg-overlay .link-copy');
   await page.dialogButton('Close');
@@ -83,7 +88,7 @@ uiTest('#3223 Copy Link\'s short link in Portuguese', E, async (page) => {
   await startCopy(page);
   await page.waitDialog('Partilhar Projeto');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-forms label')].map((l) => l.textContent)),
-    ['A ligação completa: o projeto dentro dela (não precisa de nada, mas é longa)', 'Uma ligação curta: o projeto cifrado num gist secreto da sua conta do GitHub']);
+    ['Ligação completa: o projeto dentro dela (não precisa de nada, mas é longa)', 'Ligação curta: o projeto cifrado num gist secreto da sua conta do GitHub']);
   await page.click('.dlg-overlay input[data-field="short"]');
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-info').textContent), /^Uma ligação curta, com cerca de 140 carateres/);
   // (its expiry, #3629)
@@ -91,7 +96,7 @@ uiTest('#3223 Copy Link\'s short link in Portuguese', E, async (page) => {
     ['Expira:', 'Nunca', 'Daqui a uma semana', 'Daqui a um mês', 'Daqui a seis meses', 'Daqui a um ano']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-manage a').textContent), 'Gerir as ligações curtas…');
   // (#3995: the buttons, the account)
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn, .dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Mostrar', 'Copiar', 'Gerar', 'Mostrar o Código QR', 'Fechar']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn, .dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Gerar', 'Copiar', 'Mostrar', 'Mostrar o Código QR', 'Fechar']);
   await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent === 'Com sessão no GitHub como student; o projeto não está em nenhum repositório do GitHub.', [], { what: 'the account said' });
   await page.dialogButton('Fechar');
   assert.equal(await copied(page), null);

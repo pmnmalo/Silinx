@@ -54,9 +54,10 @@ export const cleanName = n => String(n || '').replace(/\s+/g, ' ').trim().slice(
 let share = null;   // { name, session, doc, link, editLink, restore, orig, timer, known: Map<client, name>, view, hosted (a room of the page's), bound, unwatch,
                     //   bases (a drawing's text last put into its structure, #3183), drawn (its drawings bound), drawing (their writes, one after the other) }
 
-/** Share Project…'s window, live (#3996): one window, the name on it (filled with the last one, the cursor in it), Start
- *  Sharing, then the viewers' and the editors' links in the same window, hidden (link-field.js: Show, Copy, Show QR
- *  Code); Stop Sharing, Add a User… (a link of a role given, a code taken), Close. Share Module… (`module`, #3631): the
+/** Share Project…'s window, live (#3996): one window, the name on it (filled with the last one, the cursor in it; once
+ *  shared, shown, not a field: #4073), Start Sharing, then the viewers' and the editors' links in the same window, each
+ *  made by its Generate (#4073; kept for the share's later windows), hidden (link-field.js: Generate, Copy, Show, Show
+ *  QR Code); Stop Sharing, Close (Add a User…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
  *  same, that module's source opened (the followers follow it), the links opening on it (`view`: its copy's, the way
  *  switched, #3698). Resolves to the viewers' link once closed (null: not shared). */
 export async function shareProjectDialog({ module = null, view = null } = {}) {
@@ -66,6 +67,8 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   if (!share && location.protocol === 'file:') { app.log(`ERROR: ${action}: a Silinx opened from a file has no address that others can open; open Silinx from its site to share a project.`, 'err'); return null; }
   if (share && module) await (await import('./link-open.js')).showModule(module, true);
   const input = h('input', { type: 'text', value: share?.name || savedName(), 'data-field': 'name', maxlength: 40, style: { width: '100%' } });
+  const nameShown = h('div', { class: 'collab-name', 'data-no-i18n': '' });
+  const nameBox = h('div', { class: 'collab-name-box' }, input, nameShown);
   const nameErr = h('div', { class: 'wiz-error collab-name-error' });
   // (the browser edition: this page hosts the room, or a relay of the settings does, #3227)
   const r0 = savedRelay(), relays = api.collab ? [] : await relaysHere();
@@ -75,9 +78,12 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   const relayPart = !relays.length ? null : h('div', { class: 'collab-relay' },
     h('label', { class: 'collab-check' }, viaRelay, ' Through a relay (a Silinx server that lets this site in); else this page hosts it'),
     h('label', {}, 'The relay\'s address:'), address, h('label', {}, 'Its key (from its administrator):'), key);
-  // the links, hidden: the viewers' and the editors' (#3996)
-  const viewer = linkField({ field: 'link', onCopy: l => copyLink(l) });
-  const editor = linkField({ field: 'edit-link', onCopy: l => copyEditorLink(l) });
+  // the links, hidden: the viewers' and the editors', each made by its Generate (#3996, #4073: different links, the
+  // editors' with the room's signing key)
+  const linkOf = role => (share ? (module ? withTop(role === 'edit' ? share.editLink : share.link, module) : role === 'edit' ? share.editLink : share.link) : null);
+  const made = role => { if (!share) return null; share.made[role] = true; return linkOf(role); };
+  const viewer = linkField({ field: 'link', onCopy: l => copyLink(l), generate: async () => made('view') });
+  const editor = linkField({ field: 'edit-link', onCopy: l => copyEditorLink(l), generate: async () => made('edit') });
   const about = h('p', { class: 'collab-about' });
   const hostedNote = h('p', { class: 'collab-hosted' }, 'This page hosts it: its followers find it when they open the link, or send you a code, which Add a User… takes.');
   const links = h('div', { class: 'collab-links' },
@@ -89,17 +95,19 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   const way = howRow('live', { module, view, close: () => closeIt?.() });
   const draw = () => {
     const on = !!share;
-    input.readOnly = on;
+    input.hidden = on;
+    nameShown.hidden = !on;
+    nameShown.textContent = on ? share.name : '';
     if (relayPart) relayPart.hidden = on;
     links.hidden = !on;
-    viewer.set(on ? (module ? withTop(share.link, module) : share.link) : null);
-    editor.set(on ? (module ? withTop(share.editLink, module) : share.editLink) : null);
+    viewer.set(on && share.made.view ? linkOf('view') : null);
+    editor.set(on && share.made.edit ? linkOf('edit') : null);
     about.textContent = !on ? '' : module ? `Anyone with this link follows "${share.project}" live, read only, opening it on ${module}, as long as you share it.` : `Anyone with this link follows "${share.project}" live, read only, as long as you share it.`;
     hostedNote.hidden = !share?.hosted;
     // (Start Sharing the window's first button before, Close once shared: what Enter presses)
     if (btns?.[0].el) {
-      const [st, stop, add, close] = btns;
-      st.el.disabled = on; stop.el.disabled = !on; add.el.disabled = !on;
+      const [st, stop, close] = btns;
+      st.el.disabled = on; stop.el.disabled = !on;
       st.primary = !on; close.primary = on;
       st.el.classList.toggle('primary', !on); close.el.classList.toggle('primary', on);
     }
@@ -119,7 +127,6 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   btns = [
     { label: 'Start Sharing', primary: true, validate: start },
     { label: 'Stop Sharing', validate: async () => { await stopSharing(); draw(); return false; } },
-    { label: 'Add a User…', validate: () => { addUser(module); return false; } },
     { label: 'Close', value: null },
   ];
   await dialog({
@@ -128,7 +135,7 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     body: h('div', { class: 'collab-dlg' },
       h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.'),
       way.el,
-      h('label', {}, 'Your name, as they see it:'), input, nameErr, relayPart, links),
+      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, relayPart, links),
     buttons: btns,
   });
   if (way.wanted) return way.switched();
@@ -163,7 +170,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
     ? await shareRoom({ url: 'silinx-host:', WebSocket: host.WebSocket, doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) })
     : await shareRoom({ url: relayUrl(other || location.href, 'share'), token: other ? relay.key || null : await api.collabToken(), doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) });
   const base = location.origin + location.pathname, pub = hostKey?.pub ?? null;
-  share = { name, project, session, doc, base, via, other, pub, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
+  share = { name, project, session, doc, made: {}, base, via, other, pub, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share, offFiles = watchDoc(doc, ev => onEdits(s0, ev)), offDrawings = watchDrawings(s0);
@@ -225,7 +232,7 @@ const roleItems = () => (share?.session.editKey ? share.session.peers().filter(p
   : { label: `Make ${p.name} an Editor`, action: () => setRole(p, 'editor') })) : []);
 const commands = () => [
   ...roleItems(), ...(roleItems().length ? ['-'] : []),
-  { label: 'Copy Link', action: () => copyLink() },
+  { label: 'Copy View Link', action: () => copyLink() },
   { label: 'Copy Editor Link', action: () => copyEditorLink() },
   { label: 'Add a User…', action: () => addUser() },
   { label: 'Stop Sharing', action: () => stopSharing() },

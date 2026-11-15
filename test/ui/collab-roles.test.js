@@ -52,7 +52,7 @@ uiTest('#3997 the Sharing menu: a viewer made an editor, then a viewer again (th
     await page.waitConsole(/^Rui follows your project "Roles"\.$/m);
     // the owner's menu: Rui a viewer; Make Rui an Editor
     await page.waitFor(() => document.querySelector('.collab-presence .collab-btn')?.textContent === 'Sharing (1)', [], { what: 'Sharing (1)' });
-    assert.deepEqual(await menu(page), [['Ana', 'you'], ['Rui', 'viewer'], '-', ['Make Rui an Editor', ''], '-', ['Copy Link', ''], ['Copy Editor Link', ''], ['Add a User…', ''], ['Stop Sharing', '']]);
+    assert.deepEqual(await menu(page), [['Ana', 'you'], ['Rui', 'viewer'], '-', ['Make Rui an Editor', ''], '-', ['Copy View Link', ''], ['Copy Editor Link', ''], ['Add a User…', ''], ['Stop Sharing', '']]);
     // (the viewer's own menu: themselves a viewer)
     assert.deepEqual((await menu(rp)).slice(0, 2), [['Ana', 'owner'], ['Rui', 'you']]);
     await rp.eval(() => document.body.click());
@@ -76,7 +76,7 @@ uiTest('#3997 the Sharing menu: a viewer made an editor, then a viewer again (th
     // Share Project…: the new editors' link
     await page.eval(() => { window.__shared = import('/js/collab-share.js').then((m) => m.shareProjectDialog()); });
     await page.waitDialog('Share Project');
-    assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="edit-link"]').value), renewed);
+    assert.equal(await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=edit-link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=edit-link]')?.value) || null, [], { what: 'the editors\' link' }), renewed);
     await page.dialogButton('Close');
     await page.waitNoDialog();
     // the old editors' link: it opens, but what its page changes is written nowhere

@@ -31,7 +31,7 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
   await noStun(page);
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   const link = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana', { via: 'host' }); return m.sharedLink(); });
-  assert.match(link, /^http:\/\/[^/]+\/#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/);
+  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/);
   await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code \(Add a User…, in the toolbar, takes it\); it lasts while this page is open\.$/m);
   // the follower opens the link: their name, then their code
   const fp = await env.newPage(env.server.url);
@@ -66,7 +66,7 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
       await page.dialogButton('Connect');
     };
     await takeCode('S1.not-a-code');
-    await page.waitConsole(/^ERROR: Add a User: a follower's code is not of this sharing \(or not whole\): its link may be of an earlier one \(each sharing has a new link\); give them this sharing's link again \(Copy Link\) and paste the code their page then shows, whole\.$/m);
+    await page.waitConsole(/^ERROR: Add a User: a follower's code is not of this sharing \(or not whole\): its link may be of an earlier one \(each sharing has a new link\); give them this sharing's link again \(Copy View Link\) and paste the code their page then shows, whole\.$/m);
     await page.dialogButton('Close');
     await page.waitNoDialog();
     // the follower's code, at the owner's: the answer's code
@@ -97,7 +97,7 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
     await fp.waitConsole(/^WARNING: Ana's project "Hosted" is no longer followed \(the owner stopped sharing\): what you see is as it was then\.$/m);
     // the warnings and errors: the follower's end of sharing; the owner's refused code
     assert.deepEqual(await warnings(fp), ['WARNING: Ana\'s project "Hosted" is no longer followed (the owner stopped sharing): what you see is as it was then.']);
-    assert.deepEqual(await warnings(page), [`ERROR: Add a User: ${"a follower's code is not of this sharing (or not whole): its link may be of an earlier one (each sharing has a new link); give them this sharing's link again (Copy Link) and paste the code their page then shows, whole"}.`]);
+    assert.deepEqual(await warnings(page), [`ERROR: Add a User: ${"a follower's code is not of this sharing (or not whole): its link may be of an earlier one (each sharing has a new link); give them this sharing's link again (Copy View Link) and paste the code their page then shows, whole"}.`]);
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); }
 });

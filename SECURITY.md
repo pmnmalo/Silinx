@@ -328,7 +328,7 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   who is in) goes to the follower that joined only (#3529): joining and leaving again multiplies nobody else's
   download. Its limits: a
   follower's message 64 KB, the owner's 16 MB, followers per room, rooms per server.
-- **A room the owner's page hosts** (the browser edition, `#follow=….host`): the followers reach it over WebRTC. With
+- **A room the owner's page hosts** (the browser edition, `#view=….host`; `#follow=…` in the links made before #4073): the followers reach it over WebRTC. With
   the owner's key in the link, the follower's page looks for the owner at a public meeting point: Trystero's WebTorrent
   trackers (`core/collab-meet.js` `TRACKERS`), and the owner proves itself with a signature only it can make. Without
   it, the codes are exchanged by hand. Either way a STUN server (`stun.l.google.com`, or this browser's own list)

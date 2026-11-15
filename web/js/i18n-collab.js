@@ -18,7 +18,7 @@ export const COLLAB_PT = {
   'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).':
     'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e o que o seu dono faz (os seus documentos, vistas, simulações, emuladores e processos).',
   // (editors, #3182: web/js/collab-share.js)
-  'Copy Editor Link': 'Copiar Ligação de Editor', 'editor': 'editor',
+  'Copy Editor Link': 'Copiar Ligação de Editor', 'Copy View Link': 'Copiar Ligação de Visualização', 'editor': 'editor',
   // (and every drawing: state diagrams, truth tables, ASM charts, Petri nets, schematics, #3183)
   'Anyone with the editors\' link edits its text files and drawings with you, live.':
     'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.',

@@ -183,7 +183,7 @@ export const COLLAB_TOOLS = [
       editors: { type: 'boolean', description: 'start: editors may change its text files and drawings too (the result: an editor\'s link besides the follower\'s; what they change written to the disk, a drawing\'s HDL made again from it, through the import gate, the project untrusted from their first change: Xilinx ISE waits until the user trusts it in the interface).' },
       qr: { type: 'boolean', description: 'start, status: the follow link\'s QR code too, as the interface shows it (#3637): qr, an SVG (black on white); with editors, the editors\' link\'s too, editQr (#3996).' },
       key: STR('start: the key of a relay on another computer (its config.json\'s relay.key, #3227), instead of the token of a Silinx server on this one.'),
-      top: STR('start: a module of the project the links open on, as Share Module… does, live (#3631): …#follow=…&top=<module>; the project shared as it is.'),
+      top: STR('start: a module of the project the links open on, as Share Module… does, live (#3631): …#view=…&top=<module>; the project shared as it is.'),
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async run({ project: name, action = 'start', name: who, server, editors = false, key, top, qr = false, user }) {
@@ -249,7 +249,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#follow=… of Share Project… or share_project), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor, and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor, and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
@@ -261,9 +261,9 @@ export const COLLAB_TOOLS = [
     async run({ link, path, name: who, write, stop = false }) {
       let l;
       try { l = parseFollowLink(link); } catch (e) { throw toolError(e.message); }
-      if (!l || !l.base) throw toolError('link: a link to follow (http(s)://…/#follow=…)');
+      if (!l || !l.base) throw toolError('link: a link to follow (http(s)://…/#view=…)');
       // (a room the owner's page hosts, #3227: reached over WebRTC, which this server has not)
-      if (l.via === 'host') throw toolError('link: a project its owner\'s page hosts (…#follow=….host) is followed in a browser, over WebRTC: open the link in Silinx');
+      if (l.via === 'host') throw toolError('link: a project its owner\'s page hosts (…#view=….host) is followed in a browser, over WebRTC: open the link in Silinx');
       // (through the relay the link names, #3227, else the link's own Silinx)
       const origin = serverOf(l.relay || l.base, 'link');
       // (a room followed and edited: two participants; an editors' link renewed, #3997: another one, its key its own)

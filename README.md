@@ -432,12 +432,14 @@ Syntax, say its problems), and shares it with the project. A link opens a lab be
 A link opens Silinx on a design, straight in Try it, the simulation or the board emulator, with no project to create
 or import: **Share Project…** (the project's right-click menu in the Design pane, the Start page, the ISE
 style's File menu) or **Share Module…** (a module's right-click menu) makes it, **A copy** chosen in its window, the view
-and the module chosen, the link hidden until *Show* (*Copy* copies it all the same, *Show QR Code* shows its QR code, as
-large as the window) (its other way, **Live**, shares the project as you work: your name on the window, *Start Sharing*, then two links in
-the same window, each hidden with its *Show*, *Copy* and *Show QR Code*: the viewers', who follow it read only, and what you
+and the module chosen, the link made by *Generate* and hidden until *Show* (*Copy* copies it all the same, *Show QR
+Code* shows its QR code, as large as the window) (its other way, **Live**, shares the project as you work: your name on
+the window, *Start Sharing*, then two links in the same window, each made by its own *Generate* and hidden with its
+*Copy*, *Show* and *Show QR Code*: the viewers' (`#view=…`), who follow it read only, and what you
 do: your documents, views and selection, your simulations and Board Emulators (run again on their page from the same
 files, with your time, inputs and view), your runs and the reports you open; and the
-editors', who edit it with you; *Add a User…* gives the link of the role you choose; the toolbar's Sharing menu lists who is in, each a viewer or an
+editors' (`#edit=…`), who edit it with you; the toolbar's Sharing menu copies either (*Copy View Link*, *Copy Editor
+Link*), *Add a User…* gives the link of the role you choose, and it lists who is in, each a viewer or an
 editor, and makes a viewer an editor or an editor a viewer, which renews the editors' link: the old one then only
 follows, the other editors keep editing). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead

@@ -76,7 +76,7 @@ uiTest('#3182 an editor edits a text file live with the owner: the same text on 
     await page.click('.collab-presence .collab-btn');
     await page.waitForSelector('body > .menu-popup');
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi')].map((m) => [m.querySelector('.lbl').textContent, m.querySelector('.sc').textContent])),
-      [['Ana', 'você'], ['Rui', 'editor'], ['Tornar Rui Espectador', ''], ['Copiar Ligação', ''], ['Copiar Ligação de Editor', ''], ['Adicionar um Utilizador…', ''], ['Parar de Partilhar', '']]);
+      [['Ana', 'você'], ['Rui', 'editor'], ['Tornar Rui Espectador', ''], ['Copiar Ligação de Visualização', ''], ['Copiar Ligação de Editor', ''], ['Adicionar um Utilizador…', ''], ['Parar de Partilhar', '']]);
     await page.key('Escape');
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
     // (#3355) the owner's project, trusted, untrusted by the editor's first change written: said once, with its button

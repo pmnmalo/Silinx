@@ -68,7 +68,7 @@ test('share_project start: a page follows it (the project, its files, the owner\
   await ok('new_project_from_example', { name: 'traffic', example: 'traffic' });
   const r = await ok('share_project', { project: 'traffic', name: 'Teacher', server: base });
   const link = r.data.link;
-  assert.match(link, new RegExp(`^${base}/#follow=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}$`));
+  assert.match(link, new RegExp(`^${base}/#view=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}$`));
   assert.equal(r.text, `Sharing 'traffic' live, read only, as Teacher. Anyone with this link follows it (until share_project stop):\n${link}`);
   assert.deepEqual(r.data, { project: 'traffic', shared: true, link, followers: [] });
   // (again: the same link)
@@ -130,7 +130,7 @@ test('#3631 share_project top (Share Module…): the links open on the module; f
   await ok('new_project_from_example', { name: 'blinkyMod', example: 'blinky' });
   const r = await ok('share_project', { project: 'blinkyMod', name: 'Ana', server: base, top: 'speed_ctrl', editors: true });
   const { link, editLink } = r.data;
-  assert.match(link, /#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=speed_ctrl$/);
+  assert.match(link, /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=speed_ctrl$/);
   assert.match(editLink, /#edit=[^&]+&top=speed_ctrl$/);
   assert.equal(r.data.top, 'speed_ctrl');
   assert.equal(r.text, `Sharing 'blinkyMod' live, read only, as Ana, opening on speed_ctrl. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
@@ -167,11 +167,11 @@ test('the errors: a project not shared, a bad action, no project, a bad server, 
   assert.match(d.text, /^share_project: cannot share through http:\/\/127\.0\.0\.1:1: cannot reach the relay at ws:\/\/127\.0\.0\.1:1\/api\/collab\/share \(is Silinx running there\? silinx serve\)$/);
   await fails('follow_project', { link: 'http://x/#follow=abc' }, 'the link to follow is broken (copy it again from the owner\'s Share Project)');
   // (a project its owner's page hosts, #3227: a browser's, over WebRTC)
-  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host` }, 'link: a project its owner\'s page hosts (…#follow=….host) is followed in a browser, over WebRTC: open the link in Silinx');
+  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host` }, 'link: a project its owner\'s page hosts (…#view=….host) is followed in a browser, over WebRTC: open the link in Silinx');
   // (and with its owner's key, the meeting point's: a browser's too)
-  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host.${'P'.repeat(86)}` }, 'link: a project its owner\'s page hosts (…#follow=….host) is followed in a browser, over WebRTC: open the link in Silinx');
-  await fails('follow_project', { link: 'http://x/#design=abc' }, 'link: a link to follow (http(s)://…/#follow=…)');
-  await fails('follow_project', { link: `#follow=${'a'.repeat(22)}.${'b'.repeat(43)}` }, 'link: a link to follow (http(s)://…/#follow=…)');
+  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host.${'P'.repeat(86)}` }, 'link: a project its owner\'s page hosts (…#view=….host) is followed in a browser, over WebRTC: open the link in Silinx');
+  await fails('follow_project', { link: 'http://x/#design=abc' }, 'link: a link to follow (http(s)://…/#view=…)');
+  await fails('follow_project', { link: `#follow=${'a'.repeat(22)}.${'b'.repeat(43)}` }, 'link: a link to follow (http(s)://…/#view=…)');
 });
 
 // #3997: share_project promote and demote, as the Sharing menu: a viewer (the MCP's follow_project) made an editor,

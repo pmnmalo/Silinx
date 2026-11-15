@@ -2,11 +2,11 @@
 // in Silinx (for lecture slides), the whole project inside it
 // (core/design-link.js encodeDesign), and what it opens: the project only, Try it (a schematic's), the simulation (the
 // test bench), the board emulator; the module; the current view (#2886). The link is made as the choices change, its
-// length with it, hidden (#3995, link-field.js: Show, Copy, Show QR Code); one too large for a link (a zip hosted
+// length with it, made by Generate and hidden (#3995, #4073, link-field.js: Generate, Copy, Show, Show QR Code); one too large for a link (a zip hosted
 // elsewhere then) or a view the design does not have is said in the dialog, each copy in the console. Anyone with the
 // link has the whole project, its comments too: the window says so first (#2829). The link is the full one (the project
 // inside it) or a short one (#3223, core/gist-link.js): the project encrypted here and saved as a secret gist of the
-// user's GitHub account by Generate, its key in the link; the account and the project's repository said (#3995); with
+// user's GitHub account by Generate (a choice changed: Generate again, the same gist for the same expiry), its key in the link; the account and the project's repository said (#3995); with
 // no GitHub sign-in (the browser edition's) or token (a server's GH_TOKEN), the dialog offers the sign-in, or the full
 // link. (A link that opens a guided lab, #3179, is the MCP's project_link's: the window has no Lab row, #3995.)
 import { api } from './api.js';
@@ -76,9 +76,22 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   const expiry = h('select', { 'data-field': 'expires', disabled: true }, ...EXPIRY_DAYS.map(d => h('option', { value: String(d) }, EXPIRY[d])));
   let link = null, opts = null, made = null, madeFor = null, saidLong = false, manage = false, closeIt = null, copied = null, said = null;
   const shortLink = () => makeLink(linkBase(), { gist: `${made.id}.${made.key}`, ...opts });
-  // (the link, hidden: Show, Copy, Show QR Code; a short one's Generate above Show QR Code, #3995)
-  const field = linkField({ field: 'link', onCopy: l => copyNow(l) });
-  const generate = h('button', { class: 'btn link-generate', type: 'button', onclick: async () => { if (await makeShort()) update(); } }, 'Generate');
+  // (the link, hidden, made by Generate only, #3995, #4073: Generate, Copy, Show, Show QR Code)
+  const field = linkField({ field: 'link', onCopy: l => copyNow(l), generate: () => generated() });
+  // the link the choices give, made: the full one (its length said; one too long for a QR code, said once), or the short
+  // one (its gist made now, or the one made for this expiry); null: not made, said
+  const generated = async () => {
+    if (!link) return null;
+    if (short.checked) return (await makeShort()) ? shortLink() : null;
+    if (!qrSvg(link) && !saidLong) {
+      saidLong = true;
+      app.log(`${action}: the link of '${name}' is ${link.length} characters, too long for a QR code (at most ${QR_MAX_BYTES}): the short link has one.`, 'info');
+    }
+    info.textContent = link.length > LINK_LIMITS.slides
+      ? `${link.length} characters: some slide tools cut a link longer than ${LINK_LIMITS.slides} (export the project as a .zip, host it, and link to it with #open=).`
+      : `${link.length} characters.`;
+    return link;
+  };
   // the short link's gist, made now (with the browser's sign-in, or the server's token); false: why not, said
   const makeShort = async () => {
     if (made && madeFor === expiry.value) return true;
@@ -125,7 +138,6 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     link = null;
     field.set(null);
     info.textContent = ''; err.textContent = ''; account.textContent = '';
-    field.extra.replaceChildren(...(short.checked ? [generate] : []));
     if (encodeError) { err.textContent = encodeError; return; }
     // (the module: in the link when it is not the project's top, or when the link is a module's: Share Module
     // Copy…, the project then opened on it, #2871; a test bench when it is not the project's, #2878)
@@ -139,20 +151,8 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     signIn.style.display = 'none';
     if (short.checked) {
       info.textContent = 'A short link, about 140 characters: the project encrypted in this browser and saved as a secret gist of your GitHub account when you generate it; only the link opens it. Your links are your gists, which you list and delete on GitHub.';
-      const ready = made && madeFor === expiry.value;
-      generate.disabled = !!ready;
-      if (ready) field.set(shortLink());
       sayAccount();
-      return;
     }
-    field.set(link);
-    if (!qrSvg(link) && !saidLong) {
-      saidLong = true;
-      app.log(`${action}: the link of '${name}' is ${link.length} characters, too long for a QR code (at most ${QR_MAX_BYTES}): the short link has one.`, 'info');
-    }
-    info.textContent = link.length > LINK_LIMITS.slides
-      ? `${link.length} characters: some slide tools cut a link longer than ${LINK_LIMITS.slides} (export the project as a .zip, host it, and link to it with #open=).`
-      : `${link.length} characters.`;
   };
   viewSel.addEventListener('change', () => { fillModules(); update(); });
   short.addEventListener('change', update);
@@ -174,8 +174,8 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
         h('label', {}, 'Module:'), modSel,
         h('label', {}, 'View:'), h('label', { class: 'link-ui' }, withView, h('span', {}, 'Include the current view: the open tabs, the split, the panels')),
         h('label', {}, 'Link:'), h('div', { class: 'link-forms' },
-          h('label', { class: 'link-full' }, full, h('span', {}, 'The full link: the project inside it (needs nothing, but long)')), h('br'),
-          h('label', { class: 'link-short' }, short, h('span', {}, 'A short link: the project encrypted in a secret gist of your GitHub account'))),
+          h('label', { class: 'link-full' }, full, h('span', {}, 'Full link: the project inside it (needs nothing, but long)')), h('br'),
+          h('label', { class: 'link-short' }, short, h('span', {}, 'Short link: the project encrypted in a secret gist of your GitHub account'))),
         h('label', {}, 'Expires:'), expiry),
       field.el, info, account, err, signIn,
       h('div', { class: 'link-manage' }, h('a', { href: '#', onclick: e => { e.preventDefault(); manage = true; closeIt?.(); } }, 'Manage short links…'))),

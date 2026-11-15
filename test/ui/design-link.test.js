@@ -14,6 +14,8 @@ import { newPetri } from '../../core/petri.js';
 let env;
 before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
+// the window's link, made by its Generate (#4073: a link exists only once it is clicked)
+const genLink = (page) => page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value) || null, [], { what: 'the link generated' });
 const E = () => env;
 
 const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text);
@@ -34,7 +36,7 @@ async function contextMenu(page, row, item) {
   if (item) await page.click('body > .menu-popup .mi', { text: item });
   return items;
 }
-const dialogLink = (page) => page.waitFor(() => document.querySelector('.dlg-overlay .link-out')?.value || null, [], { what: 'the link in the dialog' });
+const dialogLink = (page) => page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) || null, [], { what: 'the link in the dialog' });
 
 uiTest('#2826 an example\'s link opens it into Try it: the schematic\'s live simulation running; the address cleared', E, async (page) => {
   await openLink(page, 'open=example:gates&view=try');
@@ -74,7 +76,7 @@ uiTest('#2869 a Petri net: Share Module… chooses Try it; the link opens the ne
   await contextMenu(page, row, 'Share Module…');
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
-  const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
+  const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
   await page.dialogButton('Close');
   await page.waitNoDialog();
   await openLink(page, new URL(link).hash.slice(1), 'pn=1');
@@ -102,7 +104,7 @@ uiTest('#2826 Copy Link…: the project\'s and a module\'s menus, the File menu,
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), 'Try it: \'top\' is not a schematic, a state diagram, a Petri net or an ASM chart.');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
   await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = 'simulate'; s.dispatchEvent(new Event('change')); });
-  const link = await page.waitFor(() => /&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the simulation\'s link' });
+  const link = await page.waitFor(() => /&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the simulation\'s link' });
   await page.click('.dlg-overlay .link-copy');
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -137,7 +139,7 @@ uiTest('#3230 regression, the project\'s Copy Link… with Open the project only
   assert.equal(await page.eval((s) => document.querySelector(s).disabled, field('module')), true);
   // (a module other than the top set in the list anyway, and the view left out: still no module in the link)
   await page.eval((s, u) => { const m = document.querySelector(s); m.value = 'timer'; m.dispatchEvent(new Event('change')); const c = document.querySelector(u); c.checked = false; c.dispatchEvent(new Event('change')); }, field('module'), field('ui'));
-  const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link' });
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value) || null, [], { what: 'the link' });
   assert.match(link, /#design=[A-Za-z0-9_-]+$/);
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -157,7 +159,7 @@ uiTest('#2871 regression, Share Module… with Open the project only: the link o
     await contextMenu(page, row, 'Share Module…');
     await page.waitDialog('Share Module');
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), '');
-    const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link' });
+    const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value) || null, [], { what: 'the link' });
     await page.dialogButton('Close');
     await page.waitNoDialog();
     return link;
@@ -198,14 +200,15 @@ uiTest('#2878 Copy Link…: the Module list follows Open in: Simulation the test
   // the simulation: the test benches, the project's first and chosen
   await setView('simulate');
   assert.deepEqual(await options(), ["tb_a (the project's) *", 'tb_b']);
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), /#design=[A-Za-z0-9_-]+&view=simulate(&ui=[A-Za-z0-9_-]+)?$/);
+  assert.match(await genLink(page), /#design=[A-Za-z0-9_-]+&view=simulate(&ui=[A-Za-z0-9_-]+)?$/);
   await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=module]'); s.value = 'tb_b'; s.dispatchEvent(new Event('change')); });
-  const link = await page.waitFor(() => /&top=tb_b&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'tb_b\'s link' });
+  const link = await page.waitFor(() => /&top=tb_b&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'tb_b\'s link' });
   // back to the project only: the design's module again; then the simulation: tb_b kept
   await setView('');
   assert.deepEqual(await options(), ['inv (top) *']);
   await setView('simulate');
   assert.deepEqual(await options(), ["tb_a (the project's)", 'tb_b *']);
+  await genLink(page);
   await page.click('.dlg-overlay .link-copy');
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -251,7 +254,7 @@ uiTest('#2883 a test bench\'s Share Module… in the Simulation hierarchy: Simul
     [['copy', true, false, ''], ['live', false, true, 'A test bench is shared as a copy only.']]);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'simulate');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=module]').value), 'tb_b');
-  const link = await page.waitFor(() => /&top=tb_b&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'tb_b\'s link' });
+  const link = await page.waitFor(() => /&top=tb_b&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'tb_b\'s link' });
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // in Portuguese
@@ -278,7 +281,7 @@ uiTest('#2884 regression, Board Emulator: the Module list disabled on the top, t
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = 'emulate'; v.dispatchEvent(new Event('change')); });
   const state = () => page.eval(() => { const m = document.querySelector('.dlg-overlay select[data-field=module]'); return { disabled: m.disabled, options: [...m.options].map((o) => `${o.textContent}${o.selected ? ' *' : ''}`) }; });
   assert.deepEqual(await state(), { disabled: true, options: ['top (top) *'] });
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), /#design=[A-Za-z0-9_-]+&view=emulate(&ui=[A-Za-z0-9_-]+)?$/);
+  assert.match(await genLink(page), /#design=[A-Za-z0-9_-]+&view=emulate(&ui=[A-Za-z0-9_-]+)?$/);
   // back to the project only: timer again, the list enabled
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = ''; v.dispatchEvent(new Event('change')); });
   assert.equal((await state()).disabled, false);
@@ -310,7 +313,7 @@ uiTest('#2876 regression, a schematic named in another case than its module (Gat
   await contextMenu(page, row, 'Share Module…');
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
-  const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
+  const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), '');
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -326,7 +329,7 @@ uiTest('#2882 regression, a C module (Silinx HLS): Share Module… makes its lin
   const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === 'fir'); return i >= 0 ? i : null; }, [], { what: 'the C module\'s row' });
   await contextMenu(page, row, 'Share Module…');
   await page.waitDialog('Share Module');
-  const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link' });
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value) || null, [], { what: 'the link' });
   assert.match(link, /#design=[A-Za-z0-9_-]+&top=fir(&ui=[A-Za-z0-9_-]+)?$/);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), '');
   await page.dialogButton('Close');
@@ -369,9 +372,9 @@ uiTest('#2886 the link carries Silinx\'s view: tabs, the one in front, the split
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=ui]').checked), true);
-  const link = await page.waitFor(() => /&ui=[A-Za-z0-9_-]+$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link with its view' });
+  const link = await page.waitFor(() => /&ui=[A-Za-z0-9_-]+$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link with its view' });
   await page.eval(() => { const c = document.querySelector('.dlg-overlay input[data-field=ui]'); c.checked = false; c.dispatchEvent(new Event('change')); });
-  assert.doesNotMatch(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), /&ui=/);
+  assert.doesNotMatch(await genLink(page), /&ui=/);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // another viewer (a browser of its own): the link opens Silinx as it was
@@ -509,6 +512,7 @@ uiTest('#2826 in Portuguese: Copy Link… and the replace question', E, async (p
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.menu('Ficheiro', 'Partilhar Projeto…');
   assert.equal(await page.waitDialog('Partilhar Projeto'), 'Partilhar Projeto');
+  await genLink(page);
   const t = await page.eval(() => document.querySelector('.dlg-overlay .dlg-body').innerText);
   for (const s of ['Abrir em:', 'Abrir só o projeto', 'Experimentar (a simulação de um desenho)', 'Incluir a vista atual: os separadores abertos, a divisão, os painéis', 'Módulo:', 'Vista:', 'Uma cópia', 'Uma ligação com o projeto lá dentro', 'Em direto', 'Os outros seguem-no enquanto trabalha', 'Uma ligação que abre \'gates\' no Silinx', 'caracteres']) assert.ok(t.includes(s), `${s} in:\n${t}`);
   for (const s of ['Placa:', 'Laboratório:']) assert.ok(!t.includes(s), `${s} (#3995: no Board, no Lab) in:\n${t}`);

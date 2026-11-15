@@ -68,7 +68,7 @@ uiTest('#3227 the meeting point: a follower opens the link and is in, an imposto
   await local(page);
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   const link = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana', { via: 'host' }); return m.sharedLink(); });
-  assert.match(link, /^http:\/\/[^/]+\/#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/);
+  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/);
   // an impostor at the meeting point: a page with the link, its proof forged (another key's), sent to every peer
   await page.eval(async (l) => {
     const { channelMeeting, meetTopic, hostProof, newHostKey } = await import('/core/collab-meet.js');

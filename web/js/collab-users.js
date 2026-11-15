@@ -1,6 +1,6 @@
 // Add a User… (#3996), the live Share Project…'s and the toolbar's Sharing menu's: a user's role chosen, Viewer (follows
-// the project, read only) or Editor (edits its text files and drawings with the owner), and that role's link given,
-// hidden (link-field.js: Show, Copy, Show QR Code); the two links are not the same, the editors' carrying the room's
+// the project, read only) or Editor (edits its text files and drawings with the owner), and that role's link made by
+// Generate, hidden (link-field.js: Generate, Copy, Show, Show QR Code, #4073); the two links are not the same, the editors' carrying the room's
 // signing key (core/collab-sign.js), which the viewers' has not and cannot be derived from. A share this page hosts
 // (#3227) also takes a user's code (Take a Code…, collab-host.js), for a user whose page did not find it.
 import { h, dialog } from './ui.js';
@@ -20,7 +20,7 @@ const roleLink = (share, role, module = null) => {
 /** Add a User…: Viewer or Editor chosen (`role`, Viewer first), its link given; resolves to the role last chosen. */
 export async function addUserDialog(share, module = null, role = 'viewer') {
   let chosen = ROLES.includes(role) ? role : 'viewer';
-  const field = linkField({ field: 'user-link', onCopy: l => {
+  const field = linkField({ field: 'user-link', generate: async () => roleLink(share, chosen, module), onCopy: l => {
     writeClip('text', l);
     app.log(chosen === 'editor' ? 'Add a User: the editors\' link copied: whoever opens it edits the project\'s text files and drawings with you.' : 'Add a User: the viewers\' link copied: whoever opens it follows the project live, read only.', 'ok');
   } });
@@ -31,7 +31,7 @@ export async function addUserDialog(share, module = null, role = 'viewer') {
     return h('label', { class: `collab-role-${value}` }, r, h('span', {}, label));
   };
   const draw = () => {
-    field.set(roleLink(share, chosen, module));
+    field.set(null);   // (the role's link made by Generate, #4073)
     note.textContent = chosen === 'editor' ? 'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.' : 'A viewer follows the project live, read only: its files and drawings, and what you do (your documents and cursor, your views, simulations, emulators and runs).';
   };
   draw();

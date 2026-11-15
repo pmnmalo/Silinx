@@ -64,12 +64,15 @@ test('crypto: a sealed message opens with its key, room and kind only; a key\'s 
 test('link: made and parsed; another hash is not one; a broken one is said', () => {
   const room = 'A'.repeat(22), key = 'b'.repeat(43);
   const l = followLink('http://localhost:8642/?x=1#old', room, key);
-  assert.equal(l, `http://localhost:8642/#follow=${room}.${key}`);
+  // (a viewer's link: #view=, #4073; one made before it, #follow=, the same room)
+  assert.equal(l, `http://localhost:8642/#view=${room}.${key}`);
   assert.deepEqual(parseFollowLink(l), { base: 'http://localhost:8642/', room, key, via: 'relay', sign: null });
   assert.deepEqual(parseFollowLink(`#follow=${room}.${key}`), { base: null, room, key, via: 'relay', sign: null });
+  assert.deepEqual(parseFollowLink(`#view=${room}.${key}`), parseFollowLink(`#follow=${room}.${key}`));
+  assert.throws(() => parseFollowLink(`#view=${room}.${key}.${'s'.repeat(129)}`), /broken/);   // (a signing key only in an editor's)
   // (a room the owner's page hosts, #3227)
   const hl = followLink('https://silinx.example.org/app/', room, key, 'host');
-  assert.equal(hl, `https://silinx.example.org/app/#follow=${room}.${key}.host`);
+  assert.equal(hl, `https://silinx.example.org/app/#view=${room}.${key}.host`);
   assert.deepEqual(parseFollowLink(hl), { base: 'https://silinx.example.org/app/', room, key, via: 'host', sign: null });
   assert.throws(() => followLink('http://x/', room, key, 'peer'), /through a relay or its host/);
   assert.throws(() => parseFollowLink(`#follow=${room}.${key}.peer`), /broken/);

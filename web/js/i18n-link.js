@@ -14,8 +14,8 @@ export const LINK_PT = {
   'Copy Link': 'Copiar Ligação', 'Open from a Link': 'Abrir a partir de uma Ligação',
   // Copy Link's short link (#3223)
   'Link:': 'Ligação:',
-  'The full link: the project inside it (needs nothing, but long)': 'A ligação completa: o projeto dentro dela (não precisa de nada, mas é longa)',
-  'A short link: the project encrypted in a secret gist of your GitHub account': 'Uma ligação curta: o projeto cifrado num gist secreto da sua conta do GitHub',
+  'Full link: the project inside it (needs nothing, but long)': 'Ligação completa: o projeto dentro dela (não precisa de nada, mas é longa)',
+  'Short link: the project encrypted in a secret gist of your GitHub account': 'Ligação curta: o projeto cifrado num gist secreto da sua conta do GitHub',
   'A short link, about 140 characters: the project encrypted in this browser and saved as a secret gist of your GitHub account when you generate it; only the link opens it. Your links are your gists, which you list and delete on GitHub.':
     'Uma ligação curta, com cerca de 140 carateres: o projeto cifrado neste navegador e guardado num gist secreto da sua conta do GitHub quando a gera; só a ligação o abre. As suas ligações são os seus gists, que lista e apaga no GitHub.',
   'A short link needs your GitHub sign-in: sign in, or choose the full link.': 'Uma ligação curta precisa da sua sessão no GitHub: inicie-a, ou escolha a ligação completa.',
@@ -34,7 +34,7 @@ export const LINK_PT = {
     'As suas ligações curtas: gists secretos da sua conta do GitHub, cada um com o projeto cifrado. Uma ligação feita neste navegador pode ser copiada de novo; apagar uma apaga o seu gist, e a ligação deixa de abrir.',
   'Expires:': 'Expira:', 'Never': 'Nunca', 'In a week': 'Daqui a uma semana', 'In a month': 'Daqui a um mês', 'In six months': 'Daqui a seis meses', 'In a year': 'Daqui a um ano',
   // a sharing window's QR code (#3637, web/js/link-qr.js)
-  // the link hidden (#3995, web/js/link-field.js); a short link made by Generate
+  // the link hidden (#3995, web/js/link-field.js); every link made by Generate (#4073)
   'Hide': 'Ocultar', 'Generate': 'Gerar',
   'Show QR Code': 'Mostrar o Código QR', 'QR Code': 'Código QR', 'QR code of the link': 'Código QR da ligação',
 };

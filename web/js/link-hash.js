@@ -1,7 +1,7 @@
 // A link given to a Silinx already running (#3316): the address's hash changed (a link pasted or edited in the address
 // bar, Back / Forward) without the page loading again. A design's link (#open=…, core/design-link.js) is opened as at
 // start-up, through the same functions (link-open.js linkOptions, openFromLink: the same checks, size caps, the user's
-// consent before a zip from elsewhere is fetched, the same refusals and messages); a shared project's link (#follow=,
+// consent before a zip from elsewhere is fetched, the same refusals and messages); a shared project's link (#view=, #follow=,
 // #edit=, collab-follow.js) and any link while a project is followed load the page again, which handles it at start-up
 // (following replaces the workspace's api). The open documents are saved only once the link is read and agreed to
 // (#3362: another page holding this window can change its hash): a design's link once it decodes (a zip's once the
@@ -15,7 +15,7 @@ import { S, app } from './app.js';
 import { confirmDlg } from './ui.js';
 import { collab } from './collab-state.js';
 
-const TOKEN = /^#(?:token|code)=/, FOLLOW = /^#(?:follow|edit)=/;
+const TOKEN = /^#(?:token|code)=/, FOLLOW = /^#(?:view|follow|edit)=/;   // (#view=, a viewer's, #4073; #follow=, the links before it)
 let queue = Promise.resolve();
 
 /** Open the links the address's hash gives from now on (once, at the end of the start-up). */

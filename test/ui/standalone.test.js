@@ -602,7 +602,7 @@ uiTest('standalone edition (file://) in a user\'s browser (Chrome without --allo
 }, { url: () => 'about:blank', timeout: 300000 });
 
 // #418: the Board Emulator in the browser edition compiles the design with the site's Yosys (its assets)
-uiTest('#3227 browser edition: Share Project… hosts the room in the page (its link …#follow=<room>.<key>.host.<owner\'s key>), Add a User… among its commands', E, async (page) => {
+uiTest('#3227 browser edition: Share Project… hosts the room in the page (its link …#view=<room>.<key>.host.<owner\'s key>), Add a User… in the Sharing menu', E, async (page) => {
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
@@ -626,9 +626,9 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay .collab-relay')), false);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
-  const link = await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
-  assert.ok(link.startsWith(siteUrl) && /#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/.test(link), link);
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Start Sharing', 'Stop Sharing', 'Add a User…', 'Close']);
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
+  assert.ok(link.startsWith(siteUrl) && /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/.test(link), link);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Start Sharing', 'Stop Sharing', 'Close']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-hosted').hidden), false);
   await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code/m);
   // (the meeting point's Trystero in the site's bundle, #3227)
@@ -1516,7 +1516,7 @@ uiTest('#2826 browser edition (the Pages site): a design\'s link and an example\
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = 'simulate'; v.dispatchEvent(new Event('change')); });
-  const link = await page.waitFor(() => /^https?:.*#design=[\w-]+&view=simulate(&ui=[\w-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
+  const link = await page.waitFor(() => /^https?:.*#design=[\w-]+&view=simulate(&ui=[\w-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
   await page.dialogButton('Close');
   await page.goto(link.replace('#', '?l=3#'));
   await boot();
@@ -1541,7 +1541,7 @@ uiTest('#2894 regression, browser edition (the Pages site): a link opened in a n
     } else await page.menu('File', 'Share Project…');
     await page.waitDialog(module ? 'Share Module' : 'Share Project');
     await page.eval((v) => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = v; s.dispatchEvent(new Event('change')); }, view);
-    const link = await page.waitFor(() => /#design=[\w-]+/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
+    const link = await page.waitFor(() => /#design=[\w-]+/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
     await page.dialogButton('Close');
     await page.waitNoDialog();
     return link;

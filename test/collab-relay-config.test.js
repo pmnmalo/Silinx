@@ -67,7 +67,7 @@ test('the relay\'s key opens a room, a wrong one does not; a link through that r
   const owner = await shareRoom({ url: relayUrl(base, 'share'), token: KEY, doc, user: { name: 'Ana' } });
   // (the link: the site's address, the relay's in it)
   const link = followLink(`${SITE}/`, owner.room, owner.key, 'relay', null, base);
-  assert.equal(link, `${SITE}/#follow=${owner.room}.${owner.key}&relay=${encodeURIComponent(base)}`);
+  assert.equal(link, `${SITE}/#view=${owner.room}.${owner.key}&relay=${encodeURIComponent(base)}`);
   const l = parseFollowLink(link);
   assert.equal(l.relay, base);
   const fol = await followRoom({ url: relayUrl(l.relay, 'follow'), room: l.room, key: l.key, user: { name: 'Rui' } });
@@ -80,7 +80,7 @@ test('the relay\'s key opens a room, a wrong one does not; a link through that r
 test('a link through another relay: its address an http(s) origin, no user nor password, never with .host', () => {
   const room = 'R'.repeat(22), key = 'K'.repeat(43);
   assert.equal(followLink('https://site.example/app/', room, key, 'relay', null, 'https://relay.example.org:8642/some/path?q'),
-    `https://site.example/app/#follow=${room}.${key}&relay=${encodeURIComponent('https://relay.example.org:8642')}`);
+    `https://site.example/app/#view=${room}.${key}&relay=${encodeURIComponent('https://relay.example.org:8642')}`);
   assert.equal('relay' in parseFollowLink(`#follow=${room}.${key}`), false, 'no relay named: none in the link\'s room');
   for (const bad of [`#follow=${room}.${key}&relay=${encodeURIComponent('ftp://x.example')}`, `#follow=${room}.${key}.host&relay=${encodeURIComponent('https://x.example')}`,
     `#follow=${room}.${key}&relay=${encodeURIComponent('https://u:p@x.example')}`, `#follow=${room}.${key}&relay=%E0`, `#follow=${room}.${key}&relay=`, `#follow=${room}.${key}&other=1`]) {

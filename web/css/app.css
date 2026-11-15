@@ -413,11 +413,10 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 /* a sharing window's QR code (#3637): black on white in either theme, as large as the window (#3995: shown when asked) */
 /* a sharing window's link, hidden (#3995: web/js/link-field.js): the masked field, its buttons in a column beside it;
    the Share: row's two ways side by side, each one's explanation below its button */
-.link-field { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
-.link-field > .link-out { flex: 1 1 auto; min-width: 0; font: 11px var(--mono, monospace); }
+.link-field { display: flex; gap: 8px; align-items: stretch; margin-top: 12px; }
+.link-field > .link-out { flex: 1 1 auto; min-width: 0; height: auto; font: 11px var(--mono, monospace); }   /* (as tall as its buttons, #4073) */
 .link-buttons { display: flex; flex-direction: column; gap: 4px; flex: none; min-width: 120px; }
-.link-buttons > .btn, .link-extra > .btn { width: 100%; }
-.link-extra:empty { display: none; }
+.link-buttons > .btn { width: 100%; }
 .share-how { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 10px 0; }
 .share-how-choices { display: flex; flex-wrap: wrap; gap: 6px 32px; }
 .share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }

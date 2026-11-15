@@ -282,7 +282,7 @@ uiTest('#3179 the stopwatch lab: the emulator (a step to try), the test bench, t
   // the MCP's project_link's)
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
-  const link = await page.waitFor(() => document.querySelector('.dlg-overlay .link-out')?.value || null, [], { what: 'the link' });
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) || null, [], { what: 'the link' });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=lab]')), null);
   assert.doesNotMatch(link, /lab=/);
   await page.dialogButton('Close');

@@ -74,7 +74,7 @@ test('a session description\'s fingerprint', () => {
 test('the link of a hosted room with the owner\'s key: made, parsed; a broken key refused', async () => {
   const room = 'A'.repeat(22), key = 'b'.repeat(43), { pub } = await newHostKey();
   const l = followLink('https://silinx.example.org/', room, key, 'host', null, null, pub);
-  assert.equal(l, `https://silinx.example.org/#follow=${room}.${key}.host.${pub}`);
+  assert.equal(l, `https://silinx.example.org/#view=${room}.${key}.host.${pub}`);
   assert.equal(l.length - followLink('https://silinx.example.org/', room, key, 'host').length, 87);
   assert.deepEqual(parseFollowLink(l), { base: 'https://silinx.example.org/', room, key, via: 'host', sign: null, host: pub });
   const s = await newSigner();

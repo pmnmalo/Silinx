@@ -39,7 +39,7 @@ export async function sealCode(key, room, kind, sdp) {
 
 /** A code that this sharing's key does not open: what to do, on each side (#3351). */
 export const NOT_THIS = Object.freeze({
-  offer: 'a follower\'s code is not of this sharing (or not whole): its link may be of an earlier one (each sharing has a new link); give them this sharing\'s link again (Copy Link) and paste the code their page then shows, whole',
+  offer: 'a follower\'s code is not of this sharing (or not whole): its link may be of an earlier one (each sharing has a new link); give them this sharing\'s link again (Copy View Link) and paste the code their page then shows, whole',
   answer: 'the owner\'s code is not of this sharing (or not whole): the owner may have shared again (each sharing has a new link); open their new link, or paste their code again, whole',
 });
 

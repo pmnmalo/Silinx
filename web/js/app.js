@@ -915,7 +915,7 @@ async function boot() {
 
   updateTitle();
   // a shared project's link (#3181): followed, read only, instead of the workspace's projects
-  const followed = /^#(follow|edit)=/.test(location.hash) && await (await import('./collab-follow.js')).startFollowing();
+  const followed = /^#(view|follow|edit)=/.test(location.hash) && await (await import('./collab-follow.js')).startFollowing();
   // (one pasted into this tab's address bar later: only the fragment changes, the page is not loaded again, #3318)
   log(`${PRODUCT} ${VERSION_LABEL} Project Navigator — HDL design, schematics, behavioural simulation and Xilinx FPGA implementation/programming.`, 'info');
   if (api.standalone) {

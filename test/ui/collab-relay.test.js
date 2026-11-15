@@ -47,7 +47,7 @@ uiTest('#3227 through a relay on another Silinx: the owner shares through it, th
   const link = await page.eval(async (address, key) => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana', { via: 'relay', relay: { address, key } }); return m.sharedLink(); }, relayBase, KEY);
   const host = new URL(relayBase).host;
   assert.equal(link.split('#')[0], `${new URL(env.server.url).origin}/`);
-  assert.match(link, new RegExp(`^[^#]+#follow=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}&relay=${encodeURIComponent(relayBase).replace(/\./g, '\\.')}$`));
+  assert.match(link, new RegExp(`^[^#]+#view=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}&relay=${encodeURIComponent(relayBase).replace(/\./g, '\\.')}$`));
   await page.waitConsole(new RegExp(`^Shared through the relay at ${host.replace(/\./g, '\\.')}: it sees no file, only who is in\\.$`, 'm'));
   // the follower: the site's link, the relay named, the project through it
   const fp = await env.newPage(env.server.url);

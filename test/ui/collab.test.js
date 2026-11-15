@@ -32,7 +32,7 @@ async function share(page, name, { pt = false } = {}) {
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', name);
   await page.dialogButton(pt ? 'Começar a Partilhar' : 'Start Sharing');
-  const link = await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
   await page.dialogButton(pt ? 'Fechar' : 'Close');
   await page.waitNoDialog();
   return link;
@@ -56,7 +56,7 @@ uiTest('#3181 share and follow: the follower sees the project, the owner\'s edit
   await page.openProject('Shared');
   await page.eval(async () => { await window.SilinxApp.openFile('src/top.vhd'); window.Silinx.active.editor.setCursor({ line: 9, ch: 2 }); });
   const link = await share(page, 'Ana');
-  assert.match(link, /^http:\/\/[^/]+\/#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/);
+  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/);
   await page.waitConsole(/Sharing project "Shared": anyone with its link follows it live, read only/);
   assert.equal(await page.eval(() => document.querySelector('.collab-presence .collab-btn')?.textContent), 'Sharing');
   const fp = await follow(link, 'Rui');
@@ -218,7 +218,7 @@ uiTest('#3716 Share Project in the main toolbar, after Close Project (#3719), no
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
-  await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
+  await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
   await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.waitFor(() => document.querySelector('.collab-presence .collab-btn')?.textContent === 'Sharing', [], { what: 'Sharing' });
@@ -331,9 +331,9 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
-  const link = await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' });
-  assert.match(link, /^http:\/\/[^/]+\/#follow=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=pass1$/);
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=edit-link]').value), /#edit=[^&]+&top=pass1$/);
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
+  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=pass1$/);
+  assert.match(await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=edit-link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=edit-link]')?.value) || null, [], { what: 'the editors\' link' }), /#edit=[^&]+&top=pass1$/);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-about').textContent), 'Anyone with this link follows "ModShared" live, read only, opening it on pass1, as long as you share it.');
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -357,7 +357,7 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
   // asked again while shared: that module's links at once
   await treeMenu(page, await rowOf(page, 'top'), 'Share Module…');
   await page.waitDialog('Share Module');
-  assert.match(await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=link]')?.value || null, [], { what: 'the link' }), /&top=top$/);
+  assert.match(await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' }), /&top=top$/);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // in Portuguese
