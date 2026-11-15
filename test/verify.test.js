@@ -184,7 +184,7 @@ test('Yosys\'s script, and its log read: a proof, a bounded check, a counterexam
 });
 
 // The examples against their own flat Verilog (the open synthesis's, core/synth-verilog.js, read back by Silinx's Verilog
-// front end): no difference in 10 clock cycles, no warnings; gates (combinational) proved. (stopwatch and micro80 left
+// front end): no difference in 10 clock cycles, no warnings; gates (combinational) and breadboard proved. (stopwatch and micro80 left
 // out: Yosys's SAT solver takes minutes from their second clock cycle on, #3177's later parts)
 const SLOW = new Set(['stopwatch', 'micro80']);
 test('the examples against their own flat Verilog: no difference, no warnings', async () => {
@@ -196,7 +196,7 @@ test('the examples against their own flat Verilog: no difference, no warnings', 
     const r = await check([...design, ref], top, `${top}_ref`, 10);
     got[ex] = [r.status, r.warnings, r.errors];
   }
-  assert.deepEqual(got, Object.fromEntries(EXAMPLES.filter(e => !SLOW.has(e)).map(e => [e, [e === 'gates' ? 'proved' : 'bounded', [], []]])));
+  assert.deepEqual(got, Object.fromEntries(EXAMPLES.filter(e => !SLOW.has(e)).map(e => [e, [e === 'gates' || e === 'breadboard' ? 'proved' : 'bounded', [], []]])));
 });
 
 // SymbiYosys on the same miter, natively (SILINX_SBY: its command), as an independent reference
