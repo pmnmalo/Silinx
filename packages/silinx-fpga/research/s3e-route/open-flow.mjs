@@ -21,6 +21,7 @@ import { compile, elaborate } from '../../../../core/compile.js';
 import { primitiveSources } from '../../../../core/unisim.js';
 import { isCSource, viewHdl } from '../../../../core/view-hdl.js';
 import { synthesizeOpen } from '../../../../core/synth-front.js';
+import { synthesisSources } from '../../../../core/translate-off.js';
 import { yosysWorkers } from '../../src/synth-open-node.js';
 import { runFlow } from '../../src/open-flow-core.js';
 import { synthEffort } from '../../src/synth-open.js';
@@ -63,7 +64,9 @@ if (!netFile) {
     if (v.errors.length) fail('a C source has errors', v.errors);
     srcs.push({ path: `${rel}.${v.lang === 'vhdl' ? 'vhd' : 'v'}`, lang: v.lang, text: v.text });
   }
-  const lib = compile([...primitiveSources(srcs), ...srcs]);
+  // (what synthesis reads: the lines between translate_off and translate_on blanked, as the application does, #3901)
+  const synth = synthesisSources(srcs);
+  const lib = compile([...primitiveSources(synth), ...synth]);
   const design = elaborate(lib, top);
   const errs = [...lib.errors, ...design.diags].filter(d => d.severity === 'error');
   if (errs.length) fail('the design has errors', errs.map(e => `${e.file}:${e.line} ${e.message}`));

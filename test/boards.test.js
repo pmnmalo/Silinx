@@ -85,7 +85,7 @@ test('#3741 the Elbert V2: seg a..g, dp and an (3 digits) on Numato\'s pins, act
     assert.deepEqual(unmatched, [], name);
     // (on its headers only what the board has no pin for: an<3>, and uart's rx and tx, the board has no serial port)
     const onHeaders = [...text.matchAll(/^NET "([^"]+)".*# no pin on the board/gm)].map(m => m[1]);
-    assert.deepEqual(onHeaders, { gates: [], vga: [], uart: ['rx', 'tx', 'an<3>'] }[name] || ['an<3>'], name);
+    assert.deepEqual(onHeaders, { gates: [], breadboard: [], vga: [], uart: ['rx', 'tx', 'an<3>'] }[name] || ['an<3>'], name);
   }
   const { text } = exampleUcf('clock', { board: 'elbert-v2' });
   const locs = Object.fromEntries([...text.matchAll(/^NET "([^"]+)"\s+LOC = "([^"]+)"/gm)].map(m => [m[1], m[2]]));

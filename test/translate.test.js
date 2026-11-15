@@ -5,12 +5,15 @@
 // exactly, both ways, and what has no translation, with its message and its line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { compile, elaborate, langOfPath } from '../core/compile.js';
 import { designChecks } from '../core/lint.js';
 import { Simulator } from '../core/simulator.js';
 import { primitiveSources } from '../core/unisim.js';
 import { translateSource, translationLang, translatedPath } from '../core/translate.js';
 import { EXAMPLES, example } from './examples-lib.mjs';
+import { generateCircuit } from '../core/circuit-hdl.js';
 import { diags, sim } from './lang-util.js';
 
 const other = p => (langOfPath(p) === 'vhdl' ? 'verilog' : 'vhdl');
@@ -35,6 +38,7 @@ const UNTRANSLATABLE = {
   'pong/sim/tb_pong.v': "line 27: a declaration of kind 'task' cannot be translated to VHDL",
   'stopwatch/sim/tb_stopwatch.vhd': "line 54: the procedure 'press' cannot be translated to Verilog",
   'clock/sim/tb_clock.v': "line 35: a declaration of kind 'task' cannot be translated to VHDL",
+  'breadboard/sim/tb_breadboard.vhd': "line 42: the procedure 'expect' cannot be translated to Verilog",
   'vga/sim/tb_vga.vhd': "line 50: the procedure 'expect' cannot be translated to Verilog",
   'uart/sim/tb_uart.vhd': "line 74: the procedure 'send' cannot be translated to Verilog",
   'micro80/src/light8080_ucode_pkg.vhdl': 'line 6: a file with no entity',
@@ -51,8 +55,13 @@ for (const name of EXAMPLES) {
     const base = SIMULATED.includes(name) ? run(ex, ex.sources) : null;
     if (base) assert.deepEqual([base.log, base.warnings], [['Simulation finished OK'], []]);
     const seen = {};
+    // (a digital circuit's HDL, #3901: its other language generated from the circuit, as the editor does, not translated;
+    // its simulation's model, 'Z', 'X' and the gates' delays, is outside the translator's subset)
+    const src = path.join(ex.dir, 'src');
+    const circuits = new Map(fs.readdirSync(src).filter(f => f.endsWith('.circ.json')).map(f => JSON.parse(fs.readFileSync(path.join(src, f), 'utf8'))).map(m => [m.generatedFile, m]));
     for (const s of ex.sources.filter(x => langOfPath(x.path) && !/\.c\./.test(x.path))) {
-      const r = tr(s.text, s.path, other(s.path), ex.sources);
+      const m = circuits.get(s.path);
+      const r = m ? { ok: true, lang: other(s.path), text: generateCircuit(m, other(s.path), { source: s.path }).code } : tr(s.text, s.path, other(s.path), ex.sources);
       if (!r.ok) { seen[`${name}/${s.path}`] = r.errors.map(e => `${e.line ? `line ${e.line}: ` : ''}${e.message}`).join('; '); continue; }
       const swapped = ex.sources.map(x => (x === s ? { ...x, path: translatedPath(s.path, r.lang), lang: r.lang, text: r.text } : x));
       if (base) {
