@@ -3,7 +3,8 @@
 // (the notice in their toolbar), its typing refused, the tab's closing warned; the console's Keep a Copy saves the
 // project as a project of its own (a free name beside the owner's, untrusted, the change in it) and opens it, nothing
 // shared any more. The owner stops sharing while an editor (in Portuguese) has changed a file: read only, Close Project
-// asks (Guardar uma Cópia), Close Without Keeping closes it, nothing kept, nothing editable left. The exact warnings.
+// asks (Guardar uma Cópia), Close Without Keeping closes it, nothing kept, nothing editable left. The exact warnings: one's
+// own Stop Following none (#4201), the owner's stop its warning.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -74,7 +75,9 @@ uiTest('#4198 an editor stops following: read only, the tab\'s closing warned; K
     assert.equal(await ep.eval(() => !!document.querySelector('.collab-presence')), false, 'nothing shared any more');
     assert.equal(await ep.eval(async () => (await import('/js/collab-leave.js')).unsaved()), false);
     assert.equal(await ep.eval(() => { const e = new Event('beforeunload', { cancelable: true }); dispatchEvent(e); return e.defaultPrevented; }), false);
-    assert.deepEqual(await warnings(ep), ['WARNING: Ana\'s project "Keep" is no longer followed (the connection to the relay ended): what you see is as it was then.']);
+    // (one's own Stop: said, not warned, #4201)
+    assert.match(await ep.consoleText(), /^Stopped following Ana's project "Keep": what you see is as it was then\.$/m);
+    assert.deepEqual(await warnings(ep), []);
     assert.deepEqual(await warnings(page), [untrustedByEditor('Keep')]);
     assert.deepEqual(ep.errors, []);
   } finally { await ep.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }

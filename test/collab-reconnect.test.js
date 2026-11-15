@@ -9,7 +9,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import * as Y from 'yjs';
 import { socketPair, hostedRooms } from '../core/collab-loop.js';
-import { shareRoom, followRoom, NOT_SHARED, RECONNECT } from '../core/collab-client.js';
+import { shareRoom, followRoom, NOT_SHARED, RECONNECT, LEFT } from '../core/collab-client.js';
 import { projectDoc, publishProject, putFile, docFile, editFile } from '../core/collab-doc.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -142,6 +142,15 @@ test('given up after `for`: the session ends, said; no more tries', async () => 
   assert.equal(ends.length, tries);
 });
 
+test('#4201 close() while joined: its end said as its own (stopped), not as a connection lost', async () => {
+  const c = await setup({ reconnect: { delays: [100], for: 2000 } });
+  await c.f.close();
+  await until(() => types(c.ev).includes('closed'), 'closed');
+  assert.deepEqual(types(c.ev), ['closed']);
+  assert.deepEqual([c.ev.at(-1).reason, c.ev.at(-1).stopped], [LEFT, true]);
+  assert.equal(LEFT, 'you stopped following');
+});
+
 test('close() while lost: ended at once, no more tries; reconnect: false ends at the loss, as before', async () => {
   const a = await setup({ reconnect: { delays: [100], for: 2000 } });
   a.ends.at(-1).close();
@@ -149,6 +158,8 @@ test('close() while lost: ended at once, no more tries; reconnect: false ends at
   await a.f.close();
   assert.equal(a.f.closed(), true);
   assert.deepEqual(types(a.ev), ['offline', 'closed']);
+  // (#4201: its own close said as such, not as a connection lost)
+  assert.deepEqual([a.ev.at(-1).reason, a.ev.at(-1).stopped], [LEFT, true]);
   await sleep(150);
   assert.equal(a.ends.length, 1);
 
@@ -157,6 +168,7 @@ test('close() while lost: ended at once, no more tries; reconnect: false ends at
   await until(() => b.f.closed(), 'closed');
   assert.deepEqual(types(b.ev), ['closed']);
   assert.equal(b.ev.at(-1).reason, 'the connection to the relay ended');
+  assert.equal(b.ev.at(-1).stopped, undefined, 'a connection lost: not stopped by the follower');
   await sleep(50);
   assert.equal(b.ends.length, 1);
 });

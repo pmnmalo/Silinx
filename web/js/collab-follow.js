@@ -158,7 +158,12 @@ function onEvent(ev) {
     draw();
     clearShown();
   } else if (ev.type === 'online') { app.log(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
-  else if (ev.type === 'closed') { app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn'); draw(); clearShown(); ended(); }
+  else if (ev.type === 'closed') {
+    // (one's own Stop Following: said, not warned, #4201; the owner's end or a connection lost for good: warned)
+    if (ev.stopped) app.log(`Stopped following ${collab.owner}'s project "${collab.project}": what you see is as it was then.`, 'info');
+    else app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn');
+    draw(); clearShown(); ended();
+  }
   else if (ev.type === 'role') roleChanged(ev);
   else if (ev.type === 'error') app.log(`${ev.fatal ? 'ERROR' : 'WARNING'}: Follow a shared project: ${ev.message}.`, ev.fatal ? 'err' : 'warn');
 }

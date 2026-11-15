@@ -351,6 +351,8 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
 
 
 /** A room its owner no longer shares, as the room says it to a follower that joins (core/collab-room.js). */
+/** Why a follower's session ended when it left on its own (close(), #4201). */
+export const LEFT = 'you stopped following';
 export const NOT_SHARED = 'this shared project is no longer shared (its owner stopped sharing it)';
 /** A follower's connection lost (#3835, phase 4 of #3180), not ended, made again: after these delays (the last one
  *  repeated), for `for` ms at most since it was lost. */
@@ -494,7 +496,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
     doc.off('update', onUpdate);
     awareness.destroy();
     failed(new Error(reason));
-    onEvent({ type: 'closed', reason });
+    onEvent({ type: 'closed', reason, ...(stopped ? { stopped: true } : {}) });   // (stopped: by this participant, #4201)
   };
   // the connection now: its end, an end of the session or a loss
   const use = c => {
@@ -563,7 +565,9 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
     connected: () => !ended && lostAt === null,
     close: async () => {
       stopped = true;
-      if (lostAt !== null) { end('the connection to the relay ended'); return; }
+      // (its own end, #4201: said as such, not as a connection lost)
+      if (lostAt !== null) { end(LEFT); return; }
+      cur.closedReason = LEFT;
       await cur.frame(() => null);
       cur.ws.close();
     },
