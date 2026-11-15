@@ -25,8 +25,8 @@ export {
 };
 import { openPetriFsm } from './petri-fsm-doc.js';
 import { languageMenu } from './drawing-lang-menu.js';
-import { refreshCircuitSchematic } from './drawings-circ-sch.js';
-export { openCircuitSchematic } from './drawings-circ-sch.js';
+import { openCircuitSchematic, refreshCircuitSchematic } from './drawings-circ-sch.js';
+export { openCircuitSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
