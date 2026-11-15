@@ -32,11 +32,14 @@ import { followRoom, colorOf } from '/core/collab-client.js';
 import { parseFollowLink, relayUrl } from '/core/collab-link.js';
 import { followActivity, followState, watchOwnActions } from './collab-activity.js';
 import { viewKeyOf } from './view-state.js';
+import { openReport } from './collab-runs.js';
+import { reportPath } from '/core/collab-runs.js';
 
 const TRACK_MS = 300, ARRIVE_MS = 20_000;
 let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
                   //   once the project is, #3631), act (the owner's activity put on the page, #4002), front (the
-                  //   document in front, as this page left it: another one brought there is the follower's) }
+                  //   document in front, as this page left it: another one brought there, once the project has opened (settled), is the
+//   follower's) }
 
 const d0 = p => S.docs.find(x => x.path === p && x.editor?.view);
 const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
@@ -79,7 +82,7 @@ export async function startFollowing(hash = location.hash) {
   const { project, owner } = docProject(session.doc);
   fol = { name, session, following: true, driven: null, bound: new Map(), drawn: new Map(), top: link.top || null, act: followState(), front: undefined };
   Object.assign(collab, { role: 'follower', owner: owner || session.owner()?.name || '?', project: project.name, session, editor: session.editor });
-  Object.assign(api, followApi(api, session.doc, { warn: text => app.log(`WARNING: Follow a shared project: ${text}.`, 'warn') }));
+  Object.assign(api, followApi(api, session.doc, { warn: text => app.log(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
   setPresenceCommands(commands);
   watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
   setInterval(track, TRACK_MS);
@@ -92,6 +95,8 @@ export async function startFollowing(hash = location.hash) {
 /** A module's link (Share Module…, #3631), once the project followed is open: that module opened (its drawing,
  *  else its HDL), its follower browsing alone on it (Follow <owner>, in the toolbar, follows the owner's editor). */
 export async function openFollowedTop() {
+  // (#4002: the project open, with what its opening opened: a document brought to the front from now on is the follower's)
+  if (fol) { fol.settled = true; fol.front = undefined; }
   if (!fol?.top) return;
   const top = fol.top;
   fol.top = null;
@@ -198,14 +203,15 @@ async function track() {
     const v = owner?.view;
     const mine = docPath(S.active);
     // (another document brought to the front by the follower: they browse alone)
-    if (fol.following && fol.front !== undefined && viewKeyOf(S.active) !== fol.front) setFollowing(false);
+    if (fol.following && fol.settled && fol.front !== undefined && viewKeyOf(S.active) !== fol.front) setFollowing(false);
     // (the owner's activity, #4002: its documents, the one in front, its views, its selection)
     if (fol.following && S.project?.name === collab.project) await followActivity(fol.act, ch => fol.session.activity(ch));
     if (fol.following && v?.path && S.project?.name === collab.project) {
       const key = JSON.stringify(v);
       if (fol.drivenKey !== key) {
         fol.drivenKey = key;
-        if (mine !== v.path) await app.openFile(v.path);
+        // (a report of the owner's build: once its text has come, #4002)
+        if (mine !== v.path) await (reportPath(v.path) ? openReport(`file:${v.path}`, ch => fol.session.activity(ch)) : app.openFile(v.path));
         const d = S.docs.find(x => docPath(x) === v.path);
         if (d && S.active !== d) activateDoc(d);
         if (d?.editor && v.line !== null) d.editor.setCursor({ line: v.line, ch: v.ch ?? 0 });

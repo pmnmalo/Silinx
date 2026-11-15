@@ -518,6 +518,7 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
       view: { open: ['file:src/top.vhd', 'isim:tb'], active: 'isim:tb', split: null, page: 'design', view: 'sim' },
       layout: { task: 'sim', side: true, console: true, max: false },
       design: { sel: 'm:tb', open: [['m:tb', true]] },
+      runs: null,
     });
     assert.equal(f.text, ["Following Ana's project 'act' (read only).", 'Files: src/top.vhd', 'In it:\nAna (owner)',
       'The owner is in the Simulate task, the Simulation view, the design page.', 'Their open documents: file:src/top.vhd, isim:tb (in front).',
@@ -526,10 +527,34 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
     owner.publish('ui', encodeUi({ open: ['file:src/top.vhd'], active: 'file:src/top.vhd', page: 'files', view: 'impl', split: null }));
     owner.publish('design', 'not one');
     const g = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerActivity?.view?.view === 'impl' && r; }, 'the activity changed');
-    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null });
+    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null, runs: null });
     assert.match(g.text, /\nThe owner is in the Implementation view, the files page\.\nTheir open documents: file:src\/top\.vhd \(in front\)\.$/);
     await ok('follow_project', { link, stop: true });
   } finally { await owner.close(); }
+});
+
+test('#4002 a project share_project shares: its run_process runs reach follow_project (the marks, the end of the log, the Design Summary); a project not shared sends nothing', async () => {
+  await ok('new_project_from_example', { name: 'gatesRun', example: 'gates' });
+  const { data: { link } } = await ok('share_project', { project: 'gatesRun', name: 'Ana', server: base });
+  try {
+    await ok('follow_project', { link, name: 'Bot' });
+    const run = await ok('run_process', { project: 'gatesRun', process: 'synthesize', toolchain: 'silinx' });
+    const f = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerActivity?.runs && r; }, 'the run followed', 15000);
+    const r = f.data.ownerActivity.runs;
+    assert.equal(r.id, 1);
+    assert.deepEqual(r.status, { synth: run.data.warnings.length ? 'warn' : 'ok' });
+    assert.ok(r.lines.length > 0 && r.lines.length <= 1000);
+    assert.deepEqual(r.lines.slice(-run.data.log.length).map(([t]) => t), run.data.log, 'the end of the log, as run_process gives it');
+    assert.equal(r.summary?.top, 'gates');
+    assert.equal(f.data.ownerActivity.view, null, 'no interface: no view');
+    assert.match(f.text, /\nTheir processes: synth (ok|warn)\.\nThe end of their last run's log:\n {2}/);
+    // (a second run: the next number)
+    await ok('run_process', { project: 'gatesRun', process: 'synthesize', toolchain: 'silinx' });
+    await until(async () => (await ok('follow_project', { link })).data.ownerActivity.runs.id === 2, 'the second run');
+    await ok('follow_project', { link, stop: true });
+  } finally { await ok('share_project', { project: 'gatesRun', action: 'stop' }); }
+  const { sharedRun } = await import('../server/mcp-collab.js');
+  assert.equal(await sharedRun('gatesRun', { steps: ['synth'], ok: true }), false, 'no longer shared: nothing sent');
 });
 
 test('#3227 through a relay on another computer: share_project with its key; follow_project of a site\'s link that names the relay', async () => {
