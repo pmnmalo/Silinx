@@ -51,7 +51,8 @@ test('git_clone, git_status, git_commit, git_push, git_pull, git_log: a Classroo
   assert.equal(m.text, `Committed ${m.data.commit.slice(0, 7)} on main: 3 file(s).\n  .gitignore (new)\n  silinx.json (changed)\n  src/extra.v (new)`);
   assert.equal((await ok('git_push', { project: 'lab1' })).text, 'Pushed main to local/lab1.');
   assert.equal((await ok('git_push', { project: 'lab1' })).text, 'Nothing to push: local/lab1 has every commit of main.');
-  assert.equal((await ok('git_pull', { project: 'lab1' })).text, 'Already up to date: main has every commit of GitHub\'s.');
+  const upToDate = await ok('git_pull', { project: 'lab1' });
+  assert.deepEqual([upToDate.text, upToDate.data.untrusted], ['Already up to date: main has every commit of GitHub\'s.', undefined]);
   const log = await ok('git_log', { project: 'lab1' });
   const [last, first] = log.data.commits;
   assert.equal(log.text.split('\n')[0], `${last.commit.slice(0, 7)} ${last.date} Ana Aluna: Lab 1 done (.gitignore, silinx.json, src/extra.v)`);
@@ -71,6 +72,8 @@ test('git_clone, git_status, git_commit, git_push, git_pull, git_log: a Classroo
   sh(other, 'add', '-A', '-f'); sh(other, 'commit', '--quiet', '-m', 'Theirs'); sh(other, 'push', '--quiet');
   const p = await ok('git_pull', { project: 'lab1' });
   assert.equal(p.text, 'Pulled into main: 1 file(s) changed.\n  src/more.v\nWARNING: build/top.bit: not pulled into the project: a tool\'s output, made again from the sources\nWARNING: src/SILINX.JSON: not pulled into the project: another spelling of silinx.json, the project\'s description (\'SILINX.JSON\')');
+  // (the pulled files' names and the warnings, which name them: labelled, #4174)
+  assert.equal(p.data.untrusted.content, 'the pulled files\' names and the warnings, which name them');
   assert.deepEqual(['build', 'src/SILINX.JSON', '.envrc'].filter(f => fs.existsSync(path.join(ws, 'lab1', f))), []);
   assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main; no change since the last commit.');
   // .git stays out of the file tools (#3035)
@@ -140,9 +143,10 @@ test('#3363 git_init sets only a remote the user\'s settings name (mcp.remotes);
   await ok('write_file', { project: 'lab1', path: 'src/extra.v', text: 'module extra (); endmodule\n// changed\n' });
   const diff = await raw('git_diff', { project: 'lab1', path: 'src/extra.v' });
   assert.equal(diff.content[1].text, note('the changes of src/extra.v'));
-  // (a tool's own text: none)
+  // (the files' and the branches' names, a clone's: labelled, #4174)
   const status = await raw('git_status', { project: 'lab1' });
-  assert.deepEqual([status.content.length, status.structuredContent.untrusted], [1, undefined]);
+  assert.match(status.content[0].text, /src\/extra\.v/);
+  assert.equal(status.content[1].text, note('the files\' and the branches\' names, the repository\'s'));
 });
 
 test('#3194 git_checks: what GitHub said of the branch\'s upstream (a Classroom assignment\'s verdicts); no remote, nothing pushed', async () => {

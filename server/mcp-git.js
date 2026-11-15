@@ -72,7 +72,9 @@ export const GIT_TOOLS = [
       const s = await run(() => B().gitStatus(project));
       if (!s.repository) return { text: `'${project}' is not in a git repository (git_init makes one).`, data: s };
       const where = `${s.branch || '(no branch)'}${s.upstream ? `, ${s.ahead} commit(s) ahead of and ${s.behind} behind ${s.upstream}` : ', not pushed yet'}`;
-      return { text: [`${project}: ${where}; ${s.files.length ? `${s.files.length} change(s):` : 'no change since the last commit.'}`, ...fileLines(s.files)].join('\n'), data: s };
+      // (the files' names and the branches', a clone's own: labelled, #4174)
+      return { text: [`${project}: ${where}; ${s.files.length ? `${s.files.length} change(s):` : 'no change since the last commit.'}`, ...fileLines(s.files)].join('\n'), data: s,
+        untrusted: 'the files\' and the branches\' names, the repository\'s' };
     },
   },
   {
@@ -107,7 +109,8 @@ export const GIT_TOOLS = [
       let choices;
       try { choices = checkChoices(resolve); } catch (e) { throw toolError(e.message); }
       const r = await run(() => B().gitPull(project, { resolve: choices }));
-      return { text: [pullText(r), ...(r.resolved || []).map(p => `${p}: merged by its objects, its HDL made again.`), ...(r.warnings || []).map(w => `WARNING: ${w}`)].join('\n'), data: r };
+      return { text: [pullText(r), ...(r.resolved || []).map(p => `${p}: merged by its objects, its HDL made again.`), ...(r.warnings || []).map(w => `WARNING: ${w}`)].join('\n'), data: r,
+        untrusted: r.upToDate && !r.warnings?.length ? undefined : 'the pulled files\' names and the warnings, which name them' };
     },
   },
   {

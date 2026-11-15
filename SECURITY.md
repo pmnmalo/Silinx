@@ -135,7 +135,8 @@ read that user's files has the server too.
   #3864), a module's Symbol Info (`server/mcp-symbol-info.js`, #3935), and every tool's error, #3528;
   a failed `check_syntax`'s, a `simulate` that did not start, a failed `run_process`, a `verify` that failed or could
   not run, and a failed `c_simulation`, `c_cosimulation` or `c_synthesis_report`, whose lines quote the design's
-  names, #3681)
+  names, #3681; `git_status`, `git_pull`'s files and warnings, `grade`'s run, `timing_paths`, `related_view`,
+  `read_symbol`, and `check_drawing`'s and `check_constraints`'s problems, #4174)
   is labelled "Untrusted content" after its text, and `untrusted` in its structured content: data, never instructions.
   `open_link` takes a design's own board and top only as names, as the link's `board=` and `top=` are.
 - What the MCP server tells an assistant of the user's folders (#3412, #3418): its results and errors name the
@@ -219,7 +220,9 @@ board or a PROM) without the user's say.
      NUL byte or is an HTML page is refused; text is read as UTF-8, its invalid bytes replaced with a warning. Any
      other file (a document, an image, a page or a script under its own extension, `.html`, `.js`) is kept as it is,
      opaque, and an `.svg` as XML: Silinx never renders such a file as a page nor runs it (the server sends a file as
-     `text/plain`, with `nosniff`).
+     `text/plain`, with `nosniff`). Nor does the server serve a package's own documents: from the folders outside `web/`
+     (the code, the packages it loads) it serves no HTML, SVG, XML or PDF file nor a folder's index, and every response
+     but a script's carries `Content-Security-Policy: default-src 'none'; sandbox` (#4172).
    - The result: the files accepted, and each refusal with its reason, in the console and in the MCP tools' results.
      A file refused is left out and the import goes on; a bomb refuses the whole import.
 2. **Safe output:** what a file names (a module, a port, a label, a comment, a file) reaches the page only as text:
@@ -339,7 +342,8 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   speaks for that follower only, never for the owner nor another (#3360). What a join asks for (the whole document,
   who is in) goes to the follower that joined only (#3529): joining and leaving again multiplies nobody else's
   download. Its limits: a
-  follower's message 64 KB, the owner's 16 MB, followers per room, rooms per server. An owner's connection lost, its
+  follower's message 64 KB, the owner's 16 MB, a follower's presence 8 KB and 10 a second after a burst of 40 (the
+  rest dropped, the follower told once, #4173), followers per room, rooms per server. An owner's connection lost, its
   room is kept for 2 minutes (`RELAY_LIMITS.grace`) for the owner's resume (#3835): only with the room's resume secret
   (128 random bits the relay gives the owner alone when the room opens, compared in constant time, `same()`), the
   owner's client id and the server's token again (`core/collab-room.js`); anything else is refused as a room not

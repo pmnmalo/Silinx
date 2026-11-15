@@ -51,6 +51,9 @@ test('timing_paths: the list, one path\'s stages and highlight, count; none befo
     'path 2: c.YQ -> d.BY, clock clk: 1.500 ns (no PERIOD constraint)'].join('\n'));
   assert.deepEqual(list.data.paths.map(p => [p.from, p.to, p.slack, p.lines.length]), [['a.XQ', 'b.F1', 16.7, 2], ['c.YQ', 'd.BY', null, 0]]);
   assert.equal((await ok('timing_paths', { project: 't1', count: 1 })).data.paths.length, 1);
+  // (the paths name the design's cells and nets: labelled, #4174; none, nothing to label)
+  assert.equal(list.data.untrusted.content, 'the paths\' names, the design\'s');
+  assert.equal(none.data.untrusted, undefined);
   const one = await ok('timing_paths', { project: 't1', path: 1 });
   assert.equal(one.text, [
     'path 1: a.XQ -> b.F1, clock clk: 3.300 ns, required 20.000 ns, slack 16.700 ns',
@@ -58,6 +61,7 @@ test('timing_paths: the list, one path\'s stages and highlight, count; none befo
     '  net            2.000    3.000  b.F1 (S_b), net n1',
     '  setup          0.300    3.300  b.F1 (S_b)  <- src/b.v:4'].join('\n'));
   assert.equal(one.data.path.number, 1);
+  assert.equal(one.data.untrusted.content, 'the paths\' names, the design\'s');
   assert.deepEqual(one.data.highlight, { files: { 'src/a.vhd': [12], 'src/b.v': [4] }, insts: ['a', 'b'], sites: ['S_a', 'S_b'], nets: ['n1'], drawings: {} });
   await fails('timing_paths', { project: 't1', path: 3 }, 'path: from 1 to 2');
   await fails('timing_paths', { project: 't1', path: 0 }, 'path: from 1 to 2');

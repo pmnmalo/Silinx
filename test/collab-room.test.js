@@ -5,7 +5,7 @@
 // owner, by Stop Sharing or the connection lost. The rooms over the server's WebSockets: test/collab.test.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { collabRooms, ROOM_LIMITS, OWNER_LOST } from '../core/collab-room.js';
+import { collabRooms, ROOM_LIMITS, OWNER_LOST, AWARENESS_DROPPED } from '../core/collab-room.js';
 import { KIND, PROTOCOL, NOT_SHARED, fromFrame, toFrame, senderOf } from '../core/collab-client.js';
 import { ROOM_RE } from '../core/collab-link.js';
 
@@ -19,8 +19,8 @@ function socket() {
 const text = o => JSON.stringify({ v: PROTOCOL, ...o });
 const frame = (kind, ...b) => Uint8Array.from([kind, ...b]);
 
-function room(limits) {
-  const host = collabRooms({ limits: { ...ROOM_LIMITS, ...limits } });
+function room(limits, now) {
+  const host = collabRooms({ limits: { ...ROOM_LIMITS, ...limits }, ...(now && { now }) });
   const owner = socket(), o = host.welcome(owner, 'owner');
   o.message(text({ type: 'open', client: 1 }), false);
   const id = owner.got[0].room;
@@ -197,4 +197,44 @@ test('the limits: rooms per host, followers per room', () => {
   const [b] = join(8);
   assert.deepEqual(b.got, [{ type: 'error', message: 'this shared project has 1 followers already' }]);
   assert.deepEqual(b.closed, [1008, 'refused']);
+});
+
+test('a follower\'s awareness: too large or too often, dropped, the follower told once; the owner\'s not limited (#4173)', () => {
+  let t = 0;
+  const { owner, o, join } = room({ awarenessFrame: 16, awarenessRate: 2, awarenessBurst: 3 }, () => t);
+  const [a, pa] = join(7), [b] = join(8);
+  const passed = () => b.got.filter(m => Array.isArray(m)).length;
+  const errors = s => s.got.filter(m => m.type === 'error');
+  // a burst of 3 passes; the 4th and 5th, at the same time, are dropped and the follower is told once
+  for (let i = 0; i < 5; i++) pa.message(frame(KIND.awareness, i), true);
+  assert.equal(passed(), 3);
+  assert.deepEqual(errors(a), [{ type: 'error', message: AWARENESS_DROPPED }]);
+  assert.equal(owner.got.filter(m => Array.isArray(m)).length, 3);
+  // half a second later, one more (2 a second)
+  t = 500;
+  pa.message(frame(KIND.awareness, 5), true);
+  pa.message(frame(KIND.awareness, 6), true);
+  assert.equal(passed(), 4);
+  // a long pause refills the burst, never past it
+  t = 60_000;
+  for (let i = 0; i < 4; i++) pa.message(frame(KIND.awareness, i), true);
+  assert.equal(passed(), 7);
+  // a frame larger than the awareness's limit is dropped, however rarely it comes; still told once only
+  t = 120_000;
+  pa.message(frame(KIND.awareness, ...new Array(16).fill(1)), true);
+  assert.equal(passed(), 7);
+  pa.message(frame(KIND.awareness, ...new Array(15).fill(1)), true);
+  assert.equal(passed(), 8);
+  assert.equal(errors(a).length, 1);
+  assert.equal(a.closed, null);
+  // another follower's bucket is its own; the owner's frames are not limited
+  t = 120_000;
+  const [, pc] = join(9);
+  for (let i = 0; i < 3; i++) pc.message(frame(KIND.awareness, i), true);
+  assert.equal(passed(), 11);
+  for (let i = 0; i < 50; i++) o.message(frame(KIND.awareness, i), true);
+  assert.equal(a.got.filter(m => Array.isArray(m)).length, 3 + 50);
+  assert.equal(errors(owner).length, 0);
+  // the defaults: a frame of 8 KB, 10 a second after a burst of 40
+  assert.deepEqual([ROOM_LIMITS.awarenessFrame, ROOM_LIMITS.awarenessRate, ROOM_LIMITS.awarenessBurst], [8 << 10, 10, 40]);
 });

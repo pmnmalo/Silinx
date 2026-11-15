@@ -58,6 +58,8 @@ async function analysisOf(name, pj, tc) {
   const sources = (await P.readSources(name)).filter(x => !x.missing && x.role !== 'sim');
   return (tc === 'ise' ? iseTimingPaths : vivadoTimingPaths)(await fsp.readFile(full, 'latin1'), sources, top);
 }
+// (the paths name the design's cells, nets and drawings' elements: labelled, #4174)
+const PATHS = 'the paths\' names, the design\'s';
 const ITEM = { state: 'state', trans: 'transition', node: 'box', edge: 'arrow', sym: 'symbol', wire: 'wire' };
 
 export const TIMING_TOOLS = [
@@ -91,13 +93,13 @@ export const TIMING_TOOLS = [
       if (!all.length) return { text: a || b ? `No path ${[a && `from ${a}`, b && `to ${b}`].filter(Boolean).join(' ')} in '${name}'.` : `No path between two flip-flops of a clock to time in '${name}'.`, data: { ...head, paths: [] } };
       const list = { ...r, paths: all.slice(0, count) };
       if (path === undefined) {
-        return { text: pathsText(list).join('\n'), data: { ...head, paths: list.paths.map(({ stages, from: fr, to: t, ...p }) => ({ ...p, ...(fr ? { fromRegister: fr, toRegister: t } : {}), from: `${stages[0].inst}.${stages[0].pin}`, to: `${stages.at(-1).inst}.${stages.at(-1).pin}` })) } };
+        return { untrusted: PATHS, text: pathsText(list).join('\n'), data: { ...head, paths: list.paths.map(({ stages, from: fr, to: t, ...p }) => ({ ...p, ...(fr ? { fromRegister: fr, toRegister: t } : {}), from: `${stages[0].inst}.${stages[0].pin}`, to: `${stages.at(-1).inst}.${stages.at(-1).pin}` })) } };
       }
       const p = all[path - 1];
       const highlight = pathHighlight(p);
       highlight.drawings = await drawingsOf(name, p, Object.keys(highlight.files));
       const text = [...pathsText({ ...r, paths: all }, path - 1), ...Object.entries(highlight.drawings).map(([f, items]) => `  in ${f}: ${items.length ? items.map(x => `${ITEM[x.type]} ${x.label}`).join('; ') : 'none of its elements by name'}`)];
-      return { text: text.join('\n'), data: { ...head, path: { number: path, ...p }, highlight } };
+      return { untrusted: PATHS, text: text.join('\n'), data: { ...head, path: { number: path, ...p }, highlight } };
     },
   },
 ];

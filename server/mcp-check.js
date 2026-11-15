@@ -42,7 +42,8 @@ export const CHECK_TOOLS = [
       const text = await projectText(name, file, `no drawing '${file}' in the project '${name}'`);
       try { m = JSON.parse(text); } catch { throw toolError(`no drawing '${file}' in the project '${name}'`); }
       const { lines, errors, warnings } = await checkDrawing(file, m);
-      return { text: lines.join('\n'), data: { project: name, file, ok: !errors.length, errors, warnings }, isError: false };
+      return { text: lines.join('\n'), data: { project: name, file, ok: !errors.length, errors, warnings }, isError: false,
+        untrusted: errors.length || warnings.length ? 'the drawing\'s problems, which quote its names' : undefined };
     },
   },
 ];

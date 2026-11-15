@@ -197,7 +197,8 @@ export const GRADE_TOOLS = [
       }
       const out = csv ? await writeNew(csv, csvReport(results, ex), 'csv') : null;
       const text = [`${localize(ex.title, lang)}${visible ? ' (the visible tests)' : ''}`, ...results.map(r => textReport(r, { teacher: true })), ...(out ? [`CSV: ${out}`] : [])].join('\n');
-      return { text, data: { project: name, exercise: rel, visible, results, ...(out && { csv: out }) } };
+      return { text, data: { project: name, exercise: rel, visible, results, ...(out && { csv: out }) },
+        untrusted: 'the exercise\'s tests and the submissions\' names and results' };
     },
   },
 ];

@@ -41,6 +41,12 @@ export function pageCsp(file) {
   return csp;
 }
 
+/** The CSP of every file but the scripts served from outside web/ (#4172): nothing runs in it as a page, nothing loads. */
+export const ASSET_CSP = "default-src 'none'; sandbox";
+// (a document a browser would show: not one of the app's assets)
+const ASSET_DOCUMENT = /\.(x?html?|svg|xml|xsl|pdf)$/i;
+const decodedPath = req => { try { return decodeURIComponent(req.path); } catch { return req.path; } };
+
 /** A loopback address (the server only reachable from this machine). */
 const isLoopback = host => ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(String(host).toLowerCase()) || /^127\./.test(String(host)) || /^::ffff:127\./.test(String(host));
 
@@ -145,27 +151,33 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // (on the file served, so however the URL spells it)
   const setHeaders = (res, file) => { if (/\.html$/i.test(file)) { const csp = pageCsp(file); if (csp) res.set('Content-Security-Policy', csp); } };
   app.use('/', express.static(path.join(ROOT, 'web'), { setHeaders }));
-  app.use('/core', express.static(path.join(ROOT, 'core')));
+  // the folders outside web/ (the code and the packages it loads, which ship files of their own: a test page, a README)
+  // on the page's origin, which holds the token (#4172): what the app loads from them, scripts, WebAssembly and data;
+  // no document nor a folder's index, and a CSP that runs nothing on every response but a script's (a worker's script, as
+  // ELK's, runs under its response's CSP; a script is never shown as a page: nosniff)
+  const asset = dir => [(req, res, next) => (ASSET_DOCUMENT.test(decodedPath(req)) ? res.status(404).end() : next()),
+    express.static(dir, { index: false, redirect: false, setHeaders: (res, file) => { if (!/\.m?js$/i.test(file)) res.set('Content-Security-Policy', ASSET_CSP); } })];
+  app.use('/core', asset(path.join(ROOT, 'core')));
   // the toolchain's package (silinx-fpga, #1677): its code, which core/'s re-exports import
-  app.use('/packages/silinx-fpga/src', express.static(path.join(ROOT, 'packages/silinx-fpga/src')));
+  app.use('/packages/silinx-fpga/src', asset(path.join(ROOT, 'packages/silinx-fpga/src')));
   // the HDL front end's package (silinx-hdl, #1710): its code, which core/'s re-exports import
-  app.use('/packages/silinx-hdl/src', express.static(path.join(ROOT, 'packages/silinx-hdl/src')));
-  app.use('/vendor/elk', express.static(path.join(ROOT, 'node_modules/elkjs/lib')));
+  app.use('/packages/silinx-hdl/src', asset(path.join(ROOT, 'packages/silinx-hdl/src')));
+  app.use('/vendor/elk', asset(path.join(ROOT, 'node_modules/elkjs/lib')));
   // the editor's ES modules (CodeMirror 6): the packages the import map of web/index.html names, only
   for (const pkg of importMapPackages()) {
-    app.use(`/vendor/npm/${pkg}`, express.static(path.join(ROOT, 'node_modules', pkg)));
+    app.use(`/vendor/npm/${pkg}`, asset(path.join(ROOT, 'node_modules', pkg)));
   }
   // Yosys compiled to WebAssembly (YoWASP): the open synthesis runs in the browser (web/js/yosys-worker.js)
-  app.use('/vendor/yowasp-yosys', express.static(path.join(ROOT, 'node_modules/@yowasp/yosys')));
+  app.use('/vendor/yowasp-yosys', asset(path.join(ROOT, 'node_modules/@yowasp/yosys')));
   // nextpnr in WebAssembly, its chip databases beside its bundle (the browser edition's nextpnr engine, #2136)
-  app.use('/vendor/nextpnr-spartan', express.static(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-spartan3e')));
+  app.use('/vendor/nextpnr-spartan', asset(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-spartan3e')));
   // (the Spartan-6's, #2288)
-  app.use('/vendor/nextpnr-spartan6', express.static(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-spartan6')));
-  app.use('/vendor/nextpnr-xc7', express.static(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-xc7')));   // (the 7-series', #3143)
+  app.use('/vendor/nextpnr-spartan6', asset(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-spartan6')));
+  app.use('/vendor/nextpnr-xc7', asset(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-xc7')));   // (the 7-series', #3143)
   // (the iCE40's nextpnr and icepack, when installed: not in the release zip, #2295)
-  app.use('/vendor/nextpnr-ice40', express.static(path.join(ROOT, 'node_modules/@yowasp/nextpnr-ice40')));
-  app.use('/vendor/nextpnr-ecp5', express.static(path.join(ROOT, 'node_modules/@yowasp/nextpnr-ecp5')));   // (the ECP5's, #2302)
-  app.use('/vendor/nextpnr-himbaechel-gowin', express.static(path.join(ROOT, 'node_modules/@yowasp/nextpnr-himbaechel-gowin')));   // (the Gowin's, #2303)
+  app.use('/vendor/nextpnr-ice40', asset(path.join(ROOT, 'node_modules/@yowasp/nextpnr-ice40')));
+  app.use('/vendor/nextpnr-ecp5', asset(path.join(ROOT, 'node_modules/@yowasp/nextpnr-ecp5')));   // (the ECP5's, #2302)
+  app.use('/vendor/nextpnr-himbaechel-gowin', asset(path.join(ROOT, 'node_modules/@yowasp/nextpnr-himbaechel-gowin')));   // (the Gowin's, #2303)
 
   const api = express.Router();
   // the token for a one-time code of a launcher's address (#2955); a code for the address a second launch opens

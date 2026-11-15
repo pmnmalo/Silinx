@@ -44,7 +44,9 @@ test('related_view: traffic\'s translation, ASM chart and table\'s schematic, as
   assert.equal(want.ok, true);
   assert.equal(tr.text, want.text);
   assert.match(tr.text, /^module traffic/m);
-  assert.deepEqual({ ...tr.data, text: undefined }, { project: 't', path: 'src/traffic.vhd', view: 'translation', lang: 'verilog', name: 'traffic.v', text: undefined });
+  assert.deepEqual({ ...tr.data, text: undefined, untrusted: undefined }, { project: 't', path: 'src/traffic.vhd', view: 'translation', lang: 'verilog', name: 'traffic.v', text: undefined, untrusted: undefined });
+  // (the source's names and text: labelled, #4174)
+  assert.equal(tr.data.untrusted.content, 'the view of src/traffic.vhd, which holds its names and text');
   // the state diagram's ASM chart
   const asm = await ok({ project: 't', path: 'src/traffic.fsm.json', view: 'asm' });
   assert.deepEqual(asm.data.model, fsmToAsm(normalizeFsm(JSON.parse(read('t', 'src/traffic.fsm.json')))));

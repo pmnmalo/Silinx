@@ -53,7 +53,8 @@ export const CONSTRAINTS_TOOLS = [
       const lines = [`Started : "Check Constraints" of ${path}.`, ...diags.map(diagLine),
         errors.length ? `Process "Check Constraints" failed (${errors.length} error(s), ${warnings.length} warning(s))`
           : `Process "Check Constraints" completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''}`];
-      return { text: lines.join('\n'), data: { project: name, file: path, ok: !errors.length, errors: errors.map(diagJson), warnings: warnings.map(diagJson) } };
+      return { text: lines.join('\n'), data: { project: name, file: path, ok: !errors.length, errors: errors.map(diagJson), warnings: warnings.map(diagJson) },
+        untrusted: diags.length ? 'the constraints file\'s problems, which quote it' : undefined };
     },
   },
 ];

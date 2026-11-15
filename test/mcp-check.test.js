@@ -47,7 +47,11 @@ test('check_drawing: the examples\' charts clean; a Petri net with an error, one
   await ok('write_file', { project: 't', path: 'src/ctl.pn.json', text: JSON.stringify(pn) });
   const w = await check('src/ctl.pn.json');
   assert.equal(w.text, 'WARNING: the net can reach a deadlock, no transition able to fire: after start, done\nProcess "Check Petri Net" of ctl.pn.json completed successfully with 1 warning(s).');
-  assert.deepEqual(w.data, { project: 't', file: 'src/ctl.pn.json', ok: true, errors: [], warnings: [{ message: 'the net can reach a deadlock, no transition able to fire: after start, done', item: null }] });
+  // (its problems quote the drawing's names: labelled, #4174; a clean drawing's result not)
+  const { untrusted, ...data } = w.data;
+  assert.deepEqual(data, { project: 't', file: 'src/ctl.pn.json', ok: true, errors: [], warnings: [{ message: 'the net can reach a deadlock, no transition able to fire: after start, done', item: null }] });
+  assert.equal(untrusted.content, 'the drawing\'s problems, which quote its names');
+  assert.equal(e.data.untrusted.content, 'the drawing\'s problems, which quote its names');
 });
 
 test('#3288 a state diagram\'s output assignments (write_file, check_drawing): the editor\'s fields\' errors, the state\'s name before them', async () => {

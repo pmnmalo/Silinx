@@ -10,7 +10,7 @@
 //   a follower's awareness speaks for that follower only, never for the owner nor another); and, when the owner lets editors in (its open
 //   gives the room's public key, #3182), an editor's edits whose signature is the room's (core/collab-sign.js),
 //   each sender's in its order; the owner's rekey (#3997: an editor demoted) makes another key the room's;
-// - followers per room, rooms per host, the time to the first message;
+// - followers per room, rooms per host, the time to the first message, a follower's awareness's size and rate (#4173);
 // - a room ends with its owner: at once when it stops sharing; its connection lost, after `limits.grace` (#3835: 0, at
 //   once, but on the relay), in which the owner resumes it with the secret its open was answered with (`resume`, a
 //   connection of its own, the relay's token again): its followers stay, and each is a join again for the owner (the
@@ -21,7 +21,11 @@ import { KIND, PROTOCOL, NOT_SHARED, fromFrame, senderOf } from './collab-client
 import { b64url } from './collab-crypto.js';
 import { verifierOf, verifyFrame, PUB_RE } from './collab-sign.js';
 
-export const ROOM_LIMITS = Object.freeze({ followers: 64, rooms: 32, helloWait: 10_000, grace: 0 });
+// (a follower's awareness, #4173: a frame of `awarenessFrame` bytes at most, `awarenessRate` a second after a burst of
+// `awarenessBurst`; who they are and what they look at is a few hundred bytes, renewed every 15 s and at each move)
+export const ROOM_LIMITS = Object.freeze({ followers: 64, rooms: 32, helloWait: 10_000, grace: 0, awarenessFrame: 8 << 10, awarenessRate: 10, awarenessBurst: 40 });
+/** What a follower whose awareness is over the limits is told, once (its frames dropped). */
+export const AWARENESS_DROPPED = 'this follower\'s cursor and view come too fast or too large: some were not passed on';
 /** A room its owner's connection left (#3835), as its followers are told when it ends. */
 export const OWNER_LOST = 'the owner\'s connection was lost';
 
@@ -41,7 +45,8 @@ const clientId = v => (Number.isSafeInteger(v) && v >= 0 && v <= 0xFFFFFFFF ? v 
  *  client>, verify (a promise of the editors' key, or null), resume (its secret), grace (its timer while lost) }),
  *  welcome(socket, role)
  *  -> { message(data, binary), close() }, closeRoom(id, reason) }. role: 'owner' | 'follower'. */
-export function collabRooms({ limits = ROOM_LIMITS } = {}) {
+export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
+  limits = { ...ROOM_LIMITS, ...limits };
   const rooms = new Map();   // room -> { owner, ownerClient, followers: Map<ws, client> }
 
   function closeRoom(id, reason) {
@@ -56,6 +61,17 @@ export function collabRooms({ limits = ROOM_LIMITS } = {}) {
 
   function welcome(ws, role) {
     let me = null;   // { role: 'owner' | 'follower', room, client }
+    // (a follower's awareness: a token bucket, #4173)
+    let tokens = limits.awarenessBurst, filled = now(), dropped = false;
+    const awarenessOk = size => {
+      const t = now();
+      tokens = Math.min(limits.awarenessBurst, tokens + Math.max(0, t - filled) * limits.awarenessRate / 1000);
+      filled = t;
+      const ok = size <= limits.awarenessFrame && tokens >= 1;
+      if (ok) tokens--;
+      else if (!dropped) { dropped = true; json(ws, { type: 'error', message: AWARENESS_DROPPED }); }
+      return ok;
+    };
     let chain = Promise.resolve();   // (an editor's edits, checked in their order)
     const hello = setTimeout(() => { if (!me) fail(ws, 'no open nor join'); }, limits.helloWait);
     const message = (data, binary) => {
@@ -125,9 +141,15 @@ export function collabRooms({ limits = ROOM_LIMITS } = {}) {
         return;
       }
       if (!binary) return;
-      // a follower: their awareness only (small: their endpoint's maximum); an edit is refused (read only, #3181)
+      // a follower: their awareness only (small, and not too often: #4173); an edit is refused (read only, #3181)
       const others = () => [r.owner, ...r.followers.keys()].filter(o => o && o !== ws && o.readyState === 1);
-      if (data[0] === KIND.awareness) { const f = fromFrame(me.client, new Uint8Array(data)); for (const o of others()) o.send(f, { binary: true }); return; }
+      if (data[0] === KIND.awareness) {
+        const bytes = new Uint8Array(data);
+        if (!awarenessOk(bytes.length)) return;
+        const f = fromFrame(me.client, bytes);
+        for (const o of others()) o.send(f, { binary: true });
+        return;
+      }
       if (data[0] !== KIND.edit || !r.verify) return json(ws, { type: 'error', message: 'read only: a follower cannot change the shared project' });
       // an editor's edit: forwarded once its signature is the room's (in the order they came)
       const frame = new Uint8Array(data);

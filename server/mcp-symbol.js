@@ -43,7 +43,7 @@ export const SYMBOL_TOOLS = [
       const { m, L, path } = await moduleOf(name, module);
       const sym = m.symbol || L.newSymbol(m);
       return { text: `${m.name}: ${m.symbol ? `its symbol ${path}` : 'the default symbol (no symbol file)'}: ${pinsText(sym)}; spacing ${sym.spacing}, width ${sym.width ?? 'auto'}, height ${sym.height ?? 'auto'}, name ${sym.title}`,
-        data: { project: name, file: m.symbol ? path : null, symbol: describe(m, sym) } };
+        data: { project: name, file: m.symbol ? path : null, symbol: describe(m, sym) }, untrusted: 'the module\'s names and its pins\'' };
     },
   },
   {

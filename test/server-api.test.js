@@ -672,6 +672,33 @@ test('static files: the web UI and the shared core modules are served', async ()
   assert.equal((await fetch(app.origin + '/api/no-such-route')).status, 404);
 });
 
+test('static files outside web/: the app\'s assets only, with a CSP that runs nothing; no package\'s document nor a folder\'s index (#4172)', async () => {
+  const { ASSET_CSP } = await import('../server/server.js');
+  assert.equal(ASSET_CSP, "default-src 'none'; sandbox");
+  // a package's test page (lib0's ships one): not served, however its name is spelt
+  assert.ok(fss.existsSync(path.join(HERE, '..', 'node_modules/lib0/test.html')));
+  for (const u of ['/vendor/npm/lib0/test.html', '/vendor/npm/lib0/test%2Ehtml', '/vendor/npm/lib0/TEST.HTML', '/vendor/npm/lib0/', '/vendor/npm/lib0',
+    '/core/', '/vendor/yowasp-yosys/', '/packages/silinx-fpga/src/']) {
+    const r = await fetch(app.origin + u, { redirect: 'manual' });
+    assert.equal(r.status, 404, u);
+    assert.doesNotMatch(await r.text(), /<script/i, u);
+  }
+  // the app's scripts and data: served as before; the data with the CSP, the scripts without (ELK's worker runs under its
+  // script's response's CSP), never sniffed into a page
+  for (const [u, type, csp] of [['/vendor/npm/lib0/array.js', /javascript/, null], ['/core/zip.js', /javascript/, null],
+    ['/packages/silinx-hdl/src/vhdl/parser.js', /javascript/, null], ['/vendor/elk/elk-worker.min.js', /javascript/, null],
+    ['/vendor/yowasp-yosys/package.json', /json/, ASSET_CSP], ['/vendor/npm/lib0/README.md', /markdown/, ASSET_CSP], ['/vendor/npm/lib0/array.d.ts', /./, ASSET_CSP]]) {
+    const r = await fetch(app.origin + u);
+    assert.equal(r.status, 200, u);
+    assert.match(r.headers.get('content-type'), type, u);
+    assert.equal(r.headers.get('content-security-policy'), csp, u);
+    assert.equal(r.headers.get('x-content-type-options'), 'nosniff', u);
+  }
+  // web/'s pages keep theirs, its scripts none (a module's own CSP would not apply to the page anyway)
+  assert.match((await fetch(app.origin + '/')).headers.get('content-security-policy'), /script-src 'self'/);
+  assert.equal((await fetch(app.origin + '/js/app.js')).headers.get('content-security-policy'), null);
+});
+
 // ------------------------------------------------------------------------------------------------
 // .xise
 // ------------------------------------------------------------------------------------------------

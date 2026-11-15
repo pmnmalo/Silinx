@@ -48,6 +48,9 @@ test('grade: an exercise checked, its ports from the top, run on the project (it
   const vis = await ok('grade', { project: 'c', visible: true });
   assert.equal(vis.text, '4-bit counter (the visible tests)\nc: 30 / 30 points (Accepted), the visible tests\n  + count (Counting): AC Accepted, 30 / 30\n');
   assert.deepEqual(vis.data.results.map(r => [r.verdict, r.points, r.max]), [['AC', 30, 30]]);
+  // (the exercise's tests, the submission's results: labelled, #4174; the checks above are the tool's own)
+  assert.equal(vis.data.untrusted.content, 'the exercise\'s tests and the submissions\' names and results');
+  assert.equal(ports.data.untrusted, undefined);
   const all = await ok('grade', { project: 'c', language: 'pt' });
   assert.deepEqual(all.data.results.map(r => [r.verdict, r.points, r.max]), [['AC', 100, 100]]);
   assert.match(all.text, /^Contador de 4 bits\n/);
