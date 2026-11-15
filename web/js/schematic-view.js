@@ -11,6 +11,8 @@ import { mountSchRender } from './schematic-render.js';
 import { mountSchHover } from './schematic-hover.js';
 import { mountSchExport } from './schematic-export.js';
 import { onLayoutToggled } from './layout-fit.js';
+import { iecGate } from '/core/symbol-standard.js';
+import { getSymbolStandard, onSymbolStandard } from './symbol-standard.js';
 
 export const SVGNS = 'http://www.w3.org/2000/svg';
 const FONT = '11px Arial, Helvetica, sans-serif';
@@ -154,7 +156,16 @@ function constShape(n, ports) {
   return { w, h: H, pins: { [p.id]: { ...p, x: w, y: H / 2, side: 'E' } }, body };
 }
 
-function gateShape(n, ports) {
+// an IEC 60617-12 box (#4113) where the distinctive shape's body is, x0 to x1 and 0 to h: its rectangle, its qualifier
+// and its bubble (drawn in place of the shape's own: the same pins, the same width)
+function iecBody(g, x0, x1, h) {
+  const { rect: b, text: t, bubble } = iecGate(g, { x: x0, y: 0, w: x1 - x0, h });
+  return `<rect class="gate" x="${r1(b.x)}" y="0" width="${r1(b.w)}" height="${r1(b.h)}"/>`
+    + `<text class="glabel iec" x="${r1(t.x)}" y="${r1(t.y)}" text-anchor="middle">${esc(t.label)}</text>`
+    + (bubble ? `<circle class="gate" cx="${r1(bubble.cx)}" cy="${r1(bubble.cy)}" r="${bubble.r}"/>` : '');
+}
+
+export function gateShape(n, ports, std = getSymbolStandard()) {
   const g = n.gate || 'op';
   const ins = ports.filter(p => p.side !== 'E' && !p.sel);
   const sel = ports.filter(p => p.sel);
@@ -170,7 +181,8 @@ function gateShape(n, ports) {
     const x0 = STUB + (isXor ? 5 : 0), BW = 30;
     const yi = pinYs(k, h, 10);
     const backX = y => x0 + 2 * (1 - y / h) * (y / h) * 8;   // quadratic back curve (or/xor)
-    if (g === 'and' || g === 'nand') {
+    if (std === 'iec') body += iecBody(g, x0, x0 + BW, h);
+    else if (g === 'and' || g === 'nand') {
       body += `<path class="gate" d="M${x0},0 H${x0 + 15} A15,${h / 2} 0 0 1 ${x0 + 15},${h} H${x0} Z"/>`;
     } else {
       body += `<path class="gate" d="M${x0},0 Q${x0 + 20},0 ${x0 + BW},${h / 2} Q${x0 + 20},${h} ${x0},${h} Q${x0 + 8},${h / 2} ${x0},0 Z"/>`;
@@ -178,14 +190,14 @@ function gateShape(n, ports) {
     }
     ins.forEach((p, i) => {
       const y = yi[i] ?? h / 2;
-      const end = (g === 'and' || g === 'nand') ? x0 : (isXor ? backX(y) - 5 : backX(y));
+      const end = (std === 'iec' || g === 'and' || g === 'nand') ? x0 : (isXor ? backX(y) - 5 : backX(y));
       body += stub(0, y, end, y, p.w);
       pins[p.id] = { ...p, x: 0, y, side: 'W' };
     });
     let xo = x0 + BW;
-    if (inv) { body += `<circle class="gate" cx="${xo + 3}" cy="${h / 2}" r="3"/>`; xo += 6; }
+    if (inv) { if (std !== 'iec') body += `<circle class="gate" cx="${xo + 3}" cy="${h / 2}" r="3"/>`; xo += 6; }
     w = xo + STUB;
-    if (n.label === 'reduce') body += `<text class="glabel small" x="${x0 + 10}" y="${h / 2 + 3}" text-anchor="middle">r</text>`;
+    if (n.label === 'reduce' && std !== 'iec') body += `<text class="glabel small" x="${x0 + 10}" y="${h / 2 + 3}" text-anchor="middle">r</text>`;
     outs.forEach(p => { body += stub(xo, h / 2, w, h / 2, p.w); pins[p.id] = { ...p, x: w, y: h / 2, side: 'E' }; });
     return { w, h, pins, body };
   }
@@ -193,9 +205,10 @@ function gateShape(n, ports) {
   if (g === 'not' || g === 'buf') {
     h = 20;
     const x0 = STUB, TW = 18;
-    body += `<path class="gate" d="M${x0},0 L${x0 + TW},${h / 2} L${x0},${h} Z"/>`;
+    body += std === 'iec' ? iecBody(g, x0, x0 + TW, h) : `<path class="gate" d="M${x0},0 L${x0 + TW},${h / 2} L${x0},${h} Z"/>`;
     let xo = x0 + TW;
-    if (g === 'not') { body += `<circle class="gate" cx="${xo + 3}" cy="${h / 2}" r="3"/>`; xo += 6; }
+    if (g === 'not' && std === 'iec') xo += 6;
+    else if (g === 'not') { body += `<circle class="gate" cx="${xo + 3}" cy="${h / 2}" r="3"/>`; xo += 6; }
     w = xo + STUB;
     (ins.length ? ins : []).forEach(p => { body += stub(0, h / 2, x0, h / 2, p.w); pins[p.id] = { ...p, x: 0, y: h / 2, side: 'W' }; });
     outs.forEach(p => { body += stub(xo, h / 2, w, h / 2, p.w); pins[p.id] = { ...p, x: w, y: h / 2, side: 'E' }; });
@@ -704,6 +717,9 @@ export function mountSchematic(container, opts = {}) {
   addEventListener('resize', onResize);
   // the side panel, the messages or the document maximized toggled: Full View (#1203)
   const offLayout = onLayoutToggled(container, () => fit());
+  // the standard of the gates chosen (Settings ▸ Schematic Symbols, #4113): the shapes made again, the same size and
+  // pins, so the layout stays
+  const offSymbols = onSymbolStandard(() => { if (!destroyed && layout && prep?.nodes.length) { prep = prepare(graph); render(); } });
 
   // ---------------- export (schematic-export.js)
   const { exportSvg } = mountSchExport({
@@ -713,7 +729,7 @@ export function mountSchematic(container, opts = {}) {
   function destroy() {
     destroyed = true; token++;
     clearTimeout(tipTimer);
-    ro?.disconnect(); offLayout();
+    ro?.disconnect(); offLayout(); offSymbols();
     removeEventListener("resize", onResize);
     container.innerHTML = '';
     container.classList.remove('sch-view', 'sch-lod', 'panning');

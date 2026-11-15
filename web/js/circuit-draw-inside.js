@@ -2,13 +2,15 @@
 // easily. A breadboard's strips (the holes joined: each column's a–e and f–j, each power rail, a full board's halves)
 // drawn as the metal strips under its holes; a gate IC's gates in its body, each an IEC box (&, ≥1, =1, 1; a bubble on an
 // inverting one's output) joined to its pins; another IC's pins named inside its body. In pixels, from the parts' pins.
+// (Always IEC 60617-12 boxes, the qualifiers of core/symbol-standard.js: a gate a few pixels across in a chip's body
+// reads better as a box with its qualifier than as a distinctive shape; Settings ▸ Schematic Symbols is the
+// schematics', #4113.)
 import { sv } from './dom.js';
 import { partHoles } from '/core/circuit-parts.js';
+import { iecQualifier, invertsOutput } from '/core/symbol-standard.js';
 
 const P = 20;
 const px = (v) => v * P;
-const SYMBOL = { and: '&', nand: '&', or: '≥1', nor: '≥1', xor: '=1', xnor: '=1', not: '1', buf: '1' };
-const INVERTS = new Set(['nand', 'nor', 'xnor', 'not']);
 
 /** A breadboard's strips, unturned (its group turns it): a <g> of a line through each strip's holes. */
 export function stripsSvg(p) {
@@ -43,9 +45,9 @@ export function icInside(g, d, pins, box) {
     const c = across ? [mx, cy + Math.sign(Math.round(my - cy)) * 11] : [cx + Math.sign(Math.round(mx - cx)) * 11, my];
     const lines = ps.map(([x, y]) => sv('line', { x1: x, y1: y, x2: c[0], y2: c[1], class: 'circ-gate-line' }));
     const box2 = sv('rect', { x: c[0] - 8, y: c[1] - 6, width: 16, height: 12, rx: 1.5, class: 'circ-gate' });
-    const label = sv('text', { x: c[0], y: c[1] + 3, 'text-anchor': 'middle', class: 'circ-gate-text', 'data-no-i18n': 'true' }, SYMBOL[gate.fn] || gate.fn);
+    const label = sv('text', { x: c[0], y: c[1] + 3, 'text-anchor': 'middle', class: 'circ-gate-text', 'data-no-i18n': 'true' }, iecQualifier(gate.fn) ?? gate.fn);
     g.append(...lines, box2, label);
-    if (INVERTS.has(gate.fn)) {
+    if (invertsOutput(gate.fn)) {
       // (its bubble on the box's edge toward the output pin)
       const o = at.get(gate.out), v = [o[0] - c[0], o[1] - c[1]], k = Math.min(8 / (Math.abs(v[0]) || 1e-9), 6 / (Math.abs(v[1]) || 1e-9));
       const len = Math.hypot(...v) || 1;

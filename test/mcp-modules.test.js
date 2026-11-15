@@ -62,7 +62,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(CONVERT_TOOLS), ['convert_module', 'convert_drawing']);
   assert.deepEqual(names(VIEW_TOOLS), ['related_view']);
   assert.deepEqual(names(TABLE_TOOLS), ['set_output_logic']);
-  assert.deepEqual(names(NOTATION_TOOLS), ['set_notation']);   // (the Boolean notation, #3915)
+  assert.deepEqual(names(NOTATION_TOOLS), ['set_notation', 'set_schematic_symbols']);   // (the Boolean notation, #3915; the gates' standard, #4113)
   assert.deepEqual(names(CHECK_TOOLS), ['check_drawing']);
   assert.deepEqual(names(FSM_TOOLS), ['set_fsm_outputs', 'set_fsm_look']);   // (a state's or a transition's outputs, #3814; its look, #3883)
   assert.deepEqual(names(CIRCUIT_TOOLS), ['circuit_parts', 'edit_circuit']);   // (a digital circuit's parts and edits, #3897)

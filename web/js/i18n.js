@@ -413,6 +413,9 @@ const PT = {
   'Theme': 'Tema', 'System': 'Sistema', 'Light': 'Claro', 'Dark': 'Escuro', 'Command Palette…': 'Paleta de Comandos…',
   // (the notation of the Boolean expressions shown, #3915)
   'Boolean Notation': 'Notação Booleana', 'Electronics / Engineering': 'Eletrónica / Engenharia', 'Text only': 'Só texto', 'Logic / Set theory': 'Lógica / Teoria de conjuntos',
+  // (the standard of the schematics' gates, #4113)
+  'Schematic Symbols': 'Símbolos Esquemáticos', 'IEEE Std 91-1984 (distinctive shapes)': 'IEEE Std 91-1984 (formas distintivas)',
+  'IEC 60617-12 (rectangular)': 'IEC 60617-12 (retangulares)',
   'Implement': 'Implementar', 'Emulate': 'Emular', 'Design flow': 'Fluxo de projeto',
   'Check Syntax of the selected module': 'Verificar a sintaxe do módulo selecionado',
   'Simulate Behavioral Model of the selected module': 'Simular o modelo comportamental do módulo selecionado',
