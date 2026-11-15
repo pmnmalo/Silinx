@@ -153,4 +153,8 @@ test('the breadboard example: its HDL the circuit\'s, as the editor generates it
   // Xst:2677), and an example builds with ISE with no warnings
   assert.doesNotMatch(synth.slice(synth.indexOf('architecture digital of breadboard')), /=> open\b/);
   assert.equal(synth.split('\n').length, shipped.split('\n').length);
+  // (#4048) Check Syntax's view, the simulation's model too: no design-check message (its 7408's first gate feeds its second:
+  // an instance's output and input on one net)
+  const full = compile([{ path: 'src/breadboard.vhd', lang: 'vhdl', text: shipped }]);
+  assert.deepEqual(designChecks(full, elaborate(full, 'breadboard')).map((d) => `${d.line} ${d.message}`), []);
 });

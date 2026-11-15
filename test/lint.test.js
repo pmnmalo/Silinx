@@ -390,6 +390,21 @@ test('rules: VHDL input assigned, output read (VHDL-93), with an internal signal
   assert.deepEqual(ids(c), ['mode-out@6']);
 });
 
+// (#4048) an instance's output port and one of its inputs on one net (a chip's gate feeding its next gate): the elaborator
+// makes them one signal, the net's; neither its output read nor its input updated, as XST and ISim accept it. The rules
+// still catch a port the instance's own statements write or read by its name
+test('rules: an instance\'s output wired to its own input is neither an input updated nor an output read (#4048)', () => {
+  const H = 'library ieee; use ieee.std_logic_1164.all;\n';
+  const files = (arch) => ({ 't.vhd': `${H}entity g is port (a1, b1, a2, b2 : in std_logic; y1, y2 : out std_logic); end g;\narchitecture r of g is begin ${arch} end r;\n${H}entity t is port (a, b, c : in std_logic; y : out std_logic); end t;\narchitecture r of t is signal n : std_logic; begin u : entity work.g port map (a1 => a, b1 => b, y1 => n, a2 => n, b2 => c, y2 => y); end r;\n` });
+  const modes = (arch) => lint(files(arch), 't').filter(d => d.check.startsWith('mode')).map(d => `${d.check}@${d.line} ${d.message}`);
+  assert.deepEqual(modes('y1 <= a1 and b1; y2 <= a2 and b2;'), []);
+  assert.deepEqual(modes('y1 <= a1 and b1; y2 <= y1 and b2;'), ['mode-out@3 Object <y1> of mode OUT can not be read.']);
+  assert.deepEqual(modes('y1 <= a1 and b1; a2 <= b1; y2 <= b2;'), ['mode-in@3 Object <a2> of mode IN can not be updated.']);
+  // (VHDL is case-insensitive: Y1, A2 named in another case are the same ports)
+  assert.deepEqual(modes('Y1 <= A1 and B1; Y2 <= A2 and B2;'), []);
+  assert.deepEqual(modes('y1 <= a1 and b1; y2 <= Y1 and b2;'), ['mode-out@3 Object <y1> of mode OUT can not be read.']);
+});
+
 test('rules: VHDL type errors std_logic / std_logic_vector / unsigned / integer / boolean', () => {
   const T = (decl, body) => ids(lint({ 't.vhd': VH(decl, body, 'a, b : in std_logic; y : out std_logic') }, 't')).filter(x => x.startsWith('type-'));
   assert.deepEqual(T('signal v : std_logic_vector(3 downto 0);', "v <= (others => a);\ny <= v;"), ['type-mismatch@7']);

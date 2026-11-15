@@ -307,9 +307,11 @@ export function designChecks(lib, design, { lint = true, rules = true } = {}) {
     pinfo.set(p, { ...ck, clocked, sim, logic, comb: logic && !clocked });
   }
   const fileOf = p => p.file || p.inst?.file;
-  const lineOfStmt = (p, pred) => {
-    let line = null;
-    eachStmt(p.body, (s) => { if (line == null && pred(s)) line = s.loc?.line ?? null; });
+  // (none: the process's line; `none` instead when given, no statement matching)
+  const lineOfStmt = (p, pred, none) => {
+    let line = null, found = false;
+    eachStmt(p.body, (s) => { if (!found && pred(s)) { found = true; line = s.loc?.line ?? null; } });
+    if (!found && none !== undefined) return none;
     return line ?? p.loc?.line ?? 1;
   };
   // reads of a statement; `q <= d when g = '1';` is bound with the target as its last else (the
@@ -329,6 +331,15 @@ export function designChecks(lib, design, { lint = true, rules = true } = {}) {
     return r;
   };
   const readsProc = (p) => { const r = new Set(); eachStmt(p.body, s => { for (const x of readsStmt(s)) r.add(x); }); return r; };
+  // whether an expression names a port: a reference of its signal by its name (#4048: an instance's input and output on
+  // one net are one signal, the net's; a reference with no name, its signal's)
+  const names = (e, port) => {
+    if (!e || typeof e !== 'object') return false;
+    if (e.k === 'sig' && e.sig === port.sig) return !e.name || String(e.name).toLowerCase() === String(port.name).toLowerCase();
+    return Object.entries(e).some(([k, v]) => k !== 'sig' && k !== 't' && (Array.isArray(v) ? v.some((x) => names(x, port)) : names(v, port)));
+  };
+  const writesPort = (s, port) => s.k === 'asg' && targetBits(s.target).some(x => x.sig === port.sig) && names(s.target, port);
+  const readsPort = (s, port) => readsStmt(s).has(port.sig) && exprsOf(s).some(e => names(e, port));
 
   // readers / writers of every signal
   const readers = new Map(), writers = new Map();
@@ -360,12 +371,12 @@ export function designChecks(lib, design, { lint = true, rules = true } = {}) {
       if (i.lang === 'vhdl') {
         for (const port of i.ports) {
           if (port.dir === 'in') {
-            for (const p of own) if (p.writes.has(port.sig)) {
-              add('mode-in', 'error', fileOf(p), lineOfStmt(p, s => s.k === 'asg' && targetBits(s.target).some(x => x.sig === port.sig)), `Object <${port.name}> of mode IN can not be updated.`, 'HDLCompiler');
+            for (const p of own) if (p.writes.has(port.sig) && lineOfStmt(p, s => writesPort(s, port), null) != null) {
+              add('mode-in', 'error', fileOf(p), lineOfStmt(p, s => writesPort(s, port)), `Object <${port.name}> of mode IN can not be updated.`, 'HDLCompiler');
             }
           } else if (port.dir === 'out') {
-            for (const p of own) if (p.reads.has(port.sig) && readsProc(p).has(port.sig)) {
-              add('mode-out', 'error', fileOf(p), lineOfStmt(p, s => readsStmt(s).has(port.sig)), `Object <${port.name}> of mode OUT can not be read.`, 'HDLCompiler');
+            for (const p of own) if (p.reads.has(port.sig) && lineOfStmt(p, s => readsPort(s, port), null) != null) {
+              add('mode-out', 'error', fileOf(p), lineOfStmt(p, s => readsPort(s, port)), `Object <${port.name}> of mode OUT can not be read.`, 'HDLCompiler');
             }
           }
         }
