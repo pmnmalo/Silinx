@@ -63,6 +63,17 @@ export function yosysTag(version) {
   return m ? `v${m[1]}.${m[2]}` : null;
 }
 
+// a part's name as the flow writes it (xc3s250ecp132-4)
+const PART = /^[a-z0-9-]{1,40}$/i;
+/** A measurement as the report may write it (#4169): its metrics finite numbers (else null), its part a part's name (else
+ *  null), nothing else; null if it is not one. The artifacts hold what the pull request's package wrote: outside text (#3417). */
+export function cleanQuality(q, metrics = METRICS) {
+  if (!q || typeof q !== 'object' || Array.isArray(q)) return null;
+  const out = { part: typeof q.part === 'string' && PART.test(q.part) ? q.part : null };
+  for (const [m] of metrics) out[m] = Number.isFinite(q[m]) ? q[m] : null;
+  return out;
+}
+
 const fmt = (m, x) => (x === null || x === undefined ? '-' : m === 'period' ? x.toFixed(3) : String(x));
 const pct = x => `${x > 0 ? '+' : ''}${(100 * x).toFixed(1)}%`;
 
@@ -76,7 +87,7 @@ const pct = x => `${x > 0 ? '+' : ''}${(100 * x).toFixed(1)}%`;
 export function qualityRows(base, head, tolerance = QUALITY_TOLERANCE, { metrics = METRICS, tool = 'Yosys' } = {}) {
   const rows = [];
   for (const name of [...new Set([...Object.keys(base), ...Object.keys(head)])]) {
-    const b = base[name] ?? null, h = head[name] ?? null;
+    const b = cleanQuality(base[name], metrics), h = cleanQuality(head[name], metrics);
     const row = { name, cells: {}, worse: [], better: [], note: '' };
     if (!b || !h) {
       row.note = !b && !h ? `no result with either ${tool}` : !h ? `no result with the new ${tool} (it did with the base's)` : `a result with the new ${tool} only`;
@@ -85,7 +96,7 @@ export function qualityRows(base, head, tolerance = QUALITY_TOLERANCE, { metrics
       rows.push(row);
       continue;
     }
-    if (b.part !== h.part) row.note = `built on the ${h.part} (the base's on the ${b.part}): not compared`;
+    if (b.part !== h.part) row.note = `built on the ${h.part ?? '?'} (the base's on the ${b.part ?? '?'}): not compared`;
     for (const [m] of metrics) {
       const x = b[m], y = h[m];
       if (x === y || typeof x !== 'number' || typeof y !== 'number' || row.note) { row.cells[m] = x === y ? fmt(m, y) : `${fmt(m, x)} → ${fmt(m, y)}`; continue; }

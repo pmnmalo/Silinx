@@ -10,7 +10,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkoutLayout } from './workflows-lib.mjs';
-import { yosysVersion, yosysChange, yosysTag, qualityRows, designQualities, mergeCorpus, reportMarkdown, readSide, DESIGN_SUBSET, MARK, PACKAGE, CORPUS_SHARDS } from '../scripts/yosys-update-report.mjs';
+import { yosysVersion, yosysChange, yosysTag, cleanQuality, qualityRows, designQualities, mergeCorpus, reportMarkdown, readSide, DESIGN_SUBSET, MARK, PACKAGE, CORPUS_SHARDS } from '../scripts/yosys-update-report.mjs';
 import { EXAMPLE_ORDER } from '../core/examples.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,6 +75,21 @@ test('yosys update: size and speed with both Yosys versions, a change beyond the
   assert.match(by.moved.note, /built on the xc3s500efg320-4 \(the base's on the xc3s250ecp132-4\): not compared/);
   assert.deepEqual(by.moved.worse, []);
   assert.deepEqual(designQualities({ a: { quality: q(1, 2, 3, 4) }, b: { flow: 'fail: x' } }, ['a', 'b', 'c']), { a: q(1, 2, 3, 4), b: null, c: null });
+});
+
+test('yosys update: a measurement the pull request\'s package wrote goes into the comment as numbers and a part\'s name only (#4169)', () => {
+  const q = (slices, period, part = 'xc3s250ecp132-4') => ({ part, slices, luts: 2, ffs: 3, period });
+  const hostile = '![x](https://example.com/x.png) @someone <b>';
+  assert.deepEqual(cleanQuality({ part: hostile, slices: hostile, luts: '7', ffs: 1e400, period: 7.5, extra: hostile }),
+    { part: null, slices: null, luts: null, ffs: null, period: 7.5 });
+  for (const x of [null, undefined, 'a', 42, ['x']]) assert.equal(cleanQuality(x), null);
+  // (a string period made toFixed throw: the report stopped)
+  const rows = qualityRows({ blinky: q(86, 7.3), pong: q(10, 5) }, { blinky: q(hostile, hostile), pong: q(10, 5, hostile) });
+  const by = Object.fromEntries(rows.map(r => [r.name, r]));
+  assert.deepEqual(by.blinky.cells, { slices: '86 → -', luts: '2', ffs: '3', period: '7.300 → -' });
+  assert.match(by.pong.note, /^built on the \? \(the base's on the xc3s250ecp132-4\): not compared$/);
+  const md = reportMarkdown({ baseVersion: '0.1.0', headVersion: '0.1.0', examples: rows, designs: [], corpus: null });
+  for (const bad of ['example.com', '@someone', '<b>']) assert.ok(!md.includes(bad), bad);
 });
 
 test('yosys update: the corpus\'s shards together, a shard without a result named', () => {

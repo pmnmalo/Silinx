@@ -334,3 +334,24 @@ test('workflows: a run: script that reads an env variable says shell: bash in a 
     }
   }
 });
+
+test('workflows: a workflow_run trigger runs after the repository\'s own workflow only, by its file, not its name (#4170)', () => {
+  // (workflow_run matches a workflow by its name: another file of that name, a pull request's, would start it too)
+  const nameOf = f => /^name: (.+)$/m.exec(read(f))?.[1].trim();
+  const triggered = FILES.filter(f => /^  workflow_run:\n/m.test(read(f)));
+  assert.ok(triggered.includes('pages.yml'));
+  for (const f of triggered) {
+    const yml = read(f);
+    const names = /^  workflow_run:\n    workflows: \[([^\]]+)\]/m.exec(yml)[1].split(',').map(s => s.trim());
+    const files = names.map(n => FILES.filter(g => nameOf(g) === n));
+    assert.ok(files.every(x => x.length === 1), `${f}: ${names}`);
+    for (const [job, lines] of Object.entries(jobs(yml))) {
+      if (lines.some(l => /^ {4}needs:/.test(l))) continue;
+      const cond = lines.join('\n').split(/\n {4}if: >-\n/)[1]?.split(/\n {4}\w/)[0] ?? '';
+      assert.match(cond, /github\.event\.workflow_run\.conclusion == 'success'/, `${f} ${job}`);
+      assert.match(cond, /github\.event\.workflow_run\.event == 'push'/, `${f} ${job}`);
+      assert.match(cond, /github\.event\.workflow_run\.head_repository\.full_name == github\.repository/, `${f} ${job}`);
+      for (const [g] of files) assert.ok(cond.includes(`github.event.workflow_run.path == '.github/workflows/${g}'`), `${f} ${job}: ${g}`);
+    }
+  }
+});

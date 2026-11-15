@@ -27,9 +27,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    # after a push to main; after a release: when it was published
+    # after a push to main; after a release: when it was published, by this repository's own release.yml started by
+    # a tag's push (workflow_run names a workflow by its name only: any other workflow called Release matches, #4170)
     if: >-
-      github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+      github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.path == '.github/workflows/release.yml'
+      && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # the editions' dependencies (this commit's and the older tags') installed without their install scripts (#1436)

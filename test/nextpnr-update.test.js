@@ -119,6 +119,17 @@ test('nextpnr update: an example\'s measurement from the flow\'s job; none when 
   assert.equal(measurementOf(null, 'p', 1), null);
 });
 
+test('nextpnr update: a measurement the pull request\'s nextpnr wrote goes into the comment as numbers and a part\'s name only (#4169)', () => {
+  const hostile = '![x](https://example.com/x.png) @someone';
+  const m = (slices, part = 'xc3s250ecp132-5') => ({ part, slices, luts: 2, ffs: 3, period: 9.5, seconds: 4, runs: [4] });
+  const rows = nextpnrRows({ 'blinky (Basys2-250)': m(10) }, { 'blinky (Basys2-250)': { ...m(hostile, hostile), period: hostile, runs: [hostile] } });
+  assert.equal(rows.length, 1);
+  assert.deepEqual([rows[0].cells.slices, rows[0].cells.period], ['10 → -', '9.500 → -']);
+  assert.match(rows[0].note, /^built on the \? /);
+  const md = reportMarkdown({ summary: 'spartan3e 1.0.0 → 1.0.1', rows });
+  for (const bad of ['example.com', '@someone']) assert.ok(!md.includes(bad), bad);
+});
+
 test('nextpnr update: the boards measured, one of each family\'s nextpnr, boards of the examples', () => {
   const names = TARGETS.map(targetName);
   for (const [key, t] of Object.entries(BOARDS)) assert.equal(targetName(t), key);
