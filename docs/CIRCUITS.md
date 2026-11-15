@@ -25,7 +25,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 - **Moving and turning** (#4059, #4065): a breadboard moved or turned carries the parts plugged into it (a pin in one of
   its holes) and the wires between them; with **Keep connections** (the toolbar's, as the schematic's: remembered, on by
   default) the ends of the other wires on the moved pins and holes follow them, not ticked they stay where they are. Every
-  part turns a quarter clockwise (R), a breadboard too; there is no mirror. **Cut, Copy and Paste** (#4066) copy the
+  part turns a quarter clockwise (R), a breadboard too, drawn turned whole with its labels upright (#4114); there is no mirror. **Cut, Copy and Paste** (#4066) copy the
   selected part (a breadboard with the parts on it and the wires between them), pasted 2 steps right and down, new ids
   given, a label another part has left out.
 - **Show inside** (#4060, the toolbar's, remembered): each breadboard's strips drawn under its holes (each column's a–e

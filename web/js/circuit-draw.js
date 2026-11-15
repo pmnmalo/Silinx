@@ -33,7 +33,7 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs 
 function breadboardSvg(turned, selected, inside) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type), cols = d.cols || BB_COLS;
   const x0 = px(p.x) - P, y0 = px(p.y + BB_RAILS.tp) - P, w = px(cols + 1), hgt = px(BB_RAILS.bp - BB_RAILS.tp + 2);
-  const g = sv('g', { class: `circ-bb${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id, ...(turned.rot ? { transform: `rotate(${90 * turned.rot} ${px(p.x)} ${px(p.y)})` } : {}) },
+  const g = sv('g', { class: `circ-bb${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id },
     sv('rect', { x: x0, y: y0, width: w, height: hgt, rx: 6, class: 'circ-bb-body' }),
     sv('rect', { x: x0 + 6, y: px(p.y + BB_ROWS.e) + P * 0.5, width: w - 12, height: px(BB_ROWS.f - BB_ROWS.e) - P, class: 'circ-bb-channel' }));
   // the rails' lines: red the +, blue the −
@@ -48,7 +48,36 @@ function breadboardSvg(turned, selected, inside) {
   // the rows' letters and every fifth column's number
   for (const [r, y] of Object.entries(BB_ROWS)) g.append(sv('text', { x: x0 + P / 2, y: px(p.y + y) + 3.5, class: 'circ-bb-label' }, r));
   for (let c = 1; c <= cols; c += c === 1 ? 4 : 5) g.append(sv('text', { x: px(p.x + c - 1), y: px(p.y) - P * 0.55, class: 'circ-bb-label', 'text-anchor': 'middle' }, String(c)));
+  return turnWhole(g, turned);
+}
+
+// A part drawn unturned turned as a whole by its rot quarter turns clockwise about its place (x, y), as its pins and
+// holes are (core/circuit-parts.js partPins, partHoles); its texts kept upright, each turned back about its middle; a
+// part's name, beside the part once turned, starts away from it (named: from the middle of its rectangles and circles).
+function turnWhole(g, p, named = false) {
+  const rot = (((p.rot || 0) % 4) + 4) % 4;
+  if (!rot) return g;
+  const c = named ? middle(g) : null;
+  g.setAttribute('transform', `rotate(${90 * rot} ${px(p.x)} ${px(p.y)})`);
+  for (const t of g.querySelectorAll('text')) {
+    const x = Number(t.getAttribute('x')), y = Number(t.getAttribute('y'));
+    t.setAttribute('transform', `rotate(${-90 * rot} ${x} ${y - 3.5})`);
+    if (!c || !t.classList.contains('circ-label')) continue;
+    let [vx, vy] = [x - c[0], y - c[1]];
+    for (let k = rot; k > 0; k--) [vx, vy] = [-vy, vx];
+    if (Math.abs(vx) > Math.abs(vy)) t.setAttribute('text-anchor', vx > 0 ? 'start' : 'end');
+  }
   return g;
+}
+
+// the middle of a drawing's rectangles and circles (its attributes: not yet on the page), pixels
+function middle(g) {
+  const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+  const add = (x0, y0, x1, y1) => { b.x0 = Math.min(b.x0, x0); b.y0 = Math.min(b.y0, y0); b.x1 = Math.max(b.x1, x1); b.y1 = Math.max(b.y1, y1); };
+  const n = (e, a) => Number(e.getAttribute(a));
+  for (const e of g.querySelectorAll('rect')) add(n(e, 'x'), n(e, 'y'), n(e, 'x') + n(e, 'width'), n(e, 'y') + n(e, 'height'));
+  for (const e of g.querySelectorAll('circle')) add(n(e, 'cx') - n(e, 'r'), n(e, 'cy') - n(e, 'r'), n(e, 'cx') + n(e, 'r'), n(e, 'cy') + n(e, 'r'));
+  return [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2];
 }
 
 function wireSvg(w, selected, d) {
@@ -60,8 +89,9 @@ function wireSvg(w, selected, d) {
 }
 
 const LEVEL_CLS = { 0: 'lv0', 1: 'lv1', Z: 'lvz', X: 'lvx' };
-function partSvg(p, selected, { levels, leds, inputs, inside = false }) {
-  const d = partDef(p.type);
+// (turned, #4114: drawn unturned, then turned whole about its place)
+function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
+  const p = { ...turned, rot: 0 }, d = partDef(p.type);
   const pins = partPins(p);
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
   const xs = pins.map((q) => px(q.x)), ys = pins.map((q) => px(q.y));
@@ -105,5 +135,5 @@ function partSvg(p, selected, { levels, leds, inputs, inside = false }) {
     g.append(sv('circle', { cx: px(q.x), cy: px(q.y), r: d.kind === 'ic' ? 3.4 : 3, class: `circ-pin${lv ? ` ${LEVEL_CLS[lv]}` : ''}` },
       sv('title', {}, `${p.id} pin ${q.n}${String(q.n) === q.name ? '' : ` (${q.name})`}${lv ? `: ${lv}` : ''}`)));
   }
-  return g;
+  return turnWhole(g, turned, true);
 }
