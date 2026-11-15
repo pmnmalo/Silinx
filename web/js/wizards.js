@@ -15,6 +15,7 @@ import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
 import { KIND_OPTIONS, kindFields, makeDesignProject } from './project-kind-ui.js';
 import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
+import { topSourceFiles } from '/core/top-source.js';
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
 import { designOnly, refusedHere } from './design-only.js';
 import { byLastUsed } from './project-store.js';
@@ -293,37 +294,13 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
 
 // Top-Level Source Type: what the top of a new (empty) project is (core/top-types.js, #4105)
 
-/** The top document of a new project (type sch / fsm / asm / tt: with its synchronized HDL module 'top'; petri / circuit:
- *  the drawing alone, its HDL made when the project is loaded; c / cpp: the function 'top', Silinx HLS's). */
+/** The top document of a new project (core/top-source.js, #4121: its files written, the HDL last, registering the
+ *  module in the project), or null (HDL). */
 export async function createTopSource(pname, type, lang) {
-  const t = TOP_TYPES.find(x => x.id === type);
-  const hdlPath = `src/top.${lang === 'verilog' ? 'v' : 'vhd'}`;
-  let doc, code;
-  if (type === 'sch') {
-    const { newDoc, generateHdl } = await import('/core/schdoc.js');
-    doc = newDoc('top', lang); code = generateHdl(doc, { lang }).code;
-  } else if (type === 'fsm') {
-    const { newFsm, generateFsm } = await import('/core/fsm.js');
-    doc = newFsm('top', lang); code = generateFsm(doc, lang).code;
-  } else if (type === 'asm') {
-    const { newModel, generate } = await import('/core/asm.js');
-    doc = newModel('top', lang); code = generate(doc, lang).code;
-  } else if (type === 'tt') {
-    const { newTable, generateTableHdl } = await import('/core/logic.js');
-    doc = { ...newTable('top', ['a', 'b', 'c'], ['f']), lang }; code = generateTableHdl(doc, lang).code;
-  } else if (type === 'petri' || type === 'circuit') {
-    const { newPetri } = await import('/core/petri.js'), { newCircuit } = await import('/core/circuit.js');
-    await api.writeFile(pname, t.file, JSON.stringify(type === 'petri' ? newPetri('top', lang) : newCircuit('top', lang), null, 2));
-    return t.file;
-  } else if (type === 'c' || type === 'cpp') {
-    const { cTemplate, cppTemplate } = await import('./c-templates.js');
-    await api.writeFile(pname, t.file, (type === 'c' ? cTemplate : cppTemplate)('top'));
-    return t.file;
-  } else return null;
-  doc.generatedFile = hdlPath;
-  await api.writeFile(pname, t.file, JSON.stringify(doc, null, type === 'sch' ? 1 : 2));
-  await api.writeFile(pname, hdlPath, code);   // registers the module in the project
-  return t.file;
+  const top = await topSourceFiles(type, lang);
+  if (!top) return null;
+  for (const f of top.files) await api.writeFile(pname, f.path, f.text);
+  return top.file;
 }
 
 // a date as the lists show it: 2026-10-24 15:07, local time
