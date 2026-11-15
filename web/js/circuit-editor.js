@@ -7,7 +7,7 @@
 //   ed.simulating(); ed.toggleSim(); ed.destroy();
 //
 // Breadboards, ICs, switches, buttons, LEDs and the supply on a 0.1 inch grid, wired point to point; a part from the
-// side panel's library placed by a click, moved by a drag, turned (R), deleted (Del); a wire drawn point by point,
+// Parts panel (on the left, #4062) placed by a click, moved by a drag, turned (R), deleted (Del); a wire drawn point by point,
 // ended on a pin or a hole. Try it runs it live (core/circuit-sim.js): a click flips a logic switch, a press holds a
 // button; each pin shows its level, the LEDs light. Its edits: core/circuit-edit.js (the MCP server's edit_circuit's);
 // its problems after every change (`onProblems`) and on Check (`onCheck`), its messages (`onMessage`) in the console.
@@ -25,6 +25,7 @@ import { clone } from '/core/util.js';
 import { drawCircuit, P } from './circuit-draw.js';
 import { mountCircuitToolbar } from './circuit-toolbar.js';
 import { mountCircuitSide } from './circuit-side.js';
+import { mountCircuitParts } from './circuit-parts-panel.js';
 import { printDiagram, svgSnapshot } from './print.js';
 import { onLayoutToggled } from './layout-fit.js';
 
@@ -62,24 +63,25 @@ export function mountCircuitEditor(container, opts = {}) {
   const world = sv('g', { class: 'circ-world' });
   const svg = sv('svg', { class: 'asm-canvas circ-canvas' }, world);
   const canvasWrap = h('div', { class: 'asm-canvas-wrap' }, svg);
-  const partsBody = h('div', { class: 'circ-lib' });
   const selSection = h('section', { class: 'asm-section circ-selection' });
   const circBody = h('div', {});
-  // (the selection's properties first, then the parts library, which is long, then the circuit's)
+  // the parts on the left (#4062: circuit-parts-panel.js), the selection's and the circuit's properties on the right
+  const parts = mountCircuitParts({ root, tool: () => tool, setTool });
   const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Properties'), selSection,
-    h('section', { class: 'asm-section circ-parts' }, h('h3', {}, 'Parts'), partsBody),
     h('section', { class: 'asm-section circ-circuit' }, h('h3', {}, 'Circuit'), circBody));
   mountSideFold({ root, side, key: 'silinx.circuit.props.folded' });
-  root.append(toolbar, h('div', { class: 'asm-body' }, h('div', { class: 'asm-main' }, simBar, canvasWrap), side), info.el);
+  root.append(toolbar, h('div', { class: 'asm-body' }, parts.side, h('div', { class: 'asm-main' }, simBar, canvasWrap), side), info.el);
   if (readOnly) {
     root.classList.add('asm-readonly');
     for (const g of [tools.select.parentElement, tools.select.parentElement.nextElementSibling, rotBtn.parentElement, rotBtn.parentElement.nextElementSibling]) g.hidden = true;
     keepBox.closest('label').hidden = true;   // (Show inside kept: how it is drawn)
+    parts.side.hidden = true;
+    toolbar.querySelector('.circ-parts-btn').style.display = 'none';
     for (const g of [toolbar.querySelector('.circ-check').parentElement]) g.hidden = true;
     if (opts.banner) toolbar.append(opts.banner);
   }
 
-  const { renderSide } = mountCircuitSide({ M: () => M, setM: (m) => { M = m; }, sel: () => sel, tool: () => tool, setTool, commit, status, partsBody, selSection, circBody, readOnly });
+  const { renderSide } = mountCircuitSide({ M: () => M, setM: (m) => { M = m; }, sel: () => sel, commit, status, selSection, circBody, readOnly });
 
   // ---------------------------------------------------------------- edits, history
   function commit() {
@@ -150,6 +152,7 @@ export function mountCircuitEditor(container, opts = {}) {
     side.classList.toggle('try-it-body', !!sim);   // (tried out: its Properties the Try it's body, a lighter green, #3924)
     info.set([circuitCounts(M), sim ? { text: `t = ${sim.time} ns`, cls: 'circ-time', noI18n: true } : null].filter(Boolean));
     renderSide();
+    if (!readOnly) parts.renderParts();
   }
   // whether a grid point holds a pin or a hole (a wire ends there)
   const holds = ([x, y]) => M.parts.some((p) => partPins(p).some((q) => q.x === x && q.y === y) || partHoles(p).some((q) => q.x === x && q.y === y));

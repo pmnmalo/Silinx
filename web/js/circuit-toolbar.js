@@ -4,7 +4,7 @@
 // status line of its counts and, while simulating, its time; the ⋮ menu (#4064: Curved wires, Hop-overs).
 import { h } from './ui.js';
 import { toolIcon, toolWide, zoomTools } from './editor-icons.js';
-import { panelToggle, PROPS_KEY } from './narrow.js';
+import { panelToggle, PROPS_KEY, CIRCUIT_PARTS_KEY } from './narrow.js';
 import { statusLine } from './status-line.js';
 
 /** { tools, delBtn, rotBtn, checkBtn, simBtn, zoomLbl, info, toolbar } of mountCircuitEditor. */
@@ -32,7 +32,9 @@ export function mountCircuitToolbar(ctx) {
     h('div', { class: 'asm-group' }, checkBtn), sep(),
     h('div', { class: 'asm-group' }, simBtn),
     h('div', { class: 'asm-spacer' }),
-    h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Properties', 'Show / hide the properties panel'), { key: PROPS_KEY })),
+    // (a narrow screen: the parts and the properties over the canvas, shown by these, #4062)
+    h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Parts', 'Show / hide the parts panel', null, 'circ-parts-btn'), { cls: 'parts-open', key: CIRCUIT_PARTS_KEY }),
+      panelToggle(root, btn('☰ Properties', 'Show / hide the properties panel'), { key: PROPS_KEY })),
     more.el);
   return { tools, delBtn, rotBtn, checkBtn, simBtn, zoomLbl, info, toolbar };
 }

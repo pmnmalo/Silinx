@@ -58,7 +58,8 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   await page.waitFor((ed) => document.querySelectorAll(`${ed} [data-id=D2] .circ-bar`)[1].classList.contains('lit'), [ED], { what: 'the slide switch on: light 2' });
   await page.click(`${ED} .circ-sim-btn`);
   // the library: the 74LS and the 4000 gates; a 4001 placed, its pinout
-  const groups = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-group`)].map((g) => [g.querySelector('.circ-lib-title').textContent, g.querySelectorAll('.circ-lib-part').length]), ED);
+  // (the Parts panel's categories, #4062: a title, then its parts)
+  const groups = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].map((g) => [g.textContent, document.querySelectorAll(`${ed} .circ-lib-part[data-group="${g.textContent}"]`).length]), ED);
   assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 16], ['Gates (4000)', 7], ['MSI (74LS)', 10], ['Sequential (74LS, 4000)', 15]]);
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="4001"]`).scrollIntoView({ block: 'center' }), ED);   // (the library scrolls)
   await page.click(`${ED} .circ-lib-part[data-part="4001"]`);
@@ -88,7 +89,7 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   assert.match(await readWs(env, 'PartsPj', 'src/panel.vhd'), /^    sw_1 : in std_logic;$/m);
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
-  await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title`)].some((t) => t.textContent === 'Portas (4000)'), [ED], { what: 'the library in Portuguese' });
+  await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].some((t) => t.textContent === 'Portas (4000)'), [ED], { what: 'the library in Portuguese' });
   assert.deepEqual(await page.eval((ed) => ['dip-4', 'seg7-cc', '7430', '4001', '7403'].map((t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"]`).textContent), ED),
     ['Interruptor DIP (4)', 'Mostrador de 7 segmentos, cátodo comum', '7430 Uma porta NAND de 8 entradas', '4001 Quatro portas NOR de 2 entradas', '7403 Quatro portas NAND de 2 entradas, coletor aberto']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-on`).closest('label').firstChild.textContent, ED), 'Alavancas ligadas');
@@ -102,7 +103,7 @@ uiTest('Circuit editor, the MSI ICs (#3900): a 7447 from the library\'s MSI grou
   await page.openProject('MsiPj');
   await page.eval(() => window.SilinxApp.openFile('src/m.circ.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7447"]`), [ED], { what: 'the library' });
-  const group = (title) => page.eval((ed, t) => [...[...document.querySelectorAll(`${ed} .circ-lib-group`)].find((g) => g.querySelector('.circ-lib-title').textContent === t).querySelectorAll('.circ-lib-part')].map((b) => b.dataset.part), ED, title);
+  const group = (title) => page.eval((ed, t) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-group="${t}"]`)].map((b) => b.dataset.part), ED, title);
   assert.deepEqual(await group('MSI (74LS)'), ['7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485']);
   assert.deepEqual(await group('Sequential (74LS, 4000)'), ['7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017']);
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7447"]`).scrollIntoView({ block: 'center' }), ED);
