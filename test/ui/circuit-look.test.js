@@ -19,8 +19,9 @@ const menuItem = async (page, label) => page.click(await page.eval((ed, l) => {
   const r = [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item`)].find((b) => b.lastChild.textContent === l).getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }, ED, label));
-// the menu's entries: its title's and its items' labels (* the ticked ones), their roles
-const entries = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title, ${ed} .tb-more-menu .tb-menu-item`)]
+// the menu's entries: its title's and its items' labels (* the ticked ones), their roles (its HDL's language's left out:
+// drawing-language-menu.test.js, #4063)
+const entries = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title:not([data-lang]), ${ed} .tb-more-menu .tb-menu-item:not([data-lang])`)]
   .map((e) => e.classList.contains('tb-menu-title') ? `${e.textContent}:` : `${e.getAttribute('aria-checked') === 'true' ? '*' : ''}${e.lastChild.textContent} ${e.getAttribute('role')}`), ED);
 
 uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Curved wires (undone) and Wire crossings: Hop-overs, Plain crossings; Portuguese', E, async (page) => {
@@ -44,7 +45,7 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Curved w
   assert.doesNotMatch(await wireD(page, 'w1'), / A/, 'the first wire drawn hops over none');
   assert.deepEqual(await entries(page), ['Curved wires menuitemcheckbox', 'Wire crossings:', '*Hop-overs menuitemradio', 'Plain crossings menuitemradio']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .tb-more-menu .tb-menu-title`).title, ED), 'How two wires that cross without connecting are drawn');
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu [data-value]`)].map((b) => [b.dataset.value, b.title]), ED),
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu [data-value]:not([data-lang])`)].map((b) => [b.dataset.value, b.title]), ED),
     [['hops', 'Draw a small arc where two wires cross without connecting'], ['plain', 'Draw two wires that cross without connecting straight across each other (a connection has its dot)']]);
   assert.equal(await page.eval(() => localStorage.getItem('silinx.circuit.hops')), null, 'nothing stored');
   // Plain crossings: no hop, its ✓, remembered; Hop-overs again: the hop back
@@ -73,12 +74,12 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Curved w
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-inside span`).textContent === 'Mostrar o interior', [ED], { what: 'Portuguese' });
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item`)].map((b) => [b.textContent.replace(/^✓/, ''), b.title]), ED),
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item:not([data-lang])`)].map((b) => [b.textContent.replace(/^✓/, ''), b.title]), ED),
     [['Fios curvos', 'Desenhar os fios como curvas suaves pelas suas dobras, como fios de ligação (as ligações as mesmas)'], ['Saltos', 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem'],
       ['Cruzamentos simples', 'Desenhar dois fios que se cruzam sem se ligarem a direito, um sobre o outro (uma ligação tem o seu ponto)']]);
-  assert.deepEqual(await page.eval((ed) => { const t = document.querySelector(`${ed} .tb-more-menu .tb-menu-title`); return [t.textContent, t.title]; }, ED),
+  assert.deepEqual(await page.eval((ed) => { const t = document.querySelector(`${ed} .tb-more-menu .tb-menu-title:not([data-lang])`); return [t.textContent, t.title]; }, ED),
     ['Cruzamentos de fios', 'Como se desenham dois fios que se cruzam sem se ligarem']);
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios e linguagem');   // (and its HDL's, #4063)
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

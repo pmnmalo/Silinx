@@ -151,7 +151,7 @@ export function mountSchEditor(container, opts = {}) {
     leaveSim: (...a) => leaveSim(...a), live: () => live, mirrorSel: (...a) => mirrorSel(...a), mirrorVSel: (...a) => mirrorVSel(...a), namesBox,
     readOnly, rotateSel: (...a) => rotateSel(...a),
     runCheck: (...a) => runCheck(...a), sep, setTool: (...a) => setTool(...a), tb,
-    zoomAt: (...a) => zoomAt(...a)
+    zoomAt: (...a) => zoomAt(...a), menuItems: opts.menuItems
   });
 
   // ---------------- left: symbols palette (sch-palette.js)

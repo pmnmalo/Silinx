@@ -150,8 +150,8 @@ export function mountTtEditor(container, opts = {}) {
   const more = toolbarMenu([
     menuItem('module', 'Algebra from Module…', 'Fill the table with the truth table of a combinational module of the project (exhaustive simulation)', () => opts.onFromModule?.()),
     menuItem('pen', 'Handwritten Algebra…', 'Write the expressions by hand, one a line, with any names: they become the table\'s inputs, outputs and expressions', () => handwritten(), 'tt-ink'),
-    // its expressions' notation (#3939): the Settings' by default, or the table's own (saved with it)
-    ...(notationItems = notationChoice(M, v => { if (v) M.notation = v; else delete M.notation; changed(); })),
+    // its expressions' notation (#3939): the Settings' by default, or the table's own (saved with it); its HDL's language (#4063)
+    ...(notationItems = notationChoice(M, v => { if (v) M.notation = v; else delete M.notation; changed(); })), ...(opts.menuItems || []),
   ], { title: 'Fill the table, its notation' });
   const toolbar = h('div', { class: 'tt-toolbar' },
     h('label', {}, 'Inputs:'), inIn, h('label', {}, 'Outputs:'), outIn, shapeErr,

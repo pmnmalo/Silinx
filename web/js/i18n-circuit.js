@@ -3,6 +3,10 @@ export const CIRCUIT_PT = {
   // New Source, the Design pane
   'Circuit': 'Circuito',
   // toolbar
+  'Wires and language': 'Fios e linguagem', 'HDL Language': 'Linguagem HDL', 'Preferred Language': 'Linguagem Preferida',
+  'The project\'s Preferred Language (Design Properties): the drawing\'s HDL follows it': 'A Linguagem Preferida do projeto (Propriedades do Projeto): o HDL do desenho acompanha-a',
+  'The drawing\'s HDL in VHDL, whatever the project\'s Preferred Language': 'O HDL do desenho em VHDL, seja qual for a Linguagem Preferida do projeto',
+  'The drawing\'s HDL in Verilog, whatever the project\'s Preferred Language': 'O HDL do desenho em Verilog, seja qual for a Linguagem Preferida do projeto',
   'Wire': 'Fio', 'Show inside': 'Mostrar o interior', 'Wires': 'Fios', 'Curved wires': 'Fios curvos',
   'Show what is inside the parts: the gates of each IC and its pins\' names, the strips of holes joined in each breadboard': 'Mostrar o interior das peças: as portas de cada CI e os nomes dos seus pinos, as tiras de furos ligados de cada placa de ensaio',
   'Draw the wires as smooth curves through their bends, as jumper wires (the connections the same)': 'Desenhar os fios como curvas suaves pelas suas dobras, como fios de ligação (as ligações as mesmas)', 'Stop trying it out and go back to editing the circuit (Esc)': 'Parar de experimentar e voltar a editar o circuito (Esc)',
@@ -15,7 +19,7 @@ export const CIRCUIT_PT = {
   // side panel
   'Parts': 'Peças', 'Search parts…': 'Procurar peças…', '☰ Parts': '☰ Peças', 'Show / hide the parts panel': 'Mostrar / esconder o painel das peças',
   'Collapse the Parts panel': 'Recolher o painel das peças', 'Expand the Parts panel': 'Expandir o painel das peças', 'Breadboards': 'Placas de ensaio', 'Power': 'Alimentação', 'Inputs': 'Entradas', 'Outputs': 'Saídas', 'Gates (74LS)': 'Portas (74LS)',
-  'Label': 'Etiqueta', 'Colour': 'Cor', 'HDL language': 'Linguagem HDL', 'Gates (4000)': 'Portas (4000)', 'MSI (74LS)': 'MSI (74LS)', 'Sequential (74LS, 4000)': 'Sequenciais (74LS, 4000)',
+  'Label': 'Etiqueta', 'Colour': 'Cor', 'Gates (4000)': 'Portas (4000)', 'MSI (74LS)': 'MSI (74LS)', 'Sequential (74LS, 4000)': 'Sequenciais (74LS, 4000)',
   'On': 'Ligado', 'Levers on': 'Alavancas ligadas', 'Frequency (Hz)': 'Frequência (Hz)',
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
 };

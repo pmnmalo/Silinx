@@ -45,6 +45,7 @@ export function mountPetriToolbar(ctx) {
   const more = toolbarMenu([tabBtns.analysis,
     btn('PNML ⇩', 'Export the net as PNML (for PIPE, WoPeD, TINA…)', () => downloadText(`${M().name}.pnml`, toPnml(M()), 'application/xml')),
     btn('PNML ⇧', 'Import a PNML net (replaces this one: Undo brings it back)', () => pnmlIn.click(), 'pn-pnml-in'),
+    ...(opts.menuItems || []),   // (its HDL's language, #4063: drawing-lang-menu.js)
   ], { title: 'Analysis and PNML', btnClass: 'asm-btn' });
   const toolbar = h('div', { class: 'asm-toolbar pn-toolbar' },
     h('div', { class: 'asm-group' }, ...Object.values(tools)), sep(),

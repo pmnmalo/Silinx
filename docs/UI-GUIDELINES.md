@@ -19,7 +19,8 @@ answer here.
   change the document on the left (add, delete), then zoom, then the document's settings; a spacer; the
   Properties toggle; the toolbar's ⋮ menu (`web/js/toolbar-menu.js`) at the right end of its first line for the
   commands used now and then (layout, conversion, export, analysis), its place kept free whatever wraps (#2208,
-  #2331).
+  #2331). A drawing's ⋮ menu ends with its HDL language (#4063, `web/js/drawing-lang-menu.js`: Preferred Language,
+  VHDL, Verilog), none in a design project.
 - **A ⋮ menu holds menu items, never form fields** (#2846): no `<select>`, input or check box in it. A choice is a
   section title and its options, checkable items with a ✓ on the current one (`menuChoice`); a setting on or off is one
   checkable item (`menuCheck`); an option that can't be chosen is disabled, its reason its tip. They are

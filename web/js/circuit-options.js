@@ -1,7 +1,7 @@
 // The circuit editor's options (web/js/circuit-editor.js): the toolbar's Keep connections (#4059, on by default) and Show
 // inside (#4060, off by default), remembered; its ⋮ menu (#4064): Curved wires (the circuit's wireStyle, an edit, Undo
 // takes it back; disabled read-only) and Wire crossings: Hop-overs or Plain crossings (#4101; remembered, hop-overs by
-// default, as the schematic's).
+// default, as the schematic's); the items the editor is given (`menuItems`: its HDL's language, #4063).
 import { h } from './ui.js';
 import { menuCheck, setChecked, toolbarMenu } from './toolbar-menu.js';
 import { setWireStyle } from '/core/circuit-edit.js';
@@ -12,7 +12,7 @@ const setPref = (key, on) => { try { localStorage.setItem(key, on ? '1' : '0'); 
 
 /** { keepBox, insideBox, more, keep(), inside(), hops(), sync() } of mountCircuitEditor (M(): its model; applyEdit(r)
  *  an edit; render()). sync(): the menu's ✓ as the circuit is (an undo). */
-export function mountCircuitOptions({ M, readOnly, applyEdit, render }) {
+export function mountCircuitOptions({ M, readOnly, applyEdit, render, menuItems = [] }) {
   let keepOn = pref('silinx.circuit.keep', true), insideOn = pref('silinx.circuit.inside', false), hopsOn = pref('silinx.circuit.hops', true);
   const keepBox = h('input', { type: 'checkbox', class: 'circ-keep-in', checked: keepOn });
   keepBox.addEventListener('change', () => { keepOn = keepBox.checked; setPref('silinx.circuit.keep', keepOn); });
@@ -21,8 +21,9 @@ export function mountCircuitOptions({ M, readOnly, applyEdit, render }) {
   const curvedItem = menuCheck('Curved wires', { checked: M().wireStyle === 'curved', title: 'Draw the wires as smooth curves through their bends, as jumper wires (the connections the same)',
     onChange: (on) => applyEdit(setWireStyle(M(), on ? 'curved' : 'straight')) });
   if (readOnly) curvedItem.disabled = true;
-  // (Wire crossings: Hop-overs, Plain crossings, a choice as the schematic's, #4101)
+  // (Wire crossings: Hop-overs, Plain crossings, a choice as the schematic's, #4101; and its HDL's language, #4063:
+  // drawing-lang-menu.js)
   const crossings = crossingsChoice(hopsOn, (on) => { hopsOn = on; setPref('silinx.circuit.hops', on); render(); });
-  const more = toolbarMenu([curvedItem, ...crossings], { title: 'Wires', btnClass: 'asm-btn' });
+  const more = toolbarMenu([curvedItem, ...crossings, ...menuItems], { title: menuItems.length ? 'Wires and language' : 'Wires', btnClass: 'asm-btn' });
   return { keepBox, insideBox, more, keep: () => keepOn, inside: () => insideOn, hops: () => hopsOn, sync: () => setChecked(curvedItem, M().wireStyle === 'curved') };
 }
