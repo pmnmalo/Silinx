@@ -28,7 +28,8 @@ uiTest('#3142 #1649 Design Properties: the Basys 3, experimental; the pins as an
   await page.waitDialog('Design Properties');
   const f = await fields(page);
   assert.ok(f.boards.includes('Digilent Basys 3 (experimental)') && f.boards.includes('Digilent Nexys A7 (experimental)'), String(f.boards));
-  assert.deepEqual(f.boards.filter(b => /experimental/.test(b)), ['Digilent Basys 3 (experimental)', 'Digilent Nexys A7 (experimental)']);
+  // (the 7-series' boards, every one experimental: the Arty S7's Spartan-7 and the Zybo Z7's Zynq-7000 too, #3895)
+  assert.deepEqual(f.boards.filter(b => /experimental/.test(b)), ['Digilent Basys 3 (experimental)', 'Digilent Nexys A7 (experimental)', 'Digilent Arty S7 (experimental)', 'Digilent Zybo Z7 (experimental)']);
   assert.ok(f.families.includes('Artix-7 (experimental)') && f.families.includes('Spartan-3E'), String(f.families));
   // the board chosen: its device, the synthesis tool locked
   const chosen = await page.eval(() => {
