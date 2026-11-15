@@ -1,5 +1,5 @@
 // How a schematic's wires are drawn (#4081, core/wire-style.js): Direct, Orthogonal, Curved. The ids and labels, a
-// drawing's style (a file without one: orthogonal), set and read again (older files, a bad one dropped); Direct's
+// drawing's style (a file without one: orthogonal; another editor's default, the circuit's direct), set and read again (older files, a bad one dropped); Direct's
 // geometry (core/schcurve.js with st 'direct': a straight line from end to end, or through the wire's own points; the
 // point nearest a point, the path's point answering it, crossings and hops on the straight lines, a wire split); a
 // style a drawing only: the netlist, Check Schematic, the generated VHDL and Verilog and ISE's .sch the same drawn
@@ -33,13 +33,32 @@ test('a drawing\'s style: none (an older file) or an unknown one is orthogonal; 
   assert.equal(W.wireStyleOf({ wireStyle: 'zigzag' }), 'orthogonal');
   assert.equal(W.wireStyleOf({ wireStyle: 'curved' }), 'curved');
   assert.equal(W.wireStyleOf({ wireStyle: 'direct' }), 'direct');
-  assert.deepEqual([{}, { wireStyle: 'direct' }, { wireStyle: 'curved' }].map(W.isFreeStyle), [false, true, true]);
+  assert.deepEqual([{}, { wireStyle: 'direct' }, { wireStyle: 'curved' }].map(d => W.isFreeStyle(d)), [false, true, true]);
   const d = {};
   assert.deepEqual(W.setWireStyle(d, 'direct'), { wireStyle: 'direct' });
   assert.deepEqual(W.setWireStyle(d, 'curved'), { wireStyle: 'curved' });
   assert.deepEqual(W.setWireStyle(d, 'orthogonal'), {}, 'the default: as a file without it');
   assert.throws(() => W.setWireStyle(d, 'zigzag'), /unknown wire style 'zigzag': direct, orthogonal, curved/);
   assert.deepEqual(d, {}, 'unchanged when refused');
+});
+
+test('another editor\'s default (the circuit editor\'s direct, #4080): none reads as it, it is dropped, orthogonal kept', () => {
+  const D = 'direct';
+  assert.equal(W.wireStyleOf({}, D), 'direct');
+  assert.equal(W.wireStyleOf({ wireStyle: 'zigzag' }, D), 'direct');
+  assert.equal(W.wireStyleOf({ wireStyle: 'orthogonal' }, D), 'orthogonal');
+  assert.equal(W.wireStyleOf({ wireStyle: 'curved' }, D), 'curved');
+  assert.deepEqual([{}, { wireStyle: 'orthogonal' }, { wireStyle: 'curved' }].map(d => W.isFreeStyle(d, D)), [true, false, true]);
+  const d = {};
+  assert.deepEqual(W.setWireStyle(d, 'orthogonal', D), { wireStyle: 'orthogonal' }, 'not the default: written');
+  assert.deepEqual(W.setWireStyle(d, 'curved', D), { wireStyle: 'curved' });
+  assert.deepEqual(W.setWireStyle(d, 'direct', D), {}, 'the default: dropped');
+  assert.throws(() => W.setWireStyle(d, 'zigzag', D), /unknown wire style 'zigzag'/);
+  const norm = ws => W.normalizeWireStyle({ wireStyle: ws }, D);
+  assert.deepEqual(['orthogonal', 'curved', 'direct', 'zigzag', null].map(norm), [{ wireStyle: 'orthogonal' }, { wireStyle: 'curved' }, {}, {}, {}]);
+  // (the schematic's default unchanged: no dflt, orthogonal)
+  assert.deepEqual(['orthogonal', 'direct'].map(ws => W.normalizeWireStyle({ wireStyle: ws })), [{}, { wireStyle: 'direct' }]);
+  assert.equal(W.wireStyleOf({}), 'orthogonal');
 });
 
 test('a schematic read: no style (older files) orthogonal, direct and curved kept, orthogonal and a bad one dropped; saved and read again', () => {
