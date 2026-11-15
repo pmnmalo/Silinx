@@ -7,7 +7,7 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 
 const POINT = { description: 'A place: a grid point [x, y] (0.1 inch steps), a breadboard\'s hole (BB1.f10, BB1.tp3) or a part\'s pin (U1.3, S1.out, D1.A).' };
-const OPS = ['add', 'move', 'rotate', 'copy', 'delete', 'wire', 'set'];
+const OPS = ['add', 'move', 'rotate', 'copy', 'delete', 'wire', 'set', 'wires'];
 
 /** One operation applied: { model, line } or { error }. */
 async function apply(E, m, op) {
@@ -30,6 +30,8 @@ async function apply(E, m, op) {
       const r = E.setPartProps(m, op.id, props);
       return r.error ? r : { model: r.model, line: `${op.id}: ${Object.entries(props).map(([k, v]) => `${k} ${JSON.stringify(v)}`).join(', ')}` };
     }
+    // (the editor's ⋮ Curved wires, #4064)
+    case 'wires': { const r = E.setWireStyle(m, op.style); return r.error ? r : { model: r.model, line: `the wires drawn ${op.style}` }; }
     default: return { error: `op: one of ${OPS.join(', ')}` };
   }
 }
@@ -51,7 +53,7 @@ export const CIRCUIT_TOOLS = [
   },
   {
     name: 'edit_circuit', title: 'Edit a digital circuit',
-    description: 'Edit a circuit (.circ.json) as its editor does, by a list of operations applied in order (one refused: nothing written, the reason given): { op: "add", type, at, rot (quarter turns clockwise), label, id } (a part, its pin 1 at the place; a breadboard: its hole a1), { op: "move", id, at, keep }, { op: "rotate", id, by, keep } (a breadboard with the parts plugged into it; the wires\' ends on the part\'s pins and holes follow it unless keep is false), { op: "copy", id, by: [dx, dy] } (the part, a breadboard with its parts and the wires between them, copied by dx, dy grid steps, default [2, 2], new ids), { op: "delete", id } (a part or a wire; a part\'s wires stay), { op: "wire", from, to, via: [[x, y]…], color, id } (a wire between two places; its ends join the holes, pins and wire ends on their points), { op: "set", id, label, color, on, hz } (a switch\'s, a button\'s, a clock\'s, an LED\'s or a display\'s label is its ports\' name, <label>_<k> for each of several: a DIP switch\'s levers, a display\'s segments a–g and dp, an LED bar\'s 1–10; a single port\'s label name[k] its bit k of the vector port name, as a board\'s led[0], sw[0], btn[0] for an FPGA project\'s top, its bits 0 to the last; an LED\'s or a display\'s colour; a switch\'s position as saved, a DIP switch\'s a list or { lever, on }; a clock\'s frequency in Hz, its live rate). A place: a grid point [x, y], a hole (BB1.f10) or a pin (U1.3). The circuit is written, its HDL file made again, and its check\'s errors and warnings returned. The parts: circuit_parts.',
+    description: 'Edit a circuit (.circ.json) as its editor does, by a list of operations applied in order (one refused: nothing written, the reason given): { op: "add", type, at, rot (quarter turns clockwise), label, id } (a part, its pin 1 at the place; a breadboard: its hole a1), { op: "move", id, at, keep }, { op: "rotate", id, by, keep } (a breadboard with the parts plugged into it; the wires\' ends on the part\'s pins and holes follow it unless keep is false), { op: "copy", id, by: [dx, dy] } (the part, a breadboard with its parts and the wires between them, copied by dx, dy grid steps, default [2, 2], new ids), { op: "delete", id } (a part or a wire; a part\'s wires stay), { op: "wires", style: "curved" | "straight" } (how the wires are drawn: smooth curves through their bends, as the editor\'s Curved wires; the connections the same), { op: "wire", from, to, via: [[x, y]…], color, id } (a wire between two places; its ends join the holes, pins and wire ends on their points), { op: "set", id, label, color, on, hz } (a switch\'s, a button\'s, a clock\'s, an LED\'s or a display\'s label is its ports\' name, <label>_<k> for each of several: a DIP switch\'s levers, a display\'s segments a–g and dp, an LED bar\'s 1–10; a single port\'s label name[k] its bit k of the vector port name, as a board\'s led[0], sw[0], btn[0] for an FPGA project\'s top, its bits 0 to the last; an LED\'s or a display\'s colour; a switch\'s position as saved, a DIP switch\'s a list or { lever, on }; a clock\'s frequency in Hz, its live rate). A place: a grid point [x, y], a hole (BB1.f10) or a pin (U1.3). The circuit is written, its HDL file made again, and its check\'s errors and warnings returned. The parts: circuit_parts.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The circuit: a .circ.json file of the project.'),
       operations: { type: 'array', maxItems: 200, items: { type: 'object', properties: { op: { type: 'string', enum: OPS }, at: POINT, from: POINT, to: POINT } }, description: 'The operations, in order.' },

@@ -14,7 +14,7 @@
 .circuit-editor .circ-bb-label { font: 9px var(--asm-mono, monospace); fill: var(--asm-muted); }
 .circuit-editor .circ-rail-plus { stroke: #d33; stroke-width: 1.5; }
 .circuit-editor .circ-rail-minus { stroke: #36c; stroke-width: 1.5; }
-.circuit-editor polyline.circ-wire { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.circuit-editor :is(polyline, path).circ-wire { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
 .circuit-editor .circ-wire-hit { fill: none; stroke: transparent; stroke-width: 12; }
 .circuit-editor .circ-wire-end { stroke: none; }
 .circuit-editor polyline.circ-draft { stroke: var(--asm-accent); stroke-dasharray: 4 3; }
@@ -86,7 +86,7 @@
 .circuit-editor .circ-probe-body.lvx { fill: var(--circ-lvx); }
 .circuit-editor .circ-probe-text { font: bold 11px var(--asm-mono, monospace); fill: #fff; pointer-events: none; }
 /* Keep connections (#4059), as the schematic's */
-.circuit-editor .circ-keep { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }
+.circuit-editor .circ-opt { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }
 /* the Try it bar (#4067), as the schematic's (sch-editor.css .se-simbar, .lv-badge) */
 .circuit-editor .circ-simbar { flex: none; display: flex; align-items: center; gap: 6px; padding: 3px 6px; min-height: 28px; background: var(--try-it-bar); border-bottom: 1px solid var(--try-it-line); font-size: 12px; color: #000; }
 .circuit-editor .circ-simbar[hidden] { display: none; }
@@ -95,3 +95,11 @@
 .circuit-editor .circ-sim-badge::before { content: ''; position: absolute; left: 4px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: #20c020; box-shadow: 0 0 4px #20c020; }
 html[data-theme="dark"] .circuit-editor .circ-simbar { color: var(--m-fg); }
 html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success); }
+/* Show inside (#4060): a breadboard's strips, an IC's gates or pins' names (circuit-draw-inside.js) */
+.circuit-editor .circ-opt[hidden] { display: none; }
+.circuit-editor .circ-strip { stroke: #b08d3c; stroke-width: 5; stroke-linecap: round; opacity: .45; }
+.circuit-editor .circ-gate-line { stroke: #c9c9c9; stroke-width: 1; }
+.circuit-editor .circ-gate { fill: #2c2c30; stroke: #e0e0e0; stroke-width: 1; }
+.circuit-editor .circ-gate-text { font: bold 8px var(--asm-mono, monospace); fill: #f2f2f2; }
+.circuit-editor .circ-gate-bubble { fill: #2c2c30; stroke: #e0e0e0; stroke-width: 1; }
+.circuit-editor .circ-pin-name { font: 7px var(--asm-mono, monospace); fill: #e8e8e8; }
