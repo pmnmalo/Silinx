@@ -47,7 +47,7 @@ export function mountCircuitEditor(container, opts = {}) {
   const sep = () => h('span', { class: 'asm-sep' });
   const status = (msg, err = false) => { if (msg) opts.onMessage?.(msg, err); };
 
-  // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Curved wires, Hop-overs): circuit-options.js
+  // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Wires, Wire crossings): circuit-options.js
   const { keepBox, insideBox, more, keep, inside, hops, sync } = mountCircuitOptions({ M: () => M, readOnly, menuItems: opts.menuItems, applyEdit: (...a) => applyEdit(...a), render: () => render() });
   const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox, insideBox, more,
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
@@ -143,7 +143,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (destroyed) return;
     applyView();
     world.replaceChildren(drawCircuit(M, { sel, draft, ghost, inside: inside(), hops: hops(), levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
-    sync();   // (Curved wires' ✓: an undo, a model set)
+    sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
     simBtn.classList.toggle('active', !!sim);

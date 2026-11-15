@@ -5,6 +5,7 @@
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
 import { portName, partInputs, partLamps } from './circuit-io.js';
 import { isName } from './ident.js';
+import { wireStyleOf } from './wire-style.js';
 
 export { portName };
 
@@ -39,7 +40,8 @@ export function normalizeCircuit(m = {}) {
     color: WIRE_COLORS.includes(w.color) ? w.color : 'blue',
   })).filter((w) => w.points.length >= 2);
   const out = { format: CIRCUIT_FORMAT, version: 1, name: ident(m.name, 'circuit'), lang: m.lang === 'verilog' ? 'verilog' : 'vhdl' };
-  if (m.wireStyle === 'curved') out.wireStyle = 'curved';   // (its wires drawn as curves, #4064: core/circuit-wires.js)
+  // (how its wires are drawn, #4064, #4080: core/circuit-wires.js; direct, the default, not written)
+  if (wireStyleOf(m, 'direct') !== 'direct') out.wireStyle = m.wireStyle;
   if (m.description) out.description = String(m.description);
   out.parts = parts;
   out.wires = wires;

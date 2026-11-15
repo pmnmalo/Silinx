@@ -1,7 +1,7 @@
 // The circuit editor's toolbar (#3897, docs/UI-GUIDELINES.md): the tools (select, wire), Rotate, Delete, the zoom, Keep
 // connections (#4059, as the schematic's: remembered, on by default), Show inside (#4060, remembered), Check,
 // Try it (its Reset and Stop on the Try it bar, #4067), the ☰ Properties toggle (no Print of its own: the main toolbar's prints it); the
-// status line of its counts and, while simulating, its time; the ⋮ menu (#4064: Curved wires, Hop-overs).
+// status line of its counts and, while simulating, its time; the ⋮ menu (#4064, #4080: Wires, Wire crossings).
 import { h } from './ui.js';
 import { toolIcon, toolWide, zoomTools } from './editor-icons.js';
 import { panelToggle, PROPS_KEY, CIRCUIT_PARTS_KEY } from './narrow.js';

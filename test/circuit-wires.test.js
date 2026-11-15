@@ -3,7 +3,8 @@
 // against crossings reckoned by hand; and the wireStyle of a circuit (core/circuit.js, core/circuit-edit.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { curveD, curvePoints, wireHops, hopD, wirePaths } from '../core/circuit-wires.js';
+import { curveD, curvePoints, wireHops, hopD, wirePaths, orthoPoints } from '../core/circuit-wires.js';
+import { WIRE_STYLES } from '../core/wire-style.js';
 import { normalizeCircuit } from '../core/circuit.js';
 import { setWireStyle } from '../core/circuit-edit.js';
 import { halfAdder } from './circuit-helpers.mjs';
@@ -42,16 +43,32 @@ test('a hop\'s arc over its crossing, of radius r; none where it does not fit', 
   const w = [{ id: 'a', pts: [[0, 50], [100, 50]] }, { id: 'b', pts: [[30, 0], [30, 100]] }];
   assert.deepEqual(wirePaths(w), { a: 'M0,50 L100,50', b: 'M30,0 L30,100' });
   assert.deepEqual(wirePaths(w, { hops: true }), { a: 'M0,50 L100,50', b: 'M30,0 L30,45 A5,5 0 0 1 30,55 L30,100' });
-  assert.match(wirePaths([{ id: 'c', pts: [[0, 0], [10, 0], [10, 10]] }], { curved: true }).c, /^M0,0 C/);
+  assert.match(wirePaths([{ id: 'c', pts: [[0, 0], [10, 0], [10, 10]] }], { style: 'curved' }).c, /^M0,0 C/);
+  // (#4080) orthogonal: a slanted step a horizontal one, then a vertical one; its hops on those
+  assert.deepEqual(wirePaths([{ id: 'o', pts: [[0, 0], [40, 30], [40, 60]] }], { style: 'orthogonal' }), { o: 'M0,0 L40,0 L40,30 L40,60' });
+  assert.deepEqual(wirePaths([{ id: 'a', pts: [[20, -10], [20, 40]] }, { id: 'o', pts: [[0, 0], [40, 30]] }], { style: 'orthogonal', hops: true }).o, 'M0,0 L15,0 A5,5 0 0 1 25,0 L40,0 L40,30');
 });
 
-test('a circuit\'s wireStyle: curved kept, any other dropped; set by an edit, undone by straight', () => {
+test('orthogonal points: every step horizontal or vertical, through the same points', () => {
+  const pts = [[0, 0], [3, 2], [3, 5], [1, 7], [6, 7]];
+  const o = orthoPoints(pts);
+  assert.deepEqual(o, [[0, 0], [3, 0], [3, 2], [3, 5], [1, 5], [1, 7], [6, 7]]);
+  for (let i = 1; i < o.length; i++) assert.ok(o[i][0] === o[i - 1][0] || o[i][1] === o[i - 1][1], `step ${i}`);
+  for (const p of pts) assert.ok(o.some((q) => q[0] === p[0] && q[1] === p[1]), `through ${p}`);
+});
+
+test('a circuit\'s wireStyle (#4080): orthogonal and curved kept, direct the default, any other dropped; set by an edit', () => {
+  assert.deepEqual(WIRE_STYLES.map((s) => s.id), ['direct', 'orthogonal', 'curved']);   // (the schematic's, core/wire-style.js)
   const m = halfAdder();
   assert.equal(m.wireStyle, undefined);
   assert.equal(normalizeCircuit({ ...m, wireStyle: 'curved' }).wireStyle, 'curved');
+  assert.equal(normalizeCircuit({ ...m, wireStyle: 'orthogonal' }).wireStyle, 'orthogonal');
+  assert.equal(normalizeCircuit({ ...m, wireStyle: 'direct' }).wireStyle, undefined);
   assert.equal(normalizeCircuit({ ...m, wireStyle: 'wavy' }).wireStyle, undefined);
   const c = setWireStyle(m, 'curved').model;
   assert.equal(c.wireStyle, 'curved');
-  assert.deepEqual(setWireStyle(c, 'straight').model, m);
-  assert.deepEqual(setWireStyle(m, 'wavy'), { error: 'style: curved or straight' });
+  assert.equal(setWireStyle(c, 'orthogonal').model.wireStyle, 'orthogonal');
+  assert.deepEqual(setWireStyle(c, 'direct').model, m);
+  assert.deepEqual(setWireStyle(m, 'wavy'), { error: 'style: direct, orthogonal, curved' });
+  assert.deepEqual(setWireStyle(m, 'straight'), { error: 'style: direct, orthogonal, curved' });
 });
