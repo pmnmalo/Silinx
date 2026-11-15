@@ -1,6 +1,6 @@
 // UI (#3966): an arrayed instance's Shared pins in its Properties, under Width: r(7:0) of a REG1bit, CE open drawn as a
-// bus until ticked, then a single pin (params.shared ['CE']), Check Schematic its one warning (CE not connected); Q
-// ticked an error in the console; Undo back to none; a single instance has none; in Portuguese; in both interfaces.
+// bus until ticked, then a single pin (params.shared ['CE']), Check Schematic its one warning (CE not connected); its
+// inputs alone listed, not the output Q (#4053); Undo back to none; a single instance has none; in Portuguese; in both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -57,24 +57,21 @@ uiTest('#3966 Shared pins of r(7:0): CE ticked drawn a single pin while open; Q 
   };
   await select();
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .se-props .se-shared`).closest('.se-field').querySelector('label').textContent, ED), 'Shared pins');
-  assert.deepEqual(await ticks(), ['D:0', 'CE:0', 'C:0', 'Q:0']);
+  assert.deepEqual(await ticks(), ['D:0', 'CE:0', 'C:0'], 'its inputs alone (#4053)');
   // CE open: a bus, until ticked
   assert.deepEqual(await drawn(), { pins: ['D(7:0)', 'CE(7:0)', 'C', 'Q(7:0)'], widths: ['8', '8', '8'], buses: 3 });
   await tick('CE');
   await sharedIs(['CE']);
   await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym[data-id="U"] line.pin.bus`).length === 2, [ED], { what: 'CE a single pin' });
   assert.deepEqual(await drawn(), { pins: ['D(7:0)', 'CE', 'C', 'Q(7:0)'], widths: ['8', '8'], buses: 2 });
-  assert.deepEqual(await ticks(), ['D:0', 'CE:1', 'C:0', 'Q:0'], 'the Properties redrawn with it');
-  let log = await check();
+  assert.deepEqual(await ticks(), ['D:0', 'CE:1', 'C:0'], 'the Properties redrawn with it');
+  const log = await check();
   assert.doesNotMatch(log, /ERROR|width mismatch/, log);
   assert.deepEqual(log.match(/WARNING: .*?(?=WARNING|ERROR|Process)/g), ['WARNING: input pin CE of r(7:0) (REG1bit) is not connected'], log);
   assert.match(log, /completed successfully with 1 warning\(s\)/, log);
-  // Q ticked: an output shared by the copies, the error in the console
-  await tick('Q');
-  await sharedIs(['CE', 'Q']);
-  log = await check();
-  assert.match(log, /ERROR: r\(7:0\): output Q is marked shared, but each of its 8 copies would drive the net 'q': untick it in Shared pins and connect it to a 8-bit bus/, log);
-  // Undo, twice: CE alone, then none (a bus again)
+  // C ticked too, then Undo, twice: CE alone, then none (a bus again)
+  await tick('C');
+  await sharedIs(['CE', 'C']);
   for (const [want, buses] of [[['CE'], 2], [null, 3]]) {
     await page.eval((ed) => document.querySelector(ed).focus(), ED);
     await page.key('z', { modifiers: 2 });
@@ -92,7 +89,7 @@ uiTest('#3966 Shared pins of r(7:0): CE ticked drawn a single pin while open; Q 
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .se-props .se-field label`)].some((l) => l.textContent === 'Pinos partilhados'), [ED], { what: 'in Portuguese' });
   assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .se-props .se-note`)].some((n) => n.textContent === 'marcado: um só pino para todas as cópias, a sua rede da largura do pino'), ED));
-  assert.deepEqual(await ticks(), ['D:0', 'CE:0', 'C:0', 'Q:0'], 'the pins\' names as they are');
+  assert.deepEqual(await ticks(), ['D:0', 'CE:0', 'C:0'], 'the pins\' names as they are');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

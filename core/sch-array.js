@@ -29,15 +29,21 @@ export function arrayOf(sym) {
 export const copyName = (a, i) => `${a.base}_${i}`;
 
 /** The pins of an instance marked shared by its copies (#3966, its Properties' Shared pins, params.shared: ['C', 'CE']):
- *  their names, lower case (matched whatever their case). */
+ *  their names, lower case (matched whatever their case). Only an input is shared (#4053): a mark on another pin is
+ *  ignored (isSharedPin). */
 export const sharedPins = sym => new Set((Array.isArray(sym?.params?.shared) ? sym.params.shared : []).map(n => String(n).toLowerCase()));
 
 /** An instance's Shared pins for a list of pin names (#3966, the MCP's shared): { names } in its pins' order and case
- *  ([] none), or { error } naming a pin it does not have. */
+ *  ([] none), or { error } naming a pin it does not have, or one not an input (#4053). */
+export const isSharedPin = (marked, p) => p.dir === 'in' && marked.has(String(p.name).toLowerCase());
+
 export function sharedList(pins, names) {
   const want = new Set((names || []).map(n => String(n).trim().toLowerCase())), have = new Set(pins.map(p => p.name.toLowerCase()));
   const bad = (names || []).filter(n => !have.has(String(n).trim().toLowerCase()));
   if (bad.length) return { error: `Shared pins: no pin ${bad.join(', ')} (its pins: ${pins.map(p => p.name).join(', ')})` };
+  // (an output or a bidirectional pin: each copy would drive its net, #4053)
+  const notIn = pins.filter(p => want.has(p.name.toLowerCase()) && p.dir !== 'in').map(p => p.name);
+  if (notIn.length) return { error: `Shared pins: ${notIn.join(', ')} not ${notIn.length > 1 ? 'inputs' : 'an input'}: only an input is shared by the copies` };
   return { names: pins.filter(p => want.has(p.name.toLowerCase())).map(p => p.name) };
 }
 
@@ -45,8 +51,9 @@ export function sharedList(pins, names) {
  * The widths of a net's arrayed pins (netlist(), each endpoint { kind, dir, width, arr, shared }): a pin is sliced when
  * the net's other widths (its I/O markers', labels', other pins') have its N × w bits, or, with none, when an arrayed
  * output is on it; its width then N × w (set on the endpoint, with sliced: true). A pin marked shared (#3966) is never
- * sliced: on a net of another width it is an error (misfit: true, its width left out of the net's). Returns the
- * endpoints in error: the shared arrayed outputs (each copy driving the net), the misfit shared pins.
+ * sliced: on a net of another width it is an error (misfit: true, its width left out of the net's); only an input is
+ * marked (#4053). Returns the endpoints in error: the shared arrayed outputs (each copy driving the net), the misfit
+ * shared pins.
  */
 export function sliceArrayed(eps, otherWidths) {
   const arr = eps.filter(e => e.kind === 'pin' && e.arr > 1);
@@ -57,19 +64,18 @@ export function sliceArrayed(eps, otherWidths) {
     const wide = (e.width || 1) * e.arr;
     if (!e.shared && (others.length ? others.includes(wide) : anyOut)) { e.width = wide; e.sliced = true; }
   }
-  // (a pin marked shared: the net's other widths, its slices' too, its own; an output marked shared an error alone)
+  // (a pin marked shared: the net's other widths, its slices' too, its own)
   const all = [...otherWidths, ...eps.filter(e => e.kind === 'pin').map(e => e.width)].filter(w => typeof w === 'number');
   for (const e of arr.filter(x => x.shared)) {
     const rest = [...all]; rest.splice(rest.indexOf(e.width), 1);
-    if (e.dir === 'out' || rest.some(w => w !== e.width)) e.misfit = true;
+    if (rest.some(w => w !== e.width)) e.misfit = true;
   }
   return arr.filter(e => (e.dir === 'out' && !e.sliced) || e.misfit);
 }
 
-/** The error of an arrayed pin sliceArrayed returned: a shared output, or a pin marked shared on a net of another
+/** The error of an arrayed pin sliceArrayed returned: a shared output, or an input marked shared on a net of another
  *  width (inst its instance's name, net the net's { name, width }). */
 export function arrayedError(e, inst, net) {
-  if (e.dir === 'out' && e.shared) return `${inst}: output ${e.pin} is marked shared, but each of its ${e.arr} copies would drive the net '${net.name}': untick it in Shared pins and connect it to a ${e.arr * e.width}-bit bus`;
   if (e.dir === 'out') return `${inst}: output ${e.pin} of its ${e.arr} copies drives the ${net.width}-bit net '${net.name}': connect it to a ${e.arr * e.width}-bit bus`;
   return `${inst}: pin ${e.pin} is shared by its ${e.arr} copies, but its net '${net.name}' is ${net.width} bits wide: connect it to a ${e.width}-bit net, or untick it in Shared pins`;
 }
@@ -107,7 +113,7 @@ export function arrayedDef(sym, def, nl) {
   if (!a || !def?.pins) return def;
   const marked = sharedPins(sym);
   const shared = p => {
-    if (marked.has(p.name.toLowerCase())) return true;   // (marked shared, #3966: a single pin whatever its net)
+    if (isSharedPin(marked, p)) return true;   // (marked shared, #3966: a single pin whatever its net; an input, #4053)
     const net = nl?.pinNet?.get(`${sym.id}/${p.name}`);
     const connected = !!net && ((net.endpoints?.length || 0) > 1 || net.labels?.length > 0);   // (its own net alone: open)
     return connected && !net.endpoints.some(e => e.sym === sym.id && e.pin === p.name && e.sliced);

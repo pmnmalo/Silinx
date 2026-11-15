@@ -32,7 +32,7 @@ import { normalizeGraphic } from './schgraphics.js';
 import { moveTaps, widenBuffers, widenJoins, widenMuxes } from './schdoc-upgrade.js';
 import { symbolDiff } from './schdoc-modsym.js';
 import { instanceParams } from './symbol-layout.js';
-import { arrayOf, sliceArrayed, sharedPins, arrayedError } from './sch-array.js';
+import { arrayOf, sliceArrayed, sharedPins, isSharedPin, arrayedError } from './sch-array.js';
 import {
   modulesFromLibrary, schematicFromHdl
 } from './schdoc-from-hdl.js';
@@ -328,7 +328,7 @@ export function netlist(docIn, { modules = {} } = {}) {
     defs.set(s.id, def);
     for (const p of symbolPins(s, modules, def)) {
       const id = `p:${s.id}/${p.name}`;
-      pinInfo.set(id, { kind: 'pin', sym: s.id, pin: p.name, dir: p.dir, width: p.width, x: p.x, y: p.y, ...(p.tri ? { tri: true } : {}), ...(arr ? { arr: arr.n } : {}), ...(marked?.has(p.name.toLowerCase()) ? { shared: true } : {}) });
+      pinInfo.set(id, { kind: 'pin', sym: s.id, pin: p.name, dir: p.dir, width: p.width, x: p.x, y: p.y, ...(p.tri ? { tri: true } : {}), ...(arr ? { arr: arr.n } : {}), ...(marked && isSharedPin(marked, p) ? { shared: true } : {}) });
       dsu.find(id);
       addAt(p.x, p.y, id);
     }
