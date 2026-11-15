@@ -32,7 +32,7 @@ WebAssembly tools into the single file; `scripts/pwa.mjs` adds the site's servic
  The front end    packages/silinx-hdl    VHDL and Verilog: parsers, elaboration, simulator, flat Verilog
  The toolchain    packages/silinx-fpga   synthesis to bitstream (TOOLCHAIN.md)
                      │
- Outside tools    Yosys and nextpnr (WebAssembly, npm) │ Xilinx ISE 14.7 (the user's) │ programmers (openFPGALoader…)
+ Outside tools    Yosys and nextpnr (WebAssembly, npm) │ Xilinx ISE 14.7, AMD Vivado (the user's) │ programmers (openFPGALoader…)
 ```
 
 `core/` is the heart: everything a design is (its sources, its drawings, its meaning) is computed there, the same in
@@ -44,7 +44,9 @@ Node, in a page and in a Web Worker, and tested in Node.
 
 A project is a folder with `silinx.json`: its sources, its top, its device and board, its constraints, its properties
 ([PROJECT.md](PROJECT.md); `server/projects.js` on disk, `web/js/project-store.js` in the browser; `web/js/project.js`
-opens and closes it). The Design pane shows one row per module: a drawing is the module's base and its HDL file is always
+opens and closes it). Its kind is an FPGA project or a design and simulation project, with no board, no flow and no
+HDL shown (`core/project-kind.js`, `web/js/design-only.js`; New Project's and Design Properties' Project Kind, #3780,
+#3891, #4103), and its Top-Level Source Type what a new project's top is made of (`core/top-types.js`, #4105). The Design pane shows one row per module: a drawing is the module's base and its HDL file is always
 generated from it (CLAUDE.md). ISE's project files are read and written too (`server/xise.js`, ISE's schematics:
 `core/isesch.js`).
 
@@ -60,6 +62,7 @@ them, and `web/js/drawings.js` keeps a drawing and its HDL module in step.
 | State diagram (FSM) | `core/fsm.js` | `web/js/fsm-editor.js` |
 | Truth table, Boolean algebra | `core/logic.js` | `web/js/truthtable.js` |
 | Petri net | `core/petri.js` | `web/js/petri-editor.js` |
+| Circuit (chips on a breadboard) | `core/circuit.js`; simulation, check, HDL, digital model: `core/circuit-*.js` | `web/js/circuit-editor.js` |
 | Handwriting (expressions, tables, schematics) | `core/ink/` | `web/js/ink-dialog.js` and its siblings |
 
 ### The HDL front end
@@ -85,7 +88,7 @@ toolchain receives that, and reads no VHDL itself.
   monitor (`core/emulate.js`, `web/js/emulator.js`), on a compiled cycle simulator (`core/compiled-sim.js`) in a Web
   Worker of its own (`web/js/emulator-worker.js`), or on the event-driven one.
 
-### Implementation: two flows
+### Implementation: three flows
 
 The processes (`web/js/processes.js`, `web/js/implement.js`) run the project's flow, chosen in Toolchain Settings, and
 the Design Summary (`web/js/summary.js`) shows its reports, as ISE's do:
@@ -96,6 +99,9 @@ the Design Summary (`web/js/summary.js`) shows its reports, as ISE's do:
   and simulation models). Everything about it: [TOOLCHAIN.md](TOOLCHAIN.md).
 - **Xilinx ISE 14.7**, which the user installs: XST, NGDBuild, MAP, PAR, TRCE, BitGen, run by `server/ise.js` in a
   Docker image, over SSH or natively (`server/toolchain.js`), as long jobs (`server/jobs.js`). Local server only.
+- **AMD Vivado ML Standard**, which the user installs too: a batch Tcl flow run by `server/vivado.js` in the same ways,
+  the 7-series' vendor flow: the Artix-7 besides the open flow, the Spartan-7, the Kintex-7 and the Zynq-7000 only
+  through it (#1649, #3895). Local server only.
 
 ISE is also the open flow's oracle: the same routed design converted by ISE, a clean DRC and a byte-identical `.bit`
 ([OPEN-TOOLCHAIN.md](OPEN-TOOLCHAIN.md), [QUALITY.md](QUALITY.md)). The FPGA view (`web/js/fpgaview.js`) and the
@@ -110,7 +116,8 @@ pragmas and how it is checked: [c-to-hdl.md](c-to-hdl.md).
 
 ### Constraints, boards and programming
 
-The boards' pins, clocks and peripherals are in `server/boards.js`, the parts in `server/devices.js`; the pin planner
+The boards' pins, clocks and peripherals are in `core/boards.js` (with `core/boards-vivado.js`, `boards-ulx3s.js`,
+`boards-tangnano9k.js`; `server/boards.js` re-exports it, #3541), the parts in `server/devices.js`; the pin planner
 (`web/js/pinplanner.js`) and Check Constraints write the UCF. iMPACT's window (`web/js/impact.js`) programs the FPGA
 and the board's Platform Flash: in the browser over WebUSB, with Silinx's own JTAG for the Digilent Adept boards
 (`core/adept.js`, `core/xcf.js`); on the server, also through local programmers (`server/programmer.js`).
@@ -125,11 +132,15 @@ and the board's Platform Flash: in the browser over WebUSB, with Silinx's own JT
 
 ### Around the application
 
-- **The command line**: `bin/silinx.js` (serve, check, simulate, constraints, the toolchain's settings, the MCP
-  server); the toolchain's own:
+- **The command line**: `bin/silinx.js` (serve, check, simulate, constraints, grade, classroom, the toolchain's
+  settings, the MCP server); the toolchain's own:
   `packages/silinx-fpga/bin/silinx-fpga.js`.
 - **An MCP server** for an AI assistant on the projects of the workspace (`server/mcp.js`); what it changes in a project open in the
   interface the local server tells the page (`server/project-watch.js`, `web/js/project-watch.js`, #2843).
+- **A project shared live**: `core/collab-*.js`, the relay `server/collab-relay.js`, the page's `web/js/collab-*.js`.
+- **Git and GitHub**: `server/git.js` on the server, `core/git-rest.js` (GitHub's REST API) in the browser; short
+  links as gists (`core/gist-link.js`).
+- **Open in VS Code**: `server/open-editor.js` (#4017).
 - **Security**: the pages' Content-Security-Policy (`server/csp.js`), the paths kept inside a project
   (`server/paths.js`), the server on this computer only unless asked ([SECURITY.md](../SECURITY.md)).
 
@@ -138,7 +149,8 @@ and the board's Platform Flash: in the browser over WebUSB, with Silinx's own JT
 - **Unit tests** (`test/*.test.js`, node:test) on `core/`, the server and the toolchain; **UI tests** (`test/ui/`) on a
   headless Chrome (`test/ui/harness.js`), Firefox and WebKit, in both interfaces.
 - **The examples are the test designs** (`examples/`, `test/examples-lib.mjs`): each runs on every board of the
-  Silinx toolchain (`TARGETS`, the iCEBreaker's `ICE40_TARGETS`); the Spartan-3E's also build with ISE with no warnings.
+  Silinx toolchain (`TARGETS`, the iCEBreaker's `ICE40_TARGETS`, the ULX3S's `ECP5_TARGETS`, the Tang Nano 9K's
+  `GOWIN_TARGETS`, the 7-series' `XC7_TARGETS`), and by Vivado on its boards (`VIVADO_TARGETS`); the Spartan-3E's also build with ISE with no warnings.
 - **The oracles**: ISE 14.7 for the toolchain (bitstream, DRC) and XST's Spartan-3E behaviour for the language; the C
   itself for Silinx HLS, Vitis HLS for its ports and interfaces.
-- CI runs at a release; a pull request runs the tests of the modules it changes (CLAUDE.md).
+- CI runs at a release and nightly on `main` when it changed (#3423); a pull request runs the tests of the modules it changes (CLAUDE.md).

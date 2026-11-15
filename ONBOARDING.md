@@ -1,7 +1,8 @@
 # Onboarding: programming Silinx with Claude Code
 
 Silinx is an ISE-like FPGA IDE for teaching digital systems (Spartan-3E: Basys2, Nexys2; Spartan-6: Nexys3, Atlys; iCE40:
-iCEBreaker). It runs in
+iCEBreaker; ECP5: ULX3S; Gowin: Tang Nano 9K; the 7-series, an experimental family: Basys 3, Nexys A7; and through
+AMD Vivado only, Arty S7, Zybo Z7, #3895). It runs in
 the browser (the site, the standalone `Silinx.html`) or as a local Node server, with its own open
 toolchain (Yosys WebAssembly, then nextpnr's pack, place and route â€” the fork pmnmalo/nextpnr-spartan â€” and Silinx's
 timing and bitgen) and, optionally, Xilinx ISE
@@ -27,7 +28,8 @@ npm start          # prints the address to open: http://127.0.0.1:8642/#token=â€
   into any file of the repository, a commit, an issue, a PR or a GitHub comment.** Its use is shared: the rule is in
   [section 3](#the-shared-ise-machine).
 - **Board programming:** Chrome or Edge over WebUSB (desktop, or an Android tablet), or the server with
-  adepttool (`scripts/install-adepttool.sh`).
+  adepttool (`scripts/install-adepttool.sh`) or openFPGALoader (the ECP5's, Gowin's and iCE40's boards, #2298); the MCP
+  server's `program_board` too (`server/mcp-board.js`).
 
 ## 2. How we work (summary of CLAUDE.md)
 
@@ -63,7 +65,7 @@ npm start          # prints the address to open: http://127.0.0.1:8642/#token=â€
    merges until the tag is pushed.
 7. **Small modules and functions** (#405): a source file under 1000 lines, a function under 300, one
    module per concern. A change that would go past splits first, in a pull request of its own that only
-   moves code; `test/code-size.test.js` lists today's exceptions, which only shrink. How to split (the
+   moves code; `test/code-size.test.js` checks it (its lists of exceptions are empty: none is over). How to split (the
    `mountX(ctx)` modules, getters for reassigned state, the old module re-exporting what moved, checking
    against main on the corpus) is in CLAUDE.md â–¸ Programming.
 
@@ -121,17 +123,26 @@ The architecture as a whole, part by part: [docs/ARCHITECTURE.md](docs/ARCHITECT
 
 ```
 core/          lint, quick fixes, rename;
-               drawings: schdoc.js (schematics), asm.js, fsm.js, petri.js, truth tables (logic.js);
+               drawings: schdoc.js (schematics), asm.js, fsm.js, petri.js, truth tables (logic.js; qm.js,
+               logic-qm.js: Quine-McCluskey; expr-notation.js, cond-notation.js: the Boolean notations), circuits
+               (circuit.js and circuit-*.js: simulation, check, HDL); wire-style.js (the wires' styles);
+               collab-*.js (a project shared live), grade*.js (grading), gist-link.js (short links),
+               project-folder.js (a project imported from its folder), project-kind.js (a design and simulation
+               project);
                hdl-to-sch.js (Convert to Schematic); synth-front.js (the toolchain's input); c-*.js (Silinx
                HLS); adept.js + xcf.js (WebUSB JTAG, FPGA and Platform Flash)
 packages/silinx-hdl/   the HDL front end: VHDL and Verilog parsers, elaborator, simulator, flat Verilog (core/'s
                old paths re-export it, #1710)
 packages/silinx-fpga/  the Silinx toolchain: Yosys, nextpnr's pack, place and route, timing, bitstream (docs/TOOLCHAIN.md)
 web/js/        the Project Navigator: app.js (the shell, Design pane, processes, documents), editor.js
-               (CodeMirror), sch-editor.js, asm-editor.js, fsm-editor.js, petri-editor.js, truthtable.js,
+               (CodeMirror), sch-editor.js, asm-editor.js, fsm-editor.js, petri-editor.js, truthtable.js
+               (tt-qm.js, tt-divider.js), circuit-editor.js (circuit-draw*.js, circuit-parts-panel.js,
+               circuit-toolbar.js, circuit-options.js), notation.js, wire-crossings.js, collab-*.js (sharing),
+               link-field.js, share-how.js, short-links.js, grade-results-view.js,
                isim.js (simulator UI), impact.js, pinplanner.js, i18n*.js (Portuguese), ui.js (menus,
                dialogs, long press), narrow.js (tablet portrait)
-server/        the local server: projects, the ISE flow, the Silinx flow, programmers, the MCP server (mcp*.js)
+server/        the local server: projects, the ISE flow, AMD Vivado's (vivado.js), the Silinx flow, programmers, the MCP
+               server (mcp*.js), the sharing relay (collab-relay.js), Open in VS Code (open-editor.js)
 test/ui/       UI tests on headless Chrome over CDP (harness.js); Firefox / WebKit via Playwright
 examples/      gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80: the test designs
 research/      synthesis quality, handwriting models; the toolchain's research is in packages/silinx-fpga/research
@@ -141,11 +152,12 @@ docs/          user guides (EN, PT), the project model and API, QUALITY.md (agai
 ## 5. Rules of the product worth knowing
 
 - **Drawings are the base, the HDL is generated:** every schematic, ASM chart, state diagram, truth
-  table and Petri net has its HDL file (`[Schematic] [VHDL]` badges in the Design pane). A drawing's
+  table, Petri net and circuit has its HDL file (`[Schematic] [VHDL]` badges in the Design pane); a design and
+  simulation project shows no HDL at all (#3891). A drawing's
   HDL is regenerated from it, and edits to the HDL flow back where supported. Convert to Schematic
   works for any HDL module.
-- **The examples are the test designs.** Each runs on every Silinx-toolchain board (on the iCEBreaker, the
-  ports with no pin warned) and builds with ISE with no warnings (but micro80's XST warnings on the light8080 core, #2544). A new feature should be exercised by an example where it fits.
+- **The examples are the test designs.** Each runs on every Silinx-toolchain board (on the iCEBreaker and the
+  ULX3S, the ports with no pin warned; on the Tang Nano 9K every port on a header pin; the Basys 3 and the Nexys A7) and builds with ISE with no warnings (but micro80's XST warnings on the light8080 core, #2544). A new feature should be exercised by an example where it fits.
 - **ISE is the oracle:** Silinx's `.bit` must be byte-identical to ISE's bitgen for the same routed design (nextpnr's, as XDL),
   with ISE's DRC clean. For language questions, XST's Spartan-3E behaviour is the reference.
 - **Two interfaces** (Silinx and ISE style), **light and dark themes**, **Portuguese**, **touch

@@ -18,7 +18,8 @@ patched: update to the latest.
 
 In scope: the local server and its API (`server/`), the browser editions (`web/`, the single-file
 edition and the Pages site), the open toolchain (`packages/silinx-fpga/`: synthesis with Yosys, pack, place and route with nextpnr, bitgen),
-the core (`core/`: the simulators and the board programming), the GitHub workflows (`.github/workflows/`), the scripts
+the core (`core/`: the simulators and the board programming), the HDL front end (`packages/silinx-hdl/`), the
+relay of the GitHub sign-in (`relay/`), the GitHub workflows (`.github/workflows/`), the scripts
 (`scripts/`) and the launchers (`Start Silinx.command`, `Start Silinx.bat`,
 `start-silinx.sh`).
 
@@ -49,7 +50,7 @@ read that user's files has the server too.
   no file route and no MCP tool reads, writes, renames or deletes one, by its name or through a link (#3035, #3036),
   nor by a short (8.3) name that may be one's (`GIT~1`), nor by a path the system resolves to one (#2830); a folder
   that holds one (a clone's `.git`, with its untrusted mark) is neither renamed nor deleted (#3354).
-- The programs the toolchain and the board programming run (Docker, ssh, ISE's tools, the programming tools) are
+- The programs the toolchain and the board programming run (Docker, ssh, ISE's and AMD Vivado's tools, the programming tools) are
   spawned without a shell. The programs' paths and the arguments given to Docker and ssh come from the user's
   configuration file only: the page cannot change them (the settings `server/toolchain.js` names `FILE_ONLY`, which
   the API refuses unless sent unchanged). The page picks the rest among checked values: the build's mode, the ssh
@@ -60,7 +61,11 @@ read that user's files has the server too.
   An ISE settings script and a Docker image the page chooses are checked: the script is a file outside the projects
   and the build folders (on the ssh machine, every build folder used before too: `ssh.earlierDirs`, which the page cannot
   change; no file named as a settings script is ever copied into a build folder, #3407), writable only by its owner
-  (root or the user), and Docker never pulls an image Silinx runs. The ssh port is a port number and the host no option of
+  (root or the user), and Docker never pulls an image Silinx runs. AMD Vivado's settings (#1649, #3895: Toolchain
+  Settings' `vivado.mode`, `vivado.image`, `vivado.settings`) are checked as ISE's (`server/toolchain.js`
+  `checkVivadoRemoteSettings` and the settings' checks): its mode one of ISE's, its image of plain characters, its
+  settings script Vivado's `settings64.sh` only, a plain absolute path outside `/work`, `ssh.remoteDir` and every build
+  folder used before (a local one checked as ISE's local script). The ssh port is a port number and the host no option of
   ssh. The ISE
   container runs with no network, no capability, no way to gain privileges and a bound on its processes
   (`--network none --cap-drop ALL --security-opt no-new-privileges --pids-limit`), and a memory limit
@@ -97,7 +102,7 @@ read that user's files has the server too.
   Worker: only the device flow's two POSTs, with only their own fields, only Silinx's origins, nothing kept nor
   logged; the page's policy allows its origin), or, with no relay, a fine-grained personal access token the user pastes
   (checked with GitHub's API before it is kept, never shown again). The device flow asks for the narrowest scope that
-  works, `public_repo gist` (the public repositories, the gists of Copy Link's short links); the user's private
+  works, `public_repo gist` (the public repositories, the gists of the short links Share Project… makes with Generate, #3995, #4073); the user's private
   repositories (a Classroom assignment's) only when they tick them at the sign-in, which asks for `repo gist`: an OAuth
   App has no scope for a single private repository, which only a fine-grained token (the pasted way) limits to the
   repositories chosen (#3356). Its token is kept in the user's browser only, sent only to GitHub's API in the
@@ -125,7 +130,9 @@ read that user's files has the server too.
   address included. Both lists are `FILE_ONLY` settings: the page cannot change them. A tool's result that holds a
   project's or a remote's text (`read_file`, `find_in_project`, `git_log`, `git_diff`, `git_checks`, `get_report`, the import's, `import_source`'s and a clone's
   warnings, `follow_project`'s files and names, `share_project`'s followers and warnings, `open_link`'s design,
-  `project_info`, a project's own lab in `lab`, the lines a design prints in `simulate`, and every tool's error, #3528;
+  `project_info`, a project's own lab in `lab`, the lines a design prints in `simulate`, the programmer's log of
+  `program_board` (`server/mcp-board.js`), `grade`'s results (the students' names and tests, `server/mcp-grade.js`,
+  #3864), a module's Symbol Info (`server/mcp-symbol-info.js`, #3935), and every tool's error, #3528;
   a failed `check_syntax`'s, a `simulate` that did not start, a failed `run_process`, a `verify` that failed or could
   not run, and a failed `c_simulation`, `c_cosimulation` or `c_synthesis_report`, whose lines quote the design's
   names, #3681)
@@ -177,7 +184,9 @@ read that user's files has the server too.
 
 ## Files and projects from outside (#2830)
 
-A project's zip, an ISE project (`.xise` and its folder), a design link, a file added to a project, a drawing
+A project's zip, an ISE project (`.xise` and its folder), a Silinx project imported from its folder (#3965: every
+file but the hidden ones and `build/`, put through the import gate as a zip's entries, `core/project-folder.js`
+`silinxFolderSkips`, `server/mcp-transfer.js` `import_project`), a design link, a file added to a project, a drawing
 (an ISE schematic, a PNML Petri net), a wave configuration, a test bench's data, and whatever the MCP server imports
 or writes can come from anyone: a course site, an e-mail, a forum, an assistant led astray by what it read. Silinx
 treats them as untrusted, in three layers.
@@ -186,7 +195,7 @@ treats them as untrusted, in three layers.
 file outside its own project (`..`, an absolute path, a symbolic link, a hidden folder such as `.git` with its hooks);
 exhaust the memory or the stack (a zip bomb, a file far larger than it says, a billion-laughs XML, a deeply nested or
 endlessly chained source, #2577); read a local file or the network through the XML parser (XXE); replace another
-project or the user's settings; or run a program outside the browser's sandbox (ISE, ssh, Docker, programming a
+project or the user's settings; or run a program outside the browser's sandbox (ISE, Vivado, ssh, Docker, programming a
 board or a PROM) without the user's say.
 
 1. **One import gate** (`core/import-gate.js`, the same module in the browser and on the server): every outside file
@@ -228,16 +237,19 @@ board or a PROM) without the user's say.
    writes, renames or deletes `silinx.json`, by any spelling a case-insensitive file system takes for it (#2956), nor do the browser edition's stores and a
    design link (#3034).
    It opens, is edited, checked, simulated and implemented with the Silinx toolchain; Xilinx ISE (Docker, ssh, a local
-   install) and programming a board or a PROM are refused (the server's 403, the browser edition's error, the MCP
+   install), AMD Vivado (`server/impl-routes.js`, the implementation's `untrustedMessage(…, 'AMD Vivado', …)`) and
+   programming a board or a PROM are refused (the server's 403, the browser edition's error, the MCP
    tool's) until the user trusts it: the console says so when the project opens, with a **Trust Project** button. A
    bitstream of the workspace named by its path takes its project's trust (#3039), also when named in another case on a
    case-insensitive file system (#3358), and a bitstream built for another device than the project's is not
    programmed, by the server as by the browser, unless the request forces it (#3040).
    Saving the project's description does not make it trusted; only that button does. The MCP server has no tool to
-   trust a project, by design: an assistant led astray by what it read cannot. Nor has it a tool to program a board
-   or a PROM; its `run_process` runs the Silinx toolchain, or Xilinx ISE as Toolchain Settings configure it (a local
-   install, Docker, ssh) when asked for (`toolchain: 'ise'`), under the same trust gate: an assistant's writes into a
-   project the user made, which is trusted, can reach ISE. A project made in Silinx is trusted
+   trust a project, by design: an assistant led astray by what it read cannot. Its `run_process` runs the Silinx
+   toolchain, or Xilinx ISE as Toolchain Settings configure it (a local install, Docker, ssh) when asked for
+   (`toolchain: 'ise'`), and its `program_board` (#2298, `server/mcp-board.js`) programs the project's board through
+   the interface's own function (`server/impl-routes.js` `startProgramming`), both under the same trust gate: an
+   assistant's writes into a project the user made, which is trusted, can reach ISE and the board. It has no tool to
+   program a PROM. A project made in Silinx is trusted
    from the start, but for one the MCP server makes (`new_project`, `new_project_from_example`, `open_link` of an
    example): it holds what an assistant writes, so it is untrusted too, its console line and refusals saying it was made
    through the MCP server (#2981).
@@ -327,7 +339,11 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   speaks for that follower only, never for the owner nor another (#3360). What a join asks for (the whole document,
   who is in) goes to the follower that joined only (#3529): joining and leaving again multiplies nobody else's
   download. Its limits: a
-  follower's message 64 KB, the owner's 16 MB, followers per room, rooms per server.
+  follower's message 64 KB, the owner's 16 MB, followers per room, rooms per server. An owner's connection lost, its
+  room is kept for 2 minutes (`RELAY_LIMITS.grace`) for the owner's resume (#3835): only with the room's resume secret
+  (128 random bits the relay gives the owner alone when the room opens, compared in constant time, `same()`), the
+  owner's client id and the server's token again (`core/collab-room.js`); anything else is refused as a room not
+  shared. Its followers stay meanwhile; past the 2 minutes they are told and closed.
 - **A room the owner's page hosts** (the browser edition, `#view=….host`; `#follow=…` in the links made before #4073): the followers reach it over WebRTC. With
   the owner's key in the link, the follower's page looks for the owner at a public meeting point: Trystero's WebTorrent
   trackers (`core/collab-meet.js` `TRACKERS`), and the owner proves itself with a signature only it can make. Without

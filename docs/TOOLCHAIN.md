@@ -13,8 +13,8 @@ everything on the way from a design to a programmed board is in it:
 
 | Part | Where | Is it the toolchain? |
 |---|---|---|
-| The drawings (schematic, ASM, FSM, truth table, Petri net), the C of Silinx HLS: the HDL they generate | `core/`, `web/js/` | No, the IDE: the toolchain receives their HDL |
-| The HDL front end: VHDL and Verilog elaborated into one flat Verilog module | `core/synth-front.js`, `core/synth-verilog.js` | No, the IDE, given through `io.frontEnd`; alone, the package reads Verilog only |
+| The drawings (schematic, ASM, FSM, truth table, Petri net, circuit), the C of Silinx HLS: the HDL they generate | `core/`, `web/js/` | No, the IDE: the toolchain receives their HDL |
+| The HDL front end: VHDL and Verilog elaborated into one flat Verilog module, the `synthesis translate_off` / `translate_on` sections blanked, the line numbers kept (`core/translate-off.js`, #3901) | `core/synth-front.js`, `core/synth-verilog.js` | No, the IDE, given through `io.frontEnd`; alone, the package reads Verilog only |
 | The synthesis's scripts and what Silinx adds around Yosys (state machines, carry chains, LUT resynthesis) | `src/synth-open.js`, `synth-fsm.js`, `carry-chain.js`, `lut-resynth.js` | **Yes** |
 | Yosys, nextpnr | npm: `@yowasp/yosys`, `@silinx/nextpnr-himbaechel-*` | Dependencies of the toolchain, in WebAssembly |
 | Pack, place, route, timing, power, bitstream | `src/fpga/` | **Yes** |
@@ -24,6 +24,7 @@ everything on the way from a design to a programmed board is in it:
 | Running the flow: a process on disk, a Web Worker in memory | `server/open-flow*.js`, `web/js/open-flow-*.js` | No, the IDE's hosts of `runFlow` |
 | Programming the board | `core/adept.js`, `core/xcf.js`, `server/programmer*.js` | No, the IDE |
 | Xilinx ISE 14.7 | `server/ise.js` runs it; the user installs it | No: another tool, and the open flow's oracle |
+| AMD Vivado ML Standard | `server/vivado.js` runs it; the user installs it | No: another tool, the 7-series' vendor flow and the only one of the Spartan-7, the Kintex-7 and the Zynq-7000 (#1649, #3895) |
 
 ## The process
 
@@ -81,7 +82,7 @@ and their data. nextpnr's routed design is converted to XDL (`fpga/nextpnr-xdl.j
                      │ spec, io
  The orchestrator runFlow: the steps, the log, the report; names no family, no engine
                      │ backendOf(spec.family).mount(ctx)
- The back ends    spartan3e │ spartan6 │ (a new family)
+ The back ends    spartan3e │ spartan6 │ ice40 │ ecp5 │ gowin │ xc7 │ (a new family)
                      │
  The tools        Yosys │ nextpnr │ Silinx's packer (S6, the slice count) │ timing │ bitgen
                      │
@@ -93,7 +94,7 @@ and their data. nextpnr's routed design is converted to XDL (`fpga/nextpnr-xdl.j
 Everything outside the flow comes through `io`, so the same flow runs in Node (files on disk) and in the browser (files
 in memory): the sources, the constraints, the device, the bit database, Yosys, nextpnr, the files written, the report.
 The list is at the top of `src/open-flow-core.js`. nextpnr is one hook by micro-architecture:
-`io.nextpnr.spartan3e`, `io.nextpnr.spartan6`, `io.nextpnr.ice40` (with icepack: `pack(asc)`), `io.nextpnr.xc7` (the 7-series', #3146), `io.nextpnr.ecp5` (with ecppack: `pack(config)`).
+`io.nextpnr.spartan3e`, `io.nextpnr.spartan6`, `io.nextpnr.ice40` (with icepack: `pack(asc)`), `io.nextpnr.xc7` (the 7-series', #3146), `io.nextpnr.ecp5` (with ecppack: `pack(config)`), `io.nextpnr.gowin`.
 
 ### The back ends
 
@@ -169,23 +170,25 @@ server runs them at once in worker threads (`runApart`, on a computer of 8 GB an
 after another.
 
 Every example builds on the Basys 3 and the Nexys A7 with no warning, each clock at the boards' 100 MHz by nextpnr's
-estimate (#3147, `test/open-flow-xc7-server.test.js`, which holds each build to these numbers: up to 15 % more LUTs, the
-registers within 10 %, the frequency up to 15 % lower). The LUTs are nextpnr's count (each 6LUT and 5LUT, its feed-throughs
+estimate (#3147, `test/open-flow-xc7-server.test.js`, which holds each build to these numbers, measured with nextpnr-xc7
+0.3.0, #3875, the stopwatch with the best of 3 seeds, its project's: up to 15 % more LUTs, the registers within 10 %, the
+frequency up to 15 % lower). The LUTs are nextpnr's count (each 6LUT and 5LUT, its feed-throughs
 included): Vivado counts a LUT site once, about 4–13 % fewer on blinky, vga and micro80 (#3160); Vivado's numbers on
 every example are below.
 
 | Example | Basys 3: LUTs | registers | MHz | Nexys A7: LUTs | registers | MHz |
 |---|---|---|---|---|---|---|
 | gates | 1 | 0 | – | 1 | 0 | – |
-| traffic | 87 | 58 | 213.6 | 86 | 58 | 199.3 |
-| blinky | 101 | 130 | 241.6 | 98 | 130 | 276.4 |
-| pong | 252 | 207 | 159.0 | 244 | 207 | 155.9 |
-| stopwatch | 184 | 201 | 210.6 | 184 | 201 | 225.9 |
-| clock | 149 | 158 | 268.4 | 146 | 158 | 240.9 |
-| vga | 125 | 56 | 257.2 | 124 | 56 | 234.2 |
-| isqrt | 72 | 86 | 282.9 | 73 | 86 | 316.8 |
-| uart | 122 | 138 | 257.6 | 122 | 138 | 260.0 |
-| micro80 | 169 | 185 | 146.4 | 179 | 185 | 150.1 |
+| breadboard | 4 | 8 | 241.0 | 4 | 8 | 249.8 |
+| traffic | 79 | 60 | 142.6 | 81 | 60 | 142.6 |
+| blinky | 93 | 134 | 158.9 | 93 | 134 | 154.0 |
+| pong | 252 | 215 | 102.1 | 251 | 215 | 107.4 |
+| stopwatch | 169 | 207 | 101.2 | 170 | 207 | 100.8 |
+| clock | 141 | 164 | 132.8 | 141 | 164 | 133.9 |
+| vga | 115 | 58 | 136.7 | 115 | 58 | 131.8 |
+| isqrt | 69 | 87 | 154.7 | 69 | 87 | 157.9 |
+| uart | 105 | 142 | 161.8 | 107 | 142 | 156.3 |
+| micro80 | 157 | 187 | 115.4 | 157 | 187 | 106.2 |
 
 Against AMD Vivado ML Standard 2025.2 (#3760, part of #3145: Vivado cannot read nextpnr's FASM, so the Spartan-3E's
 byte-identical check does not carry over), each example on both boards is built three ways by
@@ -246,9 +249,12 @@ Vendor tools (ISE, Vivado, Quartus) are another kind of back end: they run a who
 
 ## How a result is checked
 
-- **ISE is the oracle of the Xilinx families** (`npm run check:open-flow`). ISE converts the same `routed.xdl` and runs its DRC:
+- **ISE is the oracle of the Spartan-3E and the Spartan-6** (`npm run check:open-flow`). ISE converts the same `routed.xdl` and runs its DRC:
   no error, no warning, and its `.bit` is byte-identical to Silinx's. This proves the bitstream and that the routing is legal; it does
   not compare our placement with PAR's. Size and speed against XST are the weekly quality comparison.
 - **The examples are the test designs** on every device of `TARGETS`.
+- **Vivado is the 7-series' reference** (#3760): Silinx's netlist placed, routed and written as a bitstream by Vivado,
+  through its DRC and `write_bitstream` (`test/xc7-vivado-comparison.test.js`, above). **Apicula is Gowin's**: every
+  example's `.fs` is Apicula 0.32's byte for byte (`test/examples-gowin.test.js`).
 - **The other families have no such oracle.** What proves a build there is to be decided (#2301): post-route simulation against the
   design, the families' timing tools, the vendors' tools where available, runs on real boards.

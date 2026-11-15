@@ -47,8 +47,8 @@ Most of the project's rules come from that way of working:
   later session that a change broke something;
 - small modules and functions (#405), so that a session reads only what it changes;
 - a changelog fragment per change instead of one CHANGELOG.md, because parallel pull requests kept conflicting on it;
-- the related tests on a pull request and the full suites at a release only (#607), so that many sessions can work at
-  once on one machine;
+- the related tests on a pull request and the full suites at a release only (#607), and nightly on `main` when it
+  changed (#3423), so that many sessions can work at once on one machine;
 - ISE as the oracle of the open toolchain: a byte-identical `.bit`, because an AI's toolchain must be checked against
   the reference, not trusted.
 
@@ -69,7 +69,14 @@ Most of the project's rules come from that way of working:
 - **2026-10-28**: contributors from outside: the maintainer merges and releases, a code owner reviews (#1872).
 - **2026-10-29 onwards**: place and route move to **nextpnr** (#2137): Silinx's own placer and router were removed
   once nextpnr reached parity (#2137, #2824); the Spartan-6's packer and the bitstream writer stay Silinx's.
+- **2026-11-01**: the first family beyond Xilinx's: the iCE40, the examples on the iCEBreaker (#2517).
 - **2026-11-08**: renamed *Silinx* (#2624): the app, its command (`silinx`) and its release files.
+- **2026-11-09**: AMD Vivado as the Artix-7's back end (Basys 3, Nexys A7), as ISE is the Spartan-3E's (#1649).
+- **2026-11-10**: a project shared live, end-to-end encrypted, through a relay or the owner's page (#3181).
+- **2026-11-11**: the ECP5 (ULX3S, #2302), the Gowin (Tang Nano 9K, #2303) and the 7-series' back end of the Silinx
+  toolchain (#3146) join the open toolchain.
+- **2026-11-14**: digital circuits, chips wired on a breadboard, and the breadboard example (#3898, #3901); Vivado's
+  other 7-series boards, the Arty S7 and the Zybo Z7 (#3895).
 
 The [CHANGELOG](../CHANGELOG.md) has every release in detail.
 
