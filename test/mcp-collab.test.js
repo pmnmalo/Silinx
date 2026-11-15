@@ -222,6 +222,34 @@ test('#3997 share_project promote / demote: a viewer an editor, an editor a view
   await ok('share_project', { project: 'trafficRole', action: 'stop' });
 });
 
+test('#4110 an editor\'s quick edits written to the owner\'s disk in their order: the file ends as the shared text, never an earlier one', async () => {
+  await ok('new_project_from_example', { name: 'trafficOrder', example: 'traffic' });
+  const { data: { editLink } } = await ok('share_project', { project: 'trafficOrder', name: 'Ana', server: base, editors: true });
+  const l = parseFollowLink(editLink);
+  const timer = await P.readFile('trafficOrder', 'src/timer.vhd');
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  try {
+    await ed.ready;
+    // (each round two changes of the owner's document: a large block put first, then replaced by a line: the large
+    // text's write, the slower, finishing after the line's when nothing orders them)
+    const yt = ed.doc.getMap('files').get('src/timer.vhd');
+    const block = `${'-- a large block of comments\n'.repeat(1500)}`;
+    for (let i = 0; i < 30; i++) {
+      const head = yt.toString().length - timer.length;
+      ed.doc.transact(() => { yt.delete(0, head); yt.insert(0, block); });
+      ed.doc.transact(() => { yt.delete(0, block.length); yt.insert(0, `-- edit ${i}\n`); });
+    }
+    await ed.flush();
+    const last = `-- edit 29\n${timer}`;
+    assert.equal(docFile(ed.doc, 'src/timer.vhd'), last);
+    await until(async () => (await P.readFile('trafficOrder', 'src/timer.vhd')) === last, 'the last edit on the disk', 8000);
+    await sleep(500);
+    assert.equal(await P.readFile('trafficOrder', 'src/timer.vhd'), last, 'no earlier text written after it');
+    assert.deepEqual((await ok('share_project', { project: 'trafficOrder', action: 'status' })).data.warnings, []);
+  } finally { await ed.close(); }
+  await ok('share_project', { project: 'trafficOrder', action: 'stop' });
+});
+
 test('#3182 editors: share_project gives an editor\'s link; follow_project write merges a text file\'s edit, written to the disk by the owner, seen by a follower; what an editor may not change: refused, or undone from the disk', async () => {
   await ok('new_project_from_example', { name: 'trafficEd', example: 'traffic' });
   const r = await ok('share_project', { project: 'trafficEd', name: 'Ana', server: base, editors: true });

@@ -173,7 +173,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   share = { name, project, session, doc, made: {}, base, via, other, pub, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
-  const s0 = share, offFiles = watchDoc(doc, ev => onEdits(s0, ev)), offDrawings = watchDrawings(s0);
+  const s0 = share, offFiles = watchDoc(doc, ev => onEdits(s0, ev), { inOrder: true }), offDrawings = watchDrawings(s0);
   share.unwatch = () => { offFiles(); offDrawings(); };
   share.activity = ownerActivity(session);   // (#4002)
   share.timer = setInterval(track, TRACK_MS);

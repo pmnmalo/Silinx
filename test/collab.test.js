@@ -143,6 +143,31 @@ test('doc: a text changed by its middle only (the update carries the edit), equa
   }
 });
 
+test('#4110 doc: watchDoc inOrder: an asynchronous onChange called once the one before has ended (a slow first write finished before the next one starts), a failed one not stopping the next; without it, at once', async () => {
+  const run = async (opts) => {
+    const a = owned(), b = projectDoc();
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(a), 'remote');
+    const done = [];
+    let n = 0;
+    watchDoc(b, async ({ changes }) => {
+      const i = n++, text = docFile(b, changes[0].path);
+      await new Promise(r => setTimeout(r, [60, 0, 0][i]));
+      if (i === 1 && opts) throw new Error('a write refused');   // (in order: the next one called all the same)
+      if (i !== 1) done.push([i, text]);
+    }, opts);
+    const send = fn => { const sv = Y.encodeStateVector(b); fn(); Y.applyUpdate(b, Y.encodeStateAsUpdate(a, sv), 'remote'); };
+    send(() => putFile(a, 'src/top.vhd', 'one\n'));
+    send(() => putFile(a, 'src/top.vhd', 'two\n'));
+    send(() => putFile(a, 'src/top.vhd', 'three\n'));
+    await new Promise(r => setTimeout(r, 150));
+    return done;
+  };
+  // (in order: each one's text read when it runs, once the one before has ended: the last text written last)
+  assert.deepEqual(await run({ inOrder: true }), [[0, 'three\n'], [2, 'three\n']]);
+  // (at once, the old way: the first, slow, writes its earlier text after the last one's)
+  assert.deepEqual(await run(), [[2, 'three\n'], [0, 'one\n']]);
+});
+
 test('doc: watchDoc tells the remote changes by path and kind, the project\'s too; local changes not', () => {
   const a = owned(), b = projectDoc();
   Y.applyUpdate(b, Y.encodeStateAsUpdate(a), 'remote');

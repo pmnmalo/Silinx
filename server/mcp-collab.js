@@ -95,7 +95,8 @@ function generated(doc) {
 // again; what the gate refuses is not written (undone too), its reason among the share's warnings (`warn`).
 function ownerWrites(name, doc, owner, warn, bases) {
   const offDrawings = drawingWrites(name, doc, owner, warn, bases);
-  const offFiles = watchDoc(doc, async ({ changes, project }) => {
+  // (#4110: one change written after the other, each file's text as the document has it then)
+  const apply = async ({ changes, project }) => {
     const gen = generated(doc);
     const write = changes.filter(c => c.kind === 'changed' && editablePath(c.path) && !gen.has(c.path));
     let refused = false;
@@ -111,7 +112,8 @@ function ownerWrites(name, doc, owner, warn, bases) {
       } catch { refused = true; /* the next change */ }
     }
     if (project || refused || changes.length > write.length) { try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ } }
-  });
+  };
+  const offFiles = watchDoc(doc, apply, { inOrder: true });
   return () => { offFiles(); offDrawings(); };
 }
 // an editor's changes of the drawings edited live (#3183): each one's merged model written to the disk (the gate, the

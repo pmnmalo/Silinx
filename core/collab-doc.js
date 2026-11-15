@@ -229,8 +229,15 @@ export function docProject(doc) {
 }
 
 /** What each update received changes (the follower's page reloads it, as #2843's changes on disk): onChange({ changes:
- *  [{ path, kind: 'created' | 'changed' | 'deleted' }], project (its silinx.json changed) }). Returns the unwatch. */
-export function watchDoc(doc, onChange) {
+ *  [{ path, kind: 'created' | 'changed' | 'deleted' }], project (its silinx.json changed) }). inOrder (#4110: an
+ *  asynchronous onChange, the owner's writes of an editor's changes): each call once the one before has ended, so an
+ *  earlier change's write never finishes after a later one's. Returns the unwatch. */
+export function watchDoc(doc, onChange, { inOrder = false } = {}) {
+  if (inOrder) {
+    let chain = Promise.resolve();
+    const call = onChange;
+    onChange = ev => { chain = chain.then(() => call(ev)).catch(() => { /* the next change */ }); };
+  }
   const files = doc.getMap('files'), project = doc.getMap('project');
   const known = new Set(files.keys());
   const fn = tr => {
