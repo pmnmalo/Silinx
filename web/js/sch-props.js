@@ -19,7 +19,7 @@ import { mountMultiProps } from './sch-multi.js';
 import { mountCompareTicks } from './sch-compare.js';
 import { setMarkerWidth } from '/core/schmarker.js';
 import { instName, renameError } from '/core/schname.js';
-import { arrayName, arrayWidth, withArrayWidth } from '/core/sch-array.js';
+import { arrayName, arrayOf, arrayWidth, withArrayWidth, sharedPins } from '/core/sch-array.js';
 import { graphicProps } from './sch-graphics.js';
 
 /** { renderProps, openSelected, renamed, joinByName, renameLabel } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
@@ -159,7 +159,7 @@ export function mountProps(ctx) {
     propBody.append(h('div', { class: 'se-ptitle', text: title }), h('div', { class: 'se-note se-sum', 'data-no-i18n': '', text: sum }),
       h('div', { class: 'se-pbtns' }, h('button', { class: 'btn ro-ok se-infobtn', type: 'button', text: 'Symbol Info…', title: 'Symbol Info (F1)', onclick: () => openInfo(infoTarget()) })));
     // (cleared: a fresh automatic name, inst_n, not drawn, #3300)
-    propBody.append(field('Instance name', inp(s.name, v => { s.name = String(v).trim() ? newName(v, s.name, s.type === 'module' && arrayName(v)) : instName(doc(), s.id, ''); })), ...arrayWidthField(s, { inp, field, doc }));   // (reg(3:0): an arrayed instance, #3755; its Width, #3950)
+    propBody.append(field('Instance name', inp(s.name, v => { s.name = String(v).trim() ? newName(v, s.name, s.type === 'module' && arrayName(v)) : instName(doc(), s.id, ''); })), ...arrayWidthField(s, { inp, field, doc }), ...sharedPinsField(s, sd, { field, edit }));   // (reg(3:0): an arrayed instance, #3755; its Width, #3950; its Shared pins, #3966)
     for (const p of symbolParams(s)) {
       const v = s.params[p.name];
       let el;
@@ -353,4 +353,22 @@ function arrayWidthField(s, { inp, field, doc }) {
   }, { type: 'number', min: 1, max: 1024, step: 1 });
   el.dataset.param = 'arrayWidth';
   return [field('Width', el, 'copies of the module: its pins on buses N times as wide')];
+}
+
+// an arrayed instance's Shared pins (#3966): a tick box a pin, a ticked one shared by every copy whatever its net (drawn
+// a single pin, not sliced in the HDL), params.shared its names in the module's case; none: the key removed. [] for an
+// instance not arrayed.
+function sharedPinsField(s, def, { field, edit }) {
+  if (!arrayOf(s) || !def?.pins?.length) return [];
+  const on = sharedPins(s), box = h('div', { class: 'se-ticks se-shared' });
+  for (const p of def.pins) {
+    const el = h('input', { type: 'checkbox', checked: on.has(p.name.toLowerCase()) });
+    el.dataset.pin = p.name;
+    el.addEventListener('change', () => edit(() => {
+      const names = def.pins.map(q => q.name).filter(n => (n === p.name ? el.checked : sharedPins(s).has(n.toLowerCase())));
+      if (names.length) s.params.shared = names; else delete s.params.shared;
+    }));
+    box.append(h('label', { class: 'se-tick', 'data-no-i18n': '' }, el, ` ${p.name}`));
+  }
+  return [field('Shared pins', box, 'ticked: one pin for every copy, its net as wide as the pin')];
 }

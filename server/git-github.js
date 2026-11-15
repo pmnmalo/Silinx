@@ -98,6 +98,7 @@ export const gitStatus = async name => backend().status(await known(name));
 export const gitInit = async (name, { remote = null } = {}) => backend().init(await known(name), { remote });
 export const gitCommit = async (name, message) => backend().commit(await known(name), message);
 export const gitPush = async name => backend().push(await known(name));
+export const gitRemote = async name => backend().remote(await known(name));
 export const gitChecks = async name => backend().checks(await known(name));
 export const gitPull = async (name, { resolve = null } = {}) => backend().pull(await known(name), { resolve });
 export const gitLog = async (name, { limit = 100 } = {}) => backend().log(await known(name), { limit });
@@ -135,6 +136,14 @@ export async function deleteShortLinks({ ids = [], expired = false } = {}) {
   const f = GITHUB_TESTING.fetch || globalThis.fetch;
   const client = githubClient({ fetch: (...a) => f(...a), token, hints: HINTS });
   return expired ? deleteExpiredGists(client) : deleteGists(client, ids);
+}
+/** Where the short links are made (#3995, core/gist-link.js gistAccount): the token's account, and the project's
+ *  (`name`) repository, the back end's (GitHub's API, or the system git's origin), with whether it is private. */
+export async function shortLinkAccount(name = null) {
+  if (!token()) throw new GitHubError('the short links need a GitHub token on this server', 'Set GH_TOKEN before starting Silinx (with GitHub\'s command line: GH_TOKEN=$(gh auth token)); Silinx never stores it.', 409);
+  const { gistAccount } = await import('../core/gist-link.js');
+  const repository = name ? await (githubBackend() ? gitRemote(name) : import('./git.js').then(G => G.gitRemote(name))).catch(() => null) : null;
+  return gistAccount(apiClient(), repository);
 }
 /** A short link's design, read from its gist (no token needed). */
 export async function readGist(ref) {

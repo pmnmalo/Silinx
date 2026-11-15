@@ -138,7 +138,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.waitDialog('Share Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how input')].map((r) => [r.value, r.checked, r.disabled, r.closest('label').title])),
     [['copy', true, false, ''], ['live', false, true, 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.']]);
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.waitNoDialog();
   // nothing of what Implement needs downloaded in the background from a page opened from a file (#1450): WebKit and
   // Firefox give it a Cache Storage, and the download, cancelled by the reload below, was a console error in WebKit
@@ -1512,7 +1512,7 @@ uiTest('#2826 browser edition (the Pages site): a design\'s link and an example\
   await page.waitDialog('Share Project');
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = 'simulate'; v.dispatchEvent(new Event('change')); });
   const link = await page.waitFor(() => /^https?:.*#design=[\w-]+&view=simulate(&ui=[\w-]+)?$/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
-  await page.dialogButton('Cancel');
+  await page.dialogButton('Close');
   await page.goto(link.replace('#', '?l=3#'));
   await boot();
   await page.waitConsole(/Opened 'gates' from a link: the simulation\./);
@@ -1537,7 +1537,7 @@ uiTest('#2894 regression, browser edition (the Pages site): a link opened in a n
     await page.waitDialog(module ? 'Share Module' : 'Share Project');
     await page.eval((v) => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = v; s.dispatchEvent(new Event('change')); }, view);
     const link = await page.waitFor(() => /#design=[\w-]+/.test(document.querySelector('.dlg-overlay .link-out').value) && document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the link' });
-    await page.dialogButton('Cancel');
+    await page.dialogButton('Close');
     await page.waitNoDialog();
     return link;
   };

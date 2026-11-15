@@ -29,7 +29,26 @@ const warnings = {
   micro80: ['WARNING: [Synth 8-3936] Found unconnected internal register \'IR_reg\' and it is trimmed from \'8\' to \'6\' bits. [/work/src/src/light8080.vhdl:297]',
     'WARNING: [Synth 8-3936] Found unconnected internal register \'daa_res9_reg\' and it is trimmed from \'9\' to \'8\' bits. [/work/src/src/light8080.vhdl:746]'],
 };
-export const VIVADO_WARNINGS = { basys3: warnings, 'nexys-a7': warnings };
+// (#3895) the Arty S7's 12 MHz clock: vga's pixel every clock (DIV 1), its pace counter unused; the Zybo Z7's 125 MHz:
+// blinky's debounce count past speed_ctrl's 21-bit counters, its buttons' logic removed (#3922, to fix)
+const removed = (reg, file, line) => `WARNING: [Synth 8-6014] Unused sequential element ${reg}_reg was removed. [/work/src/src/${file}:${line}]`;
+const noLoad = port => `WARNING: [Synth 8-7129] Port ${port} in module speed_ctrl is either unconnected or has no load`;
+export const VIVADO_WARNINGS = {
+  basys3: warnings, 'nexys-a7': warnings,
+  'arty-s7': { ...warnings, vga: [removed('pace', 'vga_sync.vhd', 50)] },
+  'zybo-z7': { ...warnings, blinky: [removed('cnt_f', 'speed_ctrl.vhd', 105), removed('cnt_s', 'speed_ctrl.vhd', 107), removed('faster_meta', 'speed_ctrl.vhd', 111),
+    removed('faster_sync', 'speed_ctrl.vhd', 112), removed('slower_meta', 'speed_ctrl.vhd', 113), removed('slower_sync', 'speed_ctrl.vhd', 114), noLoad('faster'), noLoad('slower')] },
+};
 // the design rule check's findings on each example: none, but stopwatch's DSP48 multipliers (its division by constants)
 // not pipelined, Vivado's performance advice: [rule, severity, description, checks]
 export const VIVADO_DRC = { stopwatch: [['DPIP-1', 'Warning', 'Input pipelining', 3], ['DPOP-2', 'Warning', 'MREG Output pipelining', 3]] };
+// (#3895) on the Arty S7's 12 MHz clock stopwatch's multipliers' output registers are fine (no DPOP-2); a Zynq-7000's PL alone
+// (the Zybo Z7's: no processing system set up) has Vivado's advice ZPS7-1 on every design
+const ZPS7 = ['ZPS7-1', 'Warning', 'PS7 block required', 1];
+/** A board's example's DRC findings: VIVADO_DRC's, the board's. */
+export const vivadoDrc = (board, name) => {
+  const own = VIVADO_DRC[name] || [];
+  if (board === 'arty-s7') return own.filter(r => r[0] !== 'DPOP-2');
+  if (board === 'zybo-z7') return [...own, ZPS7];
+  return own;
+};

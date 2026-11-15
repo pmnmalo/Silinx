@@ -94,7 +94,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   example's `speed_ctrl.asm.json` (button synchronisers + debouncers + speed FSM + step divider).
 - **Board emulator** (*Emulate on Board ▸ Emulate Behavioral Model (RTL)*): the design runs on a drawing of the real kit
   (Digilent Basys2, Nexys2, Nexys3, Atlys, Basys 3 and Nexys A7, Spartan-3E Starter Kit, 1BitSquared iCEBreaker; a generic panel
-  for the other boards: the ULX3S, the Tang Nano 9K…),
+  for the other boards: the ULX3S, the Tang Nano 9K, the Arty S7, the Zybo Z7…),
   wired by the constraints (UCF, XDC, PCF, LPF or CST): click the slide switches, press the buttons, watch the LEDs and the
   multiplexed 7-segment display (persistence of vision), at a chosen clock rate, with a watch list
   of internal signals. It works without ISE and in the standalone edition. Two engines: the design
@@ -409,8 +409,8 @@ they are), ticking it in the Steps panel, or giving its hint and the reasons in 
 on the gates example, "A state machine" on traffic, "The clock and the board" on blinky and "The emulator" on stopwatch
 (in English and Portuguese); a teacher writes a lab as a `labs/<name>.lab.json` file of a project (*New Source ▸
 Guided Lab* starts one from a template; its format: `core/labs.js`), checked as it is edited (each save, and its Check
-Syntax, say its problems), and shares it with the project. A link opens a lab beside the project (`lab=<its id>`: *Share Project*'s
-Lab, e.g. `…/Silinx/#open=example:stopwatch&lab=stopwatch-emulator`). The progress is the project's
+Syntax, say its problems), and shares it with the project. A link opens a lab beside the project (`lab=<its id>`, e.g.
+`…/Silinx/#open=example:stopwatch&lab=stopwatch-emulator`; the MCP's `project_link` adds it to a project's link). The progress is the project's
 (`labs/progress.json`): a lab resumes where it was left.
 
 ### A design in a link (for lecture slides)
@@ -418,16 +418,18 @@ Lab, e.g. `…/Silinx/#open=example:stopwatch&lab=stopwatch-emulator`). The prog
 A link opens Silinx on a design, straight in Try it, the simulation or the board emulator, with no project to create
 or import: **Share Project…** (the project's right-click menu in the Design pane, the Start page, the ISE
 style's File menu) or **Share Module…** (a module's right-click menu) makes it, **A copy** chosen in its window, the view
-and the module chosen (its other way, **Live**, shares the project as you work: others follow it with its link, read only,
+and the module chosen, the link hidden until *Show* (*Copy* copies it all the same, *Show QR Code* shows its QR code, as
+large as the window) (its other way, **Live**, shares the project as you work: others follow it with its link, read only,
 or edit it with you). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead
-(`#gist=…`, about 140 characters, for a chat that refuses a long message): the project is encrypted in your browser and
+(`#gist=…`, about 140 characters, for a chat that refuses a long message), made by *Generate*, the window saying which
+GitHub account is signed in and which repository the project is in (private or public): the project is encrypted in your browser and
 saved as a secret gist of your GitHub account (the browser edition's Sign in with GitHub…; a server's `GH_TOKEN`), and
 the key is in the link, so GitHub keeps only what it cannot read; opening it needs no sign-in, and your links are your
 gists, which you list and delete on GitHub. A short link may expire (*Expires:* a week, a month, six months or a
 year; never by default): opened after its date it is refused, and making a short link deletes your expired ones. *File ▸ Short Links…* lists
 your short links (when each was made, when it expires), copies again those this browser made, and deletes the ones you
-choose, or the expired ones. Some slide tools cut a link longer than about 2
+choose (the header's check box selects them all), or the expired ones. Some slide tools cut a link longer than about 2
 000 characters: a larger project goes as a zip hosted elsewhere (*Export Project (.zip)…* to Silinx, then
 `…/Silinx/#open=https://…/lecture3.zip&view=simulate`), and an example by its name
 (`…/Silinx/#open=example:gates&view=try`; `#open=example:traffic&top=traffic&view=try` its state diagram). `view=`
@@ -775,6 +777,12 @@ in a mode of its own, `vivado` in `~/.silinx/config.json` (`PUT /api/toolchain`)
   Vivado on this Linux or Windows machine (`settings`: its `settings64.sh`, else found).
 - Under x86 emulation (an Apple-silicon Mac) an example takes 2 to 10 minutes from synthesis to bitstream.
 - The board is programmed with openFPGALoader (`-b basys3`). Vivado runs on the local server only, not in the browser.
+
+The other 7-series families of Vivado ML Standard are Vivado's too (#3895), with no flow of the Silinx toolchain: the
+**Spartan-7** (XC7S6 to XC7S100; the Digilent **Arty S7**-50 and -25), the **Zynq-7000** (XC7Z007S to XC7Z030; the
+Digilent **Zybo Z7**-20 and -10: its programmable logic only, the .bit over JTAG, no processing system set up) and the
+**Kintex-7** (XC7K70T, XC7K160T; no board). Their Synthesis Tool is Vivado alone. The examples' display, LEDs and
+switches these boards lack are on their Pmods. The Virtex-7 is no free edition's: ISE 14.7's flow.
 
 ## Programming the board
 

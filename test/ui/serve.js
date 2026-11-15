@@ -18,6 +18,9 @@ let handler = app;
 if (process.env.SILINX_UI_GITHUB) {
   const { fakeGitHub } = await import('../fake-github.mjs');
   const gh = fakeGitHub();
+  // (two repositories of the stand-in's user, a private one and a public one: where a short link is made, #3995)
+  gh.seed('student/secret', null, { private: true });
+  gh.seed('student/open', null);
   (await import('../../server/git-github.js')).GITHUB_TESTING.fetch = gh.fetch;
   const route = gh.route('/fake-github');
   handler = async (req, res) => {

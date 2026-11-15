@@ -420,6 +420,18 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .qr-show { padding: 0; border: 1px solid #b9c3d0; background: #fff; cursor: zoom-in; line-height: 0; }
 .qr-img { width: 128px; height: 128px; image-rendering: pixelated; }
 .qr-enlarge { font-size: 11px; }
+/* a sharing window's link, hidden (#3995: web/js/link-field.js): the masked field, its buttons in a column beside it;
+   the Share: row's two ways side by side, each one's explanation below its button */
+.link-field { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
+.link-field > .link-out { flex: 1 1 auto; min-width: 0; font: 11px var(--mono, monospace); }
+.link-buttons { display: flex; flex-direction: column; gap: 4px; flex: none; min-width: 120px; }
+.link-buttons > .btn, .link-extra > .btn { width: 100%; }
+.link-extra:empty { display: none; }
+.share-how { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 10px 0; }
+.share-how-choices { display: flex; flex-wrap: wrap; gap: 6px 32px; }
+.share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }
+.share-how-choices .share-how-note { grid-column: 2; font-size: 11px; opacity: .8; }
+.link-account { margin-top: 6px; }
 .qr-large { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .qr-large-img { width: min(100%, calc(90vh - 230px)); aspect-ratio: 1; background: #fff; image-rendering: pixelated; }
 .qr-large-link { font: 11px var(--mono, monospace); word-break: break-all; max-height: 3.6em; overflow: hidden; opacity: .75; }

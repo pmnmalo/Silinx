@@ -147,6 +147,36 @@ test('#3950 place_instance width 4 and set_instance_width: the instance\'s Width
   assert.equal(one.text.split('\n')[0], 'src/top.sch.json: r2(1:0) is now r2 (a single instance)');
 });
 
+test('#3966 place_instance and set_instance_width shared: an arrayed instance\'s Shared pins; its HDL the whole net for each copy; the errors said', async () => {
+  await ok('new_project', { name: 'sh' });
+  await ok('write_file', { project: 'sh', path: 'src/reg1.vhd', text: REG });
+  await ok('write_file', { project: 'sh', path: 'src/top.vhd', text: 'entity top is end top;\narchitecture a of top is begin end a;\n' });
+  const marker = (id, n, dir, width, y) => ({ id, name: n, dir, width, x: dir === 'in' ? 100 : 700, y });
+  const doc = { version: 4, name: 'top', lang: 'vhdl', generatedFile: 'src/top.vhd', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [],
+    ports: [marker('P1', 'd', 'in', 4, 100), marker('P2', 'ce', 'in', 1, 200), marker('P3', 'clk', 'in', 1, 300), marker('P4', 'q', 'out', 4, 100)] };
+  await ok('write_file', { project: 'sh', path: 'src/top.sch.json', text: JSON.stringify(doc) });
+  // ce and c marked shared (any case): the whole net for each copy, no warnings
+  const r = await ok('place_instance', { project: 'sh', path: 'src/top.sch.json', module: 'reg1', name: 'reg', width: 4, shared: ['CE', 'C'], x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' } });
+  assert.deepEqual([r.data.shared, r.data.diagnostics.map(d => d.message)], [['ce', 'c'], []]);
+  const saved = JSON.parse((await ok('read_file', { project: 'sh', path: 'src/top.sch.json' })).text);
+  assert.deepEqual(saved.symbols[0].params.shared, ['ce', 'c'], 'stored in the module\'s case');
+  const hdl = (await ok('read_file', { project: 'sh', path: 'src/top.vhd' })).text;
+  assert.match(hdl, /reg_2 : entity work\.reg1\n {4}port map \(\n {6}d => d\(2\),\n {6}ce => ce,\n {6}c => clk,\n {6}q => q\(2\)/);
+  assert.doesNotMatch((await ok('check_syntax', { project: 'sh', top: 'top' })).text, /ERROR|WARNING/, 'no warnings');
+  // a pin not of the module: refused; q marked shared: an output, an error; none: today's rule
+  await fails('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['z'] }, /^set_instance_width: Shared pins: no pin z \(its pins: d, ce, c, q\)$/);
+  await fails('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg' }, /width or shared/);
+  const q = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['c', 'Q'] });
+  assert.equal(q.text.split('\n')[0], 'src/top.sch.json: reg(3:0) already 4 copies; shared pins: c, q');
+  assert.deepEqual(q.data.diagnostics.map(d => d.message), ["reg(3:0): output q is marked shared, but each of its 4 copies would drive the net 'q': untick it in Shared pins and connect it to a 4-bit bus"]);
+  const none = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: [] });
+  assert.deepEqual([none.data.shared, none.data.diagnostics.map(d => d.message)], [[], []]);
+  assert.equal(JSON.parse((await ok('read_file', { project: 'sh', path: 'src/top.sch.json' })).text).symbols[0].params.shared, undefined);
+  // a shared pin on a 4-bit net: its error, not a width mismatch
+  const e = await ok('place_instance', { project: 'sh', path: 'src/top.sch.json', module: 'reg1', name: 'r(3:0)', shared: ['ce'], x: 300, y: 600, connect: { ce: 'e(3:0)' } });
+  assert.deepEqual(e.data.diagnostics.map(d => d.message).filter(m => /'e'/.test(m)), ["r(3:0): pin ce is shared by its 4 copies, but its net 'e' is 4 bits wide: connect it to a 1-bit net, or untick it in Shared pins", "net 'e' has no driver (read by r(3:0).ce)", "net 'e' connects only r(3:0).ce"], 'no width mismatch');
+});
+
 test('#3829 rename_module: its symbol file renamed with it, the module\'s name in it; the instances keep their layout', async () => {
   await ok('new_project', { name: 'r' });
   await ok('write_file', { project: 'r', path: 'src/reg1.vhd', text: REG });
