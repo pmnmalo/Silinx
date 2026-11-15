@@ -5,8 +5,8 @@ outra maneira de correr o mesmo Silinx, no seu computador.
 
 | Quero… | Use |
 |---|---|
-| escrever VHDL/Verilog, desenhar esquemáticos e máquinas de estados, simular, **sintetizar** e **programar uma placa Basys2 / Nexys2** | **Forma 1**: no browser, nada a instalar |
-| trabalhar sem Internet, guardar os projetos em pastas com qualquer browser, programar com as ferramentas instaladas (Adept, openFPGALoader…), ou usar o **Xilinx ISE 14.7** para outras placas | **Forma 2**: correr o Silinx localmente (instala o Node.js uma vez) |
+| escrever VHDL/Verilog, desenhar esquemáticos e máquinas de estados, ligar circuitos digitais numa breadboard (CIs 74xx e 4000, experimentados ao vivo), simular, **sintetizar** e **programar uma placa Basys2 / Nexys2** | **Forma 1**: no browser, nada a instalar |
+| trabalhar sem Internet, guardar os projetos em pastas com qualquer browser, programar com as ferramentas instaladas (Adept, openFPGALoader…), ou usar o **Xilinx ISE 14.7** ou o **AMD Vivado** para outras placas | **Forma 2**: correr o Silinx localmente (instala o Node.js uma vez) |
 
 > English: [GETTING-STARTED.md](GETTING-STARTED.md)
 
@@ -21,7 +21,7 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
 1. Abra a **[última versão](https://github.com/pmnmalo/Silinx/releases/latest)**.
 2. Em **Assets**, clique em **`Silinx.html`** para o descarregar.
 3. Faça duplo clique no ficheiro descarregado. Abre no browser (Chrome, Edge, Firefox ou Safari).
-4. Na página inicial clique em **Novo Projeto…** (New Project…) e escolha em *Começar a partir de* (Start from) **Example: gates** (portas lógicas desenhadas num esquemático: um bom primeiro exemplo), **Example: traffic** (uma passadeira para peões: um diagrama de estados e uma álgebra booleana), **Example: blinky** (ou *pong*, um jogo para dois, *stopwatch*, *clock*, *vga*, uma imagem num monitor VGA, *isqrt*, uma função em C feita em hardware, *uart*, um eco pela porta série para um terminal, ou *micro80*, um microprocessador compatível com o 8080 a correr um programa) ou **Projeto vazio** (Empty project). Depois dos exemplos vêm os **Test design: …**: projetos com que o próprio Silinx é testado (esquemáticos, diagramas de estados, programas em C para o Silinx HLS), cada um com o seu teste (uma bancada de teste, ou o `main()` do programa em C), para ver o que o Silinx faz com cada tipo de fonte.
+4. Na página inicial clique em **Novo Projeto…** (New Project…) e escolha em *Começar a partir de* (Start from) **Exemplo: gates** (portas lógicas desenhadas num esquemático: um bom primeiro exemplo), **Exemplo: breadboard** (chips 74LS ligados numa breadboard, a contar as vezes que se carrega num botão: um circuito digital, ver [CIRCUITS.md](CIRCUITS.md)), **Exemplo: traffic** (uma passadeira para peões: um diagrama de estados e uma álgebra booleana), **Exemplo: blinky** (ou *pong*, um jogo para dois, *stopwatch*, *clock*, *vga*, uma imagem num monitor VGA, *isqrt*, uma função em C feita em hardware, *uart*, um eco pela porta série para um terminal, ou *micro80*, um microprocessador compatível com o 8080 a correr um programa) ou **Projeto vazio** (Empty project). Depois dos exemplos vêm os **Projeto de teste: …** (Test design: …): projetos com que o próprio Silinx é testado (esquemáticos, diagramas de estados, programas em C para o Silinx HLS), cada um com o seu teste (uma bancada de teste, ou o `main()` do programa em C), para ver o que o Silinx faz com cada tipo de fonte. Um projeto vazio pergunta mais duas coisas: o seu **Tipo de Projeto** (Project Kind), *Projeto para FPGA* (uma placa e um dispositivo) ou *Só desenho e simulação (sem FPGA)* (desenhos e simulação, sem placa), e, na página seguinte, o seu **Tipo de Fonte de Topo** (Top-Level Source Type: HDL, Esquemático, uma máquina de estados (FSM ou ASM), Álgebra Booleana, Rede de Petri, Circuito, ou uma função C ou C++ para o Silinx HLS): o projeto começa com esse topo. Ambos se podem mudar depois nas **Propriedades do Projeto** (Design Properties).
 
 É tudo. A saber:
 
@@ -31,7 +31,7 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
 
 - Os projetos ficam guardados **dentro deste browser**, neste computador. Para guardar uma cópia
   ou passar para outro computador use **File ▸ Export Project (.zip)…** (e **File ▸ Import
-  Project (.zip)…** para o voltar a abrir; também abre um pacote de projeto `.silinx.json` de uma
+  Project (.zip)…** para o voltar a abrir, a partir do zip ou da pasta do projeto, a que tem o seu silinx.json; também abre um pacote de projeto `.silinx.json` de uma
   versão anterior). Apagar os dados do browser apaga os projetos.
 - **Ou guarde-os numa pasta do seu disco** (Chrome ou Edge): **File ▸ Open Workspace Folder…**
   (também na página inicial) e escolha uma pasta, por exemplo uma nova pasta `Silinx-projects` nos
@@ -64,7 +64,8 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
   com um **toque longo** (o dedo parado meio segundo); dois dedos movem um desenho e o gesto de pinça faz zoom. Na vertical o painel lateral (Projeto) mostra-se ou esconde-se com o
   botão do painel lateral no cabeçalho (na interface Estilo ISE é uma gaveta, o botão à esquerda do cabeçalho) e as propriedades dos editores abrem por cima do desenho (**Propriedades**).
 - **Uma ligação para os diapositivos**: clique com o botão direito no projeto, no painel Projeto, **Partilhar
-  Projeto…** (uma cópia): a ligação abre o Silinx no circuito, em Experimentar, na simulação ou no emulador da placa, com o
+  Projeto…** (uma cópia), e depois **Gerar** (a ligação feita, e depois **Copiar**, **Mostrar** ou **Mostrar o Código
+  QR**): a ligação abre o Silinx no projeto, em Experimentar, na simulação ou no emulador da placa, com o
   projeto inteiro lá dentro (ver o README, *A design in a link*).
 - A interface abre em português quando o browser está em português; muda-se em **Definições (⚙) ▸ Idioma** (na interface
   Estilo ISE, **View ▸ Language**).
@@ -76,7 +77,7 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
 O mesmo Silinx, a correr no seu computador em vez do site: os projetos como pastas em
 `Silinx-projects` com qualquer browser, a síntese sem Internet, a placa programada também com as
 ferramentas instaladas (Digilent Adept, openFPGALoader, xc3sprog, adepttool) ou a partir do Firefox e
-do Safari, e o Xilinx ISE 14.7 para as placas que a cadeia de ferramentas Silinx ainda não suporta.
+do Safari, e o Xilinx ISE 14.7 ou o AMD Vivado para as placas que a cadeia de ferramentas Silinx ainda não suporta.
 
 ### Passo 1: instalar o Node.js (uma vez)
 
@@ -140,14 +141,17 @@ Abre-se uma janela preta (o servidor do Silinx) e depois o browser mostra o Sili
 
 ### Passo 4: usar
 
-- Página inicial ▸ **Novo Projeto…** (New Project…), *Começar a partir de* **Example: gates** para começar (portas AND, OR, NOT e NAND
-  num esquemático: um detetor de números primos de 4 bits nos interruptores e em dois LEDs), **Example: traffic**
+- Página inicial ▸ **Novo Projeto…** (New Project…), *Começar a partir de* **Exemplo: gates** para começar (portas AND, OR, NOT e NAND
+  num esquemático: um detetor de números primos de 4 bits nos interruptores e em dois LEDs), **Exemplo: traffic**
   a seguir (uma passadeira para peões: o controlador é um diagrama de estados, as luzes uma álgebra
-  booleana), **Example: blinky** para explorar um projeto completo, ou **Projeto vazio** (Empty project).
+  booleana), **Exemplo: blinky** para explorar um projeto completo, ou **Projeto vazio** (Empty project).
 - Os projetos ficam em pastas normais em **`Silinx-projects`**, na sua pasta de utilizador
   (Windows: `C:\Users\<você>\Silinx-projects`, macOS: `/Users/<você>/Silinx-projects`).
   Pode copiá-los, fazer cópias de segurança, ou comprimi-los para entregar.
-- **File ▸ Export Project (.zip)…** começa pelo software de destino: **Xilinx ISE** cria um zip que abre no Xilinx ISE 14.7; **Silinx** guarda o projeto Silinx completo (com os diagramas ASM e esquemáticos), que se reabre com **File ▸ Import Project (.zip)…** (que reconhece o software do zip); a pasta de um projeto Silinx (a que tem o seu silinx.json) também se importa aí, como a de um projeto ISE. AMD Vivado e Intel Quartus aparecem desativados: o Silinx ainda não lê nem escreve os seus projetos. Um projeto importado veio de fora: só corre o Xilinx ISE e só programa uma placa depois de carregar em **Confiar no Projeto** (Trust Project) na consola, que o diz quando o projeto abre.
+- **Abrir no VS Code** (Open in VS Code; o editor que o Silinx encontra neste computador: VS Code, VSCodium ou Cursor):
+  botão direito num ficheiro de texto (HDL, C, restrições) no painel Projeto ou no seu separador para o ficheiro, no
+  projeto para a sua pasta (**Abrir a Pasta no VS Code**); cada gravação lá aparece no Silinx.
+- **File ▸ Export Project (.zip)…** começa pelo software de destino: **Xilinx ISE** cria um zip que abre no Xilinx ISE 14.7; **Silinx** guarda o projeto Silinx completo (com os diagramas ASM e esquemáticos), que se reabre com **File ▸ Import Project (.zip)…** (que reconhece o software do zip); a pasta de um projeto Silinx (a que tem o seu silinx.json) também se importa aí, como a de um projeto ISE. AMD Vivado e Intel Quartus aparecem desativados: o Silinx ainda não lê nem escreve os seus projetos. Um projeto importado veio de fora: só corre o Xilinx ISE e só programa uma placa depois de carregar em **Confiar no Projeto** (Trust Project) na consola, que o diz quando o projeto abre. Um projeto só de desenho e simulação (sem FPGA) não tem software a escolher: é exportado como projeto Silinx.
 - A interface abre em português quando o browser está em português; muda-se em **Definições (⚙) ▸ Idioma** (na interface
   Estilo ISE, **View ▸ Language**).
 
@@ -177,6 +181,11 @@ localmente (Forma 2), precisam de até mais duas coisas. O seu professor pode j�
      `ise/README.md`: descarrega o instalador do ISE e a licença com a sua conta AMD gratuita e
      corre um script (demora 20–60 minutos, uma vez). O ISE não pode ser partilhado, por isso cada
      pessoa cria a sua cópia.
+
+   As placas da série 7, a Basys 3 e a Nexys A7 (Artix-7), a Arty S7 (Spartan-7) e a Zybo Z7 (Zynq-7000), são
+   construídas pelo **AMD Vivado** ML Standard (gratuito para estes dispositivos) com o Silinx a correr localmente, com
+   o Vivado como ferramenta de síntese (Synthesis Tool); a Basys 3 e a Nexys A7 também pela cadeia de ferramentas
+   Silinx, também no browser (ver o README, *The Artix-7 boards with AMD Vivado*).
 2. **O controlador USB da placa** para a programar:
    - **Windows:** instale o Digilent **Adept 2** (Runtime + Utilities) a partir de digilent.com.
    - **macOS (Basys2):** num Terminal, dentro da pasta `silinx`, execute

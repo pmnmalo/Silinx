@@ -12,9 +12,10 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 
 - A circuit is one file, `<name>.circ.json`, a design source of any project: an FPGA project or a design and
   simulation project (no new project kind). New Source ▸ **Circuit** makes one, empty or with a breadboard and a power
-  supply.
-- **It is a module**, as every Silinx drawing: its **logic switches** and **buttons** are its inputs, its **LEDs** (and,
-  later, displays) its outputs, named by their labels; its HDL file is generated from it (below). The Design pane shows
+  supply; a circuit is also a **Top-Level Source Type** (#4105): New Project starts an empty project with one as its
+  top (`src/top.circ.json`), and Design Properties can choose it.
+- **It is a module**, as every Silinx drawing: its **logic switches** and **buttons** are its inputs, its **LEDs**,
+  each **7-segment display**'s segment and each **LED bar**'s light its outputs, named by their labels; its HDL file is generated from it (below). The Design pane shows
   its row as every drawing's: `[Circuit]` first (it opens the drawing), `[VHDL]` / `[Verilog]` last (hidden in a design
   project).
 - **The canvas** is a grid of 0.1 inch steps (the breadboard's pitch): every pin, hole and wire end is on a grid point.
@@ -31,13 +32,15 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 - **Show inside** (#4060, the toolbar's, remembered): each breadboard's strips drawn under its holes (each column's a–e
   and f–j, each power rail), each gate IC's gates in its body (IEC boxes, &, ≥1, =1, 1, a bubble on an inverting one)
   joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire.
-- **How the wires are drawn** (#4064, the ⋮ menu, as the schematic's): **Curved wires** (the circuit's `wireStyle`,
+- **How the wires are drawn** (#4064, the ⋮ menu): **Curved wires** (a check item, where the schematic's
+  **Wires** is a choice of Direct, Orthogonal or Curved, #4081; the circuit's `wireStyle`,
   saved with it: each wire a smooth curve through its bends, as a jumper wire) and **Wire crossings** (#4101, a
   choice as the schematic's, remembered): **Hop-overs** (the default: a small arc where a wire crosses one drawn before
   it without joining it) or **Plain crossings** (the wires straight across each other); `core/circuit-wires.js`. The look
   only: the connections are the same.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
-  net's: the toolbar (select, wire, rotate, delete, then the zoom, Keep connections, then Check and Try it; while trying it, the Try it bar above the canvas, as the schematic's, its Reset and Stop, #4067; printed
+  net's: the toolbar (select, wire, rotate, delete, then the zoom, Keep connections and Show inside, then Check and Try it, and at its right ☰ Parts, ☰ Properties (a narrow
+  screen's) and the ⋮ menu; while trying it, the Try it bar above the canvas, as the schematic's, its Reset and Stop, #4067; printed
   by the main toolbar's Print), the **Parts** panel on the left (#4062, as the schematic's Symbols: a search, the parts by
   category, each folded or open, each part with its drawing, an IC's the schematic's symbol of its gate or its block; a
   click on a part, then on the drawing; foldable, over the canvas behind ☰ Parts on a narrow screen), the Properties side
@@ -267,7 +270,8 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 
 Coordinates are grid steps (0.1 inch). A part's `x`, `y` is its pin 1's point (a breadboard's: its hole a1's), `rot` its
 quarter turns; the part's other pins follow from its description. `on` is a switch's position as saved (the simulation
-starts there). The file is plain JSON, merged by Silinx's drawing merge as the other drawings (by its parts and wires).
+starts there). The file is plain JSON. Silinx's drawing merge does not take it yet (phase 4): git merges it as any text file, line by
+line.
 
 ## The phases
 

@@ -5,8 +5,8 @@ running the same Silinx, on your own computer.
 
 | I want to… | Use |
 |---|---|
-| write VHDL/Verilog, draw schematics and state machines, simulate, **synthesize** and **program a Basys2 / Nexys2 board** | **Way 1**: in the browser, nothing to install |
-| work offline, keep the projects as folders with any browser, program with the installed tools (Adept, openFPGALoader…), or use **Xilinx ISE 14.7** for other boards | **Way 2**: run Silinx locally (installs Node.js once) |
+| write VHDL/Verilog, draw schematics and state machines, wire digital circuits on a breadboard (74xx and 4000 ICs, tried live), simulate, **synthesize** and **program a Basys2 / Nexys2 board** | **Way 1**: in the browser, nothing to install |
+| work offline, keep the projects as folders with any browser, program with the installed tools (Adept, openFPGALoader…), or use **Xilinx ISE 14.7** or **AMD Vivado** for other boards | **Way 2**: run Silinx locally (installs Node.js once) |
 
 > Português: [COMECAR.md](COMECAR.md)
 
@@ -21,7 +21,7 @@ https://pmnmalo.github.io/Silinx/dev/, its projects kept apart) and go to step 4
 1. Open the **[latest release](https://github.com/pmnmalo/Silinx/releases/latest)**.
 2. Under **Assets**, click **`Silinx.html`** to download it.
 3. Double-click the downloaded file. It opens in your browser (Chrome, Edge, Firefox or Safari).
-4. On the Start page click **New Project…** and choose in *Start from* **Example: gates** (logic gates drawn as a schematic: a good first example), **Example: traffic** (a pedestrian crossing: a state diagram and a Boolean algebra), **Example: blinky** (or *pong*, a game for two, *stopwatch*, *clock*, *vga*, a picture on a VGA monitor, *isqrt*, a C function made into hardware, *uart*, an echo over the serial port to a terminal, or *micro80*, an 8080-compatible microprocessor running a program) or **Empty project**. After the examples come the **Test design: …** entries: designs Silinx itself is tested with (schematics, state diagrams, C programs for Silinx HLS), each with its test (a test bench, or the C program's `main()`), to see what Silinx does with each kind of source.
+4. On the Start page click **New Project…** and choose in *Start from* **Example: gates** (logic gates drawn as a schematic: a good first example), **Example: breadboard** (74LS chips wired on a breadboard, counting a button's presses: a digital circuit, see [CIRCUITS.md](CIRCUITS.md)), **Example: traffic** (a pedestrian crossing: a state diagram and a Boolean algebra), **Example: blinky** (or *pong*, a game for two, *stopwatch*, *clock*, *vga*, a picture on a VGA monitor, *isqrt*, a C function made into hardware, *uart*, an echo over the serial port to a terminal, or *micro80*, an 8080-compatible microprocessor running a program) or **Empty project**. After the examples come the **Test design: …** entries: designs Silinx itself is tested with (schematics, state diagrams, C programs for Silinx HLS), each with its test (a test bench, or the C program's `main()`), to see what Silinx does with each kind of source. An empty project asks two things more: its **Project Kind**, *FPGA design* (a board and a device) or *Design and simulation only (no FPGA)* (drawings and simulation, no board), and, on the next page, its **Top-Level Source Type** (HDL, Schematic, a state machine (FSM or ASM), Boolean Algebra, Petri Net, Circuit, or a C or C++ function for Silinx HLS): the project starts with that top. Both can be changed later in **Design Properties**.
 
 That's all. Things to know:
 
@@ -31,7 +31,7 @@ That's all. Things to know:
 
 - Your projects are saved **inside this browser** on this computer. To keep a copy or move it to
   another computer use **File ▸ Export Project (.zip)…** (and **File ▸ Import Project
-  (.zip)…** to load it back; it also opens a `.silinx.json` project bundle of an earlier version). Clearing the browser's data deletes them.
+  (.zip)…** to load it back, from the zip or from the project's folder, the one with its silinx.json; it also opens a `.silinx.json` project bundle of an earlier version). Clearing the browser's data deletes them.
 - **Or keep them in a folder on your disk** (Chrome or Edge): **File ▸ Open Workspace Folder…**
   (also on the Start page) and choose a folder, for instance a new `Silinx-projects` folder in your
   Documents. Each project is then an ordinary folder in it (`silinx.json`, `src/`, `sim/`,
@@ -61,9 +61,11 @@ That's all. Things to know:
   memory, so a large design may fail in synthesis. The right-click menus open with a **long press**
   (hold a finger still for half a second); two fingers move a drawing and a pinch zooms it. In portrait the side panel (Design) is shown or hidden
   with the header's side panel button (in the ISE style interface it is a drawer, the button at the left of the header), and the editors' properties open over the drawing (**Properties**).
-- **A link for your slides**: right-click the project in the Design pane, **Share Project…** (a copy): the link opens
-  Silinx on the design, in Try it, the simulation or the board emulator, the whole project inside it (see the README,
+- **A link for your slides**: right-click the project in the Design pane, **Share Project…** (a copy), then **Generate** (the link made, then
+  **Copy**, **Show** or **Show QR Code**): the link opens Silinx on the design, in Try it, the simulation or the board emulator, the whole project inside it (see the README,
   *A design in a link*).
+- The interface opens in Portuguese when the browser is in Portuguese; **Settings (⚙) ▸ Language** changes it (in the
+  ISE style interface, **View ▸ Language**).
 
 ---
 
@@ -72,7 +74,7 @@ That's all. Things to know:
 The same Silinx, running on your computer instead of the site: projects as folders in
 `Silinx-projects` with any browser, synthesis offline, the board programmed with the installed tools
 too (Digilent Adept, openFPGALoader, xc3sprog, adepttool) or from Firefox and Safari, and Xilinx ISE
-14.7 for the boards the Silinx toolchain does not support yet.
+14.7 or AMD Vivado for the boards the Silinx toolchain does not support yet.
 
 ### Step 1: install Node.js (once)
 
@@ -141,7 +143,12 @@ A black window (the Silinx server) opens and then your browser shows Silinx at
 - Your projects are saved as normal folders in **`Silinx-projects`** in your user folder
   (Windows: `C:\Users\<you>\Silinx-projects`, macOS: `/Users/<you>/Silinx-projects`).
   You can copy them, back them up, or zip them to hand in.
-- **File ▸ Export Project (.zip)…** starts with the software it goes to: **Xilinx ISE** produces a zip that opens in Xilinx ISE 14.7; **Silinx** saves the whole Silinx project (ASM charts and schematics included), reopened with **File ▸ Import Project (.zip)…** (which recognises the zip's software); a Silinx project's folder (the one with its silinx.json) imports there too, as an ISE project's does. AMD Vivado and Intel Quartus are shown disabled: Silinx does not read or write their projects yet. An imported project came from outside: it runs Xilinx ISE and programs a board only once you press **Trust Project** in the console, where it says so when the project opens.
+- **Open in VS Code** (the editor Silinx finds on this computer: VS Code, VSCodium or Cursor): right-click a text file
+  (HDL, C, constraints) in the Design pane or its tab for the file, the project for its folder (**Open Folder in VS
+  Code**); each save there is shown in Silinx.
+- **File ▸ Export Project (.zip)…** starts with the software it goes to: **Xilinx ISE** produces a zip that opens in Xilinx ISE 14.7; **Silinx** saves the whole Silinx project (ASM charts and schematics included), reopened with **File ▸ Import Project (.zip)…** (which recognises the zip's software); a Silinx project's folder (the one with its silinx.json) imports there too, as an ISE project's does. AMD Vivado and Intel Quartus are shown disabled: Silinx does not read or write their projects yet. An imported project came from outside: it runs Xilinx ISE and programs a board only once you press **Trust Project** in the console, where it says so when the project opens. A design and simulation project (no FPGA) has no software to choose: it is exported as a Silinx project.
+- The interface opens in Portuguese when the browser is in Portuguese; **Settings (⚙) ▸ Language** changes it (in the
+  ISE style interface, **View ▸ Language**).
 
 ### Updating Silinx
 
@@ -168,6 +175,11 @@ In the browser (Way 1) nothing more is needed for the Basys2 and Nexys2. Running
    - download `silinx-docker-kit-<version>.zip` from the release and follow its `ise/README.md`:
      you download the ISE installer and licence with your own free AMD account and run one script
      (it takes 20–60 minutes, once). ISE cannot be shared, so everyone builds their own copy.
+
+   The 7-series boards, the Basys 3 and the Nexys A7 (Artix-7), the Arty S7 (Spartan-7) and the Zybo Z7 (Zynq-7000),
+   are built by **AMD Vivado** ML Standard (free for these parts) with Silinx running locally, its Synthesis Tool
+   Vivado; the Basys 3 and the Nexys A7 by the Silinx toolchain too, in the browser as well (the README, *The Artix-7
+   boards with AMD Vivado*).
 2. **The board's USB driver** to program it:
    - **Windows:** install Digilent **Adept 2** (Runtime + Utilities) from digilent.com.
    - **macOS (Basys2):** in a Terminal, inside the `silinx` folder, run
