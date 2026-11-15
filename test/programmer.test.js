@@ -381,6 +381,8 @@ test('program: an absolute bitfile of the workspace is programmed only when its 
   await fs.writeFile(untr, makeBit());
   const link = path.join(tmp, 'link.bit'), loose = path.join(path.dirname(P.projectDir('Untr')), 'loose.bit'), disk = path.join(tmp, 'disk.bit');
   await fs.symlink(untr, link);
+  await fs.mkdir(path.join(path.dirname(untr), 'sub'));
+  await fs.symlink(path.join(path.dirname(untr), 'sub'), path.join(tmp, 'linkdir'));
   await fs.writeFile(loose, makeBit());
   await fs.writeFile(disk, makeBit());
   const refused = "project 'Untr' came from outside (imported): programming the board runs only once you trust it (Trust Project, in the console when the project opens)";
@@ -391,6 +393,8 @@ test('program: an absolute bitfile of the workspace is programmed only when its 
     [{ project: 'Prog', bitfile: link }, refused],
     [{ bitfile: path.join(P.projectDir('Untr'), 'build', 'none.bit') }, refused],
     [{ bitfile: loose }, `${loose} is in the workspace but in no project: a workspace's bitstream is programmed from its project`],
+    // a link to a folder of the project, then '..': the system follows the link first (the path checked is the one opened)
+    [{ bitfile: `${path.join(tmp, 'linkdir')}/../top.bit` }, refused],   // (path.join would take the '..' off)
   ]) {
     const r = await app.call('POST', '/program', body);
     assert.equal(r.status, 403, JSON.stringify(body));
@@ -407,7 +411,7 @@ test('program: an absolute bitfile of the workspace is programmed only when its 
   for (const bitfile of [untr, link]) {
     const j = await run('/program', { bitfile, tool: 'xc3sprog', cable: 'xpc' });
     assert.equal(j.status, 'ok', bitfile);
-    assert.equal(j.result.bitfile, bitfile);
+    assert.equal(j.result.bitfile, await fs.realpath(bitfile));   // (the file programmed: the link's)
   }
 });
 

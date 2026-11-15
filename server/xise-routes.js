@@ -3,7 +3,7 @@
 import fs from 'node:fs/promises';
 import express from 'express';
 import { ZIP_LIMITS } from '../core/zip.js';
-import { GateError, gateEntries, gateMessages, gateZip } from '../core/import-gate.js';
+import { GateError, gateEntries, gateMessages, gateZip, normalizePath } from '../core/import-gate.js';
 import fss from 'node:fs';
 import path from 'node:path';
 import { exportXise, importXise } from './xise.js';
@@ -91,7 +91,8 @@ export function mountXiseRoutes(ctx) {
     try { parsed = importXise(await fs.readFile(xfile, 'utf8')); } catch (e) { throw bad(e.message); }
     // Paths in the .xise are relative to the project dir; keep only those inside it (the constraints too, #1236).
     // A Windows drive path (C:/work/x.vhd) is outside the project too, even though POSIX path.resolve keeps it inside.
-    const inProject = p => { try { if (/^[A-Za-z]:/.test(p)) throw new Error('absolute'); P.safeJoin(dir, p); return true; } catch { return false; } };
+    // (by the import gate's rules for a name, as an imported silinx.json's paths, #3411: no hidden file, no silinx.json)
+    const inProject = p => { try { if (/^[A-Za-z]:/.test(p)) throw new Error('absolute'); const n = normalizePath(p); if (n.reason || P.isProjectFile(n.path)) return false; P.safeJoin(dir, p); return true; } catch { return false; } };
     const files = [];
     const skipped = [];
     for (const f of parsed.files) {

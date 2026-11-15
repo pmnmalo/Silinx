@@ -70,6 +70,12 @@ test('#3192 loadExercise: the files beside it read; one outside its folder, or m
     assert.deepEqual(loadExercise(write(path.join(dir, 'bad.exercise.json'), JSON.stringify(raw))).problems, ['bad.exercise.json: link.v is not inside the exercise\'s folder']);
   }
   assert.deepEqual(loadExercise(path.join(dir, 'none.exercise.json')).problems, ['none.exercise.json: no such file']);
+  // #3036: a hidden file or folder of the exercise's folder (a clone's .git/config) is none of its files
+  write(path.join(dir, '.git', 'config'), '[remote "origin"]\n\turl = https://example.invalid/r\n');
+  write(path.join(dir, '.env'), 'X=1\n');
+  raw.reference.files[0].file = '.git/config';
+  raw.tests[0] = { id: 'count', kind: 'vectors', clock: 'clk', file: 'tests/../.env' };
+  assert.deepEqual(loadExercise(write(path.join(dir, 'bad.exercise.json'), JSON.stringify(raw))).problems, ['bad.exercise.json: .git/config is a hidden file or folder, no file of the exercise\'s', 'bad.exercise.json: tests/../.env is a hidden file or folder, no file of the exercise\'s']);
 });
 
 test('#3192 readSubmission: a folder, a zip (its project at its root or in its one folder); refused: a symbolic link, a file too large, no project', async () => {

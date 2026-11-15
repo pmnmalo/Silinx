@@ -41,7 +41,7 @@ function topOf(project) {
 // takes the workspace's name in any case (#3358): the paths are compared as the system names them (realpath's
 // native form keeps the disk's case, JS's the one it is given), and by name with their case folded there.
 const FOLDS = process.platform === 'darwin' || process.platform === 'win32';
-async function checkWorkspaceBit(full) {
+async function checkWorkspaceBit(full, shown = full) {
   const P = Projects, ws = path.resolve(P.workspaceDir()), names = new Set();
   const fold = s => (FOLDS ? foldName(s) : s);
   for (const [dir, f] of [[ws, path.resolve(full)], [nativeRealOf(ws), nativeRealOf(path.resolve(full))]]) {
@@ -52,7 +52,7 @@ async function checkWorkspaceBit(full) {
   for (const name of names) {
     let project = null;
     try { project = await P.readProject(name); } catch { /* not a project's folder */ }
-    if (!project) throw new P.HttpError(403, `${full} is in the workspace but in no project: a workspace's bitstream is programmed from its project`);
+    if (!project) throw new P.HttpError(403, `${shown} is in the workspace but in no project: a workspace's bitstream is programmed from its project`);
     if (!isTrusted(project)) throw new P.HttpError(403, untrustedMessage(name, 'programming the board', project));
   }
 }
@@ -79,14 +79,19 @@ export async function startProgramming(b = {}) {
     bitfile = b.bitfile;
   } else throw bad('give a project or a bitfile');
   if (!/\.bit$/i.test(bitfile) && !(/\.(bin|fs)$/i.test(bitfile) && !path.isAbsolute(b.bitfile || ''))) throw bad('only .bit files, or a project\'s .bin (the iCE40) or .fs (the Gowin), can be programmed');
-  if (path.isAbsolute(b.bitfile || '')) await checkWorkspaceBit(bitfile);
+  // (an absolute one as the system resolves it, its links and then its '..' followed in that order, once: the path
+  // checked is the one opened, #3039)
+  if (path.isAbsolute(b.bitfile || '')) {
+    bitfile = nativeRealOf(bitfile);
+    await checkWorkspaceBit(bitfile, b.bitfile);
+  }
   if (!fss.existsSync(bitfile)) throw bad(`bitstream not found: ${bitfile} (run the implementation first)`, 404);
   // a file outside the project (iMPACT's file box takes any path): only a real Xilinx bitstream,
   // and the same answer for any other file as for a missing one (no file-existence check by the API)
   if (path.isAbsolute(b.bitfile || '')) {
     let ok = false;
     try { const fd = await fs.open(bitfile); try { const { buffer, bytesRead } = await fd.read(Buffer.alloc(4096), 0, 4096, 0); parseBitHeader(buffer.subarray(0, bytesRead)); ok = true; } finally { await fd.close(); } } catch { /* not a bitstream */ }
-    if (!ok) throw bad(`bitstream not found: ${bitfile} (run the implementation first)`, 404);
+    if (!ok) throw bad(`bitstream not found: ${b.bitfile} (run the implementation first)`, 404);
   }
   const board = b.board || project?.board || null;
   if (board && !resolveBoard(board)) throw bad(`unknown board '${board}'`);

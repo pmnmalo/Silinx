@@ -24,7 +24,7 @@ import { loadConfig, detectIse, iseStatus, iseModeOf, which } from './toolchain.
 import { validateDevice, findPart, findBoard } from './devices.js';
 import { vendorFlash, vendorFlashText } from '../core/vendor-flash.js';
 import { parseBitHeader } from './programmer.js';
-import { within } from './paths.js';
+import { hiddenIn, within } from './paths.js';
 import { IDENT } from './ident.js';
 import { sourceSettingsSh } from './settings-guard.js';
 
@@ -400,6 +400,9 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
   const inside = rel => {
     const full = path.resolve(projectDir, rel);
     if (full === projectDir || !within(projectDir, full)) throw Object.assign(new Error(`file path escapes project: ${rel}`), { status: 400 });
+    // (a hidden file or folder, .git/config, is no part of the project: never built nor copied, #3036)
+    const hidden = hiddenIn(projectDir, full);
+    if (hidden) throw Object.assign(new Error(`file path is a hidden file or folder, no part of the project: ${rel} ('${hidden}')`), { status: 400 });
     return full;
   };
   // the drawn sources without an HDL file: their HDL made here (#177)

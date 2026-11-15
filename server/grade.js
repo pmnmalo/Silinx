@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { parseExercise, limitsOf, testsOf, localize, pointsOf } from '../core/grade-format.js';
 import { summarize } from '../core/grade.js';
 import { gateEntries, gateZip } from '../core/import-gate.js';
-import { within } from './paths.js';
+import { hiddenIn, within } from './paths.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -41,6 +41,8 @@ export function loadExercise(file) {
     let real;
     try { real = fs.realpathSync(full); } catch { problems.push(`${where}: no file ${rel} beside it`); return ''; }
     if (!within(fs.realpathSync(dir), real) || real === fs.realpathSync(dir)) { problems.push(`${where}: ${rel} is not inside the exercise's folder`); return ''; }
+    // (a hidden file or folder, .git/config, is no part of the project's: never read, #3036)
+    if (hiddenIn(dir, full)) { problems.push(`${where}: ${rel} is a hidden file or folder, no file of the exercise's`); return ''; }
     return fs.readFileSync(real, 'utf8');
   };
   const withText = files => (Array.isArray(files) ? files.map(f => (f && typeof f.text !== 'string' && typeof f.file === 'string' ? { path: f.path, text: read(f.file) } : f)) : files);

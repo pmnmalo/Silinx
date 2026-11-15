@@ -344,3 +344,12 @@ test('#3158 the MCP tools\' schemas: get_report\'s reports (not the toolchains),
   assert.deepEqual(tools.find(t => t.name === 'get_report').inputSchema.properties.report.enum, ['summary', 'power', 'timing', 'synthesis', 'map', 'par', 'pins', 'drc']);
   assert.deepEqual(tools.find(t => t.name === 'run_process').inputSchema.properties.toolchain.enum, ['silinx', 'ise', 'vivado']);
 });
+
+test('#3036 the build folder of a 7-series project: a constraints file outside the project, or a hidden one, refused', async () => {
+  fs.writeFileSync(path.join(path.dirname(process.env.SILINX_WORKSPACE), 'away.xdc'), XDC);
+  for (const [name, constraints, text] of [['B3out', '../away.xdc', null], ['B3hid', '.secret/top.xdc', XDC], ['B3abs', path.join(path.dirname(process.env.SILINX_WORKSPACE), 'away.xdc'), null]]) {
+    const p = blinkyProject(name, { constraints, text });
+    await assert.rejects(V.generateVivadoBuild(p.project, p.dir), e => e.status === 400 && e.message === `the constraints file ${constraints} is not one of the project's files (outside its folder, or a hidden one)`);
+    assert.equal(fs.existsSync(path.join(p.dir, 'build', 'top.xdc')), false, name);
+  }
+});

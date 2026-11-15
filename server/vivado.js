@@ -25,6 +25,7 @@ import { generateBuild, collectReports, runDocker, runSsh } from './ise.js';
 import { loadConfig, which } from './toolchain.js';
 import { capture, runCommand } from './jobs.js';
 import { IDENT } from './ident.js';
+import { hiddenIn, within } from './paths.js';
 import { parseUtilization, utilizationSummary, summaryRows, parseRouteStatus, parseTimingSummary, parseDrc, parsePower, logMessages, logCommands } from './vivado-reports.js';
 
 const VIVADO_VERSION = '2025.2';
@@ -183,7 +184,9 @@ export async function generateVivadoBuild(project, projectDir, { board = null } 
   const warnings = [...gen.warnings];
   const xdcOut = path.join(buildDir, `${top}.xdc`);
   let xdcText = '';
+  // (the project's file, as the build's sources: inside its folder, also through its links, and no hidden one, #3036)
   const cons = project.constraints && path.resolve(projectDir, project.constraints);
+  if (cons && (!within(projectDir, cons) || hiddenIn(projectDir, cons))) throw Object.assign(new Error(`the constraints file ${project.constraints} is not one of the project's files (outside its folder, or a hidden one)`), { status: 400 });
   if (cons && /\.xdc$/i.test(cons) && fss.existsSync(cons)) xdcText = await fs.readFile(cons, 'utf8');
   else if (cons && /\.ucf$/i.test(cons) && fss.existsSync(cons))
     throw Object.assign(new Error(`${project.constraints} is a UCF: Vivado reads an XDC. Update the constraints for the board (Design Properties) or write ${project.constraints.replace(/\.ucf$/i, '.xdc')}.`), { status: 400 });

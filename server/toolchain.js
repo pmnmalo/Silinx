@@ -246,7 +246,8 @@ export async function saveConfig(partial, { fromApi = false } = {}) {
     if (changed('ssh.remoteDir')) checkApiRemoteDir(cfg.ssh.remoteDir);
     if (['docker.settings', 'ssh.settings', 'ssh.remoteDir'].some(changed)) checkRemoteSettings(cfg);
     // Vivado's settings: this computer's (local mode) as local.settings, else a path in the image or on the host as theirs
-    if ((changed('vivado.settings') || changed('vivado.mode')) && cfg.vivado.settings) {
+    // (and when the ssh build folder changes: a script the folder now holds, #3407)
+    if ((changed('vivado.settings') || changed('vivado.mode') || (changed('ssh.remoteDir') && cfg.vivado.mode !== 'local')) && cfg.vivado.settings) {
       if (cfg.vivado.mode === 'local') cfg.vivado.settings = await checkLocalSettings(String(cfg.vivado.settings), 'vivado.settings', "Vivado's");
       else checkVivadoRemoteSettings(cfg);
     }

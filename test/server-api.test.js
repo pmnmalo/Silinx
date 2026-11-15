@@ -129,6 +129,13 @@ test('projects: create (empty + template), list, read with file tree, write, del
   assert.ok((await fs.readdir(path.join(ws, '.trash'))).some(n => n.startsWith('Blink2-')));
   r = await call('DELETE', '/projects/Blink2');
   assert.equal(r.status, 404);
+  // a folder of the workspace that is no project (no silinx.json): not one, left where it is
+  await fs.mkdir(path.join(ws, 'Notes'), { recursive: true });
+  await fs.writeFile(path.join(ws, 'Notes', 'a.txt'), 'mine');
+  r = await call('DELETE', '/projects/Notes');
+  assert.deepEqual([r.status, r.body], [404, { error: 'not found' }]);
+  assert.equal(await fs.readFile(path.join(ws, 'Notes', 'a.txt'), 'utf8'), 'mine');
+  await fs.rm(path.join(ws, 'Notes'), { recursive: true });
 });
 
 test('projects: invalid names, duplicates and unknown templates', async () => {
@@ -819,6 +826,10 @@ test('xise sync: auto picks the newer side, explicit import/export, unsafe paths
   }
   assert.equal(r.body.project.device.part, 'xc3s500e');
   assert.equal(r.body.project.top, 'top');
+  // #3036, #3411: a hidden file, or the project's description by any spelling, is no file of the project's either
+  await fs.writeFile(xfile, '<project><files><file xil_pn:name=".git/config" xil_pn:type="FILE_VHDL"/><file xil_pn:name="src/.env" xil_pn:type="FILE_VERILOG"/><file xil_pn:name="SILINX.JSON" xil_pn:type="FILE_VHDL"/><file xil_pn:name="rtl/top.vhd" xil_pn:type="FILE_VHDL"/><file xil_pn:name=".x.ucf" xil_pn:type="FILE_UCF"/></files></project>');
+  r = await call('POST', '/projects/Sy/sync-xise', { direction: 'import' });
+  assert.deepEqual([r.body.skipped, r.body.project.files.map(f => f.path), r.body.project.constraints], [['.git/config', 'src/.env', 'SILINX.JSON'], ['rtl/top.vhd'], 'board.ucf']);
   // broken .xise / bad direction
   await fs.writeFile(xfile, 'garbage');
   r = await call('POST', '/projects/Sy/sync-xise', { direction: 'import' });

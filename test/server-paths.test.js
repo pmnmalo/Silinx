@@ -172,3 +172,29 @@ test('#3648 the file routes (read, write, rename, delete, its trash): a path out
     assert.equal(P.projectDir('Routes'), dir);
   } finally { process.env.SILINX_WORKSPACE = was; }
 });
+
+// #3036: a hidden file or folder is no part of a project, also when its silinx.json lists one (a clone's, by hand):
+// never built, copied into build/src/ nor given to the simulation models (server/paths.js hiddenIn)
+test('hiddenIn; a project\'s silinx.json that lists a hidden file: not built, not a test bench of the open flow', async () => {
+  const { hiddenIn } = await import('../server/paths.js');
+  const { simSourcesOf } = await import('../server/open-flow.js');
+  const d = path.join(tmp, 'hid');
+  fs.mkdirSync(path.join(d, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(d, '.git'));
+  fs.writeFileSync(path.join(d, '.git', 'config'), '[remote "origin"]\n\turl = https://example.invalid/r\n');
+  fs.writeFileSync(path.join(d, 'src', 'top.vhd'), 'entity top is port(a: in bit; y: out bit); end;\narchitecture r of top is begin y <= a; end;\n');
+  link(path.join(d, '.git'), path.join(d, 'src', 'g'));
+  assert.equal(hiddenIn(d, path.join(d, 'src', 'top.vhd')), null);
+  assert.equal(hiddenIn(d, path.join(d, '.git', 'config')), '.git');
+  assert.equal(hiddenIn(d, path.join(d, 'src', 'g', 'config')), '.git', 'through a link');
+  assert.equal(hiddenIn(d, path.join(d, 'src', 'GIT~1')), 'GIT~1', 'a short name');
+  const device = { family: 'spartan3e', part: 'xc3s100e', package: 'cp132', speed: '-4' };
+  for (const bad of ['.git/config', 'src/g/config']) {
+    const project = { name: 'hid', top: 'top', device, files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }, { path: bad, lang: 'vhdl', role: 'design' }] };
+    await assert.rejects(ise.generateBuild(project, d, { sourcesOnly: true }), e => e.status === 400 && e.message === `file path is a hidden file or folder, no part of the project: ${bad} ('.git')`);
+    assert.equal(fs.existsSync(path.join(d, 'build', 'src', '.git')), false);
+    assert.deepEqual(simSourcesOf({ files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'sim' }, { path: bad, lang: 'vhdl', role: 'sim' }] }, d).map(f => f.path), ['src/top.vhd']);
+  }
+  const ok = await ise.generateBuild({ name: 'hid', top: 'top', device, files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] }, d, { sourcesOnly: true });
+  assert.deepEqual([ok.sources.map(s => s.buildPath), ok.warnings], [['src/src/top.vhd'], []]);
+});

@@ -381,7 +381,8 @@ export async function boardConstraints(dir, pj) {
 
 export async function deleteProject(name) {
   const dir = projectDir(name);
-  if (!await exists(dir)) throw new HttpError(404, 'not found');
+  // (a project's folder only: one with its silinx.json, never another folder of the workspace's)
+  if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, 'not found');
   const trash = path.join(workspaceDir(), '.trash');
   await fs.mkdir(trash, { recursive: true });
   await fs.rename(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));

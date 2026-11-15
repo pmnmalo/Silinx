@@ -58,6 +58,10 @@ test('#3407 ssh.settings and vivado.settings: never in a build folder used befor
   await refused({ ssh: { settings: '/home/U/Silinx-Build/proj/settings64.sh' } }, 'ssh.settings must be a path outside the earlier build folder silinx-build (its files came from projects)');
   await refused({ ssh: { settings: '/home/u/new/proj/settings64.sh' } }, 'ssh.settings must be an absolute path outside ssh.remoteDir (the build folder)');
   await refused({ vivado: { mode: 'ssh', settings: '/home/u/old/p/settings64.sh' } }, 'vivado.settings must be a path outside the earlier build folder old (its files came from projects)');
+  // Vivado's script set first, then the build folder moved where it is: checked again
+  await api({ vivado: { mode: 'ssh', settings: '/home/u/evil/p/settings64.sh' } });
+  await refused({ ssh: { remoteDir: 'evil' } }, 'vivado.settings must be a path outside ssh.remoteDir (the build folder)');
+  await api({ vivado: { settings: '' } });
   // the default build folder counts though never left; ISE's own script and a folder whose name only contains one: kept
   assert.equal((await api({ ssh: { settings: '/opt/Xilinx/14.7/ISE_DS/settings64.sh' } })).ssh.settings, '/opt/Xilinx/14.7/ISE_DS/settings64.sh');
   assert.equal((await api({ ssh: { settings: '/opt/older/settings64.sh' } })).ssh.settings, '/opt/older/settings64.sh');

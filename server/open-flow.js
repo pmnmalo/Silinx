@@ -29,6 +29,7 @@ import { findPart } from './devices.js';
 import { ownPackage, ownPresent } from './nextpnr-ice40-fetch.js';
 import { runCommand } from './jobs.js';
 import { safeJoin } from './projects.js';
+import { hiddenIn } from './paths.js';
 import { sourceSettingsSh } from './settings-guard.js';
 import { engineOf, s6MapOf, xc7SeedsOf } from '../packages/silinx-fpga/src/parts.js';
 import { loadConfig, detectIse, iseStatus, iseModeOf, which } from './toolchain.js';
@@ -168,6 +169,11 @@ export function openSteps(steps, { synthUpToDate = false, family = null } = {}) 
   return orderOpenSteps(st, { synthUpToDate });
 }
 
+/** The project's test benches' HDL files, for the simulation models' generics: [{ path, lang, file }], inside its
+ *  folder, a hidden file or folder never one of them (#3036). */
+export const simSourcesOf = (project, projectDir) => (project.files || []).filter(f => f.role === 'sim' && (f.lang === 'vhdl' || f.lang === 'verilog'))
+  .map(f => ({ path: f.path, lang: f.lang, file: safeJoin(projectDir, f.path) })).filter(f => !hiddenIn(projectDir, f.file));
+
 /**
  * Job body for POST /projects/:p/implement in the open mode.
  * @param {object} job
@@ -218,7 +224,7 @@ export async function runOpenImplementation(job, { project, projectDir, steps, s
     simTop: project.simTop || null,
     // the logic analyzer's capture, inserted by the front end (core/flow-ide.js, #3176)
     ...(project.capture && { capture: project.capture }),
-    simSources: (project.files || []).filter(f => f.role === 'sim' && (f.lang === 'vhdl' || f.lang === 'verilog')).map(f => ({ path: f.path, lang: f.lang, file: safeJoin(projectDir, f.path) })),
+    simSources: simSourcesOf(project, projectDir),
   };
   await fs.writeFile(path.join(outDir, 'flow.json'), JSON.stringify(spec, null, 2) + '\n');
   const onLine = line => {

@@ -24,6 +24,14 @@ export const nativeRealOf = p => realOf(p, q => fs.realpathSync.native(q));
  *  .git on Windows, has a '~' and digits in its base name (core/import-gate.js refuses them too). */
 export const hiddenName = s => (s.startsWith('.') && s !== '.' && s !== '..') || /^[^.]*~\d/.test(s);
 
+/** The hidden file's or folder's name on the way from `dir` to `full` (absolute), by the names given and once the links
+ *  of both are followed (the system's names too: GIT~1 is .git), or null: a path a project's silinx.json, an exercise or
+ *  a .xise names that is no part of the project (#3036). */
+export function hiddenIn(dir, full) {
+  const parts = (a, b) => path.relative(a, b).split(path.sep);
+  return [parts(dir, full), parts(realOf(dir), realOf(full)), parts(nativeRealOf(dir), nativeRealOf(full))].flat().find(s => s && hiddenName(s)) || null;
+}
+
 const isIn = (dir, full) => full === dir || full.startsWith(dir + path.sep);
 
 /** Is `full` (absolute) the folder `dir` or inside it, by name and once the links of both are followed? */
