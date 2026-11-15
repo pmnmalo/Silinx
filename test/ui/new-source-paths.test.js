@@ -15,12 +15,12 @@ const ADDER = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity adder is\n  p
 // each type: the pages after Select Source Type, its wizard (Wizard > enabled), only a wizard, the file it makes
 const TYPES = {
   'Boolean Algebra': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.bool.json' },
+  'Digital Electronic Circuit': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.circ.json' },   // (#3897; its wizard, #4061)
   'Module (HDL)': { pages: ['File Name and Location', 'Define Module', 'Summary'], wiz: true, file: 'src/NAME.vhd' },
   'Schematic': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.sch.json' },
   'Finite State Machine (FSM)': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.fsm.json' },   // (its wizard: #2082)
   'Algorithmic State Machine (ASM)': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.asm.json' },
   'Petri Net': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'src/NAME.pn.json' },
-  'Circuit': { pages: ['File Name and Location', 'Summary'], file: 'src/NAME.circ.json' },   // (#3897)
   'Clock Manager (DCM / PLL)': { pages: ['File Name and Location'], wiz: true, only: true },
   'Block Memory': { pages: ['File Name and Location'], wiz: true, only: true },
   'Test Bench': { pages: ['File Name and Location', 'Associate Source', 'Summary'], wiz: true, file: 'sim/NAME.vhd' },

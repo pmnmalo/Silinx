@@ -35,7 +35,7 @@ uiTest('#4105 Design Properties: the Top-Level Source Type a choice, saved, noth
   let f = await form(page);
   assert.ok(!f.shown.some(l => /^Top Module/.test(l)), f.shown.join(' | '));
   assert.deepEqual([f.value, f.types.map(t => t[0])], ['hdl', ALL]);
-  assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Petri Net', 'Circuit', 'C Function (HLS)', 'C++ Function (HLS)']);
+  assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)']);
   await chooseTop(page, 'petri');
   await page.dialogButton('OK');
   await page.waitNoDialog();
@@ -61,7 +61,7 @@ uiTest('#4105 Design Properties: the Top-Level Source Type a choice, saved, noth
   await chooseTop(page, 'circuit');
   await page.dialogButton('OK');
   await page.waitNoDialog();
-  await page.waitConsole(/^Top-Level Source Type: Circuit\.$/m);
+  await page.waitConsole(/^Top-Level Source Type: Digital Electronic Circuit\.$/m);
   assert.equal(JSON.parse(await readWs(env, 'TopDrawn', 'silinx.json')).topSourceType, 'circuit');
   assert.deepEqual(await warnings(page), []);
 });
@@ -89,7 +89,7 @@ uiTest('#4105 New Project: a Petri Net, a Circuit, a C function as the top; Port
     page.eval(async () => (await import('/js/wizards.js')).projectProperties()).catch(() => {});
     await page.waitFor(() => !!document.querySelector('.dlg-overlay .form-grid'), [], { what: 'Design Properties' });
     const f = await form(page, 'Tipo de Fonte de Topo:');
-    assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Rede de Petri', 'Circuito', 'Função C (HLS)', 'Função C++ (HLS)']);
+    assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Rede de Petri', 'Circuito Eletrónico Digital', 'Função C (HLS)', 'Função C++ (HLS)']);
     await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].pop().click());
     await page.waitNoDialog();
   } finally {
