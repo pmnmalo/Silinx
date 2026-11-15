@@ -841,44 +841,29 @@ Object.assign(PT, INK_PT); PT_PATTERNS.unshift(...INK_PT_PATTERNS);   // the han
 Object.assign(PT, IO_PT); PT_PATTERNS.unshift(...IO_PT_PATTERNS);   // bidirectional (inout) ports of the wizards
 Object.assign(PT, LINT_PT);   // design checks (the help texts of the messages are in core/hints.js)
 Object.assign(PT, EDITOR_PT); PT_PATTERNS.unshift(...EDITOR_PT_PATTERNS);   // HDL editor: Rename Symbol, quick fixes
-for (const [k, v] of Object.entries(FSM_PT)) if (!(k in PT)) PT[k] = v;   // FSM state diagram editor (existing translations kept)
-PT_PATTERNS.unshift(...FSM_PT_PATTERNS);
-for (const [k, v] of Object.entries(PETRI_PT)) if (!(k in PT)) PT[k] = v;   // Petri net editor
-PT_PATTERNS.unshift(...PETRI_PT_PATTERNS);
-for (const [k, v] of Object.entries(SYMBOL_PT)) if (!(k in PT)) PT[k] = v;   // Symbol Editor (#3755)
-PT_PATTERNS.unshift(...SYMBOL_PT_PATTERNS);
-for (const [k, v] of Object.entries(FPGA_PT)) if (!(k in PT)) PT[k] = v;   // View Implemented Design (FPGA)
-PT_PATTERNS.unshift(...FPGA_PT_PATTERNS);
-for (const [k, v] of Object.entries(SCH_PT)) if (!(k in PT)) PT[k] = v;   // schematic editor, RTL / Technology Schematic (#130)
-PT_PATTERNS.unshift(...SCH_PT_PATTERNS);
-for (const [k, v] of Object.entries(CLOCKING_PT)) if (!(k in PT)) PT[k] = v;   // the Clocking Wizard (#793)
-for (const [k, v] of Object.entries(MEMORY_PT)) if (!(k in PT)) PT[k] = v;   // the Block Memory wizard (#794)
-PT_PATTERNS.unshift(...MEMORY_PT_PATTERNS);
+// a module's labels, but those already translated, and its patterns, ahead of the ones before (#4041)
+const keep = (strings, patterns = []) => { for (const [k, v] of Object.entries(strings)) if (!(k in PT)) PT[k] = v; PT_PATTERNS.unshift(...patterns); };
+keep(FSM_PT, FSM_PT_PATTERNS);   // FSM state diagram editor (existing translations kept)
+keep(PETRI_PT, PETRI_PT_PATTERNS);   // Petri net editor
+keep(SYMBOL_PT, SYMBOL_PT_PATTERNS);   // Symbol Editor (#3755)
+keep(FPGA_PT, FPGA_PT_PATTERNS);   // View Implemented Design (FPGA)
+keep(SCH_PT, SCH_PT_PATTERNS);   // schematic editor, RTL / Technology Schematic (#130)
+keep(CLOCKING_PT);   // the Clocking Wizard (#793)
+keep(MEMORY_PT, MEMORY_PT_PATTERNS);   // the Block Memory wizard (#794)
 PT_PATTERNS.unshift(...CLOCKING_PT_PATTERNS,
   [/^(Input port|Reset input|LOCKED output|Output (\w+)): (.*)\.$/, (m, w, o, e) => `${{ 'Input port': 'Porto de entrada', 'Reset input': 'Entrada de reset', 'LOCKED output': 'Saída LOCKED' }[w] || `Saída ${o}`}: ${ptIdent(e)}.`]);
-for (const [k, v] of Object.entries(WIZARDS_PT)) if (!(k in PT)) PT[k] = v;   // the FSM, ASM and UCF wizards (#2082)
-PT_PATTERNS.unshift(...WIZARDS_PT_PATTERNS);
-for (const [k, v] of Object.entries(LINK_PT)) if (!(k in PT)) PT[k] = v;   // a design's link (#2826)
-PT_PATTERNS.unshift(...LINK_PT_PATTERNS);
-for (const [k, v] of Object.entries(VERIFY_PT)) if (!(k in PT)) PT[k] = v;   // Verify Equivalence (#3177)
-PT_PATTERNS.unshift(...VERIFY_PT_PATTERNS);
-for (const [k, v] of Object.entries(GIT_PT)) if (!(k in PT)) PT[k] = v;   // git (#3195)
-PT_PATTERNS.unshift(...GIT_PT_PATTERNS);
-for (const [k, v] of Object.entries(COLLAB_PT)) if (!(k in PT)) PT[k] = v;   // a shared project (#3181)
-PT_PATTERNS.unshift(...COLLAB_PT_PATTERNS);
-for (const [k, v] of Object.entries(RESOURCES_PT)) if (!(k in PT)) PT[k] = v;   // the device's resources checked against the design (#796)
-PT_PATTERNS.unshift(...RESOURCES_PT_PATTERNS);
-for (const [k, v] of Object.entries(PINS_PT)) if (!(k in PT)) PT[k] = v;   // I/O Pin Planning's Board view (#2694)
-PT_PATTERNS.unshift(...PINS_PT_PATTERNS);
-for (const [k, v] of Object.entries(LABS_PT)) if (!(k in PT)) PT[k] = v;   // the guided labs (#3179)
-PT_PATTERNS.unshift(...LABS_PT_PATTERNS);
-for (const [k, v] of Object.entries(GRADE_PT)) if (!(k in PT)) PT[k] = v;   // the graded exercises (#3192)
-PT_PATTERNS.unshift(...GRADE_PT_PATTERNS);
-for (const [k, v] of Object.entries(CAPTURE_PT)) if (!(k in PT)) PT[k] = v;   // the logic analyzer (#3176)
-PT_PATTERNS.unshift(...CAPTURE_PT_PATTERNS);
-for (const [k, v] of Object.entries(PROGRAM_PT)) if (!(k in PT)) PT[k] = v;   // the open families' Configure Target Device (#2298)
-PT_PATTERNS.unshift(...PROGRAM_PT_PATTERNS);
-for (const [k, v] of Object.entries(MESSAGES_PT)) if (!(k in PT)) PT[k] = v;   // toasts, dialogs, plain elements' texts (#3539)
+keep(WIZARDS_PT, WIZARDS_PT_PATTERNS);   // the FSM, ASM and UCF wizards (#2082)
+keep(LINK_PT, LINK_PT_PATTERNS);   // a design's link (#2826)
+keep(VERIFY_PT, VERIFY_PT_PATTERNS);   // Verify Equivalence (#3177)
+keep(GIT_PT, GIT_PT_PATTERNS);   // git (#3195)
+keep(COLLAB_PT, COLLAB_PT_PATTERNS);   // a shared project (#3181)
+keep(RESOURCES_PT, RESOURCES_PT_PATTERNS);   // the device's resources checked against the design (#796)
+keep(PINS_PT, PINS_PT_PATTERNS);   // I/O Pin Planning's Board view (#2694)
+keep(LABS_PT, LABS_PT_PATTERNS);   // the guided labs (#3179)
+keep(GRADE_PT, GRADE_PT_PATTERNS);   // the graded exercises (#3192)
+keep(CAPTURE_PT, CAPTURE_PT_PATTERNS);   // the logic analyzer (#3176)
+keep(PROGRAM_PT, PROGRAM_PT_PATTERNS);   // the open families' Configure Target Device (#2298)
+keep(MESSAGES_PT);   // toasts, dialogs, plain elements' texts (#3539)
 
 export const LOCALES = {
   en: { name: 'English', strings: {}, patterns: [] },
