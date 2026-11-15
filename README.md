@@ -842,7 +842,7 @@ scripts/    adepttool installer/patch, Platform Flash programmer, standalone bui
 examples/   example projects (for the Basys2; each built by the Silinx toolchain on every Basys2, Nexys2, Nexys3, Atlys and
             the iCEBreaker): gates (the first one: logic
             gates drawn as a schematic, a 4-bit prime-number detector with NOT / AND / OR and with NAND gates only),
-            breadboard (74LS chips wired on a breadboard, a digital circuit: a counter of a button's presses and a half adder),
+            breadboard (74LS chips wired on a breadboard, a digital circuit: a counter of a button's presses, its shift register on the LEDs),
             traffic (a pedestrian crossing: a state diagram, a Boolean algebra, VHDL and a Verilog display),
             blinky (VHDL + Verilog, an ASM chart, its steps counted on the display),
             pong (a game for two, Verilog), stopwatch (VHDL, block RAM and multipliers), clock (Verilog, set

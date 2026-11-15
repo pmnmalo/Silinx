@@ -3,7 +3,7 @@
   "version": 1,
   "name": "breadboard",
   "lang": "vhdl",
-  "description": "A press of BTN0 counts once on LD3..LD0: a 74161 counter, its count enabled for one clock by the rising edge of\nthe button, synchronised by a 74164 shift register (QA the button, QB QA a clock later) and detected as QA and\n(QA xor QB) by a 7486 and a 7408. SW0 low clears the counter and the shift register. SW1 and SW2 into a half adder\n(the 7486's and the 7408's other gates): LD4 their sum, LD5 their carry.",
+  "description": "A press of BTN0 counts once on LD3..LD0, up to 15: a 74161 counter, its count enabled for one clock by the rising\nedge of the button. A 74194 shift register synchronises the button with the clock (QA the button, QB QA a clock later,\nQC QB a clock later, QD QC; LD4..LD7 show them), the edge QB and not QC, as QB and (QB xor QC), by a 7486 and a 7408;\ntheir other gates stop the count at 15 (the 74161's RCO): edge and (edge xor RCO). SW0 low clears the counter and the\nshift register.",
   "parts": [
     {
       "id": "BB1",
@@ -19,7 +19,7 @@
     },
     {
       "id": "U1",
-      "type": "74164",
+      "type": "74194",
       "x": 1,
       "y": 7
     },
@@ -71,22 +71,6 @@
       "on": false
     },
     {
-      "id": "S2",
-      "type": "logic-switch",
-      "x": -12,
-      "y": 28,
-      "label": "sw[1]",
-      "on": false
-    },
-    {
-      "id": "S3",
-      "type": "logic-switch",
-      "x": -12,
-      "y": 30,
-      "label": "sw[2]",
-      "on": false
-    },
-    {
       "id": "D1",
       "type": "led",
       "x": 50,
@@ -132,6 +116,22 @@
       "x": 65,
       "y": 26,
       "label": "led[5]",
+      "color": "red"
+    },
+    {
+      "id": "D7",
+      "type": "led",
+      "x": 68,
+      "y": 26,
+      "label": "led[6]",
+      "color": "red"
+    },
+    {
+      "id": "D8",
+      "type": "led",
+      "x": 71,
+      "y": 26,
+      "label": "led[7]",
       "color": "red"
     }
   ],
@@ -282,11 +282,11 @@
       "id": "w10",
       "points": [
         [
-          7,
+          8,
           7
         ],
         [
-          7,
+          8,
           14
         ]
       ],
@@ -380,12 +380,12 @@
       "id": "w17",
       "points": [
         [
-          2,
-          7
+          8,
+          4
         ],
         [
-          2,
-          15
+          8,
+          -4
         ]
       ],
       "color": "red"
@@ -394,39 +394,39 @@
       "id": "w18",
       "points": [
         [
-          35,
+          7,
           4
         ],
         [
-          35,
-          -4
+          7,
+          -3
         ]
       ],
-      "color": "red"
+      "color": "black"
     },
     {
       "id": "w19",
       "points": [
         [
-          34,
-          4
+          3,
+          7
         ],
         [
-          34,
-          -4
+          3,
+          14
         ]
       ],
-      "color": "red"
+      "color": "black"
     },
     {
       "id": "w20",
       "points": [
         [
-          30,
+          4,
           7
         ],
         [
-          30,
+          4,
           14
         ]
       ],
@@ -436,11 +436,11 @@
       "id": "w21",
       "points": [
         [
-          31,
+          5,
           7
         ],
         [
-          31,
+          5,
           14
         ]
       ],
@@ -450,6 +450,90 @@
       "id": "w22",
       "points": [
         [
+          6,
+          7
+        ],
+        [
+          6,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w23",
+      "points": [
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w24",
+      "points": [
+        [
+          35,
+          4
+        ],
+        [
+          35,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w25",
+      "points": [
+        [
+          34,
+          4
+        ],
+        [
+          34,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w26",
+      "points": [
+        [
+          30,
+          7
+        ],
+        [
+          30,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w27",
+      "points": [
+        [
+          31,
+          7
+        ],
+        [
+          31,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w28",
+      "points": [
+        [
           32,
           7
         ],
@@ -461,7 +545,7 @@
       "color": "black"
     },
     {
-      "id": "w23",
+      "id": "w29",
       "points": [
         [
           33,
@@ -475,7 +559,7 @@
       "color": "black"
     },
     {
-      "id": "w24",
+      "id": "w30",
       "points": [
         [
           -12,
@@ -486,33 +570,33 @@
           18
         ],
         [
-          9,
+          10,
           18
         ],
         [
-          9,
-          -1
-        ],
-        [
-          8,
+          10,
           -1
         ],
         [
           7,
+          -1
+        ],
+        [
+          6,
           4
         ]
       ],
       "color": "yellow"
     },
     {
-      "id": "w25",
+      "id": "w31",
       "points": [
         [
-          7,
+          6,
           4
         ],
         [
-          8,
+          7,
           -2
         ],
         [
@@ -527,7 +611,7 @@
       "color": "yellow"
     },
     {
-      "id": "w26",
+      "id": "w32",
       "points": [
         [
           -12,
@@ -549,7 +633,7 @@
       "color": "red"
     },
     {
-      "id": "w27",
+      "id": "w33",
       "points": [
         [
           -9,
@@ -560,18 +644,18 @@
           12
         ],
         [
-          2,
+          3,
           12
         ],
         [
-          1,
+          2,
           7
         ]
       ],
       "color": "green"
     },
     {
-      "id": "w28",
+      "id": "w34",
       "points": [
         [
           -6,
@@ -582,74 +666,78 @@
           13
         ],
         [
-          2,
+          3,
           13
         ],
         [
-          1,
+          2,
           7
         ]
       ],
       "color": "green"
     },
     {
-      "id": "w29",
+      "id": "w35",
       "points": [
         [
           3,
-          7
+          4
         ],
         [
           4,
-          10
+          -5
         ],
         [
-          42,
-          10
+          39,
+          -5
         ],
         [
-          41,
+          39,
+          13
+        ],
+        [
+          38,
           7
         ]
       ],
       "color": "blue"
     },
     {
-      "id": "w30",
+      "id": "w36",
       "points": [
         [
           4,
-          7
+          4
         ],
         [
           5,
-          11
+          -6
         ],
         [
-          43,
-          11
+          40,
+          -6
         ],
         [
-          42,
+          39,
           7
         ]
       ],
       "color": "blue"
     },
     {
-      "id": "w31",
+      "id": "w37",
       "points": [
         [
           3,
-          7
+          4
         ],
         [
           4,
-          14
+          16
         ],
         [
           20,
-          14
+          16
         ],
         [
           19,
@@ -659,19 +747,19 @@
       "color": "blue"
     },
     {
-      "id": "w32",
+      "id": "w38",
       "points": [
         [
-          43,
+          40,
           7
         ],
         [
-          44,
-          15
+          41,
+          17
         ],
         [
           21,
-          15
+          17
         ],
         [
           20,
@@ -681,7 +769,7 @@
       "color": "blue"
     },
     {
-      "id": "w33",
+      "id": "w39",
       "points": [
         [
           21,
@@ -689,153 +777,141 @@
         ],
         [
           22,
-          16
+          19
         ],
         [
-          35,
-          16
+          42,
+          19
         ],
         [
-          34,
+          41,
           7
         ]
       ],
-      "color": "blue"
+      "color": "purple"
     },
     {
-      "id": "w34",
+      "id": "w40",
       "points": [
-        [
-          -12,
-          26
-        ],
-        [
-          -12,
-          19
-        ],
         [
           29,
-          19
-        ],
-        [
-          28,
-          7
-        ]
-      ],
-      "color": "orange"
-    },
-    {
-      "id": "w35",
-      "points": [
-        [
-          6,
           4
         ],
         [
-          7,
-          -3
-        ],
-        [
-          27,
-          -3
-        ],
-        [
-          27,
+          30,
           20
         ],
         [
-          29,
+          43,
           20
         ],
         [
-          28,
+          42,
           7
         ]
       ],
-      "color": "orange"
+      "color": "purple"
     },
     {
-      "id": "w36",
+      "id": "w41",
       "points": [
         [
-          -12,
-          28
-        ],
-        [
-          39,
-          28
-        ],
-        [
-          38,
+          21,
           7
-        ]
-      ],
-      "color": "orange"
-    },
-    {
-      "id": "w37",
-      "points": [
-        [
-          -12,
-          30
-        ],
-        [
-          40,
-          30
-        ],
-        [
-          39,
-          7
-        ]
-      ],
-      "color": "orange"
-    },
-    {
-      "id": "w38",
-      "points": [
-        [
-          38,
-          7
-        ],
-        [
-          39,
-          21
-        ],
-        [
-          23,
-          21
         ],
         [
           22,
           7
         ]
       ],
-      "color": "orange"
+      "color": "purple"
     },
     {
-      "id": "w39",
+      "id": "w42",
       "points": [
         [
-          39,
+          43,
           7
         ],
         [
-          40,
-          22
+          44,
+          21
         ],
         [
           24,
-          22
+          21
         ],
         [
           23,
           7
         ]
       ],
+      "color": "purple"
+    },
+    {
+      "id": "w43",
+      "points": [
+        [
+          24,
+          7
+        ],
+        [
+          25,
+          22
+        ],
+        [
+          35,
+          22
+        ],
+        [
+          34,
+          7
+        ]
+      ],
+      "color": "purple"
+    },
+    {
+      "id": "w44",
+      "points": [
+        [
+          -12,
+          26
+        ],
+        [
+          29,
+          26
+        ],
+        [
+          28,
+          7
+        ]
+      ],
       "color": "orange"
     },
     {
-      "id": "w40",
+      "id": "w45",
+      "points": [
+        [
+          1,
+          7
+        ],
+        [
+          2,
+          24
+        ],
+        [
+          29,
+          24
+        ],
+        [
+          28,
+          7
+        ]
+      ],
+      "color": "orange"
+    },
+    {
+      "id": "w46",
       "points": [
         [
           30,
@@ -849,7 +925,7 @@
       "color": "white"
     },
     {
-      "id": "w41",
+      "id": "w47",
       "points": [
         [
           51,
@@ -863,7 +939,7 @@
       "color": "black"
     },
     {
-      "id": "w42",
+      "id": "w48",
       "points": [
         [
           31,
@@ -877,7 +953,7 @@
       "color": "white"
     },
     {
-      "id": "w43",
+      "id": "w49",
       "points": [
         [
           54,
@@ -891,7 +967,7 @@
       "color": "black"
     },
     {
-      "id": "w44",
+      "id": "w50",
       "points": [
         [
           32,
@@ -905,7 +981,7 @@
       "color": "white"
     },
     {
-      "id": "w45",
+      "id": "w51",
       "points": [
         [
           57,
@@ -919,7 +995,7 @@
       "color": "black"
     },
     {
-      "id": "w46",
+      "id": "w52",
       "points": [
         [
           33,
@@ -933,7 +1009,7 @@
       "color": "white"
     },
     {
-      "id": "w47",
+      "id": "w53",
       "points": [
         [
           60,
@@ -947,11 +1023,11 @@
       "color": "black"
     },
     {
-      "id": "w48",
+      "id": "w54",
       "points": [
         [
-          40,
-          7
+          2,
+          4
         ],
         [
           62,
@@ -961,7 +1037,7 @@
       "color": "white"
     },
     {
-      "id": "w49",
+      "id": "w55",
       "points": [
         [
           63,
@@ -975,11 +1051,11 @@
       "color": "black"
     },
     {
-      "id": "w50",
+      "id": "w56",
       "points": [
         [
-          24,
-          7
+          3,
+          4
         ],
         [
           65,
@@ -989,10 +1065,66 @@
       "color": "white"
     },
     {
-      "id": "w51",
+      "id": "w57",
       "points": [
         [
           66,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w58",
+      "points": [
+        [
+          4,
+          4
+        ],
+        [
+          68,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w59",
+      "points": [
+        [
+          69,
+          26
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w60",
+      "points": [
+        [
+          5,
+          4
+        ],
+        [
+          71,
+          26
+        ]
+      ],
+      "color": "white"
+    },
+    {
+      "id": "w61",
+      "points": [
+        [
+          72,
           26
         ],
         [
