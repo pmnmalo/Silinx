@@ -1,10 +1,11 @@
 // UI: the order of a Karnaugh map's variables (#2924): MSB → LSB by columns, then rows by default (a b on the columns,
-// c d on the rows of a 4-input map), MSB → LSB by rows, then columns chosen beside the map; saved with the table and
+// c d on the rows of a 4-input map), MSB → LSB by rows, then columns chosen beside the map (above it, under its result's Hide K-map, #4057); saved with the table and
 // read back; the 3D maps of 5 inputs follow it; no selector for 1 input; in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { newTable } from '../../core/logic.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -20,7 +21,8 @@ uiTest('#2924 Karnaugh map: the variables\' order, by columns then rows by defau
   await page.openProject('TtOrder');
   const open = async (f) => {
     await page.eval((p) => window.SilinxApp.openTt(p), f);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-host'), [f], { what: f });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [f], { what: f });
+    await showKmap(page, T);   // (shown under its result, hidden when the table opens, #4057)
   };
   // the map: its variables (the columns', then the rows'), the columns' and rows' labels, its cells row by row, its groups
   const map = () => page.eval((t) => {

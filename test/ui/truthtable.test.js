@@ -1,5 +1,5 @@
 // UI: Boolean Algebra / Karnaugh Map tool. A new table (Tools menu ▸ New Source wizard), cells clicked,
-// the K-map groups and the minimal SOP shown; its VHDL module (made with it, linked: a cell change
+// the K-map groups (the map under its result, shown by its Show K-map, #4057) and the minimal SOP shown; its VHDL module (made with it, linked: a cell change
 // rewrites the HDL, which simulates to the new table; the HDL read-only, its editor's banner linking to
 // the table, #1176); its schematic, always generated, a badge of its row
 // in the Design pane, in the HDL logic form, NAND gates only too (#694: netlist without errors,
@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { truthTableFromModule, schematicFromTable } from '../../core/logic.js';
+import { showKmap, groupsOf } from './tt-helpers.js';
 import { netlist, generateHdl } from '../../core/schdoc.js';
 const IMPORT = process.env.SILINX_UI_INTERFACE === 'ise' ? 'Add Copy of Source' : 'Import Source';   // (#1501)
 
@@ -70,18 +71,19 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-cell[data-out=f][data-row="0"]`).textContent, T), 'X');
   await page.click(`${T} .tt-cell[data-out=f][data-row="0"]`);
   assert.equal(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-cell[data-out=f]`)].map((c) => c.textContent).join(''), T), '00010111');
-  // K-map: three groups of two; minimal SOP and POS, canonical forms
+  // K-map (shown under its result by its Show K-map, #4057): three groups of two; minimal SOP and POS, canonical forms
+  await showKmap(page, T);
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} svg.tt-kmap .tt-group`).length, T), 3);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-expr`).textContent, T), 'f = b.c + a.c + a.b');
   assert.match(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-cost`).textContent, T), /3 term\(s\), 6 literal\(s\); gates: 3 AND, 1 OR, 0 NOT/);
   assert.match(await page.eval((t) => document.querySelector(`${t} .tt-canon`).textContent, T), /f = Σm\(3, 5, 6, 7\)[\s\S]*f = ΠM\(0, 1, 2, 4\)/);
-  // POS groups: the 0s, the Karnaugh map's result in POS (#3939)
-  await page.click(`${T} .tt-groups input[value=pos]`);
+  // POS groups: the 0s, the Karnaugh map's result in POS (#3939; its switch the map's groups', #4057)
+  await groupsOf(page, T, 'pos');
   assert.match(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-expr`).textContent, T), /^f = \(.+\)\.\(.+\)\.\(.+\)$/);
   // (b + c), the 0s of rows 0 and 4 (columns ab = 00 and 10, #2924), wraps around the left and right edges: drawn as two parts
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} svg.tt-kmap .tt-group`)].map((g) => g.dataset.term), T), ["0", "1", "2", "2"]);
   // no Check my answer, no My expression (#694); the NAND and NOR forms below the minimal ones
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => c.textContent), T), ['Truth table', 'Notes', 'Expression', 'Karnaugh map', 'Results']);
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => c.textContent), T), ['Truth table', 'Notes', 'Expression', 'Results']);   // (the map under its result, no caption of its own, #4057)
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} .tt-mine-in, ${t} .tt-mine-out`).length, T), 0);
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least number of gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);   // (the first two: #1427; in this order: #3065)
   // no list of the essential prime implicants below them (#705), nor an "essential" mark in the K-map's legend (#3080)
@@ -157,7 +159,7 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
 
   // ---- its schematic (#694): the Schematic badge of its row opens it, generated from the table (a view, no file),
   // the minimal SOP's gates (the HDL logic form, ticked: a new table's is the least gates', here its XOR form, #2951)
-  await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-kind-sop`).click(), T);   // (its POS groups shown above: its SOP, #3939)
+  await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-kind-sop`).click(), T);   // (its POS clicked above: its SOP, #3939)
   await tickForm(page, 'kmap-res', ['f']);
   await page.waitFor(async () => /\(minimal SOP, /.test(await (await fetch('/api/projects/TtPj/file?path=src%2Fmaj3.vhd')).text()), [], { what: 'the HDL in minimal SOP', timeout: 15000 });
   const badge = (mod, text) => page.eval((m, x) => { const r = [...document.querySelectorAll('#hier .row')].find((e) => e.querySelector('.lbl').textContent === m); [...r.querySelectorAll('.badge')].find((b) => b.textContent === x).click(); }, mod, text);
@@ -233,13 +235,14 @@ uiTest('Truth Table with many outputs (#176): 4 -> 16 outputs, cells of output 6
   // its K-map, canonical forms and minimal SOP
   await page.click(`${T} .tt-tab[data-out=y5]`);
   assert.ok(await page.eval((t) => document.querySelector(`${t} .tt-tab.active`).dataset.out === 'y5' && document.querySelector(`${t} .tt-table th.tt-out.sel`).textContent === 'y5', T));
+  await showKmap(page, T);   // (#4057)
   // (SOP groups: the 1s and the don't cares written, the 0s blank; POS groups: the 0s and X, the 1s blank, #1494)
   const kcells = () => page.eval((t) => [...document.querySelectorAll(`${t} svg.tt-kmap .tt-kcell`)].map((g) => `${g.dataset.row}:${g.querySelector('.tt-k-v').textContent}`), T);
   // (a b on the columns, c on the rows, #2924)
   assert.deepEqual(await kcells(), ['0:1', '2:', '6:1', '4:', '1:X', '3:', '7:', '5:']);
-  await page.click(`${T} input[name^=tt-grp][value=pos]`);
+  await groupsOf(page, T, 'pos');
   assert.deepEqual(await kcells(), ['0:', '2:0', '6:', '4:0', '1:X', '3:0', '7:0', '5:0']);
-  await page.click(`${T} input[name^=tt-grp][value=sop]`);
+  await groupsOf(page, T, 'sop');
   assert.match(await page.eval((t) => document.querySelector(`${t} .tt-canon`).textContent, T), /y5 = Σm\(0, 6\) \+ d\(1\)/);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-expr`).textContent, T), "y5 = /a./b + a.b./c");
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} svg.tt-kmap .tt-group`).length, T), 2);
@@ -361,6 +364,7 @@ uiTest('Algebra from Module: a vector adder read into a table (exhaustive simula
   assert.deepEqual(simTable(await readWs(env, 'TtMod', 'src/blank.vhd'), 'blank.vhd', 'blank'), t.table);
   // 4 inputs: a 4x4 map; s_0 = a_0 xor b_0 (two groups)
   await page.click(`${T} .tt-tab[data-out=s_0]`);
+  await showKmap(page, T);   // (#4057)
   assert.equal(await page.eval((x) => document.querySelectorAll(`${x} svg.tt-kmap .tt-kcell`).length, T), 16);
   assert.equal(await page.eval((x) => document.querySelector(`${x} .tt-kmap-res .tt-expr`).textContent, T), "s_0 = /a_0.b_0 + a_0./b_0");
 });
@@ -454,6 +458,7 @@ end rtl;
   await page.eval(() => window.SilinxApp.openTt('src/fa.bool.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'tt:src/fa.bool.json' && document.querySelector('.doc:not([hidden]) .tt-editor'), [], { what: 'truth table editor' });
   const T = '.doc:not([hidden]) .tt-editor';
+  await showKmap(page, T);   // (its groups' legend, #4057)
   const texts = () => page.eval((t) => ({
     sop: document.querySelector(`${t} .tt-kmap-res .tt-expr`).textContent,
     pos: document.querySelector(`${t} .tt-qm .tt-expr`).textContent,   // (Quine-McCluskey's, its POS clicked below)
@@ -473,10 +478,10 @@ end rtl;
     xor: 's = a ⊕ b ⊕ c', xorCost: '3 literal(s), 2 two-input operator(s): 2 XOR / XNOR, 0 AND, 0 OR',
     groups: ['/a./b.c', '/a.b./c', 'a./b./c', 'a.b.c'],
   });
-  // the K-map's POS groups: clauses in the / notation
-  await page.click(`${T} .tt-groups input[value=pos]`);
+  // the K-map's POS groups (its result's POS, #4057): clauses in the / notation
+  await groupsOf(page, T, 'pos');
   assert.deepEqual((await texts()).groups, ['a + b + c', 'a + /b + /c', '/a + b + /c', '/a + /b + c']);
-  await page.click(`${T} .tt-groups input[value=sop]`);
+  await groupsOf(page, T, 'sop');
   // below the XOR form, the NAND and NOR forms (#694), then those of the fewest gates and of the least delay (#1427)
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least number of gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);
   // co: the carry a·b + c·(a ⊕ b), 5 literals against 6
@@ -676,7 +681,8 @@ uiTest('#1407 Truth Table: the Karnaugh map of 5 or 6 inputs in 3D, its groups a
   const T = '.doc:not([hidden]) .tt-editor';
   const open = async (f) => {
     await page.eval((p) => window.SilinxApp.openTt(p), f);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-host'), [f], { what: f });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [f], { what: f });
+    await showKmap(page, T);   // (the map under its result, #4057)
   };
   // under 3 inputs: no 3D box
   await open('src/k2.bool.json');
@@ -696,10 +702,10 @@ uiTest('#1407 Truth Table: the Karnaugh map of 5 or 6 inputs in 3D, its groups a
   // (SOP groups: the 1s written, the 0s blank; POS groups: the 0s, the 1s blank, #1494)
   const texts = () => page.eval((t) => [...new Set([...document.querySelectorAll(`${t} .tt-k3d-cell`)].map((c) => `${c.classList.contains('v1') ? 1 : 0}:${c.querySelector('.tt-k3d-v').textContent}`))].sort(), T);
   assert.deepEqual(await texts(), ['0:', '1:1']);
-  await page.click(`${T} input[name^=tt-grp][value=pos]`);
+  await groupsOf(page, T, 'pos');   // (the K-map result's POS, #4057)
   await page.waitFor((t) => !!document.querySelector(`${t} .tt-k3d`), [T], { what: '3D, POS' });
   assert.deepEqual(await texts(), ['0:0', '1:']);
-  await page.click(`${T} input[name^=tt-grp][value=sop]`);
+  await groupsOf(page, T, 'sop');
   await page.waitFor((t) => !!document.querySelector(`${t} .tt-k3d`), [T], { what: '3D, SOP' });
   // Reset view right after the 3D box, on the options' line; no hint about the layers (#1567)
   assert.deepEqual(await page.eval((t) => {
@@ -748,7 +754,9 @@ uiTest('#2206 Truth Table: the 3D Karnaugh map stays inside the page and off the
   await page.openProject('Tt3dFit');
   const T = '.doc:not([hidden]) .tt-editor';
   await page.eval((p) => window.SilinxApp.openTt(p), 'src/k6.bool.json');
-  await page.waitFor((t) => document.querySelector(`${t} .tt-kmap-host`), [T], { what: 'K-map' });
+  await page.waitFor((t) => document.querySelector(`${t} .tt-kmap-res`), [T], { what: 'K-map' });
+  await showKmap(page, T);   // (#4057)
+  await page.eval((t) => document.querySelector(`${t} .tt-k3d-on`).scrollIntoView({ block: 'center' }), T);   // (centred first: at the column's bottom edge its horizontal scroll bar may cover it)
   if (!await page.eval((t) => document.querySelector(`${t} .tt-k3d-on`).checked, T)) await page.click(`${T} .tt-k3d-on`);
   await page.waitFor((t) => !!document.querySelector(`${t} .tt-k3d`), [T], { what: '3D' });
   const fit = () => page.eval((t) => {
@@ -757,9 +765,9 @@ uiTest('#2206 Truth Table: the 3D Karnaugh map stays inside the page and off the
     const out = parts.filter((r) => r.left < s.left - 1 || r.right > s.right + 1 || r.top < s.top - 1 || r.bottom > s.bottom + 1).length;
     return { out, inHost: s.left >= host.left - 1, clear: leg.left >= s.right - 1 || leg.top >= s.bottom - 1, size: [Math.round(s.width), Math.round(s.height)], legend: [Math.round(leg.left), Math.round(leg.top)] };
   }, T);
+  await page.eval((t) => document.querySelector(`${t} .tt-k3d`).focus(), T);   // (first: focused, the scene scrolled into view, under its result since #4057)
   const f0 = await fit();
   assert.deepEqual([f0.out, f0.inHost, f0.clear], [0, true, true], 'as first shown');
-  await page.eval((t) => document.querySelector(`${t} .tt-k3d`).focus(), T);
   for (const key of ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp']) {
     for (let i = 0; i < 8; i++) await page.eval((t, k) => document.querySelector(`${t} .tt-k3d`).dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })), T, key);
     assert.deepEqual(await fit(), f0, `turned with ${key}: nothing moved, nothing out of the scene`);
@@ -785,7 +793,8 @@ uiTest('#1491 Truth Table: the 3D Karnaugh map draws each group as its exact sha
   const T = '.doc:not([hidden]) .tt-editor';
   const open = async (f) => {
     await page.eval((p) => window.SilinxApp.openTt(p), f);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-host'), [f], { what: f });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [f], { what: f });
+    await showKmap(page, T);   // (the map under its result, #4057)
     if (!(await page.eval((t) => !!document.querySelector(`${t} .tt-k3d`), T))) await page.click(`${T} .tt-k3d-on`);
     await page.waitFor((t) => !!document.querySelector(`${t} .tt-k3d`), [T], { what: `${f} in 3D` });
   };

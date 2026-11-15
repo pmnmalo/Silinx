@@ -6,6 +6,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -74,12 +75,14 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
     ['Forma canónica SdP', 'A soma dos mintermos: todas as entradas em todos os termos, sem as indiferenças'],
     ['Forma canónica PdS', 'O produto dos maxtermos: todas as entradas em todos os termos, sem as indiferenças'],
   ]);
-  // SdP (soma de produtos) and PdS (produto de somas), not SOP and POS (#3066): the K-map's and Quine-McCluskey's choice (#3939), the map's groups, the tips
+  // SdP (soma de produtos) and PdS (produto de somas), not SOP and POS (#3066): the K-map's and Quine-McCluskey's choice (#3939;
+  // the map's groups the K-map's, shown under it, #4057), the map's button and tip, the tips
+  await showKmap(page, T);
   assert.deepEqual(await page.eval((t) => [
     ...[...document.querySelectorAll(`${t} .tt-res.tt-kmap-res .tt-kind, ${t} .tt-res.tt-qm .tt-kind`)].map((b) => b.textContent),
-    ...[...document.querySelectorAll(`${t} .tt-groups input[type=radio]`)].map((r) => r.closest('label').textContent.trim()),
+    document.querySelector(`${t} .tt-kmap-on`).textContent, document.querySelector(`${t} .tt-kmap-on`).title,
     document.querySelector(`${t} .tt-res.tt-nand`).title, document.querySelector(`${t} .tt-res.tt-nor`).title,
-  ], T), ['SdP', 'PdS', 'SdP', 'PdS', 'Grupos SdP (1s)', 'Grupos PdS (0s)',
+  ], T), ['SdP', 'PdS', 'SdP', 'PdS', 'Esconder Mapa K', 'O mapa de Karnaugh desta saída, com os grupos desta SdP ou PdS',
     'A SdP mínima só com portas NAND (dupla negação); um inversor é uma NAND com as entradas ligadas, /(a·a)', 'O PdS mínimo só com portas NOR (dupla negação); um inversor é uma NOR com as entradas ligadas, /(a + a)']);
   assert.doesNotMatch(await page.eval((t) => document.querySelector(t).innerText, T), /\b(SOP|POS)\b/, 'no SOP nor POS left');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));

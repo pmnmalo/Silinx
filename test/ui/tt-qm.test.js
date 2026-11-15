@@ -1,6 +1,6 @@
 // UI: the truth table's Karnaugh map and Quine-McCluskey results (#3939): after the forms of least gates and delay, the
-// K-map's simplified function in SOP or POS as clicked (its map's groups the same), Quine-McCluskey's with its steps
-// (the columns of the implicants, the chart, the essential primes, the cover), each with its tick box (forms sop / pos,
+// K-map's simplified function in SOP or POS as clicked (its map, under it while its Show K-map is pressed, #4057: its groups
+// the same), Quine-McCluskey's with its steps (shown by its Show Steps button, #4057) (the columns of the implicants, the chart, the essential primes, the cover), each with its tick box (forms sop / pos,
 // qsop / qpos, the HDL module in it); more than 6 inputs: no Karnaugh map (the console says so), Quine-McCluskey's; 16
 // inputs: the rows drawn as they scroll into view, a cell clicked at the bottom, the result not proven minimal (the
 // console's warning); the exact console lines; Portuguese.
@@ -8,6 +8,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { newTable, normalizeTable, generateTableHdl } from '../../core/logic.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -47,17 +48,28 @@ uiTest('#3939 the K-map\'s and Quine-McCluskey\'s results: SOP or POS as clicked
   // ---- the order: least gates and delay, the Karnaugh map's, Quine-McCluskey's, then the others
   assert.deepEqual((await ev(page, (t) => [...document.querySelectorAll(`${t} .tt-results > .tt-res`)].map((r) => r.classList[1]))).slice(0, 5),
     ['tt-gates', 'tt-delay', 'tt-kmap-res', 'tt-qm', 'tt-canon']);
-  // ---- the K-map's: SOP by default, POS clicked (its map's groups the 0s'), the map's radio back to SOP (the result follows)
+  // ---- the K-map's: SOP by default, POS clicked (its map, shown, #4057: its groups the 0s'), SOP clicked again (the map's groups the 1s')
   assert.deepEqual([await kinds(page, 'tt-kmap-res'), await expr(page, 'tt-kmap-res')], [['SOP*', 'POS'], 'f = /a./b + b./c + a.c']);
   await click(page, '.tt-kmap-res .tt-kind-pos');
   assert.deepEqual([await kinds(page, 'tt-kmap-res'), await expr(page, 'tt-kmap-res')], [['SOP', 'POS*'], 'f = (a + /b + /c).(/a + b + c)']);
-  assert.equal(await ev(page, (t) => document.querySelector(`${t} .tt-groups input[value=pos]`).checked), true);
-  await click(page, '.tt-groups input[value=sop]');
+  await showKmap(page, T);
+  const legend = () => ev(page, (t) => [...document.querySelectorAll(`${t} .tt-kmap-res .tt-legend .tt-leg-cells`)].map((c) => c.textContent.trim()));
+  assert.deepEqual(await legend(), ['M(3)', 'M(4)']);
+  assert.equal(await ev(page, (t) => document.querySelectorAll(`${t} .tt-groups input[type=radio]`).length), 0, 'no SOP / POS radio buttons (#4057)');
+  await click(page, '.tt-kmap-res .tt-kind-sop');
+  await page.waitFor((t) => document.querySelector(`${t} .tt-kmap-res .tt-legend .tt-leg-cells`)?.textContent.includes('m('), [T], { what: 'the SOP groups' });
   assert.deepEqual(await kinds(page, 'tt-kmap-res'), ['SOP*', 'POS']);
-  // ---- Quine-McCluskey's: its SOP, its steps on a tick (the columns, the chart, no essential prime, the cover)
+  assert.deepEqual((await legend()).length, 3);
+  // ---- Quine-McCluskey's: its SOP, its steps while its Show Steps button is pressed (#4057: a button, not a check box; the
+  // columns, the chart, no essential prime, the cover)
   assert.deepEqual([await kinds(page, 'tt-qm'), await expr(page, 'tt-qm')], [['SOP*', 'POS'], 'f = /a./b + b./c + a.c']);
   assert.equal(await ev(page, (t) => document.querySelectorAll(`${t} .tt-qm-steps`).length), 0);
-  await click(page, '.tt-qm-steps-on input');
+  const stepsBtn = () => ev(page, (t) => { const b = document.querySelector(`${t} .tt-qm .tt-qm-steps-on`);
+    return [b.tagName, b.type, b.textContent, b.classList.contains('active'), b.getAttribute('aria-pressed'), !!b.querySelector('input'), document.querySelectorAll(`${t} .tt-qm-steps`).length]; });
+  assert.deepEqual(await stepsBtn(), ['BUTTON', 'button', 'Show Steps', false, 'false', false, 0]);
+  await click(page, '.tt-qm .tt-qm-steps-on');
+  await page.waitFor((t) => document.querySelector(`${t} .tt-qm-steps`), [T], { what: 'the steps' });
+  assert.deepEqual(await stepsBtn(), ['BUTTON', 'button', 'Hide Steps', true, 'true', false, 1]);
   const steps = () => ev(page, (t) => {
     const s = document.querySelector(`${t} .tt-qm-steps`);
     return { caps: [...s.querySelectorAll('.tt-qm-cap')].map((c) => c.textContent),
@@ -89,17 +101,20 @@ uiTest('#3939 the K-map\'s and Quine-McCluskey\'s results: SOP or POS as clicked
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
     await page.waitFor((t) => document.querySelector(`${t} .tt-kmap-res b`)?.textContent === 'Mapa de Karnaugh', [T], { what: 'Portuguese' });
-    assert.deepEqual(await ev(page, (t) => [document.querySelector(`${t} .tt-qm b`).textContent, document.querySelector(`${t} .tt-qm`).title, document.querySelector(`${t} .tt-qm-steps-on`).textContent.trim(),
+    assert.deepEqual(await ev(page, (t) => [document.querySelector(`${t} .tt-qm b`).textContent, document.querySelector(`${t} .tt-qm`).title, document.querySelector(`${t} .tt-qm-steps-on`).textContent, document.querySelector(`${t} .tt-kmap-on`).textContent,
       ...[...document.querySelectorAll(`${t} .tt-qm .tt-kind`)].map((b) => `${b.textContent}: ${b.title}`), ...[...document.querySelectorAll(`${t} .tt-qm-cap`)].map((c) => c.textContent)]), [
-      'Quine-McCluskey', 'A função simplificada pelo algoritmo de Quine-McCluskey', 'Passos',
+      'Quine-McCluskey', 'A função simplificada pelo algoritmo de Quine-McCluskey', 'Esconder Passos', 'Esconder Mapa K',
       'SdP: A função simplificada como soma de produtos (os seus 1s)', 'PdS: A função simplificada como produto de somas (os seus 0s)',
       'Implicantes primos dos 0s, coluna a coluna', 'Tabela de implicantes primos', 'Implicantes primos essenciais',
       'Cobertura: os implicantes primos essenciais, depois o menor número de outros que cobre o resto (método de Petrick)']);
+    // the steps hidden: Mostrar Passos
+    await click(page, '.tt-qm .tt-qm-steps-on');
+    await page.waitFor((t) => !document.querySelector(`${t} .tt-qm-steps`) && document.querySelector(`${t} .tt-qm-steps-on`)?.textContent === 'Mostrar Passos', [T], { what: 'Mostrar Passos' });
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
 
-  // ---- 7 inputs: no Karnaugh map (its caption hidden, no result of it), Quine-McCluskey's; the console says so, once
+  // ---- 7 inputs: no Karnaugh map (no result of it, no button to show it; no caption of its own since #4057), Quine-McCluskey's; the console says so, once
   await open(page, 'src/seven.bool.json');
-  assert.deepEqual(await ev(page, (t) => [document.querySelector(`${t} .tt-cap-kmap`).hidden, !!document.querySelector(`${t} svg.tt-kmap`), !!document.querySelector(`${t} .tt-kmap-res`)]), [true, false, false]);
+  assert.deepEqual(await ev(page, (t) => [!!document.querySelector(`${t} .tt-cap-kmap`), !!document.querySelector(`${t} svg.tt-kmap`), !!document.querySelector(`${t} .tt-kmap-res`), !!document.querySelector(`${t} .tt-kmap-on`)]), [false, false, false, false]);
   assert.equal(await expr(page, 'tt-qm'), 'y = /x5.x6 + x5./x6');
   assert.equal(await ev(page, (t) => document.querySelector(`${t} .tt-gates .tt-best-form`).textContent), 'Quine-McCluskey SOP');
   // ---- 16 inputs: 65536 rows, those in view drawn; the last one reached by scrolling and clicked

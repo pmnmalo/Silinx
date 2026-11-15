@@ -1,10 +1,11 @@
 // UI: the notation of the Boolean expressions shown (#3915): Electronics / Engineering when none is set; chosen in the
 // Settings (Settings ▸ Boolean Notation; View ▸ Boolean Notation in the ISE style interface), kept in the browser; the
-// truth table's results and K-map groups in it, its ⋮ menu a notation of its own (#3939, saved with it; the Settings' by default); a state diagram's transition table in
+// truth table's results and K-map groups in it (the map shown, #4057), its ⋮ menu a notation of its own (#3939, saved with it; the Settings' by default); a state diagram's transition table in
 // it (its drawing's labels as typed), drawn again when it changes; the menu in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -57,6 +58,7 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   await page.openProject('Notation');
   await page.eval(() => window.SilinxApp.openTt('src/m.bool.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'tt:src/m.bool.json' && document.querySelector('.doc:not([hidden]) .tt-editor .tt-canon'), [], { what: 'the truth table' });
+  await showKmap(page, T);   // (its groups' legend, #4057)
   const shown = () => page.eval((t) => ({
     canon: document.querySelector(`${t} .tt-canon-sop .tt-expr`).textContent,
     groups: [...document.querySelectorAll(`${t} .tt-leg code`)].map((c) => c.textContent),

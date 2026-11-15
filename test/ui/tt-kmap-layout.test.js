@@ -1,12 +1,14 @@
 // UI: the Karnaugh map's place in its section (#3059): the map at the section's left (the options' left), its groups'
 // legend right after it (beside it, centred on its cells, #3064, or just under it when there is no room), the minimal
 // solutions' selector ("◀ Solution 1 of 2 ▶", no count, #3077) at the legend's top, above its groups; with 2 to 6
-// inputs, one solution (no row) or several, SOP and POS, flat and in 3D, on a wide and a narrow screen. Its options:
-// SOP / POS groups, then Order and 3D (Reset view) on a line of their own at the same left (#3063).
+// inputs, one solution (no row) or several, SOP and POS, flat and in 3D, on a wide and a narrow screen. Its options
+// (#3063): Order and 3D (Reset view) on one line; since #4057 the map, its options first, under its result's Hide K-map
+// button at the same left (the SOP / POS groups its result's switch, no radio buttons).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { newTable } from '../../core/logic.js';
+import { showKmap, groupsOf } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -57,11 +59,12 @@ uiTest('#3059 #3077 Karnaugh map: at the section\'s left, the legend right after
   await page.openProject('TtKmapLayout');
   const open = async (k) => {
     await page.eval((p) => window.SilinxApp.openTt(p), `src/${k}.bool.json`);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-legend'), [`src/${k}.bool.json`], { what: k });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [`src/${k}.bool.json`], { what: k });
+    await showKmap(page, T);   // (#4057)
   };
   const several = () => page.eval((t) => !!document.querySelector(`${t} .tt-kmap-host .tt-sol`), T);
   const tab = async (o) => { await page.eval((t, o) => document.querySelector(`${t} .tt-tab[data-out=${o}]`).click(), T, o); };
-  const pos = async (on) => { await page.eval((t, g) => document.querySelector(`${t} .tt-groups input[value=${g}]`).click(), T, on ? 'pos' : 'sop'); };
+  const pos = (on) => groupsOf(page, T, on ? 'pos' : 'sop');   // (the K-map result's SOP / POS, #4057)
   const d3 = async () => {
     const on = !await page.eval((t) => document.querySelector(`${t} .tt-k3d-on`).checked, T);
     await page.eval((t) => document.querySelector(`${t} .tt-k3d-on`).click(), T);   // (narrow: the box may be under the drawer's edge)
@@ -92,18 +95,26 @@ uiTest('#3059 #3077 Karnaugh map: at the section\'s left, the legend right after
   await page.setViewport(1400, 900);
 });
 
-/** The options' lines: each a list of [left, top, bottom] of its parts, SOP / POS first, then Order and 3D. */
+/** The options' lines: each a list of [left, top, bottom] of its parts, Order then 3D. */
 const optionLines = (page) => page.eval((t) => {
-  const parts = [...document.querySelector(`${t} .tt-groups`).children].filter((e) => !e.matches('.tt-groups-br')).map((e) => {
+  const parts = [...document.querySelector(`${t} .tt-groups`).children].map((e) => {
     const r = e.getBoundingClientRect();
-    return { what: e.querySelector('input[type=radio]')?.value ?? (e.querySelector('.tt-kmap-order') || e.matches('.tt-kmap-order') ? 'order' : e.querySelector('.tt-k3d-on') ? '3d' : e.matches('.tt-k3d-reset') ? 'reset' : e.tagName), left: Math.round(r.left), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+    return { what: e.querySelector('input[type=radio]') ? 'radio' : e.querySelector('.tt-kmap-order') || e.matches('.tt-kmap-order') ? 'order' : e.querySelector('.tt-k3d-on') ? '3d' : e.matches('.tt-k3d-reset') ? 'reset' : e.tagName, left: Math.round(r.left), top: Math.round(r.top), bottom: Math.round(r.bottom) };
   });
   const lines = [];
   for (const p of parts) { const l = lines.find((x) => p.top < x.bottom && p.bottom > x.top); if (l) { l.what.push(p.what); l.bottom = Math.max(l.bottom, p.bottom); } else lines.push({ what: [p.what], left: p.left, top: p.top, bottom: p.bottom }); }
   return lines;
 }, T);
 
-uiTest('#3063 Karnaugh map: Order and 3D on a line of their own, under SOP / POS groups, at the same left', E, async (page) => {
+/** The K-map result's Hide K-map button, the options and the map (the flat map's svg or the 3D scene): their boxes; the options
+ *  and the map in the result (#4057). */
+const underButton = (page) => page.eval((t) => {
+  const res = document.querySelector(`${t} .tt-results > .tt-kmap-res`), b = (e) => { const r = e.getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), bottom: Math.round(r.bottom) }; };
+  const map = res.querySelector('.tt-kmap-host > :not(.tt-legend)');
+  return { button: b(res.querySelector(':scope > .tt-kmap-on')), options: b(res.querySelector('.tt-kmap-box > .tt-groups')), map: b(map), radios: document.querySelectorAll(`${t} input[type=radio]`).length };
+}, T);
+
+uiTest('#3063 #4057 Karnaugh map: Order and 3D on one line (wide), the map under its result\'s Hide K-map button, at the same left', E, async (page) => {
   const tables = {
     k1: newTable('k1', ['a'], ['f']),
     k2: { ...newTable('k2', ['a', 'b'], ['f']), table: { f: '0111' } },
@@ -114,26 +125,31 @@ uiTest('#3063 Karnaugh map: Order and 3D on a line of their own, under SOP / POS
   await page.openProject('TtKmapOptions');
   const open = async (k) => {
     await page.eval((p) => window.SilinxApp.openTt(p), `src/${k}.bool.json`);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-groups label'), [`src/${k}.bool.json`], { what: k });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [`src/${k}.bool.json`], { what: k });
+    await showKmap(page, T);
   };
-  // (wide: SOP / POS on one line, the rest on the next; narrow: SOP / POS may wrap, Order still starts a line of its own)
-  const two = (l, rest, what, wide) => {
-    const i = l.findIndex((x) => x.what[0] === 'order');
-    assert.deepEqual([l.slice(0, i).flatMap((x) => x.what), l.slice(i).flatMap((x) => x.what)], [['sop', 'pos'], rest], `${what}: SOP / POS, then ${rest.join(', ')} below`);
-    if (wide) assert.equal(l.length, 2, `${what}: two lines`);
-    assert.ok(l[i].top >= l[i - 1].bottom, `${what}: Order's line under SOP / POS`);
-    assert.ok(Math.abs(l[i].left - l[0].left) <= 1, `${what}: Order at the left of SOP`);
+  // (Order then 3D: on one line when wide, no SOP / POS radio buttons above them any more, #4057; narrow: 3D may wrap,
+  // at the same left; the options under the result's Hide K-map button, at its left, the map under the options at the same left)
+  const two = async (l, rest, what, wide) => {
+    assert.deepEqual(l.flatMap((x) => x.what), rest, `${what}: ${rest.join(', ')}`);
+    if (wide) assert.equal(l.length, 1, `${what}: one line`);
+    for (const x of l) assert.ok(Math.abs(x.left - l[0].left) <= 1, `${what}: each line at Order's left`);
+    const u = await underButton(page);
+    assert.equal(u.radios, 0, `${what}: no radio buttons`);
+    assert.ok(u.options.top >= u.button.bottom - 1, `${what}: the options (top ${u.options.top}) under the Hide K-map button (bottom ${u.button.bottom})`);
+    assert.ok(u.map.top >= u.options.bottom - 1, `${what}: the map (top ${u.map.top}) under the options (bottom ${u.options.bottom})`);
+    assert.ok(Math.abs(l[0].left - u.button.left) <= 1 && Math.abs(u.map.left - u.button.left) <= 1, `${what}: Order (left ${l[0].left}) and the map (${u.map.left}) at the button's left (${u.button.left})`);
   };
   for (const [w, h] of [[1400, 900], [760, 1000]]) {
     await page.setViewport(w, h);
     await open('k1');
-    assert.deepEqual((await optionLines(page)).flatMap((x) => x.what), ['sop', 'pos'], `${w}px 1 input: no Order nor 3D`);
-    await open('k2'); two(await optionLines(page), ['order'], `${w}px 2 inputs`, w > 1000);
-    await open('k3'); two(await optionLines(page), ['order', '3d'], `${w}px 3 inputs`, w > 1000);
-    await open('k6'); two(await optionLines(page), ['order', '3d'], `${w}px 6 inputs`, w > 1000);
+    assert.deepEqual((await optionLines(page)).flatMap((x) => x.what), [], `${w}px 1 input: no Order nor 3D`);
+    await open('k2'); await two(await optionLines(page), ['order'], `${w}px 2 inputs`, w > 1000);
+    await open('k3'); await two(await optionLines(page), ['order', '3d'], `${w}px 3 inputs`, w > 1000);
+    await open('k6'); await two(await optionLines(page), ['order', '3d'], `${w}px 6 inputs`, w > 1000);
     await page.eval((t) => document.querySelector(`${t} .tt-k3d-on`).click(), T);
     await page.waitFor((t) => !!document.querySelector(`${t} .tt-k3d-reset`), [T], { what: 'Reset view' });
-    two(await optionLines(page), ['order', '3d', 'reset'], `${w}px 6 inputs in 3D`, w > 1000);
+    await two(await optionLines(page), ['order', '3d', 'reset'], `${w}px 6 inputs in 3D`, w > 1000);
     await page.eval((t) => document.querySelector(`${t} .tt-k3d-on`).click(), T);   // (the 3D box left as it was found)
   }
   await page.setViewport(1400, 900);

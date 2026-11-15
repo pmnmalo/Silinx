@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { capturePrints, confirmPrint, printed } from './print-helpers.js';
 import { newTable, normalizeTable, generateTableHdl } from '../../core/logic.js';
+import { showKmap, groupsOf } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -22,7 +23,7 @@ const shownOf = (page) => page.eval((t) => {
   const k = document.querySelector(`${t} .tt-kmap-host`);
   return {
     expr: q(r, '.tt-expr'), cost: q(r, '.tt-cost'), circuit: q(r, '.tt-circuit'), notes: [...r.querySelectorAll('.tt-note')].map(n => n.textContent),
-    count: k.querySelector('.tt-sol-n')?.title ?? null, shownCount: /exist/.test(k.textContent), sol: q(k, '.tt-sol-n'), inResults: !!r.querySelector('.tt-sol-btn'),
+    count: k.querySelector('.tt-sol-n')?.title ?? null, shownCount: /exist/.test(k.textContent), sol: q(k, '.tt-sol-n'), inResults: [...r.querySelectorAll('.tt-sol-btn')].some((b) => !b.closest('.tt-kmap-box')),   // (the map's own under its result, #4057)
     groups: [...document.querySelectorAll(`${t} .tt-legend .tt-leg code`)].map(c => c.textContent),
     nand: document.querySelector(`${t} .tt-res.tt-nand .tt-expr`).textContent,
   };
@@ -34,7 +35,8 @@ const solClick = async (page, which) => {
 };
 const open = async (page, p) => {
   await page.eval((p) => window.SilinxApp.openTt(p), p);
-  await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-kmap'), [p], { what: p });
+  await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-kmap-res'), [p], { what: p });
+  await showKmap(page, T);   // (the map under its result, #4057)
 };
 const groupRects = (page) => page.eval((t) => [...document.querySelectorAll(`${t} svg.tt-kmap .tt-group`)].map(g => `${g.getAttribute('data-term')}:${g.getAttribute('x')},${g.getAttribute('y')},${g.getAttribute('width')},${g.getAttribute('height')}`).join(' '), T);
 const model = (page) => page.eval(() => window.Silinx.active.ttEditor.getModel());
@@ -90,10 +92,10 @@ uiTest('#2950 several minimal solutions: the selector on the Karnaugh map; the o
   await solClick(page, 'next');
   assert.equal(await surf(), c2);
   await page.eval(() => document.querySelector('.doc:not([hidden]) .tt-groups .tt-k3d-on').click());
-  // the POS groups on the map: one solution, no selector; back to the SOP's
-  await page.click(`${T} .tt-groups input[value=pos]`);
+  // the POS groups on the map (the K-map result's POS, #4057): one solution, no selector; back to the SOP's
+  await groupsOf(page, T, 'pos');
   assert.equal((await shownOf(page)).sol, null);
-  await page.click(`${T} .tt-groups input[value=sop]`);
+  await groupsOf(page, T, 'sop');
   // round: next again is the first; previous the last; Undo / Redo
   await solClick(page, 'next');
   assert.deepEqual([(await shownOf(page)).sol, await groupRects(page), (await model(page)).solutions], ['Solution 1 of 2', flat1, undefined]);

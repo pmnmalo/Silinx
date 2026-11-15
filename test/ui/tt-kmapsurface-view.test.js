@@ -7,6 +7,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -24,7 +25,8 @@ uiTest('#3119 #3120 Truth Table: the 3D Karnaugh map, the cells\' texts where th
   await page.openProject('TtSurfView');
   const open = async (f) => {
     await page.eval((p) => window.SilinxApp.openTt(p), f);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-host'), [f], { what: f });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [f], { what: f });
+    await showKmap(page, T);   // (the map under its result, #4057)
     await page.click(`${T} .tt-k3d-on`);
     await page.waitFor((t) => !!document.querySelector(`${t} .tt-ks`), [T], { what: `${f} in 3D` });
   };

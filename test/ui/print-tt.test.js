@@ -1,10 +1,12 @@
-// UI: a truth table prints (#1510): its table, the Karnaugh map of the output in front (flat or 3D, as shown) and the
-// results, without its commands, the expression's field and the hints; in light colours, with the project and file.
+// UI: a truth table prints (#1510): its table, the Karnaugh map of the output in front (flat or 3D, as shown; under its
+// result when its Show K-map is pressed, #4057) and the results, without its commands, the expression's field, the hints
+// and the Show / Hide buttons; in light colours, with the project and file.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { capturePrints, confirmPrint, fileMenuPrint, printOn, printed } from './print-helpers.js';
 import { newTable } from '../../core/logic.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -18,7 +20,8 @@ uiTest('#1510 a truth table prints its table, the Karnaugh map of the output in 
   await page.openProject('PrTt');
   await capturePrints(page);
   await page.eval(() => window.SilinxApp.openTt('src/maj5.tt.json'));
-  await page.waitFor(() => window.Silinx.active?.ttEditor && document.querySelector('.doc:not([hidden]) .tt-kmap'), [], { what: 'the truth table' });
+  await page.waitFor(() => window.Silinx.active?.ttEditor && document.querySelector('.doc:not([hidden]) .tt-kmap-res'), [], { what: 'the truth table' });
+  await showKmap(page, '.doc:not([hidden]) .tt-editor');
   assert.ok(await printOn(page));
   assert.equal(!!(await fileMenuPrint(page)).disabled, false, 'File ▸ Print… enabled');
   await page.click('#toolbar .tb-btn[data-cmd=print]');
@@ -37,12 +40,13 @@ uiTest('#1510 a truth table prints its table, the Karnaugh map of the output in 
   assert.deepEqual([...body.matchAll(/class="tt-kcell[^"]*" data-row="(\d+)"/g)].slice(0, 4).map((x) => +x[1]), [0, 4, 12, 8]);
   assert.doesNotMatch(body, /class="tt-kmap-order"/, 'its order\'s selector left out');
   assert.match(body, /Karnaugh map/);
+  assert.match(body, /<div class="tt-res tt-kmap-res"[\s\S]*<div class="tt-kmap-box"[\s\S]*<svg class="tt-kmap"/, 'the map under its result');
   assert.match(body, /f = d\.e \+ c\.e \+ c\.d \+ a\.b/);
   // the minterm list in the canonical SOP's row, the maxterm list in the POS's (#2952)
   assert.match(body, /<div class="tt-canon-sop"[^>]*>(?:(?!<\/div>)[\s\S])*<code class="tt-canon-list"[^>]*>f = Σm\(/);
   assert.match(body, /<div class="tt-canon-pos"[^>]*>(?:(?!<\/div>)[\s\S])*<code class="tt-canon-list"[^>]*>f = ΠM\(/);
   // not its commands, its expression's field, its hints, its options, its empty notes
-  assert.doesNotMatch(body, /class="tt-toolbar"|class="tt-expr-in"|class="hint|class="tt-groups"|class="tt-notes"|class="tt-qm-steps-on"/);
+  assert.doesNotMatch(body, /class="tt-toolbar"|class="tt-expr-in"|class="hint|class="tt-groups"|class="tt-notes"|class="tt-show /);
   // the 3D map, as shown
   await page.eval(() => document.querySelector('.doc:not([hidden]) .tt-k3d-on').click());
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .tt-k3d-layer'), [], { what: 'the 3D map' });

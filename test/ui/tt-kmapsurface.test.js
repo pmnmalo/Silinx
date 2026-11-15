@@ -5,6 +5,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
+import { showKmap } from './tt-helpers.js';
 import { capturePrints, confirmPrint, printed } from './print-helpers.js';
 
 let env;
@@ -24,7 +25,8 @@ uiTest('#2925 Truth Table: the Karnaugh map of 3 inputs on a cylinder, of 4 on a
   await capturePrints(page);
   const open = async (f) => {
     await page.eval((p) => window.SilinxApp.openTt(p), f);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-host'), [f], { what: f });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [f], { what: f });
+    await showKmap(page, T);   // (the map under its result, #4057)
   };
   const shape = () => page.eval((t) => {
     const s = document.querySelector(`${t} .tt-ks`);

@@ -9,7 +9,8 @@ import { menuChoice } from './toolbar-menu.js';
 import { getNotation } from './notation.js';
 import { canonicalCost } from '/core/logic-canon.js';
 import { designKind } from './project-kind-flag.js';
-import { kindSwitch, qmResult } from './tt-qm.js';
+import { kindSwitch, qmResult, showButton } from './tt-qm.js';
+import { drawBarsIn } from './overbar.js';
 
 // (a design and simulation project's, #3780: no HDL)
 const HDL_NOTATIONS = ['vhdl', 'verilog'];
@@ -84,7 +85,8 @@ function canonForms(A, out, n, notation, tick) {
 /** The results of the selected output, in `results` (#3065, #3939): the forms of least gates and of least delay first, then
  *  the Karnaugh map's (up to 6 inputs) and Quine-McCluskey's simplified function, each SOP or POS as clicked, then the
  *  canonical, XOR, NAND and NOR forms. ctx: the editor's M(), out(), A() (its analysis), notation(), groups() and
- *  setGroups(k) (the map's, its SOP or POS), qmKind() and setQmKind(k), qmSteps() and setQmSteps(on), setM(m),
+ *  setGroups(k) (the map's, its SOP or POS), kmapBox (the map, its options and legend), mapShown() and setMapShown(on)
+ *  (#4057), qmKind() and setQmKind(k), qmSteps() and setQmSteps(on), setM(m),
  *  changed(), renderResults(), renderKmap(). */
 export function renderTtResults(ctx) {
   const { results } = ctx, M = ctx.M(), out = ctx.out(), A = ctx.A(), notation = ctx.notation(), n = M.inputs.length;
@@ -102,7 +104,9 @@ export function renderTtResults(ctx) {
     return h('div', { class: 'tt-res tt-kmap-res', title: 'The function simplified on the Karnaugh map: its groups of 1s (SOP) or of 0s (POS)' },
       h('div', {}, tick(k), h('b', {}, 'Karnaugh map'), ': ', kindSwitch(k, ctx.setGroups), ' ',
         exprCode(out, r.ast, notation)),
-      cost(r), circuit(r.ast));
+      cost(r), circuit(r.ast),
+      showButton(['Show K-map', 'Hide K-map'], ctx.mapShown(), ctx.setMapShown, 'tt-kmap-on', 'The Karnaugh map of this output, its groups those of this SOP or POS'),
+      ctx.mapShown() ? ctx.kmapBox : null);   // (under its result, #4057)
   };
   const qk = ctx.qmKind();
   const qm = qmResult({ A, out, inputs: M.inputs, kind: qk, setKind: ctx.setQmKind, tick: tick(`q${qk}`), steps: ctx.qmSteps(), setSteps: ctx.setQmSteps,
@@ -126,4 +130,5 @@ export function renderTtResults(ctx) {
     ...(xorForm ? [xorForm] : []),
     gateForm('NAND form', A.nand, 'tt-nand', 'The minimal SOP with NAND gates only (double negation); an inverter is a NAND with its inputs tied, /(a·a)'),
     gateForm('NOR form', A.nor, 'tt-nor', 'The minimal POS with NOR gates only (double negation); an inverter is a NOR with its inputs tied, /(a + a)'));
+  drawBarsIn(results, '.tt-expr, .tt-qm-steps code');   // (the bars drawn, #4058)
 }

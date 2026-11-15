@@ -40,7 +40,6 @@
 .tt-tab { border: 1px solid var(--border, #aaa); background: var(--tab-inactive, #eee); padding: 2px 14px; font-family: var(--mono, monospace); font-weight: bold; cursor: pointer; border-radius: 3px 3px 0 0; }
 .tt-tab.active { background: var(--tab-active, #fff); border-bottom-color: var(--tab-active, #fff); color: var(--title-fg, #15428b); }
 .tt-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 14px; margin-bottom: 4px; }
-.tt-groups-br { flex-basis: 100%; height: 0; }   /* SOP / POS, then Order and 3D on a line of their own (#3063) */
 .tt-kmap-host { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px; }
 .tt-kmap { background: #fff; }
 .tt-kmap .tt-kcell rect { fill: #fff; stroke: #999; cursor: pointer; }
@@ -151,6 +150,10 @@ html[data-theme="dark"] .tt-ks-v.vX { fill: #e0a040; }
 .tt-kind { padding: 0 6px; border: 1px solid var(--border, #999); background: var(--panel, #fff); color: var(--fg, #000); cursor: pointer; font-size: inherit; }
 .tt-kind + .tt-kind { border-left: none; }
 .tt-kind.active { background: #c9dbfb; font-weight: bold; }
+/* a result's Show / Hide button (#4057: the map, the steps), under it what it shows */
+.tt-show { display: block; margin: 4px 0 2px; padding: 1px 8px; border: 1px solid var(--border, #999); border-radius: 3px; background: var(--panel, #fff); color: var(--fg, #000); cursor: pointer; font-size: inherit; }
+.tt-show.active { background: #c9dbfb; }
+.tt-kmap-box { margin: 4px 0 2px; }
 .tt-qm-steps { margin: 4px 0 2px 18px; }
 .tt-qm-cap { font-weight: bold; margin: 6px 0 2px; }
 .tt-qm-cols { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
@@ -160,4 +163,4 @@ html[data-theme="dark"] .tt-ks-v.vX { fill: #e0a040; }
 .tt-qm-chart th:first-child { text-align: left; white-space: nowrap; }
 .tt-qm-chart td { text-align: center; min-width: 18px; }
 .tt-qm-chart tr.tt-qm-ess th { color: var(--title-fg, #15428b); }
-html[data-theme="dark"] .tt-kind.active { background: #2b3f63; }
+html[data-theme="dark"] .tt-kind.active, html[data-theme="dark"] .tt-show.active { background: #2b3f63; }

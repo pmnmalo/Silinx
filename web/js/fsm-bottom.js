@@ -6,6 +6,7 @@ import { downloadText, h } from './ui.js';
 import { encodedTable, stateTable, stepFsm, toCsv, transitionTable } from '/core/fsm.js';
 import { simInputControls, simTraceTable } from './sim-panel.js';
 import { showCondText } from '/core/expr-notation.js';
+import { drawBarsIn } from './overbar.js';
 import { getNotation, onNotation } from './notation.js';
 
 /** { renderPanel, resetSim, stopRun, togglePanel } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values). */
@@ -53,6 +54,7 @@ export function mountFsmBottom(ctx) {
       h('tr', {}, h('th', {}, 'Present state'), showCode ? h('th', {}, 'Code') : null, h('th', {}, 'Input condition'), h('th', {}, 'Next state'), showCode ? h('th', {}, 'Next code') : null, h('th', {}, 'Outputs')),
       ...tt.rows.map((r) => h('tr', { class: r.stays ? 'stays' : '' }, h('td', {}, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null,
         h('td', { class: 'mono' }, r.cond === 'otherwise' ? h('i', {}, 'otherwise (stays)') : r.cond), h('td', {}, r.next), showCode ? h('td', { class: 'mono' }, r.nextCode) : null, h('td', { class: 'mono' }, r.outputs))));
+    drawBarsIn(t1, 'td.mono');   // (the bars drawn, #4058)
     wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, [tt.columns, ...tt.rows.map((r) => [r.state, r.code, r.cond, r.next, r.nextCode, r.outputs])])), t1);
     // state table (classic form)
     const st = stateTable(M());

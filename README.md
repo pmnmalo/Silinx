@@ -235,14 +235,15 @@ for Xilinx FPGAs supported by ISE 14.7.
   come into view; a very long expression shown in part) and any number of outputs, click the cells (0 → 1 → X don't care)
   or type an expression per output (`ab' + c`, `a·b + c`, `/a.b + a./b`, `~a & b`,
   `(a and not b) or c`, `a ^ b`, `¬a ∧ b`, `a̅·b`…), the expressions shown in the notation of *Settings ▸ Boolean Notation*
-  (*View ▸* in the ISE style interface), or the table's own, chosen in its toolbar's ⋮ menu and saved with it: Electronics / Engineering (`a̅·b + c`, the default),
+  (*View ▸* in the ISE style interface), or the table's own, chosen in its toolbar's ⋮ menu and saved with it: Electronics / Engineering (`a̅·b + c`, the default; each NOT drawn as a bar over its group, a NOT inside a NOT a bar above the ones under it),
   text only (`/a.b + c`), logic (`¬a ∧ b ∨ c`), VHDL or Verilog — a state diagram's tables and the conditions a
-  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output: the Karnaugh map (up to 6 inputs: past that the console says there is none; Gray order; the variables MSB → LSB by columns then rows, or by rows then
+  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output, the results, in this order: the least gates and the least delay; the *Karnaugh map*'s simplified
+  function (up to 6 inputs: past that the console says there is none), its minimal SOP or POS, whichever of *SOP* / *POS* is clicked,
+  and under it, with its *Show K-map* button, the map (Gray order; the variables MSB → LSB by columns then rows, or by rows then
   columns, chosen beside the map; 5–6 inputs as two/four 4×4 maps, the most significant picking the map) with the groups of the minimal SOP
-  (1s) or POS (0s) drawn as coloured rounded rectangles, wrap-around groups split at the edges;
-  then the results, in this order: the least gates and the least delay; the *Karnaugh map*'s simplified function, its minimal SOP or POS,
-  whichever of *SOP* / *POS* is clicked (the map's groups the same; several minimal solutions browsed with *◀ Solution k of N ▶* beside the
-  map, the one chosen used); *Quine-McCluskey*'s, SOP or POS, for every table (up to 16 inputs), with its *Steps* when ticked (the columns of the
+  (1s) or POS (0s), the result's, drawn as coloured rounded rectangles, wrap-around groups split at the edges; several minimal solutions
+  browsed with *◀ Solution k of N ▶* beside the map, the one chosen used); *Quine-McCluskey*'s, SOP or POS, for every table (up to 16
+  inputs), with its steps under its *Show Steps* button (the columns of the
   implicants combined, the prime implicant chart, the essential prime implicants, the cover: Petrick's method's minimum), exact while it is
   bounded, past that a cover heuristic (the console says it is not proven minimal);
   the canonical SOP and POS, each with its Σm / ΠM list beside its name and in full under it (the sum of the minterms, the product of the

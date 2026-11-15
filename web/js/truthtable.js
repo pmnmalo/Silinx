@@ -1,9 +1,10 @@
 // Boolean Algebra / Karnaugh Map editor (#2017: it was Truth Table; documents <name>.bool.json, <name>.tt.json before #2065). The inputs (1–16,
 // #3939: a large table's rows drawn as they scroll into view, web/js/tt-rows.js) and outputs (any number: the table scrolls, one output at a time
 // in the tabs) are named in the toolbar; the truth table is edited by clicking its output cells (0 → 1 → X) or by typing an expression per
-// output. For the selected output: Karnaugh map (up to 6 inputs) with the groups of the minimal SOP (1s) or POS (0s) (the minimal solution
-// used chosen there when it has several, #2950); the results (web/js/tt-results.js): the forms of the fewest gates and of the least delay
-// (#1427), the Karnaugh map's and Quine-McCluskey's simplified function (SOP or POS as clicked, Quine-McCluskey's steps, #3939),
+// output, the results (web/js/tt-results.js): the forms of the fewest gates and of the least delay (#1427), the Karnaugh map's
+// (up to 6 inputs) and Quine-McCluskey's simplified function (SOP or POS as clicked, #3939), the map under its result when its
+// Show K-map button is pressed (its groups, the minimal solution used chosen there when it has several, #2950, #4057) and
+// Quine-McCluskey's steps under its own when its Show Steps is,
 // canonical SOP and POS with their lists Σm / ΠM, the XOR form when it is cheaper (#435), the NAND-only and NOR-only forms
 // (#694), each one's gates and delay as a circuit. The console says when a result is not proven minimal (`opts.log(text, cls)`).
 // The expressions are written in the notation of the Settings (Boolean Notation, #3915; a̅·b + c by default), typed in any
@@ -33,6 +34,7 @@ import { domSnapshot } from './print-view.js';
 import { t as tr } from './i18n.js';
 import { statusLine } from './status-line.js';
 import { notationChoice, renderTtResults, tableNotation } from './tt-results.js';
+import { drawBarsIn } from './overbar.js';
 import { renderTtTable } from './tt-rows.js';
 import { onNotation } from './notation.js';
 import { showExpr } from '/core/expr-notation.js';
@@ -64,7 +66,7 @@ function solutionPicker(r, go) {
 // tab) and the results; the commands, the expression's field, the hints and the options left out (the notes when it
 // has some).
 function ttPrintView(root, notes, name) {
-  const drop = ['.tt-toolbar', '.doc-status', '.tt-cap-expr', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-qm-steps-on'];
+  const drop = ['.tt-toolbar', '.doc-status', '.tt-cap-expr', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-show'];
   if (!notes.value.trim()) drop.push('.tt-cap-notes', '.tt-notes');
   return { title: `${tr('Truth table')} ${name}`, app: true, body: domSnapshot(root, { drop }) };
 }
@@ -88,6 +90,7 @@ export function mountTtEditor(container, opts = {}) {
   let out = M.outputs[0];
   let groups = 'sop';            // groups drawn on the K-map: 'sop' (1s) or 'pos' (0s), its result's SOP or POS (#3939)
   let qmKind = 'sop', qmSteps = false;   // Quine-McCluskey's result: SOP or POS, its steps shown (#3939)
+  let mapShown = false;          // the Karnaugh map under its result, shown by its Show K-map button (#4057; the editor's own)
   let kindsOf = null;            // (the output they were set for: an output's own form when it is one of theirs)
   const logged = new Set();      // (the console's notes already written, #3939)
   let destroyed = false;
@@ -189,12 +192,11 @@ export function mountTtEditor(container, opts = {}) {
   const kmapHost = h('div', { class: 'tt-kmap-host' });
   const d3 = { on: false };   // (the map's 3D box: this table's, unticked when opened, #3074)
   const grpSel = h('div', { class: 'tt-groups' });
-  const kmapCap = h('div', { class: 'tt-caption tt-cap-kmap' }, 'Karnaugh map');
+  const kmapBox = h('div', { class: 'tt-kmap-box' }, grpSel, kmapHost);   // (under the Karnaugh map result, #4057)
   const results = h('div', { class: 'tt-results' });
   const right = h('div', { class: 'tt-right' },
     tabs,
     h('div', { class: 'tt-caption tt-cap-expr' }, 'Expression'), exprRow, h('div', { class: 'hint tt-ops' }, OPS), exprErr,
-    kmapCap, grpSel, kmapHost,
     h('div', { class: 'tt-caption' }, 'Results'), results);
   const status = statusLine();   // (its inputs, outputs and rows, #2763)
   root.append(toolbar, h('div', { class: 'tt-body' }, left, right), status.el);
@@ -229,13 +231,8 @@ export function mountTtEditor(container, opts = {}) {
     kmapHost.innerHTML = '';
     grpSel.innerHTML = '';
     const n = M.inputs.length;
-    kmapCap.hidden = n > MAX_KMAP_INPUTS;   // (none past 6 inputs: the console says so, #3939)
-    if (n > MAX_KMAP_INPUTS) return;
-    for (const [g, label] of [['sop', 'SOP groups (1s)'], ['pos', 'POS groups (0s)']]) {
-      const r = h('input', { type: 'radio', name: `tt-grp-${uid}`, value: g, checked: groups === g, onchange: () => setGroups(g) });
-      grpSel.append(h('label', { class: 'tt-check' }, r, ` ${label}`));
-    }
-    if (n >= 2) grpSel.append(h('div', { class: 'tt-groups-br' }));   // (Order and 3D on the line below, #3063)
+    // (none past 6 inputs: the console says so, #3939; drawn when shown, its groups its result's SOP or POS, #4057)
+    if (n > MAX_KMAP_INPUTS || !mapShown) return;
     if (n >= 2) grpSel.append(kmapOrderSelect(M.kmapOrder, o => { if (o === 'rows') M.kmapOrder = 'rows'; else delete M.kmapOrder; changed(); }));
     const L = kmapLayout(n, M.kmapOrder || 'cols');
     const res = groups === 'pos' ? A.pos : A.sop, k = res.alternatives.length;
@@ -296,6 +293,7 @@ export function mountTtEditor(container, opts = {}) {
         h('span', { class: 'tt-leg-cells' }, ` ${groups === 'pos' ? 'M' : 'm'}(${t.minterms.join(', ')})`)));   // (no "essential" mark, #3080)
     });
     if (!res.terms.length) leg.append(h('div', { class: 'hint' }, groups === 'pos' ? 'No 0s: no groups (the output is always 1).' : 'No 1s: no groups (the output is always 0).'));
+    drawBarsIn(leg);   // (the bars drawn, #4058)
     kmapHost.append(leg);
     lockTt(readOnly, root);
   }
@@ -307,6 +305,7 @@ export function mountTtEditor(container, opts = {}) {
   const renderResults = () => { renderTtResults({ results, M: () => M, out: () => out, A: () => A, notation: () => tableNotation(M),
     groups: () => groups, setGroups, qmKind: () => qmKind, setQmKind: k => { qmKind = k; renderResults(); notes3939(); },
     qmSteps: () => qmSteps, setQmSteps: on => { qmSteps = on; renderResults(); },
+    kmapBox, mapShown: () => mapShown, setMapShown: on => { mapShown = on; renderKmap(); renderResults(); },
     setM: m => { M = m; }, changed, renderKmap, renderResults }); lockTt(readOnly, results); };
   // the console's notes (#3939: a message is the console's, docs/UI-GUIDELINES.md): no Karnaugh map past 6 inputs, a
   // simplified function not proven minimal; each once

@@ -1,6 +1,6 @@
 // The truth table's Quine-McCluskey result (#3939; the algorithm: core/qm.js): its tick box (the output's HDL logic,
-// forms qsop / qpos), SOP or POS (whichever is clicked), its expression, cost and circuit, and its steps when ticked
-// "Steps": the columns of the implicants combined (by their number of 1s, ✓ the ones combined), the prime implicant
+// forms qsop / qpos), SOP or POS (whichever is clicked), its expression, cost and circuit, and its steps while its
+// Show Steps button is pressed (#4057): the columns of the implicants combined (by their number of 1s, ✓ the ones combined), the prime implicant
 // chart (× where a prime covers a minterm, the essential primes marked ✱), the essential primes and the cover. A
 // table too large to show its steps shows its counts only; a result not proven minimal is the console's (truthtable.js).
 import { h } from './ui.js';
@@ -61,6 +61,11 @@ function stepsOf(r, inputs, show, expr) {
   return box;
 }
 
+/** A result's Show / Hide button (#4057: not a check box, which in the results is the output's HDL logic): what it
+ *  shows under the result while it is pressed; [show, hide] its two labels; set(on). */
+export const showButton = ([show, hide], on, set, cls, title) => h('button', { type: 'button', class: `tt-show ${cls}${on ? ' active' : ''}`,
+  'aria-pressed': String(on), title, onclick: () => set(!on) }, on ? hide : show);
+
 /**
  * The Quine-McCluskey result: ctx { A (the analysis, A.qm), out, inputs, kind ('sop' | 'pos'), setKind(k), ticked,
  * pick() (ticks it), steps (shown), setSteps(on), show(ast) (an expression in the notation), expr(ast) (the output's, its
@@ -68,8 +73,7 @@ function stepsOf(r, inputs, show, expr) {
  */
 export function qmResult(ctx) {
   const r = ctx.A.qm[ctx.kind];
-  const stepsBox = h('label', { class: 'tt-check tt-qm-steps-on', title: 'Show the steps of the algorithm' },
-    h('input', { type: 'checkbox', checked: ctx.steps, onchange: e => ctx.setSteps(e.target.checked) }), ' Steps');
+  const stepsBox = showButton(['Show Steps', 'Hide Steps'], ctx.steps, ctx.setSteps, 'tt-qm-steps-on', 'The steps of the algorithm');
   return h('div', { class: 'tt-res tt-qm', title: 'The function simplified by the Quine-McCluskey algorithm' },
     h('div', {}, ctx.tick, h('b', {}, 'Quine-McCluskey'), ': ', kindSwitch(ctx.kind, ctx.setKind), ' ',
       ctx.expr(r.ast)),

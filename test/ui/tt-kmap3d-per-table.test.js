@@ -6,6 +6,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { newTable } from '../../core/logic.js';
+import { showKmap } from './tt-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -25,7 +26,8 @@ uiTest('#3074 Karnaugh map: the 3D box each table\'s own; a click on a flat map 
   await page.openProject('Tt3dEach');
   const open = async (k) => {
     await page.eval((p) => window.SilinxApp.openTt(p), `src/${k}.bool.json`);
-    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-legend'), [`src/${k}.bool.json`], { what: k });
+    await page.waitFor((p) => window.Silinx.active?.id === `tt:${p}` && document.querySelector('.doc:not([hidden]) .tt-editor .tt-kmap-res'), [`src/${k}.bool.json`], { what: k });
+    await showKmap(page, T);   // (the map under its result, shown by its Show K-map, #4057; kept shown when the table is in front again)
   };
   /** The shown map: 3D or flat, its box ticked or not. */
   const shown = () => page.eval((t) => ({ d3: !!document.querySelector(`${t} .tt-kmap-host > .tt-k3d`), flat: !!document.querySelector(`${t} .tt-kmap-host > svg.tt-kmap`), box: document.querySelector(`${t} .tt-k3d-on`).checked }), T);
