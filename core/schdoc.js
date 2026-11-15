@@ -32,7 +32,7 @@ import { normalizeGraphic } from './schgraphics.js';
 import { moveTaps, widenBuffers, widenJoins, widenMuxes } from './schdoc-upgrade.js';
 import { symbolDiff } from './schdoc-modsym.js';
 import { instanceParams } from './symbol-layout.js';
-import { arrayOf, sliceArrayed } from './sch-array.js';
+import { arrayOf, sliceArrayed, sharedPins, arrayedError } from './sch-array.js';
 import {
   modulesFromLibrary, schematicFromHdl
 } from './schdoc-from-hdl.js';
@@ -324,11 +324,11 @@ export function netlist(docIn, { modules = {} } = {}) {
   const pinInfo = new Map();     // node id -> endpoint
   const defs = new Map();
   for (const s of doc.symbols) {
-    const def = symbolDef(s, modules), arr = arrayOf(s);   // (an arrayed instance, reg(3:0), #3755: core/sch-array.js)
+    const def = symbolDef(s, modules), arr = arrayOf(s), marked = arr ? sharedPins(s) : null;   // (an arrayed instance, reg(3:0), #3755: core/sch-array.js; its pins marked shared, #3966)
     defs.set(s.id, def);
     for (const p of symbolPins(s, modules, def)) {
       const id = `p:${s.id}/${p.name}`;
-      pinInfo.set(id, { kind: 'pin', sym: s.id, pin: p.name, dir: p.dir, width: p.width, x: p.x, y: p.y, ...(p.tri ? { tri: true } : {}), ...(arr ? { arr: arr.n } : {}) });
+      pinInfo.set(id, { kind: 'pin', sym: s.id, pin: p.name, dir: p.dir, width: p.width, x: p.x, y: p.y, ...(p.tri ? { tri: true } : {}), ...(arr ? { arr: arr.n } : {}), ...(marked?.has(p.name.toLowerCase()) ? { shared: true } : {}) });
       dsu.find(id);
       addAt(p.x, p.y, id);
     }
@@ -447,7 +447,7 @@ export function netlist(docIn, { modules = {} } = {}) {
     }
     // width (an arrayed instance's pins: N times as wide when the net is, #3755)
     const shared = sliceArrayed(eps, [...ports.map(p => p.width), ...labels.map(L => L.width)]);
-    const pinW = eps.filter(e => isNum(e.width));
+    const pinW = eps.filter(e => isNum(e.width) && !e.misfit);   // (a pin marked shared on a net of another width: its own error)
     const lw = labels.map(L => L.width).filter(isNum);
     const portW = ports.map(p => p.width);
     const cands = [...portW, ...lw, ...pinW.map(e => e.width)];
@@ -468,7 +468,7 @@ export function netlist(docIn, { modules = {} } = {}) {
       const where = pinW.find(e => e.width !== net.width) || eps[0];
       diags.push({ severity: 'error', message: `width mismatch on net '${net.name}': ${[...mism].join(' vs ')} bits`, ref: refOf(where, symById), x: where?.x, y: where?.y, net: net.name });
     }
-    for (const e of shared) diags.push({ severity: 'error', message: `${symById.get(e.sym).name}: output ${e.pin} of its ${e.arr} copies drives the ${net.width}-bit net '${net.name}': connect it to a ${e.arr * e.width}-bit bus`, ref: refOf(e, symById), x: e.x, y: e.y, net: net.name });
+    for (const e of shared) diags.push({ severity: 'error', message: arrayedError(e, symById.get(e.sym).name, net), ref: refOf(e, symById), x: e.x, y: e.y, net: net.name });
     const pt = eps[0] || (labels[0] && labels[0].label) || doc.wires.find(w => w.id === wires[0])?.points[0];
     // drivers: tri-state outputs (and bidirectional pins / markers) may share a net, a bus; an ordinary
     // output or an input marker must be its only driver
