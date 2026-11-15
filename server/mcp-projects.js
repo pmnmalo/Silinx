@@ -8,6 +8,8 @@ import { orderExamples } from '../core/examples.js';
 import { TEST_DESIGNS, orderTestDesigns } from '../core/test-designs.js';
 import { nameUnnamed } from '../core/schname.js';
 import { DESIGN_KIND, isDesignOnly } from '../core/project-kind.js';
+import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
+import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
 import { toolError, clip, projectPath, readProject, elaborateView, viewSourcesOf, diagLine, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 
@@ -21,6 +23,17 @@ function nameInstances(text) {
   if (!m || !Array.isArray(m.symbols)) return null;
   const names = nameUnnamed(m);
   return names.length ? { text: JSON.stringify(m, null, 1), names } : null;
+}
+
+// New Project's flow (#4121, web/js/wizards.js's): the Preferred Language (a design and simulation project's VHDL) and
+// the Top-Level Source Type saved, then the top document made (core/top-source.js) and the top module 'top'; its file or null
+async function startTop(name, designOnly, type, language = 'vhdl') {
+  await P.updateProject(name, pj => ({ ...pj, preferredLanguage: designOnly ? 'vhdl' : language, ...(type !== undefined ? { topSourceType: type } : {}) }));
+  const top = type !== undefined ? await topSourceFiles(type, language) : null;
+  if (!top) return null;
+  for (const f of top.files) await P.writeFile(name, f.path, f.text);
+  await P.updateProject(name, pj => ({ ...pj, top: 'top' }));
+  return top.file;
 }
 
 // the roots of a view's hierarchy as the Design pane lists them (#3819): the Implementation view's top first, then in
@@ -90,20 +103,28 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices: basys2, nexys2, basys3…; default: the Basys2-250\'s device, no board). Then write its sources with write_file (a test bench in sim/) and choose its top module and test bench with set_top. With kind design, a design and simulation project, as New Project\'s "Design and simulation only (no FPGA)": no board, no device, no constraints; its sources are drawings (new_source), simulated with test_bench_wizard and simulate; no implementation, emulation or programming, and its HDL is not shown (set_design_properties with a board makes it an FPGA project).',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (list_devices; default: the board\'s default), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', 'design'], description: 'Its kind, as New Project\'s Project Kind: fpga (default), or design, a design and simulation project: drawings and simulation only, no board.' }, design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design.' } }, required: ['name'], additionalProperties: false },
+    description: 'Make a new empty project in the workspace for a board (list_devices: basys2, nexys2, basys3…; default: the Basys2-250\'s device, no board). Then write its sources with write_file (a test bench in sim/) and choose its top module and test bench with set_top. With kind design, a design and simulation project, as New Project\'s "Design and simulation only (no FPGA)": no board, no device, no constraints; its sources are drawings (new_source), simulated with test_bench_wizard and simulate; no implementation, emulation or programming, and its HDL is not shown (set_design_properties with a board makes it an FPGA project). With top_source_type, as New Project\'s Top-Level Source Type: the project starts with that top document, the top module \'top\' (src/top.sch.json, .fsm.json, .asm.json, .bool.json: with its HDL module, generated from it, in the language; src/top.pn.json, .circ.json: the drawing, its HDL made when the project is loaded; src/top.c, .cpp: the C or C++ function top, Silinx HLS\'s; hdl: none, the sources written by hand).',
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (list_devices; default: the board\'s default), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', 'design'], description: 'Its kind, as New Project\'s Project Kind: fpga (default), or design, a design and simulation project: drawings and simulation only, no board.' }, design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design.' },
+      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (#4105): hdl, sch (schematic), fsm, asm, tt (Boolean algebra), petri, circuit, c, cpp (a design and simulation project\'s a drawing\'s); saved as the project\'s, and its top document made.' },
+      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl; a design and simulation project\'s vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, kind: given, design_only: alias }) {
+    async run({ name, board, variant, kind: given, design_only: alias, top_source_type: type, language }) {
       // (its kind, #4103: design_only its deprecated alias)
       if (given !== undefined && alias !== undefined) throw toolError('give kind, not design_only too (design_only is kind\'s deprecated alias)');
       const designOnly = (given ?? (alias ? DESIGN_KIND : 'fpga')) === DESIGN_KIND;
       if (designOnly && (board || variant)) throw toolError(`a design and simulation project has no board: give ${given !== undefined ? 'kind design' : 'design_only'} or a board, not both`);
+      const refusal = type !== undefined && topTypeRefusal({ kind: designOnly ? DESIGN_KIND : null }, type);
+      if (refusal) throw toolError(refusal);
       let device;
       if (board || variant) ({ board, device } = await boardDevice(board, variant));
       try { await P.createProject({ name, device, board, kind: designOnly ? DESIGN_KIND : null, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
+      const flow = type !== undefined || language !== undefined;
+      const top = flow ? await startTop(name, designOnly, type, language) : null;
       const pj = await P.readProject(name);
-      if (designOnly) return { text: `Empty design and simulation project '${name}' made (no FPGA). Add its drawings with new_source, then set_top.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, trusted: false } };
-      return { text: `Empty project '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}). Write its sources with write_file, then set_top.${UNTRUSTED}`, data: { project: name, board: pj.board || null, device: pj.device, trusted: false } };
+      const made = top ? ` It starts with ${top} (the top module 'top').` : '';
+      const more = flow ? { topSourceType: pj.topSourceType ?? null, preferredLanguage: pj.preferredLanguage, top: pj.top || null, topFile: top } : {};
+      if (designOnly) return { text: `${top ? 'D' : 'Empty d'}esign and simulation project '${name}' made (no FPGA).${made} Add its drawings with new_source${top ? '' : ', then set_top'}.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, ...more, trusted: false } };
+      return { text: `${top ? 'P' : 'Empty p'}roject '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}).${made} Write its sources with write_file${top ? '' : ', then set_top'}.${UNTRUSTED}`, data: { project: name, board: pj.board || null, device: pj.device, ...more, trusted: false } };
     },
   },
   {

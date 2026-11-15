@@ -3,7 +3,7 @@
 // an IC's pinout, the part's details, #4126; a wire's colour) and the circuit's (its name; its HDL's language the ⋮ menu's, #4063). Its edits are core/circuit-edit.js's.
 import { h } from './ui.js';
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.js';
-import { setPartProps } from '/core/circuit-edit.js';
+import { setPartProps, setWireProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 import { partInfo } from '/core/circuit-part-info.js';
 
@@ -61,7 +61,7 @@ export function mountCircuitSide(ctx) {
       selSection.replaceChildren(...kids.filter(Boolean));
     } else if (w) {
       const c = h('select', { class: 'circ-color-in' }, ...WIRE_COLORS.map((k) => h('option', { value: k, selected: w.color === k }, k)));
-      c.addEventListener('change', () => { const m = structuredClone(M()); m.wires.find((x) => x.id === w.id).color = c.value; setM(m); commit(); });
+      c.addEventListener('change', () => apply(setWireProps(M(), w.id, { color: c.value })));
       selSection.replaceChildren(h('h3', {}, `Wire ${w.id}`), field('Colour', c));
     } else selSection.replaceChildren();
   }

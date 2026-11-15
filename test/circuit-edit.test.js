@@ -3,10 +3,10 @@
 // nets before the edit (core/circuit-net.js), an independent reckoning of what joins what.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { partHoles, partPins } from '../core/circuit-parts.js';
+import { partHoles, partPins, WIRE_COLORS } from '../core/circuit-parts.js';
 import { circuitNets } from '../core/circuit-net.js';
 import { checkCircuit } from '../core/circuit-check.js';
-import { movePart, rotatePart, copyParts, pasteParts, addPart, pointOf } from '../core/circuit-edit.js';
+import { movePart, rotatePart, copyParts, pasteParts, addPart, pointOf, setWireProps, setPartProps, setProps } from '../core/circuit-edit.js';
 import { halfAdder, icBench } from './circuit-helpers.mjs';
 
 // what joins what: each net's pins, sorted
@@ -90,4 +90,24 @@ test('copy and paste (#4066): a breadboard with the parts on it and the wires be
   assert.deepEqual(pasteParts(m, { parts: [] }), { error: 'nothing to paste' });
   assert.deepEqual(pasteParts(m, clip, [1]), { error: 'by: a move [dx, dy] in grid steps' });
   assert.deepEqual(pasteParts(m, { parts: [{ type: 'resistor', x: 0, y: 0 }] }), { error: 'no part \'resistor\' in the library' });
+});
+
+test('a wire\'s colour set (#4121), as its Properties\' Colour: the wire alone changed, the connections the same; setProps a part\'s or a wire\'s; the refusals', () => {
+  const m = halfAdder();
+  const r = setWireProps(m, 'WS', { color: 'green' });
+  assert.equal(r.error, undefined);
+  assert.deepEqual(r.model.wires.find((w) => w.id === 'ws'), { ...m.wires.find((w) => w.id === 'ws'), color: 'green' });
+  assert.deepEqual(r.model.wires.filter((w) => w.id !== 'ws'), m.wires.filter((w) => w.id !== 'ws'));
+  assert.deepEqual(r.model.parts, m.parts);
+  assert.deepEqual(joins(r.model), joins(m));
+  assert.notEqual(m.wires.find((w) => w.id === 'ws').color, 'green', 'the model given unchanged');
+  for (const c of WIRE_COLORS) assert.equal(setWireProps(m, 'ws', { color: c }).model.wires.find((w) => w.id === 'ws').color, c);
+  assert.deepEqual(setWireProps(m, 'ws', { color: 'pink' }), { error: `color: one of ${WIRE_COLORS.join(', ')}` });
+  assert.deepEqual(setWireProps(m, 'ws', { on: true }), { error: 'wire ws has no property \'on\' (color)' });
+  assert.deepEqual(setWireProps(m, 'w99', { color: 'red' }), { error: 'no wire w99 in the circuit' });
+  assert.deepEqual(setWireProps(m, 'U1', { color: 'red' }), { error: 'no wire U1 in the circuit' });
+  // setProps: a part's as setPartProps', a wire's as setWireProps', neither refused
+  assert.deepEqual(setProps(m, 'D1', { color: 'green' }), setPartProps(m, 'D1', { color: 'green' }));
+  assert.deepEqual(setProps(m, 'ws', { color: 'green' }), r);
+  assert.deepEqual(setProps(m, 'X9', { color: 'red' }), { error: 'no part or wire X9 in the circuit' });
 });
