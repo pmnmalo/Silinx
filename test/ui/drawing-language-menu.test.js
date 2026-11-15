@@ -1,5 +1,5 @@
-// UI: a drawing's HDL language in its editor's ⋮ menu (#4063): the schematic's, the Boolean algebra's, the state
-// diagram's, the ASM chart's, the Petri net's and the circuit's, Preferred Language ✓ by default; the circuit in Verilog
+// UI: a drawing's HDL language in its editor's ⋮ menu (#4063): the schematic's, the state diagram's, the ASM chart's,
+// the Petri net's and the circuit's, Preferred Language ✓ by default (the Boolean algebra's Notation only, #4159); the circuit in Verilog
 // (its .v made, its .vhd gone, the project's sourceLanguage), then back to the Preferred Language; the circuit's
 // Properties without their HDL language; none in a design project; Portuguese. No warnings. Both interfaces.
 import { before, after } from 'node:test';
@@ -31,13 +31,15 @@ const open = async (page, f) => {
   await page.waitFor((doc) => document.querySelector(`${doc} :is(.tb-more-btn, [data-act=more])`), [DOC], { what: f });
 };
 
-uiTest('#4063 every drawing\'s ⋮ menu: its HDL language, Preferred Language by default; the circuit in Verilog and back; Portuguese', E, async (page) => {
+uiTest('#4063 #4159 every drawing\'s ⋮ menu but the Boolean algebra\'s: its HDL language, Preferred Language by default; the circuit in Verilog and back; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'DrawLang', top: '', files: Object.fromEntries(Object.entries(FILES).map(([f, m]) => [f, JSON.stringify(m, null, 2)])) });
   await page.setViewport(1440, 900);
   await page.openProject('DrawLang');
   for (const f of Object.keys(FILES)) {
     await open(page, f);
-    assert.deepEqual(await choice(page), { title: [...(f.endsWith('.bool.json') ? ['Notation'] : f.endsWith('.fsm.json') ? ['Encoding', 'Coding Style'] : f.endsWith('.asm.json') ? ['Encoding'] : f.endsWith('.sch.json') ? ['Wires', 'Wire crossings'] : f.endsWith('.circ.json') ? ['Wire crossings'] : []), 'HDL Language'],
+    // (the Boolean algebra: its Notation, no HDL Language, #4159)
+    if (f.endsWith('.bool.json')) { assert.deepEqual(await choice(page), { title: ['Notation'], items: [] }, f); continue; }
+    assert.deepEqual(await choice(page), { title: [...(f.endsWith('.fsm.json') ? ['Encoding', 'Coding Style'] : f.endsWith('.asm.json') ? ['Encoding'] : f.endsWith('.sch.json') ? ['Wires', 'Wire crossings'] : f.endsWith('.circ.json') ? ['Wire crossings'] : []), 'HDL Language'],
       items: [['Preferred Language', true], ['VHDL', false], ['Verilog', false]] }, f);
   }
   // the circuit: no HDL language in its Properties any more; in Verilog, then back

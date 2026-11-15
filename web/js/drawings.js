@@ -33,7 +33,7 @@ export { openPetriFsm };
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
 const followOnly = (path = null) => (following() && !(path && editsDrawingHere(path)) ? { readOnly: true, banner: followNotice() } : {});
 // a drawing's ⋮ menu: its HDL's language (#4063), unless it is followed read-only
-export const langMenu = (path) => (followOnly(path).readOnly ? [] : languageMenu(path));
+const langMenu = (path) => (followOnly(path).readOnly ? [] : languageMenu(path));
 
 // ---- ASM
 export async function openAsm(path) {

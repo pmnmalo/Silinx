@@ -20,7 +20,7 @@ answer here.
   Properties toggle; the toolbar's ⋮ menu (`web/js/toolbar-menu.js`) at the right end of its first line for the
   commands used now and then (layout, conversion, export, analysis), its place kept free whatever wraps (#2208,
   #2331). A drawing's ⋮ menu ends with its HDL language (#4063, `web/js/drawing-lang-menu.js`: Preferred Language,
-  VHDL, Verilog), none in a design project.
+  VHDL, Verilog), none in a design project nor in the Boolean algebra's, whose Notation lists VHDL and Verilog (#4159).
 - **A drawing editor's tools** (#3971): its select arrow is the toolbar's first tool and the default one; an add tool
   stays on (pressed, a crosshair) and adds at each click until another tool, the arrow or Esc (`web/js/editor-tools.js`,
   the state diagram's, the ASM chart's and the Petri net's).
