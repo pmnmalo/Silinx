@@ -17,6 +17,7 @@ import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem, addWire } from '/core/circuit-edit.js';
+import { mountCircuitOptions } from './circuit-options.js';
 import { mountCircuitClip } from './circuit-clip.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
@@ -45,13 +46,9 @@ export function mountCircuitEditor(container, opts = {}) {
   const sep = () => h('span', { class: 'asm-sep' });
   const status = (msg, err = false) => { if (msg) opts.onMessage?.(msg, err); };
 
-  // Keep connections (#4059): remembered, on by default
-  const KEEP_KEY = 'silinx.circuit.keep';
-  let keepOn = true;
-  try { keepOn = localStorage.getItem(KEEP_KEY) !== '0'; } catch { /* no storage */ }
-  const keepBox = h('input', { type: 'checkbox', class: 'circ-keep-in', checked: keepOn });
-  keepBox.addEventListener('change', () => { keepOn = keepBox.checked; try { localStorage.setItem(KEEP_KEY, keepOn ? '1' : '0'); } catch { /* no storage */ } });
-  const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox,
+  // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Curved wires, Hop-overs): circuit-options.js
+  const { keepBox, insideBox, more, keep, inside, hops, sync } = mountCircuitOptions({ M: () => M, readOnly, applyEdit: (...a) => applyEdit(...a), render: () => render() });
+  const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox, insideBox, more,
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
     toggleSim, zoomBtn, fit: () => fit(),
   });
@@ -77,7 +74,7 @@ export function mountCircuitEditor(container, opts = {}) {
   if (readOnly) {
     root.classList.add('asm-readonly');
     for (const g of [tools.select.parentElement, tools.select.parentElement.nextElementSibling, rotBtn.parentElement, rotBtn.parentElement.nextElementSibling]) g.hidden = true;
-    for (const g of [keepBox.closest('.asm-group')]) { g.hidden = true; g.nextElementSibling.hidden = true; }
+    keepBox.closest('label').hidden = true;   // (Show inside kept: how it is drawn)
     for (const g of [toolbar.querySelector('.circ-check').parentElement]) g.hidden = true;
     if (opts.banner) toolbar.append(opts.banner);
   }
@@ -108,7 +105,7 @@ export function mountCircuitEditor(container, opts = {}) {
   }
   function deleteSelection() { if (!sel || readOnly) return; const id = sel.id; sel = null; applyEdit(deleteItem(M, id)); }
   // (any part, a breadboard with the parts on it, #4065; its wires' ends with it while Keep connections, #4059)
-  function rotateSelection() { if (sel?.kind === 'part' && !readOnly) applyEdit(rotatePart(M, sel.id, 1, { keep: keepOn })); }
+  function rotateSelection() { if (sel?.kind === 'part' && !readOnly) applyEdit(rotatePart(M, sel.id, 1, { keep: keep() })); }
   const clip = mountCircuitClip({ M: () => M, sel: () => sel, setSel: (s) => { sel = s; }, readOnly, applyEdit });
 
   // ---------------------------------------------------------------- the live simulation
@@ -143,7 +140,8 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit(M, { sel, draft, ghost, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit(M, { sel, draft, ghost, inside: inside(), hops: hops(), levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
+    sync();   // (Curved wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
     simBtn.classList.toggle('active', !!sim);
@@ -210,7 +208,7 @@ export function mountCircuitEditor(container, opts = {}) {
       // (shown as it will be: a breadboard with the parts on it, the wires' ends with them while Keep connections, #4059)
       const nx = g[0] - drag.dx, ny = g[1] - drag.dy, p = M.parts.find((x) => x.id === drag.id);
       if (p && (p.x !== nx || p.y !== ny)) {
-        const r = movePart(drag.base, drag.id, [nx, ny], { keep: keepOn });
+        const r = movePart(drag.base, drag.id, [nx, ny], { keep: keep() });
         if (!r.error) { M = r.model; drag.moved = nx !== drag.at[0] || ny !== drag.at[1]; render(); }
       }
     }

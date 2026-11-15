@@ -8,24 +8,29 @@ import { sv } from './dom.js';
 import { partDef, partPins, partHoles, BB_COLS, BB_ROWS, BB_RAILS } from '/core/circuit-parts.js';
 import { portName } from '/core/circuit.js';
 import { drawPart2 } from './circuit-draw-parts.js';
+import { icInside, stripsSvg } from './circuit-draw-inside.js';
+import { wirePaths } from '/core/circuit-wires.js';
 
 export const P = 20;   // pixels per grid step
 const px = (v) => v * P;
 
-/** The circuit drawn: a <g> of its breadboards, wires and parts. `levels(partId, pin)`: a pin's level while simulating. */
-export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs = null, draft = null, ghost = null } = {}) {
-  const g = sv('g', { class: 'circ-drawing' });
+/** The circuit drawn: a <g> of its breadboards, wires and parts. `levels(partId, pin)`: a pin's level while simulating;
+ *  `inside`: the ICs' gates or pin names and the breadboards' strips shown (#4060); `hops`: the wires' hop-overs (#4064). */
+export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs = null, draft = null, ghost = null, inside = false, hops = false } = {}) {
+  const g = sv('g', { class: `circ-drawing${inside ? ' circ-inside' : ''}` });
   const isSel = (id) => sel?.id === id;
-  for (const p of m.parts) if (partDef(p.type)?.kind === 'breadboard') g.append(breadboardSvg(p, isSel(p.id)));
-  for (const w of m.wires) g.append(wireSvg(w, isSel(w.id)));
-  for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs }));
+  for (const p of m.parts) if (partDef(p.type)?.kind === 'breadboard') g.append(breadboardSvg(p, isSel(p.id), inside));
+  // (straight or curved, hopping over the wires drawn before them: core/circuit-wires.js)
+  const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { curved: m.wireStyle === 'curved', hops });
+  for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
+  for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs, inside }));
   if (draft?.length) g.append(sv('polyline', { class: 'circ-wire circ-draft', points: draft.map(([x, y]) => `${px(x)},${px(y)}`).join(' ') }));
   if (ghost) { const e = partSvg(ghost, false, {}); e.classList.add('circ-ghost'); g.append(e); }
   return g;
 }
 
 // (turned, #4065: drawn unturned, then turned about its hole a1)
-function breadboardSvg(turned, selected) {
+function breadboardSvg(turned, selected, inside) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type), cols = d.cols || BB_COLS;
   const x0 = px(p.x) - P, y0 = px(p.y + BB_RAILS.tp) - P, w = px(cols + 1), hgt = px(BB_RAILS.bp - BB_RAILS.tp + 2);
   const g = sv('g', { class: `circ-bb${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id, ...(turned.rot ? { transform: `rotate(${90 * turned.rot} ${px(p.x)} ${px(p.y)})` } : {}) },
@@ -38,6 +43,7 @@ function breadboardSvg(turned, selected) {
     const ly = px(p.y + y) + (r === 'tp' || r === 'bn' ? -P / 2 : P / 2);
     for (const [a, b] of spans) g.append(sv('line', { x1: a, x2: b, y1: ly, y2: ly, class: r.endsWith('p') ? 'circ-rail-plus' : 'circ-rail-minus' }));
   }
+  if (inside) g.append(stripsSvg(p, d));   // (its strips, under its holes, #4060)
   for (const hle of partHoles(p)) g.append(sv('rect', { x: px(hle.x) - 3.5, y: px(hle.y) - 3.5, width: 7, height: 7, rx: 1.5, class: 'circ-hole' }));
   // the rows' letters and every fifth column's number
   for (const [r, y] of Object.entries(BB_ROWS)) g.append(sv('text', { x: x0 + P / 2, y: px(p.y + y) + 3.5, class: 'circ-bb-label' }, r));
@@ -45,17 +51,16 @@ function breadboardSvg(turned, selected) {
   return g;
 }
 
-function wireSvg(w, selected) {
-  const pts = w.points.map(([x, y]) => `${px(x)},${px(y)}`).join(' ');
+function wireSvg(w, selected, d) {
   const [a, b] = [w.points[0], w.points[w.points.length - 1]];
   return sv('g', { class: `circ-wire-g${selected ? ' circ-sel' : ''}`, 'data-kind': 'wire', 'data-id': w.id },
-    sv('polyline', { points: pts, class: 'circ-wire-hit' }),
-    sv('polyline', { points: pts, class: `circ-wire circ-w-${w.color}` }),
+    sv('path', { d, class: 'circ-wire-hit' }),
+    sv('path', { d, class: `circ-wire circ-w-${w.color}` }),
     ...[a, b].map(([x, y]) => sv('circle', { cx: px(x), cy: px(y), r: 3.2, class: `circ-wire-end circ-w-${w.color}` })));
 }
 
 const LEVEL_CLS = { 0: 'lv0', 1: 'lv1', Z: 'lvz', X: 'lvx' };
-function partSvg(p, selected, { levels, leds, inputs }) {
+function partSvg(p, selected, { levels, leds, inputs, inside = false }) {
   const d = partDef(p.type);
   const pins = partPins(p);
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
@@ -69,7 +74,9 @@ function partSvg(p, selected, { levels, leds, inputs }) {
     const nx = (px(p1.x) + px(p14.x)) / 2 - (p1.x === p14.x ? 0 : 0), ny = (px(p1.y) + px(p14.y)) / 2;
     const toward = [px(p1.x) - (px(pins[1].x)), px(p1.y) - (px(pins[1].y))];   // (from pin 2 to pin 1: the notch's side)
     g.append(sv('circle', { cx: nx + Math.sign(toward[0]) * P * 0.4, cy: ny + Math.sign(toward[1]) * P * 0.4, r: P * 0.28, class: 'circ-ic-notch' }));
-    g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${d.chip}`));
+    // (shown inside, #4060: its gates or its pins' names in its body, its name in its tip)
+    if (inside) { g.append(sv('title', {}, `${p.id}  ${d.chip}`)); icInside(g, d, pins, box); }
+    else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${d.chip}`));
   } else if (d.type === 'logic-switch') {
     const on = inputs ? inputs[p.id] : p.on;
     g.dataset.input = 'switch';

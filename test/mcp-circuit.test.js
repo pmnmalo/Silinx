@@ -62,7 +62,7 @@ test('edit_circuit: a half adder built on New Source\'s breadboard, its HDL made
   const before = read('src/half_adder.circ.json');
   await fails('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: [{ op: 'add', type: '7404', at: 'BB1.f22' }, { op: 'wire', from: 'U9.1', to: 'BB1.a1' }] },
     'operation 1 (wire): \'U9.1\': no part U9 in the circuit (nothing written)');
-  await fails('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: [{ op: 'paint' }] }, 'operations[0].op: one of add, move, rotate, copy, delete, wire, set');
+  await fails('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: [{ op: 'paint' }] }, 'operations[0].op: one of add, move, rotate, copy, delete, wire, set, wires');
   await fails('edit_circuit', { project: 'c', path: 'src/x.pn.json', operations: [{ op: 'delete', id: 'U1' }] }, 'src/x.pn.json: not a circuit (.circ.json)');
   assert.equal(read('src/half_adder.circ.json'), before);
   // a 7404 added beside the breadboard, unpowered: its error, its HDL not made again
@@ -79,7 +79,7 @@ test('edit_circuit: a half adder built on New Source\'s breadboard, its HDL made
   assert.match(w.text, /^WARNING: U3 pin 1 \(1A\) is floating: a 74LS input reads high\nProcess "Check Circuit" of half_adder\.circ\.json completed successfully with 1 warning\(s\)\.$/m);
 });
 
-test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a breadboard turned; a part copied (#4059, #4065, #4066)', async () => {
+test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a breadboard turned; a part copied; curved wires (#4059, #4065, #4066, #4064)', async () => {
   await ok('write_file', { project: 'c', path: 'src/moves.circ.json', text: JSON.stringify({ ...halfAdder(), name: 'moves' }, null, 2) });
   const P = 'src/moves.circ.json', m = () => JSON.parse(read(P));
   let r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'move', id: 'BB1', at: [3, 5] }] });
@@ -97,6 +97,13 @@ test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a 
   assert.deepEqual([r.data.parts, r.data.wires, r.data.errors.map((d) => d.item)], [14, 26, ['U3', 'U4']]);
   assert.deepEqual(m().parts.find((p) => p.id === 'U1'), { id: 'U1', type: '7486', x: -7, y: 4, rot: 1 });
   await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'copy', id: 'U9' }] }, 'operation 0 (copy): no part U9 in the circuit (nothing written)');
+  // (#4064) how its wires are drawn, the editor's ⋮ Curved wires
+  r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'curved' }] });
+  assert.equal(r.text.split('\n')[0], 'the wires drawn curved');
+  assert.equal(m().wireStyle, 'curved');
+  await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'straight' }] });
+  assert.equal(m().wireStyle, undefined);
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'wavy' }] }, 'operation 0 (wires): style: curved or straight (nothing written)');
 });
 
 test('simulate_drawing: a circuit\'s steps, its switches by their labels, its LEDs and time; a floating input; its refusals', async () => {

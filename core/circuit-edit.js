@@ -165,3 +165,10 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   }
   return null;
 });
+
+/** How the circuit's wires are drawn (#4064): 'curved' (smooth curves through their bends) or 'straight'. */
+export const setWireStyle = (m, style) => edit(m, (c) => {
+  if (style !== 'curved' && style !== 'straight') return 'style: curved or straight';
+  if (style === 'curved') c.wireStyle = 'curved'; else delete c.wireStyle;
+  return null;
+});

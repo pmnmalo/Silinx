@@ -28,6 +28,13 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   part turns a quarter clockwise (R), a breadboard too; there is no mirror. **Cut, Copy and Paste** (#4066) copy the
   selected part (a breadboard with the parts on it and the wires between them), pasted 2 steps right and down, new ids
   given, a label another part has left out.
+- **Show inside** (#4060, the toolbar's, remembered): each breadboard's strips drawn under its holes (each column's a–e
+  and f–j, each power rail), each gate IC's gates in its body (IEC boxes, &, ≥1, =1, 1, a bubble on an inverting one)
+  joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire.
+- **How the wires are drawn** (#4064, the ⋮ menu, as the schematic's): **Curved wires** (the circuit's `wireStyle`,
+  saved with it: each wire a smooth curve through its bends, as a jumper wire) and **Hop-overs** (remembered, on by
+  default: a small arc where a wire crosses one drawn before it without joining it); `core/circuit-wires.js`. The look
+  only: the connections are the same.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
   net's: the toolbar (select, wire, rotate, delete, then the zoom, Keep connections, then Check and Try it; while trying it, the Try it bar above the canvas, as the schematic's, its Reset and Stop, #4067; printed
   by the main toolbar's Print), the Properties side panel on the right, foldable, over the canvas behind ☰ Properties on a
@@ -227,7 +234,7 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 - `circuit_parts`: the library, a part's pins, its logic and delay;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
   rotate (a breadboard with its parts; `keep: false`, the editor's Keep connections off), copy (the editor's Copy and
-  Paste), delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
+  Paste), wires (curved or straight, the editor's Curved wires), delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points), set a part's label (a bus's bit,
   `led[0]`) or colour;
 - `run_process`: a circuit as a project's top synthesized, implemented and its bitstream made, as any top;
 - `check_drawing`: the circuit's check (its errors and warnings, as the console's);
