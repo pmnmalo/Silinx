@@ -35,8 +35,8 @@ async function reopenable(mod, model) {
 const reopenKey = d => d.reopen || d.id;
 /** A document's key as a view state has it (`file:<path>`, `isim:<module>`, `summary`…). */
 export const viewKeyOf = d => (d ? reopenKey(d) : null);
-/** A document of a view state opened (#4002: a followed owner's): false when it is of no kind REOPEN opens, or does not
- *  open in this project. */
+/** Opens a document of a view state (#4002: one the followed owner has open): false when it is of no kind REOPEN
+ *  opens, or does not open in this project. */
 export async function reopenDoc(id) {
   const [re, open] = REOPEN.find(([r]) => r.test(id)) || [];
   if (!re) return false;
