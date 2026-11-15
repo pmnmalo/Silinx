@@ -76,6 +76,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - if: github.event.pull_request.draft
-        run: echo "::error::a draft pull request runs no test (#4166): mark it ready, gh pr ready" && exit 1
+        run: >-
+          echo "::error::A draft pull request runs no test (#4166): mark it ready with gh pr ready." && exit 1
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1

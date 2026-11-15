@@ -374,7 +374,7 @@ test('#4166 PR tests: a draft runs no test and fails the check main requires; at
   const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
   // a draft: no plan (so no part), and the verdict fails first, never green nor missing (an admin's merge would pass it)
   assert.match(yml, /\n {2}plan:\n {4}if: \$\{\{ !github\.event\.pull_request\.draft \}\}\n/);
-  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[plan, tests\]\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}steps:\n {6}- if: github\.event\.pull_request\.draft\n {8}run: echo "::error::[^"\n]*gh pr ready" && exit 1\n {6}- if: contains\(needs\.\*\.result, 'failure'\)/);
+  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[plan, tests\]\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}steps:\n {6}- if: github\.event\.pull_request\.draft\n {8}run: >-\n {10}echo "::error::[^"\n]*gh pr ready\." && exit 1\n {6}- if: contains\(needs\.\*\.result, 'failure'\)/);
   // marked ready, the tests run; turned back into a draft, the check fails again; no other trigger, no pull_request_target
   assert.match(yml, /types: \[[^\]]*\bready_for_review\b[^\]]*\bconverted_to_draft\b[^\]]*\]/);
   assert.doesNotMatch(yml, /pull_request_target|workflow_dispatch|\n {2}push:/);
