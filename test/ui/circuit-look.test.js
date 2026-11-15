@@ -55,9 +55,9 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Curved w
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-inside span`).textContent === 'Mostrar o interior', [ED], { what: 'Portuguese' });
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item`)].map((b) => [b.textContent.replace(/^✓/, ''), b.title]), ED),
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item:not([data-lang])`)].map((b) => [b.textContent.replace(/^✓/, ''), b.title]), ED),
     [['Fios curvos', 'Desenhar os fios como curvas suaves pelas suas dobras, como fios de ligação (as ligações as mesmas)'], ['Saltos', 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem']]);
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios e linguagem');   // (and its HDL's, #4063)
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

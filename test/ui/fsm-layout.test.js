@@ -23,7 +23,7 @@ const status = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} 
 const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text);
 // the ⋮ menu's choices (#3289): each title followed by its options, ✓ on the diagram's
 const choices = (page) => page.eval((ed) => [...document.querySelector(`${ed} .tb-more-menu`).children]
-  .filter((e) => e.matches('.tb-menu-title, .tb-menu-check'))
+  .filter((e) => e.matches('.tb-menu-title:not([data-lang]), .tb-menu-check:not([data-lang])'))
   .map((e) => (e.classList.contains('tb-menu-title') ? e.textContent : `${e.getAttribute('aria-checked') === 'true' ? '✓ ' : ''}${e.lastChild.textContent}`)), ED);
 const pickChoice = async (page, value) => {
   await page.click(`${ED} .tb-more-btn`);
@@ -113,7 +113,7 @@ uiTest('#3289 FSM editor: the Encoding and the Coding Style choices of the ⋮ m
   const menu = async () => (await choices(page)).slice(-8);
   assert.deepEqual(await menu(), [...ENC, 'Coding Style', '✓ 3 processes', '2 processes']);
   // a line above each title, Encoding's after the commands as Coding Style's after the encodings (#3306)
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title`)].map((t) => getComputedStyle(t).borderTopStyle), ED), ['solid', 'solid']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title:not([data-lang])`)].map((t) => getComputedStyle(t).borderTopStyle), ED), ['solid', 'solid']);
   const model = await page.eval(() => window.Silinx.active.fsmEditor.getModel());
   const hdl = (m) => generateFsm({ ...model, ...m }, 'vhdl', { source: 'traffic.fsm.json' }).code;
   const vhdl = async (want, what) => {

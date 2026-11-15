@@ -148,6 +148,7 @@ export function mountTtEditor(container, opts = {}) {
     menuItem('pen', 'Handwritten Algebra…', 'Write the expressions by hand, one a line, with any names: they become the table\'s inputs, outputs and expressions', () => handwritten(), 'tt-ink'),
     // its expressions' notation (#3939): the Settings' by default, or the table's own (saved with it)
     ...(notationItems = notationChoice(M, v => { if (v) M.notation = v; else delete M.notation; changed(); })),
+    ...(opts.menuItems || []),   // (its HDL's language, #4063: drawing-lang-menu.js)
   ], { title: 'Fill the table, its notation' });
   const toolbar = h('div', { class: 'tt-toolbar' },
     h('label', {}, 'Inputs:'), inIn, h('label', {}, 'Outputs:'), outIn, shapeErr,

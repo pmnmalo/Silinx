@@ -48,7 +48,7 @@ export function mountCircuitEditor(container, opts = {}) {
   const status = (msg, err = false) => { if (msg) opts.onMessage?.(msg, err); };
 
   // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Curved wires, Hop-overs): circuit-options.js
-  const { keepBox, insideBox, more, keep, inside, hops, sync } = mountCircuitOptions({ M: () => M, readOnly, applyEdit: (...a) => applyEdit(...a), render: () => render() });
+  const { keepBox, insideBox, more, keep, inside, hops, sync } = mountCircuitOptions({ M: () => M, readOnly, menuItems: opts.menuItems, applyEdit: (...a) => applyEdit(...a), render: () => render() });
   const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox, insideBox, more,
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
     toggleSim, zoomBtn, fit: () => fit(),

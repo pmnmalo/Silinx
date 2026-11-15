@@ -37,7 +37,7 @@ uiTest('#2730 the ASM editor: no hint, its states in its status line (#2763), it
       last: el.lastElementChild.className,
       // (the encoding no longer in the toolbar: a choice of its ⋮ menu, its title then its options, ✓ on the chart's, #4055)
       inToolbar: !!tb.querySelector('select, .asm-encoding, .asm-tb-label'),
-      encoding: [...el.querySelector('.tb-more-menu').children].filter((e) => e.matches('.tb-menu-title, .tb-menu-check')).slice(-5)
+      encoding: [...el.querySelector('.tb-more-menu').children].filter((e) => e.matches('.tb-menu-title:not([data-lang]), .tb-menu-check:not([data-lang])')).slice(-5)
         .map((e) => (e.classList.contains('tb-menu-title') ? e.textContent : `${e.getAttribute('aria-checked') === 'true' ? '✓ ' : ''}${e.lastChild.textContent}`)),
       // (nothing selected: the machine's settings only, in a section that does not fold, #2739)
       side: [el.querySelector('.asm-side .asm-cap').textContent, [...el.querySelectorAll('.asm-side h3')].filter((x) => x.getClientRects().length).map((x) => x.textContent),
@@ -49,7 +49,7 @@ uiTest('#2730 the ASM editor: no hint, its states in its status line (#2763), it
   assert.match(look.zoom, /^\d+%$/);
   // Gray picked in the ⋮ menu: the status line says it and the ✓ moves; Undo takes Binary back and its ✓ (#4055)
   const pick = async (value) => { await page.click(`${D} .tb-more-btn`); await page.click(`${D} .tb-more-menu [data-value="${value}"]`); };
-  const checked = () => page.eval((d) => [...document.querySelectorAll(`${d} .tb-more-menu [data-value][aria-checked="true"]`)].map((e) => e.dataset.value), D);
+  const checked = () => page.eval((d) => [...document.querySelectorAll(`${d} .tb-more-menu [data-value]:not([data-lang])[aria-checked="true"]`)].map((e) => e.dataset.value), D);
   const encStatus = () => page.eval((d) => [...document.querySelectorAll(`${d} > .doc-status .ds-f`)].at(-1).textContent, D);
   await pick('gray');
   await page.waitFor((d) => [...document.querySelectorAll(`${d} > .doc-status .ds-f`)].at(-1).textContent === 'Encoding: Gray', [D], { what: 'Gray' });
@@ -97,7 +97,7 @@ uiTest('#2730 the ASM editor: no hint, its states in its status line (#2763), it
   await page.waitFor((d) => document.querySelector(`${d} .asm-info`)?.textContent, [D], { what: 'the editor again' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((d) => document.querySelector(`${d} .asm-info`).textContent === '4 estados', [D], { what: 'Portuguese' });
-  assert.equal(await page.eval((d) => [...document.querySelectorAll(`${d} .tb-more-menu .tb-menu-title`)].at(-1).textContent, D), 'Codificação');
+  assert.equal(await page.eval((d) => [...document.querySelectorAll(`${d} .tb-more-menu .tb-menu-title:not([data-lang])`)].at(-1).textContent, D), 'Codificação');
   assert.deepEqual(await page.eval((d) => [...document.querySelectorAll(`${d} .doc-status .ds-f`)].map((f) => f.textContent), D), ['4 estados', 'Codificação: Binária']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);

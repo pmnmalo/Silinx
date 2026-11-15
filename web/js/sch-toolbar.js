@@ -1,6 +1,7 @@
 // The schematic editor's toolbar (#405: out of mountSchEditor in sch-editor.js): its tools and buttons (Select, Wire,
 // Net Name, I/O Marker, Rotate, Mirror Horizontal / Vertical (#2209), Delete, the zooms, Keep connections, Select whole branch (#2211), Names, Check, Try it, the panels on a narrow
-// screen; the menu at the right of the first line, #2208: Rearrange Wires / Rearrange Schematic (#1481, #1506, #1730), Curved wires (#1144), Hop-overs), the editing ones hidden when read-only, and their clicks.
+// screen; the menu at the right of the first line, #2208: Rearrange Wires / Rearrange Schematic (#1481, #1506, #1730), Curved wires (#1144), Hop-overs, the
+// HDL's language, #4063), the editing ones hidden when read-only, and their clicks.
 import { PROPS_KEY, SYMBOLS_KEY, panelToggle } from './narrow.js';
 import { h } from './dom.js';
 import { ICON } from './sch-editor.js';
@@ -11,7 +12,7 @@ import { designKind } from './project-kind-flag.js';
 export function mountSchToolbar(ctx) {
   const {
     branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, curvedBox, deleteSel, enterSim, fit, hopsBox, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
-    readOnly, rotateSel, runCheck, sep, setTool, tb, zoomAt
+    readOnly, rotateSel, runCheck, sep, setTool, tb, zoomAt, menuItems
   } = ctx;
 
   const optBox = h('span', { class: 'se-opts' });
@@ -26,6 +27,8 @@ export function mountSchToolbar(ctx) {
       : 'Draw the wires as smooth curves of any shape instead of the technical drawing\'s square corners (the connections, the nets and the HDL the same)' },
       curvedBox, h('span', { text: 'Curved wires' })),
     h('label', { class: 'se-hops', title: 'Draw a small arc where two wires cross without connecting' }, hopsBox, h('span', { text: 'Hop-overs' })),
+    // (its HDL's language, #4063: drawing-lang-menu.js)
+    ...(menuItems?.length ? [h('span', { class: 'se-sep' }), ...menuItems] : []),
   );
   const moreBtn = h('button', { type: 'button', class: 'se-btn', 'data-act': 'more', title: 'Wires and layout', 'aria-haspopup': 'true', 'aria-expanded': 'false', html: ICON.more });
   const more = h('span', { class: 'se-more' }, moreBtn, moreMenu);

@@ -10,7 +10,7 @@ import { markStale, saveAll } from './processes.js';
 import { removeModule, renderHierarchy, topMenuItem } from './design.js';
 import { renameDialog } from './rename.js';
 import {
-  clashItem, drawnHdlLanguage, drawnTop, freshHdl, refreshOpenEditor, refreshSyncBanner, setViewAsTop, staleHdl
+  clashItem, drawnHdlLanguage, drawnTop, freshHdl, langMenu, refreshOpenEditor, refreshSyncBanner, setViewAsTop, staleHdl
 } from './drawings.js';
 import { designSources as ttDesignSources } from './tbwizard.js';
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
@@ -34,7 +34,7 @@ export async function openTt(path) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
       const ed = mountTtEditor(host, {
-        model,
+        model, menuItems: langMenu(path),
         onChange: (m, o) => { setDirty(d, true, o); refreshTtSchematic(path, m); },
         linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),

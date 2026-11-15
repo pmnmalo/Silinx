@@ -1,5 +1,5 @@
 // The project's Preferred Language changed (Design Properties, #1477): every drawing of the project (schematic, ASM
-// chart, state diagram, truth table, Petri net) in that language, as when its editor's HDL language changes (#220):
+// chart, state diagram, truth table, Petri net, circuit) in that language, as when its editor's HDL language changes (#220):
 // its HDL file, generated from it, made again in it and the file in the other language removed (drawnHdlLanguage);
 // a drawing with errors gets the language, its HDL made in it once it has none. The HDL files written by hand stay
 // as they are. A drawing given its own language in Source Properties (#2254, the project's sourceLanguage: { drawing:
@@ -23,7 +23,7 @@ export async function drawingsInLanguage(lang) {
 // The drawing in that language; true when that changed it.
 async function drawingToLanguage(f, lang) {
   const d = findDoc(`${viewKind(f)}:${f}`);
-  const ed = d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor;
+  const ed = d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor || d?.circuitEditor;
   if (d) await flushDoc(d);   // (its last edits saved first)
   let r;
   try { r = drawingInLanguage(f, await api.readFile(S.project.name, f), lang); } catch { return false; }
