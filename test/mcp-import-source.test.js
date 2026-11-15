@@ -102,3 +102,16 @@ test('import_source: its errors (outside the exchange folder, no such file, a fi
   // (one file refused: none copied)
   await fails('import_source', { project: 'p', files: ['tb_inv.vhd', 'x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .mem, .hex, .asm.json, .json)');
 });
+
+test('import_source and import_project: no hidden file or folder of the exchange folder, by its name or through a link', async () => {
+  await ok('new_project', { name: 'h' });
+  put('.private/key.json', '{"private_key":"k"}\n');
+  put('.inv.vhd', INV);
+  fs.symlinkSync(path.join(tmp, 'exchange', '.private'), path.join(tmp, 'exchange', 'visible'));
+  await fails('import_source', { project: 'h', files: ['.private/key.json'] }, 'files: \'.private/key.json\' is a hidden file or folder (\'.private\'), which no tool reads nor writes');
+  await fails('import_source', { project: 'h', files: ['.inv.vhd'] }, 'files: \'.inv.vhd\' is a hidden file or folder (\'.inv.vhd\'), which no tool reads nor writes');
+  await fails('import_source', { project: 'h', files: ['visible/key.json'] }, 'files: \'visible/key.json\' is a hidden file or folder (\'.private\'), which no tool reads nor writes');
+  await fails('import_project', { name: 'h2', from: '.private' }, 'from: \'.private\' is a hidden file or folder (\'.private\'), which no tool reads nor writes');
+  assert.deepEqual((await P.fileTree('h')).filter(f => /key|inv/.test(f)), []);
+  assert.equal(fs.existsSync(P.projectDir('h2')), false);
+});

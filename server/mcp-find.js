@@ -3,11 +3,21 @@
 // drawings: their texts), through the same functions (core/find.js), and its Replace All in the text sources not
 // generated from a drawing (a generated HDL file is found but replaced in its drawing). What is replaced is written as
 // write_file writes, through the import gate (#2830).
+import vm from 'node:vm';
 import * as P from './projects.js';
 import { toolError, clip, readProject, STR, PROJECT } from './mcp-util.js';
 import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
 
 const LISTED = 500;   // (the results listed at most, in the text and in the structured content)
+// a search's time bounded: a regular expression that backtracks without end ((a+)+$ on a long line) would hold the MCP
+// server, one request at a time; its matching runs as a script with a timeout, which stops it wherever it is
+export const SEARCH_LIMIT_S = 5;
+function bounded(fn, limitS = SEARCH_LIMIT_S) {
+  try { return vm.runInNewContext('fn()', { fn }, { timeout: limitS * 1000 }); } catch (e) {
+    if (e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT') throw toolError(`the search took longer than ${limitS} s and was stopped: a simpler regular expression (one that does not repeat a repetition, as (a+)+)`);
+    throw e;
+  }
+}
 
 // the project's texts to search: [{ path, text, drawing, generated }] (the drawings' HDL files: generated, as the
 // interface reads them when it opens the project, web/js/project.js)
@@ -49,7 +59,8 @@ export const FIND_TOOLS = [
       const opts = { text, matchCase, word, regex };
       const { re, error } = findPattern(opts);
       if (error) throw toolError(`Invalid regular expression: ${error}`);
-      const found = findInProject(await projectTexts(name, pj), re);
+      const texts = await projectTexts(name, pj);
+      const found = bounded(() => findInProject(texts, re));
       const count = found.reduce((s, f) => s + f.hits.length, 0);
       const lines = [];
       let listed = 0;
@@ -68,8 +79,9 @@ export const FIND_TOOLS = [
       const { GateError, gateFile } = await import('../core/import-gate.js');
       const replaced = [];
       let n = 0;
-      for (const f of found.filter(f => !f.drawing && !f.generated)) {
-        const r = replaceInText(f.text, findPattern(opts).re, replace, { regex });
+      // (every replacement made, within the search's time, before the first is written)
+      const todo = bounded(() => found.filter(f => !f.drawing && !f.generated).map(f => ({ f, r: replaceInText(f.text, findPattern(opts).re, replace, { regex }) })));
+      for (const { f, r } of todo) {
         if (r.text === f.text) continue;
         try { gateFile(f.path, r.text); } catch (e) { if (e instanceof GateError) { lines.push(`WARNING: ${e.path}: not written: ${e.reason}`); continue; } throw e; }
         await P.writeFile(name, f.path, r.text);

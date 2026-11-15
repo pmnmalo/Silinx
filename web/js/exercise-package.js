@@ -46,7 +46,8 @@ export async function classroomTemplateDialog({ name, path, exercise }) {
   const raw = exercise();
   const besides = new Map();
   for (const f of besideFiles(visibleCopy(raw))) besides.set(f, await api.readFile(name, r.dir ? `${r.dir}/${f}` : f));
-  const files = templateFiles(r.full, raw, { starter: starterProject(r.full, { lang: select.value, board: pj.board, device: pj.device }), beside: f => besides.get(f) });
+  let files;
+  try { files = templateFiles(r.full, raw, { starter: starterProject(r.full, { lang: select.value, board: pj.board, device: pj.device }), beside: f => besides.get(f) }); } catch (e) { log(`ERROR: ${e.message}`, 'err'); log('No template made: the exercise has problems.', 'err', { diag: false }); return; }
   const zip = await createZip([...files].map(([p, text]) => ({ path: p, data: text })), browserCodec());
   const file = `${r.full.id}-template.zip`;
   downloadText(file, zip, 'application/zip');

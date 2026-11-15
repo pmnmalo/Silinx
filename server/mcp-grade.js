@@ -18,6 +18,7 @@ import { projectReference } from '../core/grade-author.js';
 import { starterProject, templateFiles, STARTER_LANGUAGES } from '../core/grade-package.js';
 import { parseResults, classSummary, classCsv, classText } from '../core/grade-class.js';
 import { textReport, csvReport } from '../core/grade-report.js';
+import { markMadeByMcp } from '../core/trust.js';
 
 const ACTIONS = ['run', 'check', 'ports', 'reference', 'expected', 'student_copy', 'template', 'results', 'new'];
 
@@ -70,7 +71,11 @@ async function writeTemplate(name, rel, ex, folder, lang) {
   const at = dirOf(rel);
   const besides = new Map();
   for (const t of raw.tests || []) for (const f of [t?.file, ...(Array.isArray(t?.files) ? t.files.map(x => x?.file) : [])]) if (t?.visible && typeof f === 'string') besides.set(f, await projectText(name, at ? `${at}/${f}` : f, `no file ${f} beside ${rel}`));
-  const files = templateFiles(ex, raw, { starter: starterProject(ex, { lang: language, board: pj.board, device: pj.device }), beside: f => besides.get(f) });
+  // (its project made through the MCP server, from what an assistant wrote: untrusted, as new_project's, #2981)
+  const starter = starterProject(ex, { lang: language, board: pj.board, device: pj.device });
+  starter.set('silinx.json', `${JSON.stringify(markMadeByMcp(JSON.parse(starter.get('silinx.json'))), null, 2)}\n`);
+  let files;
+  try { files = templateFiles(ex, raw, { starter, beside: f => besides.get(f) }); } catch (e) { throw toolError(e.message); }
   for (const [p, text] of files) { const f = path.join(dir, p); await fsp.mkdir(path.dirname(f), { recursive: true }); await fsp.writeFile(f, text); }
   return { text: `${dir}: the template of ${ex.id}.exercise.json (${files.size} files: the starter project in ${language === 'vhdl' ? 'VHDL' : 'Verilog'}, the visible tests, README.md, the workflow)`,
     data: { project: name, exercise: rel, folder: dir, files: [...files.keys()] } };
@@ -104,9 +109,12 @@ export async function topPorts(name) {
   return { top: v.top, ports: v.design.top.ports.map(p => ({ name: p.name, dir: p.dir, width: p.sig?.t?.w ?? p.t?.w ?? 1 })) };
 }
 
-// a new file of the exchange folder (a CSV, a student's copy): never one that exists
+// a new file of the exchange folder (a CSV, a student's copy): never one that exists, of its kind's extension only
+const NEW_FILES = { csv: ['.csv', 'a .csv'], file: ['.json', 'a .json (the student\'s .exercise.json)'] };
 async function writeNew(p, text, what) {
   const file = await exchangePath(p, what);
+  const [ext, kind] = NEW_FILES[what];
+  if (!file.toLowerCase().endsWith(ext)) throw toolError(`${what}: '${p}' is not ${kind}`);
   try { await fsp.writeFile(file, text, { flag: 'wx' }); } catch (e) { throw toolError(e.code === 'EEXIST' ? `'${p}' exists: give another file` : e.message); }
   return file;
 }

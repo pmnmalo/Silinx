@@ -82,3 +82,17 @@ test('find_in_project: its errors', async () => {
   await fails('find_in_project', { project: 'gates' }, 'missing text');
   assert.ok(fs.existsSync(path.join(process.env.SILINX_WORKSPACE, 'gates')));
 });
+
+test('find_in_project: a regular expression that backtracks without end stopped at the search\'s time limit, nothing replaced', { timeout: 60000 }, async () => {
+  const { SEARCH_LIMIT_S } = await import('../server/mcp-find.js');
+  await ok('write_file', { project: 'gates', path: 'src/long.vhd', text: `-- ${'a'.repeat(40)}b\n` });
+  const t0 = Date.now();
+  const msg = `the search took longer than ${SEARCH_LIMIT_S} s and was stopped: a simpler regular expression (one that does not repeat a repetition, as (a+)+)`;
+  await fails('find_in_project', { project: 'gates', text: '(a+)+$', regex: true }, msg);
+  await fails('find_in_project', { project: 'gates', text: '(a+)+$', regex: true, replace: 'x' }, msg);
+  assert.ok(Date.now() - t0 < 4 * SEARCH_LIMIT_S * 1000);
+  assert.equal(await read('src/long.vhd'), `-- ${'a'.repeat(40)}b\n`);
+  // (the server answers again at once)
+  assert.equal((await ok('find_in_project', { project: 'gates', text: 'aab' })).data.count, 1);
+  await ok('delete_file', { project: 'gates', path: 'src/long.vhd' });
+});

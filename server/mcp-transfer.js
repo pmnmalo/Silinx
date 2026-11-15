@@ -14,6 +14,9 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, readProject, diagLine, STR, PROJECT } from './mcp-util.js';
 import { isDesignOnly } from '../core/project-kind.js';
+import { foldName } from '../core/fold-name.js';
+import { hiddenName, nativeRealOf } from './paths.js';
+import { configDir } from './toolchain.js';
 
 const KINDS = { xilinx: 'a Xilinx ISE project', silinx: 'a Silinx project' };
 const MAX_FILES = 5000;
@@ -36,9 +39,23 @@ export async function exchangePath(p, what) {
   // (the deepest part of the path that exists, resolved)
   let probe = full;
   while (!fs.existsSync(probe) && probe !== path.dirname(probe)) probe = path.dirname(probe);
-  if (!under(await fsp.realpath(probe), root)) throw outside();
+  const real = path.join(await fsp.realpath(probe), path.relative(probe, full));
+  if (!under(real, root)) throw outside();
+  // a hidden file or folder of it (.ssh, .config, .zshenv), by the name given or once its links are followed, as no
+  // project's file route takes one (#3036, server/paths.js hiddenName)
+  const rel = path.relative(under(full, dir) ? dir : root, full), relReal = path.relative(root, real);
+  const hidden = [...rel.split(path.sep), ...relReal.split(path.sep)].find(s => s && hiddenName(s));
+  if (hidden) throw toolError(`${what}: '${p}' is a hidden file or folder ('${hidden}'), which no tool reads nor writes`);
+  // the workspace and Silinx's configuration folder are no part of it (an exchange folder that holds them, the home
+  // folder: a file written there would be a project, or Silinx's settings), as the system names them
+  const fold = s => (FOLDS ? foldName(s) : s);
+  for (const [d, name] of [[P.workspaceDir(), 'the workspace'], [configDir(), 'Silinx\'s configuration folder']]) {
+    const dr = nativeRealOf(path.resolve(d));
+    if (under(fold(nativeRealOf(real)), fold(dr)) || under(fold(nativeRealOf(root)), fold(dr))) throw toolError(`${what}: '${p}' is in ${name}, not in the exchange folder: ${under(fold(nativeRealOf(root)), fold(dr)) ? 'set SILINX_MCP_FOLDER to a folder outside it' : 'give a path of the exchange folder outside it'}`);
+  }
   return full;
 }
+const FOLDS = process.platform === 'darwin' || process.platform === 'win32';
 
 // a folder's files as a zip's entries ([{ path, data }], its paths relative to dir), the hidden ones left out (an
 // import takes none), and those skip(rel) leaves out (a file's or a folder's path); at most the zip's limits

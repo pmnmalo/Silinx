@@ -187,3 +187,44 @@ CSV: <exchange folder>/class.csv
   fs.writeFileSync(path.join(xchg, 'bad.json'), '{"a": 1}');
   await err({ project: 'cls', action: 'results', file: 'bad.json' }, 'grade: bad.json: not a list of results (silinx grade --json writes one)');
 });
+
+test('grade template, student_copy and csv: the template\'s project untrusted, its visible tests\' files none of the starter\'s; a new file of its kind only, never a hidden one nor one of the workspace', { timeout: 120000 }, async () => {
+  await counterProject('tq', COUNTER_V);
+  const ex = counterExercise();
+  ex.tests[0] = { ...ex.tests[0], vectors: undefined, file: 'tests/count.vec' };
+  await ok('write_file', { project: 'tq', path: 'counter4.exercise.json', text: JSON.stringify(ex) });
+  await ok('write_file', { project: 'tq', path: 'tests/count.vec', text: VECTORS });
+  // the template's project made through the MCP server: untrusted, as new_project's (#2981)
+  await ok('grade', { project: 'tq', action: 'template', folder: 'tq-template' });
+  const pj = JSON.parse(fs.readFileSync(path.join(xchg, 'tq-template', 'silinx.json'), 'utf8'));
+  assert.deepEqual([pj.trusted, pj.madeBy], [false, 'mcp']);
+  const err = async (args, text) => { const x = await call('grade', args); assert.deepEqual([x.isError, x.text], [true, text]); };
+  // a visible test's file that is the starter project's top, or its description: no template
+  for (const [file, rel] of [['src/counter4.v', 'src/counter4.vhd'], ['tests/count.vec', 'silinx.json'], ['tests/count.vec', 'src/../.env']]) {
+    await ok('write_file', { project: 'tq', path: 'counter4.exercise.json', text: JSON.stringify({ ...ex, tests: [ex.tests[0], { ...ex.tests[2], visible: true, files: [{ path: 'tb/tb.v', file: rel }] }] }) });
+    if (rel !== 'src/../.env') await ok('write_file', { project: 'tq', path: rel === 'silinx.json' ? 'tests/x.vec' : rel, text: `-- ${file}\n` });
+    const x = await call('grade', { project: 'tq', action: 'template', folder: `tq-${rel.length}` });
+    assert.equal(x.isError, true);
+    assert.match(x.text, rel === 'src/../.env' ? /^grade: / : new RegExp(`^grade: a visible test's file, ${rel.replace(/\./g, '\\.')}, is not one a template takes \\(the starter project's, a hidden one or build/'s\\): give it another name$`));
+    assert.equal(fs.existsSync(path.join(xchg, `tq-${rel.length}`)), false);
+  }
+  await ok('write_file', { project: 'tq', path: 'counter4.exercise.json', text: JSON.stringify(ex) });
+  // a new file of its own kind: the student's copy a .json, the results a .csv; never a hidden one
+  await err({ project: 'tq', action: 'student_copy', file: '.zshenv' }, 'grade: file: \'.zshenv\' is a hidden file or folder (\'.zshenv\'), which no tool reads nor writes');
+  await err({ project: 'tq', action: 'student_copy', file: 'sub/.config/x.json' }, 'grade: file: \'sub/.config/x.json\' is a hidden file or folder (\'.config\'), which no tool reads nor writes');
+  await err({ project: 'tq', action: 'student_copy', file: 'copy.sh' }, 'grade: file: \'copy.sh\' is not a .json (the student\'s .exercise.json)');
+  await err({ project: 'tq', action: 'run', visible: true, csv: 'r.command' }, 'grade: csv: \'r.command\' is not a .csv');
+  assert.deepEqual(['.zshenv', 'sub', 'copy.sh', 'r.command'].filter(f => fs.existsSync(path.join(xchg, f))), []);
+  // an exchange folder that holds the workspace and the configuration folder (the home folder): neither is written
+  const was = process.env.SILINX_MCP_FOLDER;
+  process.env.SILINX_MCP_FOLDER = tmp;
+  try {
+    await err({ project: 'tq', action: 'template', folder: 'ws/pwn' }, 'grade: folder: \'ws/pwn\' is in the workspace, not in the exchange folder: give a path of the exchange folder outside it');
+    await err({ project: 'tq', action: 'student_copy', file: 'cfg/x.json' }, 'grade: file: \'cfg/x.json\' is in Silinx\'s configuration folder, not in the exchange folder: give a path of the exchange folder outside it');
+    assert.equal(fs.existsSync(path.join(tmp, 'ws', 'pwn')), false);
+    // one inside the workspace: none of its paths
+    fs.mkdirSync(path.join(tmp, 'ws', 'inbox'), { recursive: true });
+    process.env.SILINX_MCP_FOLDER = path.join(tmp, 'ws', 'inbox');
+    await err({ project: 'tq', action: 'template', folder: 'pwn' }, 'grade: folder: \'pwn\' is in the workspace, not in the exchange folder: set SILINX_MCP_FOLDER to a folder outside it');
+  } finally { process.env.SILINX_MCP_FOLDER = was; fs.rmSync(path.join(tmp, 'ws', 'inbox'), { recursive: true, force: true }); }
+});

@@ -295,6 +295,25 @@ uiTest('#3841 an exercise packaged for the students: Export Student Copy and Cla
   await page.waitFor(() => document.documentElement.lang === 'en');
 }, { timeout: 120000 });
 
+uiTest('Classroom Template…: a visible test\'s file that is the starter project\'s top makes no template, its error in the console', E, async (page) => {
+  const ex = JSON.parse(read('counter4.exercise.json'));
+  ex.tests[2] = { ...ex.tests[2], visible: true, files: [{ path: 'tb/tb_counter4.vhd', file: 'src/counter4.vhd' }] };
+  await makeProject(env, { name: 'packx', board: 'basys2', top: 'counter4',
+    files: { 'src/counter4.vhd': RIGHT, 'counter4.exercise.json': JSON.stringify(ex, null, 2), 'tests/count.vec': read('tests/count.vec'), 'ref/counter4.vhd': RIGHT } });
+  await page.openProject('packx');
+  await page.menu('Project', 'Exercise…');
+  await page.waitFor((d) => window.Silinx.active?.id === 'exercise:counter4.exercise.json' && document.querySelector(d)?.dataset.ready === '1', [D], { what: 'the exercise' });
+  await page.click(`${D} .ex-bar .tb-more-btn`);
+  await page.click(`${D} .ex-bar .tb-more-menu .asm-btn`, { text: 'Classroom Template…' });
+  await page.waitDialog('Classroom Template');
+  await page.dialogButton('Save Zip');
+  await page.waitConsole(/No template made: the exercise has problems\./);
+  const lines = (await page.consoleText()).split('\n').filter((l) => /ERROR|WARNING|template/.test(l));
+  assert.deepEqual(lines.map((l) => l.replace(/^\[[^\]]*\]\s*/, '')), [
+    'ERROR: a visible test\'s file, src/counter4.vhd, is not one a template takes (the starter project\'s, a hidden one or build/\'s): give it another name',
+    'No template made: the exercise has problems.']);
+}, { timeout: 120000 });
+
 uiTest('#3864 the class\'s results: a grades.json from the Files and by Class Results…, the tests weakest first, the students, a report in the console, Export CSV; Portuguese', E, async (page) => {
   const { gradeTests, summarize, referenceVectors } = await import('../../core/grade.js');
   const { csvReport } = await import('../../core/grade-report.js');

@@ -7,6 +7,7 @@
 import { visibleCopy } from './grade-format.js';
 import { workflowYaml, readmeText, WORKFLOW } from './classroom-template.js';
 import { VERSION } from './version.js';
+import { foldsToProjectFile } from './fold-name.js';
 
 export const STARTER_LANGUAGES = ['vhdl', 'verilog'];
 const DEVICE = Object.freeze({ family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' });
@@ -55,7 +56,11 @@ export function templateFiles(ex, raw, { starter, beside, version = VERSION }) {
   const out = new Map();
   const hidden = rel => rel.split('/').some(s => s.startsWith('.')) || /^build(\/|$)/.test(rel) || /\.exercise\.json$/i.test(rel);
   for (const [rel, text] of starter) if (!hidden(rel)) out.set(rel, text);
-  for (const rel of besideFiles(copy)) out.set(rel, beside(rel));
+  // (a visible test's file is one of its own: never the starter project's, its description, a hidden one or build/'s)
+  for (const rel of besideFiles(copy)) {
+    if (out.has(rel) || hidden(rel) || foldsToProjectFile(rel.split('/').pop())) throw new Error(`a visible test's file, ${rel}, is not one a template takes (the starter project's, a hidden one or build/'s): give it another name`);
+    out.set(rel, beside(rel));
+  }
   out.set(name, `${JSON.stringify(copy, null, 2)}\n`);
   out.set('README.md', readmeText(ex, name));
   out.set('.gitignore', 'build/\n');
