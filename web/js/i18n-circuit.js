@@ -95,7 +95,7 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Decade counter/divider with 10 decoded outputs': 'Contador/divisor de década com 10 saídas descodificadas' };
 const COUNT = { Quad: ['Quatro portas', 2], Triple: ['Três portas', 3], Dual: ['Duas portas', 4] };
 const GATES = '(?:Quad 2|Triple 3|Dual 4|8)-input (?:NAND|AND|OR|NOR|XOR)(?:, open collector)?';
-const TITLES = `(?:${[...Object.keys(TITLE).map((t) => t.replace(/[()+]/g, '\\$&')), GATES].join('|')})`;
+const TITLES = `(?:${[...Object.keys(TITLE).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), GATES].join('|')})`;
 const title = (t) => TITLE[t] ?? t.replace(/^(?:(Quad|Triple|Dual) \d|8)-input (\w+)(, open collector)?$/, (m, n, g, oc) => `${n ? COUNT[n][0] : 'Uma porta'} ${g} de ${n ? COUNT[n][1] : 8} entradas${oc ? ', coletor aberto' : ''}`);
 export const CIRCUIT_PT_PATTERNS = [
   // the status line's counts (#2763)

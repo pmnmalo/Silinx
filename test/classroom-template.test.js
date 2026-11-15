@@ -21,7 +21,7 @@ test('#3841 the workflow: the visible tests of the exercise on each push, a rele
   assert.match(y, /grade counter4\.exercise\.json \. --visible --json/);
   assert.match(y, /sha256sum -c -/);
   assert.match(y, /permissions:\n {2}contents: read\n/);
-  assert.match(core.workflowYaml('a.exercise.json'), new RegExp(`SILINX_VERSION: ${VERSION.replace(/\./g, '\\.')}\\n`));
+  assert.match(core.workflowYaml('a.exercise.json'), new RegExp(`SILINX_VERSION: ${VERSION.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n`));
   assert.throws(() => core.workflowYaml('../a.exercise.json'), /the exercise's file: a name of letters, digits, \. _ - \(\.\.\/a\.exercise\.json\)/);
   assert.throws(() => core.workflowYaml('a.exercise.json', { version: 'latest' }), /a release of Silinx: a version x\.y\.z \(latest\)/);
 });

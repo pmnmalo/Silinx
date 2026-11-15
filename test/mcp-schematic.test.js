@@ -171,7 +171,7 @@ test('add_markers: an instance\'s open pins, then a region\'s, named in1, out1â€
   for (const [args, msg] of [[{}, 'give either instance or region'], [{ instance: 'U1', region: { x: 0, y: 0, w: 1, h: 1 } }, 'give either instance or region'], [{ instance: 'U9' }, `no instance 'U9' in ${path}`]]) {
     const e = await call('add_markers', { project: 'm', path, ...args });
     assert.equal(e.isError, true);
-    assert.match(e.text, new RegExp(msg.replace(/[()]/g, '\\$&')));
+    assert.match(e.text, new RegExp(msg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
 
