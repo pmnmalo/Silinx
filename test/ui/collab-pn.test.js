@@ -52,7 +52,7 @@ uiTest('#3183 a Petri net edited live by the owner and an editor: a place moved 
       page.drag(p1, { x: p1.x, y: p1.y + 100 }),
       (async () => { await ep.click(t1); await ep.waitForSelector(`${ED} .pn-selection input.mono`); await ep.fill(`${ED} .pn-selection input.mono`, 'begin'); })(),
     ]);
-    await ep.click(`${ED} .asm-toolbar`);   // (the side panel's field left: the merge shown)
+    await ep.eval(() => document.activeElement?.blur());   // (the side panel's field left, no click on the toolbar: its middle may be a tool, Delete with another font, #4097: the merge shown)
     const both = (m) => byId(m.transitions, 't1').name === 'begin' && byId(m.places, 'p1').y > byId(n0.places, 'p1').y;
     await until(async () => both(await model(page)), 'both changes at the owner\'s');
     await until(async () => both(await model(ep)), 'both changes at the editor\'s');

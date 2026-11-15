@@ -55,7 +55,7 @@ uiTest('#3183 an ASM chart edited live by the owner and an editor: a box moved a
     ]);
     const both = (m) => node(m, 's2').name === 'RELEASE' && node(m, 's1').x > node(a0, 's1').x;
     await until(async () => both(await model(page)), 'both changes at the owner\'s');
-    await ep.click(`${ED} .asm-toolbar`);   // (the side panel's field left: the merge shown)
+    await ep.eval(() => document.activeElement?.blur());   // (the side panel's field left, no click on the toolbar: its middle may be a tool, Delete with another font, #4097: the merge shown)
     await until(async () => both(await model(ep)), 'both changes at the editor\'s');
     const merged = await model(page);
     assert.deepEqual(await model(ep), merged);
