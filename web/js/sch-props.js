@@ -355,17 +355,18 @@ function arrayWidthField(s, { inp, field, doc }) {
   return [field('Width', el, 'copies of the module: its pins on buses N times as wide')];
 }
 
-// an arrayed instance's Shared pins (#3966): a tick box a pin, a ticked one shared by every copy whatever its net (drawn
+// an arrayed instance's Shared pins (#3966): a tick box an input (#4053), a ticked one shared by every copy whatever its net (drawn
 // a single pin, not sliced in the HDL), params.shared its names in the module's case; none: the key removed. [] for an
 // instance not arrayed.
 function sharedPinsField(s, def, { field, edit }) {
-  if (!arrayOf(s) || !def?.pins?.length) return [];
+  const ins = (def?.pins || []).filter(p => p.dir === 'in');   // (only an input is shared by the copies, #4053)
+  if (!arrayOf(s) || !ins.length) return [];
   const on = sharedPins(s), box = h('div', { class: 'se-ticks se-shared' });
-  for (const p of def.pins) {
+  for (const p of ins) {
     const el = h('input', { type: 'checkbox', checked: on.has(p.name.toLowerCase()) });
     el.dataset.pin = p.name;
     el.addEventListener('change', () => edit(() => {
-      const names = def.pins.map(q => q.name).filter(n => (n === p.name ? el.checked : sharedPins(s).has(n.toLowerCase())));
+      const names = ins.map(q => q.name).filter(n => (n === p.name ? el.checked : sharedPins(s).has(n.toLowerCase())));
       if (names.length) s.params.shared = names; else delete s.params.shared;
     }));
     box.append(h('label', { class: 'se-tick', 'data-no-i18n': '' }, el, ` ${p.name}`));

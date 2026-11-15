@@ -163,12 +163,15 @@ test('#3966 place_instance and set_instance_width shared: an arrayed instance\'s
   const hdl = (await ok('read_file', { project: 'sh', path: 'src/top.vhd' })).text;
   assert.match(hdl, /reg_2 : entity work\.reg1\n {4}port map \(\n {6}d => d\(2\),\n {6}ce => ce,\n {6}c => clk,\n {6}q => q\(2\)/);
   assert.doesNotMatch((await ok('check_syntax', { project: 'sh', top: 'top' })).text, /ERROR|WARNING/, 'no warnings');
-  // a pin not of the module: refused; q marked shared: an output, an error; none: today's rule
+  // a pin not of the module, or an output (#4053): refused, the marks kept; none: today's rule
   await fails('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['z'] }, /^set_instance_width: Shared pins: no pin z \(its pins: d, ce, c, q\)$/);
   await fails('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg' }, /width or shared/);
-  const q = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['c', 'Q'] });
-  assert.equal(q.text.split('\n')[0], 'src/top.sch.json: reg(3:0) already 4 copies; shared pins: c, q');
-  assert.deepEqual(q.data.diagnostics.map(d => d.message), ["reg(3:0): output q is marked shared, but each of its 4 copies would drive the net 'q': untick it in Shared pins and connect it to a 4-bit bus"]);
+  await fails('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['c', 'Q'] }, /^set_instance_width: Shared pins: q not an input: only an input is shared by the copies$/);
+  await fails('place_instance', { project: 'sh', path: 'src/top.sch.json', module: 'reg1', name: 'u(1:0)', shared: ['q'], x: 0, y: 0 }, /Shared pins: q not an input/);
+  assert.deepEqual(JSON.parse((await ok('read_file', { project: 'sh', path: 'src/top.sch.json' })).text).symbols.map(s => s.params.shared), [['ce', 'c']]);
+  const c = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['c'] });
+  assert.equal(c.text.split('\n')[0], 'src/top.sch.json: reg(3:0) already 4 copies; shared pins: c');
+  assert.deepEqual(c.data.diagnostics, []);
   const none = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: [] });
   assert.deepEqual([none.data.shared, none.data.diagnostics.map(d => d.message)], [[], []]);
   assert.equal(JSON.parse((await ok('read_file', { project: 'sh', path: 'src/top.sch.json' })).text).symbols[0].params.shared, undefined);
