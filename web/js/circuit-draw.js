@@ -20,8 +20,8 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs 
   const g = sv('g', { class: `circ-drawing${inside ? ' circ-inside' : ''}` });
   const isSel = (id) => sel?.id === id;
   for (const p of m.parts) if (partDef(p.type)?.kind === 'breadboard') g.append(breadboardSvg(p, isSel(p.id), inside));
-  // (straight or curved, hopping over the wires drawn before them: core/circuit-wires.js)
-  const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { curved: m.wireStyle === 'curved', hops });
+  // (direct, orthogonal or curved, hopping over the wires drawn before them: core/circuit-wires.js)
+  const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { style: m.wireStyle || 'direct', hops });
   for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
   for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs, inside }));
   if (draft?.length) g.append(sv('polyline', { class: 'circ-wire circ-draft', points: draft.map(([x, y]) => `${px(x)},${px(y)}`).join(' ') }));

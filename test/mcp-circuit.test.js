@@ -101,9 +101,11 @@ test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a 
   r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'curved' }] });
   assert.equal(r.text.split('\n')[0], 'the wires drawn curved');
   assert.equal(m().wireStyle, 'curved');
-  await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'straight' }] });
+  await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'orthogonal' }] });
+  assert.equal(m().wireStyle, 'orthogonal');
+  await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'direct' }] });
   assert.equal(m().wireStyle, undefined);
-  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'wavy' }] }, 'operation 0 (wires): style: curved or straight (nothing written)');
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'wavy' }] }, 'operation 0 (wires): style: direct, orthogonal, curved (nothing written)');
 });
 
 test('simulate_drawing: a circuit\'s steps, its switches by their labels, its LEDs and time; a floating input; its refusals', async () => {

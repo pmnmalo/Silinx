@@ -1,6 +1,6 @@
 // UI: how the circuit editor draws (#4060, #4064): Show inside (the toolbar's, remembered) draws the breadboard's strips
-// and the ICs' gates (the half adder's 7486 and 7408: 4 each); the ⋮ menu's Curved wires (an edit: saved in the
-// circuit, Undo takes it back) and Hop-overs (on by default: the wire wc hops over ws); in Portuguese. No warnings. Both
+// and the ICs' gates (the half adder's 7486 and 7408: 4 each); the ⋮ menu's Wires, Direct, Orthogonal or Curved (#4080:
+// an edit, saved in the circuit, Undo takes it back) and Hop-overs (on by default: the wire wc hops over ws); in Portuguese. No warnings. Both
 // interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -43,20 +43,34 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Curved w
   await menuItem(page, 'Hop-overs');
   assert.doesNotMatch(await wireD(page, 'wc'), / A/);
   assert.equal(await page.eval(() => localStorage.getItem('silinx.circuit.hops')), '0');
-  // Curved wires: an edit (the document dirty, its wireStyle), the bent wires curves; Undo: straight again, its ✓ gone
+  // Wires (#4080): Direct ✓ by default (wc a slanted line); Orthogonal, an edit (the document dirty, its wireStyle): wc a
+  // horizontal then a vertical segment; Curved: the bent wires curves; Undo twice: Orthogonal, then Direct, the ✓ with it
+  const checked = () => page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item[data-value]:not([data-lang])`)].filter((b) => b.getAttribute('aria-checked') === 'true').map((b) => b.dataset.value), ED);
+  assert.deepEqual(await checked(), ['direct']);
+  assert.equal(await wireD(page, 'wc'), 'M300,200 L520,60');
   await page.click(`${ED} .circ-toolbar .tb-more-btn`);
-  await menuItem(page, 'Curved wires');
-  await page.waitFor((ed) => / C/.test(document.querySelector(`${ed} [data-id=ws] .circ-wire`).getAttribute('d')), [ED], { what: 'curved' });
-  assert.equal(await page.eval(() => window.Silinx.active.circuitEditor.getModel().wireStyle), 'curved');
+  await menuItem(page, 'Orthogonal');
+  await page.waitFor(() => window.Silinx.active.circuitEditor.getModel().wireStyle === 'orthogonal', [], { what: 'orthogonal' });
+  assert.equal(await wireD(page, 'wc'), 'M300,200 L520,200 L520,60');
   assert.equal(await page.eval(() => window.Silinx.active.dirty), true);
+  await page.click(`${ED} .circ-toolbar .tb-more-btn`);
+  await menuItem(page, 'Curved');
+  await page.waitFor((ed) => / C/.test(document.querySelector(`${ed} [data-id=ws] .circ-wire`).getAttribute('d')), [ED], { what: 'curved' });
+  assert.deepEqual(await checked(), ['curved']);
   await page.menu('Edit', 'Undo');
-  await page.waitFor((ed) => !/ C/.test(document.querySelector(`${ed} [data-id=ws] .circ-wire`).getAttribute('d')), [ED], { what: 'straight again' });
-  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item`)].find((b) => b.textContent.includes('Curved')).getAttribute('aria-checked'), ED), 'false');
+  await page.waitFor(() => window.Silinx.active.circuitEditor.getModel().wireStyle === 'orthogonal', [], { what: 'orthogonal again' });
+  assert.deepEqual(await checked(), ['orthogonal']);
+  await page.menu('Edit', 'Undo');
+  await page.waitFor(() => !window.Silinx.active.circuitEditor.getModel().wireStyle, [], { what: 'direct again' });
+  assert.deepEqual(await checked(), ['direct']);
+  assert.equal(await wireD(page, 'wc'), 'M300,200 L520,60');
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-inside span`).textContent === 'Mostrar o interior', [ED], { what: 'Portuguese' });
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-item:not([data-lang])`)].map((b) => [b.textContent.replace(/^✓/, ''), b.title]), ED),
-    [['Fios curvos', 'Desenhar os fios como curvas suaves pelas suas dobras, como fios de ligação (as ligações as mesmas)'], ['Saltos', 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem']]);
+    [['Direto', 'Cada fio uma linha reta de ponto a ponto'], ['Ortogonal', 'Cada fio de segmentos horizontais e verticais'], ['Curvo', 'Cada fio uma curva suave pelas suas dobras, como um fio de ligação'],
+      ['Saltos', 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem']]);
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .tb-more-menu .tb-menu-title`).textContent, ED), 'Fios');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios e linguagem');   // (and its HDL's, #4063)
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);

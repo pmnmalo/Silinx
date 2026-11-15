@@ -4,6 +4,7 @@
 import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
 import { normalizeCircuit, newId } from './circuit.js';
 import { clone } from './util.js';
+import { WIRE_STYLES } from './circuit-wires.js';
 
 /** A place's grid point: [x, y], or { error }. */
 export function pointOf(m, at) {
@@ -166,9 +167,10 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   return null;
 });
 
-/** How the circuit's wires are drawn (#4064): 'curved' (smooth curves through their bends) or 'straight'. */
+/** How the circuit's wires are drawn (#4064, #4080): 'direct' (straight from point to point), 'orthogonal' (horizontal
+ *  and vertical segments) or 'curved' (smooth curves through their bends). */
 export const setWireStyle = (m, style) => edit(m, (c) => {
-  if (style !== 'curved' && style !== 'straight') return 'style: curved or straight';
-  if (style === 'curved') c.wireStyle = 'curved'; else delete c.wireStyle;
+  if (!WIRE_STYLES.includes(style)) return `style: ${WIRE_STYLES.join(', ')}`;
+  if (style === 'direct') delete c.wireStyle; else c.wireStyle = style;
   return null;
 });

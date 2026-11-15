@@ -1,8 +1,13 @@
-// How a circuit's wires are drawn (#4064, docs/CIRCUITS.md): straight between their bends, or (Curved wires, the circuit's
-// wireStyle 'curved') a smooth curve through them, as a jumper wire bends (a Catmull-Rom spline, as cubic Béziers); with
+// How a circuit's wires are drawn (#4064, #4080, docs/CIRCUITS.md; the circuit's wireStyle, as the schematic's): Direct,
+// straight from point to point (the default); Orthogonal, horizontal and vertical segments (a slanted step turned into a
+// horizontal then a vertical one); Curved, a smooth curve through the points, as a jumper wire bends (a Catmull-Rom
+// spline, as cubic Béziers); with
 // Hop-overs, a small arc where a wire crosses one drawn before it without joining it (never at an end: a wire's end on
 // another's point is no crossing). The look only: the connections are the same (core/circuit-net.js). Points are
 // pixels [x, y]. Isomorphic module, no imports.
+
+/** The wire styles' ids, the schematic's too: direct (the default), orthogonal, curved. */
+export const WIRE_STYLES = ['direct', 'orthogonal', 'curved'];
 
 const SAMPLES = 10;   // a curve's segments sampled into this many straight pieces (its crossings, its hops)
 
@@ -85,9 +90,22 @@ export function hopD(pts, hops = [], r = 5) {
   return d;
 }
 
-/** Each wire's path (pixels): { id → d } of the wires [{ id, pts }], curved and with hops as asked. */
-export function wirePaths(wires, { curved = false, hops = false, r = 5 } = {}) {
-  const lines = wires.map((w) => ({ id: w.id, pts: curved ? curvePoints(w.pts) : w.pts }));
+/** The polyline pts drawn Orthogonal: a slanted step made a horizontal step, then a vertical one. */
+export function orthoPoints(pts) {
+  const out = [[...pts[0]]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = out[out.length - 1], b = pts[i];
+    if (a[0] !== b[0] && a[1] !== b[1]) out.push([b[0], a[1]]);
+    out.push([...b]);
+  }
+  return out;
+}
+
+/** Each wire's path (pixels): { id → d } of the wires [{ id, pts }], in the style (direct, orthogonal, curved) and with
+ *  hops as asked. */
+export function wirePaths(wires, { style = 'direct', hops = false, r = 5 } = {}) {
+  const curved = style === 'curved';
+  const lines = wires.map((w) => ({ id: w.id, pts: curved ? curvePoints(w.pts) : style === 'orthogonal' ? orthoPoints(w.pts) : w.pts }));
   const at = hops ? wireHops(lines) : new Map();
   return Object.fromEntries(lines.map((w, k) => [w.id, at.has(w.id) ? hopD(w.pts, at.get(w.id), r) : curved ? curveD(wires[k].pts) : hopD(w.pts, [], r)]));
 }
