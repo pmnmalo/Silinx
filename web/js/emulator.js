@@ -214,6 +214,17 @@ function compiledHost() {
   return { port: port1, worker: false, close: () => { port1.close(); port2.close(); } };
 }
 
+/** The board's switches and buttons, on or not, in the board's order (#4002: a shared project's viewer's board given
+ *  the owner's); running or paused, the clock's rate: added to the emulator's API, `api` (main: the board's area). */
+function withBoardControls(main, running, speed, setRunning, api) {
+  const inputs = () => [...main.querySelectorAll('.emu-sw, .emu-btn')];
+  return Object.defineProperties(Object.assign(api, { inputElements: inputs, run: (on) => { if (!!on !== running()) setRunning(!!on); } }), {
+    inputs: { get: () => inputs().map((el) => el.classList.contains('on')), enumerable: true },
+    running: { get: running, enumerable: true },
+    speed: { get: speed, enumerable: true },
+  });
+}
+
 /**
  * Mount the emulator.
  * @param {HTMLElement} container
@@ -506,7 +517,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   refresh();
   setRunning(true);
 
-  return {
+  return withBoardControls(main, () => running, () => speed, setRunning, {   // (#4002)
     destroy() { destroyed = true; unschedule(); cancelAnimationFrame(paintRaf); seen?.disconnect(); document.removeEventListener('visibilitychange', visibility); compiled?.destroy(); root.remove(); },
     pause: () => setRunning(false),
     power: (on) => setPower(!!on),
@@ -518,13 +529,6 @@ export function mountEmulator(container, { design, board, assignments, title = '
     get outputs() { return prev; },
     get paints() { return paints; },
     get held() { return held; },
-    /** The board's switches and buttons, on or not, in the board's order (#4002: a shared project's viewer's board
-     *  given the owner's); running or paused, the clock's rate. */
-    get inputs() { return [...main.querySelectorAll('.emu-sw, .emu-btn')].map((el) => el.classList.contains('on')); },
-    inputElements: () => [...main.querySelectorAll('.emu-sw, .emu-btn')],
-    get running() { return running; },
-    get speed() { return speed; },
-    run: (on) => { if (!!on !== running) setRunning(!!on); },
     printView: () => emuPrintView({ main, side, stat }),   // (#1512)
-  };
+  });
 }
