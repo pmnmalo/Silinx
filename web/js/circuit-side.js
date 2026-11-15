@@ -1,10 +1,24 @@
 // The circuit editor's side panel (#3897, docs/CIRCUITS.md): its sections, as every editor's Properties (#2735; the parts
 // library a panel of its own on the left, #4062: circuit-parts-panel.js): the selection's (a part's label, an LED's colour,
-// an IC's pinout; a wire's colour) and the circuit's (its name; its HDL's language the ⋮ menu's, #4063). Its edits are core/circuit-edit.js's.
+// an IC's pinout, the part's details, #4126; a wire's colour) and the circuit's (its name; its HDL's language the ⋮ menu's, #4063). Its edits are core/circuit-edit.js's.
 import { h } from './ui.js';
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.js';
 import { setPartProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
+import { partInfo } from '/core/circuit-part-info.js';
+
+// the selected part's details (#4126, core/circuit-part-info.js): what it does; an IC's chip, family, package, supply,
+// logic, delay, outputs, an input left open; a part's pins' roles (an IC's: its pinout above)
+function infoBlock(info) {
+  const v = (x) => h('span', { 'data-no-i18n': 'true' }, x);
+  const rows = [['Chip', info.chip && v(info.chip)], ['Family', info.family && v(info.family)], ['Package', info.package && v(info.package)],
+    ['Supply', info.power && v(info.power)], ['Logic', info.logic && h('span', {}, ...info.logic.map((l) => h('div', { 'data-no-i18n': 'true' }, l)))],
+    ['Typical delay', info.delay && v(`${info.delay} ns`)], ['Outputs', info.openCollector && 'Open collector'],
+    ['An input left open', info.openInput && (info.openInput === '1' ? 'Reads 1 (a TTL input)' : 'Reads X (unknown): connect every CMOS input')]].filter(([, x]) => x);
+  const pins = !info.chip && info.pins.length ? h('table', { class: 'circ-info-pins' }, ...info.pins.map((q) => h('tr', {}, h('td', { class: 'n' }, String(q.n)), h('td', { 'data-no-i18n': 'true' }, q.name), h('td', {}, q.role)))) : null;
+  return h('div', { class: 'circ-info' }, h('div', { class: 'circ-lib-title' }, 'Part info'), info.about ? h('div', { class: 'circ-note' }, info.about) : null,
+    rows.length ? h('table', { class: 'circ-info-rows' }, ...rows.map(([k, x]) => h('tr', {}, h('th', {}, k), h('td', {}, x)))) : null, pins);
+}
 
 /** { renderSide } of mountCircuitEditor (M(), sel(): its current values; setM(m) and commit() an edit; status(msg, err)). */
 export function mountCircuitSide(ctx) {
@@ -41,8 +55,8 @@ export function mountCircuitSide(ctx) {
         kids.push(field('Colour', c));
       }
       if (d?.dip && d.kind !== 'input') kids.push(h('div', { class: 'circ-pinout' }, h('div', { class: 'circ-lib-title' }, `${d.chip || d.title}: pinout`),
-        h('table', {}, ...Array.from({ length: d.dip / 2 }, (_, i) => { const a = d.pins[i], b = d.pins[d.dip - 1 - i]; return h('tr', {}, h('td', {}, a.name), h('td', { class: 'n' }, String(a.n)), h('td', { class: 'n' }, String(b.n)), h('td', {}, b.name)); }))),
-        d.tpd ? h('div', { class: 'circ-note' }, `Typical delay ${d.tpd} ns${d.oc ? ', open collector' : ''}`) : null);
+        h('table', {}, ...Array.from({ length: d.dip / 2 }, (_, i) => { const a = d.pins[i], b = d.pins[d.dip - 1 - i]; return h('tr', {}, h('td', {}, a.name), h('td', { class: 'n' }, String(a.n)), h('td', { class: 'n' }, String(b.n)), h('td', {}, b.name)); }))));
+      if (d) kids.push(infoBlock(partInfo(p.type)));
       if (d?.inputs || d?.lamps) kids.push(h('div', { class: 'circ-note' }, `${d.inputs ? 'Input' : 'Output'} ${portName(p)}${(d.inputs || d.lamps).length > 1 ? '_…' : ''} of the HDL`));
       selSection.replaceChildren(...kids.filter(Boolean));
     } else if (w) {

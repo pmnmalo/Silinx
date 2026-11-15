@@ -30,6 +30,13 @@ function panel() {
 }
 const litSegs = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} [data-id=DS1] .circ-seg.lit`)].map((s) => s.dataset.seg), ED);
 const litBars = (page) => page.eval((ed) => document.querySelectorAll(`${ed} [data-id=D2] .circ-bar`).length && [...document.querySelectorAll(`${ed} [data-id=D2] .circ-bar`)].map((b) => (b.classList.contains('lit') ? 1 : 0)).join(''), ED);
+// the selected part's details (#4126): their title, what it does, their rows (a list's lines joined by ;), its pins
+const info = (page) => page.eval((ed) => {
+  const b = document.querySelector(`${ed} .circ-selection .circ-info`);
+  return { title: b.querySelector('.circ-lib-title').textContent, about: b.querySelector('.circ-note')?.textContent ?? null,
+    rows: [...b.querySelectorAll('.circ-info-rows tr')].map((r) => { const d = r.querySelector('td'), l = [...d.querySelectorAll('div')]; return [r.querySelector('th').textContent, l.length ? l.map((x) => x.textContent).join('; ') : d.textContent]; }),
+    pins: [...b.querySelectorAll('.circ-info-pins tr')].map((r) => [...r.cells].map((c) => c.textContent)) };
+}, ED);
 const centre = (page, sel) => page.eval((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
 
 uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a clock, a slide switch; tried live; the library and the properties; Portuguese', () => env, async (page) => {
@@ -70,12 +77,15 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-selection h3`).textContent, ED), 'U1: Quad 2-input NOR');
   // (its pinout: pin 1 beside 14, 2 beside 13 …, as the chip seen from above)
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-pinout`).textContent, ED), 'CD4001B: pinout1A114VDD1B2134B1Y3124A2Y4114Y2A5103Y2B693BVSS783A');
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-pinout + .circ-note`).textContent, ED), 'Typical delay 60 ns');
+  // (its details, #4126: Part info)
+  assert.deepEqual(await info(page), { title: 'Part info', about: null, rows: [['Chip', 'CD4001B'], ['Family', '4000 (CMOS)'], ['Package', 'DIP-14'], ['Supply', 'VDD 14, VSS 7'],
+    ['Logic', '1Y = NOR(1A, 1B); 2Y = NOR(2A, 2B); 3Y = NOR(3A, 3B); 4Y = NOR(4A, 4B)'], ['Typical delay', '60 ns'], ['An input left open', 'Reads X (unknown): connect every CMOS input']], pins: [] });
   await page.menu('Edit', 'Undo');
   await page.waitFor((ed) => /^0 IC/.test(document.querySelector(`${ed} .doc-status .ds-f`).textContent), [ED], { what: 'undone' });
   // the properties: the clock's frequency, the DIP switch's levers as saved (Try it starts from them)
   await page.click(await centre(page, `${ED} [data-id=CK1] .circ-supply-body`));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-hz-in`), [ED], { what: 'the clock selected' });
+  assert.deepEqual(await info(page), { title: 'Part info', about: 'Drives its output to 1 and 0 in turn, at its frequency. An input of the HDL.', rows: [], pins: [['1', 'out', 'output']] });
   await page.fill(`${ED} .circ-hz-in`, '2.5');
   await page.waitFor((ed) => /clk 2\.5 Hz/.test(document.querySelector(`${ed} [data-id=CK1]`).textContent), [ED], { what: 'its frequency' });
   await page.click(await centre(page, `${ED} [data-id=S1] .circ-dip-body`));
@@ -113,9 +123,11 @@ uiTest('Circuit editor, the MSI ICs (#3900): a 7447 from the library\'s MSI grou
   await page.waitFor((ed) => /^1 IC/.test(document.querySelector(`${ed} .doc-status .ds-f`).textContent), [ED], { what: 'a 7447 placed' });
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-selection h3`).textContent, ED), 'U1: BCD to 7-segment decoder/driver, open collector, active low');
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-pinout tr`)].slice(0, 3).map((r) => r.textContent), ED), ['B116VCC', 'C215f', 'LT̅314g']);
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-pinout + .circ-note`).textContent, ED), 'Typical delay 50 ns');
+  assert.deepEqual((await info(page)).rows.slice(4), [['Typical delay', '50 ns'], ['Outputs', 'Open collector'], ['An input left open', 'Reads 1 (a TTL input)']]);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-selection h3`).textContent === 'U1: Descodificador BCD para 7 segmentos, coletor aberto, ativo a 0', [ED], { what: 'in Portuguese' });
+  assert.deepEqual(await info(page), { title: 'Informação da peça', about: null, rows: [['Circuito integrado', 'SN74LS47'], ['Família', '74LS (TTL)'], ['Encapsulamento', 'DIP-16'], ['Alimentação', 'VCC 16, GND 8'],
+    ['Atraso típico', '50 ns'], ['Saídas', 'Coletor aberto'], ['Uma entrada deixada no ar', 'Lê 1 (uma entrada TTL)']], pins: [] });
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="74138"]`).textContent, ED), '74138 Descodificador de 3 para 8 linhas');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="74595"]`).textContent, ED), '74595 Registo de deslocamento de 8 bits com latches de saída, 3 estados');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
