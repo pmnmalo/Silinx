@@ -17,3 +17,8 @@ export const FILE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 /** A project's name (its folder's): a letter, then up to 63 letters, digits, _ and - (FILE_RE's characters, at most 64);
  *  its message, a name made from a file's and the same name in another case: core/project-name.js (#3538). */
 export const PROJECT_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+
+/** A new source's file name as typed, its extension taken off (any source's: an HDL file's, a drawing's…), one list for
+ *  the New Source wizard and the MCP server's new_source (#4120: .circ.json was missing from both). */
+const SOURCE_EXT_RE = /\.(vhd|vhdl|v|ucf|pcf|lpf|cst|xdc|mem|c|cpp|asm\.json|tt\.json|bool\.json|sch\.json|fsm\.json|pn\.json|circ\.json|lab\.json)$/i;
+export const sourceBase = s => String(s ?? '').trim().replace(SOURCE_EXT_RE, '');

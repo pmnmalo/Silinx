@@ -106,8 +106,9 @@ export async function ttFromHdl(hdlPath, old) {
 async function pickModule(title, exclude) {
   const mods = S.modules.filter(m => m.role === 'design' && m.kind !== 'package' && m.file !== exclude);
   if (!mods.length) { alertDlg(title, 'The project has no design modules.', 'error'); return null; }
+  const { MAX_EDIT_INPUTS } = await import('/core/logic.js');   // (the limit truthTableFromModule is given, #4117)
   const sel = h('select', { style: { width: '100%' } }, ...mods.map(m => h('option', { value: m.name, selected: m.name === S.sel?.module }, `${m.name} (${m.file})`)));
-  const ok = await dialog({ title, width: 480, body: h('div', {}, h('div', { class: 'hint' }, 'Combinational module (at most 8 input bits): its truth table is computed by simulating every input combination.'), h('div', { style: { marginTop: '8px' } }, sel)),
+  const ok = await dialog({ title, width: 480, body: h('div', {}, h('div', { class: 'hint' }, `Combinational module (at most ${MAX_EDIT_INPUTS} input bits): its truth table is computed by simulating every input combination.`), h('div', { style: { marginTop: '8px' } }, sel)),
     buttons: [{ label: 'OK', primary: true, value: true }, { label: 'Cancel', value: null }] });
   return ok ? sel.value : null;
 }

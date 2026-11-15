@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NAME_RE, isName, IDENT_RE, isIdent, FILE_RE } from '../core/ident.js';
+import { NAME_RE, isName, IDENT_RE, isIdent, FILE_RE, sourceBase } from '../core/ident.js';
 import { escXml, escXmlApos, escXmlText } from '../core/escape.js';
 import { IDENT } from '../server/ident.js';
 import { iseIdent } from '../core/isesch-export.js';
@@ -42,6 +42,24 @@ test('FILE_RE: the copies /^[A-Za-z][A-Za-z0-9_-]*$/ (#3545)', () => {
   const copy = /^[A-Za-z][A-Za-z0-9_-]*$/;
   for (const s of [...NAMES, 'my-file', '-a', 'a--b']) assert.equal(FILE_RE.test(s), copy.test(s), s);
   assert.ok(FILE_RE.test('my-file') && !FILE_RE.test('-a'));
+});
+
+test('sourceBase: every extension of New Source\'s types taken off a typed name, the wizard\'s and the MCP\'s alike (#4120)', () => {
+  // the extensions as the wizard (web/js/new-source.js) and new_source (server/mcp-new-source.js) list their types
+  const exts = new Set(['.vhd', '.vhdl', '.v', '.tt.json']);
+  for (const f of ['web/js/new-source.js', 'server/mcp-new-source.js']) {
+    for (const [, e] of fs.readFileSync(path.join(ROOT, f), 'utf8').matchAll(/ext: '(\.[a-z.]+)'/g)) exts.add(e);
+  }
+  for (const e of ['.circ.json', '.sch.json', '.fsm.json', '.pn.json', '.lab.json', '.bool.json', '.asm.json', '.ucf', '.xdc', '.mem', '.c', '.cpp']) assert.ok(exts.has(e), e);
+  for (const e of exts) {
+    assert.equal(sourceBase(`x${e}`), 'x', e);
+    assert.equal(sourceBase(`  my-file${e.toUpperCase()} `), 'my-file', `${e}: its case, the spaces`);
+    assert.equal(sourceBase(`x${e}${e}`), `x${e}`, `${e}: once`);
+  }
+  // a name without an extension, or with another one: unchanged (trimmed)
+  for (const s of ['x', 'my_file', ' a-b ', 'x.json', 'x.circ', 'x.txt', 'x.vh', 'circ.json', '']) assert.equal(sourceBase(s), s.trim(), s);
+  assert.equal(sourceBase(undefined), '');
+  assert.equal(sourceBase(null), '');
 });
 
 const TEXTS = ['', 'plain', 'a & b', '<tag attr="v">', "it's", '"q" \'s\' <&>', '&amp;', '&&<<>>""\'\'', 'é ✓ \n\t', 0, 12.5, false];

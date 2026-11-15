@@ -126,6 +126,15 @@ test('new_source: a package, a constraints file (the project\'s, having none), a
   assert.match(fs.readFileSync(path.join(P.projectDir('ice'), 'constraints/pins.pcf'), 'utf8'), /^# Physical constraints for ice\n# Target: ice40hx1k-vq100\n/);
 });
 
+test('new_source: a name typed with its drawing\'s extension, .circ.json as .sch.json, is the file\'s name (#4120)', async () => {
+  for (const [type, file] of [['circuit', 'typed.circ.json'], ['schematic', 'typed2.sch.json']]) {
+    const r = await ok('new_source', { project: 'p', type, name: file });
+    assert.match(r.text, new RegExp(`src/${file.replace(/\./g, '\\.')}`), r.text);
+    assert.ok(fs.existsSync(path.join(P.projectDir('p'), 'src', file)), file);
+    assert.ok(!fs.existsSync(path.join(P.projectDir('p'), 'src', `${file}${file.slice(file.indexOf('.'))}`)), `${file}: its extension once`);
+  }
+});
+
 test('new_source: the wizard\'s refusals; an existing file not replaced', async () => {
   await fails({ type: 'module', name: '9bad' }, 'Enter a valid file name (letters, digits, _ and -).');
   await fails({ type: 'module', name: 'ok', location: '../out' }, 'Invalid location.');

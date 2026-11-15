@@ -122,6 +122,24 @@ uiTest('New Source: after another type, every page of the type selected last for
   assert.ok(!(await page.eval(() => (window.Silinx.fileTree || []).some((f) => /\/first\./.test(f)))));
 });
 
+uiTest('New Source: a name typed with its drawing\'s extension (.circ.json, .fsm.json) accepted, the summary\'s name with it once (#4120)', E, async (page) => {
+  await makeProject(env, { name: 'NsExt', top: 'adder', files: { 'src/adder.vhd': ADDER } });
+  await page.openProject('NsExt');
+  for (const [type, file] of [['Circuit', 'typed.circ.json'], ['Finite State Machine (FSM)', 'typed2.fsm.json']]) {
+    await openNewSource(page);
+    await pickSourceType(page, type);
+    await forward(page, 'File Name and Location');
+    await page.fill('.dlg-overlay .wiz-main input[type=text]', file);
+    await forward(page, 'Summary');
+    const summary = await page.eval(() => document.querySelector('.dlg-overlay .code-box').textContent);
+    assert.match(summary, new RegExp(`\\nSource Name: ${file.replace(/\./g, '\\.')}\\n`), `${type}: the summary`);
+    await page.dialogButton('Finish');
+    await page.waitNoDialog();
+    await page.waitFor((f) => (window.Silinx.fileTree || []).includes(f), [`src/${file}`], { what: `src/${file}` });
+    assert.ok((await readWs(env, 'NsExt', `src/${file}`)).length > 0, file);
+  }
+});
+
 uiTest('New Source: Cancel and New Source again start afresh (the default type, an empty file name); Wizard > follows the type selected last', E, async (page) => {
   await makeProject(env, { name: 'NsAgain', top: 'adder', files: { 'src/adder.vhd': ADDER } });
   await page.openProject('NsAgain');

@@ -5,8 +5,6 @@ export const TT_PT = {
   'Boolean Algebra': 'Álgebra Booleana', 'View/Edit Boolean Algebra': 'Ver/Editar Álgebra Booleana',
   'Open Boolean Algebra': 'Abrir Álgebra Booleana',
   'Algebra from Module': 'Álgebra de um Módulo',
-  'Combinational module (at most 8 input bits): its truth table is computed by simulating every input combination.':
-    'Módulo combinatório (no máximo 8 bits de entrada): a tabela de verdade é calculada simulando todas as combinações das entradas.',
   'The project has no design modules.': 'O projeto não tem módulos de projeto.',
   // editor toolbar
   'Inputs:': 'Entradas:', 'Outputs:': 'Saídas:',
@@ -74,6 +72,7 @@ export const TT_PT = {
 export const TT_PT_PATTERNS = [
   [/^Input names \(1 to (\d+)\), separated by commas or spaces; the first is the most significant bit of a row$/, 'Nomes das entradas (1 a $1), separados por vírgulas ou espaços; a primeira é o bit mais significativo de cada linha'],   // (#3939)
   [/^1 to (\d+) inputs$/, '1 a $1 entradas'],
+  [/^Combinational module \(at most (\d+) input bits\): its truth table is computed by simulating every input combination\.$/, 'Módulo combinatório (no máximo $1 bits de entrada): a tabela de verdade é calculada simulando todas as combinações das entradas.'],   // (#4117)
   // the table's notation in its ⋮ menu (a notation's name: the Settings', i18n.js; #3939)
   [/^(Electronics \/ Engineering|Text only|Logic \/ Set theory|VHDL|Verilog): (.+)$/, (m, n, ex) => `${{ 'Electronics / Engineering': 'Eletrónica / Engenharia', 'Text only': 'Só texto', 'Logic / Set theory': 'Lógica / Teoria de conjuntos' }[n] || n}: ${ex}`],
   [/^\(shown in part: (\d+) literal\(s\) in all\)$/, '(mostrada em parte: $1 literal(is) ao todo)'],   // (a large table's long expression, #3939)
