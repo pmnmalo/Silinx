@@ -5,7 +5,7 @@ const POOL = [0, 1, 2, 3].map(i => `j18_io<${i}>`).concat([0, 1, 2, 3].map(i => 
 const SEG = [0, 1, 2, 3, 4, 5, 6].map(i => `seg<${i}>`), AN = [0, 1, 2, 3].map(i => `an<${i}>`);
 const BTN = ['btn<1>', 'btn<2>', 'btn<3>'], SW = ['sw<4>', 'sw<5>', 'sw<6>', 'sw<7>'];
 export const S3A_HEADER_BITS = {
-  gates: [], traffic: [...SEG, 'dp', ...AN], blinky: ['btn<1>', ...SEG, 'dp', ...AN], pong: [...BTN, ...SEG, ...AN, 'dp'],
+  gates: [], breadboard: [], traffic: [...SEG, 'dp', ...AN], blinky: ['btn<1>', ...SEG, 'dp', ...AN], pong: [...BTN, ...SEG, ...AN, 'dp'],
   stopwatch: [...BTN, ...SEG, 'dp', ...AN], clock: [...BTN, ...SEG, ...AN, 'dp'], vga: BTN, isqrt: [...SW, ...SEG, 'dp', ...AN],
   uart: [...SEG, 'dp', ...AN], micro80: [...SW, ...SEG, 'dp', ...AN],
 };

@@ -144,10 +144,13 @@ test('the breadboard example: its HDL the circuit\'s, as the editor generates it
   assert.equal(m.generatedFile, 'src/breadboard.vhd');
   assert.deepEqual(checkCircuit(m), []);
   assert.equal(generateCircuit(m, 'vhdl', { source: 'breadboard.circ.json' }).code, shipped);
-  assert.deepEqual(circuitPorts(m).inputs.map((i) => i.name), ['clk', 'btn[0]', 'sw[0]', 'sw[1]', 'sw[2]']);
-  assert.deepEqual(circuitPorts(m).outputs.map((o) => o.name), ['led[0]', 'led[1]', 'led[2]', 'led[3]', 'led[4]', 'led[5]']);
+  assert.deepEqual(circuitPorts(m).inputs.map((i) => i.name), ['clk', 'btn[0]', 'sw[0]']);
+  assert.deepEqual(circuitPorts(m).outputs.map((o) => o.name), ['led[0]', 'led[1]', 'led[2]', 'led[3]', 'led[4]', 'led[5]', 'led[6]', 'led[7]']);
   const synth = synthesisText(shipped);
   assert.doesNotMatch(synth, /architecture circuit|'Z'|\bafter\b/);
-  assert.equal((synth.match(/^architecture digital of /gm) || []).length, 3, 'the top, the 74164 and the 74161 (the gates inlined)');
+  assert.equal((synth.match(/^architecture digital of /gm) || []).length, 3, 'the top, the 74194 and the 74161 (the gates inlined)');
+  // every output of its ICs read: XST warns on an instance's open output and on the flip-flops behind it (Xst:753,
+  // Xst:2677), and an example builds with ISE with no warnings
+  assert.doesNotMatch(synth.slice(synth.indexOf('architecture digital of breadboard')), /=> open\b/);
   assert.equal(synth.split('\n').length, shipped.split('\n').length);
 });

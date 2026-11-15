@@ -199,9 +199,11 @@ missing (its bits 0 to its last), one with inputs and outputs, one named as a sc
 several ports (a DIP switch, a display: their ports are `<label>_<k>`).
 
 **The example** `breadboard` (`examples/breadboard`): 74LS chips on a full breadboard, a button's presses counted by a
-74161 on LD3..LD0 (the button synchronised by a 74164, its rising edge `QA and (QA xor QB)` by a 7486 and a 7408), SW0
-clearing them, and a half adder on SW1, SW2 (LD4, LD5); its test bench runs the simulation's model; the Silinx toolchain
-builds it on every board with no warning.
+74161 on LD3..LD0, up to 15 (the button synchronised by a 74194 shift register, its four stages on LD4..LD7, its
+rising edge `QB and (QB xor QC)` by a 7486 and a 7408, whose other gates stop the count at the 74161's RCO), SW0 clearing
+them; its test bench runs the simulation's model; the Silinx toolchain and ISE build it on every board with no warning.
+Every output of its MSI and sequential chips is read: XST warns on an instance's unconnected output and on the
+flip-flops behind it (Xst:753, Xst:2677), so a circuit that leaves one open builds with ISE's warnings (#4020).
 
 What differs on the FPGA:
 
