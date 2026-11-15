@@ -62,6 +62,8 @@ const ALLOW = [
     'the special-purpose ranges a link\'s zip address is checked against, and addresses at their edges (#2962): IPv4-compatible, mapped, NAT64, 6to4, Teredo and its neighbours (#3415), unique and link-local, multicast, discard, benchmarking; also named in the message of #3123\'s commit (#3129)'],
   ['test/server-api.test.js', /^(fpga-lab\.local|box\.lan)$/, 'made-up computer names: the Host header test, the ssh settings'],
   ['test/collab-host.test.js', '192.168.1.20', "a made-up local network address in an SDP fixture, a documentation address since (in the history only, #3365)"],
+  ['test/collab-runs.test.js', /^(\/Users\/ana|\/home\/rui|C:\\{2}Users\\{2}Rui|ana@ise\.example\.org)$/,
+    "the redaction test's made-up home folders and ISE login (a host of example.org, RFC 2606), placeholders since (in the history only, #4167)"],
   ['server/git.js', /^(token@github\.com|https:\/\/user:token@github\.com)$/, "a made-up login in a comment's example of a URL with credentials (in the history only, #3365)"],
   ['test/build-settings.test.js', /^(\/home\/[uU]|build-box\.local)$/, "made-up remote folders and a made-up computer name of the build-settings checks (#3407)"],
   ['test/impl.test.js', /^(dev@)?10\.0\.0\.2$/, 'a made-up address of an example (in the history only)'],

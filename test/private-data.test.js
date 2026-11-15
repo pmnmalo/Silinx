@@ -162,6 +162,17 @@ test('the allow-list (#3365): two made-up values in the history, in their files 
   assert.equal(kinds('server/other.js', url).length, 2);
 });
 
+test('the allow-list (#4167): the redaction test\'s made-up home folders and ISE login in 80d9a6d, in that file only', () => {
+  const host = dot('ise', 'example', 'org'), mac = ['', 'Users', 'ana'].join('/'), linux = ['', 'home', 'rui'].join('/');
+  const win = ['C:', 'Users', 'Rui'].join('\\\\');   // as the test's source spells it, each backslash escaped
+  const line = `redact('ssh ana${at}${host}: ${mac}/ws on ${host}'); runSecrets('${win}\\\\AppData', '${linux}/.config')`;
+  assert.deepEqual(kinds('test/collab-runs.test.js', line), []);
+  assert.deepEqual(kinds('test/other.test.js', line).sort(), [`e-mail address: ana${at}${host}`, `home folder with a user name: ${linux}`,
+    `home folder with a user name: ${mac}`, `home folder with a user name: ${win}`].sort());
+  // another user name in that file is still found
+  assert.deepEqual(kinds('test/collab-runs.test.js', `'${['', 'Users', 'alice'].join('/')}/ws'`), ['home folder with a user name: /Users/alice']);
+});
+
 test('GitHub\'s hosted runners\' accounts are no one\'s home folder (#3726): runneradmin, its short name RUNNER~1', () => {
   const msg = `git reports ${['C:', 'Users', 'runneradmin', 'AppData'].join('/')} for C:\\Users\\RUNNER~1\\AppData, ${['', 'Users', 'runneradmin', 'work'].join('/')} on macOS`;
   assert.deepEqual(kinds('(message of 00201b6)', msg), []);
