@@ -156,7 +156,7 @@ uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the r
     assert.equal(await fp.eval(() => window.Silinx.active.ttEditor.getModel().table.f), '00010111');
     // the Petri net: no drawing tools, no Delete, no Import PNML; a place selected, its fields disabled, Delete changes nothing
     await fp.eval(() => window.SilinxApp.openPetri('src/ctl.pn.json'));
-    await fp.waitFor(() => window.Silinx.active?.id === 'pn:src/ctl.pn.json' && document.querySelector('.doc:not([hidden]) .petri-editor.asm-readonly [data-follow-notice]'), [], { what: 'the Petri net' });
+    await fp.waitFor(() => window.Silinx.active?.id === 'pn:src/ctl.pn.json' && document.querySelector('.doc:not([hidden]) .petri-editor.asm-readonly [data-follow-notice]'), [], { what: 'the Petri net', timeout: 30000 });   // (a followed project's file, from the share: slow on CI's runners, #4111)
     await check(fp, NOTE, 'a Petri net followed');
     const P = '.doc:not([hidden]) .petri-editor';
     assert.deepEqual(await fp.eval((p) => ['.pn-tool', '.asm-danger', '.pn-pnml-in'].map((s) => [...document.querySelectorAll(`${p} ${s}`)].some((x) => x.getClientRects().length)), P), [false, false, false]);
