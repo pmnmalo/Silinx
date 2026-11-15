@@ -3,7 +3,8 @@
 > Silinx is an independent open-source project. It is not affiliated with, endorsed by or
 > supported by AMD/Xilinx. Xilinx, ISE, ISim, iMPACT, Spartan and Virtex are trademarks of AMD.
 > Silinx has its own toolchain (Yosys synthesis, nextpnr place & route, Silinx's bitstream writer) for the
-> Basys2, Nexys2, Nexys3, Atlys and iCEBreaker boards; for the other boards and the ISE-only processes it can use the free
+> Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S and Tang Nano 9K boards (and the Basys 3 and Nexys A7, an
+> experimental family); for the other boards and the ISE-only processes it can use the free
 > Xilinx ISE 14.7 WebPACK tools, which you install yourself.
 
 > **Purpose.** Silinx was developed for educational purposes, specifically to support the teaching of Digital Systems, because AMD/Xilinx discontinued support for Xilinx ISE a long time ago. Who
@@ -18,7 +19,10 @@ for Xilinx FPGAs supported by ISE 14.7.
 
 - **Projects** made of **VHDL and/or Verilog** modules (mixed language), with *Implementation* /
   *Simulation* roles, implementation and simulation tops, UCF constraints, and ISE project
-  import/export (`.zip` with the `.xise` and all files).
+  import/export (`.zip` with the `.xise` and all files; a Silinx project from its `.zip` or its folder, the one with
+  its `silinx.json`, #3965). Its *Project Kind* (New Project, Design Properties, #4103) is an FPGA design or a design
+  and simulation project (no FPGA): no board, no constraints, no HDL shown, its Implementation view called Design
+  (#3891); Design Properties also changes the *Top-Level Source Type*, Petri Net, Circuit, C and C++ among them (#4105).
 - **HDL editor**: syntax highlighting, context-aware auto-complete (signals, ports, constants,
   project modules, `numeric_std` functions, `$system` tasks), *Language Templates*, live errors,
   type tooltips, *go to definition* (Ctrl/Cmd+click, F12), *Rename Symbol* (F2: a signal, port,
@@ -42,9 +46,12 @@ for Xilinx FPGAs supported by ISE 14.7.
 - **Schematic editor** (ISE Schematic Editor style): gates, muxes, adders/comparators, counters,
   flip-flops and registers, bus slices/joins, constants, I/O markers and any project module as a
   symbol (symbols and I/O markers rotated and mirrored: Ctrl+R / Ctrl+M); wires, buses and net
-  names; Check Schematic. The ⋮ menu's *Wires* draws them *Direct* (straight lines), *Orthogonal* (the
+  names; Check Schematic. A rectangle dragged with the Add I/O Marker tool gives every open pin in it a marker (`in1`…,
+  `out1`…, `io1`…, #4000). An instance's *Width* (Properties) makes it an array of copies, as ISE's (8: `r(7:0)`, drawn
+  as one, #3950), its inputs ticked in *Shared pins* shared by every copy (#3966, #4053). The ⋮ menu's *Wires* draws them *Direct* (straight lines), *Orthogonal* (the
   technical drawing, the default) or *Curved*: the look only, each wire keeping its horizontal and vertical path,
-  what it connects (and ISE's `.sch`). A schematic always has its VHDL/Verilog file,
+  what it connects (and ISE's `.sch`); its *Wire crossings* are *Hop-overs* (the default) or *Plain crossings*, in the
+  schematic viewer, the RTL schematic and the circuit editor too (#4101). A schematic always has its VHDL/Verilog file,
   generated from it: the schematic is the base, and an edit of the HDL updates the schematic (the
   drawing is kept when the structure does not change). Any HDL module can be converted to a schematic
   (*Convert to Schematic*), with processes and other behavioural code kept as HDL blocks: its HDL is
@@ -76,10 +83,11 @@ for Xilinx FPGAs supported by ISE 14.7.
   project HDL; schematic errors refuse the simulation with the list of errors. Esc returns to editing.
 - **ISE schematics (.sch)**: schematics in ISE projects (XML and older text formats) are converted
   on import, with the Xilinx library symbols mapped to equivalent symbols or exact HDL blocks;
-  exporting a project writes them back as ISE `.sch` files.
+  exporting a project writes them back as ISE `.sch` files, arrayed instances and edited symbols kept both ways (#3828).
 - **Graphical ASM state-machine editor** (state, decision, case and conditional-output boxes)
   that generates synthesizable VHDL or Verilog (2/3-process style, binary/gray/one-hot/enum
-  encoding) and adds it to the project. A *case* box is a multi-way decision on the value of a
+  encoding, chosen in the toolbar's ⋮ menu, #4055) and adds it to the project. Its toolbar starts with a select arrow,
+  and an add tool (state, decision, case…) stays on until Escape or the arrow (#3971). A *case* box is a multi-way decision on the value of a
   signal (e.g. an `opcode`), one exit per value (`00100`, `0|1`, `others`), generated as a
   `case` statement; conditions can test bits and slices (`opcode[4]`, `opcode[4:3]`).
   Charts and schematics print on one page or tiled over several, or save as PNG / SVG.
@@ -157,10 +165,17 @@ for Xilinx FPGAs supported by ISE 14.7.
   *Wizard >* is disabled for a type that has none, and *Next >* for a type that has only the wizard (Clock Manager,
   Block Memory).
 - **Digital circuits** (*New Source ▸ Circuit*, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (74LS gates, open collector
-  ones too, and 4000 gates, their datasheets' pinouts), switches (logic, slide, DIP), push buttons, a clock, pull-ups, LEDs,
+  ones too, and 4000 gates; the MSI ICs, 7447 / 7448, 74138 / 74139, 74151 / 74153 / 74157, 7483 / 74283, 7485; the
+  sequential ones, 7474, 7476, 74112, counters 7490 to 74193 and 4017, shift registers 74164 to 74595, the 4511, #3900:
+  their datasheets' pinouts), switches (logic, slide, DIP), push buttons, a clock, pull-ups, LEDs,
   7-segment displays and LED bars wired on a breadboard or beside it, simulated
   live with the gates' delays (*Try it*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
-  says the short circuits, the unpowered ICs and the floating inputs; its HDL is generated, one entity per IC; logic probes;
+  says the short circuits, the unpowered ICs and the floating inputs. Its parts are in the *Parts* panel on the left,
+  each drawn, an IC as its schematic symbol, with a search (#4062); *Show inside* draws the gates inside each IC and
+  the strips of each breadboard (#4060); *Keep connections* keeps the wires on a part moved or turned, a breadboard
+  carries the parts plugged into it, every part turns whole, its labels upright, and parts are copied and pasted (#4059,
+  #4114); the ⋮ menu has *Curved wires* and the wire crossings (#4064, #4101); *Try it* has its own bar, with *Reset*
+  and *Stop* (#4067). Its HDL is generated, one entity per IC; logic probes;
   its waveforms its test bench's, simulated as any module's. A circuit can be an FPGA project's top, its switches and LEDs the board's
   (`led[0]`, `sw[0]`: a vector port); its HDL's digital model is what synthesis builds (the *breadboard* example).
 - **Boolean Algebra Wizard** (*New Source ▸ Boolean Algebra ▸ Wizard >*): the names of the inputs (1–16) and of the
@@ -239,7 +254,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   `(a and not b) or c`, `a ^ b`, `¬a ∧ b`, `a̅·b`…), the expressions shown in the notation of *Settings ▸ Boolean Notation*
   (*View ▸* in the ISE style interface), or the table's own, chosen in its toolbar's ⋮ menu and saved with it: Electronics / Engineering (`a̅.b + c`, the default; each NOT drawn as a bar over its group, a NOT inside a NOT a bar above the ones under it),
   text only (`/a.b + c`), logic (`¬a ∧ b ∨ c`), VHDL or Verilog — a state diagram's tables and the conditions a
-  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output, the results, in this order: the least gates and the least delay; the *Karnaugh map*'s simplified
+  conversion writes (an HDL module, an ASM chart or a Petri net made a state diagram or a chart) too. For each output, the results, in this order: the least gates and the least delay (each its function,
+  then its terms, literals and gates); the *Karnaugh map*'s simplified
   function (up to 6 inputs: past that the console says there is none), its minimal SOP or POS, whichever of *SOP* / *POS* is clicked,
   and under it, with its *Show K-map* button, the map (Gray order; the variables MSB → LSB by columns then rows, or by rows then
   columns, chosen beside the map; 5–6 inputs as two/four 4×4 maps, the most significant picking the map) with the groups of the minimal SOP
@@ -249,14 +265,15 @@ for Xilinx FPGAs supported by ISE 14.7.
   implicants combined, the prime implicant chart, the essential prime implicants, the cover: Petrick's method's minimum), exact while it is
   bounded, past that a cover heuristic (the console says it is not proven minimal);
   the canonical SOP and POS, each with its Σm / ΠM list beside its name and in full under it (the sum of the minterms, the product of the
-  maxterms); each with its terms, literals and gates and its circuit (SdP / PdS in Portuguese). Each table's map can also be shown in 3D
+  maxterms); each with its terms, literals and gates (named as its schematic draws them, `1 AND2B1, 2 AND3, 1 OR3`: an
+  inverted input of an AND, OR, NAND or NOR, not a NOT gate, #4091) and its circuit (SdP / PdS in Portuguese). Each table's map can also be shown in 3D
   (3 inputs on a cylinder, 4 on a torus). After them come the *XOR form*, when it is simpler than both (fewer literals, or as many and fewer
-  two-input operators): `a ⊕ b ⊕ c`, a full adder's carry `a·b + c·(a ⊕ b)`, a comparator's
-  `/(a1 ⊕ b1)·/(a0 ⊕ b0)`, `a ⊕ b·c` (sums of products of literals and XOR / XNOR factors, or a
+  two-input operators): `a ⊕ b ⊕ c`, a full adder's carry `a.b + c.(a ⊕ b)`, a comparator's
+  `/(a1 ⊕ b1)./(a0 ⊕ b0)`, `a ⊕ b·c` (sums of products of literals and XOR / XNOR factors, or a
   variable XOR one; up to 6 inputs, don't cares used, checked on the whole table); and the *NAND
   form* and *NOR form*, the minimal SOP with NAND gates only and the minimal POS with NOR gates only
-  (double negation: `/(/(a.b)./(c.d))`), with their gate counts. The expressions are written with `/` as NOT and `.` as AND (`/a.b + c`, `/(a + b)`), or, chosen, as
-  `/ab + c`, `a·b' + c`, `ab' + c`, VHDL or Verilog; each reads back as typed. A tick box on
+  (double negation: `/(/(a.b)./(c.d))`), with their gate counts. The expressions are written in the notation chosen (above: here the text only one's, AND a point
+  in it as in Electronics / Engineering, #4094); each reads back as typed. A tick box on
   each result picks that output's logic in the module and the schematic (its *HDL logic*; the least gates' by default):
   the least gates or delay, the Karnaugh map's SOP or POS, Quine-McCluskey's SOP or POS, the canonical SOP or POS, the XOR form where it is simpler
   (`xor` / `xnor`, `^` / `~^`), NAND gates only (`a nand b`, `~(a & b)`), NOR gates only. The table always has its HDL module, made with it in the project's
@@ -267,7 +284,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   Its schematic is always drawn from it, in that logic (AND / OR / NOT gates, XOR / XNOR gates,
   NAND or NOR gates only): the *Schematic* badge of the table's row in the Design pane opens it
   (read-only, redrawn whenever the table changes). *Algebra from Module…*, in the toolbar's menu (⋮), fills the table with the table of any combinational module
-  of up to 8 input bits.
+  of up to 16 input bits (#3939).
 - **Handwritten expressions** (*Handwritten Algebra…*, in the Boolean Algebra editor's menu ⋮): write one or more equations on a pad, one a
   line, with any names (`F = A·B' + C`, `G = A ⊕ D`), with a pen, a finger or the mouse — on an interactive
   whiteboard or a tablet too. Silinx's own recognizer reads them, offline (a point-cloud recognizer with built-in
@@ -295,7 +312,10 @@ for Xilinx FPGAs supported by ISE 14.7.
   `.fsm.json`): the bubble diagram of the 1st-semester courses, Moore or Mealy (Mealy when a transition has outputs). Double-click to add
   a state, drag from the rim of a state to another (or to itself) to add a transition, double-click
   to edit in place (`S2 / z=1` in a state, `x && !y / z=1` on an arrow), drag a label to bend its
-  arrow; properties panel (initial/reset state, Moore outputs, condition, Mealy outputs, priority),
+  arrow (its toolbar starts with a select arrow, and an add tool stays on until Escape or the arrow, #3971); properties
+  panel (initial/reset state, Moore outputs, condition, Mealy outputs, priority; the outputs one per line, #3882; a
+  state's and a transition's *Look*: fill, border and its width, text colour, size, style and font, an arrow's colour, width and
+  solid / dashed / dotted line, saved with the diagram, its HDL unchanged, #3883; Delete, the key or the toolbar's),
   conditions in any common notation (`x && !y`, `x & ~y`, `x AND NOT y`, Boolean algebra's `x.y'`, `x·/y`,
   `x + y`; comparisons `==`, `!=`, `<`, `>=`…) and `else` / `default` / `true` / `1` for the state's otherwise
   transition, taken when no other one is,
@@ -311,7 +331,15 @@ for Xilinx FPGAs supported by ISE 14.7.
   both ways like ASM charts (an HDL edit that is no longer a plain state machine shows the reason); *Convert to State Diagram (FSM)* reads an HDL module or an
   ASM chart, *Convert to ASM chart* goes the other way; *Try it* steps through the diagram (set
   the inputs, clock edges, current state and the transition about to be taken highlighted).
-- **Implementation** with the **Silinx toolchain** (the Basys2, Nexys2, Nexys3, Atlys and iCEBreaker boards, the default; in the
+- **Petri nets** (*Tools ▸ Petri Net Editor…*, New Source ▸ *Petri Net*, `.pn.json`, `core/petri.js`): places (their
+  initial tokens, a capacity, outputs while marked), transitions (a guard over the inputs, a priority, pulses when they
+  fire) and arcs (a weight, or an inhibitor arc); *Try it* fires the transitions (the token game) or steps the clock, as
+  the hardware does (every enabled transition whose guard is true, in priority order); its *Analysis* (bounded,
+  deadlocks, live, reversible, conservative, the reachability graph) and PNML import and export in the ⋮ menu. Its HDL,
+  VHDL or Verilog, is generated from it (a register per place, a counter where a place holds more than one token), and
+  it converts to a state diagram.
+- **Implementation** with the **Silinx toolchain** (the Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S and Tang Nano 9K
+  boards, the default; the Basys 3 and Nexys A7 too, an experimental family, AMD Vivado their default; in the
   browser or locally) or with **Xilinx ISE 14.7** (XST → NGDBuild → MAP → PAR → TRCE → BitGen), run
   locally, in Docker or over SSH, with live per-step status (✓ / ⚠ / ✗) in the Processes panel
   (restored when the project is reopened), *Stop*, every warning/error in the Warnings/Errors tabs,
@@ -320,17 +348,20 @@ for Xilinx FPGAs supported by ISE 14.7.
   no board is selected (with a warning; with a board they must be assigned).
 - **Devices**: every FPGA family ISE 14.7 WebPACK implements — Spartan-3, Spartan-3E,
   Spartan-3A/3AN, Spartan-3A DSP, Spartan-6, Virtex-4/5/6, Artix-7, Kintex-7 and Zynq-7000
-  (WebPACK parts). Full flows verified to a bitstream on Spartan-3E and Spartan-6. Beyond ISE, the
+  (WebPACK parts); the 7-series, the Spartan-7 too, are AMD Vivado's (#3895, [below](#the-artix-7-boards-with-amd-vivado)). Full flows verified to a bitstream on Spartan-3E and Spartan-6. Beyond ISE, the
   Lattice iCE40 (LP, HX, Ultra, UltraPlus) builds with the Silinx toolchain's nextpnr-ice40 and icepack, and the Lattice
   ECP5 (LFE5U, LFE5UM, LFE5UM5G) with nextpnr-ecp5 and ecppack (Project Trellis); the Gowin GW1NR-9C with
   nextpnr-himbaechel-gowin (Project Apicula) and gowin_pack, Silinx's JavaScript port of Apicula's (#2303).
 - **Boards and I/O Pin Planning**: Digilent Basys2, Nexys2, Nexys3, Atlys, Cmod S6; Xilinx
-  Spartan-3E / Spartan-3A / Spartan-3 starter kits; Numato Mimas V2 and Elbert V2; Papilio One;
+  Spartan-3E / Spartan-3A / Spartan-3 starter kits (the Spartan-3A's has no 7-segment display: ISE's build of an
+  example that drives one puts it on its expansion headers, J18, J20 and FX2 J17, and says each pin, #3872); Numato
+  Mimas V2 and Elbert V2; Papilio One; EDGE Spartan 6 (#3873); Digilent Basys 3, Nexys A7, Arty S7 and Zybo Z7 (#3895);
   1BitSquared iCEBreaker (iCE40, its pins written as a PCF; a 1BitSquared iCEBreaker + PmodVGA for VGA); Radiona ULX3S
   (ECP5, its pins written as an LPF; a Radiona ULX3S + VGA for VGA); Sipeed Tang Nano 9K (Gowin, its pins written as a CST; a
   Sipeed Tang Nano 9K + VGA for VGA).
   Ports are mapped to board resources by name, the UCF is generated, and pins are checked against
-  the board before ISE runs.
+  the board before ISE runs (ISE's bitgen options are the family's: the Elbert V2's and the Spartan-3 Starter Board's
+  bitstreams too, #3869).
 - **View Implemented Design (FPGA)**: the placed and routed design inside the chip (from the Silinx
   toolchain's routing, or from ISE's `xdl`): sites coloured by module, LUT equations and flip-flops of each site, I/O pads, nets
   and their routing, the clock network; selecting a module in the Design hierarchy shows it on
@@ -365,7 +396,9 @@ In short:
   The site synthesizes, places, routes and writes the bitstream (below), and programs the board's FPGA,
   or its Platform Flash PROM so that the design starts at power-up, over USB (WebUSB: Chrome or Edge on
   a computer, Chrome on an Android tablet). Projects are kept in the browser, or (Chrome / Edge) in a
-  folder on the disk with *File ▸ Open Workspace Folder…*, in the full application's project format.
+  folder on the disk with *File ▸ Open Workspace Folder…*, in the full application's project format. A reload reopens
+  the tab's own project, not the one another tab opened last (#3952); a project open in two tabs shows a save of one in
+  the other, or asks which version to keep (#3972).
   Chrome or Edge can **install the site as an app** (*Install app*, or *Add to Home screen* on Android: a
   tablet, a classroom's interactive display): it opens in a window of its own, and once a project has
   been opened it also opens and implements with no network.
@@ -373,7 +406,8 @@ In short:
   is the same page in one file, to keep or open offline (its synthesis tools come from the site the
   first time; programming the board needs the site's address). For a course page (Moodle…), link the site's address as a URL: an HTML file uploaded to
   Moodle does not work (Moodle's filtering of uploaded HTML files removes its scripts).
-- **Synthesis and bitstreams need no Xilinx tool** for the **Basys2-100 / 250, Nexys2-500 / 1200, Nexys3, Atlys and iCEBreaker**:
+- **Synthesis and bitstreams need no Xilinx tool** for the **Basys2-100 / 250, Nexys2-500 / 1200, Nexys3, Atlys, iCEBreaker, ULX3S and Tang Nano 9K** (and the Basys 3
+  and Nexys A7, an experimental family):
   the *Silinx toolchain (no ISE)*, the default mode, synthesizes (Yosys), places and
   routes (nextpnr) and writes the bitstream, in the browser or locally.
 - **Or run Silinx locally, with Node.js (an alternative):** install [Node.js](https://nodejs.org)
@@ -444,7 +478,9 @@ files, with your time, inputs and view), your runs and the reports you open; and
 editors' (`#edit=…`), who edit it with you; the toolbar's Sharing menu copies either (*Copy View Link*, *Copy Editor
 Link*), *Add a User…* gives the link of the role you choose, and it lists who is in, each a viewer or an
 editor, and makes a viewer an editor or an editor a viewer, which renews the editors' link: the old one then only
-follows, the other editors keep editing). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
+follows, the other editors keep editing). A live share outlives a dropped connection: its owner's page reconnects on
+its own (*Reconnecting…* in the toolbar; the relay keeps the room for 2 minutes and the followers keep the project), and
+so does a follower of a room the owner's page hosts (#3835). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead
 (`#gist=…`, about 140 characters, for a chat that refuses a long message), made by *Generate*, the window saying which
 GitHub account is signed in and which repository the project is in (private or public): the project is encrypted in your browser and
@@ -582,6 +618,10 @@ npm run test:release                                             # the release z
 node scripts/package-release.mjs [version]                       # the release files into out/ (as release.yml)
 ```
 
+`grade` and `classroom grade` with `--json` write the class's results, which the Exercise document's *Class Results…*
+(its ⋮ menu) opens: each test's rate of Accepted, the weakest first, each student's verdicts, *Export CSV* (#3864,
+[docs/GRADING.md](docs/GRADING.md)).
+
 `npm run test:release` builds `silinx-<version>.zip` with the release script, unzips it into a
 clean folder, checks its contents (production dependencies only, Yosys's WebAssembly, licence and
 notices, executable launchers) and size, starts it with its own launcher (`PORT` and
@@ -595,26 +635,30 @@ in Firefox and WebKit.
 
 `node bin/silinx.js mcp` serves the projects of the Silinx workspace to an AI assistant (Claude
 Desktop, Claude Code, any client of the Model Context Protocol) over stdin / stdout. Its tools:
-`list_examples` (the examples, then the test designs: the designs Silinx is tested with), `new_project_from_example`, `new_project` (an empty one, for a board), `set_top` (the top
+`list_examples` (the examples, then the test designs: the designs Silinx is tested with), `new_project_from_example`, `new_project` (an empty one, for a board; `kind: design`, a design and simulation project), `set_top` (the top
 module and the test bench, as *Set as Top Module*; the constraints from the board's pins, as *Update
 Constraints*; `unset_top`, as *Unset as Top Module*), `list_projects`, `project_info`, `read_file`, `write_file` (a drawing's HDL file made again from it, as its editor does),
-`list_devices` (the boards and devices), `set_design_properties` (the board, the device, the synthesis tool, the Preferred Language, as
-*Design Properties*), `set_source_properties` (a drawing's language), `new_source` (every type of *New Source*: a module with its ports, a test
+`list_devices` (the boards and devices), `set_design_properties` (the board, the device, the synthesis tool, the Preferred Language, the Project Kind, the
+Top-Level Source Type, as *Design Properties*), `set_source_properties` (a drawing's language), `new_source` (every type of *New Source*: a module with its ports, a test
 bench, a package, constraints, a .mem, a C / C++ function, an empty drawing), `clock_manager` and `block_memory` (the Clocking Wizard's DCM / PLL, the
 Block Memory wizard's RAM or ROM; a module of theirs made again with other settings), `test_bench_wizard` (a self-checking
 test bench: its vectors, their expected outputs given or from the design) and `constraints_wizard` (a UCF on the board's pins; a PCF, LPF, CST or XDC on the other families' boards), `check_constraints` (*Check Constraints*, in the device's format), `convert_module` (an HDL module to a schematic, ASM chart or state
-diagram, its base from then on) and `convert_drawing` (a state diagram to an ASM chart and back, or to its Boolean algebra), `related_view` (a read-only view shown beside a source, nothing written: an HDL source's translation, a state diagram's ASM chart, an ASM chart's or a Petri net's state diagram, a truth table's schematic, or its results: the canonical and minimal forms, each output's HDL logic), `set_output_logic` (a truth table output's HDL logic or the minimal solution it uses, its HDL made again), `set_notation` (the notation of the Boolean expressions shown, as *Settings ▸ Boolean Notation*: Electronics / Engineering, a̅.b + c, by default; text, /a.b + c; logic, ¬a ∧ b ∨ c; VHDL; Verilog), `check_drawing` (an ASM chart's, a state diagram's, a Petri net's or a circuit's Check), `set_fsm_outputs` (a state's or a transition's outputs in a state diagram, as its Properties set them: a value per output, checked against its width, empty for the default), `set_fsm_look` (a state's or a transition's look in a state diagram, as its Properties' Look sets it: colours, line width and style, text size, style and font; the HDL unchanged), `circuit_parts` and `edit_circuit` (a digital circuit's parts, with their pinouts, and its edits: ICs, switches and LEDs placed on a breadboard's holes, wired, turned, deleted, docs/CIRCUITS.md), `rearrange_wires` and `rearrange_schematic` (a schematic's Rearrange Wires: few bends and crossings, the wires of a channel spread evenly; and Rearrange Schematic), `move_junction` (a schematic's junction dot moved, the wires ending on it following, as its editor's drag does), `set_wire_style` (how a schematic's wires are drawn: direct, orthogonal or curved, the look only), `add_markers` (I/O markers on every open pin of an instance or of a region, named in1, out1… as the Add I/O Marker tool's rectangle does), `save_wave_config` and `load_wave_config` (a simulation's wave configuration saved as a .wcfg of the project, and loaded), `simulate_drawing` (an ASM chart or a state diagram stepped clock edge by clock edge, as its Simulate panel does), `verify` (a module's equivalence with a reference module, as *Verify Equivalence*, or with no reference its own assertions, as *Verify Assertions*, or with a property a state diagram's or an ASM chart's, as *Verify Property*: a state never reached, a state reached, outputs never 1 together; proved, or the first clock cycle where an output differs, an assertion fails or the property does, its counterexample written as a test bench and replayed), `set_process_properties` (the Optimization, the start-up clock),
+diagram, its base from then on) and `convert_drawing` (a state diagram to an ASM chart and back, or to its Boolean algebra), `related_view` (a read-only view shown beside a source, nothing written: an HDL source's translation, a state diagram's ASM chart, an ASM chart's or a Petri net's state diagram, a truth table's schematic, or its results: the canonical and minimal forms, each output's HDL logic), `set_output_logic` (a truth table output's HDL logic or the minimal solution it uses, its HDL made again), `set_notation` (the notation of the Boolean expressions shown, as *Settings ▸ Boolean Notation*: Electronics / Engineering, a̅.b + c, by default; text, /a.b + c; logic, ¬a ∧ b ∨ c; VHDL; Verilog), `check_drawing` (an ASM chart's, a state diagram's, a Petri net's or a circuit's Check), `set_fsm_outputs` (a state's or a transition's outputs in a state diagram, as its Properties set them: a value per output, checked against its width, empty for the default), `set_fsm_look` (a state's or a transition's look in a state diagram, as its Properties' Look sets it: colours, line width and style, text size, style and font; the HDL unchanged), `circuit_parts` and `edit_circuit` (a digital circuit's parts, with their pinouts, and its edits: parts added on a breadboard's holes, moved, turned, copied, deleted, wired, set, its wires' style,
+docs/CIRCUITS.md), `rearrange_wires` and `rearrange_schematic` (a schematic's Rearrange Wires: few bends and crossings, the wires of a channel spread evenly; and Rearrange Schematic), `move_junction` (a schematic's junction dot moved, the wires ending on it following, as its editor's drag does), `set_wire_style` (how a schematic's wires are drawn: direct, orthogonal or curved, the look only), `add_markers` (I/O markers on every open pin of an instance or of a region, named in1, out1… as the Add I/O Marker tool's rectangle does), `place_instance` (a module's instance placed in a schematic, as its Symbols palette does; an arrayed one) and `set_instance_width` (an instance's Width and Shared pins), `read_symbol`, `edit_symbol` and `update_symbols` (a module's symbol, as the Symbol Editor shows and edits it; a schematic's out-of-date instances drawn with it, as *Update Symbol*), `symbol_info` (a symbol's datasheet, as *Symbol Info*), `save_wave_config` and `load_wave_config` (a simulation's wave configuration saved as a .wcfg of the project, and loaded), `simulate_drawing` (an ASM chart or a state diagram stepped clock edge by clock edge, as its Simulate panel does), `verify` (a module's equivalence with a reference module, as *Verify Equivalence*, or with no reference its own assertions, as *Verify Assertions*, or with a property a state diagram's or an ASM chart's, as *Verify Property*: a state never reached, a state reached, outputs never 1 together; proved, or the first clock cycle where an output differs, an assertion fails or the property does, its counterexample written as a test bench and replayed), `set_process_properties` (the Optimization, the start-up clock, the Spartan-6's Map, the 7-series' Place & Route seeds),
 `remove_from_project` and `add_to_project`, `rename_file` (a file or a folder), `rename_module` (its
 instances, drawings and top with it), `delete_file` and `delete_project` (into the workspace's `.trash` folder, from where they
 can be moved back),
-`git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log` and `git_checks` (a project in a GitHub repository, as the interface's git: its history, a file as it was in a commit, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
+`git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log`, `git_diff` and `git_checks` (a project in a GitHub repository, as the interface's git: its history, a file as it was in a commit, what changed in a file, a drawing's by its objects, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
 `export_project` and `import_project` (a Xilinx ISE or a Silinx project, as a .zip; a .xise or a project folder too;
 only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `import_source` (files of the exchange
 folder copied into a project, as *Import Source* / *Add Copy of Source* / *Import Test Bench*), `find_in_project` (*Find in
 Project*: every source's lines and every drawing's texts; its Replace All), `open_in_editor` (*Open in VS Code*: a file at a
 line, or the project's folder, in the user's editor on this computer), `project_link` and `open_link` (a project's
 link, the project inside it, opening Try it, the simulation or the board emulator, for slides; a project made from such a link
-or from an example's, one that differs never replaced), `check_syntax` (the errors and warnings of *Check Syntax*, the design checks included; their lint warnings left out as with
+or from an example's, one that differs never replaced), `short_links` and `delete_short_link` (*File ▸ Short Links…*: the
+server's GitHub account's short links listed, and deleted: some, the expired ones or all), `grade` (*silinx grade* and the
+Exercise document: an exercise's tests run on the project or on submissions, its problems, its ports and reference),
+`check_syntax` (the errors and warnings of *Check Syntax*, the design checks included; their lint warnings left out as with
 *Edit ▸ Design Checks* off),
 `simulate` (the test bench: its messages and its signals' changes; against the post-synthesis, post-translate, post-map or
 post-place & route model too, with its timing; signals forced, a value or a clock, as SSim's Force; its waves as a VCD file), `c_simulation`, `c_cosimulation`,
@@ -745,7 +789,10 @@ the local server's byte for byte): Yosys's `synth_xilinx`, nextpnr-himbaechel's 
 micro-architecture, and the `.bit` written from nextpnr's FASM on Project X-Ray's database; its timing is nextpnr's estimate,
 with delays fitted to Vivado's and conservative against its timing (0.7–0.95 times its Fmax on the same netlist, #3875). Every
 example builds on both boards with no warning, its clock at the board's 100 MHz (#3147; stopwatch with the best of 3 seeds), and
-runs on them in the Board Emulator.
+runs on them in the Board Emulator. Process Properties ▸ *Place & Route (7-series)*: *Best of 3 seeds (router2)* (off
+by default, one seed) has nextpnr route it three times and keeps the fastest: about 3 % more Fmax for three times the
+time (#3825). The `.bit` is compressed when the XDC sets `BITSTREAM.GENERAL.COMPRESS`, as the boards' do: about 300 KB
+instead of 2.19 MB on the Basys 3 (#3876).
 It takes **the Radiona ULX3S-12f / 25f / 45f / 85f** too (Lattice ECP5, LFE5U in CABGA381): Yosys's `synth_ecp5`, nextpnr-ecp5
 and ecppack (Project Trellis), to `build/<top>.bit`, its pins written as an LPF, loaded into the FPGA by *Configure Target Device* (the
 local server's openFPGALoader -b ulx3s, or the browser over WebUSB, #2298). The examples run on it with their seven-segment display on its GPIO header J1; vga on the
