@@ -22,6 +22,10 @@ async function join(link, name, { pt = false } = {}) {
   if (pt) await p.eval(() => localStorage.setItem('silinx.lang', 'pt'));
   await p.goto(`${new URL(link).origin}/?f=1${new URL(link).hash}`);
   await p.waitDialog(pt ? 'Seguir um Projeto Partilhado' : 'Follow a Shared Project');
+  // (what a viewer follows, said by the window, #4002)
+  assert.equal(await p.eval(() => document.querySelector('.dlg-overlay .collab-dlg p').textContent), pt
+    ? 'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e o que o seu dono faz (os seus documentos, vistas, simulações, emuladores e processos).'
+    : 'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).');
   await p.fill('.dlg-overlay input[data-field=name]', name);
   await p.dialogButton(pt ? 'Seguir' : 'Follow');
   await p.waitFor(() => window.Silinx?.project?.name && window.Silinx.startupChecked, [], { what: 'the project open', timeout: 30000 });

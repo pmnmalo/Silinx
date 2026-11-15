@@ -13,10 +13,10 @@ export const COLLAB_PT = {
   'Not shared any more': 'Já não partilhado', 'Shared project': 'Projeto partilhado',
   'Shared project: who is in it, and its commands': 'Projeto partilhado: quem está nele, e os seus comandos',
   'Your name, as they see it:': 'O seu nome, como o veem:', 'you': 'você', 'owner': 'dono', 'follower': 'seguidor', 'viewer': 'espectador',
-  'Others follow this project live with its link, read only: its files and drawings as they change, the editor you have open and your cursor. Its builds are not shared.':
-    'Outros seguem este projeto em direto com a sua ligação, só de leitura: os ficheiros e os desenhos à medida que mudam, o editor que tem aberto e o seu cursor. As compilações não são partilhadas.',
-  'This link follows a project someone shares: you see its files and drawings as they change, read only, and where its owner is.':
-    'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e onde está o seu dono.',
+  'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.':
+    'Outros seguem este projeto em direto com a sua ligação, só de leitura: os ficheiros e os desenhos à medida que mudam, e o que faz: os seus documentos e o cursor, as vistas e a seleção, as simulações, os emuladores e os processos. Das compilações, só são partilhados os relatórios que abrir.',
+  'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).':
+    'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e o que o seu dono faz (os seus documentos, vistas, simulações, emuladores e processos).',
   // (editors, #3182: web/js/collab-share.js)
   'Copy Editor Link': 'Copiar Ligação de Editor', 'editor': 'editor',
   // (and every drawing: state diagrams, truth tables, ASM charts, Petri nets, schematics, #3183)
@@ -31,8 +31,8 @@ export const COLLAB_PT = {
   'Give them the link of their role: they open it in Silinx.': 'Dê-lhe a ligação do seu papel: abre-a no Silinx.',
   'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.':
     'Um editor edita os ficheiros de texto e os desenhos consigo, em direto. Dê esta ligação só a quem lhos confia.',
-  'A viewer follows the project live, read only: its files and drawings, the editor you have open and your cursor.':
-    'Um espectador segue o projeto em direto, só de leitura: os ficheiros e os desenhos, o editor que tem aberto e o seu cursor.',
+  'A viewer follows the project live, read only: its files and drawings, and what you do (your documents and cursor, your views, simulations, emulators and runs).':
+    'Um espectador segue o projeto em direto, só de leitura: os ficheiros e os desenhos, e o que faz (os seus documentos e o cursor, as vistas, as simulações, os emuladores e os processos).',
   'This page hosts the project: a user whose page shows a code sends it to you, and Take a Code… takes it.':
     'Esta página aloja o projeto: um utilizador cuja página mostra um código envia-lho, e Receber um Código… recebe-o.',
   'Connect to the Owner': 'Ligar ao Dono', 'Copy Code': 'Copiar Código', 'Your code:': 'O seu código:', 'The owner\'s code:': 'O código do dono:',

@@ -6,7 +6,8 @@
 // own), the same one in front, the same view, page and task, the same rows expanded and selected. What the follower
 // does on its own there (a row selected or expanded, another page, view or task) is browsing alone (onOwn), as bringing
 // another document to the front is (web/js/collab-follow.js). The processes the owner runs: collab-runs.js; its
-// simulations: collab-sim.js (a click, a key or the wheel in the follower's SSim is its own too).
+// simulations: collab-sim.js (a click, a key or the wheel in the follower's SSim is its own too); its Board Emulators:
+// collab-emu.js (a click on the follower's board is its own).
 import { S, activateDoc, closeDoc, setView, showLeftPage } from './app.js';
 import { renderHierarchy } from './design.js';
 import { currentViewState, reopenDoc, viewKeyOf } from './view-state.js';
@@ -16,12 +17,14 @@ import { encodeUi } from '/core/design-link.js';
 import { designActivity, followedDesign, followedUi } from '/core/collab-channels.js';
 import { followRuns, openReport, runsPublisher } from './collab-runs.js';
 import { followSim, simNow } from './collab-sim.js';
+import { emuNow, followEmu, watchBoards } from './collab-emu.js';
 
 /** The owner's page: its activity sent (each channel only when it changed: core/collab-client.js publish), by
  *  publish() in its sharing's tracking; stop() at its end. */
 export function ownerActivity(session) {
   const runs = runsPublisher(session);
-  return {
+  const unwatch = watchBoards(() => out.publish());   // (a board's switch or button: sent at once)
+  const out = {
     publish() {
       if (!S.project) return;
       runs.publish();   // (its reports before its view: a report open there is known when the view comes)
@@ -29,10 +32,12 @@ export function ownerActivity(session) {
         session.publish('ui', encodeUi(currentViewState(), layoutNow()));
         session.publish('design', designActivity(S.selKey, S.treeOpen));
         session.publish('sim', simNow());
+        session.publish('emu', emuNow());
       } catch { /* (too large: not sent, the followers keep the last one) */ }
     },
-    stop: () => runs.stop(),
+    stop: () => { runs.stop(); unwatch(); },
   };
+  return out;
 }
 
 /** A follower's state of the owner's activity: { applied: { ui, design } (what was last put on the page), opened (the
@@ -59,6 +64,7 @@ export async function followActivity(st, get) {
     if (d) applyDesign(d);
   }
   await followSim(st, get);
+  followEmu(get);
 }
 
 async function applyUi(st, { view: v, layout }, get) {
@@ -87,7 +93,7 @@ function applyDesign(d) {
 }
 
 // what a follower does there on its own: a click (a row, its twisty, a page, a view, a task) or the Design tree's keys
-const OWN = '#hier .row, #left-tabs .tab, input[name=view], .task-btn, .isim';
+const OWN = '#hier .row, #left-tabs .tab, input[name=view], .task-btn, .isim, .emu';
 const TREE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'];
 /** Calls onOwn() at the follower's own action on what the owner's activity drives. */
 export function watchOwnActions(onOwn) {

@@ -518,6 +518,13 @@ export function mountEmulator(container, { design, board, assignments, title = '
     get outputs() { return prev; },
     get paints() { return paints; },
     get held() { return held; },
+    /** The board's switches and buttons, on or not, in the board's order (#4002: a shared project's viewer's board
+     *  given the owner's); running or paused, the clock's rate. */
+    get inputs() { return [...main.querySelectorAll('.emu-sw, .emu-btn')].map((el) => el.classList.contains('on')); },
+    inputElements: () => [...main.querySelectorAll('.emu-sw, .emu-btn')],
+    get running() { return running; },
+    get speed() { return speed; },
+    run: (on) => { if (!!on !== running) setRunning(!!on); },
     printView: () => emuPrintView({ main, side, stat }),   // (#1512)
   };
 }

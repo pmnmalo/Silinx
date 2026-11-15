@@ -126,7 +126,7 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     title: action, width: 640,
     onOpen: ({ close }) => { closeIt = () => close(null); draw(); setTimeout(() => { if (!share) { input.focus(); input.select(); } }, 0); },
     body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, the editor you have open and your cursor. Its builds are not shared.'),
+      h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.'),
       way.el,
       h('label', {}, 'Your name, as they see it:'), input, nameErr, relayPart, links),
     buttons: btns,
