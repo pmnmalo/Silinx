@@ -1,6 +1,6 @@
 // UI: the Digital Electronic Circuit Wizard (#4061): New Source ▸ Digital Electronic Circuit (second in the list) ▸
 // Wizard >: its assemblies (core/circuit-templates.js), Switches and LEDs with 2 switches and 3 LEDs, a parameter out of
-// range refused, its summary; the circuit made and opened in its editor, its HDL generated; three full breadboards; in
+// range refused, its summary; no Empty (#4161); the circuit made and opened in its editor, its HDL generated; three full breadboards; in
 // Portuguese. No warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,6 +28,8 @@ uiTest('#4061 the Digital Electronic Circuit Wizard: switches and LEDs, a parame
   await newSourceWizardOf(page, 'Digital Electronic Circuit', 'panel', 'Digital Electronic Circuit Wizard');
   assert.equal(await page3(page), 'Template');
   assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .tp-template').options].map((o) => o.value)), CIRCUIT_TEMPLATES.map((t) => t.id));
+  // no Empty (#4161)
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .tp-template').options].map((o) => o.textContent)), ['Breadboards and a supply', 'Switches and LEDs']);
   await page.fill('.dlg-overlay .tp-template', 'io');
   await page.fill('.dlg-overlay .tp-n', '9');
   await page.dialogButton('Next >');
@@ -59,7 +61,7 @@ uiTest('#4061 the Digital Electronic Circuit Wizard: switches and LEDs, a parame
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await newSourceWizardOf(page, 'Circuito Eletrónico Digital', 'x', 'Assistente de Circuito Eletrónico Digital',
     { menu: 'Projeto', item: 'Nova Fonte…', dialog: 'Nova Fonte', next: 'Seguinte >', wizard: 'Assistente >', file: 'Nome do Ficheiro e Localização' });
-  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .tp-template').options].map((o) => o.textContent)), ['Placas de ensaio e uma fonte', 'Interruptores e LEDs', 'Vazio']);
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .tp-template').options].map((o) => o.textContent)), ['Placas de ensaio e uma fonte', 'Interruptores e LEDs']);
   await page.dialogButton('Cancelar');
   await page.waitNoDialog();
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });

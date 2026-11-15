@@ -92,11 +92,12 @@ test('new_source: a circuit from the Digital Electronic Circuit Wizard\'s assemb
   d = JSON.parse(read('src/panel_io.circ.json'));
   assert.deepEqual(d.parts.filter((p) => p.label).map((p) => p.label), ['sw[0]', 'sw[1]', 'led[0]', 'led[1]', 'led[2]', 'led[3]']);
   assert.match(read('src/panel_io.v'), /^module panel_io/m);
-  await ok('new_source', { project: 'p', type: 'circuit', name: 'blank', template: 'empty' });
-  assert.deepEqual(JSON.parse(read('src/blank.circ.json')).parts, []);
+  // no empty one (#4161): refused, naming the valid ones, and nothing written
+  await fails({ type: 'circuit', name: 'blank', template: 'empty' }, 'template: one of boards, io');
+  assert.equal(fs.existsSync(path.join(P.projectDir('p'), 'src/blank.circ.json')), false);
   await fails({ type: 'circuit', name: 'big', template: 'boards', template_params: { n: 7 } }, 'Breadboards (N): a whole number from 1 to 4.');
   await fails({ type: 'schematic', name: 'sx', template: 'io' }, 'template and template_params: a circuit\'s');
-  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io, empty');
+  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io');
 });
 
 test('write_file: a drawing with no HDL file gets it, then follows its drawing (#3184)', async () => {

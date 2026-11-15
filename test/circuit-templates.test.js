@@ -20,7 +20,7 @@ function chipOn(m, bb) {
 }
 
 test('the templates\' list: boards first, its parameters\' defaults and errors', () => {
-  assert.deepEqual(CIRCUIT_TEMPLATES.map((t) => t.id), ['boards', 'io', 'empty']);
+  assert.deepEqual(CIRCUIT_TEMPLATES.map((t) => t.id), ['boards', 'io']);   // (no empty one, #4161)
   assert.equal(templateOf('circuit', 'nope').id, 'boards');
   assert.deepEqual(templateDefaults('circuit', 'boards'), { n: 1, size: 'half' });
   assert.deepEqual(templateDefaults('circuit', 'io'), { n: 4, m: 4 });
@@ -70,7 +70,6 @@ test('switches and LEDs: on the board, their labels the vector ports sw and led;
   assert.equal(circuitTemplate('io', { n: 8, m: 8 }).parts.length, 18);
 });
 
-test('empty: no part, no wire', () => {
-  const m = circuitTemplate('empty', {}, { name: 'e', lang: 'verilog' });
-  assert.deepEqual([m.name, m.lang, m.parts, m.wires], ['e', 'verilog', [], []]);
+test('no empty template (#4161): empty, or an unknown one, refused naming the valid ones', () => {
+  for (const id of ['empty', 'nope', undefined]) assert.throws(() => circuitTemplate(id, {}, { name: 'e', lang: 'verilog' }), { message: 'template: one of boards, io' });
 });

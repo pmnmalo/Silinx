@@ -1,6 +1,6 @@
 // The Digital Electronic Circuit Wizard (#4061), New Source ▸ 'Digital Electronic Circuit' ▸ Wizard >: the name,
 // language and location (not shown from New Source, #2082) -> an assembly to start from (core/circuit-templates.js: N
-// breadboards and a supply, switches and LEDs, empty; its parameters) -> summary; it creates the .circ.json and opens it
+// breadboards and a supply, switches and LEDs; its parameters) -> summary; it creates the .circ.json and opens it
 // in the circuit editor. The pages: web/js/modwizard.js (namePage), web/js/template-page.js.
 import { api } from './api.js';
 import { alertDlg, toast } from './ui.js';

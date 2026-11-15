@@ -83,7 +83,7 @@ export const NEW_SOURCE_TOOLS = [
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (a module, a test bench, a drawing).' },
       module: STR('A module: its name (default: the file name). A test bench: the module it tests (default: the project\'s top).'),
       architecture: STR('A VHDL module: its architecture\'s name (default Behavioral).'),
-      template: { type: 'string', enum: ['boards', 'io', 'empty'], description: 'A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]), empty (no part). Default: a half breadboard and its supply.' },
+      template: { type: 'string', enum: ['boards', 'io'], description: 'A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]). Default: a half breadboard and its supply.' },
       template_params: { type: 'object', description: 'The assembly\'s parameters: boards { n: 1–4, size: half | full }; io { n: 1–8 switches, m: 1–8 LEDs }.' },
       ports: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, dir: { type: 'string', enum: ['in', 'out', 'inout'] }, msb: { type: 'integer' }, lsb: { type: 'integer' } }, required: ['name'] }, description: 'A module: its ports (a bus with msb and lsb; default: clk and rst).' },
     }, required: ['project', 'type', 'name'], additionalProperties: false },
@@ -150,7 +150,7 @@ export const NEW_SOURCE_TOOLS = [
         if (type !== 'circuit') throw toolError('template and template_params: a circuit\'s');
         const C = await import('../core/chart-templates.js');
         const id = template ?? 'boards';
-        if (!['boards', 'io', 'empty'].includes(id)) throw toolError('template: boards, io or empty');
+        if (!['boards', 'io'].includes(id)) throw toolError('template: one of boards, io');   // (no empty one, #4161)
         const params = { ...C.templateDefaults('circuit', id), ...(tparams || {}) };
         const e = C.templateError('circuit', id, params);
         if (e) throw toolError(e);
