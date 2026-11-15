@@ -28,7 +28,9 @@ function splitFanIn(node, L) {
   while (kids.length > max) {
     const bmax = typeof L === 'function' ? L(base) : L;
     const nk = [];
-    for (let i = 0; i < kids.length; i += bmax) { const ch = kids.slice(i, i + bmax); nk.push(ch.length === 1 ? ch[0] : splitFanIn({ op: base, kids: ch }, L)); }
+    // (a group's inputs already split, at most bmax of them: the group as it is, #4091: split again, a wide OR of a
+    // canonical form of 16 inputs was split at every level)
+    for (let i = 0; i < kids.length; i += bmax) { const ch = kids.slice(i, i + bmax); nk.push(ch.length === 1 ? ch[0] : { op: base, kids: ch }); }
     kids = nk;
   }
   return { op: node.op, kids };

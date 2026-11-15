@@ -26,6 +26,22 @@ export function formCost(ast, form) {
   return { terms, literals, gates, text: `${terms} term(s), ${literals} literal(s); gates: ${gatesText(gates)}` };
 }
 
+// the candidates of the least gates and least delay of the last few outputs (a table of 16 inputs costs its five forms
+// in a fraction of a second: the editor and related_view ask for both goals), by the output's inputs, column and solutions
+const LEAST = new Map(), LEAST_KEEP = 8;
+/** The forms the least gates and least delay choose among (#1427): sop, pos, xor, nand, nor, each `form(f)` (outputForm's,
+ *  with its cost), costed once for the same output. */
+export function leastCandidates(doc, o, form) {
+  const key = JSON.stringify([doc.inputs, doc.table[o], doc.solutions?.[o] ?? null]);
+  let c = LEAST.get(key);
+  if (!c) {
+    c = ['sop', 'pos', 'xor', 'nand', 'nor'].map(form);
+    LEAST.set(key, c);
+    if (LEAST.size > LEAST_KEEP) LEAST.delete(LEAST.keys().next().value);
+  }
+  return c;
+}
+
 /** The order of two costs for a goal ('gates': the fewest gates, then the least delay; 'delay': the other way). */
 export function costOrder(goal) {
   const key = c => (goal === 'delay' ? [c.delay, c.gates] : [c.gates, c.delay]);

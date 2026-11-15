@@ -22,7 +22,7 @@ import { compile, elaborate, simulate } from './compile.js';
 import { clocksOf, latchGates } from './schematic.js';
 import { tbPorts, generateTestbench, expectedFromTrace } from './testbench.js';
 import { gateForm } from './logic-sch.js';
-import { circuitCost, costOrder } from './logic-cost.js';
+import { circuitCost, costOrder, leastCandidates } from './logic-cost.js';
 import { formOf, normalizeChoices, newOutputForms, solutionOf } from './logic-choice.js';
 import { qmForm, qmMinimize, qmResults } from './logic-qm.js';
 export { circuitCost, formCost } from './logic-cost.js';
@@ -848,8 +848,8 @@ export function analyzeOutput(doc, out, opts = {}) {
  */
 export function outputForm(doc, o, form = formOf(doc, o)) {
   if (form === 'gates' || form === 'delay') {
-    const order = costOrder(form);
-    const best = ['sop', 'pos', 'xor', 'nand', 'nor'].map(f => outputForm(doc, o, f)).reduce((a, b) => (order(b.cost, a.cost) < 0 ? b : a));
+    const order = costOrder(form);   // (the forms costed once for both goals, #4091)
+    const best = leastCandidates(doc, o, f => outputForm(doc, o, f)).reduce((a, b) => (order(b.cost, a.cost) < 0 ? b : a));
     return { ...best, what: `least ${form === 'gates' ? 'gates' : 'delay'}: ${best.what}` };
   }
   return withCost(plainForm(doc, o, form), form);
