@@ -30,7 +30,7 @@ export async function gradeCommand(args, { out, err }) {
   }
   if (!subs.length) { err('silinx grade: give the submissions (project folders, zips, or a folder of them)\n'); return 1; }
   const quiet = args.includes('--quiet');
-  const { results, problems, exercise: ex } = await gradeAll(exercise, subs, { visible: args.includes('--visible'), onResult: r => { if (!quiet) out(textReport(r)); } });
+  const { results, problems, exercise: ex } = await gradeAll(exercise, subs, { visible: args.includes('--visible'), onResult: r => { if (!quiet) out(textReport(r, { teacher: true })); } });
   if (problems.length) { err(`${problems.join('\n')}\n`); return 1; }
   if (opt('json')) fs.writeFileSync(opt('json'), `${JSON.stringify(results, null, 2)}\n`);
   if (opt('csv')) fs.writeFileSync(opt('csv'), csvReport(results, ex));

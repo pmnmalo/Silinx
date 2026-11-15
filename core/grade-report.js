@@ -1,6 +1,6 @@
 // Automatic grading (#3192): a submission's result (core/grade.js summarize) as a short text report for its student,
 // and many submissions' results as a CSV (one row per submission). A hidden test's report gives its verdict and
-// points only, never the expected values. Isomorphic.
+// points only (to the teacher, its messages too), never the expected values. Isomorphic.
 import { VERDICTS } from './grade-format.js';
 
 const num = n => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''));
@@ -12,8 +12,10 @@ function windowLines({ window: w }) {
 }
 
 /** The text report of a result: the total, the design's messages, then a line per test (with its messages and, for a
- *  visible one, its first difference). */
-export function textReport(r) {
+ *  visible one, its first difference). A hidden test's line is its verdict and points only, whatever its verdict: its
+ *  messages (a Runtime Error's are the design's own report lines, which can print the test's inputs) are the teacher's,
+ *  only when `teacher` (the teacher's own console: silinx grade, the Results document, the Exercise document's run). */
+export function textReport(r, { teacher = false } = {}) {
   const lines = [`${r.submission}: ${num(r.points)} / ${num(r.max)} points (${r.verdictName})${r.visible ? ', the visible tests' : ''}`];
   if (r.design.verdict) lines.push(`  ${VERDICTS[r.design.verdict]}:`, ...r.design.messages.map(m => `    ${m}`));
   for (const w of r.design.warnings || []) lines.push(`  WARNING: ${w}`);
@@ -21,7 +23,7 @@ export function textReport(r) {
     const v = t.verdict ? `${t.verdict} ${VERDICTS[t.verdict]}` : 'not run';
     lines.push(`  ${t.verdict === 'AC' ? '+' : '-'} ${t.id}${t.title && t.title !== t.id ? ` (${t.title})` : ''}: ${v}, ${num(t.points)} / ${num(t.max)}${t.visible ? '' : ' [hidden]'}`);
     if (r.design.verdict) continue;
-    if (!t.visible && t.verdict === 'WA') continue;   // (a hidden test: its verdict only)
+    if (!t.visible && (!teacher || t.verdict === 'WA')) continue;   // (a hidden test: its verdict only; its expected values never)
     for (const m of t.messages) lines.push(`      ${m}`);
     if (t.visible && t.detail?.window) lines.push(...windowLines(t.detail));
   }

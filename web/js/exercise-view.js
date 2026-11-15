@@ -225,7 +225,7 @@ function mountExercise(el, doc, path, ex) {
       const sub = await projectSubmission(name);
       const r = summarize(full, name, await gradeTests(full, sub, { visible, vectors, exerciseUnits: exerciseUnitNames(full), synthesize: browserSynthesize(full, { name, file: path }), yosys }), { visible });
       results = r;
-      for (const l of textReport(r).trimEnd().split('\n')) log(l, /^\s*(-|WARNING|Compile|Interface)/.test(l) ? 'warn' : '', { diag: /WARNING/.test(l) });
+      for (const l of textReport(r, { teacher: true }).trimEnd().split('\n')) log(l, /^\s*(-|WARNING|Compile|Interface)/.test(l) ? 'warn' : '', { diag: /WARNING/.test(l) });
       log(`Process "${visible ? 'Run Visible Tests' : 'Run All Tests'}" completed: ${num(r.points)} / ${num(r.max)} points.`, r.verdict === 'AC' ? 'ok' : 'warn', { diag: false });
     } catch (e) { log(`ERROR: ${e.message}`, 'err'); }
     finally { busy = false; render(); }

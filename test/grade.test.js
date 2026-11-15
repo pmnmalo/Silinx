@@ -360,6 +360,27 @@ test('#3192 the text report: the total, a line per test, a visible test\'s first
   assert.equal(textReport(ce).split('\n').slice(0, 3).join('\n'), 'student: 0 / 100 points (Compile Error)\n  Compile Error:\n    "src/counter4.v" Line 1: expected identifier but found \';\'');
 });
 
+test('the text report: a hidden test\'s Runtime Error, its verdict only, never the design\'s report lines (which can print the test\'s inputs); the teacher\'s all of them', async () => {
+  // a design that records its inputs and prints them in its own error (the vectors' en, cycle by cycle)
+  const leak = COUNTER_V.replace("else if (en) q <= q + 4'd1;", "else begin if (en) q <= q + 4'd1; if (q == 4'd2) $fatal(1, \"LEAK en=%b\", en); end");
+  const r = await grade(counterExercise(), hdl(leak));
+  assert.deepEqual(verdicts(r), { count: 'RE', random: 'RE', bench: 'RE' });
+  const lines = textReport(r).split('\n');
+  assert.deepEqual(lines.filter(l => /LEAK|\[hidden\]/.test(l)), [
+    '      LEAK en=0 at 70 ns (src/counter4.v line 4)',
+    '  - random: RE Runtime Error, 0 / 40 [hidden]',
+    '  - bench: RE Runtime Error, 0 / 30 [hidden]',
+  ]);
+  assert.equal(lines.filter(l => /LEAK/.test(l)).length, 1, 'the visible test\'s message only');
+  // the teacher's console: every test's messages, a hidden one's too (never its expected values)
+  assert.deepEqual(textReport(r, { teacher: true }).split('\n').filter(l => /LEAK/.test(l)).map(l => /^LEAK en=[01] at \d+ ns \(src\/counter4\.v line 4\)$/.test(l.trim())), [true, true, true]);
+  // every verdict of a hidden test: its line alone
+  for (const verdict of ['CE', 'TLE', 'NS', 'GE', 'WA']) {
+    const t = { ...r.tests[1], verdict, messages: ['a message that quotes the test'], detail: { window: { inputs: [], outputs: [], rows: [] } } };
+    assert.doesNotMatch(textReport({ ...r, tests: [t] }), /quotes the test|cycle/, verdict);
+  }
+});
+
 test('#3192 the CSV: a row per submission, each test\'s verdict and points; a cell that would be a formula quoted', async () => {
   const ex = counterExercise();
   const a = await grade(ex, hdl(COUNTER_V)), b = await grade(ex, hdl(COUNTER_V.replace('else if (en) q', 'else q')));

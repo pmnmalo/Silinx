@@ -72,7 +72,7 @@ function mountResults(el, file, results, ex) {
     const r = results.find(x => x.submission === name);
     root.querySelectorAll('.ex-class-students tr.current').forEach(t => t.classList.remove('current'));
     root.querySelector(`.ex-class-students tr[data-student="${CSS.escape(name)}"]`)?.classList.add('current');
-    for (const l of textReport(r).trimEnd().split('\n')) log(l, /^\s*(-|WARNING|Compile|Interface)/.test(l) ? 'warn' : '', { diag: false });
+    for (const l of textReport(r, { teacher: true }).trimEnd().split('\n')) log(l, /^\s*(-|WARNING|Compile|Interface)/.test(l) ? 'warn' : '', { diag: false });
   }
   function exportCsv() {
     const name = `${file.split('/').pop().replace(/\.json$/i, '')}.csv`;

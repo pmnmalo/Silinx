@@ -35,7 +35,7 @@ export async function classroomCommand(args, { out, err, runner } = {}) {
     let r;
     try {
       r = await gradeClassroom(exercise, { org: opt('org'), assignment: opt('assignment'), outDir: opt('out'), before: opt('before') || null, csv: opt('csv') || null, json: opt('json') || null,
-        issues: args.includes('--issues'), ...(runner && { runner }), onResult: x => { if (!quiet) out(textReport(x)); } });
+        issues: args.includes('--issues'), ...(runner && { runner }), onResult: x => { if (!quiet) out(textReport(x, { teacher: true })); } });
     } catch (e) { err(`silinx classroom grade: ${String(e.stderr || e.message).trim()}\n`); return 1; }
     if (r.problems.length) { err(`${r.problems.join('\n')}\n`); return 1; }
     const ok = r.results.filter(x => x.verdict === 'AC').length;

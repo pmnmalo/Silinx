@@ -188,7 +188,7 @@ export const GRADE_TOOLS = [
         results = [await gradeSubmission(ex, { ...sub, name }, { visible, vectors, exerciseUnits: [...exerciseUnitNames(ex)] })];
       }
       const out = csv ? await writeNew(csv, csvReport(results, ex), 'csv') : null;
-      const text = [`${localize(ex.title, lang)}${visible ? ' (the visible tests)' : ''}`, ...results.map(textReport), ...(out ? [`CSV: ${out}`] : [])].join('\n');
+      const text = [`${localize(ex.title, lang)}${visible ? ' (the visible tests)' : ''}`, ...results.map(r => textReport(r, { teacher: true })), ...(out ? [`CSV: ${out}`] : [])].join('\n');
       return { text, data: { project: name, exercise: rel, visible, results, ...(out && { csv: out }) } };
     },
   },
