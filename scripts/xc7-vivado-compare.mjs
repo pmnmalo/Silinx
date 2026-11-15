@@ -326,7 +326,7 @@ async function main() {
     if (a.includes('--update')) {
       const old = fs.existsSync(RESULTS) ? JSON.parse(fs.readFileSync(RESULTS, 'utf8')) : null;
       const m = mergeResults(old, results, { image: meta.image, examples: EXAMPLES });
-      fs.writeFileSync(RESULTS, `${JSON.stringify(m, null, 1)}\n`);
+      fs.writeFileSync(RESULTS, `${JSON.stringify(m, null, 2)}\n`);
       fs.writeFileSync(DOC, withTable(fs.readFileSync(DOC, 'utf8'), m));
       console.log(`${path.relative(ROOT, RESULTS)} and ${path.relative(ROOT, DOC)}'s table updated (${Object.keys(results).length} designs)`);
     }

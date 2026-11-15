@@ -134,8 +134,6 @@ test('mergeResults: a run\'s designs put in by board and in the examples\' order
 // ---------------------------------------------------------------------------------------------------------------------
 
 const results = JSON.parse(fs.readFileSync(RESULTS, 'utf8'));
-// the examples not recorded yet: breadboard (#3901), to record with Vivado (#4035)
-const TO_RECORD = ['breadboard'];
 // Silinx's netlist in Vivado: Vivado's warnings on it (none, a netlist of Xilinx's own cells, its XDC Silinx's, but gates')
 const NETLIST_WARNINGS = Object.fromEntries(XC7_TARGETS.map(({ board }) => [`${board}/gates`,
   // (gates: no clock, nothing to time)
@@ -158,7 +156,7 @@ const NETLIST_DRC = (name) => (name === 'gates' ? [] : name === 'stopwatch'
 
 for (const { board } of XC7_TARGETS) test(`the recorded comparison with Vivado on the ${board}: every example, Vivado's builds clean, Silinx's netlist through Vivado's DRC, the open flow within its bounds`, () => {
   const ex = results.boards[board];
-  assert.deepEqual(Object.keys(ex), EXAMPLES.filter(n => !TO_RECORD.includes(n)));
+  assert.deepEqual(Object.keys(ex), EXAMPLES);
   assert.equal(results.parts[board], { basys3: 'xc7a35tcpg236-1', 'nexys-a7': 'xc7a100tcsg324-1' }[board]);
   for (const [name, { silinx: s, vivado: v, netlist: n }] of Object.entries(ex)) {
     const clocked = name !== 'gates';

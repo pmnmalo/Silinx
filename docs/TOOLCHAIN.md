@@ -215,6 +215,7 @@ Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3,
 | Board | Example | LUTs: Silinx (+ feed-throughs) | LUTs: Silinx's netlist in Vivado | LUTs: Vivado | Registers: Silinx / Vivado | Slices: Silinx / Vivado | MHz: Silinx | MHz: Silinx's netlist in Vivado | MHz: Vivado | Vivado's DRC on Silinx's netlist |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Basys 3 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean |
+| Basys 3 | breadboard | 4 (+2) | 3 | 4 | 8 / 10 | 8 / 3 | 241 | 267 | 450 | RTSTAT-10 |
 | Basys 3 | traffic | 79 (+16) | 85 | 75 | 60 / 60 | 38 / 28 | 143 | 187 | 174 | RTSTAT-10 |
 | Basys 3 | blinky | 93 (+84) | 95 | 99 | 134 / 134 | 76 / 55 | 159 | 194 | 220 | RTSTAT-10 |
 | Basys 3 | pong | 252 (+137) | 245 | 198 | 215 / 215 | 143 / 109 | 102 | 132 | 143 | RTSTAT-10 |
@@ -225,6 +226,7 @@ Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3,
 | Basys 3 | uart | 105 (+41) | 116 | 135 | 142 / 150 | 76 / 66 | 162 | 195 | 222 | RTSTAT-10 |
 | Basys 3 | micro80 | 157 (+53) | 154 | 307 | 187 / 216 | 103 / 118 | 115 | 129 | 136 | RTSTAT-10 |
 | Nexys A7 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean |
+| Nexys A7 | breadboard | 4 (+2) | 3 | 4 | 8 / 10 | 7 / 3 | 250 | 267 | 446 | RTSTAT-10 |
 | Nexys A7 | traffic | 81 (+15) | 85 | 75 | 60 / 60 | 43 / 29 | 143 | 170 | 195 | RTSTAT-10 |
 | Nexys A7 | blinky | 93 (+87) | 95 | 99 | 134 / 134 | 82 / 52 | 154 | 185 | 232 | RTSTAT-10 |
 | Nexys A7 | pong | 251 (+141) | 245 | 198 | 215 / 215 | 146 / 101 | 107 | 127 | 153 | RTSTAT-10 |

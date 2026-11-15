@@ -59,6 +59,58 @@
           "bit": 186463
         }
       },
+      "breadboard": {
+        "silinx": {
+          "luts": 4,
+          "feedthroughs": 2,
+          "lutSites": 6,
+          "regs": 8,
+          "slices": 8,
+          "carry4": 2,
+          "bram": 0,
+          "dsp": 0,
+          "fmaxMHz": 241.02,
+          "met": true,
+          "warnings": [],
+          "bit": 208223
+        },
+        "vivado": {
+          "ok": true,
+          "routed": true,
+          "luts": 4,
+          "regs": 10,
+          "slices": 3,
+          "bram": 0,
+          "dsp": 0,
+          "fmaxMHz": 450.248,
+          "met": true,
+          "drc": [],
+          "drcErrors": 0,
+          "warnings": [],
+          "bit": 205656
+        },
+        "netlist": {
+          "ok": true,
+          "routed": true,
+          "luts": 3,
+          "regs": 8,
+          "slices": 6,
+          "bram": 0,
+          "dsp": 0,
+          "fmaxMHz": 267.165,
+          "met": true,
+          "drc": [
+            [
+              "RTSTAT-10",
+              "Warning",
+              1
+            ]
+          ],
+          "drcErrors": 0,
+          "warnings": [],
+          "bit": 202732
+        }
+      },
       "traffic": {
         "silinx": {
           "luts": 79,
@@ -615,6 +667,58 @@
             "WARNING: [Place 46-29] Timing had been disabled during Placer and, therefore, physical synthesis in Placer will be skipped."
           ],
           "bit": 311296
+        }
+      },
+      "breadboard": {
+        "silinx": {
+          "luts": 4,
+          "feedthroughs": 2,
+          "lutSites": 6,
+          "regs": 8,
+          "slices": 7,
+          "carry4": 2,
+          "bram": 0,
+          "dsp": 0,
+          "fmaxMHz": 249.81,
+          "met": true,
+          "warnings": [],
+          "bit": 353136
+        },
+        "vivado": {
+          "ok": true,
+          "routed": true,
+          "luts": 4,
+          "regs": 10,
+          "slices": 3,
+          "bram": 0,
+          "dsp": 0,
+          "fmaxMHz": 446.429,
+          "met": true,
+          "drc": [],
+          "drcErrors": 0,
+          "warnings": [],
+          "bit": 336493
+        },
+        "netlist": {
+          "ok": true,
+          "routed": true,
+          "luts": 3,
+          "regs": 8,
+          "slices": 7,
+          "bram": 0,
+          "dsp": 0,
+          "fmaxMHz": 267.165,
+          "met": true,
+          "drc": [
+            [
+              "RTSTAT-10",
+              "Warning",
+              1
+            ]
+          ],
+          "drcErrors": 0,
+          "warnings": [],
+          "bit": 331565
         }
       },
       "traffic": {
