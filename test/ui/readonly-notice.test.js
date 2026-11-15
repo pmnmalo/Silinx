@@ -118,7 +118,9 @@ uiTest('#2710 a Petri net\'s state machine: the notice at the right of the diagr
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
 
-// a follower's page of a shared project (#3181): its link opened in a page of its own, Rui's name given
+// a follower's page of a shared project (#3181): its link opened in a page of its own, Rui's name given; browsing alone
+// (#4111: a click of its own on the Design pane, as a user's, else the owner's activity, #4002, its Design Summary in
+// front, would bring that back over the documents the test opens through SilinxApp)
 async function follower(page) {
   const link = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana'); return m.sharedLink(); });
   const fp = await env.newPage(env.server.url);
@@ -128,6 +130,9 @@ async function follower(page) {
   await fp.fill('.dlg-overlay input[data-field=name]', 'Rui');
   await fp.dialogButton('Follow');
   await fp.waitFor(() => window.Silinx?.project && window.Silinx.startupChecked, [], { what: 'the shared project open', timeout: 20000 });
+  await fp.waitForSelector('#hier .row[data-key="project"] .lbl');
+  await fp.click('#hier .row[data-key="project"] .lbl');
+  await fp.waitConsole(/^Browsing alone: Ana is no longer followed \(Follow Ana, in the toolbar, follows them again\)\.$/m);
   return fp;
 }
 
@@ -156,7 +161,7 @@ uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the r
     assert.equal(await fp.eval(() => window.Silinx.active.ttEditor.getModel().table.f), '00010111');
     // the Petri net: no drawing tools, no Delete, no Import PNML; a place selected, its fields disabled, Delete changes nothing
     await fp.eval(() => window.SilinxApp.openPetri('src/ctl.pn.json'));
-    await fp.waitFor(() => window.Silinx.active?.id === 'pn:src/ctl.pn.json' && document.querySelector('.doc:not([hidden]) .petri-editor.asm-readonly [data-follow-notice]'), [], { what: 'the Petri net', timeout: 30000 });   // (a followed project's file, from the share: slow on CI's runners, #4111)
+    await fp.waitFor(() => window.Silinx.active?.id === 'pn:src/ctl.pn.json' && document.querySelector('.doc:not([hidden]) .petri-editor.asm-readonly [data-follow-notice]'), [], { what: 'the Petri net' });
     await check(fp, NOTE, 'a Petri net followed');
     const P = '.doc:not([hidden]) .petri-editor';
     assert.deepEqual(await fp.eval((p) => ['.pn-tool', '.asm-danger', '.pn-pnml-in'].map((s) => [...document.querySelectorAll(`${p} ${s}`)].some((x) => x.getClientRects().length)), P), [false, false, false]);
