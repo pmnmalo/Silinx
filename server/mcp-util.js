@@ -150,7 +150,7 @@ export const STR = (description) => ({ type: 'string', description });
 export const PROJECT = STR('The project\'s name in the Silinx workspace (list_projects).');
 export const deviceName = d => (d ? `${d.part}${d.package}${d.speed}` : 'no device');
 
-// a board (basys2, nexys2) and its variant: { board, device } for a new project
+// a board (list_devices') and its variant: { board, device } for a new project
 export async function boardDevice(board, variant) {
   const { resolveBoard } = await import('./devices.js');
   // (a variant needs a board, as set_design_properties says it; the boards are list_devices', #3535)

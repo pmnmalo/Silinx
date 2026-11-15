@@ -46,7 +46,7 @@ async function freeName(name, dir, base, ext) {
 export const CONVERT_TOOLS = [
   {
     name: 'convert_module', title: 'Convert a module to a drawing',
-    description: 'Convert a module of an HDL file to a drawing, as Convert to Schematic / ASM / State Diagram do: to schematic (what can be drawn is drawn, the rest kept as HDL blocks; a file of several design units split), asm (an ASM chart) or fsm (a state diagram) of its state machine. The drawing becomes the module\'s base: its HDL file is generated from it from then on (edit the drawing with write_file). Returns the conversion\'s warnings.',
+    description: 'Convert a module of an HDL file to a drawing, as Convert to Schematic / ASM / State Diagram do: to schematic (what can be drawn is drawn, the rest kept as HDL blocks; a file of several design units split), asm (an ASM chart) or fsm (a state diagram) of its state machine, its conditions in the notation set_notation set. The drawing becomes the module\'s base: its HDL file is generated from it from then on (edit the drawing with write_file). Returns the conversion\'s warnings.',
     inputSchema: { type: 'object', properties: { project: PROJECT, module: STR('The module (of an HDL file of the project).'), to: { type: 'string', enum: ['schematic', 'asm', 'fsm'], description: 'The drawing.' } }, required: ['project', 'module', 'to'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name, module, to }) {
@@ -99,7 +99,7 @@ export const CONVERT_TOOLS = [
   },
   {
     name: 'convert_drawing', title: 'Convert a state machine\'s drawing',
-    description: 'Make a new drawing of a state machine from another, as the drawings\' menus do: a state diagram to an ASM chart (asm), an ASM chart to a state diagram (fsm), each a new module (<name>_asm, <name>_fsm) not linked to the drawing it comes from; or a state diagram to its Boolean algebra (boolean: a truth table of its next-state bits and outputs as functions of the state bits and the inputs, in its encoding; unused codes are don\'t cares).',
+    description: 'Make a new drawing of a state machine from another, as the drawings\' menus do: a state diagram to an ASM chart (asm), an ASM chart to a state diagram (fsm, its conditions in the notation set_notation set), each a new module (<name>_asm, <name>_fsm) not linked to the drawing it comes from; or a state diagram to its Boolean algebra (boolean: a truth table of its next-state bits and outputs as functions of the state bits and the inputs, in its encoding; unused codes are don\'t cares).',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The drawing: a state diagram (.fsm.json) or an ASM chart (.asm.json).'), to: { type: 'string', enum: ['asm', 'fsm', 'boolean'], description: 'What to make of it.' } }, required: ['project', 'path', 'to'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project: name, path: rel, to }) {

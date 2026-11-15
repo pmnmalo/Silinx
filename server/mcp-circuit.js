@@ -39,7 +39,7 @@ async function apply(E, m, op) {
 export const CIRCUIT_TOOLS = [
   {
     name: 'circuit_parts', title: 'The parts of a digital circuit',
-    description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, output, ic), its pins (number, name, direction: in, out, vcc, gnd, pass; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns). A breadboard\'s holes: a1 to j30 (a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30.',
+    description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, pull, output, probe, ic), its pins (number, name, direction: in, out, vcc, gnd, pass, weak, probe, oc, nc; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns). A breadboard\'s holes: a1 to j30 (a full one\'s to j63; a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30 (a full one\'s to 63, split after 31).',
     inputSchema: { type: 'object', properties: { type: STR('One part\'s type (7400, led…); default: every part.') }, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ type } = {}) {

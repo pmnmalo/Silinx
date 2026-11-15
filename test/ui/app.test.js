@@ -239,6 +239,8 @@ uiTest('dialogs close with Escape and only the topmost dialog handles Enter / Es
   // the ✕ button and Cancel close dialogs too
   await page.menu('Help', 'Keyboard Shortcuts');
   await page.waitDialog('Keyboard Shortcuts');
+  // (the drawings' keys among them, #4123)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-body tr')].slice(-4).map((r) => r.cells[0].textContent)), ['F1 (schematic)', 'R / Del (circuit)', 'Esc (circuit)', 'Esc (state diagram, ASM chart, Petri net)']);
   await page.click('.dlg-overlay .dlg-x');
   await page.waitNoDialog();
   await page.menu('Tools', 'Toolchain Settings (ISE / Programmers)…');

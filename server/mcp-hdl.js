@@ -139,7 +139,7 @@ const FAILED = 'the compiler\'s messages, which quote the design\'s names and fi
 export const HDL_TOOLS = [
   {
     name: 'check_syntax', title: 'Check Syntax',
-    description: 'Parse and elaborate the design (or, with simulation, the test bench) as the application\'s Check Syntax does: the errors and warnings with their file and line, the design checks (latches, sensitivity lists, unused signals…) included; with lint false, as with Edit ▸ Design Checks (Lint Warnings) off, their lint warnings left out (their errors kept).',
+    description: 'Parse and elaborate the design (or, with simulation, the test bench) as the application\'s Check Syntax does: the errors and warnings with their file and line, the design checks (latches, sensitivity lists, unused signals…) included, a C source or a drawing whose module cannot be made by its own errors; in a design and simulation project, as its Check Design does (its drawings named). With lint false, as with Edit ▸ Design Checks (Lint Warnings) off, their lint warnings left out (their errors kept).',
     inputSchema: { type: 'object', properties: { project: PROJECT, top: STR('The module to elaborate (default: the project\'s top, or its test bench with simulation).'), simulation: { type: 'boolean', description: 'Check the simulation view (the test bench and the design).' },
       lint: { type: 'boolean', description: 'The design checks\' lint warnings, as Edit ▸ Design Checks (Lint Warnings) (default true, the interface\'s default).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },

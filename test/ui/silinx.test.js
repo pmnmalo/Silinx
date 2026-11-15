@@ -70,6 +70,12 @@ uiTest('#1314 the header\'s Settings: About, Interface, Language, Theme, Check f
   assert.deepEqual(await settingsMenu(page, 'Language', 'Português'), ['English', 'Português']);
   await page.waitFor(() => document.getElementById('settings-btn').title === 'Definições', [], { what: 'Portuguese' });
   assert.deepEqual(await settingsMenu(page), ['Acerca do Silinx', 'Interface', 'Idioma', 'Tema', 'Notação Booleana', 'Definições da Toolchain (ISE / Programadores)…', 'Procurar Atualizações…', 'Procurar Atualizações no Arranque', 'Atalhos de Teclado', 'Diga-nos Quem É…']);
+  // (Keyboard Shortcuts' drawing keys in Portuguese, #4123)
+  await settingsMenu(page, 'Atalhos de Teclado');
+  await page.waitDialog('Atalhos de Teclado');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-body tr')].slice(-4).map((r) => [...r.cells].map((c) => c.textContent))), [['F1 (esquemático)', 'Informação do Símbolo selecionado'], ['R / Del (circuito)', 'Rodar / apagar a peça selecionada'], ['Esc (circuito)', 'Terminar o fio, parar Experimentar, ou voltar a Selecionar'], ['Esc (diagrama de estados, ASM, rede de Petri)', 'Voltar à seta (uma ferramenta de adicionar fica ativa a cada clique até lá)']]);
+  await page.key('Escape');
+  await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // Interface ▸ ISE style: the ISE style interface (no header buttons there), its menus
   await settingsMenu(page, 'Interface', 'ISE style');
@@ -340,6 +346,9 @@ uiTest('command palette: Ctrl+K, search, arrow keys, Enter runs a command or ope
   await page.menu('Help', 'Keyboard Shortcuts');
   await page.waitDialog('Keyboard Shortcuts');
   assert.match(await page.eval(() => document.querySelector('.dlg-body').textContent), /Ctrl\/Cmd\+KCommand palette/);
+  // the drawings' keys too (#4123): the schematic's F1, the circuit's R, Del and Esc, an add tool's Esc
+  const rows = await page.eval(() => [...document.querySelectorAll('.dlg-body tr')].slice(-4).map((r) => [...r.cells].map((c) => c.textContent)));
+  assert.deepEqual(rows, [['F1 (schematic)', 'Symbol Info of the selected symbol'], ['R / Del (circuit)', 'Turn / delete the selected part'], ['Esc (circuit)', 'End the wire, stop Try it, or back to Select'], ['Esc (state diagram, ASM chart, Petri net)', 'Back to the arrow (an add tool stays on for every click until then)']]);
   await page.key('k', { modifiers: CTRL });
   assert.equal(await page.eval(() => document.querySelectorAll('.pal-overlay').length), 0);
   await page.key('Escape');

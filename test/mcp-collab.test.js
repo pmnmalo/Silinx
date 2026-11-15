@@ -133,7 +133,7 @@ test('#3631 share_project top (Share Module…): the links open on the module; f
   assert.match(link, /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=speed_ctrl$/);
   assert.match(editLink, /#edit=[^&]+&top=speed_ctrl$/);
   assert.equal(r.data.top, 'speed_ctrl');
-  assert.equal(r.text, `Sharing 'blinkyMod' live, read only, as Ana, opening on speed_ctrl. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
+  assert.equal(r.text, `Sharing 'blinkyMod' live as Ana, opening on speed_ctrl. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
   assert.deepEqual(parseFollowLink(link), { ...parseFollowLink(link.replace(/&top=.*$/, '')), top: 'speed_ctrl' });
   // (shared already: that module's links, another module's too)
   const again = await ok('share_project', { project: 'blinkyMod', server: base, top: 'knight' });
@@ -255,7 +255,7 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   const r = await ok('share_project', { project: 'trafficEd', name: 'Ana', server: base, editors: true });
   const { link, editLink } = r.data;
   assert.match(editLink, new RegExp(`^${base}/#edit=${parseFollowLink(link).room}\\.[A-Za-z0-9_-]{43}\\.[A-Za-z0-9_-]{129}$`));
-  assert.equal(r.text, `Sharing 'trafficEd' live, read only, as Ana. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
+  assert.equal(r.text, `Sharing 'trafficEd' live as Ana. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
   // (#3996: the viewers' and the editors' links differ, the viewers' with no signing key, nothing of the editors' in it;
   // both QR codes, as Share Project… shows them)
   assert.notEqual(link, editLink);

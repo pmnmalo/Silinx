@@ -244,6 +244,8 @@ const PT = {
   'Toggle comment': 'Comentar/descomentar', 'Find / Replace': 'Procurar / Substituir', 'Go to line': 'Ir para a linha', 'Go to definition': 'Ir para a definição',
   'Fold block': 'Dobrar bloco', 'Move the focused document tab left / right (or drag it)': 'Mover o separador do documento com o foco para a esquerda / direita (ou arrastá-lo)', 'Run process': 'Executar processo', 'Push into instance': 'Entrar na instância',
   'Double-click process': 'Duplo clique num processo', 'Double-click instance (schematic)': 'Duplo clique numa instância (esquemático)',
+  'F1 (schematic)': 'F1 (esquemático)', 'Symbol Info of the selected symbol': 'Informação do Símbolo selecionado', 'R / Del (circuit)': 'R / Del (circuito)', 'Turn / delete the selected part': 'Rodar / apagar a peça selecionada',
+  'Esc (circuit)': 'Esc (circuito)', 'End the wire, stop Try it, or back to Select': 'Terminar o fio, parar Experimentar, ou voltar a Selecionar', 'Esc (state diagram, ASM chart, Petri net)': 'Esc (diagrama de estados, ASM, rede de Petri)', 'Back to the arrow (an add tool stays on for every click until then)': 'Voltar à seta (uma ferramenta de adicionar fica ativa a cada clique até lá)',
   // SSim
   'Instances and Processes': 'Instâncias e Processos', 'Objects': 'Objetos', 'Object Name': 'Nome do Objeto', 'Value': 'Valor', 'Data Type': 'Tipo de Dados',
   'Name': 'Nome', 'Restart': 'Reiniciar', 'Run All': 'Executar Tudo', 'Break': 'Parar', 'Run for the specified time': 'Executar durante o tempo indicado',

@@ -1,5 +1,5 @@
 // The MCP server's tools of a shared project (#3181, server/mcp.js, #2674), as the interface's Share Project… and the
-// opening of a link to follow: share_project shares a project of the workspace live, read only, through the relay of
+// opening of a link to follow: share_project shares a project of the workspace live through the relay of
 // a running Silinx server (server/collab-relay.js; its token read as a second launch reads it, server/server.js
 // tokenFile), its files published from the disk and kept as they change (the project watcher, #2843);
 // follow_project follows a link, read only, and gives the project's files, who is in it, the owner's view and a file's
@@ -174,8 +174,8 @@ async function setRole(name, cur, action, user) {
 
 export const COLLAB_TOOLS = [
   {
-    name: 'share_project', title: 'Share a project live (read only)',
-    description: 'Share a project of the workspace live, read only, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it (in Silinx, or follow_project), its files and drawings as they change on disk; status, who follows it (each a viewer or an editor) and what they look at; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile; its followers get what changed once it is back).',
+    name: 'share_project', title: 'Share a project live',
+    description: 'Share a project of the workspace live, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it, read only (in Silinx, or follow_project), its files and drawings as they change on disk, and with editors: true an editor\'s link too (the interface\'s Live share always makes both; here the default is no editors, and promote then refused); status, who follows it (each a viewer or an editor) and what they look at; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile; its followers get what changed once it is back).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'stop'], description: 'start (default), status, promote, demote or stop.' },
@@ -244,7 +244,7 @@ export const COLLAB_TOOLS = [
       const editLink = session.editKey ? followLink(`${origin}/`, session.room, session.key, 'relay', session.editKey) : null;
       shares.set(name, { session, link, editLink, server: origin, off, warnings });
       return {
-        text: `Sharing '${name}' live, read only, as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too${qr ? ' (its QR code: editQr)' : ''}:\n${on(editLink)}` : ''}`,
+        text: `Sharing '${name}' live${editLink ? '' : ', read only,'} as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too${qr ? ' (its QR code: editQr)' : ''}:\n${on(editLink)}` : ''}`,
         data: { project: name, shared: true, link: on(link), ...withQr(on(link)), ...(editLink ? { editLink: on(editLink), ...withEditQr(on(editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: [] },
       };
     },

@@ -12,7 +12,7 @@ const USAGE = `usage:
   silinx serve [--port 8642] [--host 127.0.0.1] [--open]   start the Project Navigator web UI
   silinx check <projectDir> [--top name]            parse + elaborate the design
   silinx sim   <projectDir> [--top tb] [--time ns] [--vcd out.vcd]   run a behavioural simulation
-  silinx ucf   <projectDir> --board basys2|nexys2|s3e-starter [--part xc3s100e]   pins from the board
+  silinx ucf   <projectDir> --board <board> [--part xc3s100e]   pins from the board (basys2, nexys2, s3e-starter…)
   silinx grade <exercise.json> <submission…> [--visible] [--json out.json] [--csv out.csv] [--quiet]
                                                     grade submissions (project folders, zips, or a folder of
                                                         them) on an exercise's tests: a report per submission
@@ -23,7 +23,9 @@ const USAGE = `usage:
                          [--csv grades.csv] [--json grades.json] [--issues]   every test on the students' repositories
   silinx toolchain [--docker <image>]                show / set the ISE toolchain (docker image)
   silinx mcp                                        an MCP server on stdin / stdout: the workspace's
-                                                        projects for an AI assistant (Claude Desktop…)
+                                                        projects for an AI assistant (Claude Desktop…); the projects
+                                                        in SILINX_WORKSPACE, the files it imports and exports in
+                                                        SILINX_MCP_FOLDER (default: the Downloads folder)
   silinx help                                       this text`;
 
 // A path silinx.json names: inside the project, as the server confines it (it may come from someone else's project)
