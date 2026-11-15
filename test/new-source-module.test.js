@@ -12,7 +12,7 @@ const exportsOf = code => new Set([
   ...[...code.matchAll(/^export \{([^}]*)\} from /gm)].flatMap(m => m[1].split(',').map(s => s.trim()).filter(Boolean)),
 ]);
 
-// wizards.js's exports before the split (but importXiseDialog and importSilinxDialog, one Import Project (.zip)… since
+// wizards.js's exports before the split (but importXiseDialog and importSilinxDialog, one Import Project… since
 // #3703: web/js/project-zip-dialogs.js)
 const BEFORE = ['field', 'select', 'wizard', 'newProjectWizard', 'createTopSource', 'openProjectDialog', 'zipFolderSelection',
   'replaceGuard', 'closeBeforeReplace', 'moduleElsewhere', 'drawnHdlTaken',

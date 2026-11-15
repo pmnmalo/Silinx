@@ -232,3 +232,11 @@ test('#2981 the trust messages: who made the project', async () => {
   assert.deepEqual(markMadeByMcp({ name: 'p' }), { name: 'p', trusted: false, madeBy: 'mcp' });
   assert.deepEqual(markUntrusted({ name: 'p', madeBy: 'mcp' }), { name: 'p', trusted: false });
 });
+
+test('#4132 import_project / export_project: their descriptions name the File menu\'s Import Project… and Export Project (.zip)…', async () => {
+  const { TRANSFER_TOOLS } = await import('../server/mcp-transfer.js');
+  const desc = n => TRANSFER_TOOLS.find(t => t.name === n).description;
+  assert.match(desc('import_project'), /as the File menu's Import Project… does,/);
+  assert.doesNotMatch(desc('import_project'), /Import Project \(\.zip\)/);
+  assert.match(desc('export_project'), /as the File menu's Export Project \(\.zip\)… does,/);
+});

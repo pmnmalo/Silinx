@@ -26,11 +26,11 @@ uiTest('#3968 the Start page\'s git group when Silinx opens, its first ask of gi
     assert.equal(await page.eval(() => window.__gitFailed), true, 'the first ask failed');
     // the Start page in front, the group after its line, with no click
     await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Open from Repository…'), [], { what: 'the git group' });
-    assert.deepEqual(await startCommands(page), ['Import Project (.zip)…', 'Export Project (.zip)…', '—', 'Initialize Repository…', 'Open from Repository…']);
+    assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…', '—', 'Initialize Repository…', 'Open from Repository…']);
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     await page.leftTab('start');
     await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Abrir do Repositório…'), [], { what: 'the Start page in Portuguese' });
-    assert.deepEqual(await startCommands(page), ['Importar Projeto (.zip)…', 'Exportar Projeto (.zip)…', '—', 'Inicializar Repositório…', 'Abrir do Repositório…']);
+    assert.deepEqual(await startCommands(page), ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—', 'Inicializar Repositório…', 'Abrir do Repositório…']);
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
     assert.deepEqual(warnings(page), []);
   } finally {

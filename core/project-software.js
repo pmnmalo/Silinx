@@ -1,4 +1,4 @@
-// The software a project's zip comes from or goes to (#3703: the Software: row of Import Project (.zip)… and Export
+// The software a project's zip comes from or goes to (#3703: the Software: row of Import Project… and Export
 // Project (.zip)…). Silinx reads and writes a Silinx project (silinx.json and every file) and a Xilinx ISE one (its
 // .xise and its sources); not yet an AMD Vivado project (.xpr) nor an Intel Quartus one (.qpf, .qsf): those are shown
 // disabled, their reason their tip, never a choice that fails.

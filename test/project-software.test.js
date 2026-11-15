@@ -1,4 +1,4 @@
-// core/project-software.js (#3703): the software of Import Project (.zip)… and Export Project (.zip)…'s Software: row,
+// core/project-software.js (#3703): the software of Import Project… and Export Project (.zip)…'s Software: row,
 // and the software of a zip's files, as the import reads them (server/project-zip.js importProjectEntries).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

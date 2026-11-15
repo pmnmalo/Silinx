@@ -1,4 +1,4 @@
-// Import Project (.zip)… and Export Project (.zip)… (#3703): their window opened from the File menu, the software
+// Import Project… and Export Project (.zip)… (#3703): their window opened from the File menu, the software
 // chosen in it (web/js/project-zip-dialogs.js).
 export const FILE = '.dlg-overlay input[data-field=file]', FOLDER = '.dlg-overlay input[data-field=folder]';
 const software = (page, id) => page.click(`.dlg-overlay input[data-field=software-${id}]`);
@@ -12,9 +12,9 @@ export async function exportZip(page, id) {
   await page.waitNoDialog();
 }
 
-/** Import Project (.zip)…'s window, `id` (silinx, xilinx) chosen in it. */
+/** Import Project…'s window, `id` (silinx, xilinx) chosen in it. */
 export async function openImport(page, id) {
-  await page.menu('File', 'Import Project (.zip)…');
+  await page.menu('File', 'Import Project…');
   await page.waitDialog('Import Project');
   await software(page, id);
 }

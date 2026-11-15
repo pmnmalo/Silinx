@@ -196,7 +196,7 @@ uiTest('every menu opens and every enabled item acts or opens its dialog', E, as
   // (the Silinx interface: they open from the processes and the toolbar, not from a menu, #1217)
   // (no Window menu in the Silinx interface: its documents in their tabs, #1253)
   for (const w of silinx ? [] : ['SSim (', 'Board Emulator (top)', 'I/O Pin Planning', 'iMPACT', 'Design Summary']) assert.ok(windows.some((x) => x === w || (w.endsWith('(') && x.startsWith(w))), `Window menu lists ${w}: ${windows}`);
-  for (const must of ['File ▸ New Project…', 'File ▸ Open Project…', 'File ▸ Import Project (.zip)…', 'File ▸ Export Project (.zip)…',
+  for (const must of ['File ▸ New Project…', 'File ▸ Open Project…', 'File ▸ Import Project…', 'File ▸ Export Project (.zip)…',
     'File ▸ Recent Projects', 'Edit ▸ Undo', 'Edit ▸ Redo', 'Edit ▸ Find…',
     'Edit ▸ Replace…', 'Edit ▸ Go to Line…', 'View ▸ Implementation', 'View ▸ Simulation', 'View ▸ Design Summary', 'View ▸ Language',
     'Project ▸ New Source…', `Project ▸ ${IMPORT}…`, 'Project ▸ Design Properties…',
@@ -474,7 +474,7 @@ uiTest('Portuguese: View ▸ Language switches the UI; menus, dialogs and the ma
     await compare(`menu ${m}`, () => page.eval(() => window.__uiTexts(document.querySelector('body > .menu-popup'))));
     await page.closeMenus();
   }
-  const dialogs = [['File', 'New Project…', 3, 'Zz9'], ['File', 'Open Project…'], ['File', 'Import Project (.zip)…'],
+  const dialogs = [['File', 'New Project…', 3, 'Zz9'], ['File', 'Open Project…'], ['File', 'Import Project…'],
     ['Project', 'New Source…', 3, 'zz9'], ['Project', `${IMPORT}…`], ['Project', 'Design Properties…'], ['Tools', 'Toolchain Settings (ISE / Programmers)…'],
     ['Help', 'About Silinx'], ['Help', 'Keyboard Shortcuts']];
   for (const [m, it, pages = 1, name] of dialogs) {

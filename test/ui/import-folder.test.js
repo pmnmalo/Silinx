@@ -1,4 +1,4 @@
-// UI: Import Project (.zip)…, a Silinx project from its folder (#3965): the Silinx choice's rows an ISE project's
+// UI: Import Project…, a Silinx project from its folder (#3965): the Silinx choice's rows an ISE project's
 // (the project folder, or a .zip file, then the project's name), a folder's software preselected (as a zip's), the
 // folder imported as the .zip of the same project (its build folder and hidden files left out, no warning); a folder of
 // no project said; in Portuguese.
@@ -24,7 +24,7 @@ const checked = (page, id) => page.waitFor((i) => document.querySelector(`.dlg-o
 const info = (page, text) => page.waitFor((t) => [...document.querySelectorAll('.dlg-overlay .dlg-body .hint')].at(-1).textContent === t, [text], { what: `'${text}'` });
 const hint = (page) => page.eval(() => document.querySelector('.dlg-overlay .form-grid + .hint').textContent);
 
-uiTest('#3965 Import Project (.zip)…: a Silinx project from its folder, in the Xilinx ISE window\'s rows; in Portuguese', E, async (page) => {
+uiTest('#3965 Import Project…: a Silinx project from its folder, in the Xilinx ISE window\'s rows; in Portuguese', E, async (page) => {
   await makeProject(env, { name: 'FolderSrc', template: 'gates', board: 'basys2' });
   const src = await env.server.api('GET', '/api/projects/FolderSrc');
   // the project's folder on the disk, with Silinx's outputs and hidden files besides

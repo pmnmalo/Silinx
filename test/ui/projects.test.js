@@ -681,7 +681,7 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   assert.deepEqual(await startPage(page), { buttons: ['New Project…', 'Open Project…'], top: true, halves: true, commands: [
     // (the git group: Initialize Repository…, the open project's, #3534; Open from Repository…, the server editions' git,
     // #3195, the group's last, #3716)
-    'Import Project (.zip)…', 'Export Project (.zip)… (disabled)', '—',
+    'Import Project…', 'Export Project (.zip)… (disabled)', '—',
     'Initialize Repository… (disabled)', 'Open from Repository…'] });
   // drawn again with a project open (a late drawing while one opens): the same page kept, only its host's attribute
   // changes, so that a click pressed before is not lost (#494, #1222)
@@ -708,7 +708,7 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   await page.openProject('StartZip');
   await page.leftTab('start');
   await page.waitFor(() => document.getElementById('start-page').hasAttribute('data-project'), [], { what: 'the exports enabled' });
-  assert.deepEqual((await startPage(page)).commands, ['Import Project (.zip)…', 'Export Project (.zip)…', '—',
+  assert.deepEqual((await startPage(page)).commands, ['Import Project…', 'Export Project (.zip)…', '—',
     'Initialize Repository…', 'Open from Repository…']);
   // (the software chosen in the export's window, #3703)
   for (const [id, zip] of [['silinx', 'StartZip-silinx.zip'], ['xilinx', 'StartZip.zip']]) {
@@ -718,7 +718,7 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
     await page.dialogButton('Export');
     await waitDownload(page, zip);
   }
-  await page.click('#start-page .entry a', { text: 'Import Project (.zip)…' });
+  await page.click('#start-page .entry a', { text: 'Import Project…' });
   await page.waitDialog('Import Project');
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
@@ -726,10 +726,17 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#start-page .start-btns .btn')?.textContent !== 'New Project…', [], { what: 'Portuguese' });
   assert.deepEqual((await startPage(page)).buttons, ['Novo Projeto…', 'Abrir Projeto…']);
-  await page.waitFor(() => document.querySelector('#start-page .start-box .entry a')?.textContent === 'Importar Projeto (.zip)…', [], { what: 'the commands in Portuguese' });
-  assert.deepEqual((await startPage(page)).commands, ['Importar Projeto (.zip)…', 'Exportar Projeto (.zip)…', '—',
+  await page.waitFor(() => document.querySelector('#start-page .start-box .entry a')?.textContent === 'Importar Projeto…', [], { what: 'the commands in Portuguese' });
+  assert.deepEqual((await startPage(page)).commands, ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—',
     'Inicializar Repositório…', 'Abrir do Repositório…']);
+  // the File menu's: Import Project…, a folder, a .zip or a .xise (#3965); the export a .zip only (#4132)
+  const fileMenu = () => page.eval(async () => {
+    const { t } = await import('/js/i18n.js');
+    return window.SilinxApp.S.menus.find((m) => m.label === 'File').items().filter((x) => /^(Import|Export) Project/.test(x?.label || '')).map((x) => t(x.label));
+  });
+  assert.deepEqual(await fileMenu(), ['Importar Projeto…', 'Exportar Projeto (.zip)…']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  assert.deepEqual(await fileMenu(), ['Import Project…', 'Export Project (.zip)…']);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
 
@@ -804,7 +811,7 @@ uiTest('Silinx and Xilinx zip: export, import as a new project, and a failing im
   await page.waitFor(() => window.Silinx.project?.name === 'ZipCopy');
 });
 
-// #3703: Import Project (.zip)… and Export Project (.zip)…: the software chosen in the window (Silinx, Xilinx ISE; AMD
+// #3703: Import Project… and Export Project (.zip)…: the software chosen in the window (Silinx, Xilinx ISE; AMD
 // Vivado and Intel Quartus disabled, their reason their tip), the import's preselected from the zip picked, the choice
 // kept; in Portuguese
 uiTest('#3703 Import / Export Project (.zip)…: the Software row, the zip\'s software preselected, the choice kept; in Portuguese', E, async (page) => {
@@ -846,7 +853,7 @@ uiTest('#3703 Import / Export Project (.zip)…: the Software row, the zip\'s so
   await fs.writeFile(none, await createZip([{ path: 'notes.txt', data: 'notes\n' }], codec));
   const folderShown = () => page.eval(() => !document.querySelector('.dlg-overlay input[data-field=folder]').hidden);
   const info = (text) => page.waitFor((t) => [...document.querySelectorAll('.dlg-overlay .dlg-body .hint')].at(-1).textContent === t, [text], { what: `'${text}'` });
-  await page.menu('File', 'Import Project (.zip)…');
+  await page.menu('File', 'Import Project…');
   await page.waitDialog('Import Project');
   assert.deepEqual(await row(), ['Silinx (checked)', 'Xilinx ISE', VIVADO, QUARTUS]);
   assert.equal(await folderShown(), true);
@@ -882,7 +889,7 @@ uiTest('#3703 Import / Export Project (.zip)…: the Software row, the zip\'s so
 
 // #2830: the import gate on the local server: a zip's refused entries (a hidden folder, a script in a name, an XXE
 // schematic, a traversal) are left out and said in the console; the sound files are imported
-uiTest('#2830 Import Project (.zip)…, Silinx: the import gate leaves out what it refuses and says why in the console', E, async (page) => {
+uiTest('#2830 Import Project…, Silinx: the import gate leaves out what it refuses and says why in the console', E, async (page) => {
   const { createZip } = await import('../../core/zip.js');
   const zlib = await import('node:zlib');
   const codec = { deflate: (d) => zlib.deflateRawSync(d), inflate: (d, l) => zlib.inflateRawSync(d, { maxOutputLength: l }) };

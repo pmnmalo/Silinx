@@ -353,8 +353,8 @@ uiTest('#3968 the browser edition opened fresh: the Start page\'s git group, in 
   await page.eval(() => { for (const s of [localStorage, sessionStorage]) s.removeItem('silinx.github-token'); window.SilinxApp.closeProject?.(); });
   await page.eval(() => localStorage.removeItem('silinx.lastProject'));
   for (const [lang, expected] of [
-    ['en', ['Import Project (.zip)…', 'Export Project (.zip)…', '—', 'Sign in with GitHub…', 'Initialize Repository…', 'Open from Repository…']],
-    ['pt', ['Importar Projeto (.zip)…', 'Exportar Projeto (.zip)…', '—', 'Iniciar sessão no GitHub…', 'Inicializar Repositório…', 'Abrir do Repositório…']],
+    ['en', ['Import Project…', 'Export Project (.zip)…', '—', 'Sign in with GitHub…', 'Initialize Repository…', 'Open from Repository…']],
+    ['pt', ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—', 'Iniciar sessão no GitHub…', 'Inicializar Repositório…', 'Abrir do Repositório…']],
   ]) {
     await page.eval((l) => (l === 'pt' ? localStorage.setItem('silinx.lang', 'pt') : localStorage.removeItem('silinx.lang')), lang);
     await boot(page);

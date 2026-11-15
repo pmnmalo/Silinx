@@ -24,6 +24,6 @@ uiTest('#3968 SILINX_GIT=off: no git group on the Start page', E, async (page) =
   await page.leftTab('start');
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page' });
   assert.equal(await page.eval(async () => (await (await import('/js/api.js')).api.gitEnabled()).enabled), false);
-  assert.deepEqual(await startCommands(page), ['Import Project (.zip)…', 'Export Project (.zip)…']);
+  assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
   assert.deepEqual(warnings(page), []);
 });
