@@ -84,8 +84,9 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-tool`)].some((b) => b.textContent.trim() === 'Fio'), [ED], { what: 'the toolbar in Portuguese' });
   assert.deepEqual(await status(page), ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 16 fio(s)']);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts h3, ${ed} .circ-lib-title`)].map((e) => e.textContent), ED),
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts-side .asm-cap, ${ed} .circ-lib-title > span:first-child`)].map((e) => e.textContent), ED),
     ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS)', 'Sequenciais (74LS, 4000)']);
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-search`).placeholder, ED), 'Procurar peças…');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).title, ED), 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"]`).textContent, ED), '7400 Quatro portas NAND de 2 entradas');
@@ -152,7 +153,7 @@ uiTest('Circuit editor: its Properties fold to a strip and expand, remembered; o
   // narrow: the panel over the canvas, closed, shown and hidden by ☰ Properties
   await page.setViewport(800, 900);
   await page.eval(async () => (await import('/js/narrow.js')).setDrawer(false));
-  const btn = `${ED} .circ-toolbar .narrow-only`;
+  const btn = `${ED} .circ-toolbar .narrow-only:not(.circ-parts-btn)`;
   await page.waitFor((b) => document.querySelector(b)?.getClientRects().length > 0, [btn], { what: 'the ☰ button' });
   const shown = () => page.eval((s) => document.querySelector(s).classList.contains('side-open') && document.querySelector(`${s} .asm-side`).getClientRects().length > 0, ED);
   assert.equal(await shown(), false);
@@ -160,6 +161,12 @@ uiTest('Circuit editor: its Properties fold to a strip and expand, remembered; o
   assert.equal(await shown(), true);
   await page.click(btn);
   assert.equal(await shown(), false);
+  // (#4062) the Parts panel, on the left: over the canvas behind ☰ Parts
+  const parts = () => page.eval((s) => document.querySelector(`${s} .circ-parts-side`).getClientRects().length > 0 && document.querySelector(`${s} .circ-parts-side`).getBoundingClientRect().left < document.querySelector(`${s} .circ-canvas`).getBoundingClientRect().left + 10, ED);
+  assert.equal(await page.eval((s) => document.querySelector(`${s} .circ-parts-side`).getClientRects().length, ED), 0);
+  await page.click(`${ED} .circ-parts-btn`);
+  assert.equal(await parts(), true);
+  await page.click(`${ED} .circ-parts-btn`);
   await page.setViewport(1440, 900);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

@@ -37,10 +37,12 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   only: the connections are the same.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
   net's: the toolbar (select, wire, rotate, delete, then the zoom, Keep connections, then Check and Try it; while trying it, the Try it bar above the canvas, as the schematic's, its Reset and Stop, #4067; printed
-  by the main toolbar's Print), the Properties side panel on the right, foldable, over the canvas behind ☰ Properties on a
-  narrow screen: the selected part's label, colour, pinout, a switch's position as saved (a DIP switch's levers), a
-  clock's frequency; the parts library (by category: breadboards, power, inputs, outputs, the 74LS and the 4000 gates; a
-  click on a part, then on the drawing); the circuit's name and HDL language; the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
+  by the main toolbar's Print), the **Parts** panel on the left (#4062, as the schematic's Symbols: a search, the parts by
+  category, each folded or open, each part with its drawing, an IC's the schematic's symbol of its gate or its block; a
+  click on a part, then on the drawing; foldable, over the canvas behind ☰ Parts on a narrow screen), the Properties side
+  panel on the right, foldable, over the canvas behind ☰ Properties on a narrow screen: the selected part's label,
+  colour, pinout, a switch's position as saved (a DIP switch's levers), a clock's frequency; the circuit's name and HDL
+  language; the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
   · 15 wire(s)"; while simulating, "t = 24 ns"); every message in the console.
 
 ## The parts library
