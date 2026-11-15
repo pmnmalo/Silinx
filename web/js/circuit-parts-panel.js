@@ -6,8 +6,8 @@
 import { h } from './ui.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
-import { PARTS, PART_ORDER, partPins, partHoles } from '/core/circuit-parts.js';
-import { drawCircuit, P } from './circuit-draw.js';
+import { PARTS, PART_ORDER } from '/core/circuit-parts.js';
+import { drawCircuit } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
 
@@ -15,7 +15,8 @@ const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
   ['MSI (74LS)', PART_ORDER.filter((t) => PARTS[t].model)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].seq)]];
-const W = 54, H = 34;
+const W = 54, H = 34, MAX = 1.2;
+const r2 = (v) => Math.round(v * 100) / 100;
 // the schematic's symbol of an MSI or sequential IC (core/schdoc.js SYMBOLS)
 const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decoder', 74139: 'decoder', 74151: 'mux8', 74153: 'mux4', 74157: 'mux2',
   7483: 'add', 74283: 'add', 7485: 'compare', 7474: 'fdcp', 7476: 'fjkcp', 74112: 'fjkcp', 7490: 'counter', 7493: 'counter', 74161: 'counter',
@@ -38,20 +39,22 @@ function symbolPreviewOf(type) {
   return s;
 }
 
-// a part's drawing, small (its texts and tips left out: the row's name says it)
+// a part's drawing, small
 const previews = new Map();
 function preview(type) {
   if (previews.has(type)) return previews.get(type).cloneNode(true);
   if (symbolOfPart(type)) { previews.set(type, symbolPreviewOf(symbolOfPart(type))); return previews.get(type).cloneNode(true); }
-  const p = { id: 'X', type, x: 0, y: 0 };
-  const xs = [], ys = [];
-  for (const q of [...partPins(p), ...partHoles(p)]) { xs.push(q.x); ys.push(q.y); }
-  // (the part's body reaches about 2.6 steps beyond its pins: a switch's, the supply's)
-  const l = (Math.min(...xs) - 2.7) * P, r = (Math.max(...xs) + 1) * P, t = (Math.min(...ys) - 2.7) * P, b = (Math.max(...ys) + 1) * P;
-  const k = Math.min((W - 6) / (r - l), (H - 6) / (b - t));
-  const g = drawCircuit({ parts: [p], wires: [] });
-  for (const x of g.querySelectorAll('text, title')) x.remove();
-  g.setAttribute('transform', `translate(${(W - (r - l) * k) / 2 - l * k},${(H - (b - t) * k) / 2 - t * k}) scale(${k})`);
+  const g = drawCircuit({ parts: [{ id: 'X', type, x: 0, y: 0 }], wires: [] });
+  // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow)
+  for (const x of g.querySelectorAll('text.circ-label, title')) x.remove();
+  // (fitted to its drawing's box, measured off the page once: its body as drawn, not its pins', #4124; a small part not
+  // magnified past MAX)
+  const m = sv('svg', { width: 0, height: 0, style: 'position:absolute;visibility:hidden' }, g);
+  document.body.append(m);
+  const b = g.getBBox();
+  m.remove();
+  const k = Math.min((W - 6) / (b.width || 1), (H - 6) / (b.height || 1), MAX);
+  g.setAttribute('transform', `translate(${r2((W - b.width * k) / 2 - b.x * k)},${r2((H - b.height * k) / 2 - b.y * k)}) scale(${r2(k * 100) / 100})`);
   const s = sv('svg', { class: 'circ-pv', viewBox: `0 0 ${W} ${H}`, width: W, height: H }, g);
   previews.set(type, s);
   return s.cloneNode(true);

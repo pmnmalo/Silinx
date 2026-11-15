@@ -1,5 +1,5 @@
 // UI: the circuit editor's Parts panel (#4062): on the left of the canvas, the Properties on the right without the parts;
-// each part's drawing (an IC's the schematic's symbol of its gate or block); the search; a category folded and opened; a
+// each part's drawing (an IC's the schematic's symbol of its gate or block; the others' fitted to their boxes, #4124); the search; a category folded and opened; a
 // part placed from it; the panel folded to a strip, remembered; Portuguese. No warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,6 +30,16 @@ uiTest('Circuit editor: the Parts panel on the left, its drawings, search, categ
   // the drawings: a gate IC's its gate's schematic symbol, an MSI's its block's, a breadboard's and an LED's their own
   assert.deepEqual(await page.eval((ed) => ['7400', '74138', 'breadboard-half', 'led'].map((t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"] svg`).classList.contains('circ-pv-sym')), ED), [true, true, false, false]);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"] svg .gate`) !== null, ED), true);
+  // (#4124) every other part's drawing fitted to its box: centred, filling its width or its height (a small one magnified
+  // 1.2 times at most); its marks kept (the supply's +5V and GND, a pull's arrow), its name not
+  const fit = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-part svg.circ-pv:not(.circ-pv-sym)`)].map((s) => {
+    const r = s.getBoundingClientRect(), g = s.querySelector('g').getBoundingClientRect(), k = Number(/scale\(([\d.]+)\)/.exec(s.querySelector('g').getAttribute('transform'))[1]);
+    const centred = Math.abs((g.left + g.right) / 2 - (r.left + r.right) / 2) < 1.5 && Math.abs((g.top + g.bottom) / 2 - (r.top + r.bottom) / 2) < 1.5;
+    const fills = g.width >= r.width - 10 || g.height >= r.height - 10 || k === 1.2;   // (its border, its margin)
+    return centred && fills && g.left >= r.left - 0.5 && g.right <= r.right + 0.5 && g.top >= r.top - 0.5 && g.bottom <= r.bottom + 0.5 ? null : `${s.closest('[data-part]').dataset.part}: ${JSON.stringify([r.width, r.height, g.width, g.height, k])}`;
+  }).filter(Boolean), ED);
+  assert.deepEqual(fit, []);
+  assert.deepEqual(await page.eval((ed) => ['supply', 'pull-up', 'logic-switch'].map((t) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-part="${t}"] svg text`)].map((x) => x.textContent)), ED), [['+5V', 'GND'], ['↑'], []]);
   // the search; a category folded, opened
   await page.click(`${ED} .circ-search`);
   await page.type('xor');
