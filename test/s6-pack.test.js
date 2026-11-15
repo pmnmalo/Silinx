@@ -273,6 +273,7 @@ test('a cell the packer has no place for: a PackError naming it', () => {
 // and carry out both leave the slice, has its sum through a storage element as a gate, as map packs it on night 1)
 const EXAMPLE_PACK = {
   gates: { slices: 1, X: 1, L: 0, M: 0, luts: 1, ffs: 0, warnings: 0 },
+  breadboard: { slices: 2, X: 1, L: 1, M: 0, luts: 3, ffs: 8, warnings: 0 },   // (#3901: a digital circuit's, its 74LS chips)
   traffic: { slices: 34, X: 14, L: 20, M: 0, luts: 96, ffs: 58, warnings: 0 },
   blinky: { slices: 55, X: 24, L: 31, M: 0, luts: 102, ffs: 132, warnings: 0 },   // (#3710: 53, 29, 130 with 20-bit debouncers)
   pong: { slices: 111, X: 58, L: 53, M: 0, luts: 270, ffs: 207, warnings: 0 },
@@ -285,7 +286,7 @@ const EXAMPLE_PACK = {
 };
 // with LUT combining (combine: 'area'): the slices, never more than without, and the same warnings (isqrt: 29 when
 // the combining came before the storage elements, which then filled the slices it emptied again, #2636)
-const EXAMPLE_AREA = { gates: 1, traffic: 31, blinky: 54, pong: 102, stopwatch: 80, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63 };
+const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 54, pong: 102, stopwatch: 80, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63 };
 // the SLICELs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31 now)
 const NIGHT1_L = { blinky: 29 };
 // map's packing of the same netlists on ISE (packages/silinx-fpga/research/s6/measured/night1.json, night 1): its SLICELs are the packer's
