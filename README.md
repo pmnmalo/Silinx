@@ -235,7 +235,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   (1s) or POS (0s) drawn as coloured rounded rectangles, wrap-around groups split at the edges;
   then the results, in this order: the least gates and the least delay; the *Karnaugh map*'s simplified function, its minimal SOP or POS,
   whichever of *SOP* / *POS* is clicked (the map's groups the same; several minimal solutions browsed with *◀ Solution k of N ▶* beside the
-  map, the one chosen used); *Quine-McCluskey*'s, SOP or POS, for any number of inputs, with its *Steps* when ticked (the columns of the
+  map, the one chosen used); *Quine-McCluskey*'s, SOP or POS, for every table (up to 16 inputs), with its *Steps* when ticked (the columns of the
   implicants combined, the prime implicant chart, the essential prime implicants, the cover: Petrick's method's minimum), exact while it is
   bounded, past that a cover heuristic (the console says it is not proven minimal);
   the canonical SOP and POS, each with its Σm / ΠM list beside its name and in full under it (the sum of the minterms, the product of the
