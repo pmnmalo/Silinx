@@ -10,19 +10,19 @@ import { t } from './i18n.js';
 
 let info = null, asking = null;
 /** What the server says of its editor ({ available, label, reason }); a failed ask (no token yet) asked again later. */
-export function editorAvailable() {
+function editorAvailable() {
   if (info) return Promise.resolve(info);
   if (!api.editorInfo) return Promise.resolve(info = { available: false });
   return (asking ??= api.editorInfo().then(r => (info = r), () => ({ available: false })).finally(() => { asking = null; }));
 }
 /** The editor's name when it can be opened (the menus are drawn synchronously: the last answer), else null. */
-export function editorLabel() {
+function editorLabel() {
   if (!info) editorAvailable();   // (for the next menu)
   return info?.available ? info.label : null;
 }
 
 /** Opens a project's file at a line (1-based), or its folder (no path), in the editor; what it says in the console. */
-export async function openInEditor(path = null, line = null) {
+async function openInEditor(path = null, line = null) {
   const pj = S.project?.name, label = editorLabel() || 'VS Code';
   if (!pj) return;
   // (the open document saved first: the editor opens what Silinx shows)
