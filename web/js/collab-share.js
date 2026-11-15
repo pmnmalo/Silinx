@@ -32,7 +32,7 @@ import { newHostKey } from '/core/collab-meet.js';
 import { linkField } from './link-field.js';
 import { howRow, shareTitle } from './share-how.js';
 import { hdlWarning } from './design-only.js';
-import { publishActivity } from './collab-activity.js';
+import { ownerActivity } from './collab-activity.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const TRACK_MS = 300;
@@ -168,6 +168,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share, offFiles = watchDoc(doc, ev => onEdits(s0, ev)), offDrawings = watchDrawings(s0);
   share.unwatch = () => { offFiles(); offDrawings(); };
+  share.activity = ownerActivity(session);   // (#4002)
   share.timer = setInterval(track, TRACK_MS);
   addEventListener('silinx:disk-changes', onDisk);
   setPresenceCommands(commands);
@@ -189,6 +190,7 @@ export async function stopSharing(why = null) {
   share = null;
   s.hosted = null;
   clearInterval(s.timer);
+  s.activity.stop();
   removeEventListener('silinx:disk-changes', onDisk);
   s.unwatch();
   unbindAll(s.bound);
@@ -261,7 +263,7 @@ function track() {
   const d = S.active, path = d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
   const c = path && d.editor?.getCursor ? d.editor.getCursor() : null;
   share.session.setView(path ? { path, line: c?.line ?? null, ch: c?.ch ?? null } : null);
-  publishActivity(share.session);   // (#4002: where it is, its Design pane)
+  share.activity.publish();   // (#4002: where it is, its Design pane, its runs)
   // (the followers' cursors, in the text editors they look at)
   const peers = share.session.peers();
   for (const o of S.docs) o.editor?.setPeers?.(peers.filter(x => x.view?.path === o.path && x.view.line !== null).map(x => ({ name: x.name, color: x.color, line: x.view.line, ch: x.view.ch ?? 0 })));

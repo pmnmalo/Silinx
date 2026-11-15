@@ -4,15 +4,17 @@
 // deleted, a process run) is refused, read only; the processes run in the owner's Silinx. An editor (#3182) writes a
 // text file's text: merged into the shared document as its edit (core/collab-doc.js editFile), which the owner writes.
 // Every file the room shows passes the import gate first (#3361: core/collab-doc.js gatedDocFile), as any file from
-// outside: one it refuses is not shown, and `warn` says so once.
+// outside: one it refuses is not shown, and `warn` says so once. The owner's runs (#4002): its Design Summary's data and
+// the reports of its build it has open, as they came (core/collab-runs.js), read as the server's.
 import { docProject, watchDoc, editFile, gatedDocFile } from '/core/collab-doc.js';
 import { collab, readOnlyError, editsHere } from './collab-state.js';
+import { followedReports, followedRuns, reportPath } from '/core/collab-runs.js';
 
 const notFound = what => Object.assign(new Error(what), { status: 404 });
 
 /** The backend of a followed room's document (`api`: the one it stands for; its other functions refuse). warn(text):
- *  a file the gate refuses, once for each reason. */
-export function followApi(api, doc, { warn = () => {} } = {}) {
+ *  a file the gate refuses, once for each reason; activity(ch): the owner's activity (#4002: its runs and reports). */
+export function followApi(api, doc, { warn = () => {}, activity = () => null } = {}) {
   const out = {};
   const said = new Set();
   let version = 0;
@@ -29,6 +31,13 @@ export function followApi(api, doc, { warn = () => {} } = {}) {
     const { project, fileTree } = docProject(doc);
     if (!project) throw notFound('the shared project has not arrived yet');
     return { project, fileTree };
+  };
+  // (a report of the owner's build, as it came: null when it was too large to follow)
+  const report = path => {
+    const files = followedReports(activity('reports'))?.files || {};
+    if (!(path in files)) throw notFound(`file '${path}' not found (${collab.owner} has not opened it)`);
+    if (files[path] === null) throw notFound(`file '${path}' is too large to follow`);
+    return files[path];
   };
   const check = name => {
     const { project, fileTree } = current();
@@ -56,11 +65,13 @@ export function followApi(api, doc, { warn = () => {} } = {}) {
     ...(storage ? { storage, initStorage: async () => storage() } : {}),
     templates: async () => [],
     testDesigns: async () => [],
-    devices: async () => null,
+    // (the device database, the boards: data of Silinx's own, not the server's, #4002: the owner's Design Summary)
+    devices: async () => (await import('/core/devices.js')).getDeviceDb(),
     toolchain: async () => ({ ise: { mode: 'silinx', available: false, reason: `following ${collab.owner}'s project: its processes run in their Silinx` }, programmers: {} }),
     project: async name => { const { project, fileTree } = check(name); return { ...structuredClone(project), fileTree }; },
     readFile: async (name, path) => {
       check(name);
+      if (reportPath(path)) return report(path);
       const g = gated(path);
       if (g.reason) throw notFound(`file '${path}' not shown: ${g.reason}`);
       if (g.text === null) throw notFound(`file '${path}' not found`);
@@ -73,7 +84,8 @@ export function followApi(api, doc, { warn = () => {} } = {}) {
         return g.text == null ? { ...f, text: '', missing: true } : { ...f, text: g.text };
       });
     },
-    reports: async () => ({ available: false }),
+    reports: async () => followedRuns(activity('runs'))?.summary || { available: false },
+    ...(api.buildFile ? { buildFile: async (name, path) => { check(name); return report(path); } } : {}),
     writeFile: async (name, path, text) => {
       check(name);
       if (!editsHere(path)) throw readOnlyError();
