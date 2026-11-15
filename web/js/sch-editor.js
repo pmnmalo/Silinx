@@ -136,7 +136,7 @@ export function mountSchEditor(container, opts = {}) {
 
   // ---------------- toolbar
   // Keep connections, Names, Hop-overs (sch-options.js)
-  const { branchBox, hopsItems, keepBox, keepConn, namesBox, showHops, showNames, wholeBranch } = mountSchOptions({ render: (...a) => render(...a) });
+  const { branchBox, setHops, keepBox, keepConn, namesBox, showHops, showNames, wholeBranch } = mountSchOptions({ render: (...a) => render(...a) });
   const segSel = mountSchSegSel({ doc: () => doc, nl: () => nl, sel: () => sel, wholeBranch });   // (the wire segment selected, #2211; the network of wires, #2228)
   const btn = (act, icon, title) => h('button', { type: 'button', class: 'se-btn', 'data-act': act, title, html: ICON[icon] });
   const sep = () => h('span', { class: 'se-sep' });
@@ -147,7 +147,7 @@ export function mountSchEditor(container, opts = {}) {
   const { rearrangeWires, rearrangeSheet } = mountSchBeautify({ doc: () => doc, edit: (...a) => edit(...a), fit: (...a) => fit(...a), flash: (...a) => flash(...a), modules: () => modules, sel: () => sel, snapshot: (...a) => snapshot(...a) });
   const { optBox } = mountSchToolbar({
     branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems: curve.items, deleteSel: (...a) => deleteSel(...a), enterSim: (...a) => enterSim(...a),
-    fit: (...a) => fit(...a), hopsItems, keepBox,
+    fit: (...a) => fit(...a), showHops, setHops, keepBox,
     leaveSim: (...a) => leaveSim(...a), live: () => live, mirrorSel: (...a) => mirrorSel(...a), mirrorVSel: (...a) => mirrorVSel(...a), namesBox,
     readOnly, rotateSel: (...a) => rotateSel(...a),
     runCheck: (...a) => runCheck(...a), sep, setTool: (...a) => setTool(...a), tb,

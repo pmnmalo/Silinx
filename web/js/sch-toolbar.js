@@ -6,11 +6,12 @@ import { h } from './dom.js';
 import { ICON } from './sch-editor.js';
 import { GRAPHIC_LABELS, GRAPHIC_TITLES, GRAPHIC_TOOLS } from './sch-graphics.js';
 import { designKind } from './project-kind-flag.js';
+import { crossingsChoice } from './wire-crossings.js';
 
 /** { optBox } of mountSchEditor (live(): its current values). */
 export function mountSchToolbar(ctx) {
   const {
-    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems, deleteSel, enterSim, fit, hopsItems, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
+    branchBox, rearrangeWires, rearrangeSheet, container, btn, canSim, wireItems, deleteSel, enterSim, fit, showHops, setHops, keepBox, leaveSim, live, mirrorSel, mirrorVSel, namesBox,
     readOnly, rotateSel, runCheck, sep, setTool, tb, zoomAt
   } = ctx;
 
@@ -26,7 +27,7 @@ export function mountSchToolbar(ctx) {
       : 'How the wires are drawn: straight from end to end, the technical drawing\'s horizontal and vertical lines, or smooth curves of any shape (the connections, the nets and the HDL the same)' },
       ...wireItems),
     // (Wire crossings: Hop-overs, Plain crossings, a choice as Wires, #4101)
-    h('div', { class: 'se-crossings', role: 'group' }, ...hopsItems),
+    h('div', { class: 'se-crossings', role: 'group' }, ...crossingsChoice(showHops(), setHops)),
   );
   const moreBtn = h('button', { type: 'button', class: 'se-btn', 'data-act': 'more', title: 'Wires and layout', 'aria-haspopup': 'true', 'aria-expanded': 'false', html: ICON.more });
   const more = h('span', { class: 'se-more' }, moreBtn, moreMenu);

@@ -3,9 +3,8 @@
 // where this code was.
 import { h } from './dom.js';
 import { prefKey } from './prefs.js';
-import { crossingsChoice } from './wire-crossings.js';
 
-/** { branchBox, hopsItems, keepBox, keepConn, namesBox, showHops, showNames, wholeBranch } of mountSchEditor (keepConn(), showHops(), showNames(), wholeBranch(): their current values). */
+/** { branchBox, setHops, keepBox, keepConn, namesBox, showHops, showNames, wholeBranch } of mountSchEditor (keepConn(), showHops(), showNames(), wholeBranch(): their current values). */
 export function mountSchOptions(ctx) {
   const { render } = ctx;
   // moving components keeps their wires connected (re-routed), or detaches them
@@ -29,8 +28,8 @@ export function mountSchOptions(ctx) {
   // hop-overs on by default (#756), off only when the user turned them off (remembered)
   let showHops = true;
   try { showHops = localStorage.getItem(prefKey('xl.sch.hops')) !== '0'; } catch { /* default */ }
-  // (the ⋮ menu's Wire crossings: Hop-overs, Plain crossings, #4101)
-  const hopsItems = crossingsChoice(showHops, on => { showHops = on; try { localStorage.setItem(prefKey('xl.sch.hops'), showHops ? '1' : '0'); } catch { /* ignore */ } render(); });
+  // (chosen in the ⋮ menu's Wire crossings: Hop-overs or Plain crossings, sch-toolbar.js, #4101)
+  const setHops = on => { showHops = on; try { localStorage.setItem(prefKey('xl.sch.hops'), showHops ? '1' : '0'); } catch { /* ignore */ } render(); };
 
-  return { branchBox, hopsItems, keepBox, keepConn: () => keepConn, namesBox, showHops: () => showHops, showNames: () => showNames, wholeBranch: () => wholeBranch };
+  return { branchBox, setHops, keepBox, keepConn: () => keepConn, namesBox, showHops: () => showHops, showNames: () => showNames, wholeBranch: () => wholeBranch };
 }
