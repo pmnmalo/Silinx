@@ -105,6 +105,7 @@
 .sch-view .sch-svg .glabel { font-size: 9px; fill: var(--sch-symbol); }
 .sch-view .sch-svg .glabel.op { font-size: 12px; font-weight: bold; }
 .sch-view .sch-svg .glabel.small { font-size: 8px; font-weight: normal; }
+.sch-view .sch-svg .glabel.iec { font-size: 10px; font-weight: bold; }   /* an IEC 60617-12 gate's qualifier, #4113 */
 
 /* openable symbols */
 .sch-view .sch-svg .node.openable { cursor: pointer; }
