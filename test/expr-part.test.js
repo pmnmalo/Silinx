@@ -22,3 +22,15 @@ test('part: the first n operators and literals as written, \'…\' for the rest;
   const nand = { t: 'nand', args: [{ t: 'nand', args: [v('a'), v('b')] }] };
   assert.equal(formatExpr(part(nand, { n: 100 }), 'slash'), formatExpr(nand, 'slash'));
 });
+
+test('part (#4150): nested tied NANDs / NORs within the budget as written, not twice per level after the fact', () => {
+  // a chain of 20 tied NANDs over a wide AND: written in full 2^20 times its input
+  let e = { t: 'and', args: Array.from({ length: 50 }, (_, i) => v(`x${i}`)) };
+  for (let i = 0; i < 20; i++) e = { t: 'nand', args: [e] };
+  assert.ok(sizeOf(e) > 1e7, 'in full: tens of millions of nodes written');
+  for (const n of [100, 1000, 10000]) {
+    const p = part(e, { n });
+    assert.ok(sizeOf(p) <= n * 1.1 + 40, `${n}: ${sizeOf(p)} written`);   // (each level one node more, and its "…")
+    assert.ok(formatExpr(p, 'slash').length < n * 6, `${n}: its text bounded`);
+  }
+});

@@ -13,8 +13,16 @@ export function part(a, left) {
   if (left.n-- <= 0) return rest;
   if (a.a) return { ...a, a: part(a.a, left) };
   if (!a.args) return a;
-  const args = [], was = left.n;
+  // (a tied NAND / NOR writes its input twice: that input given half of what is left, then counted twice, so that
+  // nested ones stay within the budget too, #4150: counted after the fact, a NAND form of 16 inputs was megabytes)
+  if (tied(a)) {
+    const half = { n: Math.floor((left.n - 1) / 2) }, had = half.n;   // (one kept for a '…' written twice)
+    if (had < 0) return rest;
+    const x = part(a.args[0], half);
+    left.n -= 2 * (had - half.n) + 1;
+    return { ...a, args: [x] };
+  }
+  const args = [];
   for (const x of a.args) { if (left.n <= 0) { args.push(rest); break; } args.push(part(x, left)); }
-  if (tied(a)) left.n -= was - left.n;
   return { ...a, args };
 }

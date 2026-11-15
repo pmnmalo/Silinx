@@ -9,6 +9,7 @@ import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js
 import { isDesignOnly } from '../core/project-kind.js';
 import { notationSetting } from './mcp-notation.js';
 import { NOTATION_IDS, showExpr } from '../core/expr-notation.js';
+import { MAX_NODES, litsOf, part, sizeOf } from '../core/expr-part.js';
 
 const VIEWS = ['translation', 'asm', 'fsm', 'schematic', 'results'];
 // (Settings ▸ Boolean Notation's, #3915, then the older ones formatExpr has)
@@ -88,7 +89,12 @@ async function tableResults(name, rel, doc, notation, design = false) {
   const n = m.inputs.length, kmap = n <= L.MAX_KMAP_INPUTS;
   const outputs = m.outputs.map(o => {
     const A = L.analyzeOutput(m, o);   // (past 6 inputs, Quine-McCluskey's: bounded, #3939)
-    const ex = ast => `${o} = ${showExpr(ast, notation)}`;
+    // (a large table's expression shown in part, as the editor's: its first operators and literals, then its number of
+    // literals, #4150; in full it was hundreds of megabytes at 16 inputs, the NAND form's the most)
+    const ex = ast => {
+      const cut = sizeOf(ast) > MAX_NODES;
+      return `${o} = ${showExpr(cut ? part(ast, { n: MAX_NODES }) : ast, notation)}${cut ? ` (shown in part: ${litsOf(ast)} literal(s) in all)` : ''}`;
+    };
     // a minimal form (the solution used, `used`) and every minimal solution of it (#2928, #2950); `many`: the cap reached
     // (a form's terms, literals and gates by type, as the editor says them, #4091)
     const cost = (ast, form) => { const c = L.formCost(ast, form); return { cost: c.text, gates: c.gates.types.map(([type, k]) => ({ type, count: k })) }; };
