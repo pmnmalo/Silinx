@@ -14,7 +14,12 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   simulation project (no new project kind). New Source ▸ **Digital Electronic Circuit** (second in its list, #4061) makes one: a half breadboard and its
   power supply, or, by its **Wizard >** (the Digital Electronic Circuit Wizard, `core/circuit-templates.js`), a typical
   assembly: N breadboards (half or full) and a supply, their rails joined; a breadboard with N switches (`sw[k]`) and M
-  LEDs (`led[k]`) (no empty one, #4161: New Source itself makes a breadboard and its supply); a circuit is also a **Top-Level Source Type** (#4105): New Project starts an empty project with one as its
+  LEDs (`led[k]`) (no empty one, #4161: New Source itself makes a breadboard and its supply); or, on a full
+  breadboard, chips already placed, powered and wired, ready to try (#4164, `core/circuit-assemblies.js`): a 7-segment
+  display (a 7447 or a 7448), a counter with display (a 7490 or a 74161, a clock of 1 to 50 Hz, a button `rst`), a
+  4-bit adder (a 7483 or a 74283), a gate test bench (7400, 7402, 7404, 7408, 7432, 7486), a comparator (7485), a
+  decoder or multiplexer (74138, 74151), a shift register (74164, 74194: buttons `clk` and `clr`, a switch `din`) and
+  flip-flops (7474); a circuit is also a **Top-Level Source Type** (#4105): New Project starts an empty project with one as its
   top (`src/top.circ.json`), and Design Properties can choose it.
 - **It is a module**, as every Silinx drawing: its **logic switches** and **buttons** are its inputs, its **LEDs**,
   each **7-segment display**'s segment and each **LED bar**'s light its outputs, named by their labels; its HDL file is generated from it (below). The Design pane shows
@@ -249,8 +254,9 @@ What differs on the FPGA:
 
 What the interface does, the MCP server does (CLAUDE.md, #2674):
 
-- `new_source` type `circuit` (a half breadboard and its supply, or the wizard's assembly: `template` boards or io
-  (an unknown one, `empty` too, refused naming the valid ones, #4161), `template_params`);
+- `new_source` type `circuit` (a half breadboard and its supply, or the wizard's assembly: `template` boards, io,
+  seg7, counter, adder, gates, comparator, decoder, shift or flipflop (an unknown one, `empty` too, refused naming the
+  valid ones, #4161), `template_params`: a chip, a display, a clock's frequency);
 - `circuit_parts`: the library, a part's pins, its logic and delay; one part's Part info too;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
   rotate (a breadboard with its parts; `keep: false`, the editor's Keep connections off), copy (the editor's Copy and

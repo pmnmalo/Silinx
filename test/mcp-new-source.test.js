@@ -93,11 +93,30 @@ test('new_source: a circuit from the Digital Electronic Circuit Wizard\'s assemb
   assert.deepEqual(d.parts.filter((p) => p.label).map((p) => p.label), ['sw[0]', 'sw[1]', 'led[0]', 'led[1]', 'led[2]', 'led[3]']);
   assert.match(read('src/panel_io.v'), /^module panel_io/m);
   // no empty one (#4161): refused, naming the valid ones, and nothing written
-  await fails({ type: 'circuit', name: 'blank', template: 'empty' }, 'template: one of boards, io');
+  await fails({ type: 'circuit', name: 'blank', template: 'empty' }, 'template: one of boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop');
   assert.equal(fs.existsSync(path.join(P.projectDir('p'), 'src/blank.circ.json')), false);
   await fails({ type: 'circuit', name: 'big', template: 'boards', template_params: { n: 7 } }, 'Breadboards (N): a whole number from 1 to 4.');
   await fails({ type: 'schematic', name: 'sx', template: 'io' }, 'template and template_params: a circuit\'s');
-  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io');
+  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop');
+});
+
+test('new_source: the Digital Electronic Circuit Wizard\'s assemblies of ICs (#4164), their parameters; their refusals; no warnings', async () => {
+  const cases = [['seg7', { display: 'cc' }, ['7448', 'seg7-cc']], ['counter', { chip: '74161', hz: 10 }, ['74161', '7447', 'seg7-ca']], ['adder', { chip: '74283' }, ['74283']],
+    ['gates', { chip: '7486' }, ['7486']], ['comparator', undefined, ['7485']], ['decoder', { chip: '74151' }, ['74151']], ['shift', { chip: '74194' }, ['74194']], ['flipflop', undefined, ['7474']]];
+  for (const [template, template_params, chips] of cases) {
+    const r = await ok('new_source', { project: 'p', type: 'circuit', name: `asm_${template}`, template, ...(template_params ? { template_params } : {}) });
+    assert.equal(r.text, `Created Digital Electronic Circuit 'src/asm_${template}.circ.json'.\nsrc/asm_${template}.vhd generated from src/asm_${template}.circ.json`);
+    const d = JSON.parse(read(`src/asm_${template}.circ.json`));
+    assert.deepEqual(d.parts.filter((p) => /^(U|DS)\d/.test(p.id)).map((p) => p.type), chips, template);
+    // (its HDL checked with no warnings: "completed successfully")
+    assert.match(await checks(`asm_${template}`), new RegExp(`^Process "Check Syntax" of <asm_${template}> completed successfully \\(\\d+ signals, \\d+ processes\\)\\.$`), template);
+  }
+  assert.equal(JSON.parse(read('src/asm_counter.circ.json')).parts.find((p) => p.type === 'clock').hz, 10);
+  // the defaults: a 7490 at 1 Hz
+  await ok('new_source', { project: 'p', type: 'circuit', name: 'asm_count2', template: 'counter' });
+  assert.deepEqual(JSON.parse(read('src/asm_count2.circ.json')).parts.filter((p) => /^U/.test(p.id)).map((p) => p.type), ['7490', '7447']);
+  await fails({ type: 'circuit', name: 'cz', template: 'counter', template_params: { hz: 60 } }, 'Clock (Hz): a whole number from 1 to 50.');
+  await fails({ type: 'circuit', name: 'cz', template: 'gates', template_params: { chip: '7410' } }, 'Gate IC: choose one.');
 });
 
 test('write_file: a drawing with no HDL file gets it, then follows its drawing (#3184)', async () => {

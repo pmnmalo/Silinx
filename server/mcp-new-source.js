@@ -10,6 +10,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { sourceBase } from '../core/ident.js';
+import { CIRCUIT_TEMPLATES } from '../core/circuit-templates.js';
 
 const TYPES = {
   module: { label: 'Module (HDL)', ext: null, dir: 'src' },
@@ -83,8 +84,8 @@ export const NEW_SOURCE_TOOLS = [
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (a module, a test bench, a drawing).' },
       module: STR('A module: its name (default: the file name). A test bench: the module it tests (default: the project\'s top).'),
       architecture: STR('A VHDL module: its architecture\'s name (default Behavioral).'),
-      template: { type: 'string', enum: ['boards', 'io'], description: 'A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]). Default: a half breadboard and its supply.' },
-      template_params: { type: 'object', description: 'The assembly\'s parameters: boards { n: 1–4, size: half | full }; io { n: 1–8 switches, m: 1–8 LEDs }.' },
+      template: { type: 'string', enum: CIRCUIT_TEMPLATES.map((t) => t.id), description: 'A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]); on a full breadboard, its chips wired (#4164): seg7 (switches bcd[k], a BCD decoder, a 7-segment display), counter (a clock, a counter, a decoder and a display; a button rst), adder (switches a[k], b[k], LEDs s[k] and cout), gates (a gate IC, its inputs on switches a[k], b[k], its outputs on LEDs y[k]), comparator (a 7485, LEDs lt, eq, gt), decoder (a 74138 on 8 LEDs y[k], or a 74151 and its data switches d[k]), shift (buttons clk and clr, a switch din, a shift register on LEDs q[k]), flipflop (a 7474: a button clk, switches d, pre_n, clr_n, LEDs q and qn). Default: a half breadboard and its supply.' },
+      template_params: { type: 'object', description: 'The assembly\'s parameters: boards { n: 1–4, size: half | full }; io { n: 1–8 switches, m: 1–8 LEDs }; seg7 { display: ca (7447) | cc (7448) }; counter { chip: 7490 | 74161, hz: 1–50 }; adder { chip: 7483 | 74283 }; gates { chip: 7400 | 7402 | 7404 | 7408 | 7432 | 7486 }; decoder { chip: 74138 | 74151 }; shift { chip: 74164 | 74194 }; comparator and flipflop: none.' },
       ports: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, dir: { type: 'string', enum: ['in', 'out', 'inout'] }, msb: { type: 'integer' }, lsb: { type: 'integer' } }, required: ['name'] }, description: 'A module: its ports (a bus with msb and lsb; default: clk and rst).' },
     }, required: ['project', 'type', 'name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
@@ -150,7 +151,7 @@ export const NEW_SOURCE_TOOLS = [
         if (type !== 'circuit') throw toolError('template and template_params: a circuit\'s');
         const C = await import('../core/chart-templates.js');
         const id = template ?? 'boards';
-        if (!['boards', 'io'].includes(id)) throw toolError('template: one of boards, io');   // (no empty one, #4161)
+        if (!CIRCUIT_TEMPLATES.some((t) => t.id === id)) throw toolError(`template: one of ${CIRCUIT_TEMPLATES.map((t) => t.id).join(', ')}`);   // (no empty one, #4161)
         const params = { ...C.templateDefaults('circuit', id), ...(tparams || {}) };
         const e = C.templateError('circuit', id, params);
         if (e) throw toolError(e);

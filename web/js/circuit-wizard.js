@@ -1,6 +1,6 @@
 // The Digital Electronic Circuit Wizard (#4061), New Source ▸ 'Digital Electronic Circuit' ▸ Wizard >: the name,
 // language and location (not shown from New Source, #2082) -> an assembly to start from (core/circuit-templates.js: N
-// breadboards and a supply, switches and LEDs; its parameters) -> summary; it creates the .circ.json and opens it
+// breadboards and a supply, switches and LEDs, the assemblies of ICs of core/circuit-assemblies.js; their parameters) -> summary; it creates the .circ.json and opens it
 // in the circuit editor. The pages: web/js/modwizard.js (namePage), web/js/template-page.js.
 import { api } from './api.js';
 import { alertDlg, toast } from './ui.js';
@@ -20,8 +20,8 @@ export async function circuitWizard({ name = '', location = 'src', lang = null, 
   const L = lang || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
   const p1 = namePage({
     title: 'Name and Language', name, lang: L, loc: location, guard, ext: '.circ.json', nameLabel: 'Circuit (module) name:',
-    hint: designOnly() ? 'The wizard creates a digital electronic circuit from a typical assembly (breadboards, their supply, switches and LEDs), ready for you to place the chips and wire them.'   // (no HDL, #3891)
-      : 'The wizard creates a digital electronic circuit from a typical assembly (breadboards, their supply, switches and LEDs), ready for you to place the chips and wire them; its HDL is generated from it.',
+    hint: designOnly() ? 'The wizard creates a digital electronic circuit from a typical assembly: breadboards, their supply, switches and LEDs ready for your chips, or chips already wired to their switches, LEDs and display.'   // (no HDL, #3891)
+      : 'The wizard creates a digital electronic circuit from a typical assembly: breadboards, their supply, switches and LEDs ready for your chips, or chips already wired to their switches, LEDs and display; its HDL is generated from it.',
   });
   const tpl = templatePage('circuit', CIRCUIT_TEMPLATES, () => {});
   const made = () => circuitTemplate(tpl.id(), tpl.params(), { name: p1.name(), lang: p1.lang() });
