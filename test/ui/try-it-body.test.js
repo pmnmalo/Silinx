@@ -1,6 +1,6 @@
 // UI (#3924): the Try it's body a lighter green than its bar, in every drawing editor that has one: the panel of the state
 // diagram (FSM), the ASM chart and the Petri net, and the schematic's and the circuit's side panels while they are tried out (the
-// circuit's Try it has no bar of its own: its toolbar's Try it pressed, #3897); in both interfaces
+// circuit's Try it bar, #4067, as the schematic's: its toolbar's Try it pressed, its bar's Stop); in both interfaces
 // and both themes (dark: a darker, muted green), its text readable (WCAG AA, 4.5:1); the FSM's Tables, the Petri net's
 // Analysis and the schematic's and the circuit's Properties, outside Try it, not green. No message in the console.
 import { before, after } from 'node:test';
@@ -30,7 +30,7 @@ const EDITORS = [
   { kind: 'asm', file: 'src/c.asm.json', model: newModel('c'), panel: '.asm-simpanel', bar: '.asm-codebar', body: '.fsm-panel-body' },
   { kind: 'petri', file: 'src/n.pn.json', model: newPetri('n'), panel: '.pn-panel', bar: '.asm-codebar', body: '.pn-panel-body', api: 'petriEditor', other: 'analysis' },
   { kind: 'sch', file: 'src/s.sch.json', model: schematic(), panel: '.sch-editor', bar: '.se-simbar', body: '.se-props' },
-  { kind: 'circ', file: 'src/b.circ.json', model: newCircuit('b'), panel: '.circuit-editor', bar: null, body: '.asm-side' },
+  { kind: 'circ', file: 'src/b.circ.json', model: newCircuit('b'), panel: '.circuit-editor', bar: '.circ-simbar', body: '.asm-side' },
 ];
 
 /** The bar's and the body's backgrounds (the body's as painted: blended over what is behind it) and the lowest contrast
@@ -112,12 +112,13 @@ uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, P
       l = await look(page, ed);
       assert.ok(!l.cls && l.body !== 'rgb(238, 248, 238)', `sch after Stop: ${JSON.stringify(l)}`);
     }
-    // the circuit's Try it stopped (its toolbar's Try it again): its Properties plain again
+    // the circuit's Try it stopped (its bar's Stop): its Properties plain again, its bar gone
     if (ed.kind === 'circ') {
-      await page.click(`${DOC} .circ-toolbar .asm-btn`, { text: 'Try it' });
+      await page.click(`${DOC} .circuit-editor .circ-stop`);
       await page.waitFor((doc) => !document.querySelector(`${doc} .circuit-editor`).classList.contains('circ-simulating'), [DOC], { what: 'Try it stopped' });
       l = await look(page, ed);
       assert.ok(!l.cls && l.body !== 'rgb(238, 248, 238)', `circ after Stop: ${JSON.stringify(l)}`);
+      assert.equal(await page.eval((doc) => document.querySelector(`${doc} .circ-simbar`).hidden, DOC), true, 'its bar gone');
     }
   }
   assert.deepEqual(await messages(page), before0);

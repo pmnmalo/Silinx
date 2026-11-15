@@ -3,8 +3,7 @@ export const CIRCUIT_PT = {
   // New Source, the Design pane
   'Circuit': 'Circuito',
   // toolbar
-  'Wire': 'Fio', '↺ Reset': '↺ Recomeçar', '〰 Waveforms': '〰 Formas de onda',
-  'View the waveforms of this Try it in the simulator (SSim): its inputs as you changed them, the logic probes\' nets first': 'Ver as formas de onda desta experiência no simulador (SSim): as entradas como as mudou, primeiro as redes das sondas lógicas',
+  'Wire': 'Fio', 'Stop trying it out and go back to editing the circuit (Esc)': 'Parar de experimentar e voltar a editar o circuito (Esc)',
   'Draw a wire: click its start, its bends, then its end on a pin or a hole (double click or Esc: end it there)': 'Desenhar um fio: clique no início, nas dobras e no fim, num pino ou num furo (duplo clique ou Esc: acaba aí)',
   'Turn the selected part a quarter clockwise (R)': 'Rodar a peça selecionada um quarto de volta no sentido dos ponteiros do relógio (R)',
   'Check the circuit: short circuits, unpowered ICs, floating inputs, parts and wires that join nothing': 'Verificar o circuito: curto-circuitos, CIs sem alimentação, entradas no ar, peças e fios que não ligam nada',

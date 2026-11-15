@@ -29,7 +29,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   selected part (a breadboard with the parts on it and the wires between them), pasted 2 steps right and down, new ids
   given, a label another part has left out.
 - **The editor** (`web/js/circuit-editor.js` and its `circuit-*.js` modules) follows docs/UI-GUIDELINES.md, as the Petri
-  net's: the toolbar (select, wire, rotate, delete, then the zoom, then Check and Try it, Reset while trying it; printed
+  net's: the toolbar (select, wire, rotate, delete, then the zoom, Keep connections, then Check and Try it; while trying it, the Try it bar above the canvas, as the schematic's, its Reset and Stop, #4067; printed
   by the main toolbar's Print), the Properties side panel on the right, foldable, over the canvas behind ☰ Properties on a
   narrow screen: the selected part's label, colour, pinout, a switch's position as saved (a DIP switch's levers), a
   clock's frequency; the parts library (by category: breadboards, power, inputs, outputs, the 74LS and the 4000 gates; a
@@ -122,18 +122,14 @@ as VHDL's `after` and Verilog's `#` on a continuous assignment, so the live simu
   starts from a known level and oscillates once enabled).
 - **An IC is powered** when its VCC pin's net is 1 and its GND pin's net is 0; an unpowered IC drives nothing (its
   outputs float).
-- **Live:** Try it starts it; a click on a logic switch flips it, a press on a button holds it while pressed (a long
+- **Live:** Try it starts it (its bar's Reset starts it again from time 0, its Stop or Esc ends it); a click on a logic switch flips it, a press on a button holds it while pressed (a long
   press on a touch screen); the simulation runs until the circuit is quiet. The LEDs light, each pin and wire is
   coloured by its level (0, 1, Z, X), the status line says the simulated time. A circuit still changing after 1 µs of
   simulated time (a ring oscillator, a latch's race) is said to oscillate, in the console, its oscillating nets marked.
 - **The logic probe** shows its tip's level while trying it (H, L, open, X); it is no port of the HDL, but the net it
   watches is a signal of it (one only a probe watches declared with its reason, no warning).
-- **The waveforms** are SSim's, the waveform viewer of every simulation of Silinx: the circuit's *Waveforms* replays its
-  Try it (each input's change at its simulated time, a clock's ticks moving the time on by its half period) as a test
-  bench of the circuit's generated HDL (`core/circuit-replay.js`), run by the simulator and opened in SSim as the logic
-  analyzer's capture is, its probes' nets first, every net and IC pin of the circuit in its hierarchy; the MCP server's
-  `simulate_drawing` returns the same replay's probes' waves (`waveforms`). The unit tests check that they are the
-  engine's own, time for time.
+- **The waveforms** (#4068) are those of the circuit's simulation, as every module's: Simulate of a test bench of the
+  circuit (the Test Bench Wizard's, or one written by hand) in SSim; the editor has no waveforms of its own.
 - **SSim:** the generated HDL is simulated as any module's (its test bench, the waveforms); the unit tests check that
   the live engine and the HDL simulated by Silinx agree.
 
@@ -274,7 +270,7 @@ starts there). The file is plain JSON, merged by Silinx's drawing merge as the o
    simulation in real time, slowed), 7-segment displays and the LED bar, the other 74xx gates, open collector outputs,
    the 4000 gates.
 3. **MSI and sequential ICs:** decoders, multiplexers, adders, comparators, flip-flops, counters, shift registers; a
-   logic probe; the nets' waveforms (SSim on the generated HDL from the circuit's toolbar).
+   logic probe.
 4. **The circuit in the rest of Silinx:** a circuit as an FPGA project's top (its switches and LEDs on the board's),
    with an example (4a, #3901: the two models, the buses, `breadboard`); Convert to Schematic (the ICs as symbols); edited live in a shared project, its git merge; labs and
    grading; print and export as SVG.

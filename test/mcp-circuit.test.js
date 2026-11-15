@@ -170,18 +170,20 @@ test('edit_circuit and simulate_drawing with phase 2\'s parts (#3899): a DIP swi
     'simulate_drawing: step 0: \'sw\' is not an input of the circuit (its inputs: sw_1, sw_2, sw_3, sw_4, clk)');
 });
 
-test('simulate_drawing: a circuit\'s logic probes in each step; waveforms: the steps replayed by its HDL, as View Waveforms (#3900)', async () => {
+test('simulate_drawing: a circuit\'s logic probes in each step (#3900); no waveforms of its own (#4068)', async () => {
   await ok('new_source', { project: 'c', type: 'circuit', name: 'probed', language: 'verilog' });
   const P = 'src/probed.circ.json';
   const r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'add', type: '7404', at: 'BB1.f5' }, { op: 'wire', from: 'U1.14', to: 'BB1.tp5' }, { op: 'wire', from: 'U1.7', to: 'BB1.bn11' },
     { op: 'wire', from: 'BB1.tn2', to: 'BB1.bn2', via: [[-2, -3], [-2, 14]] }, { op: 'add', type: 'logic-switch', at: [-6, 9], label: 'a' }, { op: 'wire', from: 'S1.out', to: 'U1.1' },
     { op: 'add', type: 'probe', at: [6, 20], id: 'LP1' }, { op: 'set', id: 'LP1', label: 'y' }, { op: 'wire', from: 'U1.2', to: 'LP1.tip' }] });
   assert.deepEqual([r.data.errors, r.data.warnings], [[], []], r.text);
-  const s = await ok('simulate_drawing', { project: 'c', file: P, cycles: [{ a: 1 }, { a: 0 }], waveforms: true });
+  const s = await ok('simulate_drawing', { project: 'c', file: P, cycles: [{ a: 1 }, { a: 0 }] });
   assert.deepEqual(s.text.split('\n'), ['probed.circ.json from time 0, 2 step(s):', 'start: t = 10 ns; LEDs none; probes y=1', 'step 0: inputs a=1; t = 20 ns; LEDs none; probes y=0',
-    'step 1: inputs a=0; t = 30 ns; LEDs none; probes y=1', 'waves of y: X@0 1@10 0@20 1@30']);
+    'step 1: inputs a=0; t = 30 ns; LEDs none; probes y=1']);
   assert.deepEqual(s.data.steps[0].probes, { y: '0' });
-  assert.deepEqual(s.data.waves, { y: [[0, 'X'], [10, '1'], [20, '0'], [30, '1']] });
+  assert.equal(s.data.waves, undefined);
+  // (the option gone, as the editor's Waveforms button: a circuit's waveforms are its test bench's simulation's)
+  assert.equal((await call('simulate_drawing', { project: 'c', file: P, cycles: [], waveforms: true })).isError, true);
 });
 
 test('a circuit as an FPGA top (#3901): the breadboard example synthesized and built by run_process, no warning; a bus label by edit_circuit, a vector port, a bit missing its error', async () => {

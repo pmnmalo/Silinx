@@ -87,3 +87,11 @@
 .circuit-editor .circ-probe-text { font: bold 11px var(--asm-mono, monospace); fill: #fff; pointer-events: none; }
 /* Keep connections (#4059), as the schematic's */
 .circuit-editor .circ-keep { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }
+/* the Try it bar (#4067), as the schematic's (sch-editor.css .se-simbar, .lv-badge) */
+.circuit-editor .circ-simbar { flex: none; display: flex; align-items: center; gap: 6px; padding: 3px 6px; min-height: 28px; background: var(--try-it-bar); border-bottom: 1px solid var(--try-it-line); font-size: 12px; color: #000; }
+.circuit-editor .circ-simbar[hidden] { display: none; }
+.circuit-editor .circ-simbar .asm-btn { height: 22px; padding: 0 8px; }
+.circuit-editor .circ-sim-badge { font-weight: bold; color: #1b5e1b; padding: 0 4px 0 18px; position: relative; }
+.circuit-editor .circ-sim-badge::before { content: ''; position: absolute; left: 4px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: #20c020; box-shadow: 0 0 4px #20c020; }
+html[data-theme="dark"] .circuit-editor .circ-simbar { color: var(--m-fg); }
+html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success); }
