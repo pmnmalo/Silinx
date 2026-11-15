@@ -4,12 +4,17 @@
 // and POS used when it has several (#2950: the first by default). In the table document:
 //   form: the table's form (a table saved before #2951: its one form; a new table: 'gates');
 //   forms: { output: form } of the outputs whose form is not the table's;
-//   solutions: { output: { sop: k, pos: k } }, the index of the minimal solution used (k > 0; 0, the first, left out).
+//   solutions: { output: { sop: k, pos: k } }, the index of the minimal solution used (k > 0; 0, the first, left out);
+//   notation: the notation its expressions are shown in (#3939, an id of core/expr-notation.js; none: the Settings').
 // The editor's tick boxes and solution selector and the MCP's set_output_logic change them through setOutputLogic.
-import { FORMS, LogicError, minimize, MAX_EDIT_INPUTS, normalizeTable } from './logic.js';
+import { FORMS, LogicError, MAX_KMAP_INPUTS, minimize, normalizeTable } from './logic.js';
+import { NOTATION_IDS } from './expr-notation.js';
 
 /** The forms' names, as the editor's results name them. */
-export const FORM_NAMES = { sop: 'Minimal SOP', pos: 'Minimal POS', xor: 'XOR form', nand: 'NAND form', nor: 'NOR form', gates: 'Least number of gates', delay: 'Least delay', csop: 'Canonical SOP', cpos: 'Canonical POS' };
+export const FORM_NAMES = { sop: 'Karnaugh map SOP', pos: 'Karnaugh map POS', xor: 'XOR form', nand: 'NAND form', nor: 'NOR form', gates: 'Least number of gates', delay: 'Least delay', csop: 'Canonical SOP', cpos: 'Canonical POS',
+  qsop: 'Quine-McCluskey SOP', qpos: 'Quine-McCluskey POS' };   // (sop, pos: the minimal ones, the K-map's; past 6 inputs, Quine-McCluskey's, #3939)
+/** A form's name in a table (the minimal SOP and POS past the Karnaugh maps' inputs: Quine-McCluskey's, #3939). */
+export const formName = (doc, f) => FORM_NAMES[doc.inputs.length > MAX_KMAP_INPUTS && (f === 'sop' || f === 'pos') ? `q${f}` : f] || FORM_NAMES.sop;
 /** The HDL logic of output `o` of a (normalized) table. */
 export const formOf = (doc, o) => doc.forms?.[o] || doc.form || 'sop';
 
@@ -20,7 +25,7 @@ export function solutionOf(doc, o, kind, count = Infinity) {
 }
 
 /** normalizeTable's part (#2950, #2951): `forms` and `solutions` of the outputs only, valid, the defaults left out (none:
- *  no field, a table saved before stays as it was). */
+ *  no field, a table saved before stays as it was); `notation` one of the notations, else none (#3939). */
 export function normalizeChoices(doc) {
   const fs = doc.forms && typeof doc.forms === 'object' ? doc.forms : {};
   doc.forms = Object.fromEntries(doc.outputs.filter(o => FORMS.includes(fs[o]) && fs[o] !== doc.form).map(o => [o, fs[o]]));
@@ -29,6 +34,7 @@ export function normalizeChoices(doc) {
   doc.solutions = Object.fromEntries(doc.outputs.map(o => [o, Object.fromEntries(['sop', 'pos'].filter(f => k(ss[o]?.[f])).map(f => [f, k(ss[o][f])]))])
     .filter(([, s]) => Object.keys(s).length));
   for (const f of ['forms', 'solutions']) if (!Object.keys(doc[f]).length) delete doc[f];
+  if (!NOTATION_IDS.includes(doc.notation)) delete doc.notation;   // (its own notation, #3939: else the Settings')
   return doc;
 }
 
@@ -58,8 +64,7 @@ export function setOutputLogic(docIn, o, { form, solution } = {}) {
   }
   for (const [kind, k] of Object.entries(solution || {})) {
     if (kind !== 'sop' && kind !== 'pos') throw new LogicError('solution: { sop: k } or { pos: k }');
-    const n = doc.inputs.length;
-    const count = minimize(doc.table[o], n, { form: kind, ...(n > MAX_EDIT_INPUTS ? { maxNodes: 50000 } : {}) }).alternatives.length;
+    const count = minimize(doc.table[o], doc.inputs.length, { form: kind }).alternatives.length;
     if (!Number.isInteger(k) || k < 0 || k >= count) throw new LogicError(`solution ${kind}: ${count === 1 ? 'one minimal solution (0)' : `0 to ${count - 1} (${count} minimal solutions)`}`);
     doc.solutions = { ...doc.solutions, [o]: { ...doc.solutions?.[o], [kind]: k } };
   }

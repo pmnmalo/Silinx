@@ -39,6 +39,7 @@ export async function openTt(path) {
         linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
         onFromModule: () => loadTtFromModule(path),
+        log: (text, cls) => log(text, cls),   // (its notes: no K-map past 6 inputs, a result not proven minimal, #3939)
         ...(following() && !editsDrawingHere(path) ? { readOnly: true, banner: followNotice() } : {}),   // (a project followed, #3181; but an editor's link edits it live, #3183)
       });
       d.ttEditor = ed;

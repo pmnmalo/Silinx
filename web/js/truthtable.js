@@ -1,20 +1,20 @@
-// Boolean Algebra / Karnaugh Map editor (#2017: it was Truth Table; documents <name>.bool.json, <name>.tt.json before #2065). The inputs (1–6) and outputs (any
-// number: the table scrolls, one output at a time in the tabs) are named in the toolbar; the truth table is edited by clicking its output cells (0 → 1 → X) or by
-// typing an expression per output. For the selected output: Karnaugh map with the groups of the
-// minimal SOP (1s) or POS (0s) (the minimal solution used chosen there when it has several, #2950), canonical SOP and POS
-// with their lists Σm / ΠM, minimal SOP and POS with their literal and
-// gate counts, the XOR form when it is cheaper (#435), the NAND-only and NOR-only forms (#694), each one's gates and delay
-// as a circuit, and the forms of the fewest gates and of the least delay (#1427).
-// The expressions are written in the notation of the Settings (Boolean Notation, #3915; a̅·b + c by default; the menu of the
-// results chooses it too), typed in any (/a.b + c, #434, #1496); one may be written
-// by hand (#1056), and the whole table drawn by hand (#1066), both from the Development menu (#1098). Tables read from a
-// module may have up to 8 inputs (no Karnaugh map then). Logic: core/logic.js. The table always has its HDL module,
+// Boolean Algebra / Karnaugh Map editor (#2017: it was Truth Table; documents <name>.bool.json, <name>.tt.json before #2065). The inputs (1–16,
+// #3939: a large table's rows drawn as they scroll into view, web/js/tt-rows.js) and outputs (any number: the table scrolls, one output at a time
+// in the tabs) are named in the toolbar; the truth table is edited by clicking its output cells (0 → 1 → X) or by typing an expression per
+// output. For the selected output: Karnaugh map (up to 6 inputs) with the groups of the minimal SOP (1s) or POS (0s) (the minimal solution
+// used chosen there when it has several, #2950); the results (web/js/tt-results.js): the forms of the fewest gates and of the least delay
+// (#1427), the Karnaugh map's and Quine-McCluskey's simplified function (SOP or POS as clicked, Quine-McCluskey's steps, #3939),
+// canonical SOP and POS with their lists Σm / ΠM, the XOR form when it is cheaper (#435), the NAND-only and NOR-only forms
+// (#694), each one's gates and delay as a circuit. The console says when a result is not proven minimal (`opts.log(text, cls)`).
+// The expressions are written in the notation of the Settings (Boolean Notation, #3915; a̅·b + c by default), typed in any
+// (/a.b + c, #434, #1496); one may be written by hand (#1056), and the whole table drawn by hand (#1066), both from the
+// Development menu (#1098). Logic: core/logic.js. The table always has its HDL module,
 // in its language (the project's preferred one), generated from it by the host (app.js), which keeps both in sync,
 // and its schematic (#694, a view of its module in the Design pane), each output in the form ticked among its results
 // (#2951: its HDL logic; least gates by default); its language is the project's (#696).
 //
 //   const ed = mountTtEditor(host, { model, onChange(model), onFromModule(), linkInfo() -> { file, why } | null,
-//                                    onOpenFile(path), readOnly, banner });
+//                                    onOpenFile(path), log(text, cls), readOnly, banner });
 //   (readOnly: a table to read, a shared project followed, #3181: tt-readonly.js; its notice, `banner`)
 //   ed.getModel(), ed.setModel(m), ed.setLink(file), ed.destroy()
 //   edited live (#3183, web/js/collab-drawing.js): ed.setShared({ push(model), undo(), redo(), canUndo(), canRedo() } | null)
@@ -22,18 +22,19 @@
 // Styles: web/css/truthtable.css.
 import { h, linkModel, linkSnapshot } from './ui.js';
 import { ICON } from './editor-icons.js';
-import { toolbarMenu } from './toolbar-menu.js';
+import { setChoice, toolbarMenu } from './toolbar-menu.js';
 import {
   normalizeTable, validateTable, reshapeTable, analyzeOutput, parseExpr, exprColumn,
-  kmapLayout, kmapRects, MAX_EDIT_INPUTS, setOutputLogic,
+  kmapLayout, kmapRects, MAX_EDIT_INPUTS, MAX_KMAP_INPUTS, setOutputLogic, formOf,
 } from '/core/logic.js';
 import { reservedError } from '/core/reserved.js';
 import { cellText, placeKmap } from './tt-kmap3d.js';
 import { domSnapshot } from './print-view.js';
 import { t as tr } from './i18n.js';
 import { statusLine } from './status-line.js';
-import { renderTtResults, shownNotation } from './tt-results.js';
-import { onNotation, setNotation } from './notation.js';
+import { notationChoice, renderTtResults, tableNotation } from './tt-results.js';
+import { renderTtTable } from './tt-rows.js';
+import { onNotation } from './notation.js';
 import { showExpr } from '/core/expr-notation.js';
 import { ttReadOnlyChrome, lockTt } from './tt-readonly.js';
 import { designKind } from './project-kind-flag.js';
@@ -63,7 +64,7 @@ function solutionPicker(r, go) {
 // tab) and the results; the commands, the expression's field, the hints and the options left out (the notes when it
 // has some).
 function ttPrintView(root, notes, name) {
-  const drop = ['.tt-toolbar', '.doc-status', '.tt-cap-expr', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-notation', '.tt-sol-btn'];
+  const drop = ['.tt-toolbar', '.doc-status', '.tt-cap-expr', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-qm-steps-on'];
   if (!notes.value.trim()) drop.push('.tt-cap-notes', '.tt-notes');
   return { title: `${tr('Truth table')} ${name}`, app: true, body: domSnapshot(root, { drop }) };
 }
@@ -85,7 +86,10 @@ function kmapOrderSelect(order, set) {
 export function mountTtEditor(container, opts = {}) {
   let M = normalizeTable(opts.model);
   let out = M.outputs[0];
-  let groups = 'sop';            // groups drawn on the K-map: 'sop' (1s) or 'pos' (0s)
+  let groups = 'sop';            // groups drawn on the K-map: 'sop' (1s) or 'pos' (0s), its result's SOP or POS (#3939)
+  let qmKind = 'sop', qmSteps = false;   // Quine-McCluskey's result: SOP or POS, its steps shown (#3939)
+  let kindsOf = null;            // (the output they were set for: an output's own form when it is one of theirs)
+  const logged = new Set();      // (the console's notes already written, #3939)
   let destroyed = false;
   const readOnly = !!opts.readOnly;
   // Undo / Redo: snapshots of the table (the notes typed are one step per pause)
@@ -113,7 +117,7 @@ export function mountTtEditor(container, opts = {}) {
   container.append(root);
 
   // ------------------------------------------------------------------ toolbar
-  const inIn = h('input', { type: 'text', class: 'tt-inputs', title: 'Input names (1 to 6), separated by commas or spaces; the first is the most significant bit of a row', spellcheck: 'false' });
+  const inIn = h('input', { type: 'text', class: 'tt-inputs', title: `Input names (1 to ${MAX_EDIT_INPUTS}), separated by commas or spaces; the first is the most significant bit of a row`, spellcheck: 'false' });
   const outIn = h('input', { type: 'text', class: 'tt-outputs', title: 'Output names (1 or more), separated by commas or spaces', spellcheck: 'false' });
   const shapeErr = h('span', { class: 'tt-err' });
   const applyShape = () => {
@@ -138,10 +142,13 @@ export function mountTtEditor(container, opts = {}) {
   }
   const btn = (label, title, onclick, cls = '') => h('button', { type: 'button', class: `btn tt-btn ${cls}`, title, onclick }, label);
   const link = h('span', { class: 'tt-link' });
+  let notationItems = [];
   const more = toolbarMenu([
     menuItem('module', 'Algebra from Module…', 'Fill the table with the truth table of a combinational module of the project (exhaustive simulation)', () => opts.onFromModule?.()),
     menuItem('pen', 'Handwritten Algebra…', 'Write the expressions by hand, one a line, with any names: they become the table\'s inputs, outputs and expressions', () => handwritten(), 'tt-ink'),
-  ], { title: 'Fill the table' });
+    // its expressions' notation (#3939): the Settings' by default, or the table's own (saved with it)
+    ...(notationItems = notationChoice(M, v => { if (v) M.notation = v; else delete M.notation; changed(); })),
+  ], { title: 'Fill the table, its notation' });
   const toolbar = h('div', { class: 'tt-toolbar' },
     h('label', {}, 'Inputs:'), inIn, h('label', {}, 'Outputs:'), outIn, shapeErr,
     h('span', { class: 'tt-sep' }),
@@ -182,11 +189,12 @@ export function mountTtEditor(container, opts = {}) {
   const kmapHost = h('div', { class: 'tt-kmap-host' });
   const d3 = { on: false };   // (the map's 3D box: this table's, unticked when opened, #3074)
   const grpSel = h('div', { class: 'tt-groups' });
+  const kmapCap = h('div', { class: 'tt-caption tt-cap-kmap' }, 'Karnaugh map');
   const results = h('div', { class: 'tt-results' });
   const right = h('div', { class: 'tt-right' },
     tabs,
     h('div', { class: 'tt-caption tt-cap-expr' }, 'Expression'), exprRow, h('div', { class: 'hint tt-ops' }, OPS), exprErr,
-    h('div', { class: 'tt-caption' }, 'Karnaugh map'), grpSel, kmapHost,
+    kmapCap, grpSel, kmapHost,
     h('div', { class: 'tt-caption' }, 'Results'), results);
   const status = statusLine();   // (its inputs, outputs and rows, #2763)
   root.append(toolbar, h('div', { class: 'tt-body' }, left, right), status.el);
@@ -210,22 +218,7 @@ export function mountTtEditor(container, opts = {}) {
     changed();
   };
 
-  function renderTable() {
-    const n = M.inputs.length;
-    const t = h('table', { class: 'tt-table', 'data-no-i18n': '' });
-    t.append(h('tr', {}, h('th', { class: 'tt-idx' }, '#'), ...M.inputs.map(v => h('th', { class: 'tt-in' }, v)),
-      ...M.outputs.map(o => h('th', { class: `tt-out${o === out ? ' sel' : ''}`, title: 'Select this output', onclick: () => { out = o; render(); } }, o))));
-    for (let r = 0; r < 1 << n; r++) {
-      const bits = r.toString(2).padStart(n, '0');
-      t.append(h('tr', {}, h('td', { class: 'tt-idx' }, String(r)), ...[...bits].map(b => h('td', { class: 'tt-in' }, b)),
-        ...M.outputs.map(o => {
-          const c = M.table[o][r];
-          return h('td', { class: `tt-cell v${c}${o === out ? ' sel' : ''}`, 'data-out': o, 'data-row': String(r), onclick: () => cycle(o, r) }, c);
-        })));
-    }
-    tableHost.innerHTML = '';
-    tableHost.append(t);
-  }
+  const renderTable = () => renderTtTable(tableHost, { M, out, select: o => { out = o; render(); }, cycle });   // (a large one: its rows in view, #3939)
 
   function renderTabs() {
     tabs.innerHTML = '';
@@ -236,9 +229,10 @@ export function mountTtEditor(container, opts = {}) {
     kmapHost.innerHTML = '';
     grpSel.innerHTML = '';
     const n = M.inputs.length;
-    if (n > MAX_EDIT_INPUTS) { kmapHost.append(h('div', { class: 'hint' }, `No Karnaugh map for more than ${MAX_EDIT_INPUTS} inputs.`)); return; }
+    kmapCap.hidden = n > MAX_KMAP_INPUTS;   // (none past 6 inputs: the console says so, #3939)
+    if (n > MAX_KMAP_INPUTS) return;
     for (const [g, label] of [['sop', 'SOP groups (1s)'], ['pos', 'POS groups (0s)']]) {
-      const r = h('input', { type: 'radio', name: `tt-grp-${uid}`, value: g, checked: groups === g, onchange: () => { groups = g; renderKmap(); } });
+      const r = h('input', { type: 'radio', name: `tt-grp-${uid}`, value: g, checked: groups === g, onchange: () => setGroups(g) });
       grpSel.append(h('label', { class: 'tt-check' }, r, ` ${label}`));
     }
     if (n >= 2) grpSel.append(h('div', { class: 'tt-groups-br' }));   // (Order and 3D on the line below, #3063)
@@ -297,7 +291,7 @@ export function mountTtEditor(container, opts = {}) {
     const leg = h('div', { class: 'tt-legend' }, picker || null);
     res.terms.forEach((t, ti) => {
       const one = { ...res, terms: [t] };
-      const text = showExpr(groups === 'pos' ? clauseAst(one) : termAst(one), shownNotation());
+      const text = showExpr(groups === 'pos' ? clauseAst(one) : termAst(one), tableNotation(M));
       leg.append(h('div', { class: 'tt-leg' }, h('span', { class: 'tt-swatch', style: { borderColor: COLORS[ti % COLORS.length], background: `${COLORS[ti % COLORS.length]}22` } }), h('code', { 'data-no-i18n': '' }, text),
         h('span', { class: 'tt-leg-cells' }, ` ${groups === 'pos' ? 'M' : 'm'}(${t.minterms.join(', ')})`)));   // (no "essential" mark, #3080)
     });
@@ -308,9 +302,24 @@ export function mountTtEditor(container, opts = {}) {
   const termAst = r => { const lit = l => (l.neg ? { t: 'not', a: { t: 'var', name: M.inputs[l.v] } } : { t: 'var', name: M.inputs[l.v] }); const ls = r.terms[0].literals; return ls.length === 0 ? { t: 'const', v: 1 } : ls.length === 1 ? lit(ls[0]) : { t: 'and', args: ls.map(lit) }; };
   const clauseAst = r => { const lit = l => (l.neg ? { t: 'var', name: M.inputs[l.v] } : { t: 'not', a: { t: 'var', name: M.inputs[l.v] } }); const ls = r.terms[0].literals; return ls.length === 0 ? { t: 'const', v: 0 } : ls.length === 1 ? lit(ls[0]) : { t: 'or', args: ls.map(lit) }; };
 
-  const renderResults = () => { renderTtResults({ results, M: () => M, out: () => out, A: () => A, notation: shownNotation, setNotation,
+  // the map's SOP or POS, its result's too (#3939); Quine-McCluskey's
+  const setGroups = k => { groups = k; renderKmap(); renderResults(); };
+  const renderResults = () => { renderTtResults({ results, M: () => M, out: () => out, A: () => A, notation: () => tableNotation(M),
+    groups: () => groups, setGroups, qmKind: () => qmKind, setQmKind: k => { qmKind = k; renderResults(); notes3939(); },
+    qmSteps: () => qmSteps, setQmSteps: on => { qmSteps = on; renderResults(); },
     setM: m => { M = m; }, changed, renderKmap, renderResults }); lockTt(readOnly, results); };
-  // (the notation changed in the Settings or in another table's menu: drawn again, #3915)
+  // the console's notes (#3939: a message is the console's, docs/UI-GUIDELINES.md): no Karnaugh map past 6 inputs, a
+  // simplified function not proven minimal; each once
+  const note = (key, text, cls) => { if (!logged.has(key)) { logged.add(key); opts.log?.(text, cls); } };
+  function notes3939() {
+    const n = M.inputs.length, K = k => k.toUpperCase();
+    if (n > MAX_KMAP_INPUTS) note(`kmap:${n}`, `${M.name}: no Karnaugh map for more than ${MAX_KMAP_INPUTS} inputs (it has ${n}): the simplified function is Quine-McCluskey's.`);
+    else if (!A[groups].exact) note(`k:${out}:${groups}`, `WARNING: ${M.name}: ${out}: the Karnaugh map's ${K(groups)}: the exact search was cut short: this solution may not be minimal.`, 'warn');
+    else logged.delete(`k:${out}:${groups}`);   // (said again once it is not minimal again, not at every change)
+    if (A.qm[qmKind].exact) logged.delete(`q:${out}:${qmKind}`);
+    else note(`q:${out}:${qmKind}`, `WARNING: ${M.name}: ${out}: Quine-McCluskey's ${K(qmKind)} is not proven minimal (${A.qm[qmKind].method === 'heuristic' ? 'too many implicants: a cover heuristic' : 'the search for the cover was bounded'}).`, 'warn');
+  }
+  // (the notation changed in the Settings: drawn again, #3915)
   const offNotation = onNotation(() => { if (!destroyed) { renderResults(); renderKmap(); } });
 
   function renderLink() {
@@ -329,11 +338,18 @@ export function mountTtEditor(container, opts = {}) {
     if (document.activeElement !== inIn) inIn.value = M.inputs.join(', ');
     if (document.activeElement !== outIn) outIn.value = M.outputs.join(', ');
     if (document.activeElement !== notes) notes.value = M.notes;
-    A = analyzeOutput(M, out, M.inputs.length > MAX_EDIT_INPUTS ? { maxNodes: 50000 } : {});   // module tables of 7–8 inputs: keep it quick
+    A = analyzeOutput(M, out);   // (past 6 inputs, Quine-McCluskey's: bounded, #3939)
+    if (kindsOf !== out) {   // (an output's SOP or POS: its own form's when it is one of the K-map's or Quine-McCluskey's)
+      kindsOf = out;
+      const f = formOf(M, out);
+      if (f === 'sop' || f === 'pos') groups = qmKind = f;
+      if (f === 'qsop' || f === 'qpos') qmKind = f.slice(1);
+    }
     exprLbl.textContent = `${out} =`;
     if (document.activeElement !== exprIn || !exprIn.value) exprIn.value = M.exprs[out] || '';
     exprErr.textContent = '';
-    renderTabs(); renderTable(); renderKmap(); renderResults(); renderLink(); status.set([shapeText(M)]);
+    setChoice(notationItems, M.notation || '');   // (an undo, a merge, another table set)
+    renderTabs(); renderTable(); renderKmap(); renderResults(); renderLink(); status.set([shapeText(M)]); notes3939();
   }
   const uid = Math.random().toString(36).slice(2, 8);
   render();

@@ -22,7 +22,7 @@
 //   drawingPathsOf(tr)                                  the drawings a transaction changed
 import * as Y from 'yjs';
 import { normalizeFsm } from './fsm.js';
-import { normalizeTable } from './logic.js';
+import { MAX_INPUTS, normalizeTable } from './logic.js';
 import { normalizeModel as normalizeAsm } from './asm.js';
 import { normalizePetri } from './petri.js';
 import { normalizeDoc } from './schdoc.js';
@@ -45,7 +45,7 @@ function ttShape(m) {
 }
 function ttModel(sh) {
   const { outputs = [], ...settings } = sh;
-  const rows = 1 << Math.min(arr(settings.inputs).length, 8);
+  const rows = 2 ** Math.min(arr(settings.inputs).length, MAX_INPUTS);   // (up to 16 inputs, #3939)
   const outs = outputs.map(o => ({ ...o, id: String(o.id) }));
   const of = f => Object.fromEntries(outs.filter(o => o[f] != null).map(o => [o.id, o[f]]));
   const doc = {
@@ -55,7 +55,7 @@ function ttModel(sh) {
   };
   return normalizeTable(ordered(doc, TT_KEYS));
 }
-const TT_KEYS = ['version', 'name', 'inputs', 'outputs', 'table', 'exprs', 'notes', 'form', 'lang', 'kmapOrder', 'generatedFile', 'forms', 'solutions'];
+const TT_KEYS = ['version', 'name', 'inputs', 'outputs', 'table', 'exprs', 'notes', 'form', 'lang', 'kmapOrder', 'generatedFile', 'forms', 'solutions', 'notation'];
 // a model's keys in one order on every side (the known ones first, the others sorted), whatever order the structure's
 // settings arrived in: the same file everywhere
 const ordered = (doc, known) => Object.fromEntries([...known.filter(k => k in doc), ...Object.keys(doc).filter(k => !known.includes(k)).sort()].map(k => [k, doc[k]]));

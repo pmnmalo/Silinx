@@ -11,10 +11,9 @@
 //
 // Boolean algebra documents (<name>.bool.json; <name>.tt.json before #2065):
 //   { version: 1, name, inputs: ['a', 'b'], outputs: ['f'], table: { f: '0110' }, exprs: { f: 'a^b' },
-//     notes: '', form: 'sop'|'pos'|'xor'|'nand'|'nor', lang: 'vhdl'|'verilog', generatedFile?: 'src/name.vhd' }
-//   form: the logic of the generated HDL module and of its schematic (#694): the minimal SOP, POS, the
-//   XOR form of each output where it is cheaper than both (#435), else its minimal SOP, or NAND gates
-//   only (from the minimal SOP) or NOR gates only (from the minimal POS).
+//     notes: '', form: FORMS, lang: 'vhdl'|'verilog', generatedFile?: 'src/name.vhd' }
+//   form: the logic of the HDL module and schematic (#694): the minimal SOP, POS (the K-map's), Quine-McCluskey's (#3939),
+//   the XOR form where cheaper (#435, else the minimal SOP), NAND or NOR gates only (from the minimal SOP / POS), …
 
 import { VHDL93_WORDS, VERILOG_WORDS } from './reserved.js';
 import { reservedWarning } from './asm.js';
@@ -25,14 +24,14 @@ import { tbPorts, generateTestbench, expectedFromTrace } from './testbench.js';
 import { gateForm } from './logic-sch.js';
 import { circuitCost, costOrder } from './logic-cost.js';
 import { formOf, normalizeChoices, newOutputForms, solutionOf } from './logic-choice.js';
+import { qmForm, qmMinimize, qmResults } from './logic-qm.js';
 export { circuitCost } from './logic-cost.js';
 export { gateForm, schematicErrors, schematicFromTable } from './logic-sch.js';
-export { FORM_NAMES, formOf, setOutputLogic, solutionOf } from './logic-choice.js';
+export { FORM_NAMES, formName, formOf, setOutputLogic, solutionOf } from './logic-choice.js';
 
 export const TT_VERSION = 1;
-export const MAX_INPUTS = 8;          // truth tables (display, module tables)
-export const MAX_EDIT_INPUTS = 6;     // the editor and Karnaugh maps
-// Outputs: any number (each is a column of the table and its own Karnaugh map / circuit).
+export const MAX_INPUTS = 16;         // a table's inputs (the editor's, a module's: 2^16 rows, #3939); outputs: any number
+export const MAX_EDIT_INPUTS = MAX_INPUTS, MAX_KMAP_INPUTS = 6;   // (Karnaugh maps: 1 to 6; more, Quine-McCluskey's)
 
 export class LogicError extends Error {
   constructor(message, pos) { super(pos != null ? `${message} (at position ${pos})` : message); this.pos = pos; this.bare = message; }
@@ -378,6 +377,7 @@ export function primeImplicants(on, dc, n) {
  * For 'pos' the cubes are implicants of the zeros; each is the clause (sum) of its complemented literals.
  */
 export function minimize(colIn, n, { form = 'sop', maxNodes = 200000, cap = 64 } = {}) {
+  if (n > MAX_KMAP_INPUTS) return qmMinimize(normColumn(colIn, n), n, form);   // (no K-map: Quine-McCluskey's, bounded, #3939)
   const col = normColumn(colIn, n);
   const target = form === 'pos' ? '0' : '1';
   const on = idxOf(col, target), dc = idxOf(col, 'X');
@@ -700,7 +700,7 @@ export const KMAP_ORDERS = ['cols', 'rows'];
  * x0x1 = 00, 01, 11, 10), and the order lays the other four out on each map as with 4 variables.
  */
 export function kmapLayout(n, order = 'cols') {
-  if (!(n >= 1 && n <= MAX_EDIT_INPUTS)) throw new Error(`Karnaugh maps need 1 to ${MAX_EDIT_INPUTS} variables`);
+  if (!(n >= 1 && n <= MAX_KMAP_INPUTS)) throw new Error(`Karnaugh maps need 1 to ${MAX_KMAP_INPUTS} variables`);
   if (!KMAP_ORDERS.includes(order)) throw new Error(`a Karnaugh map's order is one of ${KMAP_ORDERS.join(', ')}`);
   const spec = { 1: [0, 0, 1], 2: [0, 1, 1], 3: [0, 1, 2], 4: [0, 2, 2], 5: [1, 2, 2], 6: [2, 2, 2] }[n];
   const [mv, rv, cv] = spec;
@@ -755,7 +755,7 @@ const IDENT = /^[A-Za-z][A-Za-z0-9_]*$/;
 const RESERVED = new Set([...VHDL93_WORDS, ...VERILOG_WORDS, 'logic', 'std_logic', 'ieee']);
 
 /** The logic forms of a table's HDL module and schematic (#694). */
-export const FORMS = ['sop', 'pos', 'xor', 'nand', 'nor', 'gates', 'delay', 'csop', 'cpos'];   // (gates, delay: the form of least gates or delay, #1427; csop, cpos: the canonical SOP and POS, #2951)
+export const FORMS = ['sop', 'pos', 'xor', 'nand', 'nor', 'gates', 'delay', 'csop', 'cpos', 'qsop', 'qpos'];   // (gates, delay: the form of least gates or delay, #1427; csop, cpos: the canonical SOP and POS, #2951; qsop, qpos: Quine-McCluskey's, #3939)
 
 export function newTable(name = 'truth_table', inputs = ['a', 'b', 'c'], outputs = ['f']) {
   const n = inputs.length;
@@ -823,10 +823,9 @@ export function reshapeTable(doc, inputs, outputs) {
 }
 
 /**
- * All the results shown for one output: canonical forms (canon: { sop, pos } as expressions, sigma / pi as the lists),
- * minimal SOP and POS, gate counts, the
- * XOR form when it is cheaper than both (else null; none above MAX_XOR_INPUTS inputs), and the NAND and
- * NOR forms (#694: { ast, gates, inverters }).
+ * All the results shown for one output: canonical forms (canon: { sop, pos }; sigma / pi the lists), minimal SOP and POS
+ * (the K-map's), gate counts, the XOR form when cheaper (else null; none above MAX_XOR_INPUTS inputs), the NAND and NOR
+ * forms (#694: { ast, gates, inverters }), Quine-McCluskey's (qm: { sop, pos }, #3939).
  */
 export function analyzeOutput(doc, out, opts = {}) {
   const n = doc.inputs.length;
@@ -839,7 +838,7 @@ export function analyzeOutput(doc, out, opts = {}) {
     m.pick = solutionOf(doc, out, m.form, m.alternatives.length); Object.assign(m, m.alternatives[m.pick]);   // (the one used, #2950)
   }
   const xor = minimizeXor(col, doc.inputs, { than: [sop.ast, pos.ast] });
-  return { col, ...can, canon: canonicalAsts(col, doc.inputs), sop, pos, xor, nand: gateForm(sop, doc.inputs, 'nand'), nor: gateForm(pos, doc.inputs, 'nor') };
+  return { col, ...can, canon: canonicalAsts(col, doc.inputs), sop, pos, xor, nand: gateForm(sop, doc.inputs, 'nand'), nor: gateForm(pos, doc.inputs, 'nor'), qm: qmResults(col, doc.inputs) };
 }
 
 /**
@@ -862,7 +861,8 @@ const withCost = (r, form) => {
 function plainForm(doc, o, form) {
   const n = doc.inputs.length;
   if (form === 'csop' || form === 'cpos') return { ast: canonicalAsts(doc.table[o], doc.inputs)[form.slice(1)], what: `canonical ${form.slice(1).toUpperCase()}` };
-  const m0 = minimize(doc.table[o], n, { form: form === 'pos' || form === 'nor' ? 'pos' : 'sop', ...(n > MAX_EDIT_INPUTS ? { maxNodes: 50000 } : {}) });
+  if (form === 'qsop' || form === 'qpos') return qmForm(doc, o, form);
+  const m0 = minimize(doc.table[o], n, { form: form === 'pos' || form === 'nor' ? 'pos' : 'sop' });
   const k = solutionOf(doc, o, m0.form, m0.alternatives.length), m = { ...m0, ...m0.alternatives[k] };   // (the minimal solution used, #2950)
   const ast = minimalAst(m, doc.inputs);
   const what = `minimal ${m.form === 'pos' ? 'POS' : 'SOP'}${k ? ` (solution ${k + 1} of ${m.alternatives.length})` : ''}, ${m.literals} literal(s)`;

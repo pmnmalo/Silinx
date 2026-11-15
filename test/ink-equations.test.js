@@ -79,8 +79,11 @@ test('the equations\' errors: no expression, unnamed among several, a name twice
   assert.equal(err('2F = A'), "'2F' is not a name: a letter, then letters, digits or _.");
   assert.equal(err('F = A\nG = F.B'), 'F is both an output and an input: an expression of the inputs only.');
   assert.equal(err('F = 1'), 'The expressions have no input.');
-  assert.equal(err('F = A.B.C.D.E.G.H'), '7 inputs (A, B, C, D, E, G, H): at most 6.');
-  assert.equal(err('F = A.B.C.D.E.G.H', { maxInputs: 8 }), null);
+  // (a truth table's 16 inputs, #3939)
+  const v17 = 'ABCDEGHIJKLMNOPQR'.split('');
+  assert.equal(err(`F = ${v17.join('.')}`), `17 inputs (${v17.join(', ')}): at most 16.`);
+  assert.equal(err('F = A.B.C.D.E.G.H'), null);
+  assert.equal(err('F = A.B.C.D.E.G.H', { maxInputs: 6 }), '7 inputs (A, B, C, D, E, G, H): at most 6.');
   assert.equal(err('F = A +'), 'the expression ends too early: expected a variable, 0, 1 or ( (at position 4)');
   assert.equal(err('F = A\nG = A +'), 'The expression of G: the expression ends too early: expected a variable, 0, 1 or ( (at position 4)');
 });

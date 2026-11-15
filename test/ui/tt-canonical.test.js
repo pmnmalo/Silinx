@@ -34,8 +34,8 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
   } });
   await page.openProject('TtCanon');
   await open(page, 'src/m.bool.json');
-  // the least gates and delay first, the minimal forms, then the canonical ones, then the rest (#3065)
-  assert.deepEqual((await order(page)).slice(0, 5), ['tt-gates', 'tt-delay', 'tt-sop', 'tt-pos', 'tt-canon']);
+  // the least gates and delay first, the Karnaugh map's and Quine-McCluskey's, then the canonical ones, then the rest (#3065, #3939)
+  assert.deepEqual((await order(page)).slice(0, 5), ['tt-gates', 'tt-delay', 'tt-kmap-res', 'tt-qm', 'tt-canon']);
   // the / notation by default
   assert.deepEqual(await canon(page), [
     ['tt-canon-sop', 'Canonical SOP', 'f = /a./b.c + /a.b.c + a.b./c', 'f = Σm(1, 3, 6) + d(2, 5)'],
@@ -47,19 +47,20 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
     ['3 term(s), 9 literal(s); gates: 3 AND, 1 OR, 3 NOT (12 gate inputs)', 'As a circuit: 7 gate(s), delay 3'],
     ['3 term(s), 9 literal(s); gates: 1 AND, 3 OR, 3 NOT (12 gate inputs)', 'As a circuit: 7 gate(s), delay 3'],
   ]);
-  // Canonical SOP and POS spaced as the other results (#3071): as Minimal SOP and Minimal POS
+  // Canonical SOP and POS spaced as the other results (#3071): as the Karnaugh map's and Quine-McCluskey's
   const gaps = await page.eval((t) => {
     const r = (s) => document.querySelector(`${t} ${s}`).getBoundingClientRect();
-    return [Math.round(r('.tt-canon-pos').top - r('.tt-canon-sop').bottom), Math.round(r('.tt-res.tt-pos').top - r('.tt-res.tt-sop').bottom)];
+    return [Math.round(r('.tt-canon-pos').top - r('.tt-canon-sop').bottom), Math.round(r('.tt-res.tt-qm').top - r('.tt-res.tt-kmap-res').bottom)];
   }, T);
-  assert.ok(Math.abs(gaps[0] - gaps[1]) <= 1, `the canonical forms ${gaps[0]} px apart, the minimal ones ${gaps[1]}`);
+  assert.ok(Math.abs(gaps[0] - gaps[1]) <= 1, `the canonical forms ${gaps[0]} px apart, the K-map's and Quine-McCluskey's ${gaps[1]}`);
   // no row of the lists of their own (#2952); each canonical form its tick box (#2951), not ticked (least gates)
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} .tt-canon-minterms, ${t} .tt-canon-maxterms, ${t} .tt-canon-lists`).length, T), 0);
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-canon .tt-hdl`)].map((c) => c.checked), T), [false, false]);
   // the expression under the list: on a line of its own (#3069)
   assert.ok(await page.eval((t) => { const [l, e] = document.querySelectorAll(`${t} .tt-canon-sop code`); return e.getBoundingClientRect().top >= l.getBoundingClientRect().bottom - 1; }, T));
-  // another notation: the canonical forms follow it, the lists stay
-  await page.fill(`${T} .tt-notation`, 'logic');
+  // another notation (the table's own, its ⋮ menu's, #3939): the canonical forms follow it, the lists stay
+  const notation = (v) => page.eval((t, v) => document.querySelector(`${t} .tt-toolbar .tb-more-menu [data-value="${v}"]`).click(), T, v);
+  await notation('logic');
   await page.waitFor((t) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent === "f = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ c ∨ a ∧ b ∧ ¬c", [T], { what: 'logic notation' });
   assert.deepEqual((await canon(page)).map((r) => r.slice(2)), [["f = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ c ∨ a ∧ b ∧ ¬c", 'f = Σm(1, 3, 6) + d(2, 5)'], ["f = (a ∨ b ∨ c) ∧ (¬a ∨ b ∨ c) ∧ (¬a ∨ ¬b ∨ ¬c)", 'f = ΠM(0, 4, 7) · D(2, 5)']]);
   // a constant output: no minterm, the SOP is 0
@@ -73,17 +74,17 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
     ['Forma canónica SdP', 'A soma dos mintermos: todas as entradas em todos os termos, sem as indiferenças'],
     ['Forma canónica PdS', 'O produto dos maxtermos: todas as entradas em todos os termos, sem as indiferenças'],
   ]);
-  // SdP (soma de produtos) and PdS (produto de somas), not SOP and POS (#3066): the minimal forms, the map's groups, the tips
+  // SdP (soma de produtos) and PdS (produto de somas), not SOP and POS (#3066): the K-map's and Quine-McCluskey's choice (#3939), the map's groups, the tips
   assert.deepEqual(await page.eval((t) => [
-    ...['sop', 'pos'].map((k) => document.querySelector(`${t} .tt-res.tt-${k} b`).textContent),
+    ...[...document.querySelectorAll(`${t} .tt-res.tt-kmap-res .tt-kind, ${t} .tt-res.tt-qm .tt-kind`)].map((b) => b.textContent),
     ...[...document.querySelectorAll(`${t} .tt-groups input[type=radio]`)].map((r) => r.closest('label').textContent.trim()),
     document.querySelector(`${t} .tt-res.tt-nand`).title, document.querySelector(`${t} .tt-res.tt-nor`).title,
-  ], T), ['SdP mínima', 'PdS mínimo', 'Grupos SdP (1s)', 'Grupos PdS (0s)',
+  ], T), ['SdP', 'PdS', 'SdP', 'PdS', 'Grupos SdP (1s)', 'Grupos PdS (0s)',
     'A SdP mínima só com portas NAND (dupla negação); um inversor é uma NAND com as entradas ligadas, /(a·a)', 'O PdS mínimo só com portas NOR (dupla negação); um inversor é uma NOR com as entradas ligadas, /(a + a)']);
   assert.doesNotMatch(await page.eval((t) => document.querySelector(t).innerText, T), /\b(SOP|POS)\b/, 'no SOP nor POS left');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
-  // (the notation is the Settings', #3915: chosen for every table; back to /)
-  await page.fill(`${T} .tt-notation`, 'slash');
+  // (back to the Settings', /: the table's own notation is this table's only, #3939)
+  await notation('');
   // 8 inputs: 255 minterms of 8 literals, one maxterm; the expressions wrap, the panel does not scroll sideways
   await open(page, 'src/w.bool.json');
   const w = await page.eval((t) => {

@@ -738,11 +738,11 @@ export function encodedTable(model) {
   return { stateBits, nextBits, inputBits: ib.map((b) => b.name), outputBits: ob.map((b) => b.name), rows };
 }
 
-export const TT_MAX_INPUTS = 6;
+export const TT_MAX_INPUTS = 16;   // (a truth table's, core/logic.js MAX_INPUTS, #3939)
 
 /**
  * Truth tables (core/logic.js documents) of the next-state bits and of the outputs, from the
- * encoded table: inputs = state bits + input bits (at most 6); one table of the next-state bits,
+ * encoded table: inputs = state bits + input bits (at most 16); one table of the next-state bits,
  * one of the output bits (any number of each). Unused state codes are don't cares (X).
  * Returns { tables: [{ suffix, doc }] } or { error }.
  */
