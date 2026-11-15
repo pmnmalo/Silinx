@@ -83,6 +83,16 @@ PLIST
   exit 0
 fi
 
+# GitHub's "Set up job" step prints the machine's host name in every job's log, before the hook runs, and a public
+# repository's logs are public (#4171): a host name that looks personal (macOS's default, "<name>'s Mac" or "Mac de
+# <name>") is warned of, the install goes on (SILINX_RUNNER_HOSTNAME: the name checked, for the tests)
+host_name_note() {
+  case "$(printf %s "${SILINX_RUNNER_HOSTNAME:-$(hostname)}" | tr 'A-Z' 'a-z')" in
+    *s-mac*|*s-macbook*|*s-imac*|*-de-*|*-da-*|*-do-*|*-di-*|*-du-*|*-von-*|*-van-*)
+      echo "WARNING: the machine's host name looks personal; it shows in public Actions logs (every job's \"Set up job\" step). A generic one: sudo scutil --set HostName <name>, then restart the runner." >&2 ;;
+  esac
+}
+
 # ---------------------------------------------------------------- the runner as a dedicated user
 if [ "${1:-}" = --system ]; then
   RUSER=${2:?usage: install.sh [--uninstall] --system USER RUNNER_FOLDER}
@@ -171,6 +181,7 @@ PLIST
   $CHOWN root:wheel "$RPLIST" "$WPLIST"
   # the window starts the runner's daemon when its window is open
   $LAUNCHCTL bootstrap system "$WPLIST"
+  host_name_note
   echo "Installed in $DEST, the runner as $RUSER. Check:"
   echo "  sudo RUNNER_DIR=\"$RUNNER_DIR\" RUNNER_DAEMON=\"$RPLIST\" STATE_DIR=\"$DEST\" sh \"$DEST/window.sh\" status"
   echo "  then Actions > ISE > Run workflow: its log says 'Silinx runner: ... allowed' (the hook ran)."
@@ -226,6 +237,7 @@ PLIST
 # the runner reads its .env when it starts
 (cd "$RUNNER_DIR" && ./svc.sh stop >/dev/null 2>&1 || true; ./svc.sh start)
 $LAUNCHCTL bootstrap "gui/$(id -u)" "$PLIST"
+host_name_note
 echo "Installed in $DEST. Check:"
 echo "  RUNNER_DIR=\"$RUNNER_DIR\" sh \"$DEST/window.sh\" status"
 echo "  then Actions > ISE > Run workflow: its log says 'Silinx runner: ... allowed' (the hook ran)."

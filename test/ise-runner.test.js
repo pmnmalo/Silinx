@@ -131,7 +131,7 @@ function installIn(args, { env = {}, runner = true } = {}) {
   const r = spawnSync('sh', [path.join(DIR, 'install.sh'), ...args.map(a => a.replace('RUNNER', dir))], {
     encoding: 'utf8',
     env: { PATH: process.env.PATH, HOME: home, SILINX_RUNNER_LIBRARY: lib, SILINX_RUNNER_LAUNCHCTL: path.join(bin, 'launchctl'),
-      SILINX_RUNNER_CHOWN: path.join(bin, 'chown'), SILINX_RUNNER_HOME: '/var/empty/runner-home', ...env },
+      SILINX_RUNNER_CHOWN: path.join(bin, 'chown'), SILINX_RUNNER_HOME: '/var/empty/runner-home', SILINX_RUNNER_HOSTNAME: 'ise-runner', ...env },
   });
   const read = f => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
   return { code: r.status, out: r.stdout, err: r.stderr, dir, lib, home, read, calls: () => (read(log) || '').split('\n').filter(Boolean) };
@@ -226,6 +226,26 @@ test('install.sh without --system: the hook and the window as the logged-in user
   assert.ok(install.indexOf('install.sh --system <user>') < install.indexOf('install.sh <the runner\'s folder>'), '--system documented first');
   assert.match(install, /--system is the one to use/);
   assert.match(install, /clear the\n# runner user's silinx-cache folder/);
+});
+
+test('#4171 install.sh: a host name that looks personal warned of (it shows in public Actions logs), the install done all the same', { skip: !posix }, () => {
+  const WARN = 'WARNING: the machine\'s host name looks personal; it shows in public Actions logs (every job\'s "Set up job" step). A generic one: sudo scutil --set HostName <name>, then restart the runner.';
+  // (macOS's default names, made up here: "<name>'s Mac mini", "Mac mini de <name>")
+  for (const host of ['Anas-Mac-mini', 'Mac-mini-de-Ana', 'MacBook-Pro-von-Ben', 'Joes-iMac']) {
+    for (const args of [['--system', 'iserunner', 'RUNNER'], ['RUNNER']]) {
+      const r = installIn(args, { env: { SILINX_RUNNER_HOSTNAME: host } });
+      assert.equal(r.code, 0, `${host} ${args[0]}: ${r.err}`);
+      assert.ok(r.err.split('\n').includes(WARN), `${host} ${args[0]}: ${r.err}`);
+      assert.match(r.out, /^Installed in /m);
+    }
+  }
+  // a generic one: no warning (with --system, none at all; without it, only the one that says to use --system)
+  for (const host of ['ise-runner', 'build-01', 'mac-mini-ise']) {
+    const r = installIn(['--system', 'iserunner', 'RUNNER'], { env: { SILINX_RUNNER_HOSTNAME: host } });
+    assert.deepEqual([r.code, r.err], [0, ''], host);
+    const u = installIn(['RUNNER'], { env: { SILINX_RUNNER_HOSTNAME: host } });
+    assert.deepEqual([u.code, u.err.split('\n').filter(l => l.startsWith('WARNING:')).map(l => l.slice(0, 30))], [0, ['WARNING: without --system the ']], host);
+  }
 });
 
 test('install.sh --docker-acl: the runner\'s user on Docker Desktop\'s socket, again each time it is made', { skip: !posix }, () => {

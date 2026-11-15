@@ -134,7 +134,7 @@ test('CI at a release only: the development build and the site\'s dev/ after eve
   const pages = read('.github/workflows/pages.yml');
   assert.equal(on(pages).replace(/^#.*\n/gm, ''), 'on:\n  push:\n    branches: [main]\n  workflow_run:\n    workflows: [Release]\n    types: [completed]\n  workflow_dispatch:\n');
   assert.match(pages, /ref: \$\{\{ github\.event_name == 'push' && github\.sha \|\| 'main' \}\}/);
-  assert.match(pages, /github\.event_name != 'workflow_run' \|\| github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(pages, /github\.event_name != 'workflow_run' \|\| \(github\.event\.workflow_run\.conclusion == 'success'\n/);
 });
 
 test('the development builds read their changes\' issue labels (#707): issues: read, the token in the build step\'s env only', () => {
