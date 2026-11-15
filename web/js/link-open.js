@@ -143,15 +143,21 @@ export async function openFromLink(opts, { prepare = null } = {}) {
   }
 }
 
-// the link's view of the project now open: Try it (a schematic opened, its live simulation started; a state diagram or
+// the link's view of the project now open: Try it (a schematic or a circuit opened, its live simulation started; a state diagram or
 // a Petri net opened, its Simulate panel shown, #2869), the test bench's simulation, the board emulator
 async function openView(view, module, files) {
   if (view === 'simulate') return app.runSimulation(module === S.project.top ? S.project.simTop : module);   // (the link's test bench, else the project's, #2878)
   if (view === 'emulate') { const { openEmulator } = await import('./viewers.js'); return openEmulator(S.project.top); }   // (the top's, #2884)
   const path = tryDrawing(files || {}, module);
-  if (!path) throw fail(`Try it: '${module}' is not a schematic, a state diagram, a Petri net or an ASM chart`);
+  if (!path) throw fail(`Try it: '${module}' is not a schematic, a state diagram, a Petri net, an ASM chart or a circuit`);
   if (/\.fsm\.json$/i.test(path)) { await app.openFsm(path); return app.findDoc(`fsm:${path}`)?.fsmEditor?.showPanel('sim'); }
   if (/\.pn\.json$/i.test(path)) { await app.openPetri(path); return app.findDoc(`pn:${path}`)?.petriEditor?.showPanel('sim'); }
+  // a circuit's Try it (#4119): its live simulation started, as its toolbar's Try it does
+  if (/\.circ\.json$/i.test(path)) {
+    await (await import('./drawings.js')).openCircuit(path);
+    const ed = app.findDoc(`circ:${path}`)?.circuitEditor;
+    return ed && !ed.simulating() ? ed.toggleSim() : undefined;
+  }
   // an ASM chart's simulation (#2881): its editor's, once it has one; until then the chart, said
   if (/\.asm\.json$/i.test(path)) {
     await app.openAsm(path);

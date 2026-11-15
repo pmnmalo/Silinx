@@ -69,6 +69,29 @@ uiTest('#2881 view=try on an ASM chart: blinky\'s speed_ctrl opened, its simulat
   assert.deepEqual(await consoleWarnings(page), []);
 });
 
+uiTest('#4119 regression, view=try on a circuit: the breadboard example opened in its Try it (its bar, the simulation running); Share Module… chooses Try it', E, async (page) => {
+  const ED = '.doc:not([hidden]) .circuit-editor';
+  await openLink(page, 'open=example:breadboard&view=try', 'circ=1');
+  await linkOpened(page);
+  await page.waitFor(() => window.SilinxApp.findDoc('circ:src/breadboard.circ.json')?.circuitEditor?.simulating(), [], { what: 'the circuit\'s Try it running', timeout: 60000 });
+  assert.equal(await page.eval(() => window.Silinx.active?.id), 'circ:src/breadboard.circ.json');
+  assert.equal(await page.eval((ed) => document.querySelector(ed).classList.contains('circ-simulating'), ED), true);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar:not([hidden]) > *`)].map((e) => e.textContent.trim()).filter(Boolean), ED), ['Try it', 'Reset', 'Stop']);
+  await page.waitConsole(/Opened 'breadboard' from a link \(a new project\): Try it\./);
+  assert.doesNotMatch(await page.consoleText(), /ERROR/);
+  // its module's Share Module…: Try it chosen, the link made with no error
+  const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === 'breadboard'); return i > 0 ? i : null; }, [], { what: 'the circuit\'s row' });
+  await contextMenu(page, row, 'Share Module…');
+  await page.waitDialog('Share Module');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
+  assert.match(await genLink(page), /&view=try(&ui=[A-Za-z0-9_-]+)?$/);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error')?.textContent || ''), '');
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  assert.deepEqual(await consoleWarnings(page), []);
+  assert.deepEqual(warnings(page), []);
+});
+
 uiTest('#2869 a Petri net: Share Module… chooses Try it; the link opens the net in its Try it panel', E, async (page) => {
   await makeProject(env, { name: 'PnLink', top: 'ctl', files: { 'src/ctl.pn.json': JSON.stringify(newPetri('ctl', 'vhdl'), null, 2) } });
   await page.openProject('PnLink');
@@ -101,7 +124,7 @@ uiTest('#2826 Copy Link…: the project\'s and a module\'s menus, the File menu,
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .link-info').textContent), /^\d+ characters: some slide tools cut a link longer than 2000 \(export the project as a \.zip, host it, and link to it with #open=\)\.$/);
   // a view the design does not have: said in the dialog, no link
   await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = 'try'; s.dispatchEvent(new Event('change')); });
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), 'Try it: \'top\' is not a schematic, a state diagram, a Petri net or an ASM chart.');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-error').textContent), 'Try it: \'top\' is not a schematic, a state diagram, a Petri net, an ASM chart or a circuit.');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
   await page.eval(() => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = 'simulate'; s.dispatchEvent(new Event('change')); });
   const link = await page.waitFor(() => /&view=simulate(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the simulation\'s link' });

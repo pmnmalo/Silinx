@@ -7,7 +7,7 @@
 //   #open=<url of a .zip>                    a Silinx (or Xilinx ISE) project's zip hosted elsewhere (https, not
 //                                            this computer nor a local network: #2829), fetched once the user agrees
 //   #open=example:<name>                     one of the examples
-//   &view=try|simulate|emulate               Try it (a schematic's, a state diagram's, a Petri net's or an ASM chart's: #2869, #3287, #3295),
+//   &view=try|simulate|emulate               Try it (a schematic's, a state diagram's, a Petri net's, an ASM chart's or a circuit's: #2869, #3287, #3295, #4119),
 //                                            the test bench's simulation, the board emulator
 //   &top=<module>  &board=<board>            the module to open, the board to emulate
 // A link comes from anywhere: everything here is untrusted input, sizes capped (the link, the design inflated, its
@@ -202,9 +202,9 @@ export function sameFiles(a, b) {
   return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k]);
 }
 
-/** The drawings `view=try` opens (#2869): a schematic (its Try it), a state diagram, a Petri net or an ASM chart (its
- *  simulation, #2881). */
-export const TRY_DRAWING = /\.(sch|fsm|pn|asm)\.json$/i;
+/** The drawings `view=try` opens (#2869): a schematic or a circuit (its Try it, #4119), a state diagram, a Petri net or
+ *  an ASM chart (its simulation, #2881). */
+export const TRY_DRAWING = /\.(sch|fsm|pn|asm|circ)\.json$/i;
 /** The drawing of a module that `view=try` opens: its path in files ({ path: text }), or null. The drawing's name, or
  *  its generated HDL file's module, whatever its case (#2876: the HDL's VHDL names are in lower case, a drawing's as it
  *  was typed). */
@@ -222,7 +222,7 @@ export function tryDrawing(files, module) {
 
 /**
  * Whether a design has what a link's view opens (null: it has; else the message): Try it a schematic's, a state
- * diagram's or a Petri net's (the module's drawn as one: top, else the project's top), the simulation a test bench (the project's), the emulator a board and a
+ * diagram's, a Petri net's, an ASM chart's or a circuit's (the module's drawn as one: top, else the project's top), the simulation a test bench (the project's), the emulator a board and a
  * top. files: { path: text } of the project's files (silinx.json's project given apart).
  */
 export function viewProblem(project, files, { view, top } = {}) {
@@ -234,7 +234,7 @@ export function viewProblem(project, files, { view, top } = {}) {
   if (view !== 'simulate' && bench) return `'${top}' is a test bench: a link opens it in the simulation`;
   if (view === 'try') {
     if (!module) return 'Try it: the design has no top module (give top)';
-    if (!tryDrawing(files, module)) return `Try it: '${module}' is not a schematic, a state diagram, a Petri net or an ASM chart`;
+    if (!tryDrawing(files, module)) return `Try it: '${module}' is not a schematic, a state diagram, a Petri net, an ASM chart or a circuit`;
   }
   if (view === 'simulate' && !top && !project?.simTop) return 'the design has no test bench to simulate';
   if (view === 'emulate') {

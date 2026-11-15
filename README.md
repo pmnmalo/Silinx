@@ -493,7 +493,7 @@ choose (the header's check box selects them all), or the expired ones. Some slid
 000 characters: a larger project goes as a zip hosted elsewhere (*Export Project (.zip)…* to Silinx, then
 `…/Silinx/#open=https://…/lecture3.zip&view=simulate`), and an example by its name
 (`…/Silinx/#open=example:gates&view=try`; `#open=example:traffic&top=traffic&view=try` its state diagram). `view=`
-is `try` (the Try it of a schematic, a state diagram, a Petri net or an ASM chart), `simulate` (the test bench) or
+is `try` (the Try it of a schematic, a state diagram, a Petri net, an ASM chart or a circuit), `simulate` (the test bench) or
 `emulate` (the board emulator); `top=` names the module (with `simulate`, the test bench). Opening a link makes a project named after the design;
 clicked again, that project is opened as it is when it has the same files, and one the student changed is replaced
 only when they say so. A zip from another site is fetched only once you agree (its address shown), and only from an
