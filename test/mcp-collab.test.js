@@ -6,6 +6,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeSvg } from './qr-helpers.js';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
 import { closable } from './server-close.js';
@@ -587,6 +588,14 @@ test('#4002 a project share_project shares: its run_process runs reach follow_pr
     // (a second run: the next number)
     await ok('run_process', { project: 'gatesRun', process: 'synthesize', toolchain: 'silinx' });
     await until(async () => (await ok('follow_project', { link })).data.ownerActivity.runs.id === 2, 'the second run');
+    // this computer's names never sent: a line that holds the workspace's path (as the system resolves it too) or the
+    // home folder's, as a bitstream's does, reaches the followers with its placeholders
+    const { sharedRun: run3 } = await import('../server/mcp-collab.js');
+    const ws = process.env.SILINX_WORKSPACE;
+    await run3('gatesRun', { steps: ['synth'], ok: true, lines: [`Bitstream: ${ws}/gatesRun/build/gates.bit`, `Real: ${fs.realpathSync(ws)}/gatesRun`, `Home: ${os.homedir()}/notes`] });
+    const third = await until(async () => { const x = (await ok('follow_project', { link })).data.ownerActivity.runs; return x.id === 3 && x; }, 'the third run');
+    assert.deepEqual(third.lines.map(([t]) => t), ['Bitstream: <workspace>/gatesRun/build/gates.bit', 'Real: <workspace>/gatesRun', 'Home: ~/notes']);
+    assert.equal(JSON.stringify(third.summary).includes(fs.realpathSync(ws)), false);
     await ok('follow_project', { link, stop: true });
   } finally { await ok('share_project', { project: 'gatesRun', action: 'stop' }); }
   const { sharedRun } = await import('../server/mcp-collab.js');

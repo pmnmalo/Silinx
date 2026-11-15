@@ -1606,7 +1606,8 @@ uiTest('#487 static editions: a Content-Security-Policy with the inline scripts\
   const nextpnrXc7Version = JSON.parse(await fs.readFile(path.join(ROOT, 'node_modules/@silinx/nextpnr-himbaechel-xc7/package.json'), 'utf8')).version;
   const xc7Parts = (await fs.readdir(path.join(ROOT, 'packages/silinx-fpga/bitdb/xc7'))).filter((f) => f.endsWith('.json.gz')).map((f) => f.slice(0, -8)).sort();
   const dir = `dev-${build.commit}/`;
-  const origin = new URL(siteUrl).origin;
+  // (the assets' site by its folder, a path source: never its origin alone, which other sites may share)
+  const origin = new URL('./', siteUrl).href;
   let layout;
   for (const file of [html, path.join(site, 'index.html'), path.join(site, 'Silinx.html')]) {
     const text = await fs.readFile(file, 'utf8');

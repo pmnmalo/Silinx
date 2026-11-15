@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { contentSecurityPolicy, inlineScriptHashes, scriptHash, withMetaCsp, metaCsp, addSources, relaySources, TRACKER_SOURCES } from '../server/csp.js';
+import { contentSecurityPolicy, inlineScriptHashes, scriptHash, withMetaCsp, metaCsp, addSources, relaySources, siteSource, TRACKER_SOURCES } from '../server/csp.js';
 import { relayList } from '../core/collab-link.js';
 import { addAnalytics } from '../scripts/site-analytics.mjs';
 import './ui/core-hooks.js';   // (/core/… of the browser's modules)
@@ -107,4 +107,16 @@ test('#3227 the relays a page may use: each its origin and its WebSockets\' in c
   assert.deepEqual(page['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES, 'https://site.example', 'https://relay.example.org', 'wss://relay.example.org']);
   // (never a scheme alone: no other WebSocket server reached)
   for (const csp of [contentSecurityPolicy({}), contentSecurityPolicy({ connect: relaySources(relayList('https://relay.example.org')) })]) assert.ok(!directives(csp)['connect-src'].some((c) => /^wss?:$/.test(c)));
+});
+
+test('the single file\'s policy: the assets\' site by its folder, never the origin every GitHub Pages site of the account shares', () => {
+  const PUB = 'https://pmnmalo.github.io/Silinx/';
+  assert.equal(siteSource(PUB, PUB), PUB);
+  assert.equal(siteSource(`${PUB}dev/`, PUB), PUB, 'the development site: under the released one\'s folder');
+  assert.equal(siteSource('https://site.example/', PUB), 'https://site.example/');
+  assert.equal(siteSource('http://127.0.0.1:8/assets-site/?x=1#y', PUB), 'http://127.0.0.1:8/assets-site/');
+  const d = directives(contentSecurityPolicy({ scripts: [siteSource(PUB, PUB)], connect: [siteSource(PUB, PUB)], meta: true }));
+  assert.ok(d['script-src'].includes(PUB) && d['connect-src'].includes(PUB));
+  assert.equal([...d['script-src'], ...d['connect-src']].includes('https://pmnmalo.github.io'), false, 'no origin source');
+  // (the single file built with it: test/ui/standalone.test.js #487)
 });

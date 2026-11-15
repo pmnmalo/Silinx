@@ -364,8 +364,10 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   the reports it opens), its simulations and its Board Emulators (their time, view, forces, inputs). Only the owner's
   frames carry it: the room refuses a follower's or an editor's (read only), and a page reads only what the room did
   not mark as another participant's. A follower checks every value as untrusted input (the view through a design
-  link's checks, the others by theirs; 1 MB a value, 16 channels). The owner's home folder and the ISE host it reaches
-  over SSH are replaced in the lines and reports it sends. A follower's page replays the simulations and the
+  link's checks, the others by theirs; 1 MB a value, 16 channels). The owner's computer's names are replaced in the lines,
+  the reports and the Design Summary it sends, the page's as the MCP's `run_process`'s, by the server's own list
+  (`server/owner-secrets.js`): the workspace and the exchange folder (as given and as the system resolves them), Silinx's
+  configuration folder, the home folder, and the ISE host it reaches over SSH (with its build folder there). A follower's page replays the simulations and the
   emulators itself, from the files it already has: nothing runs on the server for it.
 - **An editor** (an editor's link, `#edit=…`) changes the project's text files and drawings. At the owner's, an edit
   that changes another part of the document (the project's settings, its meta, a root of its own), builds on changes

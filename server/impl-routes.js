@@ -16,6 +16,7 @@ import { runOpenImplementation, openStatus, openSteps, buildDeviceJob, reportPar
 import { programJob, scanJob, promJob, readBitInfo, checkBitPart, expectedDevice, parseBitHeader } from './programmer.js';
 import { importXise, importIseSchematics, iseModuleSymbols } from './xise.js';
 import { within, nativeRealOf } from './paths.js';
+import { ownerSecrets } from './owner-secrets.js';
 import * as Projects from './projects.js';
 import { mountXiseRoutes } from './xise-routes.js';
 import { IDENT } from './ident.js';
@@ -177,7 +178,9 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   api.get('/devices', wrap(async () => getDeviceDb()));
 
   // ?project=<name>: also whether the Silinx toolchain can implement that project's device (open)
-  const withOpen = async (tc, name) => {
+  // (and the names of this computer a shared project's followers never get, its lines and reports: server/owner-secrets.js)
+  const withOpen = async (tc0, name) => {
+    const tc = { ...tc0, redact: await ownerSecrets() };
     if (!name) return tc;
     try { const pj = await P.readProject(String(name)); return { ...tc, open: openStatus(pj.device || {}) }; } catch { return tc; }
   };

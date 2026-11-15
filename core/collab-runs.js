@@ -17,10 +17,15 @@ export const reportPath = p => typeof p === 'string' && REPORT_RE.test(p) && !p.
 
 const bytes = s => new TextEncoder().encode(s).length;
 
+// (the placeholders the server's own list may give, server/owner-secrets.js)
+const PLACEHOLDERS = ['<workspace>', '<exchange folder>', '<Silinx configuration>', '~', '<ISE host>', '<ISE build folder>'];
+
 /** What the owner's computer's names are replaced with in what its followers get: [secret, placeholder], longest first
- *  (`toolchain`: api.toolchain()'s: its SSH host for ISE, its configuration's path, whose home folder it is in). */
+ *  (`toolchain`: api.toolchain()'s: the server's own list, `redact` (its folders, the home folder, the ISE host: as the
+ *  system names them), and its SSH host for ISE, its configuration's path, whose home folder it is in). */
 export function runSecrets(toolchain) {
-  const out = [];
+  const out = (Array.isArray(toolchain?.redact) ? toolchain.redact : [])
+    .filter(p => Array.isArray(p) && typeof p[0] === 'string' && PLACEHOLDERS.includes(p[1])).map(([s, r]) => [s, r]);
   const ssh = toolchain?.config?.ssh || {};
   if (ssh.user && ssh.host) out.push([`${ssh.user}@${ssh.host}`, '<ISE host>']);
   if (ssh.host) out.push([String(ssh.host), '<ISE host>']);
@@ -30,6 +35,9 @@ export function runSecrets(toolchain) {
 }
 /** A text with the secrets replaced. */
 export const redact = (text, secrets = []) => secrets.reduce((t, [s, r]) => t.split(s).join(r), String(text));
+/** A value (the Design Summary's data) with the secrets replaced in every string of it, its keys too. */
+export const redactAll = (v, secrets = []) => (typeof v === 'string' ? redact(v, secrets) : Array.isArray(v) ? v.map(x => redactAll(x, secrets))
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [redact(k, secrets), redactAll(x, secrets)])) : v);
 
 /** The `runs` value: { id (the run's number), status: { process: state }, from (the index of the run's first line
  *  kept), lines: [[text, class]], summary (the Design Summary's data, null: none or too large) }; the lines kept from

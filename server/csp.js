@@ -16,6 +16,15 @@ export const scriptHash = text => `'sha256-${crypto.createHash('sha256').update(
 /** The hash sources of every inline script of a page. */
 export const inlineScriptHashes = html => [...html.matchAll(INLINE)].map(m => scriptHash(m[1]));
 
+/** The assets' site as a source of the single file's policy: its folder (a path source, `https://…/Silinx/`), never
+ *  its origin, which every GitHub Pages site of the account shares (pmnmalo.github.io); the published site's folder for
+ *  the development site under it (`…/Silinx/dev/`: the released site's folder holds it). */
+export function siteSource(site, published) {
+  const u = new URL('./', site);
+  u.search = ''; u.hash = '';
+  return published && u.href.startsWith(new URL('./', published).href) ? new URL('./', published).href : u.href;
+}
+
 /** A relay's sources for connect-src (#3227): its origin and its WebSockets' (wss: for https, ws: for http), which an
  *  http(s) source does not cover. */
 export const relaySources = origins => origins.flatMap(o => [o, o.replace(/^http/, 'ws')]);

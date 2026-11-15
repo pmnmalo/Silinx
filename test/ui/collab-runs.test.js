@@ -1,10 +1,11 @@
 // UI: a viewer follows the processes the owner runs (#4002, part 2), two participants in one test, in both interfaces:
 // the owner synthesizes (the Silinx toolchain): the viewer's Processes show the same marks, its console the run's
 // lines (each once), the owner's Design Summary opens there with the same tables, and the report the owner opens (the
-// synthesis's statistics) opens there with the same text; a second run's lines follow the first's. No warnings at
-// either page.
+// synthesis's statistics) opens there with the same text; a second run's lines follow the first's; the owner's computer's
+// paths (the workspace, the home folder) replaced in what the viewer gets. No warnings at either page.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { setupUi, uiTest, makeProject } from './harness.js';
 
 let env;
@@ -64,6 +65,22 @@ uiTest('#4002 a viewer follows the owner\'s runs: the marks, the run\'s lines on
     await page.waitFor(() => !window.SilinxApp.S.busy, [], { what: 'the second run ended', timeout: 60000 });
     await new Promise((r) => setTimeout(r, 1500));
     assert.equal(count(await fp.consoleText(), started), 2);
+    // this computer's names never reach the viewer: a line of a run that holds the workspace's path (as given and as
+    // the system resolves it) or the home folder's, its placeholders there (the server's list, GET /api/toolchain)
+    const { folder } = await env.server.api('GET', '/api/workspace');
+    const real = fs.realpathSync(folder);
+    const home = (await env.server.api('GET', '/api/toolchain')).redact.find(([, l]) => l === '~')[0];   // (the server's home folder)
+    await page.eval(async (lines) => {
+      const { log } = await import('/js/console.js');
+      window.SilinxApp.S.busy = true;
+      for (const l of lines) log(l);
+      await new Promise((r) => setTimeout(r, 1200));
+      window.SilinxApp.S.busy = false;
+    }, [`Bitstream: ${folder}/GatesRuns/build/gates.bit`, `Real: ${real}/GatesRuns`, `Home: ${home}/notes`]);
+    await fp.waitFor(() => window.__console().includes('Bitstream: <workspace>/GatesRuns/build/gates.bit'), [], { what: 'the line, redacted' });
+    const theirsText = await fp.consoleText();
+    assert.match(theirsText, /Real: <workspace>\/GatesRuns\n[^]*Home: ~\/notes/);
+    for (const secret of [folder, real, home]) assert.equal(theirsText.includes(secret), false, 'no path of the owner\'s computer');
     assert.deepEqual(await warnings(fp), []);
     assert.deepEqual(await warnings(page), []);
     assert.deepEqual(fp.errors, []);

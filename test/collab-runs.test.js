@@ -4,7 +4,7 @@
 // computer's names redacted; the runs in words.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RUN_LIMITS, runSecrets, redact, runsActivity, followedRuns, reportsActivity, followedReports, reportPath, runLines } from '../core/collab-runs.js';
+import { RUN_LIMITS, runSecrets, redact, redactAll, runsActivity, followedRuns, reportsActivity, followedReports, reportPath, runLines } from '../core/collab-runs.js';
 
 test('redact: the ISE host reached over SSH and the home folder of the configuration replaced, longest first; nothing without them', () => {
   const s = runSecrets({ config: { ssh: { user: 'user', host: 'server' } }, configPath: '/Users/user/Library/Application Support/Silinx/config.json' });
@@ -15,6 +15,15 @@ test('redact: the ISE host reached over SSH and the home folder of the configura
   assert.deepEqual(runSecrets({ configPath: '/home/user/.config/silinx/config.json' }), [['/home/user', '~']]);
   assert.deepEqual(runSecrets(null), []);
   assert.equal(redact('nothing to hide', []), 'nothing to hide');
+});
+
+test('redact: the server\'s own list (its folders, the home folder, the ISE host) first, a placeholder of its own only; every string of a value', () => {
+  const tc = { configPath: '/elsewhere/silinx/config.json', config: { ssh: { user: 'u', host: 'buildbox' } },
+    redact: [['/data/ws', '<workspace>'], ['/Users/user', '~'], ['/srv/ise-build', '<ISE build folder>'], ['/x', '<evil>'], [3, '~'], 'no']};
+  const s = runSecrets(tc);
+  assert.deepEqual(s, [['/srv/ise-build', '<ISE build folder>'], ['/Users/user', '~'], ['u@buildbox', '<ISE host>'], ['/data/ws', '<workspace>'], ['buildbox', '<ISE host>']]);
+  assert.equal(redact('Bitstream: /data/ws/p/build/top.bit (/Users/user/x, buildbox:/srv/ise-build/p)', s), 'Bitstream: <workspace>/p/build/top.bit (~/x, <ISE host>:<ISE build folder>/p)');
+  assert.deepEqual(redactAll({ folder: '/data/ws/p', rows: [['/Users/user/a', 2]], n: 1, none: null, '/data/ws/k': true }, s), { folder: '<workspace>/p', rows: [['~/a', 2]], n: 1, none: null, '<workspace>/k': true });
 });
 
 test('runs: the marks of the processes (others left out), the lines kept from the run\'s end, the summary when small enough', () => {

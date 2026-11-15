@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { buildInfo, devChanges } from './build-info.mjs';
 import { VERSION, versionLabel } from '../core/version.js';
 import { THIRD_PARTY } from '../core/third-party.js';
-import { contentSecurityPolicy, inlineScriptHashes, withMetaCsp, relaySources } from '../server/csp.js';
+import { contentSecurityPolicy, inlineScriptHashes, withMetaCsp, relaySources, siteSource } from '../server/csp.js';
 import { withManifestLink, writePwa } from './pwa.mjs';
 import { relayList } from '../core/collab-link.js';
 
@@ -212,11 +212,12 @@ if (!html.includes(safeJs(appJs))) throw new Error('the app bundle was not inser
 // the Content-Security-Policy (#487), last: the hashes of the page's inline scripts as they are; the
 // single file also loads Yosys from the assets' site and fetches the assets from it
 {
-  const origin = new URL(LAYOUT.site).origin;
+  // (the assets' site's folder, never its whole origin: other GitHub Pages sites of the account share it)
+  const site = siteSource(LAYOUT.site, PUBLISHED);
   // (the GitHub sign-in's relay, when the edition has one: web/js/github-app.js, #3196)
   const { GITHUB_DEVICE_RELAY, relayOrigin } = await import('../web/js/github-app.js');
   const relay = relayOrigin(GITHUB_DEVICE_RELAY);
-  html = withMetaCsp(html, contentSecurityPolicy({ hashes: inlineScriptHashes(html), scripts: [origin], connect: [origin, ...(relay ? [relay] : []), ...relaySources(SITE_RELAYS)], meta: true }));
+  html = withMetaCsp(html, contentSecurityPolicy({ hashes: inlineScriptHashes(html), scripts: [site], connect: [site, ...(relay ? [relay] : []), ...relaySources(SITE_RELAYS)], meta: true }));
 }
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html);

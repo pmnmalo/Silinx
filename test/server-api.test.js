@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import fss from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import zlib from 'node:zlib';
 import { scratchEnv, startApp, makeFakes, sleep, HERE, POSIX_ONLY } from './server-helpers.js';
 import { createZip, readZip, textOf } from '../core/zip.js';
@@ -333,7 +334,11 @@ test('devices DB and toolchain configuration', async () => {
   assert.equal(r.body.configPath, path.join(process.env.SILINX_CONFIG_DIR, 'config.json'));
   assert.equal(r.body.platform, process.platform);
   assert.ok('openFPGALoader' in r.body.programmers && 'adepttool' in r.body.programmers);
+  // (the names of this computer a shared project's followers never get: the workspace's first, the home folder's)
+  assert.ok(r.body.redact.some(([d, l]) => d === path.resolve(process.env.SILINX_WORKSPACE) && l === '<workspace>'));
+  assert.ok(r.body.redact.some(([d, l]) => d === os.homedir() && l === '~'));
   r = await call('PUT', '/toolchain', { mode: 'ssh', ssh: { host: 'box.lan', user: 'me' } });
+  assert.deepEqual(r.body.redact.filter(([, l]) => l === '<ISE host>'), [[['me', 'box.lan'].join('@'), '<ISE host>'], ['box.lan', '<ISE host>']]);   // (its login, as the PUT sent it)
   assert.equal(r.status, 200);
   assert.equal(r.body.config.mode, 'ssh');
   assert.equal(r.body.config.ssh.port, 22);   // merged over the defaults

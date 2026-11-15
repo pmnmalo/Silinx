@@ -30,7 +30,8 @@ import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-l
 import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
-import { runsActivity, followedRuns, runLines } from '../core/collab-runs.js';
+import { runsActivity, followedRuns, runLines, redact, redactAll } from '../core/collab-runs.js';
+import { ownerSecrets } from './owner-secrets.js';
 import { followedSim, simLines } from '../core/collab-sim.js';
 import { followedEmu, emuLines } from '../core/collab-emu.js';
 
@@ -346,9 +347,11 @@ export async function sharedRun(name, { steps, ok, warnings = [], lines = [] }) 
   for (const id of steps) status[id] = ok ? 'ok' : 'err';
   if (ok && warnings.length) status[steps[steps.length - 1]] = 'warn';
   if (steps.includes('translate') && steps.includes('par')) status.impl = ok ? 'ok' : 'err';
+  // (this computer's names left out, as the page's: its folders, the home folder, the ISE host; server/owner-secrets.js)
+  const secrets = await ownerSecrets();
   let summary = null;
-  try { const r = await (await import('./impl-routes.js')).projectReports(name); summary = r?.available === false ? null : r; } catch { /* none */ }
-  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [l, /^ERROR/.test(l) ? 'err' : /^(CRITICAL )?WARNING/.test(l) ? 'warn' : '']), summary }));
+  try { const r = await (await import('./impl-routes.js')).projectReports(name); summary = r?.available === false ? null : redactAll(r, secrets); } catch { /* none */ }
+  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [redact(l, secrets), /^ERROR/.test(l) ? 'err' : /^(CRITICAL )?WARNING/.test(l) ? 'warn' : '']), summary }));
 }
 
 // an editor's write (#3182, #3183): a text file's text (core/collab-doc.js editFile), or a drawing's JSON merged

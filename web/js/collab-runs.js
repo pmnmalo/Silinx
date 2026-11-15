@@ -8,7 +8,7 @@ import { api } from './api.js';
 import { S, closeDoc, openFile, refreshSummary } from './app.js';
 import { log, onLogLine } from './console.js';
 import { renderProcesses } from './processes.js';
-import { RUN_LIMITS, followedReports, followedRuns, redact, reportPath, reportsActivity, runSecrets, runsActivity } from '/core/collab-runs.js';
+import { RUN_LIMITS, followedReports, followedRuns, redact, redactAll, reportPath, reportsActivity, runSecrets, runsActivity } from '/core/collab-runs.js';
 
 const RUNS_MS = 1000;
 
@@ -25,7 +25,7 @@ export function runsPublisher(session) {
   });
   const readSummary = async () => {
     const name = S.project?.name;
-    try { const r = name ? await api.reports(name) : null; summary = r && r.available !== false ? r : null; } catch { summary = null; }
+    try { const r = name ? await api.reports(name) : null; summary = r && r.available !== false ? redactAll(r, secrets()) : null; } catch { summary = null; }
     last = 0;   // (sent at the next tick)
   };
   readSummary();
