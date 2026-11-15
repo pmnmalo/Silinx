@@ -50,7 +50,7 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
     const top = [...document.querySelectorAll('.dlg-overlay .wiz-main select')][6];
     return { labels, top: top.value, types: [...top.options].filter(o => !o.hidden).map(o => o.value) };
   });
-  assert.deepEqual(settings, { labels: ['Top-Level Source Type:'], top: 'sch', types: ['sch', 'fsm', 'asm', 'tt'] });
+  assert.deepEqual(settings, { labels: ['Top-Level Source Type:'], top: 'sch', types: ['sch', 'fsm', 'asm', 'tt', 'petri', 'circuit'] });   // (#4105: no C / C++ either)
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Summary');
   const summary = await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent);
@@ -127,7 +127,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   const pick = v => (v === 'design' ? choose('Project Kind:', 'design') : choose('Project Kind:', 'fpga').then(() => choose('Evaluation Development Board:', v)));
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['FPGA design (a board and a device)', 'Design and simulation only (no FPGA)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top Module:'] });
+  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['FPGA design (a board and a device)', 'Design and simulation only (no FPGA)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
   await pick('basys2');
   assert.ok((await dialogFields()).shown.includes('Device:') && (await dialogFields()).shown.includes('Evaluation Development Board:'));
   await page.dialogButton('OK');

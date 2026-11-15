@@ -11,6 +11,7 @@ import * as P from './projects.js';
 import { topForBoardText } from '../core/board-generics.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT, deviceName } from './mcp-util.js';
 import { DESIGN_KIND, DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
+import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
 import { makeDesignProject } from './mcp-design-only.js';
 
 // the project's kind dropped when a design and simulation project is given a board or a device (#3780)
@@ -87,6 +88,7 @@ export const SETTINGS_TOOLS = [
       synth_tool: { type: 'string', enum: SYNTH_TOOLS, description: 'The synthesis tool.' },
       preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The Preferred Language: the drawings\' HDL (the drawings with no language of their own) made again in it.' },
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
+      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type, as Design Properties\' (#4105): a setting of the project, saved, nothing made (hdl, sch, fsm, asm, tt: Boolean algebra, petri, circuit, c, cpp; a design and simulation project\'s a drawing\'s).' },
       kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design makes it a design and simulation project (no FPGA: no board, no constraints, its HDL hidden), refused when it has HDL or C sources of its own; fpga makes a design and simulation project an FPGA project (with board, or a device; else no board, the default device).' },
       design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design, false kind fpga.' },
     }, required: ['project'], additionalProperties: false },
@@ -99,9 +101,17 @@ export const SETTINGS_TOOLS = [
       if (args.kind !== undefined && args.design_only !== undefined) throw toolError('give kind, not design_only too (design_only is kind\'s deprecated alias)');
       const kind = args.kind ?? (args.design_only === true ? DESIGN_KIND : args.design_only === false ? 'fpga' : undefined);
       if (kind !== undefined && !['fpga', DESIGN_KIND].includes(kind)) throw toolError('kind: fpga or design');
-      if (kind === DESIGN_KIND) return makeDesignProject(name, pj, args);
+      // (the Top-Level Source Type, #4105: checked against the kind the project will have; saved with the rest, or alone)
+      const tst = args.top_source_type;
+      const device = [board, variant, part, pkg, speed, synthTool, language, args.update_constraints].some(x => x !== undefined);
+      const willBeDesign = kind === DESIGN_KIND || (isDesignOnly(pj) && kind !== 'fpga' && !(board && board !== 'none') && !part);
+      if (tst !== undefined) { const why = topTypeRefusal(willBeDesign ? { kind: DESIGN_KIND } : {}, tst); if (why) throw toolError(why); }
+      const topLine = tst === undefined ? [] : [`Top-Level Source Type: ${topType(tst).label}.`];
+      const withTop = async r => { if (tst === undefined) return r; await P.updateProject(name, p => ({ ...p, topSourceType: tst })); return { text: [r?.text, ...topLine].filter(Boolean).join('\n'), data: { ...(r?.data || { project: name }), topSourceType: tst } }; };
+      if (kind === DESIGN_KIND) return withTop(await makeDesignProject(name, pj, args));
+      if (tst !== undefined && kind === undefined && !device) return withTop(null);
       const fromDesign = isDesignOnly(pj);
-      if (kind === 'fpga' && !fromDesign && [board, variant, part, pkg, speed, synthTool, language].every(x => x === undefined)) throw toolError(`the project '${name}' is an FPGA project already`);
+      if (kind === 'fpga' && !fromDesign && !device && tst === undefined) throw toolError(`the project '${name}' is an FPGA project already`);
       if (fromDesign) {
         if (kind !== 'fpga' && !(board && board !== 'none') && !part) throw toolError(DESIGN_ONLY_MESSAGES.flow(name));
         pj = { ...pj, board: null, constraints: null };
@@ -168,7 +178,7 @@ export const SETTINGS_TOOLS = [
         if (fs.existsSync(path.join(P.projectDir(name), old))) warnings.push(`WARNING: this device's constraints are ${ext.slice(1).toUpperCase()}: ${constraintsFile} is the project's now, ${old} was not converted.`);
       }
       const oldLang = pj.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl';
-      await P.updateProject(name, p => withoutKind({ ...p, board: nextBoard, device: next, constraints: constraintsFile, ...synthOf(), ...(language ? { preferredLanguage: language } : {}) }, fromDesign));
+      await P.updateProject(name, p => withoutKind({ ...p, board: nextBoard, device: next, constraints: constraintsFile, ...synthOf(), ...(language ? { preferredLanguage: language } : {}), ...(tst !== undefined ? { topSourceType: tst } : {}) }, fromDesign));
       // every drawing in the new language, its HDL file made again in it (#1477)
       const languageLines = [];
       if (language && language !== oldLang) {
@@ -189,6 +199,7 @@ export const SETTINGS_TOOLS = [
       const noFlow = experimental && !vivado ? [`WARNING: ${R.noFlowMessage(next)}.`] : [];
       warnings.push(...noFlow);
       const text = [...warnings.filter(w => !pins.includes(w) && !languageLines.includes(w) && !noFlow.includes(w)), ...languageLines, ...(fromDesign ? [`${name}: an FPGA project now: its HDL and its implementation shown.`] : []), `Device set to ${next.part}${next.speed}-${next.package}${nextBoard ? ` (board ${nextBoard})` : ''}; synthesis tool ${after.synthTool || 'of Toolchain Settings'}${constraints ? `; ${after.constraints} written from the ${nextBoard}'s pins` : ''}.`, ...pins, ...noFlow];
+      text.push(...topLine);
       return { text: text.join('\n'), data: { project: name, board: nextBoard, device: next, synthTool: after.synthTool || null, preferredLanguage: after.preferredLanguage || 'vhdl', constraints: after.constraints || null, constraintsUpdated: constraints, generics: generics ? { file: generics.path, ...generics.values } : null, warnings } };
     },
   },

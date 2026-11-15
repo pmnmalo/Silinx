@@ -4,6 +4,7 @@
 // design (a board, or None Specified and a device) makes a design project an FPGA project, the reverse is refused while
 // the project has HDL or C sources of its own (the console says which).
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, toDesignProject } from '/core/project-kind.js';
+import { HDL_TOP_TYPES } from '/core/top-types.js';
 import { S, app } from './app.js';
 import { logError } from './console.js';
 
@@ -12,7 +13,7 @@ export const KIND_OPTIONS = [['fpga', 'FPGA design (a board and a device)'], [DE
 
 /**
  * Shows the fields of an FPGA project (`fpga`: the inputs of a form-grid, each after its label) only when `isDesign()`
- * says no, and a Top-Level Source Type (`topType`) without HDL then (a Schematic instead). Returns the function that
+ * says no, and a Top-Level Source Type (`topType`) without HDL nor C / C++ then (a Schematic instead). Returns the function that
  * applies it (called again when the choice changes).
  */
 export function kindFields(isDesign, fpga, topType = null) {
@@ -20,9 +21,9 @@ export function kindFields(isDesign, fpga, topType = null) {
     const d = isDesign();
     for (const el of fpga) for (const x of [el, el.previousElementSibling]) if (x) x.style.display = d ? 'none' : '';
     if (!topType) return;
-    const hdl = [...topType.options].find(o => o.value === 'hdl');
-    if (hdl) hdl.hidden = hdl.disabled = d;
-    if (d && topType.value === 'hdl') { topType.value = 'sch'; topType.dispatchEvent(new Event('change')); }
+    // (no HDL nor C / C++ top: a drawing's, #4105)
+    for (const o of topType.options) if (HDL_TOP_TYPES.includes(o.value)) o.hidden = o.disabled = d;
+    if (d && HDL_TOP_TYPES.includes(topType.value)) { topType.value = 'sch'; topType.dispatchEvent(new Event('change')); }
   };
   apply();
   return apply;
