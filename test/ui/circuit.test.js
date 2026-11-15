@@ -102,7 +102,7 @@ uiTest('Circuit editor: New Source ▸ Circuit makes one with its breadboard and
   await page.openProject('CircNew');
   await page.menu('Project', 'New Source…');
   await page.waitDialog('New Source');
-  await pickSourceType(page, 'Circuit');
+  await pickSourceType(page, 'Digital Electronic Circuit');
   await page.dialogButton('Next >');
   await waitNewSourcePage(page, 'File Name and Location');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'blinker');

@@ -50,7 +50,7 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
     const top = [...document.querySelectorAll('.dlg-overlay .wiz-main select')][6];
     return { labels, top: top.value, types: [...top.options].filter(o => !o.hidden).map(o => o.value) };
   });
-  assert.deepEqual(settings, { labels: ['Top-Level Source Type:'], top: 'sch', types: ['sch', 'fsm', 'asm', 'tt'] });
+  assert.deepEqual(settings, { labels: ['Top-Level Source Type:'], top: 'sch', types: ['tt', 'circuit', 'sch', 'fsm', 'asm'] });   // (New Source's order, #4061)
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Summary');
   const summary = await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent);
@@ -98,7 +98,7 @@ uiTest('#3780 a design project: its HDL opened is its drawing, an HDL file added
   page.eval(async () => (await import('/js/new-source.js')).newSourceWizard()).catch(() => {});
   await page.waitDialog('New Source');
   const types = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .src-types .st')].map(e => e.lastChild.textContent));
-  assert.deepEqual(types, ['Boolean Algebra', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Circuit', 'Guided Lab']);
+  assert.deepEqual(types, ['Boolean Algebra', 'Digital Electronic Circuit', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Guided Lab']);
   await page.dialogButton('Next >');
   const labels = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].map(l => l.textContent));
   assert.deepEqual(labels, ['Source type:', 'File name:', 'Location:']);

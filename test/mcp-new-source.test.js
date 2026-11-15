@@ -54,7 +54,7 @@ test('new_source: a module with its ports and its test bench, in VHDL and in Ver
 
 test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Syntax', async () => {
   for (const [lang, ext] of [['vhdl', 'v'], ['verilog', 'g']]) {
-    for (const [type, label, fileExt] of [['schematic', 'Schematic', 'sch.json'], ['fsm', 'Finite State Machine (FSM)', 'fsm.json'], ['asm', 'Algorithmic State Machine (ASM)', 'asm.json'], ['petri', 'Petri Net', 'pn.json'], ['boolean', 'Boolean Algebra', 'bool.json'], ['circuit', 'Circuit', 'circ.json']]) {
+    for (const [type, label, fileExt] of [['schematic', 'Schematic', 'sch.json'], ['fsm', 'Finite State Machine (FSM)', 'fsm.json'], ['asm', 'Algorithmic State Machine (ASM)', 'asm.json'], ['petri', 'Petri Net', 'pn.json'], ['boolean', 'Boolean Algebra', 'bool.json'], ['circuit', 'Digital Electronic Circuit', 'circ.json']]) {
       const r = await ok('new_source', { project: 'p', type, name: `${type}_${ext}`, language: lang });
       // its HDL file, as the interface gives it (#3184): not an empty state diagram's or ASM chart's (no module yet)
       const hdl = ['fsm', 'asm'].includes(type) ? null : `src/${type}_${ext}.${lang === 'vhdl' ? 'vhd' : 'v'}`;
@@ -80,6 +80,23 @@ test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Synta
       assert.equal(await checks(d), `ERROR:Silinx - "src/${d}.${k}.json": its HDL cannot be made: ${WHY[k]}. Fix src/${d}.${k}.json (its HDL is then made).\nProcess "Check Syntax" of <${d}> failed (1 error(s), 0 warning(s)).`);
     }
   }
+});
+
+test('new_source: a circuit from the Digital Electronic Circuit Wizard\'s assemblies (#4061); their refusals', async () => {
+  let r = await ok('new_source', { project: 'p', type: 'circuit', name: 'bench3', template: 'boards', template_params: { n: 3, size: 'full' } });
+  let d = JSON.parse(read('src/bench3.circ.json'));
+  assert.deepEqual(d.parts.map((p) => p.id), ['P1', 'BB1', 'BB2', 'BB3']);
+  assert.equal(d.parts[1].type, 'breadboard-full');
+  assert.equal(r.data.hdl, 'src/bench3.vhd');
+  r = await ok('new_source', { project: 'p', type: 'circuit', name: 'panel_io', template: 'io', template_params: { n: 2 }, language: 'verilog' });
+  d = JSON.parse(read('src/panel_io.circ.json'));
+  assert.deepEqual(d.parts.filter((p) => p.label).map((p) => p.label), ['sw[0]', 'sw[1]', 'led[0]', 'led[1]', 'led[2]', 'led[3]']);
+  assert.match(read('src/panel_io.v'), /^module panel_io/m);
+  await ok('new_source', { project: 'p', type: 'circuit', name: 'blank', template: 'empty' });
+  assert.deepEqual(JSON.parse(read('src/blank.circ.json')).parts, []);
+  await fails({ type: 'circuit', name: 'big', template: 'boards', template_params: { n: 7 } }, 'Breadboards (N): a whole number from 1 to 4.');
+  await fails({ type: 'schematic', name: 'sx', template: 'io' }, 'template and template_params: a circuit\'s');
+  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io, empty');
 });
 
 test('write_file: a drawing with no HDL file gets it, then follows its drawing (#3184)', async () => {

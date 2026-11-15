@@ -284,22 +284,24 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       delete fresh.fileTree;
       await api.saveProject(pj.name, fresh);
       await app.openProject(pj.name);
-      ({ sch: app.openSch, fsm: app.openFsm, asm: app.openAsm, tt: app.openTt })[topType.value](top);
+      ({ sch: app.openSch, fsm: app.openFsm, asm: app.openAsm, tt: app.openTt, circuit: app.openFile })[topType.value](top);
     }
     toast(`Project ${pj.name} created`, 'ok');
   } catch (e) { alertDlg('New Project', e.message, 'error'); }
 }
 
 // Top-Level Source Type: what the top of a new (empty) project is
+// (in New Source's order, #4061: a digital electronic circuit too, a half breadboard and its supply)
 const TOP_TYPES = [
+  { id: 'tt', label: 'Boolean Algebra', file: 'src/top.bool.json' },
+  { id: 'circuit', label: 'Digital Electronic Circuit', file: 'src/top.circ.json' },
   { id: 'hdl', label: 'HDL' },
   { id: 'sch', label: 'Schematic', file: 'src/top.sch.json' },
   { id: 'fsm', label: 'Finite State Machine (FSM)', file: 'src/top.fsm.json' },
   { id: 'asm', label: 'Algorithmic State Machine (ASM)', file: 'src/top.asm.json' },
-  { id: 'tt', label: 'Boolean Algebra', file: 'src/top.bool.json' },
 ];
 
-/** The top document of a new project (type sch / fsm / asm / tt) and its synchronized HDL module 'top'. */
+/** The top document of a new project (type sch / fsm / asm / tt / circuit) and its synchronized HDL module 'top'. */
 export async function createTopSource(pname, type, lang) {
   const t = TOP_TYPES.find(x => x.id === type);
   const hdlPath = `src/top.${lang === 'verilog' ? 'v' : 'vhd'}`;
@@ -316,6 +318,9 @@ export async function createTopSource(pname, type, lang) {
   } else if (type === 'tt') {
     const { newTable, generateTableHdl } = await import('/core/logic.js');
     doc = { ...newTable('top', ['a', 'b', 'c'], ['f']), lang }; code = generateTableHdl(doc, lang).code;
+  } else if (type === 'circuit') {
+    const [{ newCircuit }, { generateCircuit }] = await Promise.all([import('/core/circuit.js'), import('/core/circuit-hdl.js')]);
+    doc = newCircuit('top', lang); code = generateCircuit(doc, lang, { source: 'top.circ.json' }).code;
   } else return null;
   doc.generatedFile = hdlPath;
   await api.writeFile(pname, t.file, JSON.stringify(doc, null, type === 'sch' ? 1 : 2));

@@ -1,7 +1,16 @@
 // Portuguese strings of the digital circuit editor (web/js/circuit-editor.js, #3897; merged into the dictionary of i18n.js).
 export const CIRCUIT_PT = {
   // New Source, the Design pane
-  'Circuit': 'Circuito',
+  'Circuit': 'Circuito', 'Digital Electronic Circuit': 'Circuito Eletrónico Digital',
+  // the Digital Electronic Circuit Wizard (#4061, core/circuit-templates.js)
+  'Digital Electronic Circuit Wizard': 'Assistente de Circuito Eletrónico Digital', 'Circuit (module) name:': 'Nome do circuito (módulo):',
+  'The wizard creates a digital electronic circuit from a typical assembly (breadboards, their supply, switches and LEDs), ready for you to place the chips and wire them.': 'O assistente cria um circuito eletrónico digital a partir de uma montagem típica (placas de ensaio, a sua alimentação, interruptores e LEDs), pronto para colocar os chips e ligá-los.',
+  'The wizard creates a digital electronic circuit from a typical assembly (breadboards, their supply, switches and LEDs), ready for you to place the chips and wire them; its HDL is generated from it.': 'O assistente cria um circuito eletrónico digital a partir de uma montagem típica (placas de ensaio, a sua alimentação, interruptores e LEDs), pronto para colocar os chips e ligá-los; o seu HDL é gerado a partir dele.',
+  'Breadboards and a supply': 'Placas de ensaio e uma fonte', 'Breadboards (N):': 'Placas de ensaio (N):', 'Size:': 'Tamanho:', 'Half (30 columns)': 'Meia (30 colunas)', 'Full (63 columns)': 'Inteira (63 colunas)',
+  'N breadboards one under the other, the power supply on the first one\'s top rails; on every board the + rails joined and the − rails joined, and each board\'s rails to the next one\'s.': 'N placas de ensaio umas por baixo das outras, a fonte de alimentação nas linhas de cima da primeira; em cada placa as linhas + ligadas e as linhas − ligadas, e as linhas de cada placa às da seguinte.',
+  'Switches and LEDs': 'Interruptores e LEDs', 'Switches (N):': 'Interruptores (N):', 'LEDs (M):': 'LEDs (M):',
+  'A half breadboard and its supply, N logic switches in row a (their columns the inputs sw[0]…) and M LEDs in row h, their cathodes on the − rail (their anodes\' columns the outputs led[0]…): the chips go in between.': 'Meia placa de ensaio e a sua fonte, N interruptores lógicos na fila a (as suas colunas as entradas sw[0]…) e M LEDs na fila h, os cátodos na linha − (as colunas dos ânodos as saídas led[0]…): os chips vão no meio.',
+  'Nothing, not even a breadboard: place your own parts.': 'Nada, nem sequer uma placa de ensaio: coloque as suas peças.',
   // toolbar
   'Wires and language': 'Fios e linguagem', 'HDL Language': 'Linguagem HDL', 'Preferred Language': 'Linguagem Preferida',
   'The project\'s Preferred Language (Design Properties): the drawing\'s HDL follows it': 'A Linguagem Preferida do projeto (Propriedades do Projeto): o HDL do desenho acompanha-a',

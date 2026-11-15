@@ -154,7 +154,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   with that name, location and language, and its *< Back* on the first page goes back to New Source to change them;
   *Wizard >* is disabled for a type that has none, and *Next >* for a type that has only the wizard (Clock Manager,
   Block Memory).
-- **Digital circuits** (*New Source ▸ Circuit*, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (74LS gates, open collector
+- **Digital circuits** (*New Source ▸ Digital Electronic Circuit*, its wizard's typical assemblies; a new project's top, [docs/CIRCUITS.md](docs/CIRCUITS.md)): real ICs (74LS gates, open collector
   ones too, and 4000 gates, their datasheets' pinouts), switches (logic, slide, DIP), push buttons, a clock, pull-ups, LEDs,
   7-segment displays and LED bars wired on a breadboard or beside it, simulated
   live with the gates' delays (*Try it*: a click flips a switch, the LEDs light, each pin shows its level); its *Check*
