@@ -97,14 +97,22 @@ async function reloadDoc(d, { path, kind }, by = null, where = null) {
     d.editor.markClean();
     setDirty(d, false);
     d.liveCheck?.();
-  } else {
-    // a drawing: opened again from its file, where it was among the documents
+  } else if (!(api.following && inPlace(d, text))) {
+    // a drawing: opened again from its file, where it was among the documents (a followed one: in place, #4193)
     const front = S.active === d ? null : S.active;
     await closeDoc(d);
     await openFile(path);
     if (front && S.docs.includes(front)) activateDoc(front);
   }
   log(by ? `${path} reloaded: changed by ${by}.` : `${path} reloaded: changed ${where || 'outside Silinx'}.`, 'info');
+}
+
+// a followed project's drawing changed by its owner (#4193): its model put in place, its view kept (a truth table's
+// SOP / POS, its map and Quine-McCluskey's shown; the zoom, the selection), not made again from its file
+function inPlace(d, text) {
+  const ed = editorOf(d);
+  if (!ed?.applyModel) return false;
+  try { ed.applyModel(JSON.parse(text)); return true; } catch { return false; }
 }
 
 /** Changed in the editor and on disk (deleted there): true, keep the editor's (closed: kept too, the user's work). */

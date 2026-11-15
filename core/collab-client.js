@@ -38,6 +38,7 @@ import { newKey, keyOf, seal, unseal } from './collab-crypto.js';
 import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE } from './collab-sign.js';
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
+import { selectionValue, selectionPacer } from './collab-select.js';
 
 export const PROTOCOL = 4;   // (2: an editor's signed edits, #3182; 3: a follower's awareness marked with its sender, #3360; 4: the owner's frame for one follower, #3529)
 export const SUBPROTOCOL = 'silinx-collab';   // (the WebSockets', server/collab-relay.js's)
@@ -140,7 +141,12 @@ function peersOf(awareness, owner) {
   }
   return out.sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : a.name.localeCompare(b.name)));
 }
-const viewOf = v => (v && typeof v.path === 'string' ? { path: v.path, line: Number.isInteger(v.line) ? v.line : null, ch: Number.isInteger(v.ch) ? v.ch : null } : null);
+// (a view: the document, its cursor and its selection, #4192: core/collab-select.js; a view with no selection has none)
+const viewOf = v => {
+  if (!v || typeof v.path !== 'string') return null;
+  const sel = selectionValue(v.sel);
+  return { path: v.path, line: Number.isInteger(v.line) ? v.line : null, ch: Number.isInteger(v.ch) ? v.ch : null, ...(sel ? { sel } : {}) };
+};
 
 function participant({ conn, room, key, doc, awareness, owner, onEvent }) {
   const send = (kind, bytes) => conn().frame(() => seal(key, room, kind, bytes));
@@ -148,17 +154,22 @@ function participant({ conn, room, key, doc, awareness, owner, onEvent }) {
     if (origin === 'local') send(KIND.awareness, encodeAwarenessUpdate(awareness, [...added, ...updated, ...removed]));
   });
   awareness.on('change', () => onEvent({ type: 'peers' }));
+  const pacer = selectionPacer();   // (#4192: a selection dragged or typed, its views coalesced under the relay's rate, #4173)
+  let wanted = JSON.stringify(awareness.getLocalState()?.view ?? null);
   return {
     room, doc, awareness,
     send,
     /** A frame for one follower only (#3529: the room gives it to that client). */
     sendTo: (client, kind, bytes) => conn().frame(async () => toFrame(client, await seal(key, room, kind, bytes))),
-    /** The participants but this one: [{ client, name, color, role, view: { path, line, ch } | null }]. */
+    /** The participants but this one: [{ client, name, color, role, view: { path, line, ch, sel? } | null }]. */
     peers: () => peersOf(awareness, owner()),
-    /** What this participant looks at (null: nothing open). */
+    /** What this participant looks at (null: nothing open): { path, line, ch, sel } (sel: its selection, #4192), sent
+     *  when it changed, at most every 250 ms (the last one always). */
     setView: view => {
-      const v = viewOf(view), st = awareness.getLocalState();
-      if (JSON.stringify(st?.view ?? null) !== JSON.stringify(v)) awareness.setLocalStateField('view', v);
+      const v = viewOf(view), k = JSON.stringify(v);
+      if (k === wanted) return;
+      wanted = k;
+      pacer.push(v, x => { if (JSON.stringify(awareness.getLocalState()?.view ?? null) !== JSON.stringify(x)) awareness.setLocalStateField('view', x); });
     },
     closed: () => conn().ws.readyState >= 2,
     /** Once what this participant sent before is on its way. */

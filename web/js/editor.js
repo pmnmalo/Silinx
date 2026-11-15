@@ -29,6 +29,7 @@ import { exprShort, typeText } from '/core/type-text.js';
 import { genChain } from '/core/util.js';
 import { statusLine } from './status-line.js';
 import { peersField, peerSetter } from './editor-peers.js';
+import { peerSelField, peerSelSetter, textSelection } from './editor-peer-sel.js';
 
 /** A source's Language Templates: an HDL's (SNIPPETS), a C or C++ one's (web/js/c-templates.js, #1855), else none. */
 export const snippetsFor = (lang, path) => (lang === 'c' ? cSnippets(path) : SNIPPETS[lang] || null);
@@ -390,7 +391,7 @@ export function createEditor(container, { text = '', lang = 'verilog', path = ''
         lints ? [linter(() => lintAnnotations(), { delay: 400, tooltipFilter: () => [] }), lintGutter({ tooltipFilter: () => [] })] : [],
         lineNumbers(), foldGutter(), indentFold, highlightActiveLineGutter(),
         history(), drawSelection(), highlightActiveLine(), bracketMatching(), closeBrackets(),
-        highlightSelectionMatches({ wholeWords: true }), search({ top: true }), flashField, pathField, peersField,
+        highlightSelectionMatches({ wholeWords: true }), search({ top: true }), flashField, pathField, peersField, peerSelField,
         languageOf(lang), syntaxHighlighting(highlighter), EditorView.editorAttributes.of({ class: 'xl-editor' }),
         indentUnit.of('  '), EditorState.tabSize.of(2), readOnliness.of(EditorState.readOnly.of(readOnly)), phrasing.of(EditorState.phrases.of(phrases())),
         lang === 'vhdl' || lang === 'verilog' ? autocompletion({ override: [ctx => (ro() ? null : completions(ctx))], icons: false, maxRenderedOptions: 200, addToOptions: [{ render: renderKind, position: 20 }] }) : [],
@@ -520,7 +521,7 @@ export function createEditor(container, { text = '', lang = 'verilog', path = ''
     applyFix, fixesOnLine, showFixMenu,
     exec: cmd => COMMANDS[cmd]?.(view),
     // the cursor, the selection and the history, positions as { line, ch } (0-based); the other participants' cursors (#3181)
-    getCursor, setCursor, posAt, replaceRanges, setPeers: peerSetter(() => view, offsetOf),
+    getCursor, setCursor, posAt, replaceRanges, setPeers: peerSetter(() => view, offsetOf), setPeerSelection: peerSelSetter(() => view), sharedSelection: () => textSelection(view),   // (#4192)
     somethingSelected: () => view.state.selection.ranges.some(r => !r.empty),
     getSelection: () => view.state.selection.ranges.map(r => view.state.sliceDoc(r.from, r.to)).join('\n'),
     replaceSelection: s => !ro() && view.dispatch(view.state.replaceSelection(s), { userEvent: 'input', scrollIntoView: true }),

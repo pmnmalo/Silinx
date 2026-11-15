@@ -301,6 +301,8 @@ export function mountPetriEditor(container, opts = {}) {
   requestAnimationFrame(initialFit);
   return {
     getModel: () => clone(M),
+    // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
+    sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizePetri(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) resetSim(false); render(); },
     undo, redo, canUndo: () => (shared ? shared.canUndo() : hi > 0), canRedo: () => (shared ? shared.canRedo() : hi < hist.length - 1),
     setShared(s) { shared = s; hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; },

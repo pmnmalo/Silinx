@@ -30,6 +30,7 @@ import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-l
 import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
+import { selectionWords } from '../core/collab-select.js';
 import { runsActivity, followedRuns, runLines, redact, redactAll } from '../core/collab-runs.js';
 import { ownerSecrets } from './owner-secrets.js';
 import { followedSim, simLines } from '../core/collab-sim.js';
@@ -151,7 +152,8 @@ function drawingWrites(name, doc, owner, warn, bases) {
   return () => doc.off('afterTransaction', fn);
 }
 
-const peerLines = peers => (peers.length ? peers.map(p => `${p.name} (${p.role})${p.view ? `: ${p.view.path}${p.view.line !== null ? ` line ${p.view.line + 1}` : ''}` : ''}`).join('\n') : 'nobody');
+// (its selection too, #4192: the text selected, a drawing's objects)
+const peerLines = peers => (peers.length ? peers.map(p => `${p.name} (${p.role})${p.view ? `: ${p.view.path}${p.view.line !== null ? ` line ${p.view.line + 1}` : ''}${p.view.sel ? `, selected: ${selectionWords(p.view.sel)}` : ''}` : ''}`).join('\n') : 'nobody');
 
 const ACTIONS = ['start', 'status', 'promote', 'demote', 'stop'];
 // a participant made an editor (promote) or a viewer (demote), as the Sharing menu does (#3997): the editors' key given
@@ -252,7 +254,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open and their cursor, and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave. Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),

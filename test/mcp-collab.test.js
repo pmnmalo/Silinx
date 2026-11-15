@@ -570,6 +570,31 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
   } finally { await owner.close(); }
 });
 
+test('#4192 follow_project gives the owner\'s selection with their view: a text range, a drawing\'s objects; what is not one left out; deselected', async () => {
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'sel', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' }, fileTree: ['src/top.vhd', 'src/top.sch.json'] }, files: { 'src/top.vhd': 'entity top is end;\n', 'src/top.sch.json': '{}' }, owner: 'Ana' });
+  const owner = await shareRoom({ url: relayUrl(`${base}/`, 'share'), token: 'tok-mcp', doc, user: { name: 'Ana' } });
+  try {
+    owner.setView({ path: 'src/top.vhd', line: 0, ch: 13, sel: { ranges: [[0, 7, 0, 13]], junk: true } });
+    const link = followLink(`${base}/`, owner.room, owner.key);
+    const f = await until(async () => { const r = await ok('follow_project', { link, name: 'Bot' }); return r.data.ownerView?.sel && r; }, 'the owner\'s selection');
+    assert.deepEqual(f.data.ownerView, { path: 'src/top.vhd', line: 0, ch: 13, sel: { ranges: [[0, 7, 0, 13]] } });
+    assert.match(f.text, /\nIn it:\nAna \(owner\): src\/top\.vhd line 1, selected: 1:8 to 1:14(\n|$)/);
+    // a schematic's objects
+    await sleep(300);
+    owner.setView({ path: 'src/top.sch.json', line: null, ch: null, sel: { items: ['sym:S1', 'wire:W2', 7] } });
+    const g = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerView?.path === 'src/top.sch.json' && r; }, 'the schematic\'s selection');
+    assert.deepEqual(g.data.ownerView, { path: 'src/top.sch.json', line: null, ch: null, sel: { items: ['sym:S1', 'wire:W2'] } });
+    assert.match(g.text, /\nIn it:\nAna \(owner\): src\/top\.sch\.json, selected: sym:S1, wire:W2(\n|$)/);
+    // deselected: no selection
+    await sleep(300);
+    owner.setView({ path: 'src/top.sch.json', line: null, ch: null, sel: null });
+    const h = await until(async () => { const r = await ok('follow_project', { link }); return !r.data.ownerView?.sel && r; }, 'deselected');
+    assert.deepEqual(h.data.ownerView, { path: 'src/top.sch.json', line: null, ch: null });
+    await ok('follow_project', { link, stop: true });
+  } finally { await owner.close(); }
+});
+
 test('#4002 a project share_project shares: its run_process runs reach follow_project (the marks, the end of the log, the Design Summary); a project not shared sends nothing', async () => {
   await ok('new_project_from_example', { name: 'gatesRun', example: 'gates' });
   const { data: { link } } = await ok('share_project', { project: 'gatesRun', name: 'Ana', server: base });

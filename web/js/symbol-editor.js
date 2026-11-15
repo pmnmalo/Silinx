@@ -208,6 +208,8 @@ export function mountSymbolEditor(container, opts = {}) {
   return {
     root,
     getSymbol: () => clone(S),
+    // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
+    sharedSelection: () => (sel ? { items: [`pin:${sel}`] } : null),
     setModule(m) { module = m; if (inStep()) commit(); else render(); },
     select(name) { sel = sideOf(name) ? name : null; render(); },
     undo, redo, fit,

@@ -352,7 +352,7 @@ export function mountFsmEditor(container, opts = {}) {
   requestAnimationFrame(() => { if (!fitted) fitted = tryFit(); });
 
   return {
-    getModel: () => clone(M),
+    getModel: () => clone(M), sharedSelection: () => (sel ? { items: [`${sel.type}:${sel.id}`] } : null),   // (its selection, as live sharing sends it, #4192)
     undo: () => undo(), redo: () => redo(),
     canUndo: () => !locked() && (shared ? shared.canUndo() : hi > 0), canRedo: () => !locked() && (shared ? shared.canRedo() : hi < hist.length - 1),
     // Edit ▸ Cut / Copy / Paste / Delete (#677): a state (a transition: Delete only)

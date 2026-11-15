@@ -395,6 +395,8 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
 
   return {
     getModel: () => clone(M),
+    // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
+    sharedSelection: () => (sel.nodes.size || sel.edge ? { items: [...[...sel.nodes].map(id => `node:${id}`), ...(sel.edge ? [`edge:${sel.edge}`] : [])] } : null),
     undo: () => undo(), redo: () => redo(),
     canUndo: () => (shared ? shared.canUndo() : hi > 0), canRedo: () => (shared ? shared.canRedo() : hi < hist.length - 1),
     setShared(s) { shared = s; hist = [JSON.stringify(M)]; hi = 0; lastKey = null; updateToolbar(); },

@@ -23,6 +23,7 @@ import { collab } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, docFile, editablePath, gateEdit } from '/core/collab-doc.js';
 import { isTrusted, markEditedByEditor, untrustedNotice } from '/core/trust.js';
+import { selectionOfDoc } from './collab-select-draw.js';
 import { keepBound, unbindAll } from './collab-bind.js';
 import { keepDrawingsBound, unbindDrawings, editorOf, modelOf } from './collab-drawing.js';
 import { liveDrawing, drawingKind, drawingText, sameDrawing, drawingModel, drawingPathsOf, pruneDrawing, syncDrawing, revertDrawing } from '/core/collab-model.js';
@@ -269,7 +270,7 @@ function track() {
   keepDrawingsBound(share.drawn, S.docs, share.doc, drawingHere, { mine: true, say: sayLine });   // (its drawings, #3183)
   const d = S.active, path = d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
   const c = path && d.editor?.getCursor ? d.editor.getCursor() : null;
-  share.session.setView(path ? { path, line: c?.line ?? null, ch: c?.ch ?? null } : null);
+  share.session.setView(path ? { path, line: c?.line ?? null, ch: c?.ch ?? null, sel: selectionOfDoc(d) } : null);   // (its selection, #4192)
   share.activity.publish();   // (#4002: where it is, its Design pane, its runs)
   // (the followers' cursors, in the text editors they look at)
   const peers = share.session.peers();

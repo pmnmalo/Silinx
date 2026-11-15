@@ -41,6 +41,7 @@ import { onNotation } from './notation.js';
 import { showExpr } from '/core/expr-notation.js';
 import { ttReadOnlyChrome, lockTt } from './tt-readonly.js';
 import { renderTtLink } from './tt-link.js';
+import { ttLook } from './tt-look.js';
 
 const NEXT = { 0: '1', 1: 'X', X: '0' };
 const COLORS = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd', '#ff7f0e', '#17becf', '#e377c2', '#8c564b', '#bcbd22', '#7f7f7f'];
@@ -354,6 +355,8 @@ export function mountTtEditor(container, opts = {}) {
     setChoice(notationItems, M.notation || '');   // (an undo, a merge, another table set)
     renderTabs(); renderTable(); renderKmap(); renderResults(); renderLink(); status.set([shapeText(M)]); notes3939();
   }
+  // (its look in live sharing, #4192, #4193: the followed participant's put, the table unchanged)
+  const look = ttLook(() => ({ out, groups, qm: qmKind, map: mapShown, steps: qmSteps, outputs: M.outputs }), v => { out = v.out; kindsOf = v.out; groups = v.groups; qmKind = v.qm; mapShown = v.map; qmSteps = v.steps; render(); });
   const uid = Math.random().toString(36).slice(2, 8);
   render();
 
@@ -374,6 +377,7 @@ export function mountTtEditor(container, opts = {}) {
     setLink(file) { linkModel(M, file); hist.forEach((s, i) => { hist[i] = linkSnapshot(s, file); }); renderLink(); },
     refreshLink: () => renderLink(),
     select(o) { if (M.outputs.includes(o)) { out = o; render(); } },
+    sharedSelection: look.shared, setLook: look.set,   // (live sharing, #4192, #4193: tt-look.js)
     handwritten, handwrittenTable, printView: () => ttPrintView(root, notes, M.name),   // (#1510)
     destroy() { destroyed = true; offNotation(); more.close(); container.innerHTML = ''; },
   };

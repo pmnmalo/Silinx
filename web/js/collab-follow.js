@@ -32,6 +32,8 @@ import { followRoom, colorOf } from '/core/collab-client.js';
 import { parseFollowLink, relayUrl } from '/core/collab-link.js';
 import { followActivity, followState, watchOwnActions } from './collab-activity.js';
 import { viewKeyOf } from './view-state.js';
+import { selectionOfDoc, showPeerSelection } from './collab-select-draw.js';
+import { selectionAt } from '/core/collab-select.js';
 import { openReport } from './collab-runs.js';
 import { reportPath } from '/core/collab-runs.js';
 
@@ -150,9 +152,9 @@ function onEvent(ev) {
   else if (ev.type === 'offline') {
     app.log(`WARNING: The connection to ${collab.owner}'s project "${collab.project}" was lost: reconnecting${collab.editor ? ' (your changes meanwhile are sent once it is back)' : ' (what you see is as it was then until it is back)'}.`, 'warn');
     draw();
-    for (const d of S.docs) d.editor?.setPeers?.([]);
+    clearShown();
   } else if (ev.type === 'online') { app.log(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
-  else if (ev.type === 'closed') { app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn'); draw(); for (const d of S.docs) d.editor?.setPeers?.([]); }
+  else if (ev.type === 'closed') { app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn'); draw(); clearShown(); }
   else if (ev.type === 'role') roleChanged(ev);
   else if (ev.type === 'error') app.log(`${ev.fatal ? 'ERROR' : 'WARNING'}: Follow a shared project: ${ev.message}.`, ev.fatal ? 'err' : 'warn');
 }
@@ -182,6 +184,9 @@ async function roleChanged(ev) {
   draw();
   track();
 }
+
+// the others' carets and the owner's selection, no longer shown (the connection lost, the sharing ended)
+const clearShown = () => { for (const d of S.docs) { d.editor?.setPeers?.([]); showPeerSelection(d, []); } };
 
 // a drawing's merged model through the import gate (#3361): refused, not shown, said once
 const refusedDrawings = new Set();
@@ -224,12 +229,17 @@ async function track() {
     // (an editor's drawings edited live, #3183: a merged model shown once it passes the import gate, as any file, #3361)
     keepDrawingsBound(fol.drawn, S.docs, fol.session.doc, editsDrawingHere, { say: text => app.log(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
     const here = docPath(S.active);
-    fol.session.setView(here ? { path: here, line: S.active?.editor?.getCursor?.().line ?? null, ch: S.active?.editor?.getCursor?.().ch ?? null } : null);
+    fol.session.setView(here ? { path: here, line: S.active?.editor?.getCursor?.().line ?? null, ch: S.active?.editor?.getCursor?.().ch ?? null, sel: selectionOfDoc(S.active) } : null);
     const peers = fol.session.peers();
     for (const d of S.docs) {
       if (!d.editor?.setPeers) continue;
       const p = docPath(d);
       d.editor.setPeers(peers.filter(x => x.view?.path === p && x.view.line !== null).map(x => ({ name: x.name, color: x.color, line: x.view.line, ch: x.view.ch ?? 0 })));
+    }
+    // (the owner's selection while they are followed, #4192: in their colour, the follower's own unchanged)
+    for (const d of S.docs) {
+      const sel = fol.following && owner ? selectionAt(owner.view, docPath(d)) : null;
+      showPeerSelection(d, sel ? [{ name: owner.name, color: owner.color, sel }] : []);
     }
   } finally { busy = false; }
 }

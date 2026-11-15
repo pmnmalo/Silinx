@@ -280,6 +280,8 @@ export function mountCircuitEditor(container, opts = {}) {
   requestAnimationFrame(initialFit);
   return {
     getModel: () => clone(M),
+    // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
+    sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },
     undo, redo, canUndo: () => hi > 0, canRedo: () => hi < hist.length - 1,
     // (Cut, Copy and Paste, #4066: circuit-clip.js)

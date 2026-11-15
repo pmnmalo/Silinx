@@ -344,7 +344,7 @@ export function mountSchEditor(container, opts = {}) {
   setTimeout(() => { if (!fitted) { fitted = true; fit(); } }, 0);
 
   return {
-    getDoc: () => clone(normalizeDoc(doc)),
+    getDoc: () => clone(normalizeDoc(doc)), sharedSelection: () => (sel.size ? { items: [...sel] } : null),   // (its selection, as live sharing sends it, #4192)
     /** A note at the end of the toolbar (a read-only view's "Read-only, generated from …", #1193), or none. */
     setBanner(node) { tb.querySelector('.se-banner')?.remove(); if (node) { node.classList.add('se-banner'); tb.append(node); } },
     undo: () => undo(), redo: () => redo(), setShared, applyModel, busy,   // (edited live, #3183: sch-edits.js)
