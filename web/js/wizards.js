@@ -14,6 +14,7 @@ import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
 import { KIND_OPTIONS, kindFields, makeDesignProject } from './project-kind-ui.js';
+import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
 import { designOnly, refusedHere } from './design-only.js';
 import { byLastUsed } from './project-store.js';
@@ -284,22 +285,16 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       delete fresh.fileTree;
       await api.saveProject(pj.name, fresh);
       await app.openProject(pj.name);
-      ({ sch: app.openSch, fsm: app.openFsm, asm: app.openAsm, tt: app.openTt })[topType.value](top);
+      ({ sch: app.openSch, fsm: app.openFsm, asm: app.openAsm, tt: app.openTt, petri: app.openPetri })[topType.value]?.(top) ?? app.openFile(top);
     }
     toast(`Project ${pj.name} created`, 'ok');
   } catch (e) { alertDlg('New Project', e.message, 'error'); }
 }
 
-// Top-Level Source Type: what the top of a new (empty) project is
-const TOP_TYPES = [
-  { id: 'hdl', label: 'HDL' },
-  { id: 'sch', label: 'Schematic', file: 'src/top.sch.json' },
-  { id: 'fsm', label: 'Finite State Machine (FSM)', file: 'src/top.fsm.json' },
-  { id: 'asm', label: 'Algorithmic State Machine (ASM)', file: 'src/top.asm.json' },
-  { id: 'tt', label: 'Boolean Algebra', file: 'src/top.bool.json' },
-];
+// Top-Level Source Type: what the top of a new (empty) project is (core/top-types.js, #4105)
 
-/** The top document of a new project (type sch / fsm / asm / tt) and its synchronized HDL module 'top'. */
+/** The top document of a new project (type sch / fsm / asm / tt: with its synchronized HDL module 'top'; petri / circuit:
+ *  the drawing alone, its HDL made when the project is loaded; c / cpp: the function 'top', Silinx HLS's). */
 export async function createTopSource(pname, type, lang) {
   const t = TOP_TYPES.find(x => x.id === type);
   const hdlPath = `src/top.${lang === 'verilog' ? 'v' : 'vhd'}`;
@@ -316,6 +311,14 @@ export async function createTopSource(pname, type, lang) {
   } else if (type === 'tt') {
     const { newTable, generateTableHdl } = await import('/core/logic.js');
     doc = { ...newTable('top', ['a', 'b', 'c'], ['f']), lang }; code = generateTableHdl(doc, lang).code;
+  } else if (type === 'petri' || type === 'circuit') {
+    const { newPetri } = await import('/core/petri.js'), { newCircuit } = await import('/core/circuit.js');
+    await api.writeFile(pname, t.file, JSON.stringify(type === 'petri' ? newPetri('top', lang) : newCircuit('top', lang), null, 2));
+    return t.file;
+  } else if (type === 'c' || type === 'cpp') {
+    const { cTemplate, cppTemplate } = await import('./c-templates.js');
+    await api.writeFile(pname, t.file, (type === 'c' ? cTemplate : cppTemplate)('top'));
+    return t.file;
   } else return null;
   doc.generatedFile = hdlPath;
   await api.writeFile(pname, t.file, JSON.stringify(doc, null, type === 'sch' ? 1 : 2));
@@ -482,7 +485,11 @@ export async function projectProperties() {
   // a project from before the setting follows Toolchain Settings
   const synth = select(SYNTH_TOOLS, pj.synthTool || (S.toolchain?.config?.mode === 'silinx' ? 'silinx' : 'xst'));
   dp.lockSynth(synth, pj.synthTool);
-  const syncKind = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang]);
+  // (the Top-Level Source Type: a setting, saved, nothing made, #4105; a design project's a drawing's)
+  // (a design project's from before: an HDL type shown, and kept, as a Schematic)
+  const top0 = isDesignOnly(pj) && HDL_TOP_TYPES.includes(projectTopType(pj).id) ? 'sch' : projectTopType(pj).id;
+  const topSel = select(TOP_TYPES.map(t => [t.id, t.label]), top0);
+  const syncKind = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang], topSel);
   kindSel.addEventListener('change', syncKind);
   boardSel.addEventListener('change', () => {
     const b = db.boards.find(x => x.id === boardSel.value);
@@ -497,9 +504,8 @@ export async function projectProperties() {
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),
       ...field('Device:', dp.partSel), ...field('Package:', dp.pkgSel), ...field('Speed:', dp.spdSel),
-      // (a design project's: its top, no implementation; its top's type a drawing's, never HDL, #3891)
-      ...field(isDesignOnly(pj) ? 'Top Module:' : 'Top Module (implementation):', h('span', {}, pj.top || '(none)')),
-      ...(isDesignOnly(pj) && (pj.topSourceType || 'hdl') === 'hdl' ? [] : field('Top-Level Source Type:', h('span', {}, TOP_TYPES.find(t => t.id === (pj.topSourceType || 'hdl'))?.label || 'HDL'))),
+      // (no Top Module row: Set as Top Module chooses it, #4105)
+      ...field('Top-Level Source Type:', topSel),
       ...field('Synthesis Tool:', synth),
       ...field('Preferred Language:', lang)),
     onOpen: () => syncKind(),
@@ -509,7 +515,14 @@ export async function projectProperties() {
   pj = await currentProject();
   if (pj?.name !== pj0.name) return;
   // a design and simulation project made (#3780), or one given a board or a device: an FPGA project then
-  if (kindSel.value === DESIGN_KIND) return isDesignOnly(pj) || makeDesignProject(pj);
+  const topChanged = topSel.value !== top0;
+  if (topChanged) pj.topSourceType = topSel.value;
+  const topLine = () => topChanged && app.log(`Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topSel.value).label}.`, 'info');
+  if (kindSel.value === DESIGN_KIND) {
+    if (!isDesignOnly(pj)) return await makeDesignProject(pj) && topLine();
+    if (topChanged) { await app.saveProjectJson(); topLine(); }
+    return;
+  }
   const fromDesign = isDesignOnly(pj);
   // a new device: the design checked against it first, the user told (#796)
   const next = dp.value();
@@ -526,6 +539,7 @@ export async function projectProperties() {
   pj.synthTool = synth.value;
   constraintsForDevice(pj, S.fileTree, app.log);
   await app.saveProjectJson();
+  topLine();
   // every drawing in the new language, its HDL file made again in it (#1477)
   if (lang.value !== oldLang) {
     const n = (await (await import('./drawings-lang.js')).drawingsInLanguage(lang.value)).length;

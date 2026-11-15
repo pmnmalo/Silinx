@@ -40,7 +40,7 @@ uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no 
   for (const l of ['Device:', 'Synthesis Tool:', 'Preferred Language:']) assert.ok(f.shown.includes(l), l);
   // the kind "no FPGA": the board, the device, the synthesis tool and the language hidden at once; back, shown
   await choose(page, KIND, 'design');
-  assert.deepEqual((await fields(page)).shown, ['Name:', KIND, 'Top Module (implementation):', 'Top-Level Source Type:']);
+  assert.deepEqual((await fields(page)).shown, ['Name:', KIND, 'Top-Level Source Type:']);
   await choose(page, KIND, 'fpga');
   assert.ok((await fields(page)).shown.includes(BOARD) && (await fields(page)).shown.includes('Device:'));
   await page.dialogButton('Cancel');
@@ -54,7 +54,7 @@ uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no 
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
   f = await fields(page);
-  assert.deepEqual([f.kind, f.shown], ['design', ['Name:', KIND, 'Top Module:']]);
+  assert.deepEqual([f.kind, f.shown], ['design', ['Name:', KIND, 'Top-Level Source Type:']]);
   await choose(page, KIND, 'fpga');
   await page.dialogButton('OK');
   await page.waitNoDialog();
