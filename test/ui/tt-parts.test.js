@@ -1,12 +1,13 @@
 // UI: the parts of the truth table editor (#3218, #405: out of mountTtEditor in web/js/truthtable.js): the results
-// (tt-results.js) of the majority function: their rows in order, each form's expression as core/logic.js computes it,
+// (tt-results.js) of the majority function: their rows in order, each form's expression and cost (its gates by type, #4091) as
+// core/logic.js computes them, the least gates' row (its expression beside its label), the captions (#4093),
 // the table's notation changed in its ⋮ menu (#3939: the results and the Karnaugh map's legend rewritten), the K-map's
 // POS clicked and ticked (the output's HDL logic, the table changed); the map under its result, shown by its Show K-map button
 // (#4057: hidden when the table opens, each editor its own; in Portuguese). No warnings. The editor's whole use: test/ui/truthtable.test.js.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
-import { newTable, normalizeTable, analyzeOutput, formatExpr, outputForm } from '../../core/logic.js';
+import { newTable, normalizeTable, analyzeOutput, formatExpr, outputForm, formCost } from '../../core/logic.js';
 import { showKmap } from './tt-helpers.js';
 
 let env;
@@ -38,6 +39,9 @@ uiTest('#3218 #3939 truth table editor parts: the results, their notation and th
   const setLang = (l) => page.eval(async (x) => { (await import('/js/i18n.js')).setLanguage(x); }, l);
   await setLang('pt');
   await page.waitFor((t) => document.querySelector(`${t} .tt-kmap-res .tt-kmap-on`)?.textContent === 'Mostrar Mapa K', [T], { what: 'Mostrar Mapa K' });
+  // (the cost line and the Expressions caption, #4091, #4093)
+  assert.deepEqual(await ev((t) => [document.querySelector(`${t} .tt-results > .tt-kmap-res .tt-cost`).textContent, document.querySelector(`${t} .tt-cap-results`).textContent]),
+    ['3 termo(s), 6 literal(is); portas: 3 AND2, 1 OR3', 'Expressões']);
   await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-kmap-on`).click(), T);
   await page.waitFor((t) => document.querySelector(`${t} .tt-kmap-res .tt-kmap-on`)?.textContent === 'Esconder Mapa K' && document.querySelector(`${t} .tt-kmap-res svg.tt-kmap`), [T], { what: 'Esconder Mapa K' });
   await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-kmap-on`).click(), T);
@@ -57,7 +61,23 @@ uiTest('#3218 #3939 truth table editor parts: the results, their notation and th
   const shown = () => ev((t) => Object.fromEntries(['gates', 'delay', 'kmap-res', 'qm', 'xor', 'nand', 'nor'].map((k) => [k, document.querySelector(`${t} .tt-results > .tt-${k} .tt-expr`).textContent])));
   assert.deepEqual(await shown(), exprs('slash'));
   assert.equal(await ev((t) => document.querySelector(`${t} .tt-canon-sop .tt-canon-list`).textContent), `f = ${A.sigma}`);
-  assert.match(await ev((t) => document.querySelector(`${t} .tt-results > .tt-kmap-res .tt-cost`).textContent), /^3 term\(s\), 6 literal\(s\); gates: 3 AND, 1 OR, 0 NOT/);
+  // ---- each form's terms, literals and gates by type (#4091), as core/logic.js counts them; the majority's SOP checked by hand
+  const best = (g) => outputForm(doc, 'f', g);
+  const costs = () => ev((t) => Object.fromEntries(['gates', 'delay', 'kmap-res', 'qm', 'xor', 'nand', 'nor'].map((k) => [k, document.querySelector(`${t} .tt-results > .tt-${k} .tt-cost`).textContent])));
+  assert.deepEqual(await costs(), {
+    gates: formCost(best('gates').ast, best('gates').form).text, delay: formCost(best('delay').ast, best('delay').form).text,
+    'kmap-res': formCost(A.sop.ast, 'sop').text, qm: formCost(A.qm.sop.ast, 'qsop').text,
+    xor: formCost(A.xor.ast, 'xor').text, nand: formCost(A.nand.ast, 'nand').text, nor: formCost(A.nor.ast, 'nor').text });
+  assert.deepEqual(Object.values(await costs()), ['3 term(s), 6 literal(s); gates: 3 AND2, 1 OR3', '3 term(s), 6 literal(s); gates: 3 AND2, 1 OR3', '3 term(s), 6 literal(s); gates: 3 AND2, 1 OR3',
+    '3 term(s), 6 literal(s); gates: 3 AND2, 1 OR3', '2 term(s), 5 literal(s); gates: 2 AND2, 1 OR2, 1 XOR2', '3 term(s), 6 literal(s); gates: 3 NAND2, 1 NAND3', '3 term(s), 6 literal(s); gates: 3 NOR2, 1 NOR3']);
+  // the least gates' and least delay's rows: the tick box, the label, its expression (no form's name, #4091); its cost, its circuit
+  assert.deepEqual(await ev((t) => ['gates', 'delay'].map((g) => { const r = document.querySelector(`${t} .tt-results > .tt-${g}`), [line, ...rest] = r.children;
+    return [[...line.childNodes].map((n) => n.nodeType === 3 ? n.textContent : n.matches('input.tt-hdl, label') ? 'tick' : n.className || n.tagName.toLowerCase()), line.textContent, r.querySelectorAll('.tt-best-form').length, rest.map((c) => c.className)]; })), [
+    [['tick', 'b', ': ', 'tt-expr-box'], 'Least number of gates: f = b.c + a.c + a.b', 0, ['tt-cost', 'tt-circuit']],
+    [['tick', 'b', ': ', 'tt-expr-box'], 'Least delay: f = b.c + a.c + a.b', 0, ['tt-cost', 'tt-circuit']]]);
+  // the captions: no Expression over the function's field, the results' Expressions (#4093)
+  assert.deepEqual(await ev((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => `${c.className}: ${c.textContent}`)),
+    ['tt-caption: Truth table', 'tt-caption tt-cap-notes: Notes', 'tt-caption tt-cap-results: Expressions']);
   // ---- the notation: the table's own, VHDL, from its toolbar's ⋮ menu (#3939): the results and the map's legend rewritten
   await page.eval((t) => document.querySelector(`${t} .tt-toolbar .tb-more-menu [data-value="vhdl"]`).click(), T);
   await page.waitFor((t, e) => document.querySelector(`${t} .tt-results > .tt-kmap-res .tt-expr`)?.textContent === e, [T, exprs('vhdl')['kmap-res']], { what: 'the VHDL notation' });

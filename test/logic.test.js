@@ -623,9 +623,9 @@ test('HDL of a 6-output table: the exact VHDL and Verilog, which simulate to the
   const doc = SIX();
   const vhd = generateTableHdl(doc, 'vhdl');
   assert.equal(vhd.code.slice(vhd.code.indexOf('-- y4 =')), `-- y4 = Σm(0, 2)
--- y4 = a'·c'   (minimal SOP, 2 literal(s), 3 gate(s), delay 2)
+-- y4 = a'·c'   (minimal SOP, 2 literal(s), 1 gate(s), delay 1)
 -- y5 = Σm(0, 6) + d(1, 3, 5, 7)
--- y5 = a'·b' + a·b   (minimal SOP, 4 literal(s), 5 gate(s), delay 3)
+-- y5 = a'·b' + a·b   (minimal SOP, 4 literal(s), 3 gate(s), delay 2)
 -- don't care: y5 = d(1, 3, 5, 7)
 
 library ieee;
@@ -857,7 +857,7 @@ test("HDL with the XOR form (#435): form 'xor' uses it where it is simpler, else
 -- y3 = Σm(3, 5, 6, 7)
 -- y3 = a·b + c·(a ⊕ b)   (XOR form, 5 literal(s), 4 gate(s), delay 3)
 -- y4 = Σm(0, 2)
--- y4 = a'·c'   (minimal SOP, 2 literal(s), 3 gate(s), delay 2)
+-- y4 = a'·c'   (minimal SOP, 2 literal(s), 1 gate(s), delay 1)
 -- y5 = Σm(0, 6) + d(1, 3, 5, 7)
 -- y5 = (a ⊕ b)'   (XOR form, 2 literal(s), 1 gate(s), delay 1)
 -- don't care: y5 = d(1, 3, 5, 7)

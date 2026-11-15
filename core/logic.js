@@ -25,7 +25,7 @@ import { gateForm } from './logic-sch.js';
 import { circuitCost, costOrder } from './logic-cost.js';
 import { formOf, normalizeChoices, newOutputForms, solutionOf } from './logic-choice.js';
 import { qmForm, qmMinimize, qmResults } from './logic-qm.js';
-export { circuitCost } from './logic-cost.js';
+export { circuitCost, formCost } from './logic-cost.js';
 export { gateForm, schematicErrors, schematicFromTable } from './logic-sch.js';
 export { FORM_NAMES, formName, formOf, setOutputLogic, solutionOf } from './logic-choice.js';
 

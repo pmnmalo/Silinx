@@ -3,11 +3,10 @@
 // (SOP or POS, #3939: web/js/tt-qm.js), the canonical forms, the XOR form when it is cheaper (#435), the NAND-only and
 // NOR-only forms (#694), each with its tick box (its HDL logic, #2951), in the notation of the Settings (#3915).
 import { h } from './ui.js';
-import { circuitCost, outputForm, formName, formOf, setOutputLogic, MAX_KMAP_INPUTS } from '/core/logic.js';
+import { circuitCost, formCost, outputForm, formOf, setOutputLogic, MAX_KMAP_INPUTS } from '/core/logic.js';
 import { DEFAULT_NOTATION, NOTATIONS, showExpr as formatExpr } from '/core/expr-notation.js';
 import { menuChoice } from './toolbar-menu.js';
 import { getNotation } from './notation.js';
-import { canonicalCost } from '/core/logic-canon.js';
 import { designKind } from './project-kind-flag.js';
 import { kindSwitch, qmResult, showButton } from './tt-qm.js';
 import { drawBarsIn } from './overbar.js';
@@ -59,24 +58,23 @@ function circuit(ast) {
   const c = circuitCost(ast);
   return h('div', { class: 'tt-circuit' }, `As a circuit: ${c.gates} gate(s), delay ${c.delay}`);
 }
-// the form of the fewest gates or of the least delay of an output (#1427): which one, its expression, its gates and delay
-// (the minimal SOP and POS: the K-map's, past its inputs Quine-McCluskey's, #3939)
+// a form's terms, literals and gates by type (#4091: AND2B1, OR3…, an inverted input no NOT)
+const costLine = (ast, form) => h('div', { class: 'tt-cost' }, formCost(ast, form).text);
+// the form of the fewest gates or of the least delay of an output (#1427): its expression beside its name (#4091: not
+// the name of the form it is in), its terms, literals and gates, its gates and delay as a circuit
 function bestForm(doc, out, goal, label, tip, notation, tick) {
   const r = outputForm(doc, out, goal);
   return h('div', { class: `tt-res tt-${goal}`, title: tip },
-    h('div', {}, tick(goal), h('b', {}, label), ': ', h('span', { class: 'tt-best-form' }, formName(doc, r.form))),
-    h('div', {}, exprCode(out, r.ast, notation)), circuit(r.ast));
+    h('div', {}, tick(goal), h('b', {}, label), ': ', exprCode(out, r.ast, notation)), costLine(r.ast, r.form), circuit(r.ast));
 }
 
 // the canonical forms in full, the sum of the minterms and the product of the maxterms (#2927), each the list of its
 // terms first (#2952), its full expression under it (#3069), its terms, literals, gates and circuit as the minimal
 // forms' (#3072), each with its tick box (#2951)
-const costText = (terms, literals, g) => `${terms} term(s), ${literals} literal(s); gates: ${g.and} AND, ${g.or} OR, ${g.not} NOT (${g.inputs} gate inputs)`;
-function canonForms(A, out, n, notation, tick) {
-  const cost = canonicalCost(A.col, n);
+function canonForms(A, out, notation, tick) {
   const expr = (f, label, title, ast, list) => h('div', { class: `tt-canon-${f.slice(1)}`, title }, tick(f), h('b', {}, label), ': ',
     h('code', { class: 'tt-canon-list', 'data-no-i18n': '' }, `${out} = ${list}`), h('br'), exprCode(out, ast, notation),
-    h('div', { class: 'tt-cost' }, costText(cost[f.slice(1)].terms, cost[f.slice(1)].literals, cost[f.slice(1)].gates)), circuit(ast));
+    costLine(ast, f), circuit(ast));
   return h('div', { class: 'tt-res tt-canon' },
     expr('csop', 'Canonical SOP', 'The sum of the minterms: every input in every term, the don\'t cares left out', A.canon.sop, A.sigma),
     expr('cpos', 'Canonical POS', 'The product of the maxterms: every input in every term, the don\'t cares left out', A.canon.pos, A.pi));
@@ -97,7 +95,7 @@ export function renderTtResults(ctx) {
   const cur = n > MAX_KMAP_INPUTS && (cur0 === 'sop' || cur0 === 'pos') ? `q${cur0}` : cur0;
   const pick = f => { ctx.setM(setOutputLogic(M, out, { form: f })); ctx.changed(); };
   const tick = f => hdlTick(cur === f, () => pick(f));
-  const cost = r => h('div', { class: 'tt-cost' }, costText(r.terms.length, r.literals, r.gates));
+  const cost = r => costLine(r.ast, r.form);
   // the Karnaugh map's simplified function (#3939): the minimal SOP or POS of its groups, the solution chosen on the map (#2950)
   const kmap = () => {
     const k = ctx.groups(), r = A[k];
@@ -115,18 +113,18 @@ export function renderTtResults(ctx) {
   const x = A.xor;
   const xorForm = x && h('div', { class: 'tt-res tt-xor', title: 'Shown when it has fewer literals than the minimal SOP and POS, or as many and fewer operators' },
     h('div', {}, tick('xor'), h('b', {}, 'XOR form'), ': ', exprCode(out, x.ast, notation)),
-    h('div', { class: 'tt-cost' }, `${x.literals} literal(s), ${x.ops} two-input operator(s): ${x.xor} XOR / XNOR, ${x.and} AND, ${x.or} OR`), circuit(x.ast),
+    costLine(x.ast, 'xor'), circuit(x.ast),
     x.exact ? null : h('span', { class: 'tt-note' }, 'The search was cut short: a simpler XOR form may exist.'));
   // NAND and NOR only (#694): the minimal SOP and POS by double negation
   const gateForm = (label, g, cls, from) => h('div', { class: `tt-res ${cls}`, title: from },
     h('div', {}, tick(cls.slice(3)), h('b', {}, label), ': ', exprCode(out, g.ast, notation)),
-    h('div', { class: 'tt-cost' }, `${g.gates} gate(s), ${g.inverters} of them inverter(s)`), circuit(g.ast));
+    costLine(g.ast, cls.slice(3)), circuit(g.ast));
   const best = (goal, label, tip) => bestForm(M, out, goal, label, tip, notation, tick);
   results.append(
     // (the circuit's two choices first, then the K-map's and Quine-McCluskey's, the canonical ones after them, #3065, #3939)
     best('gates', 'Least number of gates', GATES_TIP), best('delay', 'Least delay', DELAY_TIP),
     ...(n <= MAX_KMAP_INPUTS ? [kmap()] : []), qm,
-    canonForms(A, out, M.inputs.length, notation, tick),
+    canonForms(A, out, notation, tick),
     ...(xorForm ? [xorForm] : []),
     gateForm('NAND form', A.nand, 'tt-nand', 'The minimal SOP with NAND gates only (double negation); an inverter is a NAND with its inputs tied, /(a·a)'),
     gateForm('NOR form', A.nor, 'tt-nor', 'The minimal POS with NOR gates only (double negation); an inverter is a NOR with its inputs tied, /(a + a)'));

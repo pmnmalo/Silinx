@@ -7,7 +7,7 @@
 // Quine-McCluskey's steps under its own when its Show Steps is,
 // canonical SOP and POS with their lists Σm / ΠM, the XOR form when it is cheaper (#435), the NAND-only and NOR-only forms
 // (#694), each one's gates and delay as a circuit. The console says when a result is not proven minimal (`opts.log(text, cls)`).
-// The expressions are written in the notation of the Settings (Boolean Notation, #3915; a̅·b + c by default), typed in any
+// The expressions are written in the notation of the Settings (Boolean Notation, #3915; a̅.b + c by default), typed in any
 // (/a.b + c, #434, #1496); one may be written by hand (#1056), and the whole table drawn by hand (#1066), both from the
 // Development menu (#1098). Logic: core/logic.js. The table always has its HDL module,
 // in its language (the project's preferred one), generated from it by the host (app.js), which keeps both in sync,
@@ -66,7 +66,7 @@ function solutionPicker(r, go) {
 // tab) and the results; the commands, the expression's field, the hints and the options left out (the notes when it
 // has some).
 function ttPrintView(root, notes, name) {
-  const drop = ['.tt-toolbar', '.doc-status', '.tt-cap-expr', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-show'];
+  const drop = ['.tt-toolbar', '.doc-status', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-show'];
   if (!notes.value.trim()) drop.push('.tt-cap-notes', '.tt-notes');
   return { title: `${tr('Truth table')} ${name}`, app: true, body: domSnapshot(root, { drop }) };
 }
@@ -196,8 +196,8 @@ export function mountTtEditor(container, opts = {}) {
   const results = h('div', { class: 'tt-results' });
   const right = h('div', { class: 'tt-right' },
     tabs,
-    h('div', { class: 'tt-caption tt-cap-expr' }, 'Expression'), exprRow, h('div', { class: 'hint tt-ops' }, OPS), exprErr,
-    h('div', { class: 'tt-caption' }, 'Results'), results);
+    exprRow, h('div', { class: 'hint tt-ops' }, OPS), exprErr,   // (no caption over the function's field, #4093)
+    h('div', { class: 'tt-caption tt-cap-results' }, 'Expressions'), results);
   const status = statusLine();   // (its inputs, outputs and rows, #2763)
   root.append(toolbar, h('div', { class: 'tt-body' }, left, right), status.el);
   if (readOnly) ttReadOnlyChrome({ root, toolbar, fields: [inIn, outIn, notes, exprIn], hide: [more.el, exprRow.querySelector('.tt-btn'), left.querySelector(':scope > .hint')], banner: opts.banner });
@@ -301,9 +301,19 @@ export function mountTtEditor(container, opts = {}) {
   const clauseAst = r => { const lit = l => (l.neg ? { t: 'var', name: M.inputs[l.v] } : { t: 'not', a: { t: 'var', name: M.inputs[l.v] } }); const ls = r.terms[0].literals; return ls.length === 0 ? { t: 'const', v: 0 } : ls.length === 1 ? lit(ls[0]) : { t: 'or', args: ls.map(lit) }; };
 
   // the map's SOP or POS, its result's too (#3939); Quine-McCluskey's
-  const setGroups = k => { groups = k; renderKmap(); renderResults(); };
+  // (a result ticked, the output's HDL logic: its SOP or POS clicked, the output's logic that one, the result still ticked, #4092)
+  const keepTicked = (ticked, form) => {
+    if (!ticked || readOnly) return false;
+    M = setOutputLogic(M, out, { form }); changed(); return true;
+  };
+  const setGroups = k => { const f = formOf(M, out); groups = k; if (!keepTicked(M.inputs.length <= MAX_KMAP_INPUTS && (f === 'sop' || f === 'pos') && f !== k, k)) { renderKmap(); renderResults(); } };
+  const setQmKind = k => {
+    const f = formOf(M, out), q = M.inputs.length > MAX_KMAP_INPUTS && (f === 'sop' || f === 'pos') ? `q${f}` : f;   // (past 6 inputs the minimal ones are Quine-McCluskey's, #3939)
+    qmKind = k;
+    if (!keepTicked((q === 'qsop' || q === 'qpos') && q !== `q${k}`, `q${k}`)) { renderResults(); notes3939(); }
+  };
   const renderResults = () => { renderTtResults({ results, M: () => M, out: () => out, A: () => A, notation: () => tableNotation(M),
-    groups: () => groups, setGroups, qmKind: () => qmKind, setQmKind: k => { qmKind = k; renderResults(); notes3939(); },
+    groups: () => groups, setGroups, qmKind: () => qmKind, setQmKind,
     qmSteps: () => qmSteps, setQmSteps: on => { qmSteps = on; renderResults(); },
     kmapBox, mapShown: () => mapShown, setMapShown: on => { mapShown = on; renderKmap(); renderResults(); },
     setM: m => { M = m; }, changed, renderKmap, renderResults }); lockTt(readOnly, results); };

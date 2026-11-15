@@ -158,11 +158,11 @@ test('edge cases: constant 0 and 1, one variable, every row a don\'t care', () =
 test('the truth table: Quine-McCluskey\'s forms qsop and qpos (outputForm, its HDL, set_output_logic), 16 inputs, the K-map\'s up to 6', () => {
   assert.ok(L.FORMS.includes('qsop') && L.FORMS.includes('qpos'));
   const doc = L.normalizeTable({ name: 'mux', inputs: ['s', 'a', 'b'], outputs: ['y'], table: { y: '00110101' } });
-  assert.equal(L.outputForm(doc, 'y', 'qsop').what, 'Quine-McCluskey SOP, 4 literal(s), 4 gate(s), delay 3');
-  assert.equal(L.outputForm(doc, 'y', 'qpos').what, 'Quine-McCluskey POS, 4 literal(s), 4 gate(s), delay 3');
+  assert.equal(L.outputForm(doc, 'y', 'qsop').what, 'Quine-McCluskey SOP, 4 literal(s), 3 gate(s), delay 2');
+  assert.equal(L.outputForm(doc, 'y', 'qpos').what, 'Quine-McCluskey POS, 4 literal(s), 3 gate(s), delay 2');
   assert.equal(L.formatExpr(L.outputForm(doc, 'y', 'qsop').ast, 'slash'), '/s.a + s.b');
   const v = L.generateTableHdl(L.setOutputLogic(doc, 'y', { form: 'qpos' }), 'vhdl').code;
-  assert.match(v, /-- y = \(s \+ a\)·\(s' \+ b\)   \(Quine-McCluskey POS, 4 literal\(s\), 4 gate\(s\), delay 3\)/);
+  assert.match(v, /-- y = \(s \+ a\)·\(s' \+ b\)   \(Quine-McCluskey POS, 4 literal\(s\), 3 gate\(s\), delay 2\)/);
   assert.match(v, /y <= \(s or a\) and \(not s or b\);/);
   const A = L.analyzeOutput(doc, 'y');
   assert.equal(L.formatExpr(A.qm.sop.ast, 'slash'), '/s.a + s.b');

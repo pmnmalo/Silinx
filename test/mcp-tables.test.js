@@ -50,7 +50,7 @@ test('set_output_logic: the minimal solution used (a cyclic chart) and the form 
   const t = normalizeTable({ ...newTable('cyc', ['a', 'b', 'c'], ['f']), table: { f: '11100111' } });
   await call('write_file', { project: 'c', path: 'src/cyc.bool.json', text: JSON.stringify(t, null, 2) });
   const r = await ok({ project: 'c', path: 'src/cyc.bool.json', output: 'f', form: 'sop', solution: { sop: 1 } });
-  assert.deepEqual([r.data.form, r.data.solutions, r.data.expr, r.data.what], ['sop', { sop: 1 }, 'f = /a./c + /b.c + a.b', 'minimal SOP (solution 2 of 2), 6 literal(s), 7 gate(s), delay 3']);
+  assert.deepEqual([r.data.form, r.data.solutions, r.data.expr, r.data.what], ['sop', { sop: 1 }, 'f = /a./c + /b.c + a.b', 'minimal SOP (solution 2 of 2), 6 literal(s), 4 gate(s), delay 2']);
   // (the table written by write_file has its HDL file since #3184, which set_output_logic writes again, #3234)
   assert.deepEqual(r.data.hdl, { file: 'src/cyc.vhd', written: true });
   assert.match(read('c', 'src/cyc.vhd'), /^entity cyc is/m);
@@ -58,12 +58,12 @@ test('set_output_logic: the minimal solution used (a cyclic chart) and the form 
   const v = await call('related_view', { project: 'c', path: 'src/cyc.bool.json', view: 'results' });
   assert.equal(v.data.outputs[0].kmap.sop.used, 1);
   assert.equal(v.data.outputs[0].kmap.sop.expr, 'f = /a./c + /b.c + a.b');
-  assert.ok(v.text.includes(`Karnaugh map SOP: f = /a./c + /b.c + a.b   (3 term(s), 6 literal(s))
+  assert.ok(v.text.includes(`Karnaugh map SOP: f = /a./c + /b.c + a.b   (3 term(s), 6 literal(s); gates: 1 AND2, 1 AND2B1, 1 AND2B2, 1 OR3)
   2 minimal solutions exist.
   Solution 1 of 2: f = /a./b + b./c + a.c
   Solution 2 of 2: f = /a./c + /b.c + a.b   (used)
 `), v.text);
-  assert.ok(v.text.endsWith('HDL logic: Karnaugh map SOP: f = /a./c + /b.c + a.b   (minimal SOP (solution 2 of 2), 6 literal(s), 7 gate(s), delay 3)'), v.text);
+  assert.ok(v.text.endsWith('HDL logic: Karnaugh map SOP: f = /a./c + /b.c + a.b   (minimal SOP (solution 2 of 2), 6 literal(s), 4 gate(s), delay 2)'), v.text);
   // the solution alone: the form kept
   const s = await ok({ project: 'c', path: 'src/cyc.bool.json', output: 'f', solution: { sop: 0 } });
   assert.deepEqual([s.data.form, s.data.solutions, s.data.expr], ['sop', {}, 'f = /a./b + b./c + a.c']);

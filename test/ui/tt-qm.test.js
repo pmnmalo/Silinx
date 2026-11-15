@@ -86,17 +86,23 @@ uiTest('#3939 the K-map\'s and Quine-McCluskey\'s results: SOP or POS as clicked
   // its POS: the steps of the 0s
   await click(page, '.tt-qm .tt-kind-pos');
   assert.deepEqual([await kinds(page, 'tt-qm'), await expr(page, 'tt-qm'), (await steps()).caps[0], (await steps()).lists], [['SOP', 'POS*'], 'f = (a + /b + /c).(/a + b + c)', 'Prime implicants of the 0s, column by column', ['a + /b + /c, /a + b + c', 'f = (a + /b + /c).(/a + b + c)']]);
-  // ---- its tick box: Quine-McCluskey's POS, the HDL module in it; SOP clicked: unticked (the HDL stays POS)
+  // ---- its tick box: Quine-McCluskey's POS, the HDL module in it; SOP clicked: still ticked, the HDL module in its SOP (#4092);
+  // POS again: its POS
   assert.deepEqual(await ticked(page), ['tt-gates']);
   await click(page, '.tt-qm .tt-hdl');
   await page.waitFor((t) => document.querySelector(`${t} .tt-qm .tt-hdl`)?.checked, [T], { what: 'Quine-McCluskey ticked' });
   assert.equal(await page.eval(() => window.Silinx.active.ttEditor.getModel().forms?.f ?? window.Silinx.active.ttEditor.getModel().form), 'qpos');
   await moduleHas(page, 'src/cyc.vhd', /\(Quine-McCluskey POS, 6 literal\(s\), /);
   assert.match(await readWs(env, 'TtQm', 'src/cyc.vhd'), /f <= \(a or not b or not c\) and \(not a or b or c\);/);
+  const form = () => page.eval(() => window.Silinx.active.ttEditor.getModel().forms?.f ?? window.Silinx.active.ttEditor.getModel().form);
   await click(page, '.tt-qm .tt-kind-sop');
-  assert.deepEqual(await ticked(page), []);
+  await page.waitFor((t) => document.querySelector(`${t} .tt-qm .tt-kind-sop`)?.classList.contains('active'), [T], { what: 'its SOP' });
+  assert.deepEqual([await ticked(page), await form(), await kinds(page, 'tt-qm'), await expr(page, 'tt-qm')], [['tt-qm'], 'qsop', ['SOP*', 'POS'], 'f = /a./b + b./c + a.c']);
+  await moduleHas(page, 'src/cyc.vhd', /\(Quine-McCluskey SOP, 6 literal\(s\), /);
   await click(page, '.tt-qm .tt-kind-pos');
-  assert.deepEqual(await ticked(page), ['tt-qm']);
+  await page.waitFor((t) => document.querySelector(`${t} .tt-qm .tt-kind-pos`)?.classList.contains('active'), [T], { what: 'its POS' });
+  assert.deepEqual([await ticked(page), await form()], [['tt-qm'], 'qpos']);
+  await moduleHas(page, 'src/cyc.vhd', /\(Quine-McCluskey POS, 6 literal\(s\), /);
   // ---- Portuguese: the results' labels and the steps
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
@@ -116,7 +122,9 @@ uiTest('#3939 the K-map\'s and Quine-McCluskey\'s results: SOP or POS as clicked
   await open(page, 'src/seven.bool.json');
   assert.deepEqual(await ev(page, (t) => [!!document.querySelector(`${t} .tt-cap-kmap`), !!document.querySelector(`${t} svg.tt-kmap`), !!document.querySelector(`${t} .tt-kmap-res`), !!document.querySelector(`${t} .tt-kmap-on`)]), [false, false, false, false]);
   assert.equal(await expr(page, 'tt-qm'), 'y = /x5.x6 + x5./x6');
-  assert.equal(await ev(page, (t) => document.querySelector(`${t} .tt-gates .tt-best-form`).textContent), 'Quine-McCluskey SOP');
+  // (the least gates: that SOP, its expression beside the label, no form's name, #4091)
+  assert.deepEqual(await ev(page, (t) => ['.tt-expr', '.tt-cost', '.tt-circuit', '.tt-best-form'].map((s) => document.querySelector(`${t} .tt-gates ${s}`)?.textContent ?? null)),
+    ['y = /x5.x6 + x5./x6', '2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2', 'As a circuit: 3 gate(s), delay 2', null]);
   // ---- 16 inputs: 65536 rows, those in view drawn; the last one reached by scrolling and clicked
   await open(page, 'src/big.bool.json');
   const rows = () => ev(page, (t) => [...document.querySelectorAll(`${t} .tt-table tbody tr:not(.tt-spacer)`)].map((tr) => +tr.firstElementChild.textContent));

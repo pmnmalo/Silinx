@@ -35,7 +35,7 @@ export const TT_PT = {
   // the variables' order on the map (#2924)
   'Order:': 'Ordem:', 'Order of the variables on the map, from the most significant to the least': 'Ordem das variáveis no mapa, da mais significativa para a menos',
   'MSB → LSB by columns, then rows': 'MSB → LSB pelas colunas, depois linhas', 'MSB → LSB by rows, then columns': 'MSB → LSB pelas linhas, depois colunas',
-  'Results': 'Resultados', 'e.g. /a.b + c': 'p.ex. /a.b + c',
+  'Expressions': 'Expressões', 'e.g. /a.b + c': 'p.ex. /a.b + c',
   "Operators: / ' ~ (NOT), . · * (AND), ⊕ ^ or xor (XOR), xnor, + (OR)": "Operadores: / ' ~ (NOT), . · * (AND), ⊕ ^ ou xor (XOR), xnor, + (OR)",
   'XOR form': 'Forma XOR',
   'Shown when it has fewer literals than the minimal SOP and POS, or as many and fewer operators': 'Mostrada quando tem menos literais do que a SdP e o PdS mínimos, ou tantos e menos operadores',
@@ -83,12 +83,12 @@ export const TT_PT_PATTERNS = [
   [/^WARNING: (.+): (.+): Quine-McCluskey's (SOP|POS) is not proven minimal \((too many implicants: a cover heuristic|the search for the cover was bounded)\)\.$/,
     (m, t, o, k, why) => `AVISO: ${t}: ${o}: ${k === 'SOP' ? 'a SdP' : 'o PdS'} de Quine-McCluskey não está provad${k === 'SOP' ? 'a' : 'o'} mínim${k === 'SOP' ? 'a' : 'o'} (${why.startsWith('too') ? 'demasiados implicantes: uma heurística de cobertura' : 'a procura da cobertura foi limitada'}).`],
   [/^As a circuit: (\d+) gate\(s\), delay (\d+)$/, 'Como circuito: $1 porta(s), atraso $2'],   // (#1427)
-  [/^(\d+) term\(s\), (\d+) literal\(s\); gates: (\d+) AND, (\d+) OR, (\d+) NOT \((\d+) gate inputs\)$/, '$1 termo(s), $2 literal(is); portas: $3 AND, $4 OR, $5 NOT ($6 entradas de portas)'],
-  [/^(\d+) literal\(s\), (\d+) two-input operator\(s\): (\d+) XOR \/ XNOR, (\d+) AND, (\d+) OR$/, '$1 literal(is), $2 operador(es) de duas entradas: $3 XOR / XNOR, $4 AND, $5 OR'],
+  // (a form's terms, literals and gates by type, #4091: the gates' names the library's, none "nenhuma")
+  [/^(\d+) term\(s\), (\d+) literal\(s\); gates: none$/, '$1 termo(s), $2 literal(is); portas: nenhuma'],
+  [/^(\d+) term\(s\), (\d+) literal\(s\); gates: ((?:\d+ [A-Z0-9]+(?:, |$))+)$/, '$1 termo(s), $2 literal(is); portas: $3'],
   [/^(\d+) minimal solutions exist\.$/, (m, k) => `Existem ${k} soluções mínimas.`],
   [/^Solution (\d+) of (\d+)$/, (m, i, k) => `Solução ${i} de ${k}`],
   [/^\((\d+) prime implicant\(s\)\)$/, '($1 implicante(s) primo(s))'],
-  [/^(\d+) gate\(s\), (\d+) of them inverter\(s\)$/, '$1 porta(s), $2 delas inversora(s)'],
   [/^— the truth table has errors: (.+)$/, '— a tabela de verdade tem erros: $1'],
   [/^— (.+) has errors$/, '— $1 tem erros'],
   // the status line (#2763)

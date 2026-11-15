@@ -15,7 +15,7 @@ const B = OVERLINE;
 
 test('#3915 the notations: five, Electronics / Engineering the default', () => {
   assert.deepEqual(NOTATIONS.map(([id, name, ex]) => `${id}: ${name}: ${ex}`), [
-    `engineering: Electronics / Engineering: a${B}·b + c`, 'slash: Text only: /a.b + c', 'logic: Logic / Set theory: ¬a ∧ b ∨ c',
+    `engineering: Electronics / Engineering: a${B}.b + c`, 'slash: Text only: /a.b + c', 'logic: Logic / Set theory: ¬a ∧ b ∨ c',
     'vhdl: VHDL: (not a and b) or c', 'verilog: Verilog: (~a & b) | c']);
   assert.equal(DEFAULT_NOTATION, 'engineering');
   assert.equal(notationOf('logic'), 'logic');
@@ -31,6 +31,10 @@ test('#3915 the overbar: one per character, its blanks too; read back as /( … 
   assert.equal(overlineToSlash(`a${B}·${B}b${B}`), '/(a·b)');
   assert.equal(overlineToSlash(`a${B}·b${B}`), '/(a)·/(b)');
   assert.equal(overlineToSlash(`a${B}${B}·${B}b${B}`), '/(/(a)·b)');
+  // (AND written a point, #4094: the middle dot of the texts written before still read, the same function)
+  assert.equal(overlineToSlash(`a${B}.${B}b${B}`), '/(a.b)');
+  const inputs = ['a', 'b', 'c'];
+  assert.equal(formatExpr(parseExpr(`a${B}·b + c${B}·a`, { inputs }), 'slash'), formatExpr(parseExpr(`a${B}.b + c${B}.a`, { inputs }), 'slash'));
   assert.equal(overlineToSlash(`go${B}`), 'g/(o)');   // (a bar over part of a name: the parsers' error)
   assert.equal(overlineToSlash(`${B}a`), 'a');        // (a bar over nothing: none)
   // a deep one: no recursion, its bars capped (the parsers' nesting error beyond)
@@ -44,17 +48,17 @@ const L = (s) => parseExpr(s, { vars: VARS });
 
 test('#3915 a truth table\'s expressions in each notation', () => {
   const cases = {
-    '/a.b + c': [`a${B}·b + c`, '/a.b + c', '¬a ∧ b ∨ c', '(not a and b) or c', '(~a & b) | c'],
-    '/(a + b).c': [`a${B} ${B}+${B} ${B}b${B}·c`, '/(a + b).c', '¬(a ∨ b) ∧ c', 'not (a or b) and c', '~(a | b) & c'],
+    '/a.b + c': [`a${B}.b + c`, '/a.b + c', '¬a ∧ b ∨ c', '(not a and b) or c', '(~a & b) | c'],
+    '/(a + b).c': [`a${B} ${B}+${B} ${B}b${B}.c`, '/(a + b).c', '¬(a ∨ b) ∧ c', 'not (a or b) and c', '~(a | b) & c'],
     'a ^ /b ^ c': [`a ⊕ b${B} ⊕ c`, 'a ⊕ /b ⊕ c', 'a ⊕ ¬b ∨ c'.replace(' ∨ ', ' ⊕ '), 'a xor not b xor c', 'a ^ ~b ^ c'],
     '//a': [`a${B}${B}`, '//a', '¬¬a', 'not (not a)', '~(~a)'],
-    '(a + b).(b + c)': ['(a + b)·(b + c)', '(a + b).(b + c)', '(a ∨ b) ∧ (b ∨ c)', '(a or b) and (b or c)', '(a | b) & (b | c)'],
+    '(a + b).(b + c)': ['(a + b).(b + c)', '(a + b).(b + c)', '(a ∨ b) ∧ (b ∨ c)', '(a or b) and (b or c)', '(a | b) & (b | c)'],
   };
   for (const [src, want] of Object.entries(cases)) {
     assert.deepEqual(NOTATION_IDS.map((n) => showExpr(L(src), n)), want, src);
   }
   // the NAND and NOR gates: a bar over the group
-  assert.equal(showExpr({ t: 'nand', args: [{ t: 'var', name: 'a' }, { t: 'var', name: 'b' }] }, 'engineering'), `a${B}·${B}b${B}`);
+  assert.equal(showExpr({ t: 'nand', args: [{ t: 'var', name: 'a' }, { t: 'var', name: 'b' }] }, 'engineering'), `a${B}.${B}b${B}`);
   assert.equal(showExpr({ t: 'nor', args: [{ t: 'var', name: 'a' }] }, 'logic'), '¬(a ∨ a)');
   // the older notations: formatExpr's
   assert.equal(showExpr(L('/a.b + c'), 'textbook'), formatExpr(L('/a.b + c'), 'textbook'));
@@ -89,19 +93,19 @@ const C = (s) => { const p = parseCondition(s); assert.equal(p.error, undefined,
 
 test('#3915 a condition in each notation: the comparisons, the arithmetic and the literals kept', () => {
   const cases = {
-    "a.b' + /c": [`a·b${B} + c${B}`, 'a./b + /c', 'a ∧ ¬b ∨ ¬c', '(a and not b) or not c', '(a & ~b) | ~c'],
-    '!(a || b) && !c': [`a${B} ${B}+${B} ${B}b${B}·c${B}`, '/(a + b)./c', '¬(a ∨ b) ∧ ¬c', 'not (a or b) and not c', '~(a | b) & ~c'],
-    'n + 1 >= 8 && a': ['((n + 1) >= 8)·a', '((n + 1) >= 8).a', '((n + 1) >= 8) ∧ a', '((n + 1) >= 8) and a', '((n + 1) >= 8) & a'],
+    "a.b' + /c": [`a.b${B} + c${B}`, 'a./b + /c', 'a ∧ ¬b ∨ ¬c', '(a and not b) or not c', '(a & ~b) | ~c'],
+    '!(a || b) && !c': [`a${B} ${B}+${B} ${B}b${B}.c${B}`, '/(a + b)./c', '¬(a ∨ b) ∧ ¬c', 'not (a or b) and not c', '~(a | b) & ~c'],
+    'n + 1 >= 8 && a': ['((n + 1) >= 8).a', '((n + 1) >= 8).a', '((n + 1) >= 8) ∧ a', '((n + 1) >= 8) and a', '((n + 1) >= 8) & a'],
     '(a || b) == c': ['(a OR b) == c', '(a OR b) == c', '(a ∨ b) == c', '(a or b) = c', '(a | b) == c'],
-    "x != 4'b1010 && v[2]": ["(x != 4'b1010)·v[2]", "(x != 4'b1010).v[2]", "(x != 4'b1010) ∧ v[2]", "(x /= 4'b1010) and v[2]", "(x != 4'b1010) & v[2]"],
-    'a ^ !(b & c)': [`a ⊕ b${B}·${B}c${B}`, 'a ⊕ /(b.c)', 'a ⊕ ¬(b ∧ c)', 'a xor not (b and c)', 'a ^ ~(b & c)'],
+    "x != 4'b1010 && v[2]": ["(x != 4'b1010).v[2]", "(x != 4'b1010).v[2]", "(x != 4'b1010) ∧ v[2]", "(x /= 4'b1010) and v[2]", "(x != 4'b1010) & v[2]"],
+    'a ^ !(b & c)': [`a ⊕ b${B}.${B}c${B}`, 'a ⊕ /(b.c)', 'a ⊕ ¬(b ∧ c)', 'a xor not (b and c)', 'a ^ ~(b & c)'],
   };
   for (const [src, want] of Object.entries(cases)) assert.deepEqual(NOTATION_IDS.map((n) => showCond(C(src), n)), want, src);
   // a transition's text: the otherwise words and a condition not valid as typed
   assert.equal(showCondText('else', 'logic'), 'else');
   assert.equal(showCondText('', 'logic'), '');
   assert.equal(showCondText('a b', 'logic'), 'a b');
-  assert.equal(showCondText('a && !b', 'engineering'), `a·b${B}`);
+  assert.equal(showCondText('a && !b', 'engineering'), `a.b${B}`);
 });
 
 function randomCond(r, d = 0) {

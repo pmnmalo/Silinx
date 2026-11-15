@@ -32,10 +32,10 @@ test('#3915 set_notation: Electronics / Engineering by default; set, kept, read 
   await ok('write_file', { project: 'n', path: 'src/f1.bool.json', text: JSON.stringify(t, null, 2) });
   const sop = async (args = {}) => (await ok('related_view', { project: 'n', path: 'src/f1.bool.json', view: 'results', ...args })).data.outputs[0].kmap.sop;
   // none set: the default
-  assert.deepEqual(await ok('set_notation', {}), { isError: false, text: `Boolean notation: Electronics / Engineering (a${B}·b + c)`, data: { notation: 'engineering' } });
+  assert.deepEqual(await ok('set_notation', {}), { isError: false, text: `Boolean notation: Electronics / Engineering (a${B}.b + c)`, data: { notation: 'engineering' } });
   assert.equal(config().notation, undefined);
   const s0 = await sop();
-  assert.equal(JSON.stringify(s0).includes(`a${B}·b`), true, JSON.stringify(s0));
+  assert.equal(JSON.stringify(s0).includes(`a${B}.b`), true, JSON.stringify(s0));
   // set: kept in config.json, read back, the results in it
   assert.deepEqual(await ok('set_notation', { notation: 'logic' }), { isError: false, text: 'Boolean notation: Logic / Set theory (¬a ∧ b ∨ c)', data: { notation: 'logic' } });
   assert.equal(config().notation, 'logic');
@@ -50,7 +50,7 @@ test('#3915 set_notation: Electronics / Engineering by default; set, kept, read 
   const o = await ok('set_output_logic', { project: 'n', path: 'src/f1.bool.json', output: 'f', form: 'sop' });
   assert.match(o.data.expr, /^f = (¬a ∧ b ∨ c|c ∨ ¬a ∧ b)$/);
   // each notation
-  for (const [n, re] of [['engineering', new RegExp(`a${B}·b`)], ['vhdl', /not a and b/], ['verilog', /~a & b/], ['slash', /\/a\.b/]]) {
+  for (const [n, re] of [['engineering', new RegExp(`a${B}.b`)], ['vhdl', /not a and b/], ['verilog', /~a & b/], ['slash', /\/a\.b/]]) {
     await ok('set_notation', { notation: n });
     assert.match((await ok('set_output_logic', { project: 'n', path: 'src/f1.bool.json', output: 'f', form: 'sop' })).data.expr, re, n);
   }

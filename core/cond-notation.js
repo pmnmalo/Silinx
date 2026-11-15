@@ -9,7 +9,7 @@ import { overline } from './overline.js';
 
 /** The notations: [id, the name shown, an example]; the first the default. */
 export const NOTATIONS = [
-  ['engineering', 'Electronics / Engineering', 'a̅·b + c'],
+  ['engineering', 'Electronics / Engineering', 'a̅.b + c'],
   ['slash', 'Text only', '/a.b + c'],
   ['logic', 'Logic / Set theory', '¬a ∧ b ∨ c'],
   ['vhdl', 'VHDL', '(not a and b) or c'],
@@ -25,7 +25,7 @@ const PREC = { or: 1, xor: 2, and: 3 };
 // a condition's operators (core/asm-expr.js's tree) per notation: the logical ones and the bitwise ones alike (a
 // condition's operands are bits, mostly); the comparisons, the arithmetic and the literals as exprToString writes them
 const COND = {
-  engineering: { and: '·', or: ' + ', orArith: ' OR ', xor: ' ⊕ ', not: (s) => overline(s), notGroup: (s) => overline(s), eq: '==', ne: '!=' },
+  engineering: { and: '.', or: ' + ', orArith: ' OR ', xor: ' ⊕ ', not: (s) => overline(s), notGroup: (s) => overline(s), eq: '==', ne: '!=' },
   slash: { and: '.', or: ' + ', orArith: ' OR ', xor: ' ⊕ ', not: (s) => `/${s}`, notGroup: (s) => `/(${s})`, eq: '==', ne: '!=' },
   logic: { and: ' ∧ ', or: ' ∨ ', orArith: ' ∨ ', xor: ' ⊕ ', not: (s) => `¬${s}`, notGroup: (s) => `¬(${s})`, eq: '==', ne: '!=' },
   vhdl: { and: ' and ', or: ' or ', orArith: ' or ', xor: ' xor ', not: (s) => `not ${s}`, notGroup: (s) => `not (${s})`, eq: '=', ne: '/=' },

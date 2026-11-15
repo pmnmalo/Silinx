@@ -51,7 +51,7 @@ uiTest('#2950 several minimal solutions: the selector on the Karnaugh map; the o
   const s1 = await shownOf(page);
   assert.deepEqual([s1.expr, s1.count, s1.sol, s1.notes, s1.inResults, s1.shownCount], ['f = /a./b + b./c + a.c', '2 minimal solutions exist.', 'Solution 1 of 2', [], false, false]);
   assert.deepEqual(s1.groups, ['/a./b', 'b./c', 'a.c'], 'the map\'s groups: the first solution');
-  assert.equal(s1.cost, '3 term(s), 6 literal(s); gates: 3 AND, 1 OR, 3 NOT (9 gate inputs)');
+  assert.equal(s1.cost, '3 term(s), 6 literal(s); gates: 1 AND2, 1 AND2B1, 1 AND2B2, 1 OR3');
   const flat1 = await groupRects(page);
   // next: the second solution, used: its groups, its NAND form, the table, its module
   await solClick(page, 'next');

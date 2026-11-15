@@ -45,8 +45,8 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
   assert.deepEqual(await listFirst(page), [['tt-canon-list', 'tt-expr', true, true], ['tt-canon-list', 'tt-expr', true, true]], 'the list first, the expression under it (#3069)');
   // their terms, literals, gates and circuit, as the minimal forms' (#3072)
   assert.deepEqual(await page.eval((t) => ['sop', 'pos'].map((k) => [document.querySelector(`${t} .tt-canon-${k} .tt-cost`)?.textContent, document.querySelector(`${t} .tt-canon-${k} .tt-circuit`)?.textContent]), T), [
-    ['3 term(s), 9 literal(s); gates: 3 AND, 1 OR, 3 NOT (12 gate inputs)', 'As a circuit: 7 gate(s), delay 3'],
-    ['3 term(s), 9 literal(s); gates: 1 AND, 3 OR, 3 NOT (12 gate inputs)', 'As a circuit: 7 gate(s), delay 3'],
+    ['3 term(s), 9 literal(s); gates: 2 AND3B1, 1 AND3B2, 1 OR3', 'As a circuit: 4 gate(s), delay 2'],
+    ['3 term(s), 9 literal(s); gates: 1 AND3, 1 OR3, 1 OR3B1, 1 OR3B3', 'As a circuit: 4 gate(s), delay 2'],
   ]);
   // Canonical SOP and POS spaced as the other results (#3071): as the Karnaugh map's and Quine-McCluskey's
   const gaps = await page.eval((t) => {
@@ -75,6 +75,9 @@ uiTest('#2927 #2952 Truth Table: the canonical SOP and POS in full, in the notat
     ['Forma canónica SdP', 'A soma dos mintermos: todas as entradas em todos os termos, sem as indiferenças'],
     ['Forma canónica PdS', 'O produto dos maxtermos: todas as entradas em todos os termos, sem as indiferenças'],
   ]);
+  // their terms, literals and gates by type (#4091): z's SOP, 0, no gate; its POS, the AND of 8 split into three
+  assert.deepEqual(await page.eval((t) => ['sop', 'pos'].map((k) => document.querySelector(`${t} .tt-canon-${k} .tt-cost`).textContent), T), [
+    '0 termo(s), 0 literal(is); portas: nenhuma', '8 termo(s), 24 literal(is); portas: 1 AND2, 1 AND3, 1 AND5, 1 OR3, 3 OR3B1, 3 OR3B2, 1 OR3B3']);
   // SdP (soma de produtos) and PdS (produto de somas), not SOP and POS (#3066): the K-map's and Quine-McCluskey's choice (#3939;
   // the map's groups the K-map's, shown under it, #4057), the map's button and tip, the tips
   await showKmap(page, T);

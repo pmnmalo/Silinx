@@ -15,7 +15,7 @@ export { NOTATIONS, NOTATION_IDS, DEFAULT_NOTATION, notationOf, showCond } from 
 
 // the symbols of the notations that core/logic.js's formatExpr does not have
 const SYM = {
-  engineering: { and: '·', or: ' + ', xor: ' ⊕ ', not: (s) => overline(s), notGroup: (s) => overline(s) },
+  engineering: { and: '.', or: ' + ', xor: ' ⊕ ', not: (s) => overline(s), notGroup: (s) => overline(s) },   // (AND a point, #4094)
   logic: { and: ' ∧ ', or: ' ∨ ', xor: ' ⊕ ', not: (s) => `¬${s}`, notGroup: (s) => `¬(${s})` },
 };
 const PREC = { or: 1, xor: 2, and: 3 };

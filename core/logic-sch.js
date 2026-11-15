@@ -99,6 +99,66 @@ function bubbles(g) {
   return { ...g, kids: [...kids.filter(k => !inv(k)), ...kids.filter(inv).map(k => ({ leaf: k.leaf, neg: false, bubble: true }))] };
 }
 
+// at most 5 inputs an AND or OR, 4 a NAND, NOR, XOR, XNOR (the library's widest the schematic uses)
+const fanIn = op => (op === 'and' || op === 'or' ? 5 : 4);
+const oneInput = g => g.op === 'nand1' || g.op === 'nor1';
+// the gate tree of an output's expression as the schematic draws it: `only` 'nand' / 'nor' when every output of the
+// schematic is in that form (its inverters that gate), `own` an output in the NAND or NOR form among others (#3785)
+function gateTree(ast, index, form, only, own) {
+  let t = only && ast.args?.length === 1 && ast.args[0].t === 'var' ? { op: `${only}1`, kids: [{ leaf: index.get(ast.args[0].name), neg: false }] } : astTree(ast, index, own);
+  t = splitFanIn(t, fanIn);
+  // (an output that is an input: a BUF; its complement: an INV, #3786; the NAND and NOR forms' gates as they are)
+  if (t.leaf != null) t = { op: t.neg && !only ? 'inv' : 'buf', kids: [t.neg && !only ? { leaf: t.leaf, neg: false } : t] };
+  else if (form !== 'nand' && form !== 'nor') t = bubbles(t);
+  return t;
+}
+// a gate's symbol: and3b1, nand2 (an inverter of NAND gates: its inputs tied), inv, buf
+function gateType(g) {
+  const k = g.kids.length;
+  if (oneInput(g)) return `${g.op.slice(0, -1)}2`;
+  if (g.op === 'buf' || g.op === 'inv') return g.op;
+  const b = g.kids.filter(x => x.bubble).length;
+  return `${g.op}${k}${b ? `b${b}` : ''}`;
+}
+
+// the gates' families in the order a count lists them, then by inputs, then by inverted inputs
+const FAMILY = ['and', 'or', 'nand', 'nor', 'xor', 'xnor', 'inv'];
+const typeKey = t => { const m = /^([a-z]+?)(\d*)(?:b(\d+))?$/.exec(t); return [FAMILY.indexOf(m[1]), +m[2] || 0, +m[3] || 0]; };
+
+/**
+ * The gates of an expression (core/logic.js's tree) as the table's schematic draws it, alone (#4091): a complemented
+ * input of an AND, OR, NAND or NOR one of its inverted inputs (AND2B1…, #3786), no gate; an inverter (INV) where one is
+ * drawn (an XOR's or XNOR's complemented input, once an input; a complemented output); a gate wider than the library's
+ * the gates it is split into; an expression of NAND (NOR) gates only those gates, its inverters too. { types: [[type,
+ * count]] (the library's names, AND2B1, OR3, INV, NAND2…), gates (their number), inputs (their inputs, the inverted
+ * ones too; a tied NAND's two), delay (the gates on its longest path: an inverted input none, an inverter one) }.
+ */
+export function circuitGates(ast) {
+  if (ast.t === 'const' || ast.t === 'var') return { types: [], gates: 0, inputs: 0, delay: 0 };
+  const index = new Map(), ops = new Set();
+  const walk = e => { if (e.t === 'var') { if (!index.has(e.name)) index.set(e.name, index.size); return; } ops.add(e.t); (e.a ? [e.a] : e.args).forEach(walk); };
+  walk(ast);
+  const only = ['nand', 'nor'].find(g => ops.size === 1 && ops.has(g)) || null;
+  const t = gateTree(ast, index, only, only, false);
+  const count = new Map(), rails = new Set();
+  let gates = 0, inputs = 0;
+  const add = (type, k) => { count.set(type, (count.get(type) || 0) + 1); gates++; inputs += k; };
+  const depth = g => {
+    if (g.leaf != null) { if (g.neg) rails.add(g.leaf); return g.neg ? 1 : 0; }
+    if (g.op === 'buf') return depth(g.kids[0]);
+    add(gateType(g), oneInput(g) ? 2 : g.kids.length);
+    return 1 + Math.max(...g.kids.map(depth));
+  };
+  const delay = depth(t);
+  for (const _ of rails) add(only ? `${only}2` : 'inv', only ? 2 : 1);   // (the inverted rails' inverters)
+  const types = [...count].sort(([a], [b]) => { const x = typeKey(a), y = typeKey(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; })
+    .map(([type, k]) => [type.toUpperCase(), k]);
+  return { types, gates, inputs, delay };
+}
+
+/** The gates of circuitGates as a text: "1 AND2B1, 2 AND3, 1 OR3" ("none" when it has none). */
+export const gatesText = g => (g.types.length ? g.types.map(([type, k]) => `${k} ${type}`).join(', ') : 'none');
+
 /**
  * Gate schematic (core/schdoc.js document) of a table: input markers on the left, one vertical
  * rail per used input literal (inverters at the top), the circuit of each output's expression in the
@@ -112,7 +172,6 @@ export function schematicFromTable(docIn, { form, lang, name } = {}) {
   const n = tt.inputs.length;
   const doc = newDoc(name || tt.name, lang || tt.lang);
   let sid = 0, wid = 0, pid = 0, lid = 0;
-  const fanIn = op => (op === 'and' || op === 'or' ? 5 : 4);
   const index = new Map(tt.inputs.map((v, j) => [v, j]));
   // (each output's form: the one asked, or the one of least gates or delay, #1427; the inverters' gate NAND / NOR when
   // every output is in that form)
@@ -125,22 +184,10 @@ export function schematicFromTable(docIn, { form, lang, name } = {}) {
     // (f = /a in NAND or NOR gates only: an inverter gate, not the inverted rail; an output in the NAND or NOR form among
     // others: its inverters NANDs or NORs of its own, the rails' INVs the other outputs', #3785)
     const own = !only && (forms[i].form === 'nand' || forms[i].form === 'nor');
-    let t = only && ast.args?.length === 1 && ast.args[0].t === 'var' ? { op: `${only}1`, kids: [{ leaf: index.get(ast.args[0].name), neg: false }] } : astTree(ast, index, own);
-    t = splitFanIn(t, fanIn);
-    // (an output that is an input: a BUF; its complement: an INV, #3786; the NAND and NOR forms' gates as they are)
-    if (t.leaf != null) t = { op: t.neg && !only ? 'inv' : 'buf', kids: [t.neg && !only ? { leaf: t.leaf, neg: false } : t] };
-    else if (forms[i].form !== 'nand' && forms[i].form !== 'nor') t = bubbles(t);
-    return { o, t };
+    return { o, t: gateTree(ast, index, forms[i].form, only, own) };
   });
   // ---- sizes and columns
-  const one = g => g.op === 'nand1' || g.op === 'nor1';
-  const gateType = g => {
-    const k = g.kids.length;
-    if (one(g)) return `${g.op.slice(0, -1)}2`;
-    if (g.op === 'buf' || g.op === 'inv') return g.op;
-    const b = g.kids.filter(x => x.bubble).length;
-    return `${g.op}${k}${b ? `b${b}` : ''}`;
-  };
+  const one = oneInput;
   const gateH = g => (g.op === 'buf' || g.op === 'inv' ? 20 : one(g) ? 40 : Math.max(40, g.kids.length * 20));
   const size = g => {
     if (g.leaf != null) { g.h = 20; g.level = 0; return; }

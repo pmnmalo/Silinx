@@ -90,40 +90,45 @@ async function tableResults(name, rel, doc, notation, design = false) {
     const A = L.analyzeOutput(m, o);   // (past 6 inputs, Quine-McCluskey's: bounded, #3939)
     const ex = ast => `${o} = ${showExpr(ast, notation)}`;
     // a minimal form (the solution used, `used`) and every minimal solution of it (#2928, #2950); `many`: the cap reached
-    const minimal = r => ({ expr: ex(r.ast), terms: r.terms.length, literals: r.literals, used: r.pick, many: r.solutions >= 64,
+    // (a form's terms, literals and gates by type, as the editor says them, #4091)
+    const cost = (ast, form) => { const c = L.formCost(ast, form); return { cost: c.text, gates: c.gates.types.map(([type, k]) => ({ type, count: k })) }; };
+    const minimal = r => ({ expr: ex(r.ast), terms: r.terms.length, literals: r.literals, ...cost(r.ast, r.form), used: r.pick, many: r.solutions >= 64,
       solutions: r.alternatives.map(a => ({ expr: ex(a.ast), terms: a.terms.length, literals: a.literals, gates: a.gates })) });
     // Quine-McCluskey's (#3939): its prime implicants, the essential ones, the columns of its steps when small, minimal or not proven
     const cube = (c, pos) => ex(L.minimalAst({ form: pos ? 'pos' : 'sop', terms: [c] }, m.inputs)).replace(/^[^=]*= /, '');
-    const qm = r => ({ expr: ex(r.ast), terms: r.terms.length, literals: r.literals, exact: r.exact, method: r.method,
+    const qm = r => ({ expr: ex(r.ast), terms: r.terms.length, literals: r.literals, ...cost(r.ast, r.form), exact: r.exact, method: r.method,
       primes: r.primes.map(p => ({ cube: cubeText(p, n), expr: cube(p, r.form === 'pos'), essential: p.essential })),
       essential: r.essential.map(p => cube(p, r.form === 'pos')),
       columns: r.steps?.columns ? r.steps.columns.map(col => col.map(c => ({ cube: cubeText(c, n), combined: c.combined }))) : null });
     const formName = f => L.formName(m, f);   // (the minimal SOP and POS past 6 inputs: Quine-McCluskey's, as the editor's)
-    const least = goal => { const r = L.outputForm(m, o, goal); return { form: formName(r.form), expr: ex(r.ast) }; };
+    const least = goal => { const r = L.outputForm(m, o, goal); return { form: formName(r.form), expr: ex(r.ast), ...cost(r.ast, r.form) }; };
     const hdl = L.outputForm(m, o);
     return {
       output: o, canonicalSop: ex(A.canon.sop), canonicalPos: ex(A.canon.pos), minterms: `${o} = ${A.sigma}`, maxterms: `${o} = ${A.pi}`,
       canonicalCost: canonicalCost(A.col, m.inputs.length),   // (their terms, literals and gates, #3072)
+      canonicalSopCost: cost(A.canon.sop, 'csop'), canonicalPosCost: cost(A.canon.pos, 'cpos'),
       kmap: kmap ? { sop: minimal(A.sop), pos: minimal(A.pos) } : null, quineMcCluskey: { sop: qm(A.qm.sop), pos: qm(A.qm.pos) },
-      xor: A.xor ? ex(A.xor.ast) : null, nand: ex(A.nand.ast), nor: ex(A.nor.ast), leastGates: least('gates'), leastDelay: least('delay'),
+      xor: A.xor ? ex(A.xor.ast) : null, nand: ex(A.nand.ast), nor: ex(A.nor.ast),
+      xorCost: A.xor ? cost(A.xor.ast, 'xor') : null, nandCost: cost(A.nand.ast, 'nand'), norCost: cost(A.nor.ast, 'nor'), leastGates: least('gates'), leastDelay: least('delay'),
       hdlLogic: { form: L.formOf(m, o), name: formName(L.formOf(m, o)), expr: ex(hdl.ast), what: hdl.what },
     };
   });
   const lines = outputs.flatMap(r => [   // (the editor's order, #3065)
-    `Least number of gates: ${r.leastGates.form}: ${r.leastGates.expr}`, `Least delay: ${r.leastDelay.form}: ${r.leastDelay.expr}`,
+    // (the function, then its terms, literals and gates by type, #4091)
+    `Least number of gates: ${r.leastGates.expr}   (${r.leastGates.cost})`, `Least delay: ${r.leastDelay.expr}   (${r.leastDelay.cost})`,
     // (then the Karnaugh map's, up to 6 inputs, and Quine-McCluskey's, #3939)
-    ...(r.kmap ? ['sop', 'pos'].flatMap(k => [`Karnaugh map ${k.toUpperCase()}: ${r.kmap[k].expr}   (${r.kmap[k].terms} term(s), ${r.kmap[k].literals} literal(s))`, ...solutionLines(r.kmap[k])])
+    ...(r.kmap ? ['sop', 'pos'].flatMap(k => [`Karnaugh map ${k.toUpperCase()}: ${r.kmap[k].expr}   (${r.kmap[k].cost})`, ...solutionLines(r.kmap[k])])
       : [`Karnaugh map: none for more than ${L.MAX_KMAP_INPUTS} inputs (it has ${n}): the simplified function is Quine-McCluskey's.`]),
     ...['sop', 'pos'].flatMap(k => qmLines(k, r.quineMcCluskey[k])),
     // (its list, #2952, then its expression, #3069, its terms and literals, #3072)
-    `Canonical SOP: ${r.minterms}   (${r.canonicalCost.sop.terms} term(s), ${r.canonicalCost.sop.literals} literal(s))`, `  ${r.canonicalSop}`,
-    `Canonical POS: ${r.maxterms}   (${r.canonicalCost.pos.terms} term(s), ${r.canonicalCost.pos.literals} literal(s))`, `  ${r.canonicalPos}`,
-    ...(r.xor ? [`XOR form: ${r.xor}`] : []), `NAND form: ${r.nand}`, `NOR form: ${r.nor}`,
+    `Canonical SOP: ${r.minterms}   (${r.canonicalSopCost.cost})`, `  ${r.canonicalSop}`,
+    `Canonical POS: ${r.maxterms}   (${r.canonicalPosCost.cost})`, `  ${r.canonicalPos}`,
+    ...(r.xor ? [`XOR form: ${r.xor}   (${r.xorCost.cost})`] : []), `NAND form: ${r.nand}   (${r.nandCost.cost})`, `NOR form: ${r.nor}   (${r.norCost.cost})`,
     `${design ? 'Logic' : 'HDL logic'}: ${r.hdlLogic.name}: ${r.hdlLogic.expr}   (${r.hdlLogic.what})`, '']);   // (a design project's: no HDL, #3891)
   return { text: lines.join('\n').trimEnd(), data: { project: name, path: rel, view: 'results', notation, inputs: m.inputs, outputs } };
 }
 // Quine-McCluskey's SOP or POS (#3939): its expression, its prime implicants (up to 40 listed) and the essential ones
-const qmLines = (k, q) => [`Quine-McCluskey ${k.toUpperCase()}: ${q.expr}   (${q.terms} term(s), ${q.literals} literal(s)${q.exact ? '' : '; not proven minimal'})`,
+const qmLines = (k, q) => [`Quine-McCluskey ${k.toUpperCase()}: ${q.expr}   (${q.cost}${q.exact ? '' : '; not proven minimal'})`,
   q.primes.length <= 40 ? `  Prime implicants${k === 'pos' ? ' of the 0s' : ''}: ${q.primes.map(p => `${p.cube} ${p.expr}`).join(', ') || 'none'}` : `  ${q.primes.length} prime implicant(s)`,
   `  Essential: ${q.essential.join(', ') || 'none'}`];
 // the minimal solutions of a form, when it has several (#2928), as the editor's selector says them, the one used marked

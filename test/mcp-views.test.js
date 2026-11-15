@@ -80,41 +80,41 @@ test('related_view: a truth table\'s results, as its editor shows them: the cano
   const r = await ok({ project: 'q', path: 'src/m.bool.json', view: 'results', notation: 'textbook' });
   // (the editor's order, #3065, #3939: the circuit's two choices, the Karnaugh map's and Quine-McCluskey's, the canonical ones (their list, then their
   // expression, #3069; their terms and literals, #3072), XOR, NAND, NOR)
-  assert.equal(r.text, `Least number of gates: XOR form: f = c ⊕ a·b
-Least delay: XOR form: f = c ⊕ a·b
-Karnaugh map SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s))
-Karnaugh map POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s))
-Quine-McCluskey SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s))
+  assert.equal(r.text, `Least number of gates: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
+Least delay: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
+Karnaugh map SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)
+Karnaugh map POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s); gates: 1 AND2, 1 OR2, 1 OR2B2)
+Quine-McCluskey SOP: f = a'·c + b·c'   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)
   Prime implicants: 0-1 a'·c, -01 b'·c, 01- a'·b, -10 b·c'
   Essential: b·c'
-Quine-McCluskey POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s))
+Quine-McCluskey POS: f = (b + c)·(a' + c')   (2 term(s), 4 literal(s); gates: 1 AND2, 1 OR2, 1 OR2B2)
   Prime implicants of the 0s: 0-0 a + c, -00 b + c, 10- a' + b, 1-1 a' + c'
   Essential: a' + c'
-Canonical SOP: f = Σm(1, 3, 6) + d(2, 5)   (3 term(s), 9 literal(s))
+Canonical SOP: f = Σm(1, 3, 6) + d(2, 5)   (3 term(s), 9 literal(s); gates: 2 AND3B1, 1 AND3B2, 1 OR3)
   f = a'·b'·c + a'·b·c + a·b·c'
-Canonical POS: f = ΠM(0, 4, 7) · D(2, 5)   (3 term(s), 9 literal(s))
+Canonical POS: f = ΠM(0, 4, 7) · D(2, 5)   (3 term(s), 9 literal(s); gates: 1 AND3, 1 OR3, 1 OR3B1, 1 OR3B3)
   f = (a + b + c)·(a' + b + c)·(a' + b' + c')
-XOR form: f = c ⊕ a·b
-NAND form: f = (((a·a)'·c)'·(b·(c·c)')')'
-NOR form: f = ((b + c)' + ((a + a)' + (c + c)')')'
+XOR form: f = c ⊕ a·b   (1 term(s), 3 literal(s); gates: 1 AND2, 1 XOR2)
+NAND form: f = (((a·a)'·c)'·(b·(c·c)')')'   (2 term(s), 4 literal(s); gates: 5 NAND2)
+NOR form: f = ((b + c)' + ((a + a)' + (c + c)')')'   (2 term(s), 4 literal(s); gates: 5 NOR2)
 HDL logic: Least number of gates: f = c ⊕ a·b   (least gates: XOR form, 3 literal(s), 2 gate(s), delay 2)
 
-Least number of gates: Karnaugh map SOP: z = 0
-Least delay: Karnaugh map SOP: z = 0
-Karnaugh map SOP: z = 0   (0 term(s), 0 literal(s))
-Karnaugh map POS: z = 0   (1 term(s), 0 literal(s))
-Quine-McCluskey SOP: z = 0   (0 term(s), 0 literal(s))
+Least number of gates: z = 0   (0 term(s), 0 literal(s); gates: none)
+Least delay: z = 0   (0 term(s), 0 literal(s); gates: none)
+Karnaugh map SOP: z = 0   (0 term(s), 0 literal(s); gates: none)
+Karnaugh map POS: z = 0   (0 term(s), 0 literal(s); gates: none)
+Quine-McCluskey SOP: z = 0   (0 term(s), 0 literal(s); gates: none)
   Prime implicants: none
   Essential: none
-Quine-McCluskey POS: z = 0   (1 term(s), 0 literal(s))
+Quine-McCluskey POS: z = 0   (0 term(s), 0 literal(s); gates: none)
   Prime implicants of the 0s: --- 0
   Essential: 0
-Canonical SOP: z = Σm()   (0 term(s), 0 literal(s))
+Canonical SOP: z = Σm()   (0 term(s), 0 literal(s); gates: none)
   z = 0
-Canonical POS: z = ΠM(0, 1, 2, 3, 4, 5, 6, 7)   (8 term(s), 24 literal(s))
+Canonical POS: z = ΠM(0, 1, 2, 3, 4, 5, 6, 7)   (8 term(s), 24 literal(s); gates: 1 AND2, 1 AND3, 1 AND5, 1 OR3, 3 OR3B1, 3 OR3B2, 1 OR3B3)
   z = (a + b + c)·(a + b + c')·(a + b' + c)·(a + b' + c')·(a' + b + c)·(a' + b + c')·(a' + b' + c)·(a' + b' + c')
-NAND form: z = 0
-NOR form: z = 0
+NAND form: z = 0   (0 term(s), 0 literal(s); gates: none)
+NOR form: z = 0   (0 term(s), 0 literal(s); gates: none)
 HDL logic: Least number of gates: z = 0   (least gates: minimal SOP, 0 literal(s), 0 gate(s), delay 0)`);
   assert.deepEqual([r.data.view, r.data.notation, r.data.inputs, r.data.outputs.map(o => o.output)], ['results', 'textbook', ['a', 'b', 'c'], ['f', 'z']]);
   // the canonical forms' terms, literals and gates, as the editor's (#3072)
@@ -143,7 +143,7 @@ test('related_view results: every minimal solution when there are several (#2928
   assert.equal(sop.expr, sop.solutions[0].expr);
   assert.deepEqual(sop.solutions.map(x => [x.terms, x.literals, x.gates]), A.sop.alternatives.map(a => [3, 6, a.gates]));
   assert.deepEqual([sop.many, pos.many, pos.solutions.length, pos.solutions[0].expr], [false, false, 1, pos.expr]);
-  assert.ok(r.text.includes(`Karnaugh map SOP: f = /a./b + b./c + a.c   (3 term(s), 6 literal(s))
+  assert.ok(r.text.includes(`Karnaugh map SOP: f = /a./b + b./c + a.c   (3 term(s), 6 literal(s); gates: 1 AND2, 1 AND2B1, 1 AND2B2, 1 OR3)
   2 minimal solutions exist.
   Solution 1 of 2: f = /a./b + b./c + a.c   (used)
   Solution 2 of 2: f = /a./c + /b.c + a.b

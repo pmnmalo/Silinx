@@ -75,7 +75,7 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
   await showKmap(page, T);
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} svg.tt-kmap .tt-group`).length, T), 3);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-expr`).textContent, T), 'f = b.c + a.c + a.b');
-  assert.match(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-cost`).textContent, T), /3 term\(s\), 6 literal\(s\); gates: 3 AND, 1 OR, 0 NOT/);
+  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-cost`).textContent, T), '3 term(s), 6 literal(s); gates: 3 AND2, 1 OR3');
   assert.match(await page.eval((t) => document.querySelector(`${t} .tt-canon`).textContent, T), /f = Σm\(3, 5, 6, 7\)[\s\S]*f = ΠM\(0, 1, 2, 4\)/);
   // POS groups: the 0s, the Karnaugh map's result in POS (#3939; its switch the map's groups', #4057)
   await groupsOf(page, T, 'pos');
@@ -83,14 +83,14 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
   // (b + c), the 0s of rows 0 and 4 (columns ab = 00 and 10, #2924), wraps around the left and right edges: drawn as two parts
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} svg.tt-kmap .tt-group`)].map((g) => g.dataset.term), T), ["0", "1", "2", "2"]);
   // no Check my answer, no My expression (#694); the NAND and NOR forms below the minimal ones
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => c.textContent), T), ['Truth table', 'Notes', 'Expression', 'Results']);   // (the map under its result, no caption of its own, #4057)
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-caption`)].map((c) => c.textContent), T), ['Truth table', 'Notes', 'Expressions']);   // (the map under its result, no caption of its own, #4057)
   assert.equal(await page.eval((t) => document.querySelectorAll(`${t} .tt-mine-in, ${t} .tt-mine-out`).length, T), 0);
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-res > div:first-child b`)].map((b) => b.textContent), T), ['Least number of gates', 'Least delay', 'Karnaugh map', 'Quine-McCluskey', 'Canonical SOP', 'XOR form', 'NAND form', 'NOR form']);   // (the first two: #1427; in this order: #3065)
   // no list of the essential prime implicants below them (#705), nor an "essential" mark in the K-map's legend (#3080)
   assert.deepEqual(await page.eval((t) => [document.querySelectorAll(`${t} .tt-ess-list`).length, /Essential prime implicants/.test(document.querySelector(t).textContent)], T), [0, false]);
   assert.deepEqual(await page.eval((t) => [document.querySelectorAll(`${t} .tt-legend .tt-leg`).length > 0, /essential/i.test(document.querySelector(`${t} .tt-legend`).textContent)], T), [true, false]);
   assert.deepEqual(await page.eval((t) => [`${t} .tt-nand`, `${t} .tt-nor`].map((q) => [document.querySelector(`${q} .tt-expr`).textContent, document.querySelector(`${q} .tt-cost`).textContent]), T), [
-    ['f = /(/(b.c)./(a.c)./(a.b))', '4 gate(s), 0 of them inverter(s)'], ['f = /(/(a + b) + /(a + c) + /(b + c))', '4 gate(s), 0 of them inverter(s)']]);
+    ['f = /(/(b.c)./(a.c)./(a.b))', '3 term(s), 6 literal(s); gates: 3 NAND2, 1 NAND3'], ['f = /(/(a + b) + /(a + c) + /(b + c))', '3 term(s), 6 literal(s); gates: 3 NOR2, 1 NOR3']]);
   // the table is saved (autosave)
   await page.waitFor(() => !window.Silinx.active.dirty, [], { what: 'saved' });
   assert.equal((await ttFile('TtPj', 'src/maj3.bool.json')).table.f, '00010111');
@@ -101,11 +101,11 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
   // written by hand: Handwritten Algebra…, #2010, #2047)
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button`)].map((b) => b.textContent || b.title), T), ['Fill the table, its notation', 'Algebra from Module…', 'Handwritten Algebra…',
     // (its notation, #3939: the Settings' by default)
-    '✓As in the Settings', 'Electronics / Engineering: a\u0305·b + c', 'Text only: /a.b + c', 'Logic / Set theory: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c']);
+    '✓As in the Settings', 'Electronics / Engineering: a\u0305.b + c', 'Text only: /a.b + c', 'Logic / Set theory: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c']);
   // (#2257) no Language; the two commands in the menu at the right of the first line: shown by its button, hidden by Esc, by a click elsewhere and by a command
   const menu = () => page.eval((t) => { const b = document.querySelector(`${t} .tb-more-btn`); const r = b.getBoundingClientRect(), f = [...document.querySelector(`${t} .tt-toolbar`).children].find((e) => e.tagName === 'SELECT' || e.tagName === 'INPUT').getBoundingClientRect(), bar = document.querySelector(`${t} .tt-toolbar`).getBoundingClientRect(), m = document.querySelector(`${t} .tb-more-menu`); return { open: !m.hidden, expanded: b.getAttribute('aria-expanded'), buttons: [...m.querySelectorAll('button')].map((x) => x.textContent), right: bar.right - r.right < 20, firstLine: r.top < f.bottom }; }, T);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-lang`), T), null);
-  assert.deepEqual(await menu(), { open: false, expanded: 'false', buttons: ['Algebra from Module…', 'Handwritten Algebra…', '✓As in the Settings', 'Electronics / Engineering: a\u0305·b + c', 'Text only: /a.b + c', 'Logic / Set theory: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c'], right: true, firstLine: true });
+  assert.deepEqual(await menu(), { open: false, expanded: 'false', buttons: ['Algebra from Module…', 'Handwritten Algebra…', '✓As in the Settings', 'Electronics / Engineering: a\u0305.b + c', 'Text only: /a.b + c', 'Logic / Set theory: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c'], right: true, firstLine: true });
   await page.click(`${T} .tb-more-btn`);
   assert.equal((await menu()).open, true);
   assert.equal((await menu()).expanded, 'true');
@@ -468,14 +468,14 @@ end rtl;
   }), T);
   // the notations (#3915), the table's own in its ⋮ menu (#3939): the Settings' (checked: / here, the tests', test/ui/harness.js), then the five
   const notations = () => page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar .tb-more-menu [data-value]`)].map((o) => `${o.dataset.value}:${o.textContent.replace(/^✓/, '').trim()}${o.getAttribute('aria-checked') === 'true' ? ' ✓' : ''}`), T);
-  assert.deepEqual(await notations(), [':As in the Settings ✓', 'engineering:Electronics / Engineering: a\u0305·b + c', 'slash:Text only: /a.b + c', 'logic:Logic / Set theory: ¬a ∧ b ∨ c', 'vhdl:VHDL: (not a and b) or c', 'verilog:Verilog: (~a & b) | c']);
+  assert.deepEqual(await notations(), [':As in the Settings ✓', 'engineering:Electronics / Engineering: a\u0305.b + c', 'slash:Text only: /a.b + c', 'logic:Logic / Set theory: ¬a ∧ b ∨ c', 'vhdl:VHDL: (not a and b) or c', 'verilog:Verilog: (~a & b) | c']);
   const notation = (v) => page.eval((t, v) => document.querySelector(`${t} .tt-toolbar .tb-more-menu [data-value="${v}"]`).click(), T, v);
   await page.eval((t) => document.querySelector(`${t} .tt-qm .tt-kind-pos`).click(), T);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-in`).placeholder, T), 'e.g. /a.b + c');
   // s: the sum, a ⊕ b ⊕ c beside its SOP and POS
   assert.deepEqual(await texts(), {
     sop: 's = /a./b.c + /a.b./c + a./b./c + a.b.c', pos: 's = (a + b + c).(a + /b + /c).(/a + b + /c).(/a + /b + c)',
-    xor: 's = a ⊕ b ⊕ c', xorCost: '3 literal(s), 2 two-input operator(s): 2 XOR / XNOR, 0 AND, 0 OR',
+    xor: 's = a ⊕ b ⊕ c', xorCost: '1 term(s), 3 literal(s); gates: 1 XOR3',
     groups: ['/a./b.c', '/a.b./c', 'a./b./c', 'a.b.c'],
   });
   // the K-map's POS groups (its result's POS, #4057): clauses in the / notation
@@ -487,7 +487,7 @@ end rtl;
   // co: the carry a·b + c·(a ⊕ b), 5 literals against 6
   await page.click(`${T} .tt-tab[data-out=co]`);
   let x = await texts();
-  assert.deepEqual([x.sop, x.xor, x.xorCost], ['co = b.c + a.c + a.b', 'co = a.b + c.(a ⊕ b)', '5 literal(s), 4 two-input operator(s): 1 XOR / XNOR, 2 AND, 1 OR']);
+  assert.deepEqual([x.sop, x.xor, x.xorCost], ['co = b.c + a.c + a.b', 'co = a.b + c.(a ⊕ b)', '2 term(s), 5 literal(s); gates: 2 AND2, 1 OR2, 1 XOR2']);
   // x = a·b + c: XOR does not help, no XOR form
   await page.click(`${T} .tt-tab[data-out=x]`);
   x = await texts();
@@ -496,7 +496,7 @@ end rtl;
   // the other notations, selectable: on the results and the K-map groups
   await page.click(`${T} .tt-tab[data-out=s]`);
   const want = {
-    engineering: ['s = a\u0305·b\u0305·c + a\u0305·b·c\u0305 + a·b\u0305·c\u0305 + a·b·c', 's = a ⊕ b ⊕ c', ['a\u0305·b\u0305·c', 'a\u0305·b·c\u0305', 'a·b\u0305·c\u0305', 'a·b·c']],
+    engineering: ['s = a\u0305.b\u0305.c + a\u0305.b.c\u0305 + a.b\u0305.c\u0305 + a.b.c', 's = a ⊕ b ⊕ c', ['a\u0305.b\u0305.c', 'a\u0305.b.c\u0305', 'a.b\u0305.c\u0305', 'a.b.c']],
     logic: ['s = ¬a ∧ ¬b ∧ c ∨ ¬a ∧ b ∧ ¬c ∨ a ∧ ¬b ∧ ¬c ∨ a ∧ b ∧ c', 's = a ⊕ b ⊕ c', ['¬a ∧ ¬b ∧ c', '¬a ∧ b ∧ ¬c', 'a ∧ ¬b ∧ ¬c', 'a ∧ b ∧ c']],
     vhdl: ['s = (not a and not b and c) or (not a and b and not c) or (a and not b and not c) or (a and b and c)', 's = a xor b xor c', ['not a and not b and c', 'not a and b and not c', 'a and not b and not c', 'a and b and c']],
     verilog: ['s = (~a & ~b & c) | (~a & b & ~c) | (a & ~b & ~c) | (a & b & c)', 's = a ^ b ^ c', ['~a & ~b & c', '~a & b & ~c', 'a & ~b & ~c', 'a & b & c']],
@@ -584,11 +584,11 @@ end rtl;
   await setLang('pt'); const pt = await page.eval((t) => window.__uiTexts(document.querySelector(t)), T);
   assert.deepEqual(untranslated(en, pt, [/^@?(\/a.b \+ c|\/ab \+ c|a.b' \+ c|ab' \+ c|[a-z]+ =|s|co|x|a, b, c|s, co, x|fa\.vhd|Quine-McCluskey)$/]), []);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-xor b`).textContent, T), 'Forma XOR');
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-xor .tt-cost`).textContent, T), '3 literal(is), 2 operador(es) de duas entradas: 2 XOR / XNOR, 0 AND, 0 OR');
+  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-xor .tt-cost`).textContent, T), '1 termo(s), 3 literal(is); portas: 1 XOR3');
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar label`)].map((l) => l.textContent), T), ['Entradas:', 'Saídas:']);
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button`)].map((b) => b.textContent || b.title), T), ['Preencher a tabela, a sua notação', 'Álgebra de um Módulo…', 'Álgebra Manuscrita…',
-    '✓Como nas Definições', 'Eletrónica / Engenharia: a\u0305·b + c', 'Só texto: /a.b + c', 'Lógica / Teoria de conjuntos: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c']);   // (its notation, #3939)
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-nand b, ${t} .tt-nor b, ${t} .tt-nand .tt-cost`)].map((b) => b.textContent), T), ['Forma NAND', '8 porta(s), 3 delas inversora(s)', 'Forma NOR']);
+    '✓Como nas Definições', 'Eletrónica / Engenharia: a\u0305.b + c', 'Só texto: /a.b + c', 'Lógica / Teoria de conjuntos: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c']);   // (its notation, #3939)
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-nand b, ${t} .tt-nor b, ${t} .tt-nand .tt-cost`)].map((b) => b.textContent), T), ['Forma NAND', '4 termo(s), 12 literal(is); portas: 3 NAND2, 4 NAND3, 1 NAND4', 'Forma NOR']);
   // the Design pane's badges and the schematic's bar
   assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl').textContent === 'u_fa - fa').querySelectorAll('.badge')].map((b) => b.textContent)), ['Álgebra', 'Esquemático', 'VHDL']);
   assert.equal(await page.eval(() => window.Silinx.docs.find((d) => d.id === 'ttsch:src/fa.bool.json').el.querySelector('.se-banner').textContent), 'Só de leitura, gerado a partir de fa.bool.json');
@@ -624,10 +624,14 @@ uiTest('#1427 Truth Table: Least number of gates and Least delay, every form\'s 
   const circuits = () => page.eval((t) => Object.fromEntries(['kmap-res', 'qm', 'xor', 'nand', 'nor', 'gates', 'delay']
     .map((c) => [c, document.querySelector(`${t} .tt-${c} .tt-circuit`)?.textContent ?? null])), T);
   // output s (a parity): the XOR form, one gate, one level
-  assert.deepEqual(await circuits(), { 'kmap-res': 'As a circuit: 8 gate(s), delay 3', qm: 'As a circuit: 8 gate(s), delay 3', xor: 'As a circuit: 1 gate(s), delay 1',
+  assert.deepEqual(await circuits(), { 'kmap-res': 'As a circuit: 5 gate(s), delay 2', qm: 'As a circuit: 5 gate(s), delay 2', xor: 'As a circuit: 1 gate(s), delay 1',
     nand: 'As a circuit: 8 gate(s), delay 3', nor: 'As a circuit: 8 gate(s), delay 3', gates: 'As a circuit: 1 gate(s), delay 1', delay: 'As a circuit: 1 gate(s), delay 1' });
-  assert.deepEqual(await page.eval((t) => ['gates', 'delay'].map((g) => [document.querySelector(`${t} .tt-${g} b`).textContent, document.querySelector(`${t} .tt-${g} .tt-best-form`).textContent, document.querySelector(`${t} .tt-${g} .tt-expr`).textContent]), T),
-    [['Least number of gates', 'XOR form', 's = a ⊕ b ⊕ c'], ['Least delay', 'XOR form', 's = a ⊕ b ⊕ c']]);
+  // (each its expression beside its label, no form's name, then its terms, literals and gates by type, #4091)
+  assert.deepEqual(await page.eval((t) => ['gates', 'delay'].map((g) => { const r = document.querySelector(`${t} .tt-${g}`), e = r.querySelector('.tt-expr');
+    return [r.querySelector('b').textContent, e.textContent, e.closest('.tt-expr-box') === r.firstElementChild.lastElementChild, r.querySelectorAll('.tt-best-form').length,
+      [...r.children].slice(1).map((c) => `${c.className}: ${c.textContent}`)]; }), T),
+    [['Least number of gates', 's = a ⊕ b ⊕ c', true, 0, ['tt-cost: 1 term(s), 3 literal(s); gates: 1 XOR3', 'tt-circuit: As a circuit: 1 gate(s), delay 1']],
+      ['Least delay', 's = a ⊕ b ⊕ c', true, 0, ['tt-cost: 1 term(s), 3 literal(s); gates: 1 XOR3', 'tt-circuit: As a circuit: 1 gate(s), delay 1']]]);
   // the module in the form of the fewest gates: s its XOR, co its minimal SOP; it simulates to the table
   await tickForm(page, 'gates', ['co', 's']);
   await page.waitFor(async () => /least gates/.test(await (await fetch('/api/projects/TtCost/file?path=src%2Ffa.vhd')).text()), [], { what: 'the HDL of least gates', timeout: 15000 });

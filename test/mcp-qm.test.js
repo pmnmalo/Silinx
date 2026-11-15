@@ -32,7 +32,7 @@ test('related_view: Σm(0, 1, 2, 5, 6, 7), its Quine-McCluskey SOP with its prim
   assert.deepEqual(q.primes.map(p => p.cube), ['00-', '0-0', '-01', '-10', '1-1', '11-']);
   assert.deepEqual(q.essential, []);
   assert.deepEqual(q.columns.map(col => col.map(c => `${c.cube}${c.combined ? '✓' : ''}`)), [['000✓', '001✓', '010✓', '101✓', '110✓', '111✓'], ['00-', '0-0', '-01', '-10', '1-1', '11-']]);
-  assert.ok(r.text.includes(`Quine-McCluskey SOP: f = /a./b + b./c + a.c   (3 term(s), 6 literal(s))
+  assert.ok(r.text.includes(`Quine-McCluskey SOP: f = /a./b + b./c + a.c   (3 term(s), 6 literal(s); gates: 1 AND2, 1 AND2B1, 1 AND2B2, 1 OR3)
   Prime implicants: 00- /a./b, 0-0 /a./c, -01 /b.c, -10 b./c, 1-1 a.c, 11- a.b
   Essential: none
 Quine-McCluskey POS: `), r.text);
@@ -46,8 +46,8 @@ test('related_view: 7 inputs: no Karnaugh map, Quine-McCluskey\'s; 16 inputs: no
   const r = await results('q', 'src/s.bool.json');
   assert.equal(r.data.outputs[0].kmap, null);
   assert.ok(r.text.includes(`Karnaugh map: none for more than 6 inputs (it has 7): the simplified function is Quine-McCluskey's.
-Quine-McCluskey SOP: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s))`), r.text);
-  assert.ok(r.text.includes('Least number of gates: Quine-McCluskey SOP: y = /x5.x6 + x5./x6'), r.text);
+Quine-McCluskey SOP: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)`), r.text);
+  assert.ok(r.text.includes('Least number of gates: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s); gates: 2 AND2B1, 1 OR2)'), r.text);
   let seed = 3, col = '';
   for (let i = 0; i < 2 ** 16; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; col += seed >> 16 & 1 ? '1' : '0'; }
   await ok('write_file', { project: 'q', path: 'src/big.bool.json', text: JSON.stringify({ ...newTable('big', ins(16), ['f']), table: { f: col }, form: 'qsop' }) });
@@ -55,7 +55,7 @@ Quine-McCluskey SOP: y = /x5.x6 + x5./x6   (2 term(s), 4 literal(s))`), r.text);
   assert.ok(Date.now() - t0 < 30000, `${Date.now() - t0} ms`);
   const q = b.data.outputs[0].quineMcCluskey.sop;
   assert.deepEqual([q.exact, q.method, q.columns], [false, 'heuristic', null]);
-  assert.match(b.text, /\nQuine-McCluskey SOP: f = .+   \(\d+ term\(s\), \d+ literal\(s\); not proven minimal\)\n  \d+ prime implicant\(s\)\n/);
+  assert.match(b.text, /\nQuine-McCluskey SOP: f = .+   \(\d+ term\(s\), \d+ literal\(s\); gates: (?:\d+ [A-Z0-9]+, )*\d+ [A-Z0-9]+; not proven minimal\)\n  \d+ prime implicant\(s\)\n/);
   assert.match(b.text, /HDL logic: Quine-McCluskey SOP: f = .+   \(Quine-McCluskey SOP \(not proven minimal\), \d+ literal\(s\), \d+ gate\(s\), delay \d+\)$/);
 });
 
@@ -65,7 +65,7 @@ test('set_output_logic: Quine-McCluskey\'s POS (qpos), the VHDL module made agai
   const m = JSON.parse(read('q', 'src/m.bool.json'));
   await ok('write_file', { project: 'q', path: 'src/m.bool.json', text: JSON.stringify({ ...m, generatedFile: 'src/m.vhd' }) });
   const r = await ok('set_output_logic', { project: 'q', path: 'src/m.bool.json', output: 'y', form: 'qpos' });
-  assert.equal(r.text.split('\n')[0], 'src/m.bool.json: y\'s HDL logic: Quine-McCluskey POS: y = (s + a).(/s + b)   (Quine-McCluskey POS, 4 literal(s), 4 gate(s), delay 3)');
+  assert.equal(r.text.split('\n')[0], 'src/m.bool.json: y\'s HDL logic: Quine-McCluskey POS: y = (s + a).(/s + b)   (Quine-McCluskey POS, 4 literal(s), 3 gate(s), delay 2)');
   assert.equal(r.data.form, 'qpos');
   assert.equal(JSON.parse(read('q', 'src/m.bool.json')).forms.y, 'qpos');
   assert.match(read('q', 'src/m.vhd'), /y <= \(s or a\) and \(not s or b\);/);

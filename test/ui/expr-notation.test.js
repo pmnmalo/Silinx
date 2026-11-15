@@ -74,13 +74,13 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   assert.equal(await page.eval(async () => localStorage.getItem((await import('/js/notation.js')).NOTATION_KEY)), 'logic');
   // ---- the table's own notation, in its ⋮ menu (#3939): this table's, saved with it; the Settings' unchanged
   await page.eval((t) => document.querySelector(`${t} .tt-toolbar .tb-more-menu [data-value="engineering"]`).click(), T);
-  await page.waitFor((t, b) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent.includes(`a${b}·b${b}·c`), [T, B], { what: 'the engineering notation' });
-  assert.deepEqual(await shown(), { canon: `f = a${B}·b${B}·c + a${B}·b·c + a·b·c${B}`, groups: [`a${B}·c`, `b·c${B}`], menu: 'engineering' });
+  await page.waitFor((t, b) => document.querySelector(`${t} .tt-canon-sop .tt-expr`)?.textContent.includes(`a${b}.b${b}.c`), [T, B], { what: 'the engineering notation' });
+  assert.deepEqual(await shown(), { canon: `f = a${B}.b${B}.c + a${B}.b.c + a.b.c${B}`, groups: [`a${B}.c`, `b.c${B}`], menu: 'engineering' });
   assert.deepEqual((await notationMenu(page)).filter(([, c]) => c), [['Logic / Set theory', true]]);
   assert.equal(await page.eval(() => window.Silinx.active.ttEditor.getModel().notation), 'engineering');
   // the Settings changed again: the table keeps its own
   await notationMenu(page, 'Text only');
-  assert.deepEqual(await shown(), { canon: `f = a${B}·b${B}·c + a${B}·b·c + a·b·c${B}`, groups: [`a${B}·c`, `b·c${B}`], menu: 'engineering' });
+  assert.deepEqual(await shown(), { canon: `f = a${B}.b${B}.c + a${B}.b.c + a.b.c${B}`, groups: [`a${B}.c`, `b.c${B}`], menu: 'engineering' });
   await notationMenu(page, 'Electronics / Engineering');
 
   // ---- the state diagram: its transition table in the notation, its labels as typed
@@ -89,7 +89,7 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
   await page.waitForSelector(`${ED} .fsm-ttable`);
   const conds = () => page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr`)].slice(1).map((tr) => tr.children[2].textContent), ED);
-  assert.deepEqual(await conds(), [`a·b${B}`, 'otherwise (stays)', `a${B} ${B}+${B} ${B}b${B}`, 'otherwise (stays)']);
+  assert.deepEqual(await conds(), [`a.b${B}`, 'otherwise (stays)', `a${B} ${B}+${B} ${B}b${B}`, 'otherwise (stays)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['a && !b', '!(a || b)']);
   await notationMenu(page, 'VHDL');
   await page.waitFor(async (ed) => document.querySelector(`${ed} .fsm-ttable tr:nth-child(2) td:nth-child(3)`)?.textContent === 'a and not b', [ED], { what: 'the table in VHDL' });

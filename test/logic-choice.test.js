@@ -30,7 +30,8 @@ test('#2951 a new table: every output in the form of least gates; a table saved 
   const doc = normalizeTable(T3());
   assert.deepEqual([doc.form, doc.forms, doc.solutions], ['gates', undefined, undefined]);   // (no choice: no field)
   for (const o of doc.outputs) assert.equal(formOf(doc, o), 'gates');
-  assert.deepEqual(assigns(doc), ['f <= (a xnor b) or (a xnor c);', 'g <= (b and c) or (a and c) or (a and b);', 'h <= c xor (a and b);']);
+  // (f: its POS, OR3B2 and OR3B1 into an AND2, as few gates as its XNOR form and as fast, first among them, #4091)
+  assert.deepEqual(assigns(doc), ['f <= (a or not b or not c) and (not a or b or c);', 'g <= (b and c) or (a and c) or (a and b);', 'h <= c xor (a and b);']);
   // saved before: no forms nor solutions; its form (none: minimal SOP) for every output, the same module as with the
   // form given for all
   for (const form of [...FORMS, undefined]) {
@@ -58,7 +59,7 @@ test('#2951 each output in its own form, the canonical SOP and POS among them: i
     'h <= ((a nand a) nand c) nand (b nand (c nand c));',
   ]);
   const head = generateTableHdl(doc).code.split('\n').filter(l => / = .*\(/.test(l) && !/Σm|don't care/.test(l));
-  assert.deepEqual(head.map(l => l.replace(/^-- \w = .*?\s{3}/, '')), ['(canonical SOP, 10 gate(s), delay 3)', '(canonical POS, 8 gate(s), delay 3)', '(NAND gates only, from the minimal SOP, 4 literal(s), 5 gate(s), delay 3)']);
+  assert.deepEqual(head.map(l => l.replace(/^-- \w = .*?\s{3}/, '')), ['(canonical SOP, 8 gate(s), delay 3)', '(canonical POS, 5 gate(s), delay 2)', '(NAND gates only, from the minimal SOP, 4 literal(s), 5 gate(s), delay 3)']);
   for (const lang of ['vhdl', 'verilog']) {
     const t = simulated(doc, lang);
     for (const o of doc.outputs) assert.ok(careEqual(doc.table[o], t[o]), `${lang} ${o}`);
@@ -87,7 +88,7 @@ test('#2950 the minimal solution used: the HDL, the NAND form, the results and t
   const doc = setOutputLogic(base, 'f', { solution: { sop: 1 } });
   assert.deepEqual(doc.solutions, { f: { sop: 1 } });
   assert.equal(assigns(doc)[0], 'f <= (not a and not c) or (not b and c) or (a and b);');
-  assert.match(generateTableHdl(doc).code, /-- f = a'·c' \+ b'·c \+ a·b {3}\(minimal SOP \(solution 2 of 2\), 6 literal\(s\), 7 gate\(s\), delay 3\)/);
+  assert.match(generateTableHdl(doc).code, /-- f = a'·c' \+ b'·c \+ a·b {3}\(minimal SOP \(solution 2 of 2\), 6 literal\(s\), 4 gate\(s\), delay 2\)/);
   // the results: the solution used, its NAND form; the first again with { sop: 0 } (not saved)
   const A = analyzeOutput(doc, 'f');
   assert.deepEqual([A.sop.pick, A.sop.ast, A.sop.terms], [1, A.sop.alternatives[1].ast, A.sop.alternatives[1].terms]);

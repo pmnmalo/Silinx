@@ -1,5 +1,5 @@
 // The notation of the Boolean expressions Silinx shows (#3915): the viewer's preference (Settings ▸ Boolean Notation),
-// kept in the browser with the language and the theme; Electronics / Engineering (a̅·b + c) when none is set. The
+// kept in the browser with the language and the theme; Electronics / Engineering (a̅.b + c) when none is set. The
 // views that show expressions (the truth table's results and K-map groups, the state diagram's tables) read it and are
 // drawn again when it changes (the 'silinx-notation' event). core/expr-notation.js writes the expressions.
 import { prefKey } from './prefs.js';
