@@ -2,6 +2,8 @@
 export const CIRCUIT_PT = {
   // New Source, the Design pane
   'Circuit': 'Circuito', 'Digital Electronic Circuit': 'Circuito Eletrónico Digital',
+  // its schematic in the Design pane (#4069)
+  'Generated from the circuit': 'Gerado a partir do circuito', 'Generated from the circuit, in its HDL logic form': 'Gerado a partir do circuito, na sua forma da lógica do HDL',
   // the Digital Electronic Circuit Wizard (#4061, core/circuit-templates.js)
   'Digital Electronic Circuit Wizard': 'Assistente de Circuito Eletrónico Digital', 'Circuit (module) name:': 'Nome do circuito (módulo):',
   'The wizard creates a digital electronic circuit from a typical assembly (breadboards, their supply, switches and LEDs), ready for you to place the chips and wire them.': 'O assistente cria um circuito eletrónico digital a partir de uma montagem típica (placas de ensaio, a sua alimentação, interruptores e LEDs), pronto para colocar os chips e ligá-los.',
@@ -98,6 +100,7 @@ const GATES = '(?:Quad 2|Triple 3|Dual 4|8)-input (?:NAND|AND|OR|NOR|XOR)(?:, op
 const TITLES = `(?:${[...Object.keys(TITLE).map((t) => t.replace(/[()+]/g, '\\$&')), GATES].join('|')})`;
 const title = (t) => TITLE[t] ?? t.replace(/^(?:(Quad|Triple|Dual) \d|8)-input (\w+)(, open collector)?$/, (m, n, g, oc) => `${n ? COUNT[n][0] : 'Uma porta'} ${g} de ${n ? COUNT[n][1] : 8} entradas${oc ? ', coletor aberto' : ''}`);
 export const CIRCUIT_PT_PATTERNS = [
+  [/^— the circuit has errors: ([\s\S]+)$/, '— o circuito tem erros: $1'],
   // the status line's counts (#2763)
   [/^(\d+) IC\(s\) · (\d+) input\(s\) · (\d+) display\(s\) · (\d+) wire\(s\)$/, '$1 CI(s) · $2 entrada(s) · $3 mostrador(es) · $4 fio(s)'],
   // the library's parts and ICs, their tips, the selection's title, a pinout's

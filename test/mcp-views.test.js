@@ -13,6 +13,8 @@ import { fsmToAsm, normalizeFsm } from '../core/fsm.js';
 import { schematicFromTable, normalizeTable, newTable, canonicalAsts, formatExpr, analyzeOutput } from '../core/logic.js';
 import { newPetri } from '../core/petri.js';
 import { petriToFsm } from '../core/petri-fsm.js';
+import { circuitSchematic } from '../core/circuit-sch.js';
+import { halfAdder } from './circuit-helpers.mjs';
 
 let tmp;
 const { handle } = await import('../server/mcp.js');
@@ -158,6 +160,17 @@ Karnaugh map POS: `), r.text);
   assert.match(m.text, /\n {2}Many minimal solutions exist; the first 64 can be browsed\.\n {2}Solution 1 of 64: f = [^\n]+\n[\s\S]*\n {2}Solution 64 of 64: f = /);
 });
 
+test('related_view: a circuit\'s schematic, as its Design row\'s badge shows it (#4069); one with errors refused', async () => {
+  await call('new_project', { name: 'cs' });
+  await call('write_file', { project: 'cs', path: 'src/half_adder.circ.json', text: JSON.stringify(halfAdder(), null, 2) });
+  const r = await ok({ project: 'cs', path: 'src/half_adder.circ.json', view: 'schematic' });
+  assert.deepEqual(r.data.view, 'schematic');
+  assert.deepEqual(JSON.parse(r.text), (await circuitSchematic(halfAdder())).doc);
+  const bad = { ...halfAdder(), parts: halfAdder().parts.map((p) => (p.id === 'D2' ? { ...p, label: 's' } : p)) };
+  await call('write_file', { project: 'cs', path: 'src/bad.circ.json', text: JSON.stringify({ ...bad, name: 'bad' }, null, 2) });
+  await fails({ project: 'cs', path: 'src/bad.circ.json', view: 'schematic' }, 'the schematic of bad.circ.json: D2: its label \'s\' is D1\'s too');
+});
+
 test('related_view refuses: an ASM chart that is not a plain state machine, a state diagram with errors, the wrong kind of source, a file not there', async () => {
   await call('new_project_from_example', { name: 'b', example: 'blinky' });
   await fails({ project: 'b', path: 'src/speed_ctrl.asm.json', view: 'fsm' }, 'speed_ctrl.asm.json cannot be shown as a state diagram: it is not a plain state machine: it has internal registers (cnt_f, deb_f, cnt_s, deb_s, level, ticks); it has generics/parameters (DEBOUNCE); it has registered outputs (step); it synchronises inputs; it has logic that runs on every cycle besides the states');
@@ -166,7 +179,7 @@ test('related_view refuses: an ASM chart that is not a plain state machine, a st
   assert.equal(r.isError, true);
   assert.match(r.text, /^related_view: the ASM chart of empty\.fsm\.json: /);
   await fails({ project: 'b', path: 'src/top.vhd', view: 'asm' }, 'src/top.vhd: a state diagram (.fsm.json) has an ASM chart');
-  await fails({ project: 'b', path: 'src/top.vhd', view: 'schematic' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has a schematic');
+  await fails({ project: 'b', path: 'src/top.vhd', view: 'schematic' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) or a circuit (.circ.json) has a schematic');
   await fails({ project: 'b', path: 'src/top.vhd', view: 'results' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has results');
   await fails({ project: 'b', path: 'src/top.vhd', view: 'fsm' }, 'src/top.vhd: an ASM chart (.asm.json) or a Petri net (.pn.json) has a state diagram');
   await fails({ project: 'b', path: 'src/speed_ctrl.asm.json', view: 'translation' }, 'src/speed_ctrl.asm.json: an HDL source (.vhd, .v) is translated');

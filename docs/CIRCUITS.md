@@ -18,8 +18,10 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   top (`src/top.circ.json`), and Design Properties can choose it.
 - **It is a module**, as every Silinx drawing: its **logic switches** and **buttons** are its inputs, its **LEDs**,
   each **7-segment display**'s segment and each **LED bar**'s light its outputs, named by their labels; its HDL file is generated from it (below). The Design pane shows
-  its row as every drawing's: `[Circuit]` first (it opens the drawing), `[VHDL]` / `[Verilog]` last (hidden in a design
-  project).
+  its row as every drawing's: `[Circuit]` first (it opens the drawing), then `[Schematic]` (#4069, as a Boolean
+  algebra's: a read-only schematic generated from the circuit, its HDL in its logic form, the gate ICs' gates as gates,
+  the other ICs as blocks, following the circuit; `core/circuit-sch.js`, the MCP's `related_view` schematic),
+  `[VHDL]` / `[Verilog]` last (hidden in a design project).
 - **The canvas** is a grid of 0.1 inch steps (the breadboard's pitch): every pin, hole and wire end is on a grid point.
   A part is placed on a breadboard or anywhere beside it; nothing needs a breadboard.
 - **Connectivity is geometric**, as on the bench: a pin that lands on a breadboard's hole is in that hole; a wire's end

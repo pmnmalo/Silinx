@@ -35,7 +35,7 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   assert.deepEqual(await status(page), ['2 IC(s) · 2 input(s) · 2 display(s) · 15 wire(s)']);
   // its Design row: the circuit's badge first, its HDL's last (made with it, as every drawing's)
   await page.waitFor(() => [...document.querySelectorAll('#hier .lbl')].some((e) => e.textContent === 'half_adder'), [], { what: 'half_adder in the hierarchy' });
-  assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'half_adder').querySelector(':scope > .row').querySelectorAll('.badge')].map((b) => b.textContent)), ['Circuit', 'VHDL']);
+  assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'half_adder').querySelector(':scope > .row').querySelectorAll('.badge')].map((b) => b.textContent)), ['Circuit', 'Schematic', 'VHDL']);   // (its schematic, #4069)
   assert.match(await page.consoleText(), /src\/half_adder\.vhd generated from src\/half_adder\.circ\.json/);
   // a 7404 from the library, placed by a click on the canvas; Edit ▸ Undo takes it away
   await pick(page, '7404');
