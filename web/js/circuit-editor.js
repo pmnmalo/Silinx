@@ -16,13 +16,14 @@ import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
-import { addPart, movePart, rotatePart, deleteItem, addWire } from '/core/circuit-edit.js';
+import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js';
 import { mountCircuitOptions } from './circuit-options.js';
 import { mountCircuitClip } from './circuit-clip.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { clone } from '/core/util.js';
-import { drawCircuit, P } from './circuit-draw.js';
+import { drawCircuit, draftSvg, P } from './circuit-draw.js';
+import { addStyledWire } from '/core/circuit-route.js';
 import { mountCircuitToolbar } from './circuit-toolbar.js';
 import { mountCircuitSide } from './circuit-side.js';
 import { mountCircuitParts } from './circuit-parts-panel.js';
@@ -159,7 +160,8 @@ export function mountCircuitEditor(container, opts = {}) {
   function endWire() {
     const pts = draft;
     draft = null;
-    if (pts?.length >= 2) applyEdit(addWire(M, { from: pts[0], to: pts[pts.length - 1], via: pts.slice(1, -1), color: 'blue' }), null);
+    // (in the circuit's style, #4083: routed when Orthogonal; its warning, a leg drawn straight, in the console)
+    if (pts?.length >= 2) { const r = addStyledWire(M, { from: pts[0], to: pts[pts.length - 1], via: pts.slice(1, -1), color: 'blue' }); if (applyEdit(r, null) && r.warning) status(r.warning, true); }
     else render();
   }
 
@@ -204,7 +206,7 @@ export function mountCircuitEditor(container, opts = {}) {
   svg.addEventListener('pointermove', (e) => {
     const g = toGrid(toWorld(e.clientX, e.clientY));
     if (tool.startsWith('place:')) { ghost = { id: '?', type: tool.slice(6), x: g[0], y: g[1] }; render(); return; }
-    if (tool === 'wire' && draft) { render(); world.append(sv('polyline', { class: 'circ-wire circ-draft', points: [...draft, g].map(([x, y]) => `${x * P},${y * P}`).join(' ') })); return; }
+    if (tool === 'wire' && draft) { render(); const last = draft[draft.length - 1]; if (last[0] !== g[0] || last[1] !== g[1]) world.append(draftSvg(M, [...draft, g])); return; }
     if (!drag) return;
     if (drag.kind === 'pan') { view.tx = drag.tx + e.clientX - drag.x; view.ty = drag.ty + e.clientY - drag.y; applyView(); }
     else if (drag.kind === 'move') {

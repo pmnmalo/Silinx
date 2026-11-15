@@ -12,7 +12,7 @@ export function mountCircuitToolbar(ctx) {
   const { root, btn, sep, setTool, deleteSelection, rotateSelection, check, toggleSim, zoomBtn, fit, keepBox, insideBox, more } = ctx;
   const tools = {
     select: toolIcon('select', 'select', 'Select and move (drag the background to pan, wheel to zoom)', () => setTool('select'), 'circ-tool'),
-    wire: toolWide('wire', 'Wire', 'Draw a wire: click its start, its bends, then its end on a pin or a hole (double click or Esc: end it there)', () => setTool('wire'), 'circ-tool'),
+    wire: toolWide('wire', 'Wire', 'Draw a wire: click its start on a pin or a hole, then its end (the points between: where it goes through); it is made in the ⋮ menu\'s wire style, routed when Orthogonal (double click or Esc: end it there)', () => setTool('wire'), 'circ-tool'),
   };
   const rotBtn = toolIcon('rotate', 'rotate', 'Turn the selected part a quarter clockwise (R)', () => rotateSelection(), 'circ-edit');
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
