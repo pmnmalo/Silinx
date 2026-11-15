@@ -234,7 +234,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   drives it through tri-state buffers (BUFE / BUFT) or a module symbol with an inout port.
 - **Boolean Algebra / Karnaugh Map** (it was Truth Table; *Tools ▸ Boolean Algebra / Karnaugh Map…*, New Source ▸
   *Boolean Algebra (.bool.json)*): name 1–16 inputs (a table of more than 256 rows scrolls in its own box, its rows drawn as they
-  come into view; a very long expression shown in part) and any number of outputs, click the cells (0 → 1 → X don't care)
+  come into view; a very long expression shown in part; the divider between the table and its expressions dragged left or right) and any number of outputs, click the cells (0 → 1 → X don't care)
   or type an expression per output (`ab' + c`, `a·b + c`, `/a.b + a./b`, `~a & b`,
   `(a and not b) or c`, `a ^ b`, `¬a ∧ b`, `a̅·b`…), the expressions shown in the notation of *Settings ▸ Boolean Notation*
   (*View ▸* in the ISE style interface), or the table's own, chosen in its toolbar's ⋮ menu and saved with it: Electronics / Engineering (`a̅.b + c`, the default; each NOT drawn as a bar over its group, a NOT inside a NOT a bar above the ones under it),

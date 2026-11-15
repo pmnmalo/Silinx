@@ -14,6 +14,11 @@
 .tt-body { flex: 1; display: flex; min-height: 0; }
 .tt-left { flex: 0 0 auto; max-width: 48%; min-width: 0; overflow: auto; padding: 8px; border-right: 1px solid var(--border-light, #ccc); display: flex; flex-direction: column; gap: 4px; }
 .tt-right { flex: 1; min-width: 0; overflow: auto; padding: 8px 12px; }
+/* the divider between the table and the expressions (#4099): dragged, the table's column its width, the expressions at
+   least 200px */
+.tt-split { flex: none; width: 5px; margin-left: -1px; cursor: col-resize; background: transparent; touch-action: none; }
+.tt-split:hover, body.resizing-h .tt-split { background: var(--border-light, #ccc); }
+.tt-left.tt-sized { max-width: calc(100% - 205px); }   /* (the divider 4px of it) */
 .tt-caption { font-weight: bold; color: var(--title-fg, #15428b); margin: 8px 0 3px; }
 .tt-caption:first-child { margin-top: 0; }
 .tt-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

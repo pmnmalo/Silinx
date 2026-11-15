@@ -22,6 +22,7 @@
 //   (each change pushed, Undo / Redo the shared history's), ed.applyModel(m, { mine }) (the merged table in place), ed.busy()
 // Styles: web/css/truthtable.css.
 import { h, linkModel, linkSnapshot } from './ui.js';
+import { ttDivider } from './tt-divider.js';
 import { ICON } from './editor-icons.js';
 import { setChoice, toolbarMenu } from './toolbar-menu.js';
 import {
@@ -66,7 +67,7 @@ function solutionPicker(r, go) {
 // tab) and the results; the commands, the expression's field, the hints and the options left out (the notes when it
 // has some).
 function ttPrintView(root, notes, name) {
-  const drop = ['.tt-toolbar', '.doc-status', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-show'];
+  const drop = ['.tt-toolbar', '.doc-status', '.tt-row', '.hint', '.tt-expr-err', '.tt-groups', '.tt-tab:not(.active)', '.tt-k3d-reset', '.tt-sol-btn', '.tt-show', '.tt-split'];
   if (!notes.value.trim()) drop.push('.tt-cap-notes', '.tt-notes');
   return { title: `${tr('Truth table')} ${name}`, app: true, body: domSnapshot(root, { drop }) };
 }
@@ -199,7 +200,8 @@ export function mountTtEditor(container, opts = {}) {
     exprRow, h('div', { class: 'hint tt-ops' }, OPS), exprErr,   // (no caption over the function's field, #4093)
     h('div', { class: 'tt-caption tt-cap-results' }, 'Expressions'), results);
   const status = statusLine();   // (its inputs, outputs and rows, #2763)
-  root.append(toolbar, h('div', { class: 'tt-body' }, left, right), status.el);
+  const divider = ttDivider(left);   // (the table's and the expressions' divider, #4099)
+  root.append(toolbar, h('div', { class: 'tt-body' }, left, divider, right), status.el);
   if (readOnly) ttReadOnlyChrome({ root, toolbar, fields: [inIn, outIn, notes, exprIn], hide: [more.el, exprRow.querySelector('.tt-btn'), left.querySelector(':scope > .hint')], banner: opts.banner });
   root.tabIndex = -1;
   root.addEventListener('keydown', e => {
