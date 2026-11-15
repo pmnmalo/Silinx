@@ -398,7 +398,6 @@ export async function openCircuit(path) {
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
-        onWaves: async (m, events) => (await import('./circuit-waves.js')).openCircuitWaves(path, m, events),   // (#3900)
         ...followOnly(path),
       });
       d.circuitEditor = ed;

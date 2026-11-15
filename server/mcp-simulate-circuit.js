@@ -7,7 +7,7 @@
 import { toolError } from './mcp-util.js';
 
 /** The steps of a circuit `m` (its JSON) simulated: { lines, rows, warnings }. */
-export async function simulateCircuitFile(m0, steps, base, { waveforms = false } = {}) {
+export async function simulateCircuitFile(m0, steps, base) {
   const { normalizeCircuit, circuitPorts } = await import('../core/circuit.js');
   const { circuitErrors } = await import('../core/circuit-check.js');
   const { createCircuitSim, runMessages } = await import('../core/circuit-sim.js');
@@ -20,7 +20,7 @@ export async function simulateCircuitFile(m0, steps, base, { waveforms = false }
   const byName = new Map(inputs.map((x) => [x.name.toLowerCase(), x]));
   const sim = createCircuitSim(m);
   const leds = () => sim.outputs();
-  const lines = [`${base} from time 0, ${steps.length} step(s):`], rows = [], warnings = [], events = [];
+  const lines = [`${base} from time 0, ${steps.length} step(s):`], rows = [], warnings = [];
   const first = sim.run();
   const note = (r) => { const w = runMessages(sim, r); warnings.push(...w); return w; };
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
@@ -35,17 +35,11 @@ export async function simulateCircuitFile(m0, steps, base, { waveforms = false }
       if (!x) throw toolError(`step ${k}: '${n}' is not an input of the circuit (its inputs: ${inputs.map((i) => i.name).join(', ') || 'none'})`);
       if (![0, 1, '0', '1'].includes(v)) throw toolError(`step ${k}: ${n} = ${JSON.stringify(v)}: 0 or 1`);
       sim.set(x.part, String(v) === '1', x.index);
-      events.push({ t: sim.time, port: x.name, v: String(v) === '1' ? 1 : 0 });
     }
     const r = sim.run();
     const outs = leds();
     lines.push(`step ${k}: inputs ${inputs.map((i) => `${i.name}=${at(i)}`).join(' ') || 'none'}; t = ${r.time} ns${r.quiet ? '' : ' (still changing)'}; LEDs ${Object.entries(outs).map(([a, b]) => `${a}=${b}`).join(' ') || 'none'}${probeText()}`, ...note(r));
     rows.push({ step: k, time: r.time, quiet: r.quiet, inputs: Object.fromEntries(inputs.map((i) => [i.name, at(i)])), leds: Object.fromEntries(Object.entries(outs).map(([a, b]) => [a, Number(b)])), ...(probeName.size ? { probes: probes() } : {}) });
   }
-  // (the probes' waves: the steps replayed by the circuit's HDL in the simulator, as the interface's View Waveforms, #3900)
-  if (!waveforms) return { lines, rows, warnings };
-  const { probeWaves } = await import('../core/circuit-replay.js');
-  const waves = probeWaves(m, events, { lang: m.lang });
-  for (const [k, w] of Object.entries(waves)) lines.push(`waves of ${k}: ${w.map(([t, v]) => `${v}@${t}`).join(' ') || '(no signal: its net joins nothing)'}`);
-  return { lines, rows, warnings, waves };
+  return { lines, rows, warnings };
 }

@@ -15,7 +15,6 @@ import { h, twoFingerView } from './ui.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
-import { partInputs } from '/core/circuit-io.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem, addWire } from '/core/circuit-edit.js';
 import { mountCircuitClip } from './circuit-clip.js';
@@ -35,7 +34,6 @@ export function mountCircuitEditor(container, opts = {}) {
   let view = { tx: 60, ty: 120, k: 1 };
   let drag = null, draft = null, ghost = null, sim = null, fitted = false, destroyed = false;
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
-  let events = [];                      // the inputs' changes of the session: [{ t (ns), port, v }] (View Waveforms replays them)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
   let hi = 0;
@@ -53,11 +51,17 @@ export function mountCircuitEditor(container, opts = {}) {
   try { keepOn = localStorage.getItem(KEEP_KEY) !== '0'; } catch { /* no storage */ }
   const keepBox = h('input', { type: 'checkbox', class: 'circ-keep-in', checked: keepOn });
   keepBox.addEventListener('change', () => { keepOn = keepBox.checked; try { localStorage.setItem(KEEP_KEY, keepOn ? '1' : '0'); } catch { /* no storage */ } });
-  const { tools, delBtn, rotBtn, simBtn, resetBtn, wavesBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox,
-    waves: () => opts.onWaves?.(clone(M), events.slice()),
+  const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox,
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
-    toggleSim, resetSim: () => { if (sim) startSim(); }, zoomBtn, fit: () => fit(),
+    toggleSim, zoomBtn, fit: () => fit(),
   });
+  // the Try it bar (#4067, as the schematic's): above the canvas while trying it, its Reset (from time 0) and Stop (Esc);
+  // its time in the status line
+  const simBar = h('div', { class: 'circ-simbar', hidden: true },
+    h('span', { class: 'circ-sim-badge' }, 'Try it'),
+    btn('Reset', 'Start the simulation again from time 0', () => { if (sim) startSim(); }, 'circ-reset'),
+    h('span', { class: 'asm-spacer' }),
+    btn('Stop', 'Stop trying it out and go back to editing the circuit (Esc)', () => stopSim(), 'circ-stop'));
   const world = sv('g', { class: 'circ-world' });
   const svg = sv('svg', { class: 'asm-canvas circ-canvas' }, world);
   const canvasWrap = h('div', { class: 'asm-canvas-wrap' }, svg);
@@ -69,7 +73,7 @@ export function mountCircuitEditor(container, opts = {}) {
     h('section', { class: 'asm-section circ-parts' }, h('h3', {}, 'Parts'), partsBody),
     h('section', { class: 'asm-section circ-circuit' }, h('h3', {}, 'Circuit'), circBody));
   mountSideFold({ root, side, key: 'silinx.circuit.props.folded' });
-  root.append(toolbar, h('div', { class: 'asm-body' }, h('div', { class: 'asm-main' }, canvasWrap), side), info.el);
+  root.append(toolbar, h('div', { class: 'asm-body' }, h('div', { class: 'asm-main' }, simBar, canvasWrap), side), info.el);
   if (readOnly) {
     root.classList.add('asm-readonly');
     for (const g of [tools.select.parentElement, tools.select.parentElement.nextElementSibling, rotBtn.parentElement, rotBtn.parentElement.nextElementSibling]) g.hidden = true;
@@ -113,7 +117,6 @@ export function mountCircuitEditor(container, opts = {}) {
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
     stopTicks();
     sim = createCircuitSim(M);
-    events = [];
     runSim();
     // (a clock source flips its level every half period, in real time; the simulated time moves on by as much)
     ticks = M.parts.filter((p) => p.type === 'clock').map((p) => setInterval(() => {
@@ -123,13 +126,8 @@ export function mountCircuitEditor(container, opts = {}) {
     }, 500 / (p.hz || 1)));
   }
   function stopTicks() { for (const t of ticks) clearInterval(t); ticks = []; }
-  // one of a part's inputs set while trying it, run, and kept for the waveforms (its port's name, at its simulated time)
-  function setInput(id, v, index = 0) {
-    sim.set(id, v, index);
-    const port = partInputs(M.parts.find((p) => p.id === id))[index]?.port;
-    if (port) events.push({ t: sim.time, port, v: v ? 1 : 0 });
-    runSim();
-  }
+  // one of a part's inputs set while trying it, then run
+  function setInput(id, v, index = 0) { sim.set(id, v, index); runSim(); }
   function runSim() {
     const r = sim.run();
     for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
@@ -149,8 +147,7 @@ export function mountCircuitEditor(container, opts = {}) {
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
     simBtn.classList.toggle('active', !!sim);
-    resetBtn.hidden = !sim;
-    wavesBtn.disabled = !events.length && !sim;
+    simBar.hidden = !sim;
     root.classList.toggle('circ-simulating', !!sim);
     side.classList.toggle('try-it-body', !!sim);   // (tried out: its Properties the Try it's body, a lighter green, #3924)
     info.set([circuitCounts(M), sim ? { text: `t = ${sim.time} ns`, cls: 'circ-time', noI18n: true } : null].filter(Boolean));
@@ -243,7 +240,7 @@ export function mountCircuitEditor(container, opts = {}) {
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); }
     else if (mod && (k === 'c' || k === 'x')) { if (sel?.kind === 'part') { e.preventDefault(); clip.copy(k === 'x'); } }
     else if (mod && k === 'v' && !readOnly) clip.pasteKey();
-    else if (e.key === 'Escape') { if (tool === 'wire' && draft?.length >= 2) endWire(); else setTool('select'); }
+    else if (e.key === 'Escape') { if (sim) stopSim(); else if (tool === 'wire' && draft?.length >= 2) endWire(); else setTool('select'); }
     else if (!mod && k === 'r') rotateSelection();
     else if (!mod && (k === '+' || k === '=')) zoomBtn(1.25);
     else if (!mod && k === '-') zoomBtn(0.8);
@@ -287,7 +284,7 @@ export function mountCircuitEditor(container, opts = {}) {
     canCopy: () => sel?.kind === 'part', canPaste: () => !readOnly && clip.has(), canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
-    fit, print, simulating: () => !!sim, toggleSim, sim: () => sim, events: () => events.slice(),
+    fit, print, simulating: () => !!sim, toggleSim, sim: () => sim,
     select(ref) { if (!ref?.id || !itemOf(ref.id)) return; sel = { kind: ref.kind || 'part', id: ref.id }; render(); },
     destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); container.innerHTML = ''; },
   };
