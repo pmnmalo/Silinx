@@ -24,8 +24,8 @@ const parts = () => import('../packages/silinx-fpga/src/parts.js');
 const SYNTH_TOOLS = ['silinx', 'xst', 'vivado'];   // (vivado: the Artix-7's, #3146)
 const OPTIMIZATIONS = ['fast', 'area', 'speed'];
 const STARTUP_CLOCKS = { jtag: 'JtagClk', cclk: 'CCLK', user: 'UserClk' };
-// the Spartan-6's Map (#3138): Silinx's, or nextpnr's packer (on trial until its parity, #3139)
-const S6_MAPS = ['silinx', 'nextpnr'];
+// the Spartan-6's Map (#3138): nextpnr's packer (the default since its parity, #3139, #3140), or Silinx's
+const S6_MAPS = ['nextpnr', 'silinx'];
 const XC7_SEEDS = [1, 3];
 
 // the issues of the design on a new device (web/js/device-change.js deviceChangeMessages): the primitives its
@@ -205,12 +205,12 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_process_properties', title: 'Process Properties',
-    description: 'Change a project\'s Process Properties: the Optimization (fast: one mapping and one placement, the quickest build; area: the smallest circuit; speed: the fastest circuit, several placements tried), and the FPGA start-up clock (jtag when programming over JTAG; cclk when booting from the PROM or flash; user); on a Spartan-6, its Map (s6_map: silinx, Silinx\'s own, the default; nextpnr, on trial: nextpnr packs Yosys\'s netlist too); on a 7-series, its Place & Route\'s seeds (xc7_seeds: 1, the default; 3: nextpnr\'s router2 with seeds 1, 2 and 3, the best Fmax kept, ties to the lowest seed). The Silinx toolchain places and routes with nextpnr.',
+    description: 'Change a project\'s Process Properties: the Optimization (fast: one mapping and one placement, the quickest build; area: the smallest circuit; speed: the fastest circuit, several placements tried), and the FPGA start-up clock (jtag when programming over JTAG; cclk when booting from the PROM or flash; user); on a Spartan-6, its Map (s6_map: nextpnr, the default: nextpnr packs Yosys\'s netlist too; silinx, Silinx\'s own); on a 7-series, its Place & Route\'s seeds (xc7_seeds: 1, the default; 3: nextpnr\'s router2 with seeds 1, 2 and 3, the best Fmax kept, ties to the lowest seed). The Silinx toolchain places and routes with nextpnr.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       optimization: { type: 'string', enum: OPTIMIZATIONS, description: 'The Optimization.' },
       startup_clock: { type: 'string', enum: Object.keys(STARTUP_CLOCKS), description: 'The FPGA start-up clock.' },
-      s6_map: { type: 'string', enum: S6_MAPS, description: 'A Spartan-6\'s Map: silinx (the default) or nextpnr (on trial).' },
+      s6_map: { type: 'string', enum: S6_MAPS, description: 'A Spartan-6\'s Map: nextpnr (the default) or silinx.' },
       xc7_seeds: { type: 'integer', enum: XC7_SEEDS, description: 'A 7-series\' Place & Route: 1 seed (the default) or the best of 3.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
@@ -232,12 +232,12 @@ export const SETTINGS_TOOLS = [
       // (a place and route engine saved by an earlier version, #2136: dropped, nextpnr the one engine since #2137)
       await P.updateProject(name, p => {
         const { engine, s6Map, xc7Seeds, ...impl } = p.impl || {};
-        return { ...p, impl: { ...impl, ...(optimization ? GOAL_IMPL[optimization] : {}), ...(clock ? { startupClk: STARTUP_CLOCKS[clock] } : {}), ...(s6MapOf({ s6Map: map ?? s6Map }) === 'nextpnr' ? { s6Map: 'nextpnr' } : {}),
+        return { ...p, impl: { ...impl, ...(optimization ? GOAL_IMPL[optimization] : {}), ...(clock ? { startupClk: STARTUP_CLOCKS[clock] } : {}), ...(s6MapOf({ s6Map: map ?? s6Map }) === 'silinx' ? { s6Map: 'silinx' } : {}),
           ...(xc7SeedsOf({ xc7Seeds: seeds ?? xc7Seeds }) === 3 ? { xc7Seeds: 3 } : {}) } };
       });
       const impl = (await P.readProject(name)).impl || {};
       const data = { project: name, optimization: synthGoal(impl), startupClock: Object.keys(STARTUP_CLOCKS).find(k => STARTUP_CLOCKS[k] === (impl.startupClk || 'JtagClk')), ...(s6 ? { s6Map: s6MapOf(impl) } : {}), ...(xc7 ? { xc7Seeds: xc7SeedsOf(impl) } : {}) };
-      return { text: `${name}: Optimization ${data.optimization}, FPGA start-up clock ${data.startupClock}${s6 ? `, Map ${data.s6Map === 'nextpnr' ? 'nextpnr (on trial)' : 'Silinx'}` : ''}${xc7 ? `, Place & Route ${data.xc7Seeds === 3 ? 'the best of 3 seeds' : 'one seed'}` : ''}.`, data };
+      return { text: `${name}: Optimization ${data.optimization}, FPGA start-up clock ${data.startupClock}${s6 ? `, Map ${data.s6Map === 'nextpnr' ? 'nextpnr' : 'Silinx'}` : ''}${xc7 ? `, Place & Route ${data.xc7Seeds === 3 ? 'the best of 3 seeds' : 'one seed'}` : ''}.`, data };
     },
   },
   {

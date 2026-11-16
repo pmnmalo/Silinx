@@ -545,10 +545,10 @@ export async function implProperties() {
   const { synthGoal, GOAL_IMPL } = await import('/packages/silinx-fpga/src/index.js');
   const opt = select([['fast', 'Fast'], ['area', 'Area'], ['speed', 'Speed']], synthGoal(pj.impl));
   const clk = select([['JtagClk', 'JTAG Clock'], ['CCLK', 'CCLK'], ['UserClk', 'User Clock']], pj.impl.startupClk || 'JtagClk');
-  // a Spartan-6's Map (#3138): Silinx's, or nextpnr's packer, on trial until its parity (#3139)
+  // a Spartan-6's Map (#3138): nextpnr's packer, the default since its parity (#3139, #3140), or Silinx's
   const { deviceFamily, s6MapOf, xc7SeedsOf } = await import('/packages/silinx-fpga/src/parts.js');
   const { familyProfile } = await import('/core/family-profile.js');
-  const map = familyProfile(deviceFamily(pj.device)).mapChoice ? select([['silinx', 'Silinx'], ['nextpnr', 'nextpnr (on trial)']], s6MapOf(pj.impl)) : null;
+  const map = familyProfile(deviceFamily(pj.device)).mapChoice ? select([['nextpnr', 'nextpnr'], ['silinx', 'Silinx']], s6MapOf(pj.impl)) : null;
   // a 7-series' Place & Route (#3825): one seed, or the best Fmax of 3 seeds
   const seeds = familyProfile(deviceFamily(pj.device)).seedsChoice ? select([['1', 'One seed'], ['3', 'Best of 3 seeds (router2)']], String(xc7SeedsOf(pj.impl))) : null;
   const r = await dialog({
@@ -568,7 +568,7 @@ export async function implProperties() {
   if (pj?.name !== pj0.name) return;
   // (a place and route engine saved by an earlier version, #2136: nextpnr, the one engine since #2137)
   const { engine, s6Map, xc7Seeds, ...impl } = pj.impl;
-  pj.impl = { ...impl, ...GOAL_IMPL[opt.value], startupClk: clk.value, ...((map ? map.value : s6Map) === 'nextpnr' ? { s6Map: 'nextpnr' } : {}),
+  pj.impl = { ...impl, ...GOAL_IMPL[opt.value], startupClk: clk.value, ...((map ? map.value : s6Map) === 'silinx' ? { s6Map: 'silinx' } : {}),
     ...(xc7SeedsOf({ xc7Seeds: seeds ? +seeds.value : xc7Seeds }) === 3 ? { xc7Seeds: 3 } : {}) };
   await app.saveProjectJson();
 }
