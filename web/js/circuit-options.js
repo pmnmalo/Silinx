@@ -2,9 +2,10 @@
 // inside (#4060, off by default), remembered; its ⋮ menu (#4064, #4080): Wires, Direct, Orthogonal or Curved (the
 // circuit's wireStyle, core/wire-style.js as the schematic's, Direct its default; an edit, Undo takes it back; read only
 // or in a shared project, #4239: the viewer's own, the circuit untouched) and Wire crossings: Hop-overs or Plain crossings (#4101; remembered, hop-overs by default, as the
-// schematic's). No HDL Language (#4168: its Source Properties choose it).
+// schematic's); KiCad: Export ICs as KiCad Symbols…, Export Parts as KiCad Package… (#4282). No HDL Language (#4168: its
+// Source Properties choose it).
 import { h } from './ui.js';
-import { menuCheck, menuChoice, setChoice, toolbarMenu } from './toolbar-menu.js';
+import { menuCheck, menuChoice, menuTitle, setChoice, toolbarMenu } from './toolbar-menu.js';
 import { setWireStyle } from '/core/circuit-edit.js';
 import { crossingsChoice } from './wire-crossings.js';
 import { WIRE_STYLES, WIRE_STYLE_TITLE, wireStyleOf } from '/core/wire-style.js';
@@ -14,7 +15,7 @@ const setPref = (key, on) => { try { localStorage.setItem(key, on ? '1' : '0'); 
 
 /** { keepBox, insideBox, more, keep(), inside(), hops(), sync(), style(), setStyle(s), setOwn(on) } of mountCircuitEditor (M(): its model; applyEdit(r)
  *  an edit; render()). sync(): the menu's ✓ as the circuit is (an undo). */
-export function mountCircuitOptions({ M, readOnly, applyEdit, render }) {
+export function mountCircuitOptions({ M, readOnly, applyEdit, render, kicadExport = null }) {
   let keepOn = pref('silinx.circuit.keep', true), insideOn = pref('silinx.circuit.inside', false), hopsOn = pref('silinx.circuit.hops', true);
   const keepBox = h('input', { type: 'checkbox', class: 'circ-keep-in', checked: keepOn });
   keepBox.addEventListener('change', () => { keepOn = keepBox.checked; setPref('silinx.circuit.keep', keepOn); });
@@ -30,7 +31,11 @@ export function mountCircuitOptions({ M, readOnly, applyEdit, render }) {
     { value: style(), onChange: setStyle });
   // (Wire crossings: Hop-overs, Plain crossings, a choice as the schematic's, #4101)
   const crossings = crossingsChoice(hopsOn, (on) => { hopsOn = on; setPref('silinx.circuit.hops', on); render(); });
-  const more = toolbarMenu([...wiresItems, ...crossings], { title: 'Wires', btnClass: 'asm-btn' });
+  // (KiCad, #4282: the library's ICs as a .kicad_sym, the project's parts as a PCM package; kicadExport: { ics(m), pkg() })
+  const item = (label, title, onclick, cls) => h('button', { type: 'button', class: `asm-btn ${cls}`, title, onclick }, label);
+  const kicad = kicadExport ? [menuTitle('KiCad'), item('Export ICs as KiCad Symbols…', 'The library\'s ICs as a KiCad symbol library (.kicad_sym)', () => kicadExport.ics(M()), 'circ-export-ics'),
+    item('Export Parts as KiCad Package…', 'The project\'s KiCad parts as a KiCad Plugin and Content Manager package (.zip)', () => kicadExport.pkg(), 'circ-export-pkg')] : [];
+  const more = toolbarMenu([...wiresItems, ...crossings, ...kicad], { title: 'Wires', btnClass: 'asm-btn' });
   return { keepBox, insideBox, more, keep: () => keepOn, inside: () => insideOn, hops: () => hopsOn, sync: () => setChoice(wiresItems, style()),
     style, setStyle, setOwn: (on) => { own = readOnly || !!on; } };
 }

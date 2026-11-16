@@ -186,7 +186,21 @@ same text is kept. The local server fetches the catalogue's files only (kept for
 fetches nothing). The browser's edition alone fetches from a host that sends CORS headers (SparkFun's), and the others
 say that they need the server.
 
-Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a `.kicad_symdir` folder. The MCP's
+Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a `.kicad_symdir` folder.
+
+**Exports** (#4282, `core/kicad-export.js`), in the editor's ⋮ menu, under KiCad:
+- **Export ICs as KiCad Symbols…** writes the library's ICs (all 48, or this circuit's) as a `.kicad_sym` at KiCad 9's file
+  version, generator `silinx`. A gate IC has a unit per gate and a unit of its supply pins; an MSI or sequential IC has
+  one unit. The pins sit on the 2.54 mm grid (inputs on the left, outputs on the right, the supply above and below), an
+  active low one named `~{CLR}`. The footprint is KiCad's `Package_DIP:DIP-n_W7.62mm`, with `Silinx.Model` and
+  `Silinx.Family` in the properties. Silinx reads every one of them back as that IC, by its `Silinx.Model` and by its
+  part number alone.
+- **Export Parts as KiCad Package…** writes the project's KiCad parts (its `parts/` folder), and the library's ICs when
+  ticked, as a KiCad PCM package: a `.zip` with `metadata.json` (the PCM schema's required fields: identifier, name,
+  description, author, licence, version), `symbols/` and `footprints/`. It installs in KiCad, or imports into another
+  Silinx project.
+
+The parts of the library that are not ICs (switches, LEDs, displays) are not exported: they are Silinx's own drawings. The MCP's
 `part_libraries` lists the libraries and what one holds, and `import_part` takes `library` (an identifier), a `.zip` or a
 folder, with `libraries` to choose among them.
 
@@ -329,6 +343,8 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
   parts (as which IC, or drawn only; their file, source and licence) and the symbols that are no part, with why;
 - `part_libraries`: KiCad's own and the KiCad PCM's libraries (searched), and what one holds; with `catalogue`, the
   KiCad catalogue's parts;
+- `export_part`: the library's ICs as a `.kicad_sym`, or a project's KiCad parts (and ICs) as a PCM package's `.zip`, in
+  the exchange folder;
 - `import_part`: a `.kicad_sym` or `.kicad_mod` of the exchange folder (or a PCM package's `.zip`, a `.kicad_symdir`
   folder, a library of `part_libraries`, a catalogue's `part`: its one symbol) copied into the project's `parts/`, the Silinx
   properties given written in its symbols (a symbol's model, family and footprint; its source, author and licence),

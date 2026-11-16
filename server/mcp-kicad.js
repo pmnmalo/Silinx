@@ -128,4 +128,45 @@ export const KICAD_TOOLS = [
       return { text: r.lines.join('\n'), data: { project: name, path: r.path, parts: r.parts, skipped: r.skipped, errors: r.errors }, untrusted: 'the library\'s names and texts' };
     },
   },
+  {
+    name: 'export_part', title: 'Export parts in KiCad\'s formats',
+    description: 'Write Silinx\'s parts in KiCad\'s formats into the exchange folder (as the circuit editor\'s ⋮ Export…): the library\'s ICs as a KiCad symbol library (file: a .kicad_sym; ics: those chosen, default all of them), each one with a unit per gate and its supply\'s unit (an MSI or sequential IC: one), its pins on the 2.54 mm grid, its footprint KiCad\'s DIP-n_W7.62mm, its behaviour in its properties Silinx.Model and Silinx.Family (read back by Silinx as that IC; KiCad keeps them); or (file: a .zip, project given) a KiCad Plugin and Content Manager package of the project\'s KiCad parts (its parts/ folder) and, ics given, those ICs, its metadata (identifier: reverse DNS, name, description, author, licence: SPDX, version). A file there already is refused unless replace.',
+    inputSchema: { type: 'object', properties: {
+      file: STR('The file to write in the exchange folder: a .kicad_sym (the ICs) or a .zip (a project\'s package).'),
+      ics: { type: 'array', items: { type: 'string' }, maxItems: 100, description: 'The library\'s ICs, by their types (7400, 74161…; circuit_parts); default for a .kicad_sym: all of them.' },
+      project: STR('With a .zip: the project whose KiCad parts are packaged.'),
+      identifier: STR('With a .zip: the package\'s identifier, a reverse domain name (org.example.parts).'), name: STR('With a .zip: its name.'),
+      description: STR('With a .zip: what it holds (at most 150 characters).'), author: STR('With a .zip: its author.'), licence: STR('With a .zip: its licence (SPDX: CC-BY-SA-4.0…).'),
+      version: STR('With a .zip: its version (1.0.0).'),
+      replace: { type: 'boolean', description: 'Replace a file of the exchange folder of that name (default: refused).' },
+    }, required: ['file'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ file, ics, project: name, identifier, name: title, description, author, licence, version, replace = false }) {
+      const X = await import('../core/kicad-export.js');
+      const full = await exchangePath(file, 'file');
+      const zip = /\.zip$/i.test(full);
+      if (!zip && !/\.kicad_sym$/i.test(full)) throw toolError(`file: '${file}' is neither a .kicad_sym nor a .zip`);
+      if (!replace) { try { await fsp.stat(full); throw toolError(`file: '${file}' is in the exchange folder already (replace: true replaces it)`); } catch (e) { if (e.toolError) throw e; } }
+      let bytes, lines;
+      try {
+        if (!zip) {
+          if (name != null) throw new Error('project: a .zip\'s only (a .kicad_sym holds the library\'s ICs)');
+          const types = ics ?? X.EXPORTED_ICS;
+          bytes = X.icLibrary(types);
+          lines = [`${path.basename(full)} written: ${new Set(types).size} IC(s) of the library as KiCad symbols (${[...new Set(types)].join(', ')})`];
+        } else {
+          if (name == null) throw new Error('project: the project whose KiCad parts are packaged');
+          await readProject(name);
+          const { isKicadPartFile } = await import('../core/circuit-kicad.js');
+          const files = {};
+          for (const f of (await P.fileTree(name)).filter(isKicadPartFile)) files[f] = await P.readFile(name, f);
+          const zlib = await import('node:zlib');
+          bytes = await X.partsPackage(files, { identifier, name: title, description, author, licence, version }, { deflate: (d) => zlib.deflateRawSync(d) }, { ics: ics ?? null });
+          lines = [`${path.basename(full)} written: the KiCad package ${identifier} ${version} of ${Object.keys(files).length} file(s) of ${name}'s parts/${ics ? ` and ${new Set(ics).size} IC(s) of the library` : ''}`];
+        }
+      } catch (e) { throw toolError(e.message); }
+      await fsp.writeFile(full, bytes);
+      return { text: lines.join('\n'), data: { file: path.basename(full), bytes: typeof bytes === 'string' ? Buffer.byteLength(bytes) : bytes.length } };
+    },
+  },
 ];

@@ -50,6 +50,13 @@ export const CIRCUIT_PT = {
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
   // a part's details (#4126, core/circuit-part-info.js)
   // a project's KiCad parts (#4281)
+  // the ⋮ menu's KiCad exports (#4282)
+  'KiCad': 'KiCad', 'Export ICs as KiCad Symbols…': 'Exportar CIs como símbolos KiCad…', 'Export ICs as KiCad Symbols': 'Exportar CIs como símbolos KiCad',
+  'Export Parts as KiCad Package…': 'Exportar peças como pacote KiCad…', 'Export Parts as KiCad Package': 'Exportar peças como pacote KiCad',
+  'The library\'s ICs as a KiCad symbol library (.kicad_sym)': 'Os CIs da biblioteca como uma biblioteca de símbolos KiCad (.kicad_sym)',
+  'The project\'s KiCad parts as a KiCad Plugin and Content Manager package (.zip)': 'As peças KiCad do projeto como um pacote do Plugin and Content Manager do KiCad (.zip)',
+  'The library\'s ICs as a KiCad symbol library: each one a unit per gate and its supply\'s, its footprint a DIP, its behaviour in its properties (Silinx reads it back as that IC).': 'Os CIs da biblioteca como uma biblioteca de símbolos KiCad: cada um com uma unidade por porta e outra da alimentação, o footprint um DIP, o comportamento nas suas propriedades (o Silinx volta a lê-lo como esse CI).',
+  'With the library\'s ICs': 'Com os CIs da biblioteca', 'Identifier:': 'Identificador:', 'Description:': 'Descrição:', 'Version:': 'Versão:',
   'KiCad parts (project)': 'Peças KiCad (projeto)', 'KiCad catalogue': 'Catálogo KiCad', 'Import KiCad Part…': 'Importar peça KiCad…', 'Import KiCad Part': 'Importar peça KiCad',
   'Pick a KiCad symbol library (.kicad_sym, KiCad 6 to 10), a footprint (.kicad_mod), a KiCad PCM package (.zip) or a .kicad_symdir folder: it is copied into the project\'s parts/ folder as KiCad wrote it.': 'Escolha uma biblioteca de símbolos KiCad (.kicad_sym, KiCad 6 a 10), um footprint (.kicad_mod), um pacote do PCM do KiCad (.zip) ou uma pasta .kicad_symdir: é copiado para a pasta parts/ do projeto tal como o KiCad o escreveu.',
   'or a folder:': 'ou uma pasta:',
@@ -148,6 +155,9 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^Behaves as the (\d{4,5}) of the library \(by its part number\)\.$/, 'Comporta-se como o $1 da biblioteca (pela sua referência).'],
   [/^Behaves as the (\d{4,5}) of the library \(by its Silinx\.Model\)\.$/, 'Comporta-se como o $1 da biblioteca (pelo seu Silinx.Model).'],
   [/^(.+): pinout$/, '$1: pinos'],
+  // the KiCad exports (#4282): the choice of the ICs, the package's hint
+  [/^All the library's ICs \((\d+)\)$/, 'Todos os CIs da biblioteca ($1)'], [/^This circuit's ICs \((\d+)\)$/, 'Os CIs deste circuito ($1)'],
+  [/^The project's KiCad parts \(its parts\/ folder: (\d+) file\(s\)\) as a KiCad Plugin and Content Manager package, to install in KiCad or to import in Silinx\.$/, 'As peças KiCad do projeto (a sua pasta parts/: $1 ficheiro(s)) como um pacote do Plugin and Content Manager do KiCad, para instalar no KiCad ou importar no Silinx.'],
   // the KiCad catalogue (#4305): its parts' tips, a replace asked
   [/^(.+), as the (\d{4,5}): (.+) \((.+), (.+)\): click it to import it into the project$/, (m, v, n, t, lib, lic) => `${v}, como o ${n}: ${title(t)} (${lib}, ${lic}): clique para a importar para o projeto`],
   [/^(.+), drawn only: (\d+) pin\(s\)(, DIP-\d+)? \((.+), (.+)\): click it to import it into the project$/, '$1, só desenhada: $2 pino(s)$3 ($4, $5): clique para a importar para o projeto'],

@@ -149,3 +149,4 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-pv-sym .gate.nofill, .circuit-editor .circ-pv-sym .clk { fill: none; stroke: var(--pv-symbol); }
 .circuit-editor .circ-pv-sym .box { fill: var(--sch-inst-fill, #e8f0ff); stroke: var(--pv-symbol); stroke-width: 1.5; }
 .circuit-editor .circ-pv-sym circle.gate.pdot { fill: var(--pv-symbol); }
+.kicad-ics-choice, .kicad-with-ics { display: flex; align-items: center; gap: 6px; margin-top: 6px; }   /* (Export ICs as KiCad Symbols…, #4282) */
