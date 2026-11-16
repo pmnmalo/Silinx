@@ -3,6 +3,7 @@
 // normalization of warnings, the I/O wrapper of a design with more ports than the package has pins.
 // Unit-tested on synthetic data (test/designs-corpus.test.js).
 import { yosysScript, yosysFiles } from '../../packages/silinx-fpga/src/synth-open.js';
+import { portWidth } from '../../core/auto-pins.js';
 
 /** The stages of a design, in order. Each records 'pass' (the flow: 'complete') or a reason. */
 export const STAGES = ['frontend', 'tb', 'synth', 'diff', 'flow'];
@@ -194,6 +195,11 @@ export function ioWrapper(top, ports, { clocks = [], generics = {}, name = 'corp
   lines.push('endmodule');
   return { name, text: `${lines.join('\n')}\n` };
 }
+
+/** A design's top ports for its wrappers (ioWrapper, paramWrapper): [{ name, dir, w }], each of the bits XST gives it
+ *  (core/auto-pins.js portWidth: an integer with a range only its range's, integer range 2**20 - 1 downto 0: 20), as XST
+ *  refuses a connection of another width to a VHDL port (Xst:2587, #3820). */
+export const wrapperPorts = design => design.top.ports.map(p => ({ name: p.name, dir: p.dir, w: portWidth(p.sig.t) }));
 
 /** Verilog of a wrapper with the same ports as `top` that sets its generics (a Silinx project has no
  *  generics of its own). Returns { name, text }. */

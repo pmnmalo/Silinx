@@ -233,7 +233,7 @@
     "files": ["iwls05/itc99/rtl/b14.vhd"], "clock": "clock", "reset": "reset", "size": { "target": "xc3s250e", "class": "medium" },
     "notes": "ITC'99 benchmark (behavioural VHDL): Viper processor (subset) (#372)." },
   { "name": "itc99-b15", "source": "itc99", "language": "vhdl", "kind": "benchmark", "top": "b15",
-    "files": ["iwls05/itc99/rtl/b15.vhd"], "clock": "clock", "reset": "reset", "size": { "target": "xc3s250e", "class": "medium" },
+    "files": ["iwls05/itc99/rtl/b15.vhd"], "clock": "clock", "reset": "reset", "periodNs": 22, "size": { "target": "xc3s250e", "class": "medium" },
     "notes": "ITC'99 benchmark (behavioural VHDL): 80386 processor (subset) (#372)." },
   { "name": "itc99-b17", "source": "itc99", "language": "vhdl", "kind": "benchmark", "top": "b17",
     "files": ["iwls05/itc99/rtl/b17.vhd"], "clock": "clock", "reset": "reset", "size": { "target": "xc3s500e", "class": "large" },

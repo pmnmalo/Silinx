@@ -45,7 +45,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { STAGES, kindOf, timedOutResult, validateManifest, compareExpectations, updatedExpectations, countWarnings, parseTime, ioWrapper, paramWrapper, boardClockUcf, FLOW_PARTS as PARTS, chipOf, deviceOf, flaggedSynth,
+import { STAGES, kindOf, timedOutResult, validateManifest, compareExpectations, updatedExpectations, countWarnings, parseTime, ioWrapper, paramWrapper, wrapperPorts, boardClockUcf, FLOW_PARTS as PARTS, chipOf, deviceOf, flaggedSynth,
   qualityOf, compareQuality, QUALITY_TOLERANCE, machineClass, timesOf, compareTimes, slowestTable, resultsTable, withResultsTable, timesTable, withTimesTable, PADS_SHORT, nextpnrPlaceRoute } from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -232,9 +232,10 @@ async function backEnd(d, design, syn, srcs, res, opts, m, forceWrap = false, pa
     const sites = deviceSites(device);
     const pads = sites.pads.size, outPads = [...sites.pads.values()].filter(p => !p.inputOnly).length;
     // the design itself, or the I/O wrapper around it
-    const ports = design.top.ports.map(p => ({ name: p.name, dir: p.dir, w: p.sig.t.w }));
-    const bits = ports.reduce((s, p) => s + p.w, 0);
-    const outBits = ports.filter(p => p.dir !== 'in').reduce((s, p) => s + p.w, 0);
+    // (whether the design needs a wrapper: by Silinx's own widths of its ports, as before #3820)
+    const ports = wrapperPorts(design);
+    const bits = design.top.ports.reduce((s, p) => s + p.sig.t.w, 0);
+    const outBits = design.top.ports.filter(p => p.dir !== 'in').reduce((s, p) => s + p.sig.t.w, 0);
     let flowDesign = design, flowSyn = syn, wrapper = null, flowSrcs = srcs.design;
     if (forceWrap || bits > pads || outBits > outPads || ports.some(p => p.dir === 'inout')) {
       if (ports.some(p => p.dir === 'inout')) { res.flow = 'unsupported: inout ports (no I/O wrapper for them yet)'; return; }

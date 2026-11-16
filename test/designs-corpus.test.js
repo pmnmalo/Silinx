@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateManifest, timedOutResult, compareExpectations, updatedExpectations, normalizeWarning, countWarnings, parseTime, ioWrapper, paramWrapper, boardClockUcf, isGood, kindOf, FLOW_PARTS, chipOf, deviceOf, flaggedSynth,
+import { validateManifest, timedOutResult, compareExpectations, updatedExpectations, normalizeWarning, countWarnings, parseTime, ioWrapper, paramWrapper, wrapperPorts, boardClockUcf, isGood, kindOf, FLOW_PARTS, chipOf, deviceOf, flaggedSynth,
   qualityOf, describeQuality, compareQuality, timesOf, compareTimes, slowestTable, machineClass, resultsTable, withResultsTable, readmeResultsTable, TABLE_BEGIN, TABLE_END, PADS_SHORT,
   timesTable, withTimesTable, readmeTimesTable, TIMES_BEGIN, TIMES_END, nextpnrPlaceRoute } from './designs-corpus/lib.mjs';
 import { remoteFiles, mainCheckout, corpusPaths, CACHE } from '../scripts/fetch-design-corpus.mjs';
@@ -177,6 +177,30 @@ endmodule`;
   const comb = ioWrapper('c', [{ name: 'x', dir: 'in', w: 1 }, { name: 'z', dir: 'out', w: 2 }]);
   assert.match(comb.text, /sin <= din;/);
   assert.throws(() => ioWrapper('c', [{ name: 'io', dir: 'inout', w: 1 }]), /inout/);
+});
+
+test('wrapperPorts: a VHDL design\'s integer ports with a range connected by their range\'s bits, as XST wants them (#3820)', () => {
+  // ITC'99's b14: XST refused the wrapper of its 32-bit connection to addr (Xst:2587, "different type in definition")
+  const vhd = `entity b14 is port(clock, reset: in bit; addr: out integer range 2**20 - 1 downto 0; datai: in integer; datao: out integer;
+  rd, wr: out bit; sel: in integer range 127 downto -128); end;
+architecture behav of b14 is
+begin
+  process(clock, reset) begin
+    if reset = '1' then addr <= 0; datao <= 0; rd <= '0'; wr <= '0';
+    elsif clock'event and clock = '1' then addr <= (datai + sel) mod 2**20; datao <= datai; rd <= '1'; wr <= reset; end if;
+  end process;
+end;`;
+  const src = { path: 'b14.vhd', lang: 'vhdl', text: vhd };
+  const ports = wrapperPorts(elaborate(compile([src]), 'b14'));
+  assert.deepEqual(ports, [{ name: 'clock', dir: 'in', w: 1 }, { name: 'reset', dir: 'in', w: 1 }, { name: 'addr', dir: 'out', w: 20 }, { name: 'datai', dir: 'in', w: 32 },
+    { name: 'datao', dir: 'out', w: 32 }, { name: 'rd', dir: 'out', w: 1 }, { name: 'wr', dir: 'out', w: 1 }, { name: 'sel', dir: 'in', w: 8 }]);
+  const wr = ioWrapper('b14', ports, { clocks: ['clock'] });
+  assert.match(wr.text, /b14 dut \(\.reset\(sin\[0:0\]\), \.datai\(sin\[32:1\]\), \.sel\(sin\[40:33\]\), \.addr\(sout\[19:0\]\), \.datao\(sout\[51:20\]\), \.rd\(sout\[52:52\]\), \.wr\(sout\[53:53\]\), \.clock\(clk\)\);/);
+  // Silinx elaborates the wrapped design with no error and no warning
+  const lib = compile([src, { path: 'corpus_io_wrap.v', lang: 'verilog', text: wr.text }]);
+  assert.deepEqual([...lib.errors, ...elaborate(lib, wr.name).diags].map(d => `${d.severity}: ${d.message}`), []);
+  // and paramWrapper declares its ports so
+  assert.match(paramWrapper('b14', ports, { W: 1 }).text, /output wire \[19:0\] addr, input wire \[31:0\] datai/);
 });
 
 test('paramWrapper: the same ports, the generics set', () => {
