@@ -1,0 +1,13 @@
+(kicad_symbol_lib
+	(version 20251024)
+	(generator "silinx_test")
+	(symbol "TESTBASE"
+		(property "Reference" "U" (at 0 0 0))
+		(property "Value" "TESTBASE" (at 0 0 0))
+		(property "Description" "a base symbol" (at 0 0 0))
+		(symbol "TESTBASE_1_1"
+			(pin input line (at -5.08 0 0) (length 2.54) (name "A") (number "1"))
+			(pin output line (at 5.08 0 180) (length 2.54) (name "Y") (number "2"))
+		)
+	)
+)
