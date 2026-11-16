@@ -98,6 +98,13 @@ export function checkBitPart(header, device) {
 // refuses it (core/adept.js programAdept); the request's force: true programs it anyway, warned (#3040)
 const mismatchRefusal = mismatch => `${mismatch}: not programmed`;
 
+// a bitstream removed between the request's check and the job's read (a rebuild, a clean) is "not found", as one
+// missing at the request, never the system's raw ENOENT (#4235)
+const notFound = (bitfile, hint = '') => new Error(`bitstream not found: ${bitfile}${hint}`);
+async function ifFound(bitfile, hint, read) {
+  try { return await read(); } catch (e) { throw e.code === 'ENOENT' ? notFound(bitfile, hint) : e; }
+}
+
 export async function readBitInfo(file) {
   const fd = await fs.open(file, 'r');
   try {
@@ -224,8 +231,9 @@ export async function promJob(job, req) {
   if (!adepttoolPaths(cfg).ok) throw new Error('PROM programming uses adepttool, which is not installed: run scripts/install-adepttool.sh');
   const args = ['--device', String(parseInt(req.device, 10) || 0), op];
   if (op === 'program' || op === 'verify') {
-    if (!req.bitfile || !fss.existsSync(req.bitfile)) throw new Error(`bitstream not found: ${req.bitfile} (run Generate Programming File first)`);
-    const info = await readBitInfo(req.bitfile);
+    const hint = ' (run Generate Programming File first)';
+    if (!req.bitfile || !fss.existsSync(req.bitfile)) throw notFound(req.bitfile, hint);
+    const info = await ifFound(req.bitfile, hint, () => readBitInfo(req.bitfile));
     job.log(`PROM image ${req.bitfile}: design ${info.designName}, part ${info.part}, built ${info.date} ${info.time}`);
     const mismatch = checkBitPart(info, req.expectDevice);
     if (mismatch && !req.force) throw new Error(mismatchRefusal(mismatch));
@@ -354,13 +362,14 @@ export function openFamilyOf(bitfile, device) {
 }
 
 async function programOpen(job, o, cfg, req, family) {
-  const bitfile = req.bitfile, size = (await fs.stat(bitfile)).size, F = OPEN_FILES[family];
+  const bitfile = req.bitfile, size = (await ifFound(bitfile, '', () => fs.stat(bitfile))).size, F = OPEN_FILES[family];
   if (o.tool !== 'openFPGALoader') throw new Error(`${F.what} is programmed with openFPGALoader, not ${o.tool}`);
   const warnings = [], warn = w => { warnings.push(w); job.log(`WARNING: ${w}`); };
   if (family === 'ice40') job.log(`Configuration file ${bitfile} (${size} bytes, ${F.what})`);
   else {
     let info;
-    try { info = family === 'ecp5' ? ecp5BitInfo(await fs.readFile(bitfile)) : gowinFsInfo(await fs.readFile(bitfile, 'latin1')); } catch (e) { throw new Error(`${bitfile}: ${e.message}`); }
+    const text = await ifFound(bitfile, '', () => fs.readFile(bitfile, family === 'ecp5' ? null : 'latin1'));
+    try { info = family === 'ecp5' ? ecp5BitInfo(text) : gowinFsInfo(text); } catch (e) { throw new Error(`${bitfile}: ${e.message}`); }
     job.log(`Bitstream ${bitfile} (${size} bytes, ${F.what}${info.part ? `: part ${info.part}` : ''}${info.idcode != null ? `, IDCODE ${idHex(info.idcode)}` : ''})`);
     const mismatch = checkOpenBitstream(family, info, req.expectDevice);
     if (mismatch && !req.force) throw new Error(mismatchRefusal(mismatch));
@@ -389,10 +398,10 @@ export async function programJob(job, req) {
   const cfg = await loadConfig();
   const o = resolveOptions(req, cfg, req.board);
   const bitfile = req.bitfile;
-  if (!bitfile || !fss.existsSync(bitfile)) throw new Error(`bitstream not found: ${bitfile}`);
+  if (!bitfile || !fss.existsSync(bitfile)) throw notFound(bitfile);
   const open = openFamilyOf(bitfile, req.expectDevice);
   if (open) return programOpen(job, o, cfg, req, open);
-  const info = await readBitInfo(bitfile);
+  const info = await ifFound(bitfile, '', () => readBitInfo(bitfile));
   job.log(`Bitstream ${bitfile}`);
   job.log(`  design ${info.designName}  part ${info.part}  built ${info.date} ${info.time}  (${info.dataLength} bytes of configuration data)`);
   const warnings = [];

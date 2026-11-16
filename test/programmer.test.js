@@ -1,9 +1,10 @@
 // Board programming through the REST API with fake programmer binaries (openFPGALoader, xc3sprog,
 // djtgcfg, iMPACT, adepttool + Platform Flash PROM): JTAG scan, SRAM programming, PROM operations,
 // tool resolution / board defaults, failure detection, and the toolchain detection report.
-import { test, before, after, afterEach } from 'node:test';
+import { test, before, after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import fss from 'node:fs';
 import path from 'node:path';
 import { scratchEnv, makeFakes, isolatedPath, startApp, waitJob, writeConfig, makeBit, POSIX_ONLY } from './server-helpers.js';
 import { ecp5Bit, gowinFs } from './fixtures/open-bitstreams.js';
@@ -363,14 +364,22 @@ test('program: request errors', async () => {
     assert.equal(r.status, status, JSON.stringify(body));
     assert.match(r.body.error, re);
   }
-  // the bitstream disappears between the request and the job
-  const f = path.join(tmp, 'vanish.bit');
-  await fs.writeFile(f, makeBit());
-  const job = jobs.createJob('program', jj => prog.programJob(jj, { bitfile: f, tool: 'xc3sprog', cable: 'xpc' }));
-  await fs.rm(f);
-  const j = await waitJob(jobs, job.id);
-  assert.match(j.error, /bitstream not found/);
+  // the bitstream disappears between the job's check and its read (#4235): "not found", never the raw ENOENT
+  for (const [name, req] of [['vanish.bit', { tool: 'xc3sprog', cable: 'xpc' }], ['vanish.bin', { tool: 'openFPGALoader' }],
+    ['vanish.fs', { tool: 'openFPGALoader' }], ['vanish-ecp5.bit', { tool: 'openFPGALoader', expectDevice: { family: 'ecp5' } }]]) {
+    const f = path.join(tmp, name);
+    await withVanished([f], async () => {
+      const job = jobs.createJob('program', jj => prog.programJob(jj, { bitfile: f, ...req }));
+      assert.equal((await waitJob(jobs, job.id)).error, `bitstream not found: ${f}`, name);
+    });
+  }
 });
+
+// a file the existence check sees but the read does not: removed in between (#4235)
+async function withVanished(files, body) {
+  const exists = fss.existsSync, m = mock.method(fss, 'existsSync', p => files.includes(p) || exists(p));
+  try { await body(); } finally { m.mock.restore(); }
+}
 
 // #3039: a .bit named by its absolute path is its project's when it is in the workspace (by its name or through a
 // link): that project's trust applies, with or without a project in the request; a .bit from the disk is no project's
@@ -500,6 +509,11 @@ test('prom: failures and request errors', { skip: POSIX_ONLY }, async () => {
   assert.match(j.error, /unknown PROM operation 'format'/);
   j = await run('/prom', { project: 'Prog', op: 'program', bitfile: 'build/none.bit' });
   assert.match(j.error, /bitstream not found/);
+  const gone = path.join(tmp, 'vanish_prom.bit');
+  await withVanished([gone], async () => {
+    const pj = jobs.createJob('prom', jj => prog.promJob(jj, { op: 'verify', bitfile: gone }));
+    assert.equal((await waitJob(jobs, pj.id)).error, `bitstream not found: ${gone} (run Generate Programming File first)`);
+  });
   const job = jobs.createJob('prom', jj => prog.promJob(jj, { op: 'read' }));
   assert.match((await waitJob(jobs, job.id)).error, /no output file/);
   await writeConfig({ paths: { adepttool: path.join(tmp, 'no-adepttool') } });
