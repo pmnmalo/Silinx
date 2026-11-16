@@ -62,7 +62,9 @@ export const LINK_TOOLS = [
       const { exportProjectZip } = await import('./project-zip.js');
       const { gateZip } = await import('../core/import-gate.js');
       const { NODE_CODEC } = await import('./impl-routes.js');
-      const entries = (await gateZip((await exportProjectZip(P, name, 'silinx')).zip, NODE_CODEC)).files;
+      // (a copy given out, as Share Project's link: its origin in the link, its ancestor kept by the project, #4205)
+      const { ANCESTOR_FILE } = await import('../core/project-rev.js');
+      const entries = (await gateZip((await exportProjectZip(P, name, 'silinx', { copy: true })).zip, NODE_CODEC)).files.filter(e => e.path !== ANCESTOR_FILE);
       let e, link;
       try {
         e = await encodeDesign(entries);

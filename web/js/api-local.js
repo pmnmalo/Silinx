@@ -22,6 +22,8 @@ import { orderTestDesigns } from '../../core/test-designs.js';
 import { createZip, browserCodec, textOf } from '../../core/zip.js';
 import { GATE_LIMITS, gateEntries, gateMessages, gateZip } from '../../core/import-gate.js';
 import { isTrusted, markUntrusted, untrustedMessage } from '../../core/trust.js';
+import { ANCESTOR_FILE, giveCopy, originOf, receivedCopy, snapshotText } from '../../core/project-rev.js';
+import { localSnapshots } from './snapshots-local.js';
 import { runBrowserFlow, browserOpenStatus } from './open-flow-browser.js';
 import { ADEPT_FILTERS, ADEPT_VENDOR, bitHeader } from '../../core/adept.js';
 import { programUsb, scanUsb } from '../../core/usb-program.js';
@@ -36,6 +38,16 @@ const fail = msg => { throw new Error(msg); };
 // ---- the project storage in use: the browser's storage, or a folder on the disk (Chrome / Edge)
 const browser = browserStore();
 let store = browser;
+// a project's snapshots (#4205): this storage's, in localStorage
+const snapshotsOf = name => localSnapshots(() => globalThis.localStorage, `${store.kind}:${store.label || ''}`, name);
+// a copy given out of a project (core/project-rev.js giveCopy): its id written when it had none, its snapshot kept
+async function giveCopyLocal(name, p) {
+  const o = originOf(p.json);
+  const c = await giveCopy(p.json, p.files, { kept: o ? await snapshotsOf(name).read(o.rev) : null });
+  if (c.changed) await store.saveJson(name, c.base);
+  if (c.keep) snapshotsOf(name).save(c.snapshot);
+  return c;
+}
 // (a new project from an example, or from a test design: #1746)
 const ops = projectOps(() => store, { ...TEST_DESIGNS, ...EXAMPLES });
 const projectJson = async name => (await store.load(name)).json;
@@ -469,11 +481,14 @@ export const api = {
     return { project: await ops.put(name, markUntrusted(r.json), r.files), warnings: [...gateMessages(g), ...r.warnings] };
   },
   syncXise: async () => fail('not available in the standalone edition (use File > Export Project (.zip)…, Xilinx ISE)'),
-  exportZip: async (name, kind = 'xilinx') => {
+  exportZip: async (name, kind = 'xilinx', { copy = false } = {}) => {
     const p = await store.load(name);
     if (kind === 'silinx') {   // the whole Silinx project as it is
-      const entries = [{ path: 'silinx.json', data: JSON.stringify(p.json, null, 2) + '\n' },
-        ...Object.entries(p.files).filter(([k]) => !/\.xise$/i.test(k)).map(([path, data]) => ({ path, data }))];
+      // (a copy given out: its origin, its ancestor carried and kept, #4205)
+      const c = copy ? await giveCopyLocal(name, p) : null;
+      const entries = [{ path: 'silinx.json', data: JSON.stringify(c ? c.copy : p.json, null, 2) + '\n' },
+        ...Object.entries(p.files).filter(([k]) => !/\.xise$/i.test(k)).map(([path, data]) => ({ path, data })),
+        ...(c?.snapshot ? [{ path: ANCESTOR_FILE, data: snapshotText(c.snapshot) }] : [])];
       return { blob: new Blob([await createZip(entries, browserCodec())], { type: 'application/zip' }), filename: `${name}-silinx.zip`, warnings: [] };
     }
     const docs = {};
@@ -503,7 +518,11 @@ export const api = {
     try { gated = bundle ? gateEntries(bundle) : await gateZip(bytes, browserCodec()); } catch (e) { fail(e.message); }
     const p = projectFromZip(name, gated, { xiseProject, textOf });
     if (await store.exists(name)) fail(`project '${name}' already exists`);
-    return { project: await ops.put(name, p.json, p.files), missing: p.missing, warnings: p.warnings };
+    // (a copy: an id of its own, its origin kept, its ancestor kept apart, checked: #4205)
+    const c = gated.files.some(f => /(^|\/)silinx\.json$/.test(f.path)) && !gated.files.some(f => /\.xise$/i.test(f.path)) ? await receivedCopy(p.json, p.ancestor) : null;
+    const project = await ops.put(name, c ? { ...p.json, id: c.json.id, origin: c.json.origin } : p.json, p.files);
+    if (c?.snapshot) snapshotsOf(name).save(c.snapshot);
+    return { project, missing: p.missing, warnings: [...p.warnings, ...(c?.warnings || [])] };
   },
 };
 

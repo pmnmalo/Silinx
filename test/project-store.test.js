@@ -686,3 +686,52 @@ test('#3878 a file is not the project\'s silinx.json for a file id alike only as
   assert.equal(await P.isProjectFileAt(dir, path.join(dir, 'silinx.json')), true);
   assert.equal(await P.isProjectFileAt(dir, path.join(dir, 'missing.v')), false);
 });
+
+// #4205: a copy's record in the browser edition: its id and origin kept by the description's normalization and by a
+// description written whole (as the server's writeProject), a copy's ancestor kept apart by the import, never a file
+test('#4205: a project\'s id and a copy\'s origin kept; a copy\'s ancestor not a project file', async () => {
+  const { giveCopy, snapshotText, ANCESTOR_FILE } = await import('../core/project-rev.js');
+  const files = { 'src/a.v': 'module a; endmodule\n' };
+  const c = await giveCopy({ ...emptyProjectJson('A'), files: [{ path: 'src/a.v', lang: 'verilog', role: 'design' }] }, files);
+  const n = normalizeProjectJson(c.copy, 'A').json;
+  assert.deepEqual([n.id, n.origin], [c.base.id, c.copy.origin]);
+  assert.deepEqual(['id' in normalizeProjectJson({ ...c.copy, id: 'me', origin: { id: 'x' } }, 'A').json, 'origin' in normalizeProjectJson({ ...c.copy, origin: { id: 'x' } }, 'A').json], [false, false]);
+  const E = (p, t) => ({ path: p, data: new TextEncoder().encode(t) });
+  const r = projectFromZip('A', gateEntries([E('silinx.json', JSON.stringify(c.copy)), E('src/a.v', files['src/a.v']), E(ANCESTOR_FILE, snapshotText(c.snapshot))]), { textOf, xiseProject: null });
+  assert.deepEqual([Object.keys(r.files), r.ancestor, r.json.origin], [['src/a.v'], snapshotText(c.snapshot), c.copy.origin]);
+  // a description written whole keeps the id and origin it had, whatever it says
+  for (const make of [() => folder(), () => { const s = browserStore(memStorage()); return { ops: projectOps(() => s, EXAMPLES) }; }]) {
+    const { ops } = make();
+    await ops.put('Copy', c.copy, files);
+    const pj = await ops.project('Copy');
+    assert.deepEqual([pj.id, pj.origin], [c.base.id, c.copy.origin]);
+    const { id, origin, ...stale } = pj;   // eslint-disable-line no-unused-vars
+    await ops.saveProject('Copy', { ...stale, top: 'a' });
+    await ops.saveProject('Copy', { ...await ops.project('Copy'), id: 'other', origin: null });
+    const after = await ops.project('Copy');
+    assert.deepEqual([after.id, after.origin, after.top], [c.base.id, c.copy.origin, 'a']);
+  }
+});
+
+test('#4205: the browser\'s snapshots (web/js/snapshots-local.js): kept per project and storage, capped, read back checked, a full storage no error', async () => {
+  const { localSnapshots, LOCAL_SNAPSHOT_LIMITS } = await import('../web/js/snapshots-local.js');
+  const { giveCopy } = await import('../core/project-rev.js');
+  const ls = memStorage();
+  const snaps = localSnapshots(() => ls, 'browser:', 'A');
+  const made = [];
+  for (let i = 0; i < LOCAL_SNAPSHOT_LIMITS.max + 2; i++) {
+    const c = await giveCopy({ ...emptyProjectJson('A'), top: `t${i}` }, { 'src/a.v': `// ${i}\n` }, { at: `2026-01-01T00:00:0${i}Z` });
+    assert.equal(snaps.save(c.snapshot), true);
+    made.push(c.snapshot);
+  }
+  assert.equal(snaps.list().length, LOCAL_SNAPSHOT_LIMITS.max);
+  assert.deepEqual(await snaps.read(made.at(-1).rev), made.at(-1));
+  assert.equal(await snaps.read(made[0].rev), null);
+  assert.deepEqual(localSnapshots(() => ls, 'folder:work', 'A').list(), []);
+  // (tampered in the storage: not read as a snapshot)
+  const key = [...ls.m.keys()][0];
+  const v = JSON.parse(ls.getItem(key)); v[made.at(-1).rev].files['src/a.v'] = 'x'; ls.setItem(key, JSON.stringify(v));
+  assert.equal(await snaps.read(made.at(-1).rev), null);
+  const full = localSnapshots(() => ({ getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem() {} }), 'browser:', 'A');
+  assert.equal(full.save(made[0]), false);
+});

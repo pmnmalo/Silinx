@@ -125,8 +125,8 @@ export const api = {
   cancelJob: id => req('POST', `/api/jobs/${enc(id)}/cancel`),
   importXise: body => req('POST', '/api/projects/import-xise', body),
   // whole project as a zip (.xise + silinx.json + all files)
-  exportZip: async (name, kind = 'xilinx') => {
-    const r = await fetch(`/api/projects/${enc(name)}/export.zip?kind=${enc(kind)}`, { headers: await authed() });
+  exportZip: async (name, kind = 'xilinx', { copy = false } = {}) => {
+    const r = await fetch(`/api/projects/${enc(name)}/export.zip?kind=${enc(kind)}${copy ? '&copy=1' : ''}`, { headers: await authed() });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     let warnings = [];
     try { warnings = JSON.parse(decodeURIComponent(r.headers.get('X-Silinx-Warnings') || '[]')); } catch { /* none */ }

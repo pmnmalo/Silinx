@@ -46,9 +46,9 @@ export function mountXiseRoutes(ctx) {
   }));
 
   // ----- whole project as a zip (server/project-zip.js): ?kind=xilinx (default), a Xilinx ISE project;
-  // ?kind=silinx, the whole Silinx project as it is
+  // ?kind=silinx, the whole Silinx project as it is; &copy=1, a copy given out (its origin and ancestor, #4205)
   api.get('/projects/:p/export.zip', wrap(async (req, res) => {
-    const { zip, file, warnings } = await exportProjectZip(P, req.params.p, req.query.kind === 'silinx' ? 'silinx' : 'xilinx');
+    const { zip, file, warnings } = await exportProjectZip(P, req.params.p, req.query.kind === 'silinx' ? 'silinx' : 'xilinx', { copy: req.query.copy === '1' });
     if (warnings.length) res.set('X-Silinx-Warnings', encodeURIComponent(JSON.stringify(warnings.slice(0, 50))));
     res.type('application/zip').attachment(file).send(Buffer.from(zip));
   }));

@@ -32,7 +32,7 @@ const taken = dir => folderFiles(dir).filter(r => !silinxFolderSkips(r)).sort();
 const bad = (m) => { throw new Error(m); };
 // a project's files and their contents, silinx.json's fields but its name and its trust
 async function snapshot(name) {
-  const { name: _n, trusted: _t, ...pj } = await P.readProject(name);
+  const { name: _n, trusted: _t, id: _i, ...pj } = await P.readProject(name);   // (each import a project of its own: its own id, #4205)
   const files = {};
   for (const f of await P.fileTree(name)) files[f] = fs.readFileSync(P.safeJoin(P.projectDir(name), f), 'utf8');
   return { pj, files };

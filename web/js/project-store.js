@@ -17,6 +17,7 @@ import { clone } from '../../core/util.js';   // (a relative path: Node imports 
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../../core/project-name.js';
 import { filePath, gateMessages, normalizePath, requireGated } from '../../core/import-gate.js';
 import { markUntrusted } from '../../core/trust.js';
+import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
 import { DESIGN_KIND, asDesignProject, isDesignOnly } from '../../core/project-kind.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
 
@@ -110,6 +111,9 @@ export function normalizeProjectJson(saved, name) {
   if (typeof saved.synthTool === 'string') json.synthTool = saved.synthTool;
   if (isDesignOnly(saved)) Object.assign(json, { kind: DESIGN_KIND, board: null });   // (a design and simulation project, #3780)
   if (saved.trusted === false) json.trusted = false;   // (a project from outside, #2830: never made trusted by its description)
+  // (its id and the origin of a copy, #4205)
+  if (isProjectId(saved.id)) json.id = saved.id;
+  if (originOf(saved)) json.origin = originOf(saved);
   return { json: clone(json), warnings };
 }
 
@@ -117,8 +121,9 @@ export function normalizeProjectJson(saved, name) {
  * A zip's entries as the import gate let them through (core/import-gate.js gateZip / gateEntries, #2830) as a
  * project (#483): a .xise (an ISE project, read by `xiseProject(name, text, files)`) or a silinx.json (a Silinx
  * export) at its root; every other file keeps its path, skipped with a warning when it would leave the project;
- * build/ is never imported. Returns { json, files, warnings, missing } (missing: the files silinx.json lists that
- * the zip has not; the gate's refusals first in the warnings), not stored.
+ * build/ is never imported. Returns { json, files, warnings, missing, ancestor } (missing: the files silinx.json lists
+ * that the zip has not; the gate's refusals first in the warnings; ancestor: the text of a copy's ANCESTOR_FILE, or
+ * null, #4205), not stored.
  */
 export function projectFromZip(name, gated, { xiseProject, textOf }) {
   const entries = requireGated(gated, 'projectFromZip').map(f => ({ ...f, text: f.text ?? textOf(f) }));
@@ -145,7 +150,7 @@ export function projectFromZip(name, gated, { xiseProject, textOf }) {
   // (an ISE project's sources are xiseProject's already; a Silinx export's files are all the zip's: the empty project's
   // default constraints path is not a file, and constraints/top.ucf, the pins, is one to keep, #2894)
   const known = new Set(xe ? p.json.files.map(f => f.path).concat(p.json.constraints) : []);
-  for (const [k, v] of Object.entries(files)) if (!known.has(k) && !/\.xise$/i.test(k) && !isDescriptor(k)) p.files[k] = v;
+  for (const [k, v] of Object.entries(files)) if (!known.has(k) && !/\.xise$/i.test(k) && !isDescriptor(k) && !(pe && !xe && k === ANCESTOR_FILE)) p.files[k] = v;
   const missing = [];
   if (pe) {
     let saved = null;
@@ -162,7 +167,8 @@ export function projectFromZip(name, gated, { xiseProject, textOf }) {
     }
   }
   // a project from outside: trusted only once the user says so (#2830, core/trust.js)
-  return { json: markUntrusted(p.json), files: p.files, warnings, missing };
+  // (a copy's ancestor, #4205: kept apart by the caller, never a project file)
+  return { json: markUntrusted(p.json), files: p.files, warnings, missing, ancestor: pe && !xe ? files[ANCESTOR_FILE] ?? null : null };
 }
 
 /**
@@ -483,6 +489,10 @@ export function projectOps(getStore, examples = {}) {
       // a project from outside stays so until the user trusts it (trustProject, #2830), as the server's writeProject
       // (and who made it or changed it: its messages, #2981, #3355)
       if (cur.json?.trusted === false) Object.assign(clean, { trusted: false }, cur.json.madeBy ? { madeBy: cur.json.madeBy } : {});
+      // (its id and origin, the copies' record, never the interface's to change: #4205)
+      delete clean.id; delete clean.origin;
+      if (cur.json?.id !== undefined) clean.id = cur.json.id;
+      if (cur.json?.origin !== undefined) clean.origin = cur.json.origin;
       await S().saveJson(name, clean);
       return clone(clean);
     },

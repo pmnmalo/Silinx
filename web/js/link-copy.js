@@ -18,6 +18,7 @@ import { currentViewState } from './view-state.js';
 import { layoutNow } from './tasks.js';
 import { browserCodec, textOf } from '/core/zip.js';
 import { gateZip } from '/core/import-gate.js';
+import { ANCESTOR_FILE } from '/core/project-rev.js';
 import { naturalCompare } from '/core/hier-order.js';
 import { EXPIRY_DAYS } from '/core/gist-link.js';
 import { rememberLink, shortLinksDialog } from './short-links.js';
@@ -36,7 +37,8 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   const name = S.project.name;
   const action = shareTitle(module);   // (the window's title, its messages' name, #3698)
   let entries;
-  try { entries = (await gateZip(new Uint8Array(await (await api.exportZip(name, 'silinx')).blob.arrayBuffer()), browserCodec())).files; } catch (e) { app.log(`ERROR: ${action}: ${e.message}`, 'err'); return null; }
+  // (a copy given out: its origin in the link, its ancestor kept by the project, not carried by the link, too large: #4205)
+  try { entries = (await gateZip(new Uint8Array(await (await api.exportZip(name, 'silinx', { copy: true })).blob.arrayBuffer()), browserCodec())).files.filter(e => e.path !== ANCESTOR_FILE); } catch (e) { app.log(`ERROR: ${action}: ${e.message}`, 'err'); return null; }
   const files = Object.fromEntries(entries.filter(e => e.path !== 'silinx.json').map(e => [e.path, textOf(e)]));
   let design = null, encodeError = null;
   try { design = (await encodeDesign(entries)).design; } catch (e) { encodeError = e.message; }

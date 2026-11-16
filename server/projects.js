@@ -225,7 +225,11 @@ export function writeProject(name, pj) {
     let cur = null;
     try { cur = await readProject(name); } catch { /* a new project */ }
     // (and who made it, the MCP server: its messages, #2981)
-    return writeProjectUnlocked(name, cur?.trusted === false ? { ...pj, trusted: false, ...(cur.madeBy ? { madeBy: cur.madeBy } : {}) } : pj);
+    const kept = cur?.trusted === false ? { ...pj, trusted: false, ...(cur.madeBy ? { madeBy: cur.madeBy } : {}) } : pj;
+    // its id and origin are the copies' record (#4205), never the interface's to change: a project's current ones kept
+    if (!cur) return writeProjectUnlocked(name, kept);
+    const { id, origin, ...rest } = kept;   // eslint-disable-line no-unused-vars
+    return writeProjectUnlocked(name, { ...rest, ...(cur.id !== undefined ? { id: cur.id } : {}), ...(cur.origin !== undefined ? { origin: cur.origin } : {}) });
   });
 }
 
