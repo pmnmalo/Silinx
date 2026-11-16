@@ -6,7 +6,7 @@
 // the room has, its text files as their shared text and its drawings edited live as their participants merged them
 // (an editor's changes not delivered yet included). Isomorphic (the page and the MCP server).
 import { docFile, docProject } from './collab-doc.js';
-import { liveDrawing, drawingModel, drawingText } from './collab-model.js';
+import { liveDrawing, drawingModel, drawingText, withView } from './collab-model.js';
 import { freeName } from './design-link.js';
 import { markUntrusted } from './trust.js';
 
@@ -20,7 +20,7 @@ export function followedCopy(doc) {
   for (const path of fileTree) {
     if (path === 'silinx.json') continue;
     const live = liveDrawing(path) ? drawingModel(doc, path) : null;
-    const text = live ? drawingText(path, live.model) : docFile(doc, path);
+    const text = live ? drawingText(path, withView(path, live.model, docFile(doc, path))) : docFile(doc, path);   // (its file's wires' style, #4239)
     if (typeof text === 'string') entries.push({ path, data: text });
   }
   return { name: project.name, owner, entries };

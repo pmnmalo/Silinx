@@ -52,7 +52,7 @@ export function mountCircuitEditor(container, opts = {}) {
   const status = (msg, err = false) => { if (msg) opts.onMessage?.(msg, err); };
 
   // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Wires, Wire crossings): circuit-options.js
-  const { keepBox, insideBox, more, keep, inside, hops, sync } = mountCircuitOptions({ M: () => M, readOnly, applyEdit: (...a) => applyEdit(...a), render: () => render() });
+  const { keepBox, insideBox, more, keep, inside, hops, sync, style: wireStyle, setStyle: setWireStyle, setOwn: ownWireStyle } = mountCircuitOptions({ M: () => M, readOnly, applyEdit: (...a) => applyEdit(...a), render: () => render() });
   const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox, insideBox, more,
     root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
     toggleSim, zoomBtn, fit: () => fit(),
@@ -147,7 +147,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit(M, { sel, draft, ghost, inside: inside(), hops: hops(), levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
@@ -285,7 +285,7 @@ export function mountCircuitEditor(container, opts = {}) {
   problems();
   requestAnimationFrame(initialFit);
   return {
-    getModel: () => clone(M),
+    getModel: () => clone(M), wireStyle, setWireStyle, ownWireStyle,   // (a shared project's participant's own, #4239)
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },

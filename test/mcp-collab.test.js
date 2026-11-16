@@ -503,7 +503,7 @@ test('#3183 a Petri net edited live: a page adds a place while the MCP client ad
   await ok('share_project', { project: 'netPn', action: 'stop' });
 });
 
-test('#3183 a schematic edited live: a page moves a symbol while the MCP client changes the description, both kept; the owner writes it (indented as its editor saves it) and its HDL; follow_project reads it merged', async () => {
+test('#3183 a schematic edited live: a page moves a symbol while the MCP client changes the description, both kept; the owner writes it (indented as its editor saves it) and its HDL; follow_project reads it merged; #4239 its wires\' style written: left out, said', async () => {
   await ok('new_project_from_example', { name: 'gatesSch', example: 'gates' });
   const F = 'src/gates.sch.json';
   const { data: { editLink } } = await ok('share_project', { project: 'gatesSch', name: 'Ana', server: base, editors: true });
@@ -527,6 +527,15 @@ test('#3183 a schematic edited live: a page moves a symbol while the MCP client 
   assert.equal(text, JSON.stringify(drawingModel(ed.doc, F).model, null, 1), 'indented by one space, as the schematic editor saves it');
   await until(async () => (await P.readFile('gatesSch', 'src/gates.vhd')) === generateHdl(JSON.parse(text), { lang: 'vhdl' }).code, 'the HDL made again', 8000);
   assert.match(await P.readFile('gatesSch', 'src/gates.vhd'), /^-- merged live$/m);
+  // (#4239) a write of another wires' style: left out, said, the owner's file keeping its own; the write's other changes merged
+  const curved = { ...JSON.parse(text), wireStyle: 'curved', description: 'curved here' };
+  const w = await ok('follow_project', { link: editLink, write: { path: F, text: JSON.stringify(curved) } });
+  assert.ok(w.text.endsWith(`\nWrote ${F} (merged as this participant's edit).\n${F}: its wires' style (curved) left out: how each participant sees the drawing, not shared (the owner's file keeps orthogonal).`), w.text);
+  await until(async () => JSON.parse(await P.readFile('gatesSch', F)).description === 'curved here', 'the description on the disk', 8000);
+  assert.equal(JSON.parse(await P.readFile('gatesSch', F)).wireStyle, undefined);
+  assert.equal('wireStyle' in drawingModel(ed.doc, F).model, false);
+  const same = await ok('follow_project', { link: editLink, write: { path: F, text: JSON.stringify({ ...curved, wireStyle: 'orthogonal' }) } });
+  assert.equal(same.text.includes('left out'), false, same.text);
   assert.deepEqual((await ok('share_project', { project: 'gatesSch', action: 'status' })).data.warnings, []);
   await ed.close();
   await ok('follow_project', { link: editLink, stop: true });

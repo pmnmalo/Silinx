@@ -10,7 +10,8 @@ import { S, activateDoc, closeDoc, openFile, refreshSummary, setDirty, flushDoc 
 import { reloadProject } from './project.js';
 import { restoreImplStatus, saveImplStatus } from './processes.js';
 import { editsDrawingHere } from './collab-state.js';
-import { editorOf } from './collab-drawing.js';
+import { editorOf, modelOf } from './collab-drawing.js';
+import { withView } from '/core/collab-model.js';
 
 const REPORTS = 'build/reports.json', STATUS = 'build/silinx-status.json';
 // (a drawing's document: its path in its id, as app.js's docPath)
@@ -112,7 +113,8 @@ async function reloadDoc(d, { path, kind }, by = null, where = null) {
 function inPlace(d, text) {
   const ed = editorOf(d);
   if (!ed?.applyModel) return false;
-  try { ed.applyModel(JSON.parse(text)); return true; } catch { return false; }
+  // (its own wires' style kept: the owner's choice does not change a follower's view, #4239)
+  try { ed.applyModel(withView(d.path, JSON.parse(text), modelOf(ed))); return true; } catch { return false; }
 }
 
 /** Changed in the editor and on disk (deleted there): true, keep the editor's (closed: kept too, the user's work). */

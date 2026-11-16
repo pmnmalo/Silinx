@@ -17,13 +17,14 @@ import { esc } from './dom.js';
 import { menuChoice, setChoice } from './toolbar-menu.js';
 import { clone, onSeg } from './sch-editor.js';
 
-/** { items, style, free, setStyle, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot,
+/** { items, style, free, setStyle, setOwn, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot,
  *  cancelKnot, removeKnot } of a schematic editor (doc(), sel(), view(): its current ones). */
 export function mountSchCurve(ctx) {
   const { doc, sel, oneWire, view, live, readOnly, edit, render, renderProps, snapshot, pushUndo, changed, contentG } = ctx;
-  // (a read-only view, #1193: drawn in the viewer's choice of style, the schematic untouched)
-  let viewStyle = null;
-  const style = () => (readOnly && viewStyle !== null ? viewStyle : wireStyleOf(doc()));
+  // (a read-only view, #1193, or a shared project's participant, #4239 (own): drawn in the viewer's choice of style,
+  // the schematic untouched)
+  let viewStyle = null, own = false;
+  const style = () => ((readOnly || own) && viewStyle !== null ? viewStyle : wireStyleOf(doc()));
   // drawn through the wires' knots (Direct or Curved), not along their rectilinear paths
   const free = () => style() !== 'orthogonal';
   const curved = () => style() === 'curved';
@@ -32,7 +33,7 @@ export function mountSchCurve(ctx) {
   // a style chosen: an edit of the schematic (saved with it, undone by Undo)
   function setStyle(s) {
     if (s === style()) return;
-    if (readOnly) { viewStyle = s; render(); return; }
+    if (readOnly || own) { viewStyle = s; setChoice(items, s); render(); return; }
     const set = () => setWireStyle(doc(), s);
     // (in Try it too, where nothing else is edited: how the wires are drawn, not what they connect, #1175)
     if (live?.() && !readOnly) { const before = snapshot(); set(); pushUndo(before); changed(); render(); return; }
@@ -156,5 +157,7 @@ export function mountSchCurve(ctx) {
   }
   const nearestF = (S, p) => { let bi = 0, bd = Infinity; S.forEach((q, i) => { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; bi = i; } }); return bi / (S.length - 1); };
 
-  return { items, style, free, curved, setStyle, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot, cancelKnot, removeKnot };
+  // (each participant's own style, never an edit, #4239)
+  const setOwn = on => { own = !!on; };
+  return { items, style, free, curved, setStyle, setOwn, wireD, hops, hopD, previewD, wireAt, labelAt, wireText, handlesSvg, inBand, beginKnot, moveKnot, endKnot, cancelKnot, removeKnot };
 }

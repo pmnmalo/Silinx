@@ -74,17 +74,38 @@ const schModel = sh => normalizeDoc(ordered(sh, SCH_KEYS));
  *  object that name another (refs, in a collection or one of several: a connection goes with what it connects, #3183), the settings that do (setRefs),
  *  shape (a model as its settings and collections, normalized) and model (back, as its editor has it); ownIds: a
  *  participant's new objects' ids made its own (ids that are names, a truth table's outputs, are not); seqIds: a new
- *  object's id another one has in the structure already made the next free one of its sequence (a circuit's). */
+ *  object's id another one has in the structure already made the next free one of its sequence (a circuit's); view:
+ *  its settings that are how a participant sees it, not the drawing (#4239: the wires' style), never in the structure. */
 export const DRAWING_KINDS = Object.freeze({
   fsm: { collections: ['states', 'transitions'], refs: { transitions: { from: 'states', to: 'states' } }, setRefs: { initial: 'states' }, shape: normalizeFsm, model: normalizeFsm, ownIds: true },
   tt: { collections: ['outputs'], refs: {}, setRefs: {}, shape: ttShape, model: ttModel, ownIds: false },
   asm: { collections: ['nodes', 'edges'], refs: { edges: { from: 'nodes', to: 'nodes' } }, setRefs: { initial: 'nodes' }, shape: normalizeAsm, model: normalizeAsm, ownIds: true },
   pn: { collections: ['places', 'transitions', 'arcs'], refs: { arcs: { from: ['places', 'transitions'], to: ['places', 'transitions'] } }, setRefs: {}, shape: normalizePetri, model: normalizePetri, ownIds: true },
-  sch: { collections: SCH_COLLS, refs: {}, setRefs: {}, shape: schShape, model: schModel, ownIds: true },
+  sch: { collections: SCH_COLLS, refs: {}, setRefs: {}, shape: schShape, model: schModel, ownIds: true, view: ['wireStyle'] },
   // (the circuit, #4203: its parts' ids are their names, U3, S1, the HDL's ports and labels: a new one another
   // participant took already becomes the next free one of its sequence, U4, never U3~x)
-  circ: { collections: ['parts', 'wires'], refs: {}, setRefs: {}, shape: normalizeCircuit, model: normalizeCircuit, ownIds: false, seqIds: true },
+  circ: { collections: ['parts', 'wires'], refs: {}, setRefs: {}, shape: normalizeCircuit, model: normalizeCircuit, ownIds: false, seqIds: true, view: ['wireStyle'] },
 });
+/** A drawing's view settings (#4239): how each participant sees it (a schematic's or a circuit's wires drawn Direct,
+ *  Orthogonal or Curved, core/wire-style.js), each one's own, never shared: left out of the structure, its file's kept
+ *  by the owner's writes. [] for a kind that has none. */
+export const viewFields = path => DRAWING_KINDS[drawingKind(path)]?.view || [];
+/** A model with its view settings left out (a copy). */
+export function withoutView(path, model) {
+  const out = { ...model };
+  for (const k of viewFields(path)) delete out[k];
+  return out;
+}
+/** A model with the view settings of `from` (a model, or a file's text: the owner's file, the editor's own model) put
+ *  back; a copy. */
+export function withView(path, model, from) {
+  let v = from;
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch { v = null; } }
+  const out = withoutView(path, model);
+  for (const k of viewFields(path)) if (v && typeof v === 'object' && k in v) out[k] = v[k];
+  return out;
+}
+
 /** What a follower takes of a room's drawings (#3361: the owner may be hostile): their objects, all together. */
 export const DRAWING_OBJECTS_MAX = 100_000;
 
@@ -109,7 +130,7 @@ const order = cm => [...cm.entries()].filter(([, o]) => o instanceof Y.Map)
 function rawModel(ymap, K) {
   const out = {};
   const st = ymap.get('settings');
-  if (st instanceof Y.Map) for (const [k, v] of st.entries()) if (!K.collections.includes(k)) out[k] = json(v);
+  if (st instanceof Y.Map) for (const [k, v] of st.entries()) if (!K.collections.includes(k) && !(K.view || []).includes(k)) out[k] = json(v);
   for (const c of K.collections) {
     const cm = collMap(ymap, c);
     out[c] = cm ? order(cm).map(({ id, o }) => {
@@ -179,6 +200,7 @@ export function putDrawing(doc, path, model, { base = null, client = null, origi
   if (!K) throw new Error(`${path}: not a drawing that is edited live`);
   const drawings = doc.getMap('drawings');
   const next = K.shape(model);
+  for (const k of K.view || []) delete next[k];   // (how it is seen, #4239: each participant's own)
   const renamed = new Map();
   doc.transact(() => {
     let ymap = drawingMap(doc, path);
@@ -191,6 +213,7 @@ export function putDrawing(doc, path, model, { base = null, client = null, origi
     }
     for (const c of ['settings', ...K.collections]) if (!(ymap.get(c) instanceof Y.Map)) ymap.set(c, new Y.Map());
     const b = base ? K.shape(base) : rawModel(ymap, K);
+    for (const k of K.view || []) delete b[k];
     // (the new objects' ids: a participant's own, unique in the structure)
     if (client !== null && K.ownIds) {
       const tag = Number(client).toString(36);

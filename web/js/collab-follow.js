@@ -37,6 +37,7 @@ import { selectionOfDoc, showPeerSelection } from './collab-select-draw.js';
 import { selectionAt } from '/core/collab-select.js';
 import { openReport } from './collab-runs.js';
 import { reportPath } from '/core/collab-runs.js';
+import { keepWireStyles } from './collab-wire-view.js';
 
 const TRACK_MS = 300, ARRIVE_MS = 20_000;
 let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
@@ -249,6 +250,8 @@ async function track() {
     keepBound(fol.bound, S.docs, fol.session.doc.getMap('files'), p => !!d0(p) && api.shown(p));
     // (an editor's drawings edited live, #3183: a merged model shown once it passes the import gate, as any file, #3361)
     keepDrawingsBound(fol.drawn, S.docs, fol.session.doc, editsDrawingHere, { say: text => app.log(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
+    // (the wires' style of its schematics and circuits: this participant's own, remembered for this project, #4239)
+    if (S.project?.name === collab.project) keepWireStyles(S.docs, { owner: collab.owner, project: collab.project });
     const here = docPath(S.active);
     fol.session.setView(here ? { path: here, line: S.active?.editor?.getCursor?.().line ?? null, ch: S.active?.editor?.getCursor?.().ch ?? null, sel: selectionOfDoc(S.active) } : null);
     const peers = fol.session.peers();

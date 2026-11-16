@@ -23,7 +23,8 @@ import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { projectDoc, publishProject, sharedPath, docProject, docFile, gatedDocFile, watchDoc, editFile, editablePath, gateEdit } from '../core/collab-doc.js';
 import { isTrusted, markEditedByEditor } from '../core/trust.js';
 import { relayConfig } from './toolchain.js';
-import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, putDrawing, pruneDrawing, revertDrawing } from '../core/collab-model.js';
+import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, putDrawing, pruneDrawing, revertDrawing, withView, viewFields, drawingKind } from '../core/collab-model.js';
+import { wireStyleOf } from '../core/wire-style.js';
 import { checkDrawing } from './mcp-check.js';
 import { shareRoom, followRoom } from '../core/collab-client.js';
 import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-link.js';
@@ -131,7 +132,7 @@ function drawingWrites(name, doc, owner, warn, bases) {
       const r = liveDrawing(path) && fs.existsSync(file) ? drawingModel(doc, path) : null;
       if (!r) { undo = true; continue; }
       if (r.dropped.length) pruneDrawing(doc, path);
-      const text = drawingText(path, r.model);
+      const text = drawingText(path, withView(path, r.model, bases.get(path)));   // (the owner's own wires' style kept, #4239)
       if (sameDrawing(text, bases.get(path))) continue;
       let gated;
       try { gated = gateEdit(path, text); } catch (e) { warn(`${path}: an editor's change not written: ${e.reason || e.message}`); revertDrawing(doc, path, bases); continue; }
@@ -260,7 +261,7 @@ export const COLLAB_TOOLS = [
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
       name: STR('The name the owner sees (default: "MCP agent").'),
-      write: { type: 'object', description: 'With an editor\'s link (…#edit=…): a text file\'s new text, merged into the shared project as this participant\'s edit (HDL, constraints, C / C++, notes); or a state diagram\'s (.fsm.json), a truth table\'s (.bool.json), an ASM chart\'s (.asm.json), a Petri net\'s (.pn.json) or a schematic\'s (.sch.json) new JSON, merged with the others\' changes per object (a state, a transition, an output and its cells, a box, a link, a place, an arc, a symbol, a wire) and per field (its Check given after the merge, but a truth table\'s and a schematic\'s: check_syntax). Other drawings: not.', properties: { path: STR('The file.'), text: STR('Its new text.') }, required: ['path', 'text'], additionalProperties: false },
+      write: { type: 'object', description: 'With an editor\'s link (…#edit=…): a text file\'s new text, merged into the shared project as this participant\'s edit (HDL, constraints, C / C++, notes); or a state diagram\'s (.fsm.json), a truth table\'s (.bool.json), an ASM chart\'s (.asm.json), a Petri net\'s (.pn.json) or a schematic\'s (.sch.json) new JSON, merged with the others\' changes per object (a state, a transition, an output and its cells, a box, a link, a place, an arc, a symbol, a wire) and per field (its wires\' style left out, each participant\'s own, #4239) (its Check given after the merge, but a truth table\'s and a schematic\'s: check_syntax). Other drawings: not.', properties: { path: STR('The file.'), text: STR('Its new text.') }, required: ['path', 'text'], additionalProperties: false },
       stop: { type: 'boolean', description: 'Stop following it.' },
       keep: { type: 'boolean', description: 'With stop, or once following ended (the owner stopped sharing, the connection lost for good): keep a copy of the project as the room has it (its files, its drawings as merged), a project of the workspace under a free name, imported and untrusted as the interface\'s Keep a Copy does (#4198); then left.' },
     }, required: ['link'], additionalProperties: false },
@@ -305,9 +306,10 @@ export const COLLAB_TOOLS = [
         for (let t = 0; t < 40 && !session.owner(); t++) await new Promise(r => setTimeout(r, 25));
         follows.set(slot, cur = { session, link });
       }
+      let wrote = null;
       if (write !== undefined) {
         if (!cur.session.editor) throw toolError('write: this link follows only (an editor\'s link, …#edit=…, writes)');
-        try { writeShared(cur.session.doc, String(write.path), String(write.text)); } catch (e) { throw toolError(`write: ${e.message}`); }
+        try { wrote = writeShared(cur.session.doc, String(write.path), String(write.text)); } catch (e) { throw toolError(`write: ${e.message}`); }
         await cur.session.flush();
       }
       const { project, owner, fileTree } = docProject(cur.session.doc);
@@ -317,7 +319,7 @@ export const COLLAB_TOOLS = [
       if (path !== undefined) {
         // (through the import gate, as the interface's follower reads it, #3361; a drawing edited live: as merged, #3183)
         const live = liveDrawing(String(path)) ? drawingModel(cur.session.doc, String(path)) : null;
-        const g = live ? gatedText(String(path), drawingText(String(path), live.model)) : gatedDocFile(cur.session.doc, String(path));
+        const g = live ? gatedText(String(path), drawingText(String(path), withView(String(path), live.model, docFile(cur.session.doc, String(path))))) : gatedDocFile(cur.session.doc, String(path));
         if (g.reason) throw toolError(`${path}: not shown: ${g.reason}`);
         text = g.text;
         if (text === null) throw toolError(`'${path}' is not a file of the shared project (${fileTree.join(', ')})`);
@@ -333,7 +335,7 @@ export const COLLAB_TOOLS = [
         ...runLines(cur.session.activity('runs')),
         ...simLines(cur.session.activity('sim')),
         ...emuLines(cur.session.activity('emu')),
-        ...(write !== undefined ? [`Wrote ${write.path} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`] : []),
+        ...(write !== undefined ? [`Wrote ${write.path} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`, ...(wrote ? [wrote] : [])] : []),
         ...(text !== null ? [`${path}:`, text] : []),
         ...(check ? check.lines : []),
       ];
@@ -384,9 +386,10 @@ export async function sharedRun(name, { steps, ok, warnings = [], lines = [] }) 
 }
 
 // an editor's write (#3182, #3183): a text file's text (core/collab-doc.js editFile), or a drawing's JSON merged
-// into its structure as this participant's edit (its new objects' ids its own), what it leaves dangling pruned
+// into its structure as this participant's edit (its new objects' ids its own), what it leaves dangling pruned; a note
+// of what it left out (its view settings, #4239), or null
 function writeShared(doc, path, text) {
-  if (!liveDrawing(path)) { editFile(doc, path, text); return; }
+  if (!liveDrawing(path)) { editFile(doc, path, text); return null; }
   if (!drawingModel(doc, path)) throw new Error(`${path}: not a drawing of the project that an editor can change`);
   let m;
   try { m = JSON.parse(text); } catch { throw new Error(`${path}: not a drawing's JSON`); }
@@ -394,6 +397,11 @@ function writeShared(doc, path, text) {
   gateEdit(path, text);
   putDrawing(doc, path, m, { client: doc.clientID });
   pruneDrawing(doc, path);
+  // (how it is seen, the wires' style, #4239: each participant's own, never sent; said when it differs from the file's)
+  const dflt = drawingKind(path) === 'circ' ? 'direct' : undefined;
+  const file = wireStyleOf(withView(path, {}, docFile(doc, path)), dflt);
+  if (!viewFields(path).includes('wireStyle') || !('wireStyle' in m) || wireStyleOf(m, dflt) === file) return null;
+  return `${path}: its wires' style (${m.wireStyle}) left out: how each participant sees the drawing, not shared (the owner's file keeps ${file}).`;
 }
 // a text through the import gate, as gatedDocFile gives it
 function gatedText(path, text) {

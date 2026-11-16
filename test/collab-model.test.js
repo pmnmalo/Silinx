@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as Y from 'yjs';
-import { putDrawing, drawingModel, pruneDrawing, syncDrawings, drawingPathsOf, drawingKind, drawingObjects, dropDrawing, DRAWING_OBJECTS_MAX } from '../core/collab-model.js';
+import { putDrawing, drawingModel, pruneDrawing, syncDrawings, drawingPathsOf, drawingKind, drawingObjects, dropDrawing, DRAWING_OBJECTS_MAX, withView } from '../core/collab-model.js';
 import { projectDoc, publishProject, docTooLarge, FOLLOW_LIMITS } from '../core/collab-doc.js';
 import { newFsm, normalizeFsm, generateFsm, validateFsm } from '../core/fsm.js';
 import { normalizeTable, reshapeTable, generateTableHdl, truthTableFromModule, validateTable } from '../core/logic.js';
@@ -461,7 +461,9 @@ test('a schematic put and read back: the same document, normalized, its keys in 
     const m = normalizeDoc(JSON.parse(fs.readFileSync(new URL(f, dir), 'utf8')));
     const d = new Y.Doc();
     putDrawing(d, `src/${f}`, m);
-    assert.equal(canonical(drawingModel(d, `src/${f}`).model), canonical(m), f);
+    // (its wires' style left out of the structure, its file's put back as the owner's writes do, #4239)
+    assert.equal('wireStyle' in drawingModel(d, `src/${f}`).model, false, f);
+    assert.equal(canonical(withView(`src/${f}`, drawingModel(d, `src/${f}`).model, m)), canonical(m), f);
   }
 });
 
