@@ -60,7 +60,7 @@ const FOLDS = process.platform === 'darwin' || process.platform === 'win32';
 // a folder's files as a zip's entries ([{ path, data }], its paths relative to dir), the hidden ones left out (an
 // import takes none), and those skip(rel) leaves out (a file's or a folder's path); at most the zip's limits
 // (core/zip.js ZIP_LIMITS) and MAX_FILES files
-async function folderEntries(dir, skip = () => false) {
+export async function folderEntries(dir, skip = () => false) {
   const { ZIP_LIMITS } = await import('../core/zip.js');
   const out = [];
   let total = 0;

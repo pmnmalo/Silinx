@@ -13,7 +13,7 @@
 export const isTrusted = pj => pj?.trusted !== false;
 
 // where an untrusted project came from, as its messages say it (pj: its description, #2981)
-const ORIGINS = { mcp: 'was made through the MCP server (by an assistant)', editor: 'was changed by an editor of its shared link' };
+const ORIGINS = { mcp: 'was made through the MCP server (by an assistant)', editor: 'was changed by an editor of its shared link', merge: 'had a contribution merged into it (Merge Contribution)' };
 const origin = pj => ORIGINS[pj?.madeBy] || 'came from outside (imported)';
 
 /** The refusal of `what` (Xilinx ISE, programming the board…) for an untrusted project. */
@@ -31,3 +31,7 @@ export const markMadeByMcp = pj => ({ ...pj, trusted: false, madeBy: 'mcp' });
 /** A shared project's description once an editor of its link changes a file of it (#3355): untrusted, changed by an
  *  editor; one untrusted already kept as it is (who made it said as before). */
 export const markEditedByEditor = pj => (isTrusted(pj) ? { ...pj, trusted: false, madeBy: 'editor' } : pj);
+
+/** A project's description once a contribution's files are merged into it (#4206): untrusted, a merge's; one untrusted
+ *  already kept as it is (who made it said as before). */
+export const markMerged = pj => (isTrusted(pj) ? { ...pj, trusted: false, madeBy: 'merge' } : pj);
