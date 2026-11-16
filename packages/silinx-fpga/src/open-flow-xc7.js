@@ -198,6 +198,11 @@ export function xc7TimingText(timing, part, seeds = null) {
   return out.join('\n');
 }
 
+/** nextpnr's arguments for Place & Route (its files: chipdb.bin, netlist.json, design.xdc when xdc; out: routed.fasm,
+ *  report.json), as the flow runs it and as scripts/xc7-timing-vivado.mjs runs it again for nextpnr's placement (#3803). */
+export const xc7ParArgs = ({ part, router, seed, xdc }) => ['--device', part, '--chipdb', 'chipdb.bin', '--json', 'netlist.json', '-o', 'fasm=routed.fasm',
+  '--report', 'report.json', '--router', router, '--seed', String(seed || 1), '--timing-allow-fail', ...(xdc ? ['-o', 'xdc=design.xdc'] : [])];
+
 function mountXc7(ctx) {
   const { io, spec, log, report, top, ms, now, constraints, netlistText, StepError } = ctx;
   const part = spec.part;
@@ -223,12 +228,12 @@ function mountXc7(ctx) {
     return timing;
   };
 
-  // one placement and routing with nextpnr's seed (run: nextpnr's run, in this thread or apart): { seed, lines, out, nreport,
-  // fmax } (fmax: the slowest clock's, nextpnr's estimate; null with no clock), or { seed, lines, error }
+  // one placement and routing with nextpnr's seed (run: nextpnr's run, in this thread or apart; args: its arguments of a
+  // seed): { seed, lines, out, nreport, fmax } (fmax: the slowest clock's, nextpnr's estimate; null with no clock), or { seed, lines, error }
   const placeRoute = async (run, seed, args, files, clockPorts) => {
     const lines = [];
     try {
-      const out = await run([...args, '--seed', String(seed)], files, l => lines.push(l));
+      const out = await run(args(seed), files, l => lines.push(l));
       const nr = { ...JSON.parse(text(out['report.json'])), clockPorts };   // (the clocks' ports, to name them)
       return { seed, lines, out, nreport: nr, fmax: xc7Timing(nr, clockPorts)?.maxFreqMHz ?? null };
     } catch (error) { return { seed, lines, error }; }
@@ -244,8 +249,7 @@ function mountXc7(ctx) {
     const router = nextpnr.router || 'router1';
     let netlist;
     try { netlist = xc7BscanCells(netlistText()); } catch (e) { throw new StepError(e.message, [], ''); }
-    const args = ['--device', part, '--chipdb', 'chipdb.bin', '--json', 'netlist.json', '-o', 'fasm=routed.fasm', '--report', 'report.json',
-      '--router', router, '--timing-allow-fail', ...(xdc.text ? ['-o', 'xdc=design.xdc'] : [])];
+    const args = seed => xc7ParArgs({ part, router, seed, xdc: !!xdc.text });
     const files = { 'chipdb.bin': chipdb, 'netlist.json': netlist.text, ...(xdc.text && { 'design.xdc': xdc.text }) };
     // the best of 3 seeds (#3825, Process Properties): each placed and routed, apart and at once where nextpnr's io can
     // (the local server's), else one after another; the best Fmax kept, and only its warnings said
