@@ -553,6 +553,13 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
     owner.publish('emu', { docs: { 'emulator:top': { inputs: [true, false, true], powered: true, running: true, speed: 'real' }, 'emulator:../x': { inputs: [] } } });
     // (#4002 part 3: an open simulation)
     owner.publish('sim', { docs: { 'isim:tb': { now: 1000000, stim: null, forces: [], view: { rows: [{ kind: 'sig', path: 'tb.a', radix: 'default', expanded: false }, { kind: 'sig', path: 'tb.y', radix: 'hex', expanded: false }], cursor: 250000, markers: [], t0: 0, scale: 1000, fit: true, curInst: 'tb' } } } });
+    // (#4244: a state diagram's Try it and a schematic's, as web/js/collab-try.js sends them; a document that is no
+    // drawing's left out)
+    owner.publish('try', { docs: {
+      'fsm:src/ctl.fsm.json': { kind: 'fsm', sum: { state: 'WAIT', steps: 3, inputs: { go: '1' }, outputs: { y: '01' } }, snap: { state: 's1', inputs: { go: 1 }, cycle: 3, trace: [] } },
+      'sch:src/top.sch.json': { kind: 'sch', sum: { state: null, steps: 2, inputs: { sw: '0101' }, outputs: { led: '10' } }, run: 'r1', base: {}, n: 2, ops: [['set', 'P1', { $n: '5' }], ['cycles', ['P3'], 4]] },
+      'file:src/top.vhd': { kind: 'fsm', sum: {} },
+    } });
     const link = followLink(`${base}/`, owner.room, owner.key);
     const f = await ok('follow_project', { link, name: 'Bot' });
     assert.deepEqual(f.data.ownerActivity, {
@@ -562,18 +569,25 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
       runs: null,
       sim: { docs: { 'isim:tb': { now: 1000000, stim: null, forces: [], view: { rows: [{ kind: 'sig', path: 'tb.a', radix: 'default', expanded: false }, { kind: 'sig', path: 'tb.y', radix: 'hex', expanded: false }], cursor: 250000, markers: [], t0: 0, scale: 1000, fit: true, curInst: 'tb' } } } },
       emu: { docs: { 'emulator:top': { inputs: [true, false, true], powered: true, running: true, speed: 'real' } } },
+      try: {
+        'fsm:src/ctl.fsm.json': { kind: 'fsm', state: 'WAIT', steps: 3, inputs: { go: '1' }, outputs: { y: '01' } },
+        'sch:src/top.sch.json': { kind: 'sch', state: null, steps: 2, inputs: { sw: '0101' }, outputs: { led: '10' } },
+      },
     });
     assert.equal(f.text, ["Following Ana's project 'act' (read only).", 'Files: src/top.vhd', 'In it:\nAna (owner)',
       'The owner is in the Simulate task, the Simulation view, the design page.', 'Their open documents: file:src/top.vhd, isim:tb (in front).',
       'Selected in their Design pane: m:tb.', 'Their simulation tb: run to 1000 ns, the cursor at 250 ns, 2 signal(s) shown.',
-      'Their Board Emulator top: running at real time, 2 of 3 switches and buttons on.'].join('\n'));
+      'Their Board Emulator top: running at real time, 2 of 3 switches and buttons on.',
+      'Their Try it of the state diagram src/ctl.fsm.json: state WAIT; 3 step(s); inputs go = 1; outputs y = 01.',
+      'Their Try it of the schematic src/top.sch.json: 2 step(s); inputs sw = 0101; outputs led = 10.'].join('\n'));
     // (as it changes; a value that is no view left out)
     owner.publish('ui', encodeUi({ open: ['file:src/top.vhd'], active: 'file:src/top.vhd', page: 'files', view: 'impl', split: null }));
     owner.publish('design', 'not one');
     owner.publish('sim', { docs: [] });
     owner.publish('emu', null);
+    owner.publish('try', { docs: null });
     const g = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerActivity?.view?.view === 'impl' && r; }, 'the activity changed');
-    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null, runs: null, sim: null, emu: null });
+    assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null, runs: null, sim: null, emu: null, try: null });
     assert.match(g.text, /\nThe owner is in the Implementation view, the files page\.\nTheir open documents: file:src\/top\.vhd \(in front\)\.$/);
     await ok('follow_project', { link, stop: true });
   } finally { await owner.close(); }

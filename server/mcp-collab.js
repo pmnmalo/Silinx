@@ -37,6 +37,7 @@ import { runsActivity, followedRuns, runLines, redact, redactAll } from '../core
 import { ownerSecrets } from './owner-secrets.js';
 import { followedSim, simLines } from '../core/collab-sim.js';
 import { followedEmu, emuLines } from '../core/collab-emu.js';
+import { followedTry, tryLines } from '../core/collab-try.js';
 
 export const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
@@ -256,7 +257,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave; keep (with stop, or once following ended: the owner stopped sharing, the connection lost for good) keeps a copy of the project as it was in the workspace, untrusted, as the interface\'s Keep a Copy (#4198). Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; their Try it (ownerActivity.try, #4244: each document\'s with its Try it open, a state diagram\'s, an ASM chart\'s, a Petri net\'s, a schematic\'s or a circuit\'s: its state, the steps taken, its inputs and outputs); a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave; keep (with stop, or once following ended: the owner stopped sharing, the connection lost for good) keeps a copy of the project as it was in the workspace, untrusted, as the interface\'s Keep a Copy (#4198). Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
@@ -335,6 +336,7 @@ export const COLLAB_TOOLS = [
         ...runLines(cur.session.activity('runs')),
         ...simLines(cur.session.activity('sim')),
         ...emuLines(cur.session.activity('emu')),
+        ...tryLines(cur.session.activity('try')),
         ...(write !== undefined ? [`Wrote ${write.path} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`, ...(wrote ? [wrote] : [])] : []),
         ...(text !== null ? [`${path}:`, text] : []),
         ...(check ? check.lines : []),
@@ -363,8 +365,10 @@ async function keptCopy(doc) {
 function ownerActivity(session) {
   const ui = followedUi(session.activity('ui')), design = followedDesign(session.activity('design')), runs = followedRuns(session.activity('runs'));
   const sim = followedSim(session.activity('sim')), emu = followedEmu(session.activity('emu'));
-  if (!ui && !design && !runs && !sim && !emu) return null;
-  return { view: ui?.view ?? null, layout: ui?.layout ?? null, design, runs, sim, emu };
+  // (its Try it, #4244: each document's, as it shows it: its state, steps, inputs and outputs)
+  const t = followedTry(session.activity('try')), tries = t ? Object.fromEntries(Object.entries(t.docs).map(([id, d]) => [id, { kind: d.kind, ...d.sum }])) : null;
+  if (!ui && !design && !runs && !sim && !emu && !tries) return null;
+  return { view: ui?.view ?? null, layout: ui?.layout ?? null, design, runs, sim, emu, try: tries };
 }
 
 /** A run of run_process on a project this MCP server shares (#4002): sent to its followers as a page sends its runs

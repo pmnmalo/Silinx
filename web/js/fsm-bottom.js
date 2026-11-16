@@ -8,8 +8,9 @@ import { simInputControls, simTraceTable } from './sim-panel.js';
 import { showCondText } from '/core/expr-notation.js';
 import { drawBarsIn } from './overbar.js';
 import { getNotation, onNotation } from './notation.js';
+import { inputValues, traceRows } from '/core/collab-try.js';
 
-/** { renderPanel, resetSim, stopRun, togglePanel } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values). */
+/** { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values). */
 export function mountFsmBottom(ctx) {
   const {
     opts, M, bottom, btn, destroyed, diags, fit, flash, panel, panelBody, panelTitle, panelTools, render, sim,
@@ -153,5 +154,28 @@ export function mountFsmBottom(ctx) {
     simTrace.replaceChildren(...simTraceTable(sim().trace));
   }
 
-  return { renderPanel, resetSim, stopRun, togglePanel };
+  // ---------------------------------------------------------------------------- shared live (#4244)
+  // (web/js/collab-try.js: the owner's Try it as its state, its follower's put as the owner's)
+  const bits = (v, w) => (w === 1 ? String(v) : Number(v).toString(2).padStart(w, '0'));
+  function tryState() {
+    if (panel() !== 'sim' || !sim()) return null;
+    const s = sim();
+    let outputs = {};
+    try { const r = stepFsm(M(), s.state, s.inputs); outputs = Object.fromEntries(M().outputs.map((o) => [o.name, bits(r.outputs[o.name], o.width)])); } catch { /* errors: none shown */ }
+    const sum = { state: stateById(s.state)?.name ?? null, steps: s.cycle, outputs, inputs: Object.fromEntries(M().inputs.map((i) => [i.name, bits(s.inputs[i.name] ?? 0, i.width)])) };
+    return { kind: 'fsm', sum, snap: { state: s.state, inputs: { ...s.inputs }, cycle: s.cycle, trace: traceRows(s.trace) } };
+  }
+  function setTryState(o) {
+    if (!o) { if (panel() === 'sim') togglePanel('sim'); return; }
+    if (panel() !== 'sim') togglePanel('sim');
+    stopRun();
+    const s = sim(), sn = o.snap || {};
+    if (typeof sn.state === 'string' && stateById(sn.state)) s.state = sn.state;
+    Object.assign(s.inputs, inputValues(sn.inputs, M().inputs.map((i) => i.name)));
+    s.cycle = Number.isSafeInteger(sn.cycle) && sn.cycle >= 0 ? sn.cycle : 0;
+    s.trace = traceRows(sn.trace);
+    render(); renderPanel();
+  }
+
+  return { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState };
 }

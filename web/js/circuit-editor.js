@@ -20,6 +20,7 @@ import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js';
 import { mountCircuitOptions } from './circuit-options.js';
+import { adoptOps, recordCircuit, replayCircuit, replayPlan, tryOps } from '/core/collab-try.js';
 import { mountCircuitClip } from './circuit-clip.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
@@ -38,7 +39,7 @@ export function mountCircuitEditor(container, opts = {}) {
   let sel = null;                       // { kind: 'part' | 'wire', id }
   let tool = 'select';                  // select | wire | place:<type>
   let view = { tx: 60, ty: 120, k: 1 };
-  let drag = null, draft = null, ghost = null, sim = null, fitted = false, destroyed = false;
+  let drag = null, draft = null, ghost = null, sim = null, steps = null, fitted = false, destroyed = false;
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
@@ -121,6 +122,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
     stopTicks();
     sim = createCircuitSim(M);
+    recordCircuit(sim, steps = tryOps(null));   // (its steps, as live sharing sends them, #4244)
     runSim();
     // (a clock source flips its level every half period, in real time; the simulated time moves on by as much)
     ticks = M.parts.filter((p) => p.type === 'clock').map((p) => setInterval(() => {
@@ -137,7 +139,26 @@ export function mountCircuitEditor(container, opts = {}) {
     for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
     render();
   }
-  function stopSim() { stopTicks(); sim = null; render(); }
+  function stopSim() { stopTicks(); sim = null; steps = null; render(); }
+  // (shared live, #4244, web/js/collab-try.js: the owner's Try it as its steps, replayed by its follower, its own clocks
+  // stopped: the owner's ticks are among them)
+  function tryState() {
+    if (!sim || !steps) return null;
+    const lv = (v) => (Array.isArray(v) ? v.map((x) => (x ? '1' : '0')).join('') : v ? '1' : '0');
+    return { kind: 'circ', sum: { state: null, steps: steps.n, inputs: Object.fromEntries(Object.entries(sim.inputs()).slice(0, 64).map(([k, v]) => [k, lv(v)])), outputs: sim.outputs() }, ...steps.wire() };
+  }
+  function setTryState(o, applied) {
+    if (!o) { if (sim) stopSim(); return null; }
+    if (!sim) startSim();
+    if (!sim) return null;
+    stopTicks();
+    const plan = replayPlan(applied, o);
+    if (plan.restart) recordCircuit(sim = createCircuitSim(M), steps = tryOps(null));
+    replayCircuit(sim, plan.ops);
+    adoptOps(steps, o);
+    runSim();
+    return plan;
+  }
   function toggleSim() { if (sim) stopSim(); else startSim(); }
 
   // ---------------------------------------------------------------- drawing
@@ -285,7 +306,7 @@ export function mountCircuitEditor(container, opts = {}) {
   problems();
   requestAnimationFrame(initialFit);
   return {
-    getModel: () => clone(M), wireStyle, setWireStyle, ownWireStyle,   // (a shared project's participant's own, #4239)
+    getModel: () => clone(M), wireStyle, setWireStyle, ownWireStyle, tryState, setTryState,   // (a shared project's participant's own wires' style, #4239; its Try it shared live, #4244)
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },

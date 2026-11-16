@@ -195,7 +195,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
   const delBtn = toolIcon('delete', 'del', 'Delete selection (Del)', () => deleteSelection(), 'asm-danger');
 
   // (Simulate, #2880: its panel below the canvas, as the state diagram's)
-  const simBtn = toolWide('sim', 'Try it', 'Step through the chart: set the inputs, apply clock edges, see the state, the path taken and the outputs', () => simApi.toggle(), 'asm-sim-btn');
+  const simBtn = toolWide('sim', 'Try it', 'Step through the chart: set the inputs, apply clock edges, see the state, the path taken and the outputs', () => simApi.toggle(), 'asm-sim-btn try-btn');
   const simApi = mountAsmSim({
     M: () => M, btn, render: () => render(), layout: () => applyView(), destroyed: () => destroyed, simBtn,
     onErrors: (diags) => { onMessage?.('The chart cannot be simulated: correct its errors first'); onValidate?.(diags); },
@@ -425,7 +425,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     // the box a problem is about selected and shown (a click on its line in the console)
     focusNode: (id) => focusNode(id),
     // the Try it panel ('sim', a design link's view=try opens it, #2881) or none (null)
-    showPanel: (p) => simApi.show(p === 'sim'),
+    showPanel: (p) => simApi.show(p === 'sim'), tryState: () => simApi.tryState(), setTryState: (o) => simApi.setTryState(o),   // (its Try it shared live, #4244)
     get panel() { return simApi.isOpen() ? 'sim' : null; },
     fit,
     print,

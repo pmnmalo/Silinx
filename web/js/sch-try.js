@@ -5,8 +5,10 @@
 import { h } from './dom.js';
 import { symbolBox } from '/core/schdoc.js';
 import { KEYS, clone } from './sch-editor.js';
+import { adoptOps, recordLive, replayLive, replayPlan, tryOps } from '/core/collab-try.js';
+import { fmtValue } from '/core/schlive.js';
 
-/** { enterSim, leaveSim, showDiags } of mountSchEditor (destroyed(), doc(), genLang(), lastDiags(), live(), liveStarting(), modules(), nl(), sel(), tool(), view(), wireDraw(): its current values). */
+/** { enterSim, leaveSim, showDiags, tryState, setTryState } of mountSchEditor (destroyed(), doc(), genLang(), lastDiags(), live(), liveStarting(), modules(), nl(), sel(), tool(), view(), wireDraw(): its current values). */
 export function mountSchTry(ctx) {
   const {
     container, opts, canSim, canvas, centerOn, contentG, destroyed, doc, finishWire, flash, genLang, hint,
@@ -17,6 +19,7 @@ export function mountSchTry(ctx) {
   // ---------------- live simulation (Logisim style): web/js/sch-live.js on core/schlive.js
   // the inputs' values of the last Try it of this schematic, for the next one (#2106): in memory, while it is open
   let lastInputs = null;
+  let steps = null;   // (its steps since it started, as live sharing sends them, #4244: core/collab-try.js tryOps)
   const toCanvas = pt => ({ x: pt.x * view().s + view().tx, y: pt.y * view().s + view().ty });
   async function enterSim() {
     if (live() || liveStarting() || !canSim || destroyed()) return;
@@ -39,6 +42,8 @@ export function mountSchTry(ctx) {
         return;
       }
       setLive(res.ctl);
+      steps = tryOps(res.ctl.inputValues());
+      recordLive(res.ctl.live, steps);
       sel().clear();
       hint.hidden = true;
       container.classList.add('sim-mode');
@@ -55,6 +60,7 @@ export function mountSchTry(ctx) {
     lastInputs = live().inputValues();
     live().destroy();
     setLive(null);
+    steps = null;
     container.classList.remove('sim-mode');
     render(); renderProps();
     opts.onSimulate?.(false);
@@ -75,5 +81,24 @@ export function mountSchTry(ctx) {
     render(); renderProps();
   }
 
-  return { enterSim, leaveSim, showDiags };
+  // ---------------- shared live (#4244, web/js/collab-try.js): the owner's Try it as its steps, replayed by its follower
+  function tryState() {
+    if (!live() || !steps) return null;
+    const L = live().live, val = id => { const v = L.portValue(id); return v == null ? '?' : fmtValue(v, 'dec'); };
+    const ports = dir => Object.fromEntries(doc().ports.filter(p => dir.includes(p.dir)).slice(0, 64).map(p => [p.name, val(p.id)]));
+    return { kind: 'sch', sum: { state: null, steps: steps.n, inputs: ports(['in', 'inout']), outputs: ports(['out']) }, ...steps.wire() };
+  }
+  async function setTryState(o, applied) {
+    if (!o) { leaveSim(); return null; }
+    if (!live()) await enterSim();
+    if (!live()) return null;
+    const plan = replayPlan(applied, o), L = live().live;
+    if (plan.restart) { L.reset({ inputs: true }); L.restoreInputs(o.base); }
+    replayLive(L, plan.ops);
+    if (steps) adoptOps(steps, o);
+    live().update(true);
+    return plan;
+  }
+
+  return { enterSim, leaveSim, showDiags, tryState, setTryState };
 }

@@ -182,7 +182,7 @@ export function mountPetriEditor(container, opts = {}) {
   });
 
   // ---------------------------------------------------------------- simulation and analysis panel (petri-sim.js)
-  const { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel } = mountPetriSim({
+  const { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel, tryState, setTryState } = mountPetriSim({
     M: () => M, bottom, btn, destroyed: () => destroyed, panel: () => panel, panelBody, panelTitle, panelTools, render,
     sim: () => sim, status, tabBtns, transOf, setSim: (v) => { sim = v; }, setPanel: (v) => { panel = v; }
   });
@@ -300,7 +300,7 @@ export function mountPetriEditor(container, opts = {}) {
   render();
   requestAnimationFrame(initialFit);
   return {
-    getModel: () => clone(M),
+    getModel: () => clone(M), tryState, setTryState,   // (its Try it shared live, #4244)
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizePetri(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) resetSim(false); render(); },

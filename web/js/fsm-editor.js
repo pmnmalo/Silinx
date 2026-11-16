@@ -130,7 +130,7 @@ export function mountFsmEditor(container, opts = {}) {
   const checkBtn = toolWide('check', 'Check', 'Check the diagram for errors and warnings', () => { runValidate(); opts.onCheck?.(diags.slice()); }, 'fsm-check');
   const tabBtns = {
     tables: btn('Tables', 'State table, transition table and encoded transition table', () => togglePanel('tables'), 'fsm-tab-btn'),
-    sim: toolWide('sim', 'Try it', 'Step through the diagram: set the inputs, apply clock edges, see the state and the outputs', () => { togglePanel('sim'); setTool(tool); }, 'fsm-tab-btn'),
+    sim: toolWide('sim', 'Try it', 'Step through the diagram: set the inputs, apply clock edges, see the state and the outputs', () => { togglePanel('sim'); setTool(tool); }, 'fsm-tab-btn try-btn'),
   };
   const linkHost = h('span', { class: 'fsm-link' });
   const tools = fsmTools(btn, (t) => setTool(t)); let tool = 'select';
@@ -323,7 +323,7 @@ export function mountFsmEditor(container, opts = {}) {
   }
 
   // ---------------------------------------------------------------------------- bottom panel (fsm-bottom.js)
-  const { renderPanel, resetSim, stopRun, togglePanel } = mountFsmBottom({
+  const { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } = mountFsmBottom({
     opts, M: () => M, bottom, btn, destroyed: () => destroyed, diags: () => diags, fit, flash, panel: () => panel,
     panelBody, panelTitle, panelTools, render, sim: () => sim, stateById, updateToolbar,
     setPanel: (v) => { panel = v; }, setSim: (v) => { sim = v; }, closeInline, renderSide: () => renderSide()
@@ -353,7 +353,7 @@ export function mountFsmEditor(container, opts = {}) {
 
   return {
     getModel: () => clone(M), sharedSelection: () => (sel ? { items: [`${sel.type}:${sel.id}`] } : null),   // (its selection, as live sharing sends it, #4192)
-    undo: () => undo(), redo: () => redo(),
+    undo: () => undo(), redo: () => redo(), tryState, setTryState,   // (its Try it shared live, #4244)
     canUndo: () => !locked() && (shared ? shared.canUndo() : hi > 0), canRedo: () => !locked() && (shared ? shared.canRedo() : hi < hist.length - 1),
     // Edit ▸ Cut / Copy / Paste / Delete (#677): a state (a transition: Delete only)
     copy: () => copySel(), cut: () => copySel(true), paste: () => paste(), deleteSelection: () => deleteSelection(),

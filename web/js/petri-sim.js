@@ -4,8 +4,9 @@
 import { analyzePetri } from '/core/petri-analysis.js';
 import { clockStep, enabledTransitions, fire, initialMarking, isDeadlock, outputsOf } from '/core/petri.js';
 import { h } from './ui.js';
+import { inputValues } from '/core/collab-try.js';
 
-/** { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel } of mountPetriEditor (M(), destroyed(), panel(), sim(): its current values). */
+/** { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel, tryState, setTryState } of mountPetriEditor (M(), destroyed(), panel(), sim(): its current values). */
 export function mountPetriSim(ctx) {
   const {
     M, bottom, btn, destroyed, panel, panelBody, panelTitle, panelTools, render, sim, status, tabBtns, transOf, setSim,
@@ -29,7 +30,7 @@ export function mountPetriSim(ctx) {
     if (panel() !== 'sim' && sim()) { if (sim().timer) clearInterval(sim().timer); setSim(null); }
     render();
   }
-  const say = (msg) => { sim().log.unshift(msg); sim().log.length = Math.min(sim().log.length, 50); };
+  const say = (msg) => { sim().log.unshift(msg); sim().log.length = Math.min(sim().log.length, 50); sim().steps = (sim().steps || 0) + 1; };
   function fireOne(tid) {
     const ok = enabledTransitions(M(), sim().marking, envOf()).includes(tid);
     if (!ok) { status(`${transOf(tid)?.name}: not enabled${enabledTransitions(M(), sim().marking, null).includes(tid) ? ' (its guard is false)' : ''}`); return; }
@@ -102,6 +103,28 @@ export function mountPetriSim(ctx) {
       h('ol', { class: 'pn-log' }, ...sim().log.map(l => h('li', {}, l)))].filter(Boolean));
   }
 
+  // ---------------------------------------------------------------- shared live (#4244)
+  // (web/js/collab-try.js: the owner's Try it as its state, its follower's put as the owner's)
+  function tryState() {
+    if (panel() !== 'sim' || !sim()) return null;
+    const s = sim(), outs = outputsOf(M(), s.marking, s.fired);
+    const sum = { state: M().places.map(p => `${p.name}=${s.marking[p.id] || 0}`).join(' '), steps: s.steps || 0,
+      inputs: Object.fromEntries(M().inputs.map(i => [i.name, String(s.inputs[i.name] ?? 0)])), outputs: Object.fromEntries(Object.entries(outs).map(([k, v]) => [k, v.toString(2)])) };
+    return { kind: 'pn', sum, snap: { marking: { ...s.marking }, fired: [...s.fired], inputs: { ...s.inputs }, log: [...s.log], steps: s.steps || 0 } };
+  }
+  function setTryState(o) {
+    if (!o) { if (panel() === 'sim') togglePanel('sim'); return; }
+    if (panel() !== 'sim') togglePanel('sim');
+    const s = sim(), sn = o.snap || {}, m = sn.marking && typeof sn.marking === 'object' ? sn.marking : {};
+    if (s.timer) { clearInterval(s.timer); s.timer = null; }
+    s.marking = Object.fromEntries(M().places.map(p => [p.id, Number.isSafeInteger(m[p.id]) && m[p.id] >= 0 ? m[p.id] : 0]));
+    s.fired = Array.isArray(sn.fired) ? sn.fired.filter(id => transOf(id)) : [];
+    s.inputs = { ...s.inputs, ...inputValues(sn.inputs, M().inputs.map(i => i.name)) };
+    s.log = Array.isArray(sn.log) ? sn.log.filter(l => typeof l === 'string').slice(0, 50).map(l => l.slice(0, 256)) : [];
+    s.steps = Number.isSafeInteger(sn.steps) && sn.steps >= 0 ? sn.steps : 0;
+    render();
+  }
+
   // ---------------------------------------------------------------- analysis (#188)
   let anCache = null;
   function analysis() {
@@ -144,5 +167,5 @@ export function mountPetriSim(ctx) {
         h('ol', { start: '0', class: 'mono' }, ...a.states.slice(0, 200).map(st => h('li', {}, mark(st.marking), st.succ.length ? `  →  ${st.succ.map(e => `${transOf(e.transition)?.name}: M${e.to}`).join(', ')}` : '  (deadlock)')))));
   }
 
-  return { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel };
+  return { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel, tryState, setTryState };
 }

@@ -298,7 +298,7 @@ export function mountSchEditor(container, opts = {}) {
   });
 
   // ---------------- live simulation (Logisim style): web/js/sch-live.js on core/schlive.js (sch-try.js)
-  const { enterSim, leaveSim, showDiags } = mountSchTry({
+  const { enterSim, leaveSim, showDiags, tryState, setTryState } = mountSchTry({
     container, opts, canSim, canvas, centerOn, contentG, destroyed: () => destroyed, doc: () => doc,
     finishWire, flash: (...a) => flash(...a), genLang: () => genLang, hint, lastDiags: () => lastDiags,
     live: () => live, liveStarting: () => liveStarting, modules: () => modules, nl: () => nl, render, renderProps,
@@ -379,7 +379,7 @@ export function mountSchEditor(container, opts = {}) {
     openSelected,
     fit,
     print,
-    simulate: enterSim,
+    simulate: enterSim, tryState, setTryState,   // (its Try it shared live, #4244)
     stopSimulation: leaveSim,
     get simulating() { return !!live; },
     get liveSim() { return live?.live || null; },

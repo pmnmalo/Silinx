@@ -7,6 +7,7 @@
 import { h } from './dom.js';
 import { asmResetActive, asmSimEval, asmSimReset, asmSimStep, prepareAsmSim } from '/core/asm-sim.js';
 import { simInputControls, simTraceTable } from './sim-panel.js';
+import { inputValues, traceRows } from '/core/collab-try.js';
 
 const RATES = [1, 2, 5, 10];   // clock edges per second of Run
 
@@ -170,5 +171,33 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
     };
   }
 
-  return { panel, isOpen: () => open, toggle: () => show(!open), show, refresh, view, stop, step };
+  // ------------------------------------------------------------------------ shared live (#4244)
+  // (web/js/collab-try.js: the owner's Try it as its state, its follower's put as the owner's; the past for ↶ Back the
+  // follower's own, from then)
+  function tryState() {
+    if (!open || !sim || !cur) return null;
+    const m = M(), name = (id) => m.nodes.find((n) => n.id === id)?.name ?? null;
+    const sum = { state: name(cur.state), steps: sim.cycle,
+      inputs: Object.fromEntries([...m.inputs, { name: m.reset.name, width: 1 }].map((i) => [i.name, text(BigInt(sim.inputs[i.name] ?? 0), i.width)])),
+      outputs: Object.fromEntries([...m.outputs.map((o) => [o.name, text(cur.outputs[o.name], o.width)]), ...prep.regs.map((r) => [r.name, text(sim.st.regs[r.name], r.width)])]) };
+    return { kind: 'asm', sum, snap: { st: sim.st, inputs: { ...sim.inputs }, cycle: sim.cycle, rate: sim.rate, trace: traceRows(sim.trace) } };
+  }
+  function setTryState(o) {
+    if (!o) { show(false); return; }
+    if (!open) show(true);
+    if (!open) return;
+    stop();
+    const sn = o.snap || {}, st = sn.st && typeof sn.st === 'object' ? sn.st : {}, r0 = asmSimReset(prep);
+    const bigs = (v, base) => Object.fromEntries(Object.entries(base).map(([k, x]) => [k, typeof v?.[k] === 'bigint' ? v[k] : x]));
+    const state = M().nodes.some((n) => n.id === st.state && n.type === 'state') ? st.state : r0.state;
+    sim.st = { state, regs: bigs(st.regs, r0.regs), meta: bigs(st.meta, r0.meta), sync: bigs(st.sync, r0.sync) };
+    Object.assign(sim.inputs, inputValues(sn.inputs, [...M().inputs.map((i) => i.name), M().reset.name]));
+    sim.cycle = Number.isSafeInteger(sn.cycle) && sn.cycle >= 0 ? sn.cycle : 0;
+    if (RATES.includes(sn.rate)) sim.rate = sn.rate;
+    sim.trace = traceRows(sn.trace);
+    sim.past = [];
+    update();
+  }
+
+  return { panel, isOpen: () => open, toggle: () => show(!open), show, refresh, view, stop, step, tryState, setTryState };
 }

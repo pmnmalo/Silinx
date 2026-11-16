@@ -30,7 +30,8 @@ import { following, followNotice, editsDrawingHere } from './collab-state.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
-const followOnly = (path = null) => (following() && !(path && editsDrawingHere(path)) ? { readOnly: true, banner: followNotice() } : {});
+// (its Try it there, a schematic's too: the owner's followed, or the follower's own, #4244)
+const followOnly = (path = null) => (following() && !(path && editsDrawingHere(path)) ? { readOnly: true, simulate: true, banner: followNotice() } : {});
 
 // ---- ASM
 export async function openAsm(path) {

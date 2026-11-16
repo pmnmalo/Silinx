@@ -25,7 +25,7 @@ export function mountPetriToolbar(ctx) {
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
   const checkBtn = toolWide('check', 'Check', 'Check the net for errors and warnings (its token game too: transitions that never fire, deadlocks)', () => opts.onCheck?.(check()), 'pn-check');
   const tabBtns = {
-    sim: toolWide('sim', 'Try it', 'Play the net: fire transitions, clock steps, run', () => togglePanel('sim'), 'pn-tab-btn'),
+    sim: toolWide('sim', 'Try it', 'Play the net: fire transitions, clock steps, run', () => togglePanel('sim'), 'pn-tab-btn try-btn'),
     analysis: btn('∑ Analysis', 'Reachable markings, bounds, deadlocks, liveness, invariants', () => togglePanel('analysis'), 'pn-tab-btn'),
   };
   const pnmlIn = h('input', { type: 'file', accept: '.pnml,.xml', hidden: true });
