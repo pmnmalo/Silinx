@@ -1,0 +1,169 @@
+(kicad_symbol_lib
+	(version 20231120)
+	(generator "silinx_test")
+	(symbol "74LS00"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "SN74LS00N" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "https://example.org/sn74ls00.pdf" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "quad 2-input NAND gate" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "ki_fp_filters" "DIP*W7.62mm* SO14*" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "74LS00_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "1"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "2"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "3"))
+		)
+		(symbol "74LS00_2_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "4"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "5"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "6"))
+		)
+		(symbol "74LS00_3_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "9"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "10"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "8"))
+		)
+		(symbol "74LS00_4_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "12"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "13"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "11"))
+		)
+		(symbol "74LS00_5_0"
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VCC") (number "14"))
+			(pin power_in line (at 0 0 0) (length 2.54) (name "GND") (number "7"))
+		)
+	)
+	(symbol "74HC00"
+		(extends "74LS00")
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "74HC00" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "https://example.org/74hc00.pdf" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "quad 2-input NAND gate, HCMOS" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+	)
+	(symbol "MYNAND"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "MYNAND" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Silinx.Model" "7400" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Silinx.Family" "cmos" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "MYNAND_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "1"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "2"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "3"))
+		)
+		(symbol "MYNAND_2_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "4"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "5"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "6"))
+		)
+		(symbol "MYNAND_3_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "9"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "10"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "8"))
+		)
+		(symbol "MYNAND_4_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "12"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "13"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "11"))
+		)
+		(symbol "MYNAND_5_0"
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VCC") (number "14"))
+			(pin power_in line (at 0 0 0) (length 2.54) (name "GND") (number "7"))
+		)
+	)
+	(symbol "CD4011"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "CD4011BE" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "quad 2-input NAND gate, CMOS" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "CD4011_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "1"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "2"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "3"))
+		)
+		(symbol "CD4011_2_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "5"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "6"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "4"))
+		)
+		(symbol "CD4011_3_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "8"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "9"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "10"))
+		)
+		(symbol "CD4011_4_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "12"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "13"))
+			(pin output inverted (at 0 0 0) (length 2.54) (name "") (number "11"))
+		)
+		(symbol "CD4011_5_0"
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VDD") (number "14"))
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VSS") (number "7"))
+		)
+	)
+	(symbol "74LS04"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "74LS04" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "ki_fp_filters" "DIP*W7.62mm*" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "74LS04_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "1"))
+			(pin input line (at 0 0 0) (length 2.54) (name "") (number "2"))
+		)
+		(symbol "74LS04_2_0"
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VCC") (number "14"))
+			(pin power_in line (at 0 0 0) (length 2.54) (name "GND") (number "7"))
+		)
+	)
+	(symbol "SENSOR"
+		(property "Reference" "M" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "TEST-SENSOR" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "a sensor module" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "SENSOR_1_1"
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VCC") (number "1"))
+			(pin power_in line (at 0 0 0) (length 2.54) (name "GND") (number "2"))
+			(pin tri_state line (at 0 0 0) (length 2.54) (name "OUT") (number "3"))
+			(pin input line (at 0 0 0) (length 2.54) (name "~{EN}") (number "4"))
+		)
+	)
+	(symbol "MODULE"
+		(property "Reference" "M" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "TEST-MODULE" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "imported:Module_1x04" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "MODULE_1_1"
+			(pin passive line (at 0 0 0) (length 2.54) (name "A") (number "1"))
+			(pin bidirectional line (at 0 0 0) (length 2.54) (name "B") (number "2"))
+			(pin output line (at 0 0 0) (length 2.54) (name "C") (number "3"))
+			(pin input line (at 0 0 0) (length 2.54) (name "D") (number "4"))
+		)
+	)
+	(symbol "SMDCHIP"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "TEST-SMD" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "SMDCHIP_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "A") (number "1"))
+		)
+	)
+	(symbol "NOFP"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "TEST-NOFP" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "NOFP_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "A") (number "1"))
+		)
+	)
+	(symbol "BADMODEL"
+		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "TEST-BAD" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Silinx.Model" "led" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "BADMODEL_1_1"
+			(pin input line (at 0 0 0) (length 2.54) (name "A") (number "1"))
+		)
+	)
+	(symbol "VCC"
+		(power)
+		(property "Reference" "#PWR" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "VCC" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(symbol "VCC_1_1"
+			(pin power_in line (at 0 0 0) (length 2.54) (name "VCC") (number "1"))
+		)
+	)
+)

@@ -11,6 +11,7 @@ import { circuitPartModules } from './circuit-modules.js';
 import { attachSymbols, isSymbolFile, modulesFromLibrary } from './schdoc.js';
 import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlPath, modelLanguage, viewHdl } from './view-hdl.js';
 import { isDesignOnly } from './project-kind.js';
+import { useProjectParts } from './circuit-kicad.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
@@ -48,6 +49,8 @@ async function linkOf(P, name, path) {
   const tree = await P.fileTree(name);
   const target = m.generatedFile;
   if (!tree.includes(target) || !(pj.files || []).some(f => f.path === target) || (pj.excluded || []).includes(path)) return null;
+  // (a circuit's parts: the project's KiCad parts too, #4280)
+  if (kindOf(path) === 'circ') await useProjectParts(P, name);
   return { m, target, tree };
 }
 

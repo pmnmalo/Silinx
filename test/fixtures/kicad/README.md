@@ -4,3 +4,8 @@ Written by hand for Silinx's KiCad readers (core/sexpr.js, core/kicad-sym.js, co
 (https://dev-docs.kicad.org/en/file-formats/): no file of KiCad's or of a manufacturer's library is copied here. The
 symbols and footprints are made up (TEST7400, TEST74HC00…) with the structures KiCad's files have: units, a power unit,
 De Morgan bodies, derived symbols, KiCad 6's and KiCad 8's syntax, a `.kicad_symdir` folder, through-hole and SMD pads.
+
+`project/parts/` is a project's parts folder (#4280): `ttl.kicad_sym` has real part numbers (SN74LS00N, 74HC00,
+CD4011BE) with their datasheets' pinouts (written from the datasheets, not from Silinx's library), a symbol whose
+pins are not its part number's, Silinx's own properties (Silinx.Model, Silinx.Family), modules on pin headers and the
+symbols that are no part (an SMD one, one with no footprint); `imported.pretty/` a footprint.

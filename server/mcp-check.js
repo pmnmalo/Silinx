@@ -41,6 +41,8 @@ export const CHECK_TOOLS = [
       let m;
       const text = await projectText(name, file, `no drawing '${file}' in the project '${name}'`);
       try { m = JSON.parse(text); } catch { throw toolError(`no drawing '${file}' in the project '${name}'`); }
+      // (a circuit's parts: the project's KiCad parts too, #4280)
+      if (/\.circ\.json$/i.test(file)) await (await import('../core/circuit-kicad.js')).useProjectParts(await import('./projects.js'), name);
       const { lines, errors, warnings } = await checkDrawing(file, m);
       return { text: lines.join('\n'), data: { project: name, file, ok: !errors.length, errors, warnings }, isError: false,
         untrusted: errors.length || warnings.length ? 'the drawing\'s problems, which quote its names' : undefined };

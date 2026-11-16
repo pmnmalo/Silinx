@@ -108,6 +108,7 @@ export const SIMULATE_DRAWING_TOOLS = [
       try { m = JSON.parse(text); } catch { throw toolError(`no drawing '${file}' in the project '${name}'`); }
       const base = file.split('/').pop();
       if (circ) {
+        await (await import('../core/circuit-kicad.js')).useProjectParts(await import('./projects.js'), name);   // (#4280)
         const { simulateCircuitFile } = await import('./mcp-simulate-circuit.js');
         const { lines, rows, warnings } = await simulateCircuitFile(m, cycles, base);
         return { text: clip(lines.join('\n')), data: { project: name, file, kind: 'circuit', warnings, steps: rows }, isError: false };

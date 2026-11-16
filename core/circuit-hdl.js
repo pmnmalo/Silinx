@@ -15,6 +15,8 @@ import { pinPort, icPorts, vhdlIc, verilogIc, vhdlDigital, verilogDigital } from
 import { digitalTop } from './circuit-digital.js';
 
 const entityOf = (m, d) => `${m.name}_${d.chip.toLowerCase()}`;
+// (a part as the header names it: an IC's chip; a project's KiCad part's number, #4280, and its library IC's)
+const partLabel = (d) => (!d.kicad ? d.chip : d.behaves ? `${d.kicad.value}, as the ${d.chip}` : `${d.kicad.value}, drawn only`);
 const isSupply = (q) => q.name === '+' || q.name === '-';
 const WHILE = { level: 'on', momentary: 'pressed', clock: 'high' };
 
@@ -27,14 +29,15 @@ export function generateCircuit(model, lang, { source } = {}) {
   const V = lang === 'vhdl', c = V ? '--' : '//';
   const ports = circuitPorts(m);
   const plan = netPlan(m, V, ports);
-  const types = [...new Set(m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic'))];
+  // (each entity once: a project's KiCad part that behaves as a library IC is that IC's, #4280)
+  const types = [...new Map(m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic').map((d) => [entityOf(m, d).toLowerCase(), d])).values()];
 
   const L = [];
   const rule = c + '='.repeat(78);
   L.push(rule, `${c} ${V ? 'Entity' : 'Module'}      : ${m.name}`, `${c} Description : the digital circuit ${source || `${m.name}.circ.json`}`);
   if (m.description) for (const line of m.description.split(/\r?\n/)) L.push(`${c}               ${line}`.trimEnd());
   L.push(`${c} Generator   : Silinx circuit editor (edit the circuit, not this file)`,
-    `${c} Parts       : ${m.parts.filter((p) => partDef(p.type)?.kind === 'ic').map((p) => `${p.id} (${partDef(p.type).chip})`).join(', ') || 'no ICs'}`,
+    `${c} Parts       : ${m.parts.filter((p) => ['ic', 'drawn'].includes(partDef(p.type)?.kind)).map((p) => `${p.id} (${partLabel(partDef(p.type))})`).join(', ') || 'no ICs'}`,
     `${c} Inputs      : ${ports.inputs.map((x) => `${x.name} (${x.part}, '1' while ${WHILE[x.kind]})`).join(', ') || 'none'}`,
     `${c} Outputs     : ${ports.outputs.map((x) => `${x.name} (${x.part}, '1' while lit)`).join(', ') || 'none'}`, rule, '');
   // two models in one file (#3901): the simulation's (behind `synthesis translate_off`: the simulator reads it, a synthesis

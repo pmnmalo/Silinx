@@ -125,6 +125,31 @@ clock read through the IC's input, a latch, a clock used as data) silenced with 
 at 5 V: 4069 45 ns, 4001, 4011, 4071, 4081 60 ns, 4030 100 ns, 4070 140 ns), one value for both edges. The delays are inertial (a pulse shorter than the delay does not get through),
 as VHDL's `after` and Verilog's `#` on a continuous assignment, so the live simulation and the generated HDL agree.
 
+## KiCad parts
+
+A project's own parts are KiCad's (#4278, #4280): the symbol libraries of its `parts/` folder (a `.kicad_sym`, or a
+`.kicad_symdir` folder of one symbol per file, KiCad 6 to 10) and their footprints (`parts/<library>.pretty/*.kicad_mod`).
+They stay as KiCad wrote them, with their licence and authors: Silinx stores nothing converted and reads them again
+(`core/kicad-sym.js`, `core/kicad-mod.js`, `core/circuit-kicad.js`) whenever it reads a circuit. A part is named by its
+library and its symbol: `parts/ttl.kicad_sym#74HC00`. KiCad's parts have no logic, so a symbol gets its behaviour this way:
+
+- **as an IC of the library**, when its part number is one (SN74LS00N, 74HC00, DM7400N, CD4011BE, HEF4071BP: the 7400,
+  the 4011; the 74 and 4000 series' prefixes, families' letters and packages' suffixes) or its property `Silinx.Model`
+  names one, and its pins are that IC's, pin by pin (numbers and directions; a passive or unspecified pin fits any). It
+  is then that IC (its logic, its delay, its pins' places, its HDL entity), under its own number and datasheet.
+  `Silinx.Family` (`ttl`, `cmos`) makes its inputs read as that family's (an entity of its own in the HDL). A part
+  number whose pins are not the IC's is drawn only, with a warning;
+- **drawn only**, any other symbol: its pins on its footprint's places (a `.kicad_mod` of the project, else its
+  footprint's name: `DIP-14_W7.62mm`, `PinHeader_1x04_P2.54mm`; else a `DIP*W7.62mm*` filter), turned as a DIP lies on
+  the breadboard. It is not simulated and its pins drive nothing: Check Circuit warns *U2 (TEST-SENSOR) is drawn only: it is
+  not simulated and its pins drive nothing*, and its HDL leaves it out.
+
+A symbol with no through-hole footprint (an SMD package, none at all) is no part, its reason said; `Silinx.Footprint`
+gives it one its file has not (its breakout's pin header). `Silinx.Source`, `Silinx.Author` and `Silinx.Licence` say
+where it comes from. These properties are written in the symbols themselves (`core/kicad-edit.js`, only their text
+changes), which KiCad keeps: the file stays valid in both programs. A power symbol (VCC, GND) is no part: a circuit has
+its supply. Silinx's own library stays as it is, in JavaScript: its behaviour is code (#4290).
+
 ## The wiring
 
 - **A wire** goes from a grid point to a grid point, with bends; its colour is the student's (red, black, and others).
@@ -260,7 +285,11 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 - `new_source` type `circuit` (a half breadboard and its supply, or the wizard's assembly: `template` boards, io,
   seg7, counter, adder, gates, comparator, decoder, shift or flipflop (an unknown one, `empty` too, refused naming the
   valid ones, #4161), `template_params`: a chip, a display, a clock's frequency);
-- `circuit_parts`: the library, a part's pins, its logic and delay; one part's Part info too;
+- `circuit_parts`: the library, a part's pins, its logic and delay; one part's Part info too; with a project, its KiCad
+  parts (as which IC, or drawn only; their file, source and licence) and the symbols that are no part, with why;
+- `import_part`: a `.kicad_sym` or `.kicad_mod` of the exchange folder copied into the project's `parts/`, the Silinx
+  properties given written in its symbols (a symbol's model, family and footprint; its source, author and licence),
+  each symbol said;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,
   rotate (a breadboard with its parts; `keep: false`, the editor's Keep connections off), copy (the editor's Copy and
   Paste), wires (direct, orthogonal or curved, the editor's ⋮ Wires), delete, wire two points (holes, pins `U1.3`, `S1.out`, grid points; in the circuit's style, routed when orthogonal, #4083), set a part's label (a bus's bit,

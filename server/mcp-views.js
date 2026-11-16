@@ -55,6 +55,7 @@ async function relatedView({ project: name, path: rel, view, notation }) {
   if (view === 'schematic') {
     // (a circuit's, #4069: its HDL in its logic form drawn)
     if (/\.circ\.json$/i.test(rel)) {
+      await (await import('../core/circuit-kicad.js')).useProjectParts(P, name);   // (the project's KiCad parts, #4280)
       const r = await (await import('../core/circuit-sch.js')).circuitSchematic(json(text, rel));
       if (r.errors) throw toolError(`the schematic of ${base(rel)}: ${r.errors.join('; ')}`);
       return reply(name, rel, view, r.doc);

@@ -28,6 +28,8 @@ export function checkCircuit(m, nets = circuitNets(m)) {
   for (const p of m.parts) {
     const d = partDef(p.type);
     if (d?.kind === 'ic') checkIc(p, d, nets, driven, say);
+    // (a project's KiCad part with no logic, #4280: drawn only)
+    else if (d?.kind === 'drawn') say.warn(`${p.id} (${d.kicad.value}) is drawn only: it is not simulated and its pins drive nothing`, part(p.id));
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
   // a wire's end that joins nothing
@@ -115,8 +117,8 @@ function checkIc(p, d, nets, { driven, via, typeOf }, { err, warn }) {
   const pv = d.pins.find((q) => q.dir === 'vcc'), pg = d.pins.find((q) => q.dir === 'gnd');
   const vcc = netSupply(netOf(pv.n)), gnd = netSupply(netOf(pg.n));
   const V = `its ${pv.name} (pin ${pv.n})`, G = `its ${pg.name} (pin ${pg.n})`;
-  if (vcc.gnd && gnd.vcc) err(`${p.id} (${d.type}) is powered the wrong way round: ${V} on the supply's − and ${G} on its +`, part(p.id));
-  else if (!vcc.vcc || !gnd.gnd) err(`${p.id} (${d.type}) is not powered: ${[!vcc.vcc && `${V} is not on the supply's +`, !gnd.gnd && `${G} is not on the supply's −`].filter(Boolean).join(' and ')}`, part(p.id));
+  if (vcc.gnd && gnd.vcc) err(`${p.id} (${d.kicad?.value ?? d.type}) is powered the wrong way round: ${V} on the supply's − and ${G} on its +`, part(p.id));
+  else if (!vcc.vcc || !gnd.gnd) err(`${p.id} (${d.kicad?.value ?? d.type}) is not powered: ${[!vcc.vcc && `${V} is not on the supply's +`, !gnd.gnd && `${G} is not on the supply's −`].filter(Boolean).join(' and ')}`, part(p.id));
   const pins = partPins(p);
   const reads = d.family === 'ttl' ? 'a 74LS input reads high' : 'a CMOS input reads X';
   // (an MSI IC's inputs all, once one of its outputs is used)

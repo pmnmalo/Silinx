@@ -25,7 +25,7 @@ const ABOUT = {
 };
 /** A pin's role by its direction. */
 export const PIN_ROLES = { in: 'input', out: 'output', oc: 'open-collector output', vcc: 'supply +5 V', gnd: 'supply GND', nc: 'not connected',
-  pass: 'contact', weak: 'weak output', probe: 'tip' };
+  pass: 'contact', weak: 'weak output', probe: 'tip', none: 'not simulated' };
 const FAMILY = { ttl: '74LS (TTL)', cmos: '4000 (CMOS)' };
 const FN = { and: 'AND', or: 'OR', nand: 'NAND', nor: 'NOR', xor: 'XOR', not: 'NOT', buf: 'BUF' };
 
@@ -48,6 +48,11 @@ export function partInfo(type) {
     if (d.oc || d.pins.some((p) => p.dir === 'oc')) info.openCollector = true;   // (a 7447's outputs, its flag not set)
     info.openInput = readInput(d.family, 'Z');
   }
-  info.pins = d.pins.map((p) => ({ n: p.n, name: p.name, role: PIN_ROLES[p.dir] ?? p.dir }));
+  // (a project's KiCad part, #4280: its file, its symbol and its source; the library part it behaves as, or none)
+  if (d.kicad) {
+    info.kicad = d.kicad;
+    info.about = d.behaves ? `Behaves as the ${d.behaves} of the library (by its ${d.how}).` : 'Drawn only: not simulated, its pins drive nothing.';
+  }
+  info.pins = d.pins.map((p) => ({ n: p.n, name: p.name, role: PIN_ROLES[p.dir] ?? p.dir, ...(p.kicadType ? { kicadType: p.kicadType } : {}) }));
   return info;
 }

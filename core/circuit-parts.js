@@ -82,8 +82,18 @@ export const WIRE_COLORS = ['red', 'black', 'blue', 'green', 'yellow', 'orange',
 /** A clock's frequency (Hz): the live simulation's, in real time. */
 export const CLOCK_HZ = { min: 0.1, max: 50, default: 1 };
 
-/** A part's description by its type, or null. */
-export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : null);
+// ------------------------------------------------------------------ the project's own parts
+// a project's KiCad parts (#4280, core/circuit-kicad.js): the symbols of its parts/ folder, each a part whose type is
+// its file's path and its name (parts/gates.kicad_sym#74HC00); set (all of them at once) when one of its circuits is
+// read, so that the editor, the simulation, the checks and the HDL find them as the library's
+let PROJECT_PARTS = new Map();
+/** The project's own parts set, the previous project's dropped: `defs` their descriptions (core/circuit-kicad.js). */
+export function setProjectParts(defs = []) { PROJECT_PARTS = new Map(defs.map((d) => [d.type, d])); }
+/** The project's own parts set by setProjectParts. */
+export const projectParts = () => [...PROJECT_PARTS.values()];
+
+/** A part's description by its type (the library's, or one of the project's own parts), or null. */
+export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : PROJECT_PARTS.get(String(type)) ?? null);
 
 /** A pin's place unturned (dx, dy) turned by `rot` quarter turns clockwise. */
 function turn(dx, dy, rot = 0) {
@@ -126,10 +136,12 @@ export const readInput = (family, level) => (level === 'Z' ? (family === 'ttl' ?
 
 /** The library as the MCP server's circuit_parts lists it: each part's type, title, pins and delay. */
 export function partsList() {
-  return PART_ORDER.map((t) => PARTS[t]).map((d) => ({
+  return [...PART_ORDER.map((t) => PARTS[t]), ...projectParts()].map((d) => ({
     type: d.type, title: d.title, kind: d.kind, ...(d.chip ? { chip: d.chip, family: d.family, tpd: d.tpd, ...(d.oc ? { openCollector: true } : {}) } : {}),
     pins: d.pins.map((p) => ({ n: p.n, name: p.name, dir: p.dir, dx: p.dx, dy: p.dy })),
     ...(d.gates ? { gates: d.gates.map((g) => `${g.fn} (${g.ins.join(', ')}) → ${g.out}`) } : {}),
     ...(d.model || d.seq ? { function: d.title } : {}),
+    // (a project's KiCad part: its file, its symbol, its source; the library part it behaves as, or none: drawn only)
+    ...(d.kicad ? { kicad: d.kicad, behavesAs: d.behaves ?? null } : {}),
   }));
 }

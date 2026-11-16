@@ -2,7 +2,8 @@
 // library: each part's pins, its logic and its delay, core/circuit-parts.js) and edit_circuit (parts added, moved,
 // turned, deleted, wired, their properties set, as the editor does: core/circuit-edit.js, the same checks and messages);
 // the circuit written as its editor saves it, its HDL file made again, its check's messages returned. Its Check is
-// check_drawing's, its simulation simulate_drawing's (server/mcp-simulate-circuit.js).
+// check_drawing's, its simulation simulate_drawing's (server/mcp-simulate-circuit.js). A project's KiCad parts (#4280,
+// core/circuit-kicad.js): import_part (server/mcp-kicad.js), and circuit_parts and edit_circuit with them.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 
@@ -46,21 +47,30 @@ export const CIRCUIT_TOOLS = [
   {
     name: 'circuit_parts', title: 'The parts of a digital circuit',
     description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, pull, output, probe, ic), its pins (number, name, direction: in, out, vcc, gnd, pass, weak, probe, oc, nc; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns). Given one part\'s type: its details too (info: what it does, an IC\'s family, package, supply pins, logic, delay, open-collector outputs, how an input left open reads; each pin\'s role), as the editor\'s Part info. A breadboard\'s holes: a1 to j30 (a full one\'s to j63; a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30 (a full one\'s to 63, split after 31).',
-    inputSchema: { type: 'object', properties: { type: STR('One part\'s type (7400, led…); default: every part.') }, additionalProperties: false },
+    inputSchema: { type: 'object', properties: { type: STR('One part\'s type (7400, led…, a project\'s KiCad part parts/<library>.kicad_sym#<symbol>); default: every part.'),
+      project: STR('A project whose own KiCad parts (its parts/ folder, import_part) are listed too, after the library\'s; default: the library\'s only.') }, additionalProperties: false },
     annotations: { readOnlyHint: true },
-    async run({ type } = {}) {
-      const { partsList } = await import('../core/circuit-parts.js');
+    async run({ type, project: name } = {}) {
+      const { partsList, setProjectParts } = await import('../core/circuit-parts.js');
+      let kicad = null;
+      if (name != null) { await readProject(name); kicad = await (await import('../core/circuit-kicad.js')).useProjectParts(P, name); } else setProjectParts([]);
       const all = partsList();
       const list = type == null ? all : all.filter((p) => p.type === String(type));
       if (!list.length) throw toolError(`no part '${type}' (the parts: ${all.map((p) => p.type).join(', ')})`);
-      const text = list.map((p) => `${p.type}: ${p.title}${p.chip ? ` (${p.chip}, ${p.tpd} ns)` : ''}${p.pins.length ? `; pins ${p.pins.map((q) => `${q.n} ${q.name} ${q.dir}`).join(', ')}` : ''}${p.gates ? `; gates ${p.gates.join('; ')}` : ''}`);
-      if (type == null) return { text: text.join('\n'), data: { parts: list } };
+      const as = (p) => (!p.kicad ? '' : p.behavesAs ? ` [KiCad ${p.kicad.value}, as the ${p.behavesAs}]` : ` [KiCad ${p.kicad.value}, drawn only]`);
+      const text = list.map((p) => `${p.type}: ${p.title}${as(p)}${p.chip ? ` (${p.chip}, ${p.tpd} ns)` : ''}${p.pins.length ? `; pins ${p.pins.map((q) => `${q.n} ${q.name} ${q.dir}`).join(', ')}` : ''}${p.gates ? `; gates ${p.gates.join('; ')}` : ''}`);
+      // (a project's symbols that are no part, and its libraries not read)
+      const more = kicad && type == null ? [...kicad.skipped.map((x) => `${x.type}: not a part: ${x.reason}`), ...kicad.notes.map((x) => `WARNING: ${x}`), ...kicad.errors.map((x) => `ERROR: ${x}`)] : [];
+      const extra = kicad ? { project: name, skipped: kicad.skipped, notes: kicad.notes, errors: kicad.errors } : {};
+      const untrusted = kicad?.defs.length || more.length ? 'the project\'s KiCad parts: their names and texts' : undefined;
+      if (type == null) return { text: [...text, ...more].join('\n'), data: { parts: list, ...extra }, untrusted };
       // (one part: its details too, as the editor's Part info, #4126)
       const info = (await import('../core/circuit-part-info.js')).partInfo(String(type));
-      const lines = [info.about, info.chip && `Chip ${info.chip}, ${info.family}, ${info.package}; supply ${info.power}`, ...(info.logic || []),
+      const k = info.kicad, src = k && [k.source && `from ${k.source}`, k.author && `by ${k.author}`, k.licence && `licence ${k.licence}`].filter(Boolean).join(', ');
+      const lines = [info.about, k && `KiCad symbol ${k.symbol} of ${k.library}${k.datasheet ? `; datasheet ${k.datasheet}` : ''}${src ? `; ${src}` : ''}`, info.chip && `Chip ${info.chip}, ${info.family}, ${info.package}; supply ${info.power}`, ...(info.logic || []),
         info.delay && `Typical delay ${info.delay} ns`, info.openCollector && 'Outputs: open collector', info.openInput && `An input left open reads ${info.openInput}`,
         `Pins: ${info.pins.map((q) => `${q.n} ${q.name} (${q.role})`).join(', ')}`].filter(Boolean);
-      return { text: [text[0], ...lines].join('\n'), data: { parts: list, info } };
+      return { text: [text[0], ...lines].join('\n'), data: { parts: list, info, ...extra }, untrusted };
     },
   },
   {
@@ -78,6 +88,7 @@ export const CIRCUIT_TOOLS = [
       const text = await projectText(name, rel, `no file '${rel}' in the project '${name}'`);
       const C = await import('../core/circuit.js');
       const E = await import('../core/circuit-edit.js');
+      await (await import('../core/circuit-kicad.js')).useProjectParts(P, name);   // (its KiCad parts, #4280)
       let m;
       try { m = C.normalizeCircuit(JSON.parse(text)); } catch (e) { throw toolError(`${rel}: ${e.message}`); }
       const lines = [];
