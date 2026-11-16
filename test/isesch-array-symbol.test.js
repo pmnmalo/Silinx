@@ -1,6 +1,7 @@
-// ISE's schematic and an arrayed instance or a module's symbol of its own (#3828): a 1-bit register's instance reg(3:0)
-// on 4-bit buses, drawn with the default symbol and with one of its own (Q on the left, D on the top, the clock at the
-// bottom), exported as ISE's schematic writes it (core/isesch-export.js: the block named reg(3:0), its 1-bit pins on
+// ISE's schematic and an arrayed instance or a module's symbol of its own (#3828): a 1-bit register's instance bits(3:0)
+// (not reg(3:0): a reserved word, which the export renames, #3870) on 4-bit buses, drawn with the default symbol and
+// with one of its own (Q on the left, D on the top, the clock at the bottom), exported as ISE's schematic writes it
+// (core/isesch-export.js: the block named bits(3:0), its 1-bit pins on
 // the buses; the .sym with the pins on their sides, the names of the top and bottom ones inside the body) and imported
 // back (core/isesch-nets.js, core/isesch-symbol.js): the instance arrayed again, its pins on their sides; its HDL
 // compiled, elaborated and simulated in VHDL and Verilog with no warnings; an ISE project's .sym as the module's
@@ -39,12 +40,12 @@ function sheet(lang, name, own) {
 const exported = (doc, m) => exportIseSch(doc, { modules: m, timestamp: '2026-11-14T00:00:00' });
 const symsOf = r => Object.fromEntries(r.files.filter(f => f.kind === 'sym').map(f => [f.path, f.text]));
 
-test('#3828 the export: reg(3:0) a block named with its range, its 1-bit pins on the buses; the .sym of a symbol of its own', () => {
-  const { doc, m } = sheet('vhdl', 'reg(3:0)', true);
+test('#3828 the export: bits(3:0) a block named with its range, its 1-bit pins on the buses; the .sym of a symbol of its own', () => {
+  const { doc, m } = sheet('vhdl', 'bits(3:0)', true);
   const r = exported(doc, m);
   assert.deepEqual(r.warnings, ["'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
-  assert.match(r.xml, /<block symbolname="reg1" name="reg\(3:0\)">\n {12}<blockpin signalname="q\(3:0\)" name="q" \/>\n {12}<blockpin signalname="ce" name="ce" \/>\n {12}<blockpin signalname="d\(3:0\)" name="d" \/>\n {12}<blockpin signalname="clk" name="c" \/>\n/);
-  assert.match(r.xml, /<instance x="\d+" y="\d+" name="reg\(3:0\)" orien="R0" \/>/);
+  assert.match(r.xml, /<block symbolname="reg1" name="bits\(3:0\)">\n {12}<blockpin signalname="q\(3:0\)" name="q" \/>\n {12}<blockpin signalname="ce" name="ce" \/>\n {12}<blockpin signalname="d\(3:0\)" name="d" \/>\n {12}<blockpin signalname="clk" name="c" \/>\n/);
+  assert.match(r.xml, /<instance x="\d+" y="\d+" name="bits\(3:0\)" orien="R0" \/>/);
   const sym = symsOf(r)['reg1.sym'];
   assert.deepEqual(parseIseSym(sym).pins, [{ name: 'q', dir: 'out', x: 0, y: -192 }, { name: 'ce', dir: 'in', x: 0, y: -128 }, { name: 'd', dir: 'in', x: 192, y: -320 }, { name: 'c', dir: 'in', x: 192, y: 0 }]);
   assert.deepEqual(iseSymbolRect(sym), { x: 64, y: -256, w: 256, h: 192 });
@@ -56,13 +57,13 @@ test('#3828 the export: reg(3:0) a block named with its range, its 1-bit pins on
 
 for (const lang of ['vhdl', 'verilog']) {
   for (const own of [false, true]) {
-    test(`#3828 ${lang}: reg(3:0)${own ? ' with a symbol of its own' : ''} exported to ISE and imported back: arrayed, its pins on their sides; simulated, no warnings`, () => {
-      const { doc, m } = sheet(lang, 'reg(3:0)', own);
+    test(`#3828 ${lang}: bits(3:0)${own ? ' with a symbol of its own' : ''} exported to ISE and imported back: arrayed, its pins on their sides; simulated, no warnings`, () => {
+      const { doc, m } = sheet(lang, 'bits(3:0)', own);
       const r = exported(doc, m);
       const im = importIseSch(r.xml, { modules: m, symbols: symsOf(r), name: 'top', lang });
       assert.deepEqual(im.warnings, []);
       const s = im.doc.symbols.find(x => x.type === 'module');
-      assert.equal(s.name, 'reg(3:0)');
+      assert.equal(s.name, 'bits(3:0)');
       assert.deepEqual(symbolPins(s, m).map(q => `${q.name}:${q.side}`), own ? ['q:W', 'ce:W', 'd:N', 'c:S'] : ['d:W', 'ce:W', 'c:W', 'q:E']);
       assert.deepEqual(s.params.layout ?? null, own ? { spacing: 20, width: null, height: null, title: 'top' } : null);
       // (the project's module with its symbol: the instance up to date)
@@ -70,7 +71,7 @@ for (const lang of ['vhdl', 'verilog']) {
       assert.deepEqual(nl.diagnostics.map(d => d.message), []);
       const g = generateHdl(im.doc, { lang, modules: m });
       assert.deepEqual(g.diagnostics, []);
-      assert.equal((g.code.match(lang === 'vhdl' ? /reg_\d : entity work\.reg1/g : /reg1 reg_\d \(/g) || []).length, 4);
+      assert.equal((g.code.match(lang === 'vhdl' ? /bits_\d : entity work\.reg1/g : /reg1 bits_\d \(/g) || []).length, 4);
       const ext = lang === 'vhdl' ? 'vhd' : 'v';
       const tb = lang === 'vhdl'
         ? 'library ieee; use ieee.std_logic_1164.all;\nentity tb is end tb;\narchitecture t of tb is\n  signal d, q : std_logic_vector(3 downto 0) := "0000"; signal c, ce : std_logic := \'0\';\nbegin\n  uut: entity work.top port map (d => d, ce => ce, clk => c, q => q);\n  process begin\n    d <= "1010"; ce <= \'1\'; wait for 5 ns; c <= \'1\'; wait for 5 ns; c <= \'0\';\n    report "q=" & std_logic\'image(q(3)) & std_logic\'image(q(2)) & std_logic\'image(q(1)) & std_logic\'image(q(0));\n    d <= "0110"; ce <= \'0\'; wait for 5 ns; c <= \'1\'; wait for 5 ns; c <= \'0\';\n    report "q=" & std_logic\'image(q(3)) & std_logic\'image(q(2)) & std_logic\'image(q(1)) & std_logic\'image(q(0));\n    wait;\n  end process;\nend t;\n'
@@ -110,7 +111,7 @@ test('#3828 iseSymbolLayout: the sides from the body, the order along them, the 
 });
 
 test('#3828 iseModuleSymbols: an ISE project\'s .sym drawn otherwise than by default as its module\'s .sym.json; kept when there', () => {
-  const { doc, m } = sheet('vhdl', 'reg(3:0)', true);
+  const { doc, m } = sheet('vhdl', 'bits(3:0)', true);
   const syms = symsOf(exported(doc, m));
   const sources = { 'src/reg1.vhd': HDL.vhdl[1] };
   const out = iseModuleSymbols(syms, sources);

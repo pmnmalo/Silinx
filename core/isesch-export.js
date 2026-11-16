@@ -13,6 +13,7 @@ import { primIseSymbol, primTimestamp } from './isesch-prims.js';
 import { pickOrigin, placeBlock, routeStubs, sheetRouter } from './isesch-route.js';
 import { escXml } from './escape.js';
 import { isIdent } from './ident.js';
+import { iseInstanceNames } from './isesch-instnames.js';
 
 const S_OUT = 16 / 5;                     // Silinx px -> ISE units (grid 10 -> 32, pin pitch 20 -> 64)
 const SHEET_SIZES = [[1760, 1360], [2720, 1760], [3520, 2720], [5440, 3520], [7040, 5440]];
@@ -285,6 +286,8 @@ export function exportIseSch(docIn, opts = {}) {
   const addExtra = (net, seg) => { let l = extraWires.get(net); if (!l) extraWires.set(net, l = []); l.push(seg); router.addSeg(net, ...seg); };
   const conn = net => (net && (net.endpoints.length > 1 || net.wires.length || net.labels.length || net.ports.length) ? net : null);
   const customs = new Map();      // lower name -> { name, sym, def, hdl }
+  // (an instance named with a reserved word written otherwise: ISE refuses it, #3870)
+  const instName = iseInstanceNames(doc.symbols.filter(s => !tapSyms.has(s.id)), warn);
   const hdlNames = new Set();
   for (const s of doc.symbols) {
     const def = symbolDef(s, modules);
@@ -363,7 +366,7 @@ export function exportIseSch(docIn, opts = {}) {
     if (cands.size) origin = pickOrigin(router, [...cands].sort((a, b) => b[1] - a[1]).map(c => c[0].split(',').map(Number)), own);
     else { const p0 = xform(s, def, 0, def.h); origin = [X(p0.x), X(p0.y)]; }
     placeBlock(router, origin, own);
-    instances.push(`        <instance x="${origin[0]}" y="${origin[1]}" name="${xesc(s.name)}" orien="${orien}" />`);
+    instances.push(`        <instance x="${origin[0]}" y="${origin[1]}" name="${xesc(instName.get(s.id))}" orien="${orien}" />`);
     const bp = [];
     for (const q of pinsSheet) {
       const ip = pinMap[q.name];
@@ -383,7 +386,7 @@ export function exportIseSch(docIn, opts = {}) {
     // (a device primitive's attributes, as ISE writes a block's: the generics of its HDL, #1694)
     const at = (info.attrs || []).flatMap(([k, v, vt]) => [`            <attr value="${xesc(v)}" name="${xesc(k)}">`, '                <trait verilog="all:0 dp:1nosynth wsynop:1 wsynth:1" />',
       '                <trait vhdl="all:0 gm:1nosynth wa:1 wd:1" />', `                <trait valuetype="${xesc(vt)}" />`, '            </attr>']);
-    blocks.push([`        <block symbolname="${xesc(iseName)}" name="${xesc(s.name)}">`, ...at, ...bp, '        </block>'].join('\n'));
+    blocks.push([`        <block symbolname="${xesc(iseName)}" name="${xesc(instName.get(s.id))}">`, ...at, ...bp, '        </block>'].join('\n'));
   }
 
   // (the wires from the ISE pins not where the Silinx pins are, routed once every block is placed, #1798)

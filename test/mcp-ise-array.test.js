@@ -2,7 +2,8 @@
 // #2674): a 4-bit register from a 1-bit one (place_instance reg(3:0)), its module's symbol edited (edit_symbol: Q on
 // the left, D on the top, the clock at the bottom) and the instance updated, exported as a Xilinx ISE project (its .sch,
 // the module's .sym with the pins on their sides; no .sym.json) and imported back: the instance arrayed, drawn with the
-// symbol, the module's .sym.json made from the .sym, nothing out of date, Check Syntax clean; and no warnings.
+// symbol, the module's .sym.json made from the .sym, nothing out of date, Check Syntax clean; and no warnings. Its name,
+// reg, a reserved word, which ISE's sch2hdl refuses: written as reg_1(3:0), said in a warning (#3870).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -30,7 +31,7 @@ const out = f => path.join(tmp, 'exchange', f);
 
 const REG = 'library ieee;\nuse ieee.std_logic_1164.all;\n\nentity reg1 is\n  port (d, ce, c : in std_logic; q : out std_logic);\nend entity reg1;\n\narchitecture rtl of reg1 is\nbegin\n  process (c) begin\n    if rising_edge(c) then\n      if ce = \'1\' then q <= d; end if;\n    end if;\n  end process;\nend architecture rtl;\n';
 
-test('#3828 export_project / import_project: reg(3:0) with its module\'s symbol of its own, to ISE and back', async () => {
+test('#3828 #3870 export_project / import_project: reg(3:0) with its module\'s symbol of its own, to ISE and back (as reg_1(3:0))', async () => {
   await ok('new_project', { name: 'arr' });
   await ok('write_file', { project: 'arr', path: 'src/reg1.vhd', text: REG });
   await ok('write_file', { project: 'arr', path: 'src/top.vhd', text: 'entity top is end top;\narchitecture a of top is begin end a;\n' });
@@ -48,9 +49,11 @@ test('#3828 export_project / import_project: reg(3:0) with its module\'s symbol 
   const x = await ok('export_project', { project: 'arr', path: out('arr.zip') });
   const entries = await readZip(fs.readFileSync(out('arr.zip')), NODE_CODEC);
   assert.deepEqual(entries.map(e => e.path).sort(), ['arr.xise', 'constraints/top.ucf', 'src/reg1.sym', 'src/reg1.vhd', 'src/top.sch', 'src/top.vhd']);
-  assert.deepEqual(x.data.warnings, ["src/top.sch: 'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
+  // (reg, a reserved word, written as reg_1: ISE's sch2hdl refuses it, #3870)
+  assert.deepEqual(x.data.warnings, ["src/top.sch: instance 'reg(3:0)' written as 'reg_1(3:0)': 'reg' is a reserved word of Verilog, which ISE's schematic refuses as a block's name",
+    "src/top.sch: 'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
   const text = name => new TextDecoder().decode(entries.find(e => e.path === name).data);
-  assert.match(text('src/top.sch'), /<block symbolname="reg1" name="reg\(3:0\)">/);
+  assert.match(text('src/top.sch'), /<block symbolname="reg1" name="reg_1\(3:0\)">/);
   assert.match(text('src/reg1.sym'), /<pin polarity="Input" x="\d+" y="-\d+" name="d" \/>/);
 
   // and back: arrayed, drawn with the symbol, its .sym.json made, nothing out of date
@@ -60,9 +63,9 @@ test('#3828 export_project / import_project: reg(3:0) with its module\'s symbol 
   assert.deepEqual(sym.pins, [{ name: 'q', side: 'W' }, { name: 'ce', side: 'W' }, { name: 'd', side: 'N' }, { name: 'c', side: 'S' }]);
   const back = JSON.parse((await ok('read_file', { project: 'arr_x', path: 'src/top.sch.json' })).text);
   const s = back.symbols.find(q => q.type === 'module');
-  assert.deepEqual([s.name, s.params.ports.map(q => `${q.name}:${q.side}`)], ['reg(3:0)', ['q:W', 'ce:W', 'd:N', 'c:S']]);
+  assert.deepEqual([s.name, s.params.ports.map(q => `${q.name}:${q.side}`)], ['reg_1(3:0)', ['q:W', 'ce:W', 'd:N', 'c:S']]);
   assert.equal((await ok('update_symbols', { project: 'arr_x', path: 'src/top.sch.json' })).text, 'src/top.sch.json: no symbol out of date');
   const hdl = (await ok('read_file', { project: 'arr_x', path: 'src/top.vhd' })).text;
-  assert.deepEqual(hdl.match(/reg_\d : entity work\.reg1/g), ['reg_3 : entity work.reg1', 'reg_2 : entity work.reg1', 'reg_1 : entity work.reg1', 'reg_0 : entity work.reg1']);
+  assert.deepEqual(hdl.match(/reg_1_\d : entity work\.reg1/g), ['reg_1_3 : entity work.reg1', 'reg_1_2 : entity work.reg1', 'reg_1_1 : entity work.reg1', 'reg_1_0 : entity work.reg1']);
   assert.doesNotMatch((await ok('check_syntax', { project: 'arr_x' })).text, /ERROR|WARNING/);
 });
