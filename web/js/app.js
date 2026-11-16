@@ -17,6 +17,7 @@ import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
 import { viewHdl } from '/core/view-hdl.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
+import { circuitPartModules } from '/core/circuit-modules.js';
 import { isLabFile } from '/core/labs.js';
 import { primitiveTemplates } from '/core/prim-templates.js';
 import { deviceFamily, openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
@@ -129,7 +130,9 @@ export function compileProject() {
   // module info for editor completion / templates
   const fileOf = new Map();
   for (const p of S.lib.parsed) for (const u of p.units) if (u.kind === 'module' || u.kind === 'package') fileOf.set(u.name, p);
-  S.modules = [...S.lib.modules.values()].map(m => ({
+  // (a circuit's ICs' modules, in its generated HDL, are the circuit's, not the project's: no row, no picker's, #4216)
+  S.partModules = circuitPartModules(S.lib, S.sources);
+  S.modules = [...S.lib.modules.values()].filter(m => !S.partModules.has(m.name.toLowerCase())).map(m => ({
     name: m.name, lang: m.lang, file: m.archFile || m.file, line: m.loc?.line || 1, kind: m.lang === 'vhdl' ? 'entity' : 'module',
     role: S.project.files.find(f => f.path === m.file)?.role || 'design',
     portList: m.ports.map(p => ({ name: p.name, dir: p.dir, type: typeText(p.type, m.lang) })),

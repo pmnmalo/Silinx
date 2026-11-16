@@ -23,7 +23,8 @@ async function hdlModule(name, pj, module) {
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
   let lib;
   try { lib = compile(hdl); } catch (e) { throw toolError(e.message); }
-  const m = [...lib.modules.values()].find(x => x.kind !== 'package' && x.name.toLowerCase() === String(module || '').toLowerCase());
+  // (a circuit's ICs' modules are the circuit's, not the project's, #4216)
+  const m = (await import('../core/circuit-modules.js')).projectModulesOf(lib, hdl).find(x => x.kind !== 'package' && x.name.toLowerCase() === String(module || '').toLowerCase());
   if (!m) throw toolError(`no module '${module}' in the project's HDL files`);
   // (a drawing removed from the project is no module's base)
   for (const f of (await P.fileTree(name)).filter(f => VIEW_RE.test(f) && !(pj.excluded || []).includes(f))) {

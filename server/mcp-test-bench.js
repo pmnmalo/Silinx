@@ -38,7 +38,8 @@ export const TEST_BENCH_TOOLS = [
       // the design sources (the drawings' HDL among them), as the wizard's
       const design = (await viewSourcesOf(name, pj, false)).filter(s => (s.role || 'design') === 'design');
       const lib = compile(design);
-      const mods = [...lib.modules.values()].filter(m => m.kind !== 'package');
+      // (a circuit's ICs' modules are the circuit's, not modules to test, #4216)
+      const mods = (await import('../core/circuit-modules.js')).projectModulesOf(lib, design).filter(m => m.kind !== 'package');
       if (!mods.length) throw toolError('The project has no design modules to test.');
       const uut = mods.find(m => m.name.toLowerCase() === String(a.module ?? pj.top ?? '').toLowerCase()) || (a.module ? null : mods[0]);
       if (!uut) throw toolError(`no design module '${a.module}' in the project`);

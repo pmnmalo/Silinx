@@ -182,7 +182,8 @@ export const WIZARD_TOOLS = [
       const { viewSourcesOf } = await import('./mcp-util.js');
       const design = (await viewSourcesOf(name, pj, false)).filter(x => (x.role || 'design') === 'design');
       const lib = compile([...primitiveSources(design), ...design]);
-      const mods = [...lib.modules.values()].filter(m => design.some(x => x.path === m.file) && m.kind !== 'package');
+      // (a circuit's ICs' modules are the circuit's, #4216)
+      const mods = (await import('../core/circuit-modules.js')).projectModulesOf(lib, design).filter(m => design.some(x => x.path === m.file) && m.kind !== 'package');
       const top = mods.find(m => m.name.toLowerCase() === String(module ?? pj.top ?? '').toLowerCase())?.name || (module ? null : mods[0]?.name);
       if (!top) throw toolError(module ? `no design module '${module}' in the project` : 'The project has no design module.');
       // its ports as I/O Pin Planning reads them, a net a bit

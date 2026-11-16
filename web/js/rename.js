@@ -77,7 +77,7 @@ export async function renameDialog(file, mod = null) {
         // not a reserved word of VHDL or Verilog, in any letter case (#679)
         const r = nm.toLowerCase() !== modName.toLowerCase() && reservedError(nm);
         if (r) return `${r}: choose another name.`;
-        if (nm.toLowerCase() !== modName.toLowerCase() && S.modules.some(m => m.name.toLowerCase() === nm.toLowerCase())) return `A module named '${nm}' already exists.`;
+        if (nm.toLowerCase() !== modName.toLowerCase() && (S.modules.some(m => m.name.toLowerCase() === nm.toLowerCase()) || S.partModules?.has(nm.toLowerCase()))) return `A module named '${nm}' already exists.`;
       }
       return null;
   }

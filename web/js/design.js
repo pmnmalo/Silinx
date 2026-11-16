@@ -104,7 +104,8 @@ export function renderHierarchy() {
     });
     parentUl.append(it.li);
     if (info && depth < 30) {
-      const kids = instanceOrder(instancesOf(info.mod));   // (by their names in natural order, then their modules', #3819)
+      // (by their names in natural order, then their modules', #3819; a circuit's ICs none of its rows, #4216)
+      const kids = instanceOrder(instancesOf(info.mod)).filter(k => !S.partModules?.has(String(k.module).toLowerCase()));
       if (!kids.length) it.setLeaf();
       for (const k of kids) addModule(it.ul, k.module, k.name, depth + 1, `${path}/${k.name}`);
     } else it.setLeaf();

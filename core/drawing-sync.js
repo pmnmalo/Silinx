@@ -7,6 +7,7 @@
 // drawing's own (Source Properties) put the drawings in it (drawings-lang.js, #1477, #2254). A drawing made from its
 // HDL (base 'hdl') is a view of it, not its base: none of this.
 import { compile } from './compile.js';
+import { circuitPartModules } from './circuit-modules.js';
 import { attachSymbols, isSymbolFile, modulesFromLibrary } from './schdoc.js';
 import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlPath, modelLanguage, viewHdl } from './view-hdl.js';
 import { isDesignOnly } from './project-kind.js';
@@ -23,7 +24,10 @@ const designProject = async (P, name) => isDesignOnly(await Promise.resolve(P.re
 export async function projectModules(P, name) {
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
   let mods;
-  try { mods = modulesFromLibrary(compile(hdl), { sources: Object.fromEntries(hdl.map(s => [s.path, s.text])) }); } catch { return {}; }
+  let lib;
+  try { lib = compile(hdl); mods = modulesFromLibrary(lib, { sources: Object.fromEntries(hdl.map(s => [s.path, s.text])) }); } catch { return {}; }
+  // (a circuit's ICs' modules are the circuit's, not the project's, #4216: as the interface's palette)
+  for (const n of circuitPartModules(lib, hdl)) for (const k of Object.keys(mods)) if (k.toLowerCase() === n) delete mods[k];
   return attachSymbols(mods, await symbolFiles(P, name));
 }
 

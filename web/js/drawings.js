@@ -195,7 +195,8 @@ const fsmDir = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '') : 'src');
 /** A file name `${dir}/${base}${ext}` (and module name) not used yet in the project. */
 function freeName(dir, base, ext) {
   let name = base, k = 1;
-  while (S.fileTree.includes(`${dir}/${name}${ext}`) || S.modules.some(x => x.name.toLowerCase() === name.toLowerCase())) name = `${base}${++k}`;
+  // (a circuit's ICs' modules taken too, #4216)
+  while (S.fileTree.includes(`${dir}/${name}${ext}`) || S.modules.some(x => x.name.toLowerCase() === name.toLowerCase()) || S.partModules?.has(name.toLowerCase())) name = `${base}${++k}`;
   return name;
 }
 
@@ -459,6 +460,8 @@ export async function schModules() {
   // the test benches (Simulation-only sources, #332): not offered in the palette's Project modules
   const sim = new Set(S.sources.filter(s => s.role === 'sim').map(s => s.path));
   for (const m of Object.values(mods)) if (sim.has(m.file)) m.testbench = true;
+  // (a circuit's ICs' modules: the circuit's, not the project's, #4216)
+  for (const n of Object.keys(mods)) if (S.partModules?.has(n.toLowerCase())) delete mods[n];
   return mods;
 }
 

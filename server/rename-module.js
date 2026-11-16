@@ -5,6 +5,7 @@
 // bench, its stimuli; optionally its file (the drawings' links follow), and the
 // drawings changed make their HDL again (server/drawing-sync.js). The files are moved all or nothing.
 import { compile } from '../core/compile.js';
+import { projectModulesOf } from '../core/circuit-modules.js';
 import { renameModuleInSource, renameModuleInSchematic } from '../core/rename.js';
 import { reservedError } from '../core/reserved.js';
 import { syncDrawing } from './drawing-sync.js';
@@ -17,12 +18,14 @@ const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 const baseOf = p => p.slice(dirOf(p).length, p.length - extOf(p).length);
 const eq = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
 
-/** The project's modules declared in its HDL files: [{ name, file, lang, kind }]. */
-export async function projectModules(P, name) {
+/** The project's modules declared in its HDL files: [{ name, file, lang, kind }] (with `parts`, its circuits' ICs' modules
+ *  too, #4216: names taken, not modules of the project). */
+export async function projectModules(P, name, { parts = false } = {}) {
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
   let lib;
   try { lib = compile(hdl); } catch { return []; }
-  return [...lib.modules.values()].map(m => ({ name: m.name, file: m.file, lang: m.lang, kind: m.kind }));
+  // (a circuit's ICs' modules are the circuit's, #4216)
+  return (parts ? [...lib.modules.values()] : projectModulesOf(lib, hdl)).map(m => ({ name: m.name, file: m.file, lang: m.lang, kind: m.kind }));
 }
 
 /** The file a module is renamed with by default (Rename's "File name follows the module name"): its file with the new
@@ -37,6 +40,7 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
   const fail = message => Object.assign(new Error(message), { rename: true });
   const mods = await projectModules(P, name);
   const mod = mods.find(m => eq(m.name, oldName) && m.kind !== 'package');
+  const taken = await projectModules(P, name, { parts: true });
   if (!mod) throw fail(`no module '${oldName}' in the project's HDL files`);
   oldName = mod.name;
   const from = mod.file;
@@ -46,7 +50,7 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
   if (!eq(newName, oldName)) {
     const r = reservedError(newName);
     if (r) throw fail(`${r}: choose another name.`);
-    if (mods.some(m => eq(m.name, newName))) throw fail(`A module named '${newName}' already exists.`);
+    if (taken.some(m => eq(m.name, newName))) throw fail(`A module named '${newName}' already exists.`);
   }
   if (to) {
     if (to.startsWith('/') || to.split('/').includes('..')) throw fail('Enter a file path inside the project.');
