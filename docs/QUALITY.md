@@ -18,7 +18,7 @@ of *Synthesize*), and by ISE at the same goal:
 ISE's map and par are the same for every goal, its best chance: map packs the slices as tightly as it can
 (`-c 1`, as nextpnr packs them) and the clock constraint is tightened to 5 ns, so that its place
 and route works for speed (ISE stops improving once a constraint is met). nextpnr places and routes for speed
-at every goal (timing-driven); at Speed it makes several placements (8, or 32 for a design of up to 100 slices),
+at every goal (timing-driven); at Speed it makes several placements (32 for a design of up to 100 slices, 8 up to 500, 4 up to 2000, 2 above),
 each routed, and keeps the fastest by Silinx's own timing analysis (*Silinx estimate*); at Area and Fast, one.
 The slices are nextpnr's after its packing and ISE map's; the LUTs, Silinx's synthesis' and ISE map's used as
 logic. Both critical paths are measured by ISE's timing analyser (trce) on the routed design. The run times are

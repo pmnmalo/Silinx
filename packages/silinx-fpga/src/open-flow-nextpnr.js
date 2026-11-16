@@ -363,11 +363,15 @@ export function padVccoError(lines, ios, free, device) {
 // b10 4.751 -> 4.659, usb-phy 4.889 -> 4.819), Place & Route two to three times as long. A large design (over 500 slices)
 // gets 4 (#3095): a placement takes minutes (itc99-b20, 1335 slices, about 6 min; secworks-siphash, 686, about 2.5), and
 // its best of 8 was its best of 4 (b20 36.802 ns, siphash 15.397), the second four only adding 25 to 45 minutes; a
-// smaller one keeps 8 (vtr-diffeq1, 260 slices: 37.224 -> 37.076 ns from the second four).
-export const NEXTPNR_TRIES = { normal: 4, high: 8, highSmall: 32, smallSlices: 100, maxSlices: 500, highLarge: 4 };
-/** The placements at an Optimization Effort ('high', else Normal) for a design of `slices` slices: one for a large one at Normal, four at High. */
+// smaller one keeps 8 (vtr-diffeq1, 260 slices: 37.224 -> 37.076 ns from the second four). A very large design (over 2000
+// slices) gets 2 (#3821): a placement and its routing take 20 to 35 minutes (itc99-b17, 3787 slices: Optimization Area,
+// one placement, 34 min; Speed, four, past the Quality comparison's 2-hour limit every run), so four took 1.5 to 2.5 hours.
+export const NEXTPNR_TRIES = { normal: 4, high: 8, highSmall: 32, smallSlices: 100, maxSlices: 500, highLarge: 4, hugeSlices: 2000, highHuge: 2 };
+/** The placements at an Optimization Effort ('high', else Normal) for a design of `slices` slices: one for a large one at
+ *  Normal; at High four, two for a very large one. */
 export const nextpnrTries = (effort, slices) => (effort === 'high'
-  ? (slices <= NEXTPNR_TRIES.smallSlices ? NEXTPNR_TRIES.highSmall : slices <= NEXTPNR_TRIES.maxSlices ? NEXTPNR_TRIES.high : NEXTPNR_TRIES.highLarge)
+  ? (slices <= NEXTPNR_TRIES.smallSlices ? NEXTPNR_TRIES.highSmall : slices <= NEXTPNR_TRIES.maxSlices ? NEXTPNR_TRIES.high
+    : slices <= NEXTPNR_TRIES.hugeSlices ? NEXTPNR_TRIES.highLarge : NEXTPNR_TRIES.highHuge)
   : slices <= NEXTPNR_TRIES.maxSlices ? NEXTPNR_TRIES.normal : 1);
 
 /**
