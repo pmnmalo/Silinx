@@ -3,6 +3,31 @@
 What changed in each version of silinx-fpga, the Silinx toolchain. The newest version is first. Its versions
 are its own (semver, 0.x until its API is stable), apart from Silinx ISE's.
 
+## 0.4.3
+
+The 7-series' timing fitted to Vivado's, and the Spartan-7, Kintex-7 and Zynq-7000 known to the toolchain.
+
+In short:
+
+- **nextpnr-himbaechel-xc7 0.3.0:** the 7-series' frequency estimate is conservative against Vivado's (0.7–0.95 times
+  it on the same netlist).
+- **More 7-series families:** the Spartan-7, the Kintex-7 and the Zynq-7000, built with AMD Vivado (experimental).
+
+In detail:
+
+- **The research flow reads what synthesis reads (#3901):** `research/s3e-route/open-flow.mjs`, the build the "yosys
+  update" workflow measures each example with, blanks the lines between `synthesis translate_off` and `translate_on`, as
+  the application's front end does (`core/translate-off.js`): a digital circuit's simulation model is not synthesised (the
+  breadboard example: 4 slices, as the application builds it, not none).
+- **The Spartan-7, the Kintex-7 and the Zynq-7000 AMD Vivado's (Part of #3895):** FAMILY_INFO's `spartan7` (no ISE
+  14.7 name; `familyOfPart` of `xc7s…`), and `kintex7` and `zynq` with `backEnd: 'vivado'`, all three experimental with
+  XDC constraints and `openFlow: false`; `openFlowDevice` (a family with a flow of the Silinx toolchain) and
+  `noOpenFlowMessage` from src/parts.js; `openOnlyDevice` not true of a Vivado family that ISE does not have.
+- **nextpnr-himbaechel-xc7 0.3.0 (Fixes #3875).** The 7-series' timing is fitted to Vivado's: the routing, the slice's
+  cells and a DSP48E1 with no register (#3516). The placer is tuned for it (#3803, #3875). nextpnr's estimate is now
+  0.7–0.95 times Vivado's on the same netlist (1.2–2.2 times with 0.1.2). `XC7_TIMING_MODEL` and the timing report say
+  "conservative against Vivado".
+
 ## 0.4.2
 
 In short:
