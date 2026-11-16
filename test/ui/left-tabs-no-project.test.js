@@ -98,7 +98,8 @@ uiTest('#4257 the browser edition: no tab row with no project, the tabs with one
     await page.dialogButton('Next >');
     await page.dialogButton('Finish');
     await page.waitNoDialog();
-    await page.waitFor(() => window.Silinx.project?.name === 'WebTabs', [], { what: 'WebTabs open' });
+    // (the wizard done: its toast, after the project opened and its Design page shown)
+    await page.waitFor(() => window.Silinx.project?.name === 'WebTabs' && [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('WebTabs')), [], { what: 'WebTabs made' });
     assert.deepEqual(await side(page), { row: true, tabs: ['start', 'design', 'files', 'libraries', 'teaching', 'collab'], active: 'design', pages: ['design'] });
     await close(page);
     assert.deepEqual(await side(page), NONE);

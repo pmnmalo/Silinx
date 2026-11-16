@@ -39,17 +39,19 @@ const newProject = async (page, name, lang = 'en') => {
   await page.dialogButton(next);
   await page.dialogButton(finish);
   await page.waitNoDialog();
-  await page.waitFor((n) => window.Silinx.project?.name === n, [name], { what: `${name} made` });
+  // (the wizard done: its toast, its last step, after the project opened and its Design page shown; a tab chosen before
+  // it was left for Design)
+  await page.waitFor((n) => window.Silinx.project?.name === n && [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes(n)), [name], { what: `${name} made` });
 };
 const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text);
 const kept = (page) => page.eval(() => [sessionStorage.getItem('silinx.github-token'), localStorage.getItem('silinx.github-token'), sessionStorage.getItem('silinx.github-sign-in'), localStorage.getItem('silinx.github-sign-in')]);
-// (clicked once the page holds still: with a project open it is drawn again as git's status comes, #4257)
+// (clicked once the page is shown and holds still: with a project open it is drawn again as git's status comes, #4257)
 const tabCommand = async (page, label) => {
   await page.waitFor((l) => {
     const now = document.getElementById('collab-page').innerHTML;
     const same = now === window.__collabLast && performance.now() - window.__collabSince > 300;
     if (now !== window.__collabLast) { window.__collabLast = now; window.__collabSince = performance.now(); }
-    return same && [...document.querySelectorAll('#collab-page .entry a')].some((a) => a.textContent === l);
+    return same && [...document.querySelectorAll('#collab-page .entry a')].some((a) => a.textContent === l && a.getClientRects().length);
   }, [label], { what: `the Collaboration page still, with ${label}` });
   await page.click('#collab-page .entry a', { text: label });
 };
