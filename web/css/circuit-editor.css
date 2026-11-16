@@ -138,6 +138,7 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-gate { fill: #2c2c30; stroke: #e0e0e0; stroke-width: 1; }
 .circuit-editor .circ-gate-text { font: bold 8px var(--asm-mono, monospace); fill: #f2f2f2; }
 .circuit-editor .circ-gate-bubble { fill: #2c2c30; stroke: #e0e0e0; stroke-width: 1; }
+.circuit-editor .circ-gate-back { fill: none; }   /* (an XOR's second back, #4220) */
 .circuit-editor .circ-pin-name { font: 7px var(--asm-mono, monospace); fill: #e8e8e8; }
 /* an IC's preview: the schematic editor's symbol of it (#4062), its look (sch-editor.css) */
 .circuit-editor .circ-pv-sym { --pv-symbol: var(--sch-symbol, #000080); }

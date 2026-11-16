@@ -1,5 +1,5 @@
 // UI: how the circuit editor draws (#4060, #4064): Show inside (the toolbar's, remembered) draws the breadboard's strips
-// and the ICs' gates (the half adder's 7486 and 7408: 4 each); the ⋮ menu's Wires, Direct, Orthogonal or Curved (#4080:
+// and the ICs' gates (the half adder's 7486 and 7408: 4 each; IEEE distinctive shapes by default, #4220); the ⋮ menu's Wires, Direct, Orthogonal or Curved (#4080:
 // an edit, saved in the circuit, Undo takes it back) and the choice Wire crossings (#4101): Hop-overs (by default: the
 // wire wc hops over ws) or Plain crossings (remembered); in Portuguese. No warnings. Both interfaces.
 import { before, after } from 'node:test';
@@ -34,9 +34,10 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Wires, D
   // Show inside: off by default; on, the board's 64 strips (30 columns' two, 4 rails) and the 8 gates, the ICs' names in their tips
   assert.deepEqual([await count(page, '.circ-strip'), await count(page, '.circ-gate'), await count(page, '.circ-ic-text')], [0, 0, 2]);
   await page.click(`${ED} .circ-inside`);
-  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-gate`).length === 8, [ED], { what: 'the gates inside' });
-  assert.deepEqual([await count(page, '.circ-strip'), await count(page, '.circ-gate-text'), await count(page, '.circ-ic-text')], [64, 8, 0]);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-id=U1] .circ-gate-text`)].map((t) => t.textContent), ED), ['=1', '=1', '=1', '=1']);
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-gate-ieee`).length === 8, [ED], { what: 'the gates inside' });
+  // (Settings ▸ Schematic Symbols' default, IEEE Std 91-1984's shapes: no IEC box nor qualifier, #4220)
+  assert.deepEqual([await count(page, '.circ-strip'), await count(page, '.circ-gate-text'), await count(page, '.circ-ic-text')], [64, 0, 0]);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-id=U1] .circ-gate-ieee`)].map((t) => t.dataset.fn), ED), ['xor', 'xor', 'xor', 'xor']);
   assert.equal(await page.eval(() => localStorage.getItem('silinx.circuit.inside')), '1', 'remembered');
   await page.click(`${ED} .circ-inside`);
   assert.equal(await count(page, '.circ-gate'), 0);

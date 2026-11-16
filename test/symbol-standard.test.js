@@ -135,6 +135,27 @@ test('#4113 the RTL schematic in IEC: the same size and pins, a box, its qualifi
 
 test('#4113 the circuit editor\'s Show inside: the qualifiers of core/symbol-standard.js, no table of its own', () => {
   const src = fs.readFileSync(new URL('../web/js/circuit-draw-inside.js', import.meta.url), 'utf8');
-  assert.match(src, /import \{ iecQualifier, invertsOutput \} from '\/core\/symbol-standard\.js'/);
+  assert.match(src, /import \{ iecQualifier, ieeeGate, invertsOutput \} from '\/core\/symbol-standard\.js'/);
   assert.doesNotMatch(src, /'≥1'/);
+  // (#4220: in the standard chosen, Settings ▸ Schematic Symbols', not always IEC)
+  assert.match(src, /import \{ getSymbolStandard \} from '\.\/symbol-standard\.js'/);
+});
+
+test('#4220 an IEEE distinctive shape in a box: the AND\'s D, the OR\'s shield, the XOR\'s second back, the triangle; the bubble on the output', () => {
+  const box = { x: 10, y: 20, w: 16, h: 12, r: 2 };
+  // the AND: a straight back at x, a half ellipse (w/2 by h/2) from the middle of the top to the middle of the bottom
+  assert.deepEqual(S.ieeeGate('and', box), { paths: ['M10,20 H18 A8,6 0 0 1 18,32 H10 Z'], bubble: null, outX: 26 });
+  assert.deepEqual(S.ieeeGate('nand', box), { paths: ['M10,20 H18 A8,6 0 0 1 18,32 H10 Z'], bubble: { cx: 28, cy: 26, r: 2 }, outX: 30 });
+  // the OR: two curves to its point at the right's middle, its back curved in (a quarter of its width)
+  const or = S.ieeeGate('or', box);
+  assert.deepEqual(or, { paths: ['M10,20 Q20.67,20 26,26 Q20.67,32 10,32 Q14,26 10,20 Z'], bubble: null, outX: 26 });
+  assert.deepEqual(S.ieeeGate('NOR', box), { ...or, bubble: { cx: 28, cy: 26, r: 2 }, outX: 30 });
+  // the XOR: the OR's body and a second back 3 behind it, open
+  assert.deepEqual(S.ieeeGate('xor', box).paths, [...or.paths, 'M7,32 Q11,26 7,20']);
+  assert.equal(S.ieeeGate('xnor', box).bubble.cx, 28);
+  // the inverter and the buffer: a triangle, its point the output
+  assert.deepEqual(S.ieeeGate('not', box), { paths: ['M10,20 L26,26 L10,32 Z'], bubble: { cx: 28, cy: 26, r: 2 }, outX: 30 });
+  assert.deepEqual(S.ieeeGate('buf', box), { paths: ['M10,20 L26,26 L10,32 Z'], bubble: null, outX: 26 });
+  // every gate function of the circuits' gate ICs drawn (core/circuit-ics.js)
+  for (const fn of ['and', 'nand', 'or', 'nor', 'xor', 'not']) assert.ok(S.ieeeGate(fn, box).paths[0].startsWith('M10,20'), fn);
 });

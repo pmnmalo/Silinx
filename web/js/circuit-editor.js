@@ -29,6 +29,7 @@ import { mountCircuitSide } from './circuit-side.js';
 import { mountCircuitParts } from './circuit-parts-panel.js';
 import { printDiagram, svgSnapshot } from './print.js';
 import { onLayoutToggled } from './layout-fit.js';
+import { onSymbolStandard } from './symbol-standard.js';
 
 export function mountCircuitEditor(container, opts = {}) {
   let M = normalizeCircuit(opts.model || newCircuit('circuit'));
@@ -275,6 +276,8 @@ export function mountCircuitEditor(container, opts = {}) {
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(initialFit) : null;
   ro?.observe(svg);
   const offLayout = onLayoutToggled(svg, () => fit());
+  // (Show inside's gates in Settings ▸ Schematic Symbols' standard: drawn again when it changes, #4220)
+  const offSymbols = onSymbolStandard(() => { if (!destroyed) render(); });
   setTool('select');
   problems();
   requestAnimationFrame(initialFit);
@@ -291,6 +294,6 @@ export function mountCircuitEditor(container, opts = {}) {
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
     fit, print, simulating: () => !!sim, toggleSim, sim: () => sim,
     select(ref) { if (!ref?.id || !itemOf(ref.id)) return; sel = { kind: ref.kind || 'part', id: ref.id }; render(); },
-    destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); container.innerHTML = ''; },
+    destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); offSymbols(); container.innerHTML = ''; },
   };
 }
