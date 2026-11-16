@@ -42,6 +42,7 @@ test('drawingKind: the FSM\'s diagrams, the truth tables, the ASM charts, the Pe
   assert.equal(drawingKind('src/a.asm.json'), 'asm');
   assert.equal(drawingKind('src/a.pn.json'), 'pn');
   assert.equal(drawingKind('src/a.sch.json'), 'sch');
+  assert.equal(drawingKind('src/a.circ.json'), 'circ', 'the breadboard circuit (#4203)');
   for (const p of ['src/a.vhd', 'src/fsm.json', 'src/bool.json']) assert.equal(drawingKind(p), null, p);
   assert.throws(() => putDrawing(new Y.Doc(), 'src/a.vhd', {}), /src\/a\.vhd: not a drawing that is edited live/);
 });
@@ -516,4 +517,42 @@ test('#3939 a truth table of more than 8 inputs and its own notation, edited liv
   assert.equal(back.table.f, col);
   assert.equal(back.notation, 'logic');
   assert.deepEqual(back, m);
+});
+
+// the breadboard circuit edited live (#4203): its parts' ids are names (the HDL's ports and labels), so a new one another
+// participant took already becomes the next free one of its sequence
+const C = 'src/breadboard.circ.json';
+const cmodel = (doc) => drawingModel(doc, C).model;
+const cmut = (doc, fn) => { const m = structuredClone(cmodel(doc)); fn(m); return m; };
+
+test('#4203 a circuit, two participants: a part moved and a wire\'s colour changed at once both kept; an LED added under an id the other took meanwhile: the next free one; checked, its HDL identical on both sides and compiled in VHDL and Verilog', async () => {
+  const { normalizeCircuit } = await import('../core/circuit.js');
+  const { checkCircuit } = await import('../core/circuit-check.js');
+  const { generateCircuit } = await import('../core/circuit-hdl.js');
+  const src = JSON.parse(fs.readFileSync(new URL('../examples/breadboard/src/breadboard.circ.json', import.meta.url), 'utf8'));
+  const { a, b, hold, release } = pair();
+  putDrawing(a, C, src);
+  assert.deepEqual(cmodel(b), normalizeCircuit(src));
+  const base = cmodel(a);
+  hold();
+  putDrawing(a, C, cmut(a, (m) => { m.parts.find((x) => x.id === 'D8').x += 3; }), { base, client: a.clientID });
+  putDrawing(b, C, cmut(b, (m) => { m.wires[0].color = 'blue'; }), { base, client: b.clientID });
+  release();
+  assert.deepEqual(cmodel(a), cmodel(b));
+  assert.deepEqual([cmodel(a).parts.find((x) => x.id === 'D8').x, cmodel(a).wires[0].color], [src.parts.find((x) => x.id === 'D8').x + 3, 'blue']);
+  // A adds D9 (sent at once); B, from the model it had, adds a D9 of its own: it becomes D10
+  const stale = cmodel(b);
+  putDrawing(a, C, cmut(a, (m) => { m.parts.push({ id: 'D9', type: 'led', x: 80, y: 26 }); }), { base: cmodel(a), client: a.clientID });
+  const rb = putDrawing(b, C, { ...structuredClone(stale), parts: [...stale.parts, { id: 'D9', type: 'led', x: 83, y: 26 }] }, { base: stale, client: b.clientID });
+  assert.deepEqual([...rb.renamed], [['D9', 'D10']]);
+  const m = cmodel(a);
+  assert.deepEqual(cmodel(b), m);
+  assert.deepEqual(m.parts.filter((x) => /^D(9|10)$/.test(x.id)).map((x) => [x.id, x.x]).sort(), [['D10', 83], ['D9', 80]]);
+  assert.deepEqual(checkCircuit(m).filter((d) => d.severity === 'error'), []);
+  for (const lang of ['vhdl', 'verilog']) {
+    const ga = generateCircuit(m, lang, { source: 'breadboard.circ.json' }), gb = generateCircuit(cmodel(b), lang, { source: 'breadboard.circ.json' });
+    assert.equal(ga.code, gb.code, lang);
+    const lib = compile([{ path: ga.filename, text: ga.code }]);
+    assert.deepEqual([...lib.errors, ...elaborate(lib, m.name).diags].map((x) => `${x.severity}: ${x.message}`), [], lang);
+  }
 });

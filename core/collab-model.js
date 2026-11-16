@@ -1,14 +1,15 @@
 // A shared project's drawings edited live (#3183, phase 3 of #3180): each drawing as a Yjs structure of its own, in the
 // project's document (core/collab-doc.js), so that several participants edit one drawing at once and their changes merge
 // per object and per field (a Y.Text of its JSON would merge characters, and break it).
-//   drawings  Y.Map  path -> Y.Map   kind      the drawing's kind ('fsm', 'tt', 'asm', 'pn', 'sch')
+//   drawings  Y.Map  path -> Y.Map   kind      the drawing's kind ('fsm', 'tt', 'asm', 'pn', 'sch', 'circ')
 //                                    settings  Y.Map  key -> value: the drawing's own settings (its name, language,
 //                                                     generatedFile, encoding, inputs, outputs, initial state, …)
 //                                    <coll>    Y.Map  id -> Y.Map  field -> value, one per object of each of its
 //                                                     collections (the FSM: states, transitions; the truth table: its
 //                                                     outputs, by name, a field per cell of its column; the ASM chart:
 //                                                     boxes, links; the Petri net: places, transitions, arcs; the
-//                                                     schematic: symbols, wires, labels, ports, graphics); _o its place
+//                                                     schematic: symbols, wires, labels, ports, graphics; the circuit:
+//                                                     parts, wires); _o its place
 // A value is JSON (a field's whole value: last write wins, per field). An editor keeps its "model in, model out"
 // interface: putDrawing applies a new model as the smallest set of changes (a diff by ids against `base`, the model the
 // editor last had: what others changed since is kept), drawingModel reads it back (normalized, as the editor's).
@@ -26,6 +27,7 @@ import { MAX_INPUTS, normalizeTable } from './logic.js';
 import { normalizeModel as normalizeAsm } from './asm.js';
 import { normalizePetri } from './petri.js';
 import { normalizeDoc } from './schdoc.js';
+import { normalizeCircuit } from './circuit.js';
 import { drawingKind, liveDrawing } from './collab-kinds.js';
 export { drawingKind, liveDrawing };
 
@@ -71,13 +73,17 @@ const schModel = sh => normalizeDoc(ordered(sh, SCH_KEYS));
 /** The structure of the drawings edited live (core/collab-kinds.js), by kind: their collections, the fields of an
  *  object that name another (refs, in a collection or one of several: a connection goes with what it connects, #3183), the settings that do (setRefs),
  *  shape (a model as its settings and collections, normalized) and model (back, as its editor has it); ownIds: a
- *  participant's new objects' ids made its own (ids that are names, a truth table's outputs, are not). */
+ *  participant's new objects' ids made its own (ids that are names, a truth table's outputs, are not); seqIds: a new
+ *  object's id another one has in the structure already made the next free one of its sequence (a circuit's). */
 export const DRAWING_KINDS = Object.freeze({
   fsm: { collections: ['states', 'transitions'], refs: { transitions: { from: 'states', to: 'states' } }, setRefs: { initial: 'states' }, shape: normalizeFsm, model: normalizeFsm, ownIds: true },
   tt: { collections: ['outputs'], refs: {}, setRefs: {}, shape: ttShape, model: ttModel, ownIds: false },
   asm: { collections: ['nodes', 'edges'], refs: { edges: { from: 'nodes', to: 'nodes' } }, setRefs: { initial: 'nodes' }, shape: normalizeAsm, model: normalizeAsm, ownIds: true },
   pn: { collections: ['places', 'transitions', 'arcs'], refs: { arcs: { from: ['places', 'transitions'], to: ['places', 'transitions'] } }, setRefs: {}, shape: normalizePetri, model: normalizePetri, ownIds: true },
   sch: { collections: SCH_COLLS, refs: {}, setRefs: {}, shape: schShape, model: schModel, ownIds: true },
+  // (the circuit, #4203: its parts' ids are their names, U3, S1, the HDL's ports and labels: a new one another
+  // participant took already becomes the next free one of its sequence, U4, never U3~x)
+  circ: { collections: ['parts', 'wires'], refs: {}, setRefs: {}, shape: normalizeCircuit, model: normalizeCircuit, ownIds: false, seqIds: true },
 });
 /** What a follower takes of a room's drawings (#3361: the owner may be hostile): their objects, all together. */
 export const DRAWING_OBJECTS_MAX = 100_000;
@@ -204,6 +210,22 @@ export function putDrawing(doc, path, model, { base = null, client = null, origi
         for (const [c, refs] of Object.entries(K.refs)) for (const o of next[c]) for (const f of Object.keys(refs)) if (renamed.has(String(o[f]))) o[f] = renamed.get(String(o[f]));
         for (const c of K.collections) for (const o of next[c]) if (renamed.has(String(o.id))) o.id = renamed.get(String(o.id));
         for (const f of Object.keys(K.setRefs)) if (renamed.has(String(next[f]))) next[f] = renamed.get(String(next[f]));
+      }
+    }
+    // (the new objects' ids taken already in the structure, by another's: the next free ones of their sequences)
+    if (client !== null && K.seqIds) {
+      for (const c of K.collections) {
+        const had = new Set(arr(b[c]).map(o => String(o.id))), cm = collMap(ymap, c);
+        const taken = new Set([...cm.keys(), ...next[c].map(o => String(o.id))]);
+        for (const o of next[c]) {
+          const id = String(o.id), p = /^(.*?)(\d+)$/.exec(id);
+          if (had.has(id) || !cm.has(id) || !p) continue;
+          let n = +p[2] + 1;
+          while (taken.has(`${p[1]}${n}`)) n++;
+          taken.add(`${p[1]}${n}`);
+          renamed.set(id, `${p[1]}${n}`);
+          o.id = `${p[1]}${n}`;
+        }
       }
     }
     // the settings

@@ -15,8 +15,8 @@ import { putDrawing, drawingModel, drawingMap, pruneDrawing, sameModel } from '/
 
 const RETRY_MS = 120, MERGE_MS = 1500;
 /** The editor of a drawing edited live (#3183: a state diagram's, a truth table's, an ASM chart's, a Petri net's, a
- *  schematic's), null: none; modelOf(editor): its model (a schematic's, its document). */
-export const editorOf = d => d?.fsmEditor || d?.ttEditor || d?.asmEditor || d?.petriEditor || d?.schEditor || null;
+ *  schematic's, a circuit's: #4203), null: none; modelOf(editor): its model (a schematic's, its document). */
+export const editorOf = d => d?.fsmEditor || d?.ttEditor || d?.asmEditor || d?.petriEditor || d?.schEditor || d?.circuitEditor || null;
 export const modelOf = ed => (ed.getModel ? ed.getModel() : ed.getDoc());
 const same = sameModel;
 

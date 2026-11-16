@@ -397,7 +397,8 @@ async function writeMerged(s, path, { edited = false } = {}) {
   if (d && sameDrawing(drawingText(path, modelOf(editorOf(d))), gated)) app.setDirty(d, false);
   const m = await import('./drawings.js');
   const petri = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromPetri(p, x); };   // (as its save does)
-  const sync = { fsm: m.syncHdlFromFsm, tt: m.syncHdlFromTt, asm: m.syncHdlFromAsm, pn: petri, sch: m.syncHdlFromSchematic }[drawingKind(path)];
+  const circ = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromCircuit(p, x); };   // (as its save does, #4203)
+  const sync = { fsm: m.syncHdlFromFsm, tt: m.syncHdlFromTt, asm: m.syncHdlFromAsm, pn: petri, sch: m.syncHdlFromSchematic, circ }[drawingKind(path)];
   await sync(path, r.model).catch(e => app.log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
   return true;
 }

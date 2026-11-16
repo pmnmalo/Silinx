@@ -5,6 +5,8 @@
 //     onMessage(text, isError), readOnly, banner });
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.print(); ed.select(ref);
 //   ed.simulating(); ed.toggleSim(); ed.destroy();
+//   edited live (#4203, web/js/collab-drawing.js): ed.setShared({ push(model), undo(), redo(), canUndo(), canRedo() } | null)
+//   (each change pushed, Undo / Redo the shared history's), ed.applyModel(m, { renamed, mine }) (in place), ed.busy()
 //
 // Breadboards, ICs, switches, buttons, LEDs and the supply on a 0.1 inch grid, wired point to point; a part from the
 // Parts panel (on the left, #4062) placed by a click, moved by a drag, turned (R), deleted (Del); a wire drawn point by point,
@@ -39,7 +41,7 @@ export function mountCircuitEditor(container, opts = {}) {
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
-  let hi = 0;
+  let hi = 0, shared = null;
 
   container.innerHTML = '';
   const root = h('div', { class: 'asm-editor circuit-editor', tabindex: '0' });
@@ -89,14 +91,15 @@ export function mountCircuitEditor(container, opts = {}) {
     if (readOnly) { M = normalizeCircuit(JSON.parse(hist[hi])); render(); return; }
     M = normalizeCircuit(M);
     const s = JSON.stringify(M);
-    if (s !== hist[hi]) { hist.length = hi + 1; hist.push(s); if (hist.length > 200) hist.shift(); hi = hist.length - 1; opts.onChange?.(clone(M)); problems(); }
+    if (s !== hist[hi] && shared) { hist.length = 0; hist.push(s); hi = 0; opts.onChange?.(clone(M)); problems(); shared.push(clone(M)); }   // (its merge may change M)
+    else if (s !== hist[hi]) { hist.length = hi + 1; hist.push(s); if (hist.length > 200) hist.shift(); hi = hist.length - 1; opts.onChange?.(clone(M)); problems(); }
     if (sim) startSim();
     render();
   }
   const problems = () => opts.onProblems?.(checkCircuit(M));
   const restore = (i) => { hi = i; M = normalizeCircuit(JSON.parse(hist[hi])); if (sel && !itemOf(sel.id)) sel = null; opts.onChange?.(clone(M)); problems(); if (sim) startSim(); render(); };
-  const undo = () => { if (hi > 0) restore(hi - 1); };
-  const redo = () => { if (hi < hist.length - 1) restore(hi + 1); };
+  const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
+  const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
   const itemOf = (id) => M.parts.find((p) => p.id === id) || M.wires.find((w) => w.id === id);
   const applyEdit = (r, select) => { if (r.error) { status(r.error, true); return false; } M = r.model; if (select) sel = select; commit(); return true; };
 
@@ -283,7 +286,18 @@ export function mountCircuitEditor(container, opts = {}) {
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },
-    undo, redo, canUndo: () => hi > 0, canRedo: () => hi < hist.length - 1,
+    undo, redo, canUndo: () => (shared ? shared.canUndo() : hi > 0), canRedo: () => (shared ? shared.canRedo() : hi < hist.length - 1),
+    setShared(s) { shared = s; hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; },
+    // the merged circuit in place: the view, the tool and the selection kept (its part's id renamed by the merge, #4203)
+    applyModel(m, { renamed = null, mine = false } = {}) {
+      M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0;
+      if (sel && renamed?.has(sel.id)) sel = { ...sel, id: renamed.get(sel.id) };
+      if (sel && !itemOf(sel.id)) sel = null;
+      problems(); if (sim) startSim();
+      render(); if (mine) opts.onChange?.(clone(M));
+    },
+    // (a change under way the merge must wait for: a part moved, a wire being drawn, a field of the side panel typed)
+    busy: () => drag?.kind === 'move' || !!draft || side.contains(document.activeElement),
     // (Cut, Copy and Paste, #4066: circuit-clip.js)
     copy: () => clip.copy(), cut: () => clip.copy(true), paste: () => clip.paste(),
     canCopy: () => sel?.kind === 'part', canPaste: () => !readOnly && clip.has(), canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
