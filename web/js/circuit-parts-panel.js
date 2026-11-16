@@ -10,6 +10,7 @@ import { PARTS, PART_ORDER } from '/core/circuit-parts.js';
 import { drawCircuit } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
+import { getSymbolStandard } from './symbol-standard.js';
 
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
@@ -39,11 +40,13 @@ function symbolPreviewOf(type) {
   return s;
 }
 
-// a part's drawing, small
+// a part's drawing, small (an IC's symbol in Settings ▸ Schematic Symbols' standard, kept for each standard: the editor
+// draws the panel again when it changes, #4242)
 const previews = new Map();
 function preview(type) {
-  if (previews.has(type)) return previews.get(type).cloneNode(true);
-  if (symbolOfPart(type)) { previews.set(type, symbolPreviewOf(symbolOfPart(type))); return previews.get(type).cloneNode(true); }
+  const key = symbolOfPart(type) ? `${getSymbolStandard()}:${type}` : type;
+  if (previews.has(key)) return previews.get(key).cloneNode(true);
+  if (symbolOfPart(type)) { previews.set(key, symbolPreviewOf(symbolOfPart(type))); return previews.get(key).cloneNode(true); }
   const g = drawCircuit({ parts: [{ id: 'X', type, x: 0, y: 0 }], wires: [] });
   // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow)
   for (const x of g.querySelectorAll('text.circ-label, title')) x.remove();
