@@ -1,9 +1,14 @@
 // The Spartan-6's Map by nextpnr (#3138, packages/silinx-fpga/src/fpga/s6/nextpnr-pack.js): the netlist's cells by name
 // (the order of the fork's packer, so that Silinx's Map names its sites alike), Yosys's netlist for the fork (each I/O
 // buffer with its port and constraints), and the check that the fork packed the sites of Silinx's Map; the option
-// (s6MapOf) and the flow's netlist sorted only with it (open-flow-backends.js).
+// (s6MapOf) and the flow's netlist sorted only with it (open-flow-backends.js); #3151's product of two counters through
+// nextpnr's Map, the application's flow on a Nexys3 project (#3743).
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { silinxFlow } from './examples-lib.mjs';
 import { sortedNetlistText, packInput, packedSites, samePacking } from '../packages/silinx-fpga/src/fpga/s6/nextpnr-pack.js';
 import { s6MapOf } from '../packages/silinx-fpga/src/parts.js';
 import { packS6 } from '../packages/silinx-fpga/src/fpga/s6/pack.js';
@@ -74,3 +79,45 @@ test('s6MapOf: nextpnr\'s Map (the default since #3140) unless the project chose
   assert.equal(s6MapOf({ s6Map: 'nextpnr' }), 'nextpnr');
   assert.equal(s6MapOf({ s6Map: 'SILINX' }), 'nextpnr');
 });
+
+// (#3743) #3151's product of two counters by nextpnr's Map (the default since #3140): the counters' sums leave their carry
+// slices by BMUX / CMUX for the DSP48A1s, and the fork's packer put the product's 5FFs on those positions ("its pin BMUX
+// carries two nets") until its spartan6 0.5.2 (pmnmalo/nextpnr-spartan#47, a port of Silinx's muxNeeded); in Verilog and
+// in VHDL, on the Nexys3
+const PRODUCT = {
+  verilog: ['top.v', `module top(input clk, output reg [3:0] led);
+  reg [17:0] x = 0, y = 0; reg [35:0] p;
+  always @(posedge clk) begin x <= x + 3; y <= y + 5; p <= x * y; led <= p[35:32]; end
+endmodule
+`],
+  vhdl: ['top.vhd', `library ieee; use ieee.std_logic_1164.all; use ieee.numeric_std.all;
+entity top is port (clk : in std_logic; led : out std_logic_vector(3 downto 0)); end top;
+architecture rtl of top is
+  signal x, y : unsigned(17 downto 0) := (others => '0'); signal p : unsigned(35 downto 0);
+begin
+  process (clk) begin
+    if rising_edge(clk) then x <= x + 3; y <= y + 5; p <= x * y; led <= std_logic_vector(p(35 downto 32)); end if;
+  end process;
+end rtl;
+`],
+};
+const PRODUCT_UCF = 'NET "clk" LOC = "V10";\nNET "led<0>" LOC = "U16";\nNET "led<1>" LOC = "V16";\nNET "led<2>" LOC = "U15";\nNET "led<3>" LOC = "V15";\nNET "clk" PERIOD = 20 ns;\n';
+for (const [lang, [file, text]] of Object.entries(PRODUCT)) {
+  test(`#3743 a product of two counters (${lang}) by nextpnr's Map on the Nexys3: packed, placed and routed on every seed, its DSP48A1s, no warnings`, { timeout: 900000 }, async (t) => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-s6-product-'));
+    t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+    fs.writeFileSync(path.join(tmp, file), text);
+    fs.writeFileSync(path.join(tmp, 'top.ucf'), PRODUCT_UCF);
+    const project = { name: 'product', version: 1, device: { family: 'spartan6', part: 'xc6slx16', package: 'csg324', speed: '-3' }, board: 'nexys3', top: 'top',
+      files: [{ path: file, lang, role: 'design' }], constraints: 'top.ucf', impl: { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' } };
+    assert.equal(s6MapOf(project.impl), 'nextpnr');
+    const job = await silinxFlow(tmp, project, ['synth', 'translate', 'map', 'par']);
+    const lines = job.lines.map(l => (typeof l === 'string' ? l : l.text));
+    assert.equal(job.status, 'ok', lines.filter(l => /ERROR|nextpnr, seed/.test(l)).join('\n'));
+    assert.deepEqual(lines.filter(l => /WARNING/.test(l)), []);
+    assert.ok(lines.some(l => /^Packed and placed \d+ sites by nextpnr in /.test(l)), lines.join('\n'));   // (nextpnr's Map, not Silinx's)
+    assert.deepEqual(lines.filter(l => /^nextpnr, seed/.test(l)).map(l => l.replace(/ [\d.]+ ns/, ' … ns')), [1, 2, 3].map(s => `nextpnr, seed ${s}: minimum period … ns.`));
+    assert.ok(lines.includes('All signals are completely routed.'));
+    assert.ok(lines.some(l => /Number of DSP48A1s:\s+3 out of/.test(l)), lines.filter(l => /DSP/.test(l)).join('\n'));   // (Yosys's unsigned 18 x 18 product in three)
+  });
+}
