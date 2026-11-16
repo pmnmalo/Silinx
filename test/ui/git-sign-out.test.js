@@ -43,7 +43,16 @@ const newProject = async (page, name, lang = 'en') => {
 };
 const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text);
 const kept = (page) => page.eval(() => [sessionStorage.getItem('silinx.github-token'), localStorage.getItem('silinx.github-token'), sessionStorage.getItem('silinx.github-sign-in'), localStorage.getItem('silinx.github-sign-in')]);
-const tabCommand = (page, label) => page.click('#collab-page .entry a', { text: label });
+// (clicked once the page holds still: with a project open it is drawn again as git's status comes, #4257)
+const tabCommand = async (page, label) => {
+  await page.waitFor((l) => {
+    const now = document.getElementById('collab-page').innerHTML;
+    const same = now === window.__collabLast && performance.now() - window.__collabSince > 300;
+    if (now !== window.__collabLast) { window.__collabLast = now; window.__collabSince = performance.now(); }
+    return same && [...document.querySelectorAll('#collab-page .entry a')].some((a) => a.textContent === l);
+  }, [label], { what: `the Collaboration page still, with ${label}` });
+  await page.click('#collab-page .entry a', { text: label });
+};
 const tabState = (page, text) => page.waitFor((t) => [...document.querySelectorAll('#collab-page .collab-github .entry.hint')].some((e) => e.textContent === t), [text], { what: text });
 // the sign-out dialog as shown: its texts, its link, its buttons (the default one marked), the focused one
 const shown = (page) => page.eval(() => {
