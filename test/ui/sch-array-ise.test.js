@@ -2,7 +2,8 @@
 // own (Q on the left, D on the top, the clock at the bottom) exported by File ▸ Export Project (.zip)… to Xilinx ISE
 // (its .sch, the module's .sym with the pins on their sides; no .sym.json) and imported back by Import Project…:
 // the instance arrayed, drawn with the symbol, not out of date, the module's .sym.json made; Check Schematic clean; in
-// both interfaces. No warnings.
+// both interfaces. Its name, reg, a reserved word ISE's sch2hdl refuses: written as reg_1(3:0), said in the export's
+// warning, and imported back so (#3870, #4275). No other warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -44,19 +45,25 @@ const check = async (page) => {
   return page.eval((n) => document.getElementById('console-log').textContent.slice(n), n0);
 };
 
-uiTest('#3828 Export Project to Xilinx ISE and Import Project back: reg(3:0) arrayed, drawn with its module\'s symbol, up to date', E, async (page) => {
+uiTest('#3828 #4275 Export Project to Xilinx ISE and Import Project back: reg(3:0) arrayed (as reg_1(3:0)), drawn with its module\'s symbol, up to date', E, async (page) => {
   await makeProject(env, { name: 'ArrIse', top: 'top', board: 'basys2', files: { 'src/reg1.vhd': REG, 'src/reg1.sym.json': symbolText(SYM), 'src/top.vhd': 'entity top is end top;\narchitecture a of top is begin end a;\n', 'src/top.sch.json': JSON.stringify(top()) } });
   await page.openProject('ArrIse');
   await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} svg .sym[data-id="U"]`), [ED], { what: 'drawn' });
   assert.doesNotMatch(await check(page), /ERROR|WARNING/);
   // to ISE: the .sch with the block reg(3:0), the module's .sym with D on the top; no .sym.json
+  const c0 = (await page.consoleText()).length;
   await exportZip(page, 'xilinx');
   const zip = await waitDownload(page, 'ArrIse.zip');
   const entries = await readZip(new Uint8Array(await fs.readFile(zip)), codec);
   const text = (p) => Buffer.from(entries.find((e) => e.path === p).data).toString('utf8');
   assert.deepEqual(entries.map((e) => e.path).filter((p) => /^src\//.test(p)).sort(), ['src/reg1.sym', 'src/reg1.vhd', 'src/top.sch', 'src/top.vhd']);
-  assert.match(text('src/top.sch'), /<block symbolname="reg1" name="reg\(3:0\)">\n {12}<blockpin signalname="q\(3:0\)" name="q" \/>/);
+  assert.match(text('src/top.sch'), /<block symbolname="reg1" name="reg_1\(3:0\)">\n {12}<blockpin signalname="q\(3:0\)" name="q" \/>/);
+  // (reg, a reserved word, written as reg_1(3:0): ISE's sch2hdl refuses it, #3870; the console's exact lines)
+  assert.deepEqual((await page.consoleText()).slice(c0).split('\n').filter(Boolean), [
+    'Exported ArrIse.zip: Xilinx ISE project ArrIse.xise + its sources (2 KB).',
+    "WARNING: src/top.sch: instance 'reg(3:0)' written as 'reg_1(3:0)': 'reg' is a reserved word of Verilog, which ISE's schematic refuses as a block's name",
+    "WARNING: src/top.sch: 'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
   assert.match(text('src/reg1.sym'), /<pin polarity="Input" x="192" y="-320" name="d" \/>/);
 
   // and back, as a new project
@@ -70,7 +77,7 @@ uiTest('#3828 Export Project to Xilinx ISE and Import Project back: reg(3:0) arr
   await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
   await page.waitFor((ed) => window.Silinx.active?.path === 'src/top.sch.json' && document.querySelector(`${ed} svg .sym`), [ED], { what: 'the imported schematic' });
   const s = await page.eval(() => window.Silinx.active.schEditor.getDoc().symbols.find((x) => x.type === 'module'));
-  assert.deepEqual([s.name, s.params.ports.map((q) => `${q.name}:${q.side}`)], ['reg(3:0)', ['q:W', 'ce:W', 'd:N', 'c:S']]);
+  assert.deepEqual([s.name, s.params.ports.map((q) => `${q.name}:${q.side}`)], ['reg_1(3:0)', ['q:W', 'ce:W', 'd:N', 'c:S']]);
   assert.equal(await page.eval((ed, id) => document.querySelector(`${ed} svg .sym[data-id="${id}"]`).classList.contains('stale'), ED, s.id), false, 'up to date');
   assert.doesNotMatch(await check(page), /ERROR|WARNING|out of date/);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
