@@ -253,19 +253,23 @@ async function checkExample(name, srcLine, { allTraced = true } = {}) {
 test('the open flow: blinky\'s (VHDL, a Verilog counter) paths.json, the timing report\'s critical path first, every stage back to a process', { timeout: 300000 }, async () => {
   const r = await checkExample('blinky', SRC_LINE);
   assert.deepEqual(r.lines.filter(l => /WARNING/.test(l)), []);
-  // (the slowest path: from speed_ctrl's level, the register it reads, into its ticks, the one it writes)
+  // (the slowest path: from speed_ctrl's debounce counter cnt_f, its 22 bits compared with DEBOUNCE - 1, into deb_f, the
+  // register it decides; with 21 bits, before #3922, level into ticks was, now second)
   const worst = JSON.parse(r.store['open/paths.json']).paths[0];
-  assert.deepEqual([worst.stages[0].signals, worst.stages.at(-1).signals], [['u_speed.level'], ['u_speed.ticks']]);
-  // between two registers: level into ticks is that path; the slowest pair the slowest path; a pair's path from a flip-flop
-  // of its register into one of the other; each register into ticks no slower than level
+  assert.deepEqual([worst.stages[0].signals, worst.stages.at(-1).signals], [['u_speed.cnt_f'], ['u_speed.deb_f']]);
+  // between two registers: cnt_f into deb_f is that path; the slowest pair the slowest path; a pair's path from a flip-flop
+  // of its register into one of the other; level into ticks a path of its own, no slower; each register into deb_f no
+  // slower than cnt_f
   const t = JSON.parse(r.store['open/paths.json']);
-  assert.ok(t.points.includes('u_speed.level') && t.points.includes('u_speed.ticks'));
+  assert.ok(['u_speed.cnt_f', 'u_speed.deb_f', 'u_speed.level', 'u_speed.ticks'].every(x => t.points.includes(x)));
+  const cd = betweenPaths(t, 'u_speed.cnt_f', 'u_speed.deb_f');
+  assert.deepEqual([cd.length, cd[0].delay, cd[0].stages.length], [1, worst.delay, worst.stages.length]);
   const lt = betweenPaths(t, 'u_speed.level', 'u_speed.ticks');
-  assert.deepEqual([lt.length, lt[0].delay, lt[0].stages.length], [1, worst.delay, worst.stages.length]);
+  assert.ok(lt.length === 1 && lt[0].delay <= worst.delay);
   assert.equal(Math.max(...t.pairs.map(p => p.period)), worst.period);
   const on = (s, x) => s.signals.includes(x) || s.inst === x;   // (a register, or an instance with no named signal)
   for (const p of t.pairs) assert.ok(on(p.stages[0], p.from) && on(p.stages.at(-1), p.to), `${p.from} -> ${p.to}`);
-  assert.ok(betweenPaths(t, '', 'u_speed.ticks').every(p => p.delay <= worst.delay));
+  assert.ok(betweenPaths(t, '', 'u_speed.deb_f').every(p => p.delay <= worst.delay));
   assert.equal(new Set(t.pairs.map(p => `${p.from}>${p.to}`)).size, t.pairs.length, 'one path a pair');
 });
 

@@ -9,6 +9,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { TARGETS, targetName, example, exampleUcf, runTestbench } from './examples-lib.mjs';
+import { generate } from '../core/asm.js';
+import { compile, elaborate } from '../core/compile.js';
+import { Simulator } from '../core/simulator.js';
+import { boardGenericValues } from '../core/board-generics.js';
+import { resolveBoard } from '../server/devices.js';
+import { BOARDS } from '../server/boards.js';
 
 const ex = example('blinky');
 const read = (f) => fs.readFileSync(path.join(ex.dir, f), 'utf8');
@@ -68,4 +74,53 @@ for (const [what, file, from, to, message] of MUTANTS) {
     assert.equal(r.passed, false);
     assert.match(r.log.join('\n'), message);
   });
+}
+
+// The buttons' debouncers on a fast clock (#3922): the top gives speed_ctrl DEBOUNCE = CLK_HZ / 50 (20 ms), and its
+// counters (cnt_f, cnt_s) must reach DEBOUNCE - 1; with 21 bits (at most 2,097,151) they never did above 104.8 MHz:
+// on the Zybo Z7's 125 MHz the buttons did nothing (Vivado removed their logic).
+const chart = () => JSON.parse(read('src/speed_ctrl.asm.json'));
+
+test('#3922 blinky: speed_ctrl\'s debounce counters hold CLK_HZ / 50 - 1 on every board, in the chart and its VHDL', () => {
+  const widths = Object.fromEntries(chart().registers.filter((r) => /^cnt_/.test(r.name)).map((r) => [r.name, r.width]));
+  assert.deepEqual(widths, { cnt_f: 22, cnt_s: 22 });
+  for (const n of ['cnt_f', 'cnt_s']) assert.match(read('src/speed_ctrl.vhd'), new RegExp(`signal ${n}, ${n}_next : std_logic_vector\\(21 downto 0\\)`));
+  const clocks = BOARDS.map((b) => [b.id, boardGenericValues(resolveBoard(b.id)).CLK_HZ]).filter(([, hz]) => hz);
+  assert.ok(clocks.some(([id, hz]) => id === 'zybo-z7' && hz === 125_000_000));
+  for (const [id, hz] of clocks) assert.ok(hz / 50 - 1 < 2 ** 22, `${id}: DEBOUNCE ${hz / 50}`);
+});
+
+// speed_ctrl at 125 MHz (DEBOUNCE 2,500,000) with a tick every cycle: a step every 2^level cycles, level 5 at reset
+// (10 steps in 320 cycles); a button held past 20 ms: faster, level 4 (20 steps), or slower, level 6 (5 steps).
+const tb125 = (button) => `module tb;
+  reg clk = 0, rst = 1, faster = 0, slower = 0, tick = 1;
+  wire step;
+  integer n;
+  speed_ctrl #(.DEBOUNCE(2500000)) dut(.clk(clk), .rst(rst), .faster(faster), .slower(slower), .tick(tick), .step(step));
+  always #4 clk = ~clk;
+  task count; begin n = 0; repeat (320) begin @(posedge clk); #1; if (step) n = n + 1; end end endtask
+  initial begin
+    #20 rst = 0;
+    count; $display("before %0d", n);
+    ${button} = 1;
+    #19990000; count; $display("at 19.99 ms %0d", n);
+    #20000; count; $display("after %0d", n);
+    $finish;
+  end
+endmodule`;
+for (const lang of ['vhdl', 'verilog']) {
+  for (const [button, steps] of [['faster', 20], ['slower', 5]]) {
+    test(`#3922 blinky: speed_ctrl in ${lang} at 125 MHz: ${button} held 20 ms changes the speed`, { timeout: 300000 }, () => {
+      // (the VHDL: the example's file; the Verilog: the chart's)
+      const dut = lang === 'vhdl' ? { path: 'speed_ctrl.vhd', text: read('src/speed_ctrl.vhd') } : { path: 'speed_ctrl.v', text: generate(chart(), 'verilog').code };
+      const lib = compile([dut, { path: 'tb.v', text: tb125(button) }]);
+      const design = elaborate(lib, 'tb');
+      assert.deepEqual([...lib.errors, ...design.diags].map((d) => d.message), []);
+      // (only the waveforms' last change kept: no recording limit over 2.5 million cycles)
+      const sim = new Simulator(design, { waveTail: () => 1 });
+      sim.run(3e10);
+      assert.deepEqual(sim.log.map((e) => `${e.kind}: ${e.text}`), ['print: before 10', 'print: at 19.99 ms 10', `print: after ${steps}`,
+        'note: simulation finished ($finish) at 20017693 ns']);
+    });
+  }
 }

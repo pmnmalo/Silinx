@@ -375,7 +375,7 @@ uiTest('open mode: View Technology Schematic of blinky and pong without ISE: the
   await page.setView('impl');
   assert.deepEqual((await procLabels(page)).find((p) => p.label === 'View Technology Schematic'), { label: 'View Technology Schematic', disabled: false, title: '' });
   await checkTechSchematic(page, { top: 'top', blocks: ['u_pre', 'u_speed', 'u_knight', 'u_count', 'u_display'], inside: 'u_pre',
-    message: "Technology Schematic of 'top': the netlist of the Silinx toolchain's synthesis (build/open/top.json), 513 cells in 5 block(s): u_display (61), u_knight (52), u_count (84), u_speed (218), u_pre (67)." });
+    message: "Technology Schematic of 'top': the netlist of the Silinx toolchain's synthesis (build/open/top.json), 520 cells in 5 block(s): u_display (61), u_knight (52), u_speed (224), u_count (84), u_pre (68)." });
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /warning|error/i.test(l)), []);
   // Portuguese: the view's bar, its tab and the LUT's function have no untranslated text (the netlist's names apart)
   await page.eval(TEXTS);
