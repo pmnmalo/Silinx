@@ -50,3 +50,23 @@ test('importProjectEntries: the two exports back as projects; no project in the 
   await assert.rejects(importProjectEntries(P, 'none', [{ path: 'silinx.json', data: new Uint8Array(2) }], m => new Error(m)),
     { message: 'importProjectEntries: the entries must pass the import gate (core/import-gate.js)' });
 });
+
+// #4276 regression: a new project's constraints file, not written yet, is not listed in the .xise; imported back with
+// no warning, its constraints file not written either; once written, listed and imported back with it
+test('#4276 exportProjectZip: a constraints file not written yet left out of the .xise; imported back with no warnings', async () => {
+  await P.createProject({ name: 'fresh', board: 'basys2' });
+  await P.writeFile('fresh', 'src/top.vhd', 'entity top is end;\narchitecture a of top is begin end;\n');
+  await P.updateProject('fresh', pj => ({ ...pj, top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] }));
+  assert.equal((await P.readProject('fresh')).constraints, 'constraints/top.ucf');
+  const xml = async () => Buffer.from((await readZip((await exportProjectZip(P, 'fresh')).zip, NODE_CODEC)).find(e => e.path === 'fresh.xise').data).toString('utf8');
+  const back = async to => importProjectEntries(P, to, await gateZip((await exportProjectZip(P, 'fresh')).zip, NODE_CODEC), m => new Error(m));
+  assert.doesNotMatch(await xml(), /FILE_UCF/);
+  const b = await back('fresh_x');
+  // (the project imported: a new project's constraints path, its file not written, as the one exported)
+  assert.deepEqual([b.project.top, b.project.constraints, b.missing, b.warnings], ['top', 'constraints/top.ucf', [], []]);
+  assert.ok(!(await P.fileTree('fresh_x')).includes('constraints/top.ucf'));
+  await P.writeFile('fresh', 'constraints/top.ucf', 'NET "a" LOC = "B8";\n');
+  assert.match(await xml(), /<file xil_pn:name="constraints\/top\.ucf" xil_pn:type="FILE_UCF">/);
+  const u = await back('fresh_u');
+  assert.deepEqual([u.project.constraints, u.missing, u.warnings], ['constraints/top.ucf', [], []]);
+});

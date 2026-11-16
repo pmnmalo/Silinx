@@ -7,6 +7,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { setupUi, uiTest, makeProject, readWs, waitDownload, ROOT } from './harness.js';
 import { FILE, exportZip, openImport } from './zip-helpers.js';
+import zlib from 'node:zlib';
+import { readZip } from '../../core/zip.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -809,6 +811,28 @@ uiTest('Silinx and Xilinx zip: export, import as a new project, and a failing im
   assert.equal(await readWs(env, 'ZipCopy', 'src/top.vhd'), await readWs(env, 'ZipSrc', 'src/top.vhd'));
   // …and it is open again, as it was before the import
   await page.waitFor(() => window.Silinx.project?.name === 'ZipCopy');
+});
+
+// #4276 regression: a new project's constraints file, not written yet, is not listed in the exported .xise; the zip
+// imported back with no warnings, its constraints file not written either
+uiTest('#4276 Export Project (.zip)… to Xilinx ISE of a new project with no constraints file: the .xise lists none, imported back with no warnings', E, async (page) => {
+  await makeProject(env, { name: 'NoUcf', board: 'basys2', top: 'top', files: { 'src/top.vhd': 'entity top is end top;\narchitecture a of top is begin end a;\n' } });
+  await page.openProject('NoUcf');
+  await exportZip(page, 'xilinx');
+  const zip = await waitDownload(page, 'NoUcf.zip');
+  const entries = await readZip(new Uint8Array(await fs.readFile(zip)), { inflate: (d) => zlib.inflateRawSync(d) });
+  assert.deepEqual(entries.map((e) => e.path).sort(), ['NoUcf.xise', 'src/top.vhd']);
+  assert.doesNotMatch(Buffer.from(entries.find((e) => e.path === 'NoUcf.xise').data).toString('utf8'), /FILE_UCF/);
+  await openImport(page, 'xilinx');
+  await page.setFiles(FILE, [zip]);
+  await page.fill('.dlg-overlay input[type=text]', 'NoUcfBack');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfBack');
+  await page.waitConsole(/Imported Xilinx ISE project 'NoUcfBack'/);
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), [], 'no warnings');
+  const back = await env.server.api('GET', '/api/projects/NoUcfBack');
+  assert.deepEqual([back.top, back.fileTree], ['top', ['src/top.vhd']]);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
 
 // #3703: Import Project… and Export Project (.zip)…: the software chosen in the window (Silinx, Xilinx ISE; AMD

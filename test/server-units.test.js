@@ -647,3 +647,16 @@ test('ident: a project\'s top and simTop are identifiers (#1431): the names the 
   assert.equal(topNameError({ top: 7 }), "invalid top module name '7' (a letter or _, then letters, digits and _)");
   assert.equal(topNameError({ top: { a: 1 } }), "invalid top module name '[object Object]' (a letter or _, then letters, digits and _)");
 });
+
+// #4276: the constraints file listed in the .xise only when it is there (exists), a new project's not written yet; no
+// exists given: listed, as before
+test('#4276 exportXise: the constraints file listed only when exists() says it is there', () => {
+  const pj = { name: 'p', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], constraints: 'constraints/top.ucf' };
+  const UCF = /<file xil_pn:name="constraints\/top\.ucf" xil_pn:type="FILE_UCF">\n {6}<association xil_pn:name="Implementation" xil_pn:seqID="0"\/>\n {4}<\/file>/;
+  assert.match(xise.exportXise(pj), UCF);
+  assert.match(xise.exportXise(pj, { exists: p => p === 'constraints/top.ucf' }), UCF);
+  const none = xise.exportXise(pj, { exists: () => false });
+  assert.doesNotMatch(none, /FILE_UCF|top\.ucf/);
+  assert.deepEqual([xise.importXise(none).constraints, xise.importXise(none).warnings], [null, []]);
+  assert.doesNotMatch(xise.exportXise({ ...pj, constraints: null }, { exists: () => true }), /FILE_UCF/);
+});

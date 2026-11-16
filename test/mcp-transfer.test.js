@@ -240,3 +240,17 @@ test('#4132 import_project / export_project: their descriptions name the File me
   assert.doesNotMatch(desc('import_project'), /Import Project \(\.zip\)/);
   assert.match(desc('export_project'), /as the File menu's Export Project \(\.zip\)… does,/);
 });
+
+// #4276 regression: a new project's constraints file, not written yet: not in the .xise, the import back warns of nothing
+test('#4276 export_project of a new project with no constraints file written: imported back with no warnings', async () => {
+  await ok('new_project', { name: 'nouc' });
+  await ok('write_file', { project: 'nouc', path: 'src/top.vhd', text: 'entity top is end;\narchitecture a of top is begin end;\n' });
+  await ok('set_top', { project: 'nouc', top: 'top' });
+  const x = await ok('export_project', { project: 'nouc', path: out('nouc.zip') });
+  assert.deepEqual(x.data.warnings, []);
+  const zip = await readZip(fs.readFileSync(out('nouc.zip')), NODE_CODEC);
+  assert.deepEqual(zip.map(e => e.path).sort(), ['nouc.xise', 'src/top.vhd']);
+  assert.doesNotMatch(Buffer.from(zip.find(e => e.path === 'nouc.xise').data).toString('utf8'), /FILE_UCF/);
+  const i = await ok('import_project', { name: 'nouc_x', from: out('nouc.zip') });
+  assert.deepEqual([i.data.kind, i.data.missing, i.data.warnings], ['xilinx', [], []]);
+});

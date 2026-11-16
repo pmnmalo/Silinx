@@ -1442,6 +1442,41 @@ uiTest('#4205 browser edition: a copy imported keeps its origin and ancestor apa
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
 }, { url: () => 'about:blank' });
 
+// #4276 regression, browser edition: a project whose constraints file is not written yet (a new project's) exported to
+// Xilinx ISE: the .xise lists none; imported back with no warnings
+uiTest('#4276 browser edition: Export Project (.zip)… to Xilinx ISE with no constraints file: the .xise lists none, imported back with no warnings', E, async (page) => {
+  const top = 'entity top is end top;\narchitecture a of top is begin end a;\n';
+  const pj = { name: 'NoUcf', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }], constraints: 'constraints/top.ucf' };
+  const codec = { deflate: (d) => zlib.deflateRawSync(d), inflate: (d) => zlib.inflateRawSync(d) };
+  const src = path.join(env.tmp, 'noucf-silinx.zip');
+  await fs.writeFile(src, await createZip([{ path: 'silinx.json', data: JSON.stringify(pj) }, { path: 'src/top.vhd', data: top }], codec));
+  await page.goto(siteUrl);
+  await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [src]);
+  await page.fill('.dlg-overlay input[type=text]', 'NoUcf');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcf' && document.querySelector('#hier .row'), [], { what: 'the project open' });
+  assert.equal(await page.eval(() => window.Silinx.project.constraints), 'constraints/top.ucf');
+  // (the Silinx zip's own import names the constraints file not there: #4288)
+  const warnings = async () => (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l));
+  const SETUP = ['WARNING: files listed in silinx.json but not in the zip: constraints/top.ucf'];
+  assert.deepEqual(await warnings(), SETUP);
+  await exportZip(page, 'xilinx');
+  const zip = await waitDownload(page, 'NoUcf.zip');
+  const entries = await readZip(new Uint8Array(await fs.readFile(zip)), codec);
+  assert.deepEqual(entries.map((e) => e.path).sort(), ['NoUcf.xise', 'src/top.vhd']);
+  assert.doesNotMatch(Buffer.from(entries.find((e) => e.path === 'NoUcf.xise').data).toString('utf8'), /FILE_UCF/);
+  await openImport(page, 'xilinx');
+  await page.setFiles(FILE, [zip]);
+  await page.fill('.dlg-overlay input[type=text]', 'NoUcfBack');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfBack' && document.querySelector('#hier .row'), [], { what: 'the import open' });
+  await page.waitConsole(/Imported Xilinx ISE project 'NoUcfBack'/);
+  assert.deepEqual(await warnings(), SETUP, 'the export and the import back: no warnings');
+  assert.deepEqual(await page.eval(() => window.Silinx.diskTree), ['src/top.vhd']);
+}, { url: () => 'about:blank' });
+
 // #4206: the browser edition's Merge Contribution… (its back end: web/js/merge-local.js): a project given out, the copy
 // changed (a file changed, one added) and merged back three-way through the ancestor it carries; Undo Merge. No warning.
 uiTest('#4206 browser edition: Merge Contribution… of a copy changed, three-way, then Undo Merge', E, async (page) => {

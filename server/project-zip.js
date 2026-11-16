@@ -54,7 +54,7 @@ export async function exportProjectZip(P, name, kind = 'xilinx', { copy = false 
   for (const rel of tree.filter(isCSource)) cSources[rel] = await fs.readFile(P.safeJoin(P.projectDir(name), rel), 'utf8');
   const c = exportCSources(project, cSources, sources);
   for (const f of c.files) sources[f.path] = f.text;
-  const xml = exportXise(project, { sources, schematics: sch.schematics, extraFiles: [...sch.extraFiles, ...c.extraFiles] });
+  const xml = exportXise(project, { sources, schematics: sch.schematics, extraFiles: [...sch.extraFiles, ...c.extraFiles], exists: p => tree.includes(p) });
   const entries = [];
   const generated = [...sch.files, ...c.files], warnings = [...sch.warnings, ...c.warnings];
   const added = new Set(generated.map(f => f.path));

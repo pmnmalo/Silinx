@@ -20,12 +20,14 @@ export function mountXiseRoutes(ctx) {
   const xiseName = project => `${project.name}.xise`;
 
   const sourcesOf = (name, project) => projectSources(P, name, project);
+  // whether a project's file is there (its constraints file listed in the .xise only then, #4276)
+  const hasFile = name => p => { try { return fss.existsSync(P.safeJoin(P.projectDir(name), p)); } catch { return false; } };
 
   // the .xise sent, nothing written (#1432: a GET changes no file; sync-xise writes it on request)
   api.get('/projects/:p/export.xise', wrap(async (req, res) => {
     const name = req.params.p;
     const project = await P.readProject(name);
-    const xml = exportXise(project, { sources: await sourcesOf(name, project) });
+    const xml = exportXise(project, { sources: await sourcesOf(name, project), exists: hasFile(name) });
     // attachment() sets the type from the extension (.xise: octet-stream): set the XML type after it
     res.attachment(xiseName(project)).type('application/xml').send(xml);
   }));
@@ -82,7 +84,7 @@ export function mountXiseRoutes(ctx) {
       }
     }
     if (direction === 'export') {
-      const xml = exportXise(project, { sources: await sourcesOf(name, project) });
+      const xml = exportXise(project, { sources: await sourcesOf(name, project), exists: hasFile(name) });
       await fs.writeFile(xfile, xml);
       return { direction, file: xfile, project };
     }

@@ -509,7 +509,7 @@ export const api = {
     // C sources go out as their HDL (#2320)
     const c = exportCSources(p.json, Object.fromEntries(Object.entries(p.files).filter(([k]) => isCSource(k))), p.files);
     const sources = { ...p.files, ...Object.fromEntries(c.files.map(f => [f.path, f.text])) };
-    const xml = exportXise(p.json, { sources, schematics: sch.schematics, extraFiles: [...sch.extraFiles, ...c.extraFiles] });
+    const xml = exportXise(p.json, { sources, schematics: sch.schematics, extraFiles: [...sch.extraFiles, ...c.extraFiles], exists: f => f in p.files });
     const generated = [...sch.files, ...c.files];
     const added = new Set(generated.map(f => f.path));
     // Xilinx ISE project: no Silinx-only files (silinx.json, ASM charts, Silinx schematics)

@@ -813,6 +813,11 @@ test('xise: import with provided / missing files (unsafe paths mapped into the p
   r = await call('POST', '/projects/X1/sync-xise', { direction: 'export' });
   assert.equal(r.status, 200);
   assert.equal(await fs.readFile(path.join(P.projectDir('X1'), 'X1.xise'), 'utf8'), (await call('GET', '/projects/X1/export.xise')).body);
+  // (#4276) X3's constraints file, not there: not listed, by the GET and by the sync; X1's board.ucf, there: listed
+  assert.match((await call('GET', '/projects/X1/export.xise')).body, /<file xil_pn:name="board\.ucf" xil_pn:type="FILE_UCF">/);
+  assert.doesNotMatch((await call('GET', '/projects/X3/export.xise')).body, /FILE_UCF/);
+  assert.equal((await call('POST', '/projects/X3/sync-xise', { direction: 'export' })).status, 200);
+  assert.doesNotMatch(await fs.readFile(path.join(P.projectDir('X3'), 'X3.xise'), 'utf8'), /FILE_UCF/);
   assert.equal((await call('GET', '/projects/Nope/export.xise')).status, 404);
 });
 

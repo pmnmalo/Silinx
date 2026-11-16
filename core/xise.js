@@ -49,7 +49,8 @@ function topValue(project, name, sources) {
 /**
  * Build .xise XML for a project.
  * @param {object} project  Silinx project json
- * @param {object} [opts]   { sources: { path: text } } (optional, used to detect VHDL architectures / top files)
+ * @param {object} [opts]   { sources: { path: text } } (optional, used to detect VHDL architectures / top files),
+ *   exists(path): whether a project file is there (the constraints file listed only then, #4276; default: listed)
  */
 // association(s) of an ISE file -> Silinx role: both (or none) = design ("All"), only
 // Implementation = impl, otherwise (simulation only) = sim
@@ -59,7 +60,7 @@ function roleOfAssoc(assoc) {
   return impl ? 'impl' : 'sim';
 }
 
-export function exportXise(project, { sources, schematics = [], extraFiles = [] } = {}) {
+export function exportXise(project, { sources, schematics = [], extraFiles = [], exists } = {}) {
   const dev = project.device || {};
   const impl = project.impl || {};
   // ISE schematics (exported .sch) stand for the HDL generated from them; ISE generates that itself
@@ -95,7 +96,8 @@ export function exportXise(project, { sources, schematics = [], extraFiles = [] 
     lines.push('    </file>');
     seq++;
   }
-  if (project.constraints) {
+  // (a new project's constraints file, not written yet: not listed, which ISE would miss and the import back warn of, #4276)
+  if (project.constraints && (!exists || exists(project.constraints))) {
     lines.push(`    <file xil_pn:name="${esc(project.constraints)}" xil_pn:type="FILE_UCF">`,
       '      <association xil_pn:name="Implementation" xil_pn:seqID="0"/>', '    </file>');
   }
