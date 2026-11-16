@@ -41,6 +41,14 @@ export async function shareLiveDialog() {
   return openHow('live', {});
 }
 
+/** Share a Copy… (the Collaboration tab's, #4259): Share Project…'s window with A copy chosen, kept as the viewer's
+ *  way. */
+export async function shareCopyDialog() {
+  if (!S.project) return null;
+  keepHow('copy');
+  return openHow('copy', {});
+}
+
 async function openHow(how, opts) {
   if (how === 'live') return (await import('./collab-share.js')).shareProjectDialog(opts);
   return (await import('./link-copy.js')).copyLinkDialog(opts);

@@ -70,7 +70,7 @@ export const GIT_PT = {
   'git signs in to GitHub with its own credentials.': 'O git autentica-se no GitHub com as suas próprias credenciais.',
   'Checks passed': 'Verificações aprovadas', 'Checks failed': 'Verificações falhadas', 'Checks running': 'Verificações a decorrer',
   'No check on GitHub': 'Nenhuma verificação no GitHub',
-  'Live Sharing': 'Partilha em Direto', 'Not shared live.': 'Não partilhado em direto.', 'Share Live…': 'Partilhar em Direto…',
+  'Share a Copy…': 'Partilhar uma Cópia…', 'A followed project is its owner\'s to share.': 'Um projeto seguido é do seu dono para partilhar.', 'Not shared live.': 'Não partilhado em direto.', 'Share Live…': 'Partilhar em Direto…',
   'To follow a project shared live, open its link.': 'Para seguir um projeto partilhado em direto, abra a sua ligação.',
 };
 

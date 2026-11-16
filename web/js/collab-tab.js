@@ -3,9 +3,9 @@
 // labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
 // a file with the last commit), Commit…, Push, Pull, History…, the GitHub sign-in and the last push's checks; a project
 // with no repository: Initialize Repository…, Open from Repository…. The same items as the Git submenu's
-// (gitMenuItems), which keeps them. Its Live box: live sharing (#3181), what the toolbar's presence shows and its
-// commands (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live…
-// otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
+// (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, disabled with
+// no project as it is, and in a followed project), and live sharing (#3181): what the toolbar's presence shows and its commands
+// (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
 // read-only notice and its Live box only. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
 // page's, so that a later command (a merge, a branch) is one more box or entry.
 import { icon } from './icons.js';
@@ -15,7 +15,8 @@ import { S, showLeftPage } from './app.js';
 import { gitMenuItems, gitMarks, gitOff, hasGit, openFromRepositoryDialog } from './git.js';
 import { collab, following, followNotice } from './collab-state.js';
 import { presence } from './collab-presence.js';
-import { liveProblem, shareLiveDialog } from './share-how.js';
+import { liveProblem, shareLiveDialog, shareCopyDialog } from './share-how.js';
+import { getLanguage, onLanguageChange } from './i18n.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { shortCommit } from '/core/git-messages.js';
@@ -107,28 +108,40 @@ function githubBox(items, checksItem) {
     kept ? h('div', { class: 'entry collab-checks', 'data-state': state }, h('span', {}, CHECKS[state]), h('span', { 'data-no-i18n': '' }, `(${shortCommit(kept.commit)})`)) : null);
 }
 
-// live sharing (#3181): the presence's label, who is in (their role beside them) and its commands; none: Share Live…
-// (disabled with no project or where it cannot be, its reason its tip), how to follow
+// the Sharing box's heading (#4259: "Sharing" is the presence's "A partilhar" elsewhere: this one's word given here)
+const sharingTitle = () => h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Partilha' : 'Sharing');
+// Share a Copy… (#4259): Share Project…'s copy, disabled with no project as File ▸ Share Project… is, and in a followed
+// project (read only: the owner's to share), its reason its tip
+const FOLLOWED = 'A followed project is its owner\'s to share.';
+const copyEntry = () => (following() || !S.project
+  ? entry('share', h('a', { class: 'disabled', 'aria-disabled': 'true', title: following() ? FOLLOWED : '' }, 'Share a Copy…'))
+  : command({ label: 'Share a Copy…', action: () => shareCopyDialog() }, 'share'));
+
+// Sharing: Share a Copy…, then live sharing (#3181): the presence's label, who is in (their role beside them) and its
+// commands; none: Share Live… (disabled with no project or where it cannot be, its reason its tip), how to follow
 function liveBox() {
   const p = presence();
   if (!collab.role) {
     const why = S.project ? liveProblem() : null;
-    return box('collab-live', 'Live Sharing',
+    return box('collab-live', sharingTitle(),
       hint('Not shared live.'),
+      copyEntry(),
       why || !S.project
         ? entry('share', h('a', { class: 'disabled', 'aria-disabled': 'true', title: why || '' }, 'Share Live…'))
         : entry('share', h('a', { onclick: () => Promise.resolve(shareLiveDialog()).finally(renderCollabPage) }, 'Share Live…')),
       hint('To follow a project shared live, open its link.'));
   }
   const ROLE = { owner: 'owner', editor: 'editor', viewer: 'viewer' };
-  return box('collab-live', 'Live Sharing',
+  return box('collab-live', sharingTitle(),
     hint(p.label),
     ...p.all.map(x => h('div', { class: 'entry collab-peer' }, h('span', { class: 'collab-badge', style: { background: x.color }, 'data-no-i18n': '' }, (String(x.name).trim()[0] || '?').toUpperCase()),
       h('span', { 'data-no-i18n': '' }, x.name), h('span', { class: 'collab-role' }, x.me ? 'you' : ROLE[x.role] || 'viewer'))),
+    copyEntry(),
     ...p.commands.map(c => command(c, 'share')));
 }
 
 // drawn again when git's status or presence changes, after GitHub Checks, when a project opens or closes
 addEventListener('silinx:git-status', () => renderCollabPage());
 addEventListener('silinx:git-checks', e => { checks = e.detail; renderCollabPage(); });
+onLanguageChange(() => renderCollabPage());
 for (const ev of ['silinx:project-opened', 'silinx:project-closed', 'silinx:collab-presence']) addEventListener(ev, () => renderCollabPage());

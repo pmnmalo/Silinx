@@ -481,8 +481,8 @@ files, with your time, inputs and view), your runs and the reports you open; and
 editors' (`#edit=…`), who edit it with you; the toolbar's Sharing menu copies either (*Copy View Link*, *Copy Editor
 Link*), *Add a User…* gives the link of the role you choose, and it lists who is in, each a viewer or an
 editor, and makes a viewer an editor or an editor a viewer, which renews the editors' link: the old one then only
-follows, the other editors keep editing; the Collaboration tab's **Live Sharing** box shows the same, who is in and
-those commands, and *Share Live…* opens the window with Live chosen). A live share outlives a dropped connection: its owner's page reconnects on
+follows, the other editors keep editing; the Collaboration tab's **Sharing** box shows the same, who is in and
+those commands, *Share Live…* opens the window with Live chosen, and *Share a Copy…* with A copy chosen). A live share outlives a dropped connection: its owner's page reconnects on
 its own (*Reconnecting…* in the toolbar; the relay keeps the room for 2 minutes and the followers keep the project), and
 so does a follower of a room the owner's page hosts (#3835). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
 link has every file, its comments too), so nothing has to be hosted. Share Project… can make a **short link** instead
@@ -540,8 +540,8 @@ On your computer or a Silinx server, a project can live in a GitHub repository, 
 Collaboration tab** (the side panel's last, after Teaching, in both interfaces) gathers its commands: the project's
 GitHub repository and branch (the commits to push or to pull), its changed files with the Design pane's marks (a
 click compares one with the last commit), Commit…, Push, Pull, History…, the sign-in and the last push's checks; for
-a project with no repository, Initialize Repository… and Open from Repository…; and live sharing (its Live Sharing box:
-Share Live…, who is in, the links, Stop Sharing, Follow, Stop Following). The menus keep the same commands:
+a project with no repository, Initialize Repository… and Open from Repository…; and its Sharing box: Share a Copy…
+(Share Project…'s copy), and live sharing (Share Live…, who is in, the links, Stop Sharing, Follow, Stop Following). The menus keep the same commands:
 - **Open from Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
   GitHub repository, a GitHub Classroom assignment's too.
 - **Commit…, Push to GitHub and Pull from GitHub** (the Collaboration tab; the project's right-click menu in the Design
