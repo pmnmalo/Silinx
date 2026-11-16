@@ -470,8 +470,10 @@ uiTest('RTL and Technology Schematic in Portuguese: the palette, its tooltips, t
   const tech = await viewerTexts(page);
   assert.deepEqual(tech.kinds, ['wire', 'junction', 'sym:module', 'sym:constant', 'sym:slice', 'sym:busjoin', 'port', 'label']);
   assert.deepEqual(tech.untranslated, []);
-  for (const s of ['Propriedades', '⬆ Subir', 'Módulo LUT3', 'Pinos (4)', 'Larguras das entradas (MSB primeiro)', 'Função do LUT (INIT)'])
+  for (const s of ['Propriedades', '⬆ Subir', 'Larguras das entradas (MSB primeiro)', 'Função do LUT (INIT)'])
     assert.ok(tech.pt.has(s), `${s}: ${[...tech.pt].join(' | ')}`);
+  // (the first LUT clicked, its kind as the synthesis makes it: a LUT2 since blinky's 22-bit debouncers, #3922, a LUT3 before)
+  for (const re of [/^Módulo LUT[1-6]$/, /^Pinos \(\d+\)$/]) assert.ok([...tech.pt].some((s) => re.test(s)), `${re}: ${[...tech.pt].join(' | ')}`);
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /warning|error/i.test(l)), []);
   await env.server.api('PUT', '/api/toolchain', { mode: 'local' });
 }, { timeout: 300000 });

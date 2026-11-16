@@ -31,7 +31,7 @@ const BOARDS = [
   { board: 'ulx3s', tool: 'nextpnr-ecp5', part: 'lfe5u-85f-6cabga381', mhz: 25, util: ['DCCA', 'TRELLIS_COMB', 'TRELLIS_FF', 'TRELLIS_IO'], io: IO, warnings: [] },
   { board: 'tangnano9k', tool: 'nextpnr-himbaechel-gowin', part: 'gw1nr-9c-6qn88', mhz: 27, util: ['ALU', 'DFF', 'IOB', 'LUT4', 'MUX2_LUT5'], io: [],
     // (the switches read through swOn, #3710: before, sw_IBUF_I_O[2]'s)
-    warnings: ['X11Y26/C6', 'X11Y26/C2', 'X11Y26/C7', 'X9Y26/C6', 'X10Y26/C6', 'X8Y26/C6', 'X8Y26/C7', 'X11Y26/C5'].map(t => `WARNING:Place - Failed to route net 'swon[1]' from X28Y28/F6 to ${t} using dedicated routing.`) },
+    warnings: ['X11Y26/C7', 'X11Y26/C6', 'X10Y26/C7', 'X10Y26/C6', 'X9Y26/C5', 'X9Y26/C4', 'X8Y26/C2', 'X12Y26/C2'].map(t => `WARNING:Place - Failed to route net 'swon[1]' from X28Y28/F6 to ${t} using dedicated routing.`) },
 ];
 
 for (const b of BOARDS) {
