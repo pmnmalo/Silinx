@@ -10,7 +10,7 @@ const KINDS = [
   { re: /\.pn\.json$/i, what: 'Check Petri Net', check: async m => (await import('../core/petri-analysis.js')).checkPetri(m) },
   // a circuit's (#3897): its shorts, unpowered ICs, floating inputs, parts and wires that join nothing
   // (with the project's modules: its KiCad parts modelled by one checked against it, #4283)
-  { re: /\.circ\.json$/i, what: 'Check Circuit', check: async (m, ctx) => (await import('../core/circuit-check.js')).checkCircuit((await import('../core/circuit.js')).normalizeCircuit(m), undefined, { modules: ctx.modules ?? null }) },
+  { re: /\.circ\.json$/i, what: 'Check Circuit', check: async (m, ctx) => (await import('../core/circuit-check.js')).checkCircuit((await import('../core/circuit.js')).normalizeCircuit(m), undefined, { modules: ctx.modules ?? null, runner: ctx.runner ?? null }) },
 ];
 // the item a message is about (the editor selects it when the message is clicked)
 const itemOf = d => d.ref?.id ?? d.nodeId ?? d.state ?? d.transition ?? null;
@@ -48,7 +48,7 @@ export const CHECK_TOOLS = [
       if (/\.circ\.json$/i.test(file)) {
         const P = await import('./projects.js');
         await (await import('../core/circuit-kicad.js')).useProjectParts(P, name);
-        ctx = { modules: await (await import('./drawing-sync.js')).projectModules(P, name) };
+        ctx = await (await import('./drawing-sync.js')).projectHdl(P, name);   // (its modules and their live models, #4283, #4284)
       }
       const { lines, errors, warnings } = await checkDrawing(file, m, ctx);
       return { text: lines.join('\n'), data: { project: name, file, ok: !errors.length, errors, warnings }, isError: false,

@@ -102,7 +102,7 @@ export const CIRCUIT_TOOLS = [
       const { syncDrawing } = await import('./drawing-sync.js');
       const sync = await syncDrawing(P, name, rel);
       const { checkDrawing } = await import('./mcp-check.js');
-      const check = await checkDrawing(rel, m, { modules: await (await import('./drawing-sync.js')).projectModules(P, name) });
+      const check = await checkDrawing(rel, m, await (await import('./drawing-sync.js')).projectHdl(P, name));
       return { text: [...lines, ...check.lines, ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, parts: m.parts.length, wires: m.wires.length, errors: check.errors, warnings: check.warnings, ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },

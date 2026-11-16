@@ -15,8 +15,9 @@ const pinText = (q) => `${q.part} ${q.name}`;
 const part = (id) => ({ kind: 'part', id });
 
 /** The circuit's problems: [{ severity: 'error' | 'warning', message, ref: { kind: 'part' | 'wire', id } }]. */
-// (`modules`: the project's, a KiCad part modelled by one of them checked against it, #4283; none: its warning only)
-export function checkCircuit(m, nets = circuitNets(m), { modules = null } = {}) {
+// (`modules`: the project's, a KiCad part modelled by one of them checked against it, #4283; `runner`: their live models,
+// one that cannot run in Try it said, #4284)
+export function checkCircuit(m, nets = circuitNets(m), { modules = null, runner = null } = {}) {
   const out = [];
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
   const ids = checkNames(m, say);
@@ -35,7 +36,7 @@ export function checkCircuit(m, nets = circuitNets(m), { modules = null } = {}) 
     else if (d?.kind === 'drawn') say.warn(`${p.id} (${d.kicad.value}) is drawn only: it is not simulated and its pins drive nothing`, part(p.id));
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
-  checkModels(m.parts, partDef, modules, say, part);
+  checkModels(m.parts, partDef, modules, say, part, runner);
   // a wire's end that joins nothing
   for (const w of m.wires) {
     for (const [i, q] of [w.points[0], w.points[w.points.length - 1]].entries()) {

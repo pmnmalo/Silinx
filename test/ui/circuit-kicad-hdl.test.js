@@ -1,5 +1,5 @@
 // UI: a KiCad part modelled by a module of the project (#4283): its tip in the Parts panel, its body on the canvas, its
-// Part info (its HDL module), Check's warning (its module found in the project: no error); Import KiCad Part…'s HDL
+// Part info (its HDL module), Check (its module found in the project: no message), Try it running its module live (#4284); Import KiCad Part…'s HDL
 // module column (what the symbol is then); Portuguese. No browser warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,8 +23,9 @@ const lines = (page) => page.eval(() => [...document.querySelectorAll('#console-
 const centre = (page, sel) => page.eval((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
 
 uiTest('Circuit editor: a KiCad part modelled by a module of the project: its tip, body, Part info, Check; Import\'s HDL module; Portuguese', E, async (page) => {
-  const m = newCircuit('mc', 'vhdl');
-  m.parts.push({ id: 'U1', type: T, x: 40, y: 20 });
+  const m = newCircuit('mc', 'vhdl', { breadboard: false });
+  m.parts.push({ id: 'P1', type: 'supply', x: -20, y: -20 }, { id: 'U1', type: T, x: 40, y: 20 }, { id: 'S1', type: 'logic-switch', x: 30, y: 20, label: 'a' }, { id: 'D1', type: 'led', x: 50, y: 25, label: 'y' });
+  m.wires.push({ id: 'w1', points: [[30, 20], [40, 20]] }, { id: 'w2', points: [[41, 20], [50, 25]] }, { id: 'w3', points: [[51, 25], [-20, -19]] });
   await makeProject(env, { name: 'CircHdl', top: '', files: { 'src/mc.circ.json': JSON.stringify(m, null, 2), 'src/test_inv.vhd': VHD, 'parts/m.kicad_sym': LIB({ 'Silinx.HDL': 'test_inv' }) } });
   await page.setViewport(1440, 900);
   await page.openProject('CircHdl');
@@ -32,15 +33,24 @@ uiTest('Circuit editor: a KiCad part modelled by a module of the project: its ti
   await page.waitFor((ed, t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"]`), [ED, T], { what: 'its row' });
   assert.equal(await page.eval((ed, t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"]`).title, ED, T), 'TEST-INV, by its module test_inv: click it, then the drawing (Esc: done)');
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} [data-id=U1] .circ-model-body`).length, ED), 1);
-  // Check: its warning only (its module is the project's)
+  // Check: no message of U1 (its module is the project's, and runs live, #4284)
   await page.click(`${ED} .circ-check`);
-  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /Try it does not run it/.test(l.textContent)), [], { what: 'Check' });
-  assert.deepEqual((await lines(page)).filter((l) => /^(ERROR|WARNING): U1 /.test(l)), ['WARNING: U1 (TEST-INV) is simulated by its module test_inv in the HDL only: Try it does not run it']);
+  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^Process "Check Circuit" completed successfully$/.test(l.textContent)), [], { what: 'Check' });
+  assert.deepEqual((await lines(page)).filter((l) => /^(ERROR|WARNING): U1 /.test(l)), []);
+  // Try it: the switch a into its input, the LED y on its output: y = not a, live
+  await page.click(`${ED} .circ-sim-btn`);
+  await page.waitFor((ed) => document.querySelector(ed).classList.contains('circ-simulating'), [ED], { what: 'trying it' });
+  await page.waitFor((ed) => document.querySelector(`${ed} [data-id=D1] .circ-led`)?.classList.contains('lit'), [ED], { what: 'y lit: a is 0' });
+  await page.click(await centre(page, `${ED} [data-id=S1] .circ-sw-body`));
+  await page.waitFor((ed) => !document.querySelector(`${ed} [data-id=D1] .circ-led`).classList.contains('lit'), [ED], { what: 'y off: a is 1' });
+  await page.click(await centre(page, `${ED} [data-id=S1] .circ-sw-body`));
+  await page.waitFor((ed) => document.querySelector(`${ed} [data-id=D1] .circ-led`).classList.contains('lit'), [ED], { what: 'y lit again' });
+  await page.click(`${ED} .circ-sim-btn`);
   // its Part info
   await page.click(await centre(page, `${ED} [data-id=U1] .circ-model-body`));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-selection .circ-info`), [ED], { what: 'U1 selected' });
   const info = await page.eval((ed) => { const b = document.querySelector(`${ed} .circ-selection .circ-info`); return [b.querySelector('.circ-note').textContent, [...b.querySelectorAll('.circ-info-rows tr')].map((r) => [r.cells[0].textContent, r.cells[1].textContent])]; }, ED);
-  assert.deepEqual(info, ['Simulated by the project\'s module test_inv in the HDL (Try it does not run it).',
+  assert.deepEqual(info, ['Simulated by the project\'s module test_inv, in Try it and in the HDL.',
     [['KiCad symbol', 'INV (parts/m.kicad_sym)'], ['Part number', 'TEST-INV'], ['HDL module', 'test_inv'], ['Footprint', 'PinHeader_1x02_P2.54mm_Vertical']]]);
   // Import KiCad Part…: a symbol given an HDL module, what it is then
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-kicad-hdl-ui-')), file = path.join(dir, 'other.kicad_sym');
@@ -57,7 +67,7 @@ uiTest('Circuit editor: a KiCad part modelled by a module of the project: its ti
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed, t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"]`)?.title.startsWith('TEST-INV, pelo seu módulo test_inv'), [ED, T], { what: 'Portuguese' });
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-selection .circ-note`).textContent, ED), 'Simulada pelo módulo test_inv do projeto no HDL (o Experimentar não o corre).');
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-selection .circ-note`).textContent, ED), 'Simulada pelo módulo test_inv do projeto, no Experimentar e no HDL.');
   assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-selection .circ-info-rows th`)].some((t) => t.textContent === 'Módulo HDL'), ED));
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);

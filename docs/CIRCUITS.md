@@ -150,8 +150,14 @@ library and its symbol: `parts/ttl.kicad_sym#74HC00`. KiCad's parts have no logi
   no ports, and a bidirectional or passive pin is refused. The circuit's generated HDL instantiates the module for the
   part, in its simulation's model and in its digital one, so that the circuit's HDL simulates and synthesizes with it.
   Check Circuit, given the project's modules, refuses a module missing, a port without a pin, a pin without a port, a
-  direction or a width that differ. It always warns *U1 (TEST-INV) is simulated by its module test_inv in the HDL only:
-  Try it does not run it* (#4284 will).
+  direction or a width that differ. **Try it runs it** (#4284, `core/circuit-live-model.js`): each such part has a copy
+  of its module of its own in Silinx's HDL simulator (as the schematic's Try it runs its modules). The levels of its
+  input pins are forced on the module's input ports, the module runs a step (50 ns of its own time), and its output
+  ports' levels drive the part's output pins after its delay (10 ns). Its registers keep their state from one step to the
+  next. A module that cannot run (its elaboration's errors, a `$finish` or a failure as it starts) is said by Check
+  Circuit and `simulate_drawing`, for example *U1 (TEST-INV): its module test_inv cannot run in Try it: its simulation
+  stopped (finish)*, and its pins then drive nothing. The live run and the generated HDL's simulation agree vector by
+  vector (the tests), and a flip costs about what a 7404's does.
 
 A symbol with no through-hole footprint (an SMD package, none at all) is no part, its reason said; `Silinx.Footprint`
 gives it one its file has not (its breakout's pin header). `Silinx.Source`, `Silinx.Author` and `Silinx.Licence` say

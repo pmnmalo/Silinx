@@ -12,6 +12,7 @@ import { attachSymbols, isSymbolFile, modulesFromLibrary } from './schdoc.js';
 import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlPath, modelLanguage, viewHdl } from './view-hdl.js';
 import { isDesignOnly } from './project-kind.js';
 import { useProjectParts } from './circuit-kicad.js';
+import { modelRunners } from './circuit-live-model.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
@@ -30,6 +31,15 @@ export async function projectModules(P, name) {
   // (a circuit's ICs' modules are the circuit's, not the project's, #4216: as the interface's palette)
   for (const n of circuitPartModules(lib, hdl)) for (const k of Object.keys(mods)) if (k.toLowerCase() === n) delete mods[k];
   return attachSymbols(mods, await symbolFiles(P, name));
+}
+
+/** The project's HDL as a circuit's KiCad parts modelled by its modules read it (#4283, #4284): { modules (their ports,
+ *  projectModules'), runner (their live models, core/circuit-live-model.js modelRunners) }; {} with no HDL compiled. */
+export async function projectHdl(P, name) {
+  const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
+  let lib;
+  try { lib = compile(hdl); } catch { return {}; }
+  return { modules: await projectModules(P, name), runner: modelRunners(lib) };
 }
 
 /** The project's symbol files: { path: text }. */

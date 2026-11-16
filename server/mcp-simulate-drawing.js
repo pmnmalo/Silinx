@@ -110,7 +110,8 @@ export const SIMULATE_DRAWING_TOOLS = [
       if (circ) {
         await (await import('../core/circuit-kicad.js')).useProjectParts(await import('./projects.js'), name);   // (#4280)
         const { simulateCircuitFile } = await import('./mcp-simulate-circuit.js');
-        const { lines, rows, warnings } = await simulateCircuitFile(m, cycles, base);
+        // (its KiCad parts modelled by a module of the project run live, #4284)
+        const { lines, rows, warnings } = await simulateCircuitFile(m, cycles, base, await (await import('./drawing-sync.js')).projectHdl(await import('./projects.js'), name));
         return { text: clip(lines.join('\n')), data: { project: name, file, kind: 'circuit', warnings, steps: rows }, isError: false };
       }
       const { lines, rows } = asm ? await simulateAsmFile(m, cycles, base) : await simulateFsmFile(m, cycles, base);

@@ -157,7 +157,7 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(.+): pinout$/, '$1: pinos'],
   // a KiCad part modelled by a module of the project (#4283)
   [/^(.+), by its module (\w+): click it, then the drawing \(Esc: done\)$/, '$1, pelo seu módulo $2: clique nela e depois no desenho (Esc: terminar)'],
-  [/^Simulated by the project's module (\w+) in the HDL \(Try it does not run it\)\.$/, "Simulada pelo módulo $1 do projeto no HDL (o Experimentar não o corre)."],
+  [/^Simulated by the project's module (\w+), in Try it and in the HDL\.$/, 'Simulada pelo módulo $1 do projeto, no Experimentar e no HDL.'],
   [/^By its module (\w+)$/, 'Pelo seu módulo $1'],
   // the KiCad exports (#4282): the choice of the ICs, the package's hint
   [/^All the library's ICs \((\d+)\)$/, 'Todos os CIs da biblioteca ($1)'], [/^This circuit's ICs \((\d+)\)$/, 'Os CIs deste circuito ($1)'],

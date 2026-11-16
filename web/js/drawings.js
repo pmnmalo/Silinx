@@ -6,6 +6,7 @@ import { h, alertDlg, confirmDlg, popupMenu } from './ui.js';
 import { elaborate } from '/core/compile.js';
 import { viewHdl, drawnHdlPath, drawnHdlClash, drawingInLanguage } from '/core/view-hdl.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
+import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
 import { log, logError } from './console.js';
@@ -381,12 +382,16 @@ export function petriContextMenu(e, file) {
 }
 
 // ---- digital circuits (.circ.json, #3897): their HDL file made with them (#207), kept in sync with the circuit, one way
-// the project's modules, as the Check of a circuit reads them (#4283): made again when the project was compiled again
-let circuitMods = null, circuitModsLib = null;
+// the project's modules, as the Check of a circuit reads them (#4283), and their live models, as Try it runs them (#4284):
+// made again when the project was compiled again
+let circuitHdl = {}, circuitHdlLib = null;
 function circuitModules() {
-  if (!S.lib) return null;
-  if (S.lib !== circuitModsLib) { circuitModsLib = S.lib; try { circuitMods = modulesFromLibrary(S.lib, { sources: Object.fromEntries(S.sources.map((s) => [s.path, s.text])) }); } catch { circuitMods = null; } }
-  return circuitMods;
+  if (!S.lib) return {};
+  if (S.lib !== circuitHdlLib) {
+    circuitHdlLib = S.lib;
+    try { circuitHdl = { modules: modulesFromLibrary(S.lib, { sources: Object.fromEntries(S.sources.map((s) => [s.path, s.text])) }), runner: modelRunners(S.lib) }; } catch { circuitHdl = {}; }
+  }
+  return circuitHdl;
 }
 export async function openCircuit(path) {
   const id = `circ:${path}`;
@@ -412,7 +417,7 @@ export async function openCircuit(path) {
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
-        modules: circuitModules,   // (a KiCad part modelled by a module of the project, #4283)
+        hdl: circuitModules,   // (a KiCad part modelled by a module of the project, #4283, #4284)
         importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null, importCatalogue: KC.importCatalogue, kicadExport: { ics: KX.exportIcsDialog, pkg: KX.exportPackageDialog },   // (Import KiCad Part…, #4281;
         // Browse KiCad Libraries…, #4285; the KiCad catalogue, #4305; the ⋮ menu's KiCad exports, #4282)
         ...followOnly(path),

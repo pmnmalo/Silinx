@@ -10,14 +10,16 @@
 import { partDef, gateValue, readInput } from './circuit-parts.js';
 import { circuitNets, netText } from './circuit-net.js';
 import { savedInputs, partLamps } from './circuit-io.js';
+import { MODEL_TPD } from './circuit-live-model.js';
 
 const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
 
 /**
  * A circuit's simulation, at time 0 with its switches as saved and its buttons released (run() settles it).
- * nets: its nets (circuitNets), onLevel(net, level, time): each change of a net's level.
+ * nets: its nets (circuitNets), onLevel(net, level, time): each change of a net's level; runner(module): a KiCad part
+ * modelled by a module of the project, run live (core/circuit-live-model.js modelRunners, #4284; none: not run).
  */
-export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = {}) {
+export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, runner = null } = {}) {
   const N = nets.nets.length;
   const drivers = [];                       // { net, value, strength, pending, gen, tpd }
   const byNet = Array.from({ length: N }, () => []);
@@ -35,6 +37,15 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
     if (d.kind === 'supply') { addDriver(netOfPin(p.id, 1), '1'); addDriver(netOfPin(p.id, 2), '0'); }
     for (const s of d.sources || []) sources.set(`${p.id}:${s.input}`, addDriver(netOfPin(p.id, s.pin), state.get(p.id)[s.input] ? '1' : '0'));
     for (const u of d.pulls || []) addDriver(netOfPin(p.id, u.pin), u.value, 'w');
+    // (a KiCad part modelled by a module of the project, #4284: its own copy of the module, run live; its outputs after
+    // its delay; none to run: its pins drive nothing)
+    const live = d.kind === 'model' && runner?.(d.module)?.make?.();
+    if (live && !live.reason) {
+      const ic = { part: p, def: d, live, ins: d.pins.filter((q) => q.dir === 'in').map((q) => ({ port: q.port, net: netOfPin(p.id, q.n) })),
+        outs: d.pins.filter((q) => q.dir === 'out').map((q) => ({ port: q.port, d: addDriver(netOfPin(p.id, q.n), 'X', 's', MODEL_TPD) })) };
+      ics.push(ic);
+      for (const x of ic.ins) readers[x.net].add(ic);
+    }
     if (d.kind === 'ic') {
       const pinOf = (dir) => d.pins.find((q) => q.dir === dir).n;
       const ic = { part: p, def: d, vcc: netOfPin(p.id, pinOf('vcc')), gnd: netOfPin(p.id, pinOf('gnd')),
@@ -76,6 +87,11 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null } = 
 
   const powered = (ic) => levels[ic.vcc] === '1' && levels[ic.gnd] === '0';
   function evaluate(ic) {
+    if (ic.live) {   // (a module: its inputs' levels in, its outputs' out)
+      const o = ic.live.run(Object.fromEntries(ic.ins.map((x) => [x.port, levels[x.net]])));
+      for (const x of ic.outs) drive(x.d, o[x.port] ?? 'X');
+      return;
+    }
     const on = powered(ic);
     for (const x of ic.gates) {
       const v = on ? gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net]))) : 'Z';

@@ -2,7 +2,8 @@
 // names a VHDL entity or a Verilog module of the project, whose ports are the part's pins: by their names (A → a,
 // ~{EN} → en_n), or as Silinx.Ports maps them ("1=a, 2=y"). The circuit's generated HDL instantiates that module for the
 // part, in its simulation's model and in its digital one (core/circuit-hdl.js, core/circuit-digital.js), so that the
-// circuit's HDL simulates and synthesizes with it; Try it does not run it yet (#4284): its check says so. The part's
+// circuit's HDL simulates and synthesizes with it; Try it runs it (#4284, core/circuit-live-model.js), unless it cannot
+// (Check Circuit says why). The part's
 // pins are in its footprint's places (core/circuit-kicad.js pinPlaces); its supply pins are no ports. The checks against
 // the project's modules (a module missing, a port without a pin, a pin without a port, their directions): checkModels.
 // Isomorphic module.
@@ -54,19 +55,22 @@ export function modelPins(pins, props, places) {
 
 /**
  * The checks of a circuit's parts modelled by a module, against the project's modules (`modules`: { name: { ports: [{
- * name, dir }] } }, core/schdoc-from-hdl.js modulesFromLibrary's): their errors through `err`, each part's warning (Try it
- * does not run it) through `warn`. `modules` null: the warning only (the project's modules not at hand).
+ * name, dir }] } }, core/schdoc-from-hdl.js modulesFromLibrary's): their errors through `err`; a module Try it cannot
+ * run (`runner`: core/circuit-live-model.js modelRunners', its reason) a warning through `warn`. `modules` or `runner`
+ * null: those checks not made (the project's HDL not at hand).
  */
-export function checkModels(parts, defOf, modules, { err, warn }, ref) {
+export function checkModels(parts, defOf, modules, { err, warn }, ref, runner = null) {
   const byName = modules && new Map(Object.entries(modules).map(([k, v]) => [k.toLowerCase(), v]));
   for (const p of parts) {
     const d = defOf(p.type);
     if (d?.kind !== 'model') continue;
     const who = `${p.id} (${d.kicad.value})`;
-    warn(`${who} is simulated by its module ${d.module} in the HDL only: Try it does not run it`, ref(p.id));
+    const mod = byName?.get(d.module.toLowerCase());
+    if (byName && !mod) { err(`${who}: no module '${d.module}' in the project`, ref(p.id)); continue; }
+    // (Try it runs it, #4284, unless it cannot: its reason)
+    const r = runner?.(d.module);
+    if (r?.reason) warn(`${who}: its module ${d.module} cannot run in Try it: ${r.reason}`, ref(p.id));
     if (!byName) continue;
-    const mod = byName.get(d.module.toLowerCase());
-    if (!mod) { err(`${who}: no module '${d.module}' in the project`, ref(p.id)); continue; }
     const ports = new Map((mod.ports || []).map((x) => [x.name.toLowerCase(), x]));
     for (const q of d.pins.filter((x) => x.port)) {
       const x = ports.get(q.port);

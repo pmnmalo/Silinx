@@ -6,21 +6,24 @@
 // oscillation, as the console says.
 import { toolError } from './mcp-util.js';
 
-/** The steps of a circuit `m` (its JSON) simulated: { lines, rows, warnings }. */
-export async function simulateCircuitFile(m0, steps, base) {
+/** The steps of a circuit `m` (its JSON) simulated: { lines, rows, warnings }; `hdl`: the project's { modules, runner }
+ *  (core/drawing-sync.js projectHdl), its KiCad parts modelled by a module run live (#4284). */
+export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   const { normalizeCircuit, circuitPorts } = await import('../core/circuit.js');
-  const { circuitErrors } = await import('../core/circuit-check.js');
+  const { checkCircuit } = await import('../core/circuit-check.js');
   const { createCircuitSim, runMessages } = await import('../core/circuit-sim.js');
   const m = normalizeCircuit(m0);
-  const errs = circuitErrors(m);
+  const checked = checkCircuit(m, undefined, hdl), errs = checked.filter((d) => d.severity === 'error');
   if (errs.length) throw toolError([...errs.map((d) => `ERROR: ${d.message}`), 'Correct the errors of the circuit to simulate it.'].join('\n'));
   if (!Array.isArray(steps) || !steps.length) throw toolError('cycles: one object per step, its switches and buttons by their labels, e.g. [{ "a": 1 }, { "a": 0, "b": 1 }]');
   const { inputs } = circuitPorts(m);
   const at = (i) => { const v = sim.inputs()[i.part]; return (Array.isArray(v) ? v[i.index] : v) ? 1 : 0; };
   const byName = new Map(inputs.map((x) => [x.name.toLowerCase(), x]));
-  const sim = createCircuitSim(m);
+  const sim = createCircuitSim(m, { runner: hdl.runner ?? null });
   const leds = () => sim.outputs();
-  const lines = [`${base} from time 0, ${steps.length} step(s):`], rows = [], warnings = [];
+  // (a modelled part whose module cannot run live: said, its pins driving nothing, #4284)
+  const notLive = checked.filter((d) => d.severity === 'warning' && /cannot run in Try it/.test(d.message)).map((d) => d.message);
+  const lines = [`${base} from time 0, ${steps.length} step(s):`, ...notLive.map((w) => `WARNING: ${w}`)], rows = [], warnings = [...notLive];
   const first = sim.run();
   const note = (r) => { const w = runMessages(sim, r); warnings.push(...w); return w; };
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)

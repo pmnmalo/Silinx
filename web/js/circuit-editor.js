@@ -4,7 +4,7 @@
 //   const ed = mountCircuitEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags),
 //     onMessage(text, isError), readOnly, banner, importKicad(), browseKicad(), importCatalogue(id), kicadExport });   (the Parts panel's Import KiCad Part…, #4281,
 //     Browse KiCad Libraries…, #4285, its KiCad catalogue's parts, #4305; its ⋮ menu's KiCad exports, { ics(m), pkg() }, #4282;
-//     modules(): the project's, its Check's of a KiCad part modelled by one of them, #4283)
+//     hdl(): the project's { modules, runner }, a KiCad part modelled by one of them checked and run live, #4283, #4284)
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.print(); ed.select(ref);
 //   ed.simulating(); ed.toggleSim(); ed.destroy();
 //   edited live (#4203, web/js/collab-drawing.js): ed.setShared({ push(model), undo(), redo(), canUndo(), canRedo() } | null)
@@ -58,7 +58,7 @@ export function mountCircuitEditor(container, opts = {}) {
   // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Wires, Wire crossings): circuit-options.js
   const { keepBox, insideBox, more, keep, inside, hops, sync, style: wireStyle, setStyle: setWireStyle, setOwn: ownWireStyle } = mountCircuitOptions({ M: () => M, readOnly, applyEdit: (...a) => applyEdit(...a), render: () => render(), kicadExport: opts.kicadExport || null });
   const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox, insideBox, more,
-    root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M, undefined, { modules: opts.modules?.() ?? null })),
+    root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M, undefined, opts.hdl?.() ?? {})),
     toggleSim, zoomBtn, fit: () => fit(),
   });
   // the Try it bar (#4067, as the schematic's): above the canvas while trying it, its Reset (from time 0) and Stop (Esc);
@@ -103,7 +103,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (sim) startSim();
     render();
   }
-  const problems = () => opts.onProblems?.(checkCircuit(M, undefined, { modules: opts.modules?.() ?? null }));
+  const problems = () => opts.onProblems?.(checkCircuit(M, undefined, opts.hdl?.() ?? {}));
   const restore = (i) => { hi = i; M = normalizeCircuit(JSON.parse(hist[hi])); if (sel && !itemOf(sel.id)) sel = null; opts.onChange?.(clone(M)); problems(); if (sim) startSim(); render(); };
   const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
   const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
@@ -123,10 +123,10 @@ export function mountCircuitEditor(container, opts = {}) {
 
   // ---------------------------------------------------------------- the live simulation
   function startSim() {
-    const errs = checkCircuit(M).filter((d) => d.severity === 'error');
+    const errs = checkCircuit(M, undefined, opts.hdl?.() ?? {}).filter((d) => d.severity === 'error');
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
     stopTicks();
-    sim = createCircuitSim(M);
+    sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner });
     recordCircuit(sim, steps = tryOps(null));   // (its steps, as live sharing sends them, #4244)
     runSim();
     // (a clock source flips its level every half period, in real time; the simulated time moves on by as much)
@@ -158,7 +158,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (!sim) return null;
     stopTicks();
     const plan = replayPlan(applied, o);
-    if (plan.restart) recordCircuit(sim = createCircuitSim(M), steps = tryOps(null));
+    if (plan.restart) recordCircuit(sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner }), steps = tryOps(null));
     replayCircuit(sim, plan.ops);
     adoptOps(steps, o);
     runSim();

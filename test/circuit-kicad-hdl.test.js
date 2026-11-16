@@ -66,7 +66,7 @@ test('the part: kind model, its module, its pins on its footprint; Part info; Si
   assert.deepEqual([d.kind, d.module, d.behaves, d.kicad.hdl], ['model', 'test_inv', null, 'test_inv'], 'its Silinx.HDL, not the 7404 its number is');
   assert.deepEqual(d.pins.map((q) => [q.n, q.dir, q.port ?? null, q.dx, q.dy]), [[1, 'in', 'a', 0, 0], [2, 'out', 'y', 1, 0], [3, 'none', null, 2, 0], [4, 'none', null, 3, 0]]);
   setProjectParts(r.defs);
-  assert.equal(partInfo(T).about, 'Simulated by the project\'s module test_inv in the HDL (Try it does not run it).');
+  assert.equal(partInfo(T).about, 'Simulated by the project\'s module test_inv, in Try it and in the HDL.');
   assert.deepEqual(partInfo(T).pins.map((q) => q.port ?? null), ['a', 'y', null, null]);
   assert.deepEqual(kicadPartsOf({ 'parts/m.kicad_sym': LIB.replace('PinHeader_1x04_P2.54mm_Vertical', 'SOIC-8') }).skipped[0].reason, 'its footprint SOIC-8 is surface-mount: it does not plug into a breadboard');
   setProjectParts([]);
@@ -76,16 +76,16 @@ test('its checks: with the module, without the project\'s modules, a module miss
   setProjectParts(kicadPartsOf({ 'parts/m.kicad_sym': LIB }).defs);
   const m = circuit('vhdl');
   const say = (modules) => checkCircuit(m, undefined, { modules }).map((x) => `${x.severity}: ${x.message}`);
-  const WARN = 'warning: U1 (TEST-INV) is simulated by its module test_inv in the HDL only: Try it does not run it';
-  assert.deepEqual(say(modulesOf(MOD.vhdl)), [WARN]);
-  assert.deepEqual(say(modulesOf(MOD.verilog)), [WARN]);
-  assert.deepEqual(say(null), [WARN], 'the project\'s modules not at hand: the warning only');
-  assert.deepEqual(say({}), [WARN, 'error: U1 (TEST-INV): no module \'test_inv\' in the project']);
-  assert.deepEqual(say({ TEST_INV: { ports: [{ name: 'a', dir: 'in', width: 1 }, { name: 'z', dir: 'out', width: 1 }] } }), [WARN,
+  // (no warning: Try it runs it, #4284; the project's modules not at hand: nothing checked)
+  assert.deepEqual(say(modulesOf(MOD.vhdl)), []);
+  assert.deepEqual(say(modulesOf(MOD.verilog)), []);
+  assert.deepEqual(say(null), []);
+  assert.deepEqual(say({}), ['error: U1 (TEST-INV): no module \'test_inv\' in the project']);
+  assert.deepEqual(say({ TEST_INV: { ports: [{ name: 'a', dir: 'in', width: 1 }, { name: 'z', dir: 'out', width: 1 }] } }), [
     'error: U1 (TEST-INV): its module test_inv has no port y (its pin 2)', 'error: U1 (TEST-INV): its module test_inv\'s port z has no pin']);
-  assert.deepEqual(say({ test_inv: { ports: [{ name: 'a', dir: 'out', width: 1 }, { name: 'y', dir: 'out', width: 4 }] } }), [WARN,
+  assert.deepEqual(say({ test_inv: { ports: [{ name: 'a', dir: 'out', width: 1 }, { name: 'y', dir: 'out', width: 4 }] } }), [
     'error: U1 (TEST-INV): its pin 1 (A) is an input, its module test_inv\'s port a an output', 'error: U1 (TEST-INV): its module test_inv\'s port y is 4 bits wide, a pin one']);
-  // Try it: nothing driven by it
+  // Try it with no live models (none given): nothing driven by it
   const sim = createCircuitSim(m);
   sim.run();
   assert.equal(sim.outputs().y, '0', 'its LED off: nothing drives it');
