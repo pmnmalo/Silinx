@@ -93,33 +93,36 @@ export function rekeyTheirs(base, mine, theirs) {
   const colls = collections(base, mine, theirs);
   const ids = new Set();
   for (const d of [base, mine, theirs]) for (const c of colls) for (const o of d?.[c] || []) if (o.id !== undefined) ids.add(String(o.id));
-  const map = new Map(), objs = new Map();   // (old id -> new id; 'coll/old id' -> { id, name })
-  for (const c of colls) {
-    const B = byKey(base[c]), M = byKey(mine?.[c]);
-    const taken = new Set([...(base[c] || []), ...(mine?.[c] || []), ...(theirs[c] || [])].map(o => o.name).filter(n => typeof n === 'string'));
-    for (const o of theirs[c] || []) {
-      if (o.id === undefined) continue;
-      const id = String(o.id), m = M.get(id), p = SEQ.exec(id);
-      if (!p || B.has(id) || !m || same(m, o)) continue;
-      const to = nextFree(p[1], ids);
-      ids.add(to); map.set(id, to); renamed.push({ coll: c, from: id, to });
-      let name = o.name;
-      if (typeof name === 'string' && name === m.name && SEQ.test(name)) { name = nextFree(SEQ.exec(name)[1], taken); taken.add(name); }
-      objs.set(`${c}/${id}`, { id: to, name });
+  const taken = Object.fromEntries(colls.map(c => [c, new Set([...(base[c] || []), ...(mine?.[c] || []), ...(theirs[c] || [])].map(o => o.name).filter(n => typeof n === 'string'))]));
+  // (rounds: an object both added alike, its reference to one renamed, is theirs' own once that reference follows)
+  let out = theirs;
+  for (;;) {
+    const map = new Map(), objs = new Map();   // (old id -> new id; 'coll/old id' -> { id, name })
+    for (const c of colls) {
+      const B = byKey(base[c]), M = byKey(mine?.[c]);
+      for (const o of out[c] || []) {
+        if (o.id === undefined) continue;
+        const id = String(o.id), m = M.get(id), p = SEQ.exec(id);
+        if (!p || B.has(id) || !m || same(m, o)) continue;
+        const to = nextFree(p[1], ids);
+        ids.add(to); map.set(id, to); renamed.push({ coll: c, from: id, to });
+        let name = o.name;
+        if (typeof name === 'string' && name === m.name && SEQ.test(name)) { name = nextFree(SEQ.exec(name)[1], taken[c]); taken[c].add(name); }
+        objs.set(`${c}/${id}`, { id: to, name });
+      }
     }
-  }
-  if (!renamed.length) return { theirs, renamed };
-  const out = structuredClone(theirs);
-  for (const c of colls) {
-    for (const o of out[c] || []) {
-      if (o.id === undefined) continue;
-      const n = objs.get(`${c}/${o.id}`);
-      if (n) { o.id = n.id; if (n.name !== undefined) o.name = n.name; }
-      for (const f of REF_FIELDS) if (typeof o[f] === 'string' && map.has(o[f])) o[f] = map.get(o[f]);
+    if (!map.size) return { theirs: out, renamed };
+    out = structuredClone(out);
+    for (const c of colls) {
+      for (const o of out[c] || []) {
+        if (o.id === undefined) continue;
+        const n = objs.get(`${c}/${o.id}`);
+        if (n) { o.id = n.id; if (n.name !== undefined) o.name = n.name; }
+        for (const f of REF_FIELDS) if (typeof o[f] === 'string' && map.has(o[f])) o[f] = map.get(o[f]);
+      }
     }
+    if (typeof out.initial === 'string' && map.has(out.initial)) out.initial = map.get(out.initial);
   }
-  if (typeof out.initial === 'string' && map.has(out.initial)) out.initial = map.get(out.initial);
-  return { theirs: out, renamed };
 }
 
 /** A three-way merge: { merged, conflicts: [{ coll, key, base, mine, theirs } | { prop, base, mine, theirs }], renamed:

@@ -119,6 +119,12 @@ test('#4202: theirs\' references follow its renamed objects; no base, an object 
   const m = mergeDrawings(base, mine, theirs);
   assert.deepEqual([m.conflicts, m.merged.initial, m.merged.states.map((s) => s.id)], [[], 's3', ['s1', 's2', 's3']]);
   assert.deepEqual(danglingRefs(m.merged), []);
+  // an object both added alike but for its reference to one renamed (a transition from each side's new state): theirs'
+  // own too, renamed with it
+  const both = (x) => ({ ...clone(base), states: [...base.states, { id: 's2', name: 'B', x }], transitions: [...base.transitions, { id: 't2', from: 's2', to: 's1' }] });
+  const r2 = mergeDrawings(base, both(1), both(2));
+  assert.deepEqual([r2.conflicts, r2.renamed], [[], [{ coll: 'states', from: 's2', to: 's3' }, { coll: 'transitions', from: 't2', to: 't3' }]]);
+  assert.deepEqual(r2.merged.transitions.slice(1), [{ id: 't2', from: 's2', to: 's1' }, { id: 't3', from: 's3', to: 's1' }]);
   // (no base: a drawing both sides added; an id that is no sequence's; an object of the base both changed: as before)
   assert.deepEqual(rekeyTheirs({}, mine, theirs).renamed, []);
   assert.deepEqual(rekeyTheirs(null, mine, theirs).renamed, []);
