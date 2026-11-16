@@ -272,7 +272,7 @@ export function mountFsmEditor(container, opts = {}) {
     setM: (v) => { M = v; }, setHist: (v) => { hist = v; }, setHi: (v) => { hi = v; },
     setLastKey: (v) => { lastKey = v; }, setLastT: (v) => { lastT = v; }, setSel: (v) => { sel = v; },
     shared: () => shared, setSharedRef: (v) => { shared = v; }, simGone: () => { if (sim && !stateById(sim.state)) resetSim(); },
-    locked, lockable: () => [tools.state, arrangeBtn, ...encItems, ...styleItems].filter((b) => b.tagName === 'BUTTON')
+    locked, lockable: () => [tools.state, arrangeBtn, ...encItems, ...styleItems, ...(opts.menuItems || [])].filter((b) => b.tagName === 'BUTTON')   // (its HDL Language too, #4228)
   });
 
   // (a text typed in place that is not valid: to the console, by the document, #2729, as every message, #2718)
