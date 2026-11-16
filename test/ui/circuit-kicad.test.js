@@ -114,7 +114,7 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
   assert.deepEqual([pt.about, pt.rows.map(([k]) => k)], ['Só desenhada: não é simulada, os seus pinos não conduzem nada.', ['Símbolo KiCad', 'Referência', 'Footprint']]);
   await page.click(`${ED} .circ-import-kicad`);
   await page.waitFor(() => document.querySelector('.dlg-overlay .dlg-title span')?.textContent === 'Importar peça KiCad', [], { what: 'the dialog in Portuguese' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid label')].map((l) => l.textContent)), ['Ficheiro:', 'Origem:', 'Autor:', 'Licença:']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid label')].map((l) => l.textContent)), ['Ficheiro:', 'ou uma pasta:', 'Origem:', 'Autor:', 'Licença:']);
   await page.click('.dlg-overlay .dlg-buttons .btn:not(.primary)');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   fs.rmSync(dir, { recursive: true, force: true });

@@ -76,12 +76,14 @@ function rowOf(t) {
 
 /** { side, renderParts } of mountCircuitEditor (tool(): its current tool; setTool(t); importKicad(): Import KiCad Part…,
  *  none in a read-only editor). */
-export function mountCircuitParts({ root, tool, setTool, importKicad = null }) {
+export function mountCircuitParts({ root, tool, setTool, importKicad = null, browseKicad = null }) {
   const search = h('input', { type: 'search', class: 'circ-search', placeholder: 'Search parts…', spellcheck: 'false' });
   const list = h('div', { class: 'circ-lib' });
   // (a project's KiCad parts, #4281: its parts/ folder's libraries)
   const imp = importKicad && h('button', { type: 'button', class: 'circ-import-kicad', title: 'Import a KiCad symbol library or footprint into the project\'s parts/ folder', onclick: () => importKicad() }, 'Import KiCad Part…');
-  const side = h('aside', { class: 'circ-parts-side' }, h('div', { class: 'asm-cap' }, 'Parts'), h('div', { class: 'circ-lefttools' }, search, imp || null), list);
+  // (KiCad's libraries fetched by the local server, #4285: not in the browser's edition alone)
+  const browse = browseKicad && h('button', { type: 'button', class: 'circ-browse-kicad', title: 'Browse KiCad\'s own symbol libraries and the KiCad PCM\'s library packages', onclick: () => browseKicad() }, 'Browse KiCad Libraries…');
+  const side = h('aside', { class: 'circ-parts-side' }, h('div', { class: 'asm-cap' }, 'Parts'), h('div', { class: 'circ-lefttools' }, search, imp || null, browse || null), list);
   mountSideFold({ root, side, key: 'silinx.circuit.parts.folded', titles: { fold: 'Collapse the Parts panel', unfold: 'Expand the Parts panel' }, cls: 'parts-folded', toward: 'left' });
   const folded = new Set();
   search.addEventListener('input', () => renderParts());

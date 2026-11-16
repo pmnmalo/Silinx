@@ -161,6 +161,23 @@ source, author and licence are given once. The import is the MCP's `import_part`
 already is replaced only when confirmed, and each symbol is said in the console. On a server, each call (an MCP tool, an HTTP
 request) has its own project's parts (`server/parts-scope.js`, #4294).
 
+**KiCad's libraries** (#4285): **Browse KiCad Libraries…** (the Parts panel, on the local server) lists KiCad's own symbol
+libraries (74xx and 4xxx of KiCad 9.0.0: 61 and 7 of their parts behave as Silinx's ICs) and the library packages of the
+KiCad Plugin and Content Manager's official index, each one's version, licence and size before it is fetched. A library
+picked is fetched, and what its symbol libraries hold is said (their parts as ICs of the library, drawn only, the symbols
+that are no part). Those ticked are imported into `parts/` with the footprints their symbols name, their source, author
+and licence written in them. A browser alone cannot fetch them (repository.kicad.org and GitHub's release files send no
+CORS header), so the local server does (`server/kicad-libraries.js`):
+- from an allowed list of hosts only, over HTTPS, each redirect checked the same way, at most 96 MB;
+- a package is read only once its SHA-256 is the index's, KiCad's own libraries by a SHA-256 pinned in `core/kicad-pcm.js`;
+- of a package's zip only its `symbols/` and `footprints/` are inflated, with no path out of it;
+- the index and the libraries fetched are kept in Silinx's configuration folder (`kicad/`). The index is fetched again
+  after a day, and the one kept is used offline.
+
+Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a `.kicad_symdir` folder. The MCP's
+`part_libraries` lists the libraries and what one holds, and `import_part` takes `library` (an identifier), a `.zip` or a
+folder, with `libraries` to choose among them.
+
 ## The wiring
 
 - **A wire** goes from a grid point to a grid point, with bends; its colour is the student's (red, black, and others).
@@ -298,7 +315,9 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
   valid ones, #4161), `template_params`: a chip, a display, a clock's frequency);
 - `circuit_parts`: the library, a part's pins, its logic and delay; one part's Part info too; with a project, its KiCad
   parts (as which IC, or drawn only; their file, source and licence) and the symbols that are no part, with why;
-- `import_part`: a `.kicad_sym` or `.kicad_mod` of the exchange folder copied into the project's `parts/`, the Silinx
+- `part_libraries`: KiCad's own and the KiCad PCM's libraries (searched), and what one holds;
+- `import_part`: a `.kicad_sym` or `.kicad_mod` of the exchange folder (or a PCM package's `.zip`, a `.kicad_symdir`
+  folder, a library of `part_libraries`) copied into the project's `parts/`, the Silinx
   properties given written in its symbols (a symbol's model, family and footprint; its source, author and licence),
   each symbol said;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,

@@ -68,7 +68,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(CHECK_TOOLS), ['check_drawing']);
   assert.deepEqual(names(FSM_TOOLS), ['set_fsm_outputs', 'set_fsm_look']);   // (a state's or a transition's outputs, #3814; its look, #3883)
   assert.deepEqual(names(CIRCUIT_TOOLS), ['circuit_parts', 'edit_circuit']);   // (a digital circuit's parts and edits, #3897)
-  assert.deepEqual(names(KICAD_TOOLS), ['import_part']);   // (a project's KiCad parts, #4280)
+  assert.deepEqual(names(KICAD_TOOLS), ['part_libraries', 'import_part']);   // (a project's KiCad parts, #4280)
   assert.deepEqual(names(SCHEMATIC_TOOLS), ['rearrange_wires', 'rearrange_schematic', 'move_junction', 'add_markers', 'set_wire_style']);
   assert.deepEqual(names(SYMBOL_TOOLS), ['read_symbol', 'edit_symbol', 'update_symbols', 'place_instance', 'set_instance_width']);   // (a module's symbol, #3755; its instances' Width, #3950)
   assert.deepEqual(names(SYMBOL_INFO_TOOLS), ['symbol_info']);   // (a symbol's datasheet, Symbol Info)

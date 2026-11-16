@@ -51,8 +51,15 @@ export const CIRCUIT_PT = {
   // a part's details (#4126, core/circuit-part-info.js)
   // a project's KiCad parts (#4281)
   'KiCad parts (project)': 'Peças KiCad (projeto)', 'Import KiCad Part…': 'Importar peça KiCad…', 'Import KiCad Part': 'Importar peça KiCad',
-  'Pick a KiCad symbol library (.kicad_sym, KiCad 6 to 10) or a footprint (.kicad_mod): it is copied into the project\'s parts/ folder as KiCad wrote it.': 'Escolha uma biblioteca de símbolos KiCad (.kicad_sym, KiCad 6 a 10) ou um footprint (.kicad_mod): é copiado para a pasta parts/ do projeto tal como o KiCad o escreveu.',
+  'Pick a KiCad symbol library (.kicad_sym, KiCad 6 to 10), a footprint (.kicad_mod), a KiCad PCM package (.zip) or a .kicad_symdir folder: it is copied into the project\'s parts/ folder as KiCad wrote it.': 'Escolha uma biblioteca de símbolos KiCad (.kicad_sym, KiCad 6 a 10), um footprint (.kicad_mod), um pacote do PCM do KiCad (.zip) ou uma pasta .kicad_symdir: é copiado para a pasta parts/ do projeto tal como o KiCad o escreveu.',
+  'or a folder:': 'ou uma pasta:',
   'File:': 'Ficheiro:', 'Source:': 'Origem:', 'Author:': 'Autor:', 'Licence:': 'Licença:', 'Symbol': 'Símbolo', 'Model': 'Modelo', 'It is': 'É',
+  // Browse KiCad Libraries… (#4285)
+  'Browse KiCad Libraries…': 'Explorar bibliotecas KiCad…', 'Browse KiCad Libraries': 'Explorar bibliotecas KiCad', 'Search libraries…': 'Procurar bibliotecas…',
+  'Browse KiCad\'s own symbol libraries and the KiCad PCM\'s library packages': 'Explorar as bibliotecas de símbolos do próprio KiCad e os pacotes de bibliotecas do PCM do KiCad',
+  'Library': 'Biblioteca', 'Version': 'Versão', 'Size': 'Tamanho',
+  'KiCad\'s own symbol libraries and the KiCad Plugin and Content Manager\'s library packages, fetched by Silinx\'s server and kept for offline use. Each one has its own licence.': 'As bibliotecas de símbolos do próprio KiCad e os pacotes de bibliotecas do Plugin and Content Manager do KiCad, obtidos pelo servidor do Silinx e guardados para uso sem rede. Cada uma tem a sua própria licença.',
+  'Tick the symbol libraries to import: their parts are the project\'s circuits\' parts, as KiCad wrote them.': 'Assinale as bibliotecas de símbolos a importar: as suas peças passam a ser peças dos circuitos do projeto, tal como o KiCad as escreveu.',
   'By its part number': 'Pela sua referência', 'Its model\'s': 'A do seu modelo', 'Drawn only (not simulated)': 'Só desenhada (não simulada)', 'Not a part': 'Não é uma peça',
   'Import a KiCad symbol library or footprint into the project\'s parts/ folder': 'Importar uma biblioteca de símbolos ou um footprint KiCad para a pasta parts/ do projeto',
   'KiCad symbol': 'Símbolo KiCad', 'Part number': 'Referência', 'Datasheet': 'Folha de dados', 'Footprint': 'Footprint', 'Source': 'Origem', 'Author': 'Autor', 'Licence': 'Licença',
@@ -143,5 +150,7 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(.+): pinout$/, '$1: pinos'],
   [/^As the (\d{4,5}) \(by its part number\)$/, 'Como o $1 (pela sua referência)'], [/^As the (\d{4,5}) \(by its Silinx\.Model\)$/, 'Como o $1 (pelo seu Silinx.Model)'],
   [/^(\d+) symbol\(s\): (parts\/.+)$/, '$1 símbolo(s): $2'], [/^A footprint: (parts\/.+)$/, 'Um footprint: $1'],
+  [/^(.+): (\d+) symbol librar(?:y|ies), (\d+) footprint\(s\)$/, '$1: $2 biblioteca(s) de símbolos, $3 footprint(s)'],
   [/^(parts\/.+) is in the project already\. Replace it\?$/, '$1 já está no projeto. Substituí-lo?'],
+  [/^(parts\/.+): the project has it already\. Replace the files of the library\?$/, '$1: o projeto já o tem. Substituir os ficheiros da biblioteca?'],
 ];

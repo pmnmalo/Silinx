@@ -9,3 +9,4 @@ De Morgan bodies, derived symbols, KiCad 6's and KiCad 8's syntax, a `.kicad_sym
 CD4011BE) with their datasheets' pinouts (written from the datasheets, not from Silinx's library), a symbol whose
 pins are not its part number's, Silinx's own properties (Silinx.Model, Silinx.Family), modules on pin headers and the
 symbols that are no part (an SMD one, one with no footprint); `imported.pretty/` a footprint.
+Fixtures of #4285: a PCM packages list (`pcm/packages-v1.json`, made up: its SHA_OF_THE_ZIP set by the tests to the SHA-256 of the zip they build).

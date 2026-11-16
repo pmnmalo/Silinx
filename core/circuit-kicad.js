@@ -49,7 +49,9 @@ export function pinDirection(p) {
   }
 }
 // (a passive or unspecified pin says nothing of its direction: it fits any; a no-connect pin fits an unused one)
-const fits = (kicad, silinx) => kicad.type === 'passive' || kicad.type === 'unspecified' || kicad.type === 'free' || pinDirection(kicad) === silinx;
+// (a 3-state output fits an output of the library, as the 74595's, #4285)
+const fits = (kicad, silinx) => kicad.type === 'passive' || kicad.type === 'unspecified' || kicad.type === 'free' || pinDirection(kicad) === silinx
+  || (kicad.type === 'tri_state' && silinx === 'out');
 
 /** A symbol's pins, each once (its normal body's; every unit's): [{ number, name, type, … }]. */
 export function symbolPins(s) {
@@ -86,7 +88,8 @@ const footprintName = (s) => s.properties['Silinx.Footprint'] || s.properties.Fo
  */
 export function pinPlaces(s, footprints = new Map()) {
   const pins = symbolPins(s), name = footprintName(s);
-  const fp = name && (footprints.get(name) ?? footprints.get(name.replace(/^[^:]*:/, '')));
+  // (a library the PCM installed is named PCM_<its name> in KiCad's table, #4285)
+  const fp = name && (footprints.get(name) ?? footprints.get(name.replace(/^PCM_/, '')) ?? footprints.get(name.replace(/^[^:]*:/, '')));
   if (fp) {
     const g = gridPins(fp);
     if (!g.pins.length) return { error: g.smd.length ? `its footprint ${fp.name} is surface-mount: it does not plug into a breadboard` : `its footprint ${fp.name} has no pad 1 through the board` };

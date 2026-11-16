@@ -1,0 +1,15 @@
+{
+  "packages": [
+    { "identifier": "org.example.logic-parts", "name": "Example logic parts", "type": "library", "license": "CC-BY-4.0", "description": "A test package: a 74LS00 and a module", "author": { "name": "Test Author" },
+      "versions": [
+        { "version": "1.2.0", "status": "stable", "download_url": "https://github.com/example/logic-parts/releases/download/v1.2.0/logic-parts.zip", "download_sha256": "SHA_OF_THE_ZIP", "download_size": 4000, "install_size": 9000, "kicad_version": "7.0" },
+        { "version": "1.10.0", "status": "testing", "download_url": "https://github.com/example/logic-parts/releases/download/v1.10.0/logic-parts.zip", "download_sha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+        { "version": "1.1.0", "status": "stable", "download_url": "https://github.com/example/logic-parts/releases/download/v1.1.0/logic-parts.zip", "download_sha256": "1111111111111111111111111111111111111111111111111111111111111111" }
+      ] },
+    { "identifier": "org.example.a-plugin", "name": "A plugin", "type": "plugin", "license": "MIT", "versions": [{ "version": "1", "status": "stable", "download_url": "https://github.com/x/y.zip", "download_sha256": "2222222222222222222222222222222222222222222222222222222222222222" }] },
+    { "identifier": "bad id with spaces", "name": "Bad", "type": "library", "versions": [{ "version": "1", "status": "stable", "download_url": "https://github.com/x/y.zip", "download_sha256": "3333333333333333333333333333333333333333333333333333333333333333" }] },
+    { "identifier": "org.example.no-stable", "name": "No stable", "type": "library", "versions": [{ "version": "1", "status": "testing", "download_url": "https://github.com/x/y.zip", "download_sha256": "4444444444444444444444444444444444444444444444444444444444444444" }] },
+    { "identifier": "org.example.http", "name": "Not HTTPS", "type": "library", "versions": [{ "version": "1", "status": "stable", "download_url": "http://github.com/x/y.zip", "download_sha256": "5555555555555555555555555555555555555555555555555555555555555555" }] },
+    { "identifier": "org.example.alpha", "name": "Alpha footprints", "type": "library", "license": "CC0-1.0", "description": "Only footprints", "versions": [{ "version": "0.3", "status": "stable", "download_url": "https://gitlab.com/example/alpha.zip", "download_sha256": "6666666666666666666666666666666666666666666666666666666666666666", "download_size": 100 }] }
+  ]
+}

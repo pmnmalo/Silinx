@@ -36,10 +36,14 @@ const ALLOW = {
   'web/js/impact.js': { why: 'a bitstream programmed into a board, never kept in a project' },
   'server/mcp-hdl.js': { why: 'simulate writes a VCD into the exchange folder: an output, nothing read' },
   'server/mcp-grade.js': { why: 'grade\'s submissions of the exchange folder are read by server/grade.js, through the gate; its CSV, student\'s copy and template are outputs; a class\'s results file (results, #3864) is read as data, checked by core/grade-class.js parseResults, never kept in a project', via: 'server/grade.js' },
+  'core/kicad-pcm.js': { why: 'a KiCad package\'s zip (#4285): only its entries named as KiCad\'s symbols/ and footprints/ are inflated, a path out of it refused; core/kicad-import.js gates each file it writes into parts/ (gateFile)', via: 'core/kicad-import.js' },
+  'server/mcp-kicad.js': { why: 'import_part\'s file, .zip or folder of the exchange folder (#4280, #4285) goes to core/kicad-import.js, which gates each file it writes (gateFile)', via: 'core/kicad-import.js' },
+  'web/js/circuit-kicad-import.js': { why: 'Import KiCad Part…\'s file, .zip or folder picked (#4281, #4285) goes to core/kicad-import.js, which gates each file it writes (gateFile)', via: 'core/kicad-import.js' },
   'web/js/grade-results-view.js': { why: 'Class Results… (#3864): a results file picked is read as data, checked by core/grade-class.js parseResults and shown as text, never kept in a project' },
 };
 
-const GATE = /core\/import-gate\.js['"]/;
+// (a module of core/ imports it as './import-gate.js')
+const GATE = /(?:core\/|\.\/)import-gate\.js['"]/;
 function files() {
   const out = [];
   const walk = (rel) => {
