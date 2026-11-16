@@ -497,7 +497,7 @@ class PageBase {
     }
     // (no project open: no tabs, the Start page only, #4257; on a narrow screen the drawer's, opened by its button)
     if (name === 'start' && await this.eval(() => document.documentElement.hasAttribute('data-no-project'))) {
-      if (await this.eval(() => !document.getElementById('start-page').getClientRects().length)) await this.click('#drawer-btn');
+      if (await this.eval(() => !document.getElementById('start-page').getClientRects().length && !!document.getElementById('drawer-btn')?.getClientRects().length)) await this.click('#drawer-btn');
       await this.waitFor(() => !!document.getElementById('start-page').getClientRects().length, [], { what: 'the Start page' });
       return;
     }

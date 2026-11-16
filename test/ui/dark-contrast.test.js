@@ -70,7 +70,8 @@ async function themed(page, theme) {
   await page.reload();
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item'), [], { what: 'app boot' });
   // (the drawer of a narrow screen, #266; the Silinx interface's layout by tasks and its arrangement, #1149)
-  assert.deepEqual(await page.eval(() => ({ ...document.documentElement.dataset })), UI === 'ise' ? { ui: 'ise', theme, drawer: 'open' }
+  // (no project open: <html data-no-project>, #4257)
+  assert.deepEqual(await page.eval(() => { const d = { ...document.documentElement.dataset }; if ('noProject' in d === !window.Silinx.project) delete d.noProject; return d; }), UI === 'ise' ? { ui: 'ise', theme, drawer: 'open' }
     : { ui: 'silinx', theme, drawer: 'open', layout: 'tasks', task: 'edit', side: 'open', console: 'open', max: 'off', nodocs: 'on' });   // (no document yet: no tab bar, #1289)
   await page.eval(CONTRAST);
   const bad = [];
