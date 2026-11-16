@@ -103,7 +103,7 @@ test('git_init on an empty GitHub repository, its first commit; no token said wi
   assert.deepEqual([answer.repository, answer.branch, answer.files], [true, 'main', [{ path: 'silinx.json', state: 'modified' }, { path: 'src/x.vhd', state: 'new' }]]);
 });
 
-test('#3194 git_checks through GitHub\'s API: the last pushed commit\'s checks, running then done; the token in the header only', async () => {
+test('#3194 #4237 git_checks through GitHub\'s API: the last pushed commit\'s checks, running then done; a fine-grained token; the token in the header only', async () => {
   gh.seed('pmalo/lab3', filesOf(BLINKY), { private: true });
   await ok('git_clone', { url: 'https://github.com/pmalo/lab3' });
   const head = gh.head('pmalo/lab3');
@@ -118,6 +118,15 @@ test('#3194 git_checks through GitHub\'s API: the last pushed commit\'s checks, 
   const done = await ok('git_checks', { project: 'lab3' });
   assert.equal(done.text, `grade: success (commit ${c.data.commit.slice(0, 7)}): https://github.com/pmalo/lab3/runs/${1002}\n  Silinx: counter4: 40 / 40 points, Accepted`);
   assert.deepEqual([done.data.remote, done.data.commit, done.data.conclusion], ['pmalo/lab3', c.data.commit, 'success']);
+  // (#4237) a fine-grained token: the workflow's jobs and the commit's statuses; one refused, a warning; both, the permissions named
+  gh.fineGrained({ actions: true });
+  gh.setRuns('pmalo/lab3', c.data.commit, [{ name: 'Classroom', status: 'completed', conclusion: 'success', jobs: [{ name: 'grade', status: 'completed', conclusion: 'success' }] }]);
+  const fine = await ok('git_checks', { project: 'lab3' });
+  assert.equal(fine.text, ['This token cannot read GitHub\'s Checks (a fine-grained personal access token has no such permission): the workflows\' jobs and the commit\'s statuses instead, without the tests\' verdicts (their annotations).', 'WARNING: GitHub refused the commit\'s statuses: the token needs Commit statuses: read on the repository.',
+    `grade: success (commit ${c.data.commit.slice(0, 7)}): https://github.com/pmalo/lab3/actions/runs/1003/job/100300`].join('\n'));
+  gh.fineGrained({});
+  await fails('git_checks', { project: 'lab3' }, 'GitHub refused this token the commit\'s checks: a fine-grained personal access token needs Actions: read and Commit statuses: read on pmalo/lab3\nHint: Edit the token on GitHub (Settings ▸ Developer settings ▸ Fine-grained tokens) and add those two repository permissions. The tests\' verdicts (GitHub\'s Checks) need a classic token or Sign in with GitHub….');
+  gh.fineGrained(null);
   const asked = gh.requests.filter(q => q.url.includes('check-runs'));
   assert.ok(asked.length >= 3 && asked.every(q => q.headers.authorization === `Bearer ${gh.token}` && !q.url.includes(gh.token)));
   // (a project not in a repository)

@@ -59,7 +59,10 @@ autograding is not needed: Silinx's workflow is the check.
 - In Silinx, after a push, **GitHub Checks** (the Collaboration tab, or Git ▸ GitHub Checks) says the same verdicts in
   the console, with the first difference of each Wrong Answer (the MCP's `git_checks` too); the Collaboration tab keeps
   the result (passed, failed, running). A private assignment's repository needs the sign-in: Sign in with
-  GitHub… with the private repositories in the browser edition, `GH_TOKEN` for a server.
+  GitHub… with the private repositories in the browser edition, `GH_TOKEN` for a server. A fine-grained personal access
+  token cannot read GitHub's Checks (GitHub gives those tokens no such permission): with Actions and Commit statuses
+  read-only, GitHub Checks says each job's result, not the tests' verdicts; a classic token (or the sign-in's code) gives
+  them all.
 - The hidden tests' verdicts come at the deadline, from the teacher.
 
 ## 4. The teacher's run at the deadline

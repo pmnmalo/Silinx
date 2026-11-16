@@ -16,6 +16,11 @@ export function fakeGitHub({ clientId = 'Iv1.fake-client-id', tokens = ['gho_fak
   const devices = new Map();   // device_code -> { userCode, state: 'pending' | 'authorized' | 'denied', polls }
   const scopes = [];           // the scope each device code asked for (#3356)
   let clock = 0, checkId = 1000;
+  // a fine-grained personal access token's permissions (#4237): null, a classic or an OAuth token (every read); else
+  // { actions, statuses }: GitHub's Checks refused (no such permission for those tokens), Actions: read and Commit
+  // statuses: read as given
+  let fine = null;
+  const FINE_REFUSED = () => json(403, { message: 'Resource not accessible by personal access token' });
 
   const json = (status, body, headers = {}) => ({ status, body, headers });
   const nope = () => json(404, { message: 'Not Found' });
@@ -146,6 +151,30 @@ export function fakeGitHub({ clientId = 'Iv1.fake-client-id', tokens = ['gho_fak
       for (let s = start; s; s = r.commits.get(s).parents[0]) line.push(s);
       return json(200, line.slice((page - 1) * per, page * per).map(sha => { const c = r.commits.get(sha); return { sha, commit: { message: c.message, author: { name: c.author, date: c.date } }, author: { login: c.author } }; }));
     }
+    // (#4237) a commit's workflow runs (by its hash or a branch), a run's jobs, a commit's statuses
+    if (rest === '/actions/runs' && method === 'GET') {
+      if (fine && !fine.actions) return FINE_REFUSED();
+      const sha = url.searchParams.get('head_sha'), branch = url.searchParams.get('branch');
+      const all = [...(r.runs || new Map()).entries()].flatMap(([h, list]) => list.map(w => ({ ...w, head_sha: h, head_branch: r.branch })));
+      const runs = all.filter(w => (sha ? w.head_sha === sha : branch ? w.head_branch === branch : true)).reverse()
+        .map(w => ({ id: w.id, name: w.name, display_title: w.title ?? 'commit', head_sha: w.head_sha, head_branch: w.head_branch, status: w.status, conclusion: w.conclusion ?? null, html_url: `https://github.com/${full}/actions/runs/${w.id}` }));
+      return json(200, { total_count: runs.length, workflow_runs: runs });
+    }
+    if ((x = /^\/actions\/runs\/(\d+)\/jobs$/.exec(rest)) && method === 'GET') {
+      if (fine && !fine.actions) return FINE_REFUSED();
+      const w = [...(r.runs?.values() || [])].flat().find(k => String(k.id) === x[1]);
+      if (!w) return nope();
+      const jobs = (w.jobs || []).map((j, i) => ({ id: w.id * 100 + i, name: j.name, status: j.status, conclusion: j.conclusion ?? null, html_url: `https://github.com/${full}/actions/runs/${w.id}/job/${w.id * 100 + i}` }));
+      return json(200, { total_count: jobs.length, jobs });
+    }
+    if ((x = /^\/commits\/([^/]+)\/status$/.exec(rest)) && method === 'GET') {
+      if (fine && !fine.statuses) return FINE_REFUSED();
+      const ref = decodeURIComponent(x[1]), sha = r.refs.get(ref) || ref;
+      const list = r.statuses?.get(sha) || [];
+      const state = list.some(t => t.state === 'failure' || t.state === 'error') ? 'failure' : list.every(t => t.state === 'success') && list.length ? 'success' : 'pending';
+      return json(200, { state, sha, total_count: list.length, statuses: list.map(t => ({ context: t.context, state: t.state, description: t.description ?? null, target_url: t.url ?? null })) });
+    }
+    if (fine && /^\/(commits\/[^/]+\/check-runs|check-runs\/\d+\/annotations)$/.test(rest)) return FINE_REFUSED();
     if ((x = /^\/commits\/([^/]+)\/check-runs$/.exec(rest)) && method === 'GET') {   // (#3194: a commit's checks)
       const ref = decodeURIComponent(x[1]), sha = r.refs.get(ref) || ref;
       const runs = (r.checks?.get(sha) || []).map(c => ({ id: c.id, name: c.name, status: c.status, conclusion: c.conclusion ?? null, html_url: `https://github.com/${full}/runs/${c.id}`, head_sha: sha, output: { title: c.title ?? null, summary: null, annotations_count: (c.annotations || []).length } }));
@@ -244,5 +273,11 @@ export function fakeGitHub({ clientId = 'Iv1.fake-client-id', tokens = ['gho_fak
     revoke: t => valid.delete(t),
     // a commit's check runs, as GitHub Actions makes them (#3194): [{ name, status, conclusion, annotations: [{ level, title, message }] }]
     setChecks: (full, sha, runs) => { const r = repos.get(full); r.checks ||= new Map(); r.checks.set(sha, runs.map(c => ({ id: ++checkId, ...c }))); },
+    // (#4237) a commit's workflow runs: [{ name, status, conclusion, jobs: [{ name, status, conclusion }] }]; its statuses:
+    // [{ context, state ('success' | 'failure' | 'error' | 'pending'), description, url }]; the token a fine-grained one
+    // ({ actions, statuses }: the permissions given) or not (null)
+    setRuns: (full, sha, runs) => { const r = repos.get(full); r.runs ||= new Map(); r.runs.set(sha, runs.map(w => ({ id: ++checkId, ...w }))); },
+    setStatuses: (full, sha, list) => { const r = repos.get(full); r.statuses ||= new Map(); r.statuses.set(sha, list); },
+    fineGrained: (grants = null) => { fine = grants && { actions: !!grants.actions, statuses: !!grants.statuses }; },
   };
 }

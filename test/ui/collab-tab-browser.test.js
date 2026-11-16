@@ -2,7 +2,8 @@
 // test/ui/site-lib.js, with test/fake-github.mjs for GitHub: no network), in both interfaces (SILINX_UI_INTERFACE): a
 // repository opened from the tab; Commit and Push… (no Push: a commit is pushed at once); the sign-in's state, Sign out of
 // GitHub giving Sign in with GitHub…; GitHub Checks from the tab, its result kept in the tab (none, running, passed,
-// failed), its details in the console; the Live Sharing box; in Portuguese; no warnings. (The server editions': test/ui/collab-tab.test.js.)
+// failed), its details in the console, with a fine-grained token too (#4237: the workflow's jobs, or the
+// permissions to add); the Live Sharing box; in Portuguese; no warnings. (The server editions': test/ui/collab-tab.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -106,6 +107,17 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from Repository…,
   await tabCommand(page, 'GitHub Checks');
   await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `Checks passed (${short(sha)})`], 'passed');
   assert.equal(await page.eval(() => document.querySelector('#collab-page .collab-checks').dataset.state), 'success');
+  // (#4237) a fine-grained token: GitHub's Checks refused, the workflow's jobs read instead (the tab's result the same);
+  // neither readable: the console names the permissions to add
+  gh.fineGrained({ actions: true, statuses: true });
+  gh.setRuns(REPO, sha, [{ name: 'Classroom', status: 'completed', conclusion: 'failure', jobs: [{ name: 'grade', status: 'completed', conclusion: 'failure' }] }]);
+  await tabCommand(page, 'GitHub Checks');
+  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `Checks failed (${short(sha)})`], 'failed, from the workflow');
+  await page.waitConsole(new RegExp(`This token cannot read GitHub's Checks \\(a fine-grained personal access token has no such permission\\): the workflows' jobs and the commit's statuses instead, without the tests' verdicts \\(their annotations\\)\\.\\nERROR: grade: failure \\(commit ${short(sha)}\\): https://github\\.com/course/collab-ana/actions/runs/\\d+/job/\\d+`));
+  gh.fineGrained({});
+  await tabCommand(page, 'GitHub Checks');
+  await page.waitConsole(/ERROR: GitHub refused this token the commit's checks: a fine-grained personal access token needs Actions: read and Commit statuses: read on course\/collab-ana\nHint: Edit the token on GitHub \(Settings ▸ Developer settings ▸ Fine-grained tokens\) and add those two repository permissions\./);
+  gh.fineGrained(null);
   // in Portuguese (the site read again in it: the checks' result was the page's), then Sign out of GitHub from the tab
   await page.eval(() => localStorage.setItem('silinx.lang', 'pt'));
   try {

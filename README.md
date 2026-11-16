@@ -568,7 +568,8 @@ In the browser edition the same commands go through GitHub's API (there is no gi
 - **Sign in with GitHub…** (the Collaboration tab, which says whether you are signed in; the Git commands): a private repository, a commit and a pull need it. Where the
   site has Silinx's sign-in relay, it gives a code to enter at github.com/login/device; elsewhere, it asks for a
   fine-grained personal access token of yours (github.com/settings/personal-access-tokens/new: the repositories to
-  open, Contents read and write). The sign-in is kept in this browser only, and **Sign out of GitHub** forgets it.
+  open, Contents read and write; Actions and Commit statuses read-only for GitHub Checks, which then reads the
+  workflows' jobs: GitHub's Checks themselves, with a Classroom test's verdict, need a classic token or the sign-in's code). The sign-in is kept in this browser only, and **Sign out of GitHub** forgets it.
 - **Commit and Push…** commits and pushes in one step. A commit GitHub rejects (someone pushed meanwhile) says to
   pull first.
 - **Initialize Repository…** takes an empty GitHub repository (make it at github.com/new); the first commit is the

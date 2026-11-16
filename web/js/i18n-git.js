@@ -48,6 +48,7 @@ export const GIT_PT = {
   'Open GitHub\'s page for a new token:': 'Abra a página do GitHub para um novo token:',
   'Repository access: Only select repositories (the ones to open in Silinx).': 'Acesso aos repositórios: Only select repositories (os que vai abrir no Silinx).',
   'Repository permissions: Contents, Read and write (Metadata, Read-only, comes with it).': 'Permissões dos repositórios: Contents, Read and write (Metadata, Read-only, vem com ela).',
+  'Repository permissions: Actions and Commit statuses, Read-only (for GitHub Checks).': 'Permissões dos repositórios: Actions e Commit statuses, Read-only (para as Verificações do GitHub).',
   'Generate the token, copy it and paste it here.': 'Gere o token, copie-o e cole-o aqui.',
   'Account permissions: Gists, Read and write (for Share Project\'s short links).': 'Permissões da conta: Gists, Read and write (para as ligações curtas de Partilhar Projeto).',
   'Sign In': 'Iniciar Sessão',

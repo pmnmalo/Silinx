@@ -153,7 +153,7 @@ test('#3363 git_init sets only a remote the user\'s settings name (mcp.remotes);
   assert.equal(status.content[1].text, note('the files\' and the branches\' names, the repository\'s'));
 });
 
-test('#3194 git_checks: what GitHub said of the branch\'s upstream (a Classroom assignment\'s verdicts); no remote, nothing pushed', async () => {
+test('#3194 #4237 git_checks: what GitHub said of the branch\'s upstream (a Classroom assignment\'s verdicts); no remote, nothing pushed; a fine-grained token', async () => {
   const { fakeGitHub } = await import('./fake-github.mjs');
   const GH = await import('../server/git-github.js');
   await ok('new_project_from_example', { name: 'chk', example: 'gates' });
@@ -187,5 +187,14 @@ test('#3194 git_checks: what GitHub said of the branch\'s upstream (a Classroom 
     assert.deepEqual([r.data.project, r.data.remote, r.data.commit, r.data.conclusion, r.data.untrusted.content], ['lab2', 'local/lab2', sha, 'failure', 'the checks\' names, titles and annotations, which the repository\'s workflows wrote']);
     // (no token in this environment: none sent)
     assert.ok(gh.requests.every(q => !q.headers.authorization));
+    // (#4237) a fine-grained GH_TOKEN: GitHub's Checks refused, the workflow's jobs instead; neither readable: the permissions named
+    gh.fineGrained({ actions: true, statuses: true });
+    gh.setRuns('local/lab2', sha, [{ name: 'Classroom', status: 'completed', conclusion: 'failure', jobs: [{ name: 'grade', status: 'completed', conclusion: 'failure' }] }]);
+    const fine = await call('git_checks', { project: 'lab2' });
+    assert.equal(fine.isError, false, fine.text);
+    assert.equal(fine.text, ['This token cannot read GitHub\'s Checks (a fine-grained personal access token has no such permission): the workflows\' jobs and the commit\'s statuses instead, without the tests\' verdicts (their annotations).', `ERROR: grade: failure (commit ${sha.slice(0, 7)}): https://github.com/local/lab2/actions/runs/1002/job/100200`].join('\n'));
+    assert.deepEqual([fine.data.via, fine.data.unread, fine.data.conclusion], ['actions', [], 'failure']);
+    gh.fineGrained({});
+    await fails('git_checks', { project: 'lab2' }, 'GitHub refused this token the commit\'s checks: a fine-grained personal access token needs Actions: read and Commit statuses: read on local/lab2\nHint: Edit the token on GitHub (Settings ▸ Developer settings ▸ Fine-grained tokens) and add those two repository permissions. The tests\' verdicts (GitHub\'s Checks) need a classic token or Sign in with GitHub….');
   } finally { GH.GITHUB_TESTING.fetch = null; }
 });

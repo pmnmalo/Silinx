@@ -89,3 +89,69 @@ test('#3194 the console\'s lines: none, running, done with each verdict', () => 
     { level: 'info', text: 'lint: success (All good) (commit abcdef0)' },
   ]);
 });
+
+// (#4237) a fine-grained personal access token: GitHub's Checks refused ("Resource not accessible by personal access
+// token"), the workflow runs' jobs and the commit's statuses read instead
+const FALLBACK = 'This token cannot read GitHub\'s Checks (a fine-grained personal access token has no such permission): the workflows\' jobs and the commit\'s statuses instead, without the tests\' verdicts (their annotations).';
+function fine(grants) {
+  const s = setup();
+  s.gh.fineGrained(grants);
+  s.gh.setChecks(REPO, s.head, [{ name: 'grade', status: 'completed', conclusion: 'failure', annotations: GRADED }]);   // (unreadable with it)
+  s.gh.setRuns(REPO, s.head, [{ name: 'GitHub Classroom Workflow', status: 'completed', conclusion: 'failure', jobs: [{ name: 'grade', status: 'completed', conclusion: 'failure' }, { name: 'lint', status: 'completed', conclusion: 'success' }] }]);
+  s.gh.setStatuses(REPO, s.head, [{ context: 'ci/extra', state: 'success', description: 'All good', url: 'https://github.com/course/counter4-student/extra' }]);
+  return s;
+}
+
+test('#4237 a fine-grained token: the jobs of the commit\'s workflow runs and its statuses, without the annotations; the console says so', async () => {
+  const { gh, client, head } = fine({ actions: true, statuses: true });
+  const c = await commitChecks(client, { owner: 'course', repo: 'counter4-student', ref: head });
+  const RUN = 1002;   // (the workflow run's id; its jobs' ids from it)
+  assert.deepEqual(c, { commit: head, state: 'completed', conclusion: 'failure', via: 'actions', unread: [], runs: [
+    { name: 'ci/extra', status: 'completed', conclusion: 'success', url: 'https://github.com/course/counter4-student/extra', title: 'All good', annotations: [] },
+    { name: 'grade', status: 'completed', conclusion: 'failure', url: `https://github.com/${REPO}/actions/runs/${RUN}/job/${RUN * 100}`, title: null, annotations: [] },
+    { name: 'lint', status: 'completed', conclusion: 'success', url: `https://github.com/${REPO}/actions/runs/${RUN}/job/${RUN * 100 + 1}`, title: null, annotations: [] }] });
+  assert.deepEqual(checksLines(c), [
+    { level: 'info', text: FALLBACK },
+    { level: 'info', text: 'ci/extra: success (All good) (commit ' + head.slice(0, 7) + '): https://github.com/course/counter4-student/extra' },
+    { level: 'error', text: `grade: failure (commit ${head.slice(0, 7)}): https://github.com/${REPO}/actions/runs/${RUN}/job/${RUN * 100}` },
+    { level: 'info', text: `lint: success (commit ${head.slice(0, 7)}): https://github.com/${REPO}/actions/runs/${RUN}/job/${RUN * 100 + 1}` },
+  ]);
+  // (the requests: the Checks refused once, then the runs by the commit's hash, its jobs, its status; the token in the header only)
+  assert.deepEqual(gh.requests.map(r => r.url.replace(/\/repos\/course\/counter4-student/, '').replace(head, 'HEAD')), [
+    '/commits/HEAD/check-runs?per_page=100', '/actions/runs?head_sha=HEAD&per_page=100', '/commits/HEAD/status', `/actions/runs/${RUN}/jobs?per_page=100`]);
+  for (const r of gh.requests) assert.ok(!r.url.includes(gh.token) && r.headers.authorization === `Bearer ${gh.token}`, r.url);
+});
+
+test('#4237 a fine-grained token: by a branch\'s name; running; no workflow and no status: none', async () => {
+  const { gh, client, head } = fine({ actions: true, statuses: true });
+  gh.setRuns(REPO, head, [{ name: 'CI', status: 'queued', jobs: [] }]);   // (no job yet: the run itself)
+  gh.setStatuses(REPO, head, []);
+  const c = await commitChecks(client, { owner: 'course', repo: 'counter4-student', ref: 'main' });
+  assert.deepEqual([c.commit, c.state, c.conclusion, c.via, c.runs.map(r => [r.name, r.status])], ['main', 'pending', null, 'actions', [['CI', 'queued']]]);
+  gh.setRuns(REPO, head, []);
+  const none = await commitChecks(client, { owner: 'course', repo: 'counter4-student', ref: head });
+  assert.deepEqual([none.state, none.conclusion, none.runs], ['none', null, []]);
+  assert.deepEqual(checksLines(none), [{ level: 'info', text: FALLBACK }, { level: 'info', text: `No check on GitHub for commit ${head.slice(0, 7)}: the repository has no workflow, or it has not started yet.` }]);
+});
+
+test('#4237 a fine-grained token with one of the two permissions: what it reads, the other said as a warning', async () => {
+  const only = async (grants) => { const { client, head } = fine(grants); return commitChecks(client, { owner: 'course', repo: 'counter4-student', ref: head }); };
+  const a = await only({ actions: true });
+  assert.deepEqual([a.unread, a.runs.map(r => r.name), a.conclusion], [['Commit statuses: read'], ['grade', 'lint'], 'failure']);
+  assert.deepEqual(checksLines(a).slice(0, 2), [{ level: 'info', text: FALLBACK }, { level: 'warning', text: 'GitHub refused the commit\'s statuses: the token needs Commit statuses: read on the repository.' }]);
+  const s = await only({ statuses: true });
+  assert.deepEqual([s.unread, s.runs.map(r => r.name), s.conclusion], [['Actions: read'], ['ci/extra'], 'success']);
+  assert.deepEqual(checksLines(s)[1], { level: 'warning', text: 'GitHub refused the workflow runs: the token needs Actions: read on the repository.' });
+});
+
+test('#4237 a fine-grained token with neither: the error names the permissions to add; a rate limit is no refusal', async () => {
+  const { client, head } = fine({});
+  await assert.rejects(commitChecks(client, { owner: 'course', repo: 'counter4-student', ref: head }), e => e instanceof GitHubError && e.status === 403
+    && e.message === 'GitHub refused this token the commit\'s checks: a fine-grained personal access token needs Actions: read and Commit statuses: read on course/counter4-student'
+    && e.hint === 'Edit the token on GitHub (Settings ▸ Developer settings ▸ Fine-grained tokens) and add those two repository permissions. The tests\' verdicts (GitHub\'s Checks) need a classic token or Sign in with GitHub….');
+  // (a rate limit: GitHub's own error, nothing else asked)
+  const asked = [];
+  const limited = { repo: client.repo, pathOf: client.pathOf, request: async (m, p) => { asked.push(p); throw new GitHubError('GitHub refused the request (API rate limit exceeded for 1.2.3.4.)', 'Wait an hour.', 403); } };
+  await assert.rejects(commitChecks(limited, { owner: 'o', repo: 'r', ref: 'main' }), /API rate limit exceeded/);
+  assert.equal(asked.length, 1);
+});
