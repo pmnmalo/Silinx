@@ -27,6 +27,7 @@ import { parseBitHeader } from './programmer.js';
 import { hiddenIn, within } from './paths.js';
 import { IDENT } from './ident.js';
 import { sourceSettingsSh } from './settings-guard.js';
+import { circuitXstNames, isCircuitXstWarning, circuitXstNote } from '../core/circuit-xst.js';
 
 // the default flow (an empty request runs these)
 export const STEPS = ['synth', 'translate', 'map', 'par', 'trce', 'bitgen', 'prombit'];
@@ -584,15 +585,21 @@ export async function runImplementation(job, { project, projectDir, steps, gener
     if (/^=== SILINX DONE ===/.test(line)) { if (result.currentStep) result.completedSteps.push(result.currentStep); result.currentStep = null; }
   };
 
+  // XST's warnings on a digital circuit's chips left out of the log, counted (#4020, core/circuit-xst.js)
+  const restore = leaveOutCircuitWarnings(job, await circuitsOf(gen));
   let code;
   try {
     if (cfg.mode === 'local') code = await runLocal(job, cfg, det, gen, st, onLine);
     else if (cfg.mode === 'docker') code = await runDocker(job, cfg, gen, st, onLine);
     else code = await runSsh(job, cfg, det, project, gen, st, onLine);
   } finally {
+    const leftOut = restore();
+    if (leftOut.length) result.leftOut = leftOut;
     // Always try to parse whatever reports exist (also after failures / cancel).
     try {
       result.reports = await collectReports(gen.buildDir, gen.top, gen.device);
+      // (the report's count of XST's warnings without them, and how many were left out)
+      if (leftOut.length && result.reports.synthesis?.warnings != null) Object.assign(result.reports.synthesis, { warnings: Math.max(0, result.reports.synthesis.warnings - leftOut.length), leftOut: leftOut.length });
       await fs.writeFile(path.join(gen.buildDir, 'reports.json'), JSON.stringify(result.reports, null, 2) + '\n');
     } catch (e) { job.log(`WARNING: report parsing failed: ${e.message}`); }
   }
@@ -604,6 +611,21 @@ export async function runImplementation(job, { project, projectDir, steps, gener
   const board = findBoard(project.board), flash = vendorFlashText(board, gen.top);
   if (flash && fss.existsSync(path.join(gen.buildDir, `${gen.top}_prom.bin`))) job.log(`Programming file: ${flash}`);
   return result;
+}
+
+/** The digital circuits among a build's sources (their generated HDL's names, core/circuit-xst.js). */
+export async function circuitsOf(gen) {
+  const out = [];
+  for (const f of gen.sources || []) { const c = circuitXstNames(await readIf(path.join(gen.buildDir, f.buildPath))); if (c) out.push(c); }
+  return out;
+}
+
+/** XST's warnings on a digital circuit's chips left out of the job's log while it runs (#4020): the returned function
+ *  puts the log back, says how many were left out and why, and returns them. */
+export function leaveOutCircuitWarnings(job, circuits) {
+  const log = job.log, out = [];
+  if (circuits.length) job.log = function (line) { if (isCircuitXstWarning(line, circuits)) out.push(String(line)); else log.call(this, line); };
+  return () => { job.log = log; if (out.length) job.log(circuitXstNote(out.length)); return out; };
 }
 
 export function runLocal(job, cfg, det, gen, steps, onLine) {

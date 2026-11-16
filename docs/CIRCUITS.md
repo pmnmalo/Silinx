@@ -235,8 +235,11 @@ several ports (a DIP switch, a display: their ports are `<label>_<k>`).
 74161 on LD3..LD0, up to 15 (the button synchronised by a 74194 shift register, its four stages on LD4..LD7, its
 rising edge `QB and (QB xor QC)` by a 7486 and a 7408, whose other gates stop the count at the 74161's RCO), SW0 clearing
 them; its test bench runs the simulation's model; the Silinx toolchain and ISE build it on every board with no warning.
-Every output of its MSI and sequential chips is read: XST warns on an instance's unconnected output and on the
-flip-flops behind it (Xst:753, Xst:2677), so a circuit that leaves one open builds with ISE's warnings (#4020).
+Every output of its MSI and sequential chips is read. A circuit that leaves one open builds with ISE too: XST warns on
+the chip instance's unconnected output and on the flip-flops behind it (Xst:753, Xst:2677), and the ISE run leaves those
+two messages out when they are on a circuit's chips (found by their names in the circuit's generated HDL), and says in
+the console how many it left out (`INFO:Silinx - … warning(s) of XST left out`); the synthesis report's count of
+warnings is without them. Any other instance's still warn (#4020).
 
 What differs on the FPGA:
 
