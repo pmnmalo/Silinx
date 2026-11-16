@@ -180,8 +180,8 @@ uiTest('#4215 the Collaboration tab: no project, a project opened from a reposit
   await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); Object.assign(c, { role: 'follower', owner: 'Rui' }); (await import('/js/collab-tab.js')).renderCollabPage(); });
   try {
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .page > *')].map((e) => e.querySelector('h3')?.textContent ?? e.textContent)), ['Read-only, following Rui\'s project', 'Sharing']);
-    // (#4259: Share a Copy… disabled, its reason its tip; no other command)
-    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .entry a')].map((a) => [a.textContent, a.className, a.title])), [['Share a Copy…', 'disabled', 'A followed project is its owner\'s to share.']]);
+    // (#4259: Share a Copy… enabled, as File ▸ Share Project… is; no other command)
+    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .entry a')].map((a) => [a.textContent, a.className])), [['Share a Copy…', '']]);
   } finally {
     await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); Object.assign(c, { role: null, owner: '' }); (await import('/js/collab-tab.js')).renderCollabPage(); });
   }
@@ -262,7 +262,7 @@ uiTest('#4215 the Collaboration tab\'s Sharing: Share a Copy…, Share Live…, 
     await fp.leftTab('collab');
     // (browsing alone at first, on the link's module; Follow Ana from the tab follows her)
     await waitBox(fp, 'Sharing', ['Follow Ana', 'A Ana owner', 'R Rui you', 'Share a Copy…', 'Follow Ana', 'Stop Following'], 'the follower\'s');
-    assert.equal(await fp.eval(() => [...document.querySelectorAll('#collab-page .collab-live .entry a')].find((a) => a.textContent === 'Share a Copy…').className), 'disabled');
+    assert.equal(await fp.eval(() => [...document.querySelectorAll('#collab-page .collab-live .entry a')].find((a) => a.textContent === 'Share a Copy…').className), '');
     await tabCommand(fp, 'Follow Ana');
     await waitBox(fp, 'Sharing', ['Following Ana', 'A Ana owner', 'R Rui you', 'Share a Copy…', 'Follow Ana', 'Stop Following'], 'following');
     assert.equal(await fp.eval(() => document.querySelector('#collab-page .collab-readonly')?.textContent), 'Read-only, following Ana\'s project');

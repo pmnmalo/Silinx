@@ -10,6 +10,7 @@ import { symbolsMenu } from './symbol-standard.js';
 import { lintEnabled, setLintEnabled } from './diaghelp.js';
 import { INTERFACES, INTERFACE_NAMES, getInterface, setInterface, getTheme, setTheme, menuCommands } from './silinx.js';
 import { openPalette } from './palette.js';
+import { canShare } from './share-how.js';
 import { openFindInProject } from './find-project.js';
 import { developmentMenu } from './devmenu.js';
 import { S, activateDoc, app, canCopyAny, canDeleteAny, canPasteAny, closeDoc, copyAny, cutAny, deleteAny, docEditor, history, openFile,
@@ -72,7 +73,7 @@ export function setupMenus() {
       { label: 'Import Project…', action: () => import('./project-zip-dialogs.js').then(m => m.importProjectDialog()) },
       { label: 'Export Project (.zip)…', action: () => import('./project-zip-dialogs.js').then(m => m.exportProjectDialog()), disabled: hasPj },
       // (a copy, #2826, or live, #3181: chosen in its window, #3698)
-      { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()), disabled: hasPj },
+      { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()), disabled: () => !canShare() },
       hasGit() ? { label: 'Open from Repository…', action: () => openFromRepositoryDialog() } : null,   // (a GitHub repository, a Classroom assignment's: #3195; after Share Project…, #3323)
       { label: 'Short Links…', action: () => import('./short-links.js').then(m => m.shortLinksDialog()) },   // (the short links' gists, #3635)
       '-',
@@ -203,7 +204,7 @@ export function setupToolbar() {
     btn('newProject', 'New Project', () => wiz.newProjectWizard()),
     btn('open', 'Open Project', () => wiz.openProjectDialog()),
     btn('closeProject', 'Close Project', () => closeProject(), () => !!S.project),   // as File ▸ Close Project (#2027)
-    btn('share', 'Share Project', () => import('./share-how.js').then(m => m.shareDialog()), () => !!S.project),   // as File ▸ Share Project…: a copy or live (#3716; after Close Project, #3719)
+    btn('share', 'Share Project', () => import('./share-how.js').then(m => m.shareDialog()), () => canShare()),   // as File ▸ Share Project…: a copy or live (#3716; after Close Project, #3719)
     btn('print', 'Print', () => printActive(), printable),   // as File ▸ Print… (#1251)
     h('div', { class: 'tb-sep' }),
     btn('undo', 'Undo', () => undoAny(), () => undoesProject() || !!docEditor(S.active)),   // as Edit ▸ Undo (enabled as it is, #1192)

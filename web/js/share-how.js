@@ -14,6 +14,10 @@ const HOWS = Object.freeze(['copy', 'live']);
 /** The window's title, and its console messages' name: Share Project, or Share Module (a module's). */
 export const shareTitle = module => (module ? 'Share Module' : 'Share Project');
 
+/** Whether Share Project… can be used (#4259: File ▸ Share Project…, the toolbar's button and the Collaboration tab's
+ *  Share a Copy…): a project open. */
+export const canShare = () => !!S.project;
+
 /** Why the project (`module`: one of its modules) cannot be shared live here, or null (the Collaboration tab's Share
  *  Live…'s too, #4215). */
 export function liveProblem(module = null) {
@@ -30,7 +34,7 @@ const keepHow = how => { try { localStorage.setItem(HOW_KEY, how); } catch { /* 
 /** Share Project… (no `module`) or Share Module… (`module`, and the copy's `view`): the window of the way last
  *  chosen, the copy when live is not possible here. */
 export async function shareDialog({ module = null, view = null } = {}) {
-  if (!S.project) return null;
+  if (!canShare()) return null;
   return openHow(savedHow() === 'live' && !liveProblem(module) ? 'live' : 'copy', { module, view });
 }
 
@@ -44,7 +48,7 @@ export async function shareLiveDialog() {
 /** Share a Copy… (the Collaboration tab's, #4259): Share Project…'s window with A copy chosen, kept as the viewer's
  *  way. */
 export async function shareCopyDialog() {
-  if (!S.project) return null;
+  if (!canShare()) return null;
   keepHow('copy');
   return openHow('copy', {});
 }

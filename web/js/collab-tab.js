@@ -3,8 +3,8 @@
 // labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
 // a file with the last commit), Commit…, Push, Pull, History…, the GitHub sign-in and the last push's checks; a project
 // with no repository: Initialize Repository…, Open from Repository…. The same items as the Git submenu's
-// (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, disabled with
-// no project as it is, and in a followed project), and live sharing (#3181): what the toolbar's presence shows and its commands
+// (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, enabled as it
+// is), and live sharing (#3181): what the toolbar's presence shows and its commands
 // (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
 // read-only notice and its Live box only. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
 // page's, so that a later command (a merge, a branch) is one more box or entry.
@@ -15,7 +15,7 @@ import { S, showLeftPage } from './app.js';
 import { gitMenuItems, gitMarks, gitOff, hasGit, openFromRepositoryDialog } from './git.js';
 import { collab, following, followNotice } from './collab-state.js';
 import { presence } from './collab-presence.js';
-import { liveProblem, shareLiveDialog, shareCopyDialog } from './share-how.js';
+import { liveProblem, shareLiveDialog, shareCopyDialog, canShare } from './share-how.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
@@ -110,12 +110,8 @@ function githubBox(items, checksItem) {
 
 // the Sharing box's heading (#4259: "Sharing" is the presence's "A partilhar" elsewhere: this one's word given here)
 const sharingTitle = () => h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Partilha' : 'Sharing');
-// Share a Copy… (#4259): Share Project…'s copy, disabled with no project as File ▸ Share Project… is, and in a followed
-// project (read only: the owner's to share), its reason its tip
-const FOLLOWED = 'A followed project is its owner\'s to share.';
-const copyEntry = () => (following() || !S.project
-  ? entry('share', h('a', { class: 'disabled', 'aria-disabled': 'true', title: following() ? FOLLOWED : '' }, 'Share a Copy…'))
-  : command({ label: 'Share a Copy…', action: () => shareCopyDialog() }, 'share'));
+// Share a Copy… (#4259): Share Project…'s copy, enabled as File ▸ Share Project… is (canShare)
+const copyEntry = () => command({ label: 'Share a Copy…', action: () => shareCopyDialog(), disabled: !canShare() }, 'share');
 
 // Sharing: Share a Copy…, then live sharing (#3181): the presence's label, who is in (their role beside them) and its
 // commands; none: Share Live… (disabled with no project or where it cannot be, its reason its tip), how to follow
