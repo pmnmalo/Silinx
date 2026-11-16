@@ -1,6 +1,6 @@
 // UI: the Teaching tab of the Design pane's row (#3533, web/js/teaching-page.js), in both interfaces
 // (SILINX_UI_INTERFACE): its page's box, Labs and Exercises (Guided Labs…, Exercise…; its Links and Sharing box gone, the
-// Start page's sharing and git entries, #3699); a project's commands disabled with none, each opening its dialog with one;
+// Start page's sharing and git entries, #3699); no tab with no project (#4257), each command opening its dialog with one;
 // the Start page's Teaching box gone (#3333); the tab on a narrow screen (the drawer's); in Portuguese; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,27 +23,24 @@ const teach = (page) => page.eval(() => {
 });
 const commands = (off) => ['Guided Labs…', 'Exercise…'].map((c) => (off ? `${c} (disabled)` : c));
 
-uiTest('#3533 #3699 the Teaching tab: the labs and the exercises (no Links and Sharing box), disabled with no project, each opening its dialog; Portuguese', E, async (page) => {
+uiTest('#3533 #3699 #4257 the Teaching tab: the labs and the exercises (no Links and Sharing box), no tab with no project, each command opening its dialog; Portuguese', E, async (page) => {
   await page.setViewport(1366, 768);
   await page.eval(() => window.SilinxApp.closeProject?.());
-  // the tab after Libraries, its label and icon
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab[data-page]')].map((t) => t.dataset.page).filter((p) => !['procs', 'emu'].includes(p))),
-    ['start', 'design', 'files', 'libraries', 'teaching']);
-  assert.deepEqual(await page.eval(() => { const t = document.querySelector('#left-tabs .tab[data-page=teaching]'); return [t.querySelector('.tab-lbl').textContent, !!t.querySelector('.tab-ico svg')]; }), ['Teaching', true]);
-  await page.leftTab('teaching');
-  await page.waitFor(() => document.querySelectorAll('#teach-page .start-box').length === 1, [], { what: 'the Teaching page' });
-  assert.deepEqual(await teach(page), { shown: true, headings: ['Labs and Exercises'], commands: commands(true) });
-  assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab.active').dataset.page), 'teaching');
-  // the Start page: no Teaching box any more (#3333's, the tab's now)
+  // no project: no tab row (#4257); the Start page with no Teaching box (#3333's, the tab's now)
+  assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
   await page.leftTab('start');
   await page.waitFor(() => document.querySelector('#start-page .start-box h3'), [], { what: 'the Start page' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#start-page .start-box h3')].map((e) => e.textContent).filter((t) => t === 'Teaching')), []);
-  // a project open: enabled, each command its dialog
+  // a project open: the tab after Libraries (and the Collaboration tab after it, #4215), its label and icon; its commands, each its dialog
   await makeProject(env, { name: 'TeachTab', template: 'gates' });
   await page.openProject('TeachTab');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab[data-page]')].map((t) => t.dataset.page).filter((p) => !['procs', 'emu'].includes(p))),
+    ['start', 'design', 'files', 'libraries', 'teaching', 'collab']);
+  assert.deepEqual(await page.eval(() => { const t = document.querySelector('#left-tabs .tab[data-page=teaching]'); return [t.querySelector('.tab-lbl').textContent, !!t.querySelector('.tab-ico svg')]; }), ['Teaching', true]);
   await page.leftTab('teaching');
   await page.waitFor(() => document.getElementById('teach-page').hasAttribute('data-project'), [], { what: 'the commands enabled' });
-  assert.deepEqual((await teach(page)).commands, commands(false));
+  assert.deepEqual(await teach(page), { shown: true, headings: ['Labs and Exercises'], commands: commands(false) });
+  assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab.active').dataset.page), 'teaching');
   await page.click('#teach-page .entry a', { text: 'Guided Labs…' });
   await page.waitDialog('Guided Labs');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .lab-pick')?.dataset.lab), 'gates-first-steps');
@@ -54,21 +51,19 @@ uiTest('#3533 #3699 the Teaching tab: the labs and the exercises (no Links and S
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent.trim())), ['New Exercise', 'Cancel']);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
-  // the project closed: disabled again
-  await page.eval(() => window.SilinxApp.closeProject?.());
-  await page.leftTab('teaching');
-  await page.waitFor(() => !document.getElementById('teach-page').hasAttribute('data-project'), [], { what: 'the commands disabled' });
-  assert.deepEqual((await teach(page)).commands, commands(true));
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
     await page.waitFor(() => document.querySelector('#teach-page .start-box h3')?.textContent === 'Laboratórios e Exercícios', [], { what: 'Portuguese' });
-    assert.deepEqual(await teach(page), { shown: true, headings: ['Laboratórios e Exercícios'],
-      commands: ['Laboratórios Guiados… (disabled)', 'Exercício… (disabled)'] });
+    assert.deepEqual(await teach(page), { shown: true, headings: ['Laboratórios e Exercícios'], commands: ['Laboratórios Guiados…', 'Exercício…'] });
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=teaching] .tab-lbl').textContent), 'Ensino');
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
+  // the project closed: its commands disabled, the tab gone with the others
+  await page.eval(() => window.SilinxApp.closeProject?.());
+  await page.waitFor(() => !document.getElementById('teach-page').hasAttribute('data-project'), [], { what: 'the commands disabled' });
+  assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
   await noWarnings(page);
 });
 

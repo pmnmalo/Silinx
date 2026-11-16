@@ -495,6 +495,12 @@ class PageBase {
       await this.click('#task-switch .task-btn[data-task="edit"]');
       await this.waitFor(() => document.documentElement.dataset.task === 'edit', [], { what: 'Design' });
     }
+    // (no project open: no tabs, the Start page only, #4257; on a narrow screen the drawer's, opened by its button)
+    if (name === 'start' && await this.eval(() => document.documentElement.hasAttribute('data-no-project'))) {
+      if (await this.eval(() => !document.getElementById('start-page').getClientRects().length)) await this.click('#drawer-btn');
+      await this.waitFor(() => !!document.getElementById('start-page').getClientRects().length, [], { what: 'the Start page' });
+      return;
+    }
     // (a narrow screen: the tabs are the drawer's top row, opened by its button)
     if (!await this.eval((n) => !!document.querySelector(`#left-tabs .tab[data-page=${n}]`)?.getClientRects().length, name) && await this.eval(() => !!document.getElementById('drawer-btn')?.getClientRects().length)) {
       await this.click('#drawer-btn');

@@ -1,6 +1,6 @@
 // UI: the Collaboration tab (#4215, web/js/collab-tab.js) in the browser edition, through GitHub's REST API (the site,
 // test/ui/site-lib.js, with test/fake-github.mjs for GitHub: no network), in both interfaces (SILINX_UI_INTERFACE): a
-// repository opened from the tab; Commit and Push… (no Push: a commit is pushed at once); the sign-in's state, Sign out of
+// repository opened from the Start page (no tab with no project, #4257); Commit and Push… (no Push: a commit is pushed at once); the sign-in's state, Sign out of
 // GitHub giving Sign in with GitHub…; GitHub Checks from the tab, its result kept in the tab (none, running, passed,
 // failed), its details in the console, with a fine-grained token too (#4237: the workflow's jobs, or the
 // permissions to add); the Sharing box; in Portuguese; no warnings. (The server editions': test/ui/collab-tab.test.js.)
@@ -64,15 +64,17 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from Repository…,
   gh.seed(REPO, filesOf(BLINKY));
   await boot(page);
   await page.eval((t) => localStorage.setItem('silinx.github-token', t), gh.token);
-  await page.leftTab('collab');
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks'], 'signed in, no project');
-  await tabCommand(page, 'Open from Repository…');
+  // (no project: no tab, #4257; Open from Repository… from the Start page)
+  assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
+  await page.leftTab('start');
+  await page.click('#start-page .entry a', { text: 'Open from Repository…' });
   await page.waitDialog('Open from Repository');
   await page.fill('.dlg-overlay .git-url', `https://github.com/${REPO}`);
   await page.dialogButton('Open');
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'collab-ana' && !!window.SilinxApp.S.git, [], { what: 'collab-ana open' });
   await page.leftTab('collab');
+  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks'], 'signed in');
   // Commit and Push… (no Push to GitHub)
   const REPO_ENTRIES = ['GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'History…'];
   await waitBox(page, 'Repository', REPO_ENTRIES, 'the repository');

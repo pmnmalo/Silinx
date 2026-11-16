@@ -4,7 +4,7 @@
 // test/ui/git-start.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest } from './harness.js';
+import { setupUi, uiTest, makeProject } from './harness.js';
 
 let env;
 before(async () => {
@@ -21,12 +21,14 @@ const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.
 uiTest('#3968 #4215 SILINX_GIT=off: no git group on the Start page, the Collaboration tab live sharing only', E, async (page) => {
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.reload();
-  await page.leftTab('design');
   await page.leftTab('start');
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page' });
   assert.equal(await page.eval(async () => (await (await import('/js/api.js')).api.gitEnabled()).enabled), false);
   assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
-  // the Collaboration tab (#4215): its Sharing box only (this server shares live), no git box
+  // the Collaboration tab (#4215): its Sharing box only (this server shares live), no git box (a project open: no
+  // tabs with none, #4257)
+  await makeProject(env, { name: 'GitOff', template: 'gates' });
+  await page.openProject('GitOff');
   await page.leftTab('collab');
   await page.waitFor(() => document.querySelectorAll('#collab-page .start-box').length > 0, [], { what: 'the Collaboration page' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .start-box h3')].map((e) => e.textContent)), ['Sharing']);

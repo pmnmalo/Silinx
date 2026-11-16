@@ -881,7 +881,9 @@ async function boot() {
   splitter($('left-split'), $('proc-panel'), { dir: 'v', min: 80, max: 900, invert: true, storageKey: 'xl.procH' });
   splitter($('h-split'), $('console-wrap'), { dir: 'v', min: 60, max: 700, invert: true, storageKey: 'xl.consoleH' });
   initDrawer();
-  document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('click', () => { leftTabClicked(t.dataset.page, document.querySelector('#left-tabs .tab.active')?.dataset.page); showLeftPage(t.dataset.page); }));
+  document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('click', () => { leftTabClicked(t.dataset.page, document.querySelector('#left-tabs .tab.active')?.dataset.page); S.leftChosen = t.dataset.page; showLeftPage(t.dataset.page); }));
+  // (no project, no tabs: the Start page only; a project opened brings them back on the one last chosen, #4257)
+  addEventListener('silinx:project-opened', () => { if (S.leftPage === 'start' && S.leftChosen && S.leftChosen !== 'start') showLeftPage(S.leftChosen); });
   // (the Teaching page's commands of a project enabled or disabled with it, #3533)
   for (const ev of ['silinx:project-opened', 'silinx:project-closed']) addEventListener(ev, () => renderTeachingPage());
   document.querySelectorAll('#console-tabs .tab').forEach(t => t.addEventListener('click', () => showConsolePage(t.dataset.page)));
