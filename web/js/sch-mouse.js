@@ -6,6 +6,7 @@
 import { GRID, defaultParams, instanceParams, normalizeDoc, splitWiresAt, symbolPins } from '/core/schdoc.js';
 import { connectionsKept, connectivity, placementClashes, rerouteAfterMove } from '/core/schroute.js';
 import { closeMenus, twoFingerView } from './ui.js';
+import { wheelView } from './canvas-gestures.js';
 import { untangleNew } from '/core/schpath.js';
 import { clone, snap } from './sch-editor.js';
 import { mountStroke } from './sch-stroke.js';
@@ -220,14 +221,7 @@ export function mountSchMouse(ctx) {
       else setTimeout(() => propBody.querySelector('input')?.focus(), 0);
     } else setTimeout(() => propBody.querySelector('input')?.focus(), 0);
   }
-  function onWheel(e) {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey || (!e.shiftKey && Math.abs(e.deltaX) < 1 && Math.abs(e.deltaY) >= 1 && e.deltaMode !== 0) || (!e.shiftKey && Math.abs(e.deltaX) < 1 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50)) {
-      zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX, e.clientY);
-    } else {
-      view().tx -= e.shiftKey ? e.deltaY : e.deltaX; view().ty -= e.shiftKey ? 0 : e.deltaY; applyView();
-    }
-  }
+  const onWheel = e => wheelView(e, { zoom: zoomAt, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); } });
   twoFingerView(svg, { cancel: cancelDrag, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt });
   svg.addEventListener('pointerdown', onDown);
   // (a symbol's, an I/O marker's, a net name's menu: Rename…, #1546)
