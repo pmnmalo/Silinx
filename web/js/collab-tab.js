@@ -3,15 +3,19 @@
 // labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
 // a file with the last commit), Commit…, Push, Pull, History…, the GitHub sign-in and the last push's checks; a project
 // with no repository: Initialize Repository…, Open from Repository…. The same items as the Git submenu's
-// (gitMenuItems), which keeps them; every message goes to the console (docs/UI-GUIDELINES.md); a followed project
-// (read only) shows the read-only notice and no command. No git (SILINX_GIT=off): no tab. Its boxes are the Start
-// page's, so that a later command (a merge, a branch, live sharing) is one more box or entry.
+// (gitMenuItems), which keeps them. Its Live box: live sharing (#3181), what the toolbar's presence shows and its
+// commands (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live…
+// otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
+// read-only notice and its Live box only. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
+// page's, so that a later command (a merge, a branch) is one more box or entry.
 import { icon } from './icons.js';
 import { h } from './ui.js';
 import { api } from './api.js';
 import { S, showLeftPage } from './app.js';
 import { gitMenuItems, gitMarks, gitOff, hasGit, openFromRepositoryDialog } from './git.js';
-import { following, followNotice } from './collab-state.js';
+import { collab, following, followNotice } from './collab-state.js';
+import { presence } from './collab-presence.js';
+import { liveProblem, shareLiveDialog } from './share-how.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { shortCommit } from '/core/git-messages.js';
@@ -36,20 +40,24 @@ export function renderCollabPage() {
   const host = document.getElementById('collab-page');
   if (!host) return;
   const tab = document.querySelector('#left-tabs .tab[data-page="collab"]');
-  if (tab) tab.hidden = gitOff();
-  if (gitOff() && S.leftPage === 'collab') showLeftPage('design');
+  const none = gitOff() && !liveHere();
+  if (tab) tab.hidden = none;
+  if (none && S.leftPage === 'collab') showLeftPage('design');
   const page = h('div', { class: 'page' }, ...boxes());
   if (host.firstElementChild?.outerHTML === page.outerHTML) return;
   host.replaceChildren(page);
 }
 
+// (live sharing in this edition: a server's relay, or the browser edition's own page)
+const liveHere = () => !!(api.collab || api.standalone);
+
 function boxes() {
-  if (following()) return [h('div', { class: 'collab-readonly' }, followNotice())];
-  if (!hasGit()) return [];
+  if (following()) return [h('div', { class: 'collab-readonly' }, followNotice()), liveBox()];
+  if (!hasGit()) return [liveHere() ? liveBox() : null].filter(Boolean);
   const items = gitMenuItems().filter(it => it !== '-');
   const by = label => items.find(it => it.label === label);
   const init = by('Initialize Repository…'), open = { label: 'Open from Repository…', action: () => openFromRepositoryDialog() };
-  return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks'))];
+  return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks')), liveHere() ? liveBox() : null];
 }
 
 // the remote and the branch, the commands of a repository; none: Initialize Repository…, Open from Repository…
@@ -99,7 +107,28 @@ function githubBox(items, checksItem) {
     kept ? h('div', { class: 'entry collab-checks', 'data-state': state }, h('span', {}, CHECKS[state]), h('span', { 'data-no-i18n': '' }, `(${shortCommit(kept.commit)})`)) : null);
 }
 
+// live sharing (#3181): the presence's label, who is in (their role beside them) and its commands; none: Share Live…
+// (disabled with no project or where it cannot be, its reason its tip), how to follow
+function liveBox() {
+  const p = presence();
+  if (!collab.role) {
+    const why = S.project ? liveProblem() : null;
+    return box('collab-live', 'Live Sharing',
+      hint('Not shared live.'),
+      why || !S.project
+        ? entry('share', h('a', { class: 'disabled', 'aria-disabled': 'true', title: why || '' }, 'Share Live…'))
+        : entry('share', h('a', { onclick: () => Promise.resolve(shareLiveDialog()).finally(renderCollabPage) }, 'Share Live…')),
+      hint('To follow a project shared live, open its link.'));
+  }
+  const ROLE = { owner: 'owner', editor: 'editor', viewer: 'viewer' };
+  return box('collab-live', 'Live Sharing',
+    hint(p.label),
+    ...p.all.map(x => h('div', { class: 'entry collab-peer' }, h('span', { class: 'collab-badge', style: { background: x.color }, 'data-no-i18n': '' }, (String(x.name).trim()[0] || '?').toUpperCase()),
+      h('span', { 'data-no-i18n': '' }, x.name), h('span', { class: 'collab-role' }, x.me ? 'you' : ROLE[x.role] || 'viewer'))),
+    ...p.commands.map(c => command(c, 'share')));
+}
+
 // drawn again when git's status or presence changes, after GitHub Checks, when a project opens or closes
 addEventListener('silinx:git-status', () => renderCollabPage());
 addEventListener('silinx:git-checks', e => { checks = e.detail; renderCollabPage(); });
-for (const ev of ['silinx:project-opened', 'silinx:project-closed']) addEventListener(ev, () => renderCollabPage());
+for (const ev of ['silinx:project-opened', 'silinx:project-closed', 'silinx:collab-presence']) addEventListener(ev, () => renderCollabPage());

@@ -14,8 +14,9 @@ const HOWS = Object.freeze(['copy', 'live']);
 /** The window's title, and its console messages' name: Share Project, or Share Module (a module's). */
 export const shareTitle = module => (module ? 'Share Module' : 'Share Project');
 
-/** Why the project (`module`: one of its modules) cannot be shared live here, or null. */
-function liveProblem(module = null) {
+/** Why the project (`module`: one of its modules) cannot be shared live here, or null (the Collaboration tab's Share
+ *  Live…'s too, #4215). */
+export function liveProblem(module = null) {
   if (!api.collab && !api.standalone) return 'This edition of Silinx does not share a project live.';
   if (location.protocol === 'file:') return 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.';
   if (api.following) return 'You are following another\'s project: stop following it to share one live.';
@@ -31,6 +32,13 @@ const keepHow = how => { try { localStorage.setItem(HOW_KEY, how); } catch { /* 
 export async function shareDialog({ module = null, view = null } = {}) {
   if (!S.project) return null;
   return openHow(savedHow() === 'live' && !liveProblem(module) ? 'live' : 'copy', { module, view });
+}
+
+/** Share Live… (the Collaboration tab's, #4215): Share Project…'s window with Live chosen, kept as the viewer's way. */
+export async function shareLiveDialog() {
+  if (!S.project || liveProblem()) return null;
+  keepHow('live');
+  return openHow('live', {});
 }
 
 async function openHow(how, opts) {

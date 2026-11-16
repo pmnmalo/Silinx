@@ -196,7 +196,7 @@ for (const [w, h] of [[1180, 820], [1400, 900]]) {
     assert.equal(await page.eval(() => document.documentElement.dataset.drawer), 'closed');
     assert.ok(!(await shown(page, '#drawer-btn')) && !(await shown(page, '#drawer-scrim')));
     assert.ok(await shown(page, '#hier') && await shown(page, '#v-split'));
-    assert.equal(await width(page, '#left'), silinx ? 344 : 300);
+    assert.equal(await width(page, '#left'), silinx ? 344 : 330);   // (the ISE style's 330 since its sixth tab, Collaboration, #4215)
     await page.treeRow('#hier', 'gates', { dbl: true, exact: true });
     await page.waitFor((d) => document.querySelector(`${d} .sch-editor .se-canvas`), [DOC], { what: 'the schematic editor' });
     // the drawer is not involved: the Design pane stays

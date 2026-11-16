@@ -29,7 +29,7 @@
 #toolbar { display: flex; align-items: center; gap: 1px; padding: 2px 4px; background: var(--toolbar-grad); border-bottom: 1px solid #b8b8b8; height: 28px; }
 
 #main { flex: 1; display: flex; min-height: 0; padding: 3px 3px 0 3px; gap: 0; }
-#left { width: 300px; display: flex; flex-direction: column; min-width: 180px; }
+#left { width: 330px; display: flex; flex-direction: column; min-width: 180px; }
 #left-pages { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .left-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .left-page[hidden] { display: none; }
@@ -94,9 +94,10 @@ html #doc-tabs .tab.tab-slot[hidden] { display: none; }
 .bottom-tabs .tab.active { background: var(--tab-active); height: 23px; border-color: var(--border); font-weight: 600; }
 .bottom-tabs .tab:hover:not(.active) { background: linear-gradient(#fafcff, #e3edf9); }
 .bottom-tabs .tab .tlabel { overflow: hidden; text-overflow: ellipsis; }
-/* the ISE style's side panel tabs, six since Collaboration (#4215): compact; in a narrow panel (its default 300 px) the long
+/* the ISE style's side panel tabs, six since Collaboration (#4215): compact, all shown in the panel's default 330 px
+   (#4215, 300 before); in a narrower panel the long
    names ellipsized, the short ones (Start, Design, Files) and the active one kept whole, none past the panel's edge */
-html:not([data-ui="silinx"]) #left-tabs .tab { min-width: 0; padding: 0 5px; }
+html:not([data-ui="silinx"]) #left-tabs .tab { min-width: 0; padding: 0 4px; }
 html:not([data-ui="silinx"]) #left-tabs .tab:is(.active, [data-page="start"], [data-page="design"], [data-page="files"]) { flex-shrink: 0; }
 html:not([data-ui="silinx"]) #left-tabs .tab .tab-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 html #left-tabs .tab[hidden] { display: none; }   /* (the Collaboration tab with no git, #4215) */
@@ -251,6 +252,8 @@ table.grid tr.sel td { background: #dbe8fb; }
 #collab-page .collab-checks[data-state="success"] { color: var(--success); }
 #collab-page .collab-checks[data-state="failure"] { color: var(--error-fg); }
 #collab-page .collab-readonly { display: flex; padding: 4px 0; }
+#collab-page .collab-peer .collab-badge { width: 16px; height: 16px; margin: 0; border: none; font-size: 10px; line-height: 16px; }   /* (the Live Sharing box's participants, #4215: the presence's badges, smaller) */
+#collab-page .collab-peer .collab-role { color: #888; }
 .summary-table { border-collapse: collapse; margin-bottom: 16px; min-width: 640px; }
 .summary-table caption.summary-status { display: none; }   /* (the Tasks interface's only: web/css/tasks.css) */
 .summary-table caption { text-align: left; font-weight: bold; background: linear-gradient(#e9eff8, #c9d7ed); color: #15428b; padding: 3px 8px; border: 1px solid #99bbe8; border-bottom: none; }

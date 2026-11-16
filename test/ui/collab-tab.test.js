@@ -4,7 +4,9 @@
 // Repository… only); a project opened from a repository from the tab: its GitHub repository and branch, its changes with
 // the Design pane's marks (a click compares one with the last commit), Commit…, Push to GitHub, Pull from GitHub,
 // History… run from the tab, the File menu's items kept; a project with no repository: Initialize Repository… from the
-// tab, then committed and pushed; a followed project's read-only notice; in Portuguese; a narrow screen; no warnings.
+// tab, then committed and pushed; a followed project's read-only notice; Live Sharing (Share Live… from the tab, who is
+// in, the presence's commands, Stop Sharing; a follower's box); the ISE style's tabs all whole in its default side panel
+// (330 px); in Portuguese; a narrow screen; no warnings.
 // (The browser edition's sign-in and checks: test/ui/collab-tab-browser.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -83,6 +85,7 @@ const waitBoxOf = (page, heading, entries, what) => page.waitFor((hd, en) => {
   return !!b && JSON.stringify([...b.querySelectorAll('.entry')].map((e) => [...e.childNodes].filter((n) => !n.classList?.contains('ico')).map((n) => n.textContent).filter(Boolean).join(' '))) === JSON.stringify(en);
 }, [heading, entries], { what });
 const SERVER_GITHUB = 'git signs in to GitHub with its own credentials.';
+const NOT_LIVE = (off = false) => ['Live Sharing', 'Not shared live.', `Share Live…${off ? ' (disabled)' : ''}`, 'To follow a project shared live, open its link.'];
 const REPO_COMMANDS = ['Commit…', 'Push to GitHub', 'Pull from GitHub', 'History…'];
 
 uiTest('#4215 the Collaboration tab: no project, a project opened from a repository from it, its changes, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
@@ -98,10 +101,15 @@ uiTest('#4215 the Collaboration tab: no project, a project opened from a reposit
     return [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).filter((t) => { const r = t.getBoundingClientRect(); return r.left < row.left - 1 || r.right > row.right + 1; }).map((t) => t.dataset.page); }), []);
   // no project: Open from Repository… only
   await page.leftTab('collab');
-  await page.waitFor(() => document.querySelectorAll('#collab-page .start-box').length === 2, [], { what: 'the Collaboration page' });
+  await page.waitFor(() => document.querySelectorAll('#collab-page .start-box').length === 3, [], { what: 'the Collaboration page' });
   assert.deepEqual(await collab(page), { shown: true, boxes: [
     ['Repository', 'No project open.', 'Initialize Repository… (disabled)', 'Open from Repository…'],
-    ['GitHub', SERVER_GITHUB, 'GitHub Checks (disabled)']] });
+    ['GitHub', SERVER_GITHUB, 'GitHub Checks (disabled)'], NOT_LIVE(true)] });
+  // (the ISE style: every name whole in the side panel's default width, 330 px)
+  if (await page.eval(() => document.documentElement.dataset.ui === 'ise')) {
+    assert.equal(await page.eval(() => document.getElementById('left').getBoundingClientRect().width), 330);
+    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab-lbl')].filter((l) => l.getClientRects().length && l.scrollWidth > l.clientWidth).map((l) => l.textContent)), []);
+  }
   // Open from Repository… from the tab: the project, its repository and branch, no change
   await tabCommand(page, 'Open from Repository…');
   await page.waitDialog('Open from Repository');
@@ -115,7 +123,7 @@ uiTest('#4215 the Collaboration tab: no project, a project opened from a reposit
   assert.deepEqual((await collab(page)).boxes, [
     ['Repository', 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS],
     ['Changes', 'No change since the last commit.'],
-    ['GitHub', SERVER_GITHUB, 'GitHub Checks']]);
+    ['GitHub', SERVER_GITHUB, 'GitHub Checks'], NOT_LIVE()]);
   assert.deepEqual(await page.eval(() => { const a = document.querySelector('#collab-page .collab-remote'); return [a.href, a.target, a.rel]; }), ['https://github.com/local/collab1', '_blank', 'noopener noreferrer']);
   // a change and a new file (silinx.json lists it): listed with the Design pane's marks and their tips
   const counter = await page.eval(async () => (await (await import('/js/api.js')).api.readFile('collab1', 'src/counter.v')));
@@ -161,15 +169,16 @@ uiTest('#4215 the Collaboration tab: no project, a project opened from a reposit
     assert.deepEqual((await collab(page)).boxes, [
       ['Repositório', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Histórico…'],
       ['Alterações', 'Nenhuma alteração desde o último commit.'],
-      ['GitHub', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'Verificações do GitHub (Checks)']]);
+      ['GitHub', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'Verificações do GitHub (Checks)'],
+      ['Partilha em Direto', 'Não partilhado em direto.', 'Partilhar em Direto…', 'Para seguir um projeto partilhado em direto, abra a sua ligação.']]);
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab] .tab-lbl').textContent), 'Colaboração');
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
-  // a followed project (read only, #3181): the read-only notice, no command
+  // a followed project (read only, #3181): the read-only notice, the Live Sharing box only (a real one: the next test)
   await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); Object.assign(c, { role: 'follower', owner: 'Rui' }); (await import('/js/collab-tab.js')).renderCollabPage(); });
   try {
-    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .page > *')].map((e) => e.textContent)), ['Read-only, following Rui\'s project']);
+    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .page > *')].map((e) => e.querySelector('h3')?.textContent ?? e.textContent)), ['Read-only, following Rui\'s project', 'Live Sharing']);
     assert.equal(await page.eval(() => document.querySelectorAll('#collab-page .entry a').length), 0);
   } finally {
     await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); Object.assign(c, { role: null, owner: '' }); (await import('/js/collab-tab.js')).renderCollabPage(); });
@@ -184,7 +193,7 @@ uiTest('#4215 the Collaboration tab: a project with no repository, Initialize Re
   await page.openProject('CollabInit');
   await page.leftTab('collab');
   await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Initialize Repository…', 'Open from Repository…'], 'no repository');
-  assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Repository', 'GitHub']);
+  assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Repository', 'GitHub', 'Live Sharing']);
   // Initialize Repository… from the tab, with no GitHub repository: offered again, to give it one
   await tabCommand(page, 'Initialize Repository…');
   await page.waitDialog('Initialize Repository');
@@ -209,6 +218,51 @@ uiTest('#4215 the Collaboration tab: a project with no repository, Initialize Re
   await waitLog(page, /Pushed main to local\/collab2\./);
   await waitBox(page, 'Repository', ['GitHub: local/collab2', 'Branch: main', ...REPO_COMMANDS], 'pushed');
   assert.equal(sh(path.join(remotes, 'collab2.git'), 'log', '--format=%s', 'main').trim(), 'First');
+  await noWarnings(page);
+});
+
+// Live Sharing (#3181) from the tab: the presence's label, who is in and its commands, the owner's and a follower's
+uiTest('#4215 the Collaboration tab\'s Live Sharing: Share Live…, who is in, the commands, a follower\'s, Stop Sharing', E, async (page) => {
+  await page.setViewport(1366, 768);
+  await makeProject(env, { name: 'CollabLive', template: 'gates' });
+  await page.openProject('CollabLive');
+  await page.leftTab('collab');
+  await waitBox(page, 'Live Sharing', NOT_LIVE().slice(1), 'not shared');
+  // Share Live…: Share Project's window, Live chosen
+  await tabCommand(page, 'Share Live…');
+  await page.waitDialog('Share Project');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live]').checked), true);
+  await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
+  await page.dialogButton('Start Sharing');
+  const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  await page.leftTab('collab');
+  const OWNER = ['Copy View Link', 'Copy Editor Link', 'Add a User…', 'Stop Sharing'];
+  await waitBox(page, 'Live Sharing', ['Sharing', 'A Ana you', ...OWNER], 'sharing');
+  // a follower: in the owner's box, a viewer; the follower's tab, read only, its own box
+  const fp = await env.newPage(env.server.url);
+  try {
+    await fp.waitFor(() => window.SilinxApp && window.Silinx?.startupChecked, [], { what: 'app boot' });
+    const u = new URL(link);
+    await fp.goto(`${u.origin}/?f=1${u.hash}`);
+    await fp.waitDialog('Follow a Shared Project');
+    await fp.fill('.dlg-overlay input[data-field=name]', 'Rui');
+    await fp.dialogButton('Follow');
+    await fp.waitFor(() => window.Silinx?.project && window.Silinx.startupChecked, [], { what: 'the shared project open', timeout: 20000 });
+    await waitBox(page, 'Live Sharing', ['Sharing (1)', 'A Ana you', 'R Rui viewer', 'Make Rui an Editor', ...OWNER], 'Rui in');
+    await fp.leftTab('collab');
+    // (browsing alone at first, on the link's module; Follow Ana from the tab follows her)
+    await waitBox(fp, 'Live Sharing', ['Follow Ana', 'A Ana owner', 'R Rui you', 'Follow Ana', 'Stop Following'], 'the follower\'s');
+    await tabCommand(fp, 'Follow Ana');
+    await waitBox(fp, 'Live Sharing', ['Following Ana', 'A Ana owner', 'R Rui you', 'Follow Ana', 'Stop Following'], 'following');
+    assert.equal(await fp.eval(() => document.querySelector('#collab-page .collab-readonly')?.textContent), 'Read-only, following Ana\'s project');
+    // Stop Sharing from the owner's tab
+    await tabCommand(page, 'Stop Sharing');
+    await waitLog(page, /Stopped sharing "CollabLive": its followers no longer see it\./);
+    await waitBox(page, 'Live Sharing', NOT_LIVE().slice(1), 'stopped');
+    await fp.waitFor(() => document.querySelector('#collab-page .collab-live .entry')?.textContent === 'Not shared any more', [], { what: 'the follower told' });
+  } finally { await fp.close(); }
   await noWarnings(page);
 });
 

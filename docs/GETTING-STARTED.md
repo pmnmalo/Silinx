@@ -148,7 +148,7 @@ A black window (the Silinx server) opens and then your browser shows Silinx at
   Code**); each save there is shown in Silinx.
 - **The Collaboration tab** (the side panel's last): a project in a GitHub repository (a GitHub Classroom assignment's
   too), its changes, Commit…, Push, Pull, History… and GitHub's checks; Initialize Repository… or Open from Repository…
-  for one with none (README, "A project on GitHub").
+  for one with none (README, "A project on GitHub"); and live sharing: Share Live…, who is in, Stop Sharing.
 - **File ▸ Export Project (.zip)…** starts with the software it goes to: **Xilinx ISE** produces a zip that opens in Xilinx ISE 14.7; **Silinx** saves the whole Silinx project (ASM charts and schematics included), reopened with **File ▸ Import Project…** (which recognises the zip's software); a Silinx project's folder (the one with its silinx.json) imports there too, as an ISE project's does. AMD Vivado and Intel Quartus are shown disabled: Silinx does not read or write their projects yet. An imported project came from outside: it runs Xilinx ISE and programs a board only once you press **Trust Project** in the console, where it says so when the project opens. A design and simulation project (no FPGA) has no software to choose: it is exported as a Silinx project.
 - The interface opens in Portuguese when the browser is in Portuguese; **Settings (⚙) ▸ Language** changes it (in the
   ISE style interface, **View ▸ Language**).

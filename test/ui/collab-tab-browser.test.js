@@ -2,7 +2,7 @@
 // test/ui/site-lib.js, with test/fake-github.mjs for GitHub: no network), in both interfaces (SILINX_UI_INTERFACE): a
 // repository opened from the tab; Commit and Push… (no Push: a commit is pushed at once); the sign-in's state, Sign out of
 // GitHub giving Sign in with GitHub…; GitHub Checks from the tab, its result kept in the tab (none, running, passed,
-// failed), its details in the console; in Portuguese; no warnings. (The server editions': test/ui/collab-tab.test.js.)
+// failed), its details in the console; the Live Sharing box; in Portuguese; no warnings. (The server editions': test/ui/collab-tab.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -76,6 +76,8 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from Repository…,
   const REPO_ENTRIES = ['GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'History…'];
   await waitBox(page, 'Repository', REPO_ENTRIES, 'the repository');
   await waitBox(page, 'Changes', ['No change since the last commit.'], 'no change');
+  // (Live Sharing: the browser edition's page hosts it)
+  assert.deepEqual(await boxOf(page, 'Live Sharing'), ['Not shared live.', 'Share Live…', 'To follow a project shared live, open its link.']);
   const short = (s) => s.slice(0, 7);
   // GitHub Checks from the tab: none yet, then running, then failed and passed: kept in the tab, the details in the console
   await tabCommand(page, 'GitHub Checks');
