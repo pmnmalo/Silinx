@@ -93,7 +93,9 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Wires, D
       ['Cruzamentos simples', 'Desenhar dois fios que se cruzam sem se ligarem a direito, um sobre o outro (uma ligação tem o seu ponto)']]);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title:not([data-lang])`)].map((t) => t.textContent), ED),
     ['Fios', 'Cruzamentos de fios']);
-  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios e linguagem');   // (and its HDL's, #4063)
+  // (its title Wires: no HDL Language in it since #4168, #4208)
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  await page.waitFor((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title === 'Wires', [ED], { what: 'English' });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });
