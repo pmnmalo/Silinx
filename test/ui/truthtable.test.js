@@ -99,11 +99,11 @@ uiTest('Truth Table: new table, cells, K-map and SOP, linked VHDL module followi
   // it (no Generate VHDL / Verilog module any more, #220)
   // (no Generate Schematic, no NAND gates only check box: the schematic is always generated, #694; expressions
   // written by hand: Handwritten Algebra…, #2010, #2047)
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button:not([data-lang])`)].map((b) => b.textContent || b.title), T), ['Fill the table, its notation', 'Algebra from Module…', 'Handwritten Algebra…',
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button`)].map((b) => b.textContent || b.title), T), ['Fill the table, its notation', 'Algebra from Module…', 'Handwritten Algebra…',
     // (its notation, #3939: the Settings' by default)
     '✓As in the Settings', 'Electronics / Engineering: a\u0305.b + c', 'Text only: /a.b + c', 'Logic / Set theory: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c']);
   // (#2257) no Language; the two commands in the menu at the right of the first line: shown by its button, hidden by Esc, by a click elsewhere and by a command
-  const menu = () => page.eval((t) => { const b = document.querySelector(`${t} .tb-more-btn`); const r = b.getBoundingClientRect(), f = [...document.querySelector(`${t} .tt-toolbar`).children].find((e) => e.tagName === 'SELECT' || e.tagName === 'INPUT').getBoundingClientRect(), bar = document.querySelector(`${t} .tt-toolbar`).getBoundingClientRect(), m = document.querySelector(`${t} .tb-more-menu`); return { open: !m.hidden, expanded: b.getAttribute('aria-expanded'), buttons: [...m.querySelectorAll('button:not([data-lang])')].map((x) => x.textContent), right: bar.right - r.right < 20, firstLine: r.top < f.bottom }; }, T);
+  const menu = () => page.eval((t) => { const b = document.querySelector(`${t} .tb-more-btn`); const r = b.getBoundingClientRect(), f = [...document.querySelector(`${t} .tt-toolbar`).children].find((e) => e.tagName === 'SELECT' || e.tagName === 'INPUT').getBoundingClientRect(), bar = document.querySelector(`${t} .tt-toolbar`).getBoundingClientRect(), m = document.querySelector(`${t} .tb-more-menu`); return { open: !m.hidden, expanded: b.getAttribute('aria-expanded'), buttons: [...m.querySelectorAll('button')].map((x) => x.textContent), right: bar.right - r.right < 20, firstLine: r.top < f.bottom }; }, T);
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-lang`), T), null);
   assert.deepEqual(await menu(), { open: false, expanded: 'false', buttons: ['Algebra from Module…', 'Handwritten Algebra…', '✓As in the Settings', 'Electronics / Engineering: a\u0305.b + c', 'Text only: /a.b + c', 'Logic / Set theory: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c'], right: true, firstLine: true });
   await page.click(`${T} .tb-more-btn`);
@@ -484,7 +484,7 @@ end rtl;
     groups: [...document.querySelectorAll(`${t} .tt-leg code`)].map((c) => c.textContent),
   }), T);
   // the notations (#3915), the table's own in its ⋮ menu (#3939): the Settings' (checked: / here, the tests', test/ui/harness.js), then the five
-  const notations = () => page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar .tb-more-menu [data-value]:not([data-lang])`)].map((o) => `${o.dataset.value}:${o.textContent.replace(/^✓/, '').trim()}${o.getAttribute('aria-checked') === 'true' ? ' ✓' : ''}`), T);
+  const notations = () => page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar .tb-more-menu [data-value]`)].map((o) => `${o.dataset.value}:${o.textContent.replace(/^✓/, '').trim()}${o.getAttribute('aria-checked') === 'true' ? ' ✓' : ''}`), T);
   assert.deepEqual(await notations(), [':As in the Settings ✓', 'engineering:Electronics / Engineering: a\u0305.b + c', 'slash:Text only: /a.b + c', 'logic:Logic / Set theory: ¬a ∧ b ∨ c', 'vhdl:VHDL: (not a and b) or c', 'verilog:Verilog: (~a & b) | c']);
   const notation = (v) => page.eval((t, v) => document.querySelector(`${t} .tt-toolbar .tb-more-menu [data-value="${v}"]`).click(), T, v);
   await page.eval((t) => document.querySelector(`${t} .tt-qm .tt-kind-pos`).click(), T);
@@ -603,7 +603,7 @@ end rtl;
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-xor b`).textContent, T), 'Forma XOR');
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-xor .tt-cost`).textContent, T), '1 termo(s), 3 literal(is); portas: 1 XOR3');
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar label`)].map((l) => l.textContent), T), ['Entradas:', 'Saídas:']);
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button:not([data-lang])`)].map((b) => b.textContent || b.title), T), ['Preencher a tabela, a sua notação', 'Álgebra de um Módulo…', 'Álgebra Manuscrita…',
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button`)].map((b) => b.textContent || b.title), T), ['Preencher a tabela, a sua notação', 'Álgebra de um Módulo…', 'Álgebra Manuscrita…',
     '✓Como nas Definições', 'Eletrónica / Engenharia: a\u0305.b + c', 'Só texto: /a.b + c', 'Lógica / Teoria de conjuntos: ¬a ∧ b ∨ c', 'VHDL: (not a and b) or c', 'Verilog: (~a & b) | c']);   // (its notation, #3939)
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-nand b, ${t} .tt-nor b, ${t} .tt-nand .tt-cost`)].map((b) => b.textContent), T), ['Forma NAND', '4 termo(s), 12 literal(is); portas: 3 NAND2, 4 NAND3, 1 NAND4', 'Forma NOR']);
   // the Design pane's badges and the schematic's bar

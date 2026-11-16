@@ -98,5 +98,5 @@ uiTest('#3218 the Petri net editor\'s toolbar (petri-toolbar.js): its tools, Del
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^WARNING/.test(l.trim())).map((l) => l.trim()), ['WARNING: place p1 is not connected']);
   // ---- the ⋮ menu: Analysis, PNML ⇩, PNML ⇧
   await page.click(`${ED} .tb-more-btn`);
-  assert.deepEqual(await ev((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu button:not([data-lang])`)].map((b) => b.textContent)), ['∑ Analysis', 'PNML ⇩', 'PNML ⇧']);
+  assert.deepEqual(await ev((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu button`)].map((b) => b.textContent)), ['∑ Analysis', 'PNML ⇩', 'PNML ⇧']);
 });

@@ -158,7 +158,7 @@ function readOnlyChrome({ root, toolbar, hide, banner }) {
 const lockSide = (readOnly, side) => { if (readOnly) for (const x of side.querySelectorAll('input, textarea, select, button:not(.asm-fold)')) x.disabled = true; };
 /** The encodings' names, in the ⋮ menu's Encoding choice (#4055) and the status line (#2763). */
 export const ENCODING_NAMES = { binary: 'Binary', gray: 'Gray', onehot: 'One-hot', enum: 'Enum / auto' };
-export function mountAsmEditor(container, { model, onChange, onProblems, onValidate, onMessage, onVerify, readOnly = false, banner, menuItems = [] } = {}) {
+export function mountAsmEditor(container, { model, onChange, onProblems, onValidate, onMessage, onVerify, readOnly = false, banner } = {}) {
   const uid = `asm${++instanceCounter}`;
   let M = normalizeModel(model || newModel('fsm', 'vhdl'));
   let sel = { nodes: new Set(), edge: null };
@@ -221,7 +221,6 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     // (Verify Property, #3177: web/js/verify-props.js)
     ...(onVerify ? [btn('Verify Property…', 'Prove a property of the chart\'s state machine: a state never reached, a state reached, outputs never 1 together', () => onVerify(normalizeModel(M)))] : []),
     ...encItems,
-    ...menuItems,   // (its HDL's language, #4063: drawing-lang-menu.js)
   ], { title: 'Layout', btnClass: 'asm-btn' });
   const toolbar = h('div', { class: 'asm-toolbar asm-chart-toolbar' },
     h('div', { class: 'asm-group' },

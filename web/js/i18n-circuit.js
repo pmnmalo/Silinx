@@ -30,10 +30,6 @@ export const CIRCUIT_PT = {
   'Flip-flops': 'Flip-flops',
   'A 7474\'s first D flip-flop: a button clk, switches on d, pre_n and clr_n (both on: inactive), LEDs on q and qn; its second flip-flop\'s inputs tied.': 'O primeiro flip-flop D de um 7474: um botão clk, interruptores em d, pre_n e clr_n (ambos ligados: inativos), LEDs em q e qn; as entradas do seu segundo flip-flop fixas.',
   // toolbar
-  'HDL Language': 'Linguagem HDL', 'Preferred Language': 'Linguagem Preferida',
-  'The project\'s Preferred Language (Design Properties): the drawing\'s HDL follows it': 'A Linguagem Preferida do projeto (Propriedades do Projeto): o HDL do desenho acompanha-a',
-  'The drawing\'s HDL in VHDL, whatever the project\'s Preferred Language': 'O HDL do desenho em VHDL, seja qual for a Linguagem Preferida do projeto',
-  'The drawing\'s HDL in Verilog, whatever the project\'s Preferred Language': 'O HDL do desenho em Verilog, seja qual for a Linguagem Preferida do projeto',
   'Wire': 'Fio', 'Show inside': 'Mostrar o interior', 'Wires': 'Fios',
   'Show what is inside the parts: the gates of each IC and its pins\' names, the strips of holes joined in each breadboard': 'Mostrar o interior das peças: as portas de cada CI e os nomes dos seus pinos, as tiras de furos ligados de cada placa de ensaio',
   // the ⋮ menu's Wires (#4080; its labels the schematic's, i18n-schematic.js)

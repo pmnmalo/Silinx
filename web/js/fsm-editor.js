@@ -152,7 +152,7 @@ export function mountFsmEditor(container, opts = {}) {
       btn('Convert to ASM chart', 'Make an ASM chart (.asm.json) of this state machine', () => opts.onToAsm?.()),
       // (Verify Property, #3177: web/js/verify-props.js)
       ...(opts.onVerify ? [btn('Verify Property…', 'Prove a property of the state machine: a state never reached, a state reached, outputs never 1 together', () => opts.onVerify(clone(M)))] : []),
-      ...encItems, ...(designKind() ? [] : styleItems), ...(opts.menuItems || []),   // (no HDL coding style in a design project, #3780; the HDL's language, #4063)
+      ...encItems, ...(designKind() ? [] : styleItems),   // (no HDL coding style in a design project, #3780)
     ], { title: 'Layout and conversion', btnClass: 'asm-btn' }).el,
     linkHost);
   const readOnly = !!opts.readOnly;
@@ -272,7 +272,7 @@ export function mountFsmEditor(container, opts = {}) {
     setM: (v) => { M = v; }, setHist: (v) => { hist = v; }, setHi: (v) => { hi = v; },
     setLastKey: (v) => { lastKey = v; }, setLastT: (v) => { lastT = v; }, setSel: (v) => { sel = v; },
     shared: () => shared, setSharedRef: (v) => { shared = v; }, simGone: () => { if (sim && !stateById(sim.state)) resetSim(); },
-    locked, lockable: () => [tools.state, arrangeBtn, ...encItems, ...styleItems, ...(opts.menuItems || [])].filter((b) => b.tagName === 'BUTTON')   // (its HDL Language too, #4228)
+    locked, lockable: () => [tools.state, arrangeBtn, ...encItems, ...styleItems].filter((b) => b.tagName === 'BUTTON')
   });
 
   // (a text typed in place that is not valid: to the console, by the document, #2729, as every message, #2718)

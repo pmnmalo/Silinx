@@ -137,12 +137,13 @@ function untestedReach(files, deps, ch, isTest, inTests, reexports = () => false
 
 /** The hubs (#4166): web/js's shared modules, each imported by 15 page scripts or more (2026-11-15: ui.js 123, dom.js
  *  82, app.js 77, api.js 61, console.js 40, prefs.js 33, wizards.js 25, processes.js 24, i18n.js 23, design-only.js 23,
- *  drawings.js 19, design.js 18, icons.js 17, clipboard.js 17, narrow.js 15, toolbar-menu.js 15), whose change selected
+ *  drawings.js 19, design.js 18, icons.js 17, clipboard.js 17, narrow.js 15; toolbar-menu.js 14 since #4240 removed
+ *  drawing-lang-menu.js, no hub any more), whose change selected
  *  dozens of UI tests or hundreds (i18n.js 202, app.js 37). Not hubs, though as imported: the editors whose importers
  *  are their own panels (sch-editor.js, isim.js, emulator-pcb.js: their UI tests are the editor's), and core/'s and
  *  the packages' modules (the UI tests that import core/schdoc.js test it). relatedTests' UI selection reads it. */
 export const HUBS = ['ui', 'dom', 'app', 'api', 'console', 'prefs', 'wizards', 'processes', 'i18n', 'design-only',
-  'drawings', 'design', 'icons', 'clipboard', 'narrow', 'toolbar-menu'].map((n) => `web/js/${n}.js`);
+  'drawings', 'design', 'icons', 'clipboard', 'narrow'].map((n) => `web/js/${n}.js`);
 
 /** The page scripts that import each hub, at least (HUBS; test/related-tests.test.js checks it on the repository). */
 export const HUB_IMPORTERS = 15;

@@ -33,7 +33,7 @@ const getDoc = (page) => page.eval(() => window.Silinx.active.schEditor.getDoc()
 uiTest('#2208 schematic toolbar: the menu at the right of the first line holds the four operations; no Symbol Info button; in Portuguese', E, async (page) => {
   await open(page, 'MenuPj');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .se-toolbar [data-act=info]`), ED), null);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).querySelectorAll('button:not([data-lang]), label, .tb-menu-title:not([data-lang])')].map((e) => e.textContent.replace('✓', '').trim()), ED),
+  assert.deepEqual(await page.eval((ed) => [...document.querySelector(`${ed} .se-more-menu`).querySelectorAll('button, label, .tb-menu-title')].map((e) => e.textContent.replace('✓', '').trim()), ED),
     ['Rearrange Wires', 'Rearrange Schematic', 'Wires', 'Direct', 'Orthogonal', 'Curved', 'Wire crossings', 'Hop-overs', 'Plain crossings']);
   // first line, right edge: also with the toolbar so narrow that it wraps
   const place = () => page.eval((ed) => {

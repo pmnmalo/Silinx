@@ -62,7 +62,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   click on a part, then on the drawing; foldable, over the canvas behind ☰ Parts on a narrow screen), the Properties side
   panel on the right, foldable, over the canvas behind ☰ Properties on a narrow screen: the selected part's label,
   colour, pinout and Part info, a switch's position as saved (a DIP switch's levers), a clock's frequency; the circuit's name (its HDL
-  language in the ⋮ menu, as every drawing's, #4063: Preferred Language, VHDL or Verilog); the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
+  language in its Source Properties, as every drawing's, #4240: Project Preferred Language, VHDL or Verilog); the status line (its counts: "2 IC(s) · 2 switch(es) · 2 LED(s)
   · 15 wire(s)"; while simulating, "t = 24 ns"); every message in the console.
 
 ## The parts library

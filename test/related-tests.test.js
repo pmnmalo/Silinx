@@ -447,8 +447,9 @@ test('#4166 related tests: the repository — every hub imported by HUB_IMPORTER
   assert.deepEqual(i18n.unit, relatedTests(files, ['web/js/i18n.js'], { hubs: [] }).unit);
   assert.deepEqual(relatedTests(files, ['web/js/app.js']).ui, ['test/ui/app.test.js']);
   // PR 4160's: 14 UI tests before, the tests of the page scripts it changed and of their importers now
-  const pr = relatedTests(files, ['web/js/drawing-lang-menu.js', 'web/js/drawings-tt.js', 'web/js/drawings.js', 'test/ui/drawing-language-menu.test.js']);
-  for (const t of ['test/ui/drawing-language-menu.test.js', 'test/ui/related-views.test.js']) assert.ok(pr.ui.includes(t), t);
+  // (its drawing-lang-menu.js since removed, its UI test renamed, #4240)
+  const pr = relatedTests(files, ['web/js/drawings-tt.js', 'web/js/drawings.js', 'test/ui/drawing-source-language.test.js']);
+  for (const t of ['test/ui/drawing-source-language.test.js', 'test/ui/related-views.test.js']) assert.ok(pr.ui.includes(t), t);
   assert.ok(pr.ui.length <= 8, pr.ui.join(' '));
   assert.ok(!pr.ui.includes('test/ui/app.test.js'), 'app.js imports the hub drawings.js: the nightly\'s');
 });

@@ -1,6 +1,6 @@
 // The circuit editor's side panel (#3897, docs/CIRCUITS.md): its sections, as every editor's Properties (#2735; the parts
 // library a panel of its own on the left, #4062: circuit-parts-panel.js): the selection's (a part's label, an LED's colour,
-// an IC's pinout, the part's details, #4126; a wire's colour) and the circuit's (its name; its HDL's language the ⋮ menu's, #4063). Its edits are core/circuit-edit.js's.
+// an IC's pinout, the part's details, #4126; a wire's colour) and the circuit's (its name; its HDL's language Source Properties', #4168, #4240). Its edits are core/circuit-edit.js's.
 import { h } from './ui.js';
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.js';
 import { setPartProps, setWireProps } from '/core/circuit-edit.js';
@@ -67,7 +67,7 @@ export function mountCircuitSide(ctx) {
   }
 
   function renderCircuit() {
-    // (its HDL's language: the ⋮ menu's, #4063)
+    // (its HDL's language: Source Properties', #4240)
     circBody.replaceChildren(field('Name', h('input', { type: 'text', value: M().name, disabled: true })));
   }
 

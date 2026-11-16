@@ -24,7 +24,6 @@ export {
   openTt, openTtSchematic, syncHdlFromTt, ttContextMenu
 };
 import { openPetriFsm } from './petri-fsm-doc.js';
-import { languageMenu } from './drawing-lang-menu.js';
 import { openCircuitSchematic, refreshCircuitSchematic } from './drawings-circ-sch.js';
 export { openCircuitSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
@@ -32,8 +31,6 @@ export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
 const followOnly = (path = null) => (following() && !(path && editsDrawingHere(path)) ? { readOnly: true, banner: followNotice() } : {});
-// a drawing's ⋮ menu: its HDL's language (#4063), unless it is followed read-only
-const langMenu = (path) => (followOnly(path).readOnly ? [] : languageMenu(path));
 
 // ---- ASM
 export async function openAsm(path) {
@@ -53,7 +50,7 @@ export async function openAsm(path) {
       // (its problems in the console's Errors and Warnings, a click selecting the box, #2730)
       const problems = editorProblems({ file: path, tool: 'ASM', goto: (x) => { activateDoc(d); if (x.nodeId) ed.focusNode(x.nodeId); } });
       const ed = mountAsmEditor(host, {
-        model, ...followOnly(path), menuItems: langMenu(path),
+        model, ...followOnly(path),
         onChange: () => setDirty(d, true),
         onProblems: (diags) => problems.set(diags),
         onValidate: (diags) => problems.log(diags),
@@ -166,7 +163,7 @@ export async function openFsm(path) {
       const setProblems = (diags) => { last = diags; problems.set(inLanguage(diags)); };
       const offLang = onLanguageChange(() => setProblems(last));
       const ed = mountFsmEditor(host, {
-        model, ...followOnly(path), menuItems: langMenu(path),
+        model, ...followOnly(path),
         onChange: () => setDirty(d, true),
         linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
@@ -338,7 +335,7 @@ export async function openPetri(path) {
       // (its problems in the console's Errors and Warnings, a click selecting the item; its messages in the console, #2718)
       const problems = editorProblems({ file: path, tool: 'PetriNet', what: 'Check Petri Net', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); } });
       const ed = mountPetriEditor(host, {
-        model, menuItems: langMenu(path),
+        model,
         onChange: () => setDirty(d, true),
         linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f } : null; },
         onOpenFile: f => openFile(f),
@@ -485,7 +482,7 @@ export async function openSch(path) {
       el.append(host);
       const save = async m => { await api.writeFile(S.project.name, path, JSON.stringify(m, null, 1)); setDirty(d, false); };
       const ed = mountSchEditor(host, {
-        doc, modules, device: projectPart(), ...followOnly(path), menuItems: langMenu(path),
+        doc, modules, device: projectPart(), ...followOnly(path),
         simSources: () => S.sources,   // live simulation: bodies of the module symbols
         onChange: () => setDirty(d, true),
         // (its drawing when it has one, as its Design row's double-click, else its HDL, #2046)

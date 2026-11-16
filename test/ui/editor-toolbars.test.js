@@ -94,12 +94,12 @@ uiTest('#2505 the Algebra editor: no Undo or Redo of its own, its menu an icon a
   const T = `${D} .tt-toolbar`;
   assert.equal(await page.eval((t) => [...document.querySelectorAll(`${t} button`)].filter((x) => /^(Undo|Redo)$/.test(x.title)).length, T), 0);
   await page.click(`${T} .tb-more-btn`);
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tb-more-menu button:not([data-lang])`)].map((b) => [b.textContent, !!b.querySelector('svg'), getComputedStyle(b).backgroundImage]), T),
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tb-more-menu button`)].map((b) => [b.textContent, !!b.querySelector('svg'), getComputedStyle(b).backgroundImage]), T),
     [['Algebra from Module…', true, 'none'], ['Handwritten Algebra…', true, 'none'],
       // (then its notation, #3939: a choice, its title and its options, checkable, without icons)
       ['✓As in the Settings', false, 'none'], ['Electronics / Engineering: a\u0305.b + c', false, 'none'], ['Text only: /a.b + c', false, 'none'],
       ['Logic / Set theory: ¬a ∧ b ∨ c', false, 'none'], ['VHDL: (not a and b) or c', false, 'none'], ['Verilog: (~a & b) | c', false, 'none']]);
-  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tb-more-menu .tb-menu-title:not([data-lang])`)].map((x) => x.textContent), T), ['Notation']);
+  assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tb-more-menu .tb-menu-title`)].map((x) => x.textContent), T), ['Notation']);
   await shot(page, 'algebra');
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
