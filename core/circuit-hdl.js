@@ -14,9 +14,10 @@ import { circuitErrors } from './circuit-check.js';
 import { pinPort, icPorts, vhdlIc, verilogIc, vhdlDigital, verilogDigital } from './circuit-hdl-ics.js';
 import { digitalTop } from './circuit-digital.js';
 
-const entityOf = (m, d) => `${m.name}_${d.chip.toLowerCase()}`;
+// (a KiCad part modelled by a module of the project, #4283: that module)
+const entityOf = (m, d) => (d.kind === 'model' ? d.module : `${m.name}_${d.chip.toLowerCase()}`);
 // (a part as the header names it: an IC's chip; a project's KiCad part's number, #4280, and its library IC's)
-const partLabel = (d) => (!d.kicad ? d.chip : d.behaves ? `${d.kicad.value}, as the ${d.chip}` : `${d.kicad.value}, drawn only`);
+const partLabel = (d) => (!d.kicad ? d.chip : d.behaves ? `${d.kicad.value}, as the ${d.chip}` : d.kind === 'model' ? `${d.kicad.value}, by its module ${d.module}` : `${d.kicad.value}, drawn only`);
 const isSupply = (q) => q.name === '+' || q.name === '-';
 const WHILE = { level: 'on', momentary: 'pressed', clock: 'high' };
 
@@ -37,7 +38,7 @@ export function generateCircuit(model, lang, { source } = {}) {
   L.push(rule, `${c} ${V ? 'Entity' : 'Module'}      : ${m.name}`, `${c} Description : the digital circuit ${source || `${m.name}.circ.json`}`);
   if (m.description) for (const line of m.description.split(/\r?\n/)) L.push(`${c}               ${line}`.trimEnd());
   L.push(`${c} Generator   : Silinx circuit editor (edit the circuit, not this file)`,
-    `${c} Parts       : ${m.parts.filter((p) => ['ic', 'drawn'].includes(partDef(p.type)?.kind)).map((p) => `${p.id} (${partLabel(partDef(p.type))})`).join(', ') || 'no ICs'}`,
+    `${c} Parts       : ${m.parts.filter((p) => ['ic', 'drawn', 'model'].includes(partDef(p.type)?.kind)).map((p) => `${p.id} (${partLabel(partDef(p.type))})`).join(', ') || 'no ICs'}`,
     `${c} Inputs      : ${ports.inputs.map((x) => `${x.name} (${x.part}, '1' while ${WHILE[x.kind]})`).join(', ') || 'none'}`,
     `${c} Outputs     : ${ports.outputs.map((x) => `${x.name} (${x.part}, '1' while lit)`).join(', ') || 'none'}`, rule, '');
   // two models in one file (#3901): the simulation's (behind `synthesis translate_off`: the simulator reads it, a synthesis
@@ -60,7 +61,8 @@ export function generateCircuit(model, lang, { source } = {}) {
 
   // the circuit's module: its ports (a bus's bits one vector, led[0]…), its two bodies
   const decls = portDecls(ports);
-  const icMap = (p) => icPorts(partDef(p.type)).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]);
+  // (a module's instance, #4283: its pins that are ports)
+  const icMap = (p) => (partDef(p.type).kind === 'model' ? partDef(p.type).pins.filter((q) => q.port) : icPorts(partDef(p.type))).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]);
   const lamps = m.parts.flatMap((p) => partLamps(p).map((x) => [portRef(x.port, V), plan.pinNet(p.id, x.a), plan.pinNet(p.id, x.k)]));
   const dig = digitalTop(m, V, (d) => entityOf(m, d));
   if (V) {
@@ -98,7 +100,7 @@ export function generateCircuit(model, lang, { source } = {}) {
 function netPlan(m, V, ports) {
   const nets = circuitNets(m);
   const used = new Set([m.name, ...portDecls(ports).map((x) => x.name)].map((s) => s.toLowerCase()));
-  for (const d of m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic')) used.add(entityOf(m, d).toLowerCase());
+  for (const d of m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic' || d?.kind === 'model')) used.add(entityOf(m, d).toLowerCase());
   const fresh = (base) => { let s = base, k = 1; while (used.has(s.toLowerCase())) s = `${base}_${++k}`; used.add(s.toLowerCase()); return s; };
   const typeOf = new Map(m.parts.map((p) => [p.id, p.type]));
   const strong = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || q.dir === 'oc' || isSupply(q)));
@@ -118,7 +120,7 @@ function netPlan(m, V, ports) {
     name[i] = fresh(`n${name.filter(Boolean).length + 1}`);
     drv[i] = pulls[i].length ? fresh(`${name[i]}_d`) : name[i];
   });
-  const inst = new Map(m.parts.filter((p) => partDef(p.type)?.kind === 'ic').map((p) => [p.id, fresh(`u_${p.id}`)]));
+  const inst = new Map(m.parts.filter((p) => ['ic', 'model'].includes(partDef(p.type)?.kind)).map((p) => [p.id, fresh(`u_${p.id}`)]));
   const Z = V ? "'Z'" : "1'bz", lit = (v) => (V ? `'${v}'` : `1'b${v.toLowerCase()}`);
   const netOf = (id, n) => nets.pinNet.get(`${id}.${n}`);
   // (an output drives the net's strong side, an input reads the net)
@@ -142,7 +144,7 @@ function netPlan(m, V, ports) {
   }
   nets.nets.forEach((net, i) => {
     if (!name[i]) return;
-    const icOut = net.pins.some((q) => isOut(q.dir) && partDef(typeOf.get(q.part))?.kind === 'ic');
+    const icOut = net.pins.some((q) => isOut(q.dir) && ['ic', 'model'].includes(partDef(typeOf.get(q.part))?.kind));
     // a pulled net: its strong side's level, or the pull's (two pulls of opposite levels: X)
     if (pulls[i].length) {
       if (!targets.has(i) && !icOut) assigns.push([drv[i], Z, 'no strong driver']);

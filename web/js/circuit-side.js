@@ -26,7 +26,7 @@ function infoBlock(info) {
 function kicadRows(k, v) {
   if (!k) return [];
   const link = /^https?:\/\//i.test(k.datasheet || '') ? h('a', { href: k.datasheet, target: '_blank', rel: 'noopener noreferrer', 'data-no-i18n': 'true' }, k.datasheet) : k.datasheet && v(k.datasheet);
-  return [['KiCad symbol', v(`${k.symbol} (${k.library})`)], ['Part number', v(k.value)], ['Datasheet', link], ['Footprint', k.footprint && v(k.footprint)],
+  return [['KiCad symbol', v(`${k.symbol} (${k.library})`)], ['Part number', v(k.value)], ['HDL module', k.hdl && v(k.hdl)], ['Datasheet', link], ['Footprint', k.footprint && v(k.footprint)],
     ['Source', k.source && v(k.source)], ['Author', k.author && v(k.author)], ['Licence', k.licence && v(k.licence)]];
 }
 

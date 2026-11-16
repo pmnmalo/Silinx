@@ -31,7 +31,8 @@ export function digitalTop(m, V, entityOf) {
     if (d.kind === 'supply') { sources.set(netOf(p.id, 1), lit('1')); sources.set(netOf(p.id, 2), lit('0')); }
     for (const s of d.sources || []) sources.set(netOf(p.id, s.pin), portRef(partInputs(p)[s.input].port, V));
     for (const g of d.gates || []) (gatesOut.get(netOf(p.id, g.out)) ?? gatesOut.set(netOf(p.id, g.out), []).get(netOf(p.id, g.out))).push({ p, d, g });
-    if (d.model || d.seq) {
+    // (an MSI or sequential IC; a KiCad part modelled by a module of the project, #4283)
+    if (d.model || d.seq || d.kind === 'model') {
       const inst = { p, d, name: `d_${p.id}`, outs: new Map() };
       insts.push(inst);
       for (const q of d.pins.filter((x) => x.dir === 'out' || x.dir === 'oc')) (icOut.get(netOf(p.id, q.n)) ?? icOut.set(netOf(p.id, q.n), []).get(netOf(p.id, q.n))).push({ inst, q });
@@ -94,13 +95,13 @@ export function digitalTop(m, V, entityOf) {
     return V ? `${o} <= ${a} and not ${k};` : `assign ${o} = ${a} & ~${k};`;
   }));
   const instIns = insts.map((inst) => icPorts(inst.d).filter((q) => q.dir === 'in').map((q) => [pinPort(q), ref(netOf(inst.p.id, q.n))]));
+  const supply = (inst) => (inst.d.kind === 'model' ? [] : [[pinPort(inst.d.pins.find((q) => q.dir === 'vcc')), lit('1')], [pinPort(inst.d.pins.find((q) => q.dir === 'gnd')), lit('0')]]);
   const assigns = [];
   while (queue.length) { const i = queue.shift(); assigns.push([name.get(i), exprOf(i)]); }
   const instOut = insts.flatMap((inst) => [...inst.outs.values()]);
   const sigs = [...name.values(), ...instOut];
   const instLines = insts.map((inst, k) => {
-    const map = [...instIns[k], ...inst.d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => [pinPort(q), inst.outs.get(q.n) ?? (V ? 'open' : '')]),
-      [pinPort(inst.d.pins.find((q) => q.dir === 'vcc')), lit('1')], [pinPort(inst.d.pins.find((q) => q.dir === 'gnd')), lit('0')]];
+    const map = [...instIns[k], ...inst.d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => [pinPort(q), inst.outs.get(q.n) ?? (V ? 'open' : '')]), ...supply(inst)];
     return V ? `${inst.name} : entity work.${entityOf(inst.d)} port map (${map.map(([a, b]) => `${a} => ${b}`).join(', ')});` : `${entityOf(inst.d)} ${inst.name} (${map.map(([a, b]) => `.${a}(${b})`).join(', ')});`;
   });
   const decl = sigs.length ? [V ? `signal ${sigs.join(', ')} : std_logic;` : `wire ${sigs.join(', ')};`] : [];

@@ -67,7 +67,7 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   // the library: the 74LS and the 4000 gates; a 4001 placed, its pinout
   // (the Parts panel's categories, #4062: a title, then its parts)
   const groups = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].map((g) => [g.textContent, document.querySelectorAll(`${ed} .circ-lib-part[data-group="${g.textContent}"]`).length]), ED);
-  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 16], ['Gates (4000)', 7], ['MSI (74LS)', 10], ['Sequential (74LS, 4000)', 15]]);
+  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 16], ['Gates (4000)', 7], ['MSI (74LS)', 10], ['Sequential (74LS, 4000)', 15], ['KiCad catalogue', 0]]);   // (the KiCad catalogue folded at first, #4305)
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="4001"]`).scrollIntoView({ block: 'center' }), ED);   // (the library scrolls)
   await page.click(`${ED} .circ-lib-part[data-part="4001"]`);
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + r.width * 0.75, y: r.top + 24 }; }, ED);

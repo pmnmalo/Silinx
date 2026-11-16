@@ -69,7 +69,7 @@ export const CIRCUIT_PT = {
   'Tick the symbol libraries to import: their parts are the project\'s circuits\' parts, as KiCad wrote them.': 'Assinale as bibliotecas de símbolos a importar: as suas peças passam a ser peças dos circuitos do projeto, tal como o KiCad as escreveu.',
   'By its part number': 'Pela sua referência', 'Its model\'s': 'A do seu modelo', 'Drawn only (not simulated)': 'Só desenhada (não simulada)', 'Not a part': 'Não é uma peça',
   'Import a KiCad symbol library or footprint into the project\'s parts/ folder': 'Importar uma biblioteca de símbolos ou um footprint KiCad para a pasta parts/ do projeto',
-  'KiCad symbol': 'Símbolo KiCad', 'Part number': 'Referência', 'Datasheet': 'Folha de dados', 'Footprint': 'Footprint', 'Source': 'Origem', 'Author': 'Autor', 'Licence': 'Licença',
+  'HDL module': 'Módulo HDL', 'KiCad symbol': 'Símbolo KiCad', 'Part number': 'Referência', 'Datasheet': 'Folha de dados', 'Footprint': 'Footprint', 'Source': 'Origem', 'Author': 'Autor', 'Licence': 'Licença',
   'Drawn only: not simulated, its pins drive nothing.': 'Só desenhada: não é simulada, os seus pinos não conduzem nada.', 'not simulated': 'não simulado',
   'Part info': 'Informação da peça', 'Chip': 'Circuito integrado', 'Family': 'Família', 'Package': 'Encapsulamento', 'Supply': 'Alimentação', 'Logic': 'Lógica',
   'Typical delay': 'Atraso típico', 'Open collector': 'Coletor aberto', 'An input left open': 'Uma entrada deixada no ar',
@@ -155,6 +155,10 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^Behaves as the (\d{4,5}) of the library \(by its part number\)\.$/, 'Comporta-se como o $1 da biblioteca (pela sua referência).'],
   [/^Behaves as the (\d{4,5}) of the library \(by its Silinx\.Model\)\.$/, 'Comporta-se como o $1 da biblioteca (pelo seu Silinx.Model).'],
   [/^(.+): pinout$/, '$1: pinos'],
+  // a KiCad part modelled by a module of the project (#4283)
+  [/^(.+), by its module (\w+): click it, then the drawing \(Esc: done\)$/, '$1, pelo seu módulo $2: clique nela e depois no desenho (Esc: terminar)'],
+  [/^Simulated by the project's module (\w+) in the HDL \(Try it does not run it\)\.$/, "Simulada pelo módulo $1 do projeto no HDL (o Experimentar não o corre)."],
+  [/^By its module (\w+)$/, 'Pelo seu módulo $1'],
   // the KiCad exports (#4282): the choice of the ICs, the package's hint
   [/^All the library's ICs \((\d+)\)$/, 'Todos os CIs da biblioteca ($1)'], [/^This circuit's ICs \((\d+)\)$/, 'Os CIs deste circuito ($1)'],
   [/^The project's KiCad parts \(its parts\/ folder: (\d+) file\(s\)\) as a KiCad Plugin and Content Manager package, to install in KiCad or to import in Silinx\.$/, 'As peças KiCad do projeto (a sua pasta parts/: $1 ficheiro(s)) como um pacote do Plugin and Content Manager do KiCad, para instalar no KiCad ou importar no Silinx.'],

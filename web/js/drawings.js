@@ -381,6 +381,13 @@ export function petriContextMenu(e, file) {
 }
 
 // ---- digital circuits (.circ.json, #3897): their HDL file made with them (#207), kept in sync with the circuit, one way
+// the project's modules, as the Check of a circuit reads them (#4283): made again when the project was compiled again
+let circuitMods = null, circuitModsLib = null;
+function circuitModules() {
+  if (!S.lib) return null;
+  if (S.lib !== circuitModsLib) { circuitModsLib = S.lib; try { circuitMods = modulesFromLibrary(S.lib, { sources: Object.fromEntries(S.sources.map((s) => [s.path, s.text])) }); } catch { circuitMods = null; } }
+  return circuitMods;
+}
 export async function openCircuit(path) {
   const id = `circ:${path}`;
   if (findDoc(id)) return activateDoc(findDoc(id));
@@ -405,6 +412,7 @@ export async function openCircuit(path) {
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
+        modules: circuitModules,   // (a KiCad part modelled by a module of the project, #4283)
         importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null, importCatalogue: KC.importCatalogue, kicadExport: { ics: KX.exportIcsDialog, pkg: KX.exportPackageDialog },   // (Import KiCad Part…, #4281;
         // Browse KiCad Libraries…, #4285; the KiCad catalogue, #4305; the ⋮ menu's KiCad exports, #4282)
         ...followOnly(path),

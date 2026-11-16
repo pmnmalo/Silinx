@@ -5,6 +5,7 @@ import { circuitNets, netSupply, netText } from './circuit-net.js';
 import { portName, partInputs, partLamps, busOf } from './circuit-io.js';
 import { isName } from './ident.js';
 import { reservedError } from './reserved.js';
+import { checkModels } from './circuit-kicad-hdl.js';
 
 // a name of the HDL: an identifier (core/ident.js), not a reserved word of VHDL or Verilog (core/reserved.js), nor a
 // name the generated VHDL uses itself
@@ -14,7 +15,8 @@ const pinText = (q) => `${q.part} ${q.name}`;
 const part = (id) => ({ kind: 'part', id });
 
 /** The circuit's problems: [{ severity: 'error' | 'warning', message, ref: { kind: 'part' | 'wire', id } }]. */
-export function checkCircuit(m, nets = circuitNets(m)) {
+// (`modules`: the project's, a KiCad part modelled by one of them checked against it, #4283; none: its warning only)
+export function checkCircuit(m, nets = circuitNets(m), { modules = null } = {}) {
   const out = [];
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
   const ids = checkNames(m, say);
@@ -29,9 +31,11 @@ export function checkCircuit(m, nets = circuitNets(m)) {
     const d = partDef(p.type);
     if (d?.kind === 'ic') checkIc(p, d, nets, driven, say);
     // (a project's KiCad part with no logic, #4280: drawn only)
+    else if (d?.kind === 'model') continue;   // (checkModels, below)
     else if (d?.kind === 'drawn') say.warn(`${p.id} (${d.kicad.value}) is drawn only: it is not simulated and its pins drive nothing`, part(p.id));
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
+  checkModels(m.parts, partDef, modules, say, part);
   // a wire's end that joins nothing
   for (const w of m.wires) {
     for (const [i, q] of [w.points[0], w.points[w.points.length - 1]].entries()) {

@@ -72,7 +72,8 @@ function rowOf(t) {
   const d = partDef(t), k = d.kicad;
   if (!k) return { name: d.chip ? `${t} ${d.title}` : d.title, tip: `${d.title}: click it, then the drawing (Esc: done)`, noI18n: false };
   return { name: `${k.value}${k.description ? ` ${k.description}` : ''}`, noI18n: true,
-    tip: d.behaves ? `${k.value}, as the ${d.behaves}: click it, then the drawing (Esc: done)` : `${k.value}, drawn only (not simulated): click it, then the drawing (Esc: done)` };
+    tip: d.behaves ? `${k.value}, as the ${d.behaves}: click it, then the drawing (Esc: done)` : d.kind === 'model' ? `${k.value}, by its module ${d.module}: click it, then the drawing (Esc: done)`
+      : `${k.value}, drawn only (not simulated): click it, then the drawing (Esc: done)` };
 }
 
 /** { side, renderParts } of mountCircuitEditor (tool(): its current tool; setTool(t); importKicad(): Import KiCad Part…,

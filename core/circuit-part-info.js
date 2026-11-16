@@ -51,8 +51,9 @@ export function partInfo(type) {
   // (a project's KiCad part, #4280: its file, its symbol and its source; the library part it behaves as, or none)
   if (d.kicad) {
     info.kicad = d.kicad;
-    info.about = d.behaves ? `Behaves as the ${d.behaves} of the library (by its ${d.how}).` : 'Drawn only: not simulated, its pins drive nothing.';
+    info.about = d.behaves ? `Behaves as the ${d.behaves} of the library (by its ${d.how}).` : d.kind === 'model' ? `Simulated by the project's module ${d.module} in the HDL (Try it does not run it).`
+      : 'Drawn only: not simulated, its pins drive nothing.';
   }
-  info.pins = d.pins.map((p) => ({ n: p.n, name: p.name, role: PIN_ROLES[p.dir] ?? p.dir, ...(p.kicadType ? { kicadType: p.kicadType } : {}) }));
+  info.pins = d.pins.map((p) => ({ n: p.n, name: p.name, role: PIN_ROLES[p.dir] ?? p.dir, ...(p.port ? { port: p.port } : {}), ...(p.kicadType ? { kicadType: p.kicadType } : {}) }));
   return info;
 }

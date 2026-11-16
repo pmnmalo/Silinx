@@ -16,6 +16,7 @@ import { PARTS, setProjectParts } from './circuit-parts.js';
 import { dip } from './circuit-ics.js';
 import { readKicadSymLib, readKicadSymDir, pinText, footprintFilters } from './kicad-sym.js';
 import { readKicadFootprint, gridPins, packageOfFootprint } from './kicad-mod.js';
+import { modelPins } from './circuit-kicad-hdl.js';
 
 const LIB_RE = /^parts\/[^/]+\.kicad_sym$/i, DIR_FILE_RE = /^(parts\/[^/]+\.kicad_symdir)\/[^/]+\.kicad_sym$/i, FP_RE = /^parts\/([^/]+)\.pretty\/([^/]+)\.kicad_mod$/i;
 /** Whether a project's file is one of its KiCad parts' files (a library, a symbol of a folder, a footprint). */
@@ -122,7 +123,7 @@ export function pinPlaces(s, footprints = new Map()) {
 function originOf(lib, s) {
   const p = s.properties, v = (k) => (p[k] ? String(p[k]) : undefined);
   return Object.fromEntries(Object.entries({ library: lib, symbol: s.name, value: v('Value') ?? s.name, description: v('Description'), datasheet: v('Datasheet'),
-    keywords: v('ki_keywords'), footprint: v('Silinx.Footprint') ?? v('Footprint'), source: v('Silinx.Source'), author: v('Silinx.Author'), licence: v('Silinx.Licence') })
+    keywords: v('ki_keywords'), footprint: v('Silinx.Footprint') ?? v('Footprint'), hdl: v('Silinx.HDL'), source: v('Silinx.Source'), author: v('Silinx.Author'), licence: v('Silinx.Licence') })
     .filter(([, x]) => x !== undefined && x !== '' && x !== '~'));
 }
 
@@ -135,6 +136,15 @@ const hdlChip = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$
  */
 function kicadPartDef(lib, s, footprints) {
   const origin = originOf(lib, s), type = kicadPartType(lib, s.name), title = origin.description || origin.value;
+  // (modelled by a module of the project, #4283: Silinx.HDL first)
+  if (s.properties['Silinx.HDL']) {
+    const at = pinPlaces(s, footprints);
+    if (at.error) return { error: at.error };
+    const r = modelPins(symbolPins(s), s.properties, at.places);
+    if (r.error) return { error: r.error };
+    return { def: { type, title, kind: 'model', pins: r.pins.sort((a, b) => String(a.n).localeCompare(String(b.n), 'en', { numeric: true })), module: r.module, kicad: origin, behaves: null,
+      ...(at.dip ? { dip: at.dip } : {}) } };
+  }
   const named = s.properties['Silinx.Model'];
   if (named && PARTS[named]?.kind !== 'ic') return { error: `its Silinx.Model '${named}' is not an IC of the library` };
   const model = named || partOfNumber(origin.value) || partOfNumber(s.name);

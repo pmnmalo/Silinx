@@ -39,7 +39,7 @@ const lineClass = (l) => (/^ERROR: /.test(l) ? 'err' : /^WARNING: /.test(l) ? 'w
 function statusOf(rel, text, footprints) {
   const r = kicadPartsOf({ [rel]: text, ...footprints });
   const out = new Map();
-  for (const d of r.defs) out.set(d.kicad.symbol, { text: d.behaves ? `As the ${d.behaves} (by its ${d.how})` : 'Drawn only (not simulated)', why: '' });
+  for (const d of r.defs) out.set(d.kicad.symbol, { text: d.behaves ? `As the ${d.behaves} (by its ${d.how})` : d.kind === 'model' ? `By its module ${d.module}` : 'Drawn only (not simulated)', why: '' });
   for (const x of r.skipped) out.set(x.type.slice(rel.length + 1), { text: 'Not a part', why: x.reason });
   return out;
 }
@@ -61,8 +61,8 @@ export async function importKicadDialog() {
   let picked = null;   // { base, text, footprint, rows: Map(symbol → { model, family, fp }) }, or a package's { pkg, boxes: Map(library → checkbox) }
   let importBtn = null, picks = 0;   // (a file picked again while the last one is read: the last one's only)
 
-  const edits = () => Object.fromEntries([...picked.rows].map(([s, r]) => [s, { model: r.model.value || undefined, family: r.family.value || undefined, footprint: r.fp.value.trim() || undefined }])
-    .filter(([, o]) => o.model || o.family || o.footprint));
+  const edits = () => Object.fromEntries([...picked.rows].map(([s, r]) => [s, { model: r.model.value || undefined, family: r.family.value || undefined, footprint: r.fp.value.trim() || undefined, hdl: r.hdl.value.trim() || undefined }])
+    .filter(([, o]) => o.model || o.family || o.footprint || o.hdl));
   function refresh() {
     if (!picked || picked.footprint) return;
     let text;
@@ -119,14 +119,16 @@ export async function importKicadDialog() {
     try { lib = readKicadSymLib(text); } catch (e) { logError(`${f.name}: ${e.message}`); picked = null; return; }
     what.textContent = `${lib.symbols.filter((s) => !s.power).length} symbol(s): ${kicadImportPath(f.name)}`;
     const sel = (opts) => h('select', {}, ...opts.map(([v, label, raw]) => h('option', { value: v, ...(raw ? { 'data-no-i18n': 'true' } : {}) }, label)));
-    table.append(h('tr', {}, ...['Symbol', 'Part number', 'Model', 'Family', 'Footprint', 'It is'].map((x) => h('th', {}, x))));
+    table.append(h('tr', {}, ...['Symbol', 'Part number', 'Model', 'Family', 'Footprint', 'HDL module', 'It is'].map((x) => h('th', {}, x))));
     for (const s of lib.symbols.filter((x) => !x.power)) {
       const r = { model: sel([['', 'By its part number'], ...ICS.map((t) => [t, t, true])]), family: sel([['', 'Its model\'s'], ['ttl', 'TTL'], ['cmos', 'CMOS']]),
-        fp: h('input', { type: 'text', spellcheck: 'false', placeholder: s.properties.Footprint || '' }), status: h('span', { class: 'kicad-status' }) };
-      for (const x of [r.model, r.family, r.fp]) x.addEventListener('change', refresh);
+        fp: h('input', { type: 'text', spellcheck: 'false', placeholder: s.properties.Footprint || '' }), status: h('span', { class: 'kicad-status' }),
+        // (a module of the project as its model, #4283)
+        hdl: h('input', { type: 'text', spellcheck: 'false', class: 'kicad-hdl', placeholder: s.properties['Silinx.HDL'] || '' }) };
+      for (const x of [r.model, r.family, r.fp, r.hdl]) x.addEventListener('change', refresh);
       picked.rows.set(s.name, r);
       table.append(h('tr', { 'data-symbol': s.name }, h('td', { 'data-no-i18n': 'true' }, s.name), h('td', { 'data-no-i18n': 'true' }, s.properties.Value || ''),
-        h('td', {}, r.model), h('td', {}, r.family), h('td', {}, r.fp), h('td', {}, r.status)));
+        h('td', {}, r.model), h('td', {}, r.family), h('td', {}, r.fp), h('td', {}, r.hdl), h('td', {}, r.status)));
     }
     importBtn.disabled = false;
     refresh();

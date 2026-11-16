@@ -61,7 +61,7 @@ export function newCircuit(name = 'circuit', lang = 'vhdl', { breadboard = true 
 export function newId(m, typeOrWire) {
   const d = partDef(typeOrWire);
   const pfx = typeOrWire === 'wire' ? 'w' : { button: 'B', clock: 'CK', 'seg7-cc': 'DS', 'seg7-ca': 'DS', probe: 'LP' }[d?.type]
-    || { ic: 'U', drawn: 'U', input: 'S', output: 'D', breadboard: 'BB', supply: 'P', pull: 'R' }[d?.kind] || 'X';
+    || { ic: 'U', drawn: 'U', model: 'U', input: 'S', output: 'D', breadboard: 'BB', supply: 'P', pull: 'R' }[d?.kind] || 'X';
   const used = new Set([...m.parts.map((p) => p.id.toLowerCase()), ...m.wires.map((w) => w.id.toLowerCase())]);
   let k = 1;
   while (used.has(`${pfx}${k}`.toLowerCase())) k++;
@@ -82,6 +82,6 @@ export function circuitPorts(m) {
 /** The circuit's counts, as its status line says them: "2 ICs · 3 switches · 2 LEDs · 9 wires". */
 export function circuitCounts(m) {
   const n = (f) => m.parts.filter(f).length;
-  const ics = n((p) => ['ic', 'drawn'].includes(partDef(p.type)?.kind)), sw = n((p) => partDef(p.type)?.kind === 'input'), leds = n((p) => partDef(p.type)?.kind === 'output');
+  const ics = n((p) => ['ic', 'drawn', 'model'].includes(partDef(p.type)?.kind)), sw = n((p) => partDef(p.type)?.kind === 'input'), leds = n((p) => partDef(p.type)?.kind === 'output');
   return `${ics} IC(s) · ${sw} input(s) · ${leds} display(s) · ${m.wires.length} wire(s)`;
 }

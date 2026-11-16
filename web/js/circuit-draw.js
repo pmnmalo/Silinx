@@ -119,12 +119,13 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
     const chip = d.kicad?.value ?? d.chip;
     if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box); }
     else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${chip}`));
-  } else if (d.kind === 'drawn') {
-    // a project's KiCad part drawn only (#4281): a body round its pins (a DIP's between its rows), its outline dashed
+  } else if (d.kind === 'drawn' || d.kind === 'model') {
+    // a project's KiCad part drawn only (#4281): a body round its pins (a DIP's between its rows), its outline dashed;
+    // one modelled by a module of the project (#4283): its outline whole
     const dipRows = d.dip && box.y1 - box.y0 > P;
     const body = dipRows ? { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7 }
       : { x: box.x0 - P * 0.5, y: box.y0 - P * 0.5, width: box.x1 - box.x0 + P, height: box.y1 - box.y0 + P };
-    g.append(sv('rect', { ...body, rx: 2, class: 'circ-drawn-body' }), sv('title', {}, `${p.id}  ${d.kicad.value}: drawn only, not simulated`),
+    g.append(sv('rect', { ...body, rx: 2, class: d.kind === 'model' ? 'circ-model-body' : 'circ-drawn-body' }), sv('title', {}, `${p.id}  ${d.kicad.value}: ${d.kind === 'model' ? `its module ${d.module}` : 'drawn only, not simulated'}`),
       sv('text', { x: body.x + body.width / 2, y: body.y + body.height / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${d.kicad.value}`));
   } else if (d.type === 'logic-switch') {
     const on = inputs ? inputs[p.id] : p.on;
@@ -151,7 +152,7 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
   // the pins (their levels while simulating), an IC's numbered on hover (their names in the tip)
   for (const q of pins) {
     const lv = levels?.(p.id, q.n);
-    g.append(sv('circle', { cx: px(q.x), cy: px(q.y), r: d.kind === 'ic' || d.kind === 'drawn' ? 3.4 : 3, class: `circ-pin${lv ? ` ${LEVEL_CLS[lv]}` : ''}` },
+    g.append(sv('circle', { cx: px(q.x), cy: px(q.y), r: ['ic', 'drawn', 'model'].includes(d.kind) ? 3.4 : 3, class: `circ-pin${lv ? ` ${LEVEL_CLS[lv]}` : ''}` },
       sv('title', {}, `${p.id} pin ${q.n}${String(q.n) === q.name ? '' : ` (${q.name})`}${lv ? `: ${lv}` : ''}`)));
   }
   return turnWhole(g, turned, true);

@@ -9,17 +9,19 @@ const KINDS = [
   { re: /\.fsm\.json$/i, what: 'Check State Diagram', check: async m => (await import('../core/fsm.js')).validateFsm(m) },
   { re: /\.pn\.json$/i, what: 'Check Petri Net', check: async m => (await import('../core/petri-analysis.js')).checkPetri(m) },
   // a circuit's (#3897): its shorts, unpowered ICs, floating inputs, parts and wires that join nothing
-  { re: /\.circ\.json$/i, what: 'Check Circuit', check: async m => (await import('../core/circuit-check.js')).checkCircuit((await import('../core/circuit.js')).normalizeCircuit(m)) },
+  // (with the project's modules: its KiCad parts modelled by one checked against it, #4283)
+  { re: /\.circ\.json$/i, what: 'Check Circuit', check: async (m, ctx) => (await import('../core/circuit-check.js')).checkCircuit((await import('../core/circuit.js')).normalizeCircuit(m), undefined, { modules: ctx.modules ?? null }) },
 ];
 // the item a message is about (the editor selects it when the message is clicked)
 const itemOf = d => d.ref?.id ?? d.nodeId ?? d.state ?? d.transition ?? null;
 
 /** A drawing's Check (its model, `file` its path): { lines: the console's, errors, warnings: { message, item } } (null: not
- *  a drawing checked here). Also a shared drawing's after a merge (#3183, follow_project). */
-export async function checkDrawing(file, m) {
+ *  a drawing checked here). Also a shared drawing's after a merge (#3183, follow_project). ctx.modules: the project's, a
+ *  circuit's KiCad parts modelled by one of them checked against it (#4283). */
+export async function checkDrawing(file, m, ctx = {}) {
   const kind = KINDS.find(k => k.re.test(file));
   if (!kind) return null;
-  const diags = (await kind.check(m)).filter(d => d.severity === 'error' || d.severity === 'warning');
+  const diags = (await kind.check(m, ctx)).filter(d => d.severity === 'error' || d.severity === 'warning');
   const errors = diags.filter(d => d.severity === 'error'), warnings = diags.filter(d => d.severity === 'warning');
   const base = file.split('/').pop();
   const lines = [...diags.map(d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}: ${d.message}`),
@@ -42,8 +44,13 @@ export const CHECK_TOOLS = [
       const text = await projectText(name, file, `no drawing '${file}' in the project '${name}'`);
       try { m = JSON.parse(text); } catch { throw toolError(`no drawing '${file}' in the project '${name}'`); }
       // (a circuit's parts: the project's KiCad parts too, #4280)
-      if (/\.circ\.json$/i.test(file)) await (await import('../core/circuit-kicad.js')).useProjectParts(await import('./projects.js'), name);
-      const { lines, errors, warnings } = await checkDrawing(file, m);
+      let ctx = {};
+      if (/\.circ\.json$/i.test(file)) {
+        const P = await import('./projects.js');
+        await (await import('../core/circuit-kicad.js')).useProjectParts(P, name);
+        ctx = { modules: await (await import('./drawing-sync.js')).projectModules(P, name) };
+      }
+      const { lines, errors, warnings } = await checkDrawing(file, m, ctx);
       return { text: lines.join('\n'), data: { project: name, file, ok: !errors.length, errors, warnings }, isError: false,
         untrusted: errors.length || warnings.length ? 'the drawing\'s problems, which quote its names' : undefined };
     },

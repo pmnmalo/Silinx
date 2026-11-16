@@ -3,7 +3,8 @@
 //   import { mountCircuitEditor } from './circuit-editor.js';
 //   const ed = mountCircuitEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags),
 //     onMessage(text, isError), readOnly, banner, importKicad(), browseKicad(), importCatalogue(id), kicadExport });   (the Parts panel's Import KiCad Part…, #4281,
-//     Browse KiCad Libraries…, #4285, its KiCad catalogue's parts, #4305; its ⋮ menu's KiCad exports, { ics(m), pkg() }, #4282)
+//     Browse KiCad Libraries…, #4285, its KiCad catalogue's parts, #4305; its ⋮ menu's KiCad exports, { ics(m), pkg() }, #4282;
+//     modules(): the project's, its Check's of a KiCad part modelled by one of them, #4283)
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.print(); ed.select(ref);
 //   ed.simulating(); ed.toggleSim(); ed.destroy();
 //   edited live (#4203, web/js/collab-drawing.js): ed.setShared({ push(model), undo(), redo(), canUndo(), canRedo() } | null)
@@ -57,7 +58,7 @@ export function mountCircuitEditor(container, opts = {}) {
   // the toolbar's options (Keep connections, Show inside) and its ⋮ menu (Wires, Wire crossings): circuit-options.js
   const { keepBox, insideBox, more, keep, inside, hops, sync, style: wireStyle, setStyle: setWireStyle, setOwn: ownWireStyle } = mountCircuitOptions({ M: () => M, readOnly, applyEdit: (...a) => applyEdit(...a), render: () => render(), kicadExport: opts.kicadExport || null });
   const { tools, delBtn, rotBtn, simBtn, zoomLbl, info, toolbar } = mountCircuitToolbar({ keepBox, insideBox, more,
-    root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M)),
+    root, btn, sep, setTool, deleteSelection, rotateSelection, check: () => opts.onCheck?.(checkCircuit(M, undefined, { modules: opts.modules?.() ?? null })),
     toggleSim, zoomBtn, fit: () => fit(),
   });
   // the Try it bar (#4067, as the schematic's): above the canvas while trying it, its Reset (from time 0) and Stop (Esc);
@@ -102,7 +103,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (sim) startSim();
     render();
   }
-  const problems = () => opts.onProblems?.(checkCircuit(M));
+  const problems = () => opts.onProblems?.(checkCircuit(M, undefined, { modules: opts.modules?.() ?? null }));
   const restore = (i) => { hi = i; M = normalizeCircuit(JSON.parse(hist[hi])); if (sel && !itemOf(sel.id)) sel = null; opts.onChange?.(clone(M)); problems(); if (sim) startSim(); render(); };
   const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
   const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };

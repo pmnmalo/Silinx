@@ -144,6 +144,15 @@ library and its symbol: `parts/ttl.kicad_sym#74HC00`. KiCad's parts have no logi
   the breadboard. It is not simulated and its pins drive nothing: Check Circuit warns *U2 (TEST-SENSOR) is drawn only: it is
   not simulated and its pins drive nothing*, and its HDL leaves it out.
 
+- **modelled by a module of the project** (#4283, `core/circuit-kicad-hdl.js`), when its property `Silinx.HDL` names a
+  VHDL entity or a Verilog module of the project (it comes before a part number). The module's ports are the part's
+  pins: by their names (`A` → `a`, `~{EN}` → `en_n`), or as `Silinx.Ports` maps them (`1=a, 2=y`). Its supply pins are
+  no ports, and a bidirectional or passive pin is refused. The circuit's generated HDL instantiates the module for the
+  part, in its simulation's model and in its digital one, so that the circuit's HDL simulates and synthesizes with it.
+  Check Circuit, given the project's modules, refuses a module missing, a port without a pin, a pin without a port, a
+  direction or a width that differ. It always warns *U1 (TEST-INV) is simulated by its module test_inv in the HDL only:
+  Try it does not run it* (#4284 will).
+
 A symbol with no through-hole footprint (an SMD package, none at all) is no part, its reason said; `Silinx.Footprint`
 gives it one its file has not (its breakout's pin header). `Silinx.Source`, `Silinx.Author` and `Silinx.Licence` say
 where it comes from. These properties are written in the symbols themselves (`core/kicad-edit.js`, only their text

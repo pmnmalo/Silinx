@@ -32,7 +32,9 @@ export function libraryWithProperties(text, symbols, origin = {}) {
     if (!names.has(name)) throw new Error(`symbols: no symbol '${name}' in the library (its symbols: ${[...names].join(', ')})`);
     if (o?.model != null && o.model !== '' && PARTS[o.model]?.kind !== 'ic') throw new Error(`symbols.${name}.model: '${o.model}' is not an IC of the library (circuit_parts)`);
     if (o?.family != null && o.family !== '' && o.family !== 'ttl' && o.family !== 'cmos') throw new Error(`symbols.${name}.family: ttl or cmos`);
-    edits[name] = Object.fromEntries([['Silinx.Model', o?.model], ['Silinx.Family', o?.family], ['Silinx.Footprint', o?.footprint]].filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
+    // (a module of the project as its model, #4283: Silinx.HDL and Silinx.Ports)
+    if (o?.hdl && o?.model) throw new Error(`symbols.${name}: model or hdl, not both`);
+    edits[name] = Object.fromEntries([['Silinx.Model', o?.model], ['Silinx.Family', o?.family], ['Silinx.Footprint', o?.footprint], ['Silinx.HDL', o?.hdl], ['Silinx.Ports', o?.ports]].filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
   }
   const from = Object.fromEntries([['Silinx.Source', origin.source], ['Silinx.Author', origin.author], ['Silinx.Licence', origin.licence]].filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
   if (Object.keys(from).length) for (const s of lib.symbols.filter((x) => !x.extends)) edits[s.name] = { ...from, ...edits[s.name] };
@@ -59,7 +61,7 @@ export async function importKicadPart(P, name, { base, text, symbols, origin, re
   const r = await useProjectParts(P, name);
   const mine = (t) => footprint || t.startsWith(`${rel}#`);
   const lines = [`${rel} written${out !== text ? ' (its symbols\' Silinx properties set)' : ''}`,
-    ...r.defs.filter((d) => mine(d.type)).map((d) => `${d.type}: ${d.behaves ? `behaves as the ${d.behaves} (by its ${d.how})` : 'drawn only: not simulated'}`),
+    ...r.defs.filter((d) => mine(d.type)).map((d) => `${d.type}: ${d.behaves ? `behaves as the ${d.behaves} (by its ${d.how})` : d.kind === 'model' ? `modelled by the project's module ${d.module}` : 'drawn only: not simulated'}`),
     ...r.skipped.filter((x) => mine(x.type)).map((x) => `${x.type}: not a part: ${x.reason}`),
     ...r.notes.filter((x) => !footprint && x.startsWith(`${rel}: `)).map((w) => `WARNING: ${w}`),
     ...r.errors.map((e) => `ERROR: ${e}`)];
