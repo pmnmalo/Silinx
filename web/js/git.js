@@ -147,7 +147,7 @@ export async function openFromRepositoryDialog() {
 }
 
 /** File ▸ Git ▸ Commit…: the project's changes with a message. */
-export async function commitDialog() {
+async function commitDialog() {
   if (!S.project) return null;
   await saveAll();
   const s = await refreshGitStatus();
@@ -187,7 +187,7 @@ const CHECKS_HINT = 'GitHub runs the repository\'s checks on the push (a Classro
 
 /** File ▸ Git ▸ GitHub Checks (#3194): what GitHub's workflows said of the last pushed commit, in the console (a
  *  Classroom assignment's: each visible test's verdict). */
-export async function gitChecks() {
+async function gitChecks() {
   if (!S.project) return null;
   log(`GitHub's checks of '${S.project.name}'…`, 'info');
   try {
@@ -200,7 +200,7 @@ export async function gitChecks() {
 }
 
 /** File ▸ Git ▸ Push. */
-export async function gitPush() {
+async function gitPush() {
   if (!S.project) return null;
   try { const p = await api.gitPush(S.project.name); log(pushText(p), 'ok'); if (p.pushed) log(CHECKS_HINT, 'info'); return p; } catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
 }
@@ -208,7 +208,7 @@ export async function gitPush() {
 /** File ▸ Git ▸ Pull: GitHub's commits merged in; the project read again (its open documents, by the watcher). A
  *  drawing's objects changed on both sides (#3197): Mine or Theirs asked for each (web/js/git-resolve-dialog.js), then
  *  pulled again with the choices. */
-export async function gitPull({ resolve = null } = {}) {
+async function gitPull({ resolve = null } = {}) {
   if (!S.project) return null;
   await saveAll();
   const name = S.project.name;
@@ -235,7 +235,7 @@ export async function gitPull({ resolve = null } = {}) {
 }
 
 /** File ▸ Git ▸ Initialize Repository…: git init, Silinx's .gitignore, optionally the GitHub repository (origin). */
-export async function initDialog() {
+async function initDialog() {
   if (!S.project) return null;
   const url = h('input', { type: 'text', class: 'git-url', placeholder: 'https://github.com/owner/repository', style: { width: '100%' } });
   const err = fieldError('git-url-error');
@@ -268,7 +268,7 @@ export const gitMenuItems = () => [
     : { label: 'Sign in with GitHub…', action: () => signIn() }] : []),
 ];
 // Sign in with GitHub…, the Start page drawn again after it (its entry gone once signed in, #3534)
-export const signIn = () => import('./git-signin.js').then(m => m.signInDialog()).then(ok => { if (ok) renderStartPage(); return ok; });
+const signIn = () => import('./git-signin.js').then(m => m.signInDialog()).then(ok => { if (ok) renderStartPage(); return ok; });
 
 /** The git commands that start one (the Start page, the Design pane's project and device menus, #3534), where they
  *  apply: Initialize Repository… when the project has no repository (the open one's: on the Start page, disabled with
