@@ -1,7 +1,9 @@
 // UI (#4220): the circuit editor's Show inside draws the ICs' gates in Settings ▸ Schematic Symbols' standard (#4113):
 // IEEE Std 91-1984's distinctive shapes by default (the 7408's ANDs a D: an arc, no box), IEC 60617-12's boxes (& in a
 // rectangle) once it is chosen, drawn again at once with the circuit open; back to the shapes; the 7486's XORs (a shape
-// and its second back) and their boxes (=1). The breadboard's strips the same in both. No warnings. Both interfaces.
+// and its second back) and their boxes (=1). Laid out as the datasheet's connection diagram (#4224): each gate's lines
+// horizontal and vertical, from its pins (an input's) or to them (the output's), three a gate; VCC and GND named. The
+// breadboard's strips the same in both. No warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -41,6 +43,19 @@ const gates = (page, id) => page.eval((ed, u) => {
   const boxes = [...ic.querySelectorAll('rect.circ-gate')].map((r) => [r.nextElementSibling?.textContent, 'box', 1]);
   return [...shapes, ...boxes];
 }, ED, id);
+// an IC's lines inside as drawn (#4224): [its pin, orthogonal, its pin's end on the pin's point], and the pins named
+const lines = (page, id) => page.eval((ed, u) => {
+  const ic = document.querySelector(`${ed} [data-id=${u}]`);
+  const pin = new Map([...ic.querySelectorAll('circle.circ-pin')].map((c) => [c.querySelector('title').textContent.match(/pin (\d+)/)[1], [+c.getAttribute('cx'), +c.getAttribute('cy')]]));
+  const out = [...ic.querySelectorAll('polyline.circ-gate-line')].map((l) => {
+    const pts = l.getAttribute('points').split(' ').map((q) => q.split(',').map(Number));
+    const flat = pts.slice(1).every((b, i) => b[0] === pts[i][0] || b[1] === pts[i][1]);
+    const p = pin.get(l.dataset.pin), ends = [pts[0], pts.at(-1)].some((q) => q[0] === p[0] && q[1] === p[1]);
+    return [+l.dataset.pin, flat, ends];
+  }).sort((a, b) => a[0] - b[0]);
+  return { lines: out, names: [...ic.querySelectorAll('.circ-pin-name')].map((t) => t.textContent).sort() };
+}, ED, id);
+const LINES = { lines: [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13].map((n) => [n, true, true]), names: ['GND', 'VCC'] };
 
 uiTest('#4220 Show inside: the ICs\' gates in Settings ▸ Schematic Symbols\' standard, drawn again when it changes', E, async (page) => {
   await makeProject(env, { name: 'CircSyms', top: '', files: { 'src/half_adder.circ.json': JSON.stringify(halfAdder(), null, 2) } });
@@ -54,11 +69,13 @@ uiTest('#4220 Show inside: the ICs\' gates in Settings ▸ Schematic Symbols\' s
   await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-gate-ieee`).length === 8, [ED], { what: 'the shapes' });
   const AND = [['and', 'arc', 1], ['and', 'arc', 1], ['and', 'arc', 1], ['and', 'arc', 1]], XOR = [['xor', 'shield', 2], ['xor', 'shield', 2], ['xor', 'shield', 2], ['xor', 'shield', 2]];
   assert.deepEqual([await gates(page, 'U2'), await gates(page, 'U1')], [AND, XOR]);
+  assert.deepEqual([await lines(page, 'U1'), await lines(page, 'U2')], [LINES, LINES]);
   const strips = await page.eval((ed) => document.querySelectorAll(`${ed} .circ-strip`).length, ED);
   // IEC 60617-12 chosen with the circuit open: boxes, & and =1, at once
   await chooseSymbols(page, 'IEC 60617-12 (rectangular)');
   await page.waitFor((ed) => document.querySelectorAll(`${ed} rect.circ-gate`).length === 8, [ED], { what: 'the boxes' });
   assert.deepEqual([await gates(page, 'U2'), await gates(page, 'U1')], [AND.map(() => ['&', 'box', 1]), XOR.map(() => ['=1', 'box', 1])]);
+  assert.deepEqual([await lines(page, 'U1'), await lines(page, 'U2')], [LINES, LINES]);
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} .circ-strip`).length, ED), strips);
   // back to the distinctive shapes
   await chooseSymbols(page, 'IEEE Std 91-1984 (distinctive shapes)');

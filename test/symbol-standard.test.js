@@ -135,7 +135,7 @@ test('#4113 the RTL schematic in IEC: the same size and pins, a box, its qualifi
 
 test('#4113 the circuit editor\'s Show inside: the qualifiers of core/symbol-standard.js, no table of its own', () => {
   const src = fs.readFileSync(new URL('../web/js/circuit-draw-inside.js', import.meta.url), 'utf8');
-  assert.match(src, /import \{ iecQualifier, ieeeGate, invertsOutput \} from '\/core\/symbol-standard\.js'/);
+  assert.match(src, /import \{ iecQualifier, ieeeGate \} from '\/core\/symbol-standard\.js'/);
   assert.doesNotMatch(src, /'≥1'/);
   // (#4220: in the standard chosen, Settings ▸ Schematic Symbols', not always IEC)
   assert.match(src, /import \{ getSymbolStandard \} from '\.\/symbol-standard\.js'/);
