@@ -16,6 +16,7 @@ import { createOpenCodes, tokenProof } from './open-code.js';
 import { launchTarget } from './open-page.js';
 import { tightenConfigFolder, tightenedMessage } from './config-folder.js';
 import { attachRelay } from './collab-relay.js';
+import { partsScope } from './parts-scope.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -52,6 +53,7 @@ const isLoopback = host => ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(S
 
 export async function createApp({ host = '127.0.0.1', token = null, codes = createOpenCodes(), relay = relayConfig() } = {}) {
   const app = express();
+  app.use(partsScope);   // (each request its own project parts, #4294)
   // The API changes files and runs the ISE flow: only the Silinx page itself may call it.
   // A request from another web origin (a malicious page in the same browser) is refused, and when
   // bound to localhost the Host header must be local too (DNS rebinding). With a token (`serve` makes one

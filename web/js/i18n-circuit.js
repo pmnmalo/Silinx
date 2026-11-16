@@ -49,6 +49,14 @@ export const CIRCUIT_PT = {
   'On': 'Ligado', 'Levers on': 'Alavancas ligadas', 'Frequency (Hz)': 'Frequência (Hz)',
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
   // a part's details (#4126, core/circuit-part-info.js)
+  // a project's KiCad parts (#4281)
+  'KiCad parts (project)': 'Peças KiCad (projeto)', 'Import KiCad Part…': 'Importar peça KiCad…', 'Import KiCad Part': 'Importar peça KiCad',
+  'Pick a KiCad symbol library (.kicad_sym, KiCad 6 to 10) or a footprint (.kicad_mod): it is copied into the project\'s parts/ folder as KiCad wrote it.': 'Escolha uma biblioteca de símbolos KiCad (.kicad_sym, KiCad 6 a 10) ou um footprint (.kicad_mod): é copiado para a pasta parts/ do projeto tal como o KiCad o escreveu.',
+  'File:': 'Ficheiro:', 'Source:': 'Origem:', 'Author:': 'Autor:', 'Licence:': 'Licença:', 'Symbol': 'Símbolo', 'Model': 'Modelo', 'It is': 'É',
+  'By its part number': 'Pela sua referência', 'Its model\'s': 'A do seu modelo', 'Drawn only (not simulated)': 'Só desenhada (não simulada)', 'Not a part': 'Não é uma peça',
+  'Import a KiCad symbol library or footprint into the project\'s parts/ folder': 'Importar uma biblioteca de símbolos ou um footprint KiCad para a pasta parts/ do projeto',
+  'KiCad symbol': 'Símbolo KiCad', 'Part number': 'Referência', 'Datasheet': 'Folha de dados', 'Footprint': 'Footprint', 'Source': 'Origem', 'Author': 'Autor', 'Licence': 'Licença',
+  'Drawn only: not simulated, its pins drive nothing.': 'Só desenhada: não é simulada, os seus pinos não conduzem nada.', 'not simulated': 'não simulado',
   'Part info': 'Informação da peça', 'Chip': 'Circuito integrado', 'Family': 'Família', 'Package': 'Encapsulamento', 'Supply': 'Alimentação', 'Logic': 'Lógica',
   'Typical delay': 'Atraso típico', 'Open collector': 'Coletor aberto', 'An input left open': 'Uma entrada deixada no ar',
   'Reads 1 (a TTL input)': 'Lê 1 (uma entrada TTL)', 'Reads X (unknown): connect every CMOS input': 'Lê X (desconhecido): ligue todas as entradas CMOS',
@@ -127,4 +135,13 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^((?:SN74LS|CD)\d{2,4}B?): pinout$/, '$1: pinos'],
   [/^Input ([A-Za-z]\w*(?:_…)?) of the HDL$/, 'Entrada $1 do HDL'], [/^Output ([A-Za-z]\w*(?:_…)?) of the HDL$/, 'Saída $1 do HDL'],
   [/^Wire ([A-Za-z]\w*)$/, 'Fio $1'], [/^Lever (\d+)$/, 'Alavanca $1'],
+  // a project's KiCad parts (#4281): their tips, what they behave as, a pinout
+  [/^(.+), as the (\d{4,5}): click it, then the drawing \(Esc: done\)$/, '$1, como o $2: clique nela e depois no desenho (Esc: terminar)'],
+  [/^(.+), drawn only \(not simulated\): click it, then the drawing \(Esc: done\)$/, '$1, só desenhada (não simulada): clique nela e depois no desenho (Esc: terminar)'],
+  [/^Behaves as the (\d{4,5}) of the library \(by its part number\)\.$/, 'Comporta-se como o $1 da biblioteca (pela sua referência).'],
+  [/^Behaves as the (\d{4,5}) of the library \(by its Silinx\.Model\)\.$/, 'Comporta-se como o $1 da biblioteca (pelo seu Silinx.Model).'],
+  [/^(.+): pinout$/, '$1: pinos'],
+  [/^As the (\d{4,5}) \(by its part number\)$/, 'Como o $1 (pela sua referência)'], [/^As the (\d{4,5}) \(by its Silinx\.Model\)$/, 'Como o $1 (pelo seu Silinx.Model)'],
+  [/^(\d+) symbol\(s\): (parts\/.+)$/, '$1 símbolo(s): $2'], [/^A footprint: (parts\/.+)$/, 'Um footprint: $1'],
+  [/^(parts\/.+) is in the project already\. Replace it\?$/, '$1 já está no projeto. Substituí-lo?'],
 ];

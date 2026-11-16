@@ -44,6 +44,11 @@ test('a symbol with no property, a value\'s quotes and escapes, several symbols;
   assert.throws(() => setSymbolProperties(t, { C: { x: '1' } }), /^Error: no symbol 'C' in the library$/);
   assert.throws(() => setSymbolProperties('(footprint "x")', {}), /^Error: not a KiCad symbol library: it does not start with \(kicad_symbol_lib$/);
   assert.throws(() => setSymbolProperties('(kicad_symbol_lib (version 1)', {}), /a "\(" not closed/);
+  // a symbol on one line, its properties after its name (#4281): the new one on a line of its own, the text read again
+  const one = '(kicad_symbol_lib\n\t(version 20251024)\n\t(symbol "ODD" (property "Value" "X") (symbol "ODD_1_1" (pin input line (number "1"))))\n)\n';
+  const set = setSymbolProperties(one, { ODD: { 'Silinx.Model': '7404' } });
+  assert.equal(set, '(kicad_symbol_lib\n\t(version 20251024)\n\t(symbol "ODD" (property "Value" "X")\n\t\t(property "Silinx.Model" "7404" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (symbol "ODD_1_1" (pin input line (number "1"))))\n)\n');
+  assert.equal(props(set, 'ODD')['Silinx.Model'], '7404');
   // a string holding parentheses and the keyword of a symbol is no symbol
   const tricky = '(kicad_symbol_lib (version 20251024) (symbol "S" (property "Description" "(symbol \\"T\\")")))';
   assert.equal(props(setSymbolProperties(tricky, { S: { Description: 'plain' } }), 'S').Description, 'plain');

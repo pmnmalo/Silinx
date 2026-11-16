@@ -150,6 +150,17 @@ where it comes from. These properties are written in the symbols themselves (`co
 changes), which KiCad keeps: the file stays valid in both programs. A power symbol (VCC, GND) is no part: a circuit has
 its supply. Silinx's own library stays as it is, in JavaScript: its behaviour is code (#4290).
 
+**In the editor** (#4281): the Parts panel lists the project's KiCad parts last, under *KiCad parts (project)*, by their
+part number and description (searched by them too; an IC's drawing its gate's or block's, a part drawn only its own). On
+the canvas a part that behaves as an IC is drawn as one, named by its part number (`U1  74HC00`), and a part drawn only
+has a dashed body. Its Part info adds its KiCad symbol and file, its part number, its datasheet (a link), its footprint, its
+source, author and licence. **Import KiCad Part…** (the Parts panel, not in a read-only editor) takes a `.kicad_sym` or a
+`.kicad_mod`. A library's symbols are listed with what each one is (*As the 7400 (by its part number)*, *Drawn only (not
+simulated)*, *Not a part* and why, in its tip), which follows as each one's Model, Family and Footprint are set; its
+source, author and licence are given once. The import is the MCP's `import_part` (`core/kicad-import.js`): a file there
+already is replaced only when confirmed, and each symbol is said in the console. On a server, each call (an MCP tool, an HTTP
+request) has its own project's parts (`server/parts-scope.js`, #4294).
+
 ## The wiring
 
 - **A wire** goes from a grid point to a grid point, with bends; its colour is the student's (red, black, and others).

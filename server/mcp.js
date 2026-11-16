@@ -14,6 +14,7 @@
 import readline from 'node:readline';
 import { VERSION } from '../core/version.js';
 import { pathNamer, redactor, untrustedNote } from './mcp-util.js';
+import { inPartsScope } from './parts-scope.js';
 import { checkArgs } from './mcp-args.js';
 import { checkDesignOnly } from './mcp-design-only.js';
 import { PROJECT_TOOLS } from './mcp-projects.js';
@@ -100,7 +101,8 @@ export async function handle(msg, state = {}, { signal } = {}) {
       try {
         // (a design and simulation project, #3780: the flow's and the HDL's tools refused, as the interface hides them)
         await checkDesignOnly(tool.name, args);
-        const r = await tool.run(args, { signal });
+        // (its own project parts, #4294: another call's do not reach it)
+        const r = await inPartsScope(() => tool.run(args, { signal }));
         r.text = name(r.text);
         r.data = name(r.data);
         // (text from outside, #3363: labelled, in the text and in the structured content)

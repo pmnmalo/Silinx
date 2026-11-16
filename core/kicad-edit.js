@@ -45,7 +45,8 @@ export function setSymbolProperties(text, edits) {
     // (a new property goes after the symbol's last one, on a line of its own with its indent; else after its name)
     const after = last ?? sym.kids.find((k, i) => i > 1 && (key(k) === 'extends' || key(k) === 'pin_names' || key(k) === 'in_bom' || key(k) === 'on_board')) ?? sym.kids[1];
     const lineStart = text.lastIndexOf('\n', (last ?? sym).start) + 1;
-    const indent = last ? text.slice(lineStart, last.start) : `${text.slice(lineStart, sym.start)}\t`;
+    // (its line's leading white space: a symbol written on one line, its properties after its name, has no other, #4281)
+    const lead = /^[ \t]*/.exec(text.slice(lineStart))[0], indent = last && lineStart + lead.length === last.start ? lead : `${lead}\t`;
     let added = '';
     for (const [k, v] of Object.entries(props)) {
       const at = own.find((l) => l.kids[1]?.value === k);

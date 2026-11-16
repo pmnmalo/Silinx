@@ -14,10 +14,19 @@ function infoBlock(info) {
   const rows = [['Chip', info.chip && v(info.chip)], ['Family', info.family && v(info.family)], ['Package', info.package && v(info.package)],
     ['Supply', info.power && v(info.power)], ['Logic', info.logic && h('span', {}, ...info.logic.map((l) => h('div', { 'data-no-i18n': 'true' }, l)))],
     ['Typical delay', info.delay && v(`${info.delay} ns`)], ['Outputs', info.openCollector && 'Open collector'],
-    ['An input left open', info.openInput && (info.openInput === '1' ? 'Reads 1 (a TTL input)' : 'Reads X (unknown): connect every CMOS input')]].filter(([, x]) => x);
+    ['An input left open', info.openInput && (info.openInput === '1' ? 'Reads 1 (a TTL input)' : 'Reads X (unknown): connect every CMOS input')],
+    // (a project's KiCad part, #4281: its file and symbol, its part number, where it comes from)
+    ...kicadRows(info.kicad, v)].filter(([, x]) => x);
   const pins = !info.chip && info.pins.length ? h('table', { class: 'circ-info-pins' }, ...info.pins.map((q) => h('tr', {}, h('td', { class: 'n' }, String(q.n)), h('td', { 'data-no-i18n': 'true' }, q.name), h('td', {}, q.role)))) : null;
   return h('div', { class: 'circ-info' }, h('div', { class: 'circ-lib-title' }, 'Part info'), info.about ? h('div', { class: 'circ-note' }, info.about) : null,
     rows.length ? h('table', { class: 'circ-info-rows' }, ...rows.map(([k, x]) => h('tr', {}, h('th', {}, k), h('td', {}, x)))) : null, pins);
+}
+
+function kicadRows(k, v) {
+  if (!k) return [];
+  const link = /^https?:\/\//i.test(k.datasheet || '') ? h('a', { href: k.datasheet, target: '_blank', rel: 'noopener noreferrer', 'data-no-i18n': 'true' }, k.datasheet) : k.datasheet && v(k.datasheet);
+  return [['KiCad symbol', v(`${k.symbol} (${k.library})`)], ['Part number', v(k.value)], ['Datasheet', link], ['Footprint', k.footprint && v(k.footprint)],
+    ['Source', k.source && v(k.source)], ['Author', k.author && v(k.author)], ['Licence', k.licence && v(k.licence)]];
 }
 
 /** { renderSide } of mountCircuitEditor (M(), sel(): its current values; setM(m) and commit() an edit; status(msg, err)). */
@@ -31,7 +40,8 @@ export function mountCircuitSide(ctx) {
     const p = s && M().parts.find((x) => x.id === s.id), w = s && M().wires.find((x) => x.id === s.id);
     if (p) {
       const d = partDef(p.type);
-      const kids = [h('h3', {}, `${p.id}: ${d?.title ?? p.type}`)];
+      // (a project's KiCad part drawn only, #4281: its name the file's)
+      const kids = [h('h3', d?.kind === 'drawn' ? { 'data-no-i18n': 'true' } : {}, `${p.id}: ${d?.kind === 'drawn' ? d.kicad.value : d?.title ?? p.type}`)];
       if (d?.inputs || d?.lamps || d?.kind === 'probe') {
         const inp = h('input', { type: 'text', class: 'circ-label-in', value: p.label || '', placeholder: p.id, spellcheck: 'false' });
         inp.addEventListener('change', () => apply(setPartProps(M(), p.id, { label: inp.value.trim() })));
@@ -54,7 +64,7 @@ export function mountCircuitSide(ctx) {
         c.addEventListener('change', () => apply(setPartProps(M(), p.id, { color: c.value })));
         kids.push(field('Colour', c));
       }
-      if (d?.dip && d.kind !== 'input') kids.push(h('div', { class: 'circ-pinout' }, h('div', { class: 'circ-lib-title' }, `${d.chip || d.title}: pinout`),
+      if (d?.dip && d.kind !== 'input' && d.pins.length === d.dip) kids.push(h('div', { class: 'circ-pinout' }, h('div', { class: 'circ-lib-title' }, `${d.kicad?.value ?? (d.chip || d.title)}: pinout`),
         h('table', {}, ...Array.from({ length: d.dip / 2 }, (_, i) => { const a = d.pins[i], b = d.pins[d.dip - 1 - i]; return h('tr', {}, h('td', {}, a.name), h('td', { class: 'n' }, String(a.n)), h('td', { class: 'n' }, String(b.n)), h('td', {}, b.name)); }))));
       if (d) kids.push(infoBlock(partInfo(p.type)));
       if (d?.inputs || d?.lamps) kids.push(h('div', { class: 'circ-note' }, `${d.inputs ? 'Input' : 'Output'} ${portName(p)}${(d.inputs || d.lamps).length > 1 ? '_…' : ''} of the HDL`));

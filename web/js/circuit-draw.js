@@ -115,8 +115,17 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
     const toward = [px(p1.x) - (px(pins[1].x)), px(p1.y) - (px(pins[1].y))];   // (from pin 2 to pin 1: the notch's side)
     g.append(sv('circle', { cx: nx + Math.sign(toward[0]) * P * 0.4, cy: ny + Math.sign(toward[1]) * P * 0.4, r: P * 0.28, class: 'circ-ic-notch' }));
     // (shown inside, #4060: its gates or its pins' names in its body, its name in its tip)
-    if (inside) { g.append(sv('title', {}, `${p.id}  ${d.chip}`)); icInside(g, d, pins, box); }
-    else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${d.chip}`));
+    // (a project's KiCad part, #4281: its own part number)
+    const chip = d.kicad?.value ?? d.chip;
+    if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box); }
+    else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${chip}`));
+  } else if (d.kind === 'drawn') {
+    // a project's KiCad part drawn only (#4281): a body round its pins (a DIP's between its rows), its outline dashed
+    const dipRows = d.dip && box.y1 - box.y0 > P;
+    const body = dipRows ? { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7 }
+      : { x: box.x0 - P * 0.5, y: box.y0 - P * 0.5, width: box.x1 - box.x0 + P, height: box.y1 - box.y0 + P };
+    g.append(sv('rect', { ...body, rx: 2, class: 'circ-drawn-body' }), sv('title', {}, `${p.id}  ${d.kicad.value}: drawn only, not simulated`),
+      sv('text', { x: body.x + body.width / 2, y: body.y + body.height / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${d.kicad.value}`));
   } else if (d.type === 'logic-switch') {
     const on = inputs ? inputs[p.id] : p.on;
     g.dataset.input = 'switch';
@@ -142,7 +151,7 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
   // the pins (their levels while simulating), an IC's numbered on hover (their names in the tip)
   for (const q of pins) {
     const lv = levels?.(p.id, q.n);
-    g.append(sv('circle', { cx: px(q.x), cy: px(q.y), r: d.kind === 'ic' ? 3.4 : 3, class: `circ-pin${lv ? ` ${LEVEL_CLS[lv]}` : ''}` },
+    g.append(sv('circle', { cx: px(q.x), cy: px(q.y), r: d.kind === 'ic' || d.kind === 'drawn' ? 3.4 : 3, class: `circ-pin${lv ? ` ${LEVEL_CLS[lv]}` : ''}` },
       sv('title', {}, `${p.id} pin ${q.n}${String(q.n) === q.name ? '' : ` (${q.name})`}${lv ? `: ${lv}` : ''}`)));
   }
   return turnWhole(g, turned, true);

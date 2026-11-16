@@ -86,14 +86,24 @@ export const CLOCK_HZ = { min: 0.1, max: 50, default: 1 };
 // a project's KiCad parts (#4280, core/circuit-kicad.js): the symbols of its parts/ folder, each a part whose type is
 // its file's path and its name (parts/gates.kicad_sym#74HC00); set (all of them at once) when one of its circuits is
 // read, so that the editor, the simulation, the checks and the HDL find them as the library's
-let PROJECT_PARTS = new Map();
+// (on a server, each call has its own, #4294: two calls on two projects run at once, each one's awaits between the
+// other's; the scope, server/parts-scope.js, gives the current call's store, { parts }; the browser has one project
+// open at a time, and no scope)
+let PROJECT_PARTS = new Map(), scope = () => null;
+const NONE = new Map();
+const theParts = () => { const s = scope(); return s ? s.parts ?? NONE : PROJECT_PARTS; };
+/** The current call's store of the project's parts (a server's: `fn` returns its store, or null outside any call). */
+export function setPartsScope(fn) { scope = fn; }
 /** The project's own parts set, the previous project's dropped: `defs` their descriptions (core/circuit-kicad.js). */
-export function setProjectParts(defs = []) { PROJECT_PARTS = new Map(defs.map((d) => [d.type, d])); }
+export function setProjectParts(defs = []) {
+  const parts = new Map(defs.map((d) => [d.type, d])), s = scope();
+  if (s) s.parts = parts; else PROJECT_PARTS = parts;
+}
 /** The project's own parts set by setProjectParts. */
-export const projectParts = () => [...PROJECT_PARTS.values()];
+export const projectParts = () => [...theParts().values()];
 
 /** A part's description by its type (the library's, or one of the project's own parts), or null. */
-export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : PROJECT_PARTS.get(String(type)) ?? null);
+export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : theParts().get(String(type)) ?? null);
 
 /** A pin's place unturned (dx, dy) turned by `rot` quarter turns clockwise. */
 function turn(dx, dy, rot = 0) {

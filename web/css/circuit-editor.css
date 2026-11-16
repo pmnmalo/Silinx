@@ -28,6 +28,7 @@
 .circuit-editor .circ-w-purple { stroke: #7d3cb5; fill: #7d3cb5; }
 .circuit-editor .circ-ic-body { fill: #1d1d1f; stroke: #444; }
 .circuit-editor .circ-ic-notch { fill: #555; }
+.circuit-editor .circ-drawn-body { fill: #2b2f36; stroke: #8a8f98; stroke-dasharray: 4 3; }   /* (a KiCad part drawn only, #4281) */
 .circuit-editor .circ-ic-text { font: bold 10px var(--asm-mono, monospace); fill: #eee; pointer-events: none; }
 .circuit-editor .circ-pin { fill: #c9c9c9; stroke: #666; stroke-width: .8; }
 .circuit-editor .circ-pin.lv1 { fill: var(--circ-lv1); }
