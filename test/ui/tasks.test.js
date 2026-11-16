@@ -1931,3 +1931,67 @@ uiTest('#2492 Tasks: a document closed brings the task\'s own last document forw
   assert.ok(await shown(page, '#doc-tabs > .tab.active .tclose') && await shown(page, '.doc:not([hidden]) .cm-editor'));
   await noWarnings(page);
 }, { build: DEV });
+
+// #4021: Implement brought forward opens its Design Summary once summary.js is loaded, which may take a while (a
+// loaded machine): by then the viewer may have opened a document or gone to another task, which stays in front, the
+// summary behind it (it came over the UCF just opened, or took the viewer back to Implement from a simulation just
+// started). summary.js held here (CDP's Fetch) until the viewer has moved on, then let through.
+async function holdSummaryJs(page) {
+  const held = [];
+  const off = page.cdp.on((m) => { if (m.sessionId === page.sessionId && m.method === 'Fetch.requestPaused') held.push(m.params.requestId); });
+  await page.send('Network.enable');
+  await page.send('Network.setCacheDisabled', { cacheDisabled: true });
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/js/summary.js*', requestStage: 'Request' }] });
+  return {
+    held: () => held.length,
+    async release() {
+      off();
+      await page.send('Fetch.disable');
+      for (const id of held) await page.send('Fetch.continueRequest', { requestId: id }).catch(() => {});
+      await page.waitFor(() => window.Silinx.docs.some((d) => d.id === 'summary'), [], { what: 'the Design Summary opened' });
+      await tick(300);   // (and the app's next round: the tasks' refresh once a second)
+    },
+  };
+}
+const front = (page) => page.eval(() => ({ task: document.documentElement.dataset.task, active: window.Silinx.active?.id,
+  shown: [...document.querySelectorAll('#workspace > .doc')].filter((d) => d.getClientRects().length).length }));
+uiTest('#4021 Tasks: the Design Summary loaded late opens behind the UCF opened meanwhile in Implement', E, async (page) => {
+  await makeProject(env, { name: 'TasksLateSummaryUcf', template: 'blinky' });
+  await page.setViewport(1366, 768);
+  await tasksInterface(page);
+  const hold = await holdSummaryJs(page);
+  await page.openProject('TasksLateSummaryUcf');
+  await page.click('#task-switch .task-btn[data-task="impl"]');
+  await page.waitFor(() => document.documentElement.dataset.task === 'impl', [], { what: 'Implement' });
+  assert.ok(hold.held() > 0, 'summary.js held');
+  await page.waitFor(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent === 'Edit Constraints (Text)' && e.getClientRects().length), [], { what: 'Implement\'s Processes' });
+  await page.treeRow('#procs', 'Edit Constraints (Text)', { dbl: true, exact: true });
+  await page.waitFor(() => window.Silinx.active?.id === 'file:constraints/top.ucf' && window.Silinx.active.editor, [], { what: 'the UCF' });
+  await hold.release();
+  assert.deepEqual(await front(page), { task: 'impl', active: 'file:constraints/top.ucf', shown: 1 });
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#doc-tabs > .tab')].filter((t) => t.getClientRects().length).map((t) => t.querySelector('.tlabel').textContent).sort()),
+    ['Design Summary', 'top.ucf'], 'the summary behind, its tab');
+  await noWarnings(page);
+}, { build: DEV, skip: chromeOnly });
+uiTest('#4021 Tasks: the Design Summary loaded late takes no one back to Implement: the simulation started meanwhile stays in front', E, async (page) => {
+  await makeProject(env, { name: 'TasksLateSummarySim', template: 'blinky' });
+  await page.setViewport(1366, 768);
+  await tasksInterface(page);
+  const hold = await holdSummaryJs(page);
+  await page.openProject('TasksLateSummarySim');
+  const go = async (t) => { await page.click(`#task-switch .task-btn[data-task="${t}"]`); await page.waitFor((x) => document.documentElement.dataset.task === x, [t], { what: t }); };
+  await go('impl');
+  assert.ok(hold.held() > 0, 'summary.js held');
+  await go('sim');
+  await page.waitFor(() => document.querySelector('#task-sim-panel .task-sim-bench .row')?.getClientRects().length > 0, [], { what: 'Simulate\'s test benches' });
+  await page.click('#task-sim-panel .task-sim-bench .row');
+  const simShown = () => [...document.querySelectorAll('.doc .isim-left .isim-tree .row')].some((r) => r.getClientRects().length);
+  await page.waitFor(simShown, [], { what: 'the simulation', timeout: 30000 });
+  await hold.release();
+  assert.deepEqual(await front(page), { task: 'sim', active: 'isim:tb_top', shown: 1 });
+  assert.ok(await page.eval(simShown), 'the simulation still shown');
+  // Implement then shows its summary
+  await go('impl');
+  await page.waitFor(() => window.Silinx.active?.id === 'summary' && window.Silinx.active.el.getClientRects().length > 0, [], { what: 'Implement\'s Design Summary' });
+  await noWarnings(page);
+}, { build: DEV, skip: chromeOnly });

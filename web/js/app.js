@@ -701,12 +701,18 @@ function selectHierarchyPath(path) {
   row.scrollIntoView({ block: 'nearest' });
 }
 
-export async function openSummary({ background = false } = {}) {
+// wanted: asked again once summary.js is loaded (its first load may take a while: #4021), the summary opened only if
+// it still is (the Tasks layout's Implement brought forward: still in front)
+export async function openSummary({ background = false, wanted } = {}) {
   const was = S.active;
   const { mountSummary } = await import('./summary.js');
-  // opened with the project (background): if the user opened another document meanwhile, keep it in front
-  const keep = background && S.active && S.active !== was && S.active.id !== 'summary' ? S.active : null;
-  const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background, create: el => mountSummary(el) });
+  if (wanted && !wanted()) return;
+  // another document brought to the front meanwhile (by the user, or the project's opened with it): it stays in front,
+  // the summary opened behind it, not over it (#4021: over the UCF just opened, a simulation just started)
+  const keep = S.active && S.active !== was && S.active.id !== 'summary' ? S.active : null;
+  const old = findDoc('summary');
+  if (keep && old) { old.refresh?.(); return; }
+  const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el) });
   d.refresh?.();
   if (keep && S.docs.includes(keep)) activateDoc(keep);
 }

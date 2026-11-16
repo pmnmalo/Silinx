@@ -194,7 +194,8 @@ function setTask(t, { fromDoc = false } = {}) {
     const want = docs.find(d => d.id === state.tasks[t].doc) || docs.at(-1);
     if (want && want !== S.active) app.openDoc({ id: want.id });
     // the task's own page, cheap to open: the Design Summary, iMPACT
-    else if (!want && S.project?.top && t === 'impl') app.openSummary();   // (none with no top module: #1287)
+    // (once it is loaded: if the viewer is still in Implement, #4021)
+    else if (!want && S.project?.top && t === 'impl') app.openSummary({ wanted: () => current() === 'impl' });   // (none with no top module: #1287)
   }
   apply();
 }
@@ -346,7 +347,7 @@ function refreshDots() {
   const st = app?.S.status || {};
   // an implementation ended while Implement is in front: its Design Summary comes forward (#802)
   const now = taskDot('impl', st);
-  if (implementationEnded(implDot, now) && on() && current() === 'impl' && app.S.project) app.openSummary();
+  if (implementationEnded(implDot, now) && on() && current() === 'impl' && app.S.project) app.openSummary({ wanted: () => current() === 'impl' });
   implDot = now;
   if (on()) arrangeProgram(true);   // (Program's iMPACT, also once its document has its task: #803)
   // no top module: no Design Summary, whether opened behind with the project or restored with its documents (#1295)
