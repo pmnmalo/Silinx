@@ -2,7 +2,7 @@
 // easily. A breadboard's strips (the holes joined: each column's a–e and f–j, each power rail, a full board's halves)
 // drawn as the metal strips under its holes; a gate IC's gates in its body as its datasheet's connection diagram
 // (#4224, core/circuit-inside.js: each gate beside its pins, facing its output pin, wired with horizontal and vertical
-// lines into its input side and from its tip), in the standard of Settings ▸ Schematic Symbols (#4113, #4220;
+// lines into its input side and from its tip; lines, unfilled, #4299), in the standard of Settings ▸ Schematic Symbols (#4113, #4220;
 // core/symbol-standard.js): IEEE Std 91-1984's distinctive shape or IEC 60617-12's box (&, ≥1, =1, 1), a bubble on an
 // inverting one's output; the pins no gate uses named (VCC, GND); another IC's pins named inside its body. In pixels,
 // from the parts' pins.
@@ -44,7 +44,7 @@ export function icInside(g, d, pins, box, std = getSymbolStandard()) {
   }
   if (!d.gates) return;
   const L = insideLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) })));
-  for (const w of L.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), class: 'circ-gate-line', 'data-pin': w.pin }));
+  for (const w of L.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', 'data-pin': w.pin }));
   for (const gt of L.gates) g.append(...(std === 'iec' ? iecInside(gt) : [ieeeInside(gt)]));
 }
 
