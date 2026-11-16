@@ -919,6 +919,8 @@ async function boot() {
   addEventListener('beforeunload', e => { if (S.docs.some(d => d.dirty)) { e.preventDefault(); e.returnValue = ''; } });
 
   updateTitle();
+  // (the hash the start-up reads: a link given while it starts, after that, opened once the links are watched, #4234)
+  const seen = location.hash;
   // a shared project's link (#3181): followed, read only, instead of the workspace's projects
   const followed = /^#(view|follow|edit)=/.test(location.hash) && await (await import('./collab-follow.js')).startFollowing();
   // (one pasted into this tab's address bar later: only the fragment changes, the page is not loaded again, #3318)
@@ -956,7 +958,8 @@ async function boot() {
   const projects = await api.projects().catch(() => []);
   // (a project opened meanwhile, e.g. from the Start page: kept, not replaced by the last one, #2492)
   const asked = projectRequested();
-  const link = location.hash.length > 1 && (await import('./link-open.js')).linkOptions();   // a design's link: its project, not the last (#2826)
+  // a design's link: its project, not the last (#2826); a shared project's, given meanwhile, not one (#4234: at the end)
+  const link = location.hash.length > 1 && !/^#(view|follow|edit)=/.test(location.hash) && (await import('./link-open.js')).linkOptions();
   // (a workspace folder waiting for its permission: its last project is not the browser's one of that name)
   if (followed) { await openProject(followed); await (await import('./collab-follow.js')).openFollowedTop(); }   // (a module's link: on it, #3631)
   else if (!asked && !link && last && projects.some(p => p.name === last) && !(api.standalone && api.storage().needsPermission)) {
@@ -969,7 +972,7 @@ async function boot() {
   else if (!asked) showLeftPage('start');
   delete document.documentElement.dataset.starting;   // (no project reopened: the app shown at once, #1403)
   if (link) await (await import('./link-open.js')).openFromLink(link).finally(() => { S.linkOpened = true; });   // (the UI tests wait for it)
-  (await import('./link-hash.js')).watchLinks();   // a link given to the running app: opened as at start-up (#3316)
+  (await import('./link-hash.js')).watchLinks(window, seen);   // a link given to the running app: opened as at start-up (#3316)
   S.linksWatched = true;   // (the UI tests wait for it before they change the hash, #3331)
   // check for updates at start-up (a newer release opens the update dialog) unless the setting is off; not awaited
   if (!window.SILINX_NO_UPDATE_CHECK) wiz.checkUpdatesOnStart().catch(() => {});

@@ -308,6 +308,8 @@ test('#3355 an editor\'s change of a trusted project: through the import gate, t
   await page.ready;
   await until(async () => (await ok('share_project', { project: 'trustedEd', action: 'status' })).data.warnings.length, 'the refusal said');
   await until(() => docFile(page.doc, 'src/timer.vhd') === timer, 'the refused change undone');
+  // (at the MCP client's too, #4210: its next write is merged with what it has, the NUL byte's line else)
+  await until(async () => (await ok('follow_project', { link: editLink, path: 'src/timer.vhd' })).data.text === timer, 'the refused change undone at the MCP client\'s');
   const st = await ok('share_project', { project: 'trustedEd', action: 'status' });
   assert.deepEqual(st.data.warnings, ['src/timer.vhd: an editor\'s change not written: binary content (a NUL byte) in a text file']);
   assert.ok(st.text.endsWith('\nWARNING: src/timer.vhd: an editor\'s change not written: binary content (a NUL byte) in a text file'), st.text);

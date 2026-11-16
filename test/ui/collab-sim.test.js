@@ -29,16 +29,16 @@ const ssim = (page) => page.eval(() => {
   const s = v.getState();
   return { now: v.now, cursor: s.cursor, rows: s.rows.map((r) => r.path || r.name), scale: s.scale, fit: s.fit, values: [...v.state.rows].map((r) => r.sig?.path).join(','), objects: [...document.querySelectorAll('.doc:not([hidden]) .isim-objs tbody tr')].map((t) => t.textContent).join('|') };
 });
-const same = async (page, fp, what) => {
-  const want = await ssim(page);
-  await fp.waitFor((w) => {
-    const v = window.SilinxApp.findDoc('isim:tb_gates')?.view;
-    if (!v?.state || v.state.running) return false;
-    const s = v.getState();
-    const mine = { now: v.now, cursor: s.cursor, rows: s.rows.map((r) => r.path || r.name), scale: s.scale, fit: s.fit, values: [...v.state.rows].map((r) => r.sig?.path).join(','), objects: [...document.querySelectorAll('.doc:not([hidden]) .isim-objs tbody tr')].map((t) => t.textContent).join('|') };
-    return JSON.stringify(mine) === JSON.stringify(w);
-  }, [want], { what, timeout: 20000 });
-  return want;
+// the viewer's SSim as the owner's: both read again at each look (#4210: the owner's own Objects are drawn at its next
+// frame, after a run or a restart, so what it showed at first may not be what it settles on)
+const same = async (page, fp, what, timeout = 20000) => {
+  const t0 = Date.now();
+  for (;;) {
+    const want = await ssim(page), got = await ssim(fp);
+    if (want && JSON.stringify(got) === JSON.stringify(want)) return want;
+    if (Date.now() - t0 > timeout) throw new Error(`timed out after ${timeout} ms waiting for ${what}: ${JSON.stringify(got)}, the owner's ${JSON.stringify(want)}`);
+    await new Promise((r) => setTimeout(r, 50));
+  }
 };
 const owner = (page, fn, ...a) => page.eval(fn, ...a);
 

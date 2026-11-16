@@ -177,6 +177,40 @@ uiTest('#3318 a follow link pasted into an open tab is followed; in the page tha
   assert.deepEqual(await consoleWarnings(page), ['WARNING: Follow a shared project: this page shares a project, which loading the link here would stop: open the link in another tab or window.']);
 });
 
+// (#4234) a follow link given while the app starts (the page loaded, its start-up going on: before it reads a design's
+// link, or before it watches the links): followed once it is up, as one pasted later, no error; and the links watched
+// late, a hash changed meanwhile (no event of its own any more) opened then
+uiTest('#4234 a follow link given while the app starts is followed; a hash changed before the links are watched, opened once they are', E, async (page) => {
+  await makeProject(env, { name: 'Early', top: 'top', files: { 'src/top.vhd': TOP } });
+  await page.openProject('Early');
+  const link = await share(page, 'Ana');
+  const hash = new URL(link).hash;
+  const follows = async (fp, name) => {
+    await fp.waitDialog('Follow a Shared Project');
+    await fp.fill('.dlg-overlay input[data-field=name]', name);
+    await fp.dialogButton('Follow');
+    await fp.waitFor(() => window.Silinx?.project?.name === 'Early' && window.Silinx.startupChecked, [], { what: 'the project followed', timeout: 20000 });
+    await page.waitConsole(new RegExp(`^${name} follows your project "Early"\\.$`, 'm'));
+    assert.deepEqual((await fp.consoleText()).split('\n').filter((l) => /^(WARNING|AVISO|ERROR|ERRO)/.test(l.trim())), []);
+    assert.deepEqual(fp.errors, []);
+  };
+  // the link given at once, the page loaded (its start-up not waited for)
+  const fp = await env.newPage(env.server.url);
+  try {
+    await fp.eval((h) => { location.hash = h; }, hash);
+    await follows(fp, 'Rui');
+  } finally { await fp.close(); }
+  // the links watched (link-hash.js watchLinks) after the hash changed with no event: the start-up's hash given, opened
+  const fp2 = await env.newPage(env.server.url);
+  try {
+    await fp2.waitFor(() => window.Silinx?.linksWatched && window.Silinx.startupChecked, [], { what: 'the links watched' });
+    await fp2.eval(async (h) => { history.replaceState(null, '', location.pathname + h); (await import('/js/link-hash.js')).watchLinks(new EventTarget(), ''); }, hash);
+    await follows(fp2, 'Eva');
+  } finally { await fp2.close(); }
+  await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
+  assert.deepEqual(await consoleWarnings(page), []);
+});
+
 // (#3315, #3716, #3719) Share Project in the main toolbar, after Close Project (none on the Start page), both interfaces:
 // disabled with no project, its window with one; who is in, at the Silinx interface's top bar before Search commands
 // and files, at the ISE style toolbar's right end, which has no Split button any more (View ▸ Split Editor); moved when

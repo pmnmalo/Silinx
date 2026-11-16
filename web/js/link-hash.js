@@ -18,9 +18,12 @@ import { collab } from './collab-state.js';
 const TOKEN = /^#(?:token|code)=/, FOLLOW = /^#(?:view|follow|edit)=/;   // (#view=, a viewer's, #4073; #follow=, the links before it)
 let queue = Promise.resolve();
 
-/** Open the links the address's hash gives from now on (once, at the end of the start-up). */
-export function watchLinks(target = window) {
-  target.addEventListener('hashchange', () => { queue = queue.then(() => linkChanged()).catch(e => app.log(`ERROR: Open from a link: ${e.message}.`, 'err')); });
+/** Open the links the address's hash gives from now on (once, at the end of the start-up); `seen`: the hash the
+ *  start-up read, a link given while it started (the hash changed since: no listener yet, #4234) opened now. */
+export function watchLinks(target = window, seen) {
+  const changed = () => { queue = queue.then(() => linkChanged()).catch(e => app.log(`ERROR: Open from a link: ${e.message}.`, 'err')); };
+  target.addEventListener('hashchange', changed);
+  if (seen !== undefined && location.hash !== seen) changed();
 }
 
 /** The address's hash now handled as a link (false: none, or not opened). Exported for tests. */
