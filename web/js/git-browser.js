@@ -24,14 +24,16 @@ export const canRemember = () => { try { return globalThis.location?.protocol !=
 
 /** The api's git functions: store() the storage in use, ops its projectOps, prefix its keys' (the development site's own). */
 export function browserGit({ store, ops, prefix = 'silinx.' }) {
-  const TOKEN = `${prefix}github-token`;
+  const TOKEN = `${prefix}github-token`, WAY = `${prefix}github-sign-in`;
   const metaKey = name => `${prefix}git:${store().kind}:${store().label || ''}:${name}`;
   const token = () => get(TOKEN, 'sessionStorage') ?? (canRemember() ? get(TOKEN) : null);
   // the token kept: in this tab, or remembered in this browser (the other place cleared); at file: in this tab only
-  const keep = (t, wanted) => {
+  // (#4256: with how it was made, 'token' or 'device', beside it)
+  const keep = (t, wanted, way) => {
     const remember = !!wanted && canRemember();
-    put(TOKEN, null, remember ? 'sessionStorage' : 'localStorage');
+    for (const k of [TOKEN, WAY]) put(k, null, remember ? 'sessionStorage' : 'localStorage');
     put(TOKEN, t, remember ? 'localStorage' : 'sessionStorage');
+    put(WAY, way, remember ? 'localStorage' : 'sessionStorage');
     return { signedIn: true, remembered: !!remember };
   };
 
@@ -98,13 +100,20 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
     githubSignedIn: () => !!token(),
     /** How this edition signs in: 'device' (the device flow, through the relay) or 'token' (a pasted token). */
     githubSignInWay: () => githubSettings().signIn,
+    /** How the sign-in kept was made (#4256): 'token' (pasted) or 'device'; one kept before it was recorded: this
+     *  edition's way; null when not signed in. */
+    githubSignedInWay: () => {
+      if (!token()) return null;
+      const w = get(WAY, 'sessionStorage') ?? (canRemember() ? get(WAY) : null);
+      return w === 'token' || w === 'device' ? w : githubSettings().signIn;
+    },
     /** A pasted fine-grained personal access token: checked with GitHub (its user), then kept (in this browser; remember
      *  false: in this tab) -> { signedIn, remembered, login }. */
     githubSetToken: async (pasted, { remember = true } = {}) => {
       const t = String(pasted ?? '').trim();
       if (!/^[A-Za-z0-9_]{20,255}$/.test(t)) throw new GitHubError('that is not a GitHub token', 'Paste the token GitHub showed when it was generated (github_pat_…).', 400);
       const me = await githubClient({ fetch: (...a) => globalThis.fetch(...a), token: () => t, api: githubSettings().api, hints: { again: 'GitHub refused this token: check it was copied whole, and that it has not expired.' } }).request('GET', '/user');
-      return { ...keep(t, remember), login: String(me?.login || '') };
+      return { ...keep(t, remember, 'token'), login: String(me?.login || '') };
     },
     /** Sign in with GitHub (the device flow): onCode({ userCode, verificationUri }) shows the code; signal: Cancel;
      *  privateRepos: the private repositories too (else the public ones and the gists); remember: kept in this browser
@@ -114,9 +123,9 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
       const d = await startDeviceFlow({ clientId: s.clientId, login: s.login, scope: privateRepos ? PRIVATE_SCOPE : SCOPE, fetch: (...a) => globalThis.fetch(...a) });
       onCode?.({ userCode: d.userCode, verificationUri: d.verificationUri, expiresIn: d.expiresIn });
       const t = await pollDeviceFlow({ clientId: s.clientId, ...d }, { login: s.login, signal, fetch: (...a) => globalThis.fetch(...a) });
-      return keep(t, remember);
+      return keep(t, remember, 'device');
     },
-    githubSignOut: async () => { put(TOKEN, null, 'sessionStorage'); put(TOKEN, null); return { signedIn: false }; },
+    githubSignOut: async () => { for (const k of [TOKEN, WAY]) { put(k, null, 'sessionStorage'); put(k, null); } return { signedIn: false }; },
     // ---- a short link's gist (#3223): a secret gist of the signed-in user
     gistAvailable: async () => !!token(),
     gistSave: async (design, days = 0) => {

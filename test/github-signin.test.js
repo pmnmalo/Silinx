@@ -126,6 +126,37 @@ test('#3356 the device flow asks for the public repositories and the gists, the 
   } finally { globalThis.fetch = gh.fetch; }
 });
 
+test('#4256 how the sign-in kept was made: a pasted token, the device flow, kept beside it; one kept before it was recorded: the edition\'s way; Sign out forgets both', async () => {
+  const keys = () => [...store.keys(), ...session.keys()].filter((k) => /^silinx\.github-/.test(k)).sort();
+  globalThis.SILINX_GITHUB = { api: 'https://api.github.com' };
+  assert.equal(git.githubSignedInWay(), null);
+  await git.githubSetToken(gh.token);
+  assert.equal(git.githubSignedInWay(), 'token');
+  assert.deepEqual([store.get('silinx.github-sign-in'), session.has('silinx.github-sign-in')], ['token', false]);
+  const g2 = fakeGitHub({ interval: 0.01 });
+  globalThis.fetch = g2.fetch;
+  try {
+    globalThis.SILINX_GITHUB = { relay: 'https://silinx-github-relay.example.workers.dev', clientId: g2.clientId };
+    await git.githubSignIn({ onCode: ({ userCode }) => g2.authorize(userCode), remember: false });
+    assert.equal(git.githubSignedInWay(), 'device');
+    assert.deepEqual([session.get('silinx.github-sign-in'), store.has('silinx.github-sign-in'), store.has('silinx.github-token')], ['device', false, false], 'the tab\'s now: the browser\'s cleared');
+    // (a pasted token, on an edition that signs in with the device flow: still a token)
+    globalThis.fetch = gh.fetch;
+    await git.githubSetToken(gh.token);
+    assert.equal(git.githubSignedInWay(), 'token');
+    // (a sign-in kept by an older Silinx, with no way: the edition's)
+    store.delete('silinx.github-sign-in');
+    assert.equal(git.githubSignedInWay(), 'device');
+    globalThis.SILINX_GITHUB = { api: 'https://api.github.com' };
+    assert.equal(git.githubSignedInWay(), 'token');
+    store.set('silinx.github-sign-in', 'other');
+    assert.equal(git.githubSignedInWay(), 'token');
+  } finally { globalThis.fetch = gh.fetch; }
+  await git.githubSignOut();
+  assert.deepEqual(keys(), []);
+  assert.equal(git.githubSignedInWay(), null);
+});
+
 test('a short link\'s gist (#3223) in the browser edition: with the sign-in only, a secret gist of the user, read back with no token', async () => {
   globalThis.SILINX_GITHUB = { api: 'https://api.github.com' };
   assert.equal(await git.gistAvailable(), false);

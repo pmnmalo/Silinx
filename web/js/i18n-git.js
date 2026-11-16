@@ -52,6 +52,15 @@ export const GIT_PT = {
   'Generate the token, copy it and paste it here.': 'Gere o token, copie-o e cole-o aqui.',
   'Account permissions: Gists, Read and write (for Share Project\'s short links).': 'Permissões da conta: Gists, Read and write (para as ligações curtas de Partilhar Projeto).',
   'Sign In': 'Iniciar Sessão',
+  // Sign out of GitHub asks first (#4256)
+  'Sign Out': 'Terminar Sessão',
+  'Silinx forgets the personal access token in this browser. Signing in again needs that token (keep a copy of it) or a new one.':
+    'O Silinx esquece o token de acesso pessoal neste navegador. Para voltar a iniciar sessão é preciso esse token (guarde uma cópia dele) ou um novo.',
+  'The token stays valid on GitHub until it is deleted there:': 'O token continua válido no GitHub até ser apagado lá:',
+  'Silinx forgets the sign-in in this browser. You can sign in again at any time with Sign in with GitHub…':
+    'O Silinx esquece a sessão neste navegador. Pode voltar a iniciar sessão a qualquer momento com Iniciar sessão no GitHub…',
+  'Silinx\'s authorization stays on GitHub until it is revoked under Settings ▸ Applications:':
+    'A autorização do Silinx continua no GitHub até ser revogada em Settings ▸ Applications:',
   // the Collaboration tab (#4215, web/js/collab-tab.js)
   'Collaboration': 'Colaboração', 'Repository': 'Repositório', 'Changes': 'Alterações', 'Branch:': 'Ramo:',
   'No project open.': 'Nenhum projeto aberto.', 'The project is not in a git repository.': 'O projeto não está num repositório git.',

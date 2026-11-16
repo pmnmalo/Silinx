@@ -548,7 +548,9 @@ uiTest('#3530 regression, standalone edition (file://): Sign in with GitHub… k
   assert.equal(await page.eval(() => sessionStorage.getItem('silinx.github-token')), TOKEN);
   assert.ok(!(await page.eval(() => window.__console())).includes(TOKEN));
   await page.menu('File', 'Sign out of GitHub');
-  await page.waitConsole(/Signed out of GitHub: this browser no longer keeps the sign-in\./);
+  await page.waitDialog('Sign out of GitHub');
+  await page.dialogButton('Sign Out');
+  await page.waitConsole(/Signed out of GitHub: this browser no longer keeps the personal access token, which stays valid on GitHub until it is deleted at https:\/\/github\.com\/settings\/personal-access-tokens\./);
   assert.equal(await page.eval(() => sessionStorage.getItem('silinx.github-token')), null);
   // in Portuguese: the tip and the hint translated
   await page.eval(() => localStorage.setItem('silinx.lang', 'pt'));

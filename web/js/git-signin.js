@@ -6,8 +6,9 @@
 // sign-in is kept in this browser (Remember me, ticked by default), or in this tab until it closes when the user unticks
 // it (#3356); the single file opened from the disk (file:) keeps it in this tab only, Remember me unticked and disabled,
 // its reason its tip (#3530: every page opened from the disk reads that browser's storage); the device
-// flow asks for the public repositories only, the private ones when the user ticks them. Sign out of GitHub forgets the
-// sign-in. Every message goes to the console; the token is never in one.
+// flow asks for the public repositories only, the private ones when the user ticks them. Sign out of GitHub asks first (#4256:
+// what is forgotten, and that GitHub keeps the token or the authorization until it is revoked there, by how the user
+// signed in), then forgets the sign-in. Every message goes to the console; the token is never in one.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { log } from './console.js';
@@ -112,8 +113,39 @@ async function deviceDialog() {
   return true;
 }
 
-/** Sign out of GitHub: the sign-in forgotten. */
+// Sign out of GitHub (#4256): what it forgets and where GitHub's side is revoked, by how the user signed in
+const TOKENS = 'https://github.com/settings/personal-access-tokens';
+const APPS = 'https://github.com/settings/applications';
+const ext = href => h('a', { href, target: '_blank', rel: 'noopener noreferrer', 'data-no-i18n': '' }, href);
+const OUT = {
+  token: {
+    forget: 'Silinx forgets the personal access token in this browser. Signing in again needs that token (keep a copy of it) or a new one.',
+    keep: 'The token stays valid on GitHub until it is deleted there:', href: TOKENS,
+    done: `Signed out of GitHub: this browser no longer keeps the personal access token, which stays valid on GitHub until it is deleted at ${TOKENS}.`,
+  },
+  device: {
+    forget: 'Silinx forgets the sign-in in this browser. You can sign in again at any time with Sign in with GitHub…',
+    keep: 'Silinx\'s authorization stays on GitHub until it is revoked under Settings ▸ Applications:', href: APPS,
+    done: `Signed out of GitHub: this browser no longer keeps the sign-in, whose authorization stays on GitHub until it is revoked at ${APPS}.`,
+  },
+};
+/** How the sign-in kept was made: 'token' or 'device' (the edition's way for one kept before it was recorded). */
+const signedInWay = () => (api.githubSignedInWay?.() || api.githubSignInWay()) === 'device' ? 'device' : 'token';
+/** The console's line once signed out, by how the user had signed in. */
+const signedOutLine = way => OUT[way === 'device' ? 'device' : 'token'].done;
+
+/** Sign out of GitHub: asked first (Cancel the default), then the sign-in forgotten -> true once signed out. */
 export async function signOut() {
+  const way = signedInWay(), t = OUT[way];
+  const ok = await dialog({
+    title: 'Sign out of GitHub', width: 480, className: 'git-sign-out',
+    body: h('div', { class: 'msg msg-question' }, h('div', { class: 'msg-icon' }, '?'), h('div', { class: 'msg-text' },
+      h('div', { class: 'git-sign-out-forget' }, t.forget),
+      h('div', { class: 'git-sign-out-keep', style: { marginTop: '8px' } }, t.keep, ' ', ext(t.href)))),
+    buttons: [{ label: 'Sign Out', value: true }, { label: 'Cancel', value: false, primary: true }],
+  });
+  if (!ok) { log('Sign out of GitHub was cancelled: still signed in.', 'info'); return false; }
   await api.githubSignOut();
-  log('Signed out of GitHub: this browser no longer keeps the sign-in.', 'ok');
+  log(signedOutLine(way), 'ok');
+  return true;
 }

@@ -144,9 +144,11 @@ uiTest('#3196 the browser edition: Open from Repository…, Sign in with GitHub�
   for (const r of gh.requests) assert.ok(!r.url.includes(gh.token), r.url);
   assert.ok(gh.requests.some((r) => r.headers.authorization === `Bearer ${gh.token}`));
   assert.ok(!(await page.eval(() => window.__console())).includes(gh.token));
-  // Sign out of GitHub: forgotten; the menu offers the sign-in again
+  // Sign out of GitHub: asked first (#4256), then forgotten; the menu offers the sign-in again
   await page.menu('File', 'Sign out of GitHub');
-  await page.waitConsole(/Signed out of GitHub: this browser no longer keeps the sign-in\./);
+  await page.waitDialog('Sign out of GitHub');
+  await page.dialogButton('Sign Out');
+  await page.waitConsole(/Signed out of GitHub: this browser no longer keeps the sign-in, whose authorization stays on GitHub until it is revoked at https:\/\/github\.com\/settings\/applications\./);
   assert.deepEqual(await page.eval(() => [sessionStorage.getItem('silinx.github-token'), localStorage.getItem('silinx.github-token')]), [null, null]);
   await page.menu('File', 'Sign in with GitHub…');
   await page.waitDialog('Sign in with GitHub');
@@ -197,6 +199,8 @@ uiTest('#3196 the browser edition in Portuguese: the Git commands; Initialize Re
   await page.waitFor(() => !document.querySelector('#hier .git-mark'), [], { what: 'the marks gone' });
   assert.deepEqual(Object.keys(gh.filesAt('pmalo/fresh', 'main')).sort(), ['.gitignore', 'constraints/gates.ucf', 'silinx.json', 'sim/tb_gates.vhd', 'src/gates.sch.json', 'src/gates.vhd']);
   await ptMenu(page, 'Terminar sessão no GitHub', 'Sign out of GitHub');
+  await page.waitDialog('Terminar sessão no GitHub');
+  await page.dialogButton('Terminar Sessão');
   await page.waitConsole(/Signed out of GitHub/);
   // no OAuth App nor relay set up (the placeholders): the sign-in is a pasted token, its steps and permissions said
   await ptMenu(page, 'Iniciar sessão no GitHub…', 'Sign in with GitHub…');
@@ -290,6 +294,8 @@ uiTest('#3534 the browser edition: Sign in with GitHub… on the Start page and 
   assert.ok((await startLinks(page)).includes('Initialize Repository…'));
   // signed out (the Git submenu's): back, in Portuguese (the page loaded again)
   await page.menu('File', 'Sign out of GitHub');
+  await page.waitDialog('Sign out of GitHub');
+  await page.dialogButton('Sign Out');
   await page.waitConsole(/Signed out of GitHub/);
   await page.eval(() => localStorage.setItem('silinx.lang', 'pt'));
   await boot(page, { clientId: 'REPLACE-ME-with-the-client-ID-of-Silinx-GitHub-OAuth-App' });

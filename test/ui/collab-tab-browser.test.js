@@ -129,6 +129,8 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from Repository…,
     assert.deepEqual(await boxOf(page, 'Alterações'), ['Nenhuma alteração desde o último commit.']);
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab] .tab-lbl').textContent), 'Colaboração');
     await tabCommand(page, 'Terminar sessão no GitHub');
+    await page.waitDialog('Terminar sessão no GitHub');
+    await page.dialogButton('Terminar Sessão');
     await waitBox(page, 'GitHub', ['Sem sessão iniciada no GitHub.', 'Iniciar sessão no GitHub…', 'Verificações do GitHub (Checks)'], 'signed out');
   } finally {
     await page.eval(() => localStorage.removeItem('silinx.lang'));
