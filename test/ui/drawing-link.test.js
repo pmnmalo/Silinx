@@ -35,12 +35,13 @@ async function untilSaved(pj, file, ok, what, timeout = 15000) {
 }
 // the view of the open editor (its pan and zoom), from its viewport's transform
 const view = (page, vp) => page.eval((s) => document.querySelector(s).getAttribute('transform'), `${D} ${vp}`);
-// zoomed in at the middle of the drawing, as by the mouse wheel (the view then is not the fitted one)
+// zoomed in at the middle of the drawing, as by a trackpad's pinch, by 10 % (#4291: as smoothly as the fingers, by
+// exp(-deltaY · 0.01); the view then is not the fitted one)
 async function zoomIn(page, canvas, vp) {
   const was = await view(page, vp);
   await page.eval((s) => {
     const svg = document.querySelector(s), r = svg.getBoundingClientRect();
-    svg.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
+    svg.dispatchEvent(new WheelEvent('wheel', { deltaY: -10, ctrlKey: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
   }, `${D} ${canvas}`);
   await page.waitFor((s, w) => document.querySelector(s).getAttribute('transform') !== w, [`${D} ${vp}`, was], { what: 'zoomed in' });
   return view(page, vp);

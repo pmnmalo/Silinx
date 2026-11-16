@@ -4,7 +4,7 @@
 // edit a name or a condition, and the editor's keys. A transition is drawn as a stroke (#3286): its preview is the
 // path drawn, and the arc takes its shape (core/fsm-stroke.js: a bend, a self-loop's angle).
 import { pasteFromKey } from './clipboard.js';
-import { twoFingerView } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 import { radiusOf, sv } from './fsm-editor.js';
 import { fitStroke, snapAngle, snapBend } from '/core/fsm-stroke.js';
 
@@ -188,7 +188,6 @@ export function mountFsmPointer(ctx) {
     const s = addState(toWorld(ev.clientX, ev.clientY));
     setTimeout(() => editState(s), 0);
   }
-  function onWheel(ev) { ev.preventDefault(); zoomAt(ev.deltaY < 0 ? 1.1 : 1 / 1.1, ev.clientX, ev.clientY); }
   function onKeyDown(ev) {
     if (ev.target.closest('input, textarea, select')) return;
     const mod = ev.ctrlKey || ev.metaKey;
@@ -209,12 +208,12 @@ export function mountFsmPointer(ctx) {
     else if (k === 'Escape' && tool() !== 'select') setTool('select');   // (back to the arrow, #3971)
     else if (k === 'Escape' && sel()) { setSel(null); render(); renderSide(); }
   }
-  twoFingerView(svg, { cancel: cancelDrag, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt });
+  // (the schematic's gestures, #4291: the wheel's and the pinch's smooth zoom, the trackpad's pan, Space or the middle button)
+  viewGestures(svg, { cancel: cancelDrag, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt, keyEl: root });
   svg.addEventListener('pointerdown', onPointerDown);
   svg.addEventListener('pointermove', onPointerMove);
   svg.addEventListener('pointerup', onPointerUp);
   svg.addEventListener('pointercancel', onPointerUp);
   svg.addEventListener('dblclick', onDblClick);
-  svg.addEventListener('wheel', onWheel, { passive: false });
   root.addEventListener('keydown', onKeyDown);
 }

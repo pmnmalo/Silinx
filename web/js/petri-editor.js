@@ -20,7 +20,8 @@
 // its tools; its problems (`onProblems`, after every change; `onCheck`, its Check's: the token game's too, #2803) and its messages (`onMessage`: an arc that cannot be,
 // a PNML not read, a transition not enabled) go to the console (drawings.js, editor-problems.js; #2718).
 
-import { h, linkModel, linkSnapshot, twoFingerView } from './ui.js';
+import { h, linkModel, linkSnapshot } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 import { mountSideFold } from './side-fold.js';
 import { sv } from './dom.js';
 import { normalizePetri, newPetri, fire } from '/core/petri.js';
@@ -189,8 +190,9 @@ export function mountPetriEditor(container, opts = {}) {
 
   // ---------------------------------------------------------------- mouse and keys
   const hit = e => { const g = e.target.closest?.('[data-kind]'); return g ? { kind: g.dataset.kind, id: g.dataset.id } : null; };
-  // a second finger (#674): what the first one started undone, the selection as it was
-  twoFingerView(svg, {
+  // the schematic's gestures (#4291: the wheel's and the pinch's smooth zoom, the trackpad's pan, Space or the middle
+  // button); a second finger (#674): what the first one started undone, the selection as it was
+  viewGestures(svg, {
     cancel: () => {
       const d = drag;
       drag = null;
@@ -200,8 +202,8 @@ export function mountPetriEditor(container, opts = {}) {
       if ('sel0' in d) sel = d.sel0;
       render();
     },
-    pan: (dx, dy) => { view.tx += dx; view.ty += dy; applyView(); },
-    zoom: zoomAt,
+    pan: (dx, dy) => { fitted = true; view.tx += dx; view.ty += dy; applyView(); },
+    zoom: zoomAt, keyEl: root,
   });
   svg.addEventListener('pointerdown', e => {
     root.focus({ preventScroll: true });
@@ -248,7 +250,6 @@ export function mountPetriEditor(container, opts = {}) {
   }
   // (the toolbar's and the keys': about the middle of the canvas)
   function zoomBtn(f) { const r = svg.getBoundingClientRect(); zoomAt(f, r.left + r.width / 2, r.top + r.height / 2); }
-  svg.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX, e.clientY); }, { passive: false });
   root.addEventListener('keydown', e => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();

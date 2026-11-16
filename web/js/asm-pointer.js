@@ -3,7 +3,7 @@
 // route), on the background (pan with Space or the middle button, a rubber band), the second finger's zoom (#674),
 // the wheel, the double clicks, the context menu, and the editor's keys.
 import { pasteFromKey } from './clipboard.js';
-import { twoFingerView } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 import { GRID, pathD, portGeom, routeEdge } from './asm-editor.js';
 
 /** { ro, tryInitialFit } of mountAsmEditor (M(), drag(), fitted(), sel(), spaceDown(), view(): its current values). */
@@ -182,12 +182,6 @@ export function mountAsmPointer(ctx) {
     setTimeout(() => { const f = selSection.querySelector('[data-focus]'); f?.focus(); f?.select?.(); }, 0);
   }
 
-  function onWheel(ev) {
-    ev.preventDefault();
-    const f = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015));
-    zoomAt(f, ev.clientX, ev.clientY);
-  }
-
   const isEditable = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
   function onKeyDown(ev) {
     if (isEditable(ev.target)) return;
@@ -221,13 +215,13 @@ export function mountAsmPointer(ctx) {
     if (ev.key === ' ') { setSpaceDown(false); svg.classList.remove('space'); }
   }
 
-  twoFingerView(svg, { cancel: cancelDrag, pan: (dx, dy) => { setFitted(true); view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt });
+  // (the schematic's gestures, #4291: the wheel's and the pinch's smooth zoom, the trackpad's pan; Space and the middle button: its own)
+  viewGestures(svg, { cancel: cancelDrag, pan: (dx, dy) => { setFitted(true); view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt, dragPan: false });
   svg.addEventListener('pointerdown', onPointerDown);
   svg.addEventListener('pointermove', onPointerMove);
   svg.addEventListener('pointerup', onPointerUp);
   svg.addEventListener('pointercancel', onPointerUp);
   svg.addEventListener('dblclick', onDblClick);
-  svg.addEventListener('wheel', onWheel, { passive: false });
   root.addEventListener('keydown', onKeyDown);
   root.addEventListener('keyup', onKeyUp);
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { if (!fitted()) { setFitted(tryInitialFit()); } }) : null;

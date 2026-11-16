@@ -19,6 +19,7 @@ import { symbolSvg, SVGNS } from './sch-svg.js';
 import { instanceParams, newSymbol, normalizeSymbol, reconcile, symbolDef, symbolPins } from '/core/schdoc.js';
 import { mountSymbolSide } from './symbol-side.js';
 import { clone } from '/core/util.js';
+import { viewGestures } from './view-gestures.js';
 const HOW = 'Click a pin to select it; drag it to another place or side; ◀ ▶ or the arrow keys move it along its side';
 const M = 40;   // (the margin around the symbol: its pins' names)
 
@@ -156,16 +157,40 @@ export function mountSymbolEditor(container, opts = {}) {
   const toLocal = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; const m = svg.getScreenCTM(); return m ? p.matrixTransform(m.inverse()) : { x: 0, y: 0 }; };
   // (no text of the drawing selected by a drag, #3789: the pins' names are drawn, not text to select)
   svg.addEventListener('mousedown', e => e.preventDefault());
+  // (the schematic's gestures, #4291: the wheel's and the pinch's smooth zoom about the pointer, a trackpad's scroll,
+  // two fingers, Space or the middle button pan; the drawing scrolled in its frame)
+  // (the scroll's whole pixels: what each step leaves over goes with the next, the drag kept under the pointer)
+  const rest = { x: 0, y: 0 };
+  const scrollBy = (k, d) => {
+    const prop = k === 'x' ? 'scrollLeft' : 'scrollTop', to = canvasWrap[prop] - d + rest[k];
+    canvasWrap[prop] = to;
+    rest[k] = Math.max(-1, Math.min(1, to - canvasWrap[prop]));
+  };
+  const pan = (dx, dy) => { scrollBy('x', dx); scrollBy('y', dy); };
+  viewGestures(canvasWrap, {
+    cancel: () => { if (dragging) { dragging = null; render(); } },
+    pan,
+    zoom: (f, cx, cy) => {
+      const r0 = svg.getBoundingClientRect(), z0 = zoom, px = (cx - r0.left) / z0, py = (cy - r0.top) / z0;
+      setZoom(zoom * f);
+      const r1 = svg.getBoundingClientRect();
+      pan(cx - r1.left - px * zoom, cy - r1.top - py * zoom);
+    },
+    keyEl: root,
+  });
   svg.addEventListener('pointerdown', e => {
     e.preventDefault();
     const c = e.target.closest?.('.sy-pin');
     sel = c ? c.dataset.pin : null;
-    if (c && !readOnly) { dragging = { name: sel, id: e.pointerId }; svg.setPointerCapture?.(e.pointerId); }
+    if (c && !readOnly) dragging = { name: sel, id: e.pointerId };
+    else if (!c) dragging = { pan: true, id: e.pointerId, x: e.clientX, y: e.clientY };   // (the background: the view dragged)
+    svg.setPointerCapture?.(e.pointerId);
     render();
   });
   // while a pin is dragged: its handle under the pointer, and a mark where it will go on its side (#3789)
   svg.addEventListener('pointermove', e => {
     if (!dragging) return;
+    if (dragging.pan) { pan(e.clientX - dragging.x, e.clientY - dragging.y); dragging.x = e.clientX; dragging.y = e.clientY; return; }
     const pt = toLocal(e), s = instance(), def = symbolDef(s, s.modules), t = target(dragging.name, pt, def, def.body);
     svg.querySelectorAll('.sy-ghost, .sy-mark').forEach(x => x.remove());
     const node = (tag, attrs) => { const n = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v)); svg.append(n); };
@@ -175,6 +200,7 @@ export function mountSymbolEditor(container, opts = {}) {
   svg.addEventListener('pointerup', e => {
     if (!dragging) return;
     const d = dragging; dragging = null;
+    if (d.pan) return;
     const pt = toLocal(e), s = instance(), def = symbolDef(s, s.modules);
     const pin = def.pins.find(q => q.name === d.name);
     if (pin && Math.hypot(pt.x - pin.x, pt.y - pin.y) < 8) { render(); return; }   // (a click: only selected)

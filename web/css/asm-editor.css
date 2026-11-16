@@ -94,6 +94,9 @@
 .asm-editor .asm-canvas.adding { cursor: crosshair; }
 .asm-editor .asm-canvas.panning, .asm-editor .asm-canvas.space { cursor: grab; }
 .asm-editor .asm-canvas.panning { cursor: grabbing; }
+/* (Space held down, the view dragged: view-gestures.js, #4291) */
+.asm-editor .pan-ready, .asm-editor .pan-ready * { cursor: grab !important; }
+.asm-editor .panning, .asm-editor .panning * { cursor: grabbing !important; }
 .asm-editor .asm-canvas.connecting { cursor: crosshair; }
 .asm-editor .asm-hint {
   position: absolute; left: 10px; bottom: 8px; right: 10px; pointer-events: none;

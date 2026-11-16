@@ -447,8 +447,12 @@ editors and the drawings, simulation, and the Silinx toolchain (synthesis, place
   on a Design-pane row or badge, a document tab, a Files view row, a symbol of the schematic
   editor's list or the SSim wave window; the keyboard's context-menu key (or Shift+F10) opens the
   Design pane's too.
-- **Two fingers move a drawing, a pinch zooms it** (the schematic, ASM chart, state diagram and
-  Petri net editors, the SSim wave window); one finger selects and moves its parts.
+- **Two fingers move a drawing, a pinch zooms it** (the schematic, circuit, ASM chart, state diagram,
+  Petri net and symbol editors, the RTL schematic, the FPGA view, the SSim wave window); one finger
+  selects and moves its parts.
+- **Every drawing zooms and pans as the schematic does** (#4291): the mouse wheel, Ctrl + wheel and a
+  trackpad's pinch zoom about the pointer, smoothly; a trackpad's two-finger scroll pans (Shift + wheel:
+  across); the middle button, or Space held down, drags the drawing.
 - **Landscape or portrait**: in landscape the layout is the desktop's. In portrait (1024 px wide or
   less) the Design pane is a drawer, opened by the button at the left of the header. The drawing
   editors' properties (and the schematic's symbols) open over the drawing with their toolbar's

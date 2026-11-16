@@ -12,6 +12,7 @@
 //   v.showPath({ insts: [name…], nets: [name…] } | null)   // a timing path (#3178): its sites lit, its nets drawn
 // Styles: web/css/fpgaview.css.
 import { h } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 import { mountSiteDetails } from './fpgaview-details.js';
 import { mountSideFold } from './side-fold.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
@@ -377,8 +378,15 @@ export function mountFpgaView(el, { model, top = '', entities = new Map(), onSel
     apply();
   }
   const toChip = e => { const r = svg.getBoundingClientRect(); return [vb.x + ((e.clientX - r.left) / r.width) * vb.w, vb.y + ((e.clientY - r.top) / r.height) * vb.h]; };
-  svg.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = toChip(e); zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, x, y); }, { passive: false });
   let drag = null;
+  // the schematic editor's gestures (#4291): the wheel's and the pinch's smooth zoom, a trackpad's scroll pans, two
+  // fingers on a touch screen pan and pinch; the drag: below
+  viewGestures(svg, {
+    cancel: () => { drag = null; canvas.classList.remove('panning'); },
+    pan: (dx, dy) => { const r = svg.getBoundingClientRect(); vb.x -= (dx / r.width) * vb.w; vb.y -= (dy / r.height) * vb.h; apply(); },
+    zoom: (f, cx, cy) => { const [x, y] = toChip({ clientX: cx, clientY: cy }); zoom(f, x, y); },
+    dragPan: false,
+  });
   // the site under the press (with the pointer captured, the release is reported on the svg)
   svg.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y, moved: false, i: e.target.dataset?.i }; svg.setPointerCapture(e.pointerId); });
   svg.addEventListener('pointermove', e => {

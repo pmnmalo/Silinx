@@ -685,13 +685,15 @@ export function mountSchematic(container, opts = {}) {
     if (n.kind === 'inst' && n.ref?.inst) onOpenInstance?.(n.ref.inst);
     else if (n.ref?.file && n.kind !== 'in' && n.kind !== 'out' && n.kind !== 'inout') onOpenSource?.({ file: n.ref.file, line: n.ref.line || 1 });
   });
-  svg.addEventListener('wheel', e => {
-    e.preventDefault();
-    hideTip();
-    const r = container.getBoundingClientRect();
-    const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-    zoomAt(Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0018)), e.clientX - r.left, e.clientY - r.top);
-  }, { passive: false });
+  // the schematic editor's gestures (#4291): the wheel's and the pinch's smooth zoom, a trackpad's scroll pans, two
+  // fingers on a touch screen pan and pinch (what the first one started dropped); the drag: above. (Loaded when the
+  // view is mounted: the module reads the page's events, and Node's tests import this one for its shapes.)
+  import('./view-gestures.js').then(({ viewGestures }) => !destroyed && viewGestures(svg, {
+    cancel: () => { drag = null; container.classList.remove('panning'); },
+    pan: (dx, dy) => { hideTip(); autoFit = false; view.tx += dx; view.ty += dy; applyView(); },
+    zoom: (f, cx, cy) => { hideTip(); const r = container.getBoundingClientRect(); zoomAt(f, cx - r.left, cy - r.top); },
+    dragPan: false,
+  }));
   container.addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('input,textarea,select')) return;
     if (e.key === 'f' || e.key === 'F') fit();

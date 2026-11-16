@@ -13,7 +13,8 @@
 // Undo takes back the last stroke, Clear or drawing loaded (#1749), Redo does it again; a new stroke ends what can be
 // redone (#1092). devices(): what drew the strokes (pen, touch, mouse), for a drawing kept (#1749).
 // Styles: web/css/ink.css.
-import { h, twoFingerView } from './ui.js';
+import { h } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 
 const ZOOM = [0.25, 4];
 // the eraser's radius (screen px; a line is 3 px wide)
@@ -173,13 +174,14 @@ export function mountInkPad(host, { onStroke } = {}) {
     draw();
     changed();
   };
-  // two fingers: the view's (wired first: the first finger's stroke dropped when the second comes)
-  twoFingerView(canvas, {
+  // two fingers: the view's (wired first: the first finger's stroke dropped when the second comes); the wheel's and a
+  // trackpad's the schematic's (#4291: its smooth zoom, a trackpad's scroll pans); the middle button and Move: below
+  viewGestures(canvas, {
     cancel: () => { if (cur) { strokes.splice(strokes.indexOf(cur.pts), 1); cur = null; draw(); } },
     pan: (dx, dy) => { v.ox += dx; v.oy += dy; draw(); },
     zoom: (f, cx, cy) => zoomAt(f, cx, cy),
+    dragPan: false,
   });
-  canvas.addEventListener('wheel', e => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
   canvas.addEventListener('pointerdown', down);
   canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up);

@@ -5,8 +5,8 @@
 // the wire grabbed on its curve. A junction dot (#3806): selected, dragged (sch-junction.js).
 import { GRID, defaultParams, instanceParams, normalizeDoc, splitWiresAt, symbolPins } from '/core/schdoc.js';
 import { connectionsKept, connectivity, placementClashes, rerouteAfterMove } from '/core/schroute.js';
-import { closeMenus, twoFingerView } from './ui.js';
-import { wheelView } from './canvas-gestures.js';
+import { closeMenus } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 import { untangleNew } from '/core/schpath.js';
 import { clone, snap } from './sch-editor.js';
 import { mountStroke } from './sch-stroke.js';
@@ -221,8 +221,8 @@ export function mountSchMouse(ctx) {
       else setTimeout(() => propBody.querySelector('input')?.focus(), 0);
     } else setTimeout(() => propBody.querySelector('input')?.focus(), 0);
   }
-  const onWheel = e => wheelView(e, { zoom: zoomAt, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); } });
-  twoFingerView(svg, { cancel: cancelDrag, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt });
+  // the wheel and two fingers (view-gestures.js, every drawing's, #4291); Space and the middle button: onDown's
+  viewGestures(svg, { cancel: cancelDrag, pan: (dx, dy) => { view().tx += dx; view().ty += dy; applyView(); }, zoom: zoomAt, dragPan: false });
   svg.addEventListener('pointerdown', onDown);
   // (a symbol's, an I/O marker's, a net name's menu: Rename…, #1546)
   svg.addEventListener('contextmenu', e => { e.preventDefault(); contextMenu(e, itemAt(e.target)); });
@@ -236,7 +236,6 @@ export function mountSchMouse(ctx) {
   });
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
-  svg.addEventListener('wheel', onWheel, { passive: false });
   svg.addEventListener('pointerleave', () => { live()?.hideTip(); setHoverPin(null); if (tool() !== 'select') renderOverlay(); });
   // drag & drop from the palette
   canvas.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('text/x-silinx-symbol')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });

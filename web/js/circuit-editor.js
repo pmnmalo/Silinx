@@ -13,7 +13,8 @@
 // ended on a pin or a hole. Try it runs it live (core/circuit-sim.js): a click flips a logic switch, a press holds a
 // button; each pin shows its level, the LEDs light. Its edits: core/circuit-edit.js (the MCP server's edit_circuit's);
 // its problems after every change (`onProblems`) and on Check (`onCheck`), its messages (`onMessage`) in the console.
-import { h, twoFingerView } from './ui.js';
+import { h } from './ui.js';
+import { viewGestures } from './view-gestures.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
@@ -194,10 +195,11 @@ export function mountCircuitEditor(container, opts = {}) {
   // ---------------------------------------------------------------- mouse and keys
   // (what is under the pointer: a part or a wire, and a switch's, a button's or a DIP lever's input there)
   const hit = (e) => { const g = e.target.closest?.('[data-kind]'), i = e.target.closest?.('[data-input]'); return g ? { kind: g.dataset.kind, id: g.dataset.id, input: i?.dataset.input, lever: Number(i?.dataset.lever ?? 0) } : null; };
-  twoFingerView(svg, {
+  // (the schematic's gestures, #4291: the wheel's and the pinch's smooth zoom, the trackpad's pan, Space or the middle button)
+  viewGestures(svg, {
     cancel: () => { const d = drag; drag = null; if (d?.kind === 'move') { M = normalizeCircuit(JSON.parse(hist[hi])); render(); } },
-    pan: (dx, dy) => { view.tx += dx; view.ty += dy; applyView(); },
-    zoom: zoomAt,
+    pan: (dx, dy) => { fitted = true; view.tx += dx; view.ty += dy; applyView(); },
+    zoom: (...a) => zoomAt(...a), keyEl: root,
   });
   svg.addEventListener('pointerdown', (e) => {
     root.focus({ preventScroll: true });
@@ -259,7 +261,6 @@ export function mountCircuitEditor(container, opts = {}) {
     applyView();
   }
   function zoomBtn(f) { const r = svg.getBoundingClientRect(); zoomAt(f, r.left + r.width / 2, r.top + r.height / 2); }
-  svg.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX, e.clientY); }, { passive: false });
   root.addEventListener('keydown', (e) => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
