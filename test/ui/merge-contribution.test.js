@@ -71,7 +71,9 @@ uiTest('#4206 Merge Contribution…: the files that differ and what is done with
   assert.equal(JSON.parse(await readWs(env, 'Teacher', FSM)).transitions[0].cond, 'night and req');
   assert.match(await readWs(env, 'Teacher', 'src/sevenseg.v'), /\/\/ ana\n$/);
   assert.equal(await readWs(env, 'Teacher', 'src/timer.vhd'), timer);
-  assert.equal(await page.eval(() => [window.Silinx.project.trusted, window.Silinx.project.madeBy].join()), 'false,merge');
+  // (the project read again after the merge's lines: waited for, #4257's CI)
+  await page.waitFor(() => [window.Silinx.project?.trusted, window.Silinx.project?.madeBy].join() === 'false,merge', [], { what: 'the project untrusted by the merge' })
+    .catch(async (e) => { assert.equal(await page.eval(() => [window.Silinx.project.trusted, window.Silinx.project.madeBy].join()), 'false,merge', e.message); throw e; });
   // Undo Merge: the project as it was
   await page.menu('Project', 'Undo Merge');
   await page.waitConsole(/^Undid the last merge of 'Teacher': 3 file\(s\) put back, 0 removed\.$/m);

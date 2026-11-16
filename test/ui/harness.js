@@ -499,6 +499,7 @@ class PageBase {
     if (name === 'start' && await this.eval(() => document.documentElement.hasAttribute('data-no-project'))) {
       if (await this.eval(() => !document.getElementById('start-page').getClientRects().length && !!document.getElementById('drawer-btn')?.getClientRects().length)) await this.click('#drawer-btn');
       await this.waitFor(() => !!document.getElementById('start-page').getClientRects().length, [], { what: 'the Start page' });
+      await this.eval(async () => { window.SilinxApp.showLeftPage('start'); await window.SilinxApp.renderStartPage(); });   // (drawn as its tab's click does)
       return;
     }
     // (a narrow screen: the tabs are the drawer's top row, opened by its button)
