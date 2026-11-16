@@ -19,7 +19,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 170
+    # GitHub's limit for a job: the wait for CI below takes most of it (#4236)
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,9 +30,11 @@ jobs:
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - uses: ./.github/actions/setup
       # CI on this commit, started by the same tag and waited for (the unit tests on Windows take about
-      # 45 minutes, a queue more); a failed run, or none: no release
+      # 45 minutes, a queue more; the tags' runs go one at a time, so another tag's run first, and a re-run of the
+      # failed jobs after, its latest attempt: hours, #4236); a failed run not run again within 30 minutes, or none:
+      # no release; past 340 minutes (the job's limit, less the packaging), run the Release again once CI has passed
       - name: CI passed
-        run: node scripts/wait-for-ci.mjs "$GITHUB_SHA" --timeout 150 --appear 10
+        run: node scripts/wait-for-ci.mjs "$GITHUB_SHA" --timeout 340 --appear 10 --rerun 30
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Build the single-file edition

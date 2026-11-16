@@ -44,9 +44,10 @@ test('#1681 silinx-fpga release: the commit on main, its version and changelog, 
   assert.match(versionStep, /require\('\.\/packages\/silinx-fpga\/package\.json'\)\.version/);
   assert.match(versionStep, /node scripts\/sync-version\.mjs --package silinx-fpga\n/);
   const [ci, ciStep] = step(/name: CI passed\n/);
-  assert.match(ciStep, /run: node scripts\/wait-for-ci\.mjs "\$GITHUB_SHA" --timeout (\d+) --appear \d+\n\s+env:\n\s+GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(ciStep, /run: node scripts\/wait-for-ci\.mjs "\$GITHUB_SHA" --timeout (\d+) --appear \d+ --rerun \d+\n\s+env:\n\s+GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
   const wait = +/--timeout (\d+)/.exec(ciStep)[1], job = +/\n {4}timeout-minutes: (\d+)\n/.exec(jobs.build)[1];
   assert.ok(job >= wait + 10, `${job} >= ${wait} + 10`);
+  assert.ok(job <= 360 && wait >= 300, `${wait} minutes' wait in a job of ${job} (#4236)`);
   const [pack, packStep] = step(/name: Pack\n/);
   assert.match(packStep, /npm pack -w silinx-fpga --ignore-scripts --pack-destination out/);
   const [upload, uploadStep, n] = step(/uses: actions\/upload-artifact@[0-9a-f]{40} /);

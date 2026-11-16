@@ -20,7 +20,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 170
+    # GitHub's limit for a job: the wait for CI below takes most of it (#4236)
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,9 +35,10 @@ jobs:
           V="${GITHUB_REF_NAME#silinx-fpga-v}"
           test "$(node -p "require('./packages/silinx-fpga/package.json').version")" = "$V" || { echo "packages/silinx-fpga/package.json is not $V"; exit 1; }
           node scripts/sync-version.mjs --package silinx-fpga
-      # CI on this commit, started by the same tag and waited for; a failed run, or none: no release
+      # CI on this commit, started by the same tag and waited for, its latest attempt (another tag's run first, a
+      # re-run of the failed jobs after: hours, #4236); a failed run not run again within 30 minutes, or none: no release
       - name: CI passed
-        run: node scripts/wait-for-ci.mjs "$GITHUB_SHA" --timeout 150 --appear 10
+        run: node scripts/wait-for-ci.mjs "$GITHUB_SHA" --timeout 345 --appear 10 --rerun 30
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Pack
