@@ -3,7 +3,7 @@
 // (its .sch, the module's .sym with the pins on their sides; no .sym.json) and imported back by Import Project…:
 // the instance arrayed, drawn with the symbol, not out of date, the module's .sym.json made; Check Schematic clean; in
 // both interfaces. Its name, reg, a reserved word ISE's sch2hdl refuses: written as reg_1(3:0), said in the export's
-// warning, and imported back so (#3870, #4275). No other warnings.
+// warning, and imported back so (#3870, #4275). No other warnings: none from the import back (#4276).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -64,6 +64,7 @@ uiTest('#3828 #4275 Export Project to Xilinx ISE and Import Project back: reg(3:
     'Exported ArrIse.zip: Xilinx ISE project ArrIse.xise + its sources (2 KB).',
     "WARNING: src/top.sch: instance 'reg(3:0)' written as 'reg_1(3:0)': 'reg' is a reserved word of Verilog, which ISE's schematic refuses as a block's name",
     "WARNING: src/top.sch: 'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
+  const c1 = (await page.consoleText()).length;
   assert.match(text('src/reg1.sym'), /<pin polarity="Input" x="192" y="-320" name="d" \/>/);
 
   // and back, as a new project
@@ -80,5 +81,7 @@ uiTest('#3828 #4275 Export Project to Xilinx ISE and Import Project back: reg(3:
   assert.deepEqual([s.name, s.params.ports.map((q) => `${q.name}:${q.side}`)], ['reg_1(3:0)', ['q:W', 'ce:W', 'd:N', 'c:S']]);
   assert.equal(await page.eval((ed, id) => document.querySelector(`${ed} svg .sym[data-id="${id}"]`).classList.contains('stale'), ED, s.id), false, 'up to date');
   assert.doesNotMatch(await check(page), /ERROR|WARNING|out of date/);
+  // (the import back and the check: no warnings, a missing constraints file's among them, #4276)
+  assert.deepEqual((await page.consoleText()).slice(c1).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 180000 });
