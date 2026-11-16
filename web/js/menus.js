@@ -279,7 +279,7 @@ export async function exportProjectZip(kind = 'xilinx') {
   await saveAll();
   const title = 'Export Project';
   try {
-    const { blob, filename, warnings = [] } = await api.exportZip(S.project.name, kind);
+    const { blob, filename, warnings = [] } = await api.exportZip(S.project.name, kind, { copy: true });   // (a copy given out: its origin, #4205)
     const url = URL.createObjectURL(blob);
     downloadUrl(url, filename);
     setTimeout(() => URL.revokeObjectURL(url), 5000);

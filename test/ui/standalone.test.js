@@ -1395,6 +1395,51 @@ uiTest('#483 browser edition: a hostile zip (paths leaving the project, a broken
   assert.equal(await page.eval(() => document.getElementById('err-count').textContent), '', 'no error');
 }, { url: () => 'about:blank' });
 
+// #4205: the browser edition's copies: Import Project… of a copy (its origin, its ancestor) gives it an id of its own,
+// keeps its origin and its ancestor apart (the browser's storage, no project file); Export Project (.zip) as Silinx of
+// it carries its first origin and ancestor; a project of the browser's own given out: its id made, its origin, its
+// ancestor carried and kept. No warning.
+uiTest('#4205 browser edition: a copy imported keeps its origin and ancestor apart; given out again, the first origin; a project of its own given out, its id and ancestor', E, async (page) => {
+  const { giveCopy, snapshotText } = await import('../../core/project-rev.js');
+  const top = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity top is port (a : in std_logic; y : out std_logic); end;\narchitecture rtl of top is begin y <= a; end;\n';
+  const c = await giveCopy({ name: 'Teacher', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] }, { 'src/top.vhd': top });
+  const codec = { deflate: (d) => zlib.deflateRawSync(d), inflate: (d) => zlib.inflateRawSync(d) };
+  const zipFile = path.join(env.tmp, 'teacher-silinx.zip');
+  await fs.writeFile(zipFile, await createZip([{ path: 'silinx.json', data: JSON.stringify(c.copy) }, { path: 'src/top.vhd', data: top }, { path: 'silinx.base.json', data: snapshotText(c.snapshot) }], codec));
+  const unzip = async (f) => Object.fromEntries((await readZip(new Uint8Array(await fs.readFile(f)), codec)).map((e) => [e.path, Buffer.from(e.data).toString('utf8')]));
+  await page.goto(siteUrl);
+  await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [zipFile]);
+  await page.fill('.dlg-overlay input[type=text]', 'Student');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'Student' && document.querySelector('#hier .row'), [], { what: 'the copy open' });
+  await page.waitConsole(/Imported Silinx project 'Student'/);
+  const got = await page.eval(() => ({ id: window.Silinx.project.id, origin: window.Silinx.project.origin, tree: window.Silinx.diskTree }));
+  assert.ok(got.id && got.id !== c.base.id);
+  assert.deepEqual([got.origin, got.tree], [c.copy.origin, ['src/top.vhd']]);
+  await exportZip(page, 'silinx');
+  const back = await unzip(await waitDownload(page, 'Student-silinx.zip'));
+  assert.deepEqual(JSON.parse(back['silinx.json']).origin, c.copy.origin);
+  assert.equal(back['silinx.base.json'], snapshotText(c.snapshot));
+  // a project of the browser's own (no origin): its id made, its copy's origin, its ancestor carried
+  const own = { name: 'Mine', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] };
+  const ownZip = path.join(env.tmp, 'mine-plain.zip');
+  await fs.writeFile(ownZip, await createZip([{ path: 'silinx.json', data: JSON.stringify(own) }, { path: 'src/top.vhd', data: top }], codec));
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [ownZip]);
+  await page.fill('.dlg-overlay input[type=text]', 'Mine');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'Mine' && document.querySelector('#hier .row'), [], { what: 'the project open' });
+  await exportZip(page, 'silinx');
+  const mine = await unzip(await waitDownload(page, 'Mine-silinx.zip'));
+  const pj = JSON.parse(mine['silinx.json']), anc = JSON.parse(mine['silinx.base.json']);
+  assert.match(pj.id, /^[0-9a-f-]{36}$/);
+  assert.deepEqual([pj.origin.id, anc.id, anc.rev], [pj.id, pj.id, pj.origin.rev]);
+  assert.equal(await page.eval(() => Object.keys(localStorage).filter((k) => /snapshots:/.test(k)).length), 2);
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
+}, { url: () => 'about:blank' });
+
 // #3965: the browser edition imports a Silinx project from its folder (the folder picker, as an ISE project's), as the
 // .zip of the same project: its build folder and hidden files left out, no warning; the project as stored, and open
 uiTest('#3965 browser edition: a Silinx project imported from its folder, its build folder and hidden files left out, no warnings', E, async (page) => {

@@ -99,7 +99,7 @@ export const TRANSFER_TOOLS = [
       if (!fs.existsSync(path.dirname(file)) || !fs.statSync(path.dirname(file)).isDirectory()) throw toolError(`no folder '${path.dirname(file)}'`);
       if (fs.existsSync(file)) throw toolError(`'${file}' exists: an export does not replace a file (give another path)`);
       const { exportProjectZip } = await import('./project-zip.js');
-      const { zip, warnings } = await exportProjectZip(P, name, kind);
+      const { zip, warnings } = await exportProjectZip(P, name, kind, { copy: true });   // (a copy given out, as the menu's: #4205)
       // (a file that appeared meanwhile is not replaced either)
       try { await fsp.writeFile(file, zip, { flag: 'wx' }); } catch (e) { throw toolError(e.code === 'EEXIST' ? `'${file}' exists: an export does not replace a file (give another path)` : e.message); }
       const lines = [...warnings.map(w => `WARNING: ${w}`), `Exported '${name}' as ${KINDS[kind]}: ${file} (${zip.length} bytes).`];

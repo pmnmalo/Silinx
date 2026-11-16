@@ -12,6 +12,8 @@ import { createZip } from '../core/zip.js';
 import { gateMessages, normalizePath, requireGated } from '../core/import-gate.js';
 import { markUntrusted } from '../core/trust.js';
 import { PROJECT_FILE } from '../core/fold-name.js';
+import { ANCESTOR_FILE, giveCopy, originOf, receivedCopy, snapshotText } from '../core/project-rev.js';
+import { readSnapshot, saveSnapshot } from './project-snapshots.js';
 import { hiddenName } from './paths.js';
 import { exportCSources, exportIseSchematics, exportXise } from './xise.js';
 import { isCSource } from '../core/view-hdl.js';
@@ -28,13 +30,16 @@ export async function sourcesOf(P, name, project) {
   return out;
 }
 
-/** A project as a zip: { zip (bytes), file (its name), warnings } (the export's warnings: the schematics', the C's). */
-export async function exportProjectZip(P, name, kind = 'xilinx') {
+/** A project as a zip: { zip (bytes), file (its name), warnings } (the export's warnings: the schematics', the C's).
+ *  copy (a Silinx zip given out: Export Project, the MCP's export_project, #4205): the copy's silinx.json names its
+ *  origin, and the zip carries its ancestor (ANCESTOR_FILE), which the project keeps too (core/project-rev.js). */
+export async function exportProjectZip(P, name, kind = 'xilinx', { copy = false } = {}) {
   const project = await P.readProject(name);
   const tree = await P.fileTree(name);
   if (kind === 'silinx') {
     const entries = [{ path: 'silinx.json', data: await fs.readFile(path.join(P.projectDir(name), 'silinx.json')) }];
     for (const rel of tree) if (!/\.xise$/i.test(rel)) entries.push({ path: rel, data: await fs.readFile(P.safeJoin(P.projectDir(name), rel)) });
+    if (copy) await asCopy(P, name, entries);
     return { zip: await createZip(entries, NODE_CODEC), file: `${name}-silinx.zip`, warnings: [] };
   }
   const sources = await sourcesOf(P, name, project);
@@ -59,6 +64,19 @@ export async function exportProjectZip(P, name, kind = 'xilinx') {
   }
   entries.unshift({ path: xiseName(project), data: xml }, ...generated.map(f => ({ path: f.path, data: f.text })));
   return { zip: await createZip(entries, NODE_CODEC), file: `${name}.zip`, warnings };
+}
+
+// a Silinx zip's entries made a copy's (#4205): its silinx.json with its origin, its ancestor carried; the project's id
+// written when it had none, the snapshot kept
+async function asCopy(P, name, entries) {
+  const json = JSON.parse(Buffer.from(entries[0].data).toString('utf8'));
+  const files = Object.fromEntries(entries.slice(1).map(e => [e.path, Buffer.from(e.data).toString('utf8')]));
+  const o = originOf(json);
+  const r = await giveCopy(json, files, { kept: o ? await readSnapshot(P, name, o.rev) : null });
+  if (r.changed) await P.updateProject(name, cur => ({ ...cur, id: r.base.id }));
+  if (r.keep) await saveSnapshot(P, name, r.snapshot);
+  entries[0] = { path: 'silinx.json', data: `${JSON.stringify(r.copy, null, 2)}\n` };
+  if (r.snapshot) entries.push({ path: ANCESTOR_FILE, data: snapshotText(r.snapshot) });
 }
 
 /** A new project `name` from the entries of a zip or a folder, as the import gate let them through (core/import-gate.js
@@ -96,6 +114,7 @@ export async function importProjectEntries(P, name, gated, bad) {
   for (const e of entries) {
     const r = rel(e.path);
     if (r === null || written.has(r) || /\.xise$/i.test(r) || P.isProjectFile(r) || (xiseEntry && ISE_OUTPUT.test(r))) continue;
+    if (pjEntry && !xiseEntry && r === ANCESTOR_FILE) continue;   // (a copy's ancestor: kept apart, below, #4205)
     // the path in the project, once the root folder is taken off, by the import gate's rules again (#3405): the gate
     // checked the zip's path, p/build/top.bit, where build/ (Silinx's own: the bitstream, the reports) is not first
     const gatedRel = normalizePath(r);
@@ -134,6 +153,14 @@ export async function importProjectEntries(P, name, gated, bad) {
         if (typeof saved.constraints === 'string' && saved.constraints && !exists(saved.constraints) && !result.missing.includes(saved.constraints)) result.missing.push(saved.constraints);
       }
     }
+  }
+  // a copy's origin kept, an id of its own, its ancestor kept apart, checked (#4205)
+  if (pjEntry && !xiseEntry) {
+    const anc = entries.find(e => rel(e.path) === ANCESTOR_FILE);
+    const c = await receivedCopy(project, anc ? text(anc) : null);
+    project = await P.updateProject(name, cur => { const { origin, ...rest } = cur; return { ...rest, id: c.json.id, ...(c.json.origin ? { origin: c.json.origin } : {}) }; });   // eslint-disable-line no-unused-vars
+    if (c.snapshot) await saveSnapshot(P, name, c.snapshot);
+    result.warnings.push(...c.warnings);
   }
   // a project from outside: trusted only once the user says so (#2830, core/trust.js)
   project = await P.updateProject(name, markUntrusted);
