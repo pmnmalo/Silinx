@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { setupUi, uiTest, waitDownload, ROOT, chromeOnly, BROWSER } from './harness.js';
-import { FILE, FOLDER, exportZip, openImport } from './zip-helpers.js';
+import { FILE, FOLDER, exportZip, openImport, setFolder } from './zip-helpers.js';
 import { emuNotes } from './emu-notes.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { buildInfo } from '../../scripts/build-info.mjs';
@@ -1497,7 +1497,7 @@ uiTest('#3965 browser edition: a Silinx project imported from its folder, its bu
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await openImport(page, 'xilinx');
-  await page.setFiles(FOLDER, [dir]);
+  await setFolder(page, dir);
   // (the folder's software preselected; its name the project's)
   await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=software-silinx]').checked, [], { what: 'Silinx checked' });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'folder-import');
