@@ -660,7 +660,9 @@ instances, drawings and top with it), `delete_file` and `delete_project` (into t
 can be moved back),
 `git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log`, `git_diff` and `git_checks` (a project in a GitHub repository, as the interface's git: its history, a file as it was in a commit, what changed in a file, a drawing's by its objects, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
 `export_project` and `import_project` (a Xilinx ISE or a Silinx project, as a .zip; a .xise or a project folder too;
-only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `import_source` (files of the exchange
+only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `merge_preview`, `merge_contribution` and
+`undo_merge` (another person's copy of a project merged into it, as *Merge Contribution…*: three-way through the copy's
+ancestor, a drawing by its objects; and undone), `import_source` (files of the exchange
 folder copied into a project, as *Import Source* / *Add Copy of Source* / *Import Test Bench*), `find_in_project` (*Find in
 Project*: every source's lines and every drawing's texts; its Replace All), `open_in_editor` (*Open in VS Code*: a file at a
 line, or the project's folder, in the user's editor on this computer), `project_link` and `open_link` (a project's
