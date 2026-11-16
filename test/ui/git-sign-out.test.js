@@ -4,7 +4,7 @@
 // there: its page linked) or the device flow (sign in again with Sign in with GitHub…, the authorization kept on GitHub
 // until revoked under Settings ▸ Applications: linked); Cancel the default button (Enter, Escape and Cancel keep the
 // sign-in), Sign Out forgetting it; the console's exact lines, the token never in one; from the File menu and the
-// Collaboration tab; in Portuguese. Both interfaces; no warnings.
+// Collaboration tab (a project open: no tabs with none, #4257); in Portuguese. Both interfaces; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
@@ -26,6 +26,20 @@ const boot = async (page, { clientId = gh.clientId } = {}) => {
   await page.goto(`${site.url}index.html`);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'site boot', timeout: 60000 });
   await page.eval((u, id) => { window.SILINX_GITHUB = { api: u, login: u, clientId: id }; }, `${site.url}fake-github`, clientId);
+};
+// a project made with File ▸ New Project… (the Collaboration tab is a project's: no tabs with none, #4257)
+const L = { en: ['New Project Wizard', 'Next >', 'Finish'], pt: ['Assistente de Novo Projeto', 'Seguinte >', 'Concluir'] };
+const newProject = async (page, name, lang = 'en') => {
+  const [wizard, next, finish] = L[lang];
+  // (File ▸ New Project…, by the menu's own item: its labels the same in either language)
+  await page.eval(() => { window.SilinxApp.S.menus.find((m) => m.label === 'File').items().find((x) => x?.label === 'New Project…').action(); });
+  await page.waitDialog(wizard);
+  await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
+  await page.dialogButton(next);
+  await page.dialogButton(next);
+  await page.dialogButton(finish);
+  await page.waitNoDialog();
+  await page.waitFor((n) => window.Silinx.project?.name === n, [name], { what: `${name} made` });
 };
 const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text);
 const kept = (page) => page.eval(() => [sessionStorage.getItem('silinx.github-token'), localStorage.getItem('silinx.github-token'), sessionStorage.getItem('silinx.github-sign-in'), localStorage.getItem('silinx.github-sign-in')]);
@@ -66,6 +80,7 @@ const linesSince = async (page, mark) => (await page.consoleText()).slice(mark.l
 
 uiTest('#4256 Sign out of GitHub with a pasted token: asked first (Cancel the default: Enter, Escape, Cancel keep it), Sign Out forgets it, the console says it stays valid on GitHub', E, async (page) => {
   await boot(page, { clientId: TOKEN_WAY });
+  await newProject(page, 'SignOut');
   await page.leftTab('collab');
   await tabCommand(page, 'Sign in with GitHub…');
   await page.waitDialog('Sign in with GitHub');
@@ -153,6 +168,7 @@ uiTest('#4256 Sign out of GitHub in Portuguese: the dialog of each way translate
   try {
     await boot(page, { clientId: TOKEN_WAY });
     await page.waitFor(() => document.documentElement.lang === 'pt', [], { what: 'Portuguese' });
+    await newProject(page, 'SignOutPt', 'pt');
     await page.leftTab('collab');
     const ask = async () => {
       await tabCommand(page, 'Terminar sessão no GitHub');
