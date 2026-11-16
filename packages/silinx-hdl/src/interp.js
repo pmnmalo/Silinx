@@ -146,7 +146,8 @@ export function evalE(n, ctx) {
         const w = n.t.w, low = w > 1 ? V.getBits(a, 0, w - 1) : V.mk(0);
         return V.withSign(V.concat([V.getBits(a, a.w - 1, 1), low]), true);
       }
-      return V.withSign(V.resize(V.withSign(a, n.ext), n.t.w), n.t.s);
+      const r = V.withSign(V.resize(V.withSign(a, n.ext), n.t.w), n.t.s);
+      return n.strong && r.h ? V.weak(r, 0n) : r;
     }
     case 'textio_eof': {   // endfile(f): no line left to read
       const f = evalE(n.file, ctx);
@@ -206,7 +207,7 @@ export function evalE(n, ctx) {
       if (n.hex && !Array.isArray(v) && !isStr(v)) return { str: V.toHex(v).padStart(Math.ceil(v.w / 4), '0').toUpperCase() };
       const t = n.it || n.a.t;
       // to_string of a scalar std_logic / bit: the character alone (no quotes, unlike 'image)
-      if (n.ts && t && t.kind === 'logic' && t.scalar && !isStr(v) && !Array.isArray(v)) return { str: V.toBin(v).toUpperCase() };
+      if (n.ts && t && t.kind === 'logic' && t.scalar && !isStr(v) && !Array.isArray(v)) return { str: V.toLogic(v) };
       return { str: imageOf(v, t) };
     }
     case 'strcat': return { str: n.parts.map(p => toStr(evalE(p, ctx), p.t)).join('') };

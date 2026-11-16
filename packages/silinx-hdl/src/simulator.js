@@ -56,24 +56,27 @@ function resolveWired(sig) {
   return V.mk(w, v | none, x | none, sig.t.s);
 }
 
-// std_logic / Verilog wire resolution of the drivers of sig (4-state: 0 1 X Z).
+// std_logic / Verilog wire resolution of the drivers of sig, per bit as IEEE 1164's resolution table (#3926): an X or
+// a strong 0 and 1 make X, else a strong value wins; with none, a W or a weak L and H make W, else the weak value
+// (L, H) wins; Z when every driver is Z (the 'U' and '-' of std_logic are X here). Verilog's drivers are all strong.
 // Bits no driver has assigned yet keep the signal's current value.
 function resolve(sig) {
   if (sig.wired) return resolveWired(sig);
   const w = sig.t.w, M = V.mask(w);
-  let any0 = 0n, any1 = 0n, anyX = 0n, nz = 0n, D = 0n;
-  for (const { val: { v, x }, m } of sig.res.values()) {
+  let s0 = 0n, s1 = 0n, sx = 0n, w0 = 0n, w1 = 0n, wx = 0n, D = 0n;
+  for (const { val: { v, x, h = 0n }, m } of sig.res.values()) {
     D |= m;
-    nz |= m & ~(x & v);
-    any0 |= m & ~x & ~v;
-    any1 |= m & ~x & v;
-    anyX |= m & x & ~v;
+    const st = m & ~h, wk = m & h;
+    s0 |= st & ~x & ~v; s1 |= st & ~x & v; sx |= st & x & ~v;
+    w0 |= wk & ~x & ~v; w1 |= wk & ~x & v; wx |= wk & x & ~v;
   }
-  const bad = anyX | (any0 & any1), zb = D & ~nz;
+  const bad = sx | (s0 & s1), strong = s0 | s1 | bad;
+  const W = ~strong & (wx | (w0 & w1)), H = ~strong & ~W & w1, L = ~strong & ~W & w0;
+  const zb = D & ~(strong | w0 | w1 | wx);
   const cur = sig.val, und = M & ~D;
-  const v = (((any1 & ~bad) | zb) & D) | (cur.v & und);
-  const x = ((bad | zb) & D) | (cur.x & und);
-  return V.mk(w, v, x, sig.t.s);
+  const v = (((s1 & ~bad) | H | zb) & D) | (cur.v & und);
+  const x = ((bad | W | zb) & D) | (cur.x & und);
+  return V.weak(V.mk(w, v, x, sig.t.s), ((W | H | L) & D) | ((cur.h || 0n) & und));
 }
 
 const sameVal = (a, b) => (Array.isArray(a) || Array.isArray(b) ? a === b : V.same(a, b) && a.real === b.real);

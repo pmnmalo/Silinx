@@ -24,7 +24,7 @@ export function imageOf(v, t) {
     case 'int': return V.toDec(v, true);
     case 'time': return v.x ? 'X' : formatTime(Number(V.toBig(v)));
     case 'real': { const x = V.toReal(v); return Number.isInteger(x) ? x.toFixed(1) : String(x); }
-    case 'logic': return t.w === 1 && t.scalar ? `'${V.toBin(v).toUpperCase()}'` : V.toBin(v).toUpperCase();
+    case 'logic': return t.w === 1 && t.scalar ? `'${V.toLogic(v)}'` : V.toLogic(v);
     default: return V.toDec(v);
   }
 }

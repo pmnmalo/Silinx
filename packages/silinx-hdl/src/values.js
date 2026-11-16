@@ -1,6 +1,9 @@
 // 4-state logic values on top of BigInt.
 // A value is { w, v, x, s }: width in bits, value bits, unknown mask (1 = X/Z), signed flag.
 // Bits set in x are unknown; the corresponding bit in v is 1 for Z, 0 for X (only used for display).
+// A VHDL std_logic value may also carry h, the mask of its weak bits (#3926): L (v 0, x 0), H (v 1, x 0) and W
+// (v 0, x 1). Only a literal, a copy and std_logic's resolution keep it: an operator's result is strong (mk drops h),
+// as IEEE 1164's operators give '0' / '1' for 'L' / 'H'.
 
 export const mask = w => (w <= 0 ? 0n : (1n << BigInt(w)) - 1n);
 
@@ -10,6 +13,12 @@ export function mk(w, v = 0n, x = 0n, s = false) {
 }
 
 export const allX = (w, s = false) => mk(w, 0n, mask(w), s);
+// a with the weak bits h (none: a itself, strong)
+export function weak(a, h) {
+  h &= mask(a.w) & ~(a.x & a.v);   // (a Z has no strength)
+  if (!h) return a.h ? mk(a.w, a.v, a.x, a.s) : a;
+  return { ...a, h };
+}
 export const zero = (w = 1) => mk(w, 0n);
 export const ONE = mk(1, 1n);
 export const ZERO = mk(1, 0n);
@@ -58,14 +67,14 @@ export function toNum(a) { return Number(toBig(a)); }
 
 export function resize(a, w, s = a.s) {
   if (w === a.w) return a.s === s ? a : { ...a, s };
-  if (w < a.w) return mk(w, a.v, a.x, s);
+  if (w < a.w) return a.h ? weak(mk(w, a.v, a.x, s), a.h) : mk(w, a.v, a.x, s);
   let v = a.v, x = a.x;
   if (a.s && a.w > 0) {
     const ext = mask(w) ^ mask(a.w);
     if ((a.x >> BigInt(a.w - 1)) & 1n) x |= ext;
     else if (msb(a)) v |= ext;
   }
-  return { w, v, x, s };
+  return a.h ? weak({ w, v, x, s }, a.h) : { w, v, x, s };
 }
 
 export const withSign = (a, s) => (a.s === s ? a : { ...a, s });
@@ -250,26 +259,28 @@ export function getBits(a, lo, w) {
       if (p < 0 || p >= a.w) x |= 1n;
       else { v |= (a.v >> BigInt(p)) & 1n; x |= (a.x >> BigInt(p)) & 1n; }
     }
-    return mk(w, v, x);
+    return a.h ? weak(mk(w, v, x), lo < 0 ? a.h << BigInt(-lo) : a.h >> BigInt(lo)) : mk(w, v, x);
   }
   const L = BigInt(lo);
-  return mk(w, a.v >> L, a.x >> L);
+  return a.h ? weak(mk(w, a.v >> L, a.x >> L), a.h >> L) : mk(w, a.v >> L, a.x >> L);
 }
 
 // Return a copy of a with w bits at position lo replaced by b (out of range bits ignored).
 export function setBits(a, lo, w, b) {
-  let v = a.v, x = a.x;
+  let v = a.v, x = a.x, h = a.h || 0n;
+  const bh = b.h || 0n;
   for (let i = 0; i < w; i++) {
     const p = lo + i;
     if (p < 0 || p >= a.w) continue;
     const P = BigInt(p), I = BigInt(i), bit = 1n << P;
     v = (v & ~bit) | (((b.v >> I) & 1n) << P);
     x = (x & ~bit) | (((b.x >> I) & 1n) << P);
+    h = (h & ~bit) | (((bh >> I) & 1n) << P);
   }
-  return { w: a.w, v, x, s: a.s };
+  return h ? weak({ w: a.w, v, x, s: a.s }, h) : { w: a.w, v, x, s: a.s };
 }
 
-export const same = (a, b) => a.v === b.v && a.x === b.x && (a.real === b.real || toReal(a) === toReal(b));
+export const same = (a, b) => a.v === b.v && a.x === b.x && (a.h || 0n) === (b.h || 0n) && (a.real === b.real || toReal(a) === toReal(b));
 
 // REAL values: a 64-bit integer value (rounded, for code that reads bits) carrying the exact
 // JS number in `real`.
@@ -287,6 +298,18 @@ export function toBin(a) {
     const I = BigInt(i);
     const xb = (a.x >> I) & 1n, vb = (a.v >> I) & 1n;
     s += xb ? (vb ? 'z' : 'x') : (vb ? '1' : '0');
+  }
+  return s;
+}
+
+// std_logic's characters, MSB first: 0 1 X Z, and the weak L H W (#3926)
+export function toLogic(a) {
+  if (!a.h) return toBin(a).toUpperCase();
+  let s = '';
+  for (let i = a.w - 1; i >= 0; i--) {
+    const I = BigInt(i);
+    const xb = (a.x >> I) & 1n, vb = (a.v >> I) & 1n, hb = (a.h >> I) & 1n;
+    s += xb ? (vb ? 'Z' : hb ? 'W' : 'X') : hb ? (vb ? 'H' : 'L') : (vb ? '1' : '0');
   }
   return s;
 }

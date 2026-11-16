@@ -6,7 +6,7 @@
 // order).
 import * as V from './values.js';
 import { evalE, strToVal, bitpos } from './interp.js';
-import { mapBits } from './vhdl/parser.js';
+import { mapBits, weakBits } from './vhdl/parser.js';
 import { MAX_BITS, MAX_ELEMENTS, widthMessage } from './util.js';
 import {
   BIT, BOOL, CHAR, ElabError, INT, PHYS, REAL, STR, TIME, charConst, constOf, defaultValue, diag, elabType,
@@ -63,7 +63,9 @@ function bindExpr0(E, e, expect, loc) {
       if (E.lang === 'vhdl' && expect && expect.kind === 'enum' && e.scalar && e.ch) { const c = enumChar(expect, e.ch); if (c) return c; }
       if (E.lang === 'vhdl' && expect && expect.kind === 'str' && e.text !== undefined) return { k: 'str', value: e.text, t: STR };
       if (E.lang === 'vhdl' && expect && expect.kind === 'str' && !e.scalar && /^[01]+$/.test(e.bits)) return { k: 'str', value: e.bits, t: STR };
-      const val = V.fromBits(e.bits, !!e.signed);
+      // (a VHDL std_logic literal's L H W: its weak bits, #3926)
+      const lt = E.lang === 'vhdl' ? e.ch ?? e.text : undefined;
+      const val = lt ? V.weak(V.fromBits(e.bits, !!e.signed), weakBits(lt)) : V.fromBits(e.bits, !!e.signed);
       const t = e.scalar ? BIT : vecT(val.w, !!e.signed);
       if (E.lang === 'verilog' && e.sized === false && /^[xz]/.test(e.bits)) return { k: 'c', val, t, xext: e.bits[0] };
       if (E.lang === 'vhdl' && e.scalar && expect && expect.kind === 'logic' && expect.w > 1 && !expect.unconstrained) {
@@ -410,7 +412,7 @@ function arraySliceNode(E, base, left, right, loc, dir) {
 // messages) compared with a vector is a vector literal.
 export function strAsLogic(n, other) {
   if (n.k !== 'str' || other.t.kind !== 'logic' || !/^[01uxzwlh-]+$/i.test(n.value)) return n;
-  const val = V.fromBits(mapBits(n.value));
+  const val = V.weak(V.fromBits(mapBits(n.value)), weakBits(n.value));
   return { k: 'c', val, t: vecT(val.w) };
 }
 

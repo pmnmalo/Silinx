@@ -104,10 +104,14 @@ export function bindBuiltin(E, name, rawArgs, expect, loc) {
       const n = conv(a, a.t.w, false);
       // (std_logic_vector(u) / bit_vector(…) keep their type mark: overloads on the type, #72)
       const mark = name === 'unsigned' ? null : /bit/.test(name) ? 'bit_vector' : 'std_logic_vector';
+      if (mark === 'bit_vector' && n.k === 'conv') n.strong = true;
+      if (mark === 'bit_vector' && n.k === 'c' && n.val.h) return { ...n, val: V.weak(n.val, 0n), t: { ...n.t, mark } };
       return mark ? { ...n, t: { ...n.t, mark } } : n;
     }
     case 'signed': { const a = A(0); return conv(a, a.t.w, true); }
-    case 'to_01': case 'to_x01': case 'std_logic': case 'to_stdulogic': case 'to_bit': return A(0);
+    case 'std_logic': case 'to_stdulogic': return A(0);
+    // (strong: an L / H / W made 0 / 1 / X, #3926)
+    case 'to_01': case 'to_x01': case 'to_bit': { const a = A(0); return fold({ k: 'conv', a, ext: a.t.s, strong: true, t: a.t }); }
     case 'shift_left': case 'shift_right': case 'rotate_left': case 'rotate_right': {
       const a = A(0), b = A(1);
       const o = name === 'shift_left' ? '<<' : name === 'shift_right' ? (a.t.s ? '>>>' : '>>') : name === 'rotate_left' ? 'rol' : 'ror';

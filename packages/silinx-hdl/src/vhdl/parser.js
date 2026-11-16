@@ -47,11 +47,11 @@ import { sequentialMethods } from './parse-seq.js';
 import { expressionMethods } from './parse-expr.js';
 import { nestingMethods } from './parse-nesting.js';
 import { interfaceRefMethods } from './interface-refs.js';
-import { mapBits } from './nodes.js';
+import { mapBits, weakBits } from './nodes.js';
 import { ParseError, STD_LIBS, block } from './parse-defs.js';
 import { dedupe, mergePackageDecls } from './parse-helpers.js';
 
-export { mapBits };
+export { mapBits, weakBits };
 
 /**
  * Parse VHDL source text.
