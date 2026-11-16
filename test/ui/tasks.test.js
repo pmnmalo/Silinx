@@ -984,7 +984,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
       titles: [...document.querySelectorAll('#left-tabs .tab')].map((b) => b.title),
     };
   });
-  assert.deepEqual(await T(), { row: true, names: ['design'], titles: ['Start', 'Design', 'Files', 'Libraries', 'Teaching', 'Implementation', 'Emulate'] });   // (no Test: Simulate's benches, #1161; Implement's tab, #1160, #1207; Emulate's, #1399)
+  assert.deepEqual(await T(), { row: true, names: ['design'], titles: ['Start', 'Design', 'Files', 'Libraries', 'Teaching', 'Collaboration', 'Implementation', 'Emulate'] });   // (no Test: Simulate's benches, #1161; Implement's tab, #1160, #1207; Emulate's, #1399)
   // (no column of its own: the hierarchy from the window's left edge)
   assert.ok(await page.eval(() => document.querySelector('#hier').getBoundingClientRect().left) < 12);
   await page.click('#left-tabs .tab[data-page="files"]');
@@ -1012,7 +1012,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
   await page.setViewport(1366, 768);
   // Portuguese: the tooltips
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  assert.deepEqual((await T()).titles, ['Início', 'Projeto', 'Ficheiros', 'Bibliotecas', 'Ensino', 'Implementação', 'Emular']);
+  assert.deepEqual((await T()).titles, ['Início', 'Projeto', 'Ficheiros', 'Bibliotecas', 'Ensino', 'Colaboração', 'Implementação', 'Emular']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the Silinx interface: the activity bar as before, a column with every name, no tooltips
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
@@ -1021,7 +1021,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
     const tabs = [...document.querySelectorAll('#left-tabs .tab')];
     return { below: document.getElementById('left-tabs').getBoundingClientRect().top > document.getElementById('left-pages').getBoundingClientRect().top,
       titles: tabs.filter((b) => b.title).length, names: tabs.filter((b) => b.querySelector('.tab-lbl').getBoundingClientRect().width > 1).length };
-  }), { below: true, titles: 0, names: 5 });
+  }), { below: true, titles: 0, names: 6 });
   await noWarnings(page);
 }, { build: DEV });
 
@@ -1377,7 +1377,7 @@ uiTest('#1159 #1160 #1207 Tasks: no heading under the side panel\'s tabs; Implem
   await page.openProject('TasksHeads');
   await page.click('#task-switch .task-btn[data-task="edit"]');
   const heading = () => page.eval(() => [...document.querySelectorAll('#left-pages .ise-panel > .caption')].filter((c) => c.getClientRects().length).map((c) => c.textContent));
-  for (const p of ['start', 'design', 'files', 'libraries', 'teaching']) {
+  for (const p of ['start', 'design', 'files', 'libraries', 'teaching', 'collab']) {
     await page.click(`#left-tabs .tab[data-page=${p}]`);
     assert.deepEqual(await heading(), [], p);
   }

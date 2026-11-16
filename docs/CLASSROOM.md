@@ -56,8 +56,9 @@ autograding is not needed: Silinx's workflow is the check.
   tests in the page.
 - Each push runs the workflow. The Actions tab, or the commit's check, shows the verdict of each visible test, and for a
   Wrong Answer, the cycle, the signal, the expected and obtained values and the cycles around it.
-- In Silinx, after a push, **Git ▸ GitHub Checks** says the same verdicts in the console, with the first difference of
-  each Wrong Answer (the MCP's `git_checks` too). A private assignment's repository needs the sign-in: Sign in with
+- In Silinx, after a push, **GitHub Checks** (the Collaboration tab, or Git ▸ GitHub Checks) says the same verdicts in
+  the console, with the first difference of each Wrong Answer (the MCP's `git_checks` too); the Collaboration tab keeps
+  the result (passed, failed, running). A private assignment's repository needs the sign-in: Sign in with
   GitHub… with the private repositories in the browser edition, `GH_TOKEN` for a server.
 - The hidden tests' verdicts come at the deadline, from the teacher.
 

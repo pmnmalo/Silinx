@@ -85,7 +85,7 @@ test('clone: the project untrusted, its silinx.json the repository\'s (no change
   await P.writeProject('gates', pj);
   assert.equal(read(path.join(ws, 'gates', 'silinx.json')).includes('"trusted"'), false);
   let s = await G.gitStatus('gates');
-  assert.deepEqual(s, { project: 'gates', repository: true, root: 'project', branch: 'main', upstream: 'origin/main', ahead: 0, behind: 0, files: [] });
+  assert.deepEqual(s, { project: 'gates', repository: true, root: 'project', remote: 'local/gates', branch: 'main', upstream: 'origin/main', ahead: 0, behind: 0, files: [] });
   await rejects(G.gitCommit('gates', 'Nothing'), 'nothing to commit: the project has no change since the last commit');
   // a change, a new file, the tools' outputs
   const src = path.join(ws, 'gates', 'src', 'gates.vhd');

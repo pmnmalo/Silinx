@@ -189,6 +189,9 @@ async function origin(cwd) {
   return checkUrl(r.stdout.trim());
 }
 
+// origin's owner/repository, or null (no origin, or not GitHub's: the commands that need it say why)
+const remoteName = cwd => origin(cwd).then(r => `${r.owner}/${r.repo}`, () => null);
+
 // the trust of the projects whose files a git command changes (#2830): an untrusted project's mark kept in the
 // repository's .git first (P.keepTrustInRepo), so that no commit checked out (a pull, a merge) trusts it, whatever its
 // silinx.json says; the workspace's repository: every project of it. -> the projects' names, for broughtUntrusted
@@ -218,16 +221,17 @@ async function broughtUntrusted(repo, had) {
 export async function gitRemote(name) {
   const repo = await repoOf(name);
   if (!repo) return null;
-  try { const r = await origin(repo.dir); return `${r.owner}/${r.repo}`; } catch { return null; }
+  return remoteName(repo.dir);
 }
 
-/** The project's changes: { repository, root, branch, upstream, ahead, behind, files: [{ path, state }] }, the state
- *  'modified', 'new', 'deleted' or 'conflict'; the paths the project's. Not a repository: { repository: false }. */
+/** The project's changes: { repository, root, remote, branch, upstream, ahead, behind, files: [{ path, state }] }, the
+ *  state 'modified', 'new', 'deleted' or 'conflict'; the paths the project's; remote: origin's GitHub owner/repository
+ *  (null with none, or not GitHub's: the Collaboration tab's, #4215). Not a repository: { repository: false }. */
 export async function gitStatus(name) {
   const repo = await repoOf(name);
   if (!repo) return { project: name, repository: false, files: [] };
   const out = await ok('status', ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all', '--', '.'], { cwd: repo.dir });
-  const s = { project: name, repository: true, root: repo.root, branch: null, upstream: null, ahead: 0, behind: 0, files: [] };
+  const s = { project: name, repository: true, root: repo.root, remote: await remoteName(repo.dir), branch: null, upstream: null, ahead: 0, behind: 0, files: [] };
   const recs = out.split('\0');
   for (let i = 0; i < recs.length; i++) {
     const rec = recs[i];

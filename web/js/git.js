@@ -3,7 +3,7 @@
 // Open from Repository…, File ▸ Git ▸ (Commit…, Push to GitHub, Pull from GitHub, History… (web/js/git-history.js), GitHub
 // Checks (#3194: what GitHub's workflows said of the last push),
 // Initialize Repository…), the same in the Design pane's
-// project menu (the Silinx interface has no File menu), and the Design pane's marks of the files changed or new since
+// project menu (the Silinx interface has no File menu) and in the Collaboration tab (#4215, web/js/collab-tab.js), and the Design pane's marks of the files changed or new since
 // the last commit (S.git, refreshed when the project opens, after its files are written and after each command).
 // Every message goes to the console: git's line as an ERROR, its hint after it (docs/UI-GUIDELINES.md).
 import { api } from './api.js';
@@ -33,6 +33,8 @@ export function gitAvailable() {
 /** The last answer of gitAvailable (the menus are drawn synchronously; the start-up, the Start page and a project's
  *  opening ask). */
 export const hasGit = () => enabled === true;
+/** Whether this edition is known to have no git (SILINX_GIT=off): the Collaboration tab hidden (#4215). */
+export const gitOff = () => enabled === false;
 
 // a failure, in the console: git's line, then its hint
 export function logGitError(e) {
@@ -50,7 +52,7 @@ function scheduleGitStatus(ms = 400) {
 }
 /** The project's status read again: S.git ({ files, byPath, branch… } or null), the Design pane's marks drawn again. A
  *  read that a later one overtakes gives the later one's answer (Commit… asks while a save's read is in flight). */
-function refreshGitStatus() {
+export function refreshGitStatus() {
   const n = ++seq;
   const run = readStatus(n).then(r => (n === seq ? r : newest));
   newest = run;
@@ -66,20 +68,23 @@ async function readStatus(n) {
   S.git = s?.repository ? { ...s, byPath: new Map(s.files.map(f => [f.path, f.state])) } : null;
   if (JSON.stringify(S.git?.files || []) !== before) renderHierarchy();
   if (!!S.git !== had) renderStartPage();   // (its Initialize Repository…, a project with no repository's, #3534)
+  dispatchEvent(new CustomEvent('silinx:git-status'));   // (the Collaboration tab's remote, branch and changes, #4215)
   return S.git;
 }
 
-const MARKS = {
+// (a deleted file's: the Collaboration tab's list only, #4215, the Design pane having no row of it)
+export const gitMarks = {
   conflict: { text: 'C', title: 'In conflict' },
   new: { text: 'N', title: 'New: not committed yet' },
   modified: { text: 'M', title: 'Changed since the last commit' },
+  deleted: { text: 'D', title: 'Deleted since the last commit' },
 };
 /** The Design pane's mark of a row whose files are these: the strongest of their states (conflict, new, changed). */
 export function gitMark(paths) {
   if (!S.git) return null;
   const states = paths.filter(Boolean).map(p => S.git.byPath.get(p));
   const st = ['conflict', 'new', 'modified'].find(k => states.includes(k));
-  return st ? { ...MARKS[st], state: st } : null;
+  return st ? { ...gitMarks[st], state: st } : null;
 }
 
 // the status after every write of the project's files (the editors' saves, a wizard's, a rename), and after a reload
@@ -93,10 +98,11 @@ export function hookGitStatus() {
     api[k] = async (...a) => { const r = await f(...a); scheduleGitStatus(); return r; };
   }
   addEventListener('silinx:project-opened', () => refreshGitStatus());
-  addEventListener('silinx:project-closed', () => { S.git = null; });
+  addEventListener('silinx:project-closed', () => { S.git = null; dispatchEvent(new CustomEvent('silinx:git-status')); });
   // (git's presence asked once: the Start page and the Teaching page then have Open from Repository…; a project reopened at start-up, which
   // says no project-opened, gets its status; a request that failed, asked again a few times, #3968)
   const ask = wait => gitAvailable().then(on => {
+    dispatchEvent(new CustomEvent('silinx:git-status'));   // (the Collaboration tab, shown or hidden with git, #4215)
     if (on) { renderStartPage(); renderTeachingPage(); if (S.project) refreshGitStatus(); }
     else if (enabled === null && wait <= 8000) setTimeout(() => ask(wait * 2), wait);
   });
@@ -141,7 +147,7 @@ export async function openFromRepositoryDialog() {
 }
 
 /** File ▸ Git ▸ Commit…: the project's changes with a message. */
-async function commitDialog() {
+export async function commitDialog() {
   if (!S.project) return null;
   await saveAll();
   const s = await refreshGitStatus();
@@ -181,18 +187,20 @@ const CHECKS_HINT = 'GitHub runs the repository\'s checks on the push (a Classro
 
 /** File ▸ Git ▸ GitHub Checks (#3194): what GitHub's workflows said of the last pushed commit, in the console (a
  *  Classroom assignment's: each visible test's verdict). */
-async function gitChecks() {
+export async function gitChecks() {
   if (!S.project) return null;
   log(`GitHub's checks of '${S.project.name}'…`, 'info');
   try {
     const c = await api.gitChecks(S.project.name);
     for (const l of checksLines(c)) log(l.level === 'error' ? `ERROR: ${l.text}` : l.level === 'warning' ? `WARNING: ${l.text}` : l.text, l.level === 'error' ? 'err' : l.level === 'warning' ? 'warn' : c.conclusion === 'success' ? 'ok' : 'info');
+    // (their result kept by the Collaboration tab, #4215)
+    dispatchEvent(new CustomEvent('silinx:git-checks', { detail: { project: S.project.name, checks: c } }));
     return c;
   } catch (e) { logGitError(e); return null; }
 }
 
 /** File ▸ Git ▸ Push. */
-async function gitPush() {
+export async function gitPush() {
   if (!S.project) return null;
   try { const p = await api.gitPush(S.project.name); log(pushText(p), 'ok'); if (p.pushed) log(CHECKS_HINT, 'info'); return p; } catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
 }
@@ -200,7 +208,7 @@ async function gitPush() {
 /** File ▸ Git ▸ Pull: GitHub's commits merged in; the project read again (its open documents, by the watcher). A
  *  drawing's objects changed on both sides (#3197): Mine or Theirs asked for each (web/js/git-resolve-dialog.js), then
  *  pulled again with the choices. */
-async function gitPull({ resolve = null } = {}) {
+export async function gitPull({ resolve = null } = {}) {
   if (!S.project) return null;
   await saveAll();
   const name = S.project.name;
@@ -227,7 +235,7 @@ async function gitPull({ resolve = null } = {}) {
 }
 
 /** File ▸ Git ▸ Initialize Repository…: git init, Silinx's .gitignore, optionally the GitHub repository (origin). */
-async function initDialog() {
+export async function initDialog() {
   if (!S.project) return null;
   const url = h('input', { type: 'text', class: 'git-url', placeholder: 'https://github.com/owner/repository', style: { width: '100%' } });
   const err = fieldError('git-url-error');
@@ -260,7 +268,7 @@ export const gitMenuItems = () => [
     : { label: 'Sign in with GitHub…', action: () => signIn() }] : []),
 ];
 // Sign in with GitHub…, the Start page drawn again after it (its entry gone once signed in, #3534)
-const signIn = () => import('./git-signin.js').then(m => m.signInDialog()).then(ok => { if (ok) renderStartPage(); return ok; });
+export const signIn = () => import('./git-signin.js').then(m => m.signInDialog()).then(ok => { if (ok) renderStartPage(); return ok; });
 
 /** The git commands that start one (the Start page, the Design pane's project and device menus, #3534), where they
  *  apply: Initialize Repository… when the project has no repository (the open one's: on the Start page, disabled with

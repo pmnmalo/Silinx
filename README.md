@@ -522,14 +522,19 @@ editor would open on the server's screen.
 
 ### A project on GitHub (git, a GitHub Classroom assignment)
 
-On your computer or a Silinx server, a project can live in a GitHub repository, through the system's git:
-- **Open from Repository…** (the Start page, the ISE style's File menu) opens a project from a GitHub repository, a
-  GitHub Classroom assignment's too.
-- **Commit…, Push to GitHub and Pull from GitHub** (the project's right-click menu in the Design pane, under Git; the
-  File menu) send it back and bring the others' changes in. A pull that conflicts pulls nothing and leaves the files as
+On your computer or a Silinx server, a project can live in a GitHub repository, through the system's git. **The
+Collaboration tab** (the side panel's last, after Teaching, in both interfaces) gathers its commands: the project's
+GitHub repository and branch (the commits to push or to pull), its changed files with the Design pane's marks (a
+click compares one with the last commit), Commit…, Push, Pull, History…, the sign-in and the last push's checks; for
+a project with no repository, Initialize Repository… and Open from Repository…. The menus keep the same commands:
+- **Open from Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
+  GitHub repository, a GitHub Classroom assignment's too.
+- **Commit…, Push to GitHub and Pull from GitHub** (the Collaboration tab; the project's right-click menu in the Design
+  pane, under Git; the File menu) send it back and bring the others' changes in. A pull that conflicts pulls nothing and leaves the files as
   they were. The repository's hidden files (`.vscode`, `.github`) and the tools' outputs stay in the repository, out of
   the project's folder, and a pull's files pass the import gate, as an imported project's.
-- **The Design pane** marks what changed (M) or is new (N) since the last commit.
+- **The Design pane** marks what changed (M) or is new (N) since the last commit; the Collaboration tab lists every
+  changed file, deleted ones (D) too.
 - **History…** lists the commits, and opens a file as it was in one, read only.
 - **Compare** (in History… and Commit…) shows a drawing's two versions side by side, what was added, removed, moved
   or changed marked on them, and an HDL file's lines side by side.
@@ -545,7 +550,7 @@ SSH key): Silinx never asks for, stores or logs a password or a token. A server'
 
 In the browser edition the same commands go through GitHub's API (there is no git in a browser):
 - **Open from Repository…** opens a public repository with no sign-in.
-- **Sign in with GitHub…** (with the Git commands): a private repository, a commit and a pull need it. Where the
+- **Sign in with GitHub…** (the Collaboration tab, which says whether you are signed in; the Git commands): a private repository, a commit and a pull need it. Where the
   site has Silinx's sign-in relay, it gives a code to enter at github.com/login/device; elsewhere, it asks for a
   fine-grained personal access token of yours (github.com/settings/personal-access-tokens/new: the repositories to
   open, Contents read and write). The sign-in is kept in this browser only, and **Sign out of GitHub** forgets it.

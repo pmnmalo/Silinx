@@ -50,10 +50,10 @@ test('git_clone, git_status, git_commit (pushed at once), git_push, git_pull and
   assert.ok(!fs.existsSync(path.join(ws, 'lab1', '.git')));
   // (nothing of git's in the workspace: what the project was is in Silinx's configuration folder)
   assert.deepEqual(fs.readdirSync(ws), ['lab1']);
-  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main; no change since the last commit.');
+  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main (GitHub: pmalo/lab1); no change since the last commit.');
   const counter = fs.readFileSync(path.join(BLINKY, 'src', 'counter.v'), 'utf8');
   await ok('write_file', { project: 'lab1', path: 'src/counter.v', text: `${counter}// changed\n` });
-  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main; 1 change(s):\n  src/counter.v (changed)');
+  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main (GitHub: pmalo/lab1); 1 change(s):\n  src/counter.v (changed)');
   const before = gh.head('pmalo/lab1');
   const m = await ok('git_commit', { project: 'lab1', message: 'Counter changed' });
   assert.match(m.text, /^Committed [0-9a-f]{7} on main: 1 file\(s\)\.\n {2}src\/counter\.v \(changed\)$/);

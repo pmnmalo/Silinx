@@ -51,6 +51,15 @@ export const GIT_PT = {
   'Generate the token, copy it and paste it here.': 'Gere o token, copie-o e cole-o aqui.',
   'Account permissions: Gists, Read and write (for Share Project\'s short links).': 'Permissões da conta: Gists, Read and write (para as ligações curtas de Partilhar Projeto).',
   'Sign In': 'Iniciar Sessão',
+  // the Collaboration tab (#4215, web/js/collab-tab.js)
+  'Collaboration': 'Colaboração', 'Repository': 'Repositório', 'Changes': 'Alterações', 'Branch:': 'Ramo:',
+  'No project open.': 'Nenhum projeto aberto.', 'The project is not in a git repository.': 'O projeto não está num repositório git.',
+  'No GitHub repository (origin).': 'Sem repositório do GitHub (origin).', 'Not pushed yet': 'Ainda não enviado (Push)',
+  'Compare with the last commit': 'Comparar com o último commit', 'Deleted since the last commit': 'Apagado desde o último commit',
+  'Signed in to GitHub.': 'Com sessão iniciada no GitHub.', 'Not signed in to GitHub.': 'Sem sessão iniciada no GitHub.',
+  'git signs in to GitHub with its own credentials.': 'O git autentica-se no GitHub com as suas próprias credenciais.',
+  'Checks passed': 'Verificações aprovadas', 'Checks failed': 'Verificações falhadas', 'Checks running': 'Verificações a decorrer',
+  'No check on GitHub': 'Nenhuma verificação no GitHub',
 };
 
 export const GIT_PT_PATTERNS = [
@@ -62,6 +71,7 @@ export const GIT_PT_PATTERNS = [
   [/^(\d+) object\(s\) changed both here and on GitHub: choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/, '$1 objeto(s) alterado(s) aqui e no GitHub: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.'],
   [/^Choose Mine or Theirs for (\d+) object\(s\) more\.$/, 'Escolha O meu ou O deles para mais $1 objeto(s).'],
   [/^(\d+) change\(s\) on (.+):$/, '$1 alteração(ões) em $2:'],
+  [/^(\d+) commit\(s\) to push$/, '$1 commit(s) por enviar (Push)'], [/^(\d+) commit\(s\) to pull$/, '$1 commit(s) por receber (Pull)'],   // (#4215)
   [/^not a GitHub repository's address: (.*)$/, 'não é o endereço de um repositório do GitHub: $1'],
   [/^a GitHub Classroom invitation, not a repository$/, 'um convite do GitHub Classroom, não um repositório'],
 ];

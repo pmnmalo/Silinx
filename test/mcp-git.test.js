@@ -43,10 +43,10 @@ test('git_clone, git_status, git_commit, git_push, git_pull, git_log: a Classroo
   assert.equal(c.text, 'Project \'lab1\' opened from the GitHub repository local/lab1. It is untrusted, as every project from outside: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.');
   assert.deepEqual(c.data, { project: 'lab1', url: bare, repository: 'local/lab1', warnings: [], trusted: false });
   assert.equal((await ok('project_info', { project: 'lab1' })).data.top, 'top');
-  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main; no change since the last commit.');
+  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main (GitHub: local/lab1); no change since the last commit.');
   await fails('git_commit', { project: 'lab1', message: 'x' }, 'nothing to commit: the project has no change since the last commit');
   await ok('write_file', { project: 'lab1', path: 'src/extra.v', text: 'module extra; endmodule\n' });
-  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main; 2 change(s):\n  silinx.json (changed)\n  src/extra.v (new)');
+  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main (GitHub: local/lab1); 2 change(s):\n  silinx.json (changed)\n  src/extra.v (new)');
   const m = await ok('git_commit', { project: 'lab1', message: 'Lab 1 done' });
   assert.equal(m.text, `Committed ${m.data.commit.slice(0, 7)} on main: 3 file(s).\n  .gitignore (new)\n  silinx.json (changed)\n  src/extra.v (new)`);
   assert.equal((await ok('git_push', { project: 'lab1' })).text, 'Pushed main to local/lab1.');
@@ -75,7 +75,7 @@ test('git_clone, git_status, git_commit, git_push, git_pull, git_log: a Classroo
   // (the pulled files' names and the warnings, which name them: labelled, #4174)
   assert.equal(p.data.untrusted.content, 'the pulled files\' names and the warnings, which name them');
   assert.deepEqual(['build', 'src/SILINX.JSON', '.envrc'].filter(f => fs.existsSync(path.join(ws, 'lab1', f))), []);
-  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main; no change since the last commit.');
+  assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main (GitHub: local/lab1); no change since the last commit.');
   // .git stays out of the file tools (#3035)
   await fails('read_file', { project: 'lab1', path: '.git/config' }, '\'.git/config\': a hidden file or folder cannot be read');
   await fails('write_file', { project: 'lab1', path: '.git/hooks/pre-commit', text: 'x' }, '\'.git/hooks/pre-commit\': a hidden file or folder cannot be written');
@@ -86,6 +86,10 @@ test('git_init and the failures: their message and hint; a URL that is not GitHu
   assert.equal((await ok('git_status', { project: 'mine' })).text, '\'mine\' is not in a git repository (git_init makes one).');
   await fails('git_commit', { project: 'mine', message: 'x' }, 'the project \'mine\' is not in a git repository\nHint: Initialize Repository… makes one, or Open from Repository… opens a project from GitHub.');
   assert.equal((await ok('git_init', { project: 'mine' })).text, 'Repository made for \'mine\'; .gitignore written.');
+  // (no remote: said, its data's remote null; the Collaboration tab's, #4215)
+  const st = await ok('git_status', { project: 'mine' });
+  assert.match(st.text, /^mine: main, not pushed yet \(no GitHub repository\); \d+ change\(s\):/);
+  assert.equal(st.data.remote, null);
   await fails('git_push', { project: 'mine' }, 'the repository has no remote (origin)\nHint: Initialize Repository… with the GitHub repository\'s address sets it.');
   G.GIT_TESTING.localRemotes = false;
   try {

@@ -107,7 +107,7 @@ export function restGit({ client, projects, meta }) {
     }
     for (const p of Object.keys(m.paths)) if (!(p in now)) files.push({ path: p, state: 'deleted' });
     files.sort((a, b) => a.path.localeCompare(b.path));
-    return { project: name, repository: true, root: 'project', branch: m.branch, upstream: `origin/${m.branch}`, ahead: 0, behind: 0, files };
+    return { project: name, repository: true, root: 'project', remote: `${m.owner}/${m.repo}`, branch: m.branch, upstream: `origin/${m.branch}`, ahead: 0, behind: 0, files };
   }
 
   /** Open from Repository: the repository's project into a new one, untrusted (projects.create) -> { project, url,

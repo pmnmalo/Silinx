@@ -64,14 +64,14 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_status', title: 'A project\'s changes',
-    description: 'A project\'s files changed, new, deleted or in conflict since the last commit (the Design pane\'s marks), its branch and how many commits it is ahead of or behind GitHub.',
+    description: 'A project\'s files changed, new, deleted or in conflict since the last commit (the Design pane\'s marks), its GitHub repository (owner/repository), its branch and how many commits it is ahead of or behind GitHub: what the Collaboration tab shows.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project }) {
       await readProject(project);
       const s = await run(() => B().gitStatus(project));
       if (!s.repository) return { text: `'${project}' is not in a git repository (git_init makes one).`, data: s };
-      const where = `${s.branch || '(no branch)'}${s.upstream ? `, ${s.ahead} commit(s) ahead of and ${s.behind} behind ${s.upstream}` : ', not pushed yet'}`;
+      const where = `${s.branch || '(no branch)'}${s.upstream ? `, ${s.ahead} commit(s) ahead of and ${s.behind} behind ${s.upstream}` : ', not pushed yet'}${s.remote ? ` (GitHub: ${s.remote})` : ' (no GitHub repository)'}`;
       // (the files' names and the branches', a clone's own: labelled, #4174)
       return { text: [`${project}: ${where}; ${s.files.length ? `${s.files.length} change(s):` : 'no change since the last commit.'}`, ...fileLines(s.files)].join('\n'), data: s,
         untrusted: 'the files\' and the branches\' names, the repository\'s' };

@@ -99,7 +99,7 @@ test('Open from Repository: the project\'s files, the repository\'s hidden and b
   const m = mem.M.get('gates');
   assert.deepEqual([m.owner, m.repo, m.branch, m.commit], ['pmalo', 'gates', 'main', gh.head('pmalo/gates')]);
   assert.equal(m.gitignore, false);
-  assert.deepEqual(await git.status('gates'), { project: 'gates', repository: true, root: 'project', branch: 'main', upstream: 'origin/main', ahead: 0, behind: 0, files: [] });
+  assert.deepEqual(await git.status('gates'), { project: 'gates', repository: true, root: 'project', remote: 'pmalo/gates', branch: 'main', upstream: 'origin/main', ahead: 0, behind: 0, files: [] });
   // (another name; the name taken)
   assert.equal((await git.clone({ url: 'git@github.com:pmalo/gates.git', name: 'gates2' })).project, 'gates2');
   await rejects(git.clone({ url: 'https://github.com/pmalo/gates' }), 'project \'gates\' already exists', { hint: 'Choose another name for the project.', status: 409 });

@@ -24,6 +24,7 @@ import { setActionRunner, longPressMenu } from './ui.js';
 import { log, logError, logInfo, logLine, logWarning, showConsolePage, setDiagnostics, renderDiagnostics, clearConsole } from './console.js';
 import { isOwnFailure } from './own-error.js';
 import { renderTeachingPage } from './teaching-page.js';
+import { renderCollabPage } from './collab-tab.js';
 import { openProject, closeProject, projectRequested, reloadProject, updateTitle, renderStartPage, updateStorageStatus, refreshBlackboxes } from './project.js';
 import { FLOW_UP_TO, boardUcf, checkUcfFile, regenerateUcf, runImpl, stepTracker, ucfDiagnostics } from './implement.js';
 import { adoptDrawnHdl, drawnHdlClashes, freshHdl, openAsm, openFsm, openPetri, openSch,
@@ -732,6 +733,7 @@ export function showLeftPage(page) {
   document.querySelectorAll('.left-page').forEach(p => { p.hidden = p.dataset.page !== page; });
   if (page === 'start') renderStartPage();
   if (page === 'teaching') renderTeachingPage();
+  if (page === 'collab') renderCollabPage();
 }
 
 export function renderFilesPage() {

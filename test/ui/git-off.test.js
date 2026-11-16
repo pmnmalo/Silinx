@@ -1,5 +1,5 @@
 // UI (#3968): a server whose git is turned off (SILINX_GIT=off): the Start page has no git group and no line before it,
-// though it asks git's presence each time it is drawn; no warnings. (The group when git is there:
+// though it asks git's presence each time it is drawn; no Collaboration tab (#4215); no warnings. (The group when git is there:
 // test/ui/git-start.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +17,7 @@ const startCommands = (page) => page.eval(() => [...document.querySelector('#sta
   .filter((e) => e.matches('.entry, hr') && e.getClientRects().length).map((e) => (e.matches('hr') ? '—' : e.textContent)));
 const warnings = (page) => page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text);
 
-uiTest('#3968 SILINX_GIT=off: no git group on the Start page', E, async (page) => {
+uiTest('#3968 #4215 SILINX_GIT=off: no git group on the Start page, no Collaboration tab', E, async (page) => {
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.reload();
   await page.leftTab('design');
@@ -25,5 +25,8 @@ uiTest('#3968 SILINX_GIT=off: no git group on the Start page', E, async (page) =
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page' });
   assert.equal(await page.eval(async () => (await (await import('/js/api.js')).api.gitEnabled()).enabled), false);
   assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
+  // no Collaboration tab (#4215)
+  await page.waitFor(() => document.querySelector('#left-tabs .tab[data-page=collab]').hidden, [], { what: 'the Collaboration tab hidden' });
+  assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab]').getClientRects().length), 0);
   assert.deepEqual(warnings(page), []);
 });
