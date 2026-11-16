@@ -151,7 +151,7 @@ test('#4237 a fine-grained token with neither: the error names the permissions t
     && e.hint === 'Edit the token on GitHub (Settings ▸ Developer settings ▸ Fine-grained tokens) and add those two repository permissions. The tests\' verdicts (GitHub\'s Checks) need a classic token or Sign in with GitHub….');
   // (a rate limit: GitHub's own error, nothing else asked)
   const asked = [];
-  const limited = { repo: client.repo, pathOf: client.pathOf, request: async (m, p) => { asked.push(p); throw new GitHubError('GitHub refused the request (API rate limit exceeded for 1.2.3.4.)', 'Wait an hour.', 403); } };
+  const limited = { repo: client.repo, pathOf: client.pathOf, request: async (m, p) => { asked.push(p); throw new GitHubError('GitHub refused the request (API rate limit exceeded for this address.)', 'Wait an hour.', 403); } };
   await assert.rejects(commitChecks(limited, { owner: 'o', repo: 'r', ref: 'main' }), /API rate limit exceeded/);
   assert.equal(asked.length, 1);
 });
