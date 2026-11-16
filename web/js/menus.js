@@ -132,6 +132,9 @@ export function setupMenus() {
       { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog(), disabled: hasPj },   // (Import Source… in the Silinx interface, #1501)
       // the project folder's files not in the project (the Silinx interface's Files page has it too, #1214, #2450)
       { label: 'Add to Project…', action: () => addFromFolderDialog(), disabled: hasPj },
+      // (another person's copy of the project merged into it, and undone, #4206)
+      { label: 'Merge Contribution…', action: () => import('./merge-dialog.js').then(m => m.mergeContributionDialog()), disabled: hasPj },
+      { label: 'Undo Merge', action: () => import('./merge-dialog.js').then(m => m.undoMerge()), disabled: hasPj },
       '-',
       // the implementation top (the Simulation view has none: Simulate runs the selected module)
       // (the selected module the top: Unset as Top Module, #1220)

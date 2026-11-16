@@ -40,6 +40,18 @@ const browser = browserStore();
 let store = browser;
 // a project's snapshots (#4205): this storage's, in localStorage
 const snapshotsOf = name => localSnapshots(() => globalThis.localStorage, `${store.kind}:${store.label || ''}`, name);
+// Merge Contribution…'s modules and storage (#4206), loaded when first used; a contribution's zip (a Blob) through the
+// import gate
+async function mergeOf() {
+  const [apply, { contributionOf }, { localMergeStorage }] = await Promise.all([import('../../core/merge-apply.js'), import('../../core/project-merge.js'), import('./merge-local.js')]);
+  const contribution = async zip => {
+    if (zip.size > GATE_LIMITS.maxArchive) fail(`the zip is larger than ${GATE_LIMITS.maxArchive >> 20} MB, the most a merge takes`);
+    let gated;
+    try { gated = await gateZip(new Uint8Array(await zip.arrayBuffer()), browserCodec()); } catch (e) { fail(e.message); }
+    return contributionOf(gated);
+  };
+  return { apply, contribution, storage: localMergeStorage({ store: () => store, ops, snapshots: snapshotsOf }) };
+}
 // a copy given out of a project (core/project-rev.js giveCopy): its id written when it had none, its snapshot kept
 async function giveCopyLocal(name, p) {
   const o = originOf(p.json);
@@ -510,6 +522,14 @@ export const api = {
   // silinx.json normalised, what was dropped in the warnings), then stored
   // (through the import gate, #2830: its caps checked while the zip is read, each entry's name and content)
   // an old project bundle (.silinx.json, #3548) is read as such a zip: its silinx.json and its files
+  // Merge Contribution… (#4206): as the server's routes (core/merge-apply.js), on this storage
+  mergePreview: async (name, zip) => { const m = await mergeOf(); return m.apply.previewOf(await m.apply.previewMerge(m.storage, name, await m.contribution(zip))); },
+  mergeContribution: async (name, zip, resolve = {}, label = '') => {
+    const m = await mergeOf();
+    const r = await m.apply.applyMerge(m.storage, name, await m.contribution(zip), resolve);
+    return { written: r.written, removed: r.removed, regenerated: r.regenerated, taken: r.taken, untrusted: r.untrusted, lines: m.apply.mergeLines(name, label || 'the contribution', r) };
+  },
+  undoMerge: async name => { const m = await mergeOf(); return m.apply.undoMerge(m.storage, name); },
   importZip: async (name, file) => {
     if (file.size > GATE_LIMITS.maxArchive) fail(`the zip is larger than ${GATE_LIMITS.maxArchive >> 20} MB, the most an import takes`);
     const bytes = new Uint8Array(await file.arrayBuffer());

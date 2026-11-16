@@ -26,6 +26,7 @@ import { WIZARDS_PT, WIZARDS_PT_PATTERNS } from './i18n-wizards.js';
 import { LINK_PT, LINK_PT_PATTERNS } from './i18n-link.js';
 import { VERIFY_PT, VERIFY_PT_PATTERNS } from './i18n-verify.js';
 import { GIT_PT, GIT_PT_PATTERNS } from './i18n-git.js';
+import { MERGE_PT, MERGE_PT_PATTERNS } from './i18n-merge.js';
 import { COLLAB_PT, COLLAB_PT_PATTERNS } from './i18n-collab.js';
 import { MEMORY_PT, MEMORY_PT_PATTERNS } from './i18n-memory.js';
 import { RESOURCES_PT, RESOURCES_PT_PATTERNS } from './i18n-resources.js';
@@ -863,6 +864,7 @@ keep(WIZARDS_PT, WIZARDS_PT_PATTERNS);   // the FSM, ASM and UCF wizards (#2082)
 keep(LINK_PT, LINK_PT_PATTERNS);   // a design's link (#2826)
 keep(VERIFY_PT, VERIFY_PT_PATTERNS);   // Verify Equivalence (#3177)
 keep(GIT_PT, GIT_PT_PATTERNS);   // git (#3195)
+keep(MERGE_PT, MERGE_PT_PATTERNS);   // Merge Contribution… (#4206)
 keep(COLLAB_PT, COLLAB_PT_PATTERNS);   // a shared project (#3181)
 keep(RESOURCES_PT, RESOURCES_PT_PATTERNS);   // the device's resources checked against the design (#796)
 keep(PINS_PT, PINS_PT_PATTERNS);   // I/O Pin Planning's Board view (#2694)

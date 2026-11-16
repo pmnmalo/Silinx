@@ -8,7 +8,7 @@
 // before it writes, what the project was is kept (backup), and Undo Merge puts it back, unless the project changed
 // since. A merge that takes any of the contribution's files makes the project untrusted (madeBy 'merge'). Isomorphic.
 //   await findAncestor(projects, name, base, contribution) -> { ancestor, source ('carried' | 'kept' | null), warnings }
-//   await previewMerge(projects, name, contribution) -> { comparison, source, warnings, left }
+//   await previewMerge(projects, name, contribution) -> { comparison, source, warnings, left }   previewOf(it): the page's
 //   await applyMerge(projects, name, contribution, resolve) -> { written, removed, taken, regenerated, untrusted, ... }
 //   await undoMerge(projects, name) -> { restored, removed }
 //   mergeLines(name, from, result) -> [line]                  what a merge says, in the console and the MCP's results
@@ -43,6 +43,16 @@ export async function previewMerge(projects, name, contribution) {
   const a = await findAncestor(projects, name, mine.json, contribution);
   const comparison = compareProjects({ ancestor: a.ancestor, mine, theirs: { json: contribution.json, files: contribution.files } });
   return { comparison, source: a.source, warnings: [...contribution.skipped.map(p => `${p}: not merged (not a project file)`), ...a.warnings], left: openConflicts(comparison) };
+}
+
+/** A preview as the page shows it (plain JSON): { source, threeWay, warnings, left, files: [{ path, state, generatedBy?,
+ *  conflicts?, mine, theirs (the two texts, null: none) }] (the files that differ), project: silinx.json's conflicts }. */
+export function previewOf(p) {
+  const c = p.comparison;
+  return {
+    source: p.source, threeWay: c.threeWay, warnings: p.warnings, left: p.left, project: c.project.conflicts,
+    files: c.files.filter(f => f.state !== 'same').map(f => ({ ...f, mine: c.mine.files[f.path] ?? null, theirs: c.theirs.files[f.path] ?? null })),
+  };
 }
 
 /** The contribution merged into the project, every conflict resolved (resolve: openConflicts's): what was written,

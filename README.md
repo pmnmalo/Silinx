@@ -521,6 +521,19 @@ editor of the family is chosen in `~/.silinx/config.json`: `"editor": "code-insi
 `SILINX_EDITOR=off`). It is not in the browser edition, nor for a page on another computer than the server's: the
 editor would open on the server's screen.
 
+### Merging a group's work (Merge Contribution…)
+
+When several people work on copies of one project (each at home, on a copy a teacher handed out), *Project ▸ Merge
+Contribution…* brings a copy back into the project: its folder, or the .zip *File ▸ Export Project (.zip)…* made of it.
+A copy given out remembers where it came from (the project and its version then), so the merge is three-way:
+- what only one side changed, added or removed is taken;
+- a drawing both changed is merged by its objects (a state each side added: both kept), and its HDL made again;
+- for a file, a drawing's object or a setting both changed, you choose Mine or Theirs, with Compare beside it.
+
+A copy made before Silinx recorded this is merged two-way: each file that differs is a choice. *Undo Merge* puts the
+project back as it was. A merge that takes someone else's files makes the project untrusted until you trust it, as an
+import does. For a group working at the same time, Share Project's live editing needs no merge.
+
 ### A project on GitHub (git, a GitHub Classroom assignment)
 
 On your computer or a Silinx server, a project can live in a GitHub repository, through the system's git. **The

@@ -20,10 +20,11 @@ test('#405 ISE project routes: mounted alone, the .xise and zip routes', () => {
   assert.deepEqual(calls, ['get /projects/:p/export.xise', 'post /projects/import-xise', 'get /projects/:p/export.zip', 'post /projects/import-zip', 'post /projects/:p/sync-xise']);
 });
 
-test('#405 ISE project routes: registerImplRoutes registers them last, after its own', () => {
+test('#405 ISE project routes: registerImplRoutes registers them after its own, then Merge Contribution\'s (#4206)', () => {
   const { api, calls } = recorder();
   registerImplRoutes(api, { wrap: f => f, projects });
-  assert.equal(calls.length, 21);
+  assert.equal(calls.length, 24);
   assert.ok(calls.includes('post /projects/:p/capture'), 'the capture of the logic analyzer (#3176)');
-  assert.deepEqual(calls.slice(-5), ['get /projects/:p/export.xise', 'post /projects/import-xise', 'get /projects/:p/export.zip', 'post /projects/import-zip', 'post /projects/:p/sync-xise']);
+  assert.deepEqual(calls.slice(-8, -3), ['get /projects/:p/export.xise', 'post /projects/import-xise', 'get /projects/:p/export.zip', 'post /projects/import-zip', 'post /projects/:p/sync-xise']);
+  assert.deepEqual(calls.slice(-3), ['post /projects/:p/merge-preview', 'post /projects/:p/merge', 'post /projects/:p/undo-merge']);
 });
