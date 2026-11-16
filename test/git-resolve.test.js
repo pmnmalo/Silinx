@@ -100,3 +100,75 @@ test('not a drawing, or a version that is none: no conflicts of objects (a file\
   assert.deepEqual(drawingConflicts('src/x.fsm.json', null, json({ name: 'a' }), json({ name: 'b' })).conflicts, [{ id: '.name', label: 'name', mine: 'changed', theirs: 'changed' }]);
   await assert.rejects(resolveConflict('src/top.vhd', 'a', 'b', 'c', {}), { message: '\'src/top.vhd\' is no drawing whose conflicts can be resolved object by object' });
 });
+
+// a drawing's next free id of a sequence (as the editors give it: the number after the highest)
+const nextId = (objs, prefix) => `${prefix}${Math.max(0, ...objs.map((o) => (new RegExp(`^${prefix}(\\d+)$`).exec(o.id) || [0, 0])[1])) + 1}`;
+
+test('#4202: an object both sides added under one sequential id is no conflict: both kept, theirs renamed with its references; simulated in VHDL and Verilog', async () => {
+  const p = 'src/traffic.fsm.json';
+  const base = JSON.parse(text('examples', 'traffic', p));
+  const mine = clone(base), theirs = clone(base);
+  const s = nextId(base.states, 's'), t = nextId(base.transitions, 't');
+  // each side added a state (the editor's automatic name, S0, on both) and a transition from it, with the same ids
+  mine.states.push({ id: s, name: 'S0', x: 600, y: 400, outputs: { phase: '1' } });
+  mine.transitions.push({ id: t, from: s, to: 's1', cond: 'done', outputs: {} });
+  theirs.states.push({ id: s, name: 'S0', x: 700, y: 500, outputs: { phase: '2' } });
+  theirs.transitions.push({ id: t, from: s, to: 's3', cond: 'done', outputs: {} });
+  // and the same new transition on both sides: one
+  const same = { id: 't50', from: 's2', to: 's3', cond: 'night', outputs: {} };
+  mine.transitions.push(clone(same)); theirs.transitions.push(clone(same));
+  assert.deepEqual(drawingConflicts(p, json(base), json(mine), json(theirs)).conflicts, []);
+  const r = await resolveConflict(p, json(base), json(mine), json(theirs), {});
+  const s2 = nextId(base.states.concat(mine.states), 's'), t2 = `t${Math.max(50, +t.slice(1)) + 1}`;
+  assert.deepEqual(r.model.states.slice(-2).map((x) => [x.id, x.name, x.x]), [[s, 'S0', 600], [s2, 'S1', 700]]);
+  assert.deepEqual(r.model.transitions.filter((x) => x.from === s || x.from === s2).map((x) => [x.id, x.from, x.to]), [[t, s, 's1'], [t2, s2, 's3']]);
+  assert.equal(r.model.transitions.filter((x) => x.id === 't50').length, 1);
+  assert.deepEqual(await checkResolved('fsm', r.model), []);
+  const m = normalizeFsm(r.model);
+  const vectors = randomVectors(m, 80, 5);
+  for (const lang of ['vhdl', 'verilog']) assert.deepEqual(runHdl(generateFsm(m, lang).code, lang, m, vectors), runModel(m, vectors), lang);
+});
+
+test('#4202: a schematic\'s symbol and a circuit\'s part both sides added under one id: both kept, an automatic instance name made unique; compiled in VHDL and Verilog', async () => {
+  // (the schematic: a copy of its first symbol on each side, the editor's next id and automatic name on both)
+  const ps = 'src/gates.sch.json';
+  const sb = JSON.parse(text('examples', 'gates', ps));
+  const sm = clone(sb), st = clone(sb), sid = nextId(sb.symbols, 'S');
+  sm.symbols.push({ ...clone(sb.symbols[0]), id: sid, name: 'inst_90', x: sb.symbols[0].x + 400 });
+  st.symbols.push({ ...clone(sb.symbols[0]), id: sid, name: 'inst_90', x: sb.symbols[0].x + 600 });
+  assert.deepEqual(drawingConflicts(ps, json(sb), json(sm), json(st)).conflicts, []);
+  const rs = await resolveConflict(ps, json(sb), json(sm), json(st), {});
+  assert.deepEqual(rs.model.symbols.slice(-2).map((x) => [x.id, x.name]), [[sid, 'inst_90'], [`S${+sid.slice(1) + 1}`, 'inst_91']]);
+  for (const lang of ['vhdl', 'verilog']) compiles(ps, rs.model, lang);
+  // (the circuit, #4203 too: an LED on each side, D<n> on both)
+  const pc = 'src/breadboard.circ.json';
+  const cb = JSON.parse(text('examples', 'breadboard', pc));
+  const cm = clone(cb), ct = clone(cb), uid = nextId(cb.parts, 'D');
+  cm.parts.push({ id: uid, type: 'led', x: 74, y: 26, color: 'green' });
+  ct.parts.push({ id: uid, type: 'led', x: 77, y: 26, color: 'yellow' });
+  const c = drawingConflicts(pc, json(cb), json(cm), json(ct));
+  assert.equal(c.kind, 'circ');
+  assert.deepEqual(c.conflicts, []);
+  const rc = await resolveConflict(pc, json(cb), json(cm), json(ct), {});
+  assert.deepEqual(rc.model.parts.slice(-2).map((x) => [x.id, x.x]), [[uid, 74], [`D${+uid.slice(1) + 1}`, 77]]);
+  assert.deepEqual(await checkResolved('circ', rc.model), []);
+});
+
+test('#4203: a circuit\'s part both sides moved: a conflict resolved mine and theirs, checked as Check Circuit checks it, its HDL compiled in VHDL and Verilog', async () => {
+  const p = 'src/breadboard.circ.json';
+  const base = JSON.parse(text('examples', 'breadboard', p));
+  const mine = clone(base), theirs = clone(base);
+  const u = base.parts.find((x) => x.id === 'U2');
+  mine.parts.find((x) => x.id === 'U2').comment = 'mine';
+  theirs.parts.find((x) => x.id === 'U2').comment = 'theirs';
+  theirs.wires[0].color = 'blue';   // (only theirs: taken)
+  const c = drawingConflicts(p, json(base), json(mine), json(theirs));
+  assert.deepEqual(c.conflicts, [{ id: 'parts/U2', label: `parts ${u.id}`, mine: 'changed (comment)', theirs: 'changed (comment)' }]);
+  for (const side of ['mine', 'theirs']) {
+    const r = await resolveConflict(p, json(base), json(mine), json(theirs), { 'parts/U2': side });
+    assert.equal(r.model.parts.find((x) => x.id === 'U2').comment, side);
+    assert.equal(r.model.wires[0].color, 'blue');
+    assert.deepEqual(await checkResolved('circ', r.model), []);
+    for (const lang of ['vhdl', 'verilog']) compiles(p, r.model, lang);
+  }
+});

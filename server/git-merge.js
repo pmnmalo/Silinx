@@ -12,16 +12,19 @@ import { drawingConflicts, resolveConflict } from '../core/git-resolve.js';
 import { syncDrawing } from './drawing-sync.js';
 
 const MARK = '# Silinx (#3197): the drawings are merged by their objects, never as text';
-const DRAWING_ATTRIBUTES = `${MARK}\n${['sch', 'asm', 'fsm', 'tt', 'bool', 'pn'].map(k => `*.${k}.json merge=binary`).join('\n')}\n`;
+const DRAWING_ATTRIBUTES = `${MARK}\n${['sch', 'asm', 'fsm', 'tt', 'bool', 'pn', 'circ'].map(k => `*.${k}.json merge=binary`).join('\n')}\n`;
+// Silinx's lines as an older Silinx wrote them (the circuit's missing, #4203): replaced
+const OLD_LINES = new RegExp(`${MARK.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\n(?:\\*\\.\\w+\\.json merge=binary\n)*`);
 
-/** The repository's info/attributes with Silinx's lines (once; what else it holds kept). */
+/** The repository's info/attributes with Silinx's lines (once; what else it holds kept; an older Silinx's lines made
+ *  the current ones). */
 export async function ensureDrawingAttributes(gitDir) {
   const f = path.join(gitDir, 'info', 'attributes');
   let cur = '';
   try { cur = await fsp.readFile(f, 'utf8'); } catch { /* none yet */ }
-  if (cur.includes(MARK)) return false;
+  if (cur.includes(DRAWING_ATTRIBUTES)) return false;
   await fsp.mkdir(path.dirname(f), { recursive: true });
-  await fsp.writeFile(f, `${cur}${cur && !cur.endsWith('\n') ? '\n' : ''}${DRAWING_ATTRIBUTES}`);
+  await fsp.writeFile(f, cur.includes(MARK) ? cur.replace(OLD_LINES, DRAWING_ATTRIBUTES) : `${cur}${cur && !cur.endsWith('\n') ? '\n' : ''}${DRAWING_ATTRIBUTES}`);
   return true;
 }
 

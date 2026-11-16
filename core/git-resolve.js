@@ -1,8 +1,8 @@
 // A pull's conflicts in drawings, resolved object by object (#3197): the server's git (server/git.js) and GitHub's API
 // (core/git-rest.js) give a drawing in conflict its three versions (the base, mine, theirs); its conflicts are listed,
 // each object's with what each side did to it, the user chooses "mine" or "theirs" for each, and the drawing that
-// results is checked as Check Drawing checks it (an ASM chart's Validate, a state diagram's Check, a Petri net's Check;
-// for every kind, no object pointing at one the resolution left out) before it is written. Its HDL file (its
+// results is checked as Check Drawing checks it (an ASM chart's Validate, a state diagram's Check, a Petri net's Check,
+// a circuit's Check Circuit; for every kind, no object pointing at one the resolution left out) before it is written. Its HDL file (its
 // generatedFile, in conflict too when both sides changed the drawing) is made from it again by the caller. A drawing's
 // JSON is never merged as text. Isomorphic.
 import { drawingKind, diffDrawings, mergeDrawings, resolveDrawing, conflictId, danglingRefs } from './drawing-merge.js';
@@ -36,6 +36,7 @@ const CHECKS = {
   asm: async m => (await import('./asm.js')).validate(m),
   fsm: async m => (await import('./fsm.js')).validateFsm(m),
   pn: async m => (await import('./petri-analysis.js')).checkPetri(m),
+  circ: async m => (await import('./circuit-check.js')).checkCircuit((await import('./circuit.js')).normalizeCircuit(m)),   // (#4203)
 };
 
 /** The drawing's errors as Check Drawing gives them (its warnings left: a resolution may keep the sides' own). */

@@ -16,6 +16,7 @@ import { randomVectors, runHdl, runModel } from './fsm-sim.js';
 
 let tmp, ws, bare;
 const G = await import('../server/git.js');
+const { ensureDrawingAttributes } = await import('../server/git-merge.js');
 const FSM = 'src/traffic.fsm.json';
 const sh = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
@@ -75,7 +76,7 @@ test('different objects changed on both sides: merged at once, the HDL made agai
   assert.equal(m.states[0].x, readJson(path.join(ROOT, 'examples', 'traffic', FSM)).states[0].x + 20);
   assert.equal(fs.readFileSync(path.join(dir, m.generatedFile), 'utf8'), viewHdl(FSM, JSON.stringify(m), { linked: () => false }).text);
   // (git never merged the JSON as text: Silinx's attributes; the merge committed, nothing left to commit)
-  assert.match(fs.readFileSync(path.join(dir, '.git', 'info', 'attributes'), 'utf8'), /^# Silinx \(#3197\)[^\n]*\n\*\.sch\.json merge=binary\n/);
+  assert.match(fs.readFileSync(path.join(dir, '.git', 'info', 'attributes'), 'utf8'), /^# Silinx \(#3197\)[^\n]*\n\*\.sch\.json merge=binary\n(?:\*\.\w+\.json merge=binary\n)*\*\.circ\.json merge=binary\n/);
   assert.equal(sh(dir, 'log', '-1', '--format=%P').trim().split(' ').length, 2);
   assert.deepEqual((await G.gitStatus('traffic')).files, []);
   await G.gitPush('traffic');
@@ -127,4 +128,44 @@ test('a resolution that is no valid drawing pulls nothing: a transition to a sta
   const r = await G.gitPull('traffic', { resolve: { [FSM]: { 'states/s2': 'theirs' } } });
   assert.deepEqual(r.resolved, [FSM]);
   assert.ok(readJson(path.join(dir, FSM)).transitions.some((x) => x.id === 't99'));
+});
+
+test('#4202 through git: a state and a transition both sides added under the same ids: merged at once, both kept, theirs renamed; simulated in VHDL and Verilog', async () => {
+  const dir = path.join(ws, 'traffic');
+  const add = (m, x, to) => {
+    const s = `s${Math.max(...m.states.map((o) => +o.id.slice(1))) + 1}`, tr = `t${Math.max(...m.transitions.map((o) => +o.id.slice(1))) + 1}`;
+    m.states.push({ id: s, name: 'S0', x, y: 600, outputs: {} });
+    m.transitions.push({ id: tr, from: s, to, cond: 'done', outputs: {} });
+    return [s, tr];
+  };
+  let ids;
+  theirs((m) => { ids = add(m, 900, 's3'); });
+  await mine((m) => { add(m, 700, 's1'); });
+  const r = await G.gitPull('traffic');
+  assert.deepEqual(r.resolved, [FSM]);
+  const m = readJson(path.join(dir, FSM));
+  const [s, tr] = ids, s2 = `s${+s.slice(1) + 1}`;
+  assert.deepEqual(m.states.filter((o) => o.name === 'S0' || o.name === 'S1').map((o) => [o.id, o.name, o.x]), [[s, 'S0', 700], [s2, 'S1', 900]]);
+  assert.deepEqual([t(m, tr).from, t(m, tr).to], [s, 's1']);
+  assert.ok(m.transitions.some((o) => o.from === s2 && o.to === 's3' && o.id !== tr));
+  const fm = normalizeFsm(m);
+  const vectors = randomVectors(fm, 80, 3);
+  assert.deepEqual(runHdl(fs.readFileSync(path.join(dir, m.generatedFile), 'utf8'), 'vhdl', fm, vectors), runModel(fm, vectors));
+  assert.deepEqual(runHdl(generateFsm(fm, 'verilog').code, 'verilog', fm, vectors), runModel(fm, vectors));
+  assert.deepEqual((await G.gitStatus('traffic')).files, []);
+  await G.gitPush('traffic');
+});
+
+test('#4203: an older Silinx\'s attributes (no circuit) made the current ones, the repository\'s other lines kept; written once', async () => {
+  const gitDir = path.join(tmp, 'attrs');
+  fs.mkdirSync(path.join(gitDir, 'info'), { recursive: true });
+  const f = path.join(gitDir, 'info', 'attributes');
+  fs.writeFileSync(f, '*.png binary\n# Silinx (#3197): the drawings are merged by their objects, never as text\n*.sch.json merge=binary\n*.asm.json merge=binary\n*.fsm.json merge=binary\n*.tt.json merge=binary\n*.bool.json merge=binary\n*.pn.json merge=binary\n*.vhd text\n');
+  assert.equal(await ensureDrawingAttributes(gitDir), true);
+  assert.equal(fs.readFileSync(f, 'utf8'), `*.png binary\n# Silinx (#3197): the drawings are merged by their objects, never as text\n${['sch', 'asm', 'fsm', 'tt', 'bool', 'pn', 'circ'].map((k) => `*.${k}.json merge=binary\n`).join('')}*.vhd text\n`);
+  assert.equal(await ensureDrawingAttributes(gitDir), false);
+  // (git itself says a circuit is merged as binary)
+  sh(tmp, 'init', '--quiet', 'attrs-repo');
+  await ensureDrawingAttributes(path.join(tmp, 'attrs-repo', '.git'));
+  assert.equal(sh(path.join(tmp, 'attrs-repo'), 'check-attr', 'merge', 'src/breadboard.circ.json').trim(), 'src/breadboard.circ.json: merge: binary');
 });

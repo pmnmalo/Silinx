@@ -1,6 +1,6 @@
 // The drawings' diffs and merges (#3197, phase 3 of #3194): a schematic (.sch.json), an ASM chart (.asm.json), a state
-// diagram (.fsm.json), a truth table (.tt.json), a Boolean function (.bool.json) or a Petri net (.pn.json) compared, and
-// merged, object by object, never as text. A drawing is a description (its name, clock, reset… : its properties) and
+// diagram (.fsm.json), a truth table (.tt.json), a Boolean function (.bool.json), a Petri net (.pn.json) or a circuit
+// (.circ.json, #4203) compared, and merged, object by object, never as text. A drawing is a description (its name, clock, reset… : its properties) and
 // collections of objects (its arrays of objects: symbols, wires, labels, ports; nodes, edges; states, transitions;
 // places, arcs; inputs, outputs, registers…), each object known by its id (or, with none, its name), and maps (a
 // Boolean function's table and expressions: an output's column each), each entry known by its name. A diff says what
@@ -9,7 +9,7 @@
 // for each, never mixed. Isomorphic.
 
 /** The drawings' files: their kind by the name. */
-export const DRAWING_RE = /\.(sch|asm|fsm|tt|bool|pn)\.json$/i;
+export const DRAWING_RE = /\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i;
 export const drawingKind = path => DRAWING_RE.exec(String(path || ''))?.[1].toLowerCase() || null;
 
 // an object's place, not what it is: a change of these only is a move
@@ -70,10 +70,63 @@ export const noDiff = d => !d.added.length && !d.removed.length && !d.moved.leng
 /** A conflict's id: 'coll/key' for an object, '.name' for a property. */
 export const conflictId = c => (c.coll ? `${c.coll}/${c.key}` : `.${c.prop}`);
 
-/** A three-way merge: { merged, conflicts: [{ coll, key, base, mine, theirs } | { prop, base, mine, theirs }] }; with
- *  choices ({ [conflictId]: 'mine' | 'theirs' }) each conflict takes its side's (an object removed on that side:
- *  removed). A conflict with no choice keeps mine in `merged`. */
-export function mergeDrawings(base, mine, theirs, choices = {}) {
+// the fields of an object that name another one by its id (a transition's states, an edge's nodes, an arc's place and
+// transition), and the drawing's own (its initial state)
+const REF_FIELDS = ['from', 'to', 'source', 'target', 'place', 'transition'];
+const SEQ = /^(.*?)(\d+)$/;
+// the next free name of a sequence (its prefix, a number after every one `taken` has)
+function nextFree(prefix, taken) {
+  let n = 0;
+  for (const t of taken) { const m = SEQ.exec(t); if (m && m[1] === prefix) n = Math.max(n, +m[2]); }
+  return `${prefix}${n + 1}`;
+}
+
+/** Theirs' objects that both sides added under one id, differently, given new ids (#4202): a drawing's ids are
+ *  sequential (S7, s4, W80: the next free number), so two copies that each added an object gave it the same. Theirs'
+ *  is renamed to the next free id of its sequence, theirs' references to it with it, and an automatic name (S3, inst_4)
+ *  that mine's object has too, the next free one: both objects kept, no conflict. An id that is no sequence's, an
+ *  object known by its name (a port, an output: one name, one thing) or a drawing with no base (added on both sides)
+ *  are left as they are. Returns { theirs (a copy, or the same when nothing is renamed), renamed: [{ coll, from, to }] }. */
+export function rekeyTheirs(base, mine, theirs) {
+  const renamed = [];
+  if (!base || !Object.keys(base).length || !theirs) return { theirs, renamed };
+  const colls = collections(base, mine, theirs);
+  const ids = new Set();
+  for (const d of [base, mine, theirs]) for (const c of colls) for (const o of d?.[c] || []) if (o.id !== undefined) ids.add(String(o.id));
+  const map = new Map(), objs = new Map();   // (old id -> new id; 'coll/old id' -> { id, name })
+  for (const c of colls) {
+    const B = byKey(base[c]), M = byKey(mine?.[c]);
+    const taken = new Set([...(base[c] || []), ...(mine?.[c] || []), ...(theirs[c] || [])].map(o => o.name).filter(n => typeof n === 'string'));
+    for (const o of theirs[c] || []) {
+      if (o.id === undefined) continue;
+      const id = String(o.id), m = M.get(id), p = SEQ.exec(id);
+      if (!p || B.has(id) || !m || same(m, o)) continue;
+      const to = nextFree(p[1], ids);
+      ids.add(to); map.set(id, to); renamed.push({ coll: c, from: id, to });
+      let name = o.name;
+      if (typeof name === 'string' && name === m.name && SEQ.test(name)) { name = nextFree(SEQ.exec(name)[1], taken); taken.add(name); }
+      objs.set(`${c}/${id}`, { id: to, name });
+    }
+  }
+  if (!renamed.length) return { theirs, renamed };
+  const out = structuredClone(theirs);
+  for (const c of colls) {
+    for (const o of out[c] || []) {
+      if (o.id === undefined) continue;
+      const n = objs.get(`${c}/${o.id}`);
+      if (n) { o.id = n.id; if (n.name !== undefined) o.name = n.name; }
+      for (const f of REF_FIELDS) if (typeof o[f] === 'string' && map.has(o[f])) o[f] = map.get(o[f]);
+    }
+  }
+  if (typeof out.initial === 'string' && map.has(out.initial)) out.initial = map.get(out.initial);
+  return { theirs: out, renamed };
+}
+
+/** A three-way merge: { merged, conflicts: [{ coll, key, base, mine, theirs } | { prop, base, mine, theirs }], renamed:
+ *  theirs' objects given new ids (rekeyTheirs) }; with choices ({ [conflictId]: 'mine' | 'theirs' }) each conflict
+ *  takes its side's (an object removed on that side: removed). A conflict with no choice keeps mine in `merged`. */
+export function mergeDrawings(base, mine, theirsIn, choices = {}) {
+  const { theirs, renamed } = rekeyTheirs(base, mine, theirsIn);
   const conflicts = [];
   const pick = (id, b, m, t) => {
     if (same(m, t)) return m;
@@ -117,7 +170,7 @@ export function mergeDrawings(base, mine, theirs, choices = {}) {
     merged[coll] = (mine && coll in mine) || (theirs && coll in theirs) ? out : undefined;
   }
   for (const k of Object.keys(merged)) if (merged[k] === null || merged[k] === undefined) delete merged[k];
-  return { merged, conflicts };
+  return { merged, conflicts, renamed };
 }
 
 /** The conflicts' resolution, every one chosen: the merged drawing, or an Error naming the conflicts left. */

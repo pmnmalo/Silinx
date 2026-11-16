@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { drawingKind, diffDrawings, noDiff, mergeDrawings, resolveDrawing, conflictId, danglingRefs } from '../core/drawing-merge.js';
+import { drawingKind, diffDrawings, noDiff, mergeDrawings, resolveDrawing, conflictId, danglingRefs, rekeyTheirs } from '../core/drawing-merge.js';
 import { diffLines, sideBySide, unifiedDiff } from '../core/text-diff.js';
 
 const ROOT = path.join(import.meta.dirname, '..');
@@ -23,9 +23,9 @@ const clone = (o) => structuredClone(o);
 const collsOf = (d) => Object.entries(d).filter(([, v]) => Array.isArray(v) && v.length && v.every((o) => o && (o.id ?? o.name) !== undefined)).map(([k]) => k);
 
 test('drawingKind: a drawing\'s kind by its name', () => {
-  assert.deepEqual(['a.sch.json', 'src/x.asm.json', 'X.FSM.JSON', 't.tt.json', 'f.bool.json', 'n.pn.json', 'a.json', 'a.vhd', null].map(drawingKind), ['sch', 'asm', 'fsm', 'tt', 'bool', 'pn', null, null, null]);
+  assert.deepEqual(['a.sch.json', 'src/x.asm.json', 'X.FSM.JSON', 't.tt.json', 'f.bool.json', 'n.pn.json', 'b.circ.json', 'a.json', 'a.vhd', null].map(drawingKind), ['sch', 'asm', 'fsm', 'tt', 'bool', 'pn', 'circ', null, null, null]);
   assert.ok(DRAWINGS.length >= 15, DRAWINGS.length);
-  assert.deepEqual([...new Set(DRAWINGS.map(drawingKind))].sort(), ['asm', 'bool', 'fsm', 'sch']);
+  assert.deepEqual([...new Set(DRAWINGS.map(drawingKind))].sort(), ['asm', 'bool', 'circ', 'fsm', 'sch']);
 });
 
 test('diffDrawings on every drawing: nothing against itself; an object added, removed, moved, changed; a property', () => {
@@ -78,6 +78,53 @@ test('mergeDrawings on every drawing: what one side changed is taken, both sides
     assert.deepEqual(mergeDrawings(base, mine, clone(mine)).conflicts, []);
     assert.deepEqual(mergeDrawings(base, mine, clone(mine)).merged, mine);
   }
+});
+
+test('#4202 on every drawing: an object each side added under the same sequential id, both kept (theirs renamed); one both added alike, one', () => {
+  let n = 0;
+  for (const f of DRAWINGS) {
+    const base = read(f);
+    for (const coll of collsOf(base).filter((c) => base[c].every((o) => /^[A-Za-z]+\d+$/.test(String(o.id))))) {
+      const prefix = /^[A-Za-z]+/.exec(base[coll][0].id)[0];
+      const id = `${prefix}${Math.max(...base[coll].map((o) => +String(o.id).slice(prefix.length) || 0)) + 1}`;
+      const mine = clone(base), theirs = clone(base);
+      mine[coll].push({ ...clone(base[coll][0]), id, comment: 'mine' });
+      theirs[coll].push({ ...clone(base[coll][0]), id, comment: 'theirs' });
+      const { merged, conflicts, renamed } = mergeDrawings(base, mine, theirs);
+      assert.deepEqual(conflicts, [], `${f} ${coll}`);
+      assert.equal(renamed.length, 1, `${f} ${coll}`);
+      assert.equal(renamed[0].from, id);
+      assert.deepEqual(merged[coll].slice(-2).map((o) => [String(o.id), o.comment]), [[id, 'mine'], [renamed[0].to, 'theirs']], `${f} ${coll}`);
+      // (the new id is no other object's, in any collection)
+      assert.equal(Object.values(base).filter(Array.isArray).flat().filter((o) => String(o?.id) === renamed[0].to).length, 0);
+      // added alike on both sides: one object, nothing renamed
+      const alike = mergeDrawings(base, mine, clone(mine));
+      assert.deepEqual([alike.conflicts, alike.renamed, alike.merged[coll].length], [[], [], base[coll].length + 1]);
+      n++;
+    }
+  }
+  assert.ok(n >= 20, n);
+});
+
+test('#4202: theirs\' references follow its renamed objects; no base, an object changed by mine, an id no sequence\'s: no renaming', () => {
+  const base = { states: [{ id: 's1', name: 'A' }], transitions: [{ id: 't1', from: 's1', to: 's1' }], initial: 's1' };
+  const mine = { ...clone(base), states: [...base.states, { id: 's2', name: 'S0', x: 1 }] };
+  const theirs = { states: [...base.states, { id: 's2', name: 'S0', x: 2 }], transitions: [...base.transitions, { id: 't2', from: 's2', to: 's1' }], initial: 's2' };
+  const r = rekeyTheirs(base, mine, theirs);
+  assert.deepEqual(r.renamed, [{ coll: 'states', from: 's2', to: 's3' }]);
+  assert.deepEqual(r.theirs.states[1], { id: 's3', name: 'S1', x: 2 });
+  assert.deepEqual(r.theirs.transitions[1], { id: 't2', from: 's3', to: 's1' });
+  assert.equal(r.theirs.initial, 's3');
+  assert.equal(theirs.states[1].id, 's2');   // (theirs itself unchanged)
+  const m = mergeDrawings(base, mine, theirs);
+  assert.deepEqual([m.conflicts, m.merged.initial, m.merged.states.map((s) => s.id)], [[], 's3', ['s1', 's2', 's3']]);
+  assert.deepEqual(danglingRefs(m.merged), []);
+  // (no base: a drawing both sides added; an id that is no sequence's; an object of the base both changed: as before)
+  assert.deepEqual(rekeyTheirs({}, mine, theirs).renamed, []);
+  assert.deepEqual(rekeyTheirs(null, mine, theirs).renamed, []);
+  const named = (id) => ({ states: [{ id, x: 0 }] });
+  assert.deepEqual(mergeDrawings({ states: [] }, { states: [{ id: 'go', x: 1 }] }, { states: [{ id: 'go', x: 2 }] }).conflicts.map(conflictId), ['states/go']);
+  assert.deepEqual(mergeDrawings(named('s1'), { states: [{ id: 's1', x: 1 }] }, { states: [{ id: 's1', x: 2 }] }).conflicts.map(conflictId), ['states/s1']);
 });
 
 test('a Boolean function\'s maps: an output\'s column merged by itself, a conflict on one column', () => {
