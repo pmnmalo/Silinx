@@ -26,7 +26,7 @@ import { isTrusted, markEditedByEditor, untrustedNotice } from '/core/trust.js';
 import { selectionOfDoc } from './collab-select-draw.js';
 import { keepBound, unbindAll } from './collab-bind.js';
 import { keepDrawingsBound, unbindDrawings, editorOf, modelOf } from './collab-drawing.js';
-import { liveDrawing, drawingKind, drawingText, sameDrawing, drawingModel, drawingPathsOf, pruneDrawing, syncDrawing, revertDrawing } from '/core/collab-model.js';
+import { liveDrawing, drawingKind, drawingText, sameDrawing, drawingModel, drawingPathsOf, pruneDrawing, syncDrawing, revertDrawing, withView } from '/core/collab-model.js';
 import { shareRoom, colorOf } from '/core/collab-client.js';
 import { followLink, relayUrl, relayAddress, withTop } from '/core/collab-link.js';
 import { newHostKey } from '/core/collab-meet.js';
@@ -385,7 +385,7 @@ async function writeMerged(s, path, { edited = false } = {}) {
   const r = drawingModel(s.doc, path);
   if (!r || share !== s) return true;
   if (r.dropped.length) pruneDrawing(s.doc, path);
-  const text = drawingText(path, r.model);
+  const text = drawingText(path, withView(path, r.model, s.bases.get(path)));   // (the owner's own wires' style kept, #4239)
   if (sameDrawing(text, s.bases.get(path))) return true;
   let gated;
   try { gated = gateEdit(path, text); } catch (e) { app.log(`WARNING: ${path}: an editor's change not written: ${e.reason || e.message}.`, 'warn'); return false; }

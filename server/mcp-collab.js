@@ -23,7 +23,7 @@ import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { projectDoc, publishProject, sharedPath, docProject, docFile, gatedDocFile, watchDoc, editFile, editablePath, gateEdit } from '../core/collab-doc.js';
 import { isTrusted, markEditedByEditor } from '../core/trust.js';
 import { relayConfig } from './toolchain.js';
-import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, putDrawing, pruneDrawing, revertDrawing } from '../core/collab-model.js';
+import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, putDrawing, pruneDrawing, revertDrawing, withView } from '../core/collab-model.js';
 import { checkDrawing } from './mcp-check.js';
 import { shareRoom, followRoom } from '../core/collab-client.js';
 import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-link.js';
@@ -131,7 +131,7 @@ function drawingWrites(name, doc, owner, warn, bases) {
       const r = liveDrawing(path) && fs.existsSync(file) ? drawingModel(doc, path) : null;
       if (!r) { undo = true; continue; }
       if (r.dropped.length) pruneDrawing(doc, path);
-      const text = drawingText(path, r.model);
+      const text = drawingText(path, withView(path, r.model, bases.get(path)));   // (the owner's own wires' style kept, #4239)
       if (sameDrawing(text, bases.get(path))) continue;
       let gated;
       try { gated = gateEdit(path, text); } catch (e) { warn(`${path}: an editor's change not written: ${e.reason || e.message}`); revertDrawing(doc, path, bases); continue; }
@@ -317,7 +317,7 @@ export const COLLAB_TOOLS = [
       if (path !== undefined) {
         // (through the import gate, as the interface's follower reads it, #3361; a drawing edited live: as merged, #3183)
         const live = liveDrawing(String(path)) ? drawingModel(cur.session.doc, String(path)) : null;
-        const g = live ? gatedText(String(path), drawingText(String(path), live.model)) : gatedDocFile(cur.session.doc, String(path));
+        const g = live ? gatedText(String(path), drawingText(String(path), withView(String(path), live.model, docFile(cur.session.doc, String(path))))) : gatedDocFile(cur.session.doc, String(path));
         if (g.reason) throw toolError(`${path}: not shown: ${g.reason}`);
         text = g.text;
         if (text === null) throw toolError(`'${path}' is not a file of the shared project (${fileTree.join(', ')})`);

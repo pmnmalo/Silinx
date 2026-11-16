@@ -18,7 +18,8 @@ import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
 import { partPins, partHoles } from '/core/circuit-parts.js';
-import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js';
+import { addPart, movePart, rotatePart, deleteItem, setWireStyle as setCircuitWireStyle } from '/core/circuit-edit.js';
+import { wireStyleOf } from '/core/wire-style.js';
 import { mountCircuitOptions } from './circuit-options.js';
 import { mountCircuitClip } from './circuit-clip.js';
 import { checkCircuit } from '/core/circuit-check.js';
@@ -285,7 +286,7 @@ export function mountCircuitEditor(container, opts = {}) {
   problems();
   requestAnimationFrame(initialFit);
   return {
-    getModel: () => clone(M),
+    getModel: () => clone(M), wireStyle: () => wireStyleOf(M, 'direct'), setWireStyle: (v) => { if (!readOnly) applyEdit(setCircuitWireStyle(M, v)); },   // (a follower's own, #4239)
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },

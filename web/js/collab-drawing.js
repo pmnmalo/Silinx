@@ -11,7 +11,7 @@
 //   out of the structure and said in the console (nothing is changed silently); the editor's check runs on the merge.
 //   bindDrawing(d, doc, path, { mine, say }) -> unbind()      keepDrawingsBound(bound, docs, doc, editable, opts)
 import * as Y from 'yjs';
-import { putDrawing, drawingModel, drawingMap, pruneDrawing, sameModel } from '/core/collab-model.js';
+import { putDrawing, drawingModel, drawingMap, pruneDrawing, sameModel, withView } from '/core/collab-model.js';
 
 const RETRY_MS = 120, MERGE_MS = 1500;
 /** The editor of a drawing edited live (#3183: a state diagram's, a truth table's, an ASM chart's, a Petri net's, a
@@ -49,7 +49,9 @@ export function bindDrawing(d, doc, path, { mine = false, say = () => {}, accept
     if (r.dropped.length) pruneDrawing(doc, path, prune);
     if (!accept(r.model, path)) return;
     last = r.model;
-    if (!same(r.model, modelOf(ed))) ed.applyModel(r.model, { renamed, mine: own });
+    // (its own wires' style kept: how each participant sees it, never shared, #4239)
+    const m = withView(path, r.model, modelOf(ed));
+    if (!same(m, modelOf(ed))) ed.applyModel(m, { renamed, mine: own });
   };
   const observer = (_events, tr) => { if (tr.origin !== origin && tr.origin !== prune) apply({ own: tr.origin === um }); };
   ymap.observeDeep(observer);
@@ -60,7 +62,7 @@ export function bindDrawing(d, doc, path, { mine = false, say = () => {}, accept
       lastKey = key ?? null;
       const { renamed } = putDrawing(doc, path, model, { base: last, client: doc.clientID, origin });
       last = drawingModel(doc, path)?.model ?? last;
-      if (renamed.size || !same(last, modelOf(ed))) apply({ renamed });
+      if (renamed.size || !same(withView(path, last, modelOf(ed)), modelOf(ed))) apply({ renamed });
     },
     undo: () => { um.undo(); },
     redo: () => { um.redo(); },
