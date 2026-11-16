@@ -208,7 +208,7 @@ test('grade template, student_copy and csv: the template\'s project untrusted, i
     if (rel !== 'src/../.env') await ok('write_file', { project: 'tq', path: rel === 'silinx.json' ? 'tests/x.vec' : rel, text: `-- ${file}\n` });
     const x = await call('grade', { project: 'tq', action: 'template', folder: `tq-${rel.length}` });
     assert.equal(x.isError, true);
-    assert.match(x.text, rel === 'src/../.env' ? /^grade: / : new RegExp(`^grade: a visible test's file, ${rel.replace(/\./g, '\\.')}, is not one a template takes \\(the starter project's, a hidden one or build/'s\\): give it another name$`));
+    assert.match(x.text, rel === 'src/../.env' ? /^grade: / : new RegExp(`^grade: a visible test's file, ${rel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, is not one a template takes \\(the starter project's, a hidden one or build/'s\\): give it another name$`));
     assert.equal(fs.existsSync(path.join(xchg, `tq-${rel.length}`)), false);
   }
   await ok('write_file', { project: 'tq', path: 'counter4.exercise.json', text: JSON.stringify(ex) });

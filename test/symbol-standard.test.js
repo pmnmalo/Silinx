@@ -122,7 +122,7 @@ test('#4113 the RTL schematic in IEC: the same size and pins, a box, its qualifi
       assert.doesNotMatch(b.body, /<path class="gate"/, what);
       const rect = attrs(b.body.match(/<rect class="gate"[^>]*>/)[0]);
       assert.equal(+rect.height, b.h, what);
-      assert.match(b.body, new RegExp(`<text class="glabel iec"[^>]*>${S.iecQualifier(g).replace('&', '&amp;')}</text>`), what);
+      assert.match(b.body, new RegExp(`<text class="glabel iec"[^>]*>${S.iecQualifier(g).replaceAll('&', '&amp;').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</text>`), what);
       assert.equal(/<circle/.test(b.body), S.invertsOutput(g), what);
       // the input leads end at the box's left side; the output's starts at its right side (or its bubble's)
       const leads = all(b.body, /<line class="pin[^"]*"[^>]*>/g);

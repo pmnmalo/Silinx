@@ -116,7 +116,7 @@ test('the single file\'s policy: the assets\' site by its folder, never the orig
   assert.equal(siteSource('https://site.example/', PUB), 'https://site.example/');
   assert.equal(siteSource('http://127.0.0.1:8/assets-site/?x=1#y', PUB), 'http://127.0.0.1:8/assets-site/');
   const d = directives(contentSecurityPolicy({ scripts: [siteSource(PUB, PUB)], connect: [siteSource(PUB, PUB)], meta: true }));
-  assert.ok(d['script-src'].includes(PUB) && d['connect-src'].includes(PUB));
-  assert.equal([...d['script-src'], ...d['connect-src']].includes('https://pmnmalo.github.io'), false, 'no origin source');
+  assert.ok(d['script-src'].some((s) => s === PUB) && d['connect-src'].some((s) => s === PUB));
+  assert.equal([...d['script-src'], ...d['connect-src']].some((s) => s === 'https://pmnmalo.github.io'), false, 'no origin source');
   // (the single file built with it: test/ui/standalone.test.js #487)
 });

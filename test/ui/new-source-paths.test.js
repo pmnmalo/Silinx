@@ -132,7 +132,7 @@ uiTest('New Source: a name typed with its drawing\'s extension (.circ.json, .fsm
     await page.fill('.dlg-overlay .wiz-main input[type=text]', file);
     await forward(page, 'Summary');
     const summary = await page.eval(() => document.querySelector('.dlg-overlay .code-box').textContent);
-    assert.match(summary, new RegExp(`\\nSource Name: ${file.replace(/\./g, '\\.')}\\n`), `${type}: the summary`);
+    assert.match(summary, new RegExp(`\\nSource Name: ${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n`), `${type}: the summary`);
     await page.dialogButton('Finish');
     await page.waitNoDialog();
     await page.waitFor((f) => (window.Silinx.fileTree || []).includes(f), [`src/${file}`], { what: `src/${file}` });

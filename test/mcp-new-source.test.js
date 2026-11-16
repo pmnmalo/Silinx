@@ -166,7 +166,7 @@ test('new_source: a package, a constraints file (the project\'s, having none), a
 test('new_source: a name typed with its drawing\'s extension, .circ.json as .sch.json, is the file\'s name (#4120)', async () => {
   for (const [type, file] of [['circuit', 'typed.circ.json'], ['schematic', 'typed2.sch.json']]) {
     const r = await ok('new_source', { project: 'p', type, name: file });
-    assert.match(r.text, new RegExp(`src/${file.replace(/\./g, '\\.')}`), r.text);
+    assert.match(r.text, new RegExp(`src/${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), r.text);
     assert.ok(fs.existsSync(path.join(P.projectDir('p'), 'src', file)), file);
     assert.ok(!fs.existsSync(path.join(P.projectDir('p'), 'src', `${file}${file.slice(file.indexOf('.'))}`)), `${file}: its extension once`);
   }
