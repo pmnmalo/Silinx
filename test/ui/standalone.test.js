@@ -1440,6 +1440,48 @@ uiTest('#4205 browser edition: a copy imported keeps its origin and ancestor apa
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
 }, { url: () => 'about:blank' });
 
+// #4206: the browser edition's Merge Contribution… (its back end: web/js/merge-local.js): a project given out, the copy
+// changed (a file changed, one added) and merged back three-way through the ancestor it carries; Undo Merge. No warning.
+uiTest('#4206 browser edition: Merge Contribution… of a copy changed, three-way, then Undo Merge', E, async (page) => {
+  const top = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity top is port (a : in std_logic; y : out std_logic); end;\narchitecture rtl of top is begin y <= a; end;\n';
+  const codec = { deflate: (d) => zlib.deflateRawSync(d), inflate: (d) => zlib.inflateRawSync(d) };
+  const plain = path.join(env.tmp, 'merge-base.zip');
+  await fs.writeFile(plain, await createZip([{ path: 'silinx.json', data: JSON.stringify({ name: 'Base', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] }) }, { path: 'src/top.vhd', data: top }], codec));
+  await page.goto(siteUrl);
+  await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [plain]);
+  await page.fill('.dlg-overlay input[type=text]', 'MBase');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'MBase' && document.querySelector('#hier .row'), [], { what: 'the project open' });
+  await exportZip(page, 'silinx');
+  const given = Object.fromEntries((await readZip(new Uint8Array(await fs.readFile(await waitDownload(page, 'MBase-silinx.zip'))), codec)).map((e) => [e.path, Buffer.from(e.data).toString('utf8')]));
+  // the copy's work: a comment in top.vhd, a new file listed
+  const pj = JSON.parse(given['silinx.json']);
+  pj.files.push({ path: 'src/extra.vhd', lang: 'vhdl', role: 'design' });
+  const extra = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity extra is port (a : in std_logic; y : out std_logic); end;\narchitecture rtl of extra is begin y <= not a; end;\n';
+  const work = path.join(env.tmp, 'merge-work.zip');
+  await fs.writeFile(work, await createZip([{ path: 'silinx.json', data: JSON.stringify(pj) }, { path: 'src/top.vhd', data: `${top}-- the copy's\n` }, { path: 'src/extra.vhd', data: extra }, { path: 'silinx.base.json', data: given['silinx.base.json'] }], codec));
+  const start = (await page.consoleText()).length;
+  await page.menu('Project', 'Merge Contribution…');
+  await page.waitDialog('Merge Contribution');
+  await page.setFiles(FILE, [work]);
+  await page.dialogButton('Compare');
+  await page.waitFor(() => document.querySelector('.dlg-overlay .merge-files'), [], { what: 'the comparison' });
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .merge-file')].map((r) => [r.dataset.path, r.querySelector('.merge-state').textContent])),
+    [['src/extra.vhd', 'Added there: taken'], ['src/top.vhd', 'Changed there: taken']]);
+  await page.dialogButton('Merge');
+  await page.waitNoDialog();
+  await page.waitConsole(/^Merged merge-work\.zip into 'MBase' \(three-way, through the ancestor the contribution carries\): 2 file\(s\) written\. Undo Merge$/m);
+  await page.waitFor(() => window.Silinx.diskTree?.includes('src/extra.vhd') && window.Silinx.project.files.some((f) => f.path === 'src/extra.vhd'), [], { what: 'the merged file listed' });
+  // (imported, it was untrusted already: as it was, who made it said as before)
+  assert.deepEqual(await page.eval(() => [window.Silinx.project.trusted, window.Silinx.project.madeBy ?? null]), [false, null]);
+  await page.menu('Project', 'Undo Merge');
+  await page.waitConsole(/^Undid the last merge of 'MBase': 1 file\(s\) put back, 1 removed\.$/m);
+  await page.waitFor(() => !window.Silinx.diskTree?.includes('src/extra.vhd'), [], { what: 'the merged file gone' });
+  assert.deepEqual((await page.consoleText()).slice(start).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l.trim())), []);
+}, { url: () => 'about:blank' });
+
 // #3965: the browser edition imports a Silinx project from its folder (the folder picker, as an ISE project's), as the
 // .zip of the same project: its build folder and hidden files left out, no warning; the project as stored, and open
 uiTest('#3965 browser edition: a Silinx project imported from its folder, its build folder and hidden files left out, no warnings', E, async (page) => {

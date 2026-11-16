@@ -42,6 +42,13 @@ export async function tokenOf(kind, value, f = fetch) {
   } catch { return null; }
 }
 
+// a zip posted as the body (the import's, the merge's), JSON back
+async function zipPost(url, zip, headers = {}) {
+  const r = await fetch(url, { method: 'POST', headers: await authed({ 'Content-Type': 'application/zip', ...headers }), body: zip });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { status: r.status });
+  return j;
+}
 async function req(method, url, body, { text = false } = {}) {
   const opts = { method, headers: await authed() };
   if (body !== undefined) {
@@ -139,6 +146,11 @@ export const api = {
     return j;
   },
   syncXise: (name, direction) => req('POST', `/api/projects/${enc(name)}/sync-xise`, { direction }),
+  // Merge Contribution… (#4206): a contribution's zip (Blob) compared with the project, merged (resolve: the choices),
+  // the last merge undone
+  mergePreview: (name, zip) => zipPost(`/api/projects/${enc(name)}/merge-preview`, zip),
+  mergeContribution: (name, zip, resolve = {}, label = '') => zipPost(`/api/projects/${enc(name)}/merge?label=${enc(label)}`, zip, { 'X-Silinx-Resolve': encodeURIComponent(JSON.stringify(resolve)) }),
+  undoMerge: name => req('POST', `/api/projects/${enc(name)}/undo-merge`),
   // what another process changes in the project (#2843): onEvent({ project, changes: [{ path, kind }] }) for each,
   // until the stream ends or `signal` aborts (server-sent events read through fetch: the token in a header, not in the URL)
   events: async (name, onEvent, signal) => {

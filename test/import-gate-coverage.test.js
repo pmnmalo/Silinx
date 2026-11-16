@@ -32,6 +32,7 @@ const ALLOW = {
   'web/js/api.js': { why: 'the local server\'s client: it sends the zip or the .xise to the server, which gates them', via: 'server/xise-routes.js' },
   'web/js/wizards.js': { why: 'Import Source\'s files go through core/import-source.js importSourceFile, which gates each one (gateFile, #3546)' },
   'web/js/project-zip-dialogs.js': { why: 'Import Project… (#3703): the files picked go to api.importZip / importXise, gated by the server (server/xise-routes.js) or the browser edition (web/js/api-local.js); its own zip read lists the entries\' names only, to preselect the software, none inflated nor kept', via: 'web/js/api-local.js' },
+  'web/js/merge-dialog.js': { why: 'Merge Contribution… (#4206): the folder or .zip picked goes to api.mergePreview / mergeContribution, gated by the server (server/merge-routes.js) or the browser edition (web/js/api-local.js)', via: 'server/merge-routes.js' },
   'web/js/impact.js': { why: 'a bitstream programmed into a board, never kept in a project' },
   'server/mcp-hdl.js': { why: 'simulate writes a VCD into the exchange folder: an output, nothing read' },
   'server/mcp-grade.js': { why: 'grade\'s submissions of the exchange folder are read by server/grade.js, through the gate; its CSV, student\'s copy and template are outputs; a class\'s results file (results, #3864) is read as data, checked by core/grade-class.js parseResults, never kept in a project', via: 'server/grade.js' },

@@ -19,6 +19,7 @@ import { within, nativeRealOf } from './paths.js';
 import { ownerSecrets } from './owner-secrets.js';
 import * as Projects from './projects.js';
 import { mountXiseRoutes } from './xise-routes.js';
+import { mountMergeRoutes } from './merge-routes.js';
 import { IDENT } from './ident.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { normalizePath } from '../core/import-gate.js';
@@ -331,6 +332,8 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   mountXiseRoutes({
     P, api, wrap, bad
   });
+  // ----- Merge Contribution… (#4206) -------------------------------------------------------- (merge-routes.js)
+  mountMergeRoutes({ P, api, wrap, bad, NODE_CODEC });
 
 }
 
