@@ -1,7 +1,8 @@
 // The circuit editor's Browse KiCad Libraries… on the local server (#4285, server/kicad-libraries.js): the libraries to
 // browse, what one holds, and its import into a project's parts/ (core/kicad-import.js), as the MCP's part_libraries and
 // import_part with a library do.
-import { kicadLibraries, openKicadLibrary, kicadContents, kicadOrigin } from './kicad-libraries.js';
+import { kicadLibraries, openKicadLibrary, kicadContents, kicadOrigin, catalogueFile } from './kicad-libraries.js';
+import { importCataloguePart } from '../core/kicad-catalogue.js';
 import { importKicadPackage } from '../core/kicad-import.js';
 
 export function mountKicadRoutes({ P, api, wrap, bad }) {
@@ -11,6 +12,14 @@ export function mountKicadRoutes({ P, api, wrap, bad }) {
     let o;
     try { o = await openKicadLibrary(req.params.id); } catch (e) { throw failed(e); }
     return { library: o.library, cached: o.cached, contents: await kicadContents(o.pkg), footprints: o.pkg.footprints.length };
+  }));
+  // (a part of the KiCad catalogue, #4305: its files, fetched by the server, checked, kept)
+  api.post('/projects/:p/kicad/catalogue', wrap(async (req) => {
+    const name = req.params.p, b = req.body || {};
+    await P.readProject(name);
+    if (typeof b.part !== 'string') throw bad('part: a part of the KiCad catalogue');
+    try { return await importCataloguePart(P, name, b.part, catalogueFile, { replace: !!b.replace }); }
+    catch (e) { throw /^(?:https?:|fetch failed|too many redirects)/.test(e.message) ? failed(e) : bad(e.message); }
   }));
   api.post('/projects/:p/kicad/import', wrap(async (req) => {
     const name = req.params.p, b = req.body || {};

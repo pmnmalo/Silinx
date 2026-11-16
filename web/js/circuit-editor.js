@@ -2,7 +2,8 @@
 //
 //   import { mountCircuitEditor } from './circuit-editor.js';
 //   const ed = mountCircuitEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags),
-//     onMessage(text, isError), readOnly, banner, importKicad(), browseKicad() });   (the Parts panel's Import KiCad Part…, #4281, Browse KiCad Libraries…, #4285)
+//     onMessage(text, isError), readOnly, banner, importKicad(), browseKicad(), importCatalogue(id) });   (the Parts panel's Import KiCad Part…, #4281,
+//     Browse KiCad Libraries…, #4285, its KiCad catalogue's parts, #4305)
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.print(); ed.select(ref);
 //   ed.simulating(); ed.toggleSim(); ed.destroy();
 //   edited live (#4203, web/js/collab-drawing.js): ed.setShared({ push(model), undo(), redo(), canUndo(), canRedo() } | null)
@@ -72,8 +73,8 @@ export function mountCircuitEditor(container, opts = {}) {
   const circBody = h('div', {});
   // the parts on the left (#4062: circuit-parts-panel.js), the selection's and the circuit's properties on the right
   // (Import KiCad Part…, #4281: not in a read-only editor)
-  const kicad = (f) => (readOnly || !f ? null : async () => { if (await f()) { problems(); render(); } });
-  const parts = mountCircuitParts({ root, tool: () => tool, setTool, importKicad: kicad(opts.importKicad), browseKicad: kicad(opts.browseKicad) });
+  const kicad = (f) => (readOnly || !f ? null : async (...a) => { const r = await f(...a); if (r) { problems(); render(); } return r; });
+  const parts = mountCircuitParts({ root, tool: () => tool, setTool, importKicad: kicad(opts.importKicad), browseKicad: kicad(opts.browseKicad), importCatalogue: kicad(opts.importCatalogue) });
   const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Properties'), selSection,
     h('section', { class: 'asm-section circ-circuit' }, h('h3', {}, 'Circuit'), circBody));
   mountSideFold({ root, side, key: 'silinx.circuit.props.folded' });

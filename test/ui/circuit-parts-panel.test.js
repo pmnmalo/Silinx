@@ -11,7 +11,8 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 const ED = '.doc:not([hidden]) .circuit-editor';
-const rows = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-part`)].map((b) => b.dataset.part), ED);
+// (the library's parts: not the KiCad catalogue's, #4305)
+const rows = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-part]`)].map((b) => b.dataset.part), ED);
 
 uiTest('Circuit editor: the Parts panel on the left, its drawings, search, categories; a part placed; folded, remembered; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'CircParts', top: '', files: { 'src/half_adder.circ.json': JSON.stringify(halfAdder(), null, 2) } });
@@ -43,7 +44,7 @@ uiTest('Circuit editor: the Parts panel on the left, its drawings, search, categ
   // the search; a category folded, opened
   await page.click(`${ED} .circ-search`);
   await page.type('xor');
-  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-lib-part`).length === 3, [ED], { what: 'the search' });
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-lib-part[data-part]`).length === 3, [ED], { what: 'the search' });
   assert.deepEqual(await rows(page), ['7486', '4030', '4070']);
   await page.eval((ed) => { const s = document.querySelector(`${ed} .circ-search`); s.value = ''; s.dispatchEvent(new Event('input')); }, ED);
   await page.click(`${ED} .circ-lib-title`, { text: 'Breadboards (2)' });

@@ -390,7 +390,7 @@ export async function openCircuit(path) {
   catch (e) { logError(`cannot open ${path}: ${e.message}`); return; }
   const { mountCircuitEditor } = await import('./circuit-editor.js');
   // (the project's KiCad parts, its parts/ folder, #4281)
-  const K = await import('./circuit-kicad-import.js'), KB = await import('./circuit-kicad-browse.js');
+  const K = await import('./circuit-kicad-import.js'), KB = await import('./circuit-kicad-browse.js'), KC = await import('./circuit-kicad-catalogue.js');
   await K.loadCircuitParts();
   if (S.project?.name !== pj) return;   // another project opened meanwhile: not its drawing (#1231)
   openDoc({
@@ -405,7 +405,8 @@ export async function openCircuit(path) {
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
-        importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null,   // (Import KiCad Part…, #4281; Browse KiCad Libraries…, #4285)
+        importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null, importCatalogue: KC.importCatalogue,   // (Import KiCad Part…, #4281;
+        // Browse KiCad Libraries…, #4285; the KiCad catalogue, #4305)
         ...followOnly(path),
       });
       d.circuitEditor = ed;

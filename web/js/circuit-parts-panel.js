@@ -7,6 +7,7 @@ import { h } from './ui.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { PARTS, PART_ORDER, partDef, projectParts } from '/core/circuit-parts.js';
+import { searchCatalogue, catalogueTitle, CATALOGUE_LIBRARIES } from '/core/kicad-catalogue.js';
 import { drawCircuit } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
@@ -75,8 +76,9 @@ function rowOf(t) {
 }
 
 /** { side, renderParts } of mountCircuitEditor (tool(): its current tool; setTool(t); importKicad(): Import KiCad Part…,
- *  none in a read-only editor). */
-export function mountCircuitParts({ root, tool, setTool, importKicad = null, browseKicad = null }) {
+ *  browseKicad(): Browse KiCad Libraries…, importCatalogue(id): a catalogue's part imported, its type; none in a
+ *  read-only editor). */
+export function mountCircuitParts({ root, tool, setTool, importKicad = null, browseKicad = null, importCatalogue = null }) {
   const search = h('input', { type: 'search', class: 'circ-search', placeholder: 'Search parts…', spellcheck: 'false' });
   const list = h('div', { class: 'circ-lib' });
   // (a project's KiCad parts, #4281: its parts/ folder's libraries)
@@ -85,7 +87,8 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
   const browse = browseKicad && h('button', { type: 'button', class: 'circ-browse-kicad', title: 'Browse KiCad\'s own symbol libraries and the KiCad PCM\'s library packages', onclick: () => browseKicad() }, 'Browse KiCad Libraries…');
   const side = h('aside', { class: 'circ-parts-side' }, h('div', { class: 'asm-cap' }, 'Parts'), h('div', { class: 'circ-lefttools' }, search, imp || null, browse || null), list);
   mountSideFold({ root, side, key: 'silinx.circuit.parts.folded', titles: { fold: 'Collapse the Parts panel', unfold: 'Expand the Parts panel' }, cls: 'parts-folded', toward: 'left' });
-  const folded = new Set();
+  const CAT = 'KiCad catalogue';
+  const folded = new Set([CAT]);   // (the catalogue folded at first: its parts found by a search, or opened, #4305)
   search.addEventListener('input', () => renderParts());
 
   function renderParts() {
@@ -104,6 +107,20 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
         rows.push(h('button', { type: 'button', class: `circ-lib-part${tool() === `place:${t}` ? ' active' : ''}${partDef(t).kind === 'drawn' ? ' drawn' : ''}`, 'data-part': t, 'data-group': title,
           title: r.tip, onclick: () => setTool(tool() === `place:${t}` ? 'select' : `place:${t}`) },
         preview(t), h('span', { class: 'nm', ...(r.noI18n ? { 'data-no-i18n': 'true' } : {}) }, r.name)));
+      }
+    }
+    // the KiCad catalogue's parts (#4305): a click imports one into the project, then places it
+    const cat = importCatalogue ? searchCatalogue(q) : [];
+    if (cat.length) {
+      const open = !folded.has(CAT) || q;
+      rows.push(h('div', { class: `circ-lib-title${open ? ' open' : ''}`, onclick: () => { if (folded.has(CAT)) folded.delete(CAT); else folded.add(CAT); renderParts(); } },
+        h('span', {}, CAT), h('span', { class: 'circ-lib-n', 'data-no-i18n': 'true' }, ` (${cat.length})`)));
+      if (open) for (const e of cat) {
+        rows.push(h('button', { type: 'button', class: `circ-lib-part circ-cat-part${e.as ? '' : ' drawn'}`, 'data-catalogue': e.id, 'data-group': CAT,
+          title: `${catalogueTitle(e)} (${CATALOGUE_LIBRARIES[e.library].name}, ${CATALOGUE_LIBRARIES[e.library].licence}): click it to import it into the project`,
+          onclick: async () => { const type = await importCatalogue(e.id); if (type && partDef(type)) setTool(`place:${type}`); renderParts(); } },
+        e.as ? preview(e.as) : sv('svg', { class: 'circ-pv', viewBox: `0 0 ${W} ${H}`, width: W, height: H }, sv('rect', { x: 8, y: 9, width: W - 16, height: H - 18, rx: 2, class: 'circ-pv-cat' })),
+        h('span', { class: 'nm', 'data-no-i18n': 'true' }, `${e.value}${e.as ? ` (${e.as})` : ''}`)));
       }
     }
     list.replaceChildren(...rows);

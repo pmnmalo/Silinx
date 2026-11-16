@@ -3,7 +3,7 @@
 // (core/kicad-edit.js: Silinx.Model, Silinx.Family, Silinx.Footprint; Silinx.Source, Silinx.Author, Silinx.Licence),
 // then the project's parts read again (core/circuit-kicad.js) and each of its symbols said. The circuit editor's Import
 // KiCad Part… and the MCP's import_part, with the same checks and messages. Isomorphic module.
-import { readKicadSymLib } from './kicad-sym.js';
+import { readKicadSymLib, readKicadSymbols } from './kicad-sym.js';
 import { readKicadFootprint } from './kicad-mod.js';
 import { setSymbolProperties } from './kicad-edit.js';
 import { PARTS } from './circuit-parts.js';
@@ -25,7 +25,8 @@ export const kicadImportPath = (base) => (base.endsWith('.kicad_mod') ? `parts/$
  * symbol it has not, a model that is no IC of the library, a family neither ttl nor cmos.
  */
 export function libraryWithProperties(text, symbols, origin = {}) {
-  const lib = readKicadSymLib(text);
+  // (a file of a .kicad_symdir may hold a derived symbol whose parent is in another file: its extends read, not resolved)
+  const lib = readKicadSymbols(text);
   const names = new Set(lib.symbols.map((s) => s.name)), edits = {};
   for (const [name, o] of Object.entries(symbols || {})) {
     if (!names.has(name)) throw new Error(`symbols: no symbol '${name}' in the library (its symbols: ${[...names].join(', ')})`);
@@ -80,7 +81,7 @@ function footprintsNamed(texts) {
  * their symbols name (parts/<library>.pretty/). A file there already refused unless `replace`, before anything is written.
  * { written: [paths], lines (each library said: its parts as ICs, drawn only, and its symbols that are no part), parts }.
  */
-export async function importKicadPackage(P, name, pkg, { libraries = null, origin = {}, replace = false } = {}) {
+export async function importKicadPackage(P, name, pkg, { libraries = null, origin = {}, replace = false, keepSame = false } = {}) {
   const all = [...pkg.symbols.map((s) => s.name), ...pkg.symdirs.map((d) => d.name)];
   const want = libraries ?? all;
   for (const l of want) if (!all.includes(l)) throw new Error(`libraries: no library '${l}' in the package (its libraries: ${all.join(', ') || 'none'})`);
@@ -92,11 +93,14 @@ export async function importKicadPackage(P, name, pkg, { libraries = null, origi
   for (const fp of pkg.footprints.filter((f) => named.has(`${f.library}:${f.name.replace(/\.kicad_mod$/, '')}`))) files.push({ path: `parts/${fp.library}.pretty/${fp.name}`, text: fp.text });
   if (!replace) {
     const tree = new Set(await P.fileTree(name));
-    const there = files.find((f) => tree.has(f.path));
-    if (there) throw new Error(`${there.path}: the project has it already (replace: true replaces it)`);
+    // (keepSame: a file there already with the same text is kept, #4305: a catalogue's parts share their parents)
+    for (const f of files.filter((x) => tree.has(x.path))) {
+      if (keepSame && await P.readFile(name, f.path).then((t) => t === f.text, () => false)) f.same = true;
+      else throw new Error(`${f.path}: the project has it already (replace: true replaces it)`);
+    }
   }
   for (const f of files) gateFile(f.path, f.text);   // (the import gate's rules on their names and sizes, #2830: all of them before any is written)
-  for (const f of files) await P.writeFile(name, f.path, f.text);
+  for (const f of files.filter((x) => !x.same)) await P.writeFile(name, f.path, f.text);
   const r = await useProjectParts(P, name);
   const lines = [];
   for (const lib of [...new Set(files.filter((f) => f.lib).map((f) => f.lib))]) {
@@ -107,7 +111,7 @@ export async function importKicadPackage(P, name, pkg, { libraries = null, origi
   if (fps.length) lines.push(`${fps.length} footprint(s) written: ${[...new Set(fps.map((f) => f.path.replace(/\/[^/]*$/, '')))].join(', ')}`);
   lines.push(...r.errors.map((e) => `ERROR: ${e}`));
   const mine = (t) => files.some((f) => f.lib && t.startsWith(`${f.lib}#`));
-  return { written: files.map((f) => f.path), lines, parts: r.defs.filter((d) => mine(d.type)).map((d) => ({ type: d.type, kind: d.kind, behavesAs: d.behaves, value: d.kicad.value })) };
+  return { written: files.filter((f) => !f.same).map((f) => f.path), lines, parts: r.defs.filter((d) => mine(d.type)).map((d) => ({ type: d.type, kind: d.kind, behavesAs: d.behaves, value: d.kicad.value })) };
 }
 
 /**

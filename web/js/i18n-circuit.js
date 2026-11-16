@@ -50,7 +50,7 @@ export const CIRCUIT_PT = {
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
   // a part's details (#4126, core/circuit-part-info.js)
   // a project's KiCad parts (#4281)
-  'KiCad parts (project)': 'Peças KiCad (projeto)', 'Import KiCad Part…': 'Importar peça KiCad…', 'Import KiCad Part': 'Importar peça KiCad',
+  'KiCad parts (project)': 'Peças KiCad (projeto)', 'KiCad catalogue': 'Catálogo KiCad', 'Import KiCad Part…': 'Importar peça KiCad…', 'Import KiCad Part': 'Importar peça KiCad',
   'Pick a KiCad symbol library (.kicad_sym, KiCad 6 to 10), a footprint (.kicad_mod), a KiCad PCM package (.zip) or a .kicad_symdir folder: it is copied into the project\'s parts/ folder as KiCad wrote it.': 'Escolha uma biblioteca de símbolos KiCad (.kicad_sym, KiCad 6 a 10), um footprint (.kicad_mod), um pacote do PCM do KiCad (.zip) ou uma pasta .kicad_symdir: é copiado para a pasta parts/ do projeto tal como o KiCad o escreveu.',
   'or a folder:': 'ou uma pasta:',
   'File:': 'Ficheiro:', 'Source:': 'Origem:', 'Author:': 'Autor:', 'Licence:': 'Licença:', 'Symbol': 'Símbolo', 'Model': 'Modelo', 'It is': 'É',
@@ -148,6 +148,10 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^Behaves as the (\d{4,5}) of the library \(by its part number\)\.$/, 'Comporta-se como o $1 da biblioteca (pela sua referência).'],
   [/^Behaves as the (\d{4,5}) of the library \(by its Silinx\.Model\)\.$/, 'Comporta-se como o $1 da biblioteca (pelo seu Silinx.Model).'],
   [/^(.+): pinout$/, '$1: pinos'],
+  // the KiCad catalogue (#4305): its parts' tips, a replace asked
+  [/^(.+), as the (\d{4,5}): (.+) \((.+), (.+)\): click it to import it into the project$/, (m, v, n, t, lib, lic) => `${v}, como o ${n}: ${title(t)} (${lib}, ${lic}): clique para a importar para o projeto`],
+  [/^(.+), drawn only: (\d+) pin\(s\)(, DIP-\d+)? \((.+), (.+)\): click it to import it into the project$/, '$1, só desenhada: $2 pino(s)$3 ($4, $5): clique para a importar para o projeto'],
+  [/^(parts\/.+): the project has it already\. Replace it\?$/, '$1: o projeto já o tem. Substituí-lo?'],
   [/^As the (\d{4,5}) \(by its part number\)$/, 'Como o $1 (pela sua referência)'], [/^As the (\d{4,5}) \(by its Silinx\.Model\)$/, 'Como o $1 (pelo seu Silinx.Model)'],
   [/^(\d+) symbol\(s\): (parts\/.+)$/, '$1 símbolo(s): $2'], [/^A footprint: (parts\/.+)$/, 'Um footprint: $1'],
   [/^(.+): (\d+) symbol librar(?:y|ies), (\d+) footprint\(s\)$/, '$1: $2 biblioteca(s) de símbolos, $3 footprint(s)'],

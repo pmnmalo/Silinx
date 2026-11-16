@@ -50,7 +50,7 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
     [T('74LS04'), '74LS04', '74LS04, drawn only (not simulated): click it, then the drawing (Esc: done)', false],
     [T('SENSOR'), 'TEST-SENSOR a sensor module', 'TEST-SENSOR, drawn only (not simulated): click it, then the drawing (Esc: done)', false],
     [T('MODULE'), 'TEST-MODULE', 'TEST-MODULE, drawn only (not simulated): click it, then the drawing (Esc: done)', false]]);
-  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].at(-1).textContent, ED), 'KiCad parts (project)');
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].slice(-2).map((x) => x.textContent), ED), ['KiCad parts (project)', 'KiCad catalogue'], 'the project\'s, then the KiCad catalogue (#4305)');
   // the search finds them by their part number
   await page.click(`${ED} .circ-search`);
   await page.type('hcmos');
@@ -108,7 +108,7 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-import-kicad`).textContent === 'Importar peça KiCad…', [ED], { what: 'Portuguese' });
-  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].at(-1).textContent, ED), 'Peças KiCad (projeto)');
+  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].at(-2).textContent, ED), 'Peças KiCad (projeto)');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="${'parts/ttl.kicad_sym#SENSOR'}"]`).title, ED), 'TEST-SENSOR, só desenhada (não simulada): clique nela e depois no desenho (Esc: terminar)');
   const pt = await info(page);
   assert.deepEqual([pt.about, pt.rows.map(([k]) => k)], ['Só desenhada: não é simulada, os seus pinos não conduzem nada.', ['Símbolo KiCad', 'Referência', 'Footprint']]);

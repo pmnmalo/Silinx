@@ -16,7 +16,8 @@ import { readKicadSymLib } from '/core/kicad-sym.js';
 import { SEXPR_LIMITS } from '/core/sexpr.js';
 import { PARTS, PART_ORDER } from '/core/circuit-parts.js';
 
-// the project's files through the page's store, as core/drawing-sync.js reads a project
+// the project's files through the page's store, as core/drawing-sync.js reads a project (kicadStore: the catalogue's too)
+export const kicadStore = () => store();
 const store = () => ({
   fileTree: async () => S.fileTree || [],
   readFile: (name, path) => api.readFile(name, path),
@@ -90,6 +91,7 @@ export async function importKicadDialog() {
     if (!/^[A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_symdir$/.test(dir)) { if (folder.files.length) logError(`'${dir}' is not a .kicad_symdir folder`); return; }
     const pick = ++picks, files = await Promise.all(fs.map(async (f) => ({ name: f.name, text: await f.text() })));
     if (pick !== picks) return;
+    table.replaceChildren();
     try { showPackage(symdirPackage(dir, files), dir); } catch (e) { logError(`${dir}: ${e.message}`); picked = null; }
   });
   file.addEventListener('change', async () => {
@@ -99,7 +101,11 @@ export async function importKicadDialog() {
     if (/\.zip$/i.test(f.name)) {
       const pick = ++picks, bytes = new Uint8Array(await f.arrayBuffer());
       if (pick !== picks) return;
-      try { showPackage(await readPcmPackage(bytes, browserCodec()), f.name); } catch (e) { logError(`${f.name}: ${e.message}`); picked = null; }
+      let pkg;
+      try { pkg = await readPcmPackage(bytes, browserCodec()); } catch (e) { logError(`${f.name}: ${e.message}`); picked = null; return; }
+      if (pick !== picks) return;
+      table.replaceChildren();
+      try { showPackage(pkg, f.name); } catch (e) { logError(`${f.name}: ${e.message}`); picked = null; }
       return;
     }
     if (!isKicadImportName(f.name)) { logError(`'${f.name}' is not a .kicad_sym nor a .kicad_mod file's name (letters, digits, . _ -)`); return; }

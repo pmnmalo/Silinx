@@ -35,6 +35,8 @@ export function refusedUrl(u) {
 
 /** A URL's bytes, fetched from the allowed hosts only (each redirect checked), at most `maxBytes`. */
 export async function fetchAllowed(u, { maxBytes = FETCH_LIMITS.maxBytes } = {}) {
+  // (SILINX_KICAD_OFFLINE: nothing fetched, what was kept only: a classroom with no network, the tests, #4305)
+  if (process.env.SILINX_KICAD_OFFLINE) throw new Error('KiCad\'s libraries are not fetched: SILINX_KICAD_OFFLINE is set (only what was kept is used)');
   let url = u;
   for (let k = 0; ; k++) {
     const why = refusedUrl(url);
@@ -107,3 +109,19 @@ export const kicadOrigin = (lib) => ({ source: `${lib.identifier} ${lib.version}
 
 /** What a library's symbol libraries hold (core/kicad-import.js packageContents). */
 export const kicadContents = async (pkg) => (await import('../core/kicad-import.js')).packageContents(pkg);
+
+/**
+ * A file of the KiCad catalogue (#4305, core/kicad-catalogue.js): its text, fetched once (its SHA-256 checked), then kept;
+ * a URL that is not one of the catalogue's refused (the server fetches no other for it).
+ */
+export async function catalogueFile(url) {
+  const { isCatalogueFile, catalogueSha256 } = await import('../core/kicad-catalogue.js');
+  if (!isCatalogueFile(url)) throw new Error(`not a file of the KiCad catalogue: ${url}`);
+  const want = catalogueSha256(url), name = `${want}.kicad`;
+  const kept = await readCache(name);
+  if (kept) { await checkSha256(kept.bytes, want, `${url} (kept)`); return new TextDecoder().decode(kept.bytes); }
+  const bytes = await fetchAllowed(url, { maxBytes: 32 << 20 });
+  await checkSha256(bytes, want, url);
+  await writeCache(name, bytes);
+  return new TextDecoder().decode(bytes);
+}

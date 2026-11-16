@@ -61,3 +61,17 @@ export function setSymbolProperties(text, edits) {
   for (const c of changes.sort((a, b) => b.start - a.start || b.end - a.end)) out = out.slice(0, c.start) + c.text + out.slice(c.end);
   return out;
 }
+
+/**
+ * A library's symbols' texts as KiCad wrote them: { version, symbols: Map(name → its `(symbol …)` text) } (#4305: one
+ * symbol taken out of a library into a file of its own, as KiCad 10's .kicad_symdir folders hold them).
+ */
+export function symbolTexts(text) {
+  const [lib] = parseSexpr(text);
+  if (head(lib) !== 'kicad_symbol_lib') throw new Error('not a KiCad symbol library: it does not start with (kicad_symbol_lib');
+  const top = spans(text).find((l) => key(l) === 'kicad_symbol_lib');
+  return { version: num(one(lib, 'version')?.[1]), symbols: new Map(top.kids.filter((l) => key(l) === 'symbol').map((l) => [l.kids[1]?.value, text.slice(l.start, l.end)])) };
+}
+
+/** A .kicad_sym file of one symbol's text (symbolTexts's), at the library's version. */
+export const oneSymbolFile = (version, symbol) => `(kicad_symbol_lib\n\t(version ${version})\n\t(generator "silinx")\n\t${symbol}\n)\n`;

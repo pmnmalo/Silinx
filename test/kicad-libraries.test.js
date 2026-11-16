@@ -129,3 +129,25 @@ test('importKicadPackage: its libraries and the footprints they name written in 
   assert.equal((await importKicadPackage(P, 'p', pkg, { replace: true })).written.length, 2);
   setProjectParts([]);
 });
+
+test('SILINX_KICAD_OFFLINE: nothing fetched, what was kept used', async () => {
+  process.env.SILINX_KICAD_OFFLINE = '1';
+  try {
+    asked = [];
+    await assert.rejects(K.fetchAllowed('https://gitlab.com/x'), { message: 'KiCad\'s libraries are not fetched: SILINX_KICAD_OFFLINE is set (only what was kept is used)' });
+    assert.deepEqual(asked, []);
+  } finally { delete process.env.SILINX_KICAD_OFFLINE; }
+});
+
+test('catalogueFile: the catalogue\'s files only, checked against their SHA-256, kept; another URL refused unasked', async () => {
+  const { CATALOGUE_LIBRARIES } = await import('../core/kicad-catalogue.js');
+  const url = CATALOGUE_LIBRARIES['kicad-4xxx'].url;
+  asked = [];
+  await assert.rejects(K.catalogueFile('https://gitlab.com/kicad/other.kicad_sym'), { message: 'not a file of the KiCad catalogue: https://gitlab.com/kicad/other.kicad_sym' });
+  assert.deepEqual(asked, [], 'never fetched');
+  web[url] = () => res('not the library');
+  await assert.rejects(K.catalogueFile(url), { message: `${url}'s SHA-256 is ${sha('not the library')}, not the ${CATALOGUE_LIBRARIES['kicad-4xxx'].sha256} it should be: not read` });
+  assert.equal(fs.existsSync(path.join(tmp, 'kicad', `${CATALOGUE_LIBRARIES['kicad-4xxx'].sha256}.kicad`)), false, 'not kept');
+  web = {};
+  await assert.rejects(K.catalogueFile(url), { message: 'fetch failed' });
+});

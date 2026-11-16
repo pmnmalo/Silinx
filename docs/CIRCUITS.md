@@ -174,6 +174,18 @@ CORS header), so the local server does (`server/kicad-libraries.js`):
 - the index and the libraries fetched are kept in Silinx's configuration folder (`kicad/`). The index is fetched again
   after a day, and the one kept is used offline.
 
+**The KiCad catalogue** (#4305): the Parts panel's last group, *KiCad catalogue*, folded at first and opened by a
+search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (their 73
+parts that behave as Silinx's ICs, and those drawn only on a DIP) and SparkFun's v10.0.0 parts on the 0.1 inch grid.
+Silinx hosts none of their files: the catalogue (`core/kicad-catalogue-data.js`, written by `scripts/kicad-catalogue.mjs`,
+run again to follow a new version) holds only where each part is (its library file's URL and SHA-256, its footprint's),
+what it is in Silinx and the symbols it extends. A click imports the part: only its symbol (and those it extends), each
+into a file of its own as KiCad 10's folders hold them (`parts/74xx.kicad_symdir/74HC00.kicad_sym`), with its footprint
+beside it and its origin written in it. Every file is checked against its SHA-256, and a file there already with the
+same text is kept. The local server fetches the catalogue's files only (kept for offline use; `SILINX_KICAD_OFFLINE`
+fetches nothing). The browser's edition alone fetches from a host that sends CORS headers (SparkFun's), and the others
+say that they need the server.
+
 Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a `.kicad_symdir` folder. The MCP's
 `part_libraries` lists the libraries and what one holds, and `import_part` takes `library` (an identifier), a `.zip` or a
 folder, with `libraries` to choose among them.
@@ -315,9 +327,10 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
   valid ones, #4161), `template_params`: a chip, a display, a clock's frequency);
 - `circuit_parts`: the library, a part's pins, its logic and delay; one part's Part info too; with a project, its KiCad
   parts (as which IC, or drawn only; their file, source and licence) and the symbols that are no part, with why;
-- `part_libraries`: KiCad's own and the KiCad PCM's libraries (searched), and what one holds;
+- `part_libraries`: KiCad's own and the KiCad PCM's libraries (searched), and what one holds; with `catalogue`, the
+  KiCad catalogue's parts;
 - `import_part`: a `.kicad_sym` or `.kicad_mod` of the exchange folder (or a PCM package's `.zip`, a `.kicad_symdir`
-  folder, a library of `part_libraries`) copied into the project's `parts/`, the Silinx
+  folder, a library of `part_libraries`, a catalogue's `part`: its one symbol) copied into the project's `parts/`, the Silinx
   properties given written in its symbols (a symbol's model, family and footprint; its source, author and licence),
   each symbol said;
 - `edit_circuit`: operations on a circuit: add a part (on a breadboard's hole, `bb1.f10`, or at a grid point), move,

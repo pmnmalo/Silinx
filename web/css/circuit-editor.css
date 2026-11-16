@@ -70,6 +70,7 @@
 .circuit-editor .circ-lib-part .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .circuit-editor .circ-pv { flex: none; border: 1px solid var(--asm-border); background: #fff; border-radius: 2px; }
 .circuit-editor .circ-pv * { vector-effect: non-scaling-stroke; }
+.circuit-editor .circ-pv-cat { fill: #2b2f36; stroke: #8a8f98; stroke-dasharray: 3 2; }   /* (a KiCad catalogue's part drawn only, #4305) */
 /* the Parts panel folded to a strip (side-fold.js), as the schematic's Symbols */
 @media (min-width: 1024px) {
   .circuit-editor.parts-folded .circ-parts-side:not([hidden]) { width: 24px; cursor: pointer; overflow: hidden; }

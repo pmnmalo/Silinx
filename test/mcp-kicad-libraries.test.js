@@ -64,8 +64,8 @@ test('part_libraries: the libraries, a search, what one holds; import_part with 
   assert.equal((await ok('import_part', { project: 'L', library: 'org.example.logic-parts', replace: true, licence: 'CC-BY-4.0 (as its README)' })).data.written.length, 2);
   assert.match(fs.readFileSync(path.join(tmp, 'ws', 'L', 'parts', 'ttl.kicad_sym'), 'utf8'), /"Silinx\.Licence" "CC-BY-4\.0 \(as its README\)"/);
   await fails('import_part', { project: 'L', library: 'org.example.logic-parts', libraries: ['nope.kicad_sym'] }, 'libraries: no library \'nope.kicad_sym\' in the package (its libraries: ttl.kicad_sym)');
-  await fails('import_part', { project: 'L' }, 'file or library: one of them');
-  await fails('import_part', { project: 'L', file: 'a.kicad_sym', library: 'x.y' }, 'file or library: one of them');
+  await fails('import_part', { project: 'L' }, 'file, library or part: one of them');
+  await fails('import_part', { project: 'L', file: 'a.kicad_sym', library: 'x.y' }, 'file, library or part: one of them');
   await fails('import_part', { project: 'L', library: 'org.example.logic-parts', symbols: {} }, 'symbols, name: a file\'s only, not a library\'s');
   await fails('import_part', { project: 'L', file: 'a.kicad_sym', libraries: ['x'] }, 'libraries: a package\'s or a library\'s only, not a file\'s');
 });
@@ -93,4 +93,19 @@ test('import_part with a package\'s .zip and a .kicad_symdir folder of the excha
   fs.writeFileSync(path.join(ex, 'bad.zip'), 'not a zip');
   await fails('import_part', { project: 'Z', file: 'bad.zip' }, 'not a zip file');
   await fails('import_part', { project: 'Z', file: 'none.zip' }, 'file: no file \'none.zip\' in the exchange folder');
+});
+
+test('part_libraries with catalogue: its parts, searched; import_part with a part: its refusals (no network here)', async () => {
+  const c = await ok('part_libraries', { catalogue: true, query: 'nand hct' });
+  assert.deepEqual(c.text.split('\n'), ['kicad-74xx/74HCT00: 74HCT00, as the 7400: Quad 2-input NAND (KiCad 74xx symbols 9.0.0, CC-BY-SA-4.0)']);
+  assert.deepEqual(c.data.parts.map((p) => [p.id, p.as, p.title]), [['kicad-74xx/74HCT00', '7400', '74HCT00, as the 7400: Quad 2-input NAND']]);
+  assert.ok((await ok('part_libraries', { catalogue: true })).data.parts.length >= 200);
+  assert.equal((await ok('part_libraries', { catalogue: true, query: 'zzz-none' })).text, 'No part of the catalogue matches \'zzz-none\'.');
+  await fails('part_libraries', { catalogue: true, library: 'x.y' }, 'library: not with catalogue');
+  await ok('new_project', { name: 'C' });
+  await fails('import_part', { project: 'C', part: 'kicad-74xx/NONE' }, 'no part \'kicad-74xx/NONE\' in the KiCad catalogue (part_libraries with catalogue lists them)');
+  await fails('import_part', { project: 'C', part: 'kicad-74xx/74HC00', file: 'a.kicad_sym' }, 'part: alone (no file, library, libraries, symbols nor name)');
+  // (the test's network has none of KiCad's files)
+  await fails('import_part', { project: 'C', part: 'kicad-74xx/74HC00' }, 'fetch failed');
+  assert.equal(fs.existsSync(path.join(tmp, 'ws', 'C', 'parts')), false, 'nothing written');
 });
