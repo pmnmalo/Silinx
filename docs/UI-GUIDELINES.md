@@ -149,7 +149,7 @@ viewer of its own:
 - **Both interfaces** (Silinx and ISE style), **light and dark themes**, **narrow screens** (a tablet in portrait)
   and **touch** (a long press is the right click).
 - **A drawing's view gestures are the Schematic editor's** (`web/js/view-gestures.js`, #4291): the wheel's and the
-  pinch's smooth zoom about the pointer, a trackpad's scroll pans, two fingers on a touch screen, the middle button and
+  pinch's smooth zoom about the pointer (Safari's pinch too: its gesture events, #4296), a trackpad's scroll pans, two fingers on a touch screen, the middle button and
   Space drag the view; none of them starts a tool. A new editor or viewer of a drawing wires them and joins
   `test/ui/view-gestures.test.js`.
 - **Portuguese**: every label has its translation (`web/js/i18n.js` and its modules, anchored patterns).

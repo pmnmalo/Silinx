@@ -1,16 +1,37 @@
 // A drawing's view gestures, all of them (#4291): the schematic editor's, for every editor and viewer of a drawing.
 import { twoFingerView } from './ui.js';
-import { wheelView } from './canvas-gestures.js';
+import { wheelView, safariPinch } from './canvas-gestures.js';
 
-// The schematic editor's gestures for any drawing `el` (an editor's or a viewer's canvas): the wheel (canvas-gestures.js); two
-// fingers on a touch screen pan and pinch (ui.js twoFingerView: cancel() undoes what the first finger started); the
+// The schematic editor's gestures for any drawing `el` (an editor's or a viewer's canvas): the wheel and Safari's
+// pinch, its gesture events (canvas-gestures.js); two fingers on a touch screen pan and pinch (ui.js twoFingerView: cancel() undoes what the first finger started); the
 // middle button, or the left one with Space held down (the keyboard's focus in `keyEl`), drags the view. Every one is
 // the view's: the editor's own tools (select, move, draw a wire) see none of its events, so none of them starts.
 // pan(dx, dy) moves the view by client px, zoom(f, cx, cy) zooms it about a client point (each editor keeps its limits).
 // `dragPan: false` for an editor that drags its view itself (the schematic's, the ASM chart's).
 /** Wires the gestures on `el`; returns { spaceDown() }. */
 export function viewGestures(el, { zoom, pan, cancel, keyEl = el, dragPan = true }) {
-  el.addEventListener('wheel', e => wheelView(e, { zoom, pan }), { passive: false });
+  // (Safari's pinch: about the pointer last seen on el when its event has none, else el's middle; none of iPadOS's
+  // touch pinch, twoFingerView's: a finger on el. Its fingers are counted from their pointer events, the window's ones
+  // listened to before twoFingerView's, which stops them; a first finger forgets one lifted unseen.)
+  const fingers = new Set();
+  let last = null;
+  const lifted = e => {
+    fingers.delete(e.pointerId);
+    if (!fingers.size) { removeEventListener('pointerup', lifted, true); removeEventListener('pointercancel', lifted, true); }
+  };
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+    if (e.isPrimary) fingers.clear();
+    if (!fingers.size) { addEventListener('pointerup', lifted, true); addEventListener('pointercancel', lifted, true); }
+    fingers.add(e.pointerId);
+  }, true);
+  el.addEventListener('pointermove', e => { if (e.pointerType !== 'touch') last = [e.clientX, e.clientY]; }, { passive: true, capture: true });
+  const middle = () => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const pinch = safariPinch({ zoom, touching: () => fingers.size > 0, at: () => last || middle() });
+  el.addEventListener('gesturestart', pinch.start);
+  el.addEventListener('gesturechange', pinch.change);
+  el.addEventListener('gestureend', pinch.end);
+  el.addEventListener('wheel', e => { if (!pinch.wheel(e)) wheelView(e, { zoom, pan }); }, { passive: false });
   twoFingerView(el, { cancel, pan, zoom });
   let space = false, drag = null;
   const ready = on => { space = on; el.classList.toggle('pan-ready', on); };

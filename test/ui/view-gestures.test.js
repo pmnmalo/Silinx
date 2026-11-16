@@ -2,7 +2,8 @@
 // circuit, ASM chart, state diagram, Petri net and symbol editors, the RTL schematic viewer and the FPGA view, the wheel
 // with Ctrl (a trackpad's pinch) zooms about the pointer by exp(-deltaY · 0.01), as smoothly as the fingers move (not in
 // steps), a mouse's notch by exp(-deltaY · 0.0015); a trackpad's two-finger scroll pans (Shift: across); two fingers on
-// a touch screen pinch; the middle button, and the left one with Space held down, drag the view, selecting or moving
+// a touch screen pinch; Safari's trackpad pinch, its gesture events (#4296), zooms once (where a Ctrl + wheel comes too,
+// and on iPadOS, whose two fingers send them too); the middle button, and the left one with Space held down, drag the view, selecting or moving
 // nothing; the zoom stays within the editor's limits. No console warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -113,6 +114,61 @@ async function pinch(page, cfg, p) {
   near(b.y, a.y, 2 / v1.s, `${cfg.what}: the point under the fingers kept (y)`);
 }
 
+// Safari's events at the client point p, on the element there, in order (#4296): ['start'] / ['change', scale] / ['end'],
+// its gesture events (WebKit's GestureEvent, as a plain event with its scale and pointer); ['wheel', deltaY], a Ctrl +
+// wheel; ['down' | 'move' | 'up', finger, x, y], a finger's pointer event on the screen (iPadOS), ['touch', type, n] its
+// touch event, n fingers down. Returns the gesture events not prevented (the page zoomed).
+const safari = (page, p, evs) => page.eval((p, evs) => {
+  let at = document.elementFromPoint(p.x, p.y);
+  const fingers = [], target = () => (at.isConnected ? at : (at = document.elementFromPoint(p.x, p.y)));
+  // (the fingers' pointers are the page's, not the browser's: none it can capture)
+  const capture = Element.prototype.setPointerCapture, release = Element.prototype.releasePointerCapture;
+  Element.prototype.setPointerCapture = function (id) { try { capture.call(this, id); } catch {} };
+  Element.prototype.releasePointerCapture = function (id) { try { release.call(this, id); } catch {} };
+  const props = (e, o) => { for (const [k, v] of Object.entries(o)) Object.defineProperty(e, k, { value: v }); return e; };
+  let free = 0;
+  try {
+  for (const [what, a, b, c] of evs) {
+    if (what === 'wheel') target().dispatchEvent(new WheelEvent('wheel', { deltaY: a, ctrlKey: true, clientX: p.x, clientY: p.y, bubbles: true, cancelable: true }));
+    else if (what === 'touch') target().dispatchEvent(props(new Event(a, { bubbles: true, cancelable: true }), { touches: { length: b } }));
+    else if (['down', 'move', 'up'].includes(what)) {
+      if (what === 'down') fingers[a] = document.elementFromPoint(b, c);
+      const down = what !== 'up';
+      (fingers[a].isConnected ? fingers[a] : document.elementFromPoint(b, c)).dispatchEvent(new PointerEvent(`pointer${what}`, { bubbles: true, cancelable: true, composed: true, view: window, pointerId: 201 + a, pointerType: 'touch', isPrimary: a === 0, clientX: b, clientY: c, button: what === 'move' ? -1 : 0, buttons: down ? 1 : 0, width: 1, height: 1, pressure: down ? 0.5 : 0 }));
+    } else {
+      const e = props(new Event(`gesture${what}`, { bubbles: true, cancelable: true }), { scale: what === 'change' ? a : 1, rotation: 0, clientX: p.x, clientY: p.y });
+      target().dispatchEvent(e);
+      if (!e.defaultPrevented) free++;
+    }
+  }
+  } finally { Element.prototype.setPointerCapture = capture; Element.prototype.releasePointerCapture = release; }
+  return free;
+}, p, evs);
+async function safariZoomed(page, cfg, p, evs, f, what) {
+  const v0 = await viewOf(page, cfg);
+  assert.equal(await safari(page, p, evs), 0, `${cfg.what}: ${what}, the page not zoomed (every gesture event prevented)`);
+  await frame(page);
+  const v1 = await viewOf(page, cfg);
+  near(v1.s / v0.s, f, 2e-3, `${cfg.what}: ${what}, zoomed by ${f.toFixed(4)}`);
+  const a = under(v0, p), b = under(v1, p);
+  near(b.x, a.x, 2 / v1.s, `${cfg.what}: ${what}, the point under the pointer kept (x)`);
+  near(b.y, a.y, 2 / v1.s, `${cfg.what}: ${what}, the point under the pointer kept (y)`);
+}
+// Safari's pinches (#4296): macOS's trackpad (gesture events only); with a Ctrl + wheel too, the first to come zooms, once;
+// iPadOS's two fingers (pointer, touch and gesture events): twoFingerView's zoom (75 → 50 px apart: by 2/3), once
+async function safariPinches(page, cfg, p) {
+  await safariZoomed(page, cfg, p, [['start'], ['change', 1.1], ['change', 1.18], ['change', 1.25], ['end']], 1.25, 'Safari\'s trackpad pinch');
+  await safariZoomed(page, cfg, p, [['start'], ['change', 0.8], ['wheel', 10], ['change', 0.6], ['wheel', 5], ['end']], 0.6, 'Safari\'s pinch out with Ctrl + wheels too');
+  await safariZoomed(page, cfg, p, [['start'], ['wheel', -4], ['change', 1.3], ['wheel', -4], ['change', 1.5], ['end']], Math.exp(0.08), 'a Ctrl + wheel first, gesture events too');
+  const evs = [['down', 0, p.x - 75, p.y], ['touch', 'touchstart', 1], ['down', 1, p.x + 75, p.y], ['touch', 'touchstart', 2], ['start']];
+  for (let i = 1; i <= 8; i++) {
+    const d = 75 - 25 * i / 8;
+    evs.push(['move', 0, p.x - d, p.y], ['move', 1, p.x + d, p.y], ['change', d / 75]);
+  }
+  evs.push(['up', 0, p.x - 50, p.y], ['touch', 'touchend', 1], ['end'], ['up', 1, p.x + 50, p.y], ['touch', 'touchend', 0]);
+  await safariZoomed(page, cfg, p, evs, 2 / 3, 'iPadOS\'s two-finger pinch');
+}
+
 // every gesture on one drawing (cfg: what, kind, svg, vp, item, selected, limits [min, max] or null, space, middle)
 async function gestures(page, cfg) {
   const c = center(await rectOf(page, cfg.svg));
@@ -141,6 +197,9 @@ async function gestures(page, cfg) {
   await pannedBy(page, cfg, p, { deltaY: 30, shiftKey: true }, -30, 0, 'Shift + wheel');
   // two fingers on a touch screen
   await pinch(page, cfg, p);
+  // Safari's pinch (the symbol: about a point of its frame, the drawing larger than it now)
+  const q = cfg.kind === 'symbol' ? center(await page.eval((s) => { const r = document.querySelector(s).parentElement.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, cfg.svg)) : p;
+  await safariPinches(page, cfg, q);
   // the limits: zoomed in, then out, as far as it goes
   for (let i = 0; i < 40; i++) await wheel(page, c, { deltaY: -100, ctrlKey: true });
   const max = (await viewOf(page, cfg)).s;
@@ -154,7 +213,7 @@ async function gestures(page, cfg) {
   if (cfg.limits) { near(min, cfg.limits[0], 1e-6, `${cfg.what}: the zoom's least`); near(max, cfg.limits[1], 1e-6, `${cfg.what}: the zoom's most`); }
 }
 
-uiTest('#4291 the editors\' view gestures are the schematic\'s: smooth wheel and pinch zoom about the pointer, trackpad pan, two fingers, Space and the middle button pan, within the zoom\'s limits (schematic, circuit, ASM chart, state diagram, Petri net)', E, async (page) => {
+uiTest('#4291 the editors\' view gestures are the schematic\'s: smooth wheel and pinch zoom about the pointer, trackpad pan, two fingers, Safari\'s pinch (#4296), Space and the middle button pan, within the zoom\'s limits (schematic, circuit, ASM chart, state diagram, Petri net)', E, async (page) => {
   const doc = newDoc('vg', 'vhdl');
   doc.symbols.push({ id: 'S1', type: 'and2', x: 200, y: 120, rot: 0, mirror: false, name: 'XLXI_1', params: { width: 1 } });
   await makeProject(env, { name: 'ViewGestures', top: '', files: {
@@ -193,7 +252,7 @@ uiTest('#4291 the editors\' view gestures are the schematic\'s: smooth wheel and
   assert.deepEqual(warnings(page), []);
 });
 
-uiTest('#4291 the symbol editor and the RTL schematic viewer have the schematic\'s view gestures too (mounted alone)', E, async (page) => {
+uiTest('#4291 the symbol editor and the RTL schematic viewer have the schematic\'s view gestures too, Safari\'s pinch included (mounted alone)', E, async (page) => {
   await page.eval(async () => {
     const { mountSymbolEditor } = await import('/js/symbol-editor.js');
     const { mountSchematic } = await import('/js/schematic-view.js');
@@ -238,7 +297,7 @@ begin
 end rtl;
 `;
 
-uiTest('#4291 the FPGA view has the schematic\'s view gestures: smooth wheel and pinch zoom, trackpad pan, two fingers, the middle button', E, async (page) => {
+uiTest('#4291 the FPGA view has the schematic\'s view gestures: smooth wheel and pinch zoom, trackpad pan, two fingers, Safari\'s pinch (#4296), the middle button', E, async (page) => {
   const name = 'ViewGesturesFpga';
   await makeProject(env, { name, files: { 'src/top.vhd': TOP, 'src/sub.vhd': SUB }, top: 'top' });
   const build = path.join(env.server.workspace, name, 'build');

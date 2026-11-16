@@ -451,7 +451,7 @@ editors and the drawings, simulation, and the Silinx toolchain (synthesis, place
   Petri net and symbol editors, the RTL schematic, the FPGA view, the SSim wave window); one finger
   selects and moves its parts.
 - **Every drawing zooms and pans as the schematic does** (#4291): the mouse wheel, Ctrl + wheel and a
-  trackpad's pinch zoom about the pointer, smoothly; a trackpad's two-finger scroll pans (Shift + wheel:
+  trackpad's pinch zoom about the pointer, smoothly (Safari's too, #4296); a trackpad's two-finger scroll pans (Shift + wheel:
   across); the middle button, or Space held down, drags the drawing.
 - **Landscape or portrait**: in landscape the layout is the desktop's. In portrait (1024 px wide or
   less) the Design pane is a drawer, opened by the button at the left of the header. The drawing

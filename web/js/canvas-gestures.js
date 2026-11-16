@@ -18,3 +18,40 @@ export function wheelView(e, { zoom, pan }) {
   if (g.zoom) zoom(g.zoom, e.clientX, e.clientY);
   else pan(...g.pan);
 }
+
+// Safari's pinch (#4296): macOS Safari sends a trackpad's pinch as gesturestart / gesturechange / gestureend, `scale`
+// the spread since gesturestart (1 at its start), not as a Ctrl + wheel; each gesturechange zooms by its scale over the
+// last one, about the pointer (its clientX / clientY, else `at()`), as smoothly as the fingers. A browser that sends both
+// kinds zooms once: in one gesture the first of them to come (a gesturechange or a Ctrl + wheel) zooms, the other is
+// dropped. iPadOS Safari sends its gesture events for two fingers on the screen too, with their touch events, which
+// twoFingerView (ui.js) zooms already: a gesture while `touching()` zooms nothing (its trackpad's pinch, no touch, does).
+/** Safari's gesture events' handlers: start, change, end (each its event), and wheel(e): true when it is to be dropped. */
+export function safariPinch({ zoom, touching = () => false, at = () => [0, 0] }) {
+  let g = null;      // the gesture: the scale last applied, and what zooms it (null: not yet known, 'gesture', 'wheel', 'touch')
+  const start = (e) => { e.preventDefault(); g = { scale: 1, by: touching() ? 'touch' : null }; };
+  return {
+    start,
+    change(e) {
+      e.preventDefault();      // (not the page zoomed)
+      if (!g) start(e);
+      if (g.by !== 'wheel' && touching()) g.by = 'touch';     // (fingers down on the screen: from now on theirs)
+      if (g.by === 'touch' || g.by === 'wheel') return;
+      const s = e.scale;
+      if (!(s > 0) || !Number.isFinite(s)) return;
+      g.by = 'gesture';
+      const f = s / g.scale;
+      g.scale = s;
+      if (f === 1) return;
+      const p = Number.isFinite(e.clientX) && Number.isFinite(e.clientY) ? [e.clientX, e.clientY] : at();
+      zoom(f, p[0], p[1]);
+    },
+    end(e) { e.preventDefault(); g = null; },
+    wheel(e) {
+      if (!g || !e.ctrlKey) return false;
+      if (g.by == null) g.by = 'wheel';
+      if (g.by === 'wheel') return false;
+      e.preventDefault();
+      return true;
+    },
+  };
+}
