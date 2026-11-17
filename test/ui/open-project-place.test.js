@@ -38,7 +38,7 @@ uiTest('#4314 Open Project: each project\'s Stored In, the workspace folder and 
   assert.deepEqual(await placeRows(page, ['PlaceLocal', 'PlaceRepo']), {
     header: ['Project', 'Device', 'Board', 'Stored In', 'Last Used'],   // (no Top column)
     rows: [['PlaceLocal', ['Workspace Folder'], 'Kept in the workspace folder.'],   // (the newest first: just opened)
-      ['PlaceRepo', ['Workspace Folder', 'GitHub: course/place-repo'], 'Kept in the workspace folder, in the GitHub repository course/place-repo.']],
+      ['PlaceRepo', ['Workspace Folder', '↔ GitHub: course/place-repo'], 'Kept in the workspace folder, in the GitHub repository course/place-repo.']],
   });
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
@@ -50,7 +50,7 @@ uiTest('#4314 Open Project: each project\'s Stored In, the workspace folder and 
     assert.deepEqual(await placeRows(page, ['PlaceLocal', 'PlaceRepo']), {
       header: ['Projeto', 'Dispositivo', 'Placa', 'Guardado em', 'Último uso'],
       rows: [['PlaceLocal', ['Pasta de Trabalho'], 'Guardado na pasta de trabalho.'],
-        ['PlaceRepo', ['Pasta de Trabalho', 'GitHub: course/place-repo'], 'Guardado na pasta de trabalho, no repositório GitHub course/place-repo.']],
+        ['PlaceRepo', ['Pasta de Trabalho', '↔ GitHub: course/place-repo'], 'Guardado na pasta de trabalho, no repositório GitHub course/place-repo.']],
     });
     await page.dialogButton('Cancelar');
     await page.waitNoDialog();

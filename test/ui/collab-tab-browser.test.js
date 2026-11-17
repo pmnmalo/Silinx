@@ -77,7 +77,7 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Reposit
   await page.menu('File', 'Open Project…');
   await page.waitDialog('Open Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid tr')].slice(1).map((r) => [r.children[0].textContent, [...r.querySelector('td.pj-place').children].map((d) => d.textContent), r.querySelector('td.pj-place').title])),
-    [['collab-ana', ['Browser Storage', `GitHub: ${REPO}`], `Kept in this browser's storage, in the GitHub repository ${REPO}.`]]);
+    [['collab-ana', ['Browser Storage', `↔ GitHub: ${REPO}`], `Kept in this browser's storage, in the GitHub repository ${REPO}.`]]);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   await page.leftTab('collab');
