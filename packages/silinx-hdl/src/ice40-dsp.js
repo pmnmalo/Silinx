@@ -53,7 +53,6 @@ architecture silinx of SB_MAC16 is
     if hi then h := v(15 downto 8); else h := v(7 downto 0); end if;
     if s and h(7) = '1' then return X"FF" & h; else return X"00" & h; end if;
   end function;
-  signal clock : std_ulogic;
   signal rA, rB, rC, rD, rF, rJ, rK, rG, rQ, rS : unsigned(15 downto 0) := (others => '0');
   signal rH : unsigned(31 downto 0) := (others => '0');
   -- the combinational values: the inputs, the products, the sums
@@ -62,7 +61,6 @@ architecture silinx of SB_MAC16 is
   signal bad : boolean := false;
   signal co_i, aco_i, sx_i : std_ulogic := '0';
 begin
-  clock <= CLK xor to_stdulogic(NEG_TRIGGER);
   -- (an unknown bit of an unregistered operand or of a control; a register loads an unknown bit as 0)
   bad <= (A_REG = '0' and not known(A)) or (B_REG = '0' and not known(B)) or (C_REG = '0' and not known(C)) or (D_REG = '0' and not known(D))
          or not known(ADDSUBTOP & ADDSUBBOT & OLOADTOP & OLOADBOT & CI & ACCUMCI & SIGNEXTIN);
@@ -128,36 +126,37 @@ begin
     if OLOADTOP = '1' then vP <= vC; else vP <= st(15 downto 0) xor mt; end if;
     sx_i <= x(15);
   end process;
-  process (clock, IRSTTOP)
+  -- (the registers on CLK's own edge, the one NEG_TRIGGER chooses: their inputs as at the edge)
+  process (CLK, IRSTTOP)
   begin
     if IRSTTOP = '1' then rC <= (others => '0'); rA <= (others => '0'); rF <= (others => '0'); rJ <= (others => '0');
-    elsif rising_edge(clock) and CE = '1' then
+    elsif ((NEG_TRIGGER = '0' and rising_edge(CLK)) or (NEG_TRIGGER = '1' and falling_edge(CLK))) and CE = '1' then
       if CHOLD /= '1' then rC <= unsigned(to_01(C)); end if;
       if AHOLD /= '1' then rA <= unsigned(to_01(A)); end if;
       rF <= pF;
       if MODE_8x8 = '0' then rJ <= pJ; end if;
     end if;
   end process;
-  process (clock, IRSTBOT)
+  process (CLK, IRSTBOT)
   begin
     if IRSTBOT = '1' then rB <= (others => '0'); rD <= (others => '0'); rK <= (others => '0'); rG <= (others => '0'); rH <= (others => '0');
-    elsif rising_edge(clock) and CE = '1' then
+    elsif ((NEG_TRIGGER = '0' and rising_edge(CLK)) or (NEG_TRIGGER = '1' and falling_edge(CLK))) and CE = '1' then
       if BHOLD /= '1' then rB <= unsigned(to_01(B)); end if;
       if DHOLD /= '1' then rD <= unsigned(to_01(D)); end if;
       if MODE_8x8 = '0' then rK <= pK; rH <= vL; end if;
       rG <= pG;
     end if;
   end process;
-  process (clock, ORSTTOP)
+  process (CLK, ORSTTOP)
   begin
     if ORSTTOP = '1' then rQ <= (others => '0');
-    elsif rising_edge(clock) and CE = '1' and OHOLDTOP /= '1' then rQ <= vP;
+    elsif ((NEG_TRIGGER = '0' and rising_edge(CLK)) or (NEG_TRIGGER = '1' and falling_edge(CLK))) and CE = '1' and OHOLDTOP /= '1' then rQ <= vP;
     end if;
   end process;
-  process (clock, ORSTBOT)
+  process (CLK, ORSTBOT)
   begin
     if ORSTBOT = '1' then rS <= (others => '0');
-    elsif rising_edge(clock) and CE = '1' and OHOLDBOT /= '1' then rS <= vR;
+    elsif ((NEG_TRIGGER = '0' and rising_edge(CLK)) or (NEG_TRIGGER = '1' and falling_edge(CLK))) and CE = '1' and OHOLDBOT /= '1' then rS <= vR;
     end if;
   end process;
   process (vP, rQ, vF, vH, vR, rS, vG, bad, co_i, aco_i, sx_i)
