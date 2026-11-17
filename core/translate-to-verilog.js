@@ -15,15 +15,21 @@ const ATOM = 13, UNARY = 12;
 const BUILTIN_TYPES = { natural: { k: 'int', bits: null }, positive: { k: 'int', bits: null }, integer: { k: 'int', bits: null },
   std_logic: { k: 'bit' }, std_ulogic: { k: 'bit' }, bit: { k: 'bit' }, boolean: { k: 'bool' }, real: { k: 'real' }, time: { k: 'time' },
   string: { k: 'str' } };
+// a node's lint suppression (#4414: on its line, or alone on the line above it) as a comment ending its Verilog's line
+function pragmaOf(cx, node) {
+  const line = node?.loc?.line;
+  const p = line && (cx.pragmas.get(line) ?? cx.pragmas.get(line - 1));
+  return p ? ` // silinx: ${p}` : '';
+}
 const stmtsOf = x => (!x ? [] : x.kind === 'block' ? x.stmts : [x]);
 
 /** One VHDL module (a unit of kind 'module') in Verilog: { text, renamed: [[from, to]], timescale }. spell(name): the
  *  name as the source writes it (the IR has VHDL's names in lower case). */
-export function moduleToVerilog(mod, { spell = n => n, packages = [] } = {}) {
+export function moduleToVerilog(mod, { spell = n => n, packages = [], pragmas = new Map() } = {}) {
   at.line = mod.loc?.line ?? null;
   const genvars = new Set();
   walk(mod.items, n => { if (n.kind === 'generate_for') genvars.add(n.var); });
-  const cx = { mod, genvars, declared: new Set(), names: new Map(), types: new Map(), funcs: new Map(), spell, renamed: [], timescale: false, extraDecls: [], inits: [] };
+  const cx = { mod, genvars, declared: new Set(), names: new Map(), types: new Map(), funcs: new Map(), spell, renamed: [], timescale: false, extraDecls: [], inits: [], pragmas };
   const pkg = packageDecls(cx, mod, packages);
   for (const g of mod.params || []) declare(cx, g.name, 'generic', resolveType(cx, g.type || { kind: 'integer' }));
   for (const p of mod.ports || []) { declare(cx, p.name, 'port', resolveType(cx, p.type), { dir: p.dir }); cx.declared.add(outName(cx, p.name)); }
@@ -353,6 +359,7 @@ function processV(cx, p) {
   }
   const out = processBody(cx, p);
   for (const [n, e] of hidden) cx.names.set(n, e);
+  if (out.length) out[0] += pragmaOf(cx, p);
   return out;
 }
 function processBody(cx, p) {
@@ -470,7 +477,7 @@ function ifV(cx, s, o) {
   const out = [];
   for (let cur = s, kw = 'if'; ;) {
     const b = blockV(cx, cur.then, o);
-    head(out, `${kw} (${exprV(cx, cur.cond).c})${b.open}`);
+    head(out, `${kw} (${exprV(cx, cur.cond).c})${b.open}${pragmaOf(cx, cur)}`);
     out.push(...b.lines, ...b.close);
     if (!cur.else) return out;
     if (cur.else.kind === 'if') { cur = cur.else; kw = 'else if'; continue; }
