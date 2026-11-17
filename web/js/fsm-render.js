@@ -10,6 +10,7 @@
 import { fsmEncoding, outputLines, stepFsm } from '/core/fsm.js';
 import { styleOf, textCss } from '/core/fsm-style.js';
 import { sv, radiusOf, stateTexts, textW } from './fsm-editor.js';
+import { drawnCond } from './notation.js';
 
 /** { encOf, geom, render } of an FSM editor (state(): its current model, selection, problems, simulation). */
 export function mountRender(ctx) {
@@ -87,9 +88,10 @@ export function mountRender(ctx) {
     const anchor = Math.abs(n.x * side) > 0.5 ? (n.x * side > 0 ? 'start' : 'end') : 'middle';
     return { d: `M${P0.x},${P0.y} Q${C.x},${C.y} ${P2.x},${P2.y}`, apex, lab, anchor, n, mid, out: { x: n.x * side, y: n.y * side } };
   }
-  // (a transition's label: its condition, then " /" and its outputs one per line; none: the condition alone)
+  // (a transition's label: its condition, in the notation chosen (#4417), then " /" and its outputs one per line; none:
+  // the condition alone)
   const labelLines = (t) => {
-    const c = t.cond || '', o = outputLines(t.outputs);
+    const c = t.cond ? drawnCond(t.cond) : '', o = outputLines(t.outputs);
     return o.length ? [`${c || '1'} /`, ...o] : c ? [c] : [];
   };
 

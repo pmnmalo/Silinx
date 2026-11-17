@@ -44,6 +44,7 @@ import { clone } from '/core/util.js';
 import { statusLine } from './status-line.js';
 import { designKind } from './project-kind-flag.js';
 import { mountDockPanel } from './dock-panel.js';
+import { drawnLength } from './notation.js';
 export { clone };   // (core/util.js's)
 
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -52,7 +53,7 @@ let instances = 0;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export { sv };   // (web/js/dom.js's)
 const CHW = 7.3;                       // width of a 12px monospace character
-export const textW = (s) => String(s).length * CHW;
+export const textW = (s) => drawnLength(s) * CHW;   // (a bar takes no room: #4417)
 
 /** A state's texts in its circle: its name's baseline, the divider's height and its outputs, one per line (#3882),
  *  the block centred on the circle's centre; k: their size's scale, its look's text size (#3883: 1 by default). */
@@ -305,7 +306,7 @@ export function mountFsmEditor(container, opts = {}) {
 
   // ---------------------------------------------------------------------------- side panel (fsm-side.js)
   const { renderSide } = mountSide({ M: () => M, sel: () => sel, setSel: (s) => { sel = s; }, selSection, machineBody, machineSection, btn, stateById, transById,
-    encOf, commit, readOnly, locked, render, updateToolbar, flash });
+    encOf, commit, readOnly, locked, render, updateToolbar, flash, destroyed: () => destroyed });
 
   // ---------------------------------------------------------------------------- problems (to onProblems: the console, #2737)
   function validateSoon() { clearTimeout(timers.val); timers.val = setTimeout(runValidate, 120); }

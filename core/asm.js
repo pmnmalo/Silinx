@@ -86,6 +86,7 @@ import {
   exprToString, parseAction, parseCondition
 } from './asm-expr.js';
 import { mountGraphChecks } from './asm-graph.js';
+import { condAsText } from './cond-notation.js';
 export {
   exprToString, parseAction, parseCondition
 };
@@ -173,7 +174,7 @@ export function normalizeModel(m) {
     const type = NODE_TYPES.includes(n?.type) ? n.type : 'state';
     const o = { id: String(n?.id ?? `n${i + 1}`), type, x: num(n?.x), y: num(n?.y) };
     if (type === 'state' || type === 'always') { o.name = String(n?.name ?? ''); o.actions = normActions(n?.actions); }
-    if (type === 'decision') { o.cond = String(n?.cond ?? ''); if (n?.flip) o.flip = true; }
+    if (type === 'decision') { o.cond = condAsText(n?.cond); if (n?.flip) o.flip = true; }   // (no overbar kept: #4417)
     if (type === 'case') o.expr = String(n?.expr ?? '');
     if (type === 'output') o.actions = normActions(n?.actions);
     if (n?.comment) o.comment = String(n.comment);

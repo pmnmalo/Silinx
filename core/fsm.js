@@ -38,6 +38,7 @@ import { asmFromHdl } from './asm-from-hdl.js';
 import { asmToFsm, fsmToAsm } from './fsm-asm.js';
 import { generateFsm } from './fsm-hdl.js';
 import { clone } from './util.js';
+import { condAsText } from './cond-notation.js';
 import { normalizeStyle, styleProblems } from './fsm-style.js';
 export { clone };   // (core/util.js's)
 export { generateFsm } from './fsm-hdl.js';
@@ -160,7 +161,7 @@ export function normalizeFsm(m) {
   });
   const transitions = arr(src.transitions).map((t, i) => {
     const o = { id: String(t?.id ?? `t${i + 1}`), from: String(t?.from ?? ''), to: String(t?.to ?? ''),
-      cond: String(t?.cond ?? '').trim(), outputs: normOutputs(t?.outputs) };
+      cond: condAsText(t?.cond).trim(), outputs: normOutputs(t?.outputs) };   // (no overbar kept: #4417)
     if (t?.bend != null && Number.isFinite(Number(t.bend))) o.bend = Number(t.bend);
     if (t?.angle != null && Number.isFinite(Number(t.angle))) o.angle = Number(t.angle);
     const st = normalizeStyle('trans', t?.look);

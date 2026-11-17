@@ -9,7 +9,7 @@
 import { normalizePetri, preset, clockStepBy, outputsOf } from './petri.js';
 import { normalizeFsm, parseCond, evalCond, condNames, inputCombos, autoLayout } from './fsm.js';
 import { minimize } from './logic.js';
-import { showCond } from './cond-notation.js';
+import { writeCond } from './cond-notation.js';
 
 export const MAX_FSM_STATES = 200;    // the diagram stays readable
 export const MAX_GUARDS = 10;         // guards that may be true or false at a marking (2^n combinations)
@@ -72,14 +72,14 @@ export function petriToFsm(model, { maxStates = MAX_FSM_STATES, notation = null 
       outputs: Object.fromEntries(Object.entries(outputsOf(m, st.marking, st.fired)).filter(([, v]) => v).map(([o, v]) => [o, v.toString()])),
       comment: P.map(p => `${p.name}=${st.marking[p.id] || 0}`).join(', ') + (st.fired.length ? `; fired ${st.fired.map(id => T.find(t => t.id === id).name).join(', ')}` : ''),
     })),
-    // (the conditions in the notation asked for, #3915)
+    // (the conditions in the notation asked for, #3915, its text form, #4417)
     transitions: edges.map((e, i) => ({ id: `t${i}`, from: `s${e.from}`, to: `s${e.to}`, cond: notation ? shown(e.cond, notation) : e.cond })),
     initial: 's0',
   });
   return { fsm: autoLayout(fsm), states: states.length, truncated };
 }
 
-const shown = (cond, notation) => { const q = cond ? parseCond(cond) : null; return q && !q.error && q.ast ? showCond(q.ast, notation) : cond; };
+const shown = (cond, notation) => { const q = cond ? parseCond(cond) : null; return q && !q.error && q.ast ? writeCond(q.ast, notation) : cond; };
 
 // a state's name: the places that hold tokens (2·buf for two), ∅ for none; the pulsing transitions that fired, after a /
 function stateName(m, st) {

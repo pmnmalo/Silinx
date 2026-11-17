@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The conditions the conversions write, in a notation (#3915 part 2): an HDL module made a state diagram or an ASM chart
 // (fsmFromHdl, asmFromHdl), an ASM chart's state diagram (asmToFsm), a Petri net's state machine (petriToFsm). Each
-// condition the conversion writes is the neutral one (no notation, as before) shown in the notation; the machine the
+// condition the conversion writes is the neutral one (no notation, as before) shown in the notation's text form (the
+// Engineering notation's: the text only one's, no overbar kept in a drawing, #4417); the machine the
 // same (simulated as the model, its HDL the same but its comments (the Verilog notation's: the bitwise operators), that
 // HDL simulated in VHDL and Verilog); a previous
 // diagram's conditions kept as they were typed.
@@ -15,6 +16,7 @@ import { validate as validateAsm } from '../core/asm.js';
 import { petriToFsm } from '../core/petri-fsm.js';
 import { newPetri } from '../core/petri.js';
 import { NOTATION_IDS, showCond } from '../core/expr-notation.js';
+import { textNotation } from '../core/cond-notation.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
 
 const ex = (f) => fs.readFileSync(new URL(`../examples/traffic/src/${f}`, import.meta.url), 'utf8');
@@ -22,8 +24,8 @@ const TRAFFIC = ex('traffic.vhd');
 const TRAFFIC_FSM = JSON.parse(ex('traffic.fsm.json'));
 // the generated code without its comments (they quote the drawing's conditions)
 const code = (s) => s.split('\n').filter((l) => !/^\s*(--|\/\/)/.test(l)).map((l) => l.replace(/\s*(--|\/\/).*$/, '')).join('\n');
-// a condition in a notation: the neutral one shown in it (the otherwise words as they are)
-const shown = (text, n) => (isOtherwise(text) ? text : showCond(parseCond(text).ast, n));
+// a condition in a notation: the neutral one shown in its text form (the otherwise words as they are)
+const shown = (text, n) => (isOtherwise(text) ? text : showCond(parseCond(text).ast, textNotation(n)));
 
 test('#3915 an HDL module made a state diagram: its conditions in each notation, the same machine, its HDL simulated in VHDL and Verilog', () => {
   const plain = fsmFromHdl(TRAFFIC, { path: 'traffic.vhd' }).model;
@@ -41,9 +43,10 @@ test('#3915 an HDL module made a state diagram: its conditions in each notation,
       assert.deepEqual(runHdl(g, lang, m, vectors), want, `${n} ${lang}`);
     }
   }
-  // (a sample: the Engineering notation's overbar, the logic notation's signs)
+  // (a sample: the Engineering notation's text, its NOT a slash and no overbar (#4417), the logic notation's signs)
   const eng = fsmFromHdl(TRAFFIC, { path: 'traffic.vhd', notation: 'engineering' }).model.transitions.map((t) => t.cond);
-  assert.ok(eng.some((c) => c.includes('̅')), eng.join(' | '));
+  assert.ok(eng.every((c) => !c.includes('\u0305')), eng.join(' | '));
+  assert.ok(eng.some((c) => c.includes('/')), eng.join(' | '));
   assert.ok(fsmFromHdl(TRAFFIC, { path: 'traffic.vhd', notation: 'logic' }).model.transitions.some((t) => /[¬∧∨]/.test(t.cond)));
 });
 

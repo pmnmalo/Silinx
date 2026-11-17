@@ -7,6 +7,8 @@
 import { h } from './ui.js';
 import { lookFields } from './fsm-look.js';
 import { outputLines } from '/core/fsm.js';
+import { condAsText } from '/core/cond-notation.js';
+import { drawnCond, onNotation } from './notation.js';
 import { dropOutputValues, outputRows, outputsWhere, renameOutputValues, setOutputValue } from '/core/fsm-outputs.js';
 import { designKind } from './project-kind-flag.js';
 
@@ -84,7 +86,7 @@ export function mountSide(ctx) {
         h('div', { class: 'asm-label' }, `Transitions out of ${s.name} (the first true condition is taken)`),
         // (a transition's outputs one per line under it, #3882)
         h('ol', { class: 'fsm-tlist' }, ...ts.map((t) => h('li', { class: 'link', onclick: () => { setSel({ type: 'trans', id: t.id }); render(); renderSide(); } },
-          `${t.cond || '1'} → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`,
+          `${t.cond ? drawnCond(t.cond) : '1'} → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`,
           ...outputLines(t.outputs).map((o) => h('div', { class: 'mono fsm-tout' }, o))))),
         ...look('state', cur, id)].filter(Boolean));
       return;
@@ -98,7 +100,8 @@ export function mountSide(ctx) {
     const reroute = (k, v) => { const c = cur(); if (!c) return; c[k] = v; delete c.bend; delete c.angle; commit(); renderSelection(); };
     from.addEventListener('change', () => reroute('from', from.value));
     to.addEventListener('change', () => reroute('to', to.value));
-    const cond = input(t.cond, (v) => { if (!cur()) return; cur().cond = v.trim(); commit('cond'); }, { cls: 'mono fsm-cond', ph: 'e.g. x && !y   (empty = always)', key: 'cond' });
+    // (text, whatever the notation: an overbar typed or pasted kept as /…, #4417)
+    const cond = input(condAsText(t.cond), (v) => { if (!cur()) return; cur().cond = condAsText(v.trim()); commit('cond'); }, { cls: 'mono fsm-cond', ph: 'e.g. x && !y   (empty = always)', key: 'cond' });
     const outs = outputsTable('touts', cur, () => outputsWhere(M(), { type: 'trans', id }), stateById(t.from)?.outputs);
     const siblings = M().transitions.filter((x) => x.from === t.from);
     const pos = siblings.indexOf(t);
@@ -170,6 +173,9 @@ export function mountSide(ctx) {
       h('div', { class: 'asm-grid2' }, field('Reset level', act), h('label', { class: 'asm-check', style: { marginTop: '18px' } }, sync, 'Synchronous reset')),
       field('Description', desc));
   }
+
+  // (the notation changed: the arcs' conditions and the list of a state's drawn again, #4417; the editor closed, no more)
+  const offNotation = onNotation(() => { if (ctx.destroyed?.()) offNotation(); else { render(); renderSide(); } });
 
   return { renderSide };
 }

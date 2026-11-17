@@ -54,7 +54,7 @@ import {
   assignsOnEveryPath, caseLabels, ctxSens, makeTreeBuilder, mergeTrees, resolveTree, selfWidth, widthKey,
 } from './asm-trees.js';
 import { mountTextCandidates } from './asm-candidates.js';
-import { showCond } from './cond-notation.js';
+import { writeCond } from './cond-notation.js';
 export { sameAsmStructure } from './asm-same.js';
 
 // the layout (#405: asm-layout.js), still exported from here
@@ -398,8 +398,8 @@ function makeTexts(A, lang, notation = null) {
       if (p.error) continue;
       if (strictCond(negCond(p.ast)) === key) return { text: c, swap: true };
     }
-    // (a condition of its own: in the notation asked for, #3915; none, the neutral text)
-    return { text: notation ? showCond(ast, notation) : exprToString(ast), swap: false };
+    // (a condition of its own: in the notation asked for, #3915, its text form, #4417; none, the neutral text)
+    return { text: notation ? writeCond(ast, notation) : exprToString(ast), swap: false };
   };
   const actionMatches = (act, text) => {
     const p = parseAction(text);

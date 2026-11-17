@@ -241,7 +241,7 @@ uiTest('State diagram (FSM): step-by-step simulation, Mealy labels, module -> di
   await page.eval(() => window.SilinxApp.openFsm('src/m.fsm.json'));
   await page.waitFor((ed) => window.Silinx.active?.id === 'fsm:src/m.fsm.json' && document.querySelector(ed), [ED]);
   // Mealy label "condition /" and its outputs, one per line (#3882)
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans=t2] .fsm-label tspan`)].map((t) => t.textContent), ED), ['!x /', 'z=1']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans=t2] .fsm-label tspan`)].map((t) => t.textContent), ED), ['/x /', 'z=1']);   // (the tests' notation: #4417)
   // ---- simulation: x = 1, clock -> B; x = 0: z = 1 (Mealy) and the transition back to A is shown
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Try it' });
   await page.waitForSelector(`${ED} .fsm-sim`);

@@ -4,8 +4,8 @@
 // one: the state diagram's tables (core/expr-notation.js) and the conditions the conversions write (an HDL module, an
 // ASM chart or a Petri net made a drawing: core/asm-from-hdl.js, core/fsm-asm.js, core/petri-fsm.js). Its imports are
 // the parser's and the overbar's only, so that those modules read it without a cycle.
-import { exprToString } from './asm-expr.js';
-import { overline } from './overline.js';
+import { exprToString, parseCondition } from './asm-expr.js';
+import { overline, overlineToSlash, OVERLINE } from './overline.js';
 
 /** The notations: [id, the name shown, an example]; the first the default. */
 export const NOTATIONS = [
@@ -59,4 +59,20 @@ export function showCond(ast, notation = DEFAULT_NOTATION) {
     return parent ? `(${s})` : s;
   };
   return f(ast, null, false);
+}
+
+/** The text form of a notation (#4417): the one a condition is typed and kept in. The Electronics / Engineering
+ *  notation's bars are only drawn (on a state diagram's arc, an ASM chart's decision): its text is the text only one's. */
+export const textNotation = (notation) => (notationOf(notation) === 'engineering' ? 'slash' : notationOf(notation));
+
+/** A condition's tree written as a drawing keeps it: in the notation's text form, never with an overbar (#4417). */
+export const writeCond = (ast, notation = DEFAULT_NOTATION) => showCond(ast, textNotation(notation));
+
+/** A condition's text with no overbar (#4417): one written with bars (a drawing an earlier version saved, a text
+ *  pasted) in the text only notation, /a.b; a text with none as it is. */
+export function condAsText(text) {
+  const s = String(text ?? '');
+  if (!s.includes(OVERLINE)) return s;
+  const p = parseCondition(s.trim());
+  return !p.error && p.ast ? showCond(p.ast, 'slash') : overlineToSlash(s);
 }

@@ -1,6 +1,6 @@
 // UI: a transition's condition in the FSM editor in every notation of the logic operators (#3907): typed in the
 // Properties panel (a.b', a·b, else, default) and in place on the drawing (/a + b / z=1: a '/' NOT and the outputs'
-// '/'), kept as typed (the drawing's labels, the file), the HDL the same as from the C-style conditions (VHDL and
+// '/'), kept as typed (the file; the drawing's labels in the notation chosen, #4417), the HDL the same as from the C-style conditions (VHDL and
 // Verilog: compiled, elaborated, no warnings), no problem in the console; a malformed condition's error with its
 // column, two otherwise transitions an error, in English and in Portuguese.
 import { before, after } from 'node:test';
@@ -55,8 +55,8 @@ for (const lang of ['vhdl', 'verilog']) {
     const typed = ["a.b'", '/a + b', 'else', 'a·b', 'default'];
     assert.deepEqual(await conds(), typed);
     assert.deepEqual(await page.eval(() => window.Silinx.active.fsmEditor.getModel().transitions[1].outputs), { z: '1' });
-    // (the drawing's labels: as typed)
-    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ["a.b'", '/a + b /z=1', 'else', 'a·b', 'default']);
+    // (the drawing's labels: in the tests' notation, text only, #4417; the otherwise words as typed)
+    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['a./b', '/a + b /z=1', 'else', 'a.b', 'default']);
 
     // ---- saved as typed; the HDL that of the C-style form, compiled and elaborated with no warnings; no problem
     const saved = await page.waitFor(async (p, h) => {
