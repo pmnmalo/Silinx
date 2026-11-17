@@ -342,9 +342,11 @@ What differs on the FPGA:
 
 - the clock is the board's (50 MHz on the Basys2), not the circuit's clock source's rate; a button is not debounced
   by the board (synchronise it with a clocked chip, as the example does);
-- a flip-flop with both an asynchronous preset and an asynchronous clear (7474, 7476, 74112) makes the open synthesis
-  warn ("Complex async reset", Yosys), even when its preset is tied high (#3975); the 74161, 74163, 74164 and 74194 have a
-  clear only; in Verilog the digital model of those flip-flops keeps its level when both are low and one is released
+- a flip-flop with both an asynchronous preset and an asynchronous clear (7474, 7476, 74112) is built with the controls
+  the circuit uses (#3975): one tied high (to the supply's +, or left open) is left out of its digital model (the
+  chip's generics `USE_PRE1`, `USE_CLR1`… false on its instance, the generated HDL's), so that a preset tied high gives a
+  flip-flop with a clear only; one whose preset and clear are both driven makes the open synthesis warn ("Complex async
+  reset", Yosys); the 74161, 74163, 74164 and 74194 have a clear only; in Verilog the digital model of those flip-flops keeps its level when both are low and one is released
   (an `always` block sees no release), as XST builds it, where the chip takes the one still low;
 - a board whose buttons or switches are active low (the Mimas V2) reads them inverted: a circuit has no generics
   (`core/board-generics.js`) to turn them;

@@ -94,7 +94,11 @@ export function digitalTop(m, V, entityOf) {
     const a = ref(netOf(p.id, x.a)), k = ref(netOf(p.id, x.k)), o = portRef(x.port, V);
     return V ? `${o} <= ${a} and not ${k};` : `assign ${o} = ${a} & ~${k};`;
   }));
-  const instIns = insts.map((inst) => icPorts(inst.d).filter((q) => q.dir === 'in').map((q) => [pinPort(q), ref(netOf(inst.p.id, q.n))]));
+  // (a flip-flop's asynchronous control its circuit ties high, #3975: left out of its digital model, its generic false,
+  // its port the constant; its supply's + or its net's default, nothing else driving it)
+  const high = (i) => (sources.has(i) ? sources.get(i) === lit('1') : i != null && !gatesOut.has(i) && !icOut.has(i) && !contacts.has(i) && pullOf(i) === '1');
+  for (const inst of insts) inst.unused = new Set((inst.d.controls || []).filter((c) => high(netOf(inst.p.id, inst.d.pins.find((q) => pinPort(q) === c.port).n))).map((c) => c.port));
+  const instIns = insts.map((inst) => icPorts(inst.d).filter((q) => q.dir === 'in').map((q) => [pinPort(q), inst.unused.has(pinPort(q)) ? lit('1') : ref(netOf(inst.p.id, q.n))]));
   const supply = (inst) => (inst.d.kind === 'model' ? [] : [[pinPort(inst.d.pins.find((q) => q.dir === 'vcc')), lit('1')], [pinPort(inst.d.pins.find((q) => q.dir === 'gnd')), lit('0')]]);
   const assigns = [];
   while (queue.length) { const i = queue.shift(); assigns.push([name.get(i), exprOf(i)]); }
@@ -102,7 +106,9 @@ export function digitalTop(m, V, entityOf) {
   const sigs = [...name.values(), ...instOut];
   const instLines = insts.map((inst, k) => {
     const map = [...instIns[k], ...inst.d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => [pinPort(q), inst.outs.get(q.n) ?? (V ? 'open' : '')]), ...supply(inst)];
-    return V ? `${inst.name} : entity work.${entityOf(inst.d)} port map (${map.map(([a, b]) => `${a} => ${b}`).join(', ')});` : `${entityOf(inst.d)} ${inst.name} (${map.map(([a, b]) => `.${a}(${b})`).join(', ')});`;
+    const gen = (inst.d.controls || []).map((c) => [c.generic, !inst.unused.has(c.port)]);
+    const gmap = !gen.length ? '' : V ? `generic map (${gen.map(([g, u]) => `${g} => ${u}`).join(', ')}) ` : `#(${gen.map(([g, u]) => `.${g}(${u ? 1 : 0})`).join(', ')}) `;
+    return V ? `${inst.name} : entity work.${entityOf(inst.d)} ${gmap}port map (${map.map(([a, b]) => `${a} => ${b}`).join(', ')});` : `${entityOf(inst.d)} ${gmap}${inst.name} (${map.map(([a, b]) => `.${a}(${b})`).join(', ')});`;
   });
   const decl = sigs.length ? [V ? `signal ${sigs.join(', ')} : std_logic;` : `wire ${sigs.join(', ')};`] : [];
   const body = [...assigns.map(([n, e]) => (V ? `${n} <= ${e};` : `assign ${n} = ${e};`)), ...instLines, ...lampLines];

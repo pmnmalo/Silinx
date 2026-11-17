@@ -36,15 +36,34 @@ const vQ = ['o_qa <= q(0);', 'o_qb <= q(1);', 'o_qc <= q(2);', 'o_qd <= q(3);'],
 const Q4 = { vhdl: "signal q : std_logic_vector(3 downto 0) := (others => 'X');", verilog: "reg [3:0] q = 4'bxxxx;" };
 
 // ------------------------------------------------------------------ flip-flops: 7474 (D, rising), 7476 and 74112 (J-K, falling)
-// PRE̅ low: Q high; else CLR̅ low: Q low; else the clock's edge; both low: Q and Q̄ high
+// PRE̅ low: Q high; else CLR̅ low: Q low; else the clock's edge; both low: Q and Q̄ high. Its digital model (#3975) a
+// flip-flop of the controls its circuit uses: each control a generic (USE_PRE1…: true, the default), false where the
+// circuit ties it high, its process then without it (a preset and a clear both used: Yosys's "Complex async reset")
 function flipFlops(type, title, tpd, pins, jkff) {
   const edgeV = jkff ? 'falling_edge' : 'rising_edge', edgeG = jkff ? 'negedge' : 'posedge';
-  const v = (k) => [`process (i_clk${k}, i_pre${k}_n, i_clr${k}_n)`, 'begin', `  if i_pre${k}_n = '0' then r${k} <= '1';`, `  elsif i_clr${k}_n = '0' then r${k} <= '0';`, `  elsif ${edgeV}(i_clk${k}) then`,
-    jkff ? `    case std_logic_vector'(i_j${k} & i_k${k}) is when "00" => null; when "01" => r${k} <= '0'; when "10" => r${k} <= '1'; when "11" => r${k} <= not r${k}; when others => r${k} <= 'X'; end case;` : `    r${k} <= i_d${k};`,
-    '  end if;', 'end process;', `o_q${k} <= r${k};`, `o_q${k}_n <= '1' when i_pre${k}_n = '0' and i_clr${k}_n = '0' else not r${k};`];
-  const g = (k) => [`always @(${edgeG} i_clk${k} or negedge i_pre${k}_n or negedge i_clr${k}_n)`, `  if (!i_pre${k}_n) r${k} <= 1'b1;`, `  else if (!i_clr${k}_n) r${k} <= 1'b0;`,
-    jkff ? `  else case ({i_j${k}, i_k${k}}) 2'b00: r${k} <= r${k}; 2'b01: r${k} <= 1'b0; 2'b10: r${k} <= 1'b1; 2'b11: r${k} <= ~r${k}; default: r${k} <= 1'bx; endcase` : `  else r${k} <= i_d${k};`,
-    `assign o_q${k} = r${k};`, `assign o_q${k}_n = (i_pre${k}_n === 1'b0 && i_clr${k}_n === 1'b0) ? 1'b1 : ~r${k};`];
+  // (one flip-flop's process, with its preset (pre) and its clear (clr) or not)
+  const vp = (k, pre = true, clr = true) => {
+    const ctl = [...(pre ? [[`i_pre${k}_n`, '1']] : []), ...(clr ? [[`i_clr${k}_n`, '0']] : [])];
+    return [`process (${[`i_clk${k}`, ...ctl.map(([c]) => c)].join(', ')})`, 'begin', ...ctl.map(([c, v], n) => `  ${n ? 'elsif' : 'if'} ${c} = '0' then r${k} <= '${v}';`),
+      `  ${ctl.length ? 'elsif' : 'if'} ${edgeV}(i_clk${k}) then`,
+      jkff ? `    case std_logic_vector'(i_j${k} & i_k${k}) is when "00" => null; when "01" => r${k} <= '0'; when "10" => r${k} <= '1'; when "11" => r${k} <= not r${k}; when others => r${k} <= 'X'; end case;` : `    r${k} <= i_d${k};`,
+      '  end if;', 'end process;'];
+  };
+  const gp = (k, pre = true, clr = true) => {
+    const ctl = [...(pre ? [[`i_pre${k}_n`, "1'b1"]] : []), ...(clr ? [[`i_clr${k}_n`, "1'b0"]] : [])];
+    return [`always @(${[`${edgeG} i_clk${k}`, ...ctl.map(([c]) => `negedge ${c}`)].join(' or ')})`, ...ctl.map(([c, v], n) => `  ${n ? 'else if' : 'if'} (!${c}) r${k} <= ${v};`),
+      jkff ? `  ${ctl.length ? 'else ' : ''}case ({i_j${k}, i_k${k}}) 2'b00: r${k} <= r${k}; 2'b01: r${k} <= 1'b0; 2'b10: r${k} <= 1'b1; 2'b11: r${k} <= ~r${k}; default: r${k} <= 1'bx; endcase` : `  ${ctl.length ? 'else ' : ''}r${k} <= i_d${k};`];
+  };
+  const vOut = (k) => [`o_q${k} <= r${k};`, `o_q${k}_n <= '1' when i_pre${k}_n = '0' and i_clr${k}_n = '0' else not r${k};`];
+  const gOut = (k) => [`assign o_q${k} = r${k};`, `assign o_q${k}_n = (i_pre${k}_n === 1'b0 && i_clr${k}_n === 1'b0) ? 1'b1 : ~r${k};`];
+  const v = (k) => [...vp(k), ...vOut(k)], g = (k) => [...gp(k), ...gOut(k)];
+  // (the digital model: one generate per combination of the two generics)
+  const VARIANTS = [[true, true], [true, false], [false, true], [false, false]];
+  const vName = (pre, clr) => (pre && clr ? 'pc' : pre ? 'p' : clr ? 'c' : 'n');
+  const vGen = (k) => [...VARIANTS.flatMap(([pre, clr]) => [`ff${k}_${vName(pre, clr)} : if ${pre ? '' : 'not '}USE_PRE${k} and ${clr ? '' : 'not '}USE_CLR${k} generate`,
+    ...vp(k, pre, clr).map((l) => `  ${l}`), `end generate ff${k}_${vName(pre, clr)};`]), ...vOut(k)];
+  const gGen = (k) => [`generate`, ...VARIANTS.flatMap(([pre, clr], n) => [`  ${n ? 'end else ' : ''}if (${pre ? '' : '!'}USE_PRE${k} && ${clr ? '' : '!'}USE_CLR${k}) begin : ff${k}`,
+    ...gp(k, pre, clr).map((l) => `    ${l}`)]), '  end', 'endgenerate', ...gOut(k)];
   const proc = (k) => ({ sens: [`clk${k}`, `pre${k}_n`, `clr${k}_n`], run(i, p, s) {
     const q = `q${k}`, c = `clk${k}`;
     if (i[`pre${k}_n`] === '0') s[q] = '1'; else if (i[`clr${k}_n`] === '0') s[q] = '0';
@@ -56,8 +75,10 @@ function flipFlops(type, title, tpd, pins, jkff) {
   return ic(type, title, tpd, pins, {
     seq: { init: () => ({ q1: 'X', q2: 'X' }), procs: [proc(1), proc(2)],
       out: (i, s) => Object.fromEntries([1, 2].flatMap((k) => [[`q${k}`, s[`q${k}`]], [`q${k}_n`, i[`pre${k}_n`] === '0' && i[`clr${k}_n`] === '0' ? '1' : nb(s[`q${k}`])]])) },
-    vhdl: { decl: ["signal r1, r2 : std_logic := 'X';"], body: [...v(1), ...v(2)] },
-    verilog: { decl: ["reg r1 = 1'bx, r2 = 1'bx;"], body: [...g(1), ...g(2)] },
+    // (a control left out: its port's level '1', the circuit's; core/circuit-digital.js sets the generic)
+    controls: [1, 2].flatMap((k) => [{ generic: `USE_PRE${k}`, port: `pre${k}_n` }, { generic: `USE_CLR${k}`, port: `clr${k}_n` }]),
+    vhdl: { decl: ["signal r1, r2 : std_logic := 'X';"], body: [...v(1), ...v(2)], digital: [...vGen(1), ...vGen(2)] },
+    verilog: { decl: ["reg r1 = 1'bx, r2 = 1'bx;"], body: [...g(1), ...g(2)], digital: [...gGen(1), ...gGen(2)] },
   });
 }
 const c7474 = flipFlops('7474', 'Dual D flip-flop, preset and clear (rising edge)', 20, [P14(1, `1CLR${BAR}`, 'in', 'clr1_n'), P14(2, '1D', 'in', 'd1'), P14(3, '1CLK', 'in', 'clk1'),
