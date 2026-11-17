@@ -98,7 +98,7 @@ test('the relays a server\'s pages may use: config.json\'s relay.relays, in thei
   const page = path.join(path.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..', 'web', 'index.html');
   const connect = () => /connect-src ([^;]*)/.exec(pageCsp(page))[1].split(' ');
   const { TRACKER_SOURCES } = await import('../server/csp.js');
-  const BASE = ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES];
+  const BASE = ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES];
   fs.rmSync(configPath(), { force: true });
   assert.deepEqual(connect(), BASE, 'none: no other');
   assert.deepEqual((await (await fetch(`${base}/api/collab/relays`, { headers: { 'X-Silinx-Token': 'the-token' } })).json()).relays, []);

@@ -29,7 +29,7 @@ test('#487 contentSecurityPolicy: the server\'s header and a page\'s <meta> (no 
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", "'sha256-x'"],
     'worker-src': ["'self'", 'blob:'],
-    'connect-src': ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES],
+    'connect-src': ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES],
     'img-src': ["'self'", 'data:', 'blob:'],
     'style-src': ["'self'", "'unsafe-inline'"],
     'font-src': ["'self'", 'data:'],
@@ -41,7 +41,7 @@ test('#487 contentSecurityPolicy: the server\'s header and a page\'s <meta> (no 
   const meta = directives(contentSecurityPolicy({ hashes: ["'sha256-y'"], scripts: ['https://a.test'], connect: ['https://a.test'], meta: true }));
   assert.equal(meta['frame-ancestors'], undefined);
   assert.deepEqual(meta['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'https://a.test', "'sha256-y'"]);
-  assert.deepEqual(meta['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES, 'https://a.test']);
+  assert.deepEqual(meta['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, 'https://a.test']);
 });
 
 test('#487 withMetaCsp / metaCsp / addSources: the <meta> first in <head>, replaced in place, quotes escaped', () => {
@@ -69,7 +69,7 @@ test('#487 the usage counter added to a page with a policy: its loader\'s hash, 
   // every inline script of the page is allowed by its hash: the application's and the loader; the counter's script by
   // its one versioned URL (#1439), not its host
   assert.deepEqual(d['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", ...inlineScriptHashes(out), 'https://gc.zgo.at/count.v5.js']);
-  assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES, 'https://silinx.goatcounter.com']);
+  assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, 'https://silinx.goatcounter.com']);
   assert.deepEqual(d['img-src'], ["'self'", 'data:', 'blob:', 'https://silinx.goatcounter.com']);
   assert.equal(addAnalytics(out, 'silinx'), out, 'once');
   // a page without a policy: none added
@@ -104,7 +104,7 @@ test('#3227 the relays a page may use: each its origin and its WebSockets\' in c
   assert.deepEqual(relaySources([]), []);
   assert.deepEqual(relaySources(relayList('https://relay.example.org/x http://127.0.0.1:8642')), ['https://relay.example.org', 'wss://relay.example.org', 'http://127.0.0.1:8642', 'ws://127.0.0.1:8642']);
   const page = directives(contentSecurityPolicy({ connect: ['https://site.example', ...relaySources(relayList('https://relay.example.org'))], meta: true }));
-  assert.deepEqual(page['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES, 'https://site.example', 'https://relay.example.org', 'wss://relay.example.org']);
+  assert.deepEqual(page['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, 'https://site.example', 'https://relay.example.org', 'wss://relay.example.org']);
   // (never a scheme alone: no other WebSocket server reached)
   for (const csp of [contentSecurityPolicy({}), contentSecurityPolicy({ connect: relaySources(relayList('https://relay.example.org')) })]) assert.ok(!directives(csp)['connect-src'].some((c) => /^wss?:$/.test(c)));
 });
