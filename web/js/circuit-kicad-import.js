@@ -15,6 +15,7 @@ import { browserCodec } from '/core/zip.js';
 import { readKicadSymLib } from '/core/kicad-sym.js';
 import { SEXPR_LIMITS } from '/core/sexpr.js';
 import { PARTS, PART_ORDER } from '/core/circuit-parts.js';
+import { DISCRETE } from '/core/circuit-kicad-parts.js';
 
 // the project's files through the page's store, as core/drawing-sync.js reads a project (kicadStore: the catalogue's too)
 export const kicadStore = () => store();
@@ -33,13 +34,15 @@ export async function loadCircuitParts() {
 }
 
 const ICS = PART_ORDER.filter((t) => PARTS[t].kind === 'ic');
+// (an LED, a push button, a slide switch of the library's, #4349)
+const OTHERS = Object.keys(DISCRETE);
 const lineClass = (l) => (/^ERROR: /.test(l) ? 'err' : /^WARNING: /.test(l) ? 'warn' : 'info');
 
 /** What each symbol of a library is, its properties as set: Map(symbol → { text, why }). */
 function statusOf(rel, text, footprints) {
   const r = kicadPartsOf({ [rel]: text, ...footprints });
   const out = new Map();
-  for (const d of r.defs) out.set(d.kicad.symbol, { text: d.behaves ? `As the ${d.behaves} (by its ${d.how})` : d.kind === 'model' ? `By its module ${d.module}` : 'Drawn only (not simulated)', why: '' });
+  for (const d of r.defs) out.set(d.kicad.symbol, { text: d.behaves ? `As the ${PARTS[d.behaves].kind === 'ic' ? d.behaves : PARTS[d.behaves].title} (by its ${d.how})` : d.kind === 'model' ? `By its module ${d.module}` : 'Drawn only (not simulated)', why: '' });
   for (const x of r.skipped) out.set(x.type.slice(rel.length + 1), { text: 'Not a part', why: x.reason });
   return out;
 }
@@ -121,7 +124,7 @@ export async function importKicadDialog() {
     const sel = (opts) => h('select', {}, ...opts.map(([v, label, raw]) => h('option', { value: v, ...(raw ? { 'data-no-i18n': 'true' } : {}) }, label)));
     table.append(h('tr', {}, ...['Symbol', 'Part number', 'Model', 'Family', 'Footprint', 'HDL module', 'It is'].map((x) => h('th', {}, x))));
     for (const s of lib.symbols.filter((x) => !x.power)) {
-      const r = { model: sel([['', 'By its part number'], ...ICS.map((t) => [t, t, true])]), family: sel([['', 'Its model\'s'], ['ttl', 'TTL'], ['cmos', 'CMOS']]),
+      const r = { model: sel([['', 'By its part number'], ...OTHERS.map((t) => [t, PARTS[t].title]), ...ICS.map((t) => [t, t, true])]), family: sel([['', 'Its model\'s'], ['ttl', 'TTL'], ['cmos', 'CMOS']]),
         fp: h('input', { type: 'text', spellcheck: 'false', placeholder: s.properties.Footprint || '' }), status: h('span', { class: 'kicad-status' }),
         // (a module of the project as its model, #4283)
         hdl: h('input', { type: 'text', spellcheck: 'false', class: 'kicad-hdl', placeholder: s.properties['Silinx.HDL'] || '' }) };

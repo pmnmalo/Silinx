@@ -139,6 +139,14 @@ library and its symbol: `parts/ttl.kicad_sym#74HC00`. KiCad's parts have no logi
   is then that IC (its logic, its delay, its pins' places, its HDL entity), under its own number and datasheet.
   `Silinx.Family` (`ttl`, `cmos`) makes its inputs read as that family's (an entity of its own in the HDL). A part
   number whose pins are not the IC's is drawn only, with a warning;
+- **as the library's LED, slide switch or push button** (#4349), when `Silinx.Model` says `led`, `spdt` or `button`, or
+  its symbol says so: an LED (LED in its name, keywords or description) with two pins named A and K (or anode and
+  cathode), a slide switch SPDT (not a relay) with three pins in a line, a push button (push button, tactile, momentary)
+  with two pins. Its pins are matched by their names (SparkFun's LED has its cathode as pin 1, Silinx's its anode), a
+  button's by their numbers, a switch's by their places (the middle one its common). It keeps its footprint's places
+  and drawing. In Try it the LED lights in its own colour (Red, Green in its value), and the switch and the button are
+  clicked. Check and the HDL treat them as the library's. A symbol like an LED whose pins are not one's is drawn only,
+  with a note;
 - **drawn only**, any other symbol: its pins on its footprint's places (a `.kicad_mod` of the project, else its
   footprint's name: `DIP-14_W7.62mm`, `PinHeader_1x04_P2.54mm`; else a `DIP*W7.62mm*` filter), turned as a DIP lies on
   the breadboard. It is not simulated and its pins drive nothing: Check Circuit warns *U2 (TEST-SENSOR) is drawn only: it is

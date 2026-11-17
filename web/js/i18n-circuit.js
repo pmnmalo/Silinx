@@ -136,7 +136,17 @@ const COUNT = { Quad: ['Quatro portas', 2], Triple: ['Três portas', 3], Dual: [
 const GATES = '(?:Quad 2|Triple 3|Dual 4|8)-input (?:NAND|AND|OR|NOR|XOR)(?:, open collector)?';
 const TITLES = `(?:${[...Object.keys(TITLE).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), GATES].join('|')})`;
 const title = (t) => TITLE[t] ?? t.replace(/^(?:(Quad|Triple|Dual) \d|8)-input (\w+)(, open collector)?$/, (m, n, g, oc) => `${n ? COUNT[n][0] : 'Uma porta'} ${g} de ${n ? COUNT[n][1] : 8} entradas${oc ? ', coletor aberto' : ''}`);
+// (the library's parts a KiCad part may behave as besides its ICs, #4349: their titles, with their article)
+const OTHER = { LED: 'o LED', 'Slide switch (SPDT)': 'o comutador deslizante (SPDT)', 'Push button (momentary, normally open)': 'o botão de pressão (momentâneo, normalmente aberto)' };
+const OTHERS = `(${Object.keys(OTHER).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`;
+const BY = { symbol: 'pelo seu símbolo', 'Silinx.Model': 'pelo seu Silinx.Model' };
 export const CIRCUIT_PT_PATTERNS = [
+  // a KiCad part behaving as the library's LED, slide switch or push button (#4349)
+  [new RegExp(`^(.+), as the ${OTHERS} of the library: click it, then the drawing \\(Esc: done\\)$`), (m, v, t) => `${v}, como ${OTHER[t]} da biblioteca: clique nela e depois no desenho (Esc: terminar)`],
+  [new RegExp(`^(.+), as the ${OTHERS} of the library \\((.+), (.+)\\): click it to import it into the project$`), (m, v, t, lib, lic) => `${v}, como ${OTHER[t]} da biblioteca (${lib}, ${lic}): clique para a importar para o projeto`],
+  [new RegExp(`^Behaves as the ${OTHERS} of the library \\(by its (symbol|Silinx\\.Model)\\)\\.$`), (m, t, b) => `Comporta-se como ${OTHER[t]} da biblioteca (${BY[b]}).`],
+  [new RegExp(`^As the ${OTHERS} \\(by its (symbol|Silinx\\.Model)\\)$`), (m, t, b) => `Como ${OTHER[t]} (${BY[b]})`],
+  [new RegExp(`^(.+): as the ${OTHERS} of the library$`), (m, v, t) => `${v}: como ${OTHER[t]} da biblioteca`],
   [/^— the circuit has errors: ([\s\S]+)$/, '— o circuito tem erros: $1'],
   // the status line's counts (#2763)
   [/^(\d+) IC\(s\) · (\d+) input\(s\) · (\d+) display\(s\) · (\d+) wire\(s\)$/, '$1 CI(s) · $2 entrada(s) · $3 mostrador(es) · $4 fio(s)'],

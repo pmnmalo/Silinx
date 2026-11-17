@@ -146,7 +146,8 @@ function checkIc(p, d, nets, { driven, via, typeOf }, { err, warn }) {
 function checkOther(p, d, nets, { warn }) {
   const netOf = (n) => nets.nets[nets.pinNet.get(`${p.id}.${n}`)];
   if (partPins(p).every((q) => { const net = netOf(q.n); return net.pins.length < 2 && !net.wires.length; })) { warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
-  if (p.type === 'led') {
+  const base = d.kicad ? d.behaves : p.type;   // (a KiCad part behaving as the library's, #4349)
+  if (base === 'led') {
     const a = netOf(1), k = netOf(2), sa = netSupply(a), sk = netSupply(k);
     if (a === k) warn(`${p.id} never lights: its anode and its cathode are joined`, part(p.id));
     else if (sa.gnd || sk.vcc) warn(`${p.id} never lights: it is the wrong way round (${[sa.gnd && 'its anode on the supply\'s −', sk.vcc && 'its cathode on the supply\'s +'].filter(Boolean).join(', ')})`, part(p.id));

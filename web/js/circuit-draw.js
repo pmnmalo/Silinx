@@ -103,10 +103,16 @@ function wireSvg(w, selected, d) {
 // A project's KiCad part drawn only (#4281), or modelled by a module of the project (#4283): its footprint's drawing to
 // scale (#4315: its F.Fab layer, the body seen from above; its closed shapes the body, its filled ones and its lines the
 // marks on it), else a body round its pins (a DIP's between its rows); its outline dashed when drawn only, whole when
-// modelled. Its name and part number over the body when they fit, else above it; both in its tip.
-function kicadBody(g, p, d, box) {
-  const cls = d.kind === 'model' ? 'circ-model-body' : 'circ-drawn-body', name = `${p.id}  ${d.kicad.value}`;
-  g.append(sv('title', {}, `${name}: ${d.kind === 'model' ? `its module ${d.module}` : 'drawn only, not simulated'}`));
+// modelled. Its name and part number over the body when they fit, else above it; both in its tip. One that behaves as
+// the library's LED, slide switch or button (#4349): its outline whole, an LED's body lit or not in its colour (lamp:
+// on, off, x), a switch's lever toward A or B and a button's cap (on: its input), each a click while trying it.
+function kicadBody(g, p, d, box, { lamp = null, on = false } = {}) {
+  const acts = d.kind === 'input' || d.kind === 'output';
+  const cls = d.kind === 'model' ? 'circ-model-body' : acts ? 'circ-kicad-body' : 'circ-drawn-body', name = `${acts ? portName(p) : p.id}  ${d.kicad.value}`;
+  const how = d.kind === 'model' ? `its module ${d.module}` : acts ? `as the ${partDef(d.behaves).title} of the library` : 'drawn only, not simulated';
+  g.append(sv('title', {}, `${name}: ${how}`));
+  // (an LED of the library's: lit or not; drawn only, its colour as it is)
+  const ledCls = d.lamps ? ` circ-led circ-led-${d.color}${lamp === 'on' ? ' lit' : lamp === 'x' ? ' unknown' : ''}` : (() => { const c = ledColour(d.kicad); return c ? ` circ-led-${c}` : ''; })();
   let body;
   if (d.look) {
     const pt = ([x, y]) => [px(p.x + x), px(p.y + y)];
@@ -114,20 +120,28 @@ function kicadBody(g, p, d, box) {
     for (const sh of d.look.shapes) for (const [x, y] of sh.k === 'circle' ? [[sh.c[0] - sh.r, sh.c[1] - sh.r], [sh.c[0] + sh.r, sh.c[1] + sh.r]] : sh.pts) { xs.push(px(p.x + x)); ys.push(px(p.y + y)); }
     body = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
     // (no closed shape to be its body: a box round its drawing)
-    if (!d.look.shapes.some((sh) => !sh.fill && (sh.k === 'poly' || sh.k === 'circle'))) g.append(sv('rect', { ...body, rx: 2, class: cls }));
-    const led = ledColour(d.kicad);   // (an LED's body in its colour)
+    if (!d.look.shapes.some((sh) => !sh.fill && (sh.k === 'poly' || sh.k === 'circle'))) g.append(sv('rect', { ...body, rx: 2, class: `${cls}${ledCls}` }));
     const fp = sv('g', { class: 'circ-fp' });
     for (const sh of d.look.shapes) {
       const closed = sh.k === 'poly' || sh.k === 'circle';
       fp.append(sv('path', { d: shapePath(sh, pt, P), 'stroke-width': Math.max(0.8, Math.round(sh.w * P * 10) / 10),
-        class: sh.fill ? 'circ-fp-fill' : closed ? `circ-fp-body ${cls}${led ? ` circ-led-${led}` : ''}` : 'circ-fp-line' }));
+        class: sh.fill ? 'circ-fp-fill' : closed ? `circ-fp-body ${cls}${ledCls}` : 'circ-fp-line' }));
     }
     g.append(fp);
   } else {
     const dipRows = d.dip && box.y1 - box.y0 > P;
     body = dipRows ? { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7 }
       : { x: box.x0 - P * 0.5, y: box.y0 - P * 0.5, width: box.x1 - box.x0 + P, height: box.y1 - box.y0 + P };
-    g.append(sv('rect', { ...body, rx: 2, class: cls }));
+    g.append(sv('rect', { ...body, rx: 2, class: `${cls}${ledCls}` }));
+  }
+  if (d.inputs) {
+    // (its input: a slide switch's lever between its common and A (off) or B (on); a button's cap, down while pressed)
+    const at = (nm) => { const q = d.pins.find((x) => x.name === nm); return [px(p.x + q.dx), px(p.y + q.dy)]; };
+    g.dataset.input = d.inputs[0].kind === 'momentary' ? 'button' : 'switch';
+    if (d.contacts.length > 1) {
+      const [c, e] = [at('C'), at(on ? 'B' : 'A')];
+      g.append(sv('rect', { x: (c[0] + e[0]) / 2 - P * 0.35, y: (c[1] + e[1]) / 2 - P * 0.35, width: P * 0.7, height: P * 0.7, rx: 2, class: `circ-sw-knob${on ? ' on' : ''}` }));
+    } else g.append(sv('circle', { cx: body.x + body.width / 2, cy: body.y + body.height / 2, r: Math.min(P * 0.55, body.width / 3, body.height / 3), class: `circ-btn-cap${on ? ' down' : ''}` }));
   }
   // (bold 10 px monospace: 6 px a character)
   const fits = name.length * 6 + 6 <= body.width && body.height >= 14;
@@ -166,8 +180,9 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
     const chip = d.kicad?.value ?? d.chip;
     if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box); }
     else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${chip}`));
-  } else if (d.kind === 'drawn' || d.kind === 'model') {
-    kicadBody(g, p, d, box);
+  } else if (d.kicad) {
+    // (a project's KiCad part not an IC, #4281, #4283, #4349)
+    kicadBody(g, p, d, box, { lamp: leds?.[p.id], on: inputs ? inputs[p.id] : d.inputs?.[0].kind === 'momentary' ? false : p.on });
   } else if (d.type === 'logic-switch') {
     const on = inputs ? inputs[p.id] : p.on;
     g.dataset.input = 'switch';
