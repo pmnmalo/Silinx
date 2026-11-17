@@ -270,5 +270,19 @@ Vendor tools (ISE, Vivado, Quartus) are another kind of back end: they run a who
   Left out: Project X-Ray's `fasm2bels` (the placement rebuilt as a Vivado design, its DRC) and the board test (#1830).
   **Apicula is Gowin's**: every
   example's `.fs` is Apicula 0.32's byte for byte (`test/examples-gowin.test.js`).
-- **The other families have no such oracle.** What proves a build there is to be decided (#2301): post-route simulation against the
-  design, the families' timing tools, the vendors' tools where available, runs on real boards.
+- **The iCE40 and the ECP5 are proved by three checks** (#2301, `npm run check:lattice-flow`, `scripts/check-lattice-flow.mjs`), each
+  example built on the family's board (the iCEBreaker, the ULX3S) as the application builds it:
+  - the timing: nextpnr's static timing of the routed design meets the board's clock. IceStorm's `icetime` is not in YoWASP's
+    packages, so nextpnr's own timing analysis is the one there is;
+  - the bitstream: read back by IceStorm's `iceunpack` / Trellis's `ecpunpack` and packed again by `icepack` / `ecppack`, the same
+    bytes;
+  - the behaviour: the Post-Place & Route model, nextpnr's routed design of the design synthesized with the test bench's generics,
+    simulated with Silinx's models of the family's cells (written from Yosys's `cells_sim.v`, #2299), runs the example's own
+    test bench as the project's RTL does: the same log, line for line, with no warning (vga's test bench, written for its own
+    board's clock, fails on the RTL and on the model alike on these boards').
+
+  The examples' post-synthesis and post-route models are unit tests too (`ice40-netlist`, `ecp5-netlist`, `ice40-routed`,
+  `ecp5-routed`). Runs on real boards (#1830) are the fourth proof, by hand. Neither check compares the results with a vendor's
+  tools (iCEcube2, Diamond): they prove that the bitstream is the routed design and that the routed design behaves as the
+  design does, not that it is as small or as fast as theirs.
+- **The other families** (the MachXO2, the families on trial) have no such check yet.
