@@ -117,6 +117,8 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Quad 2-input NOR buffer': 'Quatro portas NOR de 2 entradas, buffer', 'Quad 2-input NOR buffer, open collector': 'Quatro portas NOR de 2 entradas, buffer, coletor aberto',
   'Quad 2-input NAND buffer': 'Quatro portas NAND de 2 entradas, buffer', 'Quad 2-input NAND buffer, open collector': 'Quatro portas NAND de 2 entradas, buffer, coletor aberto',
   'Dual 4-input NAND buffer': 'Duas portas NAND de 4 entradas, buffer', '13-input NAND': 'Uma porta NAND de 13 entradas', 'Quad 2-input XNOR': 'Quatro portas XNOR de 2 entradas',
+  'Dual AND-OR-INVERT (3-3 and 2-2 inputs)': 'Duas portas AND-OR-INVERT (3-3 e 2-2 entradas)', '4-wide AND-OR-INVERT (2-3-3-2 inputs)': 'Uma porta AND-OR-INVERT de 4 termos (2-3-3-2 entradas)',
+  '2-wide 4-input AND-OR-INVERT': 'Uma porta AND-OR-INVERT de 2 termos de 4 entradas',
   'Hex inverter, open collector': 'Seis inversores, coletor aberto', 'Hex inverter buffer, open collector': 'Seis inversores buffer, coletor aberto',
   // the MSI ICs (#3900, core/circuit-msi.js)
   'BCD to 7-segment decoder/driver, open collector, active low': 'Descodificador BCD para 7 segmentos, coletor aberto, ativo a 0',

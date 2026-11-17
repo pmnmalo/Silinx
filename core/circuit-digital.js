@@ -67,6 +67,7 @@ export function digitalTop(m, V, entityOf) {
     const ins = g.ins.map((n) => ref(netOf(p.id, n)));
     if (g.fn === 'not') return not(ins[0]);
     if (g.fn === 'buf') return ins[0];   // (a buffer, #4397)
+    if (g.fn === 'aoi') { let k = 0; return not(op('or', g.terms.map((n) => op('and', ins.slice(k, (k += n)))))); }   // (an AND-OR-INVERT)
     const [o, inv] = OPS[g.fn];
     return inv ? not(op(o, ins)) : op(o, ins);
   };

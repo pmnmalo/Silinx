@@ -43,7 +43,9 @@ export function partInfo(type) {
   if (d.kind === 'ic') {
     const supply = (dir) => d.pins.filter((p) => p.dir === dir).map((p) => `${p.name} ${p.n}`);
     Object.assign(info, { chip: d.chip, family: FAMILY[d.family] ?? d.family, package: `DIP-${d.dip}`, power: [...supply('vcc'), ...supply('gnd')].join(', ') });
-    if (d.gates) info.logic = d.gates.map((g) => `${name(g.out)} = ${FN[g.fn] ?? g.fn.toUpperCase()}(${g.ins.map(name).join(', ')})`);
+    // (an AND-OR-INVERT, #4397: the NOR of its terms' ANDs)
+    const aoi = (g) => { let k = 0; return `NOR(${g.terms.map((n) => `AND(${g.ins.slice(k, (k += n)).map(name).join(', ')})`).join(', ')})`; };
+    if (d.gates) info.logic = d.gates.map((g) => `${name(g.out)} = ${g.fn === 'aoi' ? aoi(g) : `${FN[g.fn] ?? g.fn.toUpperCase()}(${g.ins.map(name).join(', ')})`}`);
     if (d.tpd) info.delay = d.tpd;
     if (d.oc || d.pins.some((p) => p.dir === 'oc')) info.openCollector = true;   // (a 7447's outputs, its flag not set)
     info.openInput = readInput(d.family, 'Z');
