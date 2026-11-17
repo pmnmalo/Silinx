@@ -49,14 +49,14 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     if (d.kind === 'ic') {
       const pinOf = (dir) => d.pins.find((q) => q.dir === dir).n;
       const ic = { part: p, def: d, vcc: netOfPin(p.id, pinOf('vcc')), gnd: netOfPin(p.id, pinOf('gnd')),
-        gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
+        gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), en: (g.en || []).map(([n, a]) => [netOfPin(p.id, n), a]), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
       // (an MSI IC: its model, its inputs and outputs by port, core/circuit-msi.js)
       if (d.model || d.seq) {
         ic.ins = d.pins.filter((q) => q.dir === 'in').map((q) => ({ port: q.port, net: netOfPin(p.id, q.n) }));
         ic.outs = d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => ({ port: q.port, oc: q.dir === 'oc', d: addDriver(netOfPin(p.id, q.n), 'X', 's', d.tpd) }));
       }
       ics.push(ic);
-      for (const net of [ic.vcc, ic.gnd, ...ic.gates.flatMap((x) => x.ins), ...(ic.ins || []).map((x) => x.net)]) readers[net].add(ic);
+      for (const net of [ic.vcc, ic.gnd, ...ic.gates.flatMap((x) => [...x.ins, ...x.en.map(([n]) => n)]), ...(ic.ins || []).map((x) => x.net)]) readers[net].add(ic);
     }
   }
   const closed = (c) => state.get(c.part)[c.input] === c.when;
@@ -94,7 +94,9 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     }
     const on = powered(ic);
     for (const x of ic.gates) {
-      const v = on ? gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net])), x.g.terms) : 'Z';
+      // (a three-state buffer, #4397: its output while all its enables are at their active level, off (Z) once one is not)
+      const en = x.en.map(([net, a]) => { const r = readInput(ic.def.family, levels[net]); return r === 'X' ? 'X' : r === a ? '1' : '0'; });
+      const v = !on || en.includes('0') ? 'Z' : en.includes('X') ? 'X' : gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net])), x.g.terms);
       drive(x.out, ic.def.oc && v === '1' ? 'Z' : v);   // (an open collector: a 0 or nothing)
     }
     // (a sequential IC, core/circuit-seq.js: each of its processes run when an input of its sensitivity changed (all at

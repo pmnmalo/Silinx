@@ -30,7 +30,7 @@ export function insideLayout(d, pins) {
   const out = { gates: [], wires: [] };
   // (a gate whose inputs are on both rows and one of its output's row past its output, a 4023's 1, 2 and 8 to 9, #4397:
   // that input's line would cross the output's; the IC's pins' names inside it then, as an MSI IC's)
-  if ((d.gates || []).some((g) => g.fn === 'aoi')) return out;   // (an AND-OR-INVERT, #4397: its pins named)
+  if ((d.gates || []).some((g) => g.fn === 'aoi' || g.en)) return out;   // (an AND-OR-INVERT, a three-state buffer, #4397: its pins named)
   if ((d.gates || []).some((g) => { const o = at.get(g.out), r = (n) => at.get(n)[1] === o[1]; return g.ins.some((n) => !r(n)) && g.ins.some((n) => r(n) && Math.sign(at.get(n)[0] - o[0]) === -Math.sign(g.ins.filter((m) => !r(m)).reduce((a, m) => a + at.get(m)[0] - o[0], 0))); })) return out;
   for (const [gi, g] of (d.gates || []).entries()) {
     const o = at.get(g.out);

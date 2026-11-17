@@ -78,7 +78,9 @@ test('a drawn-only symbol: its pins on its footprint\'s places, not simulated; i
 
 test('partOfNumber: 74xx and 4000 part numbers, their families\' letters, prefixes and packages', () => {
   const cases = { SN74LS00N: '7400', '74HC00': '7400', '74HCT00D': '7400', DM7400N: '7400', '74LS138': '74138', 'SN74LS161AN': '74161', '74F04': '7404', 'CD74HC04E': '7404',
-    'MC74ACT08': '7408', '7486': '7486', CD4011BE: '4011', HEF4071BP: '4071', '4017': '4017', MC14081B: '4081', 'Lib:74LS32': '7432', 'sn74ls00n': '7400' };
+    'MC74ACT08': '7408', '7486': '7486', CD4011BE: '4011', HEF4071BP: '4071', '4017': '4017', MC14081B: '4081', 'Lib:74LS32': '7432', 'sn74ls00n': '7400',
+    // (KiCad's _Split symbols, #4397)
+    '74LS244_Split': '74244', '74LS240_Split': '74240' };
   for (const [n, t] of Object.entries(cases)) assert.equal(partOfNumber(n), t, n);
   for (const n of ['74HC4052D', '74LS999', 'NE555', 'ATMEGA328P', '', null, '4000', 'LM7400', 'X74LS00']) assert.equal(partOfNumber(n), null, String(n));
 });

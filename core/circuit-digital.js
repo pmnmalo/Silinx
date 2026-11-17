@@ -77,8 +77,17 @@ export function digitalTop(m, V, entityOf) {
     const out = ({ inst, q }) => { const s = `${inst.name}_${pinPort(q)}`; inst.outs.set(q.n, s); return s; };
     // (a three-state output, a 74595's: its level while enabled, else the net's other drivers', else its default)
     const tri = os.filter(({ inst, q }) => inst.d.seq?.threeState?.outs.includes(pinPort(q)));
-    const drivers = [...gs.map(gateExpr), ...os.filter((o) => !tri.includes(o)).map(out)];
+    // (a three-state buffer's, #4397: its level while all its enables are active, else the net's other drivers')
+    const triG = gs.filter((x) => x.g.en);
+    const drivers = [...gs.filter((x) => !x.g.en).map(gateExpr), ...os.filter((o) => !tri.includes(o)).map(out)];
     let rest = drivers.length ? (drivers.length === 1 ? drivers[0] : op('and', drivers)) : null;   // (open collectors on one net: a wired AND)
+    if (triG.length) {
+      rest ??= lit(pullOf(i));
+      for (const x of triG.slice().reverse()) {
+        const on = x.g.en.map(([n, a]) => { const e = ref(netOf(x.p.id, n)); return V ? `${e} = '${a}'` : a === '1' ? e : not(e); });
+        rest = V ? `${gateExpr(x)} when ${on.join(' and ')} else ${rest}` : `(${on.join(' && ')} ? ${gateExpr(x)} : ${rest})`;
+      }
+    }
     if (tri.length) {
       rest ??= lit(pullOf(i));
       for (const o of tri.slice().reverse()) {

@@ -18,6 +18,11 @@ const DUAL4_4002 = [[2, 3, 4, 5, 1], [9, 10, 11, 12, 13]];   // 4002, 4012, 4072
 const TRIPLE3_4023 = [[1, 2, 8, 9], [3, 4, 5, 6], [11, 12, 13, 10]];   // 4023, 4025, 4073, 4075
 const HEX_4049 = [[3, 2], [5, 4], [7, 6], [9, 10], [11, 12], [14, 15]];   // 4049, 4050 (16 pins: VDD 1, VSS 8; 13, 16 not connected)
 const NAND13 = [[1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 9]];   // 74133 (16 pins: GND 8, VCC 16)
+// the three-state buffers' [A, Y] (#4397, group B): the 74240's, 74241's and 74244's two groups of four; the 74365's to
+// 74368's six; the 74540's and 74541's eight, their inputs on one side and their outputs on the other
+const OCTAL_24X = [[2, 18], [4, 16], [6, 14], [8, 12], [11, 9], [13, 7], [15, 5], [17, 3]];
+const HEX_365 = [[2, 3], [4, 5], [6, 7], [10, 9], [12, 11], [14, 13]];
+const OCTAL_54X = [[2, 18], [3, 17], [4, 16], [5, 15], [6, 14], [7, 13], [8, 12], [9, 11]];
 // the AND-OR-INVERT gates (#4397): [terms…, output], each term the inputs one AND takes (KiCad's symbols' grouping)
 const AOI_7451 = [[[1, 12, 13], [9, 10, 11], 8], [[2, 3], [4, 5], 6]];   // 1Y = /(1A·1B·1C + 1D·1E·1F), 2Y = /(2A·2B + 2C·2D)
 const AOI_7454 = [[[1, 2], [3, 4, 5], [9, 10, 11], [12, 13], 6]];   // the 74LS54's Y = /(AB + CDE + FGH + JK) (the 7454's differs)
@@ -44,6 +49,21 @@ function gateIc(type, chip, title, fn, groups, tpd, { family = 'ttl', oc = false
   pins.set(supply[0], { n: supply[0], name: family === 'ttl' ? 'VCC' : 'VDD', dir: 'vcc' });
   for (let k = 1; k <= n; k++) if (!pins.has(k)) pins.set(k, { n: k, name: 'NC', dir: 'nc' });
   return { type, title, kind: 'ic', family, chip, pins: [...pins.values()].sort((a, b) => a.n - b.n).map((p) => ({ ...p, ...at(p.n) })), gates, tpd, dip: n, ...(oc ? { oc: true } : {}) };
+}
+// A three-state buffer IC (#4397, group B): its buffers `fn` (buf or not) on `pairs` ([A, Y] each), on a DIP of `pins` with
+// `supply` [VCC, GND]; `enables` [{ pins, active ('0' or '1'), of: the buffers' indices }]: a buffer drives its output while
+// all its enable pins are at their active level, else its output is off (Z). Its enable pins named OE (OE̅: active low),
+// numbered when there are several (1OE̅, 2OE̅…).
+const BAR = '\u0305';
+function triIc(type, title, fn, pairs, enables, tpd, { pins: n, supply }) {
+  const d = gateIc(type, `SN74LS${type.slice(2)}`, title, fn, pairs, tpd, { pins: n, supply });
+  const names = new Map();
+  enables.forEach((e, k) => e.pins.forEach((p, j) => names.set(p, `${enables.length > 1 || e.pins.length > 1 ? (e.pins.length > 1 ? `G${j + 1}` : `${k + 1}OE`) : 'OE'}${e.active === '0' ? BAR : ''}`)));
+  const gates = d.gates.map((g, i) => ({ ...g, en: enables.filter((e) => e.of.includes(i)).flatMap((e) => e.pins.map((p) => [p, e.active])) }));
+  // (its port in the HDL: OE̅ oe_n, 1OE̅ oe1_n, G1̅ g1_n)
+  const port = (nm) => { const b = nm.replace(BAR, ''), t = /^\d/.test(b) ? `${b.slice(1)}${b[0]}` : b; return `${t.toLowerCase()}${nm.includes(BAR) ? '_n' : ''}`; };
+  const pinsOut = d.pins.map((p) => (names.has(p.n) ? { ...p, name: names.get(p.n), dir: 'in', port: port(names.get(p.n)) } : p));
+  return { ...d, pins: pinsOut, gates };
 }
 const ttl = (type, title, fn, groups, tpd, oc, more = {}) => gateIc(type, `SN74LS${type.slice(2)}`, title, fn, groups, tpd, { oc, ...more });
 const cmos = (type, title, fn, groups, tpd, more = {}) => gateIc(type, `CD${type}B`, title, fn, groups, tpd, { family: 'cmos', ...more });
@@ -87,6 +107,18 @@ export const ICS = [
   ttl('7451', 'Dual AND-OR-INVERT (3-3 and 2-2 inputs)', 'aoi', AOI_7451, 13),
   ttl('7454', '4-wide AND-OR-INVERT (2-3-3-2 inputs)', 'aoi', AOI_7454, 13),
   ttl('7455', '2-wide 4-input AND-OR-INVERT', 'aoi', AOI_7455, 13),
+  // the three-state buffers (#4397, group B)
+  triIc('74125', 'Quad buffer, 3-state outputs, active-low enables', 'buf', [[2, 3], [5, 6], [9, 8], [12, 11]], [0, 1, 2, 3].map((i) => ({ pins: [[1, 4, 10, 13][i]], active: '0', of: [i] })), 9, { pins: 14, supply: [14, 7] }),
+  triIc('74126', 'Quad buffer, 3-state outputs, active-high enables', 'buf', [[2, 3], [5, 6], [9, 8], [12, 11]], [0, 1, 2, 3].map((i) => ({ pins: [[1, 4, 10, 13][i]], active: '1', of: [i] })), 9, { pins: 14, supply: [14, 7] }),
+  triIc('74240', 'Octal inverting buffer, 3-state outputs', 'not', OCTAL_24X, [{ pins: [1], active: '0', of: [0, 1, 2, 3] }, { pins: [19], active: '0', of: [4, 5, 6, 7] }], 10, { pins: 20, supply: [20, 10] }),
+  triIc('74241', 'Octal buffer, 3-state outputs, complementary enables', 'buf', OCTAL_24X, [{ pins: [1], active: '0', of: [0, 1, 2, 3] }, { pins: [19], active: '1', of: [4, 5, 6, 7] }], 12, { pins: 20, supply: [20, 10] }),
+  triIc('74244', 'Octal buffer, 3-state outputs', 'buf', OCTAL_24X, [{ pins: [1], active: '0', of: [0, 1, 2, 3] }, { pins: [19], active: '0', of: [4, 5, 6, 7] }], 12, { pins: 20, supply: [20, 10] }),
+  triIc('74365', 'Hex buffer, 3-state outputs, common enables', 'buf', HEX_365, [{ pins: [1, 15], active: '0', of: [0, 1, 2, 3, 4, 5] }], 16, { pins: 16, supply: [16, 8] }),
+  triIc('74366', 'Hex inverting buffer, 3-state outputs, common enables', 'not', HEX_365, [{ pins: [1, 15], active: '0', of: [0, 1, 2, 3, 4, 5] }], 11, { pins: 16, supply: [16, 8] }),
+  triIc('74367', 'Hex buffer, 3-state outputs, 4 and 2 enabled', 'buf', HEX_365, [{ pins: [1], active: '0', of: [0, 1, 2, 3] }, { pins: [15], active: '0', of: [4, 5] }], 16, { pins: 16, supply: [16, 8] }),
+  triIc('74368', 'Hex inverting buffer, 3-state outputs, 4 and 2 enabled', 'not', HEX_365, [{ pins: [1], active: '0', of: [0, 1, 2, 3] }, { pins: [15], active: '0', of: [4, 5] }], 11, { pins: 16, supply: [16, 8] }),
+  triIc('74540', 'Octal inverting buffer, 3-state outputs, flow-through', 'not', OCTAL_54X, [{ pins: [1, 19], active: '0', of: [0, 1, 2, 3, 4, 5, 6, 7] }], 10, { pins: 20, supply: [20, 10] }),
+  triIc('74541', 'Octal buffer, 3-state outputs, flow-through', 'buf', OCTAL_54X, [{ pins: [1, 19], active: '0', of: [0, 1, 2, 3, 4, 5, 6, 7] }], 12, { pins: 20, supply: [20, 10] }),
   cmos('4001', 'Quad 2-input NOR', 'nor', QUAD_4001, 60),
   cmos('4011', 'Quad 2-input NAND', 'nand', QUAD_4001, 60),
   cmos('4030', 'Quad 2-input XOR', 'xor', QUAD_4001, 100),

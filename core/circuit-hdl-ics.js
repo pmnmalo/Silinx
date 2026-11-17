@@ -33,7 +33,11 @@ export function vhdlIc(L, name, d) {
   L.push('  signal pw : boolean;', 'begin', `  pw <= ${vcc} = '1' and ${gnd} = '0';`);
   for (const g of d.gates) {
     const e = GATE_V[g.fn](g.ins.map((n) => `rd(${pinPort(pin.get(n))})`), g.terms);
-    L.push(`  ${pinPort(pin.get(g.out))} <= ${d.oc ? `oc${e}` : e} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`);
+    // (a three-state buffer, #4397: off (Z) once an enable is not at its active level, X while one is unknown)
+    const en = (g.en || []).map(([n, a]) => [`rd(${pinPort(pin.get(n))})`, a]);
+    const off = en.map(([r, a]) => `${r} = '${a === '0' ? 1 : 0}'`), unknown = en.map(([r]) => `${r} = 'X'`);
+    L.push(en.length ? `  ${pinPort(pin.get(g.out))} <= 'Z' after ${d.tpd} ns when not pw or ${off.join(' or ')} else 'X' after ${d.tpd} ns when ${unknown.join(' or ')} else ${e} after ${d.tpd} ns;`
+      : `  ${pinPort(pin.get(g.out))} <= ${d.oc ? `oc${e}` : e} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`);
   }
   L.push('end architecture model;', '');
 }
@@ -50,7 +54,11 @@ export function verilogIc(L, name, d) {
   L.push(`  wire pw = (${vcc} === 1'b1) && (${gnd} === 1'b0);`);
   for (const g of d.gates) {
     const e = GATE_VL[g.fn](g.ins.map((n) => `rd(${pinPort(pin.get(n))})`), g.terms);
-    L.push(`  assign #${d.tpd} ${pinPort(pin.get(g.out))} = pw ? ${d.oc ? `oc(${e})` : e} : 1'bz;`);
+    // (a three-state buffer, #4397: off (z) once an enable is not at its active level, x while one is unknown)
+    const en = (g.en || []).map(([n, a]) => [`rd(${pinPort(pin.get(n))})`, a]);
+    const off = en.map(([r, a]) => `(${r} === 1'b${a === '0' ? 1 : 0})`), unknown = en.map(([r]) => `(${r} === 1'bx)`);
+    L.push(en.length ? `  assign #${d.tpd} ${pinPort(pin.get(g.out))} = (!pw || ${off.join(' || ')}) ? 1'bz : (${unknown.join(' || ')}) ? 1'bx : ${e};`
+      : `  assign #${d.tpd} ${pinPort(pin.get(g.out))} = pw ? ${d.oc ? `oc(${e})` : e} : 1'bz;`);
   }
   L.push('endmodule', '');
 }
