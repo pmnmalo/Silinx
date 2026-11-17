@@ -140,6 +140,15 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   // the sequential ICs (#3900, core/circuit-seq.js)
   'Dual D flip-flop, preset and clear (rising edge)': 'Dois flip-flops D, preset e clear (flanco ascendente)',
   'Dual J-K flip-flop, preset and clear (falling edge)': 'Dois flip-flops J-K, preset e clear (flanco descendente)',
+  // (the ICs written once in VHDL, #4397)
+  'Dual D flip-flop, set and reset (rising edge)': 'Dois flip-flops D, set e reset (flanco ascendente)', 'Dual J-K flip-flop, set and reset (rising edge)': 'Dois flip-flops J-K, set e reset (flanco ascendente)',
+  'Dual J-K flip-flop, clear (falling edge)': 'Dois flip-flops J-K, clear (flanco descendente)', 'Dual J-K flip-flop, preset (falling edge)': 'Dois flip-flops J-K, preset (flanco descendente)',
+  'Dual J-K flip-flop, preset, common clock and clear (falling edge)': 'Dois flip-flops J-K, preset, relógio e clear comuns (flanco descendente)',
+  'Dual J-K̅ flip-flop, preset and clear (rising edge)': 'Dois flip-flops J-K̅, preset e clear (flanco ascendente)',
+  '4-bit bistable latch, Q and Q̅': 'Quatro latches biestáveis, Q e Q̅', '4-bit bistable latch': 'Quatro latches biestáveis', 'Quad S̅-R̅ latch': 'Quatro latches S̅-R̅',
+  'Hex D flip-flop, clear (rising edge)': 'Seis flip-flops D, clear (flanco ascendente)', 'Quad D flip-flop, clear, Q and Q̅ (rising edge)': 'Quatro flip-flops D, clear, Q e Q̅ (flanco ascendente)',
+  'Octal D flip-flop, clear (rising edge)': 'Oito flip-flops D, clear (flanco ascendente)', 'Octal D flip-flop, enable (rising edge)': 'Oito flip-flops D, enable (flanco ascendente)',
+  'Hex D flip-flop, enable (rising edge)': 'Seis flip-flops D, enable (flanco ascendente)', 'Quad D flip-flop, enable, Q and Q̅ (rising edge)': 'Quatro flip-flops D, enable, Q e Q̅ (flanco ascendente)',
   'Decade counter (divide by 2 and by 5, falling edges)': 'Contador de década (divide por 2 e por 5, flancos descendentes)',
   '4-bit binary counter (divide by 2 and by 8, falling edges)': 'Contador binário de 4 bits (divide por 2 e por 8, flancos descendentes)',
   'Synchronous 4-bit binary counter, asynchronous clear': 'Contador binário síncrono de 4 bits, clear assíncrono',

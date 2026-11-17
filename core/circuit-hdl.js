@@ -13,6 +13,7 @@ import { partInputs, partLamps, portRef, portDecls } from './circuit-io.js';
 import { circuitErrors } from './circuit-check.js';
 import { pinPort, icPorts, vhdlIc, verilogIc, vhdlDigital, verilogDigital } from './circuit-hdl-ics.js';
 import { digitalTop } from './circuit-digital.js';
+import { coreText, verilogCoreDigital } from './circuit-hdl-core.js';
 
 // (a KiCad part modelled by a module of the project, #4283: that module)
 const entityOf = (m, d) => (d.kind === 'model' ? d.module : `${m.name}_${d.chip.toLowerCase()}`);
@@ -48,14 +49,16 @@ export function generateCircuit(model, lang, { source } = {}) {
   if (!V) L.push('`timescale 1ns / 1ps', '', OFF, `\`define ${SIM}`, ON, '');
   for (const d of types) {
     const T = [];
+    // (an IC written once in VHDL, #4397: its core first, which both its models instantiate)
+    if (d.core) coreText(L, entityOf(m, d), d, V);
     (V ? vhdlIc : verilogIc)(T, entityOf(m, d), d);
-    if (!d.model && !d.seq) { L.push(OFF, ...T.slice(0, -1), ON, ''); continue; }   // (a gate IC: the digital body inlines its gates)
+    if (!d.model && !d.seq && !d.core) { L.push(OFF, ...T.slice(0, -1), ON, ''); continue; }   // (a gate IC: the digital body inlines its gates)
     if (V) {
       const a = T.findIndex((l) => l.startsWith('architecture model of'));
       L.push(...T.slice(0, a)); vhdlDigital(L, entityOf(m, d), d); L.push(OFF, ...T.slice(a, -1), ON, '');
     } else {
       const h = T.findIndex((l) => l.startsWith('module ')), e = T.lastIndexOf('endmodule');
-      L.push(...T.slice(0, h + 1), `\`ifdef ${SIM}`, ...T.slice(h + 1, e), '`else', ...verilogDigital(d), '`endif', 'endmodule', '');
+      L.push(...T.slice(0, h + 1), `\`ifdef ${SIM}`, ...T.slice(h + 1, e), '`else', ...(d.core ? verilogCoreDigital(d, entityOf(m, d)) : verilogDigital(d)), '`endif', 'endmodule', '');
     }
   }
 
