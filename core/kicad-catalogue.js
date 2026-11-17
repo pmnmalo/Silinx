@@ -6,8 +6,9 @@
 // (parts/74xx.kicad_symdir/74HC00.kicad_sym), its origin written in it, its footprint beside it: native KiCad files.
 // The files are fetched by the caller (getFile: the local server's, or the browser's from a host that sends CORS
 // headers), each one checked against its SHA-256 here. Isomorphic module.
-import { CATALOGUE, CATALOGUE_LIBRARIES } from './kicad-catalogue-data.js';
+import { CATALOGUE, CATALOGUE_LIBRARIES, CATALOGUE_LOOKS } from './kicad-catalogue-data.js';
 import { PARTS } from './circuit-parts.js';
+import { dip } from './circuit-ics.js';
 import { checkSha256 } from './kicad-pcm.js';
 import { symbolTexts, oneSymbolFile, symbolFileName } from './kicad-edit.js';
 import { importKicadPackage } from './kicad-import.js';
@@ -38,6 +39,28 @@ export function searchCatalogue(q, list = CATALOGUE) {
 
 /** A catalogue's part by its id, or null. */
 const catalogueEntry = (id) => CATALOGUE.find((e) => e.id === id) ?? null;
+
+const KINDS = { c: 'circle', l: 'line', a: 'arc', p: 'poly' };
+/**
+ * A catalogue's part drawn only, as its preview draws it before it is imported (#4346): { kind: 'drawn', kicad: { value,
+ * symbol, keywords }, pins: [{ n, dx, dy }], look?, dip? }: its footprint's drawing and pads (CATALOGUE_LOOKS; its pads
+ * only when it has no drawing), or a DIP's pins;
+ * null for a part that behaves as an IC (its IC's preview) or one with neither.
+ */
+export function catalogueDrawing(e, looks = CATALOGUE_LOOKS) {
+  if (!e || e.as) return null;
+  const kicad = { value: e.value, symbol: e.symbol, keywords: '' };
+  const m = /^DIP-(\d+)$/.exec(e.package);
+  if (m) { const n = Number(m[1]), at = dip(n); return { kind: 'drawn', kicad, dip: n, pins: Array.from({ length: n }, (_, k) => ({ n: k + 1, ...at(k + 1) })) }; }
+  const l = e.footprint && looks[e.footprint.name];
+  if (!l) return null;
+  const shapes = l.shapes.map(([k, fill, w, ...v]) => {
+    const pts = [];
+    for (let i = 0; i + 1 < v.length; i += 2) pts.push([v[i], v[i + 1]]);
+    return k === 'c' ? { k: 'circle', fill: !!fill, w, c: [v[0], v[1]], r: v[2] } : { k: KINDS[k], fill: !!fill, w, pts };
+  });
+  return { kind: 'drawn', kicad, pins: l.pins.map(([n, dx, dy]) => ({ n, dx, dy })), ...(shapes.length ? { look: { layer: 'F.Fab', shapes } } : {}) };
+}
 
 /** Whether a URL is one of the catalogue's files (the local server fetches those only for it). */
 export function isCatalogueFile(url) {

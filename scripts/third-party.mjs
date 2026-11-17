@@ -80,6 +80,9 @@ const PORTED = [
     note: 'packages/silinx-fpga/src/fpga/xc7/ (the 7-series\' frames and .bit of nextpnr\'s FASM) is a JavaScript port of its fasm2frames and xc7frames2bit.' },
   { name: 'prjxray-db', version: '0a0adde', ported: true, license: 'CC0-1.0', url: 'https://github.com/f4pga/prjxray-db', fpga: true,
     note: 'packages/silinx-fpga/bitdb/xc7/ is the subset of its database (artix7) the xc7a35t\'s and the xc7a100t\'s bitstreams need.' },
+  // the KiCad catalogue's previews (#4346): drawings derived from its footprints, in core/kicad-catalogue-data.js
+  { name: 'SparkFun-KiCad-Libraries', version: 'v10.0.0', ported: true, license: 'CC-BY-4.0', url: 'https://github.com/sparkfun/SparkFun-KiCad-Libraries', standalone: true,
+    note: 'By SparkFun Electronics. core/kicad-catalogue-data.js (CATALOGUE_LOOKS) holds drawings derived from the footprints of its v10.0.0 (footprints/*.pretty/*.kicad_mod) that the KiCad catalogue names: their F.Fab shapes (F.SilkS\'s when there are none), turned, scaled to the 0.1 inch grid and rounded, and their pads\' places. Changed: the texts, the other layers and the pads\' shapes left out. The footprints themselves are not shipped: a part imported fetches its own files from the library.' },
   // the Gowin's bitstream (#2303), in silinx-fpga too; its chip databases are read from YoWASP's package, not shipped
   { name: 'apicula', version: '0.32', ported: true, license: 'MIT', url: 'https://github.com/YosysHQ/apicula', fpga: true,
     note: 'packages/silinx-fpga/src/fpga/gowin/ (the Gowin\'s .fs of nextpnr-himbaechel-gowin\'s routed netlist) is a JavaScript port of its gowin_pack and of the parts of its chipdb, bslib and attrids that gowin_pack uses; the chip databases it reads are Apicula\'s, in @yowasp/nextpnr-himbaechel-gowin, not shipped by Silinx.' },

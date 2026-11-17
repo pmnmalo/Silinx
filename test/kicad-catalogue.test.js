@@ -6,8 +6,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, browserUrl, catalogueTitle, searchCatalogue, isCatalogueFile, catalogueSha256, importCataloguePart } from '../core/kicad-catalogue.js';
+import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, browserUrl, catalogueDrawing, catalogueTitle, searchCatalogue, isCatalogueFile, catalogueSha256, importCataloguePart } from '../core/kicad-catalogue.js';
 import { PARTS, partDef, setProjectParts } from '../core/circuit-parts.js';
+import { CATALOGUE_LOOKS } from '../core/kicad-catalogue-data.js';
+import { lookOf } from '../core/circuit-kicad.js';
+import { readKicadFootprint } from '../core/kicad-mod.js';
 import { readKicadSymLib } from '../core/kicad-sym.js';
 import { symbolTexts, oneSymbolFile, symbolFileName } from '../core/kicad-edit.js';
 
@@ -126,4 +129,39 @@ test('a symbol whose name holds a \'/\' (SparkFun\'s 10k_Axial_1/6W, #4318): its
   assert.deepEqual(r.lines, ['parts/res.kicad_symdir written: 1 part(s), 0 of them as ICs of the library (none), 1 drawn only; 0 symbol(s) no part', '1 footprint(s) written: parts/imported.pretty']);
   assert.equal(partDef(r.type)?.kind, 'drawn', 'the part found by its type');
   setProjectParts([]);
+});
+
+test('catalogueDrawing (#4346): every part drawn only has a preview (its footprint\'s drawing, its pads, or a DIP\'s), each look used; an IC none', () => {
+  const used = new Set();
+  for (const e of CATALOGUE) {
+    const d = catalogueDrawing(e);
+    if (e.as) { assert.equal(d, null, e.id); continue; }
+    assert.ok(d, e.id);
+    assert.equal(d.kind, 'drawn');
+    assert.ok(d.pins.length >= e.pins, `${e.id}: its pads, at least its pins`);
+    if (/^DIP-/.test(e.package)) assert.equal(d.dip, Number(e.package.slice(4)));
+    else { used.add(e.footprint.name); assert.ok(d.pins.some((q) => q.n === '1' && q.dx === 0 && q.dy === 0), `${e.id}: pad 1 its place`); }
+    for (const sh of d.look?.shapes ?? []) assert.ok(['circle', 'line', 'arc', 'poly'].includes(sh.k) && (sh.k === 'circle' ? sh.r > 0 : sh.pts.length >= 2), e.id);
+  }
+  assert.deepEqual(Object.keys(CATALOGUE_LOOKS).filter((k) => !used.has(k)), []);
+  // SparkFun's red LED: round (its body a circle), its value and symbol said (its colour, core/circuit-kicad.js ledColour)
+  const led = catalogueDrawing(CATALOGUE.find((e) => e.id === 'sparkfun-led/LED_Red_5mm_PTH_NoSilk'));
+  assert.deepEqual([led.kicad.value, led.kicad.symbol, led.pins.length, led.look.shapes.some((sh) => sh.k === 'circle' && !sh.fill)], ['Red', 'LED_Red_5mm_PTH_NoSilk', 2, true]);
+  // a 74xx drawn only on a DIP-14: its pins as a DIP's
+  const dip14 = catalogueDrawing(CATALOGUE.find((e) => !e.as && e.package === 'DIP-14'));
+  assert.deepEqual(dip14.pins.filter((q) => [1, 7, 8, 14].includes(q.n)).map((q) => [q.n, q.dx, q.dy]), [[1, 0, 0], [7, 6, 0], [8, 6, -3], [14, 0, -3]]);
+});
+
+test('catalogueDrawing decodes a look as scripts/kicad-catalogue.mjs writes it: lookOf\'s shapes, rounded (#4346)', () => {
+  const fp = readKicadFootprint(readFileSync(new URL('parts.pretty/LED_D5.0mm_test.kicad_mod', FIX), 'utf8')), look = lookOf(fp);
+  const r2 = (v) => Math.round(v * 100) / 100 || 0;
+  const looks = { 'T:LED': { pins: [['1', 0, 0], ['2', 0, -1]], shapes: look.shapes.map((sh) => [sh.k[0], sh.fill ? 1 : 0, Math.round(sh.w * 1000) / 1000, ...(sh.k === 'circle' ? [...sh.c, sh.r] : sh.pts.flat()).map(r2)]) } };
+  const d = catalogueDrawing({ id: 't/LED', value: 'Red', symbol: 'LED', as: null, package: 'grid', pins: 2, footprint: { name: 'T:LED' } }, looks);
+  assert.deepEqual(d.look.shapes.map((sh) => sh.k), look.shapes.map((sh) => sh.k));
+  assert.deepEqual(d.look.shapes[0], { k: 'circle', fill: false, w: 0.039, c: [0, -0.5], r: 0.98 });
+  assert.deepEqual(d.look.shapes[3].pts, look.shapes[3].pts.map((q) => q.map(r2)));
+  assert.deepEqual(d.pins, [{ n: '1', dx: 0, dy: 0 }, { n: '2', dx: 0, dy: -1 }]);
+  // a footprint with no drawing: its pads only; one not in the looks: none
+  assert.equal(catalogueDrawing({ id: 't/H', value: 'H', as: null, package: 'grid', pins: 1, footprint: { name: 'T:H' } }, { 'T:H': { pins: [['1', 0, 0]], shapes: [] } }).look, undefined);
+  assert.equal(catalogueDrawing({ id: 't/X', value: 'X', as: null, package: 'grid', pins: 1, footprint: { name: 'T:X' } }, {}), null);
 });

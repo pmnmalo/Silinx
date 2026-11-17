@@ -1,7 +1,8 @@
 // UI: the KiCad catalogue in the circuit editor's Parts panel (#4305): its group folded at first, its count; opened;
 // a search finds its parts by their number and title, the group open then; each part's tip in Silinx's words with its
 // library and licence; a click imports it through the local server (it fetches nothing here, SILINX_KICAD_OFFLINE: its error in the console,
-// nothing written; the import itself: test/kicad-catalogue.test.js); Portuguese. Both interfaces.
+// nothing written; the import itself: test/kicad-catalogue.test.js); a drawn-only part's preview drawn as the part (#4346);
+// Portuguese. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -42,11 +43,20 @@ uiTest('Parts panel: the KiCad catalogue folded, opened, searched, its tips; a p
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^ERROR: KiCad catalogue: /.test(l.textContent)), [], { what: 'its error' });
   assert.ok((await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent))).includes('ERROR: KiCad catalogue: KiCad\'s libraries are not fetched: SILINX_KICAD_OFFLINE is set (only what was kept is used)'));
   assert.equal(fs.existsSync(path.join(env.server.workspace, 'CircCat', 'parts')), false);
-  // a drawn-only part: its tip; its drawing a body
+  // a drawn-only part: its tip; its preview drawn as the part (#4346: its footprint's drawing kept in the catalogue, its
+  // pads), not a box
   await page.eval((ed) => { const s = document.querySelector(`${ed} .circ-search`); s.value = 'sparkfun conn_01x04'; s.dispatchEvent(new Event('input')); }, ED);
   await page.waitFor((s) => document.querySelectorAll(s).length >= 1, [CAT(ED)], { what: 'a SparkFun part' });
   assert.match(await page.eval((s) => document.querySelector(s).title, CAT(ED)), /^Conn_01x04, drawn only: 4 pin\(s\) \(SparkFun Connector, CC-BY-4\.0\): click it to import it into the project$/);
-  assert.equal(await page.eval((s) => !!document.querySelector(`${s} .circ-pv-cat`), CAT(ED)), true);
+  const pv = (sel) => page.eval((s) => { const v = document.querySelector(`${s} svg.circ-pv`); return { cat: !!v.querySelector('.circ-pv-cat'), fp: v.querySelectorAll('.circ-fp path').length, pins: v.querySelectorAll('.circ-pin').length,
+    led: [...v.querySelectorAll('.circ-fp-body')].map((x) => [...x.classList].find((c) => c.startsWith('circ-led-')) ?? null) }; }, sel);
+  assert.deepEqual(await pv(CAT(ED)), { cat: false, fp: 4, pins: 4, led: [] });
+  // the red LED: its round body red; a 74xx drawn only: a DIP's body and its 14 pins
+  for (const [q, want] of [['led_red_5mm_pth_nosilk', { cat: false, fp: 9, pins: 2, led: ['circ-led-red'] }], ['7454', { cat: false, fp: 0, pins: 14, led: [] }]]) {
+    await page.eval((ed, t) => { const s = document.querySelector(`${ed} .circ-search`); s.value = t; s.dispatchEvent(new Event('input')); }, ED, q);
+    await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: q });
+    assert.deepEqual(await pv(CAT(ED)), want, q);
+  }
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.eval((ed) => { const s = document.querySelector(`${ed} .circ-search`); s.value = 'nand hct'; s.dispatchEvent(new Event('input')); }, ED);

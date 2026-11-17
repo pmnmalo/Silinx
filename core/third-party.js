@@ -636,6 +636,14 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "SparkFun-KiCad-Libraries",
+    "version": "v10.0.0",
+    "license": "CC-BY-4.0",
+    "url": "https://github.com/sparkfun/SparkFun-KiCad-Libraries",
+    "standalone": true,
+    "ported": true
+  },
+  {
     "name": "statuses",
     "version": "2.0.2",
     "license": "MIT",

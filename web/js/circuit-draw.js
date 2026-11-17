@@ -136,6 +136,16 @@ function kicadBody(g, p, d, box) {
 }
 
 const LEVEL_CLS = { 0: 'lv0', 1: 'lv1', Z: 'lvz', X: 'lvx' };
+/** A part in neither the library nor the project drawn as the canvas draws a part drawn only, unturned at 0, 0, with its
+ *  pins (#4346: a KiCad catalogue's part before it is imported, d its core/kicad-catalogue.js catalogueDrawing). */
+export function drawnPartSvg(d) {
+  const g = sv('g', { class: 'circ-part circ-drawn' });
+  const xs = d.pins.map((q) => px(q.dx)), ys = d.pins.map((q) => px(q.dy));
+  kicadBody(g, { id: '', x: 0, y: 0 }, d, { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
+  for (const q of d.pins) g.append(sv('circle', { cx: px(q.dx), cy: px(q.dy), r: 3.4, class: 'circ-pin' }));
+  return g;
+}
+
 // (turned, #4114: drawn unturned, then turned whole about its place)
 function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type);

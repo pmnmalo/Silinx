@@ -196,8 +196,10 @@ CORS header), so the local server does (`server/kicad-libraries.js`):
 search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (their 73
 parts that behave as Silinx's ICs, and those drawn only on a DIP) and SparkFun's v10.0.0 parts on the 0.1 inch grid.
 Silinx hosts none of their files: the catalogue (`core/kicad-catalogue-data.js`, written by `scripts/kicad-catalogue.mjs`,
-run again to follow a new version) holds only where each part is (its library file's URL and SHA-256, its footprint's),
-what it is in Silinx and the symbols it extends. A click imports the part: only its symbol (and those it extends), each
+run again to follow a new version) holds where each part is (its library file's URL and SHA-256, its footprint's), what
+it is in Silinx and the symbols it extends. It also holds each SparkFun footprint's drawing, rounded to the grid, so a
+row's preview is the part as it will be drawn (#4346): an LED round and in its colour, a relay's box, a header's strip,
+a part drawn only on a DIP a DIP's body (CC-BY-4.0, SparkFun's; THIRD-PARTY-NOTICES.md). A click imports the part: only its symbol (and those it extends), each
 into a file of its own as KiCad 10's folders hold them (`parts/74xx.kicad_symdir/74HC00.kicad_sym`), with its footprint
 beside it and its origin written in it. Every file is checked against its SHA-256, and a file there already with the
 same text is kept. The local server fetches the catalogue's files only (kept for offline use; `SILINX_KICAD_OFFLINE`
