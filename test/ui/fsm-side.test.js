@@ -71,7 +71,7 @@ uiTest('#405 FSM side panel: nothing, a state (name, outputs, code, initial, its
     return r;
   });
   assert.deepEqual(out.none, [true, 0, ['toolbar']]);   // (nothing selected: no section, #2729)
-  assert.deepEqual(out.state, ['State', 'Code: 01 (binary)', ['x → S2', '!x → S0']]);
+  assert.deepEqual(out.state, ['State', 'Code: 01 (binary)', ['x → S2', '/x → S0']]);   // (the tests' notation: #4417)
   assert.deepEqual(out.err, [true, {}]);
   assert.deepEqual(out.s2, ['MID', { z: '1' }, 's2', false]);
   assert.deepEqual(out.opened, [{ type: 'trans', id: 't3' }, 'Transition', ['toolbar', 'render', 'toolbar']]);   // (the state's panel, then the transition's)
@@ -210,6 +210,6 @@ uiTest('#3882 FSM side panel: no Delete button for a state or a transition; a st
   });
   // (the look's, #3883: a colour's ✕ back to the theme's, Default look)
   assert.deepEqual(out.state, ['✕', '✕', '✕', 'Default look']);
-  assert.deepEqual(out.list, [['x → S2 /', 'y=1', 'z=0'], ['!x → S0']]);
+  assert.deepEqual(out.list, [['x → S2 /', 'y=1', 'z=0'], ['/x → S0']]);
   assert.deepEqual(out.trans, ['▲ Earlier', '▼ Later', 'Straighten', '✕', '✕', 'Default look']);
 });

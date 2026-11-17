@@ -8,7 +8,7 @@ import {
   transitionsFrom
 } from './fsm.js';
 import { sortedOutputs } from './fsm-hdl.js';
-import { showCond } from './cond-notation.js';
+import { writeCond } from './cond-notation.js';
 
 // ---------------------------------------------------------------------------------------
 // FSM <-> ASM chart
@@ -190,8 +190,9 @@ export function asmToFsm(asmModel, { previous = null, notation = null } = {}) {
     ...(asm.description || prev?.description ? { description: asm.description || prev.description } : {}),
   });
   const W = (n) => m.inputs.find((i) => i.name === n)?.width ?? 1;
-  // a condition the conversion writes (not one the previous diagram had): in the notation asked for (#3915)
-  const written = (text) => { const q = notation && !isOtherwise(text) ? parseCond(text) : null; return q && !q.error ? showCond(q.ast, notation) : text; };
+  // a condition the conversion writes (not one the previous diagram had): in the notation asked for (#3915), its text
+  // form (no overbar: #4417)
+  const written = (text) => { const q = notation && !isOtherwise(text) ? parseCond(text) : null; return q && !q.error ? writeCond(q.ast, notation) : text; };
   const asmStates = asm.nodes.filter((n) => n.type === 'state');
   // state ids: the previous diagram's, else the chart's
   const sid = new Map();

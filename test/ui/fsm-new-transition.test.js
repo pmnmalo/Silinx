@@ -82,8 +82,8 @@ for (const lang of ['vhdl', 'verilog']) {
     await page.key('Enter');
     const conds = () => page.eval(() => window.Silinx.active.fsmEditor.getModel().transitions.map((t) => [t.from, t.to, t.cond]));
     assert.deepEqual(await conds(), [['a', 'b', 'x'], ['b', 'a', 'x && y'], ['b', 'c', '!x && y']]);
-    // its label on the drawing, the panel of each
-    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['x', 'x && y', '!x && y']);
+    // its label on the drawing (in the tests' notation, text only: #4417), the panel of each
+    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['x', 'x.y', '/x.y']);
 
     // ---- saved, the HDL generated from it
     const file = await page.waitFor(async (p, h) => {

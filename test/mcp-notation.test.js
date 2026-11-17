@@ -92,6 +92,34 @@ test('#3915 the conversions write their conditions in the notation set: convert_
   assert.deepEqual((await read(made.data.made[0])).transitions.map((t) => t.cond), want);
 });
 
+test('#4417 the Engineering notation: the conversions write its text form (no overbar), a drawing written with bars read as text', async () => {
+  const { fsmFromHdl, parseCond, isOtherwise } = await import('../core/fsm.js');
+  const { showCond } = await import('../core/expr-notation.js');
+  const vhd = fs.readFileSync(new URL('../examples/traffic/src/traffic.vhd', import.meta.url), 'utf8');
+  await ok('new_project', { name: 'tc4417' });
+  await ok('write_file', { project: 'tc4417', path: 'src/traffic.vhd', text: vhd });
+  const read = async (p) => JSON.parse((await ok('read_file', { project: 'tc4417', path: p })).text);
+  await ok('set_notation', { notation: 'engineering' });
+  // convert_module: the text only notation's conditions (/x), never a bar
+  let r = await ok('convert_module', { project: 'tc4417', module: 'traffic', to: 'fsm' });
+  const fsm = await read(r.data.drawing);
+  const conds = fsm.transitions.map((t) => t.cond);
+  assert.deepEqual(conds, fsmFromHdl(vhd, { path: 'traffic.vhd' }).model.transitions.map((t) => (isOtherwise(t.cond) ? t.cond : showCond(parseCond(t.cond).ast, 'slash'))));
+  assert.ok(conds.every((c) => !c.includes(B)) && conds.some((c) => c.includes('/')), conds.join(' | '));
+  // a diagram written with bars (as 15.27's conversions wrote it): read as text by set_fsm_outputs, which writes it back so
+  const barred = { ...fsm, transitions: fsm.transitions.map((t) => (isOtherwise(t.cond) ? t : { ...t, cond: showCond(parseCond(t.cond).ast, 'engineering') })) };
+  assert.ok(barred.transitions.some((t) => t.cond.includes(B)));
+  await ok('write_file', { project: 'tc4417', path: r.data.drawing, text: JSON.stringify(barred, null, 2) });
+  const out = fsm.outputs[0].name;
+  await ok('set_fsm_outputs', { project: 'tc4417', path: r.data.drawing, transition: fsm.transitions[0].id, values: { [out]: '1' } });
+  assert.deepEqual((await read(r.data.drawing)).transitions.map((t) => t.cond), conds);
+  await ok('delete_file', { project: 'tc4417', path: r.data.drawing });
+  // the ASM chart's decisions too
+  r = await ok('convert_module', { project: 'tc4417', module: 'traffic', to: 'asm' });
+  const dec = (await read(r.data.drawing)).nodes.filter((x) => x.type === 'decision').map((x) => x.cond);
+  assert.ok(dec.length && dec.every((c) => !c.includes(B)), dec.join(' | '));
+});
+
 test('#4113 set_schematic_symbols: IEEE Std 91-1984 by default; IEC 60617-12 set, kept, read back; the same again; refused', async () => {
   assert.deepEqual(await ok('set_schematic_symbols', {}), { isError: false, text: 'Schematic symbols: IEEE Std 91-1984 (distinctive shapes)', data: { symbols: 'ieee' } });
   assert.equal(config().symbols, undefined);

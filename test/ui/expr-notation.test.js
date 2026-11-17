@@ -1,11 +1,13 @@
 // UI: the notation of the Boolean expressions shown (#3915): Electronics / Engineering when none is set; chosen in the
 // Settings (Settings ▸ Boolean Notation; View ▸ Boolean Notation in the ISE style interface), kept in the browser; the
 // truth table's results and K-map groups in it (the map shown, #4057), its ⋮ menu a notation of its own (#3939, saved with it; the Settings' by default); a state diagram's transition table in
-// it (its drawing's labels as typed), drawn again when it changes; the menu in Portuguese.
+// it, its arcs' conditions too (#4417: drawn in it, its Properties box and its edit in place text, never an overbar
+// kept), drawn again when it changes; the menu in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { showKmap } from './tt-helpers.js';
+import { normalizeFsm, fsmToAsm } from '../../core/fsm.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -21,6 +23,13 @@ const fsm = JSON.stringify({
   states: [{ id: 's', name: 'S', x: 100, y: 100 }, { id: 'u', name: 'U', x: 300, y: 100, outputs: { z: '1' } }],
   transitions: [{ id: 't1', from: 's', to: 'u', cond: 'a && !b' }, { id: 't2', from: 'u', to: 's', cond: '!(a || b)' }], initial: 's',
 }, null, 2);
+
+// its ASM chart, its first decision as 15.27's conversions wrote it in the Engineering notation (an overbar, #4417)
+const asm = (() => {
+  const a = fsmToAsm(normalizeFsm(JSON.parse(fsm)));
+  a.nodes.find((n) => n.id === 'd1').cond = `a.b${B}`;
+  return JSON.stringify(a, null, 2);
+})();
 
 /** Settings ▸ Boolean Notation (View ▸ in the ISE style interface): its items [label, checked]; `pick` clicked. */
 async function notationMenu(page, pick) {
@@ -54,7 +63,7 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
     return [was, r];
   }), ['slash', 'engineering']);
 
-  await makeProject(env, { name: 'Notation', files: { 'src/m.bool.json': table, 'src/nt.fsm.json': fsm } });
+  await makeProject(env, { name: 'Notation', files: { 'src/m.bool.json': table, 'src/nt.fsm.json': fsm, 'src/nt.asm.json': asm } });
   await page.openProject('Notation');
   await page.eval(() => window.SilinxApp.openTt('src/m.bool.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'tt:src/m.bool.json' && document.querySelector('.doc:not([hidden]) .tt-editor .tt-canon'), [], { what: 'the truth table' });
@@ -83,18 +92,58 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   assert.deepEqual(await shown(), { canon: `f = a${B}.b${B}.c + a${B}.b.c + a.b.c${B}`, groups: [`a${B}.c`, `b.c${B}`], menu: 'engineering' });
   await notationMenu(page, 'Electronics / Engineering');
 
-  // ---- the state diagram: its transition table in the notation, its labels as typed
+  // ---- the state diagram: its transition table and its arcs in the notation (#4417), its Properties box as typed
   await page.eval(() => window.SilinxApp.openFsm('src/nt.fsm.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/nt.fsm.json' && window.Silinx.active.fsmEditor?.fitted(), [], { what: 'the state diagram' });
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
   await page.waitForSelector(`${ED} .fsm-ttable`);
   const conds = () => page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr`)].slice(1).map((tr) => tr.children[2].textContent), ED);
+  const arcs = () => page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED);
+  const model = () => page.eval(() => window.Silinx.active.fsmEditor.getModel().transitions.map((t) => t.cond));
   assert.deepEqual(await conds(), [`a.b${B}`, 'otherwise (stays)', `a${B} ${B}+${B} ${B}b${B}`, 'otherwise (stays)']);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['a && !b', '!(a || b)']);
+  assert.deepEqual(await arcs(), [`a.b${B}`, `a${B} ${B}+${B} ${B}b${B}`]);
+  // the Properties box: the text as typed, no overbar
+  // (clicked again while the view still moves: its fit after the Tables opened)
+  for (let i = 0; ; i++) {
+    try { await page.click(`${ED} [data-trans=t1] .fsm-label`); } catch { /* not there yet */ }
+    if (await page.eval((ed) => !!(document.querySelector(`${ed} [data-trans=t1].sel`) && document.querySelector(`${ed} .fsm-cond`)), ED)) break;
+    assert.ok(i < 20, 't1 not selected');
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .fsm-cond`).value, ED), 'a && !b');
+  // an overbar typed (pasted) in it: kept as the text only notation's NOT, drawn with its bar
+  await page.fill(`${ED} .fsm-cond`, `a${B}.b`);
+  await page.waitFor(() => window.Silinx.active.fsmEditor.getModel().transitions[0].cond === '/a.b', [], { what: 'the condition kept as text' });
+  await page.waitFor((ed, b) => document.querySelector(`${ed} [data-trans=t1] .fsm-label`)?.textContent === `a${b}.b`, [ED, B], { what: 'the arc drawn again' });
+  // in place: the text, then a condition typed kept as it is
+  await page.dblclick(`${ED} [data-trans=t1] .fsm-label`);
+  await page.waitForSelector(`${ED} .fsm-inline`);
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .fsm-inline`).value, ED), '/a.b');
+  await page.fill(`${ED} .fsm-inline`, 'a && !b');
+  await page.key('Enter');
+  await page.waitFor((ed) => !document.querySelector(`${ed} .fsm-inline`), [ED], { what: 'the text in place closed' });
+  assert.deepEqual(await model(), ['a && !b', '!(a || b)']);
   await notationMenu(page, 'VHDL');
   await page.waitFor(async (ed) => document.querySelector(`${ed} .fsm-ttable tr:nth-child(2) td:nth-child(3)`)?.textContent === 'a and not b', [ED], { what: 'the table in VHDL' });
   assert.deepEqual(await conds(), ['a and not b', 'otherwise (stays)', 'not (a or b)', 'otherwise (stays)']);
-  assert.deepEqual(await page.eval(() => window.Silinx.active.fsmEditor.getModel().transitions.map((t) => t.cond)), ['a && !b', '!(a || b)']);
+  assert.deepEqual(await arcs(), ['a and not b', 'not (a or b)']);
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .fsm-cond`)?.value, ED), 'a && !b');
+  assert.deepEqual(await model(), ['a && !b', '!(a || b)']);
+
+  // ---- the ASM chart: its decisions drawn in the notation, its Properties box text (the overbar it was saved with: /…)
+  await page.eval(() => window.SilinxApp.openAsm('src/nt.asm.json'));
+  const AE = '.doc:not([hidden]) .asm-editor';
+  await page.waitFor((ae) => window.Silinx.active?.id === 'asm:src/nt.asm.json' && document.querySelector(`${ae} [data-node=d1]`), [AE], { what: 'the ASM chart' });
+  const decisions = () => page.eval((ae) => ['d1', 'd5'].map((id) => document.querySelector(`${ae} [data-node=${id}] .asm-text`).textContent), AE);
+  assert.deepEqual(await decisions(), ['a and not b', 'not (a or b)']);
+  assert.deepEqual(await page.eval(() => window.Silinx.active.asmEditor.getModel().nodes.filter((n) => n.type === 'decision').map((n) => n.cond)), ['a./b', '!(a || b)']);
+  await notationMenu(page, 'Electronics / Engineering');
+  await page.waitFor((ae, b) => document.querySelector(`${ae} [data-node=d1] .asm-text`)?.textContent === `a.b${b}`, [AE, B], { what: 'the decisions in the Engineering notation' });
+  assert.deepEqual(await decisions(), [`a.b${B}`, `a${B} ${B}+${B} ${B}b${B}`]);
+  await page.click(`${AE} [data-node=d1]`);
+  await page.waitFor((ae) => [...document.querySelectorAll(`${ae} .asm-input`)].some((i) => i.value === 'a./b'), [AE], { what: 'the decision\'s Properties, text' });
+  assert.ok(await page.eval((ae, b) => [...document.querySelectorAll(`${ae} .asm-input`)].every((i) => !i.value.includes(b)), AE, B));
+  await notationMenu(page, 'VHDL');
 
   // ---- in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
@@ -104,8 +153,8 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
 });
 
 // an HDL module converted to a state diagram (its context menu in the Design pane): the conditions written in the
-// Settings' notation (#3915 part 2), shown on the drawing as written
-uiTest('#3915 Convert to State Diagram writes its conditions in the Boolean notation of the Settings', E, async (page) => {
+// Settings' notation (#3915 part 2), its text form (the Engineering one's: text only, no overbar kept, #4417), drawn in it
+uiTest('#3915 Convert to State Diagram writes its conditions in the Boolean notation of the Settings, as text (#4417)', E, async (page) => {
   const { normalizeFsm, generateFsm, fsmFromHdl, parseCond, isOtherwise } = await import('../../core/fsm.js');
   const { showCond } = await import('../../core/expr-notation.js');
   const m = normalizeFsm(JSON.parse(fsm));
@@ -120,8 +169,9 @@ uiTest('#3915 Convert to State Diagram writes its conditions in the Boolean nota
   const conds = () => page.eval(async () => JSON.parse(await (await fetch('/api/projects/NotationConv/file?path=src%2Fnt.fsm.json')).text()).transitions.map((t) => t.cond));
   const plain = fsmFromHdl(vhd, { path: 'src/nt.vhd' }).model.transitions.map((t) => t.cond);
   const shown = (n) => plain.map((c) => (isOtherwise(c) ? c : showCond(parseCond(c).ast, n)));
-  assert.deepEqual(await conds(), shown('engineering'));
-  assert.ok((await conds()).some((c) => c.includes(B)), (await conds()).join(' | '));
-  // (its labels on the drawing: the file's, as typed)
+  assert.deepEqual(await conds(), shown('slash'));
+  assert.ok((await conds()).every((c) => !c.includes(B)) && (await conds()).some((c) => c.includes('/')), (await conds()).join(' | '));
+  // (its labels on the drawing: in the notation, its bars)
+  assert.ok(shown('engineering').some((c) => c.includes(B)));
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), shown('engineering'));
 });

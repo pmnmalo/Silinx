@@ -2,6 +2,7 @@
 // outputs, or a transition's condition and outputs, edited in place on the drawing, applied on Enter or a click
 // elsewhere, cancelled by Escape.
 import { formatOutputs, parseLabel, parseOutputs } from '/core/fsm.js';
+import { condAsText } from '/core/cond-notation.js';
 import { h } from './ui.js';
 import { clamp, textW } from './fsm-editor.js';
 
@@ -59,12 +60,12 @@ export function mountFsmInline(ctx) {
     const g = geom(t);
     if (!g) return;
     const o = formatOutputs(t.outputs);
-    inlineAt(g.lab, M().type === 'mealy' || o ? `${t.cond}${o ? ` / ${o}` : (M().type === 'mealy' ? ' / ' : '')}` : t.cond, (v) => {
+    inlineAt(g.lab, M().type === 'mealy' || o ? `${condAsText(t.cond)}${o ? ` / ${o}` : (M().type === 'mealy' ? ' / ' : '')}` : condAsText(t.cond), (v) => {
       const cur = transById(t.id);
       if (!cur) return;
       const p = parseLabel(v, M().outputs);
       if (p.error) { flash(p.error, 'err'); return; }
-      cur.cond = p.cond;
+      cur.cond = condAsText(p.cond);   // (text: no overbar kept, #4417)
       cur.outputs = p.outputs;
       commit(); renderSide();
     }, { width: 240 });

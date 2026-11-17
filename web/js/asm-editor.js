@@ -41,6 +41,7 @@ import { clone } from '/core/util.js';
 import { statusLine } from './status-line.js';
 import { mountAsmSim } from './asm-sim.js';
 import { mountDockPanel } from './dock-panel.js';
+import { drawnCond, drawnLength, onNotation } from './notation.js';
 
 export const GRID = 20;
 const CHW = 7.25;          // approx. width of a 12px monospace character
@@ -61,7 +62,7 @@ export function nodeSize(n) {
     return { w: Math.max(140, ceilTo(tw + 32, 2 * GRID)), h: Math.max(60, ceilTo(lines.length * 17 + 26, GRID)) };
   }
   if (n.type === 'decision') {
-    const tw = Math.max(3, (n.cond || '').length) * CHW;
+    const tw = Math.max(3, n.cond ? drawnLength(drawnCond(n.cond)) : 0) * CHW;   // (as drawn: #4417)
     const w = Math.max(140, ceilTo(tw * 1.25 + 56, 2 * GRID));
     return { w, h: w > 260 ? 100 : 80 };
   }
@@ -383,6 +384,8 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
 
   // ---------------------------------------------------------------------------- init
   const offLayout = onLayoutToggled(svg, () => fit());   // (the documents' room changed: Full View, #3804)
+  // (the notation changed: the decisions drawn again, #4417; the editor closed, no more)
+  const offNotation = onNotation(() => { if (destroyed) offNotation(); else render(); });
   setTool('select');
   applyView();
   render();
@@ -431,6 +434,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     print,
     destroy() {
       destroyed = true;
+      offNotation();
       simApi.stop();
       dock.destroy();
       Object.values(timers).forEach(clearTimeout);

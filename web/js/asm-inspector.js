@@ -4,6 +4,7 @@
 // called by mountAsmEditor where this code was.
 import { h } from './dom.js';
 import { designKind } from './project-kind-flag.js';
+import { condAsText } from '/core/cond-notation.js';
 
 /** { renderInspector, renderMachine } of an ASM chart editor (M(), sel(): its current model and selection). */
 export function mountInspector(ctx) {
@@ -61,8 +62,8 @@ export function mountInspector(ctx) {
         'An assignment of the current state to the same target takes priority.'));
     } else if (n.type === 'decision') {
       put(h('h3', {}, 'Decision'));
-      put(field('Condition', h('input', { class: 'asm-input mono', value: n.cond, spellcheck: 'false', 'data-focus': '1',
-        oninput: (ev) => { n.cond = ev.target.value; commit(`cond:${n.id}`); } }),
+      put(field('Condition', h('input', { class: 'asm-input mono', value: condAsText(n.cond), spellcheck: 'false', 'data-focus': '1',
+        oninput: (ev) => { n.cond = condAsText(ev.target.value); commit(`cond:${n.id}`); } }),
       'e.g. go, !done, cnt == 9, x && (mode == 2\'b01), (1 << n) > cnt. Exit 1 = true, 0 = false.'));
       put(h('label', { class: 'asm-check' },
         h('input', { type: 'checkbox', checked: !!n.flip, onchange: (ev) => { if (ev.target.checked) n.flip = true; else delete n.flip; commit('flip'); } }),
