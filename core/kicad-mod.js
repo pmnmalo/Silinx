@@ -7,7 +7,8 @@
 import { parseSexpr, head, all, one, num } from './sexpr.js';
 
 export const GRID_MM = 2.54;
-const TOLERANCE_MM = 0.01;   // (a pad this close to a grid point is on it: KiCad's coordinates are rounded to 1 µm)
+// (a pad this close to a grid point is on it: a lead bends that much, #4385: KiCad's capacitors 2.50 and 5.00 mm apart)
+const TOLERANCE_MM = 0.1;
 export const PAD_TYPES = ['thru_hole', 'smd', 'connect', 'np_thru_hole'];
 
 /** A `.kicad_mod` file read: { name, version, attr ('through_hole' | 'smd' | ''), description, tags, pads, models }. */
