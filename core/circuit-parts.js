@@ -8,6 +8,7 @@ import { MSI } from './circuit-msi.js';
 import { SEQ } from './circuit-seq.js';
 import { MODEL_ICS } from './circuit-model-ics.js';
 import { shortFunction } from './part-function.js';
+import { COUNTER_ICS } from './circuit-model-counters.js';
 
 // ------------------------------------------------------------------ the breadboards
 export const BB_COLS = 30;
@@ -76,9 +77,9 @@ const OTHERS = [
 ];
 
 // ------------------------------------------------------------------ the library
-export const PARTS = Object.fromEntries([...OTHERS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS].map((d) => [d.type, d]));
+export const PARTS = Object.fromEntries([...OTHERS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS, ...COUNTER_ICS].map((d) => [d.type, d]));
 /** The order of the library (the side panel's, circuit_parts'): the parts as written, then the ICs. */
-export const PART_ORDER = [...OTHERS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS].map((d) => d.type);
+export const PART_ORDER = [...OTHERS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS, ...COUNTER_ICS].map((d) => d.type);
 export const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white'];
 export const WIRE_COLORS = ['red', 'black', 'blue', 'green', 'yellow', 'orange', 'white', 'purple'];
 /** A clock's frequency (Hz): the live simulation's, in real time. */
