@@ -75,7 +75,8 @@ test('every IC\'s bench as synthesis reads it: the digital model\'s outputs the 
       // simulated before their first clear or clock, on the FPGA their 0), its levels are its own; a flip-flop's
       // preset and clear both low then one released, in Verilog: the always block's edges see no release, the flip-flop
       // stays as it was, as XST builds it; the engine's, the VHDL's, the one still low)
-      const corner = lang === 'verilog' && (t === '7474' || t === '74112');
+      // (the 7476 too, a J-K flip-flop with both controls: its vectors met that release once #4397's gates shifted them)
+      const corner = lang === 'verilog' && (t === '7474' || t === '74112' || t === '7476');
       got.forEach((x, k) => { if (k > 0 && !/x/i.test(engine[k] + x) && !corner) assert.equal(x, engine[k], `${t} ${lang}: vector ${k}`); });
     }
   }
