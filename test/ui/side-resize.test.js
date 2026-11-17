@@ -3,10 +3,11 @@
 // the panel's inner edge (col-resize, a separator); dragged wider and narrower, clamped to the minimum (160 px) and to
 // the maximum (720 px, the canvas keeping 200 px); remembered when the document is opened again; ← → from the keyboard;
 // a double-click gives the default width back; folded, no handle and the strip's width, expanded, the width kept; on a
-// narrow screen (the panel over the canvas behind ☰) dragged too; the tip in Portuguese; no warnings.
+// narrow screen (the panel over the canvas behind ☰) dragged too; the tip in Portuguese; no warnings. A closed editor's
+// panels let go of (#4365); the handle placed in the frame after a resize, not in the ResizeObserver's loop (#4366).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, makeProject } from './harness.js';
+import { setupUi, uiTest, makeProject, chromeOnly } from './harness.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -122,5 +123,49 @@ uiTest('#4316 every side panel resizable: dragged, clamped, remembered, the keyb
   try {
     await page.waitFor((d) => document.querySelector(`${d} .asm-editor .asm-side`).nextElementSibling.title === 'Arraste para redimensionar o painel (← → com o teclado; um duplo clique: a sua largura inicial)', [DOC], { what: 'the tip in Portuguese' });
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
+
+uiTest('#4365 #4366 a closed editor\'s panels let go of; the handle placed in the next frame, not in the ResizeObserver\'s loop', E, async (page) => {
+  await page.setViewport(1440, 900);
+  await makeProject(env, { name: 'ResizeLife', template: 'blinky' });
+  await page.openProject('ResizeLife');
+  const open = async () => {
+    await page.eval(() => window.SilinxApp.openFile('src/speed_ctrl.asm.json'));
+    await page.waitFor((d) => document.querySelector(`${d} .asm-editor .asm-side`)?.nextElementSibling?.classList.contains('side-resize'), [DOC], { what: 'the ASM editor' });
+  };
+  await open();
+  // the panel made wider: side-resize's observer (made first, called first) has not moved the handle when another
+  // observer of the panel is called in the same loop (#4366: moved there, WebKit's "ResizeObserver loop completed
+  // with undelivered notifications"); it has after the next frame, over the new edge
+  const r = await page.eval(async (d) => {
+    const side = document.querySelector(`${d} .asm-editor .asm-side`), hd = side.nextElementSibling;
+    const frame = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    await frame();
+    const before = hd.style.left;
+    const inLoop = await new Promise((res) => {
+      let first = true;
+      const ro = new ResizeObserver(() => {
+        if (first) { first = false; side.style.width = `${side.offsetWidth + 50}px`; return; }
+        ro.disconnect(); res(hd.style.left);
+      });
+      ro.observe(side);
+    });
+    await frame();
+    const s = side.getBoundingClientRect(), h = hd.getBoundingClientRect();
+    return { before, inLoop, after: hd.style.left, off: Math.round(Math.abs(h.left + h.width / 2 - s.left)) };
+  }, DOC);
+  assert.equal(r.inLoop, r.before, JSON.stringify(r));
+  assert.ok(r.after !== r.before && r.off <= 2, JSON.stringify(r));
+  await page.eval(() => window.SilinxApp.closeDoc(window.Silinx.active));
+  // opened and closed again: once collected, only the open panels are watched for a narrow screen (#4365: every
+  // closed editor kept alive by its panels' listener of the media query)
+  if (!chromeOnly) {
+    for (let i = 0; i < 3; i++) { await open(); await page.eval(() => window.SilinxApp.closeDoc(window.Silinx.active)); }
+    await new Promise((res) => setTimeout(res, 500));
+    for (let i = 0; i < 3; i++) await page.send('HeapProfiler.collectGarbage');
+    const w = await page.eval(async () => [(await import('/js/side-resize.js')).narrowWatched(), document.querySelectorAll('.side-resize').length]);
+    assert.equal(w[0], w[1], `panels watched, panels shown: ${w}`);
+  }
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
