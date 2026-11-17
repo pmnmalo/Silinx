@@ -77,7 +77,7 @@ test('run_process: blinky on the ULX3S to its .bit through nextpnr-ecp5 and ecpp
   assert.deepEqual(summary.par.fmax.map(f => [f.clock, f.constraint]), [['clk', 25]]);
   assert.ok(summary.map.utilization.some(u => u.name === 'TRELLIS_COMB'));
   // (its timing nextpnr's, #2300: test/mcp-nextpnr-reports.test.js; no power estimate)
-  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, translate, par, trce, bitgen)');
+  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, postsynth, translate, par, trce, postpar, bitgen)');
 });
 
 // #2299: a design that instantiates the ECP5's EHXPLLL and OSCG elaborates (the ECP5 primitives' models): set_top, Check Syntax
@@ -119,4 +119,26 @@ test('a project instantiating EHXPLLL and OSCG on the ULX3S: set_top, check_synt
   const net = fs.readFileSync(path.join(P.projectDir('pll'), 'build', 'open', 'top_yosys.v'), 'utf8');
   assert.match(net, /^\s*EHXPLLL #\(/m);
   assert.match(net, /^\s*OSCG #\(/m);
+});
+
+// #2299: the flow's simulation models (core/flow-models-nextpnr.js, shown again since #3707 hid them): blinky's Post-Synthesis and
+// Post-Place & Route models (Verilog, the ECP5 cells, synthesized with the test bench's generics), each simulated against its test bench
+test('run_process post_synthesis_model and post_par_model on the ulx3s: the models of blinky, simulate model each: its test bench passes, no warning (#2299)', { timeout: 900000 }, async () => {
+  await ok('new_project_from_example', { name: 'models', example: 'blinky' });
+  await ok('set_design_properties', { project: 'models', board: 'ulx3s', update_constraints: true });
+  const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
+  assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
+  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the ECP5 cells\), 263 cells$/m);
+  const par = await ok('run_process', { project: 'models', process: 'post_par_model' });
+  assert.deepEqual([par.data.warnings, par.data.errors], [[], []]);
+  assert.match(par.text, /^Placing and routing the design synthesized with the test bench's generics \(nextpnr\), for its model\.$/m);
+  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the ECP5 cells\), 335 cells$/m);
+  for (const model of ['postsynth', 'postpar']) {
+    const s = await ok('simulate', { project: 'models', model, time_ns: 2000000, signals: [] });
+    assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed, s.data.notes], [['Simulation finished OK'], [], false, []], model);
+  }
+  // (Verilog netlists of the family's cells, the test bench's generics their parameters)
+  const net = fs.readFileSync(path.join(P.projectDir('models'), 'build', 'netgen', 'par', 'top_timesim.v'), 'utf8');
+  assert.match(net, /^module top\(/m);
+  assert.match(net, /^  parameter div = 2;$/m);
 });

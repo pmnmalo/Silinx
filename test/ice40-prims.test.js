@@ -13,7 +13,7 @@ const pins = (ins, outs, w = 1) => Object.fromEntries([...ins.map((p) => [p, { d
 const FF_KINDS = ['', 'E', 'SR', 'R', 'SS', 'S', 'ESR', 'ER', 'ESS', 'ES'];
 
 test('the iCE40 library: its cells, each elaborated alone with no message', () => {
-  assert.deepEqual([...ICE40_CELLS].sort(), ['SB_CARRY', ...FF_KINDS.flatMap((k) => [`SB_DFF${k}`, `SB_DFFN${k}`]), 'SB_FILTER_50NS', 'SB_GB', 'SB_GB_IO',
+  assert.deepEqual([...ICE40_CELLS].sort(), ['ICESTORM_LC', 'ICESTORM_RAM', 'SB_CARRY', ...FF_KINDS.flatMap((k) => [`SB_DFF${k}`, `SB_DFFN${k}`]), 'SB_FILTER_50NS', 'SB_GB', 'SB_GB_IO',
     'SB_HFOSC', 'SB_IO', 'SB_IO_OD', 'SB_LED_DRV_CUR', 'SB_LFOSC', 'SB_LUT4', 'SB_MAC16', 'SB_PLL40_2F_CORE', 'SB_PLL40_2F_PAD', 'SB_PLL40_2_PAD',
     'SB_PLL40_CORE', 'SB_PLL40_PAD', 'SB_RAM40_4K', 'SB_RAM40_4KNR', 'SB_RAM40_4KNRNW', 'SB_RAM40_4KNW', 'SB_RGBA_DRV', 'SB_RGB_DRV', 'SB_SPRAM256KA',
     'SB_WARMBOOT'].sort());
@@ -243,4 +243,41 @@ test('SB_MAC16: the 16 × 16 product (unsigned and signed), the 8 × 8 ones, a 3
     params: [['TOPOUTPUT_SELECT', { bits: 2, v: 1 }], ['BOTOUTPUT_SELECT', { bits: 2, v: 1 }], ['TOPADDSUB_LOWERINPUT', { bits: 2, v: 2 }],
       ['BOTADDSUB_LOWERINPUT', { bits: 2, v: 2 }], ['TOPADDSUB_CARRYSELECT', { bits: 2, v: 2 }]] });
   checkCases('ice40', cases, 'MAC16');
+});
+
+// nextpnr-ice40's packed cells (ice40-packed.js, the Post-Place & Route model's): ICESTORM_LC's LUT, carry and flip-flop against
+// cells_sim.v's semantics written again here; ICESTORM_RAM as SB_RAM40_4K, its pins single, NEG_CLK_R / W
+function lcRef(p, steps) {
+  let q = 0, clk = p.NEG_CLK;
+  const cur = { I0: 0, I1: 0, I2: 0, I3: 0, CIN: 0, CLK: p.NEG_CLK, SR: 0, CEN: 1 };
+  for (const s of steps) {
+    Object.assign(cur, s.in);
+    const lut = bit(p.LUT_INIT, cur.I0 | (cur.I1 << 1) | (cur.I2 << 2) | (cur.I3 << 3));
+    const c = p.CIN_CONST ? p.CIN_SET : cur.CIN;
+    const pc = cur.CLK ^ p.NEG_CLK, edge = clk === 0 && pc === 1;
+    clk = pc;
+    if (p.ASYNC_SR && cur.SR) q = p.SET_NORESET;
+    else if (edge && cur.CEN) q = cur.SR ? p.SET_NORESET : lut;
+    s.out = { LO: String(lut), O: String(p.DFF_ENABLE ? q : lut), ...(p.CARRY_ENABLE ? { COUT: String((cur.I1 & cur.I2) | ((cur.I1 | cur.I2) & c)) } : {}) };
+  }
+  return steps;
+}
+
+test('ICESTORM_LC: its LUT (LO), carry (COUT, CIN_CONST / CIN_SET) and flip-flop (DFF_ENABLE, NEG_CLK, CEN, SR synchronous or ASYNC_SR, SET_NORESET) against the reference; ICESTORM_RAM', () => {
+  const r = rng(941), cases = [];
+  for (const [k, p] of [[0, { LUT_INIT: 0x6996, DFF_ENABLE: 0, CARRY_ENABLE: 1, CIN_CONST: 0, CIN_SET: 0, NEG_CLK: 0, ASYNC_SR: 0, SET_NORESET: 0 }],
+    [1, { LUT_INIT: 0x8ce1, DFF_ENABLE: 1, CARRY_ENABLE: 1, CIN_CONST: 1, CIN_SET: 1, NEG_CLK: 0, ASYNC_SR: 0, SET_NORESET: 1 }],
+    [2, { LUT_INIT: 0x5a3c, DFF_ENABLE: 1, CARRY_ENABLE: 0, CIN_CONST: 0, CIN_SET: 0, NEG_CLK: 1, ASYNC_SR: 1, SET_NORESET: 0 }]]) {
+    const steps = Array.from({ length: 40 }, (_, i) => ({ in: i % 2 ? { CLK: (i >> 1) % 2 } : { I0: r(2), I1: r(2), I2: r(2), I3: r(2), CIN: r(2), SR: r(6) ? 0 : 1, CEN: r(4) ? 1 : 0 } }));
+    const params = Object.entries(p).map(([n, v]) => [n, n === 'LUT_INIT' ? { bits: 16, v } : { bit: v }]);
+    cases.push({ name: `LC${k}`, cell: 'ICESTORM_LC', params, pins: pins(['I0', 'I1', 'I2', 'I3', 'CIN', 'CLK', 'SR', 'CEN'], ['LO', 'O', ...(p.CARRY_ENABLE ? ['COUT'] : [])]), steps: lcRef(p, steps) });
+  }
+  // ICESTORM_RAM: a word written on WCLK's falling edge (NEG_CLK_W), read on RCLK's rising one, 256 × 16
+  const single = (pre, n, dir) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`${pre}_${i}`, { dir, w: 1 }]));
+  const val = (pre, n, v, out) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`${pre}_${i}`, out ? String(bit(v, i)) : bit(v, i)]));
+  const ram = { ...single('RDATA', 16, 'out'), ...single('RADDR', 11, 'in'), ...single('WADDR', 11, 'in'), ...single('WDATA', 16, 'in'), ...pins(['RCLK', 'WCLK', 'RE', 'WE'], []) };
+  cases.push({ name: 'RAM', cell: 'ICESTORM_RAM', params: [['NEG_CLK_W', { bit: 1 }], ['INIT_0', { bits: 256, v: 0xabcd0000n }]], pins: ram, steps: [
+    { in: { ...val('RADDR', 11, 1), RE: 1, WCLK: 1 } }, { in: { RCLK: 1 }, out: val('RDATA', 16, 0xabcd, true) },
+    { in: { RCLK: 0, ...val('WADDR', 11, 1), ...val('WDATA', 16, 0x1234), WE: 1 } }, { in: { WCLK: 0 } }, { in: { RCLK: 1 }, out: val('RDATA', 16, 0x1234, true) }] });
+  checkCases('ice40', cases, 'packed');
 });

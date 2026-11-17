@@ -6,6 +6,7 @@ import { scriptSynthesis } from './synth-script.js';
 import { LPF } from './lpf.js';
 import { portBits, nextpnrNames } from './nextpnr-ports.js';
 import { mountNextpnrTiming } from './nextpnr-timing.js';
+import { otherNetlist } from './nextpnr-netlist.js';
 import { askedClocks } from './open-flow-ice40.js';
 
 /** The ECP5's parts as nextpnr-ecp5 names them (its --<part> option), by Lattice's names: lfe5u-85f -> 85k, lfe5um5g-45f -> um5g-45k. */
@@ -15,9 +16,12 @@ export const ECP5_PARTS = { 'lfe5u-12f': '12k', 'lfe5u-25f': '25k', 'lfe5u-45f':
 /** The ECP5's steps, as runFlow runs them (open-steps.js XILINX_STEPS' shape). */
 export const ECP5_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
+  // (the simulation models, #2299: Yosys's netlist and nextpnr's routed design, core/flow-models-nextpnr.js)
+  { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },
+  { id: 'postpar', label: 'Generate Post-Place & Route Simulation Model', needs: ['par'] },
   { id: 'bitgen', label: 'Generate Programming File - ecppack', needs: ['par'] },
 ];
 
@@ -62,7 +66,7 @@ function mountEcp5(ctx) {
     const free = bits.map(b => b.name).filter(p => !pins[p]?.loc);
     for (const p of free) log(`WARNING:Place - the port ${p} has no pin (LOCATE in the LPF): nextpnr places it anywhere.`);
     const args = [`--${ECP5_PARTS[device]}`, ...(spec.pkg ? ['--package', String(spec.pkg).toUpperCase()] : []), '--speed', speedOf(spec),
-      '--json', 'netlist.json', '--textcfg', 'routed.config', '--report', 'report.json', '--seed', String(spec.seed || 1), '--timing-allow-fail',
+      '--json', 'netlist.json', '--textcfg', 'routed.config', '--write', 'routed.json', '--report', 'report.json', '--seed', String(spec.seed || 1), '--timing-allow-fail',
       ...(lpf ? ['--lpf', 'design.lpf'] : []), ...(free.length ? ['--lpf-allow-unconstrained'] : [])];
     const nextpnr = tool(), lines = [];
     let out;
@@ -75,6 +79,9 @@ function mountEcp5(ctx) {
     const r = JSON.parse(text(out['report.json']));
     config = text(out['routed.config']);
     report.files.routed = io.write('open/routed.config', config);
+    // (nextpnr's routed design, its JSON: the Post-Place & Route model's, #2299)
+    ctx.setRouted?.(text(out['routed.json']));
+    io.write('open/routed.json', text(out['routed.json']));
     const items = Object.entries(r.utilization || {}).filter(([, u]) => u.used).map(([name, u]) => ctx.util(name, u.used, u.available));
     report.map = { utilization: items, warnings: 0, errors: 0 };
     log('Device utilization (nextpnr-ecp5):');
@@ -92,7 +99,7 @@ function mountEcp5(ctx) {
     log(`Bitstream: build/${top}.bit (${bytes.length} bytes, ecppack)`);
   }
 
-  return { steps: { translate: ctx.readNetlist, par: runPar, trce: timing.runTiming, bitgen: runBitgen } };
+  return { steps: { translate: ctx.readNetlist, par: runPar, trce: timing.runTiming, bitgen: runBitgen }, placeRouteNetlist: otherNetlist(mountEcp5, ctx) };
 }
 
 export const ECP5 = {
