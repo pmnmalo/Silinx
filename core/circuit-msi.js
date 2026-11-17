@@ -26,7 +26,7 @@ function bcd7(type, title, low) {
     const sel = vec(['a', 'b', 'c', 'd'], V), on = low ? 0 : 1;
     const put = (word) => SEGS.map((s, k) => (V ? `o_seg_${s} <= '${((word >> k) & 1) ^ (1 - on)}';` : `o_seg_${s} = 1'b${((word >> k) & 1) ^ (1 - on)};`)).join(' ');
     return V ? [`if i_bi_n = '0' then ${put(0)}`, `elsif i_lt_n = '0' then ${put(0x7f)}`, `elsif i_rbi_n = '0' and std_logic_vector'(${sel}) = "0000" then ${put(0)}`, 'else',
-      `  case std_logic_vector'(${sel}) is`, ...SEGMENTS.map((w, n) => `    when "${n.toString(2).padStart(4, '0')}" => ${put(w)}`), `    when others => ${put(0)}`, '  end case;', 'end if;']
+      `  case slv4'(${sel}) is`, ...SEGMENTS.map((w, n) => `    when "${n.toString(2).padStart(4, '0')}" => ${put(w)}`), `    when others => ${put(0)}`, '  end case;', 'end if;']
       : ['if (!i_bi_n) begin ' + put(0) + ' end', `else if (!i_lt_n) begin ${put(0x7f)} end`, `else if (!i_rbi_n && ${sel} == 4'd0) begin ${put(0)} end`, `else case (${sel})`,
         ...SEGMENTS.map((w, n) => `  4'd${n}: begin ${put(w)} end`), 'endcase'];
   };
@@ -59,7 +59,7 @@ const c74139 = ttl('74139', 'Dual 2-to-4 line decoder', 22, [P(1, `1G${BAR}`, 'i
 const c74151 = ttl('74151', '8-to-1 line multiplexer', 20, [P(1, 'D3', 'in'), P(2, 'D2', 'in'), P(3, 'D1', 'in'), P(4, 'D0', 'in'), P(5, 'Y', 'out'), P(6, 'W', 'out'), P(7, `G${BAR}`, 'in'), P(8, 'GND', 'gnd'),
   P(9, 'C', 'in'), P(10, 'B', 'in'), P(11, 'A', 'in'), P(12, 'D7', 'in'), P(13, 'D6', 'in'), P(14, 'D5', 'in'), P(15, 'D4', 'in'), P(16, 'VCC', 'vcc')], {
   model(i) { const y = i.g_n ? 0 : i[`d${bits(i, ['a', 'b', 'c'])}`]; return { y, w: 1 - y }; },
-  vhdl: ['if i_g_n = \'1\' then o_y <= \'0\'; o_w <= \'1\';', 'else', `  case std_logic_vector'(${vec(['a', 'b', 'c'], true)}) is`,
+  vhdl: ['if i_g_n = \'1\' then o_y <= \'0\'; o_w <= \'1\';', 'else', `  case slv3'(${vec(['a', 'b', 'c'], true)}) is`,
     ...[...Array(8)].map((_, k) => `    when "${k.toString(2).padStart(3, '0')}" => o_y <= i_d${k}; o_w <= not i_d${k};`), '    when others => o_y <= \'X\'; o_w <= \'X\';', '  end case;', 'end if;'],
   verilog: [`o_y = !i_g_n && ((${'{' + [7, 6, 5, 4, 3, 2, 1, 0].map((k) => `i_d${k}`).join(', ') + '}'} >> ${vec(['a', 'b', 'c'], false)}) & 8'd1);`, 'o_w = !o_y;'],
 });
