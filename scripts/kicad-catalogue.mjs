@@ -32,6 +32,10 @@ const sha = (t) => createHash('sha256').update(t).digest('hex');
 // imported (null: its own). Their drawings are not kept: KiCad's libraries are CC-BY-SA-4.0, and a collection of their
 // parts, even changed, is ShareAlike (https://www.kicad.org/libraries/license/); only their pads' places, facts.
 const KICAD = 'https://gitlab.com/kicad/libraries';
+// Arduino's boards that plug into a breadboard (#4394): the KiCad PCM's KiCad Library for Arduino Modules at a tag
+// (CC-BY-SA-4.0, as KiCad's: none of its drawings kept, only its pads' places); its raw files served with CORS
+const ARDUINO = { repo: 'Alarm-Siren/arduino-kicad-library', tag: 'v4.2.0', licence: 'CC-BY-SA-4.0', author: 'Nicholas Parks Young' };
+const ardRaw = (p) => `https://raw.githubusercontent.com/${ARDUINO.repo}/${ARDUINO.tag}/${p}`;
 const TO92 = 'Package_TO_SOT_THT:TO-92_Inline_Wide';
 const PICKS = {
   'Device.kicad_sym': { LED: 'LED_THT:LED_D5.0mm', R: 'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal', C: 'Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm',
@@ -113,6 +117,11 @@ async function main() {
   const rawFootprints = {};
   for (const url of named) rawFootprints[`parts/${url.split('/footprints/')[1]}`] = { text: await get(url), url };
   for (const f of files) sparkfun(f, rawFootprints);
+  const ardFootprints = {};
+  const ardNames = JSON.parse(await get(`https://api.github.com/repos/${ARDUINO.repo}/contents/footprints/arduino-library.pretty?ref=${ARDUINO.tag}`)).map((f) => f.name).filter((n) => /\.kicad_mod$/.test(n));
+  for (const n of ardNames) ardFootprints[`parts/arduino-library.pretty/${n}`] = { text: await get(ardRaw(`footprints/arduino-library.pretty/${n}`)), url: ardRaw(`footprints/arduino-library.pretty/${n}`) };
+  add('arduino-modules', { name: 'Arduino modules', version: ARDUINO.tag.slice(1), licence: ARDUINO.licence, author: ARDUINO.author, url: ardRaw('symbols/arduino-library.kicad_sym'), file: 'arduino-library.kicad_sym' },
+    await get(ardRaw('symbols/arduino-library.kicad_sym')), ardFootprints);
   // each footprint's drawing (#4346): [k (c circle, l line, a arc, p polygon), fill (0/1), stroke width, then a circle's
   // centre and radius or the other shapes' points, flat], in grid steps rounded to 0.01; its pads [number, dx, dy] turned
   // as core/circuit-kicad.js turns a part's pins (KiCad's rows down, Silinx's along the board)
@@ -120,9 +129,11 @@ async function main() {
   const looks = {};
   for (const p of parts) {
     if (!p.footprint || looks[p.footprint.name]) continue;
-    const kicad = p.footprint.url.startsWith(KICAD);
-    const fp = readKicadFootprint(kicad ? Object.values(kicadFootprints).find((f) => f.url === p.footprint.url).text : rawFootprints[`parts/${p.footprint.url.split('/footprints/')[1]}`].text);
-    const look = kicad ? null : lookOf(fp);   // (KiCad's: its pads only, CC-BY-SA)
+    // (SparkFun's drawn, CC-BY-4.0; KiCad's and Arduino modules': their pads only, CC-BY-SA)
+    const sparkfun = p.footprint.url.startsWith(raw(''));
+    const text = sparkfun ? rawFootprints[`parts/${p.footprint.url.split('/footprints/')[1]}`].text : Object.values({ ...kicadFootprints, ...ardFootprints }).find((f) => f.url === p.footprint.url).text;
+    const fp = readKicadFootprint(text);
+    const look = sparkfun ? lookOf(fp) : null;
     // (one with no drawing: its pads only, a box round them)
     looks[p.footprint.name] = { pins: gridPins(fp).pins.map((q) => [q.number, q.dy, -q.dx || 0]),
       shapes: (look?.shapes ?? []).map((sh) => [sh.k[0], sh.fill ? 1 : 0, Math.round(sh.w * 1000) / 1000, ...(sh.k === 'circle' ? [...sh.c, sh.r] : sh.pts.flat()).map(r2)]) };
@@ -136,7 +147,7 @@ async function main() {
     'export const CATALOGUE = [', ...parts.map((p) => `  ${JSON.stringify(p)},`), '];', '',
     '// each footprint\'s drawing, by its name (#4346): derived from SparkFun KiCad Libraries v10.0.0\'s footprints (SparkFun',
     '// Electronics, CC-BY-4.0, https://creativecommons.org/licenses/by/4.0/): their F.Fab shapes, in grid steps, rounded;',
-    '// KiCad\'s footprints\' pads\' places only (#4385)',
+    '// KiCad\'s and the Arduino modules\' footprints\' pads\' places only (#4385, #4394: CC-BY-SA)',
     'export const CATALOGUE_LOOKS = {', ...Object.entries(looks).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`), '};', ''];
   fs.writeFileSync(OUT, L.join('\n'));
   console.log(`${path.relative(ROOT, OUT)}: ${parts.length} parts of ${Object.keys(libs).length} libraries (${parts.filter((p) => p.as).length} as library parts)`);

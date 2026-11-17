@@ -205,14 +205,17 @@ search, lists KiCad parts by their part number, not by their library. It covers 
 parts that behave as Silinx's ICs, and those drawn only on a DIP), KiCad's own basic parts (#4385: an LED, a resistor,
 capacitors, a diode, a potentiometer, the 2N3904, 2N3906, BC547 and BC557, the 7805, a DIP switch, a 7-segment display,
 each with a through-hole footprint Silinx picks for it, written as its `Silinx.Footprint` when it is imported) and
-SparkFun's v10.0.0 parts on the 0.1 inch grid. A pad within 0.1 mm of the grid is on it, as a lead bends that much
+SparkFun's v10.0.0 parts on the 0.1 inch grid, and the Arduino boards that plug into a breadboard (#4394: the
+Nano, Micro, Mini, MKR and Nicla sockets of the KiCad Library for Arduino Modules v4.2.0, CC-BY-SA-4.0, drawn only, as
+Silinx does not simulate a microcontroller). A board's footprint whose pads are named by its pins (A0, 5V, D13) places
+its pins from its first named pad. A pad within 0.1 mm of the grid is on it, as a lead bends that much
 (KiCad's capacitors are 2.50 and 5.00 mm apart).
 Silinx hosts none of their files: the catalogue (`core/kicad-catalogue-data.js`, written by `scripts/kicad-catalogue.mjs`,
 run again to follow a new version) holds where each part is (its library file's URL and SHA-256, its footprint's), what
 it is in Silinx and the symbols it extends. It also holds each SparkFun footprint's drawing, rounded to the grid, so a
 row's preview is the part as it will be drawn (#4346): an LED round and in its colour, a relay's box, a header's strip,
 a part drawn only on a DIP a DIP's body (CC-BY-4.0, SparkFun's; THIRD-PARTY-NOTICES.md). KiCad's own footprints are
-CC-BY-SA-4.0, and a collection of their parts would be ShareAlike, so no drawing of them is kept: their previews are a
+CC-BY-SA-4.0, as are the Arduino modules', and a collection of their parts would be ShareAlike, so no drawing of them is kept: their previews are a
 box round their pads until they are imported. A click imports the part: only its symbol (and those it extends), each
 into a file of its own as KiCad 10's folders hold them (`parts/74xx.kicad_symdir/74HC00.kicad_sym`), with its footprint
 beside it and its origin written in it. Every file is checked against its SHA-256, and a file there already with the

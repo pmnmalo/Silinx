@@ -27,7 +27,7 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
     assert.ok(lib, e.id);
     assert.equal(e.id, `${e.library}/${e.symbol}`);
     assert.match(lib.sha256, /^[0-9a-f]{64}$/);
-    assert.match(lib.url, /^https:\/\/(?:gitlab\.com\/kicad\/libraries\/kicad-symbols\/-\/raw\/9\.0\.0|raw\.githubusercontent\.com\/sparkfun\/SparkFun-KiCad-Libraries\/v10\.0\.0)\//);
+    assert.match(lib.url, /^https:\/\/(?:gitlab\.com\/kicad\/libraries\/kicad-symbols\/-\/raw\/9\.0\.0|raw\.githubusercontent\.com\/sparkfun\/SparkFun-KiCad-Libraries\/v10\.0\.0|raw\.githubusercontent\.com\/Alarm-Siren\/arduino-kicad-library\/v4\.2\.0)\//);
     // (an IC on its DIP; an LED, a switch, a button of the library's on its footprint, #4349)
     if (PARTS[e.as]?.kind === 'ic') assert.match(e.package, /^DIP-\d+$/);
     else if (e.as) { assert.ok(DISCRETE[e.as], e.id); assert.ok(e.footprint, e.id); } else assert.equal(e.as, null);
@@ -50,6 +50,14 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
     assert.deepEqual(CATALOGUE_LOOKS[e.footprint.name].shapes, [], `${e.id}: no drawing of KiCad's kept`);
   }
   assert.deepEqual(basics.filter((e) => !e.footprint.set).map((e) => e.id).sort(), ['kicad-display-character/LTS-6960HR', 'kicad-regulator-linear/LM7805_TO220']);
+  // Arduino's boards that plug into a breadboard (#4394): drawn only, their pads named by their pins, none of their
+  // drawings kept (CC-BY-SA); not its shields (off the grid)
+  const ard = CATALOGUE.filter((e) => e.library === 'arduino-modules');
+  assert.ok(ard.length >= 30 && ard.every((e) => !e.as && e.footprint && !CATALOGUE_LOOKS[e.footprint.name].shapes.length), `${ard.length} boards`);
+  assert.ok(ard.some((e) => e.id === 'arduino-modules/Arduino_Nano_Socket') && !ard.some((e) => /Shield/.test(e.id)));
+  assert.deepEqual([CATALOGUE_LIBRARIES['arduino-modules'].licence, CATALOGUE_LIBRARIES['arduino-modules'].version], ['CC-BY-SA-4.0', '4.2.0']);
+  const nano = catalogueDrawing(CATALOGUE.find((e) => e.id === 'arduino-modules/Arduino_Nano_Socket'));
+  assert.deepEqual([nano.pins.length, nano.pins.filter((q) => ['3V3', '5V', 'A0', 'D13'].includes(q.n)).length, nano.look], [30, 4, undefined]);
   assert.equal(CATALOGUE.find((e) => e.id === 'kicad-transistor-bjt/2N3904').footprint.name, 'Package_TO_SOT_THT:TO-92_Inline_Wide', 'a 2.54 mm TO-92, not the 1.27 mm one');
   // SparkFun's LEDs and slide switches behave as the library's (#4349), its other parts drawn only
   assert.deepEqual(CATALOGUE.filter((e) => e.as && !PARTS[e.as].kind.startsWith('ic')).map((e) => `${e.id} ${e.as}`).sort(), ['sparkfun-led/LED_Green_5mm_PTH_Silk led', 'sparkfun-led/LED_Red_5mm_PTH_NoSilk led',
@@ -168,7 +176,8 @@ test('catalogueDrawing (#4346): every part drawn only has a preview (its footpri
     assert.equal(d.kind, 'drawn');
     assert.ok(d.pins.length >= e.pins, `${e.id}: its pads, at least its pins`);
     if (/^DIP-/.test(e.package)) assert.equal(d.dip, Number(e.package.slice(4)));
-    else { used.add(e.footprint.name); assert.ok(d.pins.some((q) => q.n === '1' && q.dx === 0 && q.dy === 0), `${e.id}: pad 1 its place`); }
+    // (its origin pad at its place: pad 1, or a board's first named pad, #4394)
+    else { used.add(e.footprint.name); assert.ok(d.pins.some((q) => q.dx === 0 && q.dy === 0), `${e.id}: its origin pad its place`); }
     for (const sh of d.look?.shapes ?? []) assert.ok(['circle', 'line', 'arc', 'poly'].includes(sh.k) && (sh.k === 'circle' ? sh.r > 0 : sh.pts.length >= 2), e.id);
   }
   assert.deepEqual(Object.keys(CATALOGUE_LOOKS).filter((k) => !used.has(k)), []);
