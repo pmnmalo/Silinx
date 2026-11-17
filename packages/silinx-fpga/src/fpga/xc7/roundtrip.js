@@ -100,7 +100,8 @@ export function referenceFrames(index, text, options = {}) {
  * A .bit's frames (readBitFramesXc7's) against the FASM it was made of, by bits: { lost: [bit and feature], stray: [bitKey],
  * unknown: [bitKey], missing: [FASM features the database does not have], counts: { features (the FASM's, one per bit),
  * pseudoPips, read (the features read back), zeroEncodings, aliases, added: { required, pudc, stepdown }, extra }, extra:
- * [features read back, of a bit set, the FASM does not name, no alias and not added] }. The bitstream is the FASM's when
+ * [features read back, of a bit set, the FASM does not name, no alias and not added], features: the features read back
+ * (framesToFeatures') }. The bitstream is the FASM's when
  * lost, stray, unknown, missing and extra are empty.
  */
 export function roundTrip(index, text, frames, options = {}) {
@@ -126,5 +127,5 @@ export function roundTrip(index, text, frames, options = {}) {
     else if (f.bits.every(([fr, b, s]) => !s || fasm.set.has(bitKey(fr, b)))) counts.aliases++;
     else { counts.extra++; extra.push(name); }
   }
-  return { lost, stray, unknown, missing: fasm.missing.map(k => `${k.tile}.${k.key}`), extra, counts };
+  return { lost, stray, unknown, missing: fasm.missing.map(k => `${k.tile}.${k.key}`), extra, counts, features };
 }

@@ -642,6 +642,7 @@ node bin/silinx.js classroom template|grade …                  # GitHub Classr
 npm test                                                         # test suite
 SILINX_ISE_TESTS=1 npm run test:ise                              # the real ISE flow (Docker image; SILINX_ISE_HOST=user@host: on another machine)
 SILINX_ISE_HOST=user@host npm run check:open-flow [projects…]   # the open flow vs ISE: DRC, byte-identical bitstreams (SILINX_ISE_HOST=local: the image here)
+npm run check:xc7 [-- --boards basys3 --filter '^pong$' --vivado]   # the 7-series' open flow: frames, round trip, pins (--vivado: Vivado's DRC, timing, write_cfgmem)
 node scripts/check-private-data.mjs [--history]                 # no personal data, secrets or Xilinx files (also run by npm test)
 npm run test:ui                                                  # UI tests (headless Chrome), incl. memory leaks (npm ci first)
 node --test --test-name-pattern='latch warning' test/ui/hints.test.js   # one UI test alone

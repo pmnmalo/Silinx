@@ -4,7 +4,8 @@
 //   node research/xc7/build-db.mjs <prjxray-db checkout> [part] [out dir]
 // What it keeps, from <db>/artix7 (fasm2frames reads the same files):
 // - the part's configuration (part.json: its ID code, the frames of each row and column, its I/O banks' HCLK_IOI3
-//   tiles) and its pins' banks (package_pins.csv), for the banks' STEPDOWN;
+//   tiles) and its pins' banks (package_pins.csv), for the banks' STEPDOWN; its IOB pins' tiles and sites (pins), for the
+//   pins' check (src/fpga/xc7/pins.js, #3145);
 // - the fabric's tiles (tilegrid.json): each one's type and where its bits are (base frame address, frames, word
 //   offset, words; an alias to another type's bits), the IOB33 tiles' sites, the tile of PUDC_B;
 // - each tile type's segment bits (segbits_<type>[.block_ram].db) and pseudo-PIPs (ppips_<type>.db, no bits), the
@@ -19,6 +20,7 @@ import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { MEASURED_PPIPS } from './measured-ppips.mjs';
+import { packagePins } from '../../src/fpga/xc7/pins.js';
 
 const [dbRoot, part = 'xc7a35tcpg236-1', outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'bitdb', 'xc7')] = process.argv.slice(2);
 if (!dbRoot) { console.error('usage: build-db.mjs <prjxray-db> [part] [out dir]'); process.exit(2); }
@@ -53,6 +55,8 @@ const addBank = (bank, tile) => { (banks[bank] ??= []).includes(tile) || banks[b
 for (const [bank, loc] of Object.entries(partJson.iobanks)) addBank(bank, `HCLK_IOI3_${loc}`);
 const [head, ...pins] = read(part, 'package_pins.csv').trim().split(/\r?\n/).map(l => l.split(','));
 for (const p of pins) addBank(p[head.indexOf('bank')], p[head.indexOf('tile')]);
+// the package's pins: each IOB pin's tile and site, for the pins' check (fpga/xc7/pins.js, #3145)
+const packagePinsDb = packagePins(read(part, 'package_pins.csv'));
 
 const grid = JSON.parse(read(fabric, 'tilegrid.json'));
 const tiles = {}, iobSites = {}, types = new Set();
@@ -112,7 +116,7 @@ const requiredFeatures = fs.existsSync(req) ? fs.readFileSync(req, 'utf8').split
 let ref = null;
 try { ref = execFileSync('git', ['-C', dbRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* not a checkout */ }
 const db = { format: 1, part, device, fabric, prjxrayDb: ref, idcode: Number(partJson.idcode), regions, banks, pudcB,
-  requiredFeatures, iobSites, tiles, types: typeDb };
+  requiredFeatures, iobSites, pins: packagePinsDb, tiles, types: typeDb };
 const text = JSON.stringify(db);
 fs.mkdirSync(outDir, { recursive: true });
 const out = path.join(outDir, `${part}.json.gz`);
