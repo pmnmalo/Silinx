@@ -18,7 +18,7 @@ import { libMethods, Exit } from './c-interp-lib.js';
 import { taskMethods } from './c-interp-task.js';
 import { DEEP_MESSAGE, isStackOverflow, MAX_ARRAY_ELEMENTS, arrayMessage } from './c-limits.js';
 
-export const MAX_STEPS = 20_000_000;
+const MAX_STEPS = 20_000_000;
 
 class Halt extends Error { constructor(loc, message) { super(message); this.loc = loc; } }
 class Return { constructor(value) { this.value = value; } }

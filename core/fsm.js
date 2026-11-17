@@ -43,10 +43,10 @@ export { clone };   // (core/util.js's)
 export { generateFsm } from './fsm-hdl.js';
 export { asmToFsm, fsmToAsm } from './fsm-asm.js';
 
-export const FSM_VERSION = 1;
+const FSM_VERSION = 1;
 export const FSM_ENCODINGS = ['binary', 'gray', 'onehot', 'enum'];
 export const FSM_STYLES = ['3process', '2process'];
-export const MAX_WIDTH = 32;
+const MAX_WIDTH = 32;
 export const STATE_R = 34;            // radius of a state circle (drawing units)
 
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -350,7 +350,7 @@ export function inputCombos(m, names, { maxBits = 16, samples = 4096, seed = 123
 }
 
 /** "a=1, y=10" (inputs in declaration order; buses in binary). */
-export function formatEnv(m, env) {
+function formatEnv(m, env) {
   return m.inputs.filter((i) => env[i.name] != null).map((i) => `${i.name}=${bitsOf(env[i.name], i.width)}`).join(', ');
 }
 
@@ -648,7 +648,7 @@ export function transitionTable(model) {
 }
 
 /** Input bits in order (MSB first): [{ input, bit, name }] ('x', or 'y_1', 'y_0' for buses). */
-export function inputBits(m) {
+function inputBits(m) {
   const out = [];
   for (const i of m.inputs) {
     if (i.width === 1) out.push({ input: i.name, bit: 0, name: i.name });
@@ -673,7 +673,7 @@ const envOfBits = (bits, k) => {
   return env;
 };
 
-export const MAX_TABLE_INPUT_BITS = 6;
+const MAX_TABLE_INPUT_BITS = 6;
 
 /**
  * State table (classic form): one row per present state, one column per input combination
@@ -738,7 +738,7 @@ export function encodedTable(model) {
   return { stateBits, nextBits, inputBits: ib.map((b) => b.name), outputBits: ob.map((b) => b.name), rows };
 }
 
-export const TT_MAX_INPUTS = 16;   // (a truth table's, core/logic.js MAX_INPUTS, #3939)
+const TT_MAX_INPUTS = 16;   // (a truth table's, core/logic.js MAX_INPUTS, #3939)
 
 /**
  * Truth tables (core/logic.js documents) of the next-state bits and of the outputs, from the

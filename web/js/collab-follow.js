@@ -139,7 +139,7 @@ function setFollowing(on) {
 }
 
 /** Stops following: the project stays as it was, read only. */
-export async function stopFollowing() {
+async function stopFollowing() {
   if (!fol?.session || fol.session.closed()) return;
   await fol.session.close();
 }

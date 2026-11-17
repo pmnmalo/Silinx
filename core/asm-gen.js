@@ -3,6 +3,7 @@
 // header that lets core/asm-from-hdl.js recover the chart's spelling. Isomorphic ES module: no DOM and no Node APIs.
 // asm.js re-exports these functions.
 import { MAX_PATHS, analyze, bits, buildIndex, flatten, joinPoints, normalizeModel, pad, pathCount, treeSize, stateEncoding, stripParens, validate, vhAssign, vhBool, vhExpr, vhLitW, vhNot, vhTruth, vlAssign, vlExpr, vlLitW, vlNot, walkAlways } from './asm.js';
+import { isIdent } from './ident.js';
 
 // ---------------------------------------------------------------------------------------
 // Generators
@@ -211,7 +212,7 @@ function alwaysStmts(a, header, B, join) {
 }
 
 const condText = (conditions) => {
-  const simple = (x) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(x.cond.trim());
+  const simple = (x) => isIdent(x.cond.trim());
   return conditions.length
     ? conditions.map((x) => (simple(x) ? `${x.value ? '' : '!'}${x.cond.trim()}` : `${x.value ? '' : '!'}(${x.cond.trim()})`)).join(' && ')
     : 'always';

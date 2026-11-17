@@ -39,7 +39,7 @@ import { followedSim, simLines } from '../core/collab-sim.js';
 import { followedEmu, emuLines } from '../core/collab-emu.js';
 import { followedTry, tryLines } from '../core/collab-try.js';
 
-export const DEFAULT_SERVER = 'http://127.0.0.1:8642';
+const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
 const shares = new Map();    // project -> { session, link, server, off }
 const follows = new Map();   // room:role (an editor's: its key too) -> { session, link }

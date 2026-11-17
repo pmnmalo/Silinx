@@ -25,7 +25,7 @@ import { isCpp } from './cpp-lex.js';
 import { MAX_NESTING, NESTING_MESSAGE, STMT_NESTING_MESSAGE, cutDeep } from './c-limits.js';
 
 // the type names of C and of stdint.h, as Silinx HLS knows them (docs/c-to-hdl.md: widths, signedness)
-export const STDINT = {
+const STDINT = {
   int8_t: [8, true], int16_t: [16, true], int32_t: [32, true], int64_t: [64, true],
   uint8_t: [8, false], uint16_t: [16, false], uint32_t: [32, false], uint64_t: [64, false],
   size_t: [64, false],

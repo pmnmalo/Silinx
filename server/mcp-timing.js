@@ -12,7 +12,7 @@ import { iseTimingPaths } from '../core/twr-paths.js';
 import { vivadoTimingPaths } from '../core/vivado-paths.js';
 import { join } from 'node:path';
 
-export const PATHS_FILE = 'build/open/paths.json';
+const PATHS_FILE = 'build/open/paths.json';
 const DRAWING = /\.(fsm|asm|sch)\.json$/i;
 
 // the drawings (state diagrams, ASM charts, schematics) whose HDL files a path's lines are in: their elements on it

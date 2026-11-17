@@ -6,6 +6,7 @@
 // (web/js/ucf-wizard.js). The wizards' checks and their messages.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
+import { FILE_RE } from '../core/ident.js';
 
 const mhzText = x => `${(+x).toFixed(3).replace(/\.?0+$/, '')} MHz`;
 
@@ -214,7 +215,7 @@ export const WIZARD_TOOLS = [
       try { applyAttributes(pj.device, asg, attributes); } catch (e) { throw toolError(e.message); }
       const loc = String(location ?? 'constraints').trim().replace(/\/+$/, '');
       const base = String(file ?? top).trim().replace(new RegExp(`\\${ext}$`, 'i'), '');
-      if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(base)) throw toolError('Enter a valid file name (letters, digits, _ and -).');
+      if (!FILE_RE.test(base)) throw toolError('Enter a valid file name (letters, digits, _ and -).');
       if (!/^[A-Za-z0-9_/-]+$/.test(loc) || loc.split('/').some(x => !x || x.startsWith('.')) || /^build(\/|$)/i.test(loc)) throw toolError('Invalid location.');
       const path = `${loc}/${base}${ext}`;
       const tree = await P.fileTree(name);

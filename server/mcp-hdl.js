@@ -12,7 +12,7 @@ import { parseTime, parseValue } from '../core/ssim-values.js';
 import { findSignalIn, injectForceIn } from '../core/ssim-forces.js';
 import { deviceFamily, experimentalDevice, familyName, openOnlyDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
 
-export const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', postmap: 'Post-Map', postpar: 'Post-Place & Route' };
+const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', postmap: 'Post-Map', postpar: 'Post-Place & Route' };
 // the process that makes each model (run_process), and the stage it comes after
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
 // the flows that make the models (#3707): the Spartan ones, ISE's and the Silinx toolchain's; none on the iCE40, ECP5,
