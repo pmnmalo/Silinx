@@ -190,7 +190,7 @@ uiTest('#4215 the Collaboration tab: a project with no repository, Store Project
   await makeProject(env, { name: 'CollabInit', template: 'gates' });
   await page.openProject('CollabInit');
   await page.leftTab('collab');
-  await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…'], 'no repository');
+  await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'no repository');
   assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Repository', 'GitHub', 'Sharing']);
   // Store Project in a GitHub Repository… from the tab, with no GitHub repository: offered again, to give it one
   await tabCommand(page, 'Store Project in a GitHub Repository…');
@@ -278,7 +278,7 @@ uiTest('#4215 the Collaboration tab on a narrow screen', E, async (page) => {
   await page.setViewport(820, 1180);
   try {
     await page.leftTab('collab');
-    await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…'], 'the Collaboration page');
+    await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'the Collaboration page');
     assert.ok((await collab(page)).shown);
     // no sideways scroll, the page inside the window
     assert.ok(await page.eval(() => document.getElementById('collab-page').getBoundingClientRect().right <= innerWidth + 1 && document.documentElement.scrollWidth <= innerWidth));

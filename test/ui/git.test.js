@@ -191,7 +191,7 @@ uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx inte
   assert.deepEqual(warnings(page), []);
 });
 
-// (#3534) Store Project in a GitHub Repository… on the Start page (before Open from GitHub Repository…, the group's last, #3716) and in
+// (#3534) Store Project in a GitHub Repository… on the Start page (after Open from GitHub Repository…, the group's last, #4343) and in
 // the Design tree's project and device menus (after Share Project…, before the Git submenu): shown for a project with
 // no repository, the Start page's disabled with no project open, the File menu's dialog run from either; gone from
 // both once the project is a repository; never Sign in with GitHub… (the browser edition's); in Portuguese. Both
@@ -211,7 +211,7 @@ uiTest('#3534 Store Project in a GitHub Repository… on the Start page and in t
   await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Open from GitHub Repository…'), [], { what: 'the Start page' });
   // no project open: disabled, as the exports
   let cmds = await startCommands(page);
-  assert.deepEqual(cmds.slice(cmds.indexOf('Store Project in a GitHub Repository… (disabled)')), ['Store Project in a GitHub Repository… (disabled)', 'Open from GitHub Repository…'], cmds.join(' | '));
+  assert.deepEqual(cmds.slice(cmds.indexOf('Open from GitHub Repository…')), ['Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)'], cmds.join(' | '));
   assert.ok(!cmds.some((c) => c.startsWith('Sign in with GitHub')), cmds.join(' | '));
   await page.eval(async () => { const { api } = await import('/js/api.js'); await api.createProject({ name: 'startgit', template: 'gates' }); });
   await page.openProject('startgit');
