@@ -15,7 +15,8 @@
 //     IFS1P3* / OFS1P3* are TRELLIS_FFs (cells_ff.vh's);
 //   - the distributed RAMs TRELLIS_DPR16X4 (16 × 4, INITVAL), DPR16X4C (INITVAL a "0x…" string) and TRELLIS_RAM16X2: read
 //     at once at RAD, written on WCK's rising edge (WCKMUX "INV": falling) when WRE (WREMUX "1", "0", "INV" or the pin);
-//   - the I/O cells TRELLIS_IO (DIR "INPUT", "OUTPUT", "BIDIR"; T = 1 releases B), IB, IBPU, IBPD, OB, OBZ, OBZPU, OBZPD, BB,
+//   - the I/O cells TRELLIS_IO (DIR "INPUT", "OUTPUT", "BIDIR"; T = 1 releases B; DATAMUX_ODDR / MDDR "IOLDO" / "IOLTO": the I/O
+//     logic's IOLDO / IOLTO in place of I / T), IB, IBPU, IBPD, OB, OBZ, OBZPU, OBZPD, BB,
 //     BBPU, BBPD, OBCO, ILVDS, OLVDS (their complement ZN / OC the input's negation), the DDR registers IDDRX1F (Q0 the
 //     rising edge's sample, Q1 the falling edge's before it) and ODDRX1F (D0 while SCLK is high, D1 low, both taken at its
 //     rising edge), RST clearing them;
@@ -27,12 +28,14 @@
 //     stopping them (the outputs low), a disabled output (*_ENABLE "DISABLED") low; REFCLK CLKI, CLKINTFB the fed back
 //     output. The dynamic phase shift (PHASESEL, PHASESTEP…), STDBY and the trims are not modelled;
 //   - GSR, SGSR, PUR, USRMCLK (no effect: the flip-flops start at their value);
-//   - the block RAM (DP16KD): ecp5-bram.js; the multiplier (MULT18X18D): ecp5-dsp.js.
+//   - the block RAM (DP16KD): ecp5-bram.js; the multiplier (MULT18X18D): ecp5-dsp.js; nextpnr-ecp5's packed cells
+//     (TRELLIS_COMB, TRELLIS_RAMW: the Post-Place & Route model's): ecp5-packed.js.
 //
 // Isomorphic ES module (browser + Node), no DOM.
 
 import { ECP5_BRAM_VHDL } from './ecp5-bram.js';
 import { ECP5_DSP_VHDL } from './ecp5-dsp.js';
+import { ECP5_PACKED_VHDL } from './ecp5-packed.js';
 
 const IEEE = 'library IEEE; use IEEE.STD_LOGIC_1164.ALL; use IEEE.NUMERIC_STD.ALL;';
 
@@ -123,12 +126,17 @@ const ffBody = (p, k) => `  Q <= q_i;
     end if;
   end process;`;
 const FF_DECLS = "  signal q_i : std_ulogic := '0';\n  signal started : boolean := false;\n";
-const TRELLIS_FF = entity('TRELLIS_FF', "Q : out std_ulogic; CLK, DI : in std_ulogic; LSR, M : in std_ulogic := '0'; CE : in std_ulogic := '1'",
-  ffBody({ clk: 'CLK', lsr: 'LSR', di: 'DI', m: 'M' }, TRELLIS_K), {
-    gens: 'GSR : string := "ENABLED"; CEMUX : string := "1"; CLKMUX : string := "CLK"; LSRMUX : string := "LSR"; SRMODE : string := "LSR_OVER_CE"; REGSET : string := "RESET"; LSRMODE : string := "LSR"',
+// (SD, nextpnr's routed design's: "0" the data M, "1" DI)
+const TRELLIS_FF = entity('TRELLIS_FF', "Q : out std_ulogic; CLK : in std_ulogic; DI, LSR, M : in std_ulogic := '0'; CE : in std_ulogic := '1'",
+  ffBody({ clk: 'CLK', lsr: 'LSR', di: 'd_of(SD, DI, M)', m: 'M' }, TRELLIS_K), {
+    gens: 'GSR : string := "ENABLED"; CEMUX : string := "1"; CLKMUX : string := "CLK"; LSRMUX : string := "LSR"; SRMODE : string := "LSR_OVER_CE"; REGSET : string := "RESET"; LSRMODE : string := "LSR"; SD : string := "1"',
     decls: `  function ce_of(m : string; c : std_ulogic) return std_ulogic is
   begin
     if m = "1" then return '1'; elsif m = "0" then return '0'; elsif m = "INV" then return not c; else return c; end if;
+  end function;
+  function d_of(sd : string; di, m : std_ulogic) return std_ulogic is
+  begin
+    if sd = "0" then return m; else return di; end if;
   end function;
 ${FF_DECLS}`,
   });
@@ -224,9 +232,13 @@ const RAMS = [
 // ---------------------------------------------------------------- the I/O cells
 const T_OFF = (t) => `${t} = '1' or ${t} = 'H'`;
 const IOS = [
-  entity('TRELLIS_IO', "B : inout std_logic; O : out std_ulogic; I : in std_ulogic := '0'; T : in std_ulogic := '0'", `  B <= 'Z' when DIR = "INPUT" or ${T_OFF('T')} else I;
+  // (nextpnr's routed design's DATAMUX_ODDR "IOLDO" / DATAMUX_MDDR "IOLTO": the data / the three-state of the I/O logic, its DDR
+  // registers, in place of I / T)
+  entity('TRELLIS_IO', "B : inout std_logic; O : out std_ulogic; I, T, IOLDO, IOLTO : in std_ulogic := '0'", `  d <= IOLDO when DATAMUX_ODDR = "IOLDO" else I;
+  t_i <= IOLTO when DATAMUX_MDDR = "IOLTO" else T;
+  B <= 'Z' when DIR = "INPUT" or ${T_OFF('t_i')} else d;
 ${BUF_X01('o_i', 'B')}
-  O <= 'X' when DIR = "OUTPUT" else o_i;`, { gens: 'DIR : string := "INPUT"', decls: '  signal o_i : std_ulogic;\n' }),
+  O <= 'X' when DIR = "OUTPUT" else o_i;`, { gens: 'DIR : string := "INPUT"; DATAMUX_ODDR, DATAMUX_MDDR : string := "PADDO"', decls: '  signal o_i, d, t_i : std_ulogic;\n' }),
   ...['IB', 'IBPU', 'IBPD'].map((n) => entity(n, 'O : out std_ulogic; I : in std_logic', BUF_X01('O', 'I'))),
   entity('OB', 'O : out std_logic; I : in std_ulogic', BUF_X01('O', 'I')),
   ...['OBZ', 'OBZPU', 'OBZPD'].map((n) => entity(n, "O : out std_logic; I : in std_ulogic; T : in std_ulogic := '0'", `  O <= 'Z' when ${T_OFF('T')} else I;`)),
@@ -357,7 +369,7 @@ export const ECP5_VHDL = [
 package COMPONENTS is
 end COMPONENTS;`,
   ...LOGIC, TRELLIS_FF, ...DIAMOND, ...RAMS, ...IOS, ...CLOCKS, EHXPLLL,
-  ECP5_BRAM_VHDL, ECP5_DSP_VHDL,
+  ECP5_BRAM_VHDL, ECP5_DSP_VHDL, ECP5_PACKED_VHDL,
 ].join('\n');
 
 /** The source entry to add to a compilation whose sources use the ECP5 primitives. */

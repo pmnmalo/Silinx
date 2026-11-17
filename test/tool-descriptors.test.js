@@ -48,17 +48,19 @@ test('#2311 the Silinx toolchain: ISE\'s tree without the open synthesis, Synthe
   assert.equal(find(t, 'translate').title, undefined);
 });
 
-test('#2302 the ECP5: the iCE40\'s tree (Emulate there, #3704); its steps, reports, LPF; its .bit loaded into the SRAM (#2298)', () => {
+test('#2302 the ECP5: the iCE40\'s tree (Emulate there, #3704; its simulation models, #2299); its steps, reports, LPF; its .bit loaded into the SRAM (#2298)', () => {
   const t = built(SILINX_ECP5);
-  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] }, { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate', { config: ['impact'] }]);
+  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel', 'postsynth'] }, { impl: [{ translate: [] }, { par: ['trce', 'postpar'] }] }, 'bitgen', 'emulate', { config: ['impact'] }]);
   assert.equal(toolOf({ part: 'lfe5u-85f' }, true), SILINX_ECP5);
   assert.equal(toolOf({ part: 'lfe5um5g-45f' }, false), ISE, 'a choice of the interface: the device makes the open mode (processes.js openMode)');
   assert.deepEqual(SILINX_ECP5.steps.map(({ produces, ...s }) => s), ECP5_STEPS);
   assert.deepEqual(SILINX_ECP5.steps.find(s => s.id === 'bitgen').produces, ['{top}.bit']);
-  assert.deepEqual(SILINX_ECP5.steps.find(s => s.id === 'par').produces, ['open/routed.config', 'open/nextpnr-report.json']);
+  assert.deepEqual(SILINX_ECP5.steps.find(s => s.id === 'par').produces, ['open/routed.config', 'open/routed.json', 'open/nextpnr-report.json']);
+  // (the simulation models, #2299: Verilog, core/flow-models-nextpnr.js)
+  assert.deepEqual(['postsynth', 'postpar'].map(id => SILINX_ECP5.steps.find(s => s.id === id).produces), [['netgen/synthesis/{top}_synthesis.v'], ['netgen/par/{top}_timesim.v']]);
   assert.deepEqual(SILINX_ECP5.steps.find(s => s.id === 'trce').produces, ['open/timing.txt', 'open/paths.json']);   // (#2300: nextpnr's timing)
   assert.deepEqual(SILINX_ECP5.reports.map(r => r.id), ['synthesis', 'routed', 'timing']);
-  assert.ok(read('packages/silinx-fpga/src/open-flow-ecp5.js').includes("io.write('open/routed.config'"));
+  assert.ok(read('packages/silinx-fpga/src/open-flow-ecp5.js').includes("io.write('open/routed.config'") && read('packages/silinx-fpga/src/open-flow-ecp5.js').includes("io.write('open/routed.json'"));
   for (const r of SILINX_ECP5.reports) assert.ok(SILINX_ECP5.steps.find(s => s.id === r.step).produces.includes(r.file), r.id);
   assert.deepEqual(SILINX_ECP5.constraints, { format: 'lpf', ext: '.lpf', label: 'LPF' });
   assert.deepEqual(SILINX_ECP5.program, { process: 'config', page: 'program-open', title: 'Program FPGA', target: 'sram', file: '{top}.bit' });
@@ -67,9 +69,10 @@ test('#2302 the ECP5: the iCE40\'s tree (Emulate there, #3704); its steps, repor
   assert.equal(SILINX_ECP5.messages.line, MESSAGE_LINE);
 });
 
-test('#2303 the Gowin: the ECP5\'s tree; its steps (gowin_pack\'s .fs), reports, CST; its .fs loaded into the SRAM (#2298)', () => {
+test('#2303 the Gowin: the ECP5\'s tree, its post-synthesis model only (#2299); its steps (gowin_pack\'s .fs), reports, CST; its .fs loaded into the SRAM (#2298)', () => {
   const t = built(SILINX_GOWIN);
-  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] }, { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate', { config: ['impact'] }]);
+  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel', 'postsynth'] }, { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate', { config: ['impact'] }]);
+  assert.deepEqual(SILINX_GOWIN.steps.find(s => s.id === 'postsynth').produces, ['netgen/synthesis/{top}_synthesis.v']);
   assert.equal(toolOf({ part: 'gw1nr-9c' }, true), SILINX_GOWIN);
   assert.deepEqual(SILINX_GOWIN.steps.find(s => s.id === 'bitgen').produces, ['{top}.fs']);
   assert.deepEqual(SILINX_GOWIN.steps.map(({ produces, ...s }) => s), GOWIN_STEPS);
@@ -83,10 +86,10 @@ test('#2303 the Gowin: the ECP5\'s tree; its steps (gowin_pack\'s .fs), reports,
   assert.deepEqual(SILINX_GOWIN.tasks.map(t => t.id), ['edit', 'sim', 'emu', 'impl']);
 });
 
-test('#2311 the iCE40: what it does not have is absent, not disabled', () => {
+test('#2311 the iCE40: what it does not have is absent, not disabled (its post-synthesis and post-place & route models, #2299)', () => {
   const t = built(SILINX_ICE40);
-  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] },
-    { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate', { config: ['impact'] }]);
+  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel', 'postsynth'] }, { impl: [{ translate: [] }, { par: ['trce', 'postpar'] }] }, 'bitgen', 'emulate', { config: ['impact'] }]);
+  assert.deepEqual(['postsynth', 'postpar'].map(id => SILINX_ICE40.steps.find(s => s.id === id).produces), [['netgen/synthesis/{top}_synthesis.v'], ['netgen/par/{top}_timesim.v']]);
   for (const id of ids(t)) assert.equal(find(t, id).disabled, undefined, id);
   assert.equal(find(t, 'synth').label, 'Synthesize - Yosys');
   assert.equal(find(t, 'par').label, 'Place & Route');
@@ -340,12 +343,14 @@ test('#3146 the Silinx toolchain on the Artix-7 (the project\'s synthesis tool S
   assert.equal(SILINX_XC7.messages.line, MESSAGE_LINE);
 });
 
-test('#3704 Emulate in every flow, on the HDL and the board\'s pins; its models the ones the tool generates (none with no netgen)', () => {
+test('#3704 Emulate in every flow, on the HDL and the board\'s pins; its models the ones the tool generates (#2299: the iCE40\'s and ECP5\'s two, the Gowin\'s one)', () => {
   for (const tool of [...TOOLS, SILINX_XC7, VIVADO, SILINX_ECP5, SILINX_GOWIN, NO_FLOW]) {
     assert.ok(hasTask(tool, 'emu'), `${tool.id}: the Emulate task`);
     assert.ok(tool.tree.some(n => n.part === 'emulate'), `${tool.id}: Emulate on Board`);
   }
   assert.deepEqual(simModelsOf(ISE), ['postsynth', 'posttrans', 'postmap', 'postpar']);
   assert.deepEqual(simModelsOf(SILINX), ['postsynth', 'posttrans', 'postmap', 'postpar']);
-  for (const tool of [SILINX_ICE40, SILINX_XC7, VIVADO, SILINX_ECP5, SILINX_GOWIN, NO_FLOW]) assert.deepEqual(simModelsOf(tool), [], tool.id);
+  for (const tool of [SILINX_ICE40, SILINX_ECP5]) assert.deepEqual(simModelsOf(tool), ['postsynth', 'postpar'], tool.id);
+  assert.deepEqual(simModelsOf(SILINX_GOWIN), ['postsynth']);
+  for (const tool of [SILINX_XC7, VIVADO, NO_FLOW]) assert.deepEqual(simModelsOf(tool), [], tool.id);
 });

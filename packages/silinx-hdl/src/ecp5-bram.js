@@ -10,8 +10,10 @@
 //     "READBEFOREWRITE": the word before); REGMODE "OUTREG": the output register, loaded from the latch when OCE; the latch
 //     and the register start at 0;
 //   - RST clears the latch and the register: on the clock's edge whatever CE (RESETMODE "SYNC"), or at once ("ASYNC");
-//   - the ports' reads of an edge before its writes; collisions are not checked. The pins' other *MUX generics are accepted
-//     and not modelled.
+//   - the ports' reads of an edge before its writes; collisions are not checked;
+//   - an input's *MUX generic (nextpnr's routed design folds its constant inputs into them): "0" or "1" that constant, "INV"
+//     the pin inverted (an open one reads 1, as the ECP5's unrouted inputs), else the pin; an open pin's value its default
+//     (0, CE and OCE 1). The clocks' *MUX: "INV" their falling edge.
 //
 // Isomorphic ES module (browser + Node), no DOM.
 
@@ -19,6 +21,19 @@ const IEEE = 'library IEEE; use IEEE.STD_LOGIC_1164.ALL; use IEEE.NUMERIC_STD.AL
 const hex2 = (n) => n.toString(16).toUpperCase().padStart(2, '0');
 const range = (n) => Array.from({ length: n }, (_, i) => i);
 const vec = (pre, n) => range(n).reverse().map((i) => `${pre}${i}`).join(' & ');
+// a pin's value through its *MUX generic (px), d its value when open (the vectors of pins, the highest first)
+const pxs = (pre, n, d = "'0'") => range(n).reverse().map((i) => `px(${pre}${i}MUX, ${pre}${i}, ${d})`).join(' & ');
+// (an input's *MUX generic, nextpnr's routed design's: "0" or "1" a constant, "INV" the pin inverted (an open pin reads 1, as
+// the ECP5's unrouted inputs), else the pin; open (Z), its value d)
+const PX = `  function px(m : string; x, d : std_ulogic) return std_ulogic is
+  begin
+    if m = "0" then return '0'; elsif m = "1" then return '1';
+    elsif m = "INV" then if x = 'Z' then return '0'; else return not x; end if;
+    elsif x = 'Z' then return d;
+    else return x;
+    end if;
+  end function;
+`;
 
 // a port's pins and its generics, x its letter
 const PORT_PINS = (x) => [...range(18).map((i) => `DI${x}${i}`), ...range(14).map((i) => `AD${x}${i}`), `CE${x}`, `OCE${x}`, `CLK${x}`, `WE${x}`, `RST${x}`,
@@ -28,7 +43,7 @@ const PORT_PINS = (x) => [...range(18).map((i) => `DI${x}${i}`), ...range(14).ma
 const edge = (x) => `    if (CLK${x}MUX = "INV" and falling_edge(CLK${x})) or (CLK${x}MUX /= "INV" and rising_edge(CLK${x})) then
       if REGMODE_${x} = "OUTREG" and oce${x}_i = '1' then r${x} := l${x}; end if;
       if cs${x} = cscode(CSDECODE_${x}) then
-        if RESETMODE = "SYNC" and RST${x} = '1' then l${x} := (others => '0'); r${x} := (others => '0');
+        if RESETMODE = "SYNC" and rst${x}_i = '1' then l${x} := (others => '0'); r${x} := (others => '0');
         elsif ce${x}_i = '1' then
           w := DATA_WIDTH_${x};
           k := word(ad${x}, w, bad);
@@ -70,10 +85,10 @@ entity DP16KD is
     ${range(64).map((j) => `INITVAL_${hex2(j)}`).join(', ')} : bit_vector(319 downto 0) := (others => '0'));
   port (${['A', 'B'].map((x) => `DO${x}17${range(17).reverse().map((i) => `, DO${x}${i}`).join('')} : out std_ulogic;
     ${range(18).map((i) => `DI${x}${i}`).join(', ')}, ${range(14).map((i) => `AD${x}${i}`).join(', ')},
-    WE${x}, RST${x}, CS${x}0, CS${x}1, CS${x}2, CLK${x} : in std_ulogic := '0'; CE${x}, OCE${x} : in std_ulogic := '1'`).join(';\n    ')});
+    WE${x}, RST${x}, CS${x}0, CS${x}1, CS${x}2, CLK${x}, CE${x}, OCE${x} : in std_ulogic := 'Z'`).join(';\n    ')});
 end DP16KD;
 architecture silinx of DP16KD is
-  -- (an INITVAL's 16 rows of 18 bits, out of their 20)
+${PX}  -- (an INITVAL's 16 rows of 18 bits, out of their 20)
   function rows(v : bit_vector(319 downto 0)) return bit_vector is
     variable r : bit_vector(287 downto 0);
   begin
@@ -111,17 +126,17 @@ architecture silinx of DP16KD is
   signal diA, diB, doA_i, doB_i : std_logic_vector(35 downto 0) := (others => '0');
   signal adA, adB : std_logic_vector(13 downto 0);
   signal csA, csB : std_logic_vector(2 downto 0);
-  signal ceA_i, ceB_i, oceA_i, oceB_i, weA_i, weB_i : std_ulogic;
+  signal ceA_i, ceB_i, oceA_i, oceB_i, weA_i, weB_i, rstA_i, rstB_i : std_ulogic;
 begin
   -- (36 bits: port A's data in on DIA and DIB, port B's out on DOA and DOB)
-  diA <= ${vec('DIB', 18)} & ${vec('DIA', 18)};
-  diB <= "000000000000000000" & ${vec('DIB', 18)};
-  adA <= ${vec('ADA', 14)};
-  adB <= ${vec('ADB', 14)};
-  csA <= CSA2 & CSA1 & CSA0;
-  csB <= CSB2 & CSB1 & CSB0;
-${['A', 'B'].map((x) => ['CE', 'OCE', 'WE'].map((p) => `  ${p.toLowerCase()}${x}_i <= not ${p}${x} when ${p}${x}MUX = "INV" else ${p}${x};`).join('\n')).join('\n')}
-  process (CLKA, CLKB, RSTA, RSTB)
+  diA <= ${pxs('DIB', 18)} & ${pxs('DIA', 18)};
+  diB <= "000000000000000000" & ${pxs('DIB', 18)};
+  adA <= ${pxs('ADA', 14)};
+  adB <= ${pxs('ADB', 14)};
+  csA <= ${pxs('CSA', 3)};
+  csB <= ${pxs('CSB', 3)};
+${['A', 'B'].map((x) => [['CE', "'1'"], ['OCE', "'1'"], ['WE', "'0'"], ['RST', "'0'"]].map(([p, d]) => `  ${p.toLowerCase()}${x}_i <= px(${p}${x}MUX, ${p}${x}, ${d});`).join('\n')).join('\n')}
+  process (CLKA, CLKB, rstA_i, rstB_i)
     variable mem : bit_vector(18431 downto 0);
     variable started : boolean := false;
     variable w, k, aA, aB : integer := 0;
@@ -136,8 +151,8 @@ ${edge('A')}
 ${edge('B')}
 ${write('A')}
 ${write('B')}
-    if RESETMODE = "ASYNC" and RSTA = '1' then lA := (others => '0'); rA := (others => '0'); end if;
-    if RESETMODE = "ASYNC" and RSTB = '1' then lB := (others => '0'); rB := (others => '0'); end if;
+    if RESETMODE = "ASYNC" and rstA_i = '1' then lA := (others => '0'); rA := (others => '0'); end if;
+    if RESETMODE = "ASYNC" and rstB_i = '1' then lB := (others => '0'); rB := (others => '0'); end if;
     if REGMODE_A = "OUTREG" then doA_i <= rA; else doA_i <= lA; end if;
     if REGMODE_B = "OUTREG" then doB_i <= rB; else doB_i <= lB; end if;
   end process;
