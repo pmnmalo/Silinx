@@ -10,6 +10,7 @@
 import { UNISIM_S6_VHDL } from './unisim-s6.js';
 import { UNISIM_JTAG_VHDL } from './unisim-jtag.js';
 import { GOWIN_SOURCE, GOWIN_CELLS, usesGowin } from './gowin-prims.js';
+import { latticeSources } from './lattice-libs.js';
 import { hex2 } from './util.js';
 
 /** True if a VHDL source uses the UNISIM library (e.g. a netgen netlist). */
@@ -870,8 +871,8 @@ function vlogUsesGowin(text, defined = new Set()) {
  * netgen and designs that instantiate primitives (VHDL `library UNISIM`, or a Verilog instance of
  * one), and SIMPRIM's for netgen's post-implementation netlists; the Gowin primitives' (#2299) for a
  * design that instantiates them (VHDL `library gw1n`, or a Verilog instance of one: Yosys's synth_gowin
- * netlist), in place of UNISIM's (some of their names are the same). Libraries already among
- * `sources` are not repeated.
+ * netlist), in place of UNISIM's (some of their names are the same); the Lattice ones' (lattice-libs.js: the
+ * iCE40's) for a design that instantiates them. Libraries already among `sources` are not repeated.
  */
 export function primitiveSources(sources) {
   const list = sources || [];
@@ -891,5 +892,6 @@ export function primitiveSources(sources) {
     uni ||= sim || (!gw && list.some((s) => isVerilog(s) && vlogUsesUnisim(s.text, defined)));
   }
   const have = new Set(list.map((s) => s.path));
-  return [...(uni ? [UNISIM_SOURCE] : []), ...(sim ? [SIMPRIM_SOURCE] : []), ...(gw && !uni ? [GOWIN_SOURCE] : [])].filter((s) => !have.has(s.path));
+  return [...(uni ? [UNISIM_SOURCE] : []), ...(sim ? [SIMPRIM_SOURCE] : []), ...(gw && !uni ? [GOWIN_SOURCE] : []), ...(uni || gw ? [] : latticeSources(list))]
+    .filter((s) => !have.has(s.path));
 }
