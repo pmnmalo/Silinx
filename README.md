@@ -532,6 +532,10 @@ Contribution…* brings a copy back into the project: its folder, or the .zip *F
 A copy given out remembers where it came from (the project and its version then), so the merge is three-way:
 - what only one side changed, added or removed is taken;
 - a drawing both changed is merged by its objects (a state each side added: both kept), and its HDL made again;
+- a text file both changed (HDL, a test bench, constraints) is merged by its lines: changes apart at once, the same
+  lines in the **merge view** (Merge Lines…: the common ancestor, mine and theirs side by side, the result below, each
+  conflict Mine, Theirs, Both or written by hand), never with conflict markers; a file renamed in the copy and changed
+  here (or the other way round) is merged as a rename;
 - for a file, a drawing's object or a setting both changed, you choose Mine or Theirs, with Compare beside it.
 
 A copy made before Silinx recorded this is merged two-way: each file that differs is a choice. *Undo Merge* puts the
@@ -549,8 +553,10 @@ a project with no repository, Store Project in a GitHub Repository… and Open f
 - **Open from GitHub Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
   GitHub repository, a GitHub Classroom assignment's too.
 - **Commit…, Push to GitHub and Pull from GitHub** (the Collaboration tab; the project's right-click menu in the Design
-  pane, under Git; the File menu) send it back and bring the others' changes in. A pull that conflicts pulls nothing and leaves the files as
-  they were. The repository's hidden files (`.vscode`, `.github`) and the tools' outputs stay in the repository, out of
+  pane, under Git; the File menu) send it back and bring the others' changes in. A text file changed on both sides is
+  merged by its lines; when the same lines changed, the pull opens the **merge view** (Mine, Theirs, Both or the lines
+  written, per conflict) and pulls again with your choices, never writing conflict markers. A pull that still conflicts
+  (a file removed on one side and changed on the other) pulls nothing and leaves the files as they were. The repository's hidden files (`.vscode`, `.github`) and the tools' outputs stay in the repository, out of
   the project's folder, and a pull's files pass the import gate, as an imported project's.
 - **The Design pane** marks what changed (M) or is new (N) since the last commit; the Collaboration tab lists every
   changed file, deleted ones (D) too.
@@ -676,11 +682,11 @@ docs/CIRCUITS.md), `rearrange_wires` and `rearrange_schematic` (a schematic's Re
 `remove_from_project` and `add_to_project`, `rename_file` (a file or a folder), `rename_module` (its
 instances, drawings and top with it), `delete_file` and `delete_project` (into the workspace's `.trash` folder, from where they
 can be moved back),
-`git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log`, `git_diff` and `git_checks` (a project in a GitHub repository, as the interface's git: its history, a file as it was in a commit, what changed in a file, a drawing's by its objects, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
+`git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log`, `git_diff` and `git_checks` (a project in a GitHub repository, as the interface's git: its history, a file as it was in a commit, what changed in a file, a drawing's by its objects, a pull's conflicts chosen per object or per hunk of lines, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
 `export_project` and `import_project` (a Xilinx ISE or a Silinx project, as a .zip; a .xise or a project folder too;
 only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `merge_preview`, `merge_contribution` and
 `undo_merge` (another person's copy of a project merged into it, as *Merge Contribution…*: three-way through the copy's
-ancestor, a drawing by its objects; and undone), `import_source` (files of the exchange
+ancestor, a drawing by its objects, a text file by its lines, its conflicts chosen per hunk; and undone), `import_source` (files of the exchange
 folder copied into a project, as *Import Source* / *Add Copy of Source* / *Import Test Bench*), `find_in_project` (*Find in
 Project*: every source's lines and every drawing's texts; its Replace All), `open_in_editor` (*Open in VS Code*: a file at a
 line, or the project's folder, in the user's editor on this computer), `project_link` and `open_link` (a project's

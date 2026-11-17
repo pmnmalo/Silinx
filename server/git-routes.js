@@ -13,7 +13,7 @@ export function registerGitRoutes(api) {
     return fn(req);
   }).then(
     out => { if (!res.headersSent) res.json(out); },
-    err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}), ...(err.files ? { files: err.files } : {}), ...(err.projects ? { projects: err.projects } : {}), ...(err.drawings ? { drawings: err.drawings } : {}) }),
+    err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}), ...(err.files ? { files: err.files } : {}), ...(err.projects ? { projects: err.projects } : {}), ...(err.drawings ? { drawings: err.drawings } : {}), ...(err.texts ? { texts: err.texts } : {}), ...(err.resolvable !== undefined ? { resolvable: err.resolvable } : {}) }),
   );
   const body = req => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
   // a short link's gist (#3223): made with the server's GitHub token (GH_TOKEN), never the page's

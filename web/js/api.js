@@ -61,7 +61,7 @@ async function req(method, url, body, { text = false } = {}) {
   if (!r.ok) {
     let msg = `${r.status} ${r.statusText}`, more = {};
     // (git's failures carry a hint for the console, and a conflict its files: #3195)
-    try { const j = await r.json(); if (j.error) msg = j.error; if (j.hint) more.hint = j.hint; if (j.files) more.files = j.files; if (j.drawings) more.drawings = j.drawings; } catch { /* not json */ }
+    try { const j = await r.json(); if (j.error) msg = j.error; if (j.hint) more.hint = j.hint; if (j.files) more.files = j.files; if (j.drawings) more.drawings = j.drawings; if (j.texts) more.texts = j.texts; if (j.resolvable !== undefined) more.resolvable = j.resolvable; } catch { /* not json */ }
     throw Object.assign(new Error(msg), { status: r.status }, more);
   }
   if (text) return r.text();

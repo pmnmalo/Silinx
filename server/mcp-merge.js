@@ -10,11 +10,12 @@ import { exchangePath, folderEntries } from './mcp-transfer.js';
 import { contributionOf } from '../core/project-merge.js';
 import { applyMerge, previewMerge, undoMerge, mergeLines } from '../core/merge-apply.js';
 import { mergeStorage } from './merge-projects.js';
+import { hunkLines } from '../core/git-messages.js';
 
 const FROM = STR('The contribution: a Silinx project\'s .zip, or its folder, in the exchange folder (its name, a path in it, or an absolute path inside it).');
 const RESOLVE = {
   type: 'object', additionalProperties: true,
-  description: 'The conflicts\' choices, as merge_preview lists them: { "<file>": "mine" | "theirs" } for a file, { "<drawing>": { "<object id>": "mine" | "theirs" } } for a drawing\'s objects (or "mine" | "theirs" for the whole drawing), { "silinx.json": { "<field>": "mine" | "theirs" } } for the project\'s description.',
+  description: 'The conflicts\' choices, as merge_preview lists them: { "<file>": "mine" | "theirs" } for a whole file, { "<text file>": { "<hunk id>": "mine" | "theirs" | "both" | { "text": "…" } } } for a text file\'s hunks (both: mine\'s lines, then theirs\'; text: the hunk\'s lines written), { "<drawing>": { "<object id>": "mine" | "theirs" } } for a drawing\'s objects (or "mine" | "theirs" for the whole drawing), { "silinx.json": { "<field>": "mine" | "theirs" } } for the project\'s description.',
 };
 
 // the contribution, through the import gate (a zip's caps checked while it is read)
@@ -37,15 +38,19 @@ async function contribution(from) {
   } catch (e) { throw e instanceof GateError ? toolError(e.message) : e; }
   try { return { c: contributionOf(gated), refusals: gated.refusals }; } catch (e) { throw toolError(e.message); }
 }
-const UNTRUSTED = 'the contribution\'s files\' paths, its drawings\' objects and its description\'s values, and the warnings, which name them';
+const UNTRUSTED = 'the contribution\'s files\' paths, its drawings\' objects, its text files\' lines and its description\'s values, and the warnings, which name them';
 const label = from => String(from).split(/[\\/]/).filter(Boolean).pop();
 const gateLines = refusals => refusals.map(x => `WARNING: Merge Contribution: ${x.path}: not merged: ${x.reason}.`);
 
 // a comparison as the results say it: each file's state (but the same), the conflicts
 function rows(cmp) {
-  return cmp.files.filter(f => f.state !== 'same').map(f => ({ path: f.path, state: f.state, ...(f.generatedBy ? { generatedBy: f.generatedBy } : {}), ...(f.conflicts?.length ? { conflicts: f.conflicts } : {}) }));
+  return cmp.files.filter(f => f.state !== 'same').map(f => ({ path: f.path, state: f.state, ...(f.generatedBy ? { generatedBy: f.generatedBy } : {}), ...(f.conflicts?.length ? { conflicts: f.conflicts } : {}),
+    ...(f.hunks?.length ? { hunks: f.hunks } : {}), ...(f.rename ? { renamedFrom: f.rename.from, renamedBy: f.rename.side } : {}), ...(f.renamedTo ? { renamedTo: f.renamedTo } : {}) }));
 }
-const STATE = { theirs: 'changed there: taken', added: 'added there: taken', removed: 'removed there: removed', mine: 'changed here: kept', merged: 'a drawing both changed, merged by its objects', conflict: 'changed on both sides: choose', generated: 'made again from its drawing' };
+const STATE = { theirs: 'changed there: taken', added: 'added there: taken', removed: 'removed there: removed', mine: 'changed here: kept', merged: 'changed on both sides, merged (a drawing by its objects, a text file by its lines)', conflict: 'changed on both sides: choose', generated: 'made again from its drawing', renamed: 'renamed' };
+// a row's line: its state, its rename, its conflicts (a drawing's objects; a text file's hunks, on lines of their own)
+const rowLines = f => [`  ${f.path}: ${STATE[f.state]}${f.renamedTo ? ` to ${f.renamedTo}` : ''}${f.renamedFrom ? ` (renamed from ${f.renamedFrom} ${f.renamedBy === 'theirs' ? 'there' : 'here'})` : ''}${f.conflicts ? ` (${f.conflicts.map(x => `${x.id}: mine ${x.mine}, theirs ${x.theirs}`).join('; ')})` : ''}`,
+  ...(f.hunks ? hunkLines(f.path, f.hunks).map(l => `  ${l}`) : [])];
 
 export const MERGE_TOOLS = [
   {
@@ -60,14 +65,14 @@ export const MERGE_TOOLS = [
       const list = rows(p.comparison);
       const lines = [...gateLines(refusals), ...p.warnings.map(w => `WARNING: Merge Contribution: ${w}.`),
         `Merge of ${label(from)} into '${name}': ${p.source ? 'three-way' : 'two-way'}, ${list.length} file(s) differ, ${p.left.length} conflict(s) to choose.`,
-        ...list.map(f => `  ${f.path}: ${STATE[f.state]}${f.conflicts ? ` (${f.conflicts.map(x => `${x.id}: mine ${x.mine}, theirs ${x.theirs}`).join('; ')})` : ''}`),
+        ...list.flatMap(rowLines),
         ...p.comparison.project.conflicts.map(x => `  silinx.json ${x.field}: mine ${JSON.stringify(x.mine)}, theirs ${JSON.stringify(x.theirs)}`)];
       return { text: lines.join('\n'), untrusted: UNTRUSTED, data: { project: name, threeWay: !!p.source, ancestor: p.source, files: list, project_conflicts: p.comparison.project.conflicts, left: p.left, warnings: p.warnings } };
     },
   },
   {
     name: 'merge_contribution', title: 'Merge Contribution',
-    description: 'Merge a contribution (another person\'s copy of the project: a Silinx .zip or folder in the exchange folder) into the project, as the Project menu\'s Merge Contribution… does: what only one side changed taken, a drawing both changed merged by its objects and its HDL made again, every conflict chosen in resolve (merge_preview lists them; one left: nothing merged). The project as it was is kept for undo_merge; a merge that takes the contribution\'s files makes the project untrusted (only the user trusts it, in the interface).',
+    description: 'Merge a contribution (another person\'s copy of the project: a Silinx .zip or folder in the exchange folder) into the project, as the Project menu\'s Merge Contribution… does: what only one side changed taken, a drawing both changed merged by its objects and its HDL made again, a text file both changed merged by its lines (a file renamed on one side merged as a rename), every conflict chosen in resolve (a text file\'s per hunk, or whole) (merge_preview lists them; one left: nothing merged). The project as it was is kept for undo_merge; a merge that takes the contribution\'s files makes the project untrusted (only the user trusts it, in the interface).',
     inputSchema: { type: 'object', properties: { project: PROJECT, from: FROM, resolve: RESOLVE }, required: ['project', 'from'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },   // (it replaces and removes files: undo_merge puts them back)
     async run({ project: name, from, resolve = {} }) {

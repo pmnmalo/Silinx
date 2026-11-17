@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { drawingConflicts, resolveConflict, checkResolved } from '../core/git-resolve.js';
+import { drawingConflicts, resolveConflict, checkResolved, checkChoices, pullConflictHint } from '../core/git-resolve.js';
 import { normalizeFsm, generateFsm } from '../core/fsm.js';
 import { viewHdl } from '../core/view-hdl.js';
 import { simulate } from '../core/compile.js';
@@ -171,4 +171,21 @@ test('#4203: a circuit\'s part both sides moved: a conflict resolved mine and th
     assert.deepEqual(await checkResolved('circ', r.model), []);
     for (const lang of ['vhdl', 'verilog']) compiles(p, r.model, lang);
   }
+});
+
+test('#4214 a pull\'s choices: a drawing\'s objects mine or theirs, a text file\'s hunks mine, theirs, both or a text; anything else refused', () => {
+  assert.equal(checkChoices(null), null);
+  assert.deepEqual(checkChoices({ 'src/a.fsm.json': { 'states/s1': 'theirs' }, 'src/a.vhd': { h1: 'both', h2: { text: 'x\n' }, h3: 'mine' } }),
+    { 'src/a.fsm.json': { 'states/s1': 'theirs' }, 'src/a.vhd': { h1: 'both', h2: { text: 'x\n' }, h3: 'mine' } });
+  const msg = 'resolve: give { "<drawing>": { "<object>": "mine" | "theirs" } } and { "<text file>": { "<hunk>": "mine" | "theirs" | "both" | { "text": "…" } } }';
+  for (const bad of [[], 'mine', { 'src/a.vhd': 'mine' }, { 'src/a.fsm.json': { 'states/s1': 'both' } }, { 'src/a.vhd': { h1: 'base' } }, { 'src/a.vhd': { h1: { text: 1 } } }, { 'src/a.vhd': { h1: { text: 'x', y: 1 } } }]) {
+    assert.throws(() => checkChoices(bad), { message: msg, status: 400 }, JSON.stringify(bad));
+  }
+});
+
+test('#4214 what a pull stopped by conflicts says, and whether Silinx resolves them', () => {
+  assert.deepEqual(pullConflictHint({ drawings: [{}] }), { resolvable: true, hint: 'The same objects of a drawing changed here and on GitHub: choose mine or theirs for each, then Pull again.' });
+  assert.deepEqual(pullConflictHint({ texts: [{}] }), { resolvable: true, hint: 'The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.' });
+  assert.deepEqual(pullConflictHint({ drawings: [{}], texts: [{}] }).hint, 'The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines (and mine or theirs for each object of a drawing), then Pull again.');
+  assert.deepEqual(pullConflictHint({ texts: [{}], others: ['x'] }), { resolvable: false, hint: 'The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.' });
 });
