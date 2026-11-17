@@ -515,3 +515,58 @@ test('#4412 VHDL to Verilog: a process with asynchronous controls before its clo
   const one = tr(FF_ASYNC.replace(/    elsif clr_n = '0' then\n      r <= '0';\n    elsif ld = '1' then\n      r <= d;\n/, ''), 'ffpc.vhd');
   assert.match(one.text, /always @\(posedge clk or negedge pre_n\) begin\n\s+if \(!pre_n\) begin\n\s+r <= 1'b1;\n\s+end else begin\n\s+r <= ~r;\n\s+end\n\s+end/);
 });
+
+// (#4414: the lint's suppressions kept: a latch, an S̅-R̅ latch's elsif, a clock that is logic on purpose)
+const PRAGMAS = `library ieee;
+use ieee.std_logic_1164.all;
+entity pragmas is
+  port (en, d, s_n, r_n, clk : in std_logic; q, q2, q3 : out std_logic);
+end entity pragmas;
+architecture rtl of pragmas is
+  signal a, b, c : std_logic := '0';
+  signal gclk : std_logic;
+begin
+  process (en, d)
+  begin
+    -- silinx: ignore latch
+    if en = '1' then
+      a <= d;
+    end if;
+  end process;
+  process (s_n, r_n)
+  begin
+    -- silinx: ignore latch
+    if s_n = '0' then
+      b <= '1';
+    -- silinx: ignore latch
+    elsif r_n = '0' then
+      b <= '0';
+    end if;
+  end process;
+  gclk <= clk and en;
+  -- silinx: ignore data-as-clock
+  process (gclk)
+  begin
+    if rising_edge(gclk) then
+      c <= d;
+    end if;
+  end process;
+  q <= a;
+  q2 <= b;
+  q3 <= c;
+end architecture rtl;
+`;
+
+test('#4414 VHDL to Verilog: the lint\'s "silinx: ignore" comments kept with their statements, the translation\'s lint as clean as the source\'s', () => {
+  const lint = (files, top) => { const lib = compile(Object.entries(files).map(([path, text]) => ({ path, text }))), d = elaborate(lib, top); return designChecks(lib, d, { lint: true }).filter((x) => x.severity === 'warning').map((x) => x.message); };
+  assert.deepEqual(lint({ 'pragmas.vhd': PRAGMAS }, 'pragmas'), [], 'the source: its suppressions');
+  const v = tr(PRAGMAS, 'pragmas.vhd');
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.text.split('\n').filter((l) => /silinx:/.test(l)).map((l) => l.trim()), [
+    'if (en) // silinx: ignore latch', 'if (!s_n) // silinx: ignore latch', 'else if (!r_n) // silinx: ignore latch', 'always @(posedge gclk) begin // silinx: ignore data-as-clock']);
+  assert.deepEqual(lint({ 'pragmas.v': v.text }, 'pragmas'), [], 'its translation: the same suppressions');
+  // without them, the translation warns as the source does
+  const bare = PRAGMAS.replace(/^\s*-- silinx: ignore.*\n/gm, '');
+  assert.equal(lint({ 'pragmas.vhd': bare }, 'pragmas').length, lint({ 'pragmas.v': tr(bare, 'pragmas.vhd').text }, 'pragmas').length);
+  assert.ok(lint({ 'pragmas.vhd': bare }, 'pragmas').length >= 3);
+});

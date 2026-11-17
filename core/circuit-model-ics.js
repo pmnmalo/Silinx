@@ -15,7 +15,7 @@ const P14 = P(dip(14)), P16 = P(dip(16)), P20 = P(dip(20));
 const ic = (type, title, tpd, pins, core, family = 'ttl', threeState = null) => ({ type, title, kind: 'ic', family, chip: family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`, tpd, dip: pins.length,
   pins: threeState ? pins.map((p) => (p.dir === 'out' ? { ...p, tri: true } : p)) : pins, ...(threeState ? { threeState: { enable: threeState, outs: pins.filter((p) => p.dir === 'out').map((p) => p.port) } } : {}),
   // (its core's ports: its pins but its outputs' enables, which the IC's entity applies)
-  core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(threeState || []).some(([e]) => e === p.port)), core), ...(core.some((e) => e.latch || e.sr) ? { latches: true } : {}) } });
+  core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(threeState || []).some(([e]) => e === p.port)), core) } });
 
 // ------------------------------------------------------------------ the cores' VHDL
 // a storage element of a core:
