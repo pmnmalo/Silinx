@@ -1458,10 +1458,10 @@ uiTest('#4276 browser edition: Export Project (.zip)… to Xilinx ISE with no co
   await page.dialogButton('Import');
   await page.waitFor(() => window.Silinx.project?.name === 'NoUcf' && document.querySelector('#hier .row'), [], { what: 'the project open' });
   assert.equal(await page.eval(() => window.Silinx.project.constraints), 'constraints/top.ucf');
-  // (the Silinx zip's own import names the constraints file not there: #4288)
+  // (the Silinx zip's own import: its constraints file not there is not missing, #4288)
   const warnings = async () => (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l));
-  const SETUP = ['WARNING: files listed in silinx.json but not in the zip: constraints/top.ucf'];
-  assert.deepEqual(await warnings(), SETUP);
+  const SETUP = [];
+  assert.deepEqual(await warnings(), SETUP, '#4288: no warnings');
   await exportZip(page, 'xilinx');
   const zip = await waitDownload(page, 'NoUcf.zip');
   const entries = await readZip(new Uint8Array(await fs.readFile(zip)), codec);

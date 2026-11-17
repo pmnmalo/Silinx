@@ -150,7 +150,8 @@ export async function importProjectEntries(P, name, gated, bad) {
       project = await P.updateProject(name, cur => ({ ...cur, ...(xiseEntry ? { board: saved.board ?? cur.board, stimuli: saved.stimuli || {}, preferredLanguage: saved.preferredLanguage, impl: { ...cur.impl, ...saved.impl } } : { ...saved, name, trusted: false }) }));
       if (!xiseEntry) {
         for (const f of Array.isArray(saved.files) ? saved.files : []) if (f?.path && !exists(f.path)) result.missing.push(f.path);
-        if (typeof saved.constraints === 'string' && saved.constraints && !exists(saved.constraints) && !result.missing.includes(saved.constraints)) result.missing.push(saved.constraints);
+        // (the constraints path is where the project's constraints file is or will be, not a file it lists: one not in the
+        // zip, a new project's not written yet, is not missing, #4288)
       }
     }
   }

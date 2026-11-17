@@ -254,3 +254,18 @@ test('#4276 export_project of a new project with no constraints file written: im
   const i = await ok('import_project', { name: 'nouc_x', from: out('nouc.zip') });
   assert.deepEqual([i.data.kind, i.data.missing, i.data.warnings], ['xilinx', [], []]);
 });
+
+// #4288 regression: a new project's Silinx zip (its constraints file not written yet) imported back: nothing missing,
+// no warnings
+test('#4288 export_project kind silinx of a new project with no constraints file written: imported back with no warnings', async () => {
+  await ok('new_project', { name: 'nouc_s' });
+  await ok('write_file', { project: 'nouc_s', path: 'src/top.vhd', text: 'entity top is end;\narchitecture a of top is begin end;\n' });
+  await ok('set_top', { project: 'nouc_s', top: 'top' });
+  const x = await ok('export_project', { project: 'nouc_s', kind: 'silinx', path: out('nouc_s.zip') });
+  assert.deepEqual(x.data.warnings, []);
+  const zip = await readZip(fs.readFileSync(out('nouc_s.zip')), NODE_CODEC);
+  assert.deepEqual(zip.map(e => e.path).sort(), ['silinx.base.json', 'silinx.json', 'src/top.vhd']);   // (a copy given out: its ancestor, #4205)
+  assert.match(Buffer.from(zip.find(e => e.path === 'silinx.json').data).toString('utf8'), /"constraints": "constraints\/top\.ucf"/);
+  const i = await ok('import_project', { name: 'nouc_s_x', from: out('nouc_s.zip') });
+  assert.deepEqual([i.data.kind, i.data.missing, i.data.warnings], ['silinx', [], []]);
+});

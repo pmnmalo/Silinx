@@ -835,6 +835,28 @@ uiTest('#4276 Export Project (.zip)… to Xilinx ISE of a new project with no co
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
 
+// #4288 regression: a new project's Silinx zip (its constraints file not written yet, its path in silinx.json) imported
+// back with no warnings, its constraints file not written either
+uiTest('#4288 Export Project (.zip)… to Silinx of a new project with no constraints file: imported back with no warnings', E, async (page) => {
+  await makeProject(env, { name: 'NoUcfS', board: 'basys2', top: 'top', files: { 'src/top.vhd': 'entity top is end top;\narchitecture a of top is begin end a;\n' } });
+  await page.openProject('NoUcfS');
+  assert.equal(await page.eval(() => window.Silinx.project.constraints), 'constraints/top.ucf');
+  await exportZip(page, 'silinx');
+  const zip = await waitDownload(page, 'NoUcfS-silinx.zip');
+  const entries = await readZip(new Uint8Array(await fs.readFile(zip)), { inflate: (d) => zlib.inflateRawSync(d) });
+  assert.ok(!entries.some((e) => e.path === 'constraints/top.ucf'));
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [zip]);
+  await page.fill('.dlg-overlay input[type=text]', 'NoUcfSBack');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfSBack');
+  await page.waitConsole(/Imported Silinx project 'NoUcfSBack'/);
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), [], 'no warnings');
+  const back = await env.server.api('GET', '/api/projects/NoUcfSBack');
+  assert.deepEqual([back.top, back.constraints, back.fileTree], ['top', 'constraints/top.ucf', ['src/top.vhd']]);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+});
+
 // #3703: Import Project… and Export Project (.zip)…: the software chosen in the window (Silinx, Xilinx ISE; AMD
 // Vivado and Intel Quartus disabled, their reason their tip), the import's preselected from the zip picked, the choice
 // kept; in Portuguese

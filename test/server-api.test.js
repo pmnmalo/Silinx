@@ -942,7 +942,7 @@ test('zip: Silinx export keeps silinx.json and every file; import restores board
   assert.equal(imp.body.project.board, 'nexys2');
   assert.deepEqual(imp.body.project.stimuli, { a: [1, 0] });
   assert.equal(imp.body.project.preferredLanguage, 'verilog');
-  assert.deepEqual(imp.body.missing, ['constraints/top.ucf']);   // the default UCF was never written
+  assert.deepEqual(imp.body.missing, []);   // the default UCF was never written: not missing (#4288)
   assert.deepEqual(imp.body.extra.sort(), ['src/fsm.asm.json', 'src/top.v']);
   assert.equal((await call('GET', '/projects/Nope/export.zip')).status, 404);
 });

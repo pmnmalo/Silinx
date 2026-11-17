@@ -423,7 +423,7 @@ test('#483 projectFromZip: entries leaving the project skipped with a warning, s
     "build/top.bit: not imported: the project's build folder (build/) is Silinx's own", 'C:\\x.v: not imported: absolute path (a drive letter)',
     'silinx.json: file path outside the project dropped (../../etc/passwd)']);
   assert.deepEqual(Object.keys(r.files).sort(), ['a/b.txt', 'src/top.vhd']);
-  assert.deepEqual(r.missing, ['src/gone.vhd', 'constraints/top.ucf']);
+  assert.deepEqual(r.missing, ['src/gone.vhd']);   // (the constraints path not a listed file: not missing, #4288)
   // (a project read with no Optimization: Fast, #2470)
   assert.deepEqual(r.json, { ...emptyProjectJson('Hostile'), impl: { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' }, top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }, { path: 'src/gone.vhd', lang: 'vhdl', role: 'design' }], constraints: 'constraints/top.ucf', trusted: false });   // (from outside, #2830)
   // the project in a folder of the zip, silinx.json not JSON: an empty project with the files
