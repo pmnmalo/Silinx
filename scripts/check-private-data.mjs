@@ -66,8 +66,8 @@ const ALLOW = [
     "the redaction test's made-up home folders and ISE login (a host of example.org, RFC 2606), placeholders since (in the history only, #4167)"],
   ['server/git.js', /^(token@github\.com|https:\/\/user:token@github\.com)$/, "a made-up login in a comment's example of a URL with credentials (in the history only, #3365)"],
   ['test/build-settings.test.js', /^(\/home\/[uU]|build-box\.local)$/, "made-up remote folders and a made-up computer name of the build-settings checks (#3407)"],
-  ['test/github-checks.test.js', '1.2.3.4', "a dummy address in a made-up rate limit's message of 26d6593, a documentation address "
-    + 'nowhere since 3a38058 (in the history only, #4364)'],
+  [/^(test\/github-checks\.test\.js|\(message of 3fa4fcb\))$/, '1.2.3.4', "a dummy address in a made-up rate limit's message of 26d6593, a "
+    + 'documentation address nowhere since 3a38058 (in the history only, #4364); named in the message of 3fa4fcb, its fix (#4423)'],
   ['test/impl.test.js', /^(dev@)?10\.0\.0\.2$/, 'a made-up address of an example (in the history only)'],
   ['test/impl.test.js', '/Users/Me', "a made-up macOS home folder of the ssh settings script's test (#1244, #1336)"],
   ['test/report-failure.test.js', /^(dev|me)@(192\.0\.2|203\.0\.113)\.\d+$/, 'made-up logins on documentation addresses (RFC 5737): the cleaning of a log line is tested on them (#251)'],
