@@ -162,7 +162,9 @@ export function projectFromZip(name, gated, { xiseProject, textOf }) {
       p.json = xe ? { ...p.json, board: n.json.board ?? p.json.board, stimuli: n.json.stimuli, preferredLanguage: n.json.preferredLanguage, impl: { ...p.json.impl, ...n.json.impl } } : n.json;
       if (!xe) {
         for (const f of n.json.files) if (p.files[f.path] === undefined) missing.push(f.path);
-        // (the constraints path, not a listed file: not in the zip is not missing, #4288)
+        // (a constraints file not in the zip is missing, but the device's default, a new project's not written yet, #4288, #4356)
+        const c = n.json.constraints;
+        if (c && c !== `constraints/top${constraintsExtOf(n.json.device)}` && p.files[c] === undefined && !missing.includes(c)) missing.push(c);
       }
     }
   }

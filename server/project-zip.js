@@ -9,6 +9,7 @@ import fs from 'node:fs/promises';
 import fss from 'node:fs';
 import path from 'node:path';
 import { createZip } from '../core/zip.js';
+import { constraintsExtOf } from '../packages/silinx-fpga/src/parts.js';
 import { gateMessages, normalizePath, requireGated } from '../core/import-gate.js';
 import { markUntrusted } from '../core/trust.js';
 import { PROJECT_FILE } from '../core/fold-name.js';
@@ -150,8 +151,9 @@ export async function importProjectEntries(P, name, gated, bad) {
       project = await P.updateProject(name, cur => ({ ...cur, ...(xiseEntry ? { board: saved.board ?? cur.board, stimuli: saved.stimuli || {}, preferredLanguage: saved.preferredLanguage, impl: { ...cur.impl, ...saved.impl } } : { ...saved, name, trusted: false }) }));
       if (!xiseEntry) {
         for (const f of Array.isArray(saved.files) ? saved.files : []) if (f?.path && !exists(f.path)) result.missing.push(f.path);
-        // (the constraints path is where the project's constraints file is or will be, not a file it lists: one not in the
-        // zip, a new project's not written yet, is not missing, #4288)
+        // (a constraints file not in the zip is missing, but the device's default, a new project's not written yet, #4288, #4356)
+        const c = saved.constraints;
+        if (typeof c === 'string' && c && c !== `constraints/top${constraintsExtOf(saved.device)}` && !exists(c) && !result.missing.includes(c)) result.missing.push(c);
       }
     }
   }

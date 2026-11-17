@@ -8,7 +8,7 @@ import path from 'node:path';
 import { setupUi, uiTest, makeProject, readWs, waitDownload, ROOT } from './harness.js';
 import { FILE, exportZip, openImport } from './zip-helpers.js';
 import zlib from 'node:zlib';
-import { readZip } from '../../core/zip.js';
+import { createZip, readZip } from '../../core/zip.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -854,6 +854,24 @@ uiTest('#4288 Export Project (.zip)… to Silinx of a new project with no constr
   const back = await env.server.api('GET', '/api/projects/NoUcfSBack');
   assert.deepEqual([back.top, back.constraints, back.fileTree], ['top', 'constraints/top.ucf', ['src/top.vhd']]);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+});
+
+// #4356 regression: a Silinx zip whose silinx.json names a constraints file of its own the zip does not contain: the
+// import warns of it (a new project's default path, not written yet, does not: #4288)
+uiTest('#4356 Import Project… of a Silinx zip missing its own constraints file: the warning names it', E, async (page) => {
+  const pj = { name: 'x', device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, top: '', files: [], constraints: 'constraints/board.ucf' };
+  const file = path.join(env.tmp, 'own-ucf-silinx.zip');
+  await fs.writeFile(file, await createZip([{ path: 'silinx.json', data: JSON.stringify(pj) }], { deflate: (d) => zlib.deflateRawSync(d) }));
+  await makeProject(env, { name: 'Holder', board: 'basys2' });
+  await page.openProject('Holder');
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [file]);
+  await page.fill('.dlg-overlay input[type=text]', 'OwnUcf');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'OwnUcf');
+  await page.waitConsole(/Imported Silinx project 'OwnUcf'/);
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), ['WARNING: files listed in silinx.json but not in the zip: constraints/board.ucf']);
+  assert.equal((await env.server.api('GET', '/api/projects/OwnUcf')).constraints, 'constraints/board.ucf');
 });
 
 // #3703: Import Project… and Export Project (.zip)…: the software chosen in the window (Silinx, Xilinx ISE; AMD
