@@ -269,3 +269,14 @@ test('#4288 export_project kind silinx of a new project with no constraints file
   const i = await ok('import_project', { name: 'nouc_s_x', from: out('nouc_s.zip') });
   assert.deepEqual([i.data.kind, i.data.missing, i.data.warnings], ['silinx', [], []]);
 });
+
+// #4356 regression: import_project of a Silinx zip naming a constraints file of its own it does not contain: missing;
+// the device's default (a new project's, not written yet, #4288): not
+test('#4356 import_project: a Silinx zip\'s constraints file not in it is missing, but the device\'s default path', async () => {
+  const device = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
+  for (const [file, constraints, missing] of [['cons_own.zip', 'constraints/board.ucf', ['constraints/board.ucf']], ['cons_def.zip', 'constraints/top.ucf', []]]) {
+    fs.writeFileSync(out(file), await createZip([{ path: 'silinx.json', data: enc(JSON.stringify({ name: 'x', device, top: '', files: [], constraints })) }], NODE_CODEC));
+    const i = await ok('import_project', { name: file.replace('.zip', ''), from: out(file) });
+    assert.deepEqual([i.data.kind, i.data.missing, i.data.warnings], ['silinx', missing, []], file);
+  }
+});

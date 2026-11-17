@@ -735,3 +735,25 @@ test('#4205: the browser\'s snapshots (web/js/snapshots-local.js): kept per proj
   const full = localSnapshots(() => ({ getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem() {} }), 'browser:', 'A');
   assert.equal(full.save(made[0]), false);
 });
+
+// #4356 regression: a constraints file not in the zip is missing, but the device's default (a new project's, not
+// written yet, #4288): constraints/top.ucf on a Spartan-3E, constraints/top.pcf on an iCE40
+test('#4356 projectFromZip: a constraints file of its own not in the zip is missing; the device\'s default path is not', () => {
+  const E = (p, d) => ({ path: p, data: new TextEncoder().encode(d) });
+  const S3E = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
+  const ICE = { family: 'ice40', part: 'up5k', package: 'sg48', speed: '' };
+  const imp = (pj, more = []) => projectFromZip('C', gateEntries([E('silinx.json', JSON.stringify({ name: 'C', top: '', files: [], ...pj })), ...more]), { textOf });
+  for (const [pj, missing] of [
+    [{ device: S3E, constraints: 'constraints/board.ucf' }, ['constraints/board.ucf']],
+    [{ device: S3E, constraints: 'constraints/top.ucf' }, []],
+    [{ device: S3E, constraints: 'constraints/top.pcf' }, ['constraints/top.pcf']],
+    [{ device: ICE, constraints: 'constraints/top.pcf' }, []],
+    [{ device: ICE, constraints: 'constraints/top.ucf' }, ['constraints/top.ucf']],
+  ]) {
+    const r = imp(pj);
+    assert.deepEqual([r.json.constraints, r.missing, r.warnings], [pj.constraints, missing, []], JSON.stringify(pj));
+  }
+  // (in the zip: not missing; listed among the files too: named once)
+  assert.deepEqual(imp({ device: S3E, constraints: 'constraints/board.ucf' }, [E('constraints/board.ucf', 'NET "a" LOC = "P11";\n')]).missing, []);
+  assert.deepEqual(imp({ device: S3E, constraints: 'constraints/board.ucf', files: [{ path: 'constraints/board.ucf', lang: 'ucf', role: 'constraints' }] }).missing, ['constraints/board.ucf']);
+});
