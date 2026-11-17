@@ -68,7 +68,7 @@ test('git_clone, git_status, git_commit (pushed at once), git_push, git_pull and
   gh.commitFiles('pmalo/lab1', { 'src/sevenseg.v': '// theirs again\n' }, { message: 'Theirs again', author: 'teammate' });
   await ok('write_file', { project: 'lab1', path: 'src/sevenseg.v', text: '// mine\n' });
   await fails('git_commit', { project: 'lab1', message: 'Mine' }, 'git push: rejected by GitHub (fetch first)\nHint: GitHub has commits that this project does not: Pull first, then Push again.');
-  await fails('git_pull', { project: 'lab1' }, 'git pull: a conflict in src/sevenseg.v: nothing was pulled, the project\'s files are as they were\nHint: The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.');
+  await fails('git_pull', { project: 'lab1' }, 'git pull: a conflict in src/sevenseg.v: nothing was pulled, the project\'s files are as they were\n  src/sevenseg.v: h1 (line 1): mine "// mine", theirs "// theirs again"\nHint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.');
   const log = await ok('git_log', { project: 'lab1' });
   assert.deepEqual(log.data.commits.map((x) => x.message), ['Theirs again', 'Theirs', 'Counter changed', 'Initial commit']);
   const first = log.data.commits.at(-1).commit;
