@@ -27,7 +27,7 @@ const ABOUT = {
 export const PIN_ROLES = { in: 'input', out: 'output', oc: 'open-collector output', vcc: 'supply +5 V', gnd: 'supply GND', nc: 'not connected',
   pass: 'contact', weak: 'weak output', probe: 'tip', none: 'not simulated' };
 const FAMILY = { ttl: '74LS (TTL)', cmos: '4000 (CMOS)' };
-const FN = { and: 'AND', or: 'OR', nand: 'NAND', nor: 'NOR', xor: 'XOR', not: 'NOT', buf: 'BUF' };
+const FN = { and: 'AND', or: 'OR', nand: 'NAND', nor: 'NOR', xor: 'XOR', xnor: 'XNOR', not: 'NOT', buf: 'BUF' };
 
 /**
  * The details of the part `type`, or null: { type, title, about? (a part that is not an IC), chip?, family?, package?,

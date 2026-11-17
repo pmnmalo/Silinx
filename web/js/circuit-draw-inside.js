@@ -35,15 +35,16 @@ export function icInside(g, d, pins, box, std = getSymbolStandard()) {
   const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
   // (its rows along the longer side)
   const across = box.x1 - box.x0 >= box.y1 - box.y0 ? 1 : 0;
-  const used = new Set((d.gates || []).flatMap((x) => [...x.ins, x.out]));
+  // (its gates drawn: their pins' names left out; a gate IC its layout cannot draw, a 4023, #4397: every pin named)
+  const L = d.gates ? insideLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) }))) : null;
+  const used = new Set(L?.gates.length ? d.gates.flatMap((x) => [...x.ins, x.out]) : []);
   for (const q of pins) {
     if (q.name === String(q.n) || used.has(q.n) || q.name === 'NC') continue;
     const [x, y] = at.get(q.n);
     const t = across ? [x, y + Math.sign(cy - y) * 11] : [x + Math.sign(cx - x) * 11, y];
     g.append(sv('text', { x: t[0], y: t[1] + 2.5, 'text-anchor': 'middle', class: 'circ-pin-name', 'data-no-i18n': 'true' }, q.name));
   }
-  if (!d.gates) return;
-  const L = insideLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) })));
+  if (!L) return;
   for (const w of L.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', 'data-pin': w.pin }));
   for (const gt of L.gates) g.append(...(std === 'iec' ? iecInside(gt) : [ieeeInside(gt)]));
 }

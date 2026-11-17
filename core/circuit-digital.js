@@ -13,7 +13,7 @@ import { partInputs, partLamps, portRef } from './circuit-io.js';
 import { pinPort, icPorts } from './circuit-hdl-ics.js';
 
 const isSupply = (q) => q.name === '+' || q.name === '-';
-const OPS = { nand: ['and', true], and: ['and', false], or: ['or', false], nor: ['or', true], xor: ['xor', false] };
+const OPS = { nand: ['and', true], and: ['and', false], or: ['or', false], nor: ['or', true], xor: ['xor', false], xnor: ['xor', true] };
 
 /** The top's digital body: { decl: [signals], body: [statements] } in VHDL (V) or Verilog; entityOf(d) an IC's entity. */
 export function digitalTop(m, V, entityOf) {
@@ -66,6 +66,7 @@ export function digitalTop(m, V, entityOf) {
   const gateExpr = ({ p, d, g }) => {
     const ins = g.ins.map((n) => ref(netOf(p.id, n)));
     if (g.fn === 'not') return not(ins[0]);
+    if (g.fn === 'buf') return ins[0];   // (a buffer, #4397)
     const [o, inv] = OPS[g.fn];
     return inv ? not(op(o, ins)) : op(o, ins);
   };

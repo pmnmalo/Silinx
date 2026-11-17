@@ -110,6 +110,13 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Pull-up (a weak 1)': 'Pull-up (um 1 fraco)', 'Pull-down (a weak 0)': 'Pull-down (um 0 fraco)', LED: 'LED',
   '7-segment display, common cathode': 'Mostrador de 7 segmentos, cátodo comum', '7-segment display, common anode': 'Mostrador de 7 segmentos, ânodo comum',
   'LED bar (10)': 'Barra de LEDs (10)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
+  // (KiCad's other gates, #4397)
+  'Hex buffer, open collector': 'Seis buffers, coletor aberto', 'Hex buffer': 'Seis buffers', 'Hex inverting buffer': 'Seis buffers inversores',
+  'Dual 4-input NAND, Schmitt trigger': 'Duas portas NAND de 4 entradas, Schmitt-trigger', 'Quad 2-input NAND, Schmitt trigger': 'Quatro portas NAND de 2 entradas, Schmitt-trigger',
+  'Quad 2-input NAND, open collector, high voltage': 'Quatro portas NAND de 2 entradas, coletor aberto, alta tensão',
+  'Quad 2-input NOR buffer': 'Quatro portas NOR de 2 entradas, buffer', 'Quad 2-input NOR buffer, open collector': 'Quatro portas NOR de 2 entradas, buffer, coletor aberto',
+  'Quad 2-input NAND buffer': 'Quatro portas NAND de 2 entradas, buffer', 'Quad 2-input NAND buffer, open collector': 'Quatro portas NAND de 2 entradas, buffer, coletor aberto',
+  'Dual 4-input NAND buffer': 'Duas portas NAND de 4 entradas, buffer', '13-input NAND': 'Uma porta NAND de 13 entradas', 'Quad 2-input XNOR': 'Quatro portas XNOR de 2 entradas',
   'Hex inverter, open collector': 'Seis inversores, coletor aberto', 'Hex inverter buffer, open collector': 'Seis inversores buffer, coletor aberto',
   // the MSI ICs (#3900, core/circuit-msi.js)
   'BCD to 7-segment decoder/driver, open collector, active low': 'Descodificador BCD para 7 segmentos, coletor aberto, ativo a 0',

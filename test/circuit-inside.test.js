@@ -32,10 +32,13 @@ function meet([a, b], [c, d]) {
 // a gate's body with its bubble
 const body = (g) => ({ x: g.flip ? g.x - (g.bubble ? 4 : 0) : g.x, y: g.y, w: g.w + (g.bubble ? 4 : 0), h: g.h });
 
-const GATE_ICS = ICS.filter((d) => d.gates);
+// (the 4023, 4025, 4073 and 4075: a gate's inputs on both rows, one past its output, #4397: their pins' names inside)
+const CROSSED = ['4023', '4025', '4073', '4075'];
+const GATE_ICS = ICS.filter((d) => d.gates && !CROSSED.includes(d.type));
 
 test('#4224 every gate IC: each gate\'s lines from its pins to its input side, from its tip to its output pin, orthogonal', () => {
-  assert.equal(GATE_ICS.length, 23);
+  assert.equal(GATE_ICS.length, 46);   // (23 of them KiCad's other gates, #4397)
+  for (const t of CROSSED) assert.deepEqual(insideLayout(ICS.find((d) => d.type === t), pinsOf(ICS.find((d) => d.type === t))), { gates: [], wires: [] }, t);
   for (const d of GATE_ICS) {
     const pins = pinsOf(d), at = new Map(pins.map((q) => [q.n, [q.x, q.y]]));
     const L = insideLayout(d, pins);

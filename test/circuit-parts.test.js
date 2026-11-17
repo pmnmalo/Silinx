@@ -22,20 +22,35 @@ const QUAD_Y1 = ['1Y', '1A', '1B', '2Y', '2A', '2B', 'GND', '3A', '3B', '3Y', '4
 const HEX = ['1A', '1Y', '2A', '2Y', '3A', '3Y', 'GND', '4Y', '4A', '5Y', '5A', '6Y', '6A', 'VCC'];
 const TRIPLE = ['1A', '1B', '2A', '2B', '2C', '2Y', 'GND', '3Y', '3A', '3B', '3C', '1Y', '1C', 'VCC'];
 const CMOS_QUAD = ['1A', '1B', '1Y', '2Y', '2A', '2B', 'VSS', '3A', '3B', '3Y', '4Y', '4A', '4B', 'VDD'];
+// (#4397: KiCad's other gates' datasheets)
+const DUAL4 = ['1A', '1B', 'NC', '1C', '1D', '1Y', 'GND', '2Y', '2A', '2B', 'NC', '2C', '2D', 'VCC'];
+const CMOS_DUAL4 = ['1Y', '1A', '1B', '1C', '1D', 'NC', 'VSS', 'NC', '2A', '2B', '2C', '2D', '2Y', 'VDD'];
+const CMOS_TRIPLE = ['1A', '1B', '2A', '2B', '2C', '2Y', 'VSS', '1C', '1Y', '3Y', '3A', '3B', '3C', 'VDD'];
+const CMOS_HEX16 = ['VDD', '1Y', '1A', '2Y', '2A', '3Y', '3A', 'VSS', '4A', '4Y', '5A', '5Y', 'NC', '6A', '6Y', 'NC'];
+const QUAD_386 = ['1A', '1B', '1Y', '2Y', '2A', '2B', 'GND', '3A', '3B', '3Y', '4Y', '4A', '4B', 'VCC'];
+const NAND13 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'GND', 'Y', 'H', 'J', 'K', 'L', 'M', 'N', 'VCC'];
 const PINOUT = {
   7400: QUAD, 7401: QUAD_Y1, 7402: QUAD_Y1, 7403: QUAD, 7404: HEX, 7405: HEX, 7406: HEX, 7408: QUAD, 7410: TRIPLE, 7411: TRIPLE, 7414: HEX,
   7420: ['1A', '1B', 'NC', '1C', '1D', '1Y', 'GND', '2Y', '2A', '2B', 'NC', '2C', '2D', 'VCC'], 7427: TRIPLE,
   7430: ['A', 'B', 'C', 'D', 'E', 'F', 'GND', 'Y', 'NC', 'NC', 'G', 'H', 'NC', 'VCC'], 7432: QUAD, 7486: QUAD,
   4001: CMOS_QUAD, 4011: CMOS_QUAD, 4030: CMOS_QUAD, 4069: HEX.map((n) => (n === 'GND' ? 'VSS' : n === 'VCC' ? 'VDD' : n)), 4070: CMOS_QUAD, 4071: CMOS_QUAD, 4081: CMOS_QUAD,
+  7407: HEX, 7409: QUAD, 7412: TRIPLE, 7413: DUAL4, 7415: TRIPLE, 7421: DUAL4, 7422: DUAL4, 7426: QUAD, 7428: QUAD_Y1, 7433: QUAD_Y1, 7437: QUAD, 7438: QUAD,
+  7440: DUAL4, 74132: QUAD, 74133: NAND13, 74136: QUAD, 74386: QUAD_386,
+  4002: CMOS_DUAL4, 4012: CMOS_DUAL4, 4023: CMOS_TRIPLE, 4025: CMOS_TRIPLE, 4049: CMOS_HEX16, 4050: CMOS_HEX16, 4072: CMOS_DUAL4, 4073: CMOS_TRIPLE, 4075: CMOS_TRIPLE,
+  4077: CMOS_QUAD,
 };
 // each IC's function, written here: the inputs' bits (an array of 0 / 1) → its output
 const F = {
   nand: (b) => 1 - b.reduce((x, y) => x & y, 1), and: (b) => b.reduce((x, y) => x & y, 1), or: (b) => b.reduce((x, y) => x | y, 0),
   nor: (b) => 1 - b.reduce((x, y) => x | y, 0), xor: (b) => b.reduce((x, y) => x ^ y, 0), not: (b) => 1 - b[0],
+  xnor: (b) => 1 - b.reduce((x, y) => x ^ y, 0), buf: (b) => b[0],
 };
 const FN = { 7400: 'nand', 7401: 'nand', 7402: 'nor', 7403: 'nand', 7404: 'not', 7405: 'not', 7406: 'not', 7408: 'and', 7410: 'nand', 7411: 'and', 7414: 'not',
-  7420: 'nand', 7427: 'nor', 7430: 'nand', 7432: 'or', 7486: 'xor', 4001: 'nor', 4011: 'nand', 4030: 'xor', 4069: 'not', 4070: 'xor', 4071: 'or', 4081: 'and' };
-const OC = ['7401', '7403', '7405', '7406'];
+  7420: 'nand', 7427: 'nor', 7430: 'nand', 7432: 'or', 7486: 'xor', 4001: 'nor', 4011: 'nand', 4030: 'xor', 4069: 'not', 4070: 'xor', 4071: 'or', 4081: 'and',
+  7407: 'buf', 7409: 'and', 7412: 'nand', 7413: 'nand', 7415: 'and', 7421: 'and', 7422: 'nand', 7426: 'nand', 7428: 'nor', 7433: 'nor', 7437: 'nand', 7438: 'nand',
+  7440: 'nand', 74132: 'nand', 74133: 'nand', 74136: 'xor', 74386: 'xor', 4002: 'nor', 4012: 'nand', 4023: 'nand', 4025: 'nor', 4049: 'not', 4050: 'buf', 4072: 'or',
+  4073: 'and', 4075: 'or', 4077: 'xnor' };
+const OC = ['7401', '7403', '7405', '7406', '7407', '7409', '7412', '7415', '7422', '7426', '7433', '7438', '74136'];
 let seed = 3;
 const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed >> 4; };
 const W = (m, id, ...points) => m.wires.push({ id, points, color: 'green' });
@@ -57,10 +72,10 @@ function vectorsOf(type, m) {
   const gates = PARTS[type].gates, w = gates[0].ins.length;
   const names = circuitPorts(m).inputs.map((x) => x.name);
   const set = (bits) => Object.fromEntries(names.map((n) => [n, bits[n]]));
-  const all = Array.from({ length: 1 << w }, (_, v) => set(Object.fromEntries(gates.flatMap((g, i) => g.ins.map((_, j) => [`g${i + 1}${'abcdefgh'[j]}`, (v >> j) & 1])))));
+  const all = Array.from({ length: 1 << w }, (_, v) => set(Object.fromEntries(gates.flatMap((g, i) => g.ins.map((_, j) => [`g${i + 1}${'abcdefghjklmn'[j]}`, (v >> j) & 1])))));
   return [...all, ...Array.from({ length: 12 }, () => set(Object.fromEntries(names.map((n) => [n, rnd() & 1]))))];
 }
-const want = (type, v) => PARTS[type].gates.map((g, i) => String(F[FN[type]](g.ins.map((_, j) => v[`g${i + 1}${'abcdefgh'[j]}`])))).join('');
+const want = (type, v) => PARTS[type].gates.map((g, i) => String(F[FN[type]](g.ins.map((_, j) => v[`g${i + 1}${'abcdefghjklmn'[j]}`])))).join('');
 
 test('every IC\'s gates against its truth table, through the engine: the 74LS gates, the open collector ones pulled up, the 4000s', () => {
   for (const type of Object.keys(PINOUT)) {

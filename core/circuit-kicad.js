@@ -54,7 +54,9 @@ export function pinDirection(p) {
 // (a passive or unspecified pin says nothing of its direction: it fits any; a no-connect pin fits an unused one)
 // (a 3-state output fits an output of the library, as the 74595's, #4285)
 const fits = (kicad, silinx) => kicad.type === 'passive' || kicad.type === 'unspecified' || kicad.type === 'free' || pinDirection(kicad) === silinx
-  || (kicad.type === 'tri_state' && silinx === 'out');
+  || (kicad.type === 'tri_state' && silinx === 'out')
+  // (an open collector output KiCad's symbol says is an output: its 74LS22's, #4397)
+  || (kicad.type === 'output' && silinx === 'oc');
 
 /** A symbol's pins, each once (its normal body's; every unit's): [{ number, name, type, … }]. */
 export function symbolPins(s) {

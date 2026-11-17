@@ -132,11 +132,13 @@ export function gateValue(fn, ins) {
   const any = (v) => ins.includes(v);
   switch (fn) {
     case 'not': return ins[0] === '0' ? '1' : ins[0] === '1' ? '0' : 'X';
+    case 'buf': return ins[0] === '0' || ins[0] === '1' ? ins[0] : 'X';
     case 'and': return any('0') ? '0' : any('X') ? 'X' : '1';
     case 'nand': return any('0') ? '1' : any('X') ? 'X' : '0';
     case 'or': return any('1') ? '1' : any('X') ? 'X' : '0';
     case 'nor': return any('1') ? '0' : any('X') ? 'X' : '1';
     case 'xor': return any('X') ? 'X' : (ins.filter((v) => v === '1').length % 2 ? '1' : '0');
+    case 'xnor': return any('X') ? 'X' : (ins.filter((v) => v === '1').length % 2 ? '0' : '1');
     default: throw new Error(`no gate function '${fn}'`);
   }
 }
