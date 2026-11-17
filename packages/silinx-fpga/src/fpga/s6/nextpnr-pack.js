@@ -4,7 +4,7 @@
 // them) and places them; Silinx reads its placement back by those sites, then routes and writes the settings as before.
 //
 //   sortedNetlistText(text) -> the netlist with its cells by name (nextpnr's order: both packers then name one site alike)
-//   packInput(text, phys, device) -> Yosys's netlist for the fork, each I/O buffer with its port and the port's constraints,
+//   packInput(text, phys, device, padLocs) -> Yosys's netlist for the fork, each I/O buffer with its port and the port's constraints,
 //                             each BSCAN with the BEL of its JTAG chain's site (#3766)
 //   packedSites(json)       -> the fork's sites { name: type } (its cells after packing)
 //   samePacking(json, phys) -> the differences of the fork's sites from Silinx's Map's ([] when they are the same)
@@ -25,9 +25,9 @@ export function sortedNetlistText(text) {
  * Yosys's netlist (sortedNetlistText's) as the fork's packer reads it: each I/O buffer of phys (physS6's, of the same
  * netlist) with its port bit (PORT) and that port's constraints (LOC, IOSTANDARD, DRIVE, SLEW, PULL); with the device,
  * each BSCAN_SPARTAN6 with its BEL, the site of its JTAG chain (BSCAN_X0Y<chain - 1>: the site decides the chain, #3766;
- * nextpnr-spartan6 0.5.1 keeps it).
+ * nextpnr-spartan6 0.5.1 keeps it). padLocs: Map instance name -> pad, the LOC of an I/O buffer whose port has none (#4374).
  */
-export function packInput(text, phys, device = null) {
+export function packInput(text, phys, device = null, padLocs = null) {
   const j = JSON.parse(text);
   const mod = topModule(j);
   const keys = Object.keys(mod.cells);
@@ -38,7 +38,7 @@ export function packInput(text, phys, device = null) {
     }
     if (inst.kind !== 'iob') continue;
     const c = mod.cells[keys[inst.cell]], a = inst.cons || {};
-    c.attributes = { ...c.attributes, PORT: inst.port, ...(inst.loc ? { LOC: inst.loc } : {}), ...(a.iostandard ? { IOSTANDARD: a.iostandard } : {}),
+    c.attributes = { ...c.attributes, PORT: inst.port, ...(inst.loc || padLocs?.get(inst.name) ? { LOC: inst.loc || padLocs.get(inst.name) } : {}), ...(a.iostandard ? { IOSTANDARD: a.iostandard } : {}),
       ...(a.drive ? { DRIVE: String(a.drive) } : {}), ...(a.slew ? { SLEW: a.slew } : {}), ...(a.pull ? { PULL: a.pull } : {}) };
   }
   return j;
