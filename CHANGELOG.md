@@ -3,6 +3,719 @@
 What changed in each version of Silinx ISE. The newest version is first. Each section is also
 the "What's new" text of its GitHub release.
 
+## 15.27.0
+
+The breadboard opens onto KiCad: KiCad's 74xx and 4xxx and SparkFun's parts found by part number, drawn as they look,
+run in Try it by their VHDL or Verilog models, and a circuit exported to KiCad. A project is worked on together: a
+Collaboration tab, a branch per person, Merge Contribution… and live sharing that follows Try it. Every drawing zooms and
+pans as the Schematic editor does, and the Lattice and Gowin boards simulate after synthesis and Place & Route.
+
+In short:
+
+- **KiCad parts in a circuit:** a KiCad catalogue in the Parts panel (KiCad's 74xx and 4xxx, SparkFun's breadboard
+  parts, Arduino boards, LEDs, switches and push buttons), Browse KiCad Libraries… and Import KiCad Part…, each part
+  drawn as it looks and run in Try it by its VHDL or Verilog model; Export to KiCad.
+- **More ICs:** 30 more gate ICs, three-state buffers, the bus transceivers 74242, 74243 and 74245 on three-state
+  buses, and 18 flip-flops, latches and registers, each written once in VHDL.
+- **Working together:** a Collaboration tab, a branch per person and Merge Branch…, Merge Contribution… (also as MCP
+  tools), text files merged; live sharing follows Try it, each participant keeping their own wires' style; GitHub Checks
+  with a fine-grained token, and signing out of GitHub asks first.
+- **Drawings:** every drawing's view gestures are the Schematic editor's (wheel and pinch zoom about the pointer, a
+  trackpad's scroll pans, Safari's pinch on the Mac); side panels resizable; the circuit editor's Properties tidied.
+- **Boards and devices:** the iCE40 and ECP5 designs simulate, after synthesis and after Place & Route too; the Tang
+  Nano 9K's DDR, serialisers, LVDS and DSPs in the open toolchain; the Spartan-6's Map by nextpnr by default; Place &
+  Route of a very large design with Optimization Speed in half the time.
+- **ISE:** the breadboard and blinky examples build with no warnings again; Export to Xilinx ISE of a new project, of an
+  instance named with a reserved word and of a VHDL top with integer ports; a circuit's unwired chip outputs and tied
+  presets build with no warnings.
+- **Projects:** a Silinx zip imported back as it was exported; the Design Summary no longer jumps in front; VHDL
+  simulation of pull-ups and pull-downs.
+
+In detail:
+
+- **VHDL to Verilog: a process with several asynchronous controls (#4412):** a clocked process whose asynchronous
+  controls come before its clock's edge, as a flip-flop's preset and clear (`if pre_n = '0' … elsif clr_n = '0' …
+  elsif rising_edge(clk) …`), was refused by the translator. One reset was the only form it read. Such a process now
+  becomes one `always @(posedge clk or negedge pre_n or negedge clr_n)` block with the same if / else if chain, which
+  simulates as the VHDL does. #4397's ICs, written in VHDL with their Verilog translated, need it.
+- **The bus transceivers (#4397, group B):** `core/circuit-ics.js` adds the 74242 (inverting), 74243 and 74245, their
+  A and B pins inputs and three-state outputs at once. Each bit is a buffer each way, enabled by GAB̅ and GBA, or by
+  DIR and OE̅. These pins are `inout` in the ICs' HDL and read as a net's readers in the circuit's HDL. A transceiver's
+  two ways never conduct at once, so their loop through its pins is marked as no loop for the lint. KiCad's
+  74LS242, 74LS243, 74LS245 and 74HC245 behave as them, whatever pin type their symbols give A. The catalogue's
+  KiCad logic ICs that behave go from 132 to 136.
+- **Three-state outputs on one net are a bus (#4409):** Check Circuit reported two 74125 outputs on one net as `Short
+  circuit`. A three-state output (`tri` on its pin) is now counted apart. Several on a net are a bus. With a plain
+  output or a supply rail on the net, Check gives a warning, a short whenever one is enabled.
+- **KiCad's `DIP?16*` footprint filters read (#4397):** a KiCad symbol with no footprint and a DIP filter written
+  the way KiCad's 74xx and 4xxx write it (`DIP?16*`, `DIP?20*`, with no width) is a DIP part. It gets as many pins as
+  the filter says, its rows 7.62 mm apart up to 20 pins and 15.24 mm from 24 (or as the filter says). Before, only
+  `DIP*W7.62mm*` was read, and 143 of KiCad's logic ICs were no part. They are drawn only for now. Their behaviour
+  comes with #4397's next changes.
+- **The three-state buffers (#4397, group B):** `core/circuit-ics.js` gives the gates enables. A gate drives its
+  output while all its enable pins are at their active level, and its output is off (Z) once one is not (X while one is
+  unknown). This works in the engine, in the ICs' HDL, and in the digital model synthesis reads: there, a buffer's
+  level while enabled, else the net's other drivers' or its default, as the 74595's outputs. It adds 11 ICs with their
+  datasheets' pinouts. KiCad's `_Split` symbols are read as their chip (74LS244_Split as the 74244). The catalogue's
+  KiCad logic ICs that behave go from 105 to 132. The 74242, 74243 and 74245 transceivers, whose pins are inputs and
+  outputs at once, come next.
+- **ICs written once in VHDL (#4397, group C):** `core/circuit-model-ics.js` adds 18 flip-flops, latches and registers.
+  Each has its datasheet's pinout and a core, a VHDL model of the chip written by small generators (a J-K or D
+  flip-flop, a D latch, an S̅-R̅ latch). Try it runs the core live (`coreModel` in `core/circuit-live-model.js`), with
+  the chip's power and the reading of its inputs. The circuit's HDL (`core/circuit-hdl-core.js`) instantiates the core
+  in its simulation model and in its digital one, and its Verilog is Silinx's translation of the VHDL, never written by
+  hand. The translator drops the lint's `silinx: ignore` comments (#4414), so the generator adds them back to the
+  Verilog. The catalogue's KiCad logic ICs that behave go from 136 to 158.
+- **KiCad's other gates as library ICs (#4397, group A):** `core/circuit-ics.js` adds 20 gates of the 74 series (7407,
+  7409, 7412, 7413, 7415, 7421, 7422, 7426, 7428, 7433, 7437, 7438, 7440, 74132, 74133, 74136, 74386, and the AND-OR-INVERTs
+  7451, 7454 as the 74LS54 and 7455) and 10 of the
+  4000 series (4002, 4012, 4023, 4025, 4049, 4050, 4072, 4073, 4075, 4077). Each has its datasheet's pinout, and the
+  gates now have the buffer, XNOR and AND-OR-INVERT functions and a DIP of 16 pins. They run in Try it, Check, the HDL and synthesis,
+  and the MCP's circuit_parts and edit_circuit have them, as the other gates do. KiCad's open collector outputs that
+  its symbols call outputs (its 74LS22's) fit an open collector IC. The catalogue's KiCad parts that behave as ICs go
+  from 73 to 105 (KiCad's standard TTL 7454 differs from the 74LS54 and stays drawn only). Show inside names the pins of the 4023, 4025, 4073 and 4075 (one of their gates has an input past
+  its output, and its lines would cross) and of the AND-OR-INVERTs.
+- **The KiCad catalogue's Arduino boards (#4394):** `scripts/kicad-catalogue.mjs` adds the boards of the KiCad PCM's
+  KiCad Library for Arduino Modules v4.2.0 (CC-BY-SA-4.0) whose pins fit the 0.1 inch grid: 32 sockets, but no
+  shield. They are drawn only, because Silinx does not simulate a microcontroller. Like KiCad's own footprints, none
+  of their drawings is kept, only their pads' places. A footprint whose pads are named by its pins (A0, 5V, D13) and
+  that has no pad 1 takes its first named through-hole pad as its origin (`originPad` in `core/kicad-mod.js`). It used
+  to be "no pad 1 through the board". The same rule adds SparkFun's triple LED.
+- **KiCad's own basic parts in the catalogue (#4385):** `scripts/kicad-catalogue.mjs` takes them from KiCad 9.0.0's
+  Device, Transistor_BJT, Regulator_Linear, Switch and Display_Character libraries, each with the through-hole
+  footprint Silinx picks for it (a 2.54 mm TO-92, not the 1.27 mm one). The import writes it as the symbol's
+  `Silinx.Footprint`. Their previews are a box round their pads: KiCad's footprints are CC-BY-SA-4.0, so none of their
+  drawings is kept. A pad within 0.1 mm of the 0.1 inch grid is on it (it was 0.01 mm), so KiCad's capacitors (2.50 and
+  5.00 mm) fit. That also adds SparkFun's 5 A relay and its 12 mm push button, which behaves as the library's button.
+- **A circuit IC's case on a concatenation, qualified by a subtype of its width (#4380):** the ICs' VHDL (the digital
+  architecture and the simulation's model) wrote `case std_logic_vector'(s1 & s0) is`, whose subtype is not locally
+  static, as VHDL wants of a case's expression (XST's HDLCompiler:803, on the breadboard example in the ISE nightly);
+  now `case slv2'(s1 & s0) is`, its `subtype slv2 is std_logic_vector(1 downto 0)` declared in the architecture. The
+  breadboard example's HDL regenerated.
+- **blinky's debounce in ticks, not clock cycles (#4377):** `speed_ctrl`'s counters `cnt_f` and `cnt_s` counted
+  `CLK_HZ / 50` cycles (20 ms), and no fixed width fitted every board's clock: 21 bits never reached it above 104.8 MHz
+  (#3922), 22 left bit 21 constant at 100 MHz (XST's `WARNING:Xst:1293 - FF/Latch <u_speed/cnt_s_21> has a constant
+  value of 0` on the Nexys3 and the Atlys). They now count the prescaler's ticks (80 a second) while the button
+  differs from its debounced value, under a `tick` decision box as the divider's (its VHDL translates to Verilog):
+  `DEBOUNCE` = 3 ticks, 2-bit counters, every bit used on every board. A button is
+  taken once held 3 ticks, 25 to 37.5 ms (it was 20 ms); a press held 2 ticks is not. A unit test checks the counters'
+  width against `DEBOUNCE - 1` at every board's clock, and simulates the chart's VHDL and Verilog. The chart's register
+  widths are integers; a width given by a generic's expression is #4378.
+- **Spartan-6: a design with ports without a LOC implemented in seconds again (#4374):** since nextpnr's packer became
+  the Spartan-6's Map (#3140) the pads of the ports with no LOC were placed by nextpnr's simulated annealing, 30–50 s a
+  seed for 62 of them (on Windows `test/s6-pad-paths.test.js` timed out); they take Silinx's pads again, as with Silinx's
+  Map: a 64-bit shift register on the Nexys3 in 5 s instead of 105 s.
+- **VHDL simulation: a bit-string literal's weak values (#4370):** a bit-string literal with L, H or W (`b"LHW1"`,
+  `x"L1"`) keeps them as a string literal does since #3926 (before: `01X1`, `00000001`); the #396 test expects the
+  weak values `to_string` shows since #3926 (`LH0XWX1X`, before `010XXX1X`), which failed the nightly run.
+- **The Board Emulator's short-click test on a slow page (#4369):** a button clicked is held down until the design
+  saw 100 cycles of it (#3109), and a slow page's run in flight, up to a quarter of a second's cycles (#3727), may take
+  the board past them before the test looks: the button then rightly up. The test reads the button with the board's
+  time (never up before the 100 cycles), and a press longer than a real one is let go at once, its LED toggled; the
+  nightly's failure in the ISE interface was this, not blinky's debouncers (#3922), whose design it does not use.
+- **A closed editor's side panels let go of (#4365, #4366):** each side panel's handle (web/js/side-resize.js, #4316)
+  listened to the narrow-screen media query with a listener of its own, never removed, which kept every closed
+  editor and viewer alive (the implemented design, the ASM chart, the Board Emulator: 34 to 119 listeners and up to
+  1000 nodes a time); one listener now serves every panel, each held weakly. The handle is placed in the frame after
+  the panel is resized, not in the ResizeObserver's callback, where WebKit reported "ResizeObserver loop completed
+  with undelivered notifications" as a page error.
+- **The private-data check of main's history (#4364):** the dummy address in a made-up rate limit's message of
+  test/github-checks.test.js, in one commit's version of it only (gone since), is on the allow-list with its reason
+  (scripts/check-private-data.mjs). Test: private-data (that file only; another address in it still found).
+- **The Circuit editor's UI tests (#4367, #4368):** circuit-look's ⋮ menu ends with the KiCad group (#4282's exports)
+  and circuit's Parts panel with the KiCad catalogue (#4305), as intended; their expected lists say so, in English and
+  in Portuguese.
+- **xc7-timing-vivado on Windows (#4371):** the placement's Tcl test reads tclsh's output and files with LF, as Tcl
+  writes CRLF on Windows; its standard output is made CRLF on every system, so the case is tested everywhere, and
+  placementCounts on a CRLF report is tested too.
+- **A constraints file not in the zip is missing, but the device's default (#4356):** #4288's fix stopped counting
+  silinx.json's `constraints` as missing at all; the import (the server's `importProjectEntries`, File ▸ Import Project…
+  and the MCP's `import_project`; the browser edition's `projectFromZip`) now leaves out only the device's default
+  path, `constraints/top<ext>` (`.ucf`, `.pcf`, `.lpf`, `.cst`, `.xdc`), which a new project names before its file is
+  written. Tests: project-zip, project-store and mcp-transfer (a file of its own and the default, on a Spartan-3E and
+  an iCE40), server (its test of a constraints file the zip does not contain, failing since #4288), the UI test
+  projects (the warning, in both interfaces).
+- **KiCad parts that behave as the library's LED, slide switch and push button (#4349):** `core/circuit-kicad-parts.js`
+  knows them by `Silinx.Model` (`led`, `spdt`, `button`) or by what their symbols say. It matches their pins by name
+  (an LED's A and K, whatever their numbers), by number (a button's) or by place (a slide switch's middle pin, its
+  common). Each pin keeps its footprint's place and the library part's number, so the simulation, Check and the HDL
+  treat them as the library's. An LED's colour is its own. Their drawing shows the LED lit, the switch's lever and the
+  button's cap. Part info says what they behave as. Import KiCad Part… and `import_part` offer the three models. The
+  catalogue's SparkFun LEDs and slide switches are listed as the LED and the slide switch of the library.
+- **The KiCad catalogue's previews drawn as the parts (#4346):** `scripts/kicad-catalogue.mjs` keeps each SparkFun
+  footprint's drawing (as #4315 draws it, in grid steps, rounded, about 42 kB) and its pads' places in
+  `core/kicad-catalogue-data.js` (`CATALOGUE_LOOKS`). `catalogueDrawing` (`core/kicad-catalogue.js`) makes a part of it
+  for the preview, a DIP's for a part drawn only on a DIP, and `drawnPartSvg` (`web/js/circuit-draw.js`) draws it. The
+  drawings are SparkFun's (CC-BY-4.0): THIRD-PARTY-NOTICES.md has their entry and licence.
+- **Open Project's Stored In, the GitHub line (#4344):** a project in a GitHub repository shows its storage, then
+  "↔ GitHub: owner/repo": the repository it is linked to (opened from, stored in), not a second place its files are
+  kept; the tip unchanged.
+- **Open from GitHub Repository… first (#4343):** on the Start page's git group (after the browser edition's Sign in
+  with GitHub…) and in the Collaboration tab's Repository box (a project with no repository, or none open), Open
+  from GitHub Repository… comes before Store Project in a GitHub Repository…, which applies to an open project only.
+- **The pages' CSP lets the KiCad catalogue fetch from gitlab.com (#4335):** `https://gitlab.com` joins `connect-src`
+  (`server/csp.js`, the server's header and the static editions' `<meta>`), as #4312's fetch through GitLab's API
+  needs. A test checks that every catalogue file's browser URL is allowed.
+- **The GW1N's other primitives in gowin_pack's port (#4333):** Silinx's JavaScript port of Apicula's `gowin_pack` writes
+  them as Apicula 0.32 does, byte for byte on a test design each (the toolchain package's changelog lists them). A
+  differential pair takes an IO_LOC for each of its two ports.
+- **A flaky wait in the live sharing's MCP test (#4330):** `test/mcp-collab.test.js`'s #3355 test waited for the
+  refused change (a NUL byte) to be undone at the MCP client's with a read that failed on any error; until the
+  owner's undo reaches the client, which may come after the browser follower's, `follow_project` reads back the
+  client's own change and says it is not shown (binary content), as the interface's follower does. That error,
+  and only that one, now counts as "not yet" (any other still fails the test), and the test asserts it right after
+  the write, read back in the same call.
+- **The Start tab alone with no project (#4322):** #4257 hid the whole tab row while no project is open; the Start
+  tab now stays, alone and active, in both interfaces (the ISE style's row, the Silinx interface's activity bar with
+  its Start icon, on a narrow screen too), so that the panel looks the same as with a project; Design, Files,
+  Libraries, Teaching and Collaboration come back when a project opens, as before.
+- **The git commands' names (#4320):** Initialize Repository… (File ▸ Git, the Collaboration tab, the Start page),
+  which puts the open project in a GitHub repository, is Store Project in a GitHub Repository… (Portuguese: Guardar o
+  Projeto num Repositório GitHub…), and Open from Repository… is Open from GitHub Repository… (Abrir do Repositório
+  GitHub…): the commands, their dialogs' titles, the hints that name them ("… puts it in one"), the MCP's `git_init`
+  and `git_clone` descriptions, the README and the guides.
+- **A symbol's file in a .kicad_symdir named as KiCad 10 names it (#4318):** a symbol taken out of its library into a
+  file of its own (the KiCad catalogue's import) gets its name escaped as KiCad's `EscapeString` does for file names
+  (`/` as `{slash}`, `\`, `"`, `<`, `>`, `|`, `:`, tabs and line ends too: `symbolFileName` in `core/kicad-edit.js`).
+  A PCM package's `.kicad_symdir` files named that way are read too.
+- **Every side panel's width dragged (#4316):** a handle over the panel's inner edge (web/js/side-resize.js, mounted
+  by `mountSideFold` and the schematic's `mountSchPanels`, so every side panel has it), dragged by the mouse, a pen or
+  a finger, ← → from the keyboard when focused; between 160 and 720 px, the canvas keeping 200 px; remembered per
+  panel (`silinx.<editor>.<panel>.width`); a double-click restores the default width. Folded, the panel keeps its
+  strip and has no handle; on a narrow screen (the panel over the canvas behind ☰) the handle works too, the panel at
+  most 90 % of the editor. The width is the view's only: no MCP tool.
+- **A KiCad part drawn only by its footprint's drawing (#4315):** `core/kicad-mod.js` reads a footprint's F.Fab
+  shapes (F.SilkS when it has none): lines, rectangles, circles, arcs (KiCad 5's too) and polygons, filled or not.
+  `core/circuit-kicad.js` keeps them with the part, in grid steps from pad 1, turned as its pins are, and finds an
+  LED's colour. `web/js/circuit-draw.js` draws them: the closed shapes are the body, the lines are its marks. A part
+  whose footprint is known by its name only keeps its dashed box. Its name goes over the body when it fits, else
+  above it (`U2  Red` no longer runs over the body).
+- **Open Project's Stored In (#4314):** the list has a Stored In column, before Last Used: *Workspace Folder* (the
+  server's, or the folder the browser edition opened) or *Browser Storage*, and *GitHub: owner/repo* under it for a
+  project in a GitHub repository (cloned, or one Initialize Repository… gave a remote); its tip says it in words. The Top column, which said little, is gone. The
+  server's list of projects (`GET /api/projects`) gives each one's `stored` and `github` (server/project-places.js:
+  its origin's, with the system's git; its record's, with GitHub's API; none with git off), the browser edition's its
+  storage and its repository; the words are core/project-place.js's. The MCP's `list_projects` says the same
+  (`stored`, `github`, and its line's "Kept in the workspace folder…").
+- **The KiCad catalogue's KiCad parts with no local server (#4312):** gitlab.com's raw files send no CORS header, so
+  the browser's edition fetches them through GitLab's API (`browserUrl` in `core/kicad-catalogue.js`), which serves
+  the same files with one; their SHA-256 is checked as before. The local server keeps the catalogue's URLs.
+- **The Parts panel's test knows the KiCad catalogue's group (#4310):** test/ui/circuit-parts.test.js listed the panel's
+  groups without the folded *KiCad catalogue* added by #4305, and so failed on main.
+- **Import KiCad Part…: a PCM .zip or a .kicad_symdir folder listed once (#4307):** when the file input fired twice,
+  both reads listed the package's libraries, so each one appeared twice. The table is now cleared once the read is
+  done, for the last pick only.
+- **The KiCad catalogue (#4305, #4278):** `core/kicad-catalogue-data.js` (written by `scripts/kicad-catalogue.mjs`) says
+  where each of 212 parts is: its library file's URL and SHA-256 at a pinned version (KiCad 9.0.0's 74xx and 4xxx,
+  SparkFun's v10.0.0), what it is in Silinx (as which IC, or drawn only) and its footprint's file. It holds none of a
+  library's content. The Parts panel's *KiCad catalogue* group (folded, opened by a search) imports a part with a click
+  (`core/kicad-catalogue.js`): its symbol and those it extends, each a file of its own in
+  `parts/<library>.kicad_symdir/`, its footprint beside it, its origin written in it. Every file is checked against its
+  SHA-256, and a file there with the same text is kept. Its files come through the local server (the catalogue's only,
+  kept for offline use) or, in the browser's edition, from SparkFun's CORS host. Portuguese too.
+- **MCP (#4305):** `part_libraries` with `catalogue` (searched by `query`); `import_part` with `part`.
+- **`SILINX_KICAD_OFFLINE` (#4305):** the local server fetches none of KiCad's libraries and uses only what it kept.
+- **The Circuit section hidden while a part or a wire is selected (#4303):** the circuit editor's Properties showed
+  the circuit's section under the selection's. It now shows only the selection's, and the circuit's again once
+  nothing is selected (`web/js/circuit-side.js`).
+- **Show inside: an IC's leads unfilled (#4299):** the leads from a gate IC's pins to its gates' inputs and from their
+  outputs to their pins (#4224) are bent polylines, and their style set no fill, so SVG's default black fill closed
+  each one into a black triangle or polygon (in both themes, both symbol standards, the print and the exported image).
+  Each lead is drawn with `fill="none"` and the editor's style of the leads (`circ-gate-line`) sets `fill: none`.
+- **A Silinx property set on a KiCad symbol written on one line (#4297):** its new property took the whole text before
+  it on that line as its indent, writing the symbol's beginning twice, and the library could not be read again
+  (`a "(" not closed`). It now takes the line's leading white space only.
+- **Safari's pinch (#4296):** macOS Safari sends a trackpad's pinch as gesture events (gesturestart, gesturechange,
+  gestureend, their `scale`), not as a Ctrl + wheel. canvas-gestures.js's safariPinch zooms by each gesturechange's
+  scale over the last one, about the pointer, the page itself not zoomed; where a browser sends a Ctrl + wheel too,
+  the first of the two to come in the gesture zooms, the other is dropped; on iPadOS, whose two fingers on the screen
+  send gesture events too, these are twoFingerView's (a finger down on the drawing: the gesture events zoom nothing),
+  its trackpad's pinch the gesture events'. web/js/view-gestures.js wires it on every drawing.
+- **Each server call its own project's KiCad parts (#4294):** the project's parts were kept in one registry for the
+  whole server. Two MCP calls (or HTTP requests) on two projects, run at once, could check, simulate or make the HDL of
+  a circuit with the other project's parts, or none. Each call now has a store of its own (`server/parts-scope.js`);
+  the browser, one project open at a time, keeps the module's.
+- **A drawing's view gestures in a module of their own (#4291, #405):** the schematic editor's wheel (zoom about the
+  pointer, as smoothly as the wheel or the pinch moves; a trackpad's scroll pans) moved as it was from
+  web/js/sch-mouse.js to web/js/canvas-gestures.js, for the other editors to share; no change of behaviour.
+- **A drawing's view gestures, shared (#4291):** web/js/view-gestures.js wires the schematic editor's wheel
+  (canvas-gestures.js), its two fingers (ui.js twoFingerView), and a drag of the view by the middle button or by Space
+  and the left one (in the capture phase: the editor's tools see none of it) on every editor and viewer of a drawing:
+  the schematic (its own Space and middle button kept), the circuit, the ASM chart (its own Space kept), the state
+  diagram, the Petri net, the symbol editor (the drawing scrolled in its frame, centred by its margins so that all of
+  it can be reached zoomed in; one finger on its background drags it), the RTL schematic viewer and the FPGA view (two
+  fingers new to both), and the ink pad; each keeps its zoom's limits. The waveform viewer keeps its own (a time axis:
+  the wheel scrolls its rows).
+- **The constraints path is not a missing file (#4288):** silinx.json's `constraints` is where the project's
+  constraints file is or will be (a new project's `constraints/top.ucf`, not written yet), not a file the project lists:
+  the import of a Silinx zip (the server's `importProjectEntries`, File ▸ Import Project… and the MCP's
+  `import_project`; the browser edition's `projectFromZip`) no longer counts it as missing when the zip has none, as the
+  .xise leaves it out (#4276); the files silinx.json lists are still checked. Tests: project-zip and mcp-transfer (a new
+  project's Silinx zip exported and imported back, nothing missing, no warnings), project-store and server-api, the UI
+  tests projects and standalone (the server and the browser editions, in both interfaces).
+- **The Design Summary drawn with the reports as they are when it is opened (#4287):** its refreshes are numbered and
+  only the latest draws, an older one answered after it (older reports) dropped; Design Summary (`openSummary`)
+  resolves once the summary is drawn, not before its reports are read. The UI test gowin-device (#2303) read the table
+  drawn at the project's opening, its Status column empty; test/ui/summary.test.js holds the reports' requests and
+  answers them out of order.
+- **KiCad's libraries fetched by the local server (#4285, #4278):** the PCM's official index and its library packages,
+  and KiCad 9.0.0's 74xx and 4xxx symbol libraries (`core/kicad-pcm.js`, `server/kicad-libraries.js`). They come from
+  an allowed list of hosts only, over HTTPS, with each redirect checked and the size limited. A package is read only
+  once its SHA-256 is the index's (KiCad's own libraries: one pinned). Only a zip's `symbols/` and `footprints/` are
+  inflated, with no path out of it. They are kept in the configuration folder for offline use, and the index is fetched
+  again after a day.
+- **Browse KiCad Libraries… (#4285):** a dialog of the Parts panel, on the local server only. It searches the libraries
+  and shows each one's version, licence and size. A library picked shows what its symbol libraries hold; those ticked
+  are imported with the footprints their symbols name and their source, author and licence. Replacing files asks first.
+- **Import KiCad Part… takes a PCM package's `.zip` and a `.kicad_symdir` folder (#4285).**
+- **MCP (#4285):** `part_libraries` (the libraries, a search, what one holds); `import_part` with `library`, a `.zip` or
+  a `.kicad_symdir` folder, and `libraries` to choose.
+- **A 3-state output fits a library IC's output (#4285):** the 74595's in KiCad's libraries (`tri_state`) now behave as
+  Silinx's 74595. A footprint named `PCM_<library>:<name>`, as the PCM's installed libraries are, is found in
+  `parts/<library>.pretty/`.
+- **A KiCad part's module run live (#4284, #4278):** `core/circuit-live-model.js` gives each such part a copy of its
+  module of its own in Silinx's HDL simulator. The circuit's simulation (`core/circuit-sim.js`) forces the part's
+  input levels on the module's inputs, runs it a step, and drives its outputs' levels after the part's delay (10 ns),
+  its registers keeping their state. The live run and the generated HDL's simulation agree vector by vector (an
+  inverter and a toggle flip-flop, VHDL and Verilog); a flip costs about what a 7404's does.
+- **A module that cannot run live (#4284):** its elaboration's errors, or a `$finish` or a failure as it starts, are said
+  by Check Circuit and `simulate_drawing` ("U1 (TEST-INV): its module test_inv cannot run in Try it: its simulation
+  stopped (finish)"), and its pins drive nothing. The warning "Try it does not run it" of #4283 is gone.
+- **Where:** the editor's Try it and Check (the project's compiled HDL), the MCP's `check_drawing`, `edit_circuit` and
+  `simulate_drawing` (`core/drawing-sync.js` `projectHdl`).
+- **A KiCad part modelled by a module of the project (#4283, #4278):** `Silinx.HDL` on a symbol names a VHDL entity or
+  a Verilog module of the project. Its ports are the part's pins (by their names, or as `Silinx.Ports` maps them; the
+  supply pins are no ports). The circuit's generated HDL instantiates it in its simulation's model and in its digital
+  one (`core/circuit-kicad-hdl.js`, `core/circuit-hdl.js`, `core/circuit-digital.js`), and the module is not copied
+  into the circuit's file. Check Circuit, given the project's modules (the editor's, `check_drawing`'s, `edit_circuit`'s),
+  refuses a module missing, a port without a pin, a pin without a port, a direction or a width that differ. It warns
+  "U1 (TEST-INV) is simulated by its module test_inv in the HDL only: Try it does not run it".
+- **In the editor (#4283):** such a part has a whole outline, its tip and Part info name its HDL module, and Import
+  KiCad Part… has an HDL module column. `import_part`'s `symbols.<name>.hdl` and `ports` write the properties. Portuguese
+  too.
+- **The library's ICs as KiCad symbols (#4282, #4278):** `core/kicad-export.js` writes each of the 48 ICs as a KiCad
+  symbol at KiCad 9's file version. A gate IC has a unit per gate and a unit of its supply; an MSI or sequential IC has
+  one unit. The pins sit on the 2.54 mm grid, an active low one named `~{CLR}`, with a DIP footprint and its behaviour
+  in `Silinx.Model` and `Silinx.Family`. Silinx reads every one of them back as that IC, by its properties and by its
+  part number alone.
+- **A project's KiCad parts as a PCM package (#4282):** a `.zip` with the PCM schema's required metadata, the project's
+  `parts/` files as they are and, ticked, the library's ICs.
+- **The editor's ⋮ menu (#4282):** Export ICs as KiCad Symbols… (all of them, or this circuit's) and Export Parts as
+  KiCad Package…, downloaded, their lines in the console. Portuguese too.
+- **MCP (#4282):** `export_part`, to the exchange folder.
+- **The circuit editor's KiCad parts (#4281, #4278):** a circuit opened reads its project's KiCad parts. The Parts panel
+  lists them last (*KiCad parts (project)*), by part number and description. The canvas draws a part that behaves as an IC
+  as that IC under its own number, and a part drawn only with a dashed body. The Part info adds the KiCad symbol and file,
+  the part number, the datasheet (a link), the footprint, the source, author and licence.
+- **Import KiCad Part… (#4281):** the Parts panel's dialog picks a `.kicad_sym` or a `.kicad_mod`, lists a library's
+  symbols with what each one is, and lets each one's Model, Family and Footprint be set, with the source, author and
+  licence given once. It imports the file as the MCP's `import_part` does (`core/kicad-import.js`, the same checks and
+  messages), each symbol said in the console. Every label is in Portuguese too.
+- **A project's KiCad parts (#4280, #4278):** the `.kicad_sym` libraries, `.kicad_symdir` folders and `.kicad_mod`
+  footprints of a project's `parts/` folder are its circuits' parts, named `parts/<library>.kicad_sym#<symbol>`.
+  Nothing converted is stored: they are read again whenever a circuit is (`core/circuit-kicad.js`). A symbol behaves
+  as an IC of the library when its part number is one or its property `Silinx.Model` names one, and its pins are that
+  IC's, pin by pin. It is then simulated, checked and made into HDL as that IC, under its own name; `Silinx.Family`
+  makes its inputs another family's. Any other symbol is drawn only: its pins on its footprint's places (a `.kicad_mod`,
+  a DIP's or a pin header's name), not simulated, with Check Circuit's warning "U2 (TEST-SENSOR) is drawn only: it is
+  not simulated and its pins drive nothing". A symbol with no through-hole footprint is no part, its reason said.
+- **What KiCad has no field for, in the symbols' properties (#4280):** `Silinx.Model`, `Silinx.Family`,
+  `Silinx.Footprint`, `Silinx.Source`, `Silinx.Author` and `Silinx.Licence` are written in the library's text
+  (`core/kicad-edit.js`), the rest of the file as it was, so the file stays valid in KiCad.
+- **MCP (#4280):** `import_part` copies a library or a footprint of the exchange folder into `parts/`, writes the
+  properties given and says each symbol (as which IC, drawn only, or no part and why). `circuit_parts` with a project
+  lists its KiCad parts and the symbols that are no part. `edit_circuit`, `check_drawing`, `simulate_drawing`,
+  `related_view` and the drawings' HDL files take them.
+- **KiCad's libraries read in core, the first step to KiCad parts in the circuit editor (#4279, #4278):**
+  `core/sexpr.js` parses KiCad's S-expressions with limits on the file's size, the lists' depth and the number of
+  tokens (a malformed file is an error with its line); `core/kicad-sym.js` reads a `.kicad_sym` library (KiCad 6 to
+  10) or a `.kicad_symdir` folder into its symbols: their properties, units and De Morgan bodies, pins (number, name,
+  electrical type, style) and graphics, a derived symbol (`extends`) resolved from its parent, in another file of the
+  folder too; KiCad 5's `.lib` is refused with what to do. `core/kicad-mod.js` reads a `.kicad_mod` footprint's pads,
+  a through-hole part's pins on the 0.1 inch grid, and a footprint's name as its package (DIP, pin header, SMD).
+  Tested on hand-written fixtures; no KiCad file is shipped.
+- **The .xise lists the constraints file only when it is there (#4276):** `exportXise` takes `exists(path)` and leaves
+  out a constraints file it says is not there (a new project's `constraints/top.ucf`, not written yet); with no `exists`,
+  listed as before. Every export passes it: File ▸ Export Project (.zip)… to Xilinx ISE (the server's
+  `exportProjectZip`, the MCP's `export_project`, the browser edition's), the `export.xise` route and the .xise sync.
+  Tests: server-units (`exportXise`), project-zip and mcp-transfer (a new project exported and imported back, no
+  warnings; its UCF written, listed and imported with it), server-api (the route and the sync), the UI tests projects
+  and standalone (the server and the browser editions, in both interfaces). The same project's Silinx zip imported back
+  still names its constraints file as missing: #4288.
+- **The ISE export's UI test of an arrayed instance after #3870 (#4275):** `test/ui/sch-array-ise.test.js` expects the
+  instance `reg(3:0)` written to ISE's schematic as `reg_1(3:0)` (reg, a reserved word ISE's sch2hdl refuses), the
+  export's exact console lines (its warning on the renamed instance among them) and `reg_1(3:0)` imported back, its
+  console with no warnings (it said a constraints file missing until #4276); it still expected `reg(3:0)`, failing every
+  run since #3870.
+- **nextpnr's error when it stops with a WebAssembly exception (#4260):** nextpnr-himbaechel-xc7 stopping on an
+  `ERROR:` line throws an exception with no message; nextpnr's runner now turns it into nextpnr's last `ERROR:` line,
+  and a run in a worker thread of its own (the local server's best of 3 seeds) fails with it instead of resolving with
+  no files. The same for every family's nextpnr. Tests: `packages/silinx-fpga/test/nextpnr-io.test.js`,
+  `test/xc7-seeds.test.js`, `test/nextpnr-xc7-cyinit.test.js`.
+- **Share a Copy… in the Collaboration tab (#4259):** `web/js/collab-tab.js`'s Live Sharing box is named Sharing
+  (Partilha: its own word, since the toolbar's presence says "Sharing", A partilhar) and has Share a Copy…, disabled
+  with no project as File ▸ Share Project… is (one check, `web/js/share-how.js` `canShare()`, for the menu, the
+  toolbar's button and the tab), before Share Live… or the live sharing's commands; it opens Share Project…'s window
+  with A copy chosen and kept as the viewer's way (`shareCopyDialog()`, as Share Live…'s). The MCP's `project_link` already makes the copy's link. Tests: `test/ui/collab-tab.test.js`,
+  `test/ui/collab-tab-browser.test.js` and `test/ui/git-off.test.js` (the box's name and entries, Share a Copy…
+  opening the window with A copy chosen, in Portuguese, in both interfaces, no warnings).
+- **No side panel tabs with no project (#4257):** with no project open, the side panel's tab row is hidden in both
+  interfaces (`<html data-no-project>`, set with the project's kind flag), and the Start page (New Project…, Open
+  Project…, Open from Repository…, the recent projects) is all it shows. On a narrow screen the Silinx interface's
+  activity bar goes too: the drawer opens from the header's button, the Start page from the window's edge. A project
+  opened brings the tabs back, on the tab last chosen where nothing else picks one (the Silinx interface opens on its
+  Design page, #1171), and closing it hides them again; in the server editions and the browser edition, for a design
+  and simulation project as for an FPGA one.
+- **Sign out of GitHub confirmed (#4256):** `web/js/git-signin.js` `signOut()` shows a dialog first (Sign Out, and
+  Cancel as the default button: Enter, Escape and Cancel keep the sign-in, its console line "Sign out of GitHub was
+  cancelled: still signed in."), its text by how the user signed in: a pasted token (github.com/settings/
+  personal-access-tokens linked) or the device flow (Settings ▸ Applications linked). The console's line after signing
+  out says the same: forgotten in this browser, still valid on GitHub, and where to revoke it; never the token. How the
+  sign-in was made is kept beside the token (`web/js/git-browser.js`, `githubSignedInWay()`: a pasted token or the
+  device flow; one kept by an older Silinx: the edition's way) and forgotten with it. The local server editions have
+  no Sign out (git signs in with its own credentials) and no MCP tool signs out: nothing changes there. Tests: unit
+  (`test/github-signin.test.js`: the way kept and forgotten), UI (`test/ui/git-sign-out.test.js`: the dialog of each
+  way, Cancel, Enter and Escape keeping the sign-in, Sign Out forgetting it, the exact console lines, from the File
+  menu and the Collaboration tab, in Portuguese, in both interfaces, no warnings).
+- **Test expressions escaped completely, the policy's sources compared exactly (#4247, #4248, #4249, #4250, #4251,
+  #4252, #4253, #4254):** CodeQL's alerts 188 to 192 (js/incomplete-sanitization): `test/mcp-grade.test.js`,
+  `test/mcp-new-source.test.js`, `test/ui/collab-relay.test.js` and `test/ui/new-source-paths.test.js` escaped only
+  `.` in the names they build a regular expression from, and `test/symbol-standard.test.js` replaced only the first
+  `&` of an IEC qualifier; each replaces every `&` and escapes every special character now, backslashes included.
+  Alerts 193, 194 and 195 (js/incomplete-url-substring-sanitization): `test/static-editions.test.js` looked the
+  Content Security Policy's sources up with `includes` (an array's, never a substring); it compares each source
+  exactly now. The tests assert the same. Tests: mcp-grade, mcp-new-source, symbol-standard, static-editions,
+  ui/collab-relay, ui/new-source-paths.
+- **Try it shared live (#4244):** a new activity channel, `try` (`core/collab-try.js`, `web/js/collab-try.js`): the
+  owner's page sends each open document's Try it, its editor's `tryState()`, at its sharing's tick when it changed; a
+  follower's page puts it on its own document with `setTryState()`, opened and closed with the owner's. A state
+  diagram's, an ASM chart's and a Petri net's Try it travels as its state (the present state, the registers, the
+  marking, the inputs, the cycle, the trace); a schematic's (a Boolean algebra's, a circuit's and an RTL schematic's
+  too) and a circuit's as their inputs then and the steps taken since it started, which the follower's own simulation
+  replays (only what is new; a clock's cycles and its run sent as one growing step, within the relay's limits, #4173).
+  What a follower takes is untrusted input: checked, capped, what is not one left out. A followed schematic can be
+  tried read only. The follower's own click, key or input in a Try it is browsing alone. MCP: `follow_project`'s
+  `ownerActivity.try` and its lines give each document's Try it: its state, steps, inputs and outputs. Tests: unit
+  (`test/collab-try.test.js`: the values made and taken, a schematic's and a circuit's steps replayed to the owner's
+  values), `follow_project`'s, and UI tests with the owner's and a viewer's pages for a state diagram and a schematic,
+  in both interfaces, in Portuguese, no warnings.
+- **The Parts panel's gate ICs in Settings ▸ Schematic Symbols' standard (#4242):** their images were kept by part type
+  alone, so each stayed in the standard it was first drawn in for the page's life (`web/js/circuit-parts-panel.js`);
+  they are kept for each standard now, and the panel, drawn again on the setting's change (#4220), shows IEEE shapes or
+  IEC boxes as the schematic editor's palette and Show inside do. Test: UI `circuit-parts-symbols` (new: a 7400 and a
+  7432 in both standards, changed with the circuit open; no warnings), in both interfaces.
+- **A drawing's HDL language in Source Properties only (#4240):** the *HDL Language* choice #4063 put at the end of the
+  drawings' ⋮ menus (Preferred Language, VHDL, Verilog) is gone from the schematic, state diagram, ASM chart and Petri
+  net editors too (the Boolean algebra and the circuit lost it in #4159 and #4168): Source Properties choose it (the
+  project's `sourceLanguage`; the MCP's `set_source_properties`, unchanged). `web/js/drawing-lang-menu.js` and the
+  editors' `menuItems` that only carried it are removed; the state diagram's Try it lock keeps its own choices.
+  `toolbar-menu.js` is no hub of `scripts/related-tests.mjs` any more (14 importers). Tests: UI
+  `drawing-source-language` (was `drawing-language-menu`: no menu has it; a schematic, a state diagram and a circuit in
+  Verilog and back by Source Properties; Portuguese; no warnings), the editors' menus' tests, in both interfaces.
+- **The wires' drawing style not shared live (#4239):** a schematic's and a circuit's `wireStyle` is a view setting
+  (`core/collab-model.js`: `view` of the `sch` and `circ` kinds, `viewFields`, `withView`, `withoutView`), left out of
+  the shared drawing's structure, so a participant's choice sends nothing; the owner's writes keep the owner's file's
+  style (the page's and the MCP server's), and so do a follower's reads and Keep a Copy. A follower's or an editor's
+  Wires choice (the ⋮ menu) is their view only, never an edit, a circuit's enabled read only too, and remembered for
+  that shared project (`web/js/collab-wire-view.js`: by owner, project and drawing) and applied when the drawing opens
+  again; the owner's change of style leaves theirs. MCP: `follow_project` write of a drawing with another wires' style
+  says it was left out. Regression tests: the collab model (unit), `follow_project`'s write, and a UI test with the
+  owner and an editor (a schematic) and a follower (a circuit), both ways, in both interfaces.
+- **GitHub Checks with a fine-grained personal access token (#4237):** GitHub gives fine-grained tokens no Checks
+  permission, so its Checks API refused them. When it refuses the token (a 403 that is not a rate limit),
+  `core/github-checks.js` reads the commit's workflow runs and their jobs (Actions: read) and its statuses (Commit
+  statuses: read) instead, in the same shape for the Collaboration tab, Git ▸ GitHub Checks and the MCP's `git_checks`,
+  in both editions; the console says so first (the tests' verdicts, GitHub's annotations, stay unreadable), a
+  permission refused as a warning, and both refused an error naming the two permissions to add. The token sign-in's
+  steps list the two permissions. Regression tests against the fake GitHub (now with workflow runs, jobs, statuses and a
+  fine-grained token's refusals): unit, MCP (`git_checks`, both back ends) and the Collaboration tab in both
+  interfaces.
+- **The Release waits for CI as long as it takes (#4236):** the Release of v15.26.0 gave up after 150 minutes while
+  its CI's second attempt (the failed jobs run again) was still running: the tags' runs go one at a time, so it had
+  waited for the toolchain package's tag's run too, and the re-run passed 85 seconds later. `scripts/wait-for-ci.mjs`
+  now has no limit of its own while a run is going (`--timeout`, none by default), reports a run's latest attempt
+  (`(attempt 2)`), and gives a failed run `--rerun` minutes to be run again before the release fails; both Release
+  workflows (the IDE's and silinx-fpga's) wait up to 340 and 345 minutes, a re-run within 30, in jobs of 360 minutes,
+  GitHub's limit. Tests: wait-for-ci (the latest attempt, when to stop waiting, v15.26.0's runs replayed minute by
+  minute: done at 153 minutes, where the 150 minutes' wait failed), the two Release workflows' limits.
+- **A bitstream removed while the programming starts (#4235):** programming the board (and verifying or programming
+  the PROM) checked that the bitstream existed, then read it: a file removed in between (a rebuild, a clean) gave the
+  system's raw "ENOENT: no such file or directory" instead of "bitstream not found". The read's ENOENT is now that same
+  message, for a .bit, an iCE40's .bin, a Gowin's .fs, an ECP5's .bit and the PROM's image. The test made the file
+  vanish at a random moment (it failed the CI of the release silinx-fpga-v0.4.3 on macOS): it now removes it exactly
+  between the check and the read. Tests: programmer (program: request errors; prom: failures and request errors).
+- **A follow link given while the app starts (#4234):** `web/js/app.js` keeps the hash its start-up read: a shared
+  project's link that comes after it is no longer read as a design's link (which refused it, the hash cleared), and
+  `web/js/link-hash.js` `watchLinks(target, seen)` opens a link the hash gives that differs from the start-up's, once
+  the links are watched (its `hashchange` came before the listener). The cause of `test/ui/collab.test.js`'s "#3318 a
+  follow link pasted into an open tab" timing out on a loaded runner: its follower changed the hash once the start-up
+  checks were written, which may be before the app watches the links. Test: `test/ui/collab.test.js` "#4234" (a link
+  given as the page loads, and a hash changed before the links are watched, opened then; no warnings nor errors).
+- **UI tests: a project's folder given again after a try that timed out (#4233):** the tests that import a
+  project from its folder give it through `setFolder` (`test/ui/zip-helpers.js`): in Firefox and WebKit in tries
+  of 15 s, the input emptied after one that timed out (three tries), since WebKit's folder listing now and then
+  never sends the input's event that Playwright waits for (the browser edition's Silinx project imported from its
+  folder, flaky in WebKit).
+- **The Collaboration tab (#4215):** a page of the side panel after Teaching (`web/js/collab-tab.js`), in the Silinx
+  and the ISE style interfaces: Repository (the GitHub repository, linked, the branch, the commits to push or to pull,
+  Commit…, Push to GitHub (not in the browser edition, whose commit is pushed), Pull from GitHub, History…), Changes
+  (each changed, new, deleted or conflicting file with the Design pane's mark; a click opens Compare) and GitHub (the
+  sign-in's state with Sign in with GitHub… / Sign out of GitHub in the browser edition, GitHub Checks and its last
+  result: passed, failed, running or none, the details in the console) and Live Sharing (#3181: the toolbar presence's
+  label, who is in with their role, and its menu's commands, `presence()` of `web/js/collab-presence.js`; not shared:
+  Share Live…, Share Project's window with Live chosen, disabled where it cannot be, its reason its tip). The same items
+  and functions as the Git submenu's and the presence menu's, which stay, as do the Start page's and the File menu's. A
+  followed project shows the read-only notice and its Live Sharing box; with git turned off (`SILINX_GIT=off`) the tab
+  has its Live Sharing box only, and no tab where nothing is shared live either. The ISE style's side panel is 330 px
+  wide by default (300 before) and its tabs more compact, so the six show their names; in a narrower panel the long
+  names are ellipsized. Portuguese labels; UI tests in both interfaces and both editions (a follower's tab too), on a
+  narrow screen.
+- **The git status's remote (#4215):** a project's status (the server's git and GitHub's API) gives its GitHub
+  repository (`remote`, owner/repository, null with none), and the MCP's `git_status` says it ("(GitHub: owner/repo)"
+  or "(no GitHub repository)").
+- **Pull and Merge Contribution… merge text files by their lines (#4214, phase 3 of #4204):** the server's git
+  (`server/git-merge.js`: the conflicting files' three versions from git's index, merged by `core/text-merge.js`, never
+  git's markers) and GitHub's REST API (`core/git-rest.js`, `core/git-rest-merge.js`) give a pull's text conflicts per
+  hunk (the error's `texts`, `resolvable`), and Pull opens the merge view, then pulls again with the choices
+  (`resolve: { path: { h1: 'mine' | 'theirs' | 'both' | { text } } }`, checked by `checkChoices`); a file removed on
+  one side and changed on the other still pulls nothing. Merge Contribution… (`core/project-merge.js`) merges a text
+  file both changed by its lines (`merged`), its conflicts per hunk (Merge Lines… opens the merge view) or the whole
+  file; with no ancestor each hunk that differs is a conflict. A renamed file (on GitHub or here, in the contribution or
+  the project) is found by its lines and its other side's changes merged into it (`renamed`). The MCP's `git_pull` and
+  `merge_contribution` take a resolution per hunk, and their results and `merge_preview` name each hunk with its line
+  and both sides' lines.
+- **The merge view of text files (#4214):** `web/js/merge-view.js`, a document of its own for text files changed on
+  both sides: each file's hunks side by side (the common ancestor, mine, theirs, a conflict marked), the result below
+  them, and for each conflict Mine, Theirs, Both (mine's lines, then theirs') or its lines edited by hand; its toolbar
+  holds the file, Previous / Next Conflict, the caller's action and Cancel, its status line the counts, its messages
+  go to the console (an action with conflicts left is refused and the first one brought into view). It writes
+  nothing: `openMergeView({ files, labels, action })` gives its caller the choices per hunk (or null), which the
+  caller's merge applies, so that no conflict marker ever reaches a project's files. In Portuguese too.
+- **A text file's three-way merge by lines (#4214, phase 3 of #4204):** `core/text-merge.js`, a diff3 on
+  `core/text-diff.js`'s diff, the same in the server and the browser: a hunk changed on one side only taken from
+  that side, one changed alike on both taken once, hunks that overlap or touch a conflict (resolved by Mine, Theirs,
+  Both or a text of the user's; never conflict markers), with no ancestor every difference a conflict; the lines
+  compared without their CR, the line end and the final newline merged as the file's properties; a renamed file
+  found by its lines (git's 50 % score). Checked against `git merge-file` and on every HDL file of the repository's
+  designs merged with itself.
+- **Git's branches (#4213, phase 4 of #4204):** New Branch… (made from the last commit, its name checked as git checks
+  it, the project on it, its changes kept), Switch Branch… (a branch only GitHub has made here, following it; the
+  changes committed first, the other projects' of the workspace's repository too; what it brings passes the import gate) and Merge Branch… (GitHub's version of the branch
+  when it is newer; the merge of a pull, `server/git.js` `mergeCommits`, its conflicts resolved in the merge view of
+  #4214 and the drawings' dialog, then a merge commit), in the server editions through the system's git
+  (`server/git-branch.js`) and in the browser edition through GitHub's REST API (`core/git-rest-branch.js`: the
+  branches listed, a branch made on GitHub, the two branches' merge base from GitHub's compare, a merge commit with both
+  parents). The MCP server's `git_branch`, `git_switch` and `git_merge` do the same, through the same functions and
+  messages.
+- **Two live-collaboration tests that timed out now and then (#4210):** `test/ui/collab-sim.test.js` "#4002" compared
+  the viewer's simulation with the owner's as the owner's page showed it at one moment, after a run or a restart:
+  the owner's Objects values are drawn at its next frame, so on a loaded runner that snapshot could be one it never
+  settles on; both are now read again at each look. `test/mcp-collab.test.js` "#3355" wrote the MCP client's second
+  change once a page saw the owner undo the refused one, not once the MCP client itself had: written over its copy
+  with the NUL byte's line still in it, it merged as `by Bot…` (no `-- `), never the text the test waited for on the
+  disk; it now waits for the MCP client's copy too.
+- **Project ▸ Merge Contribution… and Undo Merge (#4206):** the window lists the files that differ, what the merge does
+  with each, and each conflict's Mine / Theirs (a drawing's per object, `silinx.json`'s per field). Merge is refused
+  until every conflict is chosen. A file's Compare closes the window and opens the comparison, and the console's line
+  opens the window again with the choices kept. Every message goes to the console: the warnings, the merge's line with
+  Undo Merge's button, and the project's untrusted line with Trust Project's. In the server editions the merge runs
+  through `server/merge-routes.js`; in the browser edition, through its back end (`web/js/merge-local.js`, the backup
+  in the browser's storage). In Portuguese, Juntar Contribuição… and Desfazer Junção.
+- **The merge of a contribution into a project (#4206, phase 2 of #4204):** a contribution (a Silinx project's zip or
+  folder, through the import gate) is compared with the project file by file through their common ancestor (the one
+  the copy carries, else the project's snapshot of its origin, #4205), or two-way with none, said. A file one side
+  changed, added or removed is taken (or kept). A drawing both changed is merged by its objects (#3197, #4202), and
+  its HDL is made again. A text file both changed is a choice of Mine or Theirs, and so is each of a drawing's objects
+  both changed. `silinx.json` is merged by its fields (the files' list by path), never taking the contribution's id,
+  origin or trust.
+- **Undo Merge and trust (#4206):** a merge that takes any of the contribution's files makes the project untrusted
+  (`madeBy: "merge"`). Undo Merge puts the project back as it was, unless it changed since (`core/project-merge.js`,
+  `core/merge-apply.js`, `server/merge-projects.js`, the MCP's `server/mcp-merge.js`).
+- **A copy's ancestor recorded (#4205, phase 1 of #4204):** Export Project (.zip) as Silinx, the MCP's
+  `export_project` and Share Project's links give a copy. The project gets an id (once), and the copy's
+  `silinx.json` names its origin (`origin: { id, rev, at }`: the project's id, the revision of its files, the date).
+  The zip carries the ancestor (`silinx.base.json`), which the project keeps too: a hidden `.silinx/snapshots/` in the
+  server editions, the browser's storage in the browser edition, the newest few. An import gives the copy an id of
+  its own and keeps its origin and its ancestor apart (checked, never a project file), and a copy of a copy keeps
+  its first origin. The interface's description never changes the id or the origin. This is what Merge
+  Contribution… (#4206) will merge with (`core/project-rev.js`, `server/project-snapshots.js`,
+  `web/js/snapshots-local.js`).
+- **The Design Summary opened late stays behind (#4021):** Implement brought forward opens its Design Summary once
+  `summary.js` is loaded, which may take a while; by then the viewer may have opened another document (it stays in
+  front, the summary opened behind it) or gone to another task (the summary is not opened: Implement opens it when it
+  comes forward again). Two UI tests hold `summary.js` back (CDP's Fetch) to show it; the UI test "#1409 Tasks (dark)"
+  timed out on CI this way, its simulation hidden behind the summary.
+- **XST's warnings on a circuit's chips left out (#4020):** a circuit on the FPGA instances each MSI or sequential chip
+  with its unread outputs open, and XST warns on them (Xst:753) and on the flip-flops behind them (Xst:2677). The ISE
+  run (and the MCP's run_process) leaves those two messages out when they are on a circuit's chips, found by their
+  names in the circuit's generated HDL (core/circuit-xst.js); any other instance's still warn. The console says how
+  many were left out (`INFO:Silinx - … warning(s) of XST left out`), and the synthesis report's count of warnings is
+  without them.
+- **A flip-flop's tied controls left out of the digital model (#3975):** the 7474, 7476 and 74112 have the generics
+  `USE_PRE1`, `USE_CLR1`, `USE_PRE2`, `USE_CLR2` (VHDL booleans, Verilog parameters, true by default), and their
+  digital model (core/circuit-seq.js) a flip-flop for each combination (a VHDL if-generate, a Verilog generate if), with
+  the preset and the clear, one of them, or neither. core/circuit-digital.js sets them on the instance: a control whose
+  net is the supply's + or no one drives (a 74LS input reads it high) false, its port the constant '1'. The simulation's
+  model is unchanged (the chip's). In Verilog a preset tied high used to stop the open synthesis with Yosys's "Multiple
+  edge sensitive events" error (the front end's, #4332); now it is left out. docs/CIRCUITS.md follows. Tests: circuit-ff-controls (the instance's
+  generics, the entity's generates, the open synthesis's exact warnings with the preset tied, the clear tied, both
+  driven, the generated HDL compiled, checked and simulated against the engine, VHDL and Verilog).
+- **std_logic's resolution of the weak values 'W', 'L', 'H' (#3926):** a value keeps the mask of its weak bits (a
+  literal, a copy, a slice); the simulator resolves the drivers per bit as IEEE 1164's resolution table (a strong
+  value wins over a weak one; a W, or an L and an H, make W); `'image` and `to_string` show L, H and W; `to_x01`,
+  `to_01`, `to_bit` and `to_bitvector` make them strong, and the operators give strong values. `'U'` and `'-'` are
+  still simulated as `'X'`. Tested against the standard's whole 9×9 table.
+- **blinky's debouncers on a fast clock (#3922):** `speed_ctrl`'s debounce counters (`cnt_f`, `cnt_s`, in the ASM
+  chart and its generated VHDL) are 22 bits wide instead of 21, so they reach `DEBOUNCE - 1` (`CLK_HZ / 50`, 20 ms)
+  on every board up to 209 MHz: on the Zybo Z7's 125 MHz (`DEBOUNCE` 2,500,000) the faster / slower buttons did
+  nothing, and Vivado removed their logic (`Synth 8-6014`, `Synth 8-7129`), warnings now gone.
+- **ISE schematic export, instances named with a reserved word (#3870):** ISE's sch2hdl refuses a block named with a
+  reserved word of Verilog ("is an illegal block name. It is a reserved word for verilog", in a VHDL schematic too).
+  The export (`core/isesch-instnames.js`, called by `core/isesch-export.js`) writes an instance whose name, or an
+  arrayed instance's base, is a word of Verilog-2005 or of VHDL, in any letter case, with `_1` after it (`_2` … when
+  another instance has that name), as the import already names a keyword's copies, and warns
+  `instance 'reg(3:0)' written as 'reg_1(3:0)': 'reg' is a reserved word of Verilog, which ISE's schematic refuses as a
+  block's name`. The interface's Export Xilinx ISE Project and the MCP server's `export_project` share it. Tests: unit
+  (`test/isesch-instnames.test.js`: every word of each language as a gate's name in a VHDL and a Verilog schematic,
+  exported, its exact warning, read back with no warnings; another letter case; the names taken; an arrayed module's
+  instance read back arrayed, its HDL compiled and elaborated with no warnings), `export_project`'s
+  (`test/mcp-ise-array.test.js`), and ISE's (`test/ise/xise-interop.test.js`, the nightly's: `reg(3:0)` built
+  by ISE's project flow as `reg_1(3:0)`, no warnings, and imported back).
+- **The 7-series against Vivado in the weekly Quality workflow (#3834):** a job of its own, before the ISE comparison's
+  parts (its 22 builds about 2-3 hours; the ISE comparison takes the rest of the window and resumes), runs
+  `scripts/xc7-vivado-compare.mjs --guard --update` on the self-hosted runner, Vivado's image there; its results
+  (`test/xc7-vivado-comparison.json`, docs/TOOLCHAIN.md's table) are pushed to the branch `quality-results` with the ISE
+  comparison's, each only when its comparison passed. `--guard`: nothing written, the job failed, when a build that
+  passed in the recorded results fails now.
+- **Two placements over 2000 slices at Speed (#3821):** the toolchain's `NEXTPNR_TRIES` (silinx-fpga's changelog), so
+  that the Quality comparison measures itc99-b17 at Speed within its 2-hour limit per build, which stopped it every run;
+  the README and the Quality page say the counts (32 up to 100 slices, 8 up to 500, 4 up to 2000, 2 above).
+- **The pins of an integer port with a range (#3820):** `core/auto-pins.js` (the port bits with no LOC, to which the
+  ISE flow gives free pins) gave every VHDL integer port 32 bits, `x<0>` to `x<31>`; XST makes an integer with a range
+  only its range's bits (`integer range 63 downto 0`: 6; `127 downto -128`: 8, signed), so ngdbuild refused the LOCs of
+  the bits its netlist does not have. `portWidth(t)` gives XST's width (a plain integer: 32), for the pins and for a
+  UCF's bus bits.
+- **The Quality comparison's I/O wrapper (#3820):** the corpus's wrapper (`test/designs-corpus/lib.mjs` `wrapperPorts`)
+  connects such a port with those bits too: XST refused the 32-bit connection to a VHDL port of 20 or 30 bits
+  (`Xst:2587 … has different type in definition`: ITC'99's b14, b15, b17). Both fixed, the weekly Quality run builds
+  with ISE the ITC'99 designs it failed on (b04, b07, b11, b13, b14, b15, b17, b20, b21); femtorv32's `instr`, used before its
+  declaration, stays XST's own limit, listed so on the Quality page. itc99-b15, whose wrapper XORs
+  two bits fewer (1321 slices, 20.06 ns against 1336, 19.77), gets the corpus's PERIOD of 22 ns (`periodNs`, as #440's
+  designs within a few per cent of 20 ns): its warning that 20 ns is not met would flip from run to run. Tests: `test/auto-pins.test.js` (the widths, the
+  pins, a UCF's LOCs), `test/designs-corpus.test.js` (b14's wrapper: its connections, elaborated with no warning).
+- **Vivado timing nextpnr's placement, the tooling (part of #3803):** `scripts/xc7-timing-vivado.mjs --placement` places
+  each example's netlist with nextpnr here (as the open flow runs it: the same arguments, now `xc7ParArgs` of
+  open-flow-xc7.js, a BSCANE2 as the flow gives it, its design written
+  with `--write`), and has Vivado route and time that placement: measure.tcl, after
+  link_design, finds each cell's site from its tile's grid point (Vivado's GRID_POINT_X and _Y, nextpnr's tile names) and
+  fixes it there (place_cell, IS_LOC_FIXED and IS_BEL_FIXED; the same constraints written as placement.xdc), then
+  place_design places only what nextpnr's placement did not give (the IO buffers at their pins, a carry chain nextpnr
+  moved by a MUXCY), and route_design routes it; placement.rpt counts the cells fixed and those not. The numbers go to
+  each example's `nextpnrPlacement` in research/xc7/vivado-timing.json, Vivado's own measurement and the fit kept. It
+  separates the placement's quality from nextpnr's estimate of its delays. Tests: xc7-timing-vivado (the cells nextpnr
+  placed and those it made, the Tcl run by tclsh on Vivado's commands stubbed, the counts, the measurement file).
+- **The 7-series: a 5LUT feeding another slice's CYINIT, its regression test (#3746):** nextpnr's xilinx packer took
+  a LUT pair's 5LUT whose only user was another slice's CARRY4 (its CYINIT) as feeding its own carry chain inside the
+  site, so the placer put a flip-flop in the 5FF beside it, whose Q needs the same AMUX..DMUX output, and router 1
+  (the browser's, when router 2 runs out of its memory) never finished micro80. The fork's fix (only the cluster's own
+  CARRY4, on S or DI, counts) is in `@silinx/nextpnr-himbaechel-xc7` since 0.2.0. `test/nextpnr-xc7-cyinit.test.js`
+  holds it: a small design with that LUT pair, its flip-flop locked in that 5FF refused (it was taken, and router 1
+  never finished), the design placed by nextpnr routed by router 1, and micro80 routed by router 1 on the Basys 3
+  (seed 3; seed 1 routes too, in far longer).
+- **nextpnr-himbaechel-spartan6 0.5.2 (#3743):** the Spartan-6's nextpnr pinned at 0.5.2, whose packer has the rule of
+  Silinx's Map for a carry's multiplexed outputs (#3151, pmnmalo/nextpnr-spartan#47): #3151's design, which nextpnr's
+  Map (the default since #3140) stopped on, packs, places and routes. THIRD-PARTY-NOTICES follows. Tests: s6-nextpnr-pack
+  (#3151's product in Verilog and VHDL by nextpnr's Map on the Nexys3, the application's flow: packed, routed on every
+  seed, its three DSP48A1s, no warnings; it fails on 0.5.1).
+- **The Nexys A7 (xc7a100t) in the browser edition, tested, and nextpnr's memory there measured (#3669):** the browser
+  edition's UI test of the 7-series (standalone-xc7) runs blinky and vga on the Nexys A7 too, to the .bit, with no
+  warnings, its configuration data byte for byte the local server's flow's; the xc7a100t's bit database and chip
+  database fetched once, the xc7a50t's not. nextpnr's router2 there takes 2043 MB of WebAssembly memory for blinky and
+  2095 MB for vga (the same in Chrome, in WebKit and in Node: the same WebAssembly), about half of the 4 GB a page may
+  have in Chrome and Safari, and a flow takes about 5 s in Chrome, 6 s in WebKit; router1, the browser's fallback when
+  router2 runs out of memory, 90 MB and 164 MB (9 and 20 s). A new unit test, nextpnr-xc7-memory, guards these peaks
+  (router2 within 2.5 GB, router1 within 256 MB, both routing the two examples with no warning).
+- **The exports nothing used and the identifier rules' copies left by #3543 / #3545, cleaned up (#3599):** the names
+  of the drawings' parsers, Silinx HLS, live sharing, the MCP server and the 7-series in the browser that only their own
+  module used are no longer exported, `LANGS` (core/asm.js) and `typeName` (core/c-types.js), used nowhere, are removed,
+  and core/asm.js, asm-gen.js, logic.js, c-pragma.js and the MCP server's new_source, test bench and wizards take the
+  identifier rules from core/ident.js; test/unused-exports.test.js's and test/ident-escape.test.js's exceptions keep
+  only their reviewed ones. No change in behaviour.
+- **The 7-series' builds checked without byte-identity (#3145):** `npm run check:xc7` (`scripts/check-xc7.mjs`) builds the
+  examples (or project folders) through the open flow and checks each `.bit` with no Vivado: its frames the ones
+  Project X-Ray's fasm2frames makes of nextpnr's FASM, the round trip by bits clean, and its pins: each port's IOB at its
+  XDC pin, with its direction and IO standard, and no other IOB configured. `--vivado` then runs
+  `scripts/xc7-vivado-compare.mjs`, which now also reads Silinx's own `.bit` with Vivado's `write_cfgmem` (its format
+  checked; a column of the comparison's table in docs/TOOLCHAIN.md). The open-flow test of every example on the Basys 3
+  and the Nexys A7 checks the pins too.
+- **The Spartan-6's Map: nextpnr's packer the default (part of #3140):** after its parity (#3139: the same slices, the
+  periods within 5 % on average, ISE's DRC clean and the .bit byte-identical to ISE's bitgen on 20 of 20 designs),
+  `s6MapOf` gives `nextpnr` unless a project saved `impl.s6Map` `silinx`, and the flow packs with nextpnr unless the
+  spec's `s6Map` is `silinx` (the command line and the research scripts too). Process Properties lists nextpnr first, with
+  no "(on trial)" (its Portuguese entry removed), and saves the Map only when it is Silinx's; a project saved with
+  nextpnr's on trial keeps it, the choice dropped on OK. The MCP tool `set_process_properties`'s `s6_map`: `nextpnr` (the
+  default) or `silinx`. The ISE tests check nextpnr's Map by default, Silinx's with `SILINX_S6_MAP=silinx`.
+  docs/TOOLCHAIN.md and docs/OPEN-TOOLCHAIN.md follow. Tests: mcp-s6-map, s6-nextpnr-pack (`s6MapOf`), nextpnr-s6
+  (Silinx's placement of the block RAMs and DSPs with `s6Map` `silinx`), examples-nextpnr-s6-pack (Silinx's Map chosen
+  for the comparison), the UI tests open-toolchain (the field, in Portuguese too, Silinx's saved, the default not saved)
+  and standalone (the browser build packs and places by nextpnr).
+- **The MachXO2 measured (#2302):** `scripts/machxo2-measure.mjs` builds each example on a MachXO2 (or MachXO3)
+  part with the open tools, outside the IDE: the Silinx toolchain's flat Verilog (as a ULX3S project) through Yosys's
+  `synth_lattice -family xo2` (`xo3`), nextpnr-machxo2 and ecppack, YoWASP's `@yowasp/nextpnr-machxo2` 0.11.825 (a
+  development dependency), each bitstream read back by ecpunpack the same, and prints a table per part. Every example
+  builds on the LCMXO2-1200HC-4TG100C and the LCMXO3LF-6900C-5BG256C with no warning, seeds 1 to 5, the board's 25 MHz met;
+  the block and distributed RAM, the global clock buffer, the oscillator (OSCH) and the PLL (EHXPLLJ) too. The clock is
+  given a pin: nextpnr-machxo2 fails to route a global clock from a pin it placed itself (YosysHQ/nextpnr#1236).
+  `test/machxo2-measure.test.js` (the script's parts; gates, blinky, OSCH and EHXPLLJ built on the 1200HC); the results in
+  docs/TOOLCHAIN.md. The MachXO2 is not a family of Silinx yet.
+- **What proves an iCE40 or ECP5 build (Fixes #2301):** `npm run check:lattice-flow` (scripts/check-lattice-flow.mjs) builds
+  every example on the iCEBreaker and the ULX3S as the application does, and checks each three ways: nextpnr's timing
+  meets the board's clock (`icetime` is not in YoWASP's packages); the bitstream read back by `iceunpack` / `ecpunpack` and
+  packed again by `icepack` / `ecppack` is the same bytes; and the Post-Place & Route model (#2299) runs the example's test
+  bench as the project's RTL does, the same log line for line, with no warning. It prints a line per example, and the failures. docs/TOOLCHAIN.md's "How a result is checked" says
+  so in place of "to be decided". Test: check-lattice-flow (blinky on both boards; a bitstream packed again otherwise and a
+  model that fails its test bench, each said).
+- **Simulation models of the ECP5 primitives (Part of #2299):** Silinx's own functional models, from Yosys's
+  techlibs/ecp5/cells_sim.v and Lattice's guides (packages/silinx-hdl/src/ecp5-prims.js, ecp5-bram.js, ecp5-dsp.js): LUT4, LUT2,
+  PFUMX, L6MUX21, CCU2C, INV, VLO, VHI; TRELLIS_FF (CEMUX, CLKMUX, LSRMUX, SRMODE, REGSET, LSRMODE) and the Diamond flip-flops
+  FD1P3* / FD1S3* / IFS1P3* / OFS1P3*; TRELLIS_DPR16X4, DPR16X4C, TRELLIS_RAM16X2; TRELLIS_IO, IB, OB, OBZ, BB and their pull
+  variants, OBCO, ILVDS, OLVDS, IDDRX1F, ODDRX1F; DCCA, DCSC, OSCG (310 MHz / DIV), EHXPLLL (its four outputs' frequencies and
+  phases as ecppll sets them, LOCK, RST), GSR, SGSR, PUR, USRMCLK; DP16KD (the widths 1 to 18 on each port, the 36-bit pseudo
+  dual port, the write modes, the output register, the resets, INITVAL) and MULT18X18D (signed and unsigned, its registers).
+  primitiveSources gives a design the ECP5 library when it instantiates one of them (its LUT4 and INV by their pins: Z) or
+  uses `library ecp5u`; the netlist cells run natively (native-lattice.js); the open synthesis keeps them as the ECP5's
+  cells. Tests: ecp5-prims, ecp5-sim-clocks (each primitive against values computed in the test, in Verilog and VHDL; the
+  PLL against Project Trellis's ecppll), ecp5-netlist (every example's ECP5 post-synthesis netlist passes its test bench as
+  its RTL does, no warning), mcp-ecp5 (check_syntax, simulate and run_process on a design with EHXPLLL and OSCG),
+  hdl-boundary, silinx-hdl-package.
+- **Simulation models of the iCE40 primitives (Part of #2299):** Silinx's own functional models, from Yosys's
+  techlibs/ice40/cells_sim.v and Lattice's guides (packages/silinx-hdl/src/ice40-prims.js, ice40-ram.js, ice40-dsp.js):
+  SB_LUT4, SB_CARRY, the 20 flip-flops (SB_DFF, E, SR, R, SS, S, ESR, ER, ESS, ES and their falling-edge SB_DFFN… twins), SB_IO,
+  SB_GB_IO and SB_IO_OD (PIN_TYPE's input, output, enable and DDR registers), SB_GB, SB_WARMBOOT, SB_FILTER_50NS, the LED
+  drivers SB_RGBA_DRV, SB_RGB_DRV and SB_LED_DRV_CUR; the PLLs SB_PLL40_CORE, PAD, 2_PAD, 2F_CORE and 2F_PAD (the reference ×
+  (DIVF + 1) / (DIVR + 1) / 2^DIVQ, PLLOUT_SELECT, BYPASS, RESETB, LOCK), SB_HFOSC (48 MHz / 2^CLKHF_DIV) and SB_LFOSC (10 kHz);
+  the block RAMs SB_RAM40_4K and its NR / NW twins (the four widths of WRITE_MODE / READ_MODE, MASK, INIT_0 … F), the
+  UltraPlus's SB_SPRAM256KA and SB_MAC16 (its multipliers, adders, accumulators and registers). primitiveSources gives a
+  design the iCE40 library when it instantiates one of them or uses `library sb_ice40_components_syn` (lattice-libs.js); the
+  netlist cells run natively (native-lattice.js), as UNISIM's do; the open synthesis keeps them as the iCE40's cells. Tests:
+  ice40-prims, ice40-sim-clocks (each primitive against values computed in the test, in Verilog and VHDL; the PLL's frequency
+  against IceStorm's icepll), ice40-netlist (every example's iCE40 post-synthesis netlist passes its test bench as its RTL
+  does, no warning), mcp-ice40 (check_syntax, simulate and run_process on a design with a PLL and the oscillator),
+  hdl-boundary, silinx-hdl-package.
+- **The iCE40's, ECP5's and Gowin's simulation models (Part of #2299):** Generate Post-Synthesis Simulation Model writes the
+  family's synthesis's netlist, and Generate Post-Place & Route Simulation Model nextpnr's routed design (its `--write` JSON
+  through Yosys's `write_verilog`), as `build/netgen/synthesis/<top>_synthesis.v` and `build/netgen/par/<top>_timesim.v`
+  (core/flow-models-nextpnr.js, core/netlist-verilog.js): the design synthesized with the generics the test bench gives it
+  (declared as the netlist's parameters), placed and routed as Place & Route does it, the board's model beside it. Each simulates
+  with Silinx's models of the family's cells, the routed design's packed ones too (ICESTORM_LC, ICESTORM_RAM, TRELLIS_COMB,
+  TRELLIS_RAMW, TRELLIS_FF's SD, the pins' `*MUX` generics), without timing; the global buffers are left out of the model and
+  each pad gets a net of its own (#4360). The Simulate / Emulate Post-… rows and the model choices are shown for them (the
+  Gowin's Post-Synthesis only: its routed design's ALU modes are not modelled yet); simulate and run_process accept those
+  models and refuse the others with what the flow makes. Tests: ice40-routed and ecp5-routed (every example's post-place &
+  route model passes its test bench, no warning), netlist-verilog, ice40-prims, ecp5-prims (the packed cells), mcp-ice40,
+  mcp-ecp5, mcp-gowin (run_process and simulate of the models), mcp-simulate-models, tasks, tool-descriptors,
+  test/ui/sim-models-flows.
+
 ## 15.26.0
 
 Digital circuits on a breadboard come into Silinx: real 74-series chips wired as on the bench, tried out, shown inside
