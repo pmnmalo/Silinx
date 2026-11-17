@@ -100,14 +100,15 @@ uiTest('#3971 the ASM chart: the arrow first, each add tool kept pressed (three 
   assert.equal(await page.eval((d) => document.querySelector(`${d} .asm-chart-toolbar button`).dataset.act, D), 'select');
   assert.deepEqual(await tools(page), only('select'));
   assert.deepEqual(await adding(page), [false, '']);
-  // each add tool: three boxes of its type, one after another, the tool still pressed
+  // each add tool: three boxes of its type, one after another, the tool still pressed (each with 100 px of room: blinky's
+  // chart, taller since its debouncers' tick boxes, #4377, is drawn smaller, and 70 px let a box cover the one before)
   for (const [label, type] of [['State', 'state'], ['Decision', 'decision'], ['Cond. output', 'output']]) {
     await page.click(`${D} .draw-tool`, { text: label });
     assert.deepEqual(await tools(page), only(label));
     assert.deepEqual(await adding(page), [true, 'crosshair']);
     const n0 = (await model()).nodes.filter((n) => n.type === type).length;
     for (let k = 1; k <= 3; k++) {
-      await page.click(await blank(page, 70));
+      await page.click(await blank(page, 100));
       await page.waitFor((t, c) => window.Silinx.active.asmEditor.getModel().nodes.filter((n) => n.type === t).length === c, [type, n0 + k], { what: `${label} ${k}` });
       assert.deepEqual(await pressed(page), [label], `${label} ${k}: the tool still pressed`);
     }
