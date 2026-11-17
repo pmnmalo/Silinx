@@ -69,9 +69,9 @@ uiTest('#2302 an ECP5 project: its processes, its constraints LPF, Implement giv
   assert.ok(labels.includes('Generate Programming File'), String(labels));
   for (const absent of ['Map', 'Generate Text Power Report', 'Back-annotate Pin Locations']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
   assert.ok(labels.includes('Configure Target Device'), String(labels));   // (#2298)
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model only (the flow makes no simulation model)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
-  assert.ok(!labels.some((l) => /^Emulate Post-/.test(l)), String(labels));
+  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis and Post-Place & Route models too (#2299)
+  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
 
   await page.treeRow('#procs', 'Generate Programming File', { dbl: true, exact: true });
   await page.waitConsole(/Process "Generate Programming File" (completed successfully|failed)/, { timeout: 120000 }).catch(async (e) => { throw new Error(`${e.message}\n${(await page.consoleText()).slice(-2500)}`); });
