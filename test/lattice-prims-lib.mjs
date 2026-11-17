@@ -1,4 +1,4 @@
-// The Lattice primitives' tests' harness (#2299: packages/silinx-hdl/src/ice40-prims.js): the Gowin's (gowin-prims-lib.mjs:
+// The Lattice primitives' tests' harness (#2299: packages/silinx-hdl/src/ice40-prims.js, ecp5-prims.js): the Gowin's (gowin-prims-lib.mjs:
 // cases of a primitive's instance and its pins' values step by step, the outputs expected computed in the test) with a
 // family's own library: its test benches in Verilog and in VHDL (its library clause, as a user writes it), each simulated
 // with Silinx's models of that family alone, its log exactly "done": no check failed, no warning.
@@ -13,6 +13,7 @@ const steps = (cases) => Math.max(...cases.map((c) => c.steps.length));
 /** The families: their library's file and VHDL library clause. */
 export const FAMILIES = {
   ice40: { path: '<silinx>/ice40.vhd', clause: 'library sb_ice40_components_syn; use sb_ice40_components_syn.components.all;' },
+  ecp5: { path: '<silinx>/ecp5.vhd', clause: 'library ecp5u; use ecp5u.components.all;' },
 };
 
 /** The cases' test benches (tb_<family>) in Verilog and VHDL. */
@@ -38,3 +39,11 @@ export function checkCases(family, cases, label = '', langs = ['verilog', 'vhdl'
 }
 
 export { rng, bit } from './gowin-prims-lib.mjs';
+
+/** A bus of scalar pins (DIA0, DIA1 …: the ECP5's block RAM and multiplier) as the harness's pins, inputs or outputs. */
+export const busPins = (pre, n, dir) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`${pre}${i}`, { dir, w: 1 }]));
+/** A value v (a number, a BigInt or 'x') on a bus of scalar pins: { DIA0: bit, … }; as the expected outputs, their bits as strings. */
+export const busVal = (pre, n, v, out = false) => Object.fromEntries(Array.from({ length: n }, (_, i) => {
+  const b = v === 'x' ? 'x' : Number((BigInt(v) >> BigInt(i)) & 1n);
+  return [`${pre}${i}`, out ? String(b) : b];
+}));

@@ -6,7 +6,7 @@
 // Primitives not listed here (latches, block RAMs, multipliers, DCMs) keep their VHDL models.
 import * as V from './values.js';
 import { gowinPrimitive } from './native-gowin.js';
-import { ice40Primitive } from './native-lattice.js';
+import { ice40Primitive, ecp5Primitive } from './native-lattice.js';
 
 const VAL = [V.ZERO, V.ONE, V.X1];
 // bit 0 of a value: 0, 1 or 2 (unknown). (Compared, not masked, when it is a single bit: a BigInt & allocates,
@@ -34,7 +34,7 @@ const FF = /^(FD(C|P|R|S|E|CE|PE|RE|SE|RS|RSE|CP|CPE)?)(_1)?$/;
  * Native process for primitive `name` with elaborated `params` ({ name, value }) and `ports`
  * ({ name, dir, sig }); null if the primitive has no native implementation. lib: the library's file it is of: the
  * Gowin's (<silinx>/gowin.vhd, gowin-prims.js, #2299), whose names may be UNISIM's (LUT4, its output F), the iCE40's
- * (<silinx>/ice40.vhd, ice40-prims.js), else UNISIM's. reset(): its state as at
+ * (<silinx>/ice40.vhd, ice40-prims.js), the ECP5's (<silinx>/ecp5.vhd, ecp5-prims.js: its LUT4's output Z), else UNISIM's. reset(): its state as at
  * the start (a simulator that starts again: the board emulator's power cycle, #698).
  * @returns {{ fn(sim), inputs: object[], outputs: object[], init: Array<[sig, value]>, reset() } | null}
  */
@@ -70,6 +70,7 @@ function primitive(name, params, ports, proj, lib) {
   const h = { P, param, ins, outs, set, comb, b, mux, bit, rising, falling, VAL };
   if (lib === '<silinx>/gowin.vhd') return gowinPrimitive(N, h);
   if (lib === '<silinx>/ice40.vhd') return ice40Primitive(N, h);
+  if (lib === '<silinx>/ecp5.vhd') return ecp5Primitive(N, h);
   let m;
   if ((m = LUT.exec(N))) {
     const n = Number(m[2]);

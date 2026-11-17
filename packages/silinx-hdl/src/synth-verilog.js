@@ -111,7 +111,7 @@ export function yosysCell(name, ports) {
 }
 
 // the libraries whose primitives Yosys knows as cells (an instance of one stays an instance)
-const CELL_LIBS = new Set(['<silinx>/unisim.vhd', '<silinx>/gowin.vhd', '<silinx>/ice40.vhd']);
+const CELL_LIBS = new Set(['<silinx>/unisim.vhd', '<silinx>/gowin.vhd', '<silinx>/ice40.vhd', '<silinx>/ecp5.vhd']);
 
 export function toVerilog(design, { name, tables = true, simprim = null, formal = false } = {}) {
   let shiftMems = Object.assign(new Set(), { srcs: new Set() });   // the arrays that are shift chains (findShiftMems), their tap wires
@@ -133,7 +133,7 @@ export function toVerilog(design, { name, tables = true, simprim = null, formal 
 
   // ---------------- primitives instantiated by name
   // An instance of a module of Silinx's own UNISIM library (core/unisim.js, file <silinx>/…) is a
-  // Xilinx primitive (or a Gowin one, gowin-prims.js, #3498, or an iCE40 one, ice40-prims.js, #2299): Yosys knows it as a cell, so it stays an instance, with the generics the
+  // Xilinx primitive (or a Gowin one, gowin-prims.js, #3498, or an iCE40 or ECP5 one, ice40-prims.js, ecp5-prims.js, #2299): Yosys knows it as a cell, so it stays an instance, with the generics the
   // design gave it. Its simulation model (signals, processes, sub-instances) is left out; only
   // its port signals remain, with the processes that drive its inputs from their actuals.
   const prims = [], skipSig = new Set(), skipProc = new Set();
