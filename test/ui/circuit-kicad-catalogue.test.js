@@ -51,8 +51,10 @@ uiTest('Parts panel: the KiCad catalogue folded, opened, searched, its tips; a p
   const pv = (sel) => page.eval((s) => { const v = document.querySelector(`${s} svg.circ-pv`); return { cat: !!v.querySelector('.circ-pv-cat'), fp: v.querySelectorAll('.circ-fp path').length, pins: v.querySelectorAll('.circ-pin').length,
     led: [...v.querySelectorAll('.circ-fp-body')].map((x) => [...x.classList].find((c) => c.startsWith('circ-led-')) ?? null) }; }, sel);
   assert.deepEqual(await pv(CAT(ED)), { cat: false, fp: 4, pins: 4, led: [] });
-  // the red LED: its round body red; a 74xx drawn only: a DIP's body and its 14 pins
-  for (const [q, want] of [['led_red_5mm_pth_nosilk', { cat: false, fp: 9, pins: 2, led: ['circ-led-red'] }], ['7454', { cat: false, fp: 0, pins: 14, led: [] }]]) {
+  // the red LED: its round body red; a 74xx drawn only: a DIP's body and its 14 pins; KiCad's 2N3904 its pads (#4385)
+  for (const [q, want] of [['led_red_5mm_pth_nosilk', { cat: false, fp: 9, pins: 2, led: ['circ-led-red'] }], ['7454', { cat: false, fp: 0, pins: 14, led: [] }],
+    // (KiCad's own 2N3904, #4385: no drawing of KiCad's kept, a box round its pads)
+    ['2n3904', { cat: false, fp: 0, pins: 3, led: [] }]]) {
     await page.eval((ed, t) => { const s = document.querySelector(`${ed} .circ-search`); s.value = t; s.dispatchEvent(new Event('input')); }, ED, q);
     await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: q });
     assert.deepEqual(await pv(CAT(ED)), want, q);
