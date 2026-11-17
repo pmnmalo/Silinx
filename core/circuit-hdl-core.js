@@ -19,12 +19,8 @@ function coreVerilog(d) {
   if (!translated.has(d.type)) {
     const r = translateSource(d.core.vhdl, { path: `${d.core.entity}.vhd`, to: 'verilog' });
     if (!r.ok) throw new Error(`${d.type}'s core cannot be translated to Verilog: ${r.errors.map((e) => `line ${e.line}: ${e.message}`).join('; ')}`);
-    let text = r.text.split('\n').filter((l) => !/^\/\//.test(l)).join('\n').trim();
-    // (its lint's warnings silenced as its VHDL's are, the translator carrying no comment (#4414): a latch the chip is,
-    // #4397; a clock one of the IC's pins, read as the chip reads them)
-    if (d.core.latches) text = text.replace(/^([ \t]*(?:always @\* begin|else if \(.*\)))$/gm, '$1 // silinx: ignore latch');
-    text = text.replace(/^([ \t]*)(always @\((?:pos|neg)edge)/gm, '$1// silinx: ignore data-as-clock clock-as-data\n$1$2');
-    translated.set(d.type, text);
+    // (its lint's suppressions, the VHDL's `silinx: ignore` comments, carried by the translator: #4414)
+    translated.set(d.type, r.text.split('\n').filter((l) => !/^\/\//.test(l)).join('\n').trim());
   }
   return translated.get(d.type);
 }

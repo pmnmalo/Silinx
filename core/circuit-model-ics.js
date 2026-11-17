@@ -12,7 +12,7 @@ const BAR = '̅';
 const P = (at) => (n, name, dir, port) => ({ n, name, dir, ...at(n), port: port ?? name.replace(BAR, '_n').toLowerCase() });
 const P14 = P(dip(14)), P16 = P(dip(16)), P20 = P(dip(20));
 const ic = (type, title, tpd, pins, core, family = 'ttl') => ({ type, title, kind: 'ic', family, chip: family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`, tpd, dip: pins.length,
-  pins, core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins, core), ...(core.some((e) => e.latch || e.sr) ? { latches: true } : {}) } });
+  pins, core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins, core) } });
 
 // ------------------------------------------------------------------ the cores' VHDL
 // a storage element of a core:

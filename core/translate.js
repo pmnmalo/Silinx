@@ -28,6 +28,15 @@ export function translationLang(path, preferred) {
 /** The translated file's name: its own, of the other language's extension. */
 export const translatedPath = (path, to) => String(path).replace(/\.(vhdl?|s?v)$/i, to === 'vhdl' ? '.vhd' : '.v');
 
+// the lint's suppressions of a source (core/lint.js: "-- silinx: ignore latch" on a line, or on its own above one):
+// Map(line → its text after "silinx:"), so that the translation keeps them with the statement they were by (#4414)
+const IGNORE = /(?:--|\/\/)\s*silinx\s*:\s*(ignore\b[^\n]*)/i;
+function lintPragmas(text) {
+  const out = new Map();
+  text.split('\n').forEach((l, i) => { const m = IGNORE.exec(l); if (m) out.set(i + 1, m[1].trim()); });
+  return out;
+}
+
 export function translateSource(text, { path = 'input', to, sources = [] } = {}) {
   const from = langOfPath(path);
   const name = String(path).split('/').pop();
@@ -53,7 +62,7 @@ export function translateSource(text, { path = 'input', to, sources = [] } = {})
     }
     try {
       const o = from === 'vhdl'
-        ? moduleToVerilog(u, { spell: spellings(text), packages: [...units, ...others].filter(x => x.kind === 'package') })
+        ? moduleToVerilog(u, { spell: spellings(text), packages: [...units, ...others].filter(x => x.kind === 'package'), pragmas: lintPragmas(text) })
         : moduleToVhdl(u, { modules: [...units, ...others].filter(x => x.kind === 'module') });
       parts.push(o.text);
       timescale ||= o.timescale;
