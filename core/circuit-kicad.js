@@ -73,7 +73,8 @@ export function pinoutDifference(s, type) {
   for (const q of d.pins) {
     const p = mine.get(String(q.n));
     if (!p) { if (q.dir !== 'nc') return `its pin ${q.n} is missing (the ${type}'s ${q.name})`; continue; }
-    if (!fits(p, q.dir)) return `its pin ${q.n} (${pinText(p.name).text || 'no name'}) is ${p.type}, the ${type}'s pin ${q.n} (${q.name}) ${q.dir}`;
+    // (a transceiver's pin, #4397: an input and a three-state output at once, whatever KiCad's symbol says it is)
+    if (!q.io && !fits(p, q.dir)) return `its pin ${q.n} (${pinText(p.name).text || 'no name'}) is ${p.type}, the ${type}'s pin ${q.n} (${q.name}) ${q.dir}`;
   }
   const extra = pins.find((p) => !d.pins.some((q) => String(q.n) === p.number));
   return extra ? `its pin ${extra.number} is not one of the ${type}'s ${d.pins.length}` : null;

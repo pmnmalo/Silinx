@@ -49,7 +49,7 @@ test('synthesisText: the lines from a translate_off to its translate_on blanked,
 });
 
 test('every IC\'s bench as synthesis reads it: the digital model\'s outputs the engine\'s, in VHDL and in Verilog, no warnings', () => {
-  const benches = [['half_adder', halfAdder()], ...Object.keys(PARTS).filter((t) => PARTS[t].gates).map((t) => [t, icBench(t, { name: `g${t}` })]),
+  const benches = [['half_adder', halfAdder()], ...Object.keys(PARTS).filter((t) => PARTS[t].gates && !PARTS[t].pins.some((q) => q.io)).map((t) => [t, icBench(t, { name: `g${t}` })]),   // (a transceiver's: circuit-transceivers.test.js)
     ...Object.keys(PARTS).filter((t) => PARTS[t].model || PARTS[t].seq).map((t) => [t, msiBench(t, { name: `m${t}` })])];
   assert.ok(benches.length >= 40, `${benches.length} benches`);
   for (const [t, m] of benches) {

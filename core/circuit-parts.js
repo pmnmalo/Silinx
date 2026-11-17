@@ -116,7 +116,7 @@ function turn(dx, dy, rot = 0) {
 export function partPins(part) {
   const d = partDef(part.type);
   if (!d) return [];
-  return d.pins.map((p) => { const [dx, dy] = turn(p.dx, p.dy, part.rot || 0); return { n: p.n, name: p.name, dir: p.dir, x: part.x + dx, y: part.y + dy }; });
+  return d.pins.map((p) => { const [dx, dy] = turn(p.dx, p.dy, part.rot || 0); return { n: p.n, name: p.name, dir: p.dir, ...(p.tri ? { tri: true } : {}), ...(p.io ? { io: true } : {}), x: part.x + dx, y: part.y + dy }; });
 }
 
 /** A breadboard part's holes on the grid, turned with it (#4065): [{ name, strip, x, y }] (none for any other part). */

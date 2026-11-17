@@ -128,6 +128,8 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Hex buffer, 3-state outputs, 4 and 2 enabled': 'Seis buffers, saídas tri-state, ativados 4 e 2', 'Hex inverting buffer, 3-state outputs, 4 and 2 enabled': 'Seis buffers inversores, saídas tri-state, ativados 4 e 2',
   'Octal inverting buffer, 3-state outputs, flow-through': 'Oito buffers inversores, saídas tri-state, entradas e saídas em lados opostos',
   'Octal buffer, 3-state outputs, flow-through': 'Oito buffers, saídas tri-state, entradas e saídas em lados opostos',
+  'Quad bus transceiver, inverting, 3-state outputs': 'Quatro transceptores de barramento, inversores, saídas tri-state',
+  'Quad bus transceiver, 3-state outputs': 'Quatro transceptores de barramento, saídas tri-state', 'Octal bus transceiver, 3-state outputs': 'Oito transceptores de barramento, saídas tri-state',
   'Hex inverter, open collector': 'Seis inversores, coletor aberto', 'Hex inverter buffer, open collector': 'Seis inversores buffer, coletor aberto',
   // the MSI ICs (#3900, core/circuit-msi.js)
   'BCD to 7-segment decoder/driver, open collector, active low': 'Descodificador BCD para 7 segmentos, coletor aberto, ativo a 0',

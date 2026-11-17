@@ -34,7 +34,7 @@ const body = (g) => ({ x: g.flip ? g.x - (g.bubble ? 4 : 0) : g.x, y: g.y, w: g.
 
 // (the 4023, 4025, 4073 and 4075: a gate's inputs on both rows, one past its output, #4397: their pins' names inside)
 // (and the AND-OR-INVERTs 7451, 7454, 7455, and the three-state buffers: their pins' names too)
-const CROSSED = ['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541'];
+const CROSSED = ['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
 const GATE_ICS = ICS.filter((d) => d.gates && !CROSSED.includes(d.type));
 
 test('#4224 every gate IC: each gate\'s lines from its pins to its input side, from its tip to its output pin, orthogonal', () => {

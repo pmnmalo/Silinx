@@ -63,7 +63,23 @@ function triIc(type, title, fn, pairs, enables, tpd, { pins: n, supply }) {
   // (its port in the HDL: OE̅ oe_n, 1OE̅ oe1_n, G1̅ g1_n)
   const port = (nm) => { const b = nm.replace(BAR, ''), t = /^\d/.test(b) ? `${b.slice(1)}${b[0]}` : b; return `${t.toLowerCase()}${nm.includes(BAR) ? '_n' : ''}`; };
   const pinsOut = d.pins.map((p) => (names.has(p.n) ? { ...p, name: names.get(p.n), dir: 'in', port: port(names.get(p.n)) } : p));
-  return { ...d, pins: pinsOut, gates };
+  // (its outputs three-state, #4409: several on one net a bus, not a short)
+  const outs = new Set(gates.map((g) => g.out));
+  return { ...d, pins: pinsOut.map((p) => (outs.has(p.n) ? { ...p, tri: true } : p)), gates };
+}
+
+// A bus transceiver (#4397, group B): `bits` pairs [A pin, B pin], each a buffer `fn` from A to B and one from B to A;
+// `ab` and `ba` the enables of each direction ([pin, active level] all at their active level). Its A and B pins inputs and
+// three-state outputs at once (io, tri).
+function transceiverIc(type, title, fn, bits, { ab, ba, names }, tpd, { pins: n, supply }) {
+  const at = dip(n), pins = new Map();
+  bits.forEach(([a, b], k) => { pins.set(a, { n: a, name: `A${k + 1}`, dir: 'out', tri: true, io: true }); pins.set(b, { n: b, name: `B${k + 1}`, dir: 'out', tri: true, io: true }); });
+  for (const [p, name] of Object.entries(names)) pins.set(Number(p), { n: Number(p), name, dir: 'in', port: name.replace(BAR, '_n').toLowerCase() });
+  pins.set(supply[1], { n: supply[1], name: 'GND', dir: 'gnd' });
+  pins.set(supply[0], { n: supply[0], name: 'VCC', dir: 'vcc' });
+  for (let k = 1; k <= n; k++) if (!pins.has(k)) pins.set(k, { n: k, name: 'NC', dir: 'nc' });
+  const gates = bits.flatMap(([a, b]) => [{ fn, ins: [a], out: b, en: ab }, { fn, ins: [b], out: a, en: ba }]);
+  return { type, title, kind: 'ic', family: 'ttl', chip: `SN74LS${type.slice(2)}`, pins: [...pins.values()].sort((x, y) => x.n - y.n).map((p) => ({ ...p, ...at(p.n) })), gates, tpd, dip: n };
 }
 const ttl = (type, title, fn, groups, tpd, oc, more = {}) => gateIc(type, `SN74LS${type.slice(2)}`, title, fn, groups, tpd, { oc, ...more });
 const cmos = (type, title, fn, groups, tpd, more = {}) => gateIc(type, `CD${type}B`, title, fn, groups, tpd, { family: 'cmos', ...more });
@@ -119,6 +135,11 @@ export const ICS = [
   triIc('74368', 'Hex inverting buffer, 3-state outputs, 4 and 2 enabled', 'not', HEX_365, [{ pins: [1], active: '0', of: [0, 1, 2, 3] }, { pins: [15], active: '0', of: [4, 5] }], 11, { pins: 16, supply: [16, 8] }),
   triIc('74540', 'Octal inverting buffer, 3-state outputs, flow-through', 'not', OCTAL_54X, [{ pins: [1, 19], active: '0', of: [0, 1, 2, 3, 4, 5, 6, 7] }], 10, { pins: 20, supply: [20, 10] }),
   triIc('74541', 'Octal buffer, 3-state outputs, flow-through', 'buf', OCTAL_54X, [{ pins: [1, 19], active: '0', of: [0, 1, 2, 3, 4, 5, 6, 7] }], 12, { pins: 20, supply: [20, 10] }),
+  // the bus transceivers (#4397, group B): the 74242's and 74243's GAB̅ (A to B while low) and GBA (B to A while high); the
+  // 74245's DIR (A to B while high) and OE̅ (enabled while low)
+  transceiverIc('74242', 'Quad bus transceiver, inverting, 3-state outputs', 'not', [[3, 11], [4, 10], [5, 9], [6, 8]], { ab: [[1, '0']], ba: [[13, '1']], names: { 1: `GAB${BAR}`, 13: 'GBA' } }, 14, { pins: 14, supply: [14, 7] }),
+  transceiverIc('74243', 'Quad bus transceiver, 3-state outputs', 'buf', [[3, 11], [4, 10], [5, 9], [6, 8]], { ab: [[1, '0']], ba: [[13, '1']], names: { 1: `GAB${BAR}`, 13: 'GBA' } }, 14, { pins: 14, supply: [14, 7] }),
+  transceiverIc('74245', 'Octal bus transceiver, 3-state outputs', 'buf', [[2, 18], [3, 17], [4, 16], [5, 15], [6, 14], [7, 13], [8, 12], [9, 11]], { ab: [[19, '0'], [1, '1']], ba: [[19, '0'], [1, '0']], names: { 1: 'DIR', 19: `OE${BAR}` } }, 12, { pins: 20, supply: [20, 10] }),
   cmos('4001', 'Quad 2-input NOR', 'nor', QUAD_4001, 60),
   cmos('4011', 'Quad 2-input NAND', 'nand', QUAD_4001, 60),
   cmos('4030', 'Quad 2-input XOR', 'xor', QUAD_4001, 100),
