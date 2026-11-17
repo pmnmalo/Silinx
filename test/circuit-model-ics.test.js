@@ -57,6 +57,17 @@ const SHEETS = {
     stores: [[3, 2], [4, 5], [6, 7], [11, 10], [13, 12], [14, 15]].map(([d, q]) => ff(9, 'r', { d, ce: [1, 0] }, q)) },
   74379: { names: [`E${B}`, '1Q', `1Q${B}`, '1D', '2D', `2Q${B}`, '2Q', 'GND', 'CLK', '3Q', `3Q${B}`, '3D', '4D', `4Q${B}`, '4Q', 'VCC'],
     stores: [[4, 2, 3], [5, 7, 6], [12, 10, 11], [13, 15, 14]].map(([d, q, qn]) => ff(9, 'r', { d, ce: [1, 0] }, q, qn)) },
+  // (three-state outputs: `oe` their enables [pin, level], all at their levels; off, an LED of the bench dark: 0)
+  74173: { names: ['M', 'N', '1Q', '2Q', '3Q', '4Q', 'CLK', 'GND', `G1${B}`, `G2${B}`, '4D', '3D', '2D', '1D', 'CLR', 'VCC'], oe: [[1, 0], [2, 0]],
+    stores: [[14, 3], [13, 4], [12, 5], [11, 6]].map(([d, q]) => ff(7, 'r', { d, clr: [15, 1], ce: [[9, 0], [10, 0]] }, q)) },
+  74373: { names: [`OE${B}`, '1Q', '1D', '2D', '2Q', '3Q', '3D', '4D', '4Q', 'GND', 'LE', '5Q', '5D', '6D', '6Q', '7Q', '7D', '8D', '8Q', 'VCC'], oe: [[1, 0]],
+    stores: [[3, 2], [4, 5], [7, 6], [8, 9], [13, 12], [14, 15], [17, 16], [18, 19]].map(([d, q]) => lat(11, d, q)) },
+  74374: { names: [`OE${B}`, '1Q', '1D', '2D', '2Q', '3Q', '3D', '4D', '4Q', 'GND', 'CLK', '5Q', '5D', '6D', '6Q', '7Q', '7D', '8D', '8Q', 'VCC'], oe: [[1, 0]],
+    stores: [[3, 2], [4, 5], [7, 6], [8, 9], [13, 12], [14, 15], [17, 16], [18, 19]].map(([d, q]) => ff(11, 'r', { d }, q)) },
+  74573: { names: [`OE${B}`, '1D', '2D', '3D', '4D', '5D', '6D', '7D', '8D', 'GND', 'LE', '8Q', '7Q', '6Q', '5Q', '4Q', '3Q', '2Q', '1Q', 'VCC'], oe: [[1, 0]],
+    stores: [2, 3, 4, 5, 6, 7, 8, 9].map((d, k) => lat(11, d, 19 - k)) },
+  74574: { names: [`OE${B}`, '1D', '2D', '3D', '4D', '5D', '6D', '7D', '8D', 'GND', 'CLK', '8Q', '7Q', '6Q', '5Q', '4Q', '3Q', '2Q', '1Q', 'VCC'], oe: [[1, 0]],
+    stores: [2, 3, 4, 5, 6, 7, 8, 9].map((d, k) => ff(11, 'r', { d }, 19 - k)) },
 };
 
 // the datasheet's function, vector by vector: `cur`, `prev` the pins' levels (0 / 1, by number), `st` the elements'
@@ -71,7 +82,7 @@ function step(sheet, prev, cur, st) {
       const f = e.ff;
       if (f.pre && cur[f.pre[0]] === f.pre[1]) st[k] = 1;
       else if (f.clr && cur[f.clr[0]] === f.clr[1]) st[k] = 0;
-      else if (prev && (f.edge === 'r' ? prev[f.clk] === 0 && cur[f.clk] === 1 : prev[f.clk] === 1 && cur[f.clk] === 0) && (!f.ce || cur[f.ce[0]] === f.ce[1])) {
+      else if (prev && (f.edge === 'r' ? prev[f.clk] === 0 && cur[f.clk] === 1 : prev[f.clk] === 1 && cur[f.clk] === 0) && (!f.ce || (Array.isArray(f.ce[0]) ? f.ce : [f.ce]).every(([p, v]) => cur[p] === v))) {
         if ('d' in f) st[k] = cur[f.d];
         else {
           const j = cur[(f.jk ?? f.jkn)[0]], kk = f.jk ? cur[f.jk[1]] : 1 - cur[f.jkn[1]];
@@ -79,7 +90,9 @@ function step(sheet, prev, cur, st) {
         }
       }
     }
-    out[e.q] = st[k];
+    // (its outputs off: 0 on the bench's LEDs)
+    const off = sheet.oe && !sheet.oe.every(([p, v]) => cur[p] === v);
+    out[e.q] = off ? 0 : st[k];
     if (e.qn) out[e.qn] = both ? 1 : st[k] == null ? null : 1 - st[k];
   });
   return out;

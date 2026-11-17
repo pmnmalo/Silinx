@@ -115,8 +115,12 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       for (const x of ic.outs) drive(x.d, !on ? 'Z' : x.oc && o[x.port] === '1' ? 'Z' : o[x.port]);
     } else if (ic.core) {
       // (its core's outputs from its inputs as the chip reads them, while powered; a core that cannot run: X)
-      const o = ic.core.run ? ic.core.run(Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]))) : {};
-      for (const x of ic.outs) drive(x.d, !on ? 'Z' : o[x.port] ?? 'X');
+      const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
+      const o = ic.core.run ? ic.core.run(i) : {};
+      // (three-state outputs, a 74373's: off once an enable is not at its level, X while one is unknown)
+      const en = (ic.def.threeState?.enable || []).map(([p, a]) => (i[p] === 'X' ? 'X' : i[p] === a ? '1' : '0'));
+      const off = en.includes('0') ? 'Z' : en.includes('X') ? 'X' : null;
+      for (const x of ic.outs) drive(x.d, !on ? 'Z' : (off && ic.def.threeState.outs.includes(x.port) ? off : o[x.port] ?? 'X'));
     } else if (ic.def.model) {
       const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
       const o = !on ? null : Object.values(i).includes('X') ? 'X' : ic.def.model(Object.fromEntries(Object.entries(i).map(([k, v]) => [k, Number(v)])));
