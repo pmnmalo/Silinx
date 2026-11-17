@@ -238,7 +238,7 @@ async function runImplInner(mod, steps, opts, pjName) {
   const procId = extra || (steps.includes('bitgen') ? 'bitgen' : steps.includes('translate') ? 'impl' : 'synth');
   const procName = EXTRA_STEPS[procId] || { synth: openMode() ? OPEN_SYNTH : vivadoMode() ? 'Synthesize - Vivado' : 'Synthesize - XST', impl: 'Implement Design', bitgen: 'Generate Programming File' }[procId];
   // Synthesize - XST always starts with Check Syntax (same messages as the Check Syntax process)
-  if (!await checkSyntax(mod)) {
+  if (!await checkSyntax(mod, false, { hierarchy: true })) {
     setStatus('synth', 'err');
     log(`Process "${procName}" stopped: Check Syntax found errors (see the Errors tab).`, 'err');
     return;
@@ -362,7 +362,7 @@ export async function synthOpen(mod) {
   if (synthOpenRunning) return;
   synthOpenRunning = true;
   try {
-    if (!await checkSyntax(mod)) {
+    if (!await checkSyntax(mod, false, { hierarchy: true })) {
       setStatus('synth-open', 'err');
       log(`Process "${SYNTH_OPEN}" stopped: Check Syntax found errors (see the Errors tab).`, 'err');
       return;

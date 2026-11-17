@@ -6,6 +6,7 @@ import { h, dialog, alertDlg, confirmDlg, promptDlg, toast } from './ui.js';
 import { compile, elaborate } from '/core/compile.js';
 import { primitiveSources } from '/core/unisim.js';
 import { naturalCompare } from '/core/hier-order.js';
+import { hierarchySources } from '/core/top-hierarchy.js';
 import { Simulator } from '/core/simulator.js';
 import { ENGINE_KEY, defaultEngine } from '/core/emulate-engine.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
@@ -238,14 +239,15 @@ export async function runSimulation(mod, model, { stale } = {}) {
 }
 async function runSimulationInner(mod, model, stale) {
   await saveAll();
-  if (!await checkSyntax(mod, true)) return;
+  if (!await checkSyntax(mod, true, { hierarchy: true })) return;
   const net = model ? await netlistSources(model) : null;
   if (model && !net) return;
   const procId = model ? `sim-${model}` : 'sim-run';
   const title = model ? `Simulate ${SIM_MODEL_NAMES[model]} Model` : 'Simulate Behavioral Model';
   setStatus(procId, 'running');
   log(`\nStarted : "${title}".\n\nBuilding simulation model for top '${mod}'${model ? ` with the ${SIM_MODEL_NAMES[model].toLowerCase()} netlist of '${S.project.top}'` : ''}...`, 'hdr');
-  const srcs = [...S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true)), ...(net || [])];   // no implementation-only files
+  // (no implementation-only files; the test bench's hierarchy only, #4421)
+  const srcs = [...hierarchySources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true)), mod).sources, ...(net || [])];
   const lib = compile(withPrimitives(srcs));
   if (model) lib.errors = lib.errors.filter(e => !/redefined/.test(e.message));
   const design = elaborate(lib, mod);
@@ -372,7 +374,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
   await saveAll();
   const board = projectBoard();
   if (!board) { alertDlg('Board Emulator', 'The project has no board. Choose one in Project ▸ Design Properties (e.g. Digilent Basys2).'); return; }
-  if (!await checkSyntax(mod)) return;
+  if (!await checkSyntax(mod, false, { hierarchy: true })) return;
   await loadUcfText();   // the pins as they are now (pin planner / editor changes)
   // (no pins set: said first, I/O Pin Planning one click away; a re-run on a change says nothing, #1508)
   if (!quiet && !await pinsReady(S.ucfText, 'emulate', () => app.openPinPlanner(mod), S.project.device)) return;
@@ -386,7 +388,8 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
   let rep = null;
   try { rep = await api.reports(S.project.name); } catch { /* standalone / no build */ }
   const models = Object.keys(SIM_MODEL_NAMES).filter(k => rep?.simModels?.[k] && rep.top === mod);
-  const srcs = net || S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false));   // the implemented design
+  // the implemented design (the top's hierarchy, #4421)
+  const srcs = net || hierarchySources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)), mod).sources;
   const { timingGenerics, autoTimeScale, scaledGenerics } = await import('/core/emulate.js');
   let design, lib, gens = [];
   try {

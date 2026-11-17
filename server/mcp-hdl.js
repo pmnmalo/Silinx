@@ -197,7 +197,7 @@ export const HDL_TOOLS = [
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > SIM_LIMITS.maxTimeoutS) throw toolError(`timeout_s: from 1 to ${SIM_LIMITS.maxTimeoutS} s`);
       if (model !== 'behavioral' && !SIM_MODELS[model]) throw toolError(`model: behavioral or one of ${Object.keys(SIM_MODELS).join(', ')}`);
       // the behavioural Check Syntax first, as the interface's simulation does
-      const view = await elaborateView(name, { top, sim: true });
+      const view = await elaborateView(name, { top, sim: true, hierarchy: true });   // (its hierarchy only, #4421)
       const { srcs, top: mod, diags } = view;
       let { design } = view;
       const errors = diags.filter(d => d.severity === 'error');

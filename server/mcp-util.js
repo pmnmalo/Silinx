@@ -105,7 +105,9 @@ export const diagJson = d => ({ severity: d.severity, file: d.file, line: d.line
 
 // compile and elaborate a view of a project: { lib, design, top, diags } (the design checks included; lint: their lint
 // warnings too, as Edit ▸ Design Checks on, #3546)
-export async function elaborateView(name, { top, sim = false, lint = true } = {}) {
+// hierarchy: for a run of the top (a simulation), only its hierarchy's errors: a file with errors outside it left out of
+// `srcs`, a warning saying so in its errors' place (core/top-hierarchy.js, #4421)
+export async function elaborateView(name, { top, sim = false, lint = true, hierarchy = false } = {}) {
   const project = await readProject(name);
   const mod = top || (sim ? project.simTop : project.top);
   if (!mod) throw toolError(sim ? `the project '${name}' has no simulation top (a test bench): give top` : `the project '${name}' has no top module: give top`);
@@ -143,7 +145,14 @@ export async function elaborateView(name, { top, sim = false, lint = true } = {}
   const diags = withDrawingErrors([...lib.errors, ...(design?.diags || []), ...extra, ...stale, ...cErrs, ...bbWarn]
     .filter(d => { const k = `${d.file}:${d.line}:${d.message}`; if (seen.has(k)) return false; seen.add(k); return true; }), failed.filter(v => !isC(v)), { top: mod, design: isDesignOnly(project) })
     .map(d => ({ ...d, tool: d.tool || 'HDLCompiler' }));
-  return { project, srcs, lib, design, top: mod, diags };
+  if (!hierarchy) return { project, srcs, lib, design, top: mod, diags };
+  const { leftOut, leftOutDiag } = await import('../core/top-hierarchy.js');
+  const owners = failed.filter(isC).map(v => ({ file: v.path, module: v.module }));
+  const errorFiles = [...new Set(diags.filter(d => d.severity === 'error').map(d => d.file))];
+  const out = new Set(leftOut(lib, mod, errorFiles, owners));
+  if (!out.size) return { project, srcs, lib, design, top: mod, diags };
+  const left = [...out].map(f => leftOutDiag(f, mod, diags.filter(d => d.file === f && d.severity === 'error').length));
+  return { project, srcs: srcs.filter(s => !out.has(s.path)), lib, design, top: mod, diags: [...diags.filter(d => !out.has(d.file)), ...left] };
 }
 
 export const STR = (description) => ({ type: 'string', description });

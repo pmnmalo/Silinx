@@ -11,6 +11,7 @@ import { synthEffort, synthGoal, s6OpenStatus } from '/packages/silinx-fpga/src/
 import { modulesFromLibrary } from '/core/schdoc.js';
 import { OPEN_STEPS, engineOf, s6MapOf, xc7SeedsOf, orderOpenSteps, orderSteps, deviceFamily, constraintsFormatOf } from '/packages/silinx-fpga/src/parts.js';
 import { familyProfile } from '/core/family-profile.js';
+import { hierarchySources, leftOutWarning } from '/core/top-hierarchy.js';
 
 // the devices whose device description and bit database are published (packages/silinx-fpga/devices,
 // packages/silinx-fpga/bitdb): device/package -> the description's file
@@ -181,6 +182,10 @@ export async function runBrowserFlow({ project, files, steps, resources = null, 
     }
   }
   if (!sources.length) throw new Error('the project has no design HDL files');
+  // (only the top's hierarchy, as ISE: a file with errors outside it left out, a warning saying so, #4421)
+  const { sources: used, left } = hierarchySources(sources, top);
+  for (const l of left) onLine(`WARNING:Silinx - ${leftOutWarning(l, top)}`);
+  sources.splice(0, sources.length, ...used);
   const ucf = project.constraints && typeof files[project.constraints] === 'string' ? files[project.constraints] : null;
   // the port bits without a pin: on a board they would go to arbitrary pins (refused, as the server does)
   // (the iCE40's constraints are PCF: its back end says the ports without a pin, #2295)

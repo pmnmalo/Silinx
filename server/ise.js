@@ -18,6 +18,7 @@ import { FAMILY_INFO, deviceFamily, isIseFamily, constraintsFormatOf, openOnlyDe
 import { compile, elaborate } from '../core/compile.js';
 import { clocksOf, latchGates } from '../core/schematic.js';
 import { primitiveSources } from '../core/unisim.js';
+import { hierarchySources, leftOutWarning } from '../core/top-hierarchy.js';
 import { spawn } from 'node:child_process';
 import { runCommand, JobCancelled } from './jobs.js';
 import { loadConfig, detectIse, iseStatus, iseModeOf, which } from './toolchain.js';
@@ -412,6 +413,11 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
   const drawn = await viewSources(project, projectDir, hdlTexts);
   for (const v of drawn) for (const e of v.errors) warnings.push(e);
   if (!design.length && !drawn.some(v => v.text)) throw Object.assign(new Error('project has no design (role "design") HDL files'), { status: 400 });
+  // (only the top's hierarchy, as ISE: a file with errors outside it left out, a warning saying so, #4421)
+  const { left } = hierarchySources([...hdlTexts, ...drawn.filter(v => v.text).map(v => ({ path: v.path, lang: v.lang, text: v.text }))], top);
+  const leftPaths = new Set(left.map(l => l.path));
+  for (const l of left) warnings.push(leftOutWarning(l, top));
+  const kept = f => !leftPaths.has(f.path);
 
   const buildDir = path.join(projectDir, 'build');
   const srcDir = path.join(buildDir, 'src');
@@ -423,7 +429,7 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
 
   // Copy sources, preserving their relative layout under build/src/ (paths stay unique).
   const sources = [];
-  for (const f of design) {
+  for (const f of design.filter(kept)) {
     const from = inside(scriptSafe(noSettingsScript(f.path)));
     if (!fss.existsSync(from)) { warnings.push(`missing source file ${f.path} (skipped)`); continue; }
     // (its path inside the project, as resolved: a '..' of silinx.json's never reaches past build/src/, #2956)
@@ -434,7 +440,7 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
     sources.push({ ...f, buildPath: `src/${rel}` });
   }
   for (const v of drawn) {
-    if (!v.text) continue;
+    if (!v.text || !kept(v)) continue;
     const rel = `${scriptSafe(v.path).split(/[\\/]/).join('/')}.${v.lang === 'vhdl' ? 'vhd' : 'v'}`;   // e.g. src/top.sch.json.vhd (#2956)
     const to = path.join(srcDir, rel);
     await fs.mkdir(path.dirname(to), { recursive: true });
