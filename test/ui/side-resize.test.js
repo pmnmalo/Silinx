@@ -15,7 +15,9 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 const DOC = '.doc:not([hidden])';
 
-const geo = (page, ed, side) => page.eval((d, ed, s) => {
+// (after two frames: the handle is placed in the frame after the panel's ResizeObserver saw it change, #4366)
+const geo = (page, ed, side) => page.eval(async (d, ed, s) => {
+  await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
   const root = document.querySelector(`${d} ${ed}`), el = root.querySelector(s), hd = el.nextElementSibling;
   const b = (e) => e.getBoundingClientRect(), sr = b(el), hr = b(hd);
   let canvas = 0;
