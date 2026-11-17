@@ -5,7 +5,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { kicadPartsOf, useProjectParts, partOfNumber, pinDirection, pinoutDifference, pinPlaces, symbolPins, isKicadPartFile, kicadPartType } from '../core/circuit-kicad.js';
+import { kicadPartsOf, useProjectParts, partOfNumber, pinDirection, pinoutDifference, pinPlaces, symbolPins, isKicadPartFile, kicadPartType, lookOf, ledColour } from '../core/circuit-kicad.js';
 import { partDef, setProjectParts, projectParts, partsList, PARTS } from '../core/circuit-parts.js';
 import { readKicadSymLib } from '../core/kicad-sym.js';
 import { readKicadFootprint } from '../core/kicad-mod.js';
@@ -221,4 +221,33 @@ test('a .kicad_symdir folder of the project: its symbols, a part number matched'
   const r = kicadPartsOf({ [`${dir}/74LS08.kicad_sym`]: one, [`${dir}/74HCT08.kicad_sym`]: two });
   assert.deepEqual(r.defs.map((d) => [d.type, d.behaves]), [[`${dir}#74LS08`, '7408'], [`${dir}#74HCT08`, '7408']]);
   assert.deepEqual([r.skipped, r.notes, r.errors], [[], [], []]);
+});
+
+test('a drawn-only part\'s look (#4315): its footprint\'s drawing in grid steps from pad 1, turned as its pins; none with no footprint file; an LED\'s colour', () => {
+  const led = fs.readFileSync(new URL('../parts.pretty/LED_D5.0mm_test.kicad_mod', FIX), 'utf8');
+  const lib = `(kicad_symbol_lib (version 20231120) (generator "silinx_test")
+  (symbol "LED_Red_5mm" (property "Reference" "D") (property "Value" "Red") (property "Description" "Light emitting diode, 5 mm")
+    (property "ki_keywords" "LED") (property "Footprint" "leds:LED_D5.0mm_test")
+    (symbol "LED_Red_5mm_1_1" (pin passive line (at 0 0 0) (length 2.54) (name "K") (number "1")) (pin passive line (at 0 0 0) (length 2.54) (name "A") (number "2")))))`;
+  const r = kicadPartsOf({ 'parts/leds.kicad_sym': lib, 'parts/leds.pretty/LED_D5.0mm_test.kicad_mod': led });
+  assert.deepEqual([r.errors, r.skipped], [[], []]);
+  const d = r.defs[0];
+  assert.equal(d.kind, 'drawn');
+  // (pad 2 at 2.54 mm right of pad 1: one step up once turned, as the pins)
+  assert.deepEqual(d.pins.map((p) => [p.n, p.dx, p.dy]), [[1, 0, 0], [2, 0, -1]]);
+  assert.equal(d.look.layer, 'F.Fab');
+  assert.deepEqual(d.look.shapes.map((sh) => sh.k), ['circle', 'arc', 'line', 'poly', 'poly']);
+  const r2 = (v) => Math.round(v * 1000) / 1000;
+  const [circle, , line] = d.look.shapes;
+  assert.deepEqual([circle.c.map(r2), r2(circle.r), r2(circle.w), circle.fill], [[0, -0.5], 0.984, 0.039, false]);
+  assert.deepEqual(line.pts.map((q) => q.map(r2)), [[-0.591, 0.484], [0.591, 0.484]]);
+  assert.equal(lookOf(readKicadFootprint(fs.readFileSync(new URL('../parts.pretty/Module_1x04.kicad_mod', FIX), 'utf8'))), null);
+  // a footprint known by its name only (no file): no look
+  assert.equal(partDef(T('SENSOR')).look, undefined);
+  // the LED's colour: by its value, symbol or description, for an LED only
+  assert.equal(ledColour(d.kicad), 'red');
+  assert.equal(ledColour({ symbol: 'LED_5mm', value: 'Green', keywords: 'LED' }), 'green');
+  assert.equal(ledColour({ symbol: 'LED-RGB', value: 'RGB', description: 'LED' }), null);
+  assert.equal(ledColour({ symbol: 'Wire', value: 'Red' }), null);
+  assert.equal(ledColour({ symbol: 'LEDGER', value: 'Blue' }), null);
 });

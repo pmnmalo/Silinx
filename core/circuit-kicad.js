@@ -15,7 +15,7 @@
 import { PARTS, setProjectParts } from './circuit-parts.js';
 import { dip } from './circuit-ics.js';
 import { readKicadSymLib, readKicadSymDir, pinText, footprintFilters } from './kicad-sym.js';
-import { readKicadFootprint, gridPins, packageOfFootprint } from './kicad-mod.js';
+import { readKicadFootprint, gridPins, packageOfFootprint, GRID_MM } from './kicad-mod.js';
 import { modelPins } from './circuit-kicad-hdl.js';
 
 const LIB_RE = /^parts\/[^/]+\.kicad_sym$/i, DIR_FILE_RE = /^(parts\/[^/]+\.kicad_symdir)\/[^/]+\.kicad_sym$/i, FP_RE = /^parts\/([^/]+)\.pretty\/([^/]+)\.kicad_mod$/i;
@@ -79,11 +79,31 @@ export function pinoutDifference(s, type) {
 // lies, pin 1 at the lower left and the rows along the breadboard)
 const turned = ({ dx, dy }) => ({ dx: dy, dy: -dx || 0 });
 
+/**
+ * A footprint's drawing (#4315) as a part's look: its shapes in grid steps from pad 1, turned as its pins are (pt: [x, y],
+ * a circle's c and r, a stroke's w); null for a footprint with no drawing.
+ */
+export function lookOf(fp) {
+  const one = fp.pads.find((p) => p.number === '1' && p.type === 'thru_hole');
+  if (!fp.drawing || !one) return null;
+  const at = ([x, y]) => { const t = turned({ dx: (x - one.x) / GRID_MM, dy: (y - one.y) / GRID_MM }); return [t.dx, t.dy]; };
+  return { layer: fp.drawing.layer, shapes: fp.drawing.shapes.map((sh) => ({ k: sh.k, fill: sh.fill, w: sh.w / GRID_MM,
+    ...(sh.k === 'circle' ? { c: at(sh.c), r: sh.r / GRID_MM } : { pts: sh.pts.map(at) }) })) };
+}
+
+/** A KiCad part's LED colour (#4315: its body drawn in it), or null: an LED (by its symbol, keywords or description)
+ *  whose value, symbol or description names one of the library LEDs' colours. */
+export function ledColour(k) {
+  const text = `${k?.symbol ?? ''} ${k?.value ?? ''} ${k?.keywords ?? ''} ${k?.description ?? ''}`;
+  if (!/(?:^|[^A-Za-z])LED(?:[^A-Za-z]|$)/i.test(text)) return null;
+  return /(?:^|[^A-Za-z])(red|green|yellow|blue|white)(?:[^A-Za-z]|$)/i.exec(`${k.value ?? ''} ${k.symbol ?? ''} ${k.description ?? ''}`)?.[1].toLowerCase() ?? null;
+}
+
 /** A footprint's name the symbol has: Silinx.Footprint's, else its Footprint property's (null: none). */
 const footprintName = (s) => s.properties['Silinx.Footprint'] || s.properties.Footprint || null;
 
 /**
- * The places of a drawn part's pins: { places: Map(number → { dx, dy }), dip? } or { error }. From its footprint's file
+ * The places of a drawn part's pins: { places: Map(number → { dx, dy }), dip?, look? (its footprint's drawing) } or { error }. From its footprint's file
  * among `footprints` (Map of 'Lib:Name' and 'Name' → parsed .kicad_mod), else its footprint's name, else its footprint
  * filters (a DIP of 7.62 mm whose pins are as many as the symbol's).
  */
@@ -97,7 +117,7 @@ export function pinPlaces(s, footprints = new Map()) {
     const at = new Map(g.pins.map((p) => [p.number, turned(p)]));
     const off = pins.find((p) => !at.has(p.number));
     if (off) return { error: g.offGrid.includes(off.number) ? `its pin ${off.number}'s pad is off the 0.1 inch grid` : `its pin ${off.number} has no pad in its footprint ${fp.name}` };
-    return { places: at };
+    return { places: at, look: lookOf(fp) };
   }
   let pkg = name ? packageOfFootprint(name) : null;
   if (!pkg && !name) {
@@ -143,7 +163,7 @@ function kicadPartDef(lib, s, footprints) {
     const r = modelPins(symbolPins(s), s.properties, at.places);
     if (r.error) return { error: r.error };
     return { def: { type, title, kind: 'model', pins: r.pins.sort((a, b) => String(a.n).localeCompare(String(b.n), 'en', { numeric: true })), module: r.module, kicad: origin, behaves: null,
-      ...(at.dip ? { dip: at.dip } : {}) } };
+      ...(at.dip ? { dip: at.dip } : {}), ...(at.look ? { look: at.look } : {}) } };
   }
   const named = s.properties['Silinx.Model'];
   if (named && PARTS[named]?.kind !== 'ic') return { error: `its Silinx.Model '${named}' is not an IC of the library` };
@@ -166,7 +186,7 @@ function kicadPartDef(lib, s, footprints) {
   if (at.error) return { error: unlike ? `${unlike}, and ${at.error}` : at.error };
   const pins = symbolPins(s).map((p) => ({ n: Number.isInteger(Number(p.number)) ? Number(p.number) : p.number, name: pinText(p.name).text || p.number, dir: 'none',
     kicadType: p.type, ...at.places.get(p.number) })).sort((a, b) => String(a.n).localeCompare(String(b.n), 'en', { numeric: true }));
-  return { def: { type, title, kind: 'drawn', pins, kicad: origin, behaves: null, ...(at.dip ? { dip: at.dip } : {}) }, ...(unlike ? { note: `${s.name}: ${unlike}: drawn only` } : {}) };
+  return { def: { type, title, kind: 'drawn', pins, kicad: origin, behaves: null, ...(at.dip ? { dip: at.dip } : {}), ...(at.look ? { look: at.look } : {}) }, ...(unlike ? { note: `${s.name}: ${unlike}: drawn only` } : {}) };
 }
 
 /**

@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readKicadFootprint, gridPins, packageOfFootprint, matchesFootprintFilters, GRID_MM, PAD_TYPES } from '../core/kicad-mod.js';
+import { readKicadFootprint, gridPins, packageOfFootprint, matchesFootprintFilters, footprintDrawing, shapePath, GRID_MM, PAD_TYPES } from '../core/kicad-mod.js';
+import { parseSexpr } from '../core/sexpr.js';
 
 const read = (name) => readFileSync(new URL(`./fixtures/kicad/parts.pretty/${name}`, import.meta.url), 'utf8');
 
@@ -94,4 +95,41 @@ test('matchesFootprintFilters: ki_fp_filters\' globs', () => {
   assert.equal(matchesFootprintFilters('SOT-23', ['SOT?23']), true);
   assert.equal(matchesFootprintFilters('x', []), false);
   assert.equal(matchesFootprintFilters('a(b)', ['a(b)']), true, 'regular expressions\' characters are literal');
+});
+
+test('a footprint\'s drawing (#4315): its F.Fab shapes (a circle, an arc, a line, a rectangle and a polygon, filled or not), not its texts nor its other layers', () => {
+  const fp = readKicadFootprint(read('LED_D5.0mm_test.kicad_mod'));
+  assert.deepEqual(fp.drawing, { layer: 'F.Fab', shapes: [
+    { k: 'circle', c: [1.27, 0], r: 2.5, fill: false, w: 0.1 },
+    { k: 'arc', pts: [[-1.23, -1.5], [1.27, -2.9], [3.77, -1.5]], fill: false, w: 0.1 },
+    { k: 'line', pts: [[-1.23, -1.5], [-1.23, 1.5]], fill: false, w: 0.1 },
+    { k: 'poly', pts: [[0, -0.5], [2.54, -0.5], [2.54, 0.5], [0, 0.5]], fill: true, w: 0 },
+    { k: 'poly', pts: [[0, 0], [1, 1], [0, 1]], fill: true, w: 0 }] });
+  // the DIP-14 fixture has F.SilkS only: its silkscreen; one with neither: none
+  assert.equal(readKicadFootprint(read('DIP-14_W7.62mm.kicad_mod')).drawing.layer, 'F.SilkS');
+  assert.equal(readKicadFootprint(read('Module_1x04.kicad_mod')).drawing, null);
+});
+
+test('footprintDrawing: KiCad 5\'s shapes (width, an arc by its centre and angle); a shape with too few points left out', () => {
+  const d = footprintDrawing(parseSexpr(`(module X (layer F.Cu)
+    (fp_arc (start 0 0) (end 1 0) (angle 90) (layer F.Fab) (width 0.15))
+    (fp_circle (center 0 0) (end 0 2) (layer F.Fab) (width 0.2))
+    (fp_poly (pts (xy 1 1)) (layer F.Fab) (width 0))
+    (fp_circle (center 5 5) (end 5 5) (layer F.Fab) (width 0.2)))`)[0]);
+  assert.equal(d.shapes.length, 2);
+  const [arc, circle] = d.shapes;
+  // (90° clockwise on the page, y down: from (1, 0) to (0, 1), by (0.707, 0.707))
+  assert.deepEqual(arc.pts.map((q) => q.map((v) => Math.round(v * 1000) / 1000)), [[1, 0], [0.707, 0.707], [0, 1]]);
+  assert.deepEqual([arc.w, circle.r, circle.w], [0.15, 2, 0.2]);
+});
+
+test('shapePath: a line, a polygon closed, a circle, arcs clockwise and anticlockwise, under and over 180°, three points in a line', () => {
+  const id = (q) => q;
+  assert.equal(shapePath({ k: 'line', pts: [[0, 0], [1, 2]] }, id, 1), 'M0 0L1 2');
+  assert.equal(shapePath({ k: 'poly', pts: [[0, 0], [1, 0], [1, 1]] }, (q) => [q[0] * 10, q[1] * 10 + 5], 10), 'M0 5L10 5L10 15Z');
+  assert.equal(shapePath({ k: 'circle', c: [1, 1], r: 0.5 }, (q) => [q[0] * 10, q[1] * 10], 10), 'M5 10a5 5 0 1 0 10 0a5 5 0 1 0 -10 0Z');
+  assert.equal(shapePath({ k: 'arc', pts: [[1, 0], [0, 1], [-1, 0]] }, id, 1), 'M1 0A1 1 0 0 1 -1 0');
+  assert.equal(shapePath({ k: 'arc', pts: [[1, 0], [0, -1], [-1, 0]] }, id, 1), 'M1 0A1 1 0 0 0 -1 0');
+  assert.equal(shapePath({ k: 'arc', pts: [[1, 0], [0, -1], [0, 1]] }, id, 1), 'M1 0A1 1 0 1 0 0 1');
+  assert.equal(shapePath({ k: 'arc', pts: [[0, 0], [1, 1], [2, 2]] }, id, 1), 'M0 0L2 2');
 });

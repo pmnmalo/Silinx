@@ -30,6 +30,11 @@
 .circuit-editor .circ-ic-notch { fill: #555; }
 .circuit-editor .circ-drawn-body { fill: #2b2f36; stroke: #8a8f98; stroke-dasharray: 4 3; }   /* (a KiCad part drawn only, #4281) */
 .circuit-editor .circ-model-body { fill: #1d2b3a; stroke: #6c9bd2; }   /* (a KiCad part modelled by a module, #4283) */
+/* (a KiCad part's footprint drawn, #4315: its body's shapes, its marks; its stroke's width its footprint's) */
+.circuit-editor .circ-fp-body { stroke-dasharray: none; }
+.circuit-editor .circ-drawn-body.circ-fp-body { stroke: #c9ccd2; }
+.circuit-editor .circ-fp-fill { fill: #c9ccd2; stroke: #c9ccd2; }
+.circuit-editor .circ-fp-line { fill: none; stroke: #c9ccd2; stroke-linecap: round; }
 .circuit-editor .circ-ic-text { font: bold 10px var(--asm-mono, monospace); fill: #eee; pointer-events: none; }
 .circuit-editor .circ-pin { fill: #c9c9c9; stroke: #666; stroke-width: .8; }
 .circuit-editor .circ-pin.lv1 { fill: var(--circ-lv1); }

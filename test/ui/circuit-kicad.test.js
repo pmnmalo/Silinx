@@ -2,7 +2,8 @@
 // "KiCad parts (project)" (a 74HC00 drawn as its IC's gate, a module drawn only), placed on the canvas, their Part
 // info (their KiCad symbol, part number, datasheet, source, licence); Check's warning of the part drawn only; Import
 // KiCad Part…: a library picked, its symbols and what each one is as its Model is set, imported (its lines in the
-// console, its file in parts/ with the Silinx properties); Portuguese. No browser warnings. Both interfaces.
+// console, its file in parts/ with the Silinx properties); Portuguese. A part drawn only by its footprint's drawing (#4315):
+// an LED's body round and red, in the panel too. No browser warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -57,8 +58,10 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
   await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-lib-part`).length === 1, [ED], { what: 'the search' });
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part`).dataset.part, ED), T('74HC00'));
   await page.eval((ed) => { const s = document.querySelector(`${ed} .circ-search`); s.value = ''; s.dispatchEvent(new Event('input')); }, ED);
-  // on the canvas: the 74HC00 an IC named by its number, the sensor's body dashed, named too
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-canvas .circ-ic-text`)].map((t) => t.textContent), ED), ['U1  74HC00', 'M1  TEST-SENSOR']);
+  // on the canvas: the 74HC00 an IC named by its number, the sensor's body dashed, named too (above it: wider than its
+  // body, #4315)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-canvas .circ-ic-text`)].map((t) => t.textContent), ED), ['U1  74HC00']);
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} [data-id=M1] text.circ-label`).textContent, ED), 'M1  TEST-SENSOR');
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} [data-id=M1] .circ-drawn-body`).length, ED), 1);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .doc-status .ds-f`)].map((f) => f.textContent), ED), ['2 IC(s) · 0 input(s) · 0 display(s) · 2 wire(s)']);
   // Check: the IC unpowered, the module drawn only
@@ -119,4 +122,34 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   fs.rmSync(dir, { recursive: true, force: true });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 120000 });
+
+uiTest('Circuit editor: a KiCad part drawn only by its footprint\'s drawing (#4315): an LED round and red, its name above it, in the Parts panel too; Portuguese', E, async (page) => {
+  const lib = `(kicad_symbol_lib (version 20231120) (generator "t") (symbol "LED_Red_5mm" (property "Reference" "D") (property "Value" "Red")
+    (property "ki_keywords" "LED") (property "Footprint" "leds:LED_D5.0mm_test") (symbol "LED_Red_5mm_1_1" ${pin('passive', 1, 'K')} ${pin('passive', 2, 'A')})))`;
+  const m = newCircuit('kl', 'vhdl');
+  m.parts.push({ id: 'D1', type: 'parts/leds.kicad_sym#LED_Red_5mm', x: 10, y: 8 });
+  await makeProject(env, { name: 'CircKicadLook', top: '', files: { 'src/kl.circ.json': JSON.stringify(m, null, 2), 'parts/leds.kicad_sym': lib,
+    'parts/leds.pretty/LED_D5.0mm_test.kicad_mod': fs.readFileSync(new URL('../../parts.pretty/LED_D5.0mm_test.kicad_mod', FIX), 'utf8') } });
+  await page.setViewport(1440, 900);
+  await page.openProject('CircKicadLook');
+  await page.eval(() => window.SilinxApp.openFile('src/kl.circ.json'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .circ-canvas [data-id=D1] .circ-fp`), [ED], { what: 'the LED drawn' });
+  const look = () => page.eval((ed) => {
+    const g = document.querySelector(`${ed} .circ-canvas [data-id=D1]`);
+    return { paths: [...g.querySelectorAll('.circ-fp path')].map((x) => x.getAttribute('class')), box: g.querySelectorAll('rect.circ-drawn-body').length,
+      label: g.querySelector('text.circ-label')?.textContent ?? null, inside: g.querySelector('text.circ-ic-text')?.textContent ?? null, fill: getComputedStyle(g.querySelector('.circ-fp-body')).fill };
+  }, ED);
+  // its circle the body (red: an LED's colour), its arc and line marks, its filled shapes; no box round its pins; its name above it
+  const want = { paths: ['circ-fp-body circ-drawn-body circ-led-red', 'circ-fp-line', 'circ-fp-line', 'circ-fp-fill', 'circ-fp-fill'], box: 0, label: 'D1  Red', inside: null, fill: 'rgb(255, 59, 48)' };
+  assert.deepEqual(await look(), want);
+  // (the body to scale: the LED's 5 mm, about 2 grid steps)
+  const w = await page.eval((ed) => document.querySelector(`${ed} .circ-canvas [data-id=D1] .circ-fp-body`).getBBox().width, ED);
+  assert.ok(Math.abs(w - 2 * 2.5 / 2.54 * 20) < 1, `its body ${w} px wide`);
+  // the Parts panel's preview drawn the same way
+  assert.deepEqual(await page.eval((ed) => [...document.querySelector(`${ed} .circ-lib-part[data-group="KiCad parts (project)"] svg`).querySelectorAll('.circ-fp path')].length, ED), 5);
+  // in Portuguese: the same
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
+  assert.deepEqual(await look(), want);
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
 }, { timeout: 120000 });

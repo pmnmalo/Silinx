@@ -12,6 +12,8 @@ import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
 import { wireStyleOf } from '/core/wire-style.js';
 import { routeOrthogonal } from '/core/circuit-route.js';
+import { shapePath } from '/core/kicad-mod.js';
+import { ledColour } from '/core/circuit-kicad.js';
 
 export const P = 20;   // pixels per grid step
 const px = (v) => v * P;
@@ -98,6 +100,41 @@ function wireSvg(w, selected, d) {
     ...[a, b].map(([x, y]) => sv('circle', { cx: px(x), cy: px(y), r: 3.2, class: `circ-wire-end circ-w-${w.color}` })));
 }
 
+// A project's KiCad part drawn only (#4281), or modelled by a module of the project (#4283): its footprint's drawing to
+// scale (#4315: its F.Fab layer, the body seen from above; its closed shapes the body, its filled ones and its lines the
+// marks on it), else a body round its pins (a DIP's between its rows); its outline dashed when drawn only, whole when
+// modelled. Its name and part number over the body when they fit, else above it; both in its tip.
+function kicadBody(g, p, d, box) {
+  const cls = d.kind === 'model' ? 'circ-model-body' : 'circ-drawn-body', name = `${p.id}  ${d.kicad.value}`;
+  g.append(sv('title', {}, `${name}: ${d.kind === 'model' ? `its module ${d.module}` : 'drawn only, not simulated'}`));
+  let body;
+  if (d.look) {
+    const pt = ([x, y]) => [px(p.x + x), px(p.y + y)];
+    const xs = [], ys = [];
+    for (const sh of d.look.shapes) for (const [x, y] of sh.k === 'circle' ? [[sh.c[0] - sh.r, sh.c[1] - sh.r], [sh.c[0] + sh.r, sh.c[1] + sh.r]] : sh.pts) { xs.push(px(p.x + x)); ys.push(px(p.y + y)); }
+    body = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+    // (no closed shape to be its body: a box round its drawing)
+    if (!d.look.shapes.some((sh) => !sh.fill && (sh.k === 'poly' || sh.k === 'circle'))) g.append(sv('rect', { ...body, rx: 2, class: cls }));
+    const led = ledColour(d.kicad);   // (an LED's body in its colour)
+    const fp = sv('g', { class: 'circ-fp' });
+    for (const sh of d.look.shapes) {
+      const closed = sh.k === 'poly' || sh.k === 'circle';
+      fp.append(sv('path', { d: shapePath(sh, pt, P), 'stroke-width': Math.max(0.8, Math.round(sh.w * P * 10) / 10),
+        class: sh.fill ? 'circ-fp-fill' : closed ? `circ-fp-body ${cls}${led ? ` circ-led-${led}` : ''}` : 'circ-fp-line' }));
+    }
+    g.append(fp);
+  } else {
+    const dipRows = d.dip && box.y1 - box.y0 > P;
+    body = dipRows ? { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7 }
+      : { x: box.x0 - P * 0.5, y: box.y0 - P * 0.5, width: box.x1 - box.x0 + P, height: box.y1 - box.y0 + P };
+    g.append(sv('rect', { ...body, rx: 2, class: cls }));
+  }
+  // (bold 10 px monospace: 6 px a character)
+  const fits = name.length * 6 + 6 <= body.width && body.height >= 14;
+  g.append(fits ? sv('text', { x: body.x + body.width / 2, y: body.y + body.height / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, name)
+    : sv('text', { x: body.x + body.width / 2, y: body.y - 4, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, name));
+}
+
 const LEVEL_CLS = { 0: 'lv0', 1: 'lv1', Z: 'lvz', X: 'lvx' };
 // (turned, #4114: drawn unturned, then turned whole about its place)
 function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
@@ -120,13 +157,7 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
     if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box); }
     else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${chip}`));
   } else if (d.kind === 'drawn' || d.kind === 'model') {
-    // a project's KiCad part drawn only (#4281): a body round its pins (a DIP's between its rows), its outline dashed;
-    // one modelled by a module of the project (#4283): its outline whole
-    const dipRows = d.dip && box.y1 - box.y0 > P;
-    const body = dipRows ? { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7 }
-      : { x: box.x0 - P * 0.5, y: box.y0 - P * 0.5, width: box.x1 - box.x0 + P, height: box.y1 - box.y0 + P };
-    g.append(sv('rect', { ...body, rx: 2, class: d.kind === 'model' ? 'circ-model-body' : 'circ-drawn-body' }), sv('title', {}, `${p.id}  ${d.kicad.value}: ${d.kind === 'model' ? `its module ${d.module}` : 'drawn only, not simulated'}`),
-      sv('text', { x: body.x + body.width / 2, y: body.y + body.height / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${d.kicad.value}`));
+    kicadBody(g, p, d, box);
   } else if (d.type === 'logic-switch') {
     const on = inputs ? inputs[p.id] : p.on;
     g.dataset.input = 'switch';

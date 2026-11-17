@@ -167,8 +167,11 @@ its supply. Silinx's own library stays as it is, in JavaScript: its behaviour is
 
 **In the editor** (#4281): the Parts panel lists the project's KiCad parts last, under *KiCad parts (project)*, by their
 part number and description (searched by them too; an IC's drawing its gate's or block's, a part drawn only its own). On
-the canvas a part that behaves as an IC is drawn as one, named by its part number (`U1  74HC00`), and a part drawn only
-has a dashed body. Its Part info adds its KiCad symbol and file, its part number, its datasheet (a link), its footprint, its
+the canvas a part that behaves as an IC is drawn as one, named by its part number (`U1  74HC00`). A part drawn only is
+drawn as its footprint's drawing shows it from above, to scale (#4315): its F.Fab layer (F.SilkS when it has none), its
+body's outline and the marks on it, an LED's body in its colour (a SparkFun red LED is a round red body). A part whose
+footprint is known by its name only (a DIP, a pin header) has a dashed body round its pins. Its name goes over the body
+when it fits, else above it. Its Part info adds its KiCad symbol and file, its part number, its datasheet (a link), its footprint, its
 source, author and licence. **Import KiCad Part…** (the Parts panel, not in a read-only editor) takes a `.kicad_sym` or a
 `.kicad_mod`. A library's symbols are listed with what each one is (*As the 7400 (by its part number)*, *Drawn only (not
 simulated)*, *Not a part* and why, in its tip), which follows as each one's Model, Family and Footprint are set; its
