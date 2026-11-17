@@ -459,3 +459,59 @@ test('no translation: said with its line, nothing translated shown; a parse erro
   assert.match(no('module m (input a output y); endmodule\n', 'src/m.v')[0][0].message, /\(the source has errors: check its syntax\)$/);
   assert.deepEqual(no('module m; endmodule\n', 'src/m.v', 'verilog')[0], [{ line: null, message: 'it is not a source in VHDL' }]);
 });
+
+// (#4412: a flip-flop's preset and clear, and a chain of three asynchronous controls)
+const FF_ASYNC = `library ieee;
+use ieee.std_logic_1164.all;
+entity ffpc is
+  port (clk, d, pre_n, clr_n, ld : in std_logic; q : out std_logic);
+end entity ffpc;
+architecture rtl of ffpc is
+  signal r : std_logic := '0';
+begin
+  process (clk, pre_n, clr_n, ld)
+  begin
+    if pre_n = '0' then
+      r <= '1';
+    elsif clr_n = '0' then
+      r <= '0';
+    elsif ld = '1' then
+      r <= d;
+    elsif rising_edge(clk) then
+      r <= not r;
+    end if;
+  end process;
+  q <= r;
+end architecture rtl;
+`;
+const FF_TB = `\`timescale 1ns / 1ps
+module tb;
+  reg clk = 0, d = 0, pre_n = 1, clr_n = 1, ld = 0;
+  wire q;
+  ffpc dut (.clk(clk), .d(d), .pre_n(pre_n), .clr_n(clr_n), .ld(ld), .q(q));
+  initial begin
+    #10 clr_n = 0; #10 $display("%b", q); clr_n = 1;
+    #10 clk = 1; #10 $display("%b", q); clk = 0;
+    #10 pre_n = 0; #10 $display("%b", q); pre_n = 1;
+    #10 pre_n = 0; clr_n = 0; #10 $display("%b", q); pre_n = 1; clr_n = 1;
+    #10 d = 0; ld = 1; #10 $display("%b", q); ld = 0;
+    #10 clk = 1; #10 $display("%b", q); clk = 0;
+    #10 clk = 1; #10 $display("%b", q); clk = 0;
+    $finish;
+  end
+endmodule
+`;
+
+test('#4412 VHDL to Verilog: a process with asynchronous controls before its clock\'s edge (a preset, a clear, a load): one always block, its edges, the same simulation', () => {
+  const v = tr(FF_ASYNC, 'ffpc.vhd');
+  assert.deepEqual([v.ok, v.errors], [true, []]);
+  assert.match(v.text, /always @\(posedge clk or negedge pre_n or negedge clr_n or posedge ld\) begin\n\s+if \(!pre_n\) begin\n\s+r <= 1'b1;\n\s+end else if \(!clr_n\) begin\n\s+r <= 1'b0;\n\s+end else if \(ld\) begin\n\s+r <= d;\n\s+end else begin\n\s+r <= ~r;\n\s+end\n\s+end/);
+  assert.deepEqual(diags({ 'ffpc.v': v.text }, 'ffpc').filter((d) => d.severity !== 'info').map((d) => d.message), [], 'no warnings');
+  // the preset first, then the clear, then the load, then the edge: in VHDL and in its Verilog alike
+  const want = ['0', '1', '1', '1', '0', '1', '0'];
+  assert.deepEqual(sim({ 'ffpc.vhd': FF_ASYNC, 'tb.v': FF_TB }).out, want);
+  assert.deepEqual(sim({ 'ffpc.v': v.text, 'tb.v': FF_TB }).out, want);
+  // one reset still the form it was
+  const one = tr(FF_ASYNC.replace(/    elsif clr_n = '0' then\n      r <= '0';\n    elsif ld = '1' then\n      r <= d;\n/, ''), 'ffpc.vhd');
+  assert.match(one.text, /always @\(posedge clk or negedge pre_n\) begin\n\s+if \(!pre_n\) begin\n\s+r <= 1'b1;\n\s+end else begin\n\s+r <= ~r;\n\s+end\n\s+end/);
+});

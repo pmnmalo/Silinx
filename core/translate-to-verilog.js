@@ -334,7 +334,8 @@ function generateIfV(cx, g, regs) {
   return region(cx, [...out, 'end']);
 }
 
-// a process: clocked (one clock edge), with an asynchronous reset, combinational, or a test bench's (with waits)
+// a process: clocked (one clock edge), with asynchronous controls (a reset; a preset and a clear, #4412), combinational, or
+// a test bench's (with waits)
 // (its variables regs of the module: one named as a signal, or as another process's variable, gets a name of its own)
 function processV(cx, p) {
   const hidden = new Map();
@@ -368,13 +369,17 @@ function processBody(cx, p) {
   if (p.body.length === 1 && s.kind === 'if') {
     const e = edgeOf(s.cond);
     if (e && !s.else) return [`always @(${e.edge}edge ${outName(cx, e.clk)}) begin`, ...indent(stmtsV(cx, stmtsOf(s.then), { mode: 'clocked' })), 'end'];
-    const els = s.else?.kind === 'if' ? s.else : stmtsOf(s.else).length === 1 && stmtsOf(s.else)[0].kind === 'if' ? stmtsOf(s.else)[0] : null;
-    const e2 = els && !els.else && edgeOf(els.cond);
-    const rst = e2 && resetOf(s.cond);
-    if (rst) {
-      return [`always @(${e2.edge}edge ${outName(cx, e2.clk)} or ${rst.high ? 'pos' : 'neg'}edge ${outName(cx, rst.name)}) begin`,
-        ...indent([`if (${rst.high ? '' : '!'}${outName(cx, rst.name)}) begin`, ...indent(stmtsV(cx, stmtsOf(s.then), { mode: 'clocked' })),
-          'end else begin', ...indent(stmtsV(cx, stmtsOf(els.then), { mode: 'clocked' })), 'end']), 'end'];
+    // (asynchronous controls first, one or more (a flip-flop's preset and clear, #4412), then the clock's edge, no else)
+    const elseIf = (x) => (x.else?.kind === 'if' ? x.else : stmtsOf(x.else).length === 1 && stmtsOf(x.else)[0].kind === 'if' ? stmtsOf(x.else)[0] : null);
+    const ctls = [];
+    let at = s;
+    for (let r; at && (r = resetOf(at.cond)); at = elseIf(at)) ctls.push({ ...r, then: at.then });
+    const e2 = ctls.length && at && !at.else && edgeOf(at.cond);
+    if (e2) {
+      const head = ctls.map((r) => `${r.high ? 'pos' : 'neg'}edge ${outName(cx, r.name)}`);
+      const chain = ctls.flatMap((r, k) => [`${k ? 'end else ' : ''}if (${r.high ? '' : '!'}${outName(cx, r.name)}) begin`, ...indent(stmtsV(cx, stmtsOf(r.then), { mode: 'clocked' }))]);
+      return [`always @(${[`${e2.edge}edge ${outName(cx, e2.clk)}`, ...head].join(' or ')}) begin`,
+        ...indent([...chain, 'end else begin', ...indent(stmtsV(cx, stmtsOf(at.then), { mode: 'clocked' })), 'end']), 'end'];
     }
   }
   walk(p.body, n => { if (n.op === 'apply' && /^(rising|falling)_edge$/.test(n.name) || n.op === 'attr' && n.attr === 'event') cannot('a clock edge in a process of another form (one if rising_edge(clk), or an asynchronous reset first)', p); });
