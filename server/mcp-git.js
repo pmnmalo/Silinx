@@ -188,7 +188,7 @@ export const GIT_TOOLS = [
     name: 'git_switch', title: 'Switch a project to another branch',
     description: 'The project on another branch, its files those of the branch\'s last commit, as File ▸ Git ▸ Switch Branch… does; a branch only GitHub has (another person\'s, listed by git_branch) is made here, following GitHub\'s. The project\'s changes must be committed first (git_commit). The files it brings pass the import gate, as a pull\'s.',
     inputSchema: { type: 'object', properties: { project: PROJECT, branch: STR('The branch\'s name, as git_branch lists it.') }, required: ['project', 'branch'], additionalProperties: false },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async run({ project, branch }) {
       await readProject(project);
       const r = await run(() => B().gitSwitch(project, branch));
