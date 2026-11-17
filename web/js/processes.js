@@ -25,6 +25,7 @@ import { openCModel } from './c-model.js';
 import { EXTRA_STEPS, FLOW_PROCS, IMPL_IDS, buildProcesses, simModelsOf, toolOf } from './tool-descriptors.js';
 import { checkLabel, designOnly, shownDiag } from './design-only.js';
 import { failedModule, withDrawingErrors } from '/core/drawing-diags.js';
+import { hierarchyDiags } from '/core/top-hierarchy.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -279,12 +280,14 @@ export async function saveAll() {
   for (const d of S.docs) await flushDoc(d);
 }
 
-export async function checkSyntax(mod, sim = false) {
+// hierarchy: the Check Syntax a run of `mod` starts with (Implement Design, its processes, the Board Emulator, a
+// simulation, #4421): only its hierarchy's errors, as ISE's; a file with errors outside it a warning, left out of the run
+export async function checkSyntax(mod, sim = false, { hierarchy = false } = {}) {
   const id = sim ? 'sim-check' : 'check';
-  try { return await checkSyntaxInner(mod, sim, id); }
+  try { return await checkSyntaxInner(mod, sim, id, hierarchy); }
   catch (e) { setStatus(id, 'err'); log(`ERROR: ${e.message}`, 'err'); return false; }
 }
-async function checkSyntaxInner(mod, sim, id) {
+async function checkSyntaxInner(mod, sim, id, hierarchy) {
   await saveAll();
   setStatus(id, 'running');
   log(`\nStarted : "${checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax')}".\n`, 'hdr');
@@ -309,7 +312,9 @@ async function checkSyntaxInner(mod, sim, id) {
   });
   // (+ the modules named with a reserved word, #679)
   // (a design project's: its drawings named, #3891)
-  const diags = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), S.failedDrawings, { top: mod, design: designOnly() }).map(shownDiag);   // + design checks (core/lint.js)
+  const all = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), S.failedDrawings, { top: mod, design: designOnly() });   // + design checks (core/lint.js)
+  const owners = Object.entries(S.cFailed || {}).map(([file, c]) => ({ file, module: c.module }));
+  const diags = (hierarchy ? hierarchyDiags(all, lib, mod, owners) : all).map(shownDiag);
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
   for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
