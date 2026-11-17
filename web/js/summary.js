@@ -12,11 +12,16 @@ const pct = (u, t) => (t ? Math.round((100 * u) / t) : 0);
 export function mountSummary(el) {
   const page = h('div', { class: 'page' });
   el.append(page);
-  const refresh = async () => {
+  // each refresh numbered: only the latest draws, one answered after it (asked earlier: older reports) dropped, its caller
+  // then waiting for the latest's drawing (#4287: the summary drawn with no reports over the run's just drawn)
+  let asked = 0, latest = null;
+  const refresh = () => (latest = draw(++asked));
+  const draw = async (n) => {
     const pj = S.project;
     if (!pj) return;
     let rep = null;
     try { rep = await api.reports(pj.name); } catch { /* none */ }
+    if (n !== asked) return latest;
     const part = S.devices?.parts.find(p => p.part === pj.device.part);
     const errs = S.diags.filter(d => d.severity === 'error').length, warns = S.diags.length - errs;
     page.innerHTML = '';

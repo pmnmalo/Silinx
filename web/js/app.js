@@ -702,7 +702,8 @@ function selectHierarchyPath(path) {
 }
 
 // wanted: asked again once summary.js is loaded (its first load may take a while: #4021), the summary opened only if
-// it still is (the Tasks layout's Implement brought forward: still in front)
+// it still is (the Tasks layout's Implement brought forward: still in front); resolved once the summary is drawn with the
+// reports as they are now (#4287: not its drawing of before, from the project's opening)
 export async function openSummary({ background = false, wanted } = {}) {
   const was = S.active;
   const { mountSummary } = await import('./summary.js');
@@ -711,10 +712,11 @@ export async function openSummary({ background = false, wanted } = {}) {
   // the summary opened behind it, not over it (#4021: over the UCF just opened, a simulation just started)
   const keep = S.active && S.active !== was && S.active.id !== 'summary' ? S.active : null;
   const old = findDoc('summary');
-  if (keep && old) { old.refresh?.(); return; }
+  if (keep && old) { await old.refresh?.(); return; }
   const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el) });
-  d.refresh?.();
+  const drawn = d.refresh?.();
   if (keep && S.docs.includes(keep)) activateDoc(keep);
+  await drawn;
 }
 export function refreshSummary() { const d = findDoc('summary'); d?.refresh?.(); }
 
