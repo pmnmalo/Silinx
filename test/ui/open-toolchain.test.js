@@ -952,9 +952,9 @@ uiTest('#280 open mode: Generate Programming File after a change of the pins onl
 // (the Design Summary's tables and the Processes panel: the ISE style interface's; the Silinx one's cards, its Implement: tasks.test.js #802, #1149)
 uiTest('#282 #2470 open mode: Optimization Fast (an example\'s) synthesizes once, Speed tries the mappings for speed; Process Properties says so; Portuguese', E, async (page) => {
   await env.server.api('PUT', '/api/toolchain', { mode: 'silinx' });
-  // (pong: over 100 slices, eight placements at High; blinky, 91 since its debouncers count ticks in 2 bits, #4377, is
-  // a small design's 32, NEXTPNR_TRIES.highSmall)
-  await makeProject(env, { name: 'OpenEffort', template: 'pong' });
+  // (vga: over 100 slices, eight placements at High, about blinky's size before its debouncers counted ticks in 2 bits
+  // (#4377): blinky, 91 slices now, is a small design's 32, NEXTPNR_TRIES.highSmall; pong's eight took CI over 2 minutes)
+  await makeProject(env, { name: 'OpenEffort', template: 'vga' });
   await page.openProject('OpenEffort');
   await reloadToolchain(page);
   const run = async (proc) => {
