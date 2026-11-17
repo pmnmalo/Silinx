@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, browserUrl, catalogueTitle, searchCatalogue, isCatalogueFile, catalogueSha256, importCataloguePart } from '../core/kicad-catalogue.js';
 import { PARTS, partDef, setProjectParts } from '../core/circuit-parts.js';
+import { contentSecurityPolicy } from '../server/csp.js';
 import { readKicadSymLib } from '../core/kicad-sym.js';
 import { symbolTexts, oneSymbolFile, symbolFileName } from '../core/kicad-edit.js';
 
@@ -126,4 +127,11 @@ test('a symbol whose name holds a \'/\' (SparkFun\'s 10k_Axial_1/6W, #4318): its
   assert.deepEqual(r.lines, ['parts/res.kicad_symdir written: 1 part(s), 0 of them as ICs of the library (none), 1 drawn only; 0 symbol(s) no part', '1 footprint(s) written: parts/imported.pretty']);
   assert.equal(partDef(r.type)?.kind, 'drawn', 'the part found by its type');
   setProjectParts([]);
+});
+
+test('the pages\' CSP lets the browser\'s edition fetch every catalogue file from its browserUrl (#4335)', () => {
+  const connect = /connect-src ([^;]*)/.exec(contentSecurityPolicy({ meta: true }))[1].split(' ');
+  for (const h of CORS_HOSTS) assert.ok(connect.includes(`https://${h}`), `${h} in connect-src`);
+  const files = [...Object.values(CATALOGUE_LIBRARIES).map((l) => l.url), ...CATALOGUE.filter((e) => e.footprint).map((e) => e.footprint.url)];
+  for (const u of files) assert.ok(connect.includes(new URL(browserUrl(u)).origin), u);
 });

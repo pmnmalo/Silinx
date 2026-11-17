@@ -1744,7 +1744,7 @@ uiTest('#487 static editions: a Content-Security-Policy with the inline scripts\
     const hashes = [...text.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
     assert.ok(hashes.length >= 4, `${hashes.length} inline scripts`);
     assert.deepEqual(d['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", origin, ...hashes]);
-    assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', ...TRACKER_SOURCES, origin]);
+    assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, origin]);
     // the iCE40's nextpnr from npm's registry at package-lock.json's SHA-512 (#2444)
     const ice40 = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-ice40'];
     const ecp5 = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-ecp5'];
