@@ -3,7 +3,10 @@
 // the open project. Its first window picks the contribution; the second lists the files that differ, what the merge
 // does with each (taken, kept, removed, merged by its objects, made again from its drawing) and, for each conflict,
 // Mine or Theirs (a drawing's per object, silinx.json's per field), with a file's Compare (the window closes, the
-// comparison opens, and the console's line opens the window again, the choices made kept). Every message goes to the
+// comparison opens, and the console's line opens the window again, the choices made kept). A text file both sides
+// changed is merged by its lines (#4214): its conflicts per hunk in the merge view (web/js/merge-view.js: Merge Lines…,
+// the window closed, then the merge, or the window again when other conflicts are left), or the whole file Mine or
+// Theirs; a file renamed on one side has its changes merged into the new one. Every message goes to the
 // console (docs/UI-GUIDELINES.md): the warnings, what was merged, Undo Merge's button. The contribution's texts and
 // names are someone else's: shown as text only.
 import { api } from './api.js';
@@ -18,7 +21,11 @@ import { applyChanges } from './project-watch.js';
 const STATES = {
   theirs: 'Changed there: taken', added: 'Added there: taken', removed: 'Removed there: removed', mine: 'Changed here: kept',
   merged: 'Changed on both sides: merged by its objects', generated: 'Made again from its drawing', conflict: 'Changed on both sides: choose',
+  lines: 'Changed on both sides: merged by its lines', renamed: 'Renamed: its changes merged into the new file',
 };
+const DRAWING = /\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i;
+const stateOf = f => (f.state === 'merged' && !DRAWING.test(f.path) ? 'lines' : f.state);
+const textChoice = v => ['mine', 'theirs', 'both'].includes(v) || (!!v && typeof v === 'object' && typeof v.text === 'string');
 const folderName = files => (files[0]?.webkitRelativePath || '').split('/')[0];
 const err = text => log(`ERROR: Merge Contribution: ${text}`, 'err');
 const key = s => s.replace(/[^\w-]/g, '_');
@@ -60,7 +67,7 @@ async function mergeWith(zip, label, choices) {
   const errLine = h('div', { class: 'hint merge-error', style: { minHeight: '16px' } });
   const radio = (group, side, set, now) => h('label', { class: `merge-side merge-${side}` },
     h('input', { type: 'radio', name: key(group), value: side, checked: now === side, onchange: () => { set(side); errLine.textContent = ''; } }), ` ${side === 'mine' ? 'Mine' : 'Theirs'} `);
-  let compareAsked = null, close = null;
+  let compareAsked = null, linesAsked = false, close = null;
   const rowOf = (f) => {
     const choice = [];
     if (f.state === 'conflict' && f.conflicts?.length) {
@@ -68,19 +75,29 @@ async function mergeWith(zip, label, choices) {
       choice.push(h('ul', { class: 'merge-objects', style: { paddingLeft: '16px', margin: '2px 0' } }, ...f.conflicts.map(c => h('li', { class: 'merge-object', 'data-id': c.id },
         h('span', { 'data-no-i18n': '' }, `${c.label} (mine ${c.mine}, theirs ${c.theirs})`), ' ',
         ...['mine', 'theirs'].map(s => radio(`merge-${f.path}-${c.id}`, s, v => { obj()[c.id] = v; }, picked[f.path]?.[c.id]))))));
+    } else if (f.state === 'conflict' && f.hunks?.length) {
+      // (a text file's same lines: Merge Lines… per hunk, or the whole file Mine or Theirs)
+      const done = picked[f.path] && typeof picked[f.path] === 'object' && f.hunks.every(x => textChoice(picked[f.path][x.id]));
+      choice.push(' ', h('span', { class: 'merge-hunks' }, done ? `${f.hunks.length} conflict(s) of lines merged` : `${f.hunks.length} conflict(s) of lines`), ' ',
+        h('button', { type: 'button', class: 'btn merge-lines', onclick: () => { linesAsked = true; close?.(); } }, 'Merge Lines…'), ' ',
+        ...['mine', 'theirs'].map(s => radio(`merge-${f.path}`, s, v => { picked[f.path] = v; }, picked[f.path])));
     } else if (f.state === 'conflict') choice.push(' ', ...['mine', 'theirs'].map(s => radio(`merge-${f.path}`, s, v => { picked[f.path] = v; }, picked[f.path])));
     const compare = h('button', { type: 'button', class: 'btn merge-compare', onclick: () => { compareAsked = f.path; close?.(); } }, 'Compare');
     return h('tr', { class: `merge-file merge-${f.state}`, 'data-path': f.path },
-      h('td', { 'data-no-i18n': '', style: { paddingRight: '10px', verticalAlign: 'top' } }, f.path), h('td', {}, h('span', { class: 'merge-state' }, STATES[f.state]), ...choice), h('td', { style: { verticalAlign: 'top' } }, compare));
+      h('td', { 'data-no-i18n': '', style: { paddingRight: '10px', verticalAlign: 'top' } }, f.path), h('td', {}, h('span', { class: 'merge-state' }, STATES[stateOf(f)]), ...(f.renamedTo || f.rename ? [' ', h('span', { class: 'hint merge-rename', 'data-no-i18n': '' }, f.renamedTo ? `→ ${f.renamedTo}` : `← ${f.rename.from}`)] : []), ...choice), h('td', { style: { verticalAlign: 'top' } }, compare));
   };
   const fields = p.project.map(c => h('tr', { class: 'merge-file merge-field', 'data-field': c.field },
     h('td', { 'data-no-i18n': '' }, `silinx.json: ${c.field}`),
     h('td', {}, h('span', { 'data-no-i18n': '' }, `mine ${JSON.stringify(c.mine)}, theirs ${JSON.stringify(c.theirs)}`), ' ',
       ...['mine', 'theirs'].map(s => radio(`merge-field-${c.field}`, s, v => { (picked['silinx.json'] ||= {})[c.field] = v; }, picked['silinx.json']?.[c.field]))), h('td', {})));
-  const left = () => p.left.filter(x => {
+  const hunksOf = path => p.files.find(f => f.path === path)?.hunks;
+  const left = () => p.left.reduce((n, x) => {
     const v = x.field ? picked['silinx.json']?.[x.field] : x.id ? picked[x.path]?.[x.id] : picked[x.path];
-    return v !== 'mine' && v !== 'theirs';
-  }).length;
+    if (v === 'mine' || v === 'theirs') return n;
+    // (a text file's hunks chosen in the merge view)
+    if (!x.id && v && typeof v === 'object' && hunksOf(x.path)) return n + hunksOf(x.path).filter(c => !textChoice(v[c.id])).length;
+    return n + 1;
+  }, 0);
   const res = await dialog({
     title: 'Merge Contribution', width: 780,
     body: h('div', {},
@@ -95,8 +112,22 @@ async function mergeWith(zip, label, choices) {
     onOpen: (o) => { close = () => o.close(null); },
   });
   if (compareAsked) return compareOne(p, compareAsked, zip, label, picked);
+  if (linesAsked) return mergeLines(p, zip, label, picked, () => left());
   if (!res) return null;
   return merge(name, zip, label, res);
+}
+
+// the text files' conflicts in the merge view, the window closed: then the merge, or the window again (other conflicts
+// left, or the view cancelled), the choices kept
+async function mergeLines(p, zip, label, picked, left) {
+  const files = p.files.filter(f => f.hunks?.length);
+  const { openMergeView } = await import('./merge-view.js');
+  const given = Object.fromEntries(files.filter(f => picked[f.path] && typeof picked[f.path] === 'object').map(f => [f.path, picked[f.path]]));
+  const r = await openMergeView({ key: `contribution:${S.project?.name}`, title: 'Merge Contribution (lines)', files: files.map(f => ({ path: f.path, ...f.merge })),
+    labels: { mine: 'Mine (this project)', theirs: 'Theirs (the contribution)' }, action: 'Merge', choices: given });
+  if (!r) return mergeWith(zip, label, picked);
+  Object.assign(picked, r);
+  return left() ? mergeWith(zip, label, picked) : merge(S.project?.name, zip, label, picked);
 }
 
 // a file's Compare, the window closed; the console's line opens it again, the choices kept

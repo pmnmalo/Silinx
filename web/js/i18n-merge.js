@@ -16,6 +16,10 @@ export const MERGE_PT = {
   'Common Ancestor': 'Antepassado Comum', 'Result': 'Resultado', 'Both': 'Ambos', 'Edited': 'Editado',
   'Choose Mine, Theirs or Both, or write the lines here.': 'Escolha O meu, O deles ou Ambos, ou escreva aqui as linhas.',
   'Mine (here)': 'O meu (cá)', 'Theirs (GitHub)': 'O deles (GitHub)',
+  'Mine (this project)': 'O meu (este projeto)', 'Theirs (the contribution)': 'O deles (a contribuição)', 'Merge Lines…': 'Juntar Linhas…',
+  'Changed on both sides: merged by its lines': 'Alterado dos dois lados: juntado pelas suas linhas',
+  'Renamed: its changes merged into the new file': 'Mudou de nome: as suas alterações juntadas no novo ficheiro',
+  'Pull from GitHub (merge)': 'Receber do GitHub (junção)', 'Merge Contribution (lines)': 'Juntar Contribuição (linhas)',
 };
 // the actions a merge view ends with, as their buttons say them
 const ACTIONS_PT = { 'Pull from GitHub': 'Receber do GitHub (Pull)', 'Merge': 'Juntar', 'Merge Branch': 'Juntar Ramo' };
@@ -30,6 +34,8 @@ export const MERGE_PT_PATTERNS = [
   [/^Conflict (\d+) of (\d+)$/, 'Conflito $1 de $2'],
   [/^⋯ (\d+) unchanged line\(s\)$/, '⋯ $1 linha(s) sem alteração'],
   [/^File (\d+) of (\d+)$/, 'Ficheiro $1 de $2'],
+  [/^(\d+) conflict\(s\) of lines$/, '$1 conflito(s) de linhas'],
+  [/^(\d+) conflict\(s\) of lines merged$/, '$1 conflito(s) de linhas juntados'],
   [/^(\d+) of (\d+) conflict\(s\) resolved$/, '$1 de $2 conflito(s) resolvido(s)'],
   [/^Merge: (\d+) conflict\(s\) in (\d+) file\(s\), the same lines changed on both sides: choose Mine, Theirs or Both for each, or edit its lines, then (.+)\.$/,
     (m, n, f, a) => `Junção: ${n} conflito(s) em ${f} ficheiro(s), as mesmas linhas alteradas dos dois lados: escolha O meu, O deles ou Ambos para cada um, ou edite as suas linhas, e depois ${ACTIONS_PT[a] || a}.`],

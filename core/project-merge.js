@@ -7,9 +7,13 @@
 //   added     added by the contribution only: taken
 //   removed   removed by the contribution, unchanged here: removed
 //   mine      changed (or added, or removed) here only: kept
-//   merged    a drawing both sides changed, different objects: merged by its objects (core/drawing-merge.js)
-//   conflict  changed on both sides (a drawing's same objects; a text file, whole): Mine or Theirs, the user's choice
-//             (a drawing's per object); with no ancestor, every file that differs
+//   merged    a drawing both sides changed, different objects: merged by its objects (core/drawing-merge.js); a text
+//             file both sides changed apart: merged by its lines (#4214, core/text-merge.js)
+//   conflict  changed on both sides (a drawing's same objects; a text file's same lines): Mine or Theirs, the user's
+//             choice (a drawing's per object, a text file's per hunk: Mine, Theirs, Both or its lines written, or the
+//             whole file); with no ancestor, every file that differs (a text file's every hunk that differs)
+//   renamed   a file one side renamed (and the other changed): its change merged into the renamed file (`rename`:
+//             { from, side }, the renamed file's row), the old one removed
 // A drawing's generated HDL file (its generatedFile) is never a conflict: it is made again from the merged drawing by
 // the caller. silinx.json is merged by its fields (its files' list by path, the process properties by name); its id,
 // origin and trust are the project's, never the contribution's. Isomorphic.
@@ -20,6 +24,7 @@ import { requireGated, normalizePath } from './import-gate.js';
 import { ANCESTOR_FILE, designOf } from './project-rev.js';
 import { DRAWING_RE, mergeDrawings } from './drawing-merge.js';
 import { drawingConflicts, checkResolved } from './git-resolve.js';
+import { mergeText, resolveText, checkTextChoice, findRenames } from './text-merge.js';
 
 const VOLATILE = new Set(['id', 'origin', 'trusted', 'madeBy', 'name']);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -119,11 +124,15 @@ function mergeFileList(b, m = [], t = []) {
 export function compareProjects({ ancestor = null, mine, theirs }) {
   const A = ancestor?.files || null, M = mine.files, T = theirs.files;
   const gen = new Map([...generated(A), ...generated(M), ...generated(T)]);
+  const renames = A ? renamesOf(A, M, T) : new Map();
   const files = [];
   for (const path of [...new Set([...Object.keys(M), ...Object.keys(T), ...Object.keys(A || {})])].sort()) {
     const a = A ? A[path] : undefined, m = M[path], t = T[path];
     if (m === undefined && t === undefined) continue;   // (removed on both sides)
-    const row = { path, state: stateOf(A, a, m, t) };
+    const rn = renames.get(path);
+    const row = { path, state: rn?.old ? 'renamed' : stateOf(A, a, m, t) };
+    if (rn && !rn.old) row.rename = { from: rn.from, side: rn.side };
+    if (rn?.old) row.renamedTo = rn.to;
     if (gen.has(path)) row.generatedBy = gen.get(path);
     if (row.state === 'conflict' && A && DRAWING_RE.test(path) && m !== undefined && t !== undefined) {
       const c = drawingConflicts(path, a ?? null, m, t);
@@ -131,12 +140,47 @@ export function compareProjects({ ancestor = null, mine, theirs }) {
     }
     // (a generated file follows its drawing: made again, never a conflict of its own)
     if (row.generatedBy && row.state === 'conflict') row.state = 'generated';
+    // (a text file both changed, or renamed on one side: merged by its lines, its conflicts per hunk)
+    if ((row.state === 'conflict' || row.rename) && !DRAWING_RE.test(path) && !row.generatedBy) {
+      const v = textsOf({ ancestor, mine, theirs }, row);
+      if (v.mine != null && v.theirs != null) {
+        const mt = mergeText(v.base, v.mine, v.theirs);
+        row.state = mt.conflicts.length ? 'conflict' : 'merged';
+        if (mt.conflicts.length) row.hunks = mt.hunks.filter(h => h.kind === 'conflict').map(({ id, base, mine: x, theirs: y, at }) => ({ id, base, mine: x, theirs: y, at }));
+      }
+    }
     files.push(row);
   }
   const project = mergeDescription(ancestor?.json ?? null, mine.json, theirs.json);
   const counts = {};
   for (const f of files) counts[f.state] = (counts[f.state] || 0) + 1;
   return { threeWay: !!A, files, project: { conflicts: project.conflicts }, counts, mine, theirs, ancestor };
+}
+// the files renamed on one side and changed on the other (#4214): path -> { from, side } (the renamed file), and
+// from -> { old: true, to } (the file it was); a text file only, by its lines (core/text-merge.js findRenames)
+function renamesOf(A, M, T) {
+  const out = new Map();
+  const text = p => !DRAWING_RE.test(p);
+  for (const side of ['theirs', 'mine']) {
+    const [S, O] = side === 'theirs' ? [T, M] : [M, T];
+    // (gone on this side, changed on the other; added on this side only)
+    const gone = Object.keys(A).filter(p => text(p) && S[p] === undefined && O[p] !== undefined && O[p] !== A[p] && !out.has(p));
+    const added = Object.keys(S).filter(p => text(p) && A[p] === undefined && O[p] === undefined && !out.has(p));
+    if (!gone.length || !added.length) continue;
+    for (const r of findRenames(Object.fromEntries(gone.map(p => [p, A[p]])), Object.fromEntries(added.map(p => [p, S[p]])))) {
+      out.set(r.to, { from: r.from, side });
+      out.set(r.from, { old: true, to: r.to, side });
+    }
+  }
+  return out;
+}
+/** A text file's three versions in a comparison (a renamed one's from its old path on the side that kept it): { base
+ *  (null: none, a two-way merge), mine, theirs }. */
+export function textsOf(cmp, f) {
+  const A = cmp.ancestor?.files || null, M = cmp.mine.files, T = cmp.theirs.files;
+  const r = f.rename;
+  if (r) return { base: A[r.from], mine: r.side === 'theirs' ? M[r.from] : M[f.path], theirs: r.side === 'theirs' ? T[f.path] : T[r.from] };
+  return { base: A ? A[f.path] ?? null : null, mine: M[f.path] ?? null, theirs: T[f.path] ?? null };
 }
 function stateOf(A, a, m, t) {
   if (m === t) return 'same';
@@ -146,16 +190,18 @@ function stateOf(A, a, m, t) {
   return 'conflict';
 }
 
-/** The conflicts a comparison leaves to the user: [{ path, id? (a drawing's object), field? (silinx.json's) }], and how
- *  a resolution answers them: resolve { [path]: 'mine' | 'theirs' | { [objectId]: 'mine' | 'theirs' }, 'silinx.json':
- *  { [field]: 'mine' | 'theirs' } }. */
+/** The conflicts a comparison leaves to the user: [{ path, id? (a drawing's object, a text file's hunk), field?
+ *  (silinx.json's) }], and how a resolution answers them: resolve { [path]: 'mine' | 'theirs' | { [objectId]: 'mine' |
+ *  'theirs' } | { [hunk]: 'mine' | 'theirs' | 'both' | { text } }, 'silinx.json': { [field]: 'mine' | 'theirs' } }. */
 export function openConflicts(cmp, resolve = {}) {
   const side = v => v === 'mine' || v === 'theirs';
   const left = [];
   for (const f of cmp.files) {
     if (f.state !== 'conflict') continue;
     const r = resolve[f.path];
-    if (f.conflicts?.length && !side(r)) { for (const c of f.conflicts) if (!side(r?.[c.id])) left.push({ path: f.path, id: c.id }); } else if (!side(r)) left.push({ path: f.path });
+    if (f.conflicts?.length && !side(r)) { for (const c of f.conflicts) if (!side(r?.[c.id])) left.push({ path: f.path, id: c.id }); }
+    else if (f.hunks?.length && !side(r) && r && typeof r === 'object') { for (const c of f.hunks) if (!checkTextChoice(r[c.id])) left.push({ path: f.path, id: c.id }); }
+    else if (!side(r)) left.push({ path: f.path });
   }
   for (const c of cmp.project.conflicts) if (!side(resolve['silinx.json']?.[c.field])) left.push({ path: 'silinx.json', field: c.field });
   return left;
@@ -172,7 +218,7 @@ export async function mergeProjects(cmp, resolve = {}) {
   for (const f of cmp.files) {
     const r = resolve[f.path];
     let side = { same: 'mine', mine: 'mine', theirs: 'theirs', added: 'theirs', removed: 'theirs', generated: 'mine' }[f.state];
-    if (f.state === 'merged' || (f.state === 'conflict' && f.conflicts?.length && typeof r === 'object' && r)) {
+    if (DRAWING_RE.test(f.path) && (f.state === 'merged' || (f.state === 'conflict' && f.conflicts?.length && typeof r === 'object' && r))) {
       const base = parse(A[f.path] ?? '{}') || {}, mine = parse(M[f.path]), theirs = parse(T[f.path]);
       const choices = f.state === 'merged' ? {} : Object.fromEntries(f.conflicts.map(c => [c.id, r[c.id]]));
       const { merged } = mergeDrawings(base, mine, theirs, choices);
@@ -182,6 +228,21 @@ export async function mergeProjects(cmp, resolve = {}) {
       write[f.path] = `${JSON.stringify(merged, null, kind === 'sch' ? 1 : 2)}\n`;
       taken.push(f.path);
       regenerate.add(f.path);
+      continue;
+    }
+    // (a text file merged by its lines, its conflicts by the choices per hunk; a renamed file's old one goes, as the
+    // side that renamed it has it)
+    if (!DRAWING_RE.test(f.path) && (f.state === 'merged' || (f.state === 'conflict' && f.hunks?.length && r && typeof r === 'object'))) {
+      const v = textsOf(cmp, f);
+      const text = resolveText(mergeText(v.base, v.mine, v.theirs), f.state === 'merged' ? {} : r);
+      if (text !== M[f.path]) { write[f.path] = text; taken.push(f.path); }
+      continue;
+    }
+    if (f.state === 'renamed') { if (M[f.path] !== undefined && T[f.path] === undefined) { remove.push(f.path); taken.push(f.path); } continue; }
+    if (f.rename && f.state === 'conflict') {
+      // (a renamed file in conflict, whole: Mine (here's version) or Theirs (there's), at its new path)
+      const text = textsOf(cmp, f)[r === 'theirs' ? 'theirs' : 'mine'];
+      if (text !== M[f.path]) { write[f.path] = text; taken.push(f.path); }
       continue;
     }
     if (f.state === 'conflict') side = r === 'theirs' || (r && typeof r === 'object') ? 'theirs' : 'mine';

@@ -3,7 +3,9 @@
 // project changed meanwhile (the same transition of the state diagram, another file). The window lists the files that
 // differ with what the merge does, the transition's conflict with Mine / Theirs (Merge refused until it is chosen); the
 // merge's lines in the console (nothing in the window after it closes), the files as merged, the project untrusted;
-// Compare from the window and back through the console; Undo Merge putting the project back; and in Portuguese.
+// Compare from the window and back through the console; Undo Merge putting the project back; and in Portuguese. A text
+// file both changed (#4214): apart, merged by its lines; the same lines, Merge Lines… opening the merge view, its
+// choice, then the merge (no conflict marker).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -95,3 +97,65 @@ uiTest('#4206 Merge Contribution…: the files that differ and what is done with
     await page.waitNoDialog();
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
 });
+
+uiTest('#4214 Merge Contribution…: a text file merged by its lines, the same lines in the merge view (Merge Lines…); in Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'Prof', template: 'traffic', board: 'basys2' });
+  await page.openProject('Prof');
+  await exportZip(page, 'silinx');
+  const copy = path.join(env.tmp, 'prof-copy.zip');
+  await fs.copyFile(await waitDownload(page, 'Prof-silinx.zip'), copy);
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [copy]);
+  await page.fill('.dlg-overlay input[type=text]', 'Rui');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'Rui' && document.querySelector('#hier .row'), [], { what: 'the copy open' });
+  // Rui: the timer's CARS_S (the teacher's too) and its first line (the teacher's not), the decoder's last line
+  const T = await readWs(env, 'Rui', 'src/timer.vhd'), V = await readWs(env, 'Rui', 'src/sevenseg.v');
+  await writeWs(env, 'Rui', 'src/timer.vhd', `-- rui\n${T.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 6;')}`);
+  await writeWs(env, 'Rui', 'src/sevenseg.v', `${V}// rui\n`);
+  await page.openProject('Rui');
+  await exportZip(page, 'silinx');
+  const back = path.join(env.tmp, 'rui-work.zip');
+  await fs.copyFile(await waitDownload(page, 'Rui-silinx.zip'), back);
+  await writeWs(env, 'Prof', 'src/timer.vhd', T.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 8;'));
+  await writeWs(env, 'Prof', 'src/sevenseg.v', `// prof\n${V}`);
+  await page.openProject('Prof');
+  const start = (await page.consoleText()).length;
+  await page.menu('Project', 'Merge Contribution…');
+  await page.waitDialog('Merge Contribution');
+  await page.setFiles(FILE, [back]);
+  await page.dialogButton('Compare');
+  await page.waitFor(() => document.querySelector('.dlg-overlay .merge-files'), [], { what: 'the comparison' });
+  const rows = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .merge-file')].map((r) => [r.dataset.path, r.querySelector('td:nth-child(2)').textContent.replace(/\s+/g, ' ').trim()]));
+  assert.deepEqual(rows, [['src/sevenseg.v', 'Changed on both sides: merged by its lines'], ['src/timer.vhd', 'Changed on both sides: choose 1 conflict(s) of lines Merge Lines… Mine Theirs']]);
+  await page.dialogButton('Merge');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .merge-error').textContent), 'Choose Mine or Theirs for 1 conflict(s) more.');
+  // Merge Lines…: the window closed, the merge view open; its choice, then the merge
+  await page.click('.dlg-overlay .merge-file[data-path="src/timer.vhd"] .merge-lines');
+  const v = await page.waitFor(() => !document.querySelector('.dlg-overlay') && document.querySelector('.merge-view .merge-choice') && {
+    bar: [...document.querySelectorAll('.merge-bar button')].map((b) => b.textContent), heads: [...document.querySelectorAll('.merge-sides th')].map((x) => x.textContent),
+  }, [], { what: 'the merge view' });
+  assert.deepEqual(v, { bar: ['Previous Conflict', 'Next Conflict', 'Merge', 'Cancel'], heads: ['Common Ancestor', 'Mine (this project)', 'Theirs (the contribution)'] });
+  await page.click('.merge-choice[data-id=h1] .merge-pick-theirs');
+  await page.click('.merge-bar [data-cmd=apply]');
+  await page.waitConsole(/^Merged rui-work\.zip into 'Prof' \(three-way, through the ancestor the contribution carries\): 2 file\(s\) written\. Undo Merge$/m);
+  assert.equal(await readWs(env, 'Prof', 'src/timer.vhd'), `-- rui\n${T.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 6;')}`);
+  assert.equal(await readWs(env, 'Prof', 'src/sevenseg.v'), `// prof\n${V}// rui\n`);
+  const lines = (await page.consoleText()).slice(start);
+  assert.doesNotMatch(lines, /WARNING/);
+  // in Portuguese: the rows' states and the button
+  await page.menu('Project', 'Undo Merge');
+  await page.waitConsole(/^Undid the last merge of 'Prof': 2 file\(s\) put back, 0 removed\.$/m);
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    await page.menu('Projeto', 'Juntar Contribuição…');
+    await page.waitDialog('Juntar Contribuição');
+    await page.setFiles(FILE, [back]);
+    await page.dialogButton('Comparar');
+    await page.waitFor(() => document.querySelector('.dlg-overlay .merge-files'), [], { what: 'a comparação' });
+    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .merge-file')].map((r) => r.querySelector('td:nth-child(2)').textContent.replace(/\s+/g, ' ').trim())),
+      ['Alterado dos dois lados: juntado pelas suas linhas', 'Alterado dos dois lados: escolha 1 conflito(s) de linhas Juntar Linhas… O meu O deles']);
+    await page.dialogButton('Cancelar');
+    await page.waitNoDialog();
+  } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+}, { timeout: 150000 });
