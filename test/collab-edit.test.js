@@ -257,7 +257,7 @@ test('#3997 roles in a room the owner\'s page hosts: the same', async () => {
     o => followRoom({ url: 'silinx-host:', WebSocket: function S() { const { client, room } = socketPair(); h.follower(room); return client; }, ...o }));
 });
 
-test('#3527 regression: an editor\'s change of another part than the files and the drawings, or past the total a follower takes: refused at the owner\'s, said, applied nowhere', async () => {
+test('#3527 regression: an editor\'s change of another part than the files, the drawings and the description, or past the total a follower takes: refused at the owner\'s, said, applied nowhere', async () => {
   const doc = owned();
   const errors = [];
   const owner = keep(await shareRoom({ url: relayUrl(base, 'share'), token: 'the-token', doc, user: { name: 'Ana' }, editors: true, limits: { total: 8192 }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } }));
@@ -266,11 +266,11 @@ test('#3527 regression: an editor\'s change of another part than the files and t
   const fol = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, user: { name: 'Eva' }, limits: { files: 5000, total: 8192 } }));
   await fol.ready;
   const REFUSED = 'an editor\'s change was refused: ';
-  // (a root of its own, the project's settings, the meta: refused; what the editor inserts after it, built on a refused
-  // change, refused too; after a deletion refused, which takes no place of its own, applied)
+  // (a root of its own, the meta: refused; what the editor inserts after it, built on a refused change, refused too;
+  // after a deletion refused, which takes no place of its own, applied; the project's settings an editor's since #4418,
+  // core/collab-files.js taking them at the owner's)
   const steps = [
     [d => d.getMap('evil').set('k', 'x'.repeat(100)), 'it changes a part of the document that an editor does not ("evil")'],
-    [d => d.getMap('project').set('json', '{"name":"hacked"}'), 'it changes a part of the document that an editor does not ("project")'],
     [d => d.getMap('meta').set('owner', 'Eve'), 'it changes a part of the document that an editor does not ("meta")'],
     [d => d.getMap('meta').delete('version'), 'it changes a part of the document that an editor does not ("meta")', false],
   ];
