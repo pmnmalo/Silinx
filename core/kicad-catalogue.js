@@ -10,7 +10,7 @@ import { CATALOGUE, CATALOGUE_LIBRARIES, CATALOGUE_LOOKS } from './kicad-catalog
 import { PARTS } from './circuit-parts.js';
 import { dip } from './circuit-ics.js';
 import { checkSha256 } from './kicad-pcm.js';
-import { symbolTexts, oneSymbolFile, symbolFileName } from './kicad-edit.js';
+import { symbolTexts, oneSymbolFile, symbolFileName, setSymbolProperties } from './kicad-edit.js';
 import { importKicadPackage } from './kicad-import.js';
 
 export { CATALOGUE, CATALOGUE_LIBRARIES };
@@ -88,7 +88,9 @@ export async function importCataloguePart(P, name, id, getFile, { replace = fals
   const dir = `${lib.file.replace(/\.kicad_sym$/, '')}.kicad_symdir`;
   const files = [...(e.needs || []), e.symbol].map((s) => {
     if (!symbols.has(s)) throw new Error(`${lib.url}: no symbol '${s}' in it`);
-    return { name: symbolFileName(s), text: oneSymbolFile(version, symbols.get(s)) };   // (KiCad's escapes, #4318)
+    const text = oneSymbolFile(version, symbols.get(s));
+    // (the footprint the catalogue picks for it, #4385: its Silinx.Footprint)
+    return { name: symbolFileName(s), text: s === e.symbol && e.footprint?.set ? setSymbolProperties(text, { [s]: { 'Silinx.Footprint': e.footprint.name } }) : text };   // (KiCad's escapes, #4318)
   });
   const footprints = [];
   if (e.footprint) {
