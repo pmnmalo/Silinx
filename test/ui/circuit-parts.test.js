@@ -68,7 +68,7 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   // the library: the 74LS and the 4000 gates; a 4001 placed, its pinout
   // (the Parts panel's categories, #4062: a title, then its parts)
   const groups = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].map((g) => [g.textContent, document.querySelectorAll(`${ed} .circ-lib-part[data-group="${g.textContent}"]`).length]), ED);
-  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 50], ['Gates (4000)', 17], ['MSI (74LS)', 10], ['Sequential (74LS, 4000)', 33], ['KiCad catalogue', 0]]);   // (the KiCad catalogue folded at first, #4305)
+  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 50], ['Gates (4000)', 17], ['MSI (74LS)', 10], ['Sequential (74LS, 4000)', 38], ['KiCad catalogue', 0]]);   // (the KiCad catalogue folded at first, #4305)
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="4001"]`).scrollIntoView({ block: 'center' }), ED);   // (the library scrolls)
   await page.click(`${ED} .circ-lib-part[data-part="4001"]`);
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + r.width * 0.75, y: r.top + 24 }; }, ED);
@@ -117,7 +117,7 @@ uiTest('Circuit editor, the MSI ICs (#3900): a 7447 from the library\'s MSI grou
   const group = (title) => page.eval((ed, t) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-group="${t}"]`)].map((b) => b.dataset.part), ED, title);
   assert.deepEqual(await group('MSI (74LS)'), ['7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485']);
   assert.deepEqual(await group('Sequential (74LS, 4000)'), ['7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017',
-    '7473', '7478', '74107', '74109', '74113', '74114', '4013', '4027', '7475', '7477', '74375', '74279', '74174', '74175', '74273', '74377', '74378', '74379']);   // (#4397's flip-flops, latches and registers)
+    '7473', '7478', '74107', '74109', '74113', '74114', '4013', '4027', '7475', '7477', '74375', '74279', '74174', '74175', '74273', '74377', '74378', '74379', '74173', '74373', '74374', '74573', '74574']);   // (#4397's flip-flops, latches and registers)
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7447"]`).scrollIntoView({ block: 'center' }), ED);
   await page.click(`${ED} .circ-lib-part[data-part="7447"]`);
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + r.width * 0.75, y: r.top + 40 }; }, ED);
