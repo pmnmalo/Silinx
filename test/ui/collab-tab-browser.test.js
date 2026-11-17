@@ -73,6 +73,13 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from Repository…,
   await page.dialogButton('Open');
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'collab-ana' && !!window.SilinxApp.S.git, [], { what: 'collab-ana open' });
+  // Open Project's Stored In (#4314): this browser's storage, the GitHub repository it came from
+  await page.menu('File', 'Open Project…');
+  await page.waitDialog('Open Project');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid tr')].slice(1).map((r) => [r.children[0].textContent, [...r.querySelector('td.pj-place').children].map((d) => d.textContent), r.querySelector('td.pj-place').title])),
+    [['collab-ana', ['Browser Storage', `GitHub: ${REPO}`], `Kept in this browser's storage, in the GitHub repository ${REPO}.`]]);
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
   await page.leftTab('collab');
   await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks'], 'signed in');
   // Commit and Push… (no Push to GitHub)

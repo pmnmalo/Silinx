@@ -93,6 +93,8 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
     gitLog: (name, limit = 100) => backend().log(name, { limit }),
     gitChecks: name => backend().checks(name),
     gitShow: (name, commit, path) => backend().show(name, commit, path),
+    // the project's GitHub repository ('owner/repo', or null), as the server's gitRemote (#4314: Open Project's Stored In)
+    gitRemote: name => backend().remote(name),
     // a project deleted: what it was in its repository forgotten (a new one of its name is no clone)
     gitForget: name => meta.set(name, null),
 

@@ -103,7 +103,9 @@ test('the examples, a new project from one (for another board too), the projects
   assert.equal((await srv.call('new_project_from_example', { name: 'X', example: 'nope' })).content[0].text, 'new_project_from_example: unknown example \'nope\' (list_examples)');
   assert.equal((await srv.call('new_project_from_example', { name: 'X', example: 'gates', board: 'basys2', variant: '500' })).content[0].text, 'new_project_from_example: the Digilent Basys2 has no variant \'500\'');
   assert.deepEqual((await srv.call('list_projects')).structuredContent.projects, [
-    { name: 'Blinky', top: 'top', board: 'basys2', device: 'xc3s250ecp132-4' }, { name: 'TrafficN', top: 'top', board: 'nexys2', device: 'xc3s500efg320-4' }]);
+    { name: 'Blinky', top: 'top', board: 'basys2', device: 'xc3s250ecp132-4', stored: 'folder', github: null }, { name: 'TrafficN', top: 'top', board: 'nexys2', device: 'xc3s500efg320-4', stored: 'folder', github: null }]);
+  // (where each is kept, as Open Project's Stored In, #4314)
+  assert.equal((await srv.call('list_projects')).content[0].text, 'Blinky: top top, basys2 (xc3s250ecp132-4); Kept in the workspace folder.\nTrafficN: top top, nexys2 (xc3s500efg320-4); Kept in the workspace folder.');
   const info = await srv.call('project_info', { project: 'Blinky' });
   assert.equal(info.structuredContent.simTop, 'tb_top');
   assert.deepEqual(info.structuredContent.files.map(f => `${f.path} ${f.lang} ${f.role}`), ['src/counter.v verilog design', 'src/knight.vhd vhdl design', 'src/speed_ctrl.vhd vhdl design', 'src/bcd_counter.vhd vhdl design', 'src/sevenseg.v verilog design', 'src/top.vhd vhdl design', 'sim/tb_top.vhd vhdl sim'].filter(l => info.structuredContent.files.some(f => l.startsWith(f.path))));

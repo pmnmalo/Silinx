@@ -17,6 +17,7 @@ import { KIND_OPTIONS, kindFields, makeDesignProject } from './project-kind-ui.j
 import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
 import { topSourceFiles } from '/core/top-source.js';
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
+import { placeLines, placeText } from '/core/project-place.js';
 import { designOnly, refusedHere } from './design-only.js';
 import { byLastUsed } from './project-store.js';
 import { currentProject, opened } from './project.js';
@@ -310,18 +311,20 @@ export async function openProjectDialog() {
   // the projects by when they were last changed or opened, the newest first, that date last (#1156)
   const list = byLastUsed(await api.projects(), opened());
   let chosen = null;
-  const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'Project'), h('th', {}, 'Device'), h('th', {}, 'Top'), h('th', {}, 'Board'), h('th', {}, 'Last Used')));
+  const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'Project'), h('th', {}, 'Device'), h('th', {}, 'Top'), h('th', {}, 'Board'), h('th', {}, 'Stored In'), h('th', {}, 'Last Used')));
   for (const p of list) {
     // (a design project's: no device, its kind for a board, #3891)
     const design = isDesignOnly(p);
     const tr = h('tr', {}, h('td', {}, p.name), h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, p.top || ''), h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
+      // (where it is kept: the workspace folder or this browser's storage, its GitHub repository, #4314)
+      h('td', { class: 'pj-place', title: placeText(p) }, ...placeLines(p).map((l, i) => h('div', i ? { 'data-no-i18n': '' } : {}, l))),
       h('td', { class: 'pj-used', 'data-no-i18n': '' }, p.used ? dateText(p.used) : ''));
     tr.addEventListener('click', () => { tbl.querySelectorAll('tr').forEach(r => r.classList.remove('sel')); tr.classList.add('sel'); chosen = p.name; });
     tr.addEventListener('dblclick', () => { chosen = p.name; document.querySelector('.dlg .btn.primary')?.click(); });
     tbl.append(tr);
   }
   const r = await dialog({
-    title: 'Open Project', width: 680,
+    title: 'Open Project', width: 800,
     body: h('div', {}, list.length ? h('div', { style: { maxHeight: '320px', overflow: 'auto', border: '1px solid var(--frame)' } }, tbl) : h('div', {}, 'No projects found in the workspace.')),
     buttons: [{ label: 'Open', primary: true, value: () => chosen }, { label: 'Cancel', value: null }],
   });

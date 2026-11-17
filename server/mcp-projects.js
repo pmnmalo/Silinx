@@ -8,6 +8,8 @@ import { orderExamples } from '../core/examples.js';
 import { TEST_DESIGNS, orderTestDesigns } from '../core/test-designs.js';
 import { nameUnnamed } from '../core/schname.js';
 import { DESIGN_KIND, isDesignOnly } from '../core/project-kind.js';
+import { placeText } from '../core/project-place.js';
+import { withPlaces } from './project-places.js';
 import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
 import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
@@ -72,14 +74,15 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'list_projects', title: 'List the projects',
-    description: 'The projects of the Silinx workspace (the folder the Project Navigator uses), with their top module, device and board.',
+    description: 'The projects of the Silinx workspace (the folder the Project Navigator uses), with their top module, device and board, and where each is kept (the workspace folder, its GitHub repository).',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run() {
       // (a design project's: no board, no device, its kind instead, #3891)
-      const projects = (await P.listProjects()).map(p => (isDesignOnly(p) ? { name: p.name, top: p.top || null, kind: DESIGN_KIND, board: null, device: null }
-        : { name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }));
-      return { text: projects.length ? projects.map(p => `${p.name}: top ${p.top || '(none)'}, ${p.kind ? 'a design and simulation project (no FPGA)' : `${p.board || 'no board'} (${p.device})`}`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
+      // (where each is kept, as Open Project's Stored In: the workspace folder, its GitHub repository, #4314)
+      const projects = (await withPlaces(await P.listProjects())).map(p => ({ ...(isDesignOnly(p) ? { name: p.name, top: p.top || null, kind: DESIGN_KIND, board: null, device: null }
+        : { name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }), stored: p.stored, github: p.github }));
+      return { text: projects.length ? projects.map(p => `${p.name}: top ${p.top || '(none)'}, ${p.kind ? 'a design and simulation project (no FPGA)' : `${p.board || 'no board'} (${p.device})`}; ${placeText(p)}`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
     },
   },
   {

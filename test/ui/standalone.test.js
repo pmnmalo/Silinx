@@ -957,6 +957,9 @@ uiTest('browser edition: File ▸ Open Workspace Folder… keeps the projects in
   await page.menu('File', 'Open Project…');
   await page.waitDialog('Open Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid tr td:first-child')].map((td) => td.textContent)), ['Disk', 'InBrowser']);
+  // (Stored In: the folder opened, #4314)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid td.pj-place')].map((td) => [td.textContent, td.title])),
+    [['Workspace Folder', 'Kept in the workspace folder.'], ['Workspace Folder', 'Kept in the workspace folder.']]);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   // the build's files go into the project's build/ folder, as the full application writes them
