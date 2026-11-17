@@ -46,7 +46,7 @@ function permissions(lines) {
 }
 
 test('workflows: the jobs parsed', () => {
-  assert.deepEqual(Object.keys(jobs(read('quality.yml'))), ['changes', 'compare', 'publish', 'report']);
+  assert.deepEqual(Object.keys(jobs(read('quality.yml'))), ['changes', 'xc7', 'compare', 'publish', 'report']);
   assert.deepEqual(permissions(jobs(read('quality.yml')).report), { actions: 'read', checks: 'read', contents: 'read', issues: 'write' });
 });
 
@@ -71,7 +71,7 @@ test('workflows: the self-hosted runner only for main, read-only, without the ch
       assert.doesNotMatch(body, /git push|GITHUB_TOKEN|GH_TOKEN|github\.token/, `${f}:${name} no token used`);
     }
   }
-  assert.deepEqual(selfHosted, ['ise.yml:ise', 'quality.yml:compare']);
+  assert.deepEqual(selfHosted, ['ise.yml:ise', 'quality.yml:xc7', 'quality.yml:compare']);
 });
 
 // GitHub's own runners: the only labels a job may run on, but the ISE runner's
@@ -122,7 +122,9 @@ export function selfHostedProblems(f, yml) {
     // the ISE runner: scheduled or by hand only, on main, from this repository (not a fork)
     const other = events.filter(e => !SELF_HOSTED_EVENTS.includes(e));
     if (other.length) problems.push(`${f}:${name}: on the self-hosted runner, the workflow also runs on ${other.join(', ')}`);
-    if (!lines.some(l => l === `    if: needs.changes.outputs.run == 'true' && ${SELF_HOSTED_IF}` || l === `    if: ${SELF_HOSTED_IF}`))
+    // (or after a job of its own whatever that one's result, #3834: !cancelled() added, the rest the same)
+    if (!lines.some(l => l === `    if: needs.changes.outputs.run == 'true' && ${SELF_HOSTED_IF}` || l === `    if: ${SELF_HOSTED_IF}`
+      || l === `    if: \${{ !cancelled() && needs.changes.outputs.run == 'true' && ${SELF_HOSTED_IF} }}`))
       problems.push(`${f}:${name}: on the self-hosted runner without the guard of its event and ref (${SELF_HOSTED_IF})`);
     if (/pull_request|github\.head_ref|\bref: /.test(body)) problems.push(`${f}:${name}: on the self-hosted runner, a pull request's ref`);
   }
@@ -147,6 +149,9 @@ test('workflows: no pull request\'s code can reach the self-hosted ISE runner (#
     ['prt.yml:j0: on the self-hosted runner, the workflow also runs on pull_request_target']);
   for (const on of ['  push:\n', '  workflow_call:\n', '  workflow_run:\n    workflows: [CI]\n', '  issue_comment:\n'])
     assert.equal(selfHostedProblems('e.yml', wf(on + SCHED, job(SELF_HOSTED, GUARD))).length, 1, on);
+  // (#3834: after another job whatever its result, the same guard; a guard with an || not)
+  assert.deepEqual(selfHostedProblems('nc.yml', wf(SCHED, job(SELF_HOSTED, `    if: \${{ !cancelled() && needs.changes.outputs.run == 'true' && ${SELF_HOSTED_IF} }}\n`))), []);
+  assert.equal(selfHostedProblems('or.yml', wf(SCHED, job(SELF_HOSTED, `    if: \${{ !cancelled() || needs.changes.outputs.run == 'true' && ${SELF_HOSTED_IF} }}\n`))).length, 1);
   assert.deepEqual(selfHostedProblems('noif.yml', wf(SCHED, job(SELF_HOSTED))), [`noif.yml:j0: on the self-hosted runner without the guard of its event and ref (${SELF_HOSTED_IF})`]);
   assert.deepEqual(selfHostedProblems('ref.yml', wf(SCHED, job(SELF_HOSTED, GUARD + '    env:\n      R: ${{ github.head_ref }}\n'))), ['ref.yml:j0: on the self-hosted runner, a pull request\'s ref']);
   // other ways to name the runner: its labels in another order or alone, a matrix, an expression
@@ -184,11 +189,24 @@ test('workflows: a pull request\'s job with a writing token runs the base\'s scr
   assert.deepEqual(checkoutLayout(job(co(true), co(false, 'head'), '      - run: test ! -e head/node_modules\n', NODE)), { base: '', head: 'head', clean: false });
 });
 
-test('workflows: the weekly comparison\'s results pushed from GitHub\'s runner, after a passing comparison (#412)', () => {
+test('workflows: the weekly comparisons\' results pushed from GitHub\'s runner, each after its passing comparison (#412, #3834)', () => {
   const j = jobs(read('quality.yml'));
   const publish = j.publish.join('\n');
-  assert.match(publish, /^ {4}needs: compare$/m);
-  assert.doesNotMatch(publish, /^ {4}if:/m, 'only when compare passed (its --guard)');
+  assert.match(publish, /^ {4}needs: \[compare, xc7\]$/m);
+  // (only when a comparison passed, its --guard; each one's files only when it did)
+  assert.match(publish, /^ {4}if: \$\{\{ !cancelled\(\) && \(needs\.compare\.result == 'success' \|\| needs\.xc7\.result == 'success'\) \}\}$/m);
+  assert.match(publish, /- if: needs\.compare\.result == 'success'\n\s+uses: actions\/download-artifact@.+\n\s+with:\n\s+name: quality-results\n/);
+  assert.match(publish, /- if: needs\.xc7\.result == 'success'\n\s+uses: actions\/download-artifact@.+\n\s+with:\n\s+name: quality-xc7\n/);
+  for (const f of ['test/xc7-vivado-comparison.json', 'docs/TOOLCHAIN.md']) assert.match(publish, new RegExp(`git add .*${f.replace(/[./]/g, '\\$&')}`), f);
+  assert.match(publish, /jq -e '\.boards \| type == "object"' "\$R\/test\/xc7-vivado-comparison\.json"/);
+  // the 7-series' comparison first, the ISE comparison after it whatever its result; its results guarded, its artifact
+  const xc7 = j.xc7.join('\n');
+  assert.match(xc7, /^ {4}needs: changes$/m);
+  assert.match(xc7, /SILINX_ISE_HOST: local/);
+  assert.match(xc7, /run: node scripts\/xc7-vivado-compare\.mjs --guard --update$/m);
+  assert.match(xc7, /uses: actions\/upload-artifact@.+\n\s+with:\n\s+name: quality-xc7\n\s+path: \|\n\s+test\/xc7-vivado-comparison\.json\n\s+docs\/TOOLCHAIN\.md/);
+  assert.match(xc7, /^ {4}timeout-minutes: 360$/m);
+  assert.match(j.compare.join('\n'), /^ {4}needs: \[changes, xc7\]\n {4}if: \$\{\{ !cancelled\(\) && needs\.changes\.outputs\.run == 'true' && /m);
   assert.match(publish, /^ {4}runs-on: ubuntu-latest$/m);
   assert.deepEqual(permissions(j.publish), { contents: 'write' });
   assert.match(publish, /uses: actions\/download-artifact@.+\n\s+with:\n\s+name: quality-results/);

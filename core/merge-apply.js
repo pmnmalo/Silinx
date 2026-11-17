@@ -13,7 +13,7 @@
 //   await undoMerge(projects, name) -> { restored, removed }
 //   mergeLines(name, from, result) -> [line]                  what a merge says, in the console and the MCP's results
 import { originOf, parseSnapshot, projectRev } from './project-rev.js';
-import { compareProjects, mergeProjects, openConflicts } from './project-merge.js';
+import { compareProjects, mergeProjects, openConflicts, textsOf } from './project-merge.js';
 import { untrustedNotice } from './trust.js';
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
@@ -46,12 +46,13 @@ export async function previewMerge(projects, name, contribution) {
 }
 
 /** A preview as the page shows it (plain JSON): { source, threeWay, warnings, left, files: [{ path, state, generatedBy?,
- *  conflicts?, mine, theirs (the two texts, null: none) }] (the files that differ), project: silinx.json's conflicts }. */
+ *  conflicts?, hunks?, rename?, mine, theirs (the two texts, null: none), merge? (a text file's conflicts: its three
+ *  versions, for the merge view) }] (the files that differ), project: silinx.json's conflicts }. */
 export function previewOf(p) {
   const c = p.comparison;
   return {
     source: p.source, threeWay: c.threeWay, warnings: p.warnings, left: p.left, project: c.project.conflicts,
-    files: c.files.filter(f => f.state !== 'same').map(f => ({ ...f, mine: c.mine.files[f.path] ?? null, theirs: c.theirs.files[f.path] ?? null })),
+    files: c.files.filter(f => f.state !== 'same').map(f => ({ ...f, mine: c.mine.files[f.path] ?? null, theirs: c.theirs.files[f.path] ?? null, ...(f.hunks ? { merge: textsOf(c, f) } : {}) })),
   };
 }
 

@@ -11,7 +11,7 @@ import { drawingKind, diffDrawings } from '../core/drawing-merge.js';
 import { unifiedDiff } from '../core/text-diff.js';
 import { checkChoices } from '../core/git-resolve.js';
 import { checksLines } from '../core/github-checks.js';
-import { cloneText, initText, commitText, pushText, pullText, fileLines, shortCommit as short } from '../core/git-messages.js';
+import { cloneText, initText, commitText, pushText, pullText, fileLines, shortCommit as short, hunkLines, pullMergeLines } from '../core/git-messages.js';
 
 // the back end: the system's git, or GitHub's API (SILINX_GIT=github, #3196)
 const B = () => (GH.githubBackend() ? GH : Git);
@@ -21,9 +21,10 @@ const run = async fn => {
   if (!Git.gitEnabled()) throw toolError('git is turned off on this server (SILINX_GIT=off)');
   try { return await fn(); } catch (e) {
     if (e instanceof Git.GitError || e.status) {
-      // (a drawing's conflicts: each object's id, for git_pull's resolve)
-      const conflicts = (e.drawings || []).flatMap(d => d.conflicts.map(c => `  ${d.path}: ${c.id} (${c.label}): mine ${c.mine}, theirs ${c.theirs}`));
-      throw Object.assign(toolError([e.message, ...conflicts, ...(e.hint ? [`Hint: ${e.hint}`] : [])].join('\n')), e.files ? { files: e.files } : {}, e.drawings ? { drawings: e.drawings } : {});
+      // (a drawing's conflicts: each object's id, a text file's: each hunk's (#4214), for git_pull's resolve)
+      const conflicts = [...(e.drawings || []).flatMap(d => d.conflicts.map(c => `  ${d.path}: ${c.id} (${c.label}): mine ${c.mine}, theirs ${c.theirs}`)),
+        ...(e.texts || []).flatMap(t => hunkLines(t.path, t.hunks))];
+      throw Object.assign(toolError([e.message, ...conflicts, ...(e.hint ? [`Hint: ${e.hint}`] : [])].join('\n')), e.files ? { files: e.files } : {}, e.drawings ? { drawings: e.drawings } : {}, e.texts ? { texts: e.texts } : {});
     }
     throw e;
   }
@@ -101,15 +102,15 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_pull', title: 'Pull a project from GitHub',
-    description: 'Pull the commits of the project\'s GitHub repository into it (a merge), as File ▸ Git ▸ Pull does. A drawing changed on both sides is merged by its objects (never as text), its HDL made again; an object both sides changed differently is a conflict, named with its id: Pull again with resolve, "mine" or "theirs" for each (the result checked as Check Drawing checks it). Any other conflict pulls nothing: the project\'s files stay as they were, and the files in conflict are named. The pulled files pass the import gate: a hidden file, a tool\'s output or another spelling of silinx.json stays out of the project\'s folder (a WARNING each); another file it refuses pulls nothing.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, resolve: { type: 'object', description: 'The choices of a drawing\'s conflicts: { "src/ctl.fsm.json": { "transitions/t1": "theirs", "states/s2": "mine" } }.', additionalProperties: { type: 'object', additionalProperties: { type: 'string', enum: ['mine', 'theirs'] } } } }, required: ['project'], additionalProperties: false },
+    description: 'Pull the commits of the project\'s GitHub repository into it (a merge), as File ▸ Git ▸ Pull does. A drawing changed on both sides is merged by its objects (never as text), its HDL made again; an object both sides changed differently is a conflict, named with its id: Pull again with resolve, "mine" or "theirs" for each (the result checked as Check Drawing checks it). A text file (HDL, a test bench, constraints, C/C++) changed on both sides is merged by its lines: changes apart at once; the same lines a conflict per hunk, named with its id (h1, h2…), its line and both sides\' lines: Pull again with resolve, "mine", "theirs", "both" (mine\'s lines, then theirs\') or { "text": "…" } (the hunk\'s lines written) for each; never conflict markers. A file renamed on one side and changed on the other is merged as a rename. Any other conflict (a file removed on one side and changed on the other) pulls nothing: the project\'s files stay as they were, and the files in conflict are named. The pulled files pass the import gate: a hidden file, a tool\'s output or another spelling of silinx.json stays out of the project\'s folder (a WARNING each); another file it refuses pulls nothing.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, resolve: { type: 'object', description: 'The choices of the conflicts: a drawing\'s objects { "src/ctl.fsm.json": { "transitions/t1": "theirs", "states/s2": "mine" } }, a text file\'s hunks { "src/top.vhd": { "h1": "both", "h2": { "text": "  y <= a or b;\\n" } } }.', additionalProperties: { type: 'object', additionalProperties: { anyOf: [{ type: 'string', enum: ['mine', 'theirs', 'both'] }, { type: 'object', properties: { text: { type: 'string' } }, required: ['text'], additionalProperties: false }] } } } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async run({ project, resolve }) {
       await readProject(project);
       let choices;
       try { choices = checkChoices(resolve); } catch (e) { throw toolError(e.message); }
       const r = await run(() => B().gitPull(project, { resolve: choices }));
-      return { text: [pullText(r), ...(r.resolved || []).map(p => `${p}: merged by its objects, its HDL made again.`), ...(r.warnings || []).map(w => `WARNING: ${w}`)].join('\n'), data: r,
+      return { text: [pullText(r), ...pullMergeLines(r), ...(r.warnings || []).map(w => `WARNING: ${w}`)].join('\n'), data: r,
         untrusted: r.upToDate && !r.warnings?.length ? undefined : 'the pulled files\' names and the warnings, which name them' };
     },
   },

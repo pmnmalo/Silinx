@@ -154,8 +154,11 @@ test('push rejected (GitHub has commits this project has not), pull merges them;
   const head = sh(mine, 'rev-parse', 'HEAD');
   await assert.rejects(G.gitPull('team'), e => {
     assert.equal(e.message, 'git pull: a conflict in constraints/notes.txt: nothing was pulled, the project\'s files are as they were');
-    assert.equal(e.hint, 'The same lines changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.');
-    assert.deepEqual([e.status, e.files], [409, ['constraints/notes.txt']]);
+    assert.equal(e.hint, 'The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.');
+    assert.deepEqual([e.status, e.files, e.resolvable], [409, ['constraints/notes.txt'], true]);
+    // (its hunk, for the merge view: #4214)
+    assert.deepEqual(e.texts, [{ path: 'constraints/notes.txt', base: 'theirs\n', mine: 'mine\n', theirs: 'theirs, again\n',
+      hunks: [{ kind: 'conflict', id: 'h1', base: ['theirs'], mine: ['mine'], theirs: ['theirs, again'], at: { base: 1, mine: 1, theirs: 1 } }] }]);
     return true;
   });
   assert.equal(read(path.join(mine, 'constraints', 'notes.txt')), 'mine\n');

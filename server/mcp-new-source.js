@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
-import { sourceBase } from '../core/ident.js';
+import { NAME_RE, FILE_RE, sourceBase } from '../core/ident.js';
 import { CIRCUIT_TEMPLATES } from '../core/circuit-templates.js';
 
 const TYPES = {
@@ -28,8 +28,6 @@ const TYPES = {
   circuit: { label: 'Digital Electronic Circuit', ext: '.circ.json', dir: 'src' },   // (New Source's name, #4061)
   lab: { label: 'Guided Lab', ext: '.lab.json', dir: 'labs' },
 };
-const NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
-const FILE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const ident = n => n.replace(/[^A-Za-z0-9_]/g, '_');
 const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean', 'circuit'];
 

@@ -21,7 +21,7 @@ export const MEETING_KEY = prefKey('silinx.collab.meeting');
 const OWNER_MAX = 16 << 20;
 
 /** The meeting point this page uses. */
-export async function meetingPoint() {
+async function meetingPoint() {
   let which = '';
   try { which = localStorage.getItem(MEETING_KEY) || ''; } catch { /* the public one */ }
   if (which === 'local') return channelMeeting();

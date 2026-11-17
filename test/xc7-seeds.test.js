@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { XC7, xc7BestRun, xc7SeedsOfRuns, xc7SeedsLine, xc7TimingText } from '../packages/silinx-fpga/src/open-flow-xc7.js';
 import { xc7SeedsOf } from '../packages/silinx-fpga/src/parts.js';
 import { xc7Parallel } from '../packages/silinx-fpga/src/nextpnr-xc7-node.js';
+import { nextpnrIo } from '../packages/silinx-fpga/src/nextpnr-io.js';
 import { StepError } from '../packages/silinx-fpga/src/open-flow-core.js';
 import { familyProfile } from '../core/family-profile.js';
 
@@ -46,7 +47,7 @@ test('the option: impl.xc7Seeds 3, else one seed; the 7-series\' profile offers 
 // the back end's Place & Route on a fake nextpnr: each seed's Fmax (null: fails, with an ERROR: line), its warning
 const NETLIST = JSON.stringify({ modules: { top: { attributes: { top: 1 }, ports: { clk: { direction: 'input', bits: [2] }, led: { direction: 'output', bits: [3] } }, cells: {} } } });
 const MODEL = { assignments: { clk: { loc: 'W5' }, led: { loc: 'U16' } }, clocks: [{ net: 'clk', period: 10 }] };
-function backEnd(fmax, { xc7Seeds, apart = false } = {}) {
+function backEnd(fmax, { xc7Seeds, apart = false, np } = {}) {
   const lines = [], files = {}, calls = [], report = { files: {} };
   let running = 0, most = 0;
   const run = async (args, f, onLine) => {
@@ -59,7 +60,7 @@ function backEnd(fmax, { xc7Seeds, apart = false } = {}) {
     if (fmax[seed] === null) { onLine('ERROR: no route'); throw new Error(`nextpnr exited with code ${seed}`); }
     return { 'report.json': JSON.stringify({ fmax: { clk: { achieved: fmax[seed], constraint: 100 } }, utilization: {} }), 'routed.fasm': `# seed ${seed}\n` };
   };
-  const nextpnr = { router: 'router2', chipdb: async () => new Uint8Array(1), run, ...(apart && { runApart: run, parallel: 3 }) };
+  const nextpnr = { router: 'router2', chipdb: async () => new Uint8Array(1), run: np || run, ...(apart && { runApart: np || run, parallel: 3 }) };
   const io = { nextpnr: { xc7: nextpnr }, bitDb: () => ({}), write: (n, d) => { files[n] = d; return `build/${n}`; }, read: n => files[n] ?? null };
   const ctx = { io, spec: { part: 'xc7a35tcpg236-1', device: 'xc7a35t', seed: 1, ...(xc7Seeds && { xc7Seeds }) }, log: l => lines.push(l), report, top: 'top',
     ms: () => '0.1 s', now: () => 0, constraints: () => MODEL, netlistText: () => NETLIST, StepError, util: (name, used, total) => ({ name, used, total, percent: 0 }) };
@@ -117,4 +118,21 @@ test('the best of 3 seeds: a tie to the lowest seed; a failed seed left out (no 
     assert.deepEqual(Object.keys(all.files), []);   // (nothing written)
     assert.deepEqual(said(all.lines).slice(1), []);
   }
+});
+
+// #4260: nextpnr-himbaechel-xc7 stopping on an ERROR: line throws a WebAssembly.Exception (no message), through nextpnr's runner
+test('nextpnr stopping on an ERROR: line with a WebAssembly exception: Place & Route fails with its error, not undefined; no warning (#4260)', async () => {
+  const BEL = "Bel 'X10Y153/SLICE_X0Y0.A5FF' of type 'SLICE_FFX' is not valid for cell 'ff' of type 'SLICE_FFX'";
+  const np = nextpnrIo(async () => ({ Exit: class Exit {}, async runNextpnrHimbaechelXilinx(args, files, { stderr }) {
+    stderr(new TextEncoder().encode(`Info: Placing..\nWarning: a warning\nERROR: ${BEL}\n`));
+    throw new WebAssembly.Exception(new WebAssembly.Tag({ parameters: [] }), []);
+  } }), 'runNextpnrHimbaechelXilinx').run;
+  const one = backEnd({}, { np });
+  await assert.rejects(one.steps.par(), e => e instanceof StepError && e.message === `nextpnr failed: nextpnr stopped on an error: ${BEL}`
+    && e.list.join('|') === `ERROR: ${BEL}`);
+  assert.deepEqual(said(one.lines).slice(1), []);
+  assert.deepEqual(Object.keys(one.files), []);
+  const three = backEnd({}, { xc7Seeds: 3, apart: true, np });
+  await assert.rejects(three.steps.par(), e => e.message === `nextpnr failed: nextpnr stopped on an error: ${BEL}`);
+  assert.deepEqual(said(three.lines).slice(1), []);
 });

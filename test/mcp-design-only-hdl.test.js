@@ -68,8 +68,8 @@ test('list_projects: a design project with no device nor board, its kind', async
   await designProject('l1');
   await ok('new_project', { name: 'l2' });
   const r = await ok('list_projects', {});
-  assert.ok(r.text.split('\n').includes('l1: top traffic, a design and simulation project (no FPGA)'), r.text);
-  assert.deepEqual(r.data.projects.find(p => p.name === 'l1'), { name: 'l1', top: 'traffic', kind: 'design', board: null, device: null });
+  assert.ok(r.text.split('\n').includes('l1: top traffic, a design and simulation project (no FPGA); Kept in the workspace folder.'), r.text);
+  assert.deepEqual(r.data.projects.find(p => p.name === 'l1'), { name: 'l1', top: 'traffic', kind: 'design', board: null, device: null, stored: 'folder', github: null });
   assert.match(r.text.split('\n').find(l => l.startsWith('l2:')), /^l2: top \(none\), no board \(xc3s/);
 });
 

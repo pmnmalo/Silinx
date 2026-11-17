@@ -208,7 +208,8 @@ docs/          user guides (EN, PT), the project model and API, QUALITY.md (agai
     socket (`install.sh --docker-acl`). Docker Desktop shares only `/Users/Shared/silinx-ise`, so that no
     container can mount that user's home: ISE work over ssh goes there too (`ssh.remoteDir`
     `/Users/Shared/silinx-ise/build` in `~/.silinx/config.json`), and a folder elsewhere cannot be mounted.
-  - The weekly comparison pushes its results to the branch `quality-results`, to be merged by hand.
+  - The weekly comparison pushes its results to the branch `quality-results`, to be merged by hand: the Spartan-3E's
+    against ISE (docs/QUALITY.md) and the 7-series' examples against Vivado (docs/TOOLCHAIN.md's table, #3834).
   - GitHub starts scheduled runs hours late (the nightly's 21:17 UTC has started at 23:37 and at 08:13):
     look for the night's results in the morning, not at the cron's time.
 - **The workflows' building blocks:** `.github/actions/setup` (Node.js 22 and `npm ci`, after the job's

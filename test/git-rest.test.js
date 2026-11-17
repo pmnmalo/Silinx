@@ -200,10 +200,80 @@ test('pull: up to date; GitHub\'s new, changed and deleted files taken; the same
   gh.commitFiles('pmalo/gates', { 'src/gates.vhd': 'entity gates is end; -- theirs\n', 'src/and2.vhd': 'entity and2 is end; -- theirs\n' });
   P['src/gates.vhd'] = 'entity gates is end; -- mine, again\n';
   const before = structuredClone(P), meta = structuredClone(mem.M.get('gates'));
-  await rejects(git.pull('gates'), 'git pull: a conflict in src/gates.vhd: nothing was pulled, the project\'s files are as they were',
-    { hint: 'The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.', status: 409, files: ['src/gates.vhd'] });
+  await rejects(git.pull('gates'), 'git pull: a conflict in src/gates.vhd: nothing was pulled, the project\'s files are as they were', {
+    hint: 'The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.', status: 409, files: ['src/gates.vhd'], resolvable: true,
+    texts: [{ path: 'src/gates.vhd', base: 'entity gates is end; -- mine\n', mine: 'entity gates is end; -- mine, again\n', theirs: 'entity gates is end; -- theirs\n',
+      hunks: [{ kind: 'conflict', id: 'h1', base: ['entity gates is end; -- mine'], mine: ['entity gates is end; -- mine, again'], theirs: ['entity gates is end; -- theirs'], at: { base: 1, mine: 1, theirs: 1 } }] }] });
   assert.deepEqual(P, before);
   assert.deepEqual(mem.M.get('gates'), meta);
+  // a file GitHub removed and changed here: no text merge, Silinx cannot resolve it
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': null });
+  await rejects(git.pull('gates'), 'git pull: a conflict in src/gates.vhd: nothing was pulled, the project\'s files are as they were',
+    { hint: 'The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.', status: 409, files: ['src/gates.vhd'], texts: [], resolvable: false });
+  assert.deepEqual(P, before);
+});
+
+const VHD = (...l) => `${['library ieee;', 'use ieee.std_logic_1164.all;', 'entity gates is', '  port (a, b : in std_logic; y : out std_logic);', 'end gates;', 'architecture rtl of gates is', 'begin', ...l, 'end rtl;'].join('\n')}\n`;
+test('#4214 pull merges a text file changed on both sides by its lines: apart at once; the same lines by the choices per hunk, never markers', async () => {
+  const { gh, mem, git } = setup();
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': VHD('  y <= a and b;') });
+  await git.clone({ url: 'https://github.com/pmalo/gates' });
+  const P = mem.P.get('gates');
+  // apart: a comment added here, the gate changed on GitHub
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': VHD('  y <= a or b;') });
+  P['src/gates.vhd'] = `-- mine\n${VHD('  y <= a and b;')}`;
+  const r = await git.pull('gates');
+  assert.deepEqual(r, { project: 'gates', branch: 'main', upToDate: false, files: ['src/gates.vhd'], merged: ['src/gates.vhd'] });
+  assert.equal(P['src/gates.vhd'], `-- mine\n${VHD('  y <= a or b;')}`);
+  // (the merge: a change against GitHub's, which the next commit pushes)
+  assert.deepEqual((await git.status('gates')).files, [{ path: 'src/gates.vhd', state: 'modified' }]);
+  await git.commit('gates', 'Merged');
+  assert.equal(gh.filesAt('pmalo/gates', 'main')['src/gates.vhd'], `-- mine\n${VHD('  y <= a or b;')}`);
+  // the same line: a conflict, its hunk named; the choices of another hunk refused; then Both
+  const base = P['src/gates.vhd'];
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': base.replace('a or b', 'a xor b') });
+  P['src/gates.vhd'] = base.replace('a or b', 'a nand b');
+  const e = await git.pull('gates').catch((x) => x);
+  assert.deepEqual([e.status, e.resolvable, e.files, e.texts.map((t) => [t.path, t.hunks.map((h) => [h.id, h.mine, h.theirs, h.at.mine])])],
+    [409, true, ['src/gates.vhd'], [['src/gates.vhd', [['h1', ['  y <= a nand b;'], ['  y <= a xor b;'], 9]]]]]);
+  await rejects(git.pull('gates', { resolve: { 'src/gates.vhd': { h2: 'mine' } } }), 'git pull: a conflict in src/gates.vhd: nothing was pulled, the project\'s files are as they were', { status: 409 });
+  assert.equal(P['src/gates.vhd'], base.replace('a or b', 'a nand b'));
+  const p = await git.pull('gates', { resolve: { 'src/gates.vhd': { h1: 'both' } } });
+  assert.deepEqual(p.merged, ['src/gates.vhd']);
+  assert.equal(P['src/gates.vhd'], base.replace('  y <= a or b;', '  y <= a nand b;\n  y <= a xor b;'));
+  assert.doesNotMatch(P['src/gates.vhd'], /<<<<<<<|>>>>>>>/);
+  // a text of the user's
+  const base2 = gh.filesAt('pmalo/gates', 'main')['src/gates.vhd'];
+  await git.commit('gates', 'Both');
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': base2.replace('-- mine', '-- theirs') });
+  P['src/gates.vhd'] = P['src/gates.vhd'].replace('-- mine', '-- ours');
+  await git.pull('gates', { resolve: { 'src/gates.vhd': { h1: { text: '-- both of us\n' } } } });
+  assert.match(P['src/gates.vhd'], /^-- both of us\nlibrary ieee;/);
+});
+
+test('#4214 pull: a file renamed on GitHub and changed here, or renamed here and changed on GitHub, merged as a rename', async () => {
+  const { gh, mem, git } = setup();
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': VHD('  y <= a and b;') });
+  await git.clone({ url: 'https://github.com/pmalo/gates' });
+  const P = mem.P.get('gates');
+  // renamed on GitHub (and changed), changed here: the change merged into the renamed file, the old one gone
+  gh.commitFiles('pmalo/gates', { 'src/gates.vhd': null, 'rtl/gates.vhd': VHD('  y <= a and b;', '  -- theirs') });
+  P['src/gates.vhd'] = `-- mine\n${VHD('  y <= a and b;')}`;
+  const r = await git.pull('gates');
+  assert.deepEqual(r, { project: 'gates', branch: 'main', upToDate: false, files: ['rtl/gates.vhd', 'src/gates.vhd'], merged: ['rtl/gates.vhd'], renamed: [{ from: 'src/gates.vhd', to: 'rtl/gates.vhd', side: 'theirs' }] });
+  assert.equal(P['src/gates.vhd'], undefined);
+  assert.equal(P['rtl/gates.vhd'], `-- mine\n${VHD('  y <= a and b;', '  -- theirs')}`);
+  assert.deepEqual((await git.status('gates')).files, [{ path: 'rtl/gates.vhd', state: 'modified' }]);
+  await git.commit('gates', 'Merged');
+  // renamed here, changed on GitHub: GitHub's change merged into the renamed file; a commit then removes the old one
+  const now = P['rtl/gates.vhd'];
+  gh.commitFiles('pmalo/gates', { 'rtl/gates.vhd': now.replace('a and b', 'a or b') });
+  delete P['rtl/gates.vhd'];
+  P['hdl/gates.vhd'] = now.replace('-- mine', '-- moved');
+  const q = await git.pull('gates');
+  assert.deepEqual([q.merged, q.renamed], [['hdl/gates.vhd'], [{ from: 'rtl/gates.vhd', to: 'hdl/gates.vhd', side: 'mine' }]]);
+  assert.equal(P['hdl/gates.vhd'], now.replace('-- mine', '-- moved').replace('a and b', 'a or b'));
+  assert.deepEqual((await git.status('gates')).files.sort((a, b) => a.path.localeCompare(b.path)), [{ path: 'hdl/gates.vhd', state: 'new' }, { path: 'rtl/gates.vhd', state: 'deleted' }]);
 });
 
 test('the history, the newest first, with each commit\'s files; a file as it was in a commit', async () => {

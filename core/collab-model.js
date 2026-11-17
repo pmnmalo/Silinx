@@ -76,7 +76,7 @@ const schModel = sh => normalizeDoc(ordered(sh, SCH_KEYS));
  *  participant's new objects' ids made its own (ids that are names, a truth table's outputs, are not); seqIds: a new
  *  object's id another one has in the structure already made the next free one of its sequence (a circuit's); view:
  *  its settings that are how a participant sees it, not the drawing (#4239: the wires' style), never in the structure. */
-export const DRAWING_KINDS = Object.freeze({
+const DRAWING_KINDS = Object.freeze({
   fsm: { collections: ['states', 'transitions'], refs: { transitions: { from: 'states', to: 'states' } }, setRefs: { initial: 'states' }, shape: normalizeFsm, model: normalizeFsm, ownIds: true },
   tt: { collections: ['outputs'], refs: {}, setRefs: {}, shape: ttShape, model: ttModel, ownIds: false },
   asm: { collections: ['nodes', 'edges'], refs: { edges: { from: 'nodes', to: 'nodes' } }, setRefs: { initial: 'nodes' }, shape: normalizeAsm, model: normalizeAsm, ownIds: true },

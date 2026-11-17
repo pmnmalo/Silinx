@@ -20,7 +20,7 @@ const prec = (e) => {
 };
 
 /** The text of a type as declared: int, unsigned char, ap_uint<8>, bool. */
-export function typeText(t) {
+function typeText(t) {
   if (!t) return '';
   if (t.kind === 'int') {
     if (t.ap) return `ap_${t.signed ? '' : 'u'}int<${t.bits ?? (t.widthExpr ? exprText(t.widthExpr) : '?')}>`;

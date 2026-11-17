@@ -438,6 +438,9 @@ const PT_PATTERNS = [
   [/^(\d+) states?(?: · (\d+) every-cycle blocks?)?$/, (m, n, b) => `${n} estado${n === '1' ? '' : 's'}${b ? ` · ${b} bloco${b === '1' ? '' : 's'} de cada ciclo` : ''}`],   // (the ASM editor's toolbar, #2730)
   // the serial terminal's rates (#2536)
   [/^(\d+) baud$/, '$1 baud'],
+  // (Open Project's Stored In tip, #4314)
+  [/^Kept in the workspace folder(?:, in the GitHub repository (\S+))?\.$/, (m, r) => `Guardado na pasta de trabalho${r ? `, no repositório GitHub ${r}` : ''}.`],
+  [/^Kept in this browser's storage(?:, in the GitHub repository (\S+))?\.$/, (m, r) => `Guardado no armazenamento deste navegador${r ? `, no repositório GitHub ${r}` : ''}.`],
   // Find in Project (#1430)
   [/^(\d+) result\(s\) in (\d+) file\(s\)$/, '$1 resultado(s) em $2 ficheiro(s)'], [/^(\d+) replacement\(s\) in (\d+) file\(s\)$/, '$1 substituição(ões) em $2 ficheiro(s)'],
   [/^Invalid regular expression: (.*)$/, 'Expressão regular inválida: $1'],
@@ -546,7 +549,8 @@ Object.assign(PT, {
   'Tip: double-click a process in the Processes panel to run it. Simulation runs entirely inside Silinx; synthesis/implementation require Xilinx ISE 14.7 (Toolchain Settings (the gear in the toolbar)).':
     'Dica: faça duplo clique num processo no painel Processos para o executar. A simulação corre inteiramente no Silinx; a síntese/implementação requer o Xilinx ISE 14.7 (Definições da Toolchain (a roda dentada da barra de ferramentas)).',
   'Print…': 'Imprimir…', 'Print': 'Imprimir', 'Source': 'Fonte', 'Source (read-only)': 'Fonte (só de leitura)', 'Marker': 'Marcador', 'Time shown': 'Tempo mostrado', 'Simulation time': 'Tempo de simulação', 'project name': 'nome do projeto', 'new project name': 'nome do novo projeto', 'file name': 'nome do ficheiro',
-  'Device': 'Dispositivo', 'Top': 'Topo', 'Board': 'Placa', 'Last Used': 'Último uso', '.zip file:': 'Ficheiro .zip:',
+  'Device': 'Dispositivo', 'Top': 'Topo', 'Board': 'Placa', 'Last Used': 'Último uso', 'Stored In': 'Guardado em', 'Workspace Folder': 'Pasta de Trabalho', 'Browser Storage': 'Armazenamento do Navegador',   // (Open Project's Stored In, #4314)
+  '.zip file:': 'Ficheiro .zip:',
   'Import a whole Silinx project from its folder (the folder with the silinx.json file), or from a .zip of that folder (e.g. one exported with File ▸ Export Project (.zip)…).':
     'Importe um projeto Silinx completo a partir da sua pasta (a pasta com o ficheiro silinx.json), ou de um .zip dessa pasta (p. ex. um exportado com Ficheiro ▸ Exportar Projeto (.zip)…).',
   'Its build folder (build) and hidden files are not imported.': 'A sua pasta de compilação (build) e os ficheiros ocultos não são importados.',

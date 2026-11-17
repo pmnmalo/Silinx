@@ -46,7 +46,7 @@ test('the iCE40 family: its parts, its back end\'s steps and constraints, its sy
   const b = backendOf('ice40');
   assert.equal(b.id, 'ice40');
   assert.equal(b.constraints, PCF);
-  assert.deepEqual(b.steps.map(s => s.id), ['synth', 'translate', 'par', 'trce', 'bitgen']);
+  assert.deepEqual(b.steps.map(s => s.id), ['synth', 'postsynth', 'translate', 'par', 'trce', 'postpar', 'bitgen']);   // (the models, #2299)
   assert.deepEqual(orderSteps(b.steps, ['bitgen']), ['synth', 'translate', 'par', 'bitgen']);
   assert.deepEqual(orderSteps(b.steps, ['trce']), ['synth', 'translate', 'par', 'trce']);   // (#2300: nextpnr's timing)
   assert.throws(() => orderSteps(b.steps, ['xpwr']), /no step xpwr/);

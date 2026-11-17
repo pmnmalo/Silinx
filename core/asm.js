@@ -75,9 +75,10 @@
 //              cycle (the generated code assigns the defaults, then the every-cycle blocks, then
 //              the state logic, in one combinational process).
 
-export const ASM_VERSION = 1;
+const ASM_VERSION = 1;
 export const ENCODINGS = ['binary', 'gray', 'onehot', 'enum'];
 import { VHDL93_WORDS, VERILOG_WORDS, reservedError } from './reserved.js';
+import { isName } from './ident.js';
 import {
   vhAssign, vhBool, vhExpr, vhLitW, vhNot, vhTruth, vlAssign, vlExpr, vlLitW, vlNot
 } from './asm-emit.js';
@@ -95,8 +96,6 @@ export {
 // the generators (#405: asm-gen.js), still exported from here
 export { extractAlwaysBlocks, asmJoinPoints, generateVerilog, generateVhdl, generate } from './asm-gen.js';
 
-export const LANGS = ['vhdl', 'verilog'];
-
 // ---------------------------------------------------------------------------------------
 // Reserved words
 // ---------------------------------------------------------------------------------------
@@ -113,7 +112,7 @@ const VHDL_RESERVED = new Set([...VHDL93_WORDS,
 
 /** True if `s` is a portable identifier (valid in both Verilog and VHDL). */
 export function isIdentifier(s) {
-  return typeof s === 'string' && /^[A-Za-z][A-Za-z0-9_]*$/.test(s) && !s.includes('__') && !s.endsWith('_');
+  return typeof s === 'string' && isName(s) && !s.includes('__') && !s.endsWith('_');
 }
 
 export function reservedIn(s) {
@@ -355,7 +354,7 @@ function sharedWalk(idx, { leaf, exits, build }, startId, fromNode, port) {
   }
 }
 /** The subtrees of a tree's node. */
-export function treeSubs(t) {
+function treeSubs(t) {
   return t.k === 'if' ? [t.t, t.f] : t.k === 'case' ? t.branches.map((b) => b.sub) : t.k === 'act' ? [t.next] : [];
 }
 

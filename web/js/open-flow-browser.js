@@ -49,7 +49,7 @@ export const yosysBundleUrl = (base = assetsBase()) => new URL(LAYOUT.yosys, bas
 /** The URL of nextpnr's bundle (its chip databases in ../chipdb beside it, #2136) for the assets at `base`. */
 export const nextpnrBundleUrl = (base = assetsBase()) => new URL(LAYOUT.nextpnr || 'vendor/nextpnr-spartan/gen/bundle.js', base).href;
 /** The URL of the Spartan-6's nextpnr bundle (nextpnr-himbaechel-spartan6, its chip databases in ../chipdb, #2288). */
-export const nextpnrS6BundleUrl = (base = assetsBase()) => new URL(LAYOUT.nextpnrS6 || 'vendor/nextpnr-spartan6/gen/bundle.js', base).href;
+const nextpnrS6BundleUrl = (base = assetsBase()) => new URL(LAYOUT.nextpnrS6 || 'vendor/nextpnr-spartan6/gen/bundle.js', base).href;
 /** The URL of the 7-series' nextpnr bundle (nextpnr-himbaechel-xc7, its chip databases in ../chipdb, #3143). */
 export const nextpnrXc7BundleUrl = (base = assetsBase()) => new URL(LAYOUT.nextpnrXc7 || 'vendor/nextpnr-xc7/gen/bundle.js', base).href;
 // the nextpnr bundle of a family of Silinx's nextpnr packages (its profile's layout: the 7-series'; the Spartan-6's, the Spartan-3E's)

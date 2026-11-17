@@ -14,7 +14,7 @@
 import { mountExprs } from './hdl-c-expr.js';
 import { mountStmts } from './hdl-c-stmt.js';
 
-export class CModelError extends Error {}
+class CModelError extends Error {}
 
 const ctype = (w) => (w <= 8 ? 'uint8_t' : w <= 16 ? 'uint16_t' : w <= 32 ? 'uint32_t' : 'uint64_t');
 const hex = (v, w) => `0x${BigInt.asUintN(Math.max(1, w), BigInt(v ?? 0n)).toString(16)}ULL`;

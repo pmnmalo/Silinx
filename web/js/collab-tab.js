@@ -61,13 +61,13 @@ function boxes() {
   return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks')), liveHere() ? liveBox() : null];
 }
 
-// the remote and the branch, the commands of a repository; none: Store Project in a GitHub Repository…, Open from GitHub Repository…
+// the remote and the branch, the commands of a repository; none: Open from GitHub Repository…, Store Project in a GitHub Repository…
 function repositoryBox(items, init, open) {
   const g = S.git;
   if (!g) {
     return box('collab-repo', 'Repository',
       hint(S.project ? 'The project is not in a git repository.' : 'No project open.'),
-      command({ ...init, disabled: !S.project }, 'project'), cmd(open));
+      cmd(open), command({ ...init, disabled: !S.project }, 'project'));   // (Open first, #4343)
   }
   const where = !g.upstream ? 'Not pushed yet' : null;
   return box('collab-repo', 'Repository',

@@ -3,8 +3,8 @@
 // Silinx's simulator evaluates it with (core/interp.js: evalE, evalBin, evalUn). Isomorphic ES module.
 import { bitpos } from './interp.js';
 
-export const CMP = new Set(['==', '!=', '===', '!==', '<', '<=', '>', '>=']);
-export const REDUCE = new Set(['&', '~&', '|', '~|', '^', '~^', '^~', 'nand', 'nor', 'xnor']);
+const CMP = new Set(['==', '!=', '===', '!==', '<', '<=', '>', '>=']);
+const REDUCE = new Set(['&', '~&', '|', '~|', '^', '~^', '^~', 'nand', 'nor', 'xnor']);
 
 /** { E, W, SG, ext, dynSlice, psLo, psLoRun } of hdlToC (G: its fields by signal, clock(), isArr, fail, hex, fnOf). */
 export function mountExprs(G) {

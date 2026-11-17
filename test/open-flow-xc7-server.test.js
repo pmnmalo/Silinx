@@ -5,8 +5,9 @@
 // writes: no warning, every clock at the board's 100 MHz by nextpnr's estimate, its LUTs, registers and frequency
 // reported and held to a table (#3147), the .bit read back as its part's; the build folder has no ISE file. The .bit
 // checked against nextpnr's FASM with no Vivado (#3145, readback.js and roundtrip.js, apart from the generator): its frames
-// the ones fasm2frames makes of the FASM, and read back into features no bit lost and none stray. A pin the package does
-// not have: Place & Route's failure, no bitstream.
+// the ones fasm2frames makes of the FASM, and read back into features no bit lost and none stray; its pins (pins.js) each
+// port's IOB at its XDC pin, with its direction and IO standard, and no other. A pin the package does not have: Place &
+// Route's failure, no bitstream.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -18,6 +19,8 @@ import { loadBitDbXc7 } from '../packages/silinx-fpga/src/node.js';
 import { readBitXc7 } from '../packages/silinx-fpga/src/fpga/xc7/bitstream.js';
 import { bitIndexXc7, readBitFramesXc7 } from '../packages/silinx-fpga/src/fpga/xc7/readback.js';
 import { referenceFrames, roundTrip } from '../packages/silinx-fpga/src/fpga/xc7/roundtrip.js';
+import { xdcPins, ioConfig, checkPins } from '../packages/silinx-fpga/src/fpga/xc7/pins.js';
+import { readXdc } from '../packages/silinx-fpga/src/xdc.js';
 import { XC7_DB_DIR } from '../packages/silinx-fpga/src/fpga/xc7/bitdb-node.js';
 import zlib from 'node:zlib';
 import { EXAMPLES, exampleProject, XC7_TARGETS } from './examples-lib.mjs';
@@ -75,6 +78,8 @@ const QUALITY = {
     pong: [251, 215, 107.42], stopwatch: [170, 207, 100.84], clock: [141, 164, 133.9], vga: [115, 58, 131.8],
     isqrt: [69, 87, 157.93], uart: [107, 142, 156.27], micro80: [157, 187, 106.19] },
 };
+// each example's pins (its ports with a pin in the XDC, a bit each), the same on both boards
+const PINS = { gates: 6, breadboard: 11, traffic: 24, blinky: 27, pong: 27, stopwatch: 26, clock: 27, vga: 16, isqrt: 23, uart: 24, micro80: 29 };
 const warnings = lines => lines.join('\n').split('\n').filter(l => /WARNING|ERROR/.test(l));
 
 for (const { board } of XC7_TARGETS) test(`every example on the ${board} through the 7-series' back end: no warning, its .bit, 100 MHz met by nextpnr's estimate, its LUTs, registers and frequency the table's`, async t => {
@@ -136,6 +141,10 @@ for (const { board } of XC7_TARGETS) test(`every example on the ${board} through
         assert.deepEqual([rt.lost, rt.stray, rt.unknown, rt.missing, rt.extra], [[], [], [], [], []], name);
         assert.deepEqual([rt.counts.aliases, rt.counts.added], [0, { required: 0, pudc: 0, stepdown: 0 }], name);
         assert.ok(rt.counts.pseudoPips > 0 && rt.counts.zeroEncodings > 0, `${name}: ${JSON.stringify(rt.counts)}`);
+        // its pins (#3145): each port's IOB at its XDC pin, its direction and IO standard the XDC's, no other IOB configured
+        const netlist = fs.readFileSync(path.join(dir, r.files.netlist), 'utf8');
+        const pins = xdcPins(readXdc(fs.readFileSync(path.join(dir, project.constraints), 'utf8')), netlist, project.top);
+        assert.deepEqual(checkPins(db.pins, pins, ioConfig(rt.features)), { ok: true, checked: PINS[name], errors: [] }, name);
         // (no ISE file in the build folder, the XDC's name kept)
         const build = fs.readdirSync(path.join(dir, 'build'));
         assert.ok(build.includes(path.basename(project.constraints)), build.join(' '));

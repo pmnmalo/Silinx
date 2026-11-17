@@ -196,8 +196,10 @@ CORS header), so the local server does (`server/kicad-libraries.js`):
 search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (their 73
 parts that behave as Silinx's ICs, and those drawn only on a DIP) and SparkFun's v10.0.0 parts on the 0.1 inch grid.
 Silinx hosts none of their files: the catalogue (`core/kicad-catalogue-data.js`, written by `scripts/kicad-catalogue.mjs`,
-run again to follow a new version) holds only where each part is (its library file's URL and SHA-256, its footprint's),
-what it is in Silinx and the symbols it extends. A click imports the part: only its symbol (and those it extends), each
+run again to follow a new version) holds where each part is (its library file's URL and SHA-256, its footprint's), what
+it is in Silinx and the symbols it extends. It also holds each SparkFun footprint's drawing, rounded to the grid, so a
+row's preview is the part as it will be drawn (#4346): an LED round and in its colour, a relay's box, a header's strip,
+a part drawn only on a DIP a DIP's body (CC-BY-4.0, SparkFun's; THIRD-PARTY-NOTICES.md). A click imports the part: only its symbol (and those it extends), each
 into a file of its own as KiCad 10's folders hold them (`parts/74xx.kicad_symdir/74HC00.kicad_sym`), with its footprint
 beside it and its origin written in it. Every file is checked against its SHA-256, and a file there already with the
 same text is kept. The local server fetches the catalogue's files only (kept for offline use; `SILINX_KICAD_OFFLINE`
@@ -342,9 +344,11 @@ What differs on the FPGA:
 
 - the clock is the board's (50 MHz on the Basys2), not the circuit's clock source's rate; a button is not debounced
   by the board (synchronise it with a clocked chip, as the example does);
-- a flip-flop with both an asynchronous preset and an asynchronous clear (7474, 7476, 74112) makes the open synthesis
-  warn ("Complex async reset", Yosys), even when its preset is tied high (#3975); the 74161, 74163, 74164 and 74194 have a
-  clear only; in Verilog the digital model of those flip-flops keeps its level when both are low and one is released
+- a flip-flop with both an asynchronous preset and an asynchronous clear (7474, 7476, 74112) is built with the controls
+  the circuit uses (#3975): one tied high (to the supply's +, or left open) is left out of its digital model (the
+  chip's generics `USE_PRE1`, `USE_CLR1`… false on its instance, the generated HDL's), so that a preset tied high gives a
+  flip-flop with a clear only; one whose preset and clear are both driven makes the open synthesis warn ("Complex async
+  reset", Yosys); the 74161, 74163, 74164 and 74194 have a clear only; in Verilog the digital model of those flip-flops keeps its level when both are low and one is released
   (an `always` block sees no release), as XST builds it, where the chip takes the one still low;
 - a board whose buttons or switches are active low (the Mimas V2) reads them inverted: a circuit has no generics
   (`core/board-generics.js`) to turn them;

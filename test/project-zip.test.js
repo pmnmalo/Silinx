@@ -70,3 +70,44 @@ test('#4276 exportProjectZip: a constraints file not written yet left out of the
   const u = await back('fresh_u');
   assert.deepEqual([u.project.constraints, u.missing, u.warnings], ['constraints/top.ucf', [], []]);
 });
+
+// #4288 regression: a new project's Silinx zip (its constraints file not written yet, its path in silinx.json) imported
+// back with no warning: the constraints path is not a file the project lists, not missing
+test('#4288 exportProjectZip silinx: a new project with no constraints file written imported back, nothing missing, no warnings', async () => {
+  await P.createProject({ name: 'freshs', board: 'basys2' });
+  await P.writeFile('freshs', 'src/top.vhd', 'entity top is end;\narchitecture a of top is begin end;\n');
+  await P.updateProject('freshs', pj => ({ ...pj, top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] }));
+  const x = await exportProjectZip(P, 'freshs', 'silinx');
+  assert.deepEqual(x.warnings, []);
+  assert.deepEqual((await readZip(x.zip, NODE_CODEC)).map(e => e.path).sort(), ['silinx.json', 'src/top.vhd']);
+  const b = await importProjectEntries(P, 'freshs_x', await gateZip(x.zip, NODE_CODEC), m => new Error(m));
+  assert.deepEqual([b.project.top, b.project.constraints, b.missing, b.warnings], ['top', 'constraints/top.ucf', [], []]);
+  assert.ok(!(await P.fileTree('freshs_x')).includes('constraints/top.ucf'));
+  // (a listed file not in the zip is still missing)
+  await P.updateProject('freshs', pj => ({ ...pj, files: [...pj.files, { path: 'src/gone.vhd', lang: 'vhdl', role: 'design' }] }));
+  const g = await importProjectEntries(P, 'freshs_g', await gateZip((await exportProjectZip(P, 'freshs', 'silinx')).zip, NODE_CODEC), m => new Error(m));
+  assert.deepEqual([g.missing, g.warnings], [['src/gone.vhd'], []]);
+});
+
+// #4356 regression: a constraints file not in the zip is missing, but the device's default (a new project's, not
+// written yet, #4288): constraints/top.ucf on a Spartan-3E, constraints/top.pcf on an iCE40
+test('#4356 importProjectEntries: a constraints file of its own not in the zip is missing; the device\'s default path is not', async () => {
+  const S3E = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
+  const ICE = { family: 'ice40', part: 'up5k', package: 'sg48', speed: '' };
+  const enc = s => new TextEncoder().encode(s);
+  let n = 0;
+  const imp = async (pj, more = []) => importProjectEntries(P, `cons${n++}`, gateEntries([{ path: 'silinx.json', data: enc(JSON.stringify({ name: 'c', top: '', files: [], ...pj })) }, ...more]), m => new Error(m));
+  for (const [pj, missing] of [
+    [{ device: S3E, constraints: 'constraints/board.ucf' }, ['constraints/board.ucf']],
+    [{ device: S3E, constraints: 'constraints/top.ucf' }, []],
+    [{ device: S3E, constraints: 'constraints/top.pcf' }, ['constraints/top.pcf']],
+    [{ device: ICE, constraints: 'constraints/top.pcf' }, []],
+    [{ device: ICE, constraints: 'constraints/top.ucf' }, ['constraints/top.ucf']],
+  ]) {
+    const r = await imp(pj);
+    assert.deepEqual([r.project.constraints, r.missing, r.warnings], [pj.constraints, missing, []], JSON.stringify(pj));
+  }
+  // (in the zip: not missing; listed among the files too: named once)
+  assert.deepEqual((await imp({ device: S3E, constraints: 'constraints/board.ucf' }, [{ path: 'constraints/board.ucf', data: enc('NET "a" LOC = "P11";\n') }])).missing, []);
+  assert.deepEqual((await imp({ device: S3E, constraints: 'constraints/board.ucf', files: [{ path: 'constraints/board.ucf', lang: 'ucf', role: 'constraints' }] })).missing, ['constraints/board.ucf']);
+});

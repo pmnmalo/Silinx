@@ -6,5 +6,5 @@ import { nextpnrIo } from './nextpnr-io.js';
 const np = nextpnrIo(() => import('@silinx/nextpnr-himbaechel-xc7'), 'runNextpnrHimbaechelXilinx');
 parentPort.on('message', async ({ args, files }) => {
   try { parentPort.postMessage({ files: await np.run(args, files, line => parentPort.postMessage({ line })) }); }
-  catch (e) { parentPort.postMessage({ error: e.message }); }
+  catch (e) { parentPort.postMessage({ error: e?.message ?? String(e) }); }   // (never undefined: the parent's success, #4260)
 });

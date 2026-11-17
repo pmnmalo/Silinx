@@ -4,15 +4,16 @@
 //   - the recorded results (test/xc7-vivado-comparison.json, the script's --update on the ISE runner's machine with
 //     Vivado ML Standard 2025.2), checked: every example on the Basys 3 and the Nexys A7; Vivado's own flow builds each
 //     one with the expected warnings, routed, its clock met, DRC clean; Silinx's netlist placed and routed by Vivado
-//     passes Vivado's DRC and write_bitstream, its clock met; Silinx's open flow within its bounds of Vivado's LUTs and
-//     frequency; the table in docs/TOOLCHAIN.md the results'.
+//     passes Vivado's DRC and write_bitstream, its clock met; Silinx's .bit read by Vivado's write_cfgmem (#3145) with no
+//     warning, when the run had it; Silinx's open flow within its bounds of Vivado's LUTs and frequency; the table in
+//     docs/TOOLCHAIN.md the results'.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { netTcl, runSh, netlistXdc, parseArgs, logWarnings, buildNumbers, silinxNumbers, mergeResults, comparisonTable, boardSummary, withTable, tableOf, RESULTS, DOC } from '../scripts/xc7-vivado-compare.mjs';
+import { netTcl, cfgmemTcl, cfgmemNumbers, runSh, netlistXdc, parseArgs, guardFailures, logWarnings, buildNumbers, silinxNumbers, mergeResults, comparisonTable, boardSummary, withTable, tableOf, RESULTS, DOC } from '../scripts/xc7-vivado-compare.mjs';
 import { EXAMPLES, XC7_TARGETS } from './examples-lib.mjs';
 import { VIVADO_WARNINGS, VIVADO_DRC } from './vivado-examples-config.mjs';
 
@@ -26,7 +27,13 @@ test('net.tcl: Silinx\'s netlist linked as it is (no opt_design), placed, routed
     'report_timing_summary -max_paths 10 -report_unconstrained -file ${top}_timing.rpt', 'write_bitstream -force ${top}.bit']) assert.ok(t.includes(r), r);
 });
 
-test('run.sh: each design\'s HDL then its netlist through Vivado (a stand-in), each exit code, the reports kept, the checkpoints not', () => {
+test('cfgmem.tcl: Silinx\'s .bit written as a flash image by write_cfgmem (SPIx1), nothing else', () => {
+  const t = cfgmemTcl();
+  assert.deepEqual(t.split('\n').filter(l => l && !l.startsWith('#')),
+    ['write_cfgmem -force -format mcs -size 16 -interface SPIx1 -loadbit {up 0x0 silinx.bit} -file silinx.mcs', 'puts "=== SILINX DONE ==="']);
+});
+
+test('run.sh: each design\'s HDL then its netlist through Vivado (a stand-in), then Silinx\'s .bit through write_cfgmem when it has one, each exit code, the reports kept, the checkpoints and images not', () => {
   const W = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-xc7v-test-'));
   try {
     const bin = path.join(W, 'bin');
@@ -34,7 +41,7 @@ test('run.sh: each design\'s HDL then its netlist through Vivado (a stand-in), e
     // the stand-in: writes a log and its reports where it runs (the net build: -tclargs <folder> <top>), a checkpoint too;
     // it fails on a design named bad
     fs.writeFileSync(path.join(bin, 'vivado'), `#!/bin/bash
-top=top; for a in "$@"; do case "$a" in gates|top|bad) top=$a;; esac; done
+top=top; for a in "$@"; do case "$a" in gates|top|bad) top=$a;; *cfgmem.tcl) echo mcs > silinx.mcs; echo x > silinx.prm;; esac; done
 echo "WARNING: [Synth 8-3917] stand-in" > vivado.log
 for f in _util.rpt _drc.rpt _route.rpt _timing.rpt .bit; do echo x > "$top$f"; done
 touch post_route.dcp; mkdir -p .Xil
@@ -50,8 +57,16 @@ touch post_route.dcp; mkdir -p .Xil
     }
     fs.writeFileSync(path.join(W, 'run.sh'), runSh());
     fs.writeFileSync(path.join(W, 'net.tcl'), netTcl());
+    fs.writeFileSync(path.join(W, 'cfgmem.tcl'), cfgmemTcl());
+    // (gates has Silinx's .bit; bad, as a run of before #3145, none)
+    fs.mkdirSync(path.join(W, 'designs', 'basys3-gates', 'bit'));
+    fs.writeFileSync(path.join(W, 'designs', 'basys3-gates', 'bit', 'silinx.bit'), 'bit');
     const out = execFileSync('bash', [path.join(W, 'run.sh'), W], { encoding: 'utf8', env: { ...process.env, VIVADO_SETTINGS: path.join(W, 'settings64.sh') } });
-    assert.deepEqual(out.trim().split('\n'), ['basys3-gates: hdl 0 net 0', 'nexys-a7-bad: hdl 1 net 1']);
+    assert.deepEqual(out.trim().split('\n'), ['basys3-gates: hdl 0 net 0 bit 0', 'nexys-a7-bad: hdl 1 net 1']);
+    assert.deepEqual(fs.readdirSync(path.join(W, 'results', 'basys3-gates', 'bit')).sort(), ['mcs.size', 'vivado.log']);
+    assert.equal(fs.readFileSync(path.join(W, 'results', 'basys3-gates', 'bit', 'mcs.size'), 'utf8').trim(), '4');
+    assert.deepEqual(fs.readdirSync(path.join(W, 'designs', 'basys3-gates', 'bit')).filter(f => /\.(mcs|prm)$|^\.Xil$/.test(f)), []);
+    assert.equal(fs.existsSync(path.join(W, 'results', 'nexys-a7-bad', 'bit')), false);
     assert.ok(fs.existsSync(path.join(W, 'done')));
     for (const k of ['hdl', 'net']) {
       assert.deepEqual(fs.readdirSync(path.join(W, 'results', 'basys3-gates', k)).sort(), ['gates.bit', 'gates_drc.rpt', 'gates_route.rpt', 'gates_timing.rpt', 'gates_util.rpt', 'vivado.log']);
@@ -74,6 +89,12 @@ test('logWarnings: Vivado\'s own warnings once each, sorted, the build\'s folder
   assert.deepEqual([buildNumbers('0', { ...reports, timing: { noConstraints: true, met: null } }, '').fmaxMHz, buildNumbers('0', { timing: { noConstraints: true } }, '').met], [null, null]);
   assert.deepEqual(buildNumbers('1', {}, log), { ok: false, error: 'Vivado exited with 1', warnings: logWarnings(log) });
   assert.equal(buildNumbers(undefined, {}, '').error, 'Vivado did not run');
+  // write_cfgmem on Silinx's .bit
+  const w = 'WARNING: [Writecfgmem 68-4] stand-in';
+  assert.deepEqual(cfgmemNumbers('0', 'INFO: [Writecfgmem 68-23] x', 4194304), { ok: true, mcs: 4194304, warnings: [] });
+  assert.deepEqual(cfgmemNumbers('0', w, null), { ok: true, mcs: null, warnings: [w] });
+  assert.deepEqual(cfgmemNumbers('1', w, null), { ok: false, error: 'Vivado exited with 1', warnings: [w] });
+  assert.equal(cfgmemNumbers(undefined, '', null).error, 'Vivado did not run');
 });
 
 test('netlistXdc: a pin of a one-bit port named as the netlist\'s scalar; a bus\'s bits and other lines as they were', () => {
@@ -92,6 +113,7 @@ test('parseArgs: the options checked, an unknown one or a missing value an error
   assert.deepEqual(parseArgs(['--collect', '--update']), { error: '--collect: a value is missing' });
   assert.deepEqual(parseArgs(['--collect', 'silinx-xc7v-x', '--detach']), { error: '--collect: no --detach nor --dry' });
   assert.deepEqual(parseArgs(['blinky']), { error: 'unknown option blinky' });
+  assert.deepEqual(parseArgs(['--guard', '--update']), { flags: new Set(['--guard', '--update']), values: {} });
 });
 
 test('silinxNumbers: the open flow\'s LUTs, its feed-throughs and LUT sites (#3160), registers, slices, frequency, warnings', () => {
@@ -116,9 +138,15 @@ test('mergeResults: a run\'s designs put in by board and in the examples\' order
   assert.equal(a.boards.basys3.pong.silinx.luts, 8);   // (the old one not changed)
   const t = comparisonTable(b).split('\n');
   assert.equal(t.length, 2 + 4);
-  assert.equal(t[3], '| Basys 3 | blinky | 6 (+2) | 5 | 4 | 3 / 3 | 2 / 1 | 200 | 220 | 250 | DPIP-1 |');
+  assert.equal(t[3], '| Basys 3 | blinky | 6 (+2) | 5 | 4 | 3 / 3 | 2 / 1 | 200 | 220 | 250 | DPIP-1 | – |');
   assert.ok(t[5].startsWith('| Nexys A7 | pong | 9 (+2) |'));
-  assert.ok(comparisonTable(mergeResults(null, { x: { ...design('basys3', 'gates', 1), netlist: { ok: false } } }, { image: 'i', examples })).endsWith('| failed |'));
+  assert.ok(comparisonTable(mergeResults(null, { x: { ...design('basys3', 'gates', 1), netlist: { ok: false } } }, { image: 'i', examples })).endsWith('| failed | – |'));
+  // write_cfgmem's column: ok, its warnings counted, failed; kept by the merge, none for a run of before #3145
+  const c = (cfgmem) => comparisonTable(mergeResults(null, { x: { ...design('basys3', 'gates', 1), cfgmem } }, { image: 'i', examples })).split('\n')[2];
+  assert.deepEqual([c({ ok: true, mcs: 9, warnings: [] }), c({ ok: true, mcs: 9, warnings: ['a', 'b'] }), c({ ok: false, error: 'x', warnings: [] })].map(l => l.split(' | ').at(-1)),
+    ['ok |', '2 warnings |', 'failed |']);
+  assert.equal(Object.hasOwn(b.boards.basys3.pong, 'cfgmem'), false);
+  assert.deepEqual(mergeResults(null, { x: { ...design('basys3', 'gates', 1), cfgmem: { ok: true, mcs: 9, warnings: [] } } }, { image: 'i', examples }).boards.basys3.gates.cfgmem, { ok: true, mcs: 9, warnings: [] });
   assert.deepEqual(boardSummary(b.boards.basys3), { luts: 16, lutSites: 22, netlistLuts: 15, vivadoLuts: 12, fmaxRatio: 0.8 });
   // the page's table between its markers
   const doc = 'a\n<!-- xc7-vivado-comparison: begin (scripts/xc7-vivado-compare.mjs --update) -->\nold\n<!-- xc7-vivado-comparison: end -->\nb\n';
@@ -127,6 +155,17 @@ test('mergeResults: a run\'s designs put in by board and in the examples\' order
   assert.ok(d.startsWith('a\n') && d.endsWith('end -->\nb\n'));
   assert.equal(withTable(d, b), d);
   assert.throws(() => withTable('no markers', b), /no <!-- xc7-vivado-comparison/);
+});
+
+test('guardFailures (--guard, #3834): a build that passed in the recorded results and fails now; one failing before, a new design, a passing one not', () => {
+  const examples = ['gates', 'blinky', 'pong'];
+  const old = mergeResults(null, { a: design('basys3', 'gates', 1), b: design('basys3', 'blinky', 2), c: { ...design('basys3', 'pong', 3), netlist: { ok: false, error: 'Vivado exited with 1' } } }, { image: 'i', examples });
+  const fail = (d, k) => ({ ...d, [k]: { ok: false, error: 'Vivado exited with 137', warnings: [] } });
+  assert.deepEqual(guardFailures(old, { a: design('basys3', 'gates', 1), b: design('basys3', 'blinky', 2) }), []);
+  assert.deepEqual(guardFailures(old, { a: fail(design('basys3', 'gates', 1), 'vivado'), b: fail(fail(design('basys3', 'blinky', 2), 'netlist'), 'cfgmem'),
+    c: fail(design('basys3', 'pong', 3), 'netlist'), d: fail(design('nexys-a7', 'gates', 1), 'vivado') }),
+  ['basys3/gates vivado: Vivado exited with 137', 'basys3/blinky netlist: Vivado exited with 137']);
+  assert.deepEqual(guardFailures(null, { a: fail(design('basys3', 'gates', 1), 'vivado') }), []);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -158,7 +197,7 @@ for (const { board } of XC7_TARGETS) test(`the recorded comparison with Vivado o
   const ex = results.boards[board];
   assert.deepEqual(Object.keys(ex), EXAMPLES);
   assert.equal(results.parts[board], { basys3: 'xc7a35tcpg236-1', 'nexys-a7': 'xc7a100tcsg324-1' }[board]);
-  for (const [name, { silinx: s, vivado: v, netlist: n }] of Object.entries(ex)) {
+  for (const [name, { silinx: s, vivado: v, netlist: n, cfgmem: c }] of Object.entries(ex)) {
     const clocked = name !== 'gates';
     // Silinx's open flow: no warning, its clock met (nextpnr's estimate: 100 MHz, stopwatch with the best of 3 seeds, #3875),
     // a .bit (compressed as the board's XDC asks, #3876)
@@ -179,6 +218,8 @@ for (const { board } of XC7_TARGETS) test(`the recorded comparison with Vivado o
     assert.deepEqual([n.routed, n.met, n.drcErrors], [true, clocked ? true : null, 0], name);
     assert.deepEqual(n.drc, NETLIST_DRC(name), name);
     assert.ok(n.bit > 1e5, name);
+    // Silinx's .bit read by Vivado's write_cfgmem (#3145; the runs of before it have none): no error, no warning, its image
+    if (c) assert.deepEqual([c.ok, c.warnings, c.mcs > s.bit], [true, [], true], `${name}: ${c.error}`);
     // the same registers and DSPs both ways (the netlist's are Silinx's: the same count)
     assert.deepEqual([n.regs, n.dsp], [s.regs, s.dsp], name);
     // the bounds

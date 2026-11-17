@@ -16,10 +16,10 @@ import { simulate } from './compile.js';
 import { f32Bits, f64Bits } from './c-dataflow-float.js';
 import { axiBfm } from './c-axi-bfm.js';
 
-export const MAX_CYCLES = 100000;
+const MAX_CYCLES = 100000;
 /** A call's limit of cycles (#1899): maxCycles, or more, as many as the steps of its C simulation: a design that does
  *  much work in a call (a matrix product's 65536 multiplications) ends it, a call that never ends stops there. */
-export const callCycles = (call, maxCycles = MAX_CYCLES) => Math.max(maxCycles, call?.steps ?? 0);
+const callCycles = (call, maxCycles = MAX_CYCLES) => Math.max(maxCycles, call?.steps ?? 0);
 const mask = (w) => (1n << BigInt(w)) - 1n;
 // (a float's value: its IEEE bits, as its port holds them, #1768)
 const B = (v, w) => (typeof v === 'number' ? (w > 32 ? f64Bits(v) : f32Bits(v)) : BigInt(v)) & mask(w);
@@ -48,7 +48,7 @@ function bankCalls(gen, calls) {
 }
 
 /** The calls with the values of each stream and memory of structs, its words, from its members' (#1668). */
-export function wordCalls(gen, calls0) {
+function wordCalls(gen, calls0) {
   // (a pointer or an array with ap_fifo or ap_hs, #1901: its values the C's, what it reads and what it leaves)
   const ptrs = (gen.fifos || []).filter((f) => f.ptr);
   const banked = bankCalls(gen, calls0);

@@ -18,11 +18,11 @@ test('third-party notices are up to date with the installed production dependenc
   assert.match(out, /up to date \(\d+ components\)/);
 });
 
-test('every component has a known licence and its full text; the editor\'s modules (CodeMirror 6), elkjs and the adepttool port are marked standalone', () => {
+test('every component has a known licence and its full text; the editor\'s modules (CodeMirror 6), elkjs, the adepttool port and SparkFun\'s drawings (#4346) are marked standalone', () => {
   const md = fs.readFileSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'), 'utf8');
   assert.ok(THIRD_PARTY.length > 10);
   for (const c of THIRD_PARTY) {
-    assert.match(c.license, /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|EPL-2\.0 OR GPL-3\.0-or-later|LGPL-2\.1|CC0-1\.0)$/, `${c.name}: licence ${c.license}`);
+    assert.match(c.license, /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|EPL-2\.0 OR GPL-3\.0-or-later|LGPL-2\.1|CC0-1\.0|CC-BY-4\.0)$/, `${c.name}: licence ${c.license}`);
     const sec = new RegExp(`## ${c.name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')} ${c.version} — [^\\n]*\\n\\n[^\\n]*\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``).exec(md);
     assert.ok(sec, `${c.name} has a section`);
     assert.ok(sec[1].length > 200 && !/no licence file/.test(sec[1]), `${c.name}: the licence text`);
@@ -31,7 +31,9 @@ test('every component has a known licence and its full text; the editor\'s modul
   const cm = importMapPackages();
   assert.ok(['@codemirror/state', '@codemirror/view', '@codemirror/lint', '@codemirror/legacy-modes', 'style-mod'].every(p => cm.includes(p)), cm.join(', '));
   assert.deepEqual(THIRD_PARTY.filter(c => c.standalone).map(c => `${c.name}:${c.license}`).sort(),
-    ['adepttool:MIT', 'elkjs:EPL-2.0 OR GPL-3.0-or-later', ...cm.map(p => `${p}:MIT`)].sort());
+    ['adepttool:MIT', 'elkjs:EPL-2.0 OR GPL-3.0-or-later', 'SparkFun-KiCad-Libraries:CC-BY-4.0', ...cm.map(p => `${p}:MIT`)].sort());
+  // (the KiCad catalogue's previews, #4346: drawings derived from SparkFun's footprints, CC-BY-4.0)
+  assert.match(md, /## SparkFun-KiCad-Libraries v10\.0\.0 — CC-BY-4\.0[\s\S]*Attribution 4\.0 International[\s\S]*By SparkFun Electronics\. core\/kicad-catalogue-data\.js/);
   assert.match(md, /source code of elkjs \(EPL-2\.0 OR GPL-3\.0-or-later\) is available at https:\/\/github\.com\/kieler\/elkjs/);
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   for (const d of Object.keys(pkg.dependencies)) assert.ok(THIRD_PARTY.some(c => c.name === d), `direct dependency ${d} listed`);

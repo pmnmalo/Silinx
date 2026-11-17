@@ -126,7 +126,11 @@ uiTest('#3195 Open from GitHub Repository…, the marks, Commit…, Push and Pul
   await page.menu('File', 'Push to GitHub');
   await page.waitConsole(/ERROR: git push: rejected by GitHub \(fetch first\)\nHint: GitHub has commits that this project does not: Pull first, then Push again\./);
   await page.menu('File', 'Pull from GitHub');
-  await page.waitConsole(/ERROR: git pull: a conflict in src\/sevenseg\.v: nothing was pulled, the project's files are as they were\nHint: The same lines changed here and on GitHub\./);
+  await page.waitConsole(/ERROR: git pull: a conflict in src\/sevenseg\.v: nothing was pulled, the project's files are as they were\nHint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again\./);
+  // (the merge view opens, #4214: cancelled, nothing pulled)
+  await page.waitFor(() => !!document.querySelector('.merge-view .merge-choice[data-id=h1]'), [], { what: 'the merge view' });
+  await page.click('.merge-bar [data-cmd=cancel]');
+  await page.waitFor(() => !document.querySelector('.merge-view'), [], { what: 'the merge view closed' });
   assert.equal(await readWs(env, 'lab1', 'src/sevenseg.v'), '// mine\n');
   // History…: the commits, the newest first; a file of the first opens as it was, read only, the notice at the right end
   // of its toolbar
@@ -191,7 +195,7 @@ uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx inte
   assert.deepEqual(warnings(page), []);
 });
 
-// (#3534) Store Project in a GitHub Repository… on the Start page (before Open from GitHub Repository…, the group's last, #3716) and in
+// (#3534) Store Project in a GitHub Repository… on the Start page (after Open from GitHub Repository…, the group's last, #4343) and in
 // the Design tree's project and device menus (after Share Project…, before the Git submenu): shown for a project with
 // no repository, the Start page's disabled with no project open, the File menu's dialog run from either; gone from
 // both once the project is a repository; never Sign in with GitHub… (the browser edition's); in Portuguese. Both
@@ -211,7 +215,7 @@ uiTest('#3534 Store Project in a GitHub Repository… on the Start page and in t
   await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Open from GitHub Repository…'), [], { what: 'the Start page' });
   // no project open: disabled, as the exports
   let cmds = await startCommands(page);
-  assert.deepEqual(cmds.slice(cmds.indexOf('Store Project in a GitHub Repository… (disabled)')), ['Store Project in a GitHub Repository… (disabled)', 'Open from GitHub Repository…'], cmds.join(' | '));
+  assert.deepEqual(cmds.slice(cmds.indexOf('Open from GitHub Repository…')), ['Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)'], cmds.join(' | '));
   assert.ok(!cmds.some((c) => c.startsWith('Sign in with GitHub')), cmds.join(' | '));
   await page.eval(async () => { const { api } = await import('/js/api.js'); await api.createProject({ name: 'startgit', template: 'gates' }); });
   await page.openProject('startgit');

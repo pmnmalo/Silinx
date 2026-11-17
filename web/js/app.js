@@ -702,7 +702,8 @@ function selectHierarchyPath(path) {
 }
 
 // wanted: asked again once summary.js is loaded (its first load may take a while: #4021), the summary opened only if
-// it still is (the Tasks layout's Implement brought forward: still in front)
+// it still is (the Tasks layout's Implement brought forward: still in front); resolved once the summary is drawn with the
+// reports as they are now (#4287: not its drawing of before, from the project's opening)
 export async function openSummary({ background = false, wanted } = {}) {
   const was = S.active;
   const { mountSummary } = await import('./summary.js');
@@ -711,10 +712,11 @@ export async function openSummary({ background = false, wanted } = {}) {
   // the summary opened behind it, not over it (#4021: over the UCF just opened, a simulation just started)
   const keep = S.active && S.active !== was && S.active.id !== 'summary' ? S.active : null;
   const old = findDoc('summary');
-  if (keep && old) { old.refresh?.(); return; }
+  if (keep && old) { await old.refresh?.(); return; }
   const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el) });
-  d.refresh?.();
+  const drawn = d.refresh?.();
   if (keep && S.docs.includes(keep)) activateDoc(keep);
+  await drawn;
 }
 export function refreshSummary() { const d = findDoc('summary'); d?.refresh?.(); }
 
@@ -888,7 +890,7 @@ async function boot() {
   splitter($('h-split'), $('console-wrap'), { dir: 'v', min: 60, max: 700, invert: true, storageKey: 'xl.consoleH' });
   initDrawer();
   document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('click', () => { leftTabClicked(t.dataset.page, document.querySelector('#left-tabs .tab.active')?.dataset.page); S.leftChosen = t.dataset.page; showLeftPage(t.dataset.page); }));
-  // (no project, no tabs: the Start page only; a project opened brings them back on the one last chosen, #4257)
+  // (no project, the Start tab alone: its page only; a project opened brings the others back on the one last chosen, #4257, #4322)
   addEventListener('silinx:project-opened', () => { if (S.leftPage === 'start' && S.leftChosen && S.leftChosen !== 'start') showLeftPage(S.leftChosen); });
   // (the Teaching page's commands of a project enabled or disabled with it, #3533)
   for (const ev of ['silinx:project-opened', 'silinx:project-closed']) addEventListener(ev, () => renderTeachingPage());

@@ -110,6 +110,9 @@ export function yosysCell(name, ports) {
   return { name: `${full[0]}${m[3] || ''}`, tie };
 }
 
+// the libraries whose primitives Yosys knows as cells (an instance of one stays an instance)
+const CELL_LIBS = new Set(['<silinx>/unisim.vhd', '<silinx>/gowin.vhd', '<silinx>/ice40.vhd', '<silinx>/ecp5.vhd']);
+
 export function toVerilog(design, { name, tables = true, simprim = null, formal = false } = {}) {
   let shiftMems = Object.assign(new Set(), { srcs: new Set() });   // the arrays that are shift chains (findShiftMems), their tap wires
   const tapWires = new Map();
@@ -130,7 +133,7 @@ export function toVerilog(design, { name, tables = true, simprim = null, formal 
 
   // ---------------- primitives instantiated by name
   // An instance of a module of Silinx's own UNISIM library (core/unisim.js, file <silinx>/…) is a
-  // Xilinx primitive (or a Gowin one, gowin-prims.js, #3498): Yosys knows it as a cell, so it stays an instance, with the generics the
+  // Xilinx primitive (or a Gowin one, gowin-prims.js, #3498, or an iCE40 or ECP5 one, ice40-prims.js, ecp5-prims.js, #2299): Yosys knows it as a cell, so it stays an instance, with the generics the
   // design gave it. Its simulation model (signals, processes, sub-instances) is left out; only
   // its port signals remain, with the processes that drive its inputs from their actuals.
   const prims = [], skipSig = new Set(), skipProc = new Set();
@@ -138,7 +141,7 @@ export function toVerilog(design, { name, tables = true, simprim = null, formal 
   (function walk(inst) {
     for (const c of inst.children || []) {
       if (!String(c.file || '').startsWith('<silinx>/')) { walk(c); continue; }
-      if (c.file !== '<silinx>/unisim.vhd' && c.file !== '<silinx>/gowin.vhd' && !(simprim && c.file === '<silinx>/simprim.vhd')) fail(`${c.module} (${c.path}): the primitives of a post-implementation netlist (${c.file}) cannot be synthesized`, c, c.file);
+      if (!CELL_LIBS.has(c.file) && !(simprim && c.file === '<silinx>/simprim.vhd')) fail(`${c.module} (${c.path}): the primitives of a post-implementation netlist (${c.file}) cannot be synthesized`, c, c.file);
       const portSigs = new Set(c.ports.map(pt => pt.sig));
       const inside = [];
       (function all(i) { inside.push(i); (i.children || []).forEach(all); })(c);

@@ -152,6 +152,8 @@ export async function runFlow(spec, io) {
     io, spec, log, netlist: () => netlist, packed: () => impl.packed?.() ?? null, packsAtPar: () => !!impl.packsAtPar, report,
     routedOrEarlier: (...a) => impl.routedOrEarlier(...a), routedText: () => impl.routedText(), step, synth: () => synth, top,
     placeRouteNetlist: (...a) => (impl.placeRouteNetlist ? impl.placeRouteNetlist(...a) : Promise.reject(new StepError(`no Place & Route of another netlist for the ${spec.family}`))),
+    // (the family's own synthesis of the models' design: the iCE40's, ECP5's and Gowin's, #2299)
+    synthesizeModel: input => backend.synth(input, { family: spec.family, run: io.yosys, effort: spec.synthEffort || 'high' }),
     constraints
   });
 

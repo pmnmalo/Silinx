@@ -96,7 +96,8 @@ export function mountNextpnrS6(ctx) {
       try { r = await seedOf(seed); } catch (e) {
         if (!e.nextpnr) throw e;
         failed ||= e;
-        log(`nextpnr, seed ${seed}: ${e.message}${e.list[0] ? ` (${e.list[0].replace(/^ERROR:\s*/, '').replace(/\.$/, '')})` : ''}.`);
+        const why = e.list[0]?.replace(/^ERROR:\s*/, '').replace(/\.$/, '');   // (unless the message says it, #4260)
+        log(`nextpnr, seed ${seed}: ${e.message}${why && !e.message.includes(why) ? ` (${why})` : ''}.`);
         continue;
       }
       log(`nextpnr, seed ${seed}: ${r.period ? `minimum period ${r.period.toFixed(3)} ns` : 'no clocked paths'}.`);

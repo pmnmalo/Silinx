@@ -52,6 +52,12 @@ export function verilogIc(L, name, d) {
 }
 
 // ------------------------------------------------------------------ an MSI IC (core/circuit-msi.js)
+// a flip-flop's asynchronous controls, each a generic its digital model reads (#3975, core/circuit-seq.js): true, the
+// control used (the simulation's model always uses it); VHDL's generic clause, Verilog's parameters (before its ports)
+function controlGenerics(d, V) {
+  if (!d.controls) return [];
+  return V ? [`  generic (${d.controls.map((c) => c.generic).join(', ')} : boolean := true);`] : [`#(parameter ${d.controls.map((c) => `${c.generic} = 1`).join(', ')}) `];
+}
 // its inputs read (rd) into i_<port>, an X among them making every output X, else its body (the IC's own, its outputs
 // o_<port>); each output driven after its delay while powered (an open collector one: a 0 or nothing)
 const CMOS_RD = ['  -- a CMOS input reads a floating (Z) level unknown (X)', '  function rd(s : std_logic) return std_logic is', '  begin', '    return to_x01(s);', '  end function rd;'];
@@ -60,7 +66,7 @@ const TTL_RD = ['  -- a 74LS input reads a floating (Z) level high', '  function
 function vhdlMsi(L, name, d) {
   const ins = d.pins.filter((p) => p.dir === 'in'), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, '  port (');
+  L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, ...controlGenerics(d, true), '  port (');
   L.push(icPorts(d).map((p) => `    ${pinPort(p)} : ${isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
   L.push(`architecture model of ${name} is`, ...(d.family === 'cmos' ? CMOS_RD : TTL_RD), '  -- whether a level is unknown', '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    for k in v\'range loop',
     "      if v(k) /= '0' and v(k) /= '1' then return true; end if;", '    end loop;', '    return false;', '  end function anyx;');
@@ -77,7 +83,7 @@ function vhdlMsi(L, name, d) {
 function verilogMsi(L, name, d) {
   const ins = d.pins.filter((p) => p.dir === 'in'), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} (${icPorts(d).map((p) => `${isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`,
+  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} ${controlGenerics(d, false).join('')}(${icPorts(d).map((p) => `${isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`,
     ...(d.family === 'cmos' ? ['  // a CMOS input reads a floating (z) level unknown (x)', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'bx : s;", '  endfunction']
       : ['  // a 74LS input reads a floating (z) level high', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'b1 : s;", '  endfunction']));
   if (outs.some((p) => p.dir === 'oc')) L.push('  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction');
@@ -128,7 +134,7 @@ export function vhdlDigital(L, name, d) {
   L.push(`architecture digital of ${name} is`, '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    return false;', '  end function anyx;',
     `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`);
   // (a sequential IC's body reads its ports themselves: no copy of its clock, whose net synthesis then names after it)
-  if (d.seq) L.push(...d.vhdl.decl.map((v) => `  ${portsRead(v.replace(/ := (\(others => 'X'\)|'X')/, ''), ins)}`), 'begin', ...d.vhdl.body.map((l) => `  ${portsRead(driven(l, d, true), ins)}`));
+  if (d.seq) L.push(...d.vhdl.decl.map((v) => `  ${portsRead(v.replace(/ := (\(others => 'X'\)|'X')/, ''), ins)}`), 'begin', ...(d.vhdl.digital ?? d.vhdl.body).map((l) => `  ${portsRead(driven(l, d, true), ins)}`));
   else L.push('begin', `  process (${ins.map(pinPort).join(', ')})`, `    variable ${ins.map((p) => `i_${pinPort(p)}`).join(', ')} : std_logic;`, ...(d.vars?.vhdl || []).map((v) => `    ${v}`),
     '  begin', ...ins.map((p) => `    i_${pinPort(p)} := ${pinPort(p)};`), ...d.vhdl.map((l) => `    ${l}`), '  end process;');
   for (const p of outs) L.push(`  ${pinPort(p)} <= o_${pinPort(p)} and ${vcc} and not ${gnd};`);
@@ -140,7 +146,7 @@ export function verilogDigital(d) {
   const ins = d.pins.filter(isPort), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
   const L = [];
-  if (d.seq) L.push(`  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`, ...d.verilog.decl.map((v) => `  ${portsRead(v.replace(/ = (\d+'[bh]x+|1'bx)/g, ''), ins)}`), ...d.verilog.body.map((l) => `  ${portsRead(driven(l, d, false), ins)}`));
+  if (d.seq) L.push(`  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`, ...d.verilog.decl.map((v) => `  ${portsRead(v.replace(/ = (\d+'[bh]x+|1'bx)/g, ''), ins)}`), ...(d.verilog.digital ?? d.verilog.body).map((l) => `  ${portsRead(driven(l, d, false), ins)}`));
   else L.push(...ins.map((p) => `  wire i_${pinPort(p)} = ${pinPort(p)};`), `  reg ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`, '  always @* begin', ...d.verilog.map((l) => `    ${l}`), '  end');
   for (const p of outs) L.push(`  assign ${pinPort(p)} = o_${pinPort(p)} & ${vcc} & ~${gnd};`);
   return L;

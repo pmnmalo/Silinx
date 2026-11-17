@@ -118,6 +118,7 @@ test('the rPLL\'s and the oscillator\'s limits, refused as Apicula refuses them;
   // through gowin_pack: the oscillator of the GW1NZ-1 not ported, a primitive not ported refused by name
   const routed = JSON.parse((await build('osc2')).files['open/routed.json']);
   assert.throws(() => gowinPack(routed, db, 'GW1NZ-1'), /^Error: gowin_pack: the oscillator of the GW1NZ-1 is not supported yet \(u\)$/);
-  routed.modules.top.cells.u.type = 'CLKDIV';
-  assert.throws(() => gowinPack(routed, db), /^Error: gowin_pack: the primitive CLKDIV \(u\) is not supported yet$/);
+  // (CLKDIV ported since #4333: a PLL the GW1N-9C has not)
+  routed.modules.top.cells.u.type = 'PLLVR';
+  assert.throws(() => gowinPack(routed, db), /^Error: gowin_pack: the primitive PLLVR \(u\) is not supported yet$/);
 });

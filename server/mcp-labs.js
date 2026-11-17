@@ -11,7 +11,7 @@ import { PROGRESS_FILE, checkLines, checkStep, isLabFile, labFileLines, labProgr
 const ACTIONS = ['list', 'show', 'check', 'restart', 'validate'];
 
 /** The project `name` as the lab checks read it (core/labs-check.js `io`). */
-export function projectIo(name) {
+function projectIo(name) {
   return {
     project: () => P.readProject(name),
     files: () => P.fileTree(name),
@@ -23,7 +23,7 @@ export function projectIo(name) {
 
 /** The last run's build/reports.json (null: none) and whether it is newer than every file the implementation reads (the
  *  project's files but its test benches, its build/ and labs/ folders): { reports, current }. */
-export async function lastRun(name) {
+async function lastRun(name) {
   const { projectReports } = await import('./impl-routes.js');
   const r = await projectReports(name).catch(() => null);
   if (!r?.summary) return { reports: null, current: false };

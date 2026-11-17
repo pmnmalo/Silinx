@@ -18,7 +18,7 @@ import { MAX_MEMORY_BITS, memoryMessage } from './c-limits.js';
 import { sizeofBytes } from './c-sizeof.js';
 
 const MAX_UNROLL = 65536;   // iterations unrolled in all, at most
-export const NOT_COMB = '(a sequential module: not supported yet, #1526)';
+const NOT_COMB = '(a sequential module: not supported yet, #1526)';
 
 export class Stop extends Error {}
 

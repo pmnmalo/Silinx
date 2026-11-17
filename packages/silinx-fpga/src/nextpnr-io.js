@@ -13,26 +13,32 @@ export async function loadChipdb(np, part, log, StepError) {
 }
 
 /** A micro-architecture's of io.nextpnr: { run(args, files, onLine) -> files, chipdb(part) -> Uint8Array }; load() resolves the package's module,
- *  whose function `runner` runs nextpnr. */
+ *  whose function `runner` runs nextpnr. A run that fails rejects with an Error: the package's Exit its exit status; an exception
+ *  with no message (a WebAssembly.Exception: nextpnr stopping on an ERROR: line, #4260) nextpnr's last ERROR: line. */
 export function nextpnrIo(load, runner = 'runNextpnrHimbaechelSpartan3e') {
   let pkg = null;
   const mod = async () => (pkg ||= await load());
   return {
     async run(args, files, onLine = () => {}) {
       const { [runner]: runNextpnr, Exit } = await mod();
-      let rest = '';
+      let rest = '', error = null;   // (nextpnr's last ERROR: line)
+      const line = l => { if (/^ERROR:/.test(l)) error = l; onLine(l); };
       const out = bytes => {
-        if (bytes === null) { if (rest) onLine(rest); rest = ''; return; }
+        if (bytes === null) { if (rest) line(rest); rest = ''; return; }
         const lines = (rest + new TextDecoder().decode(bytes)).split('\n');
         rest = lines.pop();
-        for (const l of lines) onLine(l);
+        for (const l of lines) line(l);
       };
       try {
         return await runNextpnr(args, files, { stdout: out, stderr: out, decodeASCII: false, fetchProgress: () => {} });
       } catch (e) {
-        throw e instanceof Exit ? new Error(`nextpnr exited with code ${e.code}`) : e;
+        if (rest) line(rest);   // (the last line, without its newline)
+        rest = '';
+        if (e instanceof Exit) throw new Error(`nextpnr exited with code ${e.code}`);
+        if (typeof e?.message === 'string') throw e;
+        throw new Error(`nextpnr stopped on an error${error ? `: ${error.replace(/^ERROR:\s*/, '')}` : ''}`, { cause: e });
       } finally {
-        if (rest) onLine(rest);   // (the last line, without its newline)
+        if (rest) onLine(rest);
       }
     },
     chipdb: async part => (await mod()).chipdb(part),

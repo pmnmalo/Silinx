@@ -177,7 +177,8 @@ test('Quality workflow: the builds kept on the runner, a deadline and a build\'s
   const src = fs.readFileSync(path.join(ROOT, 'test/designs-corpus/compare-ise.mjs'), 'utf8');
   assert.match(wf, /compare-ise\.mjs "\$QUALITY_PROJECTS" --jobs 1 --ise-jobs 1 --serial --guard \\\n\s+--cache "\$HOME\/silinx-cache\/quality\/builds" --deadline \$\(\(START \+ DEADLINE_MINUTES \* 60\)\) --build-timeout "\$BUILD_TIMEOUT_MINUTES"/);
   // the deadline and the longest build inside the job's timeout
-  const num = k => +new RegExp(`${k}: (\\d+)`).exec(wf)[1];
+  // (the compare job's: the xc7 job before it has its own timeout, #3834)
+  const num = k => +new RegExp(`${k}: (\\d+)`).exec(wf.slice(wf.indexOf('\n  compare:\n')))[1];
   assert.ok(num('DEADLINE_MINUTES') + num('BUILD_TIMEOUT_MINUTES') + 20 <= num('timeout-minutes'), 'a build started at the deadline ends before the timeout');
   // the pending commit the compare script marks, which the workflow resumes only when it is one of main's, checked by git
   // after main's checkout (no token, no other ref on the self-hosted runner: workflows.test.js), and its projects kept

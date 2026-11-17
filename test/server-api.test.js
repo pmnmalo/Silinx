@@ -98,7 +98,7 @@ test('projects: create (empty + template), list, read with file tree, write, del
   // (modified: when it last changed, its newest file's date, the build's outputs aside, #1156)
   const newest = (dir) => Math.max(0, ...fss.readdirSync(dir, { withFileTypes: true }).filter((e) => e.name !== 'build' && !e.name.startsWith('.'))
     .map((e) => (e.isDirectory() ? newest(path.join(dir, e.name)) : fss.statSync(path.join(dir, e.name)).mtimeMs)));
-  assert.deepEqual(r.body[1], { name: 'Blink', device: { family: 'spartan3e', part: 'xc3s100e', package: 'cp132', speed: '-4' }, top: 'top', board: null, modified: Math.round(newest(P.projectDir('Blink'))) });
+  assert.deepEqual(r.body[1], { name: 'Blink', device: { family: 'spartan3e', part: 'xc3s100e', package: 'cp132', speed: '-4' }, top: 'top', board: null, modified: Math.round(newest(P.projectDir('Blink'))), stored: 'folder', github: null });   // (where it is kept, #4314)
   const later = new Date(Date.now() + 60e3), latest = new Date(Date.now() + 120e3);
   await fs.writeFile(path.join(P.projectDir('Blink'), 'src', 'later.vhd'), '-- x');
   await fs.utimes(path.join(P.projectDir('Blink'), 'src', 'later.vhd'), later, later);
@@ -942,7 +942,7 @@ test('zip: Silinx export keeps silinx.json and every file; import restores board
   assert.equal(imp.body.project.board, 'nexys2');
   assert.deepEqual(imp.body.project.stimuli, { a: [1, 0] });
   assert.equal(imp.body.project.preferredLanguage, 'verilog');
-  assert.deepEqual(imp.body.missing, ['constraints/top.ucf']);   // the default UCF was never written
+  assert.deepEqual(imp.body.missing, []);   // the default UCF was never written: not missing (#4288)
   assert.deepEqual(imp.body.extra.sort(), ['src/fsm.asm.json', 'src/top.v']);
   assert.equal((await call('GET', '/projects/Nope/export.zip')).status, 404);
 });

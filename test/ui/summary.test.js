@@ -2,7 +2,7 @@
 // the device model (packages/silinx-fpga/src/resources.js, #790), the family's own and their counts, in English and Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, makeProject, writeWs } from './harness.js';
+import { setupUi, uiTest, makeProject, writeWs, chromeOnly, tick } from './harness.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -216,3 +216,52 @@ uiTest('#2300 Design Summary of an iCE40 run: nextpnr\'s resources, its timing (
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   }
 });
+
+// #4287: the summary drawn at the project's opening (no reports yet) is not what Design Summary shows after a run: openSummary
+// resolved once the summary is drawn with the reports as they are then, and a refresh asked before it, answered after it
+// (its reports older), drawn over nothing. The reports' requests held (CDP Fetch) and answered out of order.
+uiTest('#4287 Design Summary: opened, its reports as they are now once it resolves; an older refresh answered later drawn over nothing; in Portuguese too', E, async (page) => {
+  await makeProject(env, { name: 'LateReports', template: 'blinky', device: { family: 'ice40', part: 'ice40up5k', package: 'sg48', speed: '' }, synthTool: 'silinx' });
+  await page.openProject('LateReports');
+  const none = [['Report Name', 'Status'], ['Synthesis Report (Yosys)', ''], ['Routed Design (ASC)', ''], ['Static Timing Report', '']];
+  // (a table's rows read until they are `rows`)
+  const shows = async (title, rows) => {
+    for (let i = 0; i < 400 && JSON.stringify(await page.eval(TABLE, title)) !== JSON.stringify(rows); i++) await tick(25);
+    assert.deepEqual(await page.eval(TABLE, title), rows);
+  };
+  await shows('Detailed Reports', none);
+  await tick(300);   // (the opening's refreshes answered)
+  const held = [];
+  const off = page.cdp.on((m) => { if (m.sessionId === page.sessionId && m.method === 'Fetch.requestPaused') held.push(m.params.requestId); });
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/projects/LateReports/reports', requestStage: 'Request' }] });
+  const until = async (f, what) => { for (let i = 0; i < 400 && !f(); i++) await tick(25); assert.ok(f(), what); };
+  try {
+    // a refresh asked before the run's reports are written (as a run's, or a project's watch): its answer held
+    await page.eval(() => { window.SilinxApp.findDoc('summary').refresh(); });
+    await until(() => held.length === 1, 'the older refresh held');
+    await writeWs(env, 'LateReports', 'build/reports.json', ICE40_REPORTS);
+    await page.eval(() => { window.opened4287 = false; window.SilinxApp.openSummary().then(() => { window.opened4287 = true; }); });
+    await until(() => held.length >= 2, 'Design Summary\'s refresh held');
+    await tick(200);
+    assert.equal(await page.eval(() => window.opened4287), false, 'openSummary resolved before its reports were read');
+    for (const id of held.slice(1)) await page.send('Fetch.continueRequest', { requestId: id });
+    await page.waitFor(() => window.opened4287, [], { what: 'openSummary resolved' });
+    const current = [['Report Name', 'Status'], ['Synthesis Report (Yosys)', 'Current'], ['Routed Design (ASC)', 'Current'], ['Static Timing Report', 'Current']];
+    assert.deepEqual(await page.eval(TABLE, 'Detailed Reports'), current, 'drawn when openSummary resolves');
+    // the older refresh answered now, with no reports: dropped
+    await page.send('Fetch.fulfillRequest', { requestId: held[0], responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from('{}').toString('base64') });
+    await tick(300);
+    assert.deepEqual(await page.eval(TABLE, 'Detailed Reports'), current, 'the older refresh not drawn over it');
+  } finally {
+    off();
+    await page.send('Fetch.disable');
+  }
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
+  try {
+    await shows('Relatórios Detalhados', [['Nome do Relatório', 'Estado'], ['Relatório de Síntese (Yosys)', 'Atual'], ['Projeto Encaminhado (ASC)', 'Atual'], ['Relatório de Temporização Estática', 'Atual']]);
+  } finally {
+    await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  }
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+  assert.deepEqual(await page.eval(() => [document.getElementById('warn-count').textContent, ...[...document.querySelectorAll('#console-warnings .diag')].map((d) => d.textContent)]), ['']);
+}, { skip: chromeOnly });

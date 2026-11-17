@@ -14,7 +14,7 @@ function runXc7Apart(args, files, onLine = () => {}) {
     const end = (f, x) => { w.terminate(); f(x); };
     w.on('message', m => {
       if (m.line !== undefined) onLine(m.line);
-      else if (m.error !== undefined) end(reject, new Error(m.error));
+      else if ('error' in m) end(reject, new Error(m.error ?? 'nextpnr stopped on an error'));
       else end(resolve, m.files);
     });
     w.on('error', e => end(reject, e));

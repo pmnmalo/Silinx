@@ -6,6 +6,7 @@
 // generatedFile, in conflict too when both sides changed the drawing) is made from it again by the caller. A drawing's
 // JSON is never merged as text. Isomorphic.
 import { drawingKind, diffDrawings, mergeDrawings, resolveDrawing, conflictId, danglingRefs } from './drawing-merge.js';
+import { checkTextChoice } from './text-merge.js';
 
 const parse = t => { try { const j = JSON.parse(t); return j && typeof j === 'object' && !Array.isArray(j) ? j : null; } catch { return null; } };
 // what a side did to an object, from the base: added, removed, moved, changed (its fields)
@@ -60,16 +61,30 @@ export async function resolveConflict(path, baseText, mineText, theirsText, choi
   return { text: `${JSON.stringify(model, null, indent)}\n`, model };
 }
 
-/** The choices of a pull (resolve: { path: { id: 'mine' | 'theirs' } }), checked: a copy, or an Error (400). */
+/** The choices of a pull, checked: a copy, or an Error (400). resolve: { "<drawing>": { "<object>": "mine" | "theirs" } }
+ *  for a drawing's objects, { "<text file>": { "<hunk>": "mine" | "theirs" | "both" | { "text": "…" } } } for a text
+ *  file's conflicts (#4214, core/text-merge.js). */
 export function checkChoices(resolve) {
   if (resolve == null) return null;
-  const bad = () => Object.assign(new Error('resolve: give { "<drawing>": { "<object>": "mine" | "theirs" } }'), { status: 400 });
+  const bad = () => Object.assign(new Error('resolve: give { "<drawing>": { "<object>": "mine" | "theirs" } } and { "<text file>": { "<hunk>": "mine" | "theirs" | "both" | { "text": "…" } } }'), { status: 400 });
   if (typeof resolve !== 'object' || Array.isArray(resolve)) throw bad();
   const out = {};
   for (const [p, c] of Object.entries(resolve)) {
-    if (!drawingKind(p) || !c || typeof c !== 'object' || Array.isArray(c)) throw bad();
+    if (!c || typeof c !== 'object' || Array.isArray(c)) throw bad();
     out[p] = {};
-    for (const [id, side] of Object.entries(c)) { if (side !== 'mine' && side !== 'theirs') throw bad(); out[p][id] = side; }
+    for (const [id, side] of Object.entries(c)) {
+      if (drawingKind(p) ? side !== 'mine' && side !== 'theirs' : !checkTextChoice(side)) throw bad();
+      out[p][id] = typeof side === 'object' ? { text: side.text } : side;
+    }
   }
   return out;
+}
+
+/** What a pull stopped by conflicts asks of the user (the GitError's hint), and whether Silinx can resolve them all
+ *  (the drawings' objects, the text files' hunks: Pull again with the choices) or not (a file removed on one side and
+ *  changed on the other, a file that is no text). */
+export function pullConflictHint({ drawings = [], texts = [], others = [] }) {
+  if (others.length) return { resolvable: false, hint: 'The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.' };
+  if (!texts.length) return { resolvable: true, hint: 'The same objects of a drawing changed here and on GitHub: choose mine or theirs for each, then Pull again.' };
+  return { resolvable: true, hint: `The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines${drawings.length ? ' (and mine or theirs for each object of a drawing)' : ''}, then Pull again.` };
 }

@@ -14,7 +14,7 @@ import { gateFile, GateError } from './import-gate.js';
 import { syncDrawings, drawingObjects, DRAWING_OBJECTS_MAX } from './collab-model.js';
 import { updateRoots } from './collab-roots.js';
 
-export const LAYOUT_VERSION = 1;
+const LAYOUT_VERSION = 1;
 export const FILE_MAX = 1 << 20;
 const PATH_MAX = 512;
 
@@ -49,7 +49,7 @@ const shareable = (path, text) => sharedPath(path) && typeof text === 'string' &
 
 /** The text files an editor may change (#3182, phase 2): HDL, constraints, C / C++ (Silinx HLS), notes; never a
  *  drawing (phase 3, #3183) nor the project's settings. */
-export const EDITABLE_RE = /\.(vhd|vhdl|v|vh|sv|ucf|xdc|c|cc|cpp|h|hpp|txt|md)$/i;
+const EDITABLE_RE = /\.(vhd|vhdl|v|vh|sv|ucf|xdc|c|cc|cpp|h|hpp|txt|md)$/i;
 export const editablePath = p => sharedPath(p) && EDITABLE_RE.test(String(p));
 
 /** An editor's text of a file, at the owner's, before it is written (#3355): through the import gate, as any file from

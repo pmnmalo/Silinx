@@ -373,7 +373,7 @@ test('workflows: only ise.yml and quality.yml reach the ISE runner, as the hook 
       assert.match(v, hosted, `${f}:${name}: runs-on ${v}`);
     }
   }
-  assert.deepEqual(reach, ['ise.yml:ise', 'quality.yml:compare']);
+  assert.deepEqual(reach, ['ise.yml:ise', 'quality.yml:xc7', 'quality.yml:compare']);
   assert.deepEqual(WORKFLOWS, [...new Set(reach.map(j => j.split(':')[0]))]);
   const hookText = fs.readFileSync(path.join(DIR, 'job-started.sh'), 'utf8');
   for (const f of WORKFLOWS) assert.ok(hookText.includes(`"$REPO/.github/workflows/${f}@refs/heads/main"`), f);

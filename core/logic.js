@@ -16,6 +16,7 @@
 //   the XOR form where cheaper (#435, else the minimal SOP), NAND or NOR gates only (from the minimal SOP / POS), …
 
 import { VHDL93_WORDS, VERILOG_WORDS } from './reserved.js';
+import { NAME_RE } from './ident.js';
 import { reservedWarning } from './asm.js';
 import { DRAWING_NESTING, DRAWING_NESTING_MESSAGE, deeperThanLimit, overlineToSlash } from './asm-expr.js';
 import { compile, elaborate, simulate } from './compile.js';
@@ -29,7 +30,7 @@ export { circuitCost, formCost } from './logic-cost.js';
 export { gateForm, schematicErrors, schematicFromTable } from './logic-sch.js';
 export { FORM_NAMES, formName, formOf, setOutputLogic, solutionOf } from './logic-choice.js';
 
-export const TT_VERSION = 1;
+const TT_VERSION = 1;
 export const MAX_INPUTS = 16;         // a table's inputs (the editor's, a module's: 2^16 rows, #3939); outputs: any number
 export const MAX_EDIT_INPUTS = MAX_INPUTS, MAX_KMAP_INPUTS = 6;   // (Karnaugh maps: 1 to 6; more, Quine-McCluskey's)
 
@@ -194,7 +195,7 @@ export function exprVars(ast) {
   return out;
 }
 
-export function evalExpr(e, env) {
+function evalExpr(e, env) {
   switch (e.t) {
     case 'const': return e.v;
     case 'var': return env[e.name] ? 1 : 0;
@@ -749,7 +750,6 @@ export function kmapRects(layout, cube) {
 }
 
 // ===================================================================== truth table documents
-const IDENT = /^[A-Za-z][A-Za-z0-9_]*$/;
 // (the shared lists, core/reserved.js, #679: the words that break the HDL of either language are errors,
 // the other reserved words warnings)
 const RESERVED = new Set([...VHDL93_WORDS, ...VERILOG_WORDS, 'logic', 'std_logic', 'ieee']);
@@ -786,13 +786,13 @@ export function normalizeTable(d) {
 export function validateTable(doc, { maxInputs = MAX_INPUTS } = {}) {
   const errs = [];
   const e = m => errs.push({ severity: 'error', message: m });
-  if (!IDENT.test(doc.name) || RESERVED.has(doc.name.toLowerCase())) e(`'${doc.name}' is not a valid module name`);
+  if (!NAME_RE.test(doc.name) || RESERVED.has(doc.name.toLowerCase())) e(`'${doc.name}' is not a valid module name`);
   else if (reservedWarning(doc.name)) errs.push({ severity: 'warning', message: reservedWarning(doc.name) });
   if (doc.inputs.length < 1 || doc.inputs.length > maxInputs) e(`a truth table has 1 to ${maxInputs} inputs`);
   if (doc.outputs.length < 1) e('a truth table has at least 1 output');
   const seen = new Set([doc.name.toLowerCase()]);
   for (const v of [...doc.inputs, ...doc.outputs]) {
-    if (!IDENT.test(v) || /__|_$/.test(v) || RESERVED.has(v.toLowerCase())) e(`'${v}' is not a valid name (a letter, then letters, digits and single _; not a VHDL/Verilog keyword)`);
+    if (!NAME_RE.test(v) || /__|_$/.test(v) || RESERVED.has(v.toLowerCase())) e(`'${v}' is not a valid name (a letter, then letters, digits and single _; not a VHDL/Verilog keyword)`);
     else if (seen.has(v.toLowerCase())) e(`the name '${v}' is used twice`);
     else if (reservedWarning(v)) errs.push({ severity: 'warning', message: reservedWarning(v) });
     seen.add(v.toLowerCase());

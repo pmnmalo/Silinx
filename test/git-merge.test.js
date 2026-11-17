@@ -3,7 +3,10 @@
 // objects: merged at once (git's text merge of its JSON never used: the repository's info/attributes), its HDL made
 // again from the merged drawing, a merge commit. The same object: nothing pulled, its conflict named (`drawings`), then
 // resolved "theirs" by the choice, its HDL made again and simulated as its model, in VHDL (its file) and in Verilog. A
-// resolution that is no valid drawing (a transition to a removed state) pulls nothing.
+// resolution that is no valid drawing (a transition to a removed state) pulls nothing. A text file changed on both
+// sides (#4214): apart, merged at once by its lines; the same lines, nothing pulled and its hunks named (`texts`), then
+// resolved by the choices per hunk, never with git's markers; the merged HDL compiled, elaborated and simulated, the
+// Verilog file and the VHDL one.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -13,6 +16,7 @@ import { scratchEnv, ROOT } from './server-helpers.js';
 import { viewHdl } from '../core/view-hdl.js';
 import { normalizeFsm, generateFsm } from '../core/fsm.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
+import { simulate } from '../core/compile.js';
 
 let tmp, ws, bare;
 const G = await import('../server/git.js');
@@ -153,6 +157,72 @@ test('#4202 through git: a state and a transition both sides added under the sam
   assert.deepEqual(runHdl(fs.readFileSync(path.join(dir, m.generatedFile), 'utf8'), 'vhdl', fm, vectors), runModel(fm, vectors));
   assert.deepEqual(runHdl(generateFsm(fm, 'verilog').code, 'verilog', fm, vectors), runModel(fm, vectors));
   assert.deepEqual((await G.gitStatus('traffic')).files, []);
+  await G.gitPush('traffic');
+});
+
+// a text file changed by another author (pushed) and here (committed)
+function theirsText(f, fn) {
+  const dir = path.join(tmp, 'theirs', String(++n));
+  sh(tmp, 'clone', '--quiet', bare, dir);
+  for (const [file, edit] of Object.entries(f)) fs.writeFileSync(path.join(dir, file), edit(fs.readFileSync(path.join(dir, file), 'utf8')));
+  sh(dir, 'commit', '--quiet', '-am', `Theirs ${n}`);
+  sh(dir, 'push', '--quiet');
+}
+async function mineText(f) {
+  const dir = path.join(ws, 'traffic');
+  for (const [file, edit] of Object.entries(f)) fs.writeFileSync(path.join(dir, file), edit(fs.readFileSync(path.join(dir, file), 'utf8')));
+  await G.gitCommit('traffic', `Mine ${++n}`);
+}
+const SEG7 = "4'd7:  seg = 7'b1111000;";
+test('#4214 text files changed on both sides: apart merged at once; the same lines resolved per hunk; the merged HDL simulated in Verilog and VHDL', async () => {
+  const dir = path.join(ws, 'traffic');
+  const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
+  const before = { seg: read('src/sevenseg.v'), timer: read('src/timer.vhd') };
+  // apart: git merges them itself, as Silinx would
+  theirsText({ 'src/timer.vhd': (t) => t.replace('END_S    : integer := 3;', 'END_S    : integer := 4;') });
+  await mineText({ 'src/timer.vhd': (t) => t.replace('YELLOW_S : integer := 2;', 'YELLOW_S : integer := 3;') });
+  let r = await G.gitPull('traffic');
+  assert.deepEqual([r.resolved, r.merged], [undefined, undefined]);
+  assert.equal(read('src/timer.vhd'), before.timer.replace('END_S    : integer := 3;', 'END_S    : integer := 4;').replace('YELLOW_S : integer := 2;', 'YELLOW_S : integer := 3;'));
+  await G.gitPush('traffic');
+  // the same lines: nothing pulled, the hunks named; the conflict of the VHDL file's, apart, merged with it
+  theirsText({ 'src/sevenseg.v': (t) => t.replace(SEG7, "4'd7:  seg = 7'b1011000;   // 7 with its top-left segment"), 'src/timer.vhd': (t) => t.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 6;') });
+  await mineText({ 'src/sevenseg.v': (t) => t.replace(SEG7, "4'd7:  seg = 7'b1111000;   // 7: a, b, c"), 'src/timer.vhd': (t) => t.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 8;') });
+  const head = sh(dir, 'rev-parse', 'HEAD');
+  const mineSeg = read('src/sevenseg.v');
+  await assert.rejects(G.gitPull('traffic'), (e) => {
+    assert.equal(e.message, 'git pull: a conflict in src/sevenseg.v, src/timer.vhd: nothing was pulled, the project\'s files are as they were');
+    assert.equal(e.hint, 'The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.');
+    assert.equal(e.resolvable, true);
+    assert.deepEqual(e.drawings, []);
+    assert.deepEqual(e.texts.map((x) => [x.path, x.hunks.map((h) => [h.id, h.mine.map((l) => l.trim()), h.theirs.map((l) => l.trim()), h.at.mine])]), [
+      ['src/sevenseg.v', [['h1', ["4'd7:  seg = 7'b1111000;   // 7: a, b, c"], ["4'd7:  seg = 7'b1011000;   // 7 with its top-left segment"], 53]]],
+      ['src/timer.vhd', [['h1', ['constant CARS_S   : integer := 8;                -- cars green: at least 5 s'], ['constant CARS_S   : integer := 6;                -- cars green: at least 5 s'], 36]]]]);
+    assert.equal(e.texts[0].mine, mineSeg);
+    return true;
+  });
+  assert.equal(sh(dir, 'rev-parse', 'HEAD'), head);
+  assert.ok(!fs.existsSync(path.join(dir, '.git', 'MERGE_HEAD')));
+  assert.equal(read('src/sevenseg.v'), mineSeg);
+  // one file's choices only: still asked, for the other
+  await assert.rejects(G.gitPull('traffic', { resolve: { 'src/sevenseg.v': { h1: 'theirs' } } }), (e) => { assert.deepEqual(e.texts.map((x) => x.path), ['src/timer.vhd']); return true; });
+  r = await G.gitPull('traffic', { resolve: { 'src/sevenseg.v': { h1: 'theirs' }, 'src/timer.vhd': { h1: { text: '    constant CARS_S   : integer := 7;                -- cars green: at least 7 s\n' } } } });
+  assert.deepEqual(r.merged, ['src/sevenseg.v', 'src/timer.vhd']);
+  const seg = read('src/sevenseg.v'), timer = read('src/timer.vhd');
+  assert.match(seg, /4'd7: {2}seg = 7'b1011000; {3}\/\/ 7 with its top-left segment\n/);
+  assert.match(timer, /^ {4}constant CARS_S {3}: integer := 7; {16}-- cars green: at least 7 s$/m);
+  for (const x of [seg, timer]) assert.doesNotMatch(x, /^(<<<<<<<|=======|>>>>>>>)/m);
+  assert.deepEqual((await G.gitStatus('traffic')).files, []);
+  assert.equal(sh(dir, 'log', '-1', '--format=%P').trim().split(' ').length, 2);
+  // the merged HDL: the Verilog display shows its new 7, the VHDL timer elaborates and runs
+  const tb = `module tb; reg clk = 0; always #1 clk = ~clk; wire [6:0] seg; wire dp; wire [3:0] an; reg [2:0] phase = 3'b000; reg rst = 1; wire done, blink; wire [3:0] left;
+  sevenseg #(.REFRESH(1000)) d (.clk(clk), .digits(16'hfff7), .points(4'b0000), .seg(seg), .dp(dp), .an(an));
+  timer #(.TICK(8)) t (.clk(clk), .rst(rst), .phase(phase), .done(done), .blink(blink), .left(left));
+  initial begin #4 rst = 0; #4 $display("seg=%b an=%b", seg, an); #200 $display("done=%b left=%d", done, left); $finish; end endmodule`;
+  const s = simulate([{ path: 'src/sevenseg.v', text: seg }, { path: 'src/timer.vhd', text: timer }, { path: 'tb.v', text: tb }], 'tb', { until: 1e6 });
+  assert.deepEqual(s.errors, []);
+  assert.deepEqual(s.design.diags.filter((d) => d.severity === 'warning').map((d) => d.message), []);
+  assert.deepEqual(s.sim.log.map((e) => String(e.text).trim()), ['seg=1011000 an=1110', 'done=1 left= 0', 'simulation finished ($finish) at 208 ns']);
   await G.gitPush('traffic');
 });
 

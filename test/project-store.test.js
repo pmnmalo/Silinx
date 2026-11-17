@@ -423,7 +423,7 @@ test('#483 projectFromZip: entries leaving the project skipped with a warning, s
     "build/top.bit: not imported: the project's build folder (build/) is Silinx's own", 'C:\\x.v: not imported: absolute path (a drive letter)',
     'silinx.json: file path outside the project dropped (../../etc/passwd)']);
   assert.deepEqual(Object.keys(r.files).sort(), ['a/b.txt', 'src/top.vhd']);
-  assert.deepEqual(r.missing, ['src/gone.vhd', 'constraints/top.ucf']);
+  assert.deepEqual(r.missing, ['src/gone.vhd']);   // (the constraints path not a listed file: not missing, #4288)
   // (a project read with no Optimization: Fast, #2470)
   assert.deepEqual(r.json, { ...emptyProjectJson('Hostile'), impl: { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' }, top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }, { path: 'src/gone.vhd', lang: 'vhdl', role: 'design' }], constraints: 'constraints/top.ucf', trusted: false });   // (from outside, #2830)
   // the project in a folder of the zip, silinx.json not JSON: an empty project with the files
@@ -734,4 +734,26 @@ test('#4205: the browser\'s snapshots (web/js/snapshots-local.js): kept per proj
   assert.equal(await snaps.read(made.at(-1).rev), null);
   const full = localSnapshots(() => ({ getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem() {} }), 'browser:', 'A');
   assert.equal(full.save(made[0]), false);
+});
+
+// #4356 regression: a constraints file not in the zip is missing, but the device's default (a new project's, not
+// written yet, #4288): constraints/top.ucf on a Spartan-3E, constraints/top.pcf on an iCE40
+test('#4356 projectFromZip: a constraints file of its own not in the zip is missing; the device\'s default path is not', () => {
+  const E = (p, d) => ({ path: p, data: new TextEncoder().encode(d) });
+  const S3E = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
+  const ICE = { family: 'ice40', part: 'up5k', package: 'sg48', speed: '' };
+  const imp = (pj, more = []) => projectFromZip('C', gateEntries([E('silinx.json', JSON.stringify({ name: 'C', top: '', files: [], ...pj })), ...more]), { textOf });
+  for (const [pj, missing] of [
+    [{ device: S3E, constraints: 'constraints/board.ucf' }, ['constraints/board.ucf']],
+    [{ device: S3E, constraints: 'constraints/top.ucf' }, []],
+    [{ device: S3E, constraints: 'constraints/top.pcf' }, ['constraints/top.pcf']],
+    [{ device: ICE, constraints: 'constraints/top.pcf' }, []],
+    [{ device: ICE, constraints: 'constraints/top.ucf' }, ['constraints/top.ucf']],
+  ]) {
+    const r = imp(pj);
+    assert.deepEqual([r.json.constraints, r.missing, r.warnings], [pj.constraints, missing, []], JSON.stringify(pj));
+  }
+  // (in the zip: not missing; listed among the files too: named once)
+  assert.deepEqual(imp({ device: S3E, constraints: 'constraints/board.ucf' }, [E('constraints/board.ucf', 'NET "a" LOC = "P11";\n')]).missing, []);
+  assert.deepEqual(imp({ device: S3E, constraints: 'constraints/board.ucf', files: [{ path: 'constraints/board.ucf', lang: 'ucf', role: 'constraints' }] }).missing, ['constraints/board.ucf']);
 });

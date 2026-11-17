@@ -312,7 +312,8 @@ export const api = {
   browserProjects: async () => (await browser.list()).map(j => j.name),
 
   // ---- projects
-  projects: () => ops.list(),
+  // (with where each is kept, as the server's: this browser's storage or the folder opened, its GitHub repository, #4314)
+  projects: async () => Promise.all((await ops.list()).map(async p => ({ ...p, stored: store.kind === 'folder' ? 'folder' : 'browser', github: await git.gitRemote(p.name).catch(() => null) }))),
   templates: async () => orderExamples(Object.keys(EXAMPLES)),
   testDesigns: async () => orderTestDesigns(Object.keys(TEST_DESIGNS)),
   // an example's description and files ({ project, files: { path: text } }, #2826)

@@ -20,6 +20,9 @@ export const GOWIN_PARTS = [...new Set(Object.keys(GOWIN_DEVICES).map(k => k.spl
 /** The Gowin's steps, as runFlow runs them. */
 export const GOWIN_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
+  // (the post-synthesis simulation model, #2299: Yosys's netlist, core/flow-models-nextpnr.js; no post-place & route one yet: the
+  // routed design's ALU modes and I/O generics are not modelled)
+  { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },

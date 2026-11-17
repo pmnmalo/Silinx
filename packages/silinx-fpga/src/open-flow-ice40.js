@@ -6,6 +6,7 @@ import { scriptSynthesis } from './synth-script.js';
 import { PCF } from './pcf.js';
 import { portBits, nextpnrNames } from './nextpnr-ports.js';
 import { mountNextpnrTiming } from './nextpnr-timing.js';
+import { otherNetlist } from './nextpnr-netlist.js';
 
 /** The iCE40's parts, as nextpnr-ice40 names them (its --<part> option): ice40up5k, ice40hx8k… */
 export const ICE40_PARTS = ['lp384', 'lp1k', 'lp4k', 'lp8k', 'hx1k', 'hx4k', 'hx8k', 'up3k', 'up5k', 'u1k', 'u2k', 'u4k'];
@@ -13,9 +14,12 @@ export const ICE40_PARTS = ['lp384', 'lp1k', 'lp4k', 'lp8k', 'hx1k', 'hx4k', 'hx
 /** The iCE40's steps, as runFlow runs them (open-steps.js XILINX_STEPS' shape). */
 export const ICE40_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
+  // (the simulation models, #2299: Yosys's netlist and nextpnr's routed design, core/flow-models-nextpnr.js)
+  { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },
+  { id: 'postpar', label: 'Generate Post-Place & Route Simulation Model', needs: ['par'] },
   { id: 'bitgen', label: 'Generate Programming File - icepack', needs: ['par'] },
 ];
 
@@ -57,7 +61,7 @@ function mountIce40(ctx) {
     const pins = pcf?.assignments || {};
     const free = bits.map(b => b.name).filter(p => !pins[p]?.loc);
     for (const p of free) log(`WARNING:Place - the port ${p} has no pin (set_io in the PCF): nextpnr places it anywhere.`);
-    const args = [`--${part}`, ...(spec.pkg ? ['--package', spec.pkg] : []), '--json', 'netlist.json', '--asc', 'routed.asc', '--report', 'report.json',
+    const args = [`--${part}`, ...(spec.pkg ? ['--package', spec.pkg] : []), '--json', 'netlist.json', '--asc', 'routed.asc', '--write', 'routed.json', '--report', 'report.json',
       '--seed', String(spec.seed || 1), '--timing-allow-fail', ...(pcf ? ['--pcf', 'design.pcf'] : []), ...(free.length ? ['--pcf-allow-unconstrained'] : [])];
     const nextpnr = tool(), lines = [];
     let out;
@@ -70,6 +74,9 @@ function mountIce40(ctx) {
     const r = JSON.parse(text(out['report.json']));
     asc = text(out['routed.asc']);
     report.files.routed = io.write('open/routed.asc', asc);
+    // (nextpnr's routed design, its JSON: the Post-Place & Route model's, #2299)
+    ctx.setRouted?.(text(out['routed.json']));
+    io.write('open/routed.json', text(out['routed.json']));
     const items = Object.entries(r.utilization || {}).filter(([, u]) => u.used).map(([name, u]) => ctx.util(name, u.used, u.available));
     report.map = { utilization: items, warnings: 0, errors: 0 };
     log('Device utilization (nextpnr-ice40):');
@@ -87,7 +94,7 @@ function mountIce40(ctx) {
     log(`Bitstream: build/${top}.bin (${bytes.length} bytes, icepack)`);
   }
 
-  return { steps: { translate: ctx.readNetlist, par: runPar, trce: timing.runTiming, bitgen: runBitgen } };
+  return { steps: { translate: ctx.readNetlist, par: runPar, trce: timing.runTiming, bitgen: runBitgen }, placeRouteNetlist: otherNetlist(mountIce40, ctx) };
 }
 
 export const ICE40 = {

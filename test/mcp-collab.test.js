@@ -52,6 +52,8 @@ async function call(name, args = {}) {
   return { text: r.content[0].text, data: r.structuredContent, isError: r.isError };
 }
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
+// (a file of a followed project, or null while it is not shown for the reason expected: any other error fails, #4330)
+const followedText = async (link, path, reason) => { const r = await call('follow_project', { link, path }); if (!r.isError) return r.data.text; assert.equal(r.text, `follow_project: ${path}: not shown: ${reason}`); return null; };
 const fails = async (name, args, message) => { const r = await call(name, args); assert.equal(r.isError, true, r.text); assert.equal(r.text, `${name}: ${message}`); };
 
 test('the tools are listed, with their schemas', () => {
@@ -303,13 +305,16 @@ test('#3355 an editor\'s change of a trusted project: through the import gate, t
   const { data: { link, editLink } } = await ok('share_project', { project: 'trustedEd', name: 'Ana', server: base, editors: true });
   const timer = await P.readFile('trustedEd', 'src/timer.vhd');
   // a change the gate refuses (a NUL byte in a text file): not written, undone, the project still trusted
-  await ok('follow_project', { link: editLink, name: 'Bot', write: { path: 'src/timer.vhd', text: `-- \0\n${timer}` } });
+  const nul = 'binary content (a NUL byte) in a text file';
+  // (#4330: at the MCP client's, its own change until the owner's undo reaches it: read back with it, not shown)
+  await fails('follow_project', { link: editLink, name: 'Bot', write: { path: 'src/timer.vhd', text: `-- \0\n${timer}` }, path: 'src/timer.vhd' }, `src/timer.vhd: not shown: ${nul}`);
   const page = await followRoom({ url: relayUrl(parseFollowLink(link).base, 'follow'), room: parseFollowLink(link).room, key: parseFollowLink(link).key, user: { name: 'Eva' } });
   await page.ready;
   await until(async () => (await ok('share_project', { project: 'trustedEd', action: 'status' })).data.warnings.length, 'the refusal said');
   await until(() => docFile(page.doc, 'src/timer.vhd') === timer, 'the refused change undone');
   // (at the MCP client's too, #4210: its next write is merged with what it has, the NUL byte's line else)
-  await until(async () => (await ok('follow_project', { link: editLink, path: 'src/timer.vhd' })).data.text === timer, 'the refused change undone at the MCP client\'s');
+  // (until then, #4330: that error, not yet)
+  await until(async () => (await followedText(editLink, 'src/timer.vhd', nul)) === timer, 'the refused change undone at the MCP client\'s');
   const st = await ok('share_project', { project: 'trustedEd', action: 'status' });
   assert.deepEqual(st.data.warnings, ['src/timer.vhd: an editor\'s change not written: binary content (a NUL byte) in a text file']);
   assert.ok(st.text.endsWith('\nWARNING: src/timer.vhd: an editor\'s change not written: binary content (a NUL byte) in a text file'), st.text);

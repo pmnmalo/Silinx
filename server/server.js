@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as P from './projects.js';
+import { withPlaces } from './project-places.js';
 import { orderExamples } from '../core/examples.js';
 import { orderTestDesigns } from '../core/test-designs.js';
 import { importMapPackages } from './import-map.js';
@@ -196,7 +197,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     if (!/^[\w-]{16,128}$/.test(nonce)) throw Object.assign(new Error('a nonce is required'), { status: 400 });
     return { proof: tokenProof(token, nonce) };
   }));
-  api.get('/projects', wrap(() => P.listProjects()));
+  api.get('/projects', wrap(async () => withPlaces(await P.listProjects())));   // (with where each is kept, #4314)
   // where the projects are kept: the Start page says it (#1297)
   api.get('/workspace', wrap(() => ({ folder: P.workspaceDir() })));
   // the other relays this server's pages may share and follow through (config.json's relay.relays, #3227)

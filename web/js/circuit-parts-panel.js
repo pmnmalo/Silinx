@@ -7,8 +7,8 @@ import { h } from './ui.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { PARTS, PART_ORDER, partDef, projectParts } from '/core/circuit-parts.js';
-import { searchCatalogue, catalogueTitle, CATALOGUE_LIBRARIES } from '/core/kicad-catalogue.js';
-import { drawCircuit } from './circuit-draw.js';
+import { searchCatalogue, catalogueTitle, catalogueDrawing, CATALOGUE_LIBRARIES } from '/core/kicad-catalogue.js';
+import { drawCircuit, drawnPartSvg } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
 import { getSymbolStandard } from './symbol-standard.js';
@@ -51,7 +51,10 @@ function preview(type) {
   const key = symbolOfPart(type) ? `${getSymbolStandard()}:${id}` : id;
   if (previews.has(key)) return previews.get(key).cloneNode(true);
   if (symbolOfPart(type)) { previews.set(key, symbolPreviewOf(symbolOfPart(type))); return previews.get(key).cloneNode(true); }
-  const g = drawCircuit({ parts: [{ id: 'X', type, x: 0, y: 0 }], wires: [] });
+  return fitted(drawCircuit({ parts: [{ id: 'X', type, x: 0, y: 0 }], wires: [] }), key);
+}
+// a part's drawing fitted to a preview, kept by key
+function fitted(g, key) {
   // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow)
   for (const x of g.querySelectorAll('text.circ-label, text.circ-ic-text, title')) x.remove();   // (a KiCad part's id and number too, #4281)
   // (fitted to its drawing's box, measured off the page once: its body as drawn, not its pins', #4124; a small part not
@@ -65,6 +68,16 @@ function preview(type) {
   const s = sv('svg', { class: 'circ-pv', viewBox: `0 0 ${W} ${H}`, width: W, height: H }, g);
   previews.set(key, s);
   return s.cloneNode(true);
+}
+
+// a KiCad catalogue's part's preview (#4346): its IC's, or drawn as it will be once imported (its footprint's drawing
+// kept in the catalogue, a DIP's body), else a box
+function cataloguePreview(e) {
+  if (e.as) return preview(e.as);
+  const key = `catalogue:${e.id}`;
+  if (previews.has(key)) return previews.get(key).cloneNode(true);
+  const d = catalogueDrawing(e);
+  return d ? fitted(drawnPartSvg(d), key) : sv('svg', { class: 'circ-pv', viewBox: `0 0 ${W} ${H}`, width: W, height: H }, sv('rect', { x: 8, y: 9, width: W - 16, height: H - 18, rx: 2, class: 'circ-pv-cat' }));
 }
 
 // a row's name and tip: a library part's, or a project's KiCad part's (its part number and what it does, #4281)
@@ -120,7 +133,7 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
         rows.push(h('button', { type: 'button', class: `circ-lib-part circ-cat-part${e.as ? '' : ' drawn'}`, 'data-catalogue': e.id, 'data-group': CAT,
           title: `${catalogueTitle(e)} (${CATALOGUE_LIBRARIES[e.library].name}, ${CATALOGUE_LIBRARIES[e.library].licence}): click it to import it into the project`,
           onclick: async () => { const type = await importCatalogue(e.id); if (type && partDef(type)) setTool(`place:${type}`); renderParts(); } },
-        e.as ? preview(e.as) : sv('svg', { class: 'circ-pv', viewBox: `0 0 ${W} ${H}`, width: W, height: H }, sv('rect', { x: 8, y: 9, width: W - 16, height: H - 18, rx: 2, class: 'circ-pv-cat' })),
+        cataloguePreview(e),
         h('span', { class: 'nm', 'data-no-i18n': 'true' }, `${e.value}${e.as ? ` (${e.as})` : ''}`)));
       }
     }

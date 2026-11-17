@@ -46,7 +46,7 @@ function segbitsOf(text) {
 
 /**
  * The database of a part from its file's object (bitdb-node.js loadBitDbXc7 reads it in Node): { part, device, fabric,
- * idcode, regions, banks, tileBank, pudcB, requiredFeatures, iobSites, tile(name), tiles(), featureBits(tile, feature,
+ * idcode, regions, banks, tileBank, pudcB, requiredFeatures, iobSites, pins (the package's IOB pins: pins.js), tile(name), tiles(), featureBits(tile, feature,
  * address) }.
  */
 export function bitDbXc7(raw) {
@@ -116,6 +116,6 @@ export function bitDbXc7(raw) {
   };
 
   return { part: raw.part, device: raw.device, fabric: raw.fabric, idcode: raw.idcode, regions: raw.regions, banks: raw.banks,
-    tileBank, pudcB: raw.pudcB, requiredFeatures: raw.requiredFeatures, iobSites: raw.iobSites, tile, tiles: () => Object.keys(raw.tiles),
+    tileBank, pudcB: raw.pudcB, requiredFeatures: raw.requiredFeatures, iobSites: raw.iobSites, pins: raw.pins || {}, tile, tiles: () => Object.keys(raw.tiles),
     featureBits };
 }
