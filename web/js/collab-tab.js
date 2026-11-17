@@ -1,7 +1,7 @@
 // The Collaboration tab (#4215): a tab of the Design pane's row (Start, Design, Files, Libraries, Teaching,
 // Collaboration), in both interfaces, gathering the git commands (#3194, web/js/git.js) as the Teaching tab gathers the
 // labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
-// a file with the last commit), Commit…, Push, Pull, History…, the GitHub sign-in and the last push's checks; a project
+// a file with the last commit), Commit…, Push, Pull, New Branch…, Switch Branch…, Merge Branch… (#4213), History…, the GitHub sign-in and the last push's checks; a project
 // with no repository: Store Project in a GitHub Repository…, Open from GitHub Repository…. The same items as the Git submenu's
 // (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, enabled as it
 // is), and live sharing (#3181): what the toolbar's presence shows and its commands
@@ -33,7 +33,7 @@ const command = (it, ic) => (it.disabled
   ? entry(ic, h('a', { class: 'disabled', 'aria-disabled': 'true' }, it.label))
   : entry(ic, h('a', { onclick: () => Promise.resolve(it.action()).finally(renderCollabPage) }, it.label)));
 const ICON = { 'Commit…': 'save', 'Commit and Push…': 'save', 'Push to GitHub': 'up', 'Pull from GitHub': 'refresh', 'History…': 'summary',
-  'GitHub Checks': 'run', 'Store Project in a GitHub Repository…': 'project', 'Sign in with GitHub…': 'project', 'Sign out of GitHub': 'project' };
+  'GitHub Checks': 'run', 'New Branch…': 'add', 'Switch Branch…': 'open', 'Merge Branch…': 'procGroup', 'Store Project in a GitHub Repository…': 'project', 'Sign in with GitHub…': 'project', 'Sign out of GitHub': 'project' };
 const cmd = it => command(it, ICON[it.label] || 'file');
 
 /** The tab shown or hidden with git, and its page drawn (#collab-page); kept when it is the same, as the Teaching page. */
@@ -78,7 +78,7 @@ function repositoryBox(items, init, open) {
     where ? hint(where) : null,
     g.ahead ? hint(`${g.ahead} commit(s) to push`) : null,
     g.behind ? hint(`${g.behind} commit(s) to pull`) : null,
-    ...items.filter(it => /^(Commit|Push|Pull|History)/.test(it.label)).map(cmd),
+    ...items.filter(it => /^(Commit|Push|Pull|History|New Branch|Switch Branch|Merge Branch)/.test(it.label)).map(cmd),
     g.remote ? null : cmd(init));
 }
 

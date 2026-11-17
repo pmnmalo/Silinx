@@ -82,9 +82,10 @@ export function checkChoices(resolve) {
 
 /** What a pull stopped by conflicts asks of the user (the GitError's hint), and whether Silinx can resolve them all
  *  (the drawings' objects, the text files' hunks: Pull again with the choices) or not (a file removed on one side and
- *  changed on the other, a file that is no text). */
-export function pullConflictHint({ drawings = [], texts = [], others = [] }) {
-  if (others.length) return { resolvable: false, hint: 'The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.' };
-  if (!texts.length) return { resolvable: true, hint: 'The same objects of a drawing changed here and on GitHub: choose mine or theirs for each, then Pull again.' };
-  return { resolvable: true, hint: `The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines${drawings.length ? ' (and mine or theirs for each object of a drawing)' : ''}, then Pull again.` };
+ *  changed on the other, a file that is no text). op 'merge': Merge Branch…'s (#4213), the other side another branch. */
+export function pullConflictHint({ drawings = [], texts = [], others = [] }, { op = 'pull' } = {}) {
+  const [where, again] = op === 'merge' ? ['on both branches', 'Merge Branch… again'] : ['here and on GitHub', 'Pull again'];
+  if (others.length) return { resolvable: false, hint: `The same file changed ${where}. Commit your version under another name, or ask the other author, then ${again}.` };
+  if (!texts.length) return { resolvable: true, hint: `The same objects of a drawing changed ${where}: choose mine or theirs for each, then ${again}.` };
+  return { resolvable: true, hint: `The same lines of a file changed ${where}: choose mine, theirs or both for each conflict, or write its lines${drawings.length ? ' (and mine or theirs for each object of a drawing)' : ''}, then ${again}.` };
 }

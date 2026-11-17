@@ -20,14 +20,16 @@ import { GitHubError, HINT, blobSha, fromBase64, textOf } from './github-api.js'
 import { checkUrl, nameFromRepo } from './github-url.js';
 import { isOutput, GITIGNORE } from './git-ignore.js';
 import { gateEntries, gateMessages, GateError, GATE_LIMITS } from './import-gate.js';
-import { DRAWING_RE } from './drawing-merge.js';
-import { drawingConflicts, resolveConflict, pullConflictHint } from './git-resolve.js';
+import { resolveConflict, pullConflictHint } from './git-resolve.js';
 import { resolveText } from './text-merge.js';
-import { mergeTexts, pullRenames } from './git-rest-merge.js';
+import { mergeConflicts, pullRenames } from './git-rest-merge.js';
 
 import { commitChecks } from './github-checks.js';
+import { restBranches } from './git-rest-branch.js';
 
 export const GitError = GitHubError;
+// the words of a merge's messages: a pull's, Switch Branch…'s, Merge Branch…'s (#4213)
+const WORDS = { pull: { did: 'pulled', again: 'Pull' }, switch: { did: 'switched', again: 'Switch Branch…' }, merge: { did: 'merged', again: 'Merge Branch…' } };
 export const PROJECT_FILE = 'silinx.json';
 
 // a path of the project's own (not hidden, not a tool's output)
@@ -153,13 +155,14 @@ export function restGit({ client, projects, meta }) {
   }
 
   /** Commit the project's changes and push them, in one step: { commit, branch, files, gitignore, pushed, remote }. */
-  async function commit(name, message) {
+  // (parents: a merge commit's, #4213: the project's last commit and the branch merged in; with no change, the same tree)
+  async function commit(name, message, { parents = null } = {}) {
     const msg = String(message ?? '').trim();
     if (!msg) throw new GitError('a commit needs a message', 'Say in a few words what changed.');
     if (msg.length > 10_000) throw new GitError('the commit message is too long (at most 10000 characters)');
     let m = await need(name);
     const { files } = await status(name);
-    if (!files.length) throw new GitError('nothing to commit: the project has no change since the last commit', null, 409);
+    if (!files.length && !parents) throw new GitError('nothing to commit: the project has no change since the last commit', null, 409);
     const mine = await local(name);
     const gitignore = !m.gitignore;
     let parent = m.commit, base = m.tree;
@@ -171,8 +174,8 @@ export function restGit({ client, projects, meta }) {
     }
     const tree = files.map(f => (f.state === 'deleted' ? { path: f.path, mode: '100644', type: 'blob', sha: null } : { path: f.path, mode: '100644', type: 'blob', content: mine[f.path] }));
     if (gitignore && m.commit) tree.push({ path: '.gitignore', mode: '100644', type: 'blob', content: GITIGNORE });
-    const t = await request('POST', `${R(m.owner, m.repo)}/git/trees`, { base_tree: base, tree });
-    const c = await request('POST', `${R(m.owner, m.repo)}/git/commits`, { message: msg, tree: t.sha, parents: [parent] });
+    const t = tree.length ? await request('POST', `${R(m.owner, m.repo)}/git/trees`, { base_tree: base, tree }) : { sha: base };
+    const c = await request('POST', `${R(m.owner, m.repo)}/git/commits`, { message: msg, tree: t.sha, parents: parents || [parent] });
     const moved = await request('PATCH', `${R(m.owner, m.repo)}/git/refs/heads/${pathOf(m.branch)}`, { sha: c.sha, force: false }, { allow: [409, 422] });
     if (moved.status) throw rejected();
     // (what was committed is the base now; a file changed while committing stays a change)
@@ -200,24 +203,6 @@ export function restGit({ client, projects, meta }) {
     const b = await request('GET', `${R(m.owner, m.repo)}/git/blobs/${sha}`);
     return textOf(b.encoding === 'base64' ? fromBase64(b.content) : new TextEncoder().encode(b.content || ''));
   };
-  // the drawings among a pull's conflicts merged by their objects, the text files by their lines (renamed: the
-  // renamed file's, its versions given): { drawings, pending, texts, waiting, left, generated }
-  async function mergeConflicts(m, head, mine, conflicts, resolve, renamed = []) {
-    const drawings = [], pending = [];
-    for (const p of conflicts.filter(x => DRAWING_RE.test(x))) {
-      const v = { base: await blobText(m, m.paths[p]?.remote), mine: mine[p] ?? null, theirs: await blobText(m, head.blobs[p]?.sha) };
-      const c = v.mine !== null && v.theirs !== null ? drawingConflicts(p, v.base, v.mine, v.theirs) : null;
-      if (!c) continue;
-      drawings.push({ ...c, v });
-      if (c.conflicts.length && !c.conflicts.every(x => resolve?.[p]?.[x.id] === 'mine' || resolve?.[p]?.[x.id] === 'theirs')) pending.push(c);
-    }
-    const generated = new Set();
-    for (const d of drawings) for (const t of [d.v.mine, d.v.theirs]) { try { const g = JSON.parse(t).generatedFile; if (g) generated.add(g); } catch { /* none */ } }
-    const text = async p => ({ path: p, v: { base: await blobText(m, m.paths[p]?.remote), mine: mine[p] ?? null, theirs: await blobText(m, head.blobs[p]?.sha) } });
-    const { texts, waiting, left } = mergeTexts([...await each(conflicts.filter(p => !drawings.some(d => d.path === p) && !generated.has(p)), text), ...renamed], resolve);
-    return { drawings, pending, texts, waiting, left, generated: [...generated].filter(g => conflicts.includes(g)) };
-  }
-
   /** Pull GitHub's commits into the project (a merge of its files): { branch, upToDate, files, resolved, merged,
    *  renamed }; a conflict left (a drawing's objects, a text file's hunks, a file removed on one side and changed on the
    *  other) pulls nothing and is a GitError with its files, the drawings' and the text files' conflicts still to choose
@@ -228,6 +213,13 @@ export function restGit({ client, projects, meta }) {
     const head = await headOf(m);
     if (!head) throw new GitError('git pull: the GitHub repository has nothing on this branch yet', 'The GitHub repository has nothing on this branch yet: Push first.', 409);
     if (head.commit === m.commit) return { project: name, branch: m.branch, upToDate: true, files: [] };
+    return pullFrom(name, m, head, resolve);
+  }
+  // another commit's files merged into the project's, from m (its base: the commit, the files' hashes) to head: a pull's,
+  // Switch Branch…'s and Merge Branch…'s (#4213, core/git-rest-branch.js: op, their messages' words); the meta then at
+  // head, on m's branch
+  async function pullFrom(name, m, head, resolve, op = 'pull') {
+    const w = WORDS[op];
     const mine = await local(name);
     const now = await hashes(mine);
     const theirs = Object.keys(head.blobs).filter(p => own(p) && head.blobs[p].mode !== '120000');
@@ -253,15 +245,15 @@ export function restGit({ client, projects, meta }) {
     }
     let merge = { drawings: [], texts: [], generated: [] };
     if (conflicts.length || renamed.length) {
-      merge = await mergeConflicts(m, head, mine, conflicts, resolve, renamed);
+      merge = await mergeConflicts({ blobText: sha => blobText(m, sha), each }, m, head, mine, conflicts, resolve, renamed);
       if (merge.pending.length || merge.waiting.length || merge.left.length) {
-        const c = pullConflictHint({ drawings: merge.pending, texts: merge.waiting, others: merge.left });
-        throw new GitError(`git pull: a conflict in ${[...conflicts, ...renamed.map(r => r.path)].sort().join(', ')}: nothing was pulled, the project's files are as they were`,
+        const c = pullConflictHint({ drawings: merge.pending, texts: merge.waiting, others: merge.left }, { op });
+        throw new GitError(`git ${op}: a conflict in ${[...conflicts, ...renamed.map(r => r.path)].sort().join(', ')}: nothing was ${w.did}, the project's files are as they were`,
           c.hint, 409, { files: [...conflicts, ...renamed.map(r => r.path)].sort(), drawings: merge.pending, texts: merge.waiting, resolvable: c.resolvable });
       }
       for (const d of merge.drawings) {
         try { d.out = await resolveConflict(d.path, d.v.base, d.v.mine, d.v.theirs, resolve?.[d.path] || {}); }
-        catch (e) { throw new GitError(`git pull: ${e.message}: nothing was pulled`, 'Choose the other side for an object, then Pull again.', e.status || 422, { files: conflicts }); }
+        catch (e) { throw new GitError(`git ${op}: ${e.message}: nothing was ${w.did}`, `Choose the other side for an object, then ${w.again} again.`, e.status || 422, { files: conflicts }); }
       }
     }
     const { files } = await fetchOwn(m, head.blobs, take);
@@ -343,5 +335,7 @@ export function restGit({ client, projects, meta }) {
     return m ? `${m.owner}/${m.repo}` : null;
   }
 
-  return { status, clone, init, commit, push, pull, log, show, checks, remote };
+  // the branches (#4213): listed, made, switched, merged (core/git-rest-branch.js)
+  const branches = restBranches({ request, R, pathOf, need, headOf, status, pullFrom, commit, meta, own });
+  return { status, clone, init, commit, push, pull, log, show, checks, remote, ...branches };
 }

@@ -87,7 +87,7 @@ const waitBoxOf = (page, heading, entries, what) => page.waitFor((hd, en) => {
 const SERVER_GITHUB = 'git signs in to GitHub with its own credentials.';
 // (#4259: the Sharing box, Share a Copy… in it)
 const NOT_LIVE = (off = false) => ['Sharing', 'Not shared live.', `Share a Copy…${off ? ' (disabled)' : ''}`, `Share Live…${off ? ' (disabled)' : ''}`, 'To follow a project shared live, open its link.'];
-const REPO_COMMANDS = ['Commit…', 'Push to GitHub', 'Pull from GitHub', 'History…'];
+const REPO_COMMANDS = ['Commit…', 'Push to GitHub', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', 'History…'];
 
 uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no project, a project opened from a repository, its changes, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
   bare('collab1');
@@ -164,7 +164,7 @@ uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no pr
   try {
     await page.waitFor(() => document.querySelector('#collab-page .start-box h3')?.textContent === 'Repositório', [], { what: 'Portuguese' });
     assert.deepEqual((await collab(page)).boxes, [
-      ['Repositório', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Histórico…'],
+      ['Repositório', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Histórico…'],
       ['Alterações', 'Nenhuma alteração desde o último commit.'],
       ['GitHub', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'Verificações do GitHub (Checks)'],
       ['Partilha', 'Não partilhado em direto.', 'Partilhar uma Cópia…', 'Partilhar em Direto…', 'Para seguir um projeto partilhado em direto, abra a sua ligação.']]);

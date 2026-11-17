@@ -72,6 +72,18 @@ export const GIT_PT = {
   'No check on GitHub': 'Nenhuma verificação no GitHub',
   'Share a Copy…': 'Partilhar uma Cópia…', 'Not shared live.': 'Não partilhado em direto.', 'Share Live…': 'Partilhar em Direto…',
   'To follow a project shared live, open its link.': 'Para seguir um projeto partilhado em direto, abra a sua ligação.',
+  // the branches (#4213, web/js/git-branch.js)
+  'New Branch…': 'Novo Ramo…', 'Switch Branch…': 'Mudar de Ramo…', 'Merge Branch…': 'Juntar Ramo…',
+  'New Branch': 'Novo Ramo', 'Switch Branch': 'Mudar de Ramo', 'Merge Branch': 'Juntar Ramo', 'Merge Branch (merge)': 'Juntar Ramo (junção)',
+  'Create': 'Criar', 'Switch': 'Mudar', 'Name of the new branch:': 'Nome do novo ramo:', 'Branch of the project:': 'Ramo do projeto:',
+  'Switch to:': 'Mudar para:', 'Merge in:': 'Juntar este:', '(no branch)': '(sem ramo)',
+  'Each person of a group works on a branch of their own, made from the last commit: the project goes on it, its changes kept.':
+    'Cada pessoa de um grupo trabalha num ramo seu, feito a partir do último commit: o projeto passa para ele, com as suas alterações.',
+  'The project\'s files become the branch\'s last commit\'s. Commit your changes first.':
+    'Os ficheiros do projeto passam a ser os do último commit do ramo. Registe (commit) primeiro as suas alterações.',
+  'What only the other branch changed is taken; a drawing changed on both is merged by its objects, a file by its lines; for the same objects or lines, you choose. Commit your changes first.':
+    'O que só o outro ramo alterou é aceite; um desenho alterado nos dois junta-se pelos seus objetos, um ficheiro pelas suas linhas; para os mesmos objetos ou linhas, escolhe você. Registe (commit) primeiro as suas alterações.',
+  'The project has no other branch: New Branch… makes one.': 'O projeto não tem outro ramo: Novo Ramo… cria um.',
 };
 
 export const GIT_PT_PATTERNS = [
@@ -84,6 +96,9 @@ export const GIT_PT_PATTERNS = [
   [/^Choose Mine or Theirs for (\d+) object\(s\) more\.$/, 'Escolha O meu ou O deles para mais $1 objeto(s).'],
   [/^(\d+) change\(s\) on (.+):$/, '$1 alteração(ões) em $2:'],
   [/^(\d+) commit\(s\) to push$/, '$1 commit(s) por enviar (Push)'], [/^(\d+) commit\(s\) to pull$/, '$1 commit(s) por receber (Pull)'],   // (#4215)
+  // (#4213) Merge Branch…'s merge view and conflicts
+  [/^Mine \((.+)\)$/, 'O meu ($1)'], [/^Theirs \((.+)\)$/, 'O deles ($1)'],
+  [/^(\d+) object\(s\) changed on both branches: choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/, '$1 objeto(s) alterado(s) nos dois ramos: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.'],
   [/^not a GitHub repository's address: (.*)$/, 'não é o endereço de um repositório do GitHub: $1'],
   [/^a GitHub Classroom invitation, not a repository$/, 'um convite do GitHub Classroom, não um repositório'],
 ];

@@ -1,6 +1,7 @@
 // Git in the interface (#3195: the server editions, through the system's git, server/git.js; #3196: the browser edition,
 // through GitHub's REST API, web/js/git-browser.js, where a commit is pushed at once and the sign-in is Silinx's): File ▸
-// Open from GitHub Repository…, File ▸ Git ▸ (Commit…, Push to GitHub, Pull from GitHub, History… (web/js/git-history.js), GitHub
+// Open from GitHub Repository…, File ▸ Git ▸ (Commit…, Push to GitHub, Pull from GitHub, New Branch…, Switch Branch…, Merge
+// Branch… (#4213, web/js/git-branch.js), History… (web/js/git-history.js), GitHub
 // Checks (#3194: what GitHub's workflows said of the last push),
 // Store Project in a GitHub Repository…), the same in the Design pane's
 // project menu (the Silinx interface has no File menu) and in the Collaboration tab (#4215, web/js/collab-tab.js), and the Design pane's marks of the files changed or new since
@@ -21,6 +22,7 @@ import { checksLines } from '/core/github-checks.js';
 import { checkUrl, nameFromRepo } from '/core/github-url.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
+import { branchMenuItems } from './git-branch.js';
 
 // ------------------------------------------------------------------ git on this server
 let enabled = null, asking = null;
@@ -226,25 +228,31 @@ async function gitPull({ resolve = null } = {}) {
     return p;
   } catch (e) {
     logGitError(e);
-    // (only conflicts Silinx resolves: the drawings' objects chosen, the text files' lines merged, then the pull again)
-    if (e.resolvable && (e.drawings?.length || e.texts?.length) && S.project?.name === name) {
-      const choices = { ...(resolve || {}) };
-      if (e.drawings?.length) {
-        const c = await (await import('./git-resolve-dialog.js')).resolveDialog(e.drawings);
-        if (!c) return null;
-        Object.assign(choices, c);
-      }
-      if (e.texts?.length) {
-        const { openMergeView } = await import('./merge-view.js');
-        const c = await openMergeView({ key: `pull:${name}`, title: 'Pull from GitHub (merge)', files: e.texts.map(t => ({ path: t.path, base: t.base, mine: t.mine, theirs: t.theirs })),
-          labels: { mine: 'Mine (here)', theirs: 'Theirs (GitHub)' }, action: 'Pull from GitHub', choices: Object.fromEntries(e.texts.map(t => [t.path, choices[t.path] || {}])) });
-        if (!c) return null;
-        Object.assign(choices, c);
-      }
-      return gitPull({ resolve: choices });
-    }
-    return null;
+    if (S.project?.name !== name) return null;
+    const choices = await chooseConflicts(e, { key: `pull:${name}`, title: 'Pull from GitHub (merge)', labels: { mine: 'Mine (here)', theirs: 'Theirs (GitHub)' }, action: 'Pull from GitHub', resolve });
+    return choices ? gitPull({ resolve: choices }) : null;
   } finally { await refreshGitStatus(); }
+}
+
+/** A pull's or a merge's conflicts (#3197, #4214; Merge Branch…'s, #4213), only those Silinx resolves: the drawings'
+ *  objects chosen (web/js/git-resolve-dialog.js), the text files' hunks in the merge view (key, title, labels, action:
+ *  its own; where: the drawings' dialog's, where the objects changed) -> the choices, with the earlier ones (resolve), or null (cancelled, or a conflict it cannot resolve). */
+export async function chooseConflicts(e, { key, title, labels, action, where, resolve = null }) {
+  if (!e.resolvable || !(e.drawings?.length || e.texts?.length)) return null;
+  const choices = { ...(resolve || {}) };
+  if (e.drawings?.length) {
+    const c = await (await import('./git-resolve-dialog.js')).resolveDialog(e.drawings, { ...(where ? { where } : {}), action });
+    if (!c) return null;
+    Object.assign(choices, c);
+  }
+  if (e.texts?.length) {
+    const { openMergeView } = await import('./merge-view.js');
+    const c = await openMergeView({ key, title, files: e.texts.map(t => ({ path: t.path, base: t.base, mine: t.mine, theirs: t.theirs })),
+      labels, action, choices: Object.fromEntries(e.texts.map(t => [t.path, choices[t.path] || {}])) });
+    if (!c) return null;
+    Object.assign(choices, c);
+  }
+  return choices;
 }
 
 /** File ▸ Git ▸ Store Project in a GitHub Repository…: git init, Silinx's .gitignore, optionally the GitHub repository (origin). */
@@ -272,6 +280,8 @@ export const gitMenuItems = () => [
   { label: api.standalone ? 'Commit and Push…' : 'Commit…', action: () => commitDialog(), disabled: !S.git },
   ...(api.standalone ? [] : [{ label: 'Push to GitHub', action: () => gitPush(), disabled: !S.git }]),
   { label: 'Pull from GitHub', action: () => gitPull(), disabled: !S.git },
+  // (the branches, #4213: web/js/git-branch.js)
+  ...branchMenuItems(),
   { label: 'History…', action: () => import('./git-history.js').then(m => m.historyDialog()), disabled: !S.git },
   { label: 'GitHub Checks', action: () => gitChecks(), disabled: !S.git },
   '-',

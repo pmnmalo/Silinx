@@ -18,6 +18,8 @@ import crypto from 'node:crypto';
 import * as P from './projects.js';
 import { checkUrl as checkGithubUrl, redact, nameFromRepo } from '../core/github-url.js';
 import { foldName } from '../core/fold-name.js';
+// the branches (#4213): listed, made, switched, merged (git-branch.js, which reads this module's names only in its functions)
+export { gitBranches, gitNewBranch, gitSwitch, gitMerge } from './git-branch.js';
 
 /** A git command's failure: its message (git's own line), a hint for the user, the HTTP status; files: a conflict's. */
 export class GitError extends Error {
@@ -102,7 +104,7 @@ const firstLine = text => {
 };
 
 /** A failed command's GitError: git's line and the hint of the known cases. */
-function explain(op, r) {
+export function explain(op, r) {
   const t = `${r.stderr}\n${r.stdout}`;
   const line = firstLine(r.stderr || r.stdout);
   const hint =
@@ -123,7 +125,7 @@ function explain(op, r) {
   return new GitError(`git ${op}: ${rejected ? `rejected by GitHub (${rejected[1]})` : line}`, hint, rejected ? 409 : 400);
 }
 
-const ok = async (op, args, opt) => {
+export const ok = async (op, args, opt) => {
   const r = await git(args, opt);
   if (r.code) throw explain(op, r);
   return r.stdout;
@@ -158,7 +160,8 @@ async function checkRepoConfig(cwd) {
   if (setting) throw new GitError(`the repository's own configuration sets '${setting}': Silinx runs no git command in it`, `A repository made or cloned by Silinx has no such setting: remove it if you trust it (git config --local --unset-all ${setting}), or open the repository again with Open from GitHub Repository….`, 409);
 }
 
-async function needRepo(name) {
+/** The project's repository (git-branch.js's too), or a GitError: none. */
+export async function needRepo(name) {
   const repo = await repoOf(name);
   if (!repo) throw new GitError(`the project '${name}' is not in a git repository`, 'Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 409);
   return repo;
@@ -176,11 +179,11 @@ async function ensureGitignore(dir) {
   return true;
 }
 
-const branchOf = async cwd => (await git(['symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd })).stdout.trim() || null;
-const headOf = async cwd => { const r = await git(['rev-parse', '--verify', '--quiet', 'HEAD'], { cwd }); return r.code ? null : r.stdout.trim(); };
+export const branchOf = async cwd => (await git(['symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd })).stdout.trim() || null;
+export const headOf = async cwd => { const r = await git(['rev-parse', '--verify', '--quiet', 'HEAD'], { cwd }); return r.code ? null : r.stdout.trim(); };
 
 // origin's URLs (fetch and push), checked: github.com's
-async function origin(cwd) {
+export async function origin(cwd) {
   const r = await git(['remote', 'get-url', 'origin'], { cwd });
   if (r.code) throw new GitError('the repository has no remote (origin)', 'Store Project in a GitHub Repository… with the repository\'s address sets it.', 409);
   // (every URL of the remote, #3523: git fetches from the first, and pushes to each push URL)
@@ -195,7 +198,7 @@ const remoteName = cwd => origin(cwd).then(r => `${r.owner}/${r.repo}`, () => nu
 // the trust of the projects whose files a git command changes (#2830): an untrusted project's mark kept in the
 // repository's .git first (P.keepTrustInRepo), so that no commit checked out (a pull, a merge) trusts it, whatever its
 // silinx.json says; the workspace's repository: every project of it. -> the projects' names, for broughtUntrusted
-async function keepTrust(name, repo) {
+export async function keepTrust(name, repo) {
   const names = repo.root === 'workspace' ? (await P.listProjects()).map(p => p.name) : [name];
   for (const n of names) {
     try { await P.keepTrustInRepo(n, repo.root); }
@@ -204,7 +207,7 @@ async function keepTrust(name, repo) {
   return new Set(names.map(n => n.toLowerCase()));
 }
 // a project that a pull into the workspace's repository brought: from outside, untrusted
-async function broughtUntrusted(repo, had) {
+export async function broughtUntrusted(repo, had) {
   if (repo.root !== 'workspace') return;
   // each on its own (#3522): one that cannot be marked never leaves the ones after it trusted
   const failed = [];
@@ -342,25 +345,42 @@ export async function gitPull(name, { resolve = null } = {}) {
 }
 // (the pull itself, the trust kept around it)
 async function pull(name, repo, branch, upstream, resolve) {
+  const r = await mergeCommits(name, repo, { op: 'pull', args: ['pull', '--no-rebase', '--ff', '--no-edit', ...(upstream ? [] : ['origin', branch])], resolve,
+    onDone: () => (upstream ? null : git(['branch', `--set-upstream-to=origin/${branch}`], { cwd: repo.dir })) });
+  return { project: name, branch, ...r };
+}
+
+// the words of a merge's messages: a pull's, Merge Branch…'s (#4213), Switch Branch…'s (its files only)
+const DID = { pull: { did: 'pulled', not: 'pulled into the project', again: 'Pull' }, merge: { did: 'merged', not: 'merged into the project', again: 'Merge Branch…' },
+  switch: { did: 'switched', not: 'checked out into the project', again: 'Switch Branch…' } };
+
+/** Another line of commits merged into the project's branch by a git command (args: a pull's, or Merge Branch…'s merge,
+ *  #4213): the drawings both sides changed by their objects, the text files by their lines, by the choices of `resolve`
+ *  where they are in conflict; a conflict left merges nothing (the merge aborted) and is a GitError with the conflicts
+ *  (`drawings`, `texts`, `resolvable`); what it brought passes the import gate. -> { upToDate, files, resolved, merged,
+ *  warnings }; onDone: run once the merge is done, before the files are listed (a pull's upstream set). The trust is the
+ *  caller's (keepTrust, broughtUntrusted). */
+export async function mergeCommits(name, repo, { op, args, resolve = null, onDone = null }) {
+  const w = DID[op];
   const before = await headOf(repo.dir);
   const kept = await keptOut(repo);
   const changed = await changedFiles(repo);
   const M = await import('./git-merge.js');
   await M.ensureDrawingAttributes((await ok('rev-parse', ['rev-parse', '--absolute-git-dir'], { cwd: repo.dir })).trim());
-  const r = await git(['pull', '--no-rebase', '--ff', '--no-edit', ...(upstream ? [] : ['origin', branch])], { cwd: repo.dir, timeout: 180_000 });
+  const r = await git(args, { cwd: repo.dir, timeout: 180_000 });
   let resolved = [], merged = [];
   if (r.code) {
     const u = await git(['diff', '--name-only', '--relative', '--diff-filter=U'], { cwd: repo.dir });
     const files = u.stdout.split('\n').filter(Boolean);
-    if (!files.length) throw explain('pull', r);
+    if (!files.length) { if (op === 'merge') await git(['merge', '--abort'], { cwd: repo.dir }); throw explain(op, r); }
     let m;
     try { m = await M.resolveOnPull({ run: a => git(a, { cwd: repo.dir }), prefix: repo.prefix, name, files, resolve }); }
-    catch (e) { await git(['merge', '--abort'], { cwd: repo.dir }); throw new GitError(`git pull: ${e.message}: nothing was pulled`, 'Choose the other side for an object, then Pull again.', e.status || 422, { files }); }
+    catch (e) { await git(['merge', '--abort'], { cwd: repo.dir }); throw new GitError(`git ${op}: ${e.message}: nothing was ${w.did}`, `Choose the other side for an object, then ${w.again} again.`, e.status || 422, { files }); }
     if (!m.done) {
       await git(['merge', '--abort'], { cwd: repo.dir });
       const { pullConflictHint } = await import('../core/git-resolve.js');
-      const c = pullConflictHint(m);
-      throw new GitError(`git pull: a conflict in ${files.join(', ')}: nothing was pulled, the project's files are as they were`, c.hint, 409,
+      const c = pullConflictHint(m, { op });
+      throw new GitError(`git ${op}: a conflict in ${files.join(', ')}: nothing was ${w.did}, the project's files are as they were`, c.hint, 409,
         { files, drawings: m.drawings, texts: m.texts, resolvable: c.resolvable });
     }
     await ok('add', ['add', '--all', '--', ...new Set([...files, ...m.written])], { cwd: repo.dir });
@@ -369,10 +389,15 @@ async function pull(name, repo, branch, upstream, resolve) {
     merged = m.merged;
   }
   const after = await headOf(repo.dir);
-  const gated = before === after ? { out: [], warnings: [] } : await gatePulled(repo, before, after, kept, changed);
-  if (!upstream) await git(['branch', `--set-upstream-to=origin/${branch}`], { cwd: repo.dir });
-  const files = before === after ? [] : (await ok('diff', before ? ['diff', '--name-only', '--relative', before, after, '--', '.'] : ['ls-files', '--', '.'], { cwd: repo.dir })).split('\n').filter(f => f && !gated.out.includes(f));
-  return { project: name, branch, upToDate: before === after, files, ...(resolved.length ? { resolved } : {}), ...(merged.length ? { merged } : {}), ...(gated.warnings.length ? { warnings: gated.warnings } : {}) };
+  const gated = before === after ? { out: [], warnings: [] } : await gatePulled(repo, before, after, kept, changed, { op });
+  await onDone?.();
+  const files = await changedBetween(repo, before, after, gated.out);
+  return { upToDate: before === after, files, ...(resolved.length ? { resolved } : {}), ...(merged.length ? { merged } : {}), ...(gated.warnings.length ? { warnings: gated.warnings } : {}) };
+}
+// the project's files a command changed, from one commit to another (none before: every one), but those left out
+export async function changedBetween(repo, before, after, out = []) {
+  if (before === after) return [];
+  return (await ok('diff', before ? ['diff', '--name-only', '--relative', before, after, '--', '.'] : ['ls-files', '--', '.'], { cwd: repo.dir })).split('\n').filter(f => f && !out.includes(f));
 }
 
 // what a pull brought passes the import gate (#3359), as a clone's files do (the workspace's repository: every
@@ -380,14 +405,17 @@ async function pull(name, repo, branch, upstream, resolve) {
 // silinx.json is taken out of the folder and left in the repository (skip-worktree: a commit neither deletes nor
 // changes it), each with its message; a file the gate refuses otherwise (a name, a NUL byte, a DTD, a size) undoes the
 // pull. -> { out: the project's paths not in its folder (taken out, or left out by a sparse checkout), warnings }
-async function gatePulled(repo, before, after, kept, changed) {
+// op: the command's ('pull', 'merge', 'switch': its words); undo: how a refused one is undone (a switch's: back to its
+// branch), else as a pull's
+export async function gatePulled(repo, before, after, kept, changed, { op = 'pull', undo = null } = {}) {
+  const w = DID[op];
   const { gateEntries, gateMessages, normalizePath, GateError } = await import('../core/import-gate.js');
   const listed = await ok('diff', before ? ['diff', '-z', '--name-only', '--diff-filter=d', before, after] : ['ls-files', '-z'], { cwd: repo.top });
   // (a pulled name another tracked file has but for its case: one file on a case-insensitive file system, #3524)
   const clashes = caseClashes(listed.split('\0').filter(Boolean), await trackedPaths(repo));
   if (clashes.length) {
-    await undoClashes(repo, before, clashes, kept, changed);
-    throw new GitError(`git pull: ${clashes.map(([p, q]) => `${p}: not imported: same name as '${q}' but for its case`).join('; ')}: nothing was pulled, the project's files are as they were`, null, 422);
+    await (undo ? undo() : undoClashes(repo, before, clashes, kept, changed));
+    throw new GitError(`git ${op}: ${clashes.map(([p, q]) => `${p}: not imported: same name as '${q}' but for its case`).join('; ')}: nothing was ${w.did}, the project's files are as they were`, null, 422);
   }
   const left = [], absent = [], warnings = [], groups = new Map();
   for (const file of listed.split('\0').filter(Boolean)) {
@@ -399,7 +427,7 @@ async function gatePulled(repo, before, after, kept, changed) {
     const [group, rel] = cut > 0 ? [file.slice(0, cut), file.slice(cut + 1)] : ['', file];
     if (rel === '.gitignore') continue;   // (git's own, as Silinx writes it)
     const out = outOfProject(rel, normalizePath);
-    if (out) { left.push(file); warnings.push(`${file}: not pulled into the project: ${out}`); continue; }
+    if (out) { left.push(file); warnings.push(`${file}: not ${w.not}: ${out}`); continue; }
     if (!groups.has(group)) groups.set(group, []);
     groups.get(group).push({ path: rel, data: st.isFile() ? await fsp.readFile(full) : new Uint8Array(), symlink: st.isSymbolicLink() });
   }
@@ -414,8 +442,8 @@ async function gatePulled(repo, before, after, kept, changed) {
     } catch (e) { if (!(e instanceof GateError)) throw e; errors.push(group ? `${group}: ${e.message}` : e.message); }
   }
   if (errors.length) {
-    await undoPull(repo, before, [...groups].flatMap(([g, es]) => es.map(e => (g ? `${g}/${e.path}` : e.path))), kept);
-    throw new GitError(`git pull: ${errors.join('; ')}: nothing was pulled, the project's files are as they were`, null, 422);
+    await (undo ? undo() : undoPull(repo, before, [...groups].flatMap(([g, es]) => es.map(e => (g ? `${g}/${e.path}` : e.path))), kept));
+    throw new GitError(`git ${op}: ${errors.join('; ')}: nothing was ${w.did}, the project's files are as they were`, null, 422);
   }
   const mine = p => (repo.prefix && p.startsWith(repo.prefix) ? p.slice(repo.prefix.length) : p);
   return { out: [...left, ...absent].map(mine), warnings };
@@ -434,7 +462,7 @@ async function pruneEmpty(top, dir) {
   }
 }
 // the files of the repository a pull left out of the folder (skip-worktree), before the next pull
-async function keptOut(repo) {
+export async function keptOut(repo) {
   const r = await git(['ls-files', '-v', '-z'], { cwd: repo.top });
   return r.code ? [] : r.stdout.split('\0').filter(l => l.startsWith('S ')).map(l => l.slice(2));
 }

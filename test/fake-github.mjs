@@ -113,6 +113,27 @@ export function fakeGitHub({ clientId = 'Iv1.fake-client-id', tokens = ['gho_fak
       r.refs.set(b, body.sha);
       return json(200, { ref: `refs/heads/${b}`, object: { sha: body.sha, type: 'commit' } });
     }
+    // (#4213) the branches, a branch made, two commits compared (their merge base: the first common ancestor from head)
+    if (rest === '/branches' && method === 'GET') {
+      const per = Number(url.searchParams.get('per_page') || 30), page = Number(url.searchParams.get('page') || 1);
+      return json(200, [...r.refs.keys()].sort().slice((page - 1) * per, page * per).map(name => ({ name, commit: { sha: r.refs.get(name) } })));
+    }
+    if (rest === '/git/refs' && method === 'POST') {
+      const b = /^refs\/heads\/(.+)$/.exec(body.ref || '')?.[1];
+      if (!b || !r.commits.has(body.sha)) return json(422, { message: 'Invalid request' });
+      if (r.refs.has(b)) return json(422, { message: 'Reference already exists' });
+      r.refs.set(b, body.sha);
+      return json(201, { ref: body.ref, object: { sha: body.sha, type: 'commit' } });
+    }
+    if ((x = /^\/compare\/([0-9a-f]{40})\.\.\.([0-9a-f]{40})$/.exec(rest)) && method === 'GET') {
+      const [a, b] = [x[1], x[2]];
+      if (!r.commits.has(a) || !r.commits.has(b)) return nope();
+      const ofA = ancestors(r, a), ofB = ancestors(r, b);
+      let base = null;
+      for (const todo = [b], seen = new Set(); todo.length && !base;) { const c = todo.shift(); if (seen.has(c)) continue; seen.add(c); if (ofA.has(c)) base = c; else todo.push(...r.commits.get(c).parents); }
+      const status = a === b ? 'identical' : ofB.has(a) ? 'ahead' : ofA.has(b) ? 'behind' : 'diverged';
+      return json(200, { status, merge_base_commit: base && { sha: base } });
+    }
     if (empty && rest.startsWith('/git/')) return json(409, { message: 'Git Repository is empty.' });
     if ((x = /^\/git\/commits\/([0-9a-f]{40})$/.exec(rest)) && method === 'GET') {
       const c = r.commits.get(x[1]);

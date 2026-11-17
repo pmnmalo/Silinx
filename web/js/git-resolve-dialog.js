@@ -5,8 +5,9 @@
 // with nothing pulled.
 import { h, dialog } from './ui.js';
 
-/** The choices for the drawings' conflicts ({ path: { id: 'mine' | 'theirs' } }), or null (Cancel). */
-export async function resolveDialog(drawings) {
+/** The choices for the drawings' conflicts ({ path: { id: 'mine' | 'theirs' } }), or null (Cancel). Merge Branch…'s
+ *  (#4213): where the objects changed, and its button. */
+export async function resolveDialog(drawings, { where = 'both here and on GitHub', action = 'Pull from GitHub' } = {}) {
   const picks = {};
   const err = h('div', { class: 'hint git-error git-resolve-error', style: { minHeight: '16px' } });
   const row = (path, c) => {
@@ -20,12 +21,12 @@ export async function resolveDialog(drawings) {
   const r = await dialog({
     title: 'Resolve Conflicts', width: 620,
     body: h('div', {},
-      h('div', { class: 'hint' }, `${total} object(s) changed both here and on GitHub: choose whose version each one keeps. The rest of each drawing is merged by itself.`),
+      h('div', { class: 'hint' }, `${total} object(s) changed ${where}: choose whose version each one keeps. The rest of each drawing is merged by itself.`),
       ...drawings.map(d => h('div', { class: 'git-drawing', 'data-path': d.path },
         h('div', { style: { fontWeight: '600', margin: '8px 0 4px' }, 'data-no-i18n': '' }, d.path),
         h('ul', { class: 'git-conflicts', style: { paddingLeft: '16px', margin: 0 } }, ...d.conflicts.map(c => row(d.path, c))))),
       err),
-    buttons: [{ label: 'Pull from GitHub', primary: true, value: () => picks,
+    buttons: [{ label: action, primary: true, value: () => picks,
       validate: () => { const left = drawings.reduce((a, d) => a + d.conflicts.filter(c => !picks[d.path]?.[c.id]).length, 0); if (!left) return true; err.textContent = `Choose Mine or Theirs for ${left} object(s) more.`; return false; } },
     { label: 'Cancel', value: null }],
   });

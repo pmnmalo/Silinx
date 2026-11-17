@@ -24,3 +24,10 @@ export const pullMergeLines = (r, { designOnly = false } = {}) => [
   ...(r.merged || []).map(f => `${f}: merged by its lines.`),
   ...(r.renamed || []).map(x => `${x.from}: renamed ${x.side === 'theirs' ? 'on GitHub' : 'here'} to ${x.to}, the other side's changes merged into it.`),
 ];
+
+// the branches (#4213): listed, made, switched, merged
+const where = (b, github) => (!github ? '' : b.local ? (b.remote ? '' : ' (not on GitHub yet)') : ' (on GitHub)');
+export const branchesText = r => [`${r.project}: on ${r.branch || '(no branch)'}; ${r.branches.length} branch(es):`, ...r.branches.map(b => `  ${b.current ? '* ' : ''}${b.name}${where(b, r.github)}`)].join('\n');
+export const newBranchText = r => `Branch ${r.branch} made from ${r.from || 'the last commit'}: the project is on it now${r.pushed ? ', on GitHub too' : '; Push sends it to GitHub'}.`;
+export const switchText = r => (r.switched ? [`Switched to ${r.branch}: ${r.files.length} file(s) changed.`, ...r.files.map(f => `  ${f}`)].join('\n') : `Already on ${r.branch}.`);
+export const mergeBranchText = r => (r.upToDate ? `Already up to date: ${r.branch} has every commit of ${r.from}.` : [`Merged ${r.from} into ${r.branch}: ${r.files.length} file(s) changed.`, ...r.files.map(f => `  ${f}`)].join('\n'));

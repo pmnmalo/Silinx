@@ -83,7 +83,7 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Reposit
   await page.leftTab('collab');
   await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks'], 'signed in');
   // Commit and Push… (no Push to GitHub)
-  const REPO_ENTRIES = ['GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'History…'];
+  const REPO_ENTRIES = ['GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', 'History…'];
   await waitBox(page, 'Repository', REPO_ENTRIES, 'the repository');
   await waitBox(page, 'Changes', ['No change since the last commit.'], 'no change');
   // (Sharing, #4259: the browser edition's page hosts live sharing)
@@ -134,7 +134,7 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Reposit
     await page.waitFor(() => document.documentElement.lang === 'pt' && window.Silinx.project?.name === 'collab-ana' && !!window.SilinxApp.S.git, [], { what: 'Portuguese, collab-ana' });
     await page.leftTab('collab');
     await waitBox(page, 'GitHub', ['Com sessão iniciada no GitHub.', 'Terminar sessão no GitHub', 'Verificações do GitHub (Checks)'], 'Portuguese');
-    assert.deepEqual(await boxOf(page, 'Repositório'), ['GitHub: course/collab-ana', 'Ramo: main', 'Registar e Enviar (Commit e Push)…', 'Receber do GitHub (Pull)', 'Histórico…']);
+    assert.deepEqual(await boxOf(page, 'Repositório'), ['GitHub: course/collab-ana', 'Ramo: main', 'Registar e Enviar (Commit e Push)…', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Histórico…']);
     assert.deepEqual(await boxOf(page, 'Alterações'), ['Nenhuma alteração desde o último commit.']);
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab] .tab-lbl').textContent), 'Colaboração');
     await tabCommand(page, 'Terminar sessão no GitHub');
