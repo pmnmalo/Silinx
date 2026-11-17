@@ -2,15 +2,20 @@
 // (core/collab-doc.js), so that the whole Project Navigator shows the owner's project as it shows one of its own.
 // It reaches nothing of the server: a follower has no token, and needs none. Every change (a file written, renamed,
 // deleted, a process run) is refused, read only; the processes run in the owner's Silinx. An editor (#3182) writes a
-// text file's text: merged into the shared document as its edit (core/collab-doc.js editFile), which the owner writes.
+// text file's text: merged into the shared document as its edit (core/collab-doc.js editFile), which the owner writes;
+// and (#4418) creates, deletes and renames files and saves the project's description (its sources, its top, its
+// settings: core/collab-files.js), which the owner takes through the import gate too.
 // Every file the room shows passes the import gate first (#3361: core/collab-doc.js gatedDocFile), as any file from
 // outside: one it refuses is not shown, and `warn` says so once. The owner's runs (#4002): its Design Summary's data and
 // the reports of its build it has open, as they came (core/collab-runs.js), read as the server's.
-import { docProject, watchDoc, editFile, gatedDocFile } from '/core/collab-doc.js';
+import { docProject, watchDoc, editFile, gatedDocFile, docFile, putFile } from '/core/collab-doc.js';
+import { createFile, deleteFile, renameFile, setDescription, textEditable } from '/core/collab-files.js';
 import { collab, readOnlyError, editsHere } from './collab-state.js';
 import { followedReports, followedRuns, reportPath } from '/core/collab-runs.js';
 
 const notFound = what => Object.assign(new Error(what), { status: 404 });
+// a file, or a folder's files
+const inFolder = (tree, p) => (tree.includes(p) ? [p] : tree.filter(f => f.startsWith(`${p}/`)));
 
 /** The backend of a followed room's document (`api`: the one it stands for; its other functions refuse). warn(text):
  *  a file the gate refuses, once for each reason; activity(ch): the owner's activity (#4002: its runs and reports). */
@@ -88,9 +93,37 @@ export function followApi(api, doc, { warn = () => {}, activity = () => null } =
     ...(api.buildFile ? { buildFile: async (name, path) => { check(name); return report(path); } } : {}),
     writeFile: async (name, path, text) => {
       check(name);
-      if (!editsHere(path)) throw readOnlyError();
-      editFile(doc, path, String(text));
+      if (editsHere(path) && docFile(doc, path) !== null) editFile(doc, path, String(text));
+      else if (!collab.editor) throw readOnlyError();
+      // (#4418: an editor's new file; a drawing it created, whose structure the owner has not made yet, as its text)
+      else if (docFile(doc, path) === null) createFile(doc, path, String(text));
+      else if (textEditable(doc, path)) putFile(doc, path, String(text));
+      else throw readOnlyError();
       return { ok: true };
+    },
+    // (#4418: an editor's description, files renamed and deleted; a folder's files each)
+    saveProject: async (name, pj) => {
+      check(name);
+      if (!collab.editor) throw readOnlyError();
+      setDescription(doc, pj);
+      const { project, fileTree } = current();
+      return { ...structuredClone(project), fileTree };
+    },
+    renameFile: async (name, from, to) => {
+      const { fileTree } = check(name);
+      if (!collab.editor) throw readOnlyError();
+      const moved = inFolder(fileTree, from);
+      if (!moved.length) throw notFound(`file '${from}' not found`);
+      doc.transact(() => { for (const p of moved) renameFile(doc, p, to + p.slice(from.length)); });
+      return { ok: true };
+    },
+    deleteFile: async (name, path) => {
+      const { fileTree } = check(name);
+      if (!collab.editor) throw readOnlyError();
+      const gone = inFolder(fileTree, path);
+      if (!gone.length) throw notFound(`file '${path}' not found`);
+      doc.transact(() => { for (const p of gone) deleteFile(doc, p); });
+      return { ok: true };   // (into the owner's .trash, where it has one)
     },
     // what the owner changes, as the local server's events of a change on disk (web/js/project-watch.js)
     events: (name, onEvent, signal) => new Promise(resolve => {

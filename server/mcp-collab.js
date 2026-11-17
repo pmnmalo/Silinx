@@ -20,8 +20,9 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
-import { projectDoc, publishProject, sharedPath, docProject, docFile, gatedDocFile, watchDoc, editFile, editablePath, gateEdit } from '../core/collab-doc.js';
+import { projectDoc, publishProject, sharedPath, docProject, docFile, gatedDocFile, watchDoc, editFile, gateEdit } from '../core/collab-doc.js';
 import { isTrusted, markEditedByEditor } from '../core/trust.js';
+import { applyEdits, sourceChange, setDescription, editQueue } from '../core/collab-files.js';
 import { relayConfig } from './toolchain.js';
 import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, putDrawing, pruneDrawing, revertDrawing, withView, viewFields, drawingKind } from '../core/collab-model.js';
 import { wireStyleOf } from '../core/wire-style.js';
@@ -94,32 +95,31 @@ function generated(doc) {
   }
   return out;
 }
-// an editor's changes, at the owner's (#3182): a text file's, written to the disk; anything else, undone (the project
-// published again from the disk, the owner's). The text passes the import gate first, as any file from outside, and the
-// project is untrusted before it is written (#3355): an editor's link reaches no ISE nor board until the user trusts it
-// again; what the gate refuses is not written (undone too), its reason among the share's warnings (`warn`).
+// an editor's changes, at the owner's (#3182, core/collab-files.js applyEdits): a text file's, written to the disk; a
+// file created, deleted or renamed and the project's description (#4418), written too (a deleted file into the
+// workspace's .trash); anything else, undone (the project published again from the disk, the owner's). The text passes
+// the import gate first, as any file from outside, and the project is untrusted before it is written (#3355): an
+// editor's link reaches no ISE nor board until the user trusts it again; what the gate refuses is not written (undone
+// too), its reason among the share's warnings (`warn`).
 function ownerWrites(name, doc, owner, warn, bases) {
   const offDrawings = drawingWrites(name, doc, owner, warn, bases);
-  // (#4110: one change written after the other, each file's text as the document has it then)
-  const apply = async ({ changes, project }) => {
-    const gen = generated(doc);
-    const write = changes.filter(c => c.kind === 'changed' && editablePath(c.path) && !gen.has(c.path));
-    let refused = false;
-    for (const c of write) {
-      const text = docFile(doc, c.path);
-      const file = P.safeJoin(P.projectDir(name), c.path);
-      if (typeof text !== 'string' || !fs.existsSync(file)) continue;
-      let gated;
-      try { gated = gateEdit(c.path, text); } catch (e) { warn(`${c.path}: an editor's change not written: ${e.reason || e.message}`); refused = true; continue; }
-      try {
-        if (isTrusted(await P.readProject(name))) await P.updateProject(name, markEditedByEditor);
-        await P.writeAtomic(file, gated);   // (#3183: a reader never sees it half-written)
-      } catch { refused = true; /* the next change */ }
-    }
-    if (project || refused || changes.length > write.length) { try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ } }
+  const store = {
+    read: async () => ({ json: await P.readProject(name), fileTree: await P.fileTree(name) }),
+    write: (path, text) => P.writeAtomic(P.safeJoin(P.projectDir(name), path), text),   // (#3183: a reader never sees it half-written)
+    remove: path => P.deleteFile(name, path, { trash: true }),
+    saveJson: json => P.writeProject(name, json),
+    untrust: async () => { if (isTrusted(await P.readProject(name))) await P.updateProject(name, markEditedByEditor); },
   };
-  const offFiles = watchDoc(doc, apply, { inOrder: true });
-  return () => { offFiles(); offDrawings(); };
+  // (#4110: one change written after the other, each file's text as the document has it then; #4418: the project
+  // published again from the disk once none waits, the watcher's publishing too)
+  const apply = async ev => {
+    const r = await applyEdits(doc, ev, store, { generated: generated(doc), warn });
+    const texts = ev.changes.filter(c => c.kind === 'changed' && r.written.includes(c.path)).length;
+    return !!(r.undone.length || r.refused || r.project || r.removed.length || r.written.length > texts);
+  };
+  const queue = editQueue(apply, async () => { try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ } });
+  const offFiles = watchDoc(doc, ev => queue.push(ev));
+  return { off: () => { offFiles(); offDrawings(); }, queue };
 }
 // an editor's changes of the drawings edited live (#3183): each one's merged model written to the disk (the gate, the
 // project untrusted, as a text file's), its HDL made again from it (server/drawing-sync.js), one write after the other;
@@ -243,9 +243,12 @@ export const COLLAB_TOOLS = [
       // (what changes on disk, published again; the relay's end, the share's)
       const { createProjectWatcher } = await import('./project-watch.js');
       const watcher = createProjectWatcher({ dirOf: P.projectDir });
-      const unsub = watcher.subscribe(name, async () => { try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ } });
-      const unwatch = session.editKey ? ownerWrites(name, doc, owner, w => warnings.push(w), bases) : () => {};
-      const off = () => { unsub(); unwatch(); watcher.close?.(); };
+      const writes = session.editKey ? ownerWrites(name, doc, owner, w => warnings.push(w), bases) : null;
+      const unsub = watcher.subscribe(name, async () => {
+        if (writes) { writes.queue.again(); return; }   // (after the editors' changes waiting, #4418)
+        try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ }
+      });
+      const off = () => { unsub(); writes?.off(); watcher.close?.(); };
       const link = followLink(`${origin}/`, session.room, session.key);
       const editLink = session.editKey ? followLink(`${origin}/`, session.room, session.key, 'relay', session.editKey) : null;
       shares.set(name, { session, link, editLink, server: origin, off, warnings });
@@ -263,11 +266,13 @@ export const COLLAB_TOOLS = [
       path: STR('A file of the project: its text as it is now.'),
       name: STR('The name the owner sees (default: "MCP agent").'),
       write: { type: 'object', description: 'With an editor\'s link (…#edit=…): a text file\'s new text, merged into the shared project as this participant\'s edit (HDL, constraints, C / C++, notes); or a state diagram\'s (.fsm.json), a truth table\'s (.bool.json), an ASM chart\'s (.asm.json), a Petri net\'s (.pn.json) or a schematic\'s (.sch.json) new JSON, merged with the others\' changes per object (a state, a transition, an output and its cells, a box, a link, a place, an arc, a symbol, a wire) and per field (its wires\' style left out, each participant\'s own, #4239) (its Check given after the merge, but a truth table\'s and a schematic\'s: check_syntax). Other drawings: not.', properties: { path: STR('The file.'), text: STR('Its new text.') }, required: ['path', 'text'], additionalProperties: false },
+      source: { type: 'object', description: 'With an editor\'s link (…#edit=…, #4418): a source of the project changed, as the interface\'s New Source… / Add Source…, Remove from Project, Delete File… and Rename… do: action add (path, a new file with text; without text, a file of the project folder put in the project), remove (out of the project, the file kept in its folder), delete (out of the project and its folder: into the owner\'s .trash) or rename (path to to). The owner writes it through the import gate, the project untrusted.', properties: { action: { type: 'string', enum: ['add', 'remove', 'delete', 'rename'] }, path: STR('The file\'s path in the project.'), to: STR('rename: its new path.'), text: STR('add: the new file\'s text.') }, required: ['action', 'path'], additionalProperties: false },
+      settings: { type: 'object', description: 'With an editor\'s link (#4418): fields of the project\'s description (silinx.json) set, as the interface\'s Set as Top Module, Design Properties… and Process Properties… do (top, simTop, device, board, impl, …); its id, name, origin and trust stay the owner\'s.' },
       stop: { type: 'boolean', description: 'Stop following it.' },
       keep: { type: 'boolean', description: 'With stop, or once following ended (the owner stopped sharing, the connection lost for good): keep a copy of the project as the room has it (its files, its drawings as merged), a project of the workspace under a free name, imported and untrusted as the interface\'s Keep a Copy does (#4198); then left.' },
     }, required: ['link'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async run({ link, path, name: who, write, stop = false, keep = false }) {
+    async run({ link, path, name: who, write, source, settings, stop = false, keep = false }) {
       let l;
       try { l = parseFollowLink(link); } catch (e) { throw toolError(e.message); }
       if (!l || !l.base) throw toolError('link: a link to follow (http(s)://…/#view=…)');
@@ -286,7 +291,7 @@ export const COLLAB_TOOLS = [
         if (!cur.session.closed()) await cur.session.close();
         return keptCopy(cur.session.doc);
       }
-      if (cur?.session.closed() && !stop && path === undefined && write === undefined) {
+      if (cur?.session.closed() && !stop && path === undefined && write === undefined && source === undefined && settings === undefined) {
         const { project, owner } = docProject(cur.session.doc);
         return { text: `Following ${owner}'s project '${project?.name}' ended: it is saved nowhere. follow_project keep: true keeps a copy of it in the workspace (untrusted); stop: true leaves it.`, data: { following: false, ended: true, owner, project: project?.name ?? null }, untrusted: 'the shared project\'s name' };
       }
@@ -313,6 +318,22 @@ export const COLLAB_TOOLS = [
         try { wrote = writeShared(cur.session.doc, String(write.path), String(write.text)); } catch (e) { throw toolError(`write: ${e.message}`); }
         await cur.session.flush();
       }
+      // (#4418: a source added, removed, deleted or renamed; the description's settings)
+      const changed = [];
+      if (source !== undefined || settings !== undefined) {
+        if (!cur.session.editor) throw toolError(`${source !== undefined ? 'source' : 'settings'}: this link follows only (an editor's link, …#edit=…, changes the project)`);
+        if (source !== undefined) {
+          try { changed.push(sourceChange(cur.session.doc, { action: String(source.action), path: String(source.path), to: source.to === undefined ? undefined : String(source.to), text: source.text })); } catch (e) { throw toolError(`source: ${e.message}`); }
+        }
+        if (settings !== undefined) {
+          if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw toolError('settings: an object of silinx.json\'s fields');
+          const pj = docProject(cur.session.doc).project;
+          if (!pj) throw toolError('settings: the shared project has not arrived yet');
+          setDescription(cur.session.doc, { ...pj, ...settings });
+          changed.push(`Set ${Object.keys(settings).join(', ') || 'nothing'} in the project's description.`);
+        }
+        await cur.session.flush();
+      }
       const { project, owner, fileTree } = docProject(cur.session.doc);
       const peers = cur.session.peers();
       const view = cur.session.owner()?.view || null;
@@ -337,6 +358,7 @@ export const COLLAB_TOOLS = [
         ...simLines(cur.session.activity('sim')),
         ...emuLines(cur.session.activity('emu')),
         ...tryLines(cur.session.activity('try')),
+        ...changed.map(t => `${t.replace(/\.$/, '')} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`),
         ...(write !== undefined ? [`Wrote ${write.path} (merged as this participant's edit${cur.session.connected() ? '' : ', sent once the connection is back'}).`, ...(wrote ? [wrote] : [])] : []),
         ...(text !== null ? [`${path}:`, text] : []),
         ...(check ? check.lines : []),

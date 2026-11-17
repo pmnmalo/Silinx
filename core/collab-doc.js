@@ -148,9 +148,10 @@ export function docTooLarge(doc, limits = FOLLOW_LIMITS) {
 }
 
 /** The parts of a shared project's document (#3527): a root of any other name is no part of one. An editor's edit
- *  changes the files and the drawings only. */
+ *  changes the files, the drawings and the project's description (#4418: its sources, its top, its settings; the owner
+ *  takes it as core/collab-files.js editorDescription does), never its meta. */
 export const DOC_ROOTS = Object.freeze(['meta', 'project', 'files', 'drawings']);
-export const EDIT_ROOTS = Object.freeze(['files', 'drawings']);
+export const EDIT_ROOTS = Object.freeze(['project', 'files', 'drawings']);
 const rootName = n => JSON.stringify(String(n).slice(0, 64));
 
 /** The bytes a document holds (#3527), whatever they are (every root, values that are no text, the updates waiting for

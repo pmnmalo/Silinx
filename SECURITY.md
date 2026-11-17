@@ -373,9 +373,12 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   (`server/owner-secrets.js`): the workspace and the exchange folder (as given and as the system resolves them), Silinx's
   configuration folder, the home folder, and the ISE host it reaches over SSH (with its build folder there). A follower's page replays the simulations and the
   emulators itself, from the files it already has: nothing runs on the server for it.
-- **An editor** (an editor's link, `#edit=…`) changes the project's text files and drawings. At the owner's, an edit
-  that changes another part of the document (the project's settings, its meta, a root of its own), builds on changes
+- **An editor** (an editor's link, `#edit=…`) changes the project's text files and drawings, creates, renames and
+  deletes its files and changes its description (its sources, its top, its settings, #4418). At the owner's, an edit
+  that changes another part of the document (its meta, a root of its own), builds on changes
   the owner does not have, or would take the document past 64 MB is refused before it is applied, said as a warning
   (#3527); each change passes the
-  import gate before it is written. The first one makes a trusted project untrusted (#3355): Xilinx ISE and the board
+  import gate before it is written (`core/collab-files.js`): a new file never replaces one of the project folder that is
+  not shared, a deleted file goes to the workspace's .trash, and the description's id, name, origin and trust stay the
+  owner's, its paths only the project's files', as Merge Contribution takes another's description. The first one makes a trusted project untrusted (#3355): Xilinx ISE and the board
   wait for the user's Trust Project.
