@@ -28,6 +28,9 @@ export function insideLayout(d, pins) {
   const at = new Map(pins.map((q) => [q.n, [q.x, q.y]]));
   const ys = pins.map((q) => q.y), rowB = Math.max(...ys), rowT = Math.min(...ys), span = rowB - rowT;
   const out = { gates: [], wires: [] };
+  // (a gate whose inputs are on both rows and one of its output's row past its output, a 4023's 1, 2 and 8 to 9, #4397:
+  // that input's line would cross the output's; the IC's pins' names inside it then, as an MSI IC's)
+  if ((d.gates || []).some((g) => { const o = at.get(g.out), r = (n) => at.get(n)[1] === o[1]; return g.ins.some((n) => !r(n)) && g.ins.some((n) => r(n) && Math.sign(at.get(n)[0] - o[0]) === -Math.sign(g.ins.filter((m) => !r(m)).reduce((a, m) => a + at.get(m)[0] - o[0], 0))); })) return out;
   for (const [gi, g] of (d.gates || []).entries()) {
     const o = at.get(g.out);
     const home = o[1] === rowB ? 'b' : 't';

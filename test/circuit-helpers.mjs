@@ -36,7 +36,7 @@ export function icBench(type, { power = true, name = 'bench', pullUps = true } =
   if (power) { W([-20, -20], pin.get(pv)); W([-20, -19], pin.get(pg)); }
   let row = 0;
   d.gates.forEach((g, i) => {
-    g.ins.forEach((n, j) => { const id = `S${i + 1}${'abcdefgh'[j]}`; m.parts.push({ id, type: 'logic-switch', x: -40, y: row, label: `g${i + 1}${'abcdefgh'[j]}` }); W([-40, row++], pin.get(n)); });
+    g.ins.forEach((n, j) => { const id = `S${i + 1}${'abcdefghjklmn'[j]}`; m.parts.push({ id, type: 'logic-switch', x: -40, y: row, label: `g${i + 1}${'abcdefghjklmn'[j]}` }); W([-40, row++], pin.get(n)); });
     m.parts.push({ id: `D${i + 1}`, type: 'led', x: 20 + 3 * i, y: 10, label: `g${i + 1}y` });
     W(pin.get(g.out), [20 + 3 * i, 10]);
     W([21 + 3 * i, 10], [-20, -19]);

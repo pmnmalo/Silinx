@@ -40,7 +40,8 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   given, a label another part has left out.
 - **Show inside** (#4060, the toolbar's, remembered): each breadboard's strips drawn under its holes (each column's a–e
   and f–j, each power rail), each gate IC's gates in its body (IEC boxes, &, ≥1, =1, 1, a bubble on an inverting one)
-  joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire.
+  joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire. A 4023, 4025, 4073 or 4075
+  has its pins named too (#4397): a gate's inputs on both rows, one past its output, its lines would cross.
 - **How the wires are drawn** (#4064, #4080, the ⋮ menu, as the schematic's, `core/wire-style.js`): **Wires**, Direct (a
   straight line from point to point, the circuit's default), Orthogonal (horizontal and vertical segments) or Curved (a
   smooth curve through its bends, as a jumper wire), the circuit's `wireStyle` (`orthogonal`, `curved`; Direct not
@@ -84,6 +85,7 @@ generated HDL and the MCP server.
 | Gates (74xx, as the 74LS) | 7400 NAND, 7404 NOT, 7408 AND, 7432 OR, 7486 XOR | 1 |
 | | 7402 NOR, 7410 / 7411 / 7420 / 7427 / 7430 (3, 4, 8 inputs), 7414 (Schmitt NOT), 7401 / 7403 / 7405 / 7406 (open collector) | 2 |
 | Gates (4000) | 4001, 4011, 4030 / 4070, 4069, 4071, 4081 | 2 |
+| Gates (more, #4397) | 7407 (buffer), 7409 / 7412 / 7415 / 7422 / 7426 / 7433 / 7438 / 74136 (open collector), 7413 / 74132 (Schmitt NAND), 7421 (AND4), 7428 / 7437 / 7440 (buffers), 74133 (13-input NAND, DIP-16), 74386 (XOR); 4002, 4012, 4023, 4025, 4072, 4073, 4075 (3 and 4 inputs), 4049 / 4050 (inverting and non-inverting buffers, DIP-16), 4077 (XNOR) | 2 |
 | MSI | 7447 / 7448, 4511 (BCD to 7 segments), 74138 / 74139 (decoders), 74151 / 74153 / 74157 (multiplexers), 7483 / 74283 (adders), 7485 (comparator) | 3 |
 | Sequential | 7474, 7476, 74112 (flip-flops), 7490 / 7493 / 74161 / 74163 / 74191 / 74193 (counters), 74164 / 74165 / 74194 / 74595 (shift registers), 4017 | 3 |
 
@@ -201,7 +203,7 @@ CORS header), so the local server does (`server/kicad-libraries.js`):
   after a day, and the one kept is used offline.
 
 **The KiCad catalogue** (#4305): the Parts panel's last group, *KiCad catalogue*, folded at first and opened by a
-search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (293 on their DIPs: their 73
+search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (293 on their DIPs: their 102
 parts that behave as Silinx's ICs, and those drawn only, #4397), KiCad's own basic parts (#4385: an LED, a resistor,
 capacitors, a diode, a potentiometer, the 2N3904, 2N3906, BC547 and BC557, the 7805, a DIP switch, a 7-segment display,
 each with a through-hole footprint Silinx picks for it, written as its `Silinx.Footprint` when it is imported) and

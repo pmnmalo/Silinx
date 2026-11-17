@@ -9,8 +9,8 @@ export const pinPort = (p) => p.port ?? (/^\d/.test(p.name) ? `${p.name.slice(1)
 export const icPorts = (d) => d.pins.filter((p) => p.dir !== 'nc');
 
 // (VHDL's nand and nor do not chain: not (a and b and c))
-const GATE_V = { nand: (x) => (x.length > 2 ? `(not (${x.join(' and ')}))` : `(${x.join(' nand ')})`), and: (x) => `(${x.join(' and ')})`, or: (x) => `(${x.join(' or ')})`, nor: (x) => (x.length > 2 ? `(not (${x.join(' or ')}))` : `(${x.join(' nor ')})`), xor: (x) => `(${x.join(' xor ')})`, not: (x) => `(not ${x[0]})` };
-const GATE_VL = { nand: (x) => `~(${x.join(' & ')})`, and: (x) => `(${x.join(' & ')})`, or: (x) => `(${x.join(' | ')})`, nor: (x) => `~(${x.join(' | ')})`, xor: (x) => `(${x.join(' ^ ')})`, not: (x) => `~${x[0]}` };
+const GATE_V = { nand: (x) => (x.length > 2 ? `(not (${x.join(' and ')}))` : `(${x.join(' nand ')})`), and: (x) => `(${x.join(' and ')})`, or: (x) => `(${x.join(' or ')})`, nor: (x) => (x.length > 2 ? `(not (${x.join(' or ')}))` : `(${x.join(' nor ')})`), xor: (x) => `(${x.join(' xor ')})`, xnor: (x) => (x.length > 2 ? `(not (${x.join(' xor ')}))` : `(${x.join(' xnor ')})`), not: (x) => `(not ${x[0]})`, buf: (x) => `(${x[0]})` };
+const GATE_VL = { nand: (x) => `~(${x.join(' & ')})`, and: (x) => `(${x.join(' & ')})`, or: (x) => `(${x.join(' | ')})`, nor: (x) => `~(${x.join(' | ')})`, xor: (x) => `(${x.join(' ^ ')})`, xnor: (x) => `~(${x.join(' ^ ')})`, not: (x) => `~${x[0]}`, buf: (x) => `(${x[0]})` };
 const isOut = (p) => p.dir === 'out' || p.dir === 'oc';
 
 /** An IC's entity in VHDL, its lines pushed on L. */
