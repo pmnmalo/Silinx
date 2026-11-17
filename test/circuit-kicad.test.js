@@ -110,6 +110,16 @@ test('pinPlaces: a footprint\'s name (DIP, headers), its file; what has none', (
   assert.deepEqual(pinPlaces(s([1], { Footprint: 'PinHeader_1x03_P2.00mm_Vertical' })), { error: 'its footprint PinHeader_1x03_P2.00mm_Vertical\'s pins are 2 mm apart, not a breadboard\'s 2.54' });
   assert.deepEqual(pinPlaces(s([1], { Footprint: 'Resistor_THT:R_Axial' })), { error: 'its footprint Resistor_THT:R_Axial is not in the project\'s parts nor a DIP or a pin header' });
   assert.deepEqual(pinPlaces(s([1], { ki_fp_filters: 'SO14*' })), { error: 'it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)' });
+  // KiCad's DIP filters (#4397): DIP?16* (its pins its count, more than its highest pin), 7.62 mm apart up to 20 pins,
+  // 15.24 mm from 24 or when it says so; one 7.62 mm wide whatever its count
+  const dipOf = (pins, f) => { const r = pinPlaces(s(pins, { ki_fp_filters: f })); return [r.dip, r.places.get(String(pins.at(-1))).dy]; };
+  assert.deepEqual(dipOf([1, 8, 9, 16], 'DIP?16* SO?16*'), [16, -3]);
+  assert.deepEqual(dipOf([1, 7, 14], 'DIP?14*'), [14, -3]);
+  assert.deepEqual(dipOf([1, 6], 'DIP?14*'), [14, 0], 'its count, not its highest pin');
+  assert.deepEqual(dipOf([1, 24], 'DIP?24*'), [24, -6]);
+  assert.deepEqual(dipOf([1, 24], 'DIP?24*7.62*'), [24, -3]);
+  assert.deepEqual(dipOf([1, 16], 'DIP*W15.24mm*'), [16, -6]);
+  assert.deepEqual(dipOf([1, 14], 'DIP*W7.62mm*'), [14, -3]);
   const fp = new Map([['M', readKicadFootprint(FILES['parts/imported.pretty/Module_1x04.kicad_mod'])]]);
   assert.deepEqual(pinPlaces(s([1, 5], { Footprint: 'lib:M' }), fp), { error: 'its pin 5\'s pad is off the 0.1 inch grid' });
   assert.deepEqual(pinPlaces(s([1, 7], { Footprint: 'M' }), fp), { error: 'its pin 7 has no pad in its footprint Module_1x04' });

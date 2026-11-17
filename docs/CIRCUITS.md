@@ -148,7 +148,7 @@ library and its symbol: `parts/ttl.kicad_sym#74HC00`. KiCad's parts have no logi
   clicked. Check and the HDL treat them as the library's. A symbol like an LED whose pins are not one's is drawn only,
   with a note;
 - **drawn only**, any other symbol: its pins on its footprint's places (a `.kicad_mod` of the project, else its
-  footprint's name: `DIP-14_W7.62mm`, `PinHeader_1x04_P2.54mm`; else a `DIP*W7.62mm*` filter), turned as a DIP lies on
+  footprint's name: `DIP-14_W7.62mm`, `PinHeader_1x04_P2.54mm`; else a DIP filter, `DIP*W7.62mm*` or KiCad's `DIP?16*`, its rows 7.62 mm apart up to 20 pins, #4397), turned as a DIP lies on
   the breadboard. It is not simulated and its pins drive nothing: Check Circuit warns *U2 (TEST-SENSOR) is drawn only: it is
   not simulated and its pins drive nothing*, and its HDL leaves it out.
 
@@ -201,8 +201,8 @@ CORS header), so the local server does (`server/kicad-libraries.js`):
   after a day, and the one kept is used offline.
 
 **The KiCad catalogue** (#4305): the Parts panel's last group, *KiCad catalogue*, folded at first and opened by a
-search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (their 73
-parts that behave as Silinx's ICs, and those drawn only on a DIP), KiCad's own basic parts (#4385: an LED, a resistor,
+search, lists KiCad parts by their part number, not by their library. It covers KiCad 9.0.0's 74xx and 4xxx (293 on their DIPs: their 73
+parts that behave as Silinx's ICs, and those drawn only, #4397), KiCad's own basic parts (#4385: an LED, a resistor,
 capacitors, a diode, a potentiometer, the 2N3904, 2N3906, BC547 and BC557, the 7805, a DIP switch, a 7-segment display,
 each with a through-hole footprint Silinx picks for it, written as its `Silinx.Footprint` when it is imported) and
 SparkFun's v10.0.0 parts on the 0.1 inch grid, and the Arduino boards that plug into a breadboard (#4394: the

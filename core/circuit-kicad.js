@@ -123,10 +123,11 @@ export function pinPlaces(s, footprints = new Map()) {
   }
   let pkg = name ? packageOfFootprint(name) : null;
   if (!pkg && !name) {
-    // (no footprint named: a DIP filter, DIP*W7.62mm*, as many pins as its highest number, made even)
-    const f = footprintFilters(s).find((x) => /^\*?DIP\*?/i.test(x) && /W7\.62mm/i.test(x));
-    const n = Math.max(pins.length, ...pins.map((p) => Number(p.number)).filter(Number.isInteger));
-    if (f && pins.every((p) => /^\d+$/.test(p.number))) pkg = { kind: 'dip', pins: n + (n % 2), rows: 3 };
+    // (no footprint named: a DIP filter, DIP*W7.62mm* or KiCad's DIP?16* (#4397), as many pins as it says, else as its
+    // highest number, made even; its rows 7.62 mm apart, 15.24 mm when it says so or, saying no width, from 24 pins)
+    const f = footprintFilters(s).map((x) => /^\*?DIP[*?]?(\d+)?\*?/i.exec(x) && { count: Number(/^\*?DIP[*?]?(\d+)/i.exec(x)?.[1]) || 0, wide: /15\.24/.test(x), narrow: /7\.62/.test(x) }).find(Boolean);
+    const n = Math.max(pins.length, f?.count ?? 0, ...pins.map((p) => Number(p.number)).filter(Number.isInteger));
+    if (f && pins.every((p) => /^\d+$/.test(p.number))) pkg = { kind: 'dip', pins: n + (n % 2), rows: f.wide || (!f.narrow && n >= 24) ? 6 : 3 };
   }
   if (!pkg) return { error: name ? `its footprint ${name} is not in the project's parts nor a DIP or a pin header` : 'it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)' };
   if (pkg.kind === 'smd') return { error: `its footprint ${name} is surface-mount: it does not plug into a breadboard` };
