@@ -1,13 +1,13 @@
 --==============================================================================
 -- Entity      : speed_ctrl
 -- Description : controller (state machine + data path) generated from the ASM chart speed_ctrl.asm.json
---               Blink speed: two debounced buttons, one level per press (0 = fastest, 7 = slowest), one step every 2**level ticks
+--               Blink speed: two buttons debounced over DEBOUNCE ticks, one level per press (0 = fastest, 7 = slowest), one step every 2**level ticks
 -- Generator   : Silinx ASM editor (edit the chart, not this file).
 -- Style       : state register + next-state logic + output logic (latch-free)
 -- Clock       : clk (rising edge)
 -- Reset       : rst, active-high, synchronous
 -- Encoding    : binary (1 state bit)
--- Generics    : DEBOUNCE = 1000000
+-- Generics    : DEBOUNCE = 3
 -- Synchronised: faster, slower (2 flip-flops each, <input>_meta and <input>_sync)
 --
 -- States:
@@ -24,11 +24,11 @@
 --   WAIT_RELEASE    : !(deb_f || deb_s) -> IDLE
 --
 -- Every cycle (in parallel with the states; the state's assignments take priority):
---   debounce_faster : (faster != deb_f) && (cnt_f == DEBOUNCE - 1)  [cnt_f = 0, deb_f = faster]
---   debounce_faster : (faster != deb_f) && !(cnt_f == DEBOUNCE - 1)  [cnt_f = cnt_f + 1]
+--   debounce_faster : (faster != deb_f) && (tick && cnt_f == DEBOUNCE - 1)  [cnt_f = 0, deb_f = faster]
+--   debounce_faster : (faster != deb_f) && !(tick && cnt_f == DEBOUNCE - 1)  [cnt_f = cnt_f + tick]
 --   debounce_faster : !(faster != deb_f)  [cnt_f = 0]
---   debounce_slower : (slower != deb_s) && (cnt_s == DEBOUNCE - 1)  [cnt_s = 0, deb_s = slower]
---   debounce_slower : (slower != deb_s) && !(cnt_s == DEBOUNCE - 1)  [cnt_s = cnt_s + 1]
+--   debounce_slower : (slower != deb_s) && (tick && cnt_s == DEBOUNCE - 1)  [cnt_s = 0, deb_s = slower]
+--   debounce_slower : (slower != deb_s) && !(tick && cnt_s == DEBOUNCE - 1)  [cnt_s = cnt_s + tick]
 --   debounce_slower : !(slower != deb_s)  [cnt_s = 0]
 --   divider          Actions: step = 0
 --   divider         : tick && (ticks >= (1 << level) - 1)  [ticks = 0, step = 1]
@@ -39,9 +39,9 @@
 -- current state/path at the clock edge and hold it otherwise.
 --
 -- Registers (internal; load the value assigned in this cycle at the clock edge, hold otherwise):
---   cnt_f : 22 bits, reset 0
+--   cnt_f : 2 bits, reset 0
 --   deb_f : 1 bit, reset 0
---   cnt_s : 22 bits, reset 0
+--   cnt_s : 2 bits, reset 0
 --   deb_s : 1 bit, reset 0
 --   level : 3 bits, reset 5
 --   ticks : 7 bits, reset 0
@@ -53,7 +53,7 @@ use ieee.numeric_std.all;
 
 entity speed_ctrl is
     generic (
-        DEBOUNCE : integer := 1000000
+        DEBOUNCE : integer := 3
     );
     port (
         clk    : in  std_logic;
@@ -82,9 +82,9 @@ architecture rtl of speed_ctrl is
     signal step_reg, step_next : std_logic := '0';
 
     -- internal registers
-    signal cnt_f, cnt_f_next : std_logic_vector(21 downto 0) := "0000000000000000000000";
+    signal cnt_f, cnt_f_next : std_logic_vector(1 downto 0) := "00";
     signal deb_f, deb_f_next : std_logic := '0';
-    signal cnt_s, cnt_s_next : std_logic_vector(21 downto 0) := "0000000000000000000000";
+    signal cnt_s, cnt_s_next : std_logic_vector(1 downto 0) := "00";
     signal deb_s, deb_s_next : std_logic := '0';
     signal level, level_next : std_logic_vector(2 downto 0) := "101";
     signal ticks, ticks_next : std_logic_vector(6 downto 0) := "0000000";
@@ -102,9 +102,9 @@ begin
             if rst = '1' then
                 state_reg <= S_IDLE;
                 step_reg <= '0';
-                cnt_f <= "0000000000000000000000";
+                cnt_f <= "00";
                 deb_f <= '0';
-                cnt_s <= "0000000000000000000000";
+                cnt_s <= "00";
                 deb_s <= '0';
                 level <= "101";
                 ticks <= "0000000";
@@ -166,25 +166,25 @@ begin
         ticks_next <= ticks;
         -- every cycle: debounce_faster
         if faster_sync /= deb_f then
-            if unsigned(cnt_f) = (DEBOUNCE - 1) then
-                cnt_f_next <= "0000000000000000000000";
+            if (tick = '1') and (unsigned(cnt_f) = (DEBOUNCE - 1)) then
+                cnt_f_next <= "00";
                 deb_f_next <= faster_sync;
             else
-                cnt_f_next <= std_logic_vector(unsigned(cnt_f) + 1);
+                cnt_f_next <= std_logic_vector(unsigned(cnt_f) + resize(unsigned'(0 => tick), 2));
             end if;
         else
-            cnt_f_next <= "0000000000000000000000";
+            cnt_f_next <= "00";
         end if;
         -- every cycle: debounce_slower
         if slower_sync /= deb_s then
-            if unsigned(cnt_s) = (DEBOUNCE - 1) then
-                cnt_s_next <= "0000000000000000000000";
+            if (tick = '1') and (unsigned(cnt_s) = (DEBOUNCE - 1)) then
+                cnt_s_next <= "00";
                 deb_s_next <= slower_sync;
             else
-                cnt_s_next <= std_logic_vector(unsigned(cnt_s) + 1);
+                cnt_s_next <= std_logic_vector(unsigned(cnt_s) + resize(unsigned'(0 => tick), 2));
             end if;
         else
-            cnt_s_next <= "0000000000000000000000";
+            cnt_s_next <= "00";
         end if;
         -- every cycle: divider
         step_next <= '0';

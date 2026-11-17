@@ -76,51 +76,69 @@ for (const [what, file, from, to, message] of MUTANTS) {
   });
 }
 
-// The buttons' debouncers on a fast clock (#3922): the top gives speed_ctrl DEBOUNCE = CLK_HZ / 50 (20 ms), and its
-// counters (cnt_f, cnt_s) must reach DEBOUNCE - 1; with 21 bits (at most 2,097,151) they never did above 104.8 MHz:
-// on the Zybo Z7's 125 MHz the buttons did nothing (Vivado removed their logic).
+// The buttons' debouncers on every board's clock (#3922, #4377): speed_ctrl's counters (cnt_f, cnt_s) count to
+// DEBOUNCE - 1, the top's DEBOUNCE_N. Counted in clock cycles (CLK_HZ / 50, 20 ms) no width fitted every board: 21 bits
+// never reached it above 104.8 MHz (the Zybo Z7's buttons did nothing, #3922), 22 left bit 21 constant at 100 MHz
+// (XST's Xst:1293 on the Nexys3 and the Atlys, #4377). Counted in the prescaler's ticks (80 a second), DEBOUNCE_N is
+// the same on every board, and the counters' width is its count's: every bit used, none missing.
 const chart = () => JSON.parse(read('src/speed_ctrl.asm.json'));
+/** The top's DEBOUNCE_N at a board's clock: its `or_else(DEBOUNCE, …)` default, evaluated with CLK_HZ. */
+function debounceAt(hz) {
+  const m = read('src/top.vhd').match(/constant DEBOUNCE_N : integer := or_else\(DEBOUNCE, ([^;]+)\);/);
+  assert.ok(m, 'DEBOUNCE_N in top.vhd');
+  const expr = m[1].replace(/CLK_HZ/g, String(hz)).replace(/_/g, '');
+  assert.match(expr, /^[\d\s/*+-]+$/);
+  return expr.split('/').map((x) => Number(x.trim())).reduce((a, b) => Math.trunc(a / b));
+}
 
-test('#3922 blinky: speed_ctrl\'s debounce counters hold CLK_HZ / 50 - 1 on every board, in the chart and its VHDL', () => {
+test('#4377 blinky: speed_ctrl\'s debounce counters as wide as DEBOUNCE - 1 at every board\'s clock, in the chart and its VHDL', () => {
   const widths = Object.fromEntries(chart().registers.filter((r) => /^cnt_/.test(r.name)).map((r) => [r.name, r.width]));
-  assert.deepEqual(widths, { cnt_f: 22, cnt_s: 22 });
-  for (const n of ['cnt_f', 'cnt_s']) assert.match(read('src/speed_ctrl.vhd'), new RegExp(`signal ${n}, ${n}_next : std_logic_vector\\(21 downto 0\\)`));
   const clocks = BOARDS.map((b) => [b.id, boardGenericValues(resolveBoard(b.id)).CLK_HZ]).filter(([, hz]) => hz);
   assert.ok(clocks.some(([id, hz]) => id === 'zybo-z7' && hz === 125_000_000));
-  for (const [id, hz] of clocks) assert.ok(hz / 50 - 1 < 2 ** 22, `${id}: DEBOUNCE ${hz / 50}`);
+  assert.ok(clocks.some(([id, hz]) => id === 'nexys3' && hz === 100_000_000));
+  for (const [id, hz] of clocks) {
+    const max = debounceAt(hz) - 1;
+    assert.ok(max >= 1, `${id}: DEBOUNCE ${max + 1}`);
+    assert.deepEqual(widths, { cnt_f: max.toString(2).length, cnt_s: max.toString(2).length }, `${id} (${hz} Hz): DEBOUNCE - 1 = ${max}`);
+  }
+  assert.equal(chart().generics.find((g) => g.name === 'DEBOUNCE').default, debounceAt(50_000_000));
+  for (const n of ['cnt_f', 'cnt_s']) assert.match(read('src/speed_ctrl.vhd'), new RegExp(`signal ${n}, ${n}_next : std_logic_vector\\(${widths[n] - 1} downto 0\\)`));
 });
 
-// speed_ctrl at 125 MHz (DEBOUNCE 2,500,000) with a tick every cycle: a step every 2^level cycles, level 5 at reset
-// (10 steps in 320 cycles); a button held past 20 ms: faster, level 4 (20 steps), or slower, level 6 (5 steps).
-const tb125 = (button) => `module tb;
-  reg clk = 0, rst = 1, faster = 0, slower = 0, tick = 1;
-  wire step;
+// speed_ctrl with a tick every 4 cycles: a step every 2^level ticks, level 5 at reset (10 steps in 1280 cycles); a
+// button held 2 ticks is not taken (a bounce), held 3 ticks (DEBOUNCE) it is: faster, level 4 (20 steps), or slower,
+// level 6 (5 steps), whatever the clock.
+const tbTicks = (button) => `module tb;
+  reg clk = 0, rst = 1, faster = 0, slower = 0;
+  reg [1:0] c = 0;
+  wire tick = c == 3, step;
   integer n;
-  speed_ctrl #(.DEBOUNCE(2500000)) dut(.clk(clk), .rst(rst), .faster(faster), .slower(slower), .tick(tick), .step(step));
+  speed_ctrl dut(.clk(clk), .rst(rst), .faster(faster), .slower(slower), .tick(tick), .step(step));
   always #4 clk = ~clk;
-  task count; begin n = 0; repeat (320) begin @(posedge clk); #1; if (step) n = n + 1; end end endtask
+  always @(posedge clk) c <= c + 1;
+  task count; begin n = 0; repeat (1280) begin @(posedge clk); #1; if (step) n = n + 1; end end endtask
   initial begin
     #20 rst = 0;
     count; $display("before %0d", n);
-    ${button} = 1;
-    #19990000; count; $display("at 19.99 ms %0d", n);
-    #20000; count; $display("after %0d", n);
+    ${button} = 1; repeat (8) @(posedge clk); ${button} = 0;
+    count; $display("held 2 ticks %0d", n);
+    ${button} = 1; repeat (16) @(posedge clk);
+    count; $display("held 4 ticks %0d", n);
     $finish;
   end
 endmodule`;
 for (const lang of ['vhdl', 'verilog']) {
   for (const [button, steps] of [['faster', 20], ['slower', 5]]) {
-    test(`#3922 blinky: speed_ctrl in ${lang} at 125 MHz: ${button} held 20 ms changes the speed`, { timeout: 300000 }, () => {
+    test(`#4377 blinky: speed_ctrl in ${lang}: ${button} held 2 ticks is not taken, held 4 (DEBOUNCE 3) changes the speed`, () => {
       // (the VHDL: the example's file; the Verilog: the chart's)
       const dut = lang === 'vhdl' ? { path: 'speed_ctrl.vhd', text: read('src/speed_ctrl.vhd') } : { path: 'speed_ctrl.v', text: generate(chart(), 'verilog').code };
-      const lib = compile([dut, { path: 'tb.v', text: tb125(button) }]);
+      const lib = compile([dut, { path: 'tb.v', text: tbTicks(button) }]);
       const design = elaborate(lib, 'tb');
       assert.deepEqual([...lib.errors, ...design.diags].map((d) => d.message), []);
-      // (only the waveforms' last change kept: no recording limit over 2.5 million cycles)
       const sim = new Simulator(design, { waveTail: () => 1 });
-      sim.run(3e10);
-      assert.deepEqual(sim.log.map((e) => `${e.kind}: ${e.text}`), ['print: before 10', 'print: at 19.99 ms 10', `print: after ${steps}`,
-        'note: simulation finished ($finish) at 20017693 ns']);
+      sim.run(1e9);
+      assert.deepEqual(sim.log.map((e) => `${e.kind}: ${e.text}`), ['print: before 10', 'print: held 2 ticks 10', `print: held 4 ticks ${steps}`,
+        'note: simulation finished ($finish) at 30925 ns']);
     });
   }
 }

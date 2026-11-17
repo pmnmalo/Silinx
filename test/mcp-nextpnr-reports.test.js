@@ -30,8 +30,10 @@ const BOARDS = [
       ...[7, 6, 5].map(i => `WARNING:Place - IO 'led[${i}]' is unconstrained in PCF and will be automatically placed`)] },
   { board: 'ulx3s', tool: 'nextpnr-ecp5', part: 'lfe5u-85f-6cabga381', mhz: 25, util: ['DCCA', 'TRELLIS_COMB', 'TRELLIS_FF', 'TRELLIS_IO'], io: IO, warnings: [] },
   { board: 'tangnano9k', tool: 'nextpnr-himbaechel-gowin', part: 'gw1nr-9c-6qn88', mhz: 27, util: ['ALU', 'DFF', 'IOB', 'LUT4', 'MUX2_LUT5'], io: [],
-    // (the switches read through swOn, #3710: before, sw_IBUF_I_O[2]'s)
-    warnings: ['X11Y26/C7', 'X11Y26/C6', 'X10Y26/C7', 'X10Y26/C6', 'X9Y26/C5', 'X9Y26/C4', 'X8Y26/C2', 'X12Y26/C2'].map(t => `WARNING:Place - Failed to route net 'swon[1]' from X28Y28/F6 to ${t} using dedicated routing.`) },
+    // (the switches read through swOn, #3710: before, sw_IBUF_I_O[2]'s; its critical path the prescaler's counter, in
+    // counter.v, since the debouncers count ticks in 2 bits, #4377: before, the speed control's)
+    chart: false,
+    warnings: ['X13Y26/C3', 'X12Y26/C2', 'X12Y26/C6', 'X10Y26/C7', 'X11Y26/C6', 'X10Y26/C6', 'X11Y26/C7', 'X14Y26/C5'].map(t => `WARNING:Place - Failed to route net 'swon[1]' from X28Y28/F6 to ${t} using dedicated routing.`) },
 ];
 
 for (const b of BOARDS) {
@@ -74,11 +76,17 @@ for (const b of BOARDS) {
     const files = Object.keys(one.data.highlight.files);
     assert.ok(files.length && files.every(f => /^src\/\w+\.(vhd|v)$/.test(f)), files.join());
     assert.ok(one.data.highlight.sites.every(s => /^X\d+Y\d+$/.test(s)));
-    // (the path starts in the speed control, whose VHDL is generated from its ASM chart: the chart's boxes on it)
-    assert.deepEqual(Object.keys(one.data.highlight.drawings), ['src/speed_ctrl.asm.json']);
-    assert.ok(one.data.highlight.drawings['src/speed_ctrl.asm.json'].length);
-    assert.equal(one.text.split('\n').length, 1 + stages.length + 1);
-    assert.match(one.text.split('\n').at(-1), /^ {2}in src\/speed_ctrl\.asm\.json: box /);
+    if (b.chart === false) {
+      // (the prescaler's path, all in its Verilog: no drawing)
+      assert.deepEqual([files, Object.keys(one.data.highlight.drawings)], [['src/counter.v'], []]);
+      assert.equal(one.text.split('\n').length, 1 + stages.length);
+    } else {
+      // (the path starts in the speed control, whose VHDL is generated from its ASM chart: the chart's boxes on it)
+      assert.deepEqual(Object.keys(one.data.highlight.drawings), ['src/speed_ctrl.asm.json']);
+      assert.ok(one.data.highlight.drawings['src/speed_ctrl.asm.json'].length);
+      assert.equal(one.text.split('\n').length, 1 + stages.length + 1);
+      assert.match(one.text.split('\n').at(-1), /^ {2}in src\/speed_ctrl\.asm\.json: box /);
+    }
     // (between two registers: the path's own)
     const [from] = one.data.registers;
     const between = await ok('timing_paths', { project: name, from });

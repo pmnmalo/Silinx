@@ -256,10 +256,10 @@ test('validation: structure of every-cycle blocks', () => {
 
 test('VHDL: generics, registers, synchronisers, every-cycle blocks before the state logic', () => {
   const code = generate(speedCtrl(), 'vhdl').code;
-  assert.match(code, /entity speed_ctrl is\n {4}generic \(\n {8}DEBOUNCE : integer := 1000000\n {4}\);\n {4}port \(/);
-  assert.match(code, /-- Generics {4}: DEBOUNCE = 1000000/);
-  assert.match(code, /-- Every cycle \(in parallel with the states; the state's assignments take priority\):\n-- {3}debounce_faster : \(faster != deb_f\) && \(cnt_f == DEBOUNCE - 1\) {2}\[cnt_f = 0, deb_f = faster\]/);
-  assert.match(code, /signal cnt_f, cnt_f_next : std_logic_vector\(21 downto 0\) := "0{22}";/);
+  assert.match(code, /entity speed_ctrl is\n {4}generic \(\n {8}DEBOUNCE : integer := 3\n {4}\);\n {4}port \(/);
+  assert.match(code, /-- Generics {4}: DEBOUNCE = 3/);
+  assert.match(code, /-- Every cycle \(in parallel with the states; the state's assignments take priority\):\n-- {3}debounce_faster : \(faster != deb_f\) && \(tick && cnt_f == DEBOUNCE - 1\) {2}\[cnt_f = 0, deb_f = faster\]/);
+  assert.match(code, /signal cnt_f, cnt_f_next : std_logic_vector\(1 downto 0\) := "00";/);
   // registers power up with their reset values (no reset needed after configuration)
   assert.match(code, /signal state_reg  : state_t := S_IDLE;/);
   assert.match(code, /signal level, level_next : std_logic_vector\(2 downto 0\) := "011";/);
@@ -267,7 +267,7 @@ test('VHDL: generics, registers, synchronisers, every-cycle blocks before the st
   assert.match(code, /faster_meta <= '0';\n\s+faster_sync <= '0';/);
   assert.match(code, /faster_meta <= faster;\n\s+faster_sync <= faster_meta;/);
   assert.match(code, /level <= "011";/);
-  assert.match(code, /if faster_sync \/= deb_f then\n\s+if unsigned\(cnt_f\) = \(DEBOUNCE - 1\) then/);
+  assert.match(code, /if faster_sync \/= deb_f then\n\s+if \(tick = '1'\) and \(unsigned\(cnt_f\) = \(DEBOUNCE - 1\)\) then/);
   assert.match(code, /if unsigned\(ticks\) >= \(shift_left\(to_unsigned\(1, 32\), to_integer\(unsigned\(level\)\)\) - 1\) then/);
   const out = code.slice(code.indexOf('output_logic : process'));
   assert.ok(out.indexOf('-- every cycle: divider') < out.indexOf('case state_reg is'), 'every-cycle blocks come before the state logic');
@@ -277,8 +277,8 @@ test('VHDL: generics, registers, synchronisers, every-cycle blocks before the st
 
 test('Verilog: parameters, registers, synchronisers, every-cycle blocks before the state logic', () => {
   const code = generate(speedCtrl(), 'verilog').code;
-  assert.match(code, /module speed_ctrl #\(\n {4}parameter DEBOUNCE = 1000000\n\) \(/);
-  assert.match(code, /reg \[21:0\] cnt_f = 22'd0, cnt_f_next;/);
+  assert.match(code, /module speed_ctrl #\(\n {4}parameter DEBOUNCE = 3\n\) \(/);
+  assert.match(code, /reg \[1:0\] cnt_f = 2'd0, cnt_f_next;/);
   assert.match(code, /reg \[2:0\] level = 3'd3, level_next;/);
   assert.match(code, /reg state_reg = S_IDLE;/);
   assert.match(code, /reg faster_meta = 1'b0, faster_sync = 1'b0;/);
