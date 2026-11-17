@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import { yosysNode } from '../packages/silinx-fpga/src/synth-open-node.js';
 import { verifyProperty, propertyMessages, propertyBench, propertyCopy, propertyError } from '../core/verify-props.js';
 import { generateFsm } from '../core/fsm-hdl.js';
+import { generate } from '../core/asm.js';
 import { simulate } from '../core/compile.js';
 
 // A -go-> B -go-> C -> A; x in A and C, y in B and C; D never entered
@@ -114,11 +115,19 @@ test('the refusals; the copy: the module renamed, the assertion before its end, 
   assert.doesNotMatch(hdlOf(m).text, /verify_property|xy_props/);
 });
 
+// blinky's chart with a debounce of a million cycles in 22-bit counters (as it was before #4377 counted ticks in 2
+// bits): WAIT_RELEASE out of reach in 200 cycles, a check longer than 3 s
+const slowChart = (text) => {
+  const asm = JSON.parse(text);
+  asm.generics.find(g => g.name === 'DEBOUNCE').default = 1000000;
+  for (const r of asm.registers) if (/^cnt_/.test(r.name)) r.width = 22;
+  return asm;
+};
+
 test('#3261 the time limit: blinky\'s ASM chart, reaching WAIT_RELEASE within 200 cycles, stopped after 3 s (Yosys\'s worker thread terminated): the cycles checked by then', async () => {
-  const read = f => fs.readFileSync(new URL(`../examples/blinky/src/${f}`, import.meta.url), 'utf8');
-  const asm = JSON.parse(read('speed_ctrl.asm.json'));
+  const asm = slowChart(fs.readFileSync(new URL('../examples/blinky/src/speed_ctrl.asm.json', import.meta.url), 'utf8'));
   const t0 = Date.now();
-  const r = await verifyProperty([{ path: 'src/speed_ctrl.vhd', lang: 'vhdl', text: read('speed_ctrl.vhd') }], { drawing: asm, property: { kind: 'reach', state: 'WAIT_RELEASE' }, depth: 200, timeLimit: 3, run: yosysNode });
+  const r = await verifyProperty([{ path: 'src/speed_ctrl.vhd', lang: 'vhdl', text: generate(asm, 'vhdl').code }], { drawing: asm, property: { kind: 'reach', state: 'WAIT_RELEASE' }, depth: 200, timeLimit: 3, run: yosysNode });
   assert.ok(Date.now() - t0 < 6000, 'stopped at its limit');
   assert.deepEqual([r.status, r.holds, r.timeLimit, r.errors, r.warnings], ['timeout', false, 3, [], []]);
   assert.ok(r.checked >= 1 && r.checked < 200, String(r.checked));

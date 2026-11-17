@@ -157,17 +157,24 @@
       "cond": "faster != deb_f"
     },
     {
-      "id": "d7",
+      "id": "d12",
       "type": "decision",
       "x": 810,
       "y": 320,
-      "cond": "tick && cnt_f == DEBOUNCE - 1"
+      "cond": "tick"
+    },
+    {
+      "id": "d7",
+      "type": "decision",
+      "x": 810,
+      "y": 450,
+      "cond": "cnt_f == DEBOUNCE - 1"
     },
     {
       "id": "o3",
       "type": "output",
       "x": 810,
-      "y": 440,
+      "y": 570,
       "actions": [
         "cnt_f = 0",
         "deb_f = faster"
@@ -177,9 +184,9 @@
       "id": "o4",
       "type": "output",
       "x": 1110,
-      "y": 430,
+      "y": 560,
       "actions": [
-        "cnt_f = cnt_f + tick"
+        "cnt_f = cnt_f + 1"
       ]
     },
     {
@@ -195,7 +202,7 @@
       "id": "a2",
       "type": "always",
       "x": 810,
-      "y": 550,
+      "y": 680,
       "name": "debounce_slower",
       "actions": []
     },
@@ -203,21 +210,28 @@
       "id": "d8",
       "type": "decision",
       "x": 810,
-      "y": 660,
+      "y": 790,
       "cond": "slower != deb_s"
+    },
+    {
+      "id": "d13",
+      "type": "decision",
+      "x": 810,
+      "y": 920,
+      "cond": "tick"
     },
     {
       "id": "d9",
       "type": "decision",
       "x": 810,
-      "y": 790,
-      "cond": "tick && cnt_s == DEBOUNCE - 1"
+      "y": 1050,
+      "cond": "cnt_s == DEBOUNCE - 1"
     },
     {
       "id": "o6",
       "type": "output",
       "x": 810,
-      "y": 910,
+      "y": 1170,
       "actions": [
         "cnt_s = 0",
         "deb_s = slower"
@@ -227,16 +241,16 @@
       "id": "o7",
       "type": "output",
       "x": 1110,
-      "y": 900,
+      "y": 1160,
       "actions": [
-        "cnt_s = cnt_s + tick"
+        "cnt_s = cnt_s + 1"
       ]
     },
     {
       "id": "o8",
       "type": "output",
       "x": 1330,
-      "y": 760,
+      "y": 890,
       "actions": [
         "cnt_s = 0"
       ]
@@ -245,7 +259,7 @@
       "id": "a3",
       "type": "always",
       "x": 810,
-      "y": 1020,
+      "y": 1280,
       "name": "divider",
       "actions": [
         "step = 0"
@@ -255,21 +269,21 @@
       "id": "d10",
       "type": "decision",
       "x": 810,
-      "y": 1130,
+      "y": 1390,
       "cond": "tick"
     },
     {
       "id": "d11",
       "type": "decision",
       "x": 810,
-      "y": 1260,
+      "y": 1520,
       "cond": "ticks >= (1 << level) - 1"
     },
     {
       "id": "o9",
       "type": "output",
       "x": 810,
-      "y": 1380,
+      "y": 1640,
       "actions": [
         "ticks = 0",
         "step = 1"
@@ -279,7 +293,7 @@
       "id": "o10",
       "type": "output",
       "x": 1130,
-      "y": 1370,
+      "y": 1630,
       "actions": [
         "ticks = ticks + 1"
       ]
@@ -379,7 +393,7 @@
     {
       "id": "e16",
       "from": "d6",
-      "to": "d7",
+      "to": "d12",
       "port": "true"
     },
     {
@@ -387,6 +401,12 @@
       "from": "d6",
       "to": "o5",
       "port": "false"
+    },
+    {
+      "id": "e29",
+      "from": "d12",
+      "to": "d7",
+      "port": "true"
     },
     {
       "id": "e18",
@@ -409,7 +429,7 @@
     {
       "id": "e21",
       "from": "d8",
-      "to": "d9",
+      "to": "d13",
       "port": "true"
     },
     {
@@ -417,6 +437,12 @@
       "from": "d8",
       "to": "o8",
       "port": "false"
+    },
+    {
+      "id": "e30",
+      "from": "d13",
+      "to": "d9",
+      "port": "true"
     },
     {
       "id": "e23",

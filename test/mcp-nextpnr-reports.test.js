@@ -33,7 +33,7 @@ const BOARDS = [
     // (the switches read through swOn, #3710: before, sw_IBUF_I_O[2]'s; its critical path the prescaler's counter, in
     // counter.v, since the debouncers count ticks in 2 bits, #4377: before, the speed control's)
     chart: false,
-    warnings: ['X13Y26/C3', 'X12Y26/C2', 'X12Y26/C6', 'X10Y26/C7', 'X11Y26/C6', 'X10Y26/C6', 'X11Y26/C7', 'X14Y26/C5'].map(t => `WARNING:Place - Failed to route net 'swon[1]' from X28Y28/F6 to ${t} using dedicated routing.`) },
+    warnings: ['X9Y26/C4', 'X10Y26/C0', 'X10Y26/C4', 'X10Y26/C2', 'X9Y26/C7', 'X8Y26/C7', 'X8Y25/C6', 'X10Y26/C7'].map(t => `WARNING:Place - Failed to route net 'swon[1]' from X28Y28/F6 to ${t} using dedicated routing.`) },
 ];
 
 for (const b of BOARDS) {

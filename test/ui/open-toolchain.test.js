@@ -375,7 +375,7 @@ uiTest('open mode: View Technology Schematic of blinky and pong without ISE: the
   await page.setView('impl');
   assert.deepEqual((await procLabels(page)).find((p) => p.label === 'View Technology Schematic'), { label: 'View Technology Schematic', disabled: false, title: '' });
   await checkTechSchematic(page, { top: 'top', blocks: ['u_pre', 'u_speed', 'u_knight', 'u_count', 'u_display'], inside: 'u_pre',
-    message: "Technology Schematic of 'top': the netlist of the Silinx toolchain's synthesis (build/open/top.json), 381 cells in 5 block(s): u_display (61), u_knight (52), u_speed (86), u_count (84), u_pre (67)." });
+    message: "Technology Schematic of 'top': the netlist of the Silinx toolchain's synthesis (build/open/top.json), 382 cells in 5 block(s): u_display (61), u_knight (52), u_speed (86), u_count (84), u_pre (68)." });
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /warning|error/i.test(l)), []);
   // Portuguese: the view's bar, its tab and the LUT's function have no untranslated text (the netlist's names apart)
   await page.eval(TEXTS);
@@ -952,7 +952,9 @@ uiTest('#280 open mode: Generate Programming File after a change of the pins onl
 // (the Design Summary's tables and the Processes panel: the ISE style interface's; the Silinx one's cards, its Implement: tasks.test.js #802, #1149)
 uiTest('#282 #2470 open mode: Optimization Fast (an example\'s) synthesizes once, Speed tries the mappings for speed; Process Properties says so; Portuguese', E, async (page) => {
   await env.server.api('PUT', '/api/toolchain', { mode: 'silinx' });
-  await makeProject(env, { name: 'OpenEffort', template: 'blinky' });
+  // (pong: over 100 slices, eight placements at High; blinky, 91 since its debouncers count ticks in 2 bits, #4377, is
+  // a small design's 32, NEXTPNR_TRIES.highSmall)
+  await makeProject(env, { name: 'OpenEffort', template: 'pong' });
   await page.openProject('OpenEffort');
   await reloadToolchain(page);
   const run = async (proc) => {

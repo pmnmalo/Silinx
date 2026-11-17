@@ -125,7 +125,7 @@ test('run_process post_synthesis_model on the Tang Nano 9K: blinky\'s model, its
   await ok('set_design_properties', { project: 'models', board: 'tangnano9k', update_constraints: true });
   const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
   assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
-  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the Gowin cells\), 336 cells$/m);
+  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the Gowin cells\), 240 cells$/m);
   const s = await ok('simulate', { project: 'models', model: 'postsynth', time_ns: 2000000, signals: [] });
   assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed], [['Simulation finished OK'], [], false]);
   const message = 'the Gowin GW1N flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
