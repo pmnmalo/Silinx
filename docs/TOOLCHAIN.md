@@ -217,30 +217,30 @@ XDC Vivado reads; and Silinx's `.bit` was not compressed where the board's XDC a
 Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3, as Vivado's).
 
 <!-- xc7-vivado-comparison: begin (scripts/xc7-vivado-compare.mjs --update) -->
-| Board | Example | LUTs: Silinx (+ feed-throughs) | LUTs: Silinx's netlist in Vivado | LUTs: Vivado | Registers: Silinx / Vivado | Slices: Silinx / Vivado | MHz: Silinx | MHz: Silinx's netlist in Vivado | MHz: Vivado | Vivado's DRC on Silinx's netlist |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Basys 3 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean |
-| Basys 3 | breadboard | 4 (+2) | 3 | 4 | 8 / 10 | 8 / 3 | 241 | 267 | 450 | RTSTAT-10 |
-| Basys 3 | traffic | 79 (+16) | 85 | 75 | 60 / 60 | 38 / 28 | 143 | 187 | 174 | RTSTAT-10 |
-| Basys 3 | blinky | 93 (+84) | 95 | 99 | 134 / 134 | 76 / 55 | 159 | 194 | 220 | RTSTAT-10 |
-| Basys 3 | pong | 252 (+137) | 245 | 198 | 215 / 215 | 143 / 109 | 102 | 132 | 143 | RTSTAT-10 |
-| Basys 3 | stopwatch | 169 (+132) | 162 | 143 | 207 / 195 | 128 / 90 | 101 | 107 | 124 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 |
-| Basys 3 | clock | 141 (+142) | 128 | 118 | 164 / 164 | 120 / 75 | 133 | 160 | 199 | RTSTAT-10 |
-| Basys 3 | vga | 115 (+46) | 110 | 134 | 58 / 63 | 58 / 49 | 137 | 157 | 163 | RTSTAT-10 |
-| Basys 3 | isqrt | 69 (+28) | 66 | 57 | 87 / 88 | 67 / 33 | 155 | 203 | 269 | RTSTAT-10 |
-| Basys 3 | uart | 105 (+41) | 116 | 135 | 142 / 150 | 76 / 66 | 162 | 195 | 222 | RTSTAT-10 |
-| Basys 3 | micro80 | 157 (+53) | 154 | 307 | 187 / 216 | 103 / 118 | 115 | 129 | 136 | RTSTAT-10 |
-| Nexys A7 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean |
-| Nexys A7 | breadboard | 4 (+2) | 3 | 4 | 8 / 10 | 7 / 3 | 250 | 267 | 446 | RTSTAT-10 |
-| Nexys A7 | traffic | 81 (+15) | 85 | 75 | 60 / 60 | 43 / 29 | 143 | 170 | 195 | RTSTAT-10 |
-| Nexys A7 | blinky | 93 (+87) | 95 | 99 | 134 / 134 | 82 / 52 | 154 | 185 | 232 | RTSTAT-10 |
-| Nexys A7 | pong | 251 (+141) | 245 | 198 | 215 / 215 | 146 / 101 | 107 | 127 | 153 | RTSTAT-10 |
-| Nexys A7 | stopwatch | 170 (+133) | 161 | 143 | 207 / 195 | 135 / 82 | 101 | 109 | 121 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 |
-| Nexys A7 | clock | 141 (+136) | 129 | 117 | 164 / 164 | 112 / 71 | 134 | 158 | 206 | RTSTAT-10 |
-| Nexys A7 | vga | 115 (+49) | 110 | 134 | 58 / 63 | 62 / 43 | 132 | 155 | 170 | RTSTAT-10 |
-| Nexys A7 | isqrt | 69 (+29) | 67 | 56 | 87 / 88 | 58 / 32 | 158 | 223 | 218 | RTSTAT-10 |
-| Nexys A7 | uart | 107 (+41) | 117 | 135 | 142 / 150 | 81 / 58 | 156 | 194 | 199 | RTSTAT-10 |
-| Nexys A7 | micro80 | 157 (+51) | 154 | 307 | 187 / 216 | 96 / 112 | 106 | 123 | 133 | RTSTAT-10 |
+| Board | Example | LUTs: Silinx (+ feed-throughs) | LUTs: Silinx's netlist in Vivado | LUTs: Vivado | Registers: Silinx / Vivado | Slices: Silinx / Vivado | MHz: Silinx | MHz: Silinx's netlist in Vivado | MHz: Vivado | Vivado's DRC on Silinx's netlist | Vivado's write_cfgmem on Silinx's .bit |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Basys 3 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean | – |
+| Basys 3 | breadboard | 4 (+2) | 3 | 4 | 8 / 10 | 8 / 3 | 241 | 267 | 450 | RTSTAT-10 | – |
+| Basys 3 | traffic | 79 (+16) | 85 | 75 | 60 / 60 | 38 / 28 | 143 | 187 | 174 | RTSTAT-10 | – |
+| Basys 3 | blinky | 93 (+84) | 95 | 99 | 134 / 134 | 76 / 55 | 159 | 194 | 220 | RTSTAT-10 | – |
+| Basys 3 | pong | 252 (+137) | 245 | 198 | 215 / 215 | 143 / 109 | 102 | 132 | 143 | RTSTAT-10 | – |
+| Basys 3 | stopwatch | 169 (+132) | 162 | 143 | 207 / 195 | 128 / 90 | 101 | 107 | 124 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 | – |
+| Basys 3 | clock | 141 (+142) | 128 | 118 | 164 / 164 | 120 / 75 | 133 | 160 | 199 | RTSTAT-10 | – |
+| Basys 3 | vga | 115 (+46) | 110 | 134 | 58 / 63 | 58 / 49 | 137 | 157 | 163 | RTSTAT-10 | – |
+| Basys 3 | isqrt | 69 (+28) | 66 | 57 | 87 / 88 | 67 / 33 | 155 | 203 | 269 | RTSTAT-10 | – |
+| Basys 3 | uart | 105 (+41) | 116 | 135 | 142 / 150 | 76 / 66 | 162 | 195 | 222 | RTSTAT-10 | – |
+| Basys 3 | micro80 | 157 (+53) | 154 | 307 | 187 / 216 | 103 / 118 | 115 | 129 | 136 | RTSTAT-10 | – |
+| Nexys A7 | gates | 1 (+0) | 1 | 1 | 0 / 0 | 1 / 1 | – | – | – | clean | – |
+| Nexys A7 | breadboard | 4 (+2) | 3 | 4 | 8 / 10 | 7 / 3 | 250 | 267 | 446 | RTSTAT-10 | – |
+| Nexys A7 | traffic | 81 (+15) | 85 | 75 | 60 / 60 | 43 / 29 | 143 | 170 | 195 | RTSTAT-10 | – |
+| Nexys A7 | blinky | 93 (+87) | 95 | 99 | 134 / 134 | 82 / 52 | 154 | 185 | 232 | RTSTAT-10 | – |
+| Nexys A7 | pong | 251 (+141) | 245 | 198 | 215 / 215 | 146 / 101 | 107 | 127 | 153 | RTSTAT-10 | – |
+| Nexys A7 | stopwatch | 170 (+133) | 161 | 143 | 207 / 195 | 135 / 82 | 101 | 109 | 121 | DPIP-1, DPOP-1, DPOP-2, RTSTAT-10, AVAL-4 | – |
+| Nexys A7 | clock | 141 (+136) | 129 | 117 | 164 / 164 | 112 / 71 | 134 | 158 | 206 | RTSTAT-10 | – |
+| Nexys A7 | vga | 115 (+49) | 110 | 134 | 58 / 63 | 62 / 43 | 132 | 155 | 170 | RTSTAT-10 | – |
+| Nexys A7 | isqrt | 69 (+29) | 67 | 56 | 87 / 88 | 58 / 32 | 158 | 223 | 218 | RTSTAT-10 | – |
+| Nexys A7 | uart | 107 (+41) | 117 | 135 | 142 / 150 | 81 / 58 | 156 | 194 | 199 | RTSTAT-10 | – |
+| Nexys A7 | micro80 | 157 (+51) | 154 | 307 | 187 / 216 | 96 / 112 | 106 | 123 | 133 | RTSTAT-10 | – |
 <!-- xc7-vivado-comparison: end -->
 
 And around the flow, one issue each: the boards and examples (#2297), the primitives' simulation models
@@ -255,8 +255,19 @@ Vendor tools (ISE, Vivado, Quartus) are another kind of back end: they run a who
   no error, no warning, and its `.bit` is byte-identical to Silinx's. This proves the bitstream and that the routing is legal; it does
   not compare our placement with PAR's. Size and speed against XST are the weekly quality comparison.
 - **The examples are the test designs** on every device of `TARGETS`.
-- **Vivado is the 7-series' reference** (#3760): Silinx's netlist placed, routed and written as a bitstream by Vivado,
-  through its DRC and `write_bitstream` (`test/xc7-vivado-comparison.test.js`, above). **Apicula is Gowin's**: every
+- **The 7-series' checks** (#3145; `npm run check:xc7`, `scripts/check-xc7.mjs`). Vivado reads no FASM and cannot rebuild
+  a `.bit` offline, so a byte-identical `.bit` is not the oracle there; each build is checked instead:
+  - with no Vivado (`packages/silinx-fpga/src/fpga/xc7/check.js`): its frames are the ones Project X-Ray's `fasm2frames`
+    makes of nextpnr's FASM; the round trip (the `.bit` read back into features, compared with the FASM by bits, not by
+    names): no bit lost, none stray; its pins: each port's IOB at its XDC pin, with its direction and its IO standard, and
+    no other IOB configured (the package's pins in the bit database, from Project X-Ray's `package_pins.csv`);
+  - with Vivado (`--vivado`: `scripts/xc7-vivado-compare.mjs`, #3760): Silinx's netlist placed,
+    routed and written as a bitstream by Vivado, through its DRC and `write_bitstream`; its resources and timing within
+    the margins `test/xc7-vivado-comparison.test.js` holds of Vivado's own flow and of Vivado's timing of the same
+    netlist (above); and Silinx's own `.bit` read by Vivado's `write_cfgmem` as a flash image, its format checked.
+
+  Left out: Project X-Ray's `fasm2bels` (the placement rebuilt as a Vivado design, its DRC) and the board test (#1830).
+  **Apicula is Gowin's**: every
   example's `.fs` is Apicula 0.32's byte for byte (`test/examples-gowin.test.js`).
 - **The other families have no such oracle.** What proves a build there is to be decided (#2301): post-route simulation against the
   design, the families' timing tools, the vendors' tools where available, runs on real boards.
