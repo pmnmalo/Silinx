@@ -94,7 +94,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     }
     const on = powered(ic);
     for (const x of ic.gates) {
-      const v = on ? gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net]))) : 'Z';
+      const v = on ? gateValue(x.g.fn, x.ins.map((net) => readInput(ic.def.family, levels[net])), x.g.terms) : 'Z';
       drive(x.out, ic.def.oc && v === '1' ? 'Z' : v);   // (an open collector: a 0 or nothing)
     }
     // (a sequential IC, core/circuit-seq.js: each of its processes run when an input of its sensitivity changed (all at

@@ -18,6 +18,10 @@ const DUAL4_4002 = [[2, 3, 4, 5, 1], [9, 10, 11, 12, 13]];   // 4002, 4012, 4072
 const TRIPLE3_4023 = [[1, 2, 8, 9], [3, 4, 5, 6], [11, 12, 13, 10]];   // 4023, 4025, 4073, 4075
 const HEX_4049 = [[3, 2], [5, 4], [7, 6], [9, 10], [11, 12], [14, 15]];   // 4049, 4050 (16 pins: VDD 1, VSS 8; 13, 16 not connected)
 const NAND13 = [[1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 9]];   // 74133 (16 pins: GND 8, VCC 16)
+// the AND-OR-INVERT gates (#4397): [terms…, output], each term the inputs one AND takes (KiCad's symbols' grouping)
+const AOI_7451 = [[[1, 12, 13], [9, 10, 11], 8], [[2, 3], [4, 5], 6]];   // 1Y = /(1A·1B·1C + 1D·1E·1F), 2Y = /(2A·2B + 2C·2D)
+const AOI_7454 = [[[1, 2], [3, 4, 5], [9, 10, 11], [12, 13], 6]];   // the 74LS54's Y = /(AB + CDE + FGH + JK) (the 7454's differs)
+const AOI_7455 = [[[1, 2, 3, 4], [10, 11, 12, 13], 8]];   // Y = /(ABCD + EFGH)
 
 /**
  * A gate IC: its gates `fn` on `groups`, its pins named as its datasheet (1A, 1B, 1Y…; a single gate's A–H, Y), on a
@@ -29,10 +33,12 @@ function gateIc(type, chip, title, fn, groups, tpd, { family = 'ttl', oc = false
   const pins = new Map();
   const one = groups.length === 1;
   const gates = groups.map((g, i) => {
-    const ins = g.slice(0, -1), out = g[g.length - 1];
+    // (an AND-OR-INVERT's: its terms, each an array of inputs)
+    const terms = Array.isArray(g[0]) ? g.slice(0, -1) : null;
+    const ins = terms ? terms.flat() : g.slice(0, -1), out = g[g.length - 1];
     ins.forEach((p, j) => pins.set(p, { n: p, name: `${one ? '' : i + 1}${'ABCDEFGHJKLMN'[j]}`, dir: 'in' }));
     pins.set(out, { n: out, name: `${one ? '' : i + 1}Y`, dir: oc ? 'oc' : 'out' });
-    return { fn, ins, out };
+    return { fn, ins, out, ...(terms ? { terms: terms.map((t) => t.length) } : {}) };
   });
   pins.set(supply[1], { n: supply[1], name: family === 'ttl' ? 'GND' : 'VSS', dir: 'gnd' });
   pins.set(supply[0], { n: supply[0], name: family === 'ttl' ? 'VCC' : 'VDD', dir: 'vcc' });
@@ -78,6 +84,9 @@ export const ICS = [
   ttl('74133', '13-input NAND', 'nand', NAND13, 10, false, { pins: 16, supply: [16, 8] }),
   ttl('74136', 'Quad 2-input XOR, open collector', 'xor', QUAD, 20, true),
   ttl('74386', 'Quad 2-input XOR', 'xor', QUAD_4001, 12),
+  ttl('7451', 'Dual AND-OR-INVERT (3-3 and 2-2 inputs)', 'aoi', AOI_7451, 13),
+  ttl('7454', '4-wide AND-OR-INVERT (2-3-3-2 inputs)', 'aoi', AOI_7454, 13),
+  ttl('7455', '2-wide 4-input AND-OR-INVERT', 'aoi', AOI_7455, 13),
   cmos('4001', 'Quad 2-input NOR', 'nor', QUAD_4001, 60),
   cmos('4011', 'Quad 2-input NAND', 'nand', QUAD_4001, 60),
   cmos('4030', 'Quad 2-input XOR', 'xor', QUAD_4001, 100),

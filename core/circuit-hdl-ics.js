@@ -9,8 +9,12 @@ export const pinPort = (p) => p.port ?? (/^\d/.test(p.name) ? `${p.name.slice(1)
 export const icPorts = (d) => d.pins.filter((p) => p.dir !== 'nc');
 
 // (VHDL's nand and nor do not chain: not (a and b and c))
-const GATE_V = { nand: (x) => (x.length > 2 ? `(not (${x.join(' and ')}))` : `(${x.join(' nand ')})`), and: (x) => `(${x.join(' and ')})`, or: (x) => `(${x.join(' or ')})`, nor: (x) => (x.length > 2 ? `(not (${x.join(' or ')}))` : `(${x.join(' nor ')})`), xor: (x) => `(${x.join(' xor ')})`, xnor: (x) => (x.length > 2 ? `(not (${x.join(' xor ')}))` : `(${x.join(' xnor ')})`), not: (x) => `(not ${x[0]})`, buf: (x) => `(${x[0]})` };
-const GATE_VL = { nand: (x) => `~(${x.join(' & ')})`, and: (x) => `(${x.join(' & ')})`, or: (x) => `(${x.join(' | ')})`, nor: (x) => `~(${x.join(' | ')})`, xor: (x) => `(${x.join(' ^ ')})`, xnor: (x) => `~(${x.join(' ^ ')})`, not: (x) => `~${x[0]}`, buf: (x) => `(${x[0]})` };
+// (an AND-OR-INVERT, #4397: its inputs x in terms of the sizes t)
+const split = (x, t) => { let k = 0; return t.map((n) => x.slice(k, (k += n))); };
+const GATE_V = { nand: (x) => (x.length > 2 ? `(not (${x.join(' and ')}))` : `(${x.join(' nand ')})`), and: (x) => `(${x.join(' and ')})`, or: (x) => `(${x.join(' or ')})`, nor: (x) => (x.length > 2 ? `(not (${x.join(' or ')}))` : `(${x.join(' nor ')})`), xor: (x) => `(${x.join(' xor ')})`, xnor: (x) => (x.length > 2 ? `(not (${x.join(' xor ')}))` : `(${x.join(' xnor ')})`), not: (x) => `(not ${x[0]})`, buf: (x) => `(${x[0]})`,
+  aoi: (x, t) => `(not (${split(x, t).map((a) => `(${a.join(' and ')})`).join(' or ')}))` };
+const GATE_VL = { nand: (x) => `~(${x.join(' & ')})`, and: (x) => `(${x.join(' & ')})`, or: (x) => `(${x.join(' | ')})`, nor: (x) => `~(${x.join(' | ')})`, xor: (x) => `(${x.join(' ^ ')})`, xnor: (x) => `~(${x.join(' ^ ')})`, not: (x) => `~${x[0]}`, buf: (x) => `(${x[0]})`,
+  aoi: (x, t) => `~(${split(x, t).map((a) => `(${a.join(' & ')})`).join(' | ')})` };
 const isOut = (p) => p.dir === 'out' || p.dir === 'oc';
 
 /** An IC's entity in VHDL, its lines pushed on L. */
@@ -28,7 +32,7 @@ export function vhdlIc(L, name, d) {
   if (d.oc) L.push('  -- an open collector output: a 0, or nothing', '  function oc(s : std_logic) return std_logic is', '  begin', "    if s = '0' then return '0'; elsif s = '1' then return 'Z'; else return 'X'; end if;", '  end function oc;');
   L.push('  signal pw : boolean;', 'begin', `  pw <= ${vcc} = '1' and ${gnd} = '0';`);
   for (const g of d.gates) {
-    const e = GATE_V[g.fn](g.ins.map((n) => `rd(${pinPort(pin.get(n))})`));
+    const e = GATE_V[g.fn](g.ins.map((n) => `rd(${pinPort(pin.get(n))})`), g.terms);
     L.push(`  ${pinPort(pin.get(g.out))} <= ${d.oc ? `oc${e}` : e} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`);
   }
   L.push('end architecture model;', '');
@@ -45,7 +49,7 @@ export function verilogIc(L, name, d) {
   if (d.oc) L.push('  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction');
   L.push(`  wire pw = (${vcc} === 1'b1) && (${gnd} === 1'b0);`);
   for (const g of d.gates) {
-    const e = GATE_VL[g.fn](g.ins.map((n) => `rd(${pinPort(pin.get(n))})`));
+    const e = GATE_VL[g.fn](g.ins.map((n) => `rd(${pinPort(pin.get(n))})`), g.terms);
     L.push(`  assign #${d.tpd} ${pinPort(pin.get(g.out))} = pw ? ${d.oc ? `oc(${e})` : e} : 1'bz;`);
   }
   L.push('endmodule', '');

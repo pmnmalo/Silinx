@@ -128,7 +128,7 @@ export function partHoles(part) {
 
 // ------------------------------------------------------------------ the gates' logic (0, 1, X)
 /** A gate's output from its inputs' levels ('0', '1', 'X'), as std_logic_1164's operators. */
-export function gateValue(fn, ins) {
+export function gateValue(fn, ins, terms = null) {
   const any = (v) => ins.includes(v);
   switch (fn) {
     case 'not': return ins[0] === '0' ? '1' : ins[0] === '1' ? '0' : 'X';
@@ -139,6 +139,8 @@ export function gateValue(fn, ins) {
     case 'nor': return any('1') ? '0' : any('X') ? 'X' : '1';
     case 'xor': return any('X') ? 'X' : (ins.filter((v) => v === '1').length % 2 ? '1' : '0');
     case 'xnor': return any('X') ? 'X' : (ins.filter((v) => v === '1').length % 2 ? '0' : '1');
+    // (an AND-OR-INVERT, #4397: the NOR of its terms' ANDs, `terms` their sizes)
+    case 'aoi': { let k = 0; return gateValue('nor', terms.map((n) => gateValue('and', ins.slice(k, (k += n))))); }
     default: throw new Error(`no gate function '${fn}'`);
   }
 }

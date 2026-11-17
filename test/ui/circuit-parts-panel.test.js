@@ -27,7 +27,7 @@ uiTest('Circuit editor: the Parts panel on the left, its drawings, search, categ
     return { parts: x('.circ-parts-side').right <= x('.circ-canvas').left + 1, props: x('.asm-side').left >= x('.circ-canvas').right - 1, inProps: document.querySelectorAll(`${ed} .asm-side .circ-lib-part`).length };
   }, ED);
   assert.deepEqual(sides, { parts: true, props: true, inProps: 0 });
-  assert.equal((await rows(page)).length, 64);
+  assert.equal((await rows(page)).length, 94);   // (30 more gates, #4397)
   // the drawings: a gate IC's its gate's schematic symbol, an MSI's its block's, a breadboard's and an LED's their own
   assert.deepEqual(await page.eval((ed) => ['7400', '74138', 'breadboard-half', 'led'].map((t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"] svg`).classList.contains('circ-pv-sym')), ED), [true, true, false, false]);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"] svg .gate`) !== null, ED), true);
@@ -44,8 +44,8 @@ uiTest('Circuit editor: the Parts panel on the left, its drawings, search, categ
   // the search; a category folded, opened
   await page.click(`${ED} .circ-search`);
   await page.type('xor');
-  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-lib-part[data-part]`).length === 3, [ED], { what: 'the search' });
-  assert.deepEqual(await rows(page), ['7486', '4030', '4070']);
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-lib-part[data-part]`).length === 5, [ED], { what: 'the search' });
+  assert.deepEqual(await rows(page), ['7486', '74136', '74386', '4030', '4070']);   // (the 74136 and 74386, #4397)
   await page.eval((ed) => { const s = document.querySelector(`${ed} .circ-search`); s.value = ''; s.dispatchEvent(new Event('input')); }, ED);
   await page.click(`${ED} .circ-lib-title`, { text: 'Breadboards (2)' });
   assert.deepEqual((await rows(page)).slice(0, 2), ['supply', 'pull-up']);

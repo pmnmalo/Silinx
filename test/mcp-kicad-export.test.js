@@ -28,7 +28,7 @@ test('export_part: ICs as a .kicad_sym, a project\'s parts as a PCM package; rea
   assert.equal(r.text, 'silinx.kicad_sym written: 2 IC(s) of the library as KiCad symbols (7400, 7404)');
   assert.deepEqual(kicadPartsOf({ 'parts/s.kicad_sym': fs.readFileSync(path.join(ex, 'silinx.kicad_sym'), 'utf8') }).defs.map((d) => d.behaves), ['7400', '7404']);
   await fails('export_part', { file: 'silinx.kicad_sym' }, 'file: \'silinx.kicad_sym\' is in the exchange folder already (replace: true replaces it)');
-  assert.match((await ok('export_part', { file: 'silinx.kicad_sym', replace: true })).text, /^silinx\.kicad_sym written: 48 IC\(s\) of the library as KiCad symbols \(7400, 7401, /);
+  assert.match((await ok('export_part', { file: 'silinx.kicad_sym', replace: true })).text, /^silinx\.kicad_sym written: 78 IC\(s\) of the library as KiCad symbols \(7400, 7401, /);
   await fails('export_part', { file: 'x.kicad_sym', ics: ['led'] }, `'led' is not an IC of the library (its ICs: ${EXPORTED_ICS.join(', ')})`);
   await fails('export_part', { file: 'x.txt' }, 'file: \'x.txt\' is neither a .kicad_sym nor a .zip');
   await fails('export_part', { file: 'x.kicad_sym', project: 'P' }, 'project: a .zip\'s only (a .kicad_sym holds the library\'s ICs)');

@@ -29,6 +29,7 @@ function symbolOfPart(type) {
   if (d?.gates) {
     const { fn, ins } = d.gates[0];
     if (fn === 'not' || fn === 'buf') return fn === 'not' ? 'inv' : 'buf';
+    if (fn === 'aoi') return null;   // (an AND-OR-INVERT, #4397: no symbol of its own, its drawing)
     return `${fn}${Math.min(ins.length, fn === 'and' || fn === 'or' ? 5 : 4)}`;
   }
   return BLOCK[d?.behaves ?? type] || null;   // (a project's KiCad part, #4281: the IC's it behaves as)
