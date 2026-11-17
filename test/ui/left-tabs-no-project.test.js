@@ -1,8 +1,8 @@
-// UI: the side panel's tabs with no project open (#4257): no tab row (Start, Design, Files, Libraries, Teaching,
-// Collaboration), the Start page only; a project opened brings them back, on the tab last chosen, and closing it hides
-// them again (the Silinx interface: on its Design page, #1171); an FPGA project and a design and simulation one (#3780); on a narrow screen (the drawer from the header's
-// button, the Silinx interface with no empty activity bar); the local server and the browser edition; in both
-// interfaces (SILINX_UI_INTERFACE); no warnings.
+// UI: the side panel's tabs with no project open (#4257, #4322): the Start tab alone in the row (not Design, Files,
+// Libraries, Teaching, Collaboration), active, its page only; a project opened brings the others back, on the tab last
+// chosen, and closing it leaves the Start tab alone again (the Silinx interface: on its Design page, #1171); an FPGA
+// project and a design and simulation one (#3780); on a narrow screen (the drawer, the Silinx interface's activity bar
+// with its Start icon); the local server and the browser edition; in both interfaces (SILINX_UI_INTERFACE); no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -24,13 +24,12 @@ const side = (page) => page.eval(() => {
   return { row: row.getClientRects().length > 0, tabs, active: row.querySelector('.tab.active')?.dataset.page || null,
     pages: [...document.querySelectorAll('.left-page')].filter((p) => !p.hidden).map((p) => p.dataset.page) };
 });
-const NONE = { row: false, tabs: [], active: 'start', pages: ['start'] };
-// the Start page shown, its boxes drawn (on a narrow screen: the drawer opened by the header's button)
+const NONE = { row: true, tabs: ['start'], active: 'start', pages: ['start'] };
+// the Start page shown, its boxes drawn (on a narrow screen: the drawer opened by the header's button), its tab beside it
 async function startShown(page) {
   if (await page.eval(() => !document.getElementById('start-page').getClientRects().length)) await page.click('#drawer-btn');
   await page.waitFor(() => document.getElementById('start-page').getClientRects().length && document.querySelector('#start-page .start-box h3'), [], { what: 'the Start page' });
-  // (no empty activity bar beside it: the Start page from the side panel's left edge)
-  assert.equal(await page.eval(() => Math.round(document.getElementById('start-page').getBoundingClientRect().left - document.getElementById('main').getBoundingClientRect().left) <= 8), true);
+  assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab.active[data-page="start"]')?.getClientRects().length > 0), true, 'the Start tab shown, active');
 }
 const close = async (page) => {
   await page.eval(() => window.SilinxApp.closeProject());
@@ -42,7 +41,7 @@ const open = async (page, name) => {
   await page.waitFor((n) => window.Silinx.project?.name === n && !document.documentElement.hasAttribute('data-no-project'), [name], { what: `${name} open` });
 };
 
-uiTest('#4257 no project: no tab row, the Start page only; a project opened brings the tabs back on the last chosen, closed hides them; a design project; a narrow screen', E, async (page) => {
+uiTest('#4257 #4322 no project: the Start tab alone, its page only; a project opened brings the tabs back on the last chosen, closed leaves the Start tab alone; a design project; a narrow screen', E, async (page) => {
   await page.setViewport(1366, 768);
   await close(page);
   assert.deepEqual(await side(page), NONE);
@@ -66,9 +65,10 @@ uiTest('#4257 no project: no tab row, the Start page only; a project opened brin
   await page.leftTab('teaching');
   await close(page);
   assert.deepEqual(await side(page), NONE);
-  // a narrow screen: no tab row (the Silinx interface: no activity bar), the drawer's Start page; a project: the tabs back
+  // a narrow screen: the Start tab alone (the Silinx interface: its activity bar's Start icon), the drawer's Start page; a
+  // project: the tabs back
   await page.setViewport(820, 1000);
-  assert.equal((await side(page)).row, false);
+  assert.deepEqual((await side(page)).tabs, ['start']);
   await startShown(page);
   await open(page, 'TabsFpga');
   await page.leftTab('design');
@@ -82,7 +82,7 @@ uiTest('#4257 no project: no tab row, the Start page only; a project opened brin
 });
 
 // the browser edition: the same, its project made with File ▸ New Project…
-uiTest('#4257 the browser edition: no tab row with no project, the tabs with one, none again once closed', () => (site?.skip ? { skip: site.skip } : env), async (page) => {
+uiTest('#4257 #4322 the browser edition: the Start tab alone with no project, the tabs with one, the Start tab alone again once closed', () => (site?.skip ? { skip: site.skip } : env), async (page) => {
   site ??= await buildSite(env.tmp);
   if (site.skip) return;
   try {

@@ -1,6 +1,6 @@
 // UI: the Collaboration tab of the Design pane's row (#4215, web/js/collab-tab.js) in the server editions, against local
 // bare repositories (no network: https://github.com/test/<repo> mapped to one, SILINX_UI_GIT_REMOTES of
-// test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Teaching; no project open: no tab (#4257,
+// test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Teaching; no project open: the Start tab alone (#4257, #4322,
 // Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, its changes with
 // the Design pane's marks (a click compares one with the last commit), Commit…, Push to GitHub, Pull from GitHub,
 // History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
@@ -89,12 +89,12 @@ const SERVER_GITHUB = 'git signs in to GitHub with its own credentials.';
 const NOT_LIVE = (off = false) => ['Sharing', 'Not shared live.', `Share a Copy…${off ? ' (disabled)' : ''}`, `Share Live…${off ? ' (disabled)' : ''}`, 'To follow a project shared live, open its link.'];
 const REPO_COMMANDS = ['Commit…', 'Push to GitHub', 'Pull from GitHub', 'History…'];
 
-uiTest('#4215 #4257 the Collaboration tab: no tab with no project, a project opened from a repository, its changes, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
+uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no project, a project opened from a repository, its changes, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
   bare('collab1');
   await page.setViewport(1366, 768);
   await page.eval(() => window.SilinxApp.closeProject?.());
-  // no project: no tab (#4257); Open from GitHub Repository… from the Start page: the project, its repository and branch, no change
-  assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
+  // no project: the Start tab alone (#4257, #4322); Open from GitHub Repository… from the Start page: the project, its repository and branch, no change
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).map((t) => t.dataset.page)), ['start']);
   await page.leftTab('start');
   await page.click('#start-page .entry a', { text: 'Open from GitHub Repository…' });
   await page.waitDialog('Open from GitHub Repository');

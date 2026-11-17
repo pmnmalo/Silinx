@@ -586,9 +586,6 @@ html[data-theme="dark"] .sch-editor .lv-clock { background: transparent; border-
   html[data-ui="silinx"]:not([data-drawer="open"]) #left-pages { display: none; }
   html[data-ui="silinx"]:not([data-drawer="open"]) #left-tabs .tab.active { background: none; color: var(--m-muted); font-weight: 500; }
   html[data-ui="silinx"] #drawer-scrim { left: 64px; }
-  /* (no project open: no activity bar, the drawer from the header's button, #4257) */
-  html[data-ui="silinx"][data-no-project] #left { width: 0 !important; min-width: 0; }
-  html[data-ui="silinx"][data-no-project] :is(#left-pages, #drawer-scrim) { left: 0; }
 }
 @media (max-width: 720px) {
   html[data-ui="silinx"] #left { min-width: 64px; }

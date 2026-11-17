@@ -101,7 +101,7 @@ html:not([data-ui="silinx"]) #left-tabs .tab { min-width: 0; padding: 0 4px; }
 html:not([data-ui="silinx"]) #left-tabs .tab:is(.active, [data-page="start"], [data-page="design"], [data-page="files"]) { flex-shrink: 0; }
 html:not([data-ui="silinx"]) #left-tabs .tab .tab-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 html #left-tabs .tab[hidden] { display: none; }   /* (the Collaboration tab with no git, #4215) */
-html[data-no-project] #left-tabs { display: none; }   /* no project open: no tabs, the Start page only (#4257) */
+html[data-no-project] #left-tabs .tab:not([data-page="start"]) { display: none; }   /* no project open: the Start tab alone (#4257, #4322) */
 .bottom-tabs .tab .tclose { width: 14px; height: 14px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #666; }
 .bottom-tabs .tab .tclose:hover { background: #e81123; color: #fff; }
 .bottom-tabs .tab.dirty .tlabel::after { content: '*'; }

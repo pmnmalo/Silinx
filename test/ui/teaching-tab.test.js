@@ -1,6 +1,6 @@
 // UI: the Teaching tab of the Design pane's row (#3533, web/js/teaching-page.js), in both interfaces
 // (SILINX_UI_INTERFACE): its page's box, Labs and Exercises (Guided Labs…, Exercise…; its Links and Sharing box gone, the
-// Start page's sharing and git entries, #3699); no tab with no project (#4257), each command opening its dialog with one;
+// Start page's sharing and git entries, #3699); the Start tab alone with no project (#4257, #4322), each command opening its dialog with one;
 // the Start page's Teaching box gone (#3333); the tab on a narrow screen (the drawer's); in Portuguese; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,11 +23,11 @@ const teach = (page) => page.eval(() => {
 });
 const commands = (off) => ['Guided Labs…', 'Exercise…'].map((c) => (off ? `${c} (disabled)` : c));
 
-uiTest('#3533 #3699 #4257 the Teaching tab: the labs and the exercises (no Links and Sharing box), no tab with no project, each command opening its dialog; Portuguese', E, async (page) => {
+uiTest('#3533 #3699 #4257 #4322 the Teaching tab: the labs and the exercises (no Links and Sharing box), no Teaching tab with no project, each command opening its dialog; Portuguese', E, async (page) => {
   await page.setViewport(1366, 768);
   await page.eval(() => window.SilinxApp.closeProject?.());
-  // no project: no tab row (#4257); the Start page with no Teaching box (#3333's, the tab's now)
-  assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
+  // no project: the Start tab alone (#4257, #4322); the Start page with no Teaching box (#3333's, the tab's now)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).map((t) => t.dataset.page)), ['start']);
   await page.leftTab('start');
   await page.waitFor(() => document.querySelector('#start-page .start-box h3'), [], { what: 'the Start page' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#start-page .start-box h3')].map((e) => e.textContent).filter((t) => t === 'Teaching')), []);
@@ -60,10 +60,10 @@ uiTest('#3533 #3699 #4257 the Teaching tab: the labs and the exercises (no Links
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
-  // the project closed: its commands disabled, the tab gone with the others
+  // the project closed: its commands disabled, the Start tab alone again
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.waitFor(() => !document.getElementById('teach-page').hasAttribute('data-project'), [], { what: 'the commands disabled' });
-  assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).map((t) => t.dataset.page)), ['start']);
   await noWarnings(page);
 });
 

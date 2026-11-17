@@ -142,8 +142,7 @@ uiTest('View ▸ Interface: the ISE style look and back, live and remembered aft
     return {
       title: shown('title-text'), search: shown('top-actions'), tasks: document.getElementById('task-switch')?.getClientRects().length ?? 0,
       tabsBelow: r('doc-tabs').top > r('workspace').top,
-      // (no project open: no tab row, #4257)
-      leftTabsBelow: window.Silinx.project ? r('left-tabs').top > r('left-pages').top : !shown('left-tabs'),
+      leftTabsBelow: r('left-tabs').top > r('left-pages').top,   // (with no project, the Start tab alone, #4322)
       icons: [...document.querySelectorAll('#toolbar .tb-btn')].filter((b) => !b.getClientRects().length).length,
       stored: localStorage.getItem('silinx.ui'),
     };
