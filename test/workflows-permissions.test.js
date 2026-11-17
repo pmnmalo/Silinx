@@ -47,7 +47,7 @@ test('quality.yml: one job writes, contents only, on GitHub\'s runner; the self-
     const m = /^ {2}([\w-]+):\n([\s\S]*)$/.exec(part);
     if (m) jobs[m[1]] = m[2].split('\n').filter(l => /^ {4}/.test(l)).join('\n') + '\n';
   }
-  assert.deepEqual(Object.keys(jobs), ['changes', 'compare', 'publish', 'report']);
+  assert.deepEqual(Object.keys(jobs), ['changes', 'xc7', 'compare', 'publish', 'report']);
   const writes = {};
   for (const [name, body] of Object.entries(jobs)) {
     const p = /\n    permissions:\n((?: {6}.*\n)+)/.exec('\n' + body);
@@ -57,6 +57,7 @@ test('quality.yml: one job writes, contents only, on GitHub\'s runner; the self-
   // (the report job writes an issue: the failure report of a scheduled run, #251)
   assert.deepEqual(writes, { publish: ['contents'], report: ['issues'] });
   assert.match(jobs.compare, /\n    runs-on: \[self-hosted, ise\]\n/);
+  assert.match(jobs.xc7, /\n    runs-on: \[self-hosted, ise\]\n/);
   assert.match(jobs.publish, /\n    runs-on: ubuntu-latest\n/);
   assert.match(jobs.report, /\n    uses: \.\/\.github\/workflows\/failure-report\.yml\n/);
   // the artifact from the self-hosted job checked before it is committed: two regular files, valid JSON
@@ -65,6 +66,7 @@ test('quality.yml: one job writes, contents only, on GitHub\'s runner; the self-
   const script = jobs.publish.slice(check, commit);
   assert.match(script, /\[ -L "\$R\/\$f" \] \|\| \[ ! -f "\$R\/\$f" \]/);
   assert.match(script, /jq -e '\.designs \| type == "array"'/);
+  assert.match(script, /jq -e '\.boards \| type == "object"'/);
 });
 
 const ACTION = path.join(DIR, '..', 'actions', 'setup', 'action.yml');

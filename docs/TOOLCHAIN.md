@@ -193,7 +193,8 @@ every example are below.
 
 Against AMD Vivado ML Standard 2025.2 (#3760, part of #3145: Vivado cannot read nextpnr's FASM, so the Spartan-3E's
 byte-identical check does not carry over), each example on both boards is built three ways by
-`scripts/xc7-vivado-compare.mjs` (Vivado on the ISE runner's machine, alone, one build after another): Silinx's open flow;
+`scripts/xc7-vivado-compare.mjs` (Vivado on the ISE runner's machine, alone, one build after another; weekly, in the
+Quality workflow before the ISE comparison, its results pushed to the branch `quality-results` as that one's, #3834): Silinx's open flow;
 Vivado's own flow from the HDL, as the application's Vivado flow runs it (the example's settings: Speed, its effort
 level); and Silinx's netlist placed and routed by Vivado with no optimisation, then written as a bitstream (Vivado's
 DRC and `write_bitstream`'s on Silinx's synthesis, its LUTs counted Vivado's way). `test/xc7-vivado-comparison.test.js`

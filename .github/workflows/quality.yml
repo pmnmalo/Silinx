@@ -1,7 +1,9 @@
 name: Quality
 # The quality of what the Silinx toolchain generates against Xilinx ISE (XST + map + par), on the
 # design corpus (test/designs-corpus: 38 open-source designs, EPFL and VTR benchmarks among them):
-# size and speed of each design with both flows on the XC3S1200E (test/designs-corpus/compare-ise.mjs).
+# size and speed of each design with both flows on the XC3S1200E (test/designs-corpus/compare-ise.mjs). And the
+# 7-series' examples against AMD Vivado (#3834: scripts/xc7-vivado-compare.mjs, its results test/xc7-vivado-comparison.json
+# and their table in docs/TOOLCHAIN.md), first.
 # Weekly, and by hand (Actions ▸ Quality ▸ Run workflow), on the self-hosted runner with the ISE
 # Docker image (label "ise", as .github/workflows/ise.yml); the new results
 # (test/designs-corpus/ise-comparison.json and the page docs/QUALITY.md) are pushed to the branch quality-results, merged into main by a maintainer (main requires CI).
@@ -28,9 +30,42 @@ jobs:
       contents: read
     with:
       workflow: quality.yml
-  compare:
+  # the 7-series' examples on the Basys 3 and the Nexys A7 through the Silinx toolchain and through AMD Vivado (#3834,
+  # #3760, #3145): Vivado's own flow from the HDL, Silinx's netlist placed and routed by Vivado (its DRC, timing and
+  # utilisation), Silinx's .bit through its write_cfgmem; Vivado ML Standard in its Docker image on the runner, alone
+  # (8 GB), one build after another. First, before the ISE comparison's parts: its 22 designs take about 2-3 hours, the
+  # ISE comparison every hour of the week's window it is given (its parts resume what they leave). --guard: nothing
+  # written (and the job failed) when a build that passed in the recorded results fails now.
+  xc7:
     needs: changes
     if: needs.changes.outputs.run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_id == '1407836659' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, ise]
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    env:
+      SILINX_ISE_HOST: local    # Vivado's Docker image on the runner itself
+      NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+      SILINX_VIVADO_TIMEOUT: 3600
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          npm-cache: false
+      - name: Silinx toolchain vs Vivado (the 7-series)
+        run: node scripts/xc7-vivado-compare.mjs --guard --update
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quality-xc7
+          path: |
+            test/xc7-vivado-comparison.json
+            docs/TOOLCHAIN.md
+  compare:
+    # (after the 7-series' comparison, whatever its result)
+    needs: [changes, xc7]
+    if: ${{ !cancelled() && needs.changes.outputs.run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_id == '1407836659' && github.ref == 'refs/heads/main' }}
     runs-on: [self-hosted, ise]
     # the comparison took 14h13m on 2026-10-25 and passed 15 hours on 2026-10-31 (#2498); with the three Optimizations
     # (#2941) and nextpnr, about 40 hours (#3292: Area alone 10.5 h, the projects 7 h). So no build starts after
@@ -146,11 +181,13 @@ jobs:
             docs/QUALITY.md
 
   # the results' commit, on GitHub's runner (the only job with a writing token, #412 / #486), from the compare
-  # job's artifact (its last part's), on the commit it compared; only when the comparison passed (--guard). GITHUB_TOKEN cannot
+  # job's artifact (its last part's), on the commit it compared, and the xc7 job's (#3834); each only when its comparison
+  # passed (--guard), the commit when either did. GITHUB_TOKEN cannot
   # be scoped to one branch: this job runs no code of the artifact and pushes to quality-results only, which a
   # maintainer reviews before merging it into main.
   publish:
-    needs: compare
+    needs: [compare, xc7]
+    if: ${{ !cancelled() && (needs.compare.result == 'success' || needs.xc7.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -159,33 +196,65 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - if: needs.compare.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: quality-results
           path: ${{ runner.temp }}/quality-results
-      # the artifact comes from the maintainer's machine: only its two files are taken, as data (never run),
-      # regular files of a sane size, the comparison valid JSON (#486)
+      - if: needs.xc7.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: quality-xc7
+          path: ${{ runner.temp }}/quality-xc7
+      # the artifacts come from the maintainer's machine: only their two files each are taken, as data (never run),
+      # regular files of a sane size, the comparisons valid JSON (#486)
       - name: Check the results
+        env:
+          ISE: ${{ needs.compare.result == 'success' }}
+          XC7: ${{ needs.xc7.result == 'success' }}
         run: |
-          R="$RUNNER_TEMP/quality-results"
-          for f in test/designs-corpus/ise-comparison.json docs/QUALITY.md; do
-            if [ -L "$R/$f" ] || [ ! -f "$R/$f" ]; then echo "::error::$f: not a regular file"; exit 1; fi
-            if [ "$(wc -c < "$R/$f")" -gt 2000000 ]; then echo "::error::$f: larger than 2 MB"; exit 1; fi
-          done
-          jq -e '.designs | type == "array"' "$R/test/designs-corpus/ise-comparison.json" > /dev/null
+          check() {
+            R="$1"; shift
+            for f in "$@"; do
+              if [ -L "$R/$f" ] || [ ! -f "$R/$f" ]; then echo "::error::$f: not a regular file"; exit 1; fi
+              if [ "$(wc -c < "$R/$f")" -gt 2000000 ]; then echo "::error::$f: larger than 2 MB"; exit 1; fi
+            done
+          }
+          if [ "$ISE" = true ]; then
+            R="$RUNNER_TEMP/quality-results"
+            check "$R" test/designs-corpus/ise-comparison.json docs/QUALITY.md
+            jq -e '.designs | type == "array"' "$R/test/designs-corpus/ise-comparison.json" > /dev/null
+          fi
+          if [ "$XC7" = true ]; then
+            R="$RUNNER_TEMP/quality-xc7"
+            check "$R" test/xc7-vivado-comparison.json docs/TOOLCHAIN.md
+            jq -e '.boards | type == "object"' "$R/test/xc7-vivado-comparison.json" > /dev/null
+          fi
       - name: Commit the results
         env:
           GH_TOKEN: ${{ github.token }}
+          ISE: ${{ needs.compare.result == 'success' }}
+          XC7: ${{ needs.xc7.result == 'success' }}
         run: |
-          cp "$RUNNER_TEMP/quality-results/test/designs-corpus/ise-comparison.json" test/designs-corpus/
-          cp "$RUNNER_TEMP/quality-results/docs/QUALITY.md" docs/
-          git add test/designs-corpus/ise-comparison.json docs/QUALITY.md
+          what=""
+          if [ "$ISE" = true ]; then
+            cp "$RUNNER_TEMP/quality-results/test/designs-corpus/ise-comparison.json" test/designs-corpus/
+            cp "$RUNNER_TEMP/quality-results/docs/QUALITY.md" docs/
+            git add test/designs-corpus/ise-comparison.json docs/QUALITY.md
+            # (a partial comparison says so, #3292: the next run makes the builds it left)
+            n=$(jq '.missing // [] | length' test/designs-corpus/ise-comparison.json)
+            part=""; [ "$n" -gt 0 ] && part=", partial: $n builds left for the next run"
+            what="the Silinx toolchain vs ISE (docs/QUALITY.md$part)"
+          fi
+          if [ "$XC7" = true ]; then
+            cp "$RUNNER_TEMP/quality-xc7/test/xc7-vivado-comparison.json" test/
+            cp "$RUNNER_TEMP/quality-xc7/docs/TOOLCHAIN.md" docs/
+            git add test/xc7-vivado-comparison.json docs/TOOLCHAIN.md
+            what="${what:+$what; }the 7-series vs Vivado (docs/TOOLCHAIN.md)"
+          fi
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
-          # (a partial comparison says so, #3292: the next run makes the builds it left)
-          n=$(jq '.missing // [] | length' test/designs-corpus/ise-comparison.json)
-          part=""; [ "$n" -gt 0 ] && part=", partial: $n builds left for the next run"
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-            commit -m "Quality: the weekly Silinx toolchain vs ISE comparison (docs/QUALITY.md$part)"
+            commit -m "Quality: the weekly comparisons, $what"
           # main requires CI's checks (a ruleset), which a workflow's push cannot pass: the results go to the
           # branch quality-results, to be merged into main by a maintainer (CLAUDE.md, Integration)
           # the token as git's authorization header for github.com (as actions/checkout sets it), for this step's pushes only
@@ -196,7 +265,7 @@ jobs:
 
   # a failed job is an issue (#251): .github/workflows/failure-report.yml
   report:
-    needs: [changes, compare, publish]
+    needs: [changes, xc7, compare, publish]
     if: always() && github.event_name == 'schedule' && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     uses: ./.github/workflows/failure-report.yml
     permissions:

@@ -22,6 +22,8 @@
 //     the run's folder on the host deleted only once --update has saved them
 //     --update: the results merged into test/xc7-vivado-comparison.json and its table written in docs/TOOLCHAIN.md
 //     (test/xc7-vivado-comparison.test.js checks both)
+//     --guard: nothing written, the exit code 1, when a build that passed in the recorded results fails now (the weekly
+//     Quality workflow's, #3834: a broken run does not replace good results)
 //   SILINX_ISE_HOST=user@host (else ~/.silinx/config.json's ssh user and host, read here, never written in a file),
 //   SILINX_ISE_HOST=local: the image on this machine; SILINX_VIVADO_IMAGE (default xilinx/vitis-hls:2025.2);
 //   SILINX_VIVADO_TIMEOUT (a build's, s, default 3600).
@@ -153,6 +155,18 @@ export function netlistXdc(xdc, ports) {
   return String(xdc).replace(/\[get_ports \{([A-Za-z_]\w*)\[\d+\]\}\]/g, (m, n) => (one.has(n) ? `[get_ports {${n}}]` : m));
 }
 
+/** --guard (#3834): the builds that passed in the recorded results (old) and fail in a run's (designs, as mergeResults
+ *  takes them): ["<board>/<example> <build>: <error>"], each kind of build (vivado, netlist, and any other with ok). */
+export function guardFailures(old, designs) {
+  const out = [];
+  for (const d of Object.values(designs)) {
+    const was = old?.boards?.[d.board]?.[d.name];
+    if (!was) continue;
+    for (const [k, r] of Object.entries(d)) if (r?.ok === false && was[k]?.ok === true) out.push(`${d.board}/${d.name} ${k}: ${r.error}`);
+  }
+  return out;
+}
+
 const BOARD_NAMES = { basys3: 'Basys 3', 'nexys-a7': 'Nexys A7' };
 const mhz = (x) => (x == null ? '–' : x.toFixed(0));
 const ratio = (a, b) => (a == null || !b ? '–' : (a / b).toFixed(2));
@@ -222,7 +236,7 @@ async function prepareDesign(d, into, D) {
 /** The command line's options, checked: { flags, values } or an error (an unknown option, a missing value) — never a
  *  Vivado run started on a mistyped one (--help: the usage). */
 export function parseArgs(argv) {
-  const FLAGS = ['--update', '--detach', '--dry'], VALUES = ['--boards', '--filter', '--collect'];
+  const FLAGS = ['--update', '--detach', '--dry', '--guard'], VALUES = ['--boards', '--filter', '--collect'];
   const out = { flags: new Set(), values: {} };
   for (let i = 0; i < argv.length; i++) {
     if (FLAGS.includes(argv[i])) out.flags.add(argv[i]);
@@ -232,7 +246,7 @@ export function parseArgs(argv) {
   if (out.values['--collect'] && (out.flags.has('--detach') || out.flags.has('--dry'))) return { error: '--collect: no --detach nor --dry' };
   return out;
 }
-const USAGE = `usage: node scripts/xc7-vivado-compare.mjs [--boards basys3,nexys-a7] [--filter '^(blinky|pong)$'] [--detach | --dry] [--update]
+const USAGE = `usage: node scripts/xc7-vivado-compare.mjs [--boards basys3,nexys-a7] [--filter '^(blinky|pong)$'] [--detach | --dry] [--update] [--guard]
        node scripts/xc7-vivado-compare.mjs --collect silinx-xc7v-… [--update]`;
 
 async function main() {
@@ -323,8 +337,12 @@ async function main() {
       const r = results[d.id], s = (x) => (x.ok ? `${x.luts} LUTs, ${x.fmaxMHz ?? '-'} MHz, ${x.warnings.length} warnings, DRC ${x.drcErrors} errors` : x.error);
       console.log(`${d.id.padEnd(20)} Silinx ${r.silinx.luts} LUTs, ${r.silinx.fmaxMHz ?? '-'} MHz | Vivado ${s(r.vivado)} | Silinx's netlist in Vivado ${s(r.netlist)}`);
     }
-    if (a.includes('--update')) {
-      const old = fs.existsSync(RESULTS) ? JSON.parse(fs.readFileSync(RESULTS, 'utf8')) : null;
+    const old = fs.existsSync(RESULTS) ? JSON.parse(fs.readFileSync(RESULTS, 'utf8')) : null;
+    const broken = a.includes('--guard') ? guardFailures(old, results) : [];
+    if (broken.length) {
+      console.error(`--guard: ${broken.length} builds passed before and fail now, nothing written:\n${broken.map((b) => `  ${b}`).join('\n')}`);
+      process.exitCode = 1;
+    } else if (a.includes('--update')) {
       const m = mergeResults(old, results, { image: meta.image, examples: EXAMPLES });
       fs.writeFileSync(RESULTS, `${JSON.stringify(m, null, 2)}\n`);
       fs.writeFileSync(DOC, withTable(fs.readFileSync(DOC, 'utf8'), m));

@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { netTcl, runSh, netlistXdc, parseArgs, logWarnings, buildNumbers, silinxNumbers, mergeResults, comparisonTable, boardSummary, withTable, tableOf, RESULTS, DOC } from '../scripts/xc7-vivado-compare.mjs';
+import { netTcl, runSh, netlistXdc, parseArgs, guardFailures, logWarnings, buildNumbers, silinxNumbers, mergeResults, comparisonTable, boardSummary, withTable, tableOf, RESULTS, DOC } from '../scripts/xc7-vivado-compare.mjs';
 import { EXAMPLES, XC7_TARGETS } from './examples-lib.mjs';
 import { VIVADO_WARNINGS, VIVADO_DRC } from './vivado-examples-config.mjs';
 
@@ -92,6 +92,7 @@ test('parseArgs: the options checked, an unknown one or a missing value an error
   assert.deepEqual(parseArgs(['--collect', '--update']), { error: '--collect: a value is missing' });
   assert.deepEqual(parseArgs(['--collect', 'silinx-xc7v-x', '--detach']), { error: '--collect: no --detach nor --dry' });
   assert.deepEqual(parseArgs(['blinky']), { error: 'unknown option blinky' });
+  assert.deepEqual(parseArgs(['--guard', '--update']), { flags: new Set(['--guard', '--update']), values: {} });
 });
 
 test('silinxNumbers: the open flow\'s LUTs, its feed-throughs and LUT sites (#3160), registers, slices, frequency, warnings', () => {
@@ -127,6 +128,17 @@ test('mergeResults: a run\'s designs put in by board and in the examples\' order
   assert.ok(d.startsWith('a\n') && d.endsWith('end -->\nb\n'));
   assert.equal(withTable(d, b), d);
   assert.throws(() => withTable('no markers', b), /no <!-- xc7-vivado-comparison/);
+});
+
+test('guardFailures (--guard, #3834): a build that passed in the recorded results and fails now; one failing before, a new design, a passing one not', () => {
+  const examples = ['gates', 'blinky', 'pong'];
+  const old = mergeResults(null, { a: design('basys3', 'gates', 1), b: design('basys3', 'blinky', 2), c: { ...design('basys3', 'pong', 3), netlist: { ok: false, error: 'Vivado exited with 1' } } }, { image: 'i', examples });
+  const fail = (d, k) => ({ ...d, [k]: { ok: false, error: 'Vivado exited with 137', warnings: [] } });
+  assert.deepEqual(guardFailures(old, { a: design('basys3', 'gates', 1), b: design('basys3', 'blinky', 2) }), []);
+  assert.deepEqual(guardFailures(old, { a: fail(design('basys3', 'gates', 1), 'vivado'), b: fail(fail(design('basys3', 'blinky', 2), 'netlist'), 'cfgmem'),
+    c: fail(design('basys3', 'pong', 3), 'netlist'), d: fail(design('nexys-a7', 'gates', 1), 'vivado') }),
+  ['basys3/gates vivado: Vivado exited with 137', 'basys3/blinky netlist: Vivado exited with 137']);
+  assert.deepEqual(guardFailures(null, { a: fail(design('basys3', 'gates', 1), 'vivado') }), []);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
