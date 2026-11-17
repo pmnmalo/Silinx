@@ -119,6 +119,10 @@ export const api = {
   gitPull: (name, { resolve = null } = {}) => req('POST', `/api/projects/${enc(name)}/git/pull`, resolve ? { resolve } : {}),
   gitLog: (name, limit = 100) => req('GET', `/api/projects/${enc(name)}/git/log?limit=${limit}`),
   gitChecks: name => req('GET', `/api/projects/${enc(name)}/git/checks`),   // (#3194)
+  gitBranches: name => req('GET', `/api/projects/${enc(name)}/git/branches`),   // (#4213)
+  gitNewBranch: (name, branch) => req('POST', `/api/projects/${enc(name)}/git/branch`, { branch }),
+  gitSwitch: (name, branch) => req('POST', `/api/projects/${enc(name)}/git/switch`, { branch }),
+  gitMerge: (name, branch, { resolve = null } = {}) => req('POST', `/api/projects/${enc(name)}/git/merge`, { branch, ...(resolve ? { resolve } : {}) }),
   gitShow: (name, commit, path) => req('GET', `/api/projects/${enc(name)}/git/show?commit=${enc(commit)}&path=${enc(path)}`),
   devices: () => req('GET', '/api/devices'),
   toolchain: (project = null) => req('GET', `/api/toolchain${project ? `?project=${enc(project)}` : ''}`),

@@ -133,3 +133,25 @@ test('#3194 #4237 git_checks through GitHub\'s API: the last pushed commit\'s ch
   await ok('new_project_from_example', { name: 'loose', example: 'gates' });
   await fails('git_checks', { project: 'loose' }, 'the project \'loose\' is not in a git repository\nHint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.');
 });
+
+test('#4213 git_branch, git_switch, git_merge through GitHub\'s API: a branch made on GitHub, another person\'s switched to and merged in', async () => {
+  gh.seed('pmalo/lab2', filesOf(BLINKY));
+  await ok('git_clone', { url: 'https://github.com/pmalo/lab2' });
+  assert.equal((await ok('git_branch', { project: 'lab2' })).text, 'lab2: on main; 1 branch(es):\n  * main');
+  assert.equal((await ok('git_branch', { project: 'lab2', branch: 'ana' })).text, 'Branch ana made from main: the project is on it now, on GitHub too.');
+  await fails('git_branch', { project: 'lab2', branch: 'ana' }, 'a branch \'ana\' already exists\nHint: Choose another name, or Switch Branch… to it.');
+  const counter = fs.readFileSync(path.join(BLINKY, 'src', 'counter.v'), 'utf8');
+  await ok('write_file', { project: 'lab2', path: 'src/counter.v', text: `// Ana\n${counter}` });
+  await ok('git_commit', { project: 'lab2', message: 'Ana' });
+  gh.repos.get('pmalo/lab2').refs.set('rui', gh.head('pmalo/lab2', 'main'));
+  gh.commitFiles('pmalo/lab2', { 'src/counter.v': `${counter}// Rui\n` }, { branch: 'rui', message: 'Rui' });
+  assert.equal((await ok('git_branch', { project: 'lab2' })).text, 'lab2: on ana; 3 branch(es):\n  * ana\n  main\n  rui');
+  assert.equal((await ok('git_switch', { project: 'lab2', branch: 'rui' })).text, 'Switched to rui: 1 file(s) changed.\n  src/counter.v');
+  assert.equal(fs.readFileSync(path.join(ws, 'lab2', 'src', 'counter.v'), 'utf8'), `${counter}// Rui\n`);
+  assert.equal((await ok('git_switch', { project: 'lab2', branch: 'ana' })).text, 'Switched to ana: 1 file(s) changed.\n  src/counter.v');
+  const r = await ok('git_merge', { project: 'lab2', branch: 'rui' });
+  assert.equal(r.text, 'Merged rui into ana: 1 file(s) changed.\n  src/counter.v\nsrc/counter.v: merged by its lines.');
+  assert.equal(gh.filesAt('pmalo/lab2', 'ana')['src/counter.v'], `// Ana\n${counter}// Rui\n`);
+  assert.equal(gh.commitOf('pmalo/lab2', gh.head('pmalo/lab2', 'ana')).parents.length, 2);
+  assert.equal((await ok('git_merge', { project: 'lab2', branch: 'rui' })).text, 'Already up to date: ana has every commit of rui.');
+});

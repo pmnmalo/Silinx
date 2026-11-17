@@ -558,6 +558,10 @@ a project with no repository, Store Project in a GitHub Repository… and Open f
   written, per conflict) and pulls again with your choices, never writing conflict markers. A pull that still conflicts
   (a file removed on one side and changed on the other) pulls nothing and leaves the files as they were. The repository's hidden files (`.vscode`, `.github`) and the tools' outputs stay in the repository, out of
   the project's folder, and a pull's files pass the import gate, as an imported project's.
+- **New Branch…, Switch Branch… and Merge Branch…** (the Collaboration tab, which shows the branch; the same menus):
+  each person of a group works on a branch of their own, and Merge Branch… merges another person's branch into theirs
+  as Pull does (a drawing by its objects, a file by its lines, the same objects or lines chosen in the merge view),
+  with a merge commit. Switch and Merge need the changes committed first.
 - **The Design pane** marks what changed (M) or is new (N) since the last commit; the Collaboration tab lists every
   changed file, deleted ones (D) too.
 - **History…** lists the commits, and opens a file as it was in one, read only.
@@ -683,7 +687,7 @@ docs/CIRCUITS.md), `rearrange_wires` and `rearrange_schematic` (a schematic's Re
 `remove_from_project` and `add_to_project`, `rename_file` (a file or a folder), `rename_module` (its
 instances, drawings and top with it), `delete_file` and `delete_project` (into the workspace's `.trash` folder, from where they
 can be moved back),
-`git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log`, `git_diff` and `git_checks` (a project in a GitHub repository, as the interface's git: its history, a file as it was in a commit, what changed in a file, a drawing's by its objects, a pull's conflicts chosen per object or per hunk of lines, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
+`git_clone`, `git_init`, `git_status`, `git_commit`, `git_push`, `git_pull`, `git_log`, `git_diff`, `git_checks`, `git_branch`, `git_switch` and `git_merge` (a project in a GitHub repository, as the interface's git: its history, a branch per person and another branch merged in, a file as it was in a commit, what changed in a file, a drawing's by its objects, a pull's conflicts chosen per object or per hunk of lines, what GitHub's workflows said of the last push: a Classroom assignment's verdicts),
 `export_project` and `import_project` (a Xilinx ISE or a Silinx project, as a .zip; a .xise or a project folder too;
 only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `merge_preview`, `merge_contribution` and
 `undo_merge` (another person's copy of a project merged into it, as *Merge Contribution…*: three-way through the copy's

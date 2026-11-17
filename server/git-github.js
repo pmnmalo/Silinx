@@ -103,6 +103,11 @@ export const gitChecks = async name => backend().checks(await known(name));
 export const gitPull = async (name, { resolve = null } = {}) => backend().pull(await known(name), { resolve });
 export const gitLog = async (name, { limit = 100 } = {}) => backend().log(await known(name), { limit });
 export const gitShow = async (name, commit, rel) => backend().show(await known(name), commit, rel);
+// the branches (#4213, core/git-rest-branch.js)
+export const gitBranches = async name => backend().branches(await known(name));
+export const gitNewBranch = async (name, branch) => backend().newBranch(await known(name), branch);
+export const gitSwitch = async (name, branch) => backend().switchBranch(await known(name), branch);
+export const gitMerge = async (name, branch, { resolve = null } = {}) => backend().merge(await known(name), branch, { resolve });
 export const gitClone = ({ url, name = null, madeBy = null }) => backend({ madeBy }).clone({ url, name });
 
 /** GitHub's API with the environment's token (or none: a public repository's), for the system git's back end's checks
