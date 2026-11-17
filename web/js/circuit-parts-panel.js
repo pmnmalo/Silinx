@@ -73,7 +73,7 @@ function fitted(g, key) {
 // a KiCad catalogue's part's preview (#4346): its IC's, or drawn as it will be once imported (its footprint's drawing
 // kept in the catalogue, a DIP's body), else a box
 function cataloguePreview(e) {
-  if (e.as) return preview(e.as);
+  if (e.as && partDef(e.as).kind === 'ic') return preview(e.as);
   const key = `catalogue:${e.id}`;
   if (previews.has(key)) return previews.get(key).cloneNode(true);
   const d = catalogueDrawing(e);
@@ -85,7 +85,8 @@ function rowOf(t) {
   const d = partDef(t), k = d.kicad;
   if (!k) return { name: d.chip ? `${t} ${d.title}` : d.title, tip: `${d.title}: click it, then the drawing (Esc: done)`, noI18n: false };
   return { name: `${k.value}${k.description ? ` ${k.description}` : ''}`, noI18n: true,
-    tip: d.behaves ? `${k.value}, as the ${d.behaves}: click it, then the drawing (Esc: done)` : d.kind === 'model' ? `${k.value}, by its module ${d.module}: click it, then the drawing (Esc: done)`
+    // (an LED, a switch, a button of the library's, #4349: its title)
+    tip: d.behaves ? `${k.value}, as the ${d.kind === 'ic' ? d.behaves : `${PARTS[d.behaves].title} of the library`}: click it, then the drawing (Esc: done)` : d.kind === 'model' ? `${k.value}, by its module ${d.module}: click it, then the drawing (Esc: done)`
       : `${k.value}, drawn only (not simulated): click it, then the drawing (Esc: done)` };
 }
 
@@ -134,7 +135,7 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
           title: `${catalogueTitle(e)} (${CATALOGUE_LIBRARIES[e.library].name}, ${CATALOGUE_LIBRARIES[e.library].licence}): click it to import it into the project`,
           onclick: async () => { const type = await importCatalogue(e.id); if (type && partDef(type)) setTool(`place:${type}`); renderParts(); } },
         cataloguePreview(e),
-        h('span', { class: 'nm', 'data-no-i18n': 'true' }, `${e.value}${e.as ? ` (${e.as})` : ''}`)));
+        h('span', { class: 'nm', 'data-no-i18n': 'true' }, `${e.value}${e.as && partDef(e.as).kind === 'ic' ? ` (${e.as})` : ''}`)));
       }
     }
     list.replaceChildren(...rows);

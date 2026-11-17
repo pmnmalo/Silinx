@@ -34,7 +34,7 @@ test('kicadPartsOf: the project\'s symbols as parts, those that are no part and 
   assert.deepEqual(r.skipped, [
     { type: T('SMDCHIP'), reason: 'its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard' },
     { type: T('NOFP'), reason: 'it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)' },
-    { type: T('BADMODEL'), reason: "its Silinx.Model 'led' is not an IC of the library" }]);
+    { type: T('BADMODEL'), reason: "its Silinx.Model 'clock' is neither an IC of the library nor one of its led, button, spdt" }]);
   assert.deepEqual(r.notes, ["parts/ttl.kicad_sym: 74LS04: its part number is the 7404's but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out: drawn only"]);
   assert.deepEqual(r.errors, []);
   assert.ok(!r.defs.some((d) => d.kicad.value === 'VCC'), 'a power symbol is no part');
@@ -232,9 +232,10 @@ test('a drawn-only part\'s look (#4315): its footprint\'s drawing in grid steps 
   const r = kicadPartsOf({ 'parts/leds.kicad_sym': lib, 'parts/leds.pretty/LED_D5.0mm_test.kicad_mod': led });
   assert.deepEqual([r.errors, r.skipped], [[], []]);
   const d = r.defs[0];
-  assert.equal(d.kind, 'drawn');
+  // (an LED: the library's, #4349; its pins by their names: its anode, KiCad's pin 2, the LED's pin 1)
+  assert.deepEqual([d.kind, d.behaves, d.how, d.color], ['output', 'led', 'symbol', 'red']);
   // (pad 2 at 2.54 mm right of pad 1: one step up once turned, as the pins)
-  assert.deepEqual(d.pins.map((p) => [p.n, p.dx, p.dy]), [[1, 0, 0], [2, 0, -1]]);
+  assert.deepEqual(d.pins.map((p) => [p.n, p.name, p.kicadN, p.dx, p.dy]), [[1, 'A', '2', 0, -1], [2, 'K', '1', 0, 0]]);
   assert.equal(d.look.layer, 'F.Fab');
   assert.deepEqual(d.look.shapes.map((sh) => sh.k), ['circle', 'arc', 'line', 'poly', 'poly']);
   const r2 = (v) => Math.round(v * 1000) / 1000;

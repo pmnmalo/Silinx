@@ -141,7 +141,8 @@ uiTest('Circuit editor: a KiCad part drawn only by its footprint\'s drawing (#43
       label: g.querySelector('text.circ-label')?.textContent ?? null, inside: g.querySelector('text.circ-ic-text')?.textContent ?? null, fill: getComputedStyle(g.querySelector('.circ-fp-body')).fill };
   }, ED);
   // its circle the body (red: an LED's colour), its arc and line marks, its filled shapes; no box round its pins; its name above it
-  const want = { paths: ['circ-fp-body circ-drawn-body circ-led-red', 'circ-fp-line', 'circ-fp-line', 'circ-fp-fill', 'circ-fp-fill'], box: 0, label: 'D1  Red', inside: null, fill: 'rgb(255, 59, 48)' };
+  // (an LED with its A and K: the library's, #4349, its body dark until lit)
+  const want = { paths: ['circ-fp-body circ-kicad-body circ-led circ-led-red', 'circ-fp-line', 'circ-fp-line', 'circ-fp-fill', 'circ-fp-fill'], box: 0, label: 'D1  Red', inside: null, fill: 'rgb(255, 59, 48)' };
   assert.deepEqual(await look(), want);
   // (the body to scale: the LED's 5 mm, about 2 grid steps)
   const w = await page.eval((ed) => document.querySelector(`${ed} .circ-canvas [data-id=D1] .circ-fp-body`).getBBox().width, ED);

@@ -27,7 +27,8 @@ export function normalizeCircuit(m = {}) {
     const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
     if (levels === 1) out.on = !!p.on;
     else if (levels > 1) out.on = Array.from({ length: levels }, (_, i) => !!(Array.isArray(p.on) && p.on[i]));
-    if (d?.kind === 'output') out.color = LED_COLORS.includes(p.color) ? p.color : 'red';
+    // (a KiCad LED, #4349: its own colour, its part's)
+    if (d?.kind === 'output') out.color = d.kicad ? d.color : LED_COLORS.includes(p.color) ? p.color : 'red';
     if (d?.type === 'clock') {
       const hz = Number(p.hz);
       out.hz = Number.isFinite(hz) ? Math.min(CLOCK_HZ.max, Math.max(CLOCK_HZ.min, Math.round(hz * 10) / 10)) : CLOCK_HZ.default;
@@ -60,7 +61,7 @@ export function newCircuit(name = 'circuit', lang = 'vhdl', { breadboard = true 
 /** A new id for a part of this type (U for an IC, S a switch, B a button, D an LED, BB a breadboard, P a supply), or a wire. */
 export function newId(m, typeOrWire) {
   const d = partDef(typeOrWire);
-  const pfx = typeOrWire === 'wire' ? 'w' : { button: 'B', clock: 'CK', 'seg7-cc': 'DS', 'seg7-ca': 'DS', probe: 'LP' }[d?.type]
+  const pfx = typeOrWire === 'wire' ? 'w' : { button: 'B', clock: 'CK', 'seg7-cc': 'DS', 'seg7-ca': 'DS', probe: 'LP' }[d?.kicad ? d.behaves : d?.type]
     || { ic: 'U', drawn: 'U', model: 'U', input: 'S', output: 'D', breadboard: 'BB', supply: 'P', pull: 'R' }[d?.kind] || 'X';
   const used = new Set([...m.parts.map((p) => p.id.toLowerCase()), ...m.wires.map((w) => w.id.toLowerCase())]);
   let k = 1;

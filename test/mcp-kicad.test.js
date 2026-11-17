@@ -44,7 +44,7 @@ test('import_part: a footprint, then a library and its symbols said, its Silinx 
     `${T('74LS04')}: not a part: its Silinx.Model is 7404 but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out`,
     `${T('SMDCHIP')}: not a part: its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard`,
     `${T('NOFP')}: not a part: it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)`,
-    `${T('BADMODEL')}: not a part: its Silinx.Model 'led' is not an IC of the library`]);
+    `${T('BADMODEL')}: not a part: its Silinx.Model 'clock' is neither an IC of the library nor one of its led, button, spdt`]);
   assert.deepEqual(r.data.parts.map((p) => [p.value, p.kind, p.behavesAs]), [['SN74LS00N', 'ic', '7400'], ['74HC00', 'ic', '7400'], ['MYNAND', 'ic', '7400'], ['CD4011BE', 'ic', '4011'],
     ['TEST-SENSOR', 'drawn', null], ['TEST-MODULE', 'drawn', null]]);
   assert.equal(r.data.untrusted.content, 'the library\'s names and texts');
@@ -65,7 +65,7 @@ test('import_part: a footprint, then a library and its symbols said, its Silinx 
     `${T('74LS04')}: not a part: its Silinx.Model is 7404 but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out`,
     `${T('SMDCHIP')}: not a part: its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard`,
     `${T('NOFP')}: not a part: it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)`]);
-  assert.equal(list.text.split('\n').at(-1), `${T('BADMODEL')}: not a part: its Silinx.Model 'led' is not an IC of the library`);
+  assert.equal(list.text.split('\n').at(-1), `${T('BADMODEL')}: not a part: its Silinx.Model 'clock' is neither an IC of the library nor one of its led, button, spdt`);
   assert.match(list.text, new RegExp(`^${T('SENSOR').replace(/[.#]/g, '\\$&')}: .*; pins 1 VCC none, 2 GND none, 3 OUT none, 4 EN none$`, 'm'));
   assert.deepEqual([list.data.project, list.data.skipped.length, list.data.notes, list.data.errors], ['k', 4, [], []]);
   assert.equal(list.data.untrusted.content, 'the project\'s KiCad parts: their names and texts');
@@ -106,7 +106,7 @@ test('import_part refuses: a file there already (unless replace), a symbol it ha
   assert.equal(again.text.split('\n')[0], 'parts/ttl.kicad_sym written');
   await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: 'other.kicad_sym', symbols: { NONE: { model: '7400' } } },
     'symbols: no symbol \'NONE\' in the library (its symbols: 74LS00, 74HC00, MYNAND, CD4011, 74LS04, SENSOR, MODULE, SMDCHIP, NOFP, BADMODEL, VCC)');
-  await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: 'other.kicad_sym', symbols: { NOFP: { model: 'led' } } }, 'symbols.NOFP.model: \'led\' is not an IC of the library (circuit_parts)');
+  await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: 'other.kicad_sym', symbols: { NOFP: { model: 'clock' } } }, 'symbols.NOFP.model: \'clock\' is neither an IC of the library (circuit_parts) nor one of its led, button, spdt');
   await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: '../x.kicad_sym' }, 'name: \'../x.kicad_sym\' is not a .kicad_sym nor a .kicad_mod file\'s name (letters, digits, . _ -)');
   await fails('import_part', { project: 'k', file: 'Module_1x04.kicad_mod', symbols: { A: {} } }, 'symbols: a footprint has none');
   fs.writeFileSync(path.join(ex, 'notes.txt'), 'x');

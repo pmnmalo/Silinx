@@ -152,7 +152,7 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   if (!p) return `no part ${id} in the circuit`;
   const d = partDef(p.type);
   const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
-  const has = ['label', ...(d?.kind === 'output' ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : [])];
+  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : [])];
   for (const [k, v] of Object.entries(props)) {
     const named = d?.inputs || d?.lamps || d?.kind === 'probe';   // (a probe's label: its row's name in the waveforms)
     if (!has.includes(k) || (k === 'label' && !named)) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || named).join(', ') || 'none'})`;
