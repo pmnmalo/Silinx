@@ -28,6 +28,22 @@ export function readWidth(key) {
 export function saveWidth(key, w) { try { localStorage.setItem(prefKey(key), String(Math.round(w))); } catch { /* storage unavailable */ } }
 export function forgetWidth(key) { try { localStorage.removeItem(prefKey(key)); } catch { /* storage unavailable */ } }
 
+// The panels laid out again when the screen turns narrow or wide: one listener of the media query for all of them,
+// each panel's apply() held weakly, so a closed editor's panels, and the whole editor with them, go (#4365: a
+// listener of its own per panel, never removed, kept every closed editor alive).
+const narrowWatch = new Set();
+let narrowQuery = null;
+function narrowChanged() { for (const r of narrowWatch) { const f = r.deref(); if (f) f(); else narrowWatch.delete(r); } }
+/** `apply` called when the screen turns narrow or wide, as long as something else keeps it (its panel's observers). */
+export function watchNarrow(apply) {
+  if (typeof WeakRef !== 'function') return;
+  for (const r of narrowWatch) if (!r.deref()) narrowWatch.delete(r);
+  narrowWatch.add(new WeakRef(apply));
+  if (!narrowQuery && (narrowQuery = globalThis.matchMedia?.(NARROW_QUERY) || null)) narrowQuery.addEventListener?.('change', narrowChanged);
+}
+/** The number of panels watched (their editors not yet collected), for the tests. */
+export const narrowWatched = () => [...narrowWatch].filter(r => r.deref()).length;
+
 /** The side panel `side` of the editor `root` resizable; `toward`: the side of the editor it is on ('right': its
  *  handle on its left edge); `foldCls`: the class of `root` when it is folded; `key`: its width's preference. Returns
  *  { width(), setWidth(w), reset(), apply(), handle }. */
@@ -104,11 +120,15 @@ export function mountSideResize({ root, side, key, toward = 'right', foldCls = n
   // folded or expanded, enlarged, shown or hidden, the window or the editor resized: the width and the handle again
   new MutationObserver(apply).observe(root, { attributes: true, attributeFilter: ['class'] });
   if (root !== side) new MutationObserver(apply).observe(side, { attributes: true, attributeFilter: ['class', 'hidden'] });
+  // (placed in the next frame, not in the observer's callback: the handle moved there is a change of layout in the
+  // observer's own loop, which WebKit reports as an error, "ResizeObserver loop completed with undelivered
+  // notifications", #4366)
   if (typeof ResizeObserver === 'function') {
-    ro = new ResizeObserver(() => place());
+    let frame = 0;
+    ro = new ResizeObserver(() => { frame ||= requestAnimationFrame(() => { frame = 0; place(); }); });
     ro.observe(side);
   }
-  globalThis.matchMedia?.(NARROW_QUERY).addEventListener?.('change', apply);
+  watchNarrow(apply);
   apply();
   return { width: () => w, setWidth, reset, apply, handle };
 }
