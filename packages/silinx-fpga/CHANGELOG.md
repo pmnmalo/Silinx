@@ -3,6 +3,72 @@
 What changed in each version of silinx-fpga, the Silinx toolchain. The newest version is first. Its versions
 are its own (semver, 0.x until its API is stable), apart from Silinx ISE's.
 
+## 0.5.0
+
+In short:
+
+- **Gowin: the I/O logic, the differential I/O and the DSPs in the bitstream:** the GW1N's .fs is written for designs
+  with ODDR / IDDR, the serialisers and deserialisers, IODELAY, LVDS (true and emulated), MIPI and I3C buffers, the user
+  flash, CLKDIV, DHCEN, DCS, DQCE and every DSP of the GW1N, byte for byte as Apicula 0.32's `gowin_pack` writes it.
+- **nextpnr's error said when it stops:** a 7-series run of nextpnr that stops on an `ERROR:` line, in a worker thread
+  of its own (`runApart`) or not, rejects with that error, not with no files or an undefined message.
+- **Optimization Speed on a very large design:** over 2000 slices, Place & Route makes two placements, not four: each
+  takes 20 to 35 minutes on such a design, and four took 1.5 to 2.5 hours.
+
+In detail:
+
+- **The Spartan-6's Map by nextpnr: the ports without a LOC on Silinx's pads (#4374):** with nextpnr's packer (the
+  default since #3140) the I/O buffers whose port has no LOC take the pads Silinx's placement gives them (with #3349's I/O
+  paths), as with Silinx's Map: `packInput`'s `padLocs`. Left to nextpnr's simulated annealing, a design with 62 such
+  ports took 30–50 s a seed to place (the rest of it 0.2 s); now 1 s.
+- **gowin_pack's remaining GW1N primitives ported (#4333):** `src/fpga/gowin/iologic.js` (IOLOGIC, ODDR / ODDRC, IDDR /
+  IDDRC, OSER4 / 8 / 10, OVIDEO, IDES4 / 8 / 10, IVIDEO, their dummies and empty halves, the IODELAY: set_iologic_attrs),
+  `hclk.js` (CLKDIV and CLKDIV2: set_hclk_attrs; DHCEN, DCS, DQCE), `dsp.js` and `dsp-multalu.js` (MULTALU18X18,
+  MULTALU36X18, MULTADDALU18X18, MULT36X36, ALU54D, PADD9, PADD18 beside MULT9X9 and MULT18X18, moved there from
+  `bsram-dsp.js`, which still exports `dspAttrs`), and `place.js`'s I/O buffers: the true and emulated LVDS outputs,
+  tristates, inputs and bidirectional buffers on their P pin, their bank's voltage and their B pin's fuses, MIPI's output
+  and input (its aux cell's), I3C's buffer, the user flash and PINCFG (no fuses), a differential cell kept to the end
+  when nextpnr marks it. `attrids.js` gains Apicula's IOLOGIC, DCS and DLLDLY tables. Still refused by name: what the
+  GW1N-9C has not (PLLVR, PLLA, DLLDLY, BANDGAP, EMCU, BUFS, BUFG, ADC, the GW1NZ-1's oscillator, the GW5A's DSPs), and an
+  ALU54D without its B_ADD_SUB / C_ADD_SUB (Apicula fails on it). Tests: `test/gowin-iologic.test.js`,
+  `test/gowin-diff-io.test.js`, `test/gowin-dsp.test.js` (44 designs on the Tang Nano 9K, `test/fixtures/gowin-pack/
+  designs.mjs`, each .fs against the SHA-256 of Apicula's, `apicula-0.32.json`'s `primitives`; CLKDIV2, which nextpnr does
+  not route alone, against Apicula's set_hclk_attrs; Apicula's messages for a pair on the wrong pins), and
+  `test/gowin-pll-osc.test.js` refuses a PLLVR now that CLKDIV is ported.
+- **A nextpnr exception with no message turned into its error (#4260):** nextpnr-himbaechel-xc7 stopping on an `ERROR:`
+  line throws a `WebAssembly.Exception`, not the package's `Exit`, and it has no `message`. `nextpnrIo().run`
+  (`src/nextpnr-io.js`, every family's runner) now rejects with an `Error` saying "nextpnr stopped on an error:" and
+  nextpnr's last `ERROR:` line (the exception its `cause`), as an `Exit` rejects with its exit status; the xc7's worker
+  (`src/nextpnr-xc7-node-worker.js`) posts an error even with no message, and `runXc7Apart` takes any `error` as a
+  failure, so a run apart no longer resolves with no files. The Spartan-6's seed line no longer repeats the error the
+  message says. Tests: `test/nextpnr-io.test.js`, `test/xc7-seeds.test.js`, `test/nextpnr-xc7-cyinit.test.js` (a run
+  apart).
+- **Two placements over 2000 slices at High (#3821):** `NEXTPNR_TRIES.hugeSlices` (2000) and `highHuge` (2): a design
+  over 2000 slices gets two placements at Optimization Effort High (Speed), four up to 2000 as before (#3095).
+  ITC'99's b17 (3787 slices) took 34 minutes at Area (one placement) and was stopped at the Quality comparison's 2-hour
+  limit at Speed (four) every run. Test: `test/nextpnr-engine.test.js` (the counts at the limits).
+- **The 7-series' nextpnr arguments in the package's API (part of #3803):** `xc7ParArgs` of open-flow-xc7.js, the
+  arguments Place & Route runs nextpnr with (the same as before), exported from index.js with `nextpnrXdc`,
+  `portBits` and `xc7BscanCells` (a BSCANE2 as Place & Route gives it to nextpnr), for Silinx's
+  scripts/xc7-timing-vivado.mjs, which runs nextpnr again with them for its placement (`--placement`: Vivado routing
+  and timing it).
+- **nextpnr-himbaechel-spartan6 0.5.2 (#3743):** the Spartan-6's nextpnr pinned at 0.5.2 (pmnmalo/nextpnr-spartan#47):
+  its packer no longer puts a 5FF on a position whose multiplexed output its logic needs (the carry's sum or carry out,
+  an F7 / F8, an O5 leaving the slice), the rule of Silinx's Map (`muxNeeded` of `fpga/s6/pack.js`, #3151). A product of
+  two counters into the DSP48A1s, which stopped nextpnr's packing ("its pin BMUX carries two nets"), packs, places and
+  routes with nextpnr's Map. Its chip databases are 0.5.1's (the packer changed only). THIRD-PARTY-NOTICES follows.
+- **The 7-series' pins checked in the bitstream (#3145):** the bit database keeps the package's IOB pins (`pins`, from
+  Project X-Ray's `package_pins.csv`; `research/xc7/build-db.mjs`); `src/fpga/xc7/pins.js` compares the IOBs a `.bit`
+  configures (read back) with the XDC's pins, directions and IO standards; `src/fpga/xc7/check.js` (`checkBitXc7`) runs
+  the frames', round trip's and pins' checks of a `.bit` together. `roundTrip` also returns the features read back.
+- **The Spartan-6's Map: nextpnr's packer the default (part of #3140):** `s6MapOf` gives `nextpnr` unless `impl.s6Map` is
+  `silinx`, and the Spartan-6's back end packs with nextpnr (`fpga/s6/nextpnr-pack.js`) unless the spec's `s6Map` is
+  `silinx`: the command line too. Silinx's own placement of its Map's sites stays until it is removed.
+- **The iCE40's and ECP5's routed design as JSON, and another netlist placed and routed (#2299):** Place & Route also writes
+  nextpnr's `--write` JSON (`open/routed.json`), and the back ends' mount gives `placeRouteNetlist(text, top)` (src/nextpnr-netlist.js:
+  the family's own Place & Route of the simulation model's netlist, nothing written), for the Post-Place & Route model. The
+  iCE40's, ECP5's and Gowin's steps list the simulation models' (`postsynth`, and `postpar` but on the Gowin).
+
 ## 0.4.3
 
 The 7-series' timing fitted to Vivado's, and the Spartan-7, Kintex-7 and Zynq-7000 known to the toolchain.
