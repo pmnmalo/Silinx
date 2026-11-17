@@ -13,8 +13,17 @@ import { symbolTexts, oneSymbolFile } from './kicad-edit.js';
 import { importKicadPackage } from './kicad-import.js';
 
 export { CATALOGUE, CATALOGUE_LIBRARIES };
-/** The hosts a browser alone fetches a catalogue's file from (they send CORS headers). */
-export const CORS_HOSTS = ['raw.githubusercontent.com'];
+/** The hosts a browser alone fetches a catalogue's file from (they send CORS headers; gitlab.com's API only). */
+export const CORS_HOSTS = ['raw.githubusercontent.com', 'gitlab.com'];
+
+/** The URL a browser alone fetches a catalogue's file from, or null (its host sends no CORS header): GitHub's raw file
+ *  as it is; gitlab.com's raw file (no CORS header) through GitLab's API, which serves the same bytes with one (#4312). */
+export function browserUrl(url) {
+  const u = new URL(url);
+  if (u.hostname === 'raw.githubusercontent.com') return url;
+  const m = u.hostname === 'gitlab.com' && /^\/(.+?)\/-\/raw\/([^/]+)\/(.+)$/.exec(u.pathname);
+  return m ? `https://gitlab.com/api/v4/projects/${encodeURIComponent(decodeURIComponent(m[1]))}/repository/files/${encodeURIComponent(decodeURIComponent(m[3]))}/raw?ref=${encodeURIComponent(decodeURIComponent(m[2]))}` : null;
+}
 
 /** A catalogue's part's title, in Silinx's words: what it is in Silinx. */
 export function catalogueTitle(e) {

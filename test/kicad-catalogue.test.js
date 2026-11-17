@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, catalogueTitle, searchCatalogue, isCatalogueFile, catalogueSha256, importCataloguePart } from '../core/kicad-catalogue.js';
+import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, browserUrl, catalogueTitle, searchCatalogue, isCatalogueFile, catalogueSha256, importCataloguePart } from '../core/kicad-catalogue.js';
 import { PARTS, partDef, setProjectParts } from '../core/circuit-parts.js';
 import { readKicadSymLib } from '../core/kicad-sym.js';
 import { symbolTexts, oneSymbolFile } from '../core/kicad-edit.js';
@@ -32,10 +32,23 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
   const hc = CATALOGUE.find((e) => e.id === 'kicad-74xx/74HC00');
   assert.deepEqual([hc.as, hc.package, hc.needs], ['7400', 'DIP-14', ['74LS00']]);
   assert.ok(CATALOGUE.filter((e) => e.library.startsWith('sparkfun-')).every((e) => !e.as && e.footprint));
-  assert.deepEqual(CORS_HOSTS, ['raw.githubusercontent.com']);
+  assert.deepEqual(CORS_HOSTS, ['raw.githubusercontent.com', 'gitlab.com']);
   assert.equal(isCatalogueFile('https://gitlab.com/other'), false);
   assert.equal(catalogueSha256(CATALOGUE_LIBRARIES['kicad-74xx'].url), 'd229bea4164b7197952f31aa6deff19d9eaa0cf0a319190424cfad3ba1b6a727', 'the one core/kicad-pcm.js pins');
   assert.equal(catalogueSha256('https://gitlab.com/other'), null);
+});
+
+test('browserUrl: every catalogue file has one; GitHub\'s raw files as they are, gitlab.com\'s through its API; others none (#4312)', () => {
+  const files = [...Object.values(CATALOGUE_LIBRARIES).map((l) => l.url), ...CATALOGUE.filter((e) => e.footprint).map((e) => e.footprint.url)];
+  for (const u of files) assert.ok(CORS_HOSTS.includes(new URL(browserUrl(u)).hostname), u);
+  // (the same bytes as the raw file, SHA-256 d229bea4…, checked by hand: GitLab's API sends Access-Control-Allow-Origin: *)
+  assert.equal(browserUrl(CATALOGUE_LIBRARIES['kicad-74xx'].url), 'https://gitlab.com/api/v4/projects/kicad%2Flibraries%2Fkicad-symbols/repository/files/74xx.kicad_sym/raw?ref=9.0.0');
+  assert.equal(browserUrl('https://gitlab.com/a/b/-/raw/v1/dir/x%20y.kicad_mod'), 'https://gitlab.com/api/v4/projects/a%2Fb/repository/files/dir%2Fx%20y.kicad_mod/raw?ref=v1');
+  const sf = CATALOGUE_LIBRARIES['sparkfun-board'].url;
+  assert.equal(browserUrl(sf), sf);
+  assert.equal(browserUrl('https://gitlab.com/kicad/libraries/kicad-symbols'), null);
+  assert.equal(browserUrl('https://repository.kicad.org/repository.json'), null);
+  assert.equal(browserUrl('https://github.com/x/y/releases/download/v1/a.zip'), null);
 });
 
 test('catalogueTitle in Silinx\'s words; searchCatalogue by number, title and library', () => {

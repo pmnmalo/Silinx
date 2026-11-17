@@ -198,8 +198,8 @@ what it is in Silinx and the symbols it extends. A click imports the part: only 
 into a file of its own as KiCad 10's folders hold them (`parts/74xx.kicad_symdir/74HC00.kicad_sym`), with its footprint
 beside it and its origin written in it. Every file is checked against its SHA-256, and a file there already with the
 same text is kept. The local server fetches the catalogue's files only (kept for offline use; `SILINX_KICAD_OFFLINE`
-fetches nothing). The browser's edition alone fetches from a host that sends CORS headers (SparkFun's), and the others
-say that they need the server.
+fetches nothing). The browser's edition alone fetches from a host that sends CORS headers (SparkFun's on GitHub, KiCad's
+through GitLab's API, which serves the same files), and the others say that they need the server.
 
 Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a `.kicad_symdir` folder.
 
