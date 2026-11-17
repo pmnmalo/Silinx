@@ -79,3 +79,44 @@ test('run_process: blinky on the ULX3S to its .bit through nextpnr-ecp5 and ecpp
   // (its timing nextpnr's, #2300: test/mcp-nextpnr-reports.test.js; no power estimate)
   await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, translate, par, trce, bitgen)');
 });
+
+// #2299: a design that instantiates the ECP5's EHXPLLL and OSCG elaborates (the ECP5 primitives' models): set_top, Check Syntax
+// and the test bench's simulation (the PLL's lock, its clock's and the oscillator's edges counted), its synthesis
+const PLL_TOP = `module top(input clk, output lock, output reg [3:0] n = 0, output reg [3:0] m = 0);
+  wire fast, slow;
+  EHXPLLL #(.CLKI_DIV(1), .CLKFB_DIV(2), .CLKOP_DIV(12), .CLKOP_CPHASE(5), .CLKOP_FPHASE(0), .FEEDBK_PATH("CLKOP"))
+    u (.CLKI(clk), .CLKFB(fast), .CLKOP(fast), .LOCK(lock), .RST(1'b0), .STDBY(1'b0));
+  OSCG #(.DIV(31)) o (.OSC(slow));
+  always @(posedge fast) n <= n + 1;
+  always @(posedge slow) m <= m + 1;
+endmodule
+`;
+const PLL_TB = `\`timescale 1ps / 1ps
+module tb_top;
+  reg clk = 0;
+  wire lock;
+  wire [3:0] n, m;
+  top dut (.clk(clk), .lock(lock), .n(n), .m(m));
+  always #20000 clk = ~clk;
+  initial begin #1000000; $display("lock %b n %0d m %0d", lock, n, m); end
+endmodule
+`;
+test('a project instantiating EHXPLLL and OSCG on the ULX3S: set_top, check_syntax and simulate, its synthesis (#2299)', { timeout: 600000 }, async () => {
+  await ok('new_project', { name: 'pll' });
+  await ok('set_design_properties', { project: 'pll', board: 'ulx3s' });
+  await ok('write_file', { project: 'pll', path: 'src/top.v', text: PLL_TOP });
+  await ok('write_file', { project: 'pll', path: 'sim/tb_top.v', text: PLL_TB });
+  await ok('set_top', { project: 'pll', top: 'top', sim_top: 'tb_top' });
+  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  const s = await ok('simulate', { project: 'pll', time_ns: 1100, signals: [] });
+  // CLKI (25 MHz) rises at 20, 60 … ns: locked at the third (100 ns), CLKOP (50 MHz) from the fourth (140 ns), a rising edge
+  // every 20 ns: 43 to 1000 ns (its last at 980), n = 43 mod 16; the oscillator's 10 MHz rises at 50, 150 … 950 ns: 10
+  assert.deepEqual([s.data.log.map(l => l.text), s.data.warnings, s.data.failed], [['lock 1 n 11 m 10'], [], false]);
+  const run = await ok('run_process', { project: 'pll', process: 'synthesize' });
+  assert.deepEqual(run.data.warnings, []);
+  // (the primitives kept as the ECP5's cells)
+  const net = fs.readFileSync(path.join(P.projectDir('pll'), 'build', 'open', 'top_yosys.v'), 'utf8');
+  assert.match(net, /^\s*EHXPLLL #\(/m);
+  assert.match(net, /^\s*OSCG #\(/m);
+});
