@@ -150,8 +150,9 @@ The ECP5 is the second (#2302, `src/open-flow-ecp5.js`, `src/lpf.js`): YoWASP's 
 (`core/family-profile.js` openFlow: the package, its packer, the browser edition's key) and in the server's `OWN` and `OWN_TOOLS`.
 The Gowin is the third (#2303, `src/open-flow-gowin.js`, `src/cst.js`): `@yowasp/nextpnr-himbaechel-gowin`, `io.nextpnr.gowin` with
 nextpnr and gowin_pack (`pack(routedJson, family)`: Silinx's port, `src/fpga/gowin/`, on Apicula's database read from the package's
-resources: Silinx ships none of Apicula's data; the rPLL and the oscillator ported, `src/fpga/gowin/pll-osc.js`, the other PLLs, IOLOGIC
-and LVDS refused by name); a port with no pin is an error (nextpnr-himbaechel-gowin places none), a
+resources: Silinx ships none of Apicula's data; the rPLL and the oscillator ported, `src/fpga/gowin/pll-osc.js`, the I/O logic,
+`iologic.js`, the HCLK's dividers, DHCEN, DCS and DQCE, `hclk.js`, the DSPs, `dsp.js`, the differential, MIPI and I3C I/O, `place.js`
+(#4333); what the GW1N-9C has not, the other PLLs, DLLDLY, the ADC…, refused by name); a port with no pin is an error (nextpnr-himbaechel-gowin places none), a
 clock's period a comment of the CST given to nextpnr as `--freq`.
 The 7-series (#3146, `src/open-flow-xc7.js`) is the first of Silinx's own nextpnr packages on them: `@silinx/nextpnr-himbaechel-xc7` (nextpnr's
 xilinx micro-architecture, about 2.8 MB, and a chip database per device beside it, 3.3 MB the xc7a50t's that the xc7a35t takes),

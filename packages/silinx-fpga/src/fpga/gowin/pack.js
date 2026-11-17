@@ -14,8 +14,9 @@ const BSRAM_TYPES = new Set(['DP', 'SDP', 'SP', 'ROM']);
 const DSP_TYPES = new Set(['ALU54D', 'MULT36X36', 'MULTALU36X18', 'MULTADDALU18X18', 'MULTALU18X18', 'MULT18X18', 'MULT9X9', 'PADD18', 'PADD9', 'MULT12X12', 'MULTALU27X18', 'MULTADDALU12X12']);
 
 /** get_bels: the cells placed on bels, as { typ, row, col, num, parms, attrs, name, cell } (row, col from 1), with the aux bels
- *  of the rPLLs, block SRAMs and DSPs. */
+ *  of the rPLLs, CLKDIVs, block SRAMs, DSPs and MIPI inputs; a differential buffer's cells last (they take their bank's standard). */
 function* bels(top, device) {
+  const later = [];
   for (const [name, cell] of Object.entries(top.cells)) {
     if (cell.type.startsWith('DUMMY_') || cell.type === 'OSER16' || cell.type === 'IDES16' || !('NEXTPNR_BEL' in cell.attributes)) continue;
     const bel = cell.attributes.NEXTPNR_BEL;
@@ -23,17 +24,21 @@ function* bels(top, device) {
     const m = BEL.exec(bel);
     if (!m) throw new Error(`gowin_pack: Unknown bel:${bel}`);
     const col = Number(m[1]) + 1, row = Number(m[2]) + 1, num = m[3];
-    if ('DIFF' in cell.attributes) throw new Error(`gowin_pack: ${name}: differential I/O is not supported yet`);
     const one = (typ, c, n = num) => ({ typ, row, col: c, num: n, parms: cell.parameters, attrs: cell.attributes, name, cell });
+    if ('DIFF' in cell.attributes) { later.push(one(cell.type, col)); continue; }
     if (cell.type === 'rPLL') {
       for (const c of pllAuxCols(device, col)) yield one('RPLLB', c);
       yield one('RPLLA', col);
       continue;
     }
+    // (extra_clkdiv_bels: the GW1NS-4's CLKDIVs take a cell beside theirs)
+    if ((cell.type === 'CLKDIV' || cell.type === 'CLKDIV2') && device === 'GW1NS-4' && (col === 18 || col === 17)) yield one(`${cell.type}_AUX`, col + (col === 18 ? 3 : 1));
     if (BSRAM_TYPES.has(cell.type)) for (const off of [1, 2]) yield one('BSRAM_AUX', col + off);
     if (DSP_TYPES.has(cell.type)) for (let off = 1; off < 9; off++) yield one('DSP_AUX', col + off);
+    if (cell.type === 'MIPI_IBUF') yield one('MIPI_IBUF_AUX', col + 1);
     yield one(cell.type, col);
   }
+  yield* later;
 }
 
 // get_pips: the routing's pips (row, col from 1; src and dest as gowin_pack reads them); a pass-through LUT for a pip from XD
@@ -206,7 +211,7 @@ export function gowinPack(netlist, db, device = 'GW1N-9C') {
   if (top?.settings?.['packer.arch'] !== 'himbaechel/gowin') throw new Error('gowin_pack: only netlists made by nextpnr-himbaechel-gowin are supported');
   const nets = name => new Set(top.netnames[name]?.bits || []);
   const gnd = nets('$PACKER_GND'), vcc = nets('$PACKER_VCC');
-  const ctx = { db, device, tilemap: tileMap(db), slices: new Map(), banks: new Map(), ioBels: new Map(), bsramInit: null, lastMode: '',
+  const ctx = { db, device, cells: top.cells, tilemap: tileMap(db), slices: new Map(), banks: new Map(), ioBels: new Map(), bsramInit: null, lastMode: '',
     isConst: w => gnd.has(w) || vcc.has(w) };
   const passLuts = [];
   route(ctx, pipsOf(top, passLuts));
