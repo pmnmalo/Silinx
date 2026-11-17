@@ -43,9 +43,10 @@ export function contentSecurityPolicy({ hashes = [], scripts = [], connect = [],
     ["script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'", ...scripts, ...hashes].join(' '),
     // the Silinx toolchain, Yosys and the board emulator run in workers started from Blobs
     "worker-src 'self' blob:",
-    // the update check (GitHub's releases and the CHANGELOG), the iCE40's nextpnr from npm's registry (#2444), a shared
+    // the update check (GitHub's releases and the CHANGELOG), the iCE40's nextpnr from npm's registry (#2444), the KiCad
+    // catalogue's files (raw.githubusercontent.com, gitlab.com's API: core/kicad-catalogue.js browserUrl, #4335), a shared
     // project's meeting point (#3227), the assets of a single file
-    ["connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://registry.npmjs.org", ...TRACKER_SOURCES, ...connect].join(' '),
+    ["connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://registry.npmjs.org https://gitlab.com", ...TRACKER_SOURCES, ...connect].join(' '),
     "img-src 'self' data: blob:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
