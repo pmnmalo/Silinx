@@ -40,7 +40,7 @@ function parents(symbols, name) {
   return out;
 }
 // a part's package as its places say it: a DIP, or pins on the 0.1 inch grid (a header, a module's rows)
-const packageOf = (d) => (d.behaves || d.dip ? `DIP-${d.dip}` : 'grid');
+const packageOf = (d) => (d.dip ? `DIP-${d.dip}` : 'grid');
 
 async function main() {
   const libraries = {}, parts = [];
@@ -53,7 +53,8 @@ async function main() {
       const fp = d.kicad.footprint && Object.entries(footprints).find(([k]) => k.endsWith(`/${d.kicad.footprint.replace(/^(?:PCM_)?([^:]*):(.*)$/, '$1.pretty/$2')}.kicad_mod`));
       parts.push({ id: `${id}/${d.kicad.symbol}`, library: id, symbol: d.kicad.symbol, value: d.kicad.value, as: d.behaves, package: packageOf(d), pins: d.pins.length,
         ...(parents(syms, d.kicad.symbol).length ? { needs: parents(syms, d.kicad.symbol) } : {}),
-        ...(fp && !d.behaves ? { footprint: { name: d.kicad.footprint.replace(/^PCM_/, ''), url: footprints[fp[0]].url, sha256: sha(footprints[fp[0]].text) } } : {}) });
+        // (an IC's place is the library's; an LED's, a switch's, a button's its footprint's, #4349)
+        ...(fp && d.kind !== 'ic' ? { footprint: { name: d.kicad.footprint.replace(/^PCM_/, ''), url: footprints[fp[0]].url, sha256: sha(footprints[fp[0]].text) } } : {}) });
     }
   };
   for (const l of OFFICIAL_LIBRARIES) {
@@ -102,7 +103,7 @@ async function main() {
     '// Electronics, CC-BY-4.0, https://creativecommons.org/licenses/by/4.0/): their F.Fab shapes, in grid steps, rounded',
     'export const CATALOGUE_LOOKS = {', ...Object.entries(looks).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`), '};', ''];
   fs.writeFileSync(OUT, L.join('\n'));
-  console.log(`${path.relative(ROOT, OUT)}: ${parts.length} parts of ${Object.keys(libs).length} libraries (${parts.filter((p) => p.as).length} as ICs)`);
+  console.log(`${path.relative(ROOT, OUT)}: ${parts.length} parts of ${Object.keys(libs).length} libraries (${parts.filter((p) => p.as).length} as library parts)`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch((e) => { console.error(e.message); process.exit(1); });

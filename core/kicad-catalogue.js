@@ -28,6 +28,7 @@ export function browserUrl(url) {
 
 /** A catalogue's part's title, in Silinx's words: what it is in Silinx. */
 export function catalogueTitle(e) {
+  if (e.as && PARTS[e.as].kind !== 'ic') return `${e.value}, as the ${PARTS[e.as].title} of the library`;   // (#4349)
   return e.as ? `${e.value}, as the ${e.as}: ${PARTS[e.as].title}` : `${e.value}, drawn only: ${e.pins} pin(s)${e.package === 'grid' ? '' : `, ${e.package}`}`;
 }
 
@@ -45,10 +46,11 @@ const KINDS = { c: 'circle', l: 'line', a: 'arc', p: 'poly' };
  * A catalogue's part drawn only, as its preview draws it before it is imported (#4346): { kind: 'drawn', kicad: { value,
  * symbol, keywords }, pins: [{ n, dx, dy }], look?, dip? }: its footprint's drawing and pads (CATALOGUE_LOOKS; its pads
  * only when it has no drawing), or a DIP's pins;
- * null for a part that behaves as an IC (its IC's preview) or one with neither.
+ * null for a part that behaves as an IC (its IC's preview) or one with neither. An LED, a switch or a button of the
+ * library's (#4349) is drawn so too, its colour its own.
  */
 export function catalogueDrawing(e, looks = CATALOGUE_LOOKS) {
-  if (!e || e.as) return null;
+  if (!e || PARTS[e.as]?.kind === 'ic') return null;
   const kicad = { value: e.value, symbol: e.symbol, keywords: '' };
   const m = /^DIP-(\d+)$/.exec(e.package);
   if (m) { const n = Number(m[1]), at = dip(n); return { kind: 'drawn', kicad, dip: n, pins: Array.from({ length: n }, (_, k) => ({ n: k + 1, ...at(k + 1) })) }; }

@@ -10,6 +10,7 @@ import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, browserUrl, catalogueDrawin
 import { PARTS, partDef, setProjectParts } from '../core/circuit-parts.js';
 import { CATALOGUE_LOOKS } from '../core/kicad-catalogue-data.js';
 import { lookOf } from '../core/circuit-kicad.js';
+import { DISCRETE } from '../core/circuit-kicad-parts.js';
 import { readKicadFootprint } from '../core/kicad-mod.js';
 import { readKicadSymLib } from '../core/kicad-sym.js';
 import { symbolTexts, oneSymbolFile, symbolFileName } from '../core/kicad-edit.js';
@@ -26,7 +27,9 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
     assert.equal(e.id, `${e.library}/${e.symbol}`);
     assert.match(lib.sha256, /^[0-9a-f]{64}$/);
     assert.match(lib.url, /^https:\/\/(?:gitlab\.com\/kicad\/libraries\/kicad-symbols\/-\/raw\/9\.0\.0|raw\.githubusercontent\.com\/sparkfun\/SparkFun-KiCad-Libraries\/v10\.0\.0)\//);
-    if (e.as) { assert.equal(PARTS[e.as]?.kind, 'ic', e.id); assert.match(e.package, /^DIP-\d+$/); } else assert.equal(e.as, null);
+    // (an IC on its DIP; an LED, a switch, a button of the library's on its footprint, #4349)
+    if (PARTS[e.as]?.kind === 'ic') assert.match(e.package, /^DIP-\d+$/);
+    else if (e.as) { assert.ok(DISCRETE[e.as], e.id); assert.ok(e.footprint, e.id); } else assert.equal(e.as, null);
     if (e.footprint) { assert.match(e.footprint.sha256, /^[0-9a-f]{64}$/); assert.ok(isCatalogueFile(e.footprint.url)); }
     assert.deepEqual(Object.keys(e).filter((k) => !['id', 'library', 'symbol', 'value', 'as', 'package', 'pins', 'needs', 'footprint'].includes(k)), [], `${e.id}: facts only`);
   }
@@ -34,7 +37,11 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
   // KiCad's 74LS00 and its derived 74HC00 among them, as the 7400; SparkFun's parts drawn only, each one with its footprint
   const hc = CATALOGUE.find((e) => e.id === 'kicad-74xx/74HC00');
   assert.deepEqual([hc.as, hc.package, hc.needs], ['7400', 'DIP-14', ['74LS00']]);
-  assert.ok(CATALOGUE.filter((e) => e.library.startsWith('sparkfun-')).every((e) => !e.as && e.footprint));
+  assert.ok(CATALOGUE.filter((e) => e.library.startsWith('sparkfun-')).every((e) => e.footprint));
+  // SparkFun's LEDs and slide switches behave as the library's (#4349), its other parts drawn only
+  assert.deepEqual(CATALOGUE.filter((e) => e.as && !PARTS[e.as].kind.startsWith('ic')).map((e) => `${e.id} ${e.as}`), ['sparkfun-led/LED_Green_5mm_PTH_Silk led', 'sparkfun-led/LED_Red_5mm_PTH_NoSilk led',
+    'sparkfun-led/LED_Red_5mm_PTH_Silk led', 'sparkfun-switch/SPDT_Slide_PTH_11.6x4.0mm spdt', 'sparkfun-switch/SPDT_Slide_PTH_11.6x4.0mm-ShortPin spdt']);
+  assert.equal(catalogueTitle(CATALOGUE.find((e) => e.id === 'sparkfun-led/LED_Red_5mm_PTH_NoSilk')), 'Red, as the LED of the library');
   assert.deepEqual(CORS_HOSTS, ['raw.githubusercontent.com', 'gitlab.com']);
   assert.equal(isCatalogueFile('https://gitlab.com/other'), false);
   assert.equal(catalogueSha256(CATALOGUE_LIBRARIES['kicad-74xx'].url), 'd229bea4164b7197952f31aa6deff19d9eaa0cf0a319190424cfad3ba1b6a727', 'the one core/kicad-pcm.js pins');
@@ -135,7 +142,7 @@ test('catalogueDrawing (#4346): every part drawn only has a preview (its footpri
   const used = new Set();
   for (const e of CATALOGUE) {
     const d = catalogueDrawing(e);
-    if (e.as) { assert.equal(d, null, e.id); continue; }
+    if (PARTS[e.as]?.kind === 'ic') { assert.equal(d, null, e.id); continue; }
     assert.ok(d, e.id);
     assert.equal(d.kind, 'drawn');
     assert.ok(d.pins.length >= e.pins, `${e.id}: its pads, at least its pins`);

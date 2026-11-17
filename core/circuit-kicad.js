@@ -5,6 +5,7 @@
 // have no logic: a symbol behaves as a part of Silinx's library when
 //   - its property Silinx.Model names it (written in the file: KiCad keeps a property it does not know), or
 //   - its part number is one of the library's (SN74LS00N, 74HC00, CD4011BE: the 7400, the 4011);
+//   - or it is an LED, a slide switch or a push button by what its symbol says (core/circuit-kicad-parts.js, #4349);
 // and its pins are that part's, pin by pin (their numbers and directions); it is then that part, its pins in the
 // library part's places, under its own name (its Value), datasheet and source. Silinx.Family ('ttl' / 'cmos') makes
 // its inputs read as that family's. Any other symbol is drawn only: its pins in its footprint's places on the 0.1 inch
@@ -17,6 +18,7 @@ import { dip } from './circuit-ics.js';
 import { readKicadSymLib, readKicadSymDir, pinText, footprintFilters } from './kicad-sym.js';
 import { readKicadFootprint, gridPins, packageOfFootprint, GRID_MM } from './kicad-mod.js';
 import { modelPins } from './circuit-kicad-hdl.js';
+import { DISCRETE, discreteModel, discretePins } from './circuit-kicad-parts.js';
 
 const LIB_RE = /^parts\/[^/]+\.kicad_sym$/i, DIR_FILE_RE = /^(parts\/[^/]+\.kicad_symdir)\/[^/]+\.kicad_sym$/i, FP_RE = /^parts\/([^/]+)\.pretty\/([^/]+)\.kicad_mod$/i;
 /** Whether a project's file is one of its KiCad parts' files (a library, a symbol of a folder, a footprint). */
@@ -92,10 +94,10 @@ export function lookOf(fp) {
 }
 
 /** A KiCad part's LED colour (#4315: its body drawn in it), or null: an LED (by its symbol, keywords or description)
- *  whose value, symbol or description names one of the library LEDs' colours. */
-export function ledColour(k) {
+ *  whose value, symbol or description names one of the library LEDs' colours. `led`: it is one (#4349: Silinx.Model's). */
+export function ledColour(k, led = false) {
   const text = `${k?.symbol ?? ''} ${k?.value ?? ''} ${k?.keywords ?? ''} ${k?.description ?? ''}`;
-  if (!/(?:^|[^A-Za-z])LED(?:[^A-Za-z]|$)/i.test(text)) return null;
+  if (!led && !/(?:^|[^A-Za-z])LED(?:[^A-Za-z]|$)/i.test(text)) return null;
   return /(?:^|[^A-Za-z])(red|green|yellow|blue|white)(?:[^A-Za-z]|$)/i.exec(`${k.value ?? ''} ${k.symbol ?? ''} ${k.description ?? ''}`)?.[1].toLowerCase() ?? null;
 }
 
@@ -166,9 +168,21 @@ function kicadPartDef(lib, s, footprints) {
       ...(at.dip ? { dip: at.dip } : {}), ...(at.look ? { look: at.look } : {}) } };
   }
   const named = s.properties['Silinx.Model'];
-  if (named && PARTS[named]?.kind !== 'ic') return { error: `its Silinx.Model '${named}' is not an IC of the library` };
-  const model = named || partOfNumber(origin.value) || partOfNumber(s.name);
-  let unlike = null;   // (a part number matched whose pins are not the library part's)
+  if (named && PARTS[named]?.kind !== 'ic' && !DISCRETE[named]) return { error: `its Silinx.Model '${named}' is neither an IC of the library nor one of its ${Object.keys(DISCRETE).join(', ')}` };
+  let unlike = null;   // (a part number matched whose pins are not the library part's; a symbol like an LED whose pins are not one's)
+  // (an LED, a switch, a button, a display of the library, #4349: by Silinx.Model, else by what the symbol says)
+  const other = named ? (DISCRETE[named] ? named : null) : partOfNumber(origin.value) || partOfNumber(s.name) ? null : discreteModel(s, symbolPins(s));
+  if (other) {
+    const at = pinPlaces(s, footprints), base = PARTS[other];
+    const r = at.error ? at : discretePins(base, symbolPins(s), at.places);
+    if (!r.error) {
+      return { def: { ...base, type, title, kicad: origin, behaves: other, how: named ? 'Silinx.Model' : 'symbol', pins: r.pins,
+        ...(at.dip ? { dip: at.dip } : {}), ...(at.look ? { look: at.look } : {}), ...(base.lamps ? { color: ledColour(origin, true) ?? 'red' } : {}) } };
+    }
+    if (named) return { error: `its Silinx.Model is ${other} but ${r.error}` };
+    unlike = at.error ? null : `it looks like a ${other} but ${r.error}`;
+  }
+  const model = other ? null : named || partOfNumber(origin.value) || partOfNumber(s.name);
   if (model) {
     const why = pinoutDifference(s, model);
     if (!why) {

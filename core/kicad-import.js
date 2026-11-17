@@ -9,6 +9,7 @@ import { setSymbolProperties } from './kicad-edit.js';
 import { PARTS } from './circuit-parts.js';
 import { useProjectParts, kicadPartsOf } from './circuit-kicad.js';
 import { gateFile } from './import-gate.js';
+import { DISCRETE } from './circuit-kicad-parts.js';
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.(kicad_sym|kicad_mod)$/;
 /** The folder of the footprints imported (parts/<this>.pretty). */
@@ -30,7 +31,7 @@ export function libraryWithProperties(text, symbols, origin = {}) {
   const names = new Set(lib.symbols.map((s) => s.name)), edits = {};
   for (const [name, o] of Object.entries(symbols || {})) {
     if (!names.has(name)) throw new Error(`symbols: no symbol '${name}' in the library (its symbols: ${[...names].join(', ')})`);
-    if (o?.model != null && o.model !== '' && PARTS[o.model]?.kind !== 'ic') throw new Error(`symbols.${name}.model: '${o.model}' is not an IC of the library (circuit_parts)`);
+    if (o?.model != null && o.model !== '' && PARTS[o.model]?.kind !== 'ic' && !DISCRETE[o.model]) throw new Error(`symbols.${name}.model: '${o.model}' is neither an IC of the library (circuit_parts) nor one of its ${Object.keys(DISCRETE).join(', ')}`);
     if (o?.family != null && o.family !== '' && o.family !== 'ttl' && o.family !== 'cmos') throw new Error(`symbols.${name}.family: ttl or cmos`);
     // (a module of the project as its model, #4283: Silinx.HDL and Silinx.Ports)
     if (o?.hdl && o?.model) throw new Error(`symbols.${name}: model or hdl, not both`);
