@@ -14,16 +14,17 @@
 
 import { localReshapeIn, reshapeOf } from './c-reshape.js';
 import { checkOpPragma } from './c-op-pragmas.js';
+import { isIdent } from './ident.js';
 
 // what Silinx makes of the pragmas it knows
 // (TASK: an hls::task's, core/cpp-lex.js, #1721; AGGREGATE and DISAGGREGATE: of the top's struct arguments, core/c-aggregate.js, #1668)
-export const MADE = new Set(['TOP', 'INTERFACE', 'LOOP_TRIPCOUNT', 'INLINE', 'UNROLL', 'PIPELINE', 'ARRAY_PARTITION', 'TASK', 'AGGREGATE', 'DISAGGREGATE', 'BIND_STORAGE', 'DEPENDENCE', 'LOOP_FLATTEN', 'LOOP_MERGE', 'BIND_OP', 'ALLOCATION', 'LATENCY', 'ARRAY_RESHAPE', 'STREAM', 'ARRAY_STENCIL', 'EXPRESSION_BALANCE', 'FUNCTION_INSTANTIATE']);
+const MADE = new Set(['TOP', 'INTERFACE', 'LOOP_TRIPCOUNT', 'INLINE', 'UNROLL', 'PIPELINE', 'ARRAY_PARTITION', 'TASK', 'AGGREGATE', 'DISAGGREGATE', 'BIND_STORAGE', 'DEPENDENCE', 'LOOP_FLATTEN', 'LOOP_MERGE', 'BIND_OP', 'ALLOCATION', 'LATENCY', 'ARRAY_RESHAPE', 'STREAM', 'ARRAY_STENCIL', 'EXPRESSION_BALANCE', 'FUNCTION_INSTANTIATE']);
 // Vitis HLS's others: accepted, ignored with a warning
-export const IGNORED = new Set(['DATAFLOW', 'RESOURCE',
+const IGNORED = new Set(['DATAFLOW', 'RESOURCE',
   'OCCURRENCE', 'PROTOCOL',
   'STABLE', 'RESET', 'SHARED', 'ALIAS', 'CACHE', 'PERFORMANCE']);
 // the interfaces of an argument Silinx makes (the others: ignored with a warning, its default made)
-export const ARG_MODES = new Set(['ap_none', 'ap_vld', 'ap_ovld', 'ap_memory', 'bram', 's_axilite', 'm_axi', 'ap_fifo', 'ap_hs']);
+const ARG_MODES = new Set(['ap_none', 'ap_vld', 'ap_ovld', 'ap_memory', 'bram', 's_axilite', 'm_axi', 'ap_fifo', 'ap_hs']);
 // (a memory's type, its ports: ram_2p reads on port 0 and writes on port 1, ram_t2p reads and writes on both; #1901)
 const STORAGE = { __proto__: null, ram_1p: '1p', rom_1p: '1p', ram_2p: '2p', ram_s2p: '2p', ram_t2p: 't2p', rom_2p: 't2p' };
 export function storageOf({ name, args }) {
@@ -57,7 +58,7 @@ export function constArgs(p, value) {
     if (!NUMERIC.has(k) || typeof v !== 'string' || /^-?\d+$/.test(v)) continue;
     const n = value(v);
     if (n !== null) p.args[k] = String(n);
-    else if (/^[A-Za-z_]\w*$/.test(v)) (p.notConst ??= {})[k] = v;
+    else if (isIdent(v)) (p.notConst ??= {})[k] = v;
   }
 }
 /** `'N' is not a constant: ` of an argument a name that is no constant, else '' (#2750). */

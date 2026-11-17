@@ -10,7 +10,7 @@ import { Rtl } from './c-axi-rtl.js';
 import { liteMap, litePorts, liteSlave } from './c-axi-lite.js';
 import { masterBus, masterPorts, busWidth, wordBytes, BURST } from './c-axi-master.js';
 
-export const modeOf = (a) => String(a.mode || Object.keys(a).find((k) => /^(ap_|s_axi|m_axi|axis|bram)/.test(k)) || '').toLowerCase();
+const modeOf = (a) => String(a.mode || Object.keys(a).find((k) => /^(ap_|s_axi|m_axi|axis|bram)/.test(k)) || '').toLowerCase();
 
 export function axiPlan(fn, consts = new Map()) {
   const bundles = new Map(), masters = new Map();

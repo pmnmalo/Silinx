@@ -99,7 +99,7 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
 }
 
 // run_process's bounds (#3408): how long it waits (then the process is stopped), the lines of the log returned
-export const PROCESS_LIMITS = Object.freeze({ timeoutS: 7200, logLines: 1000 });
+const PROCESS_LIMITS = Object.freeze({ timeoutS: 7200, logLines: 1000 });
 
 export const PROCESS_TOOLS = [
   {

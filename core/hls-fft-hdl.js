@@ -64,7 +64,7 @@ export function fftTop(checked, call, { file, lang, module, diagnostics, cToHdl 
   return { ...gen, diagnostics: [...diagnostics, ...gen.diagnostics] };
 }
 
-export function fftHdl(fft, { lang = 'vhdl', module, src = 'input.cpp', params = [], cToHdl }) {
+function fftHdl(fft, { lang = 'vhdl', module, src = 'input.cpp', params = [], cToHdl }) {
   const { p } = fft;
   const io = portsOf(fft, params);
   const bad = !fft.names.slice(0, 2).every((n) => params.some((x) => x.name === n)) ? 'its xn and xk the top\'s arguments' : io.fwd === null ? 'its fwd_inv the top\'s argument or a constant' : io.schedule === null ? 'its scale_sch the top\'s argument or a constant'

@@ -69,7 +69,7 @@ export function senderOf(frame, kind = KIND.from) {
 /** An awareness update applied with only the states its sender may speak for (#3360): a follower's own (`only`, the
  *  client id the room says sent it), or any but this participant's own (the owner's, the room's authority: who is in
  *  for a newcomer); never this participant's own state. Returns the client ids applied. */
-export function applyAwarenessFrom(awareness, update, only = null) {
+function applyAwarenessFrom(awareness, update, only = null) {
   const d = decoding.createDecoder(update);
   const e = encoding.createEncoder();
   const kept = [];

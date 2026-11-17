@@ -24,7 +24,7 @@ const same = sameModel;
  *  editor's into the structure (mine: the owner's, its unsaved changes kept) or the structure's into the editor. say(text):
  *  a line of the console (a connection removed with what it connected); accept(model): whether a merged model is shown
  *  (an editor's page: through the import gate). Returns unbind() (null: nothing to bind, no structure yet). */
-export function bindDrawing(d, doc, path, { mine = false, say = () => {}, accept = () => true } = {}) {
+function bindDrawing(d, doc, path, { mine = false, say = () => {}, accept = () => true } = {}) {
   const ed = editorOf(d);
   if (!ed) return null;
   if (mine && (d.dirty || !drawingMap(doc, path))) putDrawing(doc, path, modelOf(ed));   // (the disk's is the structure's)

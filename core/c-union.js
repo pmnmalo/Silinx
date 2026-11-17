@@ -24,7 +24,7 @@ const WORD = { 8: ['unsigned', 'char'], 16: ['unsigned', 'short'], 32: ['unsigne
 const ASSIGN_OPS = new Set(['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>=']);
 
 /** A C scalar type's storage { bits, signed, float } (LP64, char signed as GCC's on x86), else null. */
-export function scalarOf(type, typedefs = new Map()) {
+function scalarOf(type, typedefs = new Map()) {
   const ws = type.filter((x) => !(isId(x) && QUALS.has(x.v))).map((x) => x.v);
   if (ws.length === 1 && typedefs.has(ws[0])) return scalarOf(typedefs.get(ws[0]), typedefs);
   if (ws.length === 1 && STDINT[ws[0]]) return { bits: STDINT[ws[0]][0], signed: STDINT[ws[0]][1] };

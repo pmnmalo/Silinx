@@ -46,7 +46,7 @@ function planOf(a, t) {
 
 /** A local array's ARRAY_RESHAPE, as made: a memory's (`mem`: more than MEM_MIN elements, or a BIND_STORAGE) of
  *  planOf's; else null (a small one: registers, as a partition makes them). */
-export const localReshape = (a, t, mem) => (mem && t?.kind === 'array' ? planOf(a, t) : null);
+const localReshape = (a, t, mem) => (mem && t?.kind === 'array' ? planOf(a, t) : null);
 
 /** A local of the function's body by name, its declaration's variable, and whether a BIND_STORAGE names it. */
 function localOf(fn, name) {
