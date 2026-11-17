@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import http from 'node:http';
 import path from 'node:path';
-import { ROOT, BROWSER, findChrome, missingDependencies, dependenciesMessage, setupUi, uiTest } from './harness.js';
+import { ROOT, BROWSER, findChrome, missingDependencies, dependenciesMessage, setupUi, uiTest, webkitLoadFailure } from './harness.js';
 
 const skip = BROWSER === 'chrome' && !findChrome() ? 'Google Chrome / Chromium not found (set CHROME_PATH): UI tests skipped' : undefined;
 
@@ -24,6 +24,22 @@ test('one UI test alone with --test-name-pattern (the second of hints.test.js)',
   assert.match(out, /^# pass 1$/m, out);
   assert.match(out, /^# fail 0$/m, out);
   assert.doesNotMatch(out, /reading 'fold'|page errors/, out);
+});
+
+// (#4428) WebKit's failed loads from the local server (as CI's log said them): run once more, as a crashed page; any other
+// page error, another server's, or the same in another browser fails the test as before
+test('webkitLoadFailure: WebKit\'s refused fetch and module import from the local server only', () => {
+  const load = ['uncaught: Fetch API cannot load http://127.0.0.1:35875/api/workspace due to access control checks.',
+    'uncaught: Unhandled Promise Rejection: TypeError: Importing a module script failed.'];
+  assert.equal(webkitLoadFailure(load, 'webkit'), true);
+  assert.equal(webkitLoadFailure([load[0]], 'webkit'), true);
+  assert.equal(webkitLoadFailure(['uncaught: TypeError: Importing a module script failed.'], 'webkit'), true);
+  assert.equal(webkitLoadFailure(load, 'firefox'), false);
+  assert.equal(webkitLoadFailure(load, 'chrome'), false);
+  assert.equal(webkitLoadFailure([], 'webkit'), false);
+  assert.equal(webkitLoadFailure([...load, 'uncaught: TypeError: undefined is not an object (evaluating \'a.b\')'], 'webkit'), false);
+  assert.equal(webkitLoadFailure(['uncaught: Fetch API cannot load https://example.org/x due to access control checks.'], 'webkit'), false);
+  assert.equal(webkitLoadFailure(['console.error: Importing a module script failed.'], 'webkit'), false);
 });
 
 // (#2497) a page whose load event does not come: the error names the requests it still waits for, with no rejection left
