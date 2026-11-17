@@ -16,7 +16,8 @@ In short:
   parts, Arduino boards, LEDs, switches and push buttons), Browse KiCad Libraries… and Import KiCad Part…, each part
   drawn as it looks and run in Try it by its VHDL or Verilog model; Export to KiCad.
 - **More ICs:** 30 more gate ICs, three-state buffers, the bus transceivers 74242, 74243 and 74245 on three-state
-  buses, and 18 flip-flops, latches and registers, each written once in VHDL.
+  buses, and 23 flip-flops, latches and registers (the three-state 74173, 74373, 74374, 74573 and 74574 among them),
+  each written once in VHDL.
 - **Working together:** a Collaboration tab, a branch per person and Merge Branch…, Merge Contribution… (also as MCP
   tools), text files merged; live sharing follows Try it, each participant keeping their own wires' style; GitHub Checks
   with a fine-grained token, and signing out of GitHub asks first.
@@ -33,6 +34,36 @@ In short:
 
 In detail:
 
+- **micro80 routed by router 1 on the Basys 3 runs on Linux only (#4429):** `test/nextpnr-xc7-cyinit.test.js` joins the
+  toolchain's heaviest tests (`HEAVY` in `scripts/test-shard.mjs`), which CI runs on Linux: on a slow Windows runner its
+  micro80 test reached the 15 minutes a test may take.
+- **The ECP5 and Gowin projects' UI tests expect their Emulate Post-… rows (#4426):** since #2299 an ECP5 project has
+  Emulate Post-Synthesis Model and Emulate Post-Place & Route Model, a Gowin one Emulate Post-Synthesis Model (its
+  routed design not modelled yet); the tests check those rows and the absence of the others.
+- **The Circuit editor's UI tests list #4397's new ICs (#4425):** the library's groups now hold 50 74LS gates, 17 4000
+  gates and 38 sequential ICs (the flip-flops, latches and registers 7473 to 74574, 4013, 4027), which the phase 2 and
+  MSI tests expect; the phase 2 test watches the 20 Hz clock tick for up to 3 seconds
+  rather than 12 looks (a slow page missed its 1).
+- **The tests that measure blinky follow its new debounce (#4424):** blinky's two 2-bit debounce counters (#4377) in place
+  of 22-bit ones make it 40 flip-flops and 22 carry cells smaller on the LCMXO2-1200HC (`test/machxo2-measure.test.js`:
+  114 LUTs, 92 flip-flops, 42 carry cells), and moved speed_ctrl.vhd's `state_register` process to line 101
+  (`test/twr-paths.test.js`).
+- **The private-data history check: 3fa4fcb's message allowed (#4423):** the commit that allowed the dummy address of
+  `test/github-checks.test.js` (#4364) quotes it in its own message, which the history check reads too; the address is
+  allowed in that message as well.
+- **VHDL to Verilog: the lint's `silinx: ignore` comments kept (#4414):** the translator carried no comment over, so a
+  VHDL source's lint suppressions (`-- silinx: ignore latch`, `-- silinx: ignore data-as-clock`) were lost and its
+  Verilog warned where it did not. A suppression on a process's or an if / elsif branch's line, or alone on the line
+  above it, now ends that statement's Verilog line (`if (en) // silinx: ignore latch`,
+  `always @(posedge clk) begin // silinx: ignore data-as-clock`). The translation's lint is then as clean as its
+  source's. #4397's ICs written once in VHDL no longer need their Verilog patched.
+- **Three-state registers and latches (#4397, group C):** `core/circuit-model-ics.js` adds the 74173 (a 4-bit D
+  register, its M and N and its G̅1 and G̅2 enables, its clear active high), the 74373 and 74573 (8-bit latches) and the
+  74374 and 74574 (8-bit registers), written once in VHDL as the other ICs of the group are. An IC's `threeState` (its
+  outputs, their enables) turns its outputs off once an enable is not at its level. The core leaves them out, and the
+  engine and the IC's simulation model apply it. In the digital model a disabled output is high, and the circuit's top
+  takes the enables as it does the 74595's (now several enables). Its outputs are three-state for Check (#4409). The
+  catalogue's KiCad logic ICs that behave go from 158 to 174.
 - **VHDL to Verilog: a process with several asynchronous controls (#4412):** a clocked process whose asynchronous
   controls come before its clock's edge, as a flip-flop's preset and clear (`if pre_n = '0' … elsif clr_n = '0' …
   elsif rising_edge(clk) …`), was refused by the translator. One reset was the only form it read. Such a process now
