@@ -54,7 +54,6 @@ async function place(netlist, xdc, router, seed) {
   const lines = [];
   try {
     const out = await run(args(router, seed), { 'chipdb.bin': await chipdb(), 'netlist.json': netlist, 'design.xdc': xdc }, l => lines.push(l));
-    if (!out) throw new Error('nextpnr failed');   // (a run apart that stopped on an ERROR: no files, its exception no message)
     const placed = JSON.parse(new TextDecoder().decode(out['placed.json'])).modules;
     const bels = Object.fromEntries(Object.entries(Object.values(placed)[0].cells).map(([n, c]) => [n, c.attributes.NEXTPNR_BEL]));
     return { lines, bels, out };
@@ -65,7 +64,8 @@ const said = lines => lines.filter(l => /^(Warning|ERROR):/.test(l));
 test('a 5LUT feeding another slice\'s CYINIT: the 5FF beside it refused (its O5 takes the site\'s AMUX), not taken and left to the router (#3746)', { timeout: 120_000 }, async () => {
   const site = 'X10Y153/SLICE_X0Y0', locks = { lut6: `${site}.A6LUT`, lut5: `${site}.A5LUT`, ff: `${site}.A5FF`, carry: 'X10Y150/SLICE_X0Y0.CARRY4' };
   const { lines, error } = await place(design(locks), XDC, 'router1');
-  assert.ok(error, 'nextpnr failed');
+  // (nextpnr's error, its exception a WebAssembly.Exception with no message: the run apart rejects with it, #4260)
+  assert.equal(error?.message, `nextpnr stopped on an error: Bel '${site}.A5FF' of type 'SLICE_FFX' is not valid for cell 'ff' of type 'SLICE_FFX'`);
   assert.ok(lines.includes('Info: Constrained 1 LUT pairs (a 6LUT and a 5LUT sharing their inputs).'), 'the LUT pair');
   assert.deepEqual(said(lines), [`ERROR: Bel '${site}.A5FF' of type 'SLICE_FFX' is not valid for cell 'ff' of type 'SLICE_FFX'`]);
 });
