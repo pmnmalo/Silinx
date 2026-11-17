@@ -59,7 +59,10 @@ export function mountNextpnrS6(ctx) {
     const byNextpnr = spec.hardByNextpnr ?? S6_HARD_BY_NEXTPNR;
     const hard = !byNextpnr && phys.insts.some(i => i.kind === 'bram' || i.kind === 'dsp');
     let legal = { site: [] };
-    if (!byPacker) try { legal = placeS6(phys, sites, { seed: spec.seed || 1, effort: hard ? 1 : 0, timing: hard ? 0.1 : 0, nl, padPaths: padPathsS6(device, io.bitDb(), sites) }); } catch (e) { throw new StepError(`placement failed: ${e.message}`, [], e.hint); }
+    // (nextpnr's Map, #4374: the ports without a LOC on the pads Silinx's placement gives them, as with Silinx's Map; left
+    // to nextpnr's simulated annealing, 62 free IOBs took it some 40 s a seed, the rest of the design 0.2 s)
+    const freePads = byPacker && phys.insts.some(i => i.kind === 'iob' && !i.loc);
+    if (!byPacker || freePads) try { legal = placeS6(phys, sites, { seed: spec.seed || 1, effort: hard ? 1 : 0, timing: hard ? 0.1 : 0, nl, padPaths: padPathsS6(device, io.bitDb(), sites) }); } catch (e) { throw new StepError(`placement failed: ${e.message}`, [], e.hint); }
     for (const w of legal.warnings || []) log(`WARNING:Place - ${w}`);
     // (an I/O buffer on a pad with no dedicated path to a global buffer: GENERAL_OK, spartan6.cc's)
     const generalOkOf = site => new Set(phys.insts.filter((inst, i) => inst.kind === 'iob' && !sites.pads.get(site[i])?.bufg.length).map(i => i.name));
@@ -72,7 +75,8 @@ export function mountNextpnrS6(ctx) {
     const unplaced = placedXdlS6(nl, packed, phys, { site: [], tile: [], pos: [] }, { part: spec.part, name: spec.top });
     // 1. the placements and their routings, of the placed design with its constants' sources. The seeds differ by up
     // to 20 %, and nextpnr's estimates do not rank them: PLACE_SEEDS of them, the one Silinx's timing model finds fastest.
-    const netlistIn = byPacker ? packInput(netlistText(), phys, device) : siteNetlist(unplaced, { top: spec.top, fixed, chains, generalOk, device });
+    const padLocs = freePads ? new Map(phys.insts.flatMap((inst, i) => (inst.kind === 'iob' && !inst.loc ? [[inst.name, legal.site[i]]] : []))) : null;
+    const netlistIn = byPacker ? packInput(netlistText(), phys, device, padLocs) : siteNetlist(unplaced, { top: spec.top, fixed, chains, generalOk, device });
     // (a seed nextpnr cannot route, #2131: the next one; the step fails only when none routes)
     let best = null, failed = null;
     const seedOf = async seed => {

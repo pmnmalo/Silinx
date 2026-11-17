@@ -61,6 +61,17 @@ test('packInput: each I/O buffer with its port bit and the port\'s constraints, 
   assert.deepEqual(JSON.parse(text).modules.top.cells.a_IBUF_inst.attributes, {});
 });
 
+test('packInput (#4374): a port without a LOC on the pad Silinx\'s placement gave it, a LOC of the UCF kept', () => {
+  const text = sortedNetlistText(JSON.stringify(netlist()));
+  const nl = readYosysJson(text), packed = packS6(nl);
+  const phys = physS6(nl, packed, { ucf: readConstraints(UCF_FORMAT, UCF, 'top.ucf') });
+  const b = phys.insts.find(i => i.port === 'b');
+  const cells = packInput(text, phys, null, new Map([[b.name, 'T10'], [phys.insts.find(i => i.port === 'a').name, 'A2']])).modules.top.cells;
+  assert.deepEqual(cells.b_IBUF_inst.attributes, { PORT: 'b', LOC: 'T10', PULL: 'up' });
+  assert.equal(cells.a_IBUF_inst.attributes.LOC, 'V10');
+  assert.equal(cells.y_OBUF_inst.attributes.LOC, 'U16');
+});
+
 test('samePacking: [] when the fork\'s sites are Silinx\'s Map\'s (an IOB of either of a pair, BUFGMUX for BUFG); each difference named', () => {
   const phys = { insts: [{ name: 'a', type: 'IOB' }, { name: 'y', type: 'IOB' }, { name: 's0', type: 'SLICEX' }, { name: 'clk_BUFG', type: 'BUFG' }] };
   const json = cells => ({ modules: { top: { attributes: { top: T }, cells: Object.fromEntries(Object.entries(cells).map(([n, type]) => [n, { type }])) } } });
