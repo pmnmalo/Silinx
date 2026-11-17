@@ -13,7 +13,7 @@ import { closable } from './server-close.js';
 import * as Y from 'yjs';
 import { followRoom, shareRoom } from '../core/collab-client.js';
 import { encodeUi } from '../core/design-link.js';
-import { docFile, docProject, projectDoc, publishProject } from '../core/collab-doc.js';
+import { docFile, docProject, projectDoc, publishProject, FILE_MAX } from '../core/collab-doc.js';
 import { parseFollowLink, relayUrl, followLink } from '../core/collab-link.js';
 import { drawingModel, putDrawing } from '../core/collab-model.js';
 import { normalizeFsm, generateFsm } from '../core/fsm.js';
@@ -282,20 +282,78 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   await fails('follow_project', { link: editLink, write: { path: 'doc/notes.pdf', text: '{}' } }, 'write: doc/notes.pdf: not a text file of the project that an editor can change');
   await fails('follow_project', { link: editLink, write: { path: 'src/new.vhd', text: 'x' } }, 'write: src/new.vhd: not a text file of the project that an editor can change');
   await fails('follow_project', { link, write: { path: 'src/timer.vhd', text: 'x' } }, 'write: this link follows only (an editor\'s link, …#edit=…, writes)');
-  // undone by the owner, from the disk: the HDL a drawing generates (the drawing's), a file an editor's page made
+  // undone by the owner, from the disk: the HDL a drawing generates (the drawing's), a file an editor's page made over
+  // one of the project folder that is not shared (#4418: too large to share)
+  const big = `-- ${'x'.repeat(FILE_MAX)}\n`;
+  fs.writeFileSync(path.join(P.projectDir('trafficEd'), 'notes.txt'), big);
   const lamps = await P.readFile('trafficEd', 'src/traffic.vhd');
   await ok('follow_project', { link: editLink, write: { path: 'src/traffic.vhd', text: `-- mine\n${lamps}` } });
   const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: parseFollowLink(editLink).sign, user: { name: 'Rui' } });
   await ed.ready;
-  ed.doc.transact(() => ed.doc.getMap('files').set('src/evil.vhd', new Y.Text('entity evil is end;\n')));
-  await until(() => docFile(page.doc, 'src/traffic.vhd') === lamps && docFile(ed.doc, 'src/evil.vhd') === null && docFile(page.doc, 'src/evil.vhd') === null, 'both undone', 8000);
+  ed.doc.transact(() => ed.doc.getMap('files').set('notes.txt', new Y.Text('mine\n')));
+  await until(() => docFile(page.doc, 'src/traffic.vhd') === lamps && docFile(ed.doc, 'notes.txt') === null && docFile(page.doc, 'notes.txt') === null, 'both undone', 8000);
   assert.equal(await P.readFile('trafficEd', 'src/traffic.vhd'), lamps);
-  assert.equal(fs.existsSync(path.join(P.projectDir('trafficEd'), 'src/evil.vhd')), false);
+  assert.equal(fs.readFileSync(path.join(P.projectDir('trafficEd'), 'notes.txt'), 'utf8'), big, 'the file not shared kept');
   assert.equal(await P.readFile('trafficEd', 'src/timer.vhd'), `-- by Bot\n${timer}`, 'the allowed edit kept');
   await ed.close();
   await ok('follow_project', { link: editLink, stop: true });
   await ok('share_project', { project: 'trafficEd', action: 'stop' });
   await until(() => page.closed(), 'the page told');
+});
+
+test('#4418 an editor adds, removes, renames and deletes sources and sets the project\'s settings (follow_project source, settings): the owner writes each (through the import gate, the project untrusted), a follower sees them; the owner\'s id, name and trust kept; a viewer refused', async () => {
+  await P.createProject({ name: 'srcEd', template: 'traffic' });
+  const { data: { link, editLink } } = await ok('share_project', { project: 'srcEd', name: 'Ana', server: base, editors: true });
+  const l = parseFollowLink(link);
+  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Eva' } });
+  await page.ready;
+  const listed = async p => (await P.readProject('srcEd')).files.find(f => f.path === p) || null;
+  const onDisk = p => fs.existsSync(path.join(P.projectDir('srcEd'), p));
+  // a new source: written, in the project, the project untrusted (changed by an editor), at the follower's
+  const blink = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity blink is end;\narchitecture a of blink is begin end;\n';
+  const a = await ok('follow_project', { link: editLink, name: 'Bot', source: { action: 'add', path: 'src/blink.vhd', text: blink } });
+  assert.ok(a.text.includes('src/blink.vhd added to the project (vhdl, design) (merged as this participant\'s edit).'), a.text);
+  await until(async () => (await listed('src/blink.vhd')) && onDisk('src/blink.vhd'), 'the new source at the owner\'s', 8000);
+  assert.equal(await P.readFile('srcEd', 'src/blink.vhd'), blink);
+  assert.deepEqual(await listed('src/blink.vhd'), { path: 'src/blink.vhd', lang: 'vhdl', role: 'design' });
+  const pj = await P.readProject('srcEd');
+  assert.deepEqual([pj.name, pj.trusted, pj.madeBy], ['srcEd', false, 'editor']);
+  await until(() => docFile(page.doc, 'src/blink.vhd') === blink && docProject(page.doc).project.files.some(f => f.path === 'src/blink.vhd'), 'the new source at the follower\'s');
+  // renamed: the file and its entry
+  await ok('follow_project', { link: editLink, source: { action: 'rename', path: 'src/blink.vhd', to: 'src/blinker.vhd' } });
+  await until(async () => (await listed('src/blinker.vhd')) && !onDisk('src/blink.vhd') && onDisk('src/blinker.vhd'), 'renamed at the owner\'s', 8000);
+  assert.equal(await listed('src/blink.vhd'), null);
+  // removed from the project: the file kept in its folder
+  await ok('follow_project', { link: editLink, source: { action: 'remove', path: 'src/blinker.vhd' } });
+  await until(async () => !(await listed('src/blinker.vhd')), 'removed from the project', 8000);
+  assert.ok(onDisk('src/blinker.vhd'));
+  // added again (a file of the folder), then deleted: out of the project and of its folder (into the .trash)
+  await ok('follow_project', { link: editLink, source: { action: 'add', path: 'src/blinker.vhd' } });
+  await until(async () => listed('src/blinker.vhd'), 'added again', 8000);
+  await ok('follow_project', { link: editLink, source: { action: 'delete', path: 'src/blinker.vhd' } });
+  await until(async () => !(await listed('src/blinker.vhd')) && !onDisk('src/blinker.vhd'), 'deleted at the owner\'s', 8000);
+  await until(() => docFile(page.doc, 'src/blinker.vhd') === null, 'deleted at the follower\'s');
+  // the settings: the top set; its name and trust stay the owner's whatever the editor writes
+  await ok('follow_project', { link: editLink, settings: { simTop: 'timer', name: 'stolen', trusted: true, madeBy: null } });
+  await until(async () => (await P.readProject('srcEd')).simTop === 'timer', 'the setting at the owner\'s', 8000);
+  const after = await P.readProject('srcEd');
+  assert.deepEqual([after.name, after.trusted, after.madeBy], ['srcEd', false, 'editor']);
+  await until(() => docProject(page.doc).project.simTop === 'timer' && docProject(page.doc).project.trusted === false, 'the setting at the follower\'s, as the owner took it');
+  // a new file the gate refuses: not written, said, undone
+  await ok('follow_project', { link: editLink, source: { action: 'add', path: 'src/evil.vhd', text: 'x\0y' } });
+  await until(async () => (await ok('share_project', { project: 'srcEd', action: 'status' })).data.warnings.length, 'the refusal said', 8000);
+  assert.deepEqual((await ok('share_project', { project: 'srcEd', action: 'status' })).data.warnings, ['src/evil.vhd: an editor\'s change not written: binary content (a NUL byte) in a text file']);
+  assert.equal(onDisk('src/evil.vhd'), false);
+  await until(() => docFile(page.doc, 'src/evil.vhd') === null, 'the refused file undone');
+  // refused at the follower's own: a viewer's link, a source of no file, a new file over one, an unknown action
+  await fails('follow_project', { link, source: { action: 'remove', path: 'src/timer.vhd' } }, 'source: this link follows only (an editor\'s link, …#edit=…, changes the project)');
+  await fails('follow_project', { link, settings: { top: 'x' } }, 'settings: this link follows only (an editor\'s link, …#edit=…, changes the project)');
+  await fails('follow_project', { link: editLink, source: { action: 'add', path: 'src/none.vhd' } }, 'source: src/none.vhd: not a file of the project (text: a new file\'s)');
+  await fails('follow_project', { link: editLink, source: { action: 'add', path: 'src/timer.vhd', text: 'x' } }, 'source: src/timer.vhd: a file of the project already');
+  await fails('follow_project', { link: editLink, source: { action: 'add', path: '../out.vhd', text: 'x' } }, 'source: ../out.vhd: not a path of the project\'s files');
+  await page.close();
+  await ok('follow_project', { link: editLink, stop: true });
+  await ok('share_project', { project: 'srcEd', action: 'stop' });
 });
 
 test('#3355 an editor\'s change of a trusted project: through the import gate, the project untrusted before it is written (Xilinx ISE refused); what the gate refuses not written, said in the status; trusted again, the next change untrusts it again', async () => {

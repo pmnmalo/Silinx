@@ -83,15 +83,15 @@ test('#3527 updateRoots: what it builds on that the document does not have; an u
 test('#3527 updateOutside (an owner\'s update at a follower\'s) and editOutside (an editor\'s edit at the owner\'s): their messages', () => {
   const doc = owned();
   assert.deepEqual(DOC_ROOTS, ['meta', 'project', 'files', 'drawings']);
-  assert.deepEqual(EDIT_ROOTS, ['files', 'drawings']);
+  assert.deepEqual(EDIT_ROOTS, ['project', 'files', 'drawings']);
   const one = change => updatesOf(doc, change)[0];
   assert.equal(updateOutside(doc, one(CHANGES['a root of its own'])), 'the shared project holds a part that no shared project has ("evil")');
   assert.equal(updateOutside(doc, one(CHANGES['the meta, a value replaced'])), null);
   assert.equal(updateOutside(doc, one(d => d.getMap(`x${'y'.repeat(100)}`).set('k', 1))), `the shared project holds a part that no shared project has ("x${'y'.repeat(63)}")`);
   assert.equal(updateOutside(doc, Uint8Array.from([9, 9, 9])), 'an update of the shared project that does not decode');
-  for (const w of ['a text of the files', 'a text of the files, deleted from', 'a file added', 'a file removed', 'a drawing\'s object', 'a drawing\'s object replaced']) assert.equal(editOutside(doc, one(CHANGES[w])), null, w);
+  // (the project's settings too, #4418: the owner takes them as core/collab-files.js editorDescription does)
+  for (const w of ['a text of the files', 'a text of the files, deleted from', 'a file added', 'a file removed', 'a drawing\'s object', 'a drawing\'s object replaced', 'the project\'s settings']) assert.equal(editOutside(doc, one(CHANGES[w])), null, w);
   assert.equal(editOutside(doc, one(CHANGES['a root of its own'])), 'it changes a part of the document that an editor does not ("evil")');
-  assert.equal(editOutside(doc, one(CHANGES['the project\'s settings'])), 'it changes a part of the document that an editor does not ("project")');
   assert.equal(editOutside(doc, one(CHANGES['the meta, a value deleted'])), 'it changes a part of the document that an editor does not ("meta")');
   assert.equal(editOutside(doc, one(CHANGES['the files and the meta at once'])), 'it changes a part of the document that an editor does not ("meta")');
   const [, second] = updatesOf(doc, d => { d.getMap('evil').set('k', 'v'); d.getMap('files').get('src/top.vhd').insert(0, 'x'); });

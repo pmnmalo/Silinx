@@ -21,7 +21,8 @@ import { writeClip } from './clipboard.js';
 import { prefKey } from './prefs.js';
 import { collab } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
-import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, docFile, editablePath, gateEdit } from '/core/collab-doc.js';
+import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
+import { applyEdits, editQueue } from '/core/collab-files.js';
 import { isTrusted, markEditedByEditor, untrustedNotice } from '/core/trust.js';
 import { selectionOfDoc } from './collab-select-draw.js';
 import { keepBound, unbindAll } from './collab-bind.js';
@@ -174,7 +175,9 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   share = { name, project, session, doc, made: {}, base, via, other, pub, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
-  const s0 = share, offFiles = watchDoc(doc, ev => onEdits(s0, ev), { inOrder: true }), offDrawings = watchDrawings(s0);
+  const s0 = share;
+  share.queue = editQueue(ev => onEdits(s0, ev), () => resync());   // (#4110, #4418)
+  const offFiles = watchDoc(doc, ev => s0.queue.push(ev)), offDrawings = watchDrawings(s0);
   share.unwatch = () => { offFiles(); offDrawings(); };
   share.activity = ownerActivity(session);   // (#4002)
   share.timer = setInterval(track, TRACK_MS);
@@ -285,6 +288,7 @@ async function onDisk(ev) {
 async function resync() {
   const s = share;
   if (!s) return;
+  if (s.queue?.busy()) { s.queue.again(); return; }   // (an editor's changes waiting: after them, #4418)
   try { const all = await readAll(s.project); if (share === s) publishProject(s.doc, { ...all, owner: s.name, bases: s.bases }); } catch { /* the next change reads it */ }
 }
 
@@ -318,29 +322,35 @@ const editableHere = p => editablePath(p) && !S.hdlToSch?.[p] && S.fileTree?.inc
 const drawingHere = p => liveDrawing(p) && !!S.fileTree?.includes(p);
 const sayLine = text => app.log(text, /^WARNING/.test(text) ? 'warn' : 'info');
 
-// what the editors change (the document's remote transactions): a text file's, written to the disk (its open editor, bound,
-// shows it already); anything else, undone (the project published again from the disk), said in the console
-// (#3355: the text through the import gate first, as any file from outside, what it refuses not written but undone; the
-// project untrusted before the first change is written: an editor's link reaches no ISE nor board until the user trusts
-// it again)
-async function onEdits(s, { changes, project }) {
-  if (share !== s) return;
-  const write = changes.filter(c => c.kind === 'changed' && editableHere(c.path));
-  let refused = false;
-  for (const c of write) {
-    const text = docFile(s.doc, c.path);
-    if (typeof text !== 'string') continue;
-    let gated;
-    try { gated = gateEdit(c.path, text); } catch (e) { app.log(`WARNING: ${c.path}: an editor's change not written: ${e.reason || e.message}.`, 'warn'); refused = true; continue; }
-    try {
-      await untrustEdited(s);
-      await s.orig.writeFile(s.project, c.path, gated);
-      for (const d of S.docs) if (d.path === c.path && d.editor?.getValue() === gated) { d.editor.markClean?.(); app.setDirty(d, false); }
-    } catch (e) { app.log(`WARNING: ${c.path}: an editor's change not written: ${e.message}.`, 'warn'); refused = true; }
-  }
-  const undone = changes.filter(c => !write.includes(c)).map(c => c.path);
-  if (project || undone.length) app.log(`WARNING: An editor's change undone (an editor changes the text of the project's text files only): ${[...(project ? ['silinx.json'] : []), ...undone].join(', ')}.`, 'warn');
-  if (project || undone.length || refused) await resync();
+// what the editors change (the document's remote transactions, core/collab-files.js applyEdits): a text file's, written
+// to the disk (its open editor, bound, shows it already); a file created, deleted or renamed and the project's
+// description (#4418: New Source…, Remove from Project, Delete File…, Rename…, Set as Top Module…), written too, the
+// page's project reloaded; anything else (a file of the folder that is not shared, a generated HDL file's text),
+// undone (the project published again from the disk), said in the console (#3355: the text through the import gate
+// first, as any file from outside, what it refuses not written but undone; the project untrusted before the first
+// change is written: an editor's link reaches no ISE nor board until the user trusts it again)
+async function onEdits(s, ev) {
+  if (share !== s) return false;
+  const trash = !api.standalone || api.keepsTrash;
+  const store = {
+    read: async () => { const { fileTree, ...json } = await api.project(s.project); return { json, fileTree }; },
+    write: async (path, text) => {
+      await s.orig.writeFile(s.project, path, text);
+      for (const d of S.docs) if (d.path === path && d.editor?.getValue() === text) { d.editor.markClean?.(); app.setDirty(d, false); }
+    },
+    remove: path => s.orig.deleteFile(s.project, path, { trash }),
+    saveJson: json => s.orig.saveProject(s.project, json),
+    untrust: () => untrustEdited(s),
+  };
+  const r = await applyEdits(s.doc, ev, store, { generated: new Set(Object.keys(S.hdlToSch || {})), warn: text => app.log(`WARNING: ${text}.`, 'warn') });
+  if (share !== s) return false;
+  if (r.undone.length) app.log(`WARNING: An editor's change undone (a file of the project folder that is not shared, or the text of a file an editor does not change as text): ${r.undone.join(', ')}.`, 'warn');
+  // (the page's project as the disk has it now: its Design pane, its open documents; said as an owner's change is; the
+  // document from the disk again: a new drawing's structure made, the description as the owner took it)
+  const changed = [...ev.changes.filter(c => c.kind !== 'changed' && (r.written.includes(c.path) || r.removed.includes(c.path))),
+    ...(r.project ? [{ path: 'silinx.json', kind: 'changed' }] : [])];
+  if (changed.length && S.project?.name === s.project) await (await import('./project-watch.js')).applyChanges({ project: s.project, changes: changed, by: 'an editor' });
+  return !!(r.undone.length || r.refused || changed.length);   // (published again once no change waits: editQueue)
 }
 
 // the shared project, untrusted by an editor's change (#3355): its description saved so (madeBy 'editor'), said in the
