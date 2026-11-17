@@ -2,7 +2,7 @@
 // with the line / column they are reported at and their message.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { diags, sim, vhd } from './lang-util.js';
+import { diags, sim, vhd, warningsOf } from './lang-util.js';
 
 const H = 'library ieee; use ieee.std_logic_1164.all; use ieee.numeric_std.all;\n';
 const errs = (src, top = 'tb') => diags(src, top, { lang: 'vhdl' }).filter(d => d.severity === 'error').map(d => `${d.line}:${d.col} ${d.message}`);
@@ -235,7 +235,9 @@ test('bit-string and string literals: characters that are not digits of the base
   assert.deepEqual(at('"1020X01Q"'), ["6:3 '2' is not a std_logic value (in the string \"1020X01Q\")"]);
   // the valid ones: digits of the base, and the std_logic values VHDL-2008 replicates
   for (const rhs of ['x"F1"', 'x"Z1"', 'x"1-"', 'b"0101_0101"', 'o"377"', '"0101XZ-1"', '"UXWLH01-"', '8x"F"']) assert.deepEqual(at(rhs), [], rhs);
-  const r = sim(H + 'entity tb is end;\narchitecture a of tb is\n  signal y : std_logic_vector(7 downto 0) := x"Z1";\n  signal z : std_logic_vector(7 downto 0) := "LH0-WU1X";\nbegin\n  process begin wait for 1 ns; report to_string(y) & " " & to_string(z); wait; end process;\nend;', 'tb', { lang: 'vhdl' });
-  // (the simulator has four values: L / H are 0 / 1, the other std_logic values X)
-  assert.deepEqual(r.out.map(l => l.replace(/^.*Note: /, '')), ['ZZZZ0001 010XXX1X']);
+  const r = sim(H + 'entity tb is end;\narchitecture a of tb is\n  signal y : std_logic_vector(7 downto 0) := x"Z1";\n  signal z : std_logic_vector(7 downto 0) := "LH0-WU1X";\n  signal b : std_logic_vector(3 downto 0) := b"LHW1";\n  signal l : std_logic_vector(7 downto 0) := x"L1";\nbegin\n  process begin wait for 1 ns; report to_string(y) & " " & to_string(z) & " " & to_string(z(7 downto 4)) & " " & to_string(to_x01(z)) & " " & to_string(b) & " " & to_string(l); wait; end process;\nend;', 'tb', { lang: 'vhdl' });
+  // (the simulator keeps the weak values L / H / W since #3926, as IEEE 1164's to_string shows them; U and - are X;
+  // a bit-string literal keeps them as a string does, #4370; before: 010XXX1X, 01X1, 00000001)
+  assert.deepEqual(r.out.map(l => l.replace(/^.*Note: /, '')), ['ZZZZ0001 LH0XWX1X LH0X 010XXX1X LHW1 LLLL0001']);
+  assert.deepEqual(warningsOf(r), []);
 });
