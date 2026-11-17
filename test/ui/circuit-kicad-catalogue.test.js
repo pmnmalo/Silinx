@@ -52,7 +52,7 @@ uiTest('Parts panel: the KiCad catalogue folded, opened, searched, its tips; a p
     led: [...v.querySelectorAll('.circ-fp-body')].map((x) => [...x.classList].find((c) => c.startsWith('circ-led-')) ?? null) }; }, sel);
   assert.deepEqual(await pv(CAT(ED)), { cat: false, fp: 4, pins: 4, led: [] });
   // the red LED: its round body red; a 74xx drawn only: a DIP's body and its 14 pins; KiCad's 2N3904 its pads (#4385)
-  for (const [q, want] of [['led_red_5mm_pth_nosilk', { cat: false, fp: 9, pins: 2, led: ['circ-led-red'] }], ['7454', { cat: false, fp: 0, pins: 14, led: [] }],
+  for (const [q, want] of [['led_red_5mm_pth_nosilk', { cat: false, fp: 9, pins: 2, led: ['circ-led-red'] }], ['7454 drawn', { cat: false, fp: 0, pins: 14, led: [] }],
     // (KiCad's own 2N3904, #4385: no drawing of KiCad's kept, a box round its pads)
     ['2n3904', { cat: false, fp: 0, pins: 3, led: [] }],
     // (an Arduino Nano, #4394: its 30 pads named by its pins)
