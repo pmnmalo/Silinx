@@ -106,7 +106,7 @@ test('import_part refuses: a file there already (unless replace), a symbol it ha
   assert.equal(again.text.split('\n')[0], 'parts/ttl.kicad_sym written');
   await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: 'other.kicad_sym', symbols: { NONE: { model: '7400' } } },
     'symbols: no symbol \'NONE\' in the library (its symbols: 74LS00, 74HC00, MYNAND, CD4011, 74LS04, SENSOR, MODULE, SMDCHIP, NOFP, BADMODEL, VCC)');
-  await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: 'other.kicad_sym', symbols: { NOFP: { model: 'clock' } } }, 'symbols.NOFP.model: \'clock\' is neither an IC of the library (circuit_parts)');
+  await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: 'other.kicad_sym', symbols: { NOFP: { model: 'clock' } } }, 'symbols.NOFP.model: \'clock\' is neither an IC of the library (circuit_parts) nor one of its led, button, spdt');
   await fails('import_part', { project: 'k', file: 'ttl.kicad_sym', name: '../x.kicad_sym' }, 'name: \'../x.kicad_sym\' is not a .kicad_sym nor a .kicad_mod file\'s name (letters, digits, . _ -)');
   await fails('import_part', { project: 'k', file: 'Module_1x04.kicad_mod', symbols: { A: {} } }, 'symbols: a footprint has none');
   fs.writeFileSync(path.join(ex, 'notes.txt'), 'x');
