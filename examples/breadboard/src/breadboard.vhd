@@ -43,6 +43,7 @@ architecture digital of breadboard_sn74ls194 is
   begin
     return false;
   end function anyx;
+  subtype slv2 is std_logic_vector(1 downto 0);
   signal o_qd, o_qc, o_qb, o_qa : std_logic;
   signal q : std_logic_vector(3 downto 0);
 begin
@@ -50,7 +51,7 @@ begin
   begin
     if clr_n = '0' then q <= "0000";
     elsif rising_edge(clk) then
-      case std_logic_vector'(s1 & s0) is when "00" => null; when "01" => q <= q(2 downto 0) & sr; when "10" => q <= sl & q(3 downto 1); when "11" => q <= d & c & b & a; when others => q <= (others => 'X'); end case;
+      case slv2'(s1 & s0) is when "00" => null; when "01" => q <= q(2 downto 0) & sr; when "10" => q <= sl & q(3 downto 1); when "11" => q <= d & c & b & a; when others => q <= (others => 'X'); end case;
     end if;
   end process;
   o_qa <= q(0);
@@ -82,6 +83,7 @@ architecture model of breadboard_sn74ls194 is
     end loop;
     return false;
   end function anyx;
+  subtype slv2 is std_logic_vector(1 downto 0);
   signal i_clr_n, i_sr, i_a, i_b, i_c, i_d, i_sl, i_s0, i_s1, i_clk : std_logic := 'X';
   signal o_qd, o_qc, o_qb, o_qa : std_logic := 'X';
   signal q : std_logic_vector(3 downto 0) := (others => 'X');
@@ -103,7 +105,7 @@ begin
   begin
     if i_clr_n = '0' then q <= "0000";
     elsif rising_edge(i_clk) then
-      case std_logic_vector'(i_s1 & i_s0) is when "00" => null; when "01" => q <= q(2 downto 0) & i_sr; when "10" => q <= i_sl & q(3 downto 1); when "11" => q <= i_d & i_c & i_b & i_a; when others => q <= (others => 'X'); end case;
+      case slv2'(i_s1 & i_s0) is when "00" => null; when "01" => q <= q(2 downto 0) & i_sr; when "10" => q <= i_sl & q(3 downto 1); when "11" => q <= i_d & i_c & i_b & i_a; when others => q <= (others => 'X'); end case;
     end if;
   end process;
   o_qa <= q(0);

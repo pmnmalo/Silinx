@@ -63,13 +63,18 @@ function controlGenerics(d, V) {
 const CMOS_RD = ['  -- a CMOS input reads a floating (Z) level unknown (X)', '  function rd(s : std_logic) return std_logic is', '  begin', '    return to_x01(s);', '  end function rd;'];
 const TTL_RD = ['  -- a 74LS input reads a floating (Z) level high', '  function rd(s : std_logic) return std_logic is', '  begin', '    case s is', "      when '0' | 'L' => return '0';",
   "      when '1' | 'H' | 'Z' => return '1';", "      when others => return 'X';", '    end case;', '  end function rd;'];
+// a case on a concatenation: its selector qualified by a subtype of its width (slv2'(i_s1 & i_s0)), since VHDL (and
+// XST: HDLCompiler:803) wants a locally static subtype of a case's expression, which std_logic_vector' is not (#4380);
+// the subtypes an architecture's lines use, declared
+const slvSubtypes = (lines) => [...new Set([...lines.join('\n').matchAll(/\bslv(\d+)'/g)].map((m) => +m[1]))].sort((a, b) => a - b)
+  .map((w) => `  subtype slv${w} is std_logic_vector(${w - 1} downto 0);`);
 function vhdlMsi(L, name, d) {
   const ins = d.pins.filter((p) => p.dir === 'in'), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
   L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, ...controlGenerics(d, true), '  port (');
   L.push(icPorts(d).map((p) => `    ${pinPort(p)} : ${isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
   L.push(`architecture model of ${name} is`, ...(d.family === 'cmos' ? CMOS_RD : TTL_RD), '  -- whether a level is unknown', '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    for k in v\'range loop',
-    "      if v(k) /= '0' and v(k) /= '1' then return true; end if;", '    end loop;', '    return false;', '  end function anyx;');
+    "      if v(k) /= '0' and v(k) /= '1' then return true; end if;", '    end loop;', '    return false;', '  end function anyx;', ...slvSubtypes(d.seq ? d.vhdl.body : d.vhdl));
   if (outs.some((p) => p.dir === 'oc')) L.push('  -- an open collector output: a 0, or nothing', '  function oc(s : std_logic) return std_logic is', '  begin', "    if s = '0' then return '0'; elsif s = '1' then return 'Z'; else return 'X'; end if;", '  end function oc;');
   if (d.seq) return vhdlSeq(L, d, ins, outs, vcc, gnd);
   L.push(`  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic := 'X';`, '  signal pw : boolean;', 'begin', `  pw <= ${vcc} = '1' and ${gnd} = '0';`,
@@ -132,7 +137,7 @@ export function vhdlDigital(L, name, d) {
   const ins = d.pins.filter(isPort), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
   L.push(`architecture digital of ${name} is`, '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    return false;', '  end function anyx;',
-    `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`);
+    ...slvSubtypes(d.seq ? d.vhdl.digital ?? d.vhdl.body : d.vhdl), `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`);
   // (a sequential IC's body reads its ports themselves: no copy of its clock, whose net synthesis then names after it)
   if (d.seq) L.push(...d.vhdl.decl.map((v) => `  ${portsRead(v.replace(/ := (\(others => 'X'\)|'X')/, ''), ins)}`), 'begin', ...(d.vhdl.digital ?? d.vhdl.body).map((l) => `  ${portsRead(driven(l, d, true), ins)}`));
   else L.push('begin', `  process (${ins.map(pinPort).join(', ')})`, `    variable ${ins.map((p) => `i_${pinPort(p)}`).join(', ')} : std_logic;`, ...(d.vars?.vhdl || []).map((v) => `    ${v}`),

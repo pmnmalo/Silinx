@@ -46,7 +46,7 @@ function flipFlops(type, title, tpd, pins, jkff) {
     const ctl = [...(pre ? [[`i_pre${k}_n`, '1']] : []), ...(clr ? [[`i_clr${k}_n`, '0']] : [])];
     return [`process (${[`i_clk${k}`, ...ctl.map(([c]) => c)].join(', ')})`, 'begin', ...ctl.map(([c, v], n) => `  ${n ? 'elsif' : 'if'} ${c} = '0' then r${k} <= '${v}';`),
       `  ${ctl.length ? 'elsif' : 'if'} ${edgeV}(i_clk${k}) then`,
-      jkff ? `    case std_logic_vector'(i_j${k} & i_k${k}) is when "00" => null; when "01" => r${k} <= '0'; when "10" => r${k} <= '1'; when "11" => r${k} <= not r${k}; when others => r${k} <= 'X'; end case;` : `    r${k} <= i_d${k};`,
+      jkff ? `    case slv2'(i_j${k} & i_k${k}) is when "00" => null; when "01" => r${k} <= '0'; when "10" => r${k} <= '1'; when "11" => r${k} <= not r${k}; when others => r${k} <= 'X'; end case;` : `    r${k} <= i_d${k};`,
       '  end if;', 'end process;'];
   };
   const gp = (k, pre = true, clr = true) => {
@@ -249,7 +249,7 @@ const c74194 = ic('74194', '4-bit bidirectional universal shift register', 20, [
     out: (i, s) => qOut(s.q),
   },
   vhdl: { decl: [Q4.vhdl], body: ['process (i_clk, i_clr_n)', 'begin', "  if i_clr_n = '0' then q <= \"0000\";", '  elsif rising_edge(i_clk) then',
-    "    case std_logic_vector'(i_s1 & i_s0) is when \"00\" => null; when \"01\" => q <= q(2 downto 0) & i_sr; when \"10\" => q <= i_sl & q(3 downto 1); when \"11\" => q <= i_d & i_c & i_b & i_a; when others => q <= (others => 'X'); end case;",
+    "    case slv2'(i_s1 & i_s0) is when \"00\" => null; when \"01\" => q <= q(2 downto 0) & i_sr; when \"10\" => q <= i_sl & q(3 downto 1); when \"11\" => q <= i_d & i_c & i_b & i_a; when others => q <= (others => 'X'); end case;",
     '  end if;', 'end process;', ...vQ] },
   verilog: { decl: [Q4.verilog], body: ['always @(posedge i_clk or negedge i_clr_n)', "  if (!i_clr_n) q <= 4'd0;",
     "  else case ({i_s1, i_s0}) 2'b00: q <= q; 2'b01: q <= {q[2:0], i_sr}; 2'b10: q <= {i_sl, q[3:1]}; 2'b11: q <= {i_d, i_c, i_b, i_a}; default: q <= 4'bxxxx; endcase", ...gQ] },

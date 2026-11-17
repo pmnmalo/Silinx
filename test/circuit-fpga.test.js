@@ -158,3 +158,44 @@ test('the breadboard example: its HDL the circuit\'s, as the editor generates it
   const full = compile([{ path: 'src/breadboard.vhd', lang: 'vhdl', text: shipped }]);
   assert.deepEqual(designChecks(full, elaborate(full, 'breadboard')).map((d) => `${d.line} ${d.message}`), []);
 });
+
+// #4380: XST (HDLCompiler:803) wants a locally static subtype of a case's expression, which std_logic_vector'(a & b)
+// is not: a case on a concatenation qualified by a subtype of its width, declared in the same architecture
+const CASED = { 7447: 4, 7448: 4, 7476: 2, 74112: 2, 74151: 3, 74194: 2 };
+test('#4380 a case on a concatenation: its subtype of its width (slv2\'(…)), declared in its architecture; VHDL and Verilog compiled, elaborated, simulated, no warnings', () => {
+  const ics = Object.keys(PARTS).filter((t) => PARTS[t].model || PARTS[t].seq);
+  assert.deepEqual(ics.filter((t) => /\bcase \w+'\(/.test(generateCircuit(msiBench(t, { name: `c${t}` }), 'vhdl').code)), Object.keys(CASED));
+  for (const t of ics) {
+    const code = generateCircuit(msiBench(t, { name: `c${t}` }), 'vhdl').code;
+    for (const arch of code.split(/^(?=architecture )/m).slice(1)) {
+      const [, name] = /^architecture (\w+ of \w+)/.exec(arch);
+      // (every case's expression a name, or a concatenation qualified by its subtype)
+      for (const [, e] of arch.matchAll(/\bcase (.*?) is\b/g)) assert.match(e, /^(\w+|slv\d+'\(.*\))$/, `${t}: ${name}`);
+      for (const [, w] of arch.matchAll(/\bcase slv(\d+)'\(/g)) {
+        assert.equal(+w, CASED[t], `${t}: ${name}`);
+        assert.match(arch, new RegExp(`^ {2}subtype slv${w} is std_logic_vector\\(${w - 1} downto 0\\);$`, 'm'), `${t}: ${name}`);
+      }
+      // (the chip's two architectures, the model and the digital one; not the circuit's top)
+      if (CASED[t] && !name.endsWith(` of c${t}`)) assert.match(arch, /\bcase slv\d'\(/, `${t}: ${name}`);
+    }
+  }
+  // the breadboard example's 74194 (the ISE nightly's HDLCompiler:803, its line 53 then), its digital model and its simulation's
+  const shipped = fs.readFileSync(new URL('../examples/breadboard/src/breadboard.vhd', import.meta.url), 'utf8').split('\n');
+  assert.deepEqual(shipped.filter((l) => /^ {6}case \S+\(\S*s1 & \S*s0\) is when "00" => null;/.test(l)).map((l) => /case .*? is/.exec(l)[0]), ['case slv2\'(s1 & s0) is', 'case slv2\'(i_s1 & i_s0) is']);
+  assert.equal(shipped.filter((l) => l === '  subtype slv2 is std_logic_vector(1 downto 0);').length, 2);
+  // the chips' circuits whole (the simulation's model and the digital one), compiled, elaborated, simulated: no message
+  for (const t of Object.keys(CASED)) {
+    const m = msiBench(t, { name: `c${t}` }), { inputs, outputs } = circuitPorts(m);
+    const cur = Object.fromEntries(inputs.map((i) => [i.name, 0])), vectors = [{ ...cur }];
+    for (let k = 0; k < 16; k++) { cur[inputs[k % inputs.length].name] ^= 1; vectors.push({ ...cur }); }
+    for (const lang of LANGS) {
+      for (const code of [generateCircuit(m, lang).code, synthesisText(generateCircuit(m, lang).code)]) {
+        const lib = compile([{ path: file(lang), text: code }]), d = elaborate(lib, m.name);
+        assert.deepEqual([...lib.errors, ...d.diags, ...designChecks(lib, d, { lint: true })].map((e) => `${e.severity}: ${e.message}`), [], `${t} ${lang}`);
+        const r = simulate([{ path: file(lang), text: code }, { path: 'tb.v', text: circuitBench(m, vectors, { ins: inputs.map((x) => x.name), outs: outputs.map((x) => x.name), ns: 1000 }) }], 'tb', { until: 1e10 });
+        assert.deepEqual(r.errors, [], `${t} ${lang}`);
+        assert.equal(r.sim.log.map((e) => String(e.text).trim()).filter((x) => /^[01xz]+$/.test(x)).length, vectors.length, `${t} ${lang}`);
+      }
+    }
+  }
+});
