@@ -35,7 +35,7 @@ const narrowWatch = new Set();
 let narrowQuery = null;
 function narrowChanged() { for (const r of narrowWatch) { const f = r.deref(); if (f) f(); else narrowWatch.delete(r); } }
 /** `apply` called when the screen turns narrow or wide, as long as something else keeps it (its panel's observers). */
-export function watchNarrow(apply) {
+function watchNarrow(apply) {
   if (typeof WeakRef !== 'function') return;
   for (const r of narrowWatch) if (!r.deref()) narrowWatch.delete(r);
   narrowWatch.add(new WeakRef(apply));
