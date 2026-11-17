@@ -252,3 +252,22 @@ test('a drawn-only part\'s look (#4315): its footprint\'s drawing in grid steps 
   assert.equal(ledColour({ symbol: 'Wire', value: 'Red' }), null);
   assert.equal(ledColour({ symbol: 'LEDGER', value: 'Blue' }), null);
 });
+
+test('a board whose pads are named by its pins (an Arduino\'s, #4394): drawn only, its pins from its first named pad; Check says so', () => {
+  const pad = (n, x, y) => `(pad "${n}" thru_hole circle (at ${x} ${y}) (size 1.6 1.6) (drill 1) (layers "*.Cu"))`;
+  const fp = `(footprint "Board_Socket" (layer "F.Cu") (pad "" np_thru_hole circle (at -2 -2) (size 2 2) (drill 2) (layers "*.Cu")) ${pad('3V3', 0, 0)} ${pad('5V', 2.54, 0)} ${pad('GND', 5.08, 0)} ${pad('D13', 0, 15.24)})`;
+  const pin = (n) => `(pin power_in line (at 0 0 0) (length 2.54) (name "${n}") (number "${n}"))`;
+  const lib = `(kicad_symbol_lib (version 20231120) (generator "t") (symbol "Board" (property "Reference" "A") (property "Value" "Board") (property "Footprint" "boards:Board_Socket")
+    (symbol "Board_1_1" ${pin('3V3')} ${pin('5V')} ${pin('GND')} ${pin('D13')})))`;
+  const r = kicadPartsOf({ 'parts/boards.kicad_sym': lib, 'parts/boards.pretty/Board_Socket.kicad_mod': fp });
+  assert.deepEqual([r.errors, r.skipped], [[], []]);
+  const d = r.defs[0];
+  assert.equal(d.kind, 'drawn');
+  // (turned as a DIP lies: KiCad's x down the board, its y along it)
+  assert.deepEqual(d.pins.map((p) => [p.n, p.dx, p.dy]), [['3V3', 0, 0], ['5V', 0, -1], ['D13', 6, 0], ['GND', 0, -2]]);
+  setProjectParts(r.defs);
+  const m = newCircuit('b', 'vhdl', { breadboard: false });
+  m.parts.push({ id: 'A1', type: d.type, x: 0, y: 0 });
+  assert.deepEqual(checkCircuit(normalizeCircuit(m)).map((x) => x.message), ['A1 (Board) is drawn only: it is not simulated and its pins drive nothing']);
+  setProjectParts([]);
+});

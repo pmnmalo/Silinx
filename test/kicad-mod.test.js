@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readKicadFootprint, gridPins, packageOfFootprint, matchesFootprintFilters, footprintDrawing, shapePath, GRID_MM, PAD_TYPES } from '../core/kicad-mod.js';
+import { readKicadFootprint, gridPins, originPad, packageOfFootprint, matchesFootprintFilters, footprintDrawing, shapePath, GRID_MM, PAD_TYPES } from '../core/kicad-mod.js';
 import { parseSexpr } from '../core/sexpr.js';
 
 const read = (name) => readFileSync(new URL(`./fixtures/kicad/parts.pretty/${name}`, import.meta.url), 'utf8');
@@ -135,4 +135,13 @@ test('shapePath: a line, a polygon closed, a circle, arcs clockwise and anticloc
   assert.equal(shapePath({ k: 'arc', pts: [[1, 0], [0, -1], [-1, 0]] }, id, 1), 'M1 0A1 1 0 0 0 -1 0');
   assert.equal(shapePath({ k: 'arc', pts: [[1, 0], [0, -1], [0, 1]] }, id, 1), 'M1 0A1 1 0 1 0 0 1');
   assert.equal(shapePath({ k: 'arc', pts: [[0, 0], [1, 1], [2, 2]] }, id, 1), 'M0 0L2 2');
+});
+
+test('originPad and gridPins with no pad 1 (#4394): a board\'s pads named by their pins from its first named one; numbered pads with no 1 none', () => {
+  const fp = (pads) => readKicadFootprint(`(footprint "x" ${pads.map(([n, x, y]) => `(pad "${n}" thru_hole circle (at ${x} ${y}))`).join(' ')})`);
+  const board = fp([['', 0, 0], ['3V3', 2.54, 0], ['5V', 5.08, 0], ['A0', 2.54, 15.24], ['D13', 4, 4]]);
+  assert.equal(originPad(board).number, '3V3', 'its first named pad, the mounting hole left out');
+  assert.deepEqual(gridPins(board), { pins: [{ number: '3V3', dx: 0, dy: 0 }, { number: '5V', dx: 1, dy: 0 }, { number: 'A0', dx: 0, dy: 6 }], offGrid: ['D13'], smd: [] });
+  assert.equal(originPad(fp([['2', 0, 0], ['3', 2.54, 0]])), null, 'numbered pads with no pad 1');
+  assert.equal(originPad(fp([['1', 5.08, 0], ['A', 0, 0]])).number, '1');
 });

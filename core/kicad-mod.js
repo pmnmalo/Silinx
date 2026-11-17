@@ -94,14 +94,24 @@ export function shapePath(sh, pt, s) {
 }
 
 /**
- * A footprint's through-hole pads on the 0.1 inch grid: { pins: [{ number, dx, dy }] (steps from pad 1, as KiCad's axes:
- * x right, y down), offGrid: [the numbers of the pads off it], smd: [the numbers of its surface-mount pads] }. A pad
- * with no number (a mounting hole) is left out; pins is empty when it has no pad 1 through the board.
+ * A footprint's pad its pins' places start from: its pad 1 through the board; with none and no numbered pad at all (a
+ * board's pads named by their pins, A0, 5V, D13: an Arduino's, #4394), its first named one; else null.
+ */
+export function originPad(footprint) {
+  const tht = footprint.pads.filter((p) => p.number && p.type === 'thru_hole');
+  return tht.find((p) => p.number === '1') ?? (tht.some((p) => /^\d+$/.test(p.number)) ? null : tht[0] ?? null);
+}
+
+/**
+ * A footprint's through-hole pads on the 0.1 inch grid: { pins: [{ number, dx, dy }] (steps from its origin pad, pad 1
+ * or its first named one: originPad; as KiCad's axes: x right, y down), offGrid: [the numbers of the pads off it], smd:
+ * [the numbers of its surface-mount pads] }. A pad with no number (a mounting hole) is left out; pins is empty when it
+ * has no origin pad.
  */
 export function gridPins(footprint) {
   const tht = footprint.pads.filter((p) => p.number && p.type === 'thru_hole');
   const smd = footprint.pads.filter((p) => p.number && (p.type === 'smd' || p.type === 'connect')).map((p) => p.number);
-  const first = tht.find((p) => p.number === '1') ?? null;
+  const first = originPad(footprint);
   if (!first) return { pins: [], offGrid: tht.map((p) => p.number), smd };
   const pins = [], offGrid = [];
   for (const p of tht) {

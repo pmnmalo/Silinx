@@ -16,7 +16,7 @@
 import { PARTS, setProjectParts } from './circuit-parts.js';
 import { dip } from './circuit-ics.js';
 import { readKicadSymLib, readKicadSymDir, pinText, footprintFilters } from './kicad-sym.js';
-import { readKicadFootprint, gridPins, packageOfFootprint, GRID_MM } from './kicad-mod.js';
+import { readKicadFootprint, gridPins, packageOfFootprint, originPad, GRID_MM } from './kicad-mod.js';
 import { modelPins } from './circuit-kicad-hdl.js';
 import { DISCRETE, discreteModel, discretePins } from './circuit-kicad-parts.js';
 
@@ -82,11 +82,11 @@ export function pinoutDifference(s, type) {
 const turned = ({ dx, dy }) => ({ dx: dy, dy: -dx || 0 });
 
 /**
- * A footprint's drawing (#4315) as a part's look: its shapes in grid steps from pad 1, turned as its pins are (pt: [x, y],
+ * A footprint's drawing (#4315) as a part's look: its shapes in grid steps from its origin pad (pad 1), turned as its pins are (pt: [x, y],
  * a circle's c and r, a stroke's w); null for a footprint with no drawing.
  */
 export function lookOf(fp) {
-  const one = fp.pads.find((p) => p.number === '1' && p.type === 'thru_hole');
+  const one = originPad(fp);
   if (!fp.drawing || !one) return null;
   const at = ([x, y]) => { const t = turned({ dx: (x - one.x) / GRID_MM, dy: (y - one.y) / GRID_MM }); return [t.dx, t.dy]; };
   return { layer: fp.drawing.layer, shapes: fp.drawing.shapes.map((sh) => ({ k: sh.k, fill: sh.fill, w: sh.w / GRID_MM,
