@@ -28,7 +28,8 @@ export const UNIT_DIRS = ['test', 'packages/silinx-fpga/test'];
 export const UNIT_TESTS = /^(?:test|packages\/silinx-fpga\/test)\/[^/]+\.test\.js$/;
 
 /** The toolchain's heaviest unit tests (#3124): the whole open flow on every feature, device and example, the
- *  post-place & route and the Spartan-6 models of the examples, the synthesis compared on the corpus, nextpnr's engine.
+ *  post-place & route and the Spartan-6 models of the examples, the synthesis compared on the corpus, nextpnr's engine,
+ *  micro80 routed by router 1 on the Basys 3 (up to 15 minutes on a slow Windows runner, #4429).
  *  About half the unit tests' time; CI runs them on Linux only, macOS and Windows the others (--light), with
  *  test/open-flow.test.js (blinky to a bitstream, the shipped devices) and the small tests of each step as their smoke test. */
 export const HEAVY = [
@@ -36,8 +37,8 @@ export const HEAVY = [
   'test/blockram-flow.test.js', 'test/carry-chain.test.js', 'test/carry-select.test.js', 'test/clocking-flow.test.js',
   'test/examples-nextpnr-s3e.test.js', 'test/examples-nextpnr-s6-pack-atlys.test.js', 'test/examples-nextpnr-s6-pack.test.js',
   'test/examples-nextpnr-s6.test.js', 'test/examples.test.js', 'test/lut-resynth.test.js',
-  'test/nextpnr-size.test.js', 'test/open-flow-clocks.test.js', 'test/open-flow-core.test.js', 'test/open-flow-features.test.js',
-  'test/open-flow-io.test.js', 'test/s6-place.test.js', 'test/sim-model-examples.test.js', 'test/sim-model-impl.test.js',
+  'test/nextpnr-size.test.js', 'test/nextpnr-xc7-cyinit.test.js', 'test/open-flow-clocks.test.js', 'test/open-flow-core.test.js',
+  'test/open-flow-features.test.js', 'test/open-flow-io.test.js', 'test/s6-place.test.js', 'test/sim-model-examples.test.js', 'test/sim-model-impl.test.js',
   'test/sim-model-par-examples.test.js', 'test/sim-model-par-micro80.test.js', 'test/sim-model-par-vga-verilog.test.js',
   'test/sim-model-par-vga.test.js', 'test/sim-model-par.test.js', 'test/sim-model-s6-vga.test.js', 'test/sim-model-s6.test.js',
   'test/synth-diff-fixtures.test.js', 'test/synth-diff.test.js', 'test/synth-fsm.test.js', 'test/synth-goal.test.js',
