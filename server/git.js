@@ -1,5 +1,5 @@
 // Git, phase 1 (#3195, the plan #3194): a project of the server editions in a GitHub repository, through the system's
-// git: clone (Open from Repository), init, status (the Design pane's marks), commit, push, pull, the history and a file
+// git: clone (Open from GitHub Repository), init, status (the Design pane's marks), commit, push, pull, the history and a file
 // as it was in a commit. The interface's routes (git-routes.js) and the MCP's tools (mcp-git.js) call these functions.
 //
 // The repository is the one holding the project's folder: the folder itself (a clone, a Classroom assignment), or the
@@ -113,7 +113,7 @@ function explain(op, r) {
     : /Could not resolve host|unable to access|Connection timed out|Network is unreachable/.test(t) ? 'GitHub could not be reached: check the network.'
     : /Please tell me who you are|Author identity unknown|empty ident name/.test(t) ? 'Tell git who you are, once: git config --global user.name "Your Name" and git config --global user.email you@example.com.'
     : /would be overwritten by merge|Please commit your changes or stash them/.test(t) ? 'Commit your changes first, then Pull.'
-    : /refusing to merge unrelated histories/.test(t) ? 'This project and the GitHub repository have no commit in common: open the repository with Open from Repository… instead.'
+    : /refusing to merge unrelated histories/.test(t) ? 'This project and the GitHub repository have no commit in common: open the repository with Open from GitHub Repository… instead.'
     : /couldn't find remote ref|no such ref was fetched/.test(t) ? 'The GitHub repository has nothing on this branch yet: Push first.'
     : /Not possible to fast-forward/.test(t) ? 'Pull merges GitHub\'s commits with yours; check git\'s pull.ff setting.'
     : /already exists and is not an empty directory/.test(t) ? 'Choose another name for the project.'
@@ -155,12 +155,12 @@ async function repoOf(name) {
 async function checkRepoConfig(cwd) {
   const list = async scope => { const c = await git(['config', `--${scope}`, '--no-includes', '--list', '-z'], { cwd }); return c.code ? '' : c.stdout; };
   const setting = await repoConfigProblem(list);
-  if (setting) throw new GitError(`the repository's own configuration sets '${setting}': Silinx runs no git command in it`, `A repository made or cloned by Silinx has no such setting: remove it if you trust it (git config --local --unset-all ${setting}), or open the repository again with Open from Repository….`, 409);
+  if (setting) throw new GitError(`the repository's own configuration sets '${setting}': Silinx runs no git command in it`, `A repository made or cloned by Silinx has no such setting: remove it if you trust it (git config --local --unset-all ${setting}), or open the repository again with Open from GitHub Repository….`, 409);
 }
 
 async function needRepo(name) {
   const repo = await repoOf(name);
-  if (!repo) throw new GitError(`the project '${name}' is not in a git repository`, 'Initialize Repository… makes one, or Open from Repository… opens a project from GitHub.', 409);
+  if (!repo) throw new GitError(`the project '${name}' is not in a git repository`, 'Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 409);
   return repo;
 }
 
@@ -182,7 +182,7 @@ const headOf = async cwd => { const r = await git(['rev-parse', '--verify', '--q
 // origin's URLs (fetch and push), checked: github.com's
 async function origin(cwd) {
   const r = await git(['remote', 'get-url', 'origin'], { cwd });
-  if (r.code) throw new GitError('the repository has no remote (origin)', 'Initialize Repository… with the GitHub repository\'s address sets it.', 409);
+  if (r.code) throw new GitError('the repository has no remote (origin)', 'Store Project in a GitHub Repository… with the repository\'s address sets it.', 409);
   // (every URL of the remote, #3523: git fetches from the first, and pushes to each push URL)
   const all = async flags => (await git(['remote', 'get-url', ...flags, '--all', 'origin'], { cwd })).stdout.split(/\r?\n/).map(u => u.trim()).filter(Boolean);
   for (const u of [...await all([]), ...await all(['--push'])]) checkUrl(u);
@@ -543,7 +543,7 @@ async function checkoutSparse(dir) {
   if (await headOf(dir)) await ok('checkout', ['read-tree', '-mu', 'HEAD'], { cwd: dir });
 }
 
-/** Open from Repository: clone a GitHub repository into the workspace as a project, untrusted (#2830: the trust mark in
+/** Open from GitHub Repository: clone a GitHub repository into the workspace as a project, untrusted (#2830: the trust mark in
  *  .git, so its silinx.json stays the repository's): { project, url, warnings }. madeBy 'mcp': the MCP's. */
 export async function gitClone({ url, name = null, madeBy = null }) {
   const remote = checkUrl(url);

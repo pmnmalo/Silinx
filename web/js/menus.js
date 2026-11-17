@@ -74,7 +74,7 @@ export function setupMenus() {
       { label: 'Export Project (.zip)…', action: () => import('./project-zip-dialogs.js').then(m => m.exportProjectDialog()), disabled: hasPj },
       // (a copy, #2826, or live, #3181: chosen in its window, #3698)
       { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()), disabled: () => !canShare() },
-      hasGit() ? { label: 'Open from Repository…', action: () => openFromRepositoryDialog() } : null,   // (a GitHub repository, a Classroom assignment's: #3195; after Share Project…, #3323)
+      hasGit() ? { label: 'Open from GitHub Repository…', action: () => openFromRepositoryDialog() } : null,   // (a GitHub repository, a Classroom assignment's: #3195; after Share Project…, #3323)
       { label: 'Short Links…', action: () => import('./short-links.js').then(m => m.shortLinksDialog()) },   // (the short links' gists, #3635)
       '-',
       ...(api.standalone ? storageMenuItems() : []),

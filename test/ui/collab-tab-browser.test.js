@@ -59,16 +59,16 @@ const edit = async (page, rel, text) => {
   await page.eval(async (f, t) => { window.SilinxApp.S.docs.find((d) => d.path === f).editor.setValue(t); await window.SilinxApp.saveAll(); }, rel, text);
 };
 
-uiTest('#4215 the browser edition\'s Collaboration tab: Open from Repository…, Commit and Push…, the sign-in, GitHub Checks kept; Portuguese', E, async (page) => {
+uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Repository…, Commit and Push…, the sign-in, GitHub Checks kept; Portuguese', E, async (page) => {
   const REPO = 'course/collab-ana';
   gh.seed(REPO, filesOf(BLINKY));
   await boot(page);
   await page.eval((t) => localStorage.setItem('silinx.github-token', t), gh.token);
-  // (no project: no tab, #4257; Open from Repository… from the Start page)
+  // (no project: no tab, #4257; Open from GitHub Repository… from the Start page)
   assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
   await page.leftTab('start');
-  await page.click('#start-page .entry a', { text: 'Open from Repository…' });
-  await page.waitDialog('Open from Repository');
+  await page.click('#start-page .entry a', { text: 'Open from GitHub Repository…' });
+  await page.waitDialog('Open from GitHub Repository');
   await page.fill('.dlg-overlay .git-url', `https://github.com/${REPO}`);
   await page.dialogButton('Open');
   await page.waitNoDialog();

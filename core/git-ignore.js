@@ -11,7 +11,7 @@ export const isOutput = rel => {
   return OUTPUTS.some(p => (p.startsWith('*') ? rel.toLowerCase().endsWith(p.slice(1)) : parts[0] === p));
 };
 
-/** The .gitignore Silinx writes into a project (Initialize Repository…, and before a commit when it has none). */
+/** The .gitignore Silinx writes into a project (Store Project in a GitHub Repository…, and before a commit when it has none). */
 export const GITIGNORE = `# Silinx (#3195): what the tools make again from the sources is not committed
 build/
 xst/

@@ -2,7 +2,7 @@
 // Collaboration), in both interfaces, gathering the git commands (#3194, web/js/git.js) as the Teaching tab gathers the
 // labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
 // a file with the last commit), Commit…, Push, Pull, History…, the GitHub sign-in and the last push's checks; a project
-// with no repository: Initialize Repository…, Open from Repository…. The same items as the Git submenu's
+// with no repository: Store Project in a GitHub Repository…, Open from GitHub Repository…. The same items as the Git submenu's
 // (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, enabled as it
 // is), and live sharing (#3181): what the toolbar's presence shows and its commands
 // (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
@@ -33,7 +33,7 @@ const command = (it, ic) => (it.disabled
   ? entry(ic, h('a', { class: 'disabled', 'aria-disabled': 'true' }, it.label))
   : entry(ic, h('a', { onclick: () => Promise.resolve(it.action()).finally(renderCollabPage) }, it.label)));
 const ICON = { 'Commit…': 'save', 'Commit and Push…': 'save', 'Push to GitHub': 'up', 'Pull from GitHub': 'refresh', 'History…': 'summary',
-  'GitHub Checks': 'run', 'Initialize Repository…': 'project', 'Sign in with GitHub…': 'project', 'Sign out of GitHub': 'project' };
+  'GitHub Checks': 'run', 'Store Project in a GitHub Repository…': 'project', 'Sign in with GitHub…': 'project', 'Sign out of GitHub': 'project' };
 const cmd = it => command(it, ICON[it.label] || 'file');
 
 /** The tab shown or hidden with git, and its page drawn (#collab-page); kept when it is the same, as the Teaching page. */
@@ -57,11 +57,11 @@ function boxes() {
   if (!hasGit()) return [liveHere() ? liveBox() : null].filter(Boolean);
   const items = gitMenuItems().filter(it => it !== '-');
   const by = label => items.find(it => it.label === label);
-  const init = by('Initialize Repository…'), open = { label: 'Open from Repository…', action: () => openFromRepositoryDialog() };
+  const init = by('Store Project in a GitHub Repository…'), open = { label: 'Open from GitHub Repository…', action: () => openFromRepositoryDialog() };
   return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks')), liveHere() ? liveBox() : null];
 }
 
-// the remote and the branch, the commands of a repository; none: Initialize Repository…, Open from Repository…
+// the remote and the branch, the commands of a repository; none: Store Project in a GitHub Repository…, Open from GitHub Repository…
 function repositoryBox(items, init, open) {
   const g = S.git;
   if (!g) {

@@ -171,11 +171,11 @@ test('push rejected (GitHub has commits this project has not), pull merges them;
 test('init: a repository of a new project (the .gitignore, main, its GitHub remote), committed and pushed; already one', async () => {
   await P.createProject({ name: 'fresh', template: 'blinky' });
   assert.deepEqual(await G.gitStatus('fresh'), { project: 'fresh', repository: false, files: [] });
-  await rejects(G.gitCommit('fresh', 'x'), 'the project \'fresh\' is not in a git repository', 'Initialize Repository… makes one, or Open from Repository… opens a project from GitHub.');
-  await rejects(G.gitLog('fresh'), 'the project \'fresh\' is not in a git repository', 'Initialize Repository… makes one, or Open from Repository… opens a project from GitHub.');
+  await rejects(G.gitCommit('fresh', 'x'), 'the project \'fresh\' is not in a git repository', 'Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.');
+  await rejects(G.gitLog('fresh'), 'the project \'fresh\' is not in a git repository', 'Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.');
   assert.deepEqual(await G.gitInit('fresh'), { project: 'fresh', created: true, remote: null, gitignore: true });
   assert.deepEqual(await G.gitLog('fresh'), []);
-  await rejects(G.gitPush('fresh'), 'the repository has no remote (origin)', 'Initialize Repository… with the GitHub repository\'s address sets it.');
+  await rejects(G.gitPush('fresh'), 'the repository has no remote (origin)', 'Store Project in a GitHub Repository… with the repository\'s address sets it.');
   const bare = path.join(tmp, 'remotes', 'fresh.git');
   fs.mkdirSync(bare, { recursive: true });
   sh(bare, 'init', '--quiet', '--bare');
@@ -454,7 +454,7 @@ test('a repository whose own configuration names a program, an included file or 
   const flag = path.join(tmp, 'config-ran');
   const run = `sh -c "echo ran >> '${flag}'; cat"`;
   const refused = key => ({ message: `the repository's own configuration sets '${key}': Silinx runs no git command in it`, status: 409,
-    hint: `A repository made or cloned by Silinx has no such setting: remove it if you trust it (git config --local --unset-all ${key}), or open the repository again with Open from Repository….` });
+    hint: `A repository made or cloned by Silinx has no such setting: remove it if you trust it (git config --local --unset-all ${key}), or open the repository again with Open from GitHub Repository….` });
   // a filter, named by the repository's own attributes file: nothing runs, by a status, a commit or the log
   write(path.join(dir, '.git', 'info', 'attributes'), '* filter=x\n');
   for (const [key, value] of [['filter.x.clean', run], ['filter.x.smudge', run], ['filter.x.process', run], ['merge.x.driver', run], ['diff.x.textconv', run],

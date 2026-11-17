@@ -35,14 +35,14 @@ async function allowedRemote(remote) {
   const allow = mcpRemotes();
   const repo = `${r.owner}/${r.repo}`.toLowerCase();
   if (allow.includes(repo) || allow.includes(`${r.owner.toLowerCase()}/*`)) return remote;
-  throw toolError(`remote: ${r.owner}/${r.repo} is not among the repositories the user lets the MCP server set (mcp.remotes in config.json: "owner/repo" or "owner/*"); the user sets another in the interface (File ▸ Git ▸ Initialize Repository…)`);
+  throw toolError(`remote: ${r.owner}/${r.repo} is not among the repositories the user lets the MCP server set (mcp.remotes in config.json: "owner/repo" or "owner/*"); the user sets another in the interface (File ▸ Git ▸ Store Project in a GitHub Repository…)`);
 }
 const UNTRUSTED = ' It is untrusted, as every project from outside: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.';
 
 export const GIT_TOOLS = [
   {
     name: 'git_clone', title: 'Open a project from a GitHub repository',
-    description: 'Clone a GitHub repository (https://github.com/owner/repo, git@github.com:owner/repo.git; a GitHub Classroom assignment\'s repository) into the workspace as a project, as File ▸ Open from Repository… does. Its root must hold the project (silinx.json); its files pass the import gate. The credentials are git\'s own (its credential helper, an SSH key).',
+    description: 'Clone a GitHub repository (https://github.com/owner/repo, git@github.com:owner/repo.git; a GitHub Classroom assignment\'s repository) into the workspace as a project, as File ▸ Open from GitHub Repository… does. Its root must hold the project (silinx.json); its files pass the import gate. The credentials are git\'s own (its credential helper, an SSH key).',
     inputSchema: { type: 'object', properties: { url: STR('The repository\'s address on GitHub.'), name: STR('The project\'s name (default: the repository\'s).') }, required: ['url'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async run({ url, name }) {
@@ -52,7 +52,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_init', title: 'Make a git repository of a project',
-    description: 'Make a git repository of a project (git init, branch main, a .gitignore that leaves build/ and the tools\' outputs out), as File ▸ Git ▸ Initialize Repository… does; remote: its GitHub repository (origin), which a project already in a repository with no remote gets too: only one the user\'s settings let the MCP server set (mcp.remotes in config.json).',
+    description: 'Make a git repository of a project (git init, branch main, a .gitignore that leaves build/ and the tools\' outputs out), as File ▸ Git ▸ Store Project in a GitHub Repository… does; remote: its GitHub repository (origin), which a project already in a repository with no remote gets too: only one the user\'s settings let the MCP server set (mcp.remotes in config.json).',
     inputSchema: { type: 'object', properties: { project: PROJECT, remote: STR('The GitHub repository\'s address (optional): origin, where git_push pushes; one of the user\'s settings (mcp.remotes).') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project, remote }) {

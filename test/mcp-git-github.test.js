@@ -83,7 +83,7 @@ test('git_init on an empty GitHub repository, its first commit; no token said wi
   assert.equal((await ok('git_status', { project: 'fresh' })).text, '\'fresh\' is not in a git repository (git_init makes one).');
   // (the repositories the MCP may set, #3363)
   fs.writeFileSync(path.join(process.env.SILINX_CONFIG_DIR, 'config.json'), JSON.stringify({ mcp: { remotes: ['pmalo/*'] } }));
-  await fails('git_init', { project: 'fresh', remote: 'https://github.com/pmalo/lab1' }, 'the GitHub repository already has commits\nHint: Open it with Open from Repository… instead, or give an empty repository.');
+  await fails('git_init', { project: 'fresh', remote: 'https://github.com/pmalo/lab1' }, 'the GitHub repository already has commits\nHint: Open it with Open from GitHub Repository… instead, or give an empty repository.');
   assert.equal((await ok('git_init', { project: 'fresh', remote: 'https://github.com/pmalo/empty' })).text, 'Repository made for \'fresh\', its remote https://github.com/pmalo/empty.');
   const c = await ok('git_commit', { project: 'fresh', message: 'First' });
   assert.match(c.text, /^Committed [0-9a-f]{7} on main: \d+ file\(s\)\./);
@@ -131,5 +131,5 @@ test('#3194 #4237 git_checks through GitHub\'s API: the last pushed commit\'s ch
   assert.ok(asked.length >= 3 && asked.every(q => q.headers.authorization === `Bearer ${gh.token}` && !q.url.includes(gh.token)));
   // (a project not in a repository)
   await ok('new_project_from_example', { name: 'loose', example: 'gates' });
-  await fails('git_checks', { project: 'loose' }, 'the project \'loose\' is not in a git repository\nHint: Initialize Repository… with its GitHub repository, or Open from Repository… opens a project from GitHub.');
+  await fails('git_checks', { project: 'loose' }, 'the project \'loose\' is not in a git repository\nHint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.');
 });

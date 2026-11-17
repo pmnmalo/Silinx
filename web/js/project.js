@@ -264,11 +264,11 @@ export async function renderStartPage() {
       ...[['Import Project…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command),
       // (the git group after a line, where there is git; Share Project…: the main toolbar's and the File menu's, #3716)
       ...(git => (git.length ? [h('hr', { class: 'start-sep' }), ...git] : []))([
-        // (Sign in with GitHub…, the browser edition's, first; Initialize Repository…, the open project's, disabled with
+        // (Sign in with GitHub…, the browser edition's, first; Store Project in a GitHub Repository…, the open project's, disabled with
         // none as the exports: where they apply, in both interfaces, #3534, #3716)
         ...gitStartItems().sort((a, b) => !!a.project - !!b.project).map(it => command([it.label, it.project ? 'save' : 'project', () => (S.project || !it.project) && it.action(), it.project])),
         // (a GitHub repository, a Classroom assignment's: the server editions, #3195; the group's last, #3716)
-        ...(hasGit() ? [command(['Open from Repository…', 'open', () => openFromRepositoryDialog()])] : [])])),
+        ...(hasGit() ? [command(['Open from GitHub Repository…', 'open', () => openFromRepositoryDialog()])] : [])])),
     // (where the projects are kept above the recent ones, #2029)
     api.standalone ? await storageBox() : await workspaceBox(),
     h('div', { class: 'start-box' }, h('h3', {}, 'Recent Projects'),

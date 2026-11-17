@@ -1,10 +1,10 @@
-// Portuguese strings of git (#3195, web/js/git.js): File ▸ Open from Repository…, File ▸ Git ▸, their dialogs and the
+// Portuguese strings of git (#3195, web/js/git.js): File ▸ Open from GitHub Repository…, File ▸ Git ▸, their dialogs and the
 // Design pane's marks; merged into the dictionary of i18n.js.
 export const GIT_PT = {
-  'Open from Repository…': 'Abrir do Repositório…', 'Open from Repository': 'Abrir do Repositório',
+  'Open from GitHub Repository…': 'Abrir do Repositório GitHub…', 'Open from GitHub Repository': 'Abrir do Repositório GitHub',
   'Git': 'Git (controlo de versões)',
   'Commit…': 'Registar (Commit)…', 'Commit': 'Registar (Commit)', 'Push to GitHub': 'Enviar para o GitHub (Push)', 'Pull from GitHub': 'Receber do GitHub (Pull)',
-  'Initialize Repository…': 'Inicializar Repositório…', 'Initialize Repository': 'Inicializar Repositório', 'Initialize': 'Inicializar',
+  'Store Project in a GitHub Repository…': 'Guardar o Projeto num Repositório GitHub…', 'Store Project in a GitHub Repository': 'Guardar o Projeto num Repositório GitHub', 'Initialize': 'Inicializar',
   'GitHub repository (a Classroom assignment\'s too):': 'Repositório do GitHub (também o de um trabalho do Classroom):',
   'GitHub repository (optional: where Push sends the commits):': 'Repositório do GitHub (opcional: para onde o Push envia os commits):',
   'Message:': 'Mensagem:', 'https://github.com/owner/repository': 'https://github.com/dono/repositório',

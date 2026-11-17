@@ -1,6 +1,6 @@
 // UI: git in the browser edition (#3196, web/js/git-browser.js), through GitHub's REST API: the site (test/ui/site-lib.js)
 // with a stand-in for GitHub on its own origin (test/fake-github.mjs; the page pointed at it by SILINX_GITHUB, as
-// web/js/github-app.js reads it), no network. File ▸ Open from Repository… (a public repository with no sign-in; a
+// web/js/github-app.js reads it), no network. File ▸ Open from GitHub Repository… (a public repository with no sign-in; a
 // private one refused, its hint the sign-in); Sign in with GitHub… (the device flow: the code shown, authorized on
 // "GitHub"); the Design pane's marks; Commit and Push… (several files in one commit, pushed at once: no Push in the menu);
 // Pull from GitHub (an open document read again); a rejected commit and a conflict as ERROR lines with their hint;
@@ -50,8 +50,8 @@ const edit = async (page, rel, text) => {
 // the harness runs it from the menus' definitions (the Silinx interface hides File; the single file has no i18n module)
 const ptMenu = (page, pt, en) => page.menu('Ficheiro', pt).catch((e) => { if (/^no item/.test(e.message)) return page.menu('Ficheiro', en); throw e; });
 const openRepo = async (page, url) => {
-  await page.menu('File', 'Open from Repository…');
-  await page.waitDialog('Open from Repository');
+  await page.menu('File', 'Open from GitHub Repository…');
+  await page.waitDialog('Open from GitHub Repository');
   await page.fill('.dlg-overlay .git-url', url);
   await page.dialogButton('Open');
   await page.waitNoDialog();
@@ -64,7 +64,7 @@ const commit = async (page, message) => {
   await page.waitNoDialog();
 };
 
-uiTest('#3196 the browser edition: Open from Repository…, Sign in with GitHub…, the marks, Commit and Push…, Pull, a rejection and a conflict, History…', E, async (page) => {
+uiTest('#3196 the browser edition: Open from GitHub Repository…, Sign in with GitHub…, the marks, Commit and Push…, Pull, a rejection and a conflict, History…', E, async (page) => {
   gh.seed('pmalo/lab1', filesOf(BLINKY));
   gh.seed('pmalo/secret', filesOf(BLINKY), { private: true });
   await boot(page);
@@ -157,7 +157,7 @@ uiTest('#3196 the browser edition: Open from Repository…, Sign in with GitHub�
   assert.deepEqual(warnings(page), []);
 }, { url: () => 'about:blank', timeout: 240000 });
 
-uiTest('#3196 the browser edition in Portuguese: the Git commands; Initialize Repository… on an empty repository, its first commit; the sign-in with a pasted token', E, async (page) => {
+uiTest('#3196 the browser edition in Portuguese: the Git commands; Store Project in a GitHub Repository… on an empty repository, its first commit; the sign-in with a pasted token', E, async (page) => {
   gh.seed('pmalo/fresh');
   await boot(page);
   await page.menu('File', 'New Project…');
@@ -177,8 +177,8 @@ uiTest('#3196 the browser edition in Portuguese: the Git commands; Initialize Re
   await page.eval((t) => localStorage.setItem('silinx.github-token', t), gh.token);
   // not a repository yet: Registar e Enviar disabled
   await assert.rejects(ptMenu(page, 'Registar e Enviar (Commit e Push)…', 'Commit and Push…'), /menu item 'Ficheiro ▸ (Registar e Enviar \(Commit e Push\)|Commit and Push)…' is disabled$/);
-  await ptMenu(page, 'Inicializar Repositório…', 'Initialize Repository…');
-  await page.waitDialog('Inicializar Repositório');
+  await ptMenu(page, 'Guardar o Projeto num Repositório GitHub…', 'Store Project in a GitHub Repository…');
+  await page.waitDialog('Guardar o Projeto num Repositório GitHub');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .form-grid label').textContent), 'Repositório do GitHub (um vazio: para onde vão os commits):');
   // (the browser edition's repository is GitHub's: its address required)
   await page.dialogButton('Inicializar');
@@ -236,7 +236,7 @@ uiTest('#3196 the browser edition in Portuguese: the Git commands; Initialize Re
 }, { url: () => 'about:blank', timeout: 180000 });
 
 // (#3534) Sign in with GitHub… on the Start page (no project needed) and in the Design tree's project and device menus,
-// with Initialize Repository… for a project with no repository: shown when not signed in, the File menu's dialog run
+// with Store Project in a GitHub Repository… for a project with no repository: shown when not signed in, the File menu's dialog run
 // from either (a cancel keeps them); gone from both once signed in (Sign out of GitHub: the Git submenu's), back once
 // signed out; in Portuguese. Both interfaces; no warnings.
 const startLinks = (page) => page.eval(() => [...document.querySelectorAll('#start-page .entry a')].filter((a) => a.getClientRects().length).map((a) => a.textContent));
@@ -259,11 +259,11 @@ uiTest('#3534 the browser edition: Sign in with GitHub… on the Start page and 
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'SignTree' && document.querySelectorAll('#hier .row .lbl').length >= 2, [], { what: 'SignTree open' });
-  // the Start page's git group: Sign in with GitHub… first, Initialize Repository…, Open from Repository… last (#3716)
+  // the Start page's git group: Sign in with GitHub… first, Store Project in a GitHub Repository…, Open from GitHub Repository… last (#3716)
   await page.leftTab('start');
   await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Sign in with GitHub…'), [], { what: 'the Start page\'s sign-in' });
   let links = await startLinks(page);
-  assert.deepEqual(links.slice(links.indexOf('Sign in with GitHub…'), links.indexOf('Sign in with GitHub…') + 3), ['Sign in with GitHub…', 'Initialize Repository…', 'Open from Repository…'], links.join(' | '));
+  assert.deepEqual(links.slice(links.indexOf('Sign in with GitHub…'), links.indexOf('Sign in with GitHub…') + 3), ['Sign in with GitHub…', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…'], links.join(' | '));
   // its dialog, the File menu's; cancelled: still there
   await page.click('#start-page .entry a', { text: 'Sign in with GitHub…' });
   await page.waitDialog('Sign in with GitHub');
@@ -271,12 +271,12 @@ uiTest('#3534 the browser edition: Sign in with GitHub… on the Start page and 
   await page.waitNoDialog();
   await page.waitConsole(/The GitHub sign-in was cancelled\./);
   assert.ok((await startLinks(page)).includes('Sign in with GitHub…'));
-  // the project's and the device's rows: Initialize Repository…, Sign in with GitHub…, then Git
+  // the project's and the device's rows: Store Project in a GitHub Repository…, Sign in with GitHub…, then Git
   await page.leftTab('design');
   for (const row of [0, 1]) {
     const items = await treeItems(page, row);
-    const at = items.indexOf('Initialize Repository…');
-    assert.deepEqual(items.slice(at, at + 3), ['Initialize Repository…', 'Sign in with GitHub…', 'Git'], `row ${row}: ${items.join(' | ')}`);
+    const at = items.indexOf('Store Project in a GitHub Repository…');
+    assert.deepEqual(items.slice(at, at + 3), ['Store Project in a GitHub Repository…', 'Sign in with GitHub…', 'Git'], `row ${row}: ${items.join(' | ')}`);
   }
   // signed in from the device's row: gone from the menus and the Start page
   await treeItems(page, 1, 'Sign in with GitHub…');
@@ -287,11 +287,11 @@ uiTest('#3534 the browser edition: Sign in with GitHub… on the Start page and 
   await page.waitConsole(/Signed in to GitHub as student: the sign-in is kept in this browser/);
   for (const row of [0, 1]) {
     const items = await treeItems(page, row);
-    assert.ok(!items.includes('Sign in with GitHub…') && items.includes('Initialize Repository…'), `row ${row}: ${items.join(' | ')}`);
+    assert.ok(!items.includes('Sign in with GitHub…') && items.includes('Store Project in a GitHub Repository…'), `row ${row}: ${items.join(' | ')}`);
   }
   await page.leftTab('start');
   await page.waitFor(() => ![...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Sign in with GitHub…'), [], { what: 'the Start page\'s sign-in gone' });
-  assert.ok((await startLinks(page)).includes('Initialize Repository…'));
+  assert.ok((await startLinks(page)).includes('Store Project in a GitHub Repository…'));
   // signed out (the Git submenu's): back, in Portuguese (the page loaded again)
   await page.menu('File', 'Sign out of GitHub');
   await page.waitDialog('Sign out of GitHub');
@@ -302,7 +302,7 @@ uiTest('#3534 the browser edition: Sign in with GitHub… on the Start page and 
   await page.waitFor(() => document.documentElement.lang === 'pt' && window.Silinx.project?.name === 'SignTree' && document.querySelectorAll('#hier .row .lbl').length >= 2, [], { what: 'Portuguese, SignTree' });
   for (const row of [0, 1]) {
     const items = await treeItems(page, row);
-    assert.ok(items.includes('Inicializar Repositório…') && items.includes('Iniciar sessão no GitHub…'), `row ${row}: ${items.join(' | ')}`);
+    assert.ok(items.includes('Guardar o Projeto num Repositório GitHub…') && items.includes('Iniciar sessão no GitHub…'), `row ${row}: ${items.join(' | ')}`);
   }
   await page.leftTab('start');
   await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Iniciar sessão no GitHub…'), [], { what: 'the Start page in Portuguese' });
@@ -351,7 +351,7 @@ uiTest('#3194 GitHub Checks: no check yet, the hint after a push, a check queued
 }, { url: () => 'about:blank', timeout: 180000 });
 
 // (#3968) the browser edition opened fresh, no project open, not signed in: the Start page in front, its git group after
-// a line with no click, Sign in with GitHub… first, Initialize Repository… (disabled with no project), Open from
+// a line with no click, Sign in with GitHub… first, Store Project in a GitHub Repository… (disabled with no project), Open from
 // Repository… last; in Portuguese too. (A failed first ask of git: the server editions', test/ui/git-start.test.js.)
 const startBox = (page) => page.eval(() => [...document.querySelector('#start-page .start-box').children]
   .filter((e) => e.matches('.entry, hr') && e.getClientRects().length).map((e) => (e.matches('hr') ? '—' : e.textContent)));
@@ -360,8 +360,8 @@ uiTest('#3968 the browser edition opened fresh: the Start page\'s git group, in 
   await page.eval(() => { for (const s of [localStorage, sessionStorage]) s.removeItem('silinx.github-token'); window.SilinxApp.closeProject?.(); });
   await page.eval(() => localStorage.removeItem('silinx.lastProject'));
   for (const [lang, expected] of [
-    ['en', ['Import Project…', 'Export Project (.zip)…', '—', 'Sign in with GitHub…', 'Initialize Repository…', 'Open from Repository…']],
-    ['pt', ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—', 'Iniciar sessão no GitHub…', 'Inicializar Repositório…', 'Abrir do Repositório…']],
+    ['en', ['Import Project…', 'Export Project (.zip)…', '—', 'Sign in with GitHub…', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…']],
+    ['pt', ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—', 'Iniciar sessão no GitHub…', 'Guardar o Projeto num Repositório GitHub…', 'Abrir do Repositório GitHub…']],
   ]) {
     await page.eval((l) => (l === 'pt' ? localStorage.setItem('silinx.lang', 'pt') : localStorage.removeItem('silinx.lang')), lang);
     await boot(page);

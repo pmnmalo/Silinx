@@ -1,8 +1,8 @@
 // Git in the interface (#3195: the server editions, through the system's git, server/git.js; #3196: the browser edition,
 // through GitHub's REST API, web/js/git-browser.js, where a commit is pushed at once and the sign-in is Silinx's): File ▸
-// Open from Repository…, File ▸ Git ▸ (Commit…, Push to GitHub, Pull from GitHub, History… (web/js/git-history.js), GitHub
+// Open from GitHub Repository…, File ▸ Git ▸ (Commit…, Push to GitHub, Pull from GitHub, History… (web/js/git-history.js), GitHub
 // Checks (#3194: what GitHub's workflows said of the last push),
-// Initialize Repository…), the same in the Design pane's
+// Store Project in a GitHub Repository…), the same in the Design pane's
 // project menu (the Silinx interface has no File menu) and in the Collaboration tab (#4215, web/js/collab-tab.js), and the Design pane's marks of the files changed or new since
 // the last commit (S.git, refreshed when the project opens, after its files are written and after each command).
 // Every message goes to the console: git's line as an ERROR, its hint after it (docs/UI-GUIDELINES.md).
@@ -67,7 +67,7 @@ async function readStatus(n) {
   const before = JSON.stringify(S.git?.files || []), had = !!S.git;
   S.git = s?.repository ? { ...s, byPath: new Map(s.files.map(f => [f.path, f.state])) } : null;
   if (JSON.stringify(S.git?.files || []) !== before) renderHierarchy();
-  if (!!S.git !== had) renderStartPage();   // (its Initialize Repository…, a project with no repository's, #3534)
+  if (!!S.git !== had) renderStartPage();   // (its Store Project in a GitHub Repository…, a project with no repository's, #3534)
   dispatchEvent(new CustomEvent('silinx:git-status'));   // (the Collaboration tab's remote, branch and changes, #4215)
   return S.git;
 }
@@ -99,7 +99,7 @@ export function hookGitStatus() {
   }
   addEventListener('silinx:project-opened', () => refreshGitStatus());
   addEventListener('silinx:project-closed', () => { S.git = null; dispatchEvent(new CustomEvent('silinx:git-status')); });
-  // (git's presence asked once: the Start page and the Teaching page then have Open from Repository…; a project reopened at start-up, which
+  // (git's presence asked once: the Start page and the Teaching page then have Open from GitHub Repository…; a project reopened at start-up, which
   // says no project-opened, gets its status; a request that failed, asked again a few times, #3968)
   const ask = wait => gitAvailable().then(on => {
     dispatchEvent(new CustomEvent('silinx:git-status'));   // (the Collaboration tab, shown or hidden with git, #4215)
@@ -113,7 +113,7 @@ export function hookGitStatus() {
 // a field's error, beside it (the dialog stays open)
 const fieldError = cls => h('div', { class: `hint git-error ${cls}`, style: { gridColumn: '1 / -1', minHeight: '16px' } });
 
-/** File ▸ Open from Repository…: a GitHub repository (a Classroom assignment's) cloned into the workspace, opened. */
+/** File ▸ Open from GitHub Repository…: a GitHub repository (a Classroom assignment's) cloned into the workspace, opened. */
 export async function openFromRepositoryDialog() {
   const url = h('input', { type: 'text', class: 'git-url', placeholder: 'https://github.com/owner/repository', style: { width: '100%' } });
   const name = h('input', { type: 'text', class: 'git-name', style: { width: '100%' } });
@@ -126,7 +126,7 @@ export async function openFromRepositoryDialog() {
     if (!named) { try { name.value = nameFromRepo(checkUrl(url.value).repo); } catch { name.value = ''; } }
   });
   const r = await dialog({
-    title: 'Open from Repository', width: 520,
+    title: 'Open from GitHub Repository', width: 520,
     body: h('div', {},
       h('div', { class: 'form-grid' }, ...field('GitHub repository (a Classroom assignment\'s too):', url), err, ...field('Project name:', name)),
       h('div', { class: 'hint', style: { marginTop: '10px' } }, api.standalone
@@ -151,7 +151,7 @@ async function commitDialog() {
   if (!S.project) return null;
   await saveAll();
   const s = await refreshGitStatus();
-  if (!s) { log(`ERROR: the project '${S.project.name}' is not in a git repository`, 'err'); log('Hint: Initialize Repository… makes one, or Open from Repository… opens a project from GitHub.', 'info'); return null; }
+  if (!s) { log(`ERROR: the project '${S.project.name}' is not in a git repository`, 'err'); log('Hint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 'info'); return null; }
   const STATE = { modified: 'changed', new: 'new', deleted: 'deleted', conflict: 'in conflict' };
   const msg = h('textarea', { class: 'git-message', rows: 4, style: { width: '100%' } });
   // (Compare: the file against the last commit, #3197; the dialog closed for it)
@@ -234,14 +234,14 @@ async function gitPull({ resolve = null } = {}) {
   } finally { await refreshGitStatus(); }
 }
 
-/** File ▸ Git ▸ Initialize Repository…: git init, Silinx's .gitignore, optionally the GitHub repository (origin). */
+/** File ▸ Git ▸ Store Project in a GitHub Repository…: git init, Silinx's .gitignore, optionally the GitHub repository (origin). */
 async function initDialog() {
   if (!S.project) return null;
   const url = h('input', { type: 'text', class: 'git-url', placeholder: 'https://github.com/owner/repository', style: { width: '100%' } });
   const err = fieldError('git-url-error');
   url.addEventListener('input', () => { err.textContent = ''; });
   const r = await dialog({
-    title: 'Initialize Repository', width: 520,
+    title: 'Store Project in a GitHub Repository', width: 520,
     body: h('div', {}, h('div', { class: 'form-grid' }, ...field(api.standalone ? 'GitHub repository (an empty one: where the commits go):' : 'GitHub repository (optional: where Push sends the commits):', url), err),
       h('div', { class: 'hint', style: { marginTop: '10px' } }, 'A .gitignore leaves build/ and the tools\' outputs out of the commits.')),
     buttons: [{ label: 'Initialize', primary: true, value: () => url.value.trim(),
@@ -262,7 +262,7 @@ export const gitMenuItems = () => [
   { label: 'History…', action: () => import('./git-history.js').then(m => m.historyDialog()), disabled: !S.git },
   { label: 'GitHub Checks', action: () => gitChecks(), disabled: !S.git },
   '-',
-  { label: 'Initialize Repository…', action: () => initDialog() },
+  { label: 'Store Project in a GitHub Repository…', action: () => initDialog() },
   ...(api.standalone ? ['-', api.githubSignedIn()
     ? { label: 'Sign out of GitHub', action: () => import('./git-signin.js').then(m => m.signOut()) }
     : { label: 'Sign in with GitHub…', action: () => signIn() }] : []),
@@ -271,10 +271,10 @@ export const gitMenuItems = () => [
 const signIn = () => import('./git-signin.js').then(m => m.signInDialog()).then(ok => { if (ok) renderStartPage(); return ok; });
 
 /** The git commands that start one (the Start page, the Design pane's project and device menus, #3534), where they
- *  apply: Initialize Repository… when the project has no repository (the open one's: on the Start page, disabled with
+ *  apply: Store Project in a GitHub Repository… when the project has no repository (the open one's: on the Start page, disabled with
  *  none), Sign in with GitHub… in the browser edition when not signed in (Sign out of GitHub: the Git submenu's). The
  *  same functions as the Git submenu's; `project`: the command needs an open project. */
 export const gitStartItems = () => (!hasGit() ? [] : [
-  !S.git ? { label: 'Initialize Repository…', action: () => initDialog(), project: true } : null,
+  !S.git ? { label: 'Store Project in a GitHub Repository…', action: () => initDialog(), project: true } : null,
   api.standalone && !api.githubSignedIn() ? { label: 'Sign in with GitHub…', action: () => signIn() } : null,
 ].filter(Boolean));

@@ -28,7 +28,7 @@ export const PROJECT_FILE = 'silinx.json';
 // a path of the project's own (not hidden, not a tool's output)
 const own = p => !p.split('/').some(s => s.startsWith('.')) && !isOutput(p);
 
-const notRepo = name => new GitError(`the project '${name}' is not in a git repository`, 'Initialize Repository… with its GitHub repository, or Open from Repository… opens a project from GitHub.', 409);
+const notRepo = name => new GitError(`the project '${name}' is not in a git repository`, 'Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 409);
 const rejected = () => new GitError('git push: rejected by GitHub (fetch first)', HINT.rejected, 409);
 
 // a few requests at a time
@@ -110,7 +110,7 @@ export function restGit({ client, projects, meta }) {
     return { project: name, repository: true, root: 'project', remote: `${m.owner}/${m.repo}`, branch: m.branch, upstream: `origin/${m.branch}`, ahead: 0, behind: 0, files };
   }
 
-  /** Open from Repository: the repository's project into a new one, untrusted (projects.create) -> { project, url,
+  /** Open from GitHub Repository: the repository's project into a new one, untrusted (projects.create) -> { project, url,
    *  repository, warnings }. */
   async function clone({ url, name = null }) {
     const remote = checkUrl(url);
@@ -134,7 +134,7 @@ export function restGit({ client, projects, meta }) {
     return { project, url: remote.url, repository: `${m.owner}/${m.repo}`, warnings };
   }
 
-  /** Initialize Repository: the project's GitHub repository (remote: required here, there is no repository without
+  /** Store Project in a GitHub Repository: the project's GitHub repository (remote: required here, there is no repository without
    *  GitHub's), which must be empty: its first commit is the project's. */
   async function init(name, { remote = null } = {}) {
     if (!await projects.exists(name)) throw new GitError(`project '${name}' not found`, null, 404);
@@ -142,7 +142,7 @@ export function restGit({ client, projects, meta }) {
     const r = checkUrl(remote);
     const info = await request('GET', R(r.owner, r.repo));
     const m = { owner: info.owner?.login || r.owner, repo: info.name || r.repo, branch: info.default_branch || 'main', url: r.url, commit: null, tree: null, paths: {}, gitignore: false };
-    if (await headOf(m)) throw new GitError('the GitHub repository already has commits', 'Open it with Open from Repository… instead, or give an empty repository.', 409);
+    if (await headOf(m)) throw new GitError('the GitHub repository already has commits', 'Open it with Open from GitHub Repository… instead, or give an empty repository.', 409);
     await meta.set(name, m);
     return { project: name, created: true, remote: r.url, gitignore: false };
   }

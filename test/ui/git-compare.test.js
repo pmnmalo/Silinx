@@ -66,8 +66,8 @@ const t = (m, id) => m.transitions.find((x) => x.id === id);
 const open = async (page, name) => {
   bare(name);
   page.project = name;
-  await page.menu('File', 'Open from Repository…');
-  await page.waitDialog('Open from Repository');
+  await page.menu('File', 'Open from GitHub Repository…');
+  await page.waitDialog('Open from GitHub Repository');
   await page.fill('.dlg-overlay .git-url', `https://github.com/test/${name}`);
   await page.dialogButton('Open');
   await page.waitNoDialog();

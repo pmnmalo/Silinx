@@ -1,9 +1,9 @@
 // UI: the Collaboration tab of the Design pane's row (#4215, web/js/collab-tab.js) in the server editions, against local
 // bare repositories (no network: https://github.com/test/<repo> mapped to one, SILINX_UI_GIT_REMOTES of
 // test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Teaching; no project open: no tab (#4257,
-// Open from Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, its changes with
+// Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, its changes with
 // the Design pane's marks (a click compares one with the last commit), Commit…, Push to GitHub, Pull from GitHub,
-// History… run from the tab, the File menu's items kept; a project with no repository: Initialize Repository… from the
+// History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
 // tab, then committed and pushed; a followed project's read-only notice; Sharing (Share a Copy…, Share Live… from the tab, who is
 // in, the presence's commands, Stop Sharing; a follower's box); the ISE style's tabs all whole in its default side panel
 // (330 px); in Portuguese; a narrow screen; no warnings.
@@ -93,11 +93,11 @@ uiTest('#4215 #4257 the Collaboration tab: no tab with no project, a project ope
   bare('collab1');
   await page.setViewport(1366, 768);
   await page.eval(() => window.SilinxApp.closeProject?.());
-  // no project: no tab (#4257); Open from Repository… from the Start page: the project, its repository and branch, no change
+  // no project: no tab (#4257); Open from GitHub Repository… from the Start page: the project, its repository and branch, no change
   assert.equal(await page.eval(() => document.getElementById('left-tabs').getClientRects().length), 0);
   await page.leftTab('start');
-  await page.click('#start-page .entry a', { text: 'Open from Repository…' });
-  await page.waitDialog('Open from Repository');
+  await page.click('#start-page .entry a', { text: 'Open from GitHub Repository…' });
+  await page.waitDialog('Open from GitHub Repository');
   await page.fill('.dlg-overlay .git-url', 'https://github.com/test/collab1');
   await page.dialogButton('Open');
   await page.waitNoDialog();
@@ -158,7 +158,7 @@ uiTest('#4215 #4257 the Collaboration tab: no tab with no project, a project ope
   await page.waitNoDialog();
   // the File menu keeps its items (the same functions)
   const file = await page.eval(() => window.SilinxApp.S.menus.find((m) => m.label === 'File').items().filter(Boolean).flatMap((x) => (x.submenu ? x.submenu : [x])).filter((x) => x !== '-').map((x) => x.label));
-  for (const l of ['Open from Repository…']) assert.ok(file.includes(l), file.join(' | '));
+  for (const l of ['Open from GitHub Repository…']) assert.ok(file.includes(l), file.join(' | '));
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
@@ -184,21 +184,21 @@ uiTest('#4215 #4257 the Collaboration tab: no tab with no project, a project ope
   await noWarnings(page);
 });
 
-uiTest('#4215 the Collaboration tab: a project with no repository, Initialize Repository… from it, its remote, committed and pushed', E, async (page) => {
+uiTest('#4215 the Collaboration tab: a project with no repository, Store Project in a GitHub Repository… from it, its remote, committed and pushed', E, async (page) => {
   bare('collab2', { seed: false });
   await page.setViewport(1366, 768);
   await makeProject(env, { name: 'CollabInit', template: 'gates' });
   await page.openProject('CollabInit');
   await page.leftTab('collab');
-  await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Initialize Repository…', 'Open from Repository…'], 'no repository');
+  await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…'], 'no repository');
   assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Repository', 'GitHub', 'Sharing']);
-  // Initialize Repository… from the tab, with no GitHub repository: offered again, to give it one
-  await tabCommand(page, 'Initialize Repository…');
-  await page.waitDialog('Initialize Repository');
+  // Store Project in a GitHub Repository… from the tab, with no GitHub repository: offered again, to give it one
+  await tabCommand(page, 'Store Project in a GitHub Repository…');
+  await page.waitDialog('Store Project in a GitHub Repository');
   await page.dialogButton('Initialize');
   await page.waitNoDialog();
   await waitLog(page, /Repository made for 'CollabInit'; \.gitignore written\./);
-  await waitBox(page, 'Repository', ['No GitHub repository (origin).', 'Branch: main', 'Not pushed yet', ...REPO_COMMANDS, 'Initialize Repository…'], 'the repository, no remote');
+  await waitBox(page, 'Repository', ['No GitHub repository (origin).', 'Branch: main', 'Not pushed yet', ...REPO_COMMANDS, 'Store Project in a GitHub Repository…'], 'the repository, no remote');
   // its origin (the test server's local repositories stand for GitHub's, as a clone's: set with git)
   sh(path.join(env.server.workspace, 'CollabInit'), 'remote', 'add', 'origin', path.join(remotes, 'collab2.git'));
   await page.eval(async () => (await import('/js/git.js')).refreshGitStatus());
@@ -278,7 +278,7 @@ uiTest('#4215 the Collaboration tab on a narrow screen', E, async (page) => {
   await page.setViewport(820, 1180);
   try {
     await page.leftTab('collab');
-    await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Initialize Repository…', 'Open from Repository…'], 'the Collaboration page');
+    await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…'], 'the Collaboration page');
     assert.ok((await collab(page)).shown);
     // no sideways scroll, the page inside the window
     assert.ok(await page.eval(() => document.getElementById('collab-page').getBoundingClientRect().right <= innerWidth + 1 && document.documentElement.scrollWidth <= innerWidth));

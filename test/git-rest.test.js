@@ -1,5 +1,5 @@
 // The browser edition's git through GitHub's REST API (#3196: core/github-api.js, core/git-rest.js) against a stand-in
-// for GitHub (test/fake-github.mjs), no network: the device flow's sign-in; Open from Repository (the import gate, a
+// for GitHub (test/fake-github.mjs), no network: the device flow's sign-in; Open from GitHub Repository (the import gate, a
 // repository of several projects, a private one); the changes; a commit of several files pushed at once (a new file, a
 // changed one, a deleted one, the .gitignore of a repository with none); a commit GitHub rejects (its branch moved);
 // pull (a merge of the files, a conflict pulling nothing); the history; a file as it was; an empty repository's first
@@ -89,7 +89,7 @@ test('the device flow: a code shown, GitHub asked until the user authorizes it, 
   noToken(gh);
 });
 
-test('Open from Repository: the project\'s files, the repository\'s hidden and binary ones left on GitHub; status: no change', async () => {
+test('Open from GitHub Repository: the project\'s files, the repository\'s hidden and binary ones left on GitHub; status: no change', async () => {
   const { gh, mem, git } = setup();
   gh.commitFiles('pmalo/gates', { '.github/workflows/ci.yml': 'on: push\n', 'doc/board.png': Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]), 'build/top.bit': 'x' });
   const r = await git.clone({ url: 'https://github.com/pmalo/gates' });
@@ -106,7 +106,7 @@ test('Open from Repository: the project\'s files, the repository\'s hidden and b
   noToken(gh);
 });
 
-test('Open from Repository refuses: not GitHub, a Classroom invitation, no silinx.json, several projects, an empty one, the gate, a private one signed out', async () => {
+test('Open from GitHub Repository refuses: not GitHub, a Classroom invitation, no silinx.json, several projects, an empty one, the gate, a private one signed out', async () => {
   const { gh, git, signOut } = setup();
   await rejects(git.clone({ url: 'https://gitlab.com/a/b' }), 'not a GitHub repository\'s address: https://gitlab.com/a/b');
   await rejects(git.clone({ url: 'https://classroom.github.com/a/xyz' }), 'a GitHub Classroom invitation, not a repository');
@@ -228,7 +228,7 @@ test('the history, the newest first, with each commit\'s files; a file as it was
   noToken(gh);
 });
 
-test('Initialize Repository: an empty GitHub repository; its first commit is the project\'s, with Silinx\'s .gitignore', async () => {
+test('Store Project in a GitHub Repository: an empty GitHub repository; its first commit is the project\'s, with Silinx\'s .gitignore', async () => {
   const { gh, mem, git } = setup({ seed: false });
   gh.seed('pmalo/fresh');
   gh.seed('pmalo/full', GATES);
@@ -237,7 +237,7 @@ test('Initialize Repository: an empty GitHub repository; its first commit is the
   assert.deepEqual(st, { project: 'blinky', repository: false, files: [] });
   await rejects(git.commit('blinky', 'x'), 'the project \'blinky\' is not in a git repository', { status: 409 });
   await rejects(git.init('blinky'), 'the browser edition keeps a project\'s repository on GitHub: give its address');
-  await rejects(git.init('blinky', { remote: 'https://github.com/pmalo/full' }), 'the GitHub repository already has commits', { hint: 'Open it with Open from Repository… instead, or give an empty repository.' });
+  await rejects(git.init('blinky', { remote: 'https://github.com/pmalo/full' }), 'the GitHub repository already has commits', { hint: 'Open it with Open from GitHub Repository… instead, or give an empty repository.' });
   assert.deepEqual(await git.init('blinky', { remote: 'https://github.com/pmalo/fresh' }), { project: 'blinky', created: true, remote: 'https://github.com/pmalo/fresh', gitignore: false });
   assert.deepEqual((await git.status('blinky')).files, [{ path: 'silinx.json', state: 'new' }, { path: 'src/blinky.vhd', state: 'new' }]);
   assert.deepEqual(await git.log('blinky'), []);

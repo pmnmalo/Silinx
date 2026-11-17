@@ -448,7 +448,7 @@ function projectContextMenu(e) {
     '-',
     { label: 'Design Properties…', action: () => wiz.projectProperties() },
     { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()) },   // (a copy, #2826, or live, #3479: chosen in its window, #3698)
-    // (Initialize Repository…, Sign in with GitHub…: where they apply, before the Git submenu that has them too, #3534)
+    // (Store Project in a GitHub Repository…, Sign in with GitHub…: where they apply, before the Git submenu that has them too, #3534)
     ...gitStartItems().map(({ label, action }) => ({ label, action })),
     // (git, the server editions: here in both interfaces, the Silinx one having no File menu, #3195)
     hasGit() ? { label: 'Git', submenu: gitMenuItems() } : null,

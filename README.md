@@ -544,9 +544,9 @@ On your computer or a Silinx server, a project can live in a GitHub repository, 
 Collaboration tab** (the side panel's last, after Teaching, in both interfaces) gathers its commands: the project's
 GitHub repository and branch (the commits to push or to pull), its changed files with the Design pane's marks (a
 click compares one with the last commit), Commit…, Push, Pull, History…, the sign-in and the last push's checks; for
-a project with no repository, Initialize Repository… and Open from Repository…; and its Sharing box: Share a Copy…
+a project with no repository, Store Project in a GitHub Repository… and Open from GitHub Repository…; and its Sharing box: Share a Copy…
 (Share Project…'s copy), and live sharing (Share Live…, who is in, the links, Stop Sharing, Follow, Stop Following). The menus keep the same commands:
-- **Open from Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
+- **Open from GitHub Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
   GitHub repository, a GitHub Classroom assignment's too.
 - **Commit…, Push to GitHub and Pull from GitHub** (the Collaboration tab; the project's right-click menu in the Design
   pane, under Git; the File menu) send it back and bring the others' changes in. A pull that conflicts pulls nothing and leaves the files as
@@ -560,7 +560,7 @@ a project with no repository, Initialize Repository… and Open from Repository�
 - **A drawing changed on both sides** (a circuit too) is merged by its objects on Pull, never as text, and its HDL
   made again; two objects both sides added are both kept, even under one id; for an object both sides changed, Pull
   asks whose version it keeps (Mine or Theirs), and checks the result as Check Drawing does.
-- **Initialize Repository…** makes a repository of a project, with a `.gitignore` that leaves `build/` and the tools'
+- **Store Project in a GitHub Repository…** makes a repository of a project, with a `.gitignore` that leaves `build/` and the tools'
   outputs out.
 
 git signs in to GitHub with its own credentials (GitHub's command line `gh auth login`, Git Credential Manager or an
@@ -568,7 +568,7 @@ SSH key): Silinx never asks for, stores or logs a password or a token. A server'
 `SILINX_GIT=off`.
 
 In the browser edition the same commands go through GitHub's API (there is no git in a browser):
-- **Open from Repository…** opens a public repository with no sign-in.
+- **Open from GitHub Repository…** opens a public repository with no sign-in.
 - **Sign in with GitHub…** (the Collaboration tab, which says whether you are signed in; the Git commands): a private repository, a commit and a pull need it. Where the
   site has Silinx's sign-in relay, it gives a code to enter at github.com/login/device; elsewhere, it asks for a
   fine-grained personal access token of yours (github.com/settings/personal-access-tokens/new: the repositories to
@@ -576,7 +576,7 @@ In the browser edition the same commands go through GitHub's API (there is no gi
   workflows' jobs: GitHub's Checks themselves, with a Classroom test's verdict, need a classic token or the sign-in's code). The sign-in is kept in this browser only, and **Sign out of GitHub** forgets it.
 - **Commit and Push…** commits and pushes in one step. A commit GitHub rejects (someone pushed meanwhile) says to
   pull first.
-- **Initialize Repository…** takes an empty GitHub repository (make it at github.com/new); the first commit is the
+- **Store Project in a GitHub Repository…** takes an empty GitHub repository (make it at github.com/new); the first commit is the
   project's.
 
 A computer or a server with no git can use GitHub's API the same way, for the interface and the MCP's git tools:

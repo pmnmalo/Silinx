@@ -84,13 +84,13 @@ test('git_clone, git_status, git_commit, git_push, git_pull, git_log: a Classroo
 test('git_init and the failures: their message and hint; a URL that is not GitHub\'s; a pull that conflicts', async () => {
   await ok('new_project_from_example', { name: 'mine', example: 'gates' });
   assert.equal((await ok('git_status', { project: 'mine' })).text, '\'mine\' is not in a git repository (git_init makes one).');
-  await fails('git_commit', { project: 'mine', message: 'x' }, 'the project \'mine\' is not in a git repository\nHint: Initialize Repository… makes one, or Open from Repository… opens a project from GitHub.');
+  await fails('git_commit', { project: 'mine', message: 'x' }, 'the project \'mine\' is not in a git repository\nHint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.');
   assert.equal((await ok('git_init', { project: 'mine' })).text, 'Repository made for \'mine\'; .gitignore written.');
   // (no remote: said, its data's remote null; the Collaboration tab's, #4215)
   const st = await ok('git_status', { project: 'mine' });
   assert.match(st.text, /^mine: main, not pushed yet \(no GitHub repository\); \d+ change\(s\):/);
   assert.equal(st.data.remote, null);
-  await fails('git_push', { project: 'mine' }, 'the repository has no remote (origin)\nHint: Initialize Repository… with the GitHub repository\'s address sets it.');
+  await fails('git_push', { project: 'mine' }, 'the repository has no remote (origin)\nHint: Store Project in a GitHub Repository… with the repository\'s address sets it.');
   G.GIT_TESTING.localRemotes = false;
   try {
     await fails('git_clone', { url: 'https://gitlab.com/a/b' }, 'not a GitHub repository\'s address: https://gitlab.com/a/b\nHint: Give the repository\'s address on GitHub: https://github.com/owner/repository, or git@github.com:owner/repository.git.');
@@ -116,7 +116,7 @@ test('#3363 git_init sets only a remote the user\'s settings name (mcp.remotes);
   const remote = path.join(tmp, 'Theirs9.git');
   fs.mkdirSync(remote);
   sh(remote, 'init', '--quiet', '--bare');
-  const NOT = 'remote: local/Theirs9 is not among the repositories the user lets the MCP server set (mcp.remotes in config.json: "owner/repo" or "owner/*"); the user sets another in the interface (File ▸ Git ▸ Initialize Repository…)';
+  const NOT = 'remote: local/Theirs9 is not among the repositories the user lets the MCP server set (mcp.remotes in config.json: "owner/repo" or "owner/*"); the user sets another in the interface (File ▸ Git ▸ Store Project in a GitHub Repository…)';
   await ok('new_project_from_example', { name: 'out', example: 'gates' });
   try {
     // no setting: refused, nothing made
@@ -158,7 +158,7 @@ test('#3194 #4237 git_checks: what GitHub said of the branch\'s upstream (a Clas
   const GH = await import('../server/git-github.js');
   await ok('new_project_from_example', { name: 'chk', example: 'gates' });
   await ok('git_init', { project: 'chk' });
-  await fails('git_checks', { project: 'chk' }, 'the repository has no remote (origin)\nHint: Initialize Repository… with the GitHub repository\'s address sets it.');
+  await fails('git_checks', { project: 'chk' }, 'the repository has no remote (origin)\nHint: Store Project in a GitHub Repository… with the repository\'s address sets it.');
   const bare2 = path.join(tmp, 'chk.git');
   fs.mkdirSync(bare2);
   sh(bare2, 'init', '--quiet', '--bare');

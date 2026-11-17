@@ -1,5 +1,5 @@
 // UI: git in the server editions (#3195, web/js/git.js) against local bare repositories (no network: the server maps
-// https://github.com/test/<repo> to one, SILINX_UI_GIT_REMOTES of test/ui/serve.js). File ▸ Open from Repository…,
+// https://github.com/test/<repo> to one, SILINX_UI_GIT_REMOTES of test/ui/serve.js). File ▸ Open from GitHub Repository…,
 // a URL that is not GitHub's said beside its field; the project opened, untrusted; the Design pane's marks (changed,
 // new) and gone once committed; Commit… (an empty message said beside its field), Push to GitHub, Pull from GitHub,
 // a rejected push and a conflict as ERROR lines with their hint in the console; the same commands in the Design pane's
@@ -59,14 +59,14 @@ const marks = (page) => page.eval(() => [...document.querySelectorAll('#hier .ro
 const writeFile = (page, rel, text) => page.eval(async (p, t) => { const { api } = await import('/js/api.js'); await api.writeFile(window.Silinx.project.name, p, t); }, rel, text);
 const errorText = (page, cls) => page.eval((c) => document.querySelector(`.dlg-overlay .${c}`)?.textContent || '', cls);
 
-uiTest('#3195 Open from Repository…, the marks, Commit…, Push and Pull; a rejected push and a conflict in the console', E, async (page) => {
+uiTest('#3195 Open from GitHub Repository…, the marks, Commit…, Push and Pull; a rejected push and a conflict in the console', E, async (page) => {
   const remote = bare('lab1');
-  // (the File menu: Open from Repository… after Share Project…, #3323; from the menus' definitions, the Silinx
+  // (the File menu: Open from GitHub Repository… after Share Project…, #3323; from the menus' definitions, the Silinx
   // interface showing no File menu)
   const file = await page.eval(() => window.SilinxApp.S.menus.find((m) => m.label === 'File').items().filter(Boolean).map((x) => (x === '-' ? '—' : x.label)));
-  assert.deepEqual(file.slice(0, file.indexOf('Short Links…') + 2), ['New Project…', 'Open Project…', '—', 'Import Project…', 'Export Project (.zip)…', 'Share Project…', 'Open from Repository…', 'Short Links…', '—']);
-  await page.menu('File', 'Open from Repository…');
-  await page.waitDialog('Open from Repository');
+  assert.deepEqual(file.slice(0, file.indexOf('Short Links…') + 2), ['New Project…', 'Open Project…', '—', 'Import Project…', 'Export Project (.zip)…', 'Share Project…', 'Open from GitHub Repository…', 'Short Links…', '—']);
+  await page.menu('File', 'Open from GitHub Repository…');
+  await page.waitDialog('Open from GitHub Repository');
   // a URL that is not GitHub's: said beside the field, the dialog open
   await page.fill('.dlg-overlay .git-url', 'https://gitlab.com/a/lab1');
   await page.dialogButton('Open');
@@ -147,7 +147,7 @@ uiTest('#3195 Open from Repository…, the marks, Commit…, Push and Pull; a re
   assert.deepEqual(warnings(page), []);
 }, { timeout: 120000 });
 
-uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx interface has no File menu); Initialize Repository…; in Portuguese', E, async (page) => {
+uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx interface has no File menu); Store Project in a GitHub Repository…; in Portuguese', E, async (page) => {
   await page.eval(async () => { const { api } = await import('/js/api.js'); await api.createProject({ name: 'fresh', template: 'gates' }); });
   await page.openProject('fresh');
   const gitItems = async () => {
@@ -160,8 +160,8 @@ uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx inte
   assert.ok((await gitItems()).includes('Git'));
   // not a repository yet: Commit…, Push and Pull disabled
   await assert.rejects(page.menu('File', 'Commit…'), { message: 'menu item \'File ▸ Commit…\' is disabled' });
-  await page.menu('File', 'Initialize Repository…');
-  await page.waitDialog('Initialize Repository');
+  await page.menu('File', 'Store Project in a GitHub Repository…');
+  await page.waitDialog('Store Project in a GitHub Repository');
   await page.fill('.dlg-overlay .git-url', 'http://github.com/a/b');
   await page.dialogButton('Initialize');
   assert.equal(await errorText(page, 'git-url-error'), 'not a GitHub repository\'s address: http://github.com/a/b');
@@ -173,10 +173,10 @@ uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx inte
   await page.waitFor(() => !!document.querySelector('#hier .git-mark'), [], { what: 'the marks' });
   assert.ok((await marks(page)).every((m) => / N New: not committed yet$/.test(m)), (await marks(page)).join(' | '));
   await page.menu('File', 'Push to GitHub');
-  await page.waitConsole(/ERROR: the repository has no remote \(origin\)\nHint: Initialize Repository… with the GitHub repository's address sets it\./);
+  await page.waitConsole(/ERROR: the repository has no remote \(origin\)\nHint: Store Project in a GitHub Repository… with the repository's address sets it\./);
   // GitHub Checks (#3194): the server's route, its failure and hint in the console
   await page.menu('File', 'GitHub Checks');
-  await page.waitConsole(/GitHub's checks of 'fresh'…\nERROR: the repository has no remote \(origin\)\nHint: Initialize Repository… with the GitHub repository's address sets it\./);
+  await page.waitConsole(/GitHub's checks of 'fresh'…\nERROR: the repository has no remote \(origin\)\nHint: Store Project in a GitHub Repository… with the repository's address sets it\./);
   // in Portuguese: the menu's labels, the dialog's
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   const pt = await gitItems();
@@ -186,12 +186,12 @@ uiTest('#3195 the Design pane\'s project menu: the Git commands (the Silinx inte
   assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid label')].map((l) => l.textContent).join('|')), 'Mensagem:');
   await page.dialogButton('Cancelar');
   await page.menu('Ficheiro', 'Verificações do GitHub (Checks)');
-  await page.waitConsole(/GitHub's checks of 'fresh'…\nERROR: the repository has no remote \(origin\)\nHint: Initialize Repository… with the GitHub repository's address sets it\.\nGitHub's checks of 'fresh'…\nERROR: the repository has no remote/);
+  await page.waitConsole(/GitHub's checks of 'fresh'…\nERROR: the repository has no remote \(origin\)\nHint: Store Project in a GitHub Repository… with the repository's address sets it\.\nGitHub's checks of 'fresh'…\nERROR: the repository has no remote/);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(warnings(page), []);
 });
 
-// (#3534) Initialize Repository… on the Start page (before Open from Repository…, the group's last, #3716) and in
+// (#3534) Store Project in a GitHub Repository… on the Start page (before Open from GitHub Repository…, the group's last, #3716) and in
 // the Design tree's project and device menus (after Share Project…, before the Git submenu): shown for a project with
 // no repository, the Start page's disabled with no project open, the File menu's dialog run from either; gone from
 // both once the project is a repository; never Sign in with GitHub… (the browser edition's); in Portuguese. Both
@@ -205,23 +205,23 @@ const treeItems = async (page, row, item) => {
 };
 const startCommands = (page) => page.eval(() => [...document.querySelector('#start-page .start-box').querySelectorAll('.entry')]
   .filter((e) => e.getClientRects().length).map((e) => `${e.textContent}${getComputedStyle(e.querySelector('a')).pointerEvents === 'none' ? ' (disabled)' : ''}`));
-uiTest('#3534 Initialize Repository… on the Start page and in the Design tree\'s project and device menus, for a project with no repository; Portuguese', E, async (page) => {
+uiTest('#3534 Store Project in a GitHub Repository… on the Start page and in the Design tree\'s project and device menus, for a project with no repository; Portuguese', E, async (page) => {
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.leftTab('start');
-  await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Open from Repository…'), [], { what: 'the Start page' });
+  await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Open from GitHub Repository…'), [], { what: 'the Start page' });
   // no project open: disabled, as the exports
   let cmds = await startCommands(page);
-  assert.deepEqual(cmds.slice(cmds.indexOf('Initialize Repository… (disabled)')), ['Initialize Repository… (disabled)', 'Open from Repository…'], cmds.join(' | '));
+  assert.deepEqual(cmds.slice(cmds.indexOf('Store Project in a GitHub Repository… (disabled)')), ['Store Project in a GitHub Repository… (disabled)', 'Open from GitHub Repository…'], cmds.join(' | '));
   assert.ok(!cmds.some((c) => c.startsWith('Sign in with GitHub')), cmds.join(' | '));
   await page.eval(async () => { const { api } = await import('/js/api.js'); await api.createProject({ name: 'startgit', template: 'gates' }); });
   await page.openProject('startgit');
   await page.leftTab('start');
   await page.waitFor(() => document.getElementById('start-page').hasAttribute('data-project'), [], { what: 'the commands enabled' });
   cmds = await startCommands(page);
-  assert.ok(cmds.includes('Initialize Repository…'), cmds.join(' | '));
+  assert.ok(cmds.includes('Store Project in a GitHub Repository…'), cmds.join(' | '));
   // the Start page's: the File menu's dialog
-  await page.click('#start-page .entry a', { text: 'Initialize Repository…' });
-  await page.waitDialog('Initialize Repository');
+  await page.click('#start-page .entry a', { text: 'Store Project in a GitHub Repository…' });
+  await page.waitDialog('Store Project in a GitHub Repository');
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   // the project's and the device's rows: after Share Project…, before Git
@@ -229,30 +229,30 @@ uiTest('#3534 Initialize Repository… on the Start page and in the Design tree\
   await page.waitFor(() => document.querySelectorAll('#hier .row .lbl').length >= 2, [], { what: 'the Design tree' });
   for (const row of [0, 1]) {
     const items = await treeItems(page, row);
-    const at = items.indexOf('Initialize Repository…');
+    const at = items.indexOf('Store Project in a GitHub Repository…');
     assert.ok(at > 0 && /^Share Project…/.test(items[at - 1]) && items[at + 1] === 'Git', `row ${row}: ${items.join(' | ')}`);
     assert.ok(!items.some((c) => c.startsWith('Sign in with GitHub')), items.join(' | '));
   }
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  for (const row of [0, 1]) assert.ok((await treeItems(page, row)).includes('Inicializar Repositório…'), `row ${row}`);
+  for (const row of [0, 1]) assert.ok((await treeItems(page, row)).includes('Guardar o Projeto num Repositório GitHub…'), `row ${row}`);
   await page.leftTab('start');
-  await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Inicializar Repositório…'), [], { what: 'the Start page in Portuguese' });
+  await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Guardar o Projeto num Repositório GitHub…'), [], { what: 'the Start page in Portuguese' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // from the device's row: initialized; gone from the menus and the Start page
   await page.leftTab('design');
-  await treeItems(page, 1, 'Initialize Repository…');
-  await page.waitDialog('Initialize Repository');
+  await treeItems(page, 1, 'Store Project in a GitHub Repository…');
+  await page.waitDialog('Store Project in a GitHub Repository');
   await page.dialogButton('Initialize');
   await page.waitNoDialog();
   await page.waitConsole(/Repository made for 'startgit'; \.gitignore written\./);
   await page.waitFor(() => !!window.SilinxApp.S.git, [], { what: 'the repository' });
   for (const row of [0, 1]) {
     const items = await treeItems(page, row);
-    assert.ok(!items.includes('Initialize Repository…') && items.includes('Git'), `row ${row}: ${items.join(' | ')}`);
+    assert.ok(!items.includes('Store Project in a GitHub Repository…') && items.includes('Git'), `row ${row}: ${items.join(' | ')}`);
   }
   await page.leftTab('start');
-  await page.waitFor(() => ![...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Initialize Repository…'), [], { what: 'the Start page\'s entry gone' });
-  assert.ok((await startCommands(page)).includes('Open from Repository…'));
+  await page.waitFor(() => ![...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Store Project in a GitHub Repository…'), [], { what: 'the Start page\'s entry gone' });
+  assert.ok((await startCommands(page)).includes('Open from GitHub Repository…'));
   assert.deepEqual(warnings(page), []);
 });
