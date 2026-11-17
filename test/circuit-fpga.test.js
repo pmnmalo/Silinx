@@ -76,8 +76,11 @@ test('every IC\'s bench as synthesis reads it: the digital model\'s outputs the 
       // preset and clear both low then one released, in Verilog: the always block's edges see no release, the flip-flop
       // stays as it was, as XST builds it; the engine's, the VHDL's, the one still low)
       // (the 7476 too, a J-K flip-flop with both controls: its vectors met that release once #4397's gates shifted them)
-      // (and #4397's flip-flops with a preset and a clear: the 7478, 74109, 74114, 4013, 4027)
-      const corner = lang === 'verilog' && ['7474', '74112', '7476', '7478', '74109', '74114', '4013', '4027'].includes(t);
+      // (and #4397's flip-flops with a preset and a clear: the 7478, 74109, 74114, 4013, 4027; and its counters with an
+      // asynchronous load, its data changed while it is held: VHDL's process loads them again on the clock's other edge,
+      // Verilog's always block not, as the 74191's would, core/circuit-model-counters.js: the 74190, 74192, 74196, 74197,
+      // 4029, 4510)
+      const corner = lang === 'verilog' && ['7474', '74112', '7476', '7478', '74109', '74114', '4013', '4027', '74190', '74192', '74196', '74197', '4029', '4510'].includes(t);
       got.forEach((x, k) => { if (k > 0 && !/x/i.test(engine[k] + x) && !corner) assert.equal(x, engine[k], `${t} ${lang}: vector ${k}`); });
     }
   }

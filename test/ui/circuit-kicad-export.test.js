@@ -33,7 +33,7 @@ uiTest('Circuit editor ⋮: Export ICs as KiCad Symbols…, Export Parts as KiCa
   // this circuit's ICs: the 7486 and the 7408
   await menu(page, 'circ-export-ics');
   await page.waitFor(() => document.querySelector('.dlg-overlay [data-field=ics-circuit]'), [], { what: 'the dialog' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kicad-ics-choice')].map((l) => l.textContent)), ['All the library\'s ICs (115)', 'This circuit\'s ICs (2)']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kicad-ics-choice')].map((l) => l.textContent)), ['All the library\'s ICs (135)', 'This circuit\'s ICs (2)']);
   await page.click('.dlg-overlay [data-field=ics-circuit]');
   await page.click('.dlg-overlay .dlg-buttons .primary');
   const sym = fs.readFileSync(await waitDownload(page, 'silinx-ics.kicad_sym'), 'utf8');
@@ -53,7 +53,7 @@ uiTest('Circuit editor ⋮: Export ICs as KiCad Symbols…, Export Parts as KiCa
   assert.deepEqual(pkg.symbols.map((s) => s.name).sort(), ['Silinx.kicad_sym', 'ttl.kicad_sym']);
   assert.equal(pkg.symbols.find((s) => s.name === 'ttl.kicad_sym').text, LIB);
   assert.deepEqual([pkg.metadata.identifier, pkg.metadata.author, pkg.metadata.license, pkg.metadata.versions[0].version], ['org.example.circexport', { name: 'A Teacher' }, 'CC-BY-SA-4.0', '1.0.0']);
-  assert.ok((await lines(page)).includes('circexport-kicad.zip written: the KiCad package org.example.circexport 1.0.0 of 1 file(s) of CircExport\'s parts/ and 115 IC(s) of the library'));
+  assert.ok((await lines(page)).includes('circexport-kicad.zip written: the KiCad package org.example.circexport 1.0.0 of 1 file(s) of CircExport\'s parts/ and 135 IC(s) of the library'));
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.click(`${ED} .tb-more-btn`);

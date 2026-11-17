@@ -286,7 +286,7 @@ function itemV(cx, it, regs) {
   switch (it.kind) {
     case 'assign': {
       if (it.delay) return delayedV(cx, it);
-      return [`assign ${exprV(cx, it.target).c} = ${exprV(cx, it.value, typeOfTarget(cx, it.target)).c};`];
+      return [`assign ${exprV(cx, it.target).c} = ${exprV(cx, it.value, typeOfTarget(cx, it.target)).c};${pragmaOf(cx, it)}`];
     }
     case 'process': return processV(cx, it);
     case 'instance': return instanceV(cx, it);

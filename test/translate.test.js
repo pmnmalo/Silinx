@@ -516,11 +516,12 @@ test('#4412 VHDL to Verilog: a process with asynchronous controls before its clo
   assert.match(one.text, /always @\(posedge clk or negedge pre_n\) begin\n\s+if \(!pre_n\) begin\n\s+r <= 1'b1;\n\s+end else begin\n\s+r <= ~r;\n\s+end\n\s+end/);
 });
 
-// (#4414: the lint's suppressions kept: a latch, an S̅-R̅ latch's elsif, a clock that is logic on purpose)
+// (#4414: the lint's suppressions kept: a latch, an S̅-R̅ latch's elsif, a clock that is logic on purpose, a clock read as
+// data by a concurrent assignment, #4436)
 const PRAGMAS = `library ieee;
 use ieee.std_logic_1164.all;
 entity pragmas is
-  port (en, d, s_n, r_n, clk : in std_logic; q, q2, q3 : out std_logic);
+  port (en, d, s_n, r_n, clk : in std_logic; q, q2, q3, q4 : out std_logic);
 end entity pragmas;
 architecture rtl of pragmas is
   signal a, b, c : std_logic := '0';
@@ -554,6 +555,8 @@ begin
   q <= a;
   q2 <= b;
   q3 <= c;
+  -- silinx: ignore clock-as-data
+  q4 <= gclk and d;
 end architecture rtl;
 `;
 
@@ -563,7 +566,8 @@ test('#4414 VHDL to Verilog: the lint\'s "silinx: ignore" comments kept with the
   const v = tr(PRAGMAS, 'pragmas.vhd');
   assert.equal(v.ok, true);
   assert.deepEqual(v.text.split('\n').filter((l) => /silinx:/.test(l)).map((l) => l.trim()), [
-    'if (en) // silinx: ignore latch', 'if (!s_n) // silinx: ignore latch', 'else if (!r_n) // silinx: ignore latch', 'always @(posedge gclk) begin // silinx: ignore data-as-clock']);
+    'if (en) // silinx: ignore latch', 'if (!s_n) // silinx: ignore latch', 'else if (!r_n) // silinx: ignore latch', 'always @(posedge gclk) begin // silinx: ignore data-as-clock',
+    'assign q4 = gclk & d; // silinx: ignore clock-as-data']);
   assert.deepEqual(lint({ 'pragmas.v': v.text }, 'pragmas'), [], 'its translation: the same suppressions');
   // without them, the translation warns as the source does
   const bare = PRAGMAS.replace(/^\s*-- silinx: ignore.*\n/gm, '');
