@@ -60,6 +60,7 @@
     "@yowasp/nextpnr-ecp5": "0.11.825",
     "@yowasp/nextpnr-himbaechel-gowin": "0.11.825",
     "@yowasp/nextpnr-ice40": "0.11.825",
+    "@yowasp/nextpnr-machxo2": "0.11.825",
     "esbuild": "^0.28.2",
     "jsqr": "1.4.0",
     "playwright": "1.65.0"
