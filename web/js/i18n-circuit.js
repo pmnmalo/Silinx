@@ -119,6 +119,15 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Dual 4-input NAND buffer': 'Duas portas NAND de 4 entradas, buffer', '13-input NAND': 'Uma porta NAND de 13 entradas', 'Quad 2-input XNOR': 'Quatro portas XNOR de 2 entradas',
   'Dual AND-OR-INVERT (3-3 and 2-2 inputs)': 'Duas portas AND-OR-INVERT (3-3 e 2-2 entradas)', '4-wide AND-OR-INVERT (2-3-3-2 inputs)': 'Uma porta AND-OR-INVERT de 4 termos (2-3-3-2 entradas)',
   '2-wide 4-input AND-OR-INVERT': 'Uma porta AND-OR-INVERT de 2 termos de 4 entradas',
+  // (the three-state buffers, #4397)
+  'Quad buffer, 3-state outputs, active-low enables': 'Quatro buffers, saídas tri-state, enables ativos a 0',
+  'Quad buffer, 3-state outputs, active-high enables': 'Quatro buffers, saídas tri-state, enables ativos a 1',
+  'Octal inverting buffer, 3-state outputs': 'Oito buffers inversores, saídas tri-state', 'Octal buffer, 3-state outputs': 'Oito buffers, saídas tri-state',
+  'Octal buffer, 3-state outputs, complementary enables': 'Oito buffers, saídas tri-state, enables complementares',
+  'Hex buffer, 3-state outputs, common enables': 'Seis buffers, saídas tri-state, enables comuns', 'Hex inverting buffer, 3-state outputs, common enables': 'Seis buffers inversores, saídas tri-state, enables comuns',
+  'Hex buffer, 3-state outputs, 4 and 2 enabled': 'Seis buffers, saídas tri-state, ativados 4 e 2', 'Hex inverting buffer, 3-state outputs, 4 and 2 enabled': 'Seis buffers inversores, saídas tri-state, ativados 4 e 2',
+  'Octal inverting buffer, 3-state outputs, flow-through': 'Oito buffers inversores, saídas tri-state, entradas e saídas em lados opostos',
+  'Octal buffer, 3-state outputs, flow-through': 'Oito buffers, saídas tri-state, entradas e saídas em lados opostos',
   'Hex inverter, open collector': 'Seis inversores, coletor aberto', 'Hex inverter buffer, open collector': 'Seis inversores buffer, coletor aberto',
   // the MSI ICs (#3900, core/circuit-msi.js)
   'BCD to 7-segment decoder/driver, open collector, active low': 'Descodificador BCD para 7 segmentos, coletor aberto, ativo a 0',

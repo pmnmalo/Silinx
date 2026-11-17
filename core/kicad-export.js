@@ -44,7 +44,9 @@ export function icSymbol(type) {
     prop('Silinx.Model', type), prop('Silinx.Family', d.family), prop('Silinx.Source', `Silinx ${VERSION} library`)];
   let units;
   if (d.gates) {
-    units = d.gates.map((g, i) => unit(name, i + 1, g.ins.map((n) => pin.get(n)), [pin.get(g.out)]));
+    // (a three-state buffer's enables, #4397: on its unit's inputs' side, each shared enable on the first unit it serves)
+    const seen = new Set();
+    units = d.gates.map((g, i) => unit(name, i + 1, [...g.ins, ...(g.en || []).map(([n]) => n).filter((n) => !seen.has(n) && seen.add(n))].map((n) => pin.get(n)), [pin.get(g.out)]));
     units.push(`(symbol ${quote(`${name}_${d.gates.length + 1}_1`)} ${box(2 * G, 2 * G)} ${supplyPins(d.pins, 2 * G).join(' ')})`);
   } else {
     const ins = d.pins.filter((p) => p.dir === 'in'), outs = d.pins.filter((p) => p.dir === 'out' || p.dir === 'oc');

@@ -22,7 +22,8 @@ export function halfAdder(lang = 'vhdl') {
 /**
  * One IC beside nothing: its pin 1 at (0, 0), the supply at (-20, -20) wired to its VCC and GND (unless `power` is
  * false), a logic switch per gate input (label g<gate><a…h>), an LED per output (g<gate>y) its cathode on GND; an open
- * collector output pulled up (unless `pullUps` is false).
+ * collector output pulled up (unless `pullUps` is false); a three-state buffer's (#4397) enable pins each a switch
+ * (label oe<pin>), its outputs pulled down (off: a 0).
  */
 export function icBench(type, { power = true, name = 'bench', pullUps = true } = {}) {
   const d = partDef(type);
@@ -41,7 +42,11 @@ export function icBench(type, { power = true, name = 'bench', pullUps = true } =
     W(pin.get(g.out), [20 + 3 * i, 10]);
     W([21 + 3 * i, 10], [-20, -19]);
     if (d.oc && pullUps) { m.parts.push({ id: `R${i + 1}`, type: 'pull-up', x: 20 + 3 * i, y: 14 }); W([20 + 3 * i, 14], [20 + 3 * i, 10]); }
+    if (g.en) { m.parts.push({ id: `R${i + 1}`, type: 'pull-down', x: 20 + 3 * i, y: 14 }); W([20 + 3 * i, 14], [20 + 3 * i, 10]); }
   });
+  for (const n of [...new Set(d.gates.flatMap((g) => (g.en || []).map(([p]) => p)))]) {
+    m.parts.push({ id: `SE${n}`, type: 'logic-switch', x: -40, y: row, label: `oe${n}` }); W([-40, row++], pin.get(n));
+  }
   return normalizeCircuit(m);
 }
 

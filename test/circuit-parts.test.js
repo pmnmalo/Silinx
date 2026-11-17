@@ -32,6 +32,16 @@ const NAND13 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'GND', 'Y', 'H', 'J', 'K', 'L
 const AOI51 = ['1A', '2A', '2B', '2C', '2D', '2Y', 'GND', '1Y', '1D', '1E', '1F', '1B', '1C', 'VCC'];
 const AOI54 = ['A', 'B', 'C', 'D', 'E', 'Y', 'GND', 'NC', 'F', 'G', 'H', 'J', 'K', 'VCC'];
 const AOI55 = ['A', 'B', 'C', 'D', 'NC', 'NC', 'GND', 'Y', 'NC', 'E', 'F', 'G', 'H', 'VCC'];
+// the three-state buffers' (#4397, group B): their pins, then each buffer's enables [pin, active level], written here
+const B125 = ['1OE̅', '1A', '1Y', '2OE̅', '2A', '2Y', 'GND', '3Y', '3A', '3OE̅', '4Y', '4A', '4OE̅', 'VCC'];
+const B126 = B125.map((n) => n.replace('\u0305', ''));
+const OCT24 = (g1, g2) => [g1, '1A', '8Y', '2A', '7Y', '3A', '6Y', '4A', '5Y', 'GND', '5A', '4Y', '6A', '3Y', '7A', '2Y', '8A', '1Y', g2, 'VCC'];
+const HEX65 = (g1, g2) => [g1, '1A', '1Y', '2A', '2Y', '3A', '3Y', 'GND', '4Y', '4A', '5Y', '5A', '6Y', '6A', g2, 'VCC'];
+const OCT54 = ['G1̅', '1A', '2A', '3A', '4A', '5A', '6A', '7A', '8A', 'GND', '8Y', '7Y', '6Y', '5Y', '4Y', '3Y', '2Y', '1Y', 'G2̅', 'VCC'];
+const EN = { 74125: [[[1, '0']], [[4, '0']], [[10, '0']], [[13, '0']]], 74126: [[[1, '1']], [[4, '1']], [[10, '1']], [[13, '1']]],
+  74240: [1, 1, 1, 1, 19, 19, 19, 19].map((p) => [[p, '0']]), 74241: [1, 1, 1, 1, 19, 19, 19, 19].map((p) => [[p, p === 1 ? '0' : '1']]), 74244: [1, 1, 1, 1, 19, 19, 19, 19].map((p) => [[p, '0']]),
+  74365: Array(6).fill([[1, '0'], [15, '0']]), 74366: Array(6).fill([[1, '0'], [15, '0']]), 74367: [1, 1, 1, 1, 15, 15].map((p) => [[p, '0']]), 74368: [1, 1, 1, 1, 15, 15].map((p) => [[p, '0']]),
+  74540: Array(8).fill([[1, '0'], [19, '0']]), 74541: Array(8).fill([[1, '0'], [19, '0']]) };
 // an AND-OR-INVERT's terms, written here (its datasheet's function): each gate's inputs' sizes, in its inputs' order
 const TERMS = { 7451: [[3, 3], [2, 2]], 7454: [[2, 3, 3, 2]], 7455: [[4, 4]] };
 const PINOUT = {
@@ -43,6 +53,8 @@ const PINOUT = {
   7440: DUAL4, 74132: QUAD, 74133: NAND13, 74136: QUAD, 74386: QUAD_386,
   4002: CMOS_DUAL4, 4012: CMOS_DUAL4, 4023: CMOS_TRIPLE, 4025: CMOS_TRIPLE, 4049: CMOS_HEX16, 4050: CMOS_HEX16, 4072: CMOS_DUAL4, 4073: CMOS_TRIPLE, 4075: CMOS_TRIPLE,
   4077: CMOS_QUAD, 7451: AOI51, 7454: AOI54, 7455: AOI55,
+  74125: B125, 74126: B126, 74240: OCT24('1OE̅', '2OE̅'), 74241: OCT24('1OE̅', '2OE'), 74244: OCT24('1OE̅', '2OE̅'), 74365: HEX65('G1̅', 'G2̅'), 74366: HEX65('G1̅', 'G2̅'),
+  74367: HEX65('1OE̅', '2OE̅'), 74368: HEX65('1OE̅', '2OE̅'), 74540: OCT54, 74541: OCT54,
 };
 // each IC's function, written here: the inputs' bits (an array of 0 / 1) → its output
 const F = {
@@ -55,7 +67,8 @@ const FN = { 7400: 'nand', 7401: 'nand', 7402: 'nor', 7403: 'nand', 7404: 'not',
   7420: 'nand', 7427: 'nor', 7430: 'nand', 7432: 'or', 7486: 'xor', 4001: 'nor', 4011: 'nand', 4030: 'xor', 4069: 'not', 4070: 'xor', 4071: 'or', 4081: 'and',
   7407: 'buf', 7409: 'and', 7412: 'nand', 7413: 'nand', 7415: 'and', 7421: 'and', 7422: 'nand', 7426: 'nand', 7428: 'nor', 7433: 'nor', 7437: 'nand', 7438: 'nand',
   7440: 'nand', 74132: 'nand', 74133: 'nand', 74136: 'xor', 74386: 'xor', 4002: 'nor', 4012: 'nand', 4023: 'nand', 4025: 'nor', 4049: 'not', 4050: 'buf', 4072: 'or',
-  4073: 'and', 4075: 'or', 4077: 'xnor', 7451: 'aoi', 7454: 'aoi', 7455: 'aoi' };
+  4073: 'and', 4075: 'or', 4077: 'xnor', 7451: 'aoi', 7454: 'aoi', 7455: 'aoi',
+  74125: 'buf', 74126: 'buf', 74240: 'not', 74241: 'buf', 74244: 'buf', 74365: 'buf', 74366: 'not', 74367: 'buf', 74368: 'not', 74540: 'not', 74541: 'buf' };
 const OC = ['7401', '7403', '7405', '7406', '7407', '7409', '7412', '7415', '7422', '7426', '7433', '7438', '74136'];
 let seed = 3;
 const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed >> 4; };
@@ -77,11 +90,15 @@ test('the ICs\' pinouts are their datasheets\' (NC pins not connected; a 4000\'s
 function vectorsOf(type, m) {
   const gates = PARTS[type].gates, w = gates[0].ins.length;
   const names = circuitPorts(m).inputs.map((x) => x.name);
-  const set = (bits) => Object.fromEntries(names.map((n) => [n, bits[n]]));
+  // (a three-state buffer's enables at their active levels, #4397; the random vectors' each its own)
+  const on = Object.fromEntries((EN[type] || []).flat().map(([p, a]) => [`oe${p}`, Number(a)]));
+  const set = (bits) => Object.fromEntries(names.map((n) => [n, bits[n] ?? on[n] ?? 0]));
   const all = Array.from({ length: 1 << w }, (_, v) => set(Object.fromEntries(gates.flatMap((g, i) => g.ins.map((_, j) => [`g${i + 1}${'abcdefghjklmn'[j]}`, (v >> j) & 1])))));
   return [...all, ...Array.from({ length: 12 }, () => set(Object.fromEntries(names.map((n) => [n, rnd() & 1]))))];
 }
-const want = (type, v) => PARTS[type].gates.map((g, i) => String(F[FN[type]](g.ins.map((_, j) => v[`g${i + 1}${'abcdefghjklmn'[j]}`]), TERMS[type]?.[i]))).join('');
+// (a three-state buffer off: its output pulled down, a 0)
+const enabled = (type, i, v) => (EN[type]?.[i] ?? []).every(([p, a]) => v[`oe${p}`] === Number(a));
+const want = (type, v) => PARTS[type].gates.map((g, i) => (enabled(type, i, v) ? String(F[FN[type]](g.ins.map((_, j) => v[`g${i + 1}${'abcdefghjklmn'[j]}`]), TERMS[type]?.[i])) : '0')).join('');
 
 test('every IC\'s gates against its truth table, through the engine: the 74LS gates, the open collector ones pulled up, the 4000s', () => {
   for (const type of Object.keys(PINOUT)) {

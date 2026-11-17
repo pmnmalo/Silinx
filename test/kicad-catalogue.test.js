@@ -39,9 +39,9 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
   const hc = CATALOGUE.find((e) => e.id === 'kicad-74xx/74HC00');
   assert.deepEqual([hc.as, hc.package, hc.needs], ['7400', 'DIP-14', ['74LS00']]);
   assert.ok(CATALOGUE.filter((e) => e.library.startsWith('sparkfun-')).every((e) => e.footprint));
-  // KiCad's 74xx and 4xxx: 293 on their DIPs, those whose filter is KiCad's DIP?16* too (#4397); 105 as Silinx's ICs (32 more gates; KiCad's standard TTL 7454 is not the 74LS54, drawn only)
+  // KiCad's 74xx and 4xxx: 293 on their DIPs, those whose filter is KiCad's DIP?16* too (#4397); 132 as Silinx's ICs (32 more gates, 11 three-state buffers, KiCad's _Split symbols; KiCad's standard TTL 7454 is not the 74LS54, drawn only)
   const logic = CATALOGUE.filter((e) => e.library === 'kicad-74xx' || e.library === 'kicad-4xxx');
-  assert.deepEqual([logic.length, logic.filter((e) => e.as).length, logic.every((e) => /^DIP-\d+$/.test(e.package))], [293, 105, true]);
+  assert.deepEqual([logic.length, logic.filter((e) => e.as).length, logic.every((e) => /^DIP-\d+$/.test(e.package))], [297, 132, true]);
   assert.deepEqual(CATALOGUE.find((e) => e.id === 'kicad-74xx/74LS245'), { id: 'kicad-74xx/74LS245', library: 'kicad-74xx', symbol: '74LS245', value: '74LS245', as: null, package: 'DIP-20', pins: 20 });
   // KiCad's own basic parts (#4385): their footprints picked (set) or their own, KiCad's footprints' files at 9.0.0, no
   // drawing of them kept (CC-BY-SA), only their pads

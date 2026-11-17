@@ -29,7 +29,9 @@ test('#4126 every part: its details, consistent with its description', () => {
           const nm = (n) => d.pins.find((q) => q.n === n).name;
           // (an AND-OR-INVERT, #4397: the NOR of its terms' ANDs)
           const terms = g.terms ? g.terms.map((n, j) => g.ins.slice(g.terms.slice(0, j).reduce((a, b) => a + b, 0)).slice(0, n)) : null;
-          assert.equal(info.logic[i], terms ? `${nm(g.out)} = NOR(${terms.map((x) => `AND(${x.map(nm).join(', ')})`).join(', ')})` : `${nm(g.out)} = ${g.fn.toUpperCase()}(${g.ins.map(nm).join(', ')})`, t);
+          // (a three-state buffer's: while its enables are at their active levels)
+          const en = g.en ? ` while ${g.en.map(([n, a]) => `${nm(n)} = ${a}`).join(', ')}` : '';
+          assert.equal(info.logic[i], terms ? `${nm(g.out)} = NOR(${terms.map((x) => `AND(${x.map(nm).join(', ')})`).join(', ')})` : `${nm(g.out)} = ${g.fn.toUpperCase()}(${g.ins.map(nm).join(', ')})${en}`, t);
         });
       } else assert.equal(info.logic, undefined, t);
     } else {

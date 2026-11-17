@@ -41,8 +41,8 @@ test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
       const ls = els.filter((e) => e.attrs.class === 'circ-gate-line');
       // (a gate IC: three leads a 2-input gate, its inputs' and its output's; another IC: none, its pins named)
       // (the 4023, 4025, 4073, 4075 and the AND-OR-INVERTs: their pins named, #4397)
-      if (['4023', '4025', '4073', '4075', '7451', '7454', '7455'].includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
-      assert.equal(ls.length, ['4023', '4025', '4073', '4075', '7451', '7454', '7455'].includes(d.type) ? 0 : (d.gates || []).reduce((n, x) => n + x.ins.length + 1, 0), what);
+      if (['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541'].includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
+      assert.equal(ls.length, ['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541'].includes(d.type) ? 0 : (d.gates || []).reduce((n, x) => n + x.ins.length + 1, 0), what);
       for (const l of ls) {
         assert.equal(l.tag, 'polyline', what);
         assert.equal(l.attrs.fill, 'none', `${what} pin ${l.attrs['data-pin']}`);

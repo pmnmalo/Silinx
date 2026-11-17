@@ -27,7 +27,8 @@ export const isKicadPartFile = (path) => LIB_RE.test(path) || DIR_FILE_RE.test(p
 export const kicadPartType = (lib, symbol) => `${lib}#${symbol}`;
 
 // ------------------------------------------------------------------ a part number
-const SERIES74 = /^(?:SN|DM|MC|HD|MM|CD|IN|N)?(?:74|54)(?:ALVC|AHCT|ALS|AHC|ABT|ACT|HCT|HCU|LVC|AC|AS|HC|LS|LV|F|S|H|L|C)?(\d{2,4})(?:[A-Z][A-Z0-9-]*)?$/;
+// (KiCad's _Split symbols, #4397: the same chip, its units split another way)
+const SERIES74 = /^(?:SN|DM|MC|HD|MM|CD|IN|N)?(?:74|54)(?:ALVC|AHCT|ALS|AHC|ABT|ACT|HCT|HCU|LVC|AC|AS|HC|LS|LV|F|S|H|L|C)?(\d{2,4})(?:[A-Z][A-Z0-9-]*)?(?:_SPLIT)?$/;
 const SERIES4000 = /^(?:CD|HEF|MC1|MC|TC|NTE)?(4\d{3})(?:[A-Z][A-Z0-9-]*)?$/;
 /** The library part a part number is (SN74LS00N, 74HC00, CD4011BE → '7400', '4011'), or null. */
 export function partOfNumber(number) {
