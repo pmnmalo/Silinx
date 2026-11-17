@@ -101,7 +101,7 @@ test('blinky on the LCMXO2-1200HC: clk on its pin, the other 26 ports placed by 
   assert.equal(n.error, undefined);
   assert.equal(n.lpf, 'FREQUENCY PORT "clk" 25 MHZ;');
   const r = await build(n, 26);
-  assert.deepEqual(r.synth.size, { luts: 127, ffs: 132, carry: 64, muxes: 0, dram: 0, bram: 0, mult: 0, other: [] });
+  assert.deepEqual(r.synth.size, { luts: 114, ffs: 92, carry: 42, muxes: 0, dram: 0, bram: 0, mult: 0, other: [] });
   assert.deepEqual(r.par.util.TRELLIS_IO, [27, 108]);
   assert.deepEqual(r.par.util.DCCA, [1, 8]);
   assert.equal(r.par.fmax.length, 1);
