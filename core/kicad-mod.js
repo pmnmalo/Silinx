@@ -28,7 +28,7 @@ export function readKicadFootprint(text, limits) {
 }
 
 // ------------------------------------------------------------------ its drawing (#4315)
-export const DRAWING_LAYERS = ['F.Fab', 'F.SilkS'];
+const DRAWING_LAYERS = ['F.Fab', 'F.SilkS'];
 const MAX_SHAPES = 2000, MAX_POINTS = 4000;
 const xy = (a) => [num(a?.[1]), num(a?.[2])];
 // (KiCad 5's arc: its centre, its start and its angle in degrees, clockwise on the page: as KiCad 6's start, mid, end)
