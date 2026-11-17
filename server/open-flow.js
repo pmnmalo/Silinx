@@ -160,7 +160,9 @@ function xc7Status(device) {
 export function openSteps(steps, { synthUpToDate = false, family = null } = {}) {
   if (family && backendOf(family).id === family && (!isIseFamily(family) || backendOf(family).steps !== XILINX_STEPS)) {
     const asked = [].concat(steps || []).map(s => String(s).toLowerCase());
-    const list = orderSteps(backendOf(family).steps, asked);
+    // (none asked: the whole implementation, not the simulation models, #2299, which are asked for)
+    const all = backendOf(family).steps.map(s => s.id).filter(id => !/^post(synth|trans|map|par)$/.test(id));
+    const list = orderSteps(backendOf(family).steps, asked.length ? asked : all);
     return synthUpToDate && !asked.includes('synth') ? list.filter(s => s !== 'synth') : list;
   }
   const st = normalizeSteps(steps);
@@ -272,15 +274,18 @@ async function openReports(buildDir, top, device) {
   // the simulation models (#120, #121, #122): this run's, or an earlier run's still in build/ (as the ISE flow's);
   // the post-place & route model's timing beside it (its SDF)
   for (const step of ['postsynth', 'posttrans', 'postmap', 'postpar']) {
-    const rel = SIM_MODELS[step](top), f = path.join(buildDir, rel);
+    // (the iCE40's, ECP5's and Gowin's: Verilog only, <top>_synthesis.v, #2299; this run's report says which)
+    const vhd = SIM_MODELS[step](top), v = vhd.replace(/\.vhd$/, '.v');
+    const rel = /\.v$/.test(r.simModels?.[step]?.path || '') || (!r.simModels?.[step] && !fss.existsSync(path.join(buildDir, vhd)) && fss.existsSync(path.join(buildDir, v))) ? v : vhd;
+    const f = path.join(buildDir, rel), ext = rel.slice(rel.lastIndexOf('.'));
     if (!r.simModels?.[step] && !fss.existsSync(f)) continue;
-    const sdf = rel.replace(/\.vhd$/, '.sdf');
+    const sdf = ext === '.vhd' ? rel.replace(/\.vhd$/, '.sdf') : null;
     // (an earlier run's model made with a test bench's generics: the board's beside it, #622, when written with it,
     // not before it, #625)
-    const board = rel.replace(/\.vhd$/, '_board.vhd'), bf = path.join(buildDir, board);
+    const board = rel.replace(ext, `_board${ext}`), bf = path.join(buildDir, board);
     const own = !r.simModels?.[step] && fss.existsSync(f) && fss.existsSync(bf) && (await fs.stat(bf)).mtimeMs >= (await fs.stat(f)).mtimeMs
       ? { board: { path: `build/${board}`, verilog: `build/${board.replace(/\.vhd$/, '.v')}` } } : {};
-    out.simModels[step] = { ...(r.simModels?.[step] || {}), ...own, path: `build/${rel}`, ...(step === 'postpar' && fss.existsSync(path.join(buildDir, sdf)) ? { sdf: `build/${sdf}` } : {}),
+    out.simModels[step] = { ...(r.simModels?.[step] || {}), ...own, path: `build/${rel}`, ...(step === 'postpar' && sdf && fss.existsSync(path.join(buildDir, sdf)) ? { sdf: `build/${sdf}` } : {}),
       mtime: fss.existsSync(f) ? (await fs.stat(f)).mtime.toISOString() : null };
   }
   out.summary = {

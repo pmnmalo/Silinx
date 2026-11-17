@@ -1,5 +1,6 @@
 // Portuguese strings of Merge Contribution… (#4206, web/js/merge-dialog.js): Project ▸ Merge Contribution… and Undo
-// Merge, their windows; merged into the dictionary of i18n.js.
+// Merge, their windows; and of the merge view of text files (#4214, web/js/merge-view.js); merged into the dictionary
+// of i18n.js.
 export const MERGE_PT = {
   'Merge Contribution…': 'Juntar Contribuição…', 'Merge Contribution': 'Juntar Contribuição', 'Undo Merge': 'Desfazer Junção',
   'Merge': 'Juntar', 'Contribution folder:': 'Pasta da contribuição:', 'This project': 'Este projeto',
@@ -8,7 +9,20 @@ export const MERGE_PT = {
   'Changed there: taken': 'Alterado lá: aceite', 'Added there: taken': 'Acrescentado lá: aceite', 'Removed there: removed': 'Removido lá: removido',
   'Changed here: kept': 'Alterado cá: mantido', 'Changed on both sides: merged by its objects': 'Alterado dos dois lados: juntado pelos seus objetos',
   'Made again from its drawing': 'Gerado de novo a partir do seu desenho', 'Changed on both sides: choose': 'Alterado dos dois lados: escolha',
+  // the merge view (#4214)
+  'Previous Conflict': 'Conflito Anterior', 'Next Conflict': 'Conflito Seguinte', 'The conflict before this one': 'O conflito antes deste',
+  'The next conflict': 'O conflito seguinte', 'Apply the merge with these choices': 'Aplicar a junção com estas escolhas',
+  'Close the merge view: nothing is merged': 'Fechar a vista de junção: nada é juntado', 'The file shown': 'O ficheiro mostrado',
+  'Common Ancestor': 'Antepassado Comum', 'Result': 'Resultado', 'Both': 'Ambos', 'Edited': 'Editado',
+  'Choose Mine, Theirs or Both, or write the lines here.': 'Escolha O meu, O deles ou Ambos, ou escreva aqui as linhas.',
+  'Mine (here)': 'O meu (cá)', 'Theirs (GitHub)': 'O deles (GitHub)',
+  'Mine (this project)': 'O meu (este projeto)', 'Theirs (the contribution)': 'O deles (a contribuição)', 'Merge Lines…': 'Juntar Linhas…',
+  'Changed on both sides: merged by its lines': 'Alterado dos dois lados: juntado pelas suas linhas',
+  'Renamed: its changes merged into the new file': 'Mudou de nome: as suas alterações juntadas no novo ficheiro',
+  'Pull from GitHub (merge)': 'Receber do GitHub (junção)', 'Merge Contribution (lines)': 'Juntar Contribuição (linhas)',
 };
+// the actions a merge view ends with, as their buttons say them
+const ACTIONS_PT = { 'Pull from GitHub': 'Receber do GitHub (Pull)', 'Merge': 'Juntar', 'Merge Branch': 'Juntar Ramo' };
 export const MERGE_PT_PATTERNS = [
   [/^Through their common ancestor: (\d+) file\(s\) differ, (\d+) conflict\(s\) to choose\.$/, 'Através do antepassado comum: $1 ficheiro(s) diferem, $2 conflito(s) a escolher.'],
   [/^With no common ancestor: each file that differs is a choice \((\d+)\)\.$/, 'Sem antepassado comum: cada ficheiro que difere é uma escolha ($1).'],
@@ -16,4 +30,15 @@ export const MERGE_PT_PATTERNS = [
   [/^Read-only, This project$/, 'Só de leitura, Este projeto'],
   [/^Read-only, the folder '(.+)'$/, 'Só de leitura, a pasta \'$1\''],
   [/^Read-only, (.+\.zip)$/i, 'Só de leitura, $1'],
+  // the merge view (#4214)
+  [/^Conflict (\d+) of (\d+)$/, 'Conflito $1 de $2'],
+  [/^⋯ (\d+) unchanged line\(s\)$/, '⋯ $1 linha(s) sem alteração'],
+  [/^File (\d+) of (\d+)$/, 'Ficheiro $1 de $2'],
+  [/^(\d+) conflict\(s\) of lines$/, '$1 conflito(s) de linhas'],
+  [/^(\d+) conflict\(s\) of lines merged$/, '$1 conflito(s) de linhas juntados'],
+  [/^(\d+) of (\d+) conflict\(s\) resolved$/, '$1 de $2 conflito(s) resolvido(s)'],
+  [/^Merge: (\d+) conflict\(s\) in (\d+) file\(s\), the same lines changed on both sides: choose Mine, Theirs or Both for each, or edit its lines, then (.+)\.$/,
+    (m, n, f, a) => `Junção: ${n} conflito(s) em ${f} ficheiro(s), as mesmas linhas alteradas dos dois lados: escolha O meu, O deles ou Ambos para cada um, ou edite as suas linhas, e depois ${ACTIONS_PT[a] || a}.`],
+  [/^Merge: (\d+) conflict\(s\) left to resolve \((.+)\): choose Mine, Theirs or Both, or edit its lines\.$/,
+    'Junção: $1 conflito(s) por resolver ($2): escolha O meu, O deles ou Ambos, ou edite as suas linhas.'],
 ];

@@ -12,3 +12,15 @@ export const initText = (project, r) => (r.created ? `Repository made for '${pro
 export const commitText = r => [`Committed ${shortCommit(r.commit)} on ${r.branch || '(no branch)'}: ${r.files.length} file(s).`, ...fileLines(r.files)].join('\n');
 export const pushText = r => (r.pushed ? `Pushed ${r.branch} to ${r.remote}.` : `Nothing to push: ${r.remote} has every commit of ${r.branch}.`);
 export const pullText = r => (r.upToDate ? `Already up to date: ${r.branch} has every commit of GitHub's.` : [`Pulled into ${r.branch}: ${r.files.length} file(s) changed.`, ...r.files.map(f => `  ${f}`)].join('\n'));
+
+/** A text file's conflicts, each hunk's id with its first line here and what each side has there (#4214): the lines the
+ *  MCP gives for git_pull's and merge_contribution's resolve (Mine, Theirs, Both, or a text). */
+export const hunkLines = (path, hunks) => hunks.map(h => `  ${path}: ${h.id} (line ${h.at.mine}): mine ${JSON.stringify(h.mine.join('\n'))}, theirs ${JSON.stringify(h.theirs.join('\n'))}`);
+
+/** What a pull did beyond taking files: the drawings merged by their objects, the text files by their lines, the files
+ *  renamed (#4214). designOnly: a design project's drawings have no HDL. */
+export const pullMergeLines = (r, { designOnly = false } = {}) => [
+  ...(r.resolved || []).map(f => (designOnly ? `${f}: merged by its objects.` : `${f}: merged by its objects, its HDL made again.`)),
+  ...(r.merged || []).map(f => `${f}: merged by its lines.`),
+  ...(r.renamed || []).map(x => `${x.from}: renamed ${x.side === 'theirs' ? 'on GitHub' : 'here'} to ${x.to}, the other side's changes merged into it.`),
+];

@@ -132,7 +132,9 @@ export const expressionMethods = {
       }
       case 'bitstr': {
         this.next();
-        return { op: 'lit', bits: mapBits(tok.value), signed: false, sized: true };
+        const lit = { op: 'lit', bits: mapBits(tok.value), signed: false, sized: true };
+        if (/[LHW]/i.test(tok.value)) lit.text = tok.value;   // (its weak bits, as a string's, #4370)
+        return lit;
       }
       case 'id':
         return this.parseName();

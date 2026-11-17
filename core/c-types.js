@@ -93,11 +93,3 @@ export function wrap(v, t) {
   if (t.s && t.w > 0 && (x >> BigInt(t.w - 1)) & 1n) x -= 1n << BigInt(t.w);
   return x;
 }
-
-/** The type name of t, for the messages: int, unsigned, ap_uint<9>… */
-export function typeName(t) {
-  if (t.bool) return 'bool';
-  if (t.fx) return `${t.s ? 'ap_fixed' : 'ap_ufixed'}<${t.w}, ${t.w - t.f}>`;
-  if (t.ap) return `${t.s ? 'ap_int' : 'ap_uint'}<${t.w}>`;
-  return `${t.s ? '' : 'unsigned '}${{ 8: 'char', 16: 'short', 32: 'int', 64: 'long' }[t.w] || `int${t.w}`}`.trim();
-}

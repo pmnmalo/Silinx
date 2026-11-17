@@ -324,10 +324,11 @@ export async function gitChecks(name) {
   return { project: name, remote: `${remote.owner}/${remote.repo}`, ...await commitChecks(apiClient(), { owner: remote.owner, repo: remote.repo, ref: up.stdout.trim() }) };
 }
 
-/** Pull GitHub's commits into the project (a merge, never a rebase): { branch, files, upToDate, resolved }. The
- *  drawings both sides changed are merged by their objects (server/git-merge.js), by the choices of `resolve` where an
- *  object is in conflict; any other conflict pulls nothing (the merge aborted: the files as they were) and is a
- *  GitError with its files, and the drawings' conflicts still to choose (`drawings`). An untrusted project stays so,
+/** Pull GitHub's commits into the project (a merge, never a rebase): { branch, files, upToDate, resolved, merged }.
+ *  The drawings both sides changed are merged by their objects (server/git-merge.js), by the choices of `resolve` where
+ *  an object is in conflict, and the text files by their lines (#4214), by its choices where a hunk is; a conflict left
+ *  pulls nothing (the merge aborted: the files as they were) and is a GitError with its files, the drawings' conflicts
+ *  and the text files' still to choose (`drawings`, `texts`) and whether they can be (`resolvable`). An untrusted project stays so,
  *  whatever the pulled silinx.json says (#2830, keepTrust). */
 export async function gitPull(name, { resolve = null } = {}) {
   const repo = await needRepo(name);
@@ -347,7 +348,7 @@ async function pull(name, repo, branch, upstream, resolve) {
   const M = await import('./git-merge.js');
   await M.ensureDrawingAttributes((await ok('rev-parse', ['rev-parse', '--absolute-git-dir'], { cwd: repo.dir })).trim());
   const r = await git(['pull', '--no-rebase', '--ff', '--no-edit', ...(upstream ? [] : ['origin', branch])], { cwd: repo.dir, timeout: 180_000 });
-  let resolved = [];
+  let resolved = [], merged = [];
   if (r.code) {
     const u = await git(['diff', '--name-only', '--relative', '--diff-filter=U'], { cwd: repo.dir });
     const files = u.stdout.split('\n').filter(Boolean);
@@ -357,21 +358,21 @@ async function pull(name, repo, branch, upstream, resolve) {
     catch (e) { await git(['merge', '--abort'], { cwd: repo.dir }); throw new GitError(`git pull: ${e.message}: nothing was pulled`, 'Choose the other side for an object, then Pull again.', e.status || 422, { files }); }
     if (!m.done) {
       await git(['merge', '--abort'], { cwd: repo.dir });
-      const only = !m.others.length;
-      throw new GitError(`git pull: a conflict in ${files.join(', ')}: nothing was pulled, the project's files are as they were`,
-        only ? 'The same objects of a drawing changed here and on GitHub: choose mine or theirs for each, then Pull again.'
-          : 'The same lines changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.',
-        409, { files, drawings: m.drawings });
+      const { pullConflictHint } = await import('../core/git-resolve.js');
+      const c = pullConflictHint(m);
+      throw new GitError(`git pull: a conflict in ${files.join(', ')}: nothing was pulled, the project's files are as they were`, c.hint, 409,
+        { files, drawings: m.drawings, texts: m.texts, resolvable: c.resolvable });
     }
     await ok('add', ['add', '--all', '--', ...new Set([...files, ...m.written])], { cwd: repo.dir });
     await ok('commit', ['commit', '--quiet', '--no-edit', '--no-verify'], { cwd: repo.dir });
     resolved = m.resolved;
+    merged = m.merged;
   }
   const after = await headOf(repo.dir);
   const gated = before === after ? { out: [], warnings: [] } : await gatePulled(repo, before, after, kept, changed);
   if (!upstream) await git(['branch', `--set-upstream-to=origin/${branch}`], { cwd: repo.dir });
   const files = before === after ? [] : (await ok('diff', before ? ['diff', '--name-only', '--relative', before, after, '--', '.'] : ['ls-files', '--', '.'], { cwd: repo.dir })).split('\n').filter(f => f && !gated.out.includes(f));
-  return { project: name, branch, upToDate: before === after, files, ...(resolved.length ? { resolved } : {}), ...(gated.warnings.length ? { warnings: gated.warnings } : {}) };
+  return { project: name, branch, upToDate: before === after, files, ...(resolved.length ? { resolved } : {}), ...(merged.length ? { merged } : {}), ...(gated.warnings.length ? { warnings: gated.warnings } : {}) };
 }
 
 // what a pull brought passes the import gate (#3359), as a clone's files do (the workspace's repository: every

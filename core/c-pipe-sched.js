@@ -165,7 +165,7 @@ const counterOf = (st) => {
 };
 /** The arrays a for loop's body reads and writes only at its counter (a[i]), the counter stepped by a constant and written
  *  nowhere else in it: an element no two iterations in flight share (#2182). */
-export function counterIndexed(s) {
+function counterIndexed(s) {
   const v = s.kind === 'for' ? counterOf(s.step) : null;
   if (!v) return [];
   const ok = new Map();

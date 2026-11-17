@@ -11,14 +11,19 @@
 // project's text files are its own (what passes the import gate, core/import-gate.js); the repository's other files (its
 // hidden ones: .gitignore, .github; its binary ones) stay on GitHub as they are, never deleted by a commit. A drawing
 // changed on both sides is merged by its objects (#3197, core/git-resolve.js): at once when no object is in conflict,
-// else by the user's choices; its HDL file made from it again (projects.regenerate).
+// else by the user's choices; its HDL file made from it again (projects.regenerate). A text file changed on both sides
+// is merged by its lines (#4214, core/text-merge.js): at once when its changes are apart, else by the user's choices
+// per hunk (the merge view's); a file renamed on one side and changed on the other is found as a rename, its change
+// merged into the renamed file.
 // Isomorphic: the project's files and the meta are the caller's (adapters), GitHub's client core/github-api.js.
 import { GitHubError, HINT, blobSha, fromBase64, textOf } from './github-api.js';
 import { checkUrl, nameFromRepo } from './github-url.js';
 import { isOutput, GITIGNORE } from './git-ignore.js';
 import { gateEntries, gateMessages, GateError, GATE_LIMITS } from './import-gate.js';
 import { DRAWING_RE } from './drawing-merge.js';
-import { drawingConflicts, resolveConflict } from './git-resolve.js';
+import { drawingConflicts, resolveConflict, pullConflictHint } from './git-resolve.js';
+import { resolveText } from './text-merge.js';
+import { mergeTexts, pullRenames } from './git-rest-merge.js';
 
 import { commitChecks } from './github-checks.js';
 
@@ -195,8 +200,9 @@ export function restGit({ client, projects, meta }) {
     const b = await request('GET', `${R(m.owner, m.repo)}/git/blobs/${sha}`);
     return textOf(b.encoding === 'base64' ? fromBase64(b.content) : new TextEncoder().encode(b.content || ''));
   };
-  // the drawings among a pull's conflicts merged by their objects: { merged: [{ path, text }], generated, pending, left }
-  async function mergeConflicts(m, head, mine, conflicts, resolve) {
+  // the drawings among a pull's conflicts merged by their objects, the text files by their lines (renamed: the
+  // renamed file's, its versions given): { drawings, pending, texts, waiting, left, generated }
+  async function mergeConflicts(m, head, mine, conflicts, resolve, renamed = []) {
     const drawings = [], pending = [];
     for (const p of conflicts.filter(x => DRAWING_RE.test(x))) {
       const v = { base: await blobText(m, m.paths[p]?.remote), mine: mine[p] ?? null, theirs: await blobText(m, head.blobs[p]?.sha) };
@@ -207,13 +213,16 @@ export function restGit({ client, projects, meta }) {
     }
     const generated = new Set();
     for (const d of drawings) for (const t of [d.v.mine, d.v.theirs]) { try { const g = JSON.parse(t).generatedFile; if (g) generated.add(g); } catch { /* none */ } }
-    const left = conflicts.filter(p => !drawings.some(d => d.path === p) && !generated.has(p));
-    return { drawings, pending, left, generated: [...generated].filter(g => conflicts.includes(g)) };
+    const text = async p => ({ path: p, v: { base: await blobText(m, m.paths[p]?.remote), mine: mine[p] ?? null, theirs: await blobText(m, head.blobs[p]?.sha) } });
+    const { texts, waiting, left } = mergeTexts([...await each(conflicts.filter(p => !drawings.some(d => d.path === p) && !generated.has(p)), text), ...renamed], resolve);
+    return { drawings, pending, texts, waiting, left, generated: [...generated].filter(g => conflicts.includes(g)) };
   }
 
-  /** Pull GitHub's commits into the project (a merge of its files): { branch, upToDate, files, resolved }; a conflict
-   *  (not a drawing's that its objects merge) pulls nothing and is a GitError with its files, and the drawings'
-   *  conflicts still to choose (`drawings`). resolve: { path: { id: 'mine' | 'theirs' } }. */
+  /** Pull GitHub's commits into the project (a merge of its files): { branch, upToDate, files, resolved, merged,
+   *  renamed }; a conflict left (a drawing's objects, a text file's hunks, a file removed on one side and changed on the
+   *  other) pulls nothing and is a GitError with its files, the drawings' and the text files' conflicts still to choose
+   *  (`drawings`, `texts`) and whether they can be (`resolvable`). resolve: { path: { id: 'mine' | 'theirs' } } for a
+   *  drawing, { path: { hunk: 'mine' | 'theirs' | 'both' | { text } } } for a text file. */
   async function pull(name, { resolve = null } = {}) {
     const m = await need(name);
     const head = await headOf(m);
@@ -222,7 +231,7 @@ export function restGit({ client, projects, meta }) {
     const mine = await local(name);
     const now = await hashes(mine);
     const theirs = Object.keys(head.blobs).filter(p => own(p) && head.blobs[p].mode !== '120000');
-    const take = [], drop = [], conflicts = [];
+    let take = [], drop = [], conflicts = [];
     for (const p of new Set([...theirs, ...Object.keys(m.paths)])) {
       const base = m.paths[p], remote = head.blobs[p]?.sha ?? null;
       if (remote === (base?.remote ?? null)) continue;   // (unchanged on GitHub)
@@ -233,13 +242,22 @@ export function restGit({ client, projects, meta }) {
       else if (remote) take.push(p); else drop.push(p);
     }
     conflicts.sort();
-    let merge = { drawings: [], generated: [] };
-    if (conflicts.length) {
-      merge = await mergeConflicts(m, head, mine, conflicts, resolve);
-      if (merge.pending.length || merge.left.length) {
-        throw new GitError(`git pull: a conflict in ${conflicts.join(', ')}: nothing was pulled, the project's files are as they were`,
-          merge.left.length ? 'The same file changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.'
-            : 'The same objects of a drawing changed here and on GitHub: choose mine or theirs for each, then Pull again.', 409, { files: conflicts, drawings: merge.pending });
+    // (a file renamed on one side, changed on the other: the conflict is the renamed file's; GitHub's renamed file
+    // is no longer taken as it is, and the old one GitHub removed goes)
+    const renamed = conflicts.length ? await pullRenames({ paths: m.paths, blobs: head.blobs, mine, conflicts, take, base: p => blobText(m, m.paths[p]?.remote), theirs: p => blobText(m, head.blobs[p]?.sha) }) : [];
+    if (renamed.length) {
+      const from = new Set(renamed.map(r => r.from)), to = new Set(renamed.filter(r => r.side === 'theirs').map(r => r.path));
+      conflicts = conflicts.filter(p => !from.has(p));
+      take = take.filter(p => !to.has(p));
+      drop = [...drop, ...renamed.filter(r => r.side === 'theirs').map(r => r.from)];
+    }
+    let merge = { drawings: [], texts: [], generated: [] };
+    if (conflicts.length || renamed.length) {
+      merge = await mergeConflicts(m, head, mine, conflicts, resolve, renamed);
+      if (merge.pending.length || merge.waiting.length || merge.left.length) {
+        const c = pullConflictHint({ drawings: merge.pending, texts: merge.waiting, others: merge.left });
+        throw new GitError(`git pull: a conflict in ${[...conflicts, ...renamed.map(r => r.path)].sort().join(', ')}: nothing was pulled, the project's files are as they were`,
+          c.hint, 409, { files: [...conflicts, ...renamed.map(r => r.path)].sort(), drawings: merge.pending, texts: merge.waiting, resolvable: c.resolvable });
       }
       for (const d of merge.drawings) {
         try { d.out = await resolveConflict(d.path, d.v.base, d.v.mine, d.v.theirs, resolve?.[d.path] || {}); }
@@ -248,15 +266,19 @@ export function restGit({ client, projects, meta }) {
     }
     const { files } = await fetchOwn(m, head.blobs, take);
     for (const p of take) if (files[p] !== undefined) await projects.write(name, p, files[p]);
-    for (const p of drop) await projects.remove(name, p);
+    for (const p of drop) if (mine[p] !== undefined) await projects.remove(name, p);
     for (const d of merge.drawings) await projects.write(name, d.path, d.out.text);
+    for (const t of merge.texts) await projects.write(name, t.path, resolveText(t.m, resolve?.[t.path] || {}));
     for (const d of merge.drawings) await projects.regenerate?.(name, d.path);
-    // (what GitHub has of the merged files, as the project would hold it: the base of their change, which a commit pushes)
+    // (what GitHub has of the merged files, as the project would hold it: the base of their change, which a commit
+    // pushes; a file renamed here has none: it is a new file still)
     const theirsLocal = {};
-    for (const p of [...merge.drawings.map(d => d.path), ...merge.generated]) {
-      const t = merge.drawings.find(d => d.path === p)?.v.theirs ?? await blobText(m, head.blobs[p]?.sha);
+    for (const p of [...merge.drawings.map(d => d.path), ...merge.texts.filter(t => t.side !== 'mine').map(t => t.path), ...merge.generated]) {
+      const t = merge.drawings.find(d => d.path === p)?.v.theirs ?? merge.texts.find(x => x.path === p)?.v.theirs ?? await blobText(m, head.blobs[p]?.sha);
       if (t !== null) theirsLocal[p] = await blobSha(t);
     }
+    // (a file renamed here: GitHub's version its base, so that a commit removes it there)
+    for (const r of renamed) if (r.side === 'mine') theirsLocal[r.from] = await blobSha(r.v.theirs);
     // the new base: a file taken from GitHub (or the same on both sides) at GitHub's; one changed here only keeps its
     // base, so that it stays a change (a file GitHub's version of which is no text of the project's: left out, as at
     // the clone)
@@ -266,8 +288,11 @@ export function restGit({ client, projects, meta }) {
     for (const p of theirs) if (!paths[p] && after[p] !== undefined && (take.includes(p) || now[p] === head.blobs[p].sha)) paths[p] = { remote: head.blobs[p].sha, local: after[p] };
     for (const [p, l] of Object.entries(theirsLocal)) paths[p] = { remote: head.blobs[p].sha, local: l };
     await meta.set(name, { ...m, commit: head.commit, tree: head.tree, paths, gitignore: !!head.blobs['.gitignore'] });
-    const resolved = merge.drawings.map(d => d.path);
-    return { project: name, branch: m.branch, upToDate: false, files: [...new Set([...take.filter(p => files[p] !== undefined), ...drop, ...resolved, ...merge.generated])].sort(), ...(resolved.length ? { resolved } : {}) };
+    const resolved = merge.drawings.map(d => d.path), merged = merge.texts.map(t => t.path);
+    return {
+      project: name, branch: m.branch, upToDate: false, files: [...new Set([...take.filter(p => files[p] !== undefined), ...drop, ...resolved, ...merged, ...merge.generated])].sort(),
+      ...(resolved.length ? { resolved } : {}), ...(merged.length ? { merged } : {}), ...(renamed.length ? { renamed: renamed.map(r => ({ from: r.from, to: r.path, side: r.side })) } : {}),
+    };
   }
 
   /** The project's commits, the newest first: [{ commit, author, date, message, files }] (the subject: the first line). */

@@ -41,7 +41,7 @@ const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } c
 const keepName = n => { try { localStorage.setItem(NAME_KEY, n); } catch { /* this page only */ } };
 // the browser edition's relay (#3227): another Silinx's, that lets this site in, among the site's (its address, its key),
 // this browser's
-export const RELAY_KEY = prefKey('silinx.collab.relay');
+const RELAY_KEY = prefKey('silinx.collab.relay');
 /** The relays this Silinx's pages may share and follow through (their Content-Security-Policy's too): the site's, set
  *  when it is built, or config.json's relay.relays. */
 export const relaysHere = async () => { try { return (await api.collabRelays?.()) || []; } catch { return []; } };

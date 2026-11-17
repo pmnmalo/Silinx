@@ -15,7 +15,7 @@ import * as Y from 'yjs';
 import { setText } from '/core/collab-doc.js';
 import { yCollab, ySyncAnnotation } from 'y-codemirror.next';
 
-export const PIECE = 8192;
+const PIECE = 8192;
 const piece = Annotation.define();   // (a piece of a large change: never split again)
 
 // the others' changes out of this editor's history
@@ -53,7 +53,7 @@ function largeChanges() {
 
 /** An editor (web/js/editor.js) bound to a Y.Text: their texts first made the same, the editor's into the Y.Text (the
  *  owner's: their unsaved changes kept, `mine`) or the Y.Text's into the editor (an editor's page); unbind() ends it. */
-export function bindEditor(editor, ytext, { mine = false } = {}) {
+function bindEditor(editor, ytext, { mine = false } = {}) {
   const view = editor.view;
   if (!view) return () => {};
   const slot = new Compartment();

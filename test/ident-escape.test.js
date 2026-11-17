@@ -90,9 +90,6 @@ test('escXmlText: the ISE schematic graphics\' copy (& < >, no quote) (#3545)', 
 const LEFT = {
   'core/ident.js': 'the rules',
   'core/escape.js': 'the escapes',
-  // other sessions' files at #3545 (the drawings' parsers #3559 / #3554, Silinx HLS #3558, the MCP server #3535): a follow-up, #3599
-  'core/asm.js': 'a follow-up', 'core/asm-gen.js': 'a follow-up', 'core/logic.js': 'a follow-up', 'core/c-pragma.js': 'a follow-up',
-  'server/mcp-new-source.js': 'a follow-up', 'server/mcp-test-bench.js': 'a follow-up', 'server/mcp-wizards.js': 'a follow-up',
 };
 test('no module writes the identifier rules or an XML escape of its own (#3545)', () => {
   const COPY = /\^\[A-Za-z_?\]\[A-Za-z0-9_-?\]\*\$\/|\^\[A-Za-z_\]\\w\*\$\/|replace\(\/&\/g, '&amp;'\)\.replace\(\/<\/g/;

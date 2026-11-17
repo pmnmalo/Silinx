@@ -84,12 +84,15 @@ test('simulate: the project\'s data files given to the simulation ($readmemh of 
   assert.deepEqual(s.data.log.map(l => l.text), ['mem[2] = 0c']);
 });
 
-test('#3707 simulate model and run_process …_model: refused on a flow that makes no models (iCE40, Basys 3), as the interface lists none; a Basys2 project makes them', async () => {
-  for (const [project, board, family] of [['ice', 'icebreaker', 'iCE40'], ['b3', 'basys3', 'Artix-7']]) {
+test('#3707 #2299 simulate model and run_process …_model: refused on a flow that makes none (Basys 3), or not that one (the iCE40\'s post-translate and post-map, the Gowin\'s post-place & route), as the interface lists them; a Basys2 project makes them', async () => {
+  const ALL = [['postsynth', 'post_synthesis_model', 'post-synthesis'], ['posttrans', 'post_translate_model', 'post-translate'], ['postmap', 'post_map_model', 'post-map'], ['postpar', 'post_par_model', 'post-place & route']];
+  for (const [project, board, family, made] of [['ice', 'icebreaker', 'iCE40', ['postsynth', 'postpar']], ['gw', 'tangnano9k', 'Gowin GW1N', ['postsynth']], ['b3', 'basys3', 'Artix-7', []]]) {
     await ok('new_project_from_example', { name: project, example: 'gates' });
     await ok('set_design_properties', { project, board });
-    for (const [model, proc, name] of [['postsynth', 'post_synthesis_model', 'post-synthesis'], ['posttrans', 'post_translate_model', 'post-translate'], ['postmap', 'post_map_model', 'post-map'], ['postpar', 'post_par_model', 'post-place & route']]) {
-      const message = `the ${family} flow makes no ${name} simulation model (only the Spartan flows make them): simulate the behavioral model`;
+    const only = made.length === 2 ? 'only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one'
+      : made.length ? 'only the post-synthesis one): simulate the behavioral model or the post-synthesis one' : 'only the Spartan flows make them): simulate the behavioral model';
+    for (const [model, proc, name] of ALL.filter(([m]) => !made.includes(m))) {
+      const message = `the ${family} flow makes no ${name} simulation model (${only}`;
       await fails('simulate', { project, model, time_ns: 100 }, message);
       await fails('simulate', { project, model, generate: true, time_ns: 100 }, message);
       await fails('run_process', { project, process: proc }, message);
@@ -101,7 +104,7 @@ test('#3707 simulate model and run_process …_model: refused on a flow that mak
   assert.deepEqual((await ok('simulate', { project: 'g', model: 'postsynth', generate: true, time_ns: 1000, signals: [] })).data.failed, false);
 });
 
-test('#3707 hasSimModels: the flows the interface\'s tools list models for, on every board and with no device', async () => {
+test('#3707 #2299 hasSimModels: the models the interface\'s tools list, on every board and with no device', async () => {
   const { hasSimModels } = await import('../server/mcp-hdl.js');
   const { simModelsOf, toolOf } = await import('../web/js/tool-descriptors.js');
   const { BOARDS } = await import('../core/boards.js');
@@ -112,8 +115,9 @@ test('#3707 hasSimModels: the flows the interface\'s tools list models for, on e
       // (ISE on an open-only family, which the interface never offers: toolOf's fallback, not a flow)
       if (!open && openOnlyDevice(device)) continue;
       const tool = toolOf(device, open);
-      assert.deepEqual(simModelsOf(tool), hasSimModels(device) ? ALL : [], `${device?.part} ${tool.id}`);
+      assert.deepEqual(simModelsOf(tool), ALL.filter(m => hasSimModels(device, m)), `${device?.part} ${tool.id}`);
     }
   }
-  assert.deepEqual([hasSimModels({ part: 'xc3s100e' }), hasSimModels({ part: 'xc6slx16' }), hasSimModels({ part: 'ice40up5k' }), hasSimModels({ part: 'xc7a35t' })], [true, true, false, false]);
+  assert.deepEqual([hasSimModels({ part: 'xc3s100e' }), hasSimModels({ part: 'xc6slx16' }), hasSimModels({ part: 'ice40up5k' }), hasSimModels({ part: 'xc7a35t' })], [true, true, true, false]);
+  assert.deepEqual(['postsynth', 'posttrans', 'postpar'].map(m => hasSimModels({ part: 'ice40up5k' }, m)), [true, false, true]);
 });

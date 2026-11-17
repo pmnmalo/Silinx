@@ -6,8 +6,8 @@
 export const STORED_LABEL = { folder: 'Workspace Folder', browser: 'Browser Storage' };
 const STORED_TEXT = { folder: 'Kept in the workspace folder', browser: 'Kept in this browser\'s storage' };
 
-/** The Stored In cell's lines: the storage, then the GitHub repository (if any). */
-export const placeLines = p => [STORED_LABEL[p.stored], p.github ? `GitHub: ${p.github}` : null].filter(Boolean);
+/** The Stored In cell's lines: the storage, then the GitHub repository it is linked to (if any: ↔, #4344). */
+export const placeLines = p => [STORED_LABEL[p.stored], p.github ? `↔ GitHub: ${p.github}` : null].filter(Boolean);
 
 /** The place in a sentence: "Kept in the workspace folder, in the GitHub repository owner/repo." */
 export const placeText = p => `${STORED_TEXT[p.stored]}${p.github ? `, in the GitHub repository ${p.github}` : ''}.`;

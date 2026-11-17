@@ -104,7 +104,7 @@ test('git_init and the failures: their message and hint; a URL that is not GitHu
   await ok('write_file', { project: 'lab1', path: 'src/extra.v', text: 'module extra (); endmodule\n' });
   await ok('git_commit', { project: 'lab1', message: 'Mine' });
   await fails('git_push', { project: 'lab1' }, 'git push: rejected by GitHub (fetch first)\nHint: GitHub has commits that this project does not: Pull first, then Push again.');
-  await fails('git_pull', { project: 'lab1' }, 'git pull: a conflict in src/extra.v: nothing was pulled, the project\'s files are as they were\nHint: The same lines changed here and on GitHub. Commit your version under another name, or ask the other author, then Pull again.');
+  await fails('git_pull', { project: 'lab1' }, 'git pull: a conflict in src/extra.v: nothing was pulled, the project\'s files are as they were\n  src/extra.v: h1 (line 1): mine "module extra (); endmodule", theirs "module extra(); endmodule"\nHint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.');
   assert.equal(fs.readFileSync(path.join(ws, 'lab1', 'src', 'extra.v'), 'utf8'), 'module extra (); endmodule\n');
   await fails('git_status', { project: 'nope' }, 'no project \'nope\' in the workspace');
   process.env.SILINX_GIT = 'off';

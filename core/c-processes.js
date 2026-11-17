@@ -45,7 +45,7 @@ function changed(body, name) {
 
 /** The region of the top function: { calls: [{ callee, args, loc }], locals: Map name -> { kind, type, depth, loc }, consts:
  *  Map name -> its value (the global constants, #1895, and the const integers of the region) }, or { fallback: why }. */
-export function region(fn, globals = new Map()) {
+function region(fn, globals = new Map()) {
   const calls = [], locals = new Map(), depths = new Map(), consts = new Map(globals);
   let task = null;
   for (const st of fn.body.items) {

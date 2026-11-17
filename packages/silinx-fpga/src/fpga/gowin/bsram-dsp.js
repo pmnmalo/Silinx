@@ -1,6 +1,6 @@
 // Silinx toolchain - the Gowin's block SRAMs and DSPs in gowin_pack (#2303), ported from Apicula's gowin_pack.py (YosysHQ/apicula,
 // MIT): set_bsram_attrs and its byte enables, store_bsram_init_val (the initial values' map, below the main grid),
-// set_dsp_attrs for the MULT9X9 and MULT18X18 (set_mult9x9_attrs). The other DSP primitives are refused.
+// the DSPs' set_dsp_attrs moved to dsp.js (#4333), re-exported.
 import { ATTRIDS } from './attrids.js';
 import { addAttrVal, setBits } from './chipdb.js';
 
@@ -116,67 +116,5 @@ export function storeBsramInit(ctx, row, col, typ, parms, attrs) {
   for (let i = 255; i >= 0; i--, y++) ctx.bsramInit[y].set(loc[i], x);   // (flipud)
 }
 
-// set_mult9x9_attrs: one 9x9 multiplier of a DSP macro (a MULT18X18 is two)
-function mult9x9(params, attrs, a, pairIdx, idx, evenOdd) {
-  attrsUpper(attrs);
-  const pick = (k, pre) => (bin(attrs[k]) ? `${pre}${bin(attrs[k])}` : 'UNKNOWN');
-  const ce = pick('CE', 'CEIN'), clk = pick('CLK', 'CLKIN'), rst = pick('RESET', 'RSTIN');
-  const sync = params.MULT_RESET_MODE === 'SYNC';
-  const p = pairIdx, HL = evenOdd ? 'H' : 'L';
-  a[`IRASHFEN_${p}`] = '1'; a[`IRBSHFEN_${p}`] = '1';
-  if (p) a.MATCH_SHFEN = 'ENABLE';
-  a[`OR2CIB_EN${p}${HL}_${idx}`] = 'ENABLE';
-  if (attrs.NET_ASEL === 'VCC') a[`AIRMUX1_${p}`] = 'ENABLE';
-  else if (attrs.NET_ASEL && attrs.NET_ASEL !== 'GND') a[`AIRMUX1_SEL_${p}`] = 'ENABLE';
-  if (attrs.NET_BSEL === 'VCC') a[`BIRMUX1_${p * 2}`] = 'ENABLE';
-  else if (attrs.NET_BSEL && attrs.NET_BSEL !== 'GND') for (const k of [`BIRMUX0_${p * 2}`, `BIRMUX0_${p * 2 + 1}`, `BIRMUX1_${p * 2}`, `BIRMUX1_${p * 2 + 1}`]) a[k] = 'ENABLE';
-  for (const n of ['AREG', 'BREG', 'OUT_REG', 'PIPE_REG', 'ASIGN_REG', 'BSIGN_REG', 'SOA_REG']) if (!(n in params)) params[n] = '0';
-  const regs = (name, gen) => { a[`CE${HL}MUX_${name}`] = ce; a[`CLK${HL}MUX_${name}`] = clk; a[`RST${HL}MUX_${name}`] = rst; if (sync && gen) a[`RSTGEN${HL}MUX_${name}`] = 'SYNC'; };
-  for (const [parm, val] of Object.entries(params)) {
-    if (parm === 'AREG' || parm === 'BREG') {
-      const ab = parm[0], n = p * 4 + (ab === 'A' ? 0 : 2) + (evenOdd ? 1 : 0);
-      if (val === '0') { a[`IRBY_IREG${p}${ab}${HL}_${n}`] = 'ENABLE'; a[`IRNS_IREG${p}${ab}${HL}_${n}`] = 'ENABLE'; }
-      else regs(`REGM${ab}${p}`, true);
-    }
-    if (parm === 'ASIGN_REG' || parm === 'BSIGN_REG') {
-      const k = parm === 'ASIGN_REG' ? 0 : 1, s = parm.slice(0, 5);
-      if (val === '0') { a[`CINNS_${p * 3 + k}`] = 'ENABLE'; a[`CINBY_${p * 3 + k}`] = 'ENABLE'; }
-      else { a[`CEMUX_${s}${p}1`] = ce; a[`CLKMUX_${s}${p}1`] = clk; a[`RSTMUX_${s}${p}1`] = rst; if (sync) a[`RSTGENMUX_${s}${p}1`] = 'SYNC'; }
-    }
-    if (parm === 'PIPE_REG') {
-      if (val === '0') {
-        for (const k of [`CPRNS_${p * 3}`, `CPRBY_${p * 3}`, `CPRNS_${p * 3 + 1}`, `CPRBY_${p * 3 + 1}`]) a[k] = 'ENABLE';
-        a[`PPREG${p}_NS${HL}_${idx}`] = 'ENABLE'; a[`PPREG${p}_BYP${HL}_${idx}`] = 'ENABLE';
-      } else {
-        for (const s of ['ASIGN', 'BSIGN']) { a[`CEMUX_${s}${p}2`] = ce; a[`CLKMUX_${s}${p}2`] = clk; a[`RSTMUX_${s}${p}2`] = rst; }
-        regs(`REGP${p}`, false);
-        if (sync) { a[`RSTGENMUX_ASIGN${p}2`] = 'SYNC'; a[`RSTGENMUX_BSIGN${p}2`] = 'SYNC'; a[`RSTGEN${HL}MUX_REGP${p}`] = 'SYNC'; }
-      }
-    }
-    if (parm === 'OUT_REG') {
-      if (val === '0') { a[`OREG${p}_BYP${HL}_${idx}`] = 'ENABLE'; a[`OREG${p}_NS${HL}_${idx}`] = 'ENABLE'; }
-      else regs(`OREG${p}`, true);
-    }
-    if (parm === 'SOA_REG' && p) {
-      if (val === '0') {
-        if (evenOdd) { a.IRBY_IRMATCHH_9 = 'ENABLE'; a.IRNS_IRMATCHH_9 = 'ENABLE'; } else { a.IRBY_IRMATCHL_8 = 'ENABLE'; a.IRNS_IRMATCHL_8 = 'ENABLE'; }
-      } else regs('REGSD', true);
-    }
-  }
-}
-
-/** set_dsp_attrs for the MULT9X9 and MULT18X18: the DSP's attribute codes. */
-export function dspAttrs(ctx, typ, params, num, attrs) {
-  const a = {};
-  let idx = Number(num[1]);
-  if (typ === 'MULT9X9') { a.M9MODE_EN = 'ENABLE'; mult9x9(params, attrs, a, idx >> 1, idx, idx & 1); }
-  else if (typ === 'MULT18X18') {
-    idx *= 2; mult9x9(params, attrs, a, idx >> 1, idx, idx & 1);
-    idx += 1; mult9x9(params, attrs, a, idx >> 1, idx, idx & 1);
-  } else throw new Error(`gowin_pack: the DSP primitive ${typ} is not supported yet (only MULT9X9 and MULT18X18)`);
-  const fin = new Set();
-  for (const [attr, v] of Object.entries(a)) addAttrVal(ctx.db, 'DSP', fin, ATTRIDS.dsp.ids[attr], typeof v === 'string' ? ATTRIDS.dsp.vals[v] : v);
-  return fin;
-}
-
+export { dspAttrs } from './dsp.js';
 export { setBits };

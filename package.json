@@ -12,6 +12,8 @@
     "test:ui": "node --test test/ui/*.test.js",
     "test:ise": "SILINX_ISE_TESTS=1 node --test test/ise/*.test.js",
     "check:open-flow": "node scripts/check-open-flow.mjs",
+    "check:xc7": "node scripts/check-xc7.mjs",
+    "check:lattice-flow": "node scripts/check-lattice-flow.mjs",
     "test:webkit": "node --test test/webkit/*.test.js",
     "test:release": "node --test test/release/*.test.js",
     "test:browsers": "node scripts/test-browsers.mjs",

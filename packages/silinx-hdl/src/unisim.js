@@ -10,6 +10,7 @@
 import { UNISIM_S6_VHDL } from './unisim-s6.js';
 import { UNISIM_JTAG_VHDL } from './unisim-jtag.js';
 import { GOWIN_SOURCE, GOWIN_CELLS, usesGowin } from './gowin-prims.js';
+import { latticeSources, latticeShared } from './lattice-libs.js';
 import { hex2 } from './util.js';
 
 /** True if a VHDL source uses the UNISIM library (e.g. a netgen netlist). */
@@ -870,8 +871,8 @@ function vlogUsesGowin(text, defined = new Set()) {
  * netgen and designs that instantiate primitives (VHDL `library UNISIM`, or a Verilog instance of
  * one), and SIMPRIM's for netgen's post-implementation netlists; the Gowin primitives' (#2299) for a
  * design that instantiates them (VHDL `library gw1n`, or a Verilog instance of one: Yosys's synth_gowin
- * netlist), in place of UNISIM's (some of their names are the same). Libraries already among
- * `sources` are not repeated.
+ * netlist), in place of UNISIM's (some of their names are the same); the Lattice ones' (lattice-libs.js: the
+ * iCE40's, the ECP5's) for a design that instantiates them, in place of UNISIM's and Gowin's. Libraries already among `sources` are not repeated.
  */
 export function primitiveSources(sources) {
   const list = sources || [];
@@ -879,17 +880,21 @@ export function primitiveSources(sources) {
   let sim = texts.some(usesSimprim);
   let uni = sim || texts.some(usesUnisim);
   let gw = !uni && texts.some(usesGowin);
+  // (a Lattice library: the names it shares with UNISIM's and Gowin's are its own by their pins, LUT4's Z)
+  const lat = uni ? [] : latticeSources(list);
   if ((!uni || !sim) && list.some(isVerilog)) {
     const defined = new Set();
     for (const s of list) {
       const t = isVerilog(s) ? stripVlogComments(s.text) : String(s.text || '');
       for (const m of t.matchAll(isVerilog(s) ? /\b(?:module|macromodule|primitive)\s+([A-Za-z_]\w*)/g : /\bentity\s+([A-Za-z_]\w*)\s+is\b/gi)) defined.add(m[1].toUpperCase());
     }
+    for (const n of latticeShared(lat)) defined.add(n);
     gw ||= !uni && list.some((s) => isVerilog(s) && vlogUsesGowin(s.text, defined));
     // (a Verilog netlist of SIMPRIM primitives: the Silinx toolchain's post-translate / post-map models, #121)
     sim ||= list.some((s) => isVerilog(s) && vlogUsesUnisim(s.text, defined, simprimNames()));
     uni ||= sim || (!gw && list.some((s) => isVerilog(s) && vlogUsesUnisim(s.text, defined)));
   }
   const have = new Set(list.map((s) => s.path));
-  return [...(uni ? [UNISIM_SOURCE] : []), ...(sim ? [SIMPRIM_SOURCE] : []), ...(gw && !uni ? [GOWIN_SOURCE] : [])].filter((s) => !have.has(s.path));
+  return [...(uni ? [UNISIM_SOURCE] : []), ...(sim ? [SIMPRIM_SOURCE] : []), ...(gw && !uni ? [GOWIN_SOURCE] : []), ...(uni || gw ? [] : lat)]
+    .filter((s) => !have.has(s.path));
 }

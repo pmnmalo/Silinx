@@ -319,7 +319,7 @@ const mulsIn = (g) => g.nodes.filter((n) => n.op === 'mul' && bindable(g, n)).le
 const blocksOf = (df) => (df.units || []).reduce((a, u) => a + u.blocks, 0);
 
 /** The nodes to write: those the outputs need. */
-export function nodesOf(df) { return df.graph.written([...df.outputs.values()]); }
+function nodesOf(df) { return df.graph.written([...df.outputs.values()]); }
 // (the internal names start with ap_, reserved by Vitis HLS for its own: no argument's port meets them)
 export const sig = (n) => `ap_t${n.id}`;
 

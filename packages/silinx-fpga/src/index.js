@@ -76,3 +76,7 @@ export { bitDbXc7 } from './fpga/xc7/bitdb.js';
 // a 7-series .bit read back into its frames and features (bitread, bit2fasm): the BSCAN's measurement against Vivado's
 // bitstreams (scripts/xc7-bscan-vivado.mjs, #3767)
 export { bitIndexXc7, readBitFramesXc7, framesToFeatures } from './fpga/xc7/readback.js';
+// a 7-series .bit checked with no Vivado: its frames fasm2frames', the round trip by bits, its pins the XDC's
+// (scripts/check-xc7.mjs, #3145)
+export { checkBitXc7 } from './fpga/xc7/check.js';
+export { xdcPins } from './fpga/xc7/pins.js';

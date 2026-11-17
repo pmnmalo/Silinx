@@ -96,5 +96,228 @@
       "fs": "9cf774bec98df782b32e401cc8c540a0e4bb98192d1f6050b7daa7f19774b732",
       "fsBytes": 2069320
     }
+  },
+  "primitives": {
+    "note": "the primitives' designs of test/fixtures/gowin-pack/designs.mjs (#4333) on the Tang Nano 9K: their routed designs and Apicula 0.32's .fs",
+    "oddr": {
+      "routed": "c8374df2b9162d2fd9243c5c0b3ac982df84969a73df6a32efde934e43d3e3a8",
+      "fs": "e4f13720ce955b15846e542890a105313deb53754c90b937f5aadde22fe08cf7",
+      "fsBytes": 2069320
+    },
+    "oddrc": {
+      "routed": "2f77c3fa5289eb0260bd47f43412fdd9ed89bfcbdbf4ccdf594bee3b7e9de971",
+      "fs": "cd17046e83ef4b86b35f3c28f258e2e83ff1547d12ded822a21f0a58554088a8",
+      "fsBytes": 2069320
+    },
+    "oddrt": {
+      "routed": "d77d14e621398084c6915e70d7056cf7122d56d008133ca6112059d049b0093a",
+      "fs": "1a8cbd96d70eba624406513b54fbc44579d39a231583ec1d6fc914a956a4e340",
+      "fsBytes": 2069320
+    },
+    "iddr": {
+      "routed": "32f9542e1f54a22c41cf264f2132fe2ff3186ea6100784312d92c33e334d83a7",
+      "fs": "99fb7a455f97336e2e495309f21068e0589f890c0d3c24177c630132082c104a",
+      "fsBytes": 2069320
+    },
+    "iddrc": {
+      "routed": "e1d049d94e7528f9bda32ba8f0f2be5ea6ec27e16285bc1544821024bae63c28",
+      "fs": "97aa034773ff66c1b0179b6c5265fa434029d5f67c3c1c5e7ad278e12a5b41cb",
+      "fsBytes": 2069320
+    },
+    "oser4": {
+      "routed": "e2084deb9f7c32afe49d893890cfd7fe5ff2366ad470c990e53116c24478cb46",
+      "fs": "8d717bee9297ef8a96617bba71d9021acc301c9efab6d4db576772efb02cb214",
+      "fsBytes": 2069320
+    },
+    "oser8": {
+      "routed": "0f991937feb101f525bed7ba31e5d13dd3740e987a5771cb5ebb663373270152",
+      "fs": "73965f53c0500d16df8708e9fee8985fea650af8446895c43f8e08ed141e15fd",
+      "fsBytes": 2069320
+    },
+    "oser10": {
+      "routed": "fbdc298acc4ef99f2847859996ecbd4e9457d24043fb2f166337acc6622f8b71",
+      "fs": "dc3b407df3cf8005ec639ef377bb819b5b29ebba2f35fc4ddd5751a436d93207",
+      "fsBytes": 2069320
+    },
+    "ovideo": {
+      "routed": "a76e5f7c2ef2e8a5180d2751af51e9770baa1c32a1cd873fc2418f0eb29400bc",
+      "fs": "5889cf4b3b533dfdad6ce13967ea45cec78b80439b3a491e885754c936df4525",
+      "fsBytes": 2069320
+    },
+    "ides4": {
+      "routed": "47f524d05c50f8a166dc1a6155eb285825cdb431c8b26a7fed0d505fe9becc71",
+      "fs": "ff0188085299a436dc76267eaea6d47e9691c3ab95b866a5d0a4aac2af938e34",
+      "fsBytes": 2069320
+    },
+    "ides8": {
+      "routed": "de2321c673d2dadfe7dc043c2f7a6e283e5537a1e4be15741a5fd1f4851df8ec",
+      "fs": "c93749b1f0cdd57433b702bbbd78c89016b3bab3485483551e9411971a58ef5f",
+      "fsBytes": 2069320
+    },
+    "ides10": {
+      "routed": "8ae49ef26fe21efb4dbc48ca9771cc5882085f736a337e70e5c2c4613c0bdf26",
+      "fs": "cb0a7ecced0d0785fc0837349adb06df30f6edbc3ac6f4635249fab336d42cb7",
+      "fsBytes": 2069320
+    },
+    "ivideo": {
+      "routed": "53fe76f01b7321029ab87c6e3e719bc964850b7d5e2d4585afccdee39ae849fe",
+      "fs": "b2ed798f043a26e784ef10a3af149779f2385649e63b228aab86c799a7a7ae75",
+      "fsBytes": 2069320
+    },
+    "iodelay": {
+      "routed": "7bbdc5d4d289908176491b6d87e6e14a4d070a65fc31f8913a6c9a66d783951a",
+      "fs": "97b94fab6ade3423ec59a296872d44aa4ce7d06398d9722f33233298daa9b9f2",
+      "fsBytes": 2069320
+    },
+    "dhcen": {
+      "routed": "714cc85fee8591bfbf96c2fcdf309b495e0ba09dc479629cc423ad0e25eb7c04",
+      "fs": "1dedd5292ddcee2672702548d739aaf4928007b5c2bbc89ae8fc8fa889455b99",
+      "fsBytes": 2069320
+    },
+    "dcs": {
+      "routed": "74b680d53a662455df043eb635bb8405d2229158fe73216b6c187d73468eb0a9",
+      "fs": "bcfde4bbdf45a5ef38ed9b6a5b4d7e9e03792caa484d77c9b993324f56ca81d4",
+      "fsBytes": 2069320
+    },
+    "dqce": {
+      "routed": "2eeb5b0c4e598dffbcfff69b7cc903a28eec20c50b280231d6f835e47fd5ef92",
+      "fs": "5246746331bcc1765b2bc2523300a2cb945bf4a794b96586606d0524ccc17c06",
+      "fsBytes": 2069320
+    },
+    "tlvds": {
+      "routed": "4f25acfff9f3701f05b11c425ea082fb392c3d96590d423203d82ba0d1583de0",
+      "fs": "84a431d65edcf769457af7bc5d96873f35d115766243a24f4af3f35a22db9482",
+      "fsBytes": 2069320
+    },
+    "tlvdst": {
+      "routed": "8d5d349ba93f29317f033fddfd1981d3972ea85835975ce49ad69dc4c0d7216b",
+      "fs": "3f143d95674d0b4d991bdd7b7b9adb17b3a821d8ce2be65709159654c27acc21",
+      "fsBytes": 2069320
+    },
+    "tlvdsi": {
+      "routed": "d02917691aca4ea1105e1c6a5440f99bc33399a9481a8ebe6c4678bb9840aeab",
+      "fs": "3cd7f7b971a6bad3d18da1e918f7d918e21e0b90e5edec9c901f649df79b8103",
+      "fsBytes": 2069320
+    },
+    "elvds": {
+      "routed": "d0008291fd3752f6f13fce2a69568b080d3af47b9e6780ee12c05f821ccd0474",
+      "fs": "7dc167567343fee74d51148212f651bcd3d1a279d00491388b0ed05eb692ee9f",
+      "fsBytes": 2069320
+    },
+    "elvdst": {
+      "routed": "ceb607568c29aed6e9fae8bbb737725a68fca631affe907cb7daf491c7b6bb70",
+      "fs": "e78c1bfe60a0ab291cbc492fe2a8f43ad004e263e9ae676ecbb9114871f40618",
+      "fsBytes": 2069320
+    },
+    "elvdsi": {
+      "routed": "1b08ffbedfa0288de74c3da2a9a6b2407cf7bc59db2ee19b5849b26c9b48b7f7",
+      "fs": "ae9d5a63347a83eb0a51fd97d94d4d586042692fbff3c056981a97f5164e0179",
+      "fsBytes": 2069320
+    },
+    "elvdsio": {
+      "routed": "0cc2e9ebf5c519869ef8716c8cdba54b4006e1bc2306e4f822441db75d61eeb9",
+      "fs": "b328d63a410e81ca45b9e1aa9aaa8fc7b78ae1d1899929264bc8e64791325e59",
+      "fsBytes": 2069320
+    },
+    "lvdsddr": {
+      "routed": "c8ba8b23b273f8789ab62fa86a6cbaaa54f71f6e910d92946fd29643ffccf82f",
+      "fs": "4da18f13f16dd369b43189347056d72397b18cb38525e096eab2ae2bf78f943a",
+      "fsBytes": 2069320
+    },
+    "mipio": {
+      "routed": "907cb6ca7ebca78b5d140cf8c77fb5993cba7ada2922a5a48d52ad4cbaa1da50",
+      "fs": "b491642d092a04a97e37227016ddb1204e24e65ee89860af26ab091dc04c7ad4",
+      "fsBytes": 2069320
+    },
+    "mipii": {
+      "routed": "a90856db13a9e1a3ee7f0b634325e001250fae1955d83e22ec1eb620b8335118",
+      "fs": "fa8fa6de252abc2e75d81fd4f62e6c960201b2dbba29d5df4cbec8f9b7d0676c",
+      "fsBytes": 2069320
+    },
+    "i3c": {
+      "routed": "7213de4e952aa3150d6926d889a3ef2cc35818d836cb1e8ab1639d1f23d32212",
+      "fs": "de3594779d2e8306e5ac88f6c1331bc57cf46ded9e8bd15029c04a1c16da5847",
+      "fsBytes": 2069320
+    },
+    "flash": {
+      "routed": "c9e4d63029fa3523a6c1212a5cdd6648df800771ce476f10522830aa3f4c4ab7",
+      "fs": "eb700cfb803ce93768aac5181006570599fad633c53e4799796a6f8d05d4885e",
+      "fsBytes": 2069320
+    },
+    "multalu0": {
+      "routed": "fe952fcc2f0f8ceea91f11dc4a0bf7932fe21902d139cc6b52c660c0e790b748",
+      "fs": "24bc2b892eebf0e7f1349351609f1c3cf63af539c162204082b23ccacb7cf367",
+      "fsBytes": 2069320
+    },
+    "multalu1": {
+      "routed": "b9f184594f6221905e805c1c47579febb31cc3c82e3326414b8c25a273e1dec6",
+      "fs": "70c082da30eb9526fc4744494ec3ed0d8daca27af26340460d98ddfcfb7e8f59",
+      "fsBytes": 2069320
+    },
+    "multalu2": {
+      "routed": "c8d96d4d4271b3f4d9760b1441bf50366ee88417e23217fe5a6fc222eedfbb49",
+      "fs": "3772d36dc4bed5bc04d668be0b354e37c5764df8c47bc6813a498d7c0a01897d",
+      "fsBytes": 2069320
+    },
+    "multalu36": {
+      "routed": "a54ef16bc73c55aeb1c5237ca5201027e7a8eb3595debd1ba5c6b641a4961842",
+      "fs": "c212ee4cbb637287a81a42c32e419d08ecb0867082c64248cd00d1a587744657",
+      "fsBytes": 2069320
+    },
+    "multaddalu": {
+      "routed": "4f80e86506d41f05822301410e97ae4828942ed031b4d5c6dfc9a7561ac28772",
+      "fs": "72be3953c9b8c09ff255b1396936e8bc7f6b48e94c8ce7ac0bf9facc2192ff49",
+      "fsBytes": 2069320
+    },
+    "mult36": {
+      "routed": "c602a9dd8f210a63be5896e5547fa3f6ec818cc3d0b85455955dd7a9d2483790",
+      "fs": "dc2bd3192d0b094ff7c02eee0bc45fec021b456c33673e82515c1767c6ef7a1b",
+      "fsBytes": 2069320
+    },
+    "alu54": {
+      "routed": "db9b03e63445d5b786374196f18e73c1ea1d09f13eed0f185957f67a0fa57ce4",
+      "fs": "3a25f5fe439d018914e8fa7a33108a0d39ff557d2f836db4ec8a4407d3ba40c8",
+      "fsBytes": 2069320
+    },
+    "padd9": {
+      "routed": "51e13dd991e5cc945659f0f3fbc7630f2ed7ee56cd1372d13d3b40ed207a2530",
+      "fs": "742623a0f8940e9a30cc9a91f8dbfc7973c2ae90a99479b90ebce52272d7d887",
+      "fsBytes": 2069320
+    },
+    "padd18": {
+      "routed": "25d63dfd401cdc37dc96b78a9391d28ec60d626be20602331f3061f846b86738",
+      "fs": "52980c89f02b66beb6e4e131da50327bdea84492ac94038c37db07f3f57f21bb",
+      "fsBytes": 2069320
+    },
+    "multaddalu1": {
+      "routed": "22062b167932a0868d4168f65c300aa44a10f3a850bf078ea56922662520c835",
+      "fs": "be23a2c5648ca27b58efb62cda231b917fbe1d07a59f7e09731a45d6a2d4b232",
+      "fsBytes": 2069320
+    },
+    "mult36b": {
+      "routed": "2e275c837cf285b044aace88ffe17f8f6922d7317d8936eab840571836df98b1",
+      "fs": "e553d7a0cdc3587ff8ca13ac597265a2395c5f8cce05864f2c47a2763d1f346e",
+      "fsBytes": 2069320
+    },
+    "alu54b": {
+      "routed": "0614a15cf3ff7239991cc36995cf6d954988ef2b3e4c6cfc0d825a0fa061b0d6",
+      "fs": "311c8e0be12fb28443382f357f313618117f5136dfee36cad2967e719de7c4d7",
+      "fsBytes": 2069320
+    },
+    "multalu36b": {
+      "routed": "e94b0d4b3ba80d77a13f06760c29bdbd9beb5adf352bb0a9f3735017820da627",
+      "fs": "2bcd75706f0cadea4cb18ecf994e4157f850e4be3a6b6213e5eace53517aab01",
+      "fsBytes": 2069320
+    },
+    "padd18b": {
+      "routed": "5d0ca199772663472e0752585a1797c80510a4bb1753e90239345602b65bbfac",
+      "fs": "f715f4afd0dd234d96bb6b2bb2630a9cf7af8dc0a4f588f3447c3eb727030cda",
+      "fsBytes": 2069320
+    },
+    "multalu2clk": {
+      "routed": "b88c0b7df58609512e93a941ad88c03c1add1d2229aa50ec7aa52f5f87ccc8c0",
+      "fs": "cd1733d86e570b5b158af32d61242c183774e0194055bfe672b3624e92f0a2fb",
+      "fsBytes": 2069320
+    }
   }
 }

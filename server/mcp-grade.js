@@ -102,7 +102,7 @@ async function classResults(name, given, file, csv, lang) {
 }
 
 /** The ports of the project's top as an exercise states them: [{ name, dir, width }] (the reference's top). */
-export async function topPorts(name) {
+async function topPorts(name) {
   const v = await elaborateView(name, {});
   const errs = v.diags.filter(d => d.severity === 'error');
   if (errs.length || !v.design?.top) throw toolError(`the top ${v.top} does not compile: ${errs[0] ? `"${errs[0].file}" Line ${errs[0].line}: ${errs[0].message}` : 'no such module'}`);

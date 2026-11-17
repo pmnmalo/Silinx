@@ -8,7 +8,7 @@
 //   synthesized functions; structArgs: core/c-struct.js's, a pointer to structs' members said once by its name; top:
 //   the one whose depths are said, #1684; depths: its pointer arguments' depths, a DATAFLOW process's, #1707)
 
-export const DEFAULT_DEPTH = 1024;
+const DEFAULT_DEPTH = 1024;
 
 const walk = (n, fn) => {
   if (!n || typeof n !== 'object') return;

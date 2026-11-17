@@ -16,7 +16,7 @@ import { MODULE_RE } from './design-link.js';
 
 export const ROOM_RE = /^[A-Za-z0-9_-]{22}$/;   // (128 bits, base64url)
 
-export const VIAS = Object.freeze(['relay', 'host']);
+const VIAS = Object.freeze(['relay', 'host']);
 
 /** A relay's address as a link carries it: its origin, http(s), no user nor password; null when it is not one. */
 export function relayAddress(text) {

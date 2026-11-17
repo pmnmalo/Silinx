@@ -60,7 +60,7 @@ test('run_process: blinky on the Tang Nano 9K to its .fs, nextpnr\'s warnings; g
   assert.equal(summary.bit.size, 2069320);
   assert.ok(fs.existsSync(path.join(P.projectDir('bi'), 'build', 'top.fs')));
   // (its timing nextpnr's, #2300: test/mcp-nextpnr-reports.test.js; no power estimate)
-  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, translate, par, trce, bitgen)');
+  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, postsynth, translate, par, trce, bitgen)');
 });
 
 test('run_process and get_report: a CST with no clock, the clock reported with no constraint, not nextpnr\'s 12 MHz (#3488)', { timeout: 600000 }, async () => {
@@ -116,4 +116,19 @@ test('a project instantiating an rPLL and an OSC: set_top, check_syntax and simu
   const net = fs.readFileSync(path.join(P.projectDir('pll'), 'build', 'open', 'top_yosys.v'), 'utf8');
   assert.match(net, /^\s*rPLL #\(/m);
   assert.match(net, /^\s*OSC #\(/m);
+});
+
+// #2299: the Gowin's Post-Synthesis model (core/flow-models-nextpnr.js: Yosys's netlist of the Gowin cells, shown again since
+// #3707 hid it), simulated against blinky's test bench; no Post-Place & Route one yet (the routed design's ALU modes)
+test('run_process post_synthesis_model on the Tang Nano 9K: blinky\'s model, its test bench passes on it, no warning; post_par_model refused (#2299)', { timeout: 900000 }, async () => {
+  await ok('new_project_from_example', { name: 'models', example: 'blinky' });
+  await ok('set_design_properties', { project: 'models', board: 'tangnano9k', update_constraints: true });
+  const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
+  assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
+  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the Gowin cells\), 336 cells$/m);
+  const s = await ok('simulate', { project: 'models', model: 'postsynth', time_ns: 2000000, signals: [] });
+  assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed], [['Simulation finished OK'], [], false]);
+  const message = 'the Gowin GW1N flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
+  await fails('run_process', { project: 'models', process: 'post_par_model' }, message);
+  await fails('simulate', { project: 'models', model: 'postpar', time_ns: 100 }, message);
 });

@@ -116,7 +116,7 @@ export function fixedCompare(op, a, b) {
   return apCompare(op, A, wa, at.s, B, wb, bt.s);
 }
 /** ap_private<wa, sa>'s comparison with ap_private<wb, sb> (AMD's etc/ap_private.h): A and B their values. */
-export function apCompare(op, A, wa, sa, B, wb, sb) {
+function apCompare(op, A, wa, sa, B, wb, sb) {
   if (op === '>=') return !apCompare('<', A, wa, sa, B, wb, sb);
   if (op === '<=') return !apCompare('>', A, wa, sa, B, wb, sb);
   if (op === '==' || op === '!=') {
@@ -142,7 +142,7 @@ export function fixedToDouble(x) {
 }
 
 /** to_string(10): its exact decimal value (no trailing zeros). */
-export function fixedDecimal(x) {
+function fixedDecimal(x) {
   const neg = x.v < 0n;
   const a = neg ? -x.v : x.v;
   const f = x.t.f;

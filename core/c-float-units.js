@@ -21,7 +21,7 @@ import { floatType } from './c-float.js';
 
 const OPS = { add: '+', sub: '-', mul: '*', div: '/' };
 export const FLOAT_OPS = new Set(['fadd', 'fsub', 'fmul', 'fdiv', 'fsqrt', 'dadd', 'dsub', 'dmul', 'ddiv', 'dsqrt']);
-export const unitName = (op) => `ap_unit_${op}`;
+const unitName = (op) => `ap_unit_${op}`;
 export const isUnit = (name) => /^ap_unit_[fd](add|sub|mul|div|sqrt)$/.test(String(name));
 const lower = (v) => String(v ?? '').toLowerCase();
 const NUM = /^\d+$/;
@@ -35,7 +35,7 @@ const walk = (x, f) => {
 /** The C type's precision: 32 a float, 64 a double, 0 neither (core/c-float.js's floatType's). */
 const flOf = (t) => (t?.kind === 'float' ? floatType(t).fl : 0);
 
-export function asked(checked) {
+function asked(checked) {
   const out = [];
   for (const f of checked.funcs.values()) {
     if (!f.body || isUnit(f.name)) continue;

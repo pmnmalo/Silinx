@@ -77,5 +77,68 @@ test('run_process: blinky on the ULX3S to its .bit through nextpnr-ecp5 and ecpp
   assert.deepEqual(summary.par.fmax.map(f => [f.clock, f.constraint]), [['clk', 25]]);
   assert.ok(summary.map.utilization.some(u => u.name === 'TRELLIS_COMB'));
   // (its timing nextpnr's, #2300: test/mcp-nextpnr-reports.test.js; no power estimate)
-  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, translate, par, trce, bitgen)');
+  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, postsynth, translate, par, trce, postpar, bitgen)');
+});
+
+// #2299: a design that instantiates the ECP5's EHXPLLL and OSCG elaborates (the ECP5 primitives' models): set_top, Check Syntax
+// and the test bench's simulation (the PLL's lock, its clock's and the oscillator's edges counted), its synthesis
+const PLL_TOP = `module top(input clk, output lock, output reg [3:0] n = 0, output reg [3:0] m = 0);
+  wire fast, slow;
+  EHXPLLL #(.CLKI_DIV(1), .CLKFB_DIV(2), .CLKOP_DIV(12), .CLKOP_CPHASE(5), .CLKOP_FPHASE(0), .FEEDBK_PATH("CLKOP"))
+    u (.CLKI(clk), .CLKFB(fast), .CLKOP(fast), .LOCK(lock), .RST(1'b0), .STDBY(1'b0));
+  OSCG #(.DIV(31)) o (.OSC(slow));
+  always @(posedge fast) n <= n + 1;
+  always @(posedge slow) m <= m + 1;
+endmodule
+`;
+const PLL_TB = `\`timescale 1ps / 1ps
+module tb_top;
+  reg clk = 0;
+  wire lock;
+  wire [3:0] n, m;
+  top dut (.clk(clk), .lock(lock), .n(n), .m(m));
+  always #20000 clk = ~clk;
+  initial begin #1000000; $display("lock %b n %0d m %0d", lock, n, m); end
+endmodule
+`;
+test('a project instantiating EHXPLLL and OSCG on the ULX3S: set_top, check_syntax and simulate, its synthesis (#2299)', { timeout: 600000 }, async () => {
+  await ok('new_project', { name: 'pll' });
+  await ok('set_design_properties', { project: 'pll', board: 'ulx3s' });
+  await ok('write_file', { project: 'pll', path: 'src/top.v', text: PLL_TOP });
+  await ok('write_file', { project: 'pll', path: 'sim/tb_top.v', text: PLL_TB });
+  await ok('set_top', { project: 'pll', top: 'top', sim_top: 'tb_top' });
+  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  const s = await ok('simulate', { project: 'pll', time_ns: 1100, signals: [] });
+  // CLKI (25 MHz) rises at 20, 60 … ns: locked at the third (100 ns), CLKOP (50 MHz) from the fourth (140 ns), a rising edge
+  // every 20 ns: 43 to 1000 ns (its last at 980), n = 43 mod 16; the oscillator's 10 MHz rises at 50, 150 … 950 ns: 10
+  assert.deepEqual([s.data.log.map(l => l.text), s.data.warnings, s.data.failed], [['lock 1 n 11 m 10'], [], false]);
+  const run = await ok('run_process', { project: 'pll', process: 'synthesize' });
+  assert.deepEqual(run.data.warnings, []);
+  // (the primitives kept as the ECP5's cells)
+  const net = fs.readFileSync(path.join(P.projectDir('pll'), 'build', 'open', 'top_yosys.v'), 'utf8');
+  assert.match(net, /^\s*EHXPLLL #\(/m);
+  assert.match(net, /^\s*OSCG #\(/m);
+});
+
+// #2299: the flow's simulation models (core/flow-models-nextpnr.js, shown again since #3707 hid them): blinky's Post-Synthesis and
+// Post-Place & Route models (Verilog, the ECP5 cells, synthesized with the test bench's generics), each simulated against its test bench
+test('run_process post_synthesis_model and post_par_model on the ulx3s: the models of blinky, simulate model each: its test bench passes, no warning (#2299)', { timeout: 900000 }, async () => {
+  await ok('new_project_from_example', { name: 'models', example: 'blinky' });
+  await ok('set_design_properties', { project: 'models', board: 'ulx3s', update_constraints: true });
+  const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
+  assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
+  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the ECP5 cells\), 263 cells$/m);
+  const par = await ok('run_process', { project: 'models', process: 'post_par_model' });
+  assert.deepEqual([par.data.warnings, par.data.errors], [[], []]);
+  assert.match(par.text, /^Placing and routing the design synthesized with the test bench's generics \(nextpnr\), for its model\.$/m);
+  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the ECP5 cells\), 335 cells$/m);
+  for (const model of ['postsynth', 'postpar']) {
+    const s = await ok('simulate', { project: 'models', model, time_ns: 2000000, signals: [] });
+    assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed, s.data.notes], [['Simulation finished OK'], [], false, []], model);
+  }
+  // (Verilog netlists of the family's cells, the test bench's generics their parameters)
+  const net = fs.readFileSync(path.join(P.projectDir('models'), 'build', 'netgen', 'par', 'top_timesim.v'), 'utf8');
+  assert.match(net, /^module top\(/m);
+  assert.match(net, /^  parameter div = 2;$/m);
 });

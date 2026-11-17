@@ -13,7 +13,7 @@ import { STORED_LABEL, placeLines, placeText } from '../core/project-place.js';
 test('placeLines / placeText: the storage, then the GitHub repository', () => {
   assert.deepEqual(STORED_LABEL, { folder: 'Workspace Folder', browser: 'Browser Storage' });
   assert.deepEqual(placeLines({ stored: 'folder', github: null }), ['Workspace Folder']);
-  assert.deepEqual(placeLines({ stored: 'browser', github: 'course/lab1' }), ['Browser Storage', 'GitHub: course/lab1']);
+  assert.deepEqual(placeLines({ stored: 'browser', github: 'course/lab1' }), ['Browser Storage', '↔ GitHub: course/lab1']);
   assert.equal(placeText({ stored: 'folder' }), 'Kept in the workspace folder.');
   assert.equal(placeText({ stored: 'folder', github: 'course/lab1' }), 'Kept in the workspace folder, in the GitHub repository course/lab1.');
   assert.equal(placeText({ stored: 'browser', github: 'a/b' }), 'Kept in this browser\'s storage, in the GitHub repository a/b.');

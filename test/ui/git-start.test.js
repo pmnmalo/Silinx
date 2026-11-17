@@ -1,4 +1,4 @@
-// UI (#3968): the Start page's git group (Store Project in a GitHub Repository…, Open from GitHub Repository…, after a line) when Silinx opens,
+// UI (#3968): the Start page's git group (Open from GitHub Repository…, Store Project in a GitHub Repository…, after a line, #4343) when Silinx opens,
 // though the first ask of git (GET /api/git) fails, as a server not answering yet: asked again, the group drawn with its
 // answer, no reload, no click. The ask that failed was kept as "no git" for good, and the group never came. In
 // Portuguese too; no warnings. (SILINX_GIT=off, no group: test/ui/git-off.test.js.)
@@ -26,11 +26,11 @@ uiTest('#3968 the Start page\'s git group when Silinx opens, its first ask of gi
     assert.equal(await page.eval(() => window.__gitFailed), true, 'the first ask failed');
     // the Start page in front, the group after its line, with no click
     await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Open from GitHub Repository…'), [], { what: 'the git group' });
-    assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…', '—', 'Store Project in a GitHub Repository…', 'Open from GitHub Repository…']);
+    assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…', '—', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…']);
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     await page.leftTab('start');
     await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Abrir do Repositório GitHub…'), [], { what: 'the Start page in Portuguese' });
-    assert.deepEqual(await startCommands(page), ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—', 'Guardar o Projeto num Repositório GitHub…', 'Abrir do Repositório GitHub…']);
+    assert.deepEqual(await startCommands(page), ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—', 'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub…']);
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
     assert.deepEqual(warnings(page), []);
   } finally {

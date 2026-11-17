@@ -8,9 +8,13 @@ import { flowFrontEnd } from './synth-front.js';
 import { dutGenerics, postMapModels, postMapModelsOfRouted, postParModels, postSynthesisModels, postTranslateModels, scalarVerilog } from './sim-model.js';
 import { parseXdl } from '../packages/silinx-fpga/src/parts.js';
 import { primitiveSources } from './unisim.js';
+import { NEXTPNR_MODEL_FAMILIES, mountNextpnrModels } from './flow-models-nextpnr.js';
 
-/** { runPostMap, runPostPar, runPostSynth, runPostTranslate } of runOpenFlow (netlist(), packed(), routedText(), synth(): its current values). */
+/** { runPostMap, runPostPar, runPostSynth, runPostTranslate } of runOpenFlow (netlist(), packed(), routedText(), synth(): its current values);
+ *  the iCE40's, ECP5's and Gowin's: flow-models-nextpnr.js's. */
 export function mountSimModels(ctx) {
+  // (the iCE40's, ECP5's and Gowin's: Yosys's and nextpnr's netlists of their own cells, #2299)
+  if (NEXTPNR_MODEL_FAMILIES.has(ctx.spec.family)) return mountNextpnrModels(ctx);
   const {
     io, spec, log, netlist, packed, report, routedOrEarlier, routedText, step, synth, top, constraints, placeRouteNetlist
   } = ctx;

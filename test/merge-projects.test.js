@@ -4,7 +4,8 @@
 // and the student's work exported back; the merge three-way through the ancestor the copy carries, then through the
 // project's own snapshot (a contribution that carries none), two-way with neither; the merged state diagram's HDL made
 // again and simulated against its model in VHDL (its file) and in Verilog; the project untrusted (madeBy 'merge'); Undo
-// Merge putting it back byte for byte, refused once the project changed; the conflicts chosen through the MCP.
+// Merge putting it back byte for byte, refused once the project changed; the conflicts chosen through the MCP: a
+// drawing's per object, a text file's per hunk (#4214), a renamed file merged as a rename.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -132,4 +133,37 @@ test('the MCP: merge_preview lists the conflicts, merge_contribution refuses wit
   assert.match((await call('merge_preview', { project: 'base2', from: '/etc' })).text, /^merge_preview: from: '\/etc' is outside the exchange folder/);
   fs.writeFileSync(path.join(tmp, 'exchange', 'ise.zip'), (await exportProjectZip(P, 'base2', 'xilinx')).zip);
   assert.equal((await call('merge_preview', { project: 'base2', from: 'ise.zip' })).text, 'merge_preview: the contribution is a Xilinx ISE project: only a Silinx project (its .zip or its folder) is merged');
+});
+
+test('#4214 the MCP: a text file\'s conflict per hunk in merge_preview, resolved per hunk by merge_contribution; a renamed file merged into its new path', async () => {
+  await P.createProject({ name: 'base3', template: 'traffic' });
+  fs.writeFileSync(path.join(tmp, 'exchange', 'base3.zip'), (await exportProjectZip(P, 'base3', 'silinx', { copy: true })).zip);
+  assert.equal((await call('import_project', { name: 'cris', from: 'base3.zip' })).isError, false);
+  const T = file('base3', 'src/timer.vhd'), L = file('base3', 'src/lamps.vhd');
+  put('cris', 'src/timer.vhd', T.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 6;'));
+  put('base3', 'src/timer.vhd', T.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 8;'));
+  // (lamps.vhd: renamed in the contribution, changed here)
+  fs.mkdirSync(path.join(P.projectDir('cris'), 'rtl'));
+  put('cris', 'rtl/lamps.vhd', L);
+  fs.rmSync(path.join(P.projectDir('cris'), 'src/lamps.vhd'));
+  put('base3', 'src/lamps.vhd', `-- base3\n${L}`);
+  assert.equal((await call('export_project', { project: 'cris', kind: 'silinx', path: 'cris.zip' })).isError, false);
+  const p = await call('merge_preview', { project: 'base3', from: 'cris.zip' });
+  assert.equal(p.isError, false, p.text);
+  const lines = p.text.split('\n');
+  assert.equal(lines[0], "Merge of cris.zip into 'base3': three-way, 3 file(s) differ, 1 conflict(s) to choose.");
+  assert.deepEqual(lines.filter((l) => /lamps|timer/.test(l)), [
+    '  rtl/lamps.vhd: changed on both sides, merged (a drawing by its objects, a text file by its lines) (renamed from src/lamps.vhd there)',
+    '  src/lamps.vhd: renamed to rtl/lamps.vhd',
+    '  src/timer.vhd: changed on both sides: choose',
+    '    src/timer.vhd: h1 (line 36): mine "    constant CARS_S   : integer := 8;                -- cars green: at least 5 s", theirs "    constant CARS_S   : integer := 6;                -- cars green: at least 5 s"']);
+  assert.deepEqual(p.data.files.find((f) => f.path === 'src/timer.vhd').hunks.map((h) => h.id), ['h1']);
+  const refused = await call('merge_contribution', { project: 'base3', from: 'cris.zip', resolve: { 'src/timer.vhd': {} } });
+  assert.deepEqual([refused.isError, refused.text], [true, 'merge_contribution: not every conflict is resolved: src/timer.vhd h1']);
+  const r = await call('merge_contribution', { project: 'base3', from: 'cris.zip', resolve: { 'src/timer.vhd': { h1: { text: '    constant CARS_S   : integer := 7;\n' } } } });
+  assert.equal(r.isError, false, r.text);
+  assert.deepEqual([r.data.written.sort(), r.data.removed], [['rtl/lamps.vhd', 'src/timer.vhd'], ['src/lamps.vhd']]);
+  assert.equal(file('base3', 'src/timer.vhd'), T.replace(/^ {4}constant CARS_S {3}: integer := 5;.*$/m, '    constant CARS_S   : integer := 7;'));
+  assert.equal(file('base3', 'rtl/lamps.vhd'), `-- base3\n${L}`);
+  assert.equal(fs.existsSync(path.join(P.projectDir('base3'), 'src/lamps.vhd')), false);
 });

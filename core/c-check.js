@@ -35,7 +35,7 @@ const TB_LIB = new Set(['abs', 'labs', 'llabs', 'feof', 'fputs', 'fputc', 'putc'
 // the member functions of hls::stream Silinx HLS knows (#1590)
 const STREAM_MEMBERS = new Set(['read', 'write', 'empty', 'full', 'read_nb', 'write_nb', 'size']);
 const AP_MEMBERS = new Set(['range', 'to_double', 'to_float', 'to_int', 'to_uint', 'to_long', 'to_ulong', 'to_int64', 'to_uint64', 'length', 'and_reduce', 'or_reduce', 'xor_reduce']);
-export const MAX_AP_WIDTH = 1024;
+const MAX_AP_WIDTH = 1024;
 
 /** The value of a constant expression (numbers, the constants known, C's operators, sizeof if sizeOf is given), or null
  *  if it is not one. */

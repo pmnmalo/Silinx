@@ -6,8 +6,8 @@
 import * as P from './projects.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
 import { isDesignOnly } from '../core/project-kind.js';
+import { NAME_RE } from '../core/ident.js';
 
-const NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 const MODES = ['exhaustive', 'random', 'count', 'walking', 'vectors', 'none'];
 
 export const TEST_BENCH_TOOLS = [

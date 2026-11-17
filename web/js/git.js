@@ -16,7 +16,7 @@ import { saveAll } from './processes.js';
 import { renderHierarchy } from './design.js';
 import { field } from './wizards.js';
 import { applyChanges } from './project-watch.js';
-import { commitText, pushText, pullText, cloneText, initText } from '/core/git-messages.js';
+import { commitText, pushText, pullText, cloneText, initText, pullMergeLines } from '/core/git-messages.js';
 import { checksLines } from '/core/github-checks.js';
 import { checkUrl, nameFromRepo } from '/core/github-url.js';
 import { designOnly } from './design-only.js';
@@ -206,8 +206,9 @@ async function gitPush() {
 }
 
 /** File ▸ Git ▸ Pull: GitHub's commits merged in; the project read again (its open documents, by the watcher). A
- *  drawing's objects changed on both sides (#3197): Mine or Theirs asked for each (web/js/git-resolve-dialog.js), then
- *  pulled again with the choices. */
+ *  drawing's objects changed on both sides (#3197): Mine or Theirs asked for each (web/js/git-resolve-dialog.js); a text
+ *  file's same lines (#4214): the merge view (web/js/merge-view.js), Mine, Theirs, Both or edited per hunk; then pulled
+ *  again with the choices. */
 async function gitPull({ resolve = null } = {}) {
   if (!S.project) return null;
   await saveAll();
@@ -215,7 +216,7 @@ async function gitPull({ resolve = null } = {}) {
   try {
     const p = await api.gitPull(name, resolve ? { resolve } : {});
     log(pullText(p), 'ok');
-    for (const f of p.resolved || []) log(designOnly() ? `${f}: merged by its objects.` : `${f}: merged by its objects, its HDL made again.`, 'info');
+    for (const l of pullMergeLines(p, { designOnly: designOnly() })) log(l, 'info');
     for (const w of p.warnings || []) log(`WARNING: ${w}`, 'warn');
     // (the server's watcher tells the page what changed; the browser edition has none: its open documents told here)
     if (!p.upToDate && S.project?.name === name) {
@@ -225,10 +226,22 @@ async function gitPull({ resolve = null } = {}) {
     return p;
   } catch (e) {
     logGitError(e);
-    // (only drawings' objects in conflict: the choices asked, then the pull again)
-    if (e.drawings?.length && /choose mine or theirs/.test(e.hint || '') && S.project?.name === name) {
-      const choices = await (await import('./git-resolve-dialog.js')).resolveDialog(e.drawings);
-      if (choices) return gitPull({ resolve: { ...(resolve || {}), ...choices } });
+    // (only conflicts Silinx resolves: the drawings' objects chosen, the text files' lines merged, then the pull again)
+    if (e.resolvable && (e.drawings?.length || e.texts?.length) && S.project?.name === name) {
+      const choices = { ...(resolve || {}) };
+      if (e.drawings?.length) {
+        const c = await (await import('./git-resolve-dialog.js')).resolveDialog(e.drawings);
+        if (!c) return null;
+        Object.assign(choices, c);
+      }
+      if (e.texts?.length) {
+        const { openMergeView } = await import('./merge-view.js');
+        const c = await openMergeView({ key: `pull:${name}`, title: 'Pull from GitHub (merge)', files: e.texts.map(t => ({ path: t.path, base: t.base, mine: t.mine, theirs: t.theirs })),
+          labels: { mine: 'Mine (here)', theirs: 'Theirs (GitHub)' }, action: 'Pull from GitHub', choices: Object.fromEntries(e.texts.map(t => [t.path, choices[t.path] || {}])) });
+        if (!c) return null;
+        Object.assign(choices, c);
+      }
+      return gitPull({ resolve: choices });
     }
     return null;
   } finally { await refreshGitStatus(); }

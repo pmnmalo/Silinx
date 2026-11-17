@@ -1,7 +1,8 @@
 // The MCP server's drawings' diffs and conflicts (#3197, server/mcp-git.js) through the system's git, against a local
 // bare repository: git_diff of a state diagram by its objects (the last commit to now, a commit to a commit) and of an
 // HDL file by its lines; git_pull's conflict of a drawing named with each object's id, then resolved with `resolve`;
-// a choice that is neither mine nor theirs refused.
+// a choice that is neither mine nor theirs refused. A text file's conflict (#4214): each hunk named with its id, its line
+// and both sides' lines, then resolved per hunk (both, a text), merged by its lines; a bad choice refused.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -86,4 +87,45 @@ test('git_pull: a drawing\'s conflict named with each object\'s id; resolved wit
   assert.match(p.text, new RegExp(`\\n${FSM.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: merged by its objects, its HDL made again\\.$`));
   assert.equal(t1(JSON.parse(fs.readFileSync(path.join(dir, FSM), 'utf8'))).cond, 'night or req');
   assert.equal((await ok('git_status', { project: 'traffic' })).text, 'traffic: main, 2 commit(s) ahead of and 0 behind origin/main (GitHub: local/traffic); no change since the last commit.');
+});
+
+test('#4214 git_pull: a text file\'s conflict named per hunk; resolved with resolve (both, a text); a bad choice refused', async () => {
+  const dir = path.join(ws, 'traffic');
+  const other = path.join(tmp, 'other');
+  const LAMPS = 'src/lamps.vhd';
+  sh(other, 'pull', '--quiet', '--no-rebase');
+  // (the clone and the bare repository in step first)
+  await ok('git_pull', { project: 'traffic' });
+  await ok('git_push', { project: 'traffic' });
+  sh(other, 'pull', '--quiet', '--no-rebase');
+  const base = fs.readFileSync(path.join(other, LAMPS), 'utf8');
+  fs.writeFileSync(path.join(other, LAMPS), `-- theirs\n${base}`);
+  sh(other, 'commit', '--quiet', '-am', 'Theirs');
+  sh(other, 'push', '--quiet');
+  fs.writeFileSync(path.join(dir, LAMPS), `-- mine\n${base}`);
+  await ok('git_commit', { project: 'traffic', message: 'Mine' });
+  const r = await call('git_pull', { project: 'traffic' });
+  assert.equal(r.isError, true);
+  assert.equal(r.text, [`git_pull: git pull: a conflict in ${LAMPS}: nothing was pulled, the project's files are as they were`,
+    `  ${LAMPS}: h1 (line 1): mine "-- mine", theirs "-- theirs"`,
+    'Hint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again.'].join('\n'));
+  for (const bad of [{ h1: 'base' }, { h1: { text: 1 } }, { h1: { text: 'x', more: 1 } }]) {
+    const b = await call('git_pull', { project: 'traffic', resolve: { [LAMPS]: bad } });
+    assert.equal(b.isError, true, JSON.stringify(bad));
+  }
+  const p = await ok('git_pull', { project: 'traffic', resolve: { [LAMPS]: { h1: 'both' } } });
+  assert.match(p.text, /\nsrc\/lamps\.vhd: merged by its lines\.$/);
+  assert.deepEqual(p.data.merged, [LAMPS]);
+  assert.equal(fs.readFileSync(path.join(dir, LAMPS), 'utf8'), `-- mine\n-- theirs\n${base}`);
+  await ok('git_push', { project: 'traffic' });
+  // a text of the user's
+  sh(other, 'pull', '--quiet', '--no-rebase');
+  const now = fs.readFileSync(path.join(other, LAMPS), 'utf8');
+  fs.writeFileSync(path.join(other, LAMPS), now.replace('-- theirs\n', '-- theirs, again\n'));
+  sh(other, 'commit', '--quiet', '-am', 'Theirs 2');
+  sh(other, 'push', '--quiet');
+  fs.writeFileSync(path.join(dir, LAMPS), now.replace('-- theirs\n', '-- mine, again\n'));
+  await ok('git_commit', { project: 'traffic', message: 'Mine 2' });
+  await ok('git_pull', { project: 'traffic', resolve: { [LAMPS]: { h1: { text: '-- ours\n' } } } });
+  assert.equal(fs.readFileSync(path.join(dir, LAMPS), 'utf8'), now.replace('-- theirs\n', '-- ours\n'));
 });

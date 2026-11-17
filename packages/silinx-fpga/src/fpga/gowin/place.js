@@ -1,13 +1,18 @@
 // Silinx toolchain - gowin_pack's place (#2303), ported from Apicula's gowin_pack.py (YosysHQ/apicula, MIT) for the GW1N: each
 // bel's fuses (LUTs, ALUs, flip-flops, the slices' shared attributes, distributed RAM, I/O buffers and their banks, block SRAMs,
-// the MULT9X9 / MULT18X18 DSPs, the rPLLs and oscillators: pll-osc.js), then the banks' I/O standards, then the configuration pins'
-// defaults (db.io_cfg). The primitives Silinx's flow does not make yet (other PLLs, IOLOGIC, LVDS, MIPI…) are refused by name.
+// the DSPs, the rPLLs and oscillators: pll-osc.js, the I/O logic: iologic.js, the HCLK's dividers, DHCEN, DCS and DQCE: hclk.js),
+// then the banks' I/O standards (differential, MIPI and I3C I/O among them), then the configuration pins' defaults (db.io_cfg).
+// The primitives the GW1N-9C has not (PLLVR, PLLA, DLLDLY, BANDGAP, EMCU, BUFS, ADC, the GW5A's) are refused by name.
 import { ATTRIDS } from './attrids.js';
 import { addAttrVal, setBits, shortvalFuses, longvalFuses, bankFuses, bankIoFuses, locBank } from './chipdb.js';
-import { bsramAttrs, storeBsramInit, dspAttrs } from './bsram-dsp.js';
+import { bsramAttrs, storeBsramInit } from './bsram-dsp.js';
+import { placeDsp } from './dsp.js';
 import { pllAttrs, oscAttrs, oscPowerSave } from './pll-osc.js';
+import { IOLOGIC_TYPES, placeIologic } from './iologic.js';
+import { hclkAttrs, dhcenFuses, dcsFuses, dqceFuses } from './hclk.js';
 
-const DEFAULT_IOSTD = { IBUF: 'LVCMOS18', OBUF: 'LVCMOS18', TBUF: 'LVCMOS18', IOBUF: 'LVCMOS18' };
+const DEFAULT_IOSTD = { IBUF: 'LVCMOS18', OBUF: 'LVCMOS18', TBUF: 'LVCMOS18', IOBUF: 'LVCMOS18', TLVDS_IBUF: 'LVDS25', TLVDS_OBUF: 'LVDS25',
+  TLVDS_TBUF: 'LVDS25', TLVDS_IOBUF: 'LVDS25', ELVDS_IBUF: 'LVCMOS33D', ELVDS_OBUF: 'LVCMOS33D', ELVDS_TBUF: 'LVCMOS33D', ELVDS_IOBUF: 'LVCMOS33D' };
 const VCC_IOS = { LVCMOS10: '1.0', LVCMOS12: '1.2', LVCMOS15: '1.5', LVCMOS18: '1.8', LVCMOS25: '2.5', LVCMOS33: '3.3', LVDS25: '2.5', LVCMOS33D: '3.3',
   LVCMOS_D: '3.3', MIPI: '1.2', SSTL15: '1.5', SSTL18_I: '1.8', SSTL18_II: '1.8', SSTL25_I: '2.5', SSTL25_II: '2.5', SSTL33_I: '3.3', SSTL33_II: '3.3',
   SSTL15D: '1.5', SSTL18D_I: '1.8', SSTL18D_II: '1.8', SSTL25D_I: '2.5', SSTL25D_II: '2.5', SSTL33D_I: '3.3', SSTL33D_II: '3.3' };
@@ -28,8 +33,11 @@ const iostdAlias = s => IOSTD_ALIAS.find(([k]) => k.includes(s))?.[1] ?? s;
 const REFINE = { SLEW_RATE: 'SLEWRATE', PULL_MODE: 'PULLMODE', OPEN_DRAIN: 'OPENDRAIN' };
 const BSRAM_TYPES = new Set(['DP', 'SDP', 'SP', 'ROM']);
 const DSP_TYPES = new Set(['MULTADDALU18X18', 'MULTALU36X18', 'MULTALU18X18', 'MULT36X36', 'MULT18X18', 'MULT9X9', 'PADD18', 'PADD9', 'ALU54D', 'MULT12X12', 'MULTALU27X18', 'MULTADDALU12X12']);
-const UNSUPPORTED = /^(IOLOGIC|ODDR|OSER|OVIDEO|IDDR|IDES|IVIDEO|BANDGAP|PINCFG|FLASH|EMCU|MIPI|BUFS|BUFG|OSC|ADC|PLL|CLKDIV|DCS|DQCE|DHCEN|DLLDLY|USERFLASH)/;
+const UNSUPPORTED = /^(BANDGAP|EMCU|BUFS|BUFG|OSC|ADC|PLL|DLLDLY)/;
 const OSC_TYPES = new Set(['OSC', 'OSCZ', 'OSCF', 'OSCH', 'OSCW', 'OSCO']);
+// a MIPI input's B pin, in its aux cell
+const MIPI_AUX = { A: { IO_TYPE: 'LVDS25', LPRX_A2: 'ENABLE', ODMUX: 'TRIMUX', OPENDRAIN: 'OFF', DIFFRESISTOR: 'OFF', BANK_VCCIO: '2.5' },
+  B: { IO_TYPE: 'LVDS25', BANK_VCCIO: '2.5' } };
 const bin = v => parseInt(v, 2);
 
 function placeLut(ctx, t, tile, parms, num, row, col) {
@@ -96,16 +104,26 @@ export function sliceFuses(ctx) {
   }
 }
 
-// an I/O buffer: its bank, its mode and attributes, set after every bel is placed (ctx.ioBels)
-function placeIob(ctx, t, parms, attrs, num, row, col, cell) {
+// an I/O buffer: its bank, its mode and attributes, set after every bel is placed (ctx.ioBels); a differential pair's on its
+// P pin (its N pin's cell skipped), a MIPI input's on its A pin
+function placeIob(ctx, t, parms, attrs, num, row, col, name) {
   const { db } = ctx;
   let edge = 'T', idx = col;
   if (row === db.rows) edge = 'B';
   else if (col === 1) { edge = 'L'; idx = row; } else if (col === db.cols) { edge = 'R'; idx = row; }
-  const belName = `IO${edge}${idx}${num}`;
-  if ('MIPI_IBUF' in parms || 'DIFF' in parms || 'I3C_IOBUF' in parms) throw new Error(`gowin_pack: ${belName}: differential, MIPI and I3C I/O are not supported yet`);
+  const belName = `IO${edge}${idx}${num}`, iob = t.get('bels').get(`IOB${num}`);
+  if ('MIPI_IBUF' in parms && num === 'B') return;
   let mode;
-  if (bin(parms.ENABLE_USED)) mode = bin(parms.INPUT_USED) ? 'IOBUF' : 'TBUF';
+  if ('DIFF' in parms) {
+    if (parms.DIFF === 'N') return;
+    const fail = why => { throw new Error(`gowin_pack: Cannot place ${name} at ${belName} - ${why}`); };
+    if (!iob.get('is_diff')) fail('not a diff pin');
+    if (!iob.get('is_diff_p')) fail('not a P pin');
+    mode = parms.DIFF_TYPE;
+    if (iob.get('is_true_lvds') && mode[0] !== 'T') fail('it is a true lvds pin');
+    if (!iob.get('is_true_lvds') && mode[0] === 'T') fail('it is an emulated lvds pin');
+    if (mode === 'TLVDS_IBUF_ADC') throw new Error(`gowin_pack: the primitive ADC's input (${name}) is not supported yet`);
+  } else if (bin(parms.ENABLE_USED)) mode = bin(parms.INPUT_USED) ? 'IOBUF' : 'TBUF';
   else if (bin(parms.INPUT_USED)) mode = 'IBUF';
   else if (bin(parms.OUTPUT_USED)) mode = 'OBUF';
   else throw new Error('gowin_pack: IOB has no in or output');
@@ -122,6 +140,7 @@ function placeIob(ctx, t, parms, attrs, num, row, col, cell) {
   if (!ctx.ioBels.has(bank)) ctx.ioBels.set(bank, new Map());
   ctx.ioBels.get(bank).set(belName, desc);
   let iostd = DEFAULT_IOSTD[mode];
+  if (!iostd) throw new Error(`gowin_pack: no default I/O standard for ${mode} (${name})`);
   for (const flag of Object.keys(attrs)) {
     const nv = flag.split('=');
     if (nv.length < 2 || flag[0] !== '&') continue;
@@ -130,23 +149,83 @@ function placeIob(ctx, t, parms, attrs, num, row, col, cell) {
     else desc.attrs[nv[0].slice(1)] = nv[1];
   }
   desc.attrs.IO_TYPE = iostd;
-  void t; void cell;
+  if ('DIFF' in parms && 'MIPI_OBUF' in parms) desc.attrs.MIPI = 'ENABLE';
+  if ('I3C_IOBUF' in parms) desc.attrs.I3C_IOBUF = 'ENABLE';
+}
+
+const IN_MODES = new Set(['IBUF', 'IOBUF', 'TLVDS_IBUF', 'TLVDS_IOBUF', 'ELVDS_IBUF', 'ELVDS_IOBUF']);
+const OUT_MODES = new Set(['OBUF', 'IOBUF', 'TLVDS_OBUF', 'TLVDS_IOBUF', 'TLVDS_TBUF', 'ELVDS_OBUF', 'ELVDS_IOBUF']);
+const DIFF_IN = new Set(['TLVDS_IBUF', 'ELVDS_IBUF']);
+const TLVDS_OUT = new Set(['TLVDS_OBUF', 'TLVDS_TBUF', 'TLVDS_IOBUF']), ELVDS_OUT = new Set(['ELVDS_OBUF', 'ELVDS_TBUF', 'ELVDS_IOBUF']);
+
+// an I/O buffer's attributes, and its differential pair's B pin's ([a, b]: b empty for a single pin)
+function iobAttrs(ctx, iob, inBank) {
+  const { mode } = iob.flags, [row] = iob.pos;
+  let base = mode, lvds = null;
+  if (mode.startsWith('TLVDS_') || mode.startsWith('ELVDS_')) { base = mode.slice(6); lvds = { HYSTERESIS: 'NA', PULLMODE: 'NONE', OPENDRAIN: 'OFF' }; }
+  const io = { ...INIT_IO_ATTRS[base], ...lvds };
+  // (a constant output enable takes special fuses)
+  if (mode !== 'IBUF' && !DIFF_IN.has(mode)) {
+    if ('NET_OEN' in iob.flags) {
+      if (iob.flags.NET_OEN === 'GND') io.TRIMUX_PADDT = 'SIG';
+      else if (iob.flags.NET_OEN === 'VCC') io.ODMUX_1 = '0';
+      else { io.TRIMUX_PADDT = 'SIG'; io.TO = 'SIG'; }
+    } else io.ODMUX_1 = '1';
+  }
+  for (const [k, v] of Object.entries(iob.attrs)) io[REFINE[k] || k] = v;
+  io.BANK_VCCIO = inBank.BANK_VCCIO;
+  if (TLVDS_OUT.has(mode)) Object.assign(io, { LVDS_OUT: 'ON', ODMUX_1: 'UNKNOWN', ODMUX: 'TRIMUX', SLEWRATE: 'FAST', PERSISTENT: 'OFF', DRIVE: '0', DIFFRESISTOR: 'OFF' });
+  else if (ELVDS_OUT.has(mode)) {
+    Object.assign(io, { ODMUX_1: 'UNKNOWN', ODMUX: 'TRIMUX', PERSISTENT: 'OFF', DIFFRESISTOR: 'OFF' });
+    io.IO_TYPE = iostdAlias(io.IO_TYPE);
+  }
+  if (DIFF_IN.has(mode)) { io.ODMUX_1 = 'UNKNOWN'; delete io.BANK_VCCIO; }
+  if (io.IO_TYPE === 'MIPI') {
+    io.LPRX_A1 = 'ENABLE'; delete io.SLEWRATE; delete io.BANK_VCCIO;
+    Object.assign(io, { PULLMODE: 'NONE', LVDS_ON: 'ENABLE', IOBUF_MIPI_LP: 'ENABLE' });
+  }
+  if ('I3C_IOBUF' in io) {
+    delete io.I3C_IOBUF;
+    Object.assign(io, { PULLMODE: 'NONE', OPENDRAIN: 'OFF', OD: 'ENABLE', DIFFRESISTOR: 'NA', SINGLERESISTOR: 'NA', DRIVE: '16' });
+  }
+  if (ctx.device === 'GW1N-1' && row + 1 === 5 && base === 'OBUF') io.TO = 'UNKNOWN';
+  // (place's last mode: an LVDS one sets every buffer's drive but 0 unknown)
+  if (ctx.device !== 'GW1N-4' && ctx.device !== 'GW1NS-4' && ctx.lastMode.slice(1).startsWith('LVDS') && io.DRIVE !== '0') io.DRIVE = 'UNKNOWN';
+  let b = {};
+  if (io.IO_TYPE === 'MIPI') {
+    io.IO_TYPE = 'LVDS25';
+    b = { IO_TYPE: 'LVDS25', PULLMODE: 'NONE', OPENDRAIN: 'OFF', IOBUF_MIPI_LP: 'ENABLE', PERSISTENT: 'OFF' };
+  }
+  if (TLVDS_OUT.has(mode)) b = { ...io };
+  else if (DIFF_IN.has(mode)) {
+    b = { ...io };
+    if (mode === 'ELVDS_IBUF') { io.PULLMODE = 'UP'; b.PULLMODE = 'NONE'; }
+    b.IO_TYPE = io.IO_TYPE ?? 'UNKNOWN';
+    b.DIFFRESISTOR = io.DIFFRESISTOR ?? 'OFF';
+  } else if (ELVDS_OUT.has(mode)) {
+    if (mode === 'ELVDS_IOBUF') { io.PULLMODE = 'UP'; b.PULLMODE = 'UP'; }
+    b = { ...io };
+  }
+  return [io, b, lvds];
 }
 
 /** The I/O banks' standards and the I/O buffers' fuses; then the configuration pins' (place's last part). */
 function ioBanks(ctx) {
   const { db } = ctx;
-  const IN_MODES = new Set(['IBUF', 'IOBUF']), OUT_MODES = new Set(['OBUF', 'IOBUF']);
   let inBank = {};
   for (const [bank, ios] of ctx.ioBels) {
     inBank = {};
     let vccio = null, iostd = null;
     for (const [name, iob] of ios) {
-      if (IN_MODES.has(iob.flags.mode)) {
+      const { mode } = iob.flags;
+      // (a differential pair cannot be on a simplified row)
+      if (db.simplio_rows.includes(iob.pos[0]) && (mode.startsWith('ELVDS') || mode.startsWith('TLVDS'))) throw new Error(`gowin_pack: Differential IO cant be placed at special row ${iob.pos[0]}`);
+      if (IN_MODES.has(mode)) {
         iob.attrs.IO_TYPE = iostdAlias(iob.attrs.IO_TYPE);
         if ((iob.attrs.SINGLERESISTOR ?? 'OFF') !== 'OFF') iob.attrs.DDR_DYNTERM = 'ON';
       }
-      if (OUT_MODES.has(iob.flags.mode)) {
+      if (OUT_MODES.has(mode)) {
+        if (mode === 'ELVDS_OBUF' || mode === 'ELVDS_IOBUF') inBank.BANK_VCCIO = '1.2';
         if ('BANK_VCCIO' in iob.attrs && iob.attrs.BANK_VCCIO !== VCC_IOS[iob.attrs.IO_TYPE]) throw new Error(`gowin_pack: Conflict bank VCC at ${name}.`);
         if (!vccio) {
           if (!iob.attrs.IO_TYPE.startsWith('LVDS')) { iostd = iob.attrs.IO_TYPE; vccio = VCC_IOS[iostd]; }
@@ -160,28 +239,20 @@ function ioBanks(ctx) {
     if (!('BANK_VCCIO' in inBank)) inBank.BANK_VCCIO = VCC_IOS[iostd];
     ctx.banks.get(bank).iostd = iostd;
     for (const [, iob] of ios) {
-      const [row, col, idx] = iob.pos;
-      const t = db.tileAt(row, col), mode = iob.flags.mode;
-      const io = { ...INIT_IO_ATTRS[mode] };
-      if (mode !== 'IBUF') {
-        if (`NET_OEN` in iob.flags) {
-          if (iob.flags.NET_OEN === 'GND') io.TRIMUX_PADDT = 'SIG';
-          else if (iob.flags.NET_OEN === 'VCC') io.ODMUX_1 = '0';
-          else { io.TRIMUX_PADDT = 'SIG'; io.TO = 'SIG'; }
-        } else io.ODMUX_1 = '1';
+      const [row, col, idx] = iob.pos, t = db.tileAt(row, col);
+      const [io, b, lvds] = iobAttrs(ctx, iob, inBank);
+      for (const [iobIdx, atr] of [[idx, io], ['B', b]]) {
+        const ioAttrs = new Set();
+        for (const [k, v] of Object.entries(atr)) {
+          if (!(k in ATTRIDS.iob.ids)) continue;   // (gowin_pack prints "XXX IO: add … key handle")
+          addAttrVal(db, 'IOB', ioAttrs, ATTRIDS.iob.ids[k], need(ATTRIDS.iob.vals, v, k));
+          if (k === 'LVDS_OUT' && v !== 'ENABLE' && v !== 'ON') continue;
+          if (k === 'IO_TYPE' && k in inBank && inBank[k].startsWith('LVDS')) continue;
+          inBank[k] = v;
+        }
+        setBits(ctx.tilemap.get(`${row},${col}`), longvalFuses(db, t.get('ttyp'), ioAttrs, `IOB${iobIdx}`));
+        if (idx === 'B' || !lvds) break;
       }
-      for (const [k, v] of Object.entries(iob.attrs)) io[REFINE[k] || k] = v;
-      io.BANK_VCCIO = inBank.BANK_VCCIO;
-      if (ctx.lastMode.slice(1).startsWith('LVDS') && io.DRIVE !== '0') io.DRIVE = 'UNKNOWN';
-      const ioAttrs = new Set();
-      for (const [k, v] of Object.entries(io)) {
-        if (!(k in ATTRIDS.iob.ids)) continue;   // (gowin_pack prints "XXX IO: add … key handle")
-        addAttrVal(db, 'IOB', ioAttrs, ATTRIDS.iob.ids[k], need(ATTRIDS.iob.vals, v, k));
-        if (k === 'LVDS_OUT' && v !== 'ENABLE' && v !== 'ON') continue;
-        if (k === 'IO_TYPE' && k in inBank && inBank[k].startsWith('LVDS')) continue;
-        inBank[k] = v;
-      }
-      setBits(ctx.tilemap.get(`${row},${col}`), longvalFuses(db, t.get('ttyp'), ioAttrs, `IOB${idx}`));
     }
     const [brow, bcol] = db.bankTiles.get(bank);
     const bankAttrs = new Set();
@@ -233,7 +304,31 @@ export function place(ctx, bels) {
       parms.OUTPUT_USED = o; parms.INPUT_USED = i; parms.ENABLE_USED = e;
       typ = 'IOB';
     }
-    if (typ === 'GSR' || typ.startsWith('MUX2_')) continue;
+    if (IOLOGIC_TYPES.has(typ)) { placeIologic(ctx, ctx.cells, b); continue; }
+    // (no fuses of their own: the user flash, the MIPI pins' cells; the I2C and SSPI pins' configuration, as gowin_pack's defaults)
+    if (typ === 'GSR' || typ.startsWith('MUX2_') || typ.startsWith('FLASH') || typ.startsWith('MIPI_OBUF') || (typ.startsWith('MIPI_IBUF') && !typ.startsWith('MIPI_IBUF_AUX'))) continue;
+    if (typ === 'PINCFG') {
+      if ('I2C' in parms) throw new Error(' i2c_as_gpio has conflicting settings in nexpnr and gowin_pack.');
+      if ('SSPI' in parms) throw new Error(' sspi_as_gpio has conflicting settings in nexpnr and gowin_pack.');
+      continue;
+    }
+    if (typ.startsWith('MIPI_IBUF_AUX')) {
+      for (const [idx, attrsOf] of Object.entries(MIPI_AUX)) {
+        const a = new Set();
+        for (const [k, v] of Object.entries(attrsOf)) addAttrVal(db, 'IOB', a, ATTRIDS.iob.ids[k], ATTRIDS.iob.vals[v]);
+        setBits(tile, longvalFuses(db, t.get('ttyp'), a, `IOB${idx}`));
+      }
+      continue;
+    }
+    if (typ === 'DHCEN') {
+      if (!('DHCEN_USED' in attrs)) continue;
+      const [, wire, , side] = db.extra_func.get(`${row - 1},${col - 1}`).get('dhcen')[Number(num)].get('pip');
+      dhcenFuses(ctx, wire, side);
+      continue;
+    }
+    if (typ.startsWith('CLKDIV')) { setBits(tile, shortvalFuses(db, t.get('ttyp'), hclkAttrs(db, ctx.device, parms, num, typ, b.name), 'HCLK')); continue; }
+    if (typ === 'DQCE') { dqceFuses(ctx, b.name, attrs); continue; }
+    if (typ === 'DCS') { dcsFuses(ctx, row - 1, col - 1, num, attrs); continue; }
     if (typ.startsWith('RPLL')) {
       // (an rPLL's own cell and its RPLLB's: the PLL table of those that have one)
       if (db.shortval.get(t.get('ttyp'))?.has('PLL')) setBits(tile, shortvalFuses(db, t.get('ttyp'), pllAttrs(db, ctx.device, parms), 'PLL'));
@@ -251,7 +346,7 @@ export function place(ctx, bels) {
       placeDff(ctx, Number(num), ctx.lastMode, row, col, attrs.LATCH === '00000000000000000000000000000001');
     }
     else if (typ.startsWith('LUT')) placeLut(ctx, t, tile, parms, Number(num), row, col);
-    else if (typ.slice(0, 3) === 'IOB') placeIob(ctx, t, parms, attrs, num, row, col, cell);
+    else if (typ.slice(0, 3) === 'IOB') placeIob(ctx, t, parms, attrs, num, row, col, b.name);
     else if (typ.startsWith('RAM16SDP') || typ === 'RAMW') {
       for (let i = 0; i < 4; i++) slice(ctx, row, col, i).MODE = 'SSRAM';
       Object.assign(slice(ctx, row, col, 2), { LSRONMUX: 'LSRMUX', LSR_MUX_LSR: 'INV', CLKMUX_1: 'UNKNOWN', CLKMUX_CLK: 'SIG' });
@@ -261,8 +356,7 @@ export function place(ctx, bels) {
       setBits(tile, shortvalFuses(db, t.get('ttyp'), bsramAttrs(ctx, cell, typ, parms), `BSRAM_${typ}`));
     } else if (DSP_TYPES.has(typ) || typ === 'DSP_AUX') {
       if (typ === 'DSP_AUX') typ = cell.type;
-      const a = dspAttrs(ctx, typ, parms, num, attrs);
-      if (db.shortval.get(t.get('ttyp'))?.has(`DSP${num.at(-2)}`)) setBits(tile, shortvalFuses(db, t.get('ttyp'), a, `DSP${num.at(-2)}`));
+      placeDsp(ctx, t, tile, typ, parms, num, attrs);
     } else if (typ.startsWith('ALU')) placeAlu(ctx, t, tile, parms, Number(num), row, col);
     else throw new Error(`gowin_pack: unknown type ${typ} (${b.name})`);
   }

@@ -32,13 +32,13 @@ const CTRL = new Set(['ap_clk', 'ap_rst', 'ap_start', 'ap_done', 'ap_idle', 'ap_
 
 /** The arguments a function's FUNCTION_INSTANTIATE names (variable=a, b), each call's constant one made its own module's
  *  constant (#2244). */
-export function instantiated(f) {
+function instantiated(f) {
   return (f.body?.items || []).filter((s) => s.kind === 'pragma' && s.pragma.name === 'FUNCTION_INSTANTIATE')
     .flatMap((s) => String(s.pragma.args.variable ?? '').split(',').map((x) => x.trim()).filter(Boolean));
 }
 
 /** ALLOCATION instances=f limit=N function, in any function's body: f's instances at most N (the least said), #2244. */
-export function allocationLimits(funcs) {
+function allocationLimits(funcs) {
   const out = new Map();
   for (const f of funcs.values()) {
     for (const s of f.body?.items || []) {

@@ -8,7 +8,7 @@ import path from 'node:path';
 import { setupUi, uiTest, makeProject, readWs, waitDownload, ROOT } from './harness.js';
 import { FILE, exportZip, openImport } from './zip-helpers.js';
 import zlib from 'node:zlib';
-import { readZip } from '../../core/zip.js';
+import { createZip, readZip } from '../../core/zip.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -680,10 +680,10 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   await page.waitFor(() => document.querySelectorAll('#start-page .start-btns .btn').length === 2, [], { what: 'the Start page' });
   // (Share Project: the main toolbar's and the File menu's, #3716)
   assert.deepEqual(await startPage(page), { buttons: ['New Project…', 'Open Project…'], top: true, halves: true, commands: [
-    // (the git group: Store Project in a GitHub Repository…, the open project's, #3534; Open from GitHub Repository…, the server editions' git,
-    // #3195, the group's last, #3716)
+    // (the git group: Open from GitHub Repository…, the server editions' git, #3195; Store Project in a GitHub Repository…, the open
+    // project's, #3534, the group's last, #4343)
     'Import Project…', 'Export Project (.zip)… (disabled)', '—',
-    'Store Project in a GitHub Repository… (disabled)', 'Open from GitHub Repository…'] });
+    'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)'] });
   // drawn again with a project open (a late drawing while one opens): the same page kept, only its host's attribute
   // changes, so that a click pressed before is not lost (#494, #1222)
   assert.deepEqual(await page.eval(async () => {
@@ -710,7 +710,7 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   await page.leftTab('start');
   await page.waitFor(() => document.getElementById('start-page').hasAttribute('data-project'), [], { what: 'the exports enabled' });
   assert.deepEqual((await startPage(page)).commands, ['Import Project…', 'Export Project (.zip)…', '—',
-    'Store Project in a GitHub Repository…', 'Open from GitHub Repository…']);
+    'Open from GitHub Repository…', 'Store Project in a GitHub Repository…']);
   // (the software chosen in the export's window, #3703)
   for (const [id, zip] of [['silinx', 'StartZip-silinx.zip'], ['xilinx', 'StartZip.zip']]) {
     await page.click('#start-page .entry a', { text: 'Export Project (.zip)…' });
@@ -729,7 +729,7 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   assert.deepEqual((await startPage(page)).buttons, ['Novo Projeto…', 'Abrir Projeto…']);
   await page.waitFor(() => document.querySelector('#start-page .start-box .entry a')?.textContent === 'Importar Projeto…', [], { what: 'the commands in Portuguese' });
   assert.deepEqual((await startPage(page)).commands, ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—',
-    'Guardar o Projeto num Repositório GitHub…', 'Abrir do Repositório GitHub…']);
+    'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub…']);
   // the File menu's: Import Project…, a folder, a .zip or a .xise (#3965); the export a .zip only (#4132)
   const fileMenu = () => page.eval(async () => {
     const { t } = await import('/js/i18n.js');
@@ -854,6 +854,24 @@ uiTest('#4288 Export Project (.zip)… to Silinx of a new project with no constr
   const back = await env.server.api('GET', '/api/projects/NoUcfSBack');
   assert.deepEqual([back.top, back.constraints, back.fileTree], ['top', 'constraints/top.ucf', ['src/top.vhd']]);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+});
+
+// #4356 regression: a Silinx zip whose silinx.json names a constraints file of its own the zip does not contain: the
+// import warns of it (a new project's default path, not written yet, does not: #4288)
+uiTest('#4356 Import Project… of a Silinx zip missing its own constraints file: the warning names it', E, async (page) => {
+  const pj = { name: 'x', device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, top: '', files: [], constraints: 'constraints/board.ucf' };
+  const file = path.join(env.tmp, 'own-ucf-silinx.zip');
+  await fs.writeFile(file, await createZip([{ path: 'silinx.json', data: JSON.stringify(pj) }], { deflate: (d) => zlib.deflateRawSync(d) }));
+  await makeProject(env, { name: 'Holder', board: 'basys2' });
+  await page.openProject('Holder');
+  await openImport(page, 'silinx');
+  await page.setFiles(FILE, [file]);
+  await page.fill('.dlg-overlay input[type=text]', 'OwnUcf');
+  await page.dialogButton('Import');
+  await page.waitFor(() => window.Silinx.project?.name === 'OwnUcf');
+  await page.waitConsole(/Imported Silinx project 'OwnUcf'/);
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), ['WARNING: files listed in silinx.json but not in the zip: constraints/board.ucf']);
+  assert.equal((await env.server.api('GET', '/api/projects/OwnUcf')).constraints, 'constraints/board.ucf');
 });
 
 // #3703: Import Project… and Export Project (.zip)…: the software chosen in the window (Silinx, Xilinx ISE; AMD
