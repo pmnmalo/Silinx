@@ -173,6 +173,14 @@ test('the allow-list (#4167): the redaction test\'s made-up home folders and ISE
   assert.deepEqual(kinds('test/collab-runs.test.js', `'${['', 'Users', 'alice'].join('/')}/ws'`), ['home folder with a user name: /Users/alice']);
 });
 
+test('the allow-list (#4364): the dummy address of 26d6593\'s rate limit message, in that file only', () => {
+  const line = `throw new GitHubError('GitHub refused the request (API rate limit exceeded for ${dot('1', '2', '3', '4')}.)', 'Wait an hour.', 403);`;
+  assert.deepEqual(kinds('test/github-checks.test.js', line), []);
+  assert.deepEqual(kinds('test/other.test.js', line), [`IP address: ${dot('1', '2', '3', '4')}`]);
+  // another address in that file is still found
+  assert.deepEqual(kinds('test/github-checks.test.js', `for ${dot('1', '2', '3', '5')}`), [`IP address: ${dot('1', '2', '3', '5')}`]);
+});
+
 test('GitHub\'s hosted runners\' accounts are no one\'s home folder (#3726): runneradmin, its short name RUNNER~1', () => {
   const msg = `git reports ${['C:', 'Users', 'runneradmin', 'AppData'].join('/')} for C:\\Users\\RUNNER~1\\AppData, ${['', 'Users', 'runneradmin', 'work'].join('/')} on macOS`;
   assert.deepEqual(kinds('(message of 00201b6)', msg), []);

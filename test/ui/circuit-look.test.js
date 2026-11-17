@@ -44,7 +44,7 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Wires, D
   // Hop-overs, by default: wc (drawn after ws) hops over it, the first wire over none
   assert.match(await wireD(page, 'wc'), / A5,5 0 0 1 /);
   assert.doesNotMatch(await wireD(page, 'w1'), / A/, 'the first wire drawn hops over none');
-  assert.deepEqual(await entries(page), ['Wires:', '*Direct menuitemradio', 'Orthogonal menuitemradio', 'Curved menuitemradio', 'Wire crossings:', '*Hop-overs menuitemradio', 'Plain crossings menuitemradio']);
+  assert.deepEqual(await entries(page), ['Wires:', '*Direct menuitemradio', 'Orthogonal menuitemradio', 'Curved menuitemradio', 'Wire crossings:', '*Hop-overs menuitemradio', 'Plain crossings menuitemradio', 'KiCad:']);
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title`)[1].title, ED), 'How two wires that cross without connecting are drawn');
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu [data-value]`)].map((b) => [b.dataset.value, b.title]), ED),
     [['direct', 'Each wire a straight line from point to point'], ['orthogonal', 'Each wire of horizontal and vertical segments'],
@@ -54,12 +54,12 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Wires, D
   await page.click(`${ED} .circ-toolbar .tb-more-btn`);
   await menuItem(page, 'Plain crossings');
   assert.doesNotMatch(await wireD(page, 'wc'), / A/);
-  assert.deepEqual(await entries(page), ['Wires:', '*Direct menuitemradio', 'Orthogonal menuitemradio', 'Curved menuitemradio', 'Wire crossings:', 'Hop-overs menuitemradio', '*Plain crossings menuitemradio']);
+  assert.deepEqual(await entries(page), ['Wires:', '*Direct menuitemradio', 'Orthogonal menuitemradio', 'Curved menuitemradio', 'Wire crossings:', 'Hop-overs menuitemradio', '*Plain crossings menuitemradio', 'KiCad:']);
   assert.equal(await page.eval(() => localStorage.getItem('silinx.circuit.hops')), '0');
   await page.click(`${ED} .circ-toolbar .tb-more-btn`);
   await menuItem(page, 'Hop-overs');
   assert.match(await wireD(page, 'wc'), / A5,5 0 0 1 /);
-  assert.deepEqual(await entries(page), ['Wires:', '*Direct menuitemradio', 'Orthogonal menuitemradio', 'Curved menuitemradio', 'Wire crossings:', '*Hop-overs menuitemradio', 'Plain crossings menuitemradio']);
+  assert.deepEqual(await entries(page), ['Wires:', '*Direct menuitemradio', 'Orthogonal menuitemradio', 'Curved menuitemradio', 'Wire crossings:', '*Hop-overs menuitemradio', 'Plain crossings menuitemradio', 'KiCad:']);
   assert.equal(await page.eval(() => localStorage.getItem('silinx.circuit.hops')), '1');
   await page.click(`${ED} .circ-toolbar .tb-more-btn`);
   await menuItem(page, 'Plain crossings');
@@ -93,7 +93,7 @@ uiTest('Circuit editor: Show inside draws the strips and the gates; ⋮ Wires, D
       ['Saltos', 'Desenhar um pequeno arco onde dois fios se cruzam sem se ligarem'],
       ['Cruzamentos simples', 'Desenhar dois fios que se cruzam sem se ligarem a direito, um sobre o outro (uma ligação tem o seu ponto)']]);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title`)].map((t) => t.textContent), ED),
-    ['Fios', 'Cruzamentos de fios']);
+    ['Fios', 'Cruzamentos de fios', 'KiCad']);
   // (its title Wires: no HDL Language in it since #4168, #4208)
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-toolbar .tb-more-btn`).title, ED), 'Fios');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });

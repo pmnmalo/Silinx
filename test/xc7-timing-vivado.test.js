@@ -495,6 +495,8 @@ test('#3803 measure.tcl on nextpnr\'s placement: the cells fixed after link_desi
   assert.ok(!/synth_design|opt_design|write_bitstream|write_checkpoint/.test(tcl));
   assert.deepEqual(placementCounts('FAILED\tx\tSLICE_X0Y0/AFF\terr\nFIXED\t5\nMISSING\t1\nNOSITE\t0\nFAILED\t2\nUNPLACED\t30\n'), { fixed: 5, missing: 1, nosite: 0, failed: 2, unplaced: 30 });
   assert.equal(placementCounts(''), null);
+  // its lines ended in CRLF, as Tcl writes them on Windows (#4371): the same counts (a line terminator, \r, ends a line for ^…$ too)
+  assert.deepEqual(placementCounts('FAILED\tx\tSLICE_X0Y0/AFF\terr\r\nFIXED\t5\r\nMISSING\t1\r\nNOSITE\t0\r\nFAILED\t2\r\nUNPLACED\t30\r\n'), { fixed: 5, missing: 1, nosite: 0, failed: 2, unplaced: 30 });
 });
 
 // the placement's Tcl run by tclsh on Vivado's commands stubbed: two tiles (a CLB's two SLICEs, a BRAM's RAMB18s and RAMB36)
@@ -515,15 +517,18 @@ proc set_property {p v c} { global placed; lappend placed "$p $c" }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-3803-'));
   try {
     fs.writeFileSync(path.join(dir, 'placement.txt'), 'u.cnt[16]$x\t10\t143\tSLICE\t1\t0\tC6LUT\nmem\t20\t50\tRAMB18\t0\t1\tRAMB18E1\nnone\t10\t143\tSLICE\t0\t0\tAFF\nfar\t99\t99\tSLICE\t0\t0\tAFF\nbad\t10\t143\tSLICE\t0\t0\tAFF\n');
-    fs.writeFileSync(path.join(dir, 'run.tcl'), `cd {${dir}}\n${stubs}${block}puts [join $placed \\n]\n`);
-    const out = execFileSync('tclsh', [path.join(dir, 'run.tcl')], { encoding: 'utf8' });
+    // (its standard output with CRLF on every system, as on Windows: #4371's case wherever the test runs)
+    fs.writeFileSync(path.join(dir, 'run.tcl'), `fconfigure stdout -translation crlf\ncd {${dir}}\n${stubs}${block}puts [join $placed \\n]\n`);
+    // (Tcl writes its lines with CRLF on Windows, #4371: its outputs read with LF)
+    const lf = (text) => text.replace(/\r\n/g, '\n');
+    const out = lf(execFileSync('tclsh', [path.join(dir, 'run.tcl')], { encoding: 'utf8' }));
     assert.deepEqual(out.trim().split('\n'), ['u.cnt[16]$x SLICE_X13Y143/C6LUT', 'IS_BEL_FIXED u.cnt[16]$x', 'IS_LOC_FIXED u.cnt[16]$x',
       'mem RAMB18_X1Y21/RAMB18E1', 'IS_BEL_FIXED mem', 'IS_LOC_FIXED mem']);
-    assert.equal(fs.readFileSync(path.join(dir, 'placement.xdc'), 'utf8'), [
+    assert.equal(lf(fs.readFileSync(path.join(dir, 'placement.xdc'), 'utf8')), [
       'set_property BEL C6LUT [get_cells -hierarchical -filter {NAME == "u.cnt[16]$x"}]', 'set_property LOC SLICE_X13Y143 [get_cells -hierarchical -filter {NAME == "u.cnt[16]$x"}]',
       'set_property BEL RAMB18E1 [get_cells -hierarchical -filter {NAME == "mem"}]', 'set_property LOC RAMB18_X1Y21 [get_cells -hierarchical -filter {NAME == "mem"}]', ''].join('\n'));
     const rpt = fs.readFileSync(path.join(dir, 'placement.rpt'), 'utf8');
-    assert.deepEqual(rpt.split('\n').slice(0, 3), ['MISSING\tnone', 'NOSITE\tfar\tX99Y99 SLICE_X0Y0', 'FAILED\tbad\tSLICE_X12Y143/AFF\tillegal placement']);
+    assert.deepEqual(lf(rpt).split('\n').slice(0, 3), ['MISSING\tnone', 'NOSITE\tfar\tX99Y99 SLICE_X0Y0', 'FAILED\tbad\tSLICE_X12Y143/AFF\tillegal placement']);
     assert.deepEqual(placementCounts(rpt), { fixed: 2, missing: 1, nosite: 1, failed: 1, unplaced: 2 });
     // a design's numbers carry the counts
     const files = { 'status.txt': 'vivado 0\n', 'paths.rpt': PATHS, 'design.sdf': SDF, 'routes.txt': ROUTES, 'placement.rpt': rpt };
