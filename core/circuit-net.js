@@ -24,7 +24,7 @@ export function circuitNets(m) {
     for (const h of partHoles(p)) { spot(h.x, h.y).holes.push({ part: p.id, name: h.name }); join(`p:${key(h.x, h.y)}`, `s:${p.id}:${h.strip}`); }
   }
   for (const p of m.parts) {
-    for (const q of partPins(p)) { spot(q.x, q.y).pins.push({ part: p.id, n: q.n, name: q.name, dir: q.dir }); join(`p:${key(q.x, q.y)}`, `pin:${p.id}.${q.n}`); }
+    for (const q of partPins(p)) { spot(q.x, q.y).pins.push({ part: p.id, n: q.n, name: q.name, dir: q.dir, ...(q.tri ? { tri: true } : {}), ...(q.io ? { io: true } : {}) }); join(`p:${key(q.x, q.y)}`, `pin:${p.id}.${q.n}`); }
   }
   for (const p of m.parts) for (const [x, y] of partDef(p.type)?.bridges || []) join(`pin:${p.id}.${x}`, `pin:${p.id}.${y}`);
   for (const w of m.wires) {

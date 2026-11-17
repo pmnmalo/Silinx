@@ -106,7 +106,8 @@ function netPlan(m, V, ports) {
   const strong = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || q.dir === 'oc' || isSupply(q)));
   const pulls = nets.nets.map((net) => [...new Set(net.pins.filter((q) => q.dir === 'weak').map((q) => partDef(typeOf.get(q.part)).pulls[0].value))]);
   const driven = strong.map((s, i) => s || pulls[i].length > 0);
-  const read = nets.nets.map((net) => net.pins.some((q) => q.dir === 'in' || ((q.dir === 'vcc' || q.dir === 'gnd') && !isSupply(q))));
+  // (a transceiver's pin, #4397: read as it is driven)
+  const read = nets.nets.map((net) => net.pins.some((q) => q.dir === 'in' || q.io || ((q.dir === 'vcc' || q.dir === 'gnd') && !isSupply(q))));
   // (a net a logic probe watches is a signal too, for the waveforms, #3900; one nothing else reads: watched only)
   const probed = nets.nets.map((net) => net.pins.some((q) => q.dir === 'probe'));
   // (a contact copies a strongly driven net to its other side, a pulled one's too: a pull-down and a button to +)

@@ -23,7 +23,8 @@ export function vhdlIc(L, name, d) {
   const pin = new Map(d.pins.map((p) => [p.n, p]));
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
   L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, '  port (');
-  L.push(icPorts(d).map((p) => `    ${pinPort(p)} : ${isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
+  // (a transceiver's pin, #4397: read and driven, inout)
+  L.push(icPorts(d).map((p) => `    ${pinPort(p)} : ${p.io ? "inout std_logic := 'Z'" : isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
   L.push(`architecture model of ${name} is`);
   if (d.family === 'ttl') {
     L.push('  -- a 74LS input reads a floating (Z) level high', '  function rd(s : std_logic) return std_logic is', '  begin', '    case s is', "      when '0' | 'L' => return '0';",
@@ -36,6 +37,8 @@ export function vhdlIc(L, name, d) {
     // (a three-state buffer, #4397: off (Z) once an enable is not at its active level, X while one is unknown)
     const en = (g.en || []).map(([n, a]) => [`rd(${pinPort(pin.get(n))})`, a]);
     const off = en.map(([r, a]) => `${r} = '${a === '0' ? 1 : 0}'`), unknown = en.map(([r]) => `${r} = 'X'`);
+    // (a transceiver's two ways never both enabled, its datasheet's rule: their loop through its pins no loop then)
+    if (pin.get(g.out).io) L.push('  -- silinx: ignore comb-loop');
     L.push(en.length ? `  ${pinPort(pin.get(g.out))} <= 'Z' after ${d.tpd} ns when not pw or ${off.join(' or ')} else 'X' after ${d.tpd} ns when ${unknown.join(' or ')} else ${e} after ${d.tpd} ns;`
       : `  ${pinPort(pin.get(g.out))} <= ${d.oc ? `oc${e}` : e} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`);
   }
@@ -47,7 +50,7 @@ export function verilogIc(L, name, d) {
   if (d.model || d.seq) return verilogMsi(L, name, d);
   const pin = new Map(d.pins.map((p) => [p.n, p]));
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} (${icPorts(d).map((p) => `${isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`);
+  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} (${icPorts(d).map((p) => `${p.io ? 'inout' : isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`);
   if (d.family === 'ttl') L.push('  // a 74LS input reads a floating (z) level high', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'b1 : s;", '  endfunction');
   else L.push('  // a CMOS input reads a floating (z) level unknown (x)', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'bx : s;", '  endfunction');
   if (d.oc) L.push('  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction');
@@ -57,6 +60,7 @@ export function verilogIc(L, name, d) {
     // (a three-state buffer, #4397: off (z) once an enable is not at its active level, x while one is unknown)
     const en = (g.en || []).map(([n, a]) => [`rd(${pinPort(pin.get(n))})`, a]);
     const off = en.map(([r, a]) => `(${r} === 1'b${a === '0' ? 1 : 0})`), unknown = en.map(([r]) => `(${r} === 1'bx)`);
+    if (pin.get(g.out).io) L.push('  // silinx: ignore comb-loop');
     L.push(en.length ? `  assign #${d.tpd} ${pinPort(pin.get(g.out))} = (!pw || ${off.join(' || ')}) ? 1'bz : (${unknown.join(' || ')}) ? 1'bx : ${e};`
       : `  assign #${d.tpd} ${pinPort(pin.get(g.out))} = pw ? ${d.oc ? `oc(${e})` : e} : 1'bz;`);
   }

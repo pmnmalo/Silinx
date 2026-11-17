@@ -85,7 +85,9 @@ function checkNames(m, { err }) {
 function checkNets(nets, { err, warn }) {
   nets.nets.forEach((net) => {
     const sup = netSupply(net);
-    const outs = net.pins.filter((q) => q.dir === 'out'), ocs = net.pins.filter((q) => q.dir === 'oc');
+    // (three-state outputs, #4409: several on one net a bus; with a plain output or a rail, a short while one is enabled)
+    const tris = net.pins.filter((q) => q.tri), outs = net.pins.filter((q) => q.dir === 'out' && !q.tri), ocs = net.pins.filter((q) => q.dir === 'oc');
+    if (tris.length && (outs.length || ocs.length || sup.vcc || sup.gnd)) warn(`${tris.map(pinText).join(', ')} (3-state) and ${[...outs, ...ocs].map(pinText).concat(sup.vcc ? ["the supply's +"] : sup.gnd ? ["the supply's −"] : []).join(', ')} drive one net: a short whenever ${tris.length > 1 ? 'one is' : 'it is'} enabled`, part(tris[0].part));
     if (sup.vcc && sup.gnd) err(`Short circuit: the supply's + and − are joined (${netText(net)})`, part(net.pins.find(isSupply).part));
     else if ((sup.vcc || sup.gnd) && outs.length) err(`Short circuit: ${outs.map(pinText).join(', ')} drive${outs.length > 1 ? '' : 's'} the supply's ${sup.vcc ? '+' : '−'} rail`, part(outs[0].part));
     else if (sup.vcc && ocs.length) err(`Short circuit: ${ocs.map(pinText).join(', ')} (open collector) on the supply's + rail: a short whenever ${ocs.length > 1 ? 'one is' : 'it is'} 0`, part(ocs[0].part));
