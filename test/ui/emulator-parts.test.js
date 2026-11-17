@@ -147,11 +147,28 @@ uiTest('#3109 a short click on a push button: held down until the design saw a r
   await page.mouse('mouseMoved', at.x, at.y);
   await page.mouse('mousePressed', at.x, at.y);
   await page.mouse('mouseReleased', at.x, at.y);
-  // let go but still down (lit) until 100 cycles on, then up; LED0 toggled by the press
-  assert.equal(await btn0(), true, 'held down after the click');
+  // let go but still down (lit) until 100 cycles on, then up; LED0 toggled by the press. (Read with the board's time:
+  // a slow page's run in flight, up to a quarter of a second's cycles, #3727, may take it past the 100 cycles before
+  // the button is looked at, up then rightly, #4369)
+  const seen = () => page.eval(() => ({ on: document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'), now: window.SilinxApp.findDoc('emulator').view.sim.now }));
+  const clicked = await seen();
+  assert.ok(clicked.on || clicked.now >= t0 + 100 * 20000, `held down after the click until 100 cycles on (up at ${(clicked.now - t0) / 20000} cycles)`);
   await page.waitFor(() => !document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'), [], { what: 'BTN0 let go' });
   assert.ok(await emu(page, 'sim.now') >= t0 + 100 * 20000, 'down for 100 cycles at least');
   await page.waitFor((b) => document.querySelector('[data-part=led0] .emu-led').style.background !== b, [off], { what: 'LED0 toggled by the press' });
+  // a press longer than a real one (the slow page's case, #4369): let go at once, LED0 toggled back by it (BTN0 up
+  // 100 cycles first: the debouncer's 50 to take the release)
+  const on = await led0();
+  const up0 = await settledNow(page);
+  await page.waitFor((t) => window.SilinxApp.findDoc('emulator').view.sim.now >= t, [up0 + 100 * 20000], { what: 'BTN0 up 100 cycles' });
+  const t1 = await settledNow(page);
+  await page.mouse('mousePressed', at.x, at.y);
+  await page.waitFor((t) => window.SilinxApp.findDoc('emulator').view.sim.now >= t, [t1 + 400 * 20000], { what: 'BTN0 down 400 cycles' });
+  await settledNow(page);
+  await page.mouse('mouseReleased', at.x, at.y);
+  assert.equal(await btn0(), false, 'a press longer than 100 cycles let go at once');
+  await page.waitFor((b) => document.querySelector('[data-part=led0] .emu-led').style.background !== b, [on], { what: 'LED0 toggled back by the long press' });
+  assert.equal(await led0(), off, 'LED0 as before the two presses');
   // let go, then a power cycle (the board's time from 0 again) before the 100 cycles: let go then
   await page.mouse('mousePressed', at.x, at.y);
   await page.mouse('mouseReleased', at.x, at.y);
