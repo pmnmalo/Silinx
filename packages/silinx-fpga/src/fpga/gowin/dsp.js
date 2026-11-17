@@ -129,7 +129,7 @@ export function dspAttrs(ctx, typ, params, num, attrs) {
 
 /** set_dsp_mult36x36_attrs: the MULT36X36's two macros' attribute codes, [mac 0, mac 1]: A*B's low part, then its high part
  *  plus the first's cascade. */
-export function mult36x36Attrs(ctx, typ, params, attrs) {
+function mult36x36Attrs(ctx, typ, params, attrs) {
   attrsUpper(attrs);
   attrs.NET_ASEL = 'GND'; attrs.NET_BSEL = 'GND';
   regs0(params, ['AREG', 'BREG', 'ASIGN_REG', 'BSIGN_REG']);
