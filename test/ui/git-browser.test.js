@@ -125,7 +125,11 @@ uiTest('#3196 the browser edition: Open from GitHub Repository…, Sign in with 
   await commit(page, 'Mine');
   await page.waitConsole(/ERROR: git push: rejected by GitHub \(fetch first\)\nHint: GitHub has commits that this project does not: Pull first, then Push again\./);
   await page.menu('File', 'Pull from GitHub');
-  await page.waitConsole(/ERROR: git pull: a conflict in src\/sevenseg\.v: nothing was pulled, the project's files are as they were\nHint: The same file changed here and on GitHub\./);
+  await page.waitConsole(/ERROR: git pull: a conflict in src\/sevenseg\.v: nothing was pulled, the project's files are as they were\nHint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again\./);
+  // (the merge view opens, #4214: cancelled, nothing pulled)
+  await page.waitFor(() => !!document.querySelector('.merge-view .merge-choice[data-id=h1]'), [], { what: 'the merge view' });
+  await page.click('.merge-bar [data-cmd=cancel]');
+  await page.waitFor(() => !document.querySelector('.merge-view'), [], { what: 'the merge view closed' });
   assert.equal(await page.eval(() => window.SilinxApp.S.docs.find((d) => d.path === 'src/sevenseg.v').editor.getValue()), '// mine\n');
   // History…: the commits, the newest first; a file of the first opens as it was, read only
   await page.menu('File', 'History…');
