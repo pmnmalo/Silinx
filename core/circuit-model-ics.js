@@ -8,14 +8,20 @@
 // Isomorphic module.
 import { dip } from './circuit-ics.js';
 
-const BAR = '̅';
+export const BAR = '̅';
 const P = (at) => (n, name, dir, port) => ({ n, name, dir, ...at(n), port: port ?? name.replace(BAR, '_n').toLowerCase() });
 const P14 = P(dip(14)), P16 = P(dip(16)), P20 = P(dip(20));
-// (`threeState`: its outputs off (Z) once one of its enables [port, level] is not at its level, #4397: the 74373's…)
-const ic = (type, title, tpd, pins, core, family = 'ttl', threeState = null) => ({ type, title, kind: 'ic', family, chip: family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`, tpd, dip: pins.length,
-  pins: threeState ? pins.map((p) => (p.dir === 'out' ? { ...p, tri: true } : p)) : pins, ...(threeState ? { threeState: { enable: threeState, outs: pins.filter((p) => p.dir === 'out').map((p) => p.port) } } : {}),
-  // (its core's ports: its pins but its outputs' enables, which the IC's entity applies)
-  core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(threeState || []).some(([e]) => e === p.port)), core) } });
+// (`threeState`: its outputs off (Z) once one of its enables [port, level] is not at its level, #4397: the 74373's…; all
+// its outputs, or { enable, outs } those named; `chip` its own part number, else the family's)
+/** An IC written once in VHDL: its pins (by number), its core (its storage elements, or its VHDL's { decl, body }). */
+export function ic(type, title, tpd, pins, core, family = 'ttl', threeState = null, chip = null) {
+  const ts = Array.isArray(threeState) ? { enable: threeState } : threeState;
+  const outs = ts && (ts.outs ?? pins.filter((p) => p.dir === 'out').map((p) => p.port));
+  return { type, title, kind: 'ic', family, chip: chip ?? (family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`), tpd, dip: pins.length,
+    pins: ts ? pins.map((p) => (outs.includes(p.port) ? { ...p, tri: true } : p)) : pins, ...(ts ? { threeState: { enable: ts.enable, outs } } : {}),
+    // (its core's ports: its pins but its outputs' enables, which the IC's entity applies)
+    core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(ts?.enable || []).some(([e]) => e === p.port)), core) } };
+}
 
 // ------------------------------------------------------------------ the cores' VHDL
 // a storage element of a core:
@@ -47,11 +53,20 @@ function storeVhdl(e, k) {
     `  ${ctl.length ? 'elsif' : 'if'} ${f.edge}_edge(${f.clk}) then`, ...next.map((l) => `    ${l}`), '  end if;', 'end process;'],
   both: f.pre && f.clr ? `${is(f.pre)} and ${is(f.clr)}` : null };
 }
-/** A core's VHDL: the entity `name`, its ports the pins' (but the supply's and NC), its storage elements `stores`. */
+/**
+ * A core's VHDL: the entity `name`, its ports the pins' (but the supply's and NC), its storage elements `stores`, or the
+ * architecture written for it ({ decl, body }: its declarations and its statements, numeric_std's unsigned at hand).
+ */
 function coreVhdl(name, pins, stores) {
   const ins = pins.filter((p) => p.dir === 'in').map((p) => p.port), outs = pins.filter((p) => p.dir === 'out').map((p) => p.port);
-  const L = ['library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${name} is`, '  port (', `    ${ins.join(', ')} : in std_logic;`, `    ${outs.join(', ')} : out std_logic`, '  );', `end entity ${name};`, '',
-    `architecture rtl of ${name} is`, `  signal ${stores.map((_, k) => `st${k}`).join(', ')} : std_logic := 'X';`, 'begin'];
+  const raw = !Array.isArray(stores);
+  const L = ['library ieee;', 'use ieee.std_logic_1164.all;', ...(raw ? ['use ieee.numeric_std.all;'] : []), '', `entity ${name} is`, '  port (', `    ${ins.join(', ')} : in std_logic;`, `    ${outs.join(', ')} : out std_logic`, '  );', `end entity ${name};`, '',
+    `architecture rtl of ${name} is`];
+  if (raw) {
+    L.push(...stores.decl.map((l) => `  ${l}`), 'begin', ...stores.body.map((l) => `  ${l}`), 'end architecture rtl;', '');
+    return L.join('\n');
+  }
+  L.push(`  signal ${stores.map((_, k) => `st${k}`).join(', ')} : std_logic := 'X';`, 'begin');
   stores.forEach((e, k) => {
     const { body, both } = storeVhdl(e, k);
     L.push(...body.map((l) => `  ${l}`), `  ${e.q} <= st${k};`);
@@ -65,7 +80,7 @@ function coreVhdl(name, pins, stores) {
 const jkPins = (spec) => spec.map(([n, name, dir, port]) => [n, name, dir, port]);
 const JK = (k, { clk, pre, clr, edge = 'falling', kn = false }) => ({ ff: { clk, edge, ...(kn ? { jkn: [`j${k}`, `k${k}_n`] } : { jk: [`j${k}`, `k${k}`] }), ...(pre ? { pre: [pre, '0'] } : {}), ...(clr ? { clr: [clr, '0'] } : {}) }, q: `q${k}`, qn: `q${k}_n` });
 const make = (at) => (rows) => rows.map(([n, name, dir, port]) => at(n, name, dir, port)).sort((a, b) => a.n - b.n);
-const M14 = make(P14), M16 = make(P16), M20 = make(P20);
+export const M14 = make(P14), M16 = make(P16), M20 = make(P20);
 const c7473 = ic('7473', 'Dual J-K flip-flop, clear (falling edge)', 15, M14(jkPins([[1, '1CLK', 'in', 'clk1'], [2, `1CLR${BAR}`, 'in', 'clr1_n'], [3, '1K', 'in', 'k1'], [4, 'VCC', 'vcc'],
   [5, '2CLK', 'in', 'clk2'], [6, `2CLR${BAR}`, 'in', 'clr2_n'], [7, '2J', 'in', 'j2'], [8, `2Q${BAR}`, 'out', 'q2_n'], [9, '2Q', 'out', 'q2'], [10, '2K', 'in', 'k2'], [11, 'GND', 'gnd'],
   [12, '1Q', 'out', 'q1'], [13, `1Q${BAR}`, 'out', 'q1_n'], [14, '1J', 'in', 'j1']])), [JK(1, { clk: 'clk1', clr: 'clr1_n' }), JK(2, { clk: 'clk2', clr: 'clr2_n' })]);
