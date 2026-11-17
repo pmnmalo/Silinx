@@ -17,11 +17,11 @@ async function noWarnings(page) {
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
   assert.deepEqual(await page.eval(() => [document.getElementById('warn-count').textContent, ...[...document.querySelectorAll('#console-warnings .diag')].map((d) => d.textContent)]), ['']);
 }
-// the dialog's list: its header, and each of these projects' Stored In (the fifth column) lines and tip
+// the dialog's list: its header, and each of these projects' Stored In (the fourth column) lines and tip
 const placeRows = (page, names) => page.eval((ns) => {
   const rows = [...document.querySelectorAll('.dlg-overlay table.grid tr')];
   return { header: [...rows[0].children].map((c) => c.textContent),
-    rows: rows.slice(1).filter((r) => ns.includes(r.children[0].textContent)).map((r) => { const c = r.children[4]; return [r.children[0].textContent, [...c.children].map((d) => d.textContent), c.title]; }) };
+    rows: rows.slice(1).filter((r) => ns.includes(r.children[0].textContent)).map((r) => { const c = r.children[3]; return [r.children[0].textContent, [...c.children].map((d) => d.textContent), c.title]; }) };
 }, names);
 const git = (cwd, ...a) => { const r = spawnSync('git', a, { cwd, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); };
 
@@ -36,7 +36,7 @@ uiTest('#4314 Open Project: each project\'s Stored In, the workspace folder and 
   await page.menu('File', 'Open Project…');
   await page.waitDialog('Open Project');
   assert.deepEqual(await placeRows(page, ['PlaceLocal', 'PlaceRepo']), {
-    header: ['Project', 'Device', 'Top', 'Board', 'Stored In', 'Last Used'],
+    header: ['Project', 'Device', 'Board', 'Stored In', 'Last Used'],   // (no Top column)
     rows: [['PlaceLocal', ['Workspace Folder'], 'Kept in the workspace folder.'],   // (the newest first: just opened)
       ['PlaceRepo', ['Workspace Folder', 'GitHub: course/place-repo'], 'Kept in the workspace folder, in the GitHub repository course/place-repo.']],
   });
@@ -48,7 +48,7 @@ uiTest('#4314 Open Project: each project\'s Stored In, the workspace folder and 
     await page.menu('Ficheiro', 'Abrir Projeto…');
     await page.waitDialog('Abrir Projeto');
     assert.deepEqual(await placeRows(page, ['PlaceLocal', 'PlaceRepo']), {
-      header: ['Projeto', 'Dispositivo', 'Topo', 'Placa', 'Guardado em', 'Último uso'],
+      header: ['Projeto', 'Dispositivo', 'Placa', 'Guardado em', 'Último uso'],
       rows: [['PlaceLocal', ['Pasta de Trabalho'], 'Guardado na pasta de trabalho.'],
         ['PlaceRepo', ['Pasta de Trabalho', 'GitHub: course/place-repo'], 'Guardado na pasta de trabalho, no repositório GitHub course/place-repo.']],
     });

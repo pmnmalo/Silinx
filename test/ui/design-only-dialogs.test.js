@@ -92,7 +92,7 @@ uiTest('#3891 a design project\'s drawn module: Rename…, Source Properties…,
   page.eval(async () => (await import('/js/wizards.js')).openProjectDialog()).catch(() => {});
   await page.waitDialog('Open Project');
   const row = await page.eval(() => [...document.querySelectorAll('.dlg-overlay table tr')].map((r) => [...r.cells].map((c) => c.textContent)).find((c) => c[0] === 'DrawnDlg'));
-  assert.deepEqual(row.slice(0, 4), ['DrawnDlg', '', 'traffic', 'Design and simulation only (no FPGA)']);
+  assert.deepEqual(row.slice(0, 3), ['DrawnDlg', '', 'Design and simulation only (no FPGA)']);   // (no Top column, #4314)
   await cancel(page);
   // its badge's tip
   assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent === 'traffic').querySelectorAll('.badge')].map((b) => [b.textContent, b.title])), [['FSM', 'Open']]);

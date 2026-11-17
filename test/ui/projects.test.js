@@ -294,21 +294,20 @@ uiTest('open, switch and close projects (Open Project dialog, Recent Projects, S
   for (const n of ['Alpha', 'Beta']) {
     await makeProject(env, { name: n, files: { [`src/${n.toLowerCase()}.vhd`]: `library ieee; use ieee.std_logic_1164.all;\nentity ${n.toLowerCase()} is port (a : in std_logic; y : out std_logic); end;\narchitecture r of ${n.toLowerCase()} is begin y <= not a; end r;\n` }, top: n.toLowerCase() });
   }
-  // Open Project dialog (#196): the list of the workspace's projects (name, device, top, board), as the server lists them,
+  // Open Project dialog (#196): the list of the workspace's projects (name, device, board, where it is kept: no top, #4314), as the server lists them,
   // by when each was last used (its last change, or its last opening here when later), the newest first, that date last (#1156)
   const before0 = await page.eval(() => window.Silinx.project?.name ?? null);
   await page.menu('File', 'Open Project…');
   await page.waitDialog('Open Project');
   const gridRows = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid tr')].map((r) => [...r.children].map((c) => c.textContent)));
   const rows = await gridRows();
-  assert.deepEqual(rows[0], ['Project', 'Device', 'Top', 'Board', 'Stored In', 'Last Used']);
+  assert.deepEqual(rows[0], ['Project', 'Device', 'Board', 'Stored In', 'Last Used']);   // (no Top column, #4314)
   const listed = await env.server.api('GET', '/api/projects');
   const openedHere = await page.eval(() => JSON.parse(localStorage.getItem('silinx.opened') || '{}'));
   const z = (n) => String(n).padStart(2, '0'), when = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
   const used = listed.map((p) => ({ ...p, used: Math.max(p.modified, openedHere[p.name] || 0) })).sort((a, b) => b.used - a.used || (a.name < b.name ? -1 : 1));
   assert.ok(listed.every((p) => p.modified > Date.now() - 3600e3 && p.modified <= Date.now()), 'the server says when each changed');
-  assert.deepEqual(rows.slice(1), used.map((p) => [p.name, p.device ? `${p.device.part}${p.device.speed}-${p.device.package}` : '', p.top || '', p.board || '', 'Workspace Folder', when(p.used)]));   // (Stored In: the server's workspace folder, #4314)
-  assert.deepEqual(rows.slice(1).filter((r) => ['Alpha', 'Beta'].includes(r[0])).map((r) => r[2]).sort(), ['alpha', 'beta']);
+  assert.deepEqual(rows.slice(1), used.map((p) => [p.name, p.device ? `${p.device.part}${p.device.speed}-${p.device.package}` : '', p.board || '', 'Workspace Folder', when(p.used)]));   // (Stored In: the server's workspace folder, #4314)
   // a click selects one row only; Cancel opens nothing
   await page.click('.dlg-overlay table.grid tr', { text: 'Beta' });
   await page.click('.dlg-overlay table.grid tr', { text: 'Alpha' });
