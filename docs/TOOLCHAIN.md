@@ -131,7 +131,7 @@ The plan is in #1953 and #2315. For the open toolchains:
 | Spartan-6 | `synth_xilinx` | nextpnr | Silinx | UCF | Works, browser (#2103, #2288) and local |
 | iCE40 | `synth_ice40` | nextpnr-ice40 | `icepack` | PCF | Works: local server and browser, nextpnr-ice40 downloaded on first use (#2444); its 12 parts in the interface (#2463), the iCEBreaker board (#2517), other boards #2297 |
 | ECP5 | `synth_ecp5` | nextpnr-ecp5 | `ecppack`, Project Trellis | LPF | Works: local server and browser, nextpnr-ecp5 downloaded on first use (30 MB); its 10 parts, the ULX3S board and the examples on it (#2302); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
-| MachXO2 | to be defined | nextpnr-machxo2, not yet stable | `ecppack`, Project Trellis | LPF | To be measured (#2302) |
+| MachXO2 | `synth_lattice -family xo2` (`xo3` for the MachXO3; `synth_machxo2` is gone from Yosys) | nextpnr-machxo2 | `ecppack`, Project Trellis | LPF | Measured, not a family of Silinx yet (#2302): every example builds on the LCMXO2-1200HC and the LCMXO3LF-6900C, below |
 | Gowin | `synth_gowin` | nextpnr-himbaechel-gowin | `gowin_pack`, Silinx's JavaScript port of Apicula's (`src/fpga/gowin/`) | CST | Works: local server and browser, downloaded on first use (32 MB); the GW1NR-9C, the Tang Nano 9K and the examples on it, their `.fs` Apicula's byte for byte, the rPLL and the oscillator too (#2303); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
 | Cyclone V | `synth_intel_alm` | nextpnr, not yet stable | Mistral | to be defined | To be measured (#2304) |
 | Xilinx 7-series (Artix-7) | `synth_xilinx` | nextpnr-himbaechel's xilinx, `@silinx/nextpnr-himbaechel-xc7` (#3143) | Silinx, from nextpnr's FASM on Project X-Ray's database (#3144) | XDC | An experimental family (#3146): the Basys 3's XC7A35T and the Nexys A7's XC7A100T (#3145) in the local server (AMD Vivado the default there) and in the browser (#3143: the Basys 3's `.bit` the local server's byte for byte); its timing nextpnr's estimate; every example on both boards, its size and speed below (#3147) |
@@ -243,6 +243,35 @@ Vivado's is: it is now, in Vivado's packets (#3876, about 300 KB on the Basys 3,
 | Nexys A7 | uart | 107 (+41) | 117 | 135 | 142 / 150 | 81 / 58 | 156 | 194 | 199 | RTSTAT-10 |
 | Nexys A7 | micro80 | 157 (+51) | 154 | 307 | 187 / 216 | 96 / 112 | 106 | 123 | 133 | RTSTAT-10 |
 <!-- xc7-vivado-comparison: end -->
+
+The MachXO2 (#2302) is measured, not yet a family of Silinx. `scripts/machxo2-measure.mjs` takes each example's flat Verilog
+from the Silinx toolchain's synthesis (as a ULX3S project: its clock, 25 MHz) through Yosys's `synth_lattice -family xo2`
+(`xo3`), nextpnr-machxo2 and ecppack, both from YoWASP's `@yowasp/nextpnr-machxo2` 0.11.825 (a development dependency,
+about 170 MB, every part's chip database), and reads each bitstream back with ecpunpack: packed again, the same bytes.
+nextpnr-machxo2 knows the LCMXO2-640UHC and -1200HC/ZE and the LCMXO3L/LF-4300C and -6900C/E, not the larger MachXO2s
+(the MachXO2 Breakout Board's LCMXO2-7000HE). The clock is put on a pin (nextpnr-machxo2 cannot route a global clock from a
+pin it placed itself, about one design in fifteen by the seed, YosysHQ/nextpnr#1236), the other ports placed by nextpnr.
+Every example builds on both parts with no warning (Yosys's, nextpnr's but the ports it placed, ecppack's), with seeds 1 to 5,
+its clock at the board's 25 MHz met; the block RAM (DP8KC), the distributed RAM, the global clock buffer (DCCA), the
+oscillator (OSCH) and the PLL (EHXPLLJ) placed and packed (`test/machxo2-measure.test.js`). Not tested on a real board.
+
+| Example | Yosys: LUT4 / FF / CCU2D / RAM | LCMXO2-1200HC-4TG100C: LUTs, IOs | MHz (seeds 1–5) | LCMXO3LF-6900C-5BG256C: LUTs | MHz (seeds 1–5) |
+|---|---|---|---|---|---|
+| gates | 1 / 0 / 0 / – | 1 of 1280, 6 | – | 1 of 6864 | – |
+| breadboard | 7 / 8 / 0 / – | 8, 11 | 229–292 | 8 | 239–323 |
+| traffic | 112 / 56 / 20 / – | 162, 24 | 59–88 | 162 | 80–92 |
+| blinky | 127 / 132 / 64 / – | 285, 27 | 87–101 | 285 | 101–113 |
+| pong | 280 / 199 / 103 / – | 528, 27 | 67–69 | 528 | 74–77 |
+| stopwatch | 680 / 235 / 124 / 2 EBR (590 LUT4s for the xo3) | 990, 26 | 43–48 | 894 | 45–52 |
+| clock | 191 / 152 / 80 / – | 393, 27 | 78–99 | 393 | 95–113 |
+| vga | 144 / 56 / 118 / – | 484, 16 | 68–76 | 484 | 78–83 |
+| isqrt | 71 / 85 / 19 / – | 127, 23 | 100–118 | 127 | 121–136 |
+| uart | 152 / 134 / 34 / – | 242, 24 | 104–113 | 242 | 120–128 |
+| micro80 | 225 / 183 / 32 / 2 DPR16X4, 3 EBR | 323, 29 | 57–64 | 323 | 59–68 |
+
+The LUTs are nextpnr's count after packing (its TRELLIS_COMB, more than Yosys's LUT4s: the carries take two each); the bitstream is the part's whole
+configuration, 45,060 bytes on the 1200HC and 191,836 on the 6900C, a block RAM's initial values adding to it (stopwatch
+47,392 and 194,168, micro80 48,558 and 195,334). Each build takes 1–4 s.
 
 And around the flow, one issue each: the boards and examples (#2297), the primitives' simulation models
 (#2299), the reports (#2300). In the interface: the device profile (#2310), the tool descriptor (#2311), personalities (#2312).
