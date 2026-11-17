@@ -50,7 +50,7 @@ test('synthesisText: the lines from a translate_off to its translate_on blanked,
 
 test('every IC\'s bench as synthesis reads it: the digital model\'s outputs the engine\'s, in VHDL and in Verilog, no warnings', () => {
   const benches = [['half_adder', halfAdder()], ...Object.keys(PARTS).filter((t) => PARTS[t].gates && !PARTS[t].pins.some((q) => q.io)).map((t) => [t, icBench(t, { name: `g${t}` })]),   // (a transceiver's: circuit-transceivers.test.js)
-    ...Object.keys(PARTS).filter((t) => PARTS[t].model || PARTS[t].seq).map((t) => [t, msiBench(t, { name: `m${t}` })])];
+    ...Object.keys(PARTS).filter((t) => PARTS[t].model || PARTS[t].seq || PARTS[t].core).map((t) => [t, msiBench(t, { name: `m${t}` })])];   // (the ICs written once in VHDL, #4397, too)
   assert.ok(benches.length >= 40, `${benches.length} benches`);
   for (const [t, m] of benches) {
     const { inputs, outputs } = circuitPorts(m);
@@ -76,7 +76,8 @@ test('every IC\'s bench as synthesis reads it: the digital model\'s outputs the 
       // preset and clear both low then one released, in Verilog: the always block's edges see no release, the flip-flop
       // stays as it was, as XST builds it; the engine's, the VHDL's, the one still low)
       // (the 7476 too, a J-K flip-flop with both controls: its vectors met that release once #4397's gates shifted them)
-      const corner = lang === 'verilog' && (t === '7474' || t === '74112' || t === '7476');
+      // (and #4397's flip-flops with a preset and a clear: the 7478, 74109, 74114, 4013, 4027)
+      const corner = lang === 'verilog' && ['7474', '74112', '7476', '7478', '74109', '74114', '4013', '4027'].includes(t);
       got.forEach((x, k) => { if (k > 0 && !/x/i.test(engine[k] + x) && !corner) assert.equal(x, engine[k], `${t} ${lang}: vector ${k}`); });
     }
   }

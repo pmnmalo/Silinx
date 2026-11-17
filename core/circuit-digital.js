@@ -32,7 +32,7 @@ export function digitalTop(m, V, entityOf) {
     for (const s of d.sources || []) sources.set(netOf(p.id, s.pin), portRef(partInputs(p)[s.input].port, V));
     for (const g of d.gates || []) (gatesOut.get(netOf(p.id, g.out)) ?? gatesOut.set(netOf(p.id, g.out), []).get(netOf(p.id, g.out))).push({ p, d, g });
     // (an MSI or sequential IC; a KiCad part modelled by a module of the project, #4283)
-    if (d.model || d.seq || d.kind === 'model') {
+    if (d.model || d.seq || d.core || d.kind === 'model') {
       const inst = { p, d, name: `d_${p.id}`, outs: new Map() };
       insts.push(inst);
       for (const q of d.pins.filter((x) => x.dir === 'out' || x.dir === 'oc')) (icOut.get(netOf(p.id, q.n)) ?? icOut.set(netOf(p.id, q.n), []).get(netOf(p.id, q.n))).push({ inst, q });

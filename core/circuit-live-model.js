@@ -4,7 +4,7 @@
 // forced on its input ports, the module run a step, its output ports' levels driven on the part's output pins, after the
 // part's delay. Each part has its own copy (its registers its own). A module that cannot run (its elaboration's errors,
 // a failure as it starts) is said by Check Circuit: modelRunners' reason. Isomorphic module.
-import { elaborate } from './compile.js';
+import { compile, elaborate } from './compile.js';
 import { Simulator } from './simulator.js';
 import * as V from './values.js';
 
@@ -63,4 +63,12 @@ export function modelRunners(lib) {
     if (!tried.has(k)) { const r = liveModel(lib, name); tried.set(k, r.reason ? { reason: r.reason } : { make: () => liveModel(lib, name) }); }
     return tried.get(k);
   };
+}
+
+// (each IC's core compiled once, #4397: core/circuit-model-ics.js)
+const cores = new Map();
+/** An IC written once in VHDL (#4397), its core run live: a part's own copy, { run(inputs) → outputs } or { reason }. */
+export function coreModel(d) {
+  if (!cores.has(d.type)) cores.set(d.type, compile([{ path: `${d.core.entity}.vhd`, text: d.core.vhdl }]));
+  return liveModel(cores.get(d.type), d.core.entity);
 }

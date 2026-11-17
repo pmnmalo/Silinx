@@ -2,6 +2,7 @@
 // not-connected pins left out), its gates with their delay (inertial, as core/circuit-sim.js's), its inputs read as the
 // real chip reads them (a floating 74LS input high, a 4000's X), an open collector output a 0 or nothing, nothing driven
 // while unpowered. VHDL and Verilog. Isomorphic module.
+import { vhdlCoreIc, verilogCoreIc, vhdlCoreDigital } from './circuit-hdl-core.js';
 
 /** A pin's port name: 1A → a1, 2Y → y2, A → a, VCC → vcc, VDD → vdd. */
 export const pinPort = (p) => p.port ?? (/^\d/.test(p.name) ? `${p.name.slice(1).toLowerCase()}${p.name[0]}` : p.name.toLowerCase());
@@ -19,6 +20,7 @@ const isOut = (p) => p.dir === 'out' || p.dir === 'oc';
 
 /** An IC's entity in VHDL, its lines pushed on L. */
 export function vhdlIc(L, name, d) {
+  if (d.core) return vhdlCoreIc(L, name, d, d.family === 'cmos' ? CMOS_RD : TTL_RD);   // (written once in VHDL, #4397)
   if (d.model || d.seq) return vhdlMsi(L, name, d);
   const pin = new Map(d.pins.map((p) => [p.n, p]));
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
@@ -47,6 +49,10 @@ export function vhdlIc(L, name, d) {
 
 /** An IC's module in Verilog, its lines pushed on L. */
 export function verilogIc(L, name, d) {
+  if (d.core) {
+    return verilogCoreIc(L, name, d, d.family === 'ttl' ? ['  // a 74LS input reads a floating (z) level high', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'b1 : s;", '  endfunction']
+      : ['  // a CMOS input reads a floating (z) level unknown (x)', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'bx : s;", '  endfunction']);
+  }
   if (d.model || d.seq) return verilogMsi(L, name, d);
   const pin = new Map(d.pins.map((p) => [p.n, p]));
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
@@ -150,6 +156,7 @@ const driven = (l, d, V) => {
 
 /** The VHDL digital architecture of an MSI or sequential IC's entity, its lines pushed on L. */
 export function vhdlDigital(L, name, d) {
+  if (d.core) return vhdlCoreDigital(L, name, d);
   const ins = d.pins.filter(isPort), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
   L.push(`architecture digital of ${name} is`, '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    return false;', '  end function anyx;',

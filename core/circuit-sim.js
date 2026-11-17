@@ -10,7 +10,7 @@
 import { partDef, gateValue, readInput } from './circuit-parts.js';
 import { circuitNets, netText } from './circuit-net.js';
 import { savedInputs, partLamps } from './circuit-io.js';
-import { MODEL_TPD } from './circuit-live-model.js';
+import { coreModel, MODEL_TPD } from './circuit-live-model.js';
 
 const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
 
@@ -51,7 +51,9 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       const ic = { part: p, def: d, vcc: netOfPin(p.id, pinOf('vcc')), gnd: netOfPin(p.id, pinOf('gnd')),
         gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), en: (g.en || []).map(([n, a]) => [netOfPin(p.id, n), a]), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
       // (an MSI IC: its model, its inputs and outputs by port, core/circuit-msi.js)
-      if (d.model || d.seq) {
+      if (d.model || d.seq || d.core) {
+        // (an IC written once in VHDL, #4397: its own copy of its core, run live)
+        if (d.core) ic.core = coreModel(d);
         ic.ins = d.pins.filter((q) => q.dir === 'in').map((q) => ({ port: q.port, net: netOfPin(p.id, q.n) }));
         ic.outs = d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => ({ port: q.port, oc: q.dir === 'oc', d: addDriver(netOfPin(p.id, q.n), 'X', 's', d.tpd) }));
       }
@@ -111,6 +113,10 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       ic.prev = i;
       const o = q.out(i, ic.state);
       for (const x of ic.outs) drive(x.d, !on ? 'Z' : x.oc && o[x.port] === '1' ? 'Z' : o[x.port]);
+    } else if (ic.core) {
+      // (its core's outputs from its inputs as the chip reads them, while powered; a core that cannot run: X)
+      const o = ic.core.run ? ic.core.run(Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]))) : {};
+      for (const x of ic.outs) drive(x.d, !on ? 'Z' : o[x.port] ?? 'X');
     } else if (ic.def.model) {
       const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
       const o = !on ? null : Object.values(i).includes('X') ? 'X' : ic.def.model(Object.fromEntries(Object.entries(i).map(([k, v]) => [k, Number(v)])));
