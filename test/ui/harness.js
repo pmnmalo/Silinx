@@ -1026,13 +1026,21 @@ async function setupPlaywright({ server, offline }) {
  */
 // skip: a reason to skip the test (e.g. it needs the default interface)
 // tablet: 'landscape' | 'portrait': the page a tablet's (TABLET, #1130)
+// WebKit failing to load from the test's own local server (#4428: a module's import and a request to /api/… refused
+// with "access control checks", the connection dropped under it; WebKit on CI, the same test passing before and after):
+// an engine failure as a crashed page is, when it is all the page errors said
+const WEBKIT_LOAD_FAILURE = /^uncaught: (\w*: )?(Fetch API cannot load http:\/\/127\.0\.0\.1:\d+\/.* due to access control checks\.|(Unhandled Promise Rejection: )?TypeError: Importing a module script failed\.)$/;
+/** Whether the page errors `errs` are only WebKit's failed loads from the local server (#4428), run once more. */
+export const webkitLoadFailure = (errs, browser = BROWSER) => browser === 'webkit' && errs.length > 0 && errs.every((e) => WEBKIT_LOAD_FAILURE.test(e));
+
 export function uiTest(name, envRef, fn, { timeout = 90000, url, skip, build, tablet, ui } = {}) {
   test(name, { timeout }, async (t) => {
     const env = typeof envRef === 'function' ? envRef() : envRef;
     if (env.skip || skip) { t.skip(env.skip || skip); return; }
     // Firefox / WebKit ending the page by itself (an engine failure, not the app's: WebKit on CI, #110,
     // #237): the test is run once more in a fresh page, as #153 runs a crashed Yosys again in a new
-    // worker, the projects the first run made removed; said in the output. A second time fails it.
+    // worker, the projects the first run made removed; said in the output. A second time fails it. (So does WebKit failing
+    // to load from the local server, #4428: webkitLoadFailure.)
     const ws = env.server?.workspace;
     const listWs = async () => new Set(ws ? await fsp.readdir(ws).catch(() => []) : []);
     for (let attempt = 1; ; attempt++) {
@@ -1052,6 +1060,7 @@ async function runUiTest(name, env, fn, url, t, build, tablet, ui) {
     if (!url) await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot' });
     await fn(page, env, t);
     const errs = page.errors.filter((e) => !page.allowErrors.some((re) => re.test(e)));
+    if (webkitLoadFailure(errs)) throw new PageGoneError(`WebKit failed to load from the local server (${errs.join(' | ')})`);
     if (errs.length) throw new Error(`page errors:\n  ${errs.join('\n  ')}`);
   } catch (e) {
     try {
