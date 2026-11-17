@@ -22,10 +22,20 @@ const warnings = (page) => lines(page, /^(WARNING|AVISO|ERROR|ERRO)/);
 const onDisk = (f) => fs.access(path.join(env.server.workspace, 'Srcs', f)).then(() => true, () => false);
 const listed = async (f) => JSON.parse(await readWs(env, 'Srcs', 'silinx.json')).files.some((x) => x.path === f);
 const until = async (fn, what, ms = 15000) => { for (const t = Date.now(); !(await fn());) { if (Date.now() - t > ms) throw new Error(`timed out: ${what}`); await new Promise((r) => setTimeout(r, 100)); } };
+// a file's menu in the Files pane, once the page has the file in its project (the editor's page catches up with the
+// owner's changes asynchronously: its menu is the one of a file outside the project until then); retried while the
+// rows are redrawn
 async function fileMenu(page, file, item) {
-  const i = await page.waitFor((f) => { const k = [...document.querySelectorAll('#files-page tr')].findIndex((tr) => tr.dataset.file === f); return k >= 0 ? k + 1 : 0; }, [file], { what: file }).then((k) => k - 1);
-  await page.rightClick('#files-page tr', { index: i });
-  await page.waitForSelector('body > .menu-popup');
+  await page.waitFor((f) => window.Silinx.fileTree.includes(f) && window.Silinx.project.files.some((x) => x.path === f), [file], { what: `${file} in the project`, timeout: 15000 });
+  for (const t = Date.now(); ;) {
+    const i = await page.waitFor((f) => { const k = [...document.querySelectorAll('#files-page tr')].findIndex((tr) => tr.dataset.file === f); return k >= 0 ? k + 1 : 0; }, [file], { what: file }).then((k) => k - 1);
+    await page.rightClick('#files-page tr', { index: i });
+    await page.waitForSelector('body > .menu-popup');
+    if (await page.eval((it) => [...document.querySelectorAll('body > .menu-popup .mi')].some((m) => m.textContent.includes(it)), item)) break;
+    if (Date.now() - t > 15000) throw new Error(`no ${item} in ${file}'s menu`);
+    await page.key('Escape');
+    await new Promise((r) => setTimeout(r, 200));
+  }
   await page.click('body > .menu-popup .mi', { text: item });
 }
 

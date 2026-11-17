@@ -235,3 +235,23 @@ test('#4418 editQueue: each change applied after the one before; published again
   await new Promise((r) => setTimeout(r, 10));
   assert.equal(log.at(-1), 'published');
 });
+
+test('#4418 editQueue: the reads of the disk one at a time, in order (an older one never published after a newer one, a change applied meanwhile put back); again() resolves once published', async () => {
+  const log = [];
+  let disk = 'old', reads = 0, open = 0, overlap = false;
+  const q = editQueue(async (ev) => { log.push(`apply ${ev}`); disk = ev; return true; }, async () => {
+    open++; if (open > 1) overlap = true;
+    const seen = disk, n = ++reads;
+    await new Promise((r) => setTimeout(r, n === 1 ? 30 : 5));   // the first read slower than the next
+    log.push(`publish ${seen}`); open--;
+  });
+  const first = q.again();
+  assert.ok(first instanceof Promise);
+  await new Promise((r) => setTimeout(r, 5));
+  q.push('new');   // an editor's change while the first read is on
+  await first;
+  assert.equal(log[0], 'publish old', 'again() resolved once its publishing is done');
+  await q.again();
+  assert.equal(overlap, false, 'never two reads at once');
+  assert.deepEqual(log, ['publish old', 'apply new', 'publish new'], 'the last published is the newest (again() while one is due: once)');
+});
