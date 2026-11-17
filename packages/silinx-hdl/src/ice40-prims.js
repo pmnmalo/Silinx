@@ -97,23 +97,26 @@ const IO_PINS = { pin: 'PACKAGE_PIN', latch: 'LATCH_INPUT_VALUE', ce: 'CLOCK_ENA
 const OD_PINS = { pin: 'PACKAGEPIN', latch: 'LATCHINPUTVALUE', ce: 'CLOCKENABLE', iclk: 'INPUTCLK', oclk: 'OUTPUTCLK', oe: 'OUTPUTENABLE',
   d0: 'DOUT0', d1: 'DOUT1', i0: 'DIN0', i1: 'DIN1' };
 const io = (name, p, { gb = false, od = false } = {}) => entity(name, `${p.pin} : inout std_logic;${gb ? ' GLOBAL_BUFFER_OUTPUT : out std_ulogic;' : ''} ${p.i0}, ${p.i1} : out std_ulogic;
-        ${p.latch}, ${p.iclk}, ${p.oclk}, ${p.oe}, ${p.d0}, ${p.d1} : in std_ulogic := '0'; ${p.ce} : in std_ulogic := '1'`, `  ce <= '0' when ${p.ce} = '0' or ${p.ce} = 'L' else '1';
-  ic <= ${p.iclk} xor to_stdulogic(NEG_TRIGGER);
-  oc <= ${p.oclk} xor to_stdulogic(NEG_TRIGGER);
-  process (ic)
+        ${p.latch}, ${p.iclk}, ${p.oclk}, ${p.oe}, ${p.d0}, ${p.d1} : in std_ulogic := '0'; ${p.ce} : in std_ulogic := '1'`, `  oc <= ${p.oclk} xor to_stdulogic(NEG_TRIGGER);
+  -- (the registers on the clocks' own edges, not on ic's and oc's, a delta later: their inputs as at the edge)
+  process (${p.iclk})
+    variable c : std_ulogic;
   begin
-    if rising_edge(ic) then
-      ce_ri <= ce;
-      if ce = '1' then din_q0 <= ${p.pin}; end if;
-    elsif falling_edge(ic) and ce_ri = '1' then din_q1 <= ${p.pin};
+    if ${p.ce} = '0' or ${p.ce} = 'L' then c := '0'; else c := '1'; end if;
+    if (NEG_TRIGGER = '0' and rising_edge(${p.iclk})) or (NEG_TRIGGER = '1' and falling_edge(${p.iclk})) then
+      ce_ri <= c;
+      if c = '1' then din_q0 <= ${p.pin}; end if;
+    elsif ((NEG_TRIGGER = '0' and falling_edge(${p.iclk})) or (NEG_TRIGGER = '1' and rising_edge(${p.iclk}))) and ce_ri = '1' then din_q1 <= ${p.pin};
     end if;
   end process;
-  process (oc)
+  process (${p.oclk})
+    variable c : std_ulogic;
   begin
-    if rising_edge(oc) then
-      ce_ro <= ce;
-      if ce = '1' then dout_q0 <= ${p.d0}; oe_q <= ${p.oe}; end if;
-    elsif falling_edge(oc) and ce_ro = '1' then dout_q1 <= ${p.d1};
+    if ${p.ce} = '0' or ${p.ce} = 'L' then c := '0'; else c := '1'; end if;
+    if (NEG_TRIGGER = '0' and rising_edge(${p.oclk})) or (NEG_TRIGGER = '1' and falling_edge(${p.oclk})) then
+      ce_ro <= c;
+      if c = '1' then dout_q0 <= ${p.d0}; oe_q <= ${p.oe}; end if;
+    elsif ((NEG_TRIGGER = '0' and falling_edge(${p.oclk})) or (NEG_TRIGGER = '1' and rising_edge(${p.oclk}))) and ce_ro = '1' then dout_q1 <= ${p.d1};
     end if;
   end process;
   process (${p.pin}, din_q0, ${p.latch})
@@ -129,7 +132,7 @@ ${BUF_X01(p.i1, 'din_q1')}
   en <= '0' when PIN_TYPE(5 downto 4) = "00" else '1' when PIN_TYPE(5 downto 4) = "01" else ${p.oe} when PIN_TYPE(5 downto 4) = "10" else oe_q;
   ${p.pin} <= ${od ? "'0' when en = '1' and dout = '0' else 'Z' when en = '0' or dout = '1' else 'X'" : "dout when en = '1' else 'Z' when en = '0' else 'X'"};${gb ? `\n${BUF_X01('GLOBAL_BUFFER_OUTPUT', p.pin)}` : ''}`, {
   gens: `PIN_TYPE : bit_vector(5 downto 0) := "000000"; PULLUP : bit := '0'; NEG_TRIGGER : bit := '0'; IO_STANDARD : string := "SB_LVCMOS"`,
-  decls: "  signal ce, ic, oc, ce_ri, ce_ro, en, dout : std_ulogic := '0';\n  signal pin_in, din_q0, din_q1, dout_q0, dout_q1, oe_q : std_ulogic := '0';\n",
+  decls: "  signal oc, ce_ri, ce_ro, en, dout : std_ulogic := '0';\n  signal pin_in, din_q0, din_q1, dout_q0, dout_q1, oe_q : std_ulogic := '0';\n",
 });
 
 const MISC = [
