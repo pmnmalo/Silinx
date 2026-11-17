@@ -71,7 +71,8 @@ test('the ECP5 family: its parts, its formats, its back end\'s steps and constra
   const b = backendOf('ecp5');
   assert.equal(b.id, 'ecp5');
   assert.equal(b.constraints, LPF);
-  assert.deepEqual(b.steps.map(s => [s.id, s.label]), [['synth', 'Synthesize - Yosys'], ['translate', 'Translate'], ['par', 'Place & Route - nextpnr'], ['trce', 'Generate Post-Place & Route Static Timing'], ['bitgen', 'Generate Programming File - ecppack']]);
+  assert.deepEqual(b.steps.map(s => [s.id, s.label]), [['synth', 'Synthesize - Yosys'], ['postsynth', 'Generate Post-Synthesis Simulation Model'], ['translate', 'Translate'], ['par', 'Place & Route - nextpnr'],
+    ['trce', 'Generate Post-Place & Route Static Timing'], ['postpar', 'Generate Post-Place & Route Simulation Model'], ['bitgen', 'Generate Programming File - ecppack']]);   // (the models, #2299)
   assert.deepEqual(orderSteps(b.steps, ['bitgen']), ['synth', 'translate', 'par', 'bitgen']);
   assert.throws(() => orderSteps(b.steps, ['xpwr']), /no step xpwr/);
   assert.deepEqual(ecp5Utilization({ LUT4: 24, TRELLIS_FF: 26, CCU2C: 12, PFUMX: 2, L6MUX21: 1, TRELLIS_DPR16X4: 3, DP16KD: 1, PDPW16KD: 1, MULT18X18D: 2, DCCA: 1, EHXPLLL: 1, TRELLIS_IO: 4 }),

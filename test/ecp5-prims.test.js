@@ -18,7 +18,7 @@ test('the ECP5 library: its cells, each elaborated alone with no message', () =>
   const ioregs = ['IFS1P3', 'OFS1P3'].flatMap((n) => ['BX', 'DX', 'IX', 'JX'].map((k) => `${n}${k}`));
   assert.deepEqual([...ECP5_CELLS].sort(), ['BB', 'BBPD', 'BBPU', 'CCU2C', 'DCCA', 'DCSC', 'DP16KD', 'DPR16X4C', 'EHXPLLL', 'GSR', 'IB', 'IBPD', 'IBPU',
     'IDDRX1F', 'ILVDS', 'INV', 'L6MUX21', 'LUT2', 'LUT4', 'MULT18X18D', 'OB', 'OBCO', 'OBZ', 'OBZPD', 'OBZPU', 'ODDRX1F', 'OLVDS', 'OSCG', 'PFUMX', 'PUR',
-    'SGSR', 'TRELLIS_DPR16X4', 'TRELLIS_FF', 'TRELLIS_IO', 'TRELLIS_RAM16X2', 'USRMCLK', 'VHI', 'VLO', ...diamond, ...ioregs].sort());
+    'SGSR', 'TRELLIS_COMB', 'TRELLIS_DPR16X4', 'TRELLIS_FF', 'TRELLIS_IO', 'TRELLIS_RAM16X2', 'TRELLIS_RAMW', 'USRMCLK', 'VHI', 'VLO', ...diamond, ...ioregs].sort());
   const lib = compile([ECP5_SOURCE]);
   assert.deepEqual(lib.errors, []);
   for (const n of ECP5_CELLS) assert.deepEqual(elaborate(lib, n).diags.map((d) => d.message), [], n);
@@ -292,4 +292,52 @@ test('MULT18X18D: P = A × B (unsigned, signed, mixed), SIGNEDP, against the pro
   cases.push({ name: 'MUL_REG', cell: 'MULT18X18D', pins: P, steps,
     params: [['REG_INPUTA_CLK', { str: 'CLK0' }], ['REG_INPUTB_CLK', { str: 'CLK0' }], ['REG_OUTPUT_CLK', { str: 'CLK1' }]] });
   ck(cases, 'MULT18X18D');
+});
+
+// nextpnr-ecp5's packed cells (ecp5-packed.js, the Post-Place & Route model's) and its routed design's generics: TRELLIS_COMB's
+// modes against cells_sim.v's semantics written again here, TRELLIS_RAMW's pins, TRELLIS_FF's SD, the *MUX generics
+test('TRELLIS_COMB: LOGIC (open inputs 1), CCU2 (its carry, CCU2_INJECT1), its wide multiplexer (F1, or FXA / FXB), DPRAM with TRELLIS_RAMW; TRELLIS_FF\'s SD; the *MUX generics', () => {
+  const r = rng(1263), cases = [];
+  const comb = ['A', 'B', 'C', 'D'];
+  // LOGIC: F the LUT of A … D; with D open (1), the upper half of INITVAL
+  const logic = Array.from({ length: 16 }, (_, k) => ({ in: Object.fromEntries(comb.map((p, i) => [p, bit(k, i)])), out: { F: String(bit(0x28ac, k)) } }));
+  cases.push({ name: 'LOGIC', cell: 'TRELLIS_COMB', params: [['INITVAL', { bits: 16, v: 0x28ac }]], pins: pins(comb, ['F']), steps: logic });
+  cases.push({ name: 'LOGIC_OPEN', cell: 'TRELLIS_COMB', params: [['INITVAL', { bits: 16, v: 0xf000 }]], pins: pins(['A', 'B'], ['F']), steps: [{ in: { A: 0 }, out: { F: '1' } }] });
+  // CCU2: F = LUT4 xor FCI, FCO = FCI where the LUT4 is 1, else the LUT2 (INITVAL(3 downto 0)); INJECT1 YES: F the LUT4, FCO the LUT2's
+  for (const inj of ['NO', 'YES']) {
+    const init = 0x96aa;
+    const steps = Array.from({ length: 32 }, (_, k) => {
+      const x = Object.fromEntries([...comb, 'FCI'].map((p, i) => [p, bit(k, i)]));
+      const l4 = bit(init, k & 15), l2 = inj === 'YES' ? 0 : bit(init, k & 3);
+      return { in: x, out: { F: String(inj === 'YES' ? l4 : l4 ^ x.FCI), FCO: String(l4 ? x.FCI : l2) } };
+    });
+    cases.push({ name: `CCU2_${inj}`, cell: 'TRELLIS_COMB', params: [['MODE', { str: 'CCU2' }], ['INITVAL', { bits: 16, v: init }], ['CCU2_INJECT1', { str: inj }]], pins: pins([...comb, 'FCI'], ['F', 'FCO']), steps });
+  }
+  // the wide multiplexer: OFX = M ? F1 : F (PFUMX), or M ? FXB : FXA when F1 is open and they are not (L6MUX21)
+  cases.push({ name: 'PFUMX', cell: 'TRELLIS_COMB', params: [['INITVAL', { bits: 16, v: 0xffff }]], pins: pins(['M', 'F1'], ['OFX']),
+    steps: [{ in: { M: 0, F1: 0 }, out: { OFX: '1' } }, { in: { M: 1 }, out: { OFX: '0' } }, { in: { F1: 1 }, out: { OFX: '1' } }] });
+  cases.push({ name: 'L6MUX', cell: 'TRELLIS_COMB', params: [['INITVAL', { bits: 16, v: 0xffff }]], pins: pins(['M', 'FXA', 'FXB'], ['OFX']),
+    steps: [{ in: { M: 0, FXA: 0, FXB: 1 }, out: { OFX: '0' } }, { in: { M: 1 }, out: { OFX: '1' } }, { in: { FXB: 0 }, out: { OFX: '0' } }] });
+  // DPRAM: written on WCK's rising edge at WAD3 … 0 with WD when WRE, read at {A, C, B, D}; TRELLIS_RAMW's WADO / WDO
+  const ramw = { WADO3: 'A0', WADO2: 'C0', WADO1: 'B0', WADO0: 'D0', WDO3: 'B1', WDO2: 'D1', WDO1: 'A1', WDO0: 'C1' };
+  cases.push({ name: 'RAMW', cell: 'TRELLIS_RAMW', pins: pins(Object.values(ramw), Object.keys(ramw)), steps: Array.from({ length: 8 }, () => {
+    const x = Object.fromEntries(Object.values(ramw).map((p) => [p, r(2)]));
+    return { in: x, out: Object.fromEntries(Object.entries(ramw).map(([o, i]) => [o, String(x[i])])) };
+  }) });
+  const mem = Array.from({ length: 16 }, (_, i) => bit(0x1234, i)), dp = [];
+  for (let k = 0; k < 24; k++) {
+    const wa = r(16), wd = r(2), we = r(2), ra = r(16);
+    dp.push({ in: { WCK: 0, WAD3: bit(wa, 3), WAD2: bit(wa, 2), WAD1: bit(wa, 1), WAD0: bit(wa, 0), WD: wd, WRE: we, A: bit(ra, 3), C: bit(ra, 2), B: bit(ra, 1), D: bit(ra, 0) } });
+    if (we) mem[wa] = wd;
+    dp.push({ in: { WCK: 1 }, out: { F: String(mem[ra]) } });
+  }
+  cases.push({ name: 'DPRAM', cell: 'TRELLIS_COMB', params: [['MODE', { str: 'DPRAM' }], ['INITVAL', { bits: 16, v: 0x1234 }]], pins: pins([...comb, 'WAD0', 'WAD1', 'WAD2', 'WAD3', 'WD', 'WRE', 'WCK'], ['F']), steps: dp });
+  // TRELLIS_FF's SD "0": its data M, not DI
+  cases.push({ name: 'FF_SD', cell: 'TRELLIS_FF', params: [['SD', { str: '0' }]], pins: pins(['CLK', 'DI', 'M'], ['Q']),
+    steps: [{ in: { DI: 1, M: 0 } }, { in: { CLK: 1 }, out: { Q: '0' } }, { in: { CLK: 0, M: 1 } }, { in: { CLK: 1 }, out: { Q: '1' } }] });
+  // the *MUX generics: a constant ("0", "1"), an open pin inverted ("INV": 0), the pin: MULT18X18D's A0MUX "1", B1MUX "INV" of B1
+  const P = { ...busPins('A', 18, 'in'), ...busPins('B', 18, 'in'), ...busPins('P', 36, 'out') };
+  cases.push({ name: 'MUL_MUX', cell: 'MULT18X18D', params: [['A0MUX', { str: '1' }], ['A1MUX', { str: '0' }], ['B1MUX', { str: 'INV' }]], pins: P,
+    steps: [{ in: { ...busVal('A', 18, 2), ...busVal('B', 18, 3) }, out: busVal('P', 36, 1, true) }, { in: busVal('B', 18, 1) }, { in: busVal('A', 18, 6), out: busVal('P', 36, 15, true) }] });
+  checkCases('ecp5', cases, 'packed');
 });

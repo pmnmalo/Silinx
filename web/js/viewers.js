@@ -63,15 +63,17 @@ async function netlistSources(step, { hier = false, action = 'Simulate', title =
   }
   const { scalarizeNetlist, regroupNetlist } = await import('/core/netlist-hier.js');
   // single-bit nets simulate several times faster than netgen's vector signals (same behaviour);
-  // the technology schematic regroups the flat netlist by the design's own instances
-  let text = scalarizeNetlist(raw);
-  if (hier) {
+  // the technology schematic regroups the flat netlist by the design's own instances; a Verilog model (the iCE40's, ECP5's,
+  // Gowin's: Yosys's netlists, #2299) as it is
+  const verilog = /\.v$/i.test(file);
+  let text = verilog ? raw : scalarizeNetlist(raw);
+  if (hier && !verilog) {
     try {
       const design = elaborate(compile(S.sources.filter(x => inView(x.role, false) && (x.lang === 'vhdl' || x.lang === 'verilog'))), S.project.top);
       text = regroupNetlist(raw, (design.top?.children || []).map(c => c.name)).text;
     } catch (e) { log(`WARNING: technology schematic shown flat (${e.message})`, 'warn'); }
   }
-  const net = { path: file, lang: 'vhdl', text, role: 'design', netlist: step };
+  const net = { path: file, lang: verilog ? 'verilog' : 'vhdl', text, role: 'design', netlist: step };
   return [...primitiveSources([net]), net];
 }
 // The dialog of a model not generated yet (#490): "Generate and <action>" runs its process when the

@@ -79,7 +79,7 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   if (!pj.top) throw toolError(`the project '${name}' has no top module`);
   // (a model the flow does not make: refused, as simulate refuses it, #3707)
   const model = Object.keys(MODEL_PROCESS).find(m => MODEL_PROCESS[m] === proc);
-  if (model && !hasSimModels(pj.device)) throw toolError(noSimModelMessage(pj.device, model));
+  if (model && !hasSimModels(pj.device, model)) throw toolError(noSimModelMessage(pj.device, model));
   const { startImplementation } = await import('./impl-routes.js');
   let job;
   try { job = await startImplementation(name, { steps, ...(toolchain ? { toolchain } : {}) }); } catch (e) { throw toolError(e.message); }

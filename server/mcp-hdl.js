@@ -15,10 +15,19 @@ import { deviceFamily, experimentalDevice, familyName, openOnlyDevice, vivadoDev
 export const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', postmap: 'Post-Map', postpar: 'Post-Place & Route' };
 // the process that makes each model (run_process), and the stage it comes after
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
-// the flows that make the models (#3707): the Spartan ones, ISE's and the Silinx toolchain's; none on the iCE40, ECP5,
-// Gowin, the 7-series nor an experimental family, as the interface's tools (web/js/tool-descriptors.js simModelsOf, toolOf)
-export const hasSimModels = device => !vivadoDevice(device) && !experimentalDevice(device) && !openOnlyDevice(device);
-export const noSimModelMessage = (device, model) => `the ${familyName(deviceFamily(device))} flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model (only the Spartan flows make them): simulate the behavioral model`;
+// the models each flow makes (#3707), as the interface's tools (web/js/tool-descriptors.js simModelsOf, toolOf): the Spartan
+// flows', ISE's and the Silinx toolchain's, all four; the iCE40's and ECP5's the post-synthesis and post-place & route ones, the
+// Gowin's the post-synthesis one (#2299, core/flow-models-nextpnr.js); none on the 7-series nor an experimental family
+const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth'] };
+const simModelsOfDevice = device => (vivadoDevice(device) || experimentalDevice(device) ? []
+  : openOnlyDevice(device) ? NEXTPNR_MODELS[deviceFamily(device)] || [] : Object.keys(SIM_MODELS));
+/** True if the device's flow makes the model (`model`; none: any). */
+export const hasSimModels = (device, model) => (model ? simModelsOfDevice(device).includes(model) : simModelsOfDevice(device).length > 0);
+export const noSimModelMessage = (device, model) => {
+  const made = simModelsOfDevice(device);
+  const names = made.map(m => SIM_MODELS[m].toLowerCase());
+  return `the ${familyName(deviceFamily(device))} flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model (${made.length ? `only the ${names.join(' and ')} one${made.length > 1 ? 's' : ''}` : 'only the Spartan flows make them'}): simulate the behavioral model${made.length ? ` or the ${names.join(' or the ')} one` : ''}`;
+};
 const STAGE = { postsynth: 'synth', posttrans: 'translate', postmap: 'map', postpar: 'par' };
 
 // the project's data files ($readmemh, textio: viewers.js readDataFiles), with the sources' texts
@@ -61,7 +70,9 @@ async function modelSources(name, pj, model, generate) {
   }
   const { scalarizeNetlist } = await import('../core/netlist-hier.js');
   const { primitiveSources } = await import('../core/unisim.js');
-  const net = { path: m.path, lang: 'vhdl', text: scalarizeNetlist(raw), role: 'design', netlist: model };
+  // (a Verilog model: the iCE40's, ECP5's and Gowin's, Yosys's netlists, #2299)
+  const verilog = /\.v$/i.test(m.path);
+  const net = { path: m.path, lang: verilog ? 'verilog' : 'vhdl', text: verilog ? raw : scalarizeNetlist(raw), role: 'design', netlist: model };
   return { sources: [...primitiveSources([net]), net], notes, warnings, file: m.path };
 }
 
@@ -197,7 +208,7 @@ export const HDL_TOOLS = [
       if (model !== 'behavioral') {
         const pj = await P.readProject(name);
         if (!pj.top) throw toolError(`the project '${name}' has no top module: its models are of the top`);
-        if (!hasSimModels(pj.device)) throw toolError(noSimModelMessage(pj.device, model));
+        if (!hasSimModels(pj.device, model)) throw toolError(noSimModelMessage(pj.device, model));
         const net = await modelSources(name, pj, model, generate);
         head.push(...net.notes, ...net.warnings);
         const { compile, elaborate } = await import('../core/compile.js');

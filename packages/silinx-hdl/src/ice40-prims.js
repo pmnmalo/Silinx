@@ -25,13 +25,14 @@
 //   - the LED drivers SB_RGBA_DRV and SB_RGB_DRV (RGBn pulled low, its LED lit, while RGBnPWM, RGBLEDEN and CURREN / RGBPU
 //     are 1, else released) and SB_LED_DRV_CUR (LEDPU = EN);
 //   - the block RAMs (SB_RAM40_4K…) and the UltraPlus's single-port RAM (SB_SPRAM256KA): ice40-ram.js; the DSP (SB_MAC16):
-//     ice40-dsp.js.
+//     ice40-dsp.js; nextpnr-ice40's packed cells (ICESTORM_LC, ICESTORM_RAM: the Post-Place & Route model's): ice40-packed.js.
 // The I2C, SPI and LED-PWM hard IPs (SB_I2C, SB_SPI, SB_LEDDA_IP) are not modelled.
 //
 // Isomorphic ES module (browser + Node), no DOM.
 
 import { ICE40_RAM_VHDL } from './ice40-ram.js';
 import { ICE40_DSP_VHDL } from './ice40-dsp.js';
+import { ICE40_PACKED_VHDL } from './ice40-packed.js';
 
 const IEEE = 'library IEEE; use IEEE.STD_LOGIC_1164.ALL; use IEEE.NUMERIC_STD.ALL;';
 
@@ -132,7 +133,8 @@ ${BUF_X01(p.i1, 'din_q1')}
   en <= '0' when PIN_TYPE(5 downto 4) = "00" else '1' when PIN_TYPE(5 downto 4) = "01" else ${p.oe} when PIN_TYPE(5 downto 4) = "10" else oe_q;
   ${p.pin} <= ${od ? "'0' when en = '1' and dout = '0' else 'Z' when en = '0' or dout = '1' else 'X'" : "dout when en = '1' else 'Z' when en = '0' else 'X'"};${gb ? `\n${BUF_X01('GLOBAL_BUFFER_OUTPUT', p.pin)}` : ''}`, {
   gens: `PIN_TYPE : bit_vector(5 downto 0) := "000000"; PULLUP : bit := '0'; NEG_TRIGGER : bit := '0'; IO_STANDARD : string := "SB_LVCMOS"`,
-  decls: "  signal oc, ce_ri, ce_ro, en, dout : std_ulogic := '0';\n  signal pin_in, din_q0, din_q1, dout_q0, dout_q1, oe_q : std_ulogic := '0';\n",
+  // (en and dout unknown until computed: not a 0 on the pad at the start, before the cells that drive D_OUT_0 have)
+  decls: "  signal oc, ce_ri, ce_ro : std_ulogic := '0';\n  signal en, dout : std_ulogic;\n  signal pin_in, din_q0, din_q1, dout_q0, dout_q1, oe_q : std_ulogic := '0';\n",
 });
 
 const MISC = [
@@ -268,7 +270,7 @@ end COMPONENTS;`,
   LUT4, CARRY, ...FFS.flatMap((f) => [ff(f, false), ff(f, true)]),
   io('SB_IO', IO_PINS), io('SB_GB_IO', IO_PINS, { gb: true }), io('SB_IO_OD', OD_PINS, { od: true }),
   ...MISC, ...PLLS.map(pll), HFOSC, LFOSC,
-  ICE40_RAM_VHDL, ICE40_DSP_VHDL,
+  ICE40_RAM_VHDL, ICE40_DSP_VHDL, ICE40_PACKED_VHDL,
 ].join('\n');
 
 /** The source entry to add to a compilation whose sources use the iCE40 primitives. */

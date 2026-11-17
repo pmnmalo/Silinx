@@ -47,6 +47,7 @@ export function ice40Primitive(N, h) {
     });
   }
   if (N === 'SB_GB') return comb(ins('USER_SIGNAL_TO_GLOBAL_BUFFER'), outs('GLOBAL_BUFFER_OUTPUT'), () => b('USER_SIGNAL_TO_GLOBAL_BUFFER'));
+  if (N === 'ICESTORM_LC') return icestormLc(h);
   if ((m = ICE40_FF.exec(N))) {
     const clk = P.get('C'), d = P.get('D'), q = P.get('Q');
     if (!clk || !d || !q) return null;
@@ -69,6 +70,48 @@ export function ice40Primitive(N, h) {
     };
   }
   return null;
+}
+
+// nextpnr-ice40's logic cell (ice40-packed.js's ICESTORM_LC): its LUT (LO), carry (COUT) and flip-flop (O); an open input pin
+// 0, CEN 1 (a Z read as cells_sim.v's pd and pu do)
+function icestormLc(h) {
+  const { P, param, set, bit, VAL } = h;
+  const p1 = (k) => Number(param(k)?.v ?? 0n) === 1;
+  const iv = param('LUT_INIT')?.v ?? 0n;
+  const dff = p1('DFF_ENABLE'), carry = p1('CARRY_ENABLE'), cinConst = p1('CIN_CONST'), cinSet = p1('CIN_SET') ? 1 : 0;
+  const neg = p1('NEG_CLK'), asyn = p1('ASYNC_SR'), setv = p1('SET_NORESET') ? 1 : 0;
+  const pin = (k, d) => { const s = P.get(k); if (!s) return d; const x = bit(s.val); return x === 2 && s.val.z ? d : x; };
+  const [lo, o, cout] = ['LO', 'O', 'COUT'].map((k) => (P.get(k) ? [P.get(k)] : []));
+  const clk = P.get('CLK'), sr = P.get('SR');
+  // (the clock's edge as this cell saw it: its process runs again when a LUT input changes, later in the edge's time step, and
+  // its flip-flop must not load again then; the flip-flop loads the LUT's value, and reads SR and CEN, as they were before the
+  // edge's delta, as from cells of their own: a signal that changes with the clock (an input pad's, the clock through one more
+  // buffer) is the next edge's)
+  let q = 0, last = clk ? bit(clk.val) : 0, d = null, sPrev = null, cPrev = null;
+  const inputs = ['I0', 'I1', 'I2', 'I3', 'CIN', 'CLK', 'SR', 'CEN'].map((k) => P.get(k)).filter(Boolean);
+  return {
+    // (a flip-flop's output starts at 0; a LUT's is computed, not 0 before it is)
+    inputs, outputs: [...lo, ...o, ...cout], init: dff ? o.map((s) => [s, VAL[0]]) : [],
+    reset() { q = 0; last = clk ? bit(clk.val) : 0; d = null; sPrev = null; cPrev = null; },
+    fn(sim) {
+      const l = lut4(iv, ['I0', 'I1', 'I2', 'I3'].map((k) => pin(k, 0)));
+      set(sim, lo, l);
+      if (carry) {
+        const a = pin('I1', 0), c = pin('I2', 0), ci = cinConst ? cinSet : pin('CIN', 0);
+        set(sim, cout, a === 1 && c === 1 ? 1 : a === 0 && c === 0 ? 0 : ci === 1 && (a === 1 || c === 1) ? 1 : ci === 0 && (a === 0 || c === 0) ? 0 : 2);
+      } else set(sim, cout, 2);
+      if (!dff) return set(sim, o, l);
+      const s = sr ? pin('SR', 0) : 0, c = clk ? bit(clk.val) : last;
+      const edge = c !== last && (neg ? last === 1 && c === 0 : last === 0 && c === 1);
+      last = c;
+      const en = pin('CEN', 1);
+      // (its first run: the values as they are)
+      if (asyn && s === 1) q = setv;
+      else if (edge && (cPrev ?? en) !== 0) q = (sPrev ?? s) === 1 ? setv : d ?? l;
+      d = l; sPrev = s; cPrev = en;
+      set(sim, o, q);
+    },
+  };
 }
 
 // a 2:1 multiplexer's output (s its select, a / c its inputs for 0 / 1): an unknown select known when both inputs agree
@@ -113,7 +156,8 @@ export function ecp5Primitive(N, h) {
     };
   }
   if (N === 'TRELLIS_FF') {
-    const clk = P.get('CLK'), d = P.get('DI'), q = P.get('Q'), lsr = P.get('LSR'), ce = P.get('CE'), m = P.get('M');
+    // (SD, nextpnr's routed design's: "0" the data M, "1" DI)
+    const clk = P.get('CLK'), q = P.get('Q'), lsr = P.get('LSR'), ce = P.get('CE'), m = P.get('M'), d = str('SD', '1') === '0' ? m : P.get('DI');
     if (!clk || !d || !q) return null;
     const cemux = str('CEMUX', '1'), lsrmux = str('LSRMUX', 'LSR'), prld = str('LSRMODE', 'LSR') === 'PRLD';
     if ((cemux !== '1' && cemux !== '0' && !ce) || (prld && !m)) return null;
@@ -137,5 +181,31 @@ export function ecp5Primitive(N, h) {
     };
   }
   if (N === 'DCCA') return comb(ins('CLKI', 'CE'), outs('CLKO'), () => (P.get('CE') && b('CE') !== 1 ? 0 : b('CLKI')));
+  if (N === 'TRELLIS_COMB' && str('MODE', 'LOGIC') !== 'DPRAM') return trellisComb(h);
   return null;
+}
+
+// nextpnr-ecp5's half slice (ecp5-packed.js's TRELLIS_COMB) in its modes LOGIC and CCU2: F, FCO, OFX (its wide multiplexer: FXA /
+// FXB when IS_Z1, or when F1 is open and they are not, else F / F1, by M); an open A … D reads 1
+function trellisComb(h) {
+  const { P, param, set, bit, connected } = h;
+  const iv = param('INITVAL')?.v ?? 0n, ccu2 = param('MODE')?.str === 'CCU2', inject = param('CCU2_INJECT1')?.str === 'YES';
+  const z1 = Number(param('IS_Z1')?.v ?? 0n) === 1 || (!connected('F1') && (connected('FXA') || connected('FXB')));
+  const pin = (k, d) => (P.get(k) ? bit(P.get(k).val) : d);
+  const [f, fco, ofx] = ['F', 'FCO', 'OFX'].map((k) => (P.get(k) ? [P.get(k)] : []));
+  const inputs = ['A', 'B', 'C', 'D', 'M', 'FCI', 'F1', 'FXA', 'FXB'].map((k) => P.get(k)).filter(Boolean);
+  return {
+    inputs, outputs: [...f, ...fco, ...ofx], init: [],
+    fn(sim) {
+      const x = ['A', 'B', 'C', 'D'].map((k) => pin(k, 1)), l4 = lut4(iv, x);
+      let fv = l4;
+      if (ccu2) {
+        const fci = pin('FCI', 0), l2 = inject ? 0 : lut4(iv & 15n, x.slice(0, 2));
+        fv = inject ? l4 : xor(l4, fci);
+        set(sim, fco, sel(l4, l2, fci));
+      } else set(sim, fco, 2);
+      set(sim, f, fv);
+      if (ofx.length) set(sim, ofx, z1 ? sel(pin('M', 2), pin('FXA', 2), pin('FXB', 2)) : sel(pin('M', 2), fv, pin('F1', 2)));
+    },
+  };
 }

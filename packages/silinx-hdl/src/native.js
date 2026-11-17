@@ -67,7 +67,9 @@ function primitive(name, params, ports, proj, lib) {
   // as the VHDL models in core/unisim.js)
   const mux = (a, c, s) => comb(ins(a, c, s), outs('O', 'LO'), () => { const x = b(s); if (x === 1) return b(c); if (x === 0) return b(a); const u = b(a); return u !== 2 && u === b(c) ? u : 2; });
 
-  const h = { P, param, ins, outs, set, comb, b, mux, bit, rising, falling, VAL };
+  // (connected(k): the pin has an actual, not left open: the packed cells of a routed design, #2299)
+  const connected = (k) => ports.some((p) => p.name.toUpperCase() === k && p.conn != null);
+  const h = { P, param, ins, outs, set, comb, b, mux, bit, rising, falling, VAL, connected };
   if (lib === '<silinx>/gowin.vhd') return gowinPrimitive(N, h);
   if (lib === '<silinx>/ice40.vhd') return ice40Primitive(N, h);
   if (lib === '<silinx>/ecp5.vhd') return ecp5Primitive(N, h);

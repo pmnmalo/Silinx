@@ -5,13 +5,18 @@
 // (after their registers), ROA / ROB / ROC the operands and C; the registers REG_INPUTA / B / C, REG_PIPELINE and
 // REG_OUTPUT on the clock their *_CLK names ("NONE": none; "CLK0" … "CLK3"), with the enable *_CE ("CE0" … "CE3") and the
 // reset *_RST ("RST0" … "RST3": on the clock's edge, RESETMODE "SYNC", or at once, "ASYNC"), all starting at 0. MULT_BYPASS,
-// the cascade and the clock dividers are not modelled; an unknown operand bit makes P unknown.
+// the cascade and the clock dividers are not modelled; an unknown operand bit makes P unknown. An input's *MUX generic (nextpnr's
+// routed design folds its constant inputs into them): as ecp5-bram.js's; an open pin 0 (CE0 … 3 1).
 //
 // Isomorphic ES module (browser + Node), no DOM.
 
 const IEEE = 'library IEEE; use IEEE.STD_LOGIC_1164.ALL; use IEEE.NUMERIC_STD.ALL;';
 const range = (n) => Array.from({ length: n }, (_, i) => i);
 const vec = (pre, n) => range(n).reverse().map((i) => `${pre}${i}`).join(' & ');
+// the pins through their *MUX generics (px: ecp5-bram.js's), the highest first
+const pxs = (pre, n) => range(n).reverse().map((i) => `px(${pre}${i}MUX, ${pre}${i}, '0')`).join(' & ');
+const CTRL = ['SIGNEDA', 'SIGNEDB', 'SOURCEA', 'SOURCEB', 'CLK0', 'CLK1', 'CLK2', 'CLK3', 'RST0', 'RST1', 'RST2', 'RST3', 'CE0', 'CE1', 'CE2', 'CE3'];
+const INS = [...['A', 'B', 'C', 'SRIA', 'SRIB'].flatMap((p) => range(18).map((i) => `${p}${i}`)), ...CTRL];
 const REGS = ['INPUTA', 'INPUTB', 'INPUTC', 'PIPELINE', 'OUTPUT'];
 
 // a register (its name, its input, its output signal) on the clock its generics name; q_v its value or, with no clock, its input
@@ -20,7 +25,7 @@ const reg = (r, d, q) => `  process (CLK0, CLK1, CLK2, CLK3, RST0, RST1, RST2, R
     variable ev, rv : std_logic_vector(0 to 3);
   begin
     c := num(REG_${r}_CLK); e := num(REG_${r}_CE); rs := num(REG_${r}_RST);
-    ev := CE0 & CE1 & CE2 & CE3; rv := RST0 & RST1 & RST2 & RST3;
+    ev := ${[0, 1, 2, 3].map((i) => `px(CE${i}MUX, CE${i}, '1')`).join(' & ')}; rv := ${[0, 1, 2, 3].map((i) => `px(RST${i}MUX, RST${i}, '0')`).join(' & ')};
     if c >= 0 then
       if RESETMODE = "ASYNC" and rs >= 0 and rv(rs) = '1' then ${q} <= (others => '0');
       elsif (c = 0 and rising_edge(CLK0)) or (c = 1 and rising_edge(CLK1)) or (c = 2 and rising_edge(CLK2)) or (c = 3 and rising_edge(CLK3)) then
@@ -38,14 +43,24 @@ ${IEEE}
 entity MULT18X18D is
   generic (${REGS.map((r) => `REG_${r}_CLK : string := "NONE"; REG_${r}_CE : string := "CE0"; REG_${r}_RST : string := "RST0"`).join(';\n    ')};
     CLK0_DIV, CLK1_DIV, CLK2_DIV, CLK3_DIV : string := "ENABLED"; HIGHSPEED_CLK : string := "NONE"; GSR : string := "ENABLED";
-    CAS_MATCH_REG : string := "FALSE"; SOURCEB_MODE : string := "B_SHIFT"; MULT_BYPASS : string := "DISABLED"; RESETMODE : string := "SYNC");
+    CAS_MATCH_REG : string := "FALSE"; SOURCEB_MODE : string := "B_SHIFT"; MULT_BYPASS : string := "DISABLED"; RESETMODE : string := "SYNC";
+    ${INS.map((p) => `${p}MUX`).join(', ')} : string := "");
   port (${vec('P', 36).split(' & ').join(', ')}, SIGNEDP : out std_ulogic;
     ${['SROA', 'SROB', 'ROA', 'ROB', 'ROC'].map((p) => vec(p, 18).split(' & ').join(', ')).join(',\n    ')} : out std_ulogic;
-    ${['A', 'B', 'C', 'SRIA', 'SRIB'].map((p) => vec(p, 18).split(' & ').join(', ')).join(',\n    ')} : in std_ulogic := '0';
-    SIGNEDA, SIGNEDB, SOURCEA, SOURCEB, CLK0, CLK1, CLK2, CLK3, RST0, RST1, RST2, RST3 : in std_ulogic := '0';
-    CE0, CE1, CE2, CE3 : in std_ulogic := '1');
+    ${['A', 'B', 'C', 'SRIA', 'SRIB'].map((p) => vec(p, 18).split(' & ').join(', ')).join(',\n    ')},
+    ${CTRL.join(', ')} : in std_ulogic := 'Z');
 end MULT18X18D;
 architecture silinx of MULT18X18D is
+  -- (an input's *MUX generic, nextpnr's routed design's: "0" or "1" a constant, "INV" the pin inverted (an open pin reads 1),
+  -- else the pin; open (Z), its value d)
+  function px(m : string; x, d : std_ulogic) return std_ulogic is
+  begin
+    if m = "0" then return '0'; elsif m = "1" then return '1';
+    elsif m = "INV" then if x = 'Z' then return '0'; else return not x; end if;
+    elsif x = 'Z' then return d;
+    else return x;
+    end if;
+  end function;
   -- a register's clock, enable or reset: its number ("CLK2": 2), -1 for "NONE"
   function num(s : string) return integer is
   begin
@@ -63,9 +78,9 @@ architecture silinx of MULT18X18D is
   signal ai, bi, ar, br, ar_v, br_v, c, cr, cr_v : std_logic_vector(18 downto 0) := (others => '0');
   signal prod, pr, pr_v, orr, orr_v : std_logic_vector(36 downto 0) := (others => '0');
 begin
-  ai <= SIGNEDA & ${vec('SRIA', 18)} when SOURCEA = '1' else SIGNEDA & ${vec('A', 18)};
-  bi <= SIGNEDB & ${vec('SRIB', 18)} when SOURCEB = '1' else SIGNEDB & ${vec('B', 18)};
-  c <= '0' & ${vec('C', 18)};
+  ai <= px(SIGNEDAMUX, SIGNEDA, '0') & ${pxs('SRIA', 18)} when px(SOURCEAMUX, SOURCEA, '0') = '1' else px(SIGNEDAMUX, SIGNEDA, '0') & ${pxs('A', 18)};
+  bi <= px(SIGNEDBMUX, SIGNEDB, '0') & ${pxs('SRIB', 18)} when px(SOURCEBMUX, SOURCEB, '0') = '1' else px(SIGNEDBMUX, SIGNEDB, '0') & ${pxs('B', 18)};
+  c <= '0' & ${pxs('C', 18)};
 ${reg('INPUTA', 'ai', 'ar')}
 ${reg('INPUTB', 'bi', 'br')}
 ${reg('INPUTC', 'c', 'cr')}
