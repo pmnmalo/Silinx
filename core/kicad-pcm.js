@@ -72,7 +72,8 @@ export async function checkSha256(bytes, want, what = 'the download') {
 }
 
 // a package's entries Silinx reads, by their path (no other is inflated); a path out of the package refused
-const SYM = /^symbols\/([A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_sym)$/, SYMDIR = /^symbols\/([A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_symdir)\/([A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_sym)$/;
+// (a .kicad_symdir's file named as KiCad escapes a symbol's name, 10k_Axial_1{slash}6W.kicad_sym, #4318)
+const SYM = /^symbols\/([A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_sym)$/, SYMDIR = /^symbols\/([A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_symdir)\/([A-Za-z0-9][A-Za-z0-9._+{}-]*\.kicad_sym)$/;
 const FP = /^footprints\/([A-Za-z0-9][A-Za-z0-9._+-]*)\.pretty\/([A-Za-z0-9][A-Za-z0-9._+-]*\.kicad_mod)$/;
 /** The limits of a package read: its entries, and what is inflated of it. */
 export const PACKAGE_LIMITS = { maxFiles: 50000, maxEntry: 32 << 20, maxTotal: 256 << 20 };

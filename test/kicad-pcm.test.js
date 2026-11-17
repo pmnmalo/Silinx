@@ -54,12 +54,13 @@ test('sha256Hex against node:crypto; checkSha256\'s refusal', async () => {
 test('readPcmPackage: its metadata, symbol libraries, a .kicad_symdir and footprints; nothing else of it read', async () => {
   const zip = await createZip([{ path: 'metadata.json', data: JSON.stringify({ identifier: 'org.example.logic-parts' }) }, { path: 'symbols/Logic.kicad_sym', data: SYM },
     { path: 'symbols/More.kicad_symdir/B.kicad_sym', data: SYM.replace(/"A"/, '"B"') }, { path: 'symbols/More.kicad_symdir/C.kicad_sym', data: SYM.replace(/"A"/, '"C"') },
+    { path: 'symbols/More.kicad_symdir/D{slash}E.kicad_sym', data: SYM.replace(/"A"/, '"D/E"') },
     { path: 'footprints/Mods.pretty/M1.kicad_mod', data: '(footprint "M1")' }, { path: '3dmodels/Mods.3dshapes/M1.step', data: 'x'.repeat(1000) },
     { path: 'resources/icon.png', data: new Uint8Array(10) }, { path: 'symbols/notes.txt', data: 'x' }, { path: 'symbols/sub/deep.kicad_sym', data: SYM }], CODEC);
   const p = await readPcmPackage(zip, CODEC);
   assert.deepEqual(p.metadata, { identifier: 'org.example.logic-parts' });
   assert.deepEqual(p.symbols, [{ name: 'Logic.kicad_sym', text: SYM }]);
-  assert.deepEqual(p.symdirs.map((d) => [d.name, d.files.map((f) => f.name)]), [['More.kicad_symdir', ['B.kicad_sym', 'C.kicad_sym']]]);
+  assert.deepEqual(p.symdirs.map((d) => [d.name, d.files.map((f) => f.name)]), [['More.kicad_symdir', ['B.kicad_sym', 'C.kicad_sym', 'D{slash}E.kicad_sym']]], 'a symbol\'s name escaped as KiCad does (#4318)');
   assert.deepEqual(p.footprints, [{ library: 'Mods', name: 'M1.kicad_mod', text: '(footprint "M1")' }]);
   // the 3D model is never inflated: a limit below its size does not stop it
   assert.equal((await readPcmPackage(zip, CODEC, { maxEntry: 200 })).symbols.length, 1);

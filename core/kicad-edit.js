@@ -73,5 +73,11 @@ export function symbolTexts(text) {
   return { version: num(one(lib, 'version')?.[1]), symbols: new Map(top.kids.filter((l) => key(l) === 'symbol').map((l) => [l.kids[1]?.value, text.slice(l.start, l.end)])) };
 }
 
+// (KiCad's EscapeString with CTX_FILENAME, common/string_utils.cpp: what a file name cannot hold)
+const FILE_ESCAPES = { '/': '{slash}', '\\': '{backslash}', '"': '{dblquote}', '<': '{lt}', '>': '{gt}', '|': '{bar}', ':': '{colon}', '\t': '{tab}', '\n': '{return}', '\r': '{return}' };
+/** A symbol's file name in a .kicad_symdir folder, as KiCad 10 names it (#4318): its name, what a file name cannot hold
+ *  escaped as KiCad does ('10k_Axial_1/6W' → '10k_Axial_1{slash}6W.kicad_sym'). */
+export const symbolFileName = (name) => `${String(name).replace(/[/\\"<>|:\t\n\r]/g, (c) => FILE_ESCAPES[c])}.kicad_sym`;
+
 /** A .kicad_sym file of one symbol's text (symbolTexts's), at the library's version. */
 export const oneSymbolFile = (version, symbol) => `(kicad_symbol_lib\n\t(version ${version})\n\t(generator "silinx")\n\t${symbol}\n)\n`;

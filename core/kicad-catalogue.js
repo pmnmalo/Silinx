@@ -9,7 +9,7 @@
 import { CATALOGUE, CATALOGUE_LIBRARIES } from './kicad-catalogue-data.js';
 import { PARTS } from './circuit-parts.js';
 import { checkSha256 } from './kicad-pcm.js';
-import { symbolTexts, oneSymbolFile } from './kicad-edit.js';
+import { symbolTexts, oneSymbolFile, symbolFileName } from './kicad-edit.js';
 import { importKicadPackage } from './kicad-import.js';
 
 export { CATALOGUE, CATALOGUE_LIBRARIES };
@@ -54,7 +54,7 @@ export async function importCataloguePart(P, name, id, getFile, { replace = fals
   const dir = `${lib.file.replace(/\.kicad_sym$/, '')}.kicad_symdir`;
   const files = [...(e.needs || []), e.symbol].map((s) => {
     if (!symbols.has(s)) throw new Error(`${lib.url}: no symbol '${s}' in it`);
-    return { name: `${s}.kicad_sym`, text: oneSymbolFile(version, symbols.get(s)) };
+    return { name: symbolFileName(s), text: oneSymbolFile(version, symbols.get(s)) };   // (KiCad's escapes, #4318)
   });
   const footprints = [];
   if (e.footprint) {

@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { CATALOGUE, CATALOGUE_LIBRARIES, CORS_HOSTS, catalogueTitle, searchCatalogue, isCatalogueFile, catalogueSha256, importCataloguePart } from '../core/kicad-catalogue.js';
 import { PARTS, partDef, setProjectParts } from '../core/circuit-parts.js';
 import { readKicadSymLib } from '../core/kicad-sym.js';
-import { symbolTexts, oneSymbolFile } from '../core/kicad-edit.js';
+import { symbolTexts, oneSymbolFile, symbolFileName } from '../core/kicad-edit.js';
 
 const sha = (t) => createHash('sha256').update(t).digest('hex');
 const FIX = new URL('./fixtures/kicad/', import.meta.url);
@@ -92,5 +92,25 @@ test('importCataloguePart: its symbol and its parent, each a file, its footprint
   await assert.rejects(importCataloguePart(P, 'p', 'ttl/74HC00', bad, { catalogue }), new RegExp(`^Error: ${urls.lib.replace(/[.]/g, '\\.')}'s SHA-256 is [0-9a-f]{64}, not the ${sha(LIB)} it should be: not read$`));
   assert.equal(JSON.stringify(files), before);
   await assert.rejects(importCataloguePart(P, 'p', 'ttl/NONE', get, { catalogue }), { message: 'no part \'ttl/NONE\' in the KiCad catalogue (part_libraries with catalogue lists them)' });
+  setProjectParts([]);
+});
+
+test('a symbol whose name holds a \'/\' (SparkFun\'s 10k_Axial_1/6W, #4318): its file named as KiCad 10 names it, {slash}; the part found', async () => {
+  assert.equal(symbolFileName('74HC00'), '74HC00.kicad_sym');
+  assert.equal(symbolFileName('10k_Axial_1/6W'), '10k_Axial_1{slash}6W.kicad_sym');
+  assert.equal(symbolFileName('a\\b"c<d>e|f:g\th\ni'), 'a{backslash}b{dblquote}c{lt}d{gt}e{bar}f{colon}g{tab}h{return}i.kicad_sym');
+  const NAME = '10k_Axial_1/6W';
+  const LIB = readFileSync(new URL('project/parts/ttl.kicad_sym', FIX), 'utf8').replaceAll('"MODULE"', `"${NAME}"`).replaceAll('"MODULE_1_1"', `"${NAME}_1_1"`);
+  const MOD = readFileSync(new URL('project/parts/imported.pretty/Module_1x04.kicad_mod', FIX), 'utf8');
+  const urls = { lib: 'https://raw.githubusercontent.com/example/lib/v1/symbols/res.kicad_sym', fp: 'https://raw.githubusercontent.com/example/lib/v1/footprints/imported.pretty/Module_1x04.kicad_mod' };
+  const catalogue = { CATALOGUE_LIBRARIES: { res: { name: 'Test', version: '1', licence: 'CC-BY-4.0', author: 'Test', url: urls.lib, file: 'res.kicad_sym', sha256: sha(LIB) } },
+    CATALOGUE: [{ id: `res/${NAME}`, library: 'res', symbol: NAME, value: 'TEST-MODULE', as: null, package: 'grid', pins: 4, footprint: { name: 'imported:Module_1x04', url: urls.fp, sha256: sha(MOD) } }] };
+  const files = {};
+  const P = { fileTree: async () => Object.keys(files), readFile: async (_n, p) => files[p], writeFile: async (_n, p, t) => { files[p] = t; } };
+  const r = await importCataloguePart(P, 'p', `res/${NAME}`, async (u) => (u === urls.lib ? LIB : MOD), { catalogue });
+  assert.deepEqual(r.written, ['parts/res.kicad_symdir/10k_Axial_1{slash}6W.kicad_sym', 'parts/imported.pretty/Module_1x04.kicad_mod']);
+  assert.equal(r.type, `parts/res.kicad_symdir#${NAME}`);
+  assert.deepEqual(r.lines, ['parts/res.kicad_symdir written: 1 part(s), 0 of them as ICs of the library (none), 1 drawn only; 0 symbol(s) no part', '1 footprint(s) written: parts/imported.pretty']);
+  assert.equal(partDef(r.type)?.kind, 'drawn', 'the part found by its type');
   setProjectParts([]);
 });
