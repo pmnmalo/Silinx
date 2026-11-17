@@ -13,6 +13,8 @@ import { partInputs, partLamps, portRef } from './circuit-io.js';
 import { pinPort, icPorts } from './circuit-hdl-ics.js';
 
 const isSupply = (q) => q.name === '+' || q.name === '-';
+// an IC's three-state outputs and their enables [port, level] (all at their levels): a 74595's (one), #4397's (several)
+const threeStateOf = (d) => (d.threeState ? d.threeState : d.seq?.threeState ? { outs: d.seq.threeState.outs, enable: [[d.seq.threeState.enable, d.seq.threeState.active]] } : null);
 const OPS = { nand: ['and', true], and: ['and', false], or: ['or', false], nor: ['or', true], xor: ['xor', false], xnor: ['xor', true] };
 
 /** The top's digital body: { decl: [signals], body: [statements] } in VHDL (V) or Verilog; entityOf(d) an IC's entity. */
@@ -76,7 +78,7 @@ export function digitalTop(m, V, entityOf) {
     const gs = gatesOut.get(i) || [], os = icOut.get(i) || [];
     const out = ({ inst, q }) => { const s = `${inst.name}_${pinPort(q)}`; inst.outs.set(q.n, s); return s; };
     // (a three-state output, a 74595's: its level while enabled, else the net's other drivers', else its default)
-    const tri = os.filter(({ inst, q }) => inst.d.seq?.threeState?.outs.includes(pinPort(q)));
+    const tri = os.filter(({ inst, q }) => threeStateOf(inst.d)?.outs.includes(pinPort(q)));
     // (a three-state buffer's, #4397: its level while all its enables are active, else the net's other drivers')
     const triG = gs.filter((x) => x.g.en);
     const drivers = [...gs.filter((x) => !x.g.en).map(gateExpr), ...os.filter((o) => !tri.includes(o)).map(out)];
@@ -91,8 +93,8 @@ export function digitalTop(m, V, entityOf) {
     if (tri.length) {
       rest ??= lit(pullOf(i));
       for (const o of tri.slice().reverse()) {
-        const { enable, active } = o.inst.d.seq.threeState, en = ref(netOf(o.inst.p.id, o.inst.d.pins.find((x) => pinPort(x) === enable).n));
-        rest = V ? `${out(o)} when ${en} = '${active}' else ${rest}` : `(${active === '1' ? en : not(en)} ? ${out(o)} : ${rest})`;
+        const on = threeStateOf(o.inst.d).enable.map(([enable, active]) => { const en = ref(netOf(o.inst.p.id, o.inst.d.pins.find((x) => pinPort(x) === enable).n)); return V ? `${en} = '${active}'` : active === '1' ? en : not(en); });
+        rest = V ? `${out(o)} when ${on.join(' and ')} else ${rest}` : `(${on.join(' && ')} ? ${out(o)} : ${rest})`;
       }
     }
     if (rest) return rest;

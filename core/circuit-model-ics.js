@@ -11,8 +11,11 @@ import { dip } from './circuit-ics.js';
 const BAR = '̅';
 const P = (at) => (n, name, dir, port) => ({ n, name, dir, ...at(n), port: port ?? name.replace(BAR, '_n').toLowerCase() });
 const P14 = P(dip(14)), P16 = P(dip(16)), P20 = P(dip(20));
-const ic = (type, title, tpd, pins, core, family = 'ttl') => ({ type, title, kind: 'ic', family, chip: family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`, tpd, dip: pins.length,
-  pins, core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins, core), ...(core.some((e) => e.latch || e.sr) ? { latches: true } : {}) } });
+// (`threeState`: its outputs off (Z) once one of its enables [port, level] is not at its level, #4397: the 74373's…)
+const ic = (type, title, tpd, pins, core, family = 'ttl', threeState = null) => ({ type, title, kind: 'ic', family, chip: family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`, tpd, dip: pins.length,
+  pins: threeState ? pins.map((p) => (p.dir === 'out' ? { ...p, tri: true } : p)) : pins, ...(threeState ? { threeState: { enable: threeState, outs: pins.filter((p) => p.dir === 'out').map((p) => p.port) } } : {}),
+  // (its core's ports: its pins but its outputs' enables, which the IC's entity applies)
+  core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(threeState || []).some(([e]) => e === p.port)), core), ...(core.some((e) => e.latch || e.sr) ? { latches: true } : {}) } });
 
 // ------------------------------------------------------------------ the cores' VHDL
 // a storage element of a core:
@@ -21,6 +24,8 @@ const ic = (type, title, tpd, pins, core, family = 'ttl') => ({ type, title, kin
 //   { latch: { en: [port, level], d }, q, qn? }: a D latch, transparent while en is at its level
 //   { sr: { s: [ports] (active low, any one sets), r (active low) }, q }: an S̅-R̅ latch (both active: Q high)
 const is = ([p, v]) => `${p} = '${v}'`;
+// (an enable of several pins: all at their levels)
+const all = (c) => (Array.isArray(c[0]) ? c.map(is).join(' and ') : is(c));
 function storeVhdl(e, k) {
   const r = `st${k}`;
   // (a latch on purpose: the chip's own, its lint's warning silenced)
@@ -35,7 +40,7 @@ function storeVhdl(e, k) {
     const [j, k] = f.jk ?? f.jkn, kOn = f.jk ? "'1'" : "'0'", kOff = f.jk ? "'0'" : "'1'";
     next = [`if ${j} = '1' and ${k} = ${kOn} then`, `  ${r} <= not ${r};`, `elsif ${j} = '1' and ${k} = ${kOff} then`, `  ${r} <= '1';`, `elsif ${j} = '0' and ${k} = ${kOn} then`, `  ${r} <= '0';`, 'end if;'];
   }
-  if (f.ce) next = [`if ${is(f.ce)} then`, ...next.map((l) => `  ${l}`), 'end if;'];
+  if (f.ce) next = [`if ${all(f.ce)} then`, ...next.map((l) => `  ${l}`), 'end if;'];
   // (its clock one of the IC's pins, read as the chip reads them in the circuit's HDL: logic before it, on purpose)
   return { body: ['-- silinx: ignore data-as-clock', `process (${[f.clk, ...ctl.map(([c]) => c[0])].join(', ')})`, 'begin',
     ...ctl.map(([c, v], i) => `  ${i ? 'elsif' : 'if'} ${is(c)} then ${r} <= ${v};`),
@@ -59,7 +64,7 @@ function coreVhdl(name, pins, stores) {
 // ------------------------------------------------------------------ the dual J-K flip-flops: 7473, 7478, 74107, 74109, 74113, 74114
 const jkPins = (spec) => spec.map(([n, name, dir, port]) => [n, name, dir, port]);
 const JK = (k, { clk, pre, clr, edge = 'falling', kn = false }) => ({ ff: { clk, edge, ...(kn ? { jkn: [`j${k}`, `k${k}_n`] } : { jk: [`j${k}`, `k${k}`] }), ...(pre ? { pre: [pre, '0'] } : {}), ...(clr ? { clr: [clr, '0'] } : {}) }, q: `q${k}`, qn: `q${k}_n` });
-const make = (at) => (rows) => rows.map(([n, name, dir, port]) => at(n, name, dir, port));
+const make = (at) => (rows) => rows.map(([n, name, dir, port]) => at(n, name, dir, port)).sort((a, b) => a.n - b.n);
 const M14 = make(P14), M16 = make(P16), M20 = make(P20);
 const c7473 = ic('7473', 'Dual J-K flip-flop, clear (falling edge)', 15, M14(jkPins([[1, '1CLK', 'in', 'clk1'], [2, `1CLR${BAR}`, 'in', 'clr1_n'], [3, '1K', 'in', 'k1'], [4, 'VCC', 'vcc'],
   [5, '2CLK', 'in', 'clk2'], [6, `2CLR${BAR}`, 'in', 'clr2_n'], [7, '2J', 'in', 'j2'], [8, `2Q${BAR}`, 'out', 'q2_n'], [9, '2Q', 'out', 'q2'], [10, '2K', 'in', 'k2'], [11, 'GND', 'gnd'],
@@ -126,5 +131,21 @@ const c74377 = ic('74377', 'Octal D flip-flop, enable (rising edge)', 18, M20(OC
 const c74378 = ic('74378', 'Hex D flip-flop, enable (rising edge)', 18, M16(HEX_REG(EN, 9)), regs(6, { ce: true }));
 const c74379 = ic('74379', 'Quad D flip-flop, enable, Q and Q̅ (rising edge)', 18, M16(QUAD_REG(EN)), regs(4, { ce: true, qn: true }));
 
+// ------------------------------------------------------------------ the three-state registers and latches: 74173, 74373, 74374, 74573, 74574
+const c74173 = ic('74173', '4-bit D register, 3-state outputs (rising edge)', 23, M16([[1, 'M', 'in', 'm'], [2, 'N', 'in', 'n'], [3, '1Q', 'out', 'q1'], [4, '2Q', 'out', 'q2'],
+  [5, '3Q', 'out', 'q3'], [6, '4Q', 'out', 'q4'], [7, 'CLK', 'in', 'clk'], [8, 'GND', 'gnd'], [9, `G1${BAR}`, 'in', 'g1_n'], [10, `G2${BAR}`, 'in', 'g2_n'], [11, '4D', 'in', 'd4'],
+  [12, '3D', 'in', 'd3'], [13, '2D', 'in', 'd2'], [14, '1D', 'in', 'd1'], [15, 'CLR', 'in', 'clr'], [16, 'VCC', 'vcc']]),
+[1, 2, 3, 4].map((k) => ({ ff: { clk: 'clk', edge: 'rising', d: `d${k}`, clr: ['clr', '1'], ce: [['g1_n', '0'], ['g2_n', '0']] }, q: `q${k}` })), 'ttl', [['m', '0'], ['n', '0']]);
+const OE = [`OE${BAR}`, 'oe_n'];
+const c74373 = ic('74373', 'Octal transparent latch, 3-state outputs', 18, M20(OCT_REG(OE).map((r) => (r[0] === 11 ? [11, 'LE', 'in', 'le'] : r))),
+  Array.from({ length: 8 }, (_, k) => LATCH(k + 1, 'le', false)), 'ttl', [['oe_n', '0']]);
+const c74374 = ic('74374', 'Octal D flip-flop, 3-state outputs (rising edge)', 18, M20(OCT_REG(OE)), regs(8, {}), 'ttl', [['oe_n', '0']]);
+// (the 74573's and 74574's inputs on one side, their outputs on the other: flow-through)
+const FLOW = (ctl) => [[1, OE[0], 'in', OE[1]], ...Array.from({ length: 8 }, (_, k) => [k + 2, `${k + 1}D`, 'in', `d${k + 1}`]), [10, 'GND', 'gnd'], ctl,
+  ...Array.from({ length: 8 }, (_, k) => [19 - k, `${k + 1}Q`, 'out', `q${k + 1}`]), [20, 'VCC', 'vcc']];
+const c74573 = ic('74573', 'Octal transparent latch, 3-state outputs, flow-through', 18, M20(FLOW([11, 'LE', 'in', 'le'])), Array.from({ length: 8 }, (_, k) => LATCH(k + 1, 'le', false)), 'ttl', [['oe_n', '0']]);
+const c74574 = ic('74574', 'Octal D flip-flop, 3-state outputs, flow-through (rising edge)', 18, M20(FLOW([11, 'CLK', 'in', 'clk'])), regs(8, {}), 'ttl', [['oe_n', '0']]);
+
 /** The ICs written once in VHDL (#4397), as the library lists them. */
-export const MODEL_ICS = [c7473, c7478, c74107, c74109, c74113, c74114, c4013, c4027, c7475, c7477, c74375, c74279, c74174, c74175, c74273, c74377, c74378, c74379];
+export const MODEL_ICS = [c7473, c7478, c74107, c74109, c74113, c74114, c4013, c4027, c7475, c7477, c74375, c74279, c74174, c74175, c74273, c74377, c74378, c74379,
+  c74173, c74373, c74374, c74573, c74574];
