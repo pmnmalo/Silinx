@@ -30,6 +30,9 @@ import { IDENT } from './ident.js';
 import { sourceSettingsSh } from './settings-guard.js';
 import { circuitXstNames, isCircuitXstWarning, circuitXstNote } from '../core/circuit-xst.js';
 
+// a Verilog include file, copied into the build folder wherever it is in the project
+const HEADER = /\.(vh|svh|h|inc|vinc)$/i;
+
 // the default flow (an empty request runs these)
 export const STEPS = ['synth', 'translate', 'map', 'par', 'trce', 'bitgen', 'prombit'];
 // every step, in execution order: the default flow plus the optional ones
@@ -414,7 +417,10 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
   for (const v of drawn) for (const e of v.errors) warnings.push(e);
   if (!design.length && !drawn.some(v => v.text)) throw Object.assign(new Error('project has no design (role "design") HDL files'), { status: 400 });
   // (only the top's hierarchy, as ISE: a file with errors outside it left out, a warning saying so, #4421)
-  const { left } = hierarchySources([...hdlTexts, ...drawn.filter(v => v.text).map(v => ({ path: v.path, lang: v.lang, text: v.text }))], top);
+  // (with the headers the build copies, below: the sources' `include)
+  const headers = [];
+  for (const rel of (await walkFiles(projectDir)).filter(r => HEADER.test(r) && !/^build\//.test(r))) { try { headers.push({ path: rel, text: await fs.readFile(path.join(projectDir, rel), 'utf8') }); } catch { /* unreadable */ } }
+  const { left } = hierarchySources([...hdlTexts, ...drawn.filter(v => v.text).map(v => ({ path: v.path, lang: v.lang, text: v.text }))], top, { headers });
   const leftPaths = new Set(left.map(l => l.path));
   for (const l of left) warnings.push(leftOutWarning(l, top));
   const kept = f => !leftPaths.has(f.path);
@@ -429,8 +435,9 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
 
   // Copy sources, preserving their relative layout under build/src/ (paths stay unique).
   const sources = [];
-  for (const f of design.filter(kept)) {
+  for (const f of design) {
     const from = inside(scriptSafe(noSettingsScript(f.path)));
+    if (!kept(f)) continue;
     if (!fss.existsSync(from)) { warnings.push(`missing source file ${f.path} (skipped)`); continue; }
     // (its path inside the project, as resolved: a '..' of silinx.json's never reaches past build/src/, #2956)
     const rel = path.relative(projectDir, from).split(path.sep).join('/');
@@ -452,7 +459,7 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
   // Verilog include files (.vh/.svh/.h/.inc) anywhere in the project are copied too.
   const includeDirs = new Set();
   for (const rel of await walkFiles(projectDir)) {
-    if (!/\.(vh|svh|h|inc|vinc)$/i.test(rel)) continue;
+    if (!HEADER.test(rel)) continue;
     scriptSafe(rel);
     const to = path.join(srcDir, rel);
     await fs.mkdir(path.dirname(to), { recursive: true });

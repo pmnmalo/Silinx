@@ -8,7 +8,7 @@
 //
 //   topFiles(lib, top)                       { files, modules, packages, unresolved } of the top's hierarchy
 //   leftOut(lib, top, errorFiles, owners)    the files of errorFiles the hierarchy does not need: [path]
-//   hierarchySources(sources, top)           { sources, left: [{ path, errors }] }: the sources without those
+//   hierarchySources(sources, top, { headers })   { sources, left: [{ path, errors }] }: the sources without those
 //   leftOutDiag(path, top), leftOutWarning(l, top)   the warning of a file left out (a diagnostic, a log line)
 //   hierarchyDiags(diags, lib, top, owners)  a check's diagnostics with those of the files left out replaced by it
 import { compile } from './compile.js';
@@ -86,9 +86,10 @@ export function leftOut(lib, top, errorFiles, owners = []) {
 
 /** The sources ([{ path, lang, text, … }]) the top's hierarchy needs: those with errors it does not need left out
  *  (`left`: [{ path, errors: ['line: message'] }]); every source when none has errors. lib: their compiled library
- *  (with the primitives), when it is at hand. */
-export function hierarchySources(sources, top, { lib } = {}) {
-  lib ||= compile([...primitiveSources(sources), ...sources]);
+ *  (with the primitives), when it is at hand; headers: the files the sources may `include ([{ path, text }]: the
+ *  project's .vh, which the build copies), compiled with them, never returned. */
+export function hierarchySources(sources, top, { lib, headers = [] } = {}) {
+  lib ||= compile([...primitiveSources(sources), ...sources, ...headers.filter(h => !sources.some(s => s.path === h.path))]);
   const errs = lib.errors.filter(isError);
   if (!errs.length) return { sources, left: [] };
   const paths = leftOut(lib, top, errs.map(e => e.file));
@@ -99,7 +100,7 @@ export function hierarchySources(sources, top, { lib } = {}) {
 
 const count = n => `${n} error${n === 1 ? '' : 's'}`;
 /** The message of a file left out (a diagnostic's: its file said before it). */
-export const leftOutMessage = (top, n) => `not in the hierarchy of the top module '${top}': left out${n ? `, its ${count(n)} not checked (Check Syntax shows them)` : ''}`;
+const leftOutMessage = (top, n) => `not in the hierarchy of the top module '${top}': left out${n ? `, its ${count(n)} not checked (Check Syntax shows them)` : ''}`;
 /** The warning of a file left out, as a log line's text (a flow's: "WARNING: " before it). */
 export const leftOutWarning = ({ path, errors = [] }, top) => `${path} is ${leftOutMessage(top, errors.length)}`;
 /** The warning of a file left out, as a check's diagnostic (its file said, no line). */

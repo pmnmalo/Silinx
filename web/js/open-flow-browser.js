@@ -183,7 +183,8 @@ export async function runBrowserFlow({ project, files, steps, resources = null, 
   }
   if (!sources.length) throw new Error('the project has no design HDL files');
   // (only the top's hierarchy, as ISE: a file with errors outside it left out, a warning saying so, #4421)
-  const { sources: used, left } = hierarchySources(sources, top);
+  const headers = Object.keys(files).filter(p => /\.(vh|svh|h|inc|vinc)$/i.test(p) && typeof files[p] === 'string').map(p => ({ path: p, text: files[p] }));   // (the sources' `include)
+  const { sources: used, left } = hierarchySources(sources, top, { headers });
   for (const l of left) onLine(`WARNING:Silinx - ${leftOutWarning(l, top)}`);
   sources.splice(0, sources.length, ...used);
   const ucf = project.constraints && typeof files[project.constraints] === 'string' ? files[project.constraints] : null;
