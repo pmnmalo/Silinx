@@ -1,10 +1,11 @@
 // The Properties panel of the ASM, FSM and Petri net editors folded, as the schematic editor's (#2505, sch-panels.js):
 // a thin strip with its name down the side, by a button in its title, expanded again by a click on the strip.
 // Remembered per viewer and per editor (`key`). Under 1024 px the panel goes over the canvas instead (narrow.js): no
-// folding. The look: asm-editor.css (.props-folded).
+// folding. Its width dragged too (side-resize.js, #4316). The look: asm-editor.css (.props-folded).
 import { h } from './dom.js';
 import { prefKey } from './prefs.js';
 import { foldChevron } from './sch-panels.js';
+import { mountSideResize } from './side-resize.js';
 
 /** The side panel `side` of the editor `root` foldable, its title (.asm-cap) first; `key`: its preference; `titles`: its
  *  button's tips (another panel's name: I/O Pin Planning's Board Resources, #2671); `cls`: the class of `root` folded,
@@ -30,5 +31,6 @@ export function mountSideFold({ root, side, key, titles = { fold: 'Collapse the 
   let folded = false;
   try { folded = localStorage.getItem(prefKey(key)) === '1'; } catch { /* default */ }
   setFolded(folded, false);
-  return { setFolded };
+  const resize = mountSideResize({ root, side, key: key.replace(/\.folded$/, '.width'), toward, foldCls: cls });
+  return { setFolded, resize };
 }

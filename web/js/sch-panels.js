@@ -3,8 +3,10 @@
 // strip; for a small window or a document in the split view, where the canvas is left a narrow strip. Remembered per
 // viewer. Under 1024 px (#266, narrow.js) the panels go over the canvas instead, by the toolbar's buttons: no folding.
 // The look: sch-editor.css (.sym-folded, .props-folded). mountSchPanels(ctx) is called by mountSchEditor.
+// Their widths dragged too (side-resize.js, #4316).
 import { h } from './dom.js';
 import { prefKey } from './prefs.js';
+import { mountSideResize } from './side-resize.js';
 
 const CHEVRON = { left: '<path d="M10 3.5L5.5 8l4.5 4.5"/>', right: '<path d="M6 3.5L10.5 8 6 12.5"/>' };
 export const foldChevron = (dir) => `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${dir === 'left' ? CHEVRON.left : CHEVRON.right}</svg>`;
@@ -40,6 +42,8 @@ export function mountSchPanels({ container, left, right }) {
     let folded = false;
     try { folded = localStorage.getItem(prefKey(PANELS[panel].key)) === '1'; } catch { /* default */ }
     setFolded(panel, folded, false);
+    const p = PANELS[panel];
+    mountSideResize({ root: container, side: el, key: p.key.replace(/\.folded$/, '.width'), toward: p.toward, foldCls: p.cls });
   }
   return { setFolded };
 }

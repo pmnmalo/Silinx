@@ -153,6 +153,12 @@ html[data-no-project] #left-tabs { display: none; }   /* no project open: no tab
 .splitter.split-h { width: 5px; cursor: col-resize; flex: none; }
 .splitter.split-v { height: 5px; cursor: row-resize; flex: none; }
 .splitter:hover { background: #cfdcef; }
+/* a side panel's width dragged (#4316, web/js/side-resize.js): a handle over its inner edge, above the canvas and the
+   narrow screen's panel over it */
+.side-resize { position: absolute; z-index: 7; width: 6px; cursor: col-resize; touch-action: none; background: transparent; }
+.side-resize[hidden] { display: none; }
+.side-resize:hover, .side-resize:focus-visible, body.resizing-h .side-resize.dragging { background: color-mix(in srgb, var(--accent, #3a78d8) 45%, transparent); outline: none; }
+@media print { .side-resize { display: none; } }
 /* a finger drags the splitters and the dialogs' titles instead of scrolling the page (#264) */
 .splitter, .dlg-title { touch-action: none; }
 body.resizing-h, body.resizing-h * { cursor: col-resize !important; user-select: none; }

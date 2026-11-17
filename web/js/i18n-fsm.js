@@ -23,6 +23,7 @@ export const FSM_PT = {
   'Move the panel to the left of the drawing': 'Mover o painel para a esquerda do desenho', 'Move the panel below the drawing': 'Mover o painel para baixo do desenho',
   'Drag to resize the panel (↑ ↓ with the keyboard)': 'Arraste para redimensionar o painel (↑ ↓ com o teclado)',
   'Drag to resize the panel (← → with the keyboard)': 'Arraste para redimensionar o painel (← → com o teclado)',
+  'Drag to resize the panel (← → with the keyboard, a double-click: its default width)': 'Arraste para redimensionar o painel (← → com o teclado; um duplo clique: a sua largura inicial)',
   'Drag the title bar to move the panel below or to the left of the drawing': 'Arraste a barra de título para mover o painel para baixo ou para a esquerda do desenho',
   // selection
   'State (Moore outputs inside)': 'Estado (saídas de Moore lá dentro)', 'Initial (reset) state': 'Estado inicial (de reset)',

@@ -87,6 +87,10 @@ panel uses it rather than its own:
 - **Foldable:** a button at the right of its caption folds it to a thin strip with its name down the side; a click
   on the strip expands it again. Folded or not is remembered per editor (`mountSideFold` of `web/js/side-fold.js`, its
   key `silinx.<editor>.props.folded`) (#2505).
+- **Resizable:** its inner edge is dragged (the mouse, a pen, a finger; ← → when focused) to make it wider or
+  narrower, between 160 and 720 px, the canvas keeping 200 px; the width remembered per panel, a double-click on the
+  edge giving the default width back; folded, no handle; on a narrow screen it works too, at most 90 % of the editor
+  (`mountSideResize` of `web/js/side-resize.js`, mounted by `mountSideFold`, #4316).
 - **Its sections do not fold:** the panel folds as a whole, never a section of it (no `<details>`): the selection's,
   the Machine's (ASM, FSM), the Net's (Petri net) are plain sections with their heading (#2735, #2739). Nothing
   selected, the selection's section says nothing (no "Nothing selected: click …").
@@ -95,7 +99,8 @@ panel uses it rather than its own:
   toolbar, before its ⋮ menu, shown only there); open or closed is remembered per viewer. No folding there, and the
   panel never moves below or above the canvas (#266).
 - **Read-only:** shown, its fields disabled, its buttons hidden.
-- **Tests:** a UI test folds and expands it, reloads (the fold kept), and opens and closes it on a narrow window.
+- **Tests:** a UI test folds and expands it, reloads (the fold kept), and opens and closes it on a narrow window;
+  `test/ui/side-resize.test.js` drags its edge.
 
 ## A movable divider
 
