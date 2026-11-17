@@ -164,7 +164,8 @@ export async function applyEdits(doc, { changes = [], project = false }, store, 
  *  `apply(ev)`, its result whether the project is to be published again from the disk), and the project published
  *  again (`publish()`) only once none is waiting (#4418: a change still to be written, a file an editor deleted after
  *  saving the description, would be put back). `again()`: the project published again (the disk changed), now or, while
- *  changes wait, after them. */
+ *  changes wait, after them; in the queue too, so that a read of the disk never publishes after a newer one (its
+ *  promise, the publishing done). */
 export function editQueue(apply, publish) {
   let chain = Promise.resolve(), waiting = 0, due = false;
   const flush = async () => { if (waiting === 0 && due) { due = false; await publish(); } };
@@ -177,7 +178,7 @@ export function editQueue(apply, publish) {
         await flush();
       }).catch(() => { /* the next change */ });
     },
-    again() { due = true; chain = chain.then(flush).catch(() => {}); },
+    again() { due = true; chain = chain.then(flush).catch(() => {}); return chain; },
     busy: () => waiting > 0,
   };
 }
