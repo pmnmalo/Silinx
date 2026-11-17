@@ -54,10 +54,13 @@ test('an SMD package: no pin on the grid, its pads said', () => {
   assert.deepEqual(fp.pads[0].layers, ['F.Cu', 'F.Paste', 'F.Mask']);
 });
 
-test('gridPins: within 0.01 mm of a grid point is on it; a pad 1 missing puts every pad off the grid', () => {
+test('gridPins: within 0.1 mm of a grid point is on it (a lead bends that much, #4385); a pad 1 missing puts every pad off the grid', () => {
   const fp = (pads) => readKicadFootprint(`(footprint "x" ${pads.map(([n, x, y]) => `(pad "${n}" thru_hole circle (at ${x} ${y}))`).join(' ')})`);
   assert.deepEqual(gridPins(fp([['1', 0, 0], ['2', 2.549, -2.531]])).pins, [{ number: '1', dx: 0, dy: 0 }, { number: '2', dx: 1, dy: -1 }]);
-  assert.deepEqual(gridPins(fp([['1', 0, 0], ['2', 2.552, 0]])).offGrid, ['2']);
+  assert.deepEqual(gridPins(fp([['1', 0, 0], ['2', 2.552, 0]])).offGrid, []);
+  // (KiCad's capacitors: 2.50 and 5.00 mm apart, on it; a CK OS102's 2.00 mm, not)
+  assert.deepEqual(gridPins(fp([['1', 0, 0], ['2', 2.5, 0], ['3', 5, 0]])).pins.map((p) => p.dx), [0, 1, 2]);
+  assert.deepEqual(gridPins(fp([['1', 0, 0], ['2', 2.65, 0], ['3', 2, 2.54]])).offGrid, ['2', '3']);
   assert.deepEqual(gridPins(fp([['1', 10.16, 5.08], ['2', 7.62, 5.08]])).pins, [{ number: '1', dx: 0, dy: 0 }, { number: '2', dx: -1, dy: 0 }], 'from pad 1, wherever the origin');
   assert.deepEqual(gridPins(fp([['2', 0, 0], ['3', 2.54, 0]])), { pins: [], offGrid: ['2', '3'], smd: [] });
   assert.equal(GRID_MM, 2.54);

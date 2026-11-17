@@ -39,9 +39,22 @@ test('the catalogue\'s data: its parts\' libraries, ids, behaviours, packages, f
   const hc = CATALOGUE.find((e) => e.id === 'kicad-74xx/74HC00');
   assert.deepEqual([hc.as, hc.package, hc.needs], ['7400', 'DIP-14', ['74LS00']]);
   assert.ok(CATALOGUE.filter((e) => e.library.startsWith('sparkfun-')).every((e) => e.footprint));
+  // KiCad's own basic parts (#4385): their footprints picked (set) or their own, KiCad's footprints' files at 9.0.0, no
+  // drawing of them kept (CC-BY-SA), only their pads
+  const basics = CATALOGUE.filter((e) => /^kicad-(?!74xx|4xxx)/.test(e.library));
+  assert.deepEqual(basics.map((e) => e.id).sort(), ['kicad-device/C', 'kicad-device/C_Polarized', 'kicad-device/D', 'kicad-device/LED', 'kicad-device/R', 'kicad-device/R_Potentiometer',
+    'kicad-display-character/LTS-6960HR', 'kicad-regulator-linear/L7805', 'kicad-regulator-linear/LM7805_TO220', 'kicad-switch/SW_DIP_x04', 'kicad-transistor-bjt/2N3904',
+    'kicad-transistor-bjt/2N3906', 'kicad-transistor-bjt/BC547', 'kicad-transistor-bjt/BC557']);
+  for (const e of basics) {
+    assert.match(e.footprint.url, /^https:\/\/gitlab\.com\/kicad\/libraries\/kicad-footprints\/-\/raw\/9\.0\.0\/[\w-]+\.pretty\/[^/]+\.kicad_mod$/, e.id);
+    assert.deepEqual(CATALOGUE_LOOKS[e.footprint.name].shapes, [], `${e.id}: no drawing of KiCad's kept`);
+  }
+  assert.deepEqual(basics.filter((e) => !e.footprint.set).map((e) => e.id).sort(), ['kicad-display-character/LTS-6960HR', 'kicad-regulator-linear/LM7805_TO220']);
+  assert.equal(CATALOGUE.find((e) => e.id === 'kicad-transistor-bjt/2N3904').footprint.name, 'Package_TO_SOT_THT:TO-92_Inline_Wide', 'a 2.54 mm TO-92, not the 1.27 mm one');
   // SparkFun's LEDs and slide switches behave as the library's (#4349), its other parts drawn only
-  assert.deepEqual(CATALOGUE.filter((e) => e.as && !PARTS[e.as].kind.startsWith('ic')).map((e) => `${e.id} ${e.as}`), ['sparkfun-led/LED_Green_5mm_PTH_Silk led', 'sparkfun-led/LED_Red_5mm_PTH_NoSilk led',
-    'sparkfun-led/LED_Red_5mm_PTH_Silk led', 'sparkfun-switch/SPDT_Slide_PTH_11.6x4.0mm spdt', 'sparkfun-switch/SPDT_Slide_PTH_11.6x4.0mm-ShortPin spdt']);
+  assert.deepEqual(CATALOGUE.filter((e) => e.as && !PARTS[e.as].kind.startsWith('ic')).map((e) => `${e.id} ${e.as}`).sort(), ['sparkfun-led/LED_Green_5mm_PTH_Silk led', 'sparkfun-led/LED_Red_5mm_PTH_NoSilk led',
+    'sparkfun-led/LED_Red_5mm_PTH_Silk led', 'sparkfun-switch/SPDT_Slide_PTH_11.6x4.0mm spdt', 'sparkfun-switch/SPDT_Slide_PTH_11.6x4.0mm-ShortPin spdt',
+    'sparkfun-switch/SPST_Push_PTH_12x12mm_h8.0mm button', 'kicad-device/LED led'].sort());
   assert.equal(catalogueTitle(CATALOGUE.find((e) => e.id === 'sparkfun-led/LED_Red_5mm_PTH_NoSilk')), 'Red, as the LED of the library');
   assert.deepEqual(CORS_HOSTS, ['raw.githubusercontent.com', 'gitlab.com']);
   assert.equal(isCatalogueFile('https://gitlab.com/other'), false);
@@ -179,4 +192,19 @@ test('catalogueDrawing decodes a look as scripts/kicad-catalogue.mjs writes it: 
   // a footprint with no drawing: its pads only; one not in the looks: none
   assert.equal(catalogueDrawing({ id: 't/H', value: 'H', as: null, package: 'grid', pins: 1, footprint: { name: 'T:H' } }, { 'T:H': { pins: [['1', 0, 0]], shapes: [] } }).look, undefined);
   assert.equal(catalogueDrawing({ id: 't/X', value: 'X', as: null, package: 'grid', pins: 1, footprint: { name: 'T:X' } }, {}), null);
+});
+
+test('importCataloguePart: a KiCad generic symbol with the footprint the catalogue picks, written as its Silinx.Footprint; the part then the library\'s LED (#4385)', async () => {
+  const LIB = `(kicad_symbol_lib\n\t(version 20241209)\n\t(generator "kicad_symbol_editor")\n\t(symbol "LED"\n\t\t(property "Reference" "D"\n\t\t\t(at 0 0 0)\n\t\t)\n\t\t(property "Value" "LED"\n\t\t\t(at 0 0 0)\n\t\t)\n\t\t(property "Footprint" ""\n\t\t\t(at 0 0 0)\n\t\t)\n\t\t(symbol "LED_1_1"\n\t\t\t(pin passive line\n\t\t\t\t(at 0 0 0)\n\t\t\t\t(length 2.54)\n\t\t\t\t(name "K")\n\t\t\t\t(number "1")\n\t\t\t)\n\t\t\t(pin passive line\n\t\t\t\t(at 0 0 0)\n\t\t\t\t(length 2.54)\n\t\t\t\t(name "A")\n\t\t\t\t(number "2")\n\t\t\t)\n\t\t)\n\t)\n)\n`;
+  const MOD = readFileSync(new URL('parts.pretty/LED_D5.0mm_test.kicad_mod', FIX), 'utf8');
+  const urls = { lib: 'https://gitlab.com/kicad/libraries/kicad-symbols/-/raw/9.0.0/Device.kicad_sym', fp: 'https://gitlab.com/kicad/libraries/kicad-footprints/-/raw/9.0.0/LED_THT.pretty/LED_D5.0mm_test.kicad_mod' };
+  const catalogue = { CATALOGUE_LIBRARIES: { dev: { name: 'KiCad Device symbols', version: '9.0.0', licence: 'CC-BY-SA-4.0', author: 'KiCad Libraries team', url: urls.lib, file: 'Device.kicad_sym', sha256: sha(LIB) } },
+    CATALOGUE: [{ id: 'dev/LED', library: 'dev', symbol: 'LED', value: 'LED', as: 'led', package: 'grid', pins: 2, footprint: { name: 'LED_THT:LED_D5.0mm_test', url: urls.fp, sha256: sha(MOD), set: true } }] };
+  const files = {};
+  const P = { fileTree: async () => Object.keys(files), readFile: async (_n, p) => files[p], writeFile: async (_n, p, t) => { files[p] = t; } };
+  const r = await importCataloguePart(P, 'p', 'dev/LED', async (u) => (u === urls.lib ? LIB : MOD), { catalogue });
+  assert.deepEqual(r.written, ['parts/Device.kicad_symdir/LED.kicad_sym', 'parts/LED_THT.pretty/LED_D5.0mm_test.kicad_mod']);
+  assert.match(files['parts/Device.kicad_symdir/LED.kicad_sym'], /\(property "Silinx\.Footprint" "LED_THT:LED_D5\.0mm_test"/);
+  assert.deepEqual([partDef(r.type).behaves, partDef(r.type).pins.map((q) => [q.name, q.kicadN])], ['led', [['A', '2'], ['K', '1']]]);
+  setProjectParts([]);
 });
