@@ -60,9 +60,9 @@ uiTest('#2303 a Gowin project: its processes, its constraints CST, Generate Prog
   assert.ok(labels.includes('Implement Design') && labels.includes('Generate Programming File'), String(labels));
   assert.ok(!labels.includes('Map'), String(labels));
   assert.ok(labels.includes('Configure Target Device'), String(labels));   // (#2298)
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model only (the flow makes no simulation model)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
-  assert.ok(!labels.some((l) => /^Emulate Post-/.test(l)), String(labels));
+  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis model too (#2299; its routed design's ALU modes not modelled yet)
+  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
 
   await page.treeRow('#procs', 'Generate Programming File', { dbl: true, exact: true });
   await page.waitConsole(/Process "Generate Programming File" (completed successfully|failed)/, { timeout: 120000 }).catch(async (e) => { throw new Error(`${e.message}\n${(await page.consoleText()).slice(-2500)}`); });
