@@ -13,7 +13,7 @@ import { ECP5 } from '../packages/silinx-fpga/src/open-flow-ecp5.js';
 import { yosysNode } from '../packages/silinx-fpga/src/synth-open-node.js';
 import { EXAMPLES, example } from './examples-lib.mjs';
 
-// a test bench's run: its log (warnings marked), until it says it finished or failed
+// a test bench's run: its log (warnings and errors marked), until it says it finished or failed
 function run(sources, top, until = 1e11) {
   const lib = compile([...primitiveSources(sources), ...sources]);
   const d = elaborate(lib, top);
@@ -21,7 +21,8 @@ function run(sources, top, until = 1e11) {
   const s = new Simulator(d);
   for (const sig of d.signals) sig.wave = null;
   for (let t = until / 100; t <= until; t += until / 100) { const st = s.run(t); if (st.finished || s.log.some((e) => /Simulation finished OK|ERROR/.test(e.text))) break; }
-  return s.log.map((e) => `${e.kind === 'warning' ? 'WARNING: ' : ''}${e.text}`);
+  // (a test bench's assertion of severity error, its text without the word: ERROR)
+  return s.log.map((e) => `${e.kind === 'warning' ? 'WARNING: ' : e.kind === 'error' ? 'ERROR: ' : ''}${e.text}`);
 }
 
 const cellsSeen = new Set();
