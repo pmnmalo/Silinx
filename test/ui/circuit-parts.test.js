@@ -58,7 +58,8 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   assert.deepEqual(await litSegs(page), ['a', 'b']);
   // the clock (20 Hz) blinks the bar's first light; the slide switch lights its second
   const seen = new Set();
-  for (let i = 0; i < 12 && seen.size < 2; i++) { seen.add((await litBars(page))[0]); await new Promise((r) => setTimeout(r, 30)); }
+  // (for up to 3 s, not a count of looks: a slow page's live run may take longer to tick, #4425)
+  for (const end = Date.now() + 3000; Date.now() < end && seen.size < 2;) { seen.add((await litBars(page))[0]); await new Promise((r) => setTimeout(r, 30)); }
   assert.deepEqual([...seen].sort(), ['0', '1'], 'the clock ticking');
   assert.equal((await litBars(page))[1], '0');
   await page.click(await centre(page, `${ED} [data-id=S2] .circ-sw-body`));
