@@ -144,6 +144,12 @@ test('verify with a property: a state diagram\'s state never reached (failed, re
 
 test('#3261 verify\'s time_limit: blinky\'s ASM chart stopped after 3 s (timeout, the cycles checked, a warning); a limit out of range refused', async () => {
   await ok('new_project_from_example', { example: 'blinky', name: 'bt' });
+  // (its chart with a debounce of a million cycles in 22-bit counters, as before #4377 counted ticks in 2 bits:
+  // WAIT_RELEASE out of reach in 200 cycles, a check longer than 3 s)
+  const asm = JSON.parse(fs.readFileSync(new URL('../examples/blinky/src/speed_ctrl.asm.json', import.meta.url), 'utf8'));
+  asm.generics.find(g => g.name === 'DEBOUNCE').default = 1000000;
+  for (const x of asm.registers) if (/^cnt_/.test(x.name)) x.width = 22;
+  await ok('write_file', { project: 'bt', path: 'src/speed_ctrl.asm.json', text: JSON.stringify(asm, null, 2) + '\n' });
   const t0 = Date.now();
   const r = await ok('verify', { project: 'bt', module: 'speed_ctrl', property: 'reach', state: 'WAIT_RELEASE', depth: 200, time_limit: 3 });
   assert.ok(Date.now() - t0 < 8000, 'stopped at its limit');

@@ -100,18 +100,19 @@ async function marks(kind, model, lang) {
 }
 
 // Which of the slow paths comes first follows the placement: with nextpnr 1.5.2 the VHDL's counter (cnt_f) is a little
-// slower than the comparison, the Verilog's is not (#3514); the comparison's path is among the slowest in both.
-test('the open flow: the ASM chart\'s paths in VHDL and in Verilog, each on its boxes; level and ticks (its comparison box) among the slowest', { timeout: 300000 }, async () => {
+// slower than the comparison, the Verilog's is not (#3514); the comparison's path is among the slowest in both. (Which
+// register starts it follows the placement too: level in the Verilog, ticks itself in the VHDL since the debouncers'
+// counters are 2 bits, #4377.)
+test('the open flow: the ASM chart\'s paths in VHDL and in Verilog, each on its boxes; the divider\'s comparison box among the slowest', { timeout: 300000 }, async () => {
   const [v, w] = [await marks('asm', ASM, 'vhdl'), await marks('asm', ASM, 'verilog')];
-  const cmp = m => m.find(p => p.names.join() === 'level,ticks');
+  const box = m => m.slice(0, 12).flatMap(p => p.items).find(x => x.label === 'ticks >= (1 << level) - 1');
   for (const m of [v, w]) {
     assert.equal(m.length, 20);
     assert.ok(m.every(p => p.items.length), JSON.stringify(m.filter(p => !p.items.length).map(p => p.names)));
-    // (among the 12 slowest; the debouncers' counters, 22 bits for #3922, are 2 since #4377)
-    assert.ok(m.findIndex(p => p.names.join() === 'level,ticks') < 12, JSON.stringify(m.map(p => p.names)));
-    assert.ok(cmp(m).items.some(x => x.label === 'ticks >= (1 << level) - 1'));
+    // (on one of the 12 slowest)
+    assert.ok(box(m), JSON.stringify(m.map(p => p.names)));
   }
-  assert.deepEqual(cmp(v).items, cmp(w).items);
+  assert.deepEqual(box(v), box(w));
 });
 
 test('the open flow: the state diagram\'s paths in VHDL and in Verilog, from the state register: its states', { timeout: 300000 }, async () => {

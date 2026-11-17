@@ -24,11 +24,13 @@
 --   WAIT_RELEASE    : !(deb_f || deb_s) -> IDLE
 --
 -- Every cycle (in parallel with the states; the state's assignments take priority):
---   debounce_faster : (faster != deb_f) && (tick && cnt_f == DEBOUNCE - 1)  [cnt_f = 0, deb_f = faster]
---   debounce_faster : (faster != deb_f) && !(tick && cnt_f == DEBOUNCE - 1)  [cnt_f = cnt_f + tick]
+--   debounce_faster : (faster != deb_f) && tick && (cnt_f == DEBOUNCE - 1)  [cnt_f = 0, deb_f = faster]
+--   debounce_faster : (faster != deb_f) && tick && !(cnt_f == DEBOUNCE - 1)  [cnt_f = cnt_f + 1]
+--   debounce_faster : (faster != deb_f) && !tick
 --   debounce_faster : !(faster != deb_f)  [cnt_f = 0]
---   debounce_slower : (slower != deb_s) && (tick && cnt_s == DEBOUNCE - 1)  [cnt_s = 0, deb_s = slower]
---   debounce_slower : (slower != deb_s) && !(tick && cnt_s == DEBOUNCE - 1)  [cnt_s = cnt_s + tick]
+--   debounce_slower : (slower != deb_s) && tick && (cnt_s == DEBOUNCE - 1)  [cnt_s = 0, deb_s = slower]
+--   debounce_slower : (slower != deb_s) && tick && !(cnt_s == DEBOUNCE - 1)  [cnt_s = cnt_s + 1]
+--   debounce_slower : (slower != deb_s) && !tick
 --   debounce_slower : !(slower != deb_s)  [cnt_s = 0]
 --   divider          Actions: step = 0
 --   divider         : tick && (ticks >= (1 << level) - 1)  [ticks = 0, step = 1]
@@ -166,22 +168,26 @@ begin
         ticks_next <= ticks;
         -- every cycle: debounce_faster
         if faster_sync /= deb_f then
-            if (tick = '1') and (unsigned(cnt_f) = (DEBOUNCE - 1)) then
-                cnt_f_next <= "00";
-                deb_f_next <= faster_sync;
-            else
-                cnt_f_next <= std_logic_vector(unsigned(cnt_f) + resize(unsigned'(0 => tick), 2));
+            if tick = '1' then
+                if unsigned(cnt_f) = (DEBOUNCE - 1) then
+                    cnt_f_next <= "00";
+                    deb_f_next <= faster_sync;
+                else
+                    cnt_f_next <= std_logic_vector(unsigned(cnt_f) + 1);
+                end if;
             end if;
         else
             cnt_f_next <= "00";
         end if;
         -- every cycle: debounce_slower
         if slower_sync /= deb_s then
-            if (tick = '1') and (unsigned(cnt_s) = (DEBOUNCE - 1)) then
-                cnt_s_next <= "00";
-                deb_s_next <= slower_sync;
-            else
-                cnt_s_next <= std_logic_vector(unsigned(cnt_s) + resize(unsigned'(0 => tick), 2));
+            if tick = '1' then
+                if unsigned(cnt_s) = (DEBOUNCE - 1) then
+                    cnt_s_next <= "00";
+                    deb_s_next <= slower_sync;
+                else
+                    cnt_s_next <= std_logic_vector(unsigned(cnt_s) + 1);
+                end if;
             end if;
         else
             cnt_s_next <= "00";

@@ -128,11 +128,11 @@ test('run_process post_synthesis_model and post_par_model on the ulx3s: the mode
   await ok('set_design_properties', { project: 'models', board: 'ulx3s', update_constraints: true });
   const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
   assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
-  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the ECP5 cells\), 263 cells$/m);
+  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the ECP5 cells\), 188 cells$/m);
   const par = await ok('run_process', { project: 'models', process: 'post_par_model' });
   assert.deepEqual([par.data.warnings, par.data.errors], [[], []]);
   assert.match(par.text, /^Placing and routing the design synthesized with the test bench's generics \(nextpnr\), for its model\.$/m);
-  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the ECP5 cells\), 335 cells$/m);
+  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the ECP5 cells\), 232 cells$/m);
   for (const model of ['postsynth', 'postpar']) {
     const s = await ok('simulate', { project: 'models', model, time_ns: 2000000, signals: [] });
     assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed, s.data.notes], [['Simulation finished OK'], [], false, []], model);

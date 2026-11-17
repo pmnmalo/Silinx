@@ -107,7 +107,12 @@ uiTest('#3177 Verify Property: a state diagram\'s outputs both 1 found and repla
 }, { timeout: 180000 });
 
 uiTest('#3261 Verify Property\'s time limit: blinky\'s ASM chart stopped after 3 s, the cycles checked; the next check in a new worker; a limit of 0 refused', E, async (page) => {
-  const asm = fs.readFileSync(new URL('../../examples/blinky/src/speed_ctrl.asm.json', import.meta.url), 'utf8');
+  // (blinky's chart with a debounce of a million cycles in 22-bit counters, as before #4377 counted ticks in 2 bits:
+  // WAIT_RELEASE out of reach in 200 cycles, a check longer than 3 s)
+  const chart = JSON.parse(fs.readFileSync(new URL('../../examples/blinky/src/speed_ctrl.asm.json', import.meta.url), 'utf8'));
+  chart.generics.find((g) => g.name === 'DEBOUNCE').default = 1000000;
+  for (const r of chart.registers) if (/^cnt_/.test(r.name)) r.width = 22;
+  const asm = JSON.stringify(chart, null, 2) + '\n';
   await makeProject(env, { name: 'PropLimit', top: 'speed_ctrl', files: { 'src/speed_ctrl.asm.json': asm } });
   await page.openProject('PropLimit');
   await page.eval(() => window.SilinxApp.openAsm('src/speed_ctrl.asm.json'));
