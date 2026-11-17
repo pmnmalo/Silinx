@@ -32,10 +32,18 @@ async function refs(repo) {
   return by;
 }
 
-// the project's changes not committed (a switch or a merge needs none): a GitError naming how many
-async function needClean(name, again) {
+// the project's changes not committed (a switch or a merge needs none): a GitError naming how many; and none in the rest of
+// the repository either (the workspace's, holding other projects): a switch changes every project of it, and a switch
+// the import gate refuses is undone by a forced switch back, which would lose them
+async function needClean(name, repo, again) {
   const s = await G.gitStatus(name);
   if (s.files.length) throw new G.GitError(`the project has ${s.files.length} change(s) not committed`, `Commit your changes first, then ${again}.`, 409);
+  const out = await G.ok('status', ['status', '--porcelain', '-z', '--untracked-files=no'], { cwd: repo.top });
+  const others = out.split('\0').filter(r => /^[ MADRCU?!]{2} /.test(r)).map(r => r.slice(3));
+  if (others.length) {
+    throw new G.GitError(`the repository has ${others.length} change(s) not committed outside the project (${others.slice(0, 5).join(', ')}${others.length > 5 ? ', …' : ''})`,
+      `${again} changes every project of the repository: commit the other projects' changes first.`, 409);
+  }
 }
 
 /** The project's branches: { project, branch (the project's), github (it has GitHub's: origin), branches: [{ name, current, local, remote }], warnings }:
@@ -80,7 +88,7 @@ export async function gitSwitch(name, branch) {
   if (b === from) return { project: name, branch: b, from, switched: false, files: [] };
   const known = (await refs(repo)).get(b);
   if (!known) throw new G.GitError(`no branch '${b}', here or on GitHub`, 'New Branch… makes one.', 404);
-  await needClean(name, 'Switch Branch…');
+  await needClean(name, repo, 'Switch Branch…');
   const before = await G.headOf(repo.dir);
   const kept = await G.keptOut(repo);
   const had = await G.keepTrust(name, repo);
@@ -88,7 +96,8 @@ export async function gitSwitch(name, branch) {
     const r = await G.git(['switch', '--quiet', ...(known.local ? [b] : ['-c', b, '--track', `origin/${b}`])], at(repo));
     if (r.code) throw G.explain('switch', r);
     const after = await G.headOf(repo.dir);
-    // (refused by the gate: back on the branch it was on, the one made for it removed)
+    // (refused by the gate: back on the branch it was on, the one made for it removed; forced, for the files the gate took
+    // out, which needClean's clean repository makes safe: nothing of the user's to lose)
     const undo = async () => {
       await G.git(['switch', '--quiet', '--force', ...(from ? [from] : ['--detach', before])], at(repo));
       if (!known.local) await G.git(['branch', '-D', b], at(repo));
@@ -115,7 +124,7 @@ export async function gitMerge(name, branch, { resolve = null } = {}) {
   // (here and on GitHub: GitHub's when this repository's is behind it, its other author's last commits)
   const behind = known.local && known.remote && !(await G.git(['merge-base', '--is-ancestor', `refs/heads/${b}`, `refs/remotes/origin/${b}`], at(repo))).code;
   const ref = known.local && !behind ? `refs/heads/${b}` : `refs/remotes/origin/${b}`;
-  await needClean(name, 'Merge Branch…');
+  await needClean(name, repo, 'Merge Branch…');
   const had = await G.keepTrust(name, repo);
   try {
     const r = await G.mergeCommits(name, repo, { op: 'merge', args: ['merge', '--no-edit', '--ff', '-m', `Merge branch '${b}' into ${cur}`, ref], resolve });

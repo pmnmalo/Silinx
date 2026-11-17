@@ -9,7 +9,7 @@ In detail:
 
 - **Git's branches (#4213, phase 4 of #4204):** New Branch… (made from the last commit, its name checked as git checks
   it, the project on it, its changes kept), Switch Branch… (a branch only GitHub has made here, following it; the
-  changes committed first; what it brings passes the import gate) and Merge Branch… (GitHub's version of the branch
+  changes committed first, the other projects' of the workspace's repository too; what it brings passes the import gate) and Merge Branch… (GitHub's version of the branch
   when it is newer; the merge of a pull, `server/git.js` `mergeCommits`, its conflicts resolved in the merge view of
   #4214 and the drawings' dialog, then a merge commit), in the server editions through the system's git
   (`server/git-branch.js`) and in the browser edition through GitHub's REST API (`core/git-rest-branch.js`: the
