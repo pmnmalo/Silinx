@@ -18,7 +18,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 entity top is
     Generic ( CLK_HZ  : integer := 50_000_000;      -- the board's clock, in Hz (50 MHz on the Basys2 / Nexys2)
               DIV      : integer := 0;              -- base tick: 80 per second: 0 for CLK_HZ / 80
-              DEBOUNCE : integer := 0;              -- button debounce: 20 ms: 0 for CLK_HZ / 50
+              DEBOUNCE : integer := 0;              -- button debounce, in base ticks: 0 for 3 (25 to 37.5 ms)
               REFRESH  : integer := 0;              -- display: cycles per digit (1 ms): 0 for CLK_HZ / 1000
               BTN_LOW : boolean := false;           -- true: the board's buttons read '0' when pressed
               SW_LOW  : boolean := false;           -- true: the board's switches read '0' when on
@@ -34,13 +34,13 @@ entity top is
 end top;
 
 architecture Structural of top is
-    -- the timing in clock cycles: a generic given (the test bench's), else (0) from the board's clock
+    -- the timing in clock cycles (the debounce in ticks): a generic given (the test bench's), else (0) from the board's clock
     function or_else (given, derived : integer) return integer is
     begin
         if given /= 0 then return given; else return derived; end if;
     end function;
     constant DIV_N      : integer := or_else(DIV, CLK_HZ / 80);
-    constant DEBOUNCE_N : integer := or_else(DEBOUNCE, CLK_HZ / 50);
+    constant DEBOUNCE_N : integer := or_else(DEBOUNCE, 3);   -- (in ticks: the same on every board's clock, #4377)
     constant REFRESH_N  : integer := or_else(REFRESH, CLK_HZ / 1000);
     -- AN_LOW as sevenseg.v's parameter (1: true; a Verilog module takes an integer)
     function to_int (b : boolean) return integer is

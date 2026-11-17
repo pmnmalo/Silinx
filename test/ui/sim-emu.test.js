@@ -275,8 +275,8 @@ for (const [board, name] of [['basys2', 'Basys2'], ['nexys2', 'Nexys2']]) {
     const first = await shown(page);
     assert.ok(first !== null && first < 10, `a count from 0000: ${first}`);
     // BTN1 (faster) five times: 80 steps a second; the count goes on, past 0010
-    // (each press held, then released, for 40 ms of the board's time: longer than its 20 ms debounce)
-    const boardWait = async () => { const t = await page.eval(() => window.Silinx.active.view.sim.now); await page.waitFor((t0) => window.Silinx.active.view.sim.now > t0 + 40e9, [t], { what: '40 ms on the board' }); };
+    // (each press held, then released, for 50 ms of the board's time: longer than its debounce, 3 ticks of 12.5 ms, #4377)
+    const boardWait = async () => { const t = await page.eval(() => window.Silinx.active.view.sim.now); await page.waitFor((t0) => window.Silinx.active.view.sim.now > t0 + 50e9, [t], { what: '50 ms on the board' }); };
     for (let i = 0; i < 5; i++) { await widget(page, 'BTN1 = btn<1>', { modifiers: 8 }); await boardWait(); await widget(page, 'BTN1 = btn<1>', { modifiers: 8 }); await boardWait(); }
     let n = first;
     for (const t0 = Date.now(); Date.now() - t0 < 30000 && !(n > 10); await new Promise((r) => setTimeout(r, 100))) n = (await shown(page)) ?? n;

@@ -375,7 +375,7 @@ uiTest('open mode: View Technology Schematic of blinky and pong without ISE: the
   await page.setView('impl');
   assert.deepEqual((await procLabels(page)).find((p) => p.label === 'View Technology Schematic'), { label: 'View Technology Schematic', disabled: false, title: '' });
   await checkTechSchematic(page, { top: 'top', blocks: ['u_pre', 'u_speed', 'u_knight', 'u_count', 'u_display'], inside: 'u_pre',
-    message: "Technology Schematic of 'top': the netlist of the Silinx toolchain's synthesis (build/open/top.json), 520 cells in 5 block(s): u_display (61), u_knight (52), u_speed (224), u_count (84), u_pre (68)." });
+    message: "Technology Schematic of 'top': the netlist of the Silinx toolchain's synthesis (build/open/top.json), 381 cells in 5 block(s): u_display (61), u_knight (52), u_speed (86), u_count (84), u_pre (67)." });
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /warning|error/i.test(l)), []);
   // Portuguese: the view's bar, its tab and the LUT's function have no untranslated text (the netlist's names apart)
   await page.eval(TEXTS);
@@ -472,7 +472,7 @@ uiTest('RTL and Technology Schematic in Portuguese: the palette, its tooltips, t
   assert.deepEqual(tech.untranslated, []);
   for (const s of ['Propriedades', '⬆ Subir', 'Larguras das entradas (MSB primeiro)', 'Função do LUT (INIT)'])
     assert.ok(tech.pt.has(s), `${s}: ${[...tech.pt].join(' | ')}`);
-  // (the first LUT clicked, its kind as the synthesis makes it: a LUT2 since blinky's 22-bit debouncers, #3922, a LUT3 before)
+  // (the first LUT clicked, its kind as the synthesis makes it: a LUT3, then a LUT2 with blinky's 22-bit debouncers, #3922)
   for (const re of [/^Módulo LUT[1-6]$/, /^Pinos \(\d+\)$/]) assert.ok([...tech.pt].some((s) => re.test(s)), `${re}: ${[...tech.pt].join(' | ')}`);
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /warning|error/i.test(l)), []);
   await env.server.api('PUT', '/api/toolchain', { mode: 'local' });

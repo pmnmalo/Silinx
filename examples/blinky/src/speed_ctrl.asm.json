@@ -12,7 +12,7 @@
   "generics": [
     {
       "name": "DEBOUNCE",
-      "default": 1000000
+      "default": 3
     }
   ],
   "inputs": [
@@ -42,7 +42,7 @@
   "registers": [
     {
       "name": "cnt_f",
-      "width": 22,
+      "width": 2,
       "init": "0"
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "name": "cnt_s",
-      "width": 22,
+      "width": 2,
       "init": "0"
     },
     {
@@ -161,7 +161,7 @@
       "type": "decision",
       "x": 810,
       "y": 320,
-      "cond": "cnt_f == DEBOUNCE - 1"
+      "cond": "tick && cnt_f == DEBOUNCE - 1"
     },
     {
       "id": "o3",
@@ -179,7 +179,7 @@
       "x": 1110,
       "y": 430,
       "actions": [
-        "cnt_f = cnt_f + 1"
+        "cnt_f = cnt_f + tick"
       ]
     },
     {
@@ -211,7 +211,7 @@
       "type": "decision",
       "x": 810,
       "y": 790,
-      "cond": "cnt_s == DEBOUNCE - 1"
+      "cond": "tick && cnt_s == DEBOUNCE - 1"
     },
     {
       "id": "o6",
@@ -229,7 +229,7 @@
       "x": 1110,
       "y": 900,
       "actions": [
-        "cnt_s = cnt_s + 1"
+        "cnt_s = cnt_s + tick"
       ]
     },
     {
@@ -456,6 +456,6 @@
     }
   ],
   "initial": "s1",
-  "description": "Blink speed: two debounced buttons, one level per press (0 = fastest, 7 = slowest), one step every 2**level ticks",
+  "description": "Blink speed: two buttons debounced over DEBOUNCE ticks, one level per press (0 = fastest, 7 = slowest), one step every 2**level ticks",
   "generatedFile": "src/speed_ctrl.vhd"
 }

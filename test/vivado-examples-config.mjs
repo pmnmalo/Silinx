@@ -30,7 +30,7 @@ const warnings = {
     'WARNING: [Synth 8-3936] Found unconnected internal register \'daa_res9_reg\' and it is trimmed from \'9\' to \'8\' bits. [/work/src/src/light8080.vhdl:746]'],
 };
 // (#3895) the Arty S7's 12 MHz clock: vga's pixel every clock (DIV 1), its pace counter unused; the Zybo Z7's 125 MHz: none
-// (blinky's debounce counters of 22 bits since #3922)
+// (blinky's debounce counters of 22 bits since #3922, of 2 counting ticks since #4377)
 const removed = (reg, file, line) => `WARNING: [Synth 8-6014] Unused sequential element ${reg}_reg was removed. [/work/src/src/${file}:${line}]`;
 export const VIVADO_WARNINGS = {
   basys3: warnings, 'nexys-a7': warnings,

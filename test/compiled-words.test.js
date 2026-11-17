@@ -175,7 +175,7 @@ const EXPECTED = {
   gates: { chains: 0, registers: 0, cells: [1, 1] },
   breadboard: { chains: 0, registers: 0, cells: [20, 20] },
   traffic: { chains: 2, registers: 2, cells: [312, 156] },
-  blinky: { chains: 5, registers: 5, cells: [643, 341] },
+  blinky: { chains: 3, registers: 3, cells: [469, 321] },
   pong: { chains: 7, registers: 7, cells: [1106, 581] },
   stopwatch: { chains: 9, registers: 9, cells: [916, 350] },
   clock: { chains: 6, registers: 6, cells: [891, 469] },
@@ -190,7 +190,7 @@ const TABLES = {
   gates: [0, { tables: 0, inputs: 12, words: 0, outputs: 0, cells: [1, 1] }, 0],
   breadboard: [0, { tables: 1, inputs: 12, words: 64, outputs: 5, cells: [20, 9] }, 1],
   traffic: [5, { tables: 13, inputs: 12, words: 14816, outputs: 43, cells: [144, 56] }, 5],
-  blinky: [5, { tables: 26, inputs: 12, words: 23912, outputs: 63, cells: [329, 141] }, 8],
+  blinky: [3, { tables: 24, inputs: 12, words: 11752, outputs: 62, cells: [317, 128] }, 10],
   pong: [10, { tables: 58, inputs: 10, words: 23984, outputs: 150, cells: [548, 286] }, 6],
   stopwatch: [7, { tables: 41, inputs: 12, words: 9792, outputs: 69, cells: [312, 212] }, 4],
   clock: [8, { tables: 28, inputs: 12, words: 28248, outputs: 81, cells: [439, 144] }, 4],
@@ -234,15 +234,15 @@ test('#650 #659 blinky\'s post-translate, post-map and post-place & route models
   const m = await models('blinky', ['synth', 'translate', 'posttrans', 'map', 'postmap', 'par', 'trce', 'postpar']);
   // (postpar: the design nextpnr routed, #2137: a constant on routing; postmap since #2530: that design without its
   // routing, so the same cells)
-  const want = { posttrans: [643, 341], postmap: [755, 385], postpar: [755, 385] };
+  const want = { posttrans: [469, 321], postmap: [537, 357], postpar: [537, 357] };
   const wantTables = {
-    posttrans: [5, { tables: 20, inputs: 12, words: 19552, outputs: 138, cells: [341, 188] }, 6],
-    postmap: [5, { tables: 25, inputs: 12, words: 21688, outputs: 156, cells: [385, 219] }, 7],
-    postpar: [5, { tables: 24, inputs: 12, words: 21624, outputs: 147, cells: [385, 227] }, 7],
+    posttrans: [3, { tables: 18, inputs: 12, words: 7392, outputs: 141, cells: [321, 163] }, 8],
+    postmap: [3, { tables: 21, inputs: 12, words: 7480, outputs: 159, cells: [357, 184] }, 7],
+    postpar: [3, { tables: 20, inputs: 12, words: 7416, outputs: 150, cells: [357, 192] }, 7],
   };
   for (const [step, design] of Object.entries(m)) {
     const { stats, tables } = await same(design, step);
-    assert.deepEqual(stats, { chains: 5, registers: 5, cells: want[step] }, step);
+    assert.deepEqual(stats, { chains: 3, registers: 3, cells: want[step] }, step);
     assert.deepEqual([tables.equalities.equalities, tables.tables, tables.registers], wantTables[step], step);
   }
 });
