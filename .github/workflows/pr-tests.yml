@@ -6,7 +6,9 @@ name: PR tests
 # as their measured time needs (test/timings.json, about 20 minutes each, #1982), one for a small change, none
 # when no test is related. main requires related-tests, green when every part passed (or there was none).
 # A draft runs no test (#4166): its related-tests fails at once, so that it cannot merge, and the tests run when it is
-# marked ready (gh pr ready) and on every push after; a pull request turned back into a draft fails it again.
+# marked ready (gh pr ready) and on every push after; a pull request turned back into a draft fails it again. Whether
+# it is a draft is read from the pull request as it is now, not from the event (#4427): a push followed within seconds
+# by gh pr ready starts two runs, the concurrency group keeps the one queued last, and the push's says draft.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
@@ -17,9 +19,28 @@ concurrency:
   group: pr-tests-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # whether the pull request is a draft now (#4427), whichever of its runs the concurrency group kept
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      draft: ${{ steps.draft.outputs.draft }}
+    steps:
+      - id: draft
+        run: |
+          draft=$(gh api "repos/$REPO/pulls/$PR" --jq .draft)
+          echo "draft=$draft" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+
   # how many parts (#1982): a change of most of the repository ran 35 minutes and more in each of three parts
   plan:
-    if: ${{ !github.event.pull_request.draft }}
+    needs: [draft]
+    if: needs.draft.outputs.draft == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -71,11 +92,11 @@ jobs:
   # the one check main requires (#637): green when the plan and every part passed (no part: no test related)
   related-tests:
     if: always()
-    needs: [plan, tests]
+    needs: [draft, plan, tests]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - if: github.event.pull_request.draft
+      - if: needs.draft.outputs.draft != 'false'
         run: >-
           echo "::error::A draft pull request runs no test (#4166): mark it ready with gh pr ready." && exit 1
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
