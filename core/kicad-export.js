@@ -39,8 +39,10 @@ export function icSymbol(type) {
   const d = PARTS[type];
   if (d?.kind !== 'ic') throw new Error(`'${type}' is not an IC of the library`);
   const name = d.chip, pin = new Map(d.pins.map((p) => [p.n, p]));
-  const props = [prop('Reference', 'U', false, 1.27), prop('Value', d.chip, false, -1.27), prop('Footprint', `Package_DIP:DIP-${d.dip}_W7.62mm`), prop('Datasheet', ''),
-    prop('Description', d.title), prop('ki_keywords', `${d.family === 'ttl' ? 'TTL 74LS' : 'CMOS 4000'} ${type}`), prop('ki_fp_filters', 'DIP*W7.62mm*'),
+  // (its rows apart: a 24-pin DIP 0.6 inch wide, the 74154's, #4397)
+  const w = partFootprintName(type).replace(/^.*_W([\d.]+)mm$/, '$1');
+  const props = [prop('Reference', 'U', false, 1.27), prop('Value', d.chip, false, -1.27), prop('Footprint', `Package_DIP:DIP-${d.dip}_W${w}mm`), prop('Datasheet', ''),
+    prop('Description', d.title), prop('ki_keywords', `${d.family === 'ttl' ? 'TTL 74LS' : 'CMOS 4000'} ${type}`), prop('ki_fp_filters', `DIP*W${w}mm*`),
     prop('Silinx.Model', type), prop('Silinx.Family', d.family), prop('Silinx.Source', `Silinx ${VERSION} library`)];
   let units;
   if (d.gates) {
@@ -114,7 +116,7 @@ const dipRows = (d) => -Math.min(...d.pins.map((p) => p.dy));
 /** A part's footprint's name: an IC's or a DIP's KiCad's own (Package_DIP:DIP-10_W15.24mm), another one's Silinx's. */
 export function partFootprintName(type) {
   const d = PARTS[type];
-  if (d.kind === 'ic') return `Package_DIP:DIP-${d.dip}_W7.62mm`;
+  // (an IC's DIP-24 0.6 inch wide, the 74154's, #4397)
   return d.dip ? `Package_DIP:DIP-${d.dip}_W${mm(dipRows(d) * G)}mm` : `${FOOTPRINT_LIB}:Silinx_${type}`;
 }
 // its pins' electrical types (a lamp's pins are a diode's, passive; a supply's its sources) and its references

@@ -21,7 +21,8 @@ import { attachSymbolTip, hideSymbolTip, TIP_W, TIP_H } from './symbol-tip.js';
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
-  ['MSI (74LS)', PART_ORDER.filter((t) => PARTS[t].model)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].seq || PARTS[t].core)]];
+  // (an IC written once in VHDL whose function is a decoder's, a multiplexer's…: an MSI IC, #4397)
+  ['MSI (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].model || PARTS[t].msi)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => (PARTS[t].seq || PARTS[t].core) && !PARTS[t].msi)]];
 const W = 54, H = 34, MAX = 1.2;
 const r2 = (v) => Math.round(v * 100) / 100;
 // the schematic's symbol of an MSI or sequential IC (core/schdoc.js SYMBOLS)
@@ -35,7 +36,9 @@ const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decod
   // (group D's counters, #4440)
   ...Object.fromEntries([74160, 74162, 74168, 74169, 74190, 74192, 74196, 74197, 74290, 74390, 74393, 7492, 74590, 4020, 4040, 4022, 4029, 4510, 4518, 4520].map((t) => [t, 'counter'])),
   // (group E's shift registers, #4397)
-  ...Object.fromEntries([7491, 7495, 74166, 74195, 74295, 74594, 74596, 4021].map((t) => [t, 'register'])) };
+  ...Object.fromEntries([7491, 7495, 74166, 74195, 74295, 74594, 74596, 4021].map((t) => [t, 'register'])),
+  // (group F's decoders and encoders, #4397)
+  ...Object.fromEntries([7442, 74145, 74137, 74237, 74238, 74154, 74155, 74156, 7446, 7449].map((t) => [t, 'decoder'])), 74147: 'encoder', 74148: 'encoder' };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */
 function symbolOfPart(type) {
   const d = partDef(type);

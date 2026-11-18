@@ -45,7 +45,7 @@ export const CIRCUIT_PT = {
   // side panel
   'Parts': 'Peças', 'Search parts…': 'Procurar peças…', '☰ Parts': '☰ Peças', 'Show / hide the parts panel': 'Mostrar / esconder o painel das peças',
   'Collapse the Parts panel': 'Recolher o painel das peças', 'Expand the Parts panel': 'Expandir o painel das peças', 'Breadboards': 'Placas de ensaio', 'Power': 'Alimentação', 'Inputs': 'Entradas', 'Outputs': 'Saídas', 'Gates (74LS)': 'Portas (74LS)',
-  'Label': 'Etiqueta', 'Colour': 'Cor', 'Gates (4000)': 'Portas (4000)', 'MSI (74LS)': 'MSI (74LS)', 'Sequential (74LS, 4000)': 'Sequenciais (74LS, 4000)',
+  'Label': 'Etiqueta', 'Colour': 'Cor', 'Gates (4000)': 'Portas (4000)', 'MSI (74LS, 4000)': 'MSI (74LS, 4000)', 'Sequential (74LS, 4000)': 'Sequenciais (74LS, 4000)',
   'On': 'Ligado', 'Levers on': 'Alavancas ligadas', 'Frequency (Hz)': 'Frequência (Hz)',
   'red': 'vermelho', 'green': 'verde', 'yellow': 'amarelo', 'blue': 'azul', 'white': 'branco', 'black': 'preto', 'orange': 'laranja', 'purple': 'roxo',
   // a part's details (#4126, core/circuit-part-info.js)
@@ -177,6 +177,15 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   '8-bit shift register, output register with clear': 'Registo de deslocamento de 8 bits, registo de saída com clear',
   '8-bit shift register, output latches, open-collector outputs': 'Registo de deslocamento de 8 bits, latches de saída, saídas em coletor aberto',
   '8-stage static shift register with asynchronous parallel load': 'Registo de deslocamento estático de 8 andares com carregamento paralelo assíncrono',
+  // (the decoders, display drivers and encoders written once in VHDL, #4397)
+  'BCD to decimal decoder': 'Descodificador BCD para decimal', 'BCD to decimal decoder/driver, open collector': 'Descodificador/driver BCD para decimal, coletor aberto',
+  '3-to-8 line decoder with address latches, outputs active low': 'Descodificador de 3 para 8 linhas com latches de endereço, saídas ativas a 0',
+  '3-to-8 line decoder with address latches, outputs active high': 'Descodificador de 3 para 8 linhas com latches de endereço, saídas ativas a 1',
+  '3-to-8 line decoder, outputs active high': 'Descodificador de 3 para 8 linhas, saídas ativas a 1', '4-to-16 line decoder': 'Descodificador de 4 para 16 linhas',
+  'Dual 2-to-4 line decoder/demultiplexer': 'Dois descodificadores/desmultiplexadores de 2 para 4 linhas',
+  'Dual 2-to-4 line decoder/demultiplexer, open collector': 'Dois descodificadores/desmultiplexadores de 2 para 4 linhas, coletor aberto',
+  'BCD to 7-segment decoder/driver, open collector, active high': 'Descodificador BCD para 7 segmentos, coletor aberto, ativo a 1',
+  '10-line to 4-line priority encoder': 'Codificador de prioridade de 10 para 4 linhas', '8-line to 3-line priority encoder': 'Codificador de prioridade de 8 para 3 linhas',
   'Decade counter (divide by 2 and by 5, falling edges)': 'Contador de década (divide por 2 e por 5, flancos descendentes)',
   '4-bit binary counter (divide by 2 and by 8, falling edges)': 'Contador binário de 4 bits (divide por 2 e por 8, flancos descendentes)',
   'Synchronous 4-bit binary counter, asynchronous clear': 'Contador binário síncrono de 4 bits, clear assíncrono',

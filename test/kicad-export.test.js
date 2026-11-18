@@ -18,7 +18,7 @@ const BAR = '̅';
 
 test('every IC of the library, written and read back: that IC, its pins the same, no warning', () => {
   assert.deepEqual(EXPORTED_ICS, PART_ORDER.filter((t) => PARTS[t].kind === 'ic'));
-  assert.equal(EXPORTED_ICS.length, 143);   // (30 more gates, #4397)
+  assert.equal(EXPORTED_ICS.length, 155);   // (30 more gates, #4397; the 74154 on a DIP-24 0.6 inch wide)
   const text = icLibrary();
   const lib = readKicadSymLib(text);
   assert.deepEqual([lib.version, lib.generator, lib.warnings], [EXPORT_VERSION, 'silinx', []]);
@@ -29,7 +29,7 @@ test('every IC of the library, written and read back: that IC, its pins the same
     assert.equal(d.pins, PARTS[d.behaves].pins, d.behaves);
     assert.equal(d.how, 'Silinx.Model');
     assert.equal(d.family, PARTS[d.behaves].family);
-    assert.deepEqual([d.kicad.value, d.kicad.footprint, d.kicad.description], [PARTS[d.behaves].chip, `Package_DIP:DIP-${PARTS[d.behaves].dip}_W7.62mm`, PARTS[d.behaves].title]);
+    assert.deepEqual([d.kicad.value, d.kicad.footprint, d.kicad.description], [PARTS[d.behaves].chip, `Package_DIP:DIP-${PARTS[d.behaves].dip}_W${PARTS[d.behaves].dip >= 24 ? '15.24' : '7.62'}mm`, PARTS[d.behaves].title]);
   }
   // by its part number alone (its Silinx properties taken out): the same ICs
   const plain = kicadPartsOf({ 'parts/Plain.kicad_sym': text.replace(/\n\t\t\(property "Silinx\.[^\n]*/g, '') });

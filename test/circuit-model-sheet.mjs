@@ -7,7 +7,8 @@
 // the pins' levels, its edge 'r' / 'f' (Verilog's) / 'any']), run(c, e, old, nx): c the pins' levels, e(f, edge) an edge
 // between the last vector and this one, old the state before, nx the state after (written); `out(c, s)` the outputs'
 // levels by pin (null: unknown); `clocks` its clocks' pins (pulsed most often); `loads` its asynchronous loads [pin,
-// level, data pins] (the data held while one is active); `exhaustive`: every combination of its inputs (combinational).
+// level, data pins] (the data held while one is active); `exhaustive`: every combination of its inputs (combinational);
+// `steps`: the random vectors (one input changed in each: a latch's data never changes with its enable).
 import assert from 'node:assert/strict';
 import { PARTS } from '../core/circuit-parts.js';
 import { circuitPorts } from '../core/circuit.js';
@@ -68,7 +69,7 @@ export function sheetRun(type, sheet, { steps = 160 } = {}) {
     const held = (p) => (sheet.loads || []).some(([l, v, data]) => cur[l] === v && data.includes(p));
     for (const v of [1, 0]) for (const p of ins) { if (!held(p)) { cur[p] = v; vectors.push({ ...cur }); } }
     for (const p of sheet.clocks || []) for (const v of [1, 0]) { cur[p] = v; vectors.push({ ...cur }); }
-    for (let k = 0; k < steps; k++) {
+    for (let k = 0; k < (sheet.steps ?? steps); k++) {
       const clocks = sheet.clocks || [];
       const p = clocks.length && rnd() % 5 < 3 ? clocks[rnd() % clocks.length] : ins[rnd() % ins.length];
       if (held(p)) continue;

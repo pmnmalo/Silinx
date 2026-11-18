@@ -55,10 +55,12 @@ export function pinDirection(p) {
 }
 // (a passive or unspecified pin says nothing of its direction: it fits any; a no-connect pin fits an unused one)
 // (a 3-state output fits an output of the library, as the 74595's, #4285)
-const fits = (kicad, silinx) => kicad.type === 'passive' || kicad.type === 'unspecified' || kicad.type === 'free' || pinDirection(kicad) === silinx
+const fits = (kicad, silinx, q = {}) => kicad.type === 'passive' || kicad.type === 'unspecified' || kicad.type === 'free' || pinDirection(kicad) === silinx
   || (kicad.type === 'tri_state' && silinx === 'out')
   // (an open collector output KiCad's symbol says is an output: its 74LS22's, #4397)
-  || (kicad.type === 'output' && silinx === 'oc');
+  || (kicad.type === 'output' && silinx === 'oc')
+  // (an output the chip pulls up inside, which KiCad's symbol says is an open collector: the 74LS48's and 74LS248's, #4397)
+  || (kicad.type === 'open_collector' && silinx === 'out' && !!q.pullup);
 
 /** A symbol's pins, each once (its normal body's; every unit's): [{ number, name, type, … }]. */
 export function symbolPins(s) {
@@ -75,7 +77,7 @@ export function pinoutDifference(s, type) {
     const p = mine.get(String(q.n));
     if (!p) { if (q.dir !== 'nc') return `its pin ${q.n} is missing (the ${type}'s ${q.name})`; continue; }
     // (a transceiver's pin, #4397: an input and a three-state output at once, whatever KiCad's symbol says it is)
-    if (!q.io && !fits(p, q.dir)) return `its pin ${q.n} (${pinText(p.name).text || 'no name'}) is ${p.type}, the ${type}'s pin ${q.n} (${q.name}) ${q.dir}`;
+    if (!q.io && !fits(p, q.dir, q)) return `its pin ${q.n} (${pinText(p.name).text || 'no name'}) is ${p.type}, the ${type}'s pin ${q.n} (${q.name}) ${q.dir}`;
   }
   const extra = pins.find((p) => !d.pins.some((q) => String(q.n) === p.number));
   return extra ? `its pin ${extra.number} is not one of the ${type}'s ${d.pins.length}` : null;

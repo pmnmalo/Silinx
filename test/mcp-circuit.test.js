@@ -33,7 +33,8 @@ test('circuit_parts: the library, one part with its pins, gates and delay, its d
     '7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017',
     '7473', '7478', '74107', '74109', '74113', '74114', '4013', '4027', '7475', '7477', '74375', '74279', '74174', '74175', '74273', '74377', '74378', '74379', '74173', '74373', '74374', '74573', '74574',
     '74160', '74162', '74168', '74169', '74190', '74192', '74196', '74197', '74290', '74390', '74393', '7492', '74590', '4020', '4040', '4022', '4029', '4510', '4518', '4520',
-    '7491', '7495', '74166', '74195', '74295', '74594', '74596', '4021']);
+    '7491', '7495', '74166', '74195', '74295', '74594', '74596', '4021',
+    '7442', '74145', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449', '74147', '74148']);
   const one = await ok('circuit_parts', { type: '7486' });
   assert.equal(one.text.split('\n')[0], '7486: Quad 2-input XOR (SN74LS86, 12 ns); pins 1 1A in, 2 1B in, 3 1Y out, 4 2A in, 5 2B in, 6 2Y out, 7 GND gnd, 8 3Y out, 9 3A in, 10 3B in, 11 4Y out, 12 4A in, 13 4B in, 14 VCC vcc; gates xor (1, 2) → 3; xor (4, 5) → 6; xor (9, 10) → 8; xor (12, 13) → 11');
   assert.deepEqual(one.data.parts[0].pins[0], { n: 1, name: '1A', dir: 'in', dx: 0, dy: 0 });
@@ -44,7 +45,8 @@ test('circuit_parts: the library, one part with its pins, gates and delay, its d
   assert.equal((await ok('circuit_parts', {})).data.info, undefined, 'the whole library: no details');
   // (a query, #4495: the parts found by their words, as the Parts panel's search)
   assert.deepEqual((await ok('circuit_parts', { query: 'j-k flip-flop dual' })).data.parts.map((p) => p.type), ['7476', '74112', '7473', '7478', '74107', '74109', '74113', '74114', '4027']);
-  assert.deepEqual((await ok('circuit_parts', { query: 'decoder' })).data.parts.map((p) => p.type), ['7447', '7448', '74138', '74139', '4511']);
+  assert.deepEqual((await ok('circuit_parts', { query: 'decoder' })).data.parts.map((p) => p.type), ['7447', '7448', '74138', '74139', '4511',
+    '7442', '74145', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449']);   // (#4397's decoders)
   assert.deepEqual((await ok('circuit_parts', { type: 'led' })).text.split('\n'), ['led: LED; pins 1 A in, 2 K in', 'Lights while its anode A is at 1 and its cathode K at 0. An output of the HDL.', 'Pins: 1 A (input), 2 K (input)']);
   assert.equal((await ok('circuit_parts', { type: '7403' })).data.parts[0].openCollector, true);
   // an MSI IC (#3900): its function, its pins by their datasheet's names
