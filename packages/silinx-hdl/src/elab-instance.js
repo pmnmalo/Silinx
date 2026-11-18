@@ -203,12 +203,36 @@ function elabPort(E, p, conn) {
     if (pE.lang === 'verilog') ctxSize(value, t.w);
     const body = { k: 'asg', target: { k: 'sig', sig, t }, value, nb: false, delay: null, loc: conn.loc };
     addProc(E, { name: `${p.name}<=`, kind: 'glue', mode: 'comb', body, triggers: triggersOfReads(body), lang: 'verilog', loc: conn.loc, file: pE.file, inst: E.inst, glueOf: p.name });
+  } else if (conn.lnode && p.dir === 'inout' && bidirGlue(E, p, sig, t, conn)) {
+    // (an inout connected to a part of a signal: both ways, #4360)
   } else if (conn.lnode) {
     const body = { k: 'asg', target: conn.lnode, value: { k: 'sig', sig, t }, nb: false, delay: null, loc: conn.loc };
     addProc(pE, { name: `${p.name}=>`, kind: 'glue', mode: 'comb', body, triggers: [{ sig, edge: 'any' }], lang: 'verilog', loc: conn.loc, file: pE.file, inst: pE.inst, glueOf: `${E.inst.name}.${p.name}` });
   } else if (conn.node) {
     diag(pE, `output port '${p.name}' of '${E.inst.name}' is connected to a non-assignable expression`, conn.loc, 'warning');
   }
+}
+
+// An inout port connected to a part of a signal (`.p(a[1])`, a bit-select of an input port, #4360): two glues, the
+// actual's value into the port (`<=`) and the port's out to the actual (`=>`), each the other side's drivers resolved
+// without its own (a 'resx' node), so that neither reads back what it drives; both signals keep one value per driver.
+// The actual a part of a signal (a bit, a slice, its rvalue the same part): else false, and the port drives it only.
+function bidirGlue(E, p, sig, t, conn) {
+  const pE = conn.E, L = conn.lnode, R = conn.node;
+  const root = n => (n?.k === 'sig' ? n : ['bit', 'slice', 'dslice', 'pslice'].includes(n?.k) ? root(n.base) : null);
+  const lr = root(L), rr = root(R);
+  if (!lr || !rr || lr.sig !== rr.sig || L === lr || lr.t.kind !== 'logic') return false;
+  const outer = lr.sig;
+  const subst = (n, x) => (n === rr ? x : { ...n, base: subst(n.base, x) });
+  const resx = { k: 'resx', sig: outer, except: null, t: outer.t };
+  const intoPort = { k: 'asg', target: { k: 'sig', sig, t }, value: subst(R, resx), nb: false, delay: null, loc: conn.loc };
+  const back = { k: 'resx', sig, except: null, t };
+  const outOf = { k: 'asg', target: L, value: back, nb: false, delay: null, loc: conn.loc };
+  const pin = addProc(E, { name: `${p.name}<=`, kind: 'glue', mode: 'comb', body: intoPort, triggers: [{ sig: outer, edge: 'any' }], lang: 'verilog', loc: conn.loc, file: pE.file, inst: E.inst, glueOf: p.name });
+  const pout = addProc(pE, { name: `${p.name}=>`, kind: 'glue', mode: 'comb', body: outOf, triggers: [{ sig, edge: 'any' }], lang: 'verilog', loc: conn.loc, file: pE.file, inst: pE.inst, glueOf: `${E.inst.name}.${p.name}` });
+  resx.except = pout.id; back.except = pin.id;
+  outer.bidir = true; sig.bidir = true;
+  return true;
 }
 
 export function addProc(E, proc) {

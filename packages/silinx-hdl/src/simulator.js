@@ -56,15 +56,21 @@ function resolveWired(sig) {
   return V.mk(w, v | none, x | none, sig.t.s);
 }
 
+// The value of sig without the driver of process id (a glue of an inout connected to a part of a signal, #4360): the
+// other drivers' resolved value; a forced signal's own value
+export const resolveExcept = (sig, id) => (sig.forced || !sig.res ? sig.val : resolve(sig, id));
+
 // std_logic / Verilog wire resolution of the drivers of sig, per bit as IEEE 1164's resolution table (#3926): an X or
 // a strong 0 and 1 make X, else a strong value wins; with none, a W or a weak L and H make W, else the weak value
 // (L, H) wins; Z when every driver is Z (the 'U' and '-' of std_logic are X here). Verilog's drivers are all strong.
-// Bits no driver has assigned yet keep the signal's current value.
-function resolve(sig) {
-  if (sig.wired) return resolveWired(sig);
+// Bits no driver has assigned yet keep the signal's current value. except: a driver left out, whose bits no other
+// driver has assigned are Z (an inout's value seen from one side of its connection, #4360).
+function resolve(sig, except) {
+  if (sig.wired && except === undefined) return resolveWired(sig);
   const w = sig.t.w, M = V.mask(w);
-  let s0 = 0n, s1 = 0n, sx = 0n, w0 = 0n, w1 = 0n, wx = 0n, D = 0n;
-  for (const { val: { v, x, h = 0n }, m } of sig.res.values()) {
+  let s0 = 0n, s1 = 0n, sx = 0n, w0 = 0n, w1 = 0n, wx = 0n, D = except === undefined ? 0n : M;
+  for (const [key, { val: { v, x, h = 0n }, m }] of sig.res) {
+    if (key === except) continue;
     D |= m;
     const st = m & ~h, wk = m & h;
     s0 |= st & ~x & ~v; s1 |= st & ~x & v; sx |= st & x & ~v;
@@ -146,7 +152,10 @@ export class Simulator {
     for (const s of this.design.signals) {
       // a Verilog net starts at z when nothing drives it, else at x (its drivers' initial value)
       if (s.netZ && drivers.has(s)) { s.val = V.allX(s.t.w, s.t.s); if (s.wave) s.wave.v[0] = s.val; }
-      s.res = !Array.isArray(s.init) && s.t.kind === 'logic' && (drivers.get(s)?.size > 1 || (s.wired && drivers.get(s)?.size)) ? new Map() : null;
+      // (a Verilog reg's initializer is its procedural driver's value, #4360: `reg c = 1` on an inout port)
+      if (s.net === 'reg' && s.hasInit && drivers.has(s)) drivers.get(s).add('vproc');
+      s.res = !Array.isArray(s.init) && s.t.kind === 'logic' && (drivers.get(s)?.size > 1 || s.bidir || (s.wired && drivers.get(s)?.size)) ? new Map() : null;
+      if (s.res && s.net === 'reg' && s.hasInit) s.res.set('vproc', { val: s.init, m: V.mask(s.t.w) });
     }
   }
 
