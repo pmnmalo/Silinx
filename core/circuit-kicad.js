@@ -60,7 +60,9 @@ const fits = (kicad, silinx, q = {}) => kicad.type === 'passive' || kicad.type =
   // (an open collector output KiCad's symbol says is an output: its 74LS22's, #4397)
   || (kicad.type === 'output' && silinx === 'oc')
   // (an output the chip pulls up inside, which KiCad's symbol says is an open collector: the 74LS48's and 74LS248's, #4397)
-  || (kicad.type === 'open_collector' && silinx === 'out' && !!q.pullup);
+  || (kicad.type === 'open_collector' && silinx === 'out' && !!q.pullup)
+  // (an open collector KiCad's symbol says is three-state: its 74LS170's, extending the 74LS670, #4397)
+  || (kicad.type === 'tri_state' && silinx === 'oc');
 
 /** A symbol's pins, each once (its normal body's; every unit's): [{ number, name, type, … }]. */
 export function symbolPins(s) {

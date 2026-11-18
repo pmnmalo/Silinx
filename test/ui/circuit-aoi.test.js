@@ -16,7 +16,7 @@ after(async () => { await env?.teardown?.(); });
 const ED = '.doc:not([hidden]) .circuit-editor';
 const AOI = { 7451: { terms: 4, nors: 2 }, 7454: { terms: 4, nors: 1 }, 7455: { terms: 2, nors: 1 } };
 // (the latches: a latch's symbol of the Parts panel's own, #4505)
-const LATCHES = ['7475', '7477', '74375', '74279', '74373', '74573'];
+const LATCHES = ['7475', '7477', '74375', '74279', '74373', '74573', '74259', '74256'];   // (#4397's addressable latches too)
 
 /** Settings ▸ Schematic Symbols (View ▸ in the ISE style interface), `pick` clicked. */
 async function chooseSymbols(page, pick) {
