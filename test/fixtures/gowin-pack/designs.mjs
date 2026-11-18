@@ -14,6 +14,8 @@ const IN = ".RESET(1'b0), .CALIB(1'b0)";
 const qs = n => Array.from({ length: n }, (_, i) => `.Q${i}(q[${i}])`).join(', ');
 const ds = n => Array.from({ length: n }, (_, i) => `.D${i}(c[${i}])`).join(', ');
 // nextpnr's warning: a clock routed through the general routing where its dedicated routing did not reach
+// (#4352) a differential tristate's enable: nextpnr-himbaechel-gowin drops it, the flow says so
+const oenDropped = type => `WARNING:Place - ${type} u: its enable (OEN) is not in the bitstream (nextpnr-himbaechel-gowin drops it): the pair always drives.`;
 const fallback = (net, from, to) => `WARNING:Place - Failed to route net '${net}' from ${from} to ${to} using dedicated routing.`;
 
 /** The I/O logic (DDR, serialisers, deserialisers, delay) and the clock primitives (CLKDIV, DHCEN, DCS, DQCE). */
@@ -70,17 +72,17 @@ const LVCMOS33 = 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\n';   // (bank 3's LEDs at 
 export const DIFF_IO = {
   tlvds: { cst: `${CLK}${LEDS(1)}${PIN('p', 62)}${PIN('n', 61)}`, cells: { TLVDS_OBUF: 2 },
     text: `module tlvds(input clk, output p, output n, output reg [0:0] led);\n${COUNT2}  always @(posedge clk) begin c <= c + 1; led <= c[1]; end\n  TLVDS_OBUF u (.I(c[1]), .O(p), .OB(n));\nendmodule\n` },
-  tlvdst: { cst: `${CLK}${LEDS(1)}${PIN('p', 62)}${PIN('n', 61)}`, cells: { TLVDS_TBUF: 2 },
+  tlvdst: { cst: `${CLK}${LEDS(1)}${PIN('p', 62)}${PIN('n', 61)}`, cells: { TLVDS_TBUF: 2 }, warnings: [oenDropped('TLVDS_TBUF')],
     text: `module tlvdst(input clk, output p, output n, output reg [0:0] led);\n${COUNT2}  always @(posedge clk) begin c <= c + 1; led <= c[1]; end\n  TLVDS_TBUF u (.I(c[0]), .OEN(c[1]), .O(p), .OB(n));\nendmodule\n` },
   tlvdsi: { cst: `${CLK}${LEDS(1)}${PIN('p', 62)}${PIN('n', 61)}`, cells: { TLVDS_IBUF: 2 },
     text: `module tlvdsi(input clk, input p, input n, output reg [0:0] led);\n  wire d;\n  TLVDS_IBUF u (.I(p), .IB(n), .O(d));\n  always @(posedge clk) led <= d;\nendmodule\n` },
   elvds: { cst: `${CLK}${LEDS(1)}${LVCMOS33}${PIN('p', 80)}${PIN('n', 79)}`, cells: { ELVDS_OBUF: 2 },
     text: `module elvds(input clk, output p, output n, output reg [0:0] led);\n${COUNT2}  always @(posedge clk) begin c <= c + 1; led <= c[1]; end\n  ELVDS_OBUF u (.I(c[1]), .O(p), .OB(n));\nendmodule\n` },
-  elvdst: { cst: `${CLK}${LEDS(1)}${LVCMOS33}${PIN('p', 80)}${PIN('n', 79)}`, cells: { ELVDS_TBUF: 2 },
+  elvdst: { cst: `${CLK}${LEDS(1)}${LVCMOS33}${PIN('p', 80)}${PIN('n', 79)}`, cells: { ELVDS_TBUF: 2 }, warnings: [oenDropped('ELVDS_TBUF')],
     text: `module elvdst(input clk, output p, output n, output reg [0:0] led);\n${COUNT2}  always @(posedge clk) begin c <= c + 1; led <= c[1]; end\n  ELVDS_TBUF u (.I(c[0]), .OEN(c[1]), .O(p), .OB(n));\nendmodule\n` },
   elvdsi: { cst: `${CLK}${LEDS(1)}${PIN('p', 80)}${PIN('n', 79)}`, cells: { ELVDS_IBUF: 2 },
     text: `module elvdsi(input clk, input p, input n, output reg [0:0] led);\n  wire d;\n  ELVDS_IBUF u (.I(p), .IB(n), .O(d));\n  always @(posedge clk) led <= d;\nendmodule\n` },
-  elvdsio: { cst: `${CLK}${LEDS(1)}${LVCMOS33}${PIN('p', 80)}${PIN('n', 79)}`, cells: { ELVDS_IOBUF: 2 },
+  elvdsio: { cst: `${CLK}${LEDS(1)}${LVCMOS33}${PIN('p', 80)}${PIN('n', 79)}`, cells: { ELVDS_IOBUF: 2 }, warnings: [oenDropped('ELVDS_IOBUF')],
     text: `module elvdsio(input clk, inout p, inout n, output reg [0:0] led);\n${COUNT2}  wire o;\n  always @(posedge clk) begin c <= c + 1; led <= o; end\n  ELVDS_IOBUF u (.I(c[0]), .OEN(c[1]), .O(o), .IO(p), .IOB(n));\nendmodule\n` },
   // an ODDR's output on a true LVDS pair
   lvdsddr: { cst: `${CLK}${LEDS(1)}${PIN('p', 62)}${PIN('n', 61)}`, cells: { ODDR: 1, TLVDS_OBUF: 2 },
