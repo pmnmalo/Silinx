@@ -163,7 +163,7 @@ test('#3907 the otherwise transition: else, default, true, 1, always or none; ta
   const two = mk('else');
   two.transitions.push({ id: 't5', from: 's', to: 's', cond: 'default', outputs: {} });
   assert.deepEqual(validateFsm(two).filter((d) => d.severity === 'error').map((d) => d.message),
-    ['State S has 2 otherwise transitions (else, default, true, 1 or no condition), to V, S; a state has one at most']);
+    ['State S has 2 otherwise transitions (else, @else, default, others, otherwise, true, 1 or no condition), to V, S; a state has one at most']);
 });
 
 test('#3907 a transition label: the condition\'s / NOT and the outputs\' / separator', () => {

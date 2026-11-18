@@ -85,4 +85,43 @@ export const FSM_TOOLS = [
           ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
   },
+  {
+    name: 'set_fsm_condition', title: 'Set a transition\'s condition (state diagram)',
+    description: 'Set the condition of a transition of a state diagram (.fsm.json), as its editor\'s Properties do: condition, a Boolean expression over the inputs (x, !x, x && y, x || !y, a == 2\'b01, b[0]; also and, or, not, =, the Boolean-algebra notation a.b\', /a + b; an overbar written as /), empty: always; or otherwise: true, the state\'s otherwise, as its Else (every other case) box (the condition else; also typed as @else, StateCAD\'s @ELSE, others, otherwise, default): taken in every case its other transitions are not, tried last, one per state; otherwise: false empties it, as unticking the box. The diagram is written and its HDL file made again; Check\'s problems of the transition and of its state are returned.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
+      transition: STR('The transition, by its id (as read_file shows it).'),
+      condition: STR('The condition (or give otherwise).'),
+      otherwise: { type: 'boolean', description: 'true: the state\'s otherwise (the condition else); false: an empty condition (or give condition).' },
+    }, required: ['project', 'path', 'transition'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ project: name, path: rel, transition, condition, otherwise }) {
+      await readProject(name);
+      if (!/\.fsm\.json$/i.test(rel)) throw toolError(`${rel}: not a state diagram (.fsm.json)`);
+      if ((condition == null) === (otherwise == null)) throw toolError('give either condition or otherwise');
+      const text = await projectText(name, rel, `no file '${rel}' in the project '${name}'`);
+      const F = await import('../core/fsm.js');
+      const { condAsText } = await import('../core/cond-notation.js');
+      let m;
+      try { m = F.normalizeFsm(JSON.parse(text)); } catch (e) { throw toolError(`${rel}: ${e.message}`); }
+      const t = m.transitions.find(x => x.id === transition);
+      if (!t) throw toolError(`no transition '${transition}' in ${rel}`);
+      const where = `Transition ${F.nameOf(m, t.from)} → ${F.nameOf(m, t.to)}`;
+      const cond = otherwise != null ? (otherwise ? F.ELSE_COND : '') : condAsText(String(condition).trim());
+      const changed = cond !== (t.cond ?? '');
+      t.cond = cond;
+      const shown = `${cond || '(empty: always)'}${F.isOtherwise(cond) && F.drawnAsElse(m, t) ? ` (the otherwise of ${F.nameOf(m, t.from)})` : ''}`;
+      const problems = F.validateFsm(m).filter(d => d.severity !== 'info' && (d.transition === t.id || d.state === t.from))
+        .map(d => `${d.severity.toUpperCase()}: ${d.message}`);
+      let sync = null;
+      if (changed) {
+        await P.writeFile(name, rel, JSON.stringify(m, null, 2));
+        const { syncDrawing } = await import('./drawing-sync.js');
+        sync = await syncDrawing(P, name, rel);
+      }
+      return { text: [`${where}: ${changed ? 'condition set' : 'its condition is already this'}: ${shown}`, ...problems, ...(sync?.messages || [])].join('\n'),
+        data: { project: name, path: rel, transition, condition: cond, otherwise: F.isOtherwise(cond), problems,
+          ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
+    },
+  },
 ];

@@ -147,6 +147,48 @@ test('#3907 a state diagram written in every notation of the logic operators: ch
   await ok('write_file', { project: 'nn', path: 'src/nn.fsm.json', text: JSON.stringify(notations('nn', ['a.b c', '/a + b', 'else', 'true', 'default']), null, 2) });
   assert.equal(await check('src/nn.fsm.json'), [
     "ERROR: Transition A → B: the condition 'a.b c' is not valid (column 5: unexpected 'c' (an operator missing before it: a && b, a.b))",
-    'ERROR: State B has 2 otherwise transitions (else, default, true, 1 or no condition), to A, C; a state has one at most',
+    'ERROR: State B has 2 otherwise transitions (else, @else, default, others, otherwise, true, 1 or no condition), to A, C; a state has one at most',
     'Process "Check State Diagram" of nn.fsm.json failed (2 error(s), 0 warning(s)).'].join('\n'));
+});
+
+test('#4489 set_fsm_condition: a transition\'s condition typed, its Else box ticked (else, the state\'s otherwise) and unticked; StateCAD\'s @ELSE; two otherwise transitions: Check\'s error; refused', async () => {
+  await ok('new_project', { name: 'el' });
+  const F = 'src/el.fsm.json';
+  await ok('write_file', { project: 'el', path: F, text: JSON.stringify(notations('el', ['a', '!a', 'b', '!b', '1']), null, 2) });
+  const set = (args) => call('set_fsm_condition', { project: 'el', path: F, ...args });
+  const conds = async () => JSON.parse((await ok('read_file', { project: 'el', path: F })).text).transitions.map((t) => t.cond);
+  const hdl = async () => (await ok('read_file', { project: 'el', path: 'src/el.v' })).text;
+  const v0 = await hdl();
+  assert.match(v0, /if \(a\) begin\n\s+state_next = S_B;\n\s+end else if \(!a\) begin/);
+  // the Else box ticked: else, the HDL's final else
+  assert.deepEqual(await set({ transition: 't2', otherwise: true }), { isError: false,
+    text: 'Transition A → C: condition set: else (the otherwise of A)\nsrc/el.v updated from src/el.fsm.json',
+    data: { project: 'el', path: F, transition: 't2', condition: 'else', otherwise: true, problems: [], hdl: { file: 'src/el.v', written: true } } });
+  assert.match(await hdl(), /if \(a\) begin\n\s+state_next = S_B;\n\s+end else begin\n\s+state_next = S_C;/);
+  // the same again: nothing written
+  assert.deepEqual(await set({ transition: 't2', otherwise: true }), { isError: false, text: 'Transition A → C: its condition is already this: else (the otherwise of A)',
+    data: { project: 'el', path: F, transition: 't2', condition: 'else', otherwise: true, problems: [] } });
+  // StateCAD's @ELSE typed
+  const t4 = await set({ transition: 't4', condition: ' @ELSE ' });
+  assert.deepEqual([t4.isError, t4.text.split('\n')[0], t4.data.condition, t4.data.otherwise], [false, 'Transition B → C: condition set: @ELSE (the otherwise of B)', '@ELSE', true]);
+  // a second otherwise in B: Check's error, returned; written as the interface writes it
+  const two = await set({ transition: 't3', otherwise: true });
+  assert.equal(two.isError, false);
+  assert.deepEqual(two.data.problems, ['ERROR: State B has 2 otherwise transitions (else, @else, default, others, otherwise, true, 1 or no condition), to A, C; a state has one at most']);
+  assert.equal(two.text.split('\n').slice(0, 2).join('\n'), `Transition B → A: condition set: else (the otherwise of B)\n${two.data.problems[0]}`);
+  // unticked: empty (A, alone… B has @ELSE still: an empty condition is its otherwise too, the error stays)
+  const un = await set({ transition: 't3', otherwise: false });
+  assert.deepEqual([un.data.condition, un.data.problems.length], ['', 1]);
+  // typed: the error gone; an overbar kept as /
+  const b = await set({ transition: 't3', condition: 'b̅' });
+  assert.deepEqual([b.text.split('\n')[0], b.data.problems], ['Transition B → A: condition set: /b', []]);
+  assert.deepEqual(await conds(), ['a', 'else', '/b', '@ELSE', '1']);
+  // C's only transition: 1, not drawn as else
+  assert.equal((await set({ transition: 't5', condition: '' })).text.split('\n')[0], 'Transition C → A: condition set: (empty: always)');
+  // refused
+  for (const [args, why] of [[{ transition: 't1' }, 'give either condition or otherwise'], [{ transition: 't1', condition: 'a', otherwise: true }, 'give either condition or otherwise'],
+    [{ transition: 't9', otherwise: true }, `no transition 't9' in ${F}`], [{ path: 'src/el.v', transition: 't1', otherwise: true }, 'src/el.v: not a state diagram (.fsm.json)']]) {
+    const r = await set(args);
+    assert.deepEqual([r.isError, r.text], [true, `set_fsm_condition: ${why}`]);
+  }
 });

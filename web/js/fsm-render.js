@@ -7,7 +7,7 @@
 // editor's CSS reads with the default look's values as their fallbacks (a colour not chosen: the theme's; the
 // selection, a problem and the simulation still drawn over it), its texts' inline; an arc's colour, its arrowhead's
 // too (a marker per colour).
-import { fsmEncoding, outputLines, stepFsm } from '/core/fsm.js';
+import { drawnAsElse, fsmEncoding, outputLines, stepFsm } from '/core/fsm.js';
 import { styleOf, textCss } from '/core/fsm-style.js';
 import { sv, radiusOf, stateTexts, textW } from './fsm-editor.js';
 import { drawnCond } from './notation.js';
@@ -90,9 +90,9 @@ export function mountRender(ctx) {
     return { d: `M${P0.x},${P0.y} Q${C.x},${C.y} ${P2.x},${P2.y}`, apex, lab, anchor, n, mid, out: { x: n.x * side, y: n.y * side } };
   }
   // (a transition's label: its condition, in the notation chosen (#4417), then " /" and its outputs one per line; none:
-  // the condition alone)
-  const labelLines = (t) => {
-    const c = t.cond ? drawnCond(t.cond) : '', o = outputLines(t.outputs);
+  // the condition alone; its state's otherwise: else, in italics, whatever its spelling, #4489)
+  const labelLines = (M, t) => {
+    const c = drawnAsElse(M, t) ? 'else' : t.cond ? drawnCond(t.cond) : '', o = outputLines(t.outputs);
     return o.length ? [`${c || '1'} /`, ...o] : c ? [c] : [];
   };
 
@@ -114,7 +114,7 @@ export function mountRender(ctx) {
       const marker = isSel ? `${uid}-arr-sel` : hot === t.id ? `${uid}-arr-hot` : st.stroke && !bad.get(t.id) ? markerOf(st.stroke) : `${uid}-arr`;
       const grp = sv('g', { class: cls, 'data-trans': t.id, style: vars([['--fsm-edge', st.stroke], ['--fsm-ew', st.strokeWidth], ['--fsm-dash', dashOf(st)], ['--fsm-cap', st.dash === 'dotted' ? 'round' : null]]) });
       grp.append(sv('path', { class: 'fsm-hit', d: g.d }), sv('path', { class: 'fsm-edge-line', d: g.d, 'marker-end': `url(#${marker})` }));
-      const lines = labelLines(t);
+      const lines = labelLines(M, t), isElse = drawnAsElse(M, t);
       if (lines.length || isSel) {
         const shown = lines.length ? lines : ['…'];
         const w = Math.max(14, ...shown.map((l) => textW(l) * k)) + 8, hgt = 14 * k * shown.length + 4;
@@ -122,7 +122,7 @@ export function mountRender(ctx) {
         // (several lines: beside the arrow, centred on its place; above or below it, growing away from it)
         const y0 = shown.length === 1 || g.anchor !== 'middle' ? g.lab.y - hgt / 2 : g.out.y < 0 ? g.lab.y + 9 - hgt : g.lab.y - 9;
         const text = sv('text', { class: `fsm-label${lines.length ? '' : ' empty'}`, x: g.lab.x, y: y0 + 13 * k, 'text-anchor': g.anchor, style: (lines.length && textCss(st, 12)) || null });
-        shown.forEach((l, i) => text.append(sv('tspan', { x: g.lab.x, dy: i ? 14 * k : 0 }, l)));
+        shown.forEach((l, i) => text.append(sv('tspan', { x: g.lab.x, dy: i ? 14 * k : 0, class: !i && isElse ? 'fsm-else' : null }, l)));
         grp.append(sv('rect', { class: 'fsm-label-bg', x: x0, y: y0, width: w, height: hgt, rx: 4 }), text);
       }
       gEdges.append(grp);

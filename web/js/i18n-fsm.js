@@ -27,6 +27,8 @@ export const FSM_PT = {
   'Drag the title bar to move the panel below or to the left of the drawing': 'Arraste a barra de título para mover o painel para baixo ou para a esquerda do desenho',
   // selection
   'State (Moore outputs inside)': 'Estado (saídas de Moore lá dentro)', 'Initial (reset) state': 'Estado inicial (de reset)',
+  'Else (every other case)': 'Senão (todos os outros casos)',
+  'The state\'s otherwise (StateCAD\'s @ELSE): taken in every case its other transitions are not; its condition is else': 'O "caso contrário" do estado (o @ELSE do StateCAD): a transição tomada em todos os casos em que as outras não o são; a sua condição é else',
   'Name': 'Nome', 'Outputs (Moore)': 'Saídas (Moore)',
   'The value of each output while in this state (empty: its default value).': 'O valor de cada saída neste estado (vazio: o seu valor por omissão).',
   'The machine has no outputs': 'A máquina não tem saídas',
@@ -104,7 +106,7 @@ export const FSM_PT_PATTERNS = [
   [/^Output '(.*)': the default value (.*) does not fit in (\d+) bit\(s\)$/, "Saída '$1': o valor por omissão $2 não cabe em $3 bit(s)"],
   [/^The diagram has no states: double-click the drawing to add one$/, 'O diagrama não tem estados: faça duplo clique no desenho para acrescentar um'],
   [/^Two states are named '(.*)' \(letter case does not count\)$/, "Há dois estados chamados '$1' (maiúsculas e minúsculas não contam)"],
-  [/^State (.+) has (\d+) otherwise transitions \(else, default, true, 1 or no condition\), to (.+); a state has one at most$/, 'O estado $1 tem $2 transições "caso contrário" (else, default, true, 1 ou sem condição), para $3; um estado tem uma, no máximo'],
+  [/^State (.+) has (\d+) otherwise transitions \(else, @else, default, others, otherwise, true, 1 or no condition\), to (.+); a state has one at most$/, 'O estado $1 tem $2 transições "caso contrário" (else, @else, default, others, otherwise, true, 1 ou sem condição), para $3; um estado tem uma, no máximo'],
   [/^The initial \(reset\) state is not set$/, 'O estado inicial (de reset) não está definido'],
   [/^(State .+|Transition .+ → .+): '(.*)' is not an output$/, (m, w, o) => `${where(w)}: '${o}' não é uma saída`],
   [/^(State .+|Transition .+ → .+): the value '(.*)' of (\S+) must be a constant \(e\.g\. 0, 1, 4'b1010, 5\)$/, (m, w, v, o) => `${where(w)}: o valor '${v}' de ${o} tem de ser uma constante (p.ex. 0, 1, 4'b1010, 5)`],
