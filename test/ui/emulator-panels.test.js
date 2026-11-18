@@ -88,7 +88,8 @@ uiTest('#2666 #2713 the Board Emulator: Watch and notes in a side panel at the r
   await page.setViewport(760, 900);
   await page.waitFor((d) => document.querySelector(`${d} .emu`).clientWidth < 900, [DOC], { what: 'a narrow emulator' });
   assert.deepEqual([await btnShown(), await sideShown()], [true, false]);
-  assert.equal(await page.eval((d) => { const e = document.querySelector(`${d} .emu`); return Math.abs(e.querySelector('.emu-main').getBoundingClientRect().right - e.getBoundingClientRect().right) < 2; }, DOC), true, 'the board\'s area the whole width');
+  // (waited for: the side panel's place given back once the layout settles, a frame or more on a slow runner, #4473)
+  await page.waitFor((d) => { const e = document.querySelector(`${d} .emu`); return Math.abs(e.querySelector('.emu-main').getBoundingClientRect().right - e.getBoundingClientRect().right) < 2; }, [DOC], { what: 'the board\'s area the whole width' });
   await page.eval((b) => document.querySelector(b).click(), propsBtn);   // (the ISE style's drawer may be over it)
   assert.equal(await sideShown(), true);
   assert.deepEqual(await page.eval((d) => {
