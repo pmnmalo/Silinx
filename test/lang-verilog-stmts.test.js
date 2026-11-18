@@ -3,7 +3,7 @@
 // (IEEE 1364-2005 §3–§12, §17, §19).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { out, sim, vinit, vlog, diags } from './lang-util.js';
+import { out, sim, vinit, vlog, diags, warningsOf } from './lang-util.js';
 
 test('reg / wire / integer defaults: reg and integer start as x, an undriven wire is z', () => {
   const r = out(vinit(`#1 $display("%b %b %0d %b", r, w, i, t);`, `reg [3:0] r; wire [3:0] w; integer i; tri t;`));
@@ -313,6 +313,50 @@ module tb; reg [3:0] a = 4'b0101; wire [3:0] y; wire z;
   initial #1 $display("%b %b", y, z);
 endmodule`);
   assert.deepEqual(r, ['1010 1']);
+});
+
+// Regression (#4360): an inout port connected to a part of a signal (a bit of an input port) was connected one way
+// only, from the port to the actual: the child's driver, even Z, overrode the parent's bit and the child never read it
+test('an inout port connected to a bit of a signal: both ways, resolved (Verilog and VHDL parents and children, #4360)', () => {
+  const pads = `library ieee; use ieee.std_logic_1164.all;
+entity pad is port (p : inout std_logic; o : out std_logic); end;
+architecture a of pad is begin p <= 'Z'; o <= p; end;
+library ieee; use ieee.std_logic_1164.all;
+entity drv is port (p : inout std_logic; o : out std_logic); end;
+architecture a of drv is begin p <= '1', 'Z' after 7 ns; o <= p; end;
+library ieee; use ieee.std_logic_1164.all;
+entity tbv is end;
+architecture a of tbv is
+  signal v : std_logic_vector(1 downto 0) := "LZ"; signal o : std_logic;
+begin
+  u: entity work.drv port map (p => v(1), o => o);
+  process begin
+    wait for 1 ns; report to_string(v) & " " & std_logic'image(o); v(0) <= '0';
+    wait for 9 ns; report to_string(v) & " " & std_logic'image(o); wait;
+  end process;
+end;`;
+  const vlogTop = `module top(input [1:0] a, input c, output y, output z, output [1:0] b, output yb, output yv);
+  pad u (.p(a[1]), .o(y));   // a bit of an input port
+  pad w (.p(c), .o(z));      // a whole scalar
+  drv d (.p(b[0]), .o(yb));  // a bit of an output the pad drives
+  vpad x (.p(a[0]), .o(yv)); // a Verilog child
+  assign b[1] = 1'b0;
+endmodule
+module vpad(inout p, output o); assign p = 1'bz; assign o = p; endmodule
+module tb; reg [1:0] a = 2'b10; reg c = 1; wire y, z, yb, yv; wire [1:0] b;
+  top t(.a(a), .c(c), .y(y), .z(z), .b(b), .yb(yb), .yv(yv));
+  initial begin
+    #5 $display("a=%b y=%b z=%b t.a=%b b=%b yb=%b yv=%b", a, y, z, t.a, b, yb, yv);
+    a = 2'b01; c = 0;
+    #5 $display("a=%b y=%b z=%b t.a=%b b=%b yb=%b yv=%b", a, y, z, t.a, b, yb, yv);
+  end
+endmodule`;
+  const r = sim({ 't.v': vlogTop, 'p.vhd': pads });
+  assert.deepEqual(warningsOf(r), []);
+  assert.deepEqual(r.out, ['a=10 y=1 z=1 t.a=10 b=01 yb=1 yv=0', 'a=01 y=0 z=0 t.a=01 b=0z yb=z yv=1']);
+  const rv = sim({ 'p.vhd': pads }, 'tbv');
+  assert.deepEqual(warningsOf(rv), []);
+  assert.deepEqual(rv.out, ["1Z '1'", "Z0 'Z'"]);
 });
 
 test('generate: for loops with genvar (named blocks, hierarchical names), if / case generate', () => {

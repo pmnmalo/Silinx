@@ -7,6 +7,7 @@ import * as V from './values.js';
 import { ITERATIONS_MESSAGE, MAX_ELEMENTS, MAX_ITERATIONS } from './util.js';
 import { mathReal, textFile, textio } from './interp-textio.js';
 import { formatDisplay, imageOf, strToVal, toStr } from './interp-format.js';
+import { resolveExcept } from './simulator.js';
 export { formatDisplay, formatTime, imageOf, strToVal, toStr } from './interp-format.js';
 export { mathReal } from './interp-textio.js';
 
@@ -80,6 +81,7 @@ export function evalE(n, ctx) {
       const v = n.sig.val;
       return n.t !== n.sig.t && v && v.s !== undefined && !!v.s !== !!n.t.s && n.t.kind === 'logic' ? V.withSign(v, !!n.t.s) : v;
     }
+    case 'resx': return resolveExcept(n.sig, n.except);   // (an inout's glue, #4360)
     case 'loc': return locFrame(n, ctx)[n.i];
     // a variable of another process's named block (dut.blk.v, #12): its current value in that
     // process's frame (its initial value before the process has run)
