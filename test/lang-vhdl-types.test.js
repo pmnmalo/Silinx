@@ -319,6 +319,26 @@ test('unconstrained parameters take each call\'s index range: vectors and arrays
   assert.deepEqual(r, ['51 6 51', '15 7 0 15']);
 });
 
+// Regression (#4411): a procedure's aggregate actual was bound with no type (a function's took its
+// parameter's), so indexing the parameter stopped the simulation with an internal error
+test('an aggregate actual of a procedure\'s or a function\'s array parameter takes the parameter\'s type (#4411)', () => {
+  const r = outW(vproc(`
+    wait for 10 ns;
+    p((3, 4));
+    p(expected => (1 => 6, 0 => 5));
+    report integer'image(f((7, 8)));
+    q(("01", "10"));`, `
+    procedure p(expected : int_array) is
+    begin
+      for k in 0 to 1 loop report integer'image(expected(k)); end loop;
+    end procedure;
+    procedure q(v : vec_array) is begin report to_string(v(1)) & to_string(v(0)); end procedure;`,
+  `type int_array is array (0 to 1) of natural;
+   type vec_array is array (0 to 1) of std_logic_vector(1 downto 0);
+   function f(a : int_array) return integer is begin return a(0) * 10 + a(1); end function;`));
+  assert.deepEqual(r, ['3', '4', '5', '6', '78', '1001']);
+});
+
 test('null ranges: a generic entity with an optional port of N = 0 bits (#15)', () => {
   const r = outW(vhd(`
   u : entity work.opt generic map (N => 0) port map (x => none, a => "1010", y => y);

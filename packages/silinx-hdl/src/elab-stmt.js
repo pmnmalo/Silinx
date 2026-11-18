@@ -1,7 +1,7 @@
 // Silinx elaboration - statements (#405: out of core/elaborate.js): sequential statements bound (assignments, if,
 // case, loops, waits, calls of procedures and tasks, their triggers), VHDL's delay mechanisms and dynamic ranges.
 import { SimError, bitpos } from './interp.js';
-import { TEXTIO_PROCS, bindExpr, bindTextio, boundFunction, checkCallNesting, hierResolve, notDeclared, pickOverload } from './elab-expr.js';
+import { TEXTIO_PROCS, aggregateParamType, bindExpr, bindTextio, boundFunction, checkCallNesting, hierResolve, notDeclared, pickOverload } from './elab-expr.js';
 import * as V from './values.js';
 import { walkItems } from './util.js';
 import {
@@ -278,7 +278,7 @@ function bindCallStmt(E, s, loc) {
     const p = decl.params[k];
     if (!p) throw new ElabError(`too many arguments for '${name}'`, loc);
     if (p.dir === 'out') return null;
-    return bindExpr(E, a, null, loc);
+    return bindExpr(E, a, aggregateParamType(entry, k, a), loc);   // an aggregate: its parameter's type (#4411)
   });
   // VHDL `signal` parameters refer to the actual signal (assignments inside the procedure drive
   // it at once, across waits), instead of being copied in and out

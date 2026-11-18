@@ -293,6 +293,15 @@ export function pickOverload(E, entry, rawArgs, loc) {
   return entry.alts.find(a => fits(a, true)) || entry.alts.find(a => fits(a, false)) || entry;
 }
 
+// The expected type of a subprogram's k-th actual when it is an aggregate: its parameter's type,
+// if constrained (a function's or a procedure's, #4411); null otherwise
+export function aggregateParamType(entry, k, a) {
+  if (a?.op !== 'aggregate') return null;
+  let at = null;
+  try { at = elabType(entry.E, entry.decl.params[k].type, true); } catch { at = null; }
+  return at && !at.unconstrained ? at : null;
+}
+
 export function bindCall(E, entry, rawArgs, name, loc) {
   entry = pickOverload(E, entry, rawArgs, loc);
   const decl = entry.decl;
@@ -310,9 +319,7 @@ export function bindCall(E, entry, rawArgs, name, loc) {
   argExprs = argExprs.map((a, k) => a || decl.params[k].default || null);   // VHDL default parameter values
   const args = argExprs.map((a, k) => {
     if (!a) throw new ElabError(`missing argument '${decl.params[k].name}' in call to '${name}'`, loc);
-    let at = null;   // an aggregate actual takes the type of its parameter
-    if (a.op === 'aggregate') { try { at = elabType(entry.E, decl.params[k].type, true); } catch { at = null; } }
-    const n = strVec(E, bindExpr(E, a, at && !at.unconstrained ? at : null, loc));
+    const n = strVec(E, bindExpr(E, a, aggregateParamType(entry, k, a), loc));
     // a std_logic string literal (kept as a string in report messages) for a vector parameter
     const pt = decl.params[k].type;
     if (E.lang === 'vhdl' && n.k === 'str' && pt && (pt.kind === 'logic' || (pt.kind === 'named' && stdTypeName(pt.name)?.kind === 'logic'))) return strAsLogic(n, { t: { kind: 'logic' } });
