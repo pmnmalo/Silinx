@@ -1,6 +1,8 @@
 // Silinx toolchain - the Gowin's constraints, CST (#2303), as nextpnr-himbaechel-gowin reads them: a format of constraints.js's
 // model.
 //   IO_LOC "led[0]" 10;                                        a port's pin
+//   IO_LOC "p" 62,61;                                          a differential pair's pins, on its P port: its N port's
+//                                                               the second (pairLoc; open-flow-gowin.js gives it the N port, #4351)
 //   IO_PORT "led[0]" IO_TYPE=LVCMOS18 PULL_MODE=NONE DRIVE=8;  its I/O standard, pull, drive and the rest
 //   // create_clock -name clk -period 37.037 [get_ports {clk}]   a clock's period: Silinx's, in a comment (a CST has none:
 //                                                               Gowin's tools read it from an SDC), given to nextpnr in an SDC (gowin-clocks.js)
@@ -37,9 +39,9 @@ function readCst(text) {
       if (!m) fail(notCst(part.split(/\s+/)[0]));   // (a statement with no keyword, #3670)
       const verb = m[1].toUpperCase();
       if (verb === 'IO_LOC') {
-        const l = /^"([^"]+)"\s+([^\s,]+)(?:\s*,\s*\S+)?$/.exec(m[2]);
+        const l = /^"([^"]+)"\s+([^\s,]+)(?:\s*,\s*(\S+))?$/.exec(m[2]);
         if (!l) fail('IO_LOC needs "<port>" and its pin');
-        set(l[1], { loc: l[2] });
+        set(l[1], { loc: l[2], ...(l[3] && { pairLoc: l[3] }) });
       } else if (verb === 'IO_PORT') {
         const l = /^"([^"]+)"\s*(.*)$/s.exec(m[2]);
         if (!l) fail('IO_PORT needs "<port>" and its attributes');
@@ -66,7 +68,7 @@ const q = s => `"${s}"`;
 function writeCst({ assignments = {}, clocks = [] }) {
   const lines = [];
   for (const [net, a] of Object.entries(assignments)) {
-    if (a?.loc) lines.push(`IO_LOC ${q(net)} ${a.loc};`);
+    if (a?.loc) lines.push(`IO_LOC ${q(net)} ${a.loc}${a.pairLoc ? `,${a.pairLoc}` : ''};`);
     const attrs = [a?.iostandard && `IO_TYPE=${a.iostandard}`, a?.pull !== undefined && `PULL_MODE=${PULL_MODE[a.pull] || 'NONE'}`, a?.drive && `DRIVE=${a.drive}`,
       ...Object.entries(a?.cst || {}).map(([k, v]) => `${k}=${v}`)].filter(Boolean);
     if (attrs.length) lines.push(`IO_PORT ${q(net)} ${attrs.join(' ')};`);
