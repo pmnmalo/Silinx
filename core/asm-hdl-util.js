@@ -3,6 +3,7 @@
 // Isomorphic ES module: no DOM and no Node APIs.
 
 import { clone } from './util.js';
+import { clog2 } from './asm-width.js';
 export { clone };   // (core/util.js's)
 // ---------------------------------------------------------------------------------------
 // Small helpers
@@ -72,6 +73,11 @@ export function evalInt(e, consts) {
         case '+': return a + b; case '-': return a - b; case '*': return a * b;
         case '/': return b ? a / b : null; case '**': return a ** b;
       }
+    }
+    case 'call': case 'apply': {   // the generator's clog2 (VHDL's apply, #4378: a register's width given by generics)
+      if (String(e.name).toLowerCase() !== 'clog2' || e.args?.length !== 1) return null;
+      const a = evalInt(e.args[0], consts);
+      return a == null ? null : BigInt(clog2(Number(a)));
     }
   }
   return null;

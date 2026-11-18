@@ -84,14 +84,14 @@ uiTest('#3891 a design project\'s editors: no HDL in the schematic\'s, the state
   assert.deepEqual(ticks, ['The logic of this output: its module and its schematic in this form']);
   // the ASM chart's parameters
   await open(page, 'src/seq.asm.json', 'asm:src/seq.asm.json');
-  assert.ok((await texts(page)).includes('Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Parameters are integers, usable in expressions (e.g. cnt == N - 1).'));
+  assert.ok((await texts(page)).includes('Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Parameters are integers, usable in expressions (e.g. cnt == N - 1) and in the registers\' widths (e.g. clog2(N)).'));
 
   // in Portuguese
   await page.eval(() => Promise.all(window.Silinx.docs.filter((d) => d.id === 'asm:src/seq.asm.json').map((d) => window.SilinxApp.closeDoc(d))));
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
     await open(page, 'src/seq.asm.json', 'asm:src/seq.asm.json');
-    await page.waitFor((d) => document.querySelector(d).textContent.includes('Os parâmetros são inteiros, usáveis em expressões (p. ex. cnt == N - 1).'), [D], { what: 'the ASM chart\'s hint in Portuguese' });
+    await page.waitFor((d) => document.querySelector(d).textContent.includes('Os parâmetros são inteiros, usáveis em expressões (p. ex. cnt == N - 1) e nas larguras dos registos (p. ex. clog2(N)).'), [D], { what: 'the ASM chart\'s hint in Portuguese' });
     assert.deepEqual(await hdlTexts(page), []);
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));

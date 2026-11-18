@@ -1,7 +1,8 @@
 // UI: the ASM chart editor's inspector (web/js/asm-inspector.js, #405: out of mountAsmEditor), mounted alone in the
 // page with an editor of its own (the model of a new chart) whose actions are recorded: nothing, several boxes, a
 // state (its name, made initial), a decision (its exits swapped), a case and its exits, a connection; the machine's
-// panel (its name, the reset, an input added and removed, a register list made and emptied); a model replaced (Undo).
+// panel (its name, the reset, an input added and removed, a register list made and emptied); a model replaced (Undo);
+// a register's width an expression of the generics (#4378).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
@@ -129,4 +130,43 @@ uiTest('#405 ASM inspector: the machine (name, reset, an input added and removed
   assert.equal(out.noRegs, false);
   assert.deepEqual(out.commits, ['m-name', 'm-sync', 'm-init', 'ins-add', 'p-del', 'regs-add', 'r-del']);
   assert.deepEqual(out.replaced, ['other', 'START']);
+});
+
+uiTest('#4378 ASM inspector: a register\'s width, a number or an expression of the generics (in Portuguese too)', E, async (page) => {
+  await page.eval(MOUNT);
+  const out = await page.eval(() => {
+    const { ins, commits, machineBody: B, set, M } = window.__i;
+    ins.renderMachine();
+    [...B.querySelectorAll('.asm-ports-head button')][2].click();   // + register
+    const w = () => B.querySelector('table.regs tbody tr:last-child input.w');
+    const r = { field: [w().type, w().value, w().title] };
+    set(w(), ' clog2(N) ');
+    r.expr = M().registers[0].width;
+    set(w(), '12');
+    r.num = M().registers[0].width;
+    set(w(), 'N + 1');
+    ins.renderMachine();
+    r.shown = [w().value, M().registers[0].width];
+    r.commits = commits.splice(0);
+    r.hint = [...B.querySelectorAll('.asm-fhint')].pop().textContent;
+    return r;
+  });
+  assert.deepEqual(out.field, ['text', '8', 'Width: a number (1..256) or an expression of the generics, e.g. clog2(N)']);
+  assert.equal(out.expr, 'clog2(N)');
+  assert.equal(out.num, 12);
+  assert.deepEqual(out.shown, ['N + 1', 'N + 1']);
+  assert.deepEqual(out.commits, ['regs-add', 'r-w:0', 'r-w:0', 'r-w:0']);
+  assert.equal(out.hint, 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. '
+    + 'Generics are integer VHDL generics / Verilog parameters, usable in expressions (e.g. cnt == N - 1) and in the registers\' widths (e.g. clog2(N)).');
+  // in Portuguese
+  const setLang = (l) => page.eval(async (x) => { (await import('/js/i18n.js')).setLanguage(x); }, l);
+  await setLang('pt');
+  const pt = await page.eval(() => {
+    const B = window.__i.machineBody;
+    return [B.querySelector('table.regs tbody tr:last-child input.w').title, [...B.querySelectorAll('.asm-fhint')].pop().textContent];
+  });
+  await setLang('en');
+  assert.deepEqual(pt, ['Largura: um número (1..256) ou uma expressão dos genéricos, p. ex. clog2(N)',
+    'Os registos são internos: atribua-os como as saídas registadas (valor seguinte no flanco do relógio, mantêm-se nos outros casos) e leia-os em qualquer lado. '
+    + 'Os genéricos são generics VHDL / parameters Verilog inteiros, utilizáveis em expressões (p.ex. cnt == N - 1) e nas larguras dos registos (p.ex. clog2(N)).']);
 });

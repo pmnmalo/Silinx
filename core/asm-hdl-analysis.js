@@ -46,7 +46,7 @@ export function parseHeader(src, lang) {
     lines.push(raw.slice(c.length));
   }
   if (!lines.some((l) => /^\s*Generator\s*:\s*Silinx ASM editor/.test(l))) return null;
-  const h = { name: null, description: null, encoding: null, states: new Map(), always: new Map(), regInit: new Map() };
+  const h = { name: null, description: null, encoding: null, states: new Map(), always: new Map(), regInit: new Map(), regWidth: new Map() };
   const blk = (name) => {
     if (!h.always.has(name)) h.always.set(name, { actions: [], conds: [], mealy: [] });
     return h.always.get(name);
@@ -93,7 +93,10 @@ export function parseHeader(src, lang) {
       const arrow = rest.lastIndexOf(' -> ');
       addConds(s, arrow >= 0 ? rest.slice(0, arrow) : rest);
     } else if (section === 'regs') {
-      if ((m = /^ {3}(\S+)\s*: \d+ bits?, reset (.+)$/.exec(l))) h.regInit.set(m[1], m[2].trim());
+      if ((m = /^ {3}(\S+)\s*: (.+?) bits?, reset (.+)$/.exec(l))) {
+        h.regInit.set(m[1], m[3].trim());
+        if (!/^\d+$/.test(m[2])) h.regWidth.set(m[1], m[2].trim());   // a width given by generics (#4378)
+      }
     } else if (section === 'every') {
       if ((m = /^ {3}(\S+)\s+Actions: (.*)$/.exec(l))) { blk(m[1]).actions = m[2].split(', ').map((x) => x.trim()).filter(Boolean); continue; }
       m = /^ {3}(\S+)\s+: (.*)$/.exec(l);
@@ -232,6 +235,7 @@ export function analyzeModule(mod, src, lang) {
     if (d.kind === 'const') addConst(d.name, d.type, d.value, d.loc);
     else if (d.kind === 'type') types.set(d.name, d.type);
     else if (d.kind === 'signal') signals.set(d.name, d);
+    else if (d.kind === 'function' && String(d.name).toLowerCase() === 'clog2') continue;   // the registers' widths' (#4378)
     else if (d.kind === 'function' || d.kind === 'task') fail(`${d.kind} '${orig(d.name)}'${atLine(d.loc)} is not part of the state machine`);
   }
   const widthOfType = (t, what, loc) => {
@@ -434,7 +438,7 @@ export function analyzeModule(mod, src, lang) {
       if (def == null) fail(`the reset value of '${orig(R)}'${atLine(rv.loc)} must be a constant`);
     }
     const nx = nextOfReg.get(R) || null;
-    outInfo.set(O, { registered: true, internal, default: def, width, reg: R, next: nx });
+    outInfo.set(O, { registered: true, internal, default: def, width, reg: R, next: nx, ...(internal ? { range: signals.get(R).type?.range } : {}) });
     if (internal) registers.push(R);
     roles.set(R, { kind: 'regcur', out: O });
     if (O !== R) roles.set(O, { kind: 'regport', out: O });

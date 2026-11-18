@@ -259,7 +259,8 @@ test('VHDL: generics, registers, synchronisers, every-cycle blocks before the st
   assert.match(code, /entity speed_ctrl is\n {4}generic \(\n {8}DEBOUNCE : integer := 3\n {4}\);\n {4}port \(/);
   assert.match(code, /-- Generics {4}: DEBOUNCE = 3/);
   assert.match(code, /-- Every cycle \(in parallel with the states; the state's assignments take priority\):\n-- {3}debounce_faster : \(faster != deb_f\) && tick && \(cnt_f == DEBOUNCE - 1\) {2}\[cnt_f = 0, deb_f = faster\]/);
-  assert.match(code, /signal cnt_f, cnt_f_next : std_logic_vector\(1 downto 0\) := "00";/);
+  // (its debounce counters' width given by the generic, #4378)
+  assert.match(code, /signal cnt_f, cnt_f_next : std_logic_vector\(clog2\(DEBOUNCE\) - 1 downto 0\) := \(others => '0'\);/);
   // registers power up with their reset values (no reset needed after configuration)
   assert.match(code, /signal state_reg  : state_t := S_IDLE;/);
   assert.match(code, /signal level, level_next : std_logic_vector\(2 downto 0\) := "011";/);
@@ -272,13 +273,13 @@ test('VHDL: generics, registers, synchronisers, every-cycle blocks before the st
   const out = code.slice(code.indexOf('output_logic : process'));
   assert.ok(out.indexOf('-- every cycle: divider') < out.indexOf('case state_reg is'), 'every-cycle blocks come before the state logic');
   assert.match(out, /output_logic : process \(state_reg, faster_sync, slower_sync, tick, step_reg, cnt_f, deb_f, cnt_s, deb_s, level, ticks\)/);
-  assert.doesNotMatch(code, /DEBOUNCE[,)]/); // a generic is not a signal: not in sensitivity lists
+  assert.doesNotMatch(code, /process \([^)]*DEBOUNCE/); // a generic is not a signal: not in sensitivity lists
 });
 
 test('Verilog: parameters, registers, synchronisers, every-cycle blocks before the state logic', () => {
   const code = generate(speedCtrl(), 'verilog').code;
   assert.match(code, /module speed_ctrl #\(\n {4}parameter DEBOUNCE = 3\n\) \(/);
-  assert.match(code, /reg \[1:0\] cnt_f = 2'd0, cnt_f_next;/);
+  assert.match(code, /reg \[clog2\(DEBOUNCE\)-1:0\] cnt_f = 0, cnt_f_next;/);
   assert.match(code, /reg \[2:0\] level = 3'd3, level_next;/);
   assert.match(code, /reg state_reg = S_IDLE;/);
   assert.match(code, /reg faster_meta = 1'b0, faster_sync = 1'b0;/);

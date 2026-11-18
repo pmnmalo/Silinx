@@ -42,7 +42,7 @@
   "registers": [
     {
       "name": "cnt_f",
-      "width": 2,
+      "width": "clog2(DEBOUNCE)",
       "init": "0"
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "name": "cnt_s",
-      "width": 2,
+      "width": "clog2(DEBOUNCE)",
       "init": "0"
     },
     {
