@@ -22,7 +22,10 @@ const ok = async (name, args) => { const r = await call(name, args); assert.equa
 test('#4378 MCP: blinky\'s chart with a width expression, written, checked, simulated; its HDL made again', async () => {
   await ok('new_project_from_example', { name: 'b', example: 'blinky' });
   const chart = JSON.parse((await ok('read_file', { project: 'b', path: 'src/speed_ctrl.asm.json' })).text);
-  assert.deepEqual(chart.registers.filter((r) => r.name.startsWith('cnt_')).map((r) => r.width), ['clog2(DEBOUNCE)', 'clog2(DEBOUNCE)']);
+  // its debounce counters sized by the generic
+  for (const r of chart.registers) if (r.name.startsWith('cnt_')) r.width = 'clog2(DEBOUNCE)';
+  await ok('write_file', { project: 'b', path: 'src/speed_ctrl.asm.json', text: JSON.stringify(chart, null, 2) });
+  assert.match((await ok('read_file', { project: 'b', path: 'src/speed_ctrl.vhd' })).text, /signal cnt_s, cnt_s_next : std_logic_vector\(clog2\(DEBOUNCE\) - 1 downto 0\)/);
   assert.deepEqual((await ok('check_drawing', { project: 'b', file: 'src/speed_ctrl.asm.json' })).data, { project: 'b', file: 'src/speed_ctrl.asm.json', ok: true, errors: [], warnings: [] });
 
   // another expression: the HDL file follows the chart

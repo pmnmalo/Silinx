@@ -41,9 +41,9 @@
 -- current state/path at the clock edge and hold it otherwise.
 --
 -- Registers (internal; load the value assigned in this cycle at the clock edge, hold otherwise):
---   cnt_f : clog2(DEBOUNCE) bits, reset 0
+--   cnt_f : 2 bits, reset 0
 --   deb_f : 1 bit, reset 0
---   cnt_s : clog2(DEBOUNCE) bits, reset 0
+--   cnt_s : 2 bits, reset 0
 --   deb_s : 1 bit, reset 0
 --   level : 3 bits, reset 5
 --   ticks : 7 bits, reset 0
@@ -69,21 +69,6 @@ end entity speed_ctrl;
 
 architecture rtl of speed_ctrl is
 
-    -- the bits that count 0 .. n-1 (at least 1): the registers' widths
-    function clog2 (n : integer) return integer is
-        variable x : integer := n - 1;
-        variable r : integer := 0;
-    begin
-        for i in 1 to 31 loop
-            if x > 0 then
-                x := x / 2;
-                r := r + 1;
-            end if;
-        end loop;
-        if r < 1 then return 1; end if;
-        return r;
-    end function;
-
     -- state encoding
     subtype state_t is std_logic_vector(0 downto 0);
     constant S_IDLE         : state_t := "0";
@@ -99,9 +84,9 @@ architecture rtl of speed_ctrl is
     signal step_reg, step_next : std_logic := '0';
 
     -- internal registers
-    signal cnt_f, cnt_f_next : std_logic_vector(clog2(DEBOUNCE) - 1 downto 0) := (others => '0');
+    signal cnt_f, cnt_f_next : std_logic_vector(1 downto 0) := "00";
     signal deb_f, deb_f_next : std_logic := '0';
-    signal cnt_s, cnt_s_next : std_logic_vector(clog2(DEBOUNCE) - 1 downto 0) := (others => '0');
+    signal cnt_s, cnt_s_next : std_logic_vector(1 downto 0) := "00";
     signal deb_s, deb_s_next : std_logic := '0';
     signal level, level_next : std_logic_vector(2 downto 0) := "101";
     signal ticks, ticks_next : std_logic_vector(6 downto 0) := "0000000";
@@ -119,9 +104,9 @@ begin
             if rst = '1' then
                 state_reg <= S_IDLE;
                 step_reg <= '0';
-                cnt_f <= (others => '0');
+                cnt_f <= "00";
                 deb_f <= '0';
-                cnt_s <= (others => '0');
+                cnt_s <= "00";
                 deb_s <= '0';
                 level <= "101";
                 ticks <= "0000000";
@@ -185,27 +170,27 @@ begin
         if faster_sync /= deb_f then
             if tick = '1' then
                 if unsigned(cnt_f) = (DEBOUNCE - 1) then
-                    cnt_f_next <= (others => '0');
+                    cnt_f_next <= "00";
                     deb_f_next <= faster_sync;
                 else
                     cnt_f_next <= std_logic_vector(unsigned(cnt_f) + 1);
                 end if;
             end if;
         else
-            cnt_f_next <= (others => '0');
+            cnt_f_next <= "00";
         end if;
         -- every cycle: debounce_slower
         if slower_sync /= deb_s then
             if tick = '1' then
                 if unsigned(cnt_s) = (DEBOUNCE - 1) then
-                    cnt_s_next <= (others => '0');
+                    cnt_s_next <= "00";
                     deb_s_next <= slower_sync;
                 else
                     cnt_s_next <= std_logic_vector(unsigned(cnt_s) + 1);
                 end if;
             end if;
         else
-            cnt_s_next <= (others => '0');
+            cnt_s_next <= "00";
         end if;
         -- every cycle: divider
         step_next <= '0';
