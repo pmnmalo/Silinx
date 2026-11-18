@@ -192,6 +192,15 @@ export const SHOTS = [
     },
   },
   {
+    name: 'emulator-basys3',
+    about: 'The Board Emulator: the clock example on a Basys 3 (7-series)',
+    async run(page, env, { lang }) {
+      await example(page, env, 'clock', 'clock', { board: 'basys3' });
+      await task(page, 'emu');
+      await emulate(page, lang);
+    },
+  },
+  {
     name: 'implement-nexys2', lang: ['en', 'pt'],
     about: 'Implementation with the Silinx toolchain: blinky on a Nexys2, its Design Summary',
     async run(page, env, { lang }) {

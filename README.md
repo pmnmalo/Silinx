@@ -13,12 +13,12 @@ board; and build them for a real one, with Silinx's own open toolchain. Nothing 
 
 <table>
 <tr>
-<td width="50%"><a href="docs/user/en/designing.md"><img src="docs/images/schematic.webp" alt="The schematic editor"></a>
+<td width="50%"><a href="docs/user/en/designing.md"><img src="docs/images/hdl.webp" alt="The HDL editor"></a>
 <b>Design your way.</b> VHDL and Verilog with live errors explained for beginners, schematics, state diagrams, ASM
 charts, Boolean algebra and Karnaugh maps, Petri nets, even C. Every drawing generates its HDL.</td>
-<td width="50%"><a href="docs/user/en/circuits.md"><img src="docs/images/circuit.webp" alt="A circuit on a breadboard"></a>
-<b>Wire real chips on a breadboard.</b> 74xx and 4000 integrated circuits, switches, LEDs and displays, simulated
-live as you click.</td>
+<td width="50%"><a href="docs/user/en/designing.md#schematics"><img src="docs/images/schematic.webp" alt="The schematic editor"></a>
+<b>Draw schematics, see them work.</b> Gates, multiplexers, adders, counters and your own modules as symbols, wired as
+in ISE's Schematic Editor and simulated live as you click; and any HDL design drawn as its RTL schematic.</td>
 </tr>
 <tr>
 <td><a href="docs/user/en/simulating.md"><img src="docs/images/simulation.webp" alt="The waveforms of a simulation"></a>
@@ -40,13 +40,15 @@ Portuguese; guided labs, automatic grading, live sharing and links for the slide
 ## Boards
 
 The Silinx toolchain builds for the **Basys2**, **Nexys2**, **Nexys3**, **Atlys**, **iCEBreaker**, **ULX3S**, **Tang Nano 9K**
-and **GateMate evaluation** boards (and the Basys 3 and Nexys A7, an experimental family) with nothing else installed; Xilinx ISE
-14.7 and AMD Vivado, which you install yourself, add the other boards. A design and simulation project needs no board
+and **GateMate evaluation** boards (and the 7-series' Basys 3 and Nexys A7, an experimental family) with nothing else installed; Xilinx
+ISE 14.7 and AMD Vivado, which you install yourself, add the other boards (Vivado: the Arty S7 and Zybo Z7 too). A design and simulation project needs no board
 at all. [Boards and toolchains](docs/user/en/boards.md)
 
-| Basys2 (Spartan-3E) | Nexys3 (Spartan-6) | iCEBreaker (iCE40) |
-|---|---|---|
-| ![The stopwatch example on an emulated Basys2](docs/images/emulator-basys2.webp) | ![The vga example on an emulated Nexys3, its VGA monitor](docs/images/emulator-nexys3.webp) | ![The clock example on an emulated iCEBreaker](docs/images/emulator-icebreaker.webp) |
+| Basys2 (Spartan-3E) | Nexys3 (Spartan-6) |
+|---|---|
+| ![The stopwatch example on an emulated Basys2](docs/images/emulator-basys2.webp) | ![The vga example on an emulated Nexys3, its VGA monitor](docs/images/emulator-nexys3.webp) |
+| **iCEBreaker (iCE40)** | **Basys 3 (7-series)** |
+| ![The clock example on an emulated iCEBreaker](docs/images/emulator-icebreaker.webp) | ![The clock example on an emulated Basys 3](docs/images/emulator-basys3.webp) |
 
 ## Try it
 
