@@ -127,7 +127,7 @@ uiTest('#3882 FSM drawing: a state\'s and a transition\'s outputs one per line, 
   assert.deepEqual([out.c.outs, out.c.name, out.c.r, out.c.inside], [[], 5, 34, true]);
   assert.deepEqual(out.t1.lines, ['x /', 'y=0', 'z=1']);
   assert.deepEqual(out.t2.lines, ['/x']);
-  assert.deepEqual(out.t3.lines, ['1 /', 'z=1']);
+  assert.deepEqual(out.t3.lines, ['else /', 'z=1']);   // (its state's otherwise, no condition: else, #4489)
   assert.deepEqual(out.t4.lines, ['x /', 'y=1', 'z=1']);
   for (const k of ['t1', 't2', 't3', 't4']) assert.deepEqual([k, out[k].covered, out[k].apexOut], [k, true, true]);
   assert.deepEqual([out.t1.height, out.t2.height, out.t3.height], [46, 18, 32]);

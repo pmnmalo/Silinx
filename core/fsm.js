@@ -225,6 +225,13 @@ export function transitionsFrom(m, id) {
   return [...ts.filter((t) => !isOtherwise(t.cond)), ...ts.filter((t) => isOtherwise(t.cond))];
 }
 
+/** Whether a transition is drawn as its state's otherwise, `else` in italics whatever its spelling (#4489): a word
+ *  (else, @else, default, others, otherwise) always; none, 1, true or always when its state has another transition. */
+export function drawnAsElse(m, t) {
+  if (isElseWord(t.cond)) return true;
+  return isOtherwise(t.cond) && m.transitions.some((x) => x !== t && x.from === t.from && stateById(m, x.to));
+}
+
 /** States in code order (the initial state first) with their codes: [{ id, name, constName, index, width, code, bits }]. */
 export function fsmEncoding(model) {
   const m = model.kind === 'fsm' && model.states ? model : normalizeFsm(model);
@@ -312,8 +319,14 @@ export function condNames(ast, out = new Set()) {
 }
 
 /** Whether a transition's condition is the state's "otherwise": none, 1, true, always, else, default (#3907; the
- *  drawing keeps the word as it was typed), taken when no other transition is. */
-export const isOtherwise = (text) => /^\s*(1|true|always|else|default)?\s*$/i.test(String(text ?? ''));
+ *  drawing keeps the word as it was typed), StateCAD's @else, others, otherwise (#4489), taken when no other
+ *  transition is. */
+export const isOtherwise = (text) => /^\s*(1|true|always|@?\s*else|default|others|otherwise)?\s*$/i.test(String(text ?? ''));
+/** Whether a condition is the otherwise spelled as a word (else, @else, default, others, otherwise; not none, 1, true,
+ *  always), as a transition's Properties tick its Else box (#4489). */
+export const isElseWord = (text) => /^\s*(@?\s*else|default|others|otherwise)\s*$/i.test(String(text ?? ''));
+/** The otherwise's canonical word, as the Else box and the MCP's set_fsm_condition write it (#4489). */
+export const ELSE_COND = 'else';
 
 /** Parsed condition of a transition: { ast } (null ast = always) or { error, column }. */
 export function parseCond(text) {
@@ -456,11 +469,11 @@ export function validateFsm(model) {
     }
     checkOutputs(t.outputs, where, ref);
   }
-  // one otherwise transition per state at most (#3907): else, default, true, 1, none
+  // one otherwise transition per state at most (#3907): else, @else, default, others, otherwise, true, 1, none
   for (const s of m.states) {
     const others = m.transitions.filter((t) => t.from === s.id && stateById(m, t.to) && isOtherwise(t.cond));
     if (others.length > 1) {
-      add('error', `State ${s.name || '?'} has ${others.length} otherwise transitions (else, default, true, 1 or no condition), to ${others.map((t) => nameOf(m, t.to)).join(', ')}; a state has one at most`, { state: s.id, transition: others[1].id });
+      add('error', `State ${s.name || '?'} has ${others.length} otherwise transitions (else, @else, default, others, otherwise, true, 1 or no condition), to ${others.map((t) => nameOf(m, t.to)).join(', ')}; a state has one at most`, { state: s.id, transition: others[1].id });
     }
   }
   const hasErrors = out.some((d) => d.severity === 'error');

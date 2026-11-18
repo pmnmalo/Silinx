@@ -55,8 +55,8 @@ for (const lang of ['vhdl', 'verilog']) {
     const typed = ["a.b'", '/a + b', 'else', 'a·b', 'default'];
     assert.deepEqual(await conds(), typed);
     assert.deepEqual(await page.eval(() => window.Silinx.active.fsmEditor.getModel().transitions[1].outputs), { z: '1' });
-    // (the drawing's labels: in the tests' notation, text only, #4417; the otherwise words as typed)
-    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['a./b', '/a + b /z=1', 'else', 'a.b', 'default']);
+    // (the drawing's labels: in the tests' notation, text only, #4417; the otherwise words as else, #4489)
+    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), ['a./b', '/a + b /z=1', 'else', 'a.b', 'else']);
 
     // ---- saved as typed; the HDL that of the C-style form, compiled and elaborated with no warnings; no problem
     const saved = await page.waitFor(async (p, h) => {
@@ -80,11 +80,11 @@ for (const lang of ['vhdl', 'verilog']) {
     // ---- two otherwise transitions from B: an error, in English then in Portuguese
     await setCond('t1', "a.b'");
     await setCond('t4', 'true');
-    const two = 'ERROR:FSM - "src/nn.fsm.json": State B has 2 otherwise transitions (else, default, true, 1 or no condition), to A, C; a state has one at most';
+    const two = 'ERROR:FSM - "src/nn.fsm.json": State B has 2 otherwise transitions (else, @else, default, others, otherwise, true, 1 or no condition), to A, C; a state has one at most';
     await page.waitFor((w) => [...document.querySelectorAll('#console-errors .diag')].map((d) => d.textContent).join('|') === w, [two], { what: 'the otherwise error' });
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     try {
-      const pt = 'O estado B tem 2 transições "caso contrário" (else, default, true, 1 ou sem condição), para A, C; um estado tem uma, no máximo';
+      const pt = 'O estado B tem 2 transições "caso contrário" (else, @else, default, others, otherwise, true, 1 ou sem condição), para A, C; um estado tem uma, no máximo';
       await page.waitFor((w) => [...document.querySelectorAll('#console-errors .diag')].some((d) => d.textContent.endsWith(`: ${w}`)), [pt], { what: 'the error in Portuguese' });
     } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   });

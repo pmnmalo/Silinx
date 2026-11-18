@@ -6,7 +6,7 @@
 // deleted as any selection is, by the Delete key or the toolbar's (#3882). Its look last: web/js/fsm-look.js (#3883).
 import { h } from './ui.js';
 import { lookFields } from './fsm-look.js';
-import { outputLines } from '/core/fsm.js';
+import { drawnAsElse, ELSE_COND, isElseWord, outputLines } from '/core/fsm.js';
 import { condAsText } from '/core/cond-notation.js';
 import { drawnCond, onNotation } from './notation.js';
 import { drawBarsIn } from './overbar.js';
@@ -87,7 +87,7 @@ export function mountSide(ctx) {
         h('div', { class: 'asm-label' }, `Transitions out of ${s.name} (the first true condition is taken)`),
         // (a transition's outputs one per line under it, #3882)
         h('ol', { class: 'fsm-tlist' }, ...ts.map((t) => h('li', { class: 'link', onclick: () => { setSel({ type: 'trans', id: t.id }); render(); renderSide(); } },
-          h('span', {}, h('span', { class: 'fsm-tcond' }, t.cond ? drawnCond(t.cond) : '1'), ` → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`),
+          h('span', {}, h('span', { class: 'fsm-tcond' }, drawnAsElse(M(), t) ? 'else' : t.cond ? drawnCond(t.cond) : '1'), ` → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`),
           ...outputLines(t.outputs).map((o) => h('div', { class: 'mono fsm-tout' }, o))))),
         ...look('state', cur, id)].filter(Boolean));
       drawBarsIn(selSection, '.fsm-tcond');   // (the Engineering notation's bars, #4484)
@@ -104,6 +104,16 @@ export function mountSide(ctx) {
     to.addEventListener('change', () => reroute('to', to.value));
     // (text, whatever the notation: an overbar typed or pasted kept as /…, #4417)
     const cond = input(condAsText(t.cond), (v) => { if (!cur()) return; cur().cond = condAsText(v.trim()); commit('cond'); }, { cls: 'mono fsm-cond', ph: 'e.g. x && !y   (empty = always)', key: 'cond' });
+    // (the state's otherwise, StateCAD's @ELSE, #4489: ticked, `else` written and the condition not editable; unticked,
+    // the condition emptied, to be typed)
+    const elseBox = h('input', { type: 'checkbox', class: 'fsm-else-box', checked: isElseWord(t.cond) });
+    cond.disabled = elseBox.checked;
+    elseBox.addEventListener('change', () => {
+      if (!cur()) return;
+      cur().cond = elseBox.checked ? ELSE_COND : '';
+      commit(); renderSelection();
+      if (!elseBox.checked) selSection.querySelector('.fsm-cond')?.focus();
+    });
     const outs = outputsTable('touts', cur, () => outputsWhere(M(), { type: 'trans', id }), stateById(t.from)?.outputs);
     const siblings = M().transitions.filter((x) => x.from === t.from);
     const pos = siblings.indexOf(t);
@@ -118,6 +128,7 @@ export function mountSide(ctx) {
     selSection.append(h('h3', {}, 'Transition'),
       h('div', { class: 'asm-grid2' }, field('From', from), field('To', to)),
       field('Condition', cond, 'Boolean expression over the inputs: x, !x, x && y, x || !y, a == 2\'b01, b[0] (also and, or, not, =). Empty: always.'),
+      h('label', { class: 'asm-check', title: 'The state\'s otherwise (StateCAD\'s @ELSE): taken in every case its other transitions are not; its condition is else' }, elseBox, 'Else (every other case)'),
       outputsField('Outputs (Mealy)', outs, 'The value of each output while this transition is taken (empty: the state\'s value; a value makes the machine a Mealy machine).'),
       h('div', { class: 'asm-label' }, `Priority ${pos + 1} of ${siblings.length} in ${stateById(t.from)?.name ?? '?'}`),
       h('div', { class: 'asm-row' },
