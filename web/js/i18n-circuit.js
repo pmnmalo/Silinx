@@ -166,7 +166,7 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   '14-stage binary ripple counter': 'Contador binário assíncrono de 14 andares', '12-stage binary ripple counter': 'Contador binário assíncrono de 12 andares',
   'Octal counter/divider with 8 decoded outputs': 'Contador/divisor por 8 com 8 saídas descodificadas',
   'Presettable up/down counter, binary or decade': 'Contador crescente/decrescente com carregamento, binário ou de década',
-  'Presettable up/down decade counter': 'Contador de década crescente/decrescente com carregamento',
+  'Presettable up/down decade counter': 'Contador de década pré-carregável crescente/decrescente',
   'Dual BCD up counter': 'Dois contadores BCD crescentes', 'Dual 4-bit binary up counter': 'Dois contadores binários crescentes de 4 bits',
   'Decade counter (divide by 2 and by 5, falling edges)': 'Contador de década (divide por 2 e por 5, flancos descendentes)',
   '4-bit binary counter (divide by 2 and by 8, falling edges)': 'Contador binário de 4 bits (divide por 2 e por 8, flancos descendentes)',
