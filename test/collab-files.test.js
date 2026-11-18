@@ -236,22 +236,45 @@ test('#4418 editQueue: each change applied after the one before; published again
   assert.equal(log.at(-1), 'published');
 });
 
-test('#4418 editQueue: the reads of the disk one at a time, in order (an older one never published after a newer one, a change applied meanwhile put back); again() resolves once published', async () => {
+test('#4418 editQueue: the reads of the disk one at a time, in order (an older one never published after a newer one, nor over a change that arrived during it, #4480); again() resolves once its read is done', async () => {
   const log = [];
   let disk = 'old', reads = 0, open = 0, overlap = false;
-  const q = editQueue(async (ev) => { log.push(`apply ${ev}`); disk = ev; return true; }, async () => {
+  const q = editQueue(async (ev) => { log.push(`apply ${ev}`); disk = ev; return true; }, async (fresh) => {
     open++; if (open > 1) overlap = true;
     const seen = disk, n = ++reads;
     await new Promise((r) => setTimeout(r, n === 1 ? 30 : 5));   // the first read slower than the next
-    log.push(`publish ${seen}`); open--;
+    log.push(fresh() ? `publish ${seen}` : `not published ${seen}`); open--;
   });
   const first = q.again();
   assert.ok(first instanceof Promise);
   await new Promise((r) => setTimeout(r, 5));
   q.push('new');   // an editor's change while the first read is on
   await first;
-  assert.equal(log[0], 'publish old', 'again() resolved once its publishing is done');
+  assert.equal(log[0], 'not published old', 'again() resolved once its read is done; a change arrived during it: not published');
   await q.again();
   assert.equal(overlap, false, 'never two reads at once');
-  assert.deepEqual(log, ['publish old', 'apply new', 'publish new'], 'the last published is the newest (again() while one is due: once)');
+  assert.deepEqual(log, ['not published old', 'apply new', 'publish new'], 'the last published is the newest (again() while one is due: once)');
+});
+
+test('#4480 editQueue: an editor\'s change arriving while the disk is read again (the watcher\'s again()) is not published over: the read not published, the change written, the disk published after it', async () => {
+  const { owner, editor } = pair();
+  const { d, store } = disk();
+  let slow = true;
+  const q = editQueue(async ev => { const r = await applyEdits(owner, ev, store); return !!(r.removed.length || r.project || r.undone.length); }, async fresh => {
+    const all = { project: { ...structuredClone(d.json), fileTree: Object.keys(d.files) }, files: { ...d.files } };
+    if (slow) await new Promise(r => setTimeout(r, 30));   // a loaded machine's read
+    if (fresh?.() ?? true) publishProject(owner, { ...all, owner: 'Ana' });
+  });
+  watchDoc(owner, ev => q.push(ev));
+  const read = q.again();   // (the owner's own writes seen by the watcher)
+  await new Promise(r => setTimeout(r, 5));
+  sourceChange(editor, { action: 'delete', path: 'src/top.vhd' });   // the editor's change, during the read
+  slow = false;
+  await read;
+  await q.again();
+  assert.equal(q.busy(), false);
+  assert.equal(Object.hasOwn(d.files, 'src/top.vhd'), false, 'the file deleted at the owner\'s');
+  assert.equal(d.json.files.some(f => f.path === 'src/top.vhd'), false, 'out of the project');
+  assert.equal(docFile(owner, 'src/top.vhd'), null, 'not put back in the document');
+  assert.equal(docFile(editor, 'src/top.vhd'), null);
 });

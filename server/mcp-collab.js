@@ -117,7 +117,7 @@ function ownerWrites(name, doc, owner, warn, bases) {
     const texts = ev.changes.filter(c => c.kind === 'changed' && r.written.includes(c.path)).length;
     return !!(r.undone.length || r.refused || r.project || r.removed.length || r.written.length > texts);
   };
-  const queue = editQueue(apply, async () => { try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ } });
+  const queue = editQueue(apply, async fresh => { try { const all = await readAll(name); if (fresh()) publishProject(doc, { ...all, owner, bases }); } catch { /* the next change */ } });
   const offFiles = watchDoc(doc, ev => queue.push(ev));
   return { off: () => { offFiles(); offDrawings(); }, queue };
 }

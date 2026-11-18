@@ -165,10 +165,14 @@ export async function applyEdits(doc, { changes = [], project = false }, store, 
  *  again (`publish()`) only once none is waiting (#4418: a change still to be written, a file an editor deleted after
  *  saving the description, would be put back). `again()`: the project published again (the disk changed), now or, while
  *  changes wait, after them; in the queue too, so that a read of the disk never publishes after a newer one (its
- *  promise, the publishing done). */
+ *  promise, the publishing done). `publish(fresh)` puts what it read into the document only if `fresh()` (#4480: an
+ *  editor's change that arrived during the read is in the document, not yet on the disk: the read published would put
+ *  the old back over it and the change, applied from the document after, would be lost); it is published again after
+ *  that change. */
 export function editQueue(apply, publish) {
   let chain = Promise.resolve(), waiting = 0, due = false;
-  const flush = async () => { if (waiting === 0 && due) { due = false; await publish(); } };
+  const fresh = () => waiting === 0;
+  const flush = async () => { if (waiting === 0 && due) { due = false; await publish(fresh); if (waiting > 0) due = true; } };
   return {
     push(ev) {
       waiting++;

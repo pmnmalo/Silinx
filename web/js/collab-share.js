@@ -176,7 +176,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share;
-  share.queue = editQueue(ev => onEdits(s0, ev), () => publishDisk(s0));   // (#4110, #4418)
+  share.queue = editQueue(ev => onEdits(s0, ev), fresh => publishDisk(s0, fresh));   // (#4110, #4418)
   const offFiles = watchDoc(doc, ev => s0.queue.push(ev)), offDrawings = watchDrawings(s0);
   share.unwatch = () => { offFiles(); offDrawings(); };
   share.activity = ownerActivity(session);   // (#4002)
@@ -286,15 +286,15 @@ async function onDisk(ev) {
   await resync();
 }
 // (in the editors' queue, #4418: after the changes waiting, and one read of the disk at a time, an older one never
-// published after a newer one, a description an editor saved meanwhile put back)
+// published after a newer one, nor over an editor's change that arrived during it, #4480)
 async function resync() {
   const s = share;
   if (!s) return;
   if (s.queue) return s.queue.again();
   return publishDisk(s);
 }
-async function publishDisk(s) {
-  try { const all = await readAll(s.project); if (share === s) publishProject(s.doc, { ...all, owner: s.name, bases: s.bases }); } catch { /* the next change reads it */ }
+async function publishDisk(s, fresh = () => true) {
+  try { const all = await readAll(s.project); if (share === s && fresh()) publishProject(s.doc, { ...all, owner: s.name, bases: s.bases }); } catch { /* the next change reads it */ }
 }
 
 // the page's own changes of the project, into the document as they are made (the functions of api.js wrapped while
