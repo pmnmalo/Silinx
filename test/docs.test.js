@@ -20,8 +20,9 @@ const walk = d => fs.readdirSync(path.join(ROOT, d), { withFileTypes: true }).fl
   // (not the dot folders: .git, .cache, .claude's work trees of other checkouts…)
   e.name.startsWith('.') || ['node_modules', 'dist'].includes(e.name) ? [] : e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.md') ? [path.join(d, e.name)] : []);
 const ALL_MD = walk('.');
-// the user documentation (what the tests of facts read)
-const DOCS = ['README.md', 'ONBOARDING.md', 'CLAUDE.md', ...fs.readdirSync(path.join(ROOT, 'docs')).filter(f => f.endsWith('.md')).map(f => `docs/${f}`)];
+// the user documentation (what the tests of facts read): every Markdown file under docs/, the user's guide's pages too
+// (#4500)
+const DOCS = ['README.md', 'ONBOARDING.md', 'CLAUDE.md', ...walk('docs').map(f => f.split(path.sep).join('/'))];
 
 // GitHub's heading anchors
 const slug = s => s.trim().toLowerCase().replace(/[^\p{L}\p{N} _-]/gu, '').replace(/ /g, '-');
@@ -164,7 +165,7 @@ test('docs: the Silinx toolchain\'s name and default mode are the code\'s', () =
   assert.ok(readme.includes(`*${MODE_LABEL}*`), 'README names the mode by its label');
   // "the default mode" exactly when it is
   const isDefault = DEFAULT_CONFIG.mode === 'silinx';
-  for (const [f, says] of [['README.md', /\bthe default mode\b/], ['docs/GETTING-STARTED.md', /\bthe default mode\b/], ['docs/COMECAR.md', /\bo modo por omissão\b/]])
+  for (const [f, says] of [['README.md', /\bthe default mode\b/], ['docs/user/en/getting-started.md', /\bthe default mode\b/], ['docs/COMECAR.md', /\bo modo por omissão\b/]])
     assert.equal(says.test(read(f)), isDefault, `${f}: the Silinx toolchain is ${isDefault ? '' : 'not '}the default`);
 });
 
@@ -186,23 +187,23 @@ test('docs: the boards the Silinx toolchain supports are the ones the code suppo
   assert.deepEqual(quick.filter(n => !SUPPORTED.some(b => b.name === n)), [], 'claimed but not supported');
   assert.deepEqual(SUPPORTED.filter(b => /^(basys2|nexys2)$/.test(b.board) && !quick.includes(b.name)).map(b => b.name), [], 'supported but not named');
   // the section about the Silinx toolchain names every supported board, the Starter Kit too
-  const section = /^\*\*Without ISE \(Silinx toolchain[\s\S]*?(?=^\*\*Recommended)/m.exec(readme)?.[0];
-  assert.ok(section, 'README: the section on the Silinx toolchain');
+  const section = /^\*\*Without ISE \(Silinx toolchain[\s\S]*?(?=^\*\*Recommended)/m.exec(read('docs/user/en/toolchains.md'))?.[0];
+  assert.ok(section, 'docs/user/en/toolchains.md: the section on the Silinx toolchain');
   for (const b of SUPPORTED) {
     // (a board with no variants by its name: the Nexys3, the Atlys)
     const ok = b.board === 's3e-starter' ? /Spartan-3E Starter Kit/.test(section)
       : b.name.includes('-') ? named(section).includes(b.name) : new RegExp(`\\b${b.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(section);   // (a name with a +, #2517)
-    assert.ok(ok, `README's Silinx toolchain section does not name the ${b.name}`);
+    assert.ok(ok, `the toolchains' Silinx toolchain section does not name the ${b.name}`);
   }
   // "Basys2 and Nexys2 boards" (Getting Started, both languages): every variant of them
   for (const id of ['basys2', 'nexys2']) {
     const all = BOARDS.find(b => b.id === id).variants.length;
     assert.equal(SUPPORTED.filter(b => b.board === id).length, all, `every ${id} variant is supported`);
   }
-  assert.match(read('docs/GETTING-STARTED.md'), /For the Basys2 and Nexys2 boards, nothing/);
+  assert.match(read('docs/user/en/getting-started.md'), /For the Basys2 and Nexys2 boards, nothing/);
   assert.match(read('docs/COMECAR.md'), /Para as placas Basys2 e Nexys2, nada/);
   // the Spartan-6 boards (#732), both languages
-  assert.match(read('docs/GETTING-STARTED.md'), /\*\*The Spartan-6 boards, the Nexys3 and the\s+Atlys, too\*\*, in the browser and with Silinx running locally;/);
+  assert.match(read('docs/user/en/getting-started.md'), /\*\*The Spartan-6 boards, the Nexys3 and the\s+Atlys, too\*\*, in the browser and with Silinx running locally;/);
   assert.match(read('docs/COMECAR.md'), /\*\*As placas Spartan-6, a Nexys3 e a Atlys,\s+também\*\*, no browser e com o Silinx a correr localmente;/);
   // the Spartan-6 boards (#732: no developer flag), in the browser edition too (#2103, nextpnr the one engine since #2824), which is said so
   assert.deepEqual(SUPPORTED.filter(b => ['nexys3', 'atlys'].includes(b.board)).map(b => b.name), ['Nexys3', 'Atlys']);

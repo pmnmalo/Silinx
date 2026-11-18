@@ -5,7 +5,7 @@
 // - the teacher's run over fake student repositories (local git repositories behind a stand-in for the GitHub CLI):
 //   the assignment's repositories only, cloned with no hooks and no symbolic links, the CSV, the issues with each
 //   student's report (a hidden test's verdict only), the last commit before the deadline;
-// - the docs' commands (docs/CLASSROOM.md) as the CLI reads them; its wrong arguments.
+// - the docs' commands (docs/user/en/classroom.md) as the CLI reads them; its wrong arguments.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -149,8 +149,8 @@ test('#3193 the teacher\'s run: the assignment\'s repositories graded on every t
   await assert.rejects(assignmentRepos('org; x', 'a', { runner: fakeGh(repos, []) }), /names of letters, digits, \. _ -/);
 });
 
-test('#3193 the docs\' commands: silinx classroom template and grade as docs/CLASSROOM.md writes them; the wrong arguments', { timeout: 300000 }, async () => {
-  const doc = fs.readFileSync(path.join(ROOT, 'docs/CLASSROOM.md'), 'utf8');
+test('#3193 the docs\' commands: silinx classroom template and grade as docs/user/en/classroom.md writes them; the wrong arguments', { timeout: 300000 }, async () => {
+  const doc = fs.readFileSync(path.join(ROOT, 'docs/user/en/classroom.md'), 'utf8');
   const commands = [...doc.matchAll(/^silinx classroom (.+)$/gm)].map(m => m[1]);
   assert.deepEqual(commands.map(c => c.split(' ')[0]), ['template', 'grade', 'grade']);
   let out = '', err = '';
