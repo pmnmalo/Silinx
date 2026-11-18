@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { familyOf, cellCounts, synthSize, splitWarnings, clockLpf, deviceLpf, table, measureNetlist, exampleNetlist, DEVICES } from '../scripts/machxo2-measure.mjs';
+import { familyOf, cellCounts, synthSize, splitWarnings, clockLpf, deviceLpf, table, measureNetlist, exampleNetlist, run, DEVICES } from '../scripts/machxo2-measure.mjs';
 
 test('the family of a part: xo2 for a MachXO2, xo3 for a MachXO3L/LF, none for another', () => {
   assert.equal(familyOf('LCMXO2-1200HC-4TG100C'), 'xo2');
@@ -67,6 +67,28 @@ test('the table: one row per example, what failed and why, the warnings counted'
   assert.equal(lines[2], '| blinky | 127 / 132 / 64 / 1 EBR | 285/1280, 132/1280, 27/108 | 89.5 MHz | 45060 bytes | none |');
   assert.equal(lines[3], '| micro80 | 1 / 1 / 0 / 2 DPR16X4 | no: ERROR: too big | - | - | 2: Yosys: w1; nextpnr: w2 |');
   assert.match(lines[4], /^\| x \| no: synthesis failed \| - \| - \| - \| none \|$/);
+});
+
+// a tool's output flushed (YoWASP's null) in the middle of a line: one line, its text whole (#4479: Yosys flushes between
+// "Warning: " and the warning's text, which made an empty warning and dropped the text)
+test('a tool\'s lines: a flush in the middle of a line leaves the line whole, the last line without its newline kept', async () => {
+  const enc = s => new TextEncoder().encode(s);
+  const tool = async (args, files, { stdout, stderr }) => {
+    stdout(enc('Info: one\nWarning: ')); stdout(null); stdout(enc('the text\n')); stdout(null);
+    stderr(enc('\x1b[1mlast')); stderr(null);
+    return { 'out.txt': 'x' };
+  };
+  assert.deepEqual(await run(tool, [], {}), { files: { 'out.txt': 'x' }, lines: ['Info: one', 'Warning: the text', 'last'] });
+  const failing = async (args, files, { stdout }) => { stdout(enc('ERROR: ')); stdout(null); stdout(enc('it failed\n')); throw Object.assign(new Error('x'), { code: 1 }); };
+  assert.deepEqual(await run(failing, [], {}), { error: 'ERROR: it failed', lines: ['ERROR: it failed'] });
+});
+
+test('Yosys\'s synth_lattice warning of a design with two drivers: the warning with its text, as measureNetlist reads it (#4479)', { timeout: 600000 }, async () => {
+  const { runYosys } = await import('@yowasp/yosys');
+  const syn = 'module top(input [3:0] a, input clk, output reg [3:0] y); always @(posedge clk) y <= a; always @(posedge clk) y[0] <= ~a[0]; endmodule';
+  const y = await run(runYosys, ['-q', '-p', 'read_verilog -sv top_syn.v; synth_lattice -family xo2 -top top; write_json netlist.json'], { 'top_syn.v': syn });
+  assert.equal(y.error, undefined);
+  assert.deepEqual(y.lines.filter(l => /^Warning:/.test(l)), ['Warning: multiple conflicting drivers for top.\\y [0]:']);
 });
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-machxo2-test-'));
