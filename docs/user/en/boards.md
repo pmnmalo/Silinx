@@ -1,6 +1,6 @@
 # Boards and toolchains
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/boards.md)
 
 From the design to the board: synthesis, place and route, the bitstream, and the board programmed. Silinx does it
 with its own open toolchain (Yosys for the synthesis, nextpnr for place and route, Silinx's bitstream writer), in the

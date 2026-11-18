@@ -159,7 +159,7 @@ test('docs: the Silinx toolchain\'s name and default mode are the code\'s', () =
   // database's experiments are another word)
   // (#3142: the 7-series is an experimental family, its boards and its family so marked; that is the device's, not the
   // toolchain's: its words left out)
-  const family = t => t.replace(/\bexperimentalDevice\b|\bexperimental family\b|\bexperimental: true\b|' \(experimental\)'|\.experimental\b|experimental mark|an experimental one/g, '');
+  const family = t => t.replace(/\bexperimentalDevice\b|\bexperimental family\b|\bexperimental: true\b|' \(experimental\)'|\.experimental\b|experimental mark|an experimental one|família experimental/g, '');
   for (const f of [...DOCS, ...fs.readdirSync(path.join(ROOT, 'web/js')).filter(x => x.endsWith('.js')).map(x => `web/js/${x}`), 'server/toolchain.js', 'server/open-flow.js']) {
     assert.doesNotMatch(family(read(f)), /\bexperimental\b/i, f);
   }
@@ -167,7 +167,7 @@ test('docs: the Silinx toolchain\'s name and default mode are the code\'s', () =
   assert.ok(readme.includes(`*${MODE_LABEL}*`), 'README names the mode by its label');
   // "the default mode" exactly when it is
   const isDefault = DEFAULT_CONFIG.mode === 'silinx';
-  for (const [f, says] of [['README.md', /\bthe default mode\b/], ['docs/user/en/getting-started.md', /\bthe default mode\b/], ['docs/COMECAR.md', /\bo modo por omissão\b/]])
+  for (const [f, says] of [['README.md', /\bthe default mode\b/], ['docs/user/en/getting-started.md', /\bthe default mode\b/], ['docs/user/pt/getting-started.md', /\bo modo por omissão\b/]])
     assert.equal(says.test(read(f)), isDefault, `${f}: the Silinx toolchain is ${isDefault ? '' : 'not '}the default`);
 });
 
@@ -203,10 +203,10 @@ test('docs: the boards the Silinx toolchain supports are the ones the code suppo
     assert.equal(SUPPORTED.filter(b => b.board === id).length, all, `every ${id} variant is supported`);
   }
   assert.match(read('docs/user/en/getting-started.md'), /For the Basys2 and Nexys2 boards, nothing/);
-  assert.match(read('docs/COMECAR.md'), /Para as placas Basys2 e Nexys2, nada/);
+  assert.match(read('docs/user/pt/getting-started.md'), /Para as placas Basys2 e Nexys2, nada/);
   // the Spartan-6 boards (#732), both languages
   assert.match(read('docs/user/en/getting-started.md'), /\*\*The Spartan-6 boards, the Nexys3 and the\s+Atlys, too\*\*, in the browser and with Silinx running locally;/);
-  assert.match(read('docs/COMECAR.md'), /\*\*As placas Spartan-6, a Nexys3 e a Atlys,\s+também\*\*, no browser e com o Silinx a correr localmente;/);
+  assert.match(read('docs/user/pt/getting-started.md'), /\*\*As placas Spartan-6, a Nexys3 e a Atlys,\s+também\*\*, no browser e com o Silinx a correr localmente;/);
   // the Spartan-6 boards (#732: no developer flag), in the browser edition too (#2103, nextpnr the one engine since #2824), which is said so
   assert.deepEqual(SUPPORTED.filter(b => ['nexys3', 'atlys'].includes(b.board)).map(b => b.name), ['Nexys3', 'Atlys']);
   assert.match(section, /the \*\*Nexys3 and the Atlys\*\* [^.]*and in the browser edition \(#2103\)/);
@@ -221,4 +221,19 @@ test('docs test: the interface\'s labels are read past comments with quotes in t
   assert.deepEqual(literalsOf("const t = `it's ${n} file(s)`; const u = 'Interface';"), ["it's ", ' file(s)', 'Interface']);
   // a comment kept inside an expression, with an apostrophe in it
   assert.deepEqual(literalsOf("const a = [\n  // the editor's undo\n  'Undo', `x ${f(`y`)} z`, /'/g, 'Interface'];"), ['Undo', 'x ', 'y', ' z', 'Interface']);
+});
+
+// ---- the user's guide in two languages (#4502)
+// (the reference pages, long and changed with every feature, are in English only; the Portuguese pages link them)
+const EN_ONLY = ['features.md', 'toolchains.md', 'circuits.md', 'grading.md', 'classroom.md', 'c-to-hdl.md'];
+test('docs: every page of the user\'s guide has its twin in the other language, each linking the other (#4502)', () => {
+  const en = fs.readdirSync(path.join(ROOT, 'docs/user/en')).filter(f => f.endsWith('.md'));
+  const pt = fs.readdirSync(path.join(ROOT, 'docs/user/pt')).filter(f => f.endsWith('.md'));
+  assert.deepEqual(en.filter(f => !EN_ONLY.includes(f)).sort(), [...pt].sort(), 'the English pages (but the reference ones) and the Portuguese ones');
+  for (const f of pt) {
+    assert.ok(read(`docs/user/pt/${f}`).split('\n').slice(0, 4).join('\n').includes(`](../en/${f})`), `pt/${f}: its English twin linked at the top`);
+    assert.ok(read(`docs/user/en/${f}`).split('\n').slice(0, 4).join('\n').includes(`](../pt/${f})`), `en/${f}: its Portuguese twin linked at the top`);
+  }
+  assert.match(read('README.md').split('\n').slice(0, 10).join('\n'), /\]\(README\.pt\.md\)/);
+  assert.match(read('README.pt.md').split('\n').slice(0, 10).join('\n'), /\]\(README\.md\)/);
 });

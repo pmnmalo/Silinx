@@ -52,7 +52,7 @@ test('release workflow: packaged (with SHA256SUMS), checked, the notes written; 
 });
 
 test('docs: how to check a download (the getting started guides, #4500: no more in the README)', () => {
-  for (const f of ['docs/user/en/getting-started.md', 'docs/COMECAR.md']) {
+  for (const f of ['docs/user/en/getting-started.md', 'docs/user/pt/getting-started.md']) {
     const md = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const s of ['SHA256SUMS', 'sha256sum -c SHA256SUMS --ignore-missing', 'gh attestation verify']) assert.ok(md.includes(s), `${f}: ${s}`);
   }

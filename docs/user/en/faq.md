@@ -1,6 +1,6 @@
 # Questions and answers
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/faq.md)
 
 **Do I need to install anything?** No: https://pmnmalo.github.io/Silinx/ does everything in the browser, from the
 design to programming the board. Installing it ([Getting started](getting-started.md), way 2) adds the projects as

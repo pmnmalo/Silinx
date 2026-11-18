@@ -5,7 +5,7 @@ schematics, state machines, ASM charts, truth tables and breadboard circuits; si
 board; and build them for a real one, with Silinx's own open toolchain. Nothing to install.
 
 **[▶ Try it in the browser](https://pmnmalo.github.io/Silinx/)** · [Install it](docs/user/en/getting-started.md) ·
-[User's guide](docs/user/en/README.md) · [Português](docs/COMECAR.md)
+[User's guide](docs/user/en/README.md) · [Português](README.pt.md)
 
 ![Silinx: the traffic light example's state diagram, its design hierarchy and its properties](docs/images/hero.webp)
 
@@ -60,7 +60,7 @@ at all. [Boards and toolchains](docs/user/en/boards.md)
   [latest release](https://github.com/pmnmalo/Silinx/releases/latest), unzip it and start it with Node.js: your
   projects as folders, offline, with Xilinx ISE 14.7 or AMD Vivado for the other boards.
 
-Step by step: [Getting started](docs/user/en/getting-started.md) · [Começar a usar o Silinx](docs/COMECAR.md)
+Step by step: [Getting started](docs/user/en/getting-started.md) · [Começar a usar o Silinx](docs/user/pt/getting-started.md)
 
 ## Documentation
 

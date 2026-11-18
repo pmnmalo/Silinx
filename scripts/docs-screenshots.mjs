@@ -54,8 +54,8 @@ async function panels(page, { side = true, console = true } = {}) {
   }
 }
 /** The Board Emulator of the project's top (its RTL model), running, its switches set as `on` says. */
-async function emulate(page) {
-  await page.menu('Tools', 'Board Emulator');
+async function emulate(page, lang = 'en') {
+  await page.menu(lang === 'pt' ? 'Ferramentas' : 'Tools', lang === 'pt' ? 'Emulador da Placa' : 'Board Emulator');
   await page.waitFor(() => window.SilinxApp.findDoc('emulator')?.view?.outputs, [], { what: 'the emulator running', timeout: 60000 });
   await sleep(2500);
   await panels(page, { side: false, console: false });
@@ -69,19 +69,16 @@ async function foldProps(page, { all = false } = {}) {
   await page.eval(() => dispatchEvent(new Event('resize')));
   await sleep(800);
 }
-/** A process of the Processes panel run (the Silinx toolchain's), to its end. */
-async function runProcess(page, name) {
+/** A process's label in the Processes panel, by its status id, in each language. */
+const PROCESS = { bitgen: { en: 'Generate Programming File', pt: 'Gerar Ficheiro de Programação' }, impl: { en: 'Implement Design', pt: 'Implementar Projeto' } };
+/** A process of the Processes panel run (the Silinx toolchain's), to its end (its status ok or warn). */
+async function runProcess(page, id, lang = 'en') {
   await task(page, 'impl');
   await page.eval(async () => { window.SilinxApp.S.toolchain = await (await import('/js/api.js')).api.toolchain(); window.SilinxApp.renderProcesses(); });
-  await page.treeRow('#procs', name, { dbl: true, exact: true });
-  try {
-    await page.waitConsole(new RegExp(`Process "${name.replace(/[()]/g, '\\$&')}" (completed successfully|failed)`), { timeout: +process.env.SILINX_DOCS_TIMEOUT || 300000 });
-  } catch (e) {
-    const procs = await page.eval(() => [...document.querySelectorAll('#procs .lbl')].map((l) => l.textContent).join(' | '));
-    throw new Error(`${e.message}\n  processes: ${procs}\n  console: ${(await page.consoleText()).slice(-1500)}`);
-  }
-  const text = await page.consoleText();
-  if (!new RegExp(`Process "${name.replace(/[()]/g, '\\$&')}" completed successfully`).test(text)) throw new Error(`${name} failed: ${text.slice(-1500)}`);
+  await page.treeRow('#procs', PROCESS[id][lang], { dbl: true, exact: true });
+  const status = await page.waitFor((i) => ['ok', 'warn', 'error'].includes(window.SilinxApp.S.status?.[i]) && window.SilinxApp.S.status[i],
+    [id], { what: `${PROCESS[id].en} done`, timeout: +process.env.SILINX_DOCS_TIMEOUT || 300000 });
+  if (status === 'error') throw new Error(`${PROCESS[id].en} failed: ${(await page.consoleText()).slice(-1500)}`);
 }
 
 export const SHOTS = [
@@ -94,11 +91,11 @@ export const SHOTS = [
     },
   },
   {
-    name: 'new-project',
+    name: 'new-project', lang: ['en', 'pt'],
     about: 'New Project: its examples to start from',
     async run(page) {
-      await page.eval(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'New Project…' && b.getClientRects().length).click());
-      await page.waitDialog('New Project');
+      await page.eval(() => [...document.querySelectorAll('button')].find((b) => /^(New Project|Novo Projeto)…$/.test(b.textContent.trim()) && b.getClientRects().length).click());
+      await page.waitDialog(null);
       // a name, and an example to start from
       await page.eval(() => {
         const d = [...document.querySelectorAll('.dlg-overlay')].pop();
@@ -135,7 +132,7 @@ export const SHOTS = [
     },
   },
   {
-    name: 'algebra',
+    name: 'algebra', lang: ['en', 'pt'],
     about: 'Boolean algebra, a truth table: the traffic example\'s lamps',
     async run(page, env) {
       await example(page, env, 'traffic', 'traffic');
@@ -154,7 +151,7 @@ export const SHOTS = [
     },
   },
   {
-    name: 'simulation',
+    name: 'simulation', lang: ['en', 'pt'],
     about: 'The waveforms of a simulation: the traffic example\'s test bench',
     async run(page, env) {
       await example(page, env, 'traffic', 'traffic');
@@ -168,38 +165,38 @@ export const SHOTS = [
     },
   },
   {
-    name: 'emulator-basys2',
+    name: 'emulator-basys2', lang: ['en', 'pt'],
     about: 'The Board Emulator: the stopwatch example on a Basys2',
-    async run(page, env) {
+    async run(page, env, { lang }) {
       await example(page, env, 'stopwatch', 'stopwatch');
       await task(page, 'emu');
-      await emulate(page);
+      await emulate(page, lang);
     },
   },
   {
     name: 'emulator-nexys3',
     about: 'The Board Emulator: the vga example on a Nexys3, its VGA monitor',
-    async run(page, env) {
+    async run(page, env, { lang }) {
       await example(page, env, 'vga', 'vga', { board: 'nexys3' });
       await task(page, 'emu');
-      await emulate(page);
+      await emulate(page, lang);
     },
   },
   {
     name: 'emulator-icebreaker',
     about: 'The Board Emulator: the clock example on an iCEBreaker',
-    async run(page, env) {
+    async run(page, env, { lang }) {
       await example(page, env, 'clock', 'clock', { board: 'icebreaker' });
       await task(page, 'emu');
-      await emulate(page);
+      await emulate(page, lang);
     },
   },
   {
-    name: 'implement-nexys2',
+    name: 'implement-nexys2', lang: ['en', 'pt'],
     about: 'Implementation with the Silinx toolchain: blinky on a Nexys2, its Design Summary',
-    async run(page, env) {
+    async run(page, env, { lang }) {
       await example(page, env, 'blinky', 'blinky', { board: 'nexys2' });
-      await runProcess(page, 'Generate Programming File');
+      await runProcess(page, 'bitgen', lang);
       await page.eval(() => window.SilinxApp.openSummary());
       await panels(page, { console: false });
       await sleep(1000);
@@ -208,9 +205,9 @@ export const SHOTS = [
   {
     name: 'implement-icebreaker',
     about: 'Implementation with the Silinx toolchain: blinky on an iCEBreaker (iCE40), its Design Summary',
-    async run(page, env) {
+    async run(page, env, { lang }) {
       await example(page, env, 'blinky', 'blinky', { board: 'icebreaker' });
-      await runProcess(page, 'Generate Programming File');
+      await runProcess(page, 'bitgen', lang);
       await page.eval(() => window.SilinxApp.openSummary());
       await panels(page, { console: false });
       await sleep(1000);
@@ -219,10 +216,10 @@ export const SHOTS = [
   {
     name: 'fpga-view',
     about: 'The implemented design inside the chip: blinky on a Basys2',
-    async run(page, env) {
+    async run(page, env, { lang }) {
       await example(page, env, 'blinky', 'blinky');
-      await runProcess(page, 'Implement Design');
-      await page.menu('Tools', 'Implemented Design (FPGA View)');
+      await runProcess(page, 'impl', lang);
+      await page.menu(lang === 'pt' ? 'Ferramentas' : 'Tools', lang === 'pt' ? 'Projeto Implementado (Vista da FPGA)' : 'Implemented Design (FPGA View)');
       await page.waitFor(() => window.Silinx.active?.id === 'fpgaview' && document.querySelector('.doc:not([hidden]) .fv-site'), [], { what: 'FPGA view', timeout: 60000 });
       await panels(page, { console: false });
       await sleep(1500);
