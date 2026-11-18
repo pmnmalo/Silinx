@@ -69,12 +69,13 @@ async function load() {
   return (tools = { runYosys, runNextpnrMachxo2, runEcppack, runEcpunpack });
 }
 
-// a YoWASP tool's run: its output files and its lines, or its error and its lines
-async function run(fn, args, files) {
+// a YoWASP tool's run: its output files and its lines, or its error and its lines. A null is a flush, not the end of
+// a line: Yosys flushes between "Warning: " and the warning's text (#4479)
+export async function run(fn, args, files) {
   const lines = [];
   let rest = '';
   const out = b => {
-    if (b === null) { if (rest) lines.push(rest); rest = ''; return; }
+    if (b === null) return;
     const ls = (rest + new TextDecoder().decode(b)).replace(/\x1b\[[0-9;]*m/g, '').split('\n');   // (Yosys's colours)
     rest = ls.pop();
     lines.push(...ls);
