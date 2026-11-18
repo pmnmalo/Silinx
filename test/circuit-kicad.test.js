@@ -34,7 +34,7 @@ test('kicadPartsOf: the project\'s symbols as parts, those that are no part and 
   assert.deepEqual(r.skipped, [
     { type: T('SMDCHIP'), reason: 'its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard' },
     { type: T('NOFP'), reason: 'it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)' },
-    { type: T('BADMODEL'), reason: "its Silinx.Model 'clock' is neither an IC of the library nor one of its led, button, spdt" }]);
+    { type: T('BADMODEL'), reason: "its Silinx.Model 'breadboard-half' is no part of the library with pins (circuit_parts)" }]);
   assert.deepEqual(r.notes, ["parts/ttl.kicad_sym: 74LS04: its part number is the 7404's but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out: drawn only"]);
   assert.deepEqual(r.errors, []);
   assert.ok(!r.defs.some((d) => d.kicad.value === 'VCC'), 'a power symbol is no part');

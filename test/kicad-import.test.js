@@ -29,7 +29,7 @@ test('a footprint, then a library: written in parts/, each symbol said, the proj
     'parts/ttl.kicad_sym#74LS04: drawn only: not simulated', 'parts/ttl.kicad_sym#SENSOR: drawn only: not simulated', 'parts/ttl.kicad_sym#MODULE: drawn only: not simulated',
     'parts/ttl.kicad_sym#NOFP: drawn only: not simulated',
     'parts/ttl.kicad_sym#SMDCHIP: not a part: its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard',
-    'parts/ttl.kicad_sym#BADMODEL: not a part: its Silinx.Model \'clock\' is neither an IC of the library nor one of its led, button, spdt',
+    'parts/ttl.kicad_sym#BADMODEL: not a part: its Silinx.Model \'breadboard-half\' is no part of the library with pins (circuit_parts)',
     "WARNING: parts/ttl.kicad_sym: 74LS04: its part number is the 7404's but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out: drawn only"]);
   assert.equal(partDef('parts/ttl.kicad_sym#NOFP').dip, 8, 'its footprint given');
   const props = readKicadSymLib(P.files['parts/ttl.kicad_sym']).symbols.find((s) => s.name === 'NOFP').properties;

@@ -236,12 +236,23 @@ Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a 
   active low one named `~{CLR}`. The footprint is KiCad's `Package_DIP:DIP-n_W7.62mm`, with `Silinx.Model` and
   `Silinx.Family` in the properties. Silinx reads every one of them back as that IC, by its `Silinx.Model` and by its
   part number alone.
-- **Export Parts as KiCad Package…** writes the project's KiCad parts (its `parts/` folder), and the library's ICs when
-  ticked, as a KiCad PCM package: a `.zip` with `metadata.json` (the PCM schema's required fields: identifier, name,
-  description, author, licence, version), `symbols/` and `footprints/`. It installs in KiCad, or imports into another
-  Silinx project.
+- **Export Parts as KiCad Package…** writes the project's KiCad parts (its `parts/` folder), and, when chosen, the
+  library's ICs or all its parts, as a KiCad PCM package: a `.zip` with `metadata.json` (the PCM schema's required fields:
+  identifier, name, description, author, licence, version), `symbols/` and `footprints/`. It installs in KiCad, or
+  imports into another Silinx project.
 
-The parts of the library that are not ICs (switches, LEDs, displays) are not exported: they are Silinx's own drawings. The MCP's
+**Silinx's library in KiCad's format** (#4290): every part of the library with pins (all but the breadboards, which are
+the board itself) as a symbol of `symbols/Silinx.kicad_sym`. The ICs are written as above. Each other part is named
+`Silinx_<type>` (`Silinx_led`, `Silinx_seg7-cc`), has one unit and carries `Silinx.Model` (its type). A display, an LED
+bar or a DIP switch has KiCad's DIP footprint; every other part has a footprint of Silinx's
+(`footprints/Silinx.pretty/Silinx_<type>.kicad_mod`, KiCad 9's file version), its pads where its pins sit on the 0.1 inch
+grid. Read back, every part keeps its pins in the same places. The ICs, the LED, the push button and the slide switch
+behave as the library's. The supply, the logic switch, the clock, the pulls, the DIP switches, the displays, the LED bar
+and the probe are drawn only, and the import says so (a KiCad part does not behave as them yet, #4452). The library is
+generated from the parts' descriptions at each export and is not kept as a file in the repository, so it is always the
+running version's library.
+
+The MCP's
 `part_libraries` lists the libraries and what one holds, and `import_part` takes `library` (an identifier), a `.zip` or a
 folder, with `libraries` to choose among them.
 
@@ -386,8 +397,8 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
   parts (as which IC, or drawn only; their file, source and licence) and the symbols that are no part, with why;
 - `part_libraries`: KiCad's own and the KiCad PCM's libraries (searched), and what one holds; with `catalogue`, the
   KiCad catalogue's parts;
-- `export_part`: the library's ICs as a `.kicad_sym`, or a project's KiCad parts (and ICs) as a PCM package's `.zip`, in
-  the exchange folder;
+- `export_part`: the library's ICs as a `.kicad_sym`, or a PCM package's `.zip` of a project's KiCad parts and/or the
+  library's ICs or parts (`parts`, `all_parts`: Silinx's library in KiCad's format, #4290), in the exchange folder;
 - `import_part`: a `.kicad_sym` or `.kicad_mod` of the exchange folder (or a PCM package's `.zip`, a `.kicad_symdir`
   folder, a library of `part_libraries`, a catalogue's `part`: its one symbol) copied into the project's `parts/`, the Silinx
   properties given written in its symbols (a symbol's model, family and footprint; its source, author and licence),
