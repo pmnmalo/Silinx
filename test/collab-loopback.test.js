@@ -17,9 +17,9 @@ const cands = sdp => sdp.split(/\r?\n/).filter(l => l.startsWith('a=candidate:')
 const CHROME = [
   'v=0', 'o=- 4611 2 IN IP4 127.0.0.1', 's=-', 't=0 0', 'a=group:BUNDLE 0', 'm=application 50894 UDP/DTLS/SCTP webrtc-datachannel',
   'c=IN IP4 203.0.113.5',
-  'a=candidate:3061451245 1 udp 2113937151 f996b581-dd21-407d-8644-e6498bc6c2f9.local 50894 typ host generation 0 network-cost 999',
+  'a=candidate:3061451245 1 udp 2113937151 11111111-2222-4333-8444-555555555555.local 50894 typ host generation 0 network-cost 999',
   'a=candidate:842163049 1 udp 1677729535 203.0.113.5 50894 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999',
-  'a=candidate:1846311693 1 tcp 1518157311 f996b581-dd21-407d-8644-e6498bc6c2f9.local 9 typ host tcptype active generation 0 network-cost 999',
+  'a=candidate:1846311693 1 tcp 1518157311 11111111-2222-4333-8444-555555555555.local 9 typ host tcptype active generation 0 network-cost 999',
   'a=ice-ufrag:k1Zx', 'a=ice-pwd:Zc4lJ0J8bLcZQ5sV7vKj1fZp', 'a=fingerprint:sha-256 4A:AD:B9:B1:3F:82:18:3B:54:02:12:DF:3E:5D:49:6B:19:E5:7C:AB:4A:AD:B9:B1:3F:82:18:3B:54:02:12:DF',
   'a=setup:actpass', 'a=mid:0', 'a=sctp-port:5000', '',
 ].join('\r\n');
@@ -37,7 +37,7 @@ const FIREFOX = [
 // Safari's, with \n endings (an mDNS host candidate, a private IPv4 one, a loopback one, one at a well-known port)
 const SAFARI = [
   'v=0', 'o=- 99 2 IN IP4 127.0.0.1', 's=-', 't=0 0', 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0',
-  'a=candidate:1 1 udp 2122260223 192.168.1.20 52000 typ host generation 0',
+  'a=candidate:1 1 udp 2122260223 198.51.100.20 52000 typ host generation 0',
   'a=candidate:2 1 udp 2122194687 127.0.0.1 52001 typ host generation 0',
   'a=candidate:3 1 udp 2122129151 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 52002 typ host generation 0',
   'a=candidate:4 1 udp 2122063615 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 1023 typ host generation 0',
@@ -71,7 +71,7 @@ test('#4494 Safari\'s description (\\n endings): the mDNS host candidate twinned
   assert.ok(!out.includes('\r'));
   assert.equal(MIN_PORT, 1024);
   assert.deepEqual(cands(out), [
-    'a=candidate:1 1 udp 2122260223 192.168.1.20 52000 typ host generation 0',
+    'a=candidate:1 1 udp 2122260223 198.51.100.20 52000 typ host generation 0',
     'a=candidate:2 1 udp 2122194687 127.0.0.1 52001 typ host generation 0',
     'a=candidate:3 1 udp 2122129151 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 52002 typ host generation 0',
     'a=candidate:L3 1 udp 2122129151 127.0.0.1 52002 typ host generation 0',
@@ -104,9 +104,9 @@ test('#4494 a trickled candidate\'s twin: its media line kept; null for the othe
   for (const c of [
     { candidate: 'candidate:8 1 udp 1 203.0.113.5 51000 typ srflx raddr 0.0.0.0 rport 0' },
     { candidate: 'candidate:9 1 tcp 1 ab12.local 9 typ host tcptype active' },
-    { candidate: 'candidate:9 1 udp 1 fe80::1 51000 typ host' },
+    { candidate: 'candidate:9 1 udp 1 2001:db8::1 51000 typ host' },
     { candidate: 'candidate:9 1 udp 1 127.0.0.1 51000 typ host' },
-    { candidate: 'candidate:9 1 udp 1 10.0.0.2 51000 typ host' },
+    { candidate: 'candidate:9 1 udp 1 198.51.100.2 51000 typ host' },
     { candidate: 'candidate:9 1 udp 1 ab12.local 53 typ host' },
     { candidate: 'candidate:9 1 udp 1 ab12.local 70000 typ host' },
     { candidate: 'candidate:9 1 udp 1 printer.example.com 51000 typ host' },
