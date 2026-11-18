@@ -132,6 +132,7 @@ The plan is in #1953 and #2315. For the open toolchains:
 | iCE40 | `synth_ice40` | nextpnr-ice40 | `icepack` | PCF | Works: local server and browser, nextpnr-ice40 downloaded on first use (#2444); its 12 parts in the interface (#2463), the iCEBreaker board (#2517), other boards #2297 |
 | ECP5 | `synth_ecp5` | nextpnr-ecp5 | `ecppack`, Project Trellis | LPF | Works: local server and browser, nextpnr-ecp5 downloaded on first use (30 MB); its 10 parts, the ULX3S board and the examples on it (#2302); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
 | MachXO2 | `synth_lattice -family xo2` (`xo3` for the MachXO3; `synth_machxo2` is gone from Yosys) | nextpnr-machxo2 | `ecppack`, Project Trellis | LPF | Measured, not a family of Silinx yet (#2302): every example builds on the LCMXO2-1200HC and the LCMXO3LF-6900C, below |
+| GateMate | `synth_gatemate -luttree -nomx8` | nextpnr-himbaechel-gatemate | `gmpack`, Project Peppercorn | CCF | Measured, not a family of Silinx yet (#2431): every example builds on the CCGM1A1 (the GateMate A1 Evaluation Board's), the CCGM1A2 crashes nextpnr, below |
 | Gowin | `synth_gowin` | nextpnr-himbaechel-gowin | `gowin_pack`, Silinx's JavaScript port of Apicula's (`src/fpga/gowin/`) | CST | Works: local server and browser, downloaded on first use (32 MB); the GW1NR-9C, the Tang Nano 9K and the examples on it, their `.fs` Apicula's byte for byte, the rPLL and the oscillator too (#2303); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
 | Cyclone V | `synth_intel_alm` | nextpnr, not yet stable | Mistral | to be defined | To be measured (#2304) |
 | Xilinx 7-series (Artix-7) | `synth_xilinx` | nextpnr-himbaechel's xilinx, `@silinx/nextpnr-himbaechel-xc7` (#3143) | Silinx, from nextpnr's FASM on Project X-Ray's database (#3144) | XDC | An experimental family (#3146): the Basys 3's XC7A35T and the Nexys A7's XC7A100T (#3145) in the local server (AMD Vivado the default there) and in the browser (#3143: the Basys 3's `.bit` the local server's byte for byte); its timing nextpnr's estimate; every example on both boards, its size and speed below (#3147) |
@@ -274,6 +275,46 @@ The LUTs are nextpnr's count after packing (its TRELLIS_COMB, more than Yosys's 
 configuration, 45,060 bytes on the 1200HC and 191,836 on the 6900C, a block RAM's initial values adding to it (stopwatch
 47,392 and 194,168, micro80 48,558 and 195,334). Each build takes 1–4 s.
 
+The GateMate (#2431), Cologne Chip's, is measured too, not yet a family of Silinx. `scripts/gatemate-measure.mjs` takes the
+same flat Verilog (the ULX3S's, 25 MHz) through Yosys's `synth_gatemate`, nextpnr-himbaechel's gatemate and Project
+Peppercorn's gmpack, all three in WebAssembly: Yosys from `@yowasp/yosys`, the other two (and gmunpack) from YoWASP's
+`@yowasp/nextpnr-himbaechel-gatemate` 0.11.825 (a development dependency, 35 MB, the CCGM1A1's and CCGM1A2's chip databases;
+none for the CCGM1A4 and larger). In the browser the path would be the Gowin's: that package downloaded on first use, the
+bitstream packed by its gmpack. Yosys 0.70 is newer than nextpnr 0.11: `synth_gatemate` is asked for `-luttree` (LUT trees,
+nextpnr's mapping; without it CC_LUT3/CC_LUT4, which nextpnr refuses) and `-nomx8` (nextpnr refuses CC_MX8). The clock is put
+on the GateMate A1 Evaluation Board's clock pin, IO_SB_A8 (its own oscillator is 10 MHz: the 25 MHz asked here is the
+ULX3S's), the other ports placed by nextpnr. Each bitstream is read back by gmunpack and compared with the configuration
+nextpnr wrote, setting by setting (a tile nextpnr writes with only zeros is left out of the read back, so the bitstream
+packed again from it is not always the same bytes), and packed again (`test/gatemate-measure.test.js`: gates and blinky).
+
+On the CCGM1A1 every example builds with seed 1 with no warning (but the ports nextpnr placed, and Yosys's on micro80's
+memory: `Resizing cell port micro80_top.memory.0.0.B_DO from 10 bits to 20 bits.`), its clock at 25 MHz met. With seeds 1
+to 5, of 55 builds: nextpnr crashed once (vga, seed 5: `memory access out of bounds`, a WebAssembly trap); gmunpack crashed
+on two bitstreams with block RAM (micro80 seed 1, stopwatch seed 2: the same trap), the bitstream packed; and in five builds one
+flip-flop's initial value (`FF_INIT 10`, one or two of 9,000 to 17,000 settings) was not read back: either gmpack or
+gmunpack is wrong there, which only a real board or Cologne Chip's own tools (#2301) can tell. On the CCGM1A2 (two dies)
+nextpnr crashes on every example while routing (router2, a WebAssembly exception; router1 fails on `Trying to add value to
+already assigned word CPE2.C_SEL_C`). Not tested on a real board, nor compared with Cologne Chip's place and route.
+
+| Example | Yosys: LUT / MX / FF / ADDF / BRAM | CCGM1A1: CPE LTs, FFs, IOs, RAM halves (seed 1) | MHz (seeds 1–5) | Bitstream bytes (seeds 1–5) | Run time |
+|---|---|---|---|---|---|
+| gates | 3 / 1 / 0 / 0 / 0 | 5 of 40960, 0, 6, 0 | – | 797–1334 | 2–3 s |
+| breadboard | 2 / 0 / 8 / 4 / 0 | 15, 8, 11, 0 | 149–201 | 2316–3124 | 2–3 s |
+| traffic | 177 / 22 / 56 / 38 / 0 | 195, 56, 24, 0 | 41–50 | 15330–16231 | 3–4 s |
+| blinky | 205 / 53 / 92 / 103 / 0 | 298, 92, 27, 0 | 74–84 | 22122–28612 | 4 s |
+| pong | 388 / 27 / 199 / 213 / 0 | 506, 199, 27, 0 | 46–49 | 31907–34228 | 6 s |
+| stopwatch | 344 / 55 / 235 / 180 / 1 (3 CC_MULT) | 869, 235, 26, 1 | 38–40 | 71554–82571 | 7–8 s |
+| clock | 352 / 26 / 152 / 180 / 0 | 506, 152, 27, 0 | 49–65 | 31672–34173 | 5–6 s |
+| vga | 163 / 23 / 56 / 241 / 0 | 241, 56, 16, 0 | 64–68 (seed 5 crashed) | 25667–29727 | 4–5 s |
+| isqrt | 157 / 30 / 85 / 49 / 0 | 258, 85, 23, 0 | 69–74 | 15953–19442 | 3–4 s |
+| uart | 221 / 33 / 134 / 66 / 0 | 312, 134, 24, 0 | 72–86 | 19053–21834 | 4–5 s |
+| micro80 | 395 / 94 / 340 / 65 / 2 | 826, 340, 29, 2 | 38–45 | 70128–87633 | 7–8 s |
+
+The CPE LTs and FFs are nextpnr's count after packing, by half CPE (40,960 halves on the CCGM1A1's 20,480 CPEs). The bitstream is not the part's whole configuration, only the
+tiles used, so it grows with the design. The run time is Yosys, nextpnr, gmpack and gmunpack, on WebAssembly in Node.js.
+Slower than the MachXO2 on the same designs (pong 46–49 MHz against 67–77): a first measure, on nextpnr's own timing model,
+not Cologne Chip's.
+
 And around the flow, one issue each: the boards and examples (#2297), the primitives' simulation models
 (#2299), the reports (#2300). In the interface: the device profile (#2310), the tool descriptor (#2311), personalities (#2312).
 
@@ -315,4 +356,4 @@ Vendor tools (ISE, Vivado, Quartus) are another kind of back end: they run a who
   `ecp5-routed`). Runs on real boards (#1830) are the fourth proof, by hand. Neither check compares the results with a vendor's
   tools (iCEcube2, Diamond): they prove that the bitstream is the routed design and that the routed design behaves as the
   design does, not that it is as small or as fast as theirs.
-- **The other families** (the MachXO2, the families on trial) have no such check yet.
+- **The other families** (the MachXO2, the GateMate, the families on trial) have no such check yet.
