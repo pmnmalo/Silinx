@@ -3,12 +3,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ISE, NO_FLOW, DESIGN_ONLY, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5, SILINX_GOWIN, VIVADO, TOOLS, allTasks, buildProcesses, hasTask, simModelsOf, toolOf, MESSAGE_LINE, EXTRA_STEPS, IMPL_IDS } from '../web/js/tool-descriptors.js';
+import { ISE, NO_FLOW, DESIGN_ONLY, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5, SILINX_GOWIN, SILINX_GATEMATE, VIVADO, TOOLS, allTasks, buildProcesses, hasTask, simModelsOf, toolOf, MESSAGE_LINE, EXTRA_STEPS, IMPL_IDS } from '../web/js/tool-descriptors.js';
 import { XILINX_STEPS, orderSteps } from '../packages/silinx-fpga/src/open-steps.js';
 import { ICE40_STEPS } from '../packages/silinx-fpga/src/open-flow-ice40.js';
 import { XC7_STEPS } from '../packages/silinx-fpga/src/open-flow-xc7.js';
 import { ECP5_STEPS } from '../packages/silinx-fpga/src/open-flow-ecp5.js';
 import { GOWIN_STEPS } from '../packages/silinx-fpga/src/open-flow-gowin.js';
+import { GATEMATE_STEPS } from '../packages/silinx-fpga/src/open-flow-gatemate.js';
 import { familyProfile } from '../core/family-profile.js';
 import { vivadoDevice, openFlowDevice, openOnlyDevice, isIseFamily, noOpenFlowMessage } from '../packages/silinx-fpga/src/parts.js';
 
@@ -85,6 +86,22 @@ test('#2303 the Gowin: the ECP5\'s tree, its post-synthesis and post-place & rou
   assert.deepEqual(SILINX_GOWIN.constraints, { format: 'cst', ext: '.cst', label: 'CST' });
   assert.deepEqual(SILINX_GOWIN.program, { process: 'config', page: 'program-open', title: 'Program FPGA', target: 'sram', file: '{top}.fs' });
   assert.deepEqual(SILINX_GOWIN.tasks.map(t => t.id), ['edit', 'sim', 'emu', 'impl']);
+});
+
+test('#2431 the GateMate: the Gowin\'s tree with no simulation model and no Configure Target Device (its board openFPGALoader\'s, outside Silinx); its steps (gmpack\'s .bit), reports, CCF', () => {
+  const t = built(SILINX_GATEMATE);
+  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] }, { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate']);
+  assert.equal(toolOf({ part: 'ccgm1a1' }, true), SILINX_GATEMATE);
+  assert.deepEqual(SILINX_GATEMATE.steps.map(({ produces, ...s }) => s), GATEMATE_STEPS);
+  assert.deepEqual(SILINX_GATEMATE.steps.find(s => s.id === 'bitgen').produces, ['{top}.bit']);
+  assert.deepEqual(SILINX_GATEMATE.steps.find(s => s.id === 'par').produces, ['open/routed.cfg', 'open/routed.json', 'open/nextpnr-report.json']);
+  assert.deepEqual(SILINX_GATEMATE.steps.find(s => s.id === 'trce').produces, ['open/timing.txt', 'open/paths.json']);
+  assert.deepEqual(SILINX_GATEMATE.reports.map(r => [r.id, r.label]), [['synthesis', 'Synthesis Report (Yosys)'], ['routed', 'Routed Design (Peppercorn configuration)'], ['timing', 'Static Timing Report']]);
+  assert.ok(read('packages/silinx-fpga/src/open-flow-gatemate.js').includes("io.write('open/routed.cfg'"));
+  for (const r of SILINX_GATEMATE.reports) assert.ok(SILINX_GATEMATE.steps.find(s => s.id === r.step).produces.includes(r.file), r.id);
+  assert.deepEqual(SILINX_GATEMATE.constraints, { format: 'ccf', ext: '.ccf', label: 'CCF' });
+  assert.equal(SILINX_GATEMATE.program, null);
+  assert.deepEqual(SILINX_GATEMATE.tasks.map(t => t.id), ['edit', 'sim', 'emu', 'impl']);
 });
 
 test('#2311 the iCE40: what it does not have is absent, not disabled (its post-synthesis and post-place & route models, #2299)', () => {

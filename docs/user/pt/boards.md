@@ -19,6 +19,7 @@ gerador de bitstreams do Silinx), no browser, sem nada instalado.
 | iCE40 | iCEBreaker | as ferramentas do Silinx |
 | ECP5 | ULX3S | as ferramentas do Silinx |
 | Gowin | Tang Nano 9K | as ferramentas do Silinx |
+| GateMate | Cologne Chip GateMate FPGA Evaluation Board (não programada a partir do Silinx) | as ferramentas do Silinx |
 | Série 7 (uma família experimental) | Basys 3, Nexys A7 | as ferramentas do Silinx, ou o AMD Vivado |
 | Série 7 | Arty S7, Zybo Z7 | o AMD Vivado |
 | todas as famílias que o ISE 14.7 implementa | as outras placas da Digilent, da Xilinx e da Numato, ou só um dispositivo | o Xilinx ISE |

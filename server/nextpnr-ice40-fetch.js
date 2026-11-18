@@ -1,5 +1,5 @@
 // The open families' nextpnr and packer on the local server (#2444): YoWASP's package (@yowasp/nextpnr-ice40, the iCE40's;
-// @yowasp/nextpnr-ecp5, the ECP5's, #2302; @yowasp/nextpnr-himbaechel-gowin, the Gowin's, #2303) when it is installed; else (the release zip leaves them out: tens of MB packed,
+// @yowasp/nextpnr-ecp5, the ECP5's, #2302; @yowasp/nextpnr-himbaechel-gowin, the Gowin's, #2303; @yowasp/nextpnr-himbaechel-gatemate, the GateMate's, #2431) when it is installed; else (the release zip leaves them out: tens of MB packed,
 // every part's chip database) its tarball, at the version and the SHA-512 of package-lock.json, downloaded by the first run
 // from npm's registry, checked and kept in ~/.silinx/nextpnr/ (SILINX_CONFIG_DIR overrides ~/.silinx), as nextpnr-spartan's
 // chip databases are (#2329).
@@ -17,6 +17,7 @@ export const OWN_TOOLS = {
   '@yowasp/nextpnr-ice40': { tools: 'nextpnr-ice40 and icepack', mb: 80, dir: 'nextpnr-ice40' },
   '@yowasp/nextpnr-ecp5': { tools: 'nextpnr-ecp5 and ecppack', mb: 30, dir: 'nextpnr-ecp5' },
   '@yowasp/nextpnr-himbaechel-gowin': { tools: 'nextpnr-himbaechel-gowin and gowin_pack', mb: 32, dir: 'nextpnr-himbaechel-gowin' },
+  '@yowasp/nextpnr-himbaechel-gatemate': { tools: 'nextpnr-himbaechel-gatemate and gmpack', mb: 4, dir: 'nextpnr-himbaechel-gatemate' },
 };
 const ICE40 = '@yowasp/nextpnr-ice40';
 const toolOf = name => OWN_TOOLS[name] || { tools: name, mb: '?', dir: name.split('/').pop() };

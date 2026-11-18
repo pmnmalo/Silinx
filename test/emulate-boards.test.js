@@ -1,12 +1,12 @@
-// The Board Emulator on the boards of the 7-series (the Basys 3, the Nexys A7), the ECP5 (the ULX3S) and the Gowin (the
-// Tang Nano 9K), #3704: the emulator runs the HDL on the board's pins, read from the constraints in the family's format
-// (XDC, LPF, CST: web/js/constraints-format.js readPins) as from a UCF; the examples' constraints as the New Project wizard
+// The Board Emulator on the boards of the 7-series (the Basys 3, the Nexys A7), the ECP5 (the ULX3S), the Gowin (the
+// Tang Nano 9K) and the GateMate (Cologne Chip's evaluation board, #2431: drawn as rows of parts), #3704: the emulator runs the HDL on the board's pins, read from the constraints in the family's format
+// (XDC, LPF, CST, CCF: web/js/constraints-format.js readPins) as from a UCF; the examples' constraints as the New Project wizard
 // writes them, their warnings (the ports with no pin on the board) asserted; what the board shows from both engines, the
 // switches and the buttons driving the LEDs and the display.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './ui/core-hooks.js';
-import { EXAMPLES, XC7_TARGETS, ECP5_TARGETS, GOWIN_TARGETS, example, exampleUcf, exampleBoard } from './examples-lib.mjs';
+import { EXAMPLES, XC7_TARGETS, ECP5_TARGETS, GOWIN_TARGETS, GATEMATE_TARGETS, example, exampleUcf, exampleBoard } from './examples-lib.mjs';
 import { designOf, rng } from './compiled-diff.js';
 import { engines, boardOf, shown, ucfPort } from './emulate-lib.js';
 import { timingGenerics, autoTimeScale, scaledGenerics } from '../core/emulate.js';
@@ -15,7 +15,7 @@ import { constraintsFormatOf } from '../packages/silinx-fpga/src/family.js';
 
 const { readPins } = await import('../web/js/constraints-format.js');
 
-const BOARDS = [...XC7_TARGETS, ...ECP5_TARGETS, ...GOWIN_TARGETS].map((t) => t.board);
+const BOARDS = [...XC7_TARGETS, ...ECP5_TARGETS, ...GOWIN_TARGETS, ...GATEMATE_TARGETS].map((t) => t.board);
 // the ports with no pin on the board, as the wizard warns them (exampleUcf's unmatched, the wiring's unmapped): the ULX3S's
 // four switches (sw<4..7> of isqrt and micro80); none elsewhere
 const UNMAPPED = { 'ulx3s isqrt': ['sw<7>', 'sw<6>', 'sw<5>', 'sw<4>'], 'ulx3s micro80': ['sw<7>', 'sw<6>', 'sw<5>', 'sw<4>'] };
@@ -46,7 +46,7 @@ const DIGITS = { '0000000': ' ', '1111110': '0', '0110000': '1', '1101101': '2',
 const digitsOf = (st) => st.prev.digits.map((d) => (d ? (DIGITS[d.seg.map(Math.round).join('')] ?? '?') + (Math.round(d.dp) ? '.' : '') : ' ')).reverse().join('');
 
 for (const board of BOARDS) {
-  test(`#3704 gates on the ${board}: its ${board === 'ulx3s' ? 'LPF' : board === 'tangnano9k' ? 'CST' : 'XDC'}'s pins, no warning; SW3..SW0 light LD0 and LD1 for a prime, on both engines`, async () => {
+  test(`#3704 gates on the ${board}: its ${{ ulx3s: 'LPF', tangnano9k: 'CST', 'gatemate-evb': 'CCF' }[board] || 'XDC'}'s pins, no warning; SW3..SW0 light LD0 and LD1 for a prime, on both engines`, async () => {
     const b = await emulated('gates', board);
     assert.deepEqual([b.unmatched, b.wiring.unmapped, b.diags], [[], [], []]);
     assert.deepEqual(b.wiring.bits.map((x) => [x.bit, x.kind]).sort(), [['led<0>', 'led'], ['led<1>', 'led'], ['sw<0>', 'sw'], ['sw<1>', 'sw'], ['sw<2>', 'sw'], ['sw<3>', 'sw']]);

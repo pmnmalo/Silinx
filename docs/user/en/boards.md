@@ -19,6 +19,7 @@ browser, with nothing installed.
 | iCE40 | iCEBreaker | the Silinx toolchain |
 | ECP5 | ULX3S | the Silinx toolchain |
 | Gowin | Tang Nano 9K | the Silinx toolchain |
+| GateMate | Cologne Chip GateMate FPGA Evaluation Board (not programmed from Silinx) | the Silinx toolchain |
 | 7-series (an experimental family) | Basys 3, Nexys A7 | the Silinx toolchain, or AMD Vivado |
 | 7-series | Arty S7, Zybo Z7 | AMD Vivado |
 | every family ISE 14.7 implements | the other Digilent, Xilinx and Numato boards, or a device alone | Xilinx ISE |

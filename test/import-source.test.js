@@ -18,7 +18,7 @@ test('importSourcePath: constraints to constraints/, a simulation source to sim/
 });
 
 test('importSourceTakes: the dialog\'s accepted files only', () => {
-  assert.equal(IMPORT_SOURCE_ACCEPT, '.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst,.mem,.hex,.asm.json,.json');
+  assert.equal(IMPORT_SOURCE_ACCEPT, '.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst,.ccf,.mem,.hex,.asm.json,.json');
   for (const f of ['a.v', 'a.VHD', 'a.vhdl', 'a.ucf', 'a.pcf', 'a.lpf', 'a.cst', 'a.mem', 'a.hex', 'a.asm.json', 'a.fsm.json']) assert.ok(importSourceTakes(f), f);
   for (const f of ['a.sv', 'a.exe', 'a.c', 'a', 'a.xdc', 'v']) assert.ok(!importSourceTakes(f), f);
   assert.deepEqual(IMPORT_SOURCE_ROLES.map(r => r[0]), ['design', 'impl', 'sim']);

@@ -46,6 +46,9 @@ export const ECP5_TARGETS = [{ board: 'ulx3s' }];
 // the Gowin's board (#2303): the examples on the Tang Nano 9K, every port on a pin of its headers (nextpnr-himbaechel-gowin places
 // none without one); vga on the tangnano9k-vga; to its .fs through gowin_pack (Silinx's port)
 export const GOWIN_TARGETS = [{ board: 'tangnano9k' }];
+// the GateMate's board (#2431): the examples on Cologne Chip's evaluation board (its CCGM1A1), the LEDs, switches and buttons on
+// its headers, the display on its Pmods; vga on the gatemate-evb-vga; to its .bit through nextpnr-himbaechel-gatemate and gmpack
+export const GATEMATE_TARGETS = [{ board: 'gatemate-evb' }];
 // the 7-series' boards (#3142): an experimental family, its constraints XDC; every example built by the Silinx toolchain
 // (test/open-flow-xc7-server.test.js, #3147) and by Vivado (#1649); not in TARGETS (ISE's)
 export const XC7_TARGETS = [{ board: 'basys3' }, { board: 'nexys-a7' }];
@@ -53,7 +56,7 @@ export const XC7_TARGETS = [{ board: 'basys3' }, { board: 'nexys-a7' }];
 // only (no Silinx toolchain of theirs); the examples' display, LEDs and switches the boards lack on their Pmods (#3709)
 export const VIVADO_TARGETS = [{ board: 'arty-s7' }, { board: 'zybo-z7' }];
 /** The board an example runs on for a target: vga on the iCEBreaker with its PmodVGA, on the ULX3S with its VGA. */
-const VGA_BOARDS = { icebreaker: 'icebreaker-vga', ulx3s: 'ulx3s-vga', tangnano9k: 'tangnano9k-vga' };
+const VGA_BOARDS = { icebreaker: 'icebreaker-vga', ulx3s: 'ulx3s-vga', tangnano9k: 'tangnano9k-vga', 'gatemate-evb': 'gatemate-evb-vga' };
 export const exampleBoard = (name, t) => (name === 'vga' && VGA_BOARDS[t.board] ? { ...t, board: VGA_BOARDS[t.board] } : t);
 /** A target's name: 'basys2-250', 'nexys3'. */
 export const targetName = t => t.variant ? `${t.board}-${t.variant}` : t.board;

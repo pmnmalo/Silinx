@@ -39,8 +39,8 @@ Portuguese; guided labs, automatic grading, live sharing and links for the slide
 
 ## Boards
 
-The Silinx toolchain builds for the **Basys2**, **Nexys2**, **Nexys3**, **Atlys**, **iCEBreaker**, **ULX3S** and
-**Tang Nano 9K** boards (and the Basys 3 and Nexys A7, an experimental family) with nothing else installed; Xilinx ISE
+The Silinx toolchain builds for the **Basys2**, **Nexys2**, **Nexys3**, **Atlys**, **iCEBreaker**, **ULX3S**, **Tang Nano 9K**
+and **GateMate evaluation** boards (and the Basys 3 and Nexys A7, an experimental family) with nothing else installed; Xilinx ISE
 14.7 and AMD Vivado, which you install yourself, add the other boards. A design and simulation project needs no board
 at all. [Boards and toolchains](docs/user/en/boards.md)
 
@@ -53,7 +53,7 @@ at all. [Boards and toolchains](docs/user/en/boards.md)
 - **In the browser:** open **https://pmnmalo.github.io/Silinx/**, click *New Project…* and start from an example.
   Your projects stay in your browser. Nothing to install, and it works on a tablet too.
 - **Synthesis and bitstreams need no Xilinx tool** for the **Basys2-100 / 250, Nexys2-500 / 1200, Nexys3, Atlys,
-  iCEBreaker, ULX3S and Tang Nano 9K** (and the Basys 3 and Nexys A7, an experimental family): the
+  iCEBreaker, ULX3S, Tang Nano 9K and GateMate evaluation board** (and the Basys 3 and Nexys A7, an experimental family): the
   *Silinx toolchain (no ISE)*, the default mode, synthesizes (Yosys), places and routes (nextpnr) and writes the bitstream, in the
   browser or locally.
 - **On your computer:** download `silinx-<version>.zip` from the

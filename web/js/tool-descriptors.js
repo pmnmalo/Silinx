@@ -94,7 +94,7 @@ const LAB_TASKS = [
 export const MESSAGE_LINE = /^\s*(ERROR|WARNING|FATAL|CRITICAL WARNING)\s*:\s*(?:([A-Za-z][\w-]*(?::\d+)?)\s+-\s+)?(.*)$/i;
 const LOG_MESSAGES = { line: MESSAGE_LINE, stepStart: '=== SILINX STEP', stepFailed: '=== SILINX FAILED', done: '=== SILINX DONE ===' };
 
-// the back ends' lists of steps (the toolchain's open-steps.js XILINX_STEPS, open-flow-ice40.js ICE40_STEPS, open-flow-ecp5.js ECP5_STEPS, open-flow-gowin.js GOWIN_STEPS: the same,
+// the back ends' lists of steps (the toolchain's open-steps.js XILINX_STEPS, open-flow-ice40.js ICE40_STEPS, open-flow-ecp5.js ECP5_STEPS, open-flow-gowin.js GOWIN_STEPS, open-flow-gatemate.js GATEMATE_STEPS: the same,
 // test/tool-descriptors.test.js; the interface loads none of the toolchain behind them, #1678)
 const step = (id, label, needs = []) => ({ id, label, needs });
 const XILINX_STEPS = [
@@ -150,12 +150,21 @@ const GOWIN_STEPS = [
   step('postpar', 'Generate Post-Place & Route Simulation Model', ['par']),
   step('bitgen', 'Generate Programming File - gowin_pack', ['par']),
 ];
+// (the GateMate's, open-flow-gatemate.js GATEMATE_STEPS, #2431)
+const GATEMATE_STEPS = [
+  step('synth', 'Synthesize - Yosys'),
+  step('translate', 'Translate', ['synth']),
+  step('par', 'Place & Route - nextpnr', ['translate']),
+  step('trce', 'Generate Post-Place & Route Static Timing', ['par']),
+  step('bitgen', 'Generate Programming File - gmpack', ['par']),
+];
 const withProducts = (steps, products) => steps.map(s => ({ ...s, produces: products[s.id] || [] }));
 
 const UCF = { format: 'ucf', ext: '.ucf', label: 'UCF' };
 const PCF = { format: 'pcf', ext: '.pcf', label: 'PCF' };
 const LPF = { format: 'lpf', ext: '.lpf', label: 'LPF' };
 const CST = { format: 'cst', ext: '.cst', label: 'CST' };
+const CCF = { format: 'ccf', ext: '.ccf', label: 'CCF' };
 const XDC = { format: 'xdc', ext: '.xdc', label: 'XDC' };
 
 /** Xilinx ISE 14.7. */
@@ -288,6 +297,24 @@ export const SILINX_GOWIN = {
   tasks: LAB_TASKS,
 };
 
+/** The Silinx toolchain on the GateMate (#2431), with nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn): as the ECP5's,
+ *  its bitstream gmpack's .bit; its board not programmed from Silinx (openFPGALoader's, no GateMate's JTAG in Silinx: no
+ *  Configure Target Device); Emulate on the CCF's pins (#3704). */
+export const SILINX_GATEMATE = {
+  id: 'silinx-gatemate', name: 'Silinx toolchain (GateMate)', open: true,
+  steps: withProducts(GATEMATE_STEPS, { synth: ['open/{top}.json', 'open/{top}_stat.txt'], par: ['open/routed.cfg', 'open/routed.json', 'open/nextpnr-report.json'], trce: ['open/timing.txt', 'open/paths.json'], bitgen: ['{top}.bit'] }),
+  reports: [
+    { id: 'synthesis', label: 'Synthesis Report (Yosys)', step: 'synth', file: 'open/{top}_stat.txt' },
+    { id: 'routed', label: 'Routed Design (Peppercorn configuration)', step: 'par', file: 'open/routed.cfg' },
+    { id: 'timing', label: 'Static Timing Report', step: 'trce', file: 'open/timing.txt' },
+  ],
+  constraints: CCF,
+  messages: LOG_MESSAGES,
+  program: null,
+  tree: treeOf(['synth-open', 'map', 'xpwr', 'postsynth', 'posttrans', 'postmap', 'postpar', 'pin2ucf', 'fpgaview', 'tech', 'config'], SILINX_CHANGE),
+  tasks: LAB_TASKS,
+};
+
 /** An experimental family's (#3142): its constraints (XDC) and the design's checks, no implementation, no programming yet:
  *  no step, no report, and the tasks without Implement; Emulate, which needs no flow (the HDL on the board's pins, #3704). */
 export const NO_FLOW = {
@@ -339,7 +366,7 @@ export const VIVADO = {
 
 // (the tools that implement with every task of a lab session: NO_FLOW's, VIVADO's and SILINX_XC7's are some of theirs)
 export const TOOLS = [ISE, SILINX, SILINX_ICE40];
-const OPEN_BY_FAMILY = { ice40: SILINX_ICE40, artix7: SILINX_XC7, ecp5: SILINX_ECP5, gowin: SILINX_GOWIN };
+const OPEN_BY_FAMILY = { ice40: SILINX_ICE40, artix7: SILINX_XC7, ecp5: SILINX_ECP5, gowin: SILINX_GOWIN, gatemate: SILINX_GATEMATE };
 /** The tool of a project device: a 7-series one's AMD Vivado on the local server (#1649), or the Silinx toolchain there when
  *  `open` (the project's synthesis tool Silinx, #3146), and always in the browser edition (`standalone`, #3143), the Artix-7's
  *  only: a Vivado-only family's (the Spartan-7, the Kintex-7, the Zynq-7000, #3895) none there; another experimental family's

@@ -95,12 +95,12 @@ test('import_source: its errors (outside the exchange folder, no such file, a fi
   fs.writeFileSync(path.join(tmp, 'outside.vhd'), INV);
   await fails('import_source', { project: 'p', files: ['../outside.vhd'] }, 'files: \'../outside.vhd\' is outside the exchange folder (SILINX_MCP_FOLDER sets another)');
   await fails('import_source', { project: 'p', files: ['nothere.vhd'] }, 'files: no file \'<exchange folder>/nothere.vhd\'');
-  await fails('import_source', { project: 'p', files: ['x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .mem, .hex, .asm.json, .json)');
+  await fails('import_source', { project: 'p', files: ['x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .mem, .hex, .asm.json, .json)');
   await fails('import_source', { project: 'p', files: [] }, 'files: the files to copy, in the exchange folder');
   await fails('import_source', { project: 'p', files: ['inv.vhd'], association: 'all' }, 'association: one of design, impl, sim');   // (the arguments' central check, #3535)
   await fails('import_source', { project: 'nothere', files: ['inv.vhd'] }, 'no project \'nothere\' in the workspace');
   // (one file refused: none copied)
-  await fails('import_source', { project: 'p', files: ['tb_inv.vhd', 'x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .mem, .hex, .asm.json, .json)');
+  await fails('import_source', { project: 'p', files: ['tb_inv.vhd', 'x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .mem, .hex, .asm.json, .json)');
 });
 
 test('import_source and import_project: no hidden file or folder of the exchange folder, by its name or through a link', async () => {

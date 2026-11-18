@@ -14,7 +14,7 @@ ao estilo do ISE) abre-o com o módulo de topo do projeto.
 ## Placas
 
 A Basys2, a Nexys2, a Nexys3, a Atlys, a Basys 3, a Nexys A7, o Spartan-3E Starter Kit e a iCEBreaker são desenhadas
-tal como são; as outras placas (a ULX3S, a Tang Nano 9K, a Arty S7, a Zybo Z7…) têm um painel genérico.
+tal como são; as outras placas (a ULX3S, a Tang Nano 9K, a placa de avaliação GateMate, a Arty S7, a Zybo Z7…) têm um painel genérico.
 
 | Uma Nexys3 e o seu monitor VGA (o exemplo vga) | Uma iCEBreaker e os seus Pmods (o exemplo clock) |
 |---|---|

@@ -39,9 +39,13 @@ export { gowinIo } from './nextpnr-gowin-io.js';
 export { GOWIN_PARTS, GOWIN_DEVICES, GOWIN_STEPS } from './open-flow-gowin.js';
 export { gowinPack } from './fpga/gowin/pack.js';
 export { loadChipdb as loadGowinChipdb } from './fpga/gowin/chipdb.js';
+// the GateMate's nextpnr and gmpack, YoWASP's package as io.nextpnr.gatemate (#2431; in Node: node.js nextpnrGatemateNode)
+export { gatemateIo } from './nextpnr-gatemate-io.js';
+export { GATEMATE_PARTS, GATEMATE_STEPS } from './open-flow-gatemate.js';
 export { PCF } from './pcf.js';
 export { LPF } from './lpf.js';
 export { CST } from './cst.js';
+export { CCF } from './ccf.js';
 export { XDC, readXdc, writeXdc } from './xdc.js';
 export { gateAssignments, rewriteCarryChains } from './carry-chain.js';
 

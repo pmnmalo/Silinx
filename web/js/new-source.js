@@ -31,10 +31,11 @@ const SOURCE_TYPES = [
   { id: 'bramwiz', label: 'Block Memory', ico: 'template', ext: null, dir: 'src', wiz: 'memory', only: true },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
   { id: 'ucf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ucf', dir: 'constraints', wiz: 'ucf' },
-  // (the Constraints Wizard in the device's format, #2296: the PCF, LPF, CST and XDC Wizards)
+  // (the Constraints Wizard in the device's format, #2296: the PCF, LPF, CST, CCF and XDC Wizards)
   { id: 'pcf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.pcf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the iCE40's: its device shows it for UCF's, #2296)
   { id: 'lpf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.lpf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the ECP5's, #2302)
   { id: 'cst', label: 'Implementation Constraints File', ico: 'ucf', ext: '.cst', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the Gowin's, #2303)
+  { id: 'ccf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ccf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the GateMate's, #2431)
   { id: 'xdc', label: 'Implementation Constraints File', ico: 'ucf', ext: '.xdc', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the 7-series', #3142)
   { id: 'mem', label: 'Memory Initialization File (.mem)', ico: 'file', ext: '.mem', dir: 'src' },
   { id: 'lab', label: 'Guided Lab', ico: 'help', ext: '.lab.json', dir: 'labs' },   // (a teacher's, its steps checked: #3179)
@@ -46,7 +47,7 @@ const SOURCE_TYPES = [
 // a design and simulation project's (#3780)
 const DESIGN_TYPES = ['tt', 'circuit', 'sch', 'fsm', 'asm', 'petri', 'lab'];
 // the constraints files' types: one shown, the device's format's
-const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'xdc'];
+const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
 
 // name, location, lang, atFile: a wizard's < Back (#2082): New Source again at the File Name and Location page, as left
 export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false } = {}) {
@@ -55,7 +56,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   // (modwiz, schwiz, pnwiz, tbwiz) select the type whose Wizard button opens that wizard (#958)
   const LEGACY = { vhdl: ['hdl', 'vhdl'], verilog: ['hdl', 'verilog'], 'vhdl-tb': ['tb', 'vhdl'], 'verilog-tb': ['tb', 'verilog'],
     modwiz: ['hdl'], schwiz: ['sch'], pnwiz: ['petri'], tbwiz: ['tb'] };
-  const cons = constraintsFormatOf(S.project.device), consType = id => (id === 'ucf' ? cons : id);   // (the device's format: UCF, PCF, LPF, CST or XDC)
+  const cons = constraintsFormatOf(S.project.device), consType = id => (id === 'ucf' ? cons : id);   // (the device's format: UCF, PCF, LPF, CST, CCF or XDC)
   // (a design and simulation project, #3780: its drawings and its labs only, a Schematic by default; no language)
   const design = designOnly(), ofKind = t => !design || DESIGN_TYPES.includes(t.id);
   let st = SOURCE_TYPES.filter(ofKind).find(t => t.id === consType(LEGACY[type]?.[0] || type)) || SOURCE_TYPES.find(t => t.id === (design ? 'sch' : 'hdl'));   // default: Module (HDL)
@@ -252,6 +253,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     case 'pcf': text = T.pcfTemplate(pj); break;
     case 'lpf': text = T.lpfTemplate(pj); break;
     case 'cst': text = T.cstTemplate(pj); break;
+    case 'ccf': text = T.ccfTemplate(pj); break;
     case 'xdc': text = T.xdcTemplate(pj); break;
     case 'mem': text = '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n'; break;
     case 'lab': { const { newLab } = await import('/core/labs.js'); text = `${JSON.stringify(newLab(n, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`; break; }

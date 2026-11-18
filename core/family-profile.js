@@ -3,7 +3,7 @@
 // a new family is an entry here (test/family-conditions.test.js keeps web/js free of family names in conditions).
 // The resources' counts stay in the device resources model (packages/silinx-fpga/src/resources.js, #790): a profile
 // names the resource, the part counts it.
-import { ICE40_STEPS, ICE40_PARTS, ECP5_STEPS, ECP5_PARTS, GOWIN_STEPS, GOWIN_PARTS, XC7_STEPS } from '../packages/silinx-fpga/src/index.js';
+import { ICE40_STEPS, ICE40_PARTS, ECP5_STEPS, ECP5_PARTS, GOWIN_STEPS, GOWIN_PARTS, GATEMATE_STEPS, GATEMATE_PARTS, XC7_STEPS } from '../packages/silinx-fpga/src/index.js';
 
 export const FAMILY_PROFILES = {
   spartan3e: {
@@ -57,6 +57,12 @@ export const FAMILY_PROFILES = {
       parts: new RegExp(`^(${GOWIN_PARTS.join('|')})$`), partOf: 'a Gowin part', steps: GOWIN_STEPS },
     // its board programmed: the .fs loaded into the FPGA's SRAM (#2298)
     program: 'sram',
+  },
+  gatemate: {
+    // its own tools (#2431): nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn), as the ECP5's; its board not
+    // programmed from Silinx (no program: openFPGALoader's, not in the browser)
+    openFlow: { tools: 'nextpnr-himbaechel-gatemate', packer: 'gmpack', package: '@yowasp/nextpnr-himbaechel-gatemate', mb: 4, layout: 'nextpnrGatemate',
+      parts: new RegExp(`^(${Object.keys(GATEMATE_PARTS).join('|')})$`), partOf: 'a GateMate part', steps: GATEMATE_STEPS },
   },
 };
 

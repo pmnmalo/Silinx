@@ -1,5 +1,5 @@
 // Silinx - the checks of the constraints of the families nextpnr implements (#2296): a PCF (iCE40), an LPF (ECP5), a CST
-// (Gowin) and an XDC (7-series, #3142), as Check Constraints, the editor's live check and the Constraints Wizard make them,
+// (Gowin), a CCF (GateMate, #2431) and an XDC (7-series, #3142), as Check Constraints, the editor's live check and the Constraints Wizard make them,
 // in the interface (web/js/constraints-format.js) and in the MCP server (server/mcp-constraints.js); a UCF's are ucf.js
 // checkUcf's. What each format writes of a pin (PIN_ATTRS: its I/O standards, drive, slew, pull) and the checks:
 //   error    the line the back end would stop at; a pin that is no pin of the device's package; a pin given to two ports;
@@ -7,13 +7,13 @@
 //   warning  a name that is no port of the top; a pin on no resource of the board; an I/O standard Silinx does not know
 //            of the family; the ports with no pin (when the top is known), as checkUcf's
 // The names are the interface's model's (x<1>), nextpnr's in the messages (x[1]).
-import { PCF, LPF, CST, XDC, constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
+import { PCF, LPF, CST, CCF, XDC, constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
 
-const FORMATS = { pcf: PCF, lpf: LPF, cst: CST, xdc: XDC };
+const FORMATS = { pcf: PCF, lpf: LPF, cst: CST, ccf: CCF, xdc: XDC };
 // a format's command that places a port: the messages'
-const PIN_COMMAND = { pcf: 'set_io', lpf: 'LOCATE COMP', cst: 'IO_LOC', xdc: 'get_ports' };
+const PIN_COMMAND = { pcf: 'set_io', lpf: 'LOCATE COMP', cst: 'IO_LOC', ccf: 'NET', xdc: 'get_ports' };
 // the keyword of an I/O standard, a drive and a slew in the messages
-const KEYS = { lpf: { iostandard: 'IO_TYPE', drive: 'DRIVE', slew: 'SLEWRATE' }, cst: { iostandard: 'IO_TYPE', drive: 'DRIVE' } };
+const KEYS = { lpf: { iostandard: 'IO_TYPE', drive: 'DRIVE', slew: 'SLEWRATE' }, cst: { iostandard: 'IO_TYPE', drive: 'DRIVE' }, ccf: { drive: 'DRIVE', slew: 'SLEW' } };
 
 // the I/O standards nextpnr-ecp5 (ecp5/iotypes.inc) and Apicula (the Gowin's IO_TYPE) take: an unknown one warned
 const ECP5_IO = ['LVCMOS33', 'LVCMOS25', 'LVCMOS18', 'LVCMOS15', 'LVCMOS12', 'LVCMOS10', 'LVTTL33', 'LVCMOS33D', 'LVCMOS25D', 'LVDS', 'BLVDS25', 'MLVDS25',
@@ -33,6 +33,9 @@ export const PIN_ATTRS = {
   lpf: { iostandard: ECP5_IO, drive: ['4', '8', '12', '16'], slew: ['slow', 'fast'], pull: ['up', 'down', 'keeper'], clock: true },
   // (a CST's clock: Silinx's create_clock in a comment, given to nextpnr, cst.js)
   cst: { iostandard: GOWIN_IO, drive: ['4', '8', '12', '16', '24'], slew: null, pull: ['up', 'down', 'keeper'], clock: true },
+  // (the GateMate's, #2431: no I/O standard, its bank's voltage; nextpnr-himbaechel-gatemate's DRIVE and SLEW; a CCF's clock, Silinx's
+  // create_clock in a comment, ccf.js)
+  ccf: { iostandard: null, drive: ['3', '6', '9', '12'], slew: ['slow', 'fast'], pull: ['up', 'down', 'keeper'], clock: true },
 };
 /** A device's: its format's attributes. */
 export const pinAttrsOf = device => PIN_ATTRS[constraintsFormatOf(device)];
@@ -51,6 +54,8 @@ export function standardVolts(std) {
  *  row and a column (A1, B12, AA3). A package of another form: no check. */
 export function packagePinError(pin, pkg) {
   const p = String(pin), k = String(pkg || '').toLowerCase();
+  // (the GateMate's FBGA324, #2431: its GPIOs by their bank and pair, IO_SB_A8: a bank NA…WC, a pin A0…B8)
+  if (k === 'fbga324') return /^IO_[NESW][A-C]_[AB][0-8]$/i.test(p) ? null : `${p} is not a GPIO of the ${k} package (its GPIOs look like IO_SB_A8, IO_EB_B1)`;
   const balls = /^(qn84|cm|cb|bg|ct|uwg|swg|cabga|csfbga|mg|pg|ug|ub)/.test(k);
   const numbered = !balls && /^(sg|qn|tq|vq|lq|eq|pq|tqfp)(\d+)/.exec(k);
   if (numbered) return /^\d+$/.test(p) && +p >= 1 && +p <= +numbered[2] ? null : `${p} is not a pin of the ${k} package (1…${numbered[2]})`;
@@ -73,7 +78,7 @@ function boardPins(board) {
   return m;
 }
 
-/** The diagnostics of a constraints text of format `id` (pcf, lpf, cst, xdc): [{ severity, line, message }].
+/** The diagnostics of a constraints text of format `id` (pcf, lpf, cst, ccf, xdc): [{ severity, line, message }].
  *  ports: the top's (ucfPort's: name, width, msb, lsb), its names checked; top: its name, the ports with no pin warned;
  *  device: its package's pins checked; board: its resources' pins and their banks' voltages. */
 export function constraintsDiagnostics(id, text, { ports = [], top = null, device = null, board = null } = {}) {

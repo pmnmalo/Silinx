@@ -13,7 +13,7 @@ export const DESIGN_ONLY_LABEL = 'Design and simulation only (no FPGA)';
 export const isDesignOnly = pj => pj?.kind === DESIGN_KIND;
 
 // the files that belong to the HDL side of a project: HDL, C / C++ (Silinx HLS), constraints, memory images
-const HDL_SIDE = /\.(vhdl?|v|sv|vh|svh|c|cc|cpp|cxx|h|hh|hpp|ucf|pcf|xdc|lpf|cst|mem|hex|coe)$/i;
+const HDL_SIDE = /\.(vhdl?|v|sv|vh|svh|c|cc|cpp|cxx|h|hh|hpp|ucf|pcf|xdc|lpf|cst|ccf|mem|hex|coe)$/i;
 const HDL_FILE = /\.(vhdl?|v|sv)$/i;
 /** Whether `path` is a file of the HDL side (an HDL, C, constraints or memory file): none is added to a design project. */
 export const hdlSideFile = path => HDL_SIDE.test(String(path || ''));
@@ -54,7 +54,7 @@ export function asFpgaProject(pj, { board, device, ext = '.ucf' }) {
  */
 export function ownSources(pj, generated = []) {
   const gen = new Set(generated);
-  return (pj.files || []).filter(f => f.role !== 'sim' && hdlSideFile(f.path) && !/\.(ucf|pcf|xdc|lpf|cst)$/i.test(f.path) && !gen.has(f.path)).map(f => f.path);
+  return (pj.files || []).filter(f => f.role !== 'sim' && hdlSideFile(f.path) && !/\.(ucf|pcf|xdc|lpf|cst|ccf)$/i.test(f.path) && !gen.has(f.path)).map(f => f.path);
 }
 
 /** The project made a design project, or { error } (its own HDL or C sources, `ownSources`): no board, no constraints

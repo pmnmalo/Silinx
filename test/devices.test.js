@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 const dev = await import('../server/devices.js');
 
-const FAMILY_IDS = ['spartan3', 'spartan3e', 'spartan3a', 'spartan3adsp', 'spartan6', 'virtex4', 'virtex5', 'virtex6', 'artix7', 'spartan7', 'kintex7', 'zynq', 'ice40', 'ecp5', 'gowin'];
+const FAMILY_IDS = ['spartan3', 'spartan3e', 'spartan3a', 'spartan3adsp', 'spartan6', 'virtex4', 'virtex5', 'virtex6', 'artix7', 'spartan7', 'kintex7', 'zynq', 'ice40', 'ecp5', 'gowin', 'gatemate'];
 // the open toolchain's own families (#2295, #2302, #2303): not ISE's; AMD Vivado's own (#3895): the Spartan-7
-const OPEN_ONLY = ['ice40', 'ecp5', 'gowin'];
+const OPEN_ONLY = ['ice40', 'ecp5', 'gowin', 'gatemate'];
 const VIVADO_ONLY = ['spartan7'];
 
 test('families: the ISE 14.7 WebPACK families, with ISE names and I/O standards', () => {
@@ -36,7 +36,7 @@ test('parts: every part has a known family, packages with user I/O and speed gra
       assert.ok(pk.userIo > 0 && pk.userIo <= p.maxUserIo, `${p.part}-${k} userIo ${pk.userIo} vs max ${p.maxUserIo}`);
       assert.ok(dev.PACKAGES[k], `no description for package ${k}`);
     }
-    assert.ok((p.family === 'ice40' ? p.speeds.length === 0 : p.speeds.length > 0) && p.speeds.every(s => /^-\d+[LN]?$/.test(s)), `${p.part} speeds ${p.speeds}`);
+    assert.ok((['ice40', 'gatemate'].includes(p.family) ? p.speeds.length === 0 : p.speeds.length > 0) && p.speeds.every(s => /^-\d+[LN]?$/.test(s)), `${p.part} speeds ${p.speeds}`);
     assert.ok(p.slices > 0 && p.luts > 0 && p.ffs > 0 && (p.brams > 0 || p.part === 'ice40lp384'), p.part);
   }
   // WebPACK limits (UG631 Table 2-1): parts outside WebPACK must not be offered.
@@ -150,7 +150,9 @@ test('boards: devices exist with that package and speed, pins are unique, progra
     const fam = dev.findFamily(b.device.family);
     for (const r of b.resources) {
       assert.ok(r.name && r.pins.length > 0 && r.group, `${b.id}.${r.name}`);
-      assert.ok(fam.ioStandards.includes(r.iostandard), `${b.id}.${r.name}: ${r.iostandard} not a ${fam.id} I/O standard`);
+      // (a family with no I/O standard: its pins' none, the GateMate's, #2431, its bank's voltage)
+      if (fam.ioStandards.length) assert.ok(fam.ioStandards.includes(r.iostandard), `${b.id}.${r.name}: ${r.iostandard} not a ${fam.id} I/O standard`);
+      else assert.equal(r.iostandard, undefined, `${b.id}.${r.name}`);
       assert.ok(['in', 'out', 'inout'].includes(r.dir), `${b.id}.${r.name} dir`);
     }
     assert.ok(b.resources.some(r => r.group === 'Clock' && r.extra?.period), `${b.id} has no clock with a period`);

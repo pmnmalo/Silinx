@@ -41,11 +41,15 @@
   },
   "peerDependencies": {
     "@yowasp/nextpnr-ecp5": "0.11.825",
+    "@yowasp/nextpnr-himbaechel-gatemate": "0.11.825",
     "@yowasp/nextpnr-himbaechel-gowin": "0.11.825",
     "@yowasp/nextpnr-ice40": "0.11.825"
   },
   "peerDependenciesMeta": {
     "@yowasp/nextpnr-ecp5": {
+      "optional": true
+    },
+    "@yowasp/nextpnr-himbaechel-gatemate": {
       "optional": true
     },
     "@yowasp/nextpnr-himbaechel-gowin": {
