@@ -3,7 +3,8 @@
 // bus branches (a T of one pin's lines), its crossings of the data lines as the circuit's wires cross (⋮ Wire crossings:
 // hop-overs over them, or plain), never a dot on a crossing; IEEE's triangles and IEC's boxes. The circuit (the 74244's
 // bench: powered, its inputs and enables on switches, its outputs on LEDs pulled down) checked with no errors and no
-// warnings; no warnings on the page; Portuguese. Both interfaces.
+// warnings; no warnings on the page; Portuguese. The 74365's G1̅ and G2̅ combined by a NOR, its bus through the body's
+// middle to its six buffers. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -28,9 +29,9 @@ const inside = (page) => page.eval((ed) => {
 }, ED);
 
 uiTest('#4505 Show inside: the 74244\'s buffers standing, its enables\' buses (dots at their branches, bubbles), crossing as the wires cross; IEEE, IEC; Portuguese', () => env, async (page) => {
-  const m = icBench('74244', { name: 'octal' });
-  assert.deepEqual(checkCircuit(m).map((x) => `${x.severity}: ${x.message}`), []);
-  await makeProject(env, { name: 'TriPj', top: '', files: { 'src/octal.circ.json': JSON.stringify(m, null, 2) } });
+  const m = icBench('74244', { name: 'octal' }), hex = icBench('74365', { name: 'hex' });
+  assert.deepEqual([...checkCircuit(m), ...checkCircuit(hex)].map((x) => `${x.severity}: ${x.message}`), []);
+  await makeProject(env, { name: 'TriPj', top: '', files: { 'src/octal.circ.json': JSON.stringify(m, null, 2), 'src/hex.circ.json': JSON.stringify(hex, null, 2) } });
   await page.setViewport(1440, 900);
   await page.openProject('TriPj');
   await page.eval(() => { for (const k of ['silinx.circuit.inside', 'silinx.circuit.hops', 'silinx.symbols']) try { localStorage.removeItem(k); } catch { /* none */ } });
@@ -55,6 +56,12 @@ uiTest('#4505 Show inside: the 74244\'s buffers standing, its enables\' buses (d
   assert.deepEqual(await inside(page), { ...HOPS, shapes: [], boxes: Array(8).fill('1') });
   await page.eval(async () => (await import('/js/symbol-standard.js')).symbolsMenu().submenu.find((x) => /IEEE/.test(x.label)).action());
   await page.waitFor((ed) => document.querySelectorAll(`${ed} [data-id=U1] .circ-gate-ieee`).length === 8, [ED], { what: 'the shapes again' });
+  // the 74365: its six buffers flat, a NOR combining G1̅ and G2̅ (the buffers' enables active high: no bubble), its bus's 5 dots
+  await page.eval(() => window.SilinxApp.openFile('src/hex.circ.json'));
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} [data-id=U1] .circ-gate-ieee`).length === 7, [ED], { what: 'the 74365\'s gates' });
+  assert.deepEqual(await inside(page), { shapes: [...Array(6).fill('bufundefined'), 'norundefined'], boxes: [], lines: 21, arcs: 0, dots: 5, bubbles: 0, names: ['GND', 'VCC'] });
+  await page.eval(() => window.SilinxApp.openFile('src/octal.circ.json'));
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} [data-id=U1] .circ-gate-ieee`).length === 8, [ED], { what: 'the 74244 again' });
   // in Portuguese: the same drawing
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor((ed) => /CI\(s\)/.test(document.querySelector(`${ed} .doc-status .ds-f`).textContent), [ED], { what: 'the status line in Portuguese' });

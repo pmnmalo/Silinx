@@ -74,11 +74,11 @@ test('#4508 the units: a dual or quad flip-flop\'s, latch\'s, decoder\'s; the 74
   assert.equal(blocksLayout(PARTS['7400'], pinsOf(PARTS['7400'])), null);
 });
 
-test('#4508 every IC of the library and every KiCad catalogue\'s part that behaves: drawn inside, but the three-state ICs with combined enables (their pins named, #4505)', (t) => {
+test('#4508 every IC of the library and every KiCad catalogue\'s part that behaves: drawn inside, no IC left with its pins named only (#4505)', (t) => {
   const drawn = (d) => (d.gates ? insideLayout(d, pinsOf(d)).gates.length > 0 : !!blocksLayout(d, pinsOf(d))?.boxes.length);
   const named = ICS.filter((d) => !drawn(d)).map((d) => d.type);
-  t.diagnostic(`pins named only (the three-state ICs with combined enables, #4505): ${named.join(' ')}`);
-  assert.deepEqual(named, ['74365', '74366', '74540', '74541', '74245']);
+  t.diagnostic(`pins named only (#4505): ${named.join(' ')}`);
+  assert.deepEqual(named, []);
   // (a KiCad part that behaves as a library IC takes its definition: its drawing)
   const kicad = CATALOGUE.filter((e) => e.as && PARTS[e.as]?.kind === 'ic');
   assert.ok(kicad.length > 100, `${kicad.length} KiCad parts`);

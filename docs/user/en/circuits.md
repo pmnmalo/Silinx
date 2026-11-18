@@ -55,8 +55,8 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   (#4505, `core/circuit-inside-tri.js`): a buffer whose input and output are on one row flat beside them (the 74125's,
   74367's), one across the body standing between its rows (the 74244's, a transceiver's two directions side by side);
   each enable's bus into its buffers' sides, a bubble where it is active low, a dot where a line branches (one pin's T),
-  its crossings of the data lines as the wires cross, never a dot. The 74365, 74366, 74540, 74541 and 74245 (combined
-  enables) have their pins named. An
+  its crossings of the data lines as the wires cross, never a dot; enables combined by a gate as the datasheet draws
+  it (the 74365's and 74540's G1̅ and G2̅ by a NOR, the 74245's DIR and OE̅ by an AND and a NOR), its output the bus. An
   AND-OR-INVERT (7451, 74LS54, 7455, #4498) as its datasheet draws it: each term's AND beside its pins, turned toward
   the body's middle, feeding the NOR that faces its output pin.
 - **How the wires are drawn** (#4064, #4080, the ⋮ menu, as the schematic's, `core/wire-style.js`): **Wires**, Direct (a
