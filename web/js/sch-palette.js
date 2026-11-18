@@ -6,17 +6,39 @@ import { bodySvg, r1 } from './sch-svg.js';
 import { devicePrimitives } from '/core/primitives.js';
 import { naturalCompare } from '/core/hier-order.js';
 import { h, sv } from './dom.js';
+import { fitQualifier, iecQualifier } from '/core/symbol-standard.js';
+import { getSymbolStandard } from './symbol-standard.js';
+import { attachSymbolTip, hideSymbolTip, TIP_W, TIP_H } from './symbol-tip.js';
 import { popupMenu } from './ui.js';
 import { designKind } from './project-kind-flag.js';
 
 /** A symbol's drawing, small (the Symbols panel's, the circuit editor's Parts panel's, #4062): an <svg> W × H of class
- *  cls, the symbol (sym, its def: core/schdoc.js symbolDef) scaled down to fit, centred. */
-export function symbolPreview(sym, def, { W = 54, H = 34, cls = 'se-pv' } = {}) {
-  const pad = 4, sc = Math.min(1, (W - 2 * pad) / def.w, (H - 2 * pad) / def.h);
+ *  cls, the symbol (sym, its def: core/schdoc.js symbolDef) scaled down to fit, centred. In IEC 60617-12 (std, Settings ▸
+ *  Schematic Symbols' by default) a gate's, an inverter's or a buffer's qualifier in its box (&, ≥1, =1, 1), or the
+ *  qualifier given (an MSI block's: CTR, MUX…) in its body, as large as the box lets it at that size (#4524: its texts
+ *  are not the preview's, they would be too small). */
+export function symbolPreview(sym, def, { W = 54, H = 34, cls = 'se-pv', std = getSymbolStandard(), qualifier = null, zoom = 1 } = {}) {
+  // (zoom: how much larger than its size on the sheet it may be drawn, a tip's card's)
+  const pad = 4, sc = Math.min(zoom, (W - 2 * pad) / def.w, (H - 2 * pad) / def.h);
   const ox = (W - def.w * sc) / 2, oy = (H - def.h * sc) / 2;
   const s = sv('svg', { class: cls, viewBox: `0 0 ${W} ${H}`, width: W, height: H });
-  s.innerHTML = `<g transform="translate(${r1(ox)},${r1(oy)}) scale(${r1(sc * 100) / 100})">${bodySvg(sym, def)}</g>`;
+  s.innerHTML = `<g transform="translate(${r1(ox)},${r1(oy)}) scale(${r1(sc * 100) / 100})">${bodySvg(sym, def, std)}</g>`;
+  // (an MSI block's left out when it would not fit: a tall one's, a multiplexer's; its tip's card larger says it)
+  if (std === 'iec') for (const { label, x, y, w, h: bh } of qualifierBoxes(def, qualifier)) {
+    const f = fitQualifier(label, { x: ox + x * sc, y: oy + y * sc, w: w * sc, h: bh * sc }, { max: 14 * Math.max(1, sc) });
+    if (f.fits || !qualifier) s.append(sv('text', { class: 'pv-q', x: r1(f.x), y: r1(f.y), 'font-size': f.size, 'text-anchor': 'middle', 'data-no-i18n': 'true' }, label));
+  }
   return s;
+}
+// the IEC qualifiers of a symbol's drawing: [{ label, x, y, w, h (its box, the symbol's coordinates) }]: a gate's, an
+// inverter's or a buffer's, a row each (bodySvg's boxes); else the qualifier given in its body
+function qualifierBoxes(def, qualifier) {
+  if (def.shape === 'gate' || def.shape === 'inv' || def.shape === 'buf') {
+    const n = def.rows || 1, pitch = def.gh || def.body.h / n, fn = def.shape === 'gate' ? def.gate : def.shape;
+    const w = def.shape === 'gate' ? 40 : def.body.w;
+    return [...Array(n).keys()].map((r) => ({ label: iecQualifier(fn), x: 20, y: r * pitch, w, h: pitch })).filter((q) => q.label);
+  }
+  return qualifier ? [{ label: qualifier, ...def.body }] : [];
 }
 
 /** { catSel, renderPalette, search, symInfo } of mountSchEditor (device(), doc(), infoItem(), modules(), placing(): its current values). */
@@ -56,14 +78,15 @@ export function mountSchPalette(ctx) {
     }
     return items;
   }
-  function previewSvg(it) {
+  function previewSvg(it, opts) {
     const sym = { id: 'pv', type: it.type, x: 0, y: 0, rot: 0, mirror: false, name: '', params: { ...defaultParams(it.type), ...it.params } };
-    return symbolPreview(sym, symbolDef(sym, modules()));
+    return symbolPreview(sym, symbolDef(sym, modules()), opts);
   }
   function renderPalette() {
     const q = search.value.trim().toLowerCase();
     const cat = catSel.value;
     const items = paletteItems().filter(it => (cat === '<all>' || it.cat === cat) && (!q || `${it.title} ${it.type} ${it.desc}`.toLowerCase().includes(q)));
+    hideSymbolTip();
     symList.innerHTML = '';
     const cats = [...SYMBOL_CATEGORIES];
     for (const c of cats) {
@@ -79,6 +102,8 @@ export function mountSchPalette(ctx) {
           class: `se-symrow${placing() && placing().type === it.type && (placing().preset || null) === (it.preset || null) && (it.type !== 'module' || placing().params.module === it.params.module) ? ' active' : ''}`,
           draggable: 'true', title: it.desc,
         }, previewSvg(it), h('span', { class: 'nm', 'data-no-i18n': true, text: it.title }));
+        // (its tip a card: its drawing larger, what it does, how it is drawn, #4524)
+        attachSymbolTip(row, '.sch-editor', () => ({ fn: SYMBOLS[it.type].gate || null }), () => previewSvg(it, { W: TIP_W, H: TIP_H, zoom: 2 }));
         row.addEventListener('click', () => { setInfoItem(it); startPlace(it); showSymInfo(it); });
         // (on a tablet, a long press: no menu, its browser's nor ours; with a mouse, the right click's, #1990)
         row.addEventListener('pointerdown', e => { row.pointerType = e.pointerType; });

@@ -159,3 +159,63 @@ test('#4220 an IEEE distinctive shape in a box: the AND\'s D, the OR\'s shield, 
   // every gate function of the circuits' gate ICs drawn (core/circuit-ics.js)
   for (const fn of ['and', 'nand', 'or', 'nor', 'xor', 'not']) assert.ok(S.ieeeGate(fn, box).paths[0].startsWith('M10,20'), fn);
 });
+
+test('#4524 a qualifier fitted to a thumbnail\'s box: centred, as large as the box lets it, never under the minimum', () => {
+  // (the Symbols panel's AND2 at 54 × 34: its box 23 px square; the inverter's 19.6 × 11.5)
+  const a = S.fitQualifier('&', { x: 15, y: 5, w: 23, h: 23 }), o = S.fitQualifier('≥1', { x: 15, y: 5, w: 23, h: 23 });
+  assert.deepEqual(a, { x: 26.5, y: 21.5, size: 14, fits: true });   // (the maximum, 14 px; the baseline 0.36 of it below the middle)
+  assert.deepEqual(o, { x: 26.5, y: 21.5, size: 14, fits: true });
+  assert.deepEqual(S.fitQualifier('1', { x: 0, y: 0, w: 19.6, h: 11.5 }), { x: 9.8, y: 8.6, size: 8, fits: true });   // (0.7 of its height, 8.05)
+  // (a wide label narrower: CTR in a 20 px box, 0.7 of its size a character in 86 % of the width)
+  assert.equal(S.fitQualifier('CTR', { x: 0, y: 0, w: 20, h: 26 }).size, 8.2);
+  assert.equal(S.fitQualifier('BCD/7SEG', { x: 0, y: 0, w: 20, h: 26 }).size, 6);   // (the minimum: it does not fit)
+  assert.equal(S.fitQualifier('BCD/7SEG', { x: 0, y: 0, w: 20, h: 26 }).fits, false);
+  assert.equal(S.fitQualifier('MUX', { x: 0, y: 0, w: 9.6, h: 24.7 }).fits, false);   // (a MUX8's body at 54 × 34)
+  assert.equal(S.fitQualifier('MUX', { x: 0, y: 0, w: 28.4, h: 73 }).fits, true);   // (at 135 × 85, the tip's)
+  assert.equal(S.fitQualifier('&', { x: 0, y: 0, w: 4, h: 4 }, { min: 4 }).size, 4);
+  // (its size by its characters, not by its UTF-16 units)
+  assert.equal(S.fitQualifier('Σ', { x: 0, y: 0, w: 10, h: 40 }).size, S.fitQualifier('X', { x: 0, y: 0, w: 10, h: 40 }).size);
+});
+
+test('#4524 what a gate does and how it is drawn in each standard: the tips\' lines', () => {
+  assert.equal(S.gateFunction('and'), 'AND: 1 when all of its inputs are 1');
+  assert.equal(S.gateFunction('NOR'), 'NOR: OR with an inverted output, 1 when all of its inputs are 0');
+  assert.equal(S.gateFunction('not'), 'Inverter (NOT): its input inverted');
+  assert.equal(S.gateFunction('inv'), S.gateFunction('not'));
+  assert.equal(S.gateFunction('buf'), 'Buffer: its input unchanged');
+  for (const fn of ['aoi', 'mux', '']) assert.equal(S.gateFunction(fn), null);
+  // every gate's function its own line, and the inverting ones say so
+  const fns = ['and', 'nand', 'or', 'nor', 'xor', 'xnor', 'not', 'buf'];
+  assert.equal(new Set(fns.map(S.gateFunction)).size, 8);
+  for (const fn of fns) assert.equal(/inverted/.test(S.gateFunction(fn)), S.invertsOutput(fn), fn);
+  // IEC: the box and its qualifier, the bubble when it inverts
+  assert.deepEqual(fns.map((fn) => S.symbolLook(fn, 'iec')), ['IEC 60617-12: a box with &', 'IEC 60617-12: a box with &, a bubble on its output',
+    'IEC 60617-12: a box with ≥1', 'IEC 60617-12: a box with ≥1, a bubble on its output', 'IEC 60617-12: a box with =1',
+    'IEC 60617-12: a box with =1, a bubble on its output', 'IEC 60617-12: a box with 1, a bubble on its output', 'IEC 60617-12: a box with 1']);
+  // IEEE: the distinctive shape, the same bubble
+  assert.deepEqual(fns.map((fn) => S.symbolLook(fn, 'ieee')), ["IEEE Std 91-1984: the AND's D shape", "IEEE Std 91-1984: the AND's D shape, a bubble on its output",
+    "IEEE Std 91-1984: the OR's shield", "IEEE Std 91-1984: the OR's shield, a bubble on its output", "IEEE Std 91-1984: the OR's shield with a second back",
+    "IEEE Std 91-1984: the OR's shield with a second back, a bubble on its output", 'IEEE Std 91-1984: the triangle, a bubble on its output', 'IEEE Std 91-1984: the triangle']);
+  // an MSI block's qualifier in IEC only; nothing to say of another symbol; an unknown standard the default's
+  assert.equal(S.symbolLook(null, 'iec', 'CTR'), 'IEC 60617-12: a box with CTR');
+  assert.equal(S.symbolLook(null, 'ieee', 'CTR'), null);
+  assert.equal(S.symbolLook(null, 'iec'), null);
+  assert.equal(S.symbolLook('aoi', 'iec'), null);
+  assert.equal(S.symbolLook('nor', 'bogus'), S.symbolLook('nor', 'ieee'));
+});
+
+test('#4524 the tips\' lines in Portuguese: every function and every look', async () => {
+  // (web/js/i18n.js's Portuguese, as its t() reads it: a string, else the first pattern that matches)
+  const { LOCALES } = await import('../web/js/i18n.js');
+  const t = (k) => LOCALES.pt.strings[k] ?? (([re, rep]) => (re ? k.replace(re, rep) : k))(LOCALES.pt.patterns.find(([re]) => re.test(k)) ?? []);
+  {
+    const fns = ['and', 'nand', 'or', 'nor', 'xor', 'xnor', 'not', 'buf'];
+    for (const l of [...fns.map(S.gateFunction), ...fns.flatMap((fn) => ['iec', 'ieee'].map((std) => S.symbolLook(fn, std))), S.symbolLook(null, 'iec', 'CTR')]) {
+      assert.notEqual(t(l), l, l);
+    }
+    assert.equal(t(S.gateFunction('nor')), 'NOR: OR com a saída invertida, 1 quando todas as suas entradas são 0');
+    assert.equal(t(S.symbolLook('nor', 'iec')), 'IEC 60617-12: uma caixa com ≥1, uma bolha na saída');
+    assert.equal(t(S.symbolLook('xnor', 'ieee')), 'IEEE Std 91-1984: o escudo do OR com um segundo dorso, uma bolha na saída');
+    assert.equal(t(S.symbolLook(null, 'iec', 'MUX')), 'IEC 60617-12: uma caixa com MUX');
+  }
+});

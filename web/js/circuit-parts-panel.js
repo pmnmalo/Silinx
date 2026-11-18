@@ -14,7 +14,9 @@ import { drawCircuit, drawnPartSvg } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
 import { getSymbolStandard } from './symbol-standard.js';
-import { ieeeGate } from '/core/symbol-standard.js';
+import { fitQualifier, iecQualifier, ieeeGate } from '/core/symbol-standard.js';
+import { qualifierOf } from '/core/circuit-inside-blocks.js';
+import { attachSymbolTip, hideSymbolTip, TIP_W, TIP_H } from './symbol-tip.js';
 
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
@@ -43,12 +45,23 @@ function symbolOfPart(type) {
   }
   return BLOCK[d?.behaves ?? type] || null;   // (a project's KiCad part, #4281: the IC's it behaves as)
 }
-// the schematic's symbol, as its Symbols panel draws it (its texts and tips left out)
-function symbolPreviewOf(type) {
+// the schematic's symbol, as its Symbols panel draws it (its texts and tips left out; in IEC, its qualifier kept: a
+// gate's, or the MSI IC's, q, #4524)
+function symbolPreviewOf(type, q, w = W, hh = H) {
   const sym = { id: 'pv', type, x: 0, y: 0, rot: 0, mirror: false, name: '', params: defaultParams(type) };
-  const s = symbolPreview(sym, symbolDef(sym, {}), { W, H, cls: 'circ-pv circ-pv-sym' });
-  for (const x of s.querySelectorAll('text, title')) x.remove();
+  const s = symbolPreview(sym, symbolDef(sym, {}), { W: w, H: hh, cls: 'circ-pv circ-pv-sym', qualifier: q, zoom: w > W ? 2 : 1 });
+  for (const x of s.querySelectorAll('text:not(.pv-q), title')) x.remove();
   return s;
+}
+// a latch (#4505): no symbol of the schematic's, its own (latchPreview)
+const isLatch = (d) => d?.kind === 'ic' && !d.gates && /latch/i.test(d.title);
+/** An IC's tip's facts (#4524): { fn (its gates' function), qualifier (an MSI IC's IEC general qualifier: CTR, MUX…, by
+ *  its title or, a project's KiCad part, the IC's it behaves as) }. */
+function partInfo(type) {
+  const d = partDef(type);
+  if (d?.gates) return { fn: d.gates[0].fn };
+  const title = d?.behaves && partDef(d.behaves) ? partDef(d.behaves).title : d?.title;
+  return { fn: null, qualifier: (BLOCK[d?.behaves ?? type] || isLatch(d)) && title ? qualifierOf(title) || null : null };
 }
 
 // a part's drawing, small (an IC's symbol in Settings ▸ Schematic Symbols' standard, kept for each standard: the editor
@@ -60,11 +73,12 @@ function preview(type) {
   const id = d?.kicad ? `${type}:${d.behaves ?? d.kind}:${d.pins.length}` : type;
   const key = symbolOfPart(type) ? `${getSymbolStandard()}:${id}` : id;
   if (previews.has(key)) return previews.get(key).cloneNode(true);
-  if (symbolOfPart(type)) { previews.set(key, symbolPreviewOf(symbolOfPart(type))); return previews.get(key).cloneNode(true); }
+  if (symbolOfPart(type)) { previews.set(key, symbolPreviewOf(symbolOfPart(type), partInfo(type).qualifier)); return previews.get(key).cloneNode(true); }
   // (a latch, #4505: no symbol of the schematic's, a level-enabled storage box)
-  if (!symbolOfPart(type) && d?.kind === 'ic' && !d.gates && /latch/i.test(d.title)) {
-    if (!previews.has('latch')) previews.set('latch', latchPreview());
-    return previews.get('latch').cloneNode(true);
+  if (!symbolOfPart(type) && isLatch(d)) {
+    const k = `${getSymbolStandard()}:latch`;
+    if (!previews.has(k)) previews.set(k, latchPreview(getSymbolStandard() === 'iec' ? partInfo(type).qualifier : null));
+    return previews.get(k).cloneNode(true);
   }
   if (d?.gates?.[0].fn === 'aoi') {
     const k = `${getSymbolStandard()}:aoi:${d.gates[0].terms.join(',')}`;
@@ -74,14 +88,19 @@ function preview(type) {
   return fitted(drawCircuit({ parts: [{ id: 'X', type, x: 0, y: 0 }], wires: [] }), key);
 }
 // an AND-OR-INVERT's symbol (#4498), as the schematic's gates in the Symbols panel: its terms' ANDs (their inputs `terms`)
-// into a NOR, in Settings ▸ Schematic Symbols' standard (IEEE's shapes, IEC's boxes, their qualifiers left out as the
-// other gates')
+// into a NOR, in Settings ▸ Schematic Symbols' standard (IEEE's shapes, IEC's boxes with their qualifiers, & and ≥1, as
+// the other gates', #4524)
 function aoiPreview(terms) {
   const iec = getSymbolStandard() === 'iec', k = terms.length, step = 30 / k, hh = Math.min(10, step - 1.5);
   const s = sv('svg', { class: 'circ-pv circ-pv-sym circ-pv-aoi', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
   const ln = (pts) => s.append(sv('polyline', { points: pts.map((q) => q.map(r2).join(',')).join(' '), class: 'pin' }));
   const gate = (fn, box) => {
-    if (iec) { s.append(sv('rect', { x: box.x, y: r2(box.y), width: box.w, height: r2(box.h), class: 'gate', 'data-fn': fn })); return; }
+    if (iec) {
+      s.append(sv('rect', { x: box.x, y: r2(box.y), width: box.w, height: r2(box.h), class: 'gate', 'data-fn': fn }));
+      const f = fitQualifier(iecQualifier(fn), box, { min: 4 });
+      s.append(sv('text', { x: r2(f.x), y: r2(f.y), 'font-size': f.size, 'text-anchor': 'middle', class: 'pv-q', 'data-no-i18n': 'true' }, iecQualifier(fn)));
+      return;
+    }
     for (const d of ieeeGate(fn, box).paths) s.append(sv('path', { d, class: 'gate', 'data-fn': fn }));
   };
   const nor = { x: 28, y: 10, w: 10, h: 14 };
@@ -99,10 +118,12 @@ function aoiPreview(terms) {
 }
 
 // a latch's symbol (#4505), as the schematic's storage blocks in the Symbols panel: a box, its data and enable inputs on its
-// left (the enable without a clock's ▷: level-sensitive), its outputs on its right (the same in both standards)
-function latchPreview() {
+// left (the enable without a clock's ▷: level-sensitive), its outputs on its right (the same in both standards; in IEC,
+// its general qualifier q in it, #4524)
+function latchPreview(q = null) {
   const s = sv('svg', { class: 'circ-pv circ-pv-sym circ-pv-latch', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
   s.append(sv('rect', { x: 17, y: 4, width: 20, height: 26, class: 'box' }));
+  if (q) { const f = fitQualifier(q, { x: 17, y: 4, w: 20, h: 26 }); s.append(sv('text', { x: r2(f.x), y: r2(f.y), 'font-size': f.size, 'text-anchor': 'middle', class: 'pv-q', 'data-no-i18n': 'true' }, q)); }
   for (const [x1, x2, y] of [[10, 17, 11], [10, 17, 23], [37, 44, 11], [37, 44, 23]]) s.append(sv('line', { x1, y1: y, x2, y2: y, class: 'pin' }));
   return s;
 }
@@ -160,6 +181,13 @@ function rowOf(t) {
       : `${k.value}, drawn only (not simulated): click it, then the drawing (Esc: done)` };
 }
 
+// a row given its tip's card (#4524)
+// (an IC drawn as a schematic's symbol: drawn again larger, its qualifier then legible; another part's thumbnail enlarged)
+const tipped = (row, type, info) => {
+  attachSymbolTip(row, '.circuit-editor', info, type && symbolOfPart(type) ? () => symbolPreviewOf(symbolOfPart(type), partInfo(type).qualifier, TIP_W, TIP_H) : null);
+  return row;
+};
+
 /** { side, renderParts } of mountCircuitEditor (tool(): its current tool; setTool(t); importKicad(): Import KiCad Part…,
  *  browseKicad(): Browse KiCad Libraries…, importCatalogue(id): a catalogue's part imported, its type; none in a
  *  read-only editor). */
@@ -181,6 +209,7 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
   function renderParts() {
     const q = foldText(search.value.trim());
     const rows = [];
+    hideSymbolTip();
     const mine = projectParts().map((d) => d.type);
     for (const [title, types] of [...GROUPS, ...(mine.length ? [['KiCad parts (project)', mine]] : [])]) {
       const its = types.filter((t) => !q || foldText(`${t} ${partDef(t).title} ${tr(partDef(t).title)} ${partDef(t).chip || ''} ${partDef(t).kicad?.value || ''} ${partDef(t).kicad?.description || ''} ${partDef(t).kicad ? functionTextOf(kicadFunction(partDef(t))) : ''}`).includes(q));
@@ -191,9 +220,10 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
       if (!open) continue;
       for (const t of its) {
         const r = rowOf(t);
-        rows.push(h('button', { type: 'button', class: `circ-lib-part${tool() === `place:${t}` ? ' active' : ''}${partDef(t).kind === 'drawn' ? ' drawn' : ''}`, 'data-part': t, 'data-group': title,
+        // (its tip a card: its drawing larger, what it does, how it is drawn, #4524)
+        rows.push(tipped(h('button', { type: 'button', class: `circ-lib-part${tool() === `place:${t}` ? ' active' : ''}${partDef(t).kind === 'drawn' ? ' drawn' : ''}`, 'data-part': t, 'data-group': title,
           title: r.tip, onclick: () => setTool(tool() === `place:${t}` ? 'select' : `place:${t}`) },
-        preview(t), typeof r.name === 'string' ? h('span', { class: 'nm', ...(r.noI18n ? { 'data-no-i18n': 'true' } : {}) }, r.name) : r.name));
+        preview(t), typeof r.name === 'string' ? h('span', { class: 'nm', ...(r.noI18n ? { 'data-no-i18n': 'true' } : {}) }, r.name) : r.name), t, () => partInfo(t)));
       }
     }
     // the KiCad catalogue's parts (#4305): a click imports one into the project, then places it
@@ -204,10 +234,10 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
       rows.push(h('div', { class: `circ-lib-title${open ? ' open' : ''}`, onclick: () => { if (folded.has(CAT)) folded.delete(CAT); else folded.add(CAT); renderParts(); } },
         h('span', {}, CAT), h('span', { class: 'circ-lib-n', 'data-no-i18n': 'true' }, ` (${cat.length})`)));
       if (open) for (const e of cat) {
-        rows.push(h('button', { type: 'button', class: `circ-lib-part circ-cat-part${e.as ? '' : ' drawn'}`, 'data-catalogue': e.id, 'data-group': CAT,
+        rows.push(tipped(h('button', { type: 'button', class: `circ-lib-part circ-cat-part${e.as ? '' : ' drawn'}`, 'data-catalogue': e.id, 'data-group': CAT,
           title: `${catalogueTitle(e)} (${CATALOGUE_LIBRARIES[e.library].name}, ${CATALOGUE_LIBRARIES[e.library].licence}): click it to import it into the project`,
           onclick: async () => { const type = await importCatalogue(e.id); if (type && partDef(type)) setTool(`place:${type}`); renderParts(); } },
-        cataloguePreview(e), numbered(e.value, catalogueFunction(e))));
+        cataloguePreview(e), numbered(e.value, catalogueFunction(e))), e.as && partDef(e.as)?.kind === 'ic' ? e.as : null, () => (e.as && partDef(e.as)?.kind === 'ic' ? partInfo(e.as) : {})));
       }
     }
     list.replaceChildren(...rows);

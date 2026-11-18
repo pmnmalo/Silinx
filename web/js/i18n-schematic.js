@@ -14,6 +14,14 @@ export const SCH_PT = {
   // palette
   'Symbols': 'Símbolos', 'Categories': 'Categorias', '<--All Symbols-->': '<--Todos os Símbolos-->',
   'No other modules in the project': 'Nenhum outro módulo no projeto',
+  // a symbol's or a part's tip (web/js/symbol-tip.js, #4524): what a gate does (core/symbol-standard.js gateFunction)
+  'AND: 1 when all of its inputs are 1': 'AND: 1 quando todas as suas entradas são 1',
+  'NAND: AND with an inverted output, 0 when all of its inputs are 1': 'NAND: AND com a saída invertida, 0 quando todas as suas entradas são 1',
+  'OR: 1 when any of its inputs is 1': 'OR: 1 quando alguma das suas entradas é 1',
+  'NOR: OR with an inverted output, 1 when all of its inputs are 0': 'NOR: OR com a saída invertida, 1 quando todas as suas entradas são 0',
+  'XOR: 1 when an odd number of its inputs are 1': 'XOR: 1 quando um número ímpar das suas entradas é 1',
+  'XNOR: XOR with an inverted output, 1 when an even number of its inputs are 1': 'XNOR: XOR com a saída invertida, 1 quando um número par das suas entradas é 1',
+  'Inverter (NOT): its input inverted': 'Inversor (NOT): a sua entrada invertida', 'Buffer: its input unchanged': 'Buffer: a sua entrada inalterada',
   // the descriptions of the symbols (palette tooltips); gates in SCH_PT_PATTERNS
   'Inverter': 'Inversor',
   '2:1 multiplexer (O = S0 ? D1 : D0)': 'Multiplexador 2:1 (O = S0 ? D1 : D0)',
@@ -129,6 +137,11 @@ export const SCH_PT = {
 
 const markerAt = at => (/^the wire end at /.test(at) ? at.replace(/^the wire end at (.+)$/, 'na ponta de fio em $1') : `em ${at}`);
 export const SCH_PT_PATTERNS = [
+  // how a symbol is drawn in a standard (core/symbol-standard.js symbolLook, #4524)
+  [/^IEC 60617-12: a box with (.+?)(, a bubble on its output)?$/, (m, q, b) => `IEC 60617-12: uma caixa com ${q}${b ? ', uma bolha na saída' : ''}`],
+  [/^IEEE Std 91-1984: (the AND's D shape|the OR's shield|the OR's shield with a second back|the triangle)(, a bubble on its output)?$/, (m, k, b) => `IEEE Std 91-1984: ${{
+    "the AND's D shape": 'a forma em D do AND', "the OR's shield": 'o escudo do OR', "the OR's shield with a second back": 'o escudo do OR com um segundo dorso',
+    'the triangle': 'o triângulo' }[k]}${b ? ', uma bolha na saída' : ''}`],
   // I/O markers added with a rectangle (#4000, core/schmarker-many.js)
   [/^(\d+) I\/O markers? added: (.+)$/, (m, n, names) => `${n} ${+n === 1 ? 'marcador de E/S adicionado' : 'marcadores de E/S adicionados'}: ${names}`],
   [/^No I\/O marker added: no open pin or wire end there$/, 'Nenhum marcador de E/S adicionado: nenhum pino ou ponta de fio livre aí'],
