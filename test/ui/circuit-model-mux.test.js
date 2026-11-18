@@ -29,7 +29,7 @@ uiTest('Circuit editor: a 74280 parity generator written once in VHDL: Parts pan
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="74280"]`), [ED], { what: 'its row' });
   // (in the MSI group: the title row above it)
   assert.equal(await page.eval((ed) => { let e = document.querySelector(`${ed} .circ-lib-part[data-part="74280"]`); while (e && !e.classList.contains('circ-lib-title')) e = e.previousElementSibling; return e?.textContent ?? null; }, ED),
-    'MSI (74LS, 4000) (34)');
+    'MSI (74LS, 4000) (40)');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="74280"]`).textContent, ED), '74280 9-bit odd/even parity generator/checker');
   await page.click(`${ED} .circ-check`);
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^Process "Check Circuit" completed successfully$/.test(l.textContent)), [], { what: 'Check' });

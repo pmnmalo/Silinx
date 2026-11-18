@@ -34,7 +34,8 @@ test('circuit_parts: the library, one part with its pins, gates and delay, its d
     '7473', '7478', '74107', '74109', '74113', '74114', '4013', '4027', '7475', '7477', '74375', '74279', '74174', '74175', '74273', '74377', '74378', '74379', '74173', '74373', '74374', '74573', '74574',
     '74160', '74162', '74168', '74169', '74190', '74192', '74196', '74197', '74290', '74390', '74393', '7492', '74590', '4020', '4040', '4022', '4029', '4510', '4518', '4520',
     '7491', '7495', '74166', '74195', '74295', '74594', '74596', '4021',
-    '7442', '74145', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449', '74147', '74148',
+    '7442', '74145', '4028', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449', '74246', '74247', '74248', '4543', '74147', '74148',
+    '74348',
     '74158', '74257', '74258', '74251', '74253', '74352', '74353', '74298', '74181', '74182', '74280', '74688',
     '74670', '74170', '74259', '74256', '74395']);
   const one = await ok('circuit_parts', { type: '7486' });
@@ -48,7 +49,7 @@ test('circuit_parts: the library, one part with its pins, gates and delay, its d
   // (a query, #4495: the parts found by their words, as the Parts panel's search)
   assert.deepEqual((await ok('circuit_parts', { query: 'j-k flip-flop dual' })).data.parts.map((p) => p.type), ['7476', '74112', '7473', '7478', '74107', '74109', '74113', '74114', '4027']);
   assert.deepEqual((await ok('circuit_parts', { query: 'decoder' })).data.parts.map((p) => p.type), ['7447', '7448', '74138', '74139', '4511',
-    '7442', '74145', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449']);   // (#4397's decoders)
+    '7442', '74145', '4028', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449', '74246', '74247', '74248', '4543']);   // (#4397's decoders)
   assert.deepEqual((await ok('circuit_parts', { type: 'led' })).text.split('\n'), ['led: LED; pins 1 A in, 2 K in', 'Lights while its anode A is at 1 and its cathode K at 0. An output of the HDL.', 'Pins: 1 A (input), 2 K (input)']);
   assert.equal((await ok('circuit_parts', { type: '7403' })).data.parts[0].openCollector, true);
   // an MSI IC (#3900): its function, its pins by their datasheet's names

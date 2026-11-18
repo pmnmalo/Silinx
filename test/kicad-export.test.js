@@ -18,7 +18,7 @@ const BAR = '̅';
 
 test('every IC of the library, written and read back: that IC, its pins the same, no warning', () => {
   assert.deepEqual(EXPORTED_ICS, PART_ORDER.filter((t) => PARTS[t].kind === 'ic'));
-  assert.equal(EXPORTED_ICS.length, 172);   // (30 more gates, #4397; the 74154 on a DIP-24 0.6 inch wide)
+  assert.equal(EXPORTED_ICS.length, 178);   // (30 more gates, #4397; the 74154 on a DIP-24 0.6 inch wide)
   const text = icLibrary();
   const lib = readKicadSymLib(text);
   assert.deepEqual([lib.version, lib.generator, lib.warnings], [EXPORT_VERSION, 'silinx', []]);
