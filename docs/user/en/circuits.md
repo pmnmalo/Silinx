@@ -204,14 +204,14 @@ drawn as its footprint's drawing shows it from above, to scale (#4315): its F.Fa
 body's outline and the marks on it, an LED's body in its colour (a SparkFun red LED is a round red body). A part whose
 footprint is known by its name only (a DIP, a pin header) has a dashed body round its pins. Its name goes over the body
 when it fits, else above it. Its Part info adds its KiCad symbol and file, its part number, its datasheet (a link), its footprint, its
-source, author and licence. **Import KiCad Part…** (the Parts panel, not in a read-only editor) takes a `.kicad_sym` or a
+source, author and licence. **Import KiCad Part…** (the Parts panel's KiCad catalogue section, not in a read-only editor) takes a `.kicad_sym` or a
 `.kicad_mod`. A library's symbols are listed with what each one is (*As the 7400 (by its part number)*, *Drawn only (not
 simulated)*, *Not a part* and why, in its tip), which follows as each one's Model, Family and Footprint are set; its
 source, author and licence are given once. The import is the MCP's `import_part` (`core/kicad-import.js`): a file there
 already is replaced only when confirmed, and each symbol is said in the console. On a server, each call (an MCP tool, an HTTP
 request) has its own project's parts (`server/parts-scope.js`, #4294).
 
-**KiCad's libraries** (#4285): **Browse KiCad Libraries…** (the Parts panel, on the local server) lists KiCad's own symbol
+**KiCad's libraries** (#4285): **Browse KiCad Libraries…** (the Parts panel's KiCad catalogue section, on the local server) lists KiCad's own symbol
 libraries (74xx and 4xxx of KiCad 9.0.0: 61 and 7 of their parts behave as Silinx's ICs) and the library packages of the
 KiCad Plugin and Content Manager's official index, each one's version, licence and size before it is fetched. A library
 picked is fetched, and what its symbol libraries hold is said (their parts as ICs of the library, drawn only, the symbols

@@ -63,6 +63,8 @@
 .circuit-editor .circ-parts-side { width: 200px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--asm-panel); border-right: 1px solid var(--asm-border); }
 .circuit-editor .circ-parts-side[hidden] { display: none; }
 .circuit-editor .circ-lefttools { padding: 4px 5px; border-bottom: 1px solid var(--asm-border); }
+/* the KiCad catalogue's actions, under its heading (#4534) */
+.circuit-editor .circ-cat-tools { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 5px 4px 18px; }
 .circuit-editor .circ-search { width: 100%; height: 21px; box-sizing: border-box; border: 1px solid var(--field-border, #aaa); background: var(--field-bg, #fff); color: inherit; padding: 0 3px; }
 .circuit-editor .circ-lib { flex: 1; overflow: auto; min-height: 0; padding-bottom: 6px; }
 .circuit-editor .circ-lib-title {
