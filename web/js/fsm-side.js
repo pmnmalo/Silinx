@@ -9,6 +9,7 @@ import { lookFields } from './fsm-look.js';
 import { outputLines } from '/core/fsm.js';
 import { condAsText } from '/core/cond-notation.js';
 import { drawnCond, onNotation } from './notation.js';
+import { drawBarsIn } from './overbar.js';
 import { dropOutputValues, outputRows, outputsWhere, renameOutputValues, setOutputValue } from '/core/fsm-outputs.js';
 import { designKind } from './project-kind-flag.js';
 
@@ -86,9 +87,10 @@ export function mountSide(ctx) {
         h('div', { class: 'asm-label' }, `Transitions out of ${s.name} (the first true condition is taken)`),
         // (a transition's outputs one per line under it, #3882)
         h('ol', { class: 'fsm-tlist' }, ...ts.map((t) => h('li', { class: 'link', onclick: () => { setSel({ type: 'trans', id: t.id }); render(); renderSide(); } },
-          `${t.cond ? drawnCond(t.cond) : '1'} → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`,
+          h('span', {}, h('span', { class: 'fsm-tcond' }, t.cond ? drawnCond(t.cond) : '1'), ` → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`),
           ...outputLines(t.outputs).map((o) => h('div', { class: 'mono fsm-tout' }, o))))),
         ...look('state', cur, id)].filter(Boolean));
+      drawBarsIn(selSection, '.fsm-tcond');   // (the Engineering notation's bars, #4484)
       return;
     }
     const t = transById(sel().id);

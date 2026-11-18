@@ -5,7 +5,9 @@
 // another. Shown, each bar is a line over its group instead: a box with a top border around the group, nested, each
 // level above the one under it. The text stays as it is: the overlines are kept in the element, hidden, so its
 // textContent (read back, the tests) and what is copied from it are the same expression.
-import { OVERLINE } from '/core/overline.js';
+// In SVG (a state diagram's arcs, an ASM chart's decisions, #4484) the text is drawn without its overlines, and each bar
+// is a line measured over its characters (core/overline.js's barLines), the text as written kept in `data-written`.
+import { OVERLINE, BAR_WIDTH, barLines, barRuns } from '/core/overline.js';
 
 const MAX_BARS = 200;   // (as core/overline.js counts them: deeper is the parsers' nesting error)
 
@@ -63,3 +65,68 @@ function drawBars(el) {
 
 /** Every `selector` element under `root` drawn with its bars. */
 export const drawBarsIn = (root, selector = 'code') => { for (const el of root.querySelectorAll(selector)) drawBars(el); };
+
+// ---------------------------------------------------------------------------- SVG (#4484)
+const SVG_NS = 'http://www.w3.org/2000/svg';
+// (the texts not laid out when drawn (a document's tab not shown): their bars drawn once they are)
+const pending = new Map();
+let observer = null;
+
+/** A text part's bars drawn as lines, after its text element; false when it is not laid out yet. */
+function drawSvgLines(job) {
+  const { text, el, bars } = job;
+  if (!text.isConnected) return true;
+  const size = parseFloat(getComputedStyle(el).fontSize) || 12;
+  let lines;
+  try { lines = barLines(bars, (i) => el.getExtentOfChar(i), size); } catch { lines = null; }
+  if (!lines) return false;
+  let g = job.g;
+  if (!g) {
+    g = job.g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'ob-bars');
+    if (text.style.fill) g.style.stroke = text.style.fill;   // (a text of a colour of its own: its bars too)
+    text.after(g);
+  }
+  for (const l of lines) {
+    const line = document.createElementNS(SVG_NS, 'line');
+    for (const [k, v] of [['x1', l.x1], ['x2', l.x2], ['y1', l.y], ['y2', l.y], ['stroke-width', size * BAR_WIDTH]]) line.setAttribute(k, Math.round(v * 100) / 100);
+    line.dataset.level = l.level;
+    g.append(line);
+  }
+  return true;
+}
+
+function observe(job) {
+  observer ??= typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+    for (const { target } of entries) {
+      const jobs = pending.get(target) ?? [];
+      if (!target.isConnected) { pending.delete(target); observer.unobserve(target); continue; }
+      const left = jobs.filter((j) => !drawSvgLines(j));
+      if (left.length) pending.set(target, left);
+      else { pending.delete(target); observer.unobserve(target); }
+    }
+  }) : null;
+  if (!observer) return;
+  if (!pending.has(job.text)) { pending.set(job.text, []); observer.observe(job.text); }
+  pending.get(job.text).push(job);
+}
+
+/** Every SVG text `selector` under `root` drawn with its bars as lines (#4484): each of its parts (its tspans, or the
+ *  text itself) written without its overlines, its bars lines over their characters after it (`.ob-bars`), the text as
+ *  written in its `data-written`. All the texts written first, then all measured: one layout. */
+export function drawSvgBarsIn(root, selector) {
+  const jobs = [];
+  for (const text of root.querySelectorAll(selector)) {
+    const written = text.textContent;
+    if (!written.includes(OVERLINE)) continue;
+    const tspans = [...text.children].filter((c) => c.localName === 'tspan');
+    for (const el of tspans.length ? tspans : [text]) {
+      if (!el.textContent.includes(OVERLINE)) continue;
+      const { plain, bars } = barRuns(el.textContent);
+      el.textContent = plain;
+      jobs.push({ text, el, bars });
+    }
+    text.dataset.written = written;
+  }
+  for (const job of jobs) if (!drawSvgLines(job)) observe(job);
+}

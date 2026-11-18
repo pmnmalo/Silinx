@@ -11,6 +11,7 @@ import { fsmEncoding, outputLines, stepFsm } from '/core/fsm.js';
 import { styleOf, textCss } from '/core/fsm-style.js';
 import { sv, radiusOf, stateTexts, textW } from './fsm-editor.js';
 import { drawnCond } from './notation.js';
+import { drawSvgBarsIn } from './overbar.js';
 
 /** { encOf, geom, render } of an FSM editor (state(): its current model, selection, problems, simulation). */
 export function mountRender(ctx) {
@@ -126,6 +127,7 @@ export function mountRender(ctx) {
       }
       gEdges.append(grp);
     }
+    drawSvgBarsIn(gEdges, '.fsm-label');   // (the Engineering notation's bars: lines over their letters, #4484)
     for (const s of M.states) {
       const r = radiusOf(s);
       const isSel = sel?.type === 'state' && sel.id === s.id;

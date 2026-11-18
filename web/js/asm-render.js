@@ -5,6 +5,7 @@
 import { stateEncoding } from '/core/asm.js';
 import { esc } from './dom.js';
 import { drawnCond } from './notation.js';
+import { drawSvgBarsIn } from './overbar.js';
 import { CASE_BAR, ENCODING_NAMES, nodeSize, box, pathD, portGeom, portsOf, routeEdge } from './asm-editor.js';
 
 /** { render, updateToolbar } of an ASM chart editor (state(): its current model, selection, problems, history). */
@@ -175,6 +176,7 @@ export function mountRender(ctx) {
       nh += `<g class="${cls.join(' ')}" data-node="${esc(n.id)}" transform="translate(${n.x},${n.y})">${inner}</g>`;
     }
     gNodes.innerHTML = nh;
+    drawSvgBarsIn(gNodes, '.asm-text');   // (the Engineering notation's bars: lines over their letters, #4484)
 
     const ns = M.nodes.filter((n) => n.type === 'state').length;
     const na = M.nodes.filter((n) => n.type === 'always').length;
