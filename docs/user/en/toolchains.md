@@ -88,7 +88,8 @@ and gowin_pack, Silinx's JavaScript port of Apicula's (its `.fs` byte for byte A
 its pins written as a CST, loaded into the FPGA by *Configure Target Device* (the local server's openFPGALoader -b tangnano9k, or the browser over WebUSB, #2298). The examples run on it with
 their LEDs, switches, buttons and display on its headers (every port needs a pin there); vga on the **Sipeed Tang Nano 9K + VGA**.
 It takes **the Cologne Chip GateMate FPGA Evaluation Board** too (Cologne Chip GateMate CCGM1A1): Yosys's `synth_gatemate`,
-nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn), to `build/<top>.bit`, its pins written as a CCF (#2431). The examples
+nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn), to `build/<top>.bit`, its pins written as a CCF, its Post-Synthesis
+model simulated with Silinx's models of the GateMate's cells (#2431). The examples
 run on it with their LEDs, switches and buttons on its headers and their display on its Pmods; vga on the
 **Cologne Chip GateMate FPGA Evaluation Board + VGA**. Silinx does not program it: openFPGALoader (`-b gatemate_evb_jtag`) loads the `.bit`, outside Silinx
 (not in the browser). The CCGM1A2 (two dies) builds too, slowly (nextpnr's router1: pong in about 12 minutes); no board of it here.

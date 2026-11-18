@@ -1,7 +1,8 @@
 // The MCP server on the GateMate (#2431, #2674: what the interface does): list_devices lists the family, its CCGM1A1 and
 // CCGM1A2 and Cologne Chip's evaluation board, set_design_properties makes the constraints a CCF from the board's pins,
 // new_source writes the CCF template, check_constraints checks it, run_process builds its .bit (gmpack) and get_report gives
-// its reports; program_board refuses it (openFPGALoader's, outside Silinx); every result's text.
+// its reports, its Post-Synthesis model simulates blinky's test bench; program_board refuses it (openFPGALoader's, outside
+// Silinx); every result's text.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -75,7 +76,22 @@ test('run_process: blinky on the evaluation board to its .bit, no warnings; get_
   assert.ok(summary.bit.size > 1000);
   assert.ok(fs.existsSync(path.join(P.projectDir('bi'), 'build', 'top.bit')));
   // (no power estimate, no simulation model yet)
-  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, translate, par, trce, bitgen)');
+  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, postsynth, translate, par, trce, bitgen)');
   await P.updateProject('bi', pj => ({ ...pj, trusted: true }));
   await fails('program_board', { project: 'bi' }, 'a GateMate\'s board is not programmed from Silinx: its top.bit is loaded by openFPGALoader (openFPGALoader -b gatemate_evb_jtag top.bit), outside Silinx');
+});
+
+// the GateMate's Post-Synthesis model (core/flow-models-nextpnr.js: Yosys's netlist of the CC_ cells, gatemate-prims.js),
+// simulated against blinky's test bench; no Post-Place & Route one
+test('run_process post_synthesis_model on the evaluation board: blinky\'s model, its test bench passes on it, no warning; post_par_model refused', { timeout: 900000 }, async () => {
+  await ok('new_project_from_example', { name: 'models', example: 'blinky' });
+  await ok('set_design_properties', { project: 'models', board: 'gatemate-evb', update_constraints: true });
+  const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
+  assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
+  assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the GateMate cells\), \d+ cells$/m);
+  const s = await ok('simulate', { project: 'models', model: 'postsynth', time_ns: 2000000, signals: [] });
+  assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed], [['Simulation finished OK'], [], false]);
+  const message = 'the GateMate flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
+  await fails('run_process', { project: 'models', process: 'post_par_model' }, message);
+  await fails('simulate', { project: 'models', model: 'postpar', time_ns: 100 }, message);
 });

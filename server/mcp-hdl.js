@@ -17,9 +17,9 @@ const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', p
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
 // the models each flow makes (#3707), as the interface's tools (web/js/tool-descriptors.js simModelsOf, toolOf): the Spartan
 // flows', ISE's and the Silinx toolchain's, all four; the iCE40's, ECP5's and Gowin's the post-synthesis and post-place & route
-// ones (#2299, #4362, core/flow-models-nextpnr.js); the Artix-7's the Silinx toolchain's post-synthesis and post-place & route ones (#4362), AMD
+// ones (#2299, #4362, core/flow-models-nextpnr.js), the GateMate's the post-synthesis one (#2431); the Artix-7's the Silinx toolchain's post-synthesis and post-place & route ones (#4362), AMD
 // Vivado's flow none; none on the other experimental families
-const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth', 'postpar'] };
+const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth', 'postpar'], gatemate: ['postsynth'] };
 const simModelsOfDevice = (device, silinx) => (deviceFamily(device) === 'artix7' ? (silinx ? ['postsynth', 'postpar'] : [])
   : vivadoDevice(device) || experimentalDevice(device) ? []
   : openOnlyDevice(device) ? NEXTPNR_MODELS[deviceFamily(device)] || [] : Object.keys(SIM_MODELS));
