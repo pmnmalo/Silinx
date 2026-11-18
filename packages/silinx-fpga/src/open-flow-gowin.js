@@ -3,12 +3,14 @@
 // gowin_pack's bitstream (<top>.fs): Silinx's JavaScript port of Apicula's (fpga/gowin/pack.js; the package's own is Python, which
 // runs in a browser only through Pyodide); the constraints are CST (cst.js). Both come through io.nextpnr.gowin { run(args,
 // files, onLine) -> files, pack(routedJson, family) -> .fs text } (nextpnr-gowin-io.js: YoWASP's @yowasp/nextpnr-himbaechel-gowin).
-// nextpnr-himbaechel-gowin places no port without a pin: such a port is an error here, named, before nextpnr runs.
+// nextpnr-himbaechel-gowin places no port without a pin: such a port is an error here, named, before nextpnr runs; so is what it does
+// not place or keep (gowin-checks.js, #4352).
 import { scriptSynthesis } from './synth-script.js';
 import { CST } from './cst.js';
 import { portBits, nextpnrNames } from './nextpnr-ports.js';
 import { mountNextpnrTiming } from './nextpnr-timing.js';
 import { gowinClocks } from './gowin-clocks.js';
+import { gowinChecks } from './gowin-checks.js';
 
 /** The Gowin's parts, packages and speeds nextpnr-himbaechel-gowin takes: `${part}/${package}${speed}` -> its --device and family. */
 export const GOWIN_DEVICES = {
@@ -75,6 +77,9 @@ function mountGowin(ctx) {
     const dev = gowinDevice(spec);
     if (!dev) throw new StepError(`${spec.device}-${spec.pkg}${spec.speed || ''}: not a Gowin device of nextpnr-himbaechel-gowin here (${Object.keys(GOWIN_DEVICES).join(', ')})`, [], '');
     const t = now();
+    const checks = gowinChecks(netlistText(), top);
+    if (checks.errors.length) throw new StepError(checks.errors.join('; '), [], 'Divide the clock with a CLKDIV, or a PLL\'s output; for a bidirectional LVDS pair, an ELVDS_IOBUF on an emulated pair.');
+    for (const w of checks.warnings) log(`WARNING:Place - ${w}`);
     const bits = portBits(netlistText(), top);
     const read = constraints(), cst = read && nextpnrNames(read, bits);
     const pins = cst?.assignments || {};
