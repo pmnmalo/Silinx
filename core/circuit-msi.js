@@ -21,7 +21,9 @@ const SEGS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 function bcd7(type, title, low) {
   const out = low ? 'oc' : 'out';
   const pins = [P(1, 'B', 'in'), P(2, 'C', 'in'), P(3, `LT${BAR}`, 'in'), P(4, `BI${BAR}`, 'in'), P(5, `RBI${BAR}`, 'in'), P(6, 'D', 'in'), P(7, 'A', 'in'), P(8, 'GND', 'gnd'),
-    P(9, 'e', out, 'seg_e'), P(10, 'd', out, 'seg_d'), P(11, 'c', out, 'seg_c'), P(12, 'b', out, 'seg_b'), P(13, 'a', out, 'seg_a'), P(14, 'g', out, 'seg_g'), P(15, 'f', out, 'seg_f'), P(16, 'VCC', 'vcc')];
+    P(9, 'e', out, 'seg_e'), P(10, 'd', out, 'seg_d'), P(11, 'c', out, 'seg_c'), P(12, 'b', out, 'seg_b'), P(13, 'a', out, 'seg_a'), P(14, 'g', out, 'seg_g'), P(15, 'f', out, 'seg_f'), P(16, 'VCC', 'vcc')]
+    // (the 7448's segments pulled up inside the chip: KiCad's 74LS48 says they are open collectors, #4397)
+    .map((p) => (!low && p.dir === 'out' ? { ...p, pullup: true } : p));
   const v = (V) => {
     const sel = vec(['a', 'b', 'c', 'd'], V), on = low ? 0 : 1;
     const put = (word) => SEGS.map((s, k) => (V ? `o_seg_${s} <= '${((word >> k) & 1) ^ (1 - on)}';` : `o_seg_${s} = 1'b${((word >> k) & 1) ^ (1 - on)};`)).join(' ');

@@ -109,7 +109,8 @@ uiTest('Parts panel: the KiCad catalogue\'s parts say what they are, are found b
   assert.deepEqual((await rows()).find((r) => r[0] === 'kicad-4xxx/4049'), ['kicad-4xxx/4049', '4049', 'Seis buffers inversores', null]);
   await search('descodificador 74ls42');
   await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: 'a decoder in Portuguese' });
-  assert.deepEqual(await rows(), [['kicad-74xx/74LS42', '74LS42', 'Descodificador de 4 para 10 linhas', null]]);
+  // (the 74LS42 behaves as the 7442, #4397: its title the interface's Portuguese)
+  assert.deepEqual(await rows(), [['kicad-74xx/74LS42', '74LS42', 'Descodificador BCD para decimal', null]]);
   // (one the vocabulary does not cover: KiCad's words, in English)
   await search('4046');
   await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: 'the 4046' });

@@ -102,7 +102,9 @@ test('catalogueFunction: Silinx\'s IC\'s title, else KiCad\'s function, else the
   assert.deepEqual(ids('retriggerable monostable').sort(), ['kicad-74xx/74AHCT123', 'kicad-74xx/74HC123', 'kicad-74xx/74HCT123', 'kicad-74xx/74LS122', 'kicad-74xx/74LS123']);
   // (in Portuguese: KiCad's functions by the vocabulary, accents aside; Silinx's titles as the interface gives them, more)
   assert.deepEqual(ids('monoestaveis redisparaveis').sort(), ['kicad-74xx/74AHCT123', 'kicad-74xx/74HC123', 'kicad-74xx/74HCT123', 'kicad-74xx/74LS123']);
-  assert.ok(ids('descodificador').includes('kicad-74xx/74LS42'));
+  // (a decoder drawn only, the 74LS249: KiCad's function in Portuguese; the 74LS42 behaves as the 7442 since #4397, its
+  // title the interface's)
+  assert.ok(ids('descodificador').includes('kicad-74xx/74LS249'));
   assert.deepEqual(searchCatalogue('quatro portas nand hct', undefined, { more: (e) => (e.as === '7400' ? 'Quatro portas NAND de 2 entradas' : null) }).map((e) => e.id), ['kicad-74xx/74HCT00']);
   assert.deepEqual(searchCatalogue('quatro portas nand hct').map((e) => e.id), []);
   assert.equal(foldText('Endereçável ÂB'), 'enderecavel ab');
