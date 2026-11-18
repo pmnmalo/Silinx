@@ -558,6 +558,17 @@ function stmtH(cx, s, o) {
   }
   return cannot(`a statement of kind '${s.kind}'`, s);
 }
+// A case's selector of an expression (a concatenation, a conversion) is qualified by a subtype of its width declared
+// in the architecture: its subtype locally static, as VHDL-93 wants (XST's HDLCompiler:803, #4383); one per width
+function caseSubtype(cx, w) {
+  const key = `\u0000case${w}`;
+  if (!cx.names.has(key)) {
+    const name = uniqueName(cx, `case${w}_t`);
+    cx.names.set(key, { vhdl: name, kind: 'type' });
+    cx.arrays.push(`subtype ${name} is std_logic_vector(${w - 1} downto 0);`);
+  }
+  return cx.names.get(key).vhdl;
+}
 function caseH(cx, s, o) {
   if (s.variant && s.variant !== 'case') {
     let wild = false;
@@ -568,8 +579,8 @@ function caseH(cx, s, o) {
   // choices of integers (localparams of no width): the selector as an integer
   const byInt = sel.t === 'int' || s.items.some(i => i.choices.some(c => exprH(cx, c).t === 'int' && c.op !== 'int'));
   const T = byInt ? { t: 'int' } : sel.t === 'sl' ? { t: 'sl', w: 1 } : { t: 'slv', w: sel.w };
-  const selC = byInt ? toInt(sel).c : sel.t === 'uns' || sel.t === 'sgn' ? `std_logic_vector(${sel.c})` : sel.concat ? `std_logic_vector'(${sel.c})` : sel.c;
   if (!byInt && T.t === 'slv' && T.w == null) cannot('a case on a vector of a width not known', s);
+  const selC = byInt ? toInt(sel).c : sel.t === 'uns' || sel.t === 'sgn' ? `${caseSubtype(cx, T.w)}'(std_logic_vector(${sel.c}))` : sel.concat ? `${caseSubtype(cx, T.w)}'(${sel.c})` : sel.c;
   const out = [`case ${selC} is`];
   for (const it of s.items) out.push(...indent([`when ${it.choices.map(c => toType(exprH(cx, c), T).c).join(' | ')} =>`, ...indent(stmtsH(cx, stmtsOf(it.body), o))]));
   out.push(...indent(['when others =>', ...indent(s.default ? stmtsH(cx, stmtsOf(s.default), o) : ['null;'])]));

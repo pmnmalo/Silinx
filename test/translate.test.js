@@ -606,3 +606,57 @@ test('#4436 VHDL to Verilog: a concurrent assignment\'s "silinx: ignore" comment
   assert.equal(warned.length, 2);
   assert.deepEqual(lint({ 'conc.v': tr(bare, 'conc.vhd').text }, 'conc').length, 2);
 });
+
+// #4383: a case on a concatenation (or on a signed vector) in VHDL: its selector qualified by a subtype of its width
+// declared in the architecture, locally static as XST wants (HDLCompiler:803); the Verilog and its VHDL simulate alike
+const CASE_CAT = `module casecat(input a, input b, input [1:0] u, input signed [1:0] sv, output reg [1:0] y, output reg z, output reg w);
+always @* begin
+  case ({a, b})
+    2'b00: y = 2'd1;
+    2'b11: y = 2'd2;
+    default: y = 2'd0;
+  endcase
+  case ({u, a})
+    3'b101: z = 1'b1;
+    default: z = 1'b0;
+  endcase
+  case (sv)
+    2'b10: w = 1'b1;
+    default: w = 1'b0;
+  endcase
+end
+endmodule
+`;
+
+test('#4383 Verilog to VHDL: a case on a concatenation or a signed vector, its selector qualified by a subtype of its width', () => {
+  const v = tr(CASE_CAT, 'casecat.v');
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.text.split('\n').filter((l) => /subtype|case /.test(l)).map((l) => l.trim()), [
+    'subtype case2_t is std_logic_vector(1 downto 0);', 'subtype case3_t is std_logic_vector(2 downto 0);',
+    "case case2_t'(a & b) is", "case case3_t'(u & a) is", "case case2_t'(std_logic_vector(sv)) is"]);
+  assert.doesNotMatch(v.text, /std_logic_vector'\(/);
+  // simulated: the Verilog and its VHDL, with a VHDL test bench of every input; no warnings
+  const tb = `library ieee; use ieee.std_logic_1164.all; use ieee.numeric_std.all;
+entity tb is end;
+architecture t of tb is
+  signal a, b, z, w : std_logic; signal u, y : std_logic_vector(1 downto 0); signal sv : signed(1 downto 0);
+begin
+  dut : entity work.casecat port map (a => a, b => b, u => u, sv => sv, y => y, z => z, w => w);
+  process begin
+    for i in 0 to 31 loop
+      (a, b) <= std_logic_vector(to_unsigned(i mod 4, 2)); u <= std_logic_vector(to_unsigned(i / 4 mod 4, 2));
+      sv <= signed(to_unsigned(i / 16 * 2, 2));
+      wait for 1 ns; report integer'image(i) & ":" & to_string(y) & std_logic'image(z) & std_logic'image(w);
+    end loop;
+    wait;
+  end process;
+end;`;
+  const ws = (r) => [...r.r.lib.errors, ...r.design.diags].filter((d) => d.severity !== 'error').map((d) => `${d.file}:${d.line}: ${d.message}`);
+  const rv = sim({ 'casecat.v': CASE_CAT, 'tb.vhd': tb }), rh = sim({ 'casecat.vhd': v.text, 'tb.vhd': tb });
+  assert.deepEqual(ws(rv), []);
+  assert.deepEqual(ws(rh), []);
+  assert.equal(rh.out.length, 32);
+  assert.deepEqual(rh.out, rv.out);
+  assert.equal(rh.out[3], "3:10'0''0'");
+  assert.equal(rh.out[27], "27:10'1''1'");
+});
