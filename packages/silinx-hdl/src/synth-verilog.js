@@ -185,12 +185,15 @@ export function toVerilog(design, { name, tables = true, simprim = null, formal 
   // it made the flip-flops load a signal, 2.5 times the logic)
   const constSig = new Map();
   {
+    // (not a signal a process is sensitive to an edge of, a clock or an asynchronous control: its event list names
+    // it, and its condition must read it too, else Yosys's proc finds an edge with no branch of its own, #4332)
+    const edged = new Set(design.procs.flatMap(p => (p.triggers || []).filter(t => t.edge === 'pos' || t.edge === 'neg').map(t => t.sig)));
     const drivers = new Map();
     for (const p of design.procs) if (!skipProc.has(p)) for (const sg of p.writes || []) drivers.set(sg, [...(drivers.get(sg) || []), p]);
     for (const [sg, ps] of drivers) {
       const p = ps[0], b = p.body;
       if (ps.length !== 1 || p.kind !== 'assign' || !b || b.k !== 'asg' || b.delay || b.target.k !== 'sig' || b.target.sig !== sg) continue;
-      if (b.value.k !== 'c' || Array.isArray(b.value.val) || b.value.val.v === undefined || sg.t.kind === 'array' || sg.wired) continue;
+      if (b.value.k !== 'c' || Array.isArray(b.value.val) || b.value.val.v === undefined || sg.t.kind === 'array' || sg.wired || edged.has(sg)) continue;
       constSig.set(sg, b.value.val);
     }
   }
