@@ -21,6 +21,7 @@ const { icInside } = await import('../web/js/circuit-draw-inside.js');
 const { ICS } = await import('../core/circuit-ics.js');
 const { MSI } = await import('../core/circuit-msi.js');
 const { SEQ } = await import('../core/circuit-seq.js');
+const { blocksLayout } = await import('../core/circuit-inside-blocks.js');
 
 const P = 20;
 const all = (e) => (e instanceof El ? [e, ...e.children.flatMap(all)] : []);
@@ -45,7 +46,9 @@ test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
       // (the 4023, 4025, 4073, 4075 and the three-state buffers: their pins named, #4397; an AND-OR-INVERT: a lead more a
       // term, from its AND to its NOR, #4498)
       if (NAMED.includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
-      assert.equal(ls.length, NAMED.includes(d.type) ? 0 : (d.gates || []).reduce((n, x) => n + x.ins.length + (x.terms?.length ?? 0) + 1, 0), what);
+      // (an IC with no gates, #4508: a lead each of its pins in its functions' boxes, its signals' and the supply's under a box)
+      assert.equal(ls.length, NAMED.includes(d.type) ? 0 : d.gates ? d.gates.reduce((n, x) => n + x.ins.length + (x.terms?.length ?? 0) + 1, 0) : blocksLayout(d, d.pins.map((q) => ({ n: q.n, x: q.dx * P, y: q.dy * P }))).wires.length, what);
+      if (!d.gates) assert.ok(els.some((e) => e.attrs.class === 'circ-block'), `${what}: its boxes`);
       for (const l of ls) {
         assert.equal(l.tag, 'polyline', what);
         assert.equal(l.attrs.fill, 'none', `${what} pin ${l.attrs['data-pin']}`);
@@ -84,4 +87,22 @@ test('#4498 Show inside, an AND-OR-INVERT: its terms\' ANDs turned to face up or
     // (a term's lead has no pin)
     assert.equal(ieee.filter((e) => e.attrs.class === 'circ-gate-line' && e.attrs['data-pin'] === undefined).length, terms, t);
   }
+});
+
+test('#4508 Show inside, an IC with no gates: the 7474\'s two flip-flops, their clocks\' ▷, their bubbles; IEEE\'s names, IEC\'s labels; a counter\'s IEC qualifier', () => {
+  const d = SEQ.find((x) => x.type === '7474') ?? ICS.find((x) => x.type === '7474');
+  for (const std of ['ieee', 'iec']) {
+    const els = inside(d, std);
+    const boxes = els.filter((e) => e.attrs.class === 'circ-block');
+    assert.deepEqual(boxes.map((b) => [b.attrs['data-unit'], b.attrs['data-std']]), [['1', std], ['2', std]]);
+    assert.equal(els.filter((e) => e.attrs.class === 'circ-block-clock').length, 2, std);
+    const labels = (u) => boxes[u].children.filter((e) => e.attrs?.class === 'circ-block-pin').map((e) => e.children.join(''));
+    assert.deepEqual(labels(0), std === 'ieee' ? ['CLR̅', 'D', 'CLK', 'PRE̅', 'Q', 'Q̅'] : ['R', '1D', 'C1', 'S']);
+    // (the bubbles: CLR̅ and PRE̅ each unit; IEC: its Q̅ too)
+    assert.equal(els.filter((e) => e.attrs.class === 'circ-gate-bubble').length, std === 'ieee' ? 4 : 6, std);
+    assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), ['GND', 'VCC'], std);
+  }
+  const ctr = MSI.find((x) => x.type === '74161') ?? SEQ.find((x) => x.type === '74161');
+  assert.deepEqual(inside(ctr, 'iec').filter((e) => e.attrs.class === 'circ-block-qual').map((e) => e.children.join('')), ['CTR']);
+  assert.deepEqual(inside(ctr, 'ieee').filter((e) => e.attrs.class === 'circ-block-qual'), []);
 });

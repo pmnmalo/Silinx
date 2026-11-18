@@ -129,7 +129,7 @@ test('#4224 the same geometry in both standards: the IEEE shape and the IEC box 
   }
 });
 
-test('#4224 the other ICs (MSI, sequential): no gates, nothing laid out (their pins\' names drawn inside)', () => {
+test('#4224 the other ICs (MSI, sequential): no gates, nothing laid out here (their functions\' boxes: core/circuit-inside-blocks.js, #4508)', () => {
   for (const d of [...MSI, ...SEQ, ...ICS.filter((x) => !x.gates)]) assert.deepEqual(insideLayout(d, pinsOf(d)), { gates: [], wires: [] }, d.type);
 });
 

@@ -40,7 +40,11 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   given, a label another part has left out.
 - **Show inside** (#4060, the toolbar's, remembered): each breadboard's strips drawn under its holes (each column's a–e
   and f–j, each power rail), each gate IC's gates in its body (IEC boxes, &, ≥1, =1, 1, a bubble on an inverting one)
-  joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire. A 4023, 4025, 4073 or 4075
+  joined to its pins, so that a circuit is easier to wire. An IC with no gates (#4508, `core/circuit-inside-blocks.js`)
+  as its datasheet's connection diagram too: a dual or quad flip-flop, latch or decoder a box a unit beside its pins (the
+  7474's two D flip-flops), another IC one box over its body; each pin's line into its box, its name inside (IEC: 1D, C1,
+  S, R, and the box's qualifier CTR, SRG, RG, X/Y, MUX, Σ, COMP), a clock's ▷, a bubble on an active-low input. A
+  KiCad part that behaves as a library IC is drawn as it. A 4023, 4025, 4073 or 4075
   has its pins named too (#4397): a gate's inputs on both rows, one past its output, its lines would cross. An
   AND-OR-INVERT (7451, 74LS54, 7455, #4498) as its datasheet draws it: each term's AND beside its pins, turned toward
   the body's middle, feeding the NOR that faces its output pin.
