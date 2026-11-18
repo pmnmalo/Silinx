@@ -1,5 +1,6 @@
 // The MCP server's export_part (#4282, server/mcp-kicad.js): the library's ICs as a .kicad_sym in the exchange folder
-// (read back as those ICs), a project's KiCad parts as a PCM package (read back the same); what it refuses
+// (read back as those ICs), a project's KiCad parts as a PCM package (read back the same); Silinx's library's parts as a
+// package alone (#4290: their symbols and Silinx.pretty), read back; what it refuses
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ import zlib from 'node:zlib';
 import { scratchEnv } from './server-helpers.js';
 import { kicadPartsOf } from '../core/circuit-kicad.js';
 import { readPcmPackage } from '../core/kicad-pcm.js';
-import { EXPORTED_ICS } from '../core/kicad-export.js';
+import { EXPORTED_ICS, EXPORTED_PARTS, partsLibrary } from '../core/kicad-export.js';
 
 let tmp, ex;
 before(async () => { tmp = fs.realpathSync(await scratchEnv('silinx-mcp-kicad-export-')); ex = path.join(tmp, 'exchange'); fs.mkdirSync(ex); process.env.SILINX_MCP_FOLDER = ex; });
@@ -47,7 +48,27 @@ test('export_part: ICs as a .kicad_sym, a project\'s parts as a PCM package; rea
   // and imported again into another project (import_part with the .zip)
   await ok('new_project', { name: 'Q' });
   assert.match((await ok('import_part', { project: 'Q', file: 'p.zip' })).text, /^parts\/Silinx\.kicad_sym written: 1 part\(s\), 1 of them as ICs of the library \(74161\)/m);
-  await fails('export_part', { file: 'q.zip' }, 'project: the project whose KiCad parts are packaged');
+  await fails('export_part', { file: 'q.zip' }, 'project: the project whose KiCad parts are packaged (or parts, ics: the library\'s)');
   await fails('export_part', { file: 'q.zip', project: 'P', ...meta, identifier: 'bad' }, 'identifier: \'bad\' is not a reverse domain name of 2 to 50 letters, digits and - each (org.example.parts)');
   assert.equal(fs.existsSync(path.join(ex, 'q.zip')), false, 'nothing written by a refusal');
+});
+
+test('export_part: the library\'s parts as a PCM package with no project, chosen or all of them; imported back; its refusals (#4290)', async () => {
+  const meta = { identifier: 'org.example.silinx', name: 'Silinx parts', description: 'Silinx\'s library', author: 'Me', licence: 'AGPL-3.0-only', version: '1.0' };
+  const r = await ok('export_part', { file: 'lib.zip', parts: ['led', 'supply', '7400', 'led'], ...meta });
+  assert.equal(r.text, 'lib.zip written: the KiCad package org.example.silinx 1.0 of 3 part(s) of the library');
+  const pkg = await readPcmPackage(new Uint8Array(fs.readFileSync(path.join(ex, 'lib.zip'))), CODEC);
+  assert.deepEqual([pkg.symbols.map((s) => s.name), pkg.footprints.map((f) => `${f.library}/${f.name}`)], [['Silinx.kicad_sym'], ['Silinx/Silinx_led.kicad_mod', 'Silinx/Silinx_supply.kicad_mod']]);
+  assert.equal(pkg.symbols[0].text, partsLibrary(['led', 'supply', '7400']).symbols);
+  const all = await ok('export_part', { file: 'all.zip', all_parts: true, ...meta });
+  assert.equal(all.text, `all.zip written: the KiCad package org.example.silinx 1.0 of ${EXPORTED_PARTS.length} part(s) of the library`);
+  // imported into a project: its parts, the drawn ones said
+  await ok('new_project', { name: 'L' });
+  const imp = await ok('import_part', { project: 'L', file: 'lib.zip' });
+  assert.deepEqual(imp.text.split('\n'), ['parts/Silinx.kicad_sym written: 3 part(s), 2 of them as ICs of the library (led, 7400), 1 drawn only; 0 symbol(s) no part', '2 footprint(s) written: parts/Silinx.pretty']);
+  await fails('export_part', { file: 'x.kicad_sym', parts: ['led'] }, 'parts: a .zip\'s only (their footprints go with them; a .kicad_sym holds the library\'s ICs: ics)');
+  await fails('export_part', { file: 'x.kicad_sym', all_parts: true }, 'parts: a .zip\'s only (their footprints go with them; a .kicad_sym holds the library\'s ICs: ics)');
+  await fails('export_part', { file: 'x.zip', parts: ['led'], ics: ['7400'], ...meta }, 'ics: parts or ics, not both (parts may hold ICs)');
+  await fails('export_part', { file: 'x.zip', parts: ['breadboard-half'], ...meta }, '\'breadboard-half\' is not a part of the library with pins (circuit_parts: a breadboard has none)');
+  assert.equal(fs.existsSync(path.join(ex, 'x.zip')), false, 'nothing written by a refusal');
 });

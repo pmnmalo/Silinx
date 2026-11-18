@@ -88,6 +88,6 @@ test('partsPackage: a project\'s parts and ICs as a PCM package, read back the s
   await refused({ author: ' ' }, 'author: missing');
   await refused({ description: 'x'.repeat(151) }, 'description: at most 150 characters');
   await refused({ version: 'v1' }, 'version: \'v1\' is not a version (1, 1.0, 1.2.3)');
-  await refused({}, 'nothing to package: the project has no KiCad parts (parts/), and no IC of the library was chosen', { 'src/a.vhd': 'x' });
+  await refused({}, 'nothing to package: the project has no KiCad parts (parts/), and no part of the library was chosen', { 'src/a.vhd': 'x' });
   assert.equal((await readPcmPackage(await partsPackage({}, meta, CODEC, { ics: ['7404'] }), CODEC)).symbols.length, 1, 'the ICs alone');
 });

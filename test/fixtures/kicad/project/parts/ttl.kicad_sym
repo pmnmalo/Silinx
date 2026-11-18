@@ -153,7 +153,7 @@
 	(symbol "BADMODEL"
 		(property "Reference" "U" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(property "Value" "TEST-BAD" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Silinx.Model" "clock" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Silinx.Model" "breadboard-half" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(symbol "BADMODEL_1_1"
 			(pin input line (at 0 0 0) (length 2.54) (name "A") (number "1"))
 		)

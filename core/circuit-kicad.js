@@ -8,7 +8,8 @@
 //   - or it is an LED, a slide switch or a push button by what its symbol says (core/circuit-kicad-parts.js, #4349);
 // and its pins are that part's, pin by pin (their numbers and directions); it is then that part, its pins in the
 // library part's places, under its own name (its Value), datasheet and source. Silinx.Family ('ttl' / 'cmos') makes
-// its inputs read as that family's. Any other symbol is drawn only: its pins in its footprint's places on the 0.1 inch
+// its inputs read as that family's. A Silinx.Model naming another part of the library (its supply, a display: #4290) is
+// drawn only, its pins where they are. Any other symbol is drawn only: its pins in its footprint's places on the 0.1 inch
 // grid (a .kicad_mod of the project, else its footprint's name: DIP-14_W7.62mm, PinHeader_1x04_P2.54mm), not
 // simulated, its pins driving nothing. A symbol with no through-hole footprint is no part: it does not plug into a
 // breadboard. Silinx.Footprint gives a symbol a footprint its file has not (a breakout's). Silinx.Source, Silinx.Author
@@ -172,11 +173,13 @@ function kicadPartDef(lib, s, footprints) {
     return { def: { type, title, kind: 'model', pins: r.pins.sort((a, b) => String(a.n).localeCompare(String(b.n), 'en', { numeric: true })), module: r.module, kicad: origin, behaves: null,
       ...(at.dip ? { dip: at.dip } : {}), ...(at.look ? { look: at.look } : {}) } };
   }
-  const named = s.properties['Silinx.Model'];
-  if (named && PARTS[named]?.kind !== 'ic' && !DISCRETE[named]) return { error: `its Silinx.Model '${named}' is neither an IC of the library nor one of its ${Object.keys(DISCRETE).join(', ')}` };
-  let unlike = null;   // (a part number matched whose pins are not the library part's; a symbol like an LED whose pins are not one's)
+  let named = s.properties['Silinx.Model'], unlike = null;   // (unlike: a part number matched whose pins are not the library part's; a symbol like an LED whose pins are not one's)
+  // (another part of the library's, #4290: Silinx's library in KiCad's format names them all; drawn only, its pins where they
+  // are, until a KiCad part behaves as it, #4452)
+  if (named && PARTS[named]?.pins.length && PARTS[named].kind !== 'ic' && !DISCRETE[named]) { unlike = `its Silinx.Model is the library's ${named}, which a KiCad part does not behave as yet`; named = null; }
+  else if (named && PARTS[named]?.kind !== 'ic' && !DISCRETE[named]) return { error: `its Silinx.Model '${named}' is no part of the library with pins (circuit_parts)` };
   // (an LED, a switch, a button, a display of the library, #4349: by Silinx.Model, else by what the symbol says)
-  const other = named ? (DISCRETE[named] ? named : null) : partOfNumber(origin.value) || partOfNumber(s.name) ? null : discreteModel(s, symbolPins(s));
+  const other = named ? (DISCRETE[named] ? named : null) : unlike || partOfNumber(origin.value) || partOfNumber(s.name) ? null : discreteModel(s, symbolPins(s));
   if (other) {
     const at = pinPlaces(s, footprints), base = PARTS[other];
     const r = at.error ? at : discretePins(base, symbolPins(s), at.places);
@@ -187,7 +190,7 @@ function kicadPartDef(lib, s, footprints) {
     if (named) return { error: `its Silinx.Model is ${other} but ${r.error}` };
     unlike = at.error ? null : `it looks like a ${other} but ${r.error}`;
   }
-  const model = other ? null : named || partOfNumber(origin.value) || partOfNumber(s.name);
+  const model = other || unlike ? null : named || partOfNumber(origin.value) || partOfNumber(s.name);
   if (model) {
     const why = pinoutDifference(s, model);
     if (!why) {

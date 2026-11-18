@@ -44,7 +44,7 @@ test('import_part: a footprint, then a library and its symbols said, its Silinx 
     `${T('74LS04')}: not a part: its Silinx.Model is 7404 but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out`,
     `${T('SMDCHIP')}: not a part: its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard`,
     `${T('NOFP')}: not a part: it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)`,
-    `${T('BADMODEL')}: not a part: its Silinx.Model 'clock' is neither an IC of the library nor one of its led, button, spdt`]);
+    `${T('BADMODEL')}: not a part: its Silinx.Model 'breadboard-half' is no part of the library with pins (circuit_parts)`]);
   assert.deepEqual(r.data.parts.map((p) => [p.value, p.kind, p.behavesAs]), [['SN74LS00N', 'ic', '7400'], ['74HC00', 'ic', '7400'], ['MYNAND', 'ic', '7400'], ['CD4011BE', 'ic', '4011'],
     ['TEST-SENSOR', 'drawn', null], ['TEST-MODULE', 'drawn', null]]);
   assert.equal(r.data.untrusted.content, 'the library\'s names and texts');
@@ -65,7 +65,7 @@ test('import_part: a footprint, then a library and its symbols said, its Silinx 
     `${T('74LS04')}: not a part: its Silinx.Model is 7404 but its pin 2 (no name) is input, the 7404's pin 2 (1Y) out`,
     `${T('SMDCHIP')}: not a part: its footprint Package_SO:SOIC-8_3.9x4.9mm_P1.27mm is surface-mount: it does not plug into a breadboard`,
     `${T('NOFP')}: not a part: it has no footprint: give it Silinx.Footprint (DIP-14_W7.62mm, PinHeader_1x04_P2.54mm)`]);
-  assert.equal(list.text.split('\n').at(-1), `${T('BADMODEL')}: not a part: its Silinx.Model 'clock' is neither an IC of the library nor one of its led, button, spdt`);
+  assert.equal(list.text.split('\n').at(-1), `${T('BADMODEL')}: not a part: its Silinx.Model 'breadboard-half' is no part of the library with pins (circuit_parts)`);
   assert.match(list.text, new RegExp(`^${T('SENSOR').replace(/[.#]/g, '\\$&')}: .*; pins 1 VCC none, 2 GND none, 3 OUT none, 4 EN none$`, 'm'));
   assert.deepEqual([list.data.project, list.data.skipped.length, list.data.notes, list.data.errors], ['k', 4, [], []]);
   assert.equal(list.data.untrusted.content, 'the project\'s KiCad parts: their names and texts');
