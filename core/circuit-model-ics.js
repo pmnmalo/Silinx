@@ -58,7 +58,7 @@ function storeVhdl(e, k) {
  * architecture written for it ({ decl, body }: its declarations and its statements, numeric_std's unsigned at hand).
  */
 function coreVhdl(name, pins, stores) {
-  const ins = pins.filter((p) => p.dir === 'in').map((p) => p.port), outs = pins.filter((p) => p.dir === 'out').map((p) => p.port);
+  const ins = pins.filter((p) => p.dir === 'in').map((p) => p.port), outs = pins.filter((p) => p.dir === 'out' || p.dir === 'oc').map((p) => p.port);
   const raw = !Array.isArray(stores);
   const L = ['library ieee;', 'use ieee.std_logic_1164.all;', ...(raw ? ['use ieee.numeric_std.all;'] : []), '', `entity ${name} is`, '  port (', `    ${ins.join(', ')} : in std_logic;`, `    ${outs.join(', ')} : out std_logic`, '  );', `end entity ${name};`, '',
     `architecture rtl of ${name} is`];
