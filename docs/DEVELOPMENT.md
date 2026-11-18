@@ -121,7 +121,7 @@ examples/   example projects (for the Basys2; each built by the Silinx toolchain
             uart (VHDL, serial communication with a terminal),
             micro80 (VHDL, a microprocessor, light8080, running a program from block RAM); each with a self-checking testbench
 docs/       ARCHITECTURE.md (Silinx's architecture as a whole: the editions, the layers, each part and its
-            files), GETTING-STARTED.md / COMECAR.md (step-by-step guides), IR.md (parser intermediate
+            files), user/ (the user's guide, in English and Portuguese), IR.md (parser intermediate
             representation), PROJECT.md (project model and API), OPEN-TOOLCHAIN.md (how the open
             Spartan-3E toolchain is developed), TOOLCHAIN.md (the toolchain's architecture, from the design to the
             .bit), QUALITY.md (the Silinx toolchain against ISE)

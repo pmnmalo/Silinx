@@ -1,6 +1,6 @@
 # Getting started with Silinx (step by step)
 
-[User's guide](README.md) · English · [Português](../../COMECAR.md)
+[User's guide](README.md) · English · [Português](../pt/getting-started.md)
 
 ![New Project: starting from the traffic example](../../images/new-project.webp)
 

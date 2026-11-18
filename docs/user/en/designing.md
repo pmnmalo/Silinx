@@ -1,6 +1,6 @@
 # Designing
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/designing.md)
 
 A Silinx project is made of modules, and each module is written or drawn the way that suits it best. A drawing is
 the module's source: Silinx generates its VHDL or Verilog from it, always up to date. *New Source…* (the Design

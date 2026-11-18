@@ -1,6 +1,6 @@
 # The Board Emulator
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/emulator.md)
 
 The Board Emulator runs the design on a drawing of the real board, wired by its constraints: flip the switches,
 press the buttons, and watch the LEDs, the 7-segment displays and the VGA monitor, at the board's real speed. No

@@ -1,6 +1,6 @@
 # What Silinx is
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/what-is-silinx.md)
 
 Silinx is an FPGA design environment made for teaching digital systems. A student writes VHDL or Verilog, or draws
 the design (a schematic, a state diagram, an ASM chart, a truth table, a circuit of real chips on a breadboard),

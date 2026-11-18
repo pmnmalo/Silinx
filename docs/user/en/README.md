@@ -1,6 +1,6 @@
 # Silinx: the user's guide
 
-English
+English · [Português](../pt/README.md)
 
 Silinx is an FPGA design environment for teaching digital systems. These pages show what it does, one subject each.
 

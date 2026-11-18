@@ -1,6 +1,6 @@
 # Teaching with Silinx
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/teaching.md)
 
 Silinx was made for a digital systems course: the examples, the labs, the grading and the sharing are a teacher's
 tools.

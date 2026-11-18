@@ -1,6 +1,6 @@
 # Simulating
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/simulating.md)
 
 Silinx has its own simulator, **SSim**, for VHDL and Verilog, in the browser. Nothing else to install.
 

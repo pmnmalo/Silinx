@@ -1,6 +1,6 @@
 # Silinx for an AI assistant (MCP)
 
-[User's guide](README.md) · English
+[User's guide](README.md) · English · [Português](../pt/ai-mcp.md)
 
 An AI assistant (Claude, or any client of the Model Context Protocol) can work on your Silinx projects: create one
 from an example, write a module, draw a state machine, run the simulation and the implementation, read the reports.
