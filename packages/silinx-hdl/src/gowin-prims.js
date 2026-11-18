@@ -5,17 +5,24 @@
 // BSRAM), as core/unisim.js's from Xilinx's. No timing. The names, pins and generics are Gowin's (its VHDL library:
 // `library gw1n; use gw1n.components.all;`); some are UNISIM's too (LUT4, IBUF, OBUF, IOBUF, BUFG, INV, GND, VCC), so
 // a compilation has the one library or the other (unisim.js primitiveSources).
-//   - LUT1-4 (INIT, F the bit {I3 I2 I1 I0} of it), MUX2 and MUX2_LUT5-8 (O = S0 ? I1 : I0), INV;
+//   - LUT1-4 (INIT, F the bit {I3 I2 I1 I0} of it; an open input reads 1: nextpnr's routed design leaves those its INIT
+//     does not read open, #4362), MUX2 and MUX2_LUT5-8 (O = S0 ? I1 : I0), INV;
 //   - the flip-flops DFF, DFFE, DFFS / DFFSE and DFFR / DFFRE (a synchronous set / reset, before the enable), DFFP /
 //     DFFPE and DFFC / DFFCE (an asynchronous preset / clear), each with its falling-edge DFFN… twin; INIT their value
 //     at start (1 for the set and preset ones);
 //   - the latches DL, DLE, DLC, DLCE, DLP, DLPE and their DLN… twins (open while CLK is low), CE their enable;
 //   - ALU (ALU_MODE: 0 ADD, 1 SUB, 2 ADDSUB, I3 = 1 adds, 3 NE, 4 GE, 5 LE, 6 CUP, 7 CDN, 8 CUPCDN, 9 MULT): SUM = S xor
-//     CIN, COUT = S ? CIN : C, S and C of the mode, as cells_sim.v's;
+//     CIN, COUT = S ? CIN : C, S and C of the mode, as cells_sim.v's; nextpnr-himbaechel-gowin's routed ALUs (#4362) with
+//     RAW_ALU_LUT, the slice's LUT itself (Apicula's chipdb.py modes, which give cells_sim.v's S and C for each of them):
+//     S its bit {I3 1 I1 I0}, C its bit {0 0 I1 I0}; an unconnected input (nextpnr's for a constant one) whose two values
+//     give the same bit leaves it known; an open CIN, a chain's first ALU's, reads 0 (nextpnr's head of a carry from the
+//     logic, I0 + 1 + CIN, gives I0 so). Its ALU_MODE "C2L" and "ONE2C" (the chains' carry in and out) are RAW_ALU_LUT 0
+//     and 15 (netlist-verilog.js gowinAluModes); CIN_NETTYPE "VCC" / "GND" a constant CIN (the GW5A's);
 //   - the distributed RAMs RAM16S1 / 2 / 4 (one port) and RAM16SDP1 / 2 / 4 (a write port and a read port): read at once
 //     at AD / RAD, written on CLK's rising edge when WRE, INIT_0 … the bits' contents;
 //   - the I/O buffers IBUF, OBUF, TBUF and IOBUF (OEN = 1 releases the pad), the LVDS ones' ELVDS_OBUF / TLVDS_OBUF (OB
-//     the complement), BUFG, VCC, GND, GSR (no effect);
+//     the complement), BUFG, VCC, GND, GSR (no effect); nextpnr's routed design's GOWIN_VCC, GOWIN_GND, DUMMY_CELL (none)
+//     and its buffers' NET_* generics (its nets' names for gowin_pack: no effect);
 //   - rPLL and PLLVR: CLKOUT at CLKIN × (FBDIV_SEL + 1) / (IDIV_SEL + 1), CLKOUTP the same shifted by PSDA_SEL × 22.5°,
 //     high DUTYDA_SEL sixteenths of its period (PSDA and DUTYDA with DYN_DA_EN), CLKOUTD the one of CLKOUTD_SRC divided by
 //     DYN_SDIV_SEL, CLKOUTD3 by 3, the bypasses CLKIN itself; as unisim-s6.js's PLL_BASE, each re-aligned to CLKIN's
@@ -56,7 +63,7 @@ const addrOf = (v, hi, ind = '    ') => `${ind}adr := 0; bad := false;\n${ind}fo
 const lut = (n) => {
   const ins = Array.from({ length: n }, (_, i) => `I${i}`);
   const bits = ins.map((x, i) => `    if ${x} = '1' then k := k + ${2 ** i}; elsif ${x} /= '0' then bad := true; end if;`).join('\n');
-  return entity(`LUT${n}`, `F : out std_ulogic; ${ins.join(', ')} : in std_ulogic`, `  process (${ins.join(', ')})
+  return entity(`LUT${n}`, `F : out std_ulogic; ${ins.join(', ')} : in std_ulogic := '1'`, `  process (${ins.join(', ')})
     variable k : integer;
     variable bad : boolean;
   begin
@@ -111,8 +118,21 @@ const latch = ([base, pins], inverted) => {
 };
 
 // ALU: S and C of each mode (cells_sim.v's), SUM = S xor CIN, COUT = S ? CIN : C
-const ALU = entity('ALU', 'SUM, COUT : out std_ulogic; I0, I1, I3, CIN : in std_ulogic', `  process (I0, I1, I3)
+const ALU = entity('ALU', "SUM, COUT : out std_ulogic; I0, I1, I3 : in std_ulogic := 'Z'; CIN : in std_ulogic := '0'; I2 : in std_ulogic := '1'", `  process (I0, I1, I3)
+    variable sv, cv : std_ulogic;
   begin
+    if RAW_ALU_LUT >= 0 then
+      -- (nextpnr's LUT: S its bit {I3 1 I1 I0}, C its bit {0 0 I1 I0}, each unknown input tried both ways)
+      sv := 'Z'; cv := 'Z';
+      for k in 0 to 7 loop
+        if (I0 = '1' or I0 = '0' or I0 = 'H' or I0 = 'L' or (k mod 2) = 0) and (I1 = '1' or I1 = '0' or I1 = 'H' or I1 = 'L' or ((k / 2) mod 2) = 0)
+           and (I3 = '1' or I3 = '0' or I3 = 'H' or I3 = 'L' or (k / 4) = 0) then
+          sv := lutbit(sv, RAW_ALU_LUT, 4 + pick(I0, k mod 2) + 2 * pick(I1, (k / 2) mod 2) + 8 * pick(I3, k / 4));
+          cv := lutbit(cv, RAW_ALU_LUT, pick(I0, k mod 2) + 2 * pick(I1, (k / 2) mod 2));
+        end if;
+      end loop;
+      s <= sv; c <= cv;
+    else
     case ALU_MODE is
       when 0 => s <= I0 xor I1; c <= I0;
       when 1 => s <= I0 xor not I1; c <= I0;
@@ -126,9 +146,26 @@ const ALU = entity('ALU', 'SUM, COUT : out std_ulogic; I0, I1, I3, CIN : in std_
       when 9 => s <= (I0 and I1) xor I3; c <= I0 and I1;
       when others => s <= 'X'; c <= 'X';
     end case;
+    end if;
   end process;
-  SUM <= s xor CIN;
-${mux2('COUT', 'c', 'CIN', 's')}`, { gens: 'ALU_MODE : integer := 0', decls: '  signal s, c : std_ulogic;\n' });
+  ci <= '1' when CIN_NETTYPE = "VCC" else '0' when CIN_NETTYPE = "GND" else CIN;
+  SUM <= s xor ci;
+${mux2('COUT', 'c', 'ci', 's')}`, {
+  gens: 'ALU_MODE : integer := 0; RAW_ALU_LUT : integer := -1; CIN_NETTYPE : string := ""',
+  decls: `  signal s, c, ci : std_ulogic;
+  -- an input's value (1 / 0) or, unknown, the one tried (t)
+  function pick(x : std_ulogic; t : integer) return integer is
+  begin
+    if x = '1' or x = 'H' then return 1; elsif x = '0' or x = 'L' then return 0; else return t; end if;
+  end function;
+  -- the LUT's bit i, X when it differs from the one before (Z: none yet)
+  function lutbit(prev : std_ulogic; lut, i : integer) return std_ulogic is
+    variable b : std_ulogic;
+  begin
+    if ((lut / (2 ** i)) mod 2) = 1 then b := '1'; else b := '0'; end if;
+    if prev = 'Z' or prev = b then return b; else return 'X'; end if;
+  end function;
+` });
 
 // distributed RAM of 16 words: w bits (INIT_0 … the contents of bit 0 …), one port (AD) or a write and a read port (WAD, RAD)
 const ram16 = (w, dual) => {
@@ -152,15 +189,22 @@ ${Array.from({ length: w }, (_, i) => `    if bad then ${bit('DO', i)} <= 'X'; e
   end process;`, { gens: Array.from({ length: w }, (_, i) => `INIT_${i} : bit_vector(15 downto 0) := X"0000"`).join('; ') });
 };
 
+// the I/O buffers' generics in nextpnr's routed design: the names of their nets for gowin_pack (no effect)
+const NET_GENS = ['NET_I', 'NET_O', 'NET_OEN', 'NET_IO', 'NET_BOTTOM_IO_PORT_A', 'NET_BOTTOM_IO_PORT_B'].map((g) => `${g} : string := ""`).join('; ');
 const BUFS = [
-  ...['IBUF', 'OBUF', 'BUFG'].map((n) => entity(n, 'O : out std_ulogic; I : in std_ulogic', BUF_X01('O', 'I'))),
-  entity('TBUF', 'O : out std_logic; I, OEN : in std_ulogic', "  O <= I when OEN = '0' else 'Z' when OEN = '1' else 'X';"),
-  entity('IOBUF', 'O : out std_ulogic; IO : inout std_logic; I, OEN : in std_ulogic', `  IO <= I when OEN = '0' else 'Z' when OEN = '1' else 'X';\n${BUF_X01('O', 'IO')}`),
+  ...['IBUF', 'OBUF'].map((n) => entity(n, 'O : out std_ulogic; I : in std_ulogic', BUF_X01('O', 'I'), { gens: NET_GENS })),
+  entity('BUFG', 'O : out std_ulogic; I : in std_ulogic', BUF_X01('O', 'I')),
+  entity('TBUF', 'O : out std_logic; I, OEN : in std_ulogic', "  O <= I when OEN = '0' else 'Z' when OEN = '1' else 'X';", { gens: NET_GENS }),
+  entity('IOBUF', 'O : out std_ulogic; IO : inout std_logic; I, OEN : in std_ulogic', `  IO <= I when OEN = '0' else 'Z' when OEN = '1' else 'X';\n${BUF_X01('O', 'IO')}`, { gens: NET_GENS }),
   ...['ELVDS_OBUF', 'TLVDS_OBUF'].map((n) => entity(n, 'O, OB : out std_ulogic; I : in std_ulogic', `${BUF_X01('O', 'I')}\n  OB <= not I;`)),
   entity('INV', 'O : out std_ulogic; I : in std_ulogic', '  O <= not I;'),
   entity('VCC', 'V : out std_ulogic', "  V <= '1';"),
   entity('GND', 'G : out std_ulogic', "  G <= '0';"),
   entity('GSR', "GSRI : in std_ulogic := '1'", '  -- (the global set / reset: the flip-flops start at their INIT)'),
+  // (nextpnr's routed design: its constants, and its placeholders of no function, #4362)
+  entity('GOWIN_VCC', 'V : out std_ulogic', "  V <= '1';"),
+  entity('GOWIN_GND', 'G : out std_ulogic', "  G <= '0';"),
+  `\n${IEEE}\nentity DUMMY_CELL is\nend DUMMY_CELL;\narchitecture silinx of DUMMY_CELL is\nbegin\nend silinx;`,
 ];
 const MUXES = ['MUX2', 'MUX2_LUT5', 'MUX2_LUT6', 'MUX2_LUT7', 'MUX2_LUT8'].map((n) => entity(n, 'O : out std_ulogic; I0, I1, S0 : in std_ulogic', mux2('O', 'I0', 'I1', 'S0')));
 

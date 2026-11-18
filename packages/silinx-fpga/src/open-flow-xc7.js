@@ -19,6 +19,9 @@ import { bitstreamXc7 } from './fpga/xc7/bitstream.js';
 /** The 7-series' steps, as runFlow runs them (open-steps.js XILINX_STEPS' shape): nextpnr packs in its Place & Route. */
 export const XC7_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
+  // (the post-synthesis simulation model, #4362: Yosys's netlist of UNISIM's cells, core/flow-models-nextpnr.js; no post-place
+  // & route one: nextpnr's routed design is made of its sites' cells)
+  { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },

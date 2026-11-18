@@ -16,16 +16,22 @@ const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', p
 // the process that makes each model (run_process), and the stage it comes after
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
 // the models each flow makes (#3707), as the interface's tools (web/js/tool-descriptors.js simModelsOf, toolOf): the Spartan
-// flows', ISE's and the Silinx toolchain's, all four; the iCE40's and ECP5's the post-synthesis and post-place & route ones, the
-// Gowin's the post-synthesis one (#2299, core/flow-models-nextpnr.js); none on the 7-series nor an experimental family
-const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth'] };
-const simModelsOfDevice = device => (vivadoDevice(device) || experimentalDevice(device) ? []
+// flows', ISE's and the Silinx toolchain's, all four; the iCE40's, ECP5's and Gowin's the post-synthesis and post-place & route
+// ones (#2299, #4362, core/flow-models-nextpnr.js); the Artix-7's the Silinx toolchain's post-synthesis one (#4362), AMD
+// Vivado's flow none; none on the other experimental families
+const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth', 'postpar'] };
+const simModelsOfDevice = (device, silinx) => (deviceFamily(device) === 'artix7' ? (silinx ? ['postsynth'] : [])
+  : vivadoDevice(device) || experimentalDevice(device) ? []
   : openOnlyDevice(device) ? NEXTPNR_MODELS[deviceFamily(device)] || [] : Object.keys(SIM_MODELS));
-/** True if the device's flow makes the model (`model`; none: any). */
-export const hasSimModels = (device, model) => (model ? simModelsOfDevice(device).includes(model) : simModelsOfDevice(device).length > 0);
-export const noSimModelMessage = (device, model) => {
-  const made = simModelsOfDevice(device);
+/** True if the 7-series' flow is the Silinx toolchain's: the toolchain asked for (run_process), else the project's synthesis tool
+ *  (as impl-routes.js startImplementation chooses it). */
+export const silinxFlowOf = (pj, toolchain) => ['silinx', 'open'].includes(toolchain || (pj?.synthTool === 'silinx' ? 'silinx' : ''));
+/** True if the device's flow makes the model (`model`; none: any); silinx: the 7-series' flow is the Silinx toolchain's. */
+export const hasSimModels = (device, model, { silinx = false } = {}) => (model ? simModelsOfDevice(device, silinx).includes(model) : simModelsOfDevice(device, silinx).length > 0);
+export const noSimModelMessage = (device, model, { silinx = false } = {}) => {
+  const made = simModelsOfDevice(device, silinx);
   const names = made.map(m => SIM_MODELS[m].toLowerCase());
+  if (deviceFamily(device) === 'artix7' && !silinx) return `AMD Vivado's flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model of the Artix-7 (the Silinx toolchain's makes its post-synthesis one: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`;
   return `the ${familyName(deviceFamily(device))} flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model (${made.length ? `only the ${names.join(' and ')} one${made.length > 1 ? 's' : ''}` : 'only the Spartan flows make them'}): simulate the behavioral model${made.length ? ` or the ${names.join(' or the ')} one` : ''}`;
 };
 const STAGE = { postsynth: 'synth', posttrans: 'translate', postmap: 'map', postpar: 'par' };
@@ -208,7 +214,8 @@ export const HDL_TOOLS = [
       if (model !== 'behavioral') {
         const pj = await P.readProject(name);
         if (!pj.top) throw toolError(`the project '${name}' has no top module: its models are of the top`);
-        if (!hasSimModels(pj.device, model)) throw toolError(noSimModelMessage(pj.device, model));
+        const silinx = silinxFlowOf(pj);
+        if (!hasSimModels(pj.device, model, { silinx })) throw toolError(noSimModelMessage(pj.device, model, { silinx }));
         const net = await modelSources(name, pj, model, generate);
         head.push(...net.notes, ...net.warnings);
         const { compile, elaborate } = await import('../core/compile.js');

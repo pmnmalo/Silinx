@@ -14,7 +14,7 @@ const pins = (ins, outs, w = 1) => Object.fromEntries([...ins.map((p) => [p, { d
 test('the Gowin library: its cells, each elaborated alone with no message', () => {
   assert.deepEqual([...GOWIN_CELLS].sort(), ['ALU', 'BUFG', 'DFF', 'DFFC', 'DFFCE', 'DFFE', 'DFFN', 'DFFNC', 'DFFNCE', 'DFFNE', 'DFFNP', 'DFFNPE', 'DFFNR',
     'DFFNRE', 'DFFNS', 'DFFNSE', 'DFFP', 'DFFPE', 'DFFR', 'DFFRE', 'DFFS', 'DFFSE', 'DL', 'DLC', 'DLCE', 'DLE', 'DLN', 'DLNC', 'DLNCE', 'DLNE', 'DLNP',
-    'DLNPE', 'DLP', 'DLPE', 'DPB', 'DPX9B', 'ELVDS_OBUF', 'GND', 'GSR', 'IBUF', 'INV', 'IOBUF', 'LUT1', 'LUT2', 'LUT3', 'LUT4', 'MULT18X18', 'MULT36X36',
+    'DLNPE', 'DLP', 'DLPE', 'DPB', 'DPX9B', 'DUMMY_CELL', 'ELVDS_OBUF', 'GND', 'GOWIN_GND', 'GOWIN_VCC', 'GSR', 'IBUF', 'INV', 'IOBUF', 'LUT1', 'LUT2', 'LUT3', 'LUT4', 'MULT18X18', 'MULT36X36',
     'MULT9X9', 'MUX2', 'MUX2_LUT5', 'MUX2_LUT6', 'MUX2_LUT7', 'MUX2_LUT8', 'OBUF', 'OSC', 'OSCH', 'OSCZ', 'PLLVR', 'RAM16S1', 'RAM16S2', 'RAM16S4',
     'RAM16SDP1', 'RAM16SDP2', 'RAM16SDP4', 'SDPB', 'SDPX9B', 'SP', 'SPX9', 'TBUF', 'TLVDS_OBUF', 'VCC', 'pROM', 'pROMX9', 'rPLL'].sort());
   const lib = compile([GOWIN_SOURCE]);
@@ -154,6 +154,66 @@ test('ALU: SUM and COUT of each ALU_MODE (ADD, SUB, ADDSUB, NE, GE, LE, CUP, CDN
     }),
   }));
   checkCases(cases, 'ALU');
+});
+
+// #4362: nextpnr-himbaechel-gowin's routed ALUs, RAW_ALU_LUT the slice's LUT: S its bit {I3 1 I1 I0}, C its bit {0 0 I1 I0}. The
+// reference: Apicula's chip database (apycula/chipdb.py), which gives each mode's LUT, against cells_sim.v's S and C above
+const APICULA_MODES = { 0: '0110000001101010', 1: '1001000010011010', 2: '0110000010011010', 3: '1001000010011111', 4: '1001000010011010',
+  6: '1010000010100000', 7: '0101000001011111', 8: '1010111101011010' };
+const CELLS_SIM = [
+  (a, b) => [a ^ b, a], (a, b) => [a ^ (1 - b), a], (a, b, i3) => [i3 ? a ^ b : a ^ (1 - b), a], (a, b) => [a ^ (1 - b), 1], (a, b) => [a ^ (1 - b), a],
+  (a, b) => [(1 - a) ^ b, b], (a) => [a, 0], (a) => [1 - a, 1], (a, b, i3) => [i3 ? a : 1 - a, a]];
+// a case of an ALU: its parameters, its connected inputs (the others open), f(inputs) -> [SUM, COUT] over every combination
+const aluCase = (name, params, ins, f) => ({
+  name, cell: 'ALU', params, pins: pins(ins, ['SUM', 'COUT']),
+  steps: Array.from({ length: 2 ** ins.length }, (_, k) => {
+    const v = Object.fromEntries(ins.map((p, i) => [p, bit(k, i)]));
+    const [s, c] = f(v);
+    return { in: v, out: { SUM: String(s), COUT: String(c) } };
+  }),
+});
+const sumOf = (s, c, cin) => [s ^ cin, s ? cin : c];
+
+test('#4362 ALU with RAW_ALU_LUT: Apicula\'s LUT of each mode gives cells_sim.v\'s SUM and COUT, every input combination', () => {
+  const cases = Object.entries(APICULA_MODES).map(([mode, lut]) => aluCase(`RAW_${mode}`, [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: parseInt(lut, 2) }]],
+    ['I0', 'I1', 'I3', 'CIN'], ({ I0, I1, I3, CIN }) => sumOf(...CELLS_SIM[mode](I0, I1, I3), CIN)));
+  checkCases(cases, 'RAW_ALU_LUT');
+});
+
+test('#4362 ALU with RAW_ALU_LUT: nextpnr\'s LUTs of an ADDSUB with a constant input (left open), and its chains\' heads and tails (an open CIN reads 0)', () => {
+  // (nextpnr's optimize_alu_lut: I0 or I1 a constant, I3 the addition or the subtraction, both left open)
+  const add = (a, b, cin, plus) => sumOf(plus ? a ^ b : a ^ (1 - b), a, cin);
+  const cases = [
+    ...[[0x303f, 0, 1, true], [0xc0cf, 0, 1, false], [0xc0c0, 0, 0, true], [0x3030, 0, 0, false], [0x505a, 1, 1, true], [0xa0aa, 1, 1, false], [0xa0aa, 1, 0, true], [0x505a, 1, 0, false]]
+      .map(([lut, i, k, plus]) => aluCase(`I${i}=${k} ${plus ? '+' : '-'}`, [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: lut }]], [i ? 'I0' : 'I1', 'CIN'],
+        (v) => add(i ? v.I0 : k, i ? k : v.I1, v.CIN, plus))),
+    // (C2L: the carry to the logic, SUM = CIN, COUT 0; ONE2C, a chain's carry in of 1; a carry in of the logic, COUT = I0: 0x000a, and
+    // this nextpnr's I0 + 1 + CIN with CIN open, 0x505a)
+    aluCase('C2L', [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: 0 }]], ['CIN'], ({ CIN }) => [CIN, 0]),
+    { ...aluCase('C2L head', [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: 0 }]], [], () => [0, 0]), pins: pins([], ['COUT']), steps: [{ out: { COUT: '0' } }] },
+    { ...aluCase('ONE2C', [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: 15 }]], [], () => [1, 1]), pins: pins(['I2'], ['COUT']), steps: [{ in: { I2: 1 }, out: { COUT: '1' } }] },
+    ...[0x000a, 0x505a].map((lut) => ({ ...aluCase(`logic carry ${lut}`, [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: lut }], ['CIN_NETTYPE', { str: 'LOGIC' }]], ['I0'], () => [0, 0]),
+      pins: pins(['I0'], ['COUT']), steps: [{ in: { I0: 1 }, out: { COUT: '1' } }, { in: { I0: 0 }, out: { COUT: '0' } }] })),
+    // (the GW5A's constant carry in, CIN_NETTYPE)
+    ...[['GND', 0], ['VCC', 1]].map(([t, c]) => ({ ...aluCase(`CIN ${t}`, [['ALU_MODE', { int: 2 }], ['RAW_ALU_LUT', { int: 0xc0c0 }], ['CIN_NETTYPE', { str: t }]], ['I1'], () => [0, 0]),
+      pins: pins(['I1'], ['SUM', 'COUT']), steps: [0, 1].map((b) => ({ in: { I1: b }, out: { SUM: String(b ^ c), COUT: String(b & c) } })) })),
+  ];
+  checkCases(cases, 'routed ALUs');
+});
+
+test('#4362 nextpnr\'s routed design\'s cells: GOWIN_VCC, GOWIN_GND, DUMMY_CELL; the buffers\' NET_* generics ignored with no warning; a LUT\'s open input reads 1', () => {
+  const net = ['NET_I', 'NET_O', 'NET_BOTTOM_IO_PORT_A', 'NET_BOTTOM_IO_PORT_B'].map((g) => [g, { str: 'NET' }]);
+  const cases = [
+    { name: 'GOWIN_VCC', cell: 'GOWIN_VCC', pins: pins([], ['V']), steps: [{ out: { V: '1' } }] },
+    { name: 'GOWIN_GND', cell: 'GOWIN_GND', pins: pins([], ['G']), steps: [{ out: { G: '0' } }] },
+    ...['IBUF', 'OBUF'].map((cell) => ({ name: `${cell} NET_*`, cell, params: net, pins: pins(['I'], ['O']), steps: [{ in: { I: 1 }, out: { O: '1' } }, { in: { I: 0 }, out: { O: '0' } }] })),
+    // (nextpnr's pass-through LUT before a flip-flop: INIT FF00, I3 only; an AND of I0 and an open I1)
+    { name: 'LUT4 I3', cell: 'LUT4', params: [['INIT', { bits: 16, v: 0xff00 }]], pins: pins(['I3'], ['F']), steps: [{ in: { I3: 1 }, out: { F: '1' } }, { in: { I3: 0 }, out: { F: '0' } }] },
+    { name: 'LUT2 I0', cell: 'LUT2', params: [['INIT', { bits: 4, v: 8 }]], pins: pins(['I0'], ['F']), steps: [{ in: { I0: 1 }, out: { F: '1' } }, { in: { I0: 0 }, out: { F: '0' } }] },
+  ];
+  checkCases(cases, 'routed cells');
+  // (DUMMY_CELL, which has no pin: in the routed design's Verilog)
+  checkCases([{ name: 'DUMMY_CELL', cell: 'DUMMY_CELL', pins: {}, steps: [{}] }], 'DUMMY_CELL', ['verilog']);
 });
 
 test('RAM16S1/2/4 and RAM16SDP1/2/4: INIT_0 … the contents, written on CLK\'s rising edge with WRE, read at once', () => {

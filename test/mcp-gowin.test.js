@@ -60,7 +60,7 @@ test('run_process: blinky on the Tang Nano 9K to its .fs, nextpnr\'s warnings; g
   assert.equal(summary.bit.size, 2069320);
   assert.ok(fs.existsSync(path.join(P.projectDir('bi'), 'build', 'top.fs')));
   // (its timing nextpnr's, #2300: test/mcp-nextpnr-reports.test.js; no power estimate)
-  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, postsynth, translate, par, trce, bitgen)');
+  await fails('run_process', { project: 'bi', process: 'power' }, 'no step xpwr (the steps: synth, postsynth, translate, par, trce, postpar, bitgen)');
 });
 
 test('run_process and get_report: a CST with no clock, the clock reported with no constraint, not nextpnr\'s 12 MHz (#3488)', { timeout: 600000 }, async () => {
@@ -119,8 +119,9 @@ test('a project instantiating an rPLL and an OSC: set_top, check_syntax and simu
 });
 
 // #2299: the Gowin's Post-Synthesis model (core/flow-models-nextpnr.js: Yosys's netlist of the Gowin cells, shown again since
-// #3707 hid it), simulated against blinky's test bench; no Post-Place & Route one yet (the routed design's ALU modes)
-test('run_process post_synthesis_model on the Tang Nano 9K: blinky\'s model, its test bench passes on it, no warning; post_par_model refused (#2299)', { timeout: 900000 }, async () => {
+// #3707 hid it), simulated against blinky's test bench; #4362: its Post-Place & Route model, nextpnr's routed design (its cells as
+// Silinx's models name them, core/gowin-routed.js), the same; no Post-Translate or Post-Map one
+test('run_process post_synthesis_model and post_par_model on the Tang Nano 9K: blinky\'s models, its test bench passes on them, no warning; post_map_model refused (#2299, #4362)', { timeout: 900000 }, async () => {
   await ok('new_project_from_example', { name: 'models', example: 'blinky' });
   await ok('set_design_properties', { project: 'models', board: 'tangnano9k', update_constraints: true });
   const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
@@ -128,7 +129,13 @@ test('run_process post_synthesis_model on the Tang Nano 9K: blinky\'s model, its
   assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the Gowin cells\), 240 cells$/m);
   const s = await ok('simulate', { project: 'models', model: 'postsynth', time_ns: 2000000, signals: [] });
   assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed], [['Simulation finished OK'], [], false]);
-  const message = 'the Gowin GW1N flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
-  await fails('run_process', { project: 'models', process: 'post_par_model' }, message);
-  await fails('simulate', { project: 'models', model: 'postpar', time_ns: 100 }, message);
+  const par = await ok('run_process', { project: 'models', process: 'post_par_model' });
+  // (Place & Route's warnings, blinky's 8 as test/examples-gowin.test.js lists them: nets routed through the general routing)
+  assert.deepEqual([par.data.warnings.length, par.data.warnings.filter(w => !/^WARNING:Place - Failed to route net 'swon\[1\]' from \S+ to \S+ using dedicated routing\.$/.test(w)), par.data.errors], [8, [], []]);
+  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the Gowin cells\), 264 cells$/m);
+  const p = await ok('simulate', { project: 'models', model: 'postpar', time_ns: 2000000, signals: [] });
+  assert.deepEqual([p.data.log.map(l => l.text).slice(-1), p.data.warnings, p.data.failed], [['Simulation finished OK'], [], false]);
+  const message = 'the Gowin GW1N flow makes no post-map simulation model (only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one';
+  await fails('run_process', { project: 'models', process: 'post_map_model' }, message);
+  await fails('simulate', { project: 'models', model: 'postmap', time_ns: 100 }, message);
 });

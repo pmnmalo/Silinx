@@ -1,6 +1,7 @@
 // UI: the Silinx toolchain on the Artix-7 (#3146, experimental): Design Properties offers AMD Vivado (the default) or
 // Silinx as the Basys 3's synthesis tool; Silinx chosen, the process tree is the toolchain's 7-series back end (Yosys,
-// nextpnr's Place & Route, the static timing, the programming file, Emulate on Board (#3704); no simulation model, no view), Generate
+// nextpnr's Place & Route, the static timing, the programming file, Emulate on Board (#3704); its Post-Synthesis simulation model
+// (#4362: Yosys's netlist of UNISIM's cells, the model emulated too), no view), Generate
 // Programming File runs it from HDL to build/top.bit with no warning, and the Design Summary says the timing is nextpnr's
 // estimate and lists the routed design's FASM; in Portuguese, the choices translated. Both interfaces.
 import { before, after } from 'node:test';
@@ -44,13 +45,31 @@ uiTest('#3146 Design Properties: the Basys 3\'s synthesis tool, Vivado or Silinx
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await procLabels(page);
-  for (const present of ['User Constraints', 'Synthesize - Yosys', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Translate', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device'])
+  for (const present of ['User Constraints', 'Synthesize - Yosys', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Translate', 'Place & Route',
+    'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
-  for (const absent of ['Synthesize - Vivado', 'Synthesize - XST', 'Map', 'View Technology Schematic', 'Generate Post-Synthesis Simulation Model', 'Generate Text Power Report', 'View Implemented Design (FPGA)'])
+  for (const absent of ['Synthesize - Vivado', 'Synthesize - XST', 'Map', 'View Technology Schematic', 'Generate Text Power Report', 'View Implemented Design (FPGA)'])
     assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model only (the flow makes no simulation model)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
-  assert.ok(!labels.some(l => /^Emulate Post-/.test(l)), String(labels));
+  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model and its Post-Synthesis model (#4362)
+  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
+
+  // its Post-Synthesis model (#4362): Simulate Post-Synthesis Model in the Simulation view, no other; Generate Post-Synthesis
+  // Simulation Model writes Yosys's netlist of the 7-series cells, no warning
+  await page.setView('sim');
+  await page.treeRow('#hier', 'top');
+  const sim = await procLabels(page);
+  assert.ok(sim.includes('Simulate Post-Synthesis Model'), String(sim));
+  assert.ok(!sim.some(l => /Post-(Translate|Map|Place & Route)/.test(l)), String(sim));
+  await page.eval(async () => (await import('/js/implement.js')).runImpl('top', ['postsynth']));
+  await page.waitConsole(/Process "Generate Post-Synthesis Simulation Model" (completed successfully|failed)/, { timeout: 300000 });
+  const model = await page.consoleText();
+  assert.match(model, /Process "Generate Post-Synthesis Simulation Model" completed successfully/);
+  assert.match(model, /Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the 7-series cells\), \d+ cells/);
+  assert.deepEqual(model.split('\n').filter(l => /WARNING|ERROR/.test(l)), []);
+  assert.match(await readWs(env, 'Xc7Open', 'build/netgen/synthesis/top_synthesis.v'), /\n {2}FDRE #\(/);
+  await page.setView('impl');
+  await page.treeRow('#hier', 'top');
 
   // Generate Programming File: Yosys, nextpnr, the .bit from its FASM; no warning
   await page.eval(async () => (await import('/js/implement.js')).runImpl('top', ['synth', 'translate', 'map', 'par', 'bitgen']));

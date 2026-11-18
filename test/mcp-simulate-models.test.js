@@ -84,15 +84,17 @@ test('simulate: the project\'s data files given to the simulation ($readmemh of 
   assert.deepEqual(s.data.log.map(l => l.text), ['mem[2] = 0c']);
 });
 
-test('#3707 #2299 simulate model and run_process …_model: refused on a flow that makes none (Basys 3), or not that one (the iCE40\'s post-translate and post-map, the Gowin\'s post-place & route), as the interface lists them; a Basys2 project makes them', async () => {
+test('#3707 #2299 #4362 simulate model and run_process …_model: refused on a flow that makes none (Basys 3 with AMD Vivado), or not that one (the iCE40\'s and Gowin\'s post-translate and post-map), as the interface lists them; a Basys2 project makes them', async () => {
   const ALL = [['postsynth', 'post_synthesis_model', 'post-synthesis'], ['posttrans', 'post_translate_model', 'post-translate'], ['postmap', 'post_map_model', 'post-map'], ['postpar', 'post_par_model', 'post-place & route']];
-  for (const [project, board, family, made] of [['ice', 'icebreaker', 'iCE40', ['postsynth', 'postpar']], ['gw', 'tangnano9k', 'Gowin GW1N', ['postsynth']], ['b3', 'basys3', 'Artix-7', []]]) {
+  for (const [project, board, family, made] of [['ice', 'icebreaker', 'iCE40', ['postsynth', 'postpar']], ['gw', 'tangnano9k', 'Gowin GW1N', ['postsynth', 'postpar']], ['b3', 'basys3', 'Artix-7', []]]) {
     await ok('new_project_from_example', { name: project, example: 'gates' });
     await ok('set_design_properties', { project, board });
     const only = made.length === 2 ? 'only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one'
       : made.length ? 'only the post-synthesis one): simulate the behavioral model or the post-synthesis one' : 'only the Spartan flows make them): simulate the behavioral model';
     for (const [model, proc, name] of ALL.filter(([m]) => !made.includes(m))) {
-      const message = `the ${family} flow makes no ${name} simulation model (${only}`;
+      // (the Basys 3's: AMD Vivado's flow, the project's; the Silinx toolchain's makes the post-synthesis one, test/mcp-xc7.test.js)
+      const message = family === 'Artix-7' ? `AMD Vivado's flow makes no ${name} simulation model of the Artix-7 (the Silinx toolchain's makes its post-synthesis one: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`
+        : `the ${family} flow makes no ${name} simulation model (${only}`;
       await fails('simulate', { project, model, time_ns: 100 }, message);
       await fails('simulate', { project, model, generate: true, time_ns: 100 }, message);
       await fails('run_process', { project, process: proc }, message);
@@ -115,9 +117,14 @@ test('#3707 #2299 hasSimModels: the models the interface\'s tools list, on every
       // (ISE on an open-only family, which the interface never offers: toolOf's fallback, not a flow)
       if (!open && openOnlyDevice(device)) continue;
       const tool = toolOf(device, open);
-      assert.deepEqual(simModelsOf(tool), ALL.filter(m => hasSimModels(device, m)), `${device?.part} ${tool.id}`);
+      // (open: the project's synthesis tool Silinx, the Artix-7's Silinx toolchain, #4362)
+      assert.deepEqual(simModelsOf(tool), ALL.filter(m => hasSimModels(device, m, { silinx: open })), `${device?.part} ${tool.id}`);
     }
   }
   assert.deepEqual([hasSimModels({ part: 'xc3s100e' }), hasSimModels({ part: 'xc6slx16' }), hasSimModels({ part: 'ice40up5k' }), hasSimModels({ part: 'xc7a35t' })], [true, true, true, false]);
+  // (the Artix-7's: the Silinx toolchain's post-synthesis one, #4362; the Spartan-7's none, Vivado's alone)
+  assert.deepEqual(ALL.map(m => hasSimModels({ part: 'xc7a35t' }, m, { silinx: true })), [true, false, false, false]);
+  assert.equal(hasSimModels({ part: 'xc7s50' }, 'postsynth', { silinx: true }), false);
+  assert.deepEqual(['postsynth', 'postpar'].map(m => hasSimModels({ part: 'gw1nr-9c' }, m)), [true, true]);
   assert.deepEqual(['postsynth', 'posttrans', 'postpar'].map(m => hasSimModels({ part: 'ice40up5k' }, m)), [true, false, true]);
 });

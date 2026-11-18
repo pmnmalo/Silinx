@@ -12,6 +12,7 @@ import { portBits, nextpnrNames } from './nextpnr-ports.js';
 import { mountNextpnrTiming } from './nextpnr-timing.js';
 import { gowinClocks } from './gowin-clocks.js';
 import { gowinChecks } from './gowin-checks.js';
+import { otherNetlist } from './nextpnr-netlist.js';
 
 /** The Gowin's parts, packages and speeds nextpnr-himbaechel-gowin takes: `${part}/${package}${speed}` -> its --device and family. */
 export const GOWIN_DEVICES = {
@@ -23,12 +24,12 @@ export const GOWIN_PARTS = [...new Set(Object.keys(GOWIN_DEVICES).map(k => k.spl
 /** The Gowin's steps, as runFlow runs them. */
 export const GOWIN_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
-  // (the post-synthesis simulation model, #2299: Yosys's netlist, core/flow-models-nextpnr.js; no post-place & route one yet: the
-  // routed design's ALU modes and I/O generics are not modelled)
+  // (the simulation models, #2299, #4362: Yosys's netlist and nextpnr's routed design, core/flow-models-nextpnr.js)
   { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },
+  { id: 'postpar', label: 'Generate Post-Place & Route Simulation Model', needs: ['par'] },
   { id: 'bitgen', label: 'Generate Programming File - gowin_pack', needs: ['par'] },
 ];
 
@@ -164,6 +165,8 @@ function mountGowin(ctx) {
     report.par = { routed: true, unroutedSignals: 0, done: true, engine: 'nextpnr', fmax, constraintsMet: fmax.every(f => f.constraint == null || f.achieved >= f.constraint) };
     timing.record(r, fmax);
     routed = text(out['routed.json']);
+    // (nextpnr's routed design: the Post-Place & Route model's, #4362)
+    ctx.setRouted?.(routed);
     log(`Placed and routed by nextpnr-himbaechel-gowin in ${ms(t)}: ${report.files.routed}`);
   }
 
@@ -182,7 +185,7 @@ function mountGowin(ctx) {
   }
 
   let routed = null;
-  return { steps: { translate: ctx.readNetlist, par: runPar, trce: timing.runTiming, bitgen: runBitgen } };
+  return { steps: { translate: ctx.readNetlist, par: runPar, trce: timing.runTiming, bitgen: runBitgen }, placeRouteNetlist: otherNetlist(mountGowin, ctx) };
 }
 
 export const GOWIN = {

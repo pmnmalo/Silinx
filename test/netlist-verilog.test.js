@@ -1,11 +1,12 @@
 // The Verilog of the iCE40's, ECP5's and Gowin's simulation models (#2299: core/netlist-verilog.js): the test bench's generics as the
 // netlist's parameters, the global buffers left out, each pad on a net of its own (an inout connected to an input port's bit loses its value, #4360), nextpnr's
-// routed design through Yosys's write_verilog, its module named as the design's top, a cell named as a net renamed.
+// routed design through Yosys's write_verilog, its module named as the design's top, a cell named as a net renamed; the Gowin's ALU
+// chains' ends (ALU_MODE "C2L", "ONE2C") as their LUTs (#4362).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { simulate } from '../core/compile.js';
 import { primitiveSources } from '../core/unisim.js';
-import { globalBuffers, padNets, routedVerilog, withParameters } from '../core/netlist-verilog.js';
+import { globalBuffers, gowinAluModes, padNets, routedVerilog, withParameters } from '../core/netlist-verilog.js';
 import { yosysNode } from '../packages/silinx-fpga/src/synth-open-node.js';
 
 test('withParameters: the generics declared as the first module\'s parameters; none: the netlist as it is', () => {
@@ -59,4 +60,17 @@ test('globalBuffers: each SB_GB left out, its output net its input\'s wherever i
     + '  SB_GB g (\n    .GLOBAL_BUFFER_OUTPUT(g2),\n    .USER_SIGNAL_TO_GLOBAL_BUFFER(x[3])\n  );\n  X a (.C(\\c$glb ), .D(g2), .E(g20));\nendmodule\n';
   assert.equal(globalBuffers(v), 'module t(clk);\n  wire \\c$glb ;\n  wire g2;\n  X a (.C(\\clk$in ), .D(x[3]), .E(g20));\nendmodule\n');
   assert.equal(globalBuffers('module t;\nendmodule\n'), 'module t;\nendmodule\n');
+});
+
+test('#4362 gowinAluModes: ALU_MODE "C2L" and "ONE2C" written as ADDSUB with their LUTs (0 and 15, Apicula\'s), the numbered modes and the rest as they are', () => {
+  const v = (mode) => `  ALU #(\n    .ALU_MODE(${mode})\n  ) a (\n    .COUT(c)\n  );\n`;
+  assert.equal(gowinAluModes(v('"C2L"')), v("32'd2),\n    .RAW_ALU_LUT(32'd0"));
+  assert.equal(gowinAluModes(v('"ONE2C"')), v("32'd2),\n    .RAW_ALU_LUT(32'd15"));
+  for (const m of ["32'd2", '"0"', '"hadder"']) assert.equal(gowinAluModes(v(m)), v(m));
+  // (the result simulates: a C2L passes CIN to SUM, a ONE2C's COUT is 1)
+  const net = { path: 'm.v', lang: 'verilog', text: `module m(input c, output s, output o);\n  ALU #(\n    .ALU_MODE("C2L")\n  ) a (\n    .CIN(c),\n    .SUM(s)\n  );\n  ALU #(\n    .ALU_MODE("ONE2C")\n  ) b (\n    .COUT(o)\n  );\nendmodule\n` };
+  net.text = gowinAluModes(net.text);
+  const tb = { path: 'tb.v', lang: 'verilog', text: 'module tb; reg c = 1; wire s, o; m u (.c(c), .s(s), .o(o));\n  initial begin #1 $display("%b %b", s, o); c = 0; #1 $display("%b %b", s, o); end\nendmodule\n' };
+  const r = simulate([...primitiveSources([net]), net, tb], 'tb', { until: 10000 });
+  assert.deepEqual([[...r.lib.errors, ...r.design.diags].map((d) => d.message), r.sim.log.map((e) => e.text)], [[], ['1 1', '0 1']]);
 });

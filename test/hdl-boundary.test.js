@@ -23,7 +23,7 @@ const FRONT_END = new Set([
   'native.js', 'util.js', 'values.js',
   'synth-module.js', 'synth-operators.js', 'synth-stmts.js', 'synth-tables.js',
   'synth-values.js', 'synth-verilog.js',
-  'unisim-jtag.js', 'unisim-s6.js', 'unisim.js',
+  'unisim-jtag.js', 'unisim-s6.js', 'unisim-xc7.js', 'unisim.js',   // (unisim-xc7.js: #4362)
   'gowin-bsram.js', 'gowin-dsp.js', 'gowin-prims.js', 'native-gowin.js',   // (the Gowin primitives' models: #2299)
   'ice40-prims.js', 'ice40-ram.js', 'ice40-dsp.js', 'native-lattice.js', 'lattice-libs.js',   // (the iCE40's: #2299)
   'ecp5-prims.js', 'ecp5-bram.js', 'ecp5-dsp.js', 'ice40-packed.js', 'ecp5-packed.js',   // (the ECP5's, the packed cells: #2299)
@@ -106,7 +106,7 @@ test('#1709 HDL boundary: how the imports across are found', () => {
 });
 
 test('#1709 HDL boundary: the front end\'s modules exist, and are what the entry points reach', () => {
-  assert.equal(FRONT_END.size, 60);
+  assert.equal(FRONT_END.size, 61);
   for (const f of FRONT_END) assert.ok(fs.existsSync(path.join(ROOT, f)), `${f}: gone, remove it from FRONT_END`);
   // the package's modules (#1710), each one's old path in core/ re-exporting it
   for (const f of FRONT_END) assert.equal(moved(`core/${f.slice(HDL.length)}`), f);
