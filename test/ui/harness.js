@@ -780,7 +780,11 @@ export class PwPage extends PageBase {
   }
   goneError(detail) { return new PageGoneError(`${BROWSER} ${this.gone}${detail ? ` (${detail.trim()})` : ''}; last action: ${this.lastAction || 'none'}`); }
   async reload() {
+    // (the page's own requests still in flight, cancelled by the reload, which WebKit and Firefox say as failed loads,
+    // "access control checks": not the test's errors, #4475; those after the new page's load event still count)
+    const n = this.errors.length;
     await this.page.reload({ timeout: 30000 });
+    this.errors.splice(n, Infinity, ...this.errors.slice(n).filter((e) => !loadFailure([e])));
     await this.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot after reload', timeout: 30000 });   // (a slow CI machine; the page it replaced may still be busy, e.g. the emulator)
   }
   async goto(url) { await this.page.goto(url, { timeout: 30000 }); }
