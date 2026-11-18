@@ -22,6 +22,7 @@ const { ICS } = await import('../core/circuit-ics.js');
 const { MSI } = await import('../core/circuit-msi.js');
 const { SEQ } = await import('../core/circuit-seq.js');
 const { blocksLayout } = await import('../core/circuit-inside-blocks.js');
+const { insideLayout } = await import('../core/circuit-inside.js');
 
 const P = 20;
 const all = (e) => (e instanceof El ? [e, ...e.children.flatMap(all)] : []);
@@ -34,7 +35,7 @@ function inside(d, std, opts) {
   return all(g).slice(1);
 }
 
-const NAMED = ['74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
+const NAMED = ['74365', '74366', '74540', '74541', '74245'];
 
 test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
   let leads = 0;
@@ -43,11 +44,11 @@ test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
       const els = inside(d, std), what = `${d.type} ${std}`;
       const ls = els.filter((e) => e.attrs.class === 'circ-gate-line');
       // (a gate IC: three leads a 2-input gate, its inputs' and its output's; another IC: none, its pins named)
-      // (the three-state buffers: their pins named, #4397; an AND-OR-INVERT: a lead more a
+      // (the three-state ICs with combined enables: their pins named, #4397; the others' buses, #4505; an AND-OR-INVERT: a lead more a
       // term, from its AND to its NOR, #4498)
       if (NAMED.includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
       // (an IC with no gates, #4508: a lead each of its pins in its functions' boxes, its signals' and the supply's under a box)
-      assert.equal(ls.length, NAMED.includes(d.type) ? 0 : d.gates ? d.gates.reduce((n, x) => n + x.ins.length + (x.terms?.length ?? 0) + 1, 0) : blocksLayout(d, d.pins.map((q) => ({ n: q.n, x: q.dx * P, y: q.dy * P }))).wires.length, what);
+      assert.equal(ls.length, NAMED.includes(d.type) ? 0 : d.gates?.some((x) => x.en) ? insideLayout(d, d.pins.map((q) => ({ n: q.n, x: q.dx * P, y: q.dy * P }))).wires.length : d.gates ? d.gates.reduce((n, x) => n + x.ins.length + (x.terms?.length ?? 0) + 1, 0) : blocksLayout(d, d.pins.map((q) => ({ n: q.n, x: q.dx * P, y: q.dy * P }))).wires.length, what);
       if (!d.gates) assert.ok(els.some((e) => e.attrs.class === 'circ-block'), `${what}: its boxes`);
       for (const l of ls) {
         assert.equal(l.tag, 'polyline', what);
@@ -122,4 +123,22 @@ test('#4505 Show inside, the 4023: its three NANDs, 1C\'s line crossing 1Y\'s, a
       assert.deepEqual(hop.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), ['VDD', 'VSS'], `${t} ${std}`);
     }
   }
+});
+
+test('#4505 Show inside, a three-state IC: the 74244\'s buffers standing (turned), their enables\' buses, a dot where a bus branches, OE̅\'s bubbles; IEEE and IEC', () => {
+  const d = ICS.find((x) => x.type === '74244');
+  for (const std of ['ieee', 'iec']) {
+    const els = inside(d, std);
+    if (std === 'ieee') {
+      const shapes = els.filter((e) => e.attrs.class === 'circ-gate-ieee');
+      assert.deepEqual(shapes.map((e) => [e.attrs['data-fn'], e.attrs['data-rot']]), [...Array(4).fill(['buf', '-90']), ...Array(4).fill(['buf', '90'])]);
+    } else assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-gate-text').map((e) => e.children.join('')), Array(8).fill('1'));
+    // (8 buffers' inputs and outputs, 2 buses and 8 branches; 6 dots, 3 a bus; 8 bubbles, every OE̅ active low)
+    assert.equal(els.filter((e) => e.attrs.class === 'circ-gate-line').length, 26, std);
+    assert.equal(els.filter((e) => e.attrs.class === 'circ-gate-dot').length, 6, std);
+    assert.equal(els.filter((e) => /circ-gate-en/.test(e.attrs.class)).length, 8, std);
+    assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), ['GND', 'VCC'], std);
+  }
+  // (the 74126: its enables active high, no bubble)
+  assert.equal(inside(ICS.find((x) => x.type === '74126'), 'ieee').filter((e) => /circ-gate-en/.test(e.attrs.class)).length, 0);
 });

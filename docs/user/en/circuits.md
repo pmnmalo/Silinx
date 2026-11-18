@@ -51,7 +51,12 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   KiCad part that behaves as a library IC is drawn as it. A 4023, 4025, 4073 or 4075
   (#4505), whose first gate takes 1C from the upper row past its output 1Y, has that gate in the body's middle and 1C's
   line over it, crossing 1Y's once as the circuit's wires cross (Wire crossings: a hop-over or plain, never a dot); the
-  only ICs with a crossing inside, listed by name (`CROSSING_ICS`, `core/circuit-inside-cross.js`). An
+  ICs with a crossing inside are listed by name (`CROSSING_ICS`, `core/circuit-inside-cross.js`). A three-state IC
+  (#4505, `core/circuit-inside-tri.js`): a buffer whose input and output are on one row flat beside them (the 74125's,
+  74367's), one across the body standing between its rows (the 74244's, a transceiver's two directions side by side);
+  each enable's bus into its buffers' sides, a bubble where it is active low, a dot where a line branches (one pin's T),
+  its crossings of the data lines as the wires cross, never a dot. The 74365, 74366, 74540, 74541 and 74245 (combined
+  enables) have their pins named. An
   AND-OR-INVERT (7451, 74LS54, 7455, #4498) as its datasheet draws it: each term's AND beside its pins, turned toward
   the body's middle, feeding the NOR that faces its output pin.
 - **How the wires are drawn** (#4064, #4080, the ⋮ menu, as the schematic's, `core/wire-style.js`): **Wires**, Direct (a
