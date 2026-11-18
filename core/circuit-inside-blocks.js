@@ -13,7 +13,7 @@ const GAP = 4;       // between a lower and an upper unit's box
 /** Is a pin's name a clock's (an edge-triggered input): CLK, 1CLK, CKA, SRCLK, RCLK, UP, DOWN; not CLK INH. */
 export const isClock = (name) => !/INH/.test(name) && /^(\d?(CLK|SRCLK|RCLK)|CK[AB]|UP|DOWN)$/.test(name.replace(BAR, ''));
 /** Is it active low (its name barred: CLR̅, G2A̅). */
-export const isLow = (name) => name.includes(BAR);
+const isLow = (name) => name.includes(BAR);
 
 // a unit's pin's IEC label (a flip-flop's or a latch's: its control dependency notation)
 const IEC_PIN = { D: '1D', J: '1J', K: '1K', CLK: 'C1', PRE: 'S', PR: 'S', CLR: 'R', S: 'S', R: 'R', S1: 'S', S2: 'S', C: 'C1', Q: '', 'C,2C': 'C1', 'C,4C': 'C1' };
