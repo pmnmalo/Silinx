@@ -14,15 +14,13 @@ Nada a instalar.
 
 <table>
 <tr>
-<td width="50%"><a href="docs/user/pt/designing.md"><img src="docs/images/schematic.webp" alt="O editor de esquemáticos"></a>
+<td width="50%"><a href="docs/user/pt/designing.md"><img src="docs/images/hdl.webp" alt="O editor de HDL"></a>
 <b>Projete à sua maneira.</b> VHDL e Verilog com erros explicados para principiantes, esquemáticos, diagramas de
 estados, fluxogramas ASM, álgebra de Boole e mapas de Karnaugh, redes de Petri, até C. Cada desenho gera o seu HDL.</td>
-<td width="50%"><a href="docs/user/pt/designing.md#circuitos-redes-de-petri-e-c"><img src="docs/images/circuit.webp" alt="Um circuito numa breadboard"></a>
-<b>Ligue CIs reais numa breadboard.</b> Circuitos integrados 74xx e 4000, interruptores, LEDs e mostradores, simulados
-ao vivo à medida que clica.</td>
-</tr>
-<tr>
-<td><a href="docs/user/pt/simulating.md"><img src="docs/images/simulation-pt.webp" alt="As formas de onda de uma simulação"></a>
+<td width="50%"<td width="50%"><a href="docs/user/pt/designing.md#esquemáticos"><img src="docs/images/schematic.webp" alt="O editor de esquemáticos"></a>
+<b>Desenhe esquemáticos e veja-os funcionar.</b> Portas, multiplexadores, somadores, contadores e os seus próprios
+módulos como símbolos, ligados como no Schematic Editor do ISE e simulados ao vivo à medida que clica; e qualquer
+projeto em HDL desenhado como o seu esquemático RTL.</td>><a href="docs/user/pt/simulating.md"><img src="docs/images/simulation-pt.webp" alt="As formas de onda de uma simulação"></a>
 <b>Simule.</b> Bancadas de teste feitas por um assistente ou desenhadas nas formas de onda, corridas pelo simulador do
 próprio Silinx.</td>
 <td><a href="docs/user/pt/emulator.md"><img src="docs/images/emulator-basys2-pt.webp" alt="O Emulador da Placa: uma Basys2"></a>
@@ -42,13 +40,15 @@ inglês; laboratórios guiados, avaliação automática, partilha ao vivo e link
 ## Placas
 
 As ferramentas do Silinx implementam para as placas **Basys2**, **Nexys2**, **Nexys3**, **Atlys**, **iCEBreaker**,
-**ULX3S**, **Tang Nano 9K** e **GateMate de avaliação** (e para a Basys 3 e a Nexys A7, uma família experimental) sem mais nada instalado; o
-Xilinx ISE 14.7 e o AMD Vivado, que instala por si, acrescentam as outras placas. Um projeto de desenho e simulação
+**ULX3S**, **Tang Nano 9K** e **GateMate de avaliação** (e para a Basys 3 e a Nexys A7 da Série 7, uma família experimental) sem mais nada instalado; o
+Xilinx ISE 14.7 e o AMD Vivado, que instala por si, acrescentam as outras placas (o Vivado também a Arty S7 e a Zybo Z7). Um projeto de desenho e simulação
 não precisa de placa nenhuma. [Placas e ferramentas](docs/user/pt/boards.md)
 
-| Basys2 (Spartan-3E) | Nexys3 (Spartan-6) | iCEBreaker (iCE40) |
-|---|---|---|
-| ![O exemplo stopwatch numa Basys2 emulada](docs/images/emulator-basys2-pt.webp) | ![O exemplo vga numa Nexys3 emulada, com o monitor VGA](docs/images/emulator-nexys3.webp) | ![O exemplo clock numa iCEBreaker emulada](docs/images/emulator-icebreaker.webp) |
+| Basys2 (Spartan-3E) | Nexys3 (Spartan-6) |
+|---|---|
+| ![O exemplo stopwatch numa Basys2 emulada](docs/images/emulator-basys2-pt.webp) | ![O exemplo vga numa Nexys3 emulada, com o monitor VGA](docs/images/emulator-nexys3.webp) |
+| **iCEBreaker (iCE40)** | **Basys 3 (Série 7)** |
+| ![O exemplo clock numa iCEBreaker emulada](docs/images/emulator-icebreaker.webp) | ![O exemplo clock numa Basys 3 emulada](docs/images/emulator-basys3.webp) |
 
 ## Experimentar
 
