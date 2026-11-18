@@ -91,7 +91,7 @@ test('test shard: the repository\'s timings — measured files that exist, in se
   assert.deepEqual(keys, [...keys].sort(), 'sorted (a refresh changes only the times)');
   assertBalanced(files, t, 5);
   assertBalanced(files.filter(f => !HEAVY.includes(f)), t, 3);
-  assertBalanced(uiFiles, t, 3);
+  assertBalanced(uiFiles, t, 4);   // (CI's four parts per interface, #4463)
   // a UI file not measured weighs the UI files' median, not the unit files'
   const w = weights([...uiFiles, 'test/ui/new.test.js'], t);
   const ui = uiFiles.map(f => t[f]).filter(v => v != null).sort((a, b) => a - b);
@@ -115,12 +115,12 @@ test('test shard: the command line — the dry run lists the parts, a part runs 
   assert.equal(lightLines.length, 3);
   assert.equal(lightLines.reduce((s, l) => s + Number(/: (\d+) files/.exec(l)[1]), 0), unitFiles().filter(f => !HEAVY.includes(f)).length);
   // the UI tests' parts (#912): every UI file in one of them
-  const uiDry = run('2/3', '--ui', '--dry-run');
+  const uiDry = run('2/4', '--ui', '--dry-run');
   assert.equal(uiDry.status, 0, uiDry.stderr);
   assert.equal(uiDry.stderr, '', 'no warnings');
   const uiLines = uiDry.stdout.trim().split('\n');
-  assert.equal(uiLines.length, 3);
-  uiLines.forEach((l, k) => assert.match(l, new RegExp(`^${k + 1}/3: \\d+ files, ~\\d+ min$`)));
+  assert.equal(uiLines.length, 4);
+  uiLines.forEach((l, k) => assert.match(l, new RegExp(`^${k + 1}/4: \\d+ files, ~\\d+ min$`)));
   assert.equal(uiLines.reduce((s, l) => s + Number(/: (\d+) files/.exec(l)[1]), 0), testFiles(ROOT, 'test/ui').length);
   const bad = run('5/4');
   assert.equal(bad.status, 2);
