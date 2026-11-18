@@ -72,7 +72,7 @@ uiTest('#3828 #4275 Export Project to Xilinx ISE and Import Project back: reg(3:
   await page.setFiles(FILE, [zip]);
   await page.fill('.dlg-overlay input[type=text]', 'ArrBack');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'ArrBack');
+  await page.waitFor(() => window.Silinx.project?.name === 'ArrBack', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Xilinx ISE project 'ArrBack'/);
   assert.deepEqual(JSON.parse(await readWs(env, 'ArrBack', 'src/reg1.sym.json')).pins, SYM.pins);
   await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));

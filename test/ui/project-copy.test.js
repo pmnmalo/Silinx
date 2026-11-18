@@ -37,7 +37,7 @@ uiTest('#4205 Export Project (.zip) as Silinx gives a copy (its origin, its ance
   await page.setFiles(FILE, [zip]);
   await page.fill('.dlg-overlay input[type=text]', 'Ana');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Ana' && document.querySelector('#hier .row'), [], { what: 'the copy open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Ana' && document.querySelector('#hier .row'), [], { what: 'the copy open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'Ana'/);
   const ana = await page.eval(() => ({ id: window.Silinx.project.id, origin: window.Silinx.project.origin, tree: window.Silinx.diskTree }));
   assert.ok(ana.id && ana.id !== base.id);

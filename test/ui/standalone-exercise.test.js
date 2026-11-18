@@ -54,7 +54,7 @@ uiTest('#3216 browser edition: the synthesis tests run in the page (the flow\'s 
   await page.setFiles(FILE, [zipFile]);
   await page.fill('.dlg-overlay input[type=text]', 'Cnt');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Cnt' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Cnt' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   const D = '.doc:not([hidden]) .ex';
   await page.menu('Project', 'Exercise…');
   await page.waitFor((d) => window.Silinx.active?.id === 'exercise:counter4.exercise.json' && document.querySelector(d)?.dataset.ready === '1', [D], { what: 'the exercise' });

@@ -68,7 +68,7 @@ uiTest('#3965 Import Project…: a Silinx project from its folder, in the Xilinx
   await page.click('.dlg-overlay input[data-field=software-silinx]');
   await page.fill('.dlg-overlay input[type=text]', 'FromFolder');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'FromFolder' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'FromFolder' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'FromFolder' \(\d+ source file\(s\)(, \d+ other file\(s\))?\)\./);
   const text = await page.consoleText();
   assert.ok(text.includes(`Importing folder 'gates-folder': ${taken} file(s), ${count - taken} build/hidden file(s) skipped.`), text);
