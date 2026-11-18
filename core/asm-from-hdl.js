@@ -50,6 +50,7 @@ import { normalizeModel, validate, generate, parseCondition, parseAction, exprTo
 import { asmLayout, nodeSize, reusePrevious } from './asm-layout.js';
 import { lineOf, atLine, fail, stmtList, walkExpr, bitsValue, lit, evalInt } from './asm-hdl-util.js';
 import { analyzeModule, parseHeader } from './asm-hdl-analysis.js';
+import { isWidthExpr, registerWidth, widthFromHdl } from './asm-width.js';
 import {
   assignsOnEveryPath, caseLabels, ctxSens, makeTreeBuilder, mergeTrees, resolveTree, selfWidth, widthKey,
 } from './asm-trees.js';
@@ -693,7 +694,13 @@ export function asmFromHdl(source, { path = '', module = null, lang = null, prev
         const q = parseCondition(text);
         if (!q.error && q.ast.k === 'lit' && q.ast.v === (info.default ?? 0n)) init = text;
       }
-      return { name: nm, width: info.width, init };
+      // a width given by generics (#4378): the header's, the previous chart's or the declaration's, if it is the width at
+      // their values
+      const gv = new Map(A.generics.map((g) => [A.orig(g.name), g.default]));
+      const wx = [header?.regWidth.get(nm), prev?.registers?.find((x) => x.name === nm)?.width,
+        widthFromHdl(info.range, (n) => (A.genericSet.has(n) ? A.orig(n) : null))]
+        .find((t) => isWidthExpr(t) && registerWidth({ name: nm, width: t }, gv).width === info.width);
+      return { name: nm, width: wx ?? info.width, init };
     }) } : {}),
     nodes, edges,
     initial: stateId.get(A.initial.key),

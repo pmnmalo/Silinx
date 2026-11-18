@@ -4,6 +4,8 @@
 // asm.js re-exports these functions.
 import { MAX_PATHS, analyze, bits, buildIndex, flatten, joinPoints, normalizeModel, pad, pathCount, treeSize, stateEncoding, stripParens, validate, vhAssign, vhBool, vhExpr, vhLitW, vhNot, vhTruth, vlAssign, vlExpr, vlLitW, vlNot, walkAlways } from './asm.js';
 import { isIdent } from './ident.js';
+import { vhLitP } from './asm-emit.js';
+import { clog2Lines } from './asm-width.js';
 
 // ---------------------------------------------------------------------------------------
 // Generators
@@ -280,7 +282,7 @@ function headerLines(a, lang) {
     L.push(c);
     L.push(`${c} Registers (internal; load the value assigned in this cycle at the clock edge, hold otherwise):`);
     const rw = Math.max(...a.registers.map((r) => r.name.length));
-    for (const r of a.registers) L.push(`${c}   ${pad(r.name, rw)} : ${r.width} bit${r.width === 1 ? '' : 's'}, reset ${r.init}`);
+    for (const r of a.registers) L.push(`${c}   ${pad(r.name, rw)} : ${r.p ? `${r.p.text} bits` : `${r.width} bit${r.width === 1 ? '' : 's'}`}, reset ${r.init}`);
   }
   L.push(rule);
   return L;
@@ -351,7 +353,7 @@ function makeBackend(a, lang) {
       const out = [];
       for (const act of a.parsedActions.get(id) || []) {
         const s = a.syms.get(act.target);
-        out.push(...(lang === 'vhdl' ? vhAssign(sigOf(act.target), s.width, act.ast, ctxFor()) : vlAssign(sigOf(act.target), s.width, act.ast, ctxFor())));
+        out.push(...(lang === 'vhdl' ? vhAssign(sigOf(act.target), s.width, act.ast, ctxFor(), s.p) : vlAssign(sigOf(act.target), s.width, act.ast, ctxFor(), s.p)));
       }
       return out;
     },
@@ -387,11 +389,11 @@ function outputBody(a, B, lang) {
 function registerLines(a, lang) {
   const { m, enc } = a;
   const as = lang === 'vhdl' ? '<=' : '<=';
-  const lit = (v, w) => (lang === 'vhdl' ? vhLitW(v, w) : vlLitW(v, w, 'd'));
+  const lit = (v, w, p) => (p ? (lang === 'vhdl' ? vhLitP(v, p.code) : v.toString()) : lang === 'vhdl' ? vhLitW(v, w) : vlLitW(v, w, 'd'));
   const regs = m.outputs.filter((o) => o.registered);
   const reset = [`state_reg ${as} ${enc[0].constName};`,
     ...regs.map((o) => `${o.name}_reg ${as} ${lit(a.defaults.get(o.name), o.width)};`),
-    ...a.registers.map((r) => `${r.name} ${as} ${lit(a.defaults.get(r.name), r.width)};`)];
+    ...a.registers.map((r) => `${r.name} ${as} ${lit(a.defaults.get(r.name), r.width, r.p)};`)];
   const load = ['state_reg <= state_next;', ...regs.map((o) => `${o.name}_reg <= ${o.name}_next;`),
     ...a.registers.map((r) => `${r.name} <= ${r.name}_next;`)];
   for (const i of m.inputs.filter((x) => x.sync)) {
@@ -426,6 +428,7 @@ export function generateVerilog(model) {
   L.push(portLines.map((l, i) => l + (i < portLines.length - 1 ? ',' : '')).join('\n'));
   L.push(');');
   L.push('');
+  if (a.registers.some((r) => r.p?.clog2)) L.push(...clog2Lines('verilog'), '');
   L.push('    // ---------------------------------------------------------------- state encoding');
   const cw = Math.max(...enc.map((s) => s.constName.length));
   for (const s of enc) L.push(`    localparam ${vec(W)}${pad(s.constName, cw)} = ${W}'b${s.bits};`);
@@ -444,7 +447,10 @@ export function generateVerilog(model) {
   if (a.registers.length) {
     L.push('');
     L.push('    // ---------------------------------------------------------------- internal registers');
-    for (const r of a.registers) L.push(`    reg ${vec(r.width)}${r.name} = ${vlLitW(a.defaults.get(r.name), r.width, 'd')}, ${r.name}_next;`);
+    for (const r of a.registers) {
+      if (r.p) L.push(`    reg [${r.p.code}-1:0] ${r.name} = ${a.defaults.get(r.name)}, ${r.name}_next;`);
+      else L.push(`    reg ${vec(r.width)}${r.name} = ${vlLitW(a.defaults.get(r.name), r.width, 'd')}, ${r.name}_next;`);
+    }
   }
   const synced = m.inputs.filter((i) => i.sync);
   if (synced.length) {
@@ -546,6 +552,7 @@ export function generateVhdl(model) {
   L.push('');
   L.push(`architecture rtl of ${m.name} is`);
   L.push('');
+  if (a.registers.some((r) => r.p?.clog2)) L.push(...clog2Lines('vhdl'), '');
   L.push('    -- state encoding');
   if (m.encoding === 'enum') {
     L.push(`    type state_t is (${enc.map((s) => s.constName).join(', ')});`);
@@ -572,7 +579,10 @@ export function generateVhdl(model) {
   if (a.registers.length) {
     L.push('');
     L.push('    -- internal registers');
-    for (const r of a.registers) L.push(`    signal ${r.name}, ${r.name}_next : ${typ(r.width)} := ${vhLitW(a.defaults.get(r.name), r.width)};`);
+    for (const r of a.registers) {
+      if (r.p) L.push(`    signal ${r.name}, ${r.name}_next : std_logic_vector(${r.p.code} - 1 downto 0) := ${vhLitP(a.defaults.get(r.name), r.p.code)};`);
+      else L.push(`    signal ${r.name}, ${r.name}_next : ${typ(r.width)} := ${vhLitW(a.defaults.get(r.name), r.width)};`);
+    }
   }
   const synced = m.inputs.filter((i) => i.sync);
   if (synced.length) {

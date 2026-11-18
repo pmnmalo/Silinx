@@ -7,8 +7,10 @@ import {
 // ---------------------------------------------------------------------------------------
 // VHDL expression typing / emission (also used as the strict semantic checker)
 // ---------------------------------------------------------------------------------------
-// Typed fragment: { t: 'bool'|'sl'|'slv'|'uns'|'lit'|'int', c?: code, w?: width, v?: BigInt }
+// Typed fragment: { t: 'bool'|'sl'|'slv'|'uns'|'lit'|'int', c?: code, w?: width, v?: BigInt, p?: width code }
 //   'int' is a VHDL integer expression made of generics and unsized literals (32 bits in Verilog).
+//   `p`: a width given by generics (#4378: a register's, `clog2(N)`; w is its value at the generics' default values),
+//   the code the VHDL sizes with; ctx.targetP the context's (ctx.targetW's) such width.
 
 const ARITH_OPS = new Set(['+', '-', '&', '|', '^']);
 const SHIFT_OPS = new Set(['<<', '>>']);
@@ -44,6 +46,24 @@ function ctxSensitive(ast, ops) {
 
 const isConst = (x) => x.t === 'lit' || x.t === 'int';
 
+/**
+ * The width code (a width given by generics, #4378) of an operation whose result takes the width of its operands `xs`
+ * and of its context (saved, savedP), or null: such a value meets only constants and values of the same width there
+ * (any other width may be wider or narrower at the generics' values the module is given).
+ */
+function pOf(op, xs, saved, savedP, ctx) {
+  const ws = xs.filter((x) => !isConst(x) && x.t !== 'bool').map((x) => ({ p: x.p || null, w: x.w }));
+  if (saved) ws.push({ p: savedP || null, w: saved });
+  const p = ws.find((x) => x.p)?.p;
+  if (!p) return null;
+  const other = ws.find((x) => x.p !== p);
+  if (other) {
+    ctx.error(`'${op === 'neg' ? '-' : op}' combines a value ${p} bits wide (a width given by generics) with ${other.p ? `a value ${other.p} bits wide` : `a ${other.w}-bit value`}: `
+      + 'in + - & | ^ ~ << >> it meets only constants and values of the same width (compare it, or slice it)');
+  }
+  return p;
+}
+
 function vhSlLit(x, ctx) {
   if (x.t === 'int') { ctx.error(`generic '${x.c}' cannot be used as a 1-bit value`); return "'0'"; }
   if (x.v > 1n) ctx.error(`literal ${x.v} does not fit in 1 bit`);
@@ -76,11 +96,12 @@ function vhUns(x, W, ctx) {
     default: ctx.error('a boolean (comparison) cannot be used as a number; use it as a condition instead'); return '0';
   }
 }
-function vhUnsW(x, W, ctx) { // unsigned of exactly W bits
-  if (x.t === 'lit') return x.v < 2n ** 31n ? `to_unsigned(${x.v}, ${W})` : `unsigned'("${bits(x.v, W)}")`;
-  if (x.t === 'int') return `to_unsigned(${stripParens(x.c)}, ${W})`;
+function vhUnsW(x, W, ctx, P = null) { // unsigned of exactly W bits (P: of a width given by generics)
+  const wc = P || W;
+  if (x.t === 'lit') return x.v < 2n ** 31n ? `to_unsigned(${x.v}, ${wc})` : P ? `resize(unsigned'("${bits(x.v, bitlen(x.v))}"), ${P})` : `unsigned'("${bits(x.v, W)}")`;
+  if (x.t === 'int') return `to_unsigned(${stripParens(x.c)}, ${wc})`;
   const u = vhUns(x, W, ctx);
-  return x.w === W ? u : `resize(${u}, ${W})`;
+  return x.w === W && (x.p || null) === (P || null) ? u : `resize(${u}, ${wc})`;
 }
 /** Shift amount (a natural). */
 function vhCount(x, ctx) {
@@ -107,10 +128,12 @@ function truthWidth(ast, ctx) {
 }
 /** `ast` used as a truth value (VHDL typed fragment). */
 export function vhTruth(ast, ctx) {
-  const saved = ctx.targetW;
+  const saved = ctx.targetW, savedP = ctx.targetP;
   ctx.targetW = truthWidth(ast, ctx);
+  ctx.targetP = null;
   const x = vhExpr(ast, ctx);
   ctx.targetW = saved;
+  ctx.targetP = savedP;
   return x;
 }
 /** True for a 1-bit operand (std_logic or the literal 0 or 1). */
@@ -125,6 +148,7 @@ export function vhExpr(ast, ctx) {
       if (s.kind === 'generic') return { t: 'int', c: s.name, w: 32 };
       const c = s.sig;
       ctx.reads.add(c);
+      if (s.p) return { t: 'slv', c, w: s.width, p: s.p };
       return s.width === 1 ? { t: 'sl', c, w: 1 } : { t: 'slv', c, w: s.width };
     }
     case 'sel': {
@@ -135,15 +159,17 @@ export function vhExpr(ast, ctx) {
       if (ast.hi >= s.width) ctx.error(`'${ast.name}' has ${s.width} bit${s.width === 1 ? '' : 's'} (${s.width - 1}..0): index ${ast.hi} is out of range`);
       const c = s.sig;
       ctx.reads.add(c);
-      if (s.width === 1) return { t: 'sl', c, w: 1 };
+      if (s.width === 1 && !s.p) return { t: 'sl', c, w: 1 };
       return w === 1 ? { t: 'sl', c: `${c}(${ast.hi})`, w: 1 } : { t: 'slv', c: `${c}(${ast.hi} downto ${ast.lo})`, w };
     }
     case 'un': {
-      const saved = ctx.targetW;
+      const saved = ctx.targetW, savedP = ctx.targetP;
       if (ast.op === '!') return { t: 'bool', c: `(not ${vhBool(vhTruth(ast.a, ctx))})` };
       const a = vhExpr(ast.a, ctx);
       ctx.targetW = saved;
+      ctx.targetP = savedP;
       if (a.t === 'int') { ctx.error(`'${ast.op}' cannot be applied to a generic`); return a; }
+      const P = a.t === 'lit' || a.t === 'bool' ? null : pOf(ast.op === '-' ? 'neg' : ast.op, [a], saved, savedP, ctx);
       if (ast.op === '~') {
         if (a.t === 'lit') {
           if (a.w == null) { ctx.error('~ needs a sized literal (e.g. ~4\'b0011)'); return a; }
@@ -153,24 +179,26 @@ export function vhExpr(ast, ctx) {
         // which a VHDL boolean cannot express
         if (a.t === 'bool' && saved > 1) { ctx.error(`'~' cannot invert a comparison inside a ${saved}-bit expression (the result would be ${saved} bits wide); use '!' for a true/false value`); return a; }
         // Verilog extends the operand to the context width before inverting it
-        if (a.t !== 'bool' && saved > a.w) return { t: 'uns', c: `(not ${vhUnsW(a, saved, ctx)})`, w: saved };
+        if (a.t !== 'bool' && saved > a.w) return { t: 'uns', c: `(not ${vhUnsW(a, saved, ctx, P)})`, w: saved, p: P };
         return { ...a, c: `(not ${a.c})` };
       }
       // unary minus
       if (a.t === 'lit') { ctx.error('negative literals are not supported'); return a; }
       if (a.t === 'bool') { ctx.error('cannot negate a boolean'); return a; }
       const W = Math.max(a.w, saved || 0);
-      return { t: 'uns', c: `(0 - ${vhUnsW(a, W, ctx)})`, w: W };
+      return { t: 'uns', c: `(0 - ${vhUnsW(a, W, ctx, P)})`, w: W, p: P };
     }
     case 'bin': {
       const op = ast.op;
-      const saved = ctx.targetW;
+      const saved = ctx.targetW, savedP = ctx.targetP;
       if (SHIFT_OPS.has(op)) {
         // the left operand takes the context width, the shift amount is self-determined
         const a = vhExpr(ast.a, ctx);
         ctx.targetW = ctxSensitive(ast.b, CMP_SENSITIVE) ? vlSelfWidth(ast.b, ctx.peek) : 0;
+        ctx.targetP = null;
         const b = vhExpr(ast.b, ctx);
         ctx.targetW = saved;
+        ctx.targetP = savedP;
         if (a.t === 'bool' || b.t === 'bool') { ctx.error(`'${op}' cannot be applied to a boolean`); return { t: 'uns', c: '0', w: 1 }; }
         if (a.t === 'lit' && a.w == null && b.t === 'lit') {
           if (b.v > 64n) { ctx.error(`shift amount ${b.v} is too large`); return a; }
@@ -178,7 +206,8 @@ export function vhExpr(ast, ctx) {
         }
         const aw = a.t === 'int' || (a.t === 'lit' && a.w == null) ? 0 : a.w;
         const W = Math.max(aw, saved || 0) || 32;
-        return { t: 'uns', c: `${op === '<<' ? 'shift_left' : 'shift_right'}(${vhUnsW(a, W, ctx)}, ${vhCount(b, ctx)})`, w: W };
+        const P = pOf(op, [a], saved, savedP, ctx);
+        return { t: 'uns', c: `${op === '<<' ? 'shift_left' : 'shift_right'}(${vhUnsW(a, W, ctx, P)}, ${vhCount(b, ctx)})`, w: W, p: P };
       }
       // Verilog sizing (which the VHDL must match): + - & | ^ are evaluated at the width of
       // their context (assignment target); comparisons size their operands to the wider side
@@ -193,9 +222,10 @@ export function vhExpr(ast, ctx) {
         const a = vhTruth(ast.a, ctx), b = vhTruth(ast.b, ctx);
         return { t: 'bool', c: `(${vhBool(a)} ${op === '&&' ? 'and' : 'or'} ${vhBool(b)})` };
       }
-      if (!ARITH_OPS.has(op)) ctx.targetW = cmpW;
+      if (!ARITH_OPS.has(op)) { ctx.targetW = cmpW; ctx.targetP = null; }
       const a = vhExpr(ast.a, ctx), b = vhExpr(ast.b, ctx);
       ctx.targetW = saved;
+      ctx.targetP = savedP;
       if (op === '&' || op === '|' || op === '^') {
         const vop = { '&': 'and', '|': 'or', '^': 'xor' }[op];
         if (a.t === 'bool' || b.t === 'bool') {
@@ -219,12 +249,14 @@ export function vhExpr(ast, ctx) {
         // generics are 32 bits wide: keep all of their bits unless the context is narrower
         const ints = saved ? [] : [a, b].filter((x) => x.t === 'int').map(() => 32);
         const W = Math.max(...ws, ...lw, saved || 0, ...ints);
-        if (W === 1) {
+        const P = pOf(op, [a, b], saved, savedP, ctx);
+        if (W === 1 && !P) {
           const s = (x) => (isConst(x) ? vhSlLit(x, ctx) : x.c);
           return { t: 'sl', c: `(${s(a)} ${vop} ${s(b)})`, w: 1 };
         }
-        if (a.t === 'slv' && b.t === 'slv' && a.w === W && b.w === W) return { t: 'slv', c: `(${a.c} ${vop} ${b.c})`, w: W };
-        return { t: 'uns', c: `(${vhUnsW(a, W, ctx)} ${vop} ${vhUnsW(b, W, ctx)})`, w: W };
+        const same = (x) => x.t === 'slv' && x.w === W && (x.p || null) === P;
+        if (same(a) && same(b)) return { t: 'slv', c: `(${a.c} ${vop} ${b.c})`, w: W, p: P };
+        return { t: 'uns', c: `(${vhUnsW(a, W, ctx, P)} ${vop} ${vhUnsW(b, W, ctx, P)})`, w: W, p: P };
       }
       if (op === '+' || op === '-') {
         if (a.t === 'bool' || b.t === 'bool') { ctx.error(`'${op}' cannot be applied to a boolean`); return { t: 'uns', c: '0', w: 1 }; }
@@ -236,8 +268,9 @@ export function vhExpr(ast, ctx) {
         if (isConst(a) && isConst(b)) return { t: 'int', c: `(${vhInt(a)} ${op} ${vhInt(b)})`, w: 32 };
         const ints = saved ? [] : [a, b].filter((x) => x.t === 'int').map(() => 32);
         const W = Math.max(...[a, b].filter((x) => !isConst(x)).map((x) => x.w), saved || 0, ...ints);
-        const opnd = (x) => (isConst(x) ? vhUns(x, W, ctx) : vhUnsW(x, W, ctx));
-        return { t: 'uns', c: `(${opnd(a)} ${op} ${opnd(b)})`, w: W };
+        const P = pOf(op, [a, b], saved, savedP, ctx);
+        const opnd = (x) => (isConst(x) ? vhUns(x, W, ctx) : vhUnsW(x, W, ctx, P));
+        return { t: 'uns', c: `(${opnd(a)} ${op} ${opnd(b)})`, w: W, p: P };
       }
       // comparisons
       const vop = { '==': '=', '!=': '/=', '<': '<', '>': '>', '<=': '<=', '>=': '>=' }[op];
@@ -275,34 +308,43 @@ export function vhExpr(ast, ctx) {
 function vhOne(w) { return w === 1 ? "'1'" : `"${bits(1n, w)}"`; }
 function vhZero(w) { return w === 1 ? "'0'" : `"${'0'.repeat(w)}"`; }
 export function vhLitW(v, w) { return w === 1 ? (v & 1n ? "'1'" : "'0'") : `"${bits(v, w)}"`; }
+/** A literal of a width given by generics (#4378: its code p). */
+export function vhLitP(v, p) {
+  if (v === 0n) return "(others => '0')";
+  return v < 2n ** 31n ? `std_logic_vector(to_unsigned(${v}, ${p}))` : `std_logic_vector(resize(unsigned'("${bits(v, bitlen(v))}"), ${p}))`;
+}
 
-/** VHDL statements assigning `ast` to signal `sig` of width `w`. */
-export function vhAssign(sig, w, ast, ctx) {
+/** VHDL statements assigning `ast` to signal `sig` of width `w` (p: a width given by generics, its code; w its value). */
+export function vhAssign(sig, w, ast, ctx, p = null) {
   // a right shift sees the bits above the target: evaluate at the full Verilog context width
   const wide = ctxSensitive(ast, ASSIGN_SENSITIVE) ? Math.max(w, vlSelfWidth(ast, ctx.peek)) : w;
   ctx.targetW = wide;
+  ctx.targetP = wide === w ? p : null;
   const x = vhExpr(ast, ctx);
   ctx.targetW = 0;
+  ctx.targetP = null;
+  const one = w === 1 && !p, wc = p || w;
+  const same = x.w === w && (x.p || null) === (p || null);
   switch (x.t) {
     case 'lit':
       if (bitlen(x.v) > w) ctx.warn(`value ${x.v} is truncated to ${w} bit(s)`);
-      return [{ s: 'raw', text: `${sig} <= ${vhLitW(x.v, w)};` }];
+      return [{ s: 'raw', text: `${sig} <= ${p ? vhLitP(x.v, p) : vhLitW(x.v, w)};` }];
     case 'int':
-      if (w === 1) { ctx.error('cannot assign an integer (generic) expression to a 1-bit target'); return []; }
-      return [{ s: 'raw', text: `${sig} <= std_logic_vector(to_unsigned(${stripParens(x.c)}, ${w}));` }];
+      if (one) { ctx.error('cannot assign an integer (generic) expression to a 1-bit target'); return []; }
+      return [{ s: 'raw', text: `${sig} <= std_logic_vector(to_unsigned(${stripParens(x.c)}, ${wc}));` }];
     case 'sl':
-      return [{ s: 'raw', text: `${sig} <= ${w === 1 ? stripParens(x.c) : `(0 => ${x.c}, others => '0')`};` }];
+      return [{ s: 'raw', text: `${sig} <= ${one ? stripParens(x.c) : `(0 => ${x.c}, others => '0')`};` }];
     case 'slv':
-      if (w === 1) { ctx.error(`cannot assign a ${x.w}-bit value to a 1-bit target; compare it instead (e.g. x /= 0)`); return []; }
+      if (one) { ctx.error(`cannot assign a ${x.w}-bit value to a 1-bit target; compare it instead (e.g. x /= 0)`); return []; }
       if (x.w > w) ctx.warn(`${x.w}-bit value is truncated to ${w} bits`);
-      return [{ s: 'raw', text: `${sig} <= ${x.w === w ? stripParens(x.c) : `std_logic_vector(resize(unsigned(${x.c}), ${w}))`};` }];
+      return [{ s: 'raw', text: `${sig} <= ${same ? stripParens(x.c) : `std_logic_vector(resize(unsigned(${x.c}), ${wc}))`};` }];
     case 'uns':
-      if (w === 1) { ctx.error(`cannot assign a ${x.w}-bit arithmetic result to a 1-bit target; compare it instead`); return []; }
+      if (one) { ctx.error(`cannot assign a ${x.w}-bit arithmetic result to a 1-bit target; compare it instead`); return []; }
       if (x.w > w && x.w > wide) ctx.warn(`${x.w}-bit value is truncated to ${w} bits`);
-      return [{ s: 'raw', text: `${sig} <= std_logic_vector(${x.w === w ? stripParens(x.c) : `resize(${x.c}, ${w})`});` }];
+      return [{ s: 'raw', text: `${sig} <= std_logic_vector(${same ? stripParens(x.c) : `resize(${x.c}, ${wc})`});` }];
     case 'bool':
-      return [{ s: 'if', cond: stripParens(x.c), then: [{ s: 'raw', text: `${sig} <= ${vhOne(w)};` }],
-        else: [{ s: 'raw', text: `${sig} <= ${vhZero(w)};` }] }];
+      return [{ s: 'if', cond: stripParens(x.c), then: [{ s: 'raw', text: `${sig} <= ${p ? vhLitP(1n, p) : vhOne(w)};` }],
+        else: [{ s: 'raw', text: `${sig} <= ${p ? vhLitP(0n, p) : vhZero(w)};` }] }];
   }
   return [];
 }
@@ -346,7 +388,7 @@ export function vlExpr(ast, ctx) {
       if (s?.kind === 'generic') return s.name;
       const c = s ? s.sig : ast.name;
       ctx.reads.add(c);
-      if (s && s.width === 1) return c;
+      if (s && s.width === 1 && !s.p) return c;
       return ast.hi === ast.lo ? `${c}[${ast.hi}]` : `${c}[${ast.hi}:${ast.lo}]`;
     }
     case 'un': {
@@ -363,7 +405,8 @@ export function vlNot(c) {
   if ((m = /^!(.*)$/.exec(c)) && (isAtom(m[1]) || stripParens(m[1]) !== m[1])) return stripParens(m[1]);
   return `!(${c})`;
 }
-export function vlAssign(sig, w, ast, ctx) {
-  if (ast.k === 'lit') return [{ s: 'raw', text: `${sig} = ${vlLitW(ast.v, w, ast.base)};` }];
+/** Verilog statements assigning `ast` to `sig` of width `w` (p: a width given by generics: a literal as written). */
+export function vlAssign(sig, w, ast, ctx, p = null) {
+  if (ast.k === 'lit') return [{ s: 'raw', text: `${sig} = ${p ? vlLit(ast) : vlLitW(ast.v, w, ast.base)};` }];
   return [{ s: 'raw', text: `${sig} = ${stripParens(vlExpr(ast, ctx))};` }];
 }

@@ -5,6 +5,7 @@
 import { h } from './dom.js';
 import { designKind } from './project-kind-flag.js';
 import { condAsText } from '/core/cond-notation.js';
+import { widthValue } from '/core/asm-width.js';
 
 /** { renderInspector, renderMachine } of an ASM chart editor (M(), sel(): its current model and selection). */
 export function mountInspector(ctx) {
@@ -129,6 +130,10 @@ export function mountInspector(ctx) {
       oninput: (ev) => { p.name = ev.target.value.trim(); commit(key); } }));
     const widthCell = (p, key) => h('td', {}, h('input', { class: 'asm-input mono w', type: 'number', min: '1', max: '256', value: String(p.width),
       oninput: (ev) => { p.width = parseInt(ev.target.value, 10) || 0; commit(key); } }));
+    // a register's: a number or an expression of the generics (#4378: clog2(N), N + 1; core/asm-width.js)
+    const regWidthCell = (r, key) => h('td', {}, h('input', { class: 'asm-input mono w', value: String(r.width), spellcheck: 'false',
+      title: designKind() ? 'Width: a number (1..256) or an expression of the parameters, e.g. clog2(N)' : 'Width: a number (1..256) or an expression of the generics, e.g. clog2(N)',
+      oninput: (ev) => { r.width = widthValue(ev.target.value, 0); commit(key); } }));
     const removeCell = (list, i, key) => h('td', { class: 'c' }, h('button', { type: 'button', class: 'asm-x', title: 'Remove',
       onclick: () => {
         list.splice(i, 1);
@@ -167,7 +172,7 @@ export function mountInspector(ctx) {
     machineBody.append(h('small', { class: 'asm-fhint' }, 'Combinational outputs take their default unless assigned. Registered outputs (Reg) hold their value, reset to the default and can be read in conditions, e.g. cnt = cnt + 1.'));
     const regs = M().registers || [];
     machineBody.append(table('Registers', 'regs', [['Name'], ['Width'], ['Reset', 'Reset (initial) value']], regs,
-      (r, i) => [nameCell(r, `r-n:${i}`), widthCell(r, `r-w:${i}`),
+      (r, i) => [nameCell(r, `r-n:${i}`), regWidthCell(r, `r-w:${i}`),
         h('td', {}, h('input', { class: 'asm-input mono d', value: r.init, spellcheck: 'false', title: 'Reset value',
           oninput: (ev) => { r.init = ev.target.value.trim() || '0'; commit(`r-i:${i}`); } })),
         removeCell(regs, i, 'r-del')],
@@ -183,9 +188,9 @@ export function mountInspector(ctx) {
       (l) => { M().generics = l; }));
     // (a design project's: no VHDL or Verilog, #3891)
     machineBody.append(h('small', { class: 'asm-fhint' }, designKind()
-      ? 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Parameters are integers, usable in expressions (e.g. cnt == N - 1).'
+      ? 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. Parameters are integers, usable in expressions (e.g. cnt == N - 1) and in the registers\' widths (e.g. clog2(N)).'
       : 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) ' +
-      'and read them anywhere. Generics are integer VHDL generics / Verilog parameters, usable in expressions (e.g. cnt == N - 1).'));
+      'and read them anywhere. Generics are integer VHDL generics / Verilog parameters, usable in expressions (e.g. cnt == N - 1) and in the registers\' widths (e.g. clog2(N)).'));
   }
 
   return { renderInspector, renderMachine };

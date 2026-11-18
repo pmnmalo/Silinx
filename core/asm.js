@@ -54,8 +54,9 @@
 //
 // Data path (all optional, so that a small controller + data path is a single chart):
 //   generics   integer VHDL generics / Verilog parameters (non-negative), usable in any
-//              expression (not in widths); they cannot be assigned.
-//   registers  internal registers (signal `<name>`, next value `<name>_next`): readable in
+//              expression and in the registers' widths (not in the ports'); they cannot be assigned.
+//   registers  internal registers (signal `<name>`, next value `<name>_next`; a width a number or an
+//              expression of the generics, `clog2(N)`, `N + 1`: core/asm-width.js, #4378): readable in
 //              any condition/expression and assignable in actions with the same ASMD
 //              semantics as registered outputs (loaded at the clock edge, hold when not
 //              assigned, reset to `init`).
@@ -87,6 +88,7 @@ import {
 } from './asm-expr.js';
 import { mountGraphChecks } from './asm-graph.js';
 import { condAsText } from './cond-notation.js';
+import { registerWidth, widthValue } from './asm-width.js';
 export {
   exprToString, parseAction, parseCondition
 };
@@ -206,7 +208,7 @@ export function normalizeModel(m) {
       registered: !!p?.registered,
     })),
     ...(arr(src.registers).length ? { registers: arr(src.registers).map((r) => ({
-      name: String(r?.name ?? ''), width: num(r?.width, 1),
+      name: String(r?.name ?? ''), width: widthValue(r?.width, 1),
       init: r?.init == null || r.init === '' ? '0' : String(r.init),
     })) } : {}),
     nodes,
@@ -663,7 +665,7 @@ export function analyze(model) {
   const err = (msg, id) => add('error', msg, id);
   const warn = (msg, id) => add('warning', msg, id);
   const generics = m.generics || [];
-  const registers = m.registers || [];
+  let registers = m.registers || [];
 
   // ---- names --------------------------------------------------------------------------
   // `bare`: the name never appears in the code on its own (state names only appear as
@@ -694,6 +696,7 @@ export function analyze(model) {
   for (const label of ['state_register', 'next_state_logic', 'output_logic']) names.set(label, `VHDL process label '${label}'`);
 
   const syms = new Map();
+  const gvals = new Map();   // the valid generics' default values (the registers' widths, #4378)
   for (const g of generics) {
     if (!checkName(g.name, 'Generic')) continue;
     if (typeof g.default !== 'number' || !Number.isInteger(g.default) || g.default < 0 || g.default > 2147483647) {
@@ -702,6 +705,7 @@ export function analyze(model) {
     }
     claim(g.name, 'Generic');
     syms.set(g.name, { name: g.name, width: 32, kind: 'generic', sig: g.name });
+    gvals.set(g.name, g.default);
   }
   const ports = [...m.inputs.map((p) => ({ ...p, dir: 'in' })), ...m.outputs.map((p) => ({ ...p, dir: 'out' }))];
   for (const p of ports) {
@@ -718,13 +722,18 @@ export function analyze(model) {
       next: registered ? `${p.name}_next` : p.name,
     });
   }
-  for (const r of registers) {
-    if (!checkName(r.name, 'Register')) continue;
-    if (!Number.isInteger(r.width) || r.width < 1 || r.width > 256) { err(`Register '${r.name}' has invalid width ${r.width} (1..256)`); continue; }
+  // a register's width: a number or an expression of the generics (#4378: `p`, its text and code; the width its value
+  // at the generics' default values)
+  registers = registers.map((r) => {
+    if (!checkName(r.name, 'Register')) return r;
+    const rw = registerWidth(r, gvals);
+    if (rw.error) { err(rw.error); return r; }
     claim(r.name, 'Register');
     claim(`${r.name}_next`, 'Internal signal');
-    syms.set(r.name, { name: r.name, width: r.width, kind: 'register', registered: true, sig: r.name, next: `${r.name}_next` });
-  }
+    syms.set(r.name, { name: r.name, width: rw.width, kind: 'register', registered: true, sig: r.name, next: `${r.name}_next`, ...(rw.p ? { p: rw.p.code } : {}) });
+    return rw.p ? { ...r, width: rw.width, p: rw.p } : r;
+  });
+  if (registers.some((r) => r.p?.clog2) && names.has('clog2')) err(`The registers' widths call the function clog2, which clashes with ${names.get('clog2')}`);
   // output defaults and register reset values
   const defaults = new Map();
   const literalValue = (text, width, what, name) => {
@@ -775,6 +784,7 @@ export function analyze(model) {
       const ctx = makeCtx(n.id, where);
       const x = vhExpr(r.ast, ctx);
       if (x.t === 'int') { err(`${where}: a generic is a constant and cannot be tested`, n.id); continue; }
+      if (x.p) { err(`${where}: '${r.ast.name}' is ${x.p} bits wide (a width given by generics): test a slice of it (e.g. ${r.ast.name}[1:0])`, n.id); continue; }
       const width = x.w || 1;
       const branches = [];
       const seen = new Map();
@@ -823,7 +833,7 @@ export function analyze(model) {
         }
         if (assigned.has(r.target)) warn(`${where}: '${r.target}' is assigned more than once in the same box (the last assignment wins)`, n.id);
         assigned.set(r.target, true);
-        vhAssign('x', s.width, r.ast, makeCtx(n.id, where));
+        vhAssign('x', s.width, r.ast, makeCtx(n.id, where), s.p);
         list.push({ target: r.target, ast: r.ast, text: a });
       }
       parsedActions.set(n.id, list);
