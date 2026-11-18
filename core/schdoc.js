@@ -33,7 +33,7 @@ import { normalizeGraphic } from './schgraphics.js';
 import { moveTaps, widenBuffers, widenJoins, widenMuxes } from './schdoc-upgrade.js';
 import { symbolDiff } from './schdoc-modsym.js';
 import { instanceParams } from './symbol-layout.js';
-import { arrayOf, sliceArrayed, sharedPins, isSharedPin, arrayedError } from './sch-array.js';
+import { arrayOf, sliceArrayed, sharedPins, isSharedPin, arrayedError, sharedWarning } from './sch-array.js';
 import {
   modulesFromLibrary, schematicFromHdl
 } from './schdoc-from-hdl.js';
@@ -470,6 +470,7 @@ export function netlist(docIn, { modules = {} } = {}) {
       diags.push({ severity: 'error', message: `width mismatch on net '${net.name}': ${[...mism].join(' vs ')} bits`, ref: refOf(where, symById), x: where?.x, y: where?.y, net: net.name });
     }
     for (const e of shared) diags.push({ severity: 'error', message: arrayedError(e, symById.get(e.sym).name, net), ref: refOf(e, symById), x: e.x, y: e.y, net: net.name });
+    for (const e of eps.filter(x => x.autoShared && x.dir !== 'out')) diags.push({ severity: 'warning', message: sharedWarning(e, symById.get(e.sym).name, net), ref: refOf(e, symById), x: e.x, y: e.y, net: net.name });
     const pt = eps[0] || (labels[0] && labels[0].label) || doc.wires.find(w => w.id === wires[0])?.points[0];
     // drivers: tri-state outputs (and bidirectional pins / markers) may share a net, a bus; an ordinary
     // output or an input marker must be its only driver

@@ -112,16 +112,16 @@ test('#3966 #4053 the errors: a marked pin on a bus (no width mismatch, drawn a 
   assert.deepEqual(msgs(nl), ["reg(7:0): pin CE is shared by its 8 copies, but its net 'n_CE' is 8 bits wide: connect it to a 1-bit net, or untick it in Shared pins"]);
   assert.deepEqual(nl.diagnostics[0].ref, { kind: 'symbol', id: 'U', pin: 'CE' });
   assert.deepEqual(drawn(bus, nl), ['D8 D(7:0)', 'CE1', 'C1', 'Q8 Q(7:0)']);
-  // unmarked, the same sheet: CE sliced, no error (today's rule)
-  assert.deepEqual(msgs(netlist(sheet('reg(7:0)', { D: 8, CE: 8, C: 1, Q: 8 }), { modules: MODS })), []);
+  // unmarked, the same sheet: CE sliced, no error (today's rule); C shared on its 1-bit net, said in a warning (#4451)
+  assert.deepEqual(msgs(netlist(sheet('reg(7:0)', { D: 8, CE: 8, C: 1, Q: 8 }), { modules: MODS })), ["reg(7:0): pin C is shared by its 8 copies: its net 'n_C' is 1 bit wide; tick it in Shared pins, or connect it to a 8-bit bus"]);
   // a mark left on the output Q (a file written before #4053): ignored, Q by its net's width (sliced on 8 bits, a
   // shared output's error on 1)
-  const out = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 }, ['q']), nlo = netlist(out, { modules: MODS });
+  const out = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 }, ['q', 'CE', 'C']), nlo = netlist(out, { modules: MODS });
   assert.deepEqual([msgs(nlo), drawn(out, nlo)], [[], ['D8 D(7:0)', 'CE1', 'C1', 'Q8 Q(7:0)']]);
-  assert.equal(generateHdl(out, { modules: MODS }).code, generateHdl(sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 }), { modules: MODS }).code, 'its HDL the unmarked one\'s');
-  const out1 = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 1 }, ['Q']);
+  assert.equal(generateHdl(out, { modules: MODS }).code, generateHdl(sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 }, ['CE', 'C']), { modules: MODS }).code, 'its HDL the unmarked one\'s');
+  const out1 = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 1 }, ['Q', 'CE', 'C']);
   assert.deepEqual(msgs(netlist(out1, { modules: MODS })), ["reg(7:0): output Q of its 8 copies drives the 1-bit net 'n_Q': connect it to a 8-bit bus"]);
-  assert.deepEqual(arrayedDef(out1.symbols[0], symbolDef(out1.symbols[0], MODS), null).pins.map(p => p.width), [8, 8, 8, 8], 'drawn a bus, as an unmarked one');
+  assert.deepEqual(arrayedDef(out1.symbols[0], symbolDef(out1.symbols[0], MODS), null).pins.map(p => p.width), [8, 1, 1, 8], 'Q drawn a bus, as an unmarked one');
   // an error: no HDL generated from it (as any other)
   assert.ok(generateHdl(bus, { modules: MODS }).diagnostics.some(d => d.severity === 'error' && /pin CE is shared/.test(d.message)));
 });

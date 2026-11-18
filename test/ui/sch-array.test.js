@@ -17,7 +17,7 @@ const REG = `library ieee;\nuse ieee.std_logic_1164.all;\n\nentity reg1 is\n  po
 const PORTS = ['d', 'c', 'q'].map((n) => ({ name: n, dir: n === 'q' ? 'out' : 'in', width: 1 }));
 const MODS = { reg1: { name: 'reg1', lang: 'vhdl', ports: PORTS } };
 function top(name = 'r', open = []) {
-  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name, params: { module: 'reg1', generics: {}, ports: PORTS } };
+  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name, params: { module: 'reg1', generics: {}, ports: PORTS, shared: ['c'] } };   // (its clock ticked in Shared pins: on its 1-bit marker when arrayed, #4451)
   const wires = [], ports = [];
   for (const p of symbolPins(s, MODS)) {
     if (open.includes(p.name)) continue;

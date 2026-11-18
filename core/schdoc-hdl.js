@@ -139,7 +139,8 @@ export function generateHdl(docIn, opts = {}) {
   const pinType = new Map();
   for (const s of doc.symbols) if (s.type === 'module') {
     const m = findMod(modules, s.params.module);
-    for (const q of m?.ports || []) if (q.type) { const n = nl.pinNet.get(`${s.id}/${q.name}`); if (n && !pinType.has(n)) pinType.set(n, q.type); }
+    // (not an arrayed instance's pin sliced over its net: the net N times as wide, #4451)
+    for (const q of m?.ports || []) if (q.type) { const n = nl.pinNet.get(`${s.id}/${q.name}`); if (n && !pinType.has(n) && !n.endpoints.some(e => e.sym === s.id && e.pin === q.name && e.sliced)) pinType.set(n, q.type); }
   }
   const vtype = w => (w > 1 ? `std_logic_vector(${w - 1} downto 0)` : 'std_logic');
   const netType = net => {

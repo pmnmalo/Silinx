@@ -67,8 +67,10 @@ uiTest('#3966 Shared pins of r(7:0): CE ticked drawn a single pin while open; Q 
   assert.deepEqual(await ticks(), ['D:0', 'CE:1', 'C:0'], 'the Properties redrawn with it');
   const log = await check();
   assert.doesNotMatch(log, /ERROR|width mismatch/, log);
-  assert.deepEqual(log.match(/WARNING: .*?(?=WARNING|ERROR|Process)/g), ['WARNING: input pin CE of r(7:0) (REG1bit) is not connected'], log);
-  assert.match(log, /completed successfully with 1 warning\(s\)/, log);
+  // (C, not ticked, on its 1-bit marker: shared all the same, said in a warning, #4451)
+  assert.deepEqual(log.match(/WARNING: .*?(?=WARNING|ERROR|Process)/g), ["WARNING: r(7:0): pin C is shared by its 8 copies: its net 'c' is 1 bit wide; tick it in Shared pins, or connect it to a 8-bit bus",
+    'WARNING: input pin CE of r(7:0) (REG1bit) is not connected'], log);
+  assert.match(log, /completed successfully with 2 warning\(s\)/, log);
   // C ticked too, then Undo, twice: CE alone, then none (a bus again)
   await tick('C');
   await sharedIs(['CE', 'C']);

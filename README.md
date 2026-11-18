@@ -48,7 +48,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   symbol (symbols and I/O markers rotated and mirrored: Ctrl+R / Ctrl+M); wires, buses and net
   names; Check Schematic. A rectangle dragged with the Add I/O Marker tool gives every open pin in it a marker (`in1`…,
   `out1`…, `io1`…, #4000). An instance's *Width* (Properties) makes it an array of copies, as ISE's (8: `r(7:0)`, drawn
-  as one, #3950), its inputs ticked in *Shared pins* shared by every copy (#3966, #4053). The ⋮ menu's *Wires* draws them *Direct* (straight lines), *Orthogonal* (the
+  as one, #3950): its pins buses N times as wide, the wires connected to them adapting (#4451), its inputs ticked in
+  *Shared pins* shared by every copy (#3966, #4053). The ⋮ menu's *Wires* draws them *Direct* (straight lines), *Orthogonal* (the
   technical drawing, the default) or *Curved*: the look only, each wire keeping its horizontal and vertical path,
   what it connects (and ISE's `.sch`); its *Wire crossings* are *Hop-overs* (the default) or *Plain crossings*, in the
   schematic viewer, the RTL schematic and the circuit editor too (#4101). *Settings ▸ Schematic Symbols* draws the gates, inverters and buffers in

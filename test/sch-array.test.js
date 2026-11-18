@@ -14,9 +14,10 @@ const REG = { name: 'reg1', lang: 'vhdl', ports: [P('d'), P('ce'), P('c'), P('q'
 const REG2 = { name: 'reg2', lang: 'vhdl', ports: [P('d', 'in', 2), P('c'), P('q', 'out', 2)] };
 const OUT = { W: -1, E: 1 };
 
-// a sheet: the instance `name` of `m`, each pin wired to an I/O marker n_<pin> of widths[pin] bits (1 by default)
-function sheet(m, name, widths, lang = 'vhdl') {
-  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name, params: { module: m.name, generics: {}, ports: m.ports.map(q => ({ ...q })) } };
+// a sheet: the instance `name` of `m`, each pin wired to an I/O marker n_<pin> of widths[pin] bits (1 by default), its
+// pins `shared` ticked in Shared pins (#3966)
+function sheet(m, name, widths, lang = 'vhdl', shared) {
+  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name, params: { module: m.name, generics: {}, ports: m.ports.map(q => ({ ...q })), ...(shared ? { shared } : {}) } };
   const mods = { [m.name]: m };
   const wires = [], ports = [];
   for (const p of symbolPins(s, mods)) {
@@ -38,12 +39,16 @@ test('#3755 arrayName: a range in either bracket, msb first or last; anything el
   assert.equal(sliceOf('d', 0, 0, 2, true), 'd(1 downto 0)');
 });
 
-test('#3755 sliceArrayed: a pin sliced on a net N times as wide, shared on one as wide; a lone arrayed output sliced', () => {
+test('#3755 #4451 sliceArrayed: a pin sliced on a net N times as wide, shared on one as wide (autoShared); a lone arrayed pin sliced', () => {
   const pin = (dir, w = 1) => ({ kind: 'pin', dir, width: w, arr: 4 });
   let e = pin('in');
   assert.deepEqual(sliceArrayed([e], [4]), []); assert.deepEqual([e.width, e.sliced], [4, true]);
   e = pin('in');
-  assert.deepEqual(sliceArrayed([e], [1]), []); assert.deepEqual([e.width, e.sliced], [1, undefined]);
+  assert.deepEqual(sliceArrayed([e], [1]), []); assert.deepEqual([e.width, e.sliced, e.autoShared], [1, undefined, true]);
+  e = pin('in');
+  assert.deepEqual(sliceArrayed([e], [null]), []); assert.deepEqual([e.width, e.sliced], [4, true], 'a lone input, its net named with no range: a bus (#4451)');
+  e = pin('in', 2);
+  assert.deepEqual(sliceArrayed([e], [3]), []); assert.deepEqual([e.width, e.sliced, e.autoShared], [2, undefined, undefined], 'a net of another width: as it is');
   const o = pin('out'), i = pin('in');
   assert.deepEqual(sliceArrayed([o, i], []), []); assert.deepEqual([o.width, i.width], [4, 4], 'Q of one array to D of another: a bus');
   const shared = pin('out');
@@ -51,10 +56,14 @@ test('#3755 sliceArrayed: a pin sliced on a net N times as wide, shared on one a
 });
 
 test('#3755 reg(3:0) of a 1-bit register on 4-bit buses: no warnings; the copies in the HDL; Rename takes the range', () => {
-  const { doc, mods } = sheet(REG, 'reg(3:0)', { d: 4, q: 4 });
+  const { doc, mods } = sheet(REG, 'reg(3:0)', { d: 4, q: 4 }, 'vhdl', ['ce', 'c']);
   const nl = netlist(doc, { modules: mods });
   assert.deepEqual(nl.diagnostics.map(d => d.message), []);
   assert.deepEqual(['d', 'ce', 'c', 'q'].map(n => nl.pinNet.get(`U/${n}`).width), [4, 1, 1, 4]);
+  // (ce and c not ticked in Shared pins: shared all the same on their 1-bit markers, each said in a warning, #4451)
+  const un = sheet(REG, 'reg(3:0)', { d: 4, q: 4 }).doc;
+  assert.deepEqual(netlist(un, { modules: mods }).diagnostics.map(d => [d.severity, d.message]), ['ce', 'c'].map(n => ['warning', `reg(3:0): pin ${n} is shared by its 4 copies: its net 'n_${n}' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus`]));
+  assert.equal(generateHdl(un, { lang: 'vhdl', modules: mods }).code, generateHdl(doc, { lang: 'vhdl', modules: mods }).code, 'its HDL the ticked one\'s');
   const v = generateHdl(doc, { lang: 'vhdl', modules: mods });
   assert.deepEqual(v.diagnostics, []);
   assert.match(v.code, /\n {2}reg_3 : entity work\.reg1\n {4}port map \(\n {6}d => n_d\(3\),\n {6}ce => n_ce,\n {6}c => n_c,\n {6}q => n_q\(3\)\n {4}\);\n/);
@@ -69,9 +78,9 @@ test('#3755 reg(3:0) of a 1-bit register on 4-bit buses: no warnings; the copies
 });
 
 test('#3755 the errors: a bus neither N nor 1 times the pin\'s width; an output shared by the copies', () => {
-  let { doc, mods } = sheet(REG, 'reg(3:0)', { d: 3, q: 4 });
+  let { doc, mods } = sheet(REG, 'reg(3:0)', { d: 3, q: 4 }, 'vhdl', ['ce', 'c']);
   assert.deepEqual(netlist(doc, { modules: mods }).diagnostics.map(d => d.message), ["width mismatch on net 'n_d': 3 vs 1 bits"]);
-  ({ doc, mods } = sheet(REG, 'reg(3:0)', { d: 4, q: 1 }));
+  ({ doc, mods } = sheet(REG, 'reg(3:0)', { d: 4, q: 1 }, 'vhdl', ['ce', 'c']));
   assert.deepEqual(netlist(doc, { modules: mods }).diagnostics.map(d => d.message), ["reg(3:0): output q of its 4 copies drives the 1-bit net 'n_q': connect it to a 4-bit bus"]);
   // (not an array: the width mismatch as before)
   ({ doc, mods } = sheet(REG, 'r', { d: 4, q: 1 }));
@@ -126,7 +135,7 @@ endmodule
 `;
 }
 function run(lang, m, name, W, values, ce) {
-  const { doc, mods } = sheet(m, name, { d: W, q: W }, lang);
+  const { doc, mods } = sheet(m, name, { d: W, q: W }, lang, ['ce', 'c']);
   const g = generateHdl(doc, { lang, modules: mods });
   assert.deepEqual(g.diagnostics, [], `${lang}: no warnings`);
   const ext = lang === 'vhdl' ? 'vhd' : 'v';

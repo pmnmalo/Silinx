@@ -18,7 +18,7 @@ const REG = `library ieee;\nuse ieee.std_logic_1164.all;\n\nentity REG1bit is\n 
 const PORTS = ['D', 'CE', 'C', 'Q'].map((n) => ({ name: n, dir: n === 'Q' ? 'out' : 'in', width: 1 }));
 const MODS = { REG1bit: { name: 'REG1bit', lang: 'vhdl', ports: PORTS } };
 function top() {
-  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name: 'r', params: { module: 'REG1bit', generics: {}, ports: PORTS } };
+  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name: 'r', params: { module: 'REG1bit', generics: {}, ports: PORTS, shared: ['CE', 'C'] } };   // (ticked in Shared pins, #4451)
   const wires = [], ports = [];
   for (const p of symbolPins(s, MODS)) {
     const b = { x: p.x + (p.side === 'W' ? -60 : 60), y: p.y };

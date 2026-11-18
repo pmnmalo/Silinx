@@ -158,6 +158,8 @@ export function assembleIseImport(ctx) {
   doc.sheet = { w: Math.max(1700, r10(c.x1 + 120)), h: Math.max(1100, r10(c.y1 + 120)) };
   if (declLines.length) doc.hdl = { lang, decls: declLines.join('\n') };
   const nl = netlist(doc, { modules });
+  // (an arrayed instance's input on a net of its own width: shared by its copies in ISE, ticked in its Shared pins, #4451)
+  for (const n of nl.nets) for (const e of n.endpoints) if (e.autoShared && e.dir !== 'out') { const s = doc.symbols.find(q => q.id === e.sym); s.params.shared = [...(s.params.shared || []), e.pin]; }
   const unconnected = [];
   const where = new Map();
   for (const n of nl.nets) {

@@ -48,21 +48,23 @@ export function sharedList(pins, names) {
 }
 
 /**
- * The widths of a net's arrayed pins (netlist(), each endpoint { kind, dir, width, arr, shared }): a pin is sliced when
- * the net's other widths (its I/O markers', labels', other pins') have its N × w bits, or, with none, when an arrayed
- * output is on it; its width then N × w (set on the endpoint, with sliced: true). A pin marked shared (#3966) is never
- * sliced: on a net of another width it is an error (misfit: true, its width left out of the net's); only an input is
- * marked (#4053). Returns the endpoints in error: the shared arrayed outputs (each copy driving the net), the misfit
- * shared pins.
+ * The widths of a net's arrayed pins (netlist(), each endpoint { kind, dir, width, arr, shared }): the instance's width
+ * defines its pins' (#4451), each pin sliced over the copies, N × w bits (set on the endpoint, with sliced: true), its
+ * net adapting to it (its wires, a name with no range); unless the net's width is fixed elsewhere (otherWidths, its I/O
+ * markers' and labels', and its other pins') and is not N × w: there, a pin as wide as that fixed width is shared by
+ * the copies (autoShared: true, said in a warning, sharedWarning), one of another width left as it is (the width
+ * mismatch). A pin marked shared (#3966) is never sliced: on a net of another width it is an error (misfit: true, its
+ * width left out of the net's); only an input is marked (#4053). Returns the endpoints in error: the shared arrayed
+ * outputs (each copy driving the net), the misfit shared pins.
  */
 export function sliceArrayed(eps, otherWidths) {
   const arr = eps.filter(e => e.kind === 'pin' && e.arr > 1);
   if (!arr.length) return [];
-  const others = [...otherWidths, ...eps.filter(e => !arr.includes(e) && e.kind === 'pin').map(e => e.width)].filter(w => typeof w === 'number');
-  const anyOut = arr.some(e => e.dir === 'out' && !e.shared);
+  const fixed = [...otherWidths, ...eps.filter(e => !arr.includes(e) && e.kind === 'pin').map(e => e.width)].filter(w => typeof w === 'number');
   for (const e of arr) {
+    if (e.shared) continue;
     const wide = (e.width || 1) * e.arr;
-    if (!e.shared && (others.length ? others.includes(wide) : anyOut)) { e.width = wide; e.sliced = true; }
+    if (!fixed.length || fixed.includes(wide)) { e.width = wide; e.sliced = true; } else if (fixed.every(w => w === (e.width || 1))) e.autoShared = true;
   }
   // (a pin marked shared: the net's other widths, its slices' too, its own)
   const all = [...otherWidths, ...eps.filter(e => e.kind === 'pin').map(e => e.width)].filter(w => typeof w === 'number');
@@ -72,6 +74,14 @@ export function sliceArrayed(eps, otherWidths) {
   }
   return arr.filter(e => (e.dir === 'out' && !e.sliced) || e.misfit);
 }
+
+/** The warning of an arrayed pin sliceArrayed shared by the copies on its own (autoShared, #4451): an input on a net
+ *  whose width is fixed elsewhere at the pin's (inst its instance's name, net the net's { name, width }). */
+export const sharedWarning = (e, inst, net) => `${inst}: pin ${e.pin} is shared by its ${e.arr} copies: its net '${net.name}' is ${net.width} bit${net.width > 1 ? 's' : ''} wide; tick it in Shared pins, or connect it to a ${e.arr * e.width}-bit bus`;
+
+/** A pin's width on its net (netlist()'s pinNet): an arrayed instance's sliced pin N × w (#4451), else the pin's own;
+ *  `fallback` (the symbol's pin width) when the net does not have it. */
+export const pinWidthOn = (net, symId, pin, fallback) => net?.endpoints?.find(e => e.kind === 'pin' && e.sym === symId && e.pin === pin)?.width ?? fallback;
 
 /** The error of an arrayed pin sliceArrayed returned: a shared output, or an input marked shared on a net of another
  *  width (inst its instance's name, net the net's { name, width }). */
