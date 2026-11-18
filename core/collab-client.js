@@ -39,32 +39,12 @@ import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE } from
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
+import { PROTOCOL, SUBPROTOCOL, KIND, NOT_SHARED, fromFrame, toFrame, senderOf } from './collab-wire.js';
 
-export const PROTOCOL = 4;   // (2: an editor's signed edits, #3182; 3: a follower's awareness marked with its sender, #3360; 4: the owner's frame for one follower, #3529)
-export const SUBPROTOCOL = 'silinx-collab';   // (the WebSockets', server/collab-relay.js's)
-export const KIND = Object.freeze({ update: 1, awareness: 2, edit: 3, from: 4, to: 5, role: 6, activity: 7 });
+// (the wire's constants and its marked frames, in a module of their own that imports nothing: the Cloudflare relay's
+// copy of the room's logic, #4541)
+export { PROTOCOL, SUBPROTOCOL, KIND, NOT_SHARED, fromFrame, toFrame, senderOf };
 
-/** A follower's frame as the room forwards it (#3360): marked with the client id it joined with. */
-export function fromFrame(client, frame) {
-  const out = new Uint8Array(frame.length + 5);
-  out[0] = KIND.from;
-  new DataView(out.buffer).setUint32(1, client);
-  out.set(frame, 5);
-  return out;
-}
-
-/** The owner's frame for one follower (#3529): the room gives `frame` to the follower of that client id only. */
-export function toFrame(client, frame) {
-  const out = fromFrame(client, frame);
-  out[0] = KIND.to;
-  return out;
-}
-
-/** A frame the room marked: { client, frame } (null: not one); kind KIND.to: the owner's frame for one follower. */
-export function senderOf(frame, kind = KIND.from) {
-  if (frame[0] !== kind || frame.length < 6) return null;
-  return { client: new DataView(frame.buffer, frame.byteOffset).getUint32(1), frame: frame.subarray(5) };
-}
 
 /** An awareness update applied with only the states its sender may speak for (#3360): a follower's own (`only`, the
  *  client id the room says sent it), or any but this participant's own (the owner's, the room's authority: who is in
@@ -350,10 +330,8 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
 }
 
 
-/** A room its owner no longer shares, as the room says it to a follower that joins (core/collab-room.js). */
 /** Why a follower's session ended when it left on its own (close(), #4201). */
 export const LEFT = 'you stopped following';
-export const NOT_SHARED = 'this shared project is no longer shared (its owner stopped sharing it)';
 /** A follower's connection lost (#3835, phase 4 of #3180), not ended, made again: after these delays (the last one
  *  repeated), for `for` ms at most since it was lost. */
 export const RECONNECT = Object.freeze({ delays: [1000, 2000, 4000, 8000, 15_000], for: 5 * 60_000 });

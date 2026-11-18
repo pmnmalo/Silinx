@@ -17,7 +17,7 @@
 //   whole document sent again); past it, its followers are told and closed.
 // A participant is a socket: send(data, { binary }), close(code, reason), readyState (1: open), as a WebSocket of
 // `ws`; its transport gives each message to `message(data, binary)` and its end to `close()`.
-import { KIND, PROTOCOL, NOT_SHARED, fromFrame, senderOf } from './collab-client.js';
+import { KIND, PROTOCOL, NOT_SHARED, fromFrame, senderOf } from './collab-wire.js';
 import { b64url } from './collab-crypto.js';
 import { verifierOf, verifyFrame, PUB_RE } from './collab-sign.js';
 
