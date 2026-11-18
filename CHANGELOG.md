@@ -12,6 +12,8 @@ pans as the Schematic editor does, and the Lattice and Gowin boards simulate aft
 
 In short:
 
+- **Board Emulator:** a push button clicked just before a power cycle is let go by it, no longer seen by the design
+  after the reset.
 - **KiCad parts in a circuit:** a KiCad catalogue in the Parts panel (KiCad's 74xx and 4xxx, SparkFun's breadboard
   parts, Arduino boards, LEDs, switches and push buttons), Browse KiCad Libraries… and Import KiCad Part…, each part
   drawn as it looks and run in Try it by its VHDL or Verilog model; Export to KiCad.
@@ -34,6 +36,20 @@ In short:
 
 In detail:
 
+- **The Merge Contribution UI tests wait 30 s for the imported copy (#4438):** importing the contributed copy took more
+  than the 10 s default wait on a slow CI runner.
+- **A power cycle lets a held push button go at once (#4437):** a button clicked while the compiled engine's run was in
+  flight and let go waited for that run before its release was counted, and a power cycle in between kept it held for
+  the first run after the reset, long enough on a slow page for the design's debouncer to take the old click
+  (`core/emulate-press.js`: the board's time gone back releases it before anything else).
+- **The Board Emulator's short-click test presses the button it reads (#4437):** the #3109 test sets the clock rate by
+  its own selector, waits until the run at that rate is in and the button is under its centre before the click, reads
+  the shown emulator's button, checks that the press landed and says the board's state if the button is up too soon;
+  in CI's ISE interface it read the button up after 0 or 18 cycles, which no local run reproduced.
+- **A UI test run once more when WebKit failed to load from the local server (#4428, #4439):** a test whose only page errors
+  are WebKit's refused fetch ("due to access control checks") and failed module import from the test's own server runs
+  once more in a fresh page, as one whose page crashed (`webkitLoadFailure` in `test/ui/harness.js`); a second time
+  fails it, and any other error fails it at once.
 - **micro80 routed by router 1 on the Basys 3 runs on Linux only (#4429):** `test/nextpnr-xc7-cyinit.test.js` joins the
   toolchain's heaviest tests (`HEAVY` in `scripts/test-shard.mjs`), which CI runs on Linux: on a slow Windows runner its
   micro80 test reached the 15 minutes a test may take.
