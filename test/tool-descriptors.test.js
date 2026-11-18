@@ -88,9 +88,10 @@ test('#2303 the Gowin: the ECP5\'s tree, its post-synthesis and post-place & rou
   assert.deepEqual(SILINX_GOWIN.tasks.map(t => t.id), ['edit', 'sim', 'emu', 'impl']);
 });
 
-test('#2431 the GateMate: the Gowin\'s tree with no simulation model and no Configure Target Device (its board openFPGALoader\'s, outside Silinx); its steps (gmpack\'s .bit), reports, CCF', () => {
+test('#2431 the GateMate: the Gowin\'s tree, its post-synthesis model only, no Configure Target Device (its board openFPGALoader\'s, outside Silinx); its steps (gmpack\'s .bit), reports, CCF', () => {
   const t = built(SILINX_GATEMATE);
-  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel'] }, { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate']);
+  assert.deepEqual(t.map(shape), ['summary', 'constraints', { synth: ['rtl', 'check', 'cmodel', 'postsynth'] }, { impl: [{ translate: [] }, { par: ['trce'] }] }, 'bitgen', 'emulate']);
+  assert.deepEqual(SILINX_GATEMATE.steps.find(s => s.id === 'postsynth').produces, ['netgen/synthesis/{top}_synthesis.v']);
   assert.equal(toolOf({ part: 'ccgm1a1' }, true), SILINX_GATEMATE);
   assert.deepEqual(SILINX_GATEMATE.steps.map(({ produces, ...s }) => s), GATEMATE_STEPS);
   assert.deepEqual(SILINX_GATEMATE.steps.find(s => s.id === 'bitgen').produces, ['{top}.bit']);

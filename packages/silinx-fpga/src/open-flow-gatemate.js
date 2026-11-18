@@ -23,6 +23,9 @@ export const RETRIES = 3;
 /** The GateMate's steps, as runFlow runs them. */
 export const GATEMATE_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
+  // (the post-synthesis simulation model, #2299: Yosys's netlist of the CC_ cells, core/flow-models-nextpnr.js; no post-place &
+  // route one: nextpnr's routed design's CPEs are not modelled)
+  { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },

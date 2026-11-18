@@ -14,6 +14,8 @@ const steps = (cases) => Math.max(...cases.map((c) => c.steps.length));
 export const FAMILIES = {
   ice40: { path: '<silinx>/ice40.vhd', clause: 'library sb_ice40_components_syn; use sb_ice40_components_syn.components.all;' },
   ecp5: { path: '<silinx>/ecp5.vhd', clause: 'library ecp5u; use ecp5u.components.all;' },
+  // (the GateMate's, #2431: Cologne Chip's, not Lattice's, the same harness)
+  gatemate: { path: '<silinx>/gatemate.vhd', clause: 'library gatemate; use gatemate.components.all;' },
 };
 
 /** The cases' test benches (tb_<family>) in Verilog and VHDL. */

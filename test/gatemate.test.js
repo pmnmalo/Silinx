@@ -62,10 +62,11 @@ test('the GateMate family: its parts, its formats, its back end\'s steps and con
   const b = backendOf('gatemate');
   assert.equal(b.id, 'gatemate');
   assert.equal(b.constraints, CCF);
-  assert.deepEqual(b.steps.map(s => [s.id, s.label]), [['synth', 'Synthesize - Yosys'], ['translate', 'Translate'], ['par', 'Place & Route - nextpnr'],
+  // (the Post-Synthesis model, #2299: Yosys's netlist of the CC_ cells, gatemate-prims.js; no Post-Place & Route one)
+  assert.deepEqual(b.steps.map(s => [s.id, s.label]), [['synth', 'Synthesize - Yosys'], ['postsynth', 'Generate Post-Synthesis Simulation Model'], ['translate', 'Translate'], ['par', 'Place & Route - nextpnr'],
     ['trce', 'Generate Post-Place & Route Static Timing'], ['bitgen', 'Generate Programming File - gmpack']]);
   assert.deepEqual(orderSteps(b.steps, ['bitgen']), ['synth', 'translate', 'par', 'bitgen']);
-  assert.throws(() => orderSteps(b.steps, ['postsynth']), /no step postsynth/);
+  assert.throws(() => orderSteps(b.steps, ['postpar']), /no step postpar/);
   assert.deepEqual(gatemateUtilization({ CC_LUT1: 1, CC_LUT2: 10, CC_L2T4: 20, CC_L2T5: 3, CC_DFF: 26, CC_DLT: 1, CC_ADDF: 12, CC_MX2: 2, CC_MX4: 1, CC_BRAM_20K: 1, CC_BRAM_40K: 1,
     CC_FIFO_40K: 1, CC_MULT: 2, CC_BUFG: 1, CC_PLL: 1, CC_IBUF: 2, CC_OBUF: 3, CC_IOBUF: 1, CC_TOBUF: 1, CC_USR_RSTN: 1 }),
   { luts: 34, flipFlops: 26, latches: 1, ios: 7, carry: 12, muxes: 3, blockRam: 3, multipliers: 2, clockBuffers: 1, dcms: 1, cells: 91 });

@@ -1,10 +1,11 @@
-// Silinx - the simulation models of the iCE40's, ECP5's, Gowin's (#2299, #4362; hidden until now, #3707) and 7-series' flows: the
+// Silinx - the simulation models of the iCE40's, ECP5's, Gowin's (#2299, #4362; hidden until now, #3707), GateMate's (#2431) and 7-series' flows: the
 // Post-Synthesis model, the family's synthesis's netlist (Yosys's write_verilog: its cells, SB_LUT4, TRELLIS_FF, DFFE, FDRE …),
 // and the Post-Place & Route model, nextpnr's routed design (its --write JSON, through Yosys's write_verilog: its packed cells,
 // ICESTORM_LC, TRELLIS_COMB …), each simulated with Silinx's models of the family's cells (packages/silinx-hdl/src/
-// ice40-prims.js, ecp5-prims.js, gowin-prims.js; the 7-series' UNISIM ones, unisim.js, unisim-s6.js, unisim-xc7.js). The
-// 7-series' routed design is made of its sites' cells (SLICE_LUTX, SLICE_FFX …), made UNISIM's cells again (#4362,
-// core/xc7-routed.js). No timing (no SDF). As core/flow-models.js's of the Spartan flows:
+// ice40-prims.js, ecp5-prims.js, gowin-prims.js, gatemate-prims.js; the 7-series' UNISIM ones, unisim.js, unisim-s6.js,
+// unisim-xc7.js). The 7-series' routed design is made of its sites' cells (SLICE_LUTX, SLICE_FFX …), made UNISIM's cells again
+// (#4362, core/xc7-routed.js); the GateMate's Post-Synthesis model only (#2431: nextpnr-himbaechel-gatemate's routed design is
+// made of its CPEs, which Silinx does not model). No timing (no SDF). As core/flow-models.js's of the Spartan flows:
 //   - the design they are made of: synthesized with the generics the test bench (spec.simTop) gives its instance of the
 //     top, declared as the netlist's parameters (its generic map gives them again); without any, this run's synthesis (or the
 //     last run's, in build/open) and this run's routed design (or the last run's, build/open/routed.json);
@@ -20,10 +21,10 @@ import { gowinRoutedCells } from './gowin-routed.js';
 import { xc7RoutedCells } from './xc7-routed.js';
 
 /** The families whose flows make these models (nextpnr's routed design, a library of Silinx's models of their cells). */
-export const NEXTPNR_MODEL_FAMILIES = new Set(['ice40', 'ecp5', 'gowin', 'artix7']);
-const CELLS = { ice40: 'iCE40', ecp5: 'ECP5', gowin: 'Gowin', artix7: '7-series' };
-// the models a family's flow makes: the Post-Synthesis and Post-Place & Route ones
-const nextpnrModels = () => ['postsynth', 'postpar'];
+export const NEXTPNR_MODEL_FAMILIES = new Set(['ice40', 'ecp5', 'gowin', 'artix7', 'gatemate']);
+const CELLS = { ice40: 'iCE40', ecp5: 'ECP5', gowin: 'Gowin', artix7: '7-series', gatemate: 'GateMate' };
+// the models a family's flow makes: the Post-Synthesis and Post-Place & Route ones, the GateMate's Post-Synthesis one (#2431)
+const nextpnrModels = (family) => (family === 'gatemate' ? ['postsynth'] : ['postsynth', 'postpar']);
 const NAMES = { postsynth: 'Post-Synthesis', postpar: 'Post-Place & Route' };
 
 /** The Post-Place & Route model of nextpnr's routed design (its JSON) on a family: its Verilog (run: io.yosys), its module `name`

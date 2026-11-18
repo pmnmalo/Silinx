@@ -153,6 +153,7 @@ const GOWIN_STEPS = [
 // (the GateMate's, open-flow-gatemate.js GATEMATE_STEPS, #2431)
 const GATEMATE_STEPS = [
   step('synth', 'Synthesize - Yosys'),
+  step('postsynth', 'Generate Post-Synthesis Simulation Model'),
   step('translate', 'Translate', ['synth']),
   step('par', 'Place & Route - nextpnr', ['translate']),
   step('trce', 'Generate Post-Place & Route Static Timing', ['par']),
@@ -298,11 +299,12 @@ export const SILINX_GOWIN = {
 };
 
 /** The Silinx toolchain on the GateMate (#2431), with nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn): as the ECP5's,
- *  its bitstream gmpack's .bit; its board not programmed from Silinx (openFPGALoader's, no GateMate's JTAG in Silinx: no
+ *  its bitstream gmpack's .bit, its post-synthesis model Yosys's netlist; its board not programmed from Silinx (openFPGALoader's, no GateMate's JTAG in Silinx: no
  *  Configure Target Device); Emulate on the CCF's pins (#3704). */
 export const SILINX_GATEMATE = {
   id: 'silinx-gatemate', name: 'Silinx toolchain (GateMate)', open: true,
-  steps: withProducts(GATEMATE_STEPS, { synth: ['open/{top}.json', 'open/{top}_stat.txt'], par: ['open/routed.cfg', 'open/routed.json', 'open/nextpnr-report.json'], trce: ['open/timing.txt', 'open/paths.json'], bitgen: ['{top}.bit'] }),
+  steps: withProducts(GATEMATE_STEPS, { synth: ['open/{top}.json', 'open/{top}_stat.txt'], par: ['open/routed.cfg', 'open/routed.json', 'open/nextpnr-report.json'], trce: ['open/timing.txt', 'open/paths.json'], bitgen: ['{top}.bit'],
+    postsynth: ['netgen/synthesis/{top}_synthesis.v'] }),
   reports: [
     { id: 'synthesis', label: 'Synthesis Report (Yosys)', step: 'synth', file: 'open/{top}_stat.txt' },
     { id: 'routed', label: 'Routed Design (Peppercorn configuration)', step: 'par', file: 'open/routed.cfg' },
@@ -311,7 +313,7 @@ export const SILINX_GATEMATE = {
   constraints: CCF,
   messages: LOG_MESSAGES,
   program: null,
-  tree: treeOf(['synth-open', 'map', 'xpwr', 'postsynth', 'posttrans', 'postmap', 'postpar', 'pin2ucf', 'fpgaview', 'tech', 'config'], SILINX_CHANGE),
+  tree: treeOf(['synth-open', 'map', 'xpwr', 'posttrans', 'postmap', 'postpar', 'pin2ucf', 'fpgaview', 'tech', 'config'], SILINX_CHANGE),
   tasks: LAB_TASKS,
 };
 
