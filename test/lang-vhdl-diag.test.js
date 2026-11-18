@@ -2,7 +2,7 @@
 // with the line / column they are reported at and their message.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { diags, sim, vhd, warningsOf } from './lang-util.js';
+import { diags, out, sim, vhd, warningsOf } from './lang-util.js';
 
 const H = 'library ieee; use ieee.std_logic_1164.all; use ieee.numeric_std.all;\n';
 const errs = (src, top = 'tb') => diags(src, top, { lang: 'vhdl' }).filter(d => d.severity === 'error').map(d => `${d.line}:${d.col} ${d.message}`);
@@ -240,4 +240,24 @@ test('bit-string and string literals: characters that are not digits of the base
   // a bit-string literal keeps them as a string does, #4370; before: 010XXX1X, 01X1, 00000001)
   assert.deepEqual(r.out.map(l => l.replace(/^.*Note: /, '')), ['ZZZZ0001 LH0XWX1X LH0X 010XXX1X LHW1 LLLL0001']);
   assert.deepEqual(warningsOf(r), []);
+});
+
+// Regression (#4383): a case's selector whose subtype is not locally static (a concatenation, a conversion or a
+// qualification by an unconstrained type mark) was accepted silently, and only an ISE run reported it (HDLCompiler:803)
+test('a case on a concatenation or a conversion: a warning naming XST\'s HDLCompiler:803; a constrained subtype\'s none (#4383)', () => {
+  const src = vhd(`
+  process begin
+    wait for 1 ns;
+    case std_logic_vector'(a & b) is when "11" => report "q11"; when others => report "q?"; end case;
+    case a & b is when "11" => report "c11"; when others => report "c?"; end case;
+    case std_logic_vector(u) is when "10" => report "u10"; when others => report "u?"; end case;
+    case t2'(a & b) is when "11" => report "t11"; when others => report "t?"; end case;
+    case v is when "01" => report "v01"; when others => report "v?"; end case;
+    case t2'(std_logic_vector(u)) is when "10" => report "tu10"; when others => report "tu?"; end case;
+    wait;
+  end process;`, `subtype t2 is std_logic_vector(1 downto 0);
+  signal a, b : std_logic := '1'; signal u : unsigned(1 downto 0) := "10"; signal v : std_logic_vector(1 downto 0) := "01";`);
+  const W = 'the subtype of the case expression is not locally static (XST: HDLCompiler:803): qualify it with a constrained subtype (subtype t is std_logic_vector(1 downto 0); … case t\'(a & b) is)';
+  assert.deepEqual(diags(src).map(d => `${d.severity} ${d.line}: ${d.message}`), [`warning 11: ${W}`, `warning 12: ${W}`, `warning 13: ${W}`]);
+  assert.deepEqual(out(src), ['q11', 'c11', 'u10', 't11', 'v01', 'tu10']);
 });

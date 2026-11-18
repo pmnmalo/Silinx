@@ -6,10 +6,24 @@ import * as V from './values.js';
 import { walkItems } from './util.js';
 import {
   ElabError, INT, STR, Scope, bindDecl, bindLvalue, checkAssignable, containsKind, ctxSize, diag, evalRange, fitVal,
-  lroot, packageScope, rangeCheck, readsOf, triggersOfReads, walk
+  lroot, packageScope, rangeCheck, readsOf, stdTypeName, triggersOfReads, walk
 } from './elaborate.js';
 
 // ---------------------------------------------------------------- statements
+// A VHDL case's selector of a vector type: its subtype is not locally static (VHDL-93 10.8, XST's HDLCompiler:803,
+// #4383) when it is a concatenation, or a conversion or a qualification by an unconstrained type mark
+// (std_logic_vector'(a & b), std_logic_vector(u))
+function caseStatic(E, e) {
+  if (e.op === 'concat') return false;
+  if ((e.op === 'qualified' || (e.op === 'apply' && e.args?.length === 1)) && !e.pkg) {
+    const name = e.op === 'qualified' ? e.type : e.name;
+    const ent = typeof name === 'string' ? E.sc.lookup(name) : null;
+    if (ent?.kind === 'type') return !ent.t.unconstrained;
+    if (!ent && typeof name === 'string') return !stdTypeName(name)?.unconstrained;
+  }
+  return true;
+}
+
 export function bindBlock(E, stmts, loc) {
   return { k: 'blk', stmts: stmts.map(s => bindStmt(E, s, loc)).filter(Boolean), loc };
 }
@@ -103,6 +117,9 @@ function bindStmt0(E, s, loc) {
     case 'if': return bindIf(E, s, loc);
     case 'case': {
       const sel = bindExpr(E, s.expr, null, loc);
+      if (E.lang === 'vhdl' && sel.t.kind === 'logic' && !caseStatic(E, s.expr)) {
+        diag(E, 'the subtype of the case expression is not locally static (XST: HDLCompiler:803): qualify it with a constrained subtype (subtype t is std_logic_vector(1 downto 0); … case t\'(a & b) is)', loc, 'warning');
+      }
       const items = s.items.map(it => ({
         choices: it.choices.map(ch => {
           if (ch.range) {
