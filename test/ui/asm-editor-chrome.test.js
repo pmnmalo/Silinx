@@ -80,8 +80,13 @@ uiTest('#2730 the ASM editor: no hint, its states in its status line (#2763), it
   await page.eval(() => { const ed = window.Silinx.active.asmEditor; ed.setModel(ed.getModel()); });   // (nothing selected)
   assert.deepEqual(await selected(), []);
   await page.eval(async () => (await import('/js/console.js')).showConsolePage('warnings'));
-  await page.click('#console-warnings .diag');
-  await page.waitFor(() => document.querySelector('.doc:not([hidden]) .asm-node.sel'), [], { what: 'the box selected again' });
+  // (the row shown, and clicked again if the click was lost: the re-check after setModel may draw the tab's rows anew
+  // under the click on a slow runner, #4470)
+  await page.waitFor(() => document.querySelector('#console-warnings .diag')?.getClientRects().length, [], { what: 'the warning shown' });
+  for (let i = 1; ; i++) {
+    await page.click('#console-warnings .diag');
+    try { await page.waitFor(() => document.querySelector('.doc:not([hidden]) .asm-node.sel'), [], { what: 'the box selected again', timeout: 4000 }); break; } catch (e) { if (i === 3) throw e; }
+  }
   assert.deepEqual(await selected(), ['sx']);
   // fixed: its problems gone from the tabs; closed: none left
   await page.eval(() => window.Silinx.active.asmEditor.deleteSelection());
