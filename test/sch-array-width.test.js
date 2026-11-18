@@ -45,7 +45,8 @@ test('#3950 withArrayWidth / arrayWidth: the name for a width and back; 1 a sing
 test('#3950 arrayedDef: D and Q on 8-bit buses drawn 8 wide, named D(7:0), Q(7:0); C and CE on 1-bit nets shared; the title ×8', () => {
   const doc = sheet('reg(7:0)', { D: 8, CE: 1, C: 1, Q: 8 });
   const nl = netlist(doc, { modules: MODS });
-  assert.deepEqual(nl.diagnostics.map(d => d.message), []);
+  // (C and CE not ticked in Shared pins: shared all the same, said in a warning each, #4451)
+  assert.deepEqual(nl.diagnostics.map(d => d.message), ["reg(7:0): pin CE is shared by its 8 copies: its net 'n_CE' is 1 bit wide; tick it in Shared pins, or connect it to a 8-bit bus", "reg(7:0): pin C is shared by its 8 copies: its net 'n_C' is 1 bit wide; tick it in Shared pins, or connect it to a 8-bit bus"]);
   const s = doc.symbols[0], def = symbolDef(s, MODS), d = arrayedDef(s, def, nl);
   assert.deepEqual(d.pins.map(p => [p.name, p.width, p.label ?? null]), [['D', 8, 'D(7:0)'], ['CE', 1, null], ['C', 1, null], ['Q', 8, 'Q(7:0)']]);
   assert.deepEqual([d.title, d.copies], ['REG1bit ×8', 8]);
@@ -107,6 +108,7 @@ test('#3950 REG1bit given Width 8: an 8-bit register, its HDL compiled, elaborat
     const doc = sheet('bits', { D: 8, CE: 1, C: 1, Q: 8 }, lang);
     assert.deepEqual(netlist(doc, { modules: MODS }).diagnostics.map(d => d.message), ["width mismatch on net 'n_D': 8 vs 1 bits", "width mismatch on net 'n_Q': 8 vs 1 bits"], `${lang}: a single instance on 8-bit buses`);
     doc.symbols[0].name = withArrayWidth(doc.symbols[0].name, 8).name;
+    doc.symbols[0].params.shared = ['CE', 'C'];   // (its clock and enable ticked in Shared pins, #3966: no warning, #4451)
     assert.equal(doc.symbols[0].name, 'bits(7:0)');
     const g = generateHdl(doc, { lang, modules: MODS });
     assert.deepEqual(g.diagnostics, [], `${lang}: no warnings`);

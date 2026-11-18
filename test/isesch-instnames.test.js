@@ -101,7 +101,7 @@ const HDL = {
 for (const lang of ['vhdl', 'verilog']) {
   test(`#3870 ${lang}: an arrayed instance reg(3:0) written as reg_1(3:0), read back arrayed, its copies reg_1_3 … reg_1_0; its HDL compiled`, () => {
     const mods = { reg1: { name: 'reg1', lang, file: `src/${HDL[lang][0]}`, ports: [P('d'), P('c'), P('q', 'out')] } };
-    const s = { id: 'U', type: 'module', name: 'reg(3:0)', params: { module: 'reg1', generics: {}, ...instanceParams(mods.reg1) } };
+    const s = { id: 'U', type: 'module', name: 'reg(3:0)', params: { module: 'reg1', generics: {}, ...instanceParams(mods.reg1), shared: ['c'] } };
     const doc = sheet(lang, [s], mods);
     // (the markers of d and q 4 bits wide)
     for (const p of doc.ports) if (/_[dq]$/.test(p.name)) p.width = 4;
@@ -112,7 +112,7 @@ for (const lang of ['vhdl', 'verilog']) {
       "'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
     const im = importIseSch(r.xml, { modules: mods, name: 'top', lang });
     assert.deepEqual(im.warnings, []);
-    assert.deepEqual(im.doc.symbols.map(x => [x.type, x.name]), [['module', 'reg_1(3:0)']]);
+    assert.deepEqual(im.doc.symbols.map(x => [x.type, x.name, x.params.shared]), [['module', 'reg_1(3:0)', ['c']]], 'c on its 1-bit net ticked in Shared pins (#4451)');
     assert.deepEqual(netlist(im.doc, { modules: mods }).diagnostics.map(d => d.message), []);
     const code = compiles(im.doc, lang, mods, [{ path: HDL[lang][0], text: HDL[lang][1] }]);
     assert.deepEqual(code.match(lang === 'vhdl' ? /reg_1_\d : entity work\.reg1/g : /reg1 reg_1_\d \(/g),

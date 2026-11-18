@@ -28,7 +28,7 @@ const MODS = { reg1: { name: 'reg1', lang: 'vhdl', ports: PORTS, symbol: SYM } }
 const OUT = { W: [-60, 0], E: [60, 0], N: [0, -60], S: [0, 60] };
 // top: reg(3:0) drawn with SYM, each pin wired to a marker (d and q 4 bits wide)
 function top() {
-  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name: 'reg(3:0)', params: { module: 'reg1', generics: {}, ...instanceParams(MODS.reg1) } };
+  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name: 'reg(3:0)', params: { module: 'reg1', generics: {}, ...instanceParams(MODS.reg1), shared: ['ce', 'c'] } };   // (ticked in Shared pins, #4451; ticked again on the import)
   const wires = [], ports = [];
   for (const p of symbolPins(s, MODS)) {
     const b = { x: p.x + OUT[p.side][0], y: p.y + OUT[p.side][1] };

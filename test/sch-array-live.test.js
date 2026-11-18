@@ -15,10 +15,11 @@ const SRC = {
   verilog: { path: 'src/reg1.v', text: 'module reg1 (input d, input ce, input c, output reg q);\n  always @(posedge c) if (ce) q <= d;\nendmodule\n' },
 };
 
-// the instance `name` of reg1, each pin but those of `open` wired to an I/O marker n_<pin> (d and q `bus` bits wide)
+// the instance `name` of reg1, each pin but those of `open` wired to an I/O marker n_<pin> (d and q `bus` bits wide), ce
+// and c ticked in Shared pins (#3966, #4451)
 function sheet(lang, name, open = [], bus = 4) {
   const mods = { reg1: { ...REG, lang } };
-  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name, params: { module: 'reg1', generics: {}, ports: REG.ports.map(q => ({ ...q })) } };
+  const s = { id: 'U', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name, params: { module: 'reg1', generics: {}, ports: REG.ports.map(q => ({ ...q })), shared: ['ce', 'c'] } };
   const wires = [], ports = [];
   for (const p of symbolPins(s, mods)) {
     if (open.includes(p.name)) continue;

@@ -98,8 +98,11 @@ test('place_instance: a 4-bit register from a 1-bit one, reg(3:0), its pins on n
     ports: [marker('P1', 'd', 'in', 4, 100), marker('P2', 'ce', 'in', 1, 200), marker('P3', 'clk', 'in', 1, 300), marker('P4', 'q', 'out', 4, 100)] };
   await ok('write_file', { project: 'a', path: 'src/top.sch.json', text: JSON.stringify(doc) });
   const r = await ok('place_instance', { project: 'a', path: 'src/top.sch.json', module: 'reg1', name: 'reg(3:0)', x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' } });
-  assert.deepEqual(r.text.split('\n'), ['src/top.sch.json: reg(3:0) (reg1, 4 copies) placed at 300, 200', 'src/top.vhd updated from src/top.sch.json']);
-  assert.deepEqual(r.data.diagnostics, []);
+  // (ce and c on their 1-bit markers: shared by the copies, each said in a warning until ticked in Shared pins, #4451)
+  assert.deepEqual(r.text.split('\n'), ['src/top.sch.json: reg(3:0) (reg1, 4 copies) placed at 300, 200',
+    "WARNING: reg(3:0): pin ce is shared by its 4 copies: its net 'ce' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus", "WARNING: reg(3:0): pin c is shared by its 4 copies: its net 'clk' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus", 'src/top.vhd updated from src/top.sch.json']);
+  assert.deepEqual(r.data.diagnostics.map(d => [d.severity, d.message]), [['warning', "reg(3:0): pin ce is shared by its 4 copies: its net 'ce' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus"], ['warning', "reg(3:0): pin c is shared by its 4 copies: its net 'clk' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus"]]);
+  assert.deepEqual((await ok('set_instance_width', { project: 'a', path: 'src/top.sch.json', instance: 'reg', shared: ['ce', 'c'] })).data.diagnostics, []);
   const hdl = (await ok('read_file', { project: 'a', path: 'src/top.vhd' })).text;
   assert.deepEqual(hdl.match(/reg_\d : entity work\.reg1/g), ['reg_3 : entity work.reg1', 'reg_2 : entity work.reg1', 'reg_1 : entity work.reg1', 'reg_0 : entity work.reg1']);
   assert.match(hdl, /d => d\(2\),\n {6}ce => ce,\n {6}c => clk,\n {6}q => q\(2\)/);
@@ -121,7 +124,7 @@ test('#3950 place_instance width 4 and set_instance_width: the instance\'s Width
   const doc = { version: 4, name: 'top', lang: 'vhdl', generatedFile: 'src/top.vhd', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [],
     ports: [marker('P1', 'd', 'in', 8, 100), marker('P2', 'ce', 'in', 1, 200), marker('P3', 'clk', 'in', 1, 300), marker('P4', 'q', 'out', 8, 100)] };
   await ok('write_file', { project: 'w', path: 'src/top.sch.json', text: JSON.stringify(doc) });
-  const r = await ok('place_instance', { project: 'w', path: 'src/top.sch.json', module: 'reg1', name: 'reg', width: 4, x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' } });
+  const r = await ok('place_instance', { project: 'w', path: 'src/top.sch.json', module: 'reg1', name: 'reg', width: 4, shared: ['ce', 'c'], x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' } });
   assert.equal(r.text.split('\n')[0], 'src/top.sch.json: reg(3:0) (reg1, 4 copies) placed at 300, 200');
   assert.equal(r.data.copies, 4);
   // on the 8-bit buses: a width mismatch, until its Width is 8
@@ -171,9 +174,10 @@ test('#3966 place_instance and set_instance_width shared: an arrayed instance\'s
   assert.deepEqual(JSON.parse((await ok('read_file', { project: 'sh', path: 'src/top.sch.json' })).text).symbols.map(s => s.params.shared), [['ce', 'c']]);
   const c = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: ['c'] });
   assert.equal(c.text.split('\n')[0], 'src/top.sch.json: reg(3:0) already 4 copies; shared pins: c');
-  assert.deepEqual(c.data.diagnostics, []);
+  // (ce unticked, on its 1-bit marker: shared all the same, said in a warning, #4451)
+  assert.deepEqual(c.data.diagnostics.map(d => d.message), ["reg(3:0): pin ce is shared by its 4 copies: its net 'ce' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus"]);
   const none = await ok('set_instance_width', { project: 'sh', path: 'src/top.sch.json', instance: 'reg', shared: [] });
-  assert.deepEqual([none.data.shared, none.data.diagnostics.map(d => d.message)], [[], []]);
+  assert.deepEqual([none.data.shared, none.data.diagnostics.map(d => d.message)], [[], ["reg(3:0): pin ce is shared by its 4 copies: its net 'ce' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus", "reg(3:0): pin c is shared by its 4 copies: its net 'clk' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus"]]);
   assert.equal(JSON.parse((await ok('read_file', { project: 'sh', path: 'src/top.sch.json' })).text).symbols[0].params.shared, undefined);
   // a shared pin on a 4-bit net: its error, not a width mismatch
   const e = await ok('place_instance', { project: 'sh', path: 'src/top.sch.json', module: 'reg1', name: 'r(3:0)', shared: ['ce'], x: 300, y: 600, connect: { ce: 'e(3:0)' } });
@@ -207,4 +211,29 @@ test('#3829 rename_module: its symbol file renamed with it, the module\'s name i
   const k = await ok('rename_module', { project: 'r', module: 'bit_reg', to: 'r1', file: 'keep' });
   assert.deepEqual(k.data.moved, [{ from: 'src/bit_reg.sym.json', to: 'src/r1.sym.json' }]);
   assert.equal(JSON.parse((await ok('read_file', { project: 'r', path: 'src/r1.sym.json' })).text).module, 'r1');
+});
+
+test('#4451 place_instance width 8, then add_markers and connect: the wires adapt to the instance, its pins 8-bit buses', async () => {
+  await ok('new_project', { name: 'ad' });
+  await ok('write_file', { project: 'ad', path: 'src/reg1.vhd', text: REG });
+  await ok('write_file', { project: 'ad', path: 'src/top.vhd', text: 'entity top is end top;\narchitecture a of top is begin end a;\n' });
+  const doc = { version: 4, name: 'top', lang: 'vhdl', generatedFile: 'src/top.vhd', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [], ports: [] };
+  await ok('write_file', { project: 'ad', path: 'src/top.sch.json', text: JSON.stringify(doc) });
+  await ok('place_instance', { project: 'ad', path: 'src/top.sch.json', module: 'reg1', name: 'reg', width: 8, shared: ['ce', 'c'], x: 300, y: 200 });
+  // its open pins' markers: d and q 8 bits wide, the shared ones 1; no warnings
+  const m = await ok('add_markers', { project: 'ad', path: 'src/top.sch.json', instance: 'reg(7:0)' });
+  assert.deepEqual(m.data.markers.map(x => `${x.name}:${x.width}`), ['in1:8', 'in2:1', 'in3:1', 'out1:8']);
+  assert.deepEqual(m.data.diagnostics, []);
+  const hdl = (await ok('read_file', { project: 'ad', path: 'src/top.vhd' })).text;
+  assert.match(hdl, /in1 : in std_logic_vector\(7 downto 0\);/);
+  assert.match(hdl, /reg_7 : entity work\.reg1\n {4}port map \(\n {6}d => in1\(7\),\n {6}ce => in2,\n {6}c => in3,\n {6}q => out1\(7\)/);
+  assert.doesNotMatch((await ok('check_syntax', { project: 'ad', top: 'top' })).text, /ERROR|WARNING/);
+  // another, its d on the first one's q (out1), its q on a name with no range: that net the 8-bit bus (no warning of
+  // sharing)
+  const r = await ok('place_instance', { project: 'ad', path: 'src/top.sch.json', module: 'reg1', name: 'r', width: 8, shared: ['ce', 'c'], x: 300, y: 600, connect: { d: 'out1', ce: 'in2', c: 'in3', q: 'dout' } });
+  assert.deepEqual(r.data.diagnostics.map(d => d.message), ["net 'dout' connects only r(7:0).q"]);
+  // (its module's port q a std_logic: the net dout its 8 bits all the same)
+  assert.match((await ok('read_file', { project: 'ad', path: 'src/top.vhd' })).text, /signal dout : std_logic_vector\(7 downto 0\);/);
+  assert.deepEqual((await ok('check_syntax', { project: 'ad', top: 'top' })).text.split('\n').filter(l => /ERROR|WARNING/.test(l)),
+    ['WARNING:Silinx:646 - "src/top.vhd" Line 16: Signal <dout> is assigned but never used. This unconnected signal will be trimmed during the optimization process.']);
 });

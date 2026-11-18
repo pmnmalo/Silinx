@@ -13,6 +13,7 @@ import { nudgeWire, routePath, wireGrid, cleanPath } from '/core/schpath.js';
 import { setCurve } from '/core/schcurve.js';
 import { newMarkerDir, newMarkerSide } from '/core/schmarker.js';
 import { planMarkers, addMarkers, markersText } from '/core/schmarker-many.js';
+import { pinWidthOn } from '/core/sch-array.js';
 import { clone, snap, onSeg, segDist, cleanPts } from './sch-editor.js';
 
 /** { setTool, renderOpts, startPlace, placeAt, connPoints, pinNear, snapPoint, routeTo, finishWire, wireClick, netClick, ioClick, ioBand } of a
@@ -173,7 +174,7 @@ export function mountTools(ctx) {
     if (near?.port) { flash('There is already an I/O marker here'); return; }
     let width = 1, suggest = '';
     const net = near?.pin ? nl()?.pinNet.get(`${near.sym.id}/${near.pin.name}`) : nl()?.wireNet.get(cw ? cw.w.id : wireNear(p, 0.5)?.w.id);
-    if (near?.pin) width = near.pin.width || net?.width || 1;
+    if (near?.pin) width = pinWidthOn(net, near.sym.id, near.pin.name, near.pin.width) || net?.width || 1;   // (an arrayed instance's pin: N × w, #4451)
     else if (net) width = net.width;
     // its direction what it is on (a pin's, a net's: #1109); on empty space that of the marker added last (#2170); a
     // marker of 1 bit there, with the next free name, wired later (#680)
