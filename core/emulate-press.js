@@ -54,8 +54,10 @@ export function pressHolds() {
     tick(now, { settled = true } = {}) {
       if (settled) for (const [key, at] of starts) if (at === null) starts.set(key, now);
       for (const [key, r] of [...held]) {
+        // (the board's time gone back, a power cycle: let go at once, even with the run in flight not in yet, #4437)
+        if (now < r.from) { held.delete(key); r.go(); continue; }
         if (r.end) { if (!settled) continue; r.until = r.end(now); delete r.end; }
-        if (now >= r.until || now < r.from) { held.delete(key); r.go(); }
+        if (now >= r.until) { held.delete(key); r.go(); }
       }
     },
     flush() {

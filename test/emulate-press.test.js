@@ -102,6 +102,22 @@ test('#3727 pressHolds: a press made while the worker\'s run is in flight counte
   assert.deepEqual([gone.at(-1), holds.size], ['b4', 0]);
 });
 
+test('#4437 pressHolds: a power cycle while the press waits for the run in flight lets it go at once, not after the next run', () => {
+  const holds = pressHolds(), gone = [];
+  const end = (from) => from + 100 * P;
+  // clicked at 1000 cycles with a run in flight; the board powered off and on (its time from 0) before that run is in:
+  // still busy, the button let go now, so that the design's first run after the reset does not see the old click
+  holds.press('btn', { now: 1000 * P, busy: true });
+  holds.release('btn', { until: end, now: 1000 * P, go: () => gone.push('btn') });
+  holds.tick(0, { settled: false });
+  assert.deepEqual([gone, holds.size], [['btn'], 0]);
+  // its start known (settled) but not its end yet: the same
+  holds.press('b2', { now: 2000 * P });
+  holds.release('b2', { until: end, now: 2010 * P, go: () => gone.push('b2') });
+  holds.tick(5 * P, { settled: false });
+  assert.deepEqual([gone, holds.size], [['btn', 'b2'], 0]);
+});
+
 const ucfPort = (p) => { const t = p.sig.t, bus = t.w > 1 || (t.kind === 'logic' && !t.scalar); return { name: p.name, dir: p.dir, width: t.w, msb: bus ? t.left : null, lsb: bus ? t.right : null }; };
 
 test('the clock example on the compiled engine at half of real time: a 32 ms click of BTN2 / BTN3 sets the minutes / hours once held, missed when let go at once', { timeout: 300000 }, async () => {
