@@ -20,6 +20,7 @@
 //   pages of one browser (a BroadcastChannel: the tests', no network); trysteroMeeting({ joinRoom, selfId, … }).
 import { b64url } from './collab-crypto.js';
 import { newSigner, PUB_RE, SIG } from './collab-sign.js';
+import { withLoopback } from './collab-loopback.js';
 
 const subtle = () => globalThis.crypto.subtle;
 const HASH = { name: 'ECDSA', hash: 'SHA-256' };
@@ -211,11 +212,12 @@ export function offersOnly(PC) {
 
 /** Trystero's meeting point (its joinRoom and selfId: @trystero-p2p/torrent's), its trackers and WebRTC's settings
  *  (`RTC`: the connections' class, the browser's RTCPeerConnection). The room's messages go as one action: a string or
- *  bytes, marked by a first byte; a join with `answers: false` (a follower's) answers no offer (offersOnly). */
+ *  bytes, marked by a first byte; a join with `answers: false` (a follower's) answers no offer (offersOnly); the remote
+ *  host candidates get their twins at 127.0.0.1 (core/collab-loopback.js: two browsers of one computer, #4494). */
 export function trysteroMeeting({ joinRoom, selfId, trackers = TRACKERS, rtcConfig, RTC = globalThis.RTCPeerConnection } = {}) {
   return {
     async join({ topic, password, maxReceive = 16 << 20, accept = () => true, answers = true }) {
-      const room = joinRoom({ appId: APP_ID, password, relayConfig: { urls: [...trackers] }, rtcConfig, maxReceiveBytes: maxReceive + 1, ...(answers ? {} : { rtcPolyfill: offersOnly(RTC) }) }, topic);
+      const room = joinRoom({ appId: APP_ID, password, relayConfig: { urls: [...trackers] }, rtcConfig, maxReceiveBytes: maxReceive + 1, ...(RTC ? { rtcPolyfill: withLoopback(answers ? RTC : offersOnly(RTC)) } : {}) }, topic);
       const on = { peer: () => {}, leave: () => {}, data: () => {} };
       const dropped = new Set();
       const act = room.makeAction('frame', {
