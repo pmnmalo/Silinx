@@ -137,7 +137,7 @@ function bindStmt0(E, s, loc) {
       if (!E.fb) throw new ElabError('loop outside of a process', loc);
       const init = r.from.k === 'c' ? fitVal(r.from.val, INT) : V.fromInt(0);
       const i = E.fb.alloc(INT, init);
-      sc.def(s.var, { kind: 'loc', i, t: INT, lvl: E.fb.level });
+      sc.def(s.var, { kind: 'loc', i, t: INT, lvl: E.fb.level, loop: true });
       const LE = { ...E, sc };
       return { k: 'forrange', var: i, varT: INT, from: r.from, to: r.to, down: r.down, body: bindStmt(LE, s.body, loc), loc, file: E.file, label: s.label };
     }

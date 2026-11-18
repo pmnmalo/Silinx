@@ -3,7 +3,7 @@
 // delta cycles, signal vs variable semantics and resolved (multiply driven) signals.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { out, sim, vproc, vhd } from './lang-util.js';
+import { out, outW, sim, vproc, vhd } from './lang-util.js';
 
 test('if / elsif / else; nested ifs', () => {
   const r = out(vproc(`
@@ -325,4 +325,31 @@ test('std.env.finish and stop end the simulation', () => {
   process begin wait for 10 ns; report "never 2"; wait; end process;`, '', { ctx: 'use std.env.all;' }));
   assert.deepEqual(r.out, ['x']);
   assert.equal(r.r.status.now, 3000);
+});
+
+// Regression (#4358): a slice whose bounds come from a variable was given the width probed at the variable's initial
+// value (integer'low: 2147483648 bits, an error), or a null one (nothing written to a signal)
+test('slices with a variable\'s bounds: read, written (a variable, a signal), compared, their \'length (#4358)', () => {
+  const r = outW(vhd(`
+  process
+    variable l, d : std_logic_vector(7 downto 0);
+    variable u : std_logic_vector(0 to 7);
+    variable w : integer;
+  begin
+    d := "10110110"; l := (others => '0'); w := 4;
+    l(w - 1 downto 0) := d(w - 1 downto 0);
+    report "l=" & to_string(l);
+    report to_string(d(w - 1 downto 0)) & " " & integer'image(d(w + 1 downto w)'length) & " " & integer'image(d(w - 1 downto w)'length);
+    if d(w - 1 downto 0) = "0110" then report "equal"; end if;
+    l(w + 3 downto w) := x"5";
+    report "l=" & to_string(l);
+    s(w downto 1) <= d(w downto 1);
+    u := (others => '0'); u(1 to w) := d(w - 1 downto 0);
+    report "u=" & to_string(u);
+    w := 0; l := (others => '1'); l(w - 1 downto 0) := d(w - 1 downto 0);
+    report "l=" & to_string(l);
+    wait for 1 ns; report "s=" & to_string(s);
+    wait;
+  end process;`, `signal s : std_logic_vector(7 downto 0) := (others => '0');`));
+  assert.deepEqual(r, ['l=00000110', '0110 2 0', 'equal', 'l=01010110', 'u=00110000', 'l=11111111', 's=00010110']);
 });

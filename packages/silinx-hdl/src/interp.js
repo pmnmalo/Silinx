@@ -120,7 +120,7 @@ export function evalE(n, ctx) {
       if (n.dir && nullSlice(n.dir, V.toNum(l), V.toNum(r))) return V.resize(V.mk(0, 0n, 0n), n.t.w);   // (VHDL null slice)
       const p1 = bitpos(n.base.t, V.toNum(l)), p2 = bitpos(n.base.t, V.toNum(r));
       const lo = Math.min(p1, p2), w = Math.abs(p1 - p2) + 1;
-      return V.resize(V.getBits(b, lo, w), n.t.w);
+      return n.dyn ? V.getBits(b, lo, w) : V.resize(V.getBits(b, lo, w), n.t.w);   // (dyn: its run-time width, #4358)
     }
     case 'pslice': {
       const b = evalE(n.base, ctx), st = evalE(n.start, ctx);

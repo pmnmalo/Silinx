@@ -115,7 +115,8 @@ export function probeCtx(E) {
 
 // A variable: a slot of its frame; one of an enclosing process or subprogram (a procedure declared
 // in a process using the process's variables, #182) names that frame's level (up)
-export const locNode = (E, entry, name) => ({ k: 'loc', i: entry.i, t: entry.t, name, ...(E.fb && entry.lvl != null && entry.lvl !== E.fb.level ? { up: entry.lvl } : {}) });
+// (loop: a for loop's variable, whose first value an elaboration probe knows, #4358)
+export const locNode = (E, entry, name) => ({ k: 'loc', i: entry.i, t: entry.t, name, ...(E.fb && entry.lvl != null && entry.lvl !== E.fb.level ? { up: entry.lvl } : {}), ...(entry.loop ? { loop: true } : {}) });
 
 // ---------------------------------------------------------------- library
 export function buildLibrary(parsedFiles) {
