@@ -13,7 +13,7 @@ import { GOWIN } from '../packages/silinx-fpga/src/open-flow-gowin.js';
 import { yosysNode } from '../packages/silinx-fpga/src/synth-open-node.js';
 import { EXAMPLES, example } from './examples-lib.mjs';
 
-// a test bench's run: its log (warnings marked), until it says it finished or failed
+// a test bench's run: its log (warnings and errors marked: an assert … severity error's text says no ERROR, #4363), until it says it finished or failed
 function run(sources, top, until = 1e11) {
   const lib = compile([...primitiveSources(sources), ...sources]);
   const d = elaborate(lib, top);
@@ -21,8 +21,19 @@ function run(sources, top, until = 1e11) {
   const s = new Simulator(d);
   for (const sig of d.signals) sig.wave = null;
   for (let t = until / 100; t <= until; t += until / 100) { const st = s.run(t); if (st.finished || s.log.some((e) => /Simulation finished OK|ERROR/.test(e.text))) break; }
-  return s.log.map((e) => `${e.kind === 'warning' ? 'WARNING: ' : ''}${e.text}`);
+  return s.log.map((e) => `${e.kind === 'warning' ? 'WARNING: ' : e.kind === 'error' ? 'ERROR: ' : ''}${e.text}`);
 }
+
+// (#4363) a test bench's failed assert … severity error, whose text says no ERROR, then its "Simulation finished OK": marked an
+// error, which the examples' check below refuses
+test('the harness: an assert … severity error marked ERROR, in VHDL and in Verilog', () => {
+  const vhdl = { path: 'tb.vhd', lang: 'vhdl', text: 'entity tb is end;\narchitecture a of tb is\nbegin\n  process begin\n    wait for 10 ns;\n'
+    + '    assert false report "knight rider did not reach the MSB" severity error;\n    report "Simulation finished OK";\n    wait;\n  end process;\nend;\n' };
+  assert.deepEqual(run([vhdl], 'tb', 1e6).filter((l) => /knight|finished/.test(l)), ['ERROR: knight rider did not reach the MSB', 'Simulation finished OK']);
+  const vlog = { path: 'tb.v', lang: 'verilog', text: 'module tb;\n  initial begin\n    #10;\n    $error("knight rider did not reach the MSB");\n'
+    + '    $display("Simulation finished OK");\n  end\nendmodule\n' };
+  assert.deepEqual(run([vlog], 'tb', 1e6).filter((l) => /knight|finished/.test(l)), ['ERROR: knight rider did not reach the MSB', 'Simulation finished OK']);
+});
 
 const cellsSeen = new Set();
 for (const name of EXAMPLES) {
