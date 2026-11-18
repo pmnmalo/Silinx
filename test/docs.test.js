@@ -49,7 +49,9 @@ test('docs: every relative link and anchor of the Markdown files resolves', () =
       n++;
       const [p, a] = url.split('#');
       const target = p ? path.normalize(path.join(path.dirname(f), decodeURIComponent(p))) : f;
-      if (!fs.existsSync(path.join(ROOT, target))) bad.push(`${f}: ${url} (no such file)`);
+      // (its name's case as the file's: a case-insensitive disk, macOS's, finds CIRCUITS.md for circuits.md, Linux's not)
+      const named = t => { const d = path.dirname(path.join(ROOT, t)), b = path.basename(t); return b === '.' || b === '..' || !fs.existsSync(d) || fs.readdirSync(d).includes(b); };
+      if (!fs.existsSync(path.join(ROOT, target)) || !named(target)) bad.push(`${f}: ${url} (no such file)`);
       else if (a && target.endsWith('.md') && !anchors(target).has(a)) bad.push(`${f}: ${url} (no such heading)`);
     }
   }
