@@ -42,7 +42,7 @@ export function icInside(g, d, pins, box, std = getSymbolStandard(), { hops = fa
   const L = d.gates ? insideLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) }))) : null;
   // (an IC with no gates, #4508: its functions' boxes, core/circuit-inside-blocks.js)
   const B = d.gates ? null : blocksLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) })));
-  const used = new Set(L?.gates.length ? d.gates.flatMap((x) => [...x.ins, x.out]) : B ? B.boxes.flatMap((b) => b.pins.map((q) => q.n)) : []);
+  const used = new Set(L?.gates.length ? d.gates.flatMap((x) => [...x.ins, x.out, ...(x.en || []).map(([n]) => n)]) : B ? B.boxes.flatMap((b) => b.pins.map((q) => q.n)) : []);
   for (const q of pins) {
     if (q.name === String(q.n) || used.has(q.n) || q.name === 'NC') continue;
     const [x, y] = at.get(q.n);
@@ -59,6 +59,9 @@ export function icInside(g, d, pins, box, std = getSymbolStandard(), { hops = fa
       : sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', ...pin }));
   });
   for (const gt of L.gates) g.append(...(std === 'iec' ? iecInside(gt) : [ieeeInside(gt)]));
+  // (a three-state IC's, #4505: its lines' branches' dots, its active-low enables' bubbles)
+  for (const [cx, cy] of L.dots ?? []) g.append(sv('circle', { cx, cy, r: 1.5, class: 'circ-gate-dot' }));
+  for (const [cx, cy] of L.bubbles ?? []) g.append(sv('circle', { cx, cy, r: 2, class: 'circ-gate-bubble circ-gate-en' }));
 }
 
 // (a gate facing left: drawn facing right in its box, mirrored about the box's middle; an AND-OR-INVERT's term facing up

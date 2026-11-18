@@ -7,8 +7,9 @@
 // part's pins unturned: written for a DIP-14 (pin 1 at (0, 0), its rows 20 pixels a step, 60 apart). Isomorphic module.
 import { invertsOutput } from './symbol-standard.js';
 
-/** The ICs whose inside has a crossing (#4505), each by name: a new one is added here. */
-export const CROSSING_ICS = ['4023', '4025', '4073', '4075'];
+/** The ICs whose inside has a crossing (#4505), each by name: a new one is added here (the three-state ICs' buses
+ *  across their data lines: core/circuit-inside-tri.js). */
+export const CROSSING_ICS = ['4023', '4025', '4073', '4075', '74240', '74241', '74244', '74242', '74243'];
 
 const KEY = '1,2,8>9;3,4,5>6;11,12,13>10';
 const keyOf = (d) => d.gates.map((g) => `${g.ins.join(',')}>${g.out}`).join(';');
