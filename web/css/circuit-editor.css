@@ -164,4 +164,12 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-pv-sym .gate.nofill, .circuit-editor .circ-pv-sym .clk { fill: none; stroke: var(--pv-symbol); }
 .circuit-editor .circ-pv-sym .box { fill: var(--sch-inst-fill, #e8f0ff); stroke: var(--pv-symbol); stroke-width: 1.5; }
 .circuit-editor .circ-pv-sym circle.gate.pdot { fill: var(--pv-symbol); }
+/* an IEC 60617-12 qualifier in a thumbnail, sized to its box (#4524) */
+.circuit-editor .circ-pv-sym .pv-q { font-family: Arial, Helvetica, sans-serif; font-weight: bold; fill: var(--pv-symbol); stroke: none; }
+/* a part's tip: its drawing larger, its name, what it does, how it is drawn (web/js/symbol-tip.js, #4524) */
+.circuit-editor .sym-tip { position: fixed; z-index: 50; pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  max-width: 300px; padding: 6px 8px; background: var(--m-surface, var(--panel, #fff)); color: var(--m-fg, var(--fg, #000)); border: 1px solid var(--m-border-strong, var(--border, #999));
+  border-radius: 4px; box-shadow: 2px 3px 8px rgba(0,0,0,.25); font-size: 12px; line-height: 1.35; }
+.circuit-editor .sym-tip .sym-tip-name { font-weight: bold; }
+.circuit-editor .sym-tip .sym-tip-how { opacity: .75; font-size: 11px; }
 .kicad-ics-choice, .kicad-with { display: flex; align-items: center; gap: 6px; margin-top: 6px; }   /* (Export ICs as KiCad Symbols…, #4282; the package's choice, #4290) */

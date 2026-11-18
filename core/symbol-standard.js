@@ -62,3 +62,42 @@ export function ieeeGate(fn, { x, y, w, h, r = 3 }) {
         ...(base === 'xor' ? [`M${f(x - 3)},${f(B)} Q${f(x + w / 4 - 3)},${f(M)} ${f(x - 3)},${f(y)}`] : [])];
   return { paths, bubble: inv ? { cx: R + r, cy: M, r } : null, outX: R + (inv ? 2 * r : 0) };
 }
+
+/**
+ * A qualifier's text fitted to a box x, y, w, h of a small drawing (the panels' thumbnails, #4524): { x, y (its
+ * baseline), size (its font's, px), fits }, centred, as large as the box lets it (a bold capital about 0.7 of its height
+ * wide, the box's 70 % high at most), never under min px; fits: whether it fits at min px or more.
+ */
+export function fitQualifier(label, { x, y, w, h }, { min = 6, max = 14 } = {}) {
+  const n = Math.max(1, [...String(label)].length);
+  const room = Math.min(max, h * 0.7, (w * 0.86) / (n * 0.7)), size = Math.max(min, room);
+  const r = (v) => Math.round(v * 10) / 10;
+  return { x: r(x + w / 2), y: r(y + h / 2 + size * 0.36), size: r(size), fits: room >= min };
+}
+
+// a gate's function: what it does (the tips of the Symbols and Parts panels, #4524; translated by web/js/i18n.js)
+const FUNCTION = {
+  and: 'AND: 1 when all of its inputs are 1', nand: 'NAND: AND with an inverted output, 0 when all of its inputs are 1',
+  or: 'OR: 1 when any of its inputs is 1', nor: 'NOR: OR with an inverted output, 1 when all of its inputs are 0',
+  xor: 'XOR: 1 when an odd number of its inputs are 1', xnor: 'XNOR: XOR with an inverted output, 1 when an even number of its inputs are 1',
+  inv: 'Inverter (NOT): its input inverted', buf: 'Buffer: its input unchanged',
+};
+const NAME = { not: 'inv', inv: 'inv', buf: 'buf' };
+/** What a gate (and, nand, or, nor, xor, xnor, not / inv, buf) does, in a line; null for another function. */
+export const gateFunction = (fn) => { const f = String(fn).toLowerCase(); return FUNCTION[NAME[f] ?? f] ?? null; };
+// a distinctive shape's name
+const SHAPE = { and: "the AND's D shape", or: "the OR's shield", xor: "the OR's shield with a second back", buf: 'the triangle' };
+/**
+ * How a gate is drawn in the standard std (ieee, iec), in a line: "IEC 60617-12: a box with ≥1, a bubble on its
+ * output", "IEEE Std 91-1984: the OR's shield, a bubble on its output"; with qualifier (an MSI block's: CTR, MUX…,
+ * fn null), "IEC 60617-12: a box with CTR". Null when there is nothing to say (an MSI block in IEEE).
+ */
+export function symbolLook(fn, std, qualifier = null) {
+  const base = BASE[String(fn).toLowerCase()];
+  const bubble = base && invertsOutput(fn) ? ', a bubble on its output' : '';
+  if (symbolStandardOf(std) === 'iec') {
+    const q = base ? QUALIFIER[base] : qualifier;
+    return q ? `IEC 60617-12: a box with ${q}${bubble}` : null;
+  }
+  return base ? `IEEE Std 91-1984: ${SHAPE[base]}${bubble}` : null;
+}
