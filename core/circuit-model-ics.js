@@ -12,13 +12,15 @@ export const BAR = '̅';
 const P = (at) => (n, name, dir, port) => ({ n, name, dir, ...at(n), port: port ?? name.replace(BAR, '_n').toLowerCase() });
 const P14 = P(dip(14)), P16 = P(dip(16)), P20 = P(dip(20));
 // (`threeState`: its outputs off (Z) once one of its enables [port, level] is not at its level, #4397: the 74373's…; all
-// its outputs, or { enable, outs } those named; `chip` its own part number, else the family's)
+// its outputs, or { enable, outs } those named, or { sections: [{ enable, outs }] } each its own, the 74253's; `chip` its
+// own part number, else the family's)
 /** An IC written once in VHDL: its pins (by number), its core (its storage elements, or its VHDL's { decl, body }). */
 export function ic(type, title, tpd, pins, core, family = 'ttl', threeState = null, chip = null) {
-  const ts = Array.isArray(threeState) ? { enable: threeState } : threeState;
+  const ts = Array.isArray(threeState) ? { enable: threeState } : threeState?.sections
+    ? { ...threeState, enable: threeState.sections.flatMap((s) => s.enable), outs: threeState.sections.flatMap((s) => s.outs) } : threeState;
   const outs = ts && (ts.outs ?? pins.filter((p) => p.dir === 'out').map((p) => p.port));
   return { type, title, kind: 'ic', family, chip: chip ?? (family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`), tpd, dip: pins.length,
-    pins: ts ? pins.map((p) => (outs.includes(p.port) ? { ...p, tri: true } : p)) : pins, ...(ts ? { threeState: { enable: ts.enable, outs } } : {}),
+    pins: ts ? pins.map((p) => (outs.includes(p.port) ? { ...p, tri: true } : p)) : pins, ...(ts ? { threeState: { enable: ts.enable, outs, ...(ts.sections ? { sections: ts.sections } : {}) } } : {}),
     // (its core's ports: its pins but its outputs' enables, which the IC's entity applies)
     core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(ts?.enable || []).some(([e]) => e === p.port)), core) } };
 }

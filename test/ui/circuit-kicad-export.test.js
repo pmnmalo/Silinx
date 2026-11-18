@@ -34,7 +34,7 @@ uiTest('Circuit editor ⋮: Export ICs as KiCad Symbols…, Export Parts as KiCa
   // this circuit's ICs: the 7486 and the 7408
   await menu(page, 'circ-export-ics');
   await page.waitFor(() => document.querySelector('.dlg-overlay [data-field=ics-circuit]'), [], { what: 'the dialog' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kicad-ics-choice')].map((l) => l.textContent)), ['All the library\'s ICs (155)', 'This circuit\'s ICs (2)']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kicad-ics-choice')].map((l) => l.textContent)), ['All the library\'s ICs (167)', 'This circuit\'s ICs (2)']);
   await page.click('.dlg-overlay [data-field=ics-circuit]');
   await page.click('.dlg-overlay .dlg-buttons .primary');
   const sym = fs.readFileSync(await waitDownload(page, 'silinx-ics.kicad_sym'), 'utf8');
@@ -46,7 +46,7 @@ uiTest('Circuit editor ⋮: Export ICs as KiCad Symbols…, Export Parts as KiCa
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay [data-field=identifier]').value), 'org.example.circexport');
   // (what goes with the project's parts: nothing by default, the library's ICs, or all its parts with their footprints)
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kicad-with')].map((l) => [l.textContent, l.querySelector('input').checked])),
-    [['The project\'s parts only', true], ['With the library\'s ICs (155)', false], ['With the library\'s parts (169), their footprints too', false]]);
+    [['The project\'s parts only', true], ['With the library\'s ICs (167)', false], ['With the library\'s parts (181), their footprints too', false]]);
   await page.click('.dlg-overlay .dlg-buttons .primary');
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent === 'ERROR: Export Parts as KiCad Package: author: missing'), [], { what: 'its error' });
   assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay [data-field=author]')), 'the dialog open');
@@ -59,9 +59,9 @@ uiTest('Circuit editor ⋮: Export ICs as KiCad Symbols…, Export Parts as KiCa
   assert.equal(pkg.symbols.find((s) => s.name === 'Silinx.kicad_sym').text, partsLibrary().symbols);
   assert.deepEqual(pkg.footprints.map((f) => `${f.library}/${f.name}`), partsLibrary().footprints.map((f) => `Silinx/${f.name}`));
   const back = kicadPartsOf({ 'parts/Silinx.kicad_sym': pkg.symbols.find((s) => s.name === 'Silinx.kicad_sym').text, ...Object.fromEntries(pkg.footprints.map((f) => [`parts/Silinx.pretty/${f.name}`, f.text])) });
-  assert.deepEqual([back.defs.length, back.skipped, back.defs.filter((d) => d.behaves).length], [EXPORTED_PARTS.length, [], 158]);
+  assert.deepEqual([back.defs.length, back.skipped, back.defs.filter((d) => d.behaves).length], [EXPORTED_PARTS.length, [], 170]);
   assert.deepEqual([pkg.metadata.identifier, pkg.metadata.author, pkg.metadata.license, pkg.metadata.versions[0].version], ['org.example.circexport', { name: 'A Teacher' }, 'CC-BY-SA-4.0', '1.0.0']);
-  assert.ok((await lines(page)).includes('circexport-kicad.zip written: the KiCad package org.example.circexport 1.0.0 of 1 file(s) of CircExport\'s parts/ and 169 part(s) of the library'));
+  assert.ok((await lines(page)).includes('circexport-kicad.zip written: the KiCad package org.example.circexport 1.0.0 of 1 file(s) of CircExport\'s parts/ and 181 part(s) of the library'));
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.click(`${ED} .tb-more-btn`);
@@ -71,7 +71,7 @@ uiTest('Circuit editor ⋮: Export ICs as KiCad Symbols…, Export Parts as KiCa
   await page.waitFor(() => document.querySelector('.dlg-overlay .dlg-title span')?.textContent === 'Exportar peças como pacote KiCad', [], { what: 'the dialog in Portuguese' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid label')].map((l) => l.textContent)), ['Identificador:', 'Nome:', 'Descrição:', 'Autor:', 'Licença:', 'Versão:']);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kicad-with')].map((l) => l.textContent)),
-    ['Só as peças do projeto', 'Com os CIs da biblioteca (155)', 'Com as peças da biblioteca (169), também os seus footprints']);
+    ['Só as peças do projeto', 'Com os CIs da biblioteca (167)', 'Com as peças da biblioteca (181), também os seus footprints']);
   await page.click('.dlg-overlay .dlg-buttons .btn:not(.primary)');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);

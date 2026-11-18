@@ -118,10 +118,15 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
       const o = ic.core.run ? ic.core.run(i) : {};
       // (three-state outputs, a 74373's: off once an enable is not at its level, X while one is unknown)
-      const en = (ic.def.threeState?.enable || []).map(([p, a]) => (i[p] === 'X' ? 'X' : i[p] === a ? '1' : '0'));
-      const off = en.includes('0') ? 'Z' : en.includes('X') ? 'X' : null;
+      // (an output's own section's, the 74253's)
+      const ts = ic.def.threeState;
+      const offOf = (port) => {
+        if (!ts?.outs.includes(port)) return null;
+        const en = (ts.sections?.find((s) => s.outs.includes(port)) ?? ts).enable.map(([p, a]) => (i[p] === 'X' ? 'X' : i[p] === a ? '1' : '0'));
+        return en.includes('0') ? 'Z' : en.includes('X') ? 'X' : null;
+      };
       // (an open collector, the 74596's: a 0, or nothing)
-      for (const x of ic.outs) { const v = !on ? 'Z' : (off && ic.def.threeState.outs.includes(x.port) ? off : o[x.port] ?? 'X'); drive(x.d, x.oc && v === '1' ? 'Z' : v); }
+      for (const x of ic.outs) { const v = !on ? 'Z' : (offOf(x.port) ?? o[x.port] ?? 'X'); drive(x.d, x.oc && v === '1' ? 'Z' : v); }
     } else if (ic.def.model) {
       const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
       const o = !on ? null : Object.values(i).includes('X') ? 'X' : ic.def.model(Object.fromEntries(Object.entries(i).map(([k, v]) => [k, Number(v)])));
