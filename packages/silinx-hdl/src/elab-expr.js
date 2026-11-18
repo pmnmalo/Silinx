@@ -5,6 +5,7 @@
 // takes the types, scopes and binders it needs from elaborate.js (the two only call each other: they load in either
 // order).
 import * as V from './values.js';
+import { walk } from './bound-walk.js';
 import { evalE, strToVal, bitpos } from './interp.js';
 import { mapBits, weakBits } from './vhdl/parser.js';
 import { MAX_BITS, MAX_ELEMENTS, widthMessage } from './util.js';
@@ -342,6 +343,13 @@ function indexNode(E, base, idxExpr, loc) {
   return { k: 'bit', base, index, t: BIT, ...(E.lang === 'vhdl' ? { chk: true } : {}) };
 }
 
+// A bound that reads a variable other than a loop's (whose value at elaboration is its initial one, #4358)
+function varBound(n) {
+  let found = false;
+  walk(n, x => { if (x.k === 'loc' && !x.loop) found = true; return !found; });
+  return found;
+}
+
 export function sliceNode(E, base, leftE, rightE, loc, dir) {
   const left = bindExpr(E, leftE, null, loc), right = bindExpr(E, rightE, null, loc);
   // a slice of a string (s(1 to n), n known at run time too): a string
@@ -369,15 +377,20 @@ export function sliceNode(E, base, leftE, rightE, loc, dir) {
   // A VHDL slice keeps its direction: against it, it is null (`v(i + N - 1 downto i)` with N = 0,
   // #61): no element, nothing read or written
   const vdir = E.lang === 'vhdl' && dir ? dir : undefined;
-  let w;
+  let w, l, r;
   try {
     // (probe: loop variables are not at real values yet, so no run-time checks)
     const ctx = probeCtx(E);
-    const l = V.toNum(evalE(left, ctx)), r = V.toNum(evalE(right, ctx));
+    l = V.toNum(evalE(left, ctx)); r = V.toNum(evalE(right, ctx));
     w = vdir && (vdir === 'downto' ? l < r : l > r) ? 0 : Math.abs(l - r) + 1;
   } catch {
     throw new ElabError('slice bounds must be constant (or depend only on loop variables)', loc);
   }
+  // VHDL, a slice whose bounds come from a variable (not a loop's), probed outside its prefix (the variable at its
+  // initial value: `l(w - 1 downto 0)` with w's integer'low, #4358): its width is known at run time only; its type
+  // has the prefix's, and its value keeps the run-time width (an assignment takes the target's)
+  const inBase = x => { const p = bitpos(base.t, x); return p >= 0 && p < base.t.w; };
+  if (vdir && (!inBase(l) || !inBase(r)) && [left, right].some(varBound)) return { k: 'dslice', base, left, right, t: vecT(base.t.w), dir: vdir, dyn: true };
   return { k: 'dslice', base, left, right, t: vecT(w), ...(vdir ? { dir: vdir } : {}) };
 }
 
@@ -619,7 +632,16 @@ function bindAttr(E, e, loc) {
     case 'event':
       if (!edgeOperand(node)) throw new ElabError("'event requires a signal", loc);
       return { k: 'event', ...edgeOperand(node), t: BOOL };
-    case 'length': return cint(t.kind === 'array' ? t.len : t.w);
+    case 'length': {
+      // a slice of run-time bounds (#4358): left - right + 1 (downto) or right - left + 1 (to), 0 if null
+      if (node?.k === 'dslice' && node.dyn) {
+        const [hi, lo] = node.dir === 'downto' ? [node.left, node.right] : [node.right, node.left];
+        const int = x => ({ k: 'conv', a: x, ext: !!x.t.s, t: INT });
+        const n = { k: 'bin', o: '+', a: { k: 'bin', o: '-', a: int(hi), b: int(lo), t: INT }, b: cint(1), t: INT };
+        return { k: 'cond', c: { k: 'bin', o: '>', a: n, b: cint(0), t: BOOL }, a: n, b: cint(0), t: INT, vh: true };
+      }
+      return cint(t.kind === 'array' ? t.len : t.w);
+    }
     case 'ascending': return { k: 'c', val: V.fromBool(t.kind === 'int' ? !t.rdown : t.kind === 'enum' || t.kind === 'bool' ? true : !t.desc), t: BOOL };
     case 'left': return cint(t.left);
     case 'right': return cint(t.right);
