@@ -41,7 +41,9 @@ const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decod
   ...Object.fromEntries([7442, 74145, 74137, 74237, 74238, 74154, 74155, 74156, 7446, 7449].map((t) => [t, 'decoder'])), 74147: 'encoder', 74148: 'encoder',
   // (group F's multiplexers, ALU, carry generator, parity and comparator, #4397: the 74280's parity an XOR)
   74158: 'mux2', 74257: 'mux2', 74258: 'mux2', 74253: 'mux4', 74352: 'mux4', 74353: 'mux4', 74251: 'mux8', 74298: 'register', 74181: 'add', 74182: 'add',
-  74280: 'xor4', 74688: 'compare' };
+  74280: 'xor4', 74688: 'compare',
+  // (group F's register files and shift register, #4397; its addressable latches the panel's latch, as the 7475's)
+  74670: 'register', 74170: 'register', 74395: 'register' };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */
 function symbolOfPart(type) {
   const d = partDef(type);

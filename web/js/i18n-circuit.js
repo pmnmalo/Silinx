@@ -197,6 +197,10 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Quad 2-input multiplexer with storage (falling edge)': 'Quatro multiplexadores de 2 entradas com registo (flanco descendente)',
   '4-bit arithmetic logic unit': 'Unidade aritmética e lógica de 4 bits', 'Look-ahead carry generator': 'Gerador de transporte antecipado',
   '9-bit odd/even parity generator/checker': 'Gerador/verificador de paridade par/ímpar de 9 bits', '8-bit identity comparator': 'Comparador de igualdade de 8 bits',
+  // (the memories and storage ICs written once in VHDL, #4397)
+  '4 × 4 register file, 3-state outputs': 'Banco de registos de 4 × 4, saídas tri-state', '4 × 4 register file, open-collector outputs': 'Banco de registos de 4 × 4, saídas em coletor aberto',
+  '8-bit addressable latch': 'Latch endereçável de 8 bits', 'Dual 4-bit addressable latch': 'Dois latches endereçáveis de 4 bits',
+  '4-bit cascadable shift register, 3-state outputs (falling edge)': 'Registo de deslocamento de 4 bits em cascata, saídas tri-state (flanco descendente)',
   'Decade counter (divide by 2 and by 5, falling edges)': 'Contador de década (divide por 2 e por 5, flancos descendentes)',
   '4-bit binary counter (divide by 2 and by 8, falling edges)': 'Contador binário de 4 bits (divide por 2 e por 8, flancos descendentes)',
   'Synchronous 4-bit binary counter, asynchronous clear': 'Contador binário síncrono de 4 bits, clear assíncrono',
