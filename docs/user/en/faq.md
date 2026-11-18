@@ -6,7 +6,7 @@
 design to programming the board. Installing it ([Getting started](getting-started.md), way 2) adds the projects as
 folders, Xilinx ISE and AMD Vivado, and the installed programming tools.
 
-**Do I need Xilinx ISE?** Not for the Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S and Tang Nano 9K boards: the
+**Do I need Xilinx ISE?** Not for the Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S, Tang Nano 9K and GateMate evaluation boards: the
 Silinx toolchain builds for them. ISE 14.7 adds the other boards of its families. See
 [Boards and toolchains](boards.md).
 

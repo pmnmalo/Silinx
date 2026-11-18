@@ -6,7 +6,7 @@
 programação da placa. Instalá-lo ([Começar](getting-started.md), forma 2) acrescenta os projetos em pastas, o Xilinx
 ISE e o AMD Vivado, e as ferramentas de programação instaladas.
 
-**Preciso do Xilinx ISE?** Não para as placas Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S e Tang Nano 9K: as
+**Preciso do Xilinx ISE?** Não para as placas Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S, Tang Nano 9K e GateMate de avaliação: as
 ferramentas do Silinx implementam para elas. O ISE 14.7 acrescenta as outras placas das suas famílias. Veja
 [Placas e ferramentas](boards.md).
 

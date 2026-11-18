@@ -39,8 +39,8 @@ async function sourceText(type, { file, lang, pj, entity, arch, ports, uut, temp
     case 'module': return lang === 'vhdl' ? T.vhdlModule(entity, arch, ports, pj) : T.vlogModule(entity, ports, pj);
     case 'package': return T.vhdlPackage(file, pj);
     case 'test_bench': return lang === 'vhdl' ? T.vhdlTestbench(file, uut, pj) : T.vlogTestbench(file, uut, pj);
-    // (the device's format, as New Source's: UCF, the iCE40's PCF, the ECP5's LPF, the Gowin's CST, the 7-series' XDC)
-    case 'constraints': return ({ pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, xdc: T.xdcTemplate }[(await import('../packages/silinx-fpga/src/parts.js')).constraintsFormatOf(pj.device)] || T.ucfTemplate)(pj);
+    // (the device's format, as New Source's: UCF, the iCE40's PCF, the ECP5's LPF, the Gowin's CST, the GateMate's CCF, the 7-series' XDC)
+    case 'constraints': return ({ pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate }[(await import('../packages/silinx-fpga/src/parts.js')).constraintsFormatOf(pj.device)] || T.ucfTemplate)(pj);
     case 'mem': return '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n';
     case 'c': return (await import('../core/c-templates.js')).cTemplate(n);
     case 'cpp': return (await import('../core/c-templates.js')).cppTemplate(n);

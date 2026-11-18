@@ -35,10 +35,12 @@ test('the voltages of the I/O standards', () => {
 });
 
 test('what each format writes of a pin', () => {
-  assert.deepEqual(Object.keys(PIN_ATTRS), ['ucf', 'xdc', 'pcf', 'lpf', 'cst']);
+  assert.deepEqual(Object.keys(PIN_ATTRS), ['ucf', 'xdc', 'pcf', 'lpf', 'cst', 'ccf']);
   assert.deepEqual(pinAttrsOf({ part: 'ice40up5k' }), { iostandard: null, drive: null, slew: null, pull: ['up'], clock: true });
   assert.deepEqual(pinAttrsOf({ part: 'lfe5u-85f' }).drive, ['4', '8', '12', '16']);
   assert.deepEqual(pinAttrsOf({ part: 'gw1nr-9c' }).slew, null);
+  // (the GateMate's CCF, #2431: no I/O standard, its DRIVE and SLEW nextpnr-himbaechel-gatemate's)
+  assert.deepEqual(pinAttrsOf({ part: 'ccgm1a1' }), { iostandard: null, drive: ['3', '6', '9', '12'], slew: ['slow', 'fast'], pull: ['up', 'down', 'keeper'], clock: true });
   assert.equal(pinAttrsOf({ part: 'xc3s250e' }), PIN_ATTRS.ucf);
 });
 

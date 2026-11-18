@@ -193,7 +193,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   (by the names, then the inputs on the switches and the outputs on the LEDs) and changed in a list of the board's
   pins (with no board: the package pins typed); a pin given twice is refused; it writes the `.ucf`, the project's
   constraints file when it has none. On the other families it is the device's format's: the **PCF Wizard** (iCE40, a
-  pull-up per pin), the **LPF Wizard** (ECP5) and the **CST Wizard** (Gowin, each pin's I/O standard its bank's), with
+  pull-up per pin), the **LPF Wizard** (ECP5), the **CST Wizard** (Gowin, each pin's I/O standard its bank's) and the **CCF Wizard** (GateMate), with
   the I/O standard, pull and drive their format writes; a pin that is no pin of the package, or an I/O standard at
   another voltage than its bank's on the board, is refused (Check Constraints says the same of a file edited by hand).
 - **Module Wizard** (*New Source ▸ Module (HDL) ▸ Wizard >*), for beginners: the name, the location and the
@@ -335,7 +335,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   deadlocks, live, reversible, conservative, the reachability graph) and PNML import and export in the ⋮ menu. Its HDL,
   VHDL or Verilog, is generated from it (a register per place, a counter where a place holds more than one token), and
   it converts to a state diagram.
-- **Implementation** with the **Silinx toolchain** (the Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S and Tang Nano 9K
+- **Implementation** with the **Silinx toolchain** (the Basys2, Nexys2, Nexys3, Atlys, iCEBreaker, ULX3S, Tang Nano 9K and GateMate evaluation
   boards, the default; the Basys 3 and Nexys A7 too, an experimental family, AMD Vivado their default; in the
   browser or locally) or with **Xilinx ISE 14.7** (XST → NGDBuild → MAP → PAR → TRCE → BitGen), run
   locally, in Docker or over SSH, with live per-step status (✓ / ⚠ / ✗) in the Processes panel
@@ -348,14 +348,16 @@ for Xilinx FPGAs supported by ISE 14.7.
   (WebPACK parts); the 7-series, the Spartan-7 too, are AMD Vivado's (#3895, [below](toolchains.md#the-artix-7-boards-with-amd-vivado)). Full flows verified to a bitstream on Spartan-3E and Spartan-6. Beyond ISE, the
   Lattice iCE40 (LP, HX, Ultra, UltraPlus) builds with the Silinx toolchain's nextpnr-ice40 and icepack, and the Lattice
   ECP5 (LFE5U, LFE5UM, LFE5UM5G) with nextpnr-ecp5 and ecppack (Project Trellis); the Gowin GW1NR-9C with
-  nextpnr-himbaechel-gowin (Project Apicula) and gowin_pack, Silinx's JavaScript port of Apicula's (#2303).
+  nextpnr-himbaechel-gowin (Project Apicula) and gowin_pack, Silinx's JavaScript port of Apicula's (#2303); the Cologne Chip
+  GateMate CCGM1A1 and CCGM1A2 with nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn, #2431).
 - **Boards and I/O Pin Planning**: Digilent Basys2, Nexys2, Nexys3, Atlys, Cmod S6; Xilinx
   Spartan-3E / Spartan-3A / Spartan-3 starter kits (the Spartan-3A's has no 7-segment display: ISE's build of an
   example that drives one puts it on its expansion headers, J18, J20 and FX2 J17, and says each pin, #3872); Numato
   Mimas V2 and Elbert V2; Papilio One; EDGE Spartan 6 (#3873); Digilent Basys 3, Nexys A7, Arty S7 and Zybo Z7 (#3895);
   1BitSquared iCEBreaker (iCE40, its pins written as a PCF; a 1BitSquared iCEBreaker + PmodVGA for VGA); Radiona ULX3S
   (ECP5, its pins written as an LPF; a Radiona ULX3S + VGA for VGA); Sipeed Tang Nano 9K (Gowin, its pins written as a CST; a
-  Sipeed Tang Nano 9K + VGA for VGA).
+  Sipeed Tang Nano 9K + VGA for VGA); Cologne Chip GateMate FPGA Evaluation Board (GateMate, its pins written as a CCF; a Cologne
+  Chip GateMate FPGA Evaluation Board + VGA for VGA).
   Ports are mapped to board resources by name, the UCF is generated, and pins are checked against
   the board before ISE runs (ISE's bitgen options are the family's: the Elbert V2's and the Spartan-3 Starter Board's
   bitstreams too, #3869).

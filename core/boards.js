@@ -3,6 +3,7 @@
 import { FAMILY } from './boards-family.js';
 import { ULX3S_BOARDS } from './boards-ulx3s.js';
 import { TANGNANO9K_BOARDS } from './boards-tangnano9k.js';
+import { GATEMATE_BOARDS } from './boards-gatemate.js';
 import { VIVADO_BOARDS } from './boards-vivado.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -752,6 +753,8 @@ export const BOARDS = [
   ...ULX3S_BOARDS,
   // (#2303) the Gowin's board: the Tang Nano 9K (boards-tangnano9k.js)
   ...TANGNANO9K_BOARDS,
+  // (#2431) the GateMate's board: Cologne Chip's evaluation board (boards-gatemate.js)
+  ...GATEMATE_BOARDS,
 ];
 
 // Every resource above was transcribed from the source UCF named on its board; mark them.

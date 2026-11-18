@@ -1,15 +1,16 @@
 // Silinx toolchain - a board's constraints file, made from its pin table (ucf.js boardAutoAssign), in the format of its
-// device's family (#2468): UCF, PCF on the iCE40 (pcf.js), LPF on the ECP5 (lpf.js, #2302), CST on the Gowin (cst.js, #2303), XDC on
+// device's family (#2468): UCF, PCF on the iCE40 (pcf.js), LPF on the ECP5 (lpf.js, #2302), CST on the Gowin (cst.js, #2303), CCF on the GateMate (ccf.js, #2431), XDC on
 // the 7-series (xdc.js, #3142).
 import { generateUcf } from './ucf.js';
 import { PCF } from './pcf.js';
 import { LPF } from './lpf.js';
 import { CST } from './cst.js';
+import { CCF } from './ccf.js';
 import { writeXdc } from './xdc.js';
 import { constraintsFormatOf } from './family.js';
 
 // the formats that name a bit as nextpnr does: led<0> (UCF) -> led[0]
-const NEXTPNR_FORMATS = { pcf: PCF, lpf: LPF, cst: CST };
+const NEXTPNR_FORMATS = { pcf: PCF, lpf: LPF, cst: CST, ccf: CCF };
 const pcfName = net => net.replace(/<(\d+)>$/, '[$1]');
 
 /** The text of the constraints of these ports on a device: generateUcf's arguments; the header's leading "UCF" says the format.

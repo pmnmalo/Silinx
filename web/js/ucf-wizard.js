@@ -2,7 +2,7 @@
 // by default), each bit on a pin of the board (assigned from the board as I/O Pin Planning's Auto-assign, then
 // changed at will; with no board, the pins typed) -> summary with the file -> the .ucf written, the project's
 // constraints file when it has none. In the device's format (#2296): the PCF Wizard (iCE40), the LPF Wizard (ECP5), the
-// CST Wizard (Gowin), the XDC Wizard (7-series), their attributes columns of their own (a PCF's pull-up; an LPF's and a
+// CST Wizard (Gowin), the CCF Wizard (GateMate), the XDC Wizard (7-series), their attributes columns of their own (a PCF's pull-up; an LPF's and a
 // CST's I/O standard, pull and drive), the file's checks core/constraints-wizard.js's (the MCP's constraints_wizard's).
 import { api } from './api.js';
 import { h, toast } from './ui.js';

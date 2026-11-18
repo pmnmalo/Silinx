@@ -25,6 +25,7 @@ import { IDENT } from './ident.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { normalizePath } from '../core/import-gate.js';
 import { foldName } from '../core/fold-name.js';
+import { familyProfile } from '../core/family-profile.js';
 
 // files that only Silinx understands: not part of an exported Xilinx ISE project
 export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym)\.json)$/i;   // (a module's symbol too, #3828)
@@ -101,6 +102,12 @@ export async function startProgramming(b = {}) {
   // the device the bitstream must be built for: the project's, else the board's, never the request's (#3040); a
   // mismatch refused unless the request says force
   const opts = { tool: b.tool, cable: b.cable, device: b.device, position: b.position, board, bitfile, expectDevice: expectedDevice(project, board), force: b.force === true };
+  // (a family of the Silinx toolchain whose board Silinx does not program: the GateMate's, #2431, openFPGALoader's)
+  const fam = deviceFamily(opts.expectDevice);
+  if (familyProfile(fam).openFlow?.package && !familyProfile(fam).program) {
+    const tool = board && resolveBoard(board)?.board?.programmer?.tools?.openFPGALoader?.board;
+    throw bad(`a ${familyName(fam)}'s board is not programmed from Silinx: its ${path.basename(bitfile)} is loaded by openFPGALoader${tool ? ` (openFPGALoader -b ${tool} ${path.basename(bitfile)})` : ''}, outside Silinx`);
+  }
   return createJob('program', j => programJob(j, opts), { meta: { project: b.project || null, bitfile, board } });
 }
 

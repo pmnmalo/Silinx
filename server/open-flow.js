@@ -24,7 +24,7 @@ import fss from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deviceFamily, isIseFamily, vivadoDevice, openFlowDevice, noOpenFlowMessage, backendOf, orderSteps, ICE40_PARTS, ECP5_PARTS, GOWIN_DEVICES, resourcesOf, OPEN_STEPS, orderOpenSteps, synthEffort, synthGoal, findDeviceGraph, shippedDevicePath, buildDeviceCache, devicesDir, SHIPPED_DEVICES_DIR, S3E_DEVICES, s6OpenStatus, DB_DIR, hasBitDb, dbPackages, xc7Parts, XILINX_STEPS } from '../packages/silinx-fpga/src/node.js';
+import { deviceFamily, isIseFamily, vivadoDevice, openFlowDevice, noOpenFlowMessage, backendOf, orderSteps, ICE40_PARTS, ECP5_PARTS, GOWIN_DEVICES, GATEMATE_PARTS, resourcesOf, OPEN_STEPS, orderOpenSteps, synthEffort, synthGoal, findDeviceGraph, shippedDevicePath, buildDeviceCache, devicesDir, SHIPPED_DEVICES_DIR, S3E_DEVICES, s6OpenStatus, DB_DIR, hasBitDb, dbPackages, xc7Parts, XILINX_STEPS } from '../packages/silinx-fpga/src/node.js';
 import { findPart } from './devices.js';
 import { ownPackage, ownPresent } from './nextpnr-ice40-fetch.js';
 import { runCommand } from './jobs.js';
@@ -125,7 +125,7 @@ export function openStatus(device, { dbDir = BIT_DB_DIR } = {}) {
   return out;
 }
 
-// the families of YoWASP's tools (the iCE40, #2295; the ECP5, #2302): nextpnr's part, and the package installed or to
+// the families of YoWASP's tools (the iCE40, #2295; the ECP5, #2302; the Gowin, #2303; the GateMate, #2431): nextpnr's part, and the package installed or to
 // download (the release zip leaves it out, #2444)
 const OWN = {
   ice40: { pkg: '@yowasp/nextpnr-ice40', tools: 'nextpnr-ice40 and icepack', has: dev => ICE40_PARTS.includes(dev.replace(/^ice40/, '')),
@@ -135,6 +135,9 @@ const OWN = {
   // (#2303: gowin_pack, Silinx's port of Apicula's)
   gowin: { pkg: '@yowasp/nextpnr-himbaechel-gowin', tools: 'nextpnr-himbaechel-gowin and gowin_pack', has: (dev, pkg, speed) => !!GOWIN_DEVICES[`${dev}/${pkg}${speed}`],
     not: (dev, pkg, speed) => `${dev}-${pkg}${speed}: not a Gowin device of nextpnr-himbaechel-gowin here (${Object.keys(GOWIN_DEVICES).join(', ')})`, part: (dev, pkg, speed) => `${dev}${speed}${pkg}` },
+  // (#2431: Project Peppercorn's gmpack, in the same package)
+  gatemate: { pkg: '@yowasp/nextpnr-himbaechel-gatemate', tools: 'nextpnr-himbaechel-gatemate and gmpack', has: dev => !!GATEMATE_PARTS[dev],
+    not: dev => `${dev}: not a GateMate part of nextpnr-himbaechel-gatemate (${Object.keys(GATEMATE_PARTS).join(', ')})`, part: (dev, pkg) => `${dev}-${pkg}` },
 };
 function ownStatus(device) {
   const own = OWN[deviceFamily(device)];

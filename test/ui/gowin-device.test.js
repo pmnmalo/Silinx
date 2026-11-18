@@ -24,9 +24,9 @@ uiTest('#2303 Design Properties: the Gowin GW1N, its part and speed grade, its s
     const sel = (l) => [...document.querySelectorAll('.dlg-overlay label')].find((x) => x.textContent === l).nextElementSibling;
     const fam = sel('Family:'); fam.value = 'gowin'; fam.dispatchEvent(new Event('change'));
     return { part: sel('Device:').value, speeds: [...sel('Speed:').options].map((o) => o.value), synth: sel('Synthesis Tool:').value, synthOff: sel('Synthesis Tool:').disabled,
-      family: [...fam.options].at(-1).textContent };
+      family: fam.selectedOptions[0].textContent, last: [...fam.options].at(-1).textContent };
   });
-  assert.deepEqual(state, { part: 'gw1nr-9c', speeds: ['-6'], synth: 'silinx', synthOff: true, family: 'Gowin GW1N' });
+  assert.deepEqual(state, { part: 'gw1nr-9c', speeds: ['-6'], synth: 'silinx', synthOff: true, family: 'Gowin GW1N', last: 'GateMate' });
   await page.dialogButton('Cancel');
 });
 

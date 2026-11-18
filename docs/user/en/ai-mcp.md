@@ -61,7 +61,7 @@ MCP server made or imported runs ISE, or programs a board or a PROM, only once y
 `get_report` (the Design Summary and the reports of the last run: with the Silinx toolchain, Yosys's
 statistics for the synthesis and the pack and route summaries for map and par), `program_board` (the board programmed with the
 project's file, as *Configure Target Device*: a .bit into the FPGA, an ECP5's .bit or a Gowin's .fs into its SRAM, an iCE40's .bin
-into its SPI flash; a trusted project only, the client asking first), `lab` (a project's guided labs: listed, a step shown,
+into its SPI flash; a GateMate's board refused, openFPGALoader's; a trusted project only, the client asking first), `lab` (a project's guided labs: listed, a step shown,
 checked on the project and recorded, as *Guided Labs…* does; a lab restarted), `capture_settings` (the logic analyzer's
 capture: the signals of the design to watch on the board, the clock, the depth, the trigger, checked on the design with the block
 RAMs it takes), `capture` (a capture on the board over the JTAG cable, the Basys2's / Nexys2's Digilent Adept USB through

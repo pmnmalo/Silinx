@@ -83,7 +83,7 @@ and their data. nextpnr's routed design is converted to XDL (`fpga/nextpnr-xdl.j
                      │ spec, io
  The orchestrator runFlow: the steps, the log, the report; names no family, no engine
                      │ backendOf(spec.family).mount(ctx)
- The back ends    spartan3e │ spartan6 │ ice40 │ ecp5 │ gowin │ xc7 │ (a new family)
+ The back ends    spartan3e │ spartan6 │ ice40 │ ecp5 │ gowin │ gatemate │ xc7 │ (a new family)
                      │
  The tools        Yosys │ nextpnr │ Silinx's packer (S6, the slice count) │ timing │ bitgen
                      │
@@ -95,7 +95,7 @@ and their data. nextpnr's routed design is converted to XDL (`fpga/nextpnr-xdl.j
 Everything outside the flow comes through `io`, so the same flow runs in Node (files on disk) and in the browser (files
 in memory): the sources, the constraints, the device, the bit database, Yosys, nextpnr, the files written, the report.
 The list is at the top of `src/open-flow-core.js`. nextpnr is one hook by micro-architecture:
-`io.nextpnr.spartan3e`, `io.nextpnr.spartan6`, `io.nextpnr.ice40` (with icepack: `pack(asc)`), `io.nextpnr.xc7` (the 7-series', #3146), `io.nextpnr.ecp5` (with ecppack: `pack(config)`), `io.nextpnr.gowin`.
+`io.nextpnr.spartan3e`, `io.nextpnr.spartan6`, `io.nextpnr.ice40` (with icepack: `pack(asc)`), `io.nextpnr.xc7` (the 7-series', #3146), `io.nextpnr.ecp5` (with ecppack: `pack(config)`), `io.nextpnr.gowin`, `io.nextpnr.gatemate` (with gmpack: `pack(config)`).
 
 ### The back ends
 
@@ -132,7 +132,7 @@ The plan is in #1953 and #2315. For the open toolchains:
 | iCE40 | `synth_ice40` | nextpnr-ice40 | `icepack` | PCF | Works: local server and browser, nextpnr-ice40 downloaded on first use (#2444); its 12 parts in the interface (#2463), the iCEBreaker board (#2517), other boards #2297 |
 | ECP5 | `synth_ecp5` | nextpnr-ecp5 | `ecppack`, Project Trellis | LPF | Works: local server and browser, nextpnr-ecp5 downloaded on first use (30 MB); its 10 parts, the ULX3S board and the examples on it (#2302); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
 | MachXO2 | `synth_lattice -family xo2` (`xo3` for the MachXO3; `synth_machxo2` is gone from Yosys) | nextpnr-machxo2 | `ecppack`, Project Trellis | LPF | Measured, not a family of Silinx yet (#2302): every example builds on the LCMXO2-1200HC and the LCMXO3LF-6900C, below |
-| GateMate | `synth_gatemate -luttree -nomx8` | nextpnr-himbaechel-gatemate | `gmpack`, Project Peppercorn | CCF | Measured, not a family of Silinx yet (#2431): every example builds on the CCGM1A1 (the GateMate A1 Evaluation Board's), the CCGM1A2 crashes nextpnr, below |
+| GateMate | `synth_gatemate -luttree -nomx8` | nextpnr-himbaechel-gatemate | `gmpack`, Project Peppercorn | CCF | Works: local server and browser, downloaded on first use (4 MB); the CCGM1A1 and CCGM1A2, Cologne Chip's evaluation board and the examples on it (#2431); its board not programmed from Silinx (openFPGALoader's), no simulation model yet; the CCGM1A2 by router1, slowly, below |
 | Gowin | `synth_gowin` | nextpnr-himbaechel-gowin | `gowin_pack`, Silinx's JavaScript port of Apicula's (`src/fpga/gowin/`) | CST | Works: local server and browser, downloaded on first use (32 MB); the GW1NR-9C, the Tang Nano 9K and the examples on it, their `.fs` Apicula's byte for byte, the rPLL and the oscillator too (#2303); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
 | Cyclone V | `synth_intel_alm` | nextpnr, not yet stable | Mistral | to be defined | To be measured (#2304) |
 | Xilinx 7-series (Artix-7) | `synth_xilinx` | nextpnr-himbaechel's xilinx, `@silinx/nextpnr-himbaechel-xc7` (#3143) | Silinx, from nextpnr's FASM on Project X-Ray's database (#3144) | XDC | An experimental family (#3146): the Basys 3's XC7A35T and the Nexys A7's XC7A100T (#3145) in the local server (AMD Vivado the default there) and in the browser (#3143: the Basys 3's `.bit` the local server's byte for byte); its timing nextpnr's estimate; every example on both boards, its size and speed below (#3147) |
@@ -156,6 +156,13 @@ resources: Silinx ships none of Apicula's data; the rPLL and the oscillator port
 (#4333); what the GW1N-9C has not, the other PLLs, DLLDLY, the ADC…, refused by name); a port with no pin is an error (nextpnr-himbaechel-gowin places none), so is what it does not place (`src/gowin-checks.js`, #4352: a
 CLKDIV2 not a CLKDIV's only driver, TLVDS_IOBUF; a differential tristate's enable, which it drops, a warning), a
 clock's period a comment of the CST given to nextpnr as `--freq`.
+The GateMate is the fourth (#2431, `src/open-flow-gatemate.js`, `src/ccf.js`): `@yowasp/nextpnr-himbaechel-gatemate` the same way
+(4 MB packed), `io.nextpnr.gatemate` with gmpack (`pack(config)`), the routed design Project Peppercorn's text configuration
+(`open/routed.cfg`), the bitstream `<top>.bit`; its constraints Cologne Chip's CCF (`NET` / `Pin_in` / `Pin_out` / `Pin_inout`,
+`Loc` and the settings after `|`), a clock's period a comment of it (`# create_clock …`) given to nextpnr in an SDC. Its parts
+are the CCGM1A1 and the CCGM1A2 (YoWASP's package has no chip database of the larger ones); the CCGM1A2 is routed by router1
+with `--vopt no-cpe-cp`, below. A crash of nextpnr's (a WebAssembly trap with no `ERROR:` line: uart's placement with seeds 1
+and 2) is placed and routed again with the next seed, up to three times, each a warning.
 The 7-series (#3146, `src/open-flow-xc7.js`) is the first of Silinx's own nextpnr packages on them: `@silinx/nextpnr-himbaechel-xc7` (nextpnr's
 xilinx micro-architecture, about 2.8 MB, and a chip database per device beside it, 3.3 MB the xc7a50t's that the xc7a35t takes),
 `io.nextpnr.xc7`, and the bitstream from its FASM on Project X-Ray's bit database (`bitdb/xc7/<part>.json.gz`, 0.3 MB the
@@ -293,8 +300,12 @@ to 5, of 55 builds: nextpnr crashed once (vga, seed 5: `memory access out of bou
 on two bitstreams with block RAM (micro80 seed 1, stopwatch seed 2: the same trap), the bitstream packed; and in five builds one
 flip-flop's initial value (`FF_INIT 10`, one or two of 9,000 to 17,000 settings) was not read back: either gmpack or
 gmunpack is wrong there, which only a real board or Cologne Chip's own tools (#2301) can tell. On the CCGM1A2 (two dies)
-nextpnr crashes on every example while routing (router2, a WebAssembly exception; router1 fails on `Trying to add value to
-already assigned word CPE2.C_SEL_C`). Not tested on a real board, nor compared with Cologne Chip's place and route.
+nextpnr's router2 throws on every design, even one AND gate: its routing state for every wire of the chip takes 2.3 GB on
+the CCGM1A1 for that gate, and twice as much on the CCGM1A2, past WebAssembly's 4 GiB, and the `std::bad_alloc` is not caught
+(a `WebAssembly.Exception`, no message). router1 routes it, but its routes through a CPE's CP lines write a word twice
+(`Trying to add value to already assigned word CPE2.C_SEL_P`, traffic); with `--vopt no-cpe-cp` they build: gates, blinky
+(72 s) and pong (693 s, 49.8 MHz) measured. That is what Silinx runs on the CCGM1A2 (#2431): router1, `no-cpe-cp`. Not tested
+on a real board, nor compared with Cologne Chip's place and route.
 
 | Example | Yosys: LUT / MX / FF / ADDF / BRAM | CCGM1A1: CPE LTs, FFs, IOs, RAM halves (seed 1) | MHz (seeds 1–5) | Bitstream bytes (seeds 1–5) | Run time |
 |---|---|---|---|---|---|

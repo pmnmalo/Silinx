@@ -15,6 +15,7 @@ export { parseUcf, generateUcf, checkUcf, bitName, boardAutoAssign, periodNs, uc
 export { PCF } from './pcf.js';
 export { LPF } from './lpf.js';
 export { CST } from './cst.js';
+export { CCF } from './ccf.js';
 export { XDC, readXdc, writeXdc } from './xdc.js';
 
 // the flow's steps

@@ -239,6 +239,18 @@ export function cstTemplate(project) {
 `;
 }
 
+export function ccfTemplate(project) {
+  return `# Cologne Chip constraints (CCF) for ${project.name}
+# Target: ${project.device.part}-${project.device.package}
+#
+# Example:
+# NET "clk" Loc = "IO_SB_A8";
+# NET "led[0]" Loc = "IO_EB_B1" | DRIVE=3;
+# NET "btn" Loc = "IO_EB_B0" | PULLUP=true;
+# # create_clock -period 100.000 [get_ports {clk}]
+`;
+}
+
 export function xdcTemplate(project) {
   return `# Xilinx Design Constraints for ${project.name}
 # Target: ${project.device.part}${project.device.speed}-${project.device.package}

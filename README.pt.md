@@ -42,7 +42,7 @@ inglês; laboratórios guiados, avaliação automática, partilha ao vivo e link
 ## Placas
 
 As ferramentas do Silinx implementam para as placas **Basys2**, **Nexys2**, **Nexys3**, **Atlys**, **iCEBreaker**,
-**ULX3S** e **Tang Nano 9K** (e para a Basys 3 e a Nexys A7, uma família experimental) sem mais nada instalado; o
+**ULX3S**, **Tang Nano 9K** e **GateMate de avaliação** (e para a Basys 3 e a Nexys A7, uma família experimental) sem mais nada instalado; o
 Xilinx ISE 14.7 e o AMD Vivado, que instala por si, acrescentam as outras placas. Um projeto de desenho e simulação
 não precisa de placa nenhuma. [Placas e ferramentas](docs/user/pt/boards.md)
 
@@ -55,7 +55,7 @@ não precisa de placa nenhuma. [Placas e ferramentas](docs/user/pt/boards.md)
 - **No browser:** abra **https://pmnmalo.github.io/Silinx/**, clique em *Novo Projeto…* e comece a partir de um
   exemplo. Os projetos ficam no seu browser. Nada a instalar, e funciona também num tablet.
 - **A síntese e o bitstream não precisam de nenhuma ferramenta da Xilinx** para a **Basys2-100 / 250,
-  Nexys2-500 / 1200, Nexys3, Atlys, iCEBreaker, ULX3S e Tang Nano 9K**: as ferramentas do Silinx, o modo por omissão,
+  Nexys2-500 / 1200, Nexys3, Atlys, iCEBreaker, ULX3S, Tang Nano 9K e GateMate de avaliação**: as ferramentas do Silinx, o modo por omissão,
   sintetizam (Yosys), posicionam e encaminham (nextpnr) e escrevem o bitstream, no browser ou no seu computador.
 - **No seu computador:** descarregue o `silinx-<versão>.zip` da
   [última versão](https://github.com/pmnmalo/Silinx/releases/latest), descompacte-o e arranque-o com o Node.js: os
