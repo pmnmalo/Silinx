@@ -258,6 +258,29 @@ test('xc7 fasm: a line that is not FASM, a value too wide, an address backwards:
   bad('A..B', /not FASM/);
 });
 
+test('xc7 fasm: long lines that are not FASM read in a time linear in their length (CodeQL js/polynomial-redos, #4407)', () => {
+  // each took seconds to hours before #4407 (2000 blanks 2.7 s, its time growing with the cube of the length)
+  const n = 50000, bad = (text, re) => assert.throws(() => parseFasm(text), e => e instanceof FasmError && re.test(e.message));
+  const t = performance.now();
+  bad(`A${' '.repeat(n)}!`, /^FASM line 1: not FASM: A {50000}!$/);
+  bad(`${' '.repeat(n)}!`, /^FASM line 1: not FASM: !$/);
+  bad(`A = '${' '.repeat(n)}!`, /^FASM line 1: not FASM: A = ' {50000}!$/);
+  bad(`A = 1${'\t '.repeat(n)}!`, /not FASM/);
+  bad(`A = ${'0'.repeat(n)}'`, /^FASM line 1: not a value: 0{50000}'$/);
+  bad(`A = ${'0'.repeat(n)}_x`, /not FASM/);
+  bad(`A {${',a="x"'.repeat(n)}}`, /^FASM line 1: not an annotation: /);
+  bad(`A { a = "${'\\\\'.repeat(n)}!`, /not FASM/);
+  assert.equal(parseFasm(`A.B = ${'0_'.repeat(n)}1 { a = "${','.repeat(n)}" }${' '.repeat(n)}# ${'x'.repeat(n)}`)[0].value, 1n);
+  assert.ok(performance.now() - t < 2000, `${Math.round(performance.now() - t)} ms`);
+  // the blanks and comments around a line's parts; a comma and a # in an annotation's quoted value
+  assert.deepEqual(parseFasm('\t A.B[3:0] \t=\t 4 \' h 9 \t{ x = "a,#" , y_z = "\\",\\\\" } \t# c').map(f => [f.feature, f.start, f.end, f.value]), [['A.B', 0, 3, 9n]]);
+  assert.deepEqual(parseFasm('{ a = "1" } # only annotations\n  # only a comment\n\t'), []);
+  bad('A { a = "1" } B', /^FASM line 1: not FASM: A \{ a = "1" \} B$/);
+  bad('A { a = "1"', /not FASM/);
+  bad('A } a', /not FASM/);
+  bad('A { a = "1" b = "2" }', /not an annotation/);
+});
+
 test('xc7 bitdb: a tile\'s feature\'s bits (a LUT, a switch box, a block RAM\'s contents), an alias, a pseudo-PIP', () => {
   assert.deepEqual([db.part, db.device, db.fabric], [PART, 'xc7a35t', 'xc7a50t']);
   const clb = db.tile('CLBLL_L_X2Y37');
