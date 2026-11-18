@@ -20,7 +20,7 @@ everything on the way from a design to a programmed board is in it:
 | Pack, place, route, timing, power, bitstream | `src/fpga/` | **Yes** |
 | The device descriptions and the bit databases | `devices/`, `bitdb/` | **Yes**, its data |
 | The steps' order, the families' back ends | `src/open-steps.js`, `open-flow-core.js`, `open-flow-backends.js` | **Yes** |
-| The simulation models (post-synthesis to post-route) | `core/flow-models.js` (the iCE40's, ECP5's, Gowin's and 7-series': `core/flow-models-nextpnr.js`, Verilog netlists of their cells, #2299, #4362; the 7-series' post-synthesis one only), given through `io.simModels` | No, the IDE |
+| The simulation models (post-synthesis to post-route) | `core/flow-models.js` (the iCE40's, ECP5's, Gowin's and 7-series': `core/flow-models-nextpnr.js`, Verilog netlists of their cells, #2299, #4362; the 7-series' routed design's sites' cells made UNISIM's again, `core/xc7-routed.js`), given through `io.simModels` | No, the IDE |
 | Running the flow: a process on disk, a Web Worker in memory | `server/open-flow*.js`, `web/js/open-flow-*.js` | No, the IDE's hosts of `runFlow` |
 | Programming the board | `core/adept.js`, `core/xcf.js`, `server/programmer*.js` | No, the IDE |
 | Xilinx ISE 14.7 | `server/ise.js` runs it; the user installs it | No: another tool, and the open flow's oracle |

@@ -129,6 +129,7 @@ const XC7_STEPS = [
   step('translate', 'Translate', ['synth']),
   step('par', 'Place & Route - nextpnr', ['translate']),
   step('trce', 'Generate Post-Place & Route Static Timing', ['par']),
+  step('postpar', 'Generate Post-Place & Route Simulation Model', ['par']),
   step('bitgen', 'Generate Programming File', ['par']),
 ];
 const ECP5_STEPS = [
@@ -225,14 +226,14 @@ export const SILINX_ICE40 = {
 };
 
 /** The Silinx toolchain on the 7-series (#3146, an experimental family: the Artix-7 of the Basys 3), with nextpnr and the bitstream
- *  from its FASM: nextpnr maps in its Place & Route, its timing is nextpnr's estimate; the Post-Synthesis simulation model only
- *  (#4362: Yosys's netlist of UNISIM's cells), no views of the routed design; Emulate, the board's emulator on the HDL and the XDC's pins (#3704); the board programmed as Vivado's .bit is (iMPACT's page).
+ *  from its FASM: nextpnr maps in its Place & Route, its timing is nextpnr's estimate; the Post-Synthesis and Post-Place & Route simulation
+ *  models (#4362: Yosys's netlist of UNISIM's cells, nextpnr's routed design made of them again), no views of the routed design; Emulate, the board's emulator on the HDL and the XDC's pins (#3704); the board programmed as Vivado's .bit is (iMPACT's page).
  *  The local server's only: the browser edition has NO_FLOW. */
 export const SILINX_XC7 = {
   id: 'silinx-xc7', name: 'Silinx toolchain (7-series, on trial)', open: true,
   steps: withProducts(XC7_STEPS, {
-    synth: ['open/{top}.json', 'open/{top}_stat.txt'], par: ['open/routed.fasm', 'open/nextpnr-report.json'], trce: ['open/timing.txt'], bitgen: ['{top}.bit'],
-    postsynth: ['netgen/synthesis/{top}_synthesis.v'],
+    synth: ['open/{top}.json', 'open/{top}_stat.txt'], par: ['open/routed.fasm', 'open/routed.json', 'open/nextpnr-report.json'], trce: ['open/timing.txt'], bitgen: ['{top}.bit'],
+    postsynth: ['netgen/synthesis/{top}_synthesis.v'], postpar: ['netgen/par/{top}_timesim.v'],
   }),
   reports: [
     { id: 'synthesis', label: 'Synthesis Report (Yosys)', step: 'synth', file: 'open/{top}_stat.txt' },
@@ -243,7 +244,7 @@ export const SILINX_XC7 = {
   messages: LOG_MESSAGES,
   program: { process: 'config', page: 'impact', title: 'iMPACT', target: 'jtag', file: '{top}.bit' },
   // (the logic analyzer: Implement inserts its core with a BSCANE2, #3767)
-  tree: treeOf(['synth-open', 'map', 'xpwr', 'posttrans', 'postmap', 'postpar', 'pin2ucf', 'fpgaview', 'tech'], SILINX_CHANGE),
+  tree: treeOf(['synth-open', 'map', 'xpwr', 'posttrans', 'postmap', 'pin2ucf', 'fpgaview', 'tech'], SILINX_CHANGE),
   tasks: LAB_TASKS,
 };
 

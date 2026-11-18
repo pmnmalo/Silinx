@@ -1,5 +1,6 @@
 // Silinx toolchain - the 7-series' back end (#3146), a family of open-flow-backends.js's: Yosys's synth_xilinx, nextpnr-
-// himbaechel's xilinx micro-architecture (#3143) placing and routing into FASM (open/routed.fasm), and the bitstream written
+// himbaechel's xilinx micro-architecture (#3143) placing and routing into FASM (open/routed.fasm; its routed design, the
+// Post-Place & Route simulation model's, in open/routed.json, #4362), and the bitstream written
 // from the FASM by Silinx's own writer on Project X-Ray's database (fpga/xc7/, #3144); the constraints are XDC (xdc.js).
 // nextpnr comes through io.nextpnr.xc7 { run(args, files, onLine) -> files, chipdb(part, log) -> Uint8Array, router? }
 // (nextpnr-xc7-node.js: the package @silinx/nextpnr-himbaechel-xc7; router: 'router2' where memory is plenty, the local
@@ -15,16 +16,18 @@ import { loadChipdb } from './nextpnr-io.js';
 import { portBits, nextpnrNames } from './nextpnr-ports.js';
 import { fasmToFrames } from './fpga/xc7/frames.js';
 import { bitstreamXc7 } from './fpga/xc7/bitstream.js';
+import { otherNetlist } from './nextpnr-netlist.js';
 
 /** The 7-series' steps, as runFlow runs them (open-steps.js XILINX_STEPS' shape): nextpnr packs in its Place & Route. */
 export const XC7_STEPS = [
   { id: 'synth', label: 'Synthesize - Yosys', needs: [] },
-  // (the post-synthesis simulation model, #4362: Yosys's netlist of UNISIM's cells, core/flow-models-nextpnr.js; no post-place
-  // & route one: nextpnr's routed design is made of its sites' cells)
+  // (the simulation models, #4362, core/flow-models-nextpnr.js: the post-synthesis one Yosys's netlist of UNISIM's cells, the
+  // post-place & route one nextpnr's routed design, its --write JSON, its sites' cells made UNISIM's again)
   { id: 'postsynth', label: 'Generate Post-Synthesis Simulation Model', needs: [] },
   { id: 'translate', label: 'Translate', needs: ['synth'] },
   { id: 'par', label: 'Place & Route - nextpnr', needs: ['translate'] },
   { id: 'trce', label: 'Generate Post-Place & Route Static Timing', needs: ['par'] },
+  { id: 'postpar', label: 'Generate Post-Place & Route Simulation Model', needs: ['par'] },
   { id: 'bitgen', label: 'Generate Programming File', needs: ['par'] },
 ];
 
@@ -204,7 +207,7 @@ export function xc7TimingText(timing, part, seeds = null) {
 /** nextpnr's arguments for Place & Route (its files: chipdb.bin, netlist.json, design.xdc when xdc; out: routed.fasm,
  *  report.json), as the flow runs it and as scripts/xc7-timing-vivado.mjs runs it again for nextpnr's placement (#3803). */
 export const xc7ParArgs = ({ part, router, seed, xdc }) => ['--device', part, '--chipdb', 'chipdb.bin', '--json', 'netlist.json', '-o', 'fasm=routed.fasm',
-  '--report', 'report.json', '--router', router, '--seed', String(seed || 1), '--timing-allow-fail', ...(xdc ? ['-o', 'xdc=design.xdc'] : [])];
+  '--write', 'routed.json', '--report', 'report.json', '--router', router, '--seed', String(seed || 1), '--timing-allow-fail', ...(xdc ? ['-o', 'xdc=design.xdc'] : [])];
 
 function mountXc7(ctx) {
   const { io, spec, log, report, top, ms, now, constraints, netlistText, StepError } = ctx;
@@ -275,6 +278,11 @@ function mountXc7(ctx) {
     // (the BSCANs' chains: features nextpnr's FASM does not write)
     fasm = text(best.out['routed.fasm']) + xc7BscanFeatures(io.bitDb(), netlist.chains);
     report.files.routed = io.write('open/routed.fasm', fasm);
+    // (nextpnr's routed design, its JSON: the Post-Place & Route model's, #4362)
+    if (best.out['routed.json']) {
+      ctx.setRouted?.(text(best.out['routed.json']));
+      io.write('open/routed.json', text(best.out['routed.json']));
+    }
     io.write('open/nextpnr-report.json', JSON.stringify(nreport, null, 2) + '\n');
     const items = xc7PlacedUtilization(nreport, spec.resources, ctx.util, fasm);
     // (the xc7a35t's chip database is the xc7a50t's, #3143: nextpnr does not hold it to the part's own resources)
@@ -314,7 +322,7 @@ function mountXc7(ctx) {
     log(`Bitstream: build/${top}.bit (${bytes.length} bytes${compress ? ', compressed' : ''}, from nextpnr's FASM on Project X-Ray's database)`);
   }
 
-  return { steps: { translate: ctx.readNetlist, par: runPar, trce: runTiming, bitgen: runBitgen } };
+  return { steps: { translate: ctx.readNetlist, par: runPar, trce: runTiming, bitgen: runBitgen }, placeRouteNetlist: otherNetlist(mountXc7, ctx) };
 }
 
 export const XC7 = {

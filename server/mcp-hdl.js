@@ -17,10 +17,10 @@ const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', p
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
 // the models each flow makes (#3707), as the interface's tools (web/js/tool-descriptors.js simModelsOf, toolOf): the Spartan
 // flows', ISE's and the Silinx toolchain's, all four; the iCE40's, ECP5's and Gowin's the post-synthesis and post-place & route
-// ones (#2299, #4362, core/flow-models-nextpnr.js); the Artix-7's the Silinx toolchain's post-synthesis one (#4362), AMD
+// ones (#2299, #4362, core/flow-models-nextpnr.js); the Artix-7's the Silinx toolchain's post-synthesis and post-place & route ones (#4362), AMD
 // Vivado's flow none; none on the other experimental families
 const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth', 'postpar'] };
-const simModelsOfDevice = (device, silinx) => (deviceFamily(device) === 'artix7' ? (silinx ? ['postsynth'] : [])
+const simModelsOfDevice = (device, silinx) => (deviceFamily(device) === 'artix7' ? (silinx ? ['postsynth', 'postpar'] : [])
   : vivadoDevice(device) || experimentalDevice(device) ? []
   : openOnlyDevice(device) ? NEXTPNR_MODELS[deviceFamily(device)] || [] : Object.keys(SIM_MODELS));
 /** True if the 7-series' flow is the Silinx toolchain's: the toolchain asked for (run_process), else the project's synthesis tool
@@ -31,7 +31,7 @@ export const hasSimModels = (device, model, { silinx = false } = {}) => (model ?
 export const noSimModelMessage = (device, model, { silinx = false } = {}) => {
   const made = simModelsOfDevice(device, silinx);
   const names = made.map(m => SIM_MODELS[m].toLowerCase());
-  if (deviceFamily(device) === 'artix7' && !silinx) return `AMD Vivado's flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model of the Artix-7 (the Silinx toolchain's makes its post-synthesis one: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`;
+  if (deviceFamily(device) === 'artix7' && !silinx) return `AMD Vivado's flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model of the Artix-7 (the Silinx toolchain's makes its post-synthesis and post-place & route ones: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`;
   return `the ${familyName(deviceFamily(device))} flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model (${made.length ? `only the ${names.join(' and ')} one${made.length > 1 ? 's' : ''}` : 'only the Spartan flows make them'}): simulate the behavioral model${made.length ? ` or the ${names.join(' or the ')} one` : ''}`;
 };
 const STAGE = { postsynth: 'synth', posttrans: 'translate', postmap: 'map', postpar: 'par' };

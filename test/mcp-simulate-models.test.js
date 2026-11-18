@@ -92,8 +92,9 @@ test('#3707 #2299 #4362 simulate model and run_process …_model: refused on a f
     const only = made.length === 2 ? 'only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one'
       : made.length ? 'only the post-synthesis one): simulate the behavioral model or the post-synthesis one' : 'only the Spartan flows make them): simulate the behavioral model';
     for (const [model, proc, name] of ALL.filter(([m]) => !made.includes(m))) {
-      // (the Basys 3's: AMD Vivado's flow, the project's; the Silinx toolchain's makes the post-synthesis one, test/mcp-xc7.test.js)
-      const message = family === 'Artix-7' ? `AMD Vivado's flow makes no ${name} simulation model of the Artix-7 (the Silinx toolchain's makes its post-synthesis one: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`
+      // (the Basys 3's: AMD Vivado's flow, the project's; the Silinx toolchain's makes the post-synthesis and post-place & route
+      // ones, test/mcp-xc7.test.js)
+      const message = family === 'Artix-7' ? `AMD Vivado's flow makes no ${name} simulation model of the Artix-7 (the Silinx toolchain's makes its post-synthesis and post-place & route ones: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`
         : `the ${family} flow makes no ${name} simulation model (${only}`;
       await fails('simulate', { project, model, time_ns: 100 }, message);
       await fails('simulate', { project, model, generate: true, time_ns: 100 }, message);
@@ -122,8 +123,8 @@ test('#3707 #2299 hasSimModels: the models the interface\'s tools list, on every
     }
   }
   assert.deepEqual([hasSimModels({ part: 'xc3s100e' }), hasSimModels({ part: 'xc6slx16' }), hasSimModels({ part: 'ice40up5k' }), hasSimModels({ part: 'xc7a35t' })], [true, true, true, false]);
-  // (the Artix-7's: the Silinx toolchain's post-synthesis one, #4362; the Spartan-7's none, Vivado's alone)
-  assert.deepEqual(ALL.map(m => hasSimModels({ part: 'xc7a35t' }, m, { silinx: true })), [true, false, false, false]);
+  // (the Artix-7's: the Silinx toolchain's post-synthesis and post-place & route ones, #4362; the Spartan-7's none, Vivado's alone)
+  assert.deepEqual(ALL.map(m => hasSimModels({ part: 'xc7a35t' }, m, { silinx: true })), [true, false, false, true]);
   assert.equal(hasSimModels({ part: 'xc7s50' }, 'postsynth', { silinx: true }), false);
   assert.deepEqual(['postsynth', 'postpar'].map(m => hasSimModels({ part: 'gw1nr-9c' }, m)), [true, true]);
   assert.deepEqual(['postsynth', 'posttrans', 'postpar'].map(m => hasSimModels({ part: 'ice40up5k' }, m)), [true, false, true]);

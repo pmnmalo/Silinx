@@ -132,10 +132,10 @@ test('#800 simTarget: Simulate runs the simulation top, else the first test benc
   assert.deepEqual(SIM.SIM_MODELS.map(([v]) => v), ['', 'postsynth', 'posttrans', 'postmap', 'postpar']);
 });
 
-test('#3707 #2299 #4362 modelChoices: the models of the project\'s tool (the iCE40\'s, ECP5\'s and Gowin\'s post-synthesis and post-place & route, the 7-series\' post-synthesis), Behavioral only where its flow makes none; every one with no tool', async () => {
+test('#3707 #2299 #4362 modelChoices: the models of the project\'s tool (the iCE40\'s, ECP5\'s, Gowin\'s and 7-series\' post-synthesis and post-place & route), Behavioral only where its flow makes none; every one with no tool', async () => {
   const T = await import('../web/js/tool-descriptors.js');
   const all = ['', 'postsynth', 'posttrans', 'postmap', 'postpar'], np = ['', 'postsynth', 'postpar'];
-  for (const [tool, want] of [[T.ISE, all], [T.SILINX, all], [T.SILINX_ICE40, np], [T.SILINX_ECP5, np], [T.SILINX_GOWIN, np], [T.SILINX_XC7, ['', 'postsynth']], [T.VIVADO, ['']], [T.NO_FLOW, ['']], [null, all]]) {
+  for (const [tool, want] of [[T.ISE, all], [T.SILINX, all], [T.SILINX_ICE40, np], [T.SILINX_ECP5, np], [T.SILINX_GOWIN, np], [T.SILINX_XC7, np], [T.VIVADO, ['']], [T.NO_FLOW, ['']], [null, all]]) {
     assert.deepEqual(SIM.modelChoices(tool).map(([v]) => v), want, tool?.id);
   }
 });
