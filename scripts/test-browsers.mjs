@@ -17,7 +17,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // ASM and FSM editors, SSim and the board emulator, projects from the examples, and Yosys
 // (WebAssembly in a Web Worker), the static editions under their Content-Security-Policy (#487), and a tablet
 // by touch (#1130: WebKit as an iPad's Safari), the 7-series' nextpnr in WebAssembly, its router2's memory (#3143), and
-// a shared project's WebRTC between two engines of one computer (#4494)
+// a shared project's WebRTC between two engines of one computer (#4494: in WebKit, a Chrome follower; skipped in Firefox, #4497)
 const CROSS_BROWSER = ['app', 'silinx', 'editing', 'diagrams', 'fsm', 'focus', 'sim-emu', 'projects', 'synth-open', 'standalone', 'standalone-xc7', 'tablet', 'collab-engines']
   .map((n) => `test/ui/${n}.test.js`);
 

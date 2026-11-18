@@ -354,6 +354,13 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   it, the codes are exchanged by hand. Either way a STUN server (`stun.l.google.com`, or this browser's own list)
   finds the connection's addresses. Those servers see the follower's IP address, so the follow dialog names them
   before anything is sent.
+  Two browsers of one computer reach each other through loopback (#4494, `core/collab-loopback.js`): each hides its
+  host address behind an mDNS name (`<uuid>.local`) the other does not resolve, so a remote host candidate at such a
+  name gets a twin at 127.0.0.1 on the same port. This makes the browser send ICE's connectivity checks to a port of
+  its own computer that the peer named, so it is kept narrow: UDP only, mDNS host candidates only, ports of 1024 or
+  more, eight twins at most. The risk left is accepted. What is sent is a STUN binding request with the session's ICE
+  credentials, which nothing answers but that peer's own connection; it carries nothing the peer chose. A peer could
+  name 127.0.0.1 in its own description anyway, and the peer is someone with the link.
 - **A follower** receives the project read only, and nothing it does changes the owner's. The owner may be anyone who
   sent the link, so everything the room shows passes the import gate first (`core/collab-doc.js` `gatedDocFile`):
   each file's size (1 MB), NUL bytes, an HTML page, an XML DTD. A file refused is not shown, and the console gives

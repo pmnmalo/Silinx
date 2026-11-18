@@ -1,13 +1,14 @@
 // The remote host candidates' twins at 127.0.0.1 (#4494, core/collab-loopback.js): two browsers of one computer reach
 // each other over WebRTC through loopback, their host addresses being mDNS names the other does not resolve. On the
 // descriptions of Chrome, Firefox and Safari (their own forms: candidates per media section, at the session's end, \n
-// endings): each UDP host candidate (an mDNS name or an IPv4 address) followed by its twin, the same port and the rest
-// of its line, a foundation of its own; none for a server-reflexive, relayed, TCP, IPv6 or loopback one; MAX_TWINS at
-// most, none twice. A trickled candidate's twin; a connection class whose remote descriptions and candidates get theirs,
-// a twin refused left out, the candidate's own failure its caller's.
+// endings): each UDP host candidate at an mDNS name followed by its twin, the same port and the rest of its line, a
+// foundation of its own; none for a server-reflexive, relayed, TCP, IPv6, IPv4-address or loopback one, nor below port
+// MIN_PORT (a twin sends STUN checks to a port of this computer that the peer named: kept narrow); MAX_TWINS at most,
+// none twice. A trickled candidate's twin; a connection class whose remote descriptions and candidates get theirs, a
+// twin refused left out, the candidate's own failure its caller's.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loopbackSdp, loopbackCandidate, withLoopback, LOOPBACK, MAX_TWINS } from '../core/collab-loopback.js';
+import { loopbackSdp, loopbackCandidate, withLoopback, LOOPBACK, MAX_TWINS, MIN_PORT } from '../core/collab-loopback.js';
 
 // (a description's candidate lines)
 const cands = sdp => sdp.split(/\r?\n/).filter(l => l.startsWith('a=candidate:'));
@@ -33,11 +34,13 @@ const FIREFOX = [
   'a=candidate:3 1 UDP 92217343 192.0.2.40 3478 typ relay raddr 198.51.100.7 rport 61234',
   'a=end-of-candidates', 'a=ice-pwd:1a2b', 'a=ice-ufrag:3c4d', 'a=mid:0', 'a=setup:actpass', 'a=sctp-port:5000', '',
 ].join('\r\n');
-// Safari's, with \n endings (a private IPv4 host candidate, a loopback one already)
+// Safari's, with \n endings (an mDNS host candidate, a private IPv4 one, a loopback one, one at a well-known port)
 const SAFARI = [
   'v=0', 'o=- 99 2 IN IP4 127.0.0.1', 's=-', 't=0 0', 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0',
   'a=candidate:1 1 udp 2122260223 192.168.1.20 52000 typ host generation 0',
   'a=candidate:2 1 udp 2122194687 127.0.0.1 52001 typ host generation 0',
+  'a=candidate:3 1 udp 2122129151 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 52002 typ host generation 0',
+  'a=candidate:4 1 udp 2122063615 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 1023 typ host generation 0',
   'a=mid:0', '',
 ].join('\n');
 
@@ -63,13 +66,16 @@ test('#4494 Firefox\'s description: the mDNS host candidate twinned; the IPv6, s
   assert.ok(out.includes('\r\na=end-of-candidates\r\n'));
 });
 
-test('#4494 Safari\'s description (\\n endings): the IPv4 host candidate twinned, the loopback one not', () => {
+test('#4494 Safari\'s description (\\n endings): the mDNS host candidate twinned; an IPv4 address, a loopback one and one below MIN_PORT not', () => {
   const out = loopbackSdp(SAFARI);
   assert.ok(!out.includes('\r'));
+  assert.equal(MIN_PORT, 1024);
   assert.deepEqual(cands(out), [
     'a=candidate:1 1 udp 2122260223 192.168.1.20 52000 typ host generation 0',
-    'a=candidate:L1 1 udp 2122260223 127.0.0.1 52000 typ host generation 0',
     'a=candidate:2 1 udp 2122194687 127.0.0.1 52001 typ host generation 0',
+    'a=candidate:3 1 udp 2122129151 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 52002 typ host generation 0',
+    'a=candidate:L3 1 udp 2122129151 127.0.0.1 52002 typ host generation 0',
+    'a=candidate:4 1 udp 2122063615 7d1e2f30-aaaa-4bbb-8ccc-0123456789ab.local 1023 typ host generation 0',
   ]);
 });
 
@@ -94,12 +100,17 @@ test('#4494 twins: MAX_TWINS at most in a description, none twice; idempotent; n
 test('#4494 a trickled candidate\'s twin: its media line kept; null for the others and for the end of candidates', () => {
   assert.deepEqual(loopbackCandidate({ candidate: 'candidate:7 1 udp 2122260223 ab12.local 51000 typ host generation 0 ufrag Zx', sdpMid: '0', sdpMLineIndex: 0, usernameFragment: 'Zx' }),
     { candidate: 'candidate:L7 1 udp 2122260223 127.0.0.1 51000 typ host generation 0 ufrag Zx', sdpMid: '0', sdpMLineIndex: 0, usernameFragment: 'Zx' });
-  assert.deepEqual(loopbackCandidate({ candidate: 'candidate:7 1 udp 1 10.0.0.2 51000 typ host' }), { candidate: 'candidate:L7 1 udp 1 127.0.0.1 51000 typ host', sdpMid: null, sdpMLineIndex: null });
+  assert.deepEqual(loopbackCandidate({ candidate: 'candidate:7 1 UDP 1 AB12.LOCAL 1024 typ host' }), { candidate: 'candidate:L7 1 UDP 1 127.0.0.1 1024 typ host', sdpMid: null, sdpMLineIndex: null });
   for (const c of [
     { candidate: 'candidate:8 1 udp 1 203.0.113.5 51000 typ srflx raddr 0.0.0.0 rport 0' },
     { candidate: 'candidate:9 1 tcp 1 ab12.local 9 typ host tcptype active' },
     { candidate: 'candidate:9 1 udp 1 fe80::1 51000 typ host' },
     { candidate: 'candidate:9 1 udp 1 127.0.0.1 51000 typ host' },
+    { candidate: 'candidate:9 1 udp 1 10.0.0.2 51000 typ host' },
+    { candidate: 'candidate:9 1 udp 1 ab12.local 53 typ host' },
+    { candidate: 'candidate:9 1 udp 1 ab12.local 70000 typ host' },
+    { candidate: 'candidate:9 1 udp 1 printer.example.com 51000 typ host' },
+    { candidate: 'candidate:9 1 udp 1 a.b.local 51000 typ host' },
     { candidate: '', sdpMid: '0' }, {}, null, undefined,
   ]) assert.equal(loopbackCandidate(c), null, JSON.stringify(c));
 });
