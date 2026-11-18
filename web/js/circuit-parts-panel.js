@@ -43,7 +43,9 @@ const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decod
   74158: 'mux2', 74257: 'mux2', 74258: 'mux2', 74253: 'mux4', 74352: 'mux4', 74353: 'mux4', 74251: 'mux8', 74298: 'register', 74181: 'add', 74182: 'add',
   74280: 'xor4', 74688: 'compare',
   // (group F's register files and shift register, #4397; its addressable latches the panel's latch, as the 7475's)
-  74670: 'register', 74170: 'register', 74395: 'register' };
+  74670: 'register', 74170: 'register', 74395: 'register',
+  // (group F's decoders read from their datasheets, #4397)
+  4028: 'decoder', 74246: 'decoder', 74247: 'decoder', 74248: 'decoder', 4543: 'decoder', 74348: 'encoder' };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */
 function symbolOfPart(type) {
   const d = partDef(type);

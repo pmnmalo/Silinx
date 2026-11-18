@@ -68,7 +68,7 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   // the library: the 74LS and the 4000 gates; a 4001 placed, its pinout
   // (the Parts panel's categories, #4062: a title, then its parts)
   const groups = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].map((g) => [g.textContent, document.querySelectorAll(`${ed} .circ-lib-part[data-group="${g.textContent}"]`).length]), ED);
-  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 50], ['Gates (4000)', 17], ['MSI (74LS, 4000)', 34], ['Sequential (74LS, 4000)', 71], ['KiCad catalogue', 0]]);   // (the KiCad catalogue folded at first, #4305)
+  assert.deepEqual(groups, [['Breadboards', 2], ['Power', 3], ['Inputs', 6], ['Outputs', 5], ['Gates (74LS)', 50], ['Gates (4000)', 17], ['MSI (74LS, 4000)', 40], ['Sequential (74LS, 4000)', 71], ['KiCad catalogue', 0]]);   // (the KiCad catalogue folded at first, #4305)
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="4001"]`).scrollIntoView({ block: 'center' }), ED);   // (the library scrolls)
   await page.click(`${ED} .circ-lib-part[data-part="4001"]`);
   const free = await page.eval((ed) => { const r = document.querySelector(`${ed} .circ-canvas`).getBoundingClientRect(); return { x: r.left + r.width * 0.75, y: r.top + 24 }; }, ED);
@@ -116,7 +116,7 @@ uiTest('Circuit editor, the MSI ICs (#3900): a 7447 from the library\'s MSI grou
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7447"]`), [ED], { what: 'the library' });
   const group = (title) => page.eval((ed, t) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-group="${t}"]`)].map((b) => b.dataset.part), ED, title);
   assert.deepEqual(await group('MSI (74LS, 4000)'), ['7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
-    '7442', '74145', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449', '74147', '74148',
+    '7442', '74145', '4028', '74137', '74237', '74238', '74154', '74155', '74156', '7446', '7449', '74246', '74247', '74248', '4543', '74147', '74148', '74348',
     '74158', '74257', '74258', '74251', '74253', '74352', '74353', '74298', '74181', '74182', '74280', '74688']);   // (#4397's decoders, encoders, multiplexers…)
   assert.deepEqual(await group('Sequential (74LS, 4000)'), ['7474', '7476', '74112', '7490', '7493', '74161', '74163', '74191', '74193', '74164', '74165', '74194', '74595', '4511', '4017',
     '7473', '7478', '74107', '74109', '74113', '74114', '4013', '4027', '7475', '7477', '74375', '74279', '74174', '74175', '74273', '74377', '74378', '74379', '74173', '74373', '74374', '74573', '74574',

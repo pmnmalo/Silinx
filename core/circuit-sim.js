@@ -118,11 +118,11 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       const i = Object.fromEntries(ic.ins.map((x) => [x.port, readInput(ic.def.family, levels[x.net])]));
       const o = ic.core.run ? ic.core.run(i) : {};
       // (three-state outputs, a 74373's: off once an enable is not at its level, X while one is unknown)
-      // (an output's own section's, the 74253's)
+      // (an output's own section's, the 74253's; an enable one of its outputs, the 74348's GS̅: the core's level)
       const ts = ic.def.threeState;
       const offOf = (port) => {
         if (!ts?.outs.includes(port)) return null;
-        const en = (ts.sections?.find((s) => s.outs.includes(port)) ?? ts).enable.map(([p, a]) => (i[p] === 'X' ? 'X' : i[p] === a ? '1' : '0'));
+        const en = (ts.sections?.find((s) => s.outs.includes(port)) ?? ts).enable.map(([p, a]) => { const v = i[p] ?? o[p]; return v === 'X' || v == null ? 'X' : v === a ? '1' : '0'; });
         return en.includes('0') ? 'Z' : en.includes('X') ? 'X' : null;
       };
       // (an open collector, the 74596's: a 0, or nothing)

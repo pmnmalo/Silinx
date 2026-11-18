@@ -186,6 +186,11 @@ const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its
   'Dual 2-to-4 line decoder/demultiplexer, open collector': 'Dois descodificadores/desmultiplexadores de 2 para 4 linhas, coletor aberto',
   'BCD to 7-segment decoder/driver, open collector, active high': 'Descodificador BCD para 7 segmentos, coletor aberto, ativo a 1',
   '10-line to 4-line priority encoder': 'Codificador de prioridade de 10 para 4 linhas', '8-line to 3-line priority encoder': 'Codificador de prioridade de 8 para 3 linhas',
+  'BCD to 7-segment decoder/driver, open collector (30 V), active low, tails': 'Descodificador BCD para 7 segmentos, coletor aberto (30 V), ativo a 0, com caudas',
+  'BCD to 7-segment decoder/driver, open collector (15 V), active low, tails': 'Descodificador BCD para 7 segmentos, coletor aberto (15 V), ativo a 0, com caudas',
+  'BCD to 7-segment decoder/driver, active high, tails': 'Descodificador BCD para 7 segmentos, ativo a 1, com caudas',
+  'BCD to 7-segment latch/decoder/driver, phase input': 'Latch/descodificador BCD para 7 segmentos, entrada de fase',
+  '8-line to 3-line priority encoder, 3-state outputs': 'Codificador de prioridade de 8 para 3 linhas, saídas tri-state',
   // (the multiplexers, arithmetic, comparators and parity ICs written once in VHDL, #4397)
   'Quad 2-to-1 line multiplexer, inverting': 'Quatro multiplexadores de 2 para 1 linha, inversores',
   'Quad 2-to-1 line multiplexer, 3-state outputs': 'Quatro multiplexadores de 2 para 1 linha, saídas tri-state',

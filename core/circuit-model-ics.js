@@ -21,8 +21,9 @@ export function ic(type, title, tpd, pins, core, family = 'ttl', threeState = nu
   const outs = ts && (ts.outs ?? pins.filter((p) => p.dir === 'out').map((p) => p.port));
   return { type, title, kind: 'ic', family, chip: chip ?? (family === 'ttl' ? `SN74LS${type.slice(2)}` : `CD${type}B`), tpd, dip: pins.length,
     pins: ts ? pins.map((p) => (outs.includes(p.port) ? { ...p, tri: true } : p)) : pins, ...(ts ? { threeState: { enable: ts.enable, outs, ...(ts.sections ? { sections: ts.sections } : {}) } } : {}),
-    // (its core's ports: its pins but its outputs' enables, which the IC's entity applies)
-    core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => !(ts?.enable || []).some(([e]) => e === p.port)), core) } };
+    // (its core's ports: its pins but its outputs' enables, which the IC's entity applies; an enable that is one of its
+    // outputs, the 74348's GS̅, the core's)
+    core: { entity: `ic${type}_core`, vhdl: coreVhdl(`ic${type}_core`, pins.filter((p) => p.dir !== 'in' || !(ts?.enable || []).some(([e]) => e === p.port)), core) } };
 }
 
 // ------------------------------------------------------------------ the cores' VHDL
