@@ -36,6 +36,14 @@ In short:
 
 In detail:
 
+- **WebKit's failed load retried as CI's log says it (#4464):** its address came as `http: /127.0.0.1:…`, which
+  the retry of #4428 did not take; both forms are taken now.
+- **CI's UI tests in four parts per interface (#4463):** a part of three reached the step's 40 minutes (`ci.yml`,
+  `test/ci-workflow.test.js`, `test/test-shard.test.js`).
+- **The UI tests wait 30 s for an imported project (#4462):** every wait for a project opened by Import (21 of them, the
+  pattern of #4438) had the 10 s default, too short on a slow CI runner.
+- **The short-click test scrolls BTN0 into view (#4461):** on CI's runner the board reached below the window and the
+  wait for BTN0 under its centre timed out; the button is scrolled into view first, and a timeout says what is there.
 - **The Merge Contribution UI tests wait 30 s for the imported copy (#4438):** importing the contributed copy took more
   than the 10 s default wait on a slow CI runner.
 - **A power cycle lets a held push button go at once (#4437):** a button clicked while the compiled engine's run was in
