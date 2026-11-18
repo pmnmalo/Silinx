@@ -39,7 +39,7 @@ import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE } from
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
-import { PROTOCOL, SUBPROTOCOL, KIND, NOT_SHARED, fromFrame, toFrame, senderOf } from './collab-wire.js';
+import { PROTOCOL, SUBPROTOCOL, KIND, NOT_SHARED, fromFrame, toFrame, senderOf, roomUrl } from './collab-wire.js';
 
 // (the wire's constants and its marked frames, in a module of their own that imports nothing: the Cloudflare relay's
 // copy of the room's logic, #4541)
@@ -74,6 +74,7 @@ const OPEN_WAIT = 10_000;
 function connection(url, WS, protocols, onControl, onFrame) {
   const ws = new WS(url, protocols);
   ws.binaryType = 'arraybuffer';
+  const at = String(url).split('?')[0];   // (the relay's address, said without the room, #4541)
   let chain = Promise.resolve();   // (frames opened in their order: unsealing is asynchronous)
   ws.addEventListener('message', ev => {
     if (typeof ev.data === 'string') {
@@ -84,10 +85,10 @@ function connection(url, WS, protocols, onControl, onFrame) {
   });
   const opened = new Promise((resolve, reject) => {
     ws.addEventListener('open', resolve, { once: true });
-    ws.addEventListener('error', () => reject(new Error(`cannot reach the relay at ${url}`)), { once: true });
+    ws.addEventListener('error', () => reject(new Error(`cannot reach the relay at ${at}`)), { once: true });
     // (closed before it opened, or not opened in time: #3835, a rejoin waits for neither)
-    ws.addEventListener('close', () => reject(new Error(`cannot reach the relay at ${url}`)), { once: true });
-    setTimeout(() => reject(new Error(`cannot reach the relay at ${url}`)), OPEN_WAIT).unref?.();
+    ws.addEventListener('close', () => reject(new Error(`cannot reach the relay at ${at}`)), { once: true });
+    setTimeout(() => reject(new Error(`cannot reach the relay at ${at}`)), OPEN_WAIT).unref?.();
   });
   let out = Promise.resolve();   // (sent in their order too)
   return {
@@ -224,7 +225,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   };
   // a connection, opened and answered (`hello`: the open, or the resume): { c, answer }; its failure thrown
   const connect = async hello => {
-    const c = connection(url, WS, [SUBPROTOCOL, ...(token ? [`token.${token}`] : [])], msg => control(c, msg), frameIn);
+    const c = connection(hello.type === 'resume' ? roomUrl(url, room) : url, WS, [SUBPROTOCOL, ...(token ? [`token.${token}`] : [])], msg => control(c, msg), frameIn);
     try { await c.opened; } catch (e) { c.ws.close?.(); throw e; }
     const answer = firstAnswer(c, 'opened');
     c.control({ v: PROTOCOL, client: doc.clientID, ...hello });
@@ -460,7 +461,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   };
   // a connection, joined: { c, owner }; its failure thrown (the relay's answer: its message)
   const join = async S => {
-    const c = connection(url, S, [SUBPROTOCOL], msg => control(c, msg), f => frameIn(c, f));
+    const c = connection(roomUrl(url, room), S, [SUBPROTOCOL], msg => control(c, msg), f => frameIn(c, f));
     try { await c.opened; } catch (e) { c.ws.close?.(); throw e; }
     const answer = firstAnswer(c, 'joined');
     c.control({ type: 'join', v: PROTOCOL, room, client: doc.clientID });

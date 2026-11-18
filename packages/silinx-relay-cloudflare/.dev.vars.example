@@ -1,0 +1,3 @@
+# The relay's key: whoever shares a project through this relay gives it (Share Project…'s "Its key"); 24 characters
+# at least. Followers need no key, only the link.
+RELAY_KEY=

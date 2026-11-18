@@ -1,0 +1,70 @@
+// A relay of Silinx's shared projects on Cloudflare Workers (#4541): the endpoints of Silinx's own relay
+// (server/collab-relay.js), /api/collab/share (the owner) and /api/collab/follow (a follower), each room's WebSockets
+// given to that room's Durable Object (src/room-object.js), which runs the room's logic of Silinx's relay. It reads
+// none of a room's messages (they are encrypted with the link's key, which it never sees). What it checks, before a
+// WebSocket reaches a room:
+// - the page's origin: one of ORIGINS (the Silinx sites whose pages use it; a WebSocket with no origin, a program's,
+//   as the MCP server's, let in), as a Silinx server's relay.origins;
+// - opening a room needs the relay's key (its secret RELAY_KEY, in the subprotocols: `silinx-collab`, `token.<key>`),
+//   as a Silinx server's relay.key; joining one needs its room's id (`?room=`, core/collab-wire.js roomUrl);
+// - the subprotocol, `silinx-collab`.
+// The owner's open gets a new room (its id chosen here: the Durable Object's name); its resume (#3835) names its room.
+import { RelayRoom, RELAY_LIMITS } from './room-object.js';
+import { SUBPROTOCOL, ROOM_RE, NOT_SHARED } from './core/collab-wire.js';
+import { b64url } from './core/collab-crypto.js';
+
+export { RelayRoom, RELAY_LIMITS };
+const ROLES = { '/api/collab/share': 'owner', '/api/collab/follow': 'follower' };
+/** What an owner without the relay's key is told (its socket closed, 1008). */
+export const NEEDS_KEY = 'sharing a project needs this relay\'s key';
+export const NO_KEY = 'this relay has no key (its RELAY_KEY secret, 24 characters at least): it opens no room';
+const KEY_MIN = 24;   // (a Silinx server's relay.key's minimum)
+const ABOUT = 'A relay of Silinx\'s shared projects (live sharing): https://github.com/pmnmalo/Silinx\n';
+
+/** The origins a relay lets in: its ORIGINS, separated by commas or spaces. */
+export const originsOf = text => String(text || '').split(/[\s,]+/).filter(Boolean).map(o => o.replace(/\/+$/, ''));
+
+// (two keys compared in a time that does not depend on where they differ: their hashes, byte by byte)
+async function sameKey(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || !b) return false;
+  const h = async t => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)));
+  const [x, y] = [await h(a), await h(b)];
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  return d === 0;
+}
+
+// a participant refused once its WebSocket is open: the reason said, its connection closed, as Silinx's relay does
+function refused(message) {
+  const [client, server] = Object.values(new WebSocketPair());
+  server.accept();
+  server.send(JSON.stringify({ type: 'error', message }));
+  server.close(1008, 'refused');
+  return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': SUBPROTOCOL } });
+}
+
+export default {
+  async fetch(req, env) {
+    const url = new URL(req.url);
+    if (url.pathname === '/' && req.method === 'GET') return new Response(ABOUT, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    const role = Object.hasOwn(ROLES, url.pathname) ? ROLES[url.pathname] : null;
+    if (!role) return new Response('not found', { status: 404 });
+    if (String(req.headers.get('Upgrade')).toLowerCase() !== 'websocket') return new Response('a WebSocket only', { status: 426 });
+    const origin = req.headers.get('Origin');
+    if (origin && !originsOf(env.ORIGINS).includes(origin)) return new Response('cross-origin request refused', { status: 403 });
+    const protocols = String(req.headers.get('Sec-WebSocket-Protocol') || '').split(',').map(s => s.trim());
+    if (!protocols.includes(SUBPROTOCOL)) return new Response('not a Silinx participant', { status: 400 });
+    let room = url.searchParams.get('room');
+    if (role === 'owner') {
+      if (String(env.RELAY_KEY || '').length < KEY_MIN) return refused(NO_KEY);
+      if (!await sameKey(protocols.find(p => p.startsWith('token.'))?.slice(6), env.RELAY_KEY)) return refused(NEEDS_KEY);
+      // (an open: a new room; a resume: its own)
+      if (room === null) room = b64url(crypto.getRandomValues(new Uint8Array(16)));
+    }
+    if (!ROOM_RE.test(String(room))) return refused(NOT_SHARED);
+    const headers = new Headers(req.headers);
+    headers.set('x-silinx-role', role);
+    headers.set('x-silinx-room', room);
+    return env.ROOMS.get(env.ROOMS.idFromName(room)).fetch(new Request(req.url, { headers }));
+  },
+};
