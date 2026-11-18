@@ -17,10 +17,11 @@ const REF = 'silinx_ref', UUT = 'silinx_uut', MITER = 'silinx_miter';
 // the files of the ABC run: the miter's AIG (its one output, trigger) and its map (each input bit's wire), the AIG with
 // every output (ASCII, replayed here; its symbols name its inputs and outputs, a constant one too, which a map leaves
 // out), the witnesses of dsat, bmc3 and pdr
-export const AIG = `${MITER}.aig`, AIG_MAP = `${MITER}.aim`, ALL = 'silinx_all.aag';
+const AIG = `${MITER}.aig`;
+export const AIG_MAP = `${MITER}.aim`, ALL = 'silinx_all.aag';
 export const BMC_CEX = 'silinx_bmc.aiw', PDR_CEX = 'silinx_pdr.aiw', SAT_CEX = 'silinx_sat.aiw';
 // the module of one gate the `abc` pass runs on (its network put back unchanged, so that Yosys reads it again)
-export const ABC_HOST = 'silinx_abc.v';
+const ABC_HOST = 'silinx_abc.v';
 const HOST_TEXT = 'module silinx_abc(input a, b, output y); assign y = a & b; endmodule\n';
 
 // the two modules read as Verify reads them (core/verify.js verifyScript)
