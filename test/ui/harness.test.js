@@ -34,6 +34,8 @@ test('webkitLoadFailure: WebKit\'s refused fetch and module import from the loca
   assert.equal(webkitLoadFailure(load, 'webkit'), true);
   assert.equal(webkitLoadFailure([load[0]], 'webkit'), true);
   assert.equal(webkitLoadFailure(['uncaught: TypeError: Importing a module script failed.'], 'webkit'), true);
+  // (as the WebKit job's log of #4464 said it: the address 'http: /…', alone)
+  assert.equal(webkitLoadFailure(['uncaught: Fetch API cannot load http: /127.0.0.1:41455/api/workspace due to access control checks.'], 'webkit'), true);
   assert.equal(webkitLoadFailure(load, 'firefox'), false);
   assert.equal(webkitLoadFailure(load, 'chrome'), false);
   assert.equal(webkitLoadFailure([], 'webkit'), false);

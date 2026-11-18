@@ -1028,8 +1028,9 @@ async function setupPlaywright({ server, offline }) {
 // tablet: 'landscape' | 'portrait': the page a tablet's (TABLET, #1130)
 // WebKit failing to load from the test's own local server (#4428: a module's import and a request to /api/… refused
 // with "access control checks", the connection dropped under it; WebKit on CI, the same test passing before and after):
-// an engine failure as a crashed page is, when it is all the page errors said
-const WEBKIT_LOAD_FAILURE = /^uncaught: (\w*: )?(Fetch API cannot load http:\/\/127\.0\.0\.1:\d+\/.* due to access control checks\.|(Unhandled Promise Rejection: )?TypeError: Importing a module script failed\.)$/;
+// an engine failure as a crashed page is, when it is all the page errors said (its address as CI's log said it too,
+// "http: /127.0.0.1:…", which the first pattern did not take, #4464)
+const WEBKIT_LOAD_FAILURE = /^uncaught: (\w*: )?(Fetch API cannot load http:(\/\/| \/)127\.0\.0\.1:\d+\/.* due to access control checks\.|(Unhandled Promise Rejection: )?TypeError: Importing a module script failed\.)$/;
 /** Whether the page errors `errs` are only WebKit's failed loads from the local server (#4428), run once more. */
 export const webkitLoadFailure = (errs, browser = BROWSER) => browser === 'webkit' && errs.length > 0 && errs.every((e) => WEBKIT_LOAD_FAILURE.test(e));
 
