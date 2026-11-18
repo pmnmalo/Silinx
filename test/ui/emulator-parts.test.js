@@ -138,22 +138,31 @@ uiTest('#3109 a short click on a push button: held down until the design saw a r
   await page.eval(() => window.SilinxApp.openFile('src/deb.vhd'));
   await openEmulator(page);
   // 1 kHz: a real press, 100 cycles; a click of a few milliseconds, a few cycles (the old emulator: missed)
-  await page.eval(() => { const s = document.querySelectorAll('.emu-bar > select')[1]; s.value = '1000'; s.dispatchEvent(new Event('change')); });
-  const at = await page.eval(() => { const b = document.querySelector('[data-part=btn0] .emu-btn').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
-  const btn0 = () => page.eval(() => document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'));
-  const led0 = () => page.eval(() => document.querySelector('[data-part=led0] .emu-led').style.background);
+  await page.eval(() => { const s = document.querySelector('.doc:not([hidden]) .emu-speed'); s.value = '1000'; s.dispatchEvent(new Event('change')); });
+  // (the shown emulator's button, where it is once the board has run at the new rate: CI's slow page pressed beside
+  // it or read another one, #4437)
+  const BTN = '.doc:not([hidden]) [data-part=btn0] .emu-btn';
+  const btn0 = () => page.eval((b) => document.querySelector(b).classList.contains('on'), BTN);
+  const led0 = () => page.eval(() => document.querySelector('.doc:not([hidden]) [data-part=led0] .emu-led').style.background);
   const off = await led0();
+  await settledNow(page);
+  const at = await page.waitFor((b) => {
+    const el = document.querySelector(b), r = el.getBoundingClientRect(), p = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    return document.elementFromPoint(p.x, p.y)?.closest('.emu-btn') === el ? p : null;
+  }, [BTN], { what: 'BTN0 under its centre' });
   const t0 = await settledNow(page);
   await page.mouse('mouseMoved', at.x, at.y);
   await page.mouse('mousePressed', at.x, at.y);
+  assert.equal(await btn0(), true, 'BTN0 pressed');
   await page.mouse('mouseReleased', at.x, at.y);
   // let go but still down (lit) until 100 cycles on, then up; LED0 toggled by the press. (Read with the board's time:
   // a slow page's run in flight, up to a quarter of a second's cycles, #3727, may take it past the 100 cycles before
   // the button is looked at, up then rightly, #4369)
-  const seen = () => page.eval(() => ({ on: document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'), now: window.SilinxApp.findDoc('emulator').view.sim.now }));
+  const seen = () => page.eval((b) => ({ on: document.querySelector(b).classList.contains('on'), now: window.SilinxApp.findDoc('emulator').view.sim.now,
+    btns: document.querySelectorAll('[data-part=btn0] .emu-btn').length, running: window.SilinxApp.findDoc('emulator').view.running }), BTN);
   const clicked = await seen();
-  assert.ok(clicked.on || clicked.now >= t0 + 100 * 20000, `held down after the click until 100 cycles on (up at ${(clicked.now - t0) / 20000} cycles)`);
-  await page.waitFor(() => !document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'), [], { what: 'BTN0 let go' });
+  assert.ok(clicked.on || clicked.now >= t0 + 100 * 20000, `held down after the click until 100 cycles on (up at ${(clicked.now - t0) / 20000} cycles; ${JSON.stringify(clicked)})`);
+  await page.waitFor((b) => !document.querySelector(b).classList.contains('on'), [BTN], { what: 'BTN0 let go' });
   assert.ok(await emu(page, 'sim.now') >= t0 + 100 * 20000, 'down for 100 cycles at least');
   await page.waitFor((b) => document.querySelector('[data-part=led0] .emu-led').style.background !== b, [off], { what: 'LED0 toggled by the press' });
   // a press longer than a real one (the slow page's case, #4369): let go at once, LED0 toggled back by it (BTN0 up
