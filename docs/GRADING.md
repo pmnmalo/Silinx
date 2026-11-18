@@ -75,9 +75,10 @@ A test is hidden unless it has `"visible": true`. Each test is worth `points` (1
     slices are not checked: the report says so, and the other requirements give the verdict;
   - `warnings: false`: no warning from Check Syntax or the synthesis.
 
-- **equivalence**: the submission's top is proved equivalent to the reference design by Verify Equivalence (Yosys's
-  SAT solver, #3177). The check covers every input sequence, cycle by cycle from the initial state, up to `depth` clock
-  cycles (20 by default, at most 1000), and tries a proof by induction at each depth.
+- **equivalence**: the submission's top is proved equivalent to the reference design by Verify Equivalence (#3177,
+  #3262: a structural proof by Yosys's equivalence passes, else ABC). The check covers every input sequence, cycle by
+  cycle from the initial state, up to `depth` clock cycles (20 by default, at most 1000), then tries a proof for every
+  input sequence.
   - Proved, or no difference within the depth: Accepted, and the report says which.
   - A difference: a Wrong Answer, with the first cycle that differs, its outputs, and the inputs that lead to it.
   - A design the check cannot translate: Not Synthesizable.

@@ -35,21 +35,23 @@ test('#3217 the format: an equivalence test needs the reference, its depth from 
 });
 
 test('#3217 Accepted: the counter in Verilog and in VHDL, the traffic state machine drawn, each proved equivalent to its reference', { timeout: 120000 }, async () => {
-  const proved = n => ['AC', [`equivalent to the reference for every input sequence (proved by induction over ${n} clock cycle(s))`]];
-  assert.deepEqual(await grade(eq(counterExercise()), hdl(COUNTER_V)), proved(1));
-  assert.deepEqual(await grade(eq(counterExercise()), hdl(COUNTER_VHD, 'src/counter4.vhd')), proved(1));
-  assert.deepEqual(await grade(eq(trafficExercise()), drawing()), proved(2));
+  // (#3262: proved structurally, the submission's signals matched by name with the reference's)
+  const proved = ['AC', ['equivalent to the reference for every input sequence (proved signal by signal by induction, the signals matched by name)']];
+  assert.deepEqual(await grade(eq(counterExercise()), hdl(COUNTER_V)), proved);
+  assert.deepEqual(await grade(eq(counterExercise()), hdl(COUNTER_VHD, 'src/counter4.vhd')), proved);
+  assert.deepEqual(await grade(eq(trafficExercise()), drawing()), proved);
 });
 
 test('#3217 Wrong Answer: the first cycle that differs, its outputs, the inputs that lead to it (the clock left out); a drawn state machine\'s', { timeout: 120000 }, async () => {
-  assert.deepEqual(await grade(eq(counterExercise()), hdl(NO_ENABLE)), ['WA', ['cycle 2: q is 0001, expected 0000', 'the inputs, cycle by cycle: 1: rst=0 en=0; 2: rst=1 en=0']]);
+  // (the inputs of the cycle that differs do not matter, the outputs registers: ABC's choice, #3262)
+  assert.deepEqual(await grade(eq(counterExercise()), hdl(NO_ENABLE)), ['WA', ['cycle 2: q is 0001, expected 0000', 'the inputs, cycle by cycle: 1: rst=0 en=0; 2: rst=0 en=0']]);
   assert.deepEqual(await grade(eq(trafficExercise(), { depth: 5 }), WRONG_FSM),
     ['WA', ['cycle 2: phase is 110, expected 000', 'the inputs, cycle by cycle: 1: rst=0 req=1 done=0 night=0; 2: rst=0 req=0 done=0 night=0']]);
 });
 
 test('#3217 no difference within the depth, not proved: Accepted, said so; Not Synthesizable; a Grading Error from Yosys; not run without Yosys', { timeout: 120000 }, async () => {
-  // (Yosys's log of a bounded check: no counterexample, no proof)
-  const bounded = async (args, files, onLine) => { onLine('Reached maximum number of time steps -> proof failed.'); return {}; };
+  // (Yosys's log of a bounded check, #3262: no structural proof, ABC's bmc3 finds no difference, pdr no proof)
+  const bounded = async (args, files, onLine) => { ['ABC: x : i/o = 3/ 1  lat = 4  and = 9', 'ABC: + bmc3 -F 7 -T 23', 'ABC: No output asserted in 7 frames.'].forEach(onLine); return {}; };
   assert.deepEqual(await grade(eq(counterExercise(), { depth: 7 }), hdl(COUNTER_V), bounded), ['AC', ['no difference from the reference in the first 7 clock cycle(s) (not proved beyond them)']]);
   assert.deepEqual(await grade(eq(counterExercise()), hdl(COUNTER_V.replace("else if (en) q <= q + 4'd1;", "else begin wait (en); q <= q + 4'd1; end"))),
     ['NS', ['\'counter4\' cannot be verified: \'wait\' cannot be synthesized here (only one clock edge or sensitivity list per process) (line 4)']]);
@@ -61,8 +63,8 @@ test('#3217 no difference within the depth, not proved: Accepted, said so; Not S
 test('#3217 in the grading process: Accepted and Wrong Answer, the hidden test\'s verdict only in the report', { timeout: 300000 }, async () => {
   const ex = eq(counterExercise());
   const ok = await gradeSubmission(ex, { ...hdl(COUNTER_V), name: 'ok', files: Object.entries(hdl(COUNTER_V).files) });
-  assert.deepEqual([ok.verdict, ok.tests[0].verdict, ok.tests[0].messages], ['AC', 'AC', ['equivalent to the reference for every input sequence (proved by induction over 1 clock cycle(s))']]);
+  assert.deepEqual([ok.verdict, ok.tests[0].verdict, ok.tests[0].messages], ['AC', 'AC', ['equivalent to the reference for every input sequence (proved signal by signal by induction, the signals matched by name)']]);
   const wrong = await gradeSubmission(ex, { ...hdl(NO_ENABLE), name: 'wrong', files: Object.entries(hdl(NO_ENABLE).files) });
-  assert.deepEqual([wrong.verdict, wrong.tests[0].messages], ['WA', ['cycle 2: q is 0001, expected 0000', 'the inputs, cycle by cycle: 1: rst=0 en=0; 2: rst=1 en=0']]);
+  assert.deepEqual([wrong.verdict, wrong.tests[0].messages], ['WA', ['cycle 2: q is 0001, expected 0000', 'the inputs, cycle by cycle: 1: rst=0 en=0; 2: rst=0 en=0']]);
   assert.equal(textReport(wrong), 'wrong: 0 / 5 points (Wrong Answer)\n  WARNING: "src/counter4.v" Line 1: Input <en> is never used.\n  - eq: WA Wrong Answer, 0 / 5 [hidden]\n');
 });

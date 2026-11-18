@@ -1,6 +1,6 @@
-// Verify (#3177, core/verify.js, core/verify-bench.js): a module's equivalence with a reference module by Yosys's SAT
-// solver (Yosys WASM, as in the browser): proved by induction, bounded, or the counterexample (its first difference at
-// the shortest depth), in VHDL and in Verilog, the two languages mixed; the counterexample's test bench, in VHDL and in
+// Verify (#3177, core/verify.js, core/verify-bench.js): a module's equivalence with a reference module (Yosys WASM, as
+// in the browser: a structural proof, else ABC's, #3262, core/verify-abc.js): proved, bounded, or the counterexample
+// (its first difference at the shortest depth), in VHDL and in Verilog, the two languages mixed; the counterexample's test bench, in VHDL and in
 // Verilog, simulated: the same difference at the same clock cycle; the refusals (ports, modules, depth); Yosys's log
 // read. With SILINX_SBY (a SymbiYosys command, e.g. yowasp-sby), each result compared with sby's own on the same
 // miter (abc bmc3 and abc pdr): the same verdict, the counterexample's same length.
@@ -102,7 +102,7 @@ test('the counter against a decimal reference: the counterexample at clock cycle
   r.cycles.forEach((c, k) => assert.equal(c.uut.q, k <= 10 ? k.toString(2).padStart(4, '0') : undefined));
   assert.deepEqual(verifyMessages(r, { bench: 'sim/verify_cnt.vhd' }).map(m => [m.kind, m.text]), [
     ['hdr', '\nStarted : "Verify Equivalence".\n'],
-    ['info', 'Verifying \'cnt\' against its reference \'cnt_ref\': Yosys\'s SAT solver, at most 20 clock cycle(s), then a proof by induction.'],
+    ['info', 'Verifying \'cnt\' against its reference \'cnt_ref\': a structural proof (Yosys\'s equivalence passes), else ABC\'s check over at most 20 clock cycle(s), then its proof (pdr).'],
     ['err', 'ERROR:Verify - \'cnt\' differs from its reference \'cnt_ref\' at clock cycle 11: q = 1010, the reference\'s q = 0000.'],
     ['info', 'The counterexample\'s test bench: sim/verify_cnt.vhd (it replays the 11 clock cycle(s) in the simulator, both modules side by side).'],
     ['err', '\nProcess "Verify Equivalence" failed'],
@@ -119,12 +119,12 @@ test('the counter against a decimal reference: the counterexample at clock cycle
   assert.match(vhd, /^-- Counterexample of Verify \(Silinx\): 'cnt' differs from its reference 'cnt_ref' at clock cycle 11 \(q\)\.$/m);
 });
 
-test('equivalent modules, VHDL and Verilog, asynchronous resets: proved by induction, no warnings', async () => {
+test('equivalent modules, VHDL and Verilog, asynchronous resets: proved (structurally), no warnings', async () => {
   const r = await check([ACNT_VHD, HEX_V], 'acnt', 'hex_ref');
-  assert.deepEqual([r.status, r.induction, r.warnings, r.errors], ['proved', 1, [], []]);
+  assert.deepEqual([r.status, r.method, r.warnings, r.errors], ['proved', 'structural', [], []]);
   assert.deepEqual(verifyMessages(r).map(m => m.text).slice(1), [
-    'Verifying \'acnt\' against its reference \'hex_ref\': Yosys\'s SAT solver, at most 20 clock cycle(s), then a proof by induction.',
-    'Proved: \'acnt\' gives the outputs of \'hex_ref\' for every input sequence (by induction over 1 clock cycle(s)).',
+    'Verifying \'acnt\' against its reference \'hex_ref\': a structural proof (Yosys\'s equivalence passes), else ABC\'s check over at most 20 clock cycle(s), then its proof (pdr).',
+    'Proved: \'acnt\' gives the outputs of \'hex_ref\' for every input sequence (signal by signal by induction, the signals matched by name).',
     '\nProcess "Verify Equivalence" completed successfully']);
   // (and the other way round, the Verilog module verified against the VHDL one)
   assert.equal((await check([ACNT_VHD, HEX_V], 'hex_ref', 'acnt')).status, 'proved');
@@ -133,11 +133,11 @@ test('equivalent modules, VHDL and Verilog, asynchronous resets: proved by induc
   assert.deepEqual([d.status, d.cycle, d.cycles[d.cycle - 1].in.rst, d.differs], ['failed', 2, '1', ['q']]);
 });
 
-test('a difference after the depth: bounded (a warning), then found with a larger depth', async () => {
+test('a difference after the depth: bounded (a warning, the cycle pdr finds it at), then found with a larger depth', async () => {
   const b = await check([TICK_V], 'tick', 'tick_ref', 8);
-  assert.deepEqual([b.status, b.depth, b.warnings], ['bounded', 8, []]);
+  assert.deepEqual([b.status, b.depth, b.beyond, b.warnings], ['bounded', 8, 13, []]);
   assert.deepEqual(verifyMessages(b).map(m => [m.kind, m.text]).slice(2), [
-    ['warn', 'WARNING:Verify - no difference in the first 8 clock cycle(s), but not proved beyond them (the induction did not succeed): a larger depth checks more cycles.'],
+    ['warn', 'WARNING:Verify - no difference in the first 8 clock cycle(s), but ABC\'s pdr finds one at clock cycle 13: a depth of 13 shows it.'],
     ['ok', '\nProcess "Verify Equivalence" completed successfully with 1 warning(s)']]);
   const f = await check([TICK_V], 'tick', 'tick_ref', 20);
   assert.deepEqual([f.status, f.cycle, f.differs, f.cycles[12].uut.q, f.cycles[12].ref.q], ['failed', 13, ['q'], '1', '0']);
@@ -184,19 +184,19 @@ test('Yosys\'s script, and its log read: a proof, a bounded check, a counterexam
 });
 
 // The examples against their own flat Verilog (the open synthesis's, core/synth-verilog.js, read back by Silinx's Verilog
-// front end): no difference in 10 clock cycles, no warnings; gates (combinational) and breadboard proved. (stopwatch and micro80 left
-// out: Yosys's SAT solver takes minutes from their second clock cycle on, #3177's later parts)
-const SLOW = new Set(['stopwatch', 'micro80']);
-test('the examples against their own flat Verilog: no difference, no warnings', async () => {
+// front end): every one proved structurally, no warnings, stopwatch (its 1024-word memory) and micro80 too, in seconds
+// (#3262: Yosys's `sat -tempinduct` had not checked their third clock cycle in two minutes). A mutated copy's
+// counterexample: test/verify-abc.test.js.
+test('the examples against their own flat Verilog: proved, no warnings', async () => {
   const got = {};
-  for (const ex of EXAMPLES.filter(e => !SLOW.has(e))) {
+  for (const ex of EXAMPLES) {
     const { design, project: { top } } = example(ex);
     const d = elaborate(compile([...primitiveSources(design), ...design]), top);
     const ref = { path: 'sim/ref.sv', lang: 'verilog', role: 'simulation', text: toVerilog(d, { name: `${top}_ref` }).text };
     const r = await check([...design, ref], top, `${top}_ref`, 10);
-    got[ex] = [r.status, r.warnings, r.errors];
+    got[ex] = [r.status, r.method, r.warnings, r.errors];
   }
-  assert.deepEqual(got, Object.fromEntries(EXAMPLES.filter(e => !SLOW.has(e)).map(e => [e, [e === 'gates' || e === 'breadboard' ? 'proved' : 'bounded', [], []]])));
+  assert.deepEqual(got, Object.fromEntries(EXAMPLES.map(e => [e, ['proved', 'structural', [], []]])));
 });
 
 // SymbiYosys on the same miter, natively (SILINX_SBY: its command), as an independent reference

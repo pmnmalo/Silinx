@@ -1,6 +1,6 @@
 // UI: Verify Equivalence (#3177, web/js/verify.js): a module's right-click Verify Equivalence… (both interfaces; the ISE
 // style's Simulation view has it in its Processes too) asks for the reference module (one named after the module
-// proposed) and the depth; Yosys's SAT solver in the page's worker; a difference: its messages in the console, the
+// proposed) and the depth; checked in the page's Yosys worker (a structural proof, else ABC's: #3262); a difference: its messages in the console, the
 // counterexample's test bench written into the project (sim/verify_cnt.vhd, a simulation source) and simulated, SSim
 // showing it, the same difference in its messages; an equivalent reference: proved; Portuguese. No warnings.
 // Verify Assertions (the same menu, the same Processes): the depth asked, the module's assertions proved; one that
@@ -69,7 +69,7 @@ uiTest('#3177 Verify Equivalence: the reference asked, a counterexample simulate
   await page.click('.dlg-buttons .btn.primary');
   await page.waitConsole(/Process "Verify Equivalence" failed/, { timeout: 60000 });
   assert.deepEqual((await lines(page, 'Started : "Verify Equivalence".')).slice(0, 7), ['Started : "Verify Equivalence".', '',
-    'Verifying \'cnt\' against its reference \'cnt_ref\': Yosys\'s SAT solver, at most 20 clock cycle(s), then a proof by induction.',
+    'Verifying \'cnt\' against its reference \'cnt_ref\': a structural proof (Yosys\'s equivalence passes), else ABC\'s check over at most 20 clock cycle(s), then its proof (pdr).',
     'ERROR:Verify - \'cnt\' differs from its reference \'cnt_ref\' at clock cycle 11: q = 1010, the reference\'s q = 0000.',
     'The counterexample\'s test bench: sim/verify_cnt.vhd (it replays the 11 clock cycle(s) in the simulator, both modules side by side).', '',
     'Process "Verify Equivalence" failed']);
@@ -83,7 +83,7 @@ uiTest('#3177 Verify Equivalence: the reference asked, a counterexample simulate
   assert.deepEqual([again.options, again.reference], [['cnt_ref', 'hex'], 'cnt_ref']);
   await page.eval(() => { const s = [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('select'); s.value = 'hex'; });
   await page.click('.dlg-buttons .btn.primary');
-  await page.waitConsole(/Proved: 'cnt' gives the outputs of 'hex' for every input sequence \(by induction over 1 clock cycle\(s\)\)\.\n\nProcess "Verify Equivalence" completed successfully/, { timeout: 60000 });
+  await page.waitConsole(/Proved: 'cnt' gives the outputs of 'hex' for every input sequence \(signal by signal by induction, the signals matched by name\)\.\n\nProcess "Verify Equivalence" completed successfully/, { timeout: 60000 });
   // Portuguese: the menu's item and the dialog
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   const pt = await openVerify(page, 'Verificar Equivalência…');

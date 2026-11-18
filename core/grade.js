@@ -8,7 +8,7 @@ import { VERDICTS, parseVectors, valueBits, limitsOf, testsOf, pointsOf, localiz
 import { prepareDesign } from './grade-design.js';
 import { runVectors, runTestbench, randomRows, referenceRows } from './grade-sim.js';
 import { CHECKS } from './labs-check.js';
-import { verifyEquivalence, VERIFY_DEPTH } from './verify.js';
+import { verifyEquivalence, provedBy, VERIFY_DEPTH } from './verify.js';
 
 export { VERDICTS };
 const LATCH_RE = /^"[^"]*" Line \d+: Found \d+-bit latch for signal/;
@@ -63,7 +63,7 @@ async function runEquivalence(ex, test, design, yosys) {
   const run = async (...a) => { try { return await yosys(...a); } catch (e) { failed = e; throw e; } };
   const r = await verifyEquivalence(design.sources, { top: ex.top, reference: ex.top, referenceSources, depth: test.depth ?? VERIFY_DEPTH, run });
   if (failed || (r.status === 'error' && r.log)) return { verdict: 'GE', messages: [`the equivalence check could not run: ${failed?.message || r.errors[0]}`] };
-  if (r.status === 'proved') return { verdict: 'AC', messages: [`equivalent to the reference for every input sequence (proved by induction over ${r.induction} clock cycle(s))`] };
+  if (r.status === 'proved') return { verdict: 'AC', messages: [`equivalent to the reference for every input sequence (proved ${provedBy(r)})`] };
   if (r.status === 'bounded') return { verdict: 'AC', messages: [`no difference from the reference in the first ${r.depth} clock cycle(s) (not proved beyond them)`] };
   if (r.status === 'failed') {
     const last = r.cycles[r.cycle - 1], clocks = new Set(r.clocks.map(c => c.toLowerCase()));

@@ -1,5 +1,5 @@
 // Verify Equivalence (#3177): the Processes panel's process of a module (the Simulation view's), its equivalence with a
-// reference module proved by Yosys's SAT solver in the page's Yosys worker (core/verify.js, as the MCP server's verify),
+// reference module proved in the page's Yosys worker (a structural proof, else ABC's: core/verify.js, as the MCP server's verify),
 // its messages in the console; a difference: the counterexample's test bench written into the project
 // (core/verify-bench.js, sim/verify_<module>) and simulated, the waveform viewer showing where the outputs differ.
 // Verify Assertions: the module's own assertions proved (core/verify-assert.js), a failure's counterexample in the same

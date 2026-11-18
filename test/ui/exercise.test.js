@@ -194,10 +194,10 @@ uiTest('#3217 an equivalence test: the design proved equivalent to the reference
     return page.eval((n) => window.__console().slice(n), before);
   };
   let out = await runVisible();
-  assert.match(out, /eqv: 0 \/ 20 points \(Wrong Answer\), the visible tests\n {2}WARNING: "src\/counter4\.vhd" Line 10: Input <en> is never used\.\n {2}- same \(Equivalent to the reference\): WA Wrong Answer, 0 \/ 20\n {6}cycle 2: q is 0001, expected 0000\n {6}the inputs, cycle by cycle: 1: rst=0 en=0; 2: rst=1 en=0\nProcess "Run Visible Tests" completed: 0 \/ 20 points\./, out);
+  assert.match(out, /eqv: 0 \/ 20 points \(Wrong Answer\), the visible tests\n {2}WARNING: "src\/counter4\.vhd" Line 10: Input <en> is never used\.\n {2}- same \(Equivalent to the reference\): WA Wrong Answer, 0 \/ 20\n {6}cycle 2: q is 0001, expected 0000\n {6}the inputs, cycle by cycle: 1: rst=0 en=0; 2: rst=0 en=0\nProcess "Run Visible Tests" completed: 0 \/ 20 points\./, out);
   await writeWs(env, 'eqv', 'src/counter4.vhd', RIGHT);
   out = await runVisible();
-  assert.match(out, /eqv: 20 \/ 20 points \(Accepted\), the visible tests\n {2}\+ same \(Equivalent to the reference\): AC Accepted, 20 \/ 20\n {6}equivalent to the reference for every input sequence \(proved by induction over 1 clock cycle\(s\)\)\nProcess "Run Visible Tests" completed: 20 \/ 20 points\./, out);
+  assert.match(out, /eqv: 20 \/ 20 points \(Accepted\), the visible tests\n {2}\+ same \(Equivalent to the reference\): AC Accepted, 20 \/ 20\n {6}equivalent to the reference for every input sequence \(proved signal by signal by induction, the signals matched by name\)\nProcess "Run Visible Tests" completed: 20 \/ 20 points\./, out);
   assert.doesNotMatch(out, /WARNING|ERROR/);
 }, { timeout: 120000 });
 

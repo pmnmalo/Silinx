@@ -6,6 +6,7 @@
 // (its last base case solved).
 //
 //   const t = await runLimited(run, args, files, onLine, timeLimit)   // null: finished; { timedOut: true }: stopped
+//   const w = await runWithin(run, args, files, onLine, timeLimit)    // { timedOut: false, files } or { timedOut: true }
 
 /** The time limit of a check, in seconds (the checks' dialogs' Time limit, the MCP tool's time_limit). */
 export const VERIFY_TIME_LIMIT = 60;
@@ -22,10 +23,16 @@ export function timeLimitError(s) {
  * is left to finish on its own, its result unread.
  */
 export async function runLimited(run, args, files, onLine, timeLimit = VERIFY_TIME_LIMIT) {
+  const r = await runWithin(run, args, files, onLine, timeLimit);
+  return r.timedOut ? { timedOut: true } : null;
+}
+
+/** runLimited's run, its output files kept: { timedOut: false, files } (files: the run's result, {} when none) or { timedOut: true }. */
+export async function runWithin(run, args, files, onLine, timeLimit = VERIFY_TIME_LIMIT) {
   const ctl = new AbortController();
   let timer;
   const stopped = new Promise(resolve => { timer = setTimeout(() => { ctl.abort(); resolve({ timedOut: true }); }, timeLimit * 1000); });
-  const done = Promise.resolve().then(() => run(args, files, onLine, undefined, { signal: ctl.signal })).then(() => null);
+  const done = Promise.resolve().then(() => run(args, files, onLine, undefined, { signal: ctl.signal })).then(out => ({ timedOut: false, files: out || {} }));
   try { return await Promise.race([done, stopped]); }
   catch (e) { if (ctl.signal.aborted) return { timedOut: true }; throw e; }
   finally { clearTimeout(timer); done.catch(() => {}); }

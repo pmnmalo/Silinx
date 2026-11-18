@@ -97,7 +97,7 @@ test('#3217 grade: an equivalence test on the project, proved; the student\'s co
   ex.tests = [{ id: 'same', visible: true, points: 20, kind: 'equivalence', depth: 10 }];
   await ok('write_file', { project: 'eqv', path: 'counter4.exercise.json', text: JSON.stringify(ex) });
   const r = await ok('grade', { project: 'eqv' });
-  assert.equal(r.text, '4-bit counter\neqv: 20 / 20 points (Accepted)\n  + same: AC Accepted, 20 / 20\n      equivalent to the reference for every input sequence (proved by induction over 1 clock cycle(s))\n');
+  assert.equal(r.text, '4-bit counter\neqv: 20 / 20 points (Accepted)\n  + same: AC Accepted, 20 / 20\n      equivalent to the reference for every input sequence (proved signal by signal by induction, the signals matched by name)\n');
   const copy = await ok('grade', { project: 'eqv', action: 'student_copy', file: 'eqv-student.exercise.json' });
   assert.deepEqual(copy.data.tests, []);
 });
