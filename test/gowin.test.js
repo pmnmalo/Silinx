@@ -24,8 +24,12 @@ test('CST: IO_LOC, IO_PORT (its attributes) and Silinx\'s clock comment read int
     + '// create_clock -name clk -period 37.037 [get_ports {clk}]\n');
   const again = readConstraints(CST, CST.write(m));
   assert.deepEqual([again.assignments, again.clocks], [m.assignments, m.clocks]);
-  // a pull, an attribute of its own kept, IO_LOC's bank-pair suffix; another comment is a comment; nothing to write
-  assert.deepEqual(CST.read('IO_PORT "a" PULL_MODE=UP OPEN_DRAIN=ON;\nIO_LOC "a" 3, 4;\n// a note\n').assignments, { a: { pull: 'up', cst: { OPEN_DRAIN: 'ON' }, loc: '3' } });
+  // a pull, an attribute of its own kept, a differential pair's second pin (#4351: its N port's, written back); another comment is
+  // a comment; nothing to write
+  const pair = CST.read('IO_PORT "a" PULL_MODE=UP OPEN_DRAIN=ON;\nIO_LOC "a" 3, 4;\n// a note\n');
+  assert.deepEqual(pair.assignments, { a: { pull: 'up', cst: { OPEN_DRAIN: 'ON' }, loc: '3', pairLoc: '4' } });
+  assert.equal(CST.write(pair), 'IO_LOC "a" 3,4;\nIO_PORT "a" PULL_MODE=UP OPEN_DRAIN=ON;\n');
+  assert.deepEqual(CST.read(CST.write(pair)).assignments, pair.assignments);
   assert.equal(CST.write({ assignments: {} }), '');
   assert.equal(CST.comment, '//');
 });

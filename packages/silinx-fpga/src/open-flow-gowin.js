@@ -4,7 +4,8 @@
 // runs in a browser only through Pyodide); the constraints are CST (cst.js). Both come through io.nextpnr.gowin { run(args,
 // files, onLine) -> files, pack(routedJson, family) -> .fs text } (nextpnr-gowin-io.js: YoWASP's @yowasp/nextpnr-himbaechel-gowin).
 // nextpnr-himbaechel-gowin places no port without a pin: such a port is an error here, named, before nextpnr runs; so is what it does
-// not place or keep (gowin-checks.js, #4352).
+// not place or keep (gowin-checks.js, #4352). A differential pair's N port takes the second pin of its P port's IO_LOC ("p" 62,61:
+// Gowin's convention, #4351).
 import { scriptSynthesis } from './synth-script.js';
 import { CST } from './cst.js';
 import { portBits, nextpnrNames } from './nextpnr-ports.js';
@@ -65,6 +66,43 @@ export const gowinPlaced = r => Object.entries(r.utilization || {}).filter(([nam
 /** The device of a spec: its --device and family, or null. */
 export const gowinDevice = spec => GOWIN_DEVICES[`${String(spec.device || '').toLowerCase()}/${String(spec.pkg || '').toLowerCase()}${spec.speed || '-6'}`] || null;
 
+// a differential buffer's P pin and its N pin: O / OB (the outputs), I / IB (the inputs), IO / IOB (the bidirectional's)
+const PAIR_PINS = { O: 'OB', I: 'IB', IO: 'IOB' };
+/** (#4351) The CST's assignments with each differential pair's N port at the second pin of its P port's IO_LOC ("p" 62,61, the
+ *  P port's pairLoc): its N port the one the differential buffer at the P port pairs it with, in Yosys's netlist. Returns
+ *  { assignments (with no pairLoc: nextpnr's), errors }: a pairLoc on no buffer's P port, or on one whose N port has an IO_LOC of another pin, an error. */
+function gowinPairs(netlistText, top, assignments) {
+  const pairs = Object.entries(assignments).filter(([, a]) => a?.pairLoc);
+  if (!pairs.length) return { assignments, errors: [] };
+  const mods = JSON.parse(netlistText).modules || {};
+  const mod = mods[top] || Object.values(mods).find(m => m.attributes?.top) || {};
+  const portOf = new Map(portBits(netlistText, top).map((b, i) => [Object.values(mod.ports || {}).flatMap(p => p.bits)[i], b.name]));
+  // (synth_gowin's I/O buffer between a port and the differential buffer: its other side's net is the port's too)
+  for (const c of Object.values(mod.cells || {})) {
+    if (!/^(I|O|T|IO)BUF$/.test(c.type)) continue;
+    const pins = Object.entries(c.connections || {}).filter(([k, b]) => k !== 'OEN' && b.length === 1);
+    const port = pins.map(([, [b]]) => portOf.get(b)).find(Boolean);
+    if (port) for (const [, [b]] of pins) if (!portOf.has(b)) portOf.set(b, port);
+  }
+  const out = { ...assignments }, errors = [];
+  for (const [p, a] of pairs) {
+    let n = null;
+    for (const c of Object.values(mod.cells || {})) {
+      const pin = Object.keys(PAIR_PINS).find(k => c.connections?.[k]?.length === 1 && portOf.get(c.connections[k][0]) === p && c.connections[PAIR_PINS[k]]);
+      if (pin) { n = portOf.get(c.connections[PAIR_PINS[pin]][0]) ?? null; break; }
+    }
+    if (!n) errors.push(`IO_LOC "${p}" ${a.loc},${a.pairLoc}: ${p} is no differential buffer's P port, so ${a.pairLoc} is no port's pin`);
+    else if (out[n]?.loc && out[n].loc !== a.pairLoc) errors.push(`IO_LOC "${p}" ${a.loc},${a.pairLoc}: its N port ${n} has IO_LOC ${out[n].loc}, not ${a.pairLoc}`);
+    else {
+      // (nextpnr reads "62,61" as another pin: its P port at the first, its N port at the second, each an IO_LOC of its own)
+      const { pairLoc, ...rest } = a;
+      out[p] = rest;
+      out[n] = { ...out[n], loc: pairLoc };
+    }
+  }
+  return { assignments: out, errors };
+}
+
 function mountGowin(ctx) {
   const { io, spec, log, report, top, ms, now, constraints, netlistText, StepError } = ctx;
   const timing = mountNextpnrTiming(ctx, { tool: 'nextpnr-himbaechel-gowin', clockName });
@@ -81,7 +119,10 @@ function mountGowin(ctx) {
     if (checks.errors.length) throw new StepError(checks.errors.join('; '), [], 'Divide the clock with a CLKDIV, or a PLL\'s output; for a bidirectional LVDS pair, an ELVDS_IOBUF on an emulated pair.');
     for (const w of checks.warnings) log(`WARNING:Place - ${w}`);
     const bits = portBits(netlistText(), top);
-    const read = constraints(), cst = read && nextpnrNames(read, bits);
+    const read = constraints(), named = read && nextpnrNames(read, bits);
+    const paired = named && gowinPairs(netlistText(), top, named.assignments || {});
+    if (paired?.errors.length) throw new StepError(paired.errors.join('; '), [], 'Give the differential buffer\'s N port the pair\'s second pin.');
+    const cst = named && { ...named, assignments: paired.assignments };
     const pins = cst?.assignments || {};
     const free = bits.map(b => b.name).filter(p => !pins[p]?.loc);
     if (free.length) {
