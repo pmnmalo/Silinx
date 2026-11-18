@@ -1,0 +1,650 @@
+# Silinx HLS: C and C++ to HDL (high-level synthesis)
+
+[User's guide](README.md) · [Designing](designing.md) · English
+
+A C function as a design source: Silinx turns it into a VHDL or Verilog module, as AMD's **Vitis HLS**
+(formerly Vivado HLS, user guide UG1399) does for AMD's newer parts. The C file is the module's base;
+its HDL is generated from it, read-only, as a drawing's is. The plan and its phases: issue #1532.
+
+Silinx HLS is a **subset of what Vitis HLS accepts**: a source Silinx takes also goes through Vitis HLS
+(as C++), with the same ports and the same behaviour at them. Vitis HLS does not target the
+Spartan-3E, so it is not Silinx's oracle: the C itself is (see *Checking it* below).
+
+## The source
+
+- A `.c` file in C99, plus Vitis HLS's arbitrary precision integers (`#include "ap_int.h"`):
+  `ap_int<W>` and `ap_uint<W>`, `W` from 1 to 1024; or a `.cpp` file in the C++ Vitis HLS synthesizes
+  (see *C++* below).
+- Known headers: `ap_int.h`, `stdint.h`, `stdbool.h`, `stdio.h`, `stdlib.h`, `string.h`, `math.h`,
+  `stddef.h`, `limits.h` (the library for test benches, ignored by synthesis); in C++ their `<c…>` names,
+  `<iostream>`, `<fstream>`, `<iomanip>`, `hls_stream.h`, `ap_axi_sdata.h` (Silinx HLS's own: `ap_axis<D, U, TI,
+  TD>` and `ap_axiu<…>`, a beat's data, keep, strb, user, last, id and dest; a side channel of width 0 left out, #1662)
+  `hls_fir.h` (`hls::FIR`, below, #1942), `hls_fft.h` (`hls::fft`, below, #1943), `hls_vector.h`, `hls_streamofblocks.h`, `<complex>`, `ap_float.h` and
+  `malloc.h` (*The library's types*, below, #1891).
+  The project's own headers (`#include "x.h"`)
+  are read in place.
+- The **top function**: the one named by `#pragma HLS TOP name=…`, else the file's last function
+  that is not `main`. The other functions are inlined into it. `main()` is the test bench (C
+  simulation, C/RTL co-simulation); it is never synthesized.
+- `#define` constants and function-like macros of one expression; `#if`/`#ifdef` on them.
+- **Limits** (#3558, `core/c-limits.js`), each one error where it is passed: an array of at most 2^22 elements (all its
+  dimensions; a test bench's array of a size known when it runs, and `malloc`'s, too); an array in the hardware (a
+  memory of the module, or the values of a combinational one) of at most 2^23 bits; parentheses, a call's arguments,
+  indexes, `?:` and assignments nested at most 256 deep, statements (blocks, `if` and `else if`, loops, `switch`) too;
+  an expression at most 1024 operators deep (a chain of 1024 `+` is that deep); a macro's expansion at most 65,536
+  tokens, macros nested at most 256 deep. A source deeper than the stack holds all the same (functions calling each
+  other at the far end of long expressions) is refused with one error.
+- `__SYNTHESIS__` is defined in synthesis, as Vitis HLS's (#1897): code under `#ifndef __SYNTHESIS__` runs only in the
+  C simulation, even in the top function (a trace file of each call, as AMD's examples write), checked as the test
+  bench's.
+- The test bench's files (#1598, #1897): `FILE *` with `fopen` / `fprintf` / `fscanf` / `fgets` / `fclose`, a name
+  made with `sprintf` / `snprintf`, and `system("diff [-w | -b | -B | --brief] a b")` comparing two files (any other
+  command refused). The files are the project's, in memory (the browser edition too): those the test bench's strings
+  name are read (`"tb_data/in.dat"`, a format's `"out_%03d.dat"`), never a file outside the project (a path out of
+  it, absolute or through `..`, is refused with a message); the files it
+  writes stay in memory (the Console lists them), the project's are not changed. A `FILE` in the synthesized code is
+  refused.
+
+### Types
+
+| C | Bits | Signed |
+|---|---|---|
+| `bool` | 1 | no |
+| `char`, `signed char` / `unsigned char` | 8 | `char` signed (as `-fsigned-char`) |
+| `short` / `unsigned short` | 16 | |
+| `int` / `unsigned` | 32 | |
+| `long`, `long long` and their unsigned | 64 | |
+| `int8_t` … `int64_t`, `uint8_t` … `uint64_t` | as named | |
+| `ap_int<W>` / `ap_uint<W>` | W | yes / no |
+| `float` (#1768), `double` (#1773) | 32, 64 (their IEEE-754 bits) | |
+
+**`float` and `double` in hardware** (#1768, #1773): a synthesized function's floating-point variables, arguments,
+arrays and results are their IEEE-754 bits (32- and 64-bit ports, as Vitis HLS's), and each operation (`+ - *`, the
+comparisons, `?:`, `-x`, `!x`, the conversions to and from the integers and between float and double) is a circuit of
+the soft-float library (core/c-softfloat.js: round to nearest even, subnormals, infinities, a quiet NaN), inlined where it
+is: the hardware gives the C simulation's bits. C's usual conversions: a double operand, a double constant (`0.5`)
+too, makes an operation a double's; write `0.5f` to keep it a float's. **A table computed at synthesis** (#1779): a call
+of a function that only writes its arrays from constants (no argument read, no global but a constant, no call but
+`math.h`'s), as `for (i…) t[i] = sin(…)`, is run by the C simulation at synthesis, its values the arrays' (a ROM), as
+Vitis HLS computes one; so is such a loop in the function's own body, its writes depending only on constants and its own
+index, the array used only by reading its elements after it (#2151: the loop is not made); `math.h` and a division of constants are folded the same way. Of other
+values: a division (`/`), `sqrt` / `sqrtf` and `fabs` / `fabsf` are made (#1783), and `floor`, `ceil`, `trunc`,
+`round`, `fmin`, `fmax`, `copysign` (and their `…f`) on the value's bits (#1843); `exp`, `log`, `sin`, `cos`, `tan`, `pow`, `log2`, `log10`,
+`exp2`, `atan`, `asin`, `acos`, `sinh`, `cosh`, `tanh`, `cbrt`, `hypot`, `fmod` (and their `…f`) by Silinx's own
+algorithms, the same in the hardware and the C simulation (core/c-mathlib.js, #1761).
+
+`ap_fixed<W, I, Q, O>` / `ap_ufixed` (`#include "ap_fixed.h"`, #1643) run in the C
+simulation as AMD's `ap_fixed.h` computes them: full-precision results, the quantization modes (`AP_TRN`,
+`AP_TRN_ZERO`, `AP_RND`, `AP_RND_ZERO`, `AP_RND_MIN_INF`, `AP_RND_INF`, `AP_RND_CONV`) and overflow modes (`AP_WRAP`,
+`AP_SAT`, `AP_SAT_ZERO`, `AP_SAT_SYM`) of a conversion, `to_double()`, `to_int()` (toward zero), `cout` of a value.
+In hardware a fixed value is its raw bits: an operation aligns its operands' points with shifts in the type AMD gives
+its result; a conversion drops bits with its quantization's rounding (an adder) and handles its overflow (a wrap a
+truncation, a saturation two comparisons and a multiplexer). A `double` constant is only an `ap_fixed`'s value
+(`a_t c = 0.25;`, a table of coefficients, a comparison `x < 1.5`). `x.range(hi, lo) = v` assigns those bits. The test bench may use
+`float` and `double` (#1641): C's arithmetic and conversions, `math.h`, `printf`'s `%f` `%e` `%g` printed exactly as C's
+library prints them, C++'s `cout` of a double (6 significant digits, or as `fixed`, `scientific`, `setprecision` set
+the stream), `ap_int`'s `to_double()`. `const` is kept; `volatile`
+is accepted on arguments and has no effect (as in Vitis HLS's default).
+
+### Arithmetic
+
+- C types follow C: the integer promotions and the usual arithmetic conversions, wrap-around on
+  `unsigned`, signed overflow refused where Silinx can see it (it is undefined behaviour: the
+  hardware would differ from the C).
+- `ap_int` / `ap_uint` follow Vitis HLS: an operation's result is wide enough for any value of its
+  operands (`a + b`: one bit more than the wider; `a * b`: the sum of the widths), then it is
+  truncated (or sign-extended) when assigned. A C integer mixed with an `ap_int` takes its own width
+  and signedness.
+- Shifts by a negative or a too large amount, division by zero and reading an uninitialised
+  variable are undefined behaviour: refused where Silinx can see it, else their result is not
+  specified.
+
+## C++ (`.cpp` sources)
+
+The C above, plus the C++ Vitis HLS synthesizes (#1590). Each construct becomes C before the checks,
+so its hardware is the C's:
+
+- `namespace` and `using` (the names are the file's), qualified names (`std::cout`, `N::f`), `using T = …`,
+  `constexpr`, `nullptr`, `static_cast` / `const_cast`, `static_assert`, `bool` / `true` / `false`.
+- **References** as arguments (`int &y`): a pointer's ports (`y`, `y_ap_vld`; read and written `y_i`, `y_o`,
+  `y_o_ap_vld`), as Vitis HLS makes them.
+- **Templates**: function and class templates with integer and type parameters, their defaults, explicit
+  specializations (`template <> struct S<1> { … }`), a type deduced from a call's arguments (from the type they
+  are declared with). Each list of arguments is an instance with a name of its own (`adder<1, 4>` is
+  `adder_1_4`), so `template <int K>` gives one copy, and one set of statics, per `K`. In an instance a pragma
+  may use a parameter (`factor=N`), and `#pragma HLS if (cond) …` is kept only when `cond` holds.
+- **Classes of static members** (a class template's too): their functions, constants and types are named by
+  the class (`S::f`).
+- **Member functions and constructors** of a struct or a class (a class template's too): each a function of the
+  struct taking it by reference (`int S::get() const` is `int S_get(const S &)`), defined in the class or outside it
+  (`int S::get() const { … }`); constructors with initializer lists, called where the object is declared
+  (`S v(3);`, `S v;`); a default constructor of constants only gives the members their initial values (so a
+  `static S v;` starts with them); `operator()` (`v(x)`); destructors do nothing.
+- `auto x = e;` (the type `e` is declared with) and the **range for** over an array (`for (auto &x : a)`); over
+  an array argument it is refused, as C++ does (the argument is a pointer).
+- **`hls::stream<T>`** arguments: the `ap_fifo` interface (`_dout`, `_empty_n`, `_read`; `_din`, `_full_n`,
+  `_write`), each access a state of its own that waits while the FIFO is empty or full. A **stream of a struct**
+  (`hls::stream<S>`, #1662): `write`, `<<`, `read()` in a declaration, an assignment or a `return`, `read(v)`, `>>`,
+  `empty`, `full`, passed to a function, named by a pragma. The top's is one `ap_fifo` of the struct's words (#1668,
+  below), a word a struct read or written; an `ap_axis`'s side channels are members of its words, on `axis`'s ports of
+  their own (below, #1894).
+- **Arrays of streams** (#1739): `hls::stream<T> s[N]`, a parameter `s[N]` or `(&s)[N]`: each element a stream of its
+  own (its ap_fifo ports `s_0_dout`…, a FIFO in a DATAFLOW region); `s[k]` by a constant that stream, `s[i]` by a
+  variable the statement made for each element (an `if` on the index); the array passed whole, its elements; its
+  pragmas each element's. A stream's name (`hls::stream<T> s("name")`) is accepted.
+- Test benches: `std::cout` / `cerr` (with `<iomanip>`'s `setw`, `left` / `right`, `setfill('0')`, `hex` /
+  `oct` / `dec`), `ofstream` / `ifstream` (files in memory), `>>` and `<<` on streams.
+- Macros are expanded in pragmas (`#define F 4` … `#pragma HLS UNROLL factor=F`), as Vitis HLS does.
+
+Not synthesizable, as in Vitis HLS: `new` / `delete`, exceptions, RTTI, virtual functions, recursion, the STL
+(but the headers above). Not yet: operators other than `()`.
+
+## Structs and enums (C and C++)
+
+A struct is **disaggregated**, as Vitis HLS does with the structs inside the code: each member is a variable of
+its own, named by the variable and the member (`p.x` is `p_x`, `line[2].a.b` is `line_a_b[2]`); an array of
+structs is an array per member; a member array of an array of structs is one array of both sizes (`a[i].v[j]` is
+`a_v[i * 4 + j]`). So each member is a register, or a memory when its array is large, of its own.
+
+- Definitions: `struct S { … };`, `typedef struct { … } S;`, `typedef S T;`, `class` (its data members); nested structs, member
+  arrays, members' default values (`int n = 0;`).
+- Uses: members (`.`, `->`), whole structs copied (`a = b;`, `S c = d;`; a member array of 64 elements or fewer
+  a statement each, so that a loop around the copy is pipelined as a loop with no inner loop, #2126), initializer lists (`{ … }`, nested or
+  not, the missing members zero), passed to functions by value, by reference (`S &`, `const S &`) or by address
+  (`S *`; indexed, `p[i].x`, `auto t = p[i];`, an array of structs, #1684), arrays of structs passed whole, returned by a function (its call a statement: `x = f(…);` or
+  `S x = f(…);`).
+- `enum` and `enum class`: their constants are constants, the type an `int`.
+- The top function's struct arguments and result: **one port each** (#1628), as Vitis HLS aggregates them (UG1399,
+  the Vivado IP flow): the members in their order, the first at the LSB, each its C size (`bool` and `char` 8 bits,
+  `short` 16, an `ap_int<W>` 8, 16, 32, 64… bits), the padding bits 0 (`struct { short x; bool z; ap_int<5> w; }`
+  is 32 bits: `x` bits 15–0, `z` bit 16, `w` bits 28–24). A struct read is an input `s`; written (by reference or
+  address), `s_i`, `s_o` and `s_o_ap_vld`, its members not written given back as they were; returned, `ap_return`.
+  A **stream or an array of structs** (or a pointer to structs indexed) is one `ap_fifo` / one `ap_memory` of words
+  (#1668), as Vitis HLS aggregates them: the members in their order from the LSB, each of its bits (`compact=bit`,
+  Vitis HLS's default here: a `bool` 1 bit), a member array's elements one after the other (`struct { int foo[3];
+  ap_int<23> bar; }` is 119 bits). An element's word is read once while its index and the memory do not change, its
+  members' reads its fields; its members' writes go into it and it is written whole (read first when some of its
+  fields were not written). The co-simulation packs the test bench's words from the C's members.
+  `#pragma HLS AGGREGATE variable=s compact=bit | byte | none | auto` chooses the packing (`byte`: each member whole
+  bytes; `none`: its C size, as above; of a struct argument too); `#pragma HLS DISAGGREGATE variable=s` keeps a port,
+  a stream or a memory per member (`s_x`, `s_y_address0`…). A struct with a stream in it is disaggregated, as Vitis
+  HLS does.
+- **Bit-fields** (#1896): a member `T m : W;` is a member of `W` bits (`ap_uint<W>`, `ap_int<W>` of a signed `T`),
+  wrapped as C wraps it; an unnamed one (`T : W;`) is padding.
+- **Unions** (#1896, #1963): a union is one word, an unsigned integer of its size (over 64 bits, an `ap_uint` of its
+  size: a port of 96 bits for `uint32_t v[3]`), its members views of its
+  bits laid out as GCC lays them out on x86: from the least significant bit; an integer at an offset of its own size;
+  a bit-field after the one before it when it fits in a unit of its type, else at the next. `u.m` reads the member's
+  bits (a `float` or a `double` member's as one, the same bits), `u.m = e` writes them, the others kept; a struct
+  member's members, anonymous (`union { float f; uint32_t raw; struct { uint32_t mant : 23, bexp : 8, sign : 1; }; }`:
+  `u.bexp`) or named (`u.s.m`); an array member's elements (`u.b[i]`). A union variable, parameter, pointer
+  (`p->m`), array (`a[i].m`) or port is its word; `{ e }` is its first member's value, `{ .m = e }` the member's. `++`
+  and `--` on a member write it, wrapped as C wraps it (`u.m++`, `--p->m`, `y = u.m++`; a `bool` member's as a statement).
+  A union in a struct, named or anonymous, of its own or of a type's name, is a member of the word's type (part of
+  the struct's port), its members reached through the struct (`s.u.m`, `p->u.m`, `a[i].u.m`, `s.m`);
+  a struct holding it is copied, passed and returned as any other, and its methods read it.
+- **Designated initializers** (#1963): in a declaration of a struct, a union or an array, as C takes them
+  (`S s = { .y = 2, .x = 1 };`, `int a[4] = { [2] = 5 };`, `S t[2] = { [1].x = 3 };`, `{ .a.b[1] = 4, 5 }`, an index an
+  enum's constant or a macro); in C++ a member not given keeps its default value. Not yet: in an expression
+  (`(S){ .x = 1 }`).
+- **Base classes** (#1964, non-virtual, C++): `struct D : public A, B { … }`. A base is a member of its own, first
+  (`d_A_x`), so a derived class has its members and methods, hides those of the same name (`A::f()`, `A::x`, `d.A::f()`
+  reach them; a name in two bases is ambiguous, said), is passed to a parameter of its base and copied to one
+  (`A a = d;`). A constructor calls the bases', then initializes the members, in their order whatever its list's
+  (`D(int v) : A(v), y(1) {}`); a base's or a member's default constructor is called when the list does not name it.
+  A class template may derive from one (`template <class T> struct D : B<T>`). A virtual function or a virtual base is
+  refused, as Vitis HLS. Not yet: a base with static members only, `using A::A;`.
+- **Objects with a constructor** (#1964): `S a(1), b{2}, c = S(3);`, arrays of them (`S v[4];`, `S v[2] = { S(1), 2 };`,
+  a method of an element: `v[i].f()`, in a sequential module). A **static or global object** has its constructor run
+  at synthesis: its arguments constants, its body (loops too) reading only constants and calling only functions of
+  the source or math.h's, else said; what it computes is the object's initial values, in the C simulation too, so its
+  state is a register (a member array: a memory) set at the reset, with no logic for the construction.
+  A local object's constructor is code that runs where it is declared.
+- Not possible: pointers in a struct or a union, a pointer to a struct as a variable. Not yet: a method of an element
+  of an array of objects with a member array, an array of objects as a member when its constructor is not of constants,
+  an array of more dimensions initialized with `{ … }`, a float in a static object (as any static float).
+
+## What can be synthesized (UG1399's rules)
+
+1. The whole functionality in the top function and the functions it calls.
+2. No system calls: `printf`, `fprintf`, `puts` are ignored by synthesis (a note); `malloc`, `free`,
+   `exit`, file I/O, `time`, `rand` are refused.
+3. Fixed sizes: no dynamic memory, no recursion (direct or through other functions). A loop whose count depends on
+   its inputs is made, as Vitis HLS makes it (#1699): a state machine that runs until its condition is false, its
+   latency unknown (a warning; `#pragma HLS LOOP_TRIPCOUNT max=` gives the report a bound).
+4. Unambiguous: a pointer only to an argument, an array or a variable, no function pointers, no `goto`. Pointer
+   arithmetic (#1599) as Vitis HLS takes it: `*(p + e)` is `p[e]`; a local pointer is set to an array, `&x`,
+   `&a[i]` or `a + i` (`p = sel ? a : b` in an `if`), read as `*p` or `p[i]` and moved with `p += n` or `p++`:
+   Silinx makes it the target it points to (a multiplexer of their elements when it has several; written only when
+   it has one) and an offset. Vitis HLS's other forms (#1895): a local pointer passed to a function (its target
+   passed; one target, not moved); a pointer cast to a narrower native integer type (`char *p = (char *)&a[i]`,
+   read only: the bytes of `a`'s elements from their least significant, as on x86); a pointer to a pointer
+   parameter of a function the top calls, resolved at compile time (each call passes `&q`, `q` a pointer; read
+   through only, `**pp`); a pointer argument moved by arithmetic (`p += n`, `p++`, `p = p + n`), then indexed from
+   its new base. A pointer compared, or one that does not resolve so, is refused, with the rule.
+5. No undefined behaviour Silinx can see.
+
+Each refused construct has its own message, at its line and column, saying what is not possible
+and what to write instead.
+
+## The module made
+
+Names and behaviour as Vitis HLS makes them (UG1399, "Interface synthesis"):
+
+| Source | Ports |
+|---|---|
+| (clock and reset) | `ap_clk`, `ap_rst` (active high, synchronous) — none for a combinational module (#1900); `ap_rst_n` (active low) when the top has an `axis` port (#1894) |
+| the block protocol `ap_ctrl_hs` (default) | `ap_start` in; `ap_done`, `ap_idle`, `ap_ready` out |
+| `#pragma HLS INTERFACE ap_ctrl_chain port=return` | `ap_ctrl_hs`'s and `ap_continue` in (#1965): `ap_done` and `ap_return` held after a call until `ap_continue` is 1, no new call meanwhile; `ap_ready` one cycle; `ap_idle` also 0 while `ap_start` is 1; `ap_clk` and `ap_rst` even when combinational (its latency 0), as Vitis HLS 2025.2 |
+| `#pragma HLS INTERFACE ap_ctrl_none port=return` | no block protocol ports (a sequential module: `ap_clk` and `ap_rst` only, running by itself, #1900) |
+| the returned value | `ap_return` (its type's width) |
+| a scalar argument `int a` | input `a` (`ap_none`) |
+| a pointer argument only read | input `p` (`ap_none`) |
+| a pointer argument only written | output `p` and `p_ap_vld` (`ap_vld`) |
+| a pointer argument read and written | input `p_i`, output `p_o` and `p_o_ap_vld` (`ap_ovld`) |
+| a struct argument (#1628) | one port of its members (above): read, input `s`; written, `s_i`, `s_o`, `s_o_ap_vld`; returned, `ap_return` |
+| an array argument | `ap_memory`: `a_address0`, `a_ce0`, `a_we0`, `a_d0`, `a_q0`; one of two or more dimensions (`a[N][M]`, #1786) one memory of N*M words, `a[i][j]` at `i*M + j`; an array of structs one memory of its words (#1668) |
+| an array argument with `#pragma HLS INTERFACE bram` (#1668) | a BRAM's port: `a_Addr_A` (32 bits, an address in bytes), `a_EN_A`, `a_WEN_A` (a write enable a byte), `a_Din_A`, `a_Dout_A` (its words a power of 2 of bytes), `a_Clk_A`, `a_Rst_A` |
+| a pointer argument indexed (`p[i]`, `*(p + i)`, #1599), or passed to a function that indexes it (#1684) | `ap_memory`, its depth the INTERFACE pragma's `depth=` (else 1024, a warning); a pointer to structs one memory of their words (#1668), a pragma naming the struct applying to it |
+| a pointer or an array argument with `#pragma HLS INTERFACE ap_fifo` (#1901) | `ap_fifo`, as a stream's: each `*p`, `p[i]` a read, each `*p = v`, `p[i] = v` a write, in the order of the code (constant positions out of order, or read and written: an error) |
+| a pointer argument with `#pragma HLS INTERFACE ap_hs` (#1901) | the two-way handshake: read, `p`, `p_ap_vld`, `p_ap_ack`; written, `p`, `p_ap_vld`, `p_ap_ack`; each access a state that waits for it |
+| an array argument with `BIND_STORAGE` or `storage_type=` `ram_2p` / `ram_t2p`, in a loop with `UNROLL`, or of a `DATAFLOW` top (#1901) | two ports: `ram_2p` reads on `a_address0`, `a_ce0`, `a_q0` and writes on `a_address1`, `a_ce1`, `a_we1`, `a_d1`; `ram_t2p` (`UNROLL`'s) has both ports, as far as it is read and written; a `DATAFLOW` top's has all their signals, those no process uses driven 0. Two reads of a statement share a state, two writes too when their addresses cannot be the same; unrolled copies do not share one yet, port 1 then idle |
+| a stream argument, `hls::stream<T>` | `ap_fifo`: `s_dout`, `s_empty_n`, `s_read`; `s_din`, `s_full_n`, `s_write`; a stream of structs one of their words (#1668) |
+| a stream with `#pragma HLS INTERFACE axis`, or of `ap_axis` / `ap_axiu` / `hls::axis_user` with no pragma (#1894) | AXI4-Stream: `s_TVALID`, `s_TREADY`, `s_TDATA` (a struct's word, or an element of an array of streams `s_0_TDATA`…); those of `ap_axi_sdata.h` their side channels, `s_TKEEP`, `s_TSTRB`, `s_TUSER`, `s_TLAST`, `s_TID`, `s_TDEST`, those of width 0 none. Not with an `hls::FIR` (a warning, its `ap_fifo` kept) |
+| an array argument with `#pragma HLS INTERFACE axis` (#1894) | AXI4-Stream as above, when the array is read or written once in one loop `for (i = 0; i < N; i++)` of its size; else a warning, its `ap_memory` kept |
+
+Ports are `std_logic_vector(W-1 downto 0)` (VHDL) or `[W-1:0]` (Verilog), a 1-bit type a
+`std_logic` / plain wire. The block protocol: `ap_start` starts a call; `ap_ready` says the inputs
+are read and the next call may start; `ap_done` (one cycle) says the outputs and `ap_return` are
+valid; `ap_idle` is 1 while no call runs.
+
+An argument named as a reserved word of VHDL or Verilog (`in`, `out`, `signal`…), or as one of the names Vitis HLS
+reserves (`pos`, `read`, `write`, `value`, `length`, `rst`, the block protocol's `ap_start`, `ap_return`…; #1902,
+#1926), in any letter case, has its ports named `<name>_r` (`in_r_dout`, `pos_r`), with a warning, as Vitis HLS 2025.2
+names them (`test/hls-corpus/vitis-names.json`, from `scripts/hls-vitis-names.mjs`). `neg` and SystemC's other names
+(`sensitive`, `sc_module`, `clk`) are kept. Vitis keeps a few words of the languages: VHDL-2008's PSL words (`vunit`…)
+and SystemVerilog-2009's (`soft`, `nettype`…) are kept too; `units`, `uwire`, `include`, `incdir` and `rtranif1`, which
+Silinx's VHDL or Verilog would not compile with, are renamed, and their warning says Vitis does not.
+
+A function with no `static` variable whose loops all have constant bounds (fully unrolled) is
+**combinational**: with `ap_ctrl_hs`, `ap_done` and `ap_ready` follow `ap_start` and `ap_idle` is 1;
+with `ap_ctrl_none`, only the data ports. Any other function (a loop whose count depends on its inputs, a
+`static` or global variable) is a **sequential** module: a finite state machine with a datapath. Its code is cut
+into basic blocks (what runs with no jump, its ifs and switches with no loop in them included), one state each,
+run in one clock cycle; its variables are registers (a `static` or a global keeps its value between calls, its
+initial value set at the reset); its loops, `break`, `continue` and `return` choose the next state. The arguments
+are read when `ap_start` is 1 in the idle state; the call's last state has `ap_done` and `ap_ready` at 1 for one
+cycle, `ap_return` valid; a pointer output's `_ap_vld` is 1 for one cycle after each write, its value then valid.
+With `ap_ctrl_none` (#1900) a sequential function with a stream argument has only `ap_clk` and `ap_rst`: it runs by
+itself, starting its next call when one is done (Vitis HLS's free-running kernel), and the co-simulation feeds its
+streams and waits for each call's values; one with no stream keeps `ap_ctrl_hs`, with a warning (its calls could not
+be told apart: Vitis HLS's co-simulation refuses it too).
+A function with a loop called by the top, or given an array, is **inlined** into it (#1632): its loops are the
+top's (each call its own), its array parameters the arguments (a memory too), its pointer and reference parameters
+the variables passed, its by-value parameters local variables, its `static` variables one register per function
+shared by every call; an early `return` ends it through a flag. Such a call in an expression is made before it;
+in a loop's condition, or after `&&`, `||` or `?:`, it is refused. A division or remainder (#1656) by a constant
+power of 2 is shifts, by another constant a multiplication by its reciprocal and a shift, by a variable a restoring
+divider (one compare-and-subtract per bit, combinational: in one cycle); all written with + - * and comparisons, as
+XST takes them. A division by zero gives every quotient bit 1 and the dividend as the remainder (the C simulation
+stops on it). The machine shown as an ASM chart: #1575.
+
+A function with `#pragma HLS INLINE off` is a **sub-module** (#1960): a module of its own with its block protocol
+(`ap_start`, `ap_done`, `ap_idle`, `ap_ready`), an instance of it a call, as Vitis HLS makes them (`<function>_U0`,
+`_U1`, …, #2244); one shared by all its calls when it, or what it calls, holds a `static` variable (one variable, as
+the C's). Each call is a state of the caller's machine holding `ap_start` at 1 and the arguments until `ap_done`; a
+loop calling it is not pipelined (said, if asked). Its value and a pointer's are taken when they come (`ap_return` at
+`ap_done`, a pointer's at its `_ap_vld`, so one it does not write keeps the caller's); an array or a stream argument's
+port is the callee's during the call (the array a memory, whatever its size); its `static` variables are the module's.
+A global variable it shares with its caller is a port of it, as Vitis HLS makes it (#2244): an integer one a pointer's
+(`g_i`, `g_o`, `g_o_ap_vld`; `g` alone when it only reads it), an array a memory's, the caller's variable passed at each
+call.
+The report lists each function's calls, latency (from `ap_start` to `ap_done`; at most, when its branches differ) and
+resources (states, register bits, memories), a sub-module's own below it. The same modules serve DATAFLOW's processes.
+Five cases stay inlined, with a warning: a function of latency 0 called by a top of latency 0 (no clock to start it
+with: its ports are Vitis HLS's), one sharing a global variable with its caller that a function it calls uses too, or
+that is not an integer nor an array of them (not yet), one with a struct argument, an `hls::vector` too (not yet), one with `ap_ctrl_chain`, and one called by a module that waits for an AXI master (`ap_ce`) (not yet). A function is one module per size of its
+arrays; `FUNCTION_INSTANTIATE variable=v` (#2244) makes one per constant `v` its calls give, `v` a constant inside it
+(its port gone), a call whose `v` is not a constant the module with the port; `ALLOCATION instances=f limit=N function`
+(below) gives its calls N instances at most, in turn. With no pragma a function is inlined, where Vitis HLS keeps a
+large one: `cToHdl(…, { large: true })` (and `cosimulate`'s) keeps a function that holds a loop of its own (not unrolled
+whole) and is called outside any loop and any pipelined function a sub-module; it is not the default until Vitis HLS's
+modules of the corpus are recorded (`scripts/hls-vitis.mjs` reads them from `csynth.xml`'s RTL hierarchy into
+`vitis.json`, #2244) and say which of its functions it keeps.
+
+**Arrays and memories** (#1527). A local array of up to 64 elements is registers (one per element; an index that
+is not a constant a multiplexer). An array argument is a memory outside the module, `ap_memory`: one port, its
+address (`_address0`, enough bits for its size) and enable (`_ce0`), its write enable and data (`_we0`, `_d0`,
+when it is written) and the value read (`_q0`, the cycle after its address, as a block RAM gives it); the module
+is sequential. A local, `static` or global array of more than 64 elements, and a constant one in a sequential
+module, is a memory inside it with the same port, written so that ISE and Yosys make it a block RAM: its
+initial values its contents (a `const` array, or one never written, is a ROM); a `static` or global one keeps its
+values between calls; one initialized with `{ … }` and written must be `static` (or initialized with a loop).
+Each access takes a state: a statement reading a memory has a state per read (its address driven), then its own
+(the values read in registers); a write is a statement of its own (`a[i] = v;`, `a[i] += v;`, `a[i]++;`), with no
+other side effect in it; the index of a memory has no side effect; a memory is accessed in the top function only
+(not passed to a function, not in a `switch`). A combinational function's constant arrays are LUT ROMs.
+
+### The library's types (#1891)
+
+- **`hls::vector<T, N>`** (`hls_vector.h`): a struct of an array of `N` elements: `v[i]`, `{ … }`, copied, in arrays, behind
+  pointers and in streams (a stream per element). `+ - * /` and `+= -= *= /=` element by element, of two vectors or of a
+  vector and a scalar, in a statement `x = e;`, `V x = e;`, `s.write(e);` or `return e;`. Not yet: a vector's operators as a
+  function's argument or in a larger expression; comparisons; a function's result in `e`.
+- **`std::complex<T>`** (`<complex>`): `c.real()`, `c.real(x)`, `c.imag()`, `c.imag(x)`, `c = {a, b}`, `==`, `!=`, its default
+  value 0; `hls::axis<T, U, TI, TD>` (`ap_axi_sdata.h`) of a builtin type, an `ap_int`, an `ap_uint` or a complex of one. Not
+  yet: its arithmetic.
+- **`ap_float<W, E>`** (`ap_float.h`): in a test bench only, a `double` with a warning: its rounding is not modelled. In the
+  synthesized code an error.
+- **`hls::autorestart r(n, f, a…);`**: in a test bench only, `n` calls of `f(a…)` with the same arguments.
+- **`malloc`, `free`** (`malloc.h`, `stdlib.h`): in a test bench only: `n` bytes for a pointer of its type.
+- `extern "C"`, with or without braces, is dropped; a parameter `T (&a)[N]` is `T a[N]`, its `T` and `N` deduced in a template.
+
+### DATAFLOW (#1707)
+
+`#pragma HLS DATAFLOW` in the top function, whose body is calls of functions and declarations of streams and
+arrays, makes each call a **process** running at the same time as the others, as Vitis HLS does (UG1399,
+Task-level parallelism): each callee is a module of its own, made as the top would be (its own machine and
+`ap_ctrl_hs`; a callee called twice, two instances; a pointer argument the size of the array it is given). The
+channels between them:
+
+- a local `hls::stream` is a **FIFO**, one process writing it and one reading it; its depth is `#pragma HLS STREAM
+  variable= depth=`'s, else `hls::stream<T, D>`'s `D`, else 2;
+- a local array is a **buffer** (a block RAM) written by one process; the process reading it starts once its writer
+  is done (ping-pong within a call);
+- the top's arguments are passed to the process that uses them: a stream or an array to one process, a scalar to
+  any (an argument of a call is an argument of the top, a constant, a local stream or array). A stream of structs is
+  one word on its port, and an `axis` stream AXI4-Stream ports, as for any top: the processes read and write its
+  members one by one, an adapter between them and the word (#1706).
+
+The top's `ap_ctrl_hs` starts every process once a call and is done when every one is. With `ap_ctrl_none` (and a
+stream argument), or when every process is an `hls::task` (a data-driven top), the top has only `ap_clk` and
+`ap_rst`, as Vitis HLS's (#1900): its processes start again once all are done. The C simulation runs the
+calls in order; the co-simulation drives the top's ports as for any module, and when a call does not end it names
+the streams that may be too shallow (a stream to a process that waits for its writer to be done, through a buffer,
+must hold all a call writes). A loop among the calls of a region of streams is a process of its own (`Loop_<k>_proc`,
+as Vitis HLS's `Loop_…_proc`), and a process may give a value back through an output of the top (`inner(b, s, &out)`,
+`out` and `out_ap_vld`) (#1706). A region's process that is itself a region (a function template's instances, Vitis HLS's unique task regions) has its
+processes and channels in its caller's region; a region the top calls among other statements is a module of its own,
+called each time (its tasks' state kept). The report gives each process's latency, and the region's latency and interval
+(their streams' waits are the co-simulation's). Not yet: a process's result (`return`) or an output to another process, an argument
+of the top shared by two processes, a channel with two writers or readers.
+
+**`hls::stream_of_blocks`** (`hls_streamofblocks.h`, #1891): `hls::stream_of_blocks<B> s;` with `typedef T B[N];`,
+`hls::write_lock<B> l(s);` and `hls::read_lock<B> l(s);`, `l[j]`. A block is a word of a FIFO (a stream per element,
+its depth the blocks', `hls::stream_of_blocks<B, D>`), not Vitis HLS's ping-pong memory: the same values, more
+registers. A write lock's block is written at the end of its scope; a `return`, `break` or `continue` within that scope
+is refused.
+
+**`hls::split` and `hls::merge`** (`hls_np_channel.h`, #1743): `hls::split::round_robin<T, N, D> s;` (its processes
+writing `s.in`, reading `s.out[i]`) and `hls::merge::round_robin<T, N, D> m;` (writing `m.in[i]`, reading `m.out`) are
+FIFOs and a task of their own moving each value, a split's to its outputs in turn, a merge's from its inputs in turn.
+`load_balance` (Vitis HLS's a free output, an input with data, in the schedule's order) is made as `round_robin`, with a
+warning.
+
+**`hls::task`** (`hls_task.h`, #1721): `hls_thread_local hls::task t(f, a…);` starts, once, a task running `f` again
+and again while its inputs have values (`hls_thread_local` streams and tasks live across calls). The C simulation runs
+the tasks whenever the test bench or the top would wait (a read of an empty stream, the end of a call of the top),
+as Vitis HLS's threads would: an invocation of `f` that would read an empty stream is undone and run again later; an
+`f` of the form `init; while (1) body` keeps its init's variables across its iterations. In hardware (#1719) each task
+is a process running by itself (its `ap_start` 1: its machine starts again when done, its state kept across calls), its
+`hls_thread_local` streams FIFOs; the top's `ap_done` does not wait for the tasks, and the co-simulation waits for the
+values a call reads and writes (an input stream's values kept across calls: a task may read ahead of the C's).
+
+### The FIR filter: `hls::FIR` (`hls_fir.h`, #1942)
+
+Vitis HLS's FIR filter (the FIR Compiler, PG149), with Silinx's own C model and hardware:
+
+```cpp
+struct config1 : hls::ip_fir::params_t {
+  static const unsigned num_coeffs = 7;
+  static const unsigned coeff_sets = 3;
+  static const unsigned input_length = 20;
+  static const unsigned output_length = 10;
+  static const unsigned filter_type = hls::ip_fir::decimation;
+  static const unsigned decim_rate = 2;
+  static constexpr double coeff_vec[21] = { … };   // (or declared here, defined after: const double config1::coeff_vec[21] = { … };)
+};
+void top(data_t in[20], out_t out[10], ap_uint<8> *config) {
+  static hls::FIR<config1> fir1;   // (static, or at file scope: its delay line lives across calls)
+  fir1.run(in, out, config);       // (run(in, out) with one set; arrays or hls::streams; a config stream)
+}
+```
+
+- **The header**: Silinx's own `hls_fir.h` (core/cpp-headers.js, none of AMD's): `hls::ip_fir`'s constants, `hls::ip_fir::params_t`
+  and `hls::FIR<CONFIG_T>::run`, the API UG1399 and PG149 describe; the compiler reads its constants and defaults from it.
+- **The parameters**: `hls::ip_fir::params_t`'s fields and defaults, as UG1399 describes them (`input_width` 16,
+  `input_fractional_bits` 0, `output_width` 24, `coeff_width` 16, `num_coeffs` 21, `coeff_sets` 1, `input_length` and
+  `output_length` 21, `filter_type` `single_rate`, …); `config1::num_coeffs` may be used in the code. Silinx makes single
+  rate, decimation and interpolation filters of an integer rate, one channel, coefficient sets chosen by the config
+  argument (its value the set), `integer_coefficients` and `quantize_only`, `full_precision` and `truncate_lsbs`; the
+  others (`reloadable`, `hilbert_filter`, `interpolated`, `fixed_fractional`, `num_channels` > 1, the rounding modes,
+  unsigned data or coefficients, `half_band`, …) are refused, each named with why, as `coeff_structure` `symmetric` or
+  `negative_symmetric` of coefficients not so mirrored. `filter_arch` and `optimization_goal` are taken: Silinx's
+  structure is its own, chosen from the rate (below).
+- **What it computes** (the C model, the C simulation's): each input taken in the parameters' format
+  (`ap_fixed<input_width, input_width - input_fractional_bits>`), the sums in full precision (the fewest bits holding
+  every sum of a phase's coefficients times inputs of the input's range: PG149's `input_width + ceil(log2(sum |h|))`),
+  `truncate_lsbs` dropping the LSBs past `output_width`, then the output's type takes the value (an `ap_fixed`
+  conversion). Decimation by D gives an output once each D inputs (at the D-th: the single rate's y[mD + D - 1]);
+  interpolation by L gives L outputs an input (y[nL + p] = Σ h[p + kL] x[n − k]). A call reads `input_length` inputs
+  and writes `output_length` outputs (`input_length` × L / D).
+- **The structure** (#1947, `firStructure`): as the FIR Compiler (PG149), from the clocks an input may take: `sample_period`
+  (`rate_specification` `period` or `input_period`; `output_period`: its value × `interp_rate` / `decim_rate`), or
+  `hardware_oversampling_rate` (`frequency`); at least one, a port reading one input a clock, so the corpus's 0.5 is 1.
+  MACs = ⌈taps × L / (clocks × D)⌉, no more than a phase's taps: a decimator computes only the outputs it keeps. A mirrored
+  filter (`coeff_structure` `symmetric`, `negative_symmetric`, or `inferred` when it is, every set; single rate or
+  decimation; inputs under 18 bits, so that the sum stays a multiplier's operand) adds its pair of samples before the
+  multiplier (the pre-adder): half the taps, half the MACs, a second delay line. More than 28 MACs (the XC3S1200E's
+  multipliers, the largest Spartan-3E of the boards) are not made: a warning says so, and that a larger `sample_period`
+  states the rate the filter must sustain.
+- **The hardware** (its own HDL, core/hls-fir-hdl.js): the MACs (18×18 multipliers, their operands and products registered),
+  a coefficient ROM each and a delay-line RAM each (block RAMs when large enough; the delay line cyclically partitioned among
+  the MACs, so each has its tap in the same clock); the inputs read and written apace while the MACs work, the oldest taps
+  first, so a write never needs what is still to be read; the products summed in a pipelined tree and accumulated; the sum
+  written out. The input waits only when its sample would start an output before the last has read its taps; everything
+  waits while an output stream is full. Its ports are Vitis HLS's: an array's `ap_memory` with its two ports
+  (`in_r_address0` … `in_r_we1`; the second unused), a stream's `ap_fifo`, the config an `ap_none` input (`config_r`). The
+  top that runs it (its calls only, DATAFLOW or not) makes it a process of its own; in a top of other statements its C
+  model is inlined. dsp-fir-decimator: 4 MACs, 31 cycles a call (Vitis HLS's FIR Compiler 32).
+
+### An RTL blackbox: `syn.blackbox` (#1903)
+
+A function written in VHDL or Verilog, as Vitis HLS's RTL blackbox (UG1399): a JSON file describes it, and Silinx HLS
+uses its C model in the C simulation and its module in the synthesis, one instance for each call.
+
+- **The description** (Vitis HLS's keys): `c_function_name`, `rtl_top_module_name`, `c_files` (the C model, each
+  `{ "c_file": … }`; its `cflag` is ignored, with a warning), `rtl_files`, `c_parameters` (each argument's `c_name`,
+  `c_port_direction` `in`, `out` or `inout`, its `rtl_ports`: `data_read_in`, `data_write_out`, `data_write_valid`),
+  `c_return` (its `data_write_out`), `rtl_common_signal` (`module_clock`, `module_reset`, `module_clock_enable`, and
+  `ap_ctrl_chain_protocol_start`, `_done`, `_idle`, `_ready`, `_continue`), `rtl_performance` (`latency`);
+  `rtl_resource_usage` is read and not used. A file is found beside the description, else by its name in the project.
+- **The C function**: declared in the sources (`void rtl_model(data_t a, data_t &z);`); its body, if it has one, is
+  not synthesized. Each argument is described, a scalar by value `in`, a reference or a pointer to a scalar `in`,
+  `out` or `inout`; the module's ports are checked against the description and the C types (direction, width).
+- **A call**: a state of the machine. The inputs are held in registers for the whole call; `ap_start` is 1 for its
+  first cycle; the call ends with `ap_done`, or, with no `ap_done`, after the description's `latency` (0: a
+  combinational module, the same cycle). An output with a `data_write_valid` is taken in the cycle its valid is 1
+  (a valid that is never 1 leaves the variable as it was), one without as the call ends. `module_clock_enable` and
+  `ap_ctrl_chain_protocol_continue` are held at 1, `module_reset` is `ap_rst`. A loop with a call is not pipelined.
+- **In the app**: the project's JSON files that are descriptions are read as it opens, with the files they name and
+  the project's headers; the RTL module is a source of the project, synthesized with the HDL made from the C.
+- **The co-simulation** replays the test bench's calls on the HDL with the module itself, not its C model.
+- **Refused, each said**: a description that is not valid JSON or misses a key, names a file the project does not
+  have, a port kind of a memory or a stream (`RAM_type`, `FIFO_…`: not yet), an argument not described, a port the
+  module does not have or of another width; a blackbox in a DATAFLOW region (not yet). Every message starts with
+  `syn.blackbox:` and names the description's file. An input of the module the description does not name is left
+  unconnected, with a warning.
+
+### The FFT: `hls::fft` (`hls_fft.h`, #1943)
+
+Vitis HLS's FFT (the FFT LogiCORE, PG109), with Silinx's own C model and hardware:
+
+```cpp
+typedef std::complex<ap_fixed<16, 1> > cx;
+struct config1 : hls::ip_fft::params_t {
+  static const unsigned max_nfft = 10;
+  static const unsigned output_ordering = hls::ip_fft::natural_order;
+};
+void top(ap_uint<1> dir, ap_uint<15> scaling, cx xn[1024], cx xk[1024], bool *status) {
+#pragma HLS interface ap_fifo depth=1 port=status
+#pragma HLS interface ap_fifo depth=1024 port=xn,xk
+#pragma HLS stream variable=xn
+#pragma HLS stream variable=xk
+#pragma HLS dataflow
+  hls::fft<config1>(xn, xk, dir, scaling, -1, status);   // (xn, xk arrays or hls::streams)
+}
+```
+
+- **The header**: Silinx's own `hls_fft.h` (core/cpp-headers.js, none of AMD's): `hls::ip_fft`'s constants and enum types,
+  `params_t`, `ssr_params_t`, `config_t`, `status_t`, `hls::fft<CONFIG_T>`, with the field names of AMD's examples
+  (`max_nfft`, `output_ordering`, `super_sample_rate`, `use_native_float`); UG1399's names of the same fields
+  (`log2_transform_length`, `implementation_options`, …) are taken too.
+- **The fixed point**: `pipelined_streaming_io`, scaled, `truncation`, 16-bit phase factors, one channel, `input_width` 8 to 16
+  and `output_width` the same, an even `max_nfft` (radix-4 stages); each other value is refused, named. `fwd_inv` 1 is forward;
+  `scale_sch` holds 2 bits a stage, the first stage's the LSBs. Not given: UG1399's defaults, inverse and every bit 1. The
+  transform is bit-exact with AMD's C model on the corpus's 20 frames of stimulus and golden files (core/hls-fft.js gives
+  the arithmetic); `status` is 1 when a value did not fit `input_width` bits (it wraps).
+- **The hardware** (core/hls-fft-hdl.js): the top is the transform's own module, in VHDL or Verilog, so the top holds the call
+  alone and its `xn`, `xk`, and `status` are its arguments (`fwd_inv` and `scale_sch` its arguments or constants). Its ports
+  are Vitis HLS's: `dir`, `scaling`, `xn_dout` / `xn_empty_n` / `xn_read` and `xk_din` / `xk_full_n` / `xk_write` of the complex
+  values packed `{im, re}`, `status_din` / `status_full_n` / `status_write`; an array is an `ap_fifo` port whatever its pragmas.
+  It works in place: a block RAM of the values, a ROM of the twiddles, four 18x18 multipliers, one output every 3 cycles, not
+  the LogiCORE's streaming pipeline: 26,626 cycles for 1024 points where Vitis HLS's takes 3,198.
+- **The floating point** (`use_native_float`): a C model only, unscaled, natural order, radix-2 in `float`, the direction its
+  `systolicfft_inv`. It is bit-exact with AMD's C model on the corpus's 1024-point, SSR 2 forward golden files
+  (core/hls-fft.js gives the arithmetic); other lengths, other super sample rates and the inverse follow the same rules
+  with no golden file to check them. Its input and output may be streams of `hls::vector<std::complex<float>, super_sample_rate>`, a word of that many
+  samples (#2309). Its hardware (core/hls-fft-float-hdl.js) is the top's own module, as the fixed point's: a block RAM of the
+  values (`{im, re}`, the floats' bits), a ROM of the N / 2 twiddles, one floating-point adder and one multiplier (Silinx HLS's
+  own, from its soft-float library, #1761), so its outputs are the C model's to the last bit. Its ports are `in_dout` /
+  `out_din` of a word of the complex values (a stream of `hls::vector`: lane 0 the low bits), with `_empty_n` / `_read` and
+  `_full_n` / `_write`; `fwd_inv` and `scale_sch` are not used. One butterfly at a time: 12 cycles with a twiddle, 9 without,
+  about 61,000 cycles for 1024 points. Its size for 1024 points (the open synthesis, Spartan-3E): 6 block RAMs, 4 18x18
+  multipliers, about 6,200 LUTs: an XC3S500E (Nexys2) or larger, not a Basys2's XC3S100E or XC3S250E; the corpus's Artix-7 part
+  (xc7a35t) holds it easily.
+
+## Pragmas (`#pragma HLS …`)
+
+| Pragma | In Silinx |
+|---|---|
+| `TOP name=` | the top function |
+| `INTERFACE ap_ctrl_none / ap_ctrl_hs / ap_ctrl_chain port=return` | the block protocol |
+| `INTERFACE ap_none / ap_vld / ap_ovld / ap_memory / bram port=` | the argument's interface |
+| `INTERFACE s_axilite port= [bundle=] [offset=]` (#1893) | an AXI4-Lite slave `s_axi_<bundle>_*` (`control` by default): a scalar or a pointer to one a register, `port=return` the block protocol's (`interrupt`, the control register at 0x00; the interrupts' at 0x04, 0x08, 0x0c; the arguments from 0x10); the module's reset `ap_rst_n` |
+| `INTERFACE m_axi port= [bundle=] [depth=] [offset=] [max_widen_bitwidth=]` (#1893) | an AXI4 master `m_axi_<bundle>_*` (`gmem` by default): an array, or a pointer indexed or read and written as `*p`, a memory read and written over the bus, a word on its byte lanes, in bursts (#2276): a read that misses fetches a burst from its element on (`ARLEN` + 1 beats: up to `max_read_burst_length=`, 16 by default, within its array and its 4 KB page) into a buffer of its port, whose next reads are served at once; writes go into a buffer of their port, consecutive ones gathered into a burst (up to `max_write_burst_length=`), written out when it is full, when a write does not follow, when a read misses and before `ap_done`; a write updates the read buffers that hold its beat; the module waits (`ap_ce`) only for an access not served; its address a register of 64 bits of the slave (`offset=slave`, the default: `control` if no `s_axilite` names it), a port (`offset=direct`) or 0 (`offset=off`); the bus 32 bits at least, or a word's, or `max_widen_bitwidth=`. A config's `syn.directive.interface=<top> mode=m_axi …` is the same pragma; `hls_burst_maxi.h`'s `hls::burst_maxi<T>` argument a master's pointer, its `read_request(o, n)` / `write_request(o, n)` queued (up to 4) and its `read()` / `write(v)` at the requests' elements in turn, one a statement; `memcpy(a, b, n)` a loop of the elements |
+| `AGGREGATE variable= compact=` / `DISAGGREGATE variable=` (the top's, #1668) | a struct argument, a stream or an array of structs one port, stream or memory of its words, packed `compact=bit` (an array's or a stream's default), `byte`, `none` (a scalar struct's default) / a port, a stream or a memory per member |
+| `INLINE` / `INLINE recursive` / `INLINE off` | the function dissolved in its callers / the functions it calls too / a sub-module of its own, an instance a call (#2244), whatever its caller's `recursive` (#1960, below) |
+| `FUNCTION_INSTANTIATE variable=v` (in an `INLINE off` function's body, #2244) | a module of the function for each constant `v` its calls give, `v` a constant in it (no port); an argument that is no value (a pointer, an array, a stream, a struct) or no argument: a warning |
+| `LOOP_TRIPCOUNT min= max=` | the report's bound of a loop whose count depends on the inputs (its latency, else unknown) |
+| `PIPELINE [II=]` / `PIPELINE off` (in a loop's or the top function's body) | a sequential module's loop: its iterations overlapping, a new one every II cycles, its inner loops of constant count unrolled in it (below); the top function's: its calls overlapping; a warning saying the II made, and why, when it is more than asked. `off`: not pipelined, not even automatically |
+| `UNROLL` / `UNROLL factor=N` (in a loop's body) | whole: a loop of constant count run in the state it is in (no state of its own); `factor=N`: N iterations a state. A combinational module's loops are all unrolled |
+| `ARRAY_PARTITION variable= type=complete` | the array's elements registers, whatever its size (not a memory); `dim=N` of an array of more dimensions: a memory per value of that index |
+| `ARRAY_PARTITION variable= type=block\|cyclic factor=N [dim=D]` (#1920) | several memories, as Vitis HLS's: `cyclic` element k in memory k % N, `block` consecutive blocks of ceil(L / N); an argument's each with its own port (`d_0_address0`, `d_1_address0`, …), a local's `A_0`, `A_1`, … A local array of 64 elements or fewer stays registers. Accesses of different memories share a state only when the memory is known at synthesis (`A[i * N + 3]` cyclic factor=N) |
+| `DATAFLOW` (the top function's, #1707) | its calls processes running at once (below); a region of other statements: a warning, made sequential |
+| `STREAM variable= depth=` | a DATAFLOW region's stream: its FIFO's depth (else `hls::stream<T, D>`'s D, else 2) |
+| `BIND_STORAGE variable= type=` (#1901) | a local array a memory (a small one too) of `ram_1p`, `ram_2p`, `ram_s2p`, `ram_t2p`, `rom_1p` or `rom_2p`'s ports; another type: a warning. `impl=` (#1961): `lutram` and `bram` told to the tools (`ram_style`, `rom_style`), `register` its elements registers, no memory; `uram`, `srl`, `latency=` and an argument's: a warning |
+| `ARRAY_RESHAPE variable= type= [factor=] [dim=]` (#1961) | `type=cyclic factor=N`: element k in word k / N at slice k % N; `type=block`: word k % S at slice k / S, as Vitis HLS packs them (core/c-reshape.js, #2424). The top's argument of one dimension (integers, factor 2 or more) is one `ap_memory` of the words, the co-simulation packing the C's elements; a local memory is one memory of the words, its initial values packed; a small local array is registers, as a partition's. Otherwise made as `ARRAY_PARTITION` (a local) or its port's words kept (an argument), with a warning |
+| `DEPENDENCE [variable=] [class=array] inter\|intra [RAW\|WAR\|WAW] false` (#1961) | a pipelined loop's or function's memory, in the loop the pragma is in and those in it: `inter` a read need not come after another iteration's write, so the II is no longer bound by it (the C's results then only if the dependence really is false, as in Vitis HLS); `intra` a read and a write of one iteration in the same stage. `true` or no `false`: no effect. A variable's dependence is kept: a warning |
+| `LOOP_FLATTEN [off]` (in a loop's body, #1961) | the loop made one with the loop around it (and on up, each with its own pragma), of the product of their counts, when the one around holds nothing else, both counts are constants and no `break`, `continue`, `return` or `goto` is in it; else a warning, its loops kept. `off`: left alone |
+| `LOOP_MERGE [force]` (in a body, #1961) | its consecutive `for` loops made one, of the largest count (each body while its own lasts), or of their common bound; not when a value crosses them in another order than the C's (only an array at each one's own variable is safe), a warning; `force` merges them all the same, on the designer's word |
+| `ARRAY_STENCIL variable=` (in a pipelined loop's body, #2503) | the loop and the loop over the rows around it (both of constant counts, the outer holding nothing else) made one over the 2-D array's elements, an element read an iteration, kept in line buffers (a memory of a row for each row of the window but the last) and a window of registers, the taps `a[y + i][x + j]` of the body (`i`, `j` constants or its inner loops' counters, directly or through variables): II=1 with one read of the array an iteration. The outputs come in the C's order, later; the body runs every iteration, its writes only on an output's. A local array the body reads at constant indices (its inner loops unrolled), the filter's coefficients, is made registers. A body that writes the array, reads another argument, or has a `break`, `continue`, `return`, `goto` or call: a warning, its reads one at a time |
+| `BIND_OP variable= op=mul impl=fabric\|dsp\|auto` (#1961) | `fabric`: the multiplications assigned to the variable made of LUTs (a shift and an addition a bit), no multiplier block; `dsp`, `auto`: a block, as with no pragma. `latency=`, another operation on `dsp`, a floating-point operation: a warning |
+| `ALLOCATION instances=mul limit=N operation` (#1961) | a cycle takes at most N multiplier blocks (a wide multiplication counts its 18 x 18 blocks), the others waiting for a later cycle and sharing them; a pipeline's II is kept, with a warning if it takes more. `instances=f limit=N function` of an `INLINE off` function: its calls on N instances at most, in turn (#2244; else one a call). `instances=dmul limit=1 operation` (and `dadd`, `dsub`, `ddiv`, `dsqrt`, `fadd`, `fsub`, `fmul`, `fdiv`, `fsqrt`, #2273): the operations of that kind in the pragma's scope (its function, or its loop's body) one shared unit, a sub-module of the soft-float's operation scheduled over the clock, each operation a call of it (its alignment, normalization and rounding made once: much less area, a few cycles more each, and a loop calling it not pipelined); without the pragma each operation is inlined where it is; one in a loop's header, after `&&` / `\|\|` or in a branch of `?:` stays inlined. Other operations and an inlined function: a warning |
+| `LATENCY [min=] [max=]` (of the top function, #1961) | `min=`: wait states at its start, a combinational top made sequential; `max=`: a warning if a path takes more. Of a loop or a region, or of a pipelined function: a warning |
+| `EXPRESSION_BALANCE off` (in the top's body, #2613) | by default a sum of four terms or more of one width is balanced into a tree (core/c-balance.js), before the states and a pipeline's stages are made: the same value, log2 of its terms deep; `off` keeps the chains as written. Elsewhere, or not `off`: a warning |
+| `STREAM` outside a DATAFLOW region; `type=shared` / `unsync`, or `depth=` of an array, in one (#1961) | a warning saying why: a stream is a FIFO, a local array a buffer (PIPO) |
+| Vitis HLS's other pragmas, and AXI4-Stream (`axis`) on what is not a stream or an array | accepted and ignored, with a warning; an unknown pragma: a warning |
+
+A loop's pragma is its body's first statements; one elsewhere is ignored with a warning.
+
+**`PIPELINE`, as Vitis HLS makes it** (#1962, `core/c-pipe-sched.js`): the iterations of a loop that accesses a memory
+or holds a `continue` or a `break` overlap, a new one every II cycles, and its cycles are Vitis's count, (N - 1) x II + the
+stages of an iteration (the report's `depth`). Each memory's port takes one access a cycle (a read's value the cycle
+after), the operations are chained while they fit the clock, its inner loops of constant count are unrolled, those
+with accesses too, and an element read twice is one read. The II is the one the ports and the dependences allow; the operations are then
+cut into stages by the clock, an iteration over several cycles at that II (#2182: the report's `depth`, and View C
+Synthesis Report's "an iteration N cycles"), a sum's variable that the next iteration reads added last (`s += a + b + c`:
+one addition in the recurrence). When the clock's stages need a larger II (a recurrence through a long operation, as a
+`float` sum), the II is raised until they fit, and a warning says so (`a dependence at this clock: …`), as Vitis HLS
+raises it. A local array of registers that the body reads and writes only at the loop's counter (`b[i] = b[i] + 100`,
+the counter stepped by a constant and written nowhere else) is no dependence: each iteration writes its own element. A loop with no memory, one state an iteration when it fits the clock, is made so too when it does not;
+so is a loop that reads or writes streams (below, a state an access) when its states do not fit the clock and each
+stream is read or written once an iteration (a statement of its own, `empty()` / `full()` not read): its access in its
+stage, the value read there and carried on, every stage held while one waits (its FIFO empty or full). An exit known only after the next iteration has started squashes
+that iteration, if none has written anything by then but the loop's own variables. A warning says the II made only
+when the II asked cannot be met, and why: a memory's one port, or a dependence (a variable or a memory another iteration
+reads, the exit). A loop with a stream, a memory of structs, a `return` or a `goto` is made as below, its accesses a state each (a path
+longer than the clock said in View C Synthesis Report, #2080, when it cannot be made in stages). The top function's `PIPELINE` makes the whole function so, its machine one pipeline: a new call
+whenever `ap_start` finds the first stage free (`ap_ready`, ahead of `ap_done`), its loops unrolled, the report's
+`pipeline` its II and depth; one with a stream, or that cannot be made so, runs its calls one after the other, with a
+warning saying why. A function the top calls is inlined: its pragma has no effect (a warning). A top that fits the clock
+with no state is combinational, whatever its pragma. `BIND_STORAGE` is not made, so a memory has one port even where
+Vitis's `ram_2p` has two.
+
+**Loops pipelined automatically** (#1919), as Vitis HLS's default (UG1399): with no `PIPELINE` pragma, an innermost
+loop of more than 64 iterations is pipelined (II=1 aimed at); one of 64 or fewer has its parent pipelined instead,
+the inner loop unrolled in it, when Silinx can make the parent so (else the inner loop is pipelined); an innermost
+loop with no parent is pipelined whatever its count. The threshold is Vitis HLS's `syn.compile.pipeline_loops`:
+`cToHdl(…, { pipelineLoops: N })` (and `cosimulate`'s), 0 for none; `#pragma HLS PIPELINE off` in a loop leaves it
+as it is. A pipelined loop that accesses a stream (or that the pipeline above cannot make) keeps a state per access (a memory's read is in its
+register a cycle later), its condition and step in its last state, consecutive states merged when they use no port
+of the same memory or stream; its first state's work is done in its last for the next iteration when they share no
+port: `s += a[i]` takes a cycle an iteration, `a[i] = a[i] + 1` two (one port). A state that waits for a stream
+writes nothing while it waits. Where the II of 1 is not met, a warning gives the II made and why: a memory's accesses
+a state each, or a loop that cannot be made so (a branch or a `break` around an access, a `do`-while, an inner loop
+that cannot be unrolled), then made as before. The generation's report (`cToHdl(…).report`) gives a sequential module's states, register bits, memories
+and, for each loop, what its pragmas made: its II (states an iteration) and its cycles.
+Only one state runs in a cycle, so the multiplications of different states share their units (#2125), as Vitis HLS
+binds its operations: a state's multiplications take the first free units of their kind (one multiplier block, 18 x 18
+at the operands' own widths, or the same widths), the units' operands multiplexed by the state; a multiplication by a
+power of 2, or with an operand under 6 bits, keeps its own; so does one after another multiplication in its state, and
+the uses of a kind whose unit's path (the latest operands of its uses, the multiplexers, the longest path after any of
+them) has no room in the period: the latency is the schedule's, never longer. The soft-float's operations share their multiplications so.
+With the device's multiplier blocks known (the IDE gives them: a Spartan-3E's MULT18X18s, a Spartan-6's DSP48A1s;
+`cToHdl(…, { mults: N })`), a cycle takes no more than that many, every multiplication made of 18 x 18 ones: the
+others wait for a later cycle (`pow` in double on a Basys2-100's 4). The report's `units` give each unit's widths, its
+blocks, its uses and its inputs, `blocks` their sum and `unitsNs` the longest path with their multiplexers; the View
+C Synthesis Report lists them, and, when that path is over the clock, the machine is scheduled again with each multiplication's operands held in
+registers written the cycle before (core/c-schedule.js, #2273); the report warns if it is still over. A sub-module
+(#1960) has its own units and its own limit: the module's `blocks` do not count its sub-modules'.
+
+## HDL to C (the other way)
+
+Any module of the project (VHDL, Verilog, or a drawing's generated HDL: a schematic, an ASM chart, a state diagram,
+a truth table) has a **C model** (Processes ▸ View C Model, #1530): C99 computing what Silinx's simulator computes,
+two-state (an unknown bit is 0): a struct of its signals (each of at most 64 bits, an array as an array of words)
+and
+
+```c
+void top_init(top_t *s);   /* the signals at their initial values */
+void top_eval(top_t *s);   /* the combinational logic settled, the inputs set first */
+void top_step(top_t *s);   /* a sequential design: a rising edge of its clock, then top_eval */
+```
+
+The processes are C functions run in delta cycles (a VHDL signal or a Verilog nonblocking assignment takes its value
+in the next one), the clocked ones once per `top_step`; the HDL functions are C functions. One clock and its rising
+edges only; a wait with a time, file I/O, real values, more than 64 bits are said, not modelled. A C test bench sets
+the inputs, calls `top_step` (or `top_eval`) and reads the outputs, as Silinx's tests do against the simulator.
+
+## Checking it
+
+- **Against the C**: the tests compile the C with the host's C compiler (gcc or clang,
+  `-fsigned-char`), call it on random and edge inputs, and simulate the generated HDL (VHDL and
+  Verilog) on the same calls: the same outputs, call by call.
+- **Synthesis**: the generated HDL through ISE with no warnings, and through the Silinx toolchain on
+  every supported device.
+- **In the app**: C simulation (Silinx's interpreter of Silinx HLS runs `main()`) and C/RTL
+  co-simulation (the test bench's calls drive the generated HDL) — phase 5 (#1528).
+
+## The phases
+
+0. This specification (#1523).
+1. The C parser and its checks (#1524), and Check Syntax of a `.c` file.
+2. Combinational C to HDL (#1525).
+3. Sequential C, `ap_ctrl_hs` (#1526); its machine shown as an ASM chart (#1575).
+4. Arrays and memories (#1527).
+5. C simulation and co-simulation (#1528).
+6. The pragmas (#1529).
+7. HDL and state machines to C (#1530).
+8. The interface: New Source, the C editor, the processes, an example (#1531).

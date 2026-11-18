@@ -51,8 +51,8 @@ test('release workflow: packaged (with SHA256SUMS), checked, the notes written; 
   assert.match(publishStep, /gh release create "\$GITHUB_REF_NAME" out\/\* --title "Silinx \$V" --notes-file notes\.md/);
 });
 
-test('docs: how to check a download (README, docs/)', () => {
-  for (const f of ['README.md', 'docs/GETTING-STARTED.md', 'docs/COMECAR.md']) {
+test('docs: how to check a download (the getting started guides, #4500: no more in the README)', () => {
+  for (const f of ['docs/user/en/getting-started.md', 'docs/COMECAR.md']) {
     const md = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const s of ['SHA256SUMS', 'sha256sum -c SHA256SUMS --ignore-missing', 'gh attestation verify']) assert.ok(md.includes(s), `${f}: ${s}`);
   }
