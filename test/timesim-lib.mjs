@@ -91,10 +91,10 @@ export function sdfPeriod(vhdl, sdf) {
 }
 
 // An example's test bench on its post-place & route model with its timing (above), in VHDL and Verilog or in one
-// of them (vga's, in two files that run alongside each other, #566)
-export async function exampleTimesim(name, langs = ['vhdl', 'verilog']) {
+// of them (vga's, in two files that run alongside each other, #566); edit(path, text): a design file's text changed (#4460)
+export async function exampleTimesim(name, langs = ['vhdl', 'verilog'], { edit = (p, text) => text } = {}) {
   const ex = example(name);
-  const design = ex.design.map(f => ({ path: f.path, lang: f.lang, text: f.text })), sim = ex.sim.map(f => ({ path: f.path, lang: f.lang, text: f.text }));
+  const design = ex.design.map(f => ({ path: f.path, lang: f.lang, text: edit(f.path, f.text) })), sim = ex.sim.map(f => ({ path: f.path, lang: f.lang, text: f.text }));
   const r = await flow({ top: ex.project.top, steps: orderOpenSteps(['postpar']), simTop: ex.project.simTop }, design, sim, fs.readFileSync(path.join(ex.dir, ex.project.constraints), 'utf8'));
   assert.equal(r.ok, true, r.lines.join('\n'));
   assert.deepEqual(r.lines.filter(l => /^(WARNING|ERROR|INFO)/.test(l)), [], name);
