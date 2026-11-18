@@ -285,8 +285,10 @@ function itemV(cx, it, regs) {
   atLine(it);
   switch (it.kind) {
     case 'assign': {
-      if (it.delay) return delayedV(cx, it);
-      return [`assign ${exprV(cx, it.target).c} = ${exprV(cx, it.value, typeOfTarget(cx, it.target)).c};`];
+      // (its lint suppression ending its first line, as a process's, #4436)
+      const out = it.delay ? delayedV(cx, it) : [`assign ${exprV(cx, it.target).c} = ${exprV(cx, it.value, typeOfTarget(cx, it.target)).c};`];
+      if (out.length) out[0] += pragmaOf(cx, it);
+      return out;
     }
     case 'process': return processV(cx, it);
     case 'instance': return instanceV(cx, it);

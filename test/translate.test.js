@@ -570,3 +570,39 @@ test('#4414 VHDL to Verilog: the lint\'s "silinx: ignore" comments kept with the
   assert.equal(lint({ 'pragmas.vhd': bare }, 'pragmas').length, lint({ 'pragmas.v': tr(bare, 'pragmas.vhd').text }, 'pragmas').length);
   assert.ok(lint({ 'pragmas.vhd': bare }, 'pragmas').length >= 3);
 });
+
+// (#4436: a concurrent assignment's suppression, on the line above it or its own, kept at the end of its assign's line,
+// as a process's is (#4414): the 74190's core, a clock that is logic on purpose)
+const CONC_PRAGMAS = `library ieee;
+use ieee.std_logic_1164.all;
+entity conc is
+  port (clk, a, s : in std_logic; q, y, z : out std_logic);
+end entity conc;
+architecture rtl of conc is
+begin
+  process (clk)
+  begin
+    if rising_edge(clk) then
+      q <= a;
+    end if;
+  end process;
+  -- silinx: ignore clock-as-data
+  y <= not (a and (not clk));
+  z <= a when s = '1' else clk; -- silinx: ignore clock-as-data
+end architecture rtl;
+`;
+
+test('#4436 VHDL to Verilog: a concurrent assignment\'s "silinx: ignore" comment kept at the end of its assign line', () => {
+  const lint = (files, top) => { const lib = compile(Object.entries(files).map(([path, text]) => ({ path, text }))), d = elaborate(lib, top); return designChecks(lib, d, { lint: true }).filter((x) => x.severity === 'warning').map((x) => x.message); };
+  assert.deepEqual(lint({ 'conc.vhd': CONC_PRAGMAS }, 'conc'), [], 'the source: its suppressions');
+  const v = tr(CONC_PRAGMAS, 'conc.vhd');
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.text.split('\n').filter((l) => /silinx:/.test(l)).map((l) => l.trim()), [
+    'assign y = ~(a & ~clk); // silinx: ignore clock-as-data', 'assign z = s ? a : clk; // silinx: ignore clock-as-data']);
+  assert.deepEqual(lint({ 'conc.v': v.text }, 'conc'), [], 'its translation: the same suppressions');
+  // without them, the source and its translation warn alike, once per assignment
+  const bare = CONC_PRAGMAS.replace(/ *-- silinx: ignore.*\n/gm, '\n');
+  const warned = lint({ 'conc.vhd': bare }, 'conc');
+  assert.equal(warned.length, 2);
+  assert.deepEqual(lint({ 'conc.v': tr(bare, 'conc.vhd').text }, 'conc').length, 2);
+});
