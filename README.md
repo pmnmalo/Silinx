@@ -64,7 +64,7 @@ Step by step: [Getting started](docs/user/en/getting-started.md) · [Começar a 
 
 ## Documentation
 
-- **[The user's guide](docs/user/en/README.md)**: [what Silinx is](docs/user/en/what-is-silinx.md),
+- **[The user's guide](docs/user/en/README.md)** (also [on the site](https://pmnmalo.github.io/Silinx/docs/)): [what Silinx is](docs/user/en/what-is-silinx.md),
   [getting started](docs/user/en/getting-started.md), [designing](docs/user/en/designing.md),
   [circuits](docs/user/en/circuits.md), [simulating](docs/user/en/simulating.md),
   [the Board Emulator](docs/user/en/emulator.md), [boards and toolchains](docs/user/en/boards.md),

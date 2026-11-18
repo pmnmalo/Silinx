@@ -65,7 +65,7 @@ Passo a passo: [Começar a usar o Silinx](docs/user/pt/getting-started.md)
 
 ## Documentação
 
-- **[O guia do utilizador](docs/user/pt/README.md)**: [o que é o Silinx](docs/user/pt/what-is-silinx.md),
+- **[O guia do utilizador](docs/user/pt/README.md)** (também [no site](https://pmnmalo.github.io/Silinx/docs/pt/index.html)): [o que é o Silinx](docs/user/pt/what-is-silinx.md),
   [começar](docs/user/pt/getting-started.md), [projetar](docs/user/pt/designing.md),
   [simular](docs/user/pt/simulating.md), [o Emulador da Placa](docs/user/pt/emulator.md),
   [placas e ferramentas](docs/user/pt/boards.md), [ensinar](docs/user/pt/teaching.md),
