@@ -12,6 +12,7 @@ import { iecQualifier, ieeeGate } from '/core/symbol-standard.js';
 import { insideLayout } from '/core/circuit-inside.js';
 import { blocksLayout } from '/core/circuit-inside-blocks.js';
 import { getSymbolStandard } from './symbol-standard.js';
+import { wireHops, hopD } from '/core/circuit-wires.js';
 
 const P = 20;
 const px = (v) => v * P;
@@ -30,8 +31,9 @@ export function stripsSvg(p) {
 
 /** An IC's inside drawn into g: its gates (d.gates) in the standard `std` (ieee, iec) as its datasheet's connection
  *  diagram (core/circuit-inside.js), the pins no gate uses named (VCC, GND), or else its pins' names; `pins` its pins on
- *  the grid (unturned: the part is turned whole), `box` theirs. */
-export function icInside(g, d, pins, box, std = getSymbolStandard()) {
+ *  the grid (unturned: the part is turned whole), `box` theirs. `hops`: a crossing of its lines a hop-over, as the
+ *  circuit's wires (#4505). */
+export function icInside(g, d, pins, box, std = getSymbolStandard(), { hops = false } = {}) {
   const at = new Map(pins.map((q) => [q.n, [px(q.x), px(q.y)]]));
   const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
   // (its rows along the longer side)
@@ -49,7 +51,13 @@ export function icInside(g, d, pins, box, std = getSymbolStandard()) {
   }
   if (B) blocksInside(g, B, std);
   if (!L) return;
-  for (const w of L.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', ...(w.pin != null ? { 'data-pin': w.pin } : {}) }));
+  // (a crossing IC's lines, #4505: crossing as the circuit's wires do, Wire crossings: a hop-over, or plain; no dot)
+  const hop = hops && L.crossings?.length ? wireHops(L.wires.map((w, i) => ({ id: i, pts: w.points }))) : new Map();
+  L.wires.forEach((w, i) => {
+    const pin = w.pin != null ? { 'data-pin': w.pin } : {};
+    g.append(hop.has(i) ? sv('path', { d: hopD(w.points, hop.get(i), 2.5), fill: 'none', class: 'circ-gate-line circ-gate-hop', ...pin })
+      : sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', ...pin }));
+  });
   for (const gt of L.gates) g.append(...(std === 'iec' ? iecInside(gt) : [ieeeInside(gt)]));
 }
 

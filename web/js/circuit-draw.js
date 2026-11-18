@@ -27,7 +27,7 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs 
   // (direct, orthogonal or curved, hopping over the wires drawn before them: core/circuit-wires.js)
   const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { style: wireStyleOf(m, 'direct'), hops });
   for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
-  for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs, inside }));
+  for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs, inside, hops }));
   if (draft?.length >= 2) g.append(draftSvg(m, draft));
   if (ghost) { const e = partSvg(ghost, false, {}); e.classList.add('circ-ghost'); g.append(e); }
   return g;
@@ -161,7 +161,7 @@ export function drawnPartSvg(d) {
 }
 
 // (turned, #4114: drawn unturned, then turned whole about its place)
-function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
+function partSvg(turned, selected, { levels, leds, inputs, inside = false, hops = false }) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type);
   const pins = partPins(p);
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
@@ -178,7 +178,7 @@ function partSvg(turned, selected, { levels, leds, inputs, inside = false }) {
     // (shown inside, #4060: its gates or its pins' names in its body, its name in its tip)
     // (a project's KiCad part, #4281: its own part number)
     const chip = d.kicad?.value ?? d.chip;
-    if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box); }
+    if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box, undefined, { hops }); }
     else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${chip}`));
   } else if (d.kicad) {
     // (a project's KiCad part not an IC, #4281, #4283, #4349)

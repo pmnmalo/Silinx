@@ -61,6 +61,11 @@ function preview(type) {
   const key = symbolOfPart(type) ? `${getSymbolStandard()}:${id}` : id;
   if (previews.has(key)) return previews.get(key).cloneNode(true);
   if (symbolOfPart(type)) { previews.set(key, symbolPreviewOf(symbolOfPart(type))); return previews.get(key).cloneNode(true); }
+  // (a latch, #4505: no symbol of the schematic's, a level-enabled storage box)
+  if (!symbolOfPart(type) && d?.kind === 'ic' && !d.gates && /latch/i.test(d.title)) {
+    if (!previews.has('latch')) previews.set('latch', latchPreview());
+    return previews.get('latch').cloneNode(true);
+  }
   if (d?.gates?.[0].fn === 'aoi') {
     const k = `${getSymbolStandard()}:aoi:${d.gates[0].terms.join(',')}`;
     if (!previews.has(k)) previews.set(k, aoiPreview(d.gates[0].terms));
@@ -90,6 +95,15 @@ function aoiPreview(terms) {
   gate('nor', nor);
   s.append(sv('circle', { cx: 40, cy: H / 2, r: 2, class: 'gate' }));
   ln([[42, H / 2], [49, H / 2]]);
+  return s;
+}
+
+// a latch's symbol (#4505), as the schematic's storage blocks in the Symbols panel: a box, its data and enable inputs on its
+// left (the enable without a clock's ▷: level-sensitive), its outputs on its right (the same in both standards)
+function latchPreview() {
+  const s = sv('svg', { class: 'circ-pv circ-pv-sym circ-pv-latch', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+  s.append(sv('rect', { x: 17, y: 4, width: 20, height: 26, class: 'box' }));
+  for (const [x1, x2, y] of [[10, 17, 11], [10, 17, 23], [37, 44, 11], [37, 44, 23]]) s.append(sv('line', { x1, y1: y, x2, y2: y, class: 'pin' }));
   return s;
 }
 
