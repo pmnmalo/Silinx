@@ -7,10 +7,12 @@
 // canonicalFeatures turns a feature into the single bits it sets, as the fasm library's canonical_features does: none
 // for a value of 0, one per bit set of a range, the bit at address 0 named without its address.
 
+// The line is cut by hand into its feature, its annotations and its comment, each matched alone by a pattern with one
+// way to match a text: the one pattern of a whole line, its runs of blanks between optional parts, took a time that
+// grew with a power of the line's length on a line of blanks that is not FASM (CodeQL's js/polynomial-redos, #4407).
 const IDENT = '[a-zA-Z][0-9a-zA-Z_]*';
-const VALUE = "(?:[0-9]+[ \\t]*)?'[ \\t]*[a-zA-Z]?[ \\t]*[0-9a-zA-Z_]*|[0-9_]+";
-const LINE = new RegExp(`^[ \\t]*(?:(${IDENT}(?:\\.${IDENT})*)(?:\\[([0-9_]+)(?::([0-9_]+))?\\])?[ \\t]*(?:=[ \\t]*(${VALUE}))?)?` +
-  '[ \\t]*(\\{[^}]*\\})?[ \\t]*(#.*)?$');
+const VALUE = "(?:[0-9]+[ \\t]*)?'[ \\t]*(?:[a-zA-Z][ \\t]*)?[0-9a-zA-Z_]*|[0-9_]+";
+const FEATURE = new RegExp(`^(${IDENT}(?:\\.${IDENT})*)(?:\\[([0-9_]+)(?::([0-9_]+))?\\])?(?:[ \\t]*=[ \\t]*(${VALUE}))?$`);
 const ANNOTATION = /^[.a-zA-Z][0-9a-zA-Z_]*[ \t]*=[ \t]*"(?:[^"\\]|\\[\\"])*"$/;
 const DIGITS = { h: /^[0-9a-fA-F_]+$/, b: /^[01_]+$/, d: /^[0-9_]+$/, o: /^[0-7_]+$/ };
 const PREFIX = { h: '0x', b: '0b', d: '', o: '0o' };
@@ -25,13 +27,49 @@ const num = s => BigInt(s.replace(/_/g, ''));
 // a value: a plain decimal, or Verilog's [width]'<base><digits>; { width, value } (BigInt)
 function parseValue(text, line) {
   const m = /^(?:([0-9]+)[ \t]*)?'[ \t]*([hbdo])[ \t]*([0-9a-zA-Z_]+)$/.exec(text);
-  const ok = m ? DIGITS[m[2]].test(m[3]) && /[^_]/.test(m[3]) : /^[0-9_]*[0-9][0-9_]*$/.test(text);
+  const ok = m ? DIGITS[m[2]].test(m[3]) && /[^_]/.test(m[3]) : /^[0-9_]+$/.test(text) && /[0-9]/.test(text);
   if (!ok) throw new FasmError(`not a value: ${text}`, line);
   if (!m) return { width: null, value: num(text) };
   const value = BigInt(PREFIX[m[2]] + m[3].replace(/_/g, ''));
   const width = m[1] === undefined ? null : Number(m[1]);
   if (width !== null && value >= 1n << BigInt(width)) throw new FasmError(`the value ${text} is wider than ${width} bits`, line);
   return { width, value };
+}
+
+const isBlank = c => c === ' ' || c === '\t';
+
+// a text without its leading and trailing blanks (spaces and tabs)
+function blankTrim(text) {
+  let a = 0, b = text.length;
+  while (a < b && isBlank(text[a])) a++;
+  while (b > a && isBlank(text[b - 1])) b--;
+  return text.slice(a, b);
+}
+
+// a line's parts: { head (its feature and value, trimmed), annotations ({ … } or null) }, its comment (# …) dropped;
+// null when something follows its annotations other than blanks and a comment
+function splitLine(src) {
+  const brace = src.indexOf('{'), hash = src.indexOf('#');
+  if (brace < 0 || (hash >= 0 && hash < brace)) return { head: blankTrim(hash < 0 ? src : src.slice(0, hash)), annotations: null };
+  const close = src.indexOf('}', brace);
+  if (close < 0) return null;
+  const rest = blankTrim(src.slice(close + 1));
+  if (rest !== '' && rest[0] !== '#') return null;
+  return { head: blankTrim(src.slice(0, brace)), annotations: src.slice(brace, close + 1) };
+}
+
+// the annotations between a line's braces, split at the commas outside their quoted values (\" and \\ escaped there)
+function splitAnnotations(text) {
+  const out = [];
+  let start = 0, quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted && c === '\\') i++;
+    else if (c === '"') quoted = !quoted;
+    else if (c === ',' && !quoted) { out.push(text.slice(start, i)); start = i + 1; }
+  }
+  out.push(text.slice(start));
+  return out;
 }
 
 /**
@@ -44,10 +82,11 @@ export function parseFasm(text) {
   const lines = String(text).split(/\r\n|\n|\r/);
   for (let i = 0; i < lines.length; i++) {
     const src = lines[i], line = i + 1;
-    const m = LINE.exec(src);
+    const parts = splitLine(src);
+    const m = parts && (parts.head === '' ? [] : FEATURE.exec(parts.head));
     if (!m) throw new FasmError(`not FASM: ${src.trim()}`, line);
-    const [, feature, a1, a2, valueText, annotations] = m;
-    if (annotations && !annotations.slice(1, -1).trim().split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).every(a => ANNOTATION.test(a.trim()))) {
+    const [, feature, a1, a2, valueText] = m, { annotations } = parts;
+    if (annotations !== null && !splitAnnotations(annotations.slice(1, -1)).every(a => ANNOTATION.test(blankTrim(a)))) {
       throw new FasmError(`not an annotation: ${annotations}`, line);
     }
     if (!feature) continue;
