@@ -75,6 +75,10 @@
 .circuit-editor .circ-lib-part:hover { background: color-mix(in srgb, var(--asm-accent) 12%, transparent); }
 .circuit-editor .circ-lib-part.active { background: var(--asm-accent); color: #fff; }
 .circuit-editor .circ-lib-part .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a KiCad part's number in bold, what it is after it, on a second line when the panel is narrow (#4495) */
+.circuit-editor .circ-lib-part .nm.fn2 { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.2; overflow-wrap: anywhere; }
+.circuit-editor .circ-lib-part .nm .fn { color: var(--asm-muted); }
+.circuit-editor .circ-lib-part.active .nm .fn { color: inherit; }
 .circuit-editor .circ-pv { flex: none; border: 1px solid var(--asm-border); background: #fff; border-radius: 2px; }
 .circuit-editor .circ-pv * { vector-effect: non-scaling-stroke; }
 .circuit-editor .circ-pv-cat { fill: #2b2f36; stroke: #8a8f98; stroke-dasharray: 3 2; }   /* (a KiCad catalogue's part drawn only, #4305) */

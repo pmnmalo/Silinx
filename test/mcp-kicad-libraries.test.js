@@ -100,6 +100,13 @@ test('part_libraries with catalogue: its parts, searched; import_part with a par
   assert.deepEqual(c.text.split('\n'), ['kicad-74xx/74HCT00: 74HCT00, as the 7400: Quad 2-input NAND (KiCad 74xx symbols 9.0.0, CC-BY-SA-4.0)']);
   assert.deepEqual(c.data.parts.map((p) => [p.id, p.as, p.title]), [['kicad-74xx/74HCT00', '7400', '74HCT00, as the 7400: Quad 2-input NAND']]);
   assert.ok((await ok('part_libraries', { catalogue: true })).data.parts.length >= 200);
+  // (what a part is, #4495: KiCad's function where Silinx's title does not say it; found by it, in English and Portuguese)
+  const m = await ok('part_libraries', { catalogue: true, query: 'retriggerable monostable 74ls' });
+  assert.deepEqual(m.text.split('\n'), ['kicad-74xx/74LS122: 74LS122, drawn only: 12 pin(s), DIP-14 — Retriggerable monostable (KiCad 74xx symbols 9.0.0, CC-BY-SA-4.0)',
+    'kicad-74xx/74LS123: 74LS123, drawn only: 16 pin(s), DIP-16 — Dual retriggerable monostable (KiCad 74xx symbols 9.0.0, CC-BY-SA-4.0)']);
+  assert.deepEqual(m.data.parts.map((p) => p.function), ['Retriggerable monostable', 'Dual retriggerable monostable']);
+  assert.deepEqual((await ok('part_libraries', { catalogue: true, query: 'monoestáveis 74ls' })).data.parts.map((p) => p.id), ['kicad-74xx/74LS123', 'kicad-74xx/74LS221']);
+  assert.equal(c.data.parts[0].function, 'Quad 2-input NAND');
   assert.equal((await ok('part_libraries', { catalogue: true, query: 'zzz-none' })).text, 'No part of the catalogue matches \'zzz-none\'.');
   await fails('part_libraries', { catalogue: true, library: 'x.y' }, 'library: not with catalogue');
   await ok('new_project', { name: 'C' });

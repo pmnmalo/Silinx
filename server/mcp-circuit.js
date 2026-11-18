@@ -43,22 +43,38 @@ async function apply(E, m, op) {
   }
 }
 
+// the parts `query` finds (#4495): every word of it in a part's type, title, chip or function, or the function's
+// Portuguese (a KiCad part's by the vocabulary); its case and accents aside
+async function findParts(all, query) {
+  const { foldText, functionPt } = await import('../core/part-function.js');
+  const words = foldText(query).split(/\s+/).filter(Boolean);
+  return all.filter((p) => {
+    const text = foldText(`${p.type} ${p.title} ${p.chip ?? ''} ${p.kicad?.value ?? ''} ${p.function ?? ''} ${p.kicad && p.function ? functionPt(p.function) ?? '' : ''}`);
+    return words.every((w) => text.includes(w));
+  });
+}
+
 export const CIRCUIT_TOOLS = [
   {
     name: 'circuit_parts', title: 'The parts of a digital circuit',
-    description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, pull, output, probe, ic), its pins (number, name, direction: in, out, vcc, gnd, pass, weak, probe, oc, nc; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns). Given one part\'s type: its details too (info: what it does, an IC\'s family, package, supply pins, logic, delay, open-collector outputs, how an input left open reads; each pin\'s role), as the editor\'s Part info. A breadboard\'s holes: a1 to j30 (a full one\'s to j63; a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30 (a full one\'s to 63, split after 31).',
+    description: 'The library of a circuit\'s parts (.circ.json, docs/CIRCUITS.md): each part\'s type, title, kind (breadboard, supply, input, pull, output, probe, ic), its pins (number, name, direction: in, out, vcc, gnd, pass, weak, probe, oc, nc; their place dx, dy from its pin 1 in 0.1 inch grid steps, unturned), an IC\'s chip, its gates and its typical delay (ns); a project\'s KiCad part\'s function (what it is: the title of the IC it behaves as, else its description shortened); query: the parts found by their words. Given one part\'s type: its details too (info: what it does, an IC\'s family, package, supply pins, logic, delay, open-collector outputs, how an input left open reads; each pin\'s role), as the editor\'s Part info. A breadboard\'s holes: a1 to j30 (a full one\'s to j63; a–e one strip per column, f–j another), its rails tp, tn (top +, −), bn, bp (bottom −, +), 1 to 30 (a full one\'s to 63, split after 31).',
     inputSchema: { type: 'object', properties: { type: STR('One part\'s type (7400, led…, a project\'s KiCad part parts/<library>.kicad_sym#<symbol>); default: every part.'),
-      project: STR('A project whose own KiCad parts (its parts/ folder, import_part) are listed too, after the library\'s; default: the library\'s only.') }, additionalProperties: false },
+      project: STR('A project whose own KiCad parts (its parts/ folder, import_part) are listed too, after the library\'s; default: the library\'s only.'),
+      query: STR('Words to find in the parts\' types, titles, chips and functions (what a part is: a KiCad part\'s its description shortened, in English and in Portuguese: inverter, flip-flop, monoestável), as the Parts panel\'s search; default: every part.') }, additionalProperties: false },
     annotations: { readOnlyHint: true },
-    async run({ type, project: name } = {}) {
+    async run({ type, project: name, query } = {}) {
       const { partsList, setProjectParts } = await import('../core/circuit-parts.js');
       let kicad = null;
       if (name != null) { await readProject(name); kicad = await (await import('../core/circuit-kicad.js')).useProjectParts(P, name); } else setProjectParts([]);
       const all = partsList();
-      const list = type == null ? all : all.filter((p) => p.type === String(type));
+      if (type != null && query != null) throw toolError('query: not with type');
+      const list = type != null ? all.filter((p) => p.type === String(type)) : query != null ? await findParts(all, query) : all;
+      if (!list.length && query != null) return { text: `No part matches '${query}'.`, data: { parts: [] } };
       if (!list.length) throw toolError(`no part '${type}' (the parts: ${all.map((p) => p.type).join(', ')})`);
       const as = (p) => (!p.kicad ? '' : p.behavesAs ? ` [KiCad ${p.kicad.value}, as the ${p.behavesAs}]` : ` [KiCad ${p.kicad.value}, drawn only]`);
-      const text = list.map((p) => `${p.type}: ${p.title}${as(p)}${p.chip ? ` (${p.chip}, ${p.tpd} ns)` : ''}${p.pins.length ? `; pins ${p.pins.map((q) => `${q.n} ${q.name} ${q.dir}`).join(', ')}` : ''}${p.gates ? `; gates ${p.gates.join('; ')}` : ''}`);
+      // (a KiCad part: what it is, #4495, when its title does not say it)
+      const fn = (p) => (p.kicad && p.function && p.function.toLowerCase() !== p.title.toLowerCase() ? ` — ${p.function}` : '');
+      const text = list.map((p) => `${p.type}: ${p.title}${fn(p)}${as(p)}${p.chip ? ` (${p.chip}, ${p.tpd} ns)` : ''}${p.pins.length ? `; pins ${p.pins.map((q) => `${q.n} ${q.name} ${q.dir}`).join(', ')}` : ''}${p.gates ? `; gates ${p.gates.join('; ')}` : ''}`);
       // (a project's symbols that are no part, and its libraries not read)
       const more = kicad && type == null ? [...kicad.skipped.map((x) => `${x.type}: not a part: ${x.reason}`), ...kicad.notes.map((x) => `WARNING: ${x}`), ...kicad.errors.map((x) => `ERROR: ${x}`)] : [];
       const extra = kicad ? { project: name, skipped: kicad.skipped, notes: kicad.notes, errors: kicad.errors } : {};
