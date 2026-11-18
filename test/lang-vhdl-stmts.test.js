@@ -376,3 +376,33 @@ test('a function\'s slice with its parameter\'s bounds: the width of its constan
   // (1234 * 13108 = 16175272: bits 19..16 = 6; 1234 * 3277 = 4043818: bits 18..15 = 11)
   assert.deepEqual(r, ['0110 1011 6 11']);
 });
+
+// Regression (#4487): since #4358 a slice with a variable's bounds probed outside its prefix (an integer at integer'low)
+// took its prefix's width even when its own did not depend on the variable: unisim.vhd's RAMB16 `par(a * 1 + 0 downto
+// a * 1)` 2048 bits (width mismatch warnings at Check Syntax of a block memory); a slice whose width does depend on it
+// (`w - 1 downto 0`) keeps its run-time width
+test('a slice with a variable\'s bounds of a constant width: that width, no warning; written and read (#4487)', () => {
+  const r = outW(vhd(`
+  process
+    variable a, w : integer;
+    variable par : bit_vector(15 downto 0) := (others => '0');
+    variable mem : bit_vector(63 downto 0) := (others => '0');
+  begin
+    for k in 0 to 15 loop
+      a := k;
+      par(a * 1 + 0 downto a * 1) := to_bitvector(b);
+      mem(a * 4 + 3 downto a * 4) := to_bitvector(n);
+    end loop;
+    a := 3;
+    o <= to_stdlogicvector(par(a * 1 + 0 downto a * 1));
+    q <= to_stdlogicvector(mem(a * 4 + 3 downto a * 4));
+    w := 2; q(w - 1 downto 0) <= "11";
+    wait for 1 ns;
+    report to_string(o) & " " & to_string(q) & " " & integer'image(par(a + 1 downto a)'length) & " " & to_string(par);
+    wait;
+  end process;`, `signal b : std_logic := '1';
+  signal o : std_logic_vector(0 downto 0);
+  signal n : std_logic_vector(3 downto 0) := "1010";
+  signal q : std_logic_vector(3 downto 0);`));
+  assert.deepEqual(r, ['1 1011 2 1111111111111111']);
+});

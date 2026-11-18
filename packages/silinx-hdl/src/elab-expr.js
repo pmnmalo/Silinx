@@ -6,7 +6,7 @@
 // order).
 import * as V from './values.js';
 import { walk } from './bound-walk.js';
-import { evalE, strToVal, bitpos } from './interp.js';
+import { evalE, strToVal, bitpos, locFrame } from './interp.js';
 import { mapBits, weakBits } from './vhdl/parser.js';
 import { MAX_BITS, MAX_ELEMENTS, widthMessage } from './util.js';
 import {
@@ -350,6 +350,27 @@ function varBound(n) {
   return found;
 }
 
+// The width of a slice whose bounds read variables (not a loop's) if it does not depend on them (`m(a * 8 + 7 downto
+// a * 8)`, #4487): probed with those variables (integers) at a few values, the same each time; null if it depends on
+// them, or one is not an integer
+function fixedWidth(E, left, right, dir) {
+  const locs = [];
+  for (const b of [left, right]) walk(b, x => { if (x.k === 'loc' && !x.loop) locs.push(x); return true; });
+  if (locs.some(x => x.t.kind !== 'int')) return null;
+  let w = null;
+  try {
+    for (const k of [0, 1, 5]) {
+      const ctx = probeCtx(E);
+      for (const x of locs) locFrame(x, ctx)[x.i] = V.fromInt(k);
+      const l = V.toNum(evalE(left, ctx)), r = V.toNum(evalE(right, ctx));
+      const wk = (dir === 'downto' ? l < r : l > r) ? 0 : Math.abs(l - r) + 1;
+      if (wk === 0 || (w != null && wk !== w)) return null;
+      w = wk;
+    }
+  } catch { return null; }
+  return w;
+}
+
 export function sliceNode(E, base, leftE, rightE, loc, dir) {
   const left = bindExpr(E, leftE, null, loc), right = bindExpr(E, rightE, null, loc);
   // a slice of a string (s(1 to n), n known at run time too): a string
@@ -391,7 +412,12 @@ export function sliceNode(E, base, leftE, rightE, loc, dir) {
   // has the prefix's, and its value keeps the run-time width (an assignment takes the target's)
   const inBase = x => { const p = bitpos(base.t, x); return p >= 0 && p < base.t.w; };
   // (not in a function: its result's width is the slice's, and a constant argument binds it again with its value, #4476)
-  if (vdir && !(E.inFunction && !E.inTask) && (!inBase(l) || !inBase(r)) && [left, right].some(varBound)) return { k: 'dslice', base, left, right, t: vecT(base.t.w), dir: vdir, dyn: true };
+  if (vdir && !(E.inFunction && !E.inTask) && (!inBase(l) || !inBase(r)) && [left, right].some(varBound)) {
+    // (unless its width does not depend on them: a 1-bit `par(a * 1 + 0 downto a * 1)` with a at integer'low, #4487)
+    const fw = fixedWidth(E, left, right, vdir);
+    if (fw == null) return { k: 'dslice', base, left, right, t: vecT(base.t.w), dir: vdir, dyn: true };
+    w = fw;
+  }
   return { k: 'dslice', base, left, right, t: vecT(w), ...(vdir ? { dir: vdir } : {}) };
 }
 
