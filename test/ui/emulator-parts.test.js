@@ -147,8 +147,12 @@ uiTest('#3109 a short click on a push button: held down until the design saw a r
   const off = await led0();
   await settledNow(page);
   const at = await page.waitFor((b) => {
-    const el = document.querySelector(b), r = el.getBoundingClientRect(), p = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-    return document.elementFromPoint(p.x, p.y)?.closest('.emu-btn') === el ? p : null;
+    // (scrolled into view first: on CI's runner the board may reach below the window, #4461; what is there instead said)
+    const el = document.querySelector(b);
+    el.scrollIntoView({ block: 'center', inline: 'center' });
+    const r = el.getBoundingClientRect(), p = { x: r.x + r.width / 2, y: r.y + r.height / 2 }, at = document.elementFromPoint(p.x, p.y);
+    if (at?.closest('.emu-btn') === el) return p;
+    throw new Error(`at (${Math.round(p.x)}, ${Math.round(p.y)}) of ${innerWidth} x ${innerHeight}: ${at ? `${at.tagName}.${at.className}` : 'nothing'}`);
   }, [BTN], { what: 'BTN0 under its centre' });
   const t0 = await settledNow(page);
   await page.mouse('mouseMoved', at.x, at.y);
