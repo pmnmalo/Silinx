@@ -98,7 +98,8 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
   await page.waitForSelector(`${ED} .fsm-ttable`);
   const conds = () => page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr`)].slice(1).map((tr) => tr.children[2].textContent), ED);
-  const arcs = () => page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED);
+  // (as written: drawn without its overlines, its bars lines, #4484)
+  const arcs = () => page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.dataset.written ?? l.textContent), ED);
   const model = () => page.eval(() => window.Silinx.active.fsmEditor.getModel().transitions.map((t) => t.cond));
   assert.deepEqual(await conds(), [`a.b${B}`, 'otherwise (stays)', `a${B} ${B}+${B} ${B}b${B}`, 'otherwise (stays)']);
   assert.deepEqual(await arcs(), [`a.b${B}`, `a${B} ${B}+${B} ${B}b${B}`]);
@@ -114,7 +115,7 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   // an overbar typed (pasted) in it: kept as the text only notation's NOT, drawn with its bar
   await page.fill(`${ED} .fsm-cond`, `a${B}.b`);
   await page.waitFor(() => window.Silinx.active.fsmEditor.getModel().transitions[0].cond === '/a.b', [], { what: 'the condition kept as text' });
-  await page.waitFor((ed, b) => document.querySelector(`${ed} [data-trans=t1] .fsm-label`)?.textContent === `a${b}.b`, [ED, B], { what: 'the arc drawn again' });
+  await page.waitFor((ed, b) => document.querySelector(`${ed} [data-trans=t1] .fsm-label`)?.dataset.written === `a${b}.b`, [ED, B], { what: 'the arc drawn again' });
   // in place: the text, then a condition typed kept as it is
   await page.dblclick(`${ED} [data-trans=t1] .fsm-label`);
   await page.waitForSelector(`${ED} .fsm-inline`);
@@ -134,11 +135,11 @@ uiTest('#3915 the Boolean notation: Engineering by default; chosen in the Settin
   await page.eval(() => window.SilinxApp.openAsm('src/nt.asm.json'));
   const AE = '.doc:not([hidden]) .asm-editor';
   await page.waitFor((ae) => window.Silinx.active?.id === 'asm:src/nt.asm.json' && document.querySelector(`${ae} [data-node=d1]`), [AE], { what: 'the ASM chart' });
-  const decisions = () => page.eval((ae) => ['d1', 'd5'].map((id) => document.querySelector(`${ae} [data-node=${id}] .asm-text`).textContent), AE);
+  const decisions = () => page.eval((ae) => ['d1', 'd5'].map((id) => { const t = document.querySelector(`${ae} [data-node=${id}] .asm-text`); return t.dataset.written ?? t.textContent; }), AE);
   assert.deepEqual(await decisions(), ['a and not b', 'not (a or b)']);
   assert.deepEqual(await page.eval(() => window.Silinx.active.asmEditor.getModel().nodes.filter((n) => n.type === 'decision').map((n) => n.cond)), ['a./b', '!(a || b)']);
   await notationMenu(page, 'Electronics / Engineering');
-  await page.waitFor((ae, b) => document.querySelector(`${ae} [data-node=d1] .asm-text`)?.textContent === `a.b${b}`, [AE, B], { what: 'the decisions in the Engineering notation' });
+  await page.waitFor((ae, b) => document.querySelector(`${ae} [data-node=d1] .asm-text`)?.dataset.written === `a.b${b}`, [AE, B], { what: 'the decisions in the Engineering notation' });
   assert.deepEqual(await decisions(), [`a.b${B}`, `a${B} ${B}+${B} ${B}b${B}`]);
   await page.click(`${AE} [data-node=d1]`);
   await page.waitFor((ae) => [...document.querySelectorAll(`${ae} .asm-input`)].some((i) => i.value === 'a./b'), [AE], { what: 'the decision\'s Properties, text' });
@@ -173,5 +174,5 @@ uiTest('#3915 Convert to State Diagram writes its conditions in the Boolean nota
   assert.ok((await conds()).every((c) => !c.includes(B)) && (await conds()).some((c) => c.includes('/')), (await conds()).join(' | '));
   // (its labels on the drawing: in the notation, its bars)
   assert.ok(shown('engineering').some((c) => c.includes(B)));
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.textContent), ED), shown('engineering'));
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans] .fsm-label`)].map((l) => l.dataset.written ?? l.textContent), ED), shown('engineering'));   // (as written: its bars lines, #4484)
 });
