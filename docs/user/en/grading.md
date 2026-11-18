@@ -5,7 +5,7 @@
 Silinx grades digital-systems exercises the way Mooshak grades programming ones. A student submits a circuit, the
 exercise's tests simulate it, and each test gives a verdict and its points (#3191). There is no judge server:
 `silinx grade` does the grading, and adapters fit it into the tools a course already has: GitHub Classroom
-([CLASSROOM.md](CLASSROOM.md), #3193).
+([classroom.md](classroom.md), #3193).
 
 ## The exercise
 
@@ -163,7 +163,7 @@ the interface's language, the ports, and the tests with their verdicts and point
   - **Export Student Copy** (in the ⋮ menu) saves the student's copy of the exercise: no hidden test, no reference,
     and the visible tests' files written in.
   - **Classroom Template…** (in the ⋮ menu) saves the GitHub Classroom assignment's template repository as a zip
-    ([CLASSROOM.md](CLASSROOM.md)). Its starter project is made from the statement, in VHDL or Verilog: the top module
+    ([classroom.md](classroom.md)). Its starter project is made from the statement, in VHDL or Verilog: the top module
     with the statement's ports and an empty body, on the project's board and device.
 
   - **Class Results…** (in the ⋮ menu) opens the class's results of a teacher's run: the JSON that `silinx grade --json`
