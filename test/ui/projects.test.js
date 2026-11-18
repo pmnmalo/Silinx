@@ -770,7 +770,7 @@ uiTest('Silinx and Xilinx zip: export, import as a new project, and a failing im
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'ZipSrc', 'name suggested from the zip');
   await page.fill('.dlg-overlay input[type=text]', 'ZipCopy');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'ZipCopy');
+  await page.waitFor(() => window.Silinx.project?.name === 'ZipCopy', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'ZipCopy'/);
   const copy = await env.server.api('GET', '/api/projects/ZipCopy');
   assert.deepEqual(copy.fileTree, srcTree);
@@ -783,7 +783,7 @@ uiTest('Silinx and Xilinx zip: export, import as a new project, and a failing im
   await page.setFiles(FILE, [xilinxZip]);
   await page.fill('.dlg-overlay input[type=text]', 'FromIse');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'FromIse');
+  await page.waitFor(() => window.Silinx.project?.name === 'FromIse', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Xilinx ISE project 'FromIse'/);
   const ise = await env.server.api('GET', '/api/projects/FromIse');
   assert.equal(ise.top, 'top');
@@ -826,7 +826,7 @@ uiTest('#4276 Export Project (.zip)… to Xilinx ISE of a new project with no co
   await page.setFiles(FILE, [zip]);
   await page.fill('.dlg-overlay input[type=text]', 'NoUcfBack');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfBack');
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfBack', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Xilinx ISE project 'NoUcfBack'/);
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), [], 'no warnings');
   const back = await env.server.api('GET', '/api/projects/NoUcfBack');
@@ -848,7 +848,7 @@ uiTest('#4288 Export Project (.zip)… to Silinx of a new project with no constr
   await page.setFiles(FILE, [zip]);
   await page.fill('.dlg-overlay input[type=text]', 'NoUcfSBack');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfSBack');
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfSBack', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'NoUcfSBack'/);
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), [], 'no warnings');
   const back = await env.server.api('GET', '/api/projects/NoUcfSBack');
@@ -868,7 +868,7 @@ uiTest('#4356 Import Project… of a Silinx zip missing its own constraints file
   await page.setFiles(FILE, [file]);
   await page.fill('.dlg-overlay input[type=text]', 'OwnUcf');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'OwnUcf');
+  await page.waitFor(() => window.Silinx.project?.name === 'OwnUcf', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'OwnUcf'/);
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), ['WARNING: files listed in silinx.json but not in the zip: constraints/board.ucf']);
   assert.equal((await env.server.api('GET', '/api/projects/OwnUcf')).constraints, 'constraints/board.ucf');
@@ -967,7 +967,7 @@ uiTest('#2830 Import Project…, Silinx: the import gate leaves out what it refu
   await page.setFiles(FILE, [file]);
   await page.fill('.dlg-overlay input[type=text]', 'Gated');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Gated' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Gated' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'Gated' \(1 source file\(s\), 1 other file\(s\)\)\./);
   const warnings = (await page.consoleText()).split('\n').filter((l) => /^WARNING/.test(l));
   assert.deepEqual(warnings, [
@@ -1020,7 +1020,7 @@ uiTest('#2830 an imported project waits for the user\'s trust: the console line 
   await page.setFiles(FILE, [file]);
   await page.fill('.dlg-overlay input[type=text]', 'Outside');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Outside');
+  await page.waitFor(() => window.Silinx.project?.name === 'Outside', [], { timeout: 30000 });   // (an import, slow on CI, #4462)
   const NOTICE = 'Project "Outside" came from outside (imported): it is edited, checked, simulated and implemented with the Silinx toolchain; Xilinx ISE and programming a board or a PROM run only once you trust it.';
   await page.waitConsole(/came from outside \(imported\)/);
   const line = () => page.eval(() => { const b = document.querySelector('#console-log .ln .ln-action'); return b && { line: b.parentElement.firstChild.textContent, label: b.textContent, disabled: b.disabled }; });

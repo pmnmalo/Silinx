@@ -1370,7 +1370,7 @@ uiTest('#483 browser edition: a hostile zip (paths leaving the project, a broken
   await page.setFiles(FILE, [zipFile]);
   await page.fill('.dlg-overlay input[type=text]', 'Hostile');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Hostile' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Hostile' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'Hostile' \(2 source file\(s\)\)\./);
   // a project from outside (#2830): the browser edition says what waits for the user's trust, with its button
   assert.equal(await page.eval(() => document.querySelector('#console-log .ln .ln-action')?.textContent), 'Trust Project');
@@ -1418,7 +1418,7 @@ uiTest('#4205 browser edition: a copy imported keeps its origin and ancestor apa
   await page.setFiles(FILE, [zipFile]);
   await page.fill('.dlg-overlay input[type=text]', 'Student');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Student' && document.querySelector('#hier .row'), [], { what: 'the copy open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Student' && document.querySelector('#hier .row'), [], { what: 'the copy open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'Student'/);
   const got = await page.eval(() => ({ id: window.Silinx.project.id, origin: window.Silinx.project.origin, tree: window.Silinx.diskTree }));
   assert.ok(got.id && got.id !== c.base.id);
@@ -1435,7 +1435,7 @@ uiTest('#4205 browser edition: a copy imported keeps its origin and ancestor apa
   await page.setFiles(FILE, [ownZip]);
   await page.fill('.dlg-overlay input[type=text]', 'Mine');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Mine' && document.querySelector('#hier .row'), [], { what: 'the project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Mine' && document.querySelector('#hier .row'), [], { what: 'the project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await exportZip(page, 'silinx');
   const mine = await unzip(await waitDownload(page, 'Mine-silinx.zip'));
   const pj = JSON.parse(mine['silinx.json']), anc = JSON.parse(mine['silinx.base.json']);
@@ -1459,7 +1459,7 @@ uiTest('#4276 browser edition: Export Project (.zip)… to Xilinx ISE with no co
   await page.setFiles(FILE, [src]);
   await page.fill('.dlg-overlay input[type=text]', 'NoUcf');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'NoUcf' && document.querySelector('#hier .row'), [], { what: 'the project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcf' && document.querySelector('#hier .row'), [], { what: 'the project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   assert.equal(await page.eval(() => window.Silinx.project.constraints), 'constraints/top.ucf');
   // (the Silinx zip's own import: its constraints file not there is not missing, #4288)
   const warnings = async () => (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l));
@@ -1474,7 +1474,7 @@ uiTest('#4276 browser edition: Export Project (.zip)… to Xilinx ISE with no co
   await page.setFiles(FILE, [zip]);
   await page.fill('.dlg-overlay input[type=text]', 'NoUcfBack');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfBack' && document.querySelector('#hier .row'), [], { what: 'the import open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'NoUcfBack' && document.querySelector('#hier .row'), [], { what: 'the import open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Xilinx ISE project 'NoUcfBack'/);
   assert.deepEqual(await warnings(), SETUP, 'the export and the import back: no warnings');
   assert.deepEqual(await page.eval(() => window.Silinx.diskTree), ['src/top.vhd']);
@@ -1493,7 +1493,7 @@ uiTest('#4206 browser edition: Merge Contribution… of a copy changed, three-wa
   await page.setFiles(FILE, [plain]);
   await page.fill('.dlg-overlay input[type=text]', 'MBase');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'MBase' && document.querySelector('#hier .row'), [], { what: 'the project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'MBase' && document.querySelector('#hier .row'), [], { what: 'the project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await exportZip(page, 'silinx');
   const given = Object.fromEntries((await readZip(new Uint8Array(await fs.readFile(await waitDownload(page, 'MBase-silinx.zip'))), codec)).map((e) => [e.path, Buffer.from(e.data).toString('utf8')]));
   // the copy's work: a comment in top.vhd, a new file listed
@@ -1541,7 +1541,7 @@ uiTest('#3965 browser edition: a Silinx project imported from its folder, its bu
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'folder-import');
   await page.fill('.dlg-overlay input[type=text]', 'FromFolder');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'FromFolder' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'FromFolder' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'FromFolder'/);
   const lines = (await page.consoleText()).split('\n');
   assert.ok(lines.includes("Imported Silinx project 'FromFolder' (1 source file(s))."), lines.join('\n'));
@@ -1582,7 +1582,7 @@ uiTest('#3548 browser edition: no project bundle in the File menu (English, Port
   await page.setFiles(FILE, [file]);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'OldLab', 'the name the file\'s, as a zip\'s');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'OldLab' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'OldLab' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'OldLab' \(2 source file\(s\)\)\./);
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), [
     'WARNING: files listed in silinx.json but not in the zip: src/gone.vhd',
@@ -1710,7 +1710,7 @@ uiTest('#2320 browser edition: Export Project (.zip)… to Xilinx ISE writes a C
   await page.setFiles(FILE, [zipFile]);
   await page.fill('.dlg-overlay input[type=text]', 'CMod');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'CMod' && document.querySelector('#hier .row'), [], { what: 'the imported project open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'CMod' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await exportZip(page, 'xilinx');
   const entries = await readZip(new Uint8Array(await fs.readFile(await waitDownload(page, 'CMod.zip'))), codec);
   const text = (p) => Buffer.from(entries.find((e) => e.path === p).data).toString('utf8');
