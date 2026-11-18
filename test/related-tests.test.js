@@ -358,23 +358,23 @@ test('PR tests: every pull request, its parts planned (#1982), the related-tests
   const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
   assert.match(yml, /^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]\npermissions:\n {2}contents: read\n/m);
   assert.match(yml, /^concurrency:\n {2}group: pr-tests-\$\{\{ github\.ref \}\}\n {2}cancel-in-progress: true\n/m);
-  assert.equal(yml.match(/^ {4}runs-on: .*$/gm).join('\n'), Array(3).fill('    runs-on: ubuntu-latest').join('\n'), "GitHub's runner, never the self-hosted one");
+  assert.equal(yml.match(/^ {4}runs-on: .*$/gm).join('\n'), Array(4).fill('    runs-on: ubuntu-latest').join('\n'), "GitHub's runner, never the self-hosted one");
   // the plan: the parts the related tests need, as the job's outputs
-  assert.match(yml, /\n {2}plan:\n {4}if: \$\{\{ !github\.event\.pull_request\.draft \}\}\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}outputs:\n {6}parts: \$\{\{ steps\.plan\.outputs\.parts \}\}\n {6}shards: \$\{\{ steps\.plan\.outputs\.shards \}\}\n/);
+  assert.match(yml, /\n {2}plan:\n {4}needs: \[draft\]\n {4}if: needs\.draft\.outputs\.draft == 'false'\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}outputs:\n {6}parts: \$\{\{ steps\.plan\.outputs\.parts \}\}\n {6}shards: \$\{\{ steps\.plan\.outputs\.shards \}\}\n/);
   assert.match(yml, /- id: plan\n\s+run: node scripts\/related-tests\.mjs "origin\/\$BASE" HEAD --plan >> "\$GITHUB_OUTPUT"\n\s+env:\n\s+BASE: \$\{\{ github\.base_ref \}\}\n/);
   // the parts: one job each, none when no test is related; a part's limit well past its planned 20 minutes
   assert.match(yml, /\n {2}tests:\n {4}needs: \[plan\]\n {4}if: needs\.plan\.outputs\.parts != '0'\n {4}strategy:\n {6}fail-fast: false\n(?: {6}#[^\n]*\n)+ {6}max-parallel: 6\n {6}matrix:\n {8}shard: \$\{\{ fromJSON\(needs\.plan\.outputs\.shards\) \}\}\n {4}runs-on: ubuntu-latest\n {4}# [^\n]*#1982\)\n {4}timeout-minutes: 60\n {4}name: tests \(\$\{\{ matrix\.shard \}\}\/\$\{\{ needs\.plan\.outputs\.parts \}\}\)\n/);
   assert.match(yml, /fetch-depth: 0\n\s+- uses: \.\/\.github\/actions\/setup\n\s+- run: >-\n\s+node scripts\/related-tests\.mjs "origin\/\$BASE" HEAD --shard "\$SHARD\/\$PARTS"\n\s+--test-reporter=tap --test-reporter-destination=stdout\n\s+env:\n\s+BASE: \$\{\{ github\.base_ref \}\}\n\s+SHARD: \$\{\{ matrix\.shard \}\}\n\s+PARTS: \$\{\{ needs\.plan\.outputs\.parts \}\}\n/);
   // the verdict: a failed plan or part fails it, no part passes it
-  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[plan, tests\]\n[\s\S]*- if: contains\(needs\.\*\.result, 'failure'\) \|\| contains\(needs\.\*\.result, 'cancelled'\)\n\s+run: exit 1\n/);
+  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[draft, plan, tests\]\n[\s\S]*- if: contains\(needs\.\*\.result, 'failure'\) \|\| contains\(needs\.\*\.result, 'cancelled'\)\n\s+run: exit 1\n/);
   for (const f of ['CLAUDE.md', 'ONBOARDING.md']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /related-tests/, f);
 });
 
 test('#4166 PR tests: a draft runs no test and fails the check main requires; at most 6 parts at once, each under its limit', () => {
   const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
   // a draft: no plan (so no part), and the verdict fails first, never green nor missing (an admin's merge would pass it)
-  assert.match(yml, /\n {2}plan:\n {4}if: \$\{\{ !github\.event\.pull_request\.draft \}\}\n/);
-  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[plan, tests\]\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}steps:\n {6}- if: github\.event\.pull_request\.draft\n {8}run: >-\n {10}echo "::error::[^"\n]*gh pr ready\." && exit 1\n {6}- if: contains\(needs\.\*\.result, 'failure'\)/);
+  assert.match(yml, /\n {2}plan:\n {4}needs: \[draft\]\n {4}if: needs\.draft\.outputs\.draft == 'false'\n/);
+  assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[draft, plan, tests\]\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}steps:\n {6}- if: needs\.draft\.outputs\.draft != 'false'\n {8}run: >-\n {10}echo "::error::[^"\n]*gh pr ready\." && exit 1\n {6}- if: contains\(needs\.\*\.result, 'failure'\)/);
   // marked ready, the tests run; turned back into a draft, the check fails again; no other trigger, no pull_request_target
   assert.match(yml, /types: \[[^\]]*\bready_for_review\b[^\]]*\bconverted_to_draft\b[^\]]*\]/);
   assert.doesNotMatch(yml, /pull_request_target|workflow_dispatch|\n {2}push:/);
@@ -393,6 +393,20 @@ test('#4166 PR tests: a draft runs no test and fails the check main requires; at
   assert.ok(plan.minutes / plan.n < limit / 2, `${plan.minutes} / ${plan.n}`);
   // the sessions open their pull request as a draft and mark it ready when it is done
   for (const f of ['CLAUDE.md', 'ONBOARDING.md']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /gh pr ready/, f);
+});
+
+test('#4427 PR tests: the draft check reads the pull request as it is now, not the event that started the run', () => {
+  const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
+  // a push then gh pr ready within seconds: the concurrency group keeps the run queued last, maybe the push's (a draft
+  // in its payload); so no job decides on the event's draft flag
+  assert.doesNotMatch(yml, /^(?!#).*github\.event\.pull_request\.draft/m);
+  assert.match(yml, /^concurrency:\n {2}group: pr-tests-\$\{\{ github\.ref \}\}\n {2}cancel-in-progress: true\n/m);
+  // the state asked of the API, with the one permission it needs (read), on its own job; a failed call fails the step
+  assert.match(yml, /\njobs:\n(?: {2}#[^\n]*\n)* {2}draft:\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 5\n {4}permissions:\n {6}pull-requests: read\n {4}outputs:\n {6}draft: \$\{\{ steps\.draft\.outputs\.draft \}\}\n {4}steps:\n {6}- id: draft\n {8}run: \|\n {10}draft=\$\(gh api "repos\/\$REPO\/pulls\/\$PR" --jq \.draft\)\n {10}echo "draft=\$draft" >> "\$GITHUB_OUTPUT"\n {8}env:\n {10}GH_TOKEN: \$\{\{ github\.token \}\}\n {10}REPO: \$\{\{ github\.repository \}\}\n {10}PR: \$\{\{ github\.event\.pull_request\.number \}\}\n/);
+  assert.equal(yml.match(/^ +permissions:\n(?: {6,}.*\n)+/gm).join(''), '    permissions:\n      pull-requests: read\n', 'no other job asks for more');
+  // the tests run only on a pull request known to be ready; anything else (a draft, an unknown state) fails the verdict
+  assert.match(yml, /\n {2}plan:\n {4}needs: \[draft\]\n {4}if: needs\.draft\.outputs\.draft == 'false'\n/);
+  assert.match(yml, /\n {6}- if: needs\.draft\.outputs\.draft != 'false'\n {8}run: >-\n {10}echo "::error::A draft pull request runs no test/);
 });
 
 test('#4166 related tests: a hub selects its own UI test only; the UI tests that import it, name it or test its importers are the nightly\'s; the unit tests as before', () => {
