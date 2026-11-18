@@ -149,7 +149,7 @@ server/        the local server: projects, the ISE flow, AMD Vivado's (vivado.js
 test/ui/       UI tests on headless Chrome over CDP (harness.js); Firefox / WebKit via Playwright
 examples/      gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80: the test designs
 research/      synthesis quality, handwriting models; the toolchain's research is in packages/silinx-fpga/research
-docs/          user guides (EN, PT), the project model and API, QUALITY.md (against ISE)
+docs/          the user's guide (user/en, user/pt, its images/), the developers' documents (docs/README.md lists them)
 ```
 
 ## 5. Rules of the product worth knowing

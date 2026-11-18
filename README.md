@@ -72,7 +72,8 @@ Step by step: [Getting started](docs/user/en/getting-started.md) · [Começar a 
 - **Reference**: [every feature](docs/user/en/features.md), [the toolchains](docs/user/en/toolchains.md),
   [the changes of each version](CHANGELOG.md).
 - **Changing Silinx**: [CONTRIBUTING.md](CONTRIBUTING.md), [developing Silinx](docs/DEVELOPMENT.md),
-  [the architecture](docs/ARCHITECTURE.md), [the toolchain](docs/TOOLCHAIN.md), [the history](docs/HISTORY.md).
+  [the architecture](docs/ARCHITECTURE.md), [the toolchain](docs/TOOLCHAIN.md), [the history](docs/HISTORY.md),
+  [every developer's document](docs/README.md#for-those-who-change-silinx).
   Security: [SECURITY.md](SECURITY.md).
 
 Using Silinx in a course, a school or on your own? Tell us on

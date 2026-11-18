@@ -237,3 +237,11 @@ test('docs: every page of the user\'s guide has its twin in the other language, 
   assert.match(read('README.md').split('\n').slice(0, 10).join('\n'), /\]\(README\.pt\.md\)/);
   assert.match(read('README.pt.md').split('\n').slice(0, 10).join('\n'), /\]\(README\.md\)/);
 });
+
+test('docs: docs/README.md lists every developers\' document, and the old guides only point to the user\'s guide (#4503)', () => {
+  const index = read('docs/README.md');
+  const top = fs.readdirSync(path.join(ROOT, 'docs')).filter(f => f.endsWith('.md') && f !== 'README.md');
+  const pointers = top.filter(f => /^# .+\n\n(Moved to the user's guide|Mudou-se para o guia do utilizador): \[[^\]]+\]\(user\/(en|pt)\/[a-z-]+\.md\)\.\n$/.test(read(`docs/${f}`)));
+  assert.deepEqual(pointers.sort(), ['CIRCUITS.md', 'CLASSROOM.md', 'COMECAR.md', 'GETTING-STARTED.md', 'GRADING.md', 'c-to-hdl.md']);
+  assert.deepEqual(top.filter(f => !pointers.includes(f) && !index.includes(`](${f})`)), [], 'not listed in docs/README.md');
+});
