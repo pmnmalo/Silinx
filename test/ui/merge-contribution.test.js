@@ -31,7 +31,7 @@ uiTest('#4206 Merge Contribution…: the files that differ and what is done with
   await page.setFiles(FILE, [copy]);
   await page.fill('.dlg-overlay input[type=text]', 'Ana');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Ana' && document.querySelector('#hier .row'), [], { what: 'the copy open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Ana' && document.querySelector('#hier .row'), [], { what: 'the copy open', timeout: 30000 });   // (an import, slow on CI, #4438)
   // Ana's work: the first transition's condition, the seven-segment decoder (Verilog)
   await editFsm('Ana', (m) => { m.transitions[0].cond = 'night and req'; });
   await writeWs(env, 'Ana', 'src/sevenseg.v', `${await readWs(env, 'Ana', 'src/sevenseg.v')}// ana\n`);
@@ -108,7 +108,7 @@ uiTest('#4214 Merge Contribution…: a text file merged by its lines, the same l
   await page.setFiles(FILE, [copy]);
   await page.fill('.dlg-overlay input[type=text]', 'Rui');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'Rui' && document.querySelector('#hier .row'), [], { what: 'the copy open' });
+  await page.waitFor(() => window.Silinx.project?.name === 'Rui' && document.querySelector('#hier .row'), [], { what: 'the copy open', timeout: 30000 });   // (an import, slow on CI, #4438)
   // Rui: the timer's CARS_S (the teacher's too) and its first line (the teacher's not), the decoder's last line
   const T = await readWs(env, 'Rui', 'src/timer.vhd'), V = await readWs(env, 'Rui', 'src/sevenseg.v');
   await writeWs(env, 'Rui', 'src/timer.vhd', `-- rui\n${T.replace('CARS_S   : integer := 5;', 'CARS_S   : integer := 6;')}`);
