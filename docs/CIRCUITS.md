@@ -41,7 +41,9 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 - **Show inside** (#4060, the toolbar's, remembered): each breadboard's strips drawn under its holes (each column's a–e
   and f–j, each power rail), each gate IC's gates in its body (IEC boxes, &, ≥1, =1, 1, a bubble on an inverting one)
   joined to its pins, another IC's pins named inside it, so that a circuit is easier to wire. A 4023, 4025, 4073 or 4075
-  has its pins named too (#4397): a gate's inputs on both rows, one past its output, its lines would cross.
+  has its pins named too (#4397): a gate's inputs on both rows, one past its output, its lines would cross. An
+  AND-OR-INVERT (7451, 74LS54, 7455, #4498) as its datasheet draws it: each term's AND beside its pins, turned toward
+  the body's middle, feeding the NOR that faces its output pin.
 - **How the wires are drawn** (#4064, #4080, the ⋮ menu, as the schematic's, `core/wire-style.js`): **Wires**, Direct (a
   straight line from point to point, the circuit's default), Orthogonal (horizontal and vertical segments) or Curved (a
   smooth curve through its bends, as a jumper wire), the circuit's `wireStyle` (`orthogonal`, `curved`; Direct not

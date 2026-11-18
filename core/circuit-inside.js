@@ -8,6 +8,7 @@
 // IEC 60617-12's boxes (core/symbol-standard.js: the gate's box, its bubble). In pixels, from the unturned part's pins.
 // Isomorphic module.
 import { invertsOutput } from './symbol-standard.js';
+import { aoiLayout } from './circuit-inside-aoi.js';
 
 const EDGE = 7;      // the body's edge inside its pins' rows (web/js/circuit-draw.js: 0.35 of a grid step)
 const GAP = 12;      // a gate's near edge from its row: room for the lanes
@@ -22,7 +23,8 @@ const heightOf = (k) => Math.max(12, 3 * (k + 1));
 /**
  * The layout of a gate IC's inside: `d` its description (d.gates), `pins` its pins unturned, in pixels ({ n, x, y }).
  * { gates: [{ fn, x, y, w, h, flip, tip: [x, y], ins: [[x, y]], bubble: [cx, cy] | null }], wires: [{ gate, pin, kind:
- * 'in' | 'out', points: [[x, y]] }] }: a gate's box (x, y, w, h) its body without its bubble, `flip` it faces left.
+ * 'in' | 'out', points: [[x, y]] }] }: a gate's box (x, y, w, h) its body without its bubble, `flip` it faces left (an
+ * AND-OR-INVERT's terms' ANDs: `rot` -90 facing up, 90 down, their lines to their NOR of kind 'term').
  */
 export function insideLayout(d, pins) {
   const at = new Map(pins.map((q) => [q.n, [q.x, q.y]]));
@@ -30,7 +32,9 @@ export function insideLayout(d, pins) {
   const out = { gates: [], wires: [] };
   // (a gate whose inputs are on both rows and one of its output's row past its output, a 4023's 1, 2 and 8 to 9, #4397:
   // that input's line would cross the output's; the IC's pins' names inside it then, as an MSI IC's)
-  if ((d.gates || []).some((g) => g.fn === 'aoi' || g.en)) return out;   // (an AND-OR-INVERT, a three-state buffer, #4397: its pins named)
+  // (an AND-OR-INVERT, #4498: its terms' ANDs into its NOR, core/circuit-inside-aoi.js; another pinout's, its pins named)
+  if ((d.gates || []).some((g) => g.fn === 'aoi')) return aoiLayout(d, pins) ?? out;
+  if ((d.gates || []).some((g) => g.en)) return out;   // (a three-state buffer, #4397: its pins named)
   if ((d.gates || []).some((g) => { const o = at.get(g.out), r = (n) => at.get(n)[1] === o[1]; return g.ins.some((n) => !r(n)) && g.ins.some((n) => r(n) && Math.sign(at.get(n)[0] - o[0]) === -Math.sign(g.ins.filter((m) => !r(m)).reduce((a, m) => a + at.get(m)[0] - o[0], 0))); })) return out;
   for (const [gi, g] of (d.gates || []).entries()) {
     const o = at.get(g.out);

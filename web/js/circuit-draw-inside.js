@@ -45,17 +45,23 @@ export function icInside(g, d, pins, box, std = getSymbolStandard()) {
     g.append(sv('text', { x: t[0], y: t[1] + 2.5, 'text-anchor': 'middle', class: 'circ-pin-name', 'data-no-i18n': 'true' }, q.name));
   }
   if (!L) return;
-  for (const w of L.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', 'data-pin': w.pin }));
+  for (const w of L.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', ...(w.pin != null ? { 'data-pin': w.pin } : {}) }));
   for (const gt of L.gates) g.append(...(std === 'iec' ? iecInside(gt) : [ieeeInside(gt)]));
 }
 
-// (a gate facing left: drawn facing right in its box, mirrored about the box's middle)
+// (a gate facing left: drawn facing right in its box, mirrored about the box's middle; an AND-OR-INVERT's term facing up
+// or down, #4498: drawn facing right in its box turned back, then turned about its middle)
 const mirror = (gt) => (gt.flip ? { transform: `translate(${2 * gt.x + gt.w} 0) scale(-1 1)` } : {});
+const turn = (gt) => {
+  const cx = gt.x + gt.w / 2, cy = gt.y + gt.h / 2;
+  return { box: { x: cx - gt.h / 2, y: cy - gt.w / 2, w: gt.h, h: gt.w }, attrs: { transform: `rotate(${gt.rot} ${cx} ${cy})` } };
+};
 
 // an IEEE distinctive shape in the gate's box, its bubble at its tip
 function ieeeInside(gt) {
-  const { paths, bubble } = ieeeGate(gt.fn, { x: gt.x, y: gt.y, w: gt.w, h: gt.h, r: 2 });
-  const g = sv('g', { class: 'circ-gate-ieee', 'data-fn': gt.fn, ...mirror(gt) });
+  const t = gt.rot ? turn(gt) : { box: gt, attrs: mirror(gt) };
+  const { paths, bubble } = ieeeGate(gt.fn, { x: t.box.x, y: t.box.y, w: t.box.w, h: t.box.h, r: 2 });
+  const g = sv('g', { class: 'circ-gate-ieee', 'data-fn': gt.fn, ...(gt.rot ? { 'data-rot': gt.rot } : {}), ...t.attrs });
   paths.forEach((d, k) => g.append(sv('path', { d, class: k ? 'circ-gate circ-gate-back' : 'circ-gate' })));
   if (bubble) g.append(sv('circle', { cx: bubble.cx, cy: bubble.cy, r: bubble.r, class: 'circ-gate-bubble' }));
   return g;

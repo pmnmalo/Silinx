@@ -12,6 +12,7 @@ import { drawCircuit, drawnPartSvg } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
 import { getSymbolStandard } from './symbol-standard.js';
+import { ieeeGate } from '/core/symbol-standard.js';
 
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
@@ -22,14 +23,20 @@ const r2 = (v) => Math.round(v * 100) / 100;
 // the schematic's symbol of an MSI or sequential IC (core/schdoc.js SYMBOLS)
 const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decoder', 74139: 'decoder', 74151: 'mux8', 74153: 'mux4', 74157: 'mux2',
   7483: 'add', 74283: 'add', 7485: 'compare', 7474: 'fdcp', 7476: 'fjkcp', 74112: 'fjkcp', 7490: 'counter', 7493: 'counter', 74161: 'counter',
-  74163: 'counter', 74191: 'counter', 74193: 'counter', 4017: 'counter', 74164: 'register', 74165: 'register', 74194: 'register', 74595: 'register' };
+  74163: 'counter', 74191: 'counter', 74193: 'counter', 4017: 'counter', 74164: 'register', 74165: 'register', 74194: 'register', 74595: 'register',
+  // (#4397's group C, #4498: the J-K and D flip-flops, the D registers)
+  7473: 'fjkcp', 7478: 'fjkcp', 74107: 'fjkcp', 74109: 'fjkcp', 74113: 'fjkcp', 74114: 'fjkcp', 4027: 'fjkcp', 4013: 'fdcp',
+  74173: 'register', 74174: 'register', 74175: 'register', 74273: 'register', 74374: 'register', 74377: 'register', 74378: 'register',
+  74379: 'register', 74574: 'register',
+  // (group D's counters, #4440)
+  ...Object.fromEntries([74160, 74162, 74168, 74169, 74190, 74192, 74196, 74197, 74290, 74390, 74393, 7492, 74590, 4020, 4040, 4022, 4029, 4510, 4518, 4520].map((t) => [t, 'counter'])) };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */
 function symbolOfPart(type) {
   const d = partDef(type);
   if (d?.gates) {
     const { fn, ins } = d.gates[0];
     if (fn === 'not' || fn === 'buf') return fn === 'not' ? 'inv' : 'buf';
-    if (fn === 'aoi') return null;   // (an AND-OR-INVERT, #4397: no symbol of its own, its drawing)
+    if (fn === 'aoi') return null;   // (an AND-OR-INVERT, #4397: no symbol of the schematic's, its own: aoiPreview)
     return `${fn}${Math.min(ins.length, fn === 'and' || fn === 'or' ? 5 : 4)}`;
   }
   return BLOCK[d?.behaves ?? type] || null;   // (a project's KiCad part, #4281: the IC's it behaves as)
@@ -52,8 +59,38 @@ function preview(type) {
   const key = symbolOfPart(type) ? `${getSymbolStandard()}:${id}` : id;
   if (previews.has(key)) return previews.get(key).cloneNode(true);
   if (symbolOfPart(type)) { previews.set(key, symbolPreviewOf(symbolOfPart(type))); return previews.get(key).cloneNode(true); }
+  if (d?.gates?.[0].fn === 'aoi') {
+    const k = `${getSymbolStandard()}:aoi:${d.gates[0].terms.join(',')}`;
+    if (!previews.has(k)) previews.set(k, aoiPreview(d.gates[0].terms));
+    return previews.get(k).cloneNode(true);
+  }
   return fitted(drawCircuit({ parts: [{ id: 'X', type, x: 0, y: 0 }], wires: [] }), key);
 }
+// an AND-OR-INVERT's symbol (#4498), as the schematic's gates in the Symbols panel: its terms' ANDs (their inputs `terms`)
+// into a NOR, in Settings ▸ Schematic Symbols' standard (IEEE's shapes, IEC's boxes, their qualifiers left out as the
+// other gates')
+function aoiPreview(terms) {
+  const iec = getSymbolStandard() === 'iec', k = terms.length, step = 30 / k, hh = Math.min(10, step - 1.5);
+  const s = sv('svg', { class: 'circ-pv circ-pv-sym circ-pv-aoi', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+  const ln = (pts) => s.append(sv('polyline', { points: pts.map((q) => q.map(r2).join(',')).join(' '), class: 'pin' }));
+  const gate = (fn, box) => {
+    if (iec) { s.append(sv('rect', { x: box.x, y: r2(box.y), width: box.w, height: r2(box.h), class: 'gate', 'data-fn': fn })); return; }
+    for (const d of ieeeGate(fn, box).paths) s.append(sv('path', { d, class: 'gate', 'data-fn': fn }));
+  };
+  const nor = { x: 28, y: 10, w: 10, h: 14 };
+  terms.forEach((n, i) => {
+    const cy = H / 2 + (i - (k - 1) / 2) * step, box = { x: 12, y: cy - hh / 2, w: 10, h: hh };
+    for (let j = 0; j < Math.min(n, 4); j++) { const y = box.y + ((j + 1) * hh) / (Math.min(n, 4) + 1); ln([[6, y], [12, y]]); }
+    gate('and', box);
+    const sy = nor.y + ((i + 1) * nor.h) / (k + 1);
+    ln([[22, cy], [25, cy], [25, sy], [nor.x, sy]]);
+  });
+  gate('nor', nor);
+  s.append(sv('circle', { cx: 40, cy: H / 2, r: 2, class: 'gate' }));
+  ln([[42, H / 2], [49, H / 2]]);
+  return s;
+}
+
 // a part's drawing fitted to a preview, kept by key
 function fitted(g, key) {
   // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow)
