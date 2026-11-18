@@ -1,8 +1,8 @@
 // UI (#4498): the AND-OR-INVERT gates 7451, 7454 (the 74LS54) and 7455 in the circuit editor, as every other gate IC: the
 // Parts panel's row its symbol (its terms' ANDs into a NOR, in Settings ▸ Schematic Symbols' standard) and its tip; Show
 // inside its gates as its datasheet's connection diagram (each term's AND turned toward the body's middle, the NOR facing
-// its output pin), IEEE's shapes or IEC's boxes. The whole library: every IC's row has its tip and a symbol (but the
-// latches': no symbol of the schematic's), in English and in Portuguese. Each circuit (the IC's bench: powered, its
+// its output pin), IEEE's shapes or IEC's boxes. The whole library: every IC's row has its tip and a symbol (the
+// latches' the Parts panel's own, #4505), in English and in Portuguese. Each circuit (the IC's bench: powered, its
 // inputs on switches, its outputs on LEDs) checked with no errors and no warnings; no warnings on the page. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,8 +15,8 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const ED = '.doc:not([hidden]) .circuit-editor';
 const AOI = { 7451: { terms: 4, nors: 2 }, 7454: { terms: 4, nors: 1 }, 7455: { terms: 2, nors: 1 } };
-// (the latches: no latch among the schematic's symbols, #4505)
-const NO_SYMBOL = ['7475', '7477', '74375', '74279', '74373', '74573'];
+// (the latches: a latch's symbol of the Parts panel's own, #4505)
+const LATCHES = ['7475', '7477', '74375', '74279', '74373', '74573'];
 
 /** Settings ▸ Schematic Symbols (View ▸ in the ISE style interface), `pick` clicked. */
 async function chooseSymbols(page, pick) {
@@ -76,12 +76,13 @@ uiTest('#4498 the AND-OR-INVERT gates: their symbols in the Parts panel, their g
   assert.deepEqual(['7451', '7454', '7455'].map((t) => [aoi(t)[2], aoi(t)[3]]), [
     ['circ-pv circ-pv-sym circ-pv-aoi', 'path:and path:and path:nor'], ['circ-pv circ-pv-sym circ-pv-aoi', 'path:and path:and path:and path:and path:nor'],
     ['circ-pv circ-pv-sym circ-pv-aoi', 'path:and path:and path:nor']]);
-  // every IC of the library: its row, its tip (its title's), a symbol (but the latches')
+  // every IC of the library: its row, its tip (its title's), a symbol (the latches' the panel's own)
   const titles = await page.eval(async () => { const { PART_ORDER, partDef } = await import('/core/circuit-parts.js'); return Object.fromEntries(PART_ORDER.filter((t) => partDef(t).kind === 'ic').map((t) => [t, partDef(t).title])); });
   assert.ok(all.length >= 115, `${all.length} ICs`);
   for (const [t, tip, cls] of all) {
     assert.equal(tip, `${titles[t]}: click it, then the drawing (Esc: done)`, t);
-    assert.equal(/\bcirc-pv-sym\b/.test(cls), !NO_SYMBOL.includes(t), `${t}: ${cls}`);
+    assert.ok(/\bcirc-pv-sym\b/.test(cls), `${t}: ${cls}`);
+    assert.equal(/\bcirc-pv-latch\b/.test(cls), LATCHES.includes(t), `${t}: ${cls}`);
   }
 
   // Show inside: each IC's terms' ANDs (turned up or down) and its NORs; only VCC and GND named

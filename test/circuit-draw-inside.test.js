@@ -26,15 +26,15 @@ const { blocksLayout } = await import('../core/circuit-inside-blocks.js');
 const P = 20;
 const all = (e) => (e instanceof El ? [e, ...e.children.flatMap(all)] : []);
 // an IC's inside drawn as the editor does (its pins unturned, in grid units; their box in pixels): its elements
-function inside(d, std) {
+function inside(d, std, opts) {
   const pins = d.pins.map((q) => ({ n: q.n, name: q.name ?? String(q.n), x: q.dx, y: q.dy }));
   const xs = pins.map((q) => q.x * P), ys = pins.map((q) => q.y * P);
   const g = new El('g');
-  icInside(g, d, pins, { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }, std);
+  icInside(g, d, pins, { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }, std, opts);
   return all(g).slice(1);
 }
 
-const NAMED = ['4023', '4025', '4073', '4075', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
+const NAMED = ['74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
 
 test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
   let leads = 0;
@@ -43,7 +43,7 @@ test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
       const els = inside(d, std), what = `${d.type} ${std}`;
       const ls = els.filter((e) => e.attrs.class === 'circ-gate-line');
       // (a gate IC: three leads a 2-input gate, its inputs' and its output's; another IC: none, its pins named)
-      // (the 4023, 4025, 4073, 4075 and the three-state buffers: their pins named, #4397; an AND-OR-INVERT: a lead more a
+      // (the three-state buffers: their pins named, #4397; an AND-OR-INVERT: a lead more a
       // term, from its AND to its NOR, #4498)
       if (NAMED.includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
       // (an IC with no gates, #4508: a lead each of its pins in its functions' boxes, its signals' and the supply's under a box)
@@ -105,4 +105,21 @@ test('#4508 Show inside, an IC with no gates: the 7474\'s two flip-flops, their 
   const ctr = MSI.find((x) => x.type === '74161') ?? SEQ.find((x) => x.type === '74161');
   assert.deepEqual(inside(ctr, 'iec').filter((e) => e.attrs.class === 'circ-block-qual').map((e) => e.children.join('')), ['CTR']);
   assert.deepEqual(inside(ctr, 'ieee').filter((e) => e.attrs.class === 'circ-block-qual'), []);
+});
+
+test('#4505 Show inside, the 4023: its three NANDs, 1C\'s line crossing 1Y\'s, a hop-over with Wire crossings\' hop-overs, else a plain crossing; no dot', () => {
+  for (const t of ['4023', '4025', '4073', '4075']) {
+    const d = ICS.find((x) => x.type === t);
+    for (const std of ['ieee', 'iec']) {
+      const plain = inside(d, std), hop = inside(d, std, { hops: true });
+      assert.equal(plain.filter((e) => /\bcirc-gate-line\b/.test(e.attrs.class)).length, 12, `${t} ${std}`);
+      assert.equal(plain.filter((e) => /circ-gate-hop/.test(e.attrs.class)).length, 0, `${t} ${std}`);
+      // (one line hops, 1Y's, an arc over 1C's; its pin kept; unfilled)
+      const h = hop.filter((e) => /circ-gate-hop/.test(e.attrs.class));
+      assert.deepEqual(h.map((e) => [e.tag, e.attrs['data-pin'], e.attrs.fill, / A2\.5,2\.5 /.test(e.attrs.d)]), [['path', '9', 'none', true]], `${t} ${std}`);
+      // (no dot: no circle but the gates' bubbles)
+      assert.equal(hop.filter((e) => e.tag === 'circle').length, ['4023', '4025'].includes(t) ? 3 : 0, `${t} ${std}`);
+      assert.deepEqual(hop.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), ['VDD', 'VSS'], `${t} ${std}`);
+    }
+  }
 });

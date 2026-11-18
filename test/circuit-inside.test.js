@@ -8,6 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { insideLayout } from '../core/circuit-inside.js';
+import { CROSSING_ICS } from '../core/circuit-inside-cross.js';
 import { ICS } from '../core/circuit-ics.js';
 import { MSI } from '../core/circuit-msi.js';
 import { SEQ } from '../core/circuit-seq.js';
@@ -30,16 +31,24 @@ function meet([a, b], [c, d]) {
   return ax0 <= cx1 + 1e-6 && cx0 <= ax1 + 1e-6 && ay0 <= cy1 + 1e-6 && cy0 <= ay1 + 1e-6;
 }
 // a gate's body with its bubble
+// where two orthogonal segments cross at a right angle, each through the other (neither at its end), or null
+function crossesAt([a, b], [c, d]) {
+  const h1 = near(a[1], b[1]), h2 = near(c[1], d[1]);
+  if (h1 === h2) return null;
+  const [H, V] = h1 ? [[a, b], [c, d]] : [[c, d], [a, b]], x = V[0][0], y = H[0][1];
+  const inside = (v, p, q) => v > Math.min(p, q) + 1e-6 && v < Math.max(p, q) - 1e-6;
+  return inside(x, H[0][0], H[1][0]) && inside(y, V[0][1], V[1][1]) ? [x, y] : null;
+}
 const body = (g) => ({ x: g.flip ? g.x - (g.bubble ? 4 : 0) : g.x, y: g.y, w: g.w + (g.bubble ? 4 : 0), h: g.h });
 
-// (the 4023, 4025, 4073 and 4075: a gate's inputs on both rows, one past its output, #4397: their pins' names inside)
-// (and the three-state buffers: their pins' names too; the AND-OR-INVERTs, their terms and NOR: AOI_ICS, #4498)
-const CROSSED = ['4023', '4025', '4073', '4075', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
+// (the three-state buffers: their pins' names inside; the AND-OR-INVERTs, their terms and NOR: AOI_ICS, #4498)
+// (the 4023, 4025, 4073 and 4075, a gate's inputs on both rows, one past its output: laid out with a crossing, #4505)
+const CROSSED = ['74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
 const AOI_ICS = ICS.filter((d) => d.gates?.some((g) => g.fn === 'aoi'));
 const GATE_ICS = ICS.filter((d) => d.gates && !CROSSED.includes(d.type) && !AOI_ICS.includes(d));
 
 test('#4224 every gate IC: each gate\'s lines from its pins to its input side, from its tip to its output pin, orthogonal', () => {
-  assert.equal(GATE_ICS.length, 46);   // (23 of them KiCad's other gates, #4397)
+  assert.equal(GATE_ICS.length, 50);   // (23 of them KiCad's other gates, #4397; the 4023, 4025, 4073, 4075, #4505)
   for (const t of CROSSED) assert.deepEqual(insideLayout(ICS.find((d) => d.type === t), pinsOf(ICS.find((d) => d.type === t))), { gates: [], wires: [] }, t);
   for (const d of GATE_ICS) {
     const pins = pinsOf(d), at = new Map(pins.map((q) => [q.n, [q.x, q.y]]));
@@ -80,14 +89,17 @@ test('#4224 every gate IC: no line through a gate, no two lines meeting, no gate
       L.gates.forEach((o, j) => { if (j > i) assert.ok(!through([[body(o).x + 0.01, body(o).y + 0.01], [body(o).x + body(o).w - 0.01, body(o).y + 0.01]], body(g)) && !through([[body(o).x + 0.01, body(o).y + body(o).h - 0.01], [body(o).x + body(o).w - 0.01, body(o).y + body(o).h - 0.01]], body(g)), `${d.type}: gates ${i + 1} and ${j + 1} overlap`); });
       assert.ok(g.x >= inner.x0 && g.x + g.w <= inner.x1 && g.y >= inner.y0 && g.y + g.h <= inner.y1, `${d.type}: gate ${i + 1} inside the package`);
     });
+    const crossed = [];
     L.wires.forEach((w, i) => {
       // (inside the package: but the vertical lines' ends on the pins' rows)
       for (const [x, y] of w.points.slice(1, -1)) assert.ok(x >= inner.x0 && x <= inner.x1 && y >= inner.y0 && y <= inner.y1, `${d.type}: gate ${w.gate + 1} pin ${w.pin}'s bend (${x}, ${y}) outside the package`);
       L.wires.forEach((v, j) => {
         if (j <= i) return;
-        for (const a of segs(w.points)) for (const b of segs(v.points)) assert.ok(!meet(a, b), `${d.type}: the lines of gate ${w.gate + 1} pin ${w.pin} and gate ${v.gate + 1} pin ${v.pin} meet`);
+        // (a crossing IC's, #4505: two lines meeting only where they cross at a right angle, neither at its end or bend)
+        for (const a of segs(w.points)) for (const b of segs(v.points)) if (meet(a, b)) { assert.ok(CROSSING_ICS.includes(d.type) && crossesAt(a, b), `${d.type}: the lines of gate ${w.gate + 1} pin ${w.pin} and gate ${v.gate + 1} pin ${v.pin} meet`); crossed.push(crossesAt(a, b)); }
       });
     });
+    assert.deepEqual(crossed, L.crossings ?? [], `${d.type}: its crossings`);
   }
 });
 
@@ -99,7 +111,8 @@ test('#4224 the gates beside their output\'s row, facing it; the 7400 as its dat
       const g = L.gates[i], o = at.get(gd.out), mixed = gd.ins.some((n) => at.get(n)[1] !== o[1]);
       const mid = g.y + g.h / 2;
       // (in the half on its output's row, or in the middle when its inputs come from both rows)
-      if (mixed) assert.equal(mid, -30, `${d.type} gate ${i + 1}: in the middle`);
+      // (a crossing IC's first gate a little lower, its 1C's line over it, #4505)
+      if (mixed) assert.equal(mid, CROSSING_ICS.includes(d.type) && i === 0 ? -27.5 : -30, `${d.type} gate ${i + 1}: in the middle`);
       else assert.ok(o[1] === 0 ? mid > -30 : mid < -30, `${d.type} gate ${i + 1}: on its output's side`);
       assert.equal(g.flip, o[0] < gd.ins.reduce((a, n) => a + at.get(n)[0], 0) / gd.ins.length, `${d.type} gate ${i + 1}: facing its output`);
     });
@@ -194,7 +207,27 @@ test('#4498 the AND-OR-INVERTs (7451, 74LS54, 7455): each term\'s AND beside its
   assert.deepEqual(insideLayout(other, pinsOf(d)), { gates: [], wires: [] });
 });
 
-test('#4498 every combinational gate IC of the library has its gates drawn inside, but the four whose inputs cross (4023, 4025, 4073, 4075: #4505)', () => {
+test('#4498 every combinational gate IC of the library has its gates drawn inside (the 4023, 4025, 4073, 4075 too, #4505)', () => {
   const drawn = ICS.filter((d) => d.gates && !d.gates.some((g) => g.en));
-  assert.deepEqual(drawn.filter((d) => !insideLayout(d, pinsOf(d)).gates.length).map((d) => d.type), ['4023', '4025', '4073', '4075']);
+  assert.deepEqual(drawn.filter((d) => !insideLayout(d, pinsOf(d)).gates.length).map((d) => d.type), []);
+});
+
+test('#4505 the crossings: only in the ICs listed by name, each a right angle; the 4023 as laid out, 1C over its gate, across 1Y once', () => {
+  // (no IC but the listed has a crossing, and each listed has one: a new one is added to CROSSING_ICS by name)
+  const crossing = ICS.filter((d) => d.gates && insideLayout(d, pinsOf(d)).crossings?.length).map((d) => d.type);
+  assert.deepEqual(crossing, CROSSING_ICS);
+  assert.deepEqual(CROSSING_ICS, ['4023', '4025', '4073', '4075']);
+  const d = ICS.find((x) => x.type === '4023'), L = insideLayout(d, pinsOf(d));
+  assert.deepEqual([L.gates[0].x, L.gates[0].y, L.gates[0].w, L.gates[0].h, L.gates[0].tip, L.gates[0].bubble], [28, -32, 14, 9, [46, -27.5], [44, -27.5]]);
+  assert.deepEqual(L.wires.filter((w) => w.gate === 0).map((w) => [w.pin, w.points]), [
+    [1, [[0, 0], [0, -27.5], [28, -27.5]]], [2, [[20, 0], [20, -25.25], [28, -25.25]]],
+    [8, [[120, -60], [120, -34.5], [24, -34.5], [24, -29.75], [28, -29.75]]], [9, [[46, -27.5], [100, -27.5], [100, -60]]]]);
+  assert.deepEqual(L.crossings, [[100, -34.5]]);
+  // (the 4073's AND: no bubble, its tip the box's right)
+  const a = insideLayout(ICS.find((x) => x.type === '4073'), pinsOf(d));
+  assert.deepEqual([a.gates[0].tip, a.gates[0].bubble], [[42, -27.5], null]);
+  // (two segments touching at an end or running along each other are no crossing)
+  assert.equal(crossesAt([[0, 0], [10, 0]], [[10, 0], [10, 5]]), null);
+  assert.equal(crossesAt([[0, 0], [10, 0]], [[5, 0], [15, 0]]), null);
+  assert.deepEqual(crossesAt([[0, 0], [10, 0]], [[5, -5], [5, 5]]), [5, 0]);
 });

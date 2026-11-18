@@ -9,6 +9,7 @@
 // Isomorphic module.
 import { invertsOutput } from './symbol-standard.js';
 import { aoiLayout } from './circuit-inside-aoi.js';
+import { crossLayout } from './circuit-inside-cross.js';
 
 const EDGE = 7;      // the body's edge inside its pins' rows (web/js/circuit-draw.js: 0.35 of a grid step)
 const GAP = 12;      // a gate's near edge from its row: room for the lanes
@@ -30,12 +31,12 @@ export function insideLayout(d, pins) {
   const at = new Map(pins.map((q) => [q.n, [q.x, q.y]]));
   const ys = pins.map((q) => q.y), rowB = Math.max(...ys), rowT = Math.min(...ys), span = rowB - rowT;
   const out = { gates: [], wires: [] };
-  // (a gate whose inputs are on both rows and one of its output's row past its output, a 4023's 1, 2 and 8 to 9, #4397:
-  // that input's line would cross the output's; the IC's pins' names inside it then, as an MSI IC's)
   // (an AND-OR-INVERT, #4498: its terms' ANDs into its NOR, core/circuit-inside-aoi.js; another pinout's, its pins named)
   if ((d.gates || []).some((g) => g.fn === 'aoi')) return aoiLayout(d, pins) ?? out;
   if ((d.gates || []).some((g) => g.en)) return out;   // (a three-state buffer, #4397: its pins named)
-  if ((d.gates || []).some((g) => { const o = at.get(g.out), r = (n) => at.get(n)[1] === o[1]; return g.ins.some((n) => !r(n)) && g.ins.some((n) => r(n) && Math.sign(at.get(n)[0] - o[0]) === -Math.sign(g.ins.filter((m) => !r(m)).reduce((a, m) => a + at.get(m)[0] - o[0], 0))); })) return out;
+  // (a gate whose inputs are on both rows and one of its output's row past its output, a 4023's 1, 2 and 8 to 9, #4397:
+  // that input's line crosses the output's, core/circuit-inside-cross.js, #4505; another pinout's, its pins named)
+  if ((d.gates || []).some((g) => { const o = at.get(g.out), r = (n) => at.get(n)[1] === o[1]; return g.ins.some((n) => !r(n)) && g.ins.some((n) => r(n) && Math.sign(at.get(n)[0] - o[0]) === -Math.sign(g.ins.filter((m) => !r(m)).reduce((a, m) => a + at.get(m)[0] - o[0], 0))); })) return crossLayout(d, pins, (rest) => insideLayout(rest, pins)) ?? out;
   for (const [gi, g] of (d.gates || []).entries()) {
     const o = at.get(g.out);
     const home = o[1] === rowB ? 'b' : 't';
