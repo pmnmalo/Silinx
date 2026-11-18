@@ -31,7 +31,9 @@ const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decod
   74173: 'register', 74174: 'register', 74175: 'register', 74273: 'register', 74374: 'register', 74377: 'register', 74378: 'register',
   74379: 'register', 74574: 'register',
   // (group D's counters, #4440)
-  ...Object.fromEntries([74160, 74162, 74168, 74169, 74190, 74192, 74196, 74197, 74290, 74390, 74393, 7492, 74590, 4020, 4040, 4022, 4029, 4510, 4518, 4520].map((t) => [t, 'counter'])) };
+  ...Object.fromEntries([74160, 74162, 74168, 74169, 74190, 74192, 74196, 74197, 74290, 74390, 74393, 7492, 74590, 4020, 4040, 4022, 4029, 4510, 4518, 4520].map((t) => [t, 'counter'])),
+  // (group E's shift registers, #4397)
+  ...Object.fromEntries([7491, 7495, 74166, 74195, 74295, 74594, 74596, 4021].map((t) => [t, 'register'])) };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */
 function symbolOfPart(type) {
   const d = partDef(type);

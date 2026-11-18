@@ -2,7 +2,8 @@
 // after the IC's, `<ic>_core`), in VHDL as written and in Verilog as Silinx translates it (core/translate.js); and the IC's
 // own entity around it, as the other ICs' (core/circuit-hdl-ics.js): its simulation model reads its pins as the chip
 // does (rd: a 74LS input floating reads 1, a CMOS one X), runs the core, and drives its outputs after its delay while
-// powered (else Z); its digital model, what synthesis builds, the core on its ports themselves, its outputs while powered.
+// powered (else Z; an open collector's 1: Z, the 74596's); its digital model, what synthesis builds, the core on its
+// ports themselves, its outputs while powered.
 // Isomorphic module.
 import { translateSource } from './translate.js';
 
@@ -41,10 +42,11 @@ export function vhdlCoreIc(L, name, d, rd) {
   L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, '  port (',
     icPins(d).map((p) => `    ${pinPort(p)} : ${isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
   L.push(`architecture model of ${name} is`, ...rd, `  signal ${ins.map((p) => `i_${pinPort(p)}`).join(', ')} : std_logic := 'X';`, `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`,
+    ...(outs.some((p) => p.dir === 'oc') ? ['  -- an open collector output: a 0, or nothing', '  function oc(s : std_logic) return std_logic is', '  begin', "    if s = '0' then return '0'; elsif s = '1' then return 'Z'; else return 'X'; end if;", '  end function oc;'] : []),
     '  signal pw : boolean;', 'begin', `  pw <= ${vcc} = '1' and ${gnd} = '0';`, ...ins.map((p) => `  i_${pinPort(p)} <= rd(${pinPort(p)});`),
     `  u_core : entity work.${coreOf(name)} port map (${[...coreIns(d, ins).map((p) => `${pinPort(p)} => i_${pinPort(p)}`), ...outs.map((p) => `${pinPort(p)} => o_${pinPort(p)}`)].join(', ')});`,
     ...outs.map((p) => (tri(d, p) ? `  ${pinPort(p)} <= 'Z' after ${d.tpd} ns when not pw or ${d.threeState.enable.map(([e, a]) => `i_${e} = '${a === '0' ? 1 : 0}'`).join(' or ')} else 'X' after ${d.tpd} ns when ${d.threeState.enable.map(([e]) => `i_${e} = 'X'`).join(' or ')} else o_${pinPort(p)} after ${d.tpd} ns;`
-      : `  ${pinPort(p)} <= o_${pinPort(p)} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`)), 'end architecture model;', '');
+      : `  ${pinPort(p)} <= ${p.dir === 'oc' ? `oc(o_${pinPort(p)})` : `o_${pinPort(p)}`} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`)), 'end architecture model;', '');
 }
 
 /** The VHDL digital architecture of an IC with a core: its lines pushed on L. */
@@ -60,10 +62,11 @@ export function vhdlCoreDigital(L, name, d) {
 export function verilogCoreIc(L, name, d, rd) {
   const ins = icPins(d).filter((p) => p.dir === 'in'), outs = icPins(d).filter(isOut), [vcc, gnd] = supplyOf(d);
   L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} (${icPins(d).map((p) => `${isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`, ...rd,
+    ...(outs.some((p) => p.dir === 'oc') ? ['  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction'] : []),
     `  wire pw = (${vcc} === 1'b1) && (${gnd} === 1'b0);`, `  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`,
     `  ${coreOf(name)} u_core (${[...coreIns(d, ins).map((p) => `.${pinPort(p)}(rd(${pinPort(p)}))`), ...outs.map((p) => `.${pinPort(p)}(o_${pinPort(p)})`)].join(', ')});`,
     ...outs.map((p) => (tri(d, p) ? `  assign #${d.tpd} ${pinPort(p)} = (!pw || ${d.threeState.enable.map(([e, a]) => `(rd(${e}) === 1'b${a === '0' ? 1 : 0})`).join(' || ')}) ? 1'bz : (${d.threeState.enable.map(([e]) => `(rd(${e}) === 1'bx)`).join(' || ')}) ? 1'bx : o_${pinPort(p)};`
-      : `  assign #${d.tpd} ${pinPort(p)} = pw ? o_${pinPort(p)} : 1'bz;`)), 'endmodule', '');
+      : `  assign #${d.tpd} ${pinPort(p)} = pw ? ${p.dir === 'oc' ? `oc(o_${pinPort(p)})` : `o_${pinPort(p)}`} : 1'bz;`)), 'endmodule', '');
 }
 
 /** The Verilog digital body of an IC with a core (after its `else), its module `name`. */
