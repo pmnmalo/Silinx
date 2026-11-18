@@ -132,6 +132,14 @@ jobs:
           path: test-times.json
           retention-days: 30
           if-no-files-found: ignore
+      # (the failed tests' screenshots, the harness's, kept: what was on the screen, #4474)
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-screenshots-${{ matrix.interface }}-${{ matrix.part }}
+          path: /tmp/silinx-ui-*/screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # the memory test in WebKit (Safari's engine), and the single-file edition builds
   webkit-standalone:
@@ -248,6 +256,13 @@ jobs:
           key: apt-firefox-webkit-${{ steps.image.outputs.key }}
       - run: npm run test:browsers
         timeout-minutes: 40
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browsers-screenshots
+          path: /tmp/silinx-ui-*/screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # macOS and Windows: a small UI smoke test in the installed Chrome (and on macOS the release zip,
   # with its .command launcher); their unit tests are in the unit job

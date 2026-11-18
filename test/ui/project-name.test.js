@@ -74,7 +74,12 @@ uiTest('#3538 Import Project…, Silinx and Xilinx ISE: the name suggested from 
   await page.setFiles(FILE, [zip]);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'p_2026-lab');
   await page.dialogButton('Import');
-  await page.waitFor(() => window.Silinx.project?.name === 'p_2026-lab', [], { what: 'the project imported', timeout: 30000 });   // (an import, slow on CI, #4462)
+  // (an import, slow on CI, #4462; a timeout says what is on the screen instead: a dialog, the console's last lines, #4474)
+  await page.waitFor(() => {
+    if (window.Silinx.project?.name === 'p_2026-lab') return true;
+    const dlg = document.querySelector('.dlg-overlay'), log = [...document.querySelectorAll('#console-log .ln')].slice(-3).map((l) => l.textContent.trim());
+    throw new Error(`project ${window.Silinx.project?.name}; ${dlg ? `dialog: ${dlg.innerText.replace(/\s+/g, ' ').slice(0, 300)}` : 'no dialog'}; console: ${log.join(' | ')}`);
+  }, [], { what: 'the project imported', timeout: 30000 });
   await page.waitConsole(/Imported Silinx project 'p_2026-lab'/);
   // the ISE import suggests the same name, and refuses one past the rule with its message
   await exportZip(page, 'xilinx');
