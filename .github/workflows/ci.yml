@@ -105,18 +105,18 @@ jobs:
       fail-fast: false
       matrix:
         interface: [silinx, ise]
-        part: [1, 2, 3]
+        part: [1, 2, 3, 4]   # (four parts: a part of three reached the step's 40 minutes, #4463)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    name: ui (${{ matrix.interface }}, ${{ matrix.part }}/3)
+    name: ui (${{ matrix.interface }}, ${{ matrix.part }}/4)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - name: UI tests (headless Chrome, ${{ matrix.interface }} interface, part ${{ matrix.part }}/3)
+      - name: UI tests (headless Chrome, ${{ matrix.interface }} interface, part ${{ matrix.part }}/4)
         run: >-
-          node scripts/test-shard.mjs "$PART/3" --ui --test-concurrency=1
+          node scripts/test-shard.mjs "$PART/4" --ui --test-concurrency=1
           --test-reporter=tap --test-reporter-destination=stdout
           --test-reporter=./scripts/test-file-times.mjs --test-reporter-destination=stdout
           --test-reporter=./scripts/test-times-reporter.mjs --test-reporter-destination=test-times.json
