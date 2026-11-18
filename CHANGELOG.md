@@ -3,6 +3,438 @@
 What changed in each version of Silinx ISE. The newest version is first. Each section is also
 the "What's new" text of its GitHub release.
 
+## 15.28.0
+
+The Cologne Chip GateMate joins the Silinx toolchain, and every family now simulates after synthesis and after Place &
+Route. In the circuit editor, KiCad's 74xx and 4xxx logic ICs all behave: counters, shift registers, decoders,
+multiplexers, register files. Every IC is drawn inside as its datasheet draws it, in IEEE or IEC symbols, and each part
+says what it is. Verify proves the larger examples, and the user's guide comes in Portuguese and on the site.
+
+In short:
+
+- **The Cologne Chip GateMate:** the CCGM1A1 and CCGM1A2 in the Silinx toolchain, with the GateMate A1 evaluation
+  board, every example built, and its Post-Synthesis model.
+- **Simulation after implementation everywhere:** Simulate Post-Place & Route on the Gowin and the 7-series,
+  Post-Synthesis on the 7-series.
+- **KiCad's logic ICs behave:** counters, shift registers, decoders and display drivers, encoders, multiplexers, an
+  ALU, parity, comparators, register files and addressable latches, each checked against its datasheet's function
+  table. The Parts panel shows what each part is, in English or Portuguese, and finds it by function; Import KiCad
+  Part… and Browse KiCad Libraries… sit in the KiCad section. Silinx's own library is given in KiCad's format too.
+- **Show inside:** every IC drawn inside as its datasheet's connection diagram: the AND-OR-INVERT gates, the
+  flip-flops, counters and registers as function blocks, the three-state buffers and transceivers with their enables,
+  in IEEE or IEC symbols. The IEC thumbnails show their qualifiers, and the tips show a larger drawing and what the part
+  does.
+- **Drawings:** a state diagram's @ELSE (also else, others, otherwise) with an Else box in Properties; conditions drawn
+  in the Boolean notation with clean overbars and edited as text; an ASM chart's register width from the generics; an
+  instance's Width defines its pins.
+- **Projects:** a broken module outside the top's hierarchy no longer stops implementing or emulating it; Verify
+  Equivalence proves the stopwatch and micro80.
+- **Live sharing:** an editor adds, renames, removes and deletes sources; two browsers on one computer find each other
+  (Chrome and Safari).
+- **Front ends and synthesis:** fixes to VHDL and Verilog simulation, the translators and the open synthesis; the Gowin's
+  differential pairs and clear messages for what nextpnr cannot build.
+- **Documentation:** a shorter README, the user's guide as short pages, in Portuguese, and on the Pages site.
+
+In detail:
+
+- **The README shows the schematics and a 7-series board (#4536):** its second feature (English and Portuguese) is now
+  the schematic editor: symbols wired as in ISE's Schematic Editor, simulated live, and any HDL design drawn as its RTL
+  schematic; the first feature shows the HDL editor, and the breadboard circuits stay in the user's guide. Its boards
+  show a Basys 3 (the 7-series) beside the Basys2, the Nexys3 and the iCEBreaker, and name Vivado's Arty S7 and Zybo
+  Z7: a new screenshot, `emulator-basys3` (the clock example on an emulated Basys 3).
+- **KiCad's actions in the KiCad catalogue's section (#4534):** `web/js/circuit-parts-panel.js` puts Import KiCad
+  Part… and Browse KiCad Libraries… in a row under the KiCad catalogue's heading (`.circ-cat-tools`), shown when the
+  section is folded too, rather than under the search at the top of the Parts panel. Neither shows in a read-only editor,
+  and Browse only on the local server, as before. The MCP server's tools (`import_part`, the catalogue's) are unchanged.
+- **A thumbnail's qualifier always drawn (#4531):** `symbolPreview` (`web/js/sch-palette.js`) left an MSI IC's
+  qualifier out of its 54 × 34 thumbnail when it did not fit at 6 px, so the row and its tip's card differed (the 7446's,
+  7447's and 7448's BCD/7SEG, the 74151's MUX, the 4021's SRG). It is now drawn on two lines at its '/' when that fits,
+  else smaller, down to 4 px. `qualifierOf` (`core/circuit-inside-blocks.js`) gives the priority encoders HPRI/BIN, an
+  arithmetic logic unit ALU and a carry generator CPG, as their datasheets' IEC symbols do.
+- **The docs site's builder uses the shared XML escape (#4527):** scripts/build-docs-site.mjs (#4504) imports `escXml` from
+  core/escape.js in place of its own copy, which test/ident-escape.test.js refuses (#3545); the site's pages the same bytes.
+- **The panels' IEC thumbnails (#4524):** `symbolPreview` (`web/js/sch-palette.js`) drew a symbol's body only, and an IEC
+  gate's qualifier is one of its texts: it now draws the qualifier of a gate, an inverter or a buffer in each box, sized
+  to it (`fitQualifier` of `core/symbol-standard.js`), and an MSI IC's general qualifier given by the Parts panel, left
+  out where it would not fit (a tall block's, the MUX8's). The Parts panel's AND-OR-INVERT ICs' boxes and latches have
+  theirs too.
+- **The tips' cards (#4524):** `web/js/symbol-tip.js`: a card beside a row of either panel (the mouse resting on it, or
+  the keyboard's focus), its drawing 135 × 85, its name, its function and its look in the standard (`gateFunction`,
+  `symbolLook` of `core/symbol-standard.js`), then the row's own tip, which the browser does not show meanwhile; gone at
+  a click until the mouse moves. In Portuguese.
+- **The functions inside an IC with no gates (#4508):** `core/circuit-inside-blocks.js` lays out a box a unit of a dual
+  or quad flip-flop, latch or decoder (its pins named 1D, 1CLK…, in the half of its pins' row or over the body's height),
+  else one box over the body; each pin's line straight into its box, its name in it, a clock's dynamic indicator ▷ (its
+  bubble on a falling edge), an active-low input's bubble; IEC 60617-12's labels (1D, 1J, 1K, C1, S, R, a negated
+  output's bubble) and qualifier (CTR, SRG, RG, X/Y, MUX, Σ, COMP, BCD/7SEG). A supply pin under a box is drawn into it.
+  A test over the library and the KiCad catalogue's parts that behave: every IC drawn inside but #4505's (the three-state
+  buffers, the 4023, 4025, 4073, 4075), listed.
+- **The 4023 family inside, with one crossing (#4505):** their first gate (1A, 1B from the lower row, 1C from the upper
+  one past 1Y) lies in the body's middle, 1C's line over it crossing 1Y's once at a right angle, drawn as the circuit's
+  wires cross (⋮ Wire crossings: a hop-over, or plain; no dot), `core/circuit-inside-cross.js`. The ICs a crossing is
+  allowed in are listed by name (`CROSSING_ICS`); the test holds every other IC to none, and these to right-angle
+  crossings only.
+- **The latches' symbol in the Parts panel (#4505):** the 7475, 7477, 74375, 74279, 74373 and 74573 (and any latch added
+  later, by its title) show a level-enabled storage box instead of a bare DIP.
+- **The three-state ICs with combined enables inside (#4505):** the 74365, 74366, 74540, 74541 (G1̅ and G2̅ into a NOR)
+  and the 74245 (DIR and OE̅ into an AND, OE̅'s input bubbled, for A to B, and a NOR for B to A) drawn with their
+  combining gates as their datasheets draw them, each gate's output the bus of the buffers it enables. No IC of the
+  library is left with only its pins named inside; every KiCad catalogue's part that behaves as an IC is drawn.
+- **The three-state ICs inside (#4505):** `core/circuit-inside-tri.js` lays a buffer whose input and output are on one
+  row flat beside them, facing its output, and one across the body standing between its rows, pointing to its output's
+  row (a transceiver's two directions side by side, its pin's two lines joined by a dot); each enable pin's bus feeds its
+  buffers' sides, a bubble where it is active low, a dot where it branches. The buses cross the data lines at right
+  angles, drawn as the circuit's wires cross (⋮ Wire crossings), never with a dot; these ICs join `CROSSING_ICS` by
+  name. The test asserts a dot at every T of one pin's lines and none on a crossing. The ICs with combined enables
+  (74365, 74366, 74540, 74541, 74245) keep their pins named for now.
+- **The user's guide on the Pages site (#4504):** `scripts/build-docs-site.mjs` makes `docs/user/<lang>/*.md` into
+  plain HTML pages in the site's `docs/<lang>/` (the guide's own Markdown, no Markdown package: headings with
+  GitHub's anchors, lists, tables, quotes, code, links, pictures), a link to a page of the guide its HTML page, to any
+  other file of the repository the file on GitHub; `docs/images/` beside them, and `docs/index.html` choosing the
+  language. The Pages workflow runs it after the editions, from main's commit. The service worker leaves `docs/` to
+  the network. `test/build-docs-site.test.js`: the conversion, the links, and the site built whole with every local
+  link, anchor and picture found.
+- **The developers' documents apart from the user's (#4503):** `docs/README.md` sorts the documentation in two: the
+  user's guide (English, Portuguese) and the documents for those who change Silinx, one line each (development,
+  architecture, toolchain, quality, interface rules…). They keep their paths, which the code, the workflows (the
+  weekly comparison writes QUALITY.md) and CLAUDE.md name; the README, CONTRIBUTING and ONBOARDING point to the index.
+  `test/docs.test.js` checks that it lists every developers' document and that the old guides only point to the
+  user's guide.
+- **The user's guide in Portuguese (#4502):** `docs/user/pt/`, one page for each English one of the guide, each
+  linking the other at its top; COMECAR.md became `docs/user/pt/getting-started.md` (the old file points there). The
+  reference pages (the features, the toolchains, circuits, grading, GitHub Classroom, Silinx HLS) stay in English,
+  linked from the Portuguese pages as such. `README.pt.md` beside the README. Five more screenshots in Portuguese
+  (New Project, Boolean algebra, a simulation, the Board Emulator, the Design Summary): the script takes the menus'
+  and processes' Portuguese names and waits for a process by its status. `test/docs.test.js` checks that every page
+  has its twin, each linking the other, and its link check is case-sensitive.
+- **The README, a landing page (#4500):** 103 lines instead of 988: what Silinx is, a screenshot, six features each
+  with its own, the boards, Try it, the documentation's links, the licence. The full list of features moved to
+  `docs/user/en/features.md`, the ISE, Vivado and programming sections to `docs/user/en/toolchains.md`, the MCP
+  server's to `docs/user/en/ai-mcp.md`, and the developers' sections (running from the source, the command line, the
+  standalone edition, the layout) to `docs/DEVELOPMENT.md`.
+- **The user's guide as short pages (#4501):** `docs/user/en/`: an index, what Silinx is, getting started (from
+  GETTING-STARTED.md), designing, circuits (from CIRCUITS.md), simulating, the Board Emulator, boards and toolchains,
+  teaching (with grading and GitHub Classroom, from GRADING.md and CLASSROOM.md), Silinx HLS (from c-to-hdl.md), AI
+  assistants and a FAQ, each with its screenshots. The old files point to their new place. `test/docs.test.js` reads
+  every Markdown file under `docs/` (its links, menu paths and facts), and its facts about the toolchain from the new
+  pages.
+- **The documentation's screenshots, made by a script (#4499):** `npm run docs:screenshots`
+  (`scripts/docs-screenshots.mjs`) drives the app through the examples on the UI tests' harness (a temporary workspace
+  and HOME), at 1280×800 in the light theme, and writes each picture to `docs/images/` as WebP: the IDE in both
+  interfaces and both languages, New Project, the HDL, schematic, ASM, Boolean algebra and circuit editors, a
+  simulation, the Board Emulator on a Basys2, a Nexys3 (its VGA monitor) and an iCEBreaker, and an implementation with
+  the Silinx toolchain on a Nexys2 and a Tang Nano 9K. Run again, it brings them up to date; a shot whose page shows a
+  path of the computer or an e-mail address is refused. `test/docs-images.test.js` checks that every shot's picture
+  is there and every picture is a shot's, that each is WebP under 150 KB, and that every picture a document shows
+  exists.
+- **The AND-OR-INVERT gates drawn (#4498):** the Parts panel's row of the 7451, 7454 (the 74LS54) and 7455 shows its
+  terms' ANDs into a NOR, in IEEE's shapes or IEC's boxes as Settings ▸ Schematic Symbols says, instead of a bare DIP;
+  Show inside lays them out as their datasheets' connection diagrams (`core/circuit-inside-aoi.js`): each term's AND
+  turned toward the body's middle beside its pins, its lines into the NOR facing the output pin, horizontal and vertical,
+  none crossing. The Parts panel's rows of #4397's group C (the 7473, 7478, 74107, 74109, 74113, 74114, 4027, 4013,
+  the D registers) and group D's counters show their schematic symbols (fjkcp, fdcp, register, counter). A test over
+  the whole library holds every IC to a tip and a symbol (the latches have none of the schematic's yet), and every
+  combinational gate IC to its gates drawn inside (but the 4023, 4025, 4073, 4075); the MCP's `circuit_parts` gives
+  each IC's title and logic as the editor's tip and Part info.
+- **What a KiCad part is (#4495):** a part that behaves as an IC of Silinx's library shows that IC's title. Any other
+  shows its KiCad symbol's Description shortened to its function by one rule (`core/part-function.js` `shortFunction`:
+  packages, ratings, families and notes left out, a sentence's case). Only the functions are kept, in
+  `core/kicad-catalogue-functions.js`, which `scripts/kicad-catalogue.mjs` writes. The search finds a part by its
+  function, its case and accents aside. In Portuguese the functions are translated by a small vocabulary of the logic
+  ICs' words, applied by rule (`functionPt`); it agrees with the interface's own translations of Silinx's ICs' titles,
+  and a function with a word outside it stays in English. The MCP's `part_libraries` with `catalogue` and
+  `circuit_parts` return the function, and `circuit_parts` takes a `query`.
+- **WebRTC between two browsers of one computer (#4494):** each browser hides its host address behind an mDNS name
+  (`<uuid>.local`) that another browser does not resolve, the public address from STUN needs the router to loop it back,
+  and on macOS a browser without the Local Network permission cannot reach the computer's own address. A remote host
+  candidate at an mDNS name now gets a twin at 127.0.0.1 on the same port, beside it and never instead of it
+  (core/collab-loopback.js). This applies at the meeting point and to the codes' connections, and peers on two computers
+  connect as before. A twin makes the browser send STUN checks to a port of its own computer that the peer named, so it
+  is kept narrow: UDP only, mDNS names only, ports of 1024 or more, eight at most. The reasoning is in SECURITY.md.
+  Firefox takes no loopback candidate, so its pairs are still unconnected (#4497).
+- **The otherwise transition, StateCAD's spelling (#4489):** `@else` (any case), `others` and `otherwise` are a state's
+  otherwise transition, as `else`, `default`, `true`, `1` and an empty condition are since #3907: tried last, one per
+  state (Check's error lists the new words), the generated HDL's final `else`. A transition's Properties have an *Else
+  (every other case)* box: ticked, the condition is `else` and its field not editable; unticked, it is empty. The arc
+  of a state's otherwise is labelled *else* in italics, whatever its spelling (an empty condition, `1` or `true` when its
+  state has other transitions), and so is its line in the state's list of transitions. The MCP's new
+  `set_fsm_condition` sets a transition's condition, or makes it the state's otherwise (`otherwise: true`).
+- **VHDL: a slice with a variable's bounds but a constant width keeps it (#4487):** since #4358 such a slice probed
+  outside its prefix (an integer variable at integer'low) took its prefix's width even when its own did not depend on
+  the variable: the RAMB16 models' `par(a * 1 + 0 downto a * 1)` was 2048 bits, and Check Syntax of a block memory
+  warned of width mismatches in unisim.vhd. Its width is now probed with the variables at a few values: the same each
+  time, it is the slice's (`a * 8 + 7 downto a * 8`, `w + 3 downto w`); one that depends on them (`w - 1 downto 0`)
+  keeps its run-time width.
+- **simulate_drawing's schematic test ticks its shared pins (#4486):** since #4451 an arrayed instance's pin on a net
+  fixed at its own width (a 1-bit I/O marker) is shared by the copies with a warning unless ticked in Shared pins; the
+  test of #3827 (test/mcp-simulate-schematic.test.js), whose `reg(3:0)` has its clock and enable on 1-bit markers and
+  asserted no warnings, now ticks them (`place_instance`'s `shared`), and a test of its own asserts the two warnings
+  of the unticked schematic and its simulation, the same.
+- **An SVG condition's bars drawn as lines (#4484):** the arcs' labels and the decision boxes (#4417) wrote the
+  combining overline (U+0305) after each letter, which the fonts drew letter by letter at different heights. They are
+  now drawn without it, each bar a line over its characters measured from their cells (web/js/overbar.js
+  `drawSvgBarsIn`; core/overline.js `barRuns` and `barLines`: one bar per run of characters under a bar, an outer bar a
+  step above the bars under it), in the text's colour, the text as written in its `data-written`; a text not laid out
+  yet (its tab hidden) gets its bars once it is. The Properties' list of a state's transitions draws its conditions
+  with the HTML bars of #4058. Tests: test/overline-bars.test.js, test/ui/overbar.test.js (the bars measured on the
+  screen against the letters, at two zooms, in both themes and interfaces), test/ui/expr-notation.test.js.
+- **Live sharing: an editor's change no longer lost to the owner's reading its disk again (#4480):** when the owner's
+  disk changed (its own writes of an editor's previous change, seen by the project's watcher), the owner's page and
+  `share_project` read the project again and published it into the shared document; an editor's change that arrived
+  during that read was put back by it before it was written, and so never written (a source removed, renamed or
+  deleted stayed as it was). The read is now published only if no change arrived meanwhile, and the project is
+  published again after that change (`core/collab-files.js` `editQueue`'s `publish(fresh)`). It made the #4418 test of
+  `test/mcp-collab.test.js` time out on a loaded runner.
+- **The MachXO2's measurement keeps a Yosys warning whole (#4479):** `scripts/machxo2-measure.mjs` took YoWASP's flush for
+  the end of a line, and Yosys flushes between `Warning: ` and the warning's text: a warning of `synth_lattice` was
+  recorded empty and its text dropped. The flush is now ignored, and a test checks a design that warns (two drivers of
+  a register's bit).
+- **VHDL: a function's slice with a parameter's bounds (#4476):** since #4358 a slice whose bounds read a variable took
+  its prefix's width, in a function too, where its width is the result's: the stopwatch example's `quotient`
+  (`return p(shift + 3 downto shift);`) returned 28 bits and warned three times "width mismatch: target is 4 bits,
+  value is 28 bits". In a function the slice is probed as before, so its constant arguments bind it again with their
+  values; a process's or a procedure's keeps #4358's run-time width.
+- **A reload's cancelled requests are not a UI test's errors (#4475):** reloading the page cancels its own requests still
+  in flight, which WebKit and Firefox report as failed loads ("access control checks"); the harness drops those
+  reported until the new page's load event (`reload` in `test/ui/harness.js`), so the tablet's Tasks test no longer
+  fails on them twice in a row.
+- **A UI test's failed import says what was on the screen, and CI keeps the failed tests' screenshots (#4474):** the
+  #3538 Import Project test's wait reports the open dialog and the console's last lines; `ci.yml` uploads the harness's
+  screenshots of the UI and browser jobs' failed tests as artifacts (14 days).
+- **The Board Emulator's narrow-layout UI test waits for the board's area to take the whole width (#4473):** checked once
+  right after the window was narrowed, before the layout had settled on a slow runner.
+- **A UI test run once more when Firefox failed to load a module from the local server (#4471):** the retry of WebKit's
+  failed loads (#4428, #4464) takes Firefox's "error loading dynamically imported module" too (`loadFailure` in
+  `test/ui/harness.js`, per browser; never Chrome's).
+- **The ASM editor's UI test clicks the warning again if its click was lost (#4470):** the re-check after `setModel`
+  may draw the Warnings tab's rows anew under the click on a slow runner; the test waits for the row shown, then clicks
+  it up to three times, 4 s each, until the box is selected.
+- **Blinky's test bench reads the display once the segments have settled (#4460):** it read each digit at a falling edge,
+  half a clock cycle after the edge that changed the segments. On a Post-Place & Route model with its timing, the
+  segments' clock to pad can be longer than that (10.3 to 11.2 ns on the XC3S250E with blinky's debounce counters 1 bit
+  wide), and the test bench read a digit half changed: "digit 0: not a decimal digit". The synthesis was right (the
+  Post-Synthesis models of the Spartan-3E, iCE40, ECP5 and Gowin, and the Post-Place & Route model without its SDF,
+  passed). It now reads each digit at the next rising edge, a whole cycle after, as the stopwatch's, isqrt's and
+  micro80's test benches do; a test runs blinky with 1-bit debounce counters on its timed model, in VHDL and Verilog.
+- **An arrayed instance's pins sliced whatever is wired to them (#4451):** an instance's width defines its pins' (core/sch-array.js
+  `sliceArrayed`): each pin is a bus N times its width unless its net's width is fixed elsewhere (an I/O marker, a net
+  name with a range, another symbol's pin) at another; a pin on a net fixed at its own width is still shared by the
+  copies, as ISE's, now with a warning ("pin C is shared by its 8 copies: its net 'clk' is 1 bit wide; tick it in
+  Shared pins, or connect it to a 8-bit bus"), none when ticked in Shared pins; an ISE schematic imported ticks those
+  pins. An I/O marker added on such a pin (the Add I/O Marker tool, its rectangle, the MCP's `add_markers`) is N × w bits
+  wide; a net of a sliced pin is declared N × w bits wide in the HDL even when its module's port has a type
+  (`std_logic`). The MCP's `place_instance` and `set_instance_width` say the warnings as Check does.
+- **VHDL to Verilog: a concurrent assignment's lint suppression kept (#4436):** #4414 carried the lint's
+  `silinx: ignore` comments over on processes and if / elsif branches only; a concurrent assignment's (on its line or
+  the line above, the 74190's `rco_n <= …` with `clock-as-data`) now ends its `assign` line (or its delayed
+  assignment's `always` line).
+- **PR tests: whether a pull request is a draft is read as it is now (#4427):** a push followed within seconds by
+  `gh pr ready` started two runs, and the concurrency group kept the one queued last, often the push's, whose event
+  still said draft: `related-tests` failed on a ready pull request and nothing ran again. A first job asks the API
+  (`pull-requests: read`) whether the pull request is a draft, and the plan and the verdict follow its answer, so
+  whichever run survives does the right thing; a draft still runs no test and fails the check (#4166).
+- **The runs of the top check and compile only its hierarchy (#4421):** `core/top-hierarchy.js` finds the files the
+  top needs (the modules it instantiates, transitively, the generated HDL of drawings among them, their architectures'
+  files, the packages they use, the files they include); a file with errors none of them is, nor declaring a module the
+  hierarchy misses, is left out of the Check Syntax a run starts with (Implement Design's processes, the Board Emulator,
+  a simulation), of the Silinx toolchain's sources in the browser, and of the build folder of the server's three
+  toolchains (`server/ise.js` generateBuild: ISE's .prj, Vivado's sources, the Silinx toolchain's), with the warning
+  "<file> is not in the hierarchy of the top module '<top>': left out, its N errors not checked (Check Syntax shows
+  them)". A file with errors inside the hierarchy still stops the run. A clean file outside it is still read. The MCP
+  server's `run_process` and `simulate` the same; Check Syntax (of a file, of a module, `check_syntax`) unchanged.
+- **An editor's files and project description (#4418):** an editor's page creates, deletes and renames files in the
+  shared document and saves the project's description into it (`core/collab-files.js`; the description is now a part
+  of the document an editor changes, `EDIT_ROOTS`). The owner's page and `share_project` write each change to the disk
+  through the same function (`applyEdits`): a new or changed file through the import gate, the project untrusted
+  before the first write (#3355); a deleted file into the workspace's .trash; a rename whose new file the gate refuses
+  keeps the old one; a new file over a file of the project folder that is not shared (too large) undone; the
+  description taken as Merge Contribution takes one, its id, name, origin, trust and version the owner's, its paths
+  only the project's files'. `follow_project` with an editor's link: `source` (add, remove, delete, rename) and
+  `settings` (silinx.json's fields), as the interface's commands.
+- **A condition drawn in the notation, kept as text (#4417):** the notation is a view. The state diagram's arcs, its
+  Properties' list of a state's transitions and the ASM chart's decision boxes draw each condition in the notation
+  chosen (web/js/notation.js `drawnCond`; a bar takes no room in a label's width); the Properties' Condition box and
+  the edit in place show the text as typed. The conversions (Convert to State Diagram / ASM chart, a diagram made
+  again from its HDL, an ASM chart's or a Petri net's state diagram, MCP `convert_module` / `convert_drawing` /
+  `related_view`) write the notation's text form (core/cond-notation.js `writeCond`: the Electronics / Engineering
+  one's is the text only one's, `/a.b`), where they wrote the overbar characters into the drawing (#3915). A
+  condition with bars (a drawing 15.27 saved, a text pasted) is read as the text only notation's NOT
+  (`condAsText`, in `normalizeFsm` and `normalizeModel`: the MCP's tools read it so too). Tests:
+  test/cond-text.test.js, test/conversion-notation.test.js, test/mcp-notation.test.js, test/ui/expr-notation.test.js
+  (the arcs, the Properties box, the edit in place, an ASM chart's decisions, in both interfaces); the UI tests that
+  read an arc's label in the tests' text only notation.
+- **VHDL: a procedure's aggregate actual takes its parameter's type (#4411):** an aggregate passed to a procedure's
+  constrained array parameter was bound with no type (a function's already took its parameter's), so indexing the
+  parameter inside the procedure stopped the behavioural simulation ("Cannot read properties of undefined"); both
+  now share one helper, `aggregateParamType`.
+- **Counters written once in VHDL (#4397, group D):** `core/circuit-model-counters.js` adds 20 counters as the
+  flip-flops of group C are: each its datasheet's pinout and a VHDL core (its count numeric_std's), run live by Try it,
+  instantiated by the circuit's HDL, its Verilog translated by Silinx. They are synchronous (74160, 74162, 74168, 74169,
+  74190, 74192), ripple (74196, 74197, 74290, 74390, 74393, 7492, 4020, 4040; their stages counting together), the
+  74590 (a counter and an output register, its outputs three-state, its RCO̅ not: an IC's three-state outputs may now
+  be some of them), the 4022 (8 decoded outputs), the 4029 and 4510 (presettable up/down) and the 4518 and 4520 (dual,
+  CLK or ENABLE). An asynchronous load takes its data when it starts, as the 74191's. `core/circuit-model-ics.js`
+  takes a core written as VHDL. The catalogue's KiCad logic ICs that behave go from 174 to 197. The 4060's oscillator,
+  the 74LV8154 (any one of its byte enables drives the bus), the 74293 (KiCad gives its NC pins 1 and 3 as inputs) and
+  the 4033 stay drawn only.
+- **Decoders checked against their datasheets (#4397, group F):** `core/circuit-model-decoders.js` adds the 4028 (BCD
+  to decimal, active high, all low for 10–15), the 74246, 74247 and 74248 (BCD to 7 segments with tails on 6 and 9,
+  their BI̅/RBO̅ their RBO̅ output: an open collector low while a zero is blanked), the 4543 (latched, BI blanking, PH
+  inverting its segments for an LCD; no tails, blank above 9) and the 74348 (the 74148, its A̅ off while GS̅ is high).
+  An IC's three-state outputs may now be enabled by one of its own outputs (the 74348's GS̅). The catalogue's KiCad
+  logic ICs that behave go from 243 to 249. The 74LS249 stays drawn only until its datasheet is read.
+- **Decoders, display drivers and encoders written once in VHDL (#4397, group F):** `core/circuit-model-decoders.js`
+  adds 12 ICs as the shift registers of group E are, their logic sums of products of their inputs; the 74137 and 74237
+  latch their address as the chips do. A KiCad open-collector pin fits an output the chip pulls up inside (the 7448's
+  segments), so KiCad's 74LS48 behaves as the 7448. A library IC on a 24-pin DIP (the 74154) is 0.6 inch wide, and
+  exported to KiCad on `DIP-24_W15.24mm`. The catalogue's KiCad logic ICs that behave go from 207 to 224. The 4056
+  stays drawn only (its third supply, VEE); the 4028, 4543, 74246–74249 and 74348 too, until their datasheets' tables
+  are checked.
+- **Memories and storage written once in VHDL (#4397, group F):** `core/circuit-model-memory.js` adds the 74670 and
+  74170 (4 × 4 register files, their words latches written while GW̅ is low; three-state and open-collector outputs),
+  the 74259 and 74256 (addressable latches: a latch, a demultiplexer, cleared) and the 74395 (a 4-bit shift register,
+  its QA–QD three-state, its QD' not). A KiCad three-state pin fits an open collector of the library (KiCad's 74LS170
+  extends its 74LS670). The catalogue's KiCad logic ICs that behave go from 238 to 243. Drawn only: the 74322
+  (bidirectional I/O pins, #4485), the 74385 (KiCad's symbol gives half its outputs as inputs), the 74CBT3861 bus
+  switches (contacts, as group G's analog switches) and the 74469 (until its datasheet's U/D̅ is checked).
+- **Multiplexers, arithmetic, comparators and parity written once in VHDL (#4397, group F):**
+  `core/circuit-model-mux.js` adds 12 ICs as the decoders are. The 74181 does its datasheet's 32 functions for
+  active-high data (Cn and Cn+4 active low, A=B an open collector), its P̅ and G̅ the 74182's inputs; the 74298 stores
+  the selected word on its clock's falling edge. An IC's three-state outputs may now be in sections, each
+  with its own enable (the 74253's and 74353's two): the engine, the simulation model and the digital model take each
+  output's own. The catalogue's KiCad logic ICs that behave go from 224 to 238. The 74398 and 74399 stay drawn only
+  until their clock's edge is checked in their datasheet.
+- **Shift registers written once in VHDL (#4397, group E):** `core/circuit-model-shift.js` adds 8 shift registers as
+  the counters of group D are: each its datasheet's pinout and a VHDL core, run live by Try it, instantiated by the
+  circuit's HDL, its Verilog translated by Silinx. The 7495's two clocks are gated by its MODE and the 74166's by its
+  clock inhibit, as the chips' logic does; the 74295's outputs are three-state (enabled while OC is high); the 74594
+  clears its output register too; the 4021's parallel load is asynchronous. The 74596's outputs are open collectors:
+  an IC written once in VHDL may now have them (its core's 1 released, in the engine and in its simulation model). The
+  catalogue's KiCad logic ICs that behave go from 197 to 207. The 74299 and 74323 stay drawn only: their I/O pins are
+  bidirectional, which a core cannot have yet (#4485).
+- **A VHDL case's selector of a subtype not locally static (#4383):** the Verilog-to-VHDL translator wrote a
+  `case ({a, b})` as `case std_logic_vector'(a & b) is`, which XST refuses (HDLCompiler:803); it now qualifies a
+  concatenation's or a signed vector's selector by a subtype of its width declared in the architecture, as #4380 did
+  for the circuit ICs. The VHDL front end warns of such a case (a concatenation, or a conversion or qualification by
+  an unconstrained type mark), naming HDLCompiler:803; the simulation is unchanged.
+- **An ASM chart's register width given by an expression of its generics (#4378):** the Properties panel's width of a
+  register takes a number or an expression (integers, generics, `+ - * /`, parentheses, `clog2(n)`: the bits that
+  count 0 to n-1, at least 1), and so does the chart's file (`core/asm-width.js`). The Check reports an expression that
+  is not valid, names a generic the chart does not have (with the right spelling when only the letter case differs),
+  divides by 0 or goes negative, or whose value at the generics' default values is not 1..256. Such a register meets,
+  in `+ - & | ^ ~ << >>`, only constants and values of its own width (any other may be wider or narrower at the
+  values the module is given: the Check says so), a case box tests a slice of it, a copy, a comparison or a slice of it
+  meets any width. The generated VHDL declares `std_logic_vector(clog2(DEBOUNCE) - 1 downto 0)` and sizes its
+  literals and resizes with the expression; the Verilog `reg [clog2(DEBOUNCE)-1:0]`; both declare the `clog2`
+  function when a width calls it (XST has no `$clog2`), and both simulate as a reference at several generics' values.
+  The chart's simulator (Try it, `simulate_drawing`) takes the widths at the generics' default values. The chart made
+  from HDL keeps the expression, from the generator's header, the previous chart, or a hand-written declaration
+  (`[clog2(N + 1)-1:0]`, with a `clog2` function). The MCP server's `write_file`, `check_drawing` and
+  `simulate_drawing` take such a chart.
+- **The Gowin netlists' test fails on an assert … severity error (#4363):** `test/gowin-netlist.test.js` marks a test bench's
+  error entries `ERROR: ` as the iCE40's and ECP5's harnesses do, so a netlist whose test bench fails an assertion (blinky's
+  "knight rider did not reach the MSB", whose text says no ERROR) and then prints "Simulation finished OK" no longer passes; a
+  test of the harness itself, in VHDL and in Verilog. The 11 examples' Gowin netlists still pass.
+- **The Gowin's Post-Place & Route simulation model (Part of #4362):** Generate Post-Place & Route Simulation Model writes
+  nextpnr-himbaechel-gowin's routed design as `build/netgen/par/<top>_timesim.v`, as the iCE40's and ECP5's (#2299). Its cells
+  are made the models' again (core/gowin-routed.js: its block RAMs' and multipliers' pins a bit gathered into their vectors,
+  SP / DP the SPX9, DPB or DPX9B they were, the pins of no function left out) and its ALU chains' ends (`ALU_MODE` "C2L",
+  "ONE2C") written as their LUTs (core/netlist-verilog.js gowinAluModes). The row, the model choices, simulate and
+  run_process's `post_par_model` take it. Tests: gowin-routed (every example's post-place & route model passes its test bench,
+  no warning), gowin-routed-cells, netlist-verilog, gowin-prims, mcp-gowin, mcp-simulate-models, tasks, tool-descriptors,
+  gowin, test/ui/sim-models-flows, test/ui/gowin-device.
+- **The 7-series' Post-Synthesis simulation model (Part of #4362):** the Silinx toolchain's 7-series flow writes Yosys's
+  netlist of UNISIM's cells as `build/netgen/synthesis/<top>_synthesis.v`, simulated with Silinx's models of them, DSP48E1,
+  RAMB18E1 and RAMB36E1 new (packages/silinx-hdl/src/unisim-xc7.js). Its row and model choice are shown when the project's
+  synthesis tool is Silinx; simulate and run_process take it then (or with `toolchain: 'silinx'`), and with AMD Vivado's flow
+  say that the Silinx toolchain's makes it. No Post-Place & Route model: nextpnr-xilinx's routed design is made of its sites'
+  cells, which Silinx does not model (#4362 stays open for it). Tests: xc7-netlist (every example's post-synthesis model passes
+  its test bench, no warning), unisim-xc7, mcp-xc7, mcp-simulate-models, tasks, tool-descriptors, test/ui/xc7-open-flow,
+  test/ui/sim-models-flows.
+- **The 7-series' Post-Place & Route simulation model (Fixes #4362):** Generate Post-Place & Route Simulation Model writes
+  nextpnr-himbaechel-xilinx's routed design (its `--write` JSON, now `build/open/routed.json`) as
+  `build/netgen/par/<top>_timesim.v`, simulated with Silinx's UNISIM models. Its sites' cells (SLICE_LUTX, SLICE_FFX, CARRY4,
+  IOB33_INBUF_EN, RAMB18E1_RAMB18E1, DSP48E1_DSP48E1 …) are made the cells synthesis wrote again by the names nextpnr keeps
+  (`X_ORIG_TYPE`, `X_ORIG_PORT_<pin>`; core/xc7-routed.js): the site pins of a bit gathered into the cell's vectors, the pins
+  of no cell pin left out, the constants' cells their values, the inversions of a constant folded, a carry chain's head's
+  CYINIT its `X_PRECYINIT`, BUFGCTRL a BUFG and RAMD32 a RAM32X1D again, a LUT's INIT its own bits. The row and the model
+  choices are shown when the project's synthesis tool is Silinx; simulate and run_process's `post_par_model` take it then (or
+  with `toolchain: 'silinx'`). Tests: xc7-routed (every example's post-place & route model passes its test bench on the Basys 3
+  and the Nexys A7, no warning), xc7-routed-cells, mcp-xc7, mcp-simulate-models, tool-descriptors, vivado, open-flow-xc7-server,
+  xc7-timing-vivado, test/ui/xc7-open-flow, test/ui/sim-models-flows.
+- **An inout port connected to a part of a signal, both ways (#4360):** an inout whose actual is a bit or a slice of
+  a signal (a place & route netlist's I/O cell on a bit of the top's port) was connected one way only, the port
+  driving the actual: its driver, even Z, overrode the parent's bit, and the child never read it. It now has two
+  glues, each carrying the other side's drivers resolved without its own (no loop through the connection). A
+  Verilog reg's initializer (`reg c = 1`) also counts as its procedural driver's value when another driver (an
+  inout's) resolves with it.
+- **VHDL: slices whose bounds come from a variable (#4358):** the width of a slice of run-time bounds was the one
+  probed at elaboration, with the variables at their initial values: a variable with no initial value
+  (integer'low) gave a slice of 2147483648 bits (an error) or a null one (nothing written to a signal). Such a slice
+  of a variable other than a loop's, probed outside its prefix, now has its prefix's width as its type and its
+  run-time width as its value (an assignment writes the target's bits), and its `'length` is computed at run time.
+- **The Gowin's checks before Place & Route (#4352):** silinx-fpga's `gowin-checks.js` (its fragment has the details).
+- **A differential pair's IO_LOC with both pins (#4351):** the Gowin's CST keeps an IO_LOC's second pin and Place & Route
+  gives it to the pair's N port (silinx-fpga's fragment); a second pin on a port with no differential buffer, or an N port at
+  another pin, is an error naming them.
+- **Open synthesis: a constant net into an asynchronous control (#4332):** the flattened Verilog reads a net driven
+  by one constant as that constant (#14), in the flip-flop's condition but not in its event list, so Yosys's proc
+  found an edge with no branch of its own. A net a process is sensitive to an edge of (a clock, an asynchronous
+  control) is no longer folded: both read the net, and the flip-flop is the one of `.pre_n(1'b1)`.
+- **Silinx's library in KiCad's format (#4290):** every part of the library with pins becomes a KiCad symbol (the ICs as
+  in #4282; the others `Silinx_<type>`, one unit, `Silinx.Model`). A display, an LED bar or a DIP switch gets KiCad's DIP
+  footprint, and every other part a generated one (`Silinx.pretty`) with its pads at its pins' places. The package
+  dialog offers "With the library's parts (129), their footprints too"; the MCP's `export_part` takes `parts` or
+  `all_parts` for a `.zip`, with no project needed. Read back, the ICs, the LED, the button and the slide switch behave
+  as the library's. The other parts are drawn only, each with a note: a symbol whose `Silinx.Model` names one of them
+  was refused before and is now drawn only. The library is generated at each export, not kept as a file.
+- **Verify Equivalence's engines (#3262):** first a structural proof: Yosys's equivalence passes match the two modules'
+  signals by name and prove each pair equal by induction, with the initial values checked apart. If that fails, ABC
+  (built into Yosys, in the browser as on the server, with no new dependency) checks the two modules as an AIG: `bmc3`
+  finds the shortest difference within the depth, then `pdr` tries a proof for every input sequence (at most 10 s, as
+  its memory grows with its time). A combinational pair goes to `dsat`. The counterexample is ABC's witness, replayed
+  on the AIG to give each cycle's inputs and both modules' outputs, since YoWASP's Yosys has no `sim`. The proof's
+  message says how it was made, and the MCP tool's `verify` returns it as `method` (`structural`, `pdr`, `reach` or
+  `sat`). A bounded check whose difference pdr found later than the depth says at which clock cycle (`beyond`). Measured
+  against each example's own flat Verilog: stopwatch proved in 10 s (it used to time out at 120 s with 2.3 GB), micro80
+  in 12 s; mutated, each gives its counterexample at clock cycle 1 in 20 to 25 s. Verify Assertions and Verify
+  Property keep Yosys's `sat -tempinduct`.
+- **The GateMate family (#2431):** `FAMILY_INFO.gatemate` (constraints CCF, bitstream `.bit`), the CCGM1A1 and CCGM1A2 in the
+  device database (core/devices-gatemate.js: Cologne Chip's DS1001 and nextpnr's counts, no speed grade), its profile and the
+  interface's tool, SILINX_GATEMATE (no simulation model yet, no Configure Target Device); the CCF in New Source, Import
+  Source, Check Syntax, Check Constraints (a pin that is no GPIO of the FBGA324, a DRIVE or a SLEW nextpnr has not), the CCF
+  Wizard, I/O Pin Planning and Update Constraints; the Design Summary's reports (the routed design Project Peppercorn's
+  configuration); the browser edition's worker; `@yowasp/nextpnr-himbaechel-gatemate` 0.11.825 downloaded on first use as the
+  other families' nextpnr (4 MB packed), an optional peer of silinx-fpga now; the server refuses programming a GateMate's board
+  with the reason, the MCP server's program_board too. The MCP server: list_devices, set_design_properties, new_source,
+  check_constraints, run_process, get_report.
+- **Cologne Chip's GateMate FPGA Evaluation Board (#2431):** its pins from LiteX's colognechip_gatemate_evb.py (after Cologne
+  Chip's DS1003): the 10 MHz clock, eight LEDs and a button (active low); the examples' LEDs, switches and buttons on the
+  headers of its banks NA and SA, a UART on SA's, the seven-segment display on its Pmods, vga's VGA on them
+  (gatemate-evb-vga); none verified on a board. Every example builds on it (test/examples-gatemate.test.js), the 10 MHz met,
+  its warnings asserted (micro80's Yosys's of its RAM's port; uart's two crashes of nextpnr's after its placement, a WebAssembly
+  trap, placed and routed again with the next seed), each bitstream read back by gmunpack as nextpnr's configuration.
+- **The GateMate measured (#2431):** `scripts/gatemate-measure.mjs` builds each example on a Cologne Chip GateMate with the
+  open tools, outside the IDE: the Silinx toolchain's flat Verilog (as a ULX3S project) through Yosys's `synth_gatemate
+  -luttree -nomx8`, nextpnr-himbaechel's gatemate and Project Peppercorn's gmpack, YoWASP's
+  `@yowasp/nextpnr-himbaechel-gatemate` 0.11.825 (a development dependency), each bitstream read back by gmunpack and
+  compared with nextpnr's configuration setting by setting, and prints a table per part. Every example builds on the
+  CCGM1A1 (the GateMate A1 Evaluation Board's) with seed 1 and no warning but micro80's memory resized, the 25 MHz met; with
+  seeds 1 to 5, nextpnr crashed on one build, gmunpack on two, and five lost one or two flip-flop initial values on reading
+  back. The CCGM1A2 crashes nextpnr on every example. `test/gatemate-measure.test.js` (the script's parts; gates and blinky
+  built on the CCGM1A1); the results in docs/TOOLCHAIN.md. The GateMate is not a family of Silinx yet.
+- **The GateMate primitives' models (#2431):** packages/silinx-hdl/src/gatemate-prims.js and gatemate-bram.js, Silinx's own
+  functional models of the cells synth_gatemate maps onto and a user's HDL may instantiate, from Yosys's
+  techlibs/gatemate/cells_sim.v: CC_LUT1-4, CC_L2T4, CC_L2T5, CC_MX2/4/8, CC_ADDF, CC_MULT, CC_DFF, CC_DLT, the I/O buffers
+  (CC_IBUF, CC_OBUF, CC_TOBUF, CC_IOBUF, the LVDS ones), CC_IDDR, CC_ODDR, CC_BUFG, CC_PLL (its outputs at OUT_CLK after three of
+  CLK_REF's edges, not re-aligned to it), CC_USR_RSTN, CC_CFG_CTRL, and the block RAMs CC_BRAM_20K and CC_BRAM_40K (SDP and
+  TDP, NO_CHANGE and WRITE_THROUGH, the output register, the 40K's cascade); a design gets them by their names (a Verilog
+  instance) or its VHDL library (`library gatemate;`, `library cc_lib;`). The flow's postsynth step on the GateMate (core/
+  flow-models-nextpnr.js), the MCP server's post_synthesis_model; no Post-Place & Route model. Tests: each cell against
+  cells_sim.v's semantics written again, in Verilog and in VHDL (test/gatemate-prims.test.js); every example's test bench
+  passes on its GateMate post-synthesis netlist as on its RTL, with no warning (test/gatemate-netlist.test.js); native-gatemate.js evaluates
+  the netlist's LUTs, multiplexers, adders, flip-flops and buffers natively (vga's netlist 114 s, not 53 minutes).
+
 ## 15.27.0
 
 The breadboard opens onto KiCad: KiCad's 74xx and 4xxx and SparkFun's parts found by part number, drawn as they look,
