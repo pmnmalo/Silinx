@@ -206,7 +206,9 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
   const imp = importKicad && h('button', { type: 'button', class: 'circ-import-kicad', title: 'Import a KiCad symbol library or footprint into the project\'s parts/ folder', onclick: () => importKicad() }, 'Import KiCad Part…');
   // (KiCad's libraries fetched by the local server, #4285: not in the browser's edition alone)
   const browse = browseKicad && h('button', { type: 'button', class: 'circ-browse-kicad', title: 'Browse KiCad\'s own symbol libraries and the KiCad PCM\'s library packages', onclick: () => browseKicad() }, 'Browse KiCad Libraries…');
-  const side = h('aside', { class: 'circ-parts-side' }, h('div', { class: 'asm-cap' }, 'Parts'), h('div', { class: 'circ-lefttools' }, search, imp || null, browse || null), list);
+  // (both KiCad's actions in the KiCad catalogue's section, under its heading, folded or not, #4534: the search alone above)
+  const kicadTools = (imp || browse) && h('div', { class: 'circ-cat-tools' }, imp || null, browse || null);
+  const side = h('aside', { class: 'circ-parts-side' }, h('div', { class: 'asm-cap' }, 'Parts'), h('div', { class: 'circ-lefttools' }, search), list);
   mountSideFold({ root, side, key: 'silinx.circuit.parts.folded', titles: { fold: 'Collapse the Parts panel', unfold: 'Expand the Parts panel' }, cls: 'parts-folded', toward: 'left' });
   const CAT = 'KiCad catalogue';
   const folded = new Set([CAT]);   // (the catalogue folded at first: its parts found by a search, or opened, #4305)
@@ -237,10 +239,11 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
     // the KiCad catalogue's parts (#4305): a click imports one into the project, then places it
     // (found by the function in the interface's language too: Silinx's titles as it translates them)
     const cat = importCatalogue ? searchCatalogue(q, undefined, { more: (e) => { const f = catalogueFunction(e); return f.silinx ? tr(f.text) : null; } }) : [];
-    if (cat.length) {
+    if (cat.length || kicadTools) {
       const open = !folded.has(CAT) || q;
       rows.push(h('div', { class: `circ-lib-title${open ? ' open' : ''}`, onclick: () => { if (folded.has(CAT)) folded.delete(CAT); else folded.add(CAT); renderParts(); } },
         h('span', {}, CAT), h('span', { class: 'circ-lib-n', 'data-no-i18n': 'true' }, ` (${cat.length})`)));
+      if (kicadTools) rows.push(kicadTools);
       if (open) for (const e of cat) {
         rows.push(tipped(h('button', { type: 'button', class: `circ-lib-part circ-cat-part${e.as ? '' : ' drawn'}`, 'data-catalogue': e.id, 'data-group': CAT,
           title: `${catalogueTitle(e)} (${CATALOGUE_LIBRARIES[e.library].name}, ${CATALOGUE_LIBRARIES[e.library].licence}): click it to import it into the project`,
