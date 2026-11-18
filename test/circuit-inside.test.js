@@ -46,9 +46,9 @@ const body = (g) => {
   return { x: g.flip ? g.x - b : g.x, y: g.y, w: g.w + b, h: g.h };
 };
 
-// (the three-state ICs with combined enables: their pins' names inside; the others, their buses: TRI_ICS, #4505; the
+// (the three-state ICs, their buses (combined enables by a gate): TRI_ICS, #4505; no gate IC left with its pins named; the
 // AND-OR-INVERTs, their terms and NOR: AOI_ICS, #4498; the 4023, 4025, 4073 and 4075 laid out with a crossing, #4505)
-const CROSSED = ['74365', '74366', '74540', '74541', '74245'];
+const CROSSED = [];
 const TRI_ICS = ICS.filter((d) => d.gates?.some((g) => g.en) && !CROSSED.includes(d.type));
 const AOI_ICS = ICS.filter((d) => d.gates?.some((g) => g.fn === 'aoi'));
 const GATE_ICS = ICS.filter((d) => d.gates && !CROSSED.includes(d.type) && !AOI_ICS.includes(d) && !TRI_ICS.includes(d));
@@ -222,7 +222,7 @@ test('#4505 the crossings: only in the ICs listed by name, each a right angle; t
   // (no IC but the listed has a crossing, and each listed has one: a new one is added to CROSSING_ICS by name)
   const crossing = ICS.filter((d) => d.gates && insideLayout(d, pinsOf(d)).crossings?.length).map((d) => d.type);
   assert.deepEqual(crossing.sort(), [...CROSSING_ICS].sort());
-  assert.deepEqual(CROSSING_ICS, ['4023', '4025', '4073', '4075', '74240', '74241', '74244', '74242', '74243']);
+  assert.deepEqual(CROSSING_ICS, ['4023', '4025', '4073', '4075', '74240', '74241', '74244', '74242', '74243', '74540', '74541', '74245']);
   const d = ICS.find((x) => x.type === '4023'), L = insideLayout(d, pinsOf(d));
   assert.deepEqual([L.gates[0].x, L.gates[0].y, L.gates[0].w, L.gates[0].h, L.gates[0].tip, L.gates[0].bubble], [28, -32, 14, 9, [46, -27.5], [44, -27.5]]);
   assert.deepEqual(L.wires.filter((w) => w.gate === 0).map((w) => [w.pin, w.points]), [
@@ -239,12 +239,16 @@ test('#4505 the crossings: only in the ICs listed by name, each a right angle; t
 });
 
 test('#4505 the three-state ICs: each buffer beside its pins, its enable\'s bus into its side; orthogonal lines, crossing only at right angles, one pin\'s joined by a dot', () => {
-  assert.deepEqual(TRI_ICS.map((d) => d.type), ['74125', '74126', '74240', '74241', '74244', '74367', '74368', '74242', '74243']);
+  assert.deepEqual(TRI_ICS.map((d) => d.type), ['74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245']);
+  // (a buffer's enables combined by a gate, as its datasheet: G1̅ and G2̅ a NOR; DIR and OE̅ an AND, OE̅ bubbled, and a NOR)
+  const COMBINING = { 74365: ['nor'], 74366: ['nor'], 74540: ['nor'], 74541: ['nor'], 74245: ['and', 'nor'] };
   for (const d of TRI_ICS) {
     const pins = pinsOf(d), at = new Map(pins.map((q) => [q.n, [q.x, q.y]])), ys = pins.map((q) => q.y), xs = pins.map((q) => q.x);
     const inner = { x0: Math.min(...xs) - 8, x1: Math.max(...xs) + 8, y0: Math.min(...ys) + 7, y1: Math.max(...ys) - 7 };
     const L = insideLayout(d, pins);
-    assert.equal(L.gates.length, d.gates.length, d.type);
+    assert.equal(L.gates.filter((g) => !g.enables).length, d.gates.length, d.type);
+    assert.deepEqual(L.gates.filter((g) => g.enables).map((g) => g.fn), COMBINING[d.type] ?? [], d.type);
+    const net = (w) => w.net ?? w.pin;
     const key = (q) => `${q[0]},${q[1]}`, dots = new Set(L.dots.map(key));
     // (each pin's lines: from it, a tree of lines joined end to end or at a dot)
     for (const w of L.wires) {
@@ -253,13 +257,14 @@ test('#4505 the three-state ICs: each buffer beside its pins, its enable\'s bus 
       for (const [x, y] of w.points.slice(1, -1)) assert.ok(x >= inner.x0 && x <= inner.x1 && y >= inner.y0 && y <= inner.y1, `${what}: bend (${x}, ${y}) outside`);
       if (w.kind === 'in') { assert.deepEqual(w.points[0], at.get(w.pin), what); assert.deepEqual(w.points.at(-1), g.ins[0], what); }
       if (w.kind === 'out') { assert.deepEqual(w.points[0], g.tip, what); assert.ok(key(w.points.at(-1)) === key(at.get(w.pin)) || dots.has(key(w.points.at(-1))), `${what}: to its pin or onto its pin's line`); }
-      if (w.kind === 'en') assert.ok(d.gates[w.gate].en.some(([n]) => n === w.pin), what);
+      // (an enable pin's line, into its buffers or its combining gate; a combining gate's bus, its net, no pin)
+      if (w.kind === 'en') assert.ok(w.pin == null ? /^enable \d+$/.test(w.net) : g.enables ? g.enables.includes(w.pin) : d.gates[w.gate].en.some(([n]) => n === w.pin), what);
       // (through no gate but its own's side, an enable's end)
       const ss = segs(w.points);
       L.gates.forEach((o, j) => ss.forEach((sg, k) => { if (!(w.kind === 'en' && j === w.gate && k === ss.length - 1)) assert.ok(!through(sg, body(o)), `${what}: through gate ${j + 1}`); }));
     }
     // every enable's bubble an active-low enable's, one a buffer
-    assert.equal(L.bubbles.length, d.gates.filter((g) => g.en[0][1] === '0').length, d.type);
+    assert.equal(L.bubbles.length, d.gates.filter((g) => g.en.length === 1 && g.en[0][1] === '0').length + (d.type === '74245' ? 1 : 0), d.type);
     L.gates.forEach((g, i) => L.gates.forEach((o, j) => { if (j > i) assert.ok(!through([[o.x + 0.01, o.y + 0.01], [o.x + o.w - 0.01, o.y + o.h - 0.01]], g), `${d.type}: gates ${i + 1} and ${j + 1} overlap`); }));
     // two pins' lines only cross at right angles (in the listed ICs); a pin's own lines meet only end to end or at a dot
     const crossed = [];
@@ -267,18 +272,18 @@ test('#4505 the three-state ICs: each buffer beside its pins, its enable\'s bus 
       for (const a of segs(w.points)) for (const b of segs(v.points)) {
         if (!meet(a, b)) continue;
         // (two pins' lines: a right-angle crossing, never a dot on it)
-        if (w.pin !== v.pin) {
+        if (net(w) !== net(v)) {
           const c = crossesAt(a, b);
-          assert.ok(c && CROSSING_ICS.includes(d.type), `${d.type}: pins ${w.pin} and ${v.pin} meet`);
-          assert.ok(!dots.has(key(c)), `${d.type}: a dot on the crossing of pins ${w.pin} and ${v.pin}`);
+          assert.ok(c && CROSSING_ICS.includes(d.type), `${d.type}: nets ${net(w)} and ${net(v)} meet`);
+          assert.ok(!dots.has(key(c)), `${d.type}: a dot on the crossing of nets ${net(w)} and ${net(v)}`);
           crossed.push(c);
           continue;
         }
         // (one pin's: end to end (a corner), or a T, one's end on the other's middle, always with its dot)
         const ends = [...a, ...b].map(key), shared = ends.filter((e, k) => ends.indexOf(e) !== k);
         const tee = [[a, b], [b, a]].flatMap(([s1, s2]) => s1.filter((q) => meet([q, q], s2) && !s2.some((r) => key(r) === key(q))));
-        assert.ok(shared.length || tee.length, `${d.type}: pin ${w.pin}'s lines meet but not at an end`);
-        for (const q of tee) assert.ok(dots.has(key(q)), `${d.type}: pin ${w.pin}'s T at (${q}) without its dot`);
+        assert.ok(shared.length || tee.length, `${d.type}: net ${net(w)}'s lines meet but not at an end`);
+        for (const q of tee) assert.ok(dots.has(key(q)), `${d.type}: net ${net(w)}'s T at (${q}) without its dot`);
       }
     }));
     assert.deepEqual(crossed, L.crossings, `${d.type}: its crossings`);
@@ -296,4 +301,20 @@ test('#4505 the three-state ICs: each buffer beside its pins, its enable\'s bus 
   assert.deepEqual(M.gates.slice(0, 1).concat(M.gates.slice(4, 5)).map((g) => [g.x, g.y, g.w, g.h, g.rot]), [[23, -33, 6, 8, -90], [171, -35, 6, 8, 90]]);
   assert.deepEqual(M.wires.find((w) => w.kind === 'en' && w.pin === 1).points, [[0, 0], [0, -22], [141, -22]]);
   assert.equal(M.crossings.length, 14);
+});
+
+test('#4505 the combined enables: the 74365\'s G1̅ and G2̅ into a NOR, its bus through the body\'s middle; the 74245\'s DIR and OE̅ into an AND (OE̅ bubbled) and a NOR', () => {
+  const d = ICS.find((x) => x.type === '74365'), L = insideLayout(d, pinsOf(d));
+  const nor = L.gates[6];
+  assert.deepEqual([nor.fn, nor.x, nor.y, nor.w, nor.h, nor.tip, nor.enables], ['nor', 4, -34, 10, 8, [18, -30], [1, 15]]);
+  const bus = L.wires.filter((w) => w.net === 'enable 7');
+  assert.deepEqual(bus[0].points, [[18, -30], [131, -30]]);
+  // (a branch to each buffer: down to the lower row's, up to the upper row's; no bubble, the NOR's output active high)
+  assert.deepEqual(bus.slice(1).map((w) => w.points[1][1]).sort((a, b) => a - b), [-39.5, -39.5, -39.5, -20.5, -20.5, -20.5]);
+  assert.deepEqual([L.bubbles.length, L.crossings.length, L.dots.length], [0, 0, 5]);
+  const t = ICS.find((x) => x.type === '74245'), M = insideLayout(t, pinsOf(t));
+  assert.deepEqual(M.gates.filter((g) => g.enables).map((g) => [g.fn, g.y, g.enables]), [['and', -26, [19, 1]], ['nor', -42, [19, 1]]]);
+  // (A to B's bus below the buffers from the AND, B to A's above them from the NOR)
+  assert.deepEqual(M.wires.filter((w) => w.net && w.points[0][0] < 21).map((w) => w.points.at(-1)[1]), [-22, -38]);
+  assert.deepEqual(M.bubbles, [[6, -26 + 16 / 3]]);
 });

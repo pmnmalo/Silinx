@@ -35,7 +35,7 @@ function inside(d, std, opts) {
   return all(g).slice(1);
 }
 
-const NAMED = ['74365', '74366', '74540', '74541', '74245'];
+const NAMED = [];
 
 test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
   let leads = 0;
