@@ -33,9 +33,10 @@ function meet([a, b], [c, d]) {
 const body = (g) => ({ x: g.flip ? g.x - (g.bubble ? 4 : 0) : g.x, y: g.y, w: g.w + (g.bubble ? 4 : 0), h: g.h });
 
 // (the 4023, 4025, 4073 and 4075: a gate's inputs on both rows, one past its output, #4397: their pins' names inside)
-// (and the AND-OR-INVERTs 7451, 7454, 7455, and the three-state buffers: their pins' names too)
-const CROSSED = ['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
-const GATE_ICS = ICS.filter((d) => d.gates && !CROSSED.includes(d.type));
+// (and the three-state buffers: their pins' names too; the AND-OR-INVERTs, their terms and NOR: AOI_ICS, #4498)
+const CROSSED = ['4023', '4025', '4073', '4075', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
+const AOI_ICS = ICS.filter((d) => d.gates?.some((g) => g.fn === 'aoi'));
+const GATE_ICS = ICS.filter((d) => d.gates && !CROSSED.includes(d.type) && !AOI_ICS.includes(d));
 
 test('#4224 every gate IC: each gate\'s lines from its pins to its input side, from its tip to its output pin, orthogonal', () => {
   assert.equal(GATE_ICS.length, 46);   // (23 of them KiCad's other gates, #4397)
@@ -130,4 +131,70 @@ test('#4224 the same geometry in both standards: the IEEE shape and the IEC box 
 
 test('#4224 the other ICs (MSI, sequential): no gates, nothing laid out (their pins\' names drawn inside)', () => {
   for (const d of [...MSI, ...SEQ, ...ICS.filter((x) => !x.gates)]) assert.deepEqual(insideLayout(d, pinsOf(d)), { gates: [], wires: [] }, d.type);
+});
+
+test('#4498 the AND-OR-INVERTs (7451, 74LS54, 7455): each term\'s AND beside its pins, into the NOR facing its output pin; orthogonal lines, none meeting, all inside', () => {
+  assert.deepEqual(AOI_ICS.map((d) => d.type), ['7451', '7454', '7455']);
+  for (const d of AOI_ICS) {
+    const pins = pinsOf(d), at = new Map(pins.map((q) => [q.n, [q.x, q.y]])), ys = pins.map((q) => q.y), xs = pins.map((q) => q.x);
+    const inner = { x0: Math.min(...xs) - 8, x1: Math.max(...xs) + 8, y0: Math.min(...ys) + 7, y1: Math.max(...ys) - 7 };
+    const L = insideLayout(d, pins);
+    // (an AND a term, a NOR a gate: its terms' ANDs, then its NOR)
+    assert.deepEqual(L.gates.map((g) => [g.fn, g.of]), d.gates.flatMap((g, i) => [...g.terms.map(() => ['and', i]), ['nor', i]]), d.type);
+    for (const g of L.gates.filter((x) => x.fn === 'and')) assert.ok([90, -90].includes(g.rot), `${d.type}: a term faces up or down`);
+    assert.equal(L.wires.length, d.gates.reduce((s, g) => s + g.ins.length + g.terms.length + 1, 0), d.type);
+    for (const w of L.wires) {
+      const what = `${d.type} ${w.kind} ${w.pin ?? `gate ${w.gate + 1}`}`, g = L.gates[w.gate];
+      for (const [a, b] of segs(w.points)) assert.ok(near(a[0], b[0]) || near(a[1], b[1]), `${what}: a slanted line ${a} ${b}`);
+      if (w.kind === 'in') {
+        assert.deepEqual(w.points[0], at.get(w.pin), `${what}: from its pin`);
+        const end = w.points.at(-1), gd = d.gates[g.of];
+        const term = L.gates.filter((x) => x.of === g.of && x.fn === 'and').indexOf(g), from = gd.terms.slice(0, term).reduce((a, n) => a + n, 0);
+        assert.ok(gd.ins.slice(from, from + gd.terms[term]).includes(w.pin), `${what}: its term's pin`);
+        assert.deepEqual(end, g.ins[gd.ins.slice(from, from + gd.terms[term]).indexOf(w.pin)], `${what}: to its input`);
+        // (on the input side, the box's bottom facing up, its top facing down; arriving vertically from outside)
+        assert.ok(near(end[1], g.rot === -90 ? g.y + g.h : g.y) && end[0] > g.x && end[0] < g.x + g.w, `${what}: on the input side`);
+        const prev = w.points.at(-2);
+        assert.ok(near(prev[0], end[0]) && (g.rot === -90 ? prev[1] > end[1] : prev[1] < end[1]), `${what}: into the input side`);
+      } else if (w.kind === 'term') {
+        const nor = L.gates[w.to];
+        assert.equal(nor.fn, 'nor');
+        assert.deepEqual(w.points[0], g.tip, `${what}: from its AND's tip`);
+        assert.ok(nor.ins.some((q) => q[0] === w.points.at(-1)[0] && q[1] === w.points.at(-1)[1]) && near(w.points.at(-1)[0], nor.x), `${what}: into a NOR's input`);
+      } else {
+        assert.equal(g.fn, 'nor');
+        assert.equal(w.pin, d.gates[g.of].out);
+        assert.deepEqual(w.points[0], g.tip, `${what}: from the tip`);
+        assert.deepEqual(w.points.at(-1), at.get(w.pin), `${what}: to its pin`);
+        assert.ok(near(g.tip[0], g.x + g.w + 4) && at.get(w.pin)[0] >= g.tip[0], `${what}: the tip past the bubble, facing its pin`);
+      }
+    }
+    // each NOR's inputs fed once, by its own terms
+    for (const [i, nor] of L.gates.entries()) if (nor.fn === 'nor') assert.equal(L.wires.filter((w) => w.to === i).length, d.gates[nor.of].terms.length, d.type);
+    L.gates.forEach((g, i) => {
+      for (const w of L.wires) for (const sg of segs(w.points)) assert.ok(!through(sg, body(g)), `${d.type}: ${w.kind} ${w.pin}'s line through gate ${i + 1}`);
+      L.gates.forEach((o, j) => { if (j > i) assert.ok(!through([[body(o).x + 0.01, body(o).y + 0.01], [body(o).x + body(o).w - 0.01, body(o).y + body(o).h - 0.01]], body(g)), `${d.type}: gates ${i + 1} and ${j + 1} overlap`); });
+      assert.ok(g.x >= inner.x0 && body(g).x + body(g).w <= inner.x1 && g.y >= inner.y0 && g.y + g.h <= inner.y1, `${d.type}: gate ${i + 1} inside the package`);
+    });
+    L.wires.forEach((w, i) => {
+      for (const [x, y] of w.points.slice(1, -1)) assert.ok(x >= inner.x0 && x <= inner.x1 && y >= inner.y0 && y <= inner.y1, `${d.type}: ${w.kind} ${w.pin}'s bend (${x}, ${y}) outside the package`);
+      L.wires.forEach((v, j) => {
+        if (j <= i) return;
+        for (const a of segs(w.points)) for (const b of segs(v.points)) assert.ok(!meet(a, b), `${d.type}: the lines ${w.kind} ${w.pin ?? w.gate} and ${v.kind} ${v.pin ?? v.gate} meet`);
+      });
+    });
+  }
+  // the 7455 as its datasheet: A–D's AND below, E–H's above, the NOR at the right, Y up to pin 8
+  const d = ICS.find((x) => x.type === '7455'), L = insideLayout(d, pinsOf(d));
+  assert.deepEqual(L.gates.map((g) => [g.fn, g.x, g.y, g.w, g.h, g.rot ?? 0, g.tip]), [['and', 22.5, -22, 15, 8, -90, [30, -22]], ['and', 42.5, -46, 15, 8, 90, [50, -38]], ['nor', 92, -36, 14, 12, 0, [110, -30]]]);
+  assert.deepEqual(L.wires.filter((w) => w.kind !== 'in').map((w) => w.points), [[[30, -22], [30, -28], [92, -28]], [[50, -38], [50, -32], [92, -32]], [[110, -30], [120, -30], [120, -60]]]);
+  assert.deepEqual(L.wires.find((w) => w.pin === 1).points, [[0, 0], [0, -11], [25.5, -11], [25.5, -14]]);
+  // (a KiCad part's other pinout: its pins named, nothing laid out)
+  const other = { ...d, gates: [{ ...d.gates[0], ins: [1, 2, 3, 4, 9, 10, 11, 12] }] };
+  assert.deepEqual(insideLayout(other, pinsOf(d)), { gates: [], wires: [] });
+});
+
+test('#4498 every combinational gate IC of the library has its gates drawn inside, but the four whose inputs cross (4023, 4025, 4073, 4075: #4505)', () => {
+  const drawn = ICS.filter((d) => d.gates && !d.gates.some((g) => g.en));
+  assert.deepEqual(drawn.filter((d) => !insideLayout(d, pinsOf(d)).gates.length).map((d) => d.type), ['4023', '4025', '4073', '4075']);
 });

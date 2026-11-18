@@ -33,6 +33,8 @@ function inside(d, std) {
   return all(g).slice(1);
 }
 
+const NAMED = ['4023', '4025', '4073', '4075', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'];
+
 test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
   let leads = 0;
   for (const d of [...ICS, ...MSI, ...SEQ]) {
@@ -40,9 +42,10 @@ test('#4299 Show inside: no lead of any IC filled, in both standards', () => {
       const els = inside(d, std), what = `${d.type} ${std}`;
       const ls = els.filter((e) => e.attrs.class === 'circ-gate-line');
       // (a gate IC: three leads a 2-input gate, its inputs' and its output's; another IC: none, its pins named)
-      // (the 4023, 4025, 4073, 4075 and the AND-OR-INVERTs: their pins named, #4397)
-      if (['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'].includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
-      assert.equal(ls.length, ['4023', '4025', '4073', '4075', '7451', '7454', '7455', '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245'].includes(d.type) ? 0 : (d.gates || []).reduce((n, x) => n + x.ins.length + 1, 0), what);
+      // (the 4023, 4025, 4073, 4075 and the three-state buffers: their pins named, #4397; an AND-OR-INVERT: a lead more a
+      // term, from its AND to its NOR, #4498)
+      if (NAMED.includes(d.type)) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), d.pins.filter((q) => q.name !== 'NC').map((q) => q.name).sort(), what);
+      assert.equal(ls.length, NAMED.includes(d.type) ? 0 : (d.gates || []).reduce((n, x) => n + x.ins.length + (x.terms?.length ?? 0) + 1, 0), what);
       for (const l of ls) {
         assert.equal(l.tag, 'polyline', what);
         assert.equal(l.attrs.fill, 'none', `${what} pin ${l.attrs['data-pin']}`);
@@ -64,4 +67,21 @@ test('#4299 the circuit editor\'s style of the leads: unfilled', () => {
   assert.match(rule[1], /(^|;)\s*fill:\s*none\s*;/);
   // (and the XOR's second back, an open curve, #4220)
   assert.match(css, /\.circuit-editor \.circ-gate-back \{ fill: none; \}/);
+});
+
+test('#4498 Show inside, an AND-OR-INVERT: its terms\' ANDs turned to face up or down, its NOR facing its pin; IEEE shapes or IEC boxes; VCC and GND named', () => {
+  for (const t of ['7451', '7454', '7455']) {
+    const d = ICS.find((x) => x.type === t), terms = d.gates.reduce((n, g) => n + g.terms.length, 0);
+    const ieee = inside(d, 'ieee'), iec = inside(d, 'iec');
+    const shapes = ieee.filter((e) => e.attrs.class === 'circ-gate-ieee');
+    assert.deepEqual(shapes.map((e) => e.attrs['data-fn']).sort(), [...Array(terms).fill('and'), ...Array(d.gates.length).fill('nor')].sort(), t);
+    for (const e of shapes) assert.ok(e.attrs['data-fn'] === 'and' ? /^rotate\((-90|90) [\d.-]+ [\d.-]+\)$/.test(e.attrs.transform) : e.attrs.transform === undefined, `${t} ${e.attrs['data-fn']}: ${e.attrs.transform}`);
+    assert.equal(ieee.filter((e) => e.attrs.class === 'circ-gate-bubble').length, d.gates.length, `${t}: the NORs' bubbles`);
+    // (IEC: a box a gate, & or ≥1 upright in it; the NORs' bubbles)
+    assert.deepEqual(iec.filter((e) => e.attrs.class === 'circ-gate-text').map((e) => e.children.join('')).sort(), [...Array(terms).fill('&'), ...Array(d.gates.length).fill('≥1')].sort(), t);
+    assert.equal(iec.filter((e) => e.tag === 'rect' && e.attrs.class === 'circ-gate').length, terms + d.gates.length, t);
+    for (const els of [ieee, iec]) assert.deepEqual(els.filter((e) => e.attrs.class === 'circ-pin-name').map((e) => e.children.join('')).sort(), ['GND', 'VCC'], t);
+    // (a term's lead has no pin)
+    assert.equal(ieee.filter((e) => e.attrs.class === 'circ-gate-line' && e.attrs['data-pin'] === undefined).length, terms, t);
+  }
 });

@@ -50,6 +50,21 @@ test('circuit_parts: the library, one part with its pins, gates and delay, its d
   assert.equal(msi.data.parts[0].function, '3-to-8 line decoder');
   assert.match(msi.text.split('\n')[0], /^74138: 3-to-8 line decoder \(SN74LS138, 22 ns\); pins 1 A in, 2 B in, 3 C in, 4 G2A\u0305 in, [^]* 16 VCC vcc$/);
   assert.match((await ok('circuit_parts', { type: '4001' })).text, /^4001: Quad 2-input NOR \(CD4001B, 60 ns\); pins 1 1A in, 2 1B in, 3 1Y out, 4 2Y out, [^]* 7 VSS gnd, [^]* 14 VDD vcc; gates nor \(1, 2\) → 3; nor \(5, 6\) → 4;/);
+  // the AND-OR-INVERTs (#4498): the editor's tip's title (the Parts panel's), its logic (Part info's)
+  const { partDef } = await import('../core/circuit-parts.js');
+  const { partInfo } = await import('../core/circuit-part-info.js');
+  for (const [t, logic] of [['7451', ['1Y = NOR(AND(1A, 1B, 1C), AND(1D, 1E, 1F))', '2Y = NOR(AND(2A, 2B), AND(2C, 2D))']], ['7454', ['Y = NOR(AND(A, B), AND(C, D, E), AND(F, G, H), AND(J, K))']], ['7455', ['Y = NOR(AND(A, B, C, D), AND(E, F, G, H))']]]) {
+    const r = await ok('circuit_parts', { type: t });
+    assert.ok(r.text.startsWith(`${t}: ${partDef(t).title} (SN74LS${t.slice(2)}, 13 ns)`), r.text);
+    assert.deepEqual(r.data.info.logic, logic, t);
+    for (const l of logic) assert.ok(r.text.split('\n').includes(l), `${t}: ${l}`);
+  }
+  // every IC of the library: its title and its details, as the editor's tip and Part info
+  for (const p of all.data.parts.filter((x) => x.chip)) {
+    const r = await ok('circuit_parts', { type: p.type });
+    assert.deepEqual([r.data.info.title, r.data.info.chip], [partDef(p.type).title, p.chip], p.type);
+    if (partDef(p.type).gates) assert.deepEqual(r.data.info.logic, partInfo(p.type).logic, p.type);
+  }
   await fails('circuit_parts', { type: '555' }, `no part '555' (the parts: ${all.data.parts.map((p) => p.type).join(', ')})`);
 });
 
