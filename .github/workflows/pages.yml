@@ -5,6 +5,7 @@ name: Pages
 #   https://pmnmalo.github.io/Silinx/dev/   the development edition: main, after every push
 #                                               (its title says "dev:<commit> (<date>)";
 #                                               its browser storage is its own)
+#   https://pmnmalo.github.io/Silinx/docs/  the user's guide (docs/user/, as HTML pages: main's, #4504)
 # Built after every push to main (the dev edition: that commit; no tests, CI runs at a release only,
 # #607), after every release (the stable edition: its tag), and on demand (Actions ▸ Pages ▸ Run
 # workflow). A release that failed publishes nothing: the site keeps what it had.
@@ -78,6 +79,10 @@ jobs:
           git log -1 --format='Development edition: %h %s (%ci)'
           npm ci
           node scripts/build-standalone.mjs --site site/dev
+      # the user's guide (#4504): this commit's docs/user/ as plain HTML pages in docs/, with their pictures (after
+      # the stable edition, whose build empties the site folder)
+      - name: The user's guide (docs/)
+        run: node scripts/build-docs-site.mjs site
       # the older releases' assets (#487): a Silinx.html downloaded from the site fetches its own
       # version's assets (assets/<version>/, Yosys in assets/vendor/yowasp-yosys/<its version>/): the
       # site keeps those of its last releases, each built from its tag (its own script, with
