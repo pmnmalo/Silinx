@@ -76,7 +76,7 @@ export function parseWidth(text) {
 }
 
 /** The names an expression reads. */
-export function widthNames(ast, out = []) {
+function widthNames(ast, out = []) {
   if (ast.k === 'id') out.push(ast.name);
   else if (ast.k === 'clog2' || ast.k === 'par') widthNames(ast.a, out);
   else if (ast.k === 'bin') { widthNames(ast.a, out); widthNames(ast.b, out); }
@@ -84,7 +84,7 @@ export function widthNames(ast, out = []) {
 }
 
 /** True if the expression calls clog2. */
-export const usesClog2 = (ast) => ast.k === 'clog2' || ((ast.k === 'par') && usesClog2(ast.a)) || (ast.k === 'bin' && (usesClog2(ast.a) || usesClog2(ast.b)));
+const usesClog2 = (ast) => ast.k === 'clog2' || ((ast.k === 'par') && usesClog2(ast.a)) || (ast.k === 'bin' && (usesClog2(ast.a) || usesClog2(ast.b)));
 
 /** Its value at the generics' values (value(name) -> number): a number, or throws an Error (a negative value, a division by 0). */
 export function evalWidth(ast, value) {
@@ -125,13 +125,13 @@ export function clog2Lines(lang) {
       '        variable x : integer := n - 1;',
       '        variable r : integer := 0;',
       '    begin',
-      '        for i in 1 to 31 loop',
-      '            if x > 0 then',
-      '                x := x / 2;',
-      '                r := r + 1;',
-      '            end if;',
+      '        while x > 0 loop',
+      '            x := x / 2;',
+      '            r := r + 1;',
       '        end loop;',
-      '        if r < 1 then return 1; end if;',
+      '        if r < 1 then',
+      '            r := 1;',
+      '        end if;',
       '        return r;',
       '    end function;',
     ];

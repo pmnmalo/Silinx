@@ -2,7 +2,7 @@ In short:
 
 - **ASM charts: a register's width from the generics:** a register's width can be an expression of the chart's
   generics, such as `clog2(DEBOUNCE)` or `N + 1`; the generated VHDL and Verilog keep it (with a `clog2` constant
-  function, which XST accepts), and the blinky example's debounce counters use it.
+  function, which XST accepts).
 
 In detail:
 
@@ -19,5 +19,4 @@ In detail:
   The chart's simulator (Try it, `simulate_drawing`) takes the widths at the generics' default values. The chart made
   from HDL keeps the expression, from the generator's header, the previous chart, or a hand-written declaration
   (`[clog2(N + 1)-1:0]`, with a `clog2` function). The MCP server's `write_file`, `check_drawing` and
-  `simulate_drawing` take such a chart. Blinky's `speed_ctrl` chart sizes its debounce counters `clog2(DEBOUNCE)`
-  (2 bits at DEBOUNCE = 3, as before).
+  `simulate_drawing` take such a chart.
