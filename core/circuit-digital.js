@@ -93,7 +93,7 @@ export function digitalTop(m, V, entityOf) {
     if (tri.length) {
       rest ??= lit(pullOf(i));
       for (const o of tri.slice().reverse()) {
-        const on = threeStateOf(o.inst.d).enable.map(([enable, active]) => { const en = ref(netOf(o.inst.p.id, o.inst.d.pins.find((x) => pinPort(x) === enable).n)); return V ? `${en} = '${active}'` : active === '1' ? en : not(en); });
+        const ts = threeStateOf(o.inst.d), on = (ts.sections?.find((s) => s.outs.includes(pinPort(o.q))) ?? ts).enable.map(([enable, active]) => { const en = ref(netOf(o.inst.p.id, o.inst.d.pins.find((x) => pinPort(x) === enable).n)); return V ? `${en} = '${active}'` : active === '1' ? en : not(en); });
         rest = V ? `${out(o)} when ${on.join(' and ')} else ${rest}` : `(${on.join(' && ')} ? ${out(o)} : ${rest})`;
       }
     }

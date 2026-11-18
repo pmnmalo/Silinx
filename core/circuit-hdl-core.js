@@ -14,6 +14,8 @@ const supplyOf = (d) => [pinPort(d.pins.find((p) => p.dir === 'vcc')), pinPort(d
 const coreOf = (name) => `${name}_core`;
 // (a three-state output, #4397: its IC's threeState's)
 const tri = (d, p) => !!d.threeState?.outs.includes(pinPort(p));
+// (an output's enables: its section's, the 74253's two)
+const enOf = (d, p) => (d.threeState.sections?.find((s) => s.outs.includes(pinPort(p))) ?? d.threeState).enable;
 // (an IC's inputs its core reads: but its outputs' enables)
 const coreIns = (d, ins) => ins.filter((p) => !(d.threeState?.enable || []).some(([e]) => e === pinPort(p)));
 const renamed = (text, from, to) => text.replace(new RegExp(`\\b${from}\\b`, 'g'), to);
@@ -45,7 +47,7 @@ export function vhdlCoreIc(L, name, d, rd) {
     ...(outs.some((p) => p.dir === 'oc') ? ['  -- an open collector output: a 0, or nothing', '  function oc(s : std_logic) return std_logic is', '  begin', "    if s = '0' then return '0'; elsif s = '1' then return 'Z'; else return 'X'; end if;", '  end function oc;'] : []),
     '  signal pw : boolean;', 'begin', `  pw <= ${vcc} = '1' and ${gnd} = '0';`, ...ins.map((p) => `  i_${pinPort(p)} <= rd(${pinPort(p)});`),
     `  u_core : entity work.${coreOf(name)} port map (${[...coreIns(d, ins).map((p) => `${pinPort(p)} => i_${pinPort(p)}`), ...outs.map((p) => `${pinPort(p)} => o_${pinPort(p)}`)].join(', ')});`,
-    ...outs.map((p) => (tri(d, p) ? `  ${pinPort(p)} <= 'Z' after ${d.tpd} ns when not pw or ${d.threeState.enable.map(([e, a]) => `i_${e} = '${a === '0' ? 1 : 0}'`).join(' or ')} else 'X' after ${d.tpd} ns when ${d.threeState.enable.map(([e]) => `i_${e} = 'X'`).join(' or ')} else o_${pinPort(p)} after ${d.tpd} ns;`
+    ...outs.map((p) => (tri(d, p) ? `  ${pinPort(p)} <= 'Z' after ${d.tpd} ns when not pw or ${enOf(d, p).map(([e, a]) => `i_${e} = '${a === '0' ? 1 : 0}'`).join(' or ')} else 'X' after ${d.tpd} ns when ${enOf(d, p).map(([e]) => `i_${e} = 'X'`).join(' or ')} else o_${pinPort(p)} after ${d.tpd} ns;`
       : `  ${pinPort(p)} <= ${p.dir === 'oc' ? `oc(o_${pinPort(p)})` : `o_${pinPort(p)}`} after ${d.tpd} ns when pw else 'Z' after ${d.tpd} ns;`)), 'end architecture model;', '');
 }
 
@@ -55,7 +57,7 @@ export function vhdlCoreDigital(L, name, d) {
   L.push(`architecture digital of ${name} is`, `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`, 'begin',
     `  u_core : entity work.${coreOf(name)} port map (${[...coreIns(d, ins).map((p) => `${pinPort(p)} => ${pinPort(p)}`), ...outs.map((p) => `${pinPort(p)} => o_${pinPort(p)}`)].join(', ')});`,
     // (a three-state output disabled: high, as the 74595's; the circuit's top takes its enable and gives the net its own level then)
-    ...outs.map((p) => `  ${pinPort(p)} <= ${tri(d, p) ? `(o_${pinPort(p)} or not (${d.threeState.enable.map(([e, a]) => (a === '1' ? e : `not ${e}`)).join(' and ')}))` : `o_${pinPort(p)}`} and ${vcc} and not ${gnd};`), 'end architecture digital;', '');
+    ...outs.map((p) => `  ${pinPort(p)} <= ${tri(d, p) ? `(o_${pinPort(p)} or not (${enOf(d, p).map(([e, a]) => (a === '1' ? e : `not ${e}`)).join(' and ')}))` : `o_${pinPort(p)}`} and ${vcc} and not ${gnd};`), 'end architecture digital;', '');
 }
 
 /** The Verilog module of an IC with a core, its simulation body (before its `else): its lines pushed on L. */
@@ -65,7 +67,7 @@ export function verilogCoreIc(L, name, d, rd) {
     ...(outs.some((p) => p.dir === 'oc') ? ['  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction'] : []),
     `  wire pw = (${vcc} === 1'b1) && (${gnd} === 1'b0);`, `  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`,
     `  ${coreOf(name)} u_core (${[...coreIns(d, ins).map((p) => `.${pinPort(p)}(rd(${pinPort(p)}))`), ...outs.map((p) => `.${pinPort(p)}(o_${pinPort(p)})`)].join(', ')});`,
-    ...outs.map((p) => (tri(d, p) ? `  assign #${d.tpd} ${pinPort(p)} = (!pw || ${d.threeState.enable.map(([e, a]) => `(rd(${e}) === 1'b${a === '0' ? 1 : 0})`).join(' || ')}) ? 1'bz : (${d.threeState.enable.map(([e]) => `(rd(${e}) === 1'bx)`).join(' || ')}) ? 1'bx : o_${pinPort(p)};`
+    ...outs.map((p) => (tri(d, p) ? `  assign #${d.tpd} ${pinPort(p)} = (!pw || ${enOf(d, p).map(([e, a]) => `(rd(${e}) === 1'b${a === '0' ? 1 : 0})`).join(' || ')}) ? 1'bz : (${enOf(d, p).map(([e]) => `(rd(${e}) === 1'bx)`).join(' || ')}) ? 1'bx : o_${pinPort(p)};`
       : `  assign #${d.tpd} ${pinPort(p)} = pw ? ${p.dir === 'oc' ? `oc(o_${pinPort(p)})` : `o_${pinPort(p)}`} : 1'bz;`)), 'endmodule', '');
 }
 
@@ -74,5 +76,5 @@ export function verilogCoreDigital(d, name) {
   const ins = icPins(d).filter((p) => p.dir === 'in'), outs = icPins(d).filter(isOut), [vcc, gnd] = supplyOf(d);
   return [`  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`,
     `  ${coreOf(name)} u_core (${[...coreIns(d, ins).map((p) => `.${pinPort(p)}(${pinPort(p)})`), ...outs.map((p) => `.${pinPort(p)}(o_${pinPort(p)})`)].join(', ')});`,
-    ...outs.map((p) => `  assign ${pinPort(p)} = ${tri(d, p) ? `(o_${pinPort(p)} | ~(${d.threeState.enable.map(([e, a]) => (a === '1' ? e : `~${e}`)).join(' & ')}))` : `o_${pinPort(p)}`} & ${vcc} & ~${gnd};`)];
+    ...outs.map((p) => `  assign ${pinPort(p)} = ${tri(d, p) ? `(o_${pinPort(p)} | ~(${enOf(d, p).map(([e, a]) => (a === '1' ? e : `~${e}`)).join(' & ')}))` : `o_${pinPort(p)}`} & ${vcc} & ~${gnd};`)];
 }

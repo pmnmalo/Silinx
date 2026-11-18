@@ -8,7 +8,8 @@
 // between the last vector and this one, old the state before, nx the state after (written); `out(c, s)` the outputs'
 // levels by pin (null: unknown); `clocks` its clocks' pins (pulsed most often); `loads` its asynchronous loads [pin,
 // level, data pins] (the data held while one is active); `exhaustive`: every combination of its inputs (combinational);
-// `steps`: the random vectors (one input changed in each: a latch's data never changes with its enable).
+// `steps`: the random vectors (one input changed in each: a latch's data never changes with its enable); `vectors()`: its
+// own, by pin.
 import assert from 'node:assert/strict';
 import { PARTS } from '../core/circuit-parts.js';
 import { circuitPorts } from '../core/circuit.js';
@@ -61,7 +62,8 @@ export function sheetRun(type, sheet, { steps = 160 } = {}) {
   const d = PARTS[type], m = msiBench(type, { name: `c${type}` }), { inputs, outputs } = circuitPorts(m);
   const pinOf = (port) => d.pins.find((q) => q.port === port).n;
   const ins = inputs.map((i) => pinOf(i.name)), vectors = [];
-  if (sheet.exhaustive) {
+  if (sheet.vectors) vectors.push(...sheet.vectors());
+  else if (sheet.exhaustive) {
     for (let k = 0; k < 2 ** ins.length; k++) vectors.push(Object.fromEntries(ins.map((p, b) => [p, (k >> b) & 1])));
   } else {
     const cur = Object.fromEntries(ins.map((p) => [p, 0]));
