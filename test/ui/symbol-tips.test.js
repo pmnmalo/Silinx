@@ -107,9 +107,12 @@ uiTest('#4524 IEC thumbnails with their qualifiers, all distinct; the tips\' car
     await page.eval(() => window.SilinxApp.openFile('src/half_adder.circ.json'));
     await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"] .pv-q`), [CE], { what: 'the Parts panel' });
     const PART = `${CE} .circ-lib-part`;
-    const parts = await thumbs(page, PART, ['7400', '7402', '7486', '7404', '7408', '7432', '7451', '74161', '74138', '74151']);
+    const parts = await thumbs(page, PART, ['7400', '7402', '7486', '7404', '7408', '7432', '7451', '74161', '74138', '74151', '7447', '4021', '74147']);
+    // (each MSI IC's qualifier its card's too, #4531: a MUX8's smaller, BCD/7SEG and HPRI/BIN on two lines, at their '/')
     assert.deepEqual(parts.map(([n, q, , inside]) => [n, q, inside]), [['7400', '&', true], ['7402', '≥1', true], ['7486', '=1', true], ['7404', '1', true],
-      ['7408', '&', true], ['7432', '≥1', true], ['7451', '& & ≥1', true], ['74161', 'CTR', true], ['74138', 'X/Y', true], ['74151', '', true]]);   // (a MUX8 too tall for it: its card's)
+      ['7408', '&', true], ['7432', '≥1', true], ['7451', '& & ≥1', true], ['74161', 'CTR', true], ['74138', 'X/Y', true], ['74151', 'MUX', true], ['7447', 'BCD/ 7SEG', true],
+      ['4021', 'SRG', true], ['74147', 'HPRI/ BIN', true]]);
+    for (const [n, , , , size] of parts.slice(9)) assert.ok(size >= 4, `${n}: ${size} px`);
     for (const [n, , , , size] of parts.slice(0, 6)) assert.ok(size >= 8, `${n}: ${size} px`);
     const sel = `${PART}[data-part="7402"]`;
     const c02 = await card(page, sel, {});
@@ -123,6 +126,9 @@ uiTest('#4524 IEC thumbnails with their qualifiers, all distinct; the tips\' car
     const c151 = await card(page, `${PART}[data-part="74151"]`, {});
     assert.deepEqual([c151.w, c151.q, c151.lines], [135, ['MUX'], ['IEC 60617-12: a box with MUX']]);
     await away(page, PART, { part: '74151' });
+    const c147 = await card(page, `${PART}[data-part="74147"]`, {});
+    assert.deepEqual([c147.q, c147.lines], [['HPRI/BIN'], ['IEC 60617-12: a box with HPRI/BIN']]);
+    await away(page, PART, { part: '74147' });
     // (a breadboard: its drawing, no lines)
     const bb = await card(page, `${PART}[data-part="breadboard-half"]`, {});
     assert.deepEqual([bb.q, bb.lines], [[], []]);
