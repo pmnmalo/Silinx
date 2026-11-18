@@ -12,8 +12,10 @@ import { dip } from './circuit-ics.js';
 import { checkSha256 } from './kicad-pcm.js';
 import { symbolTexts, oneSymbolFile, symbolFileName, setSymbolProperties } from './kicad-edit.js';
 import { importKicadPackage } from './kicad-import.js';
+import { CATALOGUE_FUNCTIONS } from './kicad-catalogue-functions.js';
+import { functionPt, foldText } from './part-function.js';
 
-export { CATALOGUE, CATALOGUE_LIBRARIES };
+export { CATALOGUE, CATALOGUE_LIBRARIES, CATALOGUE_FUNCTIONS };
 /** The hosts a browser alone fetches a catalogue's file from (they send CORS headers; gitlab.com's API only). */
 export const CORS_HOSTS = ['raw.githubusercontent.com', 'gitlab.com'];
 
@@ -32,10 +34,32 @@ export function catalogueTitle(e) {
   return e.as ? `${e.value}, as the ${e.as}: ${PARTS[e.as].title}` : `${e.value}, drawn only: ${e.pins} pin(s)${e.package === 'grid' ? '' : `, ${e.package}`}`;
 }
 
-/** The catalogue's parts `q` finds (every word of it in a part's number, symbol, title or library), all with none. */
-export function searchCatalogue(q, list = CATALOGUE) {
-  const words = String(q ?? '').toLowerCase().split(/\s+/).filter(Boolean);
-  return list.filter((e) => words.every((w) => `${e.value} ${e.symbol} ${catalogueTitle(e)} ${CATALOGUE_LIBRARIES[e.library].name}`.toLowerCase().includes(w)));
+/**
+ * What a catalogue's part is (#4495): { text, pt, silinx }: the title of the IC of Silinx's library it behaves as (silinx:
+ * true; its Portuguese the interface's), else its KiCad description shortened to its function (CATALOGUE_FUNCTIONS; pt:
+ * that function in Portuguese, or null: none by the vocabulary), else the title of the library's part it behaves as (an
+ * LED); text '' for none. `functions`: another catalogue's (a test's).
+ */
+export function catalogueFunction(e, functions = CATALOGUE_FUNCTIONS) {
+  const as = e.as && PARTS[e.as];
+  if (as?.kind?.startsWith('ic')) return { text: as.title, pt: null, silinx: true };
+  if (functions[e.id]) return { text: functions[e.id], pt: functionPt(functions[e.id]), silinx: false };
+  return { text: as ? as.title : '', pt: null, silinx: !!as };
+}
+
+/**
+ * The catalogue's parts `q` finds (every word of it in a part's number, symbol, title, function, the function's
+ * Portuguese or library; its case and accents aside), all with none. `more(e)`: a text found too (the interface's
+ * language's).
+ */
+export function searchCatalogue(q, list = CATALOGUE, { more = null } = {}) {
+  const words = foldText(q).split(/\s+/).filter(Boolean);
+  if (!words.length) return list;
+  return list.filter((e) => {
+    const f = catalogueFunction(e);
+    const text = foldText(`${e.value} ${e.symbol} ${catalogueTitle(e)} ${f.text} ${f.pt ?? ''} ${more ? more(e) ?? '' : ''} ${CATALOGUE_LIBRARIES[e.library]?.name ?? ''}`);
+    return words.every((w) => text.includes(w));
+  });
 }
 
 /** A catalogue's part by its id, or null. */

@@ -68,6 +68,13 @@ test('import_part: a footprint, then a library and its symbols said, its Silinx 
   assert.equal(list.text.split('\n').at(-1), `${T('BADMODEL')}: not a part: its Silinx.Model 'breadboard-half' is no part of the library with pins (circuit_parts)`);
   assert.match(list.text, new RegExp(`^${T('SENSOR').replace(/[.#]/g, '\\$&')}: .*; pins 1 VCC none, 2 GND none, 3 OUT none, 4 EN none$`, 'm'));
   assert.deepEqual([list.data.project, list.data.skipped.length, list.data.notes, list.data.errors], ['k', 4, [], []]);
+  // (what each one is, #4495: the IC's title, its description shortened; found by it)
+  assert.deepEqual(list.data.parts.filter((p) => p.kicad).map((p) => p.function), ['Quad 2-input NAND', 'Quad 2-input NAND', 'Quad 2-input NAND', 'Quad 2-input NAND', 'A sensor module', '']);
+  const found = await ok('circuit_parts', { project: 'k', query: 'sensor module' });
+  assert.deepEqual(found.data.parts.map((p) => p.type), [T('SENSOR')]);
+  assert.deepEqual((await ok('circuit_parts', { project: 'k', query: 'quad nand 2-input' })).data.parts.map((p) => p.type).slice(-4), [T('74LS00'), T('74HC00'), T('MYNAND'), T('CD4011')]);
+  assert.equal((await ok('circuit_parts', { project: 'k', query: 'no-such-part' })).text, 'No part matches \'no-such-part\'.');
+  await fails('circuit_parts', { project: 'k', query: 'nand', type: '7400' }, 'query: not with type');
   assert.equal(list.data.untrusted.content, 'the project\'s KiCad parts: their names and texts');
   const one = await ok('circuit_parts', { project: 'k', type: T('74HC00') });
   assert.deepEqual(one.text.split('\n').slice(1, 4), ['Behaves as the 7400 of the library (by its part number).',

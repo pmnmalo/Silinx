@@ -40,6 +40,9 @@ test('circuit_parts: the library, one part with its pins, gates and delay, its d
     'Typical delay 12 ns', 'An input left open reads 1', 'Pins: 1 1A (input), 2 1B (input), 3 1Y (output), 4 2A (input), 5 2B (input), 6 2Y (output), 7 GND (supply GND), 8 3Y (output), 9 3A (input), 10 3B (input), 11 4Y (output), 12 4A (input), 13 4B (input), 14 VCC (supply +5 V)']);
   assert.equal(one.data.info.package, 'DIP-14');
   assert.equal((await ok('circuit_parts', {})).data.info, undefined, 'the whole library: no details');
+  // (a query, #4495: the parts found by their words, as the Parts panel's search)
+  assert.deepEqual((await ok('circuit_parts', { query: 'j-k flip-flop dual' })).data.parts.map((p) => p.type), ['7476', '74112', '7473', '7478', '74107', '74109', '74113', '74114', '4027']);
+  assert.deepEqual((await ok('circuit_parts', { query: 'decoder' })).data.parts.map((p) => p.type), ['7447', '7448', '74138', '74139', '4511']);
   assert.deepEqual((await ok('circuit_parts', { type: 'led' })).text.split('\n'), ['led: LED; pins 1 A in, 2 K in', 'Lights while its anode A is at 1 and its cathode K at 0. An output of the HDL.', 'Pins: 1 A (input), 2 K (input)']);
   assert.equal((await ok('circuit_parts', { type: '7403' })).data.parts[0].openCollector, true);
   // an MSI IC (#3900): its function, its pins by their datasheet's names

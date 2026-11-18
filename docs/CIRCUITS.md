@@ -227,6 +227,17 @@ same text is kept. The local server fetches the catalogue's files only (kept for
 fetches nothing). The browser's edition alone fetches from a host that sends CORS headers (SparkFun's on GitHub, KiCad's
 through GitLab's API, which serves the same files), and the others say that they need the server.
 
+Each row says what the part is (#4495): its part number in bold, then its function, on a second line when the panel is
+narrow. A part that behaves as an IC of Silinx's library shows that IC's title. Any other shows its KiCad symbol's
+Description, shortened by one rule (`shortFunction`, `core/part-function.js`): the packages, ratings, families and notes
+left out ("DIP-16/SOIC-16", "0.2A Ic", "CMOS", "obsolete"), a sentence's case, at most 64 characters. Only that function
+is kept (`core/kicad-catalogue-functions.js`, written by the same script), none of the libraries' text. The search
+finds a part by its function too ("inverter", "flip-flop", "multiplexer"), its case and accents aside; a project's own
+KiCad parts are shown and found the same way. In Portuguese, a KiCad function is translated by a small vocabulary of
+the logic ICs' words, applied by rule (`functionPt`: "Quad 2-input NAND gate" → "Quatro portas NAND de 2 entradas",
+"Dual retriggerable monostable" → "Dois monoestáveis redisparáveis"); one with a word outside it stays in English.
+The MCP's `part_libraries` (with `catalogue`) and `circuit_parts` return the function and search by it (`query`).
+
 Import KiCad Part… also takes a PCM package's `.zip` downloaded by hand and a `.kicad_symdir` folder.
 
 **Exports** (#4282, `core/kicad-export.js`), in the editor's ⋮ menu, under KiCad:

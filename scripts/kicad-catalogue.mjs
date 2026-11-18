@@ -20,9 +20,11 @@ import { readKicadSymbols } from '../core/kicad-sym.js';
 import { setSymbolProperties } from '../core/kicad-edit.js';
 import { readPcmPackage } from '../core/kicad-pcm.js';
 import zlib from 'node:zlib';
+import { shortFunction } from '../core/part-function.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'core', 'kicad-catalogue-data.js');
+const FUNCTIONS = path.join(ROOT, 'core', 'kicad-catalogue-functions.js');
 // SparkFun's libraries at a tag (CC-BY-4.0, their README): its raw files are served with CORS, a browser imports them too
 const SPARKFUN = { repo: 'sparkfun/SparkFun-KiCad-Libraries', tag: 'v10.0.0', licence: 'CC-BY-4.0', author: 'SparkFun Electronics' };
 const raw = (p) => `https://raw.githubusercontent.com/${SPARKFUN.repo}/${SPARKFUN.tag}/${p}`;
@@ -62,7 +64,7 @@ function parents(symbols, name) {
 const packageOf = (d) => (d.dip ? `DIP-${d.dip}` : 'grid');
 
 async function main() {
-  const libraries = {}, parts = [];
+  const libraries = {}, parts = [], functions = {};
   // (only: the symbols kept, by name; set: the Silinx.Footprint written when one is imported; its library's SHA-256 the
   // file's as fetched, `original`)
   const add = (id, lib, text, footprints = {}, { only = null, set = {}, original = text } = {}) => {
@@ -72,6 +74,7 @@ async function main() {
     const syms = readKicadSymbols(text).symbols;
     for (const d of r.defs.filter((x) => !only || only.includes(x.kicad.symbol))) {
       const fp = d.kicad.footprint && Object.entries(footprints).find(([k]) => k.endsWith(`/${d.kicad.footprint.replace(/^(?:PCM_)?([^:]*):(.*)$/, '$1.pretty/$2')}.kicad_mod`));
+      if (shortFunction(d.kicad.description)) functions[`${id}/${d.kicad.symbol}`] = shortFunction(d.kicad.description);
       parts.push({ id: `${id}/${d.kicad.symbol}`, library: id, symbol: d.kicad.symbol, value: d.kicad.value, as: d.behaves, package: packageOf(d), pins: d.pins.length,
         ...(parents(syms, d.kicad.symbol).length ? { needs: parents(syms, d.kicad.symbol) } : {}),
         // (an IC's place is the library's; an LED's, a switch's, a button's its footprint's, #4349)
@@ -150,6 +153,12 @@ async function main() {
     '// KiCad\'s and the Arduino modules\' footprints\' pads\' places only (#4385, #4394: CC-BY-SA)',
     'export const CATALOGUE_LOOKS = {', ...Object.entries(looks).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`), '};', ''];
   fs.writeFileSync(OUT, L.join('\n'));
+  // what each part is (#4495): its symbol's Description shortened to its function by core/part-function.js's rule (a
+  // part's name, a fact: none of the libraries' texts kept); a file of its own, the parts' list's lines kept as they were
+  fs.writeFileSync(FUNCTIONS, ['// The KiCad catalogue\'s parts\' functions (#4495): written by scripts/kicad-catalogue.mjs, do not edit. What each',
+    '// part is, by its id (core/kicad-catalogue-data.js CATALOGUE): its symbol\'s Description shortened to its function by',
+    '// core/part-function.js shortFunction (no package, family, rating or note: "8-bit addressable latch").', '',
+    'export const CATALOGUE_FUNCTIONS = {', ...parts.filter((p) => functions[p.id]).map((p) => `  ${JSON.stringify(p.id)}: ${JSON.stringify(functions[p.id])},`), '};', ''].join('\n'));
   console.log(`${path.relative(ROOT, OUT)}: ${parts.length} parts of ${Object.keys(libs).length} libraries (${parts.filter((p) => p.as).length} as library parts)`);
 }
 

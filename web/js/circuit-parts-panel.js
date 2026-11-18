@@ -6,8 +6,10 @@
 import { h } from './ui.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
-import { PARTS, PART_ORDER, partDef, projectParts } from '/core/circuit-parts.js';
-import { searchCatalogue, catalogueTitle, catalogueDrawing, CATALOGUE_LIBRARIES } from '/core/kicad-catalogue.js';
+import { PARTS, PART_ORDER, partDef, projectParts, kicadPartFunction } from '/core/circuit-parts.js';
+import { searchCatalogue, catalogueTitle, catalogueDrawing, catalogueFunction, CATALOGUE_LIBRARIES } from '/core/kicad-catalogue.js';
+import { functionPt, foldText } from '/core/part-function.js';
+import { t as tr, getLanguage, onLanguageChange } from './i18n.js';
 import { drawCircuit, drawnPartSvg } from './circuit-draw.js';
 import { defaultParams, symbolDef } from '/core/schdoc.js';
 import { symbolPreview } from './sch-palette.js';
@@ -81,11 +83,27 @@ function cataloguePreview(e) {
   return d ? fitted(drawnPartSvg(d), key) : sv('svg', { class: 'circ-pv', viewBox: `0 0 ${W} ${H}`, width: W, height: H }, sv('rect', { x: 8, y: 9, width: W - 16, height: H - 18, rx: 2, class: 'circ-pv-cat' }));
 }
 
+// a function in the interface's language (#4495): Silinx's title as the interface translates it, KiCad's function in
+// Portuguese by its vocabulary or, with none, in English (its element says so: lang="en")
+function functionText(f) {
+  if (getLanguage() !== 'pt' || !f.text) return { text: f.text, en: false };
+  if (f.silinx) return { text: tr(f.text), en: false };
+  return f.pt ? { text: f.pt, en: false } : { text: f.text, en: true };
+}
+const functionTextOf = (f) => `${f.text} ${functionText(f).text}`;
+// a part's number in bold, what it is after it (on a second line when the panel is narrow)
+const numbered = (value, f) => {
+  const x = functionText(f);
+  return h('span', { class: 'nm fn2', 'data-no-i18n': 'true' }, h('b', {}, value), ...(x.text ? [' ', h('span', { class: 'fn', ...(x.en ? { lang: 'en' } : {}) }, x.text)] : []));
+};
+// a project's KiCad part's function (#4495), its Portuguese
+const kicadFunction = (d) => { const f = kicadPartFunction(d); return { ...f, pt: f.silinx ? null : functionPt(f.text) }; };
+
 // a row's name and tip: a library part's, or a project's KiCad part's (its part number and what it does, #4281)
 function rowOf(t) {
   const d = partDef(t), k = d.kicad;
   if (!k) return { name: d.chip ? `${t} ${d.title}` : d.title, tip: `${d.title}: click it, then the drawing (Esc: done)`, noI18n: false };
-  return { name: `${k.value}${k.description ? ` ${k.description}` : ''}`, noI18n: true,
+  return { name: numbered(k.value, kicadFunction(d)), noI18n: true,
     // (an LED, a switch, a button of the library's, #4349: its title)
     tip: d.behaves ? `${k.value}, as the ${d.kind === 'ic' ? d.behaves : `${PARTS[d.behaves].title} of the library`}: click it, then the drawing (Esc: done)` : d.kind === 'model' ? `${k.value}, by its module ${d.module}: click it, then the drawing (Esc: done)`
       : `${k.value}, drawn only (not simulated): click it, then the drawing (Esc: done)` };
@@ -106,13 +124,15 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
   const CAT = 'KiCad catalogue';
   const folded = new Set([CAT]);   // (the catalogue folded at first: its parts found by a search, or opened, #4305)
   search.addEventListener('input', () => renderParts());
+  // (the functions in the interface's language, #4495)
+  const off = onLanguageChange(() => { if (!root.isConnected) off(); else renderParts(); });
 
   function renderParts() {
-    const q = search.value.trim().toLowerCase();
+    const q = foldText(search.value.trim());
     const rows = [];
     const mine = projectParts().map((d) => d.type);
     for (const [title, types] of [...GROUPS, ...(mine.length ? [['KiCad parts (project)', mine]] : [])]) {
-      const its = types.filter((t) => !q || `${t} ${partDef(t).title} ${partDef(t).chip || ''} ${partDef(t).kicad?.value || ''} ${partDef(t).kicad?.description || ''}`.toLowerCase().includes(q));
+      const its = types.filter((t) => !q || foldText(`${t} ${partDef(t).title} ${tr(partDef(t).title)} ${partDef(t).chip || ''} ${partDef(t).kicad?.value || ''} ${partDef(t).kicad?.description || ''} ${partDef(t).kicad ? functionTextOf(kicadFunction(partDef(t))) : ''}`).includes(q));
       if (!its.length) continue;
       const open = !folded.has(title) || q;
       rows.push(h('div', { class: `circ-lib-title${open ? ' open' : ''}`, onclick: () => { if (folded.has(title)) folded.delete(title); else folded.add(title); renderParts(); } },
@@ -122,11 +142,12 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
         const r = rowOf(t);
         rows.push(h('button', { type: 'button', class: `circ-lib-part${tool() === `place:${t}` ? ' active' : ''}${partDef(t).kind === 'drawn' ? ' drawn' : ''}`, 'data-part': t, 'data-group': title,
           title: r.tip, onclick: () => setTool(tool() === `place:${t}` ? 'select' : `place:${t}`) },
-        preview(t), h('span', { class: 'nm', ...(r.noI18n ? { 'data-no-i18n': 'true' } : {}) }, r.name)));
+        preview(t), typeof r.name === 'string' ? h('span', { class: 'nm', ...(r.noI18n ? { 'data-no-i18n': 'true' } : {}) }, r.name) : r.name));
       }
     }
     // the KiCad catalogue's parts (#4305): a click imports one into the project, then places it
-    const cat = importCatalogue ? searchCatalogue(q) : [];
+    // (found by the function in the interface's language too: Silinx's titles as it translates them)
+    const cat = importCatalogue ? searchCatalogue(q, undefined, { more: (e) => { const f = catalogueFunction(e); return f.silinx ? tr(f.text) : null; } }) : [];
     if (cat.length) {
       const open = !folded.has(CAT) || q;
       rows.push(h('div', { class: `circ-lib-title${open ? ' open' : ''}`, onclick: () => { if (folded.has(CAT)) folded.delete(CAT); else folded.add(CAT); renderParts(); } },
@@ -135,8 +156,7 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
         rows.push(h('button', { type: 'button', class: `circ-lib-part circ-cat-part${e.as ? '' : ' drawn'}`, 'data-catalogue': e.id, 'data-group': CAT,
           title: `${catalogueTitle(e)} (${CATALOGUE_LIBRARIES[e.library].name}, ${CATALOGUE_LIBRARIES[e.library].licence}): click it to import it into the project`,
           onclick: async () => { const type = await importCatalogue(e.id); if (type && partDef(type)) setTool(`place:${type}`); renderParts(); } },
-        cataloguePreview(e),
-        h('span', { class: 'nm', 'data-no-i18n': 'true' }, `${e.value}${e.as && partDef(e.as).kind === 'ic' ? ` (${e.as})` : ''}`)));
+        cataloguePreview(e), numbered(e.value, catalogueFunction(e))));
       }
     }
     list.replaceChildren(...rows);

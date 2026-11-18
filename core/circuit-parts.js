@@ -7,6 +7,7 @@ import { ICS, dip } from './circuit-ics.js';
 import { MSI } from './circuit-msi.js';
 import { SEQ } from './circuit-seq.js';
 import { MODEL_ICS } from './circuit-model-ics.js';
+import { shortFunction } from './part-function.js';
 
 // ------------------------------------------------------------------ the breadboards
 export const BB_COLS = 30;
@@ -150,6 +151,18 @@ export function gateValue(fn, ins, terms = null) {
 export const readInput = (family, level) => (level === 'Z' ? (family === 'ttl' ? '1' : 'X') : level === '0' || level === '1' ? level : 'X');
 
 /** The library as the MCP server's circuit_parts lists it: each part's type, title, pins and delay. */
+/**
+ * What a project's KiCad part is (#4495): { text, silinx }: the title of the IC of the library it behaves as (silinx:
+ * true), else its description shortened to its function (core/part-function.js), else the title of the library's part
+ * it behaves as (an LED); text '' for none.
+ */
+export function kicadPartFunction(d) {
+  const as = d.behaves && PARTS[d.behaves];
+  if (as && d.kind === 'ic') return { text: as.title, silinx: true };
+  const own = shortFunction(d.kicad?.description);
+  return own ? { text: own, silinx: false } : { text: as ? as.title : '', silinx: !!as };
+}
+
 export function partsList() {
   return [...PART_ORDER.map((t) => PARTS[t]), ...projectParts()].map((d) => ({
     type: d.type, title: d.title, kind: d.kind, ...(d.chip ? { chip: d.chip, family: d.family, tpd: d.tpd, ...(d.oc ? { openCollector: true } : {}) } : {}),
@@ -157,6 +170,6 @@ export function partsList() {
     ...(d.gates ? { gates: d.gates.map((g) => `${g.fn} (${g.ins.join(', ')}) → ${g.out}`) } : {}),
     ...(d.model || d.seq ? { function: d.title } : {}),
     // (a project's KiCad part: its file, its symbol, its source; the library part it behaves as, or none: drawn only)
-    ...(d.kicad ? { kicad: d.kicad, behavesAs: d.behaves ?? null } : {}),
+    ...(d.kicad ? { kicad: d.kicad, behavesAs: d.behaves ?? null, function: kicadPartFunction(d).text } : {}),
   }));
 }

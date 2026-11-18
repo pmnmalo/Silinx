@@ -41,15 +41,15 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
   await page.openProject('CircKicad');
   await page.eval(() => window.SilinxApp.openFile('src/kc.circ.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-group="KiCad parts (project)"]`), [ED], { what: 'the project\'s KiCad parts' });
-  // the panel: its group last, each part's name its number and description, a 74HC00 drawn as its IC's gate, a module drawn
+  // the panel: its group last, each part's name its number and what it is (#4495: its IC's title, its description shortened), a 74HC00 drawn as its IC's gate, a module drawn
   const group = await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-group="KiCad parts (project)"]`)].map((b) => [b.dataset.part, b.querySelector('.nm').textContent, b.title, b.querySelector('svg').classList.contains('circ-pv-sym')]), ED);
   assert.deepEqual(group, [
-    [T('74LS00'), 'SN74LS00N quad 2-input NAND gate', 'SN74LS00N, as the 7400: click it, then the drawing (Esc: done)', true],
-    [T('74HC00'), '74HC00 quad 2-input NAND gate, HCMOS', '74HC00, as the 7400: click it, then the drawing (Esc: done)', true],
-    [T('MYNAND'), 'MYNAND', 'MYNAND, as the 7400: click it, then the drawing (Esc: done)', true],
-    [T('CD4011'), 'CD4011BE quad 2-input NAND gate, CMOS', 'CD4011BE, as the 4011: click it, then the drawing (Esc: done)', true],
+    [T('74LS00'), 'SN74LS00N Quad 2-input NAND', 'SN74LS00N, as the 7400: click it, then the drawing (Esc: done)', true],
+    [T('74HC00'), '74HC00 Quad 2-input NAND', '74HC00, as the 7400: click it, then the drawing (Esc: done)', true],
+    [T('MYNAND'), 'MYNAND Quad 2-input NAND', 'MYNAND, as the 7400: click it, then the drawing (Esc: done)', true],
+    [T('CD4011'), 'CD4011BE Quad 2-input NAND', 'CD4011BE, as the 4011: click it, then the drawing (Esc: done)', true],
     [T('74LS04'), '74LS04', '74LS04, drawn only (not simulated): click it, then the drawing (Esc: done)', false],
-    [T('SENSOR'), 'TEST-SENSOR a sensor module', 'TEST-SENSOR, drawn only (not simulated): click it, then the drawing (Esc: done)', false],
+    [T('SENSOR'), 'TEST-SENSOR A sensor module', 'TEST-SENSOR, drawn only (not simulated): click it, then the drawing (Esc: done)', false],
     [T('MODULE'), 'TEST-MODULE', 'TEST-MODULE, drawn only (not simulated): click it, then the drawing (Esc: done)', false]]);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title > span:first-child`)].slice(-2).map((x) => x.textContent), ED), ['KiCad parts (project)', 'KiCad catalogue'], 'the project\'s, then the KiCad catalogue (#4305)');
   // the search finds them by their part number

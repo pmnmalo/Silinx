@@ -37,7 +37,7 @@ uiTest('Parts panel: the KiCad catalogue folded, opened, searched, its tips; a p
   await page.type('nand hct');
   await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: 'the search' });
   const row = await page.eval((s) => { const b = document.querySelector(s); return [b.dataset.catalogue, b.querySelector('.nm').textContent, b.title, !!b.querySelector('svg.circ-pv-sym')]; }, CAT(ED));
-  assert.deepEqual(row, ['kicad-74xx/74HCT00', '74HCT00 (7400)', '74HCT00, as the 7400: Quad 2-input NAND (KiCad 74xx symbols, CC-BY-SA-4.0): click it to import it into the project', true]);
+  assert.deepEqual(row, ['kicad-74xx/74HCT00', '74HCT00 Quad 2-input NAND', '74HCT00, as the 7400: Quad 2-input NAND (KiCad 74xx symbols, CC-BY-SA-4.0): click it to import it into the project', true]);
   // a click: imported through the local server, which has no network here: its error, nothing written
   await page.click(CAT(ED));
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^ERROR: KiCad catalogue: /.test(l.textContent)), [], { what: 'its error' });
@@ -68,4 +68,53 @@ uiTest('Parts panel: the KiCad catalogue folded, opened, searched, its tips; a p
   assert.equal(await page.eval((s) => document.querySelector(s).title, CAT(ED)), '74HCT00, como o 7400: Quatro portas NAND de 2 entradas (KiCad 74xx symbols, CC-BY-SA-4.0): clique para a importar para o projeto');
   assert.equal(await title(page), 'Catálogo KiCad (1)');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+}, { timeout: 120000 });
+
+// (#4495) what each part is: its number in bold, its function after it (Silinx's IC's title, KiCad's description
+// shortened), on two lines in the panel's width; found by it; in Portuguese, Silinx's titles as the interface translates
+// them, KiCad's by the vocabulary, one it does not cover in English (lang="en"), and found by the Portuguese
+uiTest('Parts panel: the KiCad catalogue\'s parts say what they are, are found by it; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'CircFn', top: '', files: { 'src/c.circ.json': JSON.stringify(newCircuit('c', 'vhdl'), null, 2) } });
+  await page.setViewport(1440, 900);
+  await page.openProject('CircFn');
+  await page.eval(() => window.SilinxApp.openFile('src/c.circ.json'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part`), [ED], { what: 'the parts' });
+  const search = (q) => page.eval((ed, t) => { const s = document.querySelector(`${ed} .circ-search`); s.value = t; s.dispatchEvent(new Event('input')); }, ED, q);
+  const rows = (g = 'KiCad catalogue') => page.eval((s) => [...document.querySelectorAll(s)].map((b) => { const n = b.querySelector('.nm'), f = n.querySelector('.fn');
+    return [b.dataset.catalogue, n.querySelector('b').textContent, f?.textContent ?? null, f?.getAttribute('lang') ?? null]; }), CAT(ED, g));
+  await search('retriggerable monostable 74ls');
+  await page.waitFor((s) => document.querySelectorAll(s).length === 2, [CAT(ED)], { what: 'the monostables' });
+  assert.deepEqual(await rows(), [['kicad-74xx/74LS122', '74LS122', 'Retriggerable monostable', null], ['kicad-74xx/74LS123', '74LS123', 'Dual retriggerable monostable', null]]);
+  // (the number bold, the function after it, on a second line in the panel's width)
+  const look = await page.eval((s) => { const n = document.querySelector(`${s} .nm`), b = n.querySelector('b'), f = n.querySelector('.fn');
+    return { bold: Number(getComputedStyle(b).fontWeight) >= 600, lines: Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)), below: f.getBoundingClientRect().bottom > b.getBoundingClientRect().bottom }; }, CAT(ED));
+  assert.deepEqual(look, { bold: true, lines: 2, below: true });
+  // (Silinx's IC's title for a part that behaves as one)
+  await search('4049');
+  await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: 'the 4049' });
+  assert.deepEqual(await rows(), [['kicad-4xxx/4049', '4049', 'Hex inverting buffer', null]]);
+  // found by what they are
+  for (const [q, id] of [['inverter', 'kicad-4xxx/40106'], ['flip-flop', 'kicad-74xx/74LS109'], ['multiplexer', 'kicad-4xxx/4051']]) {
+    await search(q);
+    await page.waitFor((s, i) => [...document.querySelectorAll(s)].some((b) => b.dataset.catalogue === i), [CAT(ED), id], { what: q });
+    assert.ok((await rows()).every(([, , f]) => f.toLowerCase().includes(q)), q);
+  }
+  // in Portuguese
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
+  await search('retriggerable monostable 74ls');
+  await page.waitFor((s) => document.querySelector(`${s} .fn`)?.textContent === 'Monoestável redisparável', [CAT(ED, 'KiCad catalogue')], { what: 'Portuguese' });
+  assert.deepEqual(await rows(), [['kicad-74xx/74LS122', '74LS122', 'Monoestável redisparável', null], ['kicad-74xx/74LS123', '74LS123', 'Dois monoestáveis redisparáveis', null]]);
+  await search('seis buffers inversores');
+  await page.waitFor((s) => [...document.querySelectorAll(s)].some((b) => b.dataset.catalogue === 'kicad-4xxx/4049'), [CAT(ED)], { what: 'the 4049 in Portuguese' });
+  assert.deepEqual((await rows()).find((r) => r[0] === 'kicad-4xxx/4049'), ['kicad-4xxx/4049', '4049', 'Seis buffers inversores', null]);
+  await search('descodificador 74ls42');
+  await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: 'a decoder in Portuguese' });
+  assert.deepEqual(await rows(), [['kicad-74xx/74LS42', '74LS42', 'Descodificador de 4 para 10 linhas', null]]);
+  // (one the vocabulary does not cover: KiCad's words, in English)
+  await search('4046');
+  await page.waitFor((s) => document.querySelectorAll(s).length === 1, [CAT(ED)], { what: 'the 4046' });
+  assert.deepEqual(await rows(), [['kicad-4xxx/4046', '4046', 'Phase comp & VCO', 'en']]);
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  await page.waitFor((s) => document.querySelector(`${s} .fn`)?.textContent === 'Phase comp & VCO', [CAT(ED)], { what: 'English again' });
+  assert.deepEqual(await rows(), [['kicad-4xxx/4046', '4046', 'Phase comp & VCO', null]]);
 }, { timeout: 120000 });

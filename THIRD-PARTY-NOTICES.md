@@ -5370,7 +5370,7 @@ public licenses.
 Creative Commons may be contacted at creativecommons.org.
 ```
 
-By SparkFun Electronics. core/kicad-catalogue-data.js (CATALOGUE_LOOKS) holds drawings derived from the footprints of its v10.0.0 (footprints/*.pretty/*.kicad_mod) that the KiCad catalogue names: their F.Fab shapes (F.SilkS's when there are none), turned, scaled to the 0.1 inch grid and rounded, and their pads' places. Changed: the texts, the other layers and the pads' shapes left out. The footprints themselves are not shipped: a part imported fetches its own files from the library.
+By SparkFun Electronics. core/kicad-catalogue-data.js (CATALOGUE_LOOKS) holds drawings derived from the footprints of its v10.0.0 (footprints/*.pretty/*.kicad_mod) that the KiCad catalogue names: their F.Fab shapes (F.SilkS's when there are none), turned, scaled to the 0.1 inch grid and rounded, and their pads' places. Changed: the texts, the other layers and the pads' shapes left out. The footprints themselves are not shipped: a part imported fetches its own files from the library. core/kicad-catalogue-functions.js holds what each of its parts that the catalogue names is, its symbol's Description shortened to its function (#4495). Changed: the packages, ratings and notes left out, a sentence's case.
 
 ## statuses 2.0.2 — MIT
 
