@@ -1030,9 +1030,14 @@ async function setupPlaywright({ server, offline }) {
 // with "access control checks", the connection dropped under it; WebKit on CI, the same test passing before and after):
 // an engine failure as a crashed page is, when it is all the page errors said (its address as CI's log said it too,
 // "http: /127.0.0.1:…", which the first pattern did not take, #4464)
-const WEBKIT_LOAD_FAILURE = /^uncaught: (\w*: )?(Fetch API cannot load http:(\/\/| \/)127\.0\.0\.1:\d+\/.* due to access control checks\.|(Unhandled Promise Rejection: )?TypeError: Importing a module script failed\.)$/;
-/** Whether the page errors `errs` are only WebKit's failed loads from the local server (#4428), run once more. */
-export const webkitLoadFailure = (errs, browser = BROWSER) => browser === 'webkit' && errs.length > 0 && errs.every((e) => WEBKIT_LOAD_FAILURE.test(e));
+// Firefox's the same (#4471): a module's dynamic import from the local server failed
+const LOAD_FAILURE = {
+  webkit: /^uncaught: (\w*: )?(Fetch API cannot load http:(\/\/| \/)127\.0\.0\.1:\d+\/.* due to access control checks\.|(Unhandled Promise Rejection: )?TypeError: Importing a module script failed\.)$/,
+  firefox: /^uncaught: (TypeError: )?error loading dynamically imported module: http:(\/\/| \/)127\.0\.0\.1:\d+\/\S+$/,
+};
+/** Whether the page errors `errs` are only the browser's failed loads from the local server (WebKit's, #4428; Firefox's,
+ *  #4471), run once more; never Chrome's. */
+export const loadFailure = (errs, browser = BROWSER) => !!LOAD_FAILURE[browser] && errs.length > 0 && errs.every((e) => LOAD_FAILURE[browser].test(e));
 
 export function uiTest(name, envRef, fn, { timeout = 90000, url, skip, build, tablet, ui } = {}) {
   test(name, { timeout }, async (t) => {
@@ -1041,7 +1046,7 @@ export function uiTest(name, envRef, fn, { timeout = 90000, url, skip, build, ta
     // Firefox / WebKit ending the page by itself (an engine failure, not the app's: WebKit on CI, #110,
     // #237): the test is run once more in a fresh page, as #153 runs a crashed Yosys again in a new
     // worker, the projects the first run made removed; said in the output. A second time fails it. (So does WebKit failing
-    // to load from the local server, #4428: webkitLoadFailure.)
+    // to load from the local server, #4428, and Firefox, #4471: loadFailure.)
     const ws = env.server?.workspace;
     const listWs = async () => new Set(ws ? await fsp.readdir(ws).catch(() => []) : []);
     for (let attempt = 1; ; attempt++) {
@@ -1061,7 +1066,7 @@ async function runUiTest(name, env, fn, url, t, build, tablet, ui) {
     if (!url) await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot' });
     await fn(page, env, t);
     const errs = page.errors.filter((e) => !page.allowErrors.some((re) => re.test(e)));
-    if (webkitLoadFailure(errs)) throw new PageGoneError(`WebKit failed to load from the local server (${errs.join(' | ')})`);
+    if (loadFailure(errs)) throw new PageGoneError(`${BROWSER} failed to load from the local server (${errs.join(' | ')})`);
     if (errs.length) throw new Error(`page errors:\n  ${errs.join('\n  ')}`);
   } catch (e) {
     try {
