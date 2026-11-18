@@ -64,9 +64,9 @@ BEGIN
             anode := (others => '1'); anode(i) := '0';
             wait until an = anode for clk_period * 40;
             assert an = anode report "digit " & integer'image(i) & " not shown" severity error;
-            wait until falling_edge(clk);            -- (the middle of the digit's 4 cycles, between two
-            wait until falling_edge(clk);            -- rising edges: the anodes change a little after one)
-            d := digit_of(seg);
+            wait until falling_edge(clk);            -- (the end of the digit's first cycle, at the next rising
+            wait until rising_edge(clk);             -- edge: the segments settled, a whole cycle after the edge
+            d := digit_of(seg);                      -- that changed them, as on a placed and routed design, #4460)
             assert d >= 0 report "digit " & integer'image(i) & ": not a decimal digit" severity error;
             assert dp = '1' report "the decimal point is lit" severity error;
             v := v + d * 10 ** i;
@@ -80,8 +80,8 @@ BEGIN
          t0 := now;
          loop
             wait until an = "0111" for clk_period * 40;
-            wait until falling_edge(clk);            -- (the segments follow the anodes)
-            wait until falling_edge(clk);
+            wait until falling_edge(clk);            -- (the segments follow the anodes: read at the
+            wait until rising_edge(clk);             -- next rising edge, settled)
             exit when digit_of(seg) = d or now - t0 > clk_period * cycles;
          end loop;
       end procedure;
