@@ -1,5 +1,5 @@
 // UI: the Simulation view's models are the project's tool's (#3707): a Basys 3 project lists Simulate Behavioral Model only
-// (AMD Vivado's flow makes no Post-… simulation model), with the Silinx toolchain the Post-Synthesis one too (#4362), an iCE40
+// (AMD Vivado's flow makes no Post-… simulation model), with the Silinx toolchain the Post-Synthesis and Post-Place & Route ones (#4362), an iCE40
 // and a Gowin one the Post-Synthesis and Post-Place & Route ones (#2299, #4362), a Basys2 project the four Post-… ones; the Tasks interface's model choices (the task's bar's, SSim's toolbar's) the same. In
 // Portuguese; both interfaces and the Tasks interface. No warnings.
 import { before, after } from 'node:test';
@@ -24,7 +24,7 @@ const UP5K = { family: 'ice40', part: 'ice40up5k', package: 'sg48', speed: '' };
 const POST = ['Simulate Post-Synthesis Model', 'Simulate Post-Translate Model', 'Simulate Post-Map Model', 'Simulate Post-Place & Route Model'];
 // (each project: its models' labels' indexes in POST)
 const PROJECTS = [['SmIce', { device: UP5K }, [0, 3]], ['SmGw', { board: 'tangnano9k' }, [0, 3]], ['SmB3', { board: 'basys3' }, []],
-  ['SmB3S', { board: 'basys3', synthTool: 'silinx' }, [0]], ['SmB2', { board: 'basys2' }, [0, 1, 2, 3]]];
+  ['SmB3S', { board: 'basys3', synthTool: 'silinx' }, [0, 3]], ['SmB2', { board: 'basys2' }, [0, 1, 2, 3]]];
 const make = async (name, { synthTool, ...o }) => {
   const pj = await makeProject(env, { name, ...o, files: { 'src/sm.vhd': TOP }, top: 'sm' });
   // (the project's synthesis tool: the Artix-7's Silinx toolchain, #4362)
@@ -41,7 +41,7 @@ const simProcs = async (page) => {
   return page.eval(() => [...document.querySelectorAll('#procs .row')].map((x) => x.textContent.trim().replace(/^▾/, '')));
 };
 
-uiTest('#3707 #2299 #4362 the Simulation view: no Simulate Post-… Model on a Basys 3 project with Vivado, the Post-Synthesis one with the Silinx toolchain, the Post-Synthesis and Post-Place & Route ones on an iCE40 and a Gowin one, the four on a Basys2 one; in Portuguese', E, async (page) => {
+uiTest('#3707 #2299 #4362 the Simulation view: no Simulate Post-… Model on a Basys 3 project with Vivado, the Post-Synthesis and Post-Place & Route ones with the Silinx toolchain and on an iCE40 and a Gowin one, the four on a Basys2 one; in Portuguese', E, async (page) => {
   for (const [name, o, models] of PROJECTS) {
     await make(name, o);
     await page.openProject(name);
@@ -60,7 +60,7 @@ uiTest('#3707 #2299 #4362 the Simulation view: no Simulate Post-… Model on a B
   await noWarnings(page);
 });
 
-uiTest('#3707 #2299 #4362 the Tasks interface: Simulate\'s model choices, the task\'s bar\'s and SSim\'s toolbar\'s, Behavioral only on a Basys 3 project with Vivado, Post-Synthesis with the Silinx toolchain, Post-Synthesis and Post-Place & Route on an iCE40 and a Gowin one; in Portuguese', E, async (page) => {
+uiTest('#3707 #2299 #4362 the Tasks interface: Simulate\'s model choices, the task\'s bar\'s and SSim\'s toolbar\'s, Behavioral only on a Basys 3 project with Vivado, Post-Synthesis and Post-Place & Route with the Silinx toolchain and on an iCE40 and a Gowin one; in Portuguese', E, async (page) => {
   await page.eval(() => localStorage.setItem('silinx.ui', 'tasks'));
   await page.reload();
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot' });

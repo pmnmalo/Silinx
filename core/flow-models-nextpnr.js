@@ -3,8 +3,8 @@
 // and the Post-Place & Route model, nextpnr's routed design (its --write JSON, through Yosys's write_verilog: its packed cells,
 // ICESTORM_LC, TRELLIS_COMB …), each simulated with Silinx's models of the family's cells (packages/silinx-hdl/src/
 // ice40-prims.js, ecp5-prims.js, gowin-prims.js; the 7-series' UNISIM ones, unisim.js, unisim-s6.js, unisim-xc7.js). The
-// 7-series' Post-Synthesis model only (#4362): nextpnr-xilinx's routed design is made of its sites' cells (SLICE_LUTX,
-// SLICE_FFX …), which Silinx does not model. No timing (no SDF). As core/flow-models.js's of the Spartan flows:
+// 7-series' routed design is made of its sites' cells (SLICE_LUTX, SLICE_FFX …), made UNISIM's cells again (#4362,
+// core/xc7-routed.js). No timing (no SDF). As core/flow-models.js's of the Spartan flows:
 //   - the design they are made of: synthesized with the generics the test bench (spec.simTop) gives its instance of the
 //     top, declared as the netlist's parameters (its generic map gives them again); without any, this run's synthesis (or the
 //     last run's, in build/open) and this run's routed design (or the last run's, build/open/routed.json);
@@ -17,20 +17,22 @@ import { dutGenerics } from './sim-model.js';
 import { primitiveSources } from './unisim.js';
 import { globalBuffers, gowinAluModes, padNets, routedVerilog, withParameters } from './netlist-verilog.js';
 import { gowinRoutedCells } from './gowin-routed.js';
+import { xc7RoutedCells } from './xc7-routed.js';
 
 /** The families whose flows make these models (nextpnr's routed design, a library of Silinx's models of their cells). */
 export const NEXTPNR_MODEL_FAMILIES = new Set(['ice40', 'ecp5', 'gowin', 'artix7']);
 const CELLS = { ice40: 'iCE40', ecp5: 'ECP5', gowin: 'Gowin', artix7: '7-series' };
-// the models a family's flow makes: the Post-Synthesis and Post-Place & Route ones, the 7-series' Post-Synthesis one
-const nextpnrModels = (family) => (family === 'artix7' ? ['postsynth'] : ['postsynth', 'postpar']);
+// the models a family's flow makes: the Post-Synthesis and Post-Place & Route ones
+const nextpnrModels = () => ['postsynth', 'postpar'];
 const NAMES = { postsynth: 'Post-Synthesis', postpar: 'Post-Place & Route' };
 
 /** The Post-Place & Route model of nextpnr's routed design (its JSON) on a family: its Verilog (run: io.yosys), its module `name`
  *  with `generics` its parameters, the global buffers left out, each pad on a net of its own; the Gowin's cells as nextpnr
- *  names them made the models' again, its ALU chains' ends their LUTs (#4362). */
+ *  names them made the models' again, its ALU chains' ends their LUTs, and the 7-series' sites' cells UNISIM's (#4362). */
 export async function routedModel(routed, { family, run, name, generics = {} }) {
   const gowin = family === 'gowin';
-  const v = withParameters(await routedVerilog(gowin ? gowinRoutedCells(routed) : routed, run, name), generics);
+  const cells = gowin ? gowinRoutedCells(routed) : family === 'artix7' ? xc7RoutedCells(routed) : routed;
+  const v = withParameters(await routedVerilog(cells, run, name), generics);
   return padNets(globalBuffers(gowin ? gowinAluModes(v) : v));
 }
 

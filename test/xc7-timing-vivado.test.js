@@ -480,7 +480,7 @@ test('#3803 nextpnr\'s placement for Vivado: its cells of Vivado\'s netlist at t
   assert.throws(() => placementLines(tab, ['a\tb']), /a cell's name with a tab/);
   // nextpnr run again for its placement with the open flow's own arguments (and --write)
   assert.deepEqual(xc7ParArgs({ part: 'xc7a35tcpg236-1', router: 'router2', xdc: true }), ['--device', 'xc7a35tcpg236-1', '--chipdb', 'chipdb.bin', '--json', 'netlist.json',
-    '-o', 'fasm=routed.fasm', '--report', 'report.json', '--router', 'router2', '--seed', '1', '--timing-allow-fail', '-o', 'xdc=design.xdc']);
+    '-o', 'fasm=routed.fasm', '--write', 'routed.json', '--report', 'report.json', '--router', 'router2', '--seed', '1', '--timing-allow-fail', '-o', 'xdc=design.xdc']);
   assert.deepEqual(xc7ParArgs({ part: 'p', router: 'router1', seed: 3, xdc: false }).slice(-3), ['--seed', '3', '--timing-allow-fail']);
 });
 

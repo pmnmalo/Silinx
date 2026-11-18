@@ -1,11 +1,11 @@
-// The examples' post-place & route models on the iCE40, the ECP5 (#2299) and the Gowin (#4362): each example synthesized by the
+// The examples' post-place & route models on the iCE40, the ECP5 (#2299), the Gowin and the 7-series (#4362): each example synthesized by the
 // family's synthesis with the generics its test bench gives it, placed and routed by the family's back end (its placeRouteNetlist,
 // as the Post-Place & Route model's step does it: nextpnr's --write JSON), made a model by core/flow-models-nextpnr.js routedModel
 // (Yosys's write_verilog, the test bench's generics its parameters, the global buffers left out, each pad on a net of its own; the
-// Gowin's cells as the models name them) and simulated with the family's models (packages/silinx-hdl/src/ice40-prims.js,
-// ecp5-prims.js, gowin-prims.js: its packed cells ICESTORM_LC, TRELLIS_COMB …) in place of its RTL: the test bench passes on it as
-// on the RTL, no warning. The ports have no pins (no constraints: the model is the same), but the Gowin's, whose nextpnr places no
-// port without one: the board's (its CST).
+// Gowin's cells as the models name them, the 7-series' sites' cells UNISIM's) and simulated with the family's models
+// (packages/silinx-hdl/src/ice40-prims.js, ecp5-prims.js, gowin-prims.js: its packed cells ICESTORM_LC, TRELLIS_COMB …; unisim.js)
+// in place of its RTL: the test bench passes on it as on the RTL, no warning. The ports have no pins (no constraints: the model is
+// the same), but the Gowin's and the 7-series', whose nextpnr places no port without one: the board's (its CST, its XDC).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { compile, elaborate } from '../core/compile.js';
@@ -31,8 +31,9 @@ function run(sources, top, until = 1e11) {
 }
 
 /** The tests of a family: backend (ICE40, ECP5), spec (its device), nextpnr (io.nextpnr's entry), library (its file), cells (the
- *  packed cells the examples' routed designs are made of), constraints (of an example: its back end's model of them, or null). */
-export function routedTests({ name, backend, spec, nextpnr, library, cells, constraints = () => null }) {
+ *  packed cells the examples' routed designs are made of), constraints (of an example: its back end's model of them, or null),
+ *  io (the run's io's other entries: the 7-series' bitDb). */
+export function routedTests({ name, backend, spec, nextpnr, library, cells, constraints = () => null, io = {} }) {
   const seen = new Set();
   for (const ex of EXAMPLES) {
     test(`example ${ex}: its test bench passes on its ${name} post-place & route model as on its RTL, no warning`, { timeout: 900000 }, async () => {
@@ -44,7 +45,7 @@ export function routedTests({ name, backend, spec, nextpnr, library, cells, cons
       assert.deepEqual(fe.errors, [], ex);
       const r = await backend.synth(fe.input(), { run: yosysNode });
       const text = r.files[`${r.top}.json`];
-      const ctx = { io: { nextpnr: nextpnr(), read: () => null, write: (n) => n }, spec, log: () => {}, report: { files: {} }, top: r.top, ms: () => '', now: () => 0,
+      const ctx = { io: { nextpnr: nextpnr(), read: () => null, write: (n) => n, ...io }, spec, log: () => {}, report: { files: {} }, top: r.top, ms: () => '', now: () => 0,
         constraints: () => constraints(ex), netlistText: () => text, readNetlist: () => {}, util: (n, used, total) => ({ name: n, used, total, percent: 0 }), StepError };
       const routed = await backend.mount(ctx).placeRouteNetlist(text, r.top);
       for (const c of Object.values(Object.values(JSON.parse(routed).modules)[0].cells)) seen.add(c.type);

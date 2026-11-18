@@ -104,9 +104,9 @@ test('run_process with the Silinx toolchain on the Basys 3: synth_xilinx, nextpn
   const timing = await ok('get_report', { project: 'o3', report: 'timing' });
   assert.equal(timing.data.path, 'build/open/timing.txt');
   assert.match(timing.text, /^Timing of xc7a35tcpg236-1 after Place & Route: nextpnr's estimate .*\n.*\n\nClock clk: [\d.]+ MHz \([\d.]+ ns\), constraint 100 MHz: met\n/);
-  // (a simulation model the 7-series flow does not make, the post-place & route one: refused before the back end, as simulate
-  // refuses it, #3707, #4362)
-  await fails('run_process', { project: 'o3', process: 'post_par_model', toolchain: 'silinx' }, 'the Artix-7 flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one');
+  // (a simulation model the 7-series flow does not make, the post-map one: refused before the back end, as simulate refuses
+  // it, #3707, #4362)
+  await fails('run_process', { project: 'o3', process: 'post_map_model', toolchain: 'silinx' }, 'the Artix-7 flow makes no post-map simulation model (only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one');
   // (AMD Vivado stays the project's own when no toolchain is asked: the project made through the MCP server, not trusted)
   const untrusted = 'project \'o3\' was made through the MCP server (by an assistant): AMD Vivado runs only once you trust it (Trust Project, in the console when the project opens)';
   await fails('run_process', { project: 'o3', process: 'synthesize' }, untrusted);
@@ -129,11 +129,12 @@ test('set_design_properties: the Artix-7\'s synthesis tool, vivado or silinx; ru
   assert.equal((await ok('set_design_properties', { project: 'c3', board: 'basys2' })).data.synthTool, 'silinx');
 });
 
-// (#4362) the Artix-7's Post-Synthesis model: the Silinx toolchain's (Yosys's netlist of UNISIM's 7-series cells, simulated
-// with Silinx's models of them), as the interface lists it; AMD Vivado's flow none, the post-place & route one none
-test('#4362 the Artix-7\'s post-synthesis model with the Silinx toolchain: run_process post_synthesis_model, simulate model postsynth; refused with AMD Vivado\'s flow', async () => {
+// (#4362) the Artix-7's Post-Synthesis and Post-Place & Route models: the Silinx toolchain's (Yosys's netlist of UNISIM's 7-series
+// cells; nextpnr's routed design, its sites' cells made those again, core/xc7-routed.js; simulated with Silinx's models of them),
+// as the interface lists them; AMD Vivado's flow none, the post-translate and post-map ones none
+test('#4362 the Artix-7\'s models with the Silinx toolchain: run_process post_synthesis_model and post_par_model, simulate model postsynth and postpar; refused with AMD Vivado\'s flow', { timeout: 900000 }, async () => {
   await ok('new_project_from_example', { name: 'm3', example: 'gates', board: 'basys3' });
-  const vivado = 'AMD Vivado\'s flow makes no post-synthesis simulation model of the Artix-7 (the Silinx toolchain\'s makes its post-synthesis one: toolchain \'silinx\', or the project\'s synthesis tool Silinx): simulate the behavioral model';
+  const vivado = 'AMD Vivado\'s flow makes no post-synthesis simulation model of the Artix-7 (the Silinx toolchain\'s makes its post-synthesis and post-place & route ones: toolchain \'silinx\', or the project\'s synthesis tool Silinx): simulate the behavioral model';
   await fails('simulate', { project: 'm3', model: 'postsynth', generate: true, time_ns: 100 }, vivado);
   await fails('run_process', { project: 'm3', process: 'post_synthesis_model' }, vivado);
   const r = await ok('run_process', { project: 'm3', process: 'post_synthesis_model', toolchain: 'silinx' });
@@ -145,9 +146,18 @@ test('#4362 the Artix-7\'s post-synthesis model with the Silinx toolchain: run_p
   const s = await ok('simulate', { project: 'm3', model: 'postsynth', time_ns: 1000, signals: [] });
   assert.deepEqual([s.data.failed, s.data.log.map(l => l.text)], [false, ['Simulation finished OK']]);
   assert.ok(!/WARNING/.test(s.text), s.text);
-  const message = 'the Artix-7 flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
-  await fails('simulate', { project: 'm3', model: 'postpar', generate: true, time_ns: 100 }, message);
-  await fails('run_process', { project: 'm3', process: 'post_par_model' }, message);
+  // (the Post-Place & Route model: nextpnr's routed design, no warning; the test bench passes on it)
+  const par = await ok('run_process', { project: 'm3', process: 'post_par_model' });
+  assert.deepEqual([par.data.toolchain, par.data.ok, par.data.errors, par.data.warnings], ['silinx', true, [], []]);
+  assert.ok(par.data.log.some(l => /^Post-Place & Route Simulation Model: build\/netgen\/par\/gates_timesim\.v \(Verilog, the 7-series cells\), \d+ cells$/.test(l)), par.data.log.join('\n'));
+  const routed = fs.readFileSync(path.join(P.projectDir('m3'), 'build/netgen/par/gates_timesim.v'), 'utf8');
+  assert.match(routed, /\n {2}LUT\d #\(/);
+  assert.ok(!/SLICE_LUTX|IOB33|PSEUDO_/.test(routed), 'the sites\' cells made UNISIM\'s');
+  const p = await ok('simulate', { project: 'm3', model: 'postpar', time_ns: 1000, signals: [] });
+  assert.deepEqual([p.data.failed, p.data.log.map(l => l.text)], [false, ['Simulation finished OK']]);
+  assert.ok(!/WARNING/.test(p.text), p.text);
+  await fails('simulate', { project: 'm3', model: 'postmap', generate: true, time_ns: 100 }, 'the Artix-7 flow makes no post-map simulation model (only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one');
+  await fails('run_process', { project: 'm3', process: 'post_map_model' }, 'the Artix-7 flow makes no post-map simulation model (only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one');
 });
 
 // (#3895, #2674) the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, as Design Properties locks it; run_process
