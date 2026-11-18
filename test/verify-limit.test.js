@@ -1,11 +1,11 @@
 // The formal checks' time limit (#3261, core/verify-limit.js): Yosys's run stopped when the limit passes (its signal
-// aborted), the clock cycles its log shows checked by then, the verdict 'timeout' of Verify Equivalence, Verify Assertions
+// aborted; runWithin keeps a finished run's files, #3262), the clock cycles its log shows checked by then, the verdict 'timeout' of Verify Equivalence, Verify Assertions
 // and Verify Property, and their messages: a warning when some cycles were checked, an error when none was; a limit out
 // of range refused. Yosys stands in here (a run that never ends, its lines given); blinky's ASM chart stopped in the real
 // Yosys (a worker thread terminated) in test/verify-props.test.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { runLimited, cyclesChecked, timeLimitError, VERIFY_TIME_LIMIT, MAX_TIME_LIMIT } from '../core/verify-limit.js';
+import { runLimited, runWithin, cyclesChecked, timeLimitError, VERIFY_TIME_LIMIT, MAX_TIME_LIMIT } from '../core/verify-limit.js';
 import { verifyEquivalence, verifyMessages, VERIFY_TIME_LIMIT as FROM_VERIFY } from '../core/verify.js';
 import { verifyAssertions, assertMessages } from '../core/verify-assert.js';
 import { verifyProperty, propertyMessages } from '../core/verify-props.js';
@@ -45,6 +45,10 @@ test('runLimited: a run that finishes in time (its result), one stopped (its sig
   assert.deepEqual(stops, [['x']]);
   assert.deepEqual(await runLimited(() => new Promise(() => {}), [], {}, () => {}, 0.05), { timedOut: true });
   await assert.rejects(runLimited(async () => { throw new Error('Yosys failed (exit code 1)'); }, [], {}, () => {}, 1), /exit code 1/);
+  // (runWithin: the run's output files kept, #3262)
+  assert.deepEqual(await runWithin(async () => ({ 'a.aig': 'x' }), [], {}, () => {}, 1), { timedOut: false, files: { 'a.aig': 'x' } });
+  assert.deepEqual(await runWithin(async () => undefined, [], {}, () => {}, 1), { timedOut: false, files: {} });
+  assert.deepEqual(await runWithin(hanging(), ['y'], {}, () => {}, 0.05), { timedOut: true });
 });
 
 test('the limit: 60 s by default, from 1 to 3600 s', () => {
@@ -55,11 +59,15 @@ test('the limit: 60 s by default, from 1 to 3600 s', () => {
 
 test('Verify Equivalence and Verify Assertions stopped: timeout, the cycles checked, a warning (an error when none was)', async () => {
   const srcs = [CNT('cnt', 1), CNT('cnt_ref', 1)];
+  // (Verify Equivalence: its structural proof stopped at half the limit, then ABC's run at the limit, #3262: ABC writes
+  // its lines when it ends, so a run stopped has checked no cycle it can tell; ABC's own limits, which end it before,
+  // and the cycles it then says it checked: test/verify-abc.test.js)
+  stops.length = 0;
   const e = await verifyEquivalence(srcs, { top: 'cnt', reference: 'cnt_ref', timeLimit: 0.2, run: hanging(LOG) });
-  assert.deepEqual([e.status, e.checked, e.timeLimit, e.errors], ['timeout', 2, 0.2, []]);
+  assert.deepEqual([e.status, e.checked, e.timeLimit, e.errors, stops.length], ['timeout', 0, 0.2, [], 2]);
   assert.deepEqual(msgs(verifyMessages(e)).slice(2), [
-    ['warn', 'WARNING:Verify - the check did not finish in 0.2 s (its time limit): no difference in the first 2 clock cycle(s), not checked beyond them: a larger time limit, or a smaller depth.'],
-    ['ok', 'Process "Verify Equivalence" completed successfully with 1 warning(s)'],
+    ['err', 'ERROR:Verify - the check did not finish in 0.2 s (its time limit): no clock cycle checked; a larger time limit, or a smaller depth.'],
+    ['err', 'Process "Verify Equivalence" failed'],
   ]);
   const a = await verifyAssertions([CNT('cnt', 1)], { top: 'cnt', timeLimit: 0.2, run: hanging(LOG.slice(0, 3)) });
   assert.deepEqual([a.status, a.checked], ['timeout', 1]);

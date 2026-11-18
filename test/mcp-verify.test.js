@@ -39,7 +39,7 @@ const REF = top => `module cnt_ref (input clk, rst, en, output [3:0] q);
   always @(posedge clk) if (rst) c <= 0; else if (en) c <= ${top === 15 ? 'c + 1' : `(c == ${top}) ? 0 : c + 1`};
 endmodule
 `;
-const HEAD = ['Started : "Verify Equivalence".', 'Verifying \'cnt\' against its reference \'cnt_ref\': Yosys\'s SAT solver, at most 20 clock cycle(s), then a proof by induction.'];
+const HEAD = ['Started : "Verify Equivalence".', 'Verifying \'cnt\' against its reference \'cnt_ref\': a structural proof (Yosys\'s equivalence passes), else ABC\'s check over at most 20 clock cycle(s), then its proof (pdr).'];
 
 before(async () => {
   tmp = await scratchEnv('silinx-mcp-verify-');
@@ -77,11 +77,13 @@ test('verify: written again by the next check; the reference fixed: proved; a de
   await ok('verify', { project: 'v', reference: 'cnt_ref' });
   await ok('write_file', { project: 'v', path: 'sim/cnt_ref.v', text: REF(15) });
   const p = await ok('verify', { project: 'v', module: 'cnt', reference: 'cnt_ref' });
-  assert.equal(p.text, [...HEAD, 'Proved: \'cnt\' gives the outputs of \'cnt_ref\' for every input sequence (by induction over 1 clock cycle(s)).', 'Process "Verify Equivalence" completed successfully'].join('\n'));
-  assert.deepEqual(p.data, { project: 'v', module: 'cnt', reference: 'cnt_ref', status: 'proved', depth: 20, induction: 1, errors: [], warnings: [] });
+  assert.equal(p.text, [...HEAD, 'Proved: \'cnt\' gives the outputs of \'cnt_ref\' for every input sequence (signal by signal by induction, the signals matched by name).', 'Process "Verify Equivalence" completed successfully'].join('\n'));
+  // (the proof's method, #3262)
+  assert.deepEqual(p.data, { project: 'v', module: 'cnt', reference: 'cnt_ref', status: 'proved', depth: 20, method: 'structural', errors: [], warnings: [] });
   await ok('write_file', { project: 'v', path: 'sim/cnt_ref.v', text: REF(9) });
   const b = await ok('verify', { project: 'v', reference: 'cnt_ref', depth: 5 });
-  assert.deepEqual([b.data.status, b.text.split('\n').slice(2)], ['bounded', ['WARNING:Verify - no difference in the first 5 clock cycle(s), but not proved beyond them (the induction did not succeed): a larger depth checks more cycles.',
+  // (the difference after the depth, ABC's pdr's: its clock cycle, #3262)
+  assert.deepEqual([b.data.status, b.data.beyond, b.text.split('\n').slice(2)], ['bounded', 11, ['WARNING:Verify - no difference in the first 5 clock cycle(s), but ABC\'s pdr finds one at clock cycle 11: a depth of 11 shows it.',
     'Process "Verify Equivalence" completed successfully with 1 warning(s)']]);
   // test_bench false: the counterexample only
   await ok('delete_file', { project: 'v', path: 'sim/verify_cnt.vhd' });

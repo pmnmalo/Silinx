@@ -1,17 +1,19 @@
-// Silinx - formal verification (#3177): the equivalence of a module with a reference module, proved by Yosys's own SAT
-// solver, in the browser (Yosys WASM) as on the server. Silinx's front end writes each of the two modules as the open
-// synthesis's flat SystemVerilog (core/synth-verilog.js: VHDL and Verilog alike); Yosys joins them in a miter (the same
-// inputs to both, an assertion that their outputs are equal) and `sat -tempinduct` checks it cycle by cycle from the
-// initial state (a bounded model check, the shortest difference first), trying at each depth a proof by induction (then
-// the modules are equivalent for every input sequence). A difference is a counterexample: the inputs of each clock cycle
-// and both modules' outputs, which core/verify-bench.js makes a test bench of (the simulator replays it, the waveform
-// viewer shows it).
+// Silinx - formal verification (#3177): the equivalence of a module with a reference module, in the browser (Yosys
+// WASM) as on the server. Silinx's front end writes each of the two modules as the open synthesis's flat SystemVerilog
+// (core/synth-verilog.js: VHDL and Verilog alike), and Yosys checks them (core/verify-abc.js, #3262): first a structural
+// proof (the two modules' signals matched by name, each pair proved equal by induction: a module against a transformed
+// copy of itself, whatever its size), else the two joined in a miter (the same inputs to both, their outputs compared)
+// checked by ABC: a bounded model check cycle by cycle from the initial state (the shortest difference first), then a
+// proof for every input sequence (pdr). A difference is a counterexample: the inputs of each clock cycle and both
+// modules' outputs, which core/verify-bench.js makes a test bench of (the simulator replays it, the waveform viewer
+// shows it). (verifyScript and readVerifyLog, Yosys's `sat -tempinduct`, are the assertions' engine, core/verify-assert.js.)
 //
 //   const r = await verifyEquivalence(sources, { top, reference, depth, timeLimit, run, onLine })
-//   r: { status: 'proved' | 'bounded' | 'failed' | 'timeout' | 'error', errors, warnings, depth, induction (the proof's length),
+//   r: { status: 'proved' | 'bounded' | 'failed' | 'timeout' | 'error', errors, warnings, depth, method (a proof's:
+//        'structural', 'pdr', 'reach' (every reachable state explored) or 'sat', a combinational miter's), induction (the proof's length, 'induction''s),
 //        cycles: [{ in: { port: bits }, uut: { port: bits }, ref: { port: bits } }] (the counterexample), cycle (its
 //        difference's, from 1), differs: [port], ports: [{ name, dir, width, uut, ref }] (core/testbench.js tbPorts'),
-//        clocks: [port], log }; timeout (core/verify-limit.js, #3261): Yosys stopped after timeLimit seconds, checked (the
+//        clocks: [port], log }; bounded: beyond (the clock cycle of a difference found after the depth); timeout (core/verify-limit.js, #3261): Yosys stopped after timeLimit seconds, checked (the
 //        clock cycles it had checked with no difference by then)
 //
 // The model: every register takes its next value once per clock cycle (one clock: the designs of a course; their
@@ -22,7 +24,8 @@ import { primitiveSources } from './unisim.js';
 import { toVerilog, signedInt } from './synth-verilog.js';
 import { tbPorts } from './testbench.js';
 import { clocksOf } from './schematic.js';
-import { VERIFY_TIME_LIMIT, timeLimitError, runLimited, cyclesChecked, timeoutText } from './verify-limit.js';
+import { VERIFY_TIME_LIMIT, timeLimitError, runWithin, timeoutText } from './verify-limit.js';
+import { structuralScript, readStructural, abcScript, abcFiles, readAbc, replayWitness, BMC_CEX, PDR_CEX, SAT_CEX } from './verify-abc.js';
 
 export const VERIFY_DEPTH = 20;
 export const MAX_DEPTH = 1000;
@@ -168,18 +171,64 @@ export async function verifyEquivalence(sources, { top, reference, referenceSour
       warnings.push(...v.warnings.map(w => `${m.unit.name}: ${w.message ?? w}`));
     } catch (e) { return error(`'${m.unit.name}' cannot be verified: ${e.message}`); }
   }
-  const lines = [];
-  let t;
-  try { t = await runLimited(run, ['-p', verifyScript(depth)], files, l => { lines.push(l); onLine(l); }, timeLimit); }
-  catch (e) { return { ...error(e.message), log: lines }; }
   const refBy = new Map(ref.ports.map(p => [p.name, p]));
   const ports = uut.ports.map(p => ({ name: p.name, dir: p.dir, width: p.width, uut: p, ref: refBy.get(p.name) }));
   const outputs = ports.filter(p => p.dir === 'out').map(p => p.name);
-  const r = t ? { status: 'timeout', timeLimit, checked: cyclesChecked(lines), warnings: [] } : readVerifyLog(lines, outputs);
-  if (r.status === 'error') return { ...error('Yosys gave no result (its log has neither a proof nor a counterexample)'), log: lines };
+  const lines = [];
+  let r;
+  try { r = await checkMiter(run, files, { depth, timeLimit, outputs, onLine: l => { lines.push(l); onLine(l); } }); }
+  catch (e) { return { ...error(e.message), log: lines }; }
+  if (r.status === 'error') return { ...error(r.message), log: lines };
   const clocks = [...new Set([...uut.clocks, ...ref.clocks])];
   return { ...r, errors: [], warnings: [...warnings, ...r.warnings], depth, top: uut.unit.name, reference: ref.unit.name,
     lang: uut.unit.lang, ports, clocks, log: lines };
+}
+
+/**
+ * The two modules' check (files: silinx_ref.sv, silinx_uut.sv) within timeLimit seconds: the structural proof (half of
+ * the time at most), then ABC's. { status, method, cycles, cycle, differs } | { status: 'timeout', timeLimit, checked }
+ * | { status: 'error', message }, with warnings: Yosys's of the structural proof's run, which reads the two modules as
+ * the other does (ABC's run's own are of its netlists for ABC: an input bit write_aiger calls undriven).
+ */
+async function checkMiter(run, files, opts) {
+  const s = [];
+  const r = await checkMiterIn(run, files, s, opts);
+  return { ...r, warnings: s.filter(l => /^Warning: /.test(l)).map(l => l.replace(/^Warning: /, '')) };
+}
+
+async function checkMiterIn(run, files, s, { depth, timeLimit, outputs, onLine }) {
+  const t0 = Date.now();
+  const left = () => timeLimit - (Date.now() - t0) / 1000;
+  // (a structural proof that fails, or that Yosys refuses: ABC's check decides)
+  const st = await runWithin(run, ['-p', structuralScript()], files, l => { s.push(l); onLine(l); }, timeLimit / 2).catch(() => ({ timedOut: false }));
+  if (!st.timedOut && readStructural(s).proved) return { status: 'proved', method: 'structural' };
+  const a = [];
+  // (bmc3 and pdr each given 40% of the time left, Yosys's own work before them the rest)
+  const w = await runWithin(run, ['-p', abcScript(depth, left() * 0.4)], { ...files, ...abcFiles() }, l => { a.push(l); onLine(l); }, Math.max(left(), 0.001));
+  if (w.timedOut) return { status: 'timeout', timeLimit, checked: 0 };
+  const r = readAbc(a);
+  if (r.latches === null) return { status: 'error', message: 'Yosys gave no result (its log has neither a proof nor a counterexample)' };
+  const failed = (frame, cex) => {
+    const cycles = replayWitness(w.files, cex);
+    const cycle = frame + 1;
+    if (!cycles || cycles.length < cycle || !cycles[frame].trigger) return { status: 'error', message: 'ABC\'s counterexample could not be replayed' };
+    const last = cycles[frame];
+    return { status: 'failed', cycles: cycles.slice(0, cycle).map(({ trigger, ...c }) => c), cycle, differs: outputs.filter(n => last.uut[n] !== last.ref[n]) };
+  };
+  if (r.latches === 0) return r.sat === 'proved' ? { status: 'proved', method: 'sat' } : r.sat ? failed(0, SAT_CEX) : { status: 'timeout', timeLimit, checked: 0 };
+  if (r.bmc.frame !== undefined) return failed(r.bmc.frame, BMC_CEX);
+  if (r.bmc.reached) return { status: 'proved', method: 'reach' };
+  if (r.pdr === 'proved') return { status: 'proved', method: 'pdr' };
+  if (r.pdr && r.pdr.frame < depth && r.bmc.checked < r.pdr.frame) return failed(r.pdr.frame, PDR_CEX);
+  // (a difference pdr found after the depth: bounded, its clock cycle said)
+  if (r.bmc.checked >= depth) return { status: 'bounded', ...(r.pdr ? { beyond: r.pdr.frame + 1 } : {}) };
+  return { status: 'timeout', timeLimit, checked: r.bmc.checked };
+}
+
+/** How a proof was made, for its messages: "by induction over 2 clock cycle(s)", "signal by signal by induction…". */
+export function provedBy(r) {
+  return { structural: 'signal by signal by induction, the signals matched by name', pdr: 'by an inductive invariant, ABC\'s pdr',
+    reach: 'every reachable state explored, ABC\'s bmc3', sat: 'by ABC\'s SAT solver' }[r.method] ?? `by induction over ${r.induction} clock cycle(s)`;
 }
 
 export const VERIFY_PROCESS = 'Verify Equivalence';
@@ -198,14 +247,15 @@ export function verifyMessages(r, { top = r.top, reference = r.reference, bench 
     end(false);
     return M;
   }
-  M.push({ text: `Verifying '${top}' against its reference '${reference}': Yosys's SAT solver, at most ${r.depth} clock cycle(s), then a proof by induction.`, kind: 'info' });
+  M.push({ text: `Verifying '${top}' against its reference '${reference}': a structural proof (Yosys's equivalence passes), else ABC's check over at most ${r.depth} clock cycle(s), then its proof (pdr).`, kind: 'info' });
   const warns = r.warnings.map(w => ({ text: `WARNING:Verify - ${w}`, kind: 'warn' }));
   M.push(...warns);
   if (r.status === 'proved') {
-    M.push({ text: `Proved: '${top}' gives the outputs of '${reference}' for every input sequence (by induction over ${r.induction} clock cycle(s)).`, kind: 'ok' });
+    M.push({ text: `Proved: '${top}' gives the outputs of '${reference}' for every input sequence (${provedBy(r)}).`, kind: 'ok' });
     end(true, warns.length);
   } else if (r.status === 'bounded') {
-    M.push({ text: `WARNING:Verify - no difference in the first ${r.depth} clock cycle(s), but not proved beyond them (the induction did not succeed): a larger depth checks more cycles.`, kind: 'warn' });
+    M.push({ text: r.beyond ? `WARNING:Verify - no difference in the first ${r.depth} clock cycle(s), but ABC's pdr finds one at clock cycle ${r.beyond}: a depth of ${r.beyond} shows it.`
+      : `WARNING:Verify - no difference in the first ${r.depth} clock cycle(s), but not proved beyond them (no proof found in the time limit): a larger depth checks more cycles.`, kind: 'warn' });
     end(true, warns.length + 1);
   } else if (r.status === 'timeout') {
     timeoutEnd(M, r, 'no difference', end, warns.length);
