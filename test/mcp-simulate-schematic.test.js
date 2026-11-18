@@ -1,7 +1,9 @@
 // simulate_drawing of a schematic (server/mcp-simulate-schematic.js, #3827, #2674): Try it's live simulation through the
 // MCP server, a 4-bit register made from a 1-bit one (reg(3:0), place_instance) in VHDL and in Verilog: per cycle its
 // inputs set and its clock cycled, its output and the arrayed instance's pins (its copies' values side by side, the
-// clock and the enable shared) read, as core/schlive.js reads them; no warnings; a schematic that cannot be simulated.
+// clock and the enable ticked in its Shared pins) read, as core/schlive.js reads them; no warnings; not ticked, the
+// clock and the enable on 1-bit markers still shared, with a warning each (#4451, #4486); a schematic that cannot be
+// simulated.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,7 +27,7 @@ const REG = {
 };
 const TOP = { vhdl: ['src/top.vhd', 'entity top is end top;\narchitecture a of top is begin end a;\n'], verilog: ['src/top.v', 'module top;\nendmodule\n'] };
 
-async function project(name, lang) {
+async function project(name, lang, shared = ['ce', 'c']) {
   await ok('new_project', { name });
   await ok('write_file', { project: name, path: REG[lang][0], text: REG[lang][1] });
   await ok('write_file', { project: name, path: TOP[lang][0], text: TOP[lang][1] });
@@ -33,7 +35,7 @@ async function project(name, lang) {
   const doc = { version: 4, name: 'top', lang, generatedFile: TOP[lang][0], sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [],
     ports: [marker('P1', 'd', 'in', 4, 100), marker('P2', 'ce', 'in', 1, 200), marker('P3', 'clk', 'in', 1, 300), marker('P4', 'q', 'out', 4, 100)] };
   await ok('write_file', { project: name, path: 'src/top.sch.json', text: JSON.stringify(doc) });
-  await ok('place_instance', { project: name, path: 'src/top.sch.json', module: 'reg1', name: 'reg(3:0)', x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' } });
+  await ok('place_instance', { project: name, path: 'src/top.sch.json', module: 'reg1', name: 'reg(3:0)', x: 300, y: 200, connect: { d: 'd', ce: 'ce', c: 'clk', q: 'q' }, ...(shared ? { shared } : {}) });
 }
 
 for (const lang of ['vhdl', 'verilog']) {
@@ -53,6 +55,20 @@ for (const lang of ['vhdl', 'verilog']) {
     assert.deepEqual(r.data.cycles[1], { cycle: 1, inputs: { d: 6, ce: 1 }, outputs: { q: '0110' }, instances: { 'reg(3:0)': { d: '0110', ce: '1', c: '0', q: '0110' } } });
   });
 }
+
+// Regression (#4486): the clock and the enable on 1-bit I/O markers, not ticked in Shared pins: shared by the copies all
+// the same (the simulation as when ticked), each said in a warning as Check says it (#4451)
+test('#4486 simulate_drawing: an arrayed instance\'s clock and enable on 1-bit markers, not ticked shared: shared, with a warning each', async () => {
+  await project('w', 'vhdl', null);
+  const r = await ok('simulate_drawing', { project: 'w', file: 'src/top.sch.json', cycles: [{ d: 6, ce: 1 }] });
+  const warnings = [
+    "reg(3:0): pin ce is shared by its 4 copies: its net 'ce' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus",
+    "reg(3:0): pin c is shared by its 4 copies: its net 'clk' is 1 bit wide; tick it in Shared pins, or connect it to a 4-bit bus",
+  ];
+  assert.deepEqual(r.data.warnings, warnings);
+  assert.deepEqual(r.text.split('\n'), [...warnings.map(w => `WARNING: ${w}`), 'top.sch.json: 1 clock cycle(s) of clk:',
+    'cycle 0: inputs d=0110 ce=1; outputs q=0110; reg(3:0): d=0110 ce=1 c=0 q=0110']);
+});
 
 test('#3827 simulate_drawing of a schematic: its inputs checked, a schematic with an error not simulated', async () => {
   await project('e', 'vhdl');
