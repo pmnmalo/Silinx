@@ -45,6 +45,7 @@ Contributions are welcome: bug reports, ideas and pull requests.
   [ONBOARDING.md](ONBOARDING.md) about the maintainer's own sessions, the ISE machine and talking with the maintainer do
   not apply to you.
 
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) explains how to install and run Silinx from source. By
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) explains how to install and run Silinx from source, and
+[docs/README.md](docs/README.md) lists the developers' documents. By
 contributing you agree that your contribution is licensed under the project's licence (AGPL-3.0-only,
 see [LICENSE](LICENSE) and [NOTICE](NOTICE)).
