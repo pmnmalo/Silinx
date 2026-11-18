@@ -353,3 +353,26 @@ test('slices with a variable\'s bounds: read, written (a variable, a signal), co
   end process;`, `signal s : std_logic_vector(7 downto 0) := (others => '0');`));
   assert.deepEqual(r, ['l=00000110', '0110 2 0', 'equal', 'l=01010110', 'u=00110000', 'l=11111111', 's=00010110']);
 });
+
+// Regression (#4476): since #4358 a function's slice with a parameter's bounds took its prefix's width, so the function
+// bound without its constant arguments returned 28 bits (the stopwatch's to_decimal: width mismatch warnings)
+test('a function\'s slice with its parameter\'s bounds: the width of its constant arguments, no warning (#4476)', () => {
+  const r = outW(vhd(`
+  process begin
+    wait for 1 ns;
+    q <= quotient(x, 13108, 16);
+    r <= quotient(x, 3277, 15);
+    wait for 1 ns;
+    report to_string(q) & " " & to_string(r) & " " & integer'image(to_integer(q)) & " " & integer'image(to_integer(r));
+    wait;
+  end process;`, `signal q, r : unsigned(3 downto 0);
+  signal x : unsigned(13 downto 0) := to_unsigned(1234, 14);
+  function quotient (x : unsigned(13 downto 0); recip : integer; shift : integer) return unsigned is
+    variable p : unsigned(27 downto 0);
+  begin
+    p := x * to_unsigned(recip, 14);
+    return p(shift + 3 downto shift);
+  end function;`));
+  // (1234 * 13108 = 16175272: bits 19..16 = 6; 1234 * 3277 = 4043818: bits 18..15 = 11)
+  assert.deepEqual(r, ['0110 1011 6 11']);
+});
