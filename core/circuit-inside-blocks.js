@@ -4,7 +4,7 @@
 // another IC (a counter, a register, a decoder, a multiplexer, an adder) one box over its body. Each pin's line straight
 // into its box's edge; in the box, its name, a clock's dynamic indicator ▷ (its bubble on a falling edge), a bubble on an
 // active-low input. IEC 60617-12's labels too (1D, 1J, 1K, C1, S, R; the box's general qualifier: CTR, SRG, RG, X/Y,
-// MUX, Σ, COMP), as Settings ▸ Schematic Symbols draws them. In pixels, from the part's pins unturned. Isomorphic module.
+// MUX, HPRI/BIN, ALU, CPG, Σ, COMP), as Settings ▸ Schematic Symbols draws them. In pixels, from the part's pins unturned. Isomorphic module.
 
 const BAR = '̅';
 const STUB = 12;     // a box's edge from its pins' row
@@ -18,7 +18,8 @@ const isLow = (name) => name.includes(BAR);
 // a unit's pin's IEC label (a flip-flop's or a latch's: its control dependency notation)
 const IEC_PIN = { D: '1D', J: '1J', K: '1K', CLK: 'C1', PRE: 'S', PR: 'S', CLR: 'R', S: 'S', R: 'R', S1: 'S', S2: 'S', C: 'C1', Q: '', 'C,2C': 'C1', 'C,4C': 'C1' };
 // a box's IEC general qualifier, by its IC's title
-const QUALIFIERS = [[/counter/i, 'CTR'], [/shift register/i, 'SRG'], [/7-segment/i, 'BCD/7SEG'], [/decoder/i, 'X/Y'], [/multiplexer|selector/i, 'MUX'], [/adder/i, 'Σ'],
+const QUALIFIERS = [[/counter/i, 'CTR'], [/shift register/i, 'SRG'], [/7-segment/i, 'BCD/7SEG'], [/decoder/i, 'X/Y'], [/multiplexer|selector/i, 'MUX'], [/priority encoder/i, 'HPRI/BIN'],
+  [/arithmetic logic unit/i, 'ALU'], [/carry generator/i, 'CPG'], [/adder/i, 'Σ'],
   [/comparator/i, 'COMP'], [/register|flip-flop|latch/i, 'RG']];
 export const qualifierOf = (title) => QUALIFIERS.find(([re]) => re.test(title))?.[1] ?? '';
 

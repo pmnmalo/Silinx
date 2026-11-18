@@ -17,16 +17,26 @@ import { designKind } from './project-kind-flag.js';
  *  Schematic Symbols' by default) a gate's, an inverter's or a buffer's qualifier in its box (&, ≥1, =1, 1), or the
  *  qualifier given (an MSI block's: CTR, MUX…) in its body, as large as the box lets it at that size (#4524: its texts
  *  are not the preview's, they would be too small). */
+// (a qualifier's smallest size in a thumbnail, its card's larger: #4531)
+const MIN_Q = 4;
 export function symbolPreview(sym, def, { W = 54, H = 34, cls = 'se-pv', std = getSymbolStandard(), qualifier = null, zoom = 1 } = {}) {
   // (zoom: how much larger than its size on the sheet it may be drawn, a tip's card's)
   const pad = 4, sc = Math.min(zoom, (W - 2 * pad) / def.w, (H - 2 * pad) / def.h);
   const ox = (W - def.w * sc) / 2, oy = (H - def.h * sc) / 2;
   const s = sv('svg', { class: cls, viewBox: `0 0 ${W} ${H}`, width: W, height: H });
   s.innerHTML = `<g transform="translate(${r1(ox)},${r1(oy)}) scale(${r1(sc * 100) / 100})">${bodySvg(sym, def, std)}</g>`;
-  // (an MSI block's left out when it would not fit: a tall one's, a multiplexer's; its tip's card larger says it)
+  // (an MSI block's too, always, as its tip's card draws it, #4531: one too long for its box on two lines at its '/'
+  // (BCD/7SEG), else smaller)
+  const text = (x, y, size, label) => s.append(sv('text', { class: 'pv-q', x: r1(x), y: r1(y), 'font-size': size, 'text-anchor': 'middle', 'data-no-i18n': 'true' }, label));
   if (std === 'iec') for (const { label, x, y, w, h: bh } of qualifierBoxes(def, qualifier)) {
-    const f = fitQualifier(label, { x: ox + x * sc, y: oy + y * sc, w: w * sc, h: bh * sc }, { max: 14 * Math.max(1, sc) });
-    if (f.fits || !qualifier) s.append(sv('text', { class: 'pv-q', x: r1(f.x), y: r1(f.y), 'font-size': f.size, 'text-anchor': 'middle', 'data-no-i18n': 'true' }, label));
+    const box = { x: ox + x * sc, y: oy + y * sc, w: w * sc, h: bh * sc }, f = fitQualifier(label, box, { max: 14 * Math.max(1, sc) });
+    const cut = label.indexOf('/') + 1;
+    if (f.fits || !qualifier) text(f.x, f.y, f.size, label);
+    else if (cut > 0 && cut < label.length) {
+      const lines = [label.slice(0, cut), label.slice(cut)];
+      const g = fitQualifier(lines[0].length >= lines[1].length ? lines[0] : lines[1], { ...box, h: box.h / 2 }, { min: MIN_Q, max: 14 * Math.max(1, sc) });
+      lines.forEach((l, k) => text(g.x, box.y + box.h / 2 + g.size * (k ? 1.05 : -0.05), g.size, l));
+    } else { const g = fitQualifier(label, box, { min: MIN_Q, max: 14 * Math.max(1, sc) }); text(g.x, g.y, g.size, label); }
   }
   return s;
 }
