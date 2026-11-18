@@ -65,6 +65,8 @@ const ALLOW = [
   ['test/collab-runs.test.js', /^(\/Users\/ana|\/home\/rui|C:\\{2}Users\\{2}Rui|ana@ise\.example\.org)$/,
     "the redaction test's made-up home folders and ISE login (a host of example.org, RFC 2606), placeholders since (in the history only, #4167)"],
   ['server/git.js', /^(token@github\.com|https:\/\/user:token@github\.com)$/, "a made-up login in a comment's example of a URL with credentials (in the history only, #3365)"],
+  [/^test\/collab-(loopback|meet)\.test\.js$/, /^(11111111-2222-4333-8444-555555555555|0c6f9a3e-1b2c-4d5e-8f90-a1b2c3d4e5f6|7d1e2f30-aaaa-4bbb-8ccc-0123456789ab|ab12|a)\.local$/i,
+    "made-up mDNS names of WebRTC's host candidates, the loopback twins' tests (#4494)"],
   ['test/build-settings.test.js', /^(\/home\/[uU]|build-box\.local)$/, "made-up remote folders and a made-up computer name of the build-settings checks (#3407)"],
   [/^(test\/github-checks\.test\.js|\(message of 3fa4fcb\))$/, '1.2.3.4', "a dummy address in a made-up rate limit's message of 26d6593, a "
     + 'documentation address nowhere since 3a38058 (in the history only, #4364); named in the message of 3fa4fcb, its fix (#4423)'],

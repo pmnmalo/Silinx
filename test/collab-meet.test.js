@@ -306,7 +306,7 @@ test('#4197 a follower\'s connections answer no offer: an offer refused, an answ
   assert.ok(new configs[0].rtcPolyfill({}) instanceof FakePC);
   await assert.rejects(new configs[0].rtcPolyfill({}).setRemoteDescription({ type: 'offer' }), /answers no offer/);
   // (#4494: both with the remote host candidates' twins at 127.0.0.1; the owner's answering offers)
-  const host = 'a=candidate:1 1 udp 2122260223 4f2d.local 50000 typ host generation 0';
+  const host = 'a=candidate:1 1 udp 2122260223 ab12.local 50000 typ host generation 0';
   const twin = 'a=candidate:L1 1 udp 2122260223 127.0.0.1 50000 typ host generation 0';
   const owners = new configs[1].rtcPolyfill({});
   assert.ok(owners instanceof FakePC);
