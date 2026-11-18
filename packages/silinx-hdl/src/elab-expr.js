@@ -390,7 +390,8 @@ export function sliceNode(E, base, leftE, rightE, loc, dir) {
   // initial value: `l(w - 1 downto 0)` with w's integer'low, #4358): its width is known at run time only; its type
   // has the prefix's, and its value keeps the run-time width (an assignment takes the target's)
   const inBase = x => { const p = bitpos(base.t, x); return p >= 0 && p < base.t.w; };
-  if (vdir && (!inBase(l) || !inBase(r)) && [left, right].some(varBound)) return { k: 'dslice', base, left, right, t: vecT(base.t.w), dir: vdir, dyn: true };
+  // (not in a function: its result's width is the slice's, and a constant argument binds it again with its value, #4476)
+  if (vdir && !(E.inFunction && !E.inTask) && (!inBase(l) || !inBase(r)) && [left, right].some(varBound)) return { k: 'dslice', base, left, right, t: vecT(base.t.w), dir: vdir, dyn: true };
   return { k: 'dslice', base, left, right, t: vecT(w), ...(vdir ? { dir: vdir } : {}) };
 }
 
