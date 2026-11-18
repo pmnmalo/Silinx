@@ -16,8 +16,9 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Silinx / ISE style interface, dark theme and command palette, the HDL editor (CodeMirror), schematic,
 // ASM and FSM editors, SSim and the board emulator, projects from the examples, and Yosys
 // (WebAssembly in a Web Worker), the static editions under their Content-Security-Policy (#487), and a tablet
-// by touch (#1130: WebKit as an iPad's Safari), and the 7-series' nextpnr in WebAssembly, its router2's memory (#3143)
-const CROSS_BROWSER = ['app', 'silinx', 'editing', 'diagrams', 'fsm', 'focus', 'sim-emu', 'projects', 'synth-open', 'standalone', 'standalone-xc7', 'tablet']
+// by touch (#1130: WebKit as an iPad's Safari), the 7-series' nextpnr in WebAssembly, its router2's memory (#3143), and
+// a shared project's WebRTC between two engines of one computer (#4494)
+const CROSS_BROWSER = ['app', 'silinx', 'editing', 'diagrams', 'fsm', 'focus', 'sim-emu', 'projects', 'synth-open', 'standalone', 'standalone-xc7', 'tablet', 'collab-engines']
   .map((n) => `test/ui/${n}.test.js`);
 
 const args = process.argv.slice(2);

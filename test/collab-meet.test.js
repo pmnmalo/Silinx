@@ -283,10 +283,10 @@ test('Trystero\'s adapter: the package loads, its trackers are the CSP\'s; its c
 // (a WebRTC connection of the test's: its descriptions recorded)
 class FakePC {
   constructor(cfg) { this.cfg = cfg; this.set = []; }
-  async setRemoteDescription(d, ...rest) { this.set.push([d.type, ...rest]); return 'set'; }
+  async setRemoteDescription(d, ...rest) { this.set.push([d.type, ...rest]); (this.sdps ??= []).push(d.sdp); return 'set'; }
 }
 
-test('#4197 a follower\'s connections answer no offer: an offer refused, an answer taken; the owner\'s answer every offer', async () => {
+test('#4197 a follower\'s connections answer no offer: an offer refused, an answer taken; the owner\'s answer every offer; #4494 both get the remote host candidates\' twins at 127.0.0.1', async () => {
   const PC = offersOnly(FakePC);
   const pc = new PC({ iceServers: [] });
   assert.ok(pc instanceof FakePC);
@@ -305,7 +305,17 @@ test('#4197 a follower\'s connections answer no offer: an offer refused, an answ
   assert.equal(typeof configs[0].rtcPolyfill, 'function');
   assert.ok(new configs[0].rtcPolyfill({}) instanceof FakePC);
   await assert.rejects(new configs[0].rtcPolyfill({}).setRemoteDescription({ type: 'offer' }), /answers no offer/);
-  assert.equal('rtcPolyfill' in configs[1], false, 'the owner\'s: the browser\'s connections');
+  // (#4494: both with the remote host candidates' twins at 127.0.0.1; the owner's answering offers)
+  const host = 'a=candidate:1 1 udp 2122260223 4f2d.local 50000 typ host generation 0';
+  const twin = 'a=candidate:L1 1 udp 2122260223 127.0.0.1 50000 typ host generation 0';
+  const owners = new configs[1].rtcPolyfill({});
+  assert.ok(owners instanceof FakePC);
+  assert.equal(await owners.setRemoteDescription({ type: 'offer', sdp: `v=0\r\n${host}\r\n` }), 'set');
+  assert.deepEqual(owners.set, [['offer']]);
+  assert.equal(owners.sdps[0], `v=0\r\n${host}\r\n${twin}\r\n`);
+  const followers = new configs[0].rtcPolyfill({});
+  await followers.setRemoteDescription({ type: 'answer', sdp: `v=0\r\n${host}\r\n` });
+  assert.equal(followers.sdps[0], `v=0\r\n${host}\r\n${twin}\r\n`);
 });
 
 test('#4197 the trackers: four, each a wss: address of its own, the dead tracker.btorrent.xyz not among them', () => {

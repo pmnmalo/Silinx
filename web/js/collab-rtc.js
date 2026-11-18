@@ -13,6 +13,7 @@ import { sealCode, openCode } from '/core/collab-codes.js';
 import { keyOf } from '/core/collab-crypto.js';
 import { splitFrame, frameJoiner } from '/core/collab-frag.js';
 import { FOLLOWER_JOIN } from '/core/collab-loop.js';
+import { withLoopback } from '/core/collab-loopback.js';
 
 /** The STUN servers: a public one, or this browser's own list (JSON, [] for none: a classroom's one network). */
 export const STUN_KEY = prefKey('silinx.collab.stun');
@@ -23,6 +24,9 @@ const GATHER_MS = 4000, CONNECT_MS = 60_000;
 const OWNER_MAX = 16 << 20, FOLLOWER_MAX = FOLLOWER_JOIN;
 // a channel's sending: a frame in parts when it is larger than a message
 const sendOn = (dc, d) => { if (typeof d === 'string') dc.send(d); else for (const p of splitFrame(d)) dc.send(p); };
+
+// (the remote host candidates' twins at 127.0.0.1: two browsers of one computer, #4494)
+const rtc = () => withLoopback(globalThis.RTCPeerConnection);
 
 /** WebRTC's ICE servers: this browser's STUN list (the meeting point's too, collab-meet.js). */
 export function iceServers() {
@@ -53,7 +57,7 @@ function opened(dc, pc) {
 /** The follower's side: the offer's code, for the owner; accept(the owner's answer code) connects. */
 export async function followerOffer({ key: keyText, room }) {
   const key = await keyOf(keyText);
-  const pc = new RTCPeerConnection({ iceServers: iceServers() });
+  const pc = new (rtc())({ iceServers: iceServers() });
   const dc = pc.createDataChannel(LABEL, { ordered: true });
   dc.binaryType = 'arraybuffer';
   await pc.setLocalDescription(await pc.createOffer());
@@ -73,7 +77,7 @@ export async function followerOffer({ key: keyText, room }) {
 export async function ownerAnswer({ key: keyText, room, code }) {
   const key = await keyOf(keyText);
   const sdp = await openCode(key, room, 'offer', code);
-  const pc = new RTCPeerConnection({ iceServers: iceServers() });
+  const pc = new (rtc())({ iceServers: iceServers() });
   const channel = new Promise((resolve, reject) => {
     pc.addEventListener('datachannel', ev => {
       const dc = ev.channel;
