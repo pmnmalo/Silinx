@@ -9,12 +9,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { escXml as esc } from '../core/escape.js';   // (the shared escape, #3545, #4527)
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const REPO = 'https://github.com/pmnmalo/Silinx/blob/main/';
 const LANGS = { en: 'en', pt: 'pt-PT' };
 
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** GitHub's anchor of a heading (as test/docs.test.js computes it). */
 export const slug = (s) => s.trim().toLowerCase().replace(/[^\p{L}\p{N} _-]/gu, '').replace(/ /g, '-');
 
