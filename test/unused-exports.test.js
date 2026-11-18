@@ -28,7 +28,8 @@ const LEFT = {
 };
 
 const PUBLIC = ['packages/silinx-fpga/src/index.js', 'packages/silinx-fpga/src/parts.js', 'packages/silinx-fpga/src/node.js'];
-const CHECKED = f => /^(server|core|web|bin|scripts)\//.test(f) || /^packages\/[^/]+\/(src|bin)\//.test(f);
+// (the Cloudflare relay's copies of core/'s modules, #4541: core/'s own are checked)
+const CHECKED = f => (/^(server|core|web|bin|scripts)\//.test(f) || /^packages\/[^/]+\/(src|bin)\//.test(f)) && !f.startsWith('packages/silinx-relay-cloudflare/src/core/');
 const SKIP = new Set(['node_modules', '.git', '.claude', 'devices', 'dist']);
 
 /** The exports of the files (path -> text) that nothing uses: `file name` each. */

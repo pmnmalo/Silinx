@@ -16,7 +16,11 @@
 //   connection of its own, the relay's token again): its followers stay, and each is a join again for the owner (the
 //   whole document sent again); past it, its followers are told and closed.
 // A participant is a socket: send(data, { binary }), close(code, reason), readyState (1: open), as a WebSocket of
-// `ws`; its transport gives each message to `message(data, binary)` and its end to `close()`.
+// `ws`; its transport gives each message to `message(data, binary)` (binary: a Uint8Array, or a Buffer) and its end to
+// `close()`. A platform whose rooms sleep (#4541: the Cloudflare relay's Durable Objects, whose memory is lost while
+// their sockets stay open) keeps what each socket is (`keep(socket, state)`, at each change: { role, room, client }, and
+// the owner's { editors, resume }) and gives it back when it wakes (`restore([[socket, state], …])`); it names its room
+// (`newRoom()`: the one id its rooms open with).
 import { KIND, PROTOCOL, NOT_SHARED, fromFrame, senderOf } from './collab-wire.js';
 import { b64url } from './collab-crypto.js';
 import { verifierOf, verifyFrame, PUB_RE } from './collab-sign.js';
@@ -42,12 +46,17 @@ export const fail = (ws, message) => { json(ws, { type: 'error', message }); ws.
 const clientId = v => (Number.isSafeInteger(v) && v >= 0 && v <= 0xFFFFFFFF ? v : null);   // (Yjs's: 32 bits)
 
 /** Rooms: { rooms (Map: room -> { owner (null: its connection lost, #3835), ownerClient, followers: Map<socket,
- *  client>, verify (a promise of the editors' key, or null), resume (its secret), grace (its timer while lost) }),
- *  welcome(socket, role)
- *  -> { message(data, binary), close() }, closeRoom(id, reason) }. role: 'owner' | 'follower'. */
-export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
+ *  client>, editors (the editors' public key, or null), verify (a promise of the editors' key, or null), resume (its
+ *  secret), grace (its timer while lost) }), welcome(socket, role) -> { message(data, binary), close() },
+ *  restore([[socket, state], …]) -> Map<socket, { message, close }>, closeRoom(id, reason) }. role: 'owner' |
+ *  'follower'. */
+export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = null, keep = () => {} } = {}) {
   limits = { ...ROOM_LIMITS, ...limits };
   const rooms = new Map();   // room -> { owner, ownerClient, followers: Map<ws, client> }
+  const randomId = () => b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const verifierFor = pub => { const v = verifierOf(pub); v.catch(() => {}); return v; };
+  // (what a socket is, for a platform whose rooms sleep: the owner's with its room's secrets)
+  const kept = (ws, me) => { const r = rooms.get(me.room); keep(ws, me.role === 'owner' ? { ...me, editors: r.editors, resume: r.resume } : { ...me }); };
 
   function closeRoom(id, reason) {
     const r = rooms.get(id);
@@ -59,8 +68,8 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
     if (r.owner?.readyState === 1) { json(r.owner, { type: 'closed', reason }); r.owner.close(1000, 'closed'); }
   }
 
-  function welcome(ws, role) {
-    let me = null;   // { role: 'owner' | 'follower', room, client }
+  function welcome(ws, role, state = null) {
+    let me = state && { role: state.role, room: state.room, client: state.client };   // { role: 'owner' | 'follower', room, client }
     // (a follower's awareness: a token bucket, #4173)
     let tokens = limits.awarenessBurst, filled = now(), dropped = false;
     const awarenessOk = size => {
@@ -73,7 +82,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
       return ok;
     };
     let chain = Promise.resolve();   // (an editor's edits, checked in their order)
-    const hello = setTimeout(() => { if (!me) fail(ws, 'no open nor join'); }, limits.helloWait);
+    const hello = me ? null : setTimeout(() => { if (!me) fail(ws, 'no open nor join'); }, limits.helloWait);
     const message = (data, binary) => {
       if (!me) {
         let msg = null;
@@ -84,12 +93,12 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
         if (msg.type === 'open') {
           if (rooms.size >= limits.rooms) return fail(ws, `this Silinx server shares ${limits.rooms} projects already`);
           if (msg.editors !== undefined && !PUB_RE.test(String(msg.editors))) return fail(ws, 'not a Silinx participant of this version');
-          const verify = msg.editors === undefined ? null : verifierOf(msg.editors);
-          verify?.catch(() => {});
-          const room = b64url(crypto.getRandomValues(new Uint8Array(16)));
-          const resume = b64url(crypto.getRandomValues(new Uint8Array(16)));
-          rooms.set(room, { owner: ws, ownerClient: msg.client, followers: new Map(), verify, resume, grace: null });
+          const editors = msg.editors === undefined ? null : String(msg.editors);
+          const room = newRoom ? newRoom() : randomId();
+          const resume = randomId();
+          rooms.set(room, { owner: ws, ownerClient: msg.client, followers: new Map(), editors, verify: editors && verifierFor(editors), resume, grace: null });
           me = { role: 'owner', room, client: msg.client };
+          kept(ws, me);
           return json(ws, { type: 'opened', room, resume });
         }
         if (msg.type === 'resume') {
@@ -103,6 +112,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
           r.owner = ws;
           if (old?.readyState === 1) old.close(1000, 'resumed');
           me = { role: 'owner', room: msg.room, client: msg.client };
+          kept(ws, me);
           json(ws, { type: 'opened', room: msg.room, resume: r.resume });
           for (const client of r.followers.values()) json(ws, { type: 'join', client });
           return;
@@ -114,6 +124,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
           if (msg.client === r.ownerClient || [...r.followers.values()].includes(msg.client)) return fail(ws, 'another participant of this shared project has this client id');
           r.followers.set(ws, msg.client);
           me = { role: 'follower', room: msg.room, client: msg.client };
+          kept(ws, me);
           json(ws, { type: 'joined', owner: r.ownerClient });
           return json(r.owner, { type: 'join', client: msg.client });
         }
@@ -127,7 +138,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
           try { msg = JSON.parse(String(data)); } catch { /* ignored */ }
           if (msg?.type === 'close') closeRoom(me.room, 'the owner stopped sharing');
           // (#3997: the editors' key renewed, an editor demoted: the old key's edits refused from now)
-          else if (msg?.type === 'rekey' && r.verify && PUB_RE.test(String(msg.editors))) { r.verify = verifierOf(msg.editors); r.verify.catch(() => {}); }
+          else if (msg?.type === 'rekey' && r.verify && PUB_RE.test(String(msg.editors))) { r.editors = msg.editors; r.verify = verifierFor(msg.editors); kept(ws, me); }
           return;
         }
         // (a frame for one follower: to it only, its mark taken off; to no one when it has left, #3529)
@@ -179,5 +190,25 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now } = {}) {
     return { message, close };
   }
 
-  return { rooms, welcome, closeRoom };
+  // the rooms again, from what their sockets are (a platform's rooms awake, #4541): each owner's room, then its
+  // followers; a follower whose owner is not among them told the room ended (an owner lost does not sleep: its grace's
+  // timer keeps the room awake)
+  function restore(entries) {
+    const out = new Map();
+    for (const [ws, s] of entries) {
+      if (s?.role !== 'owner' || rooms.has(s.room)) continue;
+      rooms.set(s.room, { owner: ws, ownerClient: s.client, followers: new Map(), editors: s.editors ?? null, verify: s.editors ? verifierFor(s.editors) : null, resume: s.resume, grace: null });
+      out.set(ws, welcome(ws, 'owner', s));
+    }
+    for (const [ws, s] of entries) {
+      if (s?.role !== 'follower') continue;
+      const r = rooms.get(s.room);
+      if (!r) { json(ws, { type: 'closed', reason: OWNER_LOST }); ws.close(1000, 'closed'); continue; }
+      r.followers.set(ws, s.client);
+      out.set(ws, welcome(ws, 'follower', s));
+    }
+    return out;
+  }
+
+  return { rooms, welcome, restore, closeRoom };
 }

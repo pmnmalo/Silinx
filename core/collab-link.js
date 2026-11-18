@@ -13,8 +13,9 @@
 import { KEY_RE } from './collab-crypto.js';
 import { SIGN_RE, PUB_RE } from './collab-sign.js';
 import { MODULE_RE } from './design-link.js';
+import { ROOM_RE } from './collab-wire.js';
 
-export const ROOM_RE = /^[A-Za-z0-9_-]{22}$/;   // (128 bits, base64url)
+export { ROOM_RE };   // (128 bits, base64url: core/collab-wire.js's, the Cloudflare relay's too, #4541)
 
 const VIAS = Object.freeze(['relay', 'host']);
 
