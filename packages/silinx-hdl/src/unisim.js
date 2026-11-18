@@ -5,9 +5,11 @@
 // primitive (Xilinx Libraries Guide): LUTs with their INIT truth table, carry-chain and wide-mux
 // cells, flip-flops / latches with INIT, I/O and clock buffers, shift-register LUTs and
 // distributed RAM. No timing. The Xilinx UNISIM sources are not used (nor redistributed).
-// The Spartan-6 primitives (CARRY4, SRLC32E, DSP48A1, RAMB8BWER / RAMB16BWER…) are core/unisim-s6.js's.
+// The Spartan-6 primitives (CARRY4, SRLC32E, DSP48A1, RAMB8BWER / RAMB16BWER…) are core/unisim-s6.js's; the 7-series' (DSP48E1,
+// RAMB18E1, RAMB36E1, #4362) unisim-xc7.js's.
 
 import { UNISIM_S6_VHDL } from './unisim-s6.js';
+import { UNISIM_XC7_VHDL } from './unisim-xc7.js';
 import { UNISIM_JTAG_VHDL } from './unisim-jtag.js';
 import { GOWIN_SOURCE, GOWIN_CELLS, usesGowin } from './gowin-prims.js';
 import { latticeSources, latticeShared } from './lattice-libs.js';
@@ -817,7 +819,7 @@ end VPKG;`,
   ...FFS.flatMap(([b, p]) => [ff(b, p, false), ff(b, p, true)]),
   ...LATCHES.flatMap(([n, p]) => [latch(n, p, false), latch(n, p, true)]),
   SRLS, DRAMS, MULTS, BRAMS, dcm('DCM_SP'), dcm('DCM'), ...ddrs,
-  UNISIM_S6_VHDL, UNISIM_JTAG_VHDL,
+  UNISIM_S6_VHDL, UNISIM_XC7_VHDL, UNISIM_JTAG_VHDL,
 ].join('\n');
 
 const VCOMPONENTS = 'package VCOMPONENTS is\nend VCOMPONENTS;';

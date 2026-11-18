@@ -104,8 +104,9 @@ test('run_process with the Silinx toolchain on the Basys 3: synth_xilinx, nextpn
   const timing = await ok('get_report', { project: 'o3', report: 'timing' });
   assert.equal(timing.data.path, 'build/open/timing.txt');
   assert.match(timing.text, /^Timing of xc7a35tcpg236-1 after Place & Route: nextpnr's estimate .*\n.*\n\nClock clk: [\d.]+ MHz \([\d.]+ ns\), constraint 100 MHz: met\n/);
-  // (a simulation model, which the 7-series flows do not make: refused before the back end, as simulate refuses it, #3707)
-  await fails('run_process', { project: 'o3', process: 'post_par_model', toolchain: 'silinx' }, 'the Artix-7 flow makes no post-place & route simulation model (only the Spartan flows make them): simulate the behavioral model');
+  // (a simulation model the 7-series flow does not make, the post-place & route one: refused before the back end, as simulate
+  // refuses it, #3707, #4362)
+  await fails('run_process', { project: 'o3', process: 'post_par_model', toolchain: 'silinx' }, 'the Artix-7 flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one');
   // (AMD Vivado stays the project's own when no toolchain is asked: the project made through the MCP server, not trusted)
   const untrusted = 'project \'o3\' was made through the MCP server (by an assistant): AMD Vivado runs only once you trust it (Trust Project, in the console when the project opens)';
   await fails('run_process', { project: 'o3', process: 'synthesize' }, untrusted);
@@ -126,6 +127,27 @@ test('set_design_properties: the Artix-7\'s synthesis tool, vivado or silinx; ru
   // (another family: no Vivado; from the Artix-7's Vivado, the Silinx toolchain)
   await fails('set_design_properties', { project: 'c3', board: 'basys2', synth_tool: 'vivado' }, 'AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the XC3S250E');
   assert.equal((await ok('set_design_properties', { project: 'c3', board: 'basys2' })).data.synthTool, 'silinx');
+});
+
+// (#4362) the Artix-7's Post-Synthesis model: the Silinx toolchain's (Yosys's netlist of UNISIM's 7-series cells, simulated
+// with Silinx's models of them), as the interface lists it; AMD Vivado's flow none, the post-place & route one none
+test('#4362 the Artix-7\'s post-synthesis model with the Silinx toolchain: run_process post_synthesis_model, simulate model postsynth; refused with AMD Vivado\'s flow', async () => {
+  await ok('new_project_from_example', { name: 'm3', example: 'gates', board: 'basys3' });
+  const vivado = 'AMD Vivado\'s flow makes no post-synthesis simulation model of the Artix-7 (the Silinx toolchain\'s makes its post-synthesis one: toolchain \'silinx\', or the project\'s synthesis tool Silinx): simulate the behavioral model';
+  await fails('simulate', { project: 'm3', model: 'postsynth', generate: true, time_ns: 100 }, vivado);
+  await fails('run_process', { project: 'm3', process: 'post_synthesis_model' }, vivado);
+  const r = await ok('run_process', { project: 'm3', process: 'post_synthesis_model', toolchain: 'silinx' });
+  assert.deepEqual([r.data.toolchain, r.data.ok, r.data.errors, r.data.warnings], ['silinx', true, [], []]);
+  assert.ok(r.data.log.some(l => /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/gates_synthesis\.v \(Verilog, the 7-series cells\), \d+ cells$/.test(l)), r.data.log.join('\n'));
+  assert.match(fs.readFileSync(path.join(P.projectDir('m3'), 'build/netgen/synthesis/gates_synthesis.v'), 'utf8'), /\n {2}LUT\d #\(/);
+  // (the project's synthesis tool Silinx: simulate takes the model, the test bench passes on it, no warning)
+  await ok('set_design_properties', { project: 'm3', synth_tool: 'silinx' });
+  const s = await ok('simulate', { project: 'm3', model: 'postsynth', time_ns: 1000, signals: [] });
+  assert.deepEqual([s.data.failed, s.data.log.map(l => l.text)], [false, ['Simulation finished OK']]);
+  assert.ok(!/WARNING/.test(s.text), s.text);
+  const message = 'the Artix-7 flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
+  await fails('simulate', { project: 'm3', model: 'postpar', generate: true, time_ns: 100 }, message);
+  await fails('run_process', { project: 'm3', process: 'post_par_model' }, message);
 });
 
 // (#3895, #2674) the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, as Design Properties locks it; run_process

@@ -8,7 +8,9 @@
 //     edge (the iCE40's clock example: its reset switch);
 //   - the pads: a place & route netlist connects its I/O cells' pads (SB_IO's PACKAGE_PIN, TRELLIS_IO's B, IOBUF's IO) to
 //     the top's ports and their bits, and an inout connected so loses the input's value (#4360): each pad on a net of its
-//     own, assigned from its input port (or bit) or onto its output port.
+//     own, assigned from its input port (or bit) or onto its output port;
+//   - the Gowin's ALU chains' ends (#4362): nextpnr-himbaechel-gowin's ALU_MODE "C2L" (the carry to the logic, or none) and
+//     "ONE2C" (a carry in of 1) are the ALU's LUT (RAW_ALU_LUT) 0 and 15, as Apicula's chip database gives their bits.
 //
 // Isomorphic ES module (browser + Node), no DOM.
 
@@ -54,6 +56,13 @@ export function globalBuffers(verilog) {
     v = v.replace(re, (m, at, str) => (/^\s*wire\b/.test(str.slice(str.lastIndexOf('\n', at) + 1, at)) ? m : (o.startsWith('\\') && !i.endsWith(' ') ? `${i} ` : i)));
   }
   return v;
+}
+
+const ALU_MODES = { C2L: 0, ONE2C: 15 };
+
+/** The netlist with the Gowin's ALU_MODE "C2L" and "ONE2C" written as their LUTs (RAW_ALU_LUT), the mode ADDSUB's number. */
+export function gowinAluModes(verilog) {
+  return verilog.replace(/\.ALU_MODE\("(\w+)"\)/g, (all, m) => (m in ALU_MODES ? `.ALU_MODE(32'd2),\n    .RAW_ALU_LUT(32'd${ALU_MODES[m]})` : all));
 }
 
 /** The Verilog of nextpnr's routed design (its --write JSON): Yosys's read_json and write_verilog (run: io.yosys), its module

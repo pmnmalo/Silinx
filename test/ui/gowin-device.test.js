@@ -60,9 +60,16 @@ uiTest('#2303 a Gowin project: its processes, its constraints CST, Generate Prog
   assert.ok(labels.includes('Implement Design') && labels.includes('Generate Programming File'), String(labels));
   assert.ok(!labels.includes('Map'), String(labels));
   assert.ok(labels.includes('Configure Target Device'), String(labels));   // (#2298)
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis model too (#2299; its routed design's ALU modes not modelled yet)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
-  for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
+  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis and Post-Place & Route models too (#2299, #4362)
+  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
+  // (the models' Simulate rows, the Simulation view's: #4362's Post-Place & Route one too)
+  await page.setView('sim');
+  await page.treeRow('#hier', 'blinky');
+  const sim = await page.eval(() => [...document.querySelectorAll('#procs .row')].map((x) => x.textContent.trim().replace(/^▾/, '')));
+  for (const present of ['Simulate Post-Synthesis Model', 'Simulate Post-Place & Route Model']) assert.ok(sim.includes(present), `${present}: ${sim}`);
+  await page.setView('impl');
+  await page.treeRow('#hier', 'blinky');
 
   await page.treeRow('#procs', 'Generate Programming File', { dbl: true, exact: true });
   await page.waitConsole(/Process "Generate Programming File" (completed successfully|failed)/, { timeout: 120000 }).catch(async (e) => { throw new Error(`${e.message}\n${(await page.consoleText()).slice(-2500)}`); });

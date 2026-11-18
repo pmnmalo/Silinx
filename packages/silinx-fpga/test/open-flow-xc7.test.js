@@ -122,7 +122,7 @@ test('xc7: synth_xilinx\'s cells counted as the Design Summary\'s resources', ()
 
 test('xc7: the Artix-7\'s back end, its steps (nextpnr packs at Place & Route), XDC its constraints, synth_xilinx', () => {
   assert.equal(backendOf('artix7'), XC7);
-  assert.deepEqual(XC7_STEPS.map(s => s.id), ['synth', 'translate', 'par', 'trce', 'bitgen']);
+  assert.deepEqual(XC7_STEPS.map(s => s.id), ['synth', 'postsynth', 'translate', 'par', 'trce', 'bitgen']);   // (its post-synthesis model, #4362)
   assert.equal(XC7.constraints, XDC);
   assert.equal(XC7.synthName('luts', { report: 'Number of Slice LUTs' }), 'Number of Slice LUTs');
   assert.equal(XC7.synthName('ramb16', undefined), 'Block RAM Tiles');

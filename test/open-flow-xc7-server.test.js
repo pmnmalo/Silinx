@@ -38,7 +38,7 @@ test('openStatus: the xc7a35t (Basys 3) and the xc7a100t (Nexys A7) are availabl
   for (const [board, part] of [[BASYS3, 'xc7a35tcpg236-1'], [NEXYSA7, 'xc7a100tcsg324-1']]) {
     const st = openStatus(board);
     assert.deepEqual([st.available, st.part, st.device, st.graph, st.bitDb], [true, part, board.part, null, true]);
-    assert.deepEqual(st.steps, ['synth', 'translate', 'par', 'trce', 'bitgen']);
+    assert.deepEqual(st.steps, ['synth', 'postsynth', 'translate', 'par', 'trce', 'bitgen']);   // (its post-synthesis model, #4362)
     assert.equal(st.reason, `${part}: nextpnr-himbaechel (xilinx) and Project X-Ray's bit database (the 7-series, an experimental family, #3146)`);
   }
   // (another package of the xc7a100t: no bit database)

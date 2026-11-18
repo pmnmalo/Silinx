@@ -18,7 +18,7 @@ test.after(() => fs.rmSync(config, { recursive: true, force: true }));
 test('openStatus: the GW1NR-9C in its QN88 is available, nextpnr and gowin_pack; another device is not', () => {
   const st = openStatus(DEVICE);
   assert.deepEqual([st.available, st.part, st.graph, st.reason], [true, 'gw1nr-9c-6qn88', null, 'gw1nr-9c-6qn88: nextpnr-himbaechel-gowin and gowin_pack']);
-  assert.deepEqual(st.steps, ['synth', 'postsynth', 'translate', 'par', 'trce', 'bitgen']);   // (the simulation models, #2299)
+  assert.deepEqual(st.steps, ['synth', 'postsynth', 'translate', 'par', 'trce', 'postpar', 'bitgen']);   // (the simulation models, #2299, #4362)
   const bad = openStatus({ ...DEVICE, package: 'qn48' });
   assert.equal(bad.available, false);
   assert.equal(bad.reason, 'gw1nr-9c-qn48-6: not a Gowin device of nextpnr-himbaechel-gowin here (gw1nr-9c/qn88-6)');

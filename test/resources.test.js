@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { resourcesOf, resourceCount, familyResources, primitivesOf, resourceOfPrimitive, RESOURCE_FAMILIES } from '../packages/silinx-fpga/src/resources.js';
 import { findPart, partsOfFamily, PARTS } from '../server/devices.js';
 import { UNISIM_SOURCE } from '../core/unisim.js';
+import { xc7Utilization } from '../packages/silinx-fpga/src/open-flow-xc7.js';
 
 // DS312 v4.2 Table 1 (slices, distributed RAM Kb, block RAMs, multipliers, DCMs, max user I/O) and Table 2
 // (user I/O per package); 24 BUFGMUX on every part
@@ -123,7 +124,12 @@ test('ISE\'s device reports: every Spartan-6 part\'s sites (BUFH, BUFGMUX, BUFIO
 const unisimNames = [...new Set([...UNISIM_SOURCE.text.matchAll(/^entity\s+(\w+)\s+is\b/gim)].map(m => m[1].toUpperCase()))];
 
 test('primitives: every UNISIM primitive of a counted resource (block RAM, multiplier, DSP, DCM / PLL, clock buffer) mapped to it', () => {
-  const counted = unisimNames.filter(n => /^(RAMB|MULT18X18|DSP48|DCM|PLL|BUFG|BUFIO2|BUFH|MCB)/.test(n));
+  // (the 7-series' DSP48E1, RAMB18E1 and RAMB36E1, #4362: no family's here, the 7-series' synthesis counts them, xc7Utilization)
+  const xc7 = unisimNames.filter(n => /E1$/.test(n));
+  assert.deepEqual(xc7, ['DSP48E1', 'RAMB18E1', 'RAMB36E1']);
+  for (const n of xc7) assert.ok(!RESOURCE_FAMILIES.some(f => resourceOfPrimitive(f, n)), n);
+  assert.deepEqual(['blockRam', 'multipliers'].map(k => xc7Utilization({ DSP48E1: 2, RAMB18E1: 3, RAMB36E1: 1 })[k]), [4, 2]);
+  const counted = unisimNames.filter(n => /^(RAMB|MULT18X18|DSP48|DCM|PLL|BUFG|BUFIO2|BUFH|MCB)/.test(n) && !xc7.includes(n));
   // (the PLL_BASE and BUFIO2 models: #791)
   assert.equal(counted.length, 27 + 3 + 1 + 2 + 6 + 2 + 1 + 1, counted.join(' '));
   for (const n of counted) assert.ok(RESOURCE_FAMILIES.some(f => resourceOfPrimitive(f, n)), n);

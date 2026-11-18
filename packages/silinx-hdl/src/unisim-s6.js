@@ -84,7 +84,8 @@ ${addrOfVec('A', 4)}
 end silinx;`;
 
 // a distributed RAM of 2^n words of w bits (w = 1: std_ulogic ports): rams [{ init, din, reads: [[output,
-// address]] }] written together at the address `wa`; scalar: the address pins A0 … (else vectors)
+// address]] }] written together at the address `wa`; scalar: the address pins A0 … (else vectors); an open data input
+// reads 0 (the 7-series synthesis leaves RAM32M's DID open when it reads three words only, #4362)
 const lutram = (name, n, { rams = [{ init: 'INIT', din: 'D', reads: [['O', 'A']] }], wa = 'A', w = 1, scalar = false } = {}) => {
   const bits = 2 ** n * w;
   const addrs = [...new Set([wa, ...rams.flatMap((r) => r.reads.map((x) => x[1]))])];
@@ -98,7 +99,7 @@ const lutram = (name, n, { rams = [{ init: 'INIT', din: 'D', reads: [['O', 'A']]
 ${IEEE}
 entity ${name} is
   generic (${rams.map((r) => `${r.init} : bit_vector(${bits - 1} downto 0) := (others => '0')`).join('; ')});
-  port (${addrPorts}; ${rams.map((r) => `${r.din} : in ${t}`).join('; ')}; WCLK, WE : in std_ulogic;
+  port (${addrPorts}; ${rams.map((r) => `${r.din} : in ${t} := ${w === 1 ? "'0'" : "(others => '0')"}`).join('; ')}; WCLK, WE : in std_ulogic;
         ${rams.flatMap((r) => r.reads.map((x) => `${x[0]} : out ${t}`)).join('; ')});
 end ${name};
 architecture silinx of ${name} is
