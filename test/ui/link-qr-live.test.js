@@ -266,9 +266,12 @@ uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons i
 
 // Share Project…'s window, its place and size on the screen (#4617)
 const windowBox = (page) => page.eval(() => { const r = [...document.querySelectorAll('.dlg-overlay .dlg')].pop().getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v)); });
+// (the other way's window opens once it is ready, a copy's once the project is encoded: the old one, its way's radio
+// checked by the click, waited out first, #4656)
 const switchTo = async (page, how) => {
+  await page.eval(() => { document.querySelector('.dlg-overlay').dataset.switchedFrom = '1'; });
   await page.click(`.dlg-overlay input[data-field="how-${how}"]`);
-  await page.waitFor((x) => document.querySelectorAll('.dlg-overlay').length === 1 && document.querySelector(`.dlg-overlay input[data-field="how-${x}"]`)?.checked, [how], { what: `${how} chosen` });
+  await page.waitFor((x) => document.querySelectorAll('.dlg-overlay').length === 1 && !document.querySelector('.dlg-overlay[data-switched-from]') && document.querySelector(`.dlg-overlay input[data-field="how-${x}"]`)?.checked, [how], { what: `${how} chosen` });
 };
 
 uiTest('#4617 Share Project: the window keeps its place and size switching between A copy and Live, on Start Sharing and on Generate; on a phone too', E, async (page) => {
