@@ -66,6 +66,8 @@ export function fitSimTabs() {
   const side = edge ? Math.max(0, Math.round(edge.getBoundingClientRect().right - center.getBoundingClientRect().left)) : 0;
   center.style.setProperty('--sim-side', `${side}px`);
   center.style.setProperty('--sim-tabs', `${tabs?.offsetHeight || 0}px`);
+  const split = document.getElementById('task-sim-split');   // (its handle over that edge, #4627: web/js/tasks-sim-split.js)
+  if (split) split.hidden = !side;
 }
 /** A source in front in Simulate (a module's HDL opened from the Simulation tree, #1332): the last simulation's side
  *  panel (the Simulation tree, the Objects) stays shown at its left (`data-sim-side`, web/css/tasks.css, #1343). */

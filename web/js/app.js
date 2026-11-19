@@ -1,7 +1,7 @@
 // Silinx Project Navigator — main application shell (ISE-like).
 import { api, followJob } from './api.js';
 import { icons, icon } from './icons.js';
-import { h, dialog, alertDlg, confirmDlg, promptDlg, popupMenu, splitter, setMessageSink } from './ui.js';
+import { h, dialog, alertDlg, confirmDlg, promptDlg, popupMenu, splitter, setMessageSink, LEFT_SPLIT } from './ui.js';
 import { createEditor, instTemplate, snippetsFor, typeText } from './editor.js';
 import { cRunButtons, hlsClock, hlsFamily, hlsMults, isC, noteFailedC } from './c-source.js';
 import { compile, implRoots, topCandidates } from '/core/compile.js';
@@ -885,7 +885,7 @@ async function boot() {
   setupMenus();
   setupToolbar();
   mountSplit();   // (the Split button, #1652)
-  splitter($('v-split'), $('left'), { dir: 'h', min: 180, max: 700, storageKey: 'xl.leftW' });
+  splitter($('v-split'), $('left'), LEFT_SPLIT);
   splitter($('left-split'), $('proc-panel'), { dir: 'v', min: 80, max: 900, invert: true, storageKey: 'xl.procH' });
   splitter($('h-split'), $('console-wrap'), { dir: 'v', min: 60, max: 700, invert: true, storageKey: 'xl.consoleH' });
   initDrawer();
