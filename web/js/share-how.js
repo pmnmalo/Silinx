@@ -12,6 +12,16 @@ import { getLanguage } from './i18n.js';
  *  between them does not resize the window. */
 export const SHARE_WIDTH = 720;
 
+/** The windows' introductions (#4676: of about the same length, each laid out over the other's, twinText): A copy's
+ *  (the project's name), Live's. */
+export const copyIntro = name => `A link that opens '${name}' in Silinx, for slides or a message: the whole project is inside it, no file to host. Anyone with the link has every file of the project, its comments too, as it is now.`;
+export const liveIntro = () => 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents, views, simulations and runs. Of its builds, only the reports you open.';
+/** A text and its twin, the other way's, laid out in one place (#4676): the twin unseen, the place as tall as the
+ *  taller of the two at any width and in any language, so that switching between them moves nothing below.
+ *  `attrs` the text's element's (its class the twin's too). */
+export const twinText = (tag, attrs, text, other) => h('div', { class: 'share-twin' }, h(tag, attrs, text),
+  h(tag, { ...attrs, class: `${attrs.class ? `${attrs.class} ` : ''}share-twin-ghost`, 'aria-hidden': 'true' }, other));
+
 /** The window's title, and its console messages' name: Share Project, or Share Module (a module's). */
 export const shareTitle = module => (module ? 'Share Module' : 'Share Project');
 

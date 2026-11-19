@@ -43,8 +43,8 @@ export const LINK_PT = {
 export const LINK_PT_PATTERNS = [
   [/^Expired (\d{4}-\d\d-\d\d)$/, 'Expirou a $1'], [/^Until (\d{4}-\d\d-\d\d)$/, 'Até $1'],   // (Short Links…, #3635)
   [/^(\d+) short links? of your GitHub account, the newest first; (\d+) expired\.$/, '$1 ligação(ões) curta(s) da sua conta do GitHub, a mais recente primeiro; $2 expirada(s).'],
-  [/^A link that opens '(.+)' in Silinx, for slides or a message: the whole project is inside the link \(no file to host\)\. Anyone with the link has every file of the project, its comments too\.$/,
-    'Uma ligação que abre \'$1\' no Silinx, para diapositivos ou uma mensagem: o projeto inteiro vai dentro da ligação (sem ficheiro para alojar). Quem tiver a ligação tem todos os ficheiros do projeto, também os comentários.'],
+  [/^A link that opens '(.+)' in Silinx, for slides or a message: the whole project is inside it, no file to host\. Anyone with the link has every file of the project, its comments too, as it is now\.$/,
+    'Uma ligação que abre \'$1\' no Silinx, para diapositivos ou uma mensagem: o projeto inteiro vai dentro dela, sem ficheiro para alojar. Quem tiver a ligação tem todos os ficheiros do projeto, também os comentários, como está agora.'],
   [/^(\d+) characters\.$/, '$1 caracteres.'],
   [/^The link is (\d+) characters, too long for a QR code$/, 'A ligação tem $1 caracteres, demasiado longa para um código QR'],   // (#3995)
   // (where a short link is made, #3995)

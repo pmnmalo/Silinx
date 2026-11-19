@@ -8,6 +8,11 @@
 import { h } from './ui.js';
 import { prefKey } from './prefs.js';
 import { savedRelay } from './relay-setting.js';
+import { twinText } from './share-how.js';
+
+// Live's two ways explained (#4676: of about the same length)
+const RELAY_ABOUT = 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.';
+const PEER_ABOUT = 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on school and other networks that block direct connections.';
 
 const VIA_KEY = prefKey('silinx.collab.via');
 const VIAS = Object.freeze(['relay', 'peer']);
@@ -40,11 +45,9 @@ export function viaPart({ via = defaultVia(), changed = () => {} } = {}) {
       : [h('span', { class: 'share-via-none' }, 'No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.'),
         h('button', { class: 'btn', 'data-action': 'relay-setup', onclick: setUp }, 'Set Up a Cloudflare Relay…')]));
   };
-  const relayAbout = h('div', { class: 'share-via-relay' },
-    h('p', {}, 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.'),
-    status);
-  const peerAbout = h('div', { class: 'share-via-peer' },
-    h('p', {}, 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.'));
+  // (each explanation over the other's, unseen: as tall as the taller, #4676)
+  const relayAbout = h('div', { class: 'share-via-relay' }, twinText('p', {}, RELAY_ABOUT, PEER_ABOUT), status);
+  const peerAbout = h('div', { class: 'share-via-peer' }, twinText('p', {}, PEER_ABOUT, RELAY_ABOUT));
   const el = h('div', { class: 'share-via' }, peerAbout, relayAbout);   // (the Share row's order, #4670)
   const show = () => { relayAbout.hidden = via !== 'relay'; peerAbout.hidden = via !== 'peer'; };
   drawRelay(); show();

@@ -12,7 +12,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
 import { decodeSvg } from '../qr-helpers.js';
-import { framesOf, checkFrames } from './share-frames.js';
+import { framesOf, checkFrames, twinLines } from './share-frames.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -410,7 +410,19 @@ uiTest('#4676 Share Project: Live to A copy and back, one window in every frame,
       await page.eval(async () => { (await import('/js/share-how.js')).shareLiveDialog(); });
       await page.waitDialog('Share Project');
       await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg'), [], { what: 'Live\'s window' });
+      // (#4676: the intros the same number of lines, Live's and A copy's, in English and Portuguese)
+      const same = async (what) => { const t = await twinLines(page); assert.equal(t.length, 1, what); assert.equal(t[0][1], t[0][2], `${what}: ${JSON.stringify(t)}`); };
+      await same(`Live, ${width} px`);
       checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', `Live to A copy, ${width} px`);
+      await same(`A copy, ${width} px`);
+      await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+      try {
+        await page.waitFor(() => /^Uma ligação que abre/.test(document.querySelector('.dlg-overlay .share-twin .hint')?.textContent || ''), [], { what: 'Portuguese' });
+        await same(`A copy, ${width} px, Portuguese`);
+        checkFrames(await framesOf(page, 'how-live', 'live'), 'copy', 'live', `A copy to Live, ${width} px, Portuguese`);
+        await same(`Live, ${width} px, Portuguese`);
+        checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', `Live to A copy, ${width} px, Portuguese`);
+      } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
       checkFrames(await framesOf(page, 'how-live', 'live'), 'copy', 'live', `A copy to Live, ${width} px`);
       await page.dialogButton('Close');
       await page.waitNoDialog();

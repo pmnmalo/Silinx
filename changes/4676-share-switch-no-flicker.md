@@ -8,3 +8,7 @@ In detail:
   Cloudflare relay or peer to peer) closed the window first and opened the other one once it was ready (A copy's
   once its link is made), so for a frame or more there was no window at all. The other way's window now opens first
   and replaces this one in the same frame.
+- **Share Project…'s texts the same height on either side of a switch (#4676):** A copy's and Live's introductions,
+  and Live's two ways' explanations (peer to peer, the Cloudflare relay), are reworded to about the same length, in
+  English and Portuguese, and each is laid out over its twin unseen, so it takes the taller one's lines at any width:
+  switching moves nothing below them.

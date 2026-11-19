@@ -14,7 +14,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
-import { framesOf, checkFrames } from './share-frames.js';
+import { framesOf, checkFrames, twinLines } from './share-frames.js';
 import { buildSite } from './site-lib.js';
 import { serveWorker } from '../workers-shim.js';
 import worker, { RelayRoom } from '../../packages/silinx-relay-cloudflare/src/worker.js';
@@ -89,17 +89,19 @@ const ways = (page) => page.eval(() => {
   return {
     row: [q('.share-how > label').textContent, ...[...document.querySelectorAll('.dlg-overlay .share-how-choices > label')].map((l) => [l.firstElementChild.nextElementSibling.textContent, l.querySelector('.share-how-note').textContent])],
     how: q('input[name=share-how]:checked')?.value,
-    about: [...document.querySelectorAll('.dlg-overlay .share-via p')].filter(shown).map((p) => p.textContent),
+    about: [...document.querySelectorAll('.dlg-overlay .share-via p:not(.share-twin-ghost)')].filter(shown).map((p) => p.textContent),
     relay: shown(q('.share-via-status')) ? [...q('.share-via-status').children].map((e) => e.textContent) : null,
     start: !q('.dlg-buttons button.primary').disabled,
     radios: [...new Set([...document.querySelectorAll('.dlg-overlay input[type=radio]')].map((r) => r.name))],
   };
 });
+// (#4676: each text laid out with a twin, the same number of lines as it)
+const twins = async (page, what) => { for (const [text, n, m] of await twinLines(page)) assert.equal(n, m, `${what}: ${text}…`); };
 const warnings = async (page) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|AVISO|ERROR|ERRO)/.test(l));
 
 const ROW = ['Share:', ['A copy', 'A link with the project in it'], ['Live peer to peer (no relay)', 'Others follow it as you work, with no setup'], ['Live via your Cloudflare relay', 'Others follow it as you work, on any network']];
 const RELAY = 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.';
-const PEER = 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.';
+const PEER = 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on school and other networks that block direct connections.';
 const NONE = ['No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.', 'Set Up a Cloudflare Relay…'];
 const SET = (a, k) => { localStorage.setItem('silinx.collab.relay', JSON.stringify({ address: a, key: k })); dispatchEvent(new CustomEvent('silinx:relay-changed')); };
 
@@ -114,7 +116,11 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-copy]').focus());
   await page.key('ArrowRight');
   await page.waitFor(() => document.querySelectorAll('.dlg-overlay').length === 1 && !!document.querySelector('.dlg-overlay .collab-dlg .share-via') && document.querySelector('.dlg-overlay input[data-field="how-live-peer"]')?.checked, [], { what: 'Live peer to peer by the arrow key' });
-  // Live's window, peer to peer: one row of choices, its way explained below
+  // Live's window, peer to peer: one row of choices, its way explained below; the intro and the two ways' explanations
+  // the same number of lines as their twins, A copy's intro and the other way's (#4676), on a phone too
+  await twins(page, 'Live peer to peer');
+  await page.setViewport(375, 812);
+  try { await twins(page, 'Live peer to peer, 375 px'); } finally { await page.setViewport(1400, 900); }
   const box = await windowBox(page), sizes = [];
   const step = async (name) => sizes.push([name, await windowBox(page)]);
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-peer', about: [PEER], relay: null, start: true, radios: ['share-how'] });
@@ -142,6 +148,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   const host = new URL(relay.url).host;
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .share-via-at'), [], { what: 'the relay shown' });
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-relay', about: [RELAY], relay: ['Your relay:', host, 'Change…'], start: true, radios: ['share-how'] });
+  await twins(page, 'Live via the Cloudflare relay');
   assert.equal(await page.eval((k) => document.querySelector('.dlg-overlay .dlg').innerHTML.includes(k), KEY), false, 'the key nowhere in the window');
   await step('Cloudflare, set up');
   // Start Sharing through it: the page meets its followers at the relay; the other way locked, the explanation hidden
@@ -196,9 +203,13 @@ uiTest('#4640 in Portuguese: the Share row\'s three ways, their notes and Live\'
   await newProject(page, 'via-pt', true);
   await openLive(page, true);
   const ROW_PT = ['Partilhar:', ['Uma cópia', 'Uma ligação com o projeto lá dentro'], ['Em direto ponto a ponto (sem retransmissor)', 'Os outros seguem-no enquanto trabalha, sem configuração'], ['Em direto pelo seu retransmissor Cloudflare', 'Os outros seguem-no enquanto trabalha, em qualquer rede']];
-  assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-peer', about: ['Sem configuração: quem o segue encontra-o no ponto de encontro público e liga-se de navegador a navegador (WebRTC), ou envia-lhe um código, que Adicionar um Utilizador… recebe. Pode falhar em redes que bloqueiam ligações diretas.'], relay: null, start: true, radios: ['share-how'] });
+  assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-peer', about: ['Sem configuração: quem o segue encontra-o no ponto de encontro público e liga-se de navegador a navegador (WebRTC), ou envia-lhe um código, que Adicionar um Utilizador… recebe. Pode falhar nas redes das escolas e noutras que bloqueiam ligações diretas.'], relay: null, start: true, radios: ['share-how'] });
+  await twins(page, 'Portuguese, peer to peer');
   await choose(page, 'live-relay');
   assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-relay', about: ['Quem o segue encontra-o num retransmissor seu no Cloudflare e liga-se depois diretamente a si quando pode e, senão, através do retransmissor. Funciona nas redes das escolas e noutras redes restritas, e conta para o seu plano gratuito do Cloudflare.'], relay: ['Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.', 'Configurar um Retransmissor Cloudflare…'], start: false, radios: ['share-how'] });
+  await twins(page, 'Portuguese, the relay');
+  await page.setViewport(375, 812);
+  try { await twins(page, 'Portuguese, the relay, 375 px'); } finally { await page.setViewport(1400, 900); }
   await page.eval(SET, relay.url, KEY);
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .share-via-at'), [], { what: 'the relay shown' });
   assert.deepEqual((await ways(page)).relay, ['O seu retransmissor:', new URL(relay.url).host, 'Alterar…']);
