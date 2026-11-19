@@ -84,7 +84,8 @@ In the [relay's folder](../../../packages/silinx-relay-cloudflare/README.md): `n
 
 ## Sharing through it
 
-*Share Project…* ▸ *Live* offers two ways, each explained in the window. **Live via your Cloudflare relay** is chosen
+*Share Project…*'s *Share:* row offers three ways: **A copy**, **Live via your Cloudflare relay** and **Live peer to
+peer (no relay)**; the live way chosen is explained right below the row. **Live via your Cloudflare relay** is chosen
 by default once the relay is set up: the window shows its address (never its key), and *Change…* opens *Set Up a
 Cloudflare Relay…* again. With no relay set up, the window says so and offers *Set Up a Cloudflare Relay…*, and *Start
 Sharing* waits until there is one. **Live peer to peer (no relay)** needs no setup: your followers find you at the public

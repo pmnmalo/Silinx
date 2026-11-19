@@ -85,7 +85,8 @@ export const COLLAB_PT = {
   'Looking for the owner at the meeting point…': 'A procurar o dono no ponto de encontro…',
   'If they cannot be found there, you exchange codes with them instead.': 'Se não for encontrado aí, troca códigos com ele em vez disso.',
   // (Share Project… ▸ Live's two ways, #4634: web/js/share-via.js)
-  'Connection:': 'Ligação:', 'Live via your Cloudflare relay': 'Em direto pelo seu retransmissor Cloudflare', 'Live peer to peer (no relay)': 'Em direto ponto a ponto (sem retransmissor)',
+  'Others follow it as you work, on any network': 'Os outros seguem-no enquanto trabalha, em qualquer rede', 'Others follow it as you work, with no setup': 'Os outros seguem-no enquanto trabalha, sem configuração',
+  'Live via your Cloudflare relay': 'Em direto pelo seu retransmissor Cloudflare', 'Live peer to peer (no relay)': 'Em direto ponto a ponto (sem retransmissor)',
   'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.':
     'Quem o segue encontra-o num retransmissor seu no Cloudflare e liga-se depois diretamente a si quando pode e, senão, através do retransmissor. Funciona nas redes das escolas e noutras redes restritas, e conta para o seu plano gratuito do Cloudflare.',
   'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.':

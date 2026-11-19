@@ -137,9 +137,9 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   // Share Project… ▸ Live: via your Cloudflare relay, chosen, the relay shown by its address (#4634)
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
-  if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live]');
-  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg input[data-field=via-relay]'), [], { what: 'the live window' });
-  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-via]:checked').value, document.querySelector('.dlg-overlay .share-via-at').textContent, document.querySelector('.dlg-overlay [data-action=relay-change]').textContent]), ['relay', host, 'Change…']);
+  if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live-relay]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live-relay]');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg .share-via'), [], { what: 'the live window' });
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-how]:checked').value, document.querySelector('.dlg-overlay .share-via-at').textContent, document.querySelector('.dlg-overlay [data-action=relay-change]').textContent]), ['live-relay', host, 'Change…']);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // Check Cloudflare Relay; Forget Cloudflare Relay

@@ -467,12 +467,13 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .share-how-choices { display: flex; flex-wrap: wrap; gap: 6px 32px; }
 .share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }
 .share-how-choices .share-how-note { grid-column: 2; font-size: 11px; opacity: .8; }
-/* Share Project… ▸ Live's two ways (#4634): one below the other, each one's explanation below its button; the relay
-   set (its address, Change…) or none (said, Set Up a Cloudflare Relay…) below the Cloudflare one's */
-.share-via { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 12px 0 10px; }
-.share-via-choices { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.share-via-about { margin: 2px 0 0 22px; font-size: 11px; }
-.share-via-about > p { margin: 0 0 4px; opacity: .8; }
+/* the browser edition's three (#4634): A copy, Live via your Cloudflare relay, Live peer to peer, in equal columns
+   (one below the other on a phone); Live's way explained below the row, the relay set (its address, Change…) or none
+   (said, Set Up a Cloudflare Relay…) below the Cloudflare one's */
+.share-how-three .share-how-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 16px; }
+.share-via { margin: 0 0 12px; }
+.share-via > [hidden] { display: none; }
+.share-via p { margin: 0 0 6px; }
 .share-via-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .share-via-at { font: 11px var(--mono, monospace); overflow-wrap: anywhere; }
 .share-via-none { flex: 1 1 100%; }
