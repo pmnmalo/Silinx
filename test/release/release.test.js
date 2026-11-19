@@ -26,7 +26,8 @@ const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf
 // unzipped 128.0 MB. The shared projects' packages took it to 40.4 MB (#3214); their tests and demos, every package's maps
 // and types, and the legacy modes the editor does not load left out (#3232, scripts/zip-trim.mjs): 38.8 MB, unzipped 129.8 MB.
 // zipMB 40 → 42 by the 7-series' back end (#3146: nextpnr-himbaechel-xc7 0.7 MB zipped, its bit database 0.5 MB) and
-// the HDL front end's package (#1710, 0.2 MB): the zip 40.6 MB, unzipped 134.6 MB (#3615)
+// the HDL front end's package (#1710, 0.2 MB): the zip 40.6 MB, unzipped 134.6 MB (#3615). The README's and the guide's
+// pictures (docs/images, 1.3 MB) took it to 42.9 MB: left out (#4545), the zip 41.6 MB
 const BUDGET = { zipMB: 42, appMB: 140 };
 
 const has = (cmd) => { try { execFileSync(cmd, ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } };
@@ -90,12 +91,12 @@ test('release zip: the app with its production dependencies only, Yosys\'s WebAs
   assert.ok(!fs.existsSync(path.join(APP, 'node_modules/silinx-hdl')), 'no link to packages/silinx-hdl in node_modules');
   const { THIRD_PARTY } = await import(pathToFileURL(path.join(APP, 'core/third-party.js')).href);
   // (code ported into Silinx, e.g. adepttool, is listed but is not a package)
-  // (and a package downloaded on its first use, the iCE40's, the ECP5's and the Gowin's nextpnr, is not in it: #2444,
-  // #2570, #2302, #2303)
+  // (and a package downloaded on its first use, the iCE40's, the ECP5's, the Gowin's and the GateMate's nextpnr, is not
+  // in it: #2444, #2570, #2302, #2303, #2431, #4545)
   const listed = THIRD_PARTY.filter((c) => !c.ported && !c.downloaded).map((c) => `${c.name}@${c.version}`).sort();
   assert.deepEqual(packages(path.join(APP, 'node_modules')), listed, 'node_modules of the zip = THIRD-PARTY-NOTICES.md (node scripts/third-party.mjs)');
   const downloaded = THIRD_PARTY.filter((c) => c.downloaded).map((c) => c.name);
-  assert.deepEqual(downloaded, ['@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-ice40']);
+  assert.deepEqual(downloaded, ['@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gatemate', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-ice40']);
   for (const name of downloaded) assert.ok(!fs.existsSync(path.join(APP, 'node_modules', name)), `${name} left out of the zip`);
   const notices = fs.readFileSync(path.join(APP, 'THIRD-PARTY-NOTICES.md'), 'utf8');
   for (const c of listed) assert.ok(notices.includes(`## ${c.replace(/@(?=[^@]+$)/, ' ')} `), `${c} in THIRD-PARTY-NOTICES.md`);
@@ -112,6 +113,9 @@ test('release zip: the launchers are executable (Linux, macOS) and the Windows o
 
 test('release zip: the device measurements left out, the bit database the app reads kept (#1541)', { skip: SKIP }, () => {
   assert.equal(exists('packages/silinx-fpga/research/s3e-device/data'), false, 'packages/silinx-fpga/research/s3e-device/data (#3) not packaged');
+  // (the guide's pictures too, its pages kept: #4545)
+  assert.equal(exists('docs/images'), false, 'docs/images not packaged');
+  for (const f of ['docs/user/en/README.md', 'docs/user/pt/README.md']) assert.ok(exists(f), f);
   for (const f of ['packages/silinx-fpga/bitdb/s3e-tiles.json', 'packages/silinx-fpga/research/s3e-device/build-measured.mjs']) assert.ok(exists(f), f);
 });
 

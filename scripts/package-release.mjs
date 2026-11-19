@@ -30,8 +30,9 @@ const out = path.resolve(opt('out', path.join(root, 'out')));
 const appOnly = argv.includes('--app-only');
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: ['ignore', 'inherit', 'inherit'], shell: process.platform === 'win32' && cmd === 'npm' });
 
-/** The tracked files the app never reads, left out of the zip: the device measurements (#3, #1541), the tests (#2329). */
-const NOT_RELEASED = /^(packages\/silinx-fpga\/research\/s3e-device\/data|test|packages\/silinx-fpga\/test)\//;
+/** The tracked files the app never reads, left out of the zip: the device measurements (#3, #1541), the tests (#2329),
+ *  the README's and the guide's pictures (the guide is read online, on the Pages site; 1.3 MB of WebP, #4545). */
+const NOT_RELEASED = /^(packages\/silinx-fpga\/research\/s3e-device\/data|test|packages\/silinx-fpga\/test|docs\/images)\//;
 
 const NEXTPNR_PACKAGES = ['@silinx/nextpnr-himbaechel-spartan3e', '@silinx/nextpnr-himbaechel-spartan6', '@silinx/nextpnr-himbaechel-xc7'];
 

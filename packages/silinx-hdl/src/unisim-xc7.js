@@ -207,7 +207,7 @@ end silinx;`;
 // ------------------------------------------------------------------ RAMB18E1, RAMB36E1
 // the data and parity bits, the address bits a port's word is read from (hi), the widths of DI / DIP, WEA and WEBWE, of
 // INIT_A / SRVAL_A, the INIT_xx and INITP_xx, the widest TDP port and the SDP's
-export const E1 = {
+export const E1 = { __proto__: null,
   RAMB18E1: { mem: 16384, par: 2048, aw: 14, hi: 13, dw: 16, pw: 2, wa: 2, wb: 4, iw: 18, inits: 64, initps: 8, tdp: 18, sdp: 36 },
   RAMB36E1: { mem: 32768, par: 4096, aw: 16, hi: 14, dw: 32, pw: 4, wa: 4, wb: 8, iw: 36, inits: 128, initps: 16, tdp: 36, sdp: 72 },
 };

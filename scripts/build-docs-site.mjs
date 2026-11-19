@@ -133,7 +133,8 @@ ${markdown(md, from)}
 `;
 }
 
-/** The guide written into <site>/docs/: each language's pages, the pictures. Returns the files written. */
+/** The guide written into <site>/docs/: each language's pages, the pictures. Returns the files written (relative to
+ *  <site>, with /). */
 export function build(site) {
   const out = path.join(site, 'docs');
   const written = [];
@@ -143,7 +144,7 @@ export function build(site) {
     for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.md')).sort()) {
       const file = path.join(out, lang, f === 'README.md' ? 'index.html' : f.replace(/\.md$/, '.html'));
       fs.writeFileSync(file, page(fs.readFileSync(path.join(dir, f), 'utf8'), `${lang}/${f}`, lang));
-      written.push(path.relative(site, file));
+      written.push(`docs/${lang}/${path.basename(file)}`);   // (with /, on Windows too: #4547)
     }
   }
   fs.mkdirSync(path.join(out, 'images'), { recursive: true });
