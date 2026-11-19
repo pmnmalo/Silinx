@@ -35,7 +35,7 @@ export const LINK_PT = {
   'Expires:': 'Expira:', 'Never': 'Nunca', 'In a week': 'Daqui a uma semana', 'In a month': 'Daqui a um mês', 'In six months': 'Daqui a seis meses', 'In a year': 'Daqui a um ano',
   // a sharing window's QR code (#3637, web/js/link-qr.js)
   // the link hidden (#3995, web/js/link-field.js); every link made by Generate (#4073)
-  'Hide': 'Ocultar', 'Generate': 'Gerar',
+  'Hide': 'Ocultar', 'Generate': 'Gerar', 'Generate View-Only': 'Gerar Só de Leitura', 'Generate Edit': 'Gerar Edição',   // (#4576)
   'Show QR Code': 'Mostrar o Código QR', 'QR Code': 'Código QR', 'QR code of the link': 'Código QR da ligação',
 };
 
