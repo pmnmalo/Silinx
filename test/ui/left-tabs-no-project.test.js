@@ -1,6 +1,6 @@
-// UI: the side panel's tabs with no project open (#4257, #4322): the Start tab alone in the row (not Design, Files,
-// Libraries, Collaboration, Teaching: #4577), active, its page only; a project opened brings the others back, on the tab last
-// chosen, and closing it leaves the Start tab alone again (the Silinx interface: on its Design page, #1171); an FPGA
+// UI: the side panel's tabs with no project open (#4257, #4322): the Start tab in the row, and Collaboration's (#4619: the
+// GitHub sign-in, Open from GitHub Repository…), not Design, Files, Libraries, Teaching (#4577); Start active, its page only;
+// a project opened brings the others back, on the tab last chosen, and closing it leaves the Start and Collaboration tabs again (the Silinx interface: on its Design page, #1171); an FPGA
 // project and a design and simulation one (#3780); on a narrow screen (the drawer, the Silinx interface's activity bar
 // with its Start icon); the local server and the browser edition; in both interfaces (SILINX_UI_INTERFACE); no warnings.
 import { before, after } from 'node:test';
@@ -24,7 +24,7 @@ const side = (page) => page.eval(() => {
   return { row: row.getClientRects().length > 0, tabs, active: row.querySelector('.tab.active')?.dataset.page || null,
     pages: [...document.querySelectorAll('.left-page')].filter((p) => !p.hidden).map((p) => p.dataset.page) };
 });
-const NONE = { row: true, tabs: ['start'], active: 'start', pages: ['start'] };
+const NONE = { row: true, tabs: ['start', 'collab'], active: 'start', pages: ['start'] };
 // the Start page shown, its boxes drawn (on a narrow screen: the drawer opened by the header's button), its tab beside it
 async function startShown(page) {
   if (await page.eval(() => !document.getElementById('start-page').getClientRects().length)) await page.click('#drawer-btn');
@@ -41,7 +41,7 @@ const open = async (page, name) => {
   await page.waitFor((n) => window.Silinx.project?.name === n && !document.documentElement.hasAttribute('data-no-project'), [name], { what: `${name} open` });
 };
 
-uiTest('#4257 #4322 no project: the Start tab alone, its page only; a project opened brings the tabs back on the last chosen, closed leaves the Start tab alone; a design project; a narrow screen', E, async (page) => {
+uiTest('#4257 #4322 #4619 no project: the Start and Collaboration tabs, the Start page only; a project opened brings the tabs back on the last chosen, closed leaves the Start and Collaboration tabs; a design project; a narrow screen', E, async (page) => {
   await page.setViewport(1366, 768);
   await close(page);
   assert.deepEqual(await side(page), NONE);
@@ -65,10 +65,10 @@ uiTest('#4257 #4322 no project: the Start tab alone, its page only; a project op
   await page.leftTab('teaching');
   await close(page);
   assert.deepEqual(await side(page), NONE);
-  // a narrow screen: the Start tab alone (the Silinx interface: its activity bar's Start icon), the drawer's Start page; a
+  // a narrow screen: the Start and Collaboration tabs (the Silinx interface: its activity bar's icons), the drawer's Start page; a
   // project: the tabs back
   await page.setViewport(820, 1000);
-  assert.deepEqual((await side(page)).tabs, ['start']);
+  assert.deepEqual((await side(page)).tabs, ['start', 'collab']);
   await startShown(page);
   await open(page, 'TabsFpga');
   await page.leftTab('design');
@@ -82,7 +82,7 @@ uiTest('#4257 #4322 no project: the Start tab alone, its page only; a project op
 });
 
 // the browser edition: the same, its project made with File ▸ New Project…
-uiTest('#4257 #4322 the browser edition: the Start tab alone with no project, the tabs with one, the Start tab alone again once closed', () => (site?.skip ? { skip: site.skip } : env), async (page) => {
+uiTest('#4257 #4322 #4619 the browser edition: the Start and Collaboration tabs with no project, the tabs with one, the Start and Collaboration tabs again once closed', () => (site?.skip ? { skip: site.skip } : env), async (page) => {
   site ??= await buildSite(env.tmp);
   if (site.skip) return;
   try {

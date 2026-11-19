@@ -1,7 +1,7 @@
 // UI: the Collaboration tab of the Design pane's row (#4215, web/js/collab-tab.js) in the server editions, against local
 // bare repositories (no network: https://github.com/test/<repo> mapped to one, SILINX_UI_GIT_REMOTES of
-// test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Libraries, before Teaching (#4577); no project open: the Start tab alone (#4257, #4322,
-// Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, Changes…
+// test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Libraries, before Teaching (#4577); no project open: the Start and Collaboration tabs
+// (#4257, #4322, #4619: Open from GitHub Repository… from the tab); a project opened from a repository: its GitHub repository and branch, Changes…
 // (#4581: how many, its window with the Design pane's marks, the conflicts first, a click comparing one with the last commit, following
 // git's status while open; no Changes box), Commit…, Push to GitHub, Pull from GitHub, History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
 // tab, then committed and pushed; a followed project's read-only notice; Sharing (Share a Copy…, Share Live… from the tab, who is
@@ -114,14 +114,14 @@ const waitChanges = (page, want, what) => page.waitFor((w) => {
   return JSON.stringify(got) === JSON.stringify(w);
 }, [want], { what }).catch(async (e) => { assert.deepEqual(await changesWindow(page), want, e.message); throw e; });
 
-uiTest('#4215 #4257 #4322 #4581 the Collaboration tab: no Collaboration tab with no project, a project opened from a repository, Changes…, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
+uiTest('#4215 #4257 #4322 #4581 #4619 the Collaboration tab: shown with no project, a project opened from a repository, Changes…, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
   bare('collab1');
   await page.setViewport(1366, 768);
   await page.eval(() => window.SilinxApp.closeProject?.());
-  // no project: the Start tab alone (#4257, #4322); Open from GitHub Repository… from the Start page: the project, its repository and branch, no change
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).map((t) => t.dataset.page)), ['start']);
-  await page.leftTab('start');
-  await page.click('#start-page .entry a', { text: 'Open from GitHub Repository…' });
+  // no project: the Start and Collaboration tabs (#4257, #4322, #4619); Open from GitHub Repository… from the tab: the project, its repository and branch, no change
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).map((t) => t.dataset.page)), ['start', 'collab']);
+  await page.leftTab('collab');
+  await tabCommand(page, 'Open from GitHub Repository…');
   await page.waitDialog('Open from GitHub Repository');
   await page.fill('.dlg-overlay .git-url', 'https://github.com/test/collab1');
   await page.dialogButton('Open');

@@ -356,7 +356,6 @@ html[data-ui="silinx"] .page { padding: 18px 22px; }
 html[data-ui="silinx"] .page h2 { color: var(--m-fg); font-weight: 650; font-size: 18px; }
 html[data-ui="silinx"] .page a { color: var(--m-accent); }
 html[data-ui="silinx"] .start-box h3 { color: var(--m-fg); border-bottom-color: var(--m-border); }
-html[data-ui="silinx"] .start-box .start-sep { border-top-color: var(--m-border); }
 html[data-ui="silinx"] .summary-table caption { background: var(--m-surface-2); color: var(--m-fg); border-color: var(--m-border); border-radius: 8px 8px 0 0; padding: 6px 10px; }
 html[data-ui="silinx"] .summary-table th, html[data-ui="silinx"] .summary-table td { border-color: var(--m-border); }
 html[data-ui="silinx"] .summary-table th { background: var(--m-surface-2); color: var(--m-muted); }

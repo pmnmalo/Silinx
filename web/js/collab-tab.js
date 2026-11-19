@@ -10,7 +10,9 @@
 // (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
 // read-only notice and its Live box only. The browser edition's Cloudflare Relay box (#4574, web/js/relay-setup.js): the
 // relay its live shares meet their followers at, set up, checked, forgotten. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
-// page's, so that a later command (a merge, a branch) is one more box or entry.
+// page's, so that a later command (a merge, a branch) is one more box or entry. Shown with no project open too (#4619: the
+// sign-in, Open from GitHub Repository…, how to follow, the relay; the project's commands disabled), the Start page
+// having no GitHub commands of its own.
 import { icon } from './icons.js';
 import { h } from './ui.js';
 import { api } from './api.js';
@@ -83,7 +85,7 @@ function repositoryBox(items, init, open) {
       cmd(open), command({ ...init, disabled: !S.project }, 'project'));   // (Open first, #4343)
   }
   const where = !g.upstream ? 'Not pushed yet' : null, conflicts = conflictCount(shownChanges());
-  const kept = checks?.project === S.project?.name ? checks.checks : null;
+  const kept = checks && checks.project === S.project?.name ? checks.checks : null;   // (none yet: null, with no project too, #4619)
   const state = kept && (kept.state === 'none' ? 'none' : kept.conclusion || 'pending');
   return box('collab-repo', 'Git Repository', signIn,
     g.remote
