@@ -132,12 +132,42 @@ test('write_file: a drawing with no HDL file gets it, then follows its drawing (
   const again = table('01111111', { generatedFile: 'src/maj.vhd' });
   assert.deepEqual((await ok('write_file', { project: 'p', path: 'src/maj.bool.json', text: again })).data.hdl, { file: 'src/maj.vhd', written: true, removed: null, stale: null });
   assert.match(read('src/maj.vhd'), /f <= c or b or a;/);
-  // a drawing whose HDL file name is taken by another file: none (#230, resolved from its menu)
+  // a drawing whose HDL file name is taken by another file: none (#230, resolved from its menu), said (#4693)
   await ok('write_file', { project: 'p', path: 'src/taken_tt.vhd', text: '-- not the table\'s\n' });
-  const o = await ok('write_file', { project: 'p', path: 'src/taken_tt.bool.json', text: table('00000001').replace('"maj"', '"taken_tt"') });
-  assert.equal(o.data.hdl, undefined);
+  const tt = table('00000001').replace('"maj"', '"taken_tt"');
+  const o = await ok('write_file', { project: 'p', path: 'src/taken_tt.bool.json', text: tt });
+  assert.equal(o.text, `Created src/taken_tt.bool.json (${tt.length} characters).\nWARNING: src/taken_tt.bool.json has no HDL file: src/taken_tt.vhd exists already and holds something else. Generate HDL File… (its right-click menu in the Design pane) writes its HDL to src/taken_tt_bool.vhd.`);
+  assert.deepEqual(o.data.hdl, { file: null, written: false, removed: null, stale: null, clash: { kind: 'other', file: 'src/taken_tt.vhd' } });
   assert.equal(JSON.parse(read('src/taken_tt.bool.json')).generatedFile, undefined);
   assert.equal(read('src/taken_tt.vhd'), '-- not the table\'s\n');
+});
+
+test('write_file: a drawing with no generatedFile over its module\'s HDL file: not made from it, said, with its way out (#4693)', async () => {
+  const table = (name, f, extra = {}) => JSON.stringify({ version: 1, name, inputs: ['a', 'b'], outputs: ['f'], table: { f }, exprs: {}, notes: '', form: 'sop', lang: 'vhdl', ...extra }, null, 2);
+  // the module's HDL file, written by hand: the drawing written next to it leaves it as it is, and says why
+  const hand = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity own is\n  port (a, b : in std_logic; f : out std_logic);\nend own;\narchitecture rtl of own is\nbegin\n  f <= a or b;\nend rtl;\n';
+  await ok('write_file', { project: 'p', path: 'src/own.vhd', text: hand });
+  const t = table('own', '0001');
+  const w = await ok('write_file', { project: 'p', path: 'src/own.bool.json', text: t });
+  assert.equal(w.text, `Created src/own.bool.json (${t.length} characters).\nWARNING: src/own.bool.json has no HDL file: src/own.vhd exists already and defines its module own. Generate HDL File… (its right-click menu in the Design pane), or the drawing written with "generatedFile": "src/own.vhd", replaces src/own.vhd with the HDL generated from it.`);
+  assert.deepEqual(w.data.hdl, { file: null, written: false, removed: null, stale: null, clash: { kind: 'same', file: 'src/own.vhd' } });
+  assert.equal(read('src/own.vhd'), hand);
+  assert.equal(JSON.parse(read('src/own.bool.json')).generatedFile, undefined);
+  // its way out: written with that file as its generatedFile, it replaces it
+  const linked = table('own', '0001', { generatedFile: 'src/own.vhd' });
+  assert.deepEqual((await ok('write_file', { project: 'p', path: 'src/own.bool.json', text: linked })).data.hdl, { file: 'src/own.vhd', written: true, removed: null, stale: null });
+  assert.match(read('src/own.vhd'), /f <= a and b;/);
+  // its module defined in another file of the project: that file named
+  await ok('write_file', { project: 'p', path: 'src/defs_el.vhd', text: hand.replace(/\bown\b/g, 'el') });
+  const e = await ok('write_file', { project: 'p', path: 'src/el.bool.json', text: table('el', '0110') });
+  assert.equal(e.text.split('\n')[1], 'WARNING: src/el.bool.json has no HDL file: src/defs_el.vhd exists already and defines its module el. Generate HDL File… (its right-click menu in the Design pane), or the drawing written with "generatedFile": "src/defs_el.vhd", replaces src/defs_el.vhd with the HDL generated from it.');
+  assert.deepEqual(e.data.hdl.clash, { kind: 'same', file: 'src/defs_el.vhd' });
+  assert.equal(fs.existsSync(path.join(P.projectDir('p'), 'src/el.vhd')), false);
+  // its module another drawing's: not replaced, one is renamed
+  const d = await ok('write_file', { project: 'p', path: 'src/own_copy.bool.json', text: table('own', '0111') });
+  assert.equal(d.text.split('\n')[1], 'WARNING: src/own_copy.bool.json has no HDL file: its module own is the module of src/own.bool.json (src/own.vhd). Rename one of them.');
+  assert.deepEqual(d.data.hdl.clash, { kind: 'drawn', file: 'src/own.vhd' });
+  assert.match(read('src/own.vhd'), /f <= a and b;/);
 });
 
 test('new_source: a package, a constraints file (the project\'s, having none), a .mem, a C and a C++ function', async () => {

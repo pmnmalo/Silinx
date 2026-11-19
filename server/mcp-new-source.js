@@ -163,7 +163,7 @@ export const NEW_SOURCE_TOOLS = [
       const adopted = DRAWN.includes(type) ? await (await import('./drawing-sync.js')).adoptDrawing(P, name, rel) : null;
       const entry = (await P.readProject(name)).files.find(f => f.path === (adopted?.target || rel));
       return { text: [`Created ${t.label}${t.ext ? '' : ` (${lang === 'verilog' ? 'Verilog' : 'VHDL'})`} '${rel}'.`, ...(adopted?.messages || [])].join('\n'),
-        data: { project: name, type, path: rel, language: lang, role: entry?.role || null, ...(adopted ? { hdl: adopted.target } : {}), ...(type === 'constraints' ? { constraints: (await P.readProject(name)).constraints } : {}) } };
+        data: { project: name, type, path: rel, language: lang, role: entry?.role || null, ...(adopted?.written ? { hdl: adopted.target } : {}), ...(type === 'constraints' ? { constraints: (await P.readProject(name)).constraints } : {}) } };
     },
   },
 ];

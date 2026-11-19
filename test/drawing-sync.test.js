@@ -74,3 +74,29 @@ test('drawingsInLanguage / setSourceLanguage: the drawings in Verilog, their HDL
   assert.deepEqual(back, { changed: true, language: 'verilog', messages: ['src/lamps.bool.json: its HDL is now in Verilog, src/lamps.v (src/lamps.vhd removed)'] });
   assert.equal((await P.readProject('tl')).sourceLanguage, undefined);
 });
+
+test('adoptDrawing: a drawing whose HDL file is in the way says why, a design project\'s naming its module (#4693)', async () => {
+  const same = { kind: 'same', path: 'src/m.sch.json', module: 'm', target: 'src/m.vhd', file: 'src/m.vhd' };
+  const other = { kind: 'other', path: 'src/m.sch.json', module: 'm', target: 'src/m.vhd', file: 'src/m.vhd', free: 'src/m_sch.vhd' };
+  const drawn = { ...same, kind: 'drawn', other: 'src/n.sch.json' };
+  assert.deepEqual([same, other, drawn].map(c => D.clashWarning(c)), [
+    'WARNING: src/m.sch.json has no HDL file: src/m.vhd exists already and defines its module m. Generate HDL File… (its right-click menu in the Design pane), or the drawing written with "generatedFile": "src/m.vhd", replaces src/m.vhd with the HDL generated from it.',
+    'WARNING: src/m.sch.json has no HDL file: src/m.vhd exists already and holds something else. Generate HDL File… (its right-click menu in the Design pane) writes its HDL to src/m_sch.vhd.',
+    'WARNING: src/m.sch.json has no HDL file: its module m is the module of src/n.sch.json (src/m.vhd). Rename one of them.',
+  ]);
+  assert.deepEqual([same, other, drawn].map(c => D.clashWarning(c, true)), [
+    'WARNING: src/m.sch.json: Not made: another file of the project folder defines its module m. Make Module… (right-click), or the drawing written with "generatedFile": "src/m.vhd", replaces it with the drawing\'s.',
+    'WARNING: src/m.sch.json: Not made: another file of the project folder has its name. Make Module… (right-click) makes it under another name.',
+    'WARNING: src/m.sch.json: Not made: its module m is the module of src/n.sch.json. Rename one of them.',
+  ]);
+  // on a project: the HDL file left as it was, the drawing not linked
+  await P.createProject({ name: 'clash' });
+  const hand = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity maj is\n  port (a, b, c : in std_logic; f : out std_logic);\nend maj;\narchitecture rtl of maj is\nbegin\n  f <= a;\nend rtl;\n';
+  await P.writeFile('clash', 'src/maj.vhd', hand);
+  await P.updateProject('clash', pj => ({ ...pj, files: [...pj.files, { path: 'src/maj.vhd', lang: 'vhdl', role: 'design' }] }));
+  await P.writeFile('clash', 'src/maj.bool.json', JSON.stringify({ version: 1, name: 'maj', inputs: ['a', 'b', 'c'], outputs: ['f'], table: { f: '00010111' }, exprs: {}, notes: '', form: 'sop', lang: 'vhdl' }));
+  const r = await D.adoptDrawing(P, 'clash', 'src/maj.bool.json');
+  assert.deepEqual({ ...r, messages: r.messages.length }, { target: null, written: null, removed: null, stale: null, clash: { kind: 'same', path: 'src/maj.bool.json', module: 'maj', target: 'src/maj.vhd', file: 'src/maj.vhd' }, messages: 1 });
+  assert.equal(read('clash', 'src/maj.vhd'), hand);
+  assert.equal(JSON.parse(read('clash', 'src/maj.bool.json')).generatedFile, undefined);
+});
