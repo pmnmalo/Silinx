@@ -26,6 +26,8 @@ import { newKey, seal, unseal } from '../core/collab-crypto.js';
 import { newSigner, verifierOf, signFrame, verifyFrame } from '../core/collab-sign.js';
 import { KIND } from '../core/collab-wire.js';
 import { attachRelay } from '../server/collab-relay.js';
+import { serveWorker } from '../test/workers-shim.js';
+import worker, { RelayRoom, RELAY_LIMITS } from '../packages/silinx-relay-cloudflare/src/worker.js';
 import { TRACK_MS, SOON_MS, VIEW_MS, OWNER_VIEW_MS } from '../core/collab-pace.js';
 
 export const PATHS = Object.freeze(['p2p', 'node', 'cloudflare']);
@@ -112,8 +114,6 @@ async function pathOf(path, rtt) {
     return { owner: { url: at('share'), WebSocket: delayed(WebSocket, half) }, follower: { url: at('follow'), WebSocket: delayed(WebSocket, half) }, close: async () => { relay.close(); await new Promise(r => s.close(r)); } };
   }
   if (path === 'cloudflare') {
-    const { serveWorker } = await import('../test/workers-shim.js');
-    const { default: worker, RelayRoom, RELAY_LIMITS } = await import('../packages/silinx-relay-cloudflare/src/worker.js');
     const KEY = 'a-benchmark-key-of-24-characters-or-more';
     const relay = await serveWorker({ worker, env: { RELAY_KEY: KEY, ORIGINS: '' }, objects: { ROOMS: ctx => new RelayRoom(ctx, {}, { limits: RELAY_LIMITS }) } });
     return { owner: { url: relayUrl(relay.url, 'share'), token: KEY, WebSocket: delayed(WebSocket, half) }, follower: { url: relayUrl(relay.url, 'follow'), WebSocket: delayed(WebSocket, half) }, close: () => relay.close() };
