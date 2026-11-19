@@ -3,8 +3,9 @@
 // - the ISE style interface's Implementation view: under the top module's row, after its instances, as ISE's; the
 //   constraints' row selected shows their processes, a double-click opens the file, its menu is the file's; none in the
 //   Simulation view; on a board of each family's format (UCF, PCF, LPF, CST, XDC); in Portuguese;
-// - the Silinx interface's Implement and Emulate side panels: the top module's row (its badges) and the same files under
-//   it, above the buttons and the processes; the Design page still without them (#1250); in Portuguese.
+// - the Silinx interface's Implement and Emulate: a Files tab after theirs (#4609), as Simulate's, its page the design's
+//   sources (a drawing in place of its HDL), the constraints and the memory images, opened from there, the file's menu;
+//   the Design page still without them (#1250); in Portuguese; none in the ISE style interface.
 // No warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -107,34 +108,71 @@ uiTest('#4591 ISE style ▸ Implementation view: the constraints in the board\'s
   await noWarnings(page);
 }, { ui: 'ise' });
 
-uiTest('#4591 Silinx ▸ Implement and Emulate: the top module and its constraints above the processes, opened from there, the file\'s menu; the Design page without them; in Portuguese', E, async (page) => {
-  await makeProject(env, { name: 'FF_tasks', template: 'blinky' });
+// the Files tab's page: its rows "icon name (path)"
+const filesRows = (page, sel) => page.eval((s) => [...document.querySelectorAll(`${s} .row`)].filter((r) => r.getClientRects().length)
+  .map((r) => `${r.querySelector('.ico')?.dataset.ico} ${r.querySelector('.lbl').textContent} ${r.querySelector('.meta').textContent}`), sel);
+const shownTabs = (page) => page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length)
+  .map((t) => `${t.querySelector('.tab-lbl').textContent}${t.querySelector('.tab-lbl').getClientRects().length && getComputedStyle(t.querySelector('.tab-lbl')).position !== 'absolute' ? '' : ' (icon)'}`));
+const FILES = [
+  'vhdl bcd_counter.vhd (src/bcd_counter.vhd)', 'verilog counter.v (src/counter.v)', 'vhdl knight.vhd (src/knight.vhd)',
+  'verilog sevenseg.v (src/sevenseg.v)', 'asm speed_ctrl.asm.json (src/speed_ctrl.asm.json)', 'vhdl top.vhd (src/top.vhd)',
+  'ucf top.ucf (constraints/top.ucf)', 'file rom.mem (src/rom.mem)',
+];
+
+uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the design\'s sources, the constraints and the memory images, opened from there, the file\'s menu; the processes back under the task\'s tab; the Design page without the constraints; in Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'FF_tasks', template: 'blinky', files: { 'src/rom.mem': '00\n01\n' } });
   await page.setViewport(1680, 1050);
   await page.openProject('FF_tasks');
-  // the Design page: the design only (#1250)
+  // the Design page: the design only (#1250); no Files tab of the flow in Edit
   assert.deepEqual((await rows(page, '#hier')).filter((r) => /ucf/.test(r)), []);
-  const WANT = ['moduleTop top [VHDL*] (top.vhd)', '  ucf top.ucf'];
-  for (const [task, box, bar] of [['impl', '#task-impl-files', '#task-impl-bar'], ['emu', '#task-emu-files', '#task-emu-bar']]) {
+  assert.equal(await page.eval(() => document.getElementById('task-flow-files-tab').getClientRects().length), 0);
+  for (const [task, tab, list, procs] of [['impl', 'Implementation', '#task-impl-files', '#procs'], ['emu', 'Emulate', '#task-emu-files', '#task-emu-panel .task-emu-tree']]) {
     await page.click(`#task-switch .task-btn[data-task="${task}"]`);
-    await page.waitFor((b) => document.querySelector(b)?.getClientRects().length > 0, [box], { what: `${task}'s files` });
-    assert.deepEqual(await rows(page, box), WANT, task);
-    // above the task's buttons and its processes, in its side panel
-    assert.ok(await page.eval((b, x) => document.querySelector(b).getBoundingClientRect().bottom <= document.querySelector(x).getBoundingClientRect().top + 1 && !!document.querySelector(b).closest('#left'), box, bar), task);
-    // the constraints: opened by a double-click (in Implement, as Edit Constraints (Text)), the file's menu
-    await rowOf(page, box, 'top.ucf', 'dblclick');
+    // the task's tab in front, its processes; the Files tab after it, its icon only
+    await page.click(`#left-tabs #${task === 'impl' ? 'task-procs-tab' : 'task-emu-tab'}`);
+    assert.deepEqual(await shownTabs(page), [tab, 'Files (icon)'], task);
+    assert.deepEqual(await filesRows(page, list), [], task);
+    assert.ok(await page.eval((s) => document.querySelector(s).getClientRects().length > 0, procs), `${task}: its processes`);
+    // the Files tab: its page in front, the processes hidden
+    await page.click('#task-flow-files-tab');
+    assert.deepEqual(await shownTabs(page), [`${tab} (icon)`, 'Files'], task);
+    assert.deepEqual(await filesRows(page, list), FILES, task);
+    assert.equal(await page.eval((s) => document.querySelector(s).getClientRects().length, procs), 0, `${task}: no processes`);
+    // a double-click opens a file (the UCF in Implement, its task); the drawing, its editor; the menu is the file's
+    await rowOf(page, list, 'top.ucf', 'dblclick');
     await page.waitFor(() => window.SilinxApp.S.active?.title === 'top.ucf', [], { what: `${task}: the UCF opened` });
     await page.click(`#task-switch .task-btn[data-task="${task}"]`);
-    assert.deepEqual(await fileMenu(page, box, 'top.ucf'), FILE_MENU, task);
-    // the top: its badge opens its source
-    await page.eval((b) => document.querySelector(`${b} .badge`).click(), box);
-    await page.waitFor(() => window.SilinxApp.S.active?.title === 'top.vhd', [], { what: `${task}: the top opened` });
-    assert.equal(await active(page), 'top.vhd');
+    assert.deepEqual(await fileMenu(page, list, 'top.ucf'), FILE_MENU, task);
+    assert.deepEqual(await fileMenu(page, list, 'rom.mem'), FILE_MENU.filter((x) => x !== 'Check Syntax'), task);
+    await rowOf(page, list, 'speed_ctrl.asm.json', 'dblclick');
+    await page.waitFor(() => /speed_ctrl/.test(window.SilinxApp.S.active?.title || ''), [], { what: `${task}: the ASM chart opened` });
+    await page.click(`#task-switch .task-btn[data-task="${task}"]`);
   }
-  // in Portuguese: the tree's name translated, its rows the files'
-  await page.click('#task-switch .task-btn[data-task="emu"]');
+  // the page in front the same in both tasks: back to the processes from Emulate's tab, Implement's too
+  await page.click('#left-tabs #task-emu-tab');
+  await page.click('#task-switch .task-btn[data-task="impl"]');
+  assert.deepEqual(await shownTabs(page), ['Implementation', 'Files (icon)']);
+  // in Portuguese
+  await page.click('#task-flow-files-tab');
   await language(page, 'pt');
-  await page.waitFor(() => document.querySelector('#task-emu-files .tree')?.getAttribute('aria-label') === 'Módulo de topo e os seus ficheiros', [], { what: 'Portuguese' });
-  assert.deepEqual(await rows(page, '#task-emu-files'), WANT);
+  await page.waitFor(() => document.querySelector('#task-flow-files-tab .tab-lbl')?.textContent === 'Ficheiros', [], { what: 'Portuguese' });
+  assert.deepEqual(await shownTabs(page), ['Implementação (icon)', 'Ficheiros']);
+  assert.deepEqual(await filesRows(page, '#task-impl-files'), FILES);
   await language(page, 'en');
   await noWarnings(page);
 }, { ui: 'silinx' });
+
+uiTest('#4609 ISE style: no Files tab of Implement\'s or Emulate\'s (its Implementation view has the constraints under the top)', E, async (page) => {
+  await makeProject(env, { name: 'FF_ise', template: 'blinky' });
+  await page.openProject('FF_ise');
+  assert.equal(await page.eval(() => document.getElementById('task-flow-files-tab')), null);
+  assert.equal(await page.eval(() => document.querySelectorAll('.task-flow-files').length), 0);
+  // the interface changed to Silinx and back: the tab made, then removed
+  await page.eval(async () => (await import('/js/silinx.js')).setInterface('silinx'));
+  await page.waitFor(() => document.documentElement.dataset.layout === 'tasks' && !!document.getElementById('task-flow-files-tab'), [], { what: 'the Silinx interface' });
+  await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
+  await page.waitFor(() => !document.documentElement.dataset.layout);
+  assert.equal(await page.eval(() => document.getElementById('task-flow-files-tab')), null);
+  assert.equal(await page.eval(() => [document.querySelectorAll('.task-flow-files').length, document.getElementById('left').dataset.flowPage ?? null].join()), '0,');
+  await noWarnings(page);
+}, { ui: 'ise' });

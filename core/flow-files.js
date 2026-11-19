@@ -27,3 +27,15 @@ export function flowFiles(pj, fileTree = []) {
   for (const path of mem) out.push({ path, kind: 'memory' });
   return out;
 }
+
+/**
+ * Implement's and Emulate's Files page (#4609, web/js/tasks-flow-files.js), in order, of project `pj` with `fileTree` its
+ * paths and `hdlToSch` its generated HDL files' drawings: the design's sources by path (not the simulation's; a drawing in
+ * place of its HDL), then the flow's files. [{ path, kind: 'source' | 'constraints' | 'memory' }]
+ */
+export function flowPageFiles(pj, fileTree = [], hdlToSch = {}) {
+  if (!pj) return [];
+  const src = [...new Set((pj.files || []).filter(f => f.role !== 'sim').map(f => hdlToSch[f.path] || f.path))]
+    .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  return [...src.map(path => ({ path, kind: 'source' })), ...flowFiles(pj, fileTree)];
+}

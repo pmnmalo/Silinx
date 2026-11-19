@@ -264,19 +264,26 @@ html[data-layout="tasks"] #start-page > .page { padding: 0 0 12px; }
 html[data-layout="tasks"] #start-page .start-box { margin: 0 12px; }
 html[data-layout="tasks"] #start-page .start-btns + .start-box { margin-top: 10px; }
 html[data-layout="tasks"]:not([data-task="impl"]) #task-procs-tab { display: none; }
-html[data-layout="tasks"][data-task="impl"] #left-tabs .tab:not(#task-procs-tab) { display: none; }
+html[data-layout="tasks"][data-task="impl"] #left-tabs .tab:not(#task-procs-tab, #task-flow-files-tab) { display: none; }
 html[data-layout="tasks"][data-task="impl"] #left-tabs #task-procs-tab { flex: 1 1 auto; justify-content: flex-start; background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
 /* Emulate's Processes: the side panel as Implement's, under its own tab, Emulate (#1399) */
 #task-emu-panel { display: none; }
 html[data-layout="tasks"]:not([data-task="emu"]) #task-emu-tab { display: none; }
-html[data-layout="tasks"][data-task="emu"] #left-tabs .tab:not(#task-emu-tab) { display: none; }
+html[data-layout="tasks"][data-task="emu"] #left-tabs .tab:not(#task-emu-tab, #task-flow-files-tab) { display: none; }
 html[data-layout="tasks"][data-task="emu"] #left-tabs #task-emu-tab { flex: 1 1 auto; justify-content: flex-start; background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
 html[data-layout="tasks"][data-task="emu"] :is(#design-panel, #proc-panel) { display: none; }
 html[data-layout="tasks"][data-task="emu"] #task-emu-panel { display: flex; flex: 1; }
-/* Implement's and Emulate's top module and the files their flow reads (#4591), above their buttons, the processes
-   scrolling under them */
-html[data-layout="tasks"] .task-flow-files { flex: none; max-height: 40%; overflow: auto; padding: 2px 0; border-bottom: 1px solid var(--m-border); }
-html[data-layout="tasks"] .task-flow-files:empty { display: none; }
+/* Implement's and Emulate's Files, a tab after theirs (#4609, web/js/tasks-flow-files.js): shown in those two tasks only;
+   its page in front (#left's data-flow-page) the task's tab plain, the Files tab marked and named, the panel its list */
+html[data-layout="tasks"]:not([data-task="impl"], [data-task="emu"]) #task-flow-files-tab { display: none; }
+html[data-layout="tasks"] #left[data-flow-page="files"] #left-tabs :is(#task-procs-tab, #task-emu-tab) { flex: 0 0 auto; background: none; color: var(--m-muted); font-weight: 500; cursor: pointer; }
+html[data-layout="tasks"] #left[data-flow-page="files"] #left-tabs :is(#task-procs-tab, #task-emu-tab) .tab-lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html[data-layout="tasks"] #left[data-flow-page="files"] #left-tabs #task-flow-files-tab { flex: 1 1 auto; justify-content: flex-start; background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
+html[data-layout="tasks"] #left[data-flow-page="files"] #left-tabs #task-flow-files-tab .tab-lbl { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+html[data-layout="tasks"] #left-tabs #task-flow-files-tab { cursor: pointer; }
+.task-flow-files { display: none; }
+html[data-layout="tasks"] #left[data-flow-page="files"] :is(#proc-panel, #task-emu-panel) > :not(.task-flow-files) { display: none !important; }
+html[data-layout="tasks"] #left[data-flow-page="files"] :is(#proc-panel, #task-emu-panel) > .task-flow-files { display: block; flex: 1; min-height: 0; overflow: auto; padding: 4px 0; margin: 0; }
 html[data-layout="tasks"]:is([data-task="edit"], [data-task="impl"], [data-task="emu"]) #left { flex-direction: column; }
 html[data-layout="tasks"]:is([data-task="edit"], [data-task="impl"], [data-task="emu"]) #left-tabs { order: -1; flex: none; flex-direction: row; align-items: stretch; width: auto; height: var(--m-tabs-h);
   padding: 4px 6px; gap: 2px; border-right: none; border-bottom: 1px solid var(--m-border); }

@@ -58,7 +58,7 @@ uiTest('#1204 Tasks ▸ Emulate: its Processes, the top\'s User Constraints and 
   await page.click('#task-emu-bar [data-act=emulate]');
   await page.waitConsole(/Board Emulator: 'top'/, { timeout: 30000 });
   await page.waitFor((b) => document.querySelectorAll(`${b} .task-emu-tree li`).length > 0, [BOX], { what: 'Emulate\'s Processes' });
-  assert.deepEqual(await procs(page), { shown: true, side: true, tab: 'Emulate', rows: EN });
+  assert.deepEqual(await procs(page), { shown: true, side: true, tab: 'Emulate,Files', rows: EN });   // (its Files tab after it, #4609)
   // the side panel as Implement's (its width, its tab's icon, #1399); the Watch beside the board, as before
   const emuSide = await page.eval(() => [Math.round(document.getElementById('left').getBoundingClientRect().width), !!document.querySelector('#task-emu-tab .tab-ico svg')]);
   assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-side .emu-box h4')?.textContent), 'Watch');
