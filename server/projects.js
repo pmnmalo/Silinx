@@ -174,8 +174,9 @@ function withProjectLock(name, fn) {
   return run;
 }
 
-// Windows refuses to rename over a file that another operation has open at that moment (a concurrent
-// read of it: EPERM / EACCES / EBUSY), where other systems replace it: retried a few times, briefly
+// Windows refuses to rename a file, or over one, that another operation has open at that moment (a concurrent
+// read of it, a scan of a file just written: EPERM / EACCES / EBUSY), where other systems rename it: retried a few
+// times, briefly (#4569: a file moved into the .trash, renamed, a project deleted, too)
 export async function renameOver(from, to, { tries = 10, wait = 15 } = {}) {
   for (let k = 0; ; k++) {
     try { return await fs.rename(from, to); } catch (e) {
@@ -389,7 +390,7 @@ export async function deleteProject(name) {
   if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, 'not found');
   const trash = path.join(workspaceDir(), '.trash');
   await fs.mkdir(trash, { recursive: true });
-  await fs.rename(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
+  await renameOver(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
   await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
 }
 
@@ -523,7 +524,7 @@ export async function renameFile(name, from, to, { checkName = true } = {}) {
     if (taken && path.join(path.dirname(dst), taken) !== src) throw new HttpError(409, `'${to}' already exists`);
     try {
       await fs.mkdir(path.dirname(dst), { recursive: true });
-      await fs.rename(src, dst);
+      await renameOver(src, dst);
     } catch (e) { throw await fsHttpError(e, dir, dst); }
     const pj = await readProject(name);
     // a file maps exactly; a folder maps every path below it
@@ -585,7 +586,7 @@ async function toTrash(dir, full, key) {
   for (let i = 2; await exists(base); i++) base = path.join(trash, `${stamp}-${i}`);
   const at = path.join(base, ...key.split('/'));
   await fs.mkdir(path.dirname(at), { recursive: true });
-  await fs.rename(full, at);
+  await renameOver(full, at);
   return relKey(workspaceDir(), at);
 }
 

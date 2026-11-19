@@ -319,10 +319,18 @@ test('#4418 an editor adds, removes, renames and deletes sources and sets the pr
   const pj = await P.readProject('srcEd');
   assert.deepEqual([pj.name, pj.trusted, pj.madeBy], ['srcEd', false, 'editor']);
   await until(() => docFile(page.doc, 'src/blink.vhd') === blink && docProject(page.doc).project.files.some(f => f.path === 'src/blink.vhd'), 'the new source at the follower\'s');
-  // renamed: the file and its entry
-  await ok('follow_project', { link: editLink, source: { action: 'rename', path: 'src/blink.vhd', to: 'src/blinker.vhd' } });
-  await until(async () => (await listed('src/blinker.vhd')) && !onDisk('src/blink.vhd') && onDisk('src/blinker.vhd'), 'renamed at the owner\'s', 8000);
+  // renamed: the file and its entry (#4569: the old file's move into the .trash refused twice, as Windows does while
+  // another operation has it open: retried, moved)
+  const fsp = (await import('node:fs/promises')).default, rename = fsp.rename;
+  let refused = 0;
+  fsp.rename = async (from, to) => { if (path.basename(from) === 'blink.vhd' && refused < 2) { refused++; throw Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' }); } return rename(from, to); };
+  try {
+    await ok('follow_project', { link: editLink, source: { action: 'rename', path: 'src/blink.vhd', to: 'src/blinker.vhd' } });
+    await until(async () => (await listed('src/blinker.vhd')) && !onDisk('src/blink.vhd') && onDisk('src/blinker.vhd'), 'renamed at the owner\'s', 8000);
+  } finally { fsp.rename = rename; }
+  assert.equal(refused, 2);
   assert.equal(await listed('src/blink.vhd'), null);
+  assert.deepEqual((await ok('share_project', { project: 'srcEd', action: 'status' })).data.warnings, [], 'no warnings');
   // removed from the project: the file kept in its folder
   await ok('follow_project', { link: editLink, source: { action: 'remove', path: 'src/blinker.vhd' } });
   await until(async () => !(await listed('src/blinker.vhd')), 'removed from the project', 8000);
