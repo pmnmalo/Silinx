@@ -177,4 +177,8 @@ test('open() that fails after claiming the board releases it: the next attempt f
   const used = new SimAdeptBoard({ inUse: true });
   await assert.rejects(new Adept(used).open(), /the board cannot be opened \(Unable to claim interface\.\)/);
   assert.equal(used.opened, false);
+  // (#4593) Windows: Chrome cannot open a board whose driver is Digilent Adept's, "Access denied.": WinUSB with Zadig
+  const windows = new SimAdeptBoard();
+  windows.open = async () => { throw new Error('Access denied.'); };
+  await assert.rejects(new Adept(windows).open(), { message: 'Adept USB: the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back)' });
 });

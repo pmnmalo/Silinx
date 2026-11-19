@@ -14,6 +14,7 @@
 
 import { splitBitPart } from '../packages/silinx-fpga/src/parts.js';
 import { ECP5_IDCODES } from './open-bitstream.js';
+import { WINUSB_HINT } from './webusb-support.js';
 
 export const ADEPT_VENDOR = 0x1443;
 export const ADEPT_FILTERS = [{ vendorId: ADEPT_VENDOR }];
@@ -45,7 +46,7 @@ export class Adept {
       await u.claimInterface(0);
     } catch (e) {
       try { await u.close(); } catch { /* not opened */ }
-      fail(`the board cannot be opened (${e.message}): another program may be using it (Digilent Adept, iMPACT, the Silinx application), or, on Windows, its driver is Digilent's (WinUSB is needed: see the help)`);
+      fail(`the board cannot be opened (${e.message}): another program may be using it (Digilent Adept, iMPACT, the Silinx application); ${WINUSB_HINT}`);
     }
     // the board is claimed now: a failure from here on releases it (the callers close only the
     // Adept that open() returned), or every later attempt finds it in use until the page reloads

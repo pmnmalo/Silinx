@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { programIce40Flash, FTDI_FILTERS } from '../core/ftdi-ice40.js';
 import { ftdiBoard, ice40Image } from './fixtures/ftdi-sim.js';
+import { ftdiInUse } from '../core/webusb-support.js';
 
 const fast = { sleep: async () => {}, now: () => 0 };
 
@@ -51,4 +52,7 @@ test('the errors: no flash, a byte that does not take, no CDONE, no MPSSE, the b
   await assert.rejects(run({ mpsse: false }), /no answer from the FT2232H/);
   await assert.rejects(run({ claimError: 'Unable to claim interface.' }), /the board is in use \(another program, or the operating system's FTDI driver: Unable to claim interface\.\)/);
   await assert.rejects(run({}, new Uint8Array(0)), /no \.bin to write/);
+  // (#4593) Windows: the FTDI driver's board refuses open() itself: the message, and what to do
+  const denied = { ...ftdiBoard().usb, open: async () => { throw new Error('Access denied.'); } };
+  await assert.rejects(programIce40Flash(denied, ice40Image(3000), fast), { message: `FTDI USB: ${ftdiInUse('Access denied.')}` });
 });

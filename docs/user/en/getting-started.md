@@ -69,6 +69,30 @@ That's all. Things to know:
 - The interface opens in Portuguese when the browser is in Portuguese; **Settings (⚙) ▸ Language** changes it (in the
   ISE style interface, **View ▸ Language**).
 
+### Programming the board from the browser on Windows
+
+Chrome and Edge reach a USB board only through Windows' **WinUSB** driver. Digilent Adept (installed with
+Adept, Xilinx ISE or Vivado, as on most lab computers) gives the Basys2 / Nexys2 its own driver, and FTDI's
+driver takes the FTDI boards (Basys 3, Nexys A7, iCEBreaker, ULX3S, Tang Nano 9K): the browser then lists
+the board but cannot open it. The console says so: *the board cannot be opened (Access denied.)…*.
+
+1. Close Digilent Adept, iMPACT, Vivado's Hardware Manager and the Silinx application: one program at a
+   time can use the board.
+2. Download [Zadig](https://zadig.akeo.ie) and run it, with the board connected and switched on.
+3. **Options ▸ List All Devices**, choose the board (*Digilent USB Device*, *Basys2*, *Nexys2*, or
+   *Dual RS232-HS (Interface 0)* for an FTDI board), choose **WinUSB** as the driver and click
+   **Replace Driver** (or **Install Driver**).
+4. Unplug the board and plug it in again, then click **Program FPGA**: the browser shows its list of
+   USB devices; choose the board (only the first time).
+
+Adept, iMPACT and Vivado no longer see the board while it has WinUSB: to use them again, put Digilent's
+(or FTDI's) driver back in Windows' Device Manager (the board ▸ *Update driver* ▸ *Let me pick*).
+
+The browser shows its list only right after a click: if the console says *the browser did not show its
+list of USB devices*, click the button again. If it says *no board chosen*, the list was closed with no
+board: check the cable and that the board is switched on (a board missing from the list on Windows: its
+driver, as above).
+
 ---
 
 ## Way 2: run Silinx locally (Node.js)
