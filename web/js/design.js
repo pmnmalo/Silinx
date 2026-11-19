@@ -26,17 +26,20 @@ import { gitMark, gitMenuItems, gitStartItems, hasGit } from './git.js';
 import { checkLabel, designOnly, shownFiles, withoutHdlBadges } from './design-only.js';
 import { editorItem, projectEditorItem } from './open-editor.js';
 import { hdlSideFile } from '/core/project-kind.js';
+import { flowFileRows, renderFlowTree } from './flow-files-tree.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
-// benches Simulate's (its Simulation, #1161); no constraints in any interface (the Files page and the top
-// module's User Constraints processes have them, #1250)
+// benches Simulate's (its Simulation, #1161); no constraints (#1250: the Files page, Implement's and Emulate's side
+// panels have them, #4591); the ISE style's Implementation view has them under the top module, as ISE's (#4591)
 const oneTree = () => document.documentElement.dataset.layout === 'tasks';
 
 export function renderHierarchy() {
   const host = $('hier');
   const focused = host.contains(document.activeElement) ? (document.activeElement.closest('.badge') ? 'badge' : 'tree') : null;
   host.innerHTML = '';
+  // (the Silinx interface's Implement and Emulate side panels: the top module and its flow's files, #4591)
+  for (const el of document.querySelectorAll('.task-flow-files')) renderFlowTree(el);
   // (no project: its two commands here, the Silinx interface has no File menu, #1585)
   if (!S.project) {
     host.append(h('div', { class: 'tree empty' }, h('div', {}, 'No project open'),
@@ -103,14 +106,20 @@ export function renderHierarchy() {
       onContext: rowMenu,
     });
     parentUl.append(it.li);
+    // the Implementation view's top: the files its flow reads (its constraints, the memory images) under it, after its
+    // instances, as ISE's (#4591)
+    const files = isTop && !sim && !one ? flowFileRows() : [];
     if (info && depth < 30) {
       // (by their names in natural order, then their modules', #3819; a circuit's ICs none of its rows, #4216)
       const kids = instanceOrder(instancesOf(info.mod)).filter(k => !S.partModules?.has(String(k.module).toLowerCase()));
-      if (!kids.length) it.setLeaf();
+      if (!kids.length && !files.length) it.setLeaf();
       for (const k of kids) addModule(it.ul, k.module, k.name, depth + 1, `${path}/${k.name}`);
-    } else it.setLeaf();
+    } else if (!files.length) it.setLeaf();
+    for (const f of files) it.ul.append(f.li);
   };
   for (const r of roots) addModule(devItem.ul, r, null, 0, r);
+  // (no top module in the view: the files under the device, #4591)
+  if (!sim && !one && !roots.some(isTopName)) for (const f of flowFileRows()) devItem.ul.append(f.li);
 
   // packages, ASM charts and other files
   for (const p of lib.packages.values()) {
@@ -336,7 +345,8 @@ function ownDrawingCommands(mod, file) {
   const v = viewOfModule(mod, file);
   return v ? drawingCommands(v) : [];
 }
-function moduleContextMenu(e, mod, file) {
+/** A module's row's menu (the Design pane's; Implement's and Emulate's top module row, #4591). */
+export function moduleContextMenu(e, mod, file) {
   const isSimView = S.view === 'sim';
   popupMenu([
     isSimView ? null : topMenuItem(mod, () => setTop(mod, false)),

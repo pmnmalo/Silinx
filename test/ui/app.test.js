@@ -800,7 +800,7 @@ uiTest('Design Summary: once closed it reopens from the Processes panel whatever
     await page.treeRow('#procs', 'Design Summary/Reports', { dbl: true, exact: true });
     await page.waitFor(() => window.Silinx.active?.id === 'summary' && /Project Status/.test(document.querySelector('.doc:not([hidden])').innerText), [], { what: `summary reopened (${what})` });
   };
-  // a module (Implementation view: the constraints' processes under it, the UCF not in the tree, #1250), the Simulation view
+  // a module (Implementation view: the constraints' processes under it, the UCF a row of its own under the top, #4591), the Simulation view
   // (test bench and nothing selected)
   await page.treeRow('#hier', 'top', {});
   assert.ok(await page.eval(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent === 'Check Constraints')), 'the UCF processes are kept');

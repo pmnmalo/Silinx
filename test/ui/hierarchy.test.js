@@ -72,6 +72,7 @@ const EXAMPLES = {
       'project H_gates',
       '  chip xc3s250e-4-cp132',
       '    moduleTop gates [Schematic*] [VHDL] (gates.sch.json)',
+      '      ucf gates.ucf',
     ],
     sim: [
       'project H_gates',
@@ -90,6 +91,7 @@ const EXAMPLES = {
       '      fsm u_fsm - traffic [FSM*] [VHDL] (traffic.fsm.json)',
       '      algebra u_lamps - lamps [Algebra*] [Schematic] [VHDL] (lamps.bool.json)',
       '      vhdl u_timer - timer [VHDL*] (timer.vhd)',
+      '      ucf traffic.ucf',
     ],
     sim: [
       'project H_traffic',
@@ -119,6 +121,7 @@ const EXAMPLES = {
       '      vhdl u_knight - knight [VHDL*] (knight.vhd)',
       '      verilog u_pre - prescaler [Verilog*] [VHDL] (counter.v)',
       '      asm u_speed - speed_ctrl [ASM*] [VHDL] (speed_ctrl.asm.json)',
+      '      ucf top.ucf',
     ],
     sim: [
       'project H_blinky',
@@ -149,7 +152,7 @@ for (const [ex, want] of Object.entries(EXAMPLES)) {
     await page.openProject(`H_${ex}`);
     await page.waitFor((n) => document.querySelectorAll('#hier .row').length === n, [want.impl.length], { what: 'the Implementation hierarchy' });
     assert.deepEqual(await rows(page), want.impl);
-    // no constraints in the design's hierarchy (#1250): on the Files page
+    // the constraints under the top module, as ISE's Implementation view (#4591; none in the Simulation view), and on the Files page
     await page.leftTab('files');
     await page.waitFor(() => [...document.querySelectorAll('#files-page tr')].some((tr) => /^constraints\/\w+\.ucf$/.test(tr.dataset.file || '')), [], { what: 'the UCF on the Files page' });
     await page.leftTab('design');
@@ -514,6 +517,7 @@ uiTest('drawings whose base was their HDL (before #220) that cannot be made agai
     'project H_mig_sch',
     '  chip xc3s250e-4-cp132',
     '    moduleTop gates [VHDL*] (gates.vhd)',
+    '      ucf gates.ucf',
   ]);
   await page.openProject('H_mig_sch');
   assert.deepEqual(await consoleAfterOpen(page), []);
@@ -545,6 +549,7 @@ end architecture rtl;
     '      vhdl u_fsm - traffic [VHDL*] (traffic.vhd)',
     '      algebra u_lamps - lamps [Algebra*] [Schematic] [VHDL] (lamps.bool.json)',
     '      vhdl u_timer - timer [VHDL*] (timer.vhd)',
+    '      ucf traffic.ucf',
   ]);
 }, { ui: 'ise' });
 

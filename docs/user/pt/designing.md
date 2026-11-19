@@ -54,6 +54,8 @@ caneta.
 ## O painel Projeto
 
 Uma linha por módulo: primeiro o desenho, depois o HDL gerado dele. Um projeto de desenho e simulação (sem FPGA nem
-placa) mostra só os desenhos, para uma cadeira que não chega à placa.
+placa) mostra só os desenhos, para uma cadeira que não chega à placa. No estilo ISE, a vista Implementação lista o
+ficheiro de restrições e as imagens de memória debaixo do módulo de topo, como o ISE; na interface Silinx, os painéis
+Implementar e Emular mostram o módulo de topo com esses ficheiros por cima dos seus processos.
 
 A seguir: [Simular](simulating.md). Cada editor em pormenor: [as funcionalidades](../en/features.md) (em inglês).

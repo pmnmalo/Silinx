@@ -377,7 +377,7 @@ function taskButton(t) {
 
 // the task switchers, the task's bar and the page of a task with no document: there in the Tasks interface
 // only (the other interfaces' pages, their tests and their translations do not have them)
-const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-src-bar', 'task-files-bar', 'task-close-bar'];   // (their ids)
+const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-emu-files', 'task-src-bar', 'task-files-bar', 'task-close-bar'];   // (their ids)
 const PAGE_NAME = { start: 'Start', design: 'Design', test: 'Test', files: 'Files', libraries: 'Libraries', teaching: 'Teaching', collab: 'Collaboration', procs: 'Implementation', emu: 'Emulate' };
 function build() {
   const $ = id => document.getElementById(id);
@@ -420,7 +420,9 @@ function build() {
   $('left-tabs').append(h('div', { id: 'task-emu-tab', class: 'tab', 'data-page': 'emu', role: 'tab', 'aria-selected': 'true' },
     h('span', { class: 'ico-inline tab-ico', html: icons.mBoard }), h('span', { class: 'tab-lbl' }, 'Emulate')));
   // (I/O Pin Planning and Emulate on Board above them, as Implement's bar, #1424)
+  // (the top module and the files the emulator reads, its constraints first, above them: #4591, web/js/flow-files-tree.js)
   $('proc-panel').after(h('div', { class: 'ise-panel', id: 'task-emu-panel' },
+    h('div', { id: 'task-emu-files', class: 'task-flow-files' }),
     h('div', { id: 'task-emu-bar' },
       h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner() }, 'I/O Pin Planning'),
       h('button', { class: 'btn', type: 'button', 'data-act': 'emulate', onclick: () => app.S.project?.top && import('./viewers.js').then(v => v.openEmulator(app.S.project.top)) }, 'Emulate on Board')),
@@ -436,8 +438,9 @@ function build() {
   $('hier').after(h('div', { id: 'task-close-bar' },
     h('button', { class: 'btn', type: 'button', 'data-act': 'check-design', onclick: () => app.S.project?.top && import('./processes.js').then(p => p.checkSyntax(app.S.project.top)) }, 'Check Design'),
     h('button', { class: 'btn', type: 'button', onclick: () => app.S.project && app.closeProject() }, 'Close Project')));
-  // Implement's Processes: I/O Pin Planning and Program FPGA above them (#1398; Program FPGA iMPACT's, opened beside)
-  $('procs').before(h('div', { id: 'task-impl-bar' },
+  // Implement's Processes: I/O Pin Planning and Program FPGA above them (#1398; Program FPGA iMPACT's, opened beside), and
+  // above these the top module and the files the implementation reads (#4591)
+  $('procs').before(h('div', { id: 'task-impl-files', class: 'task-flow-files' }), h('div', { id: 'task-impl-bar' },
     h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner() }, 'I/O Pin Planning'),
     h('button', { class: 'btn', type: 'button', 'data-act': 'program', onclick: async () => {
       if (!app.S.project) return;

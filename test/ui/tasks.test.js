@@ -390,11 +390,14 @@ uiTest('#799 Tasks ▸ Edit: one design tree (the design, no constraints: #1250)
   await taskAction(page);
   await page.waitConsole(/Process "Check Syntax" completed successfully/);
   assert.equal(await page.eval(() => document.getElementById('err-count').textContent), '');
-  // the ISE style interface: its views and Processes again, no constraints either
+  // the ISE style interface: its views and Processes again, no groups; its Implementation view has the constraints under
+  // the top module, as ISE's (#4591)
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
   assert.ok(await shown(page, '#design-panel .view-select') && await shown(page, '#proc-panel'));
-  assert.ok(!(await hierRows(page)).some((r) => r === 'Test Benches' || r === 'Constraints' || /\.ucf\b/.test(r)));
+  const ise = await hierRows(page);
+  assert.ok(!ise.some((r) => r === 'Test Benches' || r === 'Constraints'), ise.join(' | '));
+  assert.equal(ise.at(-1), 'top.ucf', ise.join(' | '));
   await noWarnings(page);
 }, { build: DEV });
 
@@ -984,7 +987,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
       titles: [...document.querySelectorAll('#left-tabs .tab')].map((b) => b.title),
     };
   });
-  assert.deepEqual(await T(), { row: true, names: ['design'], titles: ['Start', 'Design', 'Files', 'Libraries', 'Teaching', 'Collaboration', 'Implementation', 'Emulate'] });   // (no Test: Simulate's benches, #1161; Implement's tab, #1160, #1207; Emulate's, #1399)
+  assert.deepEqual(await T(), { row: true, names: ['design'], titles: ['Start', 'Design', 'Files', 'Libraries', 'Collaboration', 'Teaching', 'Implementation', 'Emulate'] });   // (no Test: Simulate's benches, #1161; Implement's tab, #1160, #1207; Emulate's, #1399)
   // (no column of its own: the hierarchy from the window's left edge)
   assert.ok(await page.eval(() => document.querySelector('#hier').getBoundingClientRect().left) < 12);
   await page.click('#left-tabs .tab[data-page="files"]');
@@ -1012,7 +1015,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
   await page.setViewport(1366, 768);
   // Portuguese: the tooltips
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  assert.deepEqual((await T()).titles, ['Início', 'Projeto', 'Ficheiros', 'Bibliotecas', 'Ensino', 'Colaboração', 'Implementação', 'Emular']);
+  assert.deepEqual((await T()).titles, ['Início', 'Projeto', 'Ficheiros', 'Bibliotecas', 'Colaboração', 'Ensino', 'Implementação', 'Emular']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the Silinx interface: the activity bar as before, a column with every name, no tooltips
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));

@@ -13,6 +13,7 @@ import { withPlaces } from './project-places.js';
 import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
 import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
+import { flowFiles } from '../core/flow-files.js';
 import { toolError, clip, projectPath, readProject, elaborateView, viewSourcesOf, diagLine, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 
 // a project the MCP server makes is untrusted (#2981): its tools' results say so
@@ -155,7 +156,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'A project\'s top module, test bench (simulation top), device, board, constraints file, its files (path, language, role: design, sim or impl) and the roots of its hierarchy in the Implementation and the Simulation view, as the Design pane lists them (the top first, then the names in natural order: x_2 before x_10).',
+    description: 'A project\'s top module, test bench (simulation top), device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and the Simulation view, as the Design pane lists them (the top first, then the names in natural order: x_2 before x_10), and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images; under the top module in the Implementation view and in Implement\'s and Emulate\'s panels).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
@@ -165,10 +166,13 @@ export const PROJECT_TOOLS = [
       const files = (pj.files || []).map(f => ({ path: f.path, lang: f.lang, role: f.role || 'design' }));
       const all = (await P.fileTree(name)).filter(f => !/^build\//.test(f));
       const hierarchy = { implementation: await hierarchyOf(name, pj, false), simulation: await hierarchyOf(name, pj, true) };
-      const data = { project: name, top: pj.top || null, simTop: pj.simTop || null, device: pj.device || null, board: pj.board || null, constraints: pj.constraints || null, synthTool: pj.synthTool || null, files, otherFiles: all.filter(f => !files.some(x => x.path === f) && f !== 'silinx.json'), hierarchy };
+      // (the files the implementation and the emulator read, as the Implementation view lists them under the top, #4591)
+      const flow = flowFiles(pj, all);
+      const data = { project: name, top: pj.top || null, simTop: pj.simTop || null, device: pj.device || null, board: pj.board || null, constraints: pj.constraints || null, synthTool: pj.synthTool || null, files, otherFiles: all.filter(f => !files.some(x => x.path === f) && f !== 'silinx.json'), hierarchy, flowFiles: flow };
       return { text: [`${name}: top ${data.top || '(none)'}, test bench ${data.simTop || '(none)'}, ${data.board || 'no board'} (${data.device ? `${data.device.part}${data.device.package}${data.device.speed}` : 'no device'}), constraints ${data.constraints || '(none)'}`,
         ...files.map(f => `  ${f.path} (${f.lang}, ${f.role})`), ...(data.otherFiles.length ? [`  other files: ${data.otherFiles.join(', ')}`] : []),
-        ...Object.entries(hierarchy).filter(([, r]) => r.length).map(([v, r]) => `  ${v} hierarchy: ${r.join(', ')}`)].join('\n'), data,
+        ...Object.entries(hierarchy).filter(([, r]) => r.length).map(([v, r]) => `  ${v} hierarchy: ${r.join(', ')}`),
+        ...(flow.length ? [`  implementation and emulation files: ${flow.map(f => `${f.path} (${f.kind})`).join(', ')}`] : [])].join('\n'), data,
       // (its silinx.json's fields and its files' names: the project's own text, #3528)
       untrusted: 'the project\'s settings and files\' names' };
     },

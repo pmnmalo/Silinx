@@ -236,7 +236,8 @@ uiTest('Design hierarchy: modules, instances, files, views; set top by right-cli
   await page.openProject('HierPj');
   const rows = () => page.eval(() => [...document.querySelectorAll('#hier .row')].filter((r) => r.getClientRects().length).map((r) => `${r.querySelector('.lbl').textContent}${r.querySelector('.meta') ? ` ${r.querySelector('.meta').textContent}` : ''}`));
   await page.waitFor(() => [...document.querySelectorAll('#hier .lbl')].some((e) => e.textContent === 'u_sub - sub'));
-  assert.deepEqual(await rows(), ['HierPj', 'xc3s250e-4-cp132', 'top (top.vhd)', 'u_sub - sub (sub.v)']);   // (no constraints in the hierarchy: #1250)
+  // (the constraints under the top, after its instances, as ISE's Implementation view: #4591; none in the Simulation view)
+  assert.deepEqual(await rows(), ['HierPj', 'xc3s250e-4-cp132', 'top (top.vhd)', 'u_sub - sub (sub.v)', 'top.ucf']);
   assert.ok(await page.eval(() => document.querySelector('#hier .row.top-mod .lbl').textContent === 'top'));
   // Simulation view: the test bench is the root, the design under it
   await page.setView('sim');
