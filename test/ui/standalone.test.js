@@ -775,6 +775,9 @@ uiTest('#967 #4628 browser edition: what Implement needs is downloaded once the 
     // (the device description and the bit database by their content, #4628)
     'sha256/[A-Za-z0-9_-]{43}/xc3s250ecp132-4.json.gz', ...['s3e-tiles', 'xc3s250e-tiles', 'xc3s250e-layout', 'xc3s250e-lut', 'xc3s250e-bram', 'xc3s250e-cp132-pads'].map((f) => `sha256/[A-Za-z0-9_-]{43}/${f}.json`)];
   await page.waitFor((a, w) => caches.open('silinx-assets').then((c) => c.keys()).then((ks) => w.every((p) => ks.some((k) => new RegExp(`^${a}${p}$`).test(k.url)))), [assets.replace(/[.]/g, '\\.'), want], { what: 'the assets prefetched', timeout: 60000 });
+  // (and the download ended: its files are in the cache a moment before it says so, and a run started in between joins it,
+  // its lines, "Downloading the Silinx toolchain…", in the run's, #4658)
+  await page.waitFor(() => window.SILINX_PREPARING === 0, [], { what: 'the prefetch ended' });
   const keys = await cached();
   assert.equal(keys.length, want.length + 1, keys.join('\n'));
   // the older version's entry pruned, the development edition's kept
