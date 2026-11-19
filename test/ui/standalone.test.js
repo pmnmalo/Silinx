@@ -25,7 +25,7 @@ import { VERSION, versionLabel } from '../../core/version.js';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { createZip, readZip } from '../../core/zip.js';
-import { TRACKER_SOURCES } from '../../server/csp.js';
+import { TRACKER_SOURCES, WORKERS_SOURCES } from '../../server/csp.js';
 import { EXAMPLE_ORDER } from '../../core/examples.js';
 import { TEST_DESIGN_ORDER } from '../../core/test-designs.js';
 
@@ -624,8 +624,9 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   // (Live chosen in its window: the copy its default, #3698)
   await page.click('.dlg-overlay input[data-field=how-live]');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay input[data-field=name]'), [], { what: 'the live window' });
-  // (a relay of the site's, #3227: none in a build without SILINX_SITE_RELAYS, so no such choice; this page hosts it)
-  assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay .collab-relay')), false);
+  // (#4543: the Relay: field, empty (none offered in a build without SILINX_SITE_RELAYS): this page hosts it, met at the
+  // meeting point)
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=relay]')?.value, document.querySelectorAll('#collab-relays option').length]), ['', 0]);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
@@ -1747,7 +1748,7 @@ uiTest('#487 static editions: a Content-Security-Policy with the inline scripts\
     const hashes = [...text.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
     assert.ok(hashes.length >= 4, `${hashes.length} inline scripts`);
     assert.deepEqual(d['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", origin, ...hashes]);
-    assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, origin]);
+    assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, origin, ...WORKERS_SOURCES]);
     // the iCE40's nextpnr from npm's registry at package-lock.json's SHA-512 (#2444)
     const ice40 = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-ice40'];
     const ecp5 = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-ecp5'];

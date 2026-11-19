@@ -170,9 +170,9 @@ test('the errors: a project not shared, a bad action, no project, a bad server, 
   assert.match(d.text, /^share_project: cannot share through http:\/\/127\.0\.0\.1:1: cannot reach the relay at ws:\/\/127\.0\.0\.1:1\/api\/collab\/share \(is Silinx running there\? silinx serve\)$/);
   await fails('follow_project', { link: 'http://x/#follow=abc' }, 'the link to follow is broken (copy it again from the owner\'s Share Project)');
   // (a project its owner's page hosts, #3227: a browser's, over WebRTC)
-  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host` }, 'link: a project its owner\'s page hosts (…#view=….host) is followed in a browser, over WebRTC: open the link in Silinx');
+  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host` }, 'link: a project its owner\'s page hosts (…#view=….host) with no relay is followed in a browser, over WebRTC: open the link in Silinx');
   // (and with its owner's key, the meeting point's: a browser's too)
-  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host.${'P'.repeat(86)}` }, 'link: a project its owner\'s page hosts (…#view=….host) is followed in a browser, over WebRTC: open the link in Silinx');
+  await fails('follow_project', { link: `http://x/#follow=${'R'.repeat(22)}.${'K'.repeat(43)}.host.${'P'.repeat(86)}` }, 'link: a project its owner\'s page hosts (…#view=….host) with no relay is followed in a browser, over WebRTC: open the link in Silinx');
   await fails('follow_project', { link: 'http://x/#design=abc' }, 'link: a link to follow (http(s)://…/#view=…)');
   await fails('follow_project', { link: `#follow=${'a'.repeat(22)}.${'b'.repeat(43)}` }, 'link: a link to follow (http(s)://…/#view=…)');
 });
@@ -956,4 +956,33 @@ test('#3835 share_project: its connection to the relay lost, its room resumed; m
   } finally { globalThis.WebSocket = Base; }
   await ok('share_project', { project: 'trafficRs', action: 'stop' });
   await until(() => page.closed(), 'the page told');
+});
+
+// #4543: a project its owner's page hosts (core/collab-loop.js), its followers met at a relay (the server's on this
+// computer: core/collab-meet-relay.js, through the relay with no WebRTC here): follow_project follows it through that
+// relay's meeting point; the link's relay must be one the user's settings name or this computer's (#3363)
+test('#4543 follow_project: a project its owner\'s page hosts, met at a relay: followed through it, the project and its owner; a relay not named, refused', async () => {
+  const { hostedRooms, FOLLOWER_JOIN } = await import('../core/collab-loop.js');
+  const { meetAsHost, newHostKey } = await import('../core/collab-meet.js');
+  const { relayMeeting } = await import('../core/collab-meet-relay.js');
+  const { WebSocket } = await import('ws');
+  const h = hostedRooms();
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'traffic', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' }, fileTree: ['src/top.vhd'] }, files: { 'src/top.vhd': 'entity top is end;\n' }, owner: 'Ana' });
+  const session = await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, WebSocket: h.owner });
+  const hk = await newHostKey();
+  const at = await meetAsHost({ meeting: relayMeeting({ url: base, token: 'tok-mcp', WebSocket, RTC: null }), room: session.room, key: session.key, hostKey: hk.key, maxReceive: FOLLOWER_JOIN, attach: end => h.follower(end) });
+  const link = followLink('https://pmnmalo.github.io/Silinx/', session.room, session.key, 'host', null, base, hk.pub);
+  assert.match(link, /\.host\.[A-Za-z0-9_-]{86}&relay=http%3A%2F%2F127\.0\.0\.1%3A\d+$/);
+  const r = await ok('follow_project', { link });
+  assert.equal(r.data.owner, 'Ana');
+  assert.equal((await ok('follow_project', { link, path: 'src/top.vhd' })).data.text, 'entity top is end;\n');
+  doc.getMap('files').get('src/top.vhd').insert(0, '-- 2\n');
+  for (let t = 0; t < 100 && (await call('follow_project', { link, path: 'src/top.vhd' })).data?.text !== '-- 2\nentity top is end;\n'; t++) await new Promise(x => setTimeout(x, 30));
+  assert.equal((await ok('follow_project', { link, path: 'src/top.vhd' })).data.text, '-- 2\nentity top is end;\n');
+  assert.deepEqual(session.peers().map(p => p.role), ['viewer']);
+  await ok('follow_project', { link, stop: true });
+  await fails('follow_project', { link: link.replace(/&relay=.*$/, `&relay=${encodeURIComponent('https://silinx-relay.ana.workers.dev')}`) }, 'link: https://silinx-relay.ana.workers.dev is neither a Silinx server on this computer nor a relay the user\'s settings name (relay.relays in config.json): the MCP server shares and follows through those only');
+  await session.close();
+  await at.leave();
 });

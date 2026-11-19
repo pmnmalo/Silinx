@@ -16,7 +16,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
 
 /** The site built into tmp and served: { url, served (the paths asked), close() }, or { skip } without the build's packages.
  *  route(req, res, body): a test's own requests (a stand-in for GitHub's API, #3196), true when it answered. */
-export async function buildSite(tmp, { route = null } = {}) {
+export async function buildSite(tmp, { route = null, relays = [] } = {}) {
   const require = createRequire(path.join(ROOT, 'package.json'));
   let modules;
   try {
@@ -51,7 +51,7 @@ export async function buildSite(tmp, { route = null } = {}) {
   });
   await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
   const url = `http://127.0.0.1:${server.address().port}/`;
-  const r = spawnSync(process.execPath, [path.join(root, 'scripts/build-standalone.mjs'), '--site', site, '--assets-url', url], { cwd: root, encoding: 'utf8', timeout: 180000, env: devEnv() });
+  const r = spawnSync(process.execPath, [path.join(root, 'scripts/build-standalone.mjs'), '--site', site, '--assets-url', url], { cwd: root, encoding: 'utf8', timeout: 180000, env: { ...devEnv(), ...(relays.length ? { SILINX_SITE_RELAYS: relays.join(' ') } : {}) } });
   if (r.status !== 0) { server.close(); throw new Error(`standalone build failed: ${r.stderr || r.stdout}`); }
   return { url, site, served, close: () => server.close() };
 }

@@ -29,6 +29,8 @@ import { wireStyleOf } from '../core/wire-style.js';
 import { checkDrawing } from './mcp-check.js';
 import { shareRoom, followRoom } from '../core/collab-client.js';
 import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-link.js';
+import { relayMeeting } from '../core/collab-meet-relay.js';
+import { meetOwner } from '../core/collab-meet.js';
 import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
@@ -260,7 +262,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; their Try it (ownerActivity.try, #4244: each document\'s with its Try it open, a state diagram\'s, an ASM chart\'s, a Petri net\'s, a schematic\'s or a circuit\'s: its state, the steps taken, its inputs and outputs); a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave; keep (with stop, or once following ended: the owner stopped sharing, the connection lost for good) keeps a copy of the project as it was in the workspace, untrusted, as the interface\'s Keep a Copy (#4198). Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; a project its owner\'s page hosts when its link names a relay, …host.…&relay=…, through that relay, #4543; …/#follow=…, a link made before #4073, too), read only (an editor\'s link, …/#edit=…: write changes its text files and drawings), as the interface does when opened at that link: gives the project\'s files, who is in it, the file the owner has open, their cursor and their selection (ownerView.sel, #4192: the text selected, ranges [[anchorLine, anchorCh, headLine, headCh]] 0-based; a drawing\'s objects, items \'kind:id\'), and what the owner does in their Silinx (ownerActivity: their open documents and the one in front, their Design view (Implementation / Simulation), their task, the row selected in their Design pane, the processes they run: each one\'s mark and the end of the run\'s log; their open simulations: the time each has run to, its signals shown, its cursor, its forces; their Board Emulators: powered, running, the clock\'s rate, the switches and buttons on; their Try it (ownerActivity.try, #4244: each document\'s with its Try it open, a state diagram\'s, an ASM chart\'s, a Petri net\'s, a schematic\'s or a circuit\'s: its state, the steps taken, its inputs and outputs); a project share_project shares sends its run_process runs); path: that file\'s text as it is now (call again to see it change; a drawing as its participants have merged it, with its Check (but a truth table and a schematic)). stop: leave; keep (with stop, or once following ended: the owner stopped sharing, the connection lost for good) keeps a copy of the project as it was in the workspace, untrusted, as the interface\'s Keep a Copy (#4198). Its connection lost is made again on its own (connected: false meanwhile, what it gives as it was then; a write sent once it is back). The project is not copied into the workspace (import nothing; read it here).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
@@ -276,8 +278,9 @@ export const COLLAB_TOOLS = [
       let l;
       try { l = parseFollowLink(link); } catch (e) { throw toolError(e.message); }
       if (!l || !l.base) throw toolError('link: a link to follow (http(s)://…/#view=…)');
-      // (a room the owner's page hosts, #3227: reached over WebRTC, which this server has not)
-      if (l.via === 'host') throw toolError('link: a project its owner\'s page hosts (…#view=….host) is followed in a browser, over WebRTC: open the link in Silinx');
+      // (a room the owner's page hosts, #3227: reached over WebRTC, which this server has not; met at a relay, #4543: through
+      // that relay's meeting point, its messages through the relay, core/collab-meet-relay.js)
+      if (l.via === 'host' && !(l.relay && l.host)) throw toolError('link: a project its owner\'s page hosts (…#view=….host) with no relay is followed in a browser, over WebRTC: open the link in Silinx');
       // (through the relay the link names, #3227, else the link's own Silinx)
       const origin = serverOf(l.relay || l.base, 'link');
       // (a room followed and edited: two participants; an editors' link renewed, #3997: another one, its key its own)
@@ -305,7 +308,12 @@ export const COLLAB_TOOLS = [
       if (!cur) {
         let session;
         try {
-          session = await followRoom({ url: relayUrl(origin, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: cleanName(who) || 'MCP agent' }, WebSocket: await WebSocketImpl() });
+          const user = { name: cleanName(who) || 'MCP agent' };
+          if (l.via === 'host') {
+            const meeting = relayMeeting({ url: origin, WebSocket: await WebSocketImpl(), RTC: null });
+            const owner = () => meetOwner({ meeting, room: l.room, key: l.key, host: l.host, ms: ARRIVE_MS, maxReceive: 16 << 20 });
+            session = await followRoom({ url: 'silinx-host:', room: l.room, key: l.key, sign: l.sign, user, WebSocket: await owner(), transport: owner });
+          } else session = await followRoom({ url: relayUrl(origin, 'follow'), room: l.room, key: l.key, sign: l.sign, user, WebSocket: await WebSocketImpl() });
           await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ARRIVE_MS))]);
         } catch (e) { session?.close(); throw toolError(`cannot follow: ${e.message}`); }
         // (who is in it comes right after the project: the owner awaited a little)

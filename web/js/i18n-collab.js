@@ -27,8 +27,9 @@ export const COLLAB_PT = {
   'Anyone with the editors\' link edits its text files and drawings with you, live.':
     'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.',
   // (a room the owner's page hosts, #3227: web/js/collab-host.js)
-  'Through a relay (a Silinx server that lets this site in); else this page hosts it': 'Através de um retransmissor (um servidor Silinx que deixa entrar este sítio); senão, esta página aloja-o',
-  'The relay\'s address:': 'O endereço do retransmissor:', 'Its key (from its administrator):': 'A sua chave (do seu administrador):',
+  'Relay (optional):': 'Retransmissor (opcional):', 'Its key:': 'A sua chave:', 'https://silinx-relay.<you>.workers.dev': 'https://silinx-relay.<o-seu-nome>.workers.dev',
+  'With a relay, your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.':
+    'Com um retransmissor, quem o segue liga-se diretamente a si quando pode e, senão, através dele. Sem nenhum, encontram-no no ponto de encontro público ou enviam-lhe um código.',
   // (Add a User…, #3996: web/js/collab-users.js, its code taken: web/js/collab-host.js)
   'Add a User…': 'Adicionar um Utilizador…', 'Add a User': 'Adicionar um Utilizador', 'Connect': 'Ligar', 'Take a Code…': 'Receber um Código…',
   'Role:': 'Papel:', 'Viewer': 'Espectador', 'Editor': 'Editor',
