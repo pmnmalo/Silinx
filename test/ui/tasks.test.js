@@ -987,7 +987,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
       titles: [...document.querySelectorAll('#left-tabs .tab')].map((b) => b.title),
     };
   });
-  assert.deepEqual(await T(), { row: true, names: ['design'], titles: ['Start', 'Design', 'Files', 'Libraries', 'Collaboration', 'Teaching', 'Implementation', 'Emulate'] });   // (no Test: Simulate's benches, #1161; Implement's tab, #1160, #1207; Emulate's, #1399)
+  assert.deepEqual(await T(), { row: true, names: ['design'], titles: ['Start', 'Design', 'Files', 'Libraries', 'Collaboration', 'Teaching', 'Implementation', 'Emulate', 'Files'] });   // (no Test: Simulate's benches, #1161; Implement's tab, #1160, #1207; Emulate's, #1399; their Files, #4609)
   // (no column of its own: the hierarchy from the window's left edge)
   assert.ok(await page.eval(() => document.querySelector('#hier').getBoundingClientRect().left) < 12);
   await page.click('#left-tabs .tab[data-page="files"]');
@@ -1015,7 +1015,7 @@ uiTest('#984 Tasks ▸ Edit: its pages are tabs at the top of the side panel; fo
   await page.setViewport(1366, 768);
   // Portuguese: the tooltips
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  assert.deepEqual((await T()).titles, ['Início', 'Projeto', 'Ficheiros', 'Bibliotecas', 'Colaboração', 'Ensino', 'Implementação', 'Emular']);
+  assert.deepEqual((await T()).titles, ['Início', 'Projeto', 'Ficheiros', 'Bibliotecas', 'Colaboração', 'Ensino', 'Implementação', 'Emular', 'Ficheiros']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the Silinx interface: the activity bar as before, a column with every name, no tooltips
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
@@ -1393,15 +1393,17 @@ uiTest('#1159 #1160 #1207 Tasks: no heading under the side panel\'s tabs; Implem
     above: document.getElementById('left-tabs').getBoundingClientRect().bottom <= document.getElementById('procs').getBoundingClientRect().top + 1,
     drawing: [...document.querySelectorAll('#procs .row')].filter((r) => r.getClientRects().length).map((r) => r.querySelector('.lbl').textContent).filter((l) => /^View\/Edit/.test(l)),
   }));
-  assert.deepEqual(await impl(), { tabs: [['procs', 'Implementation']], above: true, drawing: [] });
-  const width = await page.eval(() => { const b = document.getElementById('left-tabs'), cs = getComputedStyle(b); return [document.getElementById('task-procs-tab').getBoundingClientRect().width, b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)]; });
-  assert.ok(Math.abs(width[0] - width[1]) < 1, `the tab across the panel: ${width}`);
+  // (its Files tab after it, its icon only: #4609)
+  assert.deepEqual(await impl(), { tabs: [['procs', 'Implementation'], [null, '']], above: true, drawing: [] });
+  // (the two tabs across the panel: Implementation's the room the Files icon leaves)
+  const width = await page.eval(() => { const b = document.getElementById('left-tabs'), cs = getComputedStyle(b); return [document.getElementById('task-flow-files-tab').getBoundingClientRect().right - document.getElementById('task-procs-tab').getBoundingClientRect().left, b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)]; });
+  assert.ok(Math.abs(width[0] - width[1]) < 1, `the tabs across the panel: ${width}`);
   assert.deepEqual(await heading(), []);
   // (the top selected with its drawing, as Design's tree selects it: Implement's list the top's, no drawing, #1208)
   await page.eval(() => { const A = window.SilinxApp; A.S.sel = { type: 'module', module: 'gates', file: 'src/gates.vhd', sch: 'src/gates.sch.json' }; A.renderProcesses(); });
   assert.deepEqual((await impl()).drawing, []);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  assert.deepEqual((await impl()).tabs, [['procs', 'Implementação']]);
+  assert.deepEqual((await impl()).tabs, [['procs', 'Implementação'], [null, '']]);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the ISE style interface: its headings, no Processes tab
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));

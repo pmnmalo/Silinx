@@ -49,7 +49,8 @@ forms, and the circuit each gives (its gates and delay). An expression can even 
 
 One row per module: its drawing first, then the HDL generated from it. A design and simulation project (no FPGA, no
 board) shows only the drawings, for a course that does not reach the board. In the ISE style, the Implementation view
-lists the constraints file and the memory images under the top module, as ISE does; in the Silinx interface, the
-Implement and Emulate panels show the top module with those files above their processes.
+lists the constraints file and the memory images under the top module, as ISE does; in the Silinx interface, Implement
+and Emulate have a Files tab beside their processes' tab, with the design's sources, the constraints and the memory
+images.
 
 Next: [Simulating](simulating.md). Every editor in detail: [the features](features.md).

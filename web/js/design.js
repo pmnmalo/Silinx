@@ -26,20 +26,21 @@ import { gitMark, gitMenuItems, gitStartItems, hasGit } from './git.js';
 import { checkLabel, designOnly, shownFiles, withoutHdlBadges } from './design-only.js';
 import { editorItem, projectEditorItem } from './open-editor.js';
 import { hdlSideFile } from '/core/project-kind.js';
-import { flowFileRows, renderFlowTree } from './flow-files-tree.js';
+import { flowFileRows } from './flow-files-tree.js';
+import { renderFlowFiles } from './tasks-flow-files.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
-// benches Simulate's (its Simulation, #1161); no constraints (#1250: the Files page, Implement's and Emulate's side
-// panels have them, #4591); the ISE style's Implementation view has them under the top module, as ISE's (#4591)
+// benches Simulate's (its Simulation, #1161); no constraints (#1250: the Files page, Implement's and Emulate's Files
+// pages have them, #4609); the ISE style's Implementation view has them under the top module, as ISE's (#4591)
 const oneTree = () => document.documentElement.dataset.layout === 'tasks';
 
 export function renderHierarchy() {
   const host = $('hier');
   const focused = host.contains(document.activeElement) ? (document.activeElement.closest('.badge') ? 'badge' : 'tree') : null;
   host.innerHTML = '';
-  // (the Silinx interface's Implement and Emulate side panels: the top module and its flow's files, #4591)
-  for (const el of document.querySelectorAll('.task-flow-files')) renderFlowTree(el);
+  // (the Silinx interface's Implement and Emulate Files page, #4609)
+  renderFlowFiles();
   // (no project: its two commands here, the Silinx interface has no File menu, #1585)
   if (!S.project) {
     host.append(h('div', { class: 'tree empty' }, h('div', {}, 'No project open'),
@@ -345,8 +346,7 @@ function ownDrawingCommands(mod, file) {
   const v = viewOfModule(mod, file);
   return v ? drawingCommands(v) : [];
 }
-/** A module's row's menu (the Design pane's; Implement's and Emulate's top module row, #4591). */
-export function moduleContextMenu(e, mod, file) {
+function moduleContextMenu(e, mod, file) {
   const isSimView = S.view === 'sim';
   popupMenu([
     isSimView ? null : topMenuItem(mod, () => setTop(mod, false)),
