@@ -3,8 +3,8 @@
 // - the ISE style interface's Implementation view: under the top module's row, after its instances, as ISE's; the
 //   constraints' row selected shows their processes, a double-click opens the file, its menu is the file's; none in the
 //   Simulation view; on a board of each family's format (UCF, PCF, LPF, CST, XDC); in Portuguese;
-// - the Silinx interface's Implement and Emulate: a Files tab after theirs (#4609), as Simulate's, its page the design's
-//   sources (a drawing in place of its HDL), the constraints and the memory images, opened from there, the file's menu;
+// - the Silinx interface's Implement and Emulate: a Files tab after theirs (#4609), as Simulate's, its page the
+//   constraints and the memory images (not the design's sources, #4622), opened from there, the file's menu;
 //   the Design page still without them (#1250); in Portuguese; none in the ISE style interface.
 // No warnings.
 import { before, after } from 'node:test';
@@ -113,13 +113,10 @@ const filesRows = (page, sel) => page.eval((s) => [...document.querySelectorAll(
   .map((r) => `${r.querySelector('.ico')?.dataset.ico} ${r.querySelector('.lbl').textContent} ${r.querySelector('.meta').textContent}`), sel);
 const shownTabs = (page) => page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length)
   .map((t) => `${t.querySelector('.tab-lbl').textContent}${t.querySelector('.tab-lbl').getClientRects().length && getComputedStyle(t.querySelector('.tab-lbl')).position !== 'absolute' ? '' : ' (icon)'}`));
-const FILES = [
-  'vhdl bcd_counter.vhd (src/bcd_counter.vhd)', 'verilog counter.v (src/counter.v)', 'vhdl knight.vhd (src/knight.vhd)',
-  'verilog sevenseg.v (src/sevenseg.v)', 'asm speed_ctrl.asm.json (src/speed_ctrl.asm.json)', 'vhdl top.vhd (src/top.vhd)',
-  'ucf top.ucf (constraints/top.ucf)', 'file rom.mem (src/rom.mem)',
-];
+// (the files of the flow only, not the design's sources: the Design page's, #4622)
+const FILES = ['ucf top.ucf (constraints/top.ucf)', 'file rom.mem (src/rom.mem)'];
 
-uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the design\'s sources, the constraints and the memory images, opened from there, the file\'s menu; the processes back under the task\'s tab; the Design page without the constraints; in Portuguese', E, async (page) => {
+uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the constraints and the memory images (not the sources, #4622), opened from there, the file\'s menu; the processes back under the task\'s tab; the Design page without the constraints; in Portuguese', E, async (page) => {
   await makeProject(env, { name: 'FF_tasks', template: 'blinky', files: { 'src/rom.mem': '00\n01\n' } });
   await page.setViewport(1680, 1050);
   await page.openProject('FF_tasks');
@@ -138,14 +135,14 @@ uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the de
     assert.deepEqual(await shownTabs(page), [`${tab} (icon)`, 'Files'], task);
     assert.deepEqual(await filesRows(page, list), FILES, task);
     assert.equal(await page.eval((s) => document.querySelector(s).getClientRects().length, procs), 0, `${task}: no processes`);
-    // a double-click opens a file (the UCF in Implement, its task); the drawing, its editor; the menu is the file's
+    // a double-click opens a file (the UCF in Implement, its task); the menu is the file's
     await rowOf(page, list, 'top.ucf', 'dblclick');
     await page.waitFor(() => window.SilinxApp.S.active?.title === 'top.ucf', [], { what: `${task}: the UCF opened` });
     await page.click(`#task-switch .task-btn[data-task="${task}"]`);
     assert.deepEqual(await fileMenu(page, list, 'top.ucf'), FILE_MENU, task);
     assert.deepEqual(await fileMenu(page, list, 'rom.mem'), FILE_MENU.filter((x) => x !== 'Check Syntax'), task);
-    await rowOf(page, list, 'speed_ctrl.asm.json', 'dblclick');
-    await page.waitFor(() => /speed_ctrl/.test(window.SilinxApp.S.active?.title || ''), [], { what: `${task}: the ASM chart opened` });
+    await rowOf(page, list, 'rom.mem', 'dblclick');
+    await page.waitFor(() => window.SilinxApp.S.active?.title === 'rom.mem', [], { what: `${task}: the memory image opened` });
     await page.click(`#task-switch .task-btn[data-task="${task}"]`);
   }
   // the page in front the same in both tasks: back to the processes from Emulate's tab, Implement's too
