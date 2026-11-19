@@ -231,6 +231,7 @@ export function relatedTests(files, changed, { hubs = HUBS } = {}) {
 export const REPO_WIDE = [
   'test/changelog-fragments.test.js',   // 1.3 s: changes/, the fragments' format
   'test/changelog.test.js',             // 1.1 s: CHANGELOG.md and the tags; the fragments of changes/ as a build's changes
+  'test/circuit-coverage.test.js',      // 0.3 s: every circuit part checked against its datasheet, the tests' tables read (#4602)
   'test/code-size.test.js',             // 2 s: the size of every source and function (#405, #3542)
   'test/docs.test.js',                  // 1.2 s: every Markdown file's links, paths and menus
   'test/family-conditions.test.js',     // 0.2 s: web/js's conditions on a family's name
