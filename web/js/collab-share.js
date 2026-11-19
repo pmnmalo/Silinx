@@ -40,9 +40,9 @@ import { linkField } from './link-field.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
 import { hdlWarning } from './design-only.js';
 import { ownerActivity } from './collab-activity.js';
+import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
-const TRACK_MS = 300;
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; } };
 const keepName = n => { try { localStorage.setItem(NAME_KEY, n); } catch { /* this page only */ } };
 // the browser edition's relay (#3227): another Silinx's, that lets this site in, among the site's (its address, its key),
@@ -186,6 +186,10 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   share.unwatch = () => { offFiles(); offDrawings(); };
   share.activity = ownerActivity(session);   // (#4002)
   share.timer = setInterval(track, TRACK_MS);
+  // (#4647: a key, a click, a selection: looked at a frame later, not at the next look; the followers' views too)
+  share.soon = soon(track);
+  share.unevents = trackOnEvents(document, share.soon.poke);
+  share.soon.poke();
   addEventListener('silinx:disk-changes', onDisk);
   setPresenceCommands(commands);
   setPresenceRoles({ set: (peer, role) => setRole(peer, role), editors: () => !!share?.session.editKey });   // (#4646)
@@ -212,6 +216,8 @@ export async function stopSharing(why = null) {
   share = null;
   s.hosted = null;
   clearInterval(s.timer);
+  s.soon.cancel();
+  s.unevents();
   s.activity.stop();
   removeEventListener('silinx:disk-changes', onDisk);
   s.unwatch();
@@ -269,6 +275,7 @@ function onEvent(ev) {
     for (const [c, n] of share.known) if (!now.has(c)) app.log(`${n} no longer follows your project.`, 'info');
     share.known = now;
     draw();
+    share.soon.poke();   // (their cursors in this page's editors, #4647)
   } else if (ev.type === 'offline') { app.log(`WARNING: Sharing "${share.project}": the connection to the relay was lost: reconnecting (your followers see the project as it was until it is back).`, 'warn'); draw(); }
   else if (ev.type === 'online') { app.log(`Sharing "${share.project}": reconnected to the relay: your followers see your changes made meanwhile.`, 'info'); draw(); }
   else if (ev.type === 'closed') stopSharing(`Sharing "${share.project}" ended: ${ev.reason}.`);

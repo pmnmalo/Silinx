@@ -40,6 +40,7 @@ import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
 import { PROTOCOL, SUBPROTOCOL, KIND, NOT_SHARED, fromFrame, toFrame, senderOf, roomUrl } from './collab-wire.js';
+import { VIEW_MS, OWNER_VIEW_MS } from './collab-pace.js';
 
 // (the wire's constants and its marked frames, in a module of their own that imports nothing: the Cloudflare relay's
 // copy of the room's logic, #4541)
@@ -129,13 +130,13 @@ const viewOf = v => {
   return { path: v.path, line: Number.isInteger(v.line) ? v.line : null, ch: Number.isInteger(v.ch) ? v.ch : null, ...(sel ? { sel } : {}) };
 };
 
-function participant({ conn, room, key, doc, awareness, owner, onEvent }) {
+function participant({ conn, room, key, doc, awareness, owner, onEvent, viewMs = VIEW_MS }) {
   const send = (kind, bytes) => conn().frame(() => seal(key, room, kind, bytes));
   awareness.on('update', ({ added, updated, removed }, origin) => {
     if (origin === 'local') send(KIND.awareness, encodeAwarenessUpdate(awareness, [...added, ...updated, ...removed]));
   });
   awareness.on('change', () => onEvent({ type: 'peers' }));
-  const pacer = selectionPacer();   // (#4192: a selection dragged or typed, its views coalesced under the relay's rate, #4173)
+  const pacer = selectionPacer({ ms: viewMs });   // (#4192: a selection dragged or typed, its views coalesced under the relay's rate, #4173; #4647: VIEW_MS)
   let wanted = JSON.stringify(awareness.getLocalState()?.view ?? null);
   return {
     room, doc, awareness,
@@ -145,7 +146,7 @@ function participant({ conn, room, key, doc, awareness, owner, onEvent }) {
     /** The participants but this one: [{ client, name, color, role, view: { path, line, ch, sel? } | null }]. */
     peers: () => peersOf(awareness, owner()),
     /** What this participant looks at (null: nothing open): { path, line, ch, sel } (sel: its selection, #4192), sent
-     *  when it changed, at most every 250 ms (the last one always). */
+     *  when it changed, at most every `viewMs` (VIEW_MS, #4647; the last one always). */
     setView: view => {
       const v = viewOf(view), k = JSON.stringify(v);
       if (k === wanted) return;
@@ -179,8 +180,8 @@ async function applyEdit(doc, key, room, verifier, frame, admit = () => true) {
  *  resumed (`reconnect`: RECONNECT; false: never) with the secret its open was answered with, through a new
  *  connection: an event { type: 'offline' } at its loss, { type: 'online' } once resumed; each follower then a join
  *  again (the whole document sent to it: what changed meanwhile). A room the relay no longer keeps (its grace past,
- *  the relay restarted): the session ends. */
-export async function shareRoom({ url, token = null, doc, user, editors = false, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT }) {
+ *  the relay restarted): the session ends. viewMs: its view sent at most that often (core/collab-pace.js, #4647). */
+export async function shareRoom({ url, token = null, doc, user, editors = false, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, viewMs = OWNER_VIEW_MS }) {
   const { key, text } = await newKey();
   let signer = editors ? await newSigner() : null;
   // (the room's public key, for every participant: in the document)
@@ -278,7 +279,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   try { first = await connect({ type: 'open', ...(signer ? { editors: signer.pub } : {}) }); } catch (e) { awareness.destroy(); meter.stop(); throw e; }
   ({ room } = first.answer);
   resume = typeof first.answer.resume === 'string' ? first.answer.resume : null;
-  p = participant({ conn: () => cur, room, key, doc, awareness, owner: () => doc.clientID, onEvent });
+  p = participant({ conn: () => cur, room, key, doc, awareness, owner: () => doc.clientID, onEvent, viewMs });
   use(first.c);
   if (reconnect) globalThis.addEventListener?.('online', now);
   doc.on('update', onUpdate);
@@ -352,7 +353,7 @@ const REFUSED = [1003, 1008, 1009];
  *  again later; default: `WebSocket` again): an event { type: 'offline', reason } at its loss, { type: 'online' } once joined again. The owner
  *  sends the whole document again, as at any join; an editor then sends, signed, what of its own changes the owner's
  *  document lacks (its own updates past the owner's clock of it): nothing it changed meanwhile is lost. */
-export async function followRoom({ url, room, key: keyText, sign = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null }) {
+export async function followRoom({ url, room, key: keyText, sign = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null, viewMs = VIEW_MS }) {
   const key = await keyOf(keyText);
   let signer = sign ? await signerOf(sign) : null, signText = signer ? sign : null;
   const doc = new Y.Doc();
@@ -525,7 +526,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   let first;
   try { first = await join(WS); } catch (e) { awareness.destroy(); throw e; }
   owner = first.owner;
-  const p = participant({ conn: () => cur, room, key, doc, awareness, owner: () => owner, onEvent });
+  const p = participant({ conn: () => cur, room, key, doc, awareness, owner: () => owner, onEvent, viewMs });
   use(first.c);
   if (reconnect) globalThis.addEventListener?.('online', now);
   p.send(KIND.awareness, encodeAwarenessUpdate(awareness, [doc.clientID]));

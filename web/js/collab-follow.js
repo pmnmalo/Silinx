@@ -38,8 +38,9 @@ import { selectionAt } from '/core/collab-select.js';
 import { openReport } from './collab-runs.js';
 import { reportPath } from '/core/collab-runs.js';
 import { keepWireStyles } from './collab-wire-view.js';
+import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 
-const TRACK_MS = 300, ARRIVE_MS = 20_000;
+const ARRIVE_MS = 20_000;
 let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
                   //   once the project is, #3631), act (the owner's activity put on the page, #4002), front (the
                   //   document in front, as this page left it: another one brought there, once the project has opened (settled), is the
@@ -92,6 +93,8 @@ export async function startFollowing(hash = location.hash) {
   watchLeave(session, real);
   watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
   setInterval(track, TRACK_MS);
+  trackOnEvents(document, tracking.poke);   // (#4647: a key, a click, a selection: looked at a frame later)
+  tracking.poke();   // (what arrived with the project: put now, not at the next look)
   draw();
   if (session.editor) app.log(`Editing ${collab.owner}'s project "${project.name}" with them: its text files and drawings change as you all edit them (Following ${collab.owner}, in the toolbar).`, 'ok');
   else app.log(`Following ${collab.owner}'s project "${project.name}", read only: their changes appear as they make them, and what they do (their documents, views and selection) while you follow them (Following ${collab.owner}, in the toolbar).`, 'ok');
@@ -221,9 +224,11 @@ function shownDrawing(path, model) {
 }
 
 // the owner's view followed; the follower's own, told; the others' cursors in the open text editors
-let busy = false;
+let busy = false, again = false;
+const tracking = soon(() => track());
 async function track() {
-  if (!fol || busy || fol.session.closed()) return;
+  if (!fol || fol.session.closed()) return;
+  if (busy) { again = true; return; }   // (#4647: what came meanwhile looked at once this one has ended)
   busy = true;
   try {
     const owner = fol.session.owner();
@@ -265,6 +270,9 @@ async function track() {
       const sel = fol.following && owner ? selectionAt(owner.view, docPath(d)) : null;
       showPeerSelection(d, sel ? [{ name: owner.name, color: owner.color, sel }] : []);
     }
-  } finally { busy = false; }
+  } finally {
+    busy = false;
+    if (again) { again = false; tracking.poke(); }
+  }
 }
 
