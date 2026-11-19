@@ -33,7 +33,7 @@ watch its LEDs, displays and VGA screen.</td>
 board programmed over USB, from the browser.</td>
 <td><a href="docs/user/en/teaching.md"><img src="docs/images/hero-ise.webp" alt="The ISE style interface"></a>
 <b>Made for the classroom.</b> Two interfaces, the Silinx one and one in the style of Xilinx ISE, in English and
-Portuguese; guided labs, automatic grading, live sharing and links for the slides.</td>
+Portuguese; guided labs, automatic grading, live sharing (peer to peer, or through <a href="docs/user/en/live-relay.md">a free relay of your own</a>) and links for the slides.</td>
 </tr>
 </table>
 
