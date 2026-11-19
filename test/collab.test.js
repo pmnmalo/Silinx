@@ -13,7 +13,7 @@ import * as encoding from 'lib0/encoding';
 import { scratchEnv } from './server-helpers.js';
 import { closable } from './server-close.js';
 import { newKey, keyOf, seal, unseal, KEY_RE } from '../core/collab-crypto.js';
-import { followLink, parseFollowLink, relayUrl, ROOM_RE, withTop } from '../core/collab-link.js';
+import { followLink, parseFollowLink, relayUrl, ROOM_RE, withTop, workersRelay } from '../core/collab-link.js';
 import { projectDoc, publishProject, putFile, putProject, moveFile, dropFile, docFile, docProject, setText, sharedPath, watchDoc, FILE_MAX, gatedDocFile, FOLLOW_LIMITS } from '../core/collab-doc.js';
 import { shareRoom, followRoom, KIND, PROTOCOL, SUBPROTOCOL, colorOf, COLORS } from '../core/collab-client.js';
 import { attachRelay, RELAY_LIMITS } from '../server/collab-relay.js';
@@ -107,6 +107,17 @@ test('#3631 a module\'s link (Share Module…): &top=<module> last, of every for
   for (const bad of [`#follow=${room}.${key}&top=`, `#follow=${room}.${key}&top=a%20b`, `#follow=${room}.${key}&top=a&top=b`, `#follow=${room}.${key}&top=m1&relay=https%3A%2F%2Fr.example`]) assert.throws(() => parseFollowLink(bad), /broken/, bad);
 });
 
+
+test('#4543 a hosted room met at a relay: its link names the relay after the owner\'s key; parsed; a relay with .host but no owner\'s key refused; a Cloudflare Worker\'s origin told', () => {
+  const room = 'R'.repeat(22), key = 'K'.repeat(43), pub = 'P'.repeat(86), relay = 'https://silinx-relay.ana.workers.dev';
+  const link = followLink('https://pmnmalo.github.io/Silinx/', room, key, 'host', null, relay, pub);
+  assert.equal(link, `https://pmnmalo.github.io/Silinx/#view=${room}.${key}.host.${pub}&relay=${encodeURIComponent(relay)}`);
+  assert.deepEqual(parseFollowLink(link), { base: 'https://pmnmalo.github.io/Silinx/', room, key, via: 'host', sign: null, relay, host: pub });
+  assert.deepEqual(parseFollowLink(`${link}&top=top`).top, 'top');
+  assert.throws(() => followLink('https://s.example/', room, key, 'host', null, relay), /^Error: not a relay's address: https:\/\/silinx-relay\.ana\.workers\.dev$/);
+  assert.throws(() => parseFollowLink(`https://s.example/#view=${room}.${key}.host&relay=${encodeURIComponent(relay)}`), /the link to follow is broken/);
+  for (const [o, yes] of [[relay, true], ['https://a.b.workers.dev', true], ['https://workers.dev', false], ['http://a.workers.dev', false], ['https://a.workers.dev.evil.example', false], ['https://evil.example', false], ['https://-a.workers.dev', false]]) assert.equal(workersRelay(o), yes, o);
+});
 
 test('doc: a project published, its files as texts, build/, hidden files, silinx.json and paths out of it never', () => {
   for (const p of ['src/a.vhd', 'a.ucf', 'sim/tb_a.vhd', 'src/x.sch.json']) assert.ok(sharedPath(p), p);

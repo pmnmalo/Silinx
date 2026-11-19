@@ -22,7 +22,7 @@ import { S, app, activateDoc, closeDoc } from './app.js';
 import { collab, editsDrawingHere } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { followApi } from './collab-follow-api.js';
-import { NAME_KEY, cleanName, relaysHere, notHere } from './collab-share.js';
+import { NAME_KEY, cleanName, relayOk, notHere } from './collab-share.js';
 import { docProject } from '/core/collab-doc.js';
 import { keepBound, unbindAll } from './collab-bind.js';
 import { keepDrawingsBound, unbindDrawings } from './collab-drawing.js';
@@ -55,8 +55,8 @@ export async function startFollowing(hash = location.hash) {
   try { link = parseFollowLink(hash); } catch (e) { history.replaceState(null, '', location.pathname + location.search); app.log(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
   if (!link) return null;
   history.replaceState(null, '', location.pathname + location.search);
-  // (another Silinx's relay, #3227: one of this Silinx's relays only, as its Content-Security-Policy lets it connect to)
-  if (link.relay && !(await relaysHere()).includes(link.relay)) { app.log(`ERROR: Follow a shared project: ${notHere(link.relay)}: not followed.`, 'err'); return null; }
+  // (another Silinx's relay, #3227, or a Cloudflare relay on the site, #4543: as its Content-Security-Policy lets it connect to)
+  if (link.relay && !await relayOk(link.relay)) { app.log(`ERROR: Follow a shared project: ${notHere(link.relay)}: not followed.`, 'err'); return null; }
   if (api.standalone && link.via === 'relay' && !link.relay) { app.log('ERROR: Follow a shared project: open its link at the address of the Silinx that shares it (the browser edition has no relay).', 'err'); return null; }
   let saved = '';
   try { saved = localStorage.getItem(NAME_KEY) || ''; } catch { /* none */ }

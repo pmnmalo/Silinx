@@ -9,6 +9,8 @@
 //   <Silinx's address>/#view=<room>.<key>&relay=<the relay's address, its origin, http(s)>
 // A hosted room found at the public meeting point (core/collab-meet.js) carries the owner's public key after `.host`,
 // which tells the owner from the other pages that have the link: …#view=<room>.<key>.host.<owner's key>.
+// A hosted room met at a relay (#4543: the relay of the owner's settings as its meeting point, core/collab-meet-relay.js)
+// names that relay too: …#view=<room>.<key>.host.<owner's key>&relay=<the relay's address>.
 // A module's link (#3631, Share Module…) names the module its follower opens on, last: …#view=…&top=<module>.
 import { KEY_RE } from './collab-crypto.js';
 import { SIGN_RE, PUB_RE } from './collab-sign.js';
@@ -47,7 +49,7 @@ export function followLink(base, room, key, via = 'relay', sign = null, relay = 
   if (!VIAS.includes(via)) throw new Error(`a room is reached through a relay or its host (not ${via})`);
   if (sign !== null && !SIGN_RE.test(sign)) throw new Error('not an editor\'s key');
   const r = relay === null ? null : relayAddress(relay);
-  if (relay !== null && (!r || via !== 'relay')) throw new Error(`not a relay's address: ${relay}`);
+  if (relay !== null && (!r || (via === 'host' && host === null))) throw new Error(`not a relay's address: ${relay}`);
   if (host !== null && (via !== 'host' || !PUB_RE.test(host))) throw new Error('not an owner\'s key of a hosted room');
   const u = new URL(base);
   u.hash = `${sign ? 'edit' : 'view'}=${room}.${key}${sign ? `.${sign}` : ''}${via === 'host' ? '.host' : ''}${host ? `.${host}` : ''}${r ? `&relay=${encodeURIComponent(r)}` : ''}`;
@@ -77,9 +79,13 @@ export function parseFollowLink(text) {
   const sign = m?.[1] === 'edit' ? m[4] : null;
   let relay = null;
   if (m?.[7] !== undefined) { try { relay = relayAddress(decodeURIComponent(m[7])); } catch { relay = null; } }
-  if (!m || !ROOM_RE.test(m[2]) || !KEY_RE.test(m[3]) || (m[1] === 'edit' ? !SIGN_RE.test(sign || '') : m[4] !== undefined) || (m[6] !== undefined && !PUB_RE.test(m[6])) || (m[7] !== undefined && (!relay || m[5])) || (m[8] !== undefined && !MODULE_RE.test(m[8]))) throw new Error('the link to follow is broken (copy it again from the owner\'s Share Project)');
+  if (!m || !ROOM_RE.test(m[2]) || !KEY_RE.test(m[3]) || (m[1] === 'edit' ? !SIGN_RE.test(sign || '') : m[4] !== undefined) || (m[6] !== undefined && !PUB_RE.test(m[6])) || (m[7] !== undefined && (!relay || (m[5] && m[6] === undefined))) || (m[8] !== undefined && !MODULE_RE.test(m[8]))) throw new Error('the link to follow is broken (copy it again from the owner\'s Share Project)');
   return { base: at > 0 ? s.slice(0, at) : null, room: m[2], key: m[3], via: m[5] ? 'host' : 'relay', sign, ...(relay ? { relay } : {}), ...(m[6] ? { host: m[6] } : {}), ...(m[8] ? { top: m[8] } : {}) };
 }
+
+/** A Cloudflare Worker's origin (https://<name>.<account>.workers.dev, #4543): a relay the Silinx site's pages may use
+ *  (their Content-Security-Policy lets them connect to every workers.dev host, server/csp.js WORKERS_SOURCES). */
+export const workersRelay = origin => /^https:\/\/([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+workers\.dev$/i.test(String(origin ?? ''));
 
 /** The relay's WebSocket address of a Silinx address (http -> ws, https -> wss), for a role: 'share' (the owner's) or
  *  'follow' (a follower's). */

@@ -25,6 +25,11 @@ export function siteSource(site, published) {
   return published && u.href.startsWith(new URL('./', published).href) ? new URL('./', published).href : u.href;
 }
 
+/** Cloudflare Workers' relays (#4543, packages/silinx-relay-cloudflare): the Silinx site's pages may connect to any
+ *  (anyone deploys their own, its address in their settings; core/collab-link.js workersRelay), never to another host
+ *  of a scheme alone. */
+export const WORKERS_SOURCES = Object.freeze(['https://*.workers.dev', 'wss://*.workers.dev']);
+
 /** A relay's sources for connect-src (#3227): its origin and its WebSockets' (wss: for https, ws: for http), which an
  *  http(s) source does not cover. */
 export const relaySources = origins => origins.flatMap(o => [o, o.replace(/^http/, 'ws')]);
