@@ -8,6 +8,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
+import { readFileSync } from 'node:fs';
 import { serveWorker } from './workers-shim.js';
 import worker, { RelayRoom, RELAY_LIMITS, NEEDS_KEY, NO_KEY, originsOf } from '../packages/silinx-relay-cloudflare/src/worker.js';
 import { RELAY_LIMITS as NODE_LIMITS } from '../server/collab-relay.js';
@@ -45,6 +46,14 @@ test('its room\'s logic is core/\'s, copied as it is (node scripts/sync-relay-cl
   assert.deepEqual(originsOf(' https://a.example/, http://127.0.0.1:8642  https://b.example'), ['https://a.example', 'http://127.0.0.1:8642', 'https://b.example']);
   assert.equal(roomUrl('wss://r.example/api/collab/follow', 'R'.repeat(22)), `wss://r.example/api/collab/follow?room=${'R'.repeat(22)}`);
   assert.equal(roomUrl('silinx-host:', 'R'.repeat(22)), 'silinx-host:');
+});
+
+test('#4630 its wrangler.toml says workers_dev and preview_urls, so that a deploy (Deploy to Cloudflare\'s build) warns of neither', () => {
+  const toml = readFileSync(new URL('../packages/silinx-relay-cloudflare/wrangler.toml', import.meta.url), 'utf8');
+  const top = toml.split(/^\[/m)[0];   // (the top-level keys, before the first table)
+  assert.match(top, /^workers_dev = true$/m);
+  assert.match(top, /^preview_urls = false$/m);
+  assert.match(top, /^name = "silinx-relay"$/m);
 });
 
 test('a project shared and followed through it: the project arrives, an edit, the presence both ways, a leave, the end', async () => {

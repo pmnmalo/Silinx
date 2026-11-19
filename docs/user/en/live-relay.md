@@ -33,11 +33,11 @@ Cloudflare's own labels are in English, as Cloudflare shows them.
    **Set up your application**. Sign in to Cloudflare, or create a free account.
 2. **Git account.** The list shows the accounts already connected, and *New GitHub connection* / *New GitLab
    connection*. Choose your GitHub account, the one Silinx's Collaboration tab already uses (GitLab works the same
-   way). The first time, GitHub asks you to install Cloudflare's app (*Cloudflare Workers and Pages*). Give it **All
-   repositories**: Cloudflare creates a new repository for the relay, and *Only select repositories* can only list
-   repositories that already exist. Once the relay is deployed, you can narrow it: on GitHub, *Settings* ▸
-   *Applications* ▸ *Cloudflare Workers and Pages* ▸ *Configure* ▸ *Only select repositories*, the relay's repository
-   alone.
+   way). An account already connected needs nothing more. The first time, GitHub asks you to install Cloudflare's app
+   (*Cloudflare Workers and Pages*) and which repositories it may use. Cloudflare creates a new repository for the
+   relay: if *Only select repositories* does not let it, give it **All repositories**, and once the relay is deployed
+   narrow it on GitHub: *Settings* ▸ *Applications* ▸ *Cloudflare Workers and Pages* ▸ *Configure* ▸ *Only select
+   repositories*, the relay's repository alone.
 3. **Repository.** Cloudflare says that a Git repository will be created for you and that every push to it is deployed.
    Tick **Create private Git repository**. Your copy of the relay goes there; the key is not in it (it is a secret
    kept by Cloudflare).
@@ -49,11 +49,15 @@ Cloudflare's own labels are in English, as Cloudflare shows them.
    `https://pmnmalo.github.io http://127.0.0.1:8642`.
 7. **Build and deploy commands.** *Build command* empty, *Deploy command* `npm run deploy` (it runs `wrangler deploy`),
    preview builds off: leave them as they are.
-8. **Deploy.** Click *Deploy*. Cloudflare says *Setting up your repository…*, then opens the Worker's build page:
-   *Initializing* (about a minute and a half the first time), *Cloning* (it copies the Silinx repository, which takes a
-   while), *Installing*, *Deploying*. Wait a few minutes for the green **Success**.
-9. **The address.** In the Worker's *Overview*, *Domains & Routes* (or the last lines of the build's log):
-   `https://silinx-relay.<your subdomain>.workers.dev`. Paste it in Silinx's window and click *Check and Save*.
+8. **Deploy.** Click *Deploy*. Cloudflare says *Setting up your repository…*, creates your repository
+   (`<your account>/silinx-relay`), then opens the Worker's build page: *Initializing* (a minute and a half or so),
+   *Cloning*, *Installing*, *Deploying*. The whole build takes about 2 to 3 minutes and ends with
+   **Success! Build completed.** The log's two warnings about `workers_dev` and `preview_urls`, from a relay copied
+   before November 2026, are harmless.
+9. **The address.** In the build's log, under *Deployed silinx-relay triggers* (or in the Worker's *Overview*,
+   *Domains & Routes*): `https://silinx-relay.<your subdomain>.workers.dev`, the subdomain often your account's name.
+   Opened in the browser, it answers "A relay of Silinx's shared projects". Paste it in Silinx's window and click
+   *Check and Save*.
 
 Traps:
 

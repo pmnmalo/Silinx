@@ -46,8 +46,8 @@ export const COLLAB_PT = {
   'Cloudflare\'s screens, step by step': 'Os ecrãs do Cloudflare, passo a passo',
   'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.':
     'Instalar no Cloudflare abre a página "Set up your application" do Cloudflare num separador novo: entre, ou crie uma conta gratuita.',
-  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). The first time, GitHub asks to install Cloudflare\'s app: choose All repositories, as it creates a new one (you can narrow it afterwards, in GitHub\'s Settings ▸ Applications).':
-    'Conta Git: escolha a sua conta do GitHub, ou New GitHub connection (o GitLab também serve). Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare: escolha All repositories, porque ela cria um novo (pode restringi-la depois, em Settings ▸ Applications do GitHub).',
+  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). An account already connected needs nothing more. The first time, GitHub asks to install Cloudflare\'s app: if Only select repositories does not let Cloudflare create the new repository, give it All repositories, and narrow it afterwards in GitHub\'s Settings ▸ Applications.':
+    'Conta Git: escolha a sua conta do GitHub, ou New GitHub connection (o GitLab também serve). Uma conta já ligada não precisa de mais nada. Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare: se Only select repositories não deixar o Cloudflare criar o repositório novo, dê-lhe All repositories, e restrinja-a depois em Settings ▸ Applications do GitHub.',
   'Tick Create private Git repository: Cloudflare makes your copy of the relay there. The key is a secret of Cloudflare\'s, not in the repository.':
     'Marque Create private Git repository: o Cloudflare faz lá a sua cópia do retransmissor. A chave é um segredo do Cloudflare, não está no repositório.',
   'Project name: leave silinx-relay. Your relay\'s address will be https://silinx-relay.<your subdomain>.workers.dev.':
@@ -57,10 +57,10 @@ export const COLLAB_PT = {
     'ORIGINS: deixe https://pmnmalo.github.io, o sítio do Silinx. Para usar o retransmissor também a partir do servidor local do Silinx, acrescente-o depois de um espaço: https://pmnmalo.github.io http://127.0.0.1:8642.',
   'Build command empty, Deploy command npm run deploy, preview builds off: leave them as they are.':
     'Build command vazio, Deploy command npm run deploy, builds de pré-visualização desligados: deixe-os como estão.',
-  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): the first time, a few minutes. Wait for Success.':
-    'Carregue em Deploy. O Cloudflare prepara o repositório e depois constrói o retransmissor (Initializing, Cloning, Installing, Deploying): da primeira vez, alguns minutos. Espere por Success.',
-  'The address: the Worker\'s Overview ▸ Domains & Routes, or the build log\'s last lines. Paste it below and click Check and Save.':
-    'O endereço: Overview ▸ Domains & Routes do Worker, ou as últimas linhas do registo da construção. Cole-o abaixo e carregue em Verificar e Guardar.',
+  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): about 2 to 3 minutes. Wait for "Success! Build completed."':
+    'Carregue em Deploy. O Cloudflare prepara o repositório e depois constrói o retransmissor (Initializing, Cloning, Installing, Deploying): cerca de 2 a 3 minutos. Espere por "Success! Build completed."',
+  'The address: in the build log, under "Deployed silinx-relay triggers", or the Worker\'s Overview ▸ Domains & Routes. Paste it below and click Check and Save.':
+    'O endereço: no registo da construção, em "Deployed silinx-relay triggers", ou em Overview ▸ Domains & Routes do Worker. Cole-o abaixo e carregue em Verificar e Guardar.',
   'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.':
     'Use o botão Instalar no Cloudflare: Create ▸ Import a repository do Cloudflare só lista os repositórios que já tem. A sua cópia não segue a do Silinx: para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor para o seu repositório, e o Cloudflare instala-o de novo.',
   // (Add a User…, #3996: web/js/collab-users.js, its code taken: web/js/collab-host.js)

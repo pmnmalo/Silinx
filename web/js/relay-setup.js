@@ -14,14 +14,14 @@ import { relayAddress } from '/core/collab-link.js';
 // Cloudflare's screens after Deploy to Cloudflare, in order (#4630: as they were in November 2026)
 const DEPLOY_STEPS = [
   'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.',
-  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). The first time, GitHub asks to install Cloudflare\'s app: choose All repositories, as it creates a new one (you can narrow it afterwards, in GitHub\'s Settings ▸ Applications).',
+  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). An account already connected needs nothing more. The first time, GitHub asks to install Cloudflare\'s app: if Only select repositories does not let Cloudflare create the new repository, give it All repositories, and narrow it afterwards in GitHub\'s Settings ▸ Applications.',
   'Tick Create private Git repository: Cloudflare makes your copy of the relay there. The key is a secret of Cloudflare\'s, not in the repository.',
   'Project name: leave silinx-relay. Your relay\'s address will be https://silinx-relay.<your subdomain>.workers.dev.',
   'RELAY_KEY: paste the key copied in step 1.',
   'ORIGINS: leave https://pmnmalo.github.io, the Silinx site. To use the relay from Silinx\'s local server too, add it after a space: https://pmnmalo.github.io http://127.0.0.1:8642.',
   'Build command empty, Deploy command npm run deploy, preview builds off: leave them as they are.',
-  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): the first time, a few minutes. Wait for Success.',
-  'The address: the Worker\'s Overview ▸ Domains & Routes, or the build log\'s last lines. Paste it below and click Check and Save.',
+  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): about 2 to 3 minutes. Wait for "Success! Build completed."',
+  'The address: in the build log, under "Deployed silinx-relay triggers", or the Worker\'s Overview ▸ Domains & Routes. Paste it below and click Check and Save.',
 ];
 
 const hostOf = a => { try { return new URL(a).host; } catch { return a; } };

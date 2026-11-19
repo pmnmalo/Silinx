@@ -4,6 +4,10 @@
 name = "silinx-relay"
 main = "src/worker.js"
 compatibility_date = "2025-11-01"
+# Its address, https://silinx-relay.<subdomain>.workers.dev; no preview addresses (said, so that a deploy warns of
+# neither, #4630)
+workers_dev = true
+preview_urls = false
 
 [vars]
 # The Silinx sites whose pages use this relay (their origins, separated by spaces): the Silinx site's by default; add a

@@ -32,12 +32,12 @@ Os nomes do Cloudflare estão em inglês, como o Cloudflare os mostra.
 1. **Entrar.** *Instalar no Cloudflare* abre o painel do Cloudflare em *Workers & Pages* ▸ *Create an application* ▸
    **Set up your application**. Entre no Cloudflare, ou crie uma conta gratuita.
 2. **Conta Git.** A lista mostra as contas já ligadas, e *New GitHub connection* / *New GitLab connection*. Escolha a
-   sua conta do GitHub, a que o separador Colaboração do Silinx já usa (o GitLab funciona da mesma maneira). Da
-   primeira vez, o GitHub pede para instalar a aplicação do Cloudflare (*Cloudflare Workers and Pages*). Dê-lhe **All
-   repositories**: o Cloudflare cria um repositório novo para o retransmissor, e *Only select repositories* só lista
-   repositórios que já existem. Depois de o retransmissor estar instalado, pode restringi-la: no GitHub, *Settings* ▸
-   *Applications* ▸ *Cloudflare Workers and Pages* ▸ *Configure* ▸ *Only select repositories*, só o repositório do
-   retransmissor.
+   sua conta do GitHub, a que o separador Colaboração do Silinx já usa (o GitLab funciona da mesma maneira). Uma conta
+   já ligada não precisa de mais nada. Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare
+   (*Cloudflare Workers and Pages*) e quais os repositórios que pode usar. O Cloudflare cria um repositório novo para o
+   retransmissor: se *Only select repositories* não o deixar, dê-lhe **All repositories**, e depois de o retransmissor
+   estar instalado restrinja-a no GitHub: *Settings* ▸ *Applications* ▸ *Cloudflare Workers and Pages* ▸ *Configure* ▸
+   *Only select repositories*, só o repositório do retransmissor.
 3. **Repositório.** O Cloudflare diz que vai criar um repositório Git para si e que cada push para ele é instalado.
    Marque **Create private Git repository**. A sua cópia do retransmissor fica lá; a chave não está nele (é um
    segredo guardado pelo Cloudflare).
@@ -49,12 +49,15 @@ Os nomes do Cloudflare estão em inglês, como o Cloudflare os mostra.
    `https://pmnmalo.github.io http://127.0.0.1:8642`.
 7. **Comandos de construção e instalação.** *Build command* vazio, *Deploy command* `npm run deploy` (corre
    `wrangler deploy`), builds de pré-visualização desligados: deixe-os como estão.
-8. **Deploy.** Carregue em *Deploy*. O Cloudflare diz *Setting up your repository…* e abre a página da construção do
-   Worker: *Initializing* (cerca de minuto e meio da primeira vez), *Cloning* (copia o repositório do Silinx, o que
-   demora), *Installing*, *Deploying*. Espere alguns minutos pelo **Success** verde.
-9. **O endereço.** Em *Overview* do Worker, *Domains & Routes* (ou nas últimas linhas do registo da construção):
-   `https://silinx-relay.<o seu subdomínio>.workers.dev`. Cole-o na janela do Silinx e carregue em *Verificar e
-   Guardar*.
+8. **Deploy.** Carregue em *Deploy*. O Cloudflare diz *Setting up your repository…*, cria o seu repositório
+   (`<a sua conta>/silinx-relay`) e abre a página da construção do Worker: *Initializing* (cerca de minuto e meio),
+   *Cloning*, *Installing*, *Deploying*. A construção toda leva cerca de 2 a 3 minutos e acaba em
+   **Success! Build completed.** Os dois avisos do registo sobre `workers_dev` e `preview_urls`, de um retransmissor
+   copiado antes de novembro de 2026, são inofensivos.
+9. **O endereço.** No registo da construção, em *Deployed silinx-relay triggers* (ou em *Overview* do Worker,
+   *Domains & Routes*): `https://silinx-relay.<o seu subdomínio>.workers.dev`, o subdomínio muitas vezes o nome da sua
+   conta. Aberto no browser, responde "A relay of Silinx's shared projects". Cole-o na janela do Silinx e carregue em
+   *Verificar e Guardar*.
 
 Armadilhas:
 
