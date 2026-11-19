@@ -143,8 +143,9 @@ uiTest('#4215 #4257 #4322 #4581 #4619 the Collaboration tab: shown with no proje
   await page.leftTab('collab');
   await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS], 'no change');
   // (#4581: no Changes box; Changes… just before History…)
+  // (Sharing first, then Git Repository: #4636)
   assert.deepEqual((await collab(page)).boxes, [
-    ['Git Repository', SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS], NOT_LIVE()]);
+    NOT_LIVE(), ['Git Repository', SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS]]);
   assert.equal(await page.eval(() => document.querySelector('#collab-page .collab-changes, #collab-page .collab-file')), null);
   // Changes… with no change: its line
   await tabCommand(page, 'Changes…');
@@ -198,10 +199,10 @@ uiTest('#4215 #4257 #4322 #4581 #4619 the Collaboration tab: shown with no proje
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    await page.waitFor(() => document.querySelector('#collab-page .start-box h3')?.textContent === 'Repositório Git', [], { what: 'Portuguese' });
+    await page.waitFor(() => document.querySelector('#collab-page .collab-repo h3')?.textContent === 'Repositório Git', [], { what: 'Portuguese' });
     assert.deepEqual((await collab(page)).boxes, [
-      ['Repositório Git', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Alterações…', 'Histórico…', 'Verificações do GitHub (Checks)'],
-      ['Partilha', 'Não partilhado em direto.', 'Partilhar uma Cópia…', 'Partilhar em Direto…', 'Para seguir um projeto partilhado em direto, abra a sua ligação.']]);
+      ['Partilha', 'Não partilhado em direto.', 'Partilhar uma Cópia…', 'Partilhar em Direto…', 'Para seguir um projeto partilhado em direto, abra a sua ligação.'],
+      ['Repositório Git', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Alterações…', 'Histórico…', 'Verificações do GitHub (Checks)']]);
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab] .tab-lbl').textContent), 'Colaboração');
     await tabCommand(page, 'Alterações…');
     await page.waitDialog('Alterações');
@@ -230,7 +231,7 @@ uiTest('#4215 the Collaboration tab: a project with no repository, Store Project
   await page.openProject('CollabInit');
   await page.leftTab('collab');
   await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'no repository');
-  assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Git Repository', 'Sharing']);
+  assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Sharing', 'Git Repository']);
   // Store Project in a GitHub Repository… from the tab, with no GitHub repository: offered again, to give it one
   await tabCommand(page, 'Store Project in a GitHub Repository…');
   await page.waitDialog('Store Project in a GitHub Repository');
@@ -392,6 +393,33 @@ uiTest('#4215 the Collaboration tab on a narrow screen', E, async (page) => {
     assert.ok(await page.eval(() => document.getElementById('collab-page').getBoundingClientRect().right <= innerWidth + 1 && document.documentElement.scrollWidth <= innerWidth));
   } finally {
     await page.setViewport(1366, 768);
+  }
+  await noWarnings(page);
+});
+
+// the sections' order (#4636): Sharing first, then Git Repository (the relay's box between them is the browser edition's:
+// test/ui/collab-no-project.test.js), with no project open and with one, in Portuguese too; no warnings
+uiTest('#4636 the Collaboration tab: Sharing first, above Git Repository, with no project and with one', E, async (page) => {
+  await page.setViewport(1366, 768);
+  await page.eval(() => window.SilinxApp.closeProject?.());
+  await page.leftTab('collab');
+  const NO_PROJECT = [NOT_LIVE(true), ['Git Repository', SERVER_GITHUB, 'No project open.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)']];
+  await waitBoxOf(page, 'Git Repository', [SERVER_GITHUB, 'No project open.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'no project')   // (its marks: below)
+    .catch(async (e) => { assert.deepEqual((await collab(page)).boxes, NO_PROJECT, e.message); throw e; });
+  assert.deepEqual((await collab(page)).boxes, NO_PROJECT);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .page > *')].map((e) => e.className)), ['start-box collab-live', 'start-box collab-repo']);
+  await makeProject(env, { name: 'CollabOrder', template: 'gates' });
+  await page.openProject('CollabOrder');
+  await page.leftTab('collab');
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'a project');
+  assert.deepEqual((await collab(page)).boxes, [NOT_LIVE(),
+    ['Git Repository', SERVER_GITHUB, 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…']]);
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    await page.waitFor(() => document.querySelector('#collab-page .collab-repo h3')?.textContent === 'Repositório Git', [], { what: 'Portuguese' });
+    assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Partilha', 'Repositório Git']);
+  } finally {
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
   await noWarnings(page);
 });

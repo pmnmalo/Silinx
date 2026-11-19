@@ -58,7 +58,8 @@ const tabCommand = (page, label) => page.click('#collab-page .entry a', { text: 
 
 const SHARING = ['Sharing', 'Not shared live.', 'Share a Copy… (disabled)', 'Share Live… (disabled)', 'To follow a project shared live, open its link.'];
 const RELAY = ['Cloudflare Relay', 'No Cloudflare relay: your followers find you at the public meeting point.', 'Set Up a Cloudflare Relay…'];
-const NO_PROJECT = (sign) => [['Git Repository', sign, 'No project open.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)'], SHARING, RELAY];
+// (Sharing first, the relay under it, then Git Repository: #4636)
+const NO_PROJECT = (sign) => [SHARING, RELAY, ['Git Repository', sign, 'No project open.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)']];
 
 uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from GitHub Repository…, the relay; the Start page with no GitHub command; Portuguese', E, async (page) => {
   const REPO = 'course/nopro-ana';
@@ -81,9 +82,9 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   await boot(page);
   assert.deepEqual(await shownTabs(page), ['start', 'collab']);
   await page.leftTab('collab');
-  await waitPage(page, [['Repositório Git', 'Iniciar sessão no GitHub…', 'Nenhum projeto aberto.', 'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub… (disabled)'],
-    ['Partilha', 'Não partilhado em direto.', 'Partilhar uma Cópia… (disabled)', 'Partilhar em Direto… (disabled)', 'Para seguir um projeto partilhado em direto, abra a sua ligação.'],
-    ['Retransmissor Cloudflare', 'Sem retransmissor Cloudflare: quem o segue encontra-o no ponto de encontro público.', 'Configurar um Retransmissor Cloudflare…']], 'the tab in Portuguese');
+  await waitPage(page, [['Partilha', 'Não partilhado em direto.', 'Partilhar uma Cópia… (disabled)', 'Partilhar em Direto… (disabled)', 'Para seguir um projeto partilhado em direto, abra a sua ligação.'],
+    ['Retransmissor Cloudflare', 'Sem retransmissor Cloudflare: quem o segue encontra-o no ponto de encontro público.', 'Configurar um Retransmissor Cloudflare…'],
+    ['Repositório Git', 'Iniciar sessão no GitHub…', 'Nenhum projeto aberto.', 'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub… (disabled)']], 'the tab in Portuguese');
   // (back from the Collaboration tab with no project: its Start tab clicked, the harness's leftTab('start') being the Start page alone's)
   await page.click('#left-tabs .tab[data-page=start]');
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page in Portuguese' });
@@ -109,8 +110,8 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   await page.waitFor(() => window.Silinx.project?.name === 'nopro-ana' && !!window.SilinxApp.S.git, [], { what: 'nopro-ana open' });
   assert.deepEqual(await shownTabs(page), ['start', 'design', 'files', 'libraries', 'collab', 'teaching']);
   await page.leftTab('collab');
-  await waitPage(page, [['Git Repository', 'Sign out of GitHub', `GitHub: ${REPO}`, 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', 'Changes…', 'History…', 'GitHub Checks'],
-    ['Sharing', 'Not shared live.', 'Share a Copy…', 'Share Live…', 'To follow a project shared live, open its link.'], RELAY], 'the repository\'s box');
+  await waitPage(page, [['Sharing', 'Not shared live.', 'Share a Copy…', 'Share Live…', 'To follow a project shared live, open its link.'], RELAY,
+    ['Git Repository', 'Sign out of GitHub', `GitHub: ${REPO}`, 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', 'Changes…', 'History…', 'GitHub Checks']], 'the repository\'s box');
   // closed: the Start and Collaboration tabs again, the tab's box with no project
   await page.eval(() => window.SilinxApp.closeProject());
   await page.waitFor(() => !window.Silinx.project && document.documentElement.hasAttribute('data-no-project'), [], { what: 'the project closed' });
@@ -128,8 +129,8 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   // (the wizard done: its toast, after the project opened and its Design page shown)
   await page.waitFor(() => window.Silinx.project?.name === 'NoRepo' && [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('NoRepo')), [], { what: 'NoRepo made' });
   await page.leftTab('collab');
-  await waitPage(page, [['Git Repository', 'Sign out of GitHub', 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'],
-    ['Sharing', 'Not shared live.', 'Share a Copy…', 'Share Live…', 'To follow a project shared live, open its link.'], RELAY], 'a project with no repository');
+  await waitPage(page, [['Sharing', 'Not shared live.', 'Share a Copy…', 'Share Live…', 'To follow a project shared live, open its link.'], RELAY,
+    ['Git Repository', 'Sign out of GitHub', 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…']], 'a project with no repository');
   await tabCommand(page, 'Store Project in a GitHub Repository…');
   await page.waitDialog('Store Project in a GitHub Repository');
   await page.dialogButton('Cancel');
