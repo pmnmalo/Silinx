@@ -201,6 +201,25 @@ export const SHOTS = [
     },
   },
   {
+    name: 'share', lang: ['en', 'pt'],
+    about: 'Share Project…, live: the traffic example shared with the class, its links made',
+    async run(page, env, { lang }) {
+      const pt = lang === 'pt';
+      await example(page, env, 'traffic', 'traffic');
+      await open(page, 'src/traffic.fsm.json');
+      await page.menu(pt ? 'Ficheiro' : 'File', pt ? 'Partilhar Projeto…' : 'Share Project…');
+      await page.waitDialog(null);
+      await page.click('.dlg-overlay input[data-field=how-live]');
+      await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg'), [], { what: 'the live window' });
+      await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
+      await page.dialogButton(pt ? 'Começar a Partilhar' : 'Start Sharing');
+      // (the links made, hidden until Show: their address is this computer's)
+      await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(),
+        document.querySelector('.dlg-overlay input[data-field=link]')?.value), [], { what: 'the link made', timeout: 20000 });
+      await sleep(800);
+    },
+  },
+  {
     name: 'implement-nexys2', lang: ['en', 'pt'],
     about: 'Implementation with the Silinx toolchain: blinky on a Nexys2, its Design Summary',
     async run(page, env, { lang }) {
