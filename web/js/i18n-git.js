@@ -8,7 +8,7 @@ export const GIT_PT = {
   'GitHub repository (a Classroom assignment\'s too):': 'Repositório do GitHub (também o de um trabalho do Classroom):',
   'GitHub repository (optional: where Push sends the commits):': 'Repositório do GitHub (opcional: para onde o Push envia os commits):',
   'Message:': 'Mensagem:', 'https://github.com/owner/repository': 'https://github.com/dono/repositório',
-  'No change since the last commit.': 'Nenhuma alteração desde o último commit.',
+  'No change since the last commit.': 'Nenhuma alteração desde o último commit.', 'Show fewer': 'Mostrar menos',
   'Say in a few words what changed.': 'Diga em poucas palavras o que mudou.',
   'git signs in to GitHub with its own credentials (GitHub\'s command line, Git Credential Manager or an SSH key): Silinx never asks for a password or a token.':
     'O git autentica-se no GitHub com as suas próprias credenciais (a linha de comandos do GitHub, o Git Credential Manager ou uma chave SSH): o Silinx nunca pede uma palavra-passe nem um token.',
@@ -95,6 +95,7 @@ export const GIT_PT_PATTERNS = [
   [/^(\d+) object\(s\) changed both here and on GitHub: choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/, '$1 objeto(s) alterado(s) aqui e no GitHub: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.'],
   [/^Choose Mine or Theirs for (\d+) object\(s\) more\.$/, 'Escolha O meu ou O deles para mais $1 objeto(s).'],
   [/^(\d+) change\(s\) on (.+):$/, '$1 alteração(ões) em $2:'],
+  [/^(\d+) more…$/, 'Mais $1…'],   // (the Collaboration tab's changes folded, #4571)
   [/^(\d+) commit\(s\) to push$/, '$1 commit(s) por enviar (Push)'], [/^(\d+) commit\(s\) to pull$/, '$1 commit(s) por receber (Pull)'],   // (#4215)
   // (#4213) Merge Branch…'s merge view and conflicts
   [/^Mine \((.+)\)$/, 'O meu ($1)'], [/^Theirs \((.+)\)$/, 'O deles ($1)'],

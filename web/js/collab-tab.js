@@ -20,9 +20,12 @@ import { getLanguage, onLanguageChange } from './i18n.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { shortCommit } from '/core/git-messages.js';
+import { foldList } from '/core/list-fold.js';
 
 // the last GitHub Checks' answer, its project's (File ▸ Git ▸ GitHub Checks or the tab's)
 let checks = null;
+// the Changes box unfolded (#4571: "N more…"; "Show fewer" folds it again), kept while the page is drawn again
+let changesOpen = false;
 const CHECKS = { success: 'Checks passed', failure: 'Checks failed', pending: 'Checks running', none: 'No check on GitHub' };
 
 const entry = (ic, ...kids) => h('div', { class: 'entry' }, icon(ic), ...kids);
@@ -82,18 +85,23 @@ function repositoryBox(items, init, open) {
     g.remote ? null : cmd(init));
 }
 
-// the files changed since the last commit, with the Design pane's marks; a click: Compare (#3197)
+// the files changed since the last commit, with the Design pane's marks; a click: Compare (#3197); a long list folded,
+// its conflicts first (#4571: core/list-fold.js)
 function changesBox() {
   const files = S.git.files.filter(f => !designOnly() || !hdlSideFile(f.path));   // (a design project's HDL: never listed, #3891)
   const compare = path => import('./git-history.js').then(m => m.compareNow(path));
+  const { shown, more } = foldList(files, { open: changesOpen, first: f => f.state === 'conflict' });
+  const fold = open => () => { changesOpen = open; renderCollabPage(); };
   return box('collab-changes', 'Changes',
     files.length ? null : hint('No change since the last commit.'),
-    ...files.map(f => {
+    ...shown.map(f => {
       const m = gitMarks[f.state];
       return h('div', { class: 'entry collab-file', 'data-state': f.state },
         h('span', { class: `git-mark git-${f.state}`, title: m.title }, m.text),
         h('a', { class: 'collab-compare', 'data-no-i18n': '', title: 'Compare with the last commit', onclick: () => compare(f.path) }, f.path));
-    }));
+    }),
+    more ? entry('expand', h('a', { class: 'collab-fold', onclick: fold(true) }, `${more} more…`)) : null,
+    changesOpen && foldList(files).more ? entry('collapse', h('a', { class: 'collab-fold', onclick: fold(false) }, 'Show fewer')) : null);
 }
 
 // the sign-in (the browser edition's; the server editions' git signs in itself), the last push's checks

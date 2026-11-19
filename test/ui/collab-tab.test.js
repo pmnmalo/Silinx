@@ -2,7 +2,7 @@
 // bare repositories (no network: https://github.com/test/<repo> mapped to one, SILINX_UI_GIT_REMOTES of
 // test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Teaching; no project open: the Start tab alone (#4257, #4322,
 // Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, its changes with
-// the Design pane's marks (a click compares one with the last commit), Commit…, Push to GitHub, Pull from GitHub,
+// the Design pane's marks (a click compares one with the last commit; many folded, #4571), Commit…, Push to GitHub, Pull from GitHub,
 // History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
 // tab, then committed and pushed; a followed project's read-only notice; Sharing (Share a Copy…, Share Live… from the tab, who is
 // in, the presence's commands, Stop Sharing; a follower's box); the ISE style's tabs all whole in its default side panel
@@ -216,6 +216,43 @@ uiTest('#4215 the Collaboration tab: a project with no repository, Store Project
   await waitLog(page, /Pushed main to local\/collab2\./);
   await waitBox(page, 'Repository', ['GitHub: local/collab2', 'Branch: main', ...REPO_COMMANDS], 'pushed');
   assert.equal(sh(path.join(remotes, 'collab2.git'), 'log', '--format=%s', 'main').trim(), 'First');
+  await noWarnings(page);
+});
+
+// a long list of changes folded (#4571): its first ten, "N more…" unfolds the rest, "Show fewer" folds it again, the
+// choice kept while the page is drawn again; in Portuguese
+uiTest('#4571 the Collaboration tab: many changes folded, "N more…" and "Show fewer"; Portuguese', E, async (page) => {
+  await page.setViewport(1366, 768);
+  await makeProject(env, { name: 'CollabFold', template: 'gates' });
+  await page.openProject('CollabFold');
+  await page.leftTab('collab');
+  await tabCommand(page, 'Store Project in a GitHub Repository…');
+  await page.waitDialog('Store Project in a GitHub Repository');
+  await page.dialogButton('Initialize');
+  await page.waitNoDialog();
+  await waitLog(page, /Repository made for 'CollabFold'; \.gitignore written\./);
+  for (let i = 0; i < 14; i++) await writeFile(page, `src/extra${String(i).padStart(2, '0')}.v`, `module extra${i}; endmodule\n`);
+  await page.waitFor(() => window.SilinxApp.S.git?.files.length === 20, [], { what: 'the 20 changes' });
+  const all = await page.eval(() => window.SilinxApp.S.git.files.map((f) => `N ${f.path}`));
+  assert.equal(all.length, 20);
+  // folded: the first ten, then "10 more…"
+  await waitBox(page, 'Changes', [...all.slice(0, 10), '10 more…'], 'folded');
+  // unfolded: all of them, then "Show fewer"; kept when the page is drawn again
+  await tabCommand(page, '10 more…');
+  await waitBox(page, 'Changes', [...all, 'Show fewer'], 'unfolded');
+  await page.eval(async () => (await import('/js/git.js')).refreshGitStatus());
+  await page.eval(() => dispatchEvent(new CustomEvent('silinx:git-status')));
+  await waitBox(page, 'Changes', [...all, 'Show fewer'], 'still unfolded');
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    await waitBox(page, 'Alterações', [...all, 'Mostrar menos'], 'unfolded, in Portuguese');
+    await tabCommand(page, 'Mostrar menos');
+    await waitBox(page, 'Alterações', [...all.slice(0, 10), 'Mais 10…'], 'folded, in Portuguese');
+  } finally {
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  }
+  await waitBox(page, 'Changes', [...all.slice(0, 10), '10 more…'], 'folded again');
   await noWarnings(page);
 });
 
