@@ -8,7 +8,7 @@ import { KEYS, clone } from './sch-editor.js';
 import { adoptOps, recordLive, replayLive, replayPlan, tryOps } from '/core/collab-try.js';
 import { fmtValue } from '/core/schlive.js';
 
-/** { enterSim, leaveSim, showDiags, tryState, setTryState } of mountSchEditor (destroyed(), doc(), genLang(), lastDiags(), live(), liveStarting(), modules(), nl(), sel(), tool(), view(), wireDraw(): its current values). */
+/** { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged } of mountSchEditor (destroyed(), doc(), genLang(), lastDiags(), live(), liveStarting(), modules(), nl(), sel(), tool(), view(), wireDraw(): its current values). */
 export function mountSchTry(ctx) {
   const {
     container, opts, canSim, canvas, centerOn, contentG, destroyed, doc, finishWire, flash, genLang, hint,
@@ -20,6 +20,14 @@ export function mountSchTry(ctx) {
   // the inputs' values of the last Try it of this schematic, for the next one (#2106): in memory, while it is open
   let lastInputs = null;
   let steps = null;   // (its steps since it started, as live sharing sends them, #4244: core/collab-try.js tryOps)
+  // the sources Try it was built from, [path, text] (#4601: a compile of the same texts leaves it running)
+  let builtFrom = null;
+  const pairs = sources => (sources || []).map(s => [s.path, s.text]);
+  /** Whether the project's sources (`opts.simSources()`) are no longer those Try it was built from. */
+  const sourcesChanged = () => {
+    const now = pairs(opts.simSources ? opts.simSources() : []);
+    return !builtFrom || now.length !== builtFrom.length || now.some(([p, t], i) => p !== builtFrom[i][0] || t !== builtFrom[i][1]);
+  };
   const toCanvas = pt => ({ x: pt.x * view().s + view().tx, y: pt.y * view().s + view().ty });
   async function enterSim() {
     if (live() || liveStarting() || !canSim || destroyed()) return;
@@ -42,6 +50,7 @@ export function mountSchTry(ctx) {
         return;
       }
       setLive(res.ctl);
+      builtFrom = pairs(sources);
       steps = tryOps(res.ctl.inputValues());
       recordLive(res.ctl.live, steps);
       sel().clear();
@@ -60,7 +69,7 @@ export function mountSchTry(ctx) {
     lastInputs = live().inputValues();
     live().destroy();
     setLive(null);
-    steps = null;
+    steps = null; builtFrom = null;
     container.classList.remove('sim-mode');
     render(); renderProps();
     opts.onSimulate?.(false);
@@ -100,5 +109,5 @@ export function mountSchTry(ctx) {
     return plan;
   }
 
-  return { enterSim, leaveSim, showDiags, tryState, setTryState };
+  return { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged };
 }
