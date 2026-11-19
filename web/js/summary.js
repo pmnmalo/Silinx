@@ -1,13 +1,12 @@
 // Design Summary page (ISE "Design Summary/Reports").
 import { api } from './api.js';
 import { PRODUCT, VERSION_LABEL } from '/core/version.js';
-import { resourcesOf, bitstreamExtOf, deviceFamily } from '/packages/silinx-fpga/src/parts.js';
+import { bitstreamExtOf, deviceFamily } from '/packages/silinx-fpga/src/parts.js';
+import { designUtilization } from '/core/summary-utilization.js';
 import { familyProfile } from '/core/family-profile.js';
 import { toolOf } from './tool-descriptors.js';
 import { h } from './ui.js';
 import { S, app } from './app.js';
-
-const pct = (u, t) => (t ? Math.round((100 * u) / t) : 0);
 
 export function mountSummary(el) {
   const page = h('div', { class: 'page' });
@@ -43,24 +42,11 @@ export function mountSummary(el) {
       row('Product Version:', `${PRODUCT} ${VERSION_LABEL} (${open ? 'Silinx toolchain, no ISE' : vivado ? 'AMD Vivado 2025.2 flow' : 'Xilinx ISE 14.7 flow'})`, 'Constraints:', pj.constraints || '(none)'),
       row('Design Goal:', `Balanced (${pj.impl?.optMode || 'Speed'})`, 'Sources:', `${pj.files.length} HDL files`),
     ));
-    // utilization: every resource of the part (packages/silinx-fpga/src/resources.js, #790), used of available (#795): MAP's report's
-    // lines (and the part's resources it does not list, ISE's leaves the unused ones out), or before an
-    // implementation the synthesis's (the Silinx toolchain's), or the part's counts alone
-    const syn = open || vivado ? (rep?.synthesis?.utilization || []).filter(u => u.total && !u.level) : [];
-    const caption = rep?.map ? (open ? ' (Silinx toolchain)' : vivado ? ' (AMD Vivado)' : '') : syn.length ? ' (after synthesis)' : ' (not yet implemented)';
-    const tbl = h('table', { class: 'summary-table' }, h('caption', {}, `Device Utilization Summary${caption}`),
+    // utilization: every resource of the part used of available, the family's own rows (core/summary-utilization.js, #790, #795, #4512)
+    const util = designUtilization(rep, part, pj.device.package);
+    const tbl = h('table', { class: 'summary-table' }, h('caption', {}, util.caption),
       h('tr', {}, h('th', {}, 'Logic Utilization'), h('th', {}, 'Used'), h('th', {}, 'Available'), h('th', {}, 'Utilization'), h('th', {}, '')));
-    const res = part ? resourcesOf(part, pj.device.package).filter(r => r.report && r.count) : [];
-    let lines = (rep?.map?.utilization || []).filter(u => u.total).map(u => [u.name, u.used, u.total, u.percent]);
-    // (Vivado's rows name the 7-series' resources its own way: its rows alone, after routing or after synthesis)
-    if (vivado && !lines.length) lines = syn.map(u => [u.name, u.used, u.total, u.percent]);
-    if (lines.length && !vivado) lines.push(...res.filter(r => !lines.some(l => l[0] === r.report)).map(r => [r.report, 0, r.count]));
-    else if (!lines.length) {
-      const used = r => syn.find(u => u.id === r.id || u.name === r.report)?.used ?? (syn.length && r.id !== 'slices' ? 0 : '-');
-      lines = res.map(r => [r.report, used(r), r.count]);
-    }
-    for (const [k, used, avail, pc] of lines) {
-      const p = typeof used === 'number' ? (pc ?? pct(used, avail)) : null;
+    for (const { name: k, used, total: avail, percent: p } of util.rows) {
       tbl.append(h('tr', {}, h('td', {}, k), h('td', { class: 'num' }, used), h('td', { class: 'num' }, avail ?? ''), h('td', { class: p > 100 ? 'num status-bad' : 'num' }, p === null ? '' : `${p}%`),
         h('td', {}, p === null ? '' : h('span', { class: 'util-bar' }, h('div', { style: { width: `${Math.min(100, p)}%` } })))));
     }

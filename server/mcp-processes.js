@@ -4,6 +4,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, clip, redactor, projectPath, readProject, PROJECT } from './mcp-util.js';
+import { designUtilization } from '../core/summary-utilization.js';
 import { MODEL_PROCESS, hasSimModels, noSimModelMessage, silinxFlowOf } from './mcp-hdl.js';
 
 export const PROCESSES = {
@@ -129,7 +130,7 @@ export const PROCESS_TOOLS = [
   },
   {
     name: 'get_report', title: 'Read a report',
-    description: 'The Design Summary of the last run (summary: the utilization, the timing, the files, as JSON), or the text of a report of the last run: synthesis, map, par, timing, power, pins, drc (with the Silinx toolchain: Yosys\'s statistics for synthesis, the pack and route summaries for map and par; with AMD Vivado: its utilization after synthesis and after routing, its route status, timing summary, power, I/O and DRC reports).',
+    description: 'The Design Summary of the last run (summary: the utilization, the timing, the files, as JSON; designSummary.utilization: the Device Utilization Summary\'s caption and rows, as the interface shows them), or the text of a report of the last run: synthesis, map, par, timing, power, pins, drc (with the Silinx toolchain: Yosys\'s statistics for synthesis, the pack and route summaries for map and par; with AMD Vivado: its utilization after synthesis and after routing, its route status, timing summary, power, I/O and DRC reports).',
     inputSchema: { type: 'object', properties: { project: PROJECT, report: { type: 'string', enum: ['summary', ...Object.keys(REPORT_FILES.ise)], description: 'The report (default summary).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, report = 'summary' }) {
@@ -139,6 +140,9 @@ export const PROCESS_TOOLS = [
         const { projectReports } = await import('./impl-routes.js');
         const r = JSON.parse(redact(JSON.stringify(await projectReports(name))));
         if (r.available === false) return { text: `No report yet for '${name}': run a process (run_process).`, data: { project: name, report, available: false } };
+        // (the Design Summary's Device Utilization Summary, as the interface shows it: the family's own rows, #4512)
+        const { findPart } = await import('./devices.js');
+        r.designSummary = { utilization: designUtilization(r, findPart(pj.device?.part) || null, pj.device?.package) };
         return { text: clip(JSON.stringify(r, null, 1)), data: { project: name, report, available: true, summary: r }, untrusted: 'the report' };
       }
       if (!Object.hasOwn(REPORT_FILES.ise, report)) throw toolError(`report: summary or one of ${Object.keys(REPORT_FILES.ise).join(', ')}`);
