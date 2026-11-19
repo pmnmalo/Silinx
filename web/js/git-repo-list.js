@@ -10,7 +10,7 @@ import { filterRepositories, repoLine } from '/core/github-repos.js';
 /** The list's element, filled when the repositories come; url: the address's field (its 'input' filters the list). */
 export function repoList(url) {
   const status = h('div', { class: 'hint git-repos-status' }, 'Reading your GitHub repositories…');
-  const list = h('ul', { class: 'git-repos', role: 'listbox', 'aria-label': 'Your GitHub repositories', style: { maxHeight: '180px', overflowY: 'auto', margin: '4px 0 0', padding: '0', listStyle: 'none', border: '1px solid var(--border, #ccc)' } });
+  const list = h('ul', { class: 'git-repos', role: 'listbox', 'aria-label': 'Your GitHub repositories', style: { maxHeight: '180px', overflowY: 'auto', margin: '4px 0 0', padding: '0', listStyle: 'none', border: '1px solid var(--border)' } });
   list.hidden = true;
   const box = h('div', { class: 'git-repos-box', style: { gridColumn: '1 / -1' } }, status, list);
   let all = null, picking = false;
