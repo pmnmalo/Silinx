@@ -84,14 +84,31 @@ read / write. Silinx generates both sides:
 `SharedArrayBuffer`, so no cross-origin isolation, which GitHub Pages cannot set.
 
 - **The global time is in ps.**
-- **Each engine sits behind an adapter** with `advanceTo(t)`, `setPin(name, value)`, its pins' changes with their
-  times, and `nextEventTime()`.
-- **The synchronisation is conservative, with an adaptive quantum.** Each node runs to the end of the quantum, or to
-  the next known event of another node, whichever comes first. The pins that changed are exchanged at the
-  quantum's edges. The quantum is fine while a link is active (a sixteenth of a UART bit) and wide while the links
-  are idle.
-- **Links are exchanged pin by pin**, so the run is exact, the logic analyzer sees the protocol, and a protocol's
-  errors show. Decoders on top give the UART bytes, the SPI and I²C transactions, the MQTT messages.
+- **Each engine runs in batches** behind one contract: `run(t1, inputEvents)` runs it to `t1`, with its inputs set
+  at their exact times, and returns its outputs' changes with their times.
+  - An FPGA node runs `cycle(n)` between its input events and records its watched outputs' changes with their
+    cycles inside the batch. The compiled engine's `watch.uart` already does this for one pin; it is generalised to
+    every pin of a link.
+  - Lockstep cycle by cycle is not needed, and it would be slow: a `cycle(1)` call costs about 75 ns, so it caps a
+    50 MHz node at about 0.27× real time.
+- **The synchronisation is a window bounded by the links' lookahead.**
+  - In each window, the microcontrollers run first and produce their events at their exact times. The FPGA then
+    runs with those inputs at their exact cycles. Its outputs reach the microcontrollers at the window's end, so
+    they arrive at most one window late.
+  - The window follows the fastest link: a tenth of a UART bit, half an SPI clock period, a GPIO's set value. The
+    user does not see it.
+  - The measured limit: a UART at 9600 baud gives the right result up to a 10 µs window and goes wrong at 100 µs.
+- **The links are pin by pin on the FPGA's side and in the logic analyzer.**
+  - The emulators' peripherals are transactions, not pins:
+    - avr8js's USART: `onByteTransmit`, `writeByte`; its SPI: `onByte`, `completeTransfer`, master only; its TWI:
+      master only;
+    - rp2040js's UART, SPI and I²C: master only for SPI and I²C.
+  - So each link's adapter turns a byte into its pins' waveform at the exact times (start, data and stop bits at the
+    baud), and decodes the FPGA's pins back into bytes at the microcontroller's own settings (`core/uart.js`
+    `UartDecoder`). A wrong baud still gives garbage, as on a real board.
+  - The microcontrollers' GPIO pins are pins in both emulators (their ports' listeners).
+  - The AVR and the Pico are therefore the masters of SPI and I²C links, and the FPGA is the peripheral.
+  - Decoders on top give the UART bytes, the SPI and I²C transactions, and the MQTT messages.
 - **Runs are deterministic**: the same system and inputs give the same run.
 
 The engines:
@@ -99,23 +116,33 @@ The engines:
 | Node | Engine | Licence | Notes |
 |---|---|---|---|
 | FPGA | Silinx's compiled engine (`core/compiled-sim.js`), or the event-driven simulator for full waves and `inout` | Silinx's | both are already driven from outside; the compiled one runs in a Worker |
-| AVR | [avr8js](https://github.com/wokwi/avr8js) | MIT | GPIO, timers, USART, ADC, SPI, TWI (as a slave: to check) |
-| RP2040 | [rp2040js](https://github.com/wokwi/rp2040js) | MIT | runs MicroPython's own firmware (UF2) and the student's `.py` |
-| ESP32 | MicroPython's [WebAssembly port](https://github.com/micropython/micropython/tree/master/ports/webassembly) with a `machine` module of Silinx's (Pin, UART, SPI, I2C, PWM, ADC, a simulated `network`) | MIT and Silinx's | behavioural, and it says so: it is not the chip (no exact timing, no real interrupts). The same `.py` runs on the real board |
+| AVR | [avr8js](https://github.com/wokwi/avr8js) | MIT | GPIO, timers, USART, ADC; SPI and TWI as a master only |
+| RP2040 | [rp2040js](https://github.com/wokwi/rp2040js) | MIT | runs MicroPython's own firmware (UF2, downloaded once) and the student's `.py` through its REPL over the emulated USB; it needs the RP2040's bootrom (Raspberry Pi's, BSD-3) |
+| ESP32 | MicroPython's [WebAssembly port](https://github.com/micropython/micropython/tree/master/ports/webassembly) with a `machine` module of Silinx's (Pin, UART, SPI, I2C, PWM, ADC, a simulated `network`) | MIT and Silinx's | behavioural, and it says so: it is not the chip (no real interrupts); its time is virtual, a time per line through `sys.settrace`. The same `.py` runs on the real board. The browser build needs JSPI (Chrome and Edge 137+, Firefox 153; not Safari) |
 | ESP32, real firmware (later, optional) | [Espressif's QEMU](https://github.com/espressif/qemu) on the local server, synchronised over a socket with a quantum (remote-port's way) | GPL-2.0 | a separate program the user installs; GPL-2.0 is not combined with Silinx's AGPL-3.0 code. There is no Xtensa QEMU in WebAssembly |
 | Circuit | the circuit's Try it (`core/circuit-sim.js`) | Silinx's | already event-driven in ns |
 | Peripherals | JS models, shared with #3902 | Silinx's | — |
 
 Wokwi's ESP32 engine and its service are not used: they are proprietary. Only Wokwi's MIT libraries are.
 
-**Speed.** These are estimates, to be measured by #4696's benchmark:
+**Speed, measured** in Node, wall clock, by a throwaway prototype (2026-11-19). The browser's figures are to be
+confirmed by #4696's benchmark in a Worker:
 
-- avr8js reaches real time at 16 MHz in a browser;
-- the compiled engine runs tens of millions of cycles a second on a small design;
-- an FPGA at 50 MHz with an AVR should run between 0.2× and 1× real time;
-- the event-driven engine (full waves) runs in kHz, as today: the System's simulation records a short window, and
-  its emulation runs the compiled engine with no waves;
-- the FPGA nodes' UART and clock generics are scaled as the Board Emulator does (`autoTimeScale`).
+| Run | Speed |
+|---|---|
+| avr8js alone (ATmega328P at 16 MHz) | 9× real time |
+| the compiled engine, the `uart` example at 50 MHz, in a batch | 2.2× real time |
+| the event-driven engine, the same design | 184,000 cycles a second, about 0.004× real time |
+| **an AVR and the `uart` example's FPGA**, linked by UART at 9600 baud, echoing bytes in a closed loop | 0.5× to 0.9× real time (window 1 to 10 µs), every byte right |
+| the same at 115,200 baud | 0.45× to 0.5× real time (window 0.5 to 1 µs) |
+| rp2040js running MicroPython's real Pico firmware | about 0.8× real time; boot to the REPL in about 60 ms |
+| MicroPython in WebAssembly (Chrome) | 300,000 loop iterations in 15 ms; 5 million line events a second with `sys.settrace` |
+
+- **The system's waves come from the compiled engine.** It records the links' pins and the microcontrollers' pins
+  in its batches, almost for free.
+- **The event-driven engine is for short windows only.** It gives a design's internal signals; a UART byte at 9600
+  baud takes about 0.3 s with it.
+- **The FPGA nodes' UART and clock generics** are scaled as the Board Emulator does (`autoTimeScale`).
 
 ## Emulation
 
@@ -211,9 +238,18 @@ The existing `program_board` and `capture` serve the FPGA nodes.
 - **Speed** is the first unknown. #4696 measures it before the rest is built.
 - **No open ESP32 engine runs in a browser.** The behavioural MicroPython node is honest but limited, and the guide
   says so.
-- **avr8js's peripherals** are to be checked; in particular an AVR as an SPI or I²C slave of an FPGA.
+- **avr8js and rp2040js are masters only for SPI and I²C.** An AVR as an SPI or I²C slave is not simulated: that
+  would be a contribution to avr8js.
+- **The compiled engine refuses `inout` ports.** An FPGA's I²C slave (an open-drain SDA) would fall back to the
+  event-driven engine. A top-level `inout` must become three signals in the compiled engine: input, output and
+  enable, from Yosys's `$tribuf` (#4709). This is needed before the I²C links.
+- **MicroPython's WebAssembly build needs JSPI** (no Safari).
+  - One MicroPython node can call the scheduler from inside its `sleep`.
+  - Several need to be suspended and resumed, through JSPI, or each needs a Worker of its own.
 - **Web Serial** is not on Safari nor on the iPad. Windows needs drivers for the CH340 USB-serial chips.
-- **Several boards in a project** touch the build flow. The project keeps its one `board`, and the FPGA nodes are
+- **Several boards in a project** touch the build flow. Until phase 3, a System has one FPGA node on the project's
+  board (as most course systems: one FPGA, one or more microcontrollers); several FPGA nodes are simulated only.
+  Later, the project keeps its one `board`, and the FPGA nodes are
   built one by one.
 
 ## Phases
@@ -238,7 +274,7 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - the real board's terminal;
    - hardware in the loop over UART;
    - the logic analyzer on the links.
-4. **RP2040 and ESP32 in MicroPython:**
+4. **RP2040, then ESP32, in MicroPython** (the Pico first: exact and in every browser):
    - rp2040js;
    - MicroPython in WebAssembly with Silinx's `machine`;
    - `.py` onto the real boards;
@@ -255,6 +291,7 @@ The existing `program_board` and `capture` serve the FPGA nodes.
 - The System is a document in a project, not a set of projects.
 - The AVR comes first; the ESP32 comes in MicroPython.
 - The firmware is a given `.hex` first; a compiler on the server comes later.
-- Links are exchanged pin by pin, with an adaptive quantum.
+- Links are pins on the FPGA's side, the microcontrollers' peripherals converted by the links' adapters; one
+  window, bounded by the links' lookahead (measured, see Speed).
 - The boards' drawings are Silinx's own; New Source names the document "System".
 - One scheduler serves the circuit's Arduino, the System's nodes and the Zynq's processors.
