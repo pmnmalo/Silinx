@@ -12,3 +12,6 @@ In detail:
   and Live's two ways' explanations (peer to peer, the Cloudflare relay), are reworded to about the same length, in
   English and Portuguese, and each is laid out over its twin unseen, so it takes the taller one's lines at any width:
   switching moves nothing below them.
+- **Share Project… ▸ Live: your relay on a row of its own (#4676):** "Your relay: … Change…" (or the note that none
+  is set up) moved down, out of the relay's explanation, to a row of its own just above "Your name, as they see it",
+  shown when the Cloudflare relay is chosen; peer to peer keeps its place unseen, so switching moves nothing below.

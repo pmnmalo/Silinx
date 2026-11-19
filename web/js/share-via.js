@@ -46,10 +46,16 @@ export function viaPart({ via = defaultVia(), changed = () => {} } = {}) {
         h('button', { class: 'btn', 'data-action': 'relay-setup', onclick: setUp }, 'Set Up a Cloudflare Relay…')]));
   };
   // (each explanation over the other's, unseen: as tall as the taller, #4676)
-  const relayAbout = h('div', { class: 'share-via-relay' }, twinText('p', {}, RELAY_ABOUT, PEER_ABOUT), status);
+  const relayAbout = h('div', { class: 'share-via-relay' }, twinText('p', {}, RELAY_ABOUT, PEER_ABOUT));
   const peerAbout = h('div', { class: 'share-via-peer' }, twinText('p', {}, PEER_ABOUT, RELAY_ABOUT));
-  const el = h('div', { class: 'share-via' }, peerAbout, relayAbout);   // (the Share row's order, #4670)
-  const show = () => { relayAbout.hidden = via !== 'relay'; peerAbout.hidden = via !== 'peer'; };
+  // (the relay set, a row of its own below the explanations, just above the name, #4676: shown for the relay, its place
+  // kept unseen for peer to peer, so that switching between them moves nothing below)
+  const el = h('div', { class: 'share-via' }, peerAbout, relayAbout, status);   // (the Share row's order, #4670)
+  const show = () => {
+    relayAbout.hidden = via !== 'relay'; peerAbout.hidden = via !== 'peer';
+    status.style.visibility = via === 'relay' ? '' : 'hidden';
+    status.setAttribute('aria-hidden', String(via !== 'relay'));
+  };
   drawRelay(); show();
   const onRelay = () => { drawRelay(); changed(); };
   addEventListener('silinx:relay-changed', onRelay);
