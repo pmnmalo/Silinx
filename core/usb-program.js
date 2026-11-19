@@ -19,6 +19,23 @@ const fail = msg => { throw new Error(msg); };
 /** The board's USB as the browser drives it: 'spi', a JTAG cable's name, or null (the Adept, or no board). */
 export const usbOf = board => board?.programmer?.tools?.openFPGALoader?.webusb || null;
 
+/**
+ * The board's USB device as the browser asks for it (#4593): { vendor, filters } for programming `file` (op 'program'), scanning
+ * the chain ('scan'), or the Adept's own operations ('prom', 'capture'); null: no device (the board is not driven from the
+ * browser). The page asks for it at the click itself (web/js/api-local.js usbPick), before any await: Chrome shows its chooser only
+ * then.
+ */
+export function usbTarget({ board = null, device = null, file = '', op = 'program' } = {}) {
+  const cable = usbOf(board), t = (vendor, filters) => ({ vendor, filters });
+  if (op === 'prom' || op === 'capture') return t(ADEPT_VENDOR, ADEPT_FILTERS);
+  if (op === 'scan') return cable === 'spi' ? null : cable === 'ft231x' ? t(FTDI_VENDOR, FT231X_FILTERS) : CABLES[cable] ? t(FTDI_VENDOR, FTDI_JTAG_FILTERS) : t(ADEPT_VENDOR, ADEPT_FILTERS);
+  if (/\.bin$/i.test(file)) return t(FTDI_VENDOR, FTDI_FILTERS);
+  if (/\.fs$/i.test(file)) return CABLES[cable] ? t(FTDI_VENDOR, FTDI_JTAG_FILTERS) : null;
+  if (deviceFamily(device) === 'ecp5' && cable === 'ft231x') return t(FTDI_VENDOR, FT231X_FILTERS);
+  if (openOnlyDevice(device)) return null;
+  return CABLES[cable] ? t(FTDI_VENDOR, FTDI_JTAG_FILTERS) : t(ADEPT_VENDOR, ADEPT_FILTERS);
+}
+
 /** Scan the board's JTAG chain: { devices }. */
 export async function scanUsb({ board = null, getUsb, log = () => {} }) {
   const cable = usbOf(board);

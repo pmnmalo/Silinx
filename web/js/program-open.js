@@ -11,7 +11,7 @@ import { countEvent } from './analytics.js';
 import { runImpl } from './implement.js';
 import { projectTool } from './processes.js';
 import { deviceFamily, familyName } from '/packages/silinx-fpga/src/parts.js';
-import { refusedProject } from '/core/trust.js';
+import { refusedProject, isTrusted } from '/core/trust.js';
 import { noWebUsb } from '/core/webusb-support.js';
 
 export function mountOpenProgram(page) {
@@ -35,6 +35,8 @@ export function mountOpenProgram(page) {
   const program = async () => {
     if (busy) { logError('Another operation is running'); return null; }
     if (none) { app.log('WARNING: This board is not programmed from the browser yet: the local server programs it (silinx serve), with openFPGALoader.', 'warn'); return null; }
+    // (the browser edition: the board's USB asked for now, before any await: Chrome shows its chooser only right after the click, #4593)
+    if (isTrusted(pj)) api.usbPick?.({ board: board?.id, device: pj?.device || null, file });
     // (no file: the design implemented first, as iMPACT's Program FPGA, #1024)
     // (the browser edition with no WebUSB: not implemented first, the reason said at once, #4592)
     if (!(api.standalone && noWebUsb()) && !(await loadInfo())?.available) {

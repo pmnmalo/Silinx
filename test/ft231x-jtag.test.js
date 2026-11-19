@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { Ft231xJtag, scanFt231x, programEcp5Sram, ECP5, ECP5_STATUS } from '../core/ft231x-jtag.js';
 import { ft231xBoard } from './fixtures/ft231x-sim.js';
 import { ecp5Bit } from './fixtures/open-bitstreams.js';
+import { ftdiInUse } from '../core/webusb-support.js';
 
 let t = 0;
 const opts = extra => ({ now: () => (t += 1), sleep: async () => {}, ...extra });
@@ -61,5 +62,8 @@ test('an ECP5\'s errors: another part\'s .bit (by the file, by the FPGA), not an
   await assert.rejects(programEcp5Sram(ft231xBoard().usb, Buffer.alloc(100), opts()), /^Error: FT231X USB: not an ECP5 bitstream \(no Lattice preamble FF FF BD B3\)$/);
   await assert.rejects(programEcp5Sram(ft231xBoard({ deviceOptions: { eraseClocks: 1e9 } }).usb, ecp5Bit(), opts({ maxPolls: 3 })), /^Error: FT231X USB: the FPGA stayed busy \(erasing, status 0x00001200\)$/);
   await assert.rejects(programEcp5Sram(ft231xBoard({ claimError: 'busy' }).usb, ecp5Bit(), opts()), /^Error: FT231X USB: the board is in use/);
+  // (#4593) Windows: the FTDI driver's board refuses open() itself
+  const denied = { ...ft231xBoard().usb, open: async () => { throw new Error('Access denied.'); } };
+  await assert.rejects(programEcp5Sram(denied, ecp5Bit(), opts()), { message: `FT231X USB: ${ftdiInUse('Access denied.')}` });
   await assert.rejects(programEcp5Sram(ft231xBoard({ device: 'gw1nr-9c' }).usb, ecp5Bit(), opts()), /^Error: FT231X USB: no ECP5 FPGA on the JTAG chain \(found gw1nr-9c\)$/);
 });

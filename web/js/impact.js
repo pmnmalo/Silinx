@@ -12,7 +12,7 @@ import { loadUcfText } from './processes.js';
 import { mountOpenProgram } from './program-open.js';
 import { openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
 import { vendorFlashText } from '/core/vendor-flash.js';
-import { refusedProject } from '/core/trust.js';
+import { refusedProject, isTrusted } from '/core/trust.js';
 import { noWebUsb } from '/core/webusb-support.js';
 
 const roleOf = name => (/^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
@@ -126,7 +126,12 @@ export function mountImpact(el) {
     finally { busy = false; }
   };
 
+  // (the browser edition: the board's USB asked for at the click itself, before any await: Chrome shows its chooser only
+  // then, #4593; an untrusted project's refusal, or another operation running, asks for nothing)
+  const pickUsb = (op, file = '') => { if (!busy && isTrusted(pj)) api.usbPick?.({ board: board?.id, device: pj?.device || null, file, op }); };
+
   const scan = async () => {
+    pickUsb('scan');
     const r = await runJob('Scanning JTAG chain', () => api.scan({ tool: toolSel.value || undefined, cable: cable.value.trim() || undefined, board: board?.id }), 'Scan finished.');
     if (r?.status === 'ok' && r.result?.devices?.length) {
       chain = r.result.devices.map(d => ({ name: d.name || d.idcode, role: roleOf(d.name || '') }));
@@ -158,12 +163,13 @@ export function mountImpact(el) {
   };
   // (the project's own design with no pins set: said first, I/O Pin Planning one click away, #1508)
   const pinsFirst = async () => cannotProgram() || bitData || !pj?.top || bitfile.value.trim() !== fpgaFile || pinsReady(await loadUcfText(), 'program', () => app.openPinPlanner(), pj.device);
-  const programFpga = async () => (await pinsFirst()) && (await fileReady()) && runJob('Programming FPGA (SRAM)', () => api.program({
+  const programFpga = async () => pickUsb('program', bitfile.value.trim()) || (await pinsFirst()) && (await fileReady()) && runJob('Programming FPGA (SRAM)', () => api.program({
     project: pj?.name, tool: toolSel.value || undefined, cable: cable.value.trim() || undefined, board: board?.id, position: selPos + 1, bitfile: bitfile.value.trim(),
     ...(bitData ? { bitData } : {}),
   }), "'1': Programmed successfully.").then(r => { if (r?.status === 'ok') countEvent('program'); return r; });
 
   const prom = async op => {
+    pickUsb('prom');
     const name = sel().name.toUpperCase();
     if (op === 'program' && !await confirmDlg('Program PROM', `Erase the ${name} and write ${bitfile.value.trim()}?\n\nThe design will then load automatically at power-up when the board's mode jumper is set to ROM (Basys2: JP3).\nTip: use "Back up PROM" first if it holds something you want to keep.`)) return;
     if (op === 'erase' && !await confirmDlg('Erase PROM', `Erase the whole ${name}? The board will no longer boot a design from flash.`)) return;

@@ -9,6 +9,7 @@
 // status, ISC_DISABLE; the instructions openFPGALoader's SRAM path uses).
 import { Chain, JtagSeq, byterev, secs } from './adept.js';
 import { ecp5BitInfo, idHex } from './open-bitstream.js';
+import { ftdiInUse } from './webusb-support.js';
 
 export const FT231X_FILTERS = [{ vendorId: 0x0403, productId: 0x6015 }];
 
@@ -28,9 +29,12 @@ export class Ft231xJtag {
 
   async open() {
     const u = this.usb;
-    await u.open();
-    if (u.configuration == null) await u.selectConfiguration(1);
-    try { await u.claimInterface(0); } catch (e) { fail(`the board is in use (another program, or the operating system's FTDI driver: ${e.message})`); }
+    // (Windows: an FTDI driver's board refuses open() itself, "Access denied", #4593)
+    try {
+      await u.open();
+      if (u.configuration == null) await u.selectConfiguration(1);
+      await u.claimInterface(0);
+    } catch (e) { fail(ftdiInUse(e.message)); }
     this.packet = u.configuration?.interfaces?.[0]?.alternate?.endpoints?.find(e => e.direction === 'in')?.packetSize || 64;
     this.ctrl = (request, value, index = 1) => u.controlTransferOut({ requestType: 'vendor', recipient: 'device', request, value, index });
     await this.ctrl(SIO_RESET, 0);

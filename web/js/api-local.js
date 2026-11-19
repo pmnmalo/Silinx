@@ -26,10 +26,10 @@ import { ANCESTOR_FILE, giveCopy, originOf, receivedCopy, snapshotText } from '.
 import { localSnapshots } from './snapshots-local.js';
 import { runBrowserFlow, browserOpenStatus } from './open-flow-browser.js';
 import { ADEPT_FILTERS, ADEPT_VENDOR, bitHeader } from '../../core/adept.js';
-import { programUsb, scanUsb } from '../../core/usb-program.js';
+import { programUsb, scanUsb, usbTarget } from '../../core/usb-program.js';
 import { adeptLink, runCapture, captureRecord, captureLinkError } from '../../core/ila-link.js';
 import { promAdept, PROM_OPS } from '../../core/xcf.js';
-import { noWebUsb } from '../../core/webusb-support.js';
+import { noWebUsb, usbError } from '../../core/webusb-support.js';
 import { browserGit } from './git-browser.js';
 import { browserStore, folderStore, projectOps, copyProjects, emptyProjectJson, projectFromZip, bundleEntries, safePath, saveBuildResults, readBuildResults, BUILD_VIEW, DEV_SITE } from './project-store.js';
 
@@ -136,16 +136,42 @@ function fakeJob(kind, lines, status = 'error', error) {
   return { job: id };
 }
 const FULL_APP = 'the full Silinx application (run `npm start` in the Silinx folder and open http://127.0.0.1:8642; File > Export Project (.zip)… moves a project there)';
-// the board's Digilent USB, or an iCE40 board's FTDI (#2298): the user chooses it once; the browser remembers the permission
+// the board's Digilent USB, or an iCE40 board's FTDI (#2298): the user chooses it once; the browser remembers the permission.
+// Chrome shows its chooser only right after a click (a user activation): the click asks for the board itself, before any
+// await (usbPick, #4593), and the job takes the device it chose; the devices granted before are kept here, since a click
+// cannot wait for getDevices().
+let granted = [];
+let picked = null;   // the chooser the last click opened: { vendor, filters, device: a promise }
+const refreshGranted = () => globalThis.navigator?.usb?.getDevices?.().then(d => { granted = d; }, () => {});
+if (globalThis.navigator?.usb?.addEventListener) {
+  for (const ev of ['connect', 'disconnect']) globalThis.navigator.usb.addEventListener(ev, refreshGranted);
+}
+refreshGranted();
+// (a device granted before, of the filters' vendor and product: the FTDI boards share a vendor, #2298)
+const fits = (vendor, filters) => d => d.vendorId === vendor && filters.some(f => f.vendorId === d.vendorId && (f.productId == null || f.productId === d.productId));
+const sameTarget = (a, vendor, filters) => a && a.vendor === vendor && JSON.stringify(a.filters) === JSON.stringify(filters);
+/** At a click, before any await (#4593): the board's USB asked for now, when no device granted before fits; op and file as
+ *  core/usb-program.js usbTarget's. Synchronous: it only opens the browser's chooser, whose choice the job takes. */
+function usbPick({ board, device = null, file = '', op = 'program' } = {}) {
+  picked = null;
+  const usb = globalThis.navigator?.usb, t = usb && usbTarget({ board: findBoard(board), device, file, op });
+  if (!t || granted.some(fits(t.vendor, t.filters))) return;
+  let request;
+  try { request = Promise.resolve(usb.requestDevice({ filters: t.filters })); } catch (e) { request = Promise.reject(e); }
+  picked = { ...t, device: request.then(d => { refreshGranted(); return d; }) };
+  picked.device.catch(() => {});   // (read by the job; a click that ends before it, unread)
+}
 async function adeptDevice(vendor = ADEPT_VENDOR, filters = ADEPT_FILTERS) {
   const usb = globalThis.navigator?.usb;
   if (!usb) fail(noWebUsb());
-  // (a device granted before, of the filters' vendor and product: the FTDI boards share a vendor, #2298)
-  const known = (await usb.getDevices()).filter(d => d.vendorId === vendor && filters.some(f => f.vendorId === d.vendorId && (f.productId == null || f.productId === d.productId)));
-  if (known.length) return known[0];
-  try { return await usb.requestDevice({ filters }); } catch (e) {
-    fail(e.name === 'NotFoundError' ? 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list' : e.message);
-  }
+  const pick = sameTarget(picked, vendor, filters) ? picked : null;
+  picked = null;
+  try {
+    if (pick) return await pick.device;
+    const known = (await usb.getDevices()).filter(fits(vendor, filters));
+    if (known.length) return known[0];
+    return await usb.requestDevice({ filters });
+  } catch (e) { fail(usbError(e)); }
 }
 // what refuses programming before the file is read (#4592): a browser with no WebUSB (Firefox, Safari, an iPad) said
 // first, then an untrusted project's refusal (#2830: its Trust Project button, which the project needs in Chrome or
@@ -270,6 +296,7 @@ const git = browserGit({ store: () => store, ops, prefix: DEV_SITE ? 'silinx.dev
 
 export const api = {
   standalone: true,
+  usbPick,
   collabRelays: async () => [...SITE_RELAYS],
   ...git,
   devSite: DEV_SITE,

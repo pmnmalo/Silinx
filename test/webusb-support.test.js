@@ -2,7 +2,7 @@
 // an iPad or iPhone (any browser, Chrome too: Safari's engine) is told so, not to use Chrome or Edge; others are.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { noWebUsb, appleTouchDevice, NO_WEBUSB, NO_WEBUSB_APPLE } from '../core/webusb-support.js';
+import { noWebUsb, appleTouchDevice, NO_WEBUSB, NO_WEBUSB_APPLE, WINUSB_HINT, ftdiInUse, usbError } from '../core/webusb-support.js';
 
 // real browsers' navigators (the parts the rule reads)
 const UA = {
@@ -43,4 +43,20 @@ test('no navigator (Node), or one without a User-Agent: the general reason', () 
   assert.equal(noWebUsb(undefined), NO_WEBUSB);
   assert.equal(noWebUsb({}), NO_WEBUSB);
   assert.equal(appleTouchDevice(undefined), false);
+});
+
+test('#4593 Windows: the board WebUSB cannot open, its driver Adept\'s or FTDI\'s: WinUSB with Zadig', () => {
+  assert.equal(WINUSB_HINT, 'on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back)');
+  assert.equal(ftdiInUse('Access denied.'), `the board is in use (another program, or the operating system's FTDI driver: Access denied.); ${WINUSB_HINT}`);
+});
+
+test('#4593 the browser\'s refusals of the board: the chooser closed, no click, another error as it is', () => {
+  const ex = (name, message) => Object.assign(new Error(message), { name });
+  assert.equal(usbError(ex('NotFoundError', 'No device selected.')), 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list: see Configure Target Device\'s help, the WinUSB driver)');
+  const gesture = 'Failed to execute \'requestDevice\' on \'USB\': Must be handling a user gesture to show a permission request.';
+  assert.equal(usbError(ex('SecurityError', gesture)), `the browser did not show its list of USB devices (${gesture}): it shows it only right after a click; click the button again`);
+  // (a SecurityError of another kind, as a permissions policy's: its message as it is)
+  assert.equal(usbError(ex('SecurityError', 'Access to the feature "usb" is disallowed by permissions policy.')), 'Access to the feature "usb" is disallowed by permissions policy.');
+  assert.equal(usbError(ex('NetworkError', 'Unable to open device.')), 'Unable to open device.');
+  assert.equal(usbError('odd'), 'odd');
 });

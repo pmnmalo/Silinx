@@ -8,6 +8,8 @@
 // open, selectConfiguration, claimInterface, releaseInterface, close, controlTransferOut(setup), transferOut(endpoint, data),
 // transferIn(endpoint, length). Every packet the FT2232H sends begins with its two modem status bytes.
 
+import { ftdiInUse } from './webusb-support.js';
+
 export const FTDI_VENDOR = 0x0403, FT2232H = 0x6010;
 export const FTDI_FILTERS = [{ vendorId: FTDI_VENDOR, productId: FT2232H }];
 
@@ -34,9 +36,12 @@ export class FtdiSpi {
 
   async open() {
     const u = this.usb;
-    await u.open();
-    if (u.configuration == null) await u.selectConfiguration(1);
-    try { await u.claimInterface(0); } catch (e) { fail(`the board is in use (another program, or the operating system's FTDI driver: ${e.message})`); }
+    // (Windows: an FTDI driver's board refuses open() itself, "Access denied", #4593)
+    try {
+      await u.open();
+      if (u.configuration == null) await u.selectConfiguration(1);
+      await u.claimInterface(0);
+    } catch (e) { fail(ftdiInUse(e.message)); }
     this.packet = u.configuration?.interfaces?.[0]?.alternate?.endpoints?.find(e => e.direction === 'in')?.packetSize || 512;
     const ctrl = (request, value) => u.controlTransferOut({ requestType: 'vendor', recipient: 'device', request, value, index: 1 });
     await ctrl(SIO_RESET, RESET_SIO);

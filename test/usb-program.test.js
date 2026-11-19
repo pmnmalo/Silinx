@@ -4,7 +4,7 @@
 // (a .bin, its flash), the Basys2's Adept; the WebUSB device asked by its vendor and product; the scans.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { programUsb, scanUsb, usbOf } from '../core/usb-program.js';
+import { programUsb, scanUsb, usbOf, usbTarget } from '../core/usb-program.js';
 import { findBoard } from '../core/devices.js';
 import { ftdiJtagBoard, xc7Bitstream } from './fixtures/ftdi-jtag-sim.js';
 import { ftdiBoard, ice40Image } from './fixtures/ftdi-sim.js';
@@ -96,4 +96,29 @@ test('scan: the Basys 3\'s chain, the Tang Nano 9K\'s, the Basys2\'s; the iCEBre
   assert.deepEqual((await scanUsb({ board: B('tangnano9k'), getUsb: chooser(ftdiJtagBoard({ device: 'gw1nr-9c' }).usb).getUsb })).devices.map(d => d.name), ['gw1nr-9c']);
   assert.deepEqual((await scanUsb({ board: B('basys2'), getUsb: chooser(new SimAdeptBoard()).getUsb })).devices.map(d => d.name), ['xc3s250e', 'xcf02s']);
   await assert.rejects(scanUsb({ board: B('icebreaker'), getUsb: async () => null }), /^Error: 1BitSquared iCEBreaker has no JTAG chain to scan: its FPGA loads its SPI flash$/);
+});
+
+// (#4593) the device the page asks for at the click, before any await (web/js/api-local.js usbPick): the one programUsb and
+// scanUsb then ask for, board by board and file by file; none where they ask for none
+test('#4593 usbTarget: the click asks for the device the job then asks for', async () => {
+  const asked = async run => { let got = null; await run(async (vendor, filters) => { got = { vendor, filters }; throw new Error('stop'); }).catch(() => {}); return got; };
+  const ADEPT = { vendor: 0x1443, filters: [{ vendorId: 0x1443 }] }, JTAG = { vendor: 0x0403, filters: [{ vendorId: 0x0403, productId: 0x6010 }] };
+  const cases = [['basys2', 'build/top.bit'], ['nexys2', 'build/top.bit'], ['basys3', 'build/top.bit'], ['nexys-a7', 'build/top.bit'], ['tangnano9k', 'build/top.fs'],
+    ['icebreaker', 'build/top.bin'], ['ulx3s', 'build/top.bit'], ['icebreaker', 'build/top.bit'], ['basys2', 'build/top.fs']];
+  for (const [b, file] of cases) {
+    // (a file of its kind: programUsb reads a .fs's and an ECP5 .bit's header before it asks for the device)
+    const board = B(b), device = board.device, want = usbTarget({ board, device, file });
+    const data = /\.fs$/.test(file) ? enc(gowinFs()) : b === 'ulx3s' ? ecp5Bit({ size: 3000 }) : new Uint8Array(8);
+    assert.deepEqual(want, await asked(getUsb => programUsb({ board, device, file, data, getUsb })), `${b} ${file}`);
+  }
+  assert.deepEqual(usbTarget({ board: B('basys2'), device: B('basys2').device, file: 'build/top.bit' }), ADEPT);
+  assert.deepEqual(usbTarget({ board: B('basys3'), device: B('basys3').device, file: 'build/top.bit' }), JTAG);
+  assert.deepEqual(usbTarget({ board: B('icebreaker'), device: B('icebreaker').device, file: 'build/top.bit' }), null);   // (no .bit of an iCE40 from the browser)
+  for (const b of ['basys2', 'nexys2', 'basys3', 'tangnano9k', 'ulx3s', 'icebreaker']) {
+    const board = B(b);
+    assert.deepEqual(usbTarget({ board, op: 'scan' }), await asked(getUsb => scanUsb({ board, getUsb })), `${b} scan`);
+  }
+  assert.equal(usbTarget({ board: B('icebreaker'), op: 'scan' }), null);
+  // the PROM and the logic analyzer: the Adept's (no board: the Basys2 / Nexys2's Adept, as programUsb's default)
+  assert.deepEqual([usbTarget({ op: 'prom' }), usbTarget({ op: 'capture' }), usbTarget()], [ADEPT, ADEPT, ADEPT]);
 });

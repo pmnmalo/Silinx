@@ -20,3 +20,16 @@ export function noWebUsb(nav = globalThis.navigator) {
   if (nav?.usb) return null;
   return appleTouchDevice(nav) ? NO_WEBUSB_APPLE : NO_WEBUSB;
 }
+
+/** What to do when the board cannot be opened on Windows (#4593): WebUSB opens only a device whose driver is WinUSB, and
+ *  Digilent Adept's (installed with Adept, ISE or Vivado) or FTDI's driver holds the board. */
+export const WINUSB_HINT = 'on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back)';
+/** An FTDI board that could not be opened or claimed: its message. */
+export const ftdiInUse = msg => `the board is in use (another program, or the operating system's FTDI driver: ${msg}); ${WINUSB_HINT}`;
+/** The browser's refusal to give the page the board (requestDevice's, getDevices'), with what to do next (#4593): `e` the
+ *  DOMException. */
+export function usbError(e) {
+  if (e?.name === 'NotFoundError') return 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list: see Configure Target Device\'s help, the WinUSB driver)';
+  if (e?.name === 'SecurityError' && /gesture|activation/i.test(e.message)) return `the browser did not show its list of USB devices (${e.message}): it shows it only right after a click; click the button again`;
+  return e?.message || String(e);
+}

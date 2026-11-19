@@ -72,6 +72,32 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
 - A interface abre em português quando o browser está em português; muda-se em **Definições (⚙) ▸ Idioma** (na interface
   Estilo ISE, **View ▸ Language**).
 
+### Programar a placa a partir do browser no Windows
+
+O Chrome e o Edge só chegam a uma placa USB através do controlador **WinUSB** do Windows. O Digilent
+Adept (instalado com o Adept, o Xilinx ISE ou o Vivado, como na maioria dos computadores dos
+laboratórios) dá à Basys2 / Nexys2 o seu próprio controlador, e o controlador da FTDI fica com as placas
+FTDI (Basys 3, Nexys A7, iCEBreaker, ULX3S, Tang Nano 9K): o browser mostra então a placa na lista, mas
+não a consegue abrir. A consola diz isso: *the board cannot be opened (Access denied.)…*.
+
+1. Feche o Digilent Adept, o iMPACT, o Hardware Manager do Vivado e a aplicação Silinx: só um programa
+   de cada vez pode usar a placa.
+2. Descarregue o [Zadig](https://zadig.akeo.ie) e execute-o, com a placa ligada ao computador e ligada.
+3. **Options ▸ List All Devices**, escolha a placa (*Digilent USB Device*, *Basys2*, *Nexys2*, ou
+   *Dual RS232-HS (Interface 0)* numa placa FTDI), escolha **WinUSB** como controlador e clique em
+   **Replace Driver** (ou **Install Driver**).
+4. Desligue o cabo da placa e volte a ligá-lo, e depois clique em **Program FPGA**: o browser mostra a
+   sua lista de dispositivos USB; escolha a placa (só na primeira vez).
+
+O Adept, o iMPACT e o Vivado deixam de ver a placa enquanto ela tiver o WinUSB: para os voltar a usar,
+reponha o controlador da Digilent (ou da FTDI) no Gestor de Dispositivos do Windows (a placa ▸
+*Atualizar controlador* ▸ *Escolher*).
+
+O browser só mostra a sua lista logo a seguir a um clique: se a consola disser *the browser did not show
+its list of USB devices*, clique de novo no botão. Se disser *no board chosen*, a lista foi fechada sem
+placa: verifique o cabo e se a placa está ligada (uma placa que não aparece na lista no Windows: o seu
+controlador, como acima).
+
 ---
 
 ## Forma 2: correr o Silinx localmente (Node.js)

@@ -114,7 +114,8 @@ function selectionProcesses(sel, view) {
         'synth-open': () => synthOpen(top), trce: () => postParTiming(top), xpwr: () => textPowerReport(top),
         pin2ucf: () => backAnnotatePins(top), fpgaview: () => openFpgaView(top), config: () => openImpact(), impact: () => openImpact(),
         // (the logic analyzer, #3176: web/js/capture-ui.js)
-        capture: async () => (await import('./capture-ui.js')).runCaptureOnBoard(),
+        // (the browser edition: the board's USB asked for at the click, before any await: Chrome shows its chooser only then, #4593)
+        capture: async () => { if (S.project?.capture) api.usbPick?.({ op: 'capture' }); return (await import('./capture-ui.js')).runCaptureOnBoard(); },
         'capture-settings': async () => (await import('./capture-ui.js')).captureSettings(),
         'capture-view': async () => (await import('./capture-ui.js')).openCaptureView(),
       },
