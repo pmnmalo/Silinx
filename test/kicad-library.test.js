@@ -61,7 +61,7 @@ test('KiCad\'s format: the symbols\' and footprints\' lists and fields as KiCad 
   for (const s of top.filter((l) => head(l) === 'symbol')) {
     assert.deepEqual([...new Set(s.slice(2).map(head))], ['pin_names', 'exclude_from_sim', 'in_bom', 'on_board', 'property', 'symbol'], s[1]);
     for (const u of s.filter((l) => head(l) === 'symbol')) {
-      assert.match(u[1], new RegExp(`^${s[1].replace(/[.+-]/g, '\\$&')}_\\d+_1$`));
+      assert.match(u[1], new RegExp(`^${s[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+_1$`));
       for (const p of u.filter((l) => head(l) === 'pin')) assert.ok(PIN_TYPES.includes(p[1]) && p[2] === 'line', `${s[1]} ${p[1]}`);
     }
   }

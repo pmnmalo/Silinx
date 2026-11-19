@@ -235,7 +235,7 @@ test('the relay\'s meeting point refuses: a host without the token, a follower w
   const topic = await meetTopic('R'.repeat(22));
   assert.equal(meetUrl('https://relay.example/x', 'peer', topic), `wss://relay.example/api/collab/meet/peer?topic=${topic}`);
   await assert.rejects(relayMeeting({ url: r.base, token: 'wrong', WebSocket }).join({ topic, password: 'k'.repeat(43) }), /^Error: sharing a project needs this Silinx server's token$/);
-  await assert.rejects(relayMeeting({ url: r.base, WebSocket }).join({ topic, password: 'k'.repeat(43), answers: false }), new RegExp(`^Error: ${NO_HOST.replace(/[()?]/g, '\\$&')}$`));
+  await assert.rejects(relayMeeting({ url: r.base, WebSocket }).join({ topic, password: 'k'.repeat(43), answers: false }), new RegExp(`^Error: ${NO_HOST.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
   // (a topic that is not one: not found)
   const code = await new Promise(res => { const ws = new WebSocket(`${r.base.replace('http', 'ws')}/api/collab/meet/peer?topic=x`, [SUBPROTOCOL]); ws.on('unexpected-response', (_, x) => res(x.statusCode)); ws.on('open', () => res('open')); });
   assert.equal(code, 404);
