@@ -940,7 +940,7 @@ async function boot() {
     const where = st.kind === 'folder' ? `in the folder '${st.folder}' on the disk (File > Use Browser Storage to keep them in this browser)`
       : `in this browser (File > Export Project (.zip)… to keep a copy${st.supported ? '; File > Open Workspace Folder… keeps them in a folder on the disk' : ''})`;
     log(`Browser edition: projects are stored ${where}. Implement Design and Generate Programming File run the Silinx toolchain here (the Spartan-3E, the Spartan-6 of the Nexys3 and the Atlys, and the Artix-7 of the Basys 3 and the Nexys A7); Configure Target Device programs the FPGA of the board and its Platform Flash over USB (Chrome / Edge).`, 'info');
-    if (st.needsPermission) log(`The workspace folder '${st.remembered}' needs the browser's permission again: Start page > Reopen ${st.remembered}.`, 'warn');
+    if (st.needsPermission) log(st.permissionPending ? `Waiting for the browser's permission to the workspace folder '${st.remembered}'…` : `The workspace folder '${st.remembered}' needs the browser's permission again: Start page > Reopen ${st.remembered}.`, st.permissionPending ? 'info' : 'warn');   // (late: web/js/storage-late.js, #4656)
     if (api.devSite) log(`Development edition (built from main, not a release): its projects are kept apart from the stable edition's, ${new URL('../', location).href} (a workspace folder on the disk can be opened by both).`, 'warn');
     updateStorageStatus();
   }
@@ -980,6 +980,7 @@ async function boot() {
     } finally { delete document.documentElement.dataset.restoring; delete document.documentElement.dataset.starting; }   // (the work area shown, where the user was: #1339; the whole app, #1403)
   }
   else if (!asked) showLeftPage('start');
+  if (api.standalone && !followed && !asked && !link) import('./storage-late.js').then(m => m.reopenWhenGranted(last)).catch(() => {});   // (#4656)
   delete document.documentElement.dataset.starting;   // (no project reopened: the app shown at once, #1403)
   if (link) await (await import('./link-open.js')).openFromLink(link).finally(() => { S.linkOpened = true; });   // (the UI tests wait for it)
   (await import('./link-hash.js')).watchLinks(window, seen);   // a link given to the running app: opened as at start-up (#3316)

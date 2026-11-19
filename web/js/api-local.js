@@ -97,6 +97,11 @@ function pref(v) {
 const FOLDER_UNSUPPORTED = 'This browser cannot give a page a folder on the disk (File System Access API: Chrome or Edge); the projects are kept in the browser\'s storage';
 let remembered = null;   // the folder's handle remembered from a previous visit / the one in use
 let needsPermission = false;   // the browser asks for the permission again (a click: Reopen <folder>)
+// (#4656: Chrome may answer a remembered folder's queryPermission seconds late, or not at all: the start-up waits this long at
+// most, the folder needing the permission meanwhile; `late` resolves its answer when it comes: true, granted)
+const PERMISSION_WAIT = 1500;
+let late = null, permissionPending = false;
+const answer = (asked, wait) => Promise.race([asked, new Promise(ok => setTimeout(() => ok('late'), wait))]);
 const folderSupported = () => typeof globalThis.showDirectoryPicker === 'function';
 function use(next) {
   store = next;
@@ -104,7 +109,7 @@ function use(next) {
 }
 const storageInfo = () => ({
   kind: store.kind, folder: store.kind === 'folder' ? store.label : null,
-  remembered: remembered?.name || null, needsPermission, supported: folderSupported(), unsupportedReason: FOLDER_UNSUPPORTED,
+  remembered: remembered?.name || null, needsPermission, permissionPending, supported: folderSupported(), unsupportedReason: FOLDER_UNSUPPORTED,
 });
 async function useFolder(handle) {
   use(folderStore(handle));
@@ -306,18 +311,27 @@ export const api = {
   get keepsTrash() { return store.kind === 'folder'; },
   // at start-up: the folder of the previous visit, if it was the storage in use and the browser
   // still gives the permission; otherwise its name for Reopen <folder> (asking needs a click)
-  initStorage: async () => {
+  // (the browser's answer waited for `wait` ms at most, #4656: a later one in lateFolderPermission)
+  initStorage: async ({ wait = PERMISSION_WAIT } = {}) => {
     let h = null;
     try { h = await handles().load(); } catch { /* none */ }
     if (!h || !folderSupported()) return storageInfo();
     remembered = h;
     if (pref() !== 'folder') return storageInfo();
-    let state = 'prompt';
-    try { state = await h.queryPermission(READWRITE); } catch { /* ask */ }
+    const asked = Promise.resolve().then(() => h.queryPermission(READWRITE)).catch(() => 'prompt');
+    const state = await answer(asked, wait);
     if (state === 'granted') use(folderStore(h));
     else needsPermission = true;
+    if (state === 'late') {
+      permissionPending = true;
+      late = asked.then(s => { permissionPending = false; return s === 'granted'; });
+    }
     return storageInfo();
   },
+  // the answer the start-up did not wait for (#4656): true when the browser granted it, false when not, undefined when none was late
+  lateFolderPermission: () => late || Promise.resolve(undefined),
+  // the remembered folder as the storage, its permission granted late (#4656): null when the storage changed meanwhile
+  useRememberedFolder: async () => (remembered && needsPermission && store.kind !== 'folder' ? useFolder(remembered) : null),
   // File ▸ Open Workspace Folder…: null when the user cancels the picker
   openWorkspaceFolder: async () => {
     if (!folderSupported()) fail(FOLDER_UNSUPPORTED);
@@ -333,7 +347,8 @@ export const api = {
   reopenWorkspaceFolder: async () => {
     if (!remembered) fail('no workspace folder to reopen: use File > Open Workspace Folder…');
     let state = 'prompt';
-    try { state = await remembered.queryPermission(READWRITE); } catch { /* ask */ }
+    // (a late answer not waited for: the request, while the click's activation lasts, #4656)
+    try { state = await answer(Promise.resolve().then(() => remembered.queryPermission(READWRITE)), PERMISSION_WAIT); } catch { /* ask */ }
     if (state !== 'granted') state = await remembered.requestPermission(READWRITE);
     if (state !== 'granted') fail(`no permission to write in the folder '${remembered.name}'`);
     return useFolder(remembered);
