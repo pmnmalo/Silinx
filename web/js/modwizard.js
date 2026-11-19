@@ -161,7 +161,7 @@ export async function moduleWizard({ name = '', location = 'src', lang = null, n
   const fillBits = (sel, value, none) => {
     sel.innerHTML = '';
     if (none) sel.append(h('option', { value: '' }, '(none)'));
-    for (const p of ports.filter(x => x.dir === 'in' && +x.width === 1)) sel.append(h('option', { value: p.name, selected: p.name === value }, p.name));
+    for (const p of ports.filter(x => x.dir === 'in' && +x.width === 1)) sel.append(h('option', { value: p.name, selected: p.name === value, 'data-no-i18n': '' }, p.name));   // (a port's name: not translated, #4705)
     sel.value = [...sel.options].some(o => o.value === value) ? value : (sel.options[0]?.value ?? '');
   };
   const syncKind = () => {

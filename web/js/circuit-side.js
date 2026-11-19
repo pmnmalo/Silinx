@@ -66,7 +66,7 @@ export function mountCircuitSide(ctx) {
         kids.push(field('Colour', c));
       }
       if (d?.dip && d.kind !== 'input' && d.pins.length === d.dip) kids.push(h('div', { class: 'circ-pinout' }, h('div', { class: 'circ-lib-title' }, `${d.kicad?.value ?? (d.chip || d.title)}: pinout`),
-        h('table', {}, ...Array.from({ length: d.dip / 2 }, (_, i) => { const a = d.pins[i], b = d.pins[d.dip - 1 - i]; return h('tr', {}, h('td', {}, a.name), h('td', { class: 'n' }, String(a.n)), h('td', { class: 'n' }, String(b.n)), h('td', {}, b.name)); }))));
+        h('table', {}, ...Array.from({ length: d.dip / 2 }, (_, i) => { const a = d.pins[i], b = d.pins[d.dip - 1 - i]; return h('tr', {}, h('td', { 'data-no-i18n': '' }, a.name), h('td', { class: 'n' }, String(a.n)), h('td', { class: 'n' }, String(b.n)), h('td', { 'data-no-i18n': '' }, b.name)); }))));
       if (d) kids.push(infoBlock(partInfo(p.type)));
       if (d?.inputs || d?.lamps) kids.push(h('div', { class: 'circ-note' }, `${d.inputs ? 'Input' : 'Output'} ${portName(p)}${(d.inputs || d.lamps).length > 1 ? '_…' : ''} of the HDL`));
       selSection.replaceChildren(...kids.filter(Boolean));

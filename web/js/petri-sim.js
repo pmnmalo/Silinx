@@ -152,7 +152,7 @@ export function mountPetriSim(ctx) {
         row('Conservative', a.conservative ? yes(true, 'yes: every place is in a P-invariant') : 'no')),
       h('div', { class: 'pn-an-title' }, 'Places'),
       h('table', { class: 'pn-an-table pn-an-places' }, h('tr', {}, h('th', {}, 'Place'), h('th', {}, 'Most tokens'), h('th', {}, 'Capacity'), h('th', {}, 'Bits needed')),
-        ...M().places.map(p => { const b = a.bounds[p.id]; return h('tr', {}, h('td', {}, p.name), h('td', {}, String(b)), h('td', {}, String(p.capacity) + (b >= p.capacity && p.capacity > 0 ? ' (reached)' : '')), h('td', {}, b > 1 ? `${Math.ceil(Math.log2(b + 1))} bits` : '1 flip-flop')); })),
+        ...M().places.map(p => { const b = a.bounds[p.id]; return h('tr', {}, h('td', { 'data-no-i18n': '' }, p.name), h('td', {}, String(b)), h('td', {}, String(p.capacity) + (b >= p.capacity && p.capacity > 0 ? ' (reached)' : '')), h('td', {}, b > 1 ? `${Math.ceil(Math.log2(b + 1))} bits` : '1 flip-flop')); })),
       h('div', { class: 'pn-an-title' }, 'Transitions'),
       h('table', { class: 'pn-an-table pn-an-trans' }, h('tr', {}, h('th', {}, 'Transition'), h('th', {}, '')),
         ...M().transitions.map(t => { const l = a.liveness[t.id]; return h('tr', {}, h('td', {}, t.name), h('td', {}, l === 'dead' ? yes(false, 'never fires') : l === 'live' ? yes(true, 'live') : 'can fire, but not always again')); })),

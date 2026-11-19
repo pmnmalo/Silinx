@@ -412,3 +412,21 @@ test('#2296 the PCF, LPF and CST wizards\' names and refusals in Portuguese', ()
   };
   for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
 });
+
+// User data is never translated (#4705): the interface's labels that are also names a user gives (a project, a file, a
+// module, a port: 'clock' shown as 'relógio' in Open Project) translate only where the element is the interface's; the
+// elements that show user data are marked data-no-i18n (test/ui/i18n-user-names.test.js). These are the words of the
+// dictionary that can be such a name (an identifier in lower case); a new one is checked first against every place
+// where a user's name is shown.
+test('#4705 the labels that are also names: the examples\' names, the identifiers the dictionary translates', async () => {
+  const { EXAMPLE_ORDER } = await import('../core/examples.js');
+  const strings = LOCALES.pt.strings;
+  const translated = (k) => strings[k] !== undefined && strings[k] !== k;
+  // the examples (a project made from one is named as it): only clock is also a label
+  assert.deepEqual(EXAMPLE_ORDER.filter(translated), ['clock']);
+  assert.deepEqual(Object.keys(strings).filter((k) => /^[a-z_][a-z0-9_]*$/.test(k) && translated(k)).sort(), [
+    'always', 'and', 'async', 'asynchronous', 'auto', 'bidirectional', 'black', 'blue', 'both', 'changes', 'clock', 'contact',
+    'default', 'down', 'enable', 'errors', 'falling', 'falls', 'follower', 'green', 'hidden', 'input', 'live', 'logic',
+    'multiplier', 'name', 'net', 'no', 'none', 'optional', 'or', 'orange', 'output', 'owner', 'priority', 'purple', 'red',
+    'rises', 'rising', 'sync', 'synchronous', 'tip', 'up', 'viewer', 'visible', 'white', 'yellow', 'yes', 'you']);
+});
