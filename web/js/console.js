@@ -8,7 +8,7 @@ import { hintRow, sevWord } from './diaghelp.js';
 import { S, app } from './app.js';
 import { MESSAGE_LINE } from './tool-descriptors.js';
 import { shownDiag } from './design-only.js';
-import { refusedProject } from '/core/trust.js';
+import { isTrusted, refusedProject } from '/core/trust.js';
 
 const $ = id => document.getElementById(id);
 
@@ -122,6 +122,21 @@ export function setDiagnostics(diags, { keepConsole = true } = {}) {
   for (const doc of S.docs) if (doc.editor) doc.editor.setDiagnostics(diags.filter(d => d.file === doc.path && d.source !== 'parse'));
 }
 
+// an untrusted project's refusal in the Errors tab (#4589: the tab a refusal brings to the front): its Trust Project
+// button, as the console's line; disabled once the project open is trusted
+function trustButton(d) {
+  const name = d.severity === 'error' && refusedProject(d.message);
+  if (!name) return null;
+  const b = h('button', { type: 'button', class: 'btn ln-action ln-trust', onclick: async e => {
+    e.stopPropagation();
+    b.disabled = true;
+    try { if (await trustAction(name).run() === false) b.disabled = false; } catch (err) { b.disabled = false; log(`ERROR: ${err.message}`, 'err'); }
+  } }, t('Trust Project'));
+  b.dataset.trust = name;
+  b.disabled = S.project?.name === name && isTrusted(S.project);
+  return b;
+}
+
 export function renderDiagnostics() {
   const diags = S.diags;
   const errs = diags.filter(d => d.severity === 'error'), warns = diags.filter(d => d.severity !== 'error');
@@ -134,7 +149,8 @@ export function renderDiagnostics() {
         h('span', {}, `${sevWord(d)}:${d.tool || 'HDLCompiler'} - `),
         d.file ? h('span', { class: 'loc' }, d.line ? `"${d.file}" Line ${d.line}` : `"${d.file}"`) : null,
         h('span', { 'data-no-i18n': true }, d.file ? `: ${d.message}` : d.message), hint?.toggle,
-        ...diagFixes(d).map(f => h('span', { class: 'diag-fix', role: 'button', 'data-no-i18n': true, onclick: e => { e.stopPropagation(); applyDiagFix(d, f); } }, `${t('Fix:')} ${t(f.title)}`)));
+        ...diagFixes(d).map(f => h('span', { class: 'diag-fix', role: 'button', 'data-no-i18n': true, onclick: e => { e.stopPropagation(); applyDiagFix(d, f); } }, `${t('Fix:')} ${t(f.title)}`)),
+        trustButton(d));
       // (an editor's problem: its item selected, editor-problems.js)
       row.addEventListener('click', () => (d.goto ? d.goto() : d.file && app.openFile(d.file, d.line, d.col)));
       el.append(row);
