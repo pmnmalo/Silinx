@@ -29,21 +29,25 @@ export function linkField({ field = 'link', onCopy, generate, title = 'QR Code',
   const fit = () => {
     if (full.hidden) return;
     if (row) {
-      // (as tall as its text, or, before Generate, as the link's it will make: measured with as many characters)
+      // (as tall as its text, or, before Generate, as the link's it will make: measured with as many characters; on a
+      // hidden copy of the box as wide as it, #4617: the box itself never collapsed, which would take its window's
+      // scrollbar away while measuring, and measure it wider than it is)
       const n = link ? 0 : Math.max(0, Number(expected()) || 0);
-      if (n) full.value = 'x'.repeat(n);
-      full.style.height = '0';
+      const probe = h('textarea', { class: 'link-full', rows: 1, 'aria-hidden': 'true', tabindex: '-1' });
+      Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', boxSizing: 'border-box', width: `${full.getBoundingClientRect().width}px`, height: '0' });
+      probe.value = n ? 'x'.repeat(n) : full.value;
+      full.parentNode?.append(probe);
+      const need = probe.scrollHeight;
+      probe.remove();
       // (at most maxLines lines: `most`, the box's inside; not laid out yet, unbounded)
       const cs = getComputedStyle(full), most = maxLines * parseFloat(cs.lineHeight) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) || Infinity;
-      const tall = full.scrollHeight > most + 1;
-      full.style.height = `${Math.min(full.scrollHeight, most) + full.offsetHeight - full.clientHeight}px`;
-      full.style.overflowY = tall && !n ? 'auto' : '';
-      if (n) full.value = '';
+      full.style.height = `${Math.min(need, most) + full.offsetHeight - full.clientHeight}px`;
+      full.style.overflowY = need > most + 1 && !n ? 'auto' : '';
       return;
     }
     Object.assign(full.style, { alignSelf: 'flex-start', minHeight: '0' });
-    const h = full.scrollHeight + full.offsetHeight - full.clientHeight;
-    Object.assign(full.style, { alignSelf: '', minHeight: `${h}px` });
+    const tall = full.scrollHeight + full.offsetHeight - full.clientHeight;
+    Object.assign(full.style, { alignSelf: '', minHeight: `${tall}px` });
   };
   if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(full);
   const make = h('button', { class: 'btn link-generate', type: 'button', onclick: async () => {

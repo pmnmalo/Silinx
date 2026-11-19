@@ -458,7 +458,7 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 /* Share Project…'s window, a copy's or Live's (#4617): one size, as tall as a copy's with its link made (the body
    scrolled beyond), so that switching between them does not resize it; on a small screen, as tall as the screen allows */
 .dlg.share-dlg { height: min(780px, 90vh); }
-.dlg.share-dlg > .dlg-body { flex: 1 1 auto; }
+.dlg.share-dlg > .dlg-body { flex: 1 1 auto; scrollbar-gutter: stable; }   /* (its width the same, scrolled or not: the link boxes as wide) */
 .share-how { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 10px 0; }
 .share-how-choices { display: flex; flex-wrap: wrap; gap: 6px 32px; }
 .share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }
