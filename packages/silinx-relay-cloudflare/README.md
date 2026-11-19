@@ -20,6 +20,8 @@ fragment, which never reaches it.
 - **Pages from other sites are refused**: a page's WebSocket is let in only when its origin is in `ORIGINS`
   (`wrangler.toml`; the Silinx site, `https://pmnmalo.github.io`, by default). A program's WebSocket, such as the MCP
   server's, has no origin and is let in.
+- **Its meeting points** (`/api/collab/meet/…`): a project hosted by its owner's page meets its followers there; they
+  go peer to peer (WebRTC) when a direct path works, and through the relay otherwise. Its key opens a meeting point too.
 - **A quiet room sleeps** (the WebSocket Hibernation API): Cloudflare keeps its connections open and it costs no
   duration until a message comes.
 
