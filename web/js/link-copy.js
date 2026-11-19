@@ -26,6 +26,7 @@ import { rememberLink, shortLinksDialog } from './short-links.js';
 import { linkField } from './link-field.js';
 import { QR_MAX_BYTES, qrSvg } from '/core/qr.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
+import { collabLog } from './collab-log.js';
 
 // (the link's box at most so many lines, scrolled beyond: a full link is thousands of characters, #4612)
 const LINK_LINES = 8;
@@ -41,12 +42,12 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   const action = shareTitle(module);   // (the window's title, its messages' name, #3698)
   let entries;
   // (a copy given out: its origin in the link, its ancestor kept by the project, not carried by the link, too large: #4205)
-  try { entries = (await gateZip(new Uint8Array(await (await api.exportZip(name, 'silinx', { copy: true })).blob.arrayBuffer()), browserCodec())).files.filter(e => e.path !== ANCESTOR_FILE); } catch (e) { app.log(`ERROR: ${action}: ${e.message}`, 'err'); return null; }
+  try { entries = (await gateZip(new Uint8Array(await (await api.exportZip(name, 'silinx', { copy: true })).blob.arrayBuffer()), browserCodec())).files.filter(e => e.path !== ANCESTOR_FILE); } catch (e) { collabLog(`ERROR: ${action}: ${e.message}`, 'err'); return null; }
   const files = Object.fromEntries(entries.filter(e => e.path !== 'silinx.json').map(e => [e.path, textOf(e)]));
   // (the KiCad part files no drawing uses left out, #4573; a design too large for a link: an ERROR, red in the window too)
   let design = null, encodeError = null, partsLeft = [];
-  try { ({ design, parts: partsLeft } = await encodeDesign(entries)); } catch (e) { encodeError = e.message; app.log(`ERROR: ${action}: no link of '${name}': ${e.message}.`, 'err'); }
-  if (partsLeft.length) app.log(`${action}: the link of '${name}' leaves out ${partsLeft.length} file${partsLeft.length > 1 ? 's' : ''} of its KiCad parts that no drawing uses (parts/).`, 'info');
+  try { ({ design, parts: partsLeft } = await encodeDesign(entries)); } catch (e) { encodeError = e.message; collabLog(`ERROR: ${action}: no link of '${name}': ${e.message}.`, 'err'); }
+  if (partsLeft.length) collabLog(`${action}: the link of '${name}' leaves out ${partsLeft.length} file${partsLeft.length > 1 ? 's' : ''} of its KiCad parts that no drawing uses (parts/).`, 'info');
   // the Module list follows Open in (#2878): the simulation's, the test benches (the project's first); the others', the
   // design's modules (its top first), no test bench
   const pj = S.project;
@@ -95,7 +96,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     if (short.checked) return (await makeShort()) ? shortLink() : null;
     if (!qrSvg(link) && !saidLong) {
       saidLong = true;
-      app.log(`${action}: the link of '${name}' is ${link.length} characters, too long for a QR code (at most ${QR_MAX_BYTES}): the short link has one.`, 'info');
+      collabLog(`${action}: the link of '${name}' is ${link.length} characters, too long for a QR code (at most ${QR_MAX_BYTES}): the short link has one.`, 'info');
     }
     info.textContent = link.length > LINK_LIMITS.slides
       ? `${link.length} characters: some slide tools cut a link longer than ${LINK_LIMITS.slides} (export the project as a .zip, host it, and link to it with #open=).`
@@ -108,19 +109,19 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     if (!await api.gistAvailable()) {
       err.textContent = api.standalone ? 'A short link needs your GitHub sign-in: sign in, or choose the full link.' : 'A short link needs a GitHub token on the Silinx server (GH_TOKEN): choose the full link, or start the server with one.';
       if (api.standalone) signIn.style.display = '';
-      app.log(`ERROR: ${action}: no short link of '${name}': ${err.textContent}`, 'err');
+      collabLog(`ERROR: ${action}: no short link of '${name}': ${err.textContent}`, 'err');
       return false;
     }
     try {
       made = await api.gistSave(design, Number(expiry.value));
       madeFor = expiry.value;
       rememberLink({ id: made.id, link: shortLink(), project: name, expires: made.expires || null });   // (Short Links…, #3635)
-      app.log(`${action}: the short link of '${name}' made (the project in a secret gist of your GitHub account${made.expires ? `, until ${made.expires.slice(0, 10)}` : ''}).`, 'ok');
-      if (made.deleted) app.log(`${action}: ${made.deleted} expired short link${made.deleted > 1 ? 's' : ''} deleted from your gists.`, 'info');
+      collabLog(`${action}: the short link of '${name}' made (the project in a secret gist of your GitHub account${made.expires ? `, until ${made.expires.slice(0, 10)}` : ''}).`, 'ok');
+      if (made.deleted) collabLog(`${action}: ${made.deleted} expired short link${made.deleted > 1 ? 's' : ''} deleted from your gists.`, 'info');
       return true;
     } catch (e) {
       err.textContent = e.hint ? `${e.message}: ${e.hint}` : e.message;
-      app.log(`ERROR: ${action}: no short link of '${name}': ${err.textContent}${/[.!?]$/.test(err.textContent) ? '' : '.'}`, 'err');
+      collabLog(`ERROR: ${action}: no short link of '${name}': ${err.textContent}${/[.!?]$/.test(err.textContent) ? '' : '.'}`, 'err');
       return false;
     }
   };
@@ -142,11 +143,11 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     copied = l;
     if (short.checked) {
       rememberLink({ id: made.id, link: l, project: name, expires: made.expires || null });   // (the link as copied: its view)
-      app.log(`${action}: the short link of '${name}' copied, ${l.length} characters (the project in a secret gist of your GitHub account${made?.expires ? `, until ${made.expires.slice(0, 10)}` : ''}).`, 'ok');
+      collabLog(`${action}: the short link of '${name}' copied, ${l.length} characters (the project in a secret gist of your GitHub account${made?.expires ? `, until ${made.expires.slice(0, 10)}` : ''}).`, 'ok');
       return;
     }
-    app.log(`${action}: the link of '${name}'${viewSel.value ? ` (${VIEWS.find(([v]) => v === viewSel.value)[1]}, ${modSel.value})` : ''} copied, ${l.length} characters.`, 'ok');
-    if (l.length > LINK_LIMITS.slides) app.log(`WARNING: ${action}: the link is ${l.length} characters long: some slide tools cut a link longer than ${LINK_LIMITS.slides}.`, 'warn');
+    collabLog(`${action}: the link of '${name}'${viewSel.value ? ` (${VIEWS.find(([v]) => v === viewSel.value)[1]}, ${modSel.value})` : ''} copied, ${l.length} characters.`, 'ok');
+    if (l.length > LINK_LIMITS.slides) collabLog(`WARNING: ${action}: the link is ${l.length} characters long: some slide tools cut a link longer than ${LINK_LIMITS.slides}.`, 'warn');
   };
   const update = () => {
     expiry.disabled = !short.checked;

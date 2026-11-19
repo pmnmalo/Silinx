@@ -37,6 +37,7 @@ import { linkField } from './link-field.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
 import { hdlWarning } from './design-only.js';
 import { ownerActivity } from './collab-activity.js';
+import { collabLog } from './collab-log.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const TRACK_MS = 300;
@@ -67,7 +68,7 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   if (!S.project) return null;
   const action = shareTitle(module);
   // (a page opened from a file has no address the followers could open: the site's has, #3227)
-  if (!share && location.protocol === 'file:') { app.log(`ERROR: ${action}: a Silinx opened from a file has no address that others can open; open Silinx from its site to share a project.`, 'err'); return null; }
+  if (!share && location.protocol === 'file:') { collabLog(`ERROR: ${action}: a Silinx opened from a file has no address that others can open; open Silinx from its site to share a project.`, 'err'); return null; }
   if (share && module) await (await import('./link-open.js')).showModule(module, true);
   const input = h('input', { type: 'text', value: share?.name || savedName(), 'data-field': 'name', maxlength: 40, style: { width: '100%' } });
   const nameShown = h('div', { class: 'collab-name', 'data-no-i18n': '' });
@@ -126,7 +127,7 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     keepName(name);
     const relay = { address: address.value.trim(), key: key.value };
     if (!api.collab) keepRelay(relay);
-    try { await startSharing(name, !api.collab && relay.address ? { via: 'host', relay } : {}); } catch (e) { app.log(`ERROR: ${action}: ${e.message}.`, 'err'); return false; }
+    try { await startSharing(name, !api.collab && relay.address ? { via: 'host', relay } : {}); } catch (e) { collabLog(`ERROR: ${action}: ${e.message}.`, 'err'); return false; }
     if (module) await (await import('./link-open.js')).showModule(module, true);
     draw();
     return false;   // (the window kept open: its links now)
@@ -189,13 +190,13 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   addEventListener('silinx:disk-changes', onDisk);
   setPresenceCommands(commands);
   draw();
-  app.log(`Sharing project "${project}": anyone with its link follows it live, read only (Share Project… shows the link; Stop Sharing ends it).`, 'ok');
-  if (other && !host) app.log(`Shared through the relay at ${new URL(other).host}: it sees no file, only who is in.`, 'info');
+  collabLog(`Sharing project "${project}": anyone with its link follows it live, read only (Share Project… shows the link; Stop Sharing ends it).`, 'ok');
+  if (other && !host) collabLog(`Shared through the relay at ${new URL(other).host}: it sees no file, only who is in.`, 'info');
   if (host && other) {
-    app.log(`This page hosts the shared project: its followers meet it at the relay at ${new URL(other).host}, then connect to it directly when they can, through the relay otherwise; it sees no file. It lasts while this page is open.`, 'info');
+    collabLog(`This page hosts the shared project: its followers meet it at the relay at ${new URL(other).host}, then connect to it directly when they can, through the relay otherwise; it sees no file. It lasts while this page is open.`, 'info');
     share.meet = (await import('./collab-meet.js')).meetFollowers(share, hostKey.key);
   } else if (host) {
-    app.log('This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code (Add a User…, in the toolbar, takes it); it lasts while this page is open.', 'info');
+    collabLog('This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code (Add a User…, in the toolbar, takes it); it lasts while this page is open.', 'info');
     const s = share;
     s.meet = (await import('./collab-meet.js')).meetFollowers(s, hostKey.key);
   }
@@ -220,14 +221,14 @@ export async function stopSharing(why = null) {
   await s.session.close().catch(() => {});
   s.meet?.then(m => m?.leave()).catch(() => {});   // (once the followers were told)
   draw();
-  app.log(why || `Stopped sharing "${s.project}": its followers no longer see it.`, why ? 'warn' : 'info');
+  collabLog(why || `Stopped sharing "${s.project}": its followers no longer see it.`, why ? 'warn' : 'info');
 }
 export const sharedLink = () => share?.link || null;
 export const editorsLink = () => share?.editLink || null;
 
 // a link copied, said in the console
-const copyLink = (link = share.link) => { writeClip('text', link); app.log('Shared project\'s link copied: whoever opens it follows it live, read only.', 'ok'); };
-const copyEditorLink = (editLink = share.editLink) => { writeClip('text', editLink); app.log('Shared project\'s editors\' link copied: whoever opens it edits its text files and drawings with you.', 'ok'); };
+const copyLink = (link = share.link) => { writeClip('text', link); collabLog('Shared project\'s link copied: whoever opens it follows it live, read only.', 'ok'); };
+const copyEditorLink = (editLink = share.editLink) => { writeClip('text', editLink); collabLog('Shared project\'s editors\' link copied: whoever opens it edits its text files and drawings with you.', 'ok'); };
 const addUser = (module = null) => { const s = share; if (s) import('./collab-users.js').then(m => m.addUserDialog(s, module)); };
 // a participant made an editor or a viewer (#3997): the editors' key given to them, or renewed (the link with it)
 async function setRole(peer, role) {
@@ -236,8 +237,8 @@ async function setRole(peer, role) {
   try {
     if (role === 'editor') await s.session.promote(peer.client);
     else { await s.session.demote(peer.client); s.editLink = followLink(s.base, s.session.room, s.session.key, s.via, s.session.editKey, s.other, s.pub); }
-  } catch (e) { app.log(`ERROR: Sharing: ${e.message}.`, 'err'); return; }
-  app.log(role === 'editor' ? `${peer.name} is an editor now: they edit the project's text files and drawings with you.` : `${peer.name} is a viewer now: the editors' link was renewed (the old one only follows); your other editors keep editing.`, 'ok');
+  } catch (e) { collabLog(`ERROR: Sharing: ${e.message}.`, 'err'); return; }
+  collabLog(role === 'editor' ? `${peer.name} is an editor now: they edit the project's text files and drawings with you.` : `${peer.name} is a viewer now: the editors' link was renewed (the old one only follows); your other editors keep editing.`, 'ok');
 }
 const roleItems = () => (share?.session.editKey ? share.session.peers().filter(p => p.role !== 'owner').map(p => (p.role === 'editor'
   ? { label: `Make ${p.name} a Viewer`, action: () => setRole(p, 'viewer') }
@@ -262,14 +263,14 @@ function onEvent(ev) {
   if (ev.type === 'peers') {
     const now = new Map(share.session.peers().map(p => [p.client, p.name]));
     const role = new Map(share.session.peers().map(p => [p.client, p.role]));
-    for (const [c, n] of now) if (!share.known.has(c)) app.log(role.get(c) === 'editor' ? `${n} edits your project "${share.project}" with you.` : `${n} follows your project "${share.project}".`, 'info');
-    for (const [c, n] of share.known) if (!now.has(c)) app.log(`${n} no longer follows your project.`, 'info');
+    for (const [c, n] of now) if (!share.known.has(c)) collabLog(role.get(c) === 'editor' ? `${n} edits your project "${share.project}" with you.` : `${n} follows your project "${share.project}".`, 'info');
+    for (const [c, n] of share.known) if (!now.has(c)) collabLog(`${n} no longer follows your project.`, 'info');
     share.known = now;
     draw();
-  } else if (ev.type === 'offline') { app.log(`WARNING: Sharing "${share.project}": the connection to the relay was lost: reconnecting (your followers see the project as it was until it is back).`, 'warn'); draw(); }
-  else if (ev.type === 'online') { app.log(`Sharing "${share.project}": reconnected to the relay: your followers see your changes made meanwhile.`, 'info'); draw(); }
+  } else if (ev.type === 'offline') { collabLog(`WARNING: Sharing "${share.project}": the connection to the relay was lost: reconnecting (your followers see the project as it was until it is back).`, 'warn'); draw(); }
+  else if (ev.type === 'online') { collabLog(`Sharing "${share.project}": reconnected to the relay: your followers see your changes made meanwhile.`, 'info'); draw(); }
   else if (ev.type === 'closed') stopSharing(`Sharing "${share.project}" ended: ${ev.reason}.`);
-  else if (ev.type === 'error') app.log(`WARNING: Share Project: ${ev.message}.`, 'warn');
+  else if (ev.type === 'error') collabLog(`WARNING: Share Project: ${ev.message}.`, 'warn');
 }
 
 // the editor in front and its cursor, and the owner's activity (#4002), for the followers; another project opened:
@@ -333,7 +334,7 @@ function hookApi(project, doc, s) {
 // the files an editor may change here: a text file of the project's that no drawing generates; a drawing edited live
 const editableHere = p => editablePath(p) && !S.hdlToSch?.[p] && S.fileTree?.includes(p);
 const drawingHere = p => liveDrawing(p) && !!S.fileTree?.includes(p);
-const sayLine = text => app.log(text, /^WARNING/.test(text) ? 'warn' : 'info');
+const sayLine = text => collabLog(text, /^WARNING/.test(text) ? 'warn' : 'info');
 
 // what the editors change (the document's remote transactions, core/collab-files.js applyEdits): a text file's, written
 // to the disk (its open editor, bound, shows it already); a file created, deleted or renamed and the project's
@@ -355,9 +356,9 @@ async function onEdits(s, ev) {
     saveJson: json => s.orig.saveProject(s.project, json),
     untrust: () => untrustEdited(s),
   };
-  const r = await applyEdits(s.doc, ev, store, { generated: new Set(Object.keys(S.hdlToSch || {})), warn: text => app.log(`WARNING: ${text}.`, 'warn') });
+  const r = await applyEdits(s.doc, ev, store, { generated: new Set(Object.keys(S.hdlToSch || {})), warn: text => collabLog(`WARNING: ${text}.`, 'warn') });
   if (share !== s) return false;
-  if (r.undone.length) app.log(`WARNING: An editor's change undone (a file of the project folder that is not shared, or the text of a file an editor does not change as text): ${r.undone.join(', ')}.`, 'warn');
+  if (r.undone.length) collabLog(`WARNING: An editor's change undone (a file of the project folder that is not shared, or the text of a file an editor does not change as text): ${r.undone.join(', ')}.`, 'warn');
   // (the page's project as the disk has it now: its Design pane, its open documents; said as an owner's change is; the
   // document from the disk again: a new drawing's structure made, the description as the owner took it)
   const changed = [...ev.changes.filter(c => c.kind !== 'changed' && (r.written.includes(c.path) || r.removed.includes(c.path))),
@@ -375,7 +376,7 @@ async function untrustEdited(s) {
   const next = markEditedByEditor(pj);
   await s.orig.saveProject(s.project, next);
   if (S.project?.name === s.project) Object.assign(S.project, { trusted: false, madeBy: next.madeBy });
-  app.log(`WARNING: ${untrustedNotice(s.project, next)}`, 'warn', { action: trustAction(s.project) });
+  collabLog(`WARNING: ${untrustedNotice(s.project, next)}`, 'warn', { action: trustAction(s.project) });
 }
 
 // what the editors change in the drawings (#3183): the document's remote transactions, each drawing's merged model
@@ -384,7 +385,7 @@ function watchDrawings(s) {
   const fn = tr => {
     if (tr.local || share !== s) return;
     const paths = drawingPathsOf(tr);
-    if (paths.length) s.drawing = s.drawing.then(() => onDrawingEdits(s, paths)).catch(e => app.log(`WARNING: an editor's change of a drawing not written: ${e.message}.`, 'warn'));
+    if (paths.length) s.drawing = s.drawing.then(() => onDrawingEdits(s, paths)).catch(e => collabLog(`WARNING: an editor's change of a drawing not written: ${e.message}.`, 'warn'));
   };
   s.doc.on('afterTransaction', fn);
   return () => s.doc.off('afterTransaction', fn);
@@ -397,7 +398,7 @@ async function onDrawingEdits(s, paths) {
     if (!await writeMerged(s, path, { edited: true })) revertDrawing(s.doc, path, s.bases);
   }
   if (undo) {
-    app.log(`WARNING: An editor's change undone (an editor changes the project's text files and drawings only): ${paths.filter(p => !drawingHere(p)).join(', ') || paths.join(', ')}.`, 'warn');
+    collabLog(`WARNING: An editor's change undone (an editor changes the project's text files and drawings only): ${paths.filter(p => !drawingHere(p)).join(', ') || paths.join(', ')}.`, 'warn');
     await resync();
   }
 }
@@ -411,7 +412,7 @@ async function writeMerged(s, path, { edited = false } = {}) {
   const text = drawingText(path, withView(path, r.model, s.bases.get(path)));   // (the owner's own wires' style kept, #4239)
   if (sameDrawing(text, s.bases.get(path))) return true;
   let gated;
-  try { gated = gateEdit(path, text); } catch (e) { app.log(`WARNING: ${path}: an editor's change not written: ${e.reason || e.message}.`, 'warn'); return false; }
+  try { gated = gateEdit(path, text); } catch (e) { collabLog(`WARNING: ${path}: an editor's change not written: ${e.reason || e.message}.`, 'warn'); return false; }
   if (edited) await untrustEdited(s);
   await s.orig.writeFile(s.project, path, gated);
   s.bases.set(path, gated);
@@ -422,6 +423,6 @@ async function writeMerged(s, path, { edited = false } = {}) {
   const petri = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromPetri(p, x); };   // (as its save does)
   const circ = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromCircuit(p, x); };   // (as its save does, #4203)
   const sync = { fsm: m.syncHdlFromFsm, tt: m.syncHdlFromTt, asm: m.syncHdlFromAsm, pn: petri, sch: m.syncHdlFromSchematic, circ }[drawingKind(path)];
-  await sync(path, r.model).catch(e => app.log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+  await sync(path, r.model).catch(e => collabLog(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
   return true;
 }

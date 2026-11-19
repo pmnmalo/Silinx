@@ -6,7 +6,7 @@
 // browser edition's GitHub API (core/git-rest-branch.js), through api.js. Every message goes to the console.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log } from './console.js';
+import { collabLog } from './collab-log.js';
 import { S } from './app.js';
 import { reloadProject } from './project.js';
 import { saveAll } from './processes.js';
@@ -32,7 +32,7 @@ async function reread(name, files) {
 async function listBranches(name) {
   try {
     const r = await api.gitBranches(name);
-    for (const w of r.warnings || []) log(`WARNING: ${w}`, 'warn');
+    for (const w of r.warnings || []) collabLog(`WARNING: ${w}`, 'warn');
     return r;
   } catch (e) { logGitError(e); return null; }
 }
@@ -67,7 +67,7 @@ async function newBranchDialog() {
     { label: 'Cancel', value: null }],
   });
   if (!r) return null;
-  try { const b = await api.gitNewBranch(S.project.name, r); log(newBranchText(b), 'ok'); return b; }
+  try { const b = await api.gitNewBranch(S.project.name, r); collabLog(newBranchText(b), 'ok'); return b; }
   catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
 }
 
@@ -83,8 +83,8 @@ async function switchBranchDialog() {
   if (!r) return null;
   try {
     const s = await api.gitSwitch(name, r.branch);
-    log(switchText(s), 'ok');
-    for (const w of s.warnings || []) log(`WARNING: ${w}`, 'warn');
+    collabLog(switchText(s), 'ok');
+    for (const w of s.warnings || []) collabLog(`WARNING: ${w}`, 'warn');
     await reread(name, s.files);
     return s;
   } catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
@@ -105,9 +105,9 @@ async function mergeBranchDialog() {
 async function mergeBranch(name, branch, mine, resolve = null) {
   try {
     const m = await api.gitMerge(name, branch, resolve ? { resolve } : {});
-    log(mergeBranchText(m), 'ok');
-    for (const l of pullMergeLines(m, { designOnly: designOnly() })) log(l, 'info');
-    for (const w of m.warnings || []) log(`WARNING: ${w}`, 'warn');
+    collabLog(mergeBranchText(m), 'ok');
+    for (const l of pullMergeLines(m, { designOnly: designOnly() })) collabLog(l, 'info');
+    for (const w of m.warnings || []) collabLog(`WARNING: ${w}`, 'warn');
     await reread(name, m.upToDate ? [] : m.files);
     return m;
   } catch (e) {
