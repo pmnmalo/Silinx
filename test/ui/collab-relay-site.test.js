@@ -49,13 +49,14 @@ const warnings = async (page) => (await page.consoleText()).split('\n').map((l) 
 const live = async (page) => {
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
-  if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live]');
-  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg input[data-field=via-relay]'), [], { what: 'the live window, its two ways' });
+  // (#4640: Live via your Cloudflare relay, one of the Share: row's three)
+  if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live-relay]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live-relay]');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg .share-via'), [], { what: 'the live window, its way explained' });
 };
 // the relay set in this browser's settings, as the Collaboration tab's Relay box sets it (#4574)
 const setRelay = (page, address, key) => page.eval((a, k) => { localStorage.setItem('silinx.collab.relay', JSON.stringify({ address: a, key: k })); dispatchEvent(new CustomEvent('silinx:relay-changed')); }, address, key);
 // the live window's way chosen, the relay it shows, Start Sharing's state
-const ways = (page) => page.eval(() => ({ via: document.querySelector('.dlg-overlay input[name=share-via]:checked')?.value, relay: document.querySelector('.dlg-overlay .share-via-at')?.textContent ?? null, start: !document.querySelector('.dlg-overlay .dlg-buttons button.primary')?.disabled }));
+const ways = (page) => page.eval(() => ({ via: document.querySelector('.dlg-overlay input[name=share-how]:checked')?.value, relay: document.querySelector('.dlg-overlay .share-via-at')?.textContent ?? null, start: !document.querySelector('.dlg-overlay .dlg-buttons button.primary')?.disabled }));
 
 uiTest('#4543 Share Project… via your Cloudflare relay: the page hosts it, its followers meet it at the relay; the link names the relay; a follower in Portuguese follows; remembered; a relay not the site\'s refused', E, async (page) => {
   await boot(page);
@@ -64,7 +65,7 @@ uiTest('#4543 Share Project… via your Cloudflare relay: the page hosts it, its
   await live(page);
   const host = new URL(relayBase).host;
   // (#4634: the relay set, chosen by default, shown by its address; its key nowhere in the window)
-  assert.deepEqual(await ways(page), { via: 'relay', relay: host, start: true });
+  assert.deepEqual(await ways(page), { via: 'live-relay', relay: host, start: true });
   assert.equal(await page.eval((k) => document.querySelector('.dlg-overlay .dlg').innerHTML.includes(k), KEY), false);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
@@ -105,7 +106,7 @@ uiTest('#4543 Share Project… via your Cloudflare relay: the page hosts it, its
   await page.waitFor(() => window.SilinxApp && window.Silinx?.startupChecked, [], { what: 'site boot' });
   await newProject(page, 'Again', 'gates');
   await live(page);
-  assert.deepEqual(await ways(page), { via: 'relay', relay: host, start: true });
+  assert.deepEqual(await ways(page), { via: 'live-relay', relay: host, start: true });
   assert.deepEqual(JSON.parse(await page.eval(() => localStorage.getItem('silinx.collab.relay'))), { address: relayBase, key: KEY });
   await page.dialogButton('Close');
   assert.deepEqual(await warnings(page), []);

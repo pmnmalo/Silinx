@@ -1,4 +1,5 @@
-// Share Project… ▸ Live's two ways, in the browser edition (#4634; its page hosts the room, collab-host.js): through
+// Share Project… ▸ Live's two ways, in the browser edition (#4634; its page hosts the room, collab-host.js), chosen in
+// the window's Share: row (web/js/share-how.js) and explained below it: through
 // your Cloudflare relay (#4543: its followers meet the page there and connect to it directly when they can, through
 // the relay otherwise), set up first in the Collaboration tab (web/js/relay-setup.js, kept in web/js/relay-setting.js:
 // its address shown, Change… opens the guide, its key never shown), or peer to peer, no relay (#3227: the public
@@ -23,16 +24,11 @@ function defaultVia() {
   return has ? 'relay' : 'peer';
 }
 
-/** The window's Live ways: { el, via() ('relay' | 'peer'), relay() (the relay set, or null), ready() (Start Sharing
- *  possible: peer to peer, or a relay set), kept() (the way kept as the viewer's), off() (its listener removed) };
- *  `changed` called when the way or the relay set changes. */
-export function viaPart({ changed = () => {} } = {}) {
-  let via = defaultVia();
-  const radio = (value, label, ...about) => {
-    const r = h('input', { type: 'radio', name: 'share-via', value, 'data-field': `via-${value}`, checked: value === via });
-    r.addEventListener('change', () => { if (r.checked) { via = value; changed(); } });
-    return h('div', { class: `share-via-${value}` }, h('label', {}, r, label), h('div', { class: 'share-via-about' }, ...about));
-  };
+/** Live's way explained, below the window's Share: row (whose radios choose it, web/js/share-how.js): { el, via()
+ *  ('relay' | 'peer'), setVia(v), relay() (the relay set, or null), ready() (Start Sharing possible: peer to peer, or a
+ *  relay set), kept() (the way kept as the viewer's), off() (its listener removed) }; `changed` called when the relay
+ *  set changes. */
+export function viaPart({ via = defaultVia(), changed = () => {} } = {}) {
   // (the relay set: its address and Change…; none: said, and Set Up a Cloudflare Relay… here)
   const status = h('div', { class: 'share-via-status' });
   const setUp = async () => { await (await import('./relay-setup.js')).relaySetupDialog(); };
@@ -44,21 +40,21 @@ export function viaPart({ changed = () => {} } = {}) {
       : [h('span', { class: 'share-via-none' }, 'No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.'),
         h('button', { class: 'btn', 'data-action': 'relay-setup', onclick: setUp }, 'Set Up a Cloudflare Relay…')]));
   };
-  drawRelay();
-  const el = h('div', { class: 'share-via' },
-    h('label', {}, 'Connection:'),
-    h('div', { class: 'share-via-choices' },
-      radio('relay', 'Live via your Cloudflare relay',
-        h('p', {}, 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.'),
-        status),
-      radio('peer', 'Live peer to peer (no relay)',
-        h('p', {}, 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.'))));
+  const relayAbout = h('div', { class: 'share-via-relay' },
+    h('p', {}, 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.'),
+    status);
+  const peerAbout = h('div', { class: 'share-via-peer' },
+    h('p', {}, 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.'));
+  const el = h('div', { class: 'share-via' }, relayAbout, peerAbout);
+  const show = () => { relayAbout.hidden = via !== 'relay'; peerAbout.hidden = via !== 'peer'; };
+  drawRelay(); show();
   const onRelay = () => { drawRelay(); changed(); };
   addEventListener('silinx:relay-changed', onRelay);
   const relay = () => { const r = savedRelay(); return r.address ? r : null; };
   return {
     el,
     via: () => via,
+    setVia: v => { via = v; show(); },
     relay,
     ready: () => via === 'peer' || !!relay(),
     kept: () => keepVia(via),

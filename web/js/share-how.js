@@ -63,26 +63,41 @@ async function openHow(how, opts) {
 }
 
 /** The window's Share: row, `how` checked: the other way chosen closes the window (`close`), whose caller then sees
- *  `wanted` and calls `switched()`, the other way's window, its way kept as the viewer's. Returns { el, wanted,
- *  switched }. */
-export function howRow(how, { module = null, view = null, close }) {
-  let wanted = null;
+ *  `wanted` and calls `switched()`, the other way's window, its way kept as the viewer's. The browser edition's (#4634)
+ *  has three: A copy, Live via your Cloudflare relay, Live peer to peer (no relay); Live's window's `via` checked, the
+ *  other live one chosen there given to `onVia` (the window kept), locked while shared (`lock`). Returns { el, wanted,
+ *  switched, lock }. */
+export function howRow(how, { module = null, view = null, close, via = null, onVia = () => {} }) {
+  let wanted = null, wantedVia = null;
   const live = liveProblem(module);
+  const three = !api.collab && api.standalone;
+  const radios = [];
   // (side by side, each one's explanation on the line below its button, #3995)
-  const radio = (value, label, note) => {
-    const r = h('input', { type: 'radio', name: 'share-how', value, 'data-field': `how-${value}`, checked: value === how, disabled: value === 'live' && !!live });
-    r.addEventListener('change', () => { if (r.checked && value !== how) { wanted = value; close(); } });
-    return h('label', { class: `share-how-${value}`, title: value === 'live' && live ? live : '' }, r, label, h('span', { class: 'share-how-note' }, note));
+  const radio = (value, label, note, way = null) => {
+    const on = value === how && (!way || way === via);
+    const r = h('input', { type: 'radio', name: 'share-how', value: way ? `${value}-${way}` : value, 'data-field': `how-${way ? `${value}-${way}` : value}`, checked: on, disabled: value === 'live' && !!live });
+    r.addEventListener('change', () => {
+      if (!r.checked) return;
+      if (value === how && way) { via = way; onVia(way); return; }   // (Live's other way, in Live's window)
+      if (value !== how) { wanted = value; wantedVia = way; close(); }
+    });
+    radios.push({ r, way });
+    return h('label', { class: `share-how-${way ? `${value}-${way}` : value}`, title: value === 'live' && live ? live : '' }, r, label, h('span', { class: 'share-how-note' }, note));
   };
-  const el = h('div', { class: 'share-how' },
+  const el = h('div', { class: `share-how${three ? ' share-how-three' : ''}` },
     h('label', {}, 'Share:'),
     h('div', { class: 'share-how-choices' },
       radio('copy', h('span', {}, 'A copy'), 'A link with the project in it'),
-      // ('Live' is the Petri net's liveness elsewhere, Viva: this one's word given here)
-      radio('live', h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Em direto' : 'Live'), 'Others follow it as you work')));
+      ...(three
+        ? [radio('live', h('span', {}, 'Live via your Cloudflare relay'), 'Others follow it as you work, on any network', 'relay'),
+          radio('live', h('span', {}, 'Live peer to peer (no relay)'), 'Others follow it as you work, with no setup', 'peer')]
+        // ('Live' is the Petri net's liveness elsewhere, Viva: this one's word given here)
+        : [radio('live', h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Em direto' : 'Live'), 'Others follow it as you work')])));
   return {
     el,
     get wanted() { return wanted; },
-    switched: () => { keepHow(wanted); return openHow(wanted, { module, view }); },
+    switched: () => { keepHow(wanted); return openHow(wanted, { module, view, ...(wantedVia ? { via: wantedVia } : {}) }); },
+    // (while shared, Live's other way cannot be chosen: its connection is made)
+    lock: on => { for (const { r, way } of radios) if (way && way !== via) r.disabled = on || !!live; },
   };
 }

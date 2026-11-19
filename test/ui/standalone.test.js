@@ -139,7 +139,8 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how input')].map((r) => [r.value, r.checked, r.disabled, r.closest('label').title])),
-    [['copy', true, false, ''], ['live', false, true, 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.']]);
+    // (#4640: the browser edition's three ways, both live ones disabled, why their tip)
+    [['copy', true, false, ''], ...['live-relay', 'live-peer'].map((v) => [v, false, true, 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.'])]);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // nothing of what Implement needs downloaded in the background from a page opened from a file (#1450): WebKit and
@@ -624,11 +625,11 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
   // (Live chosen in its window: the copy its default, #3698)
-  await page.click('.dlg-overlay input[data-field=how-live]');
+  await page.click('.dlg-overlay input[data-field=how-live-peer]');   // (#4640: one of the Share: row's three)
   await page.waitFor(() => !!document.querySelector('.dlg-overlay input[data-field=name]'), [], { what: 'the live window' });
   // (#4543, #4634: no Cloudflare relay set up: peer to peer chosen, Start Sharing enabled; this page hosts it, met at
   // the meeting point)
-  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-via]:checked')?.value, !!document.querySelector('.dlg-overlay .share-via-none'), document.querySelector('.dlg-overlay .dlg-buttons button.primary').disabled]), ['peer', true, false]);
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-how]:checked')?.value, !!document.querySelector('.dlg-overlay .share-via-peer:not([hidden])'), document.querySelector('.dlg-overlay .dlg-buttons button.primary').disabled]), ['live-peer', true, false]);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });

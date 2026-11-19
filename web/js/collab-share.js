@@ -62,7 +62,7 @@ let share = null;   // { name, session, doc, link, editLink, restore, orig, time
  *  (link-field.js: Generate, Copy, Show, Show QR Code, in a row below a box as tall as the link); Stop Sharing, Close (Add a User…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
  *  same, that module's source opened (the followers follow it), the links opening on it (`view`: its copy's, the way
  *  switched, #3698). Resolves to the viewers' link once closed (null: not shared). */
-export async function shareProjectDialog({ module = null, view = null } = {}) {
+export async function shareProjectDialog({ module = null, view = null, via = undefined } = {}) {
   if (!S.project) return null;
   const action = shareTitle(module);
   // (a page opened from a file has no address the followers could open: the site's has, #3227)
@@ -74,8 +74,8 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   const nameErr = h('div', { class: 'wiz-error collab-name-error' });
   // (the browser edition: this page hosts the room, its followers met at the Cloudflare relay set up in the
   // Collaboration tab, #4543, #4574, or peer to peer, no relay, at the public meeting point or by codes, #3227: two
-  // choices, each explained, #4634)
-  const ways = api.collab ? null : (await import('./share-via.js')).viaPart({ changed: () => draw() });
+  // of the Share: row's choices, the one chosen explained below it, #4634)
+  const ways = api.collab ? null : (await import('./share-via.js')).viaPart({ ...(via ? { via } : {}), changed: () => draw() });
   // the links, hidden: the viewers' and the editors', each made by its Generate (#3996, #4073: different links, the
   // editors' with the room's signing key)
   const linkOf = role => (share ? (module ? withTop(role === 'edit' ? share.editLink : share.link, module) : role === 'edit' ? share.editLink : share.link) : null);
@@ -91,13 +91,14 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     hostedNote);
   // (a copy, or live: the window's Share: row, #3698)
   let closeIt = null, btns = null;
-  const way = howRow('live', { module, view, close: () => closeIt?.() });
+  const way = howRow('live', { module, view, close: () => closeIt?.(), via: ways?.via(), onVia: v => { ways.setVia(v); draw(); } });
   const draw = () => {
     const on = !!share;
     input.hidden = on;
     nameShown.hidden = !on;
     nameShown.textContent = on ? share.name : '';
     if (ways) ways.el.hidden = on;
+    way.lock(on);
     links.hidden = !on;
     viewer.set(on && share.made.view ? linkOf('view') : null);
     editor.set(on && share.made.edit ? linkOf('edit') : null);
@@ -133,8 +134,8 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     onOpen: ({ close }) => { closeIt = () => close(null); draw(); setTimeout(() => { if (!share) { input.focus(); input.select(); } }, 0); },
     body: h('div', { class: 'collab-dlg' },
       h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.'),
-      way.el,
-      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, ways?.el ?? null, links),
+      way.el, ways?.el ?? null,
+      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, links),
     buttons: btns,
   });
   ways?.off();
