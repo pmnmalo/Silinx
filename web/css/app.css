@@ -442,6 +442,11 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .link-field > [hidden] { display: none; }
 .link-buttons { display: flex; flex-direction: column; gap: 4px; flex: none; min-width: 120px; }
 .link-buttons > .btn { width: 100%; }
+/* a row field (#4576, Share Project… ▸ Live's links): the box above, as tall as the link, its buttons in one row below */
+.link-field.link-row { flex-direction: column; gap: 6px; }
+.link-field.link-row > .link-full { flex: none; height: auto; }
+.link-field.link-row > .link-buttons { flex-direction: row; flex-wrap: wrap; min-width: 0; }
+.link-field.link-row > .link-buttons > .btn { width: auto; }
 .share-how { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 10px 0; }
 .share-how-choices { display: flex; flex-wrap: wrap; gap: 6px 32px; }
 .share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }

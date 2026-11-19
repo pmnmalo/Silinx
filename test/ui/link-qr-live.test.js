@@ -4,7 +4,8 @@
 // Show, Show QR Code) with its QR code by Show QR Code only (#3637, decoded back: the link; no small one in the window);
 // Stop Sharing keeps the window, Start Sharing again; no Add a User… in it: the toolbar's Sharing menu's (Viewer or
 // Editor, that role's link by Generate), and its Copy View Link; Share Module…'s links (#3631, opening on the module);
-// the labels in Portuguese; Show shows the whole link, wrapped (#4190), on a phone too. A server with its relay. Both
+// the labels in Portuguese; each link's Generate named for it (Generate View-Only, Generate Edit), its buttons in a
+// row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too. A server with its relay. Both
 // interfaces; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -63,7 +64,9 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   // shared: the name shown, not a field; the links not made yet
   assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=name]').hidden, document.querySelector('.dlg-overlay .collab-name').hidden, document.querySelector('.dlg-overlay .collab-name').textContent]), [true, false, 'Teacher']);
   assert.deepEqual(await top(page), ['Share Project', ['Start Sharing (off)', 'Stop Sharing', 'Close *']]);
-  for (const f of ['link', 'edit-link']) assert.deepEqual(await fieldButtons(page, f), ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
+  // (#4576: each Generate named for its link)
+  assert.deepEqual(await fieldButtons(page, 'link'), ['Generate View-Only', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
+  assert.deepEqual(await fieldButtons(page, 'edit-link'), ['Generate Edit', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-out')].map((o) => o.value)), ['', '']);
   // each made by its Generate: different, the viewers' #view=, the editors' #edit=
   const link = await gen(page, 'link');
@@ -73,11 +76,10 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   assert.match(editLink, /#edit=/);
   assert.notEqual(link, editLink);
   assert.ok(!link.includes(editLink.split('.').pop()), 'nothing of the editors\' key in the viewers\' link');
-  // hidden, no small QR code, the box as tall as its buttons
-  assert.deepEqual(await fieldButtons(page, 'link'), ['Generate (off)', 'Copy', 'Show', 'Show QR Code']);
+  // hidden, no small QR code (the box and its row of buttons: the #4190 / #4576 test below)
+  assert.deepEqual(await fieldButtons(page, 'link'), ['Generate View-Only (off)', 'Copy', 'Show', 'Show QR Code']);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-out')].map((o) => o.type)), ['password', 'password']);
   assert.equal(await page.eval(() => document.querySelectorAll('.dlg-overlay .qr-img, .dlg-overlay .qr-box').length), 0);
-  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-field')].every((f) => Math.abs(f.querySelector('.link-out').getBoundingClientRect().height - f.querySelector('.link-buttons').getBoundingClientRect().height) < 2)), true);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-about').textContent), 'Anyone with this link follows "qrlive" live, read only, as long as you share it.');
   // Show, Copy; each link's QR code, as large as the window
   await page.click('.dlg-overlay .link-field:has([data-field="edit-link"]) .link-show');
@@ -152,7 +154,8 @@ uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s
     await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
     await page.dialogButton('Começar a Partilhar');
     await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
-    assert.deepEqual(await fieldButtons(page, 'link'), ['Gerar', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
+    assert.deepEqual(await fieldButtons(page, 'link'), ['Gerar Só de Leitura', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
+    assert.deepEqual(await fieldButtons(page, 'edit-link'), ['Gerar Edição', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-edit-about').textContent), 'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.');
     await page.dialogButton('Fechar');
     await page.waitNoDialog();
@@ -169,14 +172,28 @@ uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s
   assert.deepEqual(await warnings(page), []);
 }, { timeout: 120000 });
 
-// each link field's box as it looks: the box shown (the masked one, or the whole link's), its text, its height and its
-// buttons', and whether all of its text is in view (nothing cut off, across or down)
+// each link field as it looks (#4576: its box above, its buttons in one row below): the box shown, its class, its
+// text, its height, whether all of its text is in view (nothing cut off, across or down) and how many lines it takes;
+// its buttons' labels, whether they are on one line, below the box and within the field
 const boxes = (page) => page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-field')].map((f) => {
   const [b] = [...f.querySelectorAll('.link-out, .link-full')].filter((e) => !e.hidden && e.getClientRects().length);
-  return { cls: b.className, type: b.type, text: b.value, height: b.getBoundingClientRect().height, buttons: f.querySelector('.link-buttons').getBoundingClientRect().height, whole: b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight };
+  const r = b.getBoundingClientRect(), btns = [...f.querySelectorAll('.link-buttons .btn')].map((x) => x.getBoundingClientRect());
+  const line = parseFloat(getComputedStyle(b).lineHeight), pad = b.clientHeight - parseFloat(getComputedStyle(b).paddingTop) - parseFloat(getComputedStyle(b).paddingBottom);
+  // (the box as wide as the window's content, #4576: the dialog's body less its padding)
+  const body = f.closest('.dlg-body'), bs = getComputedStyle(body), content = body.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
+  return { cls: b.className, text: b.value, height: r.height, lines: Math.round(pad / line), whole: b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight, wide: Math.abs(r.width - content) < 1.5,
+    oneRow: btns.every((x) => Math.abs(x.top - btns[0].top) < 2), below: btns.every((x) => x.top >= r.bottom), inside: btns.every((x) => x.right <= f.getBoundingClientRect().right + 1) };
 }));
+// the lines a text of n characters takes in a link box as wide as the field's (measured as the box wraps it)
+const linesOf = (page, field, n) => page.eval((f, k) => {
+  const b = document.querySelector(`.dlg-overlay .link-field:has([data-field="${f}"]) .link-full`), t = document.createElement('textarea');
+  t.className = 'link-full'; t.rows = 1; Object.assign(t.style, { position: 'absolute', visibility: 'hidden', width: `${b.getBoundingClientRect().width}px`, height: '0' });
+  b.parentNode.append(t); t.value = 'x'.repeat(k);
+  const n2 = Math.round((t.scrollHeight - parseFloat(getComputedStyle(t).paddingTop) - parseFloat(getComputedStyle(t).paddingBottom)) / parseFloat(getComputedStyle(t).lineHeight));
+  t.remove(); return n2;
+}, field, n);
 
-uiTest('#4190 Share Project and Share Module: Show shows the whole link, wrapped, the box as tall as it needs; Hide brings back the masked box, as tall as its buttons; on a phone too', E, async (page) => {
+uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons in one row below its box, the box as wide as the window\'s content and as tall as the link (before Generate as tall as the link it makes), the whole link in view, hidden or shown; on a phone too', E, async (page) => {
   await make(page, 'linkbox', 'gates');
   await page.openProject('linkbox');
   await page.eval(() => localStorage.setItem('silinx.collab.name', 'Teacher'));
@@ -185,37 +202,42 @@ uiTest('#4190 Share Project and Share Module: Show shows the whole link, wrapped
       await page.setViewport(width, 900);
       await page.eval((m) => { window.__shared = import('/js/collab-share.js').then((x) => x.shareProjectDialog(m ? { module: m } : {})); }, module);
       await page.waitDialog(module ? 'Share Module' : 'Share Project');
-      if (await page.eval(() => !document.querySelector('.dlg-overlay .dlg-buttons .btn.primary')?.textContent.startsWith('Close'))) {
+      const fresh = await page.eval(() => !document.querySelector('.dlg-overlay .dlg-buttons .btn.primary')?.textContent.startsWith('Close'));
+      if (fresh) {
         await page.dialogButton('Start Sharing');
         await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
       }
+      const what = `${module ? 'Share Module' : 'Share Project'}, ${width} px`;
+      // before Generate (the first window): empty boxes, as tall as the links they will make
+      const before = fresh ? await boxes(page) : null;
       const links = [];
       for (const f of ['link', 'edit-link']) {
         if (!await page.eval((x) => document.querySelector(`.dlg-overlay input[data-field="${x}"]`).value, f)) await gen(page, f);
         links.push(await page.eval((x) => document.querySelector(`.dlg-overlay input[data-field="${x}"]`).value, f));
       }
-      const what = `${module ? 'Share Module' : 'Share Project'}, ${width} px`;
-      // hidden: the masked box, as tall as its buttons
-      for (const b of await boxes(page)) {
-        assert.deepEqual([b.cls, b.type], ['link-out', 'password'], what);
-        assert.ok(Math.abs(b.height - b.buttons) < 2, `${what}: ${b.height} vs ${b.buttons}`);
-      }
-      // shown: the whole link, nothing cut off, at least as tall as the buttons
+      const want = [await linesOf(page, 'link', links[0].length), await linesOf(page, 'edit-link', links[1].length)];
+      assert.ok(want.every((n) => n >= 1 && n <= 6), `${what}: ${want}`);
+      // hidden: a dot for each of the link's characters, all in view, the box as many lines as the link takes; the
+      // buttons on one row below it
+      const hidden = await boxes(page);
+      assert.deepEqual(hidden.map((b) => [b.cls, b.text, b.whole, b.lines, b.oneRow, b.below, b.inside, b.wide]),
+        links.map((l, i) => ['link-full link-masked', '•'.repeat(l.length), true, want[i], width > 400, true, true, true]), what);
+      if (before) assert.deepEqual(before.map((b) => [b.cls, b.text, Math.round(b.height)]), hidden.map((b) => ['link-full', '', Math.round(b.height)]), `${what}: before Generate`);
+      // (on a phone the four buttons wrap to two rows, still below the box)
+      if (width <= 400) for (const b of hidden) assert.equal(b.below, true, what);
+      // shown: the whole link, as tall as before
       for (const f of ['link', 'edit-link']) await page.click(`.dlg-overlay .link-field:has([data-field="${f}"]) .link-show`);
       const shown = await boxes(page);
-      assert.deepEqual(shown.map((b) => [b.cls, b.text, b.whole]), links.map((l) => ['link-full', l, true]), what);
-      for (const b of shown) assert.ok(b.height >= b.buttons - 1, `${what}: ${b.height} vs ${b.buttons}`);
+      assert.deepEqual(shown.map((b) => [b.cls, b.text, b.whole, b.lines, b.wide]), links.map((l, i) => ['link-full', l, true, want[i], true]), what);
       assert.equal(await page.eval(() => document.documentElement.scrollWidth <= innerWidth), true, `${what}: no horizontal scroll`);
-      // hidden again: the masked box back, as tall as its buttons
+      // hidden again
       for (const f of ['link', 'edit-link']) await page.click(`.dlg-overlay .link-field:has([data-field="${f}"]) .link-show`);
-      for (const b of await boxes(page)) {
-        assert.deepEqual([b.cls, b.type, b.text], ['link-out', 'password', b.text], what);
-        assert.ok(Math.abs(b.height - b.buttons) < 2, `${what}: ${b.height} vs ${b.buttons}`);
-      }
+      assert.deepEqual((await boxes(page)).map((b) => [b.cls, b.whole]), [['link-full link-masked', true], ['link-full link-masked', true]], what);
       await page.dialogButton('Close');
       await page.waitNoDialog();
     }
     await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
   } finally { await page.setViewport(1400, 900); }
   assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
 }, { timeout: 120000 });

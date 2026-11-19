@@ -60,8 +60,8 @@ let share = null;   // { name, session, doc, link, editLink, restore, orig, time
 
 /** Share Project…'s window, live (#3996): one window, the name on it (filled with the last one, the cursor in it; once
  *  shared, shown, not a field: #4073), Start Sharing, then the viewers' and the editors' links in the same window, each
- *  made by its Generate (#4073; kept for the share's later windows), hidden (link-field.js: Generate, Copy, Show, Show
- *  QR Code); Stop Sharing, Close (Add a User…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
+ *  made by its Generate (#4073; kept for the share's later windows; Generate View-Only, Generate Edit, #4576), hidden
+ *  (link-field.js: Generate, Copy, Show, Show QR Code, in a row below a box as tall as the link); Stop Sharing, Close (Add a User…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
  *  same, that module's source opened (the followers follow it), the links opening on it (`view`: its copy's, the way
  *  switched, #3698). Resolves to the viewers' link once closed (null: not shared). */
 export async function shareProjectDialog({ module = null, view = null } = {}) {
@@ -87,8 +87,9 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   // editors' with the room's signing key)
   const linkOf = role => (share ? (module ? withTop(role === 'edit' ? share.editLink : share.link, module) : role === 'edit' ? share.editLink : share.link) : null);
   const made = role => { if (!share) return null; share.made[role] = true; return linkOf(role); };
-  const viewer = linkField({ field: 'link', onCopy: l => copyLink(l), generate: async () => made('view') });
-  const editor = linkField({ field: 'edit-link', onCopy: l => copyEditorLink(l), generate: async () => made('edit') });
+  // (their buttons in a row below boxes as tall as the links, before Generate as tall as the links it makes, #4576)
+  const viewer = linkField({ field: 'link', label: 'Generate View-Only', row: true, expected: () => linkOf('view')?.length, onCopy: l => copyLink(l), generate: async () => made('view') });
+  const editor = linkField({ field: 'edit-link', label: 'Generate Edit', row: true, expected: () => linkOf('edit')?.length, onCopy: l => copyEditorLink(l), generate: async () => made('edit') });
   const about = h('p', { class: 'collab-about' });
   const hostedNote = h('p', { class: 'collab-hosted' }, 'This page hosts it: its followers find it when they open the link, or send you a code, which Add a User… takes.');
   const links = h('div', { class: 'collab-links' },
