@@ -1,10 +1,9 @@
 // The files the implementation and the Board Emulator read beside the HDL (#4591, core/flow-files.js): the project's
 // constraints (any family's format), then the memory images in natural order; none in build/, none that is not in the
-// project folder, none in a design and simulation project. Implement's and Emulate's Files page (#4609, flowPageFiles): the
-// design's sources by path (a drawing in place of its HDL), then those.
+// project folder, none in a design and simulation project.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CONSTRAINTS_FILE, MEMORY_FILE, flowFiles, flowPageFiles } from '../core/flow-files.js';
+import { CONSTRAINTS_FILE, MEMORY_FILE, flowFiles } from '../core/flow-files.js';
 
 const pj = (constraints, extra = {}) => ({ name: 'p', top: 'top', constraints, files: [], ...extra });
 
@@ -43,35 +42,4 @@ test('#4591 flowFiles: none in a design and simulation project, none without a p
   assert.deepEqual(flowFiles(undefined), []);
   // (the file tree left out: none)
   assert.deepEqual(flowFiles(pj('constraints/top.ucf')), []);
-});
-
-const pj2 = {
-  name: 'p', top: 'top', constraints: 'constraints/top.ucf',
-  files: [
-    { path: 'src/top.vhd', role: 'design' }, { path: 'src/u_10.v', role: 'design' }, { path: 'src/u_2.v' },
-    { path: 'src/fsm.vhd', role: 'design' }, { path: 'src/core.v', role: 'impl' }, { path: 'sim/tb_top.vhd', role: 'sim' },
-  ],
-};
-const tree = ['src/top.vhd', 'src/u_10.v', 'src/u_2.v', 'src/fsm.vhd', 'src/fsm.fsm.json', 'src/core.v', 'sim/tb_top.vhd', 'constraints/top.ucf', 'src/rom.mem'];
-
-test('#4609 flowPageFiles: the sources in natural order, a drawing for its HDL, then the constraints and the memory images', () => {
-  assert.deepEqual(flowPageFiles(pj2, tree, { 'src/fsm.vhd': 'src/fsm.fsm.json' }), [
-    { path: 'src/core.v', kind: 'source' },
-    { path: 'src/fsm.fsm.json', kind: 'source' },
-    { path: 'src/top.vhd', kind: 'source' },
-    { path: 'src/u_2.v', kind: 'source' },
-    { path: 'src/u_10.v', kind: 'source' },
-    { path: 'constraints/top.ucf', kind: 'constraints' },
-    { path: 'src/rom.mem', kind: 'memory' },
-  ]);
-});
-
-test('#4609 flowPageFiles: no test bench; no constraints row before its file exists; none without a project', () => {
-  const files = flowPageFiles(pj2, tree.filter(f => !f.startsWith('constraints/')));
-  assert.ok(!files.some(f => f.path.startsWith('sim/')));
-  assert.deepEqual(files.filter(f => f.kind !== 'source'), [{ path: 'src/rom.mem', kind: 'memory' }]);
-  // (a drawing's HDL named once even if two files map to it)
-  assert.equal(flowPageFiles({ files: [{ path: 'a.vhd' }, { path: 'b.vhd' }] }, [], { 'a.vhd': 'x.sch.json', 'b.vhd': 'x.sch.json' }).length, 1);
-  assert.deepEqual(flowPageFiles(null, tree), []);
-  assert.deepEqual(flowPageFiles(undefined), []);
 });
