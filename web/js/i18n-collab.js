@@ -27,9 +27,21 @@ export const COLLAB_PT = {
   'Anyone with the editors\' link edits its text files and drawings with you, live.':
     'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.',
   // (a room the owner's page hosts, #3227: web/js/collab-host.js)
-  'Relay (optional):': 'Retransmissor (opcional):', 'Its key:': 'A sua chave:', 'https://silinx-relay.<you>.workers.dev': 'https://silinx-relay.<o-seu-nome>.workers.dev',
-  'With a relay, your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.':
-    'Com um retransmissor, quem o segue liga-se diretamente a si quando pode e, senão, através dele. Sem nenhum, encontram-no no ponto de encontro público ou enviam-lhe um código.',
+  'Cloudflare relay (optional):': 'Retransmissor Cloudflare (opcional):', 'Its key (RELAY_KEY):': 'A sua chave (RELAY_KEY):', 'https://silinx-relay.<you>.workers.dev': 'https://silinx-relay.<o-seu-nome>.workers.dev',
+  'With a relay of yours on Cloudflare (or one of the site\'s), your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.':
+    'Com um retransmissor seu no Cloudflare (ou um do site), quem o segue liga-se diretamente a si quando pode e, senão, através dele. Sem nenhum, encontram-no no ponto de encontro público ou enviam-lhe um código.',
+  // (a relay of one's own on Cloudflare, #4574: web/js/relay-setup.js, the Collaboration tab's box)
+  'Cloudflare Relay': 'Retransmissor Cloudflare', 'Cloudflare relay:': 'Retransmissor Cloudflare:',
+  'No Cloudflare relay: your followers find you at the public meeting point.': 'Sem retransmissor Cloudflare: quem o segue encontra-o no ponto de encontro público.',
+  'Set Up a Cloudflare Relay…': 'Configurar um Retransmissor Cloudflare…', 'Set Up a Cloudflare Relay': 'Configurar um Retransmissor Cloudflare',
+  'Check Cloudflare Relay': 'Verificar o Retransmissor Cloudflare', 'Change Cloudflare Relay…': 'Mudar o Retransmissor Cloudflare…', 'Forget Cloudflare Relay': 'Esquecer o Retransmissor Cloudflare',
+  'A relay of your own, on Cloudflare\'s free plan: your followers find you there, and connect through it when they cannot connect to you directly.':
+    'Um retransmissor seu, no plano gratuito do Cloudflare: quem o segue encontra-o lá, e liga-se através dele quando não se consegue ligar diretamente a si.',
+  '1. Its key, made here: copy it and keep it somewhere safe.': '1. A sua chave, feita aqui: copie-a e guarde-a num lugar seguro.',
+  '2. Deploy it: sign in to Cloudflare (or sign up, free) and give the key when it asks for RELAY_KEY.':
+    '2. Instale-o: entre no Cloudflare (ou registe-se, é gratuito) e dê a chave quando lhe pedir RELAY_KEY.',
+  'Deploy to Cloudflare': 'Instalar no Cloudflare', '3. Its address, which Cloudflare shows at the end:': '3. O seu endereço, que o Cloudflare mostra no fim:',
+  'New Key': 'Nova Chave', 'Check and Save': 'Verificar e Guardar',
   // (Add a User…, #3996: web/js/collab-users.js, its code taken: web/js/collab-host.js)
   'Add a User…': 'Adicionar um Utilizador…', 'Add a User': 'Adicionar um Utilizador', 'Connect': 'Ligar', 'Take a Code…': 'Receber um Código…',
   'Role:': 'Papel:', 'Viewer': 'Espectador', 'Editor': 'Editor',

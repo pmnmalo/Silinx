@@ -57,7 +57,7 @@ uiTest('#4543 Share Project… Relay: the page hosts it, its followers meet it a
   await boot(page);
   await newProject(page, 'Shared', 'blinky');
   await live(page);
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .collab-relay label')].map((l) => l.textContent)), ['Relay (optional):', 'Its key:']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .collab-relay label')].map((l) => l.textContent)), ['Cloudflare relay (optional):', 'Its key (RELAY_KEY):']);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-relays option')].map((o) => o.value)), [relayBase]);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.fill('.dlg-overlay input[data-field=relay]', relayBase);

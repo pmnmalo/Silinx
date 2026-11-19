@@ -6,7 +6,8 @@
 // (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, enabled as it
 // is), and live sharing (#3181): what the toolbar's presence shows and its commands
 // (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
-// read-only notice and its Live box only. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
+// read-only notice and its Live box only. The browser edition's Cloudflare Relay box (#4574, web/js/relay-setup.js): the
+// relay its live shares meet their followers at, set up, checked, forgotten. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
 // page's, so that a later command (a merge, a branch) is one more box or entry.
 import { icon } from './icons.js';
 import { h } from './ui.js';
@@ -21,6 +22,7 @@ import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { shortCommit } from '/core/git-messages.js';
 import { foldList } from '/core/list-fold.js';
+import { relayEntries } from './relay-setup.js';
 
 // the last GitHub Checks' answer, its project's (File ▸ Git ▸ GitHub Checks or the tab's)
 let checks = null;
@@ -57,11 +59,11 @@ const liveHere = () => !!(api.collab || api.standalone);
 
 function boxes() {
   if (following()) return [h('div', { class: 'collab-readonly' }, followNotice()), liveBox()];
-  if (!hasGit()) return [liveHere() ? liveBox() : null].filter(Boolean);
+  if (!hasGit()) return [liveHere() ? liveBox() : null, relayBox()].filter(Boolean);
   const items = gitMenuItems().filter(it => it !== '-');
   const by = label => items.find(it => it.label === label);
   const init = by('Store Project in a GitHub Repository…'), open = { label: 'Open from GitHub Repository…', action: () => openFromRepositoryDialog() };
-  return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks')), liveHere() ? liveBox() : null];
+  return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks')), liveHere() ? liveBox() : null, relayBox()];
 }
 
 // the remote and the branch, the commands of a repository; none: Open from GitHub Repository…, Store Project in a GitHub Repository…
@@ -144,8 +146,15 @@ function liveBox() {
     ...p.commands.map(c => command(c, 'share')));
 }
 
+// Relay (#4574): the browser edition's relay of this browser's settings, where Share Project… ▸ Live meets the
+// followers (web/js/relay-setup.js): the relay set, Check Relay, Change Relay…, Forget Relay; none: Set Up a Cloudflare
+// Relay…. Not while sharing nor in a server edition (its own relay).
+const relayBox = () => (api.standalone && !api.collab && !collab.role
+  ? box('collab-relay-box', 'Cloudflare Relay', ...relayEntries({ entry, hint, command: (it, ic) => command(it, ic) }))
+  : null);
+
 // drawn again when git's status or presence changes, after GitHub Checks, when a project opens or closes
 addEventListener('silinx:git-status', () => renderCollabPage());
 addEventListener('silinx:git-checks', e => { checks = e.detail; renderCollabPage(); });
 onLanguageChange(() => renderCollabPage());
-for (const ev of ['silinx:project-opened', 'silinx:project-closed', 'silinx:collab-presence']) addEventListener(ev, () => renderCollabPage());
+for (const ev of ['silinx:project-opened', 'silinx:project-closed', 'silinx:collab-presence', 'silinx:relay-changed']) addEventListener(ev, () => renderCollabPage());

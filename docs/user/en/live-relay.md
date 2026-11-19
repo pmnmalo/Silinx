@@ -15,21 +15,36 @@ A relay of your own on Cloudflare's free plan takes a few minutes to set up and 
 own: a teacher for their classes, a student for their group. What it costs against the free plan counts on the
 account that set it up.
 
-## Setting it up, once
+## Setting it up, once, from Silinx
 
-1. Open the [relay's page](../../../packages/silinx-relay-cloudflare/README.md) and click **Deploy to Cloudflare**.
-2. Sign in to Cloudflare, or create a free account. Let it copy the relay into your GitHub account.
-3. When it asks for `RELAY_KEY`, give a long random key (24 characters at least) and keep it somewhere safe, as you would
-   a password.
-4. At the end it shows the relay's address, `https://silinx-relay.<your name>.workers.dev`. Open it: it answers
-   "A relay of Silinx's shared projects".
+In the **Collaboration** tab, the **Cloudflare Relay** box: *Set Up a Cloudflare Relay…*.
 
-Silinx never needs your Cloudflare account nor a token of its API: only the relay's address and its key.
+1. **Its key**: Silinx makes a long random key in your page. *Copy* it, and keep it somewhere safe, as you would a
+   password.
+2. **Deploy it**: *Deploy to Cloudflare* opens in a new tab. Sign in to Cloudflare, or create a free account, and let it
+   copy the relay into your GitHub account. When it asks for `RELAY_KEY`, paste the key.
+3. **Its address**: at the end Cloudflare shows it, `https://silinx-relay.<your name>.workers.dev`. Paste it in the
+   window and click *Check and Save*.
+
+Silinx checks the relay before it keeps it: it answers as a relay of Silinx's shared projects, it lets the Silinx site
+in, and its key opens a meeting point. What it found is in the console. If the relay does not let the site in, the
+console gives the exact line to set, `ORIGINS = "…"`: set it in Cloudflare's dashboard (the Worker's *Settings* ▸
+*Variables and Secrets*) or in `wrangler.toml`, and deploy it again.
+
+The box then shows the relay, with *Check Cloudflare Relay*, *Change Cloudflare Relay…* and *Forget Cloudflare Relay*.
+Silinx never needs your Cloudflare account nor a token of its API: only the relay's address and its key, which stay in
+this browser and never go into a link.
+
+### From a terminal instead
+
+In the [relay's folder](../../../packages/silinx-relay-cloudflare/README.md): `npx wrangler deploy`, then
+`npx wrangler secret put RELAY_KEY`. Then give its address and key in *Set Up a Cloudflare Relay…*.
 
 ## Sharing through it
 
-In *Share Project…* ▸ *Live*, fill in **Relay** (the address) and **Its key**, then *Start Sharing*. This browser
-remembers them. The link names the relay, so your followers need nothing but the link: no key, no account.
+*Share Project…* ▸ *Live* uses it by default: **Cloudflare relay** (the address) and **Its key (RELAY_KEY)** are filled
+in. Change them there, or clear them to share without it. The link names the relay, so your followers need nothing but
+the link: no key, no account.
 
 The relay sees no file. Everything is encrypted with the key in the link, and the relay never has that key. It sees only
 how many messages pass and when.
@@ -59,4 +74,5 @@ code, and those whose direct path fails cannot follow.
 
 A Silinx server (`silinx serve`) has a relay of its own, which its pages use. Another server's relay can be named in
 `config.json` (`relay.relays`, with `relay.key` on that server). The MCP server's share_project and follow_project go
-through the relays the user's settings name, a Cloudflare relay too.
+through the relays the user's settings name. Its `live_relay` tool sets a Cloudflare relay of its own (a key made,
+the relay checked, kept in `config.json`), and `share_project` with `relay: true` shares through it.

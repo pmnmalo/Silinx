@@ -15,23 +15,36 @@ Um retransmissor seu no plano gratuito do Cloudflare monta-se em poucos minutos 
 monta o seu: o professor para as suas turmas, o aluno para o seu grupo. O que gasta do plano gratuito conta na conta de
 quem o montou.
 
-## Montá-lo, uma vez
+## Montá-lo, uma vez, a partir do Silinx
 
-1. Abra a [página do retransmissor](../../../packages/silinx-relay-cloudflare/README.md) e carregue em **Deploy to
-   Cloudflare**.
-2. Entre no Cloudflare, ou crie uma conta gratuita. Deixe-o copiar o retransmissor para a sua conta do GitHub.
-3. Quando pedir `RELAY_KEY`, dê uma chave longa e aleatória (24 caracteres pelo menos) e guarde-a bem, como uma palavra-passe.
-4. No fim, mostra o endereço do retransmissor, `https://silinx-relay.<o seu nome>.workers.dev`. Abra-o: responde
-   "A relay of Silinx's shared projects".
+No separador **Colaboração**, a caixa **Retransmissor Cloudflare**: *Configurar um Retransmissor Cloudflare…*.
 
-O Silinx nunca precisa da sua conta do Cloudflare nem de um token da sua API: só do endereço do retransmissor e da sua
-chave.
+1. **A sua chave**: o Silinx faz uma chave longa e aleatória na sua página. *Copie-a* e guarde-a bem, como uma
+   palavra-passe.
+2. **Instale-o**: *Instalar no Cloudflare* abre num separador novo. Entre no Cloudflare, ou crie uma conta gratuita, e
+   deixe-o copiar o retransmissor para a sua conta do GitHub. Quando pedir `RELAY_KEY`, cole a chave.
+3. **O seu endereço**: no fim, o Cloudflare mostra-o, `https://silinx-relay.<o seu nome>.workers.dev`. Cole-o na janela e
+   carregue em *Verificar e Guardar*.
+
+O Silinx verifica o retransmissor antes de o guardar: responde como um retransmissor dos projetos partilhados do Silinx,
+deixa entrar o sítio do Silinx, e a sua chave abre um ponto de encontro. O que encontrou está na consola. Se o
+retransmissor não deixar entrar o sítio, a consola dá a linha exata a definir, `ORIGINS = "…"`: defina-a no painel do
+Cloudflare (*Settings* ▸ *Variables and Secrets* do Worker) ou no `wrangler.toml`, e instale-o de novo.
+
+A caixa mostra então o retransmissor, com *Verificar o Retransmissor Cloudflare*, *Mudar o Retransmissor Cloudflare…* e
+*Esquecer o Retransmissor Cloudflare*. O Silinx nunca precisa da sua conta do Cloudflare nem de um token da sua API: só
+do endereço do retransmissor e da sua chave, que ficam neste browser e nunca vão numa ligação.
+
+### A partir de um terminal
+
+Na [pasta do retransmissor](../../../packages/silinx-relay-cloudflare/README.md): `npx wrangler deploy`, e depois
+`npx wrangler secret put RELAY_KEY`. Depois indique o endereço e a chave em *Configurar um Retransmissor Cloudflare…*.
 
 ## Partilhar através dele
 
-Em *Partilhar Projeto…* ▸ *Ao vivo*, preencha **Retransmissor** (o endereço) e **A sua chave**, e depois *Começar a
-Partilhar*. Este browser lembra-se deles. A ligação indica o retransmissor, por isso quem o segue só precisa da ligação:
-nem chave, nem conta.
+*Partilhar Projeto…* ▸ *Ao vivo* usa-o por omissão: **Retransmissor Cloudflare** (o endereço) e **A sua chave
+(RELAY_KEY)** vêm preenchidos. Mude-os aí, ou apague-os para partilhar sem ele. A ligação indica o retransmissor, por
+isso quem o segue só precisa da ligação: nem chave, nem conta.
 
 O retransmissor não vê nenhum ficheiro. Tudo vai cifrado com a chave da ligação, que o retransmissor nunca tem. Só vê
 quantas mensagens passam e quando.
@@ -61,5 +74,6 @@ público ou um código, e quem não consegue ligar-se diretamente não pode segu
 
 Um servidor Silinx (`silinx serve`) tem o seu próprio retransmissor, que as suas páginas usam. O retransmissor de outro
 servidor pode ser indicado no `config.json` (`relay.relays`, com `relay.key` nesse servidor). O share_project e o
-follow_project do servidor MCP passam pelos retransmissores que as definições do utilizador indicam, um do Cloudflare
-também.
+follow_project do servidor MCP passam pelos retransmissores que as definições do utilizador indicam. A sua ferramenta
+`live_relay` define um retransmissor Cloudflare seu (uma chave feita, o retransmissor verificado, guardado no
+`config.json`), e o `share_project` com `relay: true` partilha através dele.

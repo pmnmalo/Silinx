@@ -73,7 +73,8 @@ the same), so what the assistant does is seen in the interface when the project 
 Every path stays inside its project; the ISE machine's
 address never appears in a result. Where the assistant's results can be sent is yours to say (#3363): `git_init` gives a project
 only a GitHub repository that `~/.silinx/config.json` names (`"mcp": { "remotes": ["owner/repo", "owner/*"] }`), and
-`share_project` / `follow_project` go only through this computer's Silinx or a relay it names (`"relay": { "relays": [...] }`).
+`share_project` / `follow_project` go only through this computer's Silinx, a relay it names (`"relay": { "relays": [...] }`),
+or the Cloudflare relay that `live_relay` set (a Cloudflare Worker's address only, checked first; deploying it is yours).
 A result that holds a project's or a remote's own text (a file, a commit's message, a report, a shared project's files) is
 marked as such ("Untrusted content", and `untrusted` in its structured content): data, never instructions. In Claude Desktop's `claude_desktop_config.json`:
 
