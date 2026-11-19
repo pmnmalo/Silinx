@@ -172,6 +172,12 @@ html[data-layout="tasks"][data-task="sim"]:not([data-max="on"], [data-side="fold
 html[data-layout="tasks"][data-task="sim"]:not([data-max="on"], [data-side="folded"]) #workspace:has(> #task-sim-panel:not([hidden])) > #task-empty { left: min(var(--left-w, 344px), 45%); }
 /* (a test bench's HDL open, no simulation: beside the panel, under the tabs that start at its edge, #1396) */
 html[data-layout="tasks"][data-task="sim"]:not([data-max="on"], [data-side="folded"]) #workspace:has(> #task-sim-panel:not([hidden])) > .doc:not([hidden]) { left: var(--sim-side, 0px); }
+/* its width dragged as the other tasks' side panel's (#4627, web/js/tasks-sim-split.js): a handle over its right edge,
+   the side panel's splitter's look; SSim's own splitter not shown (the handle is the panel's, whatever it shows) */
+#task-sim-split { display: none; }
+html[data-layout="tasks"][data-task="sim"]:not([data-max="on"], [data-side="folded"]) #task-sim-split:not([hidden]) { display: block; position: absolute; z-index: 3;
+  top: 0; bottom: 0; left: calc(var(--sim-side, 0px) - 3px); width: 5px; margin: 0; }
+html[data-layout="tasks"] .isim .isim-split-main { display: none; }
 /* (folded by the side panel's button, as the other tasks' side panels: #1428) */
 #task-sim-panel > .task-sim-trees { flex: 1; min-height: 0; overflow: auto; }
 #task-sim-panel .task-sim-choice { padding: 3px 0; }

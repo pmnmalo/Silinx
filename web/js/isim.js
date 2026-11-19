@@ -183,6 +183,12 @@ export const pathOf = (x) => '/' + String(x.path || x.name).replace(/\./g, '/');
 // ------------------------------------------------------------------------------- mount
 
 
+// SSim's Instances and Objects in the Tasks interface: the other tasks' side panel's width, as the viewer left it, at
+// most 45 % of the work area, as Simulate's panel with nothing simulated (#1409); followed as Simulate's handle drags
+// it (#4627: web/js/tasks-sim-split.js, the window's resize; SSim's own splitter not shown there, web/css/tasks.css).
+// 0: another interface.
+const tasksSide = () => { const r = document.documentElement; return r.dataset.layout === 'tasks' ? Math.min(parseFloat(getComputedStyle(r).getPropertyValue('--left-w')) || 344, Math.round((document.getElementById('workspace')?.clientWidth || innerWidth) * 0.45)) : 0; };
+
 export function mountISim(container, opts = {}) {
   const { design, sim } = opts;
   const onOpenSource = opts.onOpenSource || null;
@@ -428,15 +434,14 @@ export function mountISim(container, opts = {}) {
       track(el, e, (ev) => { set(v0 + ((dirV ? ev.clientX : ev.clientY) - p0)); }, () => root.classList.remove('isim-resizing-v', 'isim-resizing-h'));
     });
   }
-  // (its Instances and Objects: 290 px, as ISim's; in the Tasks interface the other tasks' side panel's width, as the viewer
-  // left it, at most 45 % of the work area, as Simulate's panel with nothing simulated, #1409)
-  const tasksSide = () => { const r = document.documentElement; return r.dataset.layout === 'tasks' ? Math.min(parseFloat(getComputedStyle(r).getPropertyValue('--left-w')) || 344, Math.round((document.getElementById('workspace')?.clientWidth || innerWidth) * 0.45)) : 0; };
+  // (its Instances and Objects: 290 px, as ISim's; in the Tasks interface the other tasks' side panel's width: tasksSide)
   let leftW = tasksSide() || 290, consoleH = 170, instH = null;
   const applySizes = () => {
     leftEl.style.width = leftW + 'px'; bottomEl.style.height = consoleH + 'px';
     if (instH != null) $('.isim-inst-panel').style.flex = `0 0 ${instH}px`;
   };
   hookSplit($('.isim-split-main'), true, () => leftW, (v) => { leftW = clamp(v, 140, 700); applySizes(); });
+  on(window, 'resize', () => { const w = tasksSide(); if (w && w !== leftW) { leftW = w; applySizes(); } });
   // bottom splitter: dragging down shrinks the console
   hookSplit($('.isim-split-bottom'), false, () => -consoleH, (v) => { consoleH = clamp(-v, 60, 700); applySizes(); });
   hookSplit($('.isim-split-left'), false, () => instH ?? $('.isim-inst-panel').getBoundingClientRect().height, (v) => { instH = clamp(v, 60, 900); applySizes(); });

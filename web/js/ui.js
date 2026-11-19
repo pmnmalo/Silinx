@@ -305,8 +305,12 @@ export function menuBar(el, menus) {
 }
 
 // ------------------------------------------------------------------ splitters
-// Drag handle between two flex children; `target` is the element whose size changes.
-export function splitter(handle, target, { dir = 'h', min = 80, max = 2000, invert = false, storageKey } = {}) {
+// Drag handle between two flex children; `target` is the element whose size changes. `size`: its size when a drag
+// starts (else its own), `max` a number or a function (the room now), `onSize(px)`: called with each new size, before
+// the window's resize (Simulate's side panel, whose width is #left's, #4627).
+/** The side panel's splitter (#v-split, #left): its limits and its key, the tasks' all (Simulate's too, #4627). */
+export const LEFT_SPLIT = { dir: 'h', min: 180, max: 700, storageKey: 'xl.leftW' };
+export function splitter(handle, target, { dir = 'h', min = 80, max = 2000, invert = false, storageKey, size = null, onSize = null } = {}) {
   handle.classList.add('splitter', dir === 'h' ? 'split-h' : 'split-v');
   if (storageKey) {
     try { const v = localStorage.getItem(prefKey(storageKey)); if (v) target.style[dir === 'h' ? 'width' : 'height'] = v; } catch { /* storage unavailable */ }
@@ -318,13 +322,15 @@ export function splitter(handle, target, { dir = 'h', min = 80, max = 2000, inve
     if (!e.isPrimary) return;
     try { handle.setPointerCapture(e.pointerId); } catch { /* not an active pointer */ }
     const start = dir === 'h' ? e.clientX : e.clientY;
-    const size0 = dir === 'h' ? target.offsetWidth : target.offsetHeight;
+    const size0 = size ? size() : dir === 'h' ? target.offsetWidth : target.offsetHeight;
+    const top = typeof max === 'function' ? max() : max;
     document.body.classList.add(dir === 'h' ? 'resizing-h' : 'resizing-v');
     const mv = ev => {
       if (ev.pointerId !== e.pointerId) return;
       const d = (dir === 'h' ? ev.clientX : ev.clientY) - start;
-      const sz = Math.max(min, Math.min(max, size0 + (invert ? -d : d)));
+      const sz = Math.max(min, Math.min(top, size0 + (invert ? -d : d)));
       target.style[dir === 'h' ? 'width' : 'height'] = `${sz}px`;
+      onSize?.(sz);
       dispatchEvent(new Event('resize'));
     };
     const up = ev => {

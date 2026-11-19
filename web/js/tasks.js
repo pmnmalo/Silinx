@@ -30,6 +30,7 @@ import { icons } from './icons.js';
 import { layoutToggled } from './layout-fit.js';
 import { messagesTask, initMessages } from './messages.js';
 import { mountSimPanel } from './tasks-sim-panel.js';
+import { mountSimSplit } from './tasks-sim-split.js';
 import { fitSimTabs, placeSimSide, placeSimToolbar, refreshBench, simChoices, simTarget, simulate } from './tasks-sim.js';
 import { fitBoard, initEmulate } from './tasks-emu.js';
 import { implementationEnded, showTopProcesses } from './tasks-impl.js';
@@ -378,7 +379,7 @@ function taskButton(t) {
 
 // the task switchers, the task's bar and the page of a task with no document: there in the Tasks interface
 // only (the other interfaces' pages, their tests and their translations do not have them)
-const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-flow-files-tab', 'task-src-bar', 'task-files-bar', 'task-close-bar'];   // (their ids)
+const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-sim-split', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-flow-files-tab', 'task-src-bar', 'task-files-bar', 'task-close-bar'];   // (their ids)
 const PAGE_NAME = { start: 'Start', design: 'Design', test: 'Test', files: 'Files', libraries: 'Libraries', teaching: 'Teaching', collab: 'Collaboration', procs: 'Implementation', emu: 'Emulate' };
 function build() {
   const $ = id => document.getElementById(id);
@@ -412,6 +413,7 @@ function build() {
   $('workspace').append(h('div', { id: 'task-empty', hidden: true },
     h('span', { class: 'ico' }), h('h2'), h('p'), h('button', { class: 'm-step', type: 'button', onclick: runMain })));
   simPanel = mountSimPanel(app, { simulate: () => simulate(app) });
+  mountSimSplit(document.getElementById('task-sim-panel'));   // (its width dragged, as the other tasks' side panel's, #4627)
   // Edit's pages: tabs above the hierarchy, the closed pages' name their tooltip (web/css/tasks.css, #984); the test
   // benches a page of their own, after Design (#1016)
   // Implement's side panel, its Processes, under a tab as Edit's pages (#1160: shown in Implement only, web/css/tasks.css)
