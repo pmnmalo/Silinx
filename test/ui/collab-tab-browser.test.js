@@ -1,7 +1,7 @@
 // UI: the Collaboration tab (#4215, web/js/collab-tab.js) in the browser edition, through GitHub's REST API (the site,
 // test/ui/site-lib.js, with test/fake-github.mjs for GitHub: no network), in both interfaces (SILINX_UI_INTERFACE): a
-// repository opened from the Start page (the Start tab alone with no project, #4257, #4322); Commit and Push… (no Push: a commit is pushed at once); the sign-in's state, Sign out of
-// GitHub giving Sign in with GitHub…; GitHub Checks from the tab, its result kept in the tab (none, running, passed,
+// repository opened from the Start page (the Start tab alone with no project, #4257, #4322); Commit and Push… (no Push: a commit is pushed at once); the Git
+// Repository box (#4581: the sign-in first, Changes… with how many, GitHub Checks last); Sign out of GitHub giving Sign in with GitHub…; GitHub Checks from the tab, its result kept in the tab (none, running, passed,
 // failed), its details in the console, with a fine-grained token too (#4237: the workflow's jobs, or the
 // permissions to add); the Sharing box; in Portuguese; no warnings. (The server editions': test/ui/collab-tab.test.js.)
 import { before, after } from 'node:test';
@@ -81,47 +81,52 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Reposit
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   await page.leftTab('collab');
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks'], 'signed in');
-  // Commit and Push… (no Push to GitHub)
-  const REPO_ENTRIES = ['GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', 'History…'];
-  await waitBox(page, 'Repository', REPO_ENTRIES, 'the repository');
-  await waitBox(page, 'Changes', ['No change since the last commit.'], 'no change');
+  // one Git Repository box (#4581): the sign-in first, Commit and Push… (no Push to GitHub), Changes…, GitHub Checks
+  const REPO_ENTRIES = (n = 0, ...tail) => ['Sign out of GitHub', 'GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…',
+    n ? `Changes… (${n})` : 'Changes…', 'History…', 'GitHub Checks', ...tail];
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(), 'signed in, no change');
+  assert.deepEqual((await page.eval(() => [...document.querySelectorAll('#collab-page .start-box h3')].map((e) => e.textContent))), ['Git Repository', 'Sharing', 'Cloudflare Relay']);   // (the relay's box: #4574)
   // (Sharing, #4259: the browser edition's page hosts live sharing)
   assert.deepEqual(await boxOf(page, 'Sharing'), ['Not shared live.', 'Share a Copy…', 'Share Live…', 'To follow a project shared live, open its link.']);
   const short = (s) => s.slice(0, 7);
   // GitHub Checks from the tab: none yet, then running, then failed and passed: kept in the tab, the details in the console
   await tabCommand(page, 'GitHub Checks');
   await page.waitConsole(new RegExp(`No check on GitHub for commit ${short(gh.head(REPO))}`));
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `No check on GitHub (${short(gh.head(REPO))})`], 'no check');
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(0, `No check on GitHub (${short(gh.head(REPO))})`), 'no check');
   const counter = gh.filesAt(REPO, 'main')['src/counter.v'];
   await edit(page, 'src/counter.v', `${counter}// done\n`);
   await page.leftTab('collab');
-  await waitBox(page, 'Changes', ['M src/counter.v'], 'the change');
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(1, `No check on GitHub (${short(gh.head(REPO))})`), 'the change counted');
+  await tabCommand(page, 'Changes…');
+  await page.waitDialog('Changes');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .git-change')].map((li) => [...li.childNodes].map((n) => n.textContent).join(' '))), ['M src/counter.v (changed)']);
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
   await tabCommand(page, 'Commit and Push…');
   await page.waitDialog('Commit and Push');
   await page.fill('.dlg-overlay .git-message', 'Done');
   await page.dialogButton('Commit and Push');
   await page.waitNoDialog();
   await page.waitConsole(/Pushed main to course\/collab-ana\./);
-  await waitBox(page, 'Changes', ['No change since the last commit.'], 'committed and pushed');
+  await page.waitFor(() => window.SilinxApp.S.git?.files.length === 0, [], { what: 'committed and pushed' });
   const sha = gh.head(REPO);
   gh.setChecks(REPO, sha, [{ name: 'grade', status: 'queued' }]);
   await tabCommand(page, 'GitHub Checks');
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `Checks running (${short(sha)})`], 'running');
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(0, `Checks running (${short(sha)})`), 'running');
   gh.setChecks(REPO, sha, [{ name: 'grade', status: 'completed', conclusion: 'failure', annotations: [{ level: 'failure', title: 'Silinx: count', message: 'WA Wrong Answer, 0 / 30' }] }]);
   await tabCommand(page, 'GitHub Checks');
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `Checks failed (${short(sha)})`], 'failed');
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(0, `Checks failed (${short(sha)})`), 'failed');
   await page.waitConsole(/ERROR: {3}Silinx: count: WA Wrong Answer, 0 \/ 30/);
   gh.setChecks(REPO, sha, [{ name: 'grade', status: 'completed', conclusion: 'success' }]);
   await tabCommand(page, 'GitHub Checks');
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `Checks passed (${short(sha)})`], 'passed');
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(0, `Checks passed (${short(sha)})`), 'passed');
   assert.equal(await page.eval(() => document.querySelector('#collab-page .collab-checks').dataset.state), 'success');
   // (#4237) a fine-grained token: GitHub's Checks refused, the workflow's jobs read instead (the tab's result the same);
   // neither readable: the console names the permissions to add
   gh.fineGrained({ actions: true, statuses: true });
   gh.setRuns(REPO, sha, [{ name: 'Classroom', status: 'completed', conclusion: 'failure', jobs: [{ name: 'grade', status: 'completed', conclusion: 'failure' }] }]);
   await tabCommand(page, 'GitHub Checks');
-  await waitBox(page, 'GitHub', ['Signed in to GitHub.', 'Sign out of GitHub', 'GitHub Checks', `Checks failed (${short(sha)})`], 'failed, from the workflow');
+  await waitBox(page, 'Git Repository', REPO_ENTRIES(0, `Checks failed (${short(sha)})`), 'failed, from the workflow');
   await page.waitConsole(new RegExp(`This token cannot read GitHub's Checks \\(a fine-grained personal access token has no such permission\\): the workflows' jobs and the commit's statuses instead, without the tests' verdicts \\(their annotations\\)\\.\\nERROR: grade: failure \\(commit ${short(sha)}\\): https://github\\.com/course/collab-ana/actions/runs/\\d+/job/\\d+`));
   gh.fineGrained({});
   await tabCommand(page, 'GitHub Checks');
@@ -133,14 +138,13 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Reposit
     await boot(page);
     await page.waitFor(() => document.documentElement.lang === 'pt' && window.Silinx.project?.name === 'collab-ana' && !!window.SilinxApp.S.git, [], { what: 'Portuguese, collab-ana' });
     await page.leftTab('collab');
-    await waitBox(page, 'GitHub', ['Com sessão iniciada no GitHub.', 'Terminar sessão no GitHub', 'Verificações do GitHub (Checks)'], 'Portuguese');
-    assert.deepEqual(await boxOf(page, 'Repositório'), ['GitHub: course/collab-ana', 'Ramo: main', 'Registar e Enviar (Commit e Push)…', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Histórico…']);
-    assert.deepEqual(await boxOf(page, 'Alterações'), ['Nenhuma alteração desde o último commit.']);
+    const PT = (sign) => [sign, 'GitHub: course/collab-ana', 'Ramo: main', 'Registar e Enviar (Commit e Push)…', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Alterações…', 'Histórico…', 'Verificações do GitHub (Checks)'];
+    await waitBox(page, 'Repositório Git', PT('Terminar sessão no GitHub'), 'Portuguese');
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab] .tab-lbl').textContent), 'Colaboração');
     await tabCommand(page, 'Terminar sessão no GitHub');
     await page.waitDialog('Terminar sessão no GitHub');
     await page.dialogButton('Terminar Sessão');
-    await waitBox(page, 'GitHub', ['Sem sessão iniciada no GitHub.', 'Iniciar sessão no GitHub…', 'Verificações do GitHub (Checks)'], 'signed out');
+    await waitBox(page, 'Repositório Git', PT('Iniciar sessão no GitHub…'), 'signed out');
   } finally {
     await page.eval(() => localStorage.removeItem('silinx.lang'));
   }

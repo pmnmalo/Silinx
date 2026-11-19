@@ -1,7 +1,7 @@
 // Git in the interface (#3195: the server editions, through the system's git, server/git.js; #3196: the browser edition,
 // through GitHub's REST API, web/js/git-browser.js, where a commit is pushed at once and the sign-in is Silinx's): File ▸
 // Open from GitHub Repository…, File ▸ Git ▸ (Commit…, Push to GitHub, Pull from GitHub, New Branch…, Switch Branch…, Merge
-// Branch… (#4213, web/js/git-branch.js), History… (web/js/git-history.js), GitHub
+// Branch… (#4213, web/js/git-branch.js), Changes… (#4581, web/js/git-changes.js), History… (web/js/git-history.js), GitHub
 // Checks (#3194: what GitHub's workflows said of the last push),
 // Store Project in a GitHub Repository…), the same in the Design pane's
 // project menu (the Silinx interface has no File menu) and in the Collaboration tab (#4215, web/js/collab-tab.js), and the Design pane's marks of the files changed or new since
@@ -282,6 +282,8 @@ export const gitMenuItems = () => [
   { label: 'Pull from GitHub', action: () => gitPull(), disabled: !S.git },
   // (the branches, #4213: web/js/git-branch.js)
   ...branchMenuItems(),
+  // (the changes since the last commit in a window, #4581: web/js/git-changes.js)
+  { label: 'Changes…', action: () => import('./git-changes.js').then(m => m.changesDialog()), disabled: !S.git },
   { label: 'History…', action: () => import('./git-history.js').then(m => m.historyDialog()), disabled: !S.git },
   { label: 'GitHub Checks', action: () => gitChecks(), disabled: !S.git },
   '-',

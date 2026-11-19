@@ -496,9 +496,9 @@ import does. For a group working at the same time, Share Project's live editing 
 ## A project on GitHub (git, a GitHub Classroom assignment)
 
 On your computer or a Silinx server, a project can live in a GitHub repository, through the system's git. **The
-Collaboration tab** (the side panel's last, after Teaching, in both interfaces) gathers its commands: the project's
-GitHub repository and branch (the commits to push or to pull), its changed files with the Design pane's marks (a
-click compares one with the last commit), Commit…, Push, Pull, History…, the sign-in and the last push's checks; for
+Collaboration tab** (the side panel's last, after Teaching, in both interfaces) gathers its commands in its Git
+Repository box: the project's GitHub repository and branch (the commits to push or to pull, the files in conflict), Commit…, Push, Pull, Changes…
+(how many files changed), History…, the sign-in and the last push's checks; for
 a project with no repository, Store Project in a GitHub Repository… and Open from GitHub Repository…; and its Sharing box: Share a Copy…
 (Share Project…'s copy), and live sharing (Share Live…, who is in, the links, Stop Sharing, Follow, Stop Following). The menus keep the same commands:
 - **Open from GitHub Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
@@ -513,10 +513,11 @@ a project with no repository, Store Project in a GitHub Repository… and Open f
   each person of a group works on a branch of their own, and Merge Branch… merges another person's branch into theirs
   as Pull does (a drawing by its objects, a file by its lines, the same objects or lines chosen in the merge view),
   with a merge commit. Switch and Merge need the changes committed first.
-- **The Design pane** marks what changed (M) or is new (N) since the last commit; the Collaboration tab lists every
-  changed file, deleted ones (D) too.
+- **The Design pane** marks what changed (M) or is new (N) since the last commit; **Changes…** (the Collaboration tab,
+  before History…; the Git menus) lists every changed file in a window, deleted ones (D) too, the files in conflict (C)
+  first, and a click compares a file with the last commit; the window follows the changes while it is open.
 - **History…** lists the commits, and opens a file as it was in one, read only.
-- **Compare** (in History… and Commit…) shows a drawing's two versions side by side, what was added, removed, moved
+- **Compare** (in Changes…, History… and Commit…) shows a drawing's two versions side by side, what was added, removed, moved
   or changed marked on them, and an HDL file's lines side by side.
 - **A drawing changed on both sides** (a circuit too) is merged by its objects on Pull, never as text, and its HDL
   made again; two objects both sides added are both kept, even under one id; for an object both sides changed, Pull
@@ -530,7 +531,7 @@ SSH key): Silinx never asks for, stores or logs a password or a token. A server'
 
 In the browser edition the same commands go through GitHub's API (there is no git in a browser):
 - **Open from GitHub Repository…** opens a public repository with no sign-in.
-- **Sign in with GitHub…** (the Collaboration tab, which says whether you are signed in; the Git commands): a private repository, a commit and a pull need it. Where the
+- **Sign in with GitHub…** (the first line of the Collaboration tab's Git Repository box, Sign out of GitHub once signed in; the Git commands): a private repository, a commit and a pull need it. Where the
   site has Silinx's sign-in relay, it gives a code to enter at github.com/login/device; elsewhere, it asks for a
   fine-grained personal access token of yours (github.com/settings/personal-access-tokens/new: the repositories to
   open, Contents read and write; Actions and Commit statuses read-only for GitHub Checks, which then reads the

@@ -1,7 +1,9 @@
 // The Collaboration tab (#4215): a tab of the Design pane's row (Start, Design, Files, Libraries, Collaboration,
 // Teaching: #4577), in both interfaces, gathering the git commands (#3194, web/js/git.js) as the Teaching tab gathers the
-// labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
-// a file with the last commit), Commit…, Push, Pull, New Branch…, Switch Branch…, Merge Branch… (#4213), History…, the GitHub sign-in and the last push's checks; a project
+// labs (#3533): the project's GitHub repository and branch (how many files are in conflict), Commit…, Push, Pull, New
+// Branch…, Switch Branch…, Merge Branch… (#4213), Changes… (#4581: how many, the window of web/js/git-changes.js, which
+// replaced the Changes box), History…, GitHub Checks and the last push's checks, the GitHub sign-in first: one Git
+// Repository box (#4581); a project
 // with no repository: Store Project in a GitHub Repository…, Open from GitHub Repository…. The same items as the Git submenu's
 // (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, enabled as it
 // is), and live sharing (#3181): what the toolbar's presence shows and its commands
@@ -18,16 +20,12 @@ import { collab, following, followNotice } from './collab-state.js';
 import { presence } from './collab-presence.js';
 import { liveProblem, shareLiveDialog, shareCopyDialog, canShare } from './share-how.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
-import { designOnly } from './design-only.js';
-import { hdlSideFile } from '/core/project-kind.js';
-import { shortCommit } from '/core/git-messages.js';
-import { foldList } from '/core/list-fold.js';
+import { shownChanges } from './git-changes.js';
+import { shortCommit, conflictCount } from '/core/git-messages.js';
 import { relayEntries } from './relay-setup.js';
 
 // the last GitHub Checks' answer, its project's (File ▸ Git ▸ GitHub Checks or the tab's)
 let checks = null;
-// the Changes box unfolded (#4571: "N more…"; "Show fewer" folds it again), kept while the page is drawn again
-let changesOpen = false;
 const CHECKS = { success: 'Checks passed', failure: 'Checks failed', pending: 'Checks running', none: 'No check on GitHub' };
 
 const entry = (ic, ...kids) => h('div', { class: 'entry' }, icon(ic), ...kids);
@@ -37,9 +35,15 @@ const box = (cls, title, ...kids) => h('div', { class: `start-box ${cls}` }, h('
 const command = (it, ic) => (it.disabled
   ? entry(ic, h('a', { class: 'disabled', 'aria-disabled': 'true' }, it.label))
   : entry(ic, h('a', { onclick: () => Promise.resolve(it.action()).finally(renderCollabPage) }, it.label)));
-const ICON = { 'Commit…': 'save', 'Commit and Push…': 'save', 'Push to GitHub': 'up', 'Pull from GitHub': 'refresh', 'History…': 'summary',
+const ICON = { 'Commit…': 'save', 'Commit and Push…': 'save', 'Push to GitHub': 'up', 'Pull from GitHub': 'refresh', 'Changes…': 'report', 'History…': 'summary',
   'GitHub Checks': 'run', 'New Branch…': 'add', 'Switch Branch…': 'open', 'Merge Branch…': 'procGroup', 'Store Project in a GitHub Repository…': 'project', 'Sign in with GitHub…': 'project', 'Sign out of GitHub': 'project' };
 const cmd = it => command(it, ICON[it.label] || 'file');
+// Changes… with how many there are (#4581), as the window lists them
+function changesCmd(it) {
+  const e = cmd(it), n = shownChanges().length;
+  if (n) e.append(h('span', { class: 'collab-count', 'data-no-i18n': '' }, `(${n})`));
+  return e;
+}
 
 /** The tab shown or hidden with git, and its page drawn (#collab-page); kept when it is the same, as the Teaching page. */
 export function renderCollabPage() {
@@ -63,19 +67,25 @@ function boxes() {
   const items = gitMenuItems().filter(it => it !== '-');
   const by = label => items.find(it => it.label === label);
   const init = by('Store Project in a GitHub Repository…'), open = { label: 'Open from GitHub Repository…', action: () => openFromRepositoryDialog() };
-  return [repositoryBox(items, init, open), S.git ? changesBox() : null, githubBox(items, by('GitHub Checks')), liveHere() ? liveBox() : null, relayBox()];
+  return [repositoryBox(items, init, open), liveHere() ? liveBox() : null, relayBox()];
 }
 
-// the remote and the branch, the commands of a repository; none: Open from GitHub Repository…, Store Project in a GitHub Repository…
+// Git Repository (#4581: the GitHub box's sign-in and checks in it): the sign-in first (the browser edition's command; the
+// server editions' git signs in itself), the remote and the branch, the commands of a repository, GitHub Checks and the
+// last push's checks; none: Open from GitHub Repository…, Store Project in a GitHub Repository…
 function repositoryBox(items, init, open) {
   const g = S.git;
+  const sign = items.find(it => /^Sign (in|out)/.test(it.label));
+  const signIn = sign ? cmd(sign) : hint('git signs in to GitHub with its own credentials.');
   if (!g) {
-    return box('collab-repo', 'Repository',
+    return box('collab-repo', 'Git Repository', signIn,
       hint(S.project ? 'The project is not in a git repository.' : 'No project open.'),
       cmd(open), command({ ...init, disabled: !S.project }, 'project'));   // (Open first, #4343)
   }
-  const where = !g.upstream ? 'Not pushed yet' : null;
-  return box('collab-repo', 'Repository',
+  const where = !g.upstream ? 'Not pushed yet' : null, conflicts = conflictCount(shownChanges());
+  const kept = checks?.project === S.project?.name ? checks.checks : null;
+  const state = kept && (kept.state === 'none' ? 'none' : kept.conclusion || 'pending');
+  return box('collab-repo', 'Git Repository', signIn,
     g.remote
       ? entry('project', 'GitHub:', h('a', { class: 'collab-remote', 'data-no-i18n': '', href: `https://github.com/${g.remote}`, target: '_blank', rel: 'noopener noreferrer' }, g.remote))
       : hint('No GitHub repository (origin).'),
@@ -83,39 +93,11 @@ function repositoryBox(items, init, open) {
     where ? hint(where) : null,
     g.ahead ? hint(`${g.ahead} commit(s) to push`) : null,
     g.behind ? hint(`${g.behind} commit(s) to pull`) : null,
-    ...items.filter(it => /^(Commit|Push|Pull|History|New Branch|Switch Branch|Merge Branch)/.test(it.label)).map(cmd),
+    // (a pull's or a merge's conflicts left unresolved: said here, as the Design pane's C marks, #4581)
+    conflicts ? h('div', { class: 'entry hint collab-conflicts' }, `${conflicts} file(s) in conflict`) : null,
+    ...items.filter(it => /^(Commit|Push|Pull|Changes|History|New Branch|Switch Branch|Merge Branch|GitHub Checks)/.test(it.label)).map(it => (it.label === 'Changes…' ? changesCmd(it) : cmd(it))),
+    kept ? h('div', { class: 'entry collab-checks', 'data-state': state }, h('span', {}, CHECKS[state]), h('span', { 'data-no-i18n': '' }, `(${shortCommit(kept.commit)})`)) : null,
     g.remote ? null : cmd(init));
-}
-
-// the files changed since the last commit, with the Design pane's marks; a click: Compare (#3197); a long list folded,
-// its conflicts first (#4571: core/list-fold.js)
-function changesBox() {
-  const files = S.git.files.filter(f => !designOnly() || !hdlSideFile(f.path));   // (a design project's HDL: never listed, #3891)
-  const compare = path => import('./git-history.js').then(m => m.compareNow(path));
-  const { shown, more } = foldList(files, { open: changesOpen, first: f => f.state === 'conflict' });
-  const fold = open => () => { changesOpen = open; renderCollabPage(); };
-  return box('collab-changes', 'Changes',
-    files.length ? null : hint('No change since the last commit.'),
-    ...shown.map(f => {
-      const m = gitMarks[f.state];
-      return h('div', { class: 'entry collab-file', 'data-state': f.state },
-        h('span', { class: `git-mark git-${f.state}`, title: m.title }, m.text),
-        h('a', { class: 'collab-compare', 'data-no-i18n': '', title: 'Compare with the last commit', onclick: () => compare(f.path) }, f.path));
-    }),
-    more ? entry('expand', h('a', { class: 'collab-fold', onclick: fold(true) }, `${more} more…`)) : null,
-    changesOpen && foldList(files).more ? entry('collapse', h('a', { class: 'collab-fold', onclick: fold(false) }, 'Show fewer')) : null);
-}
-
-// the sign-in (the browser edition's; the server editions' git signs in itself), the last push's checks
-function githubBox(items, checksItem) {
-  const sign = items.find(it => /^Sign (in|out)/.test(it.label));
-  const kept = S.git && checks?.project === S.project?.name ? checks.checks : null;
-  const state = kept && (kept.state === 'none' ? 'none' : kept.conclusion || 'pending');
-  return box('collab-github', 'GitHub',
-    api.standalone ? hint(api.githubSignedIn() ? 'Signed in to GitHub.' : 'Not signed in to GitHub.') : hint('git signs in to GitHub with its own credentials.'),
-    sign ? cmd(sign) : null,
-    cmd(checksItem),
-    kept ? h('div', { class: 'entry collab-checks', 'data-state': state }, h('span', {}, CHECKS[state]), h('span', { 'data-no-i18n': '' }, `(${shortCommit(kept.commit)})`)) : null);
 }
 
 // the Sharing box's heading (#4259: "Sharing" is the presence's "A partilhar" elsewhere: this one's word given here)

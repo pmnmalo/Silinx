@@ -253,9 +253,17 @@ table.grid tr.sel td { background: #dbe8fb; }
 :is(#start-page, #teach-page):not([data-project]) .start-export a { color: inherit; cursor: default; pointer-events: none; text-decoration: none; }
 #teach-page .start-box:first-child h3, #collab-page .start-box:first-child h3 { margin-top: 0; }   /* (the Teaching page's, as the Start page's, #3533; the Collaboration page's, #4215) */
 #collab-page .entry a { cursor: pointer; overflow-wrap: anywhere; }
-#collab-page .collab-file .git-mark { flex: none; width: 16px; text-align: center; font-size: 10px; font-weight: bold; color: var(--warning); }   /* (the Design pane's marks, web/css/theme.css) */
-#collab-page .collab-file .git-mark.git-new { color: var(--success); }
-#collab-page .collab-file .git-mark:is(.git-conflict, .git-deleted) { color: var(--error-fg); }
+#collab-page .collab-count { margin-left: 4px; color: var(--muted, #667); }   /* (Changes…'s count, #4581) */
+#collab-page .collab-conflicts { color: var(--error-fg); font-weight: bold; }
+/* Changes… (#4581, web/js/git-changes.js): the Design pane's marks (web/css/theme.css), the conflicts first and marked */
+.git-changes-window .git-changes { max-height: 420px; overflow: auto; padding-left: 0; list-style: none; margin: 6px 0 0; }
+.git-changes-window .git-change { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; }
+.git-changes-window .git-change a { overflow-wrap: anywhere; }
+.git-changes-window .git-mark { flex: none; width: 16px; text-align: center; font-size: 10px; font-weight: bold; color: var(--warning); }
+.git-changes-window .git-mark.git-new { color: var(--success); }
+.git-changes-window .git-mark:is(.git-conflict, .git-deleted) { color: var(--error-fg); }
+.git-changes-window .git-change[data-state="conflict"] { font-weight: bold; color: var(--error-fg); }
+.git-changes-window .git-conflicts { margin-top: 6px; color: var(--error-fg); font-weight: bold; }
 #collab-page .collab-checks[data-state="success"] { color: var(--success); }
 #collab-page .collab-checks[data-state="failure"] { color: var(--error-fg); }
 #collab-page .collab-readonly { display: flex; padding: 4px 0; }

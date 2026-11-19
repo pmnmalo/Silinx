@@ -136,7 +136,7 @@ uiTest('#4213 the branches in Portuguese: the commands, New Branch…\'s and Swi
   await open(page, 'ramos');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    await page.waitFor(() => document.querySelector('#collab-page .collab-repo h3')?.textContent === 'Repositório', [], { what: 'the tab in Portuguese' });
+    await page.waitFor(() => document.querySelector('#collab-page .collab-repo h3')?.textContent === 'Repositório Git', [], { what: 'the tab in Portuguese' });
     assert.deepEqual(await tab(page), { branch: 'main', commands: ['Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…'] });
     await page.menu('Ficheiro', 'Novo Ramo…');
     await page.waitDialog('Novo Ramo');

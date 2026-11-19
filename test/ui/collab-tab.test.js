@@ -1,9 +1,9 @@
 // UI: the Collaboration tab of the Design pane's row (#4215, web/js/collab-tab.js) in the server editions, against local
 // bare repositories (no network: https://github.com/test/<repo> mapped to one, SILINX_UI_GIT_REMOTES of
 // test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Libraries, before Teaching (#4577); no project open: the Start tab alone (#4257, #4322,
-// Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, its changes with
-// the Design pane's marks (a click compares one with the last commit; many folded, #4571), Commit…, Push to GitHub, Pull from GitHub,
-// History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
+// Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, Changes…
+// (#4581: how many, its window with the Design pane's marks, the conflicts first, a click comparing one with the last commit, following
+// git's status while open; no Changes box), Commit…, Push to GitHub, Pull from GitHub, History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
 // tab, then committed and pushed; a followed project's read-only notice; Sharing (Share a Copy…, Share Live… from the tab, who is
 // in, the presence's commands, Stop Sharing; a follower's box); the ISE style's tabs all whole in its default side panel
 // (330 px); in Portuguese; a narrow screen; no warnings.
@@ -18,6 +18,15 @@ import { setupUi, uiTest, makeProject, ROOT } from './harness.js';
 
 let env, tmp, remotes;
 const sh = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+// (git run beside the app's own status reads: its index.lock waited for, #4581)
+function shLocked(cwd, ...args) {
+  for (let i = 0; ; i++) {
+    try { return sh(cwd, ...args); } catch (e) {
+      if (i >= 50 || !/index\.lock/.test(e.stderr || e.message)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+    }
+  }
+}
 // a bare repository on "GitHub", with blinky committed (seed) or empty
 function bare(name, { seed = true } = {}) {
   const dir = path.join(remotes, `${name}.git`);
@@ -87,9 +96,25 @@ const waitBoxOf = (page, heading, entries, what) => page.waitFor((hd, en) => {
 const SERVER_GITHUB = 'git signs in to GitHub with its own credentials.';
 // (#4259: the Sharing box, Share a Copy… in it)
 const NOT_LIVE = (off = false) => ['Sharing', 'Not shared live.', `Share a Copy…${off ? ' (disabled)' : ''}`, `Share Live…${off ? ' (disabled)' : ''}`, 'To follow a project shared live, open its link.'];
-const REPO_COMMANDS = ['Commit…', 'Push to GitHub', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', 'History…'];
+// (#4581: Changes… before History…, with how many files changed)
+// (#4581: one Git Repository box, the sign-in first, GitHub Checks last)
+const REPO = (n = 0) => ['Commit…', 'Push to GitHub', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…', n ? `Changes… (${n})` : 'Changes…', 'History…', 'GitHub Checks'];
+const REPO_COMMANDS = REPO();
+// Changes…'s window (#4581): its lines (the hint, the conflicts' line) and its files (mark, path, state)
+const changesWindow = (page) => page.eval(() => {
+  const d = [...document.querySelectorAll('.dlg-overlay')].pop();
+  return { title: d?.querySelector('.dlg-title span')?.textContent,
+    lines: [...(d?.querySelectorAll('.git-changes-window > div') || [])].map((e) => e.textContent),
+    files: [...(d?.querySelectorAll('.git-change') || [])].map((li) => [...li.childNodes].map((n) => n.textContent).join(' ')) };
+});
+const waitChanges = (page, want, what) => page.waitFor((w) => {
+  const d = [...document.querySelectorAll('.dlg-overlay')].pop();
+  const got = { title: d?.querySelector('.dlg-title span')?.textContent, lines: [...(d?.querySelectorAll('.git-changes-window > div') || [])].map((e) => e.textContent),
+    files: [...(d?.querySelectorAll('.git-change') || [])].map((li) => [...li.childNodes].map((n) => n.textContent).join(' ')) };
+  return JSON.stringify(got) === JSON.stringify(w);
+}, [want], { what }).catch(async (e) => { assert.deepEqual(await changesWindow(page), want, e.message); throw e; });
 
-uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no project, a project opened from a repository, its changes, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
+uiTest('#4215 #4257 #4322 #4581 the Collaboration tab: no Collaboration tab with no project, a project opened from a repository, Changes…, Commit…, Push, Pull, History…; read only when followed; Portuguese', E, async (page) => {
   bare('collab1');
   await page.setViewport(1366, 768);
   await page.eval(() => window.SilinxApp.closeProject?.());
@@ -116,20 +141,32 @@ uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no pr
   }
   await page.waitFor(() => window.Silinx.project?.name === 'collab1' && !!window.SilinxApp.S.git, [], { what: 'collab1 open, its status' });
   await page.leftTab('collab');
-  await waitBox(page, 'Changes', ['No change since the last commit.'], 'no change');
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS], 'no change');
+  // (#4581: no Changes box; Changes… just before History…)
   assert.deepEqual((await collab(page)).boxes, [
-    ['Repository', 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS],
-    ['Changes', 'No change since the last commit.'],
-    ['GitHub', SERVER_GITHUB, 'GitHub Checks'], NOT_LIVE()]);
+    ['Git Repository', SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS], NOT_LIVE()]);
+  assert.equal(await page.eval(() => document.querySelector('#collab-page .collab-changes, #collab-page .collab-file')), null);
+  // Changes… with no change: its line
+  await tabCommand(page, 'Changes…');
+  await page.waitDialog('Changes');
+  await waitChanges(page, { title: 'Changes', lines: ['No change since the last commit.'], files: [] }, 'no change in the window');
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
   assert.deepEqual(await page.eval(() => { const a = document.querySelector('#collab-page .collab-remote'); return [a.href, a.target, a.rel]; }), ['https://github.com/local/collab1', '_blank', 'noopener noreferrer']);
   // a change and a new file (silinx.json lists it): listed with the Design pane's marks and their tips
   const counter = await page.eval(async () => (await (await import('/js/api.js')).api.readFile('collab1', 'src/counter.v')));
   await writeFile(page, 'src/counter.v', `${counter}// changed\n`);
   await writeFile(page, 'src/extra.v', 'module extra; endmodule\n');
-  await waitBox(page, 'Changes', ['M silinx.json', 'M src/counter.v', 'N src/extra.v'], 'the changes');
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .collab-file .git-mark')].map((m) => m.title)), ['Changed since the last commit', 'Changed since the last commit', 'New: not committed yet']);
-  // a click: the file compared with the last commit, in a document of its own
-  await page.click('#collab-page .collab-compare', { text: 'src/counter.v' });
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO(3)], 'the changes counted');
+  // Changes…: the window, with the Design pane's marks and their tips
+  await tabCommand(page, 'Changes…');
+  await page.waitDialog('Changes');
+  await waitChanges(page, { title: 'Changes', lines: ['3 change(s) on main: a click compares a file with the last commit.'],
+    files: ['M silinx.json (changed)', 'M src/counter.v (changed)', 'N src/extra.v (new)'] }, 'the changes');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .git-change .git-mark')].map((m) => m.title)), ['Changed since the last commit', 'Changed since the last commit', 'New: not committed yet']);
+  // a click: the window closed, the file compared with the last commit, in a document of its own
+  await page.click('.dlg-overlay .git-compare', { text: 'src/counter.v' });
+  await page.waitNoDialog();
   await page.waitFor(() => window.SilinxApp.S.active?.compare?.path === 'src/counter.v', [], { what: 'the comparison' });
   assert.deepEqual(await page.eval(() => [window.SilinxApp.S.active.compare.before.replace(/[0-9a-f]{7}$/, 'X'), window.SilinxApp.S.active.compare.after]), ['as it was in the commit X', 'as it is now']);
   // Commit… from the tab: the File menu's dialog; then one commit to push
@@ -140,12 +177,11 @@ uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no pr
   await page.dialogButton('Commit');
   await page.waitNoDialog();
   await waitLog(page, /Committed [0-9a-f]{7} on main: 4 file\(s\)\./);   // (Silinx's .gitignore, written by the commit)
-  await waitBox(page, 'Changes', ['No change since the last commit.'], 'committed');
-  await waitBox(page, 'Repository', ['GitHub: local/collab1', 'Branch: main', '1 commit(s) to push', ...REPO_COMMANDS], 'one commit to push');
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', '1 commit(s) to push', ...REPO_COMMANDS], 'committed, one commit to push');
   // Push to GitHub from the tab
   await tabCommand(page, 'Push to GitHub');
   await waitLog(page, /Pushed main to local\/collab1\./);
-  await waitBox(page, 'Repository', ['GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS], 'pushed');
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab1', 'Branch: main', ...REPO_COMMANDS], 'pushed');
   // Pull from GitHub from the tab: another author's commit
   theirs('collab1', 'src/sevenseg.v', '// theirs\n');
   await tabCommand(page, 'Pull from GitHub');
@@ -162,13 +198,16 @@ uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no pr
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    await page.waitFor(() => document.querySelector('#collab-page .start-box h3')?.textContent === 'Repositório', [], { what: 'Portuguese' });
+    await page.waitFor(() => document.querySelector('#collab-page .start-box h3')?.textContent === 'Repositório Git', [], { what: 'Portuguese' });
     assert.deepEqual((await collab(page)).boxes, [
-      ['Repositório', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Histórico…'],
-      ['Alterações', 'Nenhuma alteração desde o último commit.'],
-      ['GitHub', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'Verificações do GitHub (Checks)'],
+      ['Repositório Git', 'O git autentica-se no GitHub com as suas próprias credenciais.', 'GitHub: local/collab1', 'Ramo: main', 'Registar (Commit)…', 'Enviar para o GitHub (Push)', 'Receber do GitHub (Pull)', 'Novo Ramo…', 'Mudar de Ramo…', 'Juntar Ramo…', 'Alterações…', 'Histórico…', 'Verificações do GitHub (Checks)'],
       ['Partilha', 'Não partilhado em direto.', 'Partilhar uma Cópia…', 'Partilhar em Direto…', 'Para seguir um projeto partilhado em direto, abra a sua ligação.']]);
     assert.equal(await page.eval(() => document.querySelector('#left-tabs .tab[data-page=collab] .tab-lbl').textContent), 'Colaboração');
+    await tabCommand(page, 'Alterações…');
+    await page.waitDialog('Alterações');
+    await waitChanges(page, { title: 'Alterações', lines: ['Nenhuma alteração desde o último commit.'], files: [] }, 'the window in Portuguese');
+    await page.dialogButton('Fechar');
+    await page.waitNoDialog();
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
@@ -190,69 +229,101 @@ uiTest('#4215 the Collaboration tab: a project with no repository, Store Project
   await makeProject(env, { name: 'CollabInit', template: 'gates' });
   await page.openProject('CollabInit');
   await page.leftTab('collab');
-  await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'no repository');
-  assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Repository', 'GitHub', 'Sharing']);
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'no repository');
+  assert.deepEqual((await collab(page)).boxes.map((b) => b[0]), ['Git Repository', 'Sharing']);
   // Store Project in a GitHub Repository… from the tab, with no GitHub repository: offered again, to give it one
   await tabCommand(page, 'Store Project in a GitHub Repository…');
   await page.waitDialog('Store Project in a GitHub Repository');
   await page.dialogButton('Initialize');
   await page.waitNoDialog();
   await waitLog(page, /Repository made for 'CollabInit'; \.gitignore written\./);
-  await waitBox(page, 'Repository', ['No GitHub repository (origin).', 'Branch: main', 'Not pushed yet', ...REPO_COMMANDS, 'Store Project in a GitHub Repository…'], 'the repository, no remote');
+  await page.waitFor(() => window.SilinxApp.S.git?.files.length > 2, [], { what: 'the new files' });
+  const n0 = await page.eval(() => window.SilinxApp.S.git.files.length);
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'No GitHub repository (origin).', 'Branch: main', 'Not pushed yet', ...REPO(n0), 'Store Project in a GitHub Repository…'], 'the repository, no remote');
   // its origin (the test server's local repositories stand for GitHub's, as a clone's: set with git)
   sh(path.join(env.server.workspace, 'CollabInit'), 'remote', 'add', 'origin', path.join(remotes, 'collab2.git'));
   await page.eval(async () => (await import('/js/git.js')).refreshGitStatus());
-  // the repository, not pushed yet; every file new
-  await waitBox(page, 'Repository', ['GitHub: local/collab2', 'Branch: main', 'Not pushed yet', ...REPO_COMMANDS], 'the repository');
-  const changes = (await collab(page)).boxes.find((b) => b[0] === 'Changes').slice(1);
-  assert.ok(changes.length > 2 && changes.every((c) => /^N /.test(c)) && changes.includes('N silinx.json') && changes.includes('N .gitignore'), changes.join(' | '));
+  // the repository, not pushed yet; every file new, counted
+  await page.waitFor(() => window.SilinxApp.S.git?.remote === 'local/collab2', [], { what: 'the remote' });
+  const n = await page.eval(() => window.SilinxApp.S.git.files.length);
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab2', 'Branch: main', 'Not pushed yet', ...REPO(n)], 'the repository, its changes counted');
+  await tabCommand(page, 'Changes…');
+  await page.waitDialog('Changes');
+  const changes = (await changesWindow(page)).files;
+  assert.ok(changes.length === n && n > 2 && changes.every((c) => /^N .* \(new\)$/.test(c)) && changes.includes('N silinx.json (new)') && changes.includes('N .gitignore (new)'), changes.join(' | '));
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
   await tabCommand(page, 'Commit…');
   await page.waitDialog('Commit');
   await page.fill('.dlg-overlay .git-message', 'First');
   await page.dialogButton('Commit');
   await page.waitNoDialog();
-  await waitBox(page, 'Changes', ['No change since the last commit.'], 'committed');
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab2', 'Branch: main', 'Not pushed yet', ...REPO_COMMANDS], 'committed');
   await tabCommand(page, 'Push to GitHub');
   await waitLog(page, /Pushed main to local\/collab2\./);
-  await waitBox(page, 'Repository', ['GitHub: local/collab2', 'Branch: main', ...REPO_COMMANDS], 'pushed');
+  await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'GitHub: local/collab2', 'Branch: main', ...REPO_COMMANDS], 'pushed');
   assert.equal(sh(path.join(remotes, 'collab2.git'), 'log', '--format=%s', 'main').trim(), 'First');
   await noWarnings(page);
 });
 
-// a long list of changes folded (#4571): its first ten, "N more…" unfolds the rest, "Show fewer" folds it again, the
-// choice kept while the page is drawn again; in Portuguese
-uiTest('#4571 the Collaboration tab: many changes folded, "N more…" and "Show fewer"; Portuguese', E, async (page) => {
+// Changes… (#4581) with a merge left in conflict by git itself: the Repository box says how many files are in conflict,
+// the window lists them first and marked, follows git's status while open (a new file, the merge aborted), its line when
+// nothing changed; in Portuguese
+uiTest('#4581 the Collaboration tab: Changes…, the conflicts first, the window following git\'s status; Portuguese', E, async (page) => {
   await page.setViewport(1366, 768);
-  await makeProject(env, { name: 'CollabFold', template: 'gates' });
-  await page.openProject('CollabFold');
+  await makeProject(env, { name: 'CollabClash', template: 'gates' });
+  await page.openProject('CollabClash');
   await page.leftTab('collab');
   await tabCommand(page, 'Store Project in a GitHub Repository…');
   await page.waitDialog('Store Project in a GitHub Repository');
   await page.dialogButton('Initialize');
   await page.waitNoDialog();
-  await waitLog(page, /Repository made for 'CollabFold'; \.gitignore written\./);
-  for (let i = 0; i < 14; i++) await writeFile(page, `src/extra${String(i).padStart(2, '0')}.v`, `module extra${i}; endmodule\n`);
-  await page.waitFor(() => window.SilinxApp.S.git?.files.length === 20, [], { what: 'the 20 changes' });
-  const all = await page.eval(() => window.SilinxApp.S.git.files.map((f) => `N ${f.path}`));
-  assert.equal(all.length, 20);
-  // folded: the first ten, then "10 more…"
-  await waitBox(page, 'Changes', [...all.slice(0, 10), '10 more…'], 'folded');
-  // unfolded: all of them, then "Show fewer"; kept when the page is drawn again
-  await tabCommand(page, '10 more…');
-  await waitBox(page, 'Changes', [...all, 'Show fewer'], 'unfolded');
+  await waitLog(page, /Repository made for 'CollabClash'; \.gitignore written\./);
+  // (a merge of another branch that changed the same line, by git outside Silinx)
+  const dir = path.join(env.server.workspace, 'CollabClash'), vhd = path.join(dir, 'src', 'gates.vhd');
+  const text = fs.readFileSync(vhd, 'utf8');
+  shLocked(dir, 'add', '-A'); shLocked(dir, 'commit', '--quiet', '-m', 'First');
+  shLocked(dir, 'checkout', '--quiet', '-b', 'other');
+  fs.writeFileSync(vhd, `-- theirs\n${text}`); shLocked(dir, 'commit', '--quiet', '-am', 'Theirs');
+  shLocked(dir, 'checkout', '--quiet', 'main');
+  fs.writeFileSync(vhd, `-- mine\n${text}`); shLocked(dir, 'commit', '--quiet', '-am', 'Mine');
+  assert.throws(() => shLocked(dir, 'merge', '--quiet', 'other'));
+  fs.writeFileSync(path.join(dir, 'src', 'a_new.v'), 'module a_new; endmodule\n');
   await page.eval(async () => (await import('/js/git.js')).refreshGitStatus());
-  await page.eval(() => dispatchEvent(new CustomEvent('silinx:git-status')));
-  await waitBox(page, 'Changes', [...all, 'Show fewer'], 'still unfolded');
+  // the Git Repository box: the conflicts counted, Changes… with how many
+  const REPO_BOX = (n, c) => [SERVER_GITHUB, 'No GitHub repository (origin).', 'Branch: main', 'Not pushed yet', ...(c ? [`${c} file(s) in conflict`] : []), ...REPO(n), 'Store Project in a GitHub Repository…'];
+  await waitBox(page, 'Git Repository', REPO_BOX(2, 1), 'the conflict counted');
+  // the window: the conflict first (git lists src/a_new.v first), in red
+  await tabCommand(page, 'Changes…');
+  await page.waitDialog('Changes');
+  const CONFLICT = '1 file(s) in conflict: resolve each, then commit.';
+  await waitChanges(page, { title: 'Changes', lines: ['2 change(s) on main: a click compares a file with the last commit.', CONFLICT],
+    files: ['C src/gates.vhd (in conflict)', 'N src/a_new.v (new)'] }, 'the conflict first');
+  assert.deepEqual(await page.eval(() => window.SilinxApp.S.git.files.map((f) => f.path)), ['src/a_new.v', 'src/gates.vhd']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .git-change')].map((li) => [li.dataset.state, getComputedStyle(li).fontWeight, li.querySelector('.git-mark').title])),
+    [['conflict', '700', 'In conflict'], ['new', '400', 'New: not committed yet']]);
+  // while it is open: a file written (silinx.json lists it), the window follows
+  await writeFile(page, 'src/b_new.v', 'module b_new; endmodule\n');
+  await waitChanges(page, { title: 'Changes', lines: ['4 change(s) on main: a click compares a file with the last commit.', CONFLICT],
+    files: ['C src/gates.vhd (in conflict)', 'M silinx.json (changed)', 'N src/a_new.v (new)', 'N src/b_new.v (new)'] }, 'the window following');
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    await waitBox(page, 'Alterações', [...all, 'Mostrar menos'], 'unfolded, in Portuguese');
-    await tabCommand(page, 'Mostrar menos');
-    await waitBox(page, 'Alterações', [...all.slice(0, 10), 'Mais 10…'], 'folded, in Portuguese');
+    await waitChanges(page, { title: 'Alterações', lines: ['4 alteração(ões) em main: um clique compara um ficheiro com o último commit.', '1 ficheiro(s) em conflito: resolva cada um e depois registe (commit).'],
+      files: ['C src/gates.vhd (em conflito)', 'M silinx.json (alterado)', 'N src/a_new.v (novo)', 'N src/b_new.v (novo)'] }, 'the window in Portuguese');
+    await page.waitFor(() => [...document.querySelectorAll('#collab-page .entry')].some((e) => e.textContent === '1 ficheiro(s) em conflito'), [], { what: 'the conflicts in Portuguese' });
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
-  await waitBox(page, 'Changes', [...all.slice(0, 10), '10 more…'], 'folded again');
+  // the merge aborted, the new files removed: no change, its line; the Repository box without the conflicts
+  shLocked(dir, 'merge', '--abort');
+  for (const f of ['a_new.v', 'b_new.v']) fs.rmSync(path.join(dir, 'src', f));
+  shLocked(dir, 'checkout', '--quiet', '--', '.');
+  await page.eval(async () => (await import('/js/git.js')).refreshGitStatus());
+  await waitChanges(page, { title: 'Changes', lines: ['No change since the last commit.'], files: [] }, 'no change any more');
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  await waitBox(page, 'Git Repository', REPO_BOX(0, 0), 'no conflict any more');
   await noWarnings(page);
 });
 
@@ -315,7 +386,7 @@ uiTest('#4215 the Collaboration tab on a narrow screen', E, async (page) => {
   await page.setViewport(820, 1180);
   try {
     await page.leftTab('collab');
-    await waitBox(page, 'Repository', ['The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'the Collaboration page');
+    await waitBox(page, 'Git Repository', [SERVER_GITHUB, 'The project is not in a git repository.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository…'], 'the Collaboration page');
     assert.ok((await collab(page)).shown);
     // no sideways scroll, the page inside the window
     assert.ok(await page.eval(() => document.getElementById('collab-page').getBoundingClientRect().right <= innerWidth + 1 && document.documentElement.scrollWidth <= innerWidth));

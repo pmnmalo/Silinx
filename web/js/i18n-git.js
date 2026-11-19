@@ -8,7 +8,7 @@ export const GIT_PT = {
   'GitHub repository (a Classroom assignment\'s too):': 'Repositório do GitHub (também o de um trabalho do Classroom):',
   'GitHub repository (optional: where Push sends the commits):': 'Repositório do GitHub (opcional: para onde o Push envia os commits):',
   'Message:': 'Mensagem:', 'https://github.com/owner/repository': 'https://github.com/dono/repositório',
-  'No change since the last commit.': 'Nenhuma alteração desde o último commit.', 'Show fewer': 'Mostrar menos',
+  'No change since the last commit.': 'Nenhuma alteração desde o último commit.',
   'Say in a few words what changed.': 'Diga em poucas palavras o que mudou.',
   'git signs in to GitHub with its own credentials (GitHub\'s command line, Git Credential Manager or an SSH key): Silinx never asks for a password or a token.':
     'O git autentica-se no GitHub com as suas próprias credenciais (a linha de comandos do GitHub, o Git Credential Manager ou uma chave SSH): o Silinx nunca pede uma palavra-passe nem um token.',
@@ -62,11 +62,10 @@ export const GIT_PT = {
   'Silinx\'s authorization stays on GitHub until it is revoked under Settings ▸ Applications:':
     'A autorização do Silinx continua no GitHub até ser revogada em Settings ▸ Applications:',
   // the Collaboration tab (#4215, web/js/collab-tab.js)
-  'Collaboration': 'Colaboração', 'Repository': 'Repositório', 'Changes': 'Alterações', 'Branch:': 'Ramo:',
+  'Collaboration': 'Colaboração', 'Repository': 'Repositório', 'Git Repository': 'Repositório Git', 'Changes': 'Alterações', 'Changes…': 'Alterações…', 'Branch:': 'Ramo:',
   'No project open.': 'Nenhum projeto aberto.', 'The project is not in a git repository.': 'O projeto não está num repositório git.',
   'No GitHub repository (origin).': 'Sem repositório do GitHub (origin).', 'Not pushed yet': 'Ainda não enviado (Push)',
   'Compare with the last commit': 'Comparar com o último commit', 'Deleted since the last commit': 'Apagado desde o último commit',
-  'Signed in to GitHub.': 'Com sessão iniciada no GitHub.', 'Not signed in to GitHub.': 'Sem sessão iniciada no GitHub.',
   'git signs in to GitHub with its own credentials.': 'O git autentica-se no GitHub com as suas próprias credenciais.',
   'Checks passed': 'Verificações aprovadas', 'Checks failed': 'Verificações falhadas', 'Checks running': 'Verificações a decorrer',
   'No check on GitHub': 'Nenhuma verificação no GitHub',
@@ -95,7 +94,11 @@ export const GIT_PT_PATTERNS = [
   [/^(\d+) object\(s\) changed both here and on GitHub: choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/, '$1 objeto(s) alterado(s) aqui e no GitHub: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.'],
   [/^Choose Mine or Theirs for (\d+) object\(s\) more\.$/, 'Escolha O meu ou O deles para mais $1 objeto(s).'],
   [/^(\d+) change\(s\) on (.+):$/, '$1 alteração(ões) em $2:'],
-  [/^(\d+) more…$/, 'Mais $1…'],   // (the Collaboration tab's changes folded, #4571)
+  // Changes… (#4581, web/js/git-changes.js) and the conflicts' count of the Collaboration tab
+  [/^(\d+) change\(s\) on (.+): a click compares a file with the last commit\.$/, '$1 alteração(ões) em $2: um clique compara um ficheiro com o último commit.'],
+  [/^(\d+) file\(s\) in conflict: resolve each, then commit\.$/, '$1 ficheiro(s) em conflito: resolva cada um e depois registe (commit).'],
+  [/^(\d+) file\(s\) in conflict$/, '$1 ficheiro(s) em conflito'],
+  [/^\((changed|new|deleted|in conflict)\)$/, (_, w) => `(${{ changed: 'alterado', new: 'novo', deleted: 'apagado', 'in conflict': 'em conflito' }[w]})`],
   [/^(\d+) commit\(s\) to push$/, '$1 commit(s) por enviar (Push)'], [/^(\d+) commit\(s\) to pull$/, '$1 commit(s) por receber (Pull)'],   // (#4215)
   // (#4213) Merge Branch…'s merge view and conflicts
   [/^Mine \((.+)\)$/, 'O meu ($1)'], [/^Theirs \((.+)\)$/, 'O deles ($1)'],
