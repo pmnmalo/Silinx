@@ -725,8 +725,7 @@ uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on to
   await page.waitFor(() => document.querySelector('#start-page .start-btns .btn')?.textContent !== 'New Project…', [], { what: 'Portuguese' });
   assert.deepEqual((await startPage(page)).buttons, ['Novo Projeto…', 'Abrir Projeto…']);
   await page.waitFor(() => document.querySelector('#start-page .start-box .entry a')?.textContent === 'Importar Projeto…', [], { what: 'the commands in Portuguese' });
-  assert.deepEqual((await startPage(page)).commands, ['Importar Projeto…', 'Exportar Projeto (.zip)…', '—',
-    'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub…']);
+  assert.deepEqual((await startPage(page)).commands, ['Importar Projeto…', 'Exportar Projeto (.zip)…']);
   // the File menu's: Import Project…, a folder, a .zip or a .xise (#3965); the export a .zip only (#4132)
   const fileMenu = () => page.eval(async () => {
     const { t } = await import('/js/i18n.js');
