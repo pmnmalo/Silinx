@@ -120,6 +120,7 @@ html[data-no-project] #left-tabs .tab:not([data-page="start"]) { display: none; 
 .console-page .ln { line-height: 16px; }
 /* a line's button: what it asks of the user (Trust Project, #2830) */
 .console-page .ln .ln-action { padding: 0 8px; margin-left: 6px; line-height: 14px; font-size: inherit; }
+.console-page .diag .ln-action { flex: none; align-self: center; padding: 0 8px; margin-left: 6px; line-height: 14px; font-size: inherit; }   /* (an Errors tab's Trust Project, #4589) */
 .console-page .ln.err { color: var(--danger); }
 .console-page .ln.warn { color: #9a6700; }
 .console-page .ln.ok { color: var(--success); }

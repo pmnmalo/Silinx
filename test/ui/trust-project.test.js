@@ -3,7 +3,8 @@
 // start-up); Program FPGA refused, the server's refusal (a 403) in the console with its button, not in a dialog; the
 // browser edition's refusal (the job's ERROR line, then its "… failed:" line) with one button for the two; the button
 // asks first (No: nothing trusted, the button again enabled), Yes trusts it: every button of the project disabled, the
-// line said, and Program FPGA then programs (the programmer stood in for). In Portuguese: the button and the question.
+// line said, and Program FPGA then programs (the programmer stood in for). The Errors tab, which a refusal brings to the
+// front, lists each refusal with its button too (#4589). In Portuguese: the button and the question.
 // The warnings and errors asserted exactly. (The interface: SILINX_UI_INTERFACE.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,6 +30,9 @@ const PROGRAM_FPGA = '#workspace > .doc:not([hidden]) .imp-fpga .btn.primary';
 const trustLines = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln-trust')].map((b) => [b.parentElement.firstChild.textContent, b.textContent, !b.disabled]));
 const problems = async (page) => (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l));
 const question = (page) => page.eval(() => { const d = document.querySelector('.dlg-overlay'); return d && [d.querySelector('.dlg-title span').textContent, d.querySelector('.msg-text').textContent, ...[...d.querySelectorAll('.dlg-buttons .btn')].map((b) => b.textContent)]; });
+// the Errors tab's rows (#4589): the message, its Trust Project button's label and whether it is enabled (null: none)
+const errorRows = (page) => page.eval(() => [...document.querySelectorAll('#console-errors .diag')].map((r) => { const b = r.querySelector('.ln-trust'); return [r.querySelector('span[data-no-i18n]').textContent, b ? b.textContent : null, b ? !b.disabled : null]; }));
+const shownTab = (page) => page.eval(() => document.querySelector('#console-tabs .tab.active')?.dataset.page);
 const clickLastTrust = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln-trust')].at(-1).click());
 
 async function importZip(page) {
@@ -64,6 +68,10 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   await page.click(PROGRAM_FPGA);
   await page.waitConsole(/Programming FPGA \(SRAM\) failed: project/);
   assert.equal(await question(page), null);
+  // the Errors tab, brought to the front (what the user sees, #4589): the refusal's row with its button too
+  await page.waitFor(() => document.querySelector('#console-errors .diag .ln-trust'), [], { what: 'the Errors tab\'s button' });
+  assert.equal(await shownTab(page), 'errors');
+  assert.deepEqual(await errorRows(page), [[`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
   assert.deepEqual(await trustLines(page), [[NOTICE, 'Trust Project', true], [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
   // the browser edition's refusal (web/js/api-local.js usbJob): its job's ERROR line, then the "… failed:" line; one
   // button for the two, on the first
@@ -80,8 +88,14 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   const lines = (await page.consoleText()).split('\n');
   assert.deepEqual(lines.slice(-2), [`ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`]);
   assert.deepEqual((await trustLines(page)).at(-1), [`ERROR: ${REFUSAL}`, 'Trust Project', true]);
-  // Portuguese: the button, the question; No trusts nothing, the button enabled again
+  // the Errors tab: the three refusals, each with its button
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 3, [], { what: 'the three refusals listed' });
+  assert.deepEqual(await errorRows(page), [
+    [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true], [REFUSAL, 'Trust Project', true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
+  // Portuguese: the buttons, the question; No trusts nothing, the button enabled again
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor(() => document.querySelector('#console-errors .ln-trust').textContent === 'Confiar no Projeto', [], { what: 'in Portuguese' });
+  assert.equal(await page.eval(() => [...document.querySelectorAll('#console-errors .ln-trust')].map((b) => b.textContent).join()), 'Confiar no Projeto,Confiar no Projeto,Confiar no Projeto');
   await page.openProject(NAME);
   await page.waitFor(() => document.querySelectorAll('#console-log .ln-trust').length === 4, [], { what: 'the line said again' });
   assert.equal(await page.eval(() => [...document.querySelectorAll('#console-log .ln-trust')].at(-1).textContent), 'Confiar no Projeto');
@@ -93,14 +107,20 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   await page.waitFor(() => !document.querySelectorAll('#console-log .ln-trust')[3].disabled, [], { what: 'the button enabled again' });
   assert.equal((await env.server.api('GET', `/api/projects/${NAME}`)).trusted, false);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
-  // Yes, from the refusal's button: trusted; every button of the project disabled
-  await page.eval(() => document.querySelectorAll('#console-log .ln-trust')[2].click());
+  // refused again (the Errors tab, emptied by the project opened again, lists it), Yes from the Errors tab's button:
+  // trusted; every button of the project disabled, the Errors tab's too
+  await openImpact(page);
+  await page.click(PROGRAM_FPGA);
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 2, [], { what: 'refused again' });
+  assert.deepEqual(await errorRows(page), [[REFUSAL, 'Trust Project', true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
+  await page.eval(() => document.querySelectorAll('#console-errors .ln-trust')[1].click());
   await page.waitDialog('Trust Project');
   assert.deepEqual(await question(page), ['Trust Project', QUESTION, 'Yes', 'No']);
   await page.dialogButton('Yes');
   await page.waitNoDialog();
   await page.waitConsole(new RegExp(`^Project "${NAME}" trusted: Xilinx ISE and programming a board or a PROM may run for it\\.$`, 'm'));
-  assert.deepEqual((await trustLines(page)).map((l) => l[2]), [false, false, false, false]);
+  assert.deepEqual((await trustLines(page)).map((l) => l[2]), [false, false, false, false, false]);
+  assert.deepEqual((await errorRows(page)).map((r) => r[2]), [false, false]);
   assert.equal('trusted' in await env.server.api('GET', `/api/projects/${NAME}`), false);
   assert.equal(await page.eval(() => 'trusted' in window.Silinx.project), false);
   // the process again: it runs
@@ -110,8 +130,9 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   await page.waitFor(() => window.__programmed.length === 1, [], { what: 'programmed' });
   // opened again: no line, no button
   await page.openProject(NAME);
-  assert.equal(await page.eval(() => document.querySelectorAll('#console-log .ln-trust').length), 4);
-  // the errors: the three refusals, nothing else; no warning
-  assert.deepEqual(await problems(page), [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`, `ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`]);
+  assert.equal(await page.eval(() => document.querySelectorAll('#console-log .ln-trust').length), 5);
+  // the errors: the four refusals, nothing else; no warning
+  assert.deepEqual(await problems(page), [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`, `ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`,
+    `ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`]);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

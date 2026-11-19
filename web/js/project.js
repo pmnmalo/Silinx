@@ -104,7 +104,7 @@ export async function trustProject(name) {
   if (!await confirmDlg('Trust Project', `Trust the project "${name}"? Xilinx ISE and programming a board or a PROM will run for it: trust only a project whose files you know.`)) return false;
   await api.trustProject(name);
   if (S.project?.name === name) { delete S.project.trusted; delete S.project.madeBy; }
-  for (const b of document.querySelectorAll('#console-log .ln-trust')) if (b.dataset.trust === name) b.disabled = true;
+  for (const b of document.querySelectorAll('#console-log .ln-trust, #console-errors .ln-trust')) if (b.dataset.trust === name) b.disabled = true;
   log(`Project "${name}" trusted: Xilinx ISE and programming a board or a PROM may run for it.`, 'ok');
   return true;
 }
