@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { contentSecurityPolicy, inlineScriptHashes, scriptHash, withMetaCsp, metaCsp, addSources, relaySources, siteSource, TRACKER_SOURCES } from '../server/csp.js';
+import { contentSecurityPolicy, inlineScriptHashes, scriptHash, withMetaCsp, metaCsp, addSources, relaySources, siteSource, TRACKER_SOURCES, WORKERS_SOURCES } from '../server/csp.js';
 import { relayList } from '../core/collab-link.js';
 import { addAnalytics } from '../scripts/site-analytics.mjs';
 import './ui/core-hooks.js';   // (/core/… of the browser's modules)
@@ -107,6 +107,16 @@ test('#3227 the relays a page may use: each its origin and its WebSockets\' in c
   assert.deepEqual(page['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, 'https://site.example', 'https://relay.example.org', 'wss://relay.example.org']);
   // (never a scheme alone: no other WebSocket server reached)
   for (const csp of [contentSecurityPolicy({}), contentSecurityPolicy({ connect: relaySources(relayList('https://relay.example.org')) })]) assert.ok(!directives(csp)['connect-src'].some((c) => /^wss?:$/.test(c)));
+});
+
+test('#4543 the site\'s policy lets its pages reach Cloudflare Workers\' relays (https and wss of *.workers.dev), no other host by a scheme alone; the server\'s does not', async () => {
+  assert.deepEqual(WORKERS_SOURCES, ['https://*.workers.dev', 'wss://*.workers.dev']);
+  const build = (await import('node:fs')).readFileSync(new URL('../scripts/build-standalone.mjs', import.meta.url), 'utf8');
+  assert.match(build, /connect: \[site, \.\.\.\(relay \? \[relay\] : \[\]\), \.\.\.relaySources\(SITE_RELAYS\), \.\.\.WORKERS_SOURCES\]/);
+  const page = directives(contentSecurityPolicy({ connect: [...WORKERS_SOURCES], meta: true }));
+  assert.ok(WORKERS_SOURCES.every(w => page['connect-src'].includes(w)));
+  assert.ok(!page['connect-src'].some((c) => /^wss?:$|^https?:$|^\*$/.test(c)));
+  assert.ok(!directives(contentSecurityPolicy({}))['connect-src'].some((c) => c.includes('workers.dev')));
 });
 
 test('the single file\'s policy: the assets\' site by its folder, never the origin every GitHub Pages site of the account shares', () => {

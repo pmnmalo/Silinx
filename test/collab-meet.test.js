@@ -87,9 +87,11 @@ test('the link of a hosted room with the owner\'s key: made, parsed; a broken ke
   assert.throws(() => parseFollowLink(`#follow=${room}.${key}.host.short`), /broken/);
   assert.throws(() => parseFollowLink(`#follow=${room}.${key}.${pub}`), /broken/);
   assert.throws(() => parseFollowLink(`#follow=${room}.${key}.host.${pub}.x`), /broken/);
-  // (a relay's link names no owner's key: a hosted room is reached at the meeting point or with codes, #3281's relay never)
-  assert.throws(() => followLink('https://x/', room, key, 'host', null, 'https://relay.example.org', pub), /not a relay's address/);
-  assert.throws(() => parseFollowLink(`#follow=${room}.${key}.host.${pub}&relay=${encodeURIComponent('https://relay.example.org')}`), /broken/);
+  // (#4543: a hosted room met at a relay names it after the owner's key; a hosted room with no owner's key names none)
+  assert.equal(followLink('https://x/', room, key, 'host', null, 'https://relay.example.org', pub), `https://x/#view=${room}.${key}.host.${pub}&relay=${encodeURIComponent('https://relay.example.org')}`);
+  assert.equal(parseFollowLink(`#follow=${room}.${key}.host.${pub}&relay=${encodeURIComponent('https://relay.example.org')}`).relay, 'https://relay.example.org');
+  assert.throws(() => followLink('https://x/', room, key, 'host', null, 'https://relay.example.org'), /not a relay's address/);
+  assert.throws(() => parseFollowLink(`#follow=${room}.${key}.host&relay=${encodeURIComponent('https://relay.example.org')}`), /broken/);
   assert.equal(parseFollowLink(`#follow=${room}.${key}&relay=${encodeURIComponent('https://relay.example.org')}`).host, undefined);
 });
 
