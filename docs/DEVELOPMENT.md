@@ -61,6 +61,7 @@ node --test --test-name-pattern='latch warning' test/ui/hints.test.js   # one UI
 npx playwright install webkit && npm run test:webkit             # memory in WebKit (Safari's engine)
 npx playwright install firefox webkit && npm run test:browsers   # the main UI flows in Firefox and WebKit
 SILINX_UI_BROWSER=firefox npm run test:ui                        # any UI test in firefox, webkit or chromium
+node scripts/collab-latency.mjs [--rtt 0,20,80] [--pace before] [--webrtc]   # a shared project's latency, owner to follower, by path (#4647)
 npm run test:release                                             # the release zip as users get it (see below)
 node scripts/package-release.mjs [version]                       # the release files into out/ (as release.yml)
 ```
