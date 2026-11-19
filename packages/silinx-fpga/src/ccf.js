@@ -11,17 +11,21 @@ import { byName, periodNs, setByName } from './ucf.js';
 const KINDS = ['NET', 'PIN_IN', 'PIN_OUT', 'PIN_INOUT'];
 const PULL_KEYS = { PULLUP: 'up', PULLDOWN: 'down', KEEPER: 'keeper' };
 const PULL_OF = { up: 'PULLUP', down: 'PULLDOWN', keeper: 'KEEPER' };
-const CLOCK = /^#\s*create_clock\s+(?:-name\s+\S+\s+)?-period\s+([\d.]+)\s+\[get_ports\s+\{?([^\s}\]]+)\}?\]\s*;?\s*$/;
+// (on a line trimmed and its ';' cut: no blanks both sides of an optional ';', quadratic on a long line, #4587)
+const CLOCK = /^#\s*create_clock\s+(?:-name\s+\S+\s+)?-period\s+([\d.]+)\s+\[get_ports\s+\{?([^\s}\]]+)\}?\]$/;
 
 const notCcf = verb => `${verb}: not a CCF statement nextpnr-himbaechel-gatemate applies (NET, Pin_in, Pin_out, Pin_inout)`;
 const isTrue = v => /^(true|1)$/i.test(v);
+// a line's clock comment (CLOCK's match), or null
+const clockOf = raw => { const t = raw.trim(); return CLOCK.exec(t.endsWith(';') ? t.slice(0, -1).trimEnd() : t); };
 
 // the statements of a text: [{ text, line }] (a clock's comment one too, { clock }), comments out, ';' their end
 function statements(text) {
   const out = [];
   let cur = '', start = 0;
   String(text).split(/\r?\n/).forEach((raw, i) => {
-    if (CLOCK.test(raw.trim())) { out.push({ clock: CLOCK.exec(raw.trim()), line: i + 1 }); return; }
+    const clock = clockOf(raw);
+    if (clock) { out.push({ clock, line: i + 1 }); return; }
     let rest = raw.replace(/#.*$/s, '');   // (the s flag: linear on a long line, CodeQL's js/polynomial-redos, #3663)
     for (;;) {
       const k = rest.indexOf(';');

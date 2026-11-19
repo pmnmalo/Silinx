@@ -51,6 +51,20 @@ test('CCF: in linear time on a long line (CodeQL js/polynomial-redos)', () => {
   assert.ok(performance.now() - t0 < 500, `${Math.round(performance.now() - t0)} ms`);
 });
 
+test('CCF: a clock\'s comment in linear time, its blanks and \';\' around (CodeQL js/polynomial-redos, #4587)', () => {
+  // (the blanks either side of an optional ';' were quadratic: 100000 of them some 3 s)
+  const blanks = ' '.repeat(100000);
+  const t0 = performance.now();
+  for (const text of [`# create_clock -period 1 [get_ports a]${blanks}x`, `# create_clock -period 1 [get_ports a]${blanks};${blanks}x`]) {
+    const m = CCF.read(text);
+    assert.deepEqual([m.clocks, m.assignments], [[], {}], 'not a clock: a comment');
+  }
+  assert.ok(performance.now() - t0 < 500, `${Math.round(performance.now() - t0)} ms`);
+  // (the clock with its ';' and blanks around, as before)
+  for (const tail of ['', ';', ' ;', '; ', ` ${blanks};${blanks}`]) assert.deepEqual(CCF.read(`  # create_clock -period 8 [get_ports {fast}]${tail}`).clocks, [{ net: 'fast', period: 8 }], JSON.stringify(tail.slice(0, 3)));
+  assert.deepEqual(CCF.read('# create_clock -period 8 [get_ports {fast}];;').clocks, [], 'two \';\': a comment');
+});
+
 test('the GateMate family: its parts, its formats, its back end\'s steps and constraints, its synthesis\'s resources, its clocks', () => {
   for (const p of ['ccgm1a1', 'CCGM1A2', 'ccgm1a4']) assert.equal(familyOfPart(p), 'gatemate', p);
   assert.equal(familyOfPart('ccgm1'), null);

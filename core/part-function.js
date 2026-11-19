@@ -139,7 +139,7 @@ function clausePt(clause, agree = { f: false, pl: false }) {
   const wt = whole && (typeof whole[1] === 'function' ? whole[1](...s.match(whole[0])) : whole[1]);
   if (wt && !m[1]) return { text: whole[2] === 'adj' ? inflect(wt, agree.f, agree.pl) : wt };
   const at = NOUNS.map(([en, pt]) => {
-    const i = rest.search(new RegExp(`(?:^| )${en.replace(/[/.]/g, '\\$&')}(?= |$)`));
+    const i = rest.search(new RegExp(`(?:^| )${en.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(?= |$)`));
     return i < 0 ? null : { i: i && i + 1, en, pt };
   }).filter(Boolean).sort((a, b) => a.i - b.i || b.en.length - a.en.length)[0];
   if (!at) {

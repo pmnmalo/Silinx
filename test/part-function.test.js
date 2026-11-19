@@ -70,6 +70,10 @@ test('functionPt: the function in Portuguese by its vocabulary; null for a word 
   // (a word the vocabulary has not: none, the interface shows the English)
   for (const en of ['Phase comp & VCO', 'Logic level translator quad buffer with 3-state outputs', 'Thing plus board outline', 'Quad 2-input NAND gate, lunar phase', 'Basic 0.1" PTH',
     'The Ag9200 power-over-Ethernet (PoE) modules are designed to…', '', null]) assert.equal(functionPt(en), null, en);
+  // (a noun found as its own text, every character escaped, CodeQL's js/incomplete-sanitization, #4516: its '/' and '.'
+  // themselves, no other character in their place)
+  assert.equal(functionPt('Octal buffer/line driver'), 'Oito buffers/drivers de linha');
+  for (const en of ['Octal buffer line driver', 'Octal buffer-line driver', '3-to-8 line decoderxdemultiplexer']) assert.equal(functionPt(en), null, en);
 });
 
 test('functionPt agrees with the interface\'s own Portuguese of Silinx\'s ICs\' titles where its vocabulary has their words', () => {

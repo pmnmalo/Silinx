@@ -126,7 +126,7 @@ test('its key: an owner without it, or with another, refused, said; a relay with
   await assert.rejects(shareRoom({ url: share(), token: null, doc: owned(), user: { name: 'x' } }), new RegExp(`^Error: ${NEEDS_KEY}$`));
   for (const RELAY_KEY of [undefined, '', 'short-key']) {
     const r = await relayWith(RELAY_LIMITS, { RELAY_KEY });
-    await assert.rejects(shareRoom({ url: share(r), token: RELAY_KEY || null, doc: owned(), user: { name: 'x' } }), new RegExp(`^Error: ${NO_KEY.replace(/[()]/g, '\\$&')}$`));
+    await assert.rejects(shareRoom({ url: share(r), token: RELAY_KEY || null, doc: owned(), user: { name: 'x' } }), new RegExp(`^Error: ${NO_KEY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
     await r.close();
   }
   // (the raw refusal: the reason, then closed 1008)
