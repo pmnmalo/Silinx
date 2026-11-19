@@ -17,7 +17,8 @@ board; and build them for a real one, with Silinx's own open toolchain. Nothing 
 <b>Design your way.</b> VHDL and Verilog with live errors explained for beginners, schematics, state diagrams, ASM
 charts, Boolean algebra and Karnaugh maps, Petri nets, even C. Every drawing generates its HDL.</td>
 <td width="50%"><a href="docs/user/en/simulating.md"><img src="docs/images/simulation.webp" alt="The waveforms of a simulation"></a>
-<b>Simulate.</b> Test benches made by a wizard or drawn on the waveforms, run by Silinx's own simulator.</td>
+<b>Simulate.</b> Silinx's own simulator runs VHDL and Verilog in the browser: test benches made by a wizard or drawn
+on the waveforms, any instance's signals added, cursors and markers. Try it steps a drawing as you click.</td>
 </tr>
 <tr>
 <td><a href="docs/user/en/emulator.md"><img src="docs/images/emulator-basys2.webp" alt="The Board Emulator: a Basys2"></a>
@@ -28,9 +29,13 @@ watch its LEDs, displays and VGA screen.</td>
 board programmed over USB, from the browser.</td>
 </tr>
 <tr>
-<td colspan="2"><b><a href="docs/user/en/teaching.md">Made for the classroom.</a></b> An intuitive interface, guided labs,
-automatic grading, live sharing (peer to peer, or through <a href="docs/user/en/live-relay.md">a free relay of your own</a>)
-and links for the slides.</td>
+<td><a href="docs/user/en/teaching.md#sharing"><img src="docs/images/share.webp" alt="Share Project: the project shared live"></a>
+<b>Collaboration.</b> Share a project live: others follow it read only, or edit it with you, peer to peer or through
+<a href="docs/user/en/live-relay.md">a free relay of your own</a>. A design in a link for the slides, a project on
+GitHub, a group's copies merged back.</td>
+<td><a href="docs/user/en/teaching.md"><img src="docs/images/new-project.webp" alt="New Project: starting from an example"></a>
+<b>Classroom ready.</b> Examples from the first gates to a microprocessor, guided labs checked step by step, exercises
+graded automatically, GitHub Classroom assignments.</td>
 </tr>
 </table>
 

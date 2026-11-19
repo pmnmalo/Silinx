@@ -18,8 +18,9 @@ Nada a instalar.
 <b>Projete à sua maneira.</b> VHDL e Verilog com erros explicados para principiantes, esquemáticos, diagramas de
 estados, fluxogramas ASM, álgebra de Boole e mapas de Karnaugh, redes de Petri, até C. Cada desenho gera o seu HDL.</td>
 <td width="50%"><a href="docs/user/pt/simulating.md"><img src="docs/images/simulation-pt.webp" alt="As formas de onda de uma simulação"></a>
-<b>Simule.</b> Bancadas de teste feitas por um assistente ou desenhadas nas formas de onda, corridas pelo simulador do
-próprio Silinx.</td>
+<b>Simule.</b> O simulador do próprio Silinx corre VHDL e Verilog no browser: bancadas de teste feitas por um assistente
+ou desenhadas nas formas de onda, os sinais de qualquer instância, cursores e marcadores. O Experimentar avança um
+desenho a cada clique.</td>
 </tr>
 <tr>
 <td><a href="docs/user/pt/emulator.md"><img src="docs/images/emulator-basys2-pt.webp" alt="O Emulador da Placa: uma Basys2"></a>
@@ -30,8 +31,13 @@ interruptores, veja os LEDs, os mostradores e o ecrã VGA.</td>
 abertas do Silinx, e a placa programada por USB, a partir do browser.</td>
 </tr>
 <tr>
-<td colspan="2"><b><a href="docs/user/pt/teaching.md">Feito para a sala de aula.</a></b> Uma interface intuitiva,
-laboratórios guiados, avaliação automática, partilha ao vivo e links para os slides.</td>
+<td><a href="docs/user/pt/teaching.md#partilhar"><img src="docs/images/share-pt.webp" alt="Partilhar Projeto: o projeto partilhado ao vivo"></a>
+<b>Colaboração.</b> Partilhe um projeto ao vivo: os outros acompanham-no só a ver, ou editam-no consigo, diretamente ou
+por <a href="docs/user/pt/live-relay.md">um relay gratuito seu</a>. Um projeto num link para os slides, um projeto no GitHub, as cópias
+de um grupo juntadas de volta.</td>
+<td><a href="docs/user/pt/teaching.md"><img src="docs/images/new-project-pt.webp" alt="Novo Projeto: começar a partir de um exemplo"></a>
+<b>Pronto para a sala de aula.</b> Exemplos das primeiras portas lógicas a um microprocessador, laboratórios guiados
+verificados passo a passo, exercícios avaliados automaticamente, trabalhos do GitHub Classroom.</td>
 </tr>
 </table>
 
