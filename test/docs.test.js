@@ -245,3 +245,17 @@ test('docs: docs/README.md lists every developers\' document, and the old guides
   assert.deepEqual(pointers.sort(), ['CIRCUITS.md', 'CLASSROOM.md', 'COMECAR.md', 'GETTING-STARTED.md', 'GRADING.md', 'c-to-hdl.md']);
   assert.deepEqual(top.filter(f => !pointers.includes(f) && !index.includes(`](${f})`)), [], 'not listed in docs/README.md');
 });
+
+test('docs: the READMEs\' HTML (their features\' table) is well formed: each tag closed where it opens (#4606)', () => {
+  for (const f of ['README.md', 'README.pt.md']) {
+    const stack = [];
+    for (const [, close, tag, rest] of noCode(read(f)).matchAll(/<(\/?)(table|tr|td|th|a|b)\b([^<>]*)>/g)) {
+      assert.doesNotMatch(rest, /</, `${f}: a tag inside <${tag}…>`);
+      if (!close) { stack.push(tag); continue; }
+      assert.equal(stack.pop(), tag, `${f}: </${tag}> closes another tag`);
+    }
+    assert.deepEqual(stack, [], `${f}: tags left open`);
+    // (and no tag broken into another: '<td width="50%"<td …')
+    assert.doesNotMatch(read(f), /<[a-z]+[^<>]*<[a-z]/, `${f}: a tag inside another`);
+  }
+});
