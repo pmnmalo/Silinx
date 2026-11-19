@@ -280,10 +280,10 @@ uiTest('#3716 Share Project in the main toolbar, after Close Project (#3719), no
 
 // (#3479, #3698) Share Project… in the Design tree's project and device menus, once, as the File menu's; Share Module… in
 // a module's; its window starts with its Share: row, A copy (the default) or Live, each swapping the window for the
-// other's; the way chosen kept (the next window opens on it); Live disabled, its reason its tip, while following
+// other's; the next window on A copy again, Live chosen before or not (#4669); Live disabled, its reason its tip, while following
 // another's project (the copy still there); in Portuguese. No warnings.
 const howState = (page) => page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how input')].map((r) => `${r.value}${r.checked ? ' *' : ''}${r.disabled ? ` (disabled: ${r.closest('label').title})` : ''}`));
-uiTest('#3698 Share Project…: once in the Design tree\'s project and device menus, Share Module… in a module\'s; a copy or live chosen in its window, kept; Live disabled while following; Portuguese', E, async (page) => {
+uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and device menus, Share Module… in a module\'s; a copy or live chosen in its window, A copy the next time; Live disabled while following; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'TreeShared', top: 'top', files: { 'src/top.vhd': TOP } });
   await page.openProject('TreeShared');
   await page.leftTab('design');
@@ -318,7 +318,7 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   assert.deepEqual(await howState(page), ['copy *', 'live']);
   await page.dialogButton('Close');
   await page.waitNoDialog();
-  // the way last chosen kept: Live, then the window opens on it
+  // Live chosen, closed unshared: the next window on A copy (#4669: not the way last chosen)
   await treeMenu(page, 0, 'Share Project…');
   await page.waitDialog('Share Project');
   await chooseLive(page);
@@ -326,7 +326,8 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
   await page.waitNoDialog();
   await treeMenu(page, 0, 'Share Project…');
   await page.waitDialog('Share Project');
-  assert.deepEqual(await howState(page), ['copy', 'live *']);
+  assert.deepEqual(await howState(page), ['copy *', 'live']);
+  assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay select[data-field=view]')), 'A copy\'s window');
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // following another's project: Share Project… there, its copy; Live disabled, its reason its tip
@@ -353,7 +354,7 @@ uiTest('#3698 Share Project…: once in the Design tree\'s project and device me
 // (#3631) Share Module… in a module's menu, Live chosen (#3698): the project shared live (the name asked first), the
 // module's source opened in the owner's page, the links opening on it (…&top=<module>); a follower who opens it opens
 // the module and browses alone on it (the owner on another document), until they follow the owner; asked again while
-// shared, the links of that module at once (Live kept); in Portuguese. No warnings.
+// shared, the links of that module at once (Live: the project shared, #4669); in Portuguese. No warnings.
 const rowOf = (page, m) => page.waitFor((x) => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === x); return i >= 0 ? i : null; }, [m], { what: `${m}'s row` });
 uiTest('#3631 Share Module…: the links open on the module, the owner\'s page on it; a follower opens it, browsing alone; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'ModShared', top: 'top', files: { 'src/top.vhd': TOP, 'src/pass1.vhd': PASS } });

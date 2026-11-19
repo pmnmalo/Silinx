@@ -1,11 +1,13 @@
 // UI: Share Project…'s three ways on the Silinx site (#4640, #4634: web/js/share-how.js, web/js/share-via.js), in
-// both interfaces: the Share: row's A copy, Live via your Cloudflare relay, Live peer to peer (no relay), each with its
-// note, no other row of choices; Live's window opened by default peer to peer with no Cloudflare relay set up; the
+// both interfaces: the Share: row's A copy, Live peer to peer (no relay), Live via your Cloudflare relay (#4670: that
+// order, the arrow key's too), each with its note, no other row of choices; File ▸ Share Project… opening A copy, and
+// Live's window while shared (#4669); Live's window opened peer to peer with no Cloudflare relay set up; the
 // Cloudflare one chosen from A copy's window: none set up said below the row (where to set one up, Set Up a Cloudflare
 // Relay… opening the guide), Start Sharing disabled; peer to peer chosen in the same window (not reopened), its
 // explanation; the relay set up while the window is open (as the Collaboration tab's Relay box does): its address shown
 // with Change…, its key nowhere, Start Sharing through it (the page meeting its followers at the relay), the other way
-// locked while shared; the way chosen remembered; the window's size the same throughout (#4617); in Portuguese. The
+// locked while shared; the Live way chosen remembered for Share Live…; the window's size the same throughout (#4617);
+// in Portuguese. The
 // relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim (test/workers-shim.js), among the
 // site's relays. No warnings.
 import { before, after } from 'node:test';
@@ -36,7 +38,6 @@ const boot = async (page, pt = false) => {
   await loaded(page);
   await page.eval((p) => {
     for (const k of ['collab.relay', 'collab.via']) { localStorage.removeItem(`silinx.${k}`); localStorage.removeItem(`silinx.dev.${k}`); }
-    localStorage.setItem('silinx.share-how', 'live');   // (Share Project… opens Live's window: its way the default)
     for (const k of ['silinx.collab.stun', 'silinx.dev.collab.stun']) localStorage.setItem(k, '[]');
     for (const k of ['silinx.collab.meeting', 'silinx.dev.collab.meeting']) localStorage.setItem(k, 'local');   // (never the public trackers)
     localStorage.setItem('silinx.collab.name', 'Ana');
@@ -63,6 +64,14 @@ const open = async (page, pt = false) => {
   await page.waitDialog(pt ? 'Partilhar Projeto' : 'Share Project');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay input[name=share-how]:checked'), [], { what: 'the Share row' });
 };
+// Share Live… (the Collaboration tab's): Live's window, its way the one last chosen (#4669: File ▸ Share Project… opens A
+// copy while nothing is shared)
+const openLive = async (page, pt = false) => {
+  await page.leftTab('collab');
+  await page.click('#collab-page .entry a', { text: pt ? 'Partilhar em Direto…' : 'Share Live…' });
+  await page.waitDialog(pt ? 'Partilhar Projeto' : 'Share Project');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg .share-via'), [], { what: 'Live\'s window' });
+};
 const live = () => document.querySelector('.dlg-overlay .collab-dlg .share-via');
 // a way of the Share: row chosen: A copy and Live swap the window; Live's other way keeps it
 const choose = async (page, how) => {
@@ -86,7 +95,7 @@ const ways = (page) => page.eval(() => {
 });
 const warnings = async (page) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|AVISO|ERROR|ERRO)/.test(l));
 
-const ROW = ['Share:', ['A copy', 'A link with the project in it'], ['Live via your Cloudflare relay', 'Others follow it as you work, on any network'], ['Live peer to peer (no relay)', 'Others follow it as you work, with no setup']];
+const ROW = ['Share:', ['A copy', 'A link with the project in it'], ['Live peer to peer (no relay)', 'Others follow it as you work, with no setup'], ['Live via your Cloudflare relay', 'Others follow it as you work, on any network']];
 const RELAY = 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.';
 const PEER = 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.';
 const NONE = ['No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.', 'Set Up a Cloudflare Relay…'];
@@ -95,9 +104,15 @@ const SET = (a, k) => { localStorage.setItem('silinx.collab.relay', JSON.stringi
 uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live peer to peer in one row, Live\'s way explained below it; none set up: said, Start Sharing disabled; one set up: its address, Change…, shared through it, the other way locked; remembered; the window\'s size kept', E, async (page) => {
   await boot(page);
   await newProject(page, 'via');
-  // Live's window, peer to peer by default (no relay set up): one row of choices, its way explained below
+  // File ▸ Share Project…: A copy, nothing shared (#4669); the row's three ways in their order, the keyboard's too (#4670)
   await open(page);
-  await page.waitFor(live, [], { what: 'Live\'s window' });
+  assert.deepEqual([(await ways(page)).row, (await ways(page)).how], [ROW, 'copy']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay input[name=share-how]')].map((r) => r.dataset.field)), ['how-copy', 'how-live-peer', 'how-live-relay']);
+  // (the arrow key: the next way, peer to peer: Live's window)
+  await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-copy]').focus());
+  await page.key('ArrowRight');
+  await page.waitFor(() => document.querySelectorAll('.dlg-overlay').length === 1 && !!document.querySelector('.dlg-overlay .collab-dlg .share-via') && document.querySelector('.dlg-overlay input[data-field="how-live-peer"]')?.checked, [], { what: 'Live peer to peer by the arrow key' });
+  // Live's window, peer to peer: one row of choices, its way explained below
   const box = await windowBox(page), sizes = [];
   const step = async (name) => sizes.push([name, await windowBox(page)]);
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-peer', about: [PEER], relay: null, start: true, radios: ['share-how'] });
@@ -130,6 +145,13 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   await page.dialogButton('Start Sharing');
   await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
   await step('shared');
+  // (#4669: while shared, File ▸ Share Project… opens Live's window, the way in use: its links, Stop Sharing)
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  await open(page);
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg') && !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'Live\'s window while shared' });
+  assert.deepEqual([(await ways(page)).how, await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons button')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`))], ['live-relay', ['Start Sharing (off)', 'Stop Sharing', 'Close']]);
+  await step('shared, opened again');
   assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay .share-via').hidden, ...['copy', 'live-relay', 'live-peer'].map((x) => document.querySelector(`.dlg-overlay input[data-field="how-${x}"]`).disabled)]), [true, false, false, true]);
   await page.waitConsole(new RegExp(`^This page hosts the shared project: its followers meet it at the relay at ${host.replace(/\./g, '\\.')}, then connect to it directly when they can, through the relay otherwise; it sees no file\\. It lasts while this page is open\\.$`, 'm'));
   await page.dialogButton('Stop Sharing');
@@ -138,8 +160,13 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   assert.deepEqual(sizes, sizes.map(([n]) => [n, box]));
   await page.dialogButton('Close');
   await page.waitNoDialog();
-  // remembered: the Cloudflare relay; peer to peer once shared that way, even with a relay set up
+  // remembered for Share Live… (the Collaboration tab's): the Cloudflare relay; peer to peer once shared that way, even
+  // with a relay set up; File ▸ Share Project… still A copy (#4669)
   await open(page);
+  assert.equal((await ways(page)).how, 'copy');
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  await openLive(page);
   assert.equal((await ways(page)).how, 'live-relay');
   await choose(page, 'live-peer');
   await page.dialogButton('Start Sharing');
@@ -149,7 +176,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   await page.waitFor(() => document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'stopped' });
   await page.dialogButton('Close');
   await page.waitNoDialog();
-  await open(page);
+  await openLive(page);
   assert.equal((await ways(page)).how, 'live-peer');
   await page.dialogButton('Close');
   await page.waitNoDialog();
@@ -161,9 +188,8 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
 uiTest('#4640 in Portuguese: the Share row\'s three ways, their notes and Live\'s explanations translated; none set up, said; one set up, its address and Alterar…', E, async (page) => {
   await boot(page, true);
   await newProject(page, 'via-pt', true);
-  await open(page, true);
-  await page.waitFor(live, [], { what: 'Live\'s window' });
-  const ROW_PT = ['Partilhar:', ['Uma cópia', 'Uma ligação com o projeto lá dentro'], ['Em direto pelo seu retransmissor Cloudflare', 'Os outros seguem-no enquanto trabalha, em qualquer rede'], ['Em direto ponto a ponto (sem retransmissor)', 'Os outros seguem-no enquanto trabalha, sem configuração']];
+  await openLive(page, true);
+  const ROW_PT = ['Partilhar:', ['Uma cópia', 'Uma ligação com o projeto lá dentro'], ['Em direto ponto a ponto (sem retransmissor)', 'Os outros seguem-no enquanto trabalha, sem configuração'], ['Em direto pelo seu retransmissor Cloudflare', 'Os outros seguem-no enquanto trabalha, em qualquer rede']];
   assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-peer', about: ['Sem configuração: quem o segue encontra-o no ponto de encontro público e liga-se de navegador a navegador (WebRTC), ou envia-lhe um código, que Adicionar um Utilizador… recebe. Pode falhar em redes que bloqueiam ligações diretas.'], relay: null, start: true, radios: ['share-how'] });
   await choose(page, 'live-relay');
   assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-relay', about: ['Quem o segue encontra-o num retransmissor seu no Cloudflare e liga-se depois diretamente a si quando pode e, senão, através do retransmissor. Funciona nas redes das escolas e noutras redes restritas, e conta para o seu plano gratuito do Cloudflare.'], relay: ['Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.', 'Configurar um Retransmissor Cloudflare…'], start: false, radios: ['share-how'] });

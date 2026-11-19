@@ -360,3 +360,38 @@ uiTest('#4668 Share Project, live: a rule before the view-only link\'s sentence 
   assert.deepEqual(await warnings(page), []);
   assert.deepEqual(page.errors, []);
 }, { timeout: 120000 });
+
+// #4669: Share Project… opens on A copy, after Live was chosen too; while the project is shared live, on Live, the way
+// in use (its links, Stop Sharing); A copy again once stopped. (The Silinx site's three ways: collab-live-via.test.js.)
+uiTest('#4669 Share Project… opens on A copy, but on Live while the project is shared live', E, async (page) => {
+  await make(page, 'opensas', 'gates');
+  await page.openProject('opensas');
+  await page.eval(() => localStorage.setItem('silinx.collab.name', 'Teacher'));
+  const opened = async (what) => {
+    await page.menu('File', 'Share Project…');
+    await page.waitDialog('Share Project');
+    await page.waitFor(() => !!document.querySelector('.dlg-overlay input[name=share-how]:checked'), [], { what });
+    return page.eval(() => ({ how: document.querySelector('.dlg-overlay input[name=share-how]:checked').value, buttons: [...document.querySelectorAll('.dlg-overlay .dlg-buttons button')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`), links: !!document.querySelector('.dlg-overlay .collab-links:not([hidden])') }));
+  };
+  const close = async () => { await page.dialogButton('Close'); await page.waitNoDialog(); };
+  assert.deepEqual(await opened('nothing shared'), { how: 'copy', buttons: ['Close'], links: false });
+  // Live chosen in the window, not shared: the next time, A copy still
+  await page.click('.dlg-overlay input[data-field="how-live"]');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg'), [], { what: 'Live\'s window' });
+  await close();
+  assert.deepEqual(await opened('Live chosen before'), { how: 'copy', buttons: ['Close'], links: false });
+  // shared live: Live's window, its links and Stop Sharing
+  await page.click('.dlg-overlay input[data-field="how-live"]');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg'), [], { what: 'Live\'s window' });
+  await page.dialogButton('Start Sharing');
+  await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
+  await close();
+  assert.deepEqual(await opened('shared'), { how: 'live', buttons: ['Start Sharing (off)', 'Stop Sharing', 'Close'], links: true });
+  await page.dialogButton('Stop Sharing');
+  await page.waitFor(() => document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'stopped' });
+  await close();
+  assert.deepEqual(await opened('stopped'), { how: 'copy', buttons: ['Close'], links: false });
+  await close();
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+}, { timeout: 120000 });
