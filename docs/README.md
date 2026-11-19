@@ -22,6 +22,7 @@ AI agents alike, and [ONBOARDING.md](../ONBOARDING.md) is the maintainer's sessi
 | [UI-GUIDELINES.md](UI-GUIDELINES.md) | the interface's rules for its editors and viewers |
 | [IR.md](IR.md) | the HDL parsers' intermediate representation |
 | [PROJECT.md](PROJECT.md) | the project model and its API |
+| [CODESIGN.md](CODESIGN.md) | co-design (roadmap #4695): FPGA and microcontroller nodes in a System document, simulated together |
 | [HISTORY.md](HISTORY.md) | who started Silinx, why, and how it grew |
 
 The files at the top of `docs/` whose names are in capitals and that hold one line (GETTING-STARTED, COMECAR,
