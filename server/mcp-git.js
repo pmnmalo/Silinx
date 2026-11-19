@@ -11,7 +11,7 @@ import { drawingKind, diffDrawings } from '../core/drawing-merge.js';
 import { unifiedDiff } from '../core/text-diff.js';
 import { checkChoices } from '../core/git-resolve.js';
 import { checksLines } from '../core/github-checks.js';
-import { cloneText, initText, commitText, pushText, pullText, fileLines, shortCommit as short, hunkLines, pullMergeLines, branchesText, newBranchText, switchText, mergeBranchText } from '../core/git-messages.js';
+import { cloneText, initText, commitText, pushText, pullText, fileLines, changesFirst, conflictCount, shortCommit as short, hunkLines, pullMergeLines, branchesText, newBranchText, switchText, mergeBranchText } from '../core/git-messages.js';
 
 // the back end: the system's git, or GitHub's API (SILINX_GIT=github, #3196)
 const B = () => (GH.githubBackend() ? GH : Git);
@@ -68,7 +68,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_status', title: 'A project\'s changes',
-    description: 'A project\'s files changed, new, deleted or in conflict since the last commit (the Design pane\'s marks), its GitHub repository (owner/repository), its branch and how many commits it is ahead of or behind GitHub: what the Collaboration tab shows.',
+    description: 'A project\'s files changed, new, deleted or in conflict since the last commit (the Design pane\'s marks; the conflicts first, as Changes… lists them), its GitHub repository (owner/repository), its branch and how many commits it is ahead of or behind GitHub: what the Collaboration tab and its Changes… window show.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project }) {
@@ -77,7 +77,9 @@ export const GIT_TOOLS = [
       if (!s.repository) return { text: `'${project}' is not in a git repository (git_init makes one).`, data: s };
       const where = `${s.branch || '(no branch)'}${s.upstream ? `, ${s.ahead} commit(s) ahead of and ${s.behind} behind ${s.upstream}` : ', not pushed yet'}${s.remote ? ` (GitHub: ${s.remote})` : ' (no GitHub repository)'}`;
       // (the files' names and the branches', a clone's own: labelled, #4174)
-      return { text: [`${project}: ${where}; ${s.files.length ? `${s.files.length} change(s):` : 'no change since the last commit.'}`, ...fileLines(s.files)].join('\n'), data: s,
+      // (the conflicts first and counted, as Changes… lists them, #4581)
+      const conflicts = conflictCount(s.files);
+      return { text: [`${project}: ${where}; ${s.files.length ? `${s.files.length} change(s)${conflicts ? `, ${conflicts} in conflict` : ''}:` : 'no change since the last commit.'}`, ...fileLines(changesFirst(s.files))].join('\n'), data: s,
         untrusted: 'the files\' and the branches\' names, the repository\'s' };
     },
   },

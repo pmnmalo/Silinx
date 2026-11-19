@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkUrl, redact, nameFromRepo, URL_HINT } from '../core/github-url.js';
-import { cloneText, initText, commitText, pushText, pullText, fileLines, shortCommit } from '../core/git-messages.js';
+import { cloneText, initText, commitText, pushText, pullText, fileLines, shortCommit, changesFirst, conflictCount } from '../core/git-messages.js';
 
 test('checkUrl: GitHub\'s https and ssh addresses only, with their hint; a Classroom invitation', () => {
   for (const [u, owner, repo] of [['https://github.com/pmnmalo/Silinx', 'pmnmalo', 'Silinx'], ['https://github.com/ds-2026/lab1-ana.git', 'ds-2026', 'lab1-ana'],
@@ -24,6 +24,14 @@ test('redact, nameFromRepo', () => {
 test('the messages', () => {
   const files = [{ path: 'src/a.v', state: 'new' }, { path: 'src/b.vhd', state: 'modified' }, { path: 'c.ucf', state: 'deleted' }, { path: 'd.v', state: 'conflict' }];
   assert.deepEqual(fileLines(files), ['  src/a.v (new)', '  src/b.vhd (changed)', '  c.ucf (deleted)', '  d.v (in conflict)']);
+  // (#4581: Changes… and git_status, the conflicts first, each group in git's order; none, one, all)
+  const two = [...files, { path: 'a.v', state: 'conflict' }];
+  assert.deepEqual(changesFirst(two).map(f => f.path), ['d.v', 'a.v', 'src/a.v', 'src/b.vhd', 'c.ucf']);
+  assert.deepEqual([conflictCount(two), conflictCount(files), conflictCount([])], [2, 1, 0]);
+  assert.deepEqual(changesFirst(files.slice(0, 3)), files.slice(0, 3));
+  assert.deepEqual(changesFirst([]), []);
+  assert.notEqual(changesFirst(files), files);   // (a new list: the status's own left in git's order)
+  assert.deepEqual(files.map(f => f.path), ['src/a.v', 'src/b.vhd', 'c.ucf', 'd.v']);
   assert.equal(shortCommit('0123456789abcdef'), '0123456');
   assert.equal(cloneText({ project: 'lab1', repository: 'ds/lab1' }), 'Project \'lab1\' opened from the GitHub repository ds/lab1.');
   assert.equal(initText('p', { created: true, remote: null, gitignore: true }), 'Repository made for \'p\'; .gitignore written.');

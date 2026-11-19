@@ -55,7 +55,8 @@ const tabCommand = async (page, label) => {
   }, [label], { what: `the Collaboration page still, with ${label}` });
   await page.click('#collab-page .entry a', { text: label });
 };
-const tabState = (page, text) => page.waitFor((t) => [...document.querySelectorAll('#collab-page .collab-github .entry.hint')].some((e) => e.textContent === t), [text], { what: text });
+// (the sign-in's command, the Git Repository box's first line, #4581)
+const tabState = (page, text) => page.waitFor((t) => document.querySelector('#collab-page .collab-repo .entry a')?.textContent === t, [text], { what: text });
 // the sign-out dialog as shown: its texts, its link, its buttons (the default one marked), the focused one
 const shown = (page) => page.eval(() => {
   const d = [...document.querySelectorAll('.dlg-overlay')].pop();
@@ -98,7 +99,7 @@ uiTest('#4256 Sign out of GitHub with a pasted token: asked first (Cancel the de
   await page.fill('.dlg-overlay .git-token', gh.token);
   await page.dialogButton('Sign In');
   await page.waitNoDialog();
-  await tabState(page, 'Signed in to GitHub.');
+  await tabState(page, 'Sign out of GitHub');
   assert.deepEqual(await kept(page), [null, gh.token, null, 'token']);
   // asked: Enter (the default, Cancel), Escape, Cancel keep the sign-in
   let mark = await page.consoleText();
@@ -112,7 +113,7 @@ uiTest('#4256 Sign out of GitHub with a pasted token: asked first (Cancel the de
   await page.waitFor((m, n) => window.__console().slice(m.length).split(n).length === 4, [mark, CANCELLED], { what: 'three cancels' });
   assert.deepEqual(await linesSince(page, mark), [CANCELLED, CANCELLED, CANCELLED]);
   assert.deepEqual(await kept(page), [null, gh.token, null, 'token']);
-  await tabState(page, 'Signed in to GitHub.');
+  await tabState(page, 'Sign out of GitHub');
   // Sign Out: forgotten, the tab offers the sign-in again
   mark = await page.consoleText();
   await tabCommand(page, 'Sign out of GitHub');
@@ -122,7 +123,7 @@ uiTest('#4256 Sign out of GitHub with a pasted token: asked first (Cancel the de
   await page.waitConsole(new RegExp(OUT_TOKEN.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')));
   assert.deepEqual(await linesSince(page, mark), [OUT_TOKEN]);
   assert.deepEqual(await kept(page), [null, null, null, null]);
-  await tabState(page, 'Not signed in to GitHub.');
+  await tabState(page, 'Sign in with GitHub…');
   assert.ok(!(await page.consoleText()).includes(gh.token));
   assert.deepEqual(warnings(page), []);
 }, { url: () => 'about:blank', timeout: 180000 });
@@ -186,7 +187,7 @@ uiTest('#4256 Sign out of GitHub in Portuguese: the dialog of each way translate
       await page.waitDialog('Terminar sessão no GitHub');
       return shown(page);
     };
-    await tabState(page, 'Com sessão iniciada no GitHub.');
+    await tabState(page, 'Terminar sessão no GitHub');
     assert.deepEqual(await ask(), {
       title: 'Terminar sessão no GitHub',
       forget: 'O Silinx esquece o token de acesso pessoal neste navegador. Para voltar a iniciar sessão é preciso esse token (guarde uma cópia dele) ou um novo.',
@@ -215,7 +216,7 @@ uiTest('#4256 Sign out of GitHub in Portuguese: the dialog of each way translate
     await page.waitConsole(/Signed out of GitHub: this browser no longer keeps the sign-in, whose authorization/);
     assert.deepEqual(await linesSince(page, mark), [OUT_DEVICE]);
     assert.deepEqual(await kept(page), [null, null, null, null]);
-    await tabState(page, 'Sem sessão iniciada no GitHub.');
+    await tabState(page, 'Iniciar sessão no GitHub…');
   } finally {
     await page.eval(() => localStorage.removeItem('silinx.lang'));
   }

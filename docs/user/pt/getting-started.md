@@ -154,7 +154,8 @@ Abre-se uma janela preta (o servidor do Silinx) e depois o browser mostra o Sili
   botão direito num ficheiro de texto (HDL, C, restrições) no painel Projeto ou no seu separador para o ficheiro, no
   projeto para a sua pasta (**Abrir a Pasta no VS Code**); cada gravação lá aparece no Silinx.
 - **O separador Colaboração** (Collaboration, o último do painel lateral): um projeto num repositório do GitHub (também o
-  de um trabalho do GitHub Classroom), as suas alterações, Registar (Commit)…, Enviar (Push), Receber (Pull), Histórico…
+  de um trabalho do GitHub Classroom), Registar (Commit)…, Enviar (Push), Receber (Pull), Alterações… (os ficheiros
+  alterados, numa janela), Histórico…
   e as verificações do GitHub; Guardar o Projeto num Repositório GitHub… ou Abrir do Repositório GitHub… para um que não tenha (README, "A project
   on GitHub"); e a partilha em direto: Partilhar em Direto…, quem está no projeto, Parar de Partilhar.
 - **File ▸ Export Project (.zip)…** começa pelo software de destino: **Xilinx ISE** cria um zip que abre no Xilinx ISE 14.7; **Silinx** guarda o projeto Silinx completo (com os diagramas ASM e esquemáticos), que se reabre com **File ▸ Import Project…** (que reconhece o software do zip); a pasta de um projeto Silinx (a que tem o seu silinx.json) também se importa aí, como a de um projeto ISE. AMD Vivado e Intel Quartus aparecem desativados: o Silinx ainda não lê nem escreve os seus projetos. Um projeto importado veio de fora: só corre o Xilinx ISE e só programa uma placa depois de carregar em **Confiar no Projeto** (Trust Project) na consola, que o diz quando o projeto abre. Um projeto só de desenho e simulação (sem FPGA) não tem software a escolher: é exportado como projeto Silinx.

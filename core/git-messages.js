@@ -5,6 +5,11 @@
 const STATE = { modified: 'changed', new: 'new', deleted: 'deleted', conflict: 'in conflict' };
 export const stateWord = s => STATE[s] || s;
 export const fileLines = files => files.map(f => `  ${f.path} (${stateWord(f.state)})`);
+/** A status's files as Changes… (web/js/git-changes.js) and git_status list them (#4581): the conflicts first, then the
+ *  others, each in git's order. */
+export const changesFirst = files => [...files.filter(f => f.state === 'conflict'), ...files.filter(f => f.state !== 'conflict')];
+/** How many of a status's files are in conflict (a pull's or a merge's left unresolved). */
+export const conflictCount = files => files.filter(f => f.state === 'conflict').length;
 export const shortCommit = c => String(c || '').slice(0, 7);
 
 export const cloneText = r => `Project '${r.project}' opened from the GitHub repository ${r.repository}.`;

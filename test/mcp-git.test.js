@@ -111,6 +111,28 @@ test('git_init and the failures: their message and hint; a URL that is not GitHu
   try { await fails('git_status', { project: 'lab1' }, 'git is turned off on this server (SILINX_GIT=off)'); } finally { delete process.env.SILINX_GIT; }
 });
 
+// a merge left in conflict by git itself (outside Silinx): git_status lists the conflicts first and counts them, as
+// Changes… does (#4581); its data keeps git's order
+test('#4581 git_status: the files in conflict first and counted, as Changes… lists them', async () => {
+  await ok('new_project_from_example', { name: 'clash', example: 'gates' });
+  await ok('git_init', { project: 'clash' });
+  const dir = path.join(ws, 'clash'), vhd = path.join(dir, 'src', 'gates.vhd');
+  const text = fs.readFileSync(vhd, 'utf8');
+  sh(dir, 'add', '-A'); sh(dir, 'commit', '--quiet', '-m', 'First');
+  sh(dir, 'checkout', '--quiet', '-b', 'other');
+  fs.writeFileSync(vhd, `-- theirs\n${text}`); sh(dir, 'commit', '--quiet', '-am', 'Theirs');
+  sh(dir, 'checkout', '--quiet', 'main');
+  fs.writeFileSync(vhd, `-- mine\n${text}`); sh(dir, 'commit', '--quiet', '-am', 'Mine');
+  assert.throws(() => sh(dir, 'merge', '--quiet', 'other'));
+  fs.writeFileSync(path.join(dir, 'src', 'a_new.v'), 'module a_new; endmodule\n');
+  const st = await ok('git_status', { project: 'clash' });
+  assert.equal(st.text, 'clash: main, not pushed yet (no GitHub repository); 2 change(s), 1 in conflict:\n  src/gates.vhd (in conflict)\n  src/a_new.v (new)');
+  assert.deepEqual(st.data.files, [{ path: 'src/a_new.v', state: 'new' }, { path: 'src/gates.vhd', state: 'conflict' }]);
+  // (none in conflict: no count)
+  sh(dir, 'merge', '--abort');
+  assert.equal((await ok('git_status', { project: 'clash' })).text, 'clash: main, not pushed yet (no GitHub repository); 1 change(s):\n  src/a_new.v (new)');
+});
+
 test('#3363 git_init sets only a remote the user\'s settings name (mcp.remotes); a clone\'s and a file\'s text labelled untrusted', async () => {
   const cfg = path.join(process.env.SILINX_CONFIG_DIR, 'config.json');
   const remote = path.join(tmp, 'Theirs9.git');
