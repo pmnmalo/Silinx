@@ -82,7 +82,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(LINK_TOOLS), ['project_link', 'open_link', 'short_links', 'delete_short_link']);
   assert.deepEqual(names(COLLAB_TOOLS), ['share_project', 'follow_project']);
   assert.deepEqual(names(RELAY_TOOLS), ['live_relay']);   // (the Cloudflare relay of one's own, #4574)
-  assert.deepEqual(names(GIT_TOOLS), ['git_clone', 'git_init', 'git_status', 'git_commit', 'git_push', 'git_pull', 'git_log', 'git_checks', 'git_diff', 'git_branch', 'git_switch', 'git_merge']);
+  assert.deepEqual(names(GIT_TOOLS), ['git_clone', 'git_repositories', 'git_init', 'git_status', 'git_commit', 'git_push', 'git_pull', 'git_log', 'git_checks', 'git_diff', 'git_branch', 'git_switch', 'git_merge']);
   assert.deepEqual(names(HDL_TOOLS), ['check_syntax', 'simulate']);
   assert.deepEqual(names(VERIFY_TOOLS), ['verify']);
   assert.deepEqual(names(WCFG_TOOLS), ['save_wave_config', 'load_wave_config']);

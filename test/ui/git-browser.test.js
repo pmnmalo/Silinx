@@ -68,6 +68,15 @@ uiTest('#3196 the browser edition: Open from GitHub Repository…, Sign in with 
   gh.seed('pmalo/lab1', filesOf(BLINKY));
   gh.seed('pmalo/secret', filesOf(BLINKY), { private: true });
   await boot(page);
+  // the user's repositories (#4653), signed out: not listed, the console says why and how
+  const repoStatus = () => page.eval(() => document.querySelector('.dlg-overlay .git-repos-status')?.textContent || '');
+  await page.menu('File', 'Open from GitHub Repository…');
+  await page.waitDialog('Open from GitHub Repository');
+  await page.waitFor(() => /not listed/.test(document.querySelector('.dlg-overlay .git-repos-status')?.textContent || ''), [], { what: 'the list\'s status' });
+  assert.equal(await repoStatus(), 'Your GitHub repositories are not listed (the console says why): type the address.');
+  await page.waitConsole(/Your repositories are not listed: not signed in to GitHub\.\nHint: Sign in with GitHub… lists them \(a Classroom assignment's with your private repositories included\); or type the repository's address\./);
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
   // a public repository: no sign-in needed
   await openRepo(page, 'https://github.com/pmalo/lab1');
   await page.waitFor(() => window.Silinx.project?.name === 'lab1' && document.querySelector('#hier .row'), [], { what: 'lab1 open' });
@@ -95,6 +104,16 @@ uiTest('#3196 the browser edition: Open from GitHub Repository…, Sign in with 
   await page.waitNoDialog({ timeout: 15000 });
   await page.waitConsole(/Signed in to GitHub: the sign-in is kept in this tab until it is closed \(Sign out of GitHub forgets it\)\./);
   assert.deepEqual(gh.scopes(), ['repo gist']);
+  // the user's repositories listed (#4653), the last pushed first; one picked: its address in the field
+  await page.menu('File', 'Open from GitHub Repository…');
+  await page.waitDialog('Open from GitHub Repository');
+  await page.waitFor(() => document.querySelectorAll('.dlg-overlay .git-repo').length === 2, [], { what: 'the repositories' });
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .git-repo')].map((li) => li.textContent)), ['pmalo/secret(private)', 'pmalo/lab1']);
+  assert.equal(await repoStatus(), '2 of your 2 GitHub repositories, the most recently pushed first:');
+  await page.click('.dlg-overlay .git-repo[data-repo="pmalo/secret"]');
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay .git-url').value, document.querySelector('.dlg-overlay .git-name').value]), ['https://github.com/pmalo/secret', 'secret']);
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
   // the private repository now opens
   await openRepo(page, 'https://github.com/pmalo/secret');
   await page.waitConsole(/Project 'secret' opened from the GitHub repository pmalo\/secret\./);

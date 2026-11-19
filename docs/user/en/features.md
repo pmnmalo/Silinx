@@ -503,7 +503,10 @@ Repository box: the project's GitHub repository and branch (the commits to push 
 a project with no repository, Store Project in a GitHub Repository… and Open from GitHub Repository…; and its Sharing box: Share a Copy…
 (Share Project…'s copy), and live sharing (Share Live…, who is in, the links, Stop Sharing, Follow, Stop Following). The menus keep the same commands:
 - **Open from GitHub Repository…** (the Collaboration tab, the ISE style's File menu) opens a project from a
-  GitHub repository, a GitHub Classroom assignment's too.
+  GitHub repository, a GitHub Classroom assignment's too. It lists your repositories, the most recently pushed first,
+  filtered as you type: a click or the arrow keys pick one, or type any address. The local server lists them through
+  GitHub's command line (`gh`, signed in with `gh auth login`); the browser edition after Sign in with GitHub…. A project
+  of the same name already in the workspace: it asks whether to open it, replace it or keep both.
 - **Commit…, Push to GitHub and Pull from GitHub** (the Collaboration tab; the project's right-click menu in the Design
   pane, under Git; the File menu) send it back and bring the others' changes in. A text file changed on both sides is
   merged by its lines; when the same lines changed, the pull opens the **merge view** (Mine, Theirs, Both or the lines

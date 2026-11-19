@@ -20,6 +20,7 @@ import { applyChanges } from './project-watch.js';
 import { commitText, pushText, pullText, cloneText, initText, pullMergeLines } from '/core/git-messages.js';
 import { checksLines } from '/core/github-checks.js';
 import { keptBothText } from '/core/git-clone-exists.js';
+import { repoList } from './git-repo-list.js';
 import { checkUrl, nameFromRepo } from '/core/github-url.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
@@ -116,7 +117,8 @@ export function hookGitStatus() {
 // a field's error, beside it (the dialog stays open)
 const fieldError = cls => h('div', { class: `hint git-error ${cls}`, style: { gridColumn: '1 / -1', minHeight: '16px' } });
 
-/** File ▸ Open from GitHub Repository…: a GitHub repository (a Classroom assignment's) cloned into the workspace, opened. */
+/** File ▸ Open from GitHub Repository…: a GitHub repository (a Classroom assignment's) cloned into the workspace, opened;
+ *  the user's repositories listed under the address's field to pick from (#4653, web/js/git-repo-list.js). */
 export async function openFromRepositoryDialog() {
   const url = h('input', { type: 'text', class: 'git-url', placeholder: 'https://github.com/owner/repository', style: { width: '100%' } });
   const name = h('input', { type: 'text', class: 'git-name', style: { width: '100%' } });
@@ -131,7 +133,7 @@ export async function openFromRepositoryDialog() {
   const r = await dialog({
     title: 'Open from GitHub Repository', width: 520,
     body: h('div', {},
-      h('div', { class: 'form-grid' }, ...field('GitHub repository (a Classroom assignment\'s too):', url), err, ...field('Project name:', name)),
+      h('div', { class: 'form-grid' }, ...field('GitHub repository (a Classroom assignment\'s too):', url), err, repoList(url), ...field('Project name:', name)),
       h('div', { class: 'hint', style: { marginTop: '10px' } }, api.standalone
         ? 'A public repository opens as it is; a private one (a Classroom assignment\'s) after Sign in with GitHub… with your private repositories included.'
         : 'git signs in to GitHub with its own credentials (GitHub\'s command line, Git Credential Manager or an SSH key): Silinx never asks for a password or a token.')),

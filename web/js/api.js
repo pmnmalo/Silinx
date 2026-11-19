@@ -112,6 +112,7 @@ export const api = {
   // git (#3195, the server editions: server/git-routes.js)
   gitEnabled: () => req('GET', '/api/git'),
   // (opts: ifExists, discardChanges: a project of the name opened, replaced or both kept, #4618)
+  gitRepositories: () => req('GET', '/api/git/repositories'),   // (#4653)
   gitClone: (url, name = null, opts = {}) => req('POST', '/api/git/clone', { url, ...(name ? { name } : {}), ...opts }),
   gitStatus: name => req('GET', `/api/projects/${enc(name)}/git/status`),
   gitInit: (name, remote = null) => req('POST', `/api/projects/${enc(name)}/git/init`, remote ? { remote } : {}),

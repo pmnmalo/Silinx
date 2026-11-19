@@ -88,6 +88,12 @@ export const GIT_PT = {
   'Replacing it would lose:': 'Substituí-lo perderia:',
   'Replacing it loses nothing: every change is committed and pushed.': 'Substituí-lo não perde nada: todas as alterações estão registadas (commit) e enviadas (push).',
   'Keep both, the repository as:': 'Manter os dois, o repositório como:',
+  // the user's repositories (#4653, web/js/git-repo-list.js)
+  'Reading your GitHub repositories…': 'A ler os seus repositórios do GitHub…', 'Your GitHub repositories': 'Os seus repositórios do GitHub',
+  'You have no GitHub repository: type its address.': 'Não tem nenhum repositório do GitHub: escreva o endereço.',
+  'None of your GitHub repositories has this: its address is opened as it is.': 'Nenhum dos seus repositórios do GitHub tem isto: o endereço é aberto tal como está.',
+  'Your GitHub repositories are not listed (the console says why): type the address.': 'Os seus repositórios do GitHub não estão listados (a consola diz porquê): escreva o endereço.',
+  '(private)': '(privado)',
   'The old project is moved to the workspace .trash folder.': 'O projeto antigo é movido para a pasta .trash da pasta de trabalho.',
   'The old project will be deleted from this browser, and what it has is lost.': 'O projeto antigo será apagado deste browser, e o que tem perde-se.',
 };
@@ -121,5 +127,6 @@ export const GIT_PT_PATTERNS = [
   [/^(\d+) commit\(s\) not pushed to GitHub$/, '$1 commit(s) não enviado(s) para o GitHub'],
   [/^its commits were never pushed to GitHub$/, 'os seus commits nunca foram enviados para o GitHub'],
   [/^it is in no git repository: its files are nowhere else$/, 'não está em nenhum repositório git: os seus ficheiros não estão em mais lado nenhum'],
+  [/^(\d+) of your (\d+) GitHub repositories, the most recently pushed first:$/, '$1 dos seus $2 repositórios do GitHub, os enviados mais recentemente primeiro:'],
   [/^its changes could not be read: (.*)$/, 'não foi possível ler as suas alterações: $1'],
 ];

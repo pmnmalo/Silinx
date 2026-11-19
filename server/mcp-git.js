@@ -13,6 +13,7 @@ import { checkChoices } from '../core/git-resolve.js';
 import { checksLines } from '../core/github-checks.js';
 import { IF_EXISTS, openedText, replacedText, keptBothText } from '../core/git-clone-exists.js';
 import { gitCloneChoosing } from './git-clone.js';
+import { filterRepositories, repoLine } from '../core/github-repos.js';
 import { cloneText, initText, commitText, pushText, pullText, fileLines, changesFirst, conflictCount, shortCommit as short, hunkLines, pullMergeLines, branchesText, newBranchText, switchText, mergeBranchText } from '../core/git-messages.js';
 
 // the back end: the system's git, or GitHub's API (SILINX_GIT=github, #3196)
@@ -63,6 +64,18 @@ export const GIT_TOOLS = [
       if (r.opened) return { text: openedText(r), data: r };
       const lines = [...(r.replaced ? [replacedText(r)] : []), ...(r.renamedFrom ? [keptBothText(r)] : []), `${cloneText(r)}${UNTRUSTED}`];
       return { text: [...lines, ...r.warnings.map(w => `WARNING: ${w}`)].join('\n'), data: { ...r, trusted: false }, untrusted: r.warnings.length ? 'the warnings, which name the repository\'s files' : undefined };
+    },
+  },
+  {
+    name: 'git_repositories', title: 'The user\'s GitHub repositories',
+    description: 'The user\'s GitHub repositories (owned, a collaborator\'s, an organization\'s: a GitHub Classroom assignment\'s), the most recently pushed first, as File ▸ Open from GitHub Repository… lists them: to choose the one git_clone opens. Listed with the server\'s GitHub token (GH_TOKEN), or else with GitHub\'s command line (gh) and its own sign-in; with neither, the error says how to have them. query: only those whose owner/name or description has it.',
+    inputSchema: { type: 'object', properties: { query: STR('Only the repositories whose owner/name or description has this (any case); an address: its owner/name.') }, additionalProperties: false },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    async run({ query }) {
+      const r = await run(async () => (await import('./git-repos.js')).gitRepositories());
+      const list = filterRepositories(r.repositories, query);
+      const head = `${list.length} repositor${list.length === 1 ? 'y' : 'ies'}${query ? ` with '${query}'` : ''} of ${r.repositories.length}, the most recently pushed first (through ${r.source === 'gh' ? 'GitHub\'s command line' : 'GitHub\'s API'}).`;
+      return { text: [head, ...list.map(x => `  ${repoLine(x)}`)].join('\n'), data: { source: r.source, repositories: list }, untrusted: list.length ? 'the repositories\' names and descriptions' : undefined };
     },
   },
   {

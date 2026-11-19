@@ -13,6 +13,7 @@
 import { githubClient, startDeviceFlow, pollDeviceFlow, GitHubError, SCOPE, PRIVATE_SCOPE } from '../../core/github-api.js';
 import { restGit } from '../../core/git-rest.js';
 import { cloneOrChoose } from '../../core/git-clone-exists.js';
+import { listRepositories } from '../../core/github-repos.js';
 import { checkUrl, nameFromRepo } from '../../core/github-url.js';
 import { markUntrusted } from '../../core/trust.js';
 import { githubSettings } from './github-app.js';
@@ -95,6 +96,12 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
         sameRepository: (have, remote) => !!have && String(have).toLowerCase() === `${remote.owner}/${remote.repo}`.toLowerCase(),
       }, { url, name, ifExists, discardChanges });
       return { ...r, trusted: false };
+    },
+    // the user's repositories (#4653): Open from GitHub Repository…'s list, with this browser's sign-in
+    gitRepositories: async () => {
+      if (!token()) throw new GitHubError('your repositories are not listed: not signed in to GitHub', 'Sign in with GitHub… lists them (a Classroom assignment\'s with your private repositories included); or type the repository\'s address.', 401);
+      const c = githubClient({ fetch: (...a) => globalThis.fetch(...a), token, api: githubSettings().api });
+      return { source: 'api', repositories: await listRepositories(p => c.request('GET', p)) };
     },
     gitStatus: name => backend().status(name),
     gitInit: (name, remote = null) => backend().init(name, { remote }),
