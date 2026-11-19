@@ -309,6 +309,7 @@ html[data-ui="silinx"] .dlg-x { width: 30px; height: 30px; border-radius: 6px; c
 html[data-ui="silinx"] .dlg-x:hover { background: var(--m-hover); color: var(--m-fg); }
 html[data-ui="silinx"] .dlg-body { padding: 16px 18px; }
 html[data-ui="silinx"] .dlg-buttons { padding: 12px 16px; gap: 8px; background: var(--m-surface-2); border-top: 1px solid var(--m-border); }
+html[data-ui="silinx"] .collab-dlg .collab-rule { border-top-color: var(--m-border); }
 html[data-ui="silinx"] .dlg label { margin: 8px 0 4px; }
 html[data-ui="silinx"] .btn { height: var(--m-ctl-h); min-width: 76px; padding: 0 14px; border: 1px solid var(--m-border-strong); border-radius: var(--m-radius); background: var(--m-surface); color: var(--m-fg); font-weight: 550; cursor: pointer; }
 html[data-ui="silinx"] .btn:hover { background: var(--m-surface-2); border-color: var(--m-muted); }

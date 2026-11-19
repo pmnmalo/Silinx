@@ -99,7 +99,7 @@ html[data-ui="ise"][data-theme="dark"] .dlg-overlay { background: rgba(0, 0, 0, 
 html[data-ui="ise"][data-theme="dark"] .dlg { border-color: #4c5a72; box-shadow: 0 6px 24px rgba(0, 0, 0, .6); }
 html[data-ui="ise"][data-theme="dark"] .dlg-title { background: var(--title-grad); border-bottom-color: var(--ise-caption-line); color: var(--title-fg); }
 html[data-ui="ise"][data-theme="dark"] .dlg-x { color: var(--fg); }
-html[data-ui="ise"][data-theme="dark"] .dlg-buttons { border-top-color: var(--ise-line); }
+html[data-ui="ise"][data-theme="dark"] .dlg-buttons, html[data-ui="ise"][data-theme="dark"] .collab-dlg .collab-rule { border-top-color: var(--ise-line); }
 html[data-ui="ise"][data-theme="dark"] .dlg :is(input[type=text], input[type=number], select, textarea) { background: var(--m-surface); color: var(--fg); border-color: #555b66; }
 html[data-ui="ise"][data-theme="dark"] .dlg input:focus, html[data-ui="ise"][data-theme="dark"] .dlg select:focus { outline-color: #5b8def; border-color: #5b8def; }
 html[data-ui="ise"][data-theme="dark"] .wiz-side { background: linear-gradient(#1f3a66, #345a96); }
