@@ -74,7 +74,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(SYMBOL_TOOLS), ['read_symbol', 'edit_symbol', 'update_symbols', 'place_instance', 'set_instance_width']);   // (a module's symbol, #3755; its instances' Width, #3950)
   assert.deepEqual(names(SYMBOL_INFO_TOOLS), ['symbol_info']);   // (a symbol's datasheet, Symbol Info)
   assert.deepEqual(names(SIMULATE_DRAWING_TOOLS), ['simulate_drawing']);
-  assert.deepEqual(names(SOURCE_TOOLS), ['unset_top', 'remove_from_project', 'add_to_project', 'rename_file', 'rename_module', 'delete_file', 'delete_project']);
+  assert.deepEqual(names(SOURCE_TOOLS), ['unset_top', 'remove_from_project', 'add_to_project', 'rename_file', 'rename_module', 'delete_file', 'delete_project', 'rename_project']);
   assert.deepEqual(names(FIND_TOOLS), ['find_in_project']);   // (Find in Project, #3546)
   assert.deepEqual(names(EDITOR_TOOLS), ['open_in_editor']);   // (Open in VS Code, #4017)
   assert.deepEqual(names(TRANSFER_TOOLS), ['export_project', 'import_project', 'import_source']);

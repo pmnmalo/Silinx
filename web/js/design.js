@@ -463,6 +463,7 @@ function projectContextMenu(e) {
     // (git, the server editions: here in both interfaces, the Silinx one having no File menu, #3195)
     hasGit() ? { label: 'Git', submenu: gitMenuItems() } : null,
     '-',
+    { label: 'Rename Project…', action: () => import('./project-rename.js').then(m => m.renameProjectDialog()) },   // (#4641)
     { label: 'Close Project', action: () => closeProject() },   // (#1300)
   ].filter(Boolean), e.clientX, e.clientY);
 }

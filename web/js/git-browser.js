@@ -119,6 +119,8 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
     gitRemote: name => backend().remote(name),
     // a project deleted: what it was in its repository forgotten (a new one of its name is no clone)
     gitForget: name => meta.set(name, null),
+    // a project renamed (#4641): its record under the new name
+    gitMove: async (from, to) => { const m = await meta.get(from); await meta.set(from, null); if (m) await meta.set(to, m); },
 
     // ---- the sign-in
     githubSignedIn: () => !!token(),

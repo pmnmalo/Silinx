@@ -176,6 +176,10 @@ Abre-se uma janela preta (o servidor do Silinx) e depois o browser mostra o Sili
 - Os projetos ficam em pastas normais em **`Silinx-projects`**, na sua pasta de utilizador
   (Windows: `C:\Users\<você>\Silinx-projects`, macOS: `/Users/<você>/Silinx-projects`).
   Pode copiá-los, fazer cópias de segurança, ou comprimi-los para entregar.
+- **Mudar o Nome do Projeto…** (Rename Project…; menu Ficheiro, menu do botão direito do projeto no painel Projeto, o de
+  um projeto recente na página Início) muda o nome de um projeto: a pasta muda de nome (a de um repositório git com o
+  `.git`, mantendo o repositório no GitHub), e o projeto continua aberto com os separadores. Não enquanto corre uma
+  implementação nem enquanto o projeto é partilhado em direto.
 - **Abrir no VS Code** (Open in VS Code; o editor que o Silinx encontra neste computador: VS Code, VSCodium ou Cursor):
   botão direito num ficheiro de texto (HDL, C, restrições) no painel Projeto ou no seu separador para o ficheiro, no
   projeto para a sua pasta (**Abrir a Pasta no VS Code**); cada gravação lá aparece no Silinx.
