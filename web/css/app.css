@@ -276,6 +276,11 @@ table.grid tr.sel td { background: #dbe8fb; }
 #collab-page .collab-peer .collab-path { margin-left: auto; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; line-height: 14px; color: #888; }   /* (a follower's path, #4643) */
 #collab-page .collab-peer .collab-path[data-path="p2p"] { color: var(--success); }
 #collab-page .collab-mode { font-weight: 600; }
+#collab-page .collab-roles { display: inline-flex; border: 1px solid #aaa; border-radius: 3px; overflow: hidden; }   /* (the owner's Viewer | Editor, #4646) */
+#collab-page .collab-role-state { padding: 0 5px; border: none; background: transparent; font: inherit; font-size: 11px; line-height: 16px; color: inherit; cursor: pointer; }
+#collab-page .collab-role-state + .collab-role-state { border-left: 1px solid #aaa; }
+#collab-page .collab-role-state.on { background: var(--accent, #3b6fd6); color: #fff; cursor: default; }
+#collab-page .collab-role-state:disabled { opacity: .45; cursor: not-allowed; }
 .summary-table { border-collapse: collapse; margin-bottom: 16px; min-width: 640px; }
 .summary-table caption.summary-status { display: none; }   /* (the Tasks interface's only: web/css/tasks.css) */
 .summary-table caption { text-align: left; font-weight: bold; background: linear-gradient(#e9eff8, #c9d7ed); color: #15428b; padding: 3px 8px; border: 1px solid #99bbe8; border-bottom: none; }

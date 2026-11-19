@@ -100,6 +100,7 @@ export const COLLAB_PT = {
   'Peer to peer: directly between your browsers': 'Ponto a ponto: diretamente entre os vossos navegadores',
   'Through your Cloudflare relay: no direct path; counts against its free plan': 'Através do seu retransmissor Cloudflare: sem caminho direto; conta para o seu plano gratuito',
   'Through the Silinx server\'s relay': 'Através do retransmissor do servidor Silinx',
+  'Role': 'Papel', 'This share has no editors\' link: share it again to let editors in': 'Esta partilha não tem ligação de editores: partilhe-a de novo para deixar entrar editores',
 };
 
 export const COLLAB_PT_PATTERNS = [

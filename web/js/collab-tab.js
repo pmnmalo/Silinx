@@ -11,7 +11,7 @@
 // read-only notice and its Live box only. The browser edition's Cloudflare Relay box (#4574, web/js/relay-setup.js): the
 // relay its live shares meet their followers at, set up, checked, forgotten. Sharing first, the relay under it, then Git
 // Repository (#4636). While sharing, its mode at the top and each follower's path beside them, P2P or Relay (#4643),
-// a long list of participants folded (core/list-fold.js). No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
+// a long list of participants folded (core/list-fold.js); the owner's Viewer | Editor on each follower's row (#4646). No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
 // page's, so that a later command (a merge, a branch) is one more box or entry. Shown with no project open too (#4619: the
 // sign-in, Open from GitHub Repository…, how to follow, the relay; the project's commands disabled), the Start page
 // having no GitHub commands of its own.
@@ -118,6 +118,21 @@ const PATH = { p2p: 'P2P', relay: 'Relay' };
 const pathTip = (path, mode) => (path === 'p2p' ? 'Peer to peer: directly between your browsers'
   : mode === 'cloudflare' ? 'Through your Cloudflare relay: no direct path; counts against its free plan' : 'Through the Silinx server\'s relay');
 
+// a follower's role, for the owner (#4646): Viewer | Editor, the current one pressed, the other one a click away (the
+// same change as the Sharing menu's former Make … an Editor / a Viewer, its console lines); Editor disabled, its tip
+// saying why, in a share with no editors' key
+function roleSwitch(x, roles) {
+  const can = roles.editors();
+  const state = (role, label) => {
+    const on = x.role === role || (role === 'viewer' && x.role !== 'editor');
+    const off = !on && role === 'editor' && !can;
+    return h('button', { type: 'button', class: `collab-role-state${on ? ' on' : ''}`, 'data-role': role, 'aria-pressed': String(on), disabled: off,
+      title: on ? '' : off ? 'This share has no editors\' link: share it again to let editors in' : role === 'editor' ? `Make ${x.name} an Editor` : `Make ${x.name} a Viewer`,
+      onclick: on || off ? null : () => Promise.resolve(roles.set(x, role)).finally(renderCollabPage) }, label);
+  };
+  return h('span', { class: 'collab-roles', role: 'group', 'aria-label': 'Role' }, state('viewer', 'Viewer'), state('editor', 'Editor'));
+}
+
 // Sharing: Share a Copy…, then live sharing (#3181): the presence's label, who is in (their role beside them) and its
 // commands; none: Share Live… (disabled with no project or where it cannot be, its reason its tip), how to follow
 function liveBox() {
@@ -139,7 +154,8 @@ function liveBox() {
     p.mode ? h('div', { class: 'entry hint collab-mode', 'data-mode': p.mode }, MODE[p.mode]) : null,
     hint(p.label),
     ...shown.map(x => h('div', { class: 'entry collab-peer' }, h('span', { class: 'collab-badge', style: { background: x.color }, 'data-no-i18n': '' }, (String(x.name).trim()[0] || '?').toUpperCase()),
-      h('span', { 'data-no-i18n': '' }, x.name), h('span', { class: 'collab-role' }, x.me ? 'you' : ROLE[x.role] || 'viewer'),
+      h('span', { 'data-no-i18n': '' }, x.name),
+      p.roles && !x.me && x.role !== 'owner' ? roleSwitch(x, p.roles) : h('span', { class: 'collab-role' }, x.me ? 'you' : ROLE[x.role] || 'viewer'),
       x.path ? h('span', { class: 'collab-path', 'data-path': x.path, title: pathTip(x.path, p.mode) }, PATH[x.path]) : null)),
     more ? entry('expand', h('a', { class: 'collab-fold', onclick: fold(true) }, `${more} more…`)) : null,
     peersOpen && foldList(p.all).more ? entry('collapse', h('a', { class: 'collab-fold', onclick: fold(false) }, 'Show fewer')) : null,
