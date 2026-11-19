@@ -100,8 +100,8 @@ the Design Summary (`web/js/summary.js`) shows its reports, as ISE's do:
 - **Xilinx ISE 14.7**, which the user installs: XST, NGDBuild, MAP, PAR, TRCE, BitGen, run by `server/ise.js` in a
   Docker image, over SSH or natively (`server/toolchain.js`), as long jobs (`server/jobs.js`). Local server only.
 - **AMD Vivado ML Standard**, which the user installs too: a batch Tcl flow run by `server/vivado.js` in the same ways,
-  the 7-series' vendor flow: the Artix-7 besides the open flow, the Spartan-7, the Kintex-7 and the Zynq-7000 only
-  through it (#1649, #3895). Local server only.
+  the 7-series' vendor flow: the Artix-7 and the Zynq-7000's XC7Z010 / XC7Z020 (their programmable logic) besides the
+  open flow, the Spartan-7, the Kintex-7 and the other Zynq-7000 parts only through it (#1649, #3895, #4680). Local server only.
 
 ISE is also the open flow's oracle: the same routed design converted by ISE, a clean DRC and a byte-identical `.bit`
 ([OPEN-TOOLCHAIN.md](OPEN-TOOLCHAIN.md), [QUALITY.md](QUALITY.md)). The FPGA view (`web/js/fpgaview.js`) and the

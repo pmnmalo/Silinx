@@ -9,7 +9,7 @@ import { blackboxesIn, blackboxModels } from '/core/c-blackbox.js';
 import { compile } from '/core/compile.js';
 import { synthEffort, synthGoal, s6OpenStatus } from '/packages/silinx-fpga/src/index.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
-import { OPEN_STEPS, engineOf, s6MapOf, xc7SeedsOf, orderOpenSteps, orderSteps, deviceFamily, constraintsFormatOf } from '/packages/silinx-fpga/src/parts.js';
+import { OPEN_STEPS, engineOf, s6MapOf, xc7SeedsOf, orderOpenSteps, orderSteps, deviceFamily, openFamilyOf, constraintsFormatOf } from '/packages/silinx-fpga/src/parts.js';
 import { familyProfile } from '/core/family-profile.js';
 import { hierarchySources, leftOutWarning } from '/core/top-hierarchy.js';
 
@@ -77,7 +77,8 @@ export function browserOpenStatus(device = {}) {
   const dev = String(device.part || '').toLowerCase(), pkg = String(device.package || '').toLowerCase();
   const speed = String(device.speed || '-4').replace(/^(?!-)/, '-');
   const part = `${dev}${pkg}${speed}`;
-  const family = deviceFamily(device) || 'spartan3e';
+  // (the Zynq-7000's programmable logic the 7-series' back end's, #4680)
+  const family = openFamilyOf(deviceFamily(device)) || 'spartan3e';
   const list = Object.keys(BROWSER_DEVICES).map(k => k.replace('/', ' ')).join(', ');
   const flow = familyProfile(family).openFlow;   // (the family's open flow, #2310)
   // (a family of YoWASP's tools, the iCE40's #2295, the ECP5's #2302: its nextpnr served by the local server, or the published

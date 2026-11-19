@@ -257,6 +257,11 @@ test('#3143 the 7-series in the browser: the Basys 3\'s part, its bit database a
     reason: 'xc7a35tcpg236-1: nextpnr-himbaechel (xilinx) and Project X-Ray\'s bit database (in the browser; the 7-series, an experimental family)' });
   // (the Nexys A7's, unbuilt: the worker's fetch of its bit database says whether the site has it)
   assert.equal(browserOpenStatus({ family: 'artix7', part: 'xc7a100t', package: 'csg324', speed: '-1' }).bitDb, 'xc7/xc7a100tcsg324-1.json.gz');
+  // (#4680: the Zynq-7000's XC7Z010 and XC7Z020, the Zybo Z7's: the 7-series' back end, their bit databases)
+  for (const part of ['xc7z010', 'xc7z020']) {
+    assert.deepEqual(browserOpenStatus({ family: 'zynq', part, package: 'clg400', speed: '-1' }), { available: true, part: `${part}clg400-1`, family: 'artix7', graph: null, bitDb: `xc7/${part}clg400-1.json.gz`,
+      reason: `${part}clg400-1: nextpnr-himbaechel (xilinx) and Project X-Ray's bit database (in the browser; the 7-series, an experimental family)` });
+  }
   // a run: its spec, the XDC given as the constraints, no check of UCF pins (the back end warns of a port with no pin)
   const xc7 = { ...project, device: basys3, board: 'basys3', constraints: 'top.xdc' };
   const before = live()?.posted.length || 0;

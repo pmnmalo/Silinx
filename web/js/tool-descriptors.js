@@ -371,7 +371,7 @@ export const TOOLS = [ISE, SILINX, SILINX_ICE40];
 const OPEN_BY_FAMILY = { ice40: SILINX_ICE40, artix7: SILINX_XC7, ecp5: SILINX_ECP5, gowin: SILINX_GOWIN, gatemate: SILINX_GATEMATE };
 /** The tool of a project device: a 7-series one's AMD Vivado on the local server (#1649), or the Silinx toolchain there when
  *  `open` (the project's synthesis tool Silinx, #3146), and always in the browser edition (`standalone`, #3143), the Artix-7's
- *  only: a Vivado-only family's (the Spartan-7, the Kintex-7, the Zynq-7000, #3895) none there; another experimental family's
+ *  only: a Vivado-only family's (the Spartan-7, the Kintex-7, #3895) none there; another experimental family's
  *  none yet; `open`, the Silinx toolchain (its back end by the family), else ISE; a design and simulation project's
  *  (`designOnly`, #3780) DESIGN_ONLY whatever its device. */
 export const toolOf = (device, open, { standalone = false, designOnly = false } = {}) => (designOnly ? DESIGN_ONLY

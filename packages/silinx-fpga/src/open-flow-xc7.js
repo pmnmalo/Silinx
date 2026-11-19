@@ -44,13 +44,16 @@ export const xc7Utilization = counts => ({
 });
 // (the lines of the synthesis's report: Vivado's names for those the part's resources do not name)
 const NAMES = { luts: 'Slice LUTs', ffs: 'Slice Registers', ramb16: 'Block RAM Tiles', mult18x18: 'DSPs', bufgmux: 'BUFGCTRL', dcm: 'MMCME2_ADV / PLLE2_ADV', iob: 'Bonded IOB' };
-// the tile of the four BSCAN sites in nextpnr's chip databases (the xc7a50t's, which the xc7a35t takes, and the xc7a100t's:
-// the same grid position); the JTAG chain n's site BSCAN_X0Y<n - 1>, as Vivado's DRC asks (PDRC-2, #3767)
-const XC7_BSCAN_TILE = 'X46Y124';
+// the tile of the four BSCAN sites in nextpnr's chip databases, its CFG_CENTER_MID's grid position (the xc7a50t's, which the
+// xc7a35t takes, and the xc7a100t's: the same; the Zynq-7000's XC7Z010 and XC7Z020, #4680); the JTAG chain n's site
+// BSCAN_X0Y<n - 1>, as Vivado's DRC asks (PDRC-2, #3767)
+const XC7_BSCAN_TILES = { xc7z010: 'X67Y72', xc7z020: 'X123Y72' };
+export const xc7BscanTile = part => XC7_BSCAN_TILES[/^xc7z0[12]0/i.exec(String(part))?.[0].toLowerCase()] || 'X46Y124';
 
 /** Yosys's netlist (its text) with each BSCANE2 as nextpnr's xilinx takes it: a BSCAN (its BELs' type) on the BEL of its
- *  JTAG chain (BSCAN_X0Y<chain - 1>). Returns { text, chains: [the JTAG chains, 1 … 4] }; the text unchanged with none. */
-export function xc7BscanCells(text) {
+ *  JTAG chain (BSCAN_X0Y<chain - 1>) on the part's tile (an Artix-7's by default). Returns { text, chains: [the JTAG chains,
+ *  1 … 4] }; the text unchanged with none. */
+export function xc7BscanCells(text, part = '') {
   if (!/"BSCANE2"/.test(text)) return { text, chains: [] };
   const j = JSON.parse(text), chains = [];
   for (const m of Object.values(j.modules)) {
@@ -62,7 +65,7 @@ export function xc7BscanCells(text) {
       if (chains.includes(chain)) throw new Error(`two BSCANE2s on the JTAG chain ${chain}`);
       chains.push(chain);
       c.type = 'BSCAN';
-      c.attributes = { ...c.attributes, BEL: `${XC7_BSCAN_TILE}/BSCAN_X0Y${chain - 1}.BSCAN` };
+      c.attributes = { ...c.attributes, BEL: `${xc7BscanTile(part)}/BSCAN_X0Y${chain - 1}.BSCAN` };
     }
   }
   return { text: JSON.stringify(j), chains };
@@ -254,7 +257,7 @@ function mountXc7(ctx) {
     const chipdb = await loadChipdb(nextpnr, part, log, StepError);
     const router = nextpnr.router || 'router1';
     let netlist;
-    try { netlist = xc7BscanCells(netlistText()); } catch (e) { throw new StepError(e.message, [], ''); }
+    try { netlist = xc7BscanCells(netlistText(), part); } catch (e) { throw new StepError(e.message, [], ''); }
     const args = seed => xc7ParArgs({ part, router, seed, xdc: !!xdc.text });
     const files = { 'chipdb.bin': chipdb, 'netlist.json': netlist.text, ...(xdc.text && { 'design.xdc': xdc.text }) };
     // the best of 3 seeds (#3825, Process Properties): each placed and routed, apart and at once where nextpnr's io can

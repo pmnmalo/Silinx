@@ -81,7 +81,7 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_design_properties', title: 'Design Properties',
-    description: 'Change a project\'s target as Design Properties does: its board (its device then the board\'s; none: no board) or its device (part, package, speed), its synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the 7-series\': the Artix-7\'s default, its Silinx toolchain on trial; the Spartan-7\'s, the Kintex-7\'s and the Zynq-7000\'s only) and its Preferred Language (the drawings\' HDL made again in it); its Project Kind (kind: an FPGA project, or a design and simulation project) and its Top-Level Source Type (top_source_type). A new device is checked against the design first (the primitives its family lacks, the resources it has too few of: warnings). With update_constraints, a new board\'s pins are written into the constraints file for the top\'s ports, as Update Constraints does: its pin locations are replaced.',
+    description: 'Change a project\'s target as Design Properties does: its board (its device then the board\'s; none: no board) or its device (part, package, speed), its synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the 7-series\': the Artix-7\'s and the Zynq-7000\'s default (the Zynq\'s programmable logic), their Silinx toolchain on trial; the Spartan-7\'s and the Kintex-7\'s only) and its Preferred Language (the drawings\' HDL made again in it); its Project Kind (kind: an FPGA project, or a design and simulation project) and its Top-Level Source Type (top_source_type). A new device is checked against the design first (the primitives its family lacks, the resources it has too few of: warnings). With update_constraints, a new board\'s pins are written into the constraints file for the top\'s ports, as Update Constraints does: its pin locations are replaced.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, board: STR('The board (list_devices), or none for no board.'), variant: STR('The board\'s variant (list_devices; default: the board\'s default).'),
       part: STR('The device (list_devices), e.g. xc3s500e; with no board.'), package: STR('The device\'s package, e.g. fg320.'), speed: STR('The speed grade, e.g. -4.'),
@@ -157,7 +157,7 @@ export const SETTINGS_TOOLS = [
       const vivado = R.vivadoDevice(next);
       if (experimental && synthTool === 'xst') throw toolError(vivado ? `the ${next.part.toUpperCase()} is implemented by AMD Vivado: no XST` : `${R.noFlowMessage(next)}: no XST`);
       if (synthTool === 'vivado' && !vivado) throw toolError(`AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the ${next.part.toUpperCase()}`);
-      // (#3895: the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, as the dialog locks it)
+      // (#3895: the Spartan-7, the Kintex-7: AMD Vivado's alone, as the dialog locks it; the Zynq-7000's PL the Silinx toolchain's too, #4680)
       const vivadoOnly = vivado && !R.openFlowDevice(next);
       if (vivadoOnly && synthTool === 'silinx') throw toolError(`${R.noOpenFlowMessage(next)}: no Silinx synthesis tool`);
       // (#3146) the Artix-7's synthesis tool: the one given, else the project's when it was one of the Artix-7's, else AMD Vivado;

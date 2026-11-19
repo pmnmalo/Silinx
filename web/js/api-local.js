@@ -412,7 +412,7 @@ export const api = {
     if (isDesignOnly(p.json)) return fakeJob('implement', [`ERROR: ${DESIGN_ONLY_MESSAGES.flow(name)}`], 'error', DESIGN_ONLY_MESSAGES.flow(name));
     // (the Artix-7's: the Silinx toolchain's 7-series back end, #3143)
     if (experimentalDevice(p.json.device) && !vivadoDevice(p.json.device)) return fakeJob('implement', [`ERROR: ${noFlowMessage(p.json.device)}`], 'error', noFlowMessage(p.json.device));
-    // (the Spartan-7's, the Kintex-7's, the Zynq-7000's: AMD Vivado's alone, on the local server, #3895)
+    // (the Spartan-7's, the Kintex-7's: AMD Vivado's alone, on the local server, #3895)
     if (vivadoDevice(p.json.device) && !openFlowDevice(p.json.device)) return fakeJob('implement', [`ERROR: ${noOpenFlowMessage(p.json.device)}`], 'error', noOpenFlowMessage(p.json.device));
     if (p.json.synthTool === 'xst' && !openOnlyDevice(p.json.device)) return fakeJob('implement', NEED_ISE, 'error', 'XST needs Xilinx ISE 14.7 (choose Silinx as the synthesis tool in Design Properties)');
     const id = `local-${++jobSeq}`;

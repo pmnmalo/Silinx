@@ -160,9 +160,10 @@ test('#4362 the Artix-7\'s models with the Silinx toolchain: run_process post_sy
   await fails('run_process', { project: 'm3', process: 'post_map_model' }, 'the Artix-7 flow makes no post-map simulation model (only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one');
 });
 
-// (#3895, #2674) the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, as Design Properties locks it; run_process
-// runs Vivado whatever the project said, the Silinx toolchain asked for refused with the interface's message
-test('#3895 set_design_properties and run_process on the Spartan-7, the Kintex-7 and the Zynq-7000: Vivado alone', async () => {
+// (#3895, #2674) the Spartan-7, the Kintex-7, the Zynq-7000 but its XC7Z010 / XC7Z020 (#4680): AMD Vivado's alone, as Design
+// Properties locks it; run_process runs Vivado whatever the project said, the Silinx toolchain asked for refused with the
+// interface's message
+test('#3895 set_design_properties and run_process on the Spartan-7, the Kintex-7 and the Zynq-7000\'s other parts: Vivado alone', async () => {
   await ok('new_project_from_example', { name: 's7', example: 'blinky', board: 'basys3' });
   await ok('set_design_properties', { project: 's7', synth_tool: 'silinx' });
   // (from the Artix-7's Silinx toolchain: Vivado's; an XDC still; no "no flow" warning)
@@ -178,8 +179,8 @@ test('#3895 set_design_properties and run_process on the Spartan-7, the Kintex-7
   await fails('run_process', { project: 's7', process: 'synthesize' }, untrusted);
   await fails('run_process', { project: 's7', process: 'synthesize', toolchain: 'vivado' }, untrusted);
   await fails('run_process', { project: 's7', process: 'implement', toolchain: 'silinx' }, 'the Silinx toolchain has no back end for the XC7S50 (Spartan-7): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)');
-  // the Kintex-7 and the Zynq-7000 (ISE 14.7's flow before): Vivado's too
-  for (const [part, pkg, fam] of [['xc7k160t', 'fbg484', 'Kintex-7'], ['xc7z020', 'clg400', 'Zynq-7000'], ['xc7z007s', 'clg225', 'Zynq-7000']]) {
+  // the Kintex-7 and the Zynq-7000's parts with no bit database (ISE 14.7's flow before): Vivado's too
+  for (const [part, pkg, fam] of [['xc7k160t', 'fbg484', 'Kintex-7'], ['xc7z030', 'sbg485', 'Zynq-7000'], ['xc7z007s', 'clg225', 'Zynq-7000']]) {
     const d = await ok('set_design_properties', { project: 's7', part, package: pkg, speed: '-1' });
     assert.equal(d.text, `Device set to ${part}-1-${pkg}; synthesis tool vivado.\nWARNING: check the pin locations in constraints/top.xdc — they must exist on the ${pkg.toUpperCase()} package.`);
     await fails('run_process', { project: 's7', process: 'implement', toolchain: 'silinx' }, `the Silinx toolchain has no back end for the ${part.toUpperCase()} (${fam}): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)`);
@@ -210,5 +211,6 @@ test('#3895 the Arty S7 and the Zybo Z7: list_devices, new_project_from_example,
   const zx = fs.readFileSync(path.join(P.projectDir('a7s'), 'constraints/top.xdc'), 'utf8');
   assert.match(zx, /set_property -dict \{ PACKAGE_PIN K17 IOSTANDARD LVCMOS33 \} \[get_ports \{clk\}\]\n/);
   assert.doesNotMatch(zx, /CFGBVS|current_design/);
-  await fails('run_process', { project: 'a7s', process: 'implement', toolchain: 'silinx' }, 'the Silinx toolchain has no back end for the XC7Z010 (Zynq-7000): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)');
+  // (#4680: the XC7Z010's programmable logic the Silinx toolchain's too, on trial: the synthesis tool Silinx taken)
+  assert.equal((await ok('set_design_properties', { project: 'a7s', synth_tool: 'silinx' })).data.synthTool, 'silinx');
 });
