@@ -67,7 +67,7 @@ let share = null;   // { name, session, doc, link, editLink, restore, orig, time
  *  (link-field.js: Generate, Copy, Show, Show QR Code, in a row below a box as tall as the link); Stop Sharing, Close (Add a User…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
  *  same, that module's source opened (the followers follow it), the links opening on it (`view`: its copy's, the way
  *  switched, #3698). Resolves to the viewers' link once closed (null: not shared). */
-export async function shareProjectDialog({ module = null, view = null, via = undefined } = {}) {
+export async function shareProjectDialog({ module = null, view = null, via = undefined, shown = null } = {}) {
   if (!S.project) return null;
   const action = shareTitle(module);
   // (a page opened from a file has no address the followers could open: the site's has, #3227)
@@ -137,7 +137,7 @@ export async function shareProjectDialog({ module = null, view = null, via = und
   ];
   await dialog({
     title: action, width: SHARE_WIDTH, className: 'share-dlg',   // (a copy's size: switching keeps the window as it is, #4617)
-    onOpen: ({ close }) => { closeIt = () => close(null); draw(); setTimeout(() => { if (!share) { input.focus(); input.select(); } }, 0); },
+    onOpen: ({ close }) => { closeIt = () => close(null); draw(); shown?.(); setTimeout(() => { if (!share) { input.focus(); input.select(); } }, 0); },
     body: h('div', { class: 'collab-dlg' },
       h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.'),
       way.el, ways?.el ?? null,

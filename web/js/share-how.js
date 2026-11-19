@@ -49,18 +49,20 @@ export async function shareCopyDialog() {
   return openHow('copy', {});
 }
 
+// (`shown`: called once the window is on the screen: the one it replaces closed then, #4676)
 async function openHow(how, opts) {
   if (how === 'live') return (await import('./collab-share.js')).shareProjectDialog(opts);
   return (await import('./link-copy.js')).copyLinkDialog(opts);
 }
 
-/** The window's Share: row, `how` checked: the other way chosen closes the window (`close`), whose caller then sees
- *  `wanted` and calls `switched()`, the other way's window. The browser edition's (#4634) has three: A copy, Live peer
+/** The window's Share: row, `how` checked: the other way chosen opens its window, and closes this one (`close`) once
+ *  that one is on the screen, in the same frame (#4676: never a frame with no window, while a copy's link is made);
+ *  this one's caller then sees `wanted` and returns `switched()`, the other way's window. The browser edition's (#4634) has three: A copy, Live peer
  *  to peer (no relay), Live via your Cloudflare relay (#4670: in that order, the keyboard's too); Live's window's `via` checked, the
  *  other live one chosen there given to `onVia` (the window kept), locked while shared (`lock`). Returns { el, wanted,
  *  switched, lock }. */
 export function howRow(how, { module = null, view = null, close, via = null, onVia = () => {} }) {
-  let wanted = null, wantedVia = null;
+  let wanted = null, next = null;
   const live = liveProblem(module);
   const three = !api.collab && api.standalone;
   const radios = [];
@@ -71,7 +73,11 @@ export function howRow(how, { module = null, view = null, close, via = null, onV
     r.addEventListener('change', () => {
       if (!r.checked) return;
       if (value === how && way) { via = way; onVia(way); return; }   // (Live's other way, in Live's window)
-      if (value !== how) { wanted = value; wantedVia = way; close(); }
+      if (value !== how && !next) {
+        wanted = value;
+        next = openHow(value, { module, view, ...(way ? { via: way } : {}), shown: close });
+        next.finally(close);   // (its window never shown, an error said: this one closed all the same)
+      }
     });
     radios.push({ r, way });
     return h('label', { class: `share-how-${way ? `${value}-${way}` : value}`, title: value === 'live' && live ? live : '' }, r, label, h('span', { class: 'share-how-note' }, note));
@@ -88,7 +94,7 @@ export function howRow(how, { module = null, view = null, close, via = null, onV
   return {
     el,
     get wanted() { return wanted; },
-    switched: () => openHow(wanted, { module, view, ...(wantedVia ? { via: wantedVia } : {}) }),
+    switched: () => next,
     // (while shared, Live's other way cannot be chosen: its connection is made)
     lock: on => { for (const { r, way } of radios) if (way && way !== via) r.disabled = on || !!live; },
   };
