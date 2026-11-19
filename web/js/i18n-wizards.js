@@ -1,12 +1,15 @@
 // Portuguese strings of the FSM, ASM, Petri net, UCF and Boolean Algebra wizards of New Source (#2082, #2140, #2149:
 // web/js/chart-wizards.js, template-page.js, ucf-wizard.js, tt-wizard.js, core/chart-templates.js; merged into the
-// dictionary of i18n.js); a project's name and Replace Project (New Project's, the imports', #3538).
+// dictionary of i18n.js); a project's name and Replace Project (New Project's, the imports', #3538); Rename Project… (#4641).
 export const WIZARDS_PT = {
   'Wizard >': 'Assistente >',   // New Source's button (#958, #2082)
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
   'Project Kind:': 'Tipo de Projeto:', 'FPGA design (a board and a device)': 'Projeto para FPGA (uma placa e um dispositivo)',
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
+  // Rename Project… (#4641)
+  'Rename Project…': 'Mudar o Nome do Projeto…', 'Rename Project': 'Mudar o Nome do Projeto',
+  'A letter, then letters, digits, - and _. The project stays open; its folder is renamed.': 'Uma letra, depois letras, dígitos, - e _. O projeto continua aberto; a pasta muda de nome.',
   // the FSM and ASM wizards
   'FSM Wizard': 'Assistente de FSM', 'ASM Wizard': 'Assistente de ASM',
   'State machine (module) name:': 'Nome da máquina de estados (módulo):', 'ASM chart (module) name:': 'Nome do diagrama ASM (módulo):',
@@ -103,6 +106,8 @@ export const WIZARDS_PT_PATTERNS = [
   // a project's name (core/project-name.js: the New Project wizard's, the imports', the server's, #3538)
   [/^invalid project name '(.*)': a letter, then up to 63 letters, digits, - and _$/, "nome de projeto inválido '$1': uma letra, depois até 63 letras, dígitos, - e _"],
   [/^A project named '(.*)' already exists: choose another name\.$/, "Já existe um projeto chamado '$1': escolha outro nome."],
+  // Rename Project… (core/project-rename.js, #4641)
+  [/^'(.*)' is the project's name already$/, "'$1' já é o nome do projeto"],
   [/^A project named '(.*)' already exists\.\n\nReplace it\? The existing project will be deleted from this browser\.$/, "Já existe um projeto chamado '$1'.\n\nSubstituí-lo? O projeto existente será apagado deste browser."],
   [/^A project named '(.*)' already exists\.\n\nReplace it\? The existing project is moved to the workspace \.trash folder\.$/, "Já existe um projeto chamado '$1'.\n\nSubstituí-lo? O projeto existente é movido para a pasta .trash da pasta de trabalho."],
   [/^The template's port '(.*)' was removed: put it back, or choose another template or parameters on the Template page\.$/, "O porto '$1' do modelo foi removido: reponha-o, ou escolha outro modelo ou outros parâmetros na página Modelo."],
