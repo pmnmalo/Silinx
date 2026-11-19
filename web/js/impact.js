@@ -1,6 +1,7 @@
 // iMPACT-like device configuration: JTAG chain view, scan, program the FPGA (SRAM, volatile)
 // or the board's Platform Flash PROM (non-volatile: the design loads at power-up).
 import { api, followJob } from './api.js';
+import { jobLog } from './job-log.js';
 import { h, toast, alertDlg, confirmDlg, dialog } from './ui.js';
 import { S, app } from './app.js';
 import { logError } from './console.js';
@@ -114,7 +115,10 @@ export function mountImpact(el) {
     app.log(`\n${title}...`, 'hdr');
     try {
       const { job } = await start();
-      const r = await followJob(job, app.logLine);
+      // (the job's error left to the "… failed:" line below, said once, #4597)
+      const jl = jobLog(app.logLine);
+      let r;
+      try { r = await followJob(job, jl.line); } finally { jl.end(r); }
       if (r.status === 'ok') { app.log(okMsg, 'ok'); toast(okMsg, 'ok'); }
       else logError(`${title} failed: ${r.error || 'see log'}`);
       return r;

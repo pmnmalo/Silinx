@@ -1,7 +1,7 @@
 // UI: Trust Project (#2830, #4583): an imported project's refusals carry the Trust Project button in the console. The
 // project imported (a zip): its line with the button when it opens, and again when the page is reloaded (reopened at
 // start-up); Program FPGA refused, the server's refusal (a 403) in the console with its button, not in a dialog; the
-// browser edition's refusal (the job's ERROR line, then its "… failed:" line) with one button for the two; the button
+// browser edition's refusal (its job's ERROR line left to the "… failed:" line, said once, #4597) with its button; the button
 // asks first (No: nothing trusted, the button again enabled), Yes trusts it: every button of the project disabled, the
 // line said, and Program FPGA then programs (the programmer stood in for). The Errors tab, which a refusal brings to the
 // front, lists each refusal with its button too (#4589). In Portuguese: the button and the question.
@@ -61,7 +61,8 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   assert.deepEqual(await trustLines(page), [[NOTICE, 'Trust Project', true]]);
   // reloaded: reopened at start-up, its line and button said again
   await page.reload();
-  await page.waitFor((n) => window.SilinxApp && window.Silinx.project?.name === n && document.querySelector('#console-log .ln-trust'), [NAME], { what: 'reopened at start-up' });
+  await page.waitFor((n) => window.SilinxApp && window.Silinx.project?.name === n && document.querySelector('#console-log .ln-trust')
+    && !('restoring' in document.documentElement.dataset) && !('starting' in document.documentElement.dataset), [NAME], { what: 'reopened at start-up, its documents back' });
   assert.deepEqual(await trustLines(page), [[NOTICE, 'Trust Project', true]]);
   // Program FPGA (the local server's): refused, in the console with its button; no dialog
   await openImpact(page);
@@ -73,8 +74,8 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   assert.equal(await shownTab(page), 'errors');
   assert.deepEqual(await errorRows(page), [[`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
   assert.deepEqual(await trustLines(page), [[NOTICE, 'Trust Project', true], [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
-  // the browser edition's refusal (web/js/api-local.js usbJob): its job's ERROR line, then the "… failed:" line; one
-  // button for the two, on the first
+  // the browser edition's refusal (web/js/api-local.js usbJob): its job's last line, its error, left to the "… failed:"
+  // line (#4597): one line, its button
   await page.eval(async (msg) => {
     const { api } = await import('/js/api.js');
     const job = api.job;
@@ -86,16 +87,15 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   await page.click(PROGRAM_FPGA);
   await page.waitFor(() => document.querySelectorAll('#console-log .ln-trust').length === 3 && document.querySelector('#console-log').lastElementChild.textContent.includes('failed:'), [], { what: 'the job refused' });
   const lines = (await page.consoleText()).split('\n');
-  assert.deepEqual(lines.slice(-2), [`ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`]);
-  assert.deepEqual((await trustLines(page)).at(-1), [`ERROR: ${REFUSAL}`, 'Trust Project', true]);
-  // the Errors tab: the three refusals, each with its button
-  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 3, [], { what: 'the three refusals listed' });
-  assert.deepEqual(await errorRows(page), [
-    [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true], [REFUSAL, 'Trust Project', true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
+  assert.deepEqual(lines.slice(-3), ['', 'Programming FPGA (SRAM)...', `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`]);
+  assert.deepEqual((await trustLines(page)).at(-1), [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]);
+  // the Errors tab: the two refusals, each with its button
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 2, [], { what: 'the two refusals listed' });
+  assert.deepEqual(await errorRows(page), [[`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
   // Portuguese: the buttons, the question; No trusts nothing, the button enabled again
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#console-errors .ln-trust').textContent === 'Confiar no Projeto', [], { what: 'in Portuguese' });
-  assert.equal(await page.eval(() => [...document.querySelectorAll('#console-errors .ln-trust')].map((b) => b.textContent).join()), 'Confiar no Projeto,Confiar no Projeto,Confiar no Projeto');
+  assert.equal(await page.eval(() => [...document.querySelectorAll('#console-errors .ln-trust')].map((b) => b.textContent).join()), 'Confiar no Projeto,Confiar no Projeto');
   await page.openProject(NAME);
   await page.waitFor(() => document.querySelectorAll('#console-log .ln-trust').length === 4, [], { what: 'the line said again' });
   assert.equal(await page.eval(() => [...document.querySelectorAll('#console-log .ln-trust')].at(-1).textContent), 'Confiar no Projeto');
@@ -111,16 +111,16 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   // trusted; every button of the project disabled, the Errors tab's too
   await openImpact(page);
   await page.click(PROGRAM_FPGA);
-  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 2, [], { what: 'refused again' });
-  assert.deepEqual(await errorRows(page), [[REFUSAL, 'Trust Project', true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
-  await page.eval(() => document.querySelectorAll('#console-errors .ln-trust')[1].click());
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 1, [], { what: 'refused again' });
+  assert.deepEqual(await errorRows(page), [[`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
+  await page.eval(() => document.querySelector('#console-errors .ln-trust').click());
   await page.waitDialog('Trust Project');
   assert.deepEqual(await question(page), ['Trust Project', QUESTION, 'Yes', 'No']);
   await page.dialogButton('Yes');
   await page.waitNoDialog();
   await page.waitConsole(new RegExp(`^Project "${NAME}" trusted: Xilinx ISE and programming a board or a PROM may run for it\\.$`, 'm'));
   assert.deepEqual((await trustLines(page)).map((l) => l[2]), [false, false, false, false, false]);
-  assert.deepEqual((await errorRows(page)).map((r) => r[2]), [false, false]);
+  assert.deepEqual((await errorRows(page)).map((r) => r[2]), [false]);
   assert.equal('trusted' in await env.server.api('GET', `/api/projects/${NAME}`), false);
   assert.equal(await page.eval(() => 'trusted' in window.Silinx.project), false);
   // the process again: it runs
@@ -131,8 +131,7 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   // opened again: no line, no button
   await page.openProject(NAME);
   assert.equal(await page.eval(() => document.querySelectorAll('#console-log .ln-trust').length), 5);
-  // the errors: the four refusals, nothing else; no warning
-  assert.deepEqual(await problems(page), [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`, `ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`,
-    `ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`]);
+  // the errors: the three refusals, each said once, nothing else; no warning
+  assert.deepEqual(await problems(page), Array(3).fill(`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

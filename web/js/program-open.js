@@ -4,6 +4,7 @@
 // into the FPGA's SRAM (until the board is powered off). By openFPGALoader in the local server; through the board's USB
 // over WebUSB in the browser edition, where the board's tool says so (webusb: core/usb-program.js).
 import { api, followJob } from './api.js';
+import { jobLog } from './job-log.js';
 import { h, toast, alertDlg, confirmDlg } from './ui.js';
 import { S, app } from './app.js';
 import { logError } from './console.js';
@@ -48,7 +49,10 @@ export function mountOpenProgram(page) {
     app.log(flash ? '\nProgramming the SPI flash...' : '\nProgramming the FPGA (SRAM)...', 'hdr');
     try {
       const { job } = await api.program({ project: pj.name, board: board?.id, bitfile: file });
-      const r = await followJob(job, app.logLine);
+      // (the job's error left to the "… failed:" line below, said once, #4597)
+      const jl = jobLog(app.logLine);
+      let r;
+      try { r = await followJob(job, jl.line); } finally { jl.end(r); }
       const done = flash ? 'Flash programmed: the FPGA loads the design.' : 'FPGA programmed: the design runs until the board is powered off.';
       if (r.status === 'ok') { app.log(done, 'ok'); toast(done, 'ok'); countEvent('program'); }
       else logError(`${flash ? 'Programming the SPI flash' : 'Programming the FPGA'} failed: ${r.error || 'see log'}`);

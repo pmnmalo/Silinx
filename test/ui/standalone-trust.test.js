@@ -53,23 +53,24 @@ uiTest('#4592 browser edition, no WebUSB: Program says so first, then the trust 
   await page.waitFor((s) => !!document.querySelector(s), [PROGRAM_FPGA], { what: 'Program FPGA' });
   await page.click(PROGRAM_FPGA);
   await page.waitConsole(/Programming FPGA \(SRAM\) failed: project 'Student'/);
-  const refused = [`ERROR: ${NO_WEBUSB}`, `ERROR: ${REFUSAL} Trust Project`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`];
-  assert.deepEqual((await page.consoleText()).split('\n').slice(-3), refused);
-  await page.waitFor(() => document.querySelectorAll('#console-errors .diag').length === 3, [], { what: 'the Errors tab' });
-  assert.deepEqual(await errorRows(page), [[NO_WEBUSB, null], [REFUSAL, true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, true]]);
+  // (the job's error, its last line, said once by the "… failed:" line, #4597)
+  const refused = [`ERROR: ${NO_WEBUSB}`, `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`];
+  assert.deepEqual((await page.consoleText()).split('\n').slice(-2), refused);
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag').length === 2, [], { what: 'the Errors tab' });
+  assert.deepEqual(await errorRows(page), [[NO_WEBUSB, null], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, true]]);
   // trusted from the Errors tab (asked first)
   await page.eval(() => document.querySelector('#console-errors .ln-trust').click());
   await page.waitDialog('Trust Project');
   await page.dialogButton('Yes');
   await page.waitNoDialog();
   await page.waitConsole(/^Project "Student" trusted: Xilinx ISE and programming a board or a PROM may run for it\.$/m);
-  assert.deepEqual((await errorRows(page)).map((r) => r[1]), [null, false, false]);
+  assert.deepEqual((await errorRows(page)).map((r) => r[1]), [null, false]);
   // Program FPGA again: the browser's reason at once (no bitstream asked for, no implementation offered)
   await page.click(PROGRAM_FPGA);
   await page.waitConsole(new RegExp(`Programming FPGA \\(SRAM\\) failed: programming from the browser needs Chrome or Edge`));
   assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay')), false);
-  assert.deepEqual((await page.consoleText()).split('\n').slice(-2), [`ERROR: ${NO_WEBUSB}`, `ERROR: Programming FPGA (SRAM) failed: ${NO_WEBUSB}`]);
-  assert.deepEqual(await problems(page), [...refused, `ERROR: ${NO_WEBUSB}`, `ERROR: Programming FPGA (SRAM) failed: ${NO_WEBUSB}`]);
+  assert.deepEqual((await page.consoleText()).split('\n').slice(-2), ['Programming FPGA (SRAM)...', `ERROR: Programming FPGA (SRAM) failed: ${NO_WEBUSB}`]);
+  assert.deepEqual(await problems(page), [...refused, `ERROR: Programming FPGA (SRAM) failed: ${NO_WEBUSB}`]);
   // no warning (the Warnings tab), no error of the page's scripts (Firefox's own notices are not the app's)
   assert.deepEqual(await page.eval(() => [document.getElementById('warn-count').textContent, ...[...document.querySelectorAll('#console-warnings .diag')].map((d) => d.textContent)]), ['']);
   assert.deepEqual(page.console.filter((c) => c.type === 'error').map((c) => c.text), []);
