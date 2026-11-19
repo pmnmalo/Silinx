@@ -35,7 +35,9 @@ const qrOf = async (page, sel) => {
 const gists = (page) => page.eval(async (t) => (await (await fetch('/fake-github/gists', { headers: { Authorization: `Bearer ${t}` } })).json()).length, TOKEN);
 
 // the link made by Generate (#4073: none before)
-const gen = async (page) => { await page.click('.dlg-overlay .link-generate'); return page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link generated' }); };
+// (two frames: the window's layout settled before a click by its point, #4639; its link box fitted as it opens)
+const settled = (page) => page.eval(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const gen = async (page) => { await settled(page); await page.click('.dlg-overlay .link-generate'); return page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the link generated' }); };
 const state = (page) => page.eval(() => {
   const o = document.querySelector('.dlg-overlay .link-out');
   return { type: o.type, buttons: [...document.querySelectorAll('.dlg-overlay .link-buttons .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`), small: document.querySelectorAll('.dlg-overlay .qr-img, .dlg-overlay .qr-box').length };
@@ -180,7 +182,8 @@ uiTest('#4612 Share Project, a copy: the link\'s buttons in one row below its bo
         await page.openProject(project);
         await startCopy(page);
         await page.waitDialog('Share Project');
-        if (form === 'short') await page.click('.dlg-overlay input[data-field="short"]');
+        await settled(page);
+        if (form === 'short') { await page.click('.dlg-overlay input[data-field="short"]'); await settled(page); }
         const what = `${project}, ${form} link, ${width} px`;
         const before = await box(page);
         const link = await gen(page);
