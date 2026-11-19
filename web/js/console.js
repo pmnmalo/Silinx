@@ -8,6 +8,7 @@ import { hintRow, sevWord } from './diaghelp.js';
 import { S, app } from './app.js';
 import { MESSAGE_LINE } from './tool-descriptors.js';
 import { shownDiag } from './design-only.js';
+import { refusedProject } from '/core/trust.js';
 
 const $ = id => document.getElementById(id);
 
@@ -16,18 +17,30 @@ const lineWatchers = new Set();
  *  followers); returns the function that stops it. */
 export function onLogLine(fn) { lineWatchers.add(fn); return () => lineWatchers.delete(fn); }
 
-// action: { label, run }, a button at the end of the (last) line: what the line asks of the user (Trust Project, #2830);
-// it is disabled once run
+/** The Trust Project button's action of an untrusted project (#2830): its line said when it opens, every refusal of a
+ *  process for it (#4583). */
+export const trustAction = name => ({ label: 'Trust Project', trust: name, run: () => import('./project.js').then(m => m.trustProject(name)) });
+
+// action: { label, run, trust? (a Trust Project's project) }, a button at the end of the (last) line: what the line asks
+// of the user (Trust Project, #2830); it is disabled once run (again enabled when run says false: the user said No).
+// A refusal for an untrusted project carries its Trust Project button (#4583: the line said when it opened may be
+// long gone), one per refusal (its "… failed:" line right after it shares the error's)
 export function log(text, cls = '', { diag = true, action = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+  const refused = !action && cls === 'err' && refusedProject(text);
+  if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
   for (const line of String(text).split('\n')) {
     el.append(h('div', { class: `ln ${cls}` }, line));
     if (diag) consoleMessage(line, cls);
     for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }
   if (action) {
-    const b = h('button', { type: 'button', class: 'btn ln-action', onclick: async () => { b.disabled = true; try { await action.run(); } catch (e) { b.disabled = false; log(`ERROR: ${e.message}`, 'err'); } } }, t(action.label));
+    const b = h('button', { type: 'button', class: `btn ln-action${action.trust !== undefined ? ' ln-trust' : ''}`, onclick: async () => {
+      b.disabled = true;
+      try { if (await action.run() === false) b.disabled = false; } catch (e) { b.disabled = false; log(`ERROR: ${e.message}`, 'err'); }
+    } }, t(action.label));
+    if (action.trust !== undefined) b.dataset.trust = action.trust;
     el.lastElementChild.append(' ', b);
   }
   while (el.childElementCount > 5000) el.firstChild.remove();

@@ -25,6 +25,7 @@ import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
 import { applyEdits, editQueue } from '/core/collab-files.js';
 import { isTrusted, markEditedByEditor, untrustedNotice } from '/core/trust.js';
+import { trustAction } from './console.js';
 import { selectionOfDoc } from './collab-select-draw.js';
 import { keepBound, unbindAll } from './collab-bind.js';
 import { keepDrawingsBound, unbindDrawings, editorOf, modelOf } from './collab-drawing.js';
@@ -374,7 +375,7 @@ async function untrustEdited(s) {
   const next = markEditedByEditor(pj);
   await s.orig.saveProject(s.project, next);
   if (S.project?.name === s.project) Object.assign(S.project, { trusted: false, madeBy: next.madeBy });
-  app.log(`WARNING: ${untrustedNotice(s.project, next)}`, 'warn', { action: { label: 'Trust Project', run: () => import('./project.js').then(m => m.trustProject(s.project)) } });
+  app.log(`WARNING: ${untrustedNotice(s.project, next)}`, 'warn', { action: trustAction(s.project) });
 }
 
 // what the editors change in the drawings (#3183): the document's remote transactions, each drawing's merged model

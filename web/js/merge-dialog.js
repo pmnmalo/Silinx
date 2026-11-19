@@ -11,7 +11,7 @@
 // names are someone else's: shown as text only.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log } from './console.js';
+import { log, trustAction } from './console.js';
 import { S } from './app.js';
 import { reloadProject } from './project.js';
 import { saveAll } from './processes.js';
@@ -145,7 +145,7 @@ async function merge(name, zip, label, resolve) {
   // (the merge's line with Undo Merge's button; the project made untrusted: its line with Trust Project's, as when it opens)
   const lines = r.untrusted ? r.lines.slice(0, -1) : r.lines;
   lines.forEach((l, i) => (l.startsWith('WARNING') ? log(l, 'warn') : log(l, 'ok', i === lines.length - 1 && r.taken.length ? { action: { label: 'Undo Merge', run: () => undoMerge() } } : undefined)));
-  if (r.untrusted) log(r.lines.at(-1), 'info', { action: { label: 'Trust Project', run: () => import('./project.js').then(m => m.trustProject(name)) } });
+  if (r.untrusted) log(r.lines.at(-1), 'info', { action: trustAction(name) });
   if (S.project?.name === name) {
     const changes = [...r.written, ...r.regenerated].map(f => ({ path: f, kind: S.diskTree?.includes(f) ? 'changed' : 'added' })).concat(r.removed.map(f => ({ path: f, kind: 'removed' })));
     if (api.standalone) await applyChanges({ project: name, changes });

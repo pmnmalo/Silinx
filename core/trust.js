@@ -19,6 +19,14 @@ const origin = pj => ORIGINS[pj?.madeBy] || 'came from outside (imported)';
 /** The refusal of `what` (Xilinx ISE, programming the board…) for an untrusted project. */
 export const untrustedMessage = (name, what, pj = null) => `project '${name}' ${origin(pj)}: ${what} runs only once you trust it (Trust Project, in the console when the project opens)`;
 
+// a refusal's text (untrustedMessage's), its project's name first
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const REFUSAL = new RegExp(`project '(.+?)' (?:${[...Object.values(ORIGINS), 'came from outside (imported)'].map(esc).join('|')}): .+ runs only once you trust it`);
+
+/** The project a refusal for an untrusted project names (untrustedMessage's, in a console's line: the error itself or
+ *  its "… failed:" line, #4583); null for any other text. */
+export const refusedProject = text => REFUSAL.exec(String(text))?.[1] ?? null;
+
 /** The console's line of an untrusted project opened. */
 export const untrustedNotice = (name, pj = null) => `Project "${name}" ${origin(pj)}: it is edited, checked, simulated and implemented with the Silinx toolchain; Xilinx ISE and programming a board or a PROM run only once you trust it.`;
 

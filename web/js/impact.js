@@ -12,6 +12,7 @@ import { loadUcfText } from './processes.js';
 import { mountOpenProgram } from './program-open.js';
 import { openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
 import { vendorFlashText } from '/core/vendor-flash.js';
+import { refusedProject } from '/core/trust.js';
 
 const roleOf = name => (/^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
 
@@ -116,7 +117,11 @@ export function mountImpact(el) {
       if (r.status === 'ok') { app.log(okMsg, 'ok'); toast(okMsg, 'ok'); }
       else logError(`${title} failed: ${r.error || 'see log'}`);
       return r;
-    } catch (e) { alertDlg('iMPACT', e.message, 'error'); return null; }
+    } catch (e) {
+      // (an untrusted project's refusal, the server's: in the console, with its Trust Project button, #4583)
+      if (refusedProject(e.message)) logError(`${title} failed: ${e.message}`); else alertDlg('iMPACT', e.message, 'error');
+      return null;
+    }
     finally { busy = false; }
   };
 

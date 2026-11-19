@@ -1035,6 +1035,8 @@ uiTest('#2830 an imported project waits for the user\'s trust: the console line 
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the user trusts it
   await page.eval(() => [...document.querySelectorAll('#console-log .ln-action')].at(-1).click());
+  await page.waitDialog('Trust Project');   // (asked first, #4583)
+  await page.dialogButton('Yes');
   await page.waitConsole(/Project "Outside" trusted: Xilinx ISE and programming a board or a PROM may run for it\./);
   assert.equal(await page.eval(() => [...document.querySelectorAll('#console-log .ln-action')].at(-1).disabled), true);
   assert.equal('trusted' in await env.server.api('GET', '/api/projects/Outside'), false);
@@ -1057,6 +1059,8 @@ uiTest('#2981 a project the MCP server made waits for the user\'s trust too: the
   await assert.rejects(env.server.api('POST', '/api/projects/ByMcp/implement', { toolchain: 'ise' }),
     (e) => e.message.includes("project 'ByMcp' was made through the MCP server (by an assistant): Xilinx ISE runs only once you trust it (Trust Project, in the console when the project opens)"));
   await page.eval(() => [...document.querySelectorAll('#console-log .ln-action')].at(-1).click());
+  await page.waitDialog('Trust Project');   // (asked first, #4583)
+  await page.dialogButton('Yes');
   await page.waitConsole(/Project "ByMcp" trusted: Xilinx ISE and programming a board or a PROM may run for it\./);
   const pj = await env.server.api('GET', '/api/projects/ByMcp');
   assert.deepEqual(['trusted' in pj, 'madeBy' in pj], [false, false]);

@@ -11,6 +11,7 @@ import { countEvent } from './analytics.js';
 import { runImpl } from './implement.js';
 import { projectTool } from './processes.js';
 import { deviceFamily, familyName } from '/packages/silinx-fpga/src/parts.js';
+import { refusedProject } from '/core/trust.js';
 
 export function mountOpenProgram(page) {
   const pj = S.project;
@@ -50,7 +51,12 @@ export function mountOpenProgram(page) {
       if (r.status === 'ok') { app.log(done, 'ok'); toast(done, 'ok'); countEvent('program'); }
       else logError(`${flash ? 'Programming the SPI flash' : 'Programming the FPGA'} failed: ${r.error || 'see log'}`);
       return r;
-    } catch (e) { alertDlg(prog.title, e.message, 'error'); return null; }
+    } catch (e) {
+      // (an untrusted project's refusal, the server's: in the console, with its Trust Project button, #4583)
+      if (refusedProject(e.message)) logError(`${flash ? 'Programming the SPI flash' : 'Programming the FPGA'} failed: ${e.message}`);
+      else alertDlg(prog.title, e.message, 'error');
+      return null;
+    }
     finally { busy = false; }
   };
 
