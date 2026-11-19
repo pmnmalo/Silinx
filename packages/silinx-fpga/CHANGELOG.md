@@ -3,6 +3,62 @@
 What changed in each version of silinx-fpga, the Silinx toolchain. The newest version is first. Its versions
 are its own (semver, 0.x until its API is stable), apart from Silinx ISE's.
 
+## 0.6.0
+
+In short:
+
+- **Gowin: what nextpnr cannot do said by name:** a CLKDIV2 that is not a CLKDIV's only driver and a TLVDS_IOBUF are refused
+  before nextpnr runs (it stopped with no message on the first); a differential tristate's enable, which nextpnr drops, is a
+  warning.
+- **A Gowin differential pair's IO_LOC on its P port:** `IO_LOC "p" 62,61;` places the pair, Gowin's convention: its N port
+  needs no IO_LOC of its own.
+- **The GateMate:** Cologne Chip's CCGM1A1 and CCGM1A2, a family of the toolchain: Yosys's `synth_gatemate`,
+  nextpnr-himbaechel-gatemate and gmpack (Project Peppercorn, YoWASP's `@yowasp/nextpnr-himbaechel-gatemate`, an optional
+  dependency), its constraints CCF.
+
+In detail:
+
+- **The 7-series' FASM read in a time linear in a line's length (#4407, CodeQL's js/polynomial-redos):** `parseFasm`
+  cuts a line by hand into its feature, its annotations and its comment, each matched by a pattern with one way to
+  match a text, and checks a plain decimal value without the pattern `[0-9_]*[0-9][0-9_]*`. A line that is not FASM,
+  with long runs of blanks or digits, took a time growing with a power of its length (2000 blanks 2.7 s; a value of
+  50000 digits ending in `'` minutes); now milliseconds. What it reads and the errors it gives are the same (but a
+  value's trailing blanks, no more in its error message).
+- **The Gowin's and the 7-series' simulation models' steps (#4362):** the Gowin's back end hands nextpnr's routed design to the
+  Post-Place & Route model (`setRouted`) and places and routes another netlist (`placeRouteNetlist`, src/nextpnr-netlist.js), and
+  its steps list `postpar`; the 7-series' list `postsynth` (its Post-Synthesis model, Yosys's netlist of UNISIM's cells).
+- **The 7-series' routed design for its Post-Place & Route simulation model (#4362):** Place & Route asks nextpnr for its
+  routed design too (`--write routed.json`, in xc7ParArgs), hands it over (`setRouted`, `open/routed.json`) and places and routes
+  another netlist (`placeRouteNetlist`, src/nextpnr-netlist.js); the steps list `postpar`.
+- **The Gowin's design checks before nextpnr (#4352):** gowin-checks.js reads Yosys's netlist: a CLKDIV2 whose CLKOUT drives
+  anything but one CLKDIV's HCLKIN (a serialiser's FCLK: nextpnr-himbaechel-gowin 0.11.825's HCLK placer stops with no ERROR:
+  line; the fabric's clocks: its router fails, then stops; a CLKDIV with other loads: its packer refuses it) and a TLVDS_IOBUF
+  (not in the GW1N-9C's chip database's differential buffers) are errors naming the cells and pins; a TLVDS_TBUF's,
+  ELVDS_TBUF's or ELVDS_IOBUF's OEN not tied to 0 a warning (nextpnr's pack_diff_iobs moves it to the P pin's buffer after
+  make_iob_nets recorded that buffer's NET_OEN, none or GND, which gowin_pack reads: the pair always drives). A CLKDIV2 before
+  a CLKDIV, the CLKDIV's output the fabric's clock, builds. The differential tristates' tests assert the warning; their
+  routed designs and .fs are unchanged, Apicula's.
+- **A differential pair's IO_LOC with both pins (#4351):** cst.js reads the second pin of an IO_LOC (`pairLoc`; it dropped it
+  before) and writes it back; the Gowin's Place & Route (open-flow-gowin.js, `gowinPairs`) gives it to the N port the
+  differential buffer at the P port pairs it with (TLVDS / ELVDS / MIPI's O / OB, I / IB, IO / IOB, through synth_gowin's I/O
+  buffers), and nextpnr an IO_LOC on each port (it reads "62,61" as another pin). The Tang Nano 9K's TLVDS_OBUF on 62,61,
+  TLVDS_IBUF and ELVDS_IOBUF (80,79): the routed design and the .fs the same as with two IO_LOCs, Apicula's byte for byte. A
+  second pin on a port no differential buffer pairs, or an N port with an IO_LOC of another pin, refused by name.
+- **The GateMate's Post-Synthesis model (#2431):** GATEMATE_STEPS has the postsynth step (the IDE's model of Yosys's netlist of
+  the CC_ cells).
+- **The GateMate's back end (#2431):** src/open-flow-gatemate.js (`synth_gatemate -luttree -nomx8`: this nextpnr refuses Yosys's
+  CC_LUT3/4 and CC_MX8; place and route into Project Peppercorn's text configuration, open/routed.cfg; the bitstream gmpack's
+  `<top>.bit`; nextpnr's report as the utilization and each clock's Fmax, the clock by its port's name), src/ccf.js (Cologne
+  Chip's CCF: NET, Pin_in, Pin_out, Pin_inout, Loc and the settings after `|`; a clock's period in a comment given to nextpnr in
+  an SDC), io.nextpnr.gatemate (gatemateIo, nextpnrGatemateNode); GATEMATE_PARTS, GATEMATE_STEPS, CCF exported.
+- **The CCGM1A2 routed by router1 with no CPE's CP lines (#2431):** nextpnr's router2 throws on every design on it, one AND
+  gate too: its state for every wire takes 2.3 GB on the CCGM1A1 and twice as much on the CCGM1A2, past WebAssembly's 4 GiB (a
+  `std::bad_alloc` nextpnr does not catch); router1's routes through the CP lines write a CPE's C_SEL_P twice ("Trying to add
+  value to already assigned word"); `--router router1 --vopt no-cpe-cp` builds, slowly (pong in about 12 minutes).
+- **A crash of nextpnr's placed and routed again (#2431):** a WebAssembly trap with no ERROR: line (nextpnr-himbaechel-gatemate
+  0.11.825 after the placement of some designs: uart's with seeds 1 and 2, `memory access out of bounds`) runs nextpnr again
+  with the next seed, up to three times, each a warning.
+
 ## 0.5.0
 
 In short:
