@@ -18,6 +18,7 @@ import { gitAvailable } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
 import { isDesignOnly } from '/core/project-kind.js';
+import { reopenWaiting, forgetWaiting } from './storage-late.js';
 import { afterOpening } from './prefetch-schedule.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
@@ -344,13 +345,19 @@ async function switchStorage(what, fn) {
   if (S.project) { await closeProject(); if (S.project) return; }
   let st;
   try { st = await fn(); } catch (e) { alertDlg(what, e.message, 'error'); return; }
-  if (!st) return;   // the folder picker was cancelled
+  if (!st) return false;   // the folder picker was cancelled
   log(storageLine(st), 'ok');
   updateStorageStatus();
   showLeftPage('start');
+  return true;
 }
 const openWorkspaceFolder = () => switchStorage('Open Workspace Folder', () => api.openWorkspaceFolder());
-const reopenWorkspaceFolder = () => switchStorage('Open Workspace Folder', () => api.reopenWorkspaceFolder());
+// (#4667: the project the start-up left closed for want of the folder's permission reopened where it was, unless the
+// user opened another one meanwhile; nothing awaited before the browser's request: the click's activation)
+async function reopenWorkspaceFolder() {
+  if (S.project) forgetWaiting();
+  if (await switchStorage('Open Workspace Folder', () => api.reopenWorkspaceFolder())) await reopenWaiting();
+}
 const useBrowserStorage = () => switchStorage('Use Browser Storage', () => api.useBrowserStorage());
 async function copyBrowserProjects() {
   const what = 'Copy Browser Projects to the Folder';

@@ -1011,6 +1011,10 @@ uiTest('browser edition: File ▸ Open Workspace Folder… keeps the projects in
   await page.click('#start-page .start-storage a', { text: 'Reopen Silinx-projects' });
   await page.waitConsole(/Projects are now kept in the folder 'Silinx-projects' on the disk/);
   assert.equal(await page.eval(() => window.__fakeRoot.queryPermission({ mode: 'readwrite' })), 'granted');
+  // (#4667: the project the reload left closed for want of the permission, reopened where it was: its file in front)
+  await page.waitFor(() => window.Silinx.project?.name === 'Disk' && window.Silinx.active?.id === 'file:src/stopwatch.vhd', [], { what: 'the project reopened where it was' });
+  assert.ok((await page.eval(() => window.Silinx.active.editor.getValue())).startsWith('-- kept in the folder\n'));
+  assert.equal(await statusStorage(page), 'Storage: folder Silinx-projects');
   await page.menu('File', 'Open Project…');
   await page.waitDialog('Open Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid tr td:first-child')].map((td) => td.textContent)), ['Disk', 'InBrowser']);
