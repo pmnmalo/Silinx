@@ -264,6 +264,8 @@ export function runBrowserSpec({ spec, sources, onLine, signal = null }) {
  */
 const prepared = new Set();
 const preparing = new Map();   // key -> { done (its promise), lines (said so far), listeners }
+// how many are downloading now, for the tests (#4658: a run started before one ends joins it, its lines with it)
+const counted = () => { globalThis.SILINX_PREPARING = preparing.size; };
 export function prepareBrowserFlow(device = {}, { onLine = null, force = false } = {}) {
   const st = browserOpenStatus(device);
   const key = st.graph || st.bitDb;   // (the 7-series' has no device description: its bit database, #3143)
@@ -278,7 +280,7 @@ export function prepareBrowserFlow(device = {}, { onLine = null, force = false }
   const w = getWorker(), id = ++runSeq;
   const p = { lines: [], listeners: new Set(onLine ? [onLine] : []) };
   p.done = new Promise(resolve => {
-    const end = r => { runs.delete(id); preparing.delete(key); resolve(r); };
+    const end = r => { runs.delete(id); preparing.delete(key); counted(); resolve(r); };
     runs.set(id, {
       onData: data => {
         if (data.line !== undefined) { p.lines.push(data.line); for (const f of p.listeners) f(data.line); } else if (data.done) end(data.done);
@@ -288,6 +290,7 @@ export function prepareBrowserFlow(device = {}, { onLine = null, force = false }
     w.postMessage({ id, prepare: { graph: st.graph, part: st.part, family: st.family, device: String(device.part).toLowerCase(), pkg: String(device.package).toLowerCase(), nextpnr: usesNextpnr(st.family) }, assets: assetsBase(), yosys: yosysBundleUrl(), nextpnr: nextpnrOf(st.family), keep: [nextpnrBundleUrl(), nextpnrS6BundleUrl(), nextpnrXc7BundleUrl()], root: assetsRoot(), integrity: LAYOUT.integrity || null, sizes: LAYOUT.sizes || null, force });
   });
   preparing.set(key, p);
+  counted();
   return p.done;
 }
 
