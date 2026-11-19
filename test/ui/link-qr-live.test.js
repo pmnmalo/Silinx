@@ -4,8 +4,8 @@
 // Show, Show QR Code) with its QR code by Show QR Code only (#3637, decoded back: the link; no small one in the window);
 // Stop Sharing keeps the window, Start Sharing again; no Add a User… in it: the toolbar's Sharing menu's (Viewer or
 // Editor, that role's link by Generate), and its Copy View Link; Share Module…'s links (#3631, opening on the module);
-// the labels in Portuguese; each link's Generate named for it (Generate View-Only, Generate Edit), its buttons in a
-// row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too. A server with its relay. Both
+// the labels in Portuguese; each link's Generate named for it (Generate View-Only, Generate Edit Link: #4613), its buttons in a
+// row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too, a copy's laid out the same (#4612). A server with its relay. Both
 // interfaces; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -66,7 +66,7 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   assert.deepEqual(await top(page), ['Share Project', ['Start Sharing (off)', 'Stop Sharing', 'Close *']]);
   // (#4576: each Generate named for its link)
   assert.deepEqual(await fieldButtons(page, 'link'), ['Generate View-Only', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
-  assert.deepEqual(await fieldButtons(page, 'edit-link'), ['Generate Edit', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
+  assert.deepEqual(await fieldButtons(page, 'edit-link'), ['Generate Edit Link', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-out')].map((o) => o.value)), ['', '']);
   // each made by its Generate: different, the viewers' #view=, the editors' #edit=
   const link = await gen(page, 'link');
@@ -155,7 +155,7 @@ uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s
     await page.dialogButton('Começar a Partilhar');
     await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
     assert.deepEqual(await fieldButtons(page, 'link'), ['Gerar Só de Leitura', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
-    assert.deepEqual(await fieldButtons(page, 'edit-link'), ['Gerar Edição', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
+    assert.deepEqual(await fieldButtons(page, 'edit-link'), ['Gerar Ligação de Edição', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-edit-about').textContent), 'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.');
     await page.dialogButton('Fechar');
     await page.waitNoDialog();
@@ -193,6 +193,16 @@ const linesOf = (page, field, n) => page.eval((f, k) => {
   t.remove(); return n2;
 }, field, n);
 
+// a link field's layout, to compare a copy's with Live's (#4612): the field's class and direction, its box's font,
+// padding and border, its buttons' row (each one's class, Generate's left out, and height); each box as wide as its
+// window's content, the windows' widths their own (the boxes' test below)
+const layout = (page) => page.eval(() => {
+  const f = document.querySelector('.dlg-overlay .link-field:has(input[data-field="link"])'), b = f.querySelector('.link-full'), row = f.querySelector('.link-buttons');
+  const [fs, bs, rs] = [f, b, row].map((e) => getComputedStyle(e));
+  return { cls: f.className, dir: fs.flexDirection, gap: fs.rowGap, font: bs.font, padding: bs.padding, border: bs.borderWidth,
+    row: rs.flexDirection, wrap: rs.flexWrap, rowGap: rs.columnGap, buttons: [...row.querySelectorAll('.btn')].map((x) => [x.className, Math.round(x.getBoundingClientRect().height)]) };
+});
+
 uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons in one row below its box, the box as wide as the window\'s content and as tall as the link (before Generate as tall as the link it makes), the whole link in view, hidden or shown; on a phone too', E, async (page) => {
   await make(page, 'linkbox', 'gates');
   await page.openProject('linkbox');
@@ -208,6 +218,7 @@ uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons i
         await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
       }
       const what = `${module ? 'Share Module' : 'Share Project'}, ${width} px`;
+      const liveLayout = await layout(page);
       // before Generate (the first window): empty boxes, as tall as the links they will make
       const before = fresh ? await boxes(page) : null;
       const links = [];
@@ -235,6 +246,16 @@ uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons i
       assert.deepEqual((await boxes(page)).map((b) => [b.cls, b.whole]), [['link-full link-masked', true], ['link-full link-masked', true]], what);
       await page.dialogButton('Close');
       await page.waitNoDialog();
+      // a copy's link laid out as Live's (#4612): the same field, box and row of buttons
+      if (!module) {
+        await page.eval(() => { window.__copied = import('/js/link-copy.js').then((m) => m.copyLinkDialog()); });
+        await page.waitDialog('Share Project');
+        const copy = await layout(page);
+        assert.deepEqual({ ...copy, buttons: copy.buttons.slice(1) }, { ...liveLayout, buttons: liveLayout.buttons.slice(1) }, `${what}: a copy's`);
+        assert.deepEqual([copy.cls, copy.buttons[0][0], copy.buttons[0][1]], ['link-field link-row', 'btn link-generate', liveLayout.buttons[0][1]], `${what}: a copy's`);
+        await page.dialogButton('Close');
+        await page.waitNoDialog();
+      }
     }
     await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
   } finally { await page.setViewport(1400, 900); }

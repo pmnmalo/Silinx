@@ -27,6 +27,8 @@ import { linkField } from './link-field.js';
 import { QR_MAX_BYTES, qrSvg } from '/core/qr.js';
 import { howRow, shareTitle } from './share-how.js';
 
+// (the link's box at most so many lines, scrolled beyond: a full link is thousands of characters, #4612)
+const LINK_LINES = 8;
 const VIEWS = [['', 'Open the project only'], ['try', 'Try it (a drawing\'s simulation)'], ['simulate', 'Simulation'], ['emulate', 'Board Emulator']];
 /** The address of this app, the base of its links (its hash, a token or a link, left out). */
 const linkBase = () => location.origin + location.pathname;
@@ -81,8 +83,11 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   const expiry = h('select', { 'data-field': 'expires', disabled: true }, ...EXPIRY_DAYS.map(d => h('option', { value: String(d) }, EXPIRY[d])));
   let link = null, opts = null, made = null, madeFor = null, saidLong = false, manage = false, closeIt = null, copied = null, said = null;
   const shortLink = () => makeLink(linkBase(), { gist: `${made.id}.${made.key}`, ...opts });
-  // (the link, hidden, made by Generate only, #3995, #4073: Generate, Copy, Show, Show QR Code)
-  const field = linkField({ field: 'link', onCopy: l => copyNow(l), generate: () => generated() });
+  // (the link, hidden, made by Generate only, #3995, #4073: Generate, Copy, Show, Show QR Code; in a row below a box as
+  // wide as the window's and as tall as the link, at most LINK_LINES lines, as Live's, #4612; before Generate, as tall as
+  // the link it makes: a short one's with a gist's id and key)
+  const expected = () => (!link ? 0 : short.checked ? makeLink(linkBase(), { gist: `${'0'.repeat(32)}.${'A'.repeat(43)}`, ...opts }).length : link.length);
+  const field = linkField({ field: 'link', label: 'Generate Full Link', row: true, maxLines: LINK_LINES, expected, onCopy: l => copyNow(l), generate: () => generated() });
   // the link the choices give, made: the full one (its length said; one too long for a QR code, said once), or the short
   // one (its gist made now, or the one made for this expiry); null: not made, said
   const generated = async () => {
@@ -145,6 +150,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   };
   const update = () => {
     expiry.disabled = !short.checked;
+    field.setLabel(short.checked ? 'Generate Short Link' : 'Generate Full Link');   // (named for the link it makes, #4615)
     link = null;
     field.set(null);
     info.textContent = ''; err.textContent = ''; account.textContent = '';
@@ -163,6 +169,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
       info.textContent = 'A short link, about 140 characters: the project encrypted in this browser and saved as a secret gist of your GitHub account when you generate it; only the link opens it. Your links are your gists, which you list and delete on GitHub.';
       sayAccount();
     }
+    field.fit();   // (as tall as the link these choices make)
   };
   viewSel.addEventListener('change', () => { fillModules(); update(); });
   short.addEventListener('change', update);
