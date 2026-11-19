@@ -43,12 +43,16 @@ before(async () => {
   tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-ui-git-exists-')));
   remotes = path.join(tmp, 'remotes');
   fs.writeFileSync(path.join(tmp, 'gitconfig'), '[user]\n\tname = Ana Aluna\n\temail = ana@example.com\n[init]\n\tdefaultBranch = main\n');
-  Object.assign(process.env, { GIT_CONFIG_GLOBAL: path.join(tmp, 'gitconfig'), GIT_CONFIG_NOSYSTEM: '1', SILINX_UI_GIT_REMOTES: remotes });
+  // GitHub's command line, the stand-in's (#4666): the user has no repository, so Open from GitHub Repository…'s list
+  // says nothing in the console, whatever gh the machine has
+  fs.writeFileSync(path.join(tmp, 'repos.json'), '[]');
+  Object.assign(process.env, { GIT_CONFIG_GLOBAL: path.join(tmp, 'gitconfig'), GIT_CONFIG_NOSYSTEM: '1', SILINX_UI_GIT_REMOTES: remotes,
+    SILINX_UI_GH: path.join(ROOT, 'test', 'fake-gh.mjs'), FAKE_GH_REPOS: path.join(tmp, 'repos.json') });
   env = await setupUi();
 });
 after(async () => {
   await env?.teardown?.();
-  delete process.env.SILINX_UI_GIT_REMOTES;
+  for (const k of ['SILINX_UI_GIT_REMOTES', 'SILINX_UI_GH', 'FAKE_GH_REPOS']) delete process.env[k];
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 const E = () => env;
