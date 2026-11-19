@@ -10,6 +10,7 @@ import zlib from 'node:zlib';
 import { scratchEnv } from './server-helpers.js';
 import { decodeSvg } from './qr-helpers.js';
 import { QR_MAX_BYTES } from '../core/qr.js';
+import { kicadPartsProject } from './link-parts-helpers.js';
 
 let tmp;
 before(async () => { tmp = fs.realpathSync(await scratchEnv('silinx-mcp-link-')); });
@@ -66,6 +67,24 @@ test('#4119 regression: project_link with view try on a circuit (the breadboard 
   assert.equal(o.text, 'Opened the link as the new project \'breadboard_link\': top breadboard, basys2; the link opens Try it (Try it is the interface\'s: a schematic\'s or a circuit\'s live simulation, a state diagram\'s, a Petri net\'s or an ASM chart\'s simulation).');
   assert.deepEqual(o.data, { project: 'breadboard_link', created: true, view: 'try', top: null, board: 'basys2', warnings: [] });
   assert.deepEqual(await files('breadboard_link'), await files('breadboard'));
+});
+
+test('#4573 regression: project_link of a project whose imported KiCad libraries made its link too long: the parts no drawing uses left out, said; opened back with the parts it uses', async () => {
+  await ok('new_project_from_example', { name: 'kparts', example: 'breadboard' });
+  const { files: parts, kept, left } = kicadPartsProject();
+  for (const [p, t] of Object.entries(parts)) await P.writeFile('kparts', p, t);
+  const r = await ok('project_link', { project: 'kparts', base: 'http://localhost:3000/' });
+  const link = r.data.link;
+  assert.equal(r.text, `WARNING: the link is ${link.length} characters long: some slide tools cut a link longer than 2000 (a zip hosted elsewhere makes a short one)\nThe link of 'kparts' (${link.length} characters; src/breadboard.vhd made again from its drawing; 61 files of its KiCad parts that no drawing uses left out (parts/)):\n${link}`);
+  assert.deepEqual(r.data.parts, left);
+  assert.deepEqual(r.data.warnings, [`WARNING: the link is ${link.length} characters long: some slide tools cut a link longer than 2000 (a zip hosted elsewhere makes a short one)`]);
+  const o = await ok('open_link', { link, name: 'kparts_link' });
+  assert.deepEqual(o.data.warnings, []);
+  const mine = await files('kparts'), back = await files('kparts_link');
+  for (const p of [...kept, 'parts/README.md', 'src/kicad-parts.json', 'src/breadboard.circ.json']) assert.equal(back[p], mine[p], p);
+  for (const p of left) assert.equal(back[p], undefined, p);
+  // (an example with no KiCad parts: none left out, nothing said)
+  assert.deepEqual((await ok('project_link', { project: 'kparts_link' })).data.parts, []);
 });
 
 test('project_link: the views a design has, the default base, the errors', async () => {

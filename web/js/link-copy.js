@@ -3,7 +3,8 @@
 // (core/design-link.js encodeDesign), and what it opens: the project only, Try it (a schematic's), the simulation (the
 // test bench), the board emulator; the module; the current view (#2886). The link is made as the choices change, its
 // length with it, made by Generate and hidden (#3995, #4073, link-field.js: Generate, Copy, Show, Show QR Code); one too large for a link (a zip hosted
-// elsewhere then) or a view the design does not have is said in the dialog, each copy in the console. Anyone with the
+// elsewhere then: red, above the link's box, and an ERROR in the console, #4573) or a view the design does not have is
+// said in the dialog, each copy in the console; the KiCad part files no drawing uses are left out (core/link-parts.js). Anyone with the
 // link has the whole project, its comments too: the window says so first (#2829). The link is the full one (the project
 // inside it) or a short one (#3223, core/gist-link.js): the project encrypted here and saved as a secret gist of the
 // user's GitHub account by Generate (a choice changed: Generate again, the same gist for the same expiry), its key in the link; the account and the project's repository said (#3995); with
@@ -40,8 +41,10 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   // (a copy given out: its origin in the link, its ancestor kept by the project, not carried by the link, too large: #4205)
   try { entries = (await gateZip(new Uint8Array(await (await api.exportZip(name, 'silinx', { copy: true })).blob.arrayBuffer()), browserCodec())).files.filter(e => e.path !== ANCESTOR_FILE); } catch (e) { app.log(`ERROR: ${action}: ${e.message}`, 'err'); return null; }
   const files = Object.fromEntries(entries.filter(e => e.path !== 'silinx.json').map(e => [e.path, textOf(e)]));
-  let design = null, encodeError = null;
-  try { design = (await encodeDesign(entries)).design; } catch (e) { encodeError = e.message; }
+  // (the KiCad part files no drawing uses left out, #4573; a design too large for a link: an ERROR, red in the window too)
+  let design = null, encodeError = null, partsLeft = [];
+  try { ({ design, parts: partsLeft } = await encodeDesign(entries)); } catch (e) { encodeError = e.message; app.log(`ERROR: ${action}: no link of '${name}': ${e.message}.`, 'err'); }
+  if (partsLeft.length) app.log(`${action}: the link of '${name}' leaves out ${partsLeft.length} file${partsLeft.length > 1 ? 's' : ''} of its KiCad parts that no drawing uses (parts/).`, 'info');
   // the Module list follows Open in (#2878): the simulation's, the test benches (the project's first); the others', the
   // design's modules (its top first), no test bench
   const pj = S.project;
@@ -100,6 +103,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     if (!await api.gistAvailable()) {
       err.textContent = api.standalone ? 'A short link needs your GitHub sign-in: sign in, or choose the full link.' : 'A short link needs a GitHub token on the Silinx server (GH_TOKEN): choose the full link, or start the server with one.';
       if (api.standalone) signIn.style.display = '';
+      app.log(`ERROR: ${action}: no short link of '${name}': ${err.textContent}`, 'err');
       return false;
     }
     try {
@@ -109,7 +113,11 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
       app.log(`${action}: the short link of '${name}' made (the project in a secret gist of your GitHub account${made.expires ? `, until ${made.expires.slice(0, 10)}` : ''}).`, 'ok');
       if (made.deleted) app.log(`${action}: ${made.deleted} expired short link${made.deleted > 1 ? 's' : ''} deleted from your gists.`, 'info');
       return true;
-    } catch (e) { err.textContent = e.hint ? `${e.message}: ${e.hint}` : e.message; return false; }
+    } catch (e) {
+      err.textContent = e.hint ? `${e.message}: ${e.hint}` : e.message;
+      app.log(`ERROR: ${action}: no short link of '${name}': ${err.textContent}${/[.!?]$/.test(err.textContent) ? '' : '.'}`, 'err');
+      return false;
+    }
   };
   // the account and the repository, read once (said again after a sign-in)
   const sayAccount = async () => {
@@ -140,7 +148,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     link = null;
     field.set(null);
     info.textContent = ''; err.textContent = ''; account.textContent = '';
-    if (encodeError) { err.textContent = encodeError; return; }
+    if (encodeError) { err.textContent = `${encodeError[0].toUpperCase()}${encodeError.slice(1)}.`; return; }
     // (the module: in the link when it is not the project's top, or when the link is a module's: Share Module
     // Copy…, the project then opened on it, #2871; a test bench when it is not the project's, #2878)
     // (Open the project only, from the project's Share Project…: no module, the project opened with no source in
@@ -179,7 +187,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
           h('label', { class: 'link-full' }, full, h('span', {}, 'Full link: the project inside it (needs nothing, but long)')), h('br'),
           h('label', { class: 'link-short' }, short, h('span', {}, 'Short link: the project encrypted in a secret gist of your GitHub account'))),
         h('label', {}, 'Expires:'), expiry),
-      field.el, info, account, err, signIn,
+      err, field.el, info, account, signIn,
       h('div', { class: 'link-manage' }, h('a', { href: '#', onclick: e => { e.preventDefault(); manage = true; closeIt?.(); } }, 'Manage short links…'))),
     buttons: [{ label: 'Close', primary: true, value: true }],
   });

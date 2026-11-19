@@ -447,6 +447,7 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }
 .share-how-choices .share-how-note { grid-column: 2; font-size: 11px; opacity: .8; }
 .link-account { margin-top: 6px; }
+.link-error:not(:empty) { color: var(--error-fg); font-weight: 600; margin: 8px 0; }   /* (why no link: red, above the link's box, #4573) */
 .qr-large { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .qr-large-img { width: min(100%, calc(90vh - 230px)); aspect-ratio: 1; background: #fff; image-rendering: pixelated; }
 .qr-large-link { font: 11px var(--mono, monospace); word-break: break-all; max-height: 3.6em; overflow: hidden; opacity: .75; }

@@ -18,6 +18,7 @@ import { VIEW_RE, isCSource, viewHdl } from './view-hdl.js';
 import { gateEntries, gateMessages } from './import-gate.js';
 import { foldsToProjectFile, PROJECT_FILE } from './fold-name.js';
 import { PROJECT_NAME_RE } from './project-name.js';
+import { unusedPartFiles } from './link-parts.js';
 
 /** The limits of a link: the design's encoded length (characters), its JSON inflated (bytes), its files; `slides`:
  *  the length above which some slide tools cut a link (it is still made, with a warning). */
@@ -88,7 +89,8 @@ async function modulesOf(files) {
 // ------------------------------------------------------------------ a design in a link
 /**
  * A project's files ([{ path, data }], as a Silinx export's zip: silinx.json and every file) as the `design=` of a
- * link: { design (base64url), length, name, left: [HDL files left out, made again from their drawing] }.
+ * link: { design (base64url), length, name, left: [HDL files left out, made again from their drawing], parts: [the KiCad
+ * part files left out, which no drawing uses: core/link-parts.js] }.
  * A file that is not text (UTF-8) goes as base64. Throws when the design is too large for a link.
  */
 export async function encodeDesign(entries, { codec = browserCodec() } = {}) {
@@ -102,10 +104,13 @@ export async function encodeDesign(entries, { codec = browserCodec() } = {}) {
   if (!project || typeof project !== 'object') throw linkError('not a Silinx project: no silinx.json');
   const gen = await regenerable(files);
   for (const p of Object.keys(gen)) delete files[p];
+  // (the KiCad part files no drawing uses, #4573: whole libraries imported made the link too long to be made)
+  const parts = unusedPartFiles(files);
+  for (const p of parts) delete files[p];
   const payload = { v: FORMAT, project, files, ...(Object.keys(bin).length ? { bin } : {}), ...(Object.keys(gen).length ? { made: Object.keys(gen) } : {}) };
   const design = toB64url(new Uint8Array(await codec.deflate(enc.encode(JSON.stringify(payload)))));
   if (design.length > LINK_LIMITS.maxEncoded) throw linkError(`the design is too large for a link (${design.length} characters, at most ${LINK_LIMITS.maxEncoded}): export it as a .zip (Export Project (.zip)…, Silinx) and link to that`);
-  return { design, length: design.length, name: project.name, left: Object.keys(gen) };
+  return { design, length: design.length, name: project.name, left: Object.keys(gen), parts };
 }
 
 /**
