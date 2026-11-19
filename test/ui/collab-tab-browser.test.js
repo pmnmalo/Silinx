@@ -85,7 +85,7 @@ uiTest('#4215 the browser edition\'s Collaboration tab: Open from GitHub Reposit
   const REPO_ENTRIES = (n = 0, ...tail) => ['Sign out of GitHub', 'GitHub: course/collab-ana', 'Branch: main', 'Commit and Push…', 'Pull from GitHub', 'New Branch…', 'Switch Branch…', 'Merge Branch…',
     n ? `Changes… (${n})` : 'Changes…', 'History…', 'GitHub Checks', ...tail];
   await waitBox(page, 'Git Repository', REPO_ENTRIES(), 'signed in, no change');
-  assert.deepEqual((await page.eval(() => [...document.querySelectorAll('#collab-page .start-box h3')].map((e) => e.textContent))), ['Git Repository', 'Sharing', 'Cloudflare Relay']);   // (the relay's box: #4574)
+  assert.deepEqual((await page.eval(() => [...document.querySelectorAll('#collab-page .start-box h3')].map((e) => e.textContent))), ['Sharing', 'Cloudflare Relay', 'Git Repository']);   // (the relay's box: #4574; Sharing first, #4636)
   // (Sharing, #4259: the browser edition's page hosts live sharing)
   assert.deepEqual(await boxOf(page, 'Sharing'), ['Not shared live.', 'Share a Copy…', 'Share Live…', 'To follow a project shared live, open its link.']);
   const short = (s) => s.slice(0, 7);

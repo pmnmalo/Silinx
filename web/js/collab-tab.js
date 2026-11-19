@@ -9,7 +9,8 @@
 // is), and live sharing (#3181): what the toolbar's presence shows and its commands
 // (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
 // read-only notice and its Live box only. The browser edition's Cloudflare Relay box (#4574, web/js/relay-setup.js): the
-// relay its live shares meet their followers at, set up, checked, forgotten. No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
+// relay its live shares meet their followers at, set up, checked, forgotten. Sharing first, the relay under it, then Git
+// Repository (#4636). No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
 // page's, so that a later command (a merge, a branch) is one more box or entry. Shown with no project open too (#4619: the
 // sign-in, Open from GitHub Repository…, how to follow, the relay; the project's commands disabled), the Start page
 // having no GitHub commands of its own.
@@ -69,7 +70,7 @@ function boxes() {
   const items = gitMenuItems().filter(it => it !== '-');
   const by = label => items.find(it => it.label === label);
   const init = by('Store Project in a GitHub Repository…'), open = { label: 'Open from GitHub Repository…', action: () => openFromRepositoryDialog() };
-  return [repositoryBox(items, init, open), liveHere() ? liveBox() : null, relayBox()];
+  return [liveHere() ? liveBox() : null, relayBox(), repositoryBox(items, init, open)].filter(Boolean);   // (sharing first, its relay with it, #4636)
 }
 
 // Git Repository (#4581: the GitHub box's sign-in and checks in it): the sign-in first (the browser edition's command; the
