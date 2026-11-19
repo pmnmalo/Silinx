@@ -42,7 +42,7 @@ export function mountSide(ctx) {
         if (!s.error) { if (JSON.stringify(s.outputs) !== JSON.stringify(o.outputs)) { o.outputs = s.outputs; commit(`${key}:${r.name}`); } return; }
         if (done) { flash(`${where()}: ${s.error}`); el.value = o.outputs[r.name] ?? ''; el.classList.remove('bad'); }
       }, { cls: 'mono v', ph: r.placeholder, key: `${key}:${r.name}` });
-      tbl.append(h('tr', {}, h('td', { class: 'mono n' }, r.name), h('td', { class: 'c' }, String(r.width)), h('td', {}, el)));
+      tbl.append(h('tr', {}, h('td', { class: 'mono n', 'data-no-i18n': '' }, r.name), h('td', { class: 'c' }, String(r.width)), h('td', {}, el)));
     }
     return tbl;
   };
@@ -96,7 +96,7 @@ export function mountSide(ctx) {
     const t = transById(sel().id);
     if (!t) { setSel(null); return renderSelection(); }
     const id = t.id, cur = () => transById(id);
-    const stateOpts = (cur) => M().states.map((s) => h('option', { value: s.id, selected: s.id === cur }, s.name));
+    const stateOpts = (cur) => M().states.map((s) => h('option', { value: s.id, selected: s.id === cur, 'data-no-i18n': '' }, s.name));
     const from = h('select', { class: 'asm-select fsm-from' }, ...stateOpts(t.from));
     const to = h('select', { class: 'asm-select fsm-to' }, ...stateOpts(t.to));
     const reroute = (k, v) => { const c = cur(); if (!c) return; c[k] = v; delete c.bend; delete c.angle; commit(); renderSelection(); };

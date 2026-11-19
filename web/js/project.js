@@ -275,7 +275,7 @@ export async function renderStartPage() {
     api.standalone ? await storageBox() : await workspaceBox(),
     h('div', { class: 'start-box' }, h('h3', {}, 'Recent Projects'),
       // (its menu: Open Project, Rename Project…, #4641)
-      ...(recentHere.map(r => h('div', { class: 'entry', 'data-recent': r, oncontextmenu: e => recentMenu(e, r) }, icon('project'), h('a', { onclick: () => openProject(r).then(() => showLeftPage('design')) }, r)))),
+      ...(recentHere.map(r => h('div', { class: 'entry', 'data-recent': r, oncontextmenu: e => recentMenu(e, r) }, icon('project'), h('a', { 'data-no-i18n': '', onclick: () => openProject(r).then(() => showLeftPage('design')) }, r)))),
       projects.length ? null : h('div', { class: 'entry', style: { color: 'var(--grey-6)' } }, 'No projects yet.'),
       recentHere.length ? h('div', { class: 'entry start-clear' }, icon('remove'), h('a', { onclick: () => clearRecent() }, 'Clear Recent Projects')) : null),
   );

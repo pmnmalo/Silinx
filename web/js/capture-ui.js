@@ -100,7 +100,7 @@ export async function captureSettings() {
     ok = !errs.length;
     if (save.el) save.el.disabled = !ok;
   }
-  list.addEventListener('change', () => { for (const r of rows.children) { const sel = r.querySelector('select'), v = sel.value; sel.replaceChildren(...chosen().map(p => h('option', { value: p, selected: p === v }, p))); } check(); });
+  list.addEventListener('change', () => { for (const r of rows.children) { const sel = r.querySelector('select'), v = sel.value; sel.replaceChildren(...chosen().map(p => h('option', { value: p, selected: p === v, 'data-no-i18n': '' }, p))); } check(); });
   for (const x of [clock, depth, pre, combine]) x.addEventListener('input', check);
   const save = { label: 'Save', primary: true, value: 'save' };
   const r = await dialog({

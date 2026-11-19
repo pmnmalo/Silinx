@@ -316,7 +316,8 @@ export async function openProjectDialog() {
   for (const p of list) {
     // (a design project's: no device, its kind for a board, #3891)
     const design = isDesignOnly(p);
-    const tr = h('tr', {}, h('td', {}, p.name), h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
+    const tr = h('tr', {}, h('td', { 'data-no-i18n': '' }, p.name),   // (its name: not translated, 'clock' not 'relógio', #4705)
+      h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
       // (where it is kept: the workspace folder or this browser's storage, its GitHub repository, #4314)
       h('td', { class: 'pj-place', title: placeText(p) }, ...placeLines(p).map((l, i) => h('div', i ? { 'data-no-i18n': '' } : {}, l))),
       h('td', { class: 'pj-used', 'data-no-i18n': '' }, p.used ? dateText(p.used) : ''));
@@ -480,7 +481,7 @@ export async function projectProperties() {
   const r = await dialog({
     title: 'Design Properties', width: 520,
     body: h('div', { class: 'form-grid' },
-      ...field('Name:', h('span', {}, pj.name)),
+      ...field('Name:', h('span', { 'data-no-i18n': '' }, pj.name)),
       ...field('Project Kind:', kindSel),
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),

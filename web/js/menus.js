@@ -86,7 +86,7 @@ export function setupMenus() {
       { label: 'Print…', action: () => printActive(), shortcut: 'Ctrl+P', disabled: () => !printable() },
       '-',
       { label: 'Recent Projects', submenu: [
-        ...recent().map(r => ({ label: r, action: () => openProject(r) })),
+        ...recent().map(r => ({ label: r, raw: true, action: () => openProject(r) })),   // (a name: not translated, #4705)
         recent().length ? '-' : null,
         { label: 'Clear Recent Projects', action: () => clearRecent(), disabled: !recent().length },
       ].filter(Boolean) },

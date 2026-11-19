@@ -46,7 +46,7 @@ function mountMergeView(el, doc, { files, labels, action, choices: given, done, 
 
   const btn = (label, tip, cmd, onclick, cls = '') => h('button', { type: 'button', class: `asm-btn asm-wide${cls}`, 'data-cmd': cmd, title: tip, onclick }, label);
   const fileSel = h('select', { class: 'asm-select merge-file-select', title: 'The file shown', 'data-no-i18n': '', onchange: e => show(Number(e.target.value)) },
-    ...merges.map((m, i) => h('option', { value: String(i) }, m.path)));
+    ...merges.map((m, i) => h('option', { value: String(i), 'data-no-i18n': '' }, m.path)));
   const prev = btn('Previous Conflict', 'The conflict before this one', 'prev', () => step(-1));
   const next = btn('Next Conflict', 'The next conflict', 'next', () => step(1));
   const apply = btn(action, 'Apply the merge with these choices', 'apply', () => applyMerge(), ' merge-apply');

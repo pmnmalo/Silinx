@@ -332,7 +332,7 @@ async function addNow(file) {
 
 // ------------------------------------------------------------------ documents
 function docTab(doc) {
-  const tab = h('div', { class: 'tab', title: tabTip(doc), tabindex: '0' }, icon(doc.icon || 'file'), h('span', { class: 'tlabel' }, doc.title),
+  const tab = h('div', { class: 'tab', title: tabTip(doc), tabindex: '0' }, icon(doc.icon || 'file'), h('span', { class: 'tlabel', ...(doc.path && { 'data-no-i18n': '' }) }, doc.title),   // a file's name: not translated (#4705)
     h('span', { class: 'tclose', title: 'Close' }, '✕'));
   tab.addEventListener('mousedown', e => { if (e.button === 0 && !e.target.closest('.tclose')) activateDoc(doc); });
   tab.querySelector('.tclose').addEventListener('click', e => { e.stopPropagation(); closeDoc(doc); });

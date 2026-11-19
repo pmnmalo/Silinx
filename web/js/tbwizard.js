@@ -104,7 +104,7 @@ export async function testBenchWizard({ module, name = null, location = null, la
   const fillPortSelect = (sel, value) => {
     sel.innerHTML = '';
     sel.append(h('option', { value: '' }, '(none)'));
-    for (const p of ports.filter(x => x.dir === 'in' && x.kind === 'sl')) sel.append(h('option', { value: p.name, selected: p.name === value }, p.name));
+    for (const p of ports.filter(x => x.dir === 'in' && x.kind === 'sl')) sel.append(h('option', { value: p.name, selected: p.name === value, 'data-no-i18n': '' }, p.name));   // (a port's name: not translated, #4705)
   };
   const syncKind = () => {
     kindNote.textContent = clkSel.value
