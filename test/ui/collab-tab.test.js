@@ -1,6 +1,6 @@
 // UI: the Collaboration tab of the Design pane's row (#4215, web/js/collab-tab.js) in the server editions, against local
 // bare repositories (no network: https://github.com/test/<repo> mapped to one, SILINX_UI_GIT_REMOTES of
-// test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Teaching; no project open: the Start tab alone (#4257, #4322,
+// test/ui/serve.js), in both interfaces (SILINX_UI_INTERFACE): the tab after Libraries, before Teaching (#4577); no project open: the Start tab alone (#4257, #4322,
 // Open from GitHub Repository… from the Start page); a project opened from a repository: its GitHub repository and branch, its changes with
 // the Design pane's marks (a click compares one with the last commit; many folded, #4571), Commit…, Push to GitHub, Pull from GitHub,
 // History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
@@ -102,9 +102,9 @@ uiTest('#4215 #4257 #4322 the Collaboration tab: no Collaboration tab with no pr
   await page.dialogButton('Open');
   await page.waitNoDialog();
   await waitLog(page, /Project 'collab1' opened from the GitHub repository test\/collab1\./);
-  // the tab after Teaching, its label and icon
+  // the tab after Libraries, before Teaching (#4577), its label and icon
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab[data-page]')].map((t) => t.dataset.page).filter((p) => !['procs', 'emu'].includes(p))),
-    ['start', 'design', 'files', 'libraries', 'teaching', 'collab']);
+    ['start', 'design', 'files', 'libraries', 'collab', 'teaching']);
   assert.deepEqual(await page.eval(() => { const t = document.querySelector('#left-tabs .tab[data-page=collab]'); return [t.querySelector('.tab-lbl').textContent, !!t.querySelector('.tab-ico svg'), t.hidden]; }), ['Collaboration', true, false]);
   // (every tab in the row, none cut: the ISE style's names shown, the Silinx interface's icons)
   assert.deepEqual(await page.eval(() => { const row = document.getElementById('left-tabs').getBoundingClientRect();

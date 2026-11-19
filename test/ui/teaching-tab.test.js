@@ -31,11 +31,11 @@ uiTest('#3533 #3699 #4257 #4322 the Teaching tab: the labs and the exercises (no
   await page.leftTab('start');
   await page.waitFor(() => document.querySelector('#start-page .start-box h3'), [], { what: 'the Start page' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#start-page .start-box h3')].map((e) => e.textContent).filter((t) => t === 'Teaching')), []);
-  // a project open: the tab after Libraries (and the Collaboration tab after it, #4215), its label and icon; its commands, each its dialog
+  // a project open: the tab last, after Libraries and the Collaboration tab (#4215, #4577), its label and icon; its commands, each its dialog
   await makeProject(env, { name: 'TeachTab', template: 'gates' });
   await page.openProject('TeachTab');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#left-tabs .tab[data-page]')].map((t) => t.dataset.page).filter((p) => !['procs', 'emu'].includes(p))),
-    ['start', 'design', 'files', 'libraries', 'teaching', 'collab']);
+    ['start', 'design', 'files', 'libraries', 'collab', 'teaching']);
   assert.deepEqual(await page.eval(() => { const t = document.querySelector('#left-tabs .tab[data-page=teaching]'); return [t.querySelector('.tab-lbl').textContent, !!t.querySelector('.tab-ico svg')]; }), ['Teaching', true]);
   await page.leftTab('teaching');
   await page.waitFor(() => document.getElementById('teach-page').hasAttribute('data-project'), [], { what: 'the commands enabled' });
