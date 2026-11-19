@@ -6,7 +6,7 @@
 // next fakeDirectory with the same key: the "same folder" after a page reload. permission: the
 // state queryPermission reports ('granted' by default, 'prompt' as after a browser restart);
 // requestPermission then gives `grant` ('granted' by default). answerAfter: queryPermission answers that many ms late (as
-// Chrome may, #4656).
+// Chrome may, #4656), never when negative (Chrome stuck on the folder, #4694).
 // (a tree too large for the Storage stays in memory only: it is not read back after a reload)
 // fakeDirectoryIdb(name, { db, permission, grant }): the same, kept in the page's IndexedDB (no size
 // limit: a build's files too); flushFake(handle) waits for it to be written.
@@ -39,7 +39,7 @@ async function bytesOf(data) {
 class FakeHandle {
   constructor(name, node, ctx) { this.name = name; this._node = node; this._ctx = ctx; this.kind = node.kind; }
   async isSameEntry(other) { return !!other && other._node === this._node; }
-  async queryPermission() { if (this._ctx.answerAfter) await new Promise((ok) => setTimeout(ok, this._ctx.answerAfter)); return this._ctx.permission; }
+  async queryPermission() { if (this._ctx.answerAfter) await new Promise((ok) => this._ctx.answerAfter > 0 && setTimeout(ok, this._ctx.answerAfter)); return this._ctx.permission; }
   async requestPermission() { if (this._ctx.permission !== 'granted') this._ctx.permission = this._ctx.grant; return this._ctx.permission; }
 }
 
