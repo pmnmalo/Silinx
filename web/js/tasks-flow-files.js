@@ -1,7 +1,8 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
 // Implement's and Emulate's Files page (#4609): a tab beside the task's own (Implementation, Emulate), as Simulate's Files
 // beside Simulation (#1395, web/js/tasks-sim-files.js), listing the files of that flow beside the design (#4622; the
-// sources are the Design page's): the project's constraints and the memory images (core/flow-files.js). A double-click
+// sources are the Design page's): the project's constraints and the memory images (core/flow-files.js), under the top
+// module when the project has one (#4651). A double-click
 // opens a file, its menu is the file's. The page in front is the same in both tasks. The ISE style interface has none:
 // its Implementation view lists them under the top (#4591).
 
@@ -35,23 +36,39 @@ function apply() {
   renderFlowFiles();
 }
 
-/** The Files page drawn again (the project's files changed): web/js/design.js's renderHierarchy calls it. */
+/** The Files page drawn again (the project's files changed): web/js/design.js's renderHierarchy calls it. The files under
+ *  the top module's row, as the ISE style's Implementation view (#4591); with no top, on their own (#4651). */
 export function renderFlowFiles() {
   const S = app?.S;
   for (const ul of document.querySelectorAll('.task-flow-files')) {
     const files = S?.project ? flowFiles(S.project, S.fileTree || []) : [];
-    const key = files.map(f => f.path).join();
-    if (ul.dataset.key === key && ul.childElementCount === files.length) continue;
+    const top = files.length && S.project.top ? S.project.top : '';
+    const topFile = top ? (S.modules || []).find(m => m.name.toLowerCase() === top.toLowerCase())?.file || '' : '';
+    const key = [top, topFile, ...files.map(f => f.path)].join();
+    if (ul.dataset.key === key && ul.childElementCount === (top ? 1 : files.length)) continue;
     ul.dataset.key = key;
-    ul.replaceChildren(...files.map(({ path, kind }) => {
+    const rows = files.map(({ path, kind }) => {
       const row = h('div', { class: 'row', 'data-file': path, 'data-kind': kind }, h('span', { class: 'twisty' }), icon(kind === 'constraints' ? 'ucf' : 'file'),
         h('span', { class: 'lbl', 'data-no-i18n': '' }, path.split('/').pop()), h('span', { class: 'meta', 'data-no-i18n': '' }, `(${path})`));
-      row.addEventListener('click', () => { for (const r of ul.querySelectorAll('.row.sel')) r.classList.remove('sel'); row.classList.add('sel'); });
-      row.addEventListener('dblclick', () => open(path));
-      row.addEventListener('contextmenu', e => { e.preventDefault(); row.click(); menu(e, path); });
+      pick(ul, row, () => open(path), e => menu(e, path));
       return h('li', {}, row);
-    }));
+    });
+    if (!top) { ul.replaceChildren(...rows); continue; }
+    const sub = h('ul', {}, rows);
+    const tw = h('span', { class: 'twisty' }, '▾');
+    tw.addEventListener('click', e => { e.stopPropagation(); sub.hidden = !sub.hidden; tw.textContent = sub.hidden ? '▸' : '▾'; });
+    tw.addEventListener('dblclick', e => e.stopPropagation());
+    const row = h('div', { class: 'row top-mod', 'data-module': top }, tw, icon('moduleTop'), h('span', { class: 'lbl', 'data-no-i18n': '' }, top),
+      topFile ? h('span', { class: 'meta', 'data-no-i18n': '' }, `(${topFile.split('/').pop()})`) : null);
+    pick(ul, row, () => (topFile ? open(topFile) : tw.click()), topFile ? e => menu(e, topFile) : null);
+    ul.replaceChildren(h('li', {}, row, sub));
   }
+}
+// (a row: selected by a click, opened by a double-click, its menu the file's)
+function pick(ul, row, onOpen, onMenu) {
+  row.addEventListener('click', () => { for (const r of ul.querySelectorAll('.row.sel')) r.classList.remove('sel'); row.classList.add('sel'); });
+  row.addEventListener('dblclick', onOpen);
+  row.addEventListener('contextmenu', e => { e.preventDefault(); row.click(); onMenu?.(e); });
 }
 const open = path => app.openFile(path);
 const menu = (e, path) => import('./design.js').then(d => d.fileContextMenu(e, path));
