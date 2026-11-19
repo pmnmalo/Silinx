@@ -10,6 +10,7 @@
 // drawer), asm-editor.css and sch-editor.css (the side panels); the same width there.
 
 import { prefKey } from './prefs.js';
+import { watchLeftTabs } from './left-tabs-fit.js';
 
 export const NARROW_QUERY = '(max-width: 1023px)';
 export const DRAWER_KEY = prefKey('silinx.drawer');
@@ -43,6 +44,7 @@ export function initDrawer() {
   document.getElementById('drawer-scrim')?.addEventListener('click', () => setDrawer(false));
   globalThis.addEventListener?.('silinx:project-opened', drawerProjectOpened);
   globalThis.addEventListener?.('silinx:project-closed', drawerProjectOpened);
+  watchLeftTabs();   // (no project: the Start and Collaboration tabs whole, where they fit, #4625)
 }
 /** A project opened or closed: on a narrow screen the drawer shown, its Design page (#1557) or its Start page (#2169) with it. */
 export function drawerProjectOpened() { if (asDrawer() && !drawerOpen()) setDrawer(true); }
