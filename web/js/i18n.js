@@ -120,7 +120,7 @@ const PT = {
   'Not made: its module was removed from the project. Make Module… (right-click) makes it again from the drawing.': 'Não gerado: o seu módulo foi retirado do projeto. Gerar Módulo… (botão direito) gera-o de novo a partir do desenho.',
   'Not made: another file of the project folder has its name. Make Module… (right-click) makes it under another name.': 'Não gerado: outro ficheiro da pasta do projeto tem o seu nome. Gerar Módulo… (botão direito) gera-o com outro nome.',
   'No HDL': 'Sem HDL', 'Its HDL cannot be made: its errors are in the Console': 'O seu HDL não pode ser gerado: os seus erros estão na Consola', 'Generate HDL File…': 'Gerar Ficheiro HDL…', 'Generate HDL File': 'Gerar Ficheiro HDL',
-  'Design hierarchy': 'Hierarquia do projeto',
+  'Design hierarchy': 'Hierarquia do projeto', 'Top module and its files': 'Módulo de topo e os seus ficheiros',
   // toolbar / panels
   'New Project': 'Novo Projeto', 'Open Project': 'Abrir Projeto', 'Cut': 'Cortar', 'Copy': 'Copiar',
   'Paste': 'Colar', 'Find': 'Procurar', 'View RTL Schematic': 'Ver Esquemático RTL', 'New ASM State Diagram': 'Novo Diagrama de Estados ASM',

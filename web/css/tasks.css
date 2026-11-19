@@ -273,6 +273,10 @@ html[data-layout="tasks"][data-task="emu"] #left-tabs .tab:not(#task-emu-tab) { 
 html[data-layout="tasks"][data-task="emu"] #left-tabs #task-emu-tab { flex: 1 1 auto; justify-content: flex-start; background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
 html[data-layout="tasks"][data-task="emu"] :is(#design-panel, #proc-panel) { display: none; }
 html[data-layout="tasks"][data-task="emu"] #task-emu-panel { display: flex; flex: 1; }
+/* Implement's and Emulate's top module and the files their flow reads (#4591), above their buttons, the processes
+   scrolling under them */
+html[data-layout="tasks"] .task-flow-files { flex: none; max-height: 40%; overflow: auto; padding: 2px 0; border-bottom: 1px solid var(--m-border); }
+html[data-layout="tasks"] .task-flow-files:empty { display: none; }
 html[data-layout="tasks"]:is([data-task="edit"], [data-task="impl"], [data-task="emu"]) #left { flex-direction: column; }
 html[data-layout="tasks"]:is([data-task="edit"], [data-task="impl"], [data-task="emu"]) #left-tabs { order: -1; flex: none; flex-direction: row; align-items: stretch; width: auto; height: var(--m-tabs-h);
   padding: 4px 6px; gap: 2px; border-right: none; border-bottom: 1px solid var(--m-border); }
