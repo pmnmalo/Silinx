@@ -37,6 +37,23 @@ async function walk(dir, base = '', out = {}) {
 const render = json => `${JSON.stringify(json, null, 2)}\n`;
 const exists = name => fs.existsSync(path.join(P.projectDir(name), P.PROJECT_FILE));
 
+// what a project was at its last commit or pull: one file per project, one folder per workspace (the same project name in
+// two workspaces is two projects)
+const metaFile = async name => {
+  const { configDir } = await import('./toolchain.js');
+  const ws = crypto.createHash('sha256').update(path.resolve(P.workspaceDir())).digest('hex').slice(0, 16);
+  return path.join(configDir(), 'github-git', ws, `${P.projectDir(name) && name}.json`);
+};
+/** A project renamed (#4641): its record follows it (none: nothing done). */
+export async function moveGithubMeta(from, to) {
+  const [a, b] = [await metaFile(from), await metaFile(to)];
+  if (!fs.existsSync(a)) return;
+  // (through another name: a change of case alone is the same file on a case-insensitive file system)
+  await fsp.rename(a, `${a}.renaming`);
+  await fsp.rm(b, { force: true });
+  await fsp.rename(`${a}.renaming`, b);
+}
+
 function backend({ madeBy = null } = {}) {
   const projects = {
     exists: async name => exists(name),
@@ -72,12 +89,6 @@ function backend({ madeBy = null } = {}) {
     remove: async (name, rel) => { if (rel !== P.PROJECT_FILE) await fsp.rm(P.safeJoin(P.projectDir(name), rel), { force: true }); },
     // a merged drawing's HDL file made from it again (#3197)
     regenerate: async (name, rel) => (await import('./drawing-sync.js')).syncDrawing(P, name, rel),
-  };
-  // (one folder per workspace: the same project name in two workspaces is two projects)
-  const metaFile = async name => {
-    const { configDir } = await import('./toolchain.js');
-    const ws = crypto.createHash('sha256').update(path.resolve(P.workspaceDir())).digest('hex').slice(0, 16);
-    return path.join(configDir(), 'github-git', ws, `${P.projectDir(name) && name}.json`);
   };
   const meta = {
     get: async name => { try { return JSON.parse(await fsp.readFile(await metaFile(name), 'utf8')); } catch { return null; } },

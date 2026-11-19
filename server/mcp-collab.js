@@ -48,6 +48,8 @@ import { followedTry, tryLines } from '../core/collab-try.js';
 const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
 const shares = new Map();    // project -> { session, link, server, mode, off }
+/** Whether this MCP server shares the project `name` live (#4641: rename_project refuses it then). */
+export const sharedHere = name => [...shares].some(([n, c]) => n.toLowerCase() === String(name).toLowerCase() && !c.session.closed());
 const follows = new Map();   // room:role (an editor's: its key too) -> { session, link }
 
 const WebSocketImpl = async () => globalThis.WebSocket || (await import('ws')).WebSocket;

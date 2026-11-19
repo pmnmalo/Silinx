@@ -16,6 +16,7 @@ import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
 import { DESIGN_KIND, asDesignProject } from '../core/project-kind.js';
+import { renameProblem, renamedFile } from '../core/project-rename.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -392,6 +393,48 @@ export async function deleteProject(name) {
   await fs.mkdir(trash, { recursive: true });
   await renameOver(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
   await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
+}
+
+/** A failure made in the middle of a rename, by the tests (#4641): 'moved', after the folder moved. */
+export const RENAME_TESTING = { failAt: null };
+
+/** Rename Project… (#4641): the project's folder moved to its new name in one rename (a change of case alone through a
+ *  hidden name, as a case-insensitive file system has one folder for both), its .git with it (its remote kept); then its
+ *  silinx.json's name, a <name>.xise kept in it (Synchronize with ISE) and an untrusted project's mark in the workspace's
+ *  repository (#2830). A failure on the way moves all of it back: the old project as it was. -> { name } */
+export async function renameProject(from, to) {
+  const dir = projectDir(from);
+  if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, `project '${from}' not found`);
+  const problem = renameProblem(from, to, await fs.readdir(workspaceDir()).catch(() => []));
+  if (problem) throw new HttpError(problem.status, problem.message);
+  const dst = projectDir(to), caseOnly = from.toLowerCase() === to.toLowerCase();
+  const run = async () => {
+    if (!caseOnly && await exists(dst)) throw new HttpError(409, `a project named '${to}' already exists: choose another name`);
+    const undo = [];
+    const move = async (a, b) => { await renameOver(a, b); undo.unshift(() => renameOver(b, a)); };
+    try {
+      if (caseOnly) {
+        const tmp = path.join(workspaceDir(), `.rename-${to}-${Date.now()}`);
+        await move(dir, tmp);
+        await move(tmp, dst);
+      } else await move(dir, dst);
+      if (RENAME_TESTING.failAt === 'moved') throw new Error('rename failed (test)');
+      const [mark, newMark] = [trustMarks(dir)[1], trustMarks(dst)[1]];
+      if (await exists(mark)) await move(mark, newMark);
+      for (const f of await fs.readdir(dst)) {
+        const n = renamedFile(f, from, to);
+        if (n && !await exists(path.join(dst, n))) await move(path.join(dst, f), path.join(dst, n));
+      }
+      const file = path.join(dst, PROJECT_FILE), text = await fs.readFile(file, 'utf8');
+      await writeAtomic(file, JSON.stringify({ ...JSON.parse(text), name: to }, null, 2) + '\n');
+      undo.unshift(() => writeAtomic(file, text));
+    } catch (e) {
+      for (const u of undo) await u().catch(() => {});
+      throw e;
+    }
+    return { name: to };
+  };
+  return withProjectLock(from, () => (caseOnly ? run() : withProjectLock(to, run)));
 }
 
 // project-relative path normalised to forward slashes, without './' or a trailing '/'

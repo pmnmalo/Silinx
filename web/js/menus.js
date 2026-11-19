@@ -80,6 +80,7 @@ export function setupMenus() {
       ...(api.standalone ? storageMenuItems() : []),
       // git (#3195): the project's commit, push, pull; a repository made
       ...(hasGit() ? [...gitMenuItems().map(it => (it === '-' ? it : { ...it, disabled: hasPj() || it.disabled })), '-'] : []),
+      { label: 'Rename Project…', action: () => import('./project-rename.js').then(m => m.renameProjectDialog()), disabled: hasPj },   // (#4641)
       { label: 'Close Project', action: () => closeProject(), disabled: hasPj },
       '-',
       { label: 'Print…', action: () => printActive(), shortcut: 'Ctrl+P', disabled: () => !printable() },
