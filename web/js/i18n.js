@@ -35,6 +35,7 @@ import { LABS_PT, LABS_PT_PATTERNS } from './i18n-labs.js';
 import { GRADE_PT, GRADE_PT_PATTERNS } from './i18n-grade.js';
 import { CAPTURE_PT, CAPTURE_PT_PATTERNS } from './i18n-capture.js';
 import { PROGRAM_PT, PROGRAM_PT_PATTERNS } from './i18n-program.js';
+import { SUMMARY_PT, SUMMARY_PT_PATTERNS } from './i18n-summary.js';
 import { MESSAGES_PT } from './i18n-messages.js';
 import { prefKey } from './prefs.js';
 
@@ -514,7 +515,6 @@ const PT_PATTERNS = [
   [/^(\d+) file\(s\) selected$/, '$1 ficheiro(s) selecionado(s)'],
   [/^Folder '(.*)': (\d+) file\(s\), project (.*)$/, "Pasta '$1': $2 ficheiro(s), projeto $3"],
   [/^Folder '(.*)': (\d+) file\(s\) — no (silinx\.json|\.xise) found!$/, "Pasta '$1': $2 ficheiro(s) — sem $3!"],
-  [/^Number of (.+)$/, 'Número de $1'],
   [/^Balanced \((Speed|Area)\)$/, (m, g) => `Equilibrado (${g === 'Speed' ? 'Velocidade' : 'Área'})`],
   [/^Example: (.*)$/, 'Exemplo: $1'],
   [/^Test design: (.*)$/, 'Projeto de teste: $1'],
@@ -879,6 +879,7 @@ keep(LABS_PT, LABS_PT_PATTERNS);   // the guided labs (#3179)
 keep(GRADE_PT, GRADE_PT_PATTERNS);   // the graded exercises (#3192)
 keep(CAPTURE_PT, CAPTURE_PT_PATTERNS);   // the logic analyzer (#3176)
 keep(PROGRAM_PT, PROGRAM_PT_PATTERNS);   // the open families' Configure Target Device (#2298)
+keep(SUMMARY_PT, SUMMARY_PT_PATTERNS);   // the Design Summary's values (#4518)
 keep(MESSAGES_PT);   // toasts, dialogs, plain elements' texts (#3539)
 
 export const LOCALES = {

@@ -30,7 +30,7 @@ uiTest('Design Summary, not yet implemented: a Spartan-3E part\'s resources, its
   try {
     await page.waitFor(() => /Número de BUFGMUXs/.test(document.querySelector('.doc:not([hidden])')?.innerText || ''), [], { what: 'the summary in Portuguese' });
     const pt = await page.eval(UTILIZATION);
-    assert.deepEqual(pt.map((r) => r[0]), ['Número de Slice Flip Flops', 'Número de 4 input LUTs', 'Número de occupied Slices', 'Número de bonded IOBs',
+    assert.deepEqual(pt.map((r) => r[0]), ['Número de Flip Flops de Slice', 'Número de LUTs de 4 entradas', 'Número de Slices ocupadas', 'Número de IOBs ligados a pinos',
       'Número de RAMB16s', 'Número de MULT18X18SIOs', 'Número de BUFGMUXs', 'Número de DCMs']);
   } finally {
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
@@ -171,7 +171,7 @@ uiTest('#3176 Design Summary: the logic analyzer inserted at Implement, its prob
   try {
     await page.waitFor(() => /Analisador Lógico/.test(document.querySelector('.doc:not([hidden])')?.innerText || ''), [], { what: 'the table in Portuguese' });
     assert.deepEqual(await page.eval(CAPTURE_ROWS), ['Analisador Lógico', ['Sondas', 'u_knight.count [8], u_knight.dir'], ['Amostras', '9 bits × 1024 amostras em clk, 64 antes do disparo'],
-      ['Disparo', 'u_knight.dir sobe e u_knight.count = 20'], ['Block RAMs (memórias)', '1 block RAM(s), na utilização acima'], ['Ligação', 'JTAG USER1 (BSCAN_SPARTAN3)']]);
+      ['Disparo', 'u_knight.dir sobe e u_knight.count = 20'], ['Block RAMs (memórias)', '1 RAM(s) de bloco, na utilização acima'], ['Ligação', 'JTAG USER1 (BSCAN_SPARTAN3)']]);
   } finally {
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   }
@@ -201,7 +201,7 @@ uiTest('#2300 Design Summary of an iCE40 run: nextpnr\'s resources, its timing (
   const title = 'Timing (post Place & Route, nextpnr\'s analysis)';
   await page.waitFor((x) => window.SilinxApp.findDoc('summary') && (document.querySelector('.doc:not([hidden])')?.innerText || '').includes(x), [title], { what: 'the summary\'s timing' });
   assert.equal(await page.eval(CAPTION), 'Device Utilization Summary (Silinx toolchain)');
-  assert.deepEqual((await page.eval(ROWS)).slice(0, 3), [['ICESTORM_LC', '29', '5280', '1%', false], ['SB_GB', '2', '8', '25%', false], ['SB_IO', '4', '39', '10%', false]]);
+  assert.deepEqual(await page.eval(ROWS), [['ICESTORM_LC', '29', '5280', '1%', false], ['SB_GB', '2', '8', '25%', false], ['SB_IO', '4', '39', '10%', false]]);
   assert.deepEqual(await page.eval(TABLE, title), [['Timing Constraints', 'All constraints met'], ['Minimum period', '12.541 ns (maximum frequency 79.74 MHz)'],
     ['clock clk', 'clk at 12 MHz (83.333 ns) — met, 12.541 ns'], ['clock slow', '120.5 MHz (8.299 ns) — no constraint']]);
   assert.deepEqual(await page.eval(TABLE, 'Detailed Reports'), [['Report Name', 'Status'], ['Synthesis Report (Yosys)', 'Current'], ['Routed Design (ASC)', 'Current'], ['Static Timing Report', 'Current']]);
@@ -210,11 +210,61 @@ uiTest('#2300 Design Summary of an iCE40 run: nextpnr\'s resources, its timing (
     const pt = 'Temporização (após Posicionar e Encaminhar, análise do nextpnr)';
     await page.waitFor((x) => (document.querySelector('.doc:not([hidden])')?.innerText || '').includes(x), [pt], { what: 'the summary in Portuguese' });
     const rows = await page.eval(TABLE, pt);
-    assert.deepEqual([rows[0], rows.at(-1)], [['Restrições de Temporização', 'Todas as restrições cumpridas'], ['clock slow', '120.5 MHz (8.299 ns) — sem restrição']]);
+    assert.deepEqual(rows, [['Restrições de Temporização', 'Todas as restrições cumpridas'], ['Período mínimo', '12.541 ns (frequência máxima 79.74 MHz)'],
+      ['relógio clk', 'clk a 12 MHz (83.333 ns) — cumprida, 12.541 ns'], ['relógio slow', '120.5 MHz (8.299 ns) — sem restrição']]);
     assert.ok((await page.eval(TABLE, 'Relatórios Detalhados')).some((r) => r[0] === 'Relatório de Temporização Estática'));
   } finally {
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   }
+});
+
+// #4512, #4518: a Silinx toolchain run on a board of each family: the Device Utilization Summary's rows the family's own (the
+// iCE40's and the Gowin's nextpnr cells alone, no Spartan row at 0 after them; the Spartan-3E's MAP rows and the part's
+// resources MAP leaves out), and on the Nexys2 every value of the summary in Portuguese
+const runOf = (map, timing) => JSON.stringify({ source: 'open', top: 'blinky', synthesis: { tool: 'Yosys', cells: 70, warnings: 0, errors: 0, utilization: [] },
+  map: { utilization: map.map(([name, used, total]) => ({ name, used, total, percent: Math.round((100 * used) / total) })), warnings: 0, errors: 0 },
+  par: { routed: true, unroutedSignals: 0 }, timing, simModels: {}, files: {}, summary: { synthesized: true, mapped: true, routed: true } });
+const FAMILY_RUNS = [
+  ['icebreaker', [['ICESTORM_LC', 184, 5280], ['SB_GB', 2, 8], ['SB_IO', 27, 39]], [['ICESTORM_LC', '184', '5280', '3%', false], ['SB_GB', '2', '8', '25%', false], ['SB_IO', '27', '39', '69%', false]]],
+  ['tangnano9k', [['ALU', 26, 6480], ['DFF', 52, 6480], ['IOB', 15, 71], ['LUT4', 61, 8640], ['MUX2_LUT5', 4, 4320]],
+    [['ALU', '26', '6480', '0%', false], ['DFF', '52', '6480', '1%', false], ['IOB', '15', '71', '21%', false], ['LUT4', '61', '8640', '1%', false], ['MUX2_LUT5', '4', '4320', '0%', false]]],
+  ['nexys2', [['Number of Slice Flip Flops', 52, 9312], ['Number of 4 input LUTs', 110, 9312], ['Number of occupied Slices', 64, 4656], ['Number of bonded IOBs', 27, 232], ['Number of BUFGMUXs', 1, 24]],
+    [['Number of Slice Flip Flops', '52', '9312', '1%', false], ['Number of 4 input LUTs', '110', '9312', '1%', false], ['Number of occupied Slices', '64', '4656', '1%', false],
+      ['Number of bonded IOBs', '27', '232', '12%', false], ['Number of BUFGMUXs', '1', '24', '4%', false], ['Number of RAMB16s', '0', '20', '0%', false],
+      ['Number of MULT18X18SIOs', '0', '20', '0%', false], ['Number of DCMs', '0', '4', '0%', false]]],
+];
+const S3E_TIMING = { met: true, timingErrors: 0, score: null, minPeriodNs: 6.781, maxFreqMHz: 147.471, clocks: [],
+  constraints: [{ name: 'PERIOD clk', constraint: 'PERIOD 20 ns on clk', required: 20, minPeriodNs: 6.781, maxFreqMHz: 147.471, timingErrors: 0, slackNs: 13.219 }] };
+
+uiTest('#4512 #4518 Design Summary of a Silinx toolchain run on the iCEBreaker, the Tang Nano 9K and the Nexys2: the family\'s own rows; on the Nexys2 its values in Portuguese', E, async (page) => {
+  for (const [board, map, rows] of FAMILY_RUNS) {
+    const name = `Family-${board}`;
+    await makeProject(env, { name, template: 'blinky', board });
+    await writeWs(env, name, 'build/reports.json', runOf(map, board === 'nexys2' ? S3E_TIMING : undefined));
+    await page.openProject(name);
+    await page.waitFor(() => window.SilinxApp.findDoc('summary') && /Silinx toolchain\)/.test(document.querySelector('.doc:not([hidden])')?.innerText || ''), [], { what: `the summary of the ${board} run` });
+    assert.equal(await page.eval(CAPTION), 'Device Utilization Summary (Silinx toolchain)', board);
+    assert.deepEqual(await page.eval(ROWS), rows, board);
+  }
+  const version = await page.eval(async () => { const v = await import('/core/version.js'); return `${v.PRODUCT} ${v.VERSION_LABEL}`; });
+  assert.deepEqual((await page.eval(TABLE, 'Project Status'))[4], ['Product Version:', `${version} (Silinx toolchain, no ISE)`, 'Constraints:', 'constraints/top.ucf']);
+  assert.deepEqual(await page.eval(TABLE, 'Timing (post Place & Route, Silinx toolchain estimate)'), [['Timing Constraints', 'All constraints met'],
+    ['Minimum period', '6.781 ns (maximum frequency 147.471 MHz)'], ['PERIOD clk', 'PERIOD 20 ns on clk — met, 6.781 ns']]);
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
+  try {
+    await page.waitFor(() => /Resumo da Utilização/.test(document.querySelector('.doc:not([hidden])')?.innerText || ''), [], { what: 'the summary in Portuguese' });
+    assert.equal(await page.eval(CAPTION), 'Resumo da Utilização do Dispositivo (toolchain Silinx)');
+    assert.deepEqual((await page.eval(ROWS)).map((r) => r[0]), ['Número de Flip Flops de Slice', 'Número de LUTs de 4 entradas', 'Número de Slices ocupadas', 'Número de IOBs ligados a pinos',
+      'Número de BUFGMUXs', 'Número de RAMB16s', 'Número de MULT18X18SIOs', 'Número de DCMs']);
+    assert.deepEqual((await page.eval(TABLE, 'Estado do Projeto'))[4], ['Versão do Produto:', `${version} (toolchain Silinx, sem ISE)`, 'Restrições:', 'constraints/top.ucf']);
+    assert.deepEqual(await page.eval(TABLE, 'Temporização (após Posicionar e Encaminhar, estimativa da toolchain Silinx)'), [['Restrições de Temporização', 'Todas as restrições cumpridas'],
+      ['Período mínimo', '6.781 ns (frequência máxima 147.471 MHz)'], ['PERIOD clk', 'PERIOD 20 ns em clk — cumprida, 6.781 ns']]);
+  } finally {
+    await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  }
+  // (no warning: in the browser's console, nor in Silinx's)
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+  assert.deepEqual(await page.eval(() => [document.getElementById('warn-count').textContent, ...[...document.querySelectorAll('#console-warnings .diag')].map((d) => d.textContent)]), ['']);
 });
 
 // #4287: the summary drawn at the project's opening (no reports yet) is not what Design Summary shows after a run: openSummary
