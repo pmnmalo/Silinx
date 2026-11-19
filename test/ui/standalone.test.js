@@ -140,7 +140,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.waitDialog('Share Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how input')].map((r) => [r.value, r.checked, r.disabled, r.closest('label').title])),
     // (#4640: the browser edition's three ways, both live ones disabled, why their tip)
-    [['copy', true, false, ''], ...['live-relay', 'live-peer'].map((v) => [v, false, true, 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.'])]);
+    [['copy', true, false, ''], ...['live-peer', 'live-relay'].map((v) => [v, false, true, 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.'])]);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // nothing of what Implement needs downloaded in the background from a page opened from a file (#1450): WebKit and

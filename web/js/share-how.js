@@ -1,15 +1,12 @@
 // Share Project… and Share Module… (#3698): one action, the way of sharing chosen in its window, its first row (Share:):
 // a copy (web/js/link-copy.js: a link with the project in it) or live (web/js/collab-share.js: others follow it as it
-// changes). Switching closes the window and opens the other way's in its place; the way last chosen is kept per viewer
-// (the copy by default). Live is disabled, its reason its tip, where the project cannot be shared live.
+// changes). Switching closes the window and opens the other way's in its place. It opens on A copy, but while the project
+// is shared live: on Live, the way in use (#4669; Live's way last chosen, relay or peer to peer, is still the one Share
+// Live… preselects: web/js/share-via.js). Live is disabled, its reason its tip, where the project cannot be shared live.
 import { api } from './api.js';
 import { h } from './ui.js';
 import { S } from './app.js';
-import { prefKey } from './prefs.js';
 import { getLanguage } from './i18n.js';
-
-const HOW_KEY = prefKey('silinx.share-how');
-const HOWS = Object.freeze(['copy', 'live']);
 
 /** The window's width, a copy's and Live's (#4617): one size (its height app.css's .share-dlg), so that switching
  *  between them does not resize the window. */
@@ -32,28 +29,23 @@ export function liveProblem(module = null) {
   return null;
 }
 
-const savedHow = () => { try { return HOWS.includes(localStorage.getItem(HOW_KEY)) ? localStorage.getItem(HOW_KEY) : 'copy'; } catch { return 'copy'; } };
-const keepHow = how => { try { localStorage.setItem(HOW_KEY, how); } catch { /* this page only */ } };
-
-/** Share Project… (no `module`) or Share Module… (`module`, and the copy's `view`): the window of the way last
- *  chosen, the copy when live is not possible here. */
+/** Share Project… (no `module`) or Share Module… (`module`, and the copy's `view`): A copy's window, but while the
+ *  project is shared live, Live's (its links, Stop Sharing; #4669). */
 export async function shareDialog({ module = null, view = null } = {}) {
   if (!canShare()) return null;
-  return openHow(savedHow() === 'live' && !liveProblem(module) ? 'live' : 'copy', { module, view });
+  const shared = !liveProblem(module) && !!(await import('./collab-share.js')).sharedLink();
+  return openHow(shared ? 'live' : 'copy', { module, view });
 }
 
-/** Share Live… (the Collaboration tab's, #4215): Share Project…'s window with Live chosen, kept as the viewer's way. */
+/** Share Live… (the Collaboration tab's, #4215): Share Project…'s window with Live chosen (its way last chosen). */
 export async function shareLiveDialog() {
   if (!S.project || liveProblem()) return null;
-  keepHow('live');
   return openHow('live', {});
 }
 
-/** Share a Copy… (the Collaboration tab's, #4259): Share Project…'s window with A copy chosen, kept as the viewer's
- *  way. */
+/** Share a Copy… (the Collaboration tab's, #4259): Share Project…'s window with A copy chosen. */
 export async function shareCopyDialog() {
   if (!canShare()) return null;
-  keepHow('copy');
   return openHow('copy', {});
 }
 
@@ -63,8 +55,8 @@ async function openHow(how, opts) {
 }
 
 /** The window's Share: row, `how` checked: the other way chosen closes the window (`close`), whose caller then sees
- *  `wanted` and calls `switched()`, the other way's window, its way kept as the viewer's. The browser edition's (#4634)
- *  has three: A copy, Live via your Cloudflare relay, Live peer to peer (no relay); Live's window's `via` checked, the
+ *  `wanted` and calls `switched()`, the other way's window. The browser edition's (#4634) has three: A copy, Live peer
+ *  to peer (no relay), Live via your Cloudflare relay (#4670: in that order, the keyboard's too); Live's window's `via` checked, the
  *  other live one chosen there given to `onVia` (the window kept), locked while shared (`lock`). Returns { el, wanted,
  *  switched, lock }. */
 export function howRow(how, { module = null, view = null, close, via = null, onVia = () => {} }) {
@@ -89,14 +81,14 @@ export function howRow(how, { module = null, view = null, close, via = null, onV
     h('div', { class: 'share-how-choices' },
       radio('copy', h('span', {}, 'A copy'), 'A link with the project in it'),
       ...(three
-        ? [radio('live', h('span', {}, 'Live via your Cloudflare relay'), 'Others follow it as you work, on any network', 'relay'),
-          radio('live', h('span', {}, 'Live peer to peer (no relay)'), 'Others follow it as you work, with no setup', 'peer')]
+        ? [radio('live', h('span', {}, 'Live peer to peer (no relay)'), 'Others follow it as you work, with no setup', 'peer'),
+          radio('live', h('span', {}, 'Live via your Cloudflare relay'), 'Others follow it as you work, on any network', 'relay')]
         // ('Live' is the Petri net's liveness elsewhere, Viva: this one's word given here)
         : [radio('live', h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Em direto' : 'Live'), 'Others follow it as you work')])));
   return {
     el,
     get wanted() { return wanted; },
-    switched: () => { keepHow(wanted); return openHow(wanted, { module, view, ...(wantedVia ? { via: wantedVia } : {}) }); },
+    switched: () => openHow(wanted, { module, view, ...(wantedVia ? { via: wantedVia } : {}) }),
     // (while shared, Live's other way cannot be chosen: its connection is made)
     lock: on => { for (const { r, way } of radios) if (way && way !== via) r.disabled = on || !!live; },
   };
