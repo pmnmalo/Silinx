@@ -298,7 +298,7 @@ export function mountSchEditor(container, opts = {}) {
   });
 
   // ---------------- live simulation (Logisim style): web/js/sch-live.js on core/schlive.js (sch-try.js)
-  const { enterSim, leaveSim, showDiags, tryState, setTryState } = mountSchTry({
+  const { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged } = mountSchTry({
     container, opts, canSim, canvas, centerOn, contentG, destroyed: () => destroyed, doc: () => doc,
     finishWire, flash: (...a) => flash(...a), genLang: () => genLang, hint, lastDiags: () => lastDiags,
     live: () => live, liveStarting: () => liveStarting, modules: () => modules, nl: () => nl, render, renderProps,
@@ -359,8 +359,8 @@ export function mountSchEditor(container, opts = {}) {
       linkModel(doc, file);
       for (const st of [undoStack, redoStack]) st.forEach((s, i) => { st[i] = linkSnapshot(s, file); });
     },
-    // (called after every compile of the project: the same modules again change nothing, so that the palette and
-    // the properties are not made anew between the press and the release of a click on them, #339)
+    // (after every compile: the same modules change nothing, the palette not made anew under a click, #339; Try it
+    // left only when its modules or the sources it was built from changed, #4601)
     /** The project's part changed (Design Properties): the palette's Device Primitives follow its family (#791). */
     setDevice(part) {
       if ((part?.part || null) === (device?.part || null)) return;
@@ -369,7 +369,7 @@ export function mountSchEditor(container, opts = {}) {
     },
     setModules(m) {
       const next = normMods(m);
-      if (!live && JSON.stringify(next) === JSON.stringify(modules)) return;
+      if (JSON.stringify(next) === JSON.stringify(modules) && (!live || !sourcesChanged())) return;
       leaveSim(); modules = next;
       // (a document of version 2 with module symbols, converted once their pins are known, #678)
       if (+doc.version < 3) doc = normalizeDoc(doc, { modules });

@@ -1,9 +1,9 @@
 // UI: live schematic simulation — Simulate in the schematic editor, click inputs, watch the wires and
 // outputs change, step a clock and see a flip-flop store the value, edit a bus value, module symbol pins,
-// Portuguese labels, Esc back to editing.
+// Portuguese labels, Esc back to editing; kept through a compile of the same sources, left when they change (#4601).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, makeProject } from './harness.js';
+import { setupUi, uiTest, makeProject, readWs, writeWs } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { newDoc, normalizeDoc, symbolPins } from '../../core/schdoc.js';
 
@@ -222,4 +222,32 @@ uiTest('#1124 Try it: turned and mirrored I/O markers get their switch, LED and 
   await page.click(`${ED} .lv-ctl[data-port="P1"]`);
   await page.click(`${ED} .lv-ctl[data-port="P2"]`);
   await page.waitFor((sel) => document.querySelector(`${sel} .se-simlayer .lv-out[data-port="P3"]`).classList.contains('lv-1'), [ED], { what: 'y = 1' });
+});
+
+uiTest('#4601 Try it kept running through a compile of the same sources (silinx.json changed outside Silinx: the project read again), its inputs as they were; left when a module it uses changes (a body of the same ports)', E, async (page) => {
+  const doc = schematic();
+  await makeProject(env, { name: 'KeepPj', files: { 'src/half.vhd': HALF, 'src/live.sch.json': JSON.stringify(doc) } });
+  await page.openProject('KeepPj');
+  await page.eval(() => window.SilinxApp.openSch('src/live.sch.json'));
+  await page.waitFor((sel) => window.Silinx.active?.id === 'sch:src/live.sch.json' && document.querySelector(`${sel} .se-btn[data-act=sim]`), [ED]);
+  await page.click(`${ED} .se-btn[data-act=sim]`);
+  await page.waitFor((sel) => document.querySelector(sel)?.classList.contains('sim-mode') && document.querySelector(`${sel} .se-simlayer .lv-ctl`), [ED], { what: 'simulation mode' });
+  await page.click(`${ED} .lv-ctl[data-port="${portId(doc, 'a')}"]`);
+  await page.waitFor((sel) => document.querySelector(`${sel} g.wire[data-id="W1"]`).classList.contains('lv-1'), [ED], { what: 'wire a = 1' });
+  // (the project's palette made again once a compile is done: its modules read, then a tick)
+  const compiled = () => page.eval(async () => { await window.SilinxApp.reloadProject(); await (await import('/js/drawings.js')).schModules(); await new Promise((r) => setTimeout(r, 50)); });
+  // silinx.json written by another process (as the link's #2876 test saw, #4601): the project read and compiled again,
+  // the same sources: Try it still running, a still 1
+  const pj = JSON.parse(await readWs(env, 'KeepPj', 'silinx.json'));
+  await writeWs(env, 'KeepPj', 'silinx.json', JSON.stringify({ ...pj, simTop: pj.simTop ?? null, note: 'outside' }, null, 2));
+  await page.waitConsole(/Changed outside Silinx: silinx\.json\./);
+  await compiled();
+  assert.equal(await page.eval(() => window.Silinx.active.schEditor.simulating), true, 'Try it kept');
+  assert.equal(await wireLevel(page, 'W1'), 'lv-1');
+  // the half adder's body changed (its ports the same): Try it left, not running a model of the old one
+  await writeWs(env, 'KeepPj', 'src/half.vhd', HALF.replace('s <= x xor y', 's <= not (x xor y)'));
+  await page.waitConsole(/Changed outside Silinx: src\/half\.vhd\./);
+  await page.waitFor((sel) => !window.Silinx.active.schEditor.simulating && !document.querySelector(sel).classList.contains('sim-mode'), [ED], { what: 'Try it left' });
+  const lines = (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l));
+  assert.deepEqual(lines, []);
 });
