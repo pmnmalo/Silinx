@@ -33,10 +33,29 @@ In Silinx's **Collaboration** tab, the **Cloudflare Relay** box: *Set Up a Cloud
 key in your page (copy it), opens **Deploy to Cloudflare** in a new tab, and takes the relay's address once it is
 deployed:
 
-1. In Cloudflare, sign in (or create a free account) and let it make a copy of this folder in your GitHub account. When
-   it asks for `RELAY_KEY`, paste the key Silinx made.
-2. Its address is shown at the end, `https://silinx-relay.<your subdomain>.workers.dev`: paste it in Silinx and click
-   *Check and Save*.
+1. **Sign in.** The button opens Cloudflare's dashboard, *Workers & Pages* ▸ *Create an application* ▸ **Set up your
+   application**: sign in to Cloudflare, or create a free account.
+2. **Git account.** Choose your GitHub account (or *New GitHub connection*; GitLab works the same way). The first time,
+   GitHub asks you to install Cloudflare's app: give it **All repositories**, as Cloudflare creates a new repository
+   and *Only select repositories* lists only existing ones. Narrow it afterwards in GitHub's *Settings* ▸
+   *Applications* ▸ *Cloudflare Workers and Pages* ▸ *Configure*, to the relay's repository alone.
+3. **Repository.** Tick **Create private Git repository**: your copy of this folder goes there. Every push to it is
+   deployed. The key is not in it: `RELAY_KEY` is a secret kept by Cloudflare.
+4. **Project name.** Leave `silinx-relay`: the address becomes `https://silinx-relay.<your subdomain>.workers.dev`.
+5. **RELAY_KEY.** Paste the key Silinx made.
+6. **ORIGINS.** Leave `https://pmnmalo.github.io`, the Silinx site; add another site after a space, for example Silinx's
+   local server: `https://pmnmalo.github.io http://127.0.0.1:8642` (see below).
+7. **Build command** empty, **Deploy command** `npm run deploy` (`wrangler deploy`, this folder's `package.json`),
+   preview builds off: leave them as they are.
+8. **Deploy.** Cloudflare sets up the repository, then builds the Worker: *Initializing* (about a minute and a half
+   the first time), *Cloning* (the whole Silinx repository, so it is slow), *Installing*, *Deploying*. Wait for the
+   green **Success**.
+9. **The address**, in the Worker's *Overview* ▸ *Domains & Routes* or the build log's last lines: paste it in Silinx
+   and click *Check and Save*.
+
+Use the button, not *Workers & Pages* ▸ *Create* ▸ *Import a repository*, which only lists the repositories you
+already have. Your copy does not follow this folder: to update the relay, push its new files to your repository, and
+Cloudflare deploys it again.
 
 Silinx checks the relay (it answers, it lets the Silinx site in, its key opens a meeting point), says what it found in
 its console, and keeps the relay in the browser's settings. Share Project… ▸ Live then shares through it by default.

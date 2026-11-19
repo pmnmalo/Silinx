@@ -21,10 +21,49 @@ No separador **Colaboração**, a caixa **Retransmissor Cloudflare**: *Configura
 
 1. **A sua chave**: o Silinx faz uma chave longa e aleatória na sua página. *Copie-a* e guarde-a bem, como uma
    palavra-passe.
-2. **Instale-o**: *Instalar no Cloudflare* abre num separador novo. Entre no Cloudflare, ou crie uma conta gratuita, e
-   deixe-o copiar o retransmissor para a sua conta do GitHub. Quando pedir `RELAY_KEY`, cole a chave.
-3. **O seu endereço**: no fim, o Cloudflare mostra-o, `https://silinx-relay.<o seu nome>.workers.dev`. Cole-o na janela e
-   carregue em *Verificar e Guardar*.
+2. **Instale-o**: *Instalar no Cloudflare* abre o Cloudflare num separador novo. *Os ecrãs do Cloudflare, passo a
+   passo*, na janela, diz o que lá encontra (abaixo).
+3. **O seu endereço**: cole-o na janela e carregue em *Verificar e Guardar*.
+
+### Os ecrãs do Cloudflare, passo a passo
+
+Os nomes do Cloudflare estão em inglês, como o Cloudflare os mostra.
+
+1. **Entrar.** *Instalar no Cloudflare* abre o painel do Cloudflare em *Workers & Pages* ▸ *Create an application* ▸
+   **Set up your application**. Entre no Cloudflare, ou crie uma conta gratuita.
+2. **Conta Git.** A lista mostra as contas já ligadas, e *New GitHub connection* / *New GitLab connection*. Escolha a
+   sua conta do GitHub, a que o separador Colaboração do Silinx já usa (o GitLab funciona da mesma maneira). Da
+   primeira vez, o GitHub pede para instalar a aplicação do Cloudflare (*Cloudflare Workers and Pages*). Dê-lhe **All
+   repositories**: o Cloudflare cria um repositório novo para o retransmissor, e *Only select repositories* só lista
+   repositórios que já existem. Depois de o retransmissor estar instalado, pode restringi-la: no GitHub, *Settings* ▸
+   *Applications* ▸ *Cloudflare Workers and Pages* ▸ *Configure* ▸ *Only select repositories*, só o repositório do
+   retransmissor.
+3. **Repositório.** O Cloudflare diz que vai criar um repositório Git para si e que cada push para ele é instalado.
+   Marque **Create private Git repository**. A sua cópia do retransmissor fica lá; a chave não está nele (é um
+   segredo guardado pelo Cloudflare).
+4. **Project name.** Deixe `silinx-relay`. Passa a ser o endereço do seu retransmissor,
+   `https://silinx-relay.<o seu subdomínio>.workers.dev`.
+5. **RELAY_KEY.** Um campo de palavra-passe: cole a chave que o Silinx fez e copiou.
+6. **ORIGINS.** Deixe `https://pmnmalo.github.io`, o sítio do Silinx. Se também usa o servidor local do Silinx
+   (`silinx serve`) ou outro sítio do Silinx, acrescente o seu endereço depois de um espaço, por exemplo
+   `https://pmnmalo.github.io http://127.0.0.1:8642`.
+7. **Comandos de construção e instalação.** *Build command* vazio, *Deploy command* `npm run deploy` (corre
+   `wrangler deploy`), builds de pré-visualização desligados: deixe-os como estão.
+8. **Deploy.** Carregue em *Deploy*. O Cloudflare diz *Setting up your repository…* e abre a página da construção do
+   Worker: *Initializing* (cerca de minuto e meio da primeira vez), *Cloning* (copia o repositório do Silinx, o que
+   demora), *Installing*, *Deploying*. Espere alguns minutos pelo **Success** verde.
+9. **O endereço.** Em *Overview* do Worker, *Domains & Routes* (ou nas últimas linhas do registo da construção):
+   `https://silinx-relay.<o seu subdomínio>.workers.dev`. Cole-o na janela do Silinx e carregue em *Verificar e
+   Guardar*.
+
+Armadilhas:
+
+- Use o botão *Instalar no Cloudflare*. *Workers & Pages* ▸ *Create* ▸ *Import a repository* do Cloudflare só lista os
+  repositórios que já tem: não faz a cópia.
+- A sua cópia não segue a do Silinx. Para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor
+  ([`packages/silinx-relay-cloudflare`](../../../packages/silinx-relay-cloudflare/README.md)) para o seu repositório:
+  o Cloudflare instala cada push.
+- O plano gratuito tem limites diários (abaixo).
 
 O Silinx verifica o retransmissor antes de o guardar: responde como um retransmissor dos projetos partilhados do Silinx,
 deixa entrar o sítio do Silinx, e a sua chave abre um ponto de encontro. O que encontrou está na consola. Se o

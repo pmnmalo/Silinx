@@ -42,6 +42,27 @@ export const COLLAB_PT = {
     '2. Instale-o: entre no Cloudflare (ou registe-se, é gratuito) e dê a chave quando lhe pedir RELAY_KEY.',
   'Deploy to Cloudflare': 'Instalar no Cloudflare', '3. Its address, which Cloudflare shows at the end:': '3. O seu endereço, que o Cloudflare mostra no fim:',
   'New Key': 'Nova Chave', 'Check and Save': 'Verificar e Guardar',
+  // (Cloudflare's screens, step by step, #4630; Cloudflare's own labels kept as Cloudflare shows them)
+  'Cloudflare\'s screens, step by step': 'Os ecrãs do Cloudflare, passo a passo',
+  'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.':
+    'Instalar no Cloudflare abre a página "Set up your application" do Cloudflare num separador novo: entre, ou crie uma conta gratuita.',
+  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). The first time, GitHub asks to install Cloudflare\'s app: choose All repositories, as it creates a new one (you can narrow it afterwards, in GitHub\'s Settings ▸ Applications).':
+    'Conta Git: escolha a sua conta do GitHub, ou New GitHub connection (o GitLab também serve). Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare: escolha All repositories, porque ela cria um novo (pode restringi-la depois, em Settings ▸ Applications do GitHub).',
+  'Tick Create private Git repository: Cloudflare makes your copy of the relay there. The key is a secret of Cloudflare\'s, not in the repository.':
+    'Marque Create private Git repository: o Cloudflare faz lá a sua cópia do retransmissor. A chave é um segredo do Cloudflare, não está no repositório.',
+  'Project name: leave silinx-relay. Your relay\'s address will be https://silinx-relay.<your subdomain>.workers.dev.':
+    'Project name: deixe silinx-relay. O endereço do seu retransmissor será https://silinx-relay.<o seu subdomínio>.workers.dev.',
+  'RELAY_KEY: paste the key copied in step 1.': 'RELAY_KEY: cole a chave copiada no passo 1.',
+  'ORIGINS: leave https://pmnmalo.github.io, the Silinx site. To use the relay from Silinx\'s local server too, add it after a space: https://pmnmalo.github.io http://127.0.0.1:8642.':
+    'ORIGINS: deixe https://pmnmalo.github.io, o sítio do Silinx. Para usar o retransmissor também a partir do servidor local do Silinx, acrescente-o depois de um espaço: https://pmnmalo.github.io http://127.0.0.1:8642.',
+  'Build command empty, Deploy command npm run deploy, preview builds off: leave them as they are.':
+    'Build command vazio, Deploy command npm run deploy, builds de pré-visualização desligados: deixe-os como estão.',
+  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): the first time, a few minutes. Wait for Success.':
+    'Carregue em Deploy. O Cloudflare prepara o repositório e depois constrói o retransmissor (Initializing, Cloning, Installing, Deploying): da primeira vez, alguns minutos. Espere por Success.',
+  'The address: the Worker\'s Overview ▸ Domains & Routes, or the build log\'s last lines. Paste it below and click Check and Save.':
+    'O endereço: Overview ▸ Domains & Routes do Worker, ou as últimas linhas do registo da construção. Cole-o abaixo e carregue em Verificar e Guardar.',
+  'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.':
+    'Use o botão Instalar no Cloudflare: Create ▸ Import a repository do Cloudflare só lista os repositórios que já tem. A sua cópia não segue a do Silinx: para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor para o seu repositório, e o Cloudflare instala-o de novo.',
   // (Add a User…, #3996: web/js/collab-users.js, its code taken: web/js/collab-host.js)
   'Add a User…': 'Adicionar um Utilizador…', 'Add a User': 'Adicionar um Utilizador', 'Connect': 'Ligar', 'Take a Code…': 'Receber um Código…',
   'Role:': 'Papel:', 'Viewer': 'Espectador', 'Editor': 'Editor',
