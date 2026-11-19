@@ -93,9 +93,16 @@ export const COLLAB_PT = {
   'No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.':
     'Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.',
   'Your relay:': 'O seu retransmissor:', 'Change…': 'Alterar…',
+  // (the Collaboration tab's Sharing box while sharing, #4643: its mode, each follower's path, a long list folded)
+  'Live peer to peer': 'Em direto ponto a ponto', 'Live via the Silinx server\'s relay': 'Em direto pelo retransmissor do servidor Silinx',
+  'P2P': 'P2P', 'Relay': 'Retransmissor', 'Show fewer': 'Mostrar menos',
+  'Peer to peer: directly between your browsers': 'Ponto a ponto: diretamente entre os vossos navegadores',
+  'Through your Cloudflare relay: no direct path; counts against its free plan': 'Através do seu retransmissor Cloudflare: sem caminho direto; conta para o seu plano gratuito',
+  'Through the Silinx server\'s relay': 'Através do retransmissor do servidor Silinx',
 };
 
 export const COLLAB_PT_PATTERNS = [
+  [/^(\d+) more…$/, 'Mais $1…'],   // (the Collaboration tab's participants folded, #4643)
   [/^Read-only, following (.+)'s project$/, 'Só de leitura, a seguir o projeto de $1'],
   [/^Sharing \((\d+)\)$/, 'A partilhar ($1)'],
   [/^Through the relay at (.+)\.$/, 'Através do retransmissor em $1.'],

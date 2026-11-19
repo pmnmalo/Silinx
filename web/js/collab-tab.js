@@ -10,7 +10,8 @@
 // (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
 // read-only notice and its Live box only. The browser edition's Cloudflare Relay box (#4574, web/js/relay-setup.js): the
 // relay its live shares meet their followers at, set up, checked, forgotten. Sharing first, the relay under it, then Git
-// Repository (#4636). No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
+// Repository (#4636). While sharing, its mode at the top and each follower's path beside them, P2P or Relay (#4643),
+// a long list of participants folded (core/list-fold.js). No git (SILINX_GIT=off) and no live sharing: no tab. Its boxes are the Start
 // page's, so that a later command (a merge, a branch) is one more box or entry. Shown with no project open too (#4619: the
 // sign-in, Open from GitHub Repository…, how to follow, the relay; the project's commands disabled), the Start page
 // having no GitHub commands of its own.
@@ -26,9 +27,12 @@ import { getLanguage, onLanguageChange } from './i18n.js';
 import { shownChanges } from './git-changes.js';
 import { shortCommit, conflictCount } from '/core/git-messages.js';
 import { relayEntries } from './relay-setup.js';
+import { foldList } from '/core/list-fold.js';
 
 // the last GitHub Checks' answer, its project's (File ▸ Git ▸ GitHub Checks or the tab's)
 let checks = null;
+// the participants unfolded ("N more…"; "Show fewer" folds them again), kept while the page is drawn again
+let peersOpen = false;
 const CHECKS = { success: 'Checks passed', failure: 'Checks failed', pending: 'Checks running', none: 'No check on GitHub' };
 
 const entry = (ic, ...kids) => h('div', { class: 'entry' }, icon(ic), ...kids);
@@ -108,6 +112,12 @@ const sharingTitle = () => h('span', { 'data-no-i18n': '' }, getLanguage() === '
 // Share a Copy… (#4259): Share Project…'s copy, enabled as File ▸ Share Project… is (canShare)
 const copyEntry = () => command({ label: 'Share a Copy…', action: () => shareCopyDialog(), disabled: !canShare() }, 'share');
 
+// a share's mode (#4643: Share Project… ▸ Live's two ways, #4634, and a Silinx server's relay) and a follower's path
+const MODE = { cloudflare: 'Live via your Cloudflare relay', p2p: 'Live peer to peer', server: 'Live via the Silinx server\'s relay' };
+const PATH = { p2p: 'P2P', relay: 'Relay' };
+const pathTip = (path, mode) => (path === 'p2p' ? 'Peer to peer: directly between your browsers'
+  : mode === 'cloudflare' ? 'Through your Cloudflare relay: no direct path; counts against its free plan' : 'Through the Silinx server\'s relay');
+
 // Sharing: Share a Copy…, then live sharing (#3181): the presence's label, who is in (their role beside them) and its
 // commands; none: Share Live… (disabled with no project or where it cannot be, its reason its tip), how to follow
 function liveBox() {
@@ -123,10 +133,16 @@ function liveBox() {
       hint('To follow a project shared live, open its link.'));
   }
   const ROLE = { owner: 'owner', editor: 'editor', viewer: 'viewer' };
+  const { shown, more } = foldList(p.all, { open: peersOpen });
+  const fold = open => () => { peersOpen = open; renderCollabPage(); };
   return box('collab-live', sharingTitle(),
+    p.mode ? h('div', { class: 'entry hint collab-mode', 'data-mode': p.mode }, MODE[p.mode]) : null,
     hint(p.label),
-    ...p.all.map(x => h('div', { class: 'entry collab-peer' }, h('span', { class: 'collab-badge', style: { background: x.color }, 'data-no-i18n': '' }, (String(x.name).trim()[0] || '?').toUpperCase()),
-      h('span', { 'data-no-i18n': '' }, x.name), h('span', { class: 'collab-role' }, x.me ? 'you' : ROLE[x.role] || 'viewer'))),
+    ...shown.map(x => h('div', { class: 'entry collab-peer' }, h('span', { class: 'collab-badge', style: { background: x.color }, 'data-no-i18n': '' }, (String(x.name).trim()[0] || '?').toUpperCase()),
+      h('span', { 'data-no-i18n': '' }, x.name), h('span', { class: 'collab-role' }, x.me ? 'you' : ROLE[x.role] || 'viewer'),
+      x.path ? h('span', { class: 'collab-path', 'data-path': x.path, title: pathTip(x.path, p.mode) }, PATH[x.path]) : null)),
+    more ? entry('expand', h('a', { class: 'collab-fold', onclick: fold(true) }, `${more} more…`)) : null,
+    peersOpen && foldList(p.all).more ? entry('collapse', h('a', { class: 'collab-fold', onclick: fold(false) }, 'Show fewer')) : null,
     copyEntry(),
     ...p.commands.map(c => command(c, 'share')));
 }

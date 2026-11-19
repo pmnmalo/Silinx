@@ -33,6 +33,7 @@ import { shareRoom, followRoom } from '../core/collab-client.js';
 import { followLink, parseFollowLink, relayUrl, withTop } from '../core/collab-link.js';
 import { relayMeeting } from '../core/collab-meet-relay.js';
 import { meetOwner } from '../core/collab-meet.js';
+import { shareMode, withPaths, MODE_WORDS } from '../core/collab-paths.js';
 import { MODULE_RE, viewProblem } from '../core/design-link.js';
 import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
@@ -46,7 +47,7 @@ import { followedTry, tryLines } from '../core/collab-try.js';
 
 const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
-const shares = new Map();    // project -> { session, link, server, off }
+const shares = new Map();    // project -> { session, link, server, mode, off }
 const follows = new Map();   // room:role (an editor's: its key too) -> { session, link }
 
 const WebSocketImpl = async () => globalThis.WebSocket || (await import('ws')).WebSocket;
@@ -160,7 +161,7 @@ function drawingWrites(name, doc, owner, warn, bases) {
 }
 
 // (its selection too, #4192: the text selected, a drawing's objects)
-const peerLines = peers => (peers.length ? peers.map(p => `${p.name} (${p.role})${p.view ? `: ${p.view.path}${p.view.line !== null ? ` line ${p.view.line + 1}` : ''}${p.view.sel ? `, selected: ${selectionWords(p.view.sel)}` : ''}` : ''}`).join('\n') : 'nobody');
+const peerLines = peers => (peers.length ? peers.map(p => `${p.name} (${p.role}${p.path ? `, ${p.path === 'p2p' ? 'peer to peer' : 'through the relay'}` : ''})${p.view ? `: ${p.view.path}${p.view.line !== null ? ` line ${p.view.line + 1}` : ''}${p.view.sel ? `, selected: ${selectionWords(p.view.sel)}` : ''}` : ''}`).join('\n') : 'nobody');
 
 const ACTIONS = ['start', 'status', 'promote', 'demote', 'stop'];
 // a participant made an editor (promote) or a viewer (demote), as the Sharing menu does (#3997): the editors' key given
@@ -185,7 +186,7 @@ async function setRole(name, cur, action, user) {
 export const COLLAB_TOOLS = [
   {
     name: 'share_project', title: 'Share a project live',
-    description: 'Share a project of the workspace live, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it, read only (in Silinx, or follow_project), its files and drawings as they change on disk, and with editors: true an editor\'s link too (the interface\'s Live share always makes both; here the default is no editors, and promote then refused); status, who follows it (each a viewer or an editor) and what they look at; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile; its followers get what changed once it is back).',
+    description: 'Share a project of the workspace live, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it, read only (in Silinx, or follow_project), its files and drawings as they change on disk, and with editors: true an editor\'s link too (the interface\'s Live share always makes both; here the default is no editors, and promote then refused); status, who follows it (each a viewer or an editor, and its path, #4643: p2p or relay) and what they look at; start and status give the share\'s mode too (cloudflare: through the Cloudflare relay; server: a Silinx server\'s relay; p2p: an interface\'s page peer to peer), as the Collaboration tab shows them; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile; its followers get what changed once it is back).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'stop'], description: 'start (default), status, promote, demote or stop.' },
@@ -226,11 +227,11 @@ export const COLLAB_TOOLS = [
       if (action === 'promote' || action === 'demote') return setRole(name, cur, action, user);
       if (action === 'status') {
         if (!cur || cur.session.closed()) { if (cur) { shares.delete(name); cur.off(); } return { text: `'${name}' is not shared.`, data: { project: name, shared: false } }; }
-        const peers = cur.session.peers();
+        const peers = withPaths(cur.session.peers());   // (#4643: each follower's path: a relay's room's, through it)
         const warns = cur.warnings.map(w => `\nWARNING: ${w}`).join('');
         // (#3835: its connection to the relay lost, being made again: said)
         const lost = cur.session.connected() ? '' : '\nThe connection to the relay was lost: reconnecting (its followers see the project as it was until it is back).';
-        return { text: `'${name}' is shared: ${cur.link}${lost}\nFollowers:\n${peerLines(peers)}${warns}`, data: { project: name, shared: true, connected: cur.session.connected(), link: cur.link, ...withQr(cur.link), followers: peers, warnings: [...cur.warnings] }, untrusted: peers.length || cur.warnings.length ? [...(peers.length ? ['the followers\' names and views'] : []), ...(cur.warnings.length ? ['the warnings, which name the shared project\'s files'] : [])].join(', ') : undefined };
+        return { text: `'${name}' is shared ${MODE_WORDS[cur.mode]}: ${cur.link}${lost}\nFollowers:\n${peerLines(peers)}${warns}`, data: { project: name, shared: true, mode: cur.mode, connected: cur.session.connected(), link: cur.link, ...withQr(cur.link), followers: peers, warnings: [...cur.warnings] }, untrusted: peers.length || cur.warnings.length ? [...(peers.length ? ['the followers\' names and views'] : []), ...(cur.warnings.length ? ['the warnings, which name the shared project\'s files'] : [])].join(', ') : undefined };
       }
       await readProject(name);
       // (a module's links, Share Module…: one of the design's modules, #3631)
@@ -239,7 +240,7 @@ export const COLLAB_TOOLS = [
       if (problem) throw toolError(`top: ${problem}`);
       const on = l => (l && top !== undefined ? withTop(l, top) : l);
       const at = top !== undefined ? `, opening on ${top}` : '';
-      if (cur && !cur.session.closed()) return { text: `'${name}' is shared already${at}: ${on(cur.link)}`, data: { project: name, shared: true, link: on(cur.link), ...withQr(on(cur.link)), ...(cur.editLink ? { editLink: on(cur.editLink), ...withEditQr(on(cur.editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: cur.session.peers() } };
+      if (cur && !cur.session.closed()) return { text: `'${name}' is shared already ${MODE_WORDS[cur.mode]}${at}: ${on(cur.link)}`, data: { project: name, shared: true, mode: cur.mode, link: on(cur.link), ...withQr(on(cur.link)), ...(cur.editLink ? { editLink: on(cur.editLink), ...withEditQr(on(cur.editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: withPaths(cur.session.peers()) } };
       // (the Cloudflare relay set, #4574: its key; the links the Silinx site's, naming the relay)
       const own = cloud ? await liveRelay() : null;
       if (cloud && !own) throw toolError(`${relay ? 'relay' : 'via'}: no Cloudflare relay is set (live_relay)`);
@@ -268,10 +269,12 @@ export const COLLAB_TOOLS = [
       const base = own ? SITE_URL : `${origin}/`, meetAt = own ? own.address : null;
       const link = followLink(base, session.room, session.key, 'relay', null, meetAt);
       const editLink = session.editKey ? followLink(base, session.room, session.key, 'relay', session.editKey, meetAt) : null;
-      shares.set(name, { session, link, editLink, server: origin, off, warnings });
+      // (#4643: the Cloudflare relay's or a Silinx server's room: every follower through the relay)
+      const mode = shareMode({ relay: origin, cloudflare: !!own });
+      shares.set(name, { session, link, editLink, server: origin, mode, off, warnings });
       return {
-        text: `Sharing '${name}' live${editLink ? '' : ', read only,'} as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too${qr ? ' (its QR code: editQr)' : ''}:\n${on(editLink)}` : ''}`,
-        data: { project: name, shared: true, link: on(link), ...withQr(on(link)), ...(editLink ? { editLink: on(editLink), ...withEditQr(on(editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: [] },
+        text: `Sharing '${name}' live ${MODE_WORDS[mode]}${editLink ? '' : ', read only,'} as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too${qr ? ' (its QR code: editQr)' : ''}:\n${on(editLink)}` : ''}`,
+        data: { project: name, shared: true, link: on(link), ...withQr(on(link)), ...(editLink ? { editLink: on(editLink), ...withEditQr(on(editLink)) } : {}), ...(top !== undefined ? { top } : {}), mode, followers: [] },
       };
     },
   },
@@ -414,6 +417,23 @@ function ownerActivity(session) {
   const t = followedTry(session.activity('try')), tries = t ? Object.fromEntries(Object.entries(t.docs).map(([id, d]) => [id, { kind: d.kind, ...d.sum }])) : null;
   if (!ui && !design && !runs && !sim && !emu && !tries) return null;
   return { view: ui?.view ?? null, layout: ui?.layout ?? null, design, runs, sim, emu, try: tries };
+}
+
+/** A project this MCP server shares, as project_info gives it (#4643): { mode, connected, followers (each with its
+ *  path) }, or null. */
+function shareInfo(name) {
+  const cur = shares.get(name);
+  if (!cur || cur.session.closed()) return null;
+  return { mode: cur.mode, connected: cur.session.connected(), followers: withPaths(cur.session.peers()).map(p => ({ name: p.name, role: p.role, path: p.path })) };
+}
+/** A tool's result about a project (project_info's) with its live share's (#4643): data.sharing, a line of its text,
+ *  its followers' names among what is untrusted. */
+export function withSharing(name, r) {
+  const sharing = shareInfo(name);
+  if (!sharing) return r;
+  const who = sharing.followers.map(p => `${p.name} (${p.role}, ${p.path === 'p2p' ? 'peer to peer' : 'through the relay'})`).join(', ');
+  return { ...r, text: `${r.text}\n  shared live ${MODE_WORDS[sharing.mode]}: ${who || 'no follower yet'}`, data: { ...r.data, sharing },
+    untrusted: sharing.followers.length ? [r.untrusted, 'its followers\' names'].filter(Boolean).join(', ') : r.untrusted };
 }
 
 /** A run of run_process on a project this MCP server shares (#4002): sent to its followers as a page sends its runs

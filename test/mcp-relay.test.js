@@ -95,6 +95,15 @@ test('#4574 #4634 share_project relay: true or via: cloudflare: through the rela
   const f = await call('follow_project', { link: s.data.link, name: 'Rui' });
   assert.equal(f.isError, false, f.text);
   assert.equal(f.data.owner, 'Ana');
+  // (#4643: the mode, the Cloudflare relay's; its room's followers through it; project_info the same)
+  assert.equal(s.data.mode, 'cloudflare');
+  assert.ok(s.text.startsWith('Sharing \'r\' live via your Cloudflare relay as Ana.'), s.text);
+  const st = await call('share_project', { project: 'r', action: 'status' });
+  assert.equal(st.data.mode, 'cloudflare');
+  assert.deepEqual(st.data.followers.map(p => [p.name, p.path]), [['Rui', 'relay']]);
+  assert.ok(st.text.startsWith(`'r' is shared via your Cloudflare relay: ${s.data.link}\n`), st.text);
+  assert.ok(st.text.endsWith('\nFollowers:\nRui (viewer, through the relay)'), st.text);
+  assert.deepEqual((await call('project_info', { project: 'r' })).data.sharing, { mode: 'cloudflare', connected: true, followers: [{ name: 'Rui', role: 'viewer', path: 'relay' }] });
   assert.equal((await call('share_project', { project: 'r', action: 'stop' })).isError, false);
   // (#4634) via: cloudflare, the same
   const v = await call('share_project', { project: 'r', name: 'Ana', via: 'cloudflare' });

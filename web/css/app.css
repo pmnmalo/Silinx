@@ -273,6 +273,9 @@ table.grid tr.sel td { background: #dbe8fb; }
 #collab-page .collab-readonly { display: flex; padding: 4px 0; }
 #collab-page .collab-peer .collab-badge { width: 16px; height: 16px; margin: 0; border: none; font-size: 10px; line-height: 16px; }   /* (the Live Sharing box's participants, #4215: the presence's badges, smaller) */
 #collab-page .collab-peer .collab-role { color: #888; }
+#collab-page .collab-peer .collab-path { margin-left: auto; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; line-height: 14px; color: #888; }   /* (a follower's path, #4643) */
+#collab-page .collab-peer .collab-path[data-path="p2p"] { color: var(--success); }
+#collab-page .collab-mode { font-weight: 600; }
 .summary-table { border-collapse: collapse; margin-bottom: 16px; min-width: 640px; }
 .summary-table caption.summary-status { display: none; }   /* (the Tasks interface's only: web/css/tasks.css) */
 .summary-table caption { text-align: left; font-weight: bold; background: linear-gradient(#e9eff8, #c9d7ed); color: #15428b; padding: 3px 8px; border: 1px solid #99bbe8; border-bottom: none; }
