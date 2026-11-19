@@ -18,26 +18,26 @@ const KEY = 'a-relay-key-of-24-characters-or-more';
 // Cloudflare's screens, step by step (#4630), in order: English, Portuguese
 const STEPS = [
   'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.',
-  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). The first time, GitHub asks to install Cloudflare\'s app: choose All repositories, as it creates a new one (you can narrow it afterwards, in GitHub\'s Settings ▸ Applications).',
+  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). An account already connected needs nothing more. The first time, GitHub asks to install Cloudflare\'s app: if Only select repositories does not let Cloudflare create the new repository, give it All repositories, and narrow it afterwards in GitHub\'s Settings ▸ Applications.',
   'Tick Create private Git repository: Cloudflare makes your copy of the relay there. The key is a secret of Cloudflare\'s, not in the repository.',
   'Project name: leave silinx-relay. Your relay\'s address will be https://silinx-relay.<your subdomain>.workers.dev.',
   'RELAY_KEY: paste the key copied in step 1.',
   'ORIGINS: leave https://pmnmalo.github.io, the Silinx site. To use the relay from Silinx\'s local server too, add it after a space: https://pmnmalo.github.io http://127.0.0.1:8642.',
   'Build command empty, Deploy command npm run deploy, preview builds off: leave them as they are.',
-  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): the first time, a few minutes. Wait for Success.',
-  'The address: the Worker\'s Overview ▸ Domains & Routes, or the build log\'s last lines. Paste it below and click Check and Save.',
+  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): about 2 to 3 minutes. Wait for "Success! Build completed."',
+  'The address: in the build log, under "Deployed silinx-relay triggers", or the Worker\'s Overview ▸ Domains & Routes. Paste it below and click Check and Save.',
 ];
 const TRAPS = 'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.';
 const PASSOS = [
   'Instalar no Cloudflare abre a página "Set up your application" do Cloudflare num separador novo: entre, ou crie uma conta gratuita.',
-  'Conta Git: escolha a sua conta do GitHub, ou New GitHub connection (o GitLab também serve). Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare: escolha All repositories, porque ela cria um novo (pode restringi-la depois, em Settings ▸ Applications do GitHub).',
+  'Conta Git: escolha a sua conta do GitHub, ou New GitHub connection (o GitLab também serve). Uma conta já ligada não precisa de mais nada. Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare: se Only select repositories não deixar o Cloudflare criar o repositório novo, dê-lhe All repositories, e restrinja-a depois em Settings ▸ Applications do GitHub.',
   'Marque Create private Git repository: o Cloudflare faz lá a sua cópia do retransmissor. A chave é um segredo do Cloudflare, não está no repositório.',
   'Project name: deixe silinx-relay. O endereço do seu retransmissor será https://silinx-relay.<o seu subdomínio>.workers.dev.',
   'RELAY_KEY: cole a chave copiada no passo 1.',
   'ORIGINS: deixe https://pmnmalo.github.io, o sítio do Silinx. Para usar o retransmissor também a partir do servidor local do Silinx, acrescente-o depois de um espaço: https://pmnmalo.github.io http://127.0.0.1:8642.',
   'Build command vazio, Deploy command npm run deploy, builds de pré-visualização desligados: deixe-os como estão.',
-  'Carregue em Deploy. O Cloudflare prepara o repositório e depois constrói o retransmissor (Initializing, Cloning, Installing, Deploying): da primeira vez, alguns minutos. Espere por Success.',
-  'O endereço: Overview ▸ Domains & Routes do Worker, ou as últimas linhas do registo da construção. Cole-o abaixo e carregue em Verificar e Guardar.',
+  'Carregue em Deploy. O Cloudflare prepara o repositório e depois constrói o retransmissor (Initializing, Cloning, Installing, Deploying): cerca de 2 a 3 minutos. Espere por "Success! Build completed."',
+  'O endereço: no registo da construção, em "Deployed silinx-relay triggers", ou em Overview ▸ Domains & Routes do Worker. Cole-o abaixo e carregue em Verificar e Guardar.',
 ];
 // the step-by-step: [summary, open, its steps, its paragraphs]
 const stepsOf = (page) => page.eval(() => { const d = document.querySelector('.dlg-overlay details.relay-setup-steps'); return d && [d.querySelector('summary').textContent, d.open, [...d.querySelectorAll('li')].map((l) => l.textContent), [...d.querySelectorAll('p')].map((p) => p.textContent)]; });

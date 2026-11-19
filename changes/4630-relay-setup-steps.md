@@ -11,3 +11,5 @@ In detail:
   set, folded in Change Cloudflare Relay…), and its traps: Create ▸ Import a repository makes no copy, and the copy is
   updated by pushing to it. Translated into Portuguese; the relay's README and the user's guide (`live-relay`, in
   English and Portuguese) give the same steps.
+- **The relay's `wrangler.toml` says `workers_dev = true` and `preview_urls = false` (#4630):** a deploy's build log
+  no longer warns that neither is set.
