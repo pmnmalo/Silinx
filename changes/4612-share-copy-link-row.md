@@ -2,7 +2,7 @@ In short:
 
 - Share Project… ▸ A copy looks like Live: the link's buttons sit in one row below a box as wide as the window and only
   as tall as the link. Generate is named for the link it makes: Generate Full Link or Generate Short Link in a copy,
-  Generate View-Only or Generate Edit Link live.
+  Generate View-Only or Generate Edit Link live. The window keeps its size when switching between A copy and Live.
 
 In detail:
 
@@ -16,3 +16,6 @@ In detail:
   Link: choice makes (in Portuguese Gerar a Ligação Completa, Gerar a Ligação Curta).
 - **Share Project… ▸ Live: Generate Edit Link (#4613):** the editors' link's Generate is named Generate Edit Link (in
   Portuguese Gerar Ligação de Edição).
+- **Share Project…'s window keeps its size (#4617):** A copy's and Live's windows are the same size, 720 pixels wide and
+  as tall as a copy's with its link made (at most 90% of the screen's height, the content scrolled beyond), so switching
+  between them, Start Sharing and Generate no longer resize it.

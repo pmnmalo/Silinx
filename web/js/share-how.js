@@ -11,6 +11,10 @@ import { getLanguage } from './i18n.js';
 const HOW_KEY = prefKey('silinx.share-how');
 const HOWS = Object.freeze(['copy', 'live']);
 
+/** The window's width, a copy's and Live's (#4617): one size (its height app.css's .share-dlg), so that switching
+ *  between them does not resize the window. */
+export const SHARE_WIDTH = 720;
+
 /** The window's title, and its console messages' name: Share Project, or Share Module (a module's). */
 export const shareTitle = module => (module ? 'Share Module' : 'Share Project');
 
