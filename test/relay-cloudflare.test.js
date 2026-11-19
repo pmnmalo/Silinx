@@ -37,7 +37,7 @@ const roomOf = (r, room) => r.namespaces.ROOMS.objects.get(room).obj.host.rooms.
 
 test('its room\'s logic is core/\'s, copied as it is (node scripts/sync-relay-cloudflare.mjs); its limits Silinx\'s relay\'s, one room an object', () => {
   assert.deepEqual(staleCopies(), []);
-  assert.deepEqual(RELAY_CORE, ['collab-room.js', 'collab-wire.js', 'collab-crypto.js', 'collab-sign.js']);
+  assert.deepEqual(RELAY_CORE, ['collab-room.js', 'collab-meeting.js', 'collab-wire.js', 'collab-crypto.js', 'collab-sign.js']);
   const { ping, ...node } = NODE_LIMITS;
   assert.equal(ping, 30_000);
   assert.deepEqual({ ...RELAY_LIMITS, rooms: node.rooms }, node);

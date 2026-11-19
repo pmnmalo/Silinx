@@ -9,12 +9,15 @@
 //   as a Silinx server's relay.key; joining one needs its room's id (`?room=`, core/collab-wire.js roomUrl);
 // - the subprotocol, `silinx-collab`.
 // The owner's open gets a new room (its id chosen here: the Durable Object's name); its resume (#3835) names its room.
+// Its meeting points (#4542): /api/collab/meet/host (a hosted room's owner's page: the relay's key, as an owner's) and
+// /api/collab/meet/peer (a follower), with their topic (`?topic=`), each topic's sockets to the object `meet.<topic>`.
 import { RelayRoom, RELAY_LIMITS } from './room-object.js';
 import { SUBPROTOCOL, ROOM_RE, NOT_SHARED } from './core/collab-wire.js';
+import { TOPIC_RE } from './core/collab-meeting.js';
 import { b64url } from './core/collab-crypto.js';
 
 export { RelayRoom, RELAY_LIMITS };
-const ROLES = { '/api/collab/share': 'owner', '/api/collab/follow': 'follower' };
+const ROLES = { '/api/collab/share': 'owner', '/api/collab/follow': 'follower', '/api/collab/meet/host': 'host', '/api/collab/meet/peer': 'peer' };
 /** What an owner without the relay's key is told (its socket closed, 1008). */
 export const NEEDS_KEY = 'sharing a project needs this relay\'s key';
 export const NO_KEY = 'this relay has no key (its RELAY_KEY secret, 24 characters at least): it opens no room';
@@ -55,13 +58,19 @@ export default {
     const protocols = String(req.headers.get('Sec-WebSocket-Protocol') || '').split(',').map(s => s.trim());
     if (!protocols.includes(SUBPROTOCOL)) return new Response('not a Silinx participant', { status: 400 });
     let room = url.searchParams.get('room');
-    if (role === 'owner') {
+    if (role === 'host' || role === 'peer') {
+      const topic = url.searchParams.get('topic');
+      if (!TOPIC_RE.test(String(topic))) return new Response('not found', { status: 404 });
+      if (role === 'host' && String(env.RELAY_KEY || '').length < KEY_MIN) return refused(NO_KEY);
+      if (role === 'host' && !await sameKey(protocols.find(p => p.startsWith('token.'))?.slice(6), env.RELAY_KEY)) return refused(NEEDS_KEY);
+      room = `meet.${topic}`;
+    } else if (role === 'owner') {
       if (String(env.RELAY_KEY || '').length < KEY_MIN) return refused(NO_KEY);
       if (!await sameKey(protocols.find(p => p.startsWith('token.'))?.slice(6), env.RELAY_KEY)) return refused(NEEDS_KEY);
       // (an open: a new room; a resume: its own)
       if (room === null) room = b64url(crypto.getRandomValues(new Uint8Array(16)));
     }
-    if (!ROOM_RE.test(String(room))) return refused(NOT_SHARED);
+    if (!ROOM_RE.test(String(room)) && !String(room).startsWith('meet.')) return refused(NOT_SHARED);
     const headers = new Headers(req.headers);
     headers.set('x-silinx-role', role);
     headers.set('x-silinx-room', room);
