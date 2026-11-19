@@ -376,6 +376,7 @@ const FAKE_FOLDER = (url) => `(() => {
   const fake = () => import(${JSON.stringify(url)});
   const open = async () => (window.__fakeRoot = await (await fake()).fakeDirectoryIdb('Silinx-projects',
     { db: '__fakefs', permission: localStorage.getItem('__fakefs.permission') || 'granted', answerAfter: Number(localStorage.getItem('__fakefs.answerAfter')) || 0 }));
+  if (localStorage.getItem('__fakefs.noAnswer')) window.SILINX_FOLDER_NO_ANSWER = Number(localStorage.getItem('__fakefs.noAnswer'));
   window.showDirectoryPicker = async (opts) => { window.__picker = opts; return open(); };
   window.SILINX_WORKSPACE_HANDLES = {
     load: async () => (localStorage.getItem('__fakefs.remembered') ? open() : null),
@@ -907,6 +908,43 @@ uiTest('#1051 the site installable as an app: its manifest, icons and service wo
   } finally { unreachable = false; }
 }, { url: () => 'about:blank', timeout: 300000 });
 
+uiTest('#4694 browser edition: a reload reopens the project where it was at once, waiting neither for the toolchain\'s download nor for the network', E, async (page) => {
+  const boot = async () => {
+    await page.goto(siteUrl);
+    await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
+  };
+  await boot();
+  await page.eval(async () => { await navigator.serviceWorker.ready; });
+  await boot();   // (the page under its service worker)
+  await page.eval(async () => { await caches.delete('silinx-assets'); });
+  await page.menu('File', 'New Project…');
+  await page.waitDialog('New Project Wizard');
+  await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Back');
+  await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
+  await page.dialogButton('Next >');
+  await page.fill('.dlg-overlay .wiz-main select', 'basys2', { index: 0 });
+  await page.dialogButton('Next >');
+  await page.dialogButton('Finish');
+  await page.waitNoDialog();
+  await page.waitFor(() => window.Silinx.project?.name === 'Back' && window.Silinx.project.top);
+  await page.eval(() => window.SilinxApp.openFile('src/knight.vhd'));
+  await page.waitFor(() => window.Silinx.active?.id === 'file:src/knight.vhd');
+  // the site out of reach and nothing of the toolchain kept: the page from the worker, the project from the browser's
+  // storage, its file in front, at once (the toolchain's download comes 15 s after at the earliest, #4628)
+  unreachable = true;
+  try {
+    served.length = 0;
+    const t0 = Date.now();
+    await boot();
+    await page.waitFor(() => window.Silinx.project?.name === 'Back' && window.Silinx.active?.id === 'file:src/knight.vhd' && !('restoring' in document.documentElement.dataset), [], { what: 'the project reopened where it was' });
+    const took = Date.now() - t0;
+    assert.ok(took < 5000, `reopened in ${took} ms`);
+    assert.deepEqual(await page.eval(async () => (await caches.keys()).includes('silinx-assets') ? (await (await caches.open('silinx-assets')).keys()).length : 0), 0, 'no toolchain downloaded');
+    assert.deepEqual([...new Set(served)].filter((p) => !/^unreachable \/(sw\.js)?$/.test(p)), [], 'nothing but the page and its worker asked of the site');
+    assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR|Downloading/);
+  } finally { unreachable = false; }
+}, { url: () => 'about:blank', timeout: 300000 });
+
 // (the File and Edit menus: the ISE style interface's, the Silinx one has none, #1307)
 uiTest('browser edition: File ▸ Open Workspace Folder… keeps the projects in a folder on the disk, in the full application\'s format', E, async (page) => {
   const fakeUrl = `${siteUrl}__test/fs-access-fake.js`;
@@ -987,7 +1025,19 @@ uiTest('browser edition: File ▸ Open Workspace Folder… keeps the projects in
   assert.ok(Date.now() - booted >= 4000);
   await page.waitConsole(/Projects are kept in the folder 'Silinx-projects' on the disk \(the browser's permission came late\)\./);
   assert.equal(await statusStorage(page), 'Storage: folder Silinx-projects');
-  assert.doesNotMatch(await page.consoleText(), /needs the browser's permission again|WARNING|ERROR/);
+  assert.doesNotMatch(await page.consoleText(), /needs the browser's permission again|has not answered|WARNING|ERROR/);
+  // no answer at all (#4694: Chrome stuck on the folder until it was restarted): said once, with the remedy, the deadline
+  // passed (2 s here, 10 s in use); the app on the browser's storage meanwhile
+  await page.eval(() => { localStorage.setItem('__fakefs.answerAfter', '-1'); localStorage.setItem('__fakefs.noAnswer', '2000'); });
+  await boot();
+  await page.waitConsole(/Waiting for the browser's permission to the workspace folder 'Silinx-projects'…/);
+  const silent = 'WARNING: The browser has not answered about the workspace folder \'Silinx-projects\' for 2 s: quit it completely (Cmd+Q on a Mac, ⋮ ▸ Exit on Windows and Linux; closing its window is not enough) and open it again.';
+  await page.waitFor((w) => window.__console().includes(w), [silent], { what: 'the warning', timeout: 20000 });
+  await new Promise((ok) => setTimeout(ok, 4000));
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#console-log .ln.warn, #console-log .ln.err')].map((l) => l.textContent)), [silent], 'that warning, once');
+  assert.equal(await page.eval(() => window.Silinx.project), null);
+  assert.equal(await statusStorage(page), 'Storage: this browser');
+  await page.eval(() => { localStorage.setItem('__fakefs.answerAfter', '4000'); localStorage.removeItem('__fakefs.noAnswer'); });
   // late and not granted: as without it, said once it came
   await page.eval(() => localStorage.setItem('__fakefs.permission', 'prompt'));
   await boot();

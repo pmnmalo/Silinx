@@ -4,18 +4,24 @@
 // user opened one or changed the storage meanwhile. Not granted: as at a start-up without it (Start page ▸ Reopen <folder>).
 // A start-up whose folder needs the browser's permission again (a click: Reopen <folder>, #4667) keeps this tab's project
 // waiting too: the click that reopens the folder reopens it where it was (reopenWaiting).
+// No answer in NO_ANSWER ms (#4694: Chrome stuck on the folder answered nothing about it, not even isSameEntry, until it was
+// restarted): said, with the remedy; the wait goes on.
 import { api } from './api.js';
-import { log } from './console.js';
+import { log, logWarning } from './console.js';
 import { S, showLeftPage } from './app.js';
 import { openProject, updateStorageStatus } from './project.js';
 import { restoreStartTask } from './tasks.js';
+import { onSilence } from './silent-answer.js';
+
+const NO_ANSWER = 10000;
 
 let waiting = null;   // (this tab's project, not reopened for want of the folder's permission, #4667)
 
 /** Wait for the late answer, then act on it; last: the project to reopen (this tab's last). */
 export async function reopenWhenGranted(last) {
   if (api.storage().needsPermission) waiting = last || null;
-  const granted = await api.lateFolderPermission?.();
+  const wait = globalThis.SILINX_FOLDER_NO_ANSWER ?? NO_ANSWER;   // (the tests' own)
+  const granted = await onSilence(api.lateFolderPermission?.(), wait, () => logWarning(`The browser has not answered about the workspace folder '${api.storage().remembered}' for ${Math.round(wait / 1000)} s: quit it completely (Cmd+Q on a Mac, ⋮ ▸ Exit on Windows and Linux; closing its window is not enough) and open it again.`));
   if (granted === undefined) return;
   const st = api.storage();
   if (!granted) { log(`The workspace folder '${st.remembered}' needs the browser's permission again: Start page > Reopen ${st.remembered}.`, 'warn'); return; }

@@ -468,7 +468,7 @@ const PT_PATTERNS = [
   [/^(.+) (implements|synthesizes|emulates) the top module '(.+)', not the selected module '(.+)'\.$/,
     (m, p, v, top, sel) => `${t(p)} ${{ implements: 'implementa', synthesizes: 'sintetiza', emulates: 'emula' }[v]} o módulo de topo '${top}', não o módulo selecionado '${sel}'.`],
   // the browser edition's workspace folder (its name)
-  [/^Reopen (.+)$/, 'Reabrir $1'], [/^In the folder (.+) on the disk\.$/, 'Na pasta $1 no disco.'], [/^Storage: folder (.+)$/, 'Armazenamento: pasta $1'], [/^Projects are kept in the folder (.+) on the disk \(File ▸ Open Workspace Folder… to change it\)\.$/, 'Os projetos ficam guardados na pasta $1 do disco (File ▸ Open Workspace Folder… para a mudar).'],
+  [/^Reopen (.+)$/, 'Reabrir $1'], [/^In the folder (.+) on the disk\.$/, 'Na pasta $1 no disco.'], [/^Storage: folder (.+)$/, 'Armazenamento: pasta $1'], [/^Projects are kept in the folder (.+) on the disk \(File ▸ Open Workspace Folder… to change it\)\.$/, 'Os projetos ficam guardados na pasta $1 do disco (File ▸ Open Workspace Folder… para a mudar).'], [/^The browser has not answered about the workspace folder '(.+)' for (\d+) s: quit it completely \(Cmd\+Q on a Mac, ⋮ ▸ Exit on Windows and Linux; closing its window is not enough\) and open it again\.$/, "O navegador não respondeu sobre a pasta de trabalho '$1' durante $2 s: fecha-o por completo (Cmd+Q no Mac, ⋮ ▸ Sair no Windows e no Linux; fechar a janela não chega) e volta a abri-lo."],
   // schematic symbols: flip-flops (FD*, FT*, FJK*)
   [/^(D|Toggle \(T\)|J-K) flip-flop(?: with (.*?))?( \(bitwise when Width > 1\))?$/, (m, k, w, bw) => {
     let r = w || '';
