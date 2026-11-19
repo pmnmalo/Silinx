@@ -13,27 +13,24 @@ board; and build them for a real one, with Silinx's own open toolchain. Nothing 
 
 <table>
 <tr>
-<td width="50%"><a href="docs/user/en/designing.md"><img src="docs/images/hdl.webp" alt="The HDL editor"></a>
+<td width="50%"><a href="docs/user/en/designing.md"><img src="docs/images/schematic.webp" alt="The schematic editor"></a>
 <b>Design your way.</b> VHDL and Verilog with live errors explained for beginners, schematics, state diagrams, ASM
 charts, Boolean algebra and Karnaugh maps, Petri nets, even C. Every drawing generates its HDL.</td>
-<td width="50%"><a href="docs/user/en/designing.md#schematics"><img src="docs/images/schematic.webp" alt="The schematic editor"></a>
-<b>Draw schematics, see them work.</b> Gates, multiplexers, adders, counters and your own modules as symbols, wired as
-in ISE's Schematic Editor and simulated live as you click; and any HDL design drawn as its RTL schematic.</td>
+<td width="50%"><a href="docs/user/en/simulating.md"><img src="docs/images/simulation.webp" alt="The waveforms of a simulation"></a>
+<b>Simulate.</b> Test benches made by a wizard or drawn on the waveforms, run by Silinx's own simulator.</td>
 </tr>
 <tr>
-<td><a href="docs/user/en/simulating.md"><img src="docs/images/simulation.webp" alt="The waveforms of a simulation"></a>
-<b>Simulate.</b> Test benches made by a wizard or drawn on the waveforms, run by Silinx's own simulator.</td>
 <td><a href="docs/user/en/emulator.md"><img src="docs/images/emulator-basys2.webp" alt="The Board Emulator: a Basys2"></a>
 <b>Try it on an emulated board.</b> The design runs on a picture of the board: press its buttons, flip its switches,
 watch its LEDs, displays and VGA screen.</td>
-</tr>
-<tr>
 <td><a href="docs/user/en/boards.md"><img src="docs/images/implement-nexys2.webp" alt="The Design Summary after an implementation"></a>
 <b>Build for a real board.</b> Synthesis, place and route and the bitstream with Silinx's open toolchain, and the
 board programmed over USB, from the browser.</td>
-<td><a href="docs/user/en/teaching.md"><img src="docs/images/hero-ise.webp" alt="The ISE style interface"></a>
-<b>Made for the classroom.</b> Two interfaces, the Silinx one and one in the style of Xilinx ISE, in English and
-Portuguese; guided labs, automatic grading, live sharing (peer to peer, or through <a href="docs/user/en/live-relay.md">a free relay of your own</a>) and links for the slides.</td>
+</tr>
+<tr>
+<td colspan="2"><b><a href="docs/user/en/teaching.md">Made for the classroom.</a></b> An intuitive interface, guided labs,
+automatic grading, live sharing (peer to peer, or through <a href="docs/user/en/live-relay.md">a free relay of your own</a>)
+and links for the slides.</td>
 </tr>
 </table>
 

@@ -14,26 +14,24 @@ Nada a instalar.
 
 <table>
 <tr>
-<td width="50%"><a href="docs/user/pt/designing.md"><img src="docs/images/hdl.webp" alt="O editor de HDL"></a>
+<td width="50%"><a href="docs/user/pt/designing.md"><img src="docs/images/schematic.webp" alt="O editor de esquemáticos"></a>
 <b>Projete à sua maneira.</b> VHDL e Verilog com erros explicados para principiantes, esquemáticos, diagramas de
 estados, fluxogramas ASM, álgebra de Boole e mapas de Karnaugh, redes de Petri, até C. Cada desenho gera o seu HDL.</td>
-<td width="50%"<td width="50%"><a href="docs/user/pt/designing.md#esquemáticos"><img src="docs/images/schematic.webp" alt="O editor de esquemáticos"></a>
-<b>Desenhe esquemáticos e veja-os funcionar.</b> Portas, multiplexadores, somadores, contadores e os seus próprios
-módulos como símbolos, ligados como no Schematic Editor do ISE e simulados ao vivo à medida que clica; e qualquer
-projeto em HDL desenhado como o seu esquemático RTL.</td>><a href="docs/user/pt/simulating.md"><img src="docs/images/simulation-pt.webp" alt="As formas de onda de uma simulação"></a>
+<td width="50%"><a href="docs/user/pt/simulating.md"><img src="docs/images/simulation-pt.webp" alt="As formas de onda de uma simulação"></a>
 <b>Simule.</b> Bancadas de teste feitas por um assistente ou desenhadas nas formas de onda, corridas pelo simulador do
 próprio Silinx.</td>
+</tr>
+<tr>
 <td><a href="docs/user/pt/emulator.md"><img src="docs/images/emulator-basys2-pt.webp" alt="O Emulador da Placa: uma Basys2"></a>
 <b>Experimente numa placa emulada.</b> O projeto corre numa imagem da placa: carregue nos botões, mude os
 interruptores, veja os LEDs, os mostradores e o ecrã VGA.</td>
-</tr>
-<tr>
 <td><a href="docs/user/pt/boards.md"><img src="docs/images/implement-nexys2-pt.webp" alt="O Resumo do Projeto depois de uma implementação"></a>
 <b>Implemente para uma placa real.</b> A síntese, o posicionamento e encaminhamento e o bitstream com as ferramentas
 abertas do Silinx, e a placa programada por USB, a partir do browser.</td>
-<td><a href="docs/user/pt/teaching.md"><img src="docs/images/hero-ise-pt.webp" alt="A interface ao estilo do ISE"></a>
-<b>Feito para a sala de aula.</b> Duas interfaces, a do Silinx e uma ao estilo do Xilinx ISE, em português e em
-inglês; laboratórios guiados, avaliação automática, partilha ao vivo e links para os slides.</td>
+</tr>
+<tr>
+<td colspan="2"><b><a href="docs/user/pt/teaching.md">Feito para a sala de aula.</a></b> Uma interface intuitiva,
+laboratórios guiados, avaliação automática, partilha ao vivo e links para os slides.</td>
 </tr>
 </table>
 
