@@ -2,13 +2,13 @@
 // where the browser edition keeps the projects (#405: out of app.js).
 import { api } from './api.js';
 import { icon } from './icons.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, alertDlg, confirmDlg, toast } from './ui.js';
 import * as wiz from './wizards.js';
 import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { isTrusted, untrustedNotice } from '/core/trust.js';
 import { S, closeAllDocs, compileProject, renderFilesPage, renderLibsPage, showLeftPage, fixMissingTops,
   restoreViewState, openSummary } from './app.js';
-import { log, renderDiagnostics } from './console.js';
+import { log, renderDiagnostics, trustAction } from './console.js';
 import { drawingsAsBase, adoptDrawnHdl, drawnHdlClashes } from './drawings.js';
 import { renderProcesses, restoreImplStatus, reservedNameDiags } from './processes.js';
 import { projectSaved, renderHierarchy } from './design.js';
@@ -75,7 +75,7 @@ async function openProjectNow(name, { startup = false } = {}) {
   // (a design project's: no device, #3891)
   log(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
   // a project from outside (#2830): what waits for the user's trust, and the button that gives it
-  if (!isTrusted(S.project)) log(untrustedNotice(name, S.project), 'info', { action: { label: 'Trust Project', run: () => trustProject(name) } });
+  if (!isTrusted(S.project)) log(untrustedNotice(name, S.project), 'info', { action: trustAction(name) });
   warnReservedNames();
   // the processes' status of the last run, its synthesis up to date or not (#280), restored before the project is
   // used: not awaited, it drew the Processes panel again under a double-click on a process and Implement Design
@@ -98,11 +98,15 @@ async function openProjectNow(name, { startup = false } = {}) {
 }
 
 // The user trusts the project from outside (#2830): Xilinx ISE and programming may run for it from now on (also the
-// button of a shared project an editor changed, web/js/collab-share.js, #3355)
+// button of a shared project an editor changed, web/js/collab-share.js, #3355); asked first, and every Trust Project
+// button of it disabled once done (the line said when it opened, the refusals', #4583). False: the user said No.
 export async function trustProject(name) {
+  if (!await confirmDlg('Trust Project', `Trust the project "${name}"? Xilinx ISE and programming a board or a PROM will run for it: trust only a project whose files you know.`)) return false;
   await api.trustProject(name);
   if (S.project?.name === name) { delete S.project.trusted; delete S.project.madeBy; }
+  for (const b of document.querySelectorAll('#console-log .ln-trust')) if (b.dataset.trust === name) b.disabled = true;
   log(`Project "${name}" trusted: Xilinx ISE and programming a board or a PROM may run for it.`, 'ok');
+  return true;
 }
 
 // The modules named with a reserved word of VHDL or Verilog (#679), said when the project is opened

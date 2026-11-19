@@ -449,6 +449,7 @@ const PT_PATTERNS = [
   // (the iCE40's Configure Target Device, #2298)
   [/^Configuration file: (\S+) \((\d+) bytes\)$/, 'Ficheiro de configuração: $1 ($2 bytes)'],
   [/^There is no (\S+) yet\. Implement the design and generate it now\?$/, 'Ainda não há $1. Implementar o projeto e gerá-lo agora?'],
+  [/^Trust the project "(.+)"\? Xilinx ISE and programming a board or a PROM will run for it: trust only a project whose files you know\.$/, 'Confiar no projeto "$1"? O Xilinx ISE e a programação de uma placa ou de uma PROM passam a correr para ele: confie apenas num projeto cujos ficheiros conhece.'],   // (#4583)
   [/^Write (\S+) into the board's SPI flash\? The FPGA then loads it, and again at every power-up\.$/, 'Escrever $1 na flash SPI da placa? A FPGA depois carrega-o, e de novo sempre que é ligada.'],
   // Simulate's side panel: a test bench's row (#1378)
   [/^Simulate ([A-Za-z][A-Za-z0-9_]*)$/, 'Simular $1'],
