@@ -306,6 +306,7 @@ uiTest('#3534 #4619 the browser edition: Sign in with GitHub… in the Collabora
   await page.eval(() => localStorage.setItem('silinx.lang', 'pt'));
   await boot(page, { clientId: 'REPLACE-ME-with-the-client-ID-of-Silinx-GitHub-OAuth-App' });
   await page.waitFor(() => document.documentElement.lang === 'pt' && window.Silinx.project?.name === 'SignTree' && document.querySelectorAll('#hier .row .lbl').length >= 2, [], { what: 'Portuguese, SignTree' });
+  await page.leftTab('design');   // (reloaded on the Collaboration tab, the one last shown)
   for (const row of [0, 1]) {
     const items = await treeItems(page, row);
     assert.ok(items.includes('Guardar o Projeto num Repositório GitHub…') && items.includes('Iniciar sessão no GitHub…'), `row ${row}: ${items.join(' | ')}`);
