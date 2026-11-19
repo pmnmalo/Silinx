@@ -1,5 +1,5 @@
-// The Tasks interface's menus of a panel's empty space: Design's tree, New Source…, Import Source… (#1501) and Close
-// Project, as the buttons around it (#1384).
+// The Tasks interface's menus of a panel's empty space: Design's tree, New Source…, Import Source… (#1501), Rename Project… (#4641) and
+// Close Project, as the buttons around it (#1384).
 
 import { popupMenu } from './ui.js';
 
@@ -13,6 +13,7 @@ export function initTreeMenus(app, { on, task }) {
       { label: 'New Source…', action: wizard('newSourceWizard') },
       { label: 'Import Source…', action: wizard('addSourceDialog') },
       '-',
+      { label: 'Rename Project…', action: () => import('./project-rename.js').then(m => m.renameProjectDialog()) },   // (#4641)
       { label: 'Close Project', action: () => app.closeProject() },
     ], e.clientX, e.clientY);
   });

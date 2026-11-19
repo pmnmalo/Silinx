@@ -245,3 +245,22 @@ test('#3536 write_file / rename_file: a path by another case is the project\'s o
   assert.deepEqual((await P.fileTree('cs')).filter(f => /extra|lamps\.vhd/i.test(f)), ['sim/Extra.vhd', 'src/Lamps.vhd']);
   assert.equal((await ok('check_syntax', { project: 'cs' })).text, 'Process "Check Syntax" of <top> completed successfully (43 signals, 32 processes).');
 });
+
+test('rename_project: as Rename Project… (#4641): renamed, its files and checks as before; a clash, an invalid name, the same name, a project that is not there', async () => {
+  await ok('new_project_from_example', { name: 'rn', example: 'gates' });
+  await ok('new_project', { name: 'rn_other' });
+  const before = await files('rn');
+  const r = await ok('rename_project', { project: 'rn', to: 'rn2' });
+  assert.equal(r.text, 'Project \'rn\' renamed to \'rn2\'.');
+  assert.deepEqual(r.data, { project: 'rn2', renamed: 'rn' });
+  assert.ok(!fs.existsSync(P.projectDir('rn')));
+  assert.deepEqual(await files('rn2'), before);
+  assert.equal((await ok('check_syntax', { project: 'rn2' })).text, 'Process "Check Syntax" of <gates> completed successfully (22 signals, 21 processes).');
+  assert.ok((await ok('list_projects', {})).data.projects.some(p => p.name === 'rn2'));
+  await fails('rename_project', { project: 'rn2', to: 'RN_OTHER' }, 'a project named \'rn_other\' already exists: choose another name');
+  await fails('rename_project', { project: 'rn2', to: '1rn' }, 'invalid project name \'1rn\': a letter, then up to 63 letters, digits, - and _');
+  await fails('rename_project', { project: 'rn2', to: 'rn2' }, '\'rn2\' is the project\'s name already');
+  await fails('rename_project', { project: 'rn', to: 'rn3' }, 'no project \'rn\' in the workspace');
+  // a change of case alone
+  assert.equal((await ok('rename_project', { project: 'rn2', to: 'Rn2' })).text, 'Project \'rn2\' renamed to \'Rn2\'.');
+});

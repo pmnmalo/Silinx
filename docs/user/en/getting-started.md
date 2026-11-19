@@ -169,6 +169,9 @@ A black window (the Silinx server) opens and then your browser shows Silinx at
 - Your projects are saved as normal folders in **`Silinx-projects`** in your user folder
   (Windows: `C:\Users\<you>\Silinx-projects`, macOS: `/Users/<you>/Silinx-projects`).
   You can copy them, back them up, or zip them to hand in.
+- **Rename Project…** (File menu, the project's right-click menu in the Design pane, a recent project's on the Start
+  page) changes a project's name: its folder is renamed (a git repository's with its `.git`, its GitHub repository
+  kept), and the project stays open with its tabs. Not while an implementation runs or while the project is shared live.
 - **Open in VS Code** (the editor Silinx finds on this computer: VS Code, VSCodium or Cursor): right-click a text file
   (HDL, C, constraints) in the Design pane or its tab for the file, the project for its folder (**Open Folder in VS
   Code**); each save there is shown in Silinx.

@@ -2,7 +2,7 @@
 // where the browser edition keeps the projects (#405: out of app.js).
 import { api } from './api.js';
 import { icon } from './icons.js';
-import { h, alertDlg, confirmDlg, toast } from './ui.js';
+import { h, alertDlg, confirmDlg, toast, popupMenu } from './ui.js';
 import * as wiz from './wizards.js';
 import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { isTrusted, untrustedNotice } from '/core/trust.js';
@@ -273,7 +273,8 @@ export async function renderStartPage() {
     // (where the projects are kept above the recent ones, #2029)
     api.standalone ? await storageBox() : await workspaceBox(),
     h('div', { class: 'start-box' }, h('h3', {}, 'Recent Projects'),
-      ...(recentHere.map(r => h('div', { class: 'entry' }, icon('project'), h('a', { onclick: () => openProject(r).then(() => showLeftPage('design')) }, r)))),
+      // (its menu: Open Project, Rename Project…, #4641)
+      ...(recentHere.map(r => h('div', { class: 'entry', 'data-recent': r, oncontextmenu: e => recentMenu(e, r) }, icon('project'), h('a', { onclick: () => openProject(r).then(() => showLeftPage('design')) }, r)))),
       projects.length ? null : h('div', { class: 'entry', style: { color: 'var(--grey-6)' } }, 'No projects yet.'),
       recentHere.length ? h('div', { class: 'entry start-clear' }, icon('remove'), h('a', { onclick: () => clearRecent() }, 'Clear Recent Projects')) : null),
   );
@@ -285,6 +286,14 @@ export async function renderStartPage() {
   if (host.firstElementChild?.outerHTML === page.outerHTML) return;
   // replaced, not appended: two renders at once (the page shown again while a project closes) list it once
   host.replaceChildren(page);
+}
+// a recent project's menu (#4641)
+function recentMenu(e, name) {
+  e.preventDefault();
+  popupMenu([
+    { label: 'Open Project', action: () => openProject(name).then(() => showLeftPage('design')) },
+    { label: 'Rename Project…', action: () => import('./project-rename.js').then(m => m.renameProjectDialog(name)) },
+  ], e.clientX, e.clientY);
 }
 // the application's Start page: where the projects are kept, the server's workspace folder (information only, #1297)
 async function workspaceBox() {

@@ -31,6 +31,7 @@ import { adeptLink, runCapture, captureRecord, captureLinkError } from '../../co
 import { promAdept, PROM_OPS } from '../../core/xcf.js';
 import { noWebUsb, usbError } from '../../core/webusb-support.js';
 import { browserGit } from './git-browser.js';
+import { renamedMessage } from '../../core/project-rename.js';
 import { browserStore, folderStore, projectOps, copyProjects, emptyProjectJson, projectFromZip, bundleEntries, safePath, saveBuildResults, readBuildResults, BUILD_VIEW, DEV_SITE } from './project-store.js';
 
 const fail = msg => { throw new Error(msg); };
@@ -374,6 +375,13 @@ export const api = {
   trustProject: name => ops.trustProject(name),
   renameFile: (name, from, to) => ops.renameFile(name, from, to),
   deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); return r; },
+  // Rename Project… (#4641): its GitHub record, its build and captures of this session follow it
+  renameProject: async (name, to) => {
+    const r = await ops.renameProject(name, to);
+    await git.gitMove(name, to);
+    for (const m of [builds, sessionCaptures]) if (m.has(name)) { const v = m.get(name); m.delete(name); m.set(to, v); }
+    return { ...r, message: renamedMessage(name, to) };
+  },
   // a file of the build (build/…: not among the project's files): this session's, else (a
   // workspace folder) the one in the project's build/ folder
   readFile: async (name, path) => {

@@ -15,6 +15,7 @@ import { topForBoard } from '../../core/board-generics.js';
 import { resolveBoard } from '../../core/devices.js';
 import { clone } from '../../core/util.js';   // (a relative path: Node imports this module too, as api-local.js)
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../../core/project-name.js';
+import { renameProblem, renamedFile } from '../../core/project-rename.js';
 import { filePath, gateMessages, normalizePath, requireGated } from '../../core/import-gate.js';
 import { markUntrusted } from '../../core/trust.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
@@ -231,6 +232,14 @@ export function browserStore(storage = () => globalThis.localStorage) {
       persist();
     },
     deleteProject: async name => { get(name); delete mem[name]; persist(); },
+    // Rename Project… (#4641): its entry under the new name, kept only once stored (the old one back when it is not)
+    renameProject: async (from, to) => {
+      const p = get(from), was = mem;
+      const files = Object.fromEntries(Object.entries(p.files).map(([k, v]) => [renamedFile(k, from, to) && !(renamedFile(k, from, to) in p.files) ? renamedFile(k, from, to) : k, v]));
+      mem = Object.fromEntries(Object.entries(mem).filter(([k]) => k !== from));
+      mem[to] = { ...p, json: { ...p.json, name: to }, files, modified: Date.now() };
+      try { persist(); } catch (e) { mem = was; throw e; }
+    },
     // the build's outputs stay in memory in this storage (too large for localStorage)
     writeBuild: async () => {},
     readBinary: async () => null,
@@ -377,6 +386,44 @@ export function folderStore(root) {
       await copyDir(dir, await trash.getDirectoryHandle(`${name}-${Date.now()}`, { create: true }));
       await root.removeEntry(name, { recursive: true });
       cache.delete(name);
+    }),
+    // Rename Project… (#4641): its folder copied under the new name, then the old one removed (no move of a folder in the
+    // File System Access API); a failure on the way removes the copy, the old project as it was. A change of case alone
+    // (one folder on a case-insensitive disk) through a hidden copy, the old folder made again from it on a failure.
+    renameProject: (from, to) => locked(from, async () => {
+      const src = await projectDir(from);
+      if (projectNameError(to)) fail(projectNameError(to));
+      const caseOnly = from.toLowerCase() === to.toLowerCase();
+      const copy = async (dir, name, json) => {
+        const dst = await root.getDirectoryHandle(name, { create: true });
+        try {
+          await copyDir(dir, dst);
+          if (json) {
+            await writeAt(dst, PROJECT_FILE, projectJsonText(to, json));
+            const kept = [];
+            for await (const [n, h] of dst.entries()) if (h.kind === 'file' && renamedFile(n, from, to)) kept.push([n, h]);
+            for (const [n, h] of kept) {
+              const r = renamedFile(n, from, to);
+              if (await entryAt(dst, r)) continue;
+              await writeAt(dst, r, new Uint8Array(await (await h.getFile()).arrayBuffer()));
+              await dst.removeEntry(n);
+            }
+          }
+        } catch (e) { await root.removeEntry(name, { recursive: true }).catch(() => {}); throw e; }
+        return dst;
+      };
+      const json = await readJson(src);
+      if (!caseOnly) {
+        if (await store.exists(to)) fail(`a project named '${to}' already exists: choose another name`);
+        await copy(src, to, json);
+        try { await root.removeEntry(from, { recursive: true }); } catch (e) { await root.removeEntry(to, { recursive: true }).catch(() => {}); throw e; }
+      } else {
+        const tmp = `.rename-${to}-${Date.now()}`, held = await copy(src, tmp, json);
+        await root.removeEntry(from, { recursive: true });
+        try { await copy(held, to, null); } catch (e) { await copy(held, from, null).catch(() => {}); await root.removeEntry(tmp, { recursive: true }).catch(() => {}); throw e; }
+        await root.removeEntry(tmp, { recursive: true }).catch(() => {});
+      }
+      cache.delete(from); cache.delete(to);
     }),
     // the build's outputs (build/…), as the full application writes them
     writeBuild: (name, path, data) => locked(name, async () => writeAt(await projectDir(name), path, data)),
@@ -586,6 +633,14 @@ export function projectOps(getStore, examples = {}) {
       return { ok: true, ...(trashed ? { trashed } : {}) };
     },
     deleteProject: async name => { await S().deleteProject(name); return { ok: true }; },
+    // Rename Project… (#4641): the server's checks and messages (core/project-rename.js)
+    renameProject: async (from, to) => {
+      if (!await S().exists(from)) fail(`project '${from}' not found`);
+      const problem = renameProblem(from, to, (await S().list()).map(j => j.name));
+      if (problem) fail(problem.message);
+      await S().renameProject(from, to);
+      return { name: to };
+    },
     sources: async name => {
       const p = await S().load(name);
       return p.json.files.map(f => ({ ...f, text: p.files[f.path] ?? '', missing: p.files[f.path] === undefined }));

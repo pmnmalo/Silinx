@@ -196,4 +196,18 @@ export const SOURCE_TOOLS = [
       return { text: `Project '${name}' deleted (moved to the workspace's .trash folder).`, data: { project: name, deleted: true } };
     },
   },
+  {
+    name: 'rename_project', title: 'Rename a project',
+    description: 'Rename a project of the workspace, as Rename Project… does (#4641): to, its new name (New Project\'s rule: a letter, then up to 63 letters, digits, - and _; no other project\'s, in any case; a change of case alone is a rename). Its folder is moved whole (a git repository\'s .git with it, its remote kept; a failure leaves it as it was), its silinx.json\'s name and a <name>.xise kept in it follow. Refused while a process of it runs or while it is shared live (share_project stop first).',
+    inputSchema: { type: 'object', properties: { project: PROJECT, to: STR('The project\'s new name.') }, required: ['project', 'to'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false },
+    async run({ project: name, to }) {
+      await readProject(name);
+      const { renameProjectChecked } = await import('./project-rename.js');
+      const { sharedHere } = await import('./mcp-collab.js');
+      let r;
+      try { r = await renameProjectChecked(name, to, { shared: sharedHere }); } catch (e) { throw toolError(e.message); }
+      return { text: r.message, data: { project: to, renamed: name } };
+    },
+  },
 ];
