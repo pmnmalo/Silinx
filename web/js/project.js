@@ -14,7 +14,7 @@ import { renderProcesses, restoreImplStatus, reservedNameDiags } from './process
 import { projectSaved, renderHierarchy } from './design.js';
 import { prefKey } from './prefs.js';
 import { watchProject, stopWatching } from './project-watch.js';
-import { gitAvailable, gitStartItems, hasGit, openFromRepositoryDialog } from './git.js';
+import { gitAvailable } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
 import { isDesignOnly } from '/core/project-kind.js';
@@ -262,18 +262,10 @@ export async function renderStartPage() {
     h('div', { class: 'start-btns' },
       h('button', { class: 'btn', type: 'button', onclick: () => wiz.newProjectWizard() }, 'New Project…'),
       h('button', { class: 'btn', type: 'button', onclick: () => wiz.openProjectDialog() }, 'Open Project…')),   // (Close Project: under the Design tree, #1309)
-    // the import and the export, as the File menu has them (#1216; the software chosen in their window, #3703); a line,
-    // then the sharing and the git entries in one group (#3699)
+    // the import and the export, as the File menu has them (#1216; the software chosen in their window, #3703); the
+    // GitHub commands are the Collaboration tab's, shown with no project too (#4619)
     h('div', { class: 'start-box' }, h('h3', {}, 'Project Commands'),
-      ...[['Import Project…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command),
-      // (the git group after a line, where there is git; Share Project…: the main toolbar's and the File menu's, #3716)
-      ...(git => (git.length ? [h('hr', { class: 'start-sep' }), ...git] : []))([
-        // (Sign in with GitHub…, the browser edition's, first; then Open from GitHub Repository… (a GitHub repository, a
-        // Classroom assignment's: #3195), before Store Project in a GitHub Repository…, the open project's, disabled with none
-        // as the exports, #4343: where they apply, in both interfaces, #3534, #3716)
-        ...(items => [...items.filter(it => !it.project), ...(hasGit() ? [{ label: 'Open from GitHub Repository…', action: () => openFromRepositoryDialog(), open: true }] : []), ...items.filter(it => it.project)])(gitStartItems())
-          .map(it => command([it.label, it.open ? 'open' : it.project ? 'save' : 'project', () => (S.project || !it.project) && it.action(), it.project])),
-      ])),
+      ...[['Import Project…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command)),
     // (where the projects are kept above the recent ones, #2029)
     api.standalone ? await storageBox() : await workspaceBox(),
     h('div', { class: 'start-box' }, h('h3', {}, 'Recent Projects'),

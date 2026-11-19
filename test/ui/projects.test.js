@@ -674,16 +674,14 @@ const startPage = (page) => page.eval(() => {
     commands: [...box.children].slice(1).filter((e) => e.getClientRects().length).map((e) => (e.tagName === 'HR' ? '—' : `${e.textContent}${getComputedStyle(e.querySelector('a')).pointerEvents === 'none' ? ' (disabled)' : ''}`)),
   };
 });
-uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the Silinx and Xilinx imports and exports in Project Commands, then the sharing and git group', E, async (page) => {
+uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on top; the Silinx and Xilinx imports and exports in Project Commands, no git group', E, async (page) => {
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.leftTab('start');
   await page.waitFor(() => document.querySelectorAll('#start-page .start-btns .btn').length === 2, [], { what: 'the Start page' });
   // (Share Project: the main toolbar's and the File menu's, #3716)
   assert.deepEqual(await startPage(page), { buttons: ['New Project…', 'Open Project…'], top: true, halves: true, commands: [
-    // (the git group: Open from GitHub Repository…, the server editions' git, #3195; Store Project in a GitHub Repository…, the open
-    // project's, #3534, the group's last, #4343)
-    'Import Project…', 'Export Project (.zip)… (disabled)', '—',
-    'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)'] });
+    // (no git group: the Collaboration tab's, shown with no project too, #4619)
+    'Import Project…', 'Export Project (.zip)… (disabled)'] });
   // drawn again with a project open (a late drawing while one opens): the same page kept, only its host's attribute
   // changes, so that a click pressed before is not lost (#494, #1222)
   assert.deepEqual(await page.eval(async () => {
@@ -709,8 +707,7 @@ uiTest('#1216 #3699 Start page: New Project and Open Project buttons on top; the
   await page.openProject('StartZip');
   await page.leftTab('start');
   await page.waitFor(() => document.getElementById('start-page').hasAttribute('data-project'), [], { what: 'the exports enabled' });
-  assert.deepEqual((await startPage(page)).commands, ['Import Project…', 'Export Project (.zip)…', '—',
-    'Open from GitHub Repository…', 'Store Project in a GitHub Repository…']);
+  assert.deepEqual((await startPage(page)).commands, ['Import Project…', 'Export Project (.zip)…']);
   // (the software chosen in the export's window, #3703)
   for (const [id, zip] of [['silinx', 'StartZip-silinx.zip'], ['xilinx', 'StartZip.zip']]) {
     await page.click('#start-page .entry a', { text: 'Export Project (.zip)…' });

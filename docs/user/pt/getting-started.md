@@ -179,7 +179,8 @@ Abre-se uma janela preta (o servidor do Silinx) e depois o browser mostra o Sili
 - **Abrir no VS Code** (Open in VS Code; o editor que o Silinx encontra neste computador: VS Code, VSCodium ou Cursor):
   botão direito num ficheiro de texto (HDL, C, restrições) no painel Projeto ou no seu separador para o ficheiro, no
   projeto para a sua pasta (**Abrir a Pasta no VS Code**); cada gravação lá aparece no Silinx.
-- **O separador Colaboração** (Collaboration, o último do painel lateral): um projeto num repositório do GitHub (também o
+- **O separador Colaboração** (Collaboration, o último do painel lateral; sem projeto aberto, ao lado de Início: o início de
+  sessão no GitHub, Abrir do Repositório GitHub…): um projeto num repositório do GitHub (também o
   de um trabalho do GitHub Classroom), Registar (Commit)…, Enviar (Push), Receber (Pull), Alterações… (os ficheiros
   alterados, numa janela), Histórico…
   e as verificações do GitHub; Guardar o Projeto num Repositório GitHub… ou Abrir do Repositório GitHub… para um que não tenha (README, "A project

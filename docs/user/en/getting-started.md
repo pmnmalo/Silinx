@@ -172,7 +172,7 @@ A black window (the Silinx server) opens and then your browser shows Silinx at
 - **Open in VS Code** (the editor Silinx finds on this computer: VS Code, VSCodium or Cursor): right-click a text file
   (HDL, C, constraints) in the Design pane or its tab for the file, the project for its folder (**Open Folder in VS
   Code**); each save there is shown in Silinx.
-- **The Collaboration tab** (the side panel's last): a project in a GitHub repository (a GitHub Classroom assignment's
+- **The Collaboration tab** (the side panel's last; with no project open, beside Start: the sign-in, Open from GitHub Repository…): a project in a GitHub repository (a GitHub Classroom assignment's
   too), Commit…, Push, Pull, Changes… (its changed files, in a window), History… and GitHub's checks; Store Project in a GitHub Repository… or Open from GitHub Repository…
   for one with none (README, "A project on GitHub"); and its Sharing box: Share a Copy…, and live sharing: Share Live…,
   who is in, Stop Sharing.

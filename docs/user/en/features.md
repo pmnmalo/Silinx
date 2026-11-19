@@ -496,12 +496,13 @@ import does. For a group working at the same time, Share Project's live editing 
 ## A project on GitHub (git, a GitHub Classroom assignment)
 
 On your computer or a Silinx server, a project can live in a GitHub repository, through the system's git. **The
-Collaboration tab** (the side panel's last, after Teaching, in both interfaces) gathers its commands in its Git
+Collaboration tab** (the side panel's last, after Teaching, in both interfaces; shown beside Start with no project open, for
+the sign-in and Open from GitHub Repository…) gathers its commands in its Git
 Repository box: the project's GitHub repository and branch (the commits to push or to pull, the files in conflict), Commit…, Push, Pull, Changes…
 (how many files changed), History…, the sign-in and the last push's checks; for
 a project with no repository, Store Project in a GitHub Repository… and Open from GitHub Repository…; and its Sharing box: Share a Copy…
 (Share Project…'s copy), and live sharing (Share Live…, who is in, the links, Stop Sharing, Follow, Stop Following). The menus keep the same commands:
-- **Open from GitHub Repository…** (the Collaboration tab, the Start page, the ISE style's File menu) opens a project from a
+- **Open from GitHub Repository…** (the Collaboration tab, the ISE style's File menu) opens a project from a
   GitHub repository, a GitHub Classroom assignment's too.
 - **Commit…, Push to GitHub and Pull from GitHub** (the Collaboration tab; the project's right-click menu in the Design
   pane, under Git; the File menu) send it back and bring the others' changes in. A text file changed on both sides is
