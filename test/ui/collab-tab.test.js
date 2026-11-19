@@ -366,7 +366,7 @@ uiTest('#4215 the Collaboration tab\'s Sharing: Share a Copy…, Share Live…, 
     await fp.fill('.dlg-overlay input[data-field=name]', 'Rui');
     await fp.dialogButton('Follow');
     await fp.waitFor(() => window.Silinx?.project && window.Silinx.startupChecked, [], { what: 'the shared project open', timeout: 20000 });
-    await waitBox(page, 'Sharing', [MODE, 'Sharing (1)', 'A Ana you', 'R Rui viewer Relay', 'Share a Copy…', 'Make Rui an Editor', ...OWNER], 'Rui in');
+    await waitBox(page, 'Sharing', [MODE, 'Sharing (1)', 'A Ana you', 'R Rui ViewerEditor Relay', 'Share a Copy…', ...OWNER], 'Rui in');
     const tag = () => page.eval(() => { const t = document.querySelector('#collab-page .collab-path'); return [document.querySelector('#collab-page .collab-mode').textContent, t.textContent, t.title, t.dataset.path]; });
     assert.deepEqual(await tag(), [MODE, 'Relay', 'Through the Silinx server\'s relay', 'relay']);
     // (in Portuguese: the mode, the tag and its tip)
@@ -425,6 +425,49 @@ uiTest('#4643 the Sharing box\'s participants: the mode, each follower\'s path, 
     } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   } finally {
     await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); c.role = null; (await import('/js/collab-presence.js')).renderPresence(); });
+  }
+  await noWarnings(page);
+});
+
+// #4646: the owner's Viewer | Editor on a follower's row, the change through the share's (a stub's here: the real one,
+// test/ui/collab-roles.test.js); a share with no editors' key: Editor disabled, its tip saying why; in Portuguese
+uiTest('#4646 the Sharing box\'s Viewer | Editor: a click asks the share to change the role; no editors\' key: Editor disabled, why in its tip', E, async (page) => {
+  await makeProject(env, { name: 'CollabRoles', template: 'gates' });
+  await page.openProject('CollabRoles');
+  await page.leftTab('collab');
+  const show = (editors) => page.eval(async (ed) => {
+    const { collab: c } = await import('/js/collab-state.js');
+    c.role = 'owner';
+    window.__roles = [];
+    const pr = await import('/js/collab-presence.js');
+    pr.setPresenceRoles({ set: (peer, role) => { window.__roles.push([peer.name, role]); }, editors: () => ed });
+    pr.renderPresence({ label: 'Sharing (2)', me: { name: 'Ana', role: 'owner', color: '#888', me: true }, peers: [{ client: 2, name: 'Eva', role: 'editor', color: '#888', path: 'p2p' }, { client: 3, name: 'Rui', role: 'viewer', color: '#888', path: 'relay' }], mode: 'server' });
+  }, editors);
+  const states = () => page.eval(() => [...document.querySelectorAll('#collab-page .collab-peer')].map((r) => [r.children[1].textContent, [...r.querySelectorAll('.collab-role-state')].map((b) => [b.textContent, b.getAttribute('aria-pressed'), b.title, b.disabled])]));
+  try {
+    await show(true);
+    await page.waitFor(() => document.querySelectorAll('#collab-page .collab-roles').length === 2, [], { what: 'the controls' });
+    assert.deepEqual(await states(), [['Ana', []],
+      ['Eva', [['Viewer', 'false', 'Make Eva a Viewer', false], ['Editor', 'true', '', false]]],
+      ['Rui', [['Viewer', 'true', '', false], ['Editor', 'false', 'Make Rui an Editor', false]]]]);
+    // a click on the other state: the share asked; on the pressed one: nothing
+    await page.eval(() => [...document.querySelectorAll('#collab-page .collab-peer')][2].querySelector('[data-role="editor"]').click());
+    await page.eval(() => [...document.querySelectorAll('#collab-page .collab-peer')][1].querySelector('[data-role="editor"]').click());
+    await page.eval(() => [...document.querySelectorAll('#collab-page .collab-peer')][1].querySelector('[data-role="viewer"]').click());
+    assert.deepEqual(await page.eval(() => window.__roles), [['Rui', 'editor'], ['Eva', 'viewer']]);
+    // no editors' key: Rui's Editor disabled, why in its tip; Eva (an editor) still made a viewer
+    await show(false);
+    await page.waitFor(() => document.querySelector('#collab-page .collab-role-state[disabled]'), [], { what: 'Editor disabled' });
+    assert.deepEqual((await states())[2], ['Rui', [['Viewer', 'true', '', false], ['Editor', 'false', 'This share has no editors\' link: share it again to let editors in', true]]]);
+    await page.eval(() => [...document.querySelectorAll('#collab-page .collab-peer')][2].querySelector('[data-role="editor"]').click());
+    assert.deepEqual(await page.eval(() => window.__roles), []);
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+    try {
+      await page.waitFor(() => document.querySelector('#collab-page .collab-role-state')?.textContent === 'Espectador', [], { what: 'Portuguese' });
+      assert.deepEqual((await states())[2], ['Rui', [['Espectador', 'true', '', false], ['Editor', 'false', 'Esta partilha não tem ligação de editores: partilhe-a de novo para deixar entrar editores', true]]]);
+    } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+  } finally {
+    await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); c.role = null; const pr = await import('/js/collab-presence.js'); pr.setPresenceRoles(null); pr.renderPresence(); });
   }
   await noWarnings(page);
 });

@@ -8,14 +8,19 @@ import { collab } from './collab-state.js';
 
 let box = null;
 let commands = () => [];   // the menu's commands (collab-share.js, collab-follow.js)
+let roles = null;   // the owner's role changes (#4646, collab-share.js): { set(peer, role), editors() }
 let shown = { label: '', all: [], mode: null };   // what the presence shows (the Collaboration tab's Live box too, #4215)
 
 /** The menu's commands while a project is shared or followed: () => [items]. */
 export function setPresenceCommands(fn) { commands = fn; }
+/** The owner's role changes (#4646: the Collaboration tab's Viewer | Editor per follower): { set(peer, role), editors()
+ *  (the share has an editors' key: a follower can be made one) }, or null. */
+export function setPresenceRoles(r) { roles = r; }
 /** The presence as shown (the Collaboration tab's Live box, #4215): its label, the participants (the owner first; me:
  *  this page's; an owner's followers with their path, #4643: 'p2p' | 'relay'), the share's mode (the owner's:
- *  core/collab-paths.js MODES), the menu's commands; nothing while no project is shared or followed. */
-export const presence = () => (collab.role ? { label: shown.label, all: shown.all, mode: shown.mode, commands: commands().filter(c => c !== '-') } : { label: '', all: [], mode: null, commands: [] });
+ *  core/collab-paths.js MODES), the owner's role changes (#4646, setPresenceRoles; a follower's: null), the menu's
+ *  commands; nothing while no project is shared or followed. */
+export const presence = () => (collab.role ? { label: shown.label, all: shown.all, mode: shown.mode, roles: collab.role === 'owner' ? roles : null, commands: commands().filter(c => c !== '-') } : { label: '', all: [], mode: null, roles: null, commands: [] });
 
 const initial = name => (String(name).trim()[0] || '?').toUpperCase();
 const badge = p => h('span', { class: `collab-badge${p.role === 'owner' ? ' owner' : ''}`, style: { background: p.color }, title: p.name, 'data-no-i18n': '', 'data-peer': p.name }, initial(p.name));

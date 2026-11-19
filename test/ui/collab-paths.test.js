@@ -117,7 +117,7 @@ uiTest('#4643 the Collaboration tab while sharing: the mode at the top; each fol
   const eva = await follow(link, 'Eva', { rtc: false });
   try {
     // Rui: P2P once his channel is open; Eva: through the relay
-    await waitEntries(page, [MODE, 'Sharing (2)', 'A Ana you', 'E Eva viewer Relay', 'R Rui viewer P2P', 'Share a Copy…', 'Make Eva an Editor', 'Make Rui an Editor', ...OWNER.slice(1)], 'Rui P2P, Eva through the relay');
+    await waitEntries(page, [MODE, 'Sharing (2)', 'A Ana you', 'E Eva ViewerEditor Relay', 'R Rui ViewerEditor P2P', 'Share a Copy…', ...OWNER.slice(1)], 'Rui P2P, Eva through the relay');
     assert.deepEqual((await sharing(page)).tags, [['Relay', RELAY_TIP, 'relay'], ['P2P', P2P_TIP, 'p2p']]);
     // (the relay saw Rui's path switch: its meeting point carried the signalling, then the switch)
     assert.equal([...relay.meetings.values()][0].peers.size, 2);
@@ -135,7 +135,7 @@ uiTest('#4643 the Collaboration tab while sharing: the mode at the top; each fol
     } finally { await language(page, 'English'); }
     // Eva leaves: gone from the list, Rui still P2P
     await eva.close();
-    await waitEntries(page, [MODE, 'Sharing (1)', 'A Ana you', 'R Rui viewer P2P', 'Share a Copy…', 'Make Rui an Editor', ...OWNER.slice(1)], 'Eva gone');
+    await waitEntries(page, [MODE, 'Sharing (1)', 'A Ana you', 'R Rui ViewerEditor P2P', 'Share a Copy…', ...OWNER.slice(1)], 'Eva gone');
     assert.deepEqual(await warnings(rui), []);
     assert.deepEqual(rui.errors, []);
   } finally { await rui.close(); await eva.close().catch(() => {}); }

@@ -23,7 +23,7 @@ import { S, app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { prefKey } from './prefs.js';
 import { collab } from './collab-state.js';
-import { renderPresence, setPresenceCommands } from './collab-presence.js';
+import { renderPresence, setPresenceCommands, setPresenceRoles } from './collab-presence.js';
 import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
 import { applyEdits, editQueue } from '/core/collab-files.js';
 import { isTrusted, markEditedByEditor, untrustedNotice } from '/core/trust.js';
@@ -188,6 +188,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   share.timer = setInterval(track, TRACK_MS);
   addEventListener('silinx:disk-changes', onDisk);
   setPresenceCommands(commands);
+  setPresenceRoles({ set: (peer, role) => setRole(peer, role), editors: () => !!share?.session.editKey });   // (#4646)
   draw();
   app.log(`Sharing project "${project}": anyone with its link follows it live, read only (Share Project… shows the link; Stop Sharing ends it).`, 'ok');
   if (other && !host) app.log(`Shared through the relay at ${new URL(other).host}: it sees no file, only who is in.`, 'info');
@@ -219,6 +220,7 @@ export async function stopSharing(why = null) {
   s.restore();
   for (const o of S.docs) o.editor?.setPeers?.([]);
   Object.assign(collab, { role: null, owner: '', project: null, session: null });
+  setPresenceRoles(null);
   await s.session.close().catch(() => {});
   s.meet?.then(m => m?.leave()).catch(() => {});   // (once the followers were told)
   draw();
@@ -241,11 +243,8 @@ async function setRole(peer, role) {
   } catch (e) { app.log(`ERROR: Sharing: ${e.message}.`, 'err'); return; }
   app.log(role === 'editor' ? `${peer.name} is an editor now: they edit the project's text files and drawings with you.` : `${peer.name} is a viewer now: the editors' link was renewed (the old one only follows); your other editors keep editing.`, 'ok');
 }
-const roleItems = () => (share?.session.editKey ? share.session.peers().filter(p => p.role !== 'owner').map(p => (p.role === 'editor'
-  ? { label: `Make ${p.name} a Viewer`, action: () => setRole(p, 'viewer') }
-  : { label: `Make ${p.name} an Editor`, action: () => setRole(p, 'editor') })) : []);
+// (a participant's role: the Collaboration tab's Viewer | Editor on their row, #4646, setPresenceRoles)
 const commands = () => [
-  ...roleItems(), ...(roleItems().length ? ['-'] : []),
   { label: 'Copy View Link', action: () => copyLink() },
   { label: 'Copy Editor Link', action: () => copyEditorLink() },
   { label: 'Add a User…', action: () => addUser() },
