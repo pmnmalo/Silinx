@@ -27,7 +27,7 @@ export function lossOf(s) {
   return out;
 }
 
-export const REPLACE_HINT = 'Commit and push them first; or replace it anyway, losing them.';
+const REPLACE_HINT = 'Commit and push them first; or replace it anyway, losing them.';
 /** The refusal's message: a replace that would lose what it names. */
 export const notReplacedText = (project, loss) => `project '${project}' not replaced: ${loss.join('; ')}`;
 /** The console's line of an existing project opened (if_exists 'open'). */
