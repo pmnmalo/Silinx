@@ -5,7 +5,7 @@
 // if_exists). Every message goes to the console.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log } from './console.js';
+import { collabLog } from './collab-log.js';
 import { S } from './app.js';
 import { closeProject, openProject } from './project.js';
 import { field } from './wizards.js';
@@ -60,11 +60,11 @@ const confirmLoss = ex => dialog({
  *  opening), or null (cancelled; or failed, logged by fail). */
 export async function cloneOntoExisting(url, ex, fail) {
   const choice = await ask(ex);
-  if (!choice) { log(`Open from GitHub Repository cancelled: project '${ex.project}' kept as it is.`, 'info'); return null; }
+  if (!choice) { collabLog(`Open from GitHub Repository cancelled: project '${ex.project}' kept as it is.`, 'info'); return null; }
   if (choice === 'open' || choice === 'pull') {
     let r;
     try { r = await api.gitClone(url, ex.project, { ifExists: 'open' }); } catch (e) { fail(e); return null; }
-    log(openedText(r), 'ok');
+    collabLog(openedText(r), 'ok');
     return { ...r, then: choice === 'pull' && r.sameRepository ? 'pull' : null };
   }
   if (choice.rename) {
@@ -72,13 +72,13 @@ export async function cloneOntoExisting(url, ex, fail) {
     try { r = await api.gitClone(url, choice.rename, { ifExists: 'rename' }); } catch (e) { fail(e); return null; }
     return r.renamedFrom ? r : { ...r, renamedFrom: ex.project };   // (the name taken meanwhile: the free one after it)
   }
-  if (ex.loss.length && !await confirmLoss(ex)) { log(`Open from GitHub Repository cancelled: project '${ex.project}' kept as it is.`, 'info'); return null; }
+  if (ex.loss.length && !await confirmLoss(ex)) { collabLog(`Open from GitHub Repository cancelled: project '${ex.project}' kept as it is.`, 'info'); return null; }
   // (the project closed first, opened again if the clone fails: it is then as it was)
   const wasOpen = sameProject([S.project].filter(Boolean), ex.project);
   if (wasOpen) await closeProject();
   try {
     const r = await api.gitClone(url, ex.project, { ifExists: 'replace', discardChanges: ex.loss.length > 0 });
-    log(replacedText(r), 'ok');
+    collabLog(replacedText(r), 'ok');
     return r;
   } catch (e) {
     fail(e);
