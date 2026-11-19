@@ -4,19 +4,20 @@
 // as large as the window allows (link-qr.js enlargeQr): no small QR code in the window. A link not made yet disables
 // the three; one longer than a QR code holds disables Show QR Code, its reason its tip. A row field (#4576, Share
 // Project… ▸ Live's two links): its buttons in one row below its box (wrapping on a narrow screen), Generate named for
-// its link (Generate View-Only, Generate Edit); its box as tall as the link needs, the whole link in view, hidden (a dot
+// its link (Generate View-Only, Generate Edit Link); its box as tall as the link needs, the whole link in view, hidden (a dot
 // for each of its characters, wrapped as it is) or shown; before Generate, as tall as the link it will make
-// (`expected()`: its length).
+// (`expected()`: its length). Share Project… ▸ A copy's link is a row field too (#4612), its box at most `maxLines`
+// lines (a full link of thousands of characters), scrolled beyond.
 import { h } from './ui.js';
 import { enlargeQr } from './link-qr.js';
 import { qrSvg } from '/core/qr.js';
 
 /** The field of a link: { el (the box, then its buttons Generate, Copy, Show, Show QR Code), set(link | null), link,
  *  generated }. `label` Generate's label; `row`: its buttons in a row below a box as tall as the link (`expected()`, the
- *  length of the link Generate will make, the box's before). `field` its data-field; `generate()` makes the link (#4073: a link exists only once Generate is
+ *  length of the link Generate will make, the box's before; `maxLines`: at most so many lines, scrolled beyond, #4612). `field` its data-field; `generate()` makes the link (#4073: a link exists only once Generate is
  *  clicked; it resolves to the link, or null: not made, said by the window); `onCopy(link)` copies it (and says so);
  *  `title` the QR code's window's. set(link) shows a link made (Generate then disabled); set(null) none, Generate on. */
-export function linkField({ field = 'link', onCopy, generate, title = 'QR Code', label = 'Generate', row = false, expected = () => 0 } = {}) {
+export function linkField({ field = 'link', onCopy, generate, title = 'QR Code', label = 'Generate', row = false, expected = () => 0, maxLines = Infinity } = {}) {
   let link = null, shown = false, busy = false;
   const input = h('input', { type: 'password', readonly: '', class: 'link-out', 'data-field': field, 'data-no-i18n': '', autocomplete: 'off', spellcheck: false });
   const full = h('textarea', { class: 'link-full', readonly: '', rows: 1, 'data-no-i18n': '', autocomplete: 'off', spellcheck: false, hidden: true });
@@ -32,7 +33,11 @@ export function linkField({ field = 'link', onCopy, generate, title = 'QR Code',
       const n = link ? 0 : Math.max(0, Number(expected()) || 0);
       if (n) full.value = 'x'.repeat(n);
       full.style.height = '0';
-      full.style.height = `${full.scrollHeight + full.offsetHeight - full.clientHeight}px`;
+      // (at most maxLines lines: `most`, the box's inside; not laid out yet, unbounded)
+      const cs = getComputedStyle(full), most = maxLines * parseFloat(cs.lineHeight) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) || Infinity;
+      const tall = full.scrollHeight > most + 1;
+      full.style.height = `${Math.min(full.scrollHeight, most) + full.offsetHeight - full.clientHeight}px`;
+      full.style.overflowY = tall && !n ? 'auto' : '';
       if (n) full.value = '';
       return;
     }
@@ -71,5 +76,7 @@ export function linkField({ field = 'link', onCopy, generate, title = 'QR Code',
     get link() { return link; },
     set(l) { link = l || null; input.value = full.value = link || ''; draw(); },
     fit,
+    /** Generate's label changed (a copy's: Generate Full Link or Generate Short Link, as its Link: choice, #4615). */
+    setLabel(t) { make.textContent = t; },
   };
 }

@@ -3,8 +3,10 @@
 // the link), as large as the window, no small one in the window; the short link's (#3223) once Generate has made it
 // (Show QR Code disabled before), the one Copy then copies (no second gist); a link too long for a QR code (an
 // example's full link): Show QR Code disabled, its reason its tip, a line in the console suggesting the short link
-// (information: the dialog's default, no warning); the labels in Portuguese (Share Project Live…'s:
-// link-qr-live.test.js). Both interfaces; the exact warnings.
+// (information: the dialog's default, no warning); Generate named for the link it makes, Generate Full Link or Generate
+// Short Link (#4615); the labels in Portuguese (Share Project Live…'s:
+// link-qr-live.test.js); the link's buttons in one row below a box as wide as the window's content and as tall as the
+// link, at most 8 lines, scrolled beyond (#4612), on a phone too (laid out as Live's: link-qr-live.test.js). Both interfaces; the exact warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
@@ -45,16 +47,17 @@ uiTest('#3637 #3995 Share Project: the full link hidden, Show and Copy; its QR c
   await page.openProject('qrlamp');
   await startCopy(page);
   await page.waitDialog('Share Project');
-  // (#4073: no link before Generate; its buttons Generate, Copy, Show, Show QR Code, the box as tall as them)
-  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)'], small: 0 });
+  // (#4073: no link before Generate; its buttons Generate, Copy, Show, Show QR Code, in one row below the box, #4612:
+  // the layout's test below)
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate Full Link', 'Copy (off)', 'Show (off)', 'Show QR Code (off)'], small: 0 });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').value), '');
-  assert.equal(await page.eval(() => Math.abs(document.querySelector('.dlg-overlay .link-out').getBoundingClientRect().height - document.querySelector('.dlg-overlay .link-buttons').getBoundingClientRect().height) < 2), true);
+  assert.equal(await page.eval(() => { const b = document.querySelector('.dlg-overlay .link-full:not(label)').getBoundingClientRect(); return [...document.querySelectorAll('.dlg-overlay .link-buttons .btn')].every((x) => x.getBoundingClientRect().top >= b.bottom); }), true);
   const link = await gen(page);
   assert.ok(link.length <= QR_MAX_BYTES, `${link.length}`);
   // hidden, no small QR code; Show shows it, Hide hides it again
-  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate (off)', 'Copy', 'Show', 'Show QR Code'], small: 0 });
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate Full Link (off)', 'Copy', 'Show', 'Show QR Code'], small: 0 });
   await page.click('.dlg-overlay .link-show');
-  assert.deepEqual(await state(page), { type: 'text', buttons: ['Generate (off)', 'Copy', 'Hide', 'Show QR Code'], small: 0 });
+  assert.deepEqual(await state(page), { type: 'text', buttons: ['Generate Full Link (off)', 'Copy', 'Hide', 'Show QR Code'], small: 0 });
   await page.click('.dlg-overlay .link-show');
   assert.equal((await state(page)).type, 'password');
   // Show QR Code: a dialog of its own, over the other, as large as the window
@@ -81,13 +84,13 @@ uiTest('#3637 #3995 Share Project: the full link hidden, Show and Copy; its QR c
   await page.waitFor(() => !document.querySelector('.qr-large-img'), [], { what: 'the QR code closed' });
   // the short link: nothing until Generate (Show QR Code disabled); Generate makes it once
   await page.click('.dlg-overlay input[data-field="short"]');
-  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)'], small: 0 });
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate Short Link', 'Copy (off)', 'Show (off)', 'Show QR Code (off)'], small: 0 });
   const before = await gists(page);
   await page.click('.dlg-overlay .link-generate');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .link-out').value, [], { what: 'the short link made' });
   const shortLink = await page.eval(() => document.querySelector('.dlg-overlay .link-out').value);
   assert.match(shortLink, /#gist=[0-9a-f]{32}\.[A-Za-z0-9_-]{43}/);
-  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate (off)', 'Copy', 'Show', 'Show QR Code'], small: 0 });
+  assert.deepEqual(await state(page), { type: 'password', buttons: ['Generate Short Link (off)', 'Copy', 'Show', 'Show QR Code'], small: 0 });
   await page.click('.dlg-overlay .link-qr');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .qr-large-img'), [], { what: 'the QR code shown' });
   assert.equal((await qrOf(page, '.dlg-overlay .qr-large-img')).text, shortLink);
@@ -128,19 +131,83 @@ uiTest('#3637 #3995 the link\'s buttons and the QR code\'s labels in Portuguese'
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await startCopy(page);
   await page.waitDialog('Partilhar Projeto');
-  assert.deepEqual((await state(page)).buttons, ['Gerar', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
+  assert.deepEqual((await state(page)).buttons, ['Gerar a Ligação Completa', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
   await gen(page);
   await page.click('.dlg-overlay .link-show');
-  assert.deepEqual((await state(page)).buttons, ['Gerar (off)', 'Copiar', 'Ocultar', 'Mostrar o Código QR']);
+  assert.deepEqual((await state(page)).buttons, ['Gerar a Ligação Completa (off)', 'Copiar', 'Ocultar', 'Mostrar o Código QR']);
   await page.click('.dlg-overlay .link-qr');
   await page.waitDialog('Código QR');
   assert.equal(await page.eval(() => document.querySelector('.qr-large-img').getAttribute('aria-label')), 'Código QR da ligação');
   await page.dialogButton('Fechar');
   await page.waitDialog('Partilhar Projeto');
   await page.click('.dlg-overlay input[data-field="short"]');
-  assert.deepEqual((await state(page)).buttons, ['Gerar', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
+  assert.deepEqual((await state(page)).buttons, ['Gerar a Ligação Curta', 'Copiar (off)', 'Mostrar (off)', 'Mostrar o Código QR (off)']);
   await page.dialogButton('Fechar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(await warnings(page), []);
 });
+
+// the link field as it looks (#4612): its box (the textarea, shown or hidden), its class, its text, its height in lines,
+// whether all of it is in view, whether it scrolls; its buttons on one line, below the box, within the field; the box
+// as wide as the window's content (the dialog's body less its padding)
+const box = (page) => page.eval(() => {
+  const f = document.querySelector('.dlg-overlay .link-field'), b = f.querySelector('.link-full');
+  const r = b.getBoundingClientRect(), btns = [...f.querySelectorAll('.link-buttons .btn')].map((x) => x.getBoundingClientRect()), cs = getComputedStyle(b);
+  const body = f.closest('.dlg-body'), bs = getComputedStyle(body), content = body.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
+  return { cls: b.className, text: b.value, height: Math.round(r.height), lines: Math.round((b.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / parseFloat(cs.lineHeight)),
+    whole: b.scrollHeight <= b.clientHeight && b.scrollWidth <= b.clientWidth, scrolls: cs.overflowY === 'auto', wide: Math.abs(r.width - content) < 1.5,
+    oneRow: btns.every((x) => Math.abs(x.top - btns[0].top) < 2), below: btns.every((x) => x.top >= r.bottom), inside: btns.every((x) => x.right <= f.getBoundingClientRect().right + 1) };
+});
+// the lines a text of n characters takes in the link's box (measured as the box wraps it)
+const linesOf = (page, n) => page.eval((k) => {
+  const b = document.querySelector('.dlg-overlay .link-field .link-full'), t = document.createElement('textarea');
+  t.className = 'link-full'; t.rows = 1; Object.assign(t.style, { position: 'absolute', visibility: 'hidden', width: `${b.getBoundingClientRect().width}px`, height: '0' });
+  b.parentNode.append(t); t.value = 'x'.repeat(k);
+  const cs = getComputedStyle(t), m = Math.round((t.scrollHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / parseFloat(cs.lineHeight));
+  t.remove(); return m;
+}, n);
+const MAX_LINES = 8;
+
+uiTest('#4612 Share Project, a copy: the link\'s buttons in one row below its box, the box as wide as the window\'s content and as tall as the link (at most 8 lines, scrolled beyond; before Generate as tall as the link it makes); on a phone too', E, async (page) => {
+  await fakeApi(page);
+  await make(page, 'rowlamp');
+  await make(page, 'rowgates', 'gates');
+  try {
+    for (const width of [1400, 375]) {
+      await page.setViewport(width, 900);
+      for (const [project, form] of [['rowlamp', 'full'], ['rowgates', 'full'], ['rowgates', 'short']]) {
+        await page.openProject(project);
+        await startCopy(page);
+        await page.waitDialog('Share Project');
+        if (form === 'short') await page.click('.dlg-overlay input[data-field="short"]');
+        const what = `${project}, ${form} link, ${width} px`;
+        const before = await box(page);
+        const link = await gen(page);
+        const n = await linesOf(page, link.length), lines = Math.min(n, MAX_LINES);
+        // (a short link fits; the gates' full link does not, nor, on a phone, an empty project's)
+        if (form === 'short' || (project === 'rowlamp' && width > 400)) assert.ok(n <= MAX_LINES, `${what}: ${n} lines`);
+        else assert.ok(n > MAX_LINES, `${what}: ${n} lines`);
+        // hidden: a dot per character, as many lines as the link (the full gates' scrolled); the buttons in one row
+        // below the box (two rows on a phone, still below it)
+        const hidden = await box(page);
+        assert.deepEqual([hidden.cls, hidden.text, hidden.lines, hidden.whole, hidden.scrolls, hidden.oneRow, hidden.below, hidden.inside, hidden.wide],
+          ['link-full link-masked', '•'.repeat(link.length), lines, n <= MAX_LINES, n > MAX_LINES, width > 400, true, true, true], what);
+        // before Generate: empty, as tall as the link it made
+        assert.deepEqual([before.cls, before.text, before.height, before.scrolls, before.below, before.wide], ['link-full', '', hidden.height, false, true, true], `${what}: before Generate`);
+        // shown: the whole link, as tall
+        await page.click('.dlg-overlay .link-show');
+        const shown = await box(page);
+        assert.deepEqual([shown.cls, shown.text, shown.height, shown.whole, shown.scrolls, shown.below, shown.wide], ['link-full', link, hidden.height, n <= MAX_LINES, n > MAX_LINES, true, true], what);
+        assert.equal(await page.eval(() => document.documentElement.scrollWidth <= innerWidth), true, `${what}: no horizontal scroll`);
+        // Manage short links… below the box's row of buttons
+        assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-manage').getBoundingClientRect().top >= document.querySelector('.dlg-overlay .link-buttons').getBoundingClientRect().bottom), true, what);
+        await page.dialogButton('Close');
+        await page.waitNoDialog();
+      }
+    }
+  } finally { await page.setViewport(1400, 900); }
+  // (the gates' full link too long for a QR code: information, said once; no warning)
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+}, { timeout: 180000 });
