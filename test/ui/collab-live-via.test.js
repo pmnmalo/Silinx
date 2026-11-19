@@ -90,10 +90,17 @@ const ways = (page) => page.eval(() => {
     row: [q('.share-how > label').textContent, ...[...document.querySelectorAll('.dlg-overlay .share-how-choices > label')].map((l) => [l.firstElementChild.nextElementSibling.textContent, l.querySelector('.share-how-note').textContent])],
     how: q('input[name=share-how]:checked')?.value,
     about: [...document.querySelectorAll('.dlg-overlay .share-via p:not(.share-twin-ghost)')].filter(shown).map((p) => p.textContent),
-    relay: shown(q('.share-via-status')) ? [...q('.share-via-status').children].map((e) => e.textContent) : null,
+    relay: shown(q('.share-via-status')) && getComputedStyle(q('.share-via-status')).visibility !== 'hidden' ? [...q('.share-via-status').children].map((e) => e.textContent) : null,
     start: !q('.dlg-buttons button.primary').disabled,
     radios: [...new Set([...document.querySelectorAll('.dlg-overlay input[type=radio]')].map((r) => r.name))],
   };
+});
+// (#4676) the relay set's row: the last of Live's way's part, right above Your name, below the explanations; Your name's
+// top (the same for either way: nothing moves below the row)
+const relayRow = (page) => page.eval(() => {
+  const via = document.querySelector('.dlg-overlay .share-via'), st = via.querySelector('.share-via-status'), name = via.nextElementSibling;
+  const shownAbout = [...via.querySelectorAll(':scope > .share-via-relay, :scope > .share-via-peer')].find((e) => !e.hidden);
+  return { last: via.lastElementChild === st, name: name.textContent, below: st.getBoundingClientRect().top >= shownAbout.getBoundingClientRect().bottom - 1, above: st.getBoundingClientRect().bottom <= name.getBoundingClientRect().top + 1, nameTop: Math.round(name.getBoundingClientRect().top) };
 });
 // (#4676: each text laid out with a twin, the same number of lines as it)
 const twins = async (page, what) => { for (const [text, n, m] of await twinLines(page)) assert.equal(n, m, `${what}: ${text}…`); };
@@ -131,6 +138,8 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   assert.deepEqual((await ways(page)).row, ROW);
   // the Cloudflare relay from A copy's window: none set up, said, the guide offered, Start Sharing disabled
   await choose(page, 'live-relay'); await step('Cloudflare, none set up');
+  const rowRelay = await relayRow(page);
+  assert.deepEqual([rowRelay.last, rowRelay.name, rowRelay.below, rowRelay.above], [true, 'Your name, as they see it:', true, true]);
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-relay', about: [RELAY], relay: NONE, start: false, radios: ['share-how'] });
   await page.click('.dlg-overlay [data-action=relay-setup]');
   await page.waitDialog('Set Up a Cloudflare Relay');
@@ -140,6 +149,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   // peer to peer in the same window (not reopened: the name typed kept)
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana Live');
   await choose(page, 'live-peer'); await step('peer to peer');
+  assert.equal((await relayRow(page)).nameTop, rowRelay.nameTop, 'Your name where it was, peer to peer');
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-peer', about: [PEER], relay: null, start: true, radios: ['share-how'] });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=name]').value), 'Ana Live');
   // a relay set up meanwhile (the Collaboration tab's Relay box): its address, Change…; its key nowhere
