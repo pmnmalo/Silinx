@@ -4,7 +4,8 @@
 //   constraints' row selected shows their processes, a double-click opens the file, its menu is the file's; none in the
 //   Simulation view; on a board of each family's format (UCF, PCF, LPF, CST, XDC); in Portuguese;
 // - the Silinx interface's Implement and Emulate: a Files tab after theirs (#4609), as Simulate's, its page the
-//   constraints and the memory images (not the design's sources, #4622), opened from there, the file's menu;
+//   constraints and the memory images (not the design's sources, #4622), under the top module's row or, with no top,
+//   on their own (#4651), opened from there, the file's menu;
 //   the Design page still without them (#1250); in Portuguese; none in the ISE style interface.
 // No warnings.
 import { before, after } from 'node:test';
@@ -108,15 +109,17 @@ uiTest('#4591 ISE style ▸ Implementation view: the constraints in the board\'s
   await noWarnings(page);
 }, { ui: 'ise' });
 
-// the Files tab's page: its rows "icon name (path)"
+// the Files tab's page: its rows "icon name (path)", indented by their depth
 const filesRows = (page, sel) => page.eval((s) => [...document.querySelectorAll(`${s} .row`)].filter((r) => r.getClientRects().length)
-  .map((r) => `${r.querySelector('.ico')?.dataset.ico} ${r.querySelector('.lbl').textContent} ${r.querySelector('.meta').textContent}`), sel);
+  .map((r) => `${'  '.repeat(r.parentElement.closest('ul').closest('li') ? 1 : 0)}${r.querySelector('.ico')?.dataset.ico} ${r.querySelector('.lbl').textContent} ${r.querySelector('.meta')?.textContent}`), sel);
 const shownTabs = (page) => page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length)
   .map((t) => `${t.querySelector('.tab-lbl').textContent}${t.querySelector('.tab-lbl').getClientRects().length && getComputedStyle(t.querySelector('.tab-lbl')).position !== 'absolute' ? '' : ' (icon)'}`));
-// (the files of the flow only, not the design's sources: the Design page's, #4622)
-const FILES = ['ucf top.ucf (constraints/top.ucf)', 'file rom.mem (src/rom.mem)'];
+// (the files of the flow only, not the design's sources: the Design page's, #4622; under the top module, #4651)
+const FILES = ['moduleTop top (top.vhd)', '  ucf top.ucf (constraints/top.ucf)', '  file rom.mem (src/rom.mem)'];
+// (with no top module: on their own, #4651)
+const NO_TOP = ['ucf top.ucf (constraints/top.ucf)', 'file rom.mem (src/rom.mem)'];
 
-uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the constraints and the memory images (not the sources, #4622), opened from there, the file\'s menu; the processes back under the task\'s tab; the Design page without the constraints; in Portuguese', E, async (page) => {
+uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the constraints and the memory images (not the sources, #4622), under the top module or on their own with no top (#4651), opened from there, the file\'s menu; the processes back under the task\'s tab; the Design page without the constraints; in Portuguese', E, async (page) => {
   await makeProject(env, { name: 'FF_tasks', template: 'blinky', files: { 'src/rom.mem': '00\n01\n' } });
   await page.setViewport(1680, 1050);
   await page.openProject('FF_tasks');
@@ -156,6 +159,19 @@ uiTest('#4609 Silinx ▸ Implement and Emulate: a Files tab after theirs, the co
   assert.deepEqual(await shownTabs(page), ['Implementação (icon)', 'Ficheiros']);
   assert.deepEqual(await filesRows(page, '#task-impl-files'), FILES);
   await language(page, 'en');
+  // the top's row: a double-click opens its source; its twisty folds the files
+  await rowOf(page, '#task-impl-files', 'top', 'dblclick');
+  await page.waitFor(() => window.SilinxApp.S.active?.title === 'top.vhd', [], { what: 'the top opened' });
+  await page.click('#task-switch .task-btn[data-task="impl"]');
+  await page.click('#task-impl-files .top-mod .twisty');
+  assert.deepEqual(await filesRows(page, '#task-impl-files'), FILES.slice(0, 1));
+  await page.click('#task-impl-files .top-mod .twisty');
+  // no top module (Unset as Top Module): the files on their own, in both tasks
+  await page.eval(async () => (await import('/js/design.js')).unsetTop());
+  await page.waitFor(() => !document.querySelector('#task-impl-files .top-mod'), [], { what: 'no top row' });
+  assert.deepEqual(await filesRows(page, '#task-impl-files'), NO_TOP);
+  await page.click('#task-switch .task-btn[data-task="emu"]');
+  assert.deepEqual(await filesRows(page, '#task-emu-files'), NO_TOP);
   await noWarnings(page);
 }, { ui: 'silinx' });
 
