@@ -31,3 +31,11 @@ export const checkFrames = (frames, from, to, what) => {
   assert.deepEqual([...new Set(frames.map((f) => f[0].box))].length, 1, `${what}: the same box`);
   if (to === 'copy') assert.deepEqual([...new Set(frames.slice(first).map((f) => f[0].link))].length, 1, `${what}: the link box as tall from the first frame`);
 };
+
+/** The top window's texts laid out with their twin (#4676: the intros, Live's ways' explanations): each one's
+ *  [text, its lines, its twin's lines], the lines measured as the text wraps. */
+export const twinLines = (page) => page.eval(() => {
+  const lines = (e) => { const cs = getComputedStyle(e); return Math.round((e.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / parseFloat(cs.lineHeight)); };
+  return [...[...document.querySelectorAll('.dlg-overlay')].pop().querySelectorAll('.share-twin')].filter((t) => !t.closest('[hidden]'))
+    .map((t) => [t.firstElementChild.textContent.slice(0, 24), lines(t.firstElementChild), lines(t.lastElementChild)]);
+});

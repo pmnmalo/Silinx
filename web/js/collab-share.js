@@ -37,7 +37,7 @@ import { followLink, relayUrl, relayAddress, withTop, workersRelay } from '/core
 import { shareMode, hostedPaths, withPaths } from '/core/collab-paths.js';
 import { newHostKey } from '/core/collab-meet.js';
 import { linkField } from './link-field.js';
-import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
+import { SHARE_WIDTH, howRow, shareTitle, copyIntro, liveIntro, twinText } from './share-how.js';
 import { hdlWarning } from './design-only.js';
 import { ownerActivity } from './collab-activity.js';
 import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
@@ -139,7 +139,7 @@ export async function shareProjectDialog({ module = null, view = null, via = und
     title: action, width: SHARE_WIDTH, className: 'share-dlg',   // (a copy's size: switching keeps the window as it is, #4617)
     onOpen: ({ close }) => { closeIt = () => close(null); draw(); shown?.(); setTimeout(() => { if (!share) { input.focus(); input.select(); } }, 0); },
     body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.'),
+      twinText('p', {}, liveIntro(), copyIntro(S.project.name)),   // (as tall as A copy's, #4676)
       way.el, ways?.el ?? null,
       h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, links),
     buttons: btns,
