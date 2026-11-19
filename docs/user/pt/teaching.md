@@ -45,7 +45,9 @@ Classroom. Veja [a avaliação automática](../en/grading.md) e [o GitHub Classr
 
 - **Um projeto num link**, para os slides: *Partilhar Projeto…* faz um link que abre o Silinx no projeto, logo no
   Experimentar, na simulação ou no emulador da placa, o projeto inteiro dentro do link. Ou um código QR.
-- **Ao vivo**: partilhe o projeto enquanto trabalha; a turma acompanha só a ver, ou edita consigo.
+- **Ao vivo**: partilhe o projeto enquanto trabalha; a turma acompanha só a ver, ou edita consigo. A partir do sítio,
+  quem o segue liga-se diretamente a si; [um retransmissor seu](live-relay.md), gratuito no Cloudflare, encontra-os e leva
+  as mensagens de quem está numa rede que bloqueia o caminho direto.
 - **Juntar Contribuição…** traz de volta para o projeto a cópia de um aluno ou de um grupo, um desenho juntado pelos
   seus objetos.
 - **GitHub**: um projeto num repositório (commit, push, pull, ramos), também um trabalho do GitHub Classroom.
