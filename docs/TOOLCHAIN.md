@@ -24,7 +24,7 @@ everything on the way from a design to a programmed board is in it:
 | Running the flow: a process on disk, a Web Worker in memory | `server/open-flow*.js`, `web/js/open-flow-*.js` | No, the IDE's hosts of `runFlow` |
 | Programming the board | `core/adept.js`, `core/xcf.js`, `server/programmer*.js` | No, the IDE |
 | Xilinx ISE 14.7 | `server/ise.js` runs it; the user installs it | No: another tool, and the open flow's oracle |
-| AMD Vivado ML Standard | `server/vivado.js` runs it; the user installs it | No: another tool, the 7-series' vendor flow and the only one of the Spartan-7, the Kintex-7 and the Zynq-7000 (#1649, #3895) |
+| AMD Vivado ML Standard | `server/vivado.js` runs it; the user installs it | No: another tool, the 7-series' vendor flow and the only one of the Spartan-7, the Kintex-7 and the Zynq-7000's parts but the XC7Z010 / XC7Z020 (#1649, #3895, #4680) |
 
 ## The process
 

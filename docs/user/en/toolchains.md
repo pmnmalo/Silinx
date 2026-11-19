@@ -78,7 +78,9 @@ example builds on both boards with no warning, its clock at the board's 100 MHz 
 runs on them in the Board Emulator. Process Properties ▸ *Place & Route (7-series)*: *Best of 3 seeds (router2)* (off
 by default, one seed) has nextpnr route it three times and keeps the fastest: about 3 % more Fmax for three times the
 time (#3825). The `.bit` is compressed when the XDC sets `BITSTREAM.GENERAL.COMPRESS`, as the boards' do: about 300 KB
-instead of 2.19 MB on the Basys 3 (#3876).
+instead of 2.19 MB on the Basys 3 (#3876). The Zynq-7000's programmable logic goes the same way on **the Digilent
+Zybo Z7-20 / 10** (XC7Z020 / XC7Z010-CLG400, #4680), AMD Vivado still the local server's default; its processing system,
+the Cortex-A9, is not set up yet (#4679).
 It takes **the Radiona ULX3S-12f / 25f / 45f / 85f** too (Lattice ECP5, LFE5U in CABGA381): Yosys's `synth_ecp5`, nextpnr-ecp5
 and ecppack (Project Trellis), to `build/<top>.bit`, its pins written as an LPF, loaded into the FPGA by *Configure Target Device* (the
 local server's openFPGALoader -b ulx3s, or the browser over WebUSB, #2298). The examples run on it with their seven-segment display on its GPIO header J1; vga on the

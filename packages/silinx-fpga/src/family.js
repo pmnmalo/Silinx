@@ -19,7 +19,10 @@ export const FAMILY_INFO = {
   spartan7:     { name: 'Spartan-7',                                            pm: 'spartan7', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFlow: false },
   kintex7:      { name: 'Kintex-7',           xise: 'Kintex7',                  pm: 'kintex7', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFlow: false },
   virtex7:      { name: 'Virtex-7',           xise: 'Virtex7',                  pm: 'virtex7' },
-  zynq:         { name: 'Zynq-7000',          xise: 'Zynq',                     pm: 'zynq', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFlow: false },
+  // (#4680: its programmable logic the 7-series' fabric, the Silinx toolchain's 7-series back end's, openFamily; its parts with
+  // a bit database and a chip database of nextpnr's, openParts: the XC7Z010 and the XC7Z020, the others Vivado's alone; its
+  // processing system not set up yet, #4679)
+  zynq:         { name: 'Zynq-7000',          xise: 'Zynq',                     pm: 'zynq', experimental: true, constraints: 'xdc', backEnd: 'vivado', openFamily: 'artix7', openParts: /^xc7z0[12]0$/ },
   ice40:        { name: 'iCE40', constraints: 'pcf', bitstream: '.bin' },
   // (#2302: Project Trellis's, nextpnr-ecp5 and ecppack; its constraints LPF, its bitstream ecppack's .bit, no Xilinx header)
   ecp5:         { name: 'ECP5', constraints: 'lpf', bitstream: '.bit' },
@@ -68,8 +71,15 @@ export const experimentalDevice = device => !!FAMILY_INFO[deviceFamily(device)]?
  *  the Kintex-7 and the Zynq-7000, Vivado ML Standard's; the Virtex-7 keeps ISE 14.7's flow)? */
 export const vivadoDevice = device => FAMILY_INFO[deviceFamily(device)]?.backEnd === 'vivado';
 /** Has this project device's family a flow of the Silinx toolchain (#3895: not the 7-series' but the Artix-7's, whose bit
- *  database Silinx has)? An ISE family's is the Silinx toolchain's Spartan-3E / Spartan-6 one, or its message. */
-export const openFlowDevice = device => FAMILY_INFO[deviceFamily(device)]?.openFlow !== false;
+ *  database Silinx has; #4680: the Zynq-7000's XC7Z010 and XC7Z020, its openParts)? An ISE family's is the Silinx
+ *  toolchain's Spartan-3E / Spartan-6 one, or its message. */
+export const openFlowDevice = device => {
+  const info = FAMILY_INFO[deviceFamily(device)];
+  return info?.openFlow !== false && (!info?.openParts || info.openParts.test(String(device?.part || '').toLowerCase()));
+};
+/** The family whose back end of the Silinx toolchain implements this one: the Zynq-7000's the Artix-7's, the 7-series' (its
+ *  programmable logic the same fabric, #4680); the family itself otherwise. */
+export const openFamilyOf = family => FAMILY_INFO[family]?.openFamily || family;
 /** Why the Silinx toolchain does not implement a device of a Vivado-only family (#3895): the interface offers Vivado alone. */
 export const noOpenFlowMessage = device => `the Silinx toolchain has no back end for the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)`;
 /** Why an experimental family's device has no implementation (the interface offers none; a request gets this error). */

@@ -28,7 +28,7 @@ const EN = { family: 'Family:', device: 'Device:', pkg: 'Package:', speed: 'Spee
 const PT = { family: 'Família:', device: 'Dispositivo:', pkg: 'Encapsulamento:', speed: 'Velocidade:', synth: 'Ferramenta de Síntese:' };
 const warnings = async page => (await page.consoleText()).split('\n').filter(l => /WARNING|ERROR/.test(l));
 
-uiTest('#3895 New Project: the Spartan-7, the Kintex-7 and the Zynq-7000, experimental; their parts; AMD Vivado alone, locked; the Artix-7\'s two tools', E, async (page) => {
+uiTest('#3895 New Project: the Spartan-7, the Kintex-7 and the Zynq-7000, experimental; their parts; AMD Vivado alone, locked; the Artix-7\'s and the XC7Z010 / XC7Z020\'s two tools (#4680)', E, async (page) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'S7New');
@@ -42,7 +42,14 @@ uiTest('#3895 New Project: the Spartan-7, the Kintex-7 and the Zynq-7000, experi
   assert.deepEqual([s7.synth, s7.synthValue, s7.synthOff], [[VIVADO], 'vivado', true]);
   const z7 = await pick(page, { fam: 'zynq', labels: EN });
   assert.deepEqual(z7.parts, ['XC7Z007S', 'XC7Z012S', 'XC7Z014S', 'XC7Z015', 'XC7Z010', 'XC7Z020', 'XC7Z030']);
-  assert.deepEqual([z7.synth, z7.synthValue, z7.synthOff], [[VIVADO], 'vivado', true]);
+  assert.deepEqual([z7.part, z7.synth, z7.synthValue, z7.synthOff], ['xc7z007s', [VIVADO], 'vivado', true]);
+  // (#4680: the XC7Z010 and the XC7Z020, their programmable logic, the Artix-7's two tools; the XC7Z030 Vivado's alone)
+  for (const part of ['xc7z010', 'xc7z020']) {
+    const z = await pick(page, { part, labels: EN });
+    assert.deepEqual([z.part, z.synth, z.synthValue, z.synthOff], [part, [VIVADO, 'Silinx (VHDL/Verilog; no Vivado needed; on trial)'], 'vivado', false]);
+  }
+  const z30 = await pick(page, { part: 'xc7z030', labels: EN });
+  assert.deepEqual([z30.synth, z30.synthValue, z30.synthOff], [[VIVADO], 'vivado', true]);
   const k7 = await pick(page, { fam: 'kintex7', labels: EN });
   assert.deepEqual([k7.parts, k7.synth, k7.synthOff], [['XC7K70T', 'XC7K160T'], [VIVADO], true]);
   // (the Artix-7: Vivado or the Silinx toolchain, #3146; the Spartan-3E: Silinx or XST)
@@ -61,7 +68,7 @@ uiTest('#3895 New Project: the Spartan-7, the Kintex-7 and the Zynq-7000, experi
   assert.deepEqual(await warnings(page), []);
 });
 
-uiTest('#3895 Design Properties: a Basys 3 project to the Zynq-7000\'s XC7Z020: Vivado alone, locked; its processes Vivado\'s, no warning', E, async (page) => {
+uiTest('#3895 Design Properties: a Basys 3 project to the Zynq-7000\'s XC7Z007S: Vivado alone, locked; its processes Vivado\'s, no warning', E, async (page) => {
   await makeProject(env, { name: 'Z7Props', board: 'basys3', files: { 'src/top.v': TOP }, top: 'top' });
   await page.openProject('Z7Props');
   await page.menu('Project', 'Design Properties…');
@@ -73,16 +80,20 @@ uiTest('#3895 Design Properties: a Basys 3 project to the Zynq-7000\'s XC7Z020: 
     const b = [...document.querySelectorAll('.dlg-overlay label')].find(x => x.textContent === 'Evaluation Development Board:').nextElementSibling;
     b.value = ''; b.dispatchEvent(new Event('change'));
   });
-  const z = await pick(page, { fam: 'zynq', part: 'xc7z020', labels: EN });
-  assert.deepEqual([z.family, z.part, z.packages, z.synth, z.synthValue, z.synthOff], ['Zynq-7000 (experimental)', 'xc7z020', ['clg400', 'clg484'], [VIVADO], 'vivado', true]);
+  // (#4680: the XC7Z020, its programmable logic, Vivado or the Silinx toolchain)
+  const z20 = await pick(page, { fam: 'zynq', part: 'xc7z020', labels: EN });
+  assert.deepEqual([z20.packages, z20.synth.length, z20.synthValue, z20.synthOff], [['clg400', 'clg484'], 2, 'vivado', false]);
+  const z = await pick(page, { fam: 'zynq', part: 'xc7z007s', labels: EN });
+  assert.deepEqual([z.family, z.part, z.packages, z.synth, z.synthValue, z.synthOff], ['Zynq-7000 (experimental)', 'xc7z007s', ['clg225', 'clg400'], [VIVADO], 'vivado', true]);
   await page.dialogButton('OK');
   await page.waitNoDialog();
-  await page.waitFor(() => window.Silinx.project.device?.part === 'xc7z020', [], { what: 'the device set' });
-  await page.waitConsole(/Device set to xc7z020-1-clg400\./);
+  await page.waitFor(() => window.Silinx.project.device?.part === 'xc7z007s', [], { what: 'the device set' });
+  // (the XC7Z020's package kept: the XC7Z007S has it too)
+  await page.waitConsole(/Device set to xc7z007s-1-clg400\./);
   const pj = await page.eval(() => window.Silinx.project);
-  assert.deepEqual([pj.device, pj.synthTool, pj.board ?? null], [{ family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, 'vivado', null]);
+  assert.deepEqual([pj.device, pj.synthTool, pj.board ?? null], [{ family: 'zynq', part: 'xc7z007s', package: 'clg400', speed: '-1' }, 'vivado', null]);
   const lines = (await page.consoleText()).split('\n').filter(l => /WARNING|ERROR|Device set/.test(l));
-  assert.deepEqual(lines, ['Device set to xc7z020-1-clg400.']);   // (no "no flow" warning: AMD Vivado implements it)
+  assert.deepEqual(lines, ['Device set to xc7z007s-1-clg400.']);   // (no "no flow" warning: AMD Vivado implements it)
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await page.eval(() => [...document.querySelectorAll('#procs .row')].map(x => x.textContent.trim().replace(/^▾/, '')));

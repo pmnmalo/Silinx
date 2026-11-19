@@ -2,7 +2,7 @@
 // Silinx toolchain - the 7-series' bit database (#3144): the subset of Project X-Ray's database (prjxray-db, CC0 1.0)
 // one part needs for its bitstream, in one compact file (bitdb/xc7/<part>.json.gz) that src/fpga/xc7/bitdb.js reads.
 //   node research/xc7/build-db.mjs <prjxray-db checkout> [part] [out dir]
-// What it keeps, from <db>/artix7 (fasm2frames reads the same files):
+// What it keeps, from <db>/<the part's family> (artix7, zynq7: fasm2frames reads the same files):
 // - the part's configuration (part.json: its ID code, the frames of each row and column, its I/O banks' HCLK_IOI3
 //   tiles) and its pins' banks (package_pins.csv), for the banks' STEPDOWN; its IOB pins' tiles and sites (pins), for the
 //   pins' check (src/fpga/xc7/pins.js, #3145);
@@ -24,7 +24,8 @@ import { packagePins } from '../../src/fpga/xc7/pins.js';
 
 const [dbRoot, part = 'xc7a35tcpg236-1', outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'bitdb', 'xc7')] = process.argv.slice(2);
 if (!dbRoot) { console.error('usage: build-db.mjs <prjxray-db> [part] [out dir]'); process.exit(2); }
-const fam = path.join(dbRoot, 'artix7');
+// (the family's folder of prjxray-db: the Zynq-7000's PL, its xc7z parts, in zynq7, #4680)
+const fam = path.join(dbRoot, /^xc7z/.test(part) ? 'zynq7' : 'artix7');
 const read = (...p) => fs.readFileSync(path.join(fam, ...p), 'utf8');
 const yamlValue = (text, key) => new RegExp(`^${key}:\\s*\\n((?:\\s+.*\\n)+)`, 'm').exec(text)?.[1];
 
