@@ -1,11 +1,12 @@
 // An in-memory FileSystemDirectoryHandle (the File System Access API of Chrome / Edge) for tests:
 // the unit tests of web/js/project-store.js (Node) and the UI tests of the browser edition, where
 // the real folder picker (showDirectoryPicker) cannot be driven headless.
-//   fakeDirectory(name, { storage, key, permission, grant })
+//   fakeDirectory(name, { storage, key, permission, grant, answerAfter })
 // storage + key: the tree is kept in that Storage (e.g. localStorage) and read back from it by the
 // next fakeDirectory with the same key: the "same folder" after a page reload. permission: the
 // state queryPermission reports ('granted' by default, 'prompt' as after a browser restart);
-// requestPermission then gives `grant` ('granted' by default).
+// requestPermission then gives `grant` ('granted' by default). answerAfter: queryPermission answers that many ms late (as
+// Chrome may, #4656).
 // (a tree too large for the Storage stays in memory only: it is not read back after a reload)
 // fakeDirectoryIdb(name, { db, permission, grant }): the same, kept in the page's IndexedDB (no size
 // limit: a build's files too); flushFake(handle) waits for it to be written.
@@ -38,7 +39,7 @@ async function bytesOf(data) {
 class FakeHandle {
   constructor(name, node, ctx) { this.name = name; this._node = node; this._ctx = ctx; this.kind = node.kind; }
   async isSameEntry(other) { return !!other && other._node === this._node; }
-  async queryPermission() { return this._ctx.permission; }
+  async queryPermission() { if (this._ctx.answerAfter) await new Promise((ok) => setTimeout(ok, this._ctx.answerAfter)); return this._ctx.permission; }
   async requestPermission() { if (this._ctx.permission !== 'granted') this._ctx.permission = this._ctx.grant; return this._ctx.permission; }
 }
 
@@ -111,7 +112,7 @@ async function idbOpen(db) {
   open.onupgradeneeded = () => open.result.createObjectStore('tree');
   return idbReq(open);
 }
-export async function fakeDirectoryIdb(name = 'Silinx-projects', { db = 'fake-folder', permission = 'granted', grant = 'granted' } = {}) {
+export async function fakeDirectoryIdb(name = 'Silinx-projects', { db = 'fake-folder', permission = 'granted', grant = 'granted', answerAfter = 0 } = {}) {
   const conn = await idbOpen(db);
   const saved = await idbReq(conn.transaction('tree').objectStore('tree').get('root'));
   const root = saved || { kind: 'directory', children: new Map() };
@@ -123,7 +124,7 @@ export async function fakeDirectoryIdb(name = 'Silinx-projects', { db = 'fake-fo
     tx.oncomplete = ok; tx.onerror = () => ko(tx.error);
   });
   const ctx = {
-    permission, grant,
+    permission, grant, answerAfter,
     check() { if (ctx.permission !== 'granted') throw err('NotAllowedError', 'permission to the folder was not granted'); },
     save() {
       dirty = true;
@@ -138,11 +139,11 @@ export async function fakeDirectoryIdb(name = 'Silinx-projects', { db = 'fake-fo
 }
 export const flushFake = (handle) => handle?._ctx?.flush?.();
 
-export function fakeDirectory(name = 'Silinx-projects', { storage, key, permission = 'granted', grant = 'granted' } = {}) {
+export function fakeDirectory(name = 'Silinx-projects', { storage, key, permission = 'granted', grant = 'granted', answerAfter = 0 } = {}) {
   let root = { kind: 'directory', children: new Map() };
   if (storage && key) { try { const s = storage.getItem(key); if (s) root = deserialize(JSON.parse(s)); } catch { /* a new folder */ } }
   const ctx = {
-    permission, grant,
+    permission, grant, answerAfter,
     // writes need the permission (as the browser: NotAllowedError)
     check() { if (ctx.permission !== 'granted') throw err('NotAllowedError', 'permission to the folder was not granted'); },
     // (a tree too large for the Storage, e.g. with a build's bitstreams, is kept in memory only)

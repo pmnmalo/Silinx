@@ -375,7 +375,7 @@ uiTest('browser edition (the site over HTTP): Generate Programming File runs the
 const FAKE_FOLDER = (url) => `(() => {
   const fake = () => import(${JSON.stringify(url)});
   const open = async () => (window.__fakeRoot = await (await fake()).fakeDirectoryIdb('Silinx-projects',
-    { db: '__fakefs', permission: localStorage.getItem('__fakefs.permission') || 'granted' }));
+    { db: '__fakefs', permission: localStorage.getItem('__fakefs.permission') || 'granted', answerAfter: Number(localStorage.getItem('__fakefs.answerAfter')) || 0 }));
   window.showDirectoryPicker = async (opts) => { window.__picker = opts; return open(); };
   window.SILINX_WORKSPACE_HANDLES = {
     load: async () => (localStorage.getItem('__fakefs.remembered') ? open() : null),
@@ -971,6 +971,28 @@ uiTest('browser edition: File ▸ Open Workspace Folder… keeps the projects in
   assert.equal(await statusStorage(page), 'Storage: folder Silinx-projects');
   await page.eval(() => window.SilinxApp.openFile('src/stopwatch.vhd'));
   await page.waitFor(() => window.Silinx.active?.editor && window.Silinx.active.editor.getValue().startsWith('-- kept in the folder\n'));
+  // the browser's answer late (#4656: Chrome's took 10 s): the app up at once on the browser's storage, saying it waits; the
+  // answer, granted, then reopens the folder and the project where it was (its file's editor in front)
+  await page.eval(() => localStorage.setItem('__fakefs.answerAfter', '4000'));
+  const booted = Date.now();
+  await boot();
+  await page.waitFor(() => !('starting' in document.documentElement.dataset), [], { what: 'the app up' });
+  assert.ok(Date.now() - booted < 3500, `up in ${Date.now() - booted} ms, not waiting for the answer`);
+  assert.equal(await page.eval(() => window.Silinx.project), null);
+  await page.waitConsole(/Waiting for the browser's permission to the workspace folder 'Silinx-projects'…/);
+  await page.waitFor(() => window.Silinx.project?.name === 'Disk' && window.Silinx.active?.id === 'file:src/stopwatch.vhd', [], { what: 'reopened where it was once the answer came', timeout: 20000 });
+  assert.ok(Date.now() - booted >= 4000);
+  await page.waitConsole(/Projects are kept in the folder 'Silinx-projects' on the disk \(the browser's permission came late\)\./);
+  assert.equal(await statusStorage(page), 'Storage: folder Silinx-projects');
+  assert.doesNotMatch(await page.consoleText(), /needs the browser's permission again|WARNING|ERROR/);
+  // late and not granted: as without it, said once it came
+  await page.eval(() => localStorage.setItem('__fakefs.permission', 'prompt'));
+  await boot();
+  await page.waitConsole(/Waiting for the browser's permission to the workspace folder 'Silinx-projects'…/);
+  await page.waitConsole(/The workspace folder 'Silinx-projects' needs the browser's permission again: Start page > Reopen Silinx-projects\./, { timeout: 20000 });
+  assert.equal(await page.eval(() => window.Silinx.project), null);
+  assert.equal(await statusStorage(page), 'Storage: this browser');
+  await page.eval(() => localStorage.removeItem('__fakefs.answerAfter'));
   // after a browser restart the permission is asked again (a click: Reopen <folder>)
   await page.eval(() => localStorage.setItem('__fakefs.permission', 'prompt'));
   await boot();
