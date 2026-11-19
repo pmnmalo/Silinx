@@ -192,3 +192,28 @@ test('renameOver: Windows refusing to rename over an open file (EPERM / EACCES /
     await fsp.rm(dir, { recursive: true, force: true });
   }
 });
+
+test('#4569 a file moved into the .trash, a file renamed, a project deleted: Windows refusing the rename of an open file (EPERM) is retried, the file moved', async () => {
+  const fsp = (await import('node:fs/promises')).default;
+  const real = fsp.rename;
+  // (each rename refused twice, as Windows does while another operation has the file open, then done)
+  let refused = 0;
+  const twice = () => { let n = 0; fsp.rename = async (from, to) => { if (n < 2) { n++; refused++; throw Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' }); } return real(from, to); }; };
+  try {
+    await P.createProject({ name: 'Busy' });
+    await P.writeFile('Busy', 'src/a.vhd', 'entity a is end;\n');
+    await P.writeFile('Busy', 'src/b.vhd', 'entity b is end;\n');
+    twice();
+    await P.renameFile('Busy', 'src/a.vhd', 'src/a2.vhd');
+    twice();
+    const { trashed } = await P.deleteFile('Busy', 'src/b.vhd', { trash: true });
+    assert.equal(refused, 4);
+    assert.deepEqual(await P.fileTree('Busy'), ['src/a2.vhd']);
+    assert.deepEqual((await P.readProject('Busy')).files.map(f => f.path), ['src/a2.vhd']);
+    assert.match(trashed, /^\.trash\/Busy-\d+\/src\/b\.vhd$/);
+    twice();
+    await P.deleteProject('Busy');
+    assert.equal(refused, 6);
+    assert.equal((await P.listProjects()).some(p => p.name === 'Busy'), false);
+  } finally { fsp.rename = real; }
+});
