@@ -13,6 +13,7 @@ import { mountOpenProgram } from './program-open.js';
 import { openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
 import { vendorFlashText } from '/core/vendor-flash.js';
 import { refusedProject } from '/core/trust.js';
+import { noWebUsb } from '/core/webusb-support.js';
 
 const roleOf = name => (/^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
 
@@ -133,10 +134,12 @@ export function mountImpact(el) {
     }
   };
 
+  // (the browser edition in a browser with no WebUSB, #4592: nothing asked first, its reason said at once by Program)
+  const cannotProgram = () => !!api.standalone && !!noWebUsb();
   // the project's programming file not built, or older than the sources: implement the design first, then program
   // it (#1024; as Generate and Simulate, #490); false when it is not built (No, or the implementation failed)
   const fileReady = async () => {
-    if (bitData || !pj?.top || bitfile.value.trim() !== fpgaFile) return true;   // (a file of the student's choice)
+    if (cannotProgram() || bitData || !pj?.top || bitfile.value.trim() !== fpgaFile) return true;   // (a file of the student's choice)
     // (is the file there: a build in the browser's storage is gone after a reload, its processes' state is not, #1084)
     const there = await api.bitinfo(pj.name).then(b => b?.available, () => undefined);
     const st = programFileState(S.status, there);
@@ -154,7 +157,7 @@ export function mountImpact(el) {
     return true;
   };
   // (the project's own design with no pins set: said first, I/O Pin Planning one click away, #1508)
-  const pinsFirst = async () => bitData || !pj?.top || bitfile.value.trim() !== fpgaFile || pinsReady(await loadUcfText(), 'program', () => app.openPinPlanner(), pj.device);
+  const pinsFirst = async () => cannotProgram() || bitData || !pj?.top || bitfile.value.trim() !== fpgaFile || pinsReady(await loadUcfText(), 'program', () => app.openPinPlanner(), pj.device);
   const programFpga = async () => (await pinsFirst()) && (await fileReady()) && runJob('Programming FPGA (SRAM)', () => api.program({
     project: pj?.name, tool: toolSel.value || undefined, cable: cable.value.trim() || undefined, board: board?.id, position: selPos + 1, bitfile: bitfile.value.trim(),
     ...(bitData ? { bitData } : {}),

@@ -12,6 +12,7 @@ import { runImpl } from './implement.js';
 import { projectTool } from './processes.js';
 import { deviceFamily, familyName } from '/packages/silinx-fpga/src/parts.js';
 import { refusedProject } from '/core/trust.js';
+import { noWebUsb } from '/core/webusb-support.js';
 
 export function mountOpenProgram(page) {
   const pj = S.project;
@@ -35,13 +36,14 @@ export function mountOpenProgram(page) {
     if (busy) { logError('Another operation is running'); return null; }
     if (none) { app.log('WARNING: This board is not programmed from the browser yet: the local server programs it (silinx serve), with openFPGALoader.', 'warn'); return null; }
     // (no file: the design implemented first, as iMPACT's Program FPGA, #1024)
-    if (!(await loadInfo())?.available) {
+    // (the browser edition with no WebUSB: not implemented first, the reason said at once, #4592)
+    if (!(api.standalone && noWebUsb()) && !(await loadInfo())?.available) {
       if (!pj?.top || !await confirmDlg(prog.title, `There is no ${file} yet. Implement the design and generate it now?`)) return null;
       if (!await runImpl(pj.top, ['synth', 'translate', 'par', 'bitgen'])) return null;
       await loadInfo();
     }
     // (the flash, non-volatile: asked first; the SRAM, as iMPACT's Program FPGA, not)
-    if (flash && !await confirmDlg(prog.title, `Write ${file} into the board's SPI flash? The FPGA then loads it, and again at every power-up.`)) return null;
+    if (flash && !(api.standalone && noWebUsb()) && !await confirmDlg(prog.title, `Write ${file} into the board's SPI flash? The FPGA then loads it, and again at every power-up.`)) return null;
     busy = true;
     app.log(flash ? '\nProgramming the SPI flash...' : '\nProgramming the FPGA (SRAM)...', 'hdr');
     try {

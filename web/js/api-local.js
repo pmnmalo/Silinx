@@ -147,6 +147,14 @@ async function adeptDevice(vendor = ADEPT_VENDOR, filters = ADEPT_FILTERS) {
     fail(e.name === 'NotFoundError' ? 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list' : e.message);
   }
 }
+// what refuses programming before the file is read (#4592): a browser with no WebUSB (Firefox, Safari, an iPad) said
+// first, then an untrusted project's refusal (#2830: its Trust Project button, which the project needs in Chrome or
+// Edge too); a trusted project in such a browser told at once, not after its bitstream is asked for
+function refuseFirst(log, project, pj, what) {
+  const why = noWebUsb();
+  if (project && !isTrusted(pj)) { if (why) log(`ERROR: ${why}`); fail(untrustedMessage(project, what, pj)); }
+  if (why) fail(why);
+}
 // a job that talks to the board: its log lines, then ok or the error (run(log, job))
 function usbJob(kind, run) {
   const id = `local-${++jobSeq}`;
@@ -426,7 +434,7 @@ export const api = {
   // (core/usb-program.js: the Adept's, an iCE40's flash, an FT2232H's JTAG for the 7-series and the Gowin, #2298)
   program: async ({ project, bitfile, bitData, board, force = false } = {}) => usbJob('program', async log => {
     const pjb = project && await projectJson(project);
-    if (project && !isTrusted(pjb)) fail(untrustedMessage(project, 'programming the board', pjb));   // (#2830)
+    refuseFirst(log, project, pjb, 'programming the board');
     const data = bitData || await bitOf(project, bitfile);
     if (!data) fail(/\.(bin|fs)$/i.test(bitfile || '') ? `no ${bitfile} in this browser: run Generate Programming File first`
       : `no bitstream ${bitfile || ''} in this browser: run Generate Programming File first, or choose a .bit file`);
@@ -450,7 +458,7 @@ export const api = {
   // backup (read) is downloaded
   prom: async ({ project, op, bitfile, bitData, verify = true, reconfigure = false } = {}) => usbJob('prom', async (log, job) => {
     const pjp = project && await projectJson(project);
-    if (project && !isTrusted(pjp)) fail(untrustedMessage(project, 'programming the PROM', pjp));   // (#2830)
+    refuseFirst(log, project, pjp, 'programming the PROM');
     if (!PROM_OPS.includes(op)) fail(`unknown PROM operation '${op}' (valid: ${PROM_OPS.join(', ')})`);
     let bit = null;
     if (op === 'program' || op === 'verify') {
