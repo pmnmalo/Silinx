@@ -140,7 +140,8 @@ for (const example of EXAMPLES) {
 // the left, D on the top, the clock at the bottom), exported (its .sch, the module's .sym; the block named reg_1(3:0),
 // since sch2hdl refuses a Verilog keyword as a block's name, #3870), built by ISE's project flow (its sch2hdl reads the
 // array: 4 flip-flops in map's report) to the bitstream with no warnings, and what ISE leaves imported back: the
-// instance arrayed, drawn with the symbol, the module's .sym.json made from the .sym
+// instance arrayed, drawn with the symbol, the module's .sym.json made from the .sym; its clock and enable, on 1-bit
+// markers, ticked in its Shared pins (else each a warning, #4451, #4568)
 test('#3828 #3870 an arrayed instance (reg(3:0), a keyword) with its module\'s symbol of its own: exported, built in ISE\'s project flow, imported back', { skip, timeout: 30 * 60000 }, async () => {
   const { normalizeDoc, symbolPins, generateHdl } = await import('../../core/schdoc.js');
   const { instanceParams, symbolText } = await import('../../core/symbol-layout.js');
@@ -149,7 +150,7 @@ test('#3828 #3870 an arrayed instance (reg(3:0), a keyword) with its module\'s s
   const REG = 'library ieee;\nuse ieee.std_logic_1164.all;\n\nentity reg1 is\n  port (d, ce, c : in std_logic; q : out std_logic);\nend entity reg1;\n\narchitecture rtl of reg1 is\nbegin\n  process (c) begin\n    if rising_edge(c) then\n      if ce = \'1\' then q <= d; end if;\n    end if;\n  end process;\nend architecture rtl;\n';
   const SYM = { version: 1, kind: 'symbol', module: 'reg1', pins: [{ name: 'q', side: 'W' }, { name: 'ce', side: 'W' }, { name: 'd', side: 'N' }, { name: 'c', side: 'S' }], spacing: 20, width: null, height: null, title: 'top' };
   const mods = { reg1: { name: 'reg1', lang: 'vhdl', ports: ['d', 'ce', 'c', 'q'].map(n => ({ name: n, dir: n === 'q' ? 'out' : 'in', width: 1 })), symbol: SYM } };
-  const s = { id: 'U', type: 'module', x: 400, y: 300, rot: 0, mirror: false, name: 'reg(3:0)', params: { module: 'reg1', generics: {}, ...instanceParams(mods.reg1) } };
+  const s = { id: 'U', type: 'module', x: 400, y: 300, rot: 0, mirror: false, name: 'reg(3:0)', params: { module: 'reg1', generics: {}, ...instanceParams(mods.reg1), shared: ['ce', 'c'] } };
   const OUT = { W: [-80, 0], E: [80, 0], N: [0, -80], S: [0, 80] };
   const wires = [], ports = [];
   for (const p of symbolPins(s, mods)) {
