@@ -100,7 +100,7 @@ uiTest('#4257 #4322 the browser edition: the Start tab alone with no project, th
     await page.waitNoDialog();
     // (the wizard done: its toast, after the project opened and its Design page shown)
     await page.waitFor(() => window.Silinx.project?.name === 'WebTabs' && [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('WebTabs')), [], { what: 'WebTabs made' });
-    assert.deepEqual(await side(page), { row: true, tabs: ['start', 'design', 'files', 'libraries', 'teaching', 'collab'], active: 'design', pages: ['design'] });
+    assert.deepEqual(await side(page), { row: true, tabs: ['start', 'design', 'files', 'libraries', 'collab', 'teaching'], active: 'design', pages: ['design'] });
     await close(page);
     assert.deepEqual(await side(page), NONE);
     await noWarnings(page);

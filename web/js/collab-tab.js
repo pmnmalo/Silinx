@@ -1,5 +1,5 @@
-// The Collaboration tab (#4215): a tab of the Design pane's row (Start, Design, Files, Libraries, Teaching,
-// Collaboration), in both interfaces, gathering the git commands (#3194, web/js/git.js) as the Teaching tab gathers the
+// The Collaboration tab (#4215): a tab of the Design pane's row (Start, Design, Files, Libraries, Collaboration,
+// Teaching: #4577), in both interfaces, gathering the git commands (#3194, web/js/git.js) as the Teaching tab gathers the
 // labs (#3533): the project's GitHub repository and branch, its changes with the Design pane's marks (a click compares
 // a file with the last commit), Commit…, Push, Pull, New Branch…, Switch Branch…, Merge Branch… (#4213), History…, the GitHub sign-in and the last push's checks; a project
 // with no repository: Store Project in a GitHub Repository…, Open from GitHub Repository…. The same items as the Git submenu's
