@@ -624,9 +624,9 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   // (Live chosen in its window: the copy its default, #3698)
   await page.click('.dlg-overlay input[data-field=how-live]');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay input[data-field=name]'), [], { what: 'the live window' });
-  // (#4543: the Relay: field, empty (none offered in a build without SILINX_SITE_RELAYS): this page hosts it, met at the
-  // meeting point)
-  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=relay]')?.value, document.querySelectorAll('#collab-relays option').length]), ['', 0]);
+  // (#4543, #4634: no Cloudflare relay set up: peer to peer chosen, Start Sharing enabled; this page hosts it, met at
+  // the meeting point)
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-via]:checked')?.value, !!document.querySelector('.dlg-overlay .share-via-none'), document.querySelector('.dlg-overlay .dlg-buttons button.primary').disabled]), ['peer', true, false]);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });

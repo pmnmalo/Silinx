@@ -27,9 +27,7 @@ export const COLLAB_PT = {
   'Anyone with the editors\' link edits its text files and drawings with you, live.':
     'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.',
   // (a room the owner's page hosts, #3227: web/js/collab-host.js)
-  'Cloudflare relay (optional):': 'Retransmissor Cloudflare (opcional):', 'Its key (RELAY_KEY):': 'A sua chave (RELAY_KEY):', 'https://silinx-relay.<you>.workers.dev': 'https://silinx-relay.<o-seu-nome>.workers.dev',
-  'With a relay of yours on Cloudflare (or one of the site\'s), your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.':
-    'Com um retransmissor seu no Cloudflare (ou um do site), quem o segue liga-se diretamente a si quando pode e, senão, através dele. Sem nenhum, encontram-no no ponto de encontro público ou enviam-lhe um código.',
+  'https://silinx-relay.<you>.workers.dev': 'https://silinx-relay.<o-seu-nome>.workers.dev',
   // (a relay of one's own on Cloudflare, #4574: web/js/relay-setup.js, the Collaboration tab's box)
   'Cloudflare Relay': 'Retransmissor Cloudflare', 'Cloudflare relay:': 'Retransmissor Cloudflare:',
   'No Cloudflare relay: your followers find you at the public meeting point.': 'Sem retransmissor Cloudflare: quem o segue encontra-o no ponto de encontro público.',
@@ -86,6 +84,15 @@ export const COLLAB_PT = {
   'Exchange Codes Instead': 'Trocar Códigos em Vez Disso',
   'Looking for the owner at the meeting point…': 'A procurar o dono no ponto de encontro…',
   'If they cannot be found there, you exchange codes with them instead.': 'Se não for encontrado aí, troca códigos com ele em vez disso.',
+  // (Share Project… ▸ Live's two ways, #4634: web/js/share-via.js)
+  'Connection:': 'Ligação:', 'Live via your Cloudflare relay': 'Em direto pelo seu retransmissor Cloudflare', 'Live peer to peer (no relay)': 'Em direto ponto a ponto (sem retransmissor)',
+  'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.':
+    'Quem o segue encontra-o num retransmissor seu no Cloudflare e liga-se depois diretamente a si quando pode e, senão, através do retransmissor. Funciona nas redes das escolas e noutras redes restritas, e conta para o seu plano gratuito do Cloudflare.',
+  'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on networks that block direct connections.':
+    'Sem configuração: quem o segue encontra-o no ponto de encontro público e liga-se de navegador a navegador (WebRTC), ou envia-lhe um código, que Adicionar um Utilizador… recebe. Pode falhar em redes que bloqueiam ligações diretas.',
+  'No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.':
+    'Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.',
+  'Your relay:': 'O seu retransmissor:', 'Change…': 'Alterar…',
 };
 
 export const COLLAB_PT_PATTERNS = [

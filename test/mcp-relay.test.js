@@ -1,8 +1,9 @@
 // The MCP server's live_relay (#4574, server/mcp-relay.js), as the Collaboration tab's Cloudflare Relay box: none set;
 // a new key; set (a Cloudflare Worker's address only, checked first: refused with the check's message, not kept), read
 // back without its key, checked again, forgotten; share_project relay: true shares through it (its links on the Silinx
-// site, naming the relay) and follow_project follows them; refused: relay with no relay set, with server or key, with
-// another action. The relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim; its
+// site, naming the relay), as via: cloudflare does (#4634, Share Project… ▸ Live's choice), and follow_project follows
+// them; refused: relay or via: cloudflare with no relay set, with server or key, with another action; via: peer (the
+// page's peer to peer: no WebRTC here). The relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim; its
 // workers.dev address taken to the shim by the WebSocket and fetch given to the tool.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -73,9 +74,12 @@ test('#4574 live_relay: none set; a new key; set refused (not a Worker, short ke
   assert.deepEqual(await relayCall({ action: 'check' }), { text: 'The relay at silinx-relay.class.workers.dev answers and takes its key.', data: { relay: AT, ok: true }, isError: false });
 });
 
-test('#4574 share_project relay: true: through the relay set, its links on the Silinx site naming it; follow_project follows them; refused without one, with server or key', async () => {
+test('#4574 #4634 share_project relay: true or via: cloudflare: through the relay set, its links on the Silinx site naming it; follow_project follows them; refused without one, with server or key; via: peer refused (a page\'s only)', async () => {
   assert.equal((await call('new_project', { name: 'r' })).isError, false);
-  for (const [args, msg] of [[{ relay: true, server: 'http://127.0.0.1:8642' }, 'relay: without server or key (the relay set has its own)'], [{ relay: true, key: KEY }, 'relay: without server or key (the relay set has its own)'], [{ relay: true, action: 'status' }, 'relay: with action start only']]) {
+  for (const [args, msg] of [[{ relay: true, server: 'http://127.0.0.1:8642' }, 'relay: without server or key (the relay set has its own)'], [{ relay: true, key: KEY }, 'relay: without server or key (the relay set has its own)'], [{ relay: true, action: 'status' }, 'relay: with action start only'],
+    // (#4634: Share Project… ▸ Live's choice by name; peer to peer a page's only)
+    [{ via: 'cloudflare', server: 'http://127.0.0.1:8642' }, 'via: without server or key (the relay set has its own)'], [{ via: 'cloudflare', action: 'status' }, 'via: with action start only'],
+    [{ via: 'peer' }, 'via: one of cloudflare, server'], [{ relay: true, via: 'server' }, 'relay: true is via: cloudflare, not server']]) {
     const r = await call('share_project', { project: 'r', ...args });
     assert.equal(r.isError, true);
     assert.equal(r.text, `share_project: ${msg}`);
@@ -92,6 +96,16 @@ test('#4574 share_project relay: true: through the relay set, its links on the S
   assert.equal(f.isError, false, f.text);
   assert.equal(f.data.owner, 'Ana');
   assert.equal((await call('share_project', { project: 'r', action: 'stop' })).isError, false);
+  // (#4634) via: cloudflare, the same
+  const v = await call('share_project', { project: 'r', name: 'Ana', via: 'cloudflare' });
+  assert.equal(v.isError, false, v.text);
+  assert.ok(v.data.link.startsWith('https://pmnmalo.github.io/Silinx/#'), v.data.link);
+  assert.equal(parseFollowLink(v.data.link).relay, AT);
+  assert.equal(v.data.editLink, undefined);
+  const g = await call('follow_project', { link: v.data.link, name: 'Rui' });
+  assert.equal(g.isError, false, g.text);
+  assert.equal(g.data.owner, 'Ana');
+  assert.equal((await call('share_project', { project: 'r', action: 'stop' })).isError, false);
   // forgotten: share_project relay: true refused
   assert.deepEqual(await relayCall({ action: 'forget' }), { text: `The Cloudflare relay ${AT} forgotten: share_project shares through the Silinx server again.`, data: { relay: null }, isError: false });
   assert.equal(config().liveRelay, null);
@@ -99,4 +113,7 @@ test('#4574 share_project relay: true: through the relay set, its links on the S
   const r = await call('share_project', { project: 'r', relay: true });
   assert.equal(r.isError, true);
   assert.equal(r.text, 'share_project: relay: no Cloudflare relay is set (live_relay)');
+  const w = await call('share_project', { project: 'r', via: 'cloudflare' });
+  assert.equal(w.isError, true);
+  assert.equal(w.text, 'share_project: via: no Cloudflare relay is set (live_relay)');
 });
