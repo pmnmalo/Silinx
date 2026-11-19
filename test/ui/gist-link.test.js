@@ -49,11 +49,11 @@ uiTest('#3223 Copy Link: the full link or a short one (a secret gist); the short
   // (#3995, #4073: not made yet, Copy, Show and Show QR Code disabled, Generate first; the account said, the project in
   // no repository)
   const buttons = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`));
-  assert.deepEqual(await buttons(), ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
+  assert.deepEqual(await buttons(), ['Generate Short Link', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
   await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent === 'Signed in to GitHub as student; the project is in no GitHub repository.', [], { what: 'the account said' });
   await page.click('.dlg-overlay .link-generate');
   await page.waitConsole(/Share Project: the short link of 'lamp' made \(the project in a secret gist of your GitHub account\)\./);
-  assert.deepEqual(await buttons(), ['Generate (off)', 'Copy', 'Show', 'Show QR Code']);
+  assert.deepEqual(await buttons(), ['Generate Short Link (off)', 'Copy', 'Show', 'Show QR Code']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-out').type), 'password');
   await page.click('.dlg-overlay .link-copy');
   await page.dialogButton('Close');
@@ -96,7 +96,7 @@ uiTest('#3223 Copy Link\'s short link in Portuguese', E, async (page) => {
     ['Expira:', 'Nunca', 'Daqui a uma semana', 'Daqui a um mês', 'Daqui a seis meses', 'Daqui a um ano']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .link-manage a').textContent), 'Gerir as ligações curtas…');
   // (#3995: the buttons, the account)
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn, .dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Gerar', 'Copiar', 'Mostrar', 'Mostrar o Código QR', 'Fechar']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-buttons .btn, .dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Gerar a Ligação Curta', 'Copiar', 'Mostrar', 'Mostrar o Código QR', 'Fechar']);
   await page.waitFor(() => document.querySelector('.dlg-overlay .link-account').textContent === 'Com sessão no GitHub como student; o projeto não está em nenhum repositório do GitHub.', [], { what: 'the account said' });
   await page.dialogButton('Fechar');
   assert.equal(await copied(page), null);

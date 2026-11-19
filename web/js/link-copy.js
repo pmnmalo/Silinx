@@ -25,7 +25,7 @@ import { EXPIRY_DAYS } from '/core/gist-link.js';
 import { rememberLink, shortLinksDialog } from './short-links.js';
 import { linkField } from './link-field.js';
 import { QR_MAX_BYTES, qrSvg } from '/core/qr.js';
-import { howRow, shareTitle } from './share-how.js';
+import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
 
 // (the link's box at most so many lines, scrolled beyond: a full link is thousands of characters, #4612)
 const LINK_LINES = 8;
@@ -181,7 +181,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   // (a copy, or live: the window's Share: row, #3698, below what the window does, #3995)
   const how = howRow('copy', { module, view, close: () => closeIt?.() });
   await dialog({
-    title: action, width: 720,
+    title: action, width: SHARE_WIDTH, className: 'share-dlg',   // (Live's size: switching keeps the window as it is, #4617)
     onOpen: ({ close }) => { closeIt = () => close(null); },
     body: h('div', {},
       h('div', { class: 'hint' }, `A link that opens '${name}' in Silinx, for slides or a message: the whole project is inside the link (no file to host). Anyone with the link has every file of the project, its comments too.`),

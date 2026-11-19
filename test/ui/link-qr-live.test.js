@@ -5,7 +5,8 @@
 // Stop Sharing keeps the window, Start Sharing again; no Add a User… in it: the toolbar's Sharing menu's (Viewer or
 // Editor, that role's link by Generate), and its Copy View Link; Share Module…'s links (#3631, opening on the module);
 // the labels in Portuguese; each link's Generate named for it (Generate View-Only, Generate Edit Link: #4613), its buttons in a
-// row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too, a copy's laid out the same (#4612). A server with its relay. Both
+// row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too, a copy's laid out the same (#4612);
+// the window's size the same as a copy's, switching, sharing or generating (#4617). A server with its relay. Both
 // interfaces; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -256,6 +257,53 @@ uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons i
         await page.dialogButton('Close');
         await page.waitNoDialog();
       }
+    }
+    await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
+  } finally { await page.setViewport(1400, 900); }
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+}, { timeout: 120000 });
+
+// Share Project…'s window, its place and size on the screen (#4617)
+const windowBox = (page) => page.eval(() => { const r = [...document.querySelectorAll('.dlg-overlay .dlg')].pop().getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v)); });
+const switchTo = async (page, how) => {
+  await page.click(`.dlg-overlay input[data-field="how-${how}"]`);
+  await page.waitFor((x) => document.querySelectorAll('.dlg-overlay').length === 1 && document.querySelector(`.dlg-overlay input[data-field="how-${x}"]`)?.checked, [how], { what: `${how} chosen` });
+};
+
+uiTest('#4617 Share Project: the window keeps its place and size switching between A copy and Live, on Start Sharing and on Generate; on a phone too', E, async (page) => {
+  await make(page, 'samesize', 'gates');
+  await page.openProject('samesize');
+  await page.eval(() => localStorage.setItem('silinx.collab.name', 'Teacher'));
+  try {
+    for (const width of [1400, 375]) {
+      await page.setViewport(width, 900);
+      await page.eval(async () => { (await import('/js/share-how.js')).shareCopyDialog(); });
+      await page.waitDialog('Share Project');
+      const box = await windowBox(page), what = `${width} px`;
+      // (as wide as the window allows on a phone, as tall as the screen allows)
+      assert.equal(box[2], width > 800 ? 720 : Math.round(width * 0.96), what);
+      const steps = [];
+      const step = async (name) => steps.push([name, await windowBox(page)]);
+      await switchTo(page, 'live'); await step('live');
+      if (await page.eval(() => document.querySelector('.dlg-overlay .collab-links').hidden)) {
+        await page.dialogButton('Start Sharing');
+        await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
+      }
+      await step('live, shared');
+      for (const f of ['link', 'edit-link']) if (!await page.eval((x) => document.querySelector(`.dlg-overlay input[data-field="${x}"]`).value, f)) await gen(page, f);
+      await step('live, its links generated');
+      await switchTo(page, 'copy'); await step('a copy');
+      await page.click('.dlg-overlay .link-generate');
+      await page.waitFor(() => document.querySelector('.dlg-overlay .link-out').value || null, [], { what: 'the full link generated' });
+      await step('a copy, its full link generated');
+      await page.click('.dlg-overlay input[data-field="short"]'); await step('a copy, short link chosen');
+      await switchTo(page, 'live'); await step('live again');
+      await switchTo(page, 'copy'); await step('a copy again');
+      assert.deepEqual(steps, steps.map(([n]) => [n, box]), what);
+      assert.equal(await page.eval(() => document.documentElement.scrollWidth <= innerWidth), true, `${what}: no horizontal scroll`);
+      await page.dialogButton('Close');
+      await page.waitNoDialog();
     }
     await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());
   } finally { await page.setViewport(1400, 900); }
