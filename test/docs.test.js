@@ -67,7 +67,9 @@ test('docs: the repository paths and npm scripts they name exist', () => {
       if (!fs.existsSync(path.join(ROOT, file))) bad.push(`${f}: ${file}`);
     }
   }
-  const { scripts } = JSON.parse(read('package.json'));
+  // (the repository's scripts, or a package's: the Cloudflare relay's `npm run deploy`, its Deploy command, #4630)
+  const scripts = Object.assign({}, ...['package.json', ...fs.readdirSync(path.join(ROOT, 'packages')).map(d => `packages/${d}/package.json`)]
+    .filter(f => fs.existsSync(path.join(ROOT, f))).map(f => JSON.parse(read(f)).scripts || {}));
   for (const f of ALL_MD) for (const [, s] of read(f).matchAll(/npm run ([\w:-]+)/g)) if (!scripts[s]) bad.push(`${f}: npm run ${s}`);
   assert.deepEqual(bad, []);
 });
