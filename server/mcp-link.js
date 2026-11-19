@@ -26,6 +26,8 @@ async function projectFiles(name) {
   return out;
 }
 const linkFail = e => (e.linkError ? toolError(e.message) : e);
+// (the KiCad part files no drawing uses, left out of the link, #4573: core/link-parts.js)
+const partsLeft = e => (e.parts.length ? `; ${e.parts.length} file${e.parts.length > 1 ? 's' : ''} of its KiCad parts that no drawing uses left out (parts/)` : '');
 // the ids of the guided labs a project can run (core/labs.js listLabs, #3179)
 async function labIds(name) {
   const { listLabs } = await import('../core/labs.js');
@@ -38,7 +40,7 @@ const accountLine = a => `Signed in to GitHub as ${a.login || '?'}; ${!a.reposit
 export const LINK_TOOLS = [
   {
     name: 'project_link', title: 'A project\'s link (Share Project…, a copy)',
-    description: `The link that opens a project in Silinx, as Share Project… does with A copy chosen (Share Module… with top) (for lecture slides): the whole project inside the link (compressed; the HDL its drawings make again left out), and what it opens in: view try (Try it: a schematic's or a circuit's live simulation, a state diagram's, a Petri net's or an ASM chart's simulation), simulate (its test bench's simulation) or emulate (the board emulator); top: the module (default the project's top). A link longer than ${LINK_LIMITS.slides} characters works in a browser but some slide tools cut it; one above ${LINK_LIMITS.maxEncoded} cannot be made (export_project kind silinx, a zip hosted elsewhere, and its link #open=<its https address>). Anyone with the link has the whole project, its comments included.`,
+    description: `The link that opens a project in Silinx, as Share Project… does with A copy chosen (Share Module… with top) (for lecture slides): the whole project inside the link (compressed; the HDL its drawings make again and the KiCad part files no drawing uses left out), and what it opens in: view try (Try it: a schematic's or a circuit's live simulation, a state diagram's, a Petri net's or an ASM chart's simulation), simulate (its test bench's simulation) or emulate (the board emulator); top: the module (default the project's top). A link longer than ${LINK_LIMITS.slides} characters works in a browser but some slide tools cut it; one above ${LINK_LIMITS.maxEncoded} cannot be made (export_project kind silinx, a zip hosted elsewhere, and its link #open=<its https address>). Anyone with the link has the whole project, its comments included.`,
     inputSchema: { type: 'object', properties: {
       project: PROJECT, view: { type: 'string', enum: LINK_VIEWS, description: 'What the link opens: try, simulate or emulate (default: the project only).' },
       top: STR('The module to open (default: the project\'s top); with view simulate, the test bench to simulate (default: the project\'s); a test bench only with simulate.'),
@@ -80,13 +82,13 @@ export const LINK_TOOLS = [
         const where = await GH.shortLinkAccount(name).catch(() => null);
         const said = where ? `\n${accountLine(where)}` : '';
         const svg = qr ? qrSvg(link) : null;
-        return { text: `${svg ? 'With its QR code (qr, an SVG). ' : ''}The short link of '${name}'${view ? `, opening ${VIEW_NAMES[view]}` : ''}${top ? ` of ${top}` : ''}${lab ? `, with the lab '${lab}'` : ''} (${link.length} characters; the project encrypted in a secret gist${g.url ? `, ${g.url}` : ''}${g.expires ? `; it expires on ${g.expires.slice(0, 10)}` : ''}):\n${link}${g.deleted.length ? `\n${g.deleted.length} expired short link${g.deleted.length > 1 ? 's' : ''} deleted from the account's gists.` : ''}${said}`, data: { project: name, link, length: link.length, view: view || null, top: top || null, ...(lab ? { lab } : {}), left: e.left, warnings: [], gist: g.id, expires: g.expires, deleted: g.deleted, account: where, ...(svg ? { qr: svg } : {}) } };
+        return { text: `${svg ? 'With its QR code (qr, an SVG). ' : ''}The short link of '${name}'${view ? `, opening ${VIEW_NAMES[view]}` : ''}${top ? ` of ${top}` : ''}${lab ? `, with the lab '${lab}'` : ''} (${link.length} characters${partsLeft(e)}; the project encrypted in a secret gist${g.url ? `, ${g.url}` : ''}${g.expires ? `; it expires on ${g.expires.slice(0, 10)}` : ''}):\n${link}${g.deleted.length ? `\n${g.deleted.length} expired short link${g.deleted.length > 1 ? 's' : ''} deleted from the account's gists.` : ''}${said}`, data: { project: name, link, length: link.length, view: view || null, top: top || null, ...(lab ? { lab } : {}), left: e.left, parts: e.parts, warnings: [], gist: g.id, expires: g.expires, deleted: g.deleted, account: where, ...(svg ? { qr: svg } : {}) } };
       }
       const warnings = link.length > LINK_LIMITS.slides ? [`WARNING: the link is ${link.length} characters long: some slide tools cut a link longer than ${LINK_LIMITS.slides} (a zip hosted elsewhere makes a short one)`] : [];
       const svg = qr ? qrSvg(link) : null;
       if (qr && !svg) warnings.push(`WARNING: the link is ${link.length} characters, too long for a QR code (at most ${QR_MAX_BYTES}): a short link (short: true) has one`);
-      const lines = [...warnings, `The link of '${name}'${view ? `, opening ${VIEW_NAMES[view]}` : ''}${top ? ` of ${top}` : ''}${lab ? `, with the lab '${lab}'` : ''} (${link.length} characters${e.left.length ? `; ${e.left.join(', ')} made again from ${e.left.length > 1 ? 'their drawings' : 'its drawing'}` : ''}${svg ? '; its QR code: qr, an SVG' : ''}):`, link];
-      return { text: lines.join('\n'), data: { project: name, link, length: link.length, view: view || null, top: top || null, ...(lab ? { lab } : {}), left: e.left, warnings, ...(svg ? { qr: svg } : {}) } };
+      const lines = [...warnings, `The link of '${name}'${view ? `, opening ${VIEW_NAMES[view]}` : ''}${top ? ` of ${top}` : ''}${lab ? `, with the lab '${lab}'` : ''} (${link.length} characters${e.left.length ? `; ${e.left.join(', ')} made again from ${e.left.length > 1 ? 'their drawings' : 'its drawing'}` : ''}${partsLeft(e)}${svg ? '; its QR code: qr, an SVG' : ''}):`, link];
+      return { text: lines.join('\n'), data: { project: name, link, length: link.length, view: view || null, top: top || null, ...(lab ? { lab } : {}), left: e.left, parts: e.parts, warnings, ...(svg ? { qr: svg } : {}) } };
     },
   },
   {
