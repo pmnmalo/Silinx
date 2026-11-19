@@ -6,8 +6,9 @@
 // its Try it opened or closed as the owner's, its state, its inputs and its steps the owner's (a schematic's and a
 // circuit's replayed from where it was). A click, a key or an input of the follower's in a Try it is its own: browsing
 // alone (collab-activity.js OWN).
-import { S, app } from './app.js';
+import { S } from './app.js';
 import { followedTry, tryActivity } from '/core/collab-try.js';
+import { collabLog } from './collab-log.js';
 
 // (a schematic view's read-only editor too: an RTL schematic's, viewers.js)
 const editorOf = d => d?.fsmEditor || d?.asmEditor || d?.petriEditor || d?.schEditor || d?.circuitEditor || d?.viewer || null;
@@ -34,7 +35,7 @@ export async function followTry(st, get) {
     catch (e) {
       mine.key = key;
       const why = `${d.path || d.id}: ${e.message}`;
-      if (!told.has(why)) { told.add(why); app.log(`WARNING: Follow a shared project: the owner's Try it of ${why}.`, 'warn'); }
+      if (!told.has(why)) { told.add(why); collabLog(`WARNING: Follow a shared project: the owner's Try it of ${why}.`, 'warn'); }
     }
     st.tries.set(ed, mine);
   }

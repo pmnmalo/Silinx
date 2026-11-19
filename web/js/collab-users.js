@@ -4,10 +4,10 @@
 // signing key (core/collab-sign.js), which the viewers' has not and cannot be derived from. A share this page hosts
 // (#3227) also takes a user's code (Take a Code…, collab-host.js), for a user whose page did not find it.
 import { h, dialog } from './ui.js';
-import { app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { linkField } from './link-field.js';
 import { withTop } from '/core/collab-link.js';
+import { collabLog } from './collab-log.js';
 
 const ROLES = Object.freeze(['viewer', 'editor']);
 
@@ -22,7 +22,7 @@ export async function addUserDialog(share, module = null, role = 'viewer') {
   let chosen = ROLES.includes(role) ? role : 'viewer';
   const field = linkField({ field: 'user-link', generate: async () => roleLink(share, chosen, module), onCopy: l => {
     writeClip('text', l);
-    app.log(chosen === 'editor' ? 'Add a User: the editors\' link copied: whoever opens it edits the project\'s text files and drawings with you.' : 'Add a User: the viewers\' link copied: whoever opens it follows the project live, read only.', 'ok');
+    collabLog(chosen === 'editor' ? 'Add a User: the editors\' link copied: whoever opens it edits the project\'s text files and drawings with you.' : 'Add a User: the viewers\' link copied: whoever opens it follows the project live, read only.', 'ok');
   } });
   const note = h('p', { class: 'collab-role-note' });
   const radio = (value, label) => {

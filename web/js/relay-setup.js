@@ -5,11 +5,11 @@
 // browser's settings (web/js/relay-setting.js), which Share Project… ▸ Live uses by default. Check Relay checks it
 // again; Forget Relay forgets it. Every result in the console; the key in no link, address or message.
 import { h, dialog } from './ui.js';
-import { app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { savedRelay, keepRelay } from './relay-setting.js';
 import { checkRelay, newRelayKey, DEPLOY_URL } from '/core/relay-setup.js';
 import { relayAddress } from '/core/collab-link.js';
+import { collabLog } from './collab-log.js';
 
 // Cloudflare's screens after Deploy to Cloudflare, in order (#4630: as they were in November 2026)
 const DEPLOY_STEPS = [
@@ -38,15 +38,15 @@ async function checkHere({ address, key }) {
 
 // the check's result said in the console (and returned)
 function said(r) {
-  if (r.ok) app.log(`Relay: ${r.lines[0]} Share Project… ▸ Live meets your followers there.`, 'ok');
-  else app.log(`ERROR: Relay: ${r.error}.`, 'err');
+  if (r.ok) collabLog(`Relay: ${r.lines[0]} Share Project… ▸ Live meets your followers there.`, 'ok');
+  else collabLog(`ERROR: Relay: ${r.error}.`, 'err');
   return r;
 }
 
 /** Check Relay: the relay set, checked again. */
 async function checkSavedRelay() {
   const r = savedRelay();
-  if (!r.address) { app.log('ERROR: Relay: no relay is set (Set Up a Cloudflare Relay…).', 'err'); return null; }
+  if (!r.address) { collabLog('ERROR: Relay: no relay is set (Set Up a Cloudflare Relay…).', 'err'); return null; }
   return said(await checkHere(r));
 }
 
@@ -54,7 +54,7 @@ async function checkSavedRelay() {
 function forgetRelay() {
   if (!savedRelay().address) return;
   keepRelay({ address: '', key: '' });
-  app.log('Relay forgotten: Share Project… ▸ Live meets your followers at the public meeting point.', 'info');
+  collabLog('Relay forgotten: Share Project… ▸ Live meets your followers at the public meeting point.', 'info');
 }
 
 /** Set Up a Cloudflare Relay…: its key (this browser's relay's, or a new one), Deploy to Cloudflare, its address;
@@ -63,7 +63,7 @@ export async function relaySetupDialog() {
   const r0 = savedRelay();
   const key = h('input', { type: 'password', 'data-field': 'relay-key', value: r0.key || newRelayKey(), autocomplete: 'off', spellcheck: 'false', style: { flex: '1' } });
   const show = h('button', { class: 'btn', 'data-action': 'show-key', onclick: () => { key.type = key.type === 'password' ? 'text' : 'password'; show.textContent = key.type === 'password' ? 'Show' : 'Hide'; } }, 'Show');
-  const copy = h('button', { class: 'btn', 'data-action': 'copy-key', onclick: () => { writeClip('text', key.value); app.log('Relay key copied: give it to Cloudflare when it asks for RELAY_KEY, and keep it somewhere safe.', 'ok'); } }, 'Copy');
+  const copy = h('button', { class: 'btn', 'data-action': 'copy-key', onclick: () => { writeClip('text', key.value); collabLog('Relay key copied: give it to Cloudflare when it asks for RELAY_KEY, and keep it somewhere safe.', 'ok'); } }, 'Copy');
   const fresh = h('button', { class: 'btn', 'data-action': 'new-key', onclick: () => { key.value = newRelayKey(); } }, 'New Key');
   const address = h('input', { type: 'text', 'data-field': 'relay', 'data-no-i18n': '', value: r0.address, placeholder: 'https://silinx-relay.<you>.workers.dev', autocomplete: 'off', spellcheck: 'false', style: { width: '100%' } });
   const err = h('div', { class: 'wiz-error relay-setup-error', 'data-no-i18n': '' });   // (the console's message, as it is)

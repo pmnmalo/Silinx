@@ -24,14 +24,16 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // action: { label, run, trust? (a Trust Project's project) }, a button at the end of the (last) line: what the line asks
 // of the user (Trust Project, #2830); it is disabled once run (again enabled when run says false: the user said No).
 // A refusal for an untrusted project carries its Trust Project button (#4583: the line said when it opened may be
-// long gone), one per refusal (its "… failed:" line right after it shares the error's)
-export function log(text, cls = '', { diag = true, action = null } = {}) {
+// long gone), one per refusal (its "… failed:" line right after it shares the error's).
+// src: the line's source in the console's filters (web/js/messages.js), kept whatever process ran last (the collaboration's,
+// Design, #4632: web/js/collab-log.js); none: the process's whose header came last, or the application's
+export function log(text, cls = '', { diag = true, action = null, src = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
   if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
   for (const line of String(text).split('\n')) {
-    el.append(h('div', { class: `ln ${cls}` }, line));
+    el.append(h('div', { class: `ln ${cls}`, ...(src ? { 'data-src': src, 'data-own-src': '' } : {}) }, line));
     if (diag) consoleMessage(line, cls);
     for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }

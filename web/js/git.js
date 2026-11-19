@@ -9,7 +9,7 @@
 // Every message goes to the console: git's line as an ERROR, its hint after it (docs/UI-GUIDELINES.md).
 import { api } from './api.js';
 import { h, dialog, toast } from './ui.js';
-import { log } from './console.js';
+import { collabLog } from './collab-log.js';
 import { S } from './app.js';
 import { openProject, reloadProject, renderStartPage } from './project.js';
 import { renderTeachingPage } from './teaching-page.js';
@@ -42,8 +42,8 @@ export const gitOff = () => enabled === false;
 
 // a failure, in the console: git's line, then its hint
 export function logGitError(e) {
-  log(`ERROR: ${e.message}`, 'err');
-  if (e.hint) log(`Hint: ${e.hint}`, 'info');
+  collabLog(`ERROR: ${e.message}`, 'err');
+  if (e.hint) collabLog(`Hint: ${e.hint}`, 'info');
 }
 
 // ------------------------------------------------------------------ the status and the Design pane's marks
@@ -142,7 +142,7 @@ export async function openFromRepositoryDialog() {
     { label: 'Cancel', value: null }],
   });
   if (!r) return null;
-  log(`Cloning ${r.url}…`, 'info');
+  collabLog(`Cloning ${r.url}…`, 'info');
   let c;
   try { c = await api.gitClone(r.url, r.name || null); } catch (e) {
     // (a project of the name: open it, replace it or keep both, asked, #4618)
@@ -152,9 +152,9 @@ export async function openFromRepositoryDialog() {
     if (!c) return null;
   }
   if (!c.opened) {
-    if (c.renamedFrom) log(keptBothText(c), 'info');
-    log(cloneText(c), 'ok');
-    for (const w of c.warnings || []) log(`WARNING: ${w}`, 'warn');
+    if (c.renamedFrom) collabLog(keptBothText(c), 'info');
+    collabLog(cloneText(c), 'ok');
+    for (const w of c.warnings || []) collabLog(`WARNING: ${w}`, 'warn');
   }
   await openProject(c.project);
   if (c.then === 'pull') await gitPull();
@@ -166,7 +166,7 @@ async function commitDialog() {
   if (!S.project) return null;
   await saveAll();
   const s = await refreshGitStatus();
-  if (!s) { log(`ERROR: the project '${S.project.name}' is not in a git repository`, 'err'); log('Hint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 'info'); return null; }
+  if (!s) { collabLog(`ERROR: the project '${S.project.name}' is not in a git repository`, 'err'); collabLog('Hint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 'info'); return null; }
   const STATE = { modified: 'changed', new: 'new', deleted: 'deleted', conflict: 'in conflict' };
   const msg = h('textarea', { class: 'git-message', rows: 4, style: { width: '100%' } });
   // (Compare: the file against the last commit, #3197; the dialog closed for it)
@@ -190,8 +190,8 @@ async function commitDialog() {
   if (r === null || r === undefined) return null;
   try {
     const c = await api.gitCommit(S.project.name, r);
-    log(commitText(c), 'ok');
-    if (c.pushed) { log(pushText(c), 'ok'); log(CHECKS_HINT, 'info'); }   // (the browser edition's: pushed at once)
+    collabLog(commitText(c), 'ok');
+    if (c.pushed) { collabLog(pushText(c), 'ok'); collabLog(CHECKS_HINT, 'info'); }   // (the browser edition's: pushed at once)
     toast('Committed', 'ok');
     return c;
   } catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
@@ -204,10 +204,10 @@ const CHECKS_HINT = 'GitHub runs the repository\'s checks on the push (a Classro
  *  Classroom assignment's: each visible test's verdict). */
 async function gitChecks() {
   if (!S.project) return null;
-  log(`GitHub's checks of '${S.project.name}'…`, 'info');
+  collabLog(`GitHub's checks of '${S.project.name}'…`, 'info');
   try {
     const c = await api.gitChecks(S.project.name);
-    for (const l of checksLines(c)) log(l.level === 'error' ? `ERROR: ${l.text}` : l.level === 'warning' ? `WARNING: ${l.text}` : l.text, l.level === 'error' ? 'err' : l.level === 'warning' ? 'warn' : c.conclusion === 'success' ? 'ok' : 'info');
+    for (const l of checksLines(c)) collabLog(l.level === 'error' ? `ERROR: ${l.text}` : l.level === 'warning' ? `WARNING: ${l.text}` : l.text, l.level === 'error' ? 'err' : l.level === 'warning' ? 'warn' : c.conclusion === 'success' ? 'ok' : 'info');
     // (their result kept by the Collaboration tab, #4215)
     dispatchEvent(new CustomEvent('silinx:git-checks', { detail: { project: S.project.name, checks: c } }));
     return c;
@@ -217,7 +217,7 @@ async function gitChecks() {
 /** File ▸ Git ▸ Push. */
 async function gitPush() {
   if (!S.project) return null;
-  try { const p = await api.gitPush(S.project.name); log(pushText(p), 'ok'); if (p.pushed) log(CHECKS_HINT, 'info'); return p; } catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
+  try { const p = await api.gitPush(S.project.name); collabLog(pushText(p), 'ok'); if (p.pushed) collabLog(CHECKS_HINT, 'info'); return p; } catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
 }
 
 /** File ▸ Git ▸ Pull: GitHub's commits merged in; the project read again (its open documents, by the watcher). A
@@ -230,9 +230,9 @@ async function gitPull({ resolve = null } = {}) {
   const name = S.project.name;
   try {
     const p = await api.gitPull(name, resolve ? { resolve } : {});
-    log(pullText(p), 'ok');
-    for (const l of pullMergeLines(p, { designOnly: designOnly() })) log(l, 'info');
-    for (const w of p.warnings || []) log(`WARNING: ${w}`, 'warn');
+    collabLog(pullText(p), 'ok');
+    for (const l of pullMergeLines(p, { designOnly: designOnly() })) collabLog(l, 'info');
+    for (const w of p.warnings || []) collabLog(`WARNING: ${w}`, 'warn');
     // (the server's watcher tells the page what changed; the browser edition has none: its open documents told here)
     if (!p.upToDate && S.project?.name === name) {
       if (api.standalone) await applyChanges({ project: name, changes: p.files.map(f => ({ path: f, kind: S.diskTree?.includes(f) ? 'changed' : 'added' })) });
@@ -283,7 +283,7 @@ async function initDialog() {
     { label: 'Cancel', value: null }],
   });
   if (r === null) return null;
-  try { const i = await api.gitInit(S.project.name, r || null); log(initText(S.project.name, i), 'ok'); return i; }
+  try { const i = await api.gitInit(S.project.name, r || null); collabLog(initText(S.project.name, i), 'ok'); return i; }
   catch (e) { logGitError(e); return null; } finally { await refreshGitStatus(); }
 }
 

@@ -7,13 +7,13 @@
 //   hostSocket(link): the follower's side (the meeting point first, collab-meet.js), its code shown and the owner's
 //                   asked; a WebSocket class for followRoom
 import { h, dialog } from './ui.js';
-import { app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { hostedRooms } from '/core/collab-loop.js';
 import { followerOffer, ownerAnswer, channelSocket, channelEnd } from './collab-rtc.js';
+import { collabLog } from './collab-log.js';
 
 const codeField = (value, field) => h('textarea', { class: 'collab-code', rows: 4, readonly: value !== undefined ? '' : null, spellcheck: 'false', 'data-field': field, 'data-no-i18n': '', style: { width: '100%' } }, value ?? '');
-const copyButton = (text, what) => h('button', { type: 'button', class: 'btn collab-copy', onclick: () => { writeClip('text', text); app.log(`${what} copied.`, 'ok'); } }, 'Copy Code');
+const copyButton = (text, what) => h('button', { type: 'button', class: 'btn collab-copy', onclick: () => { writeClip('text', text); collabLog(`${what} copied.`, 'ok'); } }, 'Copy Code');
 
 /** The room of a share hosted by this page, and the owner's socket to it. */
 export function hostRoom() {
@@ -34,10 +34,10 @@ export async function addCodeDialog(share) {
   });
   if (!code || !share.hosted) return null;
   let ans;
-  try { ans = await ownerAnswer({ key: share.session.key, room: share.session.room, code }); } catch (e) { app.log(`ERROR: Add a User: ${e.message}.`, 'err'); return null; }
+  try { ans = await ownerAnswer({ key: share.session.key, room: share.session.room, code }); } catch (e) { collabLog(`ERROR: Add a User: ${e.message}.`, 'err'); return null; }
   ans.channel.then(dc => { if (share.hosted) share.hosted.follower(channelEnd(dc, ans.pc)); else ans.close(); },
-    e => app.log(`WARNING: Add a User: ${e.message}.`, 'warn'));
-  app.log('Add a User: send your code back to them; they are in once they paste it.', 'info');
+    e => collabLog(`WARNING: Add a User: ${e.message}.`, 'warn'));
+  collabLog('Add a User: send your code back to them; they are in once they paste it.', 'info');
   await dialog({
     title: 'Add a User',
     body: h('div', { class: 'collab-dlg' },
@@ -56,7 +56,7 @@ export async function hostSocket(link) {
     if (met !== 'codes') return met;
   }
   let offer;
-  try { offer = await followerOffer({ key: link.key, room: link.room }); } catch (e) { app.log(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
+  try { offer = await followerOffer({ key: link.key, room: link.room }); } catch (e) { collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
   const answer = codeField(undefined, 'answer');
   const code = await dialog({
     title: 'Connect to the Owner',
@@ -68,6 +68,6 @@ export async function hostSocket(link) {
   });
   if (!code) { offer.close(); return null; }
   let dc;
-  try { dc = await offer.accept(code); } catch (e) { offer.close(); app.log(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
+  try { dc = await offer.accept(code); } catch (e) { offer.close(); collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
   return function HostChannelSocket() { return channelSocket(dc, offer.pc); };
 }

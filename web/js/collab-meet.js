@@ -13,13 +13,13 @@
 //                    rejoin(): the owner found there again, with no dialog (#3835: its connection lost, made again)
 //   publicServers(link) -> the follow dialog's line naming the public servers a hosted room's follower reaches (#3361)
 import { h, dialog } from './ui.js';
-import { app } from './app.js';
 import { prefKey } from './prefs.js';
 import { iceServers } from './collab-rtc.js';
 import { meetAsHost, meetOwner, channelMeeting, trysteroMeeting, MEET_MS, TRACKERS } from '/core/collab-meet.js';
 import { relayMeeting } from '/core/collab-meet-relay.js';
 import { withLoopback } from '/core/collab-loopback.js';
 import { FOLLOWER_JOIN } from '/core/collab-loop.js';
+import { collabLog } from './collab-log.js';
 
 /** This browser's meeting point: '' (the public one, Trystero's) or 'local' (between this browser's pages). */
 export const MEETING_KEY = prefKey('silinx.collab.meeting');
@@ -52,7 +52,7 @@ export async function meetFollowers(share, hostKey) {
   try {
     return await meetAsHost({ meeting: await meetingPoint(share.meetAt), room: share.session.room, key: share.session.key, hostKey, maxReceive: FOLLOWER_JOIN, attach: end => share.hosted?.follower(end), onVia: () => share.onVia?.() });
   } catch (e) {
-    app.log(`WARNING: Share Project: ${share.meetAt ? `the relay at ${new URL(share.meetAt.address).host}` : 'the meeting point'} is out of reach (${e.message}): each follower connects with a code instead (Add a User…).`, 'warn');
+    collabLog(`WARNING: Share Project: ${share.meetAt ? `the relay at ${new URL(share.meetAt.address).host}` : 'the meeting point'} is out of reach (${e.message}): each follower connects with a code instead (Add a User…).`, 'warn');
     return null;
   }
 }
@@ -77,9 +77,9 @@ export async function findOwner(link) {
       h('p', {}, 'If they cannot be found there, you exchange codes with them instead.')),
     buttons,
   });
-  if (how === 'found') { app.log('Follow a shared project: the owner was found at the meeting point.', 'info'); found.rejoin = () => ownerAgain(link); return found; }
+  if (how === 'found') { collabLog('Follow a shared project: the owner was found at the meeting point.', 'info'); found.rejoin = () => ownerAgain(link); return found; }
   ac.abort();
   if (how === null) return null;
-  app.log(gaveUp ? `WARNING: Follow a shared project: ${gaveUp} (in ${MEET_MS / 1000} s): exchange codes with them instead.` : 'Follow a shared project: codes exchanged with the owner instead of the meeting point.', gaveUp ? 'warn' : 'info');
+  collabLog(gaveUp ? `WARNING: Follow a shared project: ${gaveUp} (in ${MEET_MS / 1000} s): exchange codes with them instead.` : 'Follow a shared project: codes exchanged with the owner instead of the meeting point.', gaveUp ? 'warn' : 'info');
   return 'codes';
 }

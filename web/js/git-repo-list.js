@@ -4,7 +4,7 @@
 // sign-in, the server's token or GitHub's command line); when they cannot be, the console says why and how to have them.
 import { api } from './api.js';
 import { h } from './ui.js';
-import { log } from './console.js';
+import { collabLog } from './collab-log.js';
 import { filterRepositories, repoLine } from '/core/github-repos.js';
 
 /** The list's element, filled when the repositories come; url: the address's field (its 'input' filters the list). */
@@ -50,8 +50,8 @@ export function repoList(url) {
   }, e => {
     if (!url.isConnected) return;
     status.textContent = 'Your GitHub repositories are not listed (the console says why): type the address.';
-    log(`${e.message.replace(/^./, c => c.toUpperCase())}.`, 'info');
-    if (e.hint) log(`Hint: ${e.hint}`, 'info');
+    collabLog(`${e.message.replace(/^./, c => c.toUpperCase())}.`, 'info');
+    if (e.hint) collabLog(`Hint: ${e.hint}`, 'info');
   });
   return box;
 }

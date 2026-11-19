@@ -3,7 +3,8 @@
 // - Each line of the Console says where it comes from (data-src): Check Syntax (Design), Simulation, Emulation,
 //   Implementation (synthesis, implementation, the constraints' checks (#2692) and programming the board: one filter,
 //   #1173), or the application
-//   ('app'); sourceOf() reads it from the processes'
+//   ('app'), or the one its writer gave it (data-own-src: the collaboration's messages, Design's, #4632); sourceOf() reads
+//   the others' from the processes'
 //   headers ("Started : …", "=== SILINX STEP …", iMPACT's "Programming FPGA (SRAM)..."): the lines after a
 //   header are its process's.
 // - Filters by source follow the task in front in the Tasks interface (Implement: Implementation)
@@ -74,7 +75,8 @@ const isimInput = () => document.querySelector('#workspace > .doc:not([hidden]) 
 const simulating = () => !!isimInput() && (task === 'sim' || (task === null && /^isim(:|$)/.test(app?.S.active?.id || '')));
 
 function tag(ln) {
-  if (!ln.dataset.src) {
+  if (ln.dataset.ownSrc !== undefined) { /* its writer's source (#4632): the lines after it stay the process's */ }
+  else if (!ln.dataset.src) {
     ln.dataset.src = cur = sourceOf(ln.textContent, cur);
     // (a process started: shown, the filter turned to its source if it hid it, #1852)
     if (/^Started : "/.test(ln.textContent.trim()) && built) {
@@ -87,7 +89,7 @@ function tag(ln) {
 }
 function retagAll() {
   cur = 'app';
-  for (const ln of $('console-log').children) { delete ln.dataset.src; tag(ln); }
+  for (const ln of $('console-log').children) { if (ln.dataset.ownSrc === undefined) delete ln.dataset.src; tag(ln); }
 }
 function refilter() {
   const set = shownSources();
@@ -206,7 +208,7 @@ export function initMessages(a) {
   build();
   new MutationObserver(ms => {
     if (!built) return;
-    for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1 && !el.dataset.src) tag(el);
+    for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1 && (!el.dataset.src || el.dataset.ownSrc !== undefined)) tag(el);
     if (ms.some(m => m.removedNodes.length) && !$('console-log').childElementCount) cur = 'app';   // (cleared)
     showLast();
   }).observe($('console-log'), { childList: true });
