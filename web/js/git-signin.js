@@ -11,7 +11,7 @@
 // signed in), then forgets the sign-in. Every message goes to the console; the token is never in one.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log } from './console.js';
+import { collabLog } from './collab-log.js';
 import { logGitError } from './git.js';
 
 const DEVICE = 'https://github.com/login/device';
@@ -63,8 +63,8 @@ async function tokenDialog() {
     } }, { label: 'Cancel', value: null }],
   });
   field.value = '';
-  if (!r) { log('The GitHub sign-in was cancelled.', 'info'); return false; }
-  log(signedIn(r.login, r.remembered), 'ok');
+  if (!r) { collabLog('The GitHub sign-in was cancelled.', 'info'); return false; }
+  collabLog(signedIn(r.login, r.remembered), 'ok');
   return true;
 }
 
@@ -80,7 +80,7 @@ async function deviceDialog() {
       keptHint()),
     buttons: [{ label: 'Get a Code', primary: true, value: () => ({ privateRepos: priv.checked, remember: remember.checked }) }, { label: 'Cancel', value: null }],
   });
-  if (!opts) { log('The GitHub sign-in was cancelled.', 'info'); return false; }
+  if (!opts) { collabLog('The GitHub sign-in was cancelled.', 'info'); return false; }
   const ctl = new AbortController();
   const code = h('code', { class: 'git-user-code', 'data-no-i18n': '', style: { fontSize: '20px', letterSpacing: '2px' } }, '…');
   const link = h('a', { class: 'git-verify', href: DEVICE, target: '_blank', rel: 'noopener noreferrer', 'data-no-i18n': '' }, DEVICE);
@@ -106,10 +106,10 @@ async function deviceDialog() {
     },
   }).then(ok => ({ ok }), error => ({ error }));
   const r = await Promise.race([shown.then(v => (v === 'done' ? null : { cancel: true })), run]);
-  if (!r || r.cancel) { ctl.abort(); await run; log('The GitHub sign-in was cancelled.', 'info'); return false; }
+  if (!r || r.cancel) { ctl.abort(); await run; collabLog('The GitHub sign-in was cancelled.', 'info'); return false; }
   close?.('done');
   if (r.error) { logGitError(r.error); return false; }
-  log(signedIn(null, r.ok.remembered), 'ok');
+  collabLog(signedIn(null, r.ok.remembered), 'ok');
   return true;
 }
 
@@ -144,8 +144,8 @@ export async function signOut() {
       h('div', { class: 'git-sign-out-keep', style: { marginTop: '8px' } }, t.keep, ' ', ext(t.href)))),
     buttons: [{ label: 'Sign Out', value: true }, { label: 'Cancel', value: false, primary: true }],
   });
-  if (!ok) { log('Sign out of GitHub was cancelled: still signed in.', 'info'); return false; }
+  if (!ok) { collabLog('Sign out of GitHub was cancelled: still signed in.', 'info'); return false; }
   await api.githubSignOut();
-  log(signedOutLine(way), 'ok');
+  collabLog(signedOutLine(way), 'ok');
   return true;
 }

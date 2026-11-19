@@ -8,7 +8,7 @@
 // either way the page then leaves the project followed: its own backend again, nothing shared.
 import { api } from './api.js';
 import { dialog, h } from './ui.js';
-import { log } from './console.js';
+import { collabLog } from './collab-log.js';
 import { app } from './app.js';
 import { collab } from './collab-state.js';
 import { renderPresence } from './collab-presence.js';
@@ -33,7 +33,7 @@ export const canKeep = () => !!st && !st.kept && !st.left && st.session.closed()
 /** Following ended: the console's line offering Keep a Copy. */
 export function followEnded() {
   if (!canKeep()) return;
-  log(`${collab.owner}'s project "${collab.project}" is read only now and saved nowhere: Keep a Copy saves it as a project of yours (untrusted, as any project from someone else).`, 'info', { action: { label: 'Keep a Copy', run: () => keepCopy() } });
+  collabLog(`${collab.owner}'s project "${collab.project}" is read only now and saved nowhere: Keep a Copy saves it as a project of yours (untrusted, as any project from someone else).`, 'info', { action: { label: 'Keep a Copy', run: () => keepCopy() } });
 }
 
 // the page's own backend again, nothing followed
@@ -50,17 +50,17 @@ function leave() {
 export async function keepCopy({ open = true } = {}) {
   if (!canKeep()) return null;
   let copy;
-  try { copy = followedCopy(st.session.doc); } catch (e) { log(`ERROR: Keep a Copy: ${e.message}.`, 'err'); return null; }
+  try { copy = followedCopy(st.session.doc); } catch (e) { collabLog(`ERROR: Keep a Copy: ${e.message}.`, 'err'); return null; }
   try {
     const name = copyName(copy.name, (await st.real.projects()).map(p => p.name));
     await st.real.importZip(name, new Blob([await designZip(copy.entries)], { type: 'application/zip' }));
     st.kept = true;
     const owner = collab.owner;
     leave();
-    log(`Kept a copy of ${owner}'s project "${copy.name}" as your project "${name}" (untrusted: Trust Project, when it opens, once you trust it).`, 'ok');
+    collabLog(`Kept a copy of ${owner}'s project "${copy.name}" as your project "${name}" (untrusted: Trust Project, when it opens, once you trust it).`, 'ok');
     if (open) await app.openProject(name);
     return name;
-  } catch (e) { log(`ERROR: Keep a Copy: ${e.message}.`, 'err'); return null; }
+  } catch (e) { collabLog(`ERROR: Keep a Copy: ${e.message}.`, 'err'); return null; }
 }
 
 /** Before the project followed is closed, once following ended: its changes kept or not, as the user says, then the
@@ -75,7 +75,7 @@ export async function leaveFollowed() {
     });
     if (!v) return false;
     if (v === 'keep') return !!(await keepCopy({ open: false }));
-    log(`WARNING: ${collab.owner}'s project "${collab.project}" closed: your changes were not kept.`, 'warn');
+    collabLog(`WARNING: ${collab.owner}'s project "${collab.project}" closed: your changes were not kept.`, 'warn');
   }
   leave();
   return true;

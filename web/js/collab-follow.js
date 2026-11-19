@@ -39,6 +39,7 @@ import { openReport } from './collab-runs.js';
 import { reportPath } from '/core/collab-runs.js';
 import { keepWireStyles } from './collab-wire-view.js';
 import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
+import { collabLog } from './collab-log.js';
 
 const ARRIVE_MS = 20_000;
 let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
@@ -53,12 +54,12 @@ const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || ''
  *  link to follow, broken, refused, or the follower did not agree). The hash is cleared (a reload does not join again). */
 export async function startFollowing(hash = location.hash) {
   let link;
-  try { link = parseFollowLink(hash); } catch (e) { history.replaceState(null, '', location.pathname + location.search); app.log(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
+  try { link = parseFollowLink(hash); } catch (e) { history.replaceState(null, '', location.pathname + location.search); collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
   if (!link) return null;
   history.replaceState(null, '', location.pathname + location.search);
   // (another Silinx's relay, #3227, or a Cloudflare relay on the site, #4543: as its Content-Security-Policy lets it connect to)
-  if (link.relay && !await relayOk(link.relay)) { app.log(`ERROR: Follow a shared project: ${notHere(link.relay)}: not followed.`, 'err'); return null; }
-  if (api.standalone && link.via === 'relay' && !link.relay) { app.log('ERROR: Follow a shared project: open its link at the address of the Silinx that shares it (the browser edition has no relay).', 'err'); return null; }
+  if (link.relay && !await relayOk(link.relay)) { collabLog(`ERROR: Follow a shared project: ${notHere(link.relay)}: not followed.`, 'err'); return null; }
+  if (api.standalone && link.via === 'relay' && !link.relay) { collabLog('ERROR: Follow a shared project: open its link at the address of the Silinx that shares it (the browser edition has no relay).', 'err'); return null; }
   let saved = '';
   try { saved = localStorage.getItem(NAME_KEY) || ''; } catch { /* none */ }
   const input = h('input', { type: 'text', value: saved, 'data-field': 'name', maxlength: 40, style: { width: '100%' } });
@@ -83,12 +84,12 @@ export async function startFollowing(hash = location.hash) {
     // was found there, never when the codes were exchanged by hand: they would have to be again)
     session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign: link.sign, user: { name }, onEvent: ev => onEvent(ev), ...(WS ? (WS.rejoin ? { transport: WS.rejoin } : { reconnect: false }) : {}) });
     await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ARRIVE_MS))]);
-  } catch (e) { session?.close(); app.log(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
+  } catch (e) { session?.close(); collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
   const { project, owner } = docProject(session.doc);
   fol = { name, session, following: true, driven: null, bound: new Map(), drawn: new Map(), top: link.top || null, act: followState(), front: undefined };
   Object.assign(collab, { role: 'follower', owner: owner || session.owner()?.name || '?', project: project.name, session, editor: session.editor });
   const real = { ...api };   // (its own backend, for a copy kept once following ends, #4198)
-  Object.assign(api, followApi(api, session.doc, { warn: text => app.log(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
+  Object.assign(api, followApi(api, session.doc, { warn: text => collabLog(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
   setPresenceCommands(commands);
   watchLeave(session, real);
   watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
@@ -96,8 +97,8 @@ export async function startFollowing(hash = location.hash) {
   trackOnEvents(document, tracking.poke);   // (#4647: a key, a click, a selection: looked at a frame later)
   tracking.poke();   // (what arrived with the project: put now, not at the next look)
   draw();
-  if (session.editor) app.log(`Editing ${collab.owner}'s project "${project.name}" with them: its text files and drawings change as you all edit them (Following ${collab.owner}, in the toolbar).`, 'ok');
-  else app.log(`Following ${collab.owner}'s project "${project.name}", read only: their changes appear as they make them, and what they do (their documents, views and selection) while you follow them (Following ${collab.owner}, in the toolbar).`, 'ok');
+  if (session.editor) collabLog(`Editing ${collab.owner}'s project "${project.name}" with them: its text files and drawings change as you all edit them (Following ${collab.owner}, in the toolbar).`, 'ok');
+  else collabLog(`Following ${collab.owner}'s project "${project.name}", read only: their changes appear as they make them, and what they do (their documents, views and selection) while you follow them (Following ${collab.owner}, in the toolbar).`, 'ok');
   return project.name;
 }
 
@@ -111,7 +112,7 @@ export async function openFollowedTop() {
   fol.top = null;
   fol.following = false;   // (the owner's view not brought to the front meanwhile)
   await (await import('./link-open.js')).showModule(top, true);
-  app.log(`Browsing alone on ${top}, the link's module (Follow ${collab.owner}, in the toolbar, follows ${collab.owner} again).`, 'info');
+  collabLog(`Browsing alone on ${top}, the link's module (Follow ${collab.owner}, in the toolbar, follows ${collab.owner} again).`, 'info');
   draw();
 }
 
@@ -121,7 +122,7 @@ export async function openFollowedTop() {
 export function followPasted() {
   if (collab.role !== 'owner') { location.reload(); return; }
   history.replaceState(null, '', location.pathname + location.search);
-  app.log('WARNING: Follow a shared project: this page shares a project, which loading the link here would stop: open the link in another tab or window.', 'warn');
+  collabLog('WARNING: Follow a shared project: this page shares a project, which loading the link here would stop: open the link in another tab or window.', 'warn');
 }
 
 const commands = () => [
@@ -136,7 +137,7 @@ function setFollowing(on) {
   fol.driven = null;
   fol.drivenKey = null;   // (the owner's view brought to the front again, even unchanged since: #3631)
   fol.act.forget();   // (and the owner's whole activity, #4002)
-  app.log(on ? `Following ${collab.owner}: their documents, views and selection.` : `Browsing alone: ${collab.owner} is no longer followed (Follow ${collab.owner}, in the toolbar, follows them again).`, 'info');
+  collabLog(on ? `Following ${collab.owner}: their documents, views and selection.` : `Browsing alone: ${collab.owner} is no longer followed (Follow ${collab.owner}, in the toolbar, follows them again).`, 'info');
   draw();
   track();
 }
@@ -158,18 +159,18 @@ function onEvent(ev) {
   if (!fol) return;
   if (ev.type === 'peers' || ev.type === 'activity') { draw(); track(); }
   else if (ev.type === 'offline') {
-    app.log(`WARNING: The connection to ${collab.owner}'s project "${collab.project}" was lost: reconnecting${collab.editor ? ' (your changes meanwhile are sent once it is back)' : ' (what you see is as it was then until it is back)'}.`, 'warn');
+    collabLog(`WARNING: The connection to ${collab.owner}'s project "${collab.project}" was lost: reconnecting${collab.editor ? ' (your changes meanwhile are sent once it is back)' : ' (what you see is as it was then until it is back)'}.`, 'warn');
     draw();
     clearShown();
-  } else if (ev.type === 'online') { app.log(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
+  } else if (ev.type === 'online') { collabLog(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
   else if (ev.type === 'closed') {
     // (one's own Stop Following: said, not warned, #4201; the owner's end or a connection lost for good: warned)
-    if (ev.stopped) app.log(`Stopped following ${collab.owner}'s project "${collab.project}": what you see is as it was then.`, 'info');
-    else app.log(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn');
+    if (ev.stopped) collabLog(`Stopped following ${collab.owner}'s project "${collab.project}": what you see is as it was then.`, 'info');
+    else collabLog(`WARNING: ${collab.owner}'s project "${collab.project}" is no longer followed (${ev.reason}): what you see is as it was then.`, 'warn');
     draw(); clearShown(); ended();
   }
   else if (ev.type === 'role') roleChanged(ev);
-  else if (ev.type === 'error') app.log(`${ev.fatal ? 'ERROR' : 'WARNING'}: Follow a shared project: ${ev.message}.`, ev.fatal ? 'err' : 'warn');
+  else if (ev.type === 'error') collabLog(`${ev.fatal ? 'ERROR' : 'WARNING'}: Follow a shared project: ${ev.message}.`, ev.fatal ? 'err' : 'warn');
 }
 
 // the owner's word of this participant's role (#3997): an editor (the key renewed: nothing changes here) or a viewer;
@@ -179,7 +180,7 @@ async function roleChanged(ev) {
   const editor = ev.role === 'editor';
   if (collab.editor === editor) return;
   collab.editor = editor;
-  app.log(editor ? `${collab.owner} made you an editor: you edit the project's text files and drawings with them.` : `${collab.owner} made you a viewer: you follow the project, read only.`, 'info');
+  collabLog(editor ? `${collab.owner} made you an editor: you edit the project's text files and drawings with them.` : `${collab.owner} made you a viewer: you follow the project, read only.`, 'info');
   await reopenDocs();
   fol.drivenKey = null;
   fol.front = undefined;
@@ -218,7 +219,7 @@ const refusedDrawings = new Set();
 function shownDrawing(path, model) {
   try { gateEdit(path, drawingText(path, model)); return true; } catch (e) {
     const why = `${path}: ${e.reason || e.message}`;
-    if (!refusedDrawings.has(why)) { refusedDrawings.add(why); app.log(`WARNING: Follow a shared project: ${path}: not shown: ${e.reason || e.message}.`, 'warn'); }
+    if (!refusedDrawings.has(why)) { refusedDrawings.add(why); collabLog(`WARNING: Follow a shared project: ${path}: not shown: ${e.reason || e.message}.`, 'warn'); }
     return false;
   }
 }
@@ -254,7 +255,7 @@ async function track() {
     // (the open text editors, live, #3182: an editor's own files to edit, the others read only)
     keepBound(fol.bound, S.docs, fol.session.doc.getMap('files'), p => !!d0(p) && api.shown(p));
     // (an editor's drawings edited live, #3183: a merged model shown once it passes the import gate, as any file, #3361)
-    keepDrawingsBound(fol.drawn, S.docs, fol.session.doc, editsDrawingHere, { say: text => app.log(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
+    keepDrawingsBound(fol.drawn, S.docs, fol.session.doc, editsDrawingHere, { say: text => collabLog(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
     // (the wires' style of its schematics and circuits: this participant's own, remembered for this project, #4239)
     if (S.project?.name === collab.project) keepWireStyles(S.docs, { owner: collab.owner, project: collab.project });
     const here = docPath(S.active);

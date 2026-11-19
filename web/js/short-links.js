@@ -7,9 +7,9 @@
 // selecting or unselecting them all. The links are kept where the sign-in is (localStorage; at file:, this tab only: #3530).
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { prefKey } from './prefs.js';
+import { collabLog } from './collab-log.js';
 
 const KEY = prefKey('silinx.short-links');
 const MAX = 200;
@@ -31,12 +31,12 @@ function forgetLinks({ ids = null, still = null }) {
 }
 
 const plural = n => `${n} short link${n === 1 ? '' : 's'}`;
-const fail = e => app.log(`ERROR: Short Links: ${e.message}${e.hint ? `\nHint: ${e.hint}` : ''}`, 'err');
+const fail = e => collabLog(`ERROR: Short Links: ${e.message}${e.hint ? `\nHint: ${e.hint}` : ''}`, 'err');
 
 /** File ▸ Short Links…: the user's short links, listed, copied again and deleted. */
 export async function shortLinksDialog() {
   if (!await api.gistAvailable()) {
-    app.log(api.standalone ? 'ERROR: Short Links: your short links need your GitHub sign-in: Sign in with GitHub… first.' : 'ERROR: Short Links: your short links need a GitHub token on the Silinx server (GH_TOKEN): start the server with one.', 'err');
+    collabLog(api.standalone ? 'ERROR: Short Links: your short links need your GitHub sign-in: Sign in with GitHub… first.' : 'ERROR: Short Links: your short links need a GitHub token on the Silinx server (GH_TOKEN): start the server with one.', 'err');
     if (api.standalone) { const { signInDialog } = await import('./git-signin.js'); if (!await signInDialog()) return null; } else return null;
   }
   let list;
@@ -60,7 +60,7 @@ export async function shortLinksDialog() {
         h('td', { 'data-no-i18n': '' }, day(g.created || r?.made)),
         g.expires ? h('td', { class: 'short-expires' }, g.expired ? `Expired ${day(g.expires)}` : `Until ${day(g.expires)}`) : h('td', { class: 'short-expires' }, 'Never'),
         h('td', {},
-          r ? h('a', { href: '#', class: 'short-copy', onclick: e => { e.preventDefault(); writeClip('text', r.link); app.log(`Short Links: the short link of '${r.project}' copied, ${r.link.length} characters.`, 'ok'); } }, 'Copy') : '',
+          r ? h('a', { href: '#', class: 'short-copy', onclick: e => { e.preventDefault(); writeClip('text', r.link); collabLog(`Short Links: the short link of '${r.project}' copied, ${r.link.length} characters.`, 'ok'); } }, 'Copy') : '',
           r ? ' ' : '',
           h('a', { href: g.url, class: 'short-gist', target: '_blank', rel: 'noopener noreferrer' }, 'Gist')));
     }));
@@ -73,7 +73,7 @@ export async function shortLinksDialog() {
     forgetLinks({ ids: deleted });
     for (const id of deleted) picked.delete(id);
     list = list.filter(g => !deleted.includes(g.id));
-    app.log(`Short Links: ${plural(deleted.length)} deleted from your gists${which.expired ? ' (the expired ones)' : ''}.`, 'ok');
+    collabLog(`Short Links: ${plural(deleted.length)} deleted from your gists${which.expired ? ' (the expired ones)' : ''}.`, 'ok');
     draw();
     return false;   // (the dialog kept open, its list as it is now)
   };
