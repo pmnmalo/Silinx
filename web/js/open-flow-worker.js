@@ -8,8 +8,9 @@
 //   in:  { prepare: { graph, part, family, device, pkg, nextpnr }, assets, yosys, nextpnr, root }: what a run of that device fetches
 //        (nextpnr and the device's chip database too when prepare.nextpnr: the project's engine is not Silinx's, #2136; the
 //        7-series': no device description, its bit database bitdb/xc7/<part>.json.gz and nextpnr-himbaechel-xc7, #3143),
-//        fetched into Cache Storage (web/js/asset-cache.js, #967), this edition's other versions deleted from it
-//   out: { done: { fetched, bytes, pruned } }
+//        fetched into Cache Storage (web/js/asset-cache.js, #967), this edition's other versions deleted from it; sizes: the
+//        assets' sizes by their path under assets/ (the build's), force: an Implement's (#4628: on a metered connection too)
+//   out: { line } (what it downloads, its size, its progress: #4628) … { done: { fetched, bytes, pruned } }
 import { runOpenFlow } from '/core/flow-ide.js';
 import { familyProfile } from '/core/family-profile.js';
 import { loadDevice, dbFileNames, dbFilesFrom, makeBitDb, fetchBitDbS6, s6DbNames, bitDbXc7, nextpnrIo, ice40Io, ecp5Io, gowinIo, gatemateIo, runYosysOnce, yosysWorkerSource, readableBlobs } from '/packages/silinx-fpga/src/index.js';
@@ -18,7 +19,7 @@ import { workerIo } from './open-flow-worker-io.js';
 import { parseXdl, fpgaModel, deviceGrid, MODEL_VERSION } from '/packages/silinx-fpga/src/parts.js';
 import { ice40FromTarball } from './nextpnr-ice40-browser.js';
 import { routerFallback } from './nextpnr-router-fallback.js';
-import { assetFetch, assetFetchSource, assetCached, prefetchAssets, pruneAssetCache, YOSYS_FILES, nextpnrFiles, nextpnrChipdb } from './asset-cache.js';
+import { assetFetch, assetFetchSource, assetCached, meteredConnection, prefetchAssets, pruneAssetCache, YOSYS_FILES, nextpnrFiles, nextpnrChipdb } from './asset-cache.js';
 
 // (Yosys in this worker's own thread, where it cannot start workers of its own: its Blobs readable, #556)
 readableBlobs();
@@ -44,8 +45,9 @@ const loaded = new Set();   // (the URLs of Yosys a run of this worker has loade
 // a Yosys worker's code: the cache first, then Yosys (packages/silinx-fpga/src/synth-open.js)
 const yosysSource = bundle => assetFetchSource() + yosysWorkerSource(bundle);
 
-/** What a run of the device fetches, fetched into the cache: { fetched, bytes, pruned }. */
-async function prepare({ prepare: d, assets, yosys, nextpnr, keep, root }) {
+/** What a run of the device fetches, fetched into the cache: { fetched, bytes, pruned }; post({ line }) says what is
+ *  downloaded and how far it is (nothing when the cache holds it all). */
+async function prepare({ prepare: d, assets, yosys, nextpnr, keep, root, sizes, force }, post) {
   const base = new URL(assets);
   // (this version's nextpnr kept, its gen/ and chipdb/, whatever this project's engine; nextpnr: the family's, #2288; keep: this
   // version's every nextpnr bundle, the other families' too, #3143)
@@ -53,7 +55,22 @@ async function prepare({ prepare: d, assets, yosys, nextpnr, keep, root }) {
   const urls = [...(d.graph ? [new URL(`devices/${d.graph}`, base)] : []), ...dbUrls(d, base),
     ...YOSYS_FILES.map(f => new URL(f, yosys)),
     ...(nextpnr && d.nextpnr ? [...nextpnrFiles(uarchOf(d.family)).map(f => new URL(f, nextpnr)), await chipdbUrl(d, nextpnr)] : [])];
-  return { ...await prefetchAssets(urls, { fetchFn: netFetch }), pruned };
+  const missing = [];
+  for (const u of urls) if (!await assetCached(u)) missing.push(u);
+  if (!missing.length || (!force && meteredConnection(self.navigator))) return { fetched: 0, bytes: 0, pruned };
+  return { ...await prefetchAssets(missing, { fetchFn: netFetch, force, onProgress: progress(d.part, missing, sizes, post) }), pruned };
+}
+// the console's lines of a download (#4628): what and how much (the files' sizes, the build's), then each quarter of it
+const MB = n => (n / 1e6).toFixed(1);
+function progress(part, urls, sizes, post) {
+  const total = urls.map(String).reduce((n, u) => n + (sizes?.[u.slice(u.lastIndexOf('/assets/') + 8)] || 0), 0);
+  post({ line: `Downloading the Silinx toolchain for the ${part} (${total ? `${MB(total)} MB: ` : ''}once, then kept by this browser)…` });
+  let done = 0, quarter = 0;
+  return n => {
+    done += n;
+    if (!total) return;
+    for (; quarter < 4 && done >= total * (quarter + 1) / 4; quarter++) post({ line: `Downloaded ${MB(total * (quarter + 1) / 4)} of ${MB(total)} MB (${(quarter + 1) * 25}%)` });
+  };
 }
 // a family's nextpnr micro-architecture (the name of its WebAssembly files): its profile's, else the Spartan-3E's or -6's
 const uarchOf = family => { const f = familyProfile(family).openFlow; return f?.uarch || (f?.bitDb === 's6' ? 'spartan6' : 'spartan3e'); };
@@ -130,7 +147,7 @@ self.onmessage = async ({ data }) => {
   // every message carries the run's id (web/js/open-flow-browser.js: each run hears only its own)
   const post = m => self.postMessage({ ...m, id: data.id });
   if (data.integrity) self.SILINX_ASSET_INTEGRITY = data.integrity;   // (the assets' SHA-256, #1237: this worker's fetches and its Yosys workers')
-  if (data.prepare) { post({ done: await prepare(data).catch(e => ({ fetched: 0, bytes: 0, pruned: 0, error: e.message })) }); return; }
+  if (data.prepare) { post({ done: await prepare(data, post).catch(e => ({ fetched: 0, bytes: 0, pruned: 0, error: e.message })) }); return; }
   try {
     const base = new URL(assets);
     // what the flow needs, fetched before it starts (it reads them synchronously)

@@ -18,7 +18,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = 'https://pmnmalo.github.io/Silinx/';
 const DEV = `${SITE}dev/`;
 
-test('#1051 route: the page network-first, the manifest and icons kept, the versioned assets from their cache, nothing else intercepted', () => {
+test('#1051 route: the page network-first, the manifest and icons kept, Yosys\'s and nextpnr\'s files from their cache (#4628: not an edition\'s device descriptions), nothing else intercepted', () => {
   const nav = (url) => route({ url, mode: 'navigate' }, SITE);
   const get = (url, scope = SITE) => route({ url, mode: 'cors' }, scope);
   assert.equal(nav(SITE), 'page');
@@ -31,8 +31,12 @@ test('#1051 route: the page network-first, the manifest and icons kept, the vers
   assert.equal(get(`${SITE}version.json`), 'network');
   assert.equal(get(`${SITE}sw.js`), 'network');
   assert.equal(get(`${SITE}assets/vendor/yowasp-yosys/0.70.1258/gen/bundle.js`), 'asset');
-  assert.equal(get(`${SITE}assets/15.12.0/devices/xc3s250ecp132-4.json.gz`), 'asset');
-  assert.equal(get(`${SITE}assets/dev-83fea1b/bitdb/s3e-tiles.json`), 'asset');
+  assert.equal(get(`${SITE}assets/vendor/nextpnr-spartan/1.5.2/chipdb/chipdb-xc3s250e.bin.gz`), 'asset');
+  // an edition's device descriptions and bit databases: the flow worker's assetFetch keeps them by their content, not this
+  // worker by their URL (a second copy, #4628); nor the content's keys themselves (never requested)
+  assert.equal(get(`${SITE}assets/15.12.0/devices/xc3s250ecp132-4.json.gz`), 'network');
+  assert.equal(get(`${SITE}assets/dev-83fea1b/bitdb/s3e-tiles.json`), 'network');
+  assert.equal(get(`${SITE}assets/sha256/${'A'.repeat(43)}/s3e-tiles.json`), 'network');
   assert.equal(get(`${SITE}assets/devices/xc3s250ecp132-4.json.gz`), 'network', 'the unversioned assets of before #487');
   // another origin (GitHub's API, the usage counter), another method
   assert.equal(get('https://api.github.com/repos/pmnmalo/Silinx/releases/latest'), 'network');
@@ -46,7 +50,7 @@ test('#1051 route: the page network-first, the manifest and icons kept, the vers
   assert.equal(get(`${DEV}assets/dev-83fea1b/bitdb/s3e-tiles.json`), 'network');
   assert.equal(route({ url: DEV, mode: 'navigate' }, DEV), 'page');
   assert.equal(get(`${DEV}manifest.webmanifest`, DEV), 'shell');
-  assert.equal(get(`${DEV}assets/dev-83fea1b/bitdb/s3e-tiles.json`, DEV), 'asset');
+  assert.equal(get(`${DEV}assets/vendor/yowasp-yosys/0.70.1258/gen/yosys.core.wasm`, DEV), 'asset');
   assert.equal(route({ url: SITE, mode: 'navigate' }, DEV), 'network', 'outside its scope');
 });
 
@@ -192,15 +196,16 @@ test('#1051 the worker: installed keeps the page and SHELL; the page from the ne
   const bundle = `${SITE}assets/vendor/yowasp-yosys/0.70.1258/gen/bundle.js`;
   await w.stores.get('silinx-assets').put(bundle, new Response('yosys'));
   assert.equal(await (await w.fire('fetch', req(bundle))).text(), 'yosys');
-  const dev = `${SITE}assets/dev-83fea1b/bitdb/s3e-tiles.json`;
+  const dev = `${SITE}assets/vendor/nextpnr-spartan/1.5.2/chipdb/chipdb-xc3s250e.bin.gz`;
   await assert.rejects(w.fire('fetch', req(dev)), /Failed to fetch/, 'not kept, no network: the request fails as it would');
   w.net.down = false;
   w.net.files.set(dev, 'tiles');
   assert.equal(await (await w.fire('fetch', req(dev))).text(), 'tiles');
   await new Promise((ok) => setImmediate(ok));
   assert.equal(await (await w.stores.get('silinx-assets').match(dev)).text(), 'tiles');
-  // nothing else answered by the worker: version.json, another origin, dev/
-  for (const u of [`${SITE}version.json`, 'https://api.github.com/x', `${DEV}index.html`]) assert.equal(await w.fire('fetch', req(u, u.endsWith('.html') ? 'navigate' : 'cors')), null, u);
+  // nothing else answered by the worker: version.json, another origin, dev/, an edition's bit database (the flow worker's
+  // assetFetch keeps it by its content, #4628)
+  for (const u of [`${SITE}assets/dev-83fea1b/bitdb/s3e-tiles.json`, `${SITE}version.json`, 'https://api.github.com/x', `${DEV}index.html`]) assert.equal(await w.fire('fetch', req(u, u.endsWith('.html') ? 'navigate' : 'cors')), null, u);
   // no network and no kept page: the navigation fails as it would without the worker
   w.stores.delete(CACHE);
   w.net.down = true;

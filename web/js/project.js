@@ -18,10 +18,12 @@ import { gitAvailable } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
 import { isDesignOnly } from '/core/project-kind.js';
+import { afterOpening } from './prefetch-schedule.js';
+
+// (the background download of the last project opened, cancelled when another opens: #4628)
+let cancelPrefetch = () => {};
 
 const $ = id => document.getElementById(id);
-// how long after a project opens the browser edition fetches what Implement needs (#967): after the opening's own work
-const prepareDelay = () => globalThis.SILINX_PREPARE_DELAY ?? 2000;
 
 // per-project UI state (cleared when another project is opened or the project is closed)
 function resetProjectState() {
@@ -83,8 +85,10 @@ async function openProjectNow(name, { startup = false } = {}) {
   await restoreImplStatus();
   // what another process (the MCP server) changes in it, shown as it changes (#2843)
   if (S.project?.name === name) watchProject(name);
-  // the browser edition: what Implement needs, downloaded now in the background, kept by the browser (#967)
-  if (api.standalone) setTimeout(() => S.project?.name === name && import('./open-flow-browser.js').then(m => m.prepareBrowserFlow(S.project.device)).catch(() => {}), prepareDelay());
+  // the browser edition: what Implement needs, downloaded in the background once the page is idle, kept by the browser
+  // (#967; never while the page and the project load, nor on a metered connection: the first Implement's then, #4628)
+  cancelPrefetch();
+  if (api.standalone) cancelPrefetch = afterOpening(() => S.project?.name === name && import('./open-flow-browser.js').then(m => m.prepareBrowserFlow(S.project.device)).catch(() => {}));
   // where the user was in this project; the Design Summary the first time (its documents reopened out of sight: the
   // work area shown once they are in place, at start-up once its task is back too, web/js/app.js, #1339)
   document.documentElement.dataset.restoring = '';

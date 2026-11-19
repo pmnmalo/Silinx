@@ -168,7 +168,7 @@ xilinx micro-architecture, about 2.8 MB, and a chip database per device beside i
 `io.nextpnr.xc7`, and the bitstream from its FASM on Project X-Ray's bit database (`bitdb/xc7/<part>.json.gz`, 0.3 MB the
 xc7a35t's). The browser edition publishes them as the Spartan-3E's and the Spartan-6's (#3143): `assets/vendor/nextpnr-xc7/<its
 version>/gen|chipdb/` and `assets/<version>/bitdb/xc7/`, a part available where the build found its bit database (the page's
-layout `xc7Parts`), fetched into Cache Storage when a project opens; nextpnr routes with router2 as the local server does (about
+layout `xc7Parts`), fetched into Cache Storage once the page is idle after a project opened, or by the first Implement (#4628); nextpnr routes with router2 as the local server does (about
 1.3 GB of the browser's memory for the xc7a35t, its `.bit` the server's), router1 again where router2 stops without an error of
 its own, out of memory (`web/js/nextpnr-router-fallback.js`, a warning says so).
 
