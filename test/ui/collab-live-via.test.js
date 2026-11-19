@@ -7,12 +7,14 @@
 // explanation; the relay set up while the window is open (as the Collaboration tab's Relay box does): its address shown
 // with Change…, its key nowhere, Start Sharing through it (the page meeting its followers at the relay), the other way
 // locked while shared; the Live way chosen remembered for Share Live…; the window's size the same throughout (#4617);
+// Live (either way) to A copy with no frame between, one window in every frame (#4676: test/ui/share-frames.js);
 // in Portuguese. The
 // relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim (test/workers-shim.js), among the
 // site's relays. No warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
+import { framesOf, checkFrames } from './share-frames.js';
 import { buildSite } from './site-lib.js';
 import { serveWorker } from '../workers-shim.js';
 import worker, { RelayRoom } from '../../packages/silinx-relay-cloudflare/src/worker.js';
@@ -116,8 +118,9 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   const box = await windowBox(page), sizes = [];
   const step = async (name) => sizes.push([name, await windowBox(page)]);
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-peer', about: [PEER], relay: null, start: true, radios: ['share-how'] });
-  // A copy: the same row, nothing chosen of Live's
-  await choose(page, 'copy'); await step('a copy');
+  // A copy: the same row, nothing chosen of Live's; switched with no frame between (#4676: one window in every frame)
+  checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', 'Live peer to peer to A copy');
+  await step('a copy');
   assert.equal((await ways(page)).how, 'copy');
   assert.deepEqual((await ways(page)).row, ROW);
   // the Cloudflare relay from A copy's window: none set up, said, the guide offered, Start Sharing disabled
@@ -157,6 +160,9 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   await page.dialogButton('Stop Sharing');
   await page.waitFor(() => document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'stopped' });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="how-live-peer"]').disabled), false, 'unlocked once stopped');
+  // (#4676: from the Cloudflare relay's window to A copy, no frame between)
+  checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', 'Live via the Cloudflare relay to A copy');
+  await step('a copy, from the relay\'s');
   assert.deepEqual(sizes, sizes.map(([n]) => [n, box]));
   await page.dialogButton('Close');
   await page.waitNoDialog();

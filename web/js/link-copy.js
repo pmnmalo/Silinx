@@ -36,7 +36,7 @@ const linkBase = () => location.origin + location.pathname;
 
 /** Share Project…'s window, a copy of the open project (Share Module…: module and view chosen first, a module's
  *  context menu). Resolves, once closed, to the link last copied, or null (or the live window's, the way switched). */
-export async function copyLinkDialog({ module = null, view = null } = {}) {
+export async function copyLinkDialog({ module = null, view = null, shown = null } = {}) {
   if (!S.project) return null;
   const name = S.project.name;
   const action = shareTitle(module);   // (the window's title, its messages' name, #3698)
@@ -185,7 +185,7 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
     title: action, width: SHARE_WIDTH, className: 'share-dlg',   // (Live's size: switching keeps the window as it is, #4617)
     // (the link's box fitted as the window opens, #4639: its layout final once shown, not a frame later, as its
     // ResizeObserver would)
-    onOpen: ({ close }) => { closeIt = () => close(null); field.fit(); },
+    onOpen: ({ close }) => { closeIt = () => close(null); field.fit(); shown?.(); },
     body: h('div', {},
       h('div', { class: 'hint' }, `A link that opens '${name}' in Silinx, for slides or a message: the whole project is inside the link (no file to host). Anyone with the link has every file of the project, its comments too.`),
       how.el,

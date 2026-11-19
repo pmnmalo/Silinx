@@ -12,6 +12,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
 import { decodeSvg } from '../qr-helpers.js';
+import { framesOf, checkFrames } from './share-frames.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -392,6 +393,29 @@ uiTest('#4669 Share Project… opens on A copy, but on Live while the project is
   await close();
   assert.deepEqual(await opened('stopped'), { how: 'copy', buttons: ['Close'], links: false });
   await close();
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+}, { timeout: 120000 });
+
+// #4676: the switch between A copy and Live drawn with no frame between: recorded each frame (requestAnimationFrame) from
+// the click until the other way's window has stayed: one window in every frame (never none, never two), the same box,
+// the old way's frames then the new way's only; A copy's link box as tall from its first frame (fitted as it opens).
+uiTest('#4676 Share Project: Live to A copy and back, one window in every frame, the same box, A copy whole from its first frame; on a phone too', E, async (page) => {
+  await make(page, 'flicker', 'gates');
+  await page.openProject('flicker');
+  await page.eval(() => localStorage.setItem('silinx.collab.name', 'Teacher'));
+  try {
+    for (const width of [1400, 375]) {
+      await page.setViewport(width, 900);
+      await page.eval(async () => { (await import('/js/share-how.js')).shareLiveDialog(); });
+      await page.waitDialog('Share Project');
+      await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg'), [], { what: 'Live\'s window' });
+      checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', `Live to A copy, ${width} px`);
+      checkFrames(await framesOf(page, 'how-live', 'live'), 'copy', 'live', `A copy to Live, ${width} px`);
+      await page.dialogButton('Close');
+      await page.waitNoDialog();
+    }
+  } finally { await page.setViewport(1400, 900); }
   assert.deepEqual(await warnings(page), []);
   assert.deepEqual(page.errors, []);
 }, { timeout: 120000 });
