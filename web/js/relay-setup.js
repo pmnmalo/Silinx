@@ -11,6 +11,19 @@ import { savedRelay, keepRelay } from './relay-setting.js';
 import { checkRelay, newRelayKey, DEPLOY_URL } from '/core/relay-setup.js';
 import { relayAddress } from '/core/collab-link.js';
 
+// Cloudflare's screens after Deploy to Cloudflare, in order (#4630: as they were in November 2026)
+const DEPLOY_STEPS = [
+  'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.',
+  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). The first time, GitHub asks to install Cloudflare\'s app: choose All repositories, as it creates a new one (you can narrow it afterwards, in GitHub\'s Settings ▸ Applications).',
+  'Tick Create private Git repository: Cloudflare makes your copy of the relay there. The key is a secret of Cloudflare\'s, not in the repository.',
+  'Project name: leave silinx-relay. Your relay\'s address will be https://silinx-relay.<your subdomain>.workers.dev.',
+  'RELAY_KEY: paste the key copied in step 1.',
+  'ORIGINS: leave https://pmnmalo.github.io, the Silinx site. To use the relay from Silinx\'s local server too, add it after a space: https://pmnmalo.github.io http://127.0.0.1:8642.',
+  'Build command empty, Deploy command npm run deploy, preview builds off: leave them as they are.',
+  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): the first time, a few minutes. Wait for Success.',
+  'The address: the Worker\'s Overview ▸ Domains & Routes, or the build log\'s last lines. Paste it below and click Check and Save.',
+];
+
 const hostOf = a => { try { return new URL(a).host; } catch { return a; } };
 
 /** The relay checked from this page (its CSP's relays first: web/js/collab-share.js relayOk): { ok, address, error }. */
@@ -72,6 +85,10 @@ export async function relaySetupDialog() {
       h('div', { class: 'relay-key-row', style: { display: 'flex', gap: '6px' } }, key, show, copy, fresh),
       h('p', {}, '2. Deploy it: sign in to Cloudflare (or sign up, free) and give the key when it asks for RELAY_KEY.'),
       h('p', {}, h('a', { class: 'relay-deploy', href: DEPLOY_URL, target: '_blank', rel: 'noopener noreferrer' }, 'Deploy to Cloudflare')),
+      h('details', { class: 'relay-setup-steps', open: !r0.address },
+        h('summary', {}, 'Cloudflare\'s screens, step by step'),
+        h('ol', {}, ...DEPLOY_STEPS.map(s => h('li', {}, s))),
+        h('p', {}, 'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.')),
       h('p', {}, '3. Its address, which Cloudflare shows at the end:'), address, err),
     buttons: [{ label: 'Check and Save', primary: true, validate: save, value: () => kept }, { label: 'Cancel', value: null }],
   });

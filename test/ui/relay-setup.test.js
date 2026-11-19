@@ -1,7 +1,7 @@
 // UI: a Cloudflare relay of one's own set up from the Collaboration tab (#4574, web/js/relay-setup.js), on the Silinx
 // site (the browser edition), in both interfaces: the Cloudflare Relay box with none set; Set Up a Cloudflare Relay…:
 // its key made in the page (43 characters), Show, Copy (said in the console), New Key, the Deploy to Cloudflare button
-// (a new tab); a relay that does not let the site in refused, the exact ORIGINS line in the console and the window,
+// (a new tab), Cloudflare's screens step by step (#4630: open until a relay is set, in order); a relay that does not let the site in refused, the exact ORIGINS line in the console and the window,
 // nothing kept; once it does, checked and kept: the box shows it; Share Project… ▸ Live's Cloudflare fields filled
 // with it; Check Cloudflare Relay; Forget Cloudflare Relay; the key in no console line; in Portuguese, the box and the
 // window translated. The relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim
@@ -15,6 +15,32 @@ import worker, { RelayRoom } from '../../packages/silinx-relay-cloudflare/src/wo
 import { DEPLOY_URL } from '../../core/relay-setup.js';
 
 const KEY = 'a-relay-key-of-24-characters-or-more';
+// Cloudflare's screens, step by step (#4630), in order: English, Portuguese
+const STEPS = [
+  'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.',
+  'Git account: choose your GitHub account, or New GitHub connection (GitLab works too). The first time, GitHub asks to install Cloudflare\'s app: choose All repositories, as it creates a new one (you can narrow it afterwards, in GitHub\'s Settings ▸ Applications).',
+  'Tick Create private Git repository: Cloudflare makes your copy of the relay there. The key is a secret of Cloudflare\'s, not in the repository.',
+  'Project name: leave silinx-relay. Your relay\'s address will be https://silinx-relay.<your subdomain>.workers.dev.',
+  'RELAY_KEY: paste the key copied in step 1.',
+  'ORIGINS: leave https://pmnmalo.github.io, the Silinx site. To use the relay from Silinx\'s local server too, add it after a space: https://pmnmalo.github.io http://127.0.0.1:8642.',
+  'Build command empty, Deploy command npm run deploy, preview builds off: leave them as they are.',
+  'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): the first time, a few minutes. Wait for Success.',
+  'The address: the Worker\'s Overview ▸ Domains & Routes, or the build log\'s last lines. Paste it below and click Check and Save.',
+];
+const TRAPS = 'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.';
+const PASSOS = [
+  'Instalar no Cloudflare abre a página "Set up your application" do Cloudflare num separador novo: entre, ou crie uma conta gratuita.',
+  'Conta Git: escolha a sua conta do GitHub, ou New GitHub connection (o GitLab também serve). Da primeira vez, o GitHub pede para instalar a aplicação do Cloudflare: escolha All repositories, porque ela cria um novo (pode restringi-la depois, em Settings ▸ Applications do GitHub).',
+  'Marque Create private Git repository: o Cloudflare faz lá a sua cópia do retransmissor. A chave é um segredo do Cloudflare, não está no repositório.',
+  'Project name: deixe silinx-relay. O endereço do seu retransmissor será https://silinx-relay.<o seu subdomínio>.workers.dev.',
+  'RELAY_KEY: cole a chave copiada no passo 1.',
+  'ORIGINS: deixe https://pmnmalo.github.io, o sítio do Silinx. Para usar o retransmissor também a partir do servidor local do Silinx, acrescente-o depois de um espaço: https://pmnmalo.github.io http://127.0.0.1:8642.',
+  'Build command vazio, Deploy command npm run deploy, builds de pré-visualização desligados: deixe-os como estão.',
+  'Carregue em Deploy. O Cloudflare prepara o repositório e depois constrói o retransmissor (Initializing, Cloning, Installing, Deploying): da primeira vez, alguns minutos. Espere por Success.',
+  'O endereço: Overview ▸ Domains & Routes do Worker, ou as últimas linhas do registo da construção. Cole-o abaixo e carregue em Verificar e Guardar.',
+];
+// the step-by-step: [summary, open, its steps, its paragraphs]
+const stepsOf = (page) => page.eval(() => { const d = document.querySelector('.dlg-overlay details.relay-setup-steps'); return d && [d.querySelector('summary').textContent, d.open, [...d.querySelectorAll('li')].map((l) => l.textContent), [...d.querySelectorAll('p')].map((p) => p.textContent)]; });
 let env, site, relay;
 before(async () => {
   env = await setupUi({ server: false });
@@ -80,6 +106,8 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   await page.click('.dlg-overlay button[data-action=copy-key]');
   await page.waitConsole(/Relay key copied: give it to Cloudflare when it asks for RELAY_KEY, and keep it somewhere safe\./);
   assert.deepEqual(await page.eval(() => { const a = document.querySelector('.dlg-overlay a.relay-deploy'); return [a.textContent, a.href, a.target, a.rel]; }), ['Deploy to Cloudflare', DEPLOY_URL, '_blank', 'noopener noreferrer']);
+  // Cloudflare's screens, step by step, in order: open, as no relay is set yet (#4630)
+  assert.deepEqual(await stepsOf(page), ["Cloudflare's screens, step by step", true, STEPS, [TRAPS]]);
   // (Cloudflare's relay deployed with the key: here, the shim's, whose key is KEY)
   await page.fill('.dlg-overlay input[data-field=relay-key]', KEY);
   await page.fill('.dlg-overlay input[data-field=relay]', relay.url);
@@ -99,6 +127,13 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   await page.waitConsole(new RegExp(ok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.deepEqual(JSON.parse(await page.eval(() => localStorage.getItem('silinx.collab.relay'))), { address: relay.url, key: KEY });
   await waitBox(page, 'Cloudflare Relay', [`Cloudflare relay: ${host}`, 'Check Cloudflare Relay', 'Change Cloudflare Relay…', 'Forget Cloudflare Relay']);
+  // Change Cloudflare Relay…: the same window, its step by step folded (a relay is set), its address and key kept
+  await tabCommand(page, 'Change Cloudflare Relay…');
+  await page.waitDialog('Set Up a Cloudflare Relay');
+  assert.deepEqual(await stepsOf(page), ["Cloudflare's screens, step by step", false, STEPS, [TRAPS]]);
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=relay]').value, document.querySelector('.dlg-overlay input[data-field=relay-key]').value]), [relay.url, KEY]);
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
   // Share Project… ▸ Live: its Cloudflare fields, filled with it
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
@@ -128,12 +163,14 @@ uiTest('#4574 in Portuguese: the Cloudflare Relay box and its window translated;
   await waitBox(page, 'Retransmissor Cloudflare', ['Sem retransmissor Cloudflare: quem o segue encontra-o no ponto de encontro público.', 'Configurar um Retransmissor Cloudflare…']);
   await tabCommand(page, 'Configurar um Retransmissor Cloudflare…');
   await page.waitDialog('Configurar um Retransmissor Cloudflare');
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .relay-setup-body p')].map((p) => p.textContent)), [
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .relay-setup-body > p')].map((p) => p.textContent)), [
     'Um retransmissor seu, no plano gratuito do Cloudflare: quem o segue encontra-o lá, e liga-se através dele quando não se consegue ligar diretamente a si.',
     '1. A sua chave, feita aqui: copie-a e guarde-a num lugar seguro.',
     '2. Instale-o: entre no Cloudflare (ou registe-se, é gratuito) e dê a chave quando lhe pedir RELAY_KEY.',
     'Instalar no Cloudflare',
     '3. O seu endereço, que o Cloudflare mostra no fim:']);
+  assert.deepEqual(await stepsOf(page), ['Os ecrãs do Cloudflare, passo a passo', true, PASSOS, [
+    'Use o botão Instalar no Cloudflare: Create ▸ Import a repository do Cloudflare só lista os repositórios que já tem. A sua cópia não segue a do Silinx: para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor para o seu repositório, e o Cloudflare instala-o de novo.']]);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay button')].map((b) => b.textContent).filter((t) => t !== '✕')), ['Mostrar', 'Copiar', 'Nova Chave', 'Verificar e Guardar', 'Cancelar']);
   await page.fill('.dlg-overlay input[data-field=relay]', relay.url);
   await page.dialogButton('Verificar e Guardar');
