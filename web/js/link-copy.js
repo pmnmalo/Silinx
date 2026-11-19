@@ -182,7 +182,9 @@ export async function copyLinkDialog({ module = null, view = null } = {}) {
   const how = howRow('copy', { module, view, close: () => closeIt?.() });
   await dialog({
     title: action, width: SHARE_WIDTH, className: 'share-dlg',   // (Live's size: switching keeps the window as it is, #4617)
-    onOpen: ({ close }) => { closeIt = () => close(null); },
+    // (the link's box fitted as the window opens, #4639: its layout final once shown, not a frame later, as its
+    // ResizeObserver would)
+    onOpen: ({ close }) => { closeIt = () => close(null); field.fit(); },
     body: h('div', {},
       h('div', { class: 'hint' }, `A link that opens '${name}' in Silinx, for slides or a message: the whole project is inside the link (no file to host). Anyone with the link has every file of the project, its comments too.`),
       how.el,

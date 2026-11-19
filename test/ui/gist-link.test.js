@@ -201,6 +201,7 @@ uiTest('#3635 Short Links…: listed, the one made here copied again, the expire
   // from Copy Link's Manage short links…
   await startCopy(page);
   await page.waitDialog('Share Project');
+  await page.eval(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));   // (its layout settled first, #4639)
   await page.click('.dlg-overlay .link-manage a');
   await page.waitDialog('Short Links');
   assert.equal(await copied(page), null);
