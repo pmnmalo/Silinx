@@ -188,6 +188,36 @@ test('a slide switch (SPDT) between the rails, a DIP switch, a pull-down with a 
   }
 });
 
+test('#4602 a DIP switch of 8: lever k joins pin k to pin 17 − k (its datasheet), each on its own; the engine and the HDL, no warnings', () => {
+  // lever k joins pin k (on +) to pin 17 − k: an LED each, pulled down, lit while its lever is on
+  const parts = [{ id: 'S1', type: 'dip-8', x: 0, y: 10, label: 'sw', on: [true, false, false, true, false, true, false, false] }], wires = [];
+  for (let k = 1; k <= 8; k++) {
+    const top = partPins(parts[0]).find((q) => q.n === 17 - k), bot = partPins(parts[0]).find((q) => q.n === k), x = 10 + 3 * k;
+    wires.push({ id: `v${k}`, points: [[bot.x, bot.y], [bot.x, bot.y + 2 + k], VCC], color: 'red' });
+    parts.push({ id: `D${k}`, type: 'led', x, y: 0, label: `l${k}` }, { id: `R${k}`, type: 'pull-down', x, y: 3 });
+    wires.push({ id: `t${k}`, points: [[top.x, top.y], [top.x, top.y - 1 - k], [x, 0]], color: 'green' }, { id: `k${k}`, points: [[x + 1, 0], GND], color: 'black' },
+      { id: `q${k}`, points: [[x, 3], [x, 0]], color: 'green' });
+  }
+  const m = bench('dip8', parts, wires), { inputs, outputs } = circuitPorts(m);
+  assert.deepEqual(checkCircuit(m), []);
+  assert.deepEqual(inputs.map((x) => x.name), ['sw_1', 'sw_2', 'sw_3', 'sw_4', 'sw_5', 'sw_6', 'sw_7', 'sw_8']);
+  const sim = createCircuitSim(m);
+  sim.run();
+  assert.equal(Object.values(sim.outputs()).join(''), '10010100', 'its levers as saved');
+  // each lever on its own, then all of them, then none: the LEDs the levers on (written here)
+  const vectors = [...Array.from({ length: 8 }, (_, k) => 1 << k), 0xff, 0xa5, 0].map((w) => Object.fromEntries(inputs.map((x, k) => [x.name, (w >> k) & 1])));
+  const want = vectors.map((v) => inputs.map((x) => String(v[x.name])).join(''));
+  assert.deepEqual(vectors.map((v) => { for (const i of inputs) sim.set(i.part, v[i.name] === 1, i.index); sim.run(); return Object.values(sim.outputs()).join(''); }), want);
+  for (const lang of ['vhdl', 'verilog']) {
+    const g = generateCircuit(m, lang), file = lang === 'vhdl' ? 'dut.vhd' : 'dut.v';
+    const lib = compile([{ path: file, text: g.code }]), d = elaborate(lib, m.name);
+    assert.deepEqual([...lib.errors, ...d.diags, ...designChecks(lib, d, { lint: true })].map((e) => e.message), [], `${lang}: no warnings`);
+    const r = simulate([{ path: file, text: g.code }, { path: 'tb.v', text: circuitBench(m, vectors, { ins: inputs.map((x) => x.name), outs: outputs.map((x) => x.name) }) }], 'tb', { until: 1e9 });
+    assert.deepEqual(r.errors, [], lang);
+    assert.deepEqual(r.sim.log.map((e) => String(e.text).trim()).filter((x) => /^[01xz]+$/.test(x)), want, lang);
+  }
+});
+
 // two 7403 NANDs (open collector) on one net: a wired AND (pulled up or not), on an LED and a 7404's input
 function wiredAnd({ pull = true } = {}) {
   const m = icBench('7403', { name: 'wired', pullUps: false });

@@ -91,6 +91,7 @@ test('a breadboard: a column\'s a–e one strip, its f–j another, the rails al
   assert.notEqual(strip('tn1'), strip('bn1'));   // (the two − rails: joined by a wire, as on the bench)
   // pins on the same strip are one net; on two columns, two nets; wires join their ends only, not where they cross
   const m = newCircuit('x');
+  assert.deepEqual(m.parts.map((p) => p.type), ['breadboard-half', 'supply'], 'a new circuit: a half breadboard and its supply');
   m.parts.push({ id: 'D1', type: 'led', x: 0, y: 0 }, { id: 'D2', type: 'led', x: 0, y: 4 }, { id: 'D3', type: 'led', x: 5, y: 7 });
   m.wires.push({ id: 'wa', points: [[1, 1], [5, 9]], color: 'red' }, { id: 'wb', points: [[3, -10], [3, 20]], color: 'red' });
   const n = circuitNets(normalizeCircuit(m));
