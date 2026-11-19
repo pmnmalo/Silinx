@@ -43,6 +43,8 @@ export const HEAVY = [
   'test/sim-model-par-vga.test.js', 'test/sim-model-par.test.js', 'test/sim-model-s6-vga.test.js', 'test/sim-model-s6.test.js',
   'test/synth-diff-fixtures.test.js', 'test/synth-diff.test.js', 'test/synth-fsm.test.js', 'test/synth-goal.test.js',
   'test/synth-open.test.js', 'test/synth-quality.test.js',
+  // (Verify's ABC on stopwatch and micro80: 30 s and 20 s here, past its 120 s check limit on a slow Windows runner, #4548)
+  'test/verify-abc.test.js',
 ];
 
 /** The test files of a folder (dir 'test', the UI tests' 'test/ui'), relative to the root with '/', sorted. */
