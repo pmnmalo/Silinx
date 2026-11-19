@@ -302,7 +302,13 @@ test('the frames a relay carries for a session of three (20 edits, 60 moves): th
   t.diagnostic(`the relay carried ${viaRoom} frames through its room, ${viaP2P} peer to peer (${setup} to meet and connect); the channels carried ${rtc.net.sent}`);
   assert.ok(viaRoom > 150, `through the room: ${viaRoom}`);
   assert.equal(viaP2P, 0);
-  assert.ok(setup < 40, `to meet: ${setup}`);
+  // (#4660: to meet, the signalling, always the same: 3 hellos, 3 welcomes and the host's 2 notices of a peer (JSON), each
+  // follower's offer and the host's answer, and each side's switch (sealed), these 8 counted where sent and where
+  // received: 24; then the room's own frames that went through the relay before a follower's channel opened, which the
+  // timing decides (3 to 8 messages measured, each counted twice): at most what the opening and the joins take through
+  // a relay's room (a0, measured above: about 20), and the owner's proof to each follower)
+  const SIGNALLING = 24;
+  assert.ok(setup >= SIGNALLING && setup <= SIGNALLING + a0 + 4, `to meet: ${setup} (the signalling ${SIGNALLING}, the room's frames at its joins ${a0})`);
   for (const f of gs) await f.close();
   await o.session.close();
   await o.at.leave();
