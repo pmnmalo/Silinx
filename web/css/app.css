@@ -467,6 +467,15 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .share-how-choices { display: flex; flex-wrap: wrap; gap: 6px 32px; }
 .share-how-choices > label { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; }
 .share-how-choices .share-how-note { grid-column: 2; font-size: 11px; opacity: .8; }
+/* Share Project… ▸ Live's two ways (#4634): one below the other, each one's explanation below its button; the relay
+   set (its address, Change…) or none (said, Set Up a Cloudflare Relay…) below the Cloudflare one's */
+.share-via { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; margin: 12px 0 10px; }
+.share-via-choices { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.share-via-about { margin: 2px 0 0 22px; font-size: 11px; }
+.share-via-about > p { margin: 0 0 4px; opacity: .8; }
+.share-via-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.share-via-at { font: 11px var(--mono, monospace); overflow-wrap: anywhere; }
+.share-via-none { flex: 1 1 100%; }
 .link-account { margin-top: 6px; }
 .link-error:not(:empty) { color: var(--error-fg); font-weight: 600; margin: 8px 0; }   /* (why no link: red, above the link's box, #4573) */
 .qr-large { display: flex; flex-direction: column; align-items: center; gap: 8px; }

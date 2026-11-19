@@ -84,9 +84,14 @@ Na [pasta do retransmissor](../../../packages/silinx-relay-cloudflare/README.md)
 
 ## Partilhar através dele
 
-*Partilhar Projeto…* ▸ *Ao vivo* usa-o por omissão: **Retransmissor Cloudflare** (o endereço) e **A sua chave
-(RELAY_KEY)** vêm preenchidos. Mude-os aí, ou apague-os para partilhar sem ele. A ligação indica o retransmissor, por
-isso quem o segue só precisa da ligação: nem chave, nem conta.
+*Partilhar Projeto…* ▸ *Em direto* oferece duas formas, cada uma explicada na janela. **Em direto pelo seu
+retransmissor Cloudflare** vem escolhida por omissão quando o retransmissor está configurado: a janela mostra o seu
+endereço (nunca a chave), e *Alterar…* abre de novo *Configurar um Retransmissor Cloudflare…*. Sem retransmissor
+configurado, a janela di-lo e oferece *Configurar um Retransmissor Cloudflare…*, e *Começar a Partilhar* espera até haver
+um. **Em direto ponto a ponto (sem retransmissor)** não precisa de configuração: quem o segue encontra-o no ponto de
+encontro público e liga-se de navegador a navegador, ou envia-lhe um código (*Adicionar um Utilizador…*); pode falhar em
+redes que bloqueiam ligações diretas. A janela lembra-se da forma escolhida da última vez. A ligação indica o
+retransmissor, por isso quem o segue só precisa da ligação: nem chave, nem conta.
 
 O retransmissor não vê nenhum ficheiro. Tudo vai cifrado com a chave da ligação, que o retransmissor nunca tem. Só vê
 quantas mensagens passam e quando.

@@ -19,7 +19,6 @@ import { h, dialog } from './ui.js';
 import { S, app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { prefKey } from './prefs.js';
-import { savedRelay, keepRelay } from './relay-setting.js';
 import { collab } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
@@ -73,17 +72,10 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   const nameShown = h('div', { class: 'collab-name', 'data-no-i18n': '' });
   const nameBox = h('div', { class: 'collab-name-box' }, input, nameShown);
   const nameErr = h('div', { class: 'wiz-error collab-name-error' });
-  // (the browser edition: this page hosts the room, its followers met at a relay of this browser's settings, #4543: a
-  // Cloudflare relay of one's own, or one of the site's; none, the public meeting point and the codes, #3227)
-  const r0 = savedRelay(), relays = api.collab ? [] : await relaysHere();
-  const address = h('input', { type: 'text', 'data-field': 'relay', 'data-no-i18n': '', value: r0.address, list: 'collab-relays', placeholder: 'https://silinx-relay.<you>.workers.dev', autocomplete: 'off', spellcheck: 'false', style: { width: '100%' } });
-  const key = h('input', { type: 'password', 'data-field': 'relay-key', value: r0.key, autocomplete: 'off', style: { width: '100%' } });
-  const relayPart = api.collab ? null : h('div', { class: 'collab-relay' },
-    h('label', {}, 'Cloudflare relay (optional):'), address, h('datalist', { id: 'collab-relays' }, ...relays.map(r => h('option', { value: r }))),
-    h('label', {}, 'Its key (RELAY_KEY):'), key,
-    h('p', { class: 'collab-relay-about' }, 'With a relay of yours on Cloudflare (or one of the site\'s), your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.'),
-    // (a relay of one's own, set up, checked and kept, the fields filled with it: #4574)
-    h('a', { class: 'collab-relay-setup', onclick: async () => { const r = await (await import('./relay-setup.js')).relaySetupDialog(); if (r) { address.value = r.address; key.value = r.key; } } }, 'Set Up a Cloudflare Relay…'));
+  // (the browser edition: this page hosts the room, its followers met at the Cloudflare relay set up in the
+  // Collaboration tab, #4543, #4574, or peer to peer, no relay, at the public meeting point or by codes, #3227: two
+  // choices, each explained, #4634)
+  const ways = api.collab ? null : (await import('./share-via.js')).viaPart({ changed: () => draw() });
   // the links, hidden: the viewers' and the editors', each made by its Generate (#3996, #4073: different links, the
   // editors' with the room's signing key)
   const linkOf = role => (share ? (module ? withTop(role === 'edit' ? share.editLink : share.link, module) : role === 'edit' ? share.editLink : share.link) : null);
@@ -105,7 +97,7 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     input.hidden = on;
     nameShown.hidden = !on;
     nameShown.textContent = on ? share.name : '';
-    if (relayPart) relayPart.hidden = on;
+    if (ways) ways.el.hidden = on;
     links.hidden = !on;
     viewer.set(on && share.made.view ? linkOf('view') : null);
     editor.set(on && share.made.edit ? linkOf('edit') : null);
@@ -114,7 +106,7 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     // (Start Sharing the window's first button before, Close once shared: what Enter presses)
     if (btns?.[0].el) {
       const [st, stop, close] = btns;
-      st.el.disabled = on; stop.el.disabled = !on;
+      st.el.disabled = on || (ways ? !ways.ready() : false); stop.el.disabled = !on;
       st.primary = !on; close.primary = on;
       st.el.classList.toggle('primary', !on); close.el.classList.toggle('primary', on);
     }
@@ -124,9 +116,9 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     const name = cleanName(input.value);
     if (!name) { nameErr.textContent = 'Your name first: the others see it.'; input.focus(); return false; }
     keepName(name);
-    const relay = { address: address.value.trim(), key: key.value };
-    if (!api.collab) keepRelay(relay);
-    try { await startSharing(name, !api.collab && relay.address ? { via: 'host', relay } : {}); } catch (e) { app.log(`ERROR: ${action}: ${e.message}.`, 'err'); return false; }
+    if (ways && !ways.ready()) return false;   // (Start Sharing disabled then: no relay set up yet)
+    ways?.kept();
+    try { await startSharing(name, ways?.via() === 'relay' ? { via: 'host', relay: ways.relay() } : {}); } catch (e) { app.log(`ERROR: ${action}: ${e.message}.`, 'err'); return false; }
     if (module) await (await import('./link-open.js')).showModule(module, true);
     draw();
     return false;   // (the window kept open: its links now)
@@ -142,9 +134,10 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
     body: h('div', { class: 'collab-dlg' },
       h('p', {}, 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents and cursor, your views and selection, your simulations, emulators and runs. Of its builds, only the reports you open are shared.'),
       way.el,
-      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, relayPart, links),
+      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, ways?.el ?? null, links),
     buttons: btns,
   });
+  ways?.off();
   if (way.wanted) return way.switched();
   return share ? (module ? withTop(share.link, module) : share.link) : null;
 }

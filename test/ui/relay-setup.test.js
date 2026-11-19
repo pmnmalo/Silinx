@@ -2,8 +2,8 @@
 // site (the browser edition), in both interfaces: the Cloudflare Relay box with none set; Set Up a Cloudflare Relay…:
 // its key made in the page (43 characters), Show, Copy (said in the console), New Key, the Deploy to Cloudflare button
 // (a new tab), Cloudflare's screens step by step (#4630: open until a relay is set, in order); a relay that does not let the site in refused, the exact ORIGINS line in the console and the window,
-// nothing kept; once it does, checked and kept: the box shows it; Share Project… ▸ Live's Cloudflare fields filled
-// with it; Check Cloudflare Relay; Forget Cloudflare Relay; the key in no console line; in Portuguese, the box and the
+// nothing kept; once it does, checked and kept: the box shows it; Share Project… ▸ Live via your Cloudflare relay
+// chosen, the relay shown (#4634); Check Cloudflare Relay; Forget Cloudflare Relay; the key in no console line; in Portuguese, the box and the
 // window translated. The relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim
 // (test/workers-shim.js), among the site's relays. No warnings but those asserted.
 import { before, after } from 'node:test';
@@ -134,14 +134,12 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=relay]').value, document.querySelector('.dlg-overlay input[data-field=relay-key]').value]), [relay.url, KEY]);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
-  // Share Project… ▸ Live: its Cloudflare fields, filled with it
+  // Share Project… ▸ Live: via your Cloudflare relay, chosen, the relay shown by its address (#4634)
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
   if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live]');
-  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg input[data-field=relay]'), [], { what: 'the live window' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .collab-relay label')].map((l) => l.textContent)), ['Cloudflare relay (optional):', 'Its key (RELAY_KEY):']);
-  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=relay]').value, document.querySelector('.dlg-overlay input[data-field=relay-key]').value]), [relay.url, KEY]);
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay a.collab-relay-setup').textContent), 'Set Up a Cloudflare Relay…');
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg input[data-field=via-relay]'), [], { what: 'the live window' });
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-via]:checked').value, document.querySelector('.dlg-overlay .share-via-at').textContent, document.querySelector('.dlg-overlay [data-action=relay-change]').textContent]), ['relay', host, 'Change…']);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // Check Cloudflare Relay; Forget Cloudflare Relay

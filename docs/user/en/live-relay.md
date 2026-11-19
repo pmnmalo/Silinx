@@ -84,9 +84,13 @@ In the [relay's folder](../../../packages/silinx-relay-cloudflare/README.md): `n
 
 ## Sharing through it
 
-*Share Project…* ▸ *Live* uses it by default: **Cloudflare relay** (the address) and **Its key (RELAY_KEY)** are filled
-in. Change them there, or clear them to share without it. The link names the relay, so your followers need nothing but
-the link: no key, no account.
+*Share Project…* ▸ *Live* offers two ways, each explained in the window. **Live via your Cloudflare relay** is chosen
+by default once the relay is set up: the window shows its address (never its key), and *Change…* opens *Set Up a
+Cloudflare Relay…* again. With no relay set up, the window says so and offers *Set Up a Cloudflare Relay…*, and *Start
+Sharing* waits until there is one. **Live peer to peer (no relay)** needs no setup: your followers find you at the public
+meeting point and connect browser to browser, or send you a code (*Add a User…*); it may fail on networks that block
+direct connections. The window remembers the way you chose last. The link names the relay, so your followers need
+nothing but the link: no key, no account.
 
 The relay sees no file. Everything is encrypted with the key in the link, and the relay never has that key. It sees only
 how many messages pass and when.
