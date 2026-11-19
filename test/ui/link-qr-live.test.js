@@ -313,3 +313,50 @@ uiTest('#4617 Share Project: the window keeps its place and size switching betwe
   assert.deepEqual(await warnings(page), []);
   assert.deepEqual(page.errors, []);
 }, { timeout: 120000 });
+
+// #4668: Share Project… ▸ Live in three parts, a rule before each link's sentence (the viewers', the editors'): the
+// name, the view-only link, the editors' link; each rule a thin line as wide as the window's content, a little space
+// above and below; on a phone too. (The window's size across A copy and Live: #4617's test above.)
+uiTest('#4668 Share Project, live: a rule before the view-only link\'s sentence and before the editors\', as wide as the window\'s content, spaced; on a phone too', E, async (page) => {
+  await make(page, 'rules', 'gates');
+  await page.openProject('rules');
+  await page.eval(() => localStorage.setItem('silinx.collab.name', 'Teacher'));
+  try {
+    for (const width of [1400, 375]) {
+      await page.setViewport(width, 900);
+      await page.eval(() => { window.__shared = import('/js/collab-share.js').then((m) => m.shareProjectDialog()); });
+      await page.waitDialog('Share Project');
+      await page.dialogButton('Start Sharing');
+      await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared' });
+      const what = `${width} px`;
+      const parts = await page.eval(() => {
+        const links = document.querySelector('.dlg-overlay .collab-links');
+        const body = links.closest('.dlg-body'), bs = getComputedStyle(body), content = body.getBoundingClientRect().width - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight) - (body.offsetWidth - body.clientWidth);
+        const kids = [...links.children].filter((e) => !e.hidden);
+        // (what the window shows above the links: the first rule's space measured from it, its margin collapsing through theirs)
+        let before = links.previousElementSibling;
+        while (before && !before.getClientRects().length) before = before.previousElementSibling;
+        return {
+          order: kids.map((e) => (e.tagName === 'HR' ? 'rule' : e.className)),
+          sentences: kids.filter((e, i) => kids[i - 1]?.tagName === 'HR').map((e) => e.textContent),
+          rules: kids.filter((e) => e.tagName === 'HR').map((r) => {
+            const b = r.getBoundingClientRect(), cs = getComputedStyle(r), i = kids.indexOf(r);
+            const above = (kids[i - 1] ?? before).getBoundingClientRect().bottom, below = kids[i + 1].getBoundingClientRect().top;
+            return { line: cs.borderTopStyle === 'solid' && parseFloat(cs.borderTopWidth) === 1 && b.height <= 2, wide: Math.abs(b.width - content) < 2, spaced: b.top - above >= 6 && below - b.bottom >= 6, visible: r.getClientRects().length > 0 };
+          }),
+        };
+      });
+      assert.deepEqual(parts.order, ['rule', 'collab-about', 'link-field link-row', 'rule', 'collab-edit-about', 'link-field link-row'], what);
+      assert.deepEqual(parts.sentences, ['Anyone with this link follows "rules" live, read only, as long as you share it.', 'Anyone with the editors\' link edits its text files and drawings with you, live.'], what);
+      assert.deepEqual(parts.rules, [{ line: true, wide: true, spaced: true, visible: true }, { line: true, wide: true, spaced: true, visible: true }], what);
+      // (no sideways scroll on a phone)
+      assert.equal(await page.eval(() => document.documentElement.scrollWidth <= innerWidth), true, what);
+      await page.dialogButton('Stop Sharing');
+      await page.waitFor(() => document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'stopped' });
+      await page.dialogButton('Close');
+      await page.waitNoDialog();
+    }
+  } finally { await page.setViewport(1400, 900); }
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+}, { timeout: 120000 });

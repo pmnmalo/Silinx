@@ -90,9 +90,10 @@ export async function shareProjectDialog({ module = null, view = null, via = und
   const editor = linkField({ field: 'edit-link', label: 'Generate Edit Link', row: true, expected: () => linkOf('edit')?.length, onCopy: l => copyEditorLink(l), generate: async () => made('edit') });
   const about = h('p', { class: 'collab-about' });
   const hostedNote = h('p', { class: 'collab-hosted' }, 'This page hosts it: its followers find it when they open the link, or send you a code, which Add a User… takes.');
+  // (three parts, a rule before each link's sentence, #4668: the name, the view-only link, the editors' link)
   const links = h('div', { class: 'collab-links' },
-    about, viewer.el,
-    h('p', { class: 'collab-edit-about' }, 'Anyone with the editors\' link edits its text files and drawings with you, live.'), editor.el,
+    h('hr', { class: 'collab-rule' }), about, viewer.el,
+    h('hr', { class: 'collab-rule' }), h('p', { class: 'collab-edit-about' }, 'Anyone with the editors\' link edits its text files and drawings with you, live.'), editor.el,
     hostedNote);
   // (a copy, or live: the window's Share: row, #3698)
   let closeIt = null, btns = null;
