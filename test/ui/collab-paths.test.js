@@ -101,8 +101,9 @@ uiTest('#4643 the Collaboration tab while sharing: the mode at the top; each fol
   await newProject(page, 'Paths');
   await page.menu('File', 'Share Project…');
   await page.waitDialog('Share Project');
-  if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live]');
-  await page.waitFor(() => document.querySelector('.dlg-overlay input[name=share-via]:checked')?.value === 'relay', [], { what: 'the Cloudflare relay chosen' });
+  // (the Share row's Live via your Cloudflare relay, #4640)
+  if (!await page.eval(() => document.querySelector('.dlg-overlay input[data-field=how-live-relay]')?.checked)) await page.click('.dlg-overlay input[data-field=how-live-relay]');
+  await page.waitFor(() => document.querySelector('.dlg-overlay input[data-field=how-live-relay]')?.checked, [], { what: 'the Cloudflare relay chosen' });
   await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
   await page.dialogButton('Close');
