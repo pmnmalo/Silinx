@@ -83,6 +83,13 @@ export const GIT_PT = {
   'What only the other branch changed is taken; a drawing changed on both is merged by its objects, a file by its lines; for the same objects or lines, you choose. Commit your changes first.':
     'O que só o outro ramo alterou é aceite; um desenho alterado nos dois junta-se pelos seus objetos, um ficheiro pelas suas linhas; para os mesmos objetos ou linhas, escolhe você. Registe (commit) primeiro as suas alterações.',
   'The project has no other branch: New Branch… makes one.': 'O projeto não tem outro ramo: Novo Ramo… cria um.',
+  // a clone onto a project of the same name (#4618, web/js/git-clone-exists.js)
+  'Project Already Exists': 'O Projeto Já Existe', 'Open and Pull': 'Abrir e Receber (Pull)', 'Keep Both': 'Manter os Dois',
+  'Replacing it would lose:': 'Substituí-lo perderia:',
+  'Replacing it loses nothing: every change is committed and pushed.': 'Substituí-lo não perde nada: todas as alterações estão registadas (commit) e enviadas (push).',
+  'Keep both, the repository as:': 'Manter os dois, o repositório como:',
+  'The old project is moved to the workspace .trash folder.': 'O projeto antigo é movido para a pasta .trash da pasta de trabalho.',
+  'The old project will be deleted from this browser, and what it has is lost.': 'O projeto antigo será apagado deste browser, e o que tem perde-se.',
 };
 
 export const GIT_PT_PATTERNS = [
@@ -105,4 +112,14 @@ export const GIT_PT_PATTERNS = [
   [/^(\d+) object\(s\) changed on both branches: choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/, '$1 objeto(s) alterado(s) nos dois ramos: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.'],
   [/^not a GitHub repository's address: (.*)$/, 'não é o endereço de um repositório do GitHub: $1'],
   [/^a GitHub Classroom invitation, not a repository$/, 'um convite do GitHub Classroom, não um repositório'],
+  // (#4618) a clone onto a project of the same name
+  [/^A project named '(.*)' already exists\.$/, "Já existe um projeto chamado '$1'."],
+  [/^It is a clone of (.+): Open and Pull brings it up to date\.$/, 'É um clone de $1: Abrir e Receber (Pull) atualiza-o.'],
+  [/^It is not a clone of (.+)\.$/, 'Não é um clone de $1.'],
+  [/^Replace '(.*)' with the repository's project\? It has what is nowhere else:$/, "Substituir '$1' pelo projeto do repositório? Tem o que não está em mais lado nenhum:"],
+  [/^(\d+) uncommitted change\(s\)$/, '$1 alteração(ões) sem commit'],
+  [/^(\d+) commit\(s\) not pushed to GitHub$/, '$1 commit(s) não enviado(s) para o GitHub'],
+  [/^its commits were never pushed to GitHub$/, 'os seus commits nunca foram enviados para o GitHub'],
+  [/^it is in no git repository: its files are nowhere else$/, 'não está em nenhum repositório git: os seus ficheiros não estão em mais lado nenhum'],
+  [/^its changes could not be read: (.*)$/, 'não foi possível ler as suas alterações: $1'],
 ];

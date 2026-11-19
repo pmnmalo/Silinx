@@ -118,11 +118,11 @@ export function restGit({ client, projects, meta }) {
   }
 
   /** Open from GitHub Repository: the repository's project into a new one, untrusted (projects.create) -> { project, url,
-   *  repository, warnings }. */
-  async function clone({ url, name = null }) {
+   *  repository, warnings }. replace: a project of the name removed by it once the clone is fetched and checked (#4618). */
+  async function clone({ url, name = null, replace = null }) {
     const remote = checkUrl(url);
     const project = name || nameFromRepo(remote.repo);
-    if (await projects.exists(project)) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
+    if (!replace && await projects.exists(project)) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
     const info = await request('GET', R(remote.owner, remote.repo));
     const m = { owner: info.owner?.login || remote.owner, repo: info.name || remote.repo, branch: info.default_branch || 'main', url: remote.url };
     const head = await headOf(m);
@@ -135,7 +135,10 @@ export function restGit({ client, projects, meta }) {
     }
     const { files, warnings } = await fetchOwn(m, head.blobs, Object.keys(head.blobs));
     try { JSON.parse(files[PROJECT_FILE]); } catch { throw new GitError('not opened: its silinx.json is not valid JSON', null, 422); }
-    if (await projects.exists(project)) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
+    if (await projects.exists(project)) {
+      if (!replace) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
+      await replace();
+    }
     await projects.create(project, files);
     await remember(project, m, head, await hashes(await local(project)));
     return { project, url: remote.url, repository: `${m.owner}/${m.repo}`, warnings };

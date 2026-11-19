@@ -11,20 +11,22 @@ import { drawingKind, diffDrawings } from '../core/drawing-merge.js';
 import { unifiedDiff } from '../core/text-diff.js';
 import { checkChoices } from '../core/git-resolve.js';
 import { checksLines } from '../core/github-checks.js';
+import { IF_EXISTS, openedText, replacedText, keptBothText } from '../core/git-clone-exists.js';
+import { gitCloneChoosing } from './git-clone.js';
 import { cloneText, initText, commitText, pushText, pullText, fileLines, changesFirst, conflictCount, shortCommit as short, hunkLines, pullMergeLines, branchesText, newBranchText, switchText, mergeBranchText } from '../core/git-messages.js';
 
 // the back end: the system's git, or GitHub's API (SILINX_GIT=github, #3196)
 const B = () => (GH.githubBackend() ? GH : Git);
 
 // a git failure: its message, then its hint, as the console shows them
-const run = async fn => {
+const run = async (fn, more = () => []) => {
   if (!Git.gitEnabled()) throw toolError('git is turned off on this server (SILINX_GIT=off)');
   try { return await fn(); } catch (e) {
     if (e instanceof Git.GitError || e.status) {
       // (a drawing's conflicts: each object's id, a text file's: each hunk's (#4214), for git_pull's resolve)
       const conflicts = [...(e.drawings || []).flatMap(d => d.conflicts.map(c => `  ${d.path}: ${c.id} (${c.label}): mine ${c.mine}, theirs ${c.theirs}`)),
         ...(e.texts || []).flatMap(t => hunkLines(t.path, t.hunks))];
-      throw Object.assign(toolError([e.message, ...conflicts, ...(e.hint ? [`Hint: ${e.hint}`] : [])].join('\n')), e.files ? { files: e.files } : {}, e.drawings ? { drawings: e.drawings } : {}, e.texts ? { texts: e.texts } : {});
+      throw Object.assign(toolError([e.message, ...conflicts, ...more(e), ...(e.hint ? [`Hint: ${e.hint}`] : [])].join('\n')), e.files ? { files: e.files } : {}, e.drawings ? { drawings: e.drawings } : {}, e.texts ? { texts: e.texts } : {});
     }
     throw e;
   }
@@ -41,17 +43,26 @@ async function allowedRemote(remote) {
 // the choices of a pull's or a merge's conflicts (git_pull, git_merge)
 const RESOLVE = (what) => ({ type: 'object', description: `The choices of the ${what}'s conflicts: a drawing's objects { "src/ctl.fsm.json": { "transitions/t1": "theirs", "states/s2": "mine" } }, a text file's hunks { "src/top.vhd": { "h1": "both", "h2": { "text": "  y <= a or b;\\n" } } }.`, additionalProperties: { type: 'object', additionalProperties: { anyOf: [{ type: 'string', enum: ['mine', 'theirs', 'both'] }, { type: 'object', properties: { text: { type: 'string' } }, required: ['text'], additionalProperties: false }] } } });
 const choicesOf = resolve => { try { return checkChoices(resolve); } catch (e) { throw toolError(e.message); } };
+// a project of the name already there (#4618): what the interface's question shows, for if_exists
+const existingLines = e => (e.existing ? [
+  `It is ${e.existing.sameRepository ? 'a clone of the same repository' : `not a clone of ${e.existing.repository}`}; ${e.existing.loss.length ? `replacing it would lose: ${e.existing.loss.join('; ')}` : 'replacing it would lose nothing (every change committed and pushed)'}.`,
+  `if_exists: "open" opens it${e.existing.sameRepository ? ' (git_pull brings it up to date)' : ''}, "replace" replaces it${e.existing.loss.length ? ' (with discard_changes: true, losing that)' : ''}, "rename" opens the repository as '${e.existing.suggested}'.`,
+] : []);
 const UNTRUSTED = ' It is untrusted, as every project from outside: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.';
 
 export const GIT_TOOLS = [
   {
     name: 'git_clone', title: 'Open a project from a GitHub repository',
-    description: 'Clone a GitHub repository (https://github.com/owner/repo, git@github.com:owner/repo.git; a GitHub Classroom assignment\'s repository) into the workspace as a project, as File ▸ Open from GitHub Repository… does. Its root must hold the project (silinx.json); its files pass the import gate. The credentials are git\'s own (its credential helper, an SSH key).',
-    inputSchema: { type: 'object', properties: { url: STR('The repository\'s address on GitHub.'), name: STR('The project\'s name (default: the repository\'s).') }, required: ['url'], additionalProperties: false },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async run({ url, name }) {
-      const r = await run(() => B().gitClone({ url, name: name || null, madeBy: 'mcp' }));
-      return { text: [`${cloneText(r)}${UNTRUSTED}`, ...r.warnings.map(w => `WARNING: ${w}`)].join('\n'), data: { ...r, trusted: false }, untrusted: r.warnings.length ? 'the warnings, which name the repository\'s files' : undefined };
+    description: 'Clone a GitHub repository (https://github.com/owner/repo, git@github.com:owner/repo.git; a GitHub Classroom assignment\'s repository) into the workspace as a project, as File ▸ Open from GitHub Repository… does. Its root must hold the project (silinx.json); its files pass the import gate. The credentials are git\'s own (its credential helper, an SSH key). A project of the name already there (#4618): if_exists says what to do, as the interface\'s question: "error" (the default: nothing done, the existing project described), "open" (it opened as it is; git_pull brings it up to date when it is a clone of the same repository), "replace" (the clone made and checked first, then the old project moved to the workspace\'s .trash folder; refused when it has uncommitted changes, unpushed commits or is in no repository, named, unless discard_changes is true), "rename" (both kept: the clone under a free name, name-2…).',
+    inputSchema: { type: 'object', properties: { url: STR('The repository\'s address on GitHub.'), name: STR('The project\'s name (default: the repository\'s).'),
+      if_exists: { type: 'string', enum: IF_EXISTS, description: 'A project of the name already there: "error" (default), "open", "replace" or "rename".' },
+      discard_changes: { type: 'boolean', description: 'With if_exists "replace": replace the project even though it has changes nowhere else (the error named them), losing them. Only when the user said so.' } }, required: ['url'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    async run({ url, name, if_exists: ifExists = 'error', discard_changes: discardChanges = false }) {
+      const r = await run(() => gitCloneChoosing({ url, name: name || null, ifExists, discardChanges: discardChanges === true, madeBy: 'mcp' }), existingLines);
+      if (r.opened) return { text: openedText(r), data: r };
+      const lines = [...(r.replaced ? [replacedText(r)] : []), ...(r.renamedFrom ? [keptBothText(r)] : []), `${cloneText(r)}${UNTRUSTED}`];
+      return { text: [...lines, ...r.warnings.map(w => `WARNING: ${w}`)].join('\n'), data: { ...r, trusted: false }, untrusted: r.warnings.length ? 'the warnings, which name the repository\'s files' : undefined };
     },
   },
   {

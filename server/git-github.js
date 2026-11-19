@@ -108,7 +108,7 @@ export const gitBranches = async name => backend().branches(await known(name));
 export const gitNewBranch = async (name, branch) => backend().newBranch(await known(name), branch);
 export const gitSwitch = async (name, branch) => backend().switchBranch(await known(name), branch);
 export const gitMerge = async (name, branch, { resolve = null } = {}) => backend().merge(await known(name), branch, { resolve });
-export const gitClone = ({ url, name = null, madeBy = null }) => backend({ madeBy }).clone({ url, name });
+export const gitClone = ({ url, name = null, madeBy = null, replace = null }) => backend({ madeBy }).clone({ url, name, replace });
 
 /** GitHub's API with the environment's token (or none: a public repository's), for the system git's back end's checks
  *  (server/git.js gitChecks, #3194). */
