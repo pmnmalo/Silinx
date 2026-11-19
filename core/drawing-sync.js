@@ -9,7 +9,7 @@
 import { compile } from './compile.js';
 import { circuitPartModules } from './circuit-modules.js';
 import { attachSymbols, isSymbolFile, modulesFromLibrary } from './schdoc.js';
-import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlPath, modelLanguage, viewHdl } from './view-hdl.js';
+import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlClash, drawnHdlPath, modelLanguage, viewHdl } from './view-hdl.js';
 import { isDesignOnly } from './project-kind.js';
 import { useProjectParts } from './circuit-kicad.js';
 import { modelRunners } from './circuit-live-model.js';
@@ -94,9 +94,10 @@ export async function syncDrawing(P, name, path, modules = null) {
 
 /** A drawing with no HDL file gets it (#207, #3184), as the interface's adoptDrawnHdl gives it when the project is
  *  loaded: the HDL made from it written next to it (drawnHdlPath, which registers the module in the project) and the
- *  drawing linked to it (generatedFile). Not when it has errors (a module by itself until it has none), when that file
- *  is there already or another HDL file of the project defines its module (#230: resolved from its menu), nor for a
- *  drawing made from its HDL. { target, written, removed: null, stale: null, messages }, or null when it gets none. */
+ *  drawing linked to it (generatedFile). Not when it has errors (a module by itself until it has none), nor for a
+ *  drawing made from its HDL: null. Nor when that file is there already or another HDL file of the project defines its
+ *  module (#230: resolved from its menu): said, as the interface says it (#4693), { target: null, written: null,
+ *  clash: drawnHdlClash's, messages }. { target, written, removed: null, stale: null, messages } when it gets it. */
 export async function adoptDrawing(P, name, path) {
   if (!kindOf(path)) return null;
   let m;
@@ -105,12 +106,45 @@ export async function adoptDrawing(P, name, path) {
   const r = viewHdl(path, JSON.stringify(m), { modules: kindOf(path) === 'sch' ? await projectModules(P, name) : {}, linked: () => false });
   if (!r || r.errors.length || !r.module || !r.text) return null;
   const target = drawnHdlPath(path, r.module, r.lang);
-  if ((await P.fileTree(name)).includes(target)) return null;
+  const tree = await P.fileTree(name);
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
-  if (hdl.some(s => definesModule(s.text, r.module, s.path))) return null;
+  const elsewhere = hdl.find(s => s.path !== target && definesModule(s.text, r.module, s.path));
+  const text = tree.includes(target) ? (hdl.find(s => s.path === target)?.text ?? await P.readFile(name, target).catch(() => null)) : null;
+  const c = drawnHdlClash({ path, module: r.module, lang: r.lang, exists: p => tree.includes(p), read: p => (p === target ? text : null), definedIn: elsewhere?.path || null });
+  if (c) {
+    // (its module is another drawing's, that file the other drawing's HDL: not replaced, one is renamed)
+    const other = c.kind === 'same' ? await drawingOfHdl(P, name, tree, c.file, path) : null;
+    const clash = other ? { ...c, kind: 'drawn', other } : c;
+    return { target: null, written: null, removed: null, stale: null, clash, messages: [clashWarning(clash, await designProject(P, name))] };
+  }
   await P.writeFile(name, target, r.text);
   await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: target }, null, indent(path)));
   return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} generated from ${path}`] };
+}
+
+// the drawing (other than `path`) whose HDL file is `file` (its generatedFile), or null
+async function drawingOfHdl(P, name, tree, file, path) {
+  for (const f of tree.filter(f => f !== path && kindOf(f))) {
+    try { if (JSON.parse(await P.readFile(name, f))?.generatedFile === file) return f; } catch { /* not a drawing's JSON */ }
+  }
+  return null;
+}
+
+/** Why a drawing has no HDL file (adoptDrawing's clash), as the interface's console says it (drawings.js
+ *  drawnHdlClashes; a design project's: its module named, never its HDL file, #3891), with the assistant's way to
+ *  resolve it: the drawing written with that file as its generatedFile replaces it (#4693). */
+export function clashWarning(c, designOnly = false) {
+  const own = `, or the drawing written with "generatedFile": "${c.file}",`;
+  if (designOnly) {
+    return `WARNING: ${c.path}: ${c.kind === 'same' ? `Not made: another file of the project folder defines its module ${c.module}. Make Module… (right-click)${own} replaces it with the drawing's.`
+      : c.kind === 'drawn' ? `Not made: its module ${c.module} is the module of ${c.other}. Rename one of them.`
+        : 'Not made: another file of the project folder has its name. Make Module… (right-click) makes it under another name.'}`;
+  }
+  return c.kind === 'same'
+    ? `WARNING: ${c.path} has no HDL file: ${c.file} exists already and defines its module ${c.module}. Generate HDL File… (its right-click menu in the Design pane)${own} replaces ${c.file} with the HDL generated from it.`
+    : c.kind === 'drawn'
+      ? `WARNING: ${c.path} has no HDL file: its module ${c.module} is the module of ${c.other} (${c.file}). Rename one of them.`
+      : `WARNING: ${c.path} has no HDL file: ${c.target} exists already and holds something else. Generate HDL File… (its right-click menu in the Design pane) writes its HDL to ${c.free}.`;
 }
 
 /** The HDL files of the project their drawing cannot make again (errors): [{ target, from, why }] (app.js's
