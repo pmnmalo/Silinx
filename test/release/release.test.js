@@ -27,8 +27,9 @@ const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf
 // and types, and the legacy modes the editor does not load left out (#3232, scripts/zip-trim.mjs): 38.8 MB, unzipped 129.8 MB.
 // zipMB 40 → 42 by the 7-series' back end (#3146: nextpnr-himbaechel-xc7 0.7 MB zipped, its bit database 0.5 MB) and
 // the HDL front end's package (#1710, 0.2 MB): the zip 40.6 MB, unzipped 134.6 MB (#3615). The README's and the guide's
-// pictures (docs/images, 1.3 MB) took it to 42.9 MB: left out (#4545), the zip 41.6 MB
-const BUDGET = { zipMB: 42, appMB: 140 };
+// pictures (docs/images, 1.3 MB of WebP, which zip does not compress) took it to 42.9 MB, unzipped 139.4 MB: kept, for
+// the guide read offline, zipMB 42 → 44 and appMB 140 → 142 (#4556)
+const BUDGET = { zipMB: 44, appMB: 142 };
 
 const has = (cmd) => { try { execFileSync(cmd, ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } };
 const SKIP = process.platform === 'win32' ? 'the release is packaged on Linux (zip): not on Windows'
@@ -113,9 +114,8 @@ test('release zip: the launchers are executable (Linux, macOS) and the Windows o
 
 test('release zip: the device measurements left out, the bit database the app reads kept (#1541)', { skip: SKIP }, () => {
   assert.equal(exists('packages/silinx-fpga/research/s3e-device/data'), false, 'packages/silinx-fpga/research/s3e-device/data (#3) not packaged');
-  // (the guide's pictures too, its pages kept: #4545)
-  assert.equal(exists('docs/images'), false, 'docs/images not packaged');
-  for (const f of ['docs/user/en/README.md', 'docs/user/pt/README.md']) assert.ok(exists(f), f);
+  // (the guide in it, its pages and their pictures: #4556)
+  for (const f of ['docs/user/en/README.md', 'docs/user/pt/README.md', 'docs/images/hero.webp']) assert.ok(exists(f), f);
   for (const f of ['packages/silinx-fpga/bitdb/s3e-tiles.json', 'packages/silinx-fpga/research/s3e-device/build-measured.mjs']) assert.ok(exists(f), f);
 });
 
