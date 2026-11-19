@@ -1,5 +1,5 @@
-// The Teaching page (#3533): a tab of the Design pane's row (Start, Design, Files, Libraries, Teaching), in both
-// interfaces, gathering the tools of a class: the guided labs (#3179) and the exercises (#3192), as the Project menu
+// The Teaching page (#3533): a tab of the Design pane's row (Start, Design, Files, Libraries, Collaboration,
+// Teaching: #4577), in both interfaces, gathering the tools of a class: the guided labs (#3179) and the exercises (#3192), as the Project menu
 // has them. The same functions as the menus'; the Start page's Teaching box (#3333) gave way to it. (Its Links and
 // Sharing box, gone: the Start page's sharing and git entries, #3699.)
 import { icon } from './icons.js';

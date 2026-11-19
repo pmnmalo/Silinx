@@ -1,5 +1,5 @@
 // UI: the side panel's tabs with no project open (#4257, #4322): the Start tab alone in the row (not Design, Files,
-// Libraries, Teaching, Collaboration), active, its page only; a project opened brings the others back, on the tab last
+// Libraries, Collaboration, Teaching: #4577), active, its page only; a project opened brings the others back, on the tab last
 // chosen, and closing it leaves the Start tab alone again (the Silinx interface: on its Design page, #1171); an FPGA
 // project and a design and simulation one (#3780); on a narrow screen (the drawer, the Silinx interface's activity bar
 // with its Start icon); the local server and the browser edition; in both interfaces (SILINX_UI_INTERFACE); no warnings.
@@ -49,7 +49,7 @@ uiTest('#4257 #4322 no project: the Start tab alone, its page only; a project op
   // an FPGA project: the tabs back; Files chosen
   await makeProject(env, { name: 'TabsFpga', template: 'gates' });
   await page.openProject('TabsFpga');
-  const all = ['start', 'design', 'files', 'libraries', 'teaching', 'collab'];
+  const all = ['start', 'design', 'files', 'libraries', 'collab', 'teaching'];
   assert.deepEqual(await side(page), { row: true, tabs: all, active: 'design', pages: ['design'] });
   await page.leftTab('files');
   await close(page);
