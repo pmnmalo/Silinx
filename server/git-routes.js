@@ -13,7 +13,7 @@ export function registerGitRoutes(api) {
     return fn(req);
   }).then(
     out => { if (!res.headersSent) res.json(out); },
-    err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}), ...(err.files ? { files: err.files } : {}), ...(err.projects ? { projects: err.projects } : {}), ...(err.drawings ? { drawings: err.drawings } : {}), ...(err.texts ? { texts: err.texts } : {}), ...(err.resolvable !== undefined ? { resolvable: err.resolvable } : {}) }),
+    err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}), ...(err.files ? { files: err.files } : {}), ...(err.projects ? { projects: err.projects } : {}), ...(err.drawings ? { drawings: err.drawings } : {}), ...(err.texts ? { texts: err.texts } : {}), ...(err.resolvable !== undefined ? { resolvable: err.resolvable } : {}), ...(err.existing ? { existing: err.existing } : {}) }),
   );
   const body = req => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
   // a short link's gist (#3223): made with the server's GitHub token (GH_TOKEN), never the page's
@@ -31,7 +31,9 @@ export function registerGitRoutes(api) {
   api.post('/gists/delete', route(req => GH.deleteShortLinks({ ids: Array.isArray(body(req).ids) ? body(req).ids.map(String) : [], expired: body(req).expired === true }).then(deleted => ({ deleted }))));
   // (whether git is there: the interface shows its menu)
   api.get('/git', (req, res) => res.json({ enabled: Git.gitEnabled() }));
-  api.post('/git/clone', route(req => B().gitClone({ url: body(req).url, name: body(req).name || null })));
+  // (a project of the name: opened, replaced or both kept, as ifExists says; else a 409 with what to ask, #4618)
+  api.post('/git/clone', route(async req => (await import('./git-clone.js')).gitCloneChoosing({ url: body(req).url, name: body(req).name || null,
+    ifExists: body(req).ifExists || 'error', discardChanges: body(req).discardChanges === true })));
   api.get('/projects/:p/git/status', route(req => B().gitStatus(req.params.p)));
   api.post('/projects/:p/git/init', route(req => B().gitInit(req.params.p, { remote: body(req).remote || null })));
   api.post('/projects/:p/git/commit', route(req => B().gitCommit(req.params.p, body(req).message)));

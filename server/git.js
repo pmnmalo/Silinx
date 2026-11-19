@@ -573,12 +573,13 @@ async function checkoutSparse(dir) {
 }
 
 /** Open from GitHub Repository: clone a GitHub repository into the workspace as a project, untrusted (#2830: the trust mark in
- *  .git, so its silinx.json stays the repository's): { project, url, warnings }. madeBy 'mcp': the MCP's. */
-export async function gitClone({ url, name = null, madeBy = null }) {
+ *  .git, so its silinx.json stays the repository's): { project, url, warnings }. madeBy 'mcp': the MCP's. replace: a project
+ *  of the name removed by it once the clone is made and checked (#4618, core/git-clone-exists.js), else a 409. */
+export async function gitClone({ url, name = null, madeBy = null, replace = null }) {
   const remote = checkUrl(url);
   const project = name || nameFromRepo(remote.repo);
   const dir = P.projectDir(project);
-  if (fs.existsSync(dir)) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
+  if (fs.existsSync(dir) && !replace) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
   const ws = P.workspaceDir();
   await fsp.mkdir(ws, { recursive: true });
   const tmp = path.join(ws, `.silinx-clone-${crypto.randomBytes(6).toString('hex')}`);
@@ -599,7 +600,10 @@ export async function gitClone({ url, name = null, madeBy = null }) {
     if (gated.refusals.length) throw new GitError(`not opened: ${gateMessages({ refusals: gated.refusals, warnings: [] }).join('; ')}`, null, 422);
     try { JSON.parse(await fsp.readFile(path.join(tmp, P.PROJECT_FILE), 'utf8')); } catch { throw new GitError('not opened: its silinx.json is not valid JSON', null, 422); }
     await fsp.writeFile(path.join(tmp, P.CLONE_TRUST), JSON.stringify({ trusted: false, ...(madeBy ? { madeBy } : {}) }) + '\n');
-    if (fs.existsSync(dir)) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
+    if (fs.existsSync(dir)) {
+      if (!replace) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);
+      await replace();
+    }
     await fsp.rename(tmp, dir);
     return { project, url: remote.url, repository: `${remote.owner}/${remote.repo}`, warnings: gated.warnings };
   } finally {

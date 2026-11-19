@@ -19,6 +19,7 @@ import { field } from './wizards.js';
 import { applyChanges } from './project-watch.js';
 import { commitText, pushText, pullText, cloneText, initText, pullMergeLines } from '/core/git-messages.js';
 import { checksLines } from '/core/github-checks.js';
+import { keptBothText } from '/core/git-clone-exists.js';
 import { checkUrl, nameFromRepo } from '/core/github-url.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
@@ -141,10 +142,20 @@ export async function openFromRepositoryDialog() {
   if (!r) return null;
   log(`Cloning ${r.url}…`, 'info');
   let c;
-  try { c = await api.gitClone(r.url, r.name || null); } catch (e) { logGitError(e); return null; }
-  log(cloneText(c), 'ok');
-  for (const w of c.warnings || []) log(`WARNING: ${w}`, 'warn');
+  try { c = await api.gitClone(r.url, r.name || null); } catch (e) {
+    // (a project of the name: open it, replace it or keep both, asked, #4618)
+    if (e.status !== 409 || !e.existing) { logGitError(e); return null; }
+    const { cloneOntoExisting } = await import('./git-clone-exists.js');
+    c = await cloneOntoExisting(r.url, e.existing, logGitError);
+    if (!c) return null;
+  }
+  if (!c.opened) {
+    if (c.renamedFrom) log(keptBothText(c), 'info');
+    log(cloneText(c), 'ok');
+    for (const w of c.warnings || []) log(`WARNING: ${w}`, 'warn');
+  }
   await openProject(c.project);
+  if (c.then === 'pull') await gitPull();
   return c.project;
 }
 

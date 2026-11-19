@@ -12,6 +12,8 @@
 // disk shares that one origin's storage.
 import { githubClient, startDeviceFlow, pollDeviceFlow, GitHubError, SCOPE, PRIVATE_SCOPE } from '../../core/github-api.js';
 import { restGit } from '../../core/git-rest.js';
+import { cloneOrChoose } from '../../core/git-clone-exists.js';
+import { checkUrl, nameFromRepo } from '../../core/github-url.js';
 import { markUntrusted } from '../../core/trust.js';
 import { githubSettings } from './github-app.js';
 import { projectJsonText, normalizeProjectJson } from './project-store.js';
@@ -81,8 +83,17 @@ export function browserGit({ store, ops, prefix = 'silinx.' }) {
 
   return {
     gitEnabled: async () => ({ enabled: true, backend: 'github-api', signedIn: !!token() }),
-    gitClone: async (url, name = null) => {
-      const r = await backend().clone({ url, name });
+    // (a project of the name: opened, replaced or both kept, as opts.ifExists says, #4618; a replaced one deleted from
+    // this browser, or moved to the folder's .trash)
+    gitClone: async (url, name = null, { ifExists = 'error', discardChanges = false } = {}) => {
+      const r = await cloneOrChoose({
+        GitError: GitHubError, checkUrl, nameFromRepo,
+        exists: n => store().exists(n),
+        status: n => backend().status(n),
+        remove: async n => { await ops.deleteProject(n); await meta.set(n, null); return store().kind === 'folder'; },
+        clone: o => backend().clone(o),
+        sameRepository: (have, remote) => !!have && String(have).toLowerCase() === `${remote.owner}/${remote.repo}`.toLowerCase(),
+      }, { url, name, ifExists, discardChanges });
       return { ...r, trusted: false };
     },
     gitStatus: name => backend().status(name),
