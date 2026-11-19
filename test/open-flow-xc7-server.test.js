@@ -22,6 +22,7 @@ import { referenceFrames, roundTrip } from '../packages/silinx-fpga/src/fpga/xc7
 import { xdcPins, ioConfig, checkPins } from '../packages/silinx-fpga/src/fpga/xc7/pins.js';
 import { readXdc } from '../packages/silinx-fpga/src/xdc.js';
 import { XC7_DB_DIR } from '../packages/silinx-fpga/src/fpga/xc7/bitdb-node.js';
+import { xc7BscanCells, xc7BscanTile } from '../packages/silinx-fpga/src/open-flow-xc7.js';
 import zlib from 'node:zlib';
 import { EXAMPLES, exampleProject, XC7_TARGETS } from './examples-lib.mjs';
 
@@ -45,6 +46,33 @@ test('openStatus: the xc7a35t (Basys 3) and the xc7a100t (Nexys A7) are availabl
   const ftg = openStatus({ family: 'artix7', part: 'xc7a100t', package: 'ftg256', speed: '-1' });
   assert.equal(ftg.available, false);
   assert.equal(ftg.reason, 'no 7-series bit database for the xc7a100tftg256-1 yet (only xc7a100tcsg324-1, xc7a35tcpg236-1): use AMD Vivado for this device');
+});
+
+test('#4680 openStatus: the Zynq-7000\'s XC7Z010 and XC7Z020 (the Zybo Z7\'s) are the 7-series\'; its other parts AMD Vivado\'s alone', () => {
+  for (const part of ['xc7z010', 'xc7z020']) {
+    const st = openStatus({ family: 'zynq', part, package: 'clg400', speed: '-1' });
+    assert.deepEqual([st.available, st.part, st.device, st.graph, st.bitDb], [true, `${part}clg400-1`, part, null, true]);
+    assert.deepEqual(st.steps, ['synth', 'postsynth', 'translate', 'par', 'trce', 'postpar', 'bitgen']);
+    assert.equal(st.reason, `${part}clg400-1: nextpnr-himbaechel (xilinx) and Project X-Ray's bit database (the 7-series, an experimental family, #3146)`);
+  }
+  // (the XC7Z020's other package: no bit database; the XC7Z030: no open flow of its family's)
+  assert.equal(openStatus({ family: 'zynq', part: 'xc7z020', package: 'clg484', speed: '-1' }).reason, 'no 7-series bit database for the xc7z020clg484-1 yet (only xc7a100tcsg324-1, xc7a35tcpg236-1, xc7z010clg400-1, xc7z020clg400-1): use AMD Vivado for this device');
+  const z30 = openStatus({ family: 'zynq', part: 'xc7z030', package: 'sbg485', speed: '-1' });
+  assert.deepEqual([z30.available, z30.reason], [false, 'the Silinx toolchain has no back end for the XC7Z030 (Zynq-7000): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)']);
+  assert.deepEqual(openSteps(undefined, { family: 'artix7' }), ['synth', 'translate', 'par', 'trce', 'bitgen']);
+});
+
+test('#4680 the BSCAN\'s tile of the part: its CFG_CENTER_MID in the bit database, nextpnr\'s X<grid x>Y<grid y>', () => {
+  // (Project X-Ray's tile grid: the xc7a50t's CFG_CENTER_MID_X46Y32 at 46, 124; the xc7z010's CFG_CENTER_MID_X67Y32 at 67, 72;
+  // the xc7z020's CFG_CENTER_MID_X123Y84 at 123, 72)
+  assert.deepEqual(['xc7a35tcpg236-1', 'xc7a100tcsg324-1', 'xc7z010clg400-1', 'XC7Z020CLG400-1', ''].map(xc7BscanTile), ['X46Y124', 'X46Y124', 'X67Y72', 'X123Y72', 'X46Y124']);
+  for (const [part, tile] of [['xc7z010clg400-1', 'X67Y72'], ['xc7z020clg400-1', 'X123Y72']]) {
+    const db = loadBitDbXc7(part);
+    assert.deepEqual(db.tiles().filter(n => db.tile(n).type === 'CFG_CENTER_MID'), [`CFG_CENTER_MID_${{ X67Y72: 'X67Y32', X123Y72: 'X123Y84' }[tile]}`], part);
+    const text = JSON.stringify({ modules: { top: { cells: { b: { type: 'BSCANE2', parameters: { JTAG_CHAIN: '00000000000000000000000000000010' }, attributes: {} } } } } });
+    const out = xc7BscanCells(text, part);
+    assert.deepEqual([out.chains, JSON.parse(out.text).modules.top.cells.b.attributes.BEL], [[2], `${tile}/BSCAN_X0Y1.BSCAN`]);
+  }
 });
 
 test('openSteps: the 7-series\' list (nextpnr maps in its Place & Route); the Spartan-3E\'s chain as it was', () => {
@@ -154,6 +182,42 @@ for (const { board } of XC7_TARGETS) test(`every example on the ${board} through
         assert.deepEqual(build.filter(f => /\.(xst|prj|ut|ucf|sh)$/.test(f)), []);
       });
     }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// (#4680) the Zynq-7000's programmable logic: blinky on the Zybo Z7-20 and Z7-10 (their PL; no processing system), its .bit
+// the part's (its ID code), its frames fasm2frames' and read back clean, its pins the XDC's, no warning
+const ZYNQ = { 20: { part: 'xc7z020clg400-1', bitPart: '7z020clg400', idcode: 0x3727093 }, 10: { part: 'xc7z010clg400-1', bitPart: '7z010clg400', idcode: 0x3722093 } };
+for (const variant of ['20', '10']) test(`#4680 blinky on the Zybo Z7-${variant} through the 7-series' back end: no warning, its .bit the ${ZYNQ[variant].part}'s, checked against nextpnr's FASM`, async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-zynq-'));
+  const Z = ZYNQ[variant];
+  try {
+    const db = loadBitDbXc7(Z.part);
+    const index = bitIndexXc7(JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(XC7_DB_DIR, `${Z.part}.json.gz`))).toString('utf8')));
+    const { dir, project } = exampleProject('blinky', { board: 'zybo-z7', variant }, tmp);
+    assert.equal(project.device.family, 'zynq');
+    const { lines, result, error } = await run(dir, project);
+    assert.equal(error, undefined, error?.message);
+    assert.deepEqual(warnings(lines), []);
+    assert.deepEqual(result.completedSteps, ['synth', 'translate', 'par', 'trce', 'bitgen']);
+    const r = result.reports;
+    assert.deepEqual([r.source, r.par.engine], ['open', 'nextpnr']);
+    // (the Zybo's 125 MHz clock met by nextpnr's estimate)
+    assert.equal(r.timing.met, true);
+    assert.ok(r.timing.maxFreqMHz >= 125, `${r.timing.maxFreqMHz} MHz`);
+    const bit = fs.readFileSync(path.join(dir, `build/${project.top}.bit`));
+    assert.deepEqual([parseBitHeader(bit).part], [Z.bitPart]);
+    const fasm = fs.readFileSync(path.join(dir, 'build/open/routed.fasm'), 'utf8');
+    const ref = referenceFrames(index, fasm), back = readBitFramesXc7(new Uint8Array(bit), index);
+    assert.equal(back.idcode, Z.idcode);
+    let differ = 0;
+    for (const [a, w] of back.frames) if (!(ref.get(a) ?? new Uint32Array(101)).every((x, i) => x === w[i])) differ++;
+    assert.equal(differ, 0, 'frames not fasm2frames\'');
+    const rt = roundTrip(index, fasm, back.frames);
+    assert.deepEqual([rt.lost, rt.stray, rt.unknown, rt.missing, rt.extra], [[], [], [], [], []]);
+    const netlist = fs.readFileSync(path.join(dir, r.files.netlist), 'utf8');
+    const pins = xdcPins(readXdc(fs.readFileSync(path.join(dir, project.constraints), 'utf8')), netlist, project.top);
+    assert.deepEqual(checkPins(db.pins, pins, ioConfig(rt.features)), { ok: true, checked: PINS.blinky, errors: [] });
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 

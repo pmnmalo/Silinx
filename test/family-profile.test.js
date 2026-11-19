@@ -85,11 +85,14 @@ test('the open flow: the parts each family\'s Silinx toolchain takes, its bit da
   const xc7 = familyProfile('artix7').openFlow;
   assert.deepEqual([xc7.bitDb, xc7.uarch, xc7.runner, xc7.layout, xc7.steps, xc7.package], ['xc7', 'xilinx', 'runNextpnrHimbaechelXilinx', 'nextpnrXc7', XC7_STEPS, undefined]);
   for (const p of ['xc7a35t', 'xc7a50t', 'xc7a100t']) assert.ok(xc7.parts.test(p), p);
-  for (const p of ['xc7k70t', 'xc7z020', 'xc7a35', 'xc6slx16']) assert.ok(!xc7.parts.test(p), p);
+  // (the Zynq-7000's XC7Z010 and XC7Z020 too, their programmable logic, #4680; not its parts with no bit database)
+  for (const p of ['xc7z010', 'xc7z020']) assert.ok(xc7.parts.test(p), p);
+  for (const p of ['xc7k70t', 'xc7z007s', 'xc7z030', 'xc7a35', 'xc6slx16']) assert.ok(!xc7.parts.test(p), p);
   // (its runner is the package's, its WebAssembly files the micro-architecture's)
   const xc7Package = await import('@silinx/nextpnr-himbaechel-xc7');
   assert.equal(typeof xc7Package[xc7.runner], 'function');
   assert.equal(xc7Package.deviceOf('xc7a35tcpg236-1'), 'xc7a50t');
+  assert.deepEqual(['xc7z010clg400-1', 'xc7z020clg400-1'].map(xc7Package.deviceOf), ['xc7z010', 'xc7z020']);
   for (const dev of ['xc3s200a', 'xc3s400', 'xc6slx45t', 'xc7a35t']) {
     assert.ok(!familyProfile('spartan3e').openFlow.parts.test(dev) && !familyProfile('spartan6').openFlow.parts.test(dev), dev);
   }

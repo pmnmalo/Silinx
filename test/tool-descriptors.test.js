@@ -11,7 +11,7 @@ import { ECP5_STEPS } from '../packages/silinx-fpga/src/open-flow-ecp5.js';
 import { GOWIN_STEPS } from '../packages/silinx-fpga/src/open-flow-gowin.js';
 import { GATEMATE_STEPS } from '../packages/silinx-fpga/src/open-flow-gatemate.js';
 import { familyProfile } from '../core/family-profile.js';
-import { vivadoDevice, openFlowDevice, openOnlyDevice, isIseFamily, noOpenFlowMessage } from '../packages/silinx-fpga/src/parts.js';
+import { vivadoDevice, openFlowDevice, openOnlyDevice, isIseFamily, noOpenFlowMessage, openFamilyOf, deviceFamily } from '../packages/silinx-fpga/src/parts.js';
 
 const read = f => fs.readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const ids = t => t.flatMap(n => [n.id, ...ids(n.children || [])]);
@@ -322,20 +322,32 @@ test('#1649 AMD Vivado on the Artix-7 (the local server): ISE\'s step names, Viv
   assert.deepEqual(find(t, 'bitgen').run(), ['synth', 'translate', 'map', 'par', 'bitgen']);
 });
 
-test('#3895 the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado on the local server whatever the synthesis tool, no flow in the browser edition', () => {
-  for (const part of ['xc7s6', 'xc7s50', 'xc7k70t', 'xc7k160t', 'xc7z007s', 'xc7z010', 'xc7z020']) {
+test('#3895 the Spartan-7, the Kintex-7, the Zynq-7000\'s parts with no bit database: AMD Vivado on the local server whatever the synthesis tool, no flow in the browser edition', () => {
+  for (const part of ['xc7s6', 'xc7s50', 'xc7k70t', 'xc7k160t', 'xc7z007s', 'xc7z015', 'xc7z030']) {
     for (const open of [false, true]) assert.equal(toolOf({ part }, open), VIVADO, `${part} open=${open}: no Silinx toolchain of theirs`);
     for (const open of [false, true]) assert.equal(toolOf({ part }, open, { standalone: true }), NO_FLOW, `${part}: none in the browser edition`);
     assert.equal(toolOf({ part }, false, { designOnly: true }), DESIGN_ONLY, part);
   }
-  // the light entry's helpers: Vivado's families, the Artix-7 alone with a flow of the Silinx toolchain
-  for (const [part, vivado, open] of [['xc7a35t', true, true], ['xc7s50', true, false], ['xc7k160t', true, false], ['xc7z020', true, false], ['xc7v585t', false, true], ['xc3s250e', false, true], ['ice40up5k', false, true]]) {
+  // the light entry's helpers: Vivado's families, the Artix-7 and the Zynq-7000's XC7Z010 / XC7Z020 (#4680) with a flow of
+  // the Silinx toolchain
+  for (const [part, vivado, open] of [['xc7a35t', true, true], ['xc7s50', true, false], ['xc7k160t', true, false], ['xc7z020', true, true], ['xc7z010', true, true], ['xc7z007s', true, false], ['xc7z030', true, false], ['xc7v585t', false, true], ['xc3s250e', false, true], ['ice40up5k', false, true]]) {
     assert.equal(vivadoDevice({ part }), vivado, part);
     assert.equal(openFlowDevice({ part }), open, part);
   }
   assert.equal(openOnlyDevice({ part: 'xc7s50' }), false, 'the Spartan-7 is not ISE\'s, nor the Silinx toolchain\'s only');
   assert.equal(isIseFamily('spartan7'), false);
   assert.equal(noOpenFlowMessage({ part: 'xc7s50' }), 'the Silinx toolchain has no back end for the XC7S50 (Spartan-7): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)');
+});
+
+test('#4680 the Zynq-7000\'s XC7Z010 and XC7Z020 (their programmable logic): the Silinx toolchain\'s 7-series back end as the Artix-7\'s, Vivado the local server\'s default', () => {
+  for (const part of ['xc7z010', 'xc7z020']) {
+    assert.equal(toolOf({ part }, true), SILINX_XC7, part);
+    assert.equal(toolOf({ part }, true, { standalone: true }), SILINX_XC7, `${part}: in the browser edition too`);
+    assert.equal(toolOf({ part }, false), VIVADO, `${part}: Vivado's on the local server, the project's synthesis tool not Silinx`);
+    assert.equal(openFamilyOf(deviceFamily({ part })), 'artix7', part);
+  }
+  // (the family's other parts, and the other families, their own)
+  assert.deepEqual(['zynq', 'artix7', 'spartan7', 'spartan3e', 'ice40'].map(openFamilyOf), ['artix7', 'artix7', 'spartan7', 'spartan3e', 'ice40']);
 });
 
 test('#3146 the Silinx toolchain on the Artix-7 (the project\'s synthesis tool Silinx, the local server): its steps, its reports, the timing nextpnr\'s; its post-synthesis and post-place & route simulation models (#4362), no view; Emulate (#3704)', () => {

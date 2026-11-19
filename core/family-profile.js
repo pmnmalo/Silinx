@@ -30,8 +30,9 @@ export const FAMILY_PROFILES = {
     // the Silinx toolchain's 7-series back end (#3146), in the browser edition too (#3143): nextpnr-himbaechel-xc7 (its
     // micro-architecture uarch, its function runner; layout: the browser edition's key of its bundle, its chip databases in
     // ../chipdb beside it; mb: its WebAssembly and a chip database, the log's), Project X-Ray's bit databases in bitdb/xc7
-    // (one per part: <part>.json.gz), its steps (nextpnr packs in its Place & Route)
-    openFlow: { parts: /^xc7a\d+t$/, bitDb: 'xc7', nextpnr: true, uarch: 'xilinx', runner: 'runNextpnrHimbaechelXilinx', layout: 'nextpnrXc7', mb: 6, steps: XC7_STEPS },
+    // (one per part: <part>.json.gz), its steps (nextpnr packs in its Place & Route); the Zynq-7000's XC7Z010 and XC7Z020 too,
+    // their programmable logic (#4680: family.js openFamilyOf)
+    openFlow: { parts: /^xc7a\d+t$|^xc7z0[12]0$/, bitDb: 'xc7', nextpnr: true, uarch: 'xilinx', runner: 'runNextpnrHimbaechelXilinx', layout: 'nextpnrXc7', mb: 6, steps: XC7_STEPS },
     // its Place & Route's seeds in Process Properties (#3825): one, or the best of 3 (impl.xc7Seeds)
     seedsChoice: true,
   },

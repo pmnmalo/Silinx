@@ -24,8 +24,8 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
 
 * `role: design` files go to synthesis; `role: sim` files are only used for simulation.
 * `synthTool`: `'silinx'` (the Silinx toolchain: Yosys, nextpnr's place & route, Silinx's bitstream),
-  `'xst'` (Xilinx ISE 14.7) or `'vivado'` (AMD Vivado, the 7-series devices of the local server: the Artix-7's default, the
-  Spartan-7's, Kintex-7's and Zynq-7000's only one, #3895); without it, the mode of Toolchain Settings.
+  `'xst'` (Xilinx ISE 14.7) or `'vivado'` (AMD Vivado, the 7-series devices of the local server: the Artix-7's and the
+  Zynq-7000's XC7Z010 / XC7Z020's default, #4680, the Spartan-7's, Kintex-7's and the other Zynq-7000 parts' only one, #3895); without it, the mode of Toolchain Settings.
 * `kind`: `"design"` for a design and simulation project (no FPGA: drawings and simulation, no board, no implementation;
   #3891, #4103); absent, an FPGA project.
 * `topSourceType`: the Top-Level Source Type (#4105): `hdl` (absent too), `sch`, `fsm`, `asm`, `tt`, `petri`, `circuit`,

@@ -24,7 +24,7 @@ import fss from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deviceFamily, isIseFamily, vivadoDevice, openFlowDevice, noOpenFlowMessage, backendOf, orderSteps, ICE40_PARTS, ECP5_PARTS, GOWIN_DEVICES, GATEMATE_PARTS, resourcesOf, OPEN_STEPS, orderOpenSteps, synthEffort, synthGoal, findDeviceGraph, shippedDevicePath, buildDeviceCache, devicesDir, SHIPPED_DEVICES_DIR, S3E_DEVICES, s6OpenStatus, DB_DIR, hasBitDb, dbPackages, xc7Parts, XILINX_STEPS } from '../packages/silinx-fpga/src/node.js';
+import { deviceFamily, isIseFamily, vivadoDevice, openFlowDevice, openFamilyOf, noOpenFlowMessage, backendOf, orderSteps, ICE40_PARTS, ECP5_PARTS, GOWIN_DEVICES, GATEMATE_PARTS, resourcesOf, OPEN_STEPS, orderOpenSteps, synthEffort, synthGoal, findDeviceGraph, shippedDevicePath, buildDeviceCache, devicesDir, SHIPPED_DEVICES_DIR, S3E_DEVICES, s6OpenStatus, DB_DIR, hasBitDb, dbPackages, xc7Parts, XILINX_STEPS } from '../packages/silinx-fpga/src/node.js';
 import { findPart } from './devices.js';
 import { ownPackage, ownPresent } from './nextpnr-ice40-fetch.js';
 import { runCommand } from './jobs.js';
@@ -85,10 +85,11 @@ export function flowHeapMb(totalBytes = os.totalmem(), nodeOptions = process.env
  */
 export function openStatus(device, { dbDir = BIT_DB_DIR } = {}) {
   const out = { available: false, reason: '', part: null, device: null, graph: null, shipped: false, bitDb: false, canBuild: false };
-  // (the Spartan-7, the Kintex-7, the Zynq-7000: AMD Vivado's alone, no bit database of theirs, #3895)
+  // (the Spartan-7, the Kintex-7: AMD Vivado's alone, no bit database of theirs, #3895)
   if (vivadoDevice(device) && !openFlowDevice(device)) return { ...out, device: String(device.part).toLowerCase(), reason: noOpenFlowMessage(device) };
   if (OWN[deviceFamily(device)]) return { ...out, ...ownStatus(device) };
-  if (deviceFamily(device) === 'artix7') return { ...out, ...xc7Status(device) };
+  // (the Zynq-7000's programmable logic the 7-series' too, #4680)
+  if (openFamilyOf(deviceFamily(device)) === 'artix7') return { ...out, ...xc7Status(device) };
   let part;
   try { part = reportPart(device || {}); } catch (e) { out.reason = e.message; return out; }
   const dev = String(device.part).toLowerCase();
@@ -185,7 +186,7 @@ export const simSourcesOf = (project, projectDir) => (project.files || []).filte
  * @param {object} o { project, projectDir, steps?, seed?, effort? }
  */
 export async function runOpenImplementation(job, { project, projectDir, steps, seed = 1, effort = 1, synthUpToDate = false }) {
-  const st = openSteps(steps, { synthUpToDate, family: deviceFamily(project.device) });
+  const st = openSteps(steps, { synthUpToDate, family: openFamilyOf(deviceFamily(project.device)) });
   const status = openStatus(project.device || {});
   job.log(`Silinx implementation with the Silinx toolchain (no ISE): ${project.name} top=${project.top} device=${status.part || '?'}`);
   const result = { buildDir: path.join(projectDir, 'build'), steps: st, warnings: [], mode: 'silinx', reports: null, completedSteps: [], failedStep: null };
@@ -217,7 +218,7 @@ export async function runOpenImplementation(job, { project, projectDir, steps, s
   }
   for (const f of ['placed.xdl', 'routed.xdl', 'routed.asc', 'routed.config', 'routed.fasm', 'nextpnr-report.json', 'timing.txt', 'paths.json', 'report.json', 'fpga-view.json']) await fs.rm(path.join(outDir, f), { force: true });
   const spec = {
-    top: gen.top, part: status.part, device: status.device, family: deviceFamily(project.device) || 'spartan3e',
+    top: gen.top, part: status.part, device: status.device, family: openFamilyOf(deviceFamily(project.device)) || 'spartan3e',
     pkg: String(project.device.package).toLowerCase(), speed: String(project.device.speed || ''), graph: status.graph, bitDbDir: BIT_DB_DIR,
     sources: gen.sources.map(s => ({ path: s.path, lang: s.lang, file: path.join(gen.buildDir, s.buildPath) })),
     ucf: gen.hasUcf ? path.join(gen.buildDir, gen.constraintsFile || `${gen.top}.ucf`) : null,

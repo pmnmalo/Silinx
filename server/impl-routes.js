@@ -11,7 +11,7 @@ import { detectToolchain, saveConfig, loadConfig } from './toolchain.js';
 import { runImplementation, collectReports, normalizeSteps } from './ise.js';
 import { runVivado, isVivadoDevice, vivadoSteps, collectVivadoReports } from './vivado.js';
 import { DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
-import { deviceFamily, experimentalDevice, familyName, noFlowMessage, noOpenFlowMessage, openFlowDevice, openOnlyDevice, bitstreamExtOf } from '../packages/silinx-fpga/src/parts.js';
+import { deviceFamily, experimentalDevice, familyName, noFlowMessage, noOpenFlowMessage, openFlowDevice, openFamilyOf, openOnlyDevice, bitstreamExtOf } from '../packages/silinx-fpga/src/parts.js';
 import { runOpenImplementation, openStatus, openSteps, buildDeviceJob, reportPart } from './open-flow.js';
 import { programJob, scanJob, promJob, readBitInfo, checkBitPart, expectedDevice, parseBitHeader } from './programmer.js';
 import { importXise, importIseSchematics, iseModuleSymbols } from './xise.js';
@@ -137,7 +137,7 @@ export async function startImplementation(name, body = {}) {
   const choice = body.toolchain || ({ silinx: 'silinx', xst: 'ise', vivado: 'vivado' })[project.synthTool];
   // (a 7-series device: Vivado's, #1649, unless the Silinx toolchain is asked for or is the project's synthesis tool: its
   // 7-series back end, on trial, #3146; a toolchain asked for Vivado: its)
-  // (a Vivado-only family's, #3895: the Spartan-7, the Kintex-7, the Zynq-7000: Vivado's whatever the project's synthesis tool;
+  // (a Vivado-only family's, #3895: the Spartan-7, the Kintex-7: Vivado's whatever the project's synthesis tool;
   // the Silinx toolchain or ISE asked for: an error)
   const only = isVivadoDevice(project.device) && !openFlowDevice(project.device);
   if (only && ['silinx', 'open'].includes(body.toolchain)) throw bad(noOpenFlowMessage(project.device));
@@ -155,7 +155,7 @@ export async function startImplementation(name, body = {}) {
   const open = openOnlyDevice(project.device) || (choice ? ['silinx', 'open'].includes(choice) : (await loadConfig()).mode === 'silinx');
   // (the synthesis up to date, #280: the run starts at Translate from its netlist)
   const synthUpToDate = !!body.synthUpToDate;
-  if (open) { try { steps = openSteps(body.steps, { synthUpToDate, family: deviceFamily(project.device) }); } catch (e) { throw bad(e.message); } }
+  if (open) { try { steps = openSteps(body.steps, { synthUpToDate, family: openFamilyOf(deviceFamily(project.device)) }); } catch (e) { throw bad(e.message); } }
   // Xilinx ISE (Docker, ssh, the Mac's or the PC's own) runs outside the browser's sandbox: not for a project from
   // outside until the user trusts it (#2830); the Silinx toolchain does
   if (!open && !isTrusted(project)) throw bad(untrustedMessage(name, 'Xilinx ISE', project), 403);
