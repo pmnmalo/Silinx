@@ -14,6 +14,9 @@
 // editor changes in one is written to the disk (through the gate too) and its HDL generated again, as the page's own
 // changes are. Its connection to the relay lost (#3835), the room is resumed on its own: "Reconnecting…" in the toolbar
 // meanwhile, the loss and the return in the console; its followers keep it as it was, and get what changed once back.
+// How it reaches each follower (#4643, core/collab-paths.js): its mode (via the Cloudflare relay, peer to peer, via a
+// Silinx server's relay) and each follower's path (P2P or Relay), in the presence (the Collaboration tab shows them),
+// drawn again when a path changes; never a console line for it (many followers would flood it).
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { S, app } from './app.js';
@@ -31,6 +34,7 @@ import { keepDrawingsBound, unbindDrawings, editorOf, modelOf } from './collab-d
 import { liveDrawing, drawingKind, drawingText, sameDrawing, drawingModel, drawingPathsOf, pruneDrawing, syncDrawing, revertDrawing, withView } from '/core/collab-model.js';
 import { shareRoom, colorOf } from '/core/collab-client.js';
 import { followLink, relayUrl, relayAddress, withTop, workersRelay } from '/core/collab-link.js';
+import { shareMode, hostedPaths, withPaths } from '/core/collab-paths.js';
 import { newHostKey } from '/core/collab-meet.js';
 import { linkField } from './link-field.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
@@ -171,7 +175,9 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
     ? await shareRoom({ url: 'silinx-host:', WebSocket: host.WebSocket, doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) })
     : await shareRoom({ url: relayUrl(other || location.href, 'share'), token: other ? relay.key || null : await api.collabToken(), doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) });
   const base = location.origin + location.pathname, pub = hostKey?.pub ?? null;
-  share = { name, project, session, doc, made: {}, base, via, other, pub, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
+  // (#4643: the way chosen; a relay of the browser edition's is the Cloudflare one: hosted, Live's choice, or a Worker's)
+  const mode = shareMode({ hosted: !!host, relay: other, cloudflare: !!other && (!!host || workersRelay(other)) });
+  share = { name, project, session, doc, made: {}, base, via, mode, other, pub, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share;
@@ -193,6 +199,8 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
     const s = share;
     s.meet = (await import('./collab-meet.js')).meetFollowers(s, hostKey.key);
   }
+  // (a hosted room's meeting: its followers' paths, drawn again as they change, #4643)
+  if (host) { const s = share; s.onVia = () => { if (share === s) draw(); }; s.meet.then(m => { s.met = m; s.onVia(); }).catch(() => {}); }
   return share.link;
 }
 
@@ -246,9 +254,11 @@ const commands = () => [
 
 function draw() {
   if (!share) { renderPresence(); return; }
-  const peers = share.session.peers();
+  // (each follower's path, #4643: a hosted room's as its meeting says, a relay's room's through the relay)
+  const paths = share.hosted ? hostedPaths(share.hosted.rooms, share.met?.ends, share.met?.meeting.via) : null;
+  const peers = withPaths(share.session.peers(), paths);
   const label = share.session.connected?.() === false ? 'Reconnecting…' : peers.length ? `Sharing (${peers.length})` : 'Sharing';
-  renderPresence({ label, me: { name: share.name, role: 'owner', color: colorOf(share.doc.clientID), me: true }, peers });
+  renderPresence({ label, me: { name: share.name, role: 'owner', color: colorOf(share.doc.clientID), me: true }, peers, mode: share.mode });
 }
 
 function onEvent(ev) {

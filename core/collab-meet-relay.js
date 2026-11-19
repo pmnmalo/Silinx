@@ -10,7 +10,8 @@
 //   relayMeeting({ url (the relay's address, http(s)), token (the host's: the relay's key or the server's token),
 //   WebSocket, RTC (a WebRTC connection's class; none: the relay only, as in node), iceServers (the STUN servers, from
 //   the user's list) }) -> a meeting point (core/collab-meet.js): { join({ topic, password, maxReceive, accept,
-//   answers }) -> a meeting }; a meeting's `via(id)` says how a peer's messages go: 'relay' or 'direct'.
+//   answers }) -> a meeting }; a meeting's `via(id)` says how a peer's messages go: 'relay' or 'direct', and
+//   `onVia(f(id, via))` is told when that changes (#4643: the Collaboration tab's P2P / Relay per follower).
 import { keyOf, seal, unseal, b64url } from './collab-crypto.js';
 import { SUBPROTOCOL } from './collab-wire.js';
 import { MEET_PROTOCOL, ID_BYTES } from './collab-meeting.js';
@@ -45,7 +46,7 @@ export function relayMeeting({ url, token = null, WebSocket: WS = globalThis.Web
       const key = await keyOf(password);
       const ws = new WS(meetUrl(url, answers ? 'host' : 'peer', topic), [SUBPROTOCOL, ...(answers && token ? [`token.${token}`] : [])]);
       ws.binaryType = 'arraybuffer';
-      const on = { peer: () => {}, leave: () => {}, data: null };
+      const on = { peer: () => {}, leave: () => {}, via: () => {}, data: null };
       const early = [];   // (what came before onData: kept for it)
       const peers = new Map();   // id -> { out: 'relay' | 'direct', switched (its messages through the channel taken), held, pc, dc, join }
       let self = null, left = false, out = Promise.resolve();
@@ -66,16 +67,18 @@ export function relayMeeting({ url, token = null, WebSocket: WS = globalThis.Web
       };
       const fallBack = p => {
         if (!p.dc && !p.pc) return;
+        const was = p.out;
         p.out = 'relay';
         p.switched = true;   // (what the channel held, taken: the relay's messages from now)
         for (const d of p.held.splice(0)) deliver(p.id, d);
         try { p.pc?.close(); } catch { /* closed */ }
         p.pc = p.dc = null;
+        if (was !== 'relay' && peers.has(p.id)) on.via(p.id, 'relay');
       };
       // a data channel open: the switch said through the relay, its last message, then the channel
       const use = (p, dc) => {
         dc.binaryType = 'arraybuffer';
-        const opened = () => { if (!peers.has(p.id)) return; p.dc = dc; viaRelay(p.id, M.switch, new Uint8Array(0)); p.out = 'direct'; };
+        const opened = () => { if (!peers.has(p.id)) return; p.dc = dc; viaRelay(p.id, M.switch, new Uint8Array(0)); p.out = 'direct'; on.via(p.id, 'direct'); };
         if (dc.readyState === 'open') opened(); else dc.addEventListener('open', opened, { once: true });
         dc.addEventListener('message', e => {
           let d = e.data;
@@ -163,7 +166,7 @@ export function relayMeeting({ url, token = null, WebSocket: WS = globalThis.Web
       if (!answers) setTimeout(() => { const p = peers.get(w.host); if (p) { on.peer(w.host); offer(p).catch(() => fallBack(p)); } }, 0);
       return {
         self,
-        onPeer: f => { on.peer = f; }, onLeave: f => { on.leave = f; }, onData: f => { on.data = f; for (const [id, d] of early.splice(0)) f(id, d); },
+        onPeer: f => { on.peer = f; }, onLeave: f => { on.leave = f; }, onVia: f => { on.via = f; }, onData: f => { on.data = f; for (const [id, d] of early.splice(0)) f(id, d); },
         send: (id, d) => {
           const p = peers.get(id);
           if (!p || left) return;

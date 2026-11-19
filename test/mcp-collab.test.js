@@ -72,13 +72,13 @@ test('share_project start: a page follows it (the project, its files, the owner\
   const r = await ok('share_project', { project: 'traffic', name: 'Teacher', server: base });
   const link = r.data.link;
   assert.match(link, new RegExp(`^${base}/#view=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}$`));
-  assert.equal(r.text, `Sharing 'traffic' live, read only, as Teacher. Anyone with this link follows it (until share_project stop):\n${link}`);
-  assert.deepEqual(r.data, { project: 'traffic', shared: true, link, followers: [] });
+  assert.equal(r.text, `Sharing 'traffic' live via the Silinx server's relay, read only, as Teacher. Anyone with this link follows it (until share_project stop):\n${link}`);
+  assert.deepEqual(r.data, { project: 'traffic', shared: true, link, mode: 'server', followers: [] });
   // (again: the same link)
-  assert.equal((await ok('share_project', { project: 'traffic', server: base })).text, `'traffic' is shared already: ${link}`);
+  assert.equal((await ok('share_project', { project: 'traffic', server: base })).text, `'traffic' is shared already via the Silinx server's relay: ${link}`);
   // (its QR code, #3637: the follow link's, decoded back; the status's too)
   const q = await ok('share_project', { project: 'traffic', server: base, qr: true });
-  assert.equal(q.text, `'traffic' is shared already: ${link}`);
+  assert.equal(q.text, `'traffic' is shared already via the Silinx server's relay: ${link}`);
   assert.equal(decodeSvg(q.data.qr), link);
   assert.equal(decodeSvg((await ok('share_project', { project: 'traffic', action: 'status', qr: true })).data.qr), link);
   assert.equal((await ok('share_project', { project: 'traffic', action: 'status' })).data.qr, undefined);
@@ -95,7 +95,14 @@ test('share_project start: a page follows it (the project, its files, the owner\
   fs.writeFileSync(path.join(P.projectDir('traffic'), 'src/timer.vhd'), text);
   await until(() => docFile(page.doc, 'src/timer.vhd') === text, 'the change on disk', 8000);
   const st = await until(async () => { const s = await ok('share_project', { project: 'traffic', action: 'status' }); return s.data.followers.length && s; }, 'the follower in the status');
-  assert.equal(st.text, `'traffic' is shared: ${link}\nFollowers:\nRui (viewer)`);
+  // (#4643: its mode, each follower's path: a server's relay's room, through it; project_info says the same)
+  assert.equal(st.text, `'traffic' is shared via the Silinx server's relay: ${link}\nFollowers:\nRui (viewer, through the relay)`);
+  assert.equal(st.data.mode, 'server');
+  assert.deepEqual(st.data.followers.map(p => [p.name, p.role, p.path]), [['Rui', 'viewer', 'relay']]);
+  const info = await ok('project_info', { project: 'traffic' });
+  assert.deepEqual(info.data.sharing, { mode: 'server', connected: true, followers: [{ name: 'Rui', role: 'viewer', path: 'relay' }] });
+  assert.equal(info.text.split('\n').at(-1), '  shared live via the Silinx server\'s relay: Rui (viewer, through the relay)');
+  assert.equal(info.data.untrusted.content, 'the project\'s settings and files\' names, its followers\' names');
   await ok('share_project', { project: 'traffic', action: 'stop' }).then(s => assert.equal(s.text, 'Stopped sharing \'traffic\': its followers no longer see it.'));
   await until(() => page.closed(), 'the page told');
   assert.equal((await ok('share_project', { project: 'traffic', action: 'status' })).text, '\'traffic\' is not shared.');
@@ -136,11 +143,11 @@ test('#3631 share_project top (Share Module…): the links open on the module; f
   assert.match(link, /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=speed_ctrl$/);
   assert.match(editLink, /#edit=[^&]+&top=speed_ctrl$/);
   assert.equal(r.data.top, 'speed_ctrl');
-  assert.equal(r.text, `Sharing 'blinkyMod' live as Ana, opening on speed_ctrl. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
+  assert.equal(r.text, `Sharing 'blinkyMod' live via the Silinx server's relay as Ana, opening on speed_ctrl. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
   assert.deepEqual(parseFollowLink(link), { ...parseFollowLink(link.replace(/&top=.*$/, '')), top: 'speed_ctrl' });
   // (shared already: that module's links, another module's too)
   const again = await ok('share_project', { project: 'blinkyMod', server: base, top: 'knight' });
-  assert.equal(again.text, `'blinkyMod' is shared already, opening on knight: ${link.replace(/speed_ctrl$/, 'knight')}`);
+  assert.equal(again.text, `'blinkyMod' is shared already via the Silinx server's relay, opening on knight: ${link.replace(/speed_ctrl$/, 'knight')}`);
   assert.equal(again.data.editLink, editLink.replace(/speed_ctrl$/, 'knight'));
   // (its QR code, #3637: the module's follow link's)
   assert.equal(decodeSvg((await ok('share_project', { project: 'blinkyMod', server: base, top: 'knight', qr: true })).data.qr), link.replace(/speed_ctrl$/, 'knight'));
@@ -198,7 +205,7 @@ test('#3997 share_project promote / demote: a viewer an editor, an editor a view
   assert.equal(pr.text, '\'Bot\' is an editor of \'trafficRole\' now: they edit its text files and drawings.');
   assert.deepEqual([pr.data.project, pr.data.user, pr.data.role, pr.data.untrusted.content], ['trafficRole', 'Bot', 'editor', 'the participant\'s name']);
   await until(async () => (await ok('follow_project', { link })).data.editor, 'Bot an editor');
-  await until(async () => /Bot \(editor\)/.test((await ok('share_project', { project: 'trafficRole', action: 'status' })).text), 'Bot an editor at the owner\'s');
+  await until(async () => /Bot \(editor, through the relay\)/.test((await ok('share_project', { project: 'trafficRole', action: 'status' })).text), 'Bot an editor at the owner\'s');
   await fails('share_project', { project: 'trafficRole', action: 'promote', user: 'Bot' }, 'user: \'Bot\' is an editor already');
   await ok('follow_project', { link, write: { path: 'src/timer.vhd', text: `-- by Bot\n${timer}` } });
   await until(async () => (await P.readFile('trafficRole', 'src/timer.vhd')) === `-- by Bot\n${timer}`, 'Bot\'s edit on the disk', 8000);
@@ -258,7 +265,7 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   const r = await ok('share_project', { project: 'trafficEd', name: 'Ana', server: base, editors: true });
   const { link, editLink } = r.data;
   assert.match(editLink, new RegExp(`^${base}/#edit=${parseFollowLink(link).room}\\.[A-Za-z0-9_-]{43}\\.[A-Za-z0-9_-]{129}$`));
-  assert.equal(r.text, `Sharing 'trafficEd' live as Ana. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
+  assert.equal(r.text, `Sharing 'trafficEd' live via the Silinx server's relay as Ana. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
   // (#3996: the viewers' and the editors' links differ, the viewers' with no signing key, nothing of the editors' in it;
   // both QR codes, as Share Project… shows them)
   assert.notEqual(link, editLink);
@@ -949,7 +956,7 @@ test('#3835 share_project: its connection to the relay lost, its room resumed; m
     socks[0].close();
     const off = await until(async () => { const r = await ok('share_project', { project: 'trafficRs', action: 'status' }); return r.data.connected ? null : r; }, 'the loss seen');
     assert.equal(off.data.shared, true);
-    assert.ok(off.text.startsWith(`'trafficRs' is shared: ${link}\nThe connection to the relay was lost: reconnecting (its followers see the project as it was until it is back).\nFollowers:`), off.text);
+    assert.ok(off.text.startsWith(`'trafficRs' is shared via the Silinx server's relay: ${link}\nThe connection to the relay was lost: reconnecting (its followers see the project as it was until it is back).\nFollowers:`), off.text);
     const text = `-- changed meanwhile\n${await P.readFile('trafficRs', 'src/timer.vhd')}`;
     fs.writeFileSync(path.join(P.projectDir('trafficRs'), 'src/timer.vhd'), text);
     await sleep(300);
@@ -957,7 +964,7 @@ test('#3835 share_project: its connection to the relay lost, its room resumed; m
     await until(async () => (await ok('share_project', { project: 'trafficRs', action: 'status' })).data.connected, 'back', 10_000);
     await until(() => docFile(page.doc, 'src/timer.vhd') === text, 'the change made meanwhile at the follower\'s', 8000);
     const st = await until(async () => { const r = await ok('share_project', { project: 'trafficRs', action: 'status' }); return r.data.followers.length ? r : null; }, 'Rui in the status again', 20_000);
-    assert.equal(st.text, `'trafficRs' is shared: ${link}\nFollowers:\nRui (viewer)`);
+    assert.equal(st.text, `'trafficRs' is shared via the Silinx server's relay: ${link}\nFollowers:\nRui (viewer, through the relay)`);
     assert.deepEqual(st.data.warnings, []);
     assert.equal(page.closed(), false);
     assert.deepEqual(ev, []);   // (the follower: no loss, no error)

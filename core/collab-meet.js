@@ -15,7 +15,8 @@
 //   (answers: false, a follower's: its connections answer no offer, only the owner's do, #4197), a meeting:
 //   { self, onPeer(f(id)), onLeave(f(id)), onData(f(id, data: string | Uint8Array)), send(id, data), binding(id) ->
 //   Promise<{ local, remote }> (the connection's two fingerprints, this side's first), drop(id), leave() }
-//   meetAsHost({ meeting, room, key, hostKey, attach }) -> { leave() }    meetOwner({ meeting, room, key, host, ms })
+//   meetAsHost({ meeting, room, key, hostKey, attach, onVia(id, via) (a relay's meeting's path changed, #4643) }) ->
+//   { meeting, ends (id -> its room's socket), leave() }    meetOwner({ meeting, room, key, host, ms })
 //   -> a WebSocket (followRoom's) to the owner; channelMeeting(name): a meeting point of a page's own, between the
 //   pages of one browser (a BroadcastChannel: the tests', no network); trysteroMeeting({ joinRoom, selfId, … }).
 import { b64url } from './collab-crypto.js';
@@ -89,8 +90,9 @@ async function bound(m, id, tries = 10) {
 }
 
 /** The owner's side: every peer that joins gets the proof, then is attached as a follower (a room's socket). */
-export async function meetAsHost({ meeting: point, room, key, hostKey, attach, maxReceive }) {
+export async function meetAsHost({ meeting: point, room, key, hostKey, attach, maxReceive, onVia = () => {} }) {
   const m = await point.join({ topic: await meetTopic(room), password: key, maxReceive });
+  m.onVia?.(onVia);   // (a relay's meeting only: the others' paths are direct)
   const ends = new Map();   // id -> the room's socket of that peer
   m.onPeer(async id => {
     if (ends.has(id)) return;

@@ -7,7 +7,8 @@
 // the follower's after MEET_MS with no owner, or at their choice (Exchange Codes Instead). Every message in the console.
 // A relay of the owner's settings (#4543: Share Project…'s Relay:, a link's `&relay=`) is the meeting point instead
 // (core/collab-meet-relay.js): peer to peer when a direct path works, through the relay otherwise.
-//   meetFollowers(share, hostKey): the owner's page at the meeting point (its followers attached to its room)
+//   meetFollowers(share, hostKey): the owner's page at the meeting point (its followers attached to its room); a
+//                    follower's path changed at a relay's: share.onVia() (#4643)
 //   findOwner(link) -> a WebSocket class for followRoom, 'codes' (the codes instead) or null (cancelled); the class's
 //                    rejoin(): the owner found there again, with no dialog (#3835: its connection lost, made again)
 //   publicServers(link) -> the follow dialog's line naming the public servers a hosted room's follower reaches (#3361)
@@ -49,7 +50,7 @@ export function publicServers(link) {
 /** The owner's page at the meeting point: each follower that finds it there gets its proof, then joins its room. */
 export async function meetFollowers(share, hostKey) {
   try {
-    return await meetAsHost({ meeting: await meetingPoint(share.meetAt), room: share.session.room, key: share.session.key, hostKey, maxReceive: FOLLOWER_JOIN, attach: end => share.hosted?.follower(end) });
+    return await meetAsHost({ meeting: await meetingPoint(share.meetAt), room: share.session.room, key: share.session.key, hostKey, maxReceive: FOLLOWER_JOIN, attach: end => share.hosted?.follower(end), onVia: () => share.onVia?.() });
   } catch (e) {
     app.log(`WARNING: Share Project: ${share.meetAt ? `the relay at ${new URL(share.meetAt.address).host}` : 'the meeting point'} is out of reach (${e.message}): each follower connects with a code instead (Add a User…).`, 'warn');
     return null;

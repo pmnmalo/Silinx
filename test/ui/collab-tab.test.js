@@ -6,7 +6,8 @@
 // git's status while open; no Changes box), Commit…, Push to GitHub, Pull from GitHub, History… run from the tab, the File menu's items kept; a project with no repository: Store Project in a GitHub Repository… from the
 // tab, then committed and pushed; a followed project's read-only notice; Sharing (Share a Copy…, Share Live… from the tab, who is
 // in, the presence's commands, Stop Sharing; a follower's box); the ISE style's tabs all whole in its default side panel
-// (330 px); in Portuguese; a narrow screen; no warnings.
+// (330 px); in Portuguese; a narrow screen; while sharing (#4643), the mode at the top and each follower's path (P2P or
+// Relay), a long list of participants folded; no warnings.
 // (The browser edition's sign-in and checks: test/ui/collab-tab-browser.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -352,7 +353,9 @@ uiTest('#4215 the Collaboration tab\'s Sharing: Share a Copy…, Share Live…, 
   await page.waitNoDialog();
   await page.leftTab('collab');
   const OWNER = ['Copy View Link', 'Copy Editor Link', 'Add a User…', 'Stop Sharing'];
-  await waitBox(page, 'Sharing', ['Sharing', 'A Ana you', 'Share a Copy…', ...OWNER], 'sharing');
+  // (#4643: the mode at the top, this server's relay; each follower's path beside them, its relay's room: through it)
+  const MODE = 'Live via the Silinx server\'s relay';
+  await waitBox(page, 'Sharing', [MODE, 'Sharing', 'A Ana you', 'Share a Copy…', ...OWNER], 'sharing');
   // a follower: in the owner's box, a viewer; the follower's tab, read only, its own box
   const fp = await env.newPage(env.server.url);
   try {
@@ -363,7 +366,17 @@ uiTest('#4215 the Collaboration tab\'s Sharing: Share a Copy…, Share Live…, 
     await fp.fill('.dlg-overlay input[data-field=name]', 'Rui');
     await fp.dialogButton('Follow');
     await fp.waitFor(() => window.Silinx?.project && window.Silinx.startupChecked, [], { what: 'the shared project open', timeout: 20000 });
-    await waitBox(page, 'Sharing', ['Sharing (1)', 'A Ana you', 'R Rui viewer', 'Share a Copy…', 'Make Rui an Editor', ...OWNER], 'Rui in');
+    await waitBox(page, 'Sharing', [MODE, 'Sharing (1)', 'A Ana you', 'R Rui viewer Relay', 'Share a Copy…', 'Make Rui an Editor', ...OWNER], 'Rui in');
+    const tag = () => page.eval(() => { const t = document.querySelector('#collab-page .collab-path'); return [document.querySelector('#collab-page .collab-mode').textContent, t.textContent, t.title, t.dataset.path]; });
+    assert.deepEqual(await tag(), [MODE, 'Relay', 'Through the Silinx server\'s relay', 'relay']);
+    // (in Portuguese: the mode, the tag and its tip)
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+    try {
+      await page.waitFor(() => document.querySelector('#collab-page .collab-path')?.textContent === 'Retransmissor', [], { what: 'the tag in Portuguese' });
+      assert.deepEqual(await tag(), ['Em direto pelo retransmissor do servidor Silinx', 'Retransmissor', 'Através do retransmissor do servidor Silinx', 'relay']);
+    } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+    // (no console line about Rui's path: his arrival only)
+    assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /Rui/.test(l)).map((l) => l.trim()), ['Rui follows your project "CollabLive".']);
     await fp.leftTab('collab');
     // (browsing alone at first, on the link's module; Follow Ana from the tab follows her)
     await waitBox(fp, 'Sharing', ['Follow Ana', 'A Ana owner', 'R Rui you', 'Share a Copy…', 'Follow Ana', 'Stop Following'], 'the follower\'s');
@@ -377,6 +390,42 @@ uiTest('#4215 the Collaboration tab\'s Sharing: Share a Copy…, Share Live…, 
     await waitBox(page, 'Sharing', NOT_LIVE().slice(1), 'stopped');
     await fp.waitFor(() => document.querySelector('#collab-page .collab-live .entry')?.textContent === 'Not shared any more', [], { what: 'the follower told' });
   } finally { await fp.close(); }
+  await noWarnings(page);
+});
+
+// #4643: a long list of participants folded (core/list-fold.js): an owner's 14 followers, as the presence shows them (a
+// share peer to peer: its mode, their paths): its first ten, "5 more…"; all, "Show fewer"; in Portuguese
+uiTest('#4643 the Sharing box\'s participants: the mode, each follower\'s path, a long list folded; in Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'CollabMany', template: 'gates' });
+  await page.openProject('CollabMany');
+  await page.leftTab('collab');
+  await page.eval(async () => {
+    const { collab: c } = await import('/js/collab-state.js');
+    c.role = 'owner';
+    const peers = Array.from({ length: 14 }, (_, i) => ({ client: i + 2, name: `P${String(i).padStart(2, '0')}`, role: 'viewer', color: '#888', path: i % 2 ? 'relay' : 'p2p' }));
+    (await import('/js/collab-presence.js')).renderPresence({ label: 'Sharing (14)', me: { name: 'Ana', role: 'owner', color: '#888', me: true }, peers, mode: 'p2p' });
+  });
+  try {
+    const peersShown = () => page.eval(() => [...document.querySelectorAll('#collab-page .collab-peer')].map((e) => e.textContent));
+    const fold = () => page.eval(() => document.querySelector('#collab-page .collab-fold')?.textContent ?? null);
+    await page.waitFor(() => document.querySelector('#collab-page .collab-mode')?.textContent === 'Live peer to peer', [], { what: 'the mode' });
+    assert.deepEqual(await peersShown(), ['AAnayou', ...Array.from({ length: 9 }, (_, i) => `PP0${i}viewer${i % 2 ? 'Relay' : 'P2P'}`)]);
+    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#collab-page .collab-path')].slice(0, 2).map((t) => t.title)), ['Peer to peer: directly between your browsers', 'Through the Silinx server\'s relay']);
+    assert.equal(await fold(), '5 more…');
+    await page.click('#collab-page .collab-fold');
+    await page.waitFor(() => document.querySelectorAll('#collab-page .collab-peer').length === 15, [], { what: 'unfolded' });
+    assert.equal(await fold(), 'Show fewer');
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+    try {
+      await page.waitFor(() => document.querySelector('#collab-page .collab-fold')?.textContent === 'Mostrar menos', [], { what: 'Show fewer in Portuguese' });
+      assert.equal(await page.eval(() => document.querySelector('#collab-page .collab-mode').textContent), 'Em direto ponto a ponto');
+      await page.click('#collab-page .collab-fold');
+      await page.waitFor(() => document.querySelectorAll('#collab-page .collab-peer').length === 10, [], { what: 'folded again' });
+      assert.equal(await fold(), 'Mais 5…');
+    } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+  } finally {
+    await page.eval(async () => { const { collab: c } = await import('/js/collab-state.js'); c.role = null; (await import('/js/collab-presence.js')).renderPresence(); });
+  }
   await noWarnings(page);
 });
 
