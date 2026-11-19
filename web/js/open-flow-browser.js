@@ -209,7 +209,17 @@ export async function runBrowserFlow({ project, files, steps, resources = null, 
   const earlier = {};
   for (const [k, v] of Object.entries(files)) if (k.startsWith('build/') && typeof v === 'string') earlier[k.slice(6)] = v;
   if (signal?.aborted) throw cancelled();
+  // what the run needs, downloaded first where the background did not (#4628): the console says what, its size, its progress
+  await waitPrepared(project.device, onLine, signal);
   return workerRun({ spec, sources, simSources, ucf, ucfName: project.constraints ? project.constraints.split('/').pop() : null, files: earlier, assets: assetsBase(), yosys: yosysBundleUrl(), nextpnr: nextpnrBundleUrl(), nextpnrS6: nextpnrS6BundleUrl(), nextpnrXc7: nextpnrXc7BundleUrl(), nextpnrOwn: ownTools(st.family), integrity: LAYOUT.integrity || null }, { onLine, onWrite, onReport, signal });
+}
+
+// the device's toolchain in the cache before a run (prepareBrowserFlow, forced); Stop ends the wait as it ends a run
+async function waitPrepared(device, onLine, signal) {
+  const abort = () => stopWorker(cancelled());
+  signal?.addEventListener('abort', abort, { once: true });
+  try { await prepareBrowserFlow(device, { onLine, force: true }); } finally { signal?.removeEventListener('abort', abort); }
+  if (signal?.aborted) throw cancelled();
 }
 
 // one run in the worker: its lines, files and report to the handlers; resolves its done ({ ok, report, error, view })
@@ -244,24 +254,41 @@ export function runBrowserSpec({ spec, sources, onLine, signal = null }) {
 
 /**
  * What Implement of the project's device fetches (Yosys, the device description, its bit database; nextpnr and the device's
- * chip database, #2136, #2288), fetched into the
- * browser's Cache Storage by the flow's worker, in the background, when a project opens (#967): its first run does not
- * wait for 17 MB to download. Nothing in a page opened from a file (the single file: WebKit and Firefox give it a
- * Cache Storage, and a navigation that cancelled the download was a console error in WebKit, #1450), where there is
- * no Cache Storage, for a device the Silinx toolchain does not support, or once the device's are prepared.
- * Resolves { fetched, bytes, pruned } or null.
+ * chip database, #2136, #2288), fetched into the browser's Cache Storage by the flow's worker: in the background once the
+ * page is idle after a project opened (web/js/prefetch-schedule.js, #967, #4628), else by the first run (force: on a metered
+ * connection too), which waits for it, onLine(line) saying what it downloads, its size and its progress (a download
+ * already under way joined, its lines so far said again). Nothing in a page opened from a file (the single file: WebKit
+ * and Firefox give it a Cache Storage, and a navigation that cancelled the download was a console error in WebKit, #1450),
+ * where there is no Cache Storage, for a device the Silinx toolchain does not support, or, in the background, once the
+ * device's are prepared. Resolves { fetched, bytes, pruned } or null.
  */
 const prepared = new Set();
-export function prepareBrowserFlow(device = {}) {
+const preparing = new Map();   // key -> { done (its promise), lines (said so far), listeners }
+export function prepareBrowserFlow(device = {}, { onLine = null, force = false } = {}) {
   const st = browserOpenStatus(device);
   const key = st.graph || st.bitDb;   // (the 7-series' has no device description: its bit database, #3143)
-  if (!st.available || !key || prepared.has(key) || globalThis.location?.protocol === 'file:' || !globalThis.isSecureContext || !globalThis.caches) return Promise.resolve(null);
+  if (!st.available || !key || globalThis.location?.protocol === 'file:' || !globalThis.isSecureContext || !globalThis.caches) return Promise.resolve(null);
+  const now = preparing.get(key);
+  if (now) {
+    if (onLine) { for (const l of now.lines) onLine(l); now.listeners.add(onLine); }
+    return now.done;
+  }
+  if (!force && prepared.has(key)) return Promise.resolve(null);
   prepared.add(key);
   const w = getWorker(), id = ++runSeq;
-  return new Promise(resolve => {
-    runs.set(id, { onData: data => { if (data.done) { runs.delete(id); resolve(data.done); } }, fail: () => { runs.delete(id); prepared.delete(key); resolve(null); } });
-    w.postMessage({ id, prepare: { graph: st.graph, part: st.part, family: st.family, device: String(device.part).toLowerCase(), pkg: String(device.package).toLowerCase(), nextpnr: usesNextpnr(st.family) }, assets: assetsBase(), yosys: yosysBundleUrl(), nextpnr: nextpnrOf(st.family), keep: [nextpnrBundleUrl(), nextpnrS6BundleUrl(), nextpnrXc7BundleUrl()], root: assetsRoot(), integrity: LAYOUT.integrity || null });
+  const p = { lines: [], listeners: new Set(onLine ? [onLine] : []) };
+  p.done = new Promise(resolve => {
+    const end = r => { runs.delete(id); preparing.delete(key); resolve(r); };
+    runs.set(id, {
+      onData: data => {
+        if (data.line !== undefined) { p.lines.push(data.line); for (const f of p.listeners) f(data.line); } else if (data.done) end(data.done);
+      },
+      fail: () => { prepared.delete(key); end(null); },
+    });
+    w.postMessage({ id, prepare: { graph: st.graph, part: st.part, family: st.family, device: String(device.part).toLowerCase(), pkg: String(device.package).toLowerCase(), nextpnr: usesNextpnr(st.family) }, assets: assetsBase(), yosys: yosysBundleUrl(), nextpnr: nextpnrOf(st.family), keep: [nextpnrBundleUrl(), nextpnrS6BundleUrl(), nextpnrXc7BundleUrl()], root: assetsRoot(), integrity: LAYOUT.integrity || null, sizes: LAYOUT.sizes || null, force });
   });
+  preparing.set(key, p);
+  return p.done;
 }
 
 /** The error of a stopped run (as the server's JobCancelled). */

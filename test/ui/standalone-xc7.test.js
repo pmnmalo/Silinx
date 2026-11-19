@@ -59,8 +59,9 @@ const BOARDS = {
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // what a run on the Basys 3 fetches from the site's assets but Yosys (its URLs, as the site serves them); on the Nexys A7, its
 // part's bit database and chip database (nextpnr is the Basys 3's, kept)
-const XC7_A100T_ASSETS = [/(?:^|\/)assets\/dev-[0-9a-f]+\/bitdb\/xc7\/xc7a100tcsg324-1\.json\.gz$/, /(?:^|\/)assets\/vendor\/nextpnr-xc7\/[\d.]+\/chipdb\/chipdb-xc7a100t\.bin\.gz$/];
-const XC7_ASSETS = [/(?:^|\/)assets\/dev-[0-9a-f]+\/bitdb\/xc7\/xc7a35tcpg236-1\.json\.gz$/, /(?:^|\/)assets\/vendor\/nextpnr-xc7\/[\d.]+\/chipdb\/chipdb-xc7a50t\.bin\.gz$/,
+// (the bit databases kept by their content: assets/sha256/<it>/…, #4628)
+const XC7_A100T_ASSETS = [/(?:^|\/)assets\/(dev-[0-9a-f]+\/bitdb\/xc7|sha256\/[A-Za-z0-9_-]{43})\/xc7a100tcsg324-1\.json\.gz$/, /(?:^|\/)assets\/vendor\/nextpnr-xc7\/[\d.]+\/chipdb\/chipdb-xc7a100t\.bin\.gz$/];
+const XC7_ASSETS = [/(?:^|\/)assets\/(dev-[0-9a-f]+\/bitdb\/xc7|sha256\/[A-Za-z0-9_-]{43})\/xc7a35tcpg236-1\.json\.gz$/, /(?:^|\/)assets\/vendor\/nextpnr-xc7\/[\d.]+\/chipdb\/chipdb-xc7a50t\.bin\.gz$/,
   /(?:^|\/)assets\/vendor\/nextpnr-xc7\/[\d.]+\/gen\/nextpnr-himbaechel-xilinx\.core\.wasm$/, /(?:^|\/)assets\/vendor\/nextpnr-xc7\/[\d.]+\/gen\/nextpnr-himbaechel-xilinx-resources\.0\.tar$/];
 // the project's XDC, as its editor shows it, once the wizard has made it for the board (its console line) and the editor is open
 // (not as soon as the project opens: on a slower machine the file and its editor come later, #3143's CI)
@@ -76,6 +77,7 @@ for (const [example, top, id, issue] of [['blinky', 'top', 'basys3', 3143], ['vg
   uiTest(`#${issue} browser edition: Generate Programming File of ${example} on the ${board.name.replace('Digilent ', '')} runs the 7-series' flow in the browser, no warnings, the local server's .bit`, E, async (page) => {
     await page.goto(site.url);
     await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
+    await page.eval(() => { window.SILINX_PREPARE_DELAY = 0; });   // (the background download as soon as the page is idle, #4628)
     const name = `Web7${example}${id === 'basys3' ? '' : 'A7'}`, opened = site.served.length, booted = (await page.consoleText()).length;
     await newProject(page, name, example, id);
     assert.deepEqual(await page.eval(() => [window.Silinx.project.device, window.Silinx.project.synthTool]), [board.device, 'silinx']);

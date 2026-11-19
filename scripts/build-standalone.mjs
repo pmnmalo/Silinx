@@ -75,12 +75,16 @@ const ASSET_DIRS = [
   [`vendor/nextpnr-xc7/${NEXTPNR_XC7_VERSION}/gen`, 'node_modules/@silinx/nextpnr-himbaechel-xc7/gen', () => true],
   [`vendor/nextpnr-xc7/${NEXTPNR_XC7_VERSION}/chipdb`, 'node_modules/@silinx/nextpnr-himbaechel-xc7/chipdb', f => f.endsWith('.bin.gz')],
 ];
-// each one's SHA-256 by its path under assets/, checked by the browser's cache before it keeps or uses a copy (#1237)
+// each one's SHA-256 by its path under assets/, checked by the browser's cache before it keeps or uses a copy (#1237), and its
+// size (the first Implement says what it downloads and how far it is, #4628)
 LAYOUT.integrity = {};
+LAYOUT.sizes = {};
 for (const [dir, from, filter] of ASSET_DIRS) {
   for (const f of fs.readdirSync(path.join(ROOT, from)).sort()) {
     const src = path.join(ROOT, from, f);
-    if (fs.statSync(src).isFile() && filter(f)) LAYOUT.integrity[`${dir}/${f}`] = `sha256-${crypto.createHash('sha256').update(fs.readFileSync(src)).digest('base64')}`;
+    if (!fs.statSync(src).isFile() || !filter(f)) continue;
+    LAYOUT.integrity[`${dir}/${f}`] = `sha256-${crypto.createHash('sha256').update(fs.readFileSync(src)).digest('base64')}`;
+    LAYOUT.sizes[`${dir}/${f}`] = fs.statSync(src).size;
   }
 }
 const copyDir = (from, to, filter = () => true) => {

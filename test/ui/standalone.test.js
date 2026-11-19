@@ -31,6 +31,7 @@ import { TEST_DESIGN_ORDER } from '../../core/test-designs.js';
 
 let env, plain, html, site, server, siteUrl, build, skip = null;
 const served = [];   // (the paths the site served, #967)
+const servedAt = new Map();   // (when each was first served, #4628: Date.now())
 let unreachable = false;   // (the site out of reach: its connections closed unanswered, #1051)
 before(async () => {
   env = await setupUi({ server: false });
@@ -70,6 +71,7 @@ before(async () => {
     // (the simulated Digilent board of the programming test, the fake folder of the workspace folder tests)
     const TEST = { '__test/adept-sim.js': 'adept-sim.js', '__test/fs-access-fake.js': 'fs-access-fake.js' };
     served.push(rel);
+    if (!servedAt.has(rel)) servedAt.set(rel, Date.now());
     const f = TEST[rel] ? path.join(ROOT, 'test/fixtures', TEST[rel]) : path.join(site, rel);
     if (!f.startsWith(site + path.sep) && !rel.startsWith('__test/')) { res.writeHead(403).end(); return; }
     try {
@@ -716,7 +718,7 @@ uiTest('#280 browser edition: Generate Programming File again, the design unchan
 
 // (#2497: on CI only, this test's and Open Workspace Folder's reload timed out waiting for the load event: the harness's
 // goto / reload now name the requests the page still waits for)
-uiTest('#967 browser edition: what Implement needs is downloaded when a project opens and kept in Cache Storage; Implement then fetches none of it, after a reload too', E, async (page) => {
+uiTest('#967 #4628 browser edition: what Implement needs is downloaded once the page is idle after a project opens (not while it opens) and kept in Cache Storage, by their content; Implement then fetches none of it, after a reload too; with none kept, the first Implement downloads it, saying so', E, async (page) => {
   const assets = `${siteUrl}assets/`;
   // (nextpnr's too, its WebAssembly and its chip databases, #2792; the bundles' bundle.js is an import, not assetFetch's)
   const versioned = () => served.filter((p) => /^assets\/(vendor\/(yowasp-yosys|nextpnr-spartan6?)\/[^/]+\/(gen\/(?!bundle\.js)|chipdb\/)|dev-[0-9a-f]+\/(devices|bitdb)\/)/.test(p));
@@ -740,7 +742,16 @@ uiTest('#967 browser edition: what Implement needs is downloaded when a project 
     await c.put(`${a}0.0.1/devices/xc3s250ecp132-4.json.gz`, new Response('old'));
     await c.put(`${a.replace(/assets\/$/, 'dev/assets/')}dev-0000000/devices/xc3s250ecp132-4.json.gz`, new Response('the dev edition\'s'));
   }, assets);
+  // (#4628: the background download 3 s after the project opened here, the page loaded long before, then when the browser is
+  // idle: its idle callbacks noted)
+  await page.eval(() => {
+    window.SILINX_PREPARE_DELAY = 3000;
+    const ric = window.requestIdleCallback.bind(window);
+    window.__idle = [];
+    window.requestIdleCallback = (f, o) => ric((d) => { window.__idle.push(o?.timeout); f(d); }, o);
+  });
   served.length = 0;
+  servedAt.clear();
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Kept');
@@ -751,12 +762,17 @@ uiTest('#967 browser edition: what Implement needs is downloaded when a project 
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'Kept' && window.Silinx.project.top);
-  // in the background, a moment after the project opened: Yosys, the XC3S250E's device description and its bit database,
+  const opened = Date.now();
+  // not while the project opens: none of it asked for in the next second and a half
+  await new Promise((ok) => setTimeout(ok, 1500));
+  assert.deepEqual(versioned(), [], 'nothing downloaded while the project opens');
+  // in the background, once the browser is idle after the delay: Yosys, the XC3S250E's device description and its bit database,
   // nextpnr and the XC3S250E's chip database (the default engine's, #2136)
   const want = [...['bundle.js', 'yosys.core.wasm', 'yosys.core2.wasm', 'yosys.core3.wasm', 'yosys.core4.wasm', 'yosys-resources.0.tar'].map((f) => `vendor/yowasp-yosys/[^/]+/gen/${f}`),
     ...['bundle.js', ...['', '2', '3', '4'].map((n) => `nextpnr-himbaechel-spartan3e.core${n}.wasm`), 'nextpnr-himbaechel-spartan3e-resources.0.tar'].map((f) => `vendor/nextpnr-spartan/[^/]+/gen/${f}`),
     'vendor/nextpnr-spartan/[^/]+/chipdb/chipdb-xc3s250e.bin.gz',
-    'dev-[0-9a-f]+/devices/xc3s250ecp132-4.json.gz', ...['s3e-tiles', 'xc3s250e-tiles', 'xc3s250e-layout', 'xc3s250e-lut', 'xc3s250e-bram', 'xc3s250e-cp132-pads'].map((f) => `dev-[0-9a-f]+/bitdb/${f}.json`)];
+    // (the device description and the bit database by their content, #4628)
+    'sha256/[A-Za-z0-9_-]{43}/xc3s250ecp132-4.json.gz', ...['s3e-tiles', 'xc3s250e-tiles', 'xc3s250e-layout', 'xc3s250e-lut', 'xc3s250e-bram', 'xc3s250e-cp132-pads'].map((f) => `sha256/[A-Za-z0-9_-]{43}/${f}.json`)];
   await page.waitFor((a, w) => caches.open('silinx-assets').then((c) => c.keys()).then((ks) => w.every((p) => ks.some((k) => new RegExp(`^${a}${p}$`).test(k.url)))), [assets.replace(/[.]/g, '\\.'), want], { what: 'the assets prefetched', timeout: 60000 });
   const keys = await cached();
   assert.equal(keys.length, want.length + 1, keys.join('\n'));
@@ -764,6 +780,10 @@ uiTest('#967 browser edition: what Implement needs is downloaded when a project 
   assert.ok(!keys.some((k) => k.includes('/0.0.1/')));
   assert.ok(keys.some((k) => k.includes('/dev/assets/dev-0000000/')));
   assert.equal(versioned().filter((p) => p.endsWith('yosys.core.wasm')).length, 1, 'Yosys downloaded once');
+  // asked for 3 s after the opening at the earliest, from an idle callback (its timeout, 10 s)
+  const first = Math.min(...[...servedAt].filter(([p]) => versioned().includes(p)).map(([, t]) => t));
+  assert.ok(first >= opened + 1500, `the first asset ${first - opened} ms after the project opened`);
+  assert.ok((await page.eval(() => window.__idle)).includes(10000), 'from an idle callback');
   // the first Implement: nothing of them fetched, Yosys said kept
   await page.setView('impl');
   served.length = 0;
@@ -794,8 +814,17 @@ uiTest('#967 browser edition: what Implement needs is downloaded when a project 
   await page.setView('impl');
   served.length = 0;
   log = await run();
-  assert.match(log, /Downloading Yosys, the synthesis tool \(WebAssembly, about 17 MB: once, then kept by this browser\)…/);
-  assert.doesNotMatch(log, /Loading Yosys/);
+  // (#4628: the toolchain first, its size the build's, its progress by quarters; then Yosys, kept)
+  const sizes = await page.eval(() => window.SILINX_ASSET_LAYOUT.sizes);
+  const total = Object.entries(sizes).filter(([p]) => want.some((w) => new RegExp(`^${w.replace('sha256/[A-Za-z0-9_-]{43}', 'dev-[0-9a-f]+/(devices|bitdb)')}$`).test(p))).reduce((n, [, b]) => n + b, 0);
+  assert.ok(total > 50e6, `${total} bytes`);
+  const mb = (n) => (n / 1e6).toFixed(1);
+  assert.deepEqual(log.match(/^.*(Downloading the Silinx toolchain|Downloaded [\d.]+ of).*$/gm).map((l) => l.replace(/^.*?(?=Download)/, '')), [
+    `Downloading the Silinx toolchain for the xc3s250ecp132-4 (${mb(total)} MB: once, then kept by this browser)…`,
+    ...[1, 2, 3, 4].map((q) => `Downloaded ${mb(total * q / 4)} of ${mb(total)} MB (${q * 25}%)`)]);
+  assert.ok(log.indexOf('(100%)') < log.indexOf('Loading Yosys (WebAssembly, kept by this browser)…'), 'downloaded before the run');
+  assert.doesNotMatch(log, /Downloading Yosys/);
+  assert.doesNotMatch(log, /WARNING|ERROR/);
   assert.match(log, /Process "Generate Programming File" completed successfully/);
   assert.ok(versioned().some((p) => p.endsWith('yosys.core.wasm')) && versioned().some((p) => p.endsWith('.json.gz')));
   assert.ok(versioned().some((p) => p.endsWith('nextpnr-himbaechel-spartan3e.core.wasm')) && versioned().some((p) => p.endsWith('chipdb-xc3s250e.bin.gz')), versioned().join('\n'));
@@ -838,8 +867,9 @@ uiTest('#1051 the site installable as an app: its manifest, icons and service wo
   // the downloaded file's copy on the site: no manifest
   await boot(`${siteUrl}Silinx.html`);
   assert.equal(await page.eval(() => document.querySelector('link[rel="manifest"]')), null);
-  // a project: what Implement needs is kept when it opens (#967)
+  // a project: what Implement needs is kept when it opens (#967), once the page is idle (#4628)
   await boot();
+  await page.eval(() => { window.SILINX_PREPARE_DELAY = 0; });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Away');
@@ -1760,7 +1790,10 @@ uiTest('#487 static editions: a Content-Security-Policy with the inline scripts\
     assert.deepEqual(d['base-uri'], ["'none'"]);
     assert.equal(d['frame-ancestors'], undefined, 'not in a <meta> (the browser reports it as an error)');
     layout = JSON.parse(text.match(/window\.SILINX_ASSET_LAYOUT = (\{.*?\});\n/)[1]);
-    assert.deepEqual({ ...layout, integrity: undefined }, { dir, yosys: `../vendor/yowasp-yosys/${yosysVersion}/gen/bundle.js`, nextpnr: `../vendor/nextpnr-spartan/${nextpnrVersion}/gen/bundle.js`, nextpnrS6: `../vendor/nextpnr-spartan6/${nextpnrS6Version}/gen/bundle.js`, nextpnrXc7: `../vendor/nextpnr-xc7/${nextpnrXc7Version}/gen/bundle.js`, xc7Parts, nextpnrIce40Package: { url: ice40.resolved, integrity: ice40.integrity }, nextpnrEcp5Package: { url: ecp5.resolved, integrity: ecp5.integrity }, nextpnrGowinPackage: { url: gowin.resolved, integrity: gowin.integrity }, nextpnrGatematePackage: { url: gatemate.resolved, integrity: gatemate.integrity }, site: siteUrl, integrity: undefined });
+    assert.deepEqual({ ...layout, integrity: undefined, sizes: undefined }, { dir, yosys: `../vendor/yowasp-yosys/${yosysVersion}/gen/bundle.js`, nextpnr: `../vendor/nextpnr-spartan/${nextpnrVersion}/gen/bundle.js`, nextpnrS6: `../vendor/nextpnr-spartan6/${nextpnrS6Version}/gen/bundle.js`, nextpnrXc7: `../vendor/nextpnr-xc7/${nextpnrXc7Version}/gen/bundle.js`, xc7Parts, nextpnrIce40Package: { url: ice40.resolved, integrity: ice40.integrity }, nextpnrEcp5Package: { url: ecp5.resolved, integrity: ecp5.integrity }, nextpnrGowinPackage: { url: gowin.resolved, integrity: gowin.integrity }, nextpnrGatematePackage: { url: gatemate.resolved, integrity: gatemate.integrity }, site: siteUrl, integrity: undefined, sizes: undefined });
+    // (each asset's size beside its SHA-256, the first Implement's download said with it, #4628)
+    assert.deepEqual(Object.keys(layout.sizes).sort(), Object.keys(layout.integrity).sort());
+    for (const p of [`${dir}devices/xc3s250ecp132-4.json.gz`, `vendor/yowasp-yosys/${yosysVersion}/gen/yosys.core.wasm`]) assert.equal(layout.sizes[p], (await fs.stat(path.join(site, 'assets', p))).size, p);
   }
   // the site's assets, versioned; none at the unversioned paths of before
   const ls = async (p) => (await fs.readdir(path.join(site, p))).sort();

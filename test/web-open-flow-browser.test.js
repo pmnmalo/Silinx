@@ -147,6 +147,62 @@ test('#1450 prepareBrowserFlow: nothing in a page opened from a file, though it 
   } finally { delete globalThis.caches; delete globalThis.isSecureContext; delete globalThis.location; }
 });
 
+test('#4628 prepareBrowserFlow for a run (force): asked again though prepared (the worker checks the cache), the sizes sent; a run joins a download under way, its lines so far said again; a run waits for it before it starts, Stop ends the wait', async () => {
+  const dev = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
+  globalThis.caches = {};
+  globalThis.isSecureContext = true;
+  try {
+    // the background's: once
+    const bg = prepareBrowserFlow(dev);
+    const w = live(), m = w.posted.at(-1);
+    assert.equal(m.force, false);
+    assert.equal(m.sizes, null, 'unbuilt: no sizes');
+    w.send({ id: m.id, line: 'Downloading the Silinx toolchain for the xc3s250ecp132-4 (87.0 MB: once, then kept by this browser)…' });
+    w.send({ id: m.id, line: 'Downloaded 21.8 of 87.0 MB (25%)' });
+    // a run while it downloads: joined (no second download), the lines so far said, then the next ones
+    const lines = [];
+    const run = prepareBrowserFlow(dev, { onLine: l => lines.push(l), force: true });
+    assert.equal(w.posted.length, 1 + w.posted.indexOf(m), 'not asked again');
+    w.send({ id: m.id, line: 'Downloaded 43.5 of 87.0 MB (50%)' });
+    w.send({ id: m.id, done: { fetched: 20, bytes: 87e6, pruned: 0 } });
+    assert.deepEqual(await run, { fetched: 20, bytes: 87e6, pruned: 0 });
+    assert.deepEqual(await bg, { fetched: 20, bytes: 87e6, pruned: 0 });
+    assert.deepEqual(lines, ['Downloading the Silinx toolchain for the xc3s250ecp132-4 (87.0 MB: once, then kept by this browser)…', 'Downloaded 21.8 of 87.0 MB (25%)', 'Downloaded 43.5 of 87.0 MB (50%)']);
+    // prepared: the background asks no more, a run asks again (forced: on a metered connection too, the worker's cache check)
+    assert.equal(await prepareBrowserFlow(dev), null);
+    const again = prepareBrowserFlow(dev, { force: true });
+    const m2 = live().posted.at(-1);
+    assert.equal(m2.force, true);
+    live().send({ id: m2.id, done: { fetched: 0, bytes: 0, pruned: 0 } });
+    assert.deepEqual(await again, { fetched: 0, bytes: 0, pruned: 0 });
+    // a run: its toolchain asked for first, the run posted once it is there
+    globalThis.location = new URL('https://example.test/');
+    const w3 = live(), n0 = w3.posted.length;
+    const r = start();
+    let pm;
+    for (let i = 0; i < 400 && !(pm = w3.posted.slice(n0).find(x => x.prepare && x.force)); i++) await new Promise(ok => setTimeout(ok, 5));
+    assert.ok(pm, 'the toolchain asked for first');
+    assert.ok(!w3.posted.some(x => x.spec), 'the run waits');
+    w3.send({ id: pm.id, line: 'Downloading the Silinx toolchain for the xc3s250ecp132-4 (1.0 MB: once, then kept by this browser)…' });
+    w3.send({ id: pm.id, done: { fetched: 1, bytes: 1e6, pruned: 0 } });
+    let rm;
+    for (let i = 0; i < 400 && !(rm = w3.posted.find(x => x.spec)); i++) await new Promise(ok => setTimeout(ok, 5));
+    assert.ok(rm, 'then the run');
+    assert.ok(r.lines.includes('Downloading the Silinx toolchain for the xc3s250ecp132-4 (1.0 MB: once, then kept by this browser)…'), r.lines.join('\n'));
+    w3.send({ id: rm.id, done: { ok: true } });
+    assert.deepEqual(await r.run, { ok: true });
+    // Stop while it downloads: the worker terminated, the run cancelled
+    const ac = new AbortController();
+    const r2 = start({ signal: ac.signal });
+    const w4 = live(), n1 = w4.posted.length;
+    for (let i = 0; i < 400 && !w4.posted.slice(n1).some(x => x.prepare); i++) await new Promise(ok => setTimeout(ok, 5));
+    assert.ok(w4.posted.slice(n1).some(x => x.prepare));
+    ac.abort();
+    await assert.rejects(r2.run, e => e.cancelled === true);
+    assert.equal(w4.terminated, true);
+  } finally { delete globalThis.caches; delete globalThis.isSecureContext; delete globalThis.location; }
+});
+
 test('#2103 the Spartan-6 in the browser: the Nexys3\'s and the Atlys\'s parts, with their steps; a run says its family and refuses a step the part has not; prepare asks for its databases', async () => {
   const nexys3 = { family: 'spartan6', part: 'xc6slx16', package: 'csg324', speed: '-3' };
   const steps = ['synth', 'postsynth', 'translate', 'map', 'par', 'trce', 'bitgen', 'prombit'];

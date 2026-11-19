@@ -4,11 +4,13 @@
 // - 'page': the page (a navigation to the folder or its index.html): the network first, the copy kept for
 //   when there is none;
 // - 'shell': the manifest and the icons, kept by this build's worker;
-// - 'asset': the versioned assets (web/js/asset-cache.js, #967), read from their cache: Yosys's bundle,
-//   which the Yosys workers import (an import is not a fetch: assetFetch does not see it), offline too;
+// - 'asset': Yosys's and nextpnr's files (web/js/asset-cache.js VENDOR_ASSET, #967), read from their cache: their bundles,
+//   which the workers import (an import is not a fetch: assetFetch does not see it), offline too; an edition's device
+//   descriptions and bit databases are not (#4628): the flow worker's assetFetch keeps them by their content, a copy by
+//   their URL here would be a second one;
 // - 'network': everything else, not intercepted (version.json, GitHub's API, the usage counter, the
 //   downloaded Silinx.html, the root's dev/: the development edition's own worker).
-import { isVersionedAsset } from './asset-cache.js';
+import { VENDOR_ASSET } from './asset-cache.js';
 
 /** The files the worker keeps beside the page (the site's, scripts/pwa.mjs). */
 export const SHELL = ['manifest.webmanifest', 'icons/silinx-192.png', 'icons/silinx-512.png', 'icons/silinx-maskable-512.png'];
@@ -21,7 +23,7 @@ export function route({ url, method = 'GET', mode } = {}, scope) {
   if (method !== 'GET' || !url || !scope || !url.startsWith(scope)) return 'network';
   const rel = url.slice(scope.length).replace(/[?#].*$/, '');
   if (rel.startsWith('dev/')) return 'network';
-  if (isVersionedAsset(url)) return 'asset';
+  if (VENDOR_ASSET.test(url)) return 'asset';
   if (rel === '' || rel === 'index.html') return mode === 'navigate' ? 'page' : 'network';
   return SHELL.includes(rel) ? 'shell' : 'network';
 }
