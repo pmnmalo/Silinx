@@ -34,6 +34,8 @@ export function registerGitRoutes(api) {
   // (a project of the name: opened, replaced or both kept, as ifExists says; else a 409 with what to ask, #4618)
   api.post('/git/clone', route(async req => (await import('./git-clone.js')).gitCloneChoosing({ url: body(req).url, name: body(req).name || null,
     ifExists: body(req).ifExists || 'error', discardChanges: body(req).discardChanges === true })));
+  // (the user's repositories: Open from GitHub Repository…'s list, #4653)
+  api.get('/git/repositories', route(async () => (await import('./git-repos.js')).gitRepositories()));
   api.get('/projects/:p/git/status', route(req => B().gitStatus(req.params.p)));
   api.post('/projects/:p/git/init', route(req => B().gitInit(req.params.p, { remote: body(req).remote || null })));
   api.post('/projects/:p/git/commit', route(req => B().gitCommit(req.params.p, body(req).message)));

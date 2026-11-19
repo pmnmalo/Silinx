@@ -120,6 +120,8 @@ export function apiClient() {
 // ------------------------------------------------------------------ a short link's gist (#3223, core/gist-link.js)
 /** Whether this server can make a short link: a GitHub token in its environment (GH_TOKEN, GITHUB_TOKEN). */
 export const gistAvailable = () => !!token();
+/** Whether the environment has a GitHub token: the user's repositories listed with it (#4653, server/git-repos.js). */
+export const hasToken = () => !!token();
 /** A short link's secret gist, made with the environment's token -> { id, key, url }. */
 export async function makeGist(design, { days = 0 } = {}) {
   if (!token()) throw new GitHubError('a short link needs a GitHub token on this server', `Set GH_TOKEN before starting Silinx (with GitHub's command line: GH_TOKEN=$(gh auth token)), or copy the full link; Silinx never stores it.`, 409);

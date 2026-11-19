@@ -11,6 +11,10 @@ if (process.env.SILINX_UI_GIT_REMOTES) {
   Object.assign(GIT_TESTING, { localRemotes: true, remoteOf: r => path.join(process.env.SILINX_UI_GIT_REMOTES, `${r.repo}.git`) });
 }
 
+// GitHub's command line (#4653: the user's repositories): the stand-in script SILINX_UI_GH, else none (never the
+// developer's own gh, signed in to their account)
+(await import('../../server/git-repos.js')).REPOS_TESTING.gh = process.env.SILINX_UI_GH ? [process.execPath, process.env.SILINX_UI_GH] : 'silinx-ui-no-gh';
+
 const app = await createApp({ host: '127.0.0.1' });
 // a stand-in for GitHub's API (#3223, test/fake-github.mjs), on the server's own origin (its page's CSP: 'self') at
 // /fake-github: the server's gists made there (GH_TOKEN, the stand-in's), the page's read there (SILINX_GITHUB.api)

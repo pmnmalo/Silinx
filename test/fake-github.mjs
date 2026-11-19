@@ -53,8 +53,8 @@ export function fakeGitHub({ clientId = 'Iv1.fake-client-id', tokens = ['gho_fak
     return sha;
   }
   /** A repository: files ({ path: text }) in its first commit (none: an empty repository). */
-  function seed(full, files = null, { private: priv = false, branch = 'main', writers = [user] } = {}) {
-    repos.set(full, { private: priv, branch, blobs: new Map(), trees: new Map(), commits: new Map(), refs: new Map(), writers: new Set(writers) });
+  function seed(full, files = null, { private: priv = false, branch = 'main', writers = [user], description = null } = {}) {
+    repos.set(full, { private: priv, description, branch, blobs: new Map(), trees: new Map(), commits: new Map(), refs: new Map(), writers: new Set(writers) });
     if (files) commitFiles(full, files, { message: 'Initial commit' });
   }
   const filesAt = (full, ref) => {
@@ -73,6 +73,13 @@ export function fakeGitHub({ clientId = 'Iv1.fake-client-id', tokens = ['gho_fak
     if (auth && !valid.has(auth[1])) return json(401, { message: 'Bad credentials' });
     const signed = !!auth;
     if (url.pathname === '/user' && method === 'GET') return signed ? json(200, { login: user }) : json(401, { message: 'Requires authentication' });
+    // the user's repositories (#4653): the seeded ones, the last seeded first (as pushed last), per_page a page
+    if (url.pathname === '/user/repos' && method === 'GET') {
+      if (!signed) return json(401, { message: 'Requires authentication' });
+      const per = Number(url.searchParams.get('per_page') || 30), page = Number(url.searchParams.get('page') || 1);
+      const all = [...repos.entries()].reverse().map(([full, r], i) => ({ full_name: full, html_url: `https://github.com/${full}`, private: r.private, description: r.description || null, pushed_at: new Date(Date.UTC(2026, 10, 19) - i * 3600e3).toISOString() }));
+      return json(200, all.slice((page - 1) * per, page * per));
+    }
     // gists (#3223): a secret one made by the signed-in user, read by anyone with its id; the user's own listed (100 a
     // page, their contents left out, as GitHub's) and deleted by them only (#3629)
     if (url.pathname === '/gists' && method === 'GET') {
