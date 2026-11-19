@@ -24,6 +24,8 @@ import { projectDoc, publishProject, sharedPath, docProject, docFile, gatedDocFi
 import { isTrusted, markEditedByEditor } from '../core/trust.js';
 import { applyEdits, sourceChange, setDescription, editQueue } from '../core/collab-files.js';
 import { relayConfig } from './toolchain.js';
+import { liveRelay } from './mcp-relay.js';
+import { SITE_URL } from '../core/design-link.js';
 import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, putDrawing, pruneDrawing, revertDrawing, withView, viewFields, drawingKind } from '../core/collab-model.js';
 import { wireStyleOf } from '../core/wire-style.js';
 import { checkDrawing } from './mcp-check.js';
@@ -52,11 +54,11 @@ const cleanName = n => String(n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
 
 // a Silinx address (http(s), its origin only): this computer's (loopback), or a relay the user's settings name
 // (relay.relays in config.json, #3363: never a host an assistant chose alone, a network's or another site's)
-function serverOf(server = DEFAULT_SERVER, what = 'server') {
+function serverOf(server = DEFAULT_SERVER, what = 'server', own = null) {
   let u;
   try { u = new URL(server); } catch { throw toolError(`server: '${server}' is not an address`); }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') throw toolError(`server: '${server}' is not an http(s) address`);
-  if (!LOOPBACK.has(u.hostname.toLowerCase()) && !relayConfig().relays.includes(u.origin)) {
+  if (!LOOPBACK.has(u.hostname.toLowerCase()) && !relayConfig().relays.includes(u.origin) && u.origin !== own) {
     throw toolError(`${what}: ${u.origin} is neither a Silinx server on this computer nor a relay the user's settings name (relay.relays in config.json): the MCP server shares and follows through those only`);
   }
   return u.origin;
@@ -193,10 +195,11 @@ export const COLLAB_TOOLS = [
       editors: { type: 'boolean', description: 'start: editors may change its text files and drawings too (the result: an editor\'s link besides the follower\'s; what they change written to the disk, a drawing\'s HDL made again from it, through the import gate, the project untrusted from their first change: Xilinx ISE waits until the user trusts it in the interface).' },
       qr: { type: 'boolean', description: 'start, status: the follow link\'s QR code too, as the interface shows it (#3637): qr, an SVG (black on white); with editors, the editors\' link\'s too, editQr (#3996).' },
       key: STR('start: the key of a relay on another computer (its config.json\'s relay.key, #3227), instead of the token of a Silinx server on this one.'),
+      relay: { type: 'boolean', description: 'start: through the Cloudflare relay set with live_relay (#4574), its key, instead of a Silinx server\'s relay; the links open on the Silinx site.' },
       top: STR('start: a module of the project the links open on, as Share Module… does, live (#3631): …#view=…&top=<module>; the project shared as it is.'),
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async run({ project: name, action = 'start', name: who, server, editors = false, key, top, qr = false, user }) {
+    async run({ project: name, action = 'start', name: who, server, editors = false, key, top, qr = false, user, relay = false }) {
       // (the follow link's QR code, #3637)
       const withQr = link => (qr ? { qr: qrSvg(link) } : {});
       // (the editors' link's QR code too, as Share Project… shows it, #3996)
@@ -204,6 +207,7 @@ export const COLLAB_TOOLS = [
       if (!ACTIONS.includes(action)) throw toolError('action: start, status, promote, demote or stop');
       if (user !== undefined && action !== 'promote' && action !== 'demote') throw toolError('user: with action promote or demote only');
       if (top !== undefined && action !== 'start') throw toolError('top: with action start only');
+      if (relay && action !== 'start') throw toolError('relay: with action start only');
       if (top !== undefined && !MODULE_RE.test(top)) throw toolError(`top: '${String(top).slice(0, 64)}' is not a module name`);
       const cur = shares.get(name);
       if (action === 'stop') {
@@ -230,11 +234,15 @@ export const COLLAB_TOOLS = [
       const on = l => (l && top !== undefined ? withTop(l, top) : l);
       const at = top !== undefined ? `, opening on ${top}` : '';
       if (cur && !cur.session.closed()) return { text: `'${name}' is shared already${at}: ${on(cur.link)}`, data: { project: name, shared: true, link: on(cur.link), ...withQr(on(cur.link)), ...(cur.editLink ? { editLink: on(cur.editLink), ...withEditQr(on(cur.editLink)) } : {}), ...(top !== undefined ? { top } : {}), followers: cur.session.peers() } };
-      const origin = serverOf(server);
+      // (the Cloudflare relay set, #4574: its key; the links the Silinx site's, naming the relay)
+      const own = relay ? await liveRelay() : null;
+      if (relay && !own) throw toolError('relay: no Cloudflare relay is set (live_relay)');
+      if (own && (server !== undefined || key !== undefined)) throw toolError('relay: without server or key (the relay set has its own)');
+      const origin = own ? own.address : serverOf(server);
       const owner = cleanName(who) || 'MCP agent';
       const doc = projectDoc(), bases = new Map();
       publishProject(doc, { ...all, owner, bases });
-      const token = key ? String(key) : await tokenOf(origin);
+      const token = own ? own.key : key ? String(key) : await tokenOf(origin);
       let session;
       // (an editor's change the owner refused among them too, #3527)
       const warnings = [];
@@ -251,8 +259,9 @@ export const COLLAB_TOOLS = [
         try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ }
       });
       const off = () => { unsub(); writes?.off(); watcher.close?.(); };
-      const link = followLink(`${origin}/`, session.room, session.key);
-      const editLink = session.editKey ? followLink(`${origin}/`, session.room, session.key, 'relay', session.editKey) : null;
+      const base = own ? SITE_URL : `${origin}/`, via = own ? own.address : null;
+      const link = followLink(base, session.room, session.key, 'relay', null, via);
+      const editLink = session.editKey ? followLink(base, session.room, session.key, 'relay', session.editKey, via) : null;
       shares.set(name, { session, link, editLink, server: origin, off, warnings });
       return {
         text: `Sharing '${name}' live${editLink ? '' : ', read only,'} as ${owner}${at}. Anyone with this link follows it (until share_project stop)${qr ? '; its QR code: qr, an SVG' : ''}:\n${on(link)}${editLink ? `\nAnyone with this one edits its text files and drawings too${qr ? ' (its QR code: editQr)' : ''}:\n${on(editLink)}` : ''}`,
@@ -282,7 +291,7 @@ export const COLLAB_TOOLS = [
       // that relay's meeting point, its messages through the relay, core/collab-meet-relay.js)
       if (l.via === 'host' && !(l.relay && l.host)) throw toolError('link: a project its owner\'s page hosts (…#view=….host) with no relay is followed in a browser, over WebRTC: open the link in Silinx');
       // (through the relay the link names, #3227, else the link's own Silinx)
-      const origin = serverOf(l.relay || l.base, 'link');
+      const origin = serverOf(l.relay || l.base, 'link', (await liveRelay())?.address);   // (the Cloudflare relay set too, #4574)
       // (a room followed and edited: two participants; an editors' link renewed, #3997: another one, its key its own)
       const slot = `${l.room}:${l.sign ? `edit.${l.sign}` : 'follow'}`;
       let cur = follows.get(slot);

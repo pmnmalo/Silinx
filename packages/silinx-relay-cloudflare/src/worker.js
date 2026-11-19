@@ -8,6 +8,7 @@
 // - opening a room needs the relay's key (its secret RELAY_KEY, in the subprotocols: `silinx-collab`, `token.<key>`),
 //   as a Silinx server's relay.key; joining one needs its room's id (`?room=`, core/collab-wire.js roomUrl);
 // - the subprotocol, `silinx-collab`.
+// Its root (GET /) answers what it is to any page, with the origins it lets in (#4574).
 // The owner's open gets a new room (its id chosen here: the Durable Object's name); its resume (#3835) names its room.
 // Its meeting points (#4542): /api/collab/meet/host (a hosted room's owner's page: the relay's key, as an owner's) and
 // /api/collab/meet/peer (a follower), with their topic (`?topic=`), each topic's sockets to the object `meet.<topic>`.
@@ -22,7 +23,9 @@ const ROLES = { '/api/collab/share': 'owner', '/api/collab/follow': 'follower', 
 export const NEEDS_KEY = 'sharing a project needs this relay\'s key';
 export const NO_KEY = 'this relay has no key (its RELAY_KEY secret, 24 characters at least): it opens no room';
 const KEY_MIN = 24;   // (a Silinx server's relay.key's minimum)
-const ABOUT = 'A relay of Silinx\'s shared projects (live sharing): https://github.com/pmnmalo/Silinx\n';
+/** What its root answers, to any page (#4574: Silinx's check of a relay, core/relay-setup.js), with the origins it lets in
+ *  (`Silinx-Origins`), so that a page refused can say why. */
+export const ABOUT = 'A relay of Silinx\'s shared projects (live sharing): https://github.com/pmnmalo/Silinx\n';
 
 /** The origins a relay lets in: its ORIGINS, separated by commas or spaces. */
 export const originsOf = text => String(text || '').split(/[\s,]+/).filter(Boolean).map(o => o.replace(/\/+$/, ''));
@@ -49,7 +52,9 @@ function refused(message) {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
-    if (url.pathname === '/' && req.method === 'GET') return new Response(ABOUT, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    if (url.pathname === '/' && req.method === 'GET') {
+      return new Response(ABOUT, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Silinx-Origins', 'Silinx-Origins': originsOf(env.ORIGINS).join(' '), 'Cache-Control': 'no-store' } });
+    }
     const role = Object.hasOwn(ROLES, url.pathname) ? ROLES[url.pathname] : null;
     if (!role) return new Response('not found', { status: 404 });
     if (String(req.headers.get('Upgrade')).toLowerCase() !== 'websocket') return new Response('a WebSocket only', { status: 426 });

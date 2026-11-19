@@ -30,6 +30,7 @@ const { FIND_TOOLS } = await import('../server/mcp-find.js');
 const { EDITOR_TOOLS } = await import('../server/mcp-editor.js');
 const { LINK_TOOLS } = await import('../server/mcp-link.js');
 const { COLLAB_TOOLS } = await import('../server/mcp-collab.js');
+const { RELAY_TOOLS } = await import('../server/mcp-relay.js');
 const { GIT_TOOLS } = await import('../server/mcp-git.js');
 const { HDL_TOOLS } = await import('../server/mcp-hdl.js');
 const { WCFG_TOOLS } = await import('../server/mcp-wcfg.js');
@@ -80,6 +81,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(MERGE_TOOLS), ['merge_preview', 'merge_contribution', 'undo_merge']);   // (Merge Contribution…, #4206)
   assert.deepEqual(names(LINK_TOOLS), ['project_link', 'open_link', 'short_links', 'delete_short_link']);
   assert.deepEqual(names(COLLAB_TOOLS), ['share_project', 'follow_project']);
+  assert.deepEqual(names(RELAY_TOOLS), ['live_relay']);   // (the Cloudflare relay of one's own, #4574)
   assert.deepEqual(names(GIT_TOOLS), ['git_clone', 'git_init', 'git_status', 'git_commit', 'git_push', 'git_pull', 'git_log', 'git_checks', 'git_diff', 'git_branch', 'git_switch', 'git_merge']);
   assert.deepEqual(names(HDL_TOOLS), ['check_syntax', 'simulate']);
   assert.deepEqual(names(VERIFY_TOOLS), ['verify']);
@@ -91,7 +93,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(TIMING_TOOLS), ['timing_paths']);
   assert.deepEqual(names(LAB_TOOLS), ['lab']);   // (the guided labs, #3179)
   assert.deepEqual(names(GRADE_TOOLS), ['grade']);   // (automatic grading, #3192)
-  assert.deepEqual(mcp.TOOLS, [...PROJECT_TOOLS, ...SETTINGS_TOOLS, ...NEW_SOURCE_TOOLS, ...WIZARD_TOOLS, ...CONSTRAINTS_TOOLS, ...TEST_BENCH_TOOLS, ...CONVERT_TOOLS, ...VIEW_TOOLS, ...TABLE_TOOLS, ...NOTATION_TOOLS, ...CHECK_TOOLS, ...FSM_TOOLS, ...CIRCUIT_TOOLS, ...KICAD_TOOLS, ...SCHEMATIC_TOOLS, ...SYMBOL_TOOLS, ...SYMBOL_INFO_TOOLS, ...SIMULATE_DRAWING_TOOLS, ...SOURCE_TOOLS, ...FIND_TOOLS, ...EDITOR_TOOLS, ...TRANSFER_TOOLS, ...MERGE_TOOLS, ...LINK_TOOLS, ...GIT_TOOLS, ...COLLAB_TOOLS, ...HDL_TOOLS, ...VERIFY_TOOLS, ...WCFG_TOOLS, ...HLS_TOOLS, ...PROCESS_TOOLS, ...BOARD_TOOLS, ...CAPTURE_TOOLS, ...TIMING_TOOLS, ...LAB_TOOLS, ...GRADE_TOOLS]);
+  assert.deepEqual(mcp.TOOLS, [...PROJECT_TOOLS, ...SETTINGS_TOOLS, ...NEW_SOURCE_TOOLS, ...WIZARD_TOOLS, ...CONSTRAINTS_TOOLS, ...TEST_BENCH_TOOLS, ...CONVERT_TOOLS, ...VIEW_TOOLS, ...TABLE_TOOLS, ...NOTATION_TOOLS, ...CHECK_TOOLS, ...FSM_TOOLS, ...CIRCUIT_TOOLS, ...KICAD_TOOLS, ...SCHEMATIC_TOOLS, ...SYMBOL_TOOLS, ...SYMBOL_INFO_TOOLS, ...SIMULATE_DRAWING_TOOLS, ...SOURCE_TOOLS, ...FIND_TOOLS, ...EDITOR_TOOLS, ...TRANSFER_TOOLS, ...MERGE_TOOLS, ...LINK_TOOLS, ...GIT_TOOLS, ...COLLAB_TOOLS, ...RELAY_TOOLS, ...HDL_TOOLS, ...VERIFY_TOOLS, ...WCFG_TOOLS, ...HLS_TOOLS, ...PROCESS_TOOLS, ...BOARD_TOOLS, ...CAPTURE_TOOLS, ...TIMING_TOOLS, ...LAB_TOOLS, ...GRADE_TOOLS]);
   assert.equal(new Set(names(mcp.TOOLS)).size, mcp.TOOLS.length);
   for (const t of mcp.TOOLS) {
     assert.equal(typeof t.run, 'function', t.name);

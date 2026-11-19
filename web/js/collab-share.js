@@ -19,6 +19,7 @@ import { h, dialog } from './ui.js';
 import { S, app } from './app.js';
 import { writeClip } from './clipboard.js';
 import { prefKey } from './prefs.js';
+import { savedRelay, keepRelay } from './relay-setting.js';
 import { collab } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
@@ -41,8 +42,7 @@ const TRACK_MS = 300;
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; } };
 const keepName = n => { try { localStorage.setItem(NAME_KEY, n); } catch { /* this page only */ } };
 // the browser edition's relay (#3227): another Silinx's, that lets this site in, among the site's (its address, its key),
-// this browser's
-const RELAY_KEY = prefKey('silinx.collab.relay');
+// this browser's (web/js/relay-setting.js)
 /** The relays this Silinx's pages may share and follow through (their Content-Security-Policy's too): the site's, set
  *  when it is built, or config.json's relay.relays. */
 const relaysHere = async () => { try { return (await api.collabRelays?.()) || []; } catch { return []; } };
@@ -50,8 +50,6 @@ const relaysHere = async () => { try { return (await api.collabRelays?.()) || []
 export const relayOk = async r => (api.standalone && workersRelay(r)) || (await relaysHere()).includes(r);
 /** Why a relay is refused here. */
 export const notHere = r => `the relay at ${new URL(r).host} is not among this Silinx's relays (${api.standalone ? 'the site\'s, set when it is built, or a Cloudflare Worker\'s, https://….workers.dev' : 'config.json\'s relay.relays'})`;
-const savedRelay = () => { try { const r = JSON.parse(localStorage.getItem(RELAY_KEY) || 'null'); return { address: r?.on === false ? '' : String(r?.address || ''), key: String(r?.key || '') }; } catch { return { address: '', key: '' }; } };
-const keepRelay = r => { try { localStorage.setItem(RELAY_KEY, JSON.stringify(r)); } catch { /* this page only */ } };
 /** The name of a participant, as the others see it (trimmed, at most 40 characters). */
 export const cleanName = n => String(n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
 
@@ -80,9 +78,11 @@ export async function shareProjectDialog({ module = null, view = null } = {}) {
   const address = h('input', { type: 'text', 'data-field': 'relay', 'data-no-i18n': '', value: r0.address, list: 'collab-relays', placeholder: 'https://silinx-relay.<you>.workers.dev', autocomplete: 'off', spellcheck: 'false', style: { width: '100%' } });
   const key = h('input', { type: 'password', 'data-field': 'relay-key', value: r0.key, autocomplete: 'off', style: { width: '100%' } });
   const relayPart = api.collab ? null : h('div', { class: 'collab-relay' },
-    h('label', {}, 'Relay (optional):'), address, h('datalist', { id: 'collab-relays' }, ...relays.map(r => h('option', { value: r }))),
-    h('label', {}, 'Its key:'), key,
-    h('p', { class: 'collab-relay-about' }, 'With a relay, your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.'));
+    h('label', {}, 'Cloudflare relay (optional):'), address, h('datalist', { id: 'collab-relays' }, ...relays.map(r => h('option', { value: r }))),
+    h('label', {}, 'Its key (RELAY_KEY):'), key,
+    h('p', { class: 'collab-relay-about' }, 'With a relay of yours on Cloudflare (or one of the site\'s), your followers connect to you directly when they can, through it otherwise. Without one, they find you at the public meeting point, or send you a code.'),
+    // (a relay of one's own, set up, checked and kept, the fields filled with it: #4574)
+    h('a', { class: 'collab-relay-setup', onclick: async () => { const r = await (await import('./relay-setup.js')).relaySetupDialog(); if (r) { address.value = r.address; key.value = r.key; } } }, 'Set Up a Cloudflare Relay…'));
   // the links, hidden: the viewers' and the editors', each made by its Generate (#3996, #4073: different links, the
   // editors' with the room's signing key)
   const linkOf = role => (share ? (module ? withTop(role === 'edit' ? share.editLink : share.link, module) : role === 'edit' ? share.editLink : share.link) : null);

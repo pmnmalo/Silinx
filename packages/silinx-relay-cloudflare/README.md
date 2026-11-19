@@ -18,7 +18,7 @@ fragment, which never reaches it.
 - **Opening a room needs the relay's key**, a secret of the Worker (`RELAY_KEY`, 24 characters at least). Whoever
   shares a project through the relay gives it in Silinx (Share Project… ▸ Live). Followers need only the link.
 - **Pages from other sites are refused**: a page's WebSocket is let in only when its origin is in `ORIGINS`
-  (`wrangler.toml`; the Silinx site, `https://pmnmalo.github.io`, by default). A program's WebSocket, such as the MCP
+  (`wrangler.toml`; the Silinx site, `https://pmnmalo.github.io`, by default: see below). A program's WebSocket, such as the MCP
   server's, has no origin and is let in.
 - **Its meeting points** (`/api/collab/meet/…`): a project hosted by its owner's page meets its followers there; they
   go peer to peer (WebRTC) when a direct path works, and through the relay otherwise. Its key opens a meeting point too.
@@ -27,14 +27,33 @@ fragment, which never reaches it.
 
 ## Deploying it
 
-1. Click **Deploy to Cloudflare** above, sign in to (or create) a Cloudflare account, and let it make a copy of this
-   folder in your GitHub account. When it asks for `RELAY_KEY`, give a long random key (24 characters at least) and keep
-   it somewhere safe.
-2. Its address is shown at the end, `https://silinx-relay.<your subdomain>.workers.dev`. Open it: it answers
-   "A relay of Silinx's shared projects".
-3. In Silinx, Share Project… ▸ Live ▸ Relay: give its address and the key.
+### From Silinx (the easiest)
 
-From a terminal instead: `npx wrangler deploy` in this folder, then `npx wrangler secret put RELAY_KEY`.
+In Silinx's **Collaboration** tab, the **Cloudflare Relay** box: *Set Up a Cloudflare Relay…*. It makes a long random
+key in your page (copy it), opens **Deploy to Cloudflare** in a new tab, and takes the relay's address once it is
+deployed:
+
+1. In Cloudflare, sign in (or create a free account) and let it make a copy of this folder in your GitHub account. When
+   it asks for `RELAY_KEY`, paste the key Silinx made.
+2. Its address is shown at the end, `https://silinx-relay.<your subdomain>.workers.dev`: paste it in Silinx and click
+   *Check and Save*.
+
+Silinx checks the relay (it answers, it lets the Silinx site in, its key opens a meeting point), says what it found in
+its console, and keeps the relay in the browser's settings. Share Project… ▸ Live then shares through it by default.
+
+### From a terminal
+
+`npx wrangler deploy` in this folder, then `npx wrangler secret put RELAY_KEY` (a long random key, 24 characters at
+least). Its address answers "A relay of Silinx's shared projects". Then, in Silinx, *Set Up a Cloudflare Relay…* with
+its address and key (or Share Project… ▸ Live ▸ Cloudflare relay).
+
+### The sites it lets in
+
+`ORIGINS` (`wrangler.toml`, or the Worker's *Settings* ▸ *Variables and Secrets* in Cloudflare's dashboard) lists the
+Silinx sites whose pages use it; the Silinx site's, `https://pmnmalo.github.io`, by default. If Silinx's check says the
+relay does not let its site in, it gives the exact line to set, for example
+`ORIGINS = "https://pmnmalo.github.io http://127.0.0.1:8642"`; deploy it again after changing it. Its root tells any page
+which origins it lets in (`Silinx-Origins`), so that Silinx can say why it is refused.
 
 ## The free plan's limits
 
