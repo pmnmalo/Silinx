@@ -148,7 +148,8 @@ function bitDataAt(bytes) {
 }
 
 test('xc7 bitstream: the xc7a100t\'s (the Nexys A7\'s) database and an empty design\'s .bit, its length UG470\'s', () => {
-  assert.deepEqual(xc7Parts(), ['xc7a100tcsg324-1', PART]);
+  // (the Zynq-7000's XC7Z010 and XC7Z020 too, their programmable logic, #4680)
+  assert.deepEqual(xc7Parts(), ['xc7a100tcsg324-1', PART, 'xc7z010clg400-1', 'xc7z020clg400-1']);
   const a7 = loadBitDbXc7('xc7a100tcsg324-1');
   const raw7 = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(XC7_DB_DIR, 'xc7a100tcsg324-1.json.gz'))).toString('utf8'));
   // the same prjxray-db as the xc7a35t's; the xc7a100t's own fabric (the xc7a35t's is the xc7a50t's)

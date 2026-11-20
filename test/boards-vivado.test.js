@@ -20,7 +20,7 @@ after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 const board = id => BOARDS.find(b => b.id === id);
 const pins = (b, name) => b.resources.find(r => r.name === name).pins;
 
-test('the Arty S7 and the Zybo Z7: their variants\' devices in the database, AMD Vivado\'s alone, Digilent\'s XDCs their source', () => {
+test('the Arty S7 and the Zybo Z7: their variants\' devices in the database, AMD Vivado\'s (the Arty S7\'s alone; the Zybo Z7\'s PL the Silinx toolchain\'s too, #4680), Digilent\'s XDCs their source', () => {
   assert.deepEqual(VIVADO_TARGETS, [{ board: 'arty-s7' }, { board: 'zybo-z7' }]);
   for (const [id, variants, xdcFile] of [['arty-s7', [['50', 'spartan7', 'xc7s50', 'csga324'], ['25', 'spartan7', 'xc7s25', 'csga324']], 'Arty-S7-50'],
     ['zybo-z7', [['20', 'zynq', 'xc7z020', 'clg400'], ['10', 'zynq', 'xc7z010', 'clg400']], 'Zybo-Z7']]) {
@@ -29,7 +29,7 @@ test('the Arty S7 and the Zybo Z7: their variants\' devices in the database, AMD
     assert.deepEqual(b.device, b.variants[0].device, id);
     for (const v of b.variants) {
       assert.deepEqual(dev.validateDevice(v.device), [], `${id} ${v.id}`);
-      assert.deepEqual([experimentalDevice(v.device), vivadoDevice(v.device), openFlowDevice(v.device)], [true, true, false], `${id} ${v.id}`);
+      assert.deepEqual([experimentalDevice(v.device), vivadoDevice(v.device), openFlowDevice(v.device)], [true, true, id === 'zybo-z7'], `${id} ${v.id}`);
       assert.deepEqual(dev.resolveBoard(id, { variant: v.id }).device, v.device);
     }
     assert.equal(b.sourceUrl, `https://github.com/Digilent/digilent-xdc/blob/c8644a9fe31cc803789643124545d56b3bef4600/${xdcFile}-Master.xdc`);
