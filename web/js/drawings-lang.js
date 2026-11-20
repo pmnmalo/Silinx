@@ -1,6 +1,6 @@
 // The project's Preferred Language changed (Design Properties, #1477): every drawing of the project (schematic, ASM
 // chart, state diagram, truth table, Petri net, circuit) in that language, as when its editor's HDL language changes (#220):
-// its HDL file, generated from it, made again in it and the file in the other language removed (drawnHdlLanguage);
+// its HDL file, generated from it, made again in it and the file in the other language removed (drawings.js syncDrawingHdl);
 // a drawing with errors gets the language, its HDL made in it once it has none. The HDL files written by hand stay
 // as they are. A drawing given its own language in Source Properties (#2254, the project's sourceLanguage: { drawing:
 // 'vhdl' | 'verilog' }) keeps it.
@@ -8,7 +8,7 @@ import { api } from './api.js';
 import { drawingInLanguage, modelLanguage } from '/core/view-hdl.js';
 import { S, findDoc, flushDoc } from './app.js';
 import { saveProjectJson } from './design.js';
-import { drawnHdlLanguage, viewKind } from './drawings.js';
+import { syncDrawingHdl, viewKind } from './drawings.js';
 
 // Returns the drawings it changed.
 export async function drawingsInLanguage(lang) {
@@ -28,7 +28,7 @@ async function drawingToLanguage(f, lang) {
   let r;
   try { r = drawingInLanguage(f, await api.readFile(S.project.name, f), lang); } catch { return false; }
   if (!r || r.model.base === 'hdl') return false;
-  // the drawing in that language, its link as it is: drawnHdlLanguage makes its HDL and links it
+  // the drawing in that language, its link as it is: syncDrawingHdl makes its HDL and links it
   const m = { ...r.model, generatedFile: r.from || undefined };
   const text = JSON.stringify(m, null, viewKind(f) === 'sch' ? 1 : 2);
   await api.writeFile(S.project.name, f, text);
@@ -36,7 +36,7 @@ async function drawingToLanguage(f, lang) {
   if (ed?.setDoc) ed.setDoc(m); else ed?.setModel?.(m);
   // (a table's schematic, when open, follows: #2257, this is now the only way to change the table's language)
   if (viewKind(f) === 'tt') (await import('./drawings-tt.js')).refreshTtSchematic(f, m);
-  if (r.from && S.schOwners?.[f] === r.from) await drawnHdlLanguage(f, m);
+  if (r.from && S.schOwners?.[f] === r.from) await syncDrawingHdl(f);
   return true;
 }
 

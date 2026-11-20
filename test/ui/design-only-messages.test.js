@@ -34,13 +34,18 @@ uiTest('#3891 a design project\'s console: no HDL when it opens; a drawing with 
   // the state diagram with an error (two states of one name): its module not made again, the drawing named
   const bad = JSON.parse(FSM);
   bad.states[1].name = bad.states[0].name;
-  await page.eval(async (m) => (await import('/js/drawings.js')).syncHdlFromFsm('src/traffic.fsm.json', { ...m, generatedFile: 'src/traffic.vhd' }), bad);
-  await page.waitConsole(/WARNING: src\/traffic\.fsm\.json: its module is not made again: the state diagram has errors: /);
+  // (saved, its HDL made again as its editor's save makes it: core/drawing-sync.js, the MCP's words, #4750)
+  await page.eval(async (m) => {
+    const { api } = await import('/js/api.js');
+    await api.writeFile(window.Silinx.project.name, 'src/traffic.fsm.json', JSON.stringify({ ...m, generatedFile: 'src/traffic.vhd' }, null, 2));
+    await (await import('/js/drawings.js')).syncDrawingHdl('src/traffic.fsm.json');
+  }, bad);
+  await page.waitConsole(/WARNING: src\/traffic\.fsm\.json: its module is not made again: Two states are named '\w+' \(letter case does not count\)$/m);
   await page.eval(async () => (await import('/js/processes.js')).checkSyntax('traffic'));
   await page.waitConsole(/Process "Check Design" failed/);
   const errs = (await warnings(page)).filter((l) => /^ERROR/.test(l));
   assert.ok(errs.length >= 1 && errs.every((l) => l.startsWith('ERROR:Silinx - "src/traffic.fsm.json": ')), errs.join('\n'));
-  assert.ok(errs.some((l) => l.includes('src/traffic.fsm.json: its module is not up to date: the state diagram has errors: ') && l.endsWith('Fix src/traffic.fsm.json.')), errs.join('\n'));
+  assert.ok(errs.some((l) => l.includes('src/traffic.fsm.json: its module is not up to date: it has errors: ') && l.endsWith('Fix src/traffic.fsm.json.')), errs.join('\n'));
   // the Errors tab: the drawing, no line
   const tab = await page.eval(() => [...document.querySelectorAll('.diag .loc')].map((e) => e.textContent));
   assert.ok(tab.length && tab.every((t) => t === '"src/traffic.fsm.json"'), tab.join());

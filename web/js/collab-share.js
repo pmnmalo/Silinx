@@ -31,7 +31,7 @@ import { trustAction } from './console.js';
 import { selectionOfDoc } from './collab-select-draw.js';
 import { keepBound, unbindAll } from './collab-bind.js';
 import { keepDrawingsBound, unbindDrawings, editorOf, modelOf } from './collab-drawing.js';
-import { liveDrawing, drawingKind, drawingText, sameDrawing, drawingModel, drawingPathsOf, pruneDrawing, syncDrawing, revertDrawing, withView } from '/core/collab-model.js';
+import { liveDrawing, drawingText, sameDrawing, drawingModel, drawingPathsOf, pruneDrawing, syncDrawing, revertDrawing, withView } from '/core/collab-model.js';
 import { shareRoom, colorOf } from '/core/collab-client.js';
 import { followLink, relayUrl, relayAddress, withTop, workersRelay } from '/core/collab-link.js';
 import { shareMode, hostedPaths, withPaths } from '/core/collab-paths.js';
@@ -451,9 +451,7 @@ async function writeMerged(s, path, { edited = false } = {}) {
   const d = S.docs.find(x => x.path === path && editorOf(x));
   if (d && sameDrawing(drawingText(path, modelOf(editorOf(d))), gated)) app.setDirty(d, false);
   const m = await import('./drawings.js');
-  const petri = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromPetri(p, x); };   // (as its save does)
-  const circ = async (p, x) => { if (x.generatedFile && S.fileTree.includes(x.generatedFile)) await m.syncHdlFromCircuit(p, x); };   // (as its save does, #4203)
-  const sync = { fsm: m.syncHdlFromFsm, tt: m.syncHdlFromTt, asm: m.syncHdlFromAsm, pn: petri, sch: m.syncHdlFromSchematic, circ }[drawingKind(path)];
-  await sync(path, r.model).catch(e => collabLog(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+  // (its HDL made again, as its save does: core/drawing-sync.js, #4750)
+  await m.syncDrawingHdl(path).catch(e => collabLog(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
   return true;
 }
