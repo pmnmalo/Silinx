@@ -45,7 +45,7 @@ uiTest('Circuit editor, phase 2\'s parts: a DIP switch, a display, an LED bar, a
   await page.openProject('PartsPj');
   await page.eval(() => window.SilinxApp.openFile('src/panel.circ.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} [data-id=DS1] .circ-seg`), [ED], { what: 'the display drawn' });
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .doc-status .ds-f`)].map((f) => f.textContent), ED), ['0 IC(s) · 3 input(s) · 2 display(s) · 15 wire(s)']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .doc-status .ds-f`)].map((f) => f.textContent), ED), ['0 IC(s) · 3 input(s) · 2 display(s) · 17 wire(s)']);
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} [data-id=S1] .circ-dip-lever`).length, ED), 4);
   // Try it: nothing lit; lever 1 on: segment a; lever 2 on: b too
   await page.click(`${ED} .circ-sim-btn`);

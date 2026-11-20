@@ -16,7 +16,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
 
 - A circuit is one file, `<name>.circ.json`, a design source of any project: an FPGA project or a design and
   simulation project (no new project kind). New Source ▸ **Digital Electronic Circuit** (second in its list, #4061) makes one: a half breadboard and its
-  power supply, or, by its **Wizard >** (the Digital Electronic Circuit Wizard, `core/circuit-templates.js`), a typical
+  power supply, on its top rails, the top rails joined to the bottom ones (+ to +, − to −, #4929), or, by its **Wizard >** (the Digital Electronic Circuit Wizard, `core/circuit-templates.js`), a typical
   assembly: N breadboards (half or full) and a supply, their rails joined; a breadboard with N switches (`sw[k]`) and M
   LEDs (`led[k]`) (no empty one, #4161: New Source itself makes a breadboard and its supply); or, on a full
   breadboard, chips already placed, powered and wired, ready to try (#4164, `core/circuit-assemblies.js`): a 7-segment
@@ -292,6 +292,8 @@ folder, with `libraries` to choose among them.
 ## The wiring
 
 - **A wire** goes from a grid point to a grid point, with bends; its colour is the student's (red, black, and others).
+  A new wire is red when it joins VCC (an IC's VCC or VDD pin, the supply's +, a + rail, or what they are joined to), black
+  when it joins GND (GND, VSS, −), blue otherwise (#4932, #4933); its Properties' Colour changes it.
   The Wire tool draws it point by point (a click on each bend, a double click or a click on a pin or hole to end it).
 - **A breadboard's strips:** each column's five holes a–e are one strip, its five holes f–j another; the channel
   between e and f separates them, and a DIP IC straddles it. Each power rail (top +, top −, bottom +, bottom −) is one

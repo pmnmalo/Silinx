@@ -110,7 +110,7 @@ uiTest('Circuit editor: New Source ▸ Circuit makes one with its breadboard and
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor((ed) => window.Silinx.active?.id === 'circ:src/blinker.circ.json' && document.querySelector(ed), [ED], { what: 'the new circuit opened' });
-  assert.deepEqual(await status(page), ['0 IC(s) · 0 input(s) · 0 display(s) · 2 wire(s)']);
+  assert.deepEqual(await status(page), ['0 IC(s) · 0 input(s) · 0 display(s) · 4 wire(s)']);   // (its supply's two, its rails' jumpers, #4929)
   const m = JSON.parse(await readWs(env, 'CircNew', 'src/blinker.circ.json'));
   assert.deepEqual(m.parts.map((p) => p.type), ['breadboard-half', 'supply']);
   // a button from the + rail to an LED's anode, its cathode on the − rail: lit while pressed
@@ -122,7 +122,9 @@ uiTest('Circuit editor: New Source ▸ Circuit makes one with its breadboard and
   await page.click(await at(page, 2, 1)); await page.click(await at(page, 2, -4));
   await page.click(await at(page, 5, 1)); await page.click(await at(page, 5, 4));
   await page.click(await at(page, 6, 1)); await page.click(await at(page, 6, -3));
-  await page.waitFor((ed) => /5 wire/.test(document.querySelector(`${ed} .doc-status`).textContent), [ED], { what: 'three wires drawn' });
+  await page.waitFor((ed) => /7 wire/.test(document.querySelector(`${ed} .doc-status`).textContent), [ED], { what: 'three wires drawn' });
+  // (their colours by default, #4932, #4933: to the + rail red, the LED's anode blue, to the − rail black)
+  assert.deepEqual(await page.eval(() => window.Silinx.active.circuitEditor.getModel().wires.slice(4).map((w) => w.color)), ['red', 'blue', 'black']);
   await page.click(`${ED} [data-act=select]`);
   await page.click(`${ED} .circ-sim-btn`);
   await page.waitFor((ed) => document.querySelector(ed).classList.contains('circ-simulating'), [ED], { what: 'simulating' });

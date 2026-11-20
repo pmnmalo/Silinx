@@ -3,6 +3,7 @@
 // 'S1.out', 'D1.A'). Each edit returns { model } (a new one) or { error }. Isomorphic module.
 import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
 import { normalizeCircuit, newId } from './circuit.js';
+import { circuitNets } from './circuit-net.js';
 import { clone } from './util.js';
 import { WIRE_STYLES, isWireStyle, setWireStyle as setStyleOf } from './wire-style.js';
 
@@ -125,8 +126,21 @@ export const deleteItem = (m, id) => edit(m, (c) => {
   return c.parts.length + c.wires.length === n ? `no part or wire ${id} in the circuit` : null;
 });
 
-/** A wire added from a place to a place, through `via` bends (grid points); { model, id }. */
-export function addWire(m, { from, to, via = [], color = 'blue', id } = {}) {
+// what a wire's net is joined to (#4932, #4933): the supply's + or −, an IC's VCC (VDD) or GND (VSS) pin, a + or − rail
+const RAIL = { vcc: /^(tp|bp)\d+$/i, gnd: /^(tn|bn)\d+$/i };
+const joins = (net, dir) => net.pins.some((q) => q.dir === dir) || net.holes.some((h) => RAIL[dir].test(h.name));
+
+/** A wire's colour by default (#4932, #4933): red when its net is joined to VCC (an IC's VCC or VDD pin, the supply's +, a
+ *  + rail), black to GND (GND, VSS, −); blue otherwise, or joined to both (a short). */
+export function wireColorOf(m, id) {
+  const net = circuitNets(m).nets.find((n) => n.wires.includes(id));
+  const vcc = !!net && joins(net, 'vcc'), gnd = !!net && joins(net, 'gnd');
+  return vcc && !gnd ? 'red' : gnd && !vcc ? 'black' : 'blue';
+}
+
+/** A wire added from a place to a place, through `via` bends (grid points); its colour, when none is given, its net's
+ *  (wireColorOf: red to VCC, black to GND, else blue); { model, id }. */
+export function addWire(m, { from, to, via = [], color, id } = {}) {
   let wid = null;
   const r = edit(m, (c) => {
     const a = pointOf(c, from), b = pointOf(c, to);
@@ -134,10 +148,12 @@ export function addWire(m, { from, to, via = [], color = 'blue', id } = {}) {
     if (b.error) return b.error;
     if (!Array.isArray(via) || !via.every((q) => Array.isArray(q) && q.length === 2 && q.every(Number.isInteger))) return 'via: the bends, a list of grid points [[x, y], …]';
     if (a[0] === b[0] && a[1] === b[1] && !via.length) return 'a wire joins two different places';
-    if (!WIRE_COLORS.includes(color)) return `color: one of ${WIRE_COLORS.join(', ')}`;
+    if (color != null && !WIRE_COLORS.includes(color)) return `color: one of ${WIRE_COLORS.join(', ')}`;
     wid = id || newId(c, 'wire');
     if (partIn(c, wid) || c.wires.some((w) => w.id.toLowerCase() === wid.toLowerCase())) return `${wid}: the circuit has a part or a wire named so`;
-    c.wires.push({ id: wid, points: [a, ...via, b], color });
+    const w = { id: wid, points: [a, ...via, b], color: color ?? 'blue' };
+    c.wires.push(w);
+    if (color == null) w.color = wireColorOf(c, wid);
     return null;
   });
   return r.error ? r : { ...r, id: wid };

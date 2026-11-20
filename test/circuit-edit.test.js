@@ -6,7 +6,10 @@ import assert from 'node:assert/strict';
 import { partHoles, partPins, WIRE_COLORS } from '../core/circuit-parts.js';
 import { circuitNets } from '../core/circuit-net.js';
 import { checkCircuit } from '../core/circuit-check.js';
-import { movePart, rotatePart, copyParts, pasteParts, addPart, pointOf, setWireProps, setPartProps, setProps } from '../core/circuit-edit.js';
+import { movePart, rotatePart, copyParts, pasteParts, addPart, addWire, pointOf, setWireProps, setPartProps, setProps, wireColorOf } from '../core/circuit-edit.js';
+import { addStyledWire } from '../core/circuit-route.js';
+import { newCircuit } from '../core/circuit.js';
+import { netSupply } from '../core/circuit-net.js';
 import { halfAdder, icBench } from './circuit-helpers.mjs';
 
 // what joins what: each net's pins, sorted
@@ -110,4 +113,48 @@ test('a wire\'s colour set (#4121), as its Properties\' Colour: the wire alone c
   assert.deepEqual(setProps(m, 'D1', { color: 'green' }), setPartProps(m, 'D1', { color: 'green' }));
   assert.deepEqual(setProps(m, 'ws', { color: 'green' }), r);
   assert.deepEqual(setProps(m, 'X9', { color: 'red' }), { error: 'no part or wire X9 in the circuit' });
+});
+
+test('a new circuit\'s bottom rails powered too (#4929): the top rails joined to the bottom ones, + to + red, − to − black; its check clean', () => {
+  const m = newCircuit('n');
+  assert.deepEqual(m.wires.map((w) => [w.id, w.color, w.points[0], w.points.at(-1)]), [
+    ['w1', 'red', pointOf(m, 'P1.+'), pointOf(m, 'BB1.tp1')], ['w2', 'black', pointOf(m, 'P1.-'), pointOf(m, 'BB1.tn1')],
+    ['w3', 'red', pointOf(m, 'BB1.tp30'), pointOf(m, 'BB1.bp30')], ['w4', 'black', pointOf(m, 'BB1.tn30'), pointOf(m, 'BB1.bn30')]]);
+  // (the nets, an independent reckoning: the bottom + rail on the supply's +, the bottom − on its −)
+  const nets = circuitNets(m).nets, of = (w) => netSupply(nets.find((n) => n.wires.includes(w)));
+  assert.deepEqual([of('w3'), of('w4')], [{ vcc: true, gnd: false }, { vcc: false, gnd: true }]);
+  assert.deepEqual(checkCircuit(m), []);
+  // an LED from the bottom + rail to the bottom − rail: lit, as on the bench
+  const led = addPart(m, { type: 'led', at: 'BB1.bp5', rot: 3 }).model;
+  assert.deepEqual(pointOf(led, 'D1.K'), pointOf(led, 'BB1.bn5'));
+  assert.deepEqual(checkCircuit(led), [], 'no part left unpowered');
+});
+
+test('a new wire\'s colour by default (#4932, #4933): red to VCC, VDD, the supply\'s + or a + rail; black to GND, VSS, − or a − rail; blue otherwise; a colour given kept', () => {
+  let m = addPart(newCircuit('c'), { type: '7400', at: 'BB1.f10', id: 'U1' }).model;
+  m = addPart(m, { type: '4071', at: 'BB1.f20', id: 'U2' }).model;
+  const colour = (from, to, more = {}) => { const r = addWire(m, { from, to, ...more }); assert.equal(r.error, undefined); return r.model.wires.find((w) => w.id === r.id).color; };
+  assert.equal(colour('U1.14', [40, 0]), 'red', 'a 74LS IC\'s VCC pin');
+  assert.equal(colour('U1.7', [40, 0]), 'black', 'its GND pin');
+  assert.equal(colour('U2.VDD', [40, 0]), 'red', 'a 4000 IC\'s VDD pin');
+  assert.equal(colour('U2.VSS', [40, 0]), 'black', 'its VSS pin');
+  assert.equal(colour('BB1.c10', [40, 0]), 'red', 'a hole of the strip of a VCC pin (the net)');
+  assert.equal(colour('BB1.a1', 'BB1.bp1'), 'red', 'the bottom + rail');
+  assert.equal(colour('BB1.a1', 'BB1.tn3'), 'black', 'the top − rail');
+  assert.equal(colour('P1.+', [-10, -4]), 'red', 'the supply\'s +');
+  assert.equal(colour('U1.1', 'BB1.a3'), 'blue', 'a signal');
+  assert.equal(colour('BB1.tp4', 'BB1.tn4'), 'blue', 'both (a short): no default');
+  assert.equal(colour('BB1.a1', 'BB1.bp1', { color: 'green' }), 'green', 'a colour given');
+  // a rail by its name, no supply on the board
+  const bare = addPart(newCircuit('b', 'vhdl', { breadboard: false }), { type: 'breadboard-half', at: [0, 0] }).model;
+  assert.equal(addWire(bare, { from: 'BB1.a1', to: 'BB1.tp1' }).model.wires[0].color, 'red');
+  assert.equal(addWire(bare, { from: 'BB1.a1', to: 'BB1.bn1' }).model.wires[0].color, 'black');
+  assert.equal(addWire(bare, { from: 'BB1.a1', to: 'BB1.a5' }).model.wires[0].color, 'blue');
+  // the same drawn Orthogonal (routed) or Curved, as the editor and edit_circuit add them; wireColorOf of a wire there
+  for (const wireStyle of ['orthogonal', 'curved']) {
+    const r = addStyledWire({ ...m, wireStyle }, { from: 'U1.7', to: 'BB1.bn12' });
+    assert.equal(r.model.wires.find((w) => w.id === r.id).color, 'black', wireStyle);
+    assert.equal(wireColorOf(r.model, r.id), 'black');
+  }
+  assert.equal(wireColorOf(m, 'w99'), 'blue', 'no such wire');
 });

@@ -2,7 +2,7 @@
 // breadboards or beside them, wired on a 0.1 inch grid. Its model here (normalized, a new one, its ports); its parts:
 // core/circuit-parts.js; its nets: core/circuit-net.js; its checks: core/circuit-check.js; its simulation:
 // core/circuit-sim.js; its HDL: core/circuit-hdl.js. Isomorphic module (browser + Node).
-import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
+import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ, BB_COLS, BB_RAILS } from './circuit-parts.js';
 import { portName, partInputs, partLamps } from './circuit-io.js';
 import { isName } from './ident.js';
 import { wireStyleOf } from './wire-style.js';
@@ -50,11 +50,16 @@ export function normalizeCircuit(m = {}) {
   return out;
 }
 
-/** A new circuit: empty, or (`breadboard`) a half breadboard with its supply on the top rails' left. */
+/** A new circuit: empty, or (`breadboard`) a half breadboard with its supply on the top rails' left, its bottom rails
+ *  powered too. */
 export function newCircuit(name = 'circuit', lang = 'vhdl', { breadboard = true } = {}) {
   const parts = breadboard ? [{ id: 'BB1', type: 'breadboard-half', x: 0, y: 0 }, { id: 'P1', type: 'supply', x: -4, y: -4 }] : [];
-  // the supply's terminals joined to the top rails (+ to tp, − to tn) by two wires
-  const wires = breadboard ? [{ id: 'w1', points: [[-4, -4], [0, -4]], color: 'red' }, { id: 'w2', points: [[-4, -3], [0, -3]], color: 'black' }] : [];
+  // the supply's terminals joined to the top rails (+ to tp, − to tn) by two wires; the top rails to the bottom ones on
+  // the right (+ to +, − to −, #4929), as the Breadboards template does (core/circuit-templates.js)
+  const c = BB_COLS, r = BB_RAILS;
+  const wires = breadboard ? [{ id: 'w1', points: [[-4, -4], [0, -4]], color: 'red' }, { id: 'w2', points: [[-4, -3], [0, -3]], color: 'black' },
+    { id: 'w3', points: [[c - 1, r.tp], [c + 1, r.tp], [c + 1, r.bp], [c - 1, r.bp]], color: 'red' },
+    { id: 'w4', points: [[c - 1, r.tn], [c, r.tn], [c, r.bn], [c - 1, r.bn]], color: 'black' }] : [];
   return normalizeCircuit({ name, lang, parts, wires });
 }
 

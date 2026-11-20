@@ -63,7 +63,7 @@ uiTest('Circuit editor: a project\'s KiCad parts in the Parts panel, placed, the
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-canvas .circ-ic-text`)].map((t) => t.textContent), ED), ['U1  74HC00']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} [data-id=M1] text.circ-label`).textContent, ED), 'M1  TEST-SENSOR');
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} [data-id=M1] .circ-drawn-body`).length, ED), 1);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .doc-status .ds-f`)].map((f) => f.textContent), ED), ['2 IC(s) · 0 input(s) · 0 display(s) · 2 wire(s)']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .doc-status .ds-f`)].map((f) => f.textContent), ED), ['2 IC(s) · 0 input(s) · 0 display(s) · 4 wire(s)']);
   // Check: the IC unpowered, the module drawn only
   await page.click(`${ED} .circ-check`);
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /drawn only/.test(l.textContent)), [], { what: 'Check' });
