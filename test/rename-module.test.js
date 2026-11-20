@@ -43,3 +43,26 @@ test('renameModule: refused before anything moves when a drawing\'s new path is 
   assert.ok(fs.existsSync(path.join(P.projectDir('b'), 'src/speed_ctrl.vhd')) && fs.existsSync(path.join(P.projectDir('b'), 'src/speed_ctrl.asm.json')));
   assert.match(fs.readFileSync(path.join(P.projectDir('b'), 'src/top.vhd'), 'utf8'), /speed_ctrl/);
 });
+
+// (#4731) core/rename-module.js, the interface's too: `before` called once the checks passed, with the files to change
+// and to move, before any moves (the interface closes their editors); never on a refusal; a circuit's module renamed
+// with its drawing, its HDL made again by its kind
+test('#4731 renameModule: before() with the plan, not on a refusal; a circuit renamed with its drawing', async () => {
+  const C = await import('../core/rename-module.js');
+  assert.equal(C.renameModule, R.renameModule);
+  await P.createProject({ name: 'c', template: 'breadboard' });
+  const calls = [];
+  await assert.rejects(C.renameModule(P, 'c', 'breadboard', 'entity', { before: p => calls.push(p) }), { rename: true });
+  assert.deepEqual(calls, []);
+  const hdl = (await R.projectModules(P, 'c')).find(m => m.name === 'breadboard').file;
+  const r = await C.renameModule(P, 'c', 'breadboard', 'board1', { to: R.followingFile(hdl, 'breadboard', 'board1'), before: p => calls.push(p) });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].moved, [['src/breadboard.circ.json', 'src/board1.circ.json'], [hdl, hdl.replace('breadboard', 'board1')]]);
+  assert.ok(calls[0].changed.includes('src/breadboard.circ.json'), JSON.stringify(calls[0].changed));
+  assert.equal(r.file, hdl.replace('breadboard', 'board1'));
+  const text = await P.readFile('c', r.file);
+  assert.match(text, /\b(entity|module) board1\b/);
+  assert.ok(!/\bbreadboard\b/.test(text), 'no old name left in its HDL');
+  assert.equal(JSON.parse(await P.readFile('c', 'src/board1.circ.json')).generatedFile, r.file);
+  assert.equal((await P.readProject('c')).top, 'board1');
+});
