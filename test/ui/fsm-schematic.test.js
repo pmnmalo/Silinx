@@ -78,7 +78,7 @@ for (const kind of ['fpga', 'design']) {
     await page.eval(() => { const ed = window.Silinx.active.fsmEditor; ed.setModel({ ...ed.getModel(), encoding: 'onehot' }); });
     await page.eval(async () => (await import('/js/drawings-fsm-sch.js')).refreshFsmSchematic('src/traffic.fsm.json', window.Silinx.active.fsmEditor.getModel()));
     await page.waitFor((id) => /not in sync/.test(window.Silinx.docs.find((x) => x.id === id).el.querySelector('.gen-banner')?.textContent || ''), [ID], { what: 'the banner out of sync' });
-    assert.equal((await view(page)).banner, 'Read-only, not in sync with traffic.fsm.json — No schematic: the encoded table is made for the binary and gray encodings (choose one of them)');
+    assert.equal((await view(page)).banner, 'Read-only, not in sync with traffic.fsm.json — No schematic: the encoded table is made for the binary, gray and user-defined encodings (choose one of them)');
     // (the diagram as it was; the schematic closed)
     await page.eval((m) => window.Silinx.active.fsmEditor.setModel(m), FSM);
     await page.eval((id) => window.SilinxApp.closeDoc(window.Silinx.docs.find((d) => d.id === id)), ID);
@@ -91,7 +91,7 @@ for (const kind of ['fpga', 'design']) {
 
     // one-hot: no schematic, why said in the console (information, no warning)
     await clickBadge(page, 'hot', 'Schematic');
-    await page.waitConsole(/hot\.fsm\.json: No schematic: the encoded table is made for the binary and gray encodings \(choose one of them\)\./);
+    await page.waitConsole(/hot\.fsm\.json: No schematic: the encoded table is made for the binary, gray and user-defined encodings \(choose one of them\)\./);
     assert.equal(await page.eval(() => window.Silinx.docs.some((x) => x.id === 'fsmsch:src/hot.fsm.json')), false);
 
     // in Portuguese: the badge and its tip

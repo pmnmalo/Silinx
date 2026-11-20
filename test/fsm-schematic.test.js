@@ -124,6 +124,8 @@ test('a synchronous active-low reset: FDR, after an inverter', () => {
 test('#4911 the schematic stepped in its simulator as the model: Moore and Mealy, binary and gray, every kind of reset, buses', () => {
   stepped(TRAFFIC);
   stepped({ ...TRAFFIC, encoding: 'gray' });
+  // (the user's codes, #4908: the states' codes in the other order)
+  stepped({ ...TRAFFIC, encoding: 'user', states: TRAFFIC.states.map((x, i) => ({ ...x, code: (TRAFFIC.states.length - 1 - i).toString(2).padStart(3, '0') })) });
   assert.deepEqual(ff(stepped(newFsm('seq'))), ['fdc:0', 'fdc:0']);
   assert.ok(types(stepped({ ...newFsm('seq'), reset: { name: 'rst_n', active: 'low', sync: false } })).includes('inv'));
   stepped({ ...newFsm('seq'), reset: { name: 'rst_n', active: 'low', sync: true } });
@@ -134,7 +136,7 @@ test('#4911 the schematic stepped in its simulator as the model: Moore and Mealy
 
 test('no schematic, why said: one-hot, enumerated, a diagram with errors, too many bits, a signal named as a state bit', () => {
   assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'enum' }), { error: 'No schematic: the enumerated encoding has no state codes: choose binary or gray to see the schematic' });
-  assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'onehot' }), { error: 'No schematic: the encoded table is made for the binary and gray encodings (choose one of them)' });
+  assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'onehot' }), { error: 'No schematic: the encoded table is made for the binary, gray and user-defined encodings (choose one of them)' });
   assert.deepEqual(fsmSchematic({ ...TRAFFIC, states: TRAFFIC.states.map((x) => ({ ...x, name: 'S' })) }), { error: 'No schematic: correct the errors of the diagram first' });
   assert.deepEqual(fsmSchematic({ ...MEALY, inputs: [...MEALY.inputs, { name: 'w', width: 8 }] }),
     { error: 'No schematic: too many bits for a table: 2 state bit(s) + 11 input bit(s) (at most 10)' });
