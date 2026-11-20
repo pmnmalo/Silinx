@@ -107,7 +107,7 @@ test('symbol_info ADD8: its composition\'s levels; symbol_composition draws each
   assert.deepEqual(fa.text.split('\n').slice(0, 2), ['ADD8: FA1 = 2 × XOR2 + 2 × AND2 + OR2 (a level of ADD8)', 'FA1\'s drawing (a schematic, read-only; its modules: none, gates only):']);
   assert.deepEqual(fa.data.doc.symbols.map(s => s.type).sort(), ['and2', 'and2', 'or2', 'xor2', 'xor2']);
   await fails('symbol_composition', { project: 'fpga', symbol: 'ADD8', module: 'ADD16' }, 'no level \'ADD16\' in the composition of ADD8: one of ADD8, ADD4, FA1');
-  await fails('symbol_composition', { project: 'fpga', symbol: 'FDCE' }, 'FDCE: no composition (a symbol of the palette drawn as it is; the adders, subtractors, multiplexers, decoders, demultiplexers and encoders have one)');
+  await fails('symbol_composition', { project: 'fpga', symbol: 'FDCE' }, 'FDCE: no composition (a symbol of the palette drawn as it is; the adders, subtractors, comparators, multiplexers, decoders, demultiplexers and encoders have one)');
   await fails('symbol_composition', { project: 'fpga', symbol: 'NOPE' }, 'no symbol \'NOPE\' in the palette');
 });
 
@@ -149,4 +149,14 @@ test('symbol_composition M8_1 and PENC8_3: a level by its path, its values', asy
   assert.deepEqual([enc.data.module, enc.data.values], ['PENC4_2', { I0: '0', I1: '0', I2: '1', I3: '0', A0: '0', A1: '1', V: '1' }]);
   const top = await ok('symbol_composition', { project: 'fpga', symbol: 'encoder', params: { n: 3, mode: 'priority' }, inputs: { I1: 1, I6: 1 } });
   assert.deepEqual(top.data.values, { I0: '0', I1: '1', I2: '0', I3: '0', I4: '0', I5: '0', I6: '1', I7: '0', A0: '0', A1: '1', A2: '1', V: '1' }, 'A = 6');
+});
+
+// #4810: a signed comparator: its subtractor takes the operands with their sign bits inverted (−128 < 1)
+test('symbol_composition COMP8 signed: its SUB8\'s operands, the sign bits inverted; LT', async () => {
+  await setup();
+  const p = { project: 'fpga', symbol: 'compare', params: { width: 8, op: 'lt', signed: true }, inputs: { A: '0x80', B: 1 } };
+  const top = await ok('symbol_composition', p);
+  assert.deepEqual([top.data.module, top.data.values], ['COMP8_LT_S', { A: '128', B: '1', O: '1' }]);
+  const sub = await ok('symbol_composition', { ...p, path: ['U1'] });
+  assert.deepEqual([sub.data.module, sub.data.values], ['SUB8_NOBI', { A: '0', B: '129', D: '127', BO: '1' }], '0x00 − 0x81: a borrow');
 });

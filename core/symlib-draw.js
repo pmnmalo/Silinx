@@ -94,7 +94,8 @@ export function lanes(name, description, markers, items, sides = {}) {
     // (a library module's instance, or a gate of the palette: { type, params })
     const pins = it.mod ? it.mod.ports : symbolDef({ type: it.type, params: it.params }).pins;
     const I = it.mod ? c.inst(it.mod, X, y + (pins.some(q => q.side === 'N') ? 40 : 0), it.label) : c.sym(it.type, it.params, X, y);
-    for (const q of pins) stub(c, I.pin(q.name), q.side, it.net(q.name));
+    // (a pin whose net is null left open: an output not used)
+    for (const q of pins) { const n = it.net(q.name); if (n != null) stub(c, I.pin(q.name), q.side, n); }
     y = r10(y + I.def.h + (pins.some(q => q.side === 'S') ? 120 : 60));
   }
   return { doc: c.doc, sides };
