@@ -5,6 +5,7 @@ import * as Git from './git.js';
 import * as GH from './git-github.js';
 import * as backupStore from './backup-store.js';
 import { projectDir } from './projects.js';
+import { sendError } from './http-errors.js';
 
 // the back end: the system's git, or GitHub's API (SILINX_GIT=github, #3196)
 const B = () => (GH.githubBackend() ? GH : Git);
@@ -15,7 +16,7 @@ export function registerGitRoutes(api) {
     return fn(req);
   }).then(
     out => { if (!res.headersSent) res.json(out); },
-    err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}), ...(err.files ? { files: err.files } : {}), ...(err.projects ? { projects: err.projects } : {}), ...(err.drawings ? { drawings: err.drawings } : {}), ...(err.texts ? { texts: err.texts } : {}), ...(err.resolvable !== undefined ? { resolvable: err.resolvable } : {}), ...(err.existing ? { existing: err.existing } : {}) }),
+    err => sendError(res, err.status ? err : Object.assign(new Error('internal server error'), { status: 500 })),   // (one envelope, #4753)
   );
   const body = req => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
   // a short link's gist (#3223): made with the server's GitHub token (GH_TOKEN), never the page's
@@ -24,10 +25,10 @@ export function registerGitRoutes(api) {
     const { design: d, expires_days: days = 0 } = body(req);
     if (typeof d !== 'string' || !d) throw Object.assign(new Error('design: the encoded design (Share Project\'s)'), { status: 400 });
     return GH.makeGist(d, { days });   // (an expiry, #3629: checked by core/gist-link.js expiryDate)
-  }).then(({ id, key, expires, deleted }) => res.json({ id, key, expires, deleted: deleted.length }), err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}) })));
+  }).then(({ id, key, expires, deleted }) => res.json({ id, key, expires, deleted: deleted.length }), err => sendError(res, err.status ? err : Object.assign(new Error('internal server error'), { status: 500, hint: err.hint }))));
   // where they are made (#3995): the token's account, the project's repository and whether it is private
   api.get('/gist/account', (req, res) => GH.shortLinkAccount(typeof req.query.project === 'string' && req.query.project ? req.query.project : null)
-    .then(out => res.json(out), err => res.status(err.status || 500).json({ error: err.status ? err.message : 'internal server error', ...(err.hint ? { hint: err.hint } : {}) })));
+    .then(out => res.json(out), err => sendError(res, err.status ? err : Object.assign(new Error('internal server error'), { status: 500, hint: err.hint }))));
   // the token's short links (#3635): listed; deleted, given ids or the expired ones
   api.get('/gists', route(() => GH.listShortLinks()));
   api.post('/gists/delete', route(req => GH.deleteShortLinks({ ids: Array.isArray(body(req).ids) ? body(req).ids.map(String) : [], expired: body(req).expired === true }).then(deleted => ({ deleted }))));

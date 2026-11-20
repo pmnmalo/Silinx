@@ -110,6 +110,21 @@ export async function loadConfig() {
   catch { return merge(DEFAULT_CONFIG, {}); }
 }
 
+// (the settings with no default, known all the same: the programmer's device, as a request's, #1433)
+const OPTIONAL = ['programmer.device'];
+// the settings of partial that are none of DEFAULT_CONFIG's (a section's keys, or FILE_ONLY's), as "ssh.hots"
+function unknownSettings(partial) {
+  const out = [];
+  for (const [k, v] of Object.entries(partial)) {
+    if (FILE_ONLY.includes(k)) continue;
+    if (!Object.hasOwn(DEFAULT_CONFIG, k)) { out.push(k); continue; }
+    const d = DEFAULT_CONFIG[k];
+    if (d && typeof d === 'object' && !Array.isArray(d) && v && typeof v === 'object' && !Array.isArray(v))
+      for (const s of Object.keys(v)) if (!Object.hasOwn(d, s) && !FILE_ONLY.includes(`${k}.${s}`) && !OPTIONAL.includes(`${k}.${s}`)) out.push(`${k}.${s}`);
+  }
+  return out;
+}
+
 /** The settings that name a program to run or its arguments: set in config.json (or with the
  *  command line) only, never through the API (Toolchain Settings does not show them). */
 export const FILE_ONLY = ['docker.command', 'docker.extraArgs', 'ssh.sshArgs', 'ssh.identity', 'ssh.earlierDirs', 'paths', 'relay', 'mcp', 'editor'];
@@ -219,6 +234,9 @@ export async function saveConfig(partial, { fromApi = false } = {}) {
   refuseUserConfigInTests();
   const current = await loadConfig();
   if (fromApi) {
+    // (a setting the API does not know: refused, never kept in config.json, #4753)
+    const unknown = unknownSettings(partial);
+    if (unknown.length) throw Object.assign(new Error(`unknown setting${unknown.length > 1 ? 's' : ''}: ${unknown.join(', ')}`), { status: 400 });
     for (const key of FILE_ONLY) {
       const v = at(partial, key);
       if (v !== undefined && !same(v, at(current, key)))

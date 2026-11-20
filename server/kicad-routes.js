@@ -4,9 +4,11 @@
 import { kicadLibraries, openKicadLibrary, kicadContents, kicadOrigin, catalogueFile } from './kicad-libraries.js';
 import { importCataloguePart } from '../core/kicad-catalogue.js';
 import { importKicadPackage } from '../core/kicad-import.js';
+import { pathFree } from './http-errors.js';
 
 export function mountKicadRoutes({ P, api, wrap, bad }) {
-  const failed = (e) => bad(e.message, 502);
+  // (a file system's error rewrapped without the server's paths, #4753)
+  const failed = (e) => bad(pathFree(e), 502);
   api.get('/kicad/libraries', wrap(async (req) => { try { return await kicadLibraries({ refresh: req.query.refresh === '1' }); } catch (e) { throw failed(e); } }));
   api.get('/kicad/libraries/:id', wrap(async (req) => {
     let o;
@@ -19,7 +21,7 @@ export function mountKicadRoutes({ P, api, wrap, bad }) {
     await P.readProject(name);
     if (typeof b.part !== 'string') throw bad('part: a part of the KiCad catalogue');
     try { return await importCataloguePart(P, name, b.part, catalogueFile, { replace: !!b.replace }); }
-    catch (e) { throw /^(?:https?:|fetch failed|too many redirects)/.test(e.message) ? failed(e) : bad(e.message); }
+    catch (e) { throw /^(?:https?:|fetch failed|too many redirects)/.test(e.message) ? failed(e) : bad(pathFree(e)); }
   }));
   api.post('/projects/:p/kicad/import', wrap(async (req) => {
     const name = req.params.p, b = req.body || {};
@@ -30,6 +32,6 @@ export function mountKicadRoutes({ P, api, wrap, bad }) {
     try { o = await openKicadLibrary(b.library); } catch (e) { throw failed(e); }
     try {
       return await importKicadPackage(P, name, o.pkg, { libraries: b.libraries ?? null, origin: kicadOrigin(o.library), replace: !!b.replace });
-    } catch (e) { throw bad(e.message); }
+    } catch (e) { throw bad(pathFree(e)); }
   }));
 }

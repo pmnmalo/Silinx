@@ -26,6 +26,7 @@ import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { normalizePath } from '../core/import-gate.js';
 import { foldName } from '../core/fold-name.js';
 import { familyProfile } from '../core/family-profile.js';
+import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY } from './http-errors.js';
 
 // files that only Silinx understands: not part of an exported Xilinx ISE project
 export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym)\.json)$/i;   // (a module's symbol too, #3828)
@@ -112,23 +113,24 @@ export async function startProgramming(b = {}) {
 }
 
 /** The project's bitstream (GET /projects/:p/bitinfo, the MCP server's bitstream_info, #4751): { available, path, its
- *  header's design, part, date and time, a warning when it was built for another device; an open family's size }. */
+ *  header's design, part, date and time, a warning when it was built for another device; an open family's size }:
+ *  its path the project's, never the server's (#4753). */
 export async function bitInfo(name) {
   const P = Projects;
   const project = await P.readProject(name);
   if (!topOf(project)) return { available: false, reason: 'no top module' };
   // (an open family's bitstream, the iCE40's .bin, the ECP5's .bit: no Xilinx header, its size, #2298, #2302; its family's flag)
   if (openOnlyDevice(project.device)) {
-    const bin = path.join(P.projectDir(name), 'build', `${project.top}${bitstreamExtOf(project.device)}`), own = { [deviceFamily(project.device)]: true };
-    const st = await fs.stat(bin).catch(() => null);
-    return st ? { available: true, path: bin, size: st.size, ...own } : { available: false, path: bin, ...own };
+    const rel = `build/${project.top}${bitstreamExtOf(project.device)}`, own = { [deviceFamily(project.device)]: true };
+    const st = await fs.stat(path.join(P.projectDir(name), rel)).catch(() => null);
+    return st ? { available: true, path: rel, size: st.size, ...own } : { available: false, path: rel, ...own };
   }
-  const bit = path.join(P.projectDir(name), 'build', `${project.top}.bit`);
-  if (!fss.existsSync(bit)) return { available: false, path: bit };
+  const rel = `build/${project.top}.bit`, bit = path.join(P.projectDir(name), rel);
+  if (!fss.existsSync(bit)) return { available: false, path: rel };
   try {
     const info = await readBitInfo(bit);
-    return { available: true, ...info, warning: checkBitPart(info, project.device) };
-  } catch (e) { return { available: false, path: bit, error: e.message }; }
+    return { available: true, ...info, path: rel, warning: checkBitPart(info, project.device) };
+  } catch (e) { return { available: false, path: rel, error: pathFree(e) }; }
 }
 
 /** The board's Platform Flash PROM (XCF0xS): POST /prom, and the MCP server's program_prom (#4751). b: { project, op
@@ -251,7 +253,7 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
 
   api.put('/toolchain', wrap(async req => {
     try { await saveConfig(req.body || {}, { fromApi: true }); }
-    catch (e) { throw bad(e.message, e.status || 400); }
+    catch (e) { throw e.status ? bad(e.message, e.status) : e; }   // (a file system's error: the envelope's internal error, no path, #4753)
     return withOpen(await detectToolchain(), req.query.project);
   }));
 
@@ -275,17 +277,18 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   }));
 
   // ----- implementation -----------------------------------------------------------------------
-  api.post('/projects/:p/implement', wrap(async req => ({ job: (await startImplementation(req.params.p, req.body || {})).id })));
+  // (its body checked as the MCP's run_process takes it, #4753)
+  api.post('/projects/:p/implement', checkBody(IMPLEMENT_BODY), wrap(async req => ({ job: (await startImplementation(req.params.p, req.body || {})).id })));
 
   api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p)));
 
   // the logic analyzer's capture on the board (#3176, server/ila-board.js: adepttool, the MCP tool capture's): a job, its
   // lines the run's, its result { capture, file }
-  api.post('/projects/:p/capture', wrap(async req => {
-    const name = req.params.p, { arm = true, timeoutS = 10, device = 0 } = req.body || {};
+  api.post('/projects/:p/capture', checkBody(CAPTURE_BODY), wrap(async req => {
+    const name = req.params.p, { arm = true, timeoutS = 10, device = 0 } = req.body || {};   // (checked: CAPTURE_BODY, #4753)
     await Projects.readProject(name);
     const { captureProject } = await import('./ila-board.js');
-    const job = createJob('capture', async j => { const r = await captureProject(name, { arm: arm !== false, timeoutMs: Math.max(0.1, +timeoutS || 10) * 1000, device: +device || 0, log: l => j.log(l) }); return { capture: r.capture, file: r.file }; },
+    const job = createJob('capture', async j => { const r = await captureProject(name, { arm, timeoutMs: timeoutS * 1000, device, log: l => j.log(l) }); return { capture: r.capture, file: r.file }; },
       { meta: { project: name } });
     return { job: job.id };
   }));
