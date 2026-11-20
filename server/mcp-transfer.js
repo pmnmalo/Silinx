@@ -15,7 +15,7 @@ import * as P from './projects.js';
 import { toolError, readProject, diagLine, STR, PROJECT } from './mcp-util.js';
 import { isDesignOnly } from '../core/project-kind.js';
 import { foldName } from '../core/fold-name.js';
-import { hiddenName, nativeRealOf } from './paths.js';
+import { hiddenName, nativeRealOf, realOf } from './paths.js';
 import { configDir } from './toolchain.js';
 
 const KINDS = { xilinx: 'a Xilinx ISE project', silinx: 'a Silinx project' };
@@ -36,10 +36,8 @@ export async function exchangePath(p, what) {
   const outside = () => toolError(`${what}: '${p}' is outside the exchange folder (SILINX_MCP_FOLDER sets another)`);
   const under = (f, d) => f === d || f.startsWith(d + path.sep);
   if (!under(full, dir) && !under(full, root)) throw outside();
-  // (the deepest part of the path that exists, resolved)
-  let probe = full;
-  while (!fs.existsSync(probe) && probe !== path.dirname(probe)) probe = path.dirname(probe);
-  const real = path.join(await fsp.realpath(probe), path.relative(probe, full));
+  // (where it really is: its deepest part that exists resolved, paths.js realOf, #4769)
+  const real = realOf(full);
   if (!under(real, root)) throw outside();
   // a hidden file or folder of it (.ssh, .config, .zshenv), by the name given or once its links are followed, as no
   // project's file route takes one (#3036, server/paths.js hiddenName)

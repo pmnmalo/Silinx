@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
-import { hiddenName, nativeRealOf, readWithin } from './paths.js';
+import { hiddenName, nativeRealOf, readWithin, realOf, within } from './paths.js';
 
 // ------------------------------------------------------------------ helpers
 export const toolError = (message) => Object.assign(new Error(message), { toolError: true });
@@ -98,11 +98,9 @@ export async function projectPath(name, rel, verb = 'read', { last = true } = {}
   const dir = P.projectDir(name);
   const full = await P.spelledJoin(dir, rel, { last });   // (its folders as the project spells them, #3536)
   const root = await fsp.realpath(dir).catch(() => { throw toolError(`no project '${name}' in the workspace`); });
-  // (the deepest part of the path that exists, resolved)
-  let probe = full;
-  while (!fs.existsSync(probe) && probe !== dir) probe = path.dirname(probe);
-  const real = await fsp.realpath(probe);
-  if (real !== root && !real.startsWith(root + path.sep)) throw toolError(`'${rel}' is outside the project '${name}'`);
+  // (inside it by name and once its links are followed: paths.js within, #4769)
+  if (!within(dir, full)) throw toolError(`'${rel}' is outside the project '${name}'`);
+  const real = realOf(full);
   // (a short (8.3) name too, and a path the system names a hidden one: paths.js hiddenName, nativeRealOf)
   const hidden = p => p.split(/[\\/]/).some(hiddenName);
   if (verb !== null && (hidden(P.relKey(dir, full)) || hidden(path.relative(root, real)) || hidden(path.relative(nativeRealOf(dir), nativeRealOf(full))))) throw Object.assign(toolError(`'${rel}': a hidden file or folder cannot be ${verb}`), { hidden: true });

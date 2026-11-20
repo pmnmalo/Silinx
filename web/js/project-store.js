@@ -41,15 +41,12 @@ const langOf = langOfPath;   // (core/file-kinds.js, #4733)
 /**
  * A project-relative path normalised: forward slashes, no empty or '.' segments. null when it would
  * leave the project (#483): not a string, empty, absolute ('/x', '\\\\host\\x', 'C:\\x'), a '..' segment,
- * or a control character in it. Every operation of the stores and the imports go through it: the code
- * does not rely on the platform (the File System Access API's TypeError, the server's safeJoin).
+ * or a control character in it: core/import-gate.js normalizePath's syntax, a backslash read as '/' (#4769). Every
+ * operation of the stores and the imports go through it: the code does not rely on the platform (the File System
+ * Access API's TypeError, the server's safeJoin).
  */
 export function safePath(p) {
-  if (typeof p !== 'string' || /[\0-\x1f]/.test(p)) return null;
-  const parts = p.replace(/\\/g, '/').split('/');
-  if (parts[0] === '' || /^[A-Za-z]:$/.test(parts[0]) || parts.includes('..')) return null;
-  const out = parts.filter(s => s !== '' && s !== '.');
-  return out.length ? out.join('/') : null;
+  return normalizePath(p, { names: false, backslashes: true }).path ?? null;
 }
 /** The path a store's operation is given, by the server's rule (core/import-gate.js filePath, #3598), or its error. */
 export function cleanPath(p) { const r = filePath(p); return r.reason ? fail(r.message) : r.path; }

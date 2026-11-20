@@ -15,7 +15,7 @@
 // Isomorphic: the codec is the browser's CompressionStream (in Node too), or one given.
 import { browserCodec, createZip } from './zip.js';
 import { VIEW_RE, isCSource, viewHdl } from './view-hdl.js';
-import { gateEntries, gateMessages } from './import-gate.js';
+import { gateEntries, gateMessages, normalizePath } from './import-gate.js';
 import { foldsToProjectFile, PROJECT_FILE } from './fold-name.js';
 import { PROJECT_NAME_RE } from './project-name.js';
 import { unusedPartFiles } from './link-parts.js';
@@ -177,12 +177,12 @@ export async function decodeDesign(design, { codec = browserCodec() } = {}) {
 
 // a file's path inside the project: relative, forward slashes, no '..', no hidden part (.git, settings), not silinx.json
 // nor a name a case-insensitive file system takes for it (SILINX.JSON, ſilinx.json; src/silinx.json is a file, #3034)
-// (the import checks the paths again: project-store.js projectFromZip, server/project-zip.js)
+// (the syntax core/import-gate.js normalizePath's, #4769; the import checks the paths again: project-store.js
+// projectFromZip, server/project-zip.js)
 function safePath(p) {
-  const parts = p.split('/'), last = parts[parts.length - 1];
-  return p.length > 0 && p.length <= 255 && !/[\\:\0-\x1f]/.test(p) && !foldsToProjectFile(p)
-    && !(last !== PROJECT_FILE && foldsToProjectFile(last))
-    && parts.every(s => s && s !== '..' && !s.startsWith('.'));
+  const parts = String(p).split('/'), last = parts[parts.length - 1];
+  return normalizePath(p, { names: false }).path === p && p.length <= 255 && !p.includes(':') && !foldsToProjectFile(p)
+    && !(last !== PROJECT_FILE && foldsToProjectFile(last)) && parts.every(s => !s.startsWith('.'));
 }
 
 /** The project's files of a link's design as a Silinx export's zip (bytes), for the import of a zip. */
