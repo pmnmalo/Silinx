@@ -11,7 +11,9 @@
 // names are someone else's: shown as text only.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log, trustAction } from './console.js';
+import { trustAction } from './console.js';
+// (Merge Contribution's lines: the collaboration's, under Design, #4729)
+import { collabLog } from './collab-log.js';
 import { S } from './app.js';
 import { reloadProject } from './project.js';
 import { saveAll } from './processes.js';
@@ -27,7 +29,7 @@ const DRAWING = /\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i;
 const stateOf = f => (f.state === 'merged' && !DRAWING.test(f.path) ? 'lines' : f.state);
 const textChoice = v => ['mine', 'theirs', 'both'].includes(v) || (!!v && typeof v === 'object' && typeof v.text === 'string');
 const folderName = files => (files[0]?.webkitRelativePath || '').split('/')[0];
-const err = text => log(`ERROR: Merge Contribution: ${text}`, 'err');
+const err = text => collabLog(`ERROR: Merge Contribution: ${text}`, 'err');
 const key = s => s.replace(/[^\w-]/g, '_');
 
 /** Project ▸ Merge Contribution…: the contribution picked, compared, the conflicts chosen, merged. */
@@ -61,8 +63,8 @@ async function mergeWith(zip, label, choices) {
   await saveAll();
   let p;
   try { p = await api.mergePreview(name, zip); } catch (e) { err(e.message); return null; }
-  for (const w of p.warnings) log(`WARNING: Merge Contribution: ${w}.`, 'warn');
-  if (!p.files.length && !p.project.length) { log(`Merge Contribution: ${label} holds nothing that differs from '${name}'.`, 'info'); return null; }
+  for (const w of p.warnings) collabLog(`WARNING: Merge Contribution: ${w}.`, 'warn');
+  if (!p.files.length && !p.project.length) { collabLog(`Merge Contribution: ${label} holds nothing that differs from '${name}'.`, 'info'); return null; }
   const picked = structuredClone(choices);
   const errLine = h('div', { class: 'hint merge-error', style: { minHeight: '16px' } });
   const radio = (group, side, set, now) => h('label', { class: `merge-side merge-${side}` },
@@ -135,7 +137,7 @@ async function compareOne(p, path, zip, label, picked) {
   const f = p.files.find(x => x.path === path);
   const { openCompare } = await import('./drawing-diff-view.js');
   await openCompare(path, { label: 'This project', text: f.mine }, { label, text: f.theirs });
-  log(`Merge Contribution: ${path} compared with ${label}.`, 'info', { action: { label: 'Merge Contribution…', run: () => mergeWith(zip, label, picked) } });
+  collabLog(`Merge Contribution: ${path} compared with ${label}.`, 'info', { action: { label: 'Merge Contribution…', run: () => mergeWith(zip, label, picked) } });
   return null;
 }
 
@@ -144,8 +146,8 @@ async function merge(name, zip, label, resolve) {
   try { r = await api.mergeContribution(name, zip, resolve, label); } catch (e) { err(e.message); return null; }
   // (the merge's line with Undo Merge's button; the project made untrusted: its line with Trust Project's, as when it opens)
   const lines = r.untrusted ? r.lines.slice(0, -1) : r.lines;
-  lines.forEach((l, i) => (l.startsWith('WARNING') ? log(l, 'warn') : log(l, 'ok', i === lines.length - 1 && r.taken.length ? { action: { label: 'Undo Merge', run: () => undoMerge() } } : undefined)));
-  if (r.untrusted) log(r.lines.at(-1), 'info', { action: trustAction(name) });
+  lines.forEach((l, i) => (l.startsWith('WARNING') ? collabLog(l, 'warn') : collabLog(l, 'ok', i === lines.length - 1 && r.taken.length ? { action: { label: 'Undo Merge', run: () => undoMerge() } } : undefined)));
+  if (r.untrusted) collabLog(r.lines.at(-1), 'info', { action: trustAction(name) });
   if (S.project?.name === name) {
     const changes = [...r.written, ...r.regenerated].map(f => ({ path: f, kind: S.diskTree?.includes(f) ? 'changed' : 'added' })).concat(r.removed.map(f => ({ path: f, kind: 'removed' })));
     if (api.standalone) await applyChanges({ project: name, changes });
@@ -160,8 +162,8 @@ export async function undoMerge() {
   const name = S.project.name;
   await saveAll();
   let r;
-  try { r = await api.undoMerge(name); } catch (e) { log(`ERROR: Undo Merge: ${e.message}`, 'err'); return null; }
-  log(`Undid the last merge of '${name}': ${r.restored.length} file(s) put back, ${r.removed.length} removed.`, 'ok');
+  try { r = await api.undoMerge(name); } catch (e) { collabLog(`ERROR: Undo Merge: ${e.message}`, 'err'); return null; }
+  collabLog(`Undid the last merge of '${name}': ${r.restored.length} file(s) put back, ${r.removed.length} removed.`, 'ok');
   if (S.project?.name === name) {
     if (api.standalone) await applyChanges({ project: name, changes: [...r.restored.map(f => ({ path: f, kind: 'changed' })), ...r.removed.map(f => ({ path: f, kind: 'removed' }))] });
     await reloadProject();

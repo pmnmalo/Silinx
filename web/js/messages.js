@@ -15,7 +15,11 @@
 // - SSim's console and the emulator's Messages box are hidden; their lines come here (Simulation, Emulation).
 // - One command line: SSim's commands while simulating (SSim> run 1 us; Simulate in front, or an SSim window in the
 //   other interfaces; its history on ↑ / ↓), else the command palette.
-// The sources and the filters (sourceOf, filterSources) have no DOM and are unit tested (test/messages.test.js).
+// - A line outside a process (after its result, before the next header) is the application's, as a line its writer
+//   said is (appLog, logError, logWarning, logInfo: the Trust Project notice, refusals); the application's lines are
+//   shown under every filter and task (#4729).
+// The sources and the filters (sourceOf, lineSource, isShown, filterSources) have no DOM and are unit tested
+// (test/messages.test.js).
 
 import { h } from './ui.js';
 
@@ -26,15 +30,21 @@ export const SOURCE_LABEL = { all: 'All', check: 'Design',   // (the design's ch
 const TASK_SOURCES = { edit: ['check'], sim: ['sim'], emu: ['emu'], impl: ['impl'], prog: ['impl'] };
 
 /** The source of a Console line: the process a header starts, else `cur` (the lines after a header are
- *  its process's; before any, the application's). */
+ *  its process's; before any, and after its end, the application's: endsProcess). An unknown process is the
+ *  application's (#4729: always shown, never misfiled under Implementation). */
 export function sourceOf(line, cur = 'app') {
   const s = String(line).trim();
   let m = /^Started : "([^"]+)"/.exec(s);
   if (m) {
     const p = m[1];
-    if (/Check Syntax|Check Schematic|^Check (Design|State Diagram|Petri Net|Circuit)$|^Validate$/.test(p)) return 'check';   // (a chart's Validate, #2730; Check, #2803; a design project's Check Design, #4716)   // (Check Constraints, a UCF's Check Syntax too: Implementation's, #2692)
-    if (/^Simulate\b|^Save as Test Bench|^C Simulation$|^C\/RTL Co-simulation$/.test(p)) return 'sim';   // (a C module's runs, #1852)
-    return 'impl';   // synthesis, Translate, Map, Place & Route and their models, timing, power, back-annotation, the FPGA view
+    // (a chart's Validate, #2730; Check, #2803; a design project's Check Design, #4716; a schematic's Try it, an exercise's
+    // tests, #4729) (Check Constraints, a UCF's Check Syntax too: Implementation's, #2692)
+    if (/Check Syntax|Check Schematic|^Check (Design|State Diagram|Petri Net|Circuit)$|^Validate$|^Try it$|^Run (Visible|All) Tests$/.test(p)) return 'check';
+    // (a C module's runs, #1852; Verify, the Simulation view's processes, #4729)
+    if (/^Simulate\b|^Save as Test Bench|^C Simulation$|^C\/RTL Co-simulation$|^Verify (Equivalence|Property|Assertions)$/.test(p)) return 'sim';
+    // synthesis, Translate, Map, Place & Route and their models, timing, power, back-annotation, the FPGA view, the constraints' check
+    if (/^(Synthesize\b|Translate$|Map$|Place & Route$|Implement Design$|Generate |Back-annotate |View |Validate Design Rules$|Check Constraints$|Analyze |Program)/.test(p)) return 'impl';
+    return 'app';
   }
   if (/^=== SILINX STEP \w+/.test(s)) return 'impl';
   if (/^(ERROR: )?Board Emulator:/.test(s)) return 'emu';
@@ -42,6 +52,24 @@ export function sourceOf(line, cur = 'app') {
   if (/^Project ".*" (opened|closed)|^Toolchain: |^Programmers found: |^Silinx \S+ (is up to date|Project Navigator)|^Browser edition: /.test(s)) return 'app';
   return cur;
 }
+
+/** Whether a line ends its process (#4729): its result ("Process "…" completed successfully", "… failed", "… stopped"),
+ *  the emulator's one line; the lines after it, until the next header, are the application's, not that process's. */
+export function endsProcess(line) {
+  const s = String(line).trim();
+  return /^Process "[^"]*" (completed|failed|stopped)|^Process (failed|stopped)\b|^(ERROR: )?Board Emulator:/.test(s);
+}
+
+/** A line's source after the line whose source carried on was `cur`, and the source the line after it carries on:
+ *  [source, next]. */
+export function lineSource(line, cur = 'app') {
+  const src = sourceOf(line, cur);
+  return [src, endsProcess(line) ? 'app' : src];
+}
+
+/** Whether lines of `src` are shown when the sources `set` are (null: every one): the application's always are
+ *  (#4729: the Trust Project notice, the app's own information, warnings and errors, under every filter and task). */
+export const isShown = (set, src) => !set || src === 'app' || set.includes(src);
 
 /** The sources shown: `filter` picked by the viewer ('all' or a source), else the task's (null: every source). */
 export function filterSources(filter, task) {
@@ -77,15 +105,14 @@ const simulating = () => !!isimInput() && (task === 'sim' || (task === null && /
 function tag(ln) {
   if (ln.dataset.ownSrc !== undefined) { /* its writer's source (#4632): the lines after it stay the process's */ }
   else if (!ln.dataset.src) {
-    ln.dataset.src = cur = sourceOf(ln.textContent, cur);
+    [ln.dataset.src, cur] = lineSource(ln.textContent, cur);
     // (a process started: shown, the filter turned to its source if it hid it, #1852)
-    if (/^Started : "/.test(ln.textContent.trim()) && built) {
-      const f = filterForProcess(cur, picked, task);
+    if (/^Started : "/.test(ln.textContent.trim()) && built && ln.dataset.src !== 'app') {
+      const f = filterForProcess(ln.dataset.src, picked, task);
       if (f !== picked) { picked = f; refilter(); return; }
     }
   } else cur = ln.dataset.src;
-  const set = shownSources();
-  ln.classList.toggle('mc-off', !!set && !set.includes(ln.dataset.src));
+  ln.classList.toggle('mc-off', !isShown(shownSources(), ln.dataset.src));
 }
 function retagAll() {
   cur = 'app';
@@ -93,7 +120,7 @@ function retagAll() {
 }
 function refilter() {
   const set = shownSources();
-  for (const ln of $('console-log').children) ln.classList.toggle('mc-off', !!set && !set.includes(ln.dataset.src));
+  for (const ln of $('console-log').children) ln.classList.toggle('mc-off', !isShown(set, ln.dataset.src));
   // (pressed: the sources shown; All when every one is)
   for (const b of document.querySelectorAll('#mc-filters .filt')) b.setAttribute('aria-pressed', String(set ? set.includes(b.dataset.src) : b.dataset.src === 'all'));
   showLast();
@@ -109,11 +136,10 @@ function showLast() {
   last.className = ln ? ln.className.replace(/\bmc-off\b/, '') : '';
 }
 
-// a line of SSim's console or of the emulator's Messages box, written here with its source
+// a line of SSim's console or of the emulator's Messages box, written here with its source, each of its lines: its own
+// (#4729: the lines after it stay the process's, not the simulation's)
 function mirror(text, cls, src) {
-  app.log(text, cls, { diag: false });
-  const ln = $('console-log').lastElementChild;
-  if (ln) { ln.dataset.src = src; tag(ln); }
+  app.log(text, cls, { diag: false, src });
 }
 const ISIM_CLS = { 'k-error': 'err', 'k-failure': 'err', 'k-warning': 'warn', 'k-cmd': 'hdr' };
 const isimCls = el => Object.entries(ISIM_CLS).find(([k]) => el.classList.contains(k))?.[1] || '';

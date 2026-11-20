@@ -7,7 +7,7 @@
 // No answer in NO_ANSWER ms (#4694: Chrome stuck on the folder answered nothing about it, not even isSameEntry, until it was
 // restarted): said, with the remedy; the wait goes on.
 import { api } from './api.js';
-import { log, logWarning } from './console.js';
+import { appLog as log, logWarning } from './console.js';   // (the application's lines, #4729)
 import { S, showLeftPage } from './app.js';
 import { openProject, updateStorageStatus } from './project.js';
 import { restoreStartTask } from './tasks.js';

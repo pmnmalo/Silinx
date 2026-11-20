@@ -8,7 +8,7 @@ import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { isTrusted, untrustedNotice } from '/core/trust.js';
 import { S, closeAllDocs, compileProject, renderFilesPage, renderLibsPage, showLeftPage, fixMissingTops,
   restoreViewState, openSummary } from './app.js';
-import { log, renderDiagnostics, trustAction } from './console.js';
+import { appLog, log, renderDiagnostics, trustAction } from './console.js';
 import { drawingsAsBase, adoptDrawnHdl, drawnHdlClashes } from './drawings.js';
 import { renderProcesses, restoreImplStatus, reservedNameDiags } from './processes.js';
 import { projectSaved, renderHierarchy } from './design.js';
@@ -78,7 +78,7 @@ async function openProjectNow(name, { startup = false } = {}) {
   // (a design project's: no device, #3891)
   log(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
   // a project from outside (#2830): what waits for the user's trust, and the button that gives it
-  if (!isTrusted(S.project)) log(untrustedNotice(name, S.project), 'info', { action: trustAction(name) });
+  if (!isTrusted(S.project)) appLog(untrustedNotice(name, S.project), 'info', { action: trustAction(name) });   // (shown under every filter and task, #4729)
   warnReservedNames();
   // the processes' status of the last run, its synthesis up to date or not (#280), restored before the project is
   // used: not awaited, it drew the Processes panel again under a double-click on a process and Implement Design

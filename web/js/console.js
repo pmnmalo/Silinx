@@ -26,7 +26,8 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // A refusal for an untrusted project carries its Trust Project button (#4583: the line said when it opened may be
 // long gone), one per refusal (its "… failed:" line right after it shares the error's).
 // src: the line's source in the console's filters (web/js/messages.js), kept whatever process ran last (the collaboration's,
-// Design, #4632: web/js/collab-log.js); none: the process's whose header came last, or the application's
+// Design, #4632: web/js/collab-log.js; the application's, #4729: appLog, logError…); none: the process's whose header came
+// last, or the application's (none running)
 export function log(text, cls = '', { diag = true, action = null, src = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
@@ -88,21 +89,24 @@ export function logLine(line, opts) {
   else if (/=== SILINX (STEP|DONE)/.test(line) || /completed successfully/i.test(line)) cls = 'ok';
   log(line, cls, opts);
 }
+/** A line of the application's own (`cls`, `opts` as log's), outside any process (#4729): its source the application's,
+ *  shown under every filter and task, whatever process ran last. */
+export const appLog = (text, cls = '', opts = {}) => log(text, cls, { ...opts, src: 'app' });
 /** An error of the app's own (#3540: a file it cannot read; #3591: a refusal, a menu action's error): an ERROR line
  *  of the console, in the interface's language, its Errors tab in front (no toasted message). */
 export function logError(text) {
-  log(`ERROR: ${t(text)}`, 'err');
+  log(`ERROR: ${t(text)}`, 'err', { src: 'app' });
   bringForward('errors');
 }
 /** A warning of the app's own (#3591): a WARNING line of the console, its Warnings tab in front. */
 export function logWarning(text) {
-  log(`WARNING: ${t(text)}`, 'warn');
+  log(`WARNING: ${t(text)}`, 'warn', { src: 'app' });
   bringForward('warnings');
 }
 /** A piece of information of the app's own (#3591: why a command does nothing): an INFO line of the console, the
  *  console's page in front. */
 export function logInfo(text) {
-  log(`INFO: ${t(text)}`, 'info');
+  log(`INFO: ${t(text)}`, 'info', { src: 'app' });
   bringForward('console');
 }
 export function showConsolePage(page) {
