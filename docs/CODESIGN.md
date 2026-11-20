@@ -295,3 +295,10 @@ The existing `program_board` and `capture` serve the FPGA nodes.
   window, bounded by the links' lookahead (measured, see Speed).
 - The boards' drawings are Silinx's own; New Source names the document "System".
 - One scheduler serves the circuit's Arduino, the System's nodes and the Zynq's processors.
+- The ESP32 runs MicroPython in WebAssembly, with a virtual time per line through `sys.settrace`. It needs JSPI, so
+  it is not simulated in Safari. The Pico runs MicroPython's real firmware on rp2040js and comes first in phase 4.
+- A System has one FPGA node, on the project's board, until phase 3.
+- The AVR and the Pico are the masters of SPI and I²C links, and the FPGA is the peripheral.
+- A link's synchronisation is a property of the link. A fixed latency is exact at every quantum and is the default,
+  because grading needs determinism. An adaptive quantum is faster, but its timing-sensitive exchanges depend on the
+  quantum (#4710's benchmark).
