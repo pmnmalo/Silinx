@@ -55,8 +55,10 @@ test('on each path, no delay: a keystroke, a drawing\'s edit and an editor\'s ke
 test('with 40 ms of round trip: once per hop (p2p: one, a relay: two)', async () => {
   const p2p = await measure({ path: 'p2p', rtt: 40, cases: ['keystroke'], n: 5 });
   const relay = await measure({ path: 'node', rtt: 40, cases: ['keystroke'], n: 5 });
-  assert.ok(p2p.keystroke.median >= 20 && p2p.keystroke.median < 40, JSON.stringify(p2p));
-  assert.ok(relay.keystroke.median >= 40 && relay.keystroke.median < 60, JSON.stringify(relay));
+  // (Windows' timers tick every 15.6 ms: each hop's setTimeout of 20 ms takes up to 31; the scheduled CI's 68.8 ms, #4819)
+  const tick = process.platform === 'win32' ? 16 : 0;
+  assert.ok(p2p.keystroke.median >= 20 && p2p.keystroke.median < 40 + tick, JSON.stringify(p2p));
+  assert.ok(relay.keystroke.median >= 40 && relay.keystroke.median < 60 + 2 * tick, JSON.stringify(relay));
 });
 
 test('the pace before #4647: the cursor waited for the page\'s look', async () => {
