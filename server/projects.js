@@ -471,8 +471,9 @@ export async function deleteProject(name) {
   });
 }
 
-/** A failure made in the middle of a rename, by the tests (#4641): 'moved', after the folder moved. */
-export const RENAME_TESTING = { failAt: null };
+/** A failure made in the middle of a rename, by the tests (#4641, #4760): failAt 'moved' (after the folder moved), 'mark'
+ *  (after the trust mark), 'files' (after a <name>.xise), 'json' (after its silinx.json); failUndo: the moves back fail. */
+export const RENAME_TESTING = { failAt: null, failUndo: false };
 
 /** Rename Project… (#4641): the project's folder moved to its new name in one rename (a change of case alone through a
  *  hidden name, as a case-insensitive file system has one folder for both), its .git with it (its remote kept); then its
@@ -489,26 +490,36 @@ export async function renameProject(from, to) {
     await requireProject(from);   // (deleted or renamed meanwhile)
     if (!caseOnly && await exists(dst)) throw new HttpError(409, `a project named '${to}' already exists: choose another name`);
     const undo = [];
-    const move = async (a, b) => { await renameOver(a, b); undo.unshift(() => renameOver(b, a)); };
+    // (each undone step named by its place in the workspace, for a failure to undo it, #4760)
+    const rel = p => path.relative(workspaceDir(), p).split(path.sep).join('/');
+    const back = (a, b) => RENAME_TESTING.failUndo ? Promise.reject(Object.assign(new Error('undo failed (test)'), { code: 'EPERM' })) : renameOver(b, a);
+    const move = async (a, b) => { await renameOver(a, b); undo.unshift({ what: `${rel(b)} → ${rel(a)}`, run: () => back(a, b) }); };
+    const failAt = at => { if (RENAME_TESTING.failAt === at) throw new Error('rename failed (test)'); };
     try {
       if (caseOnly) {
         const tmp = path.join(workspaceDir(), `.rename-${to}-${Date.now()}`);
         await move(dir, tmp);
         await move(tmp, dst);
       } else await move(dir, dst);
-      if (RENAME_TESTING.failAt === 'moved') throw new Error('rename failed (test)');
+      failAt('moved');
       const [mark, newMark] = [trustMarks(dir)[1], trustMarks(dst)[1]];
       if (await exists(mark)) await move(mark, newMark);
+      failAt('mark');
       for (const f of await fs.readdir(dst)) {
         const n = renamedFile(f, from, to);
         if (n && !await exists(path.join(dst, n))) await move(path.join(dst, f), path.join(dst, n));
       }
+      failAt('files');
       const file = path.join(dst, PROJECT_FILE), text = await fs.readFile(file, 'utf8');
       await writeAtomic(file, JSON.stringify({ ...parseDescription(text), name: to }, null, 2) + '\n');
-      undo.unshift(() => writeAtomic(file, text));
+      undo.unshift({ what: `${rel(file)}'s name`, run: () => writeAtomic(file, text) });
+      failAt('json');
       await trustStore.move(key, dst);
     } catch (e) {
-      for (const u of undo) await u().catch(() => {});
+      // (an undo that failed said, with what it left, never swallowed, #4760: its file system's code, not its paths)
+      const left = [];
+      for (const u of undo) await u.run().catch(x => left.push(`${u.what} (${x.code || 'failed'})`));
+      if (left.length) throw new HttpError(500, `could not rename the project '${from}' to '${to}' (${e.status ? e.message : e.code || e.message}), and putting it back failed too: ${left.join(', ')}. Look at the workspace's folders '${from}' and '${to}'.`);
       throw e;
     }
     return { name: to };

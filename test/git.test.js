@@ -494,3 +494,26 @@ test('a repository whose own configuration names a program, an included file or 
     await assert.rejects(G.gitPull('own-config'), { message: 'not a GitHub repository\'s address: https://elsewhere.example/c/d' });
   } finally { G.GIT_TESTING.localRemotes = true; }
 });
+
+// #4760: git's answer past the most Silinx reads is an error (git stopped), never its first part read as the whole; a
+// failing git diff before a pull an error, never {} (the files a name clash's pull writes over then not kept, #3524)
+test('#4760 git: an answer past the limit an error; changedFiles: git diff failing an error, the changed files\' bytes', async () => {
+  G.GIT_TESTING.maxOut = 8;
+  try {
+    await assert.rejects(G.git(['--version'], { cwd: tmp }), e => e instanceof G.GitError && e.status === 413
+      && e.message === 'git --version: its answer is larger than 8 bytes, the most Silinx reads: stopped' && e.hint === 'A file or a list this large is git\'s on the command line: run git there.');
+  } finally { G.GIT_TESTING.maxOut = null; }
+  assert.match((await G.git(['--version'], { cwd: tmp })).stdout, /^git version /);
+  const dir = path.join(tmp, 'changed-4760');
+  write(path.join(dir, 'a.v'), 'module a; endmodule\n');
+  write(path.join(dir, 'b.v'), 'module b; endmodule\n');
+  sh(dir, 'init', '--quiet');
+  sh(dir, 'add', '-A');
+  sh(dir, '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '--quiet', '-m', 'one');
+  write(path.join(dir, 'a.v'), 'module a2; endmodule\n');
+  assert.deepEqual(Object.entries(await G.changedFiles({ top: dir })).map(([f, b]) => [f, b.toString()]), [['a.v', 'module a2; endmodule\n']]);
+  // (no repository there: git diff fails, and so does changedFiles)
+  const none = path.join(tmp, 'not-a-repo-4760');
+  fs.mkdirSync(none, { recursive: true });
+  await assert.rejects(G.changedFiles({ top: none }), e => e instanceof G.GitError && /^git diff: /.test(e.message));
+});

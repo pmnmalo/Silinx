@@ -107,8 +107,11 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
   try {
     for (const [a, b] of moved) { await P.renameFile(name, a, b); done.push([a, b]); }
   } catch (e) {
-    for (const [a, b] of done.reverse()) await P.renameFile(name, b, a, { checkName: false }).catch(() => {});   // (back to its name, #2973)
-    throw fail(`could not rename ${[...moved].map(([a, b]) => `${a} → ${b}`).join(', ')}: ${e.message}. Nothing was changed.`);
+    // (back to its name, #2973; a move that could not be undone said, never "Nothing was changed", #4760)
+    const left = [];
+    for (const [a, b] of done.reverse()) await P.renameFile(name, b, a, { checkName: false }).catch(x => left.push(`${b} (${x.message})`));
+    const what = `could not rename ${[...moved].map(([a, b]) => `${a} → ${b}`).join(', ')}: ${e.message}`;
+    throw fail(left.length ? `${what}. Moving the files back failed too: ${left.join(', ')} kept ${left.length > 1 ? 'their' : 'its'} new name; rename ${left.length > 1 ? 'them' : 'it'} back by hand.` : `${what}. Nothing was changed.`);
   }
   // 2. the updated contents, at their new paths
   for (const [p, text] of changed) await P.writeFile(name, moved.get(p) || p, text);
