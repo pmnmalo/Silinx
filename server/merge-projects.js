@@ -10,6 +10,14 @@ import { markMerged } from '../core/trust.js';
 import { readSnapshot } from './project-snapshots.js';
 import { syncDrawing } from './drawing-sync.js';
 import { parseDescription } from '../core/project-json.js';
+import { lockProject } from './projects.js';
+
+// a file's bytes as text: UTF-8 with no NUL, else null (a binary file)
+const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });   // (a byte order mark kept: written back as it was)
+function textOf(buf) {
+  if (buf.includes(0)) return null;
+  try { return utf8.decode(buf); } catch { return null; }
+}
 
 const backupFile = (P, name) => path.join(P.projectDir(name), '.silinx', 'merges', 'last.json');
 
@@ -19,9 +27,17 @@ export function mergeStorage(P) {
     async read(name) {
       const json = parseDescription(await fsp.readFile(path.join(P.projectDir(name), PROJECT_FILE), 'utf8'));
       const files = {};
-      for (const rel of await P.fileTree(name)) if (!/\.xise$/i.test(rel)) files[rel] = await fsp.readFile(P.safeJoin(P.projectDir(name), rel), 'utf8');
+      // (a binary file, not UTF-8 text, left out, as a contribution's are: never merged, nor written back by Undo Merge
+      // decoded as text, #4757)
+      for (const rel of await P.fileTree(name)) {
+        if (/\.xise$/i.test(rel)) continue;
+        const text = textOf(await fsp.readFile(P.safeJoin(P.projectDir(name), rel)));
+        if (text !== null) files[rel] = text;
+      }
       return { json, files };
     },
+    // (a merge's or an undo's writes all under the project's lock: no other write in between, #4757)
+    locked: (name, fn) => lockProject(name, fn),
     write: (name, rel, text) => P.writeFile(name, rel, text),
     remove: (name, rel) => P.deleteFile(name, rel),
     saveJson: (name, json) => P.writeProject(name, json),

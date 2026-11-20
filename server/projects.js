@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { compile, elaborate } from '../core/compile.js';
 import { primitiveSources } from '../core/unisim.js';
 import { constraintsExtOf } from '../packages/silinx-fpga/src/parts.js';
@@ -221,15 +222,28 @@ function withProjectLocks(names, fn) {
 async function requireProject(name) {
   if (!await exists(await projectFile(projectDir(name)))) throw new HttpError(404, `project '${name}' not found`);
 }
+// Re-entered (#4757): a sequence of writes that holds the project's lock (lockProject: a merge, its undo) calls
+// writeFile, writeProject… under it, which take it again: they run at once, as the holder's, never wait for it. What
+// the holder started and that runs after it released the lock waits as any other
+const holding = new AsyncLocalStorage();   // -> { key, held, parent }: the locks the current call holds
+const holds = key => { for (let h = holding.getStore(); h; h = h.parent) if (h.key === key && h.held) return true; return false; };
 function withProjectLock(name, fn) {
   name = String(name).toLowerCase();   // case-insensitive file systems: Foo and foo are one folder
+  if (holds(name)) return Promise.resolve().then(fn);
   const prev = locks.get(name) || Promise.resolve();
-  const run = prev.then(() => withFileLock(workspaceDir(), name, fn));
+  const run = prev.then(() => withFileLock(workspaceDir(), name, () => {
+    const h = { key: name, held: true, parent: holding.getStore() };
+    return holding.run(h, async () => fn()).finally(() => { h.held = false; });
+  }));
   const tail = run.catch(() => {});
   locks.set(name, tail);
   tail.then(() => { if (locks.get(name) === tail) locks.delete(name); });
   return run;
 }
+
+/** fn() run holding the project's lock, whatever it writes through this module under it (a merge and its undo, #4757):
+ *  no other request, tab or process writes the project meanwhile. */
+export const lockProject = (name, fn) => withProjectLock(name, fn);
 
 // Windows refuses to rename a file, or over one, that another operation has open at that moment (a concurrent
 // read of it, a scan of a file just written: EPERM / EACCES / EBUSY), where other systems rename it: retried a few

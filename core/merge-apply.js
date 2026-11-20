@@ -2,11 +2,15 @@
 // caller (the server's projects, the browser's store), as core/git-rest.js takes its own:
 //   projects: { read(name) -> { json, files }, write(name, path, text), remove(name, path), saveJson(name, json),
 //               regenerate(name, drawing), kept(name, rev) -> snapshot | null, markMerged(name),
-//               backup: { get(name), set(name, data | null) } }
+//               backup: { get(name), set(name, data | null) }, locked?(name, fn) (fn run holding the project: the
+//               server's lock, #4757) }
 // The ancestor: the contribution's own (its ANCESTOR_FILE, checked: its origin's), else the project's snapshot of the
 // contribution's origin; none (no origin, another project's, not kept): a two-way merge, said. A merge is one step:
 // before it writes, what the project was is kept (backup), and Undo Merge puts it back, unless the project changed
-// since. A merge that takes any of the contribution's files makes the project untrusted (madeBy 'merge'). Isomorphic.
+// since. A merge that takes any of the contribution's files makes the project untrusted (madeBy 'merge'). A merge or an
+// undo that stops halfway (a file that cannot be written, a crash) is never lost (#4757): its backup, recorded before it
+// writes, says so (no `after`: a merge not finished; `undoing`: an undo not finished); another merge is refused until
+// Undo Merge puts the project back, and that undo, file by file, is done again until it ends. Isomorphic.
 //   await findAncestor(projects, name, base, contribution) -> { ancestor, source ('carried' | 'kept' | null), warnings }
 //   await previewMerge(projects, name, contribution) -> { comparison, source, warnings, left }   previewOf(it): the page's
 //   await applyMerge(projects, name, contribution, resolve) -> { written, removed, taken, regenerated, untrusted, ... }
@@ -58,7 +62,14 @@ export function previewOf(p) {
 
 /** The contribution merged into the project, every conflict resolved (resolve: openConflicts's): what was written,
  *  removed, taken and made again; the project as it was kept for Undo Merge. */
-export async function applyMerge(projects, name, contribution, resolve = {}) {
+export function applyMerge(projects, name, contribution, resolve = {}) {
+  return (projects.locked || ((n, fn) => fn()))(name, () => applyLocked(projects, name, contribution, resolve));
+}
+async function applyLocked(projects, name, contribution, resolve) {
+  // (a merge or an undo that did not finish: the project as it was before it is the backup's, never written over)
+  const prev = await projects.backup.get(name);
+  if (prev?.undoing) throw fail(`project '${name}': the last Undo Merge did not finish: Undo Merge again, then merge`, 409);
+  if (prev?.files && prev.json && !prev.after) throw fail(`project '${name}': the last merge did not finish (some of its files may be written): Undo Merge puts the project back as it was before it, then merge again`, 409);
   const p = await previewMerge(projects, name, contribution);
   const m = await mergeProjects(p.comparison, resolve);
   const mine = p.comparison.mine;
@@ -81,11 +92,16 @@ export async function applyMerge(projects, name, contribution, resolve = {}) {
 
 /** The last merge undone: the project as it was before it (its files and its description; untrusted still, if the
  *  merge made it so: Trust Project is the user's); refused when there is none, or the project changed since. */
-export async function undoMerge(projects, name) {
+export function undoMerge(projects, name) {
+  return (projects.locked || ((n, fn) => fn()))(name, () => undoLocked(projects, name));
+}
+async function undoLocked(projects, name) {
   const b = await projects.backup.get(name);
   if (!b?.files || !b.json) throw fail(`project '${name}': no merge to undo`, 404);
   const now = await projects.read(name);
-  if (b.after && await projectRev(now.json, now.files) !== b.after) throw fail(`project '${name}' changed since the merge: Undo Merge would lose those changes (it is not undone)`, 409);
+  // (an undo begun and stopped: done again, whatever it already put back; a merge not finished: undone as it is)
+  if (!b.undoing && b.after && await projectRev(now.json, now.files) !== b.after) throw fail(`project '${name}' changed since the merge: Undo Merge would lose those changes (it is not undone)`, 409);
+  if (!b.undoing) await projects.backup.set(name, { ...b, undoing: true });
   const restored = [], removed = [];
   for (const [path, text] of Object.entries(b.files)) if (now.files[path] !== text) { await projects.write(name, path, text); restored.push(path); }
   for (const path of Object.keys(now.files)) if (!(path in b.files)) { await projects.remove(name, path); removed.push(path); }
