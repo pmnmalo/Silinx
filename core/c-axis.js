@@ -10,6 +10,7 @@
 //   fifoPort(f, 'dout' | 'empty_n' | 'read' | 'din' | 'full_n' | 'write') -> a stream's signal, for the test bench
 import { structPragmas } from './c-aggregate.js';
 import { fifoSuffix } from './c-fifo.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 const SIDE = { __proto__: null, data: 'TDATA', keep: 'TKEEP', strb: 'TSTRB', user: 'TUSER', last: 'TLAST', id: 'TID', dest: 'TDEST' };
 const modeOf = (a) => String(a.mode || Object.keys(a).find((k) => /^(ap_|s_axi|m_axi|axis|bram)/.test(k)) || '').toLowerCase();
@@ -166,7 +167,7 @@ export function axisTop(gen, names, lang, side) {
 }
 
 function vhdlTop(name, core, ports, map, word) {
-  const T = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
+  const T = vhdlType;
   const L = [`-- ${name}: Vitis HLS's AXI4-Stream ports (axis) and active-low reset, around ${core}`,
     'library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${name} is`, '  port ('];
   ports.forEach((p, k) => L.push(`    ${p.name} : ${p.dir} ${T(p.w)}${k < ports.length - 1 ? ';' : ''}`));
@@ -182,7 +183,7 @@ function vhdlTop(name, core, ports, map, word) {
 }
 
 function verilogTop(name, core, ports, map, word) {
-  const R = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+  const R = vlogRange;
   const L = [`// ${name}: Vitis HLS's AXI4-Stream ports (axis) and active-low reset, around ${core}`, `module ${name} (`];
   ports.forEach((p, k) => L.push(`  ${p.dir === 'in' ? 'input ' : 'output'} wire ${R(p.w)}${p.name}${k < ports.length - 1 ? ',' : ''}`));
   L.push(');', '  wire ap_rst_i = ~ap_rst_n;');

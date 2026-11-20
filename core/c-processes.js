@@ -20,6 +20,7 @@ import { moduleRegistry } from './c-submodule.js';
 import { structPragmas, wordGroups } from './c-aggregate.js';
 import { wordAdapter, wordPorts } from './c-processes-word.js';
 import { blackboxProcess } from './c-blackbox-process.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 const clog2 = (n) => Math.max(1, (n - 1).toString(2).length);
 const CTRL = ['ap_clk', 'ap_rst', 'ap_start', 'ap_done', 'ap_idle', 'ap_ready'];
@@ -345,7 +346,7 @@ function control(procs) {
 function vhdlTop(net) {
   const { name, src, procs } = net;
   const { sigs, links, fifos, bufs, sig } = pieces(net);
-  const T = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
+  const T = vhdlType;
   const out = [];
   fifos.forEach((f, i) => out.push(...vhdlFifo(`${name}_ap_fifo${i}`, f.w, f.depth, net.stall)));
   net.words.forEach((g, i) => out.push(...wordAdapter(`${name}_ap_word${i}`, g, 'vhdl', net.stall)));
@@ -410,7 +411,7 @@ function vhdlTop(net) {
 }
 
 function vhdlFifo(name, w, depth, stall = false) {
-  const T = (x) => (x === 1 ? 'std_logic' : `std_logic_vector(${x - 1} downto 0)`);
+  const T = vhdlType;
   const aw = clog2(depth), cw = clog2(depth + 1);
   return [`-- a FIFO of ${depth} words of ${w} bits (#pragma HLS DATAFLOW's channel): its first word on dout while empty_n`,
     'library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `entity ${name} is`,
@@ -429,7 +430,7 @@ function vhdlFifo(name, w, depth, stall = false) {
 function verilogTop(net) {
   const { name, src, procs } = net;
   const { sigs, links, fifos, bufs, sig } = pieces(net);
-  const W = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+  const W = vlogRange;
   const out = [];
   fifos.forEach((f, i) => out.push(...verilogFifo(`${name}_ap_fifo${i}`, f.w, f.depth, net.stall)));
   net.words.forEach((g, i) => out.push(...wordAdapter(`${name}_ap_word${i}`, g, 'verilog', net.stall)));
@@ -476,7 +477,7 @@ function verilogTop(net) {
 
 function verilogFifo(name, w, depth, stall = false) {
   const aw = clog2(depth), cw = clog2(depth + 1);
-  const W = w > 1 ? `[${w - 1}:0] ` : '';
+  const W = vlogRange(w);
   return [`// a FIFO of ${depth} words of ${w} bits (#pragma HLS DATAFLOW's channel): its first word on dout while empty_n`,
     `module ${name} (input wire ap_clk, input wire ap_rst, ${stall ? 'input wire ap_ce, ' : ''}input wire ${W}din, input wire wr, output wire full_n, output wire ${W}dout, input wire rd, output wire empty_n);`,
     `  reg ${W}mem [0:${depth - 1}];`, `  reg [${aw - 1}:0] head, tail;`, `  reg [${cw - 1}:0] cnt;`,

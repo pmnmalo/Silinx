@@ -2,7 +2,9 @@
 // own ports, as its test bench drives them, that drives the generated module through its AXI interfaces: a call's arguments
 // written to the AXI4-Lite registers, its start, its end read back and its results; each channel's handshake now and then
 // late. A response not OKAY is printed as a fault. Isomorphic ES module: no DOM and no Node APIs.
-const W = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+import { vlogRange } from './hdl-emit.js';
+
+const W = vlogRange;
 const HS = ['ap_start', 'ap_done', 'ap_idle', 'ap_ready'];
 
 export function axiBfm(gen) {
