@@ -81,7 +81,7 @@ test('#4734 while a simulation runs: ping, initialize, tools/list and another pr
   s.send({ id: 3, method: 'initialize', params: { protocolVersion: '2025-06-18' } });
   s.send({ id: 4, method: 'tools/list' });
   s.send(call(5, 'project_info', { project: 'g' }));
-  s.send(call(6, 'project_info', { project: 'D' }));
+  s.send(call(6, 'project_info', { project: 'd' }));   // (its own name: a case-sensitive file system has no 'D')
   assert.ok(await s.until(() => [2, 3, 4, 5].every(n => s.got.some(a => a.id === n))), JSON.stringify(s.got.map(a => a.id)));
   assert.deepEqual(s.got.find(a => a.id === 2).result, {});
   assert.equal(s.got.find(a => a.id === 3).result.serverInfo.name, 'silinx');
@@ -90,7 +90,7 @@ test('#4734 while a simulation runs: ping, initialize, tools/list and another pr
   assert.ok(!s.got.some(a => a.id === 1 || a.id === 6), 'd\'s project_info waits for its simulation');
   s.send({ method: 'notifications/cancelled', params: { requestId: 1 } });
   assert.ok(await s.until(() => s.got.some(a => a.id === 6)), 'answered once the simulation stopped');
-  assert.match(s.got.find(a => a.id === 6).result.content[0].text, /^D: top \(none\), test bench tb/);
+  assert.match(s.got.find(a => a.id === 6).result.content[0].text, /^d: top \(none\), test bench tb/);
   assert.ok(!s.got.some(a => a.id === 1), 'the cancelled request not answered');
   assert.ok(!s.got.some(a => a.method), 'no notification');
   await s.end();
