@@ -232,11 +232,11 @@ test('#3972 a page\'s request: told to the project\'s other pages, not to it; a 
   release();
   assert.deepEqual(await look(), { a: [{ path: 'src/b.vhd', kind: 'created' }], b: [], anon: [] }, 'B right after A');
   assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'told once');
-  // the two tabs' holds overlapping (hold(), not acquire()): each one's told to neither (as a request of no page)
+  // the two tabs' holds overlapping (hold(), not acquire()): their changes not told apart, told to both (#4873)
   const ra = w.hold('p5', 'tab-a'), rb = w.hold('p5', 'tab-b');
   await fs.writeFile(path.join(dir, 'src', 'both.vhd'), '--\n');
   ra(); rb();
-  assert.deepEqual(await look(), { a: [], b: [], anon: [] }, 'both held');
+  assert.deepEqual(await look(), { a: [{ path: 'src/both.vhd', kind: 'created' }], b: [{ path: 'src/both.vhd', kind: 'created' }], anon: [] }, 'both held');
   // tab B's save after: told to A
   await w.check('p5');
   release = w.hold('p5', 'tab-b');
@@ -312,6 +312,44 @@ test('#3972 acquire: another page\'s request on the project waited for, each one
   await watcher.check('p6');
   await watcher.check('p6');
   assert.deepEqual(seen, { a: [], b: [] });
+  watcher.close();
+});
+
+// #4873: A's request writes and runs past `wait`; B's, held anyway, writes the same file after it. Neither is told
+// apart: both pages are told, so A, whose write is no longer on disk, reads it again (told to neither before: A stale)
+test('#4873 two pages\' writes overlapping (one held after waiting `wait`): the file told to both pages', async () => {
+  const { w, dir, off } = await setup('p8');
+  off();
+  w.close();
+  const watcher = createProjectWatcher({ dirOf: n => path.join(tmp, n), interval: 60_000, wait: 200 });
+  const seen = { a: [], b: [] };
+  watcher.subscribe('p8', ev => seen.a.push(...ev.changes.map(c => `${c.path} ${c.kind}`)), { client: 'tab-a' });
+  watcher.subscribe('p8', ev => seen.b.push(...ev.changes.map(c => `${c.path} ${c.kind}`)), { client: 'tab-b' });
+  const file = path.join(dir, 'src', 'shared.vhd');
+  await watcher.check('p8');
+  await fs.writeFile(file, '-- before\n');
+  await watcher.check('p8');
+  assert.deepEqual(seen, { a: ['src/shared.vhd created'], b: ['src/shared.vhd created'] }, 'another process\'s: told to both');
+  for (const k of Object.keys(seen)) seen[k].length = 0;
+  const relA = await watcher.acquire('p8', 'tab-a');
+  await fs.writeFile(file, '-- A\n');
+  const t0 = Date.now();
+  const relB = await watcher.acquire('p8', 'tab-b');   // (A still running: B held after `wait`)
+  assert.ok(Date.now() - t0 >= 150, 'B waited up to `wait`');
+  await fs.writeFile(file, '-- B, the later write\n');
+  relB();
+  relA();
+  await watcher.check('p8');
+  await watcher.check('p8');
+  assert.deepEqual(seen, { a: ['src/shared.vhd changed'], b: ['src/shared.vhd changed'] });
+  // the next request of one page, alone: told to the other page only, as before
+  for (const k of Object.keys(seen)) seen[k].length = 0;
+  const relA2 = await watcher.acquire('p8', 'tab-a');
+  await fs.writeFile(file, '-- A again\n');
+  relA2();
+  await watcher.check('p8');
+  await watcher.check('p8');
+  assert.deepEqual(seen, { a: [], b: ['src/shared.vhd changed'] });
   watcher.close();
 });
 

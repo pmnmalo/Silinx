@@ -5,6 +5,7 @@
 // Design Summary updated. Both interfaces; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { setupUi, uiTest, makeProject, readWs, writeWs } from './harness.js';
 
 let env, P;
@@ -228,4 +229,37 @@ uiTest('#4859 two tabs: a save on its way when the other tab\'s write is told: w
     assert.deepEqual(await lines(page), ['Changed in another tab: src/a.vhd.', 'src/a.vhd reloaded: changed in another tab.']);
     assert.deepEqual([warnings(page), warnings(other)], [[], []]);
   } finally { await other.close?.(); }
+});
+
+// #4873: another page's save of the file runs past the server's wait (a request of another client held here, its text
+// sent 3 s later); this page's save, held anyway, writes first. Their changes not told apart, both pages are told: this
+// page's editor shows the later text on disk (told to neither before: the editor left with a text no longer on disk)
+uiTest('#4873 two pages\' saves overlapping: the later write on disk told to the page, its editor reloaded', E, async (page) => {
+  await makeProject(env, { name: 'Overlap', top: 'a', files: { 'src/a.vhd': A() } });
+  await page.openProject('Overlap');
+  await page.eval(() => window.SilinxApp.openFile('src/a.vhd'));
+  await page.waitFor(() => !!window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor, [], { what: 'the editor' });
+  const later = `${A()}-- the other page's, written last\n`;
+  // the other page's request: its headers now (the project held), its text after 3 s
+  const { url } = env.server;
+  const other = new Promise((resolve, reject) => {
+    const req = http.request(`${url}/api/projects/Overlap/file?path=src/a.vhd`, { method: 'PUT', headers: { 'Content-Type': 'text/plain', 'X-Silinx-Client': 'another-page' } }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+    req.on('error', reject);
+    req.flushHeaders();
+    setTimeout(() => req.end(later), 3000);
+  });
+  await new Promise((r) => setTimeout(r, 300));
+  await page.eval((t) => {
+    const d = window.SilinxApp.S.docs.find((o) => o.path === 'src/a.vhd');
+    d.editor.setValue(t);
+    clearTimeout(d._autosave);
+    return window.SilinxApp.saveAll();
+  }, `${A()}-- this page's\n`);
+  assert.equal(await other, 200);
+  assert.equal(await readWs(env, 'Overlap', 'src/a.vhd'), later);
+  await page.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.getValue() === t, [later], { what: 'the editor the later text on disk' });
+  await page.waitConsole(/src\/a\.vhd reloaded: changed in another tab\./);
+  assert.equal(await page.eval(() => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty), false);
+  assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay')), false, 'no File Changed on Disk');
+  assert.deepEqual(warnings(page), []);
 });
