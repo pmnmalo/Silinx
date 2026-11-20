@@ -8,20 +8,16 @@ import { designUtilization } from '../core/summary-utilization.js';
 import { severityOf } from '../core/log-severity.js';
 import { messageLocation, projectPath as sourcePath } from '../core/message-location.js';
 import { MODEL_PROCESS, hasSimModels, noSimModelMessage, silinxFlowOf } from './mcp-hdl.js';
+import { ISE, processSteps } from '../core/tool-descriptors.js';
 
-export const PROCESSES = {
-  synthesize: ['synth'],
-  implement: ['synth', 'translate', 'map', 'par'],
-  bitstream: ['synth', 'translate', 'map', 'par', 'bitgen'],
-  timing: ['synth', 'translate', 'map', 'par', 'trce'],
-  power: ['synth', 'translate', 'map', 'par', 'xpwr'],
-  pins: ['synth', 'translate', 'map', 'par', 'pin2ucf'],
-  // the simulation models (Generate Post-… Simulation Model, #2674): the flow up to their stage, then the model
-  post_synthesis_model: ['synth', 'postsynth'],
-  post_translate_model: ['synth', 'translate', 'posttrans'],
-  post_map_model: ['synth', 'translate', 'map', 'postmap'],
-  post_par_model: ['synth', 'translate', 'map', 'par', 'postpar'],
+// run_process's processes: those of the interface's tree (core/tool-descriptors.js, the Xilinx flow's names, #4751), each
+// the steps its process runs (processSteps): the flow up to its stage, then its own step (the simulation models: Generate
+// Post-… Simulation Model, #2674)
+const PROCESS_IDS = {
+  synthesize: 'synth', implement: 'impl', bitstream: 'bitgen', timing: 'trce', power: 'xpwr', pins: 'pin2ucf',
+  post_synthesis_model: 'postsynth', post_translate_model: 'posttrans', post_map_model: 'postmap', post_par_model: 'postpar',
 };
+export const PROCESSES = Object.fromEntries(Object.entries(PROCESS_IDS).map(([name, id]) => [name, processSteps(ISE, id)]));
 // a report of the build folder: its file, by the toolchain of the last run (#460: the Silinx toolchain
 // writes Yosys's statistics, no map or par report: those two are made from its Design Summary)
 export const REPORT_FILES = {

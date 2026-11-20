@@ -389,6 +389,21 @@ export const simModelsOf = (tool) => {
   return ['postsynth', 'posttrans', 'postmap', 'postpar'].filter(id => ids.has(id));
 };
 
+/** The steps a run of the process `id` of a tool's tree runs (#4751: the MCP server's run_process, as the interface's
+ *  process): its own flow, else its parent's flow and then itself (a step of its own, EXTRA_STEPS', after its stage: a
+ *  simulation model, the timing, the power, the pins); null when the tree has no such process or it runs no step. */
+export function processSteps(tool, id) {
+  const find = (ns, flow) => {
+    for (const n of ns) {
+      if (n.id === id) return n.flow || (flow && EXTRA_STEPS[id] ? [...flow, id] : null);
+      const r = n.children && find(n.children, n.flow || flow);
+      if (r !== undefined) return r;
+    }
+    return undefined;
+  };
+  return find(tool.tree, null) ?? null;
+}
+
 /**
  * The process tree of a tool: its descriptor's nodes with what they run.
  * parts: the interface's own ({ summary, constraints, emulate }: process definitions); actions: { <id>: run } of the nodes

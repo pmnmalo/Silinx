@@ -3,5 +3,5 @@
 // importing them from this module.
 export {
   OPEN_SYNTH, SYNTH_OPEN, EXTRA_STEPS, FLOW_PROCS, IMPL_IDS, MESSAGE_LINE, ISE, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5,
-  SILINX_GOWIN, SILINX_GATEMATE, NO_FLOW, DESIGN_ONLY, VIVADO, TOOLS, toolOf, allTasks, hasTask, simModelsOf, buildProcesses,
+  SILINX_GOWIN, SILINX_GATEMATE, NO_FLOW, DESIGN_ONLY, VIVADO, TOOLS, toolOf, allTasks, hasTask, simModelsOf, processSteps, buildProcesses,
 } from '../../core/tool-descriptors.js';

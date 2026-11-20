@@ -5,7 +5,9 @@
 An AI assistant (Claude, or any client of the Model Context Protocol) can work on your Silinx projects: create one
 from an example, write a module, draw a state machine, run the simulation and the implementation, read the reports.
 Everything the interface does is a tool of Silinx's MCP server, done through the same functions, with the same
-checks and messages.
+checks and messages. But what is yours only, done in the interface: trusting a project (*Trust Project*, #2830) and
+*Toolchain Settings* (ISE's mode and paths, an SSH host, the programmers: this computer's; `toolchain_info` reads what they
+found, with no host, user or path).
 
 ## Connecting it
 
@@ -61,7 +63,12 @@ MCP server made or imported runs ISE, or programs a board or a PROM, only once y
 `get_report` (the Design Summary and the reports of the last run: with the Silinx toolchain, Yosys's
 statistics for the synthesis and the pack and route summaries for map and par), `program_board` (the board programmed with the
 project's file, as *Configure Target Device*: a .bit into the FPGA, an ECP5's .bit or a Gowin's .fs into its SRAM, an iCE40's .bin
-into its SPI flash; a GateMate's board refused, openFPGALoader's; a trusted project only, the client asking first), `lab` (a project's guided labs: listed, a step shown,
+into its SPI flash; a GateMate's board refused, openFPGALoader's; a trusted project only, the client asking first), `program_prom` (the board's
+Platform Flash PROM, as iMPACT's window: programmed with the project's PROM file and verified, verified, backed up into
+`build/prom-backup/`, erased, the FPGA reloaded from it; a trusted project only), `jtag_scan` (the JTAG chain's devices),
+`bitstream_info` (the programming file's header: its design, part and date, another device's warned), `toolchain_info`
+(*Toolchain Settings*' state, read only: ISE's mode, whether ISE and Vivado can run and why not; no host, user or path:
+the settings are changed in the interface only, #4751), `lab` (a project's guided labs: listed, a step shown,
 checked on the project and recorded, as *Guided Labs…* does; a lab restarted), `capture_settings` (the logic analyzer's
 capture: the signals of the design to watch on the board, the clock, the depth, the trigger, checked on the design with the block
 RAMs it takes), `capture` (a capture on the board over the JTAG cable, the Basys2's / Nexys2's Digilent Adept USB through

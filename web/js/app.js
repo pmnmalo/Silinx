@@ -839,7 +839,7 @@ export function renderLibsPage() {
 
 // ------------------------------------------------------------------ browser edition: where projects are kept
 // the Simulation view with module `mod` selected (e.g. a test bench just created): Simulate runs it
-export function showInSim(mod) {
+function showInSim(mod) {
   setView('sim');
   // (the Silinx interface, the Tasks layout: the test bench Simulate's, the one it runs, #1161)
   if (document.documentElement.dataset.layout === 'tasks') {
