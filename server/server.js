@@ -325,7 +325,9 @@ export async function startServer({ port = 8642, host = '127.0.0.1' } = {}) {
 export function openerCommand(url, { platform = process.platform, target = launchTarget } = {}) {
   let to = url;
   try { to = target(url); } catch { /* no configuration folder: the address as it is */ }
-  return platform === 'win32' ? ['cmd', ['/c', 'start', '""', to]] : platform === 'darwin' ? ['open', [to]] : ['xdg-open', [to]];
+  // Windows: url.dll's handler takes the page as one argument; cmd's start re-read `&`, `^` and `%` in it (#4743)
+  return platform === 'win32' ? ['rundll32', ['url.dll,FileProtocolHandler', to]]
+    : platform === 'darwin' ? ['open', [to]] : ['xdg-open', [to]];
 }
 
 /** Open a URL in the default browser (best effort). */
