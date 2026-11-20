@@ -238,18 +238,19 @@ const TB_FAST = TB.replace('after 5 ns', 'after 10 ps');
 // the console's lines from the first command on
 const commandLines = (page) => page.eval(() => { const l = Array.from(document.querySelector('.doc:not([hidden]) .isim-console')?.children || [], (e) => e.textContent).join('\n').split('\n'); return l.slice(l.findIndex((x) => x.startsWith('SSim>'))); });
 // in the page: type `cmds` into ISim's command line (`input`), one after the other, at once
-const TYPE = `(input, cmds) => { for (const c of cmds) { input.value = c; input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); } }`;
+// (typed in the page by each page.eval's own copy: the page evaluates no string, its policy has no 'unsafe-eval', #4741)
 // starts `run` and types `cmds` while it goes on: performance.now() made to jump, the run yields
 // after its first chunk of time (as a long run does), so it still runs when they are typed
-const typeDuringRun = (page, run, cmds) => page.eval((r, cs, type) => {
+const typeDuringRun = (page, run, cmds) => page.eval((r, cs) => {
   const v = window.Silinx.active.view, now = performance.now;
   let jump = 0;
   performance.now = () => now.call(performance) + (jump += 100);
   try { v.exec(r); } finally { performance.now = now; }
   const running = v.state.running;
-  (0, eval)(type)(document.querySelector('.doc:not([hidden]) .isim-cmdline input'), cs);
+  const input = document.querySelector('.doc:not([hidden]) .isim-cmdline input');
+  for (const c of cs) { input.value = c; input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); }
   return running;
-}, run, cmds, TYPE);
+}, run, cmds);
 
 uiTest('ISim command line: commands given before ISim\'s first run starts or during a run wait for it and run in turn, none lost; Break cancels the waiting ones (#215)', E, async (page) => {
   await makeProject(env, { name: 'RunQueuePj', top: 'cnt', files: { 'src/cnt.vhd': CNT, 'sim/tb.vhd': TB_FAST }, roles: { 'sim/tb.vhd': 'sim' } });
@@ -258,16 +259,16 @@ uiTest('ISim command line: commands given before ISim\'s first run starts or dur
   await page.treeRow('#hier', 'tb');
   // typed as soon as ISim's command line is there, before its first run (1 us) has started, when ISim
   // looks ready (not running): they wait for that run (the CI failure of #215: 'run all' lost)
-  await page.eval((type) => {
+  await page.eval(() => {
     const mo = new MutationObserver(() => {
       const input = document.querySelector('.isim-cmdline input');
       if (!input) return;
       mo.disconnect();
       window.__early = { running: window.Silinx.active?.view?.state?.running ?? false, time: document.querySelector('.isim-st-time')?.textContent ?? '' };
-      (0, eval)(type)(input, ['run 2 ns', 'show time']);
+      for (const c of ['run 2 ns', 'show time']) { input.value = c; input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); }
     });
     mo.observe(document.body, { childList: true, subtree: true });
-  }, TYPE);
+  });
   await page.treeRow('#procs', 'Simulate Behavioral Model', { dbl: true, exact: true });
   await page.waitFor(() => /^isim:/.test(window.Silinx.active?.id || '') && window.Silinx.active.view, [], { what: 'ISim open', timeout: 20000 });
   await simTime(page, '1,002,000');

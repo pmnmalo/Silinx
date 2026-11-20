@@ -4,6 +4,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { withEvalPolicy } from './eval-policy.js';
 import { setupUi, uiTest } from './harness.js';
 import { yosysNode } from '../../packages/silinx-fpga/src/node.js';
 import { fakeTgz } from '../helpers-fake-tgz.mjs';
@@ -16,6 +17,7 @@ const E = () => env;
 const GEN = new URL('../../node_modules/@yowasp/nextpnr-ice40/gen/', import.meta.url);
 
 uiTest('#2444 the real bundle from its files in memory: nextpnr-ice40 and icepack to a bitstream', E, async (page) => {
+  await withEvalPolicy(page);   // (the code run here as in a worker or a published edition: eval allowed, #4845)
   const out = await yosysNode(['-q', '-p', 'read_verilog b.v; synth_ice40 -top b -json b.json'], { 'b.v': 'module b(input clk, output reg led); always @(posedge clk) led <= !led; endmodule\n' }, () => {});
   const json = typeof out['b.json'] === 'string' ? out['b.json'] : new TextDecoder().decode(out['b.json']);
   const names = fs.readdirSync(GEN);
@@ -33,6 +35,7 @@ uiTest('#2444 the real bundle from its files in memory: nextpnr-ice40 and icepac
 });
 
 uiTest('#2444 a tarball downloaded once, kept by the browser; another version replaces it; a wrong SHA-512 is refused and not kept', E, async (page) => {
+  await withEvalPolicy(page);   // (the code run here as in a worker or a published edition: eval allowed, #4845)
   const bundle = 'var runNextpnrIce40 = async () => (await (await fetch(new URL("./data.bin", import.meta.url))).text());\nvar other = 1;\nexport {\n  runNextpnrIce40,\n  other as renamed\n};\n';
   const a = fakeTgz({ 'gen/bundle.js': bundle, 'gen/data.bin': 'the data' }), b = fakeTgz({ 'gen/bundle.js': bundle, 'gen/data.bin': 'other' });
   const b64 = x => Buffer.from(x.bytes).toString('base64');

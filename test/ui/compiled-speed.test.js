@@ -5,6 +5,7 @@
 // long-running run() seconds in Maglev before it optimized it (CompiledSim.cycle: run() in pieces).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { withEvalPolicy } from './eval-policy.js';
 import { setupUi, uiTest, BROWSER } from './harness.js';
 import { example, exampleUcf } from '../examples-lib.mjs';
 import { designOf } from '../compiled-diff.js';
@@ -61,6 +62,7 @@ async function measure(cs, json, opts, old = false) {
 }
 
 uiTest('the compiled simulator\'s code in the browser: vga\'s post-synthesis model, the outputs as in Node, at about Node\'s speed (Chrome)', E, async (page) => {
+  await withEvalPolicy(page);   // (the code run here as in a worker or a published edition: eval allowed, #4845)
   const node = await measure({ compileNetlist, CompiledSim }, net.json, opts);
   // (measure, as in Node)
   const inPage = (old, pg = page) => pg.eval(async (src, json, o, x) => (0, eval)(`(${src})`)(await import('/core/compiled-sim.js'), json, o, x), measure.toString(), net.json, opts, old);
