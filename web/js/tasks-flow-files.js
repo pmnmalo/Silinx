@@ -10,6 +10,8 @@ import { h } from './ui.js';
 import { icon, icons } from './icons.js';
 import { designKind } from './project-kind-flag.js';
 import { flowFiles } from '../../core/flow-files.js';
+// (design.js imports this module too: neither reads the other's names at load time, as web/js/flow-files-tree.js)
+import { fileContextMenu } from './design.js';
 
 let page = 'procs';   // ('procs': the task's processes; 'files')
 let app = null;
@@ -71,4 +73,5 @@ function pick(ul, row, onOpen, onMenu) {
   row.addEventListener('contextmenu', e => { e.preventDefault(); row.click(); onMenu?.(e); });
 }
 const open = path => app.openFile(path);
-const menu = (e, path) => import('./design.js').then(d => d.fileContextMenu(e, path));
+// (opened in the right-click itself, as the Design pane's rows', not a module load later)
+const menu = (e, path) => fileContextMenu(e, path);
