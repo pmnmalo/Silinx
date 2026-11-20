@@ -5,17 +5,17 @@
 // bank's), each line as ConstraintSystem's in the console.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, diagLine, diagJson } from './mcp-util.js';
+import { boardOfProject, ucfPort } from '../core/board-constraints.js';
+import { constraintsFileDiagnostics } from '../core/constraints-diagnostics.js';
 
-// the top's ports as the interface's check reads them (web/js/drawings.js ucfPort), its language; none when it does not elaborate
+// the top's ports as the interface's check reads them (core/board-constraints.js ucfPort), its language; none when it
+// does not elaborate
 async function topPorts(name, pj) {
   if (!pj.top) return { ports: [], lang: 'vhdl' };
   try {
     const { elaborateView } = await import('./mcp-util.js');
     const { design, srcs, lib } = await elaborateView(name);
-    const ports = (design?.top?.ports || []).map(p => {
-      const t = p.sig.t, bus = t.w > 1 || (t.kind === 'logic' && !t.scalar);
-      return { name: p.name, dir: p.dir, width: t.w, msb: bus ? t.left : null, lsb: bus ? t.right : null };
-    });
+    const ports = (design?.top?.ports || []).map(ucfPort);
     const file = [...(lib?.modules?.values() || [])].find(m => m.name === pj.top)?.file;
     return { ports, lang: srcs?.find(s => s.path === file)?.lang || 'vhdl' };
   } catch { return { ports: [], lang: 'vhdl' }; }
@@ -35,20 +35,10 @@ export const CONSTRAINTS_TOOLS = [
       let text;
       try { text = await P.readFile(name, path); } catch { throw toolError(`${path} cannot be read.`); }
       const { ports, lang } = await topPorts(name, pj);
-      const { resolveBoard, findPart, findFamily } = await import('./devices.js');
-      const r = pj.board ? resolveBoard(pj.board, { part: pj.device?.part }) : null;
-      const board = r ? { ...r.board, resources: r.resources } : null;
-      const ext = path.split('.').pop().toLowerCase();
-      let diags;
-      if (ext === 'ucf') {
-        const { checkUcf } = await import('../packages/silinx-fpga/src/parts.js');
-        const iostandards = findFamily(findPart(pj.device?.part)?.family || pj.device?.family)?.ioStandards || null;
-        diags = checkUcf(text, { top: pj.top, ports, lang, iostandards, board, package: pj.device?.package });
-      } else {
-        const { constraintsDiagnostics } = await import('../core/constraints-check.js');
-        diags = constraintsDiagnostics(ext, text, ext === 'xdc' ? { ports } : { ports, top: pj.top || null, device: pj.device, board });
-      }
-      diags = diags.map(d => ({ ...d, file: path, tool: 'ConstraintSystem' }));
+      const { findPart, findFamily } = await import('./devices.js');
+      const iostandards = findFamily(findPart(pj.device?.part)?.family || pj.device?.family)?.ioStandards || null;
+      // (core/constraints-diagnostics.js: the interface's check, #4732)
+      const diags = constraintsFileDiagnostics(path, text, { top: pj.top || null, ports, lang, device: pj.device, board: boardOfProject(pj), iostandards });
       const errors = diags.filter(d => d.severity === 'error'), warnings = diags.filter(d => d.severity !== 'error');
       const lines = [`Started : "Check Constraints" of ${path}.`, ...diags.map(diagLine),
         errors.length ? `Process "Check Constraints" failed (${errors.length} error(s), ${warnings.length} warning(s))`

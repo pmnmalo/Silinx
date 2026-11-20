@@ -28,6 +28,7 @@ import { openPetriFsm } from './petri-fsm-doc.js';
 import { openCircuitSchematic, refreshCircuitSchematic } from './drawings-circ-sch.js';
 export { openCircuitSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
+import { ucfPort } from '/core/board-constraints.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
@@ -717,10 +718,8 @@ export function topUcfPorts() {
   try { const d = S.lib && S.project?.top ? elaborate(S.lib, S.project.top) : null; return d?.top ? d.top.ports.map(ucfPort) : undefined; } catch { return undefined; }
 }
 
-export function ucfPort(p) {
-  const t = p.sig.t, bus = t.w > 1 || (t.kind === 'logic' && !t.scalar);
-  return { name: p.name, dir: p.dir, width: t.w, msb: bus ? t.left : null, lsb: bus ? t.right : null };
-}
+// (a top port as the constraints read it: core/board-constraints.js, the MCP's too, #4732)
+export { ucfPort };
 
 export function refreshOpenEditor(path, text) {
   const od = findDoc(`file:${path}`);
