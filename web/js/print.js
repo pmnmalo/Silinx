@@ -2,6 +2,7 @@
 // printed on one page or tiled over several pages (the browser's print dialog also saves PDF).
 import { h, dialog, toast, downloadText, message } from './ui.js';
 import { esc } from './dom.js';
+import { downloadBlob } from './download.js';
 
 const STYLE_PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity',
   'stroke-linecap', 'stroke-linejoin', 'opacity', 'font-family', 'font-size', 'font-weight', 'font-style',
@@ -147,12 +148,6 @@ async function snapshotPng(snapshot, k = 2) {
     if (!blob) throw new Error('the image is too large for this browser');
     return { blob, width: cv.width, height: cv.height };
   } finally { URL.revokeObjectURL(url); }
-}
-
-function downloadBlob(filename, blob) {
-  const a = h('a', { href: URL.createObjectURL(blob), download: filename });
-  document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 /** Print dialog: paper, orientation and pages across, then the browser print dialog; or save SVG / PNG. */

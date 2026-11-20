@@ -6,6 +6,7 @@ import * as V from '/core/values.js';
 import { mountWcfg } from './isim-wcfg.js';
 import { applyStimuli } from '/core/stimuli.js';
 import { toVCD } from '/core/simulator.js';
+import { downloadBlob } from './download.js';
 
 /** { api, exportVCD } of mountISim (consoleH(), leftW(), needScroll(), objDirty(), rafId(): its current values). */
 export function mountApi(ctx) {
@@ -108,13 +109,9 @@ export function mountApi(ctx) {
   function exportVCD() {
     try {
       const text = toVCD(design, sim);
-      const blob = new Blob([text], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${design.top?.name || 'waveform'}.vcd`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      logLine(`Waveform exported to ${a.download} (${(text.length / 1024).toFixed(1)} KB)`);
+      const filename = `${design.top?.name || 'waveform'}.vcd`;
+      downloadBlob(filename, new Blob([text], { type: 'text/plain' }));
+      logLine(`Waveform exported to ${filename} (${(text.length / 1024).toFixed(1)} KB)`);
     } catch (e) { logLine(`ERROR: VCD export failed: ${e.message}`, 'error'); }
   }
 

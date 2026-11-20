@@ -18,6 +18,7 @@ import { readSchematic, circuitErrors, gateName } from '/core/ink/schematic.js';
 import { schematicFromCircuit } from '/core/ink/schematic-doc.js';
 import { InkError } from '/core/ink/segment.js';
 import { SYMBOLS } from '/core/schdoc.js';
+import { debounce } from './debounce.js';
 
 const KINDS = [['and', 'AND'], ['or', 'OR'], ['xor', 'XOR'], ['nand', 'NAND'], ['nor', 'NOR'], ['xnor', 'XNOR']];
 // the types a gate of n inputs can be: the symbols that exist
@@ -26,16 +27,17 @@ const typesFor = n => (n === 1 ? [['buf', 'BUF'], ['inv', 'NOT']] : KINDS.map(([
 export function handwrittenSchematic({ name = 'schematic', lang = 'vhdl', replaces = false, title = 'Handwritten Schematic' } = {}) {
   const templates = inkTemplates(), gates = inkGateTemplates();
   // read: the circuit as read, before the user's corrections; strokes: the drawing it was read from
-  let timer = null, circuit = null, read = null, strokes = [];
+  let circuit = null, read = null, strokes = [];
   const msg = h('div', { class: 'ink-msg' });
   const list = h('div', { class: 'ink-circuit' });
   const showMsg = (lines, kind = 'warn') => { msg.className = `ink-msg ink-${kind}`; msg.replaceChildren(...lines.map(l => h('div', {}, l))); };
   const check = () => { const e = circuit ? circuitErrors(circuit) : ['Nothing drawn: draw the circuit on the pad.']; showMsg([...e, ...(circuit?.warnings || [])], e.length || circuit?.warnings.length ? 'warn' : 'ok'); return !e.length; };
   const padHost = h('div', { class: 'ink-pad ink-pad-full' });
-  const pad = mountInkPad(padHost, { onStroke: () => { clearTimeout(timer); timer = setTimeout(recognize, 400); } });
-  const flush = () => { if (timer) { clearTimeout(timer); recognize(); } };
+  const reading = debounce(() => recognize(), 400);
+  const pad = mountInkPad(padHost, { onStroke: () => reading() });
+  const flush = () => reading.flush();
   // (a correction typed by hand: the reading still pending would write over it, #2389; the next stroke reads again)
-  const edited = () => { clearTimeout(timer); timer = null; };
+  const edited = () => reading.cancel();
   // the circuit read: a row a gate (its type to choose), a row a name (to correct)
   function renderList() {
     list.replaceChildren();
@@ -60,7 +62,6 @@ export function handwrittenSchematic({ name = 'schematic', lang = 'vhdl', replac
     }
   }
   function recognize() {
-    timer = null;
     strokes = pad.strokes();
     circuit = null; read = null;
     if (!strokes.length) { pad.setLabels([]); renderList(); showMsg([]); return; }
@@ -99,5 +100,5 @@ export function handwrittenSchematic({ name = 'schematic', lang = 'vhdl', replac
       { label: 'Create Schematic', primary: true, validate: () => { flush(); return check(); }, value: () => { learn(); return { ...schematicFromCircuit(circuit, { name, lang }), circuit }; } },
       { label: 'Cancel', value: null },
     ],
-  }).finally(() => { clearTimeout(timer); pad.destroy(); });
+  }).finally(() => { reading.cancel(); pad.destroy(); });
 }

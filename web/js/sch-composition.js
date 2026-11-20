@@ -4,6 +4,7 @@
 // values are the symbol's there (core/symlib-live.js: the levels above simulated with them) and follow them.
 import { closeDoc, findDoc, openDoc } from './app.js';
 import { h } from './ui.js';
+import { debounce } from './debounce.js';
 
 const tabs = new Set();   // the open compositions, each { from, refresh }
 
@@ -70,8 +71,7 @@ export async function openComposition(sym, from = null, at = []) {
         const r = D.levelValues(path, top, outs);
         if (!r.error) await ed.tryWith(LV.savedInputs(cur(), r.values), path.length === 1 ? L => LV.forceOutputs(L, cur(), outs) : null);
       };
-      let timer = null;
-      const tab = { from, refresh, later: () => { clearTimeout(timer); timer = setTimeout(refresh, 30); } };
+      const tab = { from, refresh, later: debounce(() => refresh(), 30) };
       tabs.add(tab);
       const go = async (p, values = null) => {
         const was = ed.simulating;
@@ -94,7 +94,7 @@ export async function openComposition(sym, from = null, at = []) {
       }
       if (steps.length > 1) go(steps);
       if (tab.from) refresh();
-      return { destroy: () => { clearTimeout(timer); tabs.delete(tab); ed.destroy?.(); } };
+      return { destroy: () => { tab.later.cancel(); tabs.delete(tab); ed.destroy?.(); } };
     },
   });
 }
