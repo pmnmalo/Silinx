@@ -26,6 +26,7 @@ import { registerWritten } from '../core/project-entries.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
+import { parseDescription } from '../core/project-json.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -56,7 +57,7 @@ export function exampleFiles(name) {
     }
   };
   walk('');
-  return { project: JSON.parse(fsSync.readFileSync(path.join(dir, PROJECT_FILE), 'utf8')), files };
+  return { project: parseDescription(fsSync.readFileSync(path.join(dir, PROJECT_FILE), 'utf8')), files };
 }
 
 export function workspaceDir() {
@@ -122,11 +123,15 @@ export async function listProjects() {
   for (const ent of await fs.readdir(ws, { withFileTypes: true })) {
     // (a folder whose name is no project's is none, whatever it holds: no route opens it, #3522)
     if (!ent.isDirectory() || ent.name.startsWith('.') || !NAME_RE.test(ent.name)) continue;
-    try {
-      const dir = path.join(ws, ent.name);
-      const pj = JSON.parse(await fs.readFile(await projectFile(dir), 'utf8'));
-      out.push({ name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), modified: await lastChange(dir) });
-    } catch { /* not a project */ }
+    const dir = path.join(ws, ent.name);
+    let text;
+    try { text = await fs.readFile(await projectFile(dir), 'utf8'); } catch { continue; }   // (not a project)
+    // a silinx.json that is no description (a merge's conflict marks, an editor's mistake, #4755): the project listed,
+    // damaged, with why, its name taken; never hidden as if it were none
+    let pj;
+    try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
+    catch (e) { out.push({ name: ent.name, damaged: damagedText(e), modified: await lastChange(dir) }); continue; }
+    out.push({ name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), modified: await lastChange(dir) });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -175,7 +180,7 @@ async function migrateTrust() {
     const dir = path.join(workspaceDir(), n);
     if (n.startsWith('.') || projectNameError(n)) continue;
     let pj;
-    try { pj = JSON.parse(await fs.readFile(path.join(dir, PROJECT_FILE), 'utf8')); } catch { continue; }
+    try { pj = parseDescription(await fs.readFile(path.join(dir, PROJECT_FILE), 'utf8')); } catch { continue; }
     if (pj?.trusted !== false && !cloneTrust(dir)) list.push({ dir, id: typeof pj?.id === 'string' ? pj.id : null });
   }
   await trustStore.migrate(list);
@@ -184,12 +189,17 @@ async function recordedTrust(dir, id) {
   if (!trustStore.hasRecords()) { migrating ||= migrateTrust().finally(() => { migrating = null; }); await migrating; }
   return trustStore.isRecorded(dir, typeof id === 'string' ? id : null);
 }
+// a project whose silinx.json is no description (#4755): why, as the lists show it, and the message of what reads it
+const damagedText = e => `its ${PROJECT_FILE} cannot be read: ${e.message}`;
+const damagedMessage = (name, e) => `the project '${name}' is damaged: ${damagedText(e)} (correct it in a text editor, or delete the project)`;
 
 export async function readProject(name) {
   const dir = projectDir(name);
   let pj, text;
-  try { text = await fs.readFile(await projectFile(dir), 'utf8'); pj = JSON.parse(text); }
+  try { text = await fs.readFile(await projectFile(dir), 'utf8'); }
   catch { throw new HttpError(404, `project '${name}' not found`); }
+  try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
+  catch (e) { throw new HttpError(422, damagedMessage(name, e)); }
   etags.set(pj, descriptionEtag(text));
   const ct = cloneTrust(dir);
   if (ct) Object.assign(pj, { trusted: false }, ct.madeBy ? { madeBy: ct.madeBy } : {});
@@ -204,6 +214,17 @@ export async function readProject(name) {
 // (API, CLI, several browser tabs) cannot lose each other's updates; and across processes (the MCP server's, the CLI's,
 // another server's: a lock file, #4726), once this process's turn came.
 const locks = new Map();
+// two projects' locks (a rename's: its old name's and its new one's) taken in one order, their names', whoever asks:
+// A to B and B to A at once wait for each other, never for ever (#4755)
+function withProjectLocks(names, fn) {
+  const keys = [...new Set(names.map(n => String(n).toLowerCase()))].sort();
+  return keys.reduceRight((run, key) => () => withProjectLock(key, run), fn)();
+}
+// inside a project's lock: its silinx.json still there (a write after Delete Project or Rename Project never makes its
+// folder again, #4755)
+async function requireProject(name) {
+  if (!await exists(await projectFile(projectDir(name)))) throw new HttpError(404, `project '${name}' not found`);
+}
 function withProjectLock(name, fn) {
   name = String(name).toLowerCase();   // case-insensitive file systems: Foo and foo are one folder
   const prev = locks.get(name) || Promise.resolve();
@@ -277,7 +298,7 @@ export function writeProject(name, pj, { ifMatch = null } = {}) {
     // a project from outside stays so until the user trusts it (trustProject, #2830): a description written whole (the
     // interface's) does not make it trusted
     let cur = null;
-    try { cur = await readProject(name); } catch { /* a new project */ }
+    try { cur = await readProject(name); } catch (e) { if (e.status !== 404) throw e; /* a new project */ }
     if (ifMatch && cur && etagOf(cur) !== ifMatch) {
       throw Object.assign(new HttpError(412, `the project '${name}' was changed meanwhile (by another tab or process)`), { project: cur, etag: etagOf(cur) });
     }
@@ -354,7 +375,7 @@ export async function createProject({ name, template = 'empty', device, board, k
     if (!src) throw new HttpError(400, `unknown template '${template}'`);
     // (its files without its silinx.json, written once below, already marked when the project is untrusted: never on
     // disk as a trusted project's in between, #3413)
-    const pj = { ...JSON.parse(await fs.readFile(path.join(src, PROJECT_FILE), 'utf8')), name };
+    const pj = { ...parseDescription(await fs.readFile(path.join(src, PROJECT_FILE), 'utf8')), name };
     pj.files ||= [];
     await copyDir(src, dir, { skipRoot: PROJECT_FILE });
     const was = `${pj.board}|${pj.device?.part}|${pj.device?.package}`, fromBoard = pj.board;
@@ -449,14 +470,17 @@ export async function boardConstraints(dir, pj) {
 
 export async function deleteProject(name) {
   const dir = projectDir(name);
-  // (a project's folder only: one with its silinx.json, never another folder of the workspace's)
-  if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, 'not found');
-  const trash = path.join(workspaceDir(), '.trash');
-  await fs.mkdir(trash, { recursive: true });
-  const key = trustStore.folderKey(dir);
-  await renameOver(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
-  await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
-  await trustStore.forget(key);   // (#4735: its trust record: restored from the .trash, it is untrusted)
+  // (under its lock: a write in progress ends first, and one after it finds no project, #4755)
+  return withProjectLock(name, async () => {
+    // (a project's folder only: one with its silinx.json, never another folder of the workspace's)
+    if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, 'not found');
+    const trash = path.join(workspaceDir(), '.trash');
+    await fs.mkdir(trash, { recursive: true });
+    const key = trustStore.folderKey(dir);
+    await renameOver(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
+    await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
+    await trustStore.forget(key);   // (#4735: its trust record: restored from the .trash, it is untrusted)
+  });
 }
 
 /** A failure made in the middle of a rename, by the tests (#4641): 'moved', after the folder moved. */
@@ -474,6 +498,7 @@ export async function renameProject(from, to) {
   const dst = projectDir(to), caseOnly = from.toLowerCase() === to.toLowerCase();
   const key = trustStore.folderKey(dir);   // (#4735: its trust record, moved last)
   const run = async () => {
+    await requireProject(from);   // (deleted or renamed meanwhile)
     if (!caseOnly && await exists(dst)) throw new HttpError(409, `a project named '${to}' already exists: choose another name`);
     const undo = [];
     const move = async (a, b) => { await renameOver(a, b); undo.unshift(() => renameOver(b, a)); };
@@ -491,7 +516,7 @@ export async function renameProject(from, to) {
         if (n && !await exists(path.join(dst, n))) await move(path.join(dst, f), path.join(dst, n));
       }
       const file = path.join(dst, PROJECT_FILE), text = await fs.readFile(file, 'utf8');
-      await writeAtomic(file, JSON.stringify({ ...JSON.parse(text), name: to }, null, 2) + '\n');
+      await writeAtomic(file, JSON.stringify({ ...parseDescription(text), name: to }, null, 2) + '\n');
       undo.unshift(() => writeAtomic(file, text));
       await trustStore.move(key, dst);
     } catch (e) {
@@ -500,7 +525,7 @@ export async function renameProject(from, to) {
     }
     return { name: to };
   };
-  return withProjectLock(from, () => (caseOnly ? run() : withProjectLock(to, run)));
+  return withProjectLocks([from, to], run);
 }
 
 // project-relative path normalised to forward slashes, without './' or a trailing '/'
@@ -584,20 +609,21 @@ export async function writeFile(name, rel0, text) {
   const gated = normalizePath(inBuild ? `b${rel.slice(5)}` : rel);   // (build/x as b/x: its own name checked)
   if (gated.reason) throw new HttpError(400, `'${rel0}': not written: ${gated.reason}`);
   // (onto a folder, or through a file: the project's path in the message, #3537)
-  if ((await fs.stat(full).catch(() => null))?.isDirectory()) throw new HttpError(400, `'${rel}' is a folder, not a file`);
-  try {
-    await fs.mkdir(path.dirname(full), { recursive: true });
-    await writeAtomic(full, text, dir);   // (a reader, or a crash, never sees a half-written / empty file)
-  } catch (e) { throw await fsHttpError(e, dir, full); }
-  // Register HDL files automatically (not the generated ones in build/, e.g. the netlists of the open
-  // synthesis); a file written again is back in the project (not excluded).
-  // (core/project-entries.js registerWritten, as the browser edition's store, #4733; locked only when it changes)
-  if (registerWritten(await readProject(name), rel)) {
-    await withProjectLock(name, async () => {
-      const pj = await readProject(name);
-      if (registerWritten(pj, rel)) await writeProjectUnlocked(name, pj);
-    });
-  }
+  // (under the project's lock, the project still there: a write after Delete Project or Rename Project is refused,
+  // never makes its folder again, #4755)
+  await withProjectLock(name, async () => {
+    await requireProject(name);
+    if ((await fs.stat(full).catch(() => null))?.isDirectory()) throw new HttpError(400, `'${rel}' is a folder, not a file`);
+    try {
+      await fs.mkdir(path.dirname(full), { recursive: true });
+      await writeAtomic(full, text, dir);   // (a reader, or a crash, never sees a half-written / empty file)
+    } catch (e) { throw await fsHttpError(e, dir, full); }
+    // Register HDL files automatically (not the generated ones in build/, e.g. the netlists of the open
+    // synthesis); a file written again is back in the project (not excluded).
+    // (core/project-entries.js registerWritten, as the browser edition's store, #4733; written only when it changes)
+    const pj = await readProject(name);
+    if (registerWritten(pj, rel)) await writeProjectUnlocked(name, pj);
+  });
 }
 
 
@@ -616,6 +642,7 @@ export async function renameFile(name, from, to, { checkName = true } = {}) {
   if (gated.reason) throw new HttpError(400, `'${to}': not renamed: ${gated.reason}`);
   refuseHidden(dir, to, dst, 'renamed');   // (through a symbolic link too)
   return withProjectLock(name, async () => {
+    await requireProject(name);   // (deleted or renamed meanwhile: its folder never made again, #4755)
     let st;
     try { st = await fs.stat(src); } catch { throw new HttpError(404, `file '${from}' not found`); }
     const isDir = st.isDirectory();
@@ -663,6 +690,7 @@ export async function deleteFile(name, rel, { trash = false, mustExist = false }
   refuseHidden(dir, rel, full, 'deleted');
   let trashed = null;
   await withProjectLock(name, async () => {
+    await requireProject(name);   // (deleted or renamed meanwhile, #4755)
     await refuseHiddenInside(dir, rel, full, 'deleted');
     const there = await fs.lstat(full).then(() => true, () => false);
     if (mustExist && !there) throw new HttpError(404, `no file or folder '${key}' in the project '${name}'`);

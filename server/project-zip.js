@@ -19,6 +19,7 @@ import { hiddenName } from './paths.js';
 import { exportCSources, exportIseSchematics, exportXise } from './xise.js';
 import { isCSource } from '../core/view-hdl.js';
 import { ISE_OUTPUT, NODE_CODEC, SILINX_ONLY, importXiseProject } from './impl-routes.js';
+import { parseDescription } from '../core/project-json.js';
 
 const xiseName = project => `${project.name}.xise`;
 
@@ -133,7 +134,8 @@ export async function importProjectEntries(P, name, gated, bad) {
   let project = await P.readProject(name);
   if (pjEntry) {
     let saved = null;
-    try { saved = JSON.parse(text(pjEntry)); } catch { /* ignore a broken silinx.json */ }
+    // (its byte order mark skipped; one that is no JSON said, its settings not restored, #4755)
+    try { saved = parseDescription(text(pjEntry)); } catch (e) { result.warnings.push(`silinx.json: not read (${e.message}): its settings not restored`); }
     if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
       // its file paths stay inside the project (a path that leaves it is dropped, with a warning), and are names the
       // import gate takes: no hidden file, no silinx.json (a write target once the constraints are updated, #3411)

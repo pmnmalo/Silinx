@@ -318,7 +318,9 @@ export async function openProjectDialog() {
     // (a design project's: no device, its kind for a board, #3891)
     const design = isDesignOnly(p);
     const tr = h('tr', {}, h('td', { 'data-no-i18n': '' }, p.name),   // (its name: not translated, 'clock' not 'relógio', #4705)
-      h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
+      // (a damaged one, its silinx.json unreadable: said in its row, why in its tip; opened, the console says it, #4755)
+      p.damaged ? h('td', { class: 'pj-damaged', colspan: 2, title: p.damaged }, 'Damaged: silinx.json cannot be read')
+        : h('td', {}, p.device && !design ? `${p.device.part}${p.device.speed}-${p.device.package}` : ''), p.damaged ? null : h('td', {}, design ? DESIGN_ONLY_LABEL : p.board || ''),
       // (where it is kept: the workspace folder or this browser's storage, its GitHub repository, #4314)
       h('td', { class: 'pj-place', title: placeText(p) }, ...placeLines(p).map((l, i) => h('div', i ? { 'data-no-i18n': '' } : {}, l))),
       h('td', { class: 'pj-used', 'data-no-i18n': '' }, p.used ? dateText(p.used) : ''));

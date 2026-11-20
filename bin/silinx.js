@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { within } from '../server/paths.js';
+import { parseDescription } from '../core/project-json.js';
 
 const [cmd = 'serve', ...args] = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : def; };
@@ -39,7 +40,7 @@ function insideProject(dir, rel) {
 
 async function loadProject(dir) {
   let pj;
-  try { pj = JSON.parse(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8')); }
+  try { pj = parseDescription(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8')); }
   catch (e) { throw new Error(e.code === 'ENOENT' ? `no Silinx project in ${dir} (silinx.json not found)` : `cannot read ${path.join(dir, 'silinx.json')}: ${e.message}`); }
   pj.files ||= [];
   const sources = pj.files.map(f => ({ ...f, text: fs.readFileSync(insideProject(dir, f.path), 'utf8') }));

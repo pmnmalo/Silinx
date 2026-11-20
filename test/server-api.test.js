@@ -96,7 +96,9 @@ test('projects: create (empty + template), list, read with file tree, write, del
   await fs.writeFile(path.join(ws, 'Broken', 'silinx.json'), '{oops');
   await fs.writeFile(path.join(ws, 'stray.txt'), 'x');
   r = await call('GET', '/projects');
-  assert.deepEqual(r.body.map(p => p.name), ['Alpha', 'Blink', 'Blink2']);
+  assert.deepEqual(r.body.map(p => p.name), ['Alpha', 'Blink', 'Blink2', 'Broken']);
+  // (a silinx.json that is no JSON: listed, damaged, with why; its name taken, #4755)
+  assert.match(r.body[3].damaged, /^its silinx\.json cannot be read: /);
   // (modified: when it last changed, its newest file's date, the build's outputs aside, #1156)
   const newest = (dir) => Math.max(0, ...fss.readdirSync(dir, { withFileTypes: true }).filter((e) => e.name !== 'build' && !e.name.startsWith('.'))
     .map((e) => (e.isDirectory() ? newest(path.join(dir, e.name)) : fss.statSync(path.join(dir, e.name)).mtimeMs)));
@@ -110,7 +112,9 @@ test('projects: create (empty + template), list, read with file tree, write, del
   assert.equal((await call('GET', '/projects')).body[1].modified, later.getTime(), 'a source written later; the build aside');
   await fs.rm(path.join(P.projectDir('Blink'), 'src', 'later.vhd'));
   await fs.rm(path.join(P.projectDir('Blink'), 'build'), { recursive: true });
-  assert.equal((await call('GET', '/projects/Broken')).status, 404);
+  const broken = await call('GET', '/projects/Broken');
+  assert.equal(broken.status, 422);
+  assert.match(broken.body.error, /^the project 'Broken' is damaged: its silinx\.json cannot be read: .* \(correct it in a text editor, or delete the project\)$/);
 
   // PUT replaces silinx.json (name forced, fileTree dropped)
   r = await call('PUT', '/projects/Alpha', { name: 'Other', top: 'x', files: [], fileTree: ['junk'] });
