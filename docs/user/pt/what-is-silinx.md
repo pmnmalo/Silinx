@@ -29,7 +29,7 @@ ferramentas abertas, para que os alunos não precisem de instalar mais nada. Que
 | A interface Silinx (a predefinida) | A interface ao estilo do ISE |
 |---|---|
 | ![A interface Silinx](../../images/hero-pt.webp) | ![A interface ao estilo do ISE](../../images/hero-ise-pt.webp) |
-| As tarefas (Projeto, Simular, Emular, Implementar) no cabeçalho, uma de cada vez. | Os menus, as barras de ferramentas e o painel de Processos do Project Navigator do ISE. |
+| As tarefas (Projetar, Simular, Emular, Implementar) no cabeçalho, uma de cada vez. | Os menus, as barras de ferramentas e o painel de Processos do Project Navigator do ISE. |
 
 As duas estão em português e em inglês: o Silinx escolhe a língua do browser, e *Definições ▸ Idioma* muda-a.
 

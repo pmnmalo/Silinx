@@ -362,8 +362,7 @@ uiTest('Portuguese: the Silinx header, buttons, empty state and palette are tran
   await subMenu(page, 'View', 'Language', 'Português');
   await page.waitFor(() => document.documentElement.lang === 'pt');
   const pt = await page.eval(() => window.__uiTexts(document.getElementById('app')));
-  // (the first task's name, Design, is the same in Portuguese: #1046)
-  assert.deepEqual(untranslated(en, pt).filter((t) => !/^@?Design$/.test(t)), []);
+  assert.deepEqual(untranslated(en, pt), []);   // (the first task too: Projetar, #4953)
   const T = await page.eval(() => ({
     search: document.querySelector('.m-search-text').textContent,
     tasks: [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.textContent.trim()),
@@ -371,8 +370,8 @@ uiTest('Portuguese: the Silinx header, buttons, empty state and palette are tran
     settings: document.getElementById('settings-btn').getAttribute('title'),
   }));
   assert.deepEqual(T, {
-    // ('Design' in Portuguese too, #1046)
-    search: 'Procurar comandos e ficheiros…', tasks: ['Design', 'Simular', 'Emular', 'Implementar'],
+    // (Projetar: the Design task, a verb as its neighbours, not the Design pane's Projeto, #4953)
+    search: 'Procurar comandos e ficheiros…', tasks: ['Projetar', 'Simular', 'Emular', 'Implementar'],
     empty: 'Abra uma fonte no painel Projeto.', settings: 'Definições',
   });
   const subs = await subMenu(page, 'Ver', 'Interface');

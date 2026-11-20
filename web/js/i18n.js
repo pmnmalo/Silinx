@@ -710,8 +710,11 @@ Object.assign(PT, {
 });
 // the ISE style title bar (web/js/project.js updateTitle, #987): "<project> - [Design Summary]", its name translated (#1007)
 PT_PATTERNS.push([/^(.+) - \[Design Summary\]$/, (m, pj) => `${pj} - [${PT['Design Summary']}]`]);
+// the Design task's name (its button, its page's title: data-i18n-task): a verb as its neighbours, not the Design pane's
+// "Projeto" (#4953)
+const TASK_PT = { Design: 'Projetar' };
 // a task's button with its dot (web/js/tasks.js taskTitle, #991): "Implement — done with warnings"
-PT_PATTERNS.push([/^(Design|Simulate|Implement) — (done, no warnings|done with warnings|errors|out of date \(a source changed\)|running…)$/, (m, a, b) => `${a === 'Design' ? 'Design' : PT[a]} — ${PT[b]}`]);   // (the Design task: 'Design' in Portuguese too, #1046)
+PT_PATTERNS.push([/^(Design|Simulate|Implement) — (done, no warnings|done with warnings|errors|out of date \(a source changed\)|running…)$/, (m, a, b) => `${a === 'Design' ? TASK_PT.Design : PT[a]} — ${PT[b]}`]);   // (the Design task: Projetar, #4953)
 PT_PATTERNS.push(
   [/^Stopped: (.*)$/s, 'Parado: $1'],
   [/^Simulation stopped: (.*)$/s, 'Simulação parada: $1'],
@@ -918,9 +921,9 @@ const attrState = new WeakMap();   // element -> { [attr]: { orig, last } }
 function skipEl(el) { return !el || (el.closest && el.closest(SKIP)); }
 // a text box: its text (the user's) left as it is, its own attributes (placeholder, tip) translated as an input's (#3931)
 const isBox = el => el?.tagName === 'TEXTAREA';
-// a text kept as it is inside an element that says so (data-i18n-keep="Design": the Tasks interface's Design task, not
-// "Projeto" as the Design pane, #1046); other texts there translated as usual
-const kept = (el, text) => el?.closest?.('[data-i18n-keep]')?.dataset.i18nKeep === text.trim();
+// a task's name inside an element that says so (data-i18n-task="Design": the Design task, "Projetar", a verb as Simular,
+// Emular, Implementar, not "Projeto" as the Design pane, #1046, #4953); other texts there translated as usual
+const asTask = (el, text) => lang === 'pt' && el?.closest?.('[data-i18n-task]')?.dataset.i18nTask === text.trim() ? text.replace(text.trim(), TASK_PT[text.trim()]) : null;
 
 function translateText(node) {
   const parent = node.parentElement;
@@ -928,7 +931,7 @@ function translateText(node) {
   const cur = node.nodeValue;
   let st = textState.get(node);
   if (!st || cur !== st.last) { st = { orig: cur, last: cur }; textState.set(node, st); }
-  const next = kept(parent, st.orig) ? st.orig : t(st.orig);
+  const next = asTask(parent, st.orig) ?? t(st.orig);
   if (next !== cur) { st.last = next; node.nodeValue = next; } else st.last = cur;
 }
 
@@ -941,7 +944,7 @@ function translateAttrs(el) {
     if (!map) { map = {}; attrState.set(el, map); }
     let st = map[a];
     if (!st || cur !== st.last) st = map[a] = { orig: cur, last: cur };
-    const next = kept(el, st.orig) ? st.orig : t(st.orig);
+    const next = asTask(el, st.orig) ?? t(st.orig);
     if (next !== cur) { st.last = next; el.setAttribute(a, next); }
   }
 }

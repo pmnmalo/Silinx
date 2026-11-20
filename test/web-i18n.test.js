@@ -71,8 +71,8 @@ test('t(): exact strings, patterns, surrounding whitespace, unknown text unchang
   assert.equal(t("The test design has its own sources and its test: a test bench (Simulate), or the C program's main() (C Simulation)."), 'O projeto de teste tem as suas próprias fontes e o seu teste: uma bancada de teste (Simular), ou o main() do programa em C (Simulação de C).');
   // a task's button with its dot (#991): the task and its state
   assert.equal(t('Implement — done with warnings'), 'Implementar — concluído com avisos');
-  assert.equal(t('Design — done, no warnings'), 'Design — concluído, sem avisos', 'the Design task: Design in Portuguese too (#1046)');
-  assert.equal(t('Design'), 'Projeto', 'elsewhere (the Design pane, the console\'s filter): Projeto; the task keeps Design with data-i18n-keep');
+  assert.equal(t('Design — done, no warnings'), 'Projetar — concluído, sem avisos', 'the Design task: Projetar, a verb as its neighbours (#4953)');
+  assert.equal(t('Design'), 'Projeto', 'elsewhere (the Design pane, the console\'s filter): Projeto; the task\'s button says Projetar with data-i18n-task');
   assert.equal(t('Simulate — out of date (a source changed)'), 'Simular — desatualizado (uma fonte mudou)');
   assert.equal(t('Implement — errors'), 'Implementar — erros');
   assert.equal(t('Implement — running…'), 'Implementar — em curso…');
