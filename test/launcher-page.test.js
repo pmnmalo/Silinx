@@ -23,7 +23,7 @@ const mode = f => fs.statSync(f).mode & 0o777;
 
 test('#3409 the opener\'s arguments hold no code and no token: the path of a page that leads to the address', () => {
   const dir = path.join(tmp, 'pages');
-  for (const [platform, cmd] of [['darwin', 'open'], ['linux', 'xdg-open'], ['win32', 'cmd']]) {
+  for (const [platform, cmd] of [['darwin', 'open'], ['linux', 'xdg-open'], ['win32', 'rundll32']]) {
     for (const url of [URL_, 'http://127.0.0.1:8642/#token=abcdefghijklmnopqrstuvwx']) {
       const [c, args] = openerCommand(url, { platform, target: u => launchTarget(u, { dir }) });
       assert.equal(c, cmd);
@@ -38,6 +38,13 @@ test('#3409 the opener\'s arguments hold no code and no token: the path of a pag
   }
   // (an address with neither: as it is)
   assert.deepEqual(openerCommand('http://127.0.0.1:8642/', { platform: 'darwin', target: u => launchTarget(u, { dir }) }), ['open', ['http://127.0.0.1:8642/']]);
+});
+
+test('#4743 Windows: the page opened through url.dll\'s handler, one argument, no cmd to re-read `&`, `^` or `%` in its path', () => {
+  const odd = 'C:\\Users\\A&B^%x%\\.silinx\\open-abc.html';
+  assert.deepEqual(openerCommand(URL_, { platform: 'win32', target: () => odd }), ['rundll32', ['url.dll,FileProtocolHandler', odd]]);
+  assert.deepEqual(openerCommand('http://127.0.0.1:8642/', { platform: 'win32', target: u => u }),
+    ['rundll32', ['url.dll,FileProtocolHandler', 'http://127.0.0.1:8642/']]);
 });
 
 test('#3409 the page: the browser sent on to the address at once, the address escaped as an attribute and as a script string', () => {
