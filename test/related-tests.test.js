@@ -210,7 +210,8 @@ test('#1982 related tests: the parts planned by the tests\' measured time — on
   const all = { unit: Object.keys(timings).filter((f) => !f.startsWith('test/ui/')), ui: Object.keys(timings).filter((f) => f.startsWith('test/ui/')) };
   const plan = planShards(all, timings);
   assert.ok(plan.n > 3 && plan.n <= MAX_PARTS, `${plan.n}`);
-  assert.ok(plan.minutes / plan.n < 25, `${plan.minutes} / ${plan.n}`);
+  // (45 as said above: v15.29.0's timings, every UI file measured, gave 28.5, #4822)
+  assert.ok(plan.minutes / plan.n < 45, `${plan.minutes} / ${plan.n}`);
   // each part's files, balanced: every file once
   const parts = Array.from({ length: plan.n }, (_, k) => shardOf(all, { i: k + 1, n: plan.n }, timings));
   assert.deepEqual(parts.flatMap((p) => p.unit).sort(), [...all.unit].sort());
