@@ -45,8 +45,8 @@ test('#4807 the levels: ADD n of at most four blocks (FA1, ADD4, ADD16 …), SUB
   const c = composition('add', { width: 16 });
   assert.equal(c.symbol, 'ADD16');
   assert.deepEqual(levelParts(c.modules[0]), [{ name: 'ADD4', count: 4, module: true }, { name: 'GND', count: 1, module: false }]);
-  assert.deepEqual(['add', 'sub', 'compare', 'mux4', 'counter', 'and2'].map(hasComposition), [true, true, false, false, false, false]);
-  assert.equal(composition('mux4', {}), null);
+  assert.deepEqual(['add', 'sub', 'compare', 'counter', 'and2', 'fdce'].map(hasComposition), [true, true, false, false, false, false]);
+  assert.equal(composition('compare', {}), null);
   assert.equal(composition('add', { width: 5, cin: true }).top, 'ADD5_NOCO', 'the defaults for the parameters left out');
 });
 

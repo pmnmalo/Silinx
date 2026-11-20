@@ -68,3 +68,34 @@ export const instDef = mod => symbolDef({ type: 'module', x: 0, y: 0, rot: 0, mi
 
 /** The name of bits msb..lsb of bus `bus` of `width` bits: the bus itself when they are all of it. */
 export const bitsName = (bus, width, msb, lsb) => (msb === width - 1 && lsb === 0 ? bus : msb === lsb ? `${bus}(${msb})` : `${bus}(${msb}:${lsb})`);
+
+// a pin's short wire, away from its symbol on its side, named `net` at its end
+const AWAY = { W: [-60, 0], E: [60, 0], N: [0, -40], S: [0, 40] };
+export function stub(c, p, side, net) {
+  const [dx, dy] = AWAY[side] || AWAY.W, e = { x: p.x + dx, y: p.y + dy };
+  c.wire(p, e);
+  c.label(net, e.x, e.y);
+}
+
+/**
+ * A drawing of instances joined by their wires' names, as ISE's bus taps name them (#1688): `markers` ([{ name, dir,
+ * width }], the inputs on the left, the outputs on the right, each on a short wire of its own) and `items` ([{ mod,
+ * label, net(pin) }] or a gate's [{ type, params, net(pin) }], stacked from the top, each pin on a short wire named
+ * net(pin)). The library's { doc, sides }.
+ */
+export function lanes(name, description, markers, items, sides = {}) {
+  const c = canvas(name, description);
+  const TOP = 120, ROW = 40, XM = 100, X = 360;
+  const wMax = Math.max(80, ...items.map(it => (it.mod ? instDef(it.mod).w : 80))), xOut = r10(X + wMax + 220);
+  markers.filter(m => m.dir === 'in').forEach((m, i) => { c.marker(m.name, 'in', m.width, XM, TOP + ROW * i); c.wire({ x: XM, y: TOP + ROW * i }, { x: XM + 40, y: TOP + ROW * i }); });
+  markers.filter(m => m.dir !== 'in').forEach((m, i) => { c.marker(m.name, 'out', m.width, xOut, TOP + ROW * i); c.wire({ x: xOut - 40, y: TOP + ROW * i }, { x: xOut, y: TOP + ROW * i }); });
+  let y = TOP;
+  for (const it of items) {
+    // (a library module's instance, or a gate of the palette: { type, params })
+    const pins = it.mod ? it.mod.ports : symbolDef({ type: it.type, params: it.params }).pins;
+    const I = it.mod ? c.inst(it.mod, X, y + (pins.some(q => q.side === 'N') ? 40 : 0), it.label) : c.sym(it.type, it.params, X, y);
+    for (const q of pins) stub(c, I.pin(q.name), q.side, it.net(q.name));
+    y = r10(y + I.def.h + (pins.some(q => q.side === 'S') ? 120 : 60));
+  }
+  return { doc: c.doc, sides };
+}
