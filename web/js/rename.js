@@ -11,6 +11,7 @@ import { reservedError } from '/core/reserved.js';
 import { isName } from '/core/ident.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { designOnly } from './design-only.js';
+import { pageStore, serialDrawings } from './page-store.js';
 
 // ---- Rename Symbol (F2) in an HDL editor: the name under the cursor, everywhere it means the same
 // object in the file; a port / generic also in the instances of its module in the other files
@@ -84,14 +85,6 @@ export async function renameDialog(file, mod = null) {
   await renameSource(file, fIn.value.trim(), modName, mIn ? mIn.value.trim() : null);
 }
 
-// the project store core/rename-module.js works on, over the server's API (as git-browser.js's, core/drawing-sync.js's)
-const pageStore = () => ({
-  readProject: n => api.project(n), fileTree: async n => (await api.project(n)).fileTree, readSources: n => api.sources(n),
-  readFile: (n, p) => api.readFile(n, p), writeFile: (n, p, t) => api.writeFile(n, p, t), deleteFile: (n, p) => api.deleteFile(n, p),
-  renameFile: (n, a, b) => api.renameFile(n, a, b),
-  updateProject: async (n, fn) => { const pj = await api.project(n); delete pj.fileTree; return api.saveProject(n, fn(pj) || pj); },
-});
-
 // close the editors of the files that move or change: the paths to reopen after, the active one first
 async function closeTouched(paths, moved) {
   const reopen = [];
@@ -109,12 +102,12 @@ async function closeTouched(paths, moved) {
 async function renameModuleNow(from, to, oldMod, newMod) {
   const { renameModule } = await import('/core/rename-module.js');
   let reopen = [];
-  S.syncing = true;
   try {
-    const r = await renameModule(pageStore(), S.project.name, oldMod, newMod, {
+    // (in the drawings' queue: no drawing's HDL made again in the middle of it, #4750)
+    const r = await serialDrawings(() => renameModule(pageStore(), S.project.name, oldMod, newMod, {
       to: to !== from ? to : null, hidden: designOnly() ? hdlSideFile : null,
       before: async ({ changed, moved }) => { reopen = await closeTouched(new Set(changed), new Map(moved)); },
-    });
+    }));
     await reloadProject(false);
     markStale();
     log(r.message, 'ok');
@@ -123,7 +116,7 @@ async function renameModuleNow(from, to, oldMod, newMod) {
   } catch (e) {
     alertDlg('Rename', e.message, 'error');
     await reloadProject(false);
-  } finally { S.syncing = false; }
+  }
 }
 
 async function renameSource(from, to, oldMod, newMod) {
@@ -132,7 +125,6 @@ async function renameSource(from, to, oldMod, newMod) {
   const pj = S.project;
   const changed = new Map();                      // path -> new text
   const moved = new Map();                        // old path -> new path
-  S.syncing = true;
   try {
     if (to && to !== from) {
       moved.set(from, to);
@@ -143,8 +135,10 @@ async function renameSource(from, to, oldMod, newMod) {
       }
     }
     const reopen = await closeTouched(new Set(changed.keys()), moved);
-    for (const [a, b] of moved) await api.renameFile(pj.name, a, b);
-    for (const [p, text] of changed) await api.writeFile(pj.name, p, text);
+    await serialDrawings(async () => {
+      for (const [a, b] of moved) await api.renameFile(pj.name, a, b);
+      for (const [p, text] of changed) await api.writeFile(pj.name, p, text);
+    });
     await reloadProject(false);
     markStale();
     const parts = [];
@@ -154,5 +148,5 @@ async function renameSource(from, to, oldMod, newMod) {
   } catch (e) {
     alertDlg('Rename', e.message, 'error');
     await reloadProject(false);
-  } finally { S.syncing = false; }
+  }
 }

@@ -4,7 +4,7 @@
 import { api } from './api.js';
 import { h, alertDlg, confirmDlg, popupMenu } from './ui.js';
 import { elaborate } from '/core/compile.js';
-import { viewHdl, drawnHdlPath, drawnHdlClash, drawingInLanguage } from '/core/view-hdl.js';
+import { viewHdl, drawnHdlPath, drawnHdlClash } from '/core/view-hdl.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
 import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
@@ -18,11 +18,12 @@ import { reloadProject } from './project.js';
 import { markStale, saveAll } from './processes.js';
 import { openModuleSource, removeModule, renderHierarchy, saveProjectJson, setTop, topMenuItem } from './design.js';
 import { renameDialog } from './rename.js';
+import { pageStore, serialDrawings } from './page-store.js';
 import {
-  openTt, openTtSchematic, syncHdlFromTt, ttContextMenu, ttFromHdl
+  openTt, openTtSchematic, ttContextMenu, ttFromHdl
 } from './drawings-tt.js';
 export {
-  openTt, openTtSchematic, syncHdlFromTt, ttContextMenu
+  openTt, openTtSchematic, ttContextMenu
 };
 import { openPetriFsm } from './petri-fsm-doc.js';
 import { openCircuitSchematic, refreshCircuitSchematic } from './drawings-circ-sch.js';
@@ -65,7 +66,7 @@ export async function openAsm(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (!S.syncing) syncHdlFromAsm(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+          syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { problems.clear(); ed.destroy?.(); },
       };
@@ -80,26 +81,58 @@ export async function openAsm(path) {
 export function staleHdl(target, from, why) { (S.staleHdl ||= {})[target] = { from, why }; }
 export function freshHdl(target) { if (S.staleHdl) delete S.staleHdl[target]; }
 
-export async function syncHdlFromAsm(asmPath, model) {
-  const target = model.generatedFile;
-  if (!target || !S.fileTree.includes(target)) return;
-  if (await drawnHdlLanguage(asmPath, model)) return;
-  const { generate, validate } = await import('/core/asm.js');
-  const errs = (validate(model) || []).filter(x => x.severity === 'error');
-  if (errs.length) { staleHdl(target, asmPath, `the ASM chart has errors: ${errs.map(x => x.message).join('; ')}`); hdlStatus(`${target.split('/').pop()} not updated: the chart has ${errs.length} error(s)`); return; }
-  let g;
-  try { g = generate(model, /\.v$/i.test(target) ? 'verilog' : 'vhdl'); } catch (e) { staleHdl(target, asmPath, e.message); hdlStatus(`${target} not updated: ${e.message}`); return; }
-  freshHdl(target);
-  const cur = S.sources.find(x => x.path === target)?.text;
-  if (cur === g.code) return;
-  S.syncing = true;
-  try {
-    await api.writeFile(S.project.name, target, g.code);
-    const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
-    refreshOpenEditor(target, g.code);
+// A drawing's HDL file made again from it as its editor saves it (#4750): core/drawing-sync.js syncDrawing, the MCP
+// server's, with its messages; a drawing in another language than its file's gets its HDL file in that language, the
+// other one removed (#220, #1477). Its outcome where the user works: the HDL file's text and its editor, its banner and
+// the drawing's link (out of sync, and why), Check Syntax's stale files, the console (each reason once). In the drawings'
+// queue (page-store.js). Returns syncDrawing's result (null: a drawing with no HDL file in the project).
+export function syncDrawingHdl(path) {
+  return serialDrawings(async () => {
+    const { syncDrawing } = await import('/core/drawing-sync.js');
+    const r = await syncDrawing(pageStore(), S.project.name, path, viewKind(path) === 'sch' ? await schModules() : null);
+    if (!r) return null;
+    const { target } = r;
+    const relink = () => drawingEditor(path)?.refreshLink?.();
+    S.outOfSync ||= {};
+    if (r.removed) {
+      closeDocByPath(r.removed);
+      linkOpenEditor(path, target);
+      for (const m of r.messages) log(m, 'info');
+      await reloadProject(false);
+      markStale();
+      relink();
+      return r;
+    }
+    if (r.stale) {
+      const why = `the ${STALE_NOUN[viewKind(path)]} has errors: ${r.stale}`;
+      if (S.outOfSync[target] !== why) for (const m of r.messages) log(m, 'warn');
+      S.outOfSync[target] = why;
+      staleHdl(target, path, `it has errors: ${r.stale}`);
+      findDoc(`sch:${path}`)?.schEditor?.check();
+      refreshSyncBanner(target);
+      relink();
+      hdlStatus(`${target.split('/').pop()} not updated: ${path.split('/').pop()} has errors`);
+      return r;
+    }
+    // (its HDL not made in the drawing's language: that file there already)
+    if (!r.written && r.messages.length) { for (const m of r.messages) log(m, 'warn'); return r; }
+    freshHdl(target);
+    if (S.outOfSync[target]) { delete S.outOfSync[target]; refreshSyncBanner(target); relink(); }
+    if (!r.written) return r;
+    const text = await api.readFile(S.project.name, target);
+    const src = S.sources.find(x => x.path === target); if (src) src.text = text;
+    refreshOpenEditor(target, text);
     compileProject(); renderHierarchy(); markStale();
-    hdlStatus(`${target} updated from ${asmPath.split('/').pop()}`);
-  } finally { S.syncing = false; }
+    hdlStatus(`${target} updated from ${path.split('/').pop()}`);
+    return r;
+  });
+}
+// (what its HDL editor's banner and its link call it)
+const STALE_NOUN = { sch: 'schematic', asm: 'ASM chart', tt: 'truth table', fsm: 'state diagram', pn: 'Petri net', circ: 'circuit' };
+// a drawing's editor, when it is open
+function drawingEditor(path) {
+  const d = findDoc(`${viewKind(path)}:${path}`);
+  return d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor || d?.circuitEditor || null;
 }
 
 async function asmFromHdlFile(hdlPath, opts = {}) {
@@ -182,7 +215,7 @@ export async function openFsm(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (!S.syncing) syncHdlFromFsm(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+          syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { offLang(); problems.clear(); ed.destroy?.(); },
       };
@@ -190,7 +223,6 @@ export async function openFsm(path) {
   });
 }
 const fsmModel = async path => { const d = findDoc(`fsm:${path}`); if (d?.fsmEditor) { await flushDoc(d); return d.fsmEditor.getModel(); } return JSON.parse(await api.readFile(S.project.name, path)); };
-const refreshFsmLink = fsmPath => findDoc(`fsm:${fsmPath}`)?.fsmEditor?.refreshLink();
 const fsmDir = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '') : 'src');
 /** A file name `${dir}/${base}${ext}` (and module name) not used yet in the project. */
 function freeName(dir, base, ext) {
@@ -198,37 +230,6 @@ function freeName(dir, base, ext) {
   // (a circuit's ICs' modules taken too, #4216)
   while (S.fileTree.includes(`${dir}/${name}${ext}`) || S.modules.some(x => x.name.toLowerCase() === name.toLowerCase()) || S.partModules?.has(name.toLowerCase())) name = `${base}${++k}`;
   return name;
-}
-
-export async function syncHdlFromFsm(fsmPath, model) {
-  const target = model.generatedFile;
-  if (!target || !S.fileTree.includes(target)) return;
-  if (await drawnHdlLanguage(fsmPath, model)) return;
-  const { generateFsm, fsmErrors, normalizeFsm } = await import('/core/fsm.js');
-  const m = normalizeFsm(model);
-  S.outOfSync ||= {};
-  const errs = fsmErrors(m);
-  if (errs.length) {
-    const why = `the state diagram has errors: ${errs.map(x => x.message).join('; ')}`;
-    if (S.outOfSync[target] !== why) log(hdlWarning(`WARNING: ${target} not updated: ${why}`, fsmPath, why), 'warn');
-    S.outOfSync[target] = why; staleHdl(target, fsmPath, why); refreshSyncBanner(target); refreshFsmLink(fsmPath);
-    return;
-  }
-  const g = generateFsm(m, /\.v$/i.test(target) ? 'verilog' : 'vhdl', { source: fsmPath.split('/').pop() });
-  freshHdl(target);
-  // back in sync once the HDL is written (not before: the link would say so while the file is old)
-  const inSync = () => { if (S.outOfSync[target]) { delete S.outOfSync[target]; refreshSyncBanner(target); refreshFsmLink(fsmPath); } };
-  const cur = S.sources.find(x => x.path === target)?.text;
-  if (cur === g.code) return inSync();
-  S.syncing = true;
-  try {
-    await api.writeFile(S.project.name, target, g.code);
-    inSync();
-    const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
-    refreshOpenEditor(target, g.code);
-    compileProject(); renderHierarchy(); markStale();
-    hdlStatus(`${target} updated from ${fsmPath.split('/').pop()}`);
-  } finally { S.syncing = false; }
 }
 
 // the state diagram `old` made again from its HDL module: { model, warnings }; throws why it cannot be
@@ -352,24 +353,12 @@ export async function openPetri(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (m.generatedFile && S.fileTree.includes(m.generatedFile)) await syncHdlFromPetri(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+          await syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { problems.clear(); ed.destroy?.(); },
       };
     },
   });
-}
-export async function syncHdlFromPetri(path, m) {
-  if (await drawnHdlLanguage(path, m)) return;
-  const { generatePetri } = await import('/core/petri.js');
-  let g;
-  try { g = generatePetri(m, m.lang, { source: path.split('/').pop() }); } catch (e) { staleHdl(m.generatedFile, path, `the Petri net has errors: ${e.message}`); return; }   // (errors: shown in the editor)
-  freshHdl(m.generatedFile);
-  if (S.sources.find(x => x.path === m.generatedFile)?.text === g.code) return;
-  await api.writeFile(S.project.name, m.generatedFile, g.code);
-  const src = S.sources.find(x => x.path === m.generatedFile); if (src) src.text = g.code;
-  refreshOpenEditor(m.generatedFile, g.code);
-  compileProject(); markStale();
 }
 export function petriContextMenu(e, file) {
   popupMenu([
@@ -428,24 +417,12 @@ export async function openCircuit(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (m.generatedFile && S.fileTree.includes(m.generatedFile)) await syncHdlFromCircuit(path, m).catch(e => log(`WARNING: HDL not synchronized: ${e.message}`, 'warn'));
+          await syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => { problems.clear(); ed.destroy?.(); },
       };
     },
   });
-}
-export async function syncHdlFromCircuit(path, m) {
-  if (await drawnHdlLanguage(path, m)) return;
-  const { generateCircuit } = await import('/core/circuit-hdl.js');
-  let g;
-  try { g = generateCircuit(m, m.lang, { source: path.split('/').pop() }); } catch (e) { staleHdl(m.generatedFile, path, `the circuit has errors: ${e.message}`); return; }
-  freshHdl(m.generatedFile);
-  if (S.sources.find(x => x.path === m.generatedFile)?.text === g.code) return;
-  await api.writeFile(S.project.name, m.generatedFile, g.code);
-  const src = S.sources.find(x => x.path === m.generatedFile); if (src) src.text = g.code;
-  refreshOpenEditor(m.generatedFile, g.code);
-  compileProject(); markStale();
 }
 export function circuitContextMenu(e, file) {
   popupMenu([
@@ -520,7 +497,7 @@ export async function openSch(path) {
         save: async () => {
           const m = ed.getDoc();
           await save(m);
-          if (!S.syncing) syncHdlFromSchematic(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+          syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => ed.destroy?.() };
     },
@@ -550,34 +527,6 @@ export function drawingCommands(sch) {
     isFsm(sch) ? { label: 'Convert to ASM chart', action: () => fsmToAsmChart(sch) } : null,
     isPn(sch) ? { label: 'View State Machine (FSM)', action: () => openPetriFsm(sch) } : null,   // (its state space, #2696)
   ].filter(Boolean);
-}
-
-// A drawing's language changed (its editor's HDL language, a schematic's Language): its HDL file,
-// generated from it, is made again in that language, the file in the other language removed (#220:
-// no Generate HDL any more). Not while it has errors (its file stays until it has none). Returns
-// whether its language had changed (the HDL then written here).
-export async function drawnHdlLanguage(path, m) {
-  const owned = m.generatedFile;
-  const L = m.lang === 'verilog' ? 'Verilog' : 'VHDL';
-  if (!owned || !S.fileTree.includes(owned) || /\.v$/i.test(owned) === (L === 'Verilog')) return false;
-  const r = drawingInLanguage(path, JSON.stringify(m), m.lang, { modules: viewKind(path) === 'sch' ? await schModules() : {} });
-  if (!r.hdl || r.errors.length) { status(`${owned.split('/').pop()} not made in ${L} yet: ${path.split('/').pop()} has errors`); return true; }
-  const { target } = r;
-  if ((S.diskTree || S.fileTree).includes(target)) { log(`WARNING: the HDL of ${path} is not made in ${L}: ${target} exists already`, 'warn'); return true; }
-  S.syncing = true;
-  try {
-    closeDocByPath(owned);
-    await api.deleteFile(S.project.name, owned);
-    await api.writeFile(S.project.name, target, r.hdl);
-    await api.writeFile(S.project.name, path, r.text);
-    linkOpenEditor(path, target);
-    log(`${path}: its HDL is now in ${L}, ${target} (${owned} removed)`, 'info');
-  } finally { S.syncing = false; }
-  await reloadProject(false);
-  markStale();
-  const d = findDoc(`${viewKind(path)}:${path}`);
-  (d?.ttEditor || d?.fsmEditor || d?.petriEditor)?.refreshLink?.();
-  return true;
 }
 
 // Every source has its HDL file (#207): a drawn source without one (a module by itself, #177) gets
@@ -616,8 +565,7 @@ async function writeDrawnHdl(path, target, hdl) {
 // an open editor of the drawing keeps the link (its next save writes it): the link alone, its undo
 // history, selection and view kept (#245: not the whole model again, which reset them)
 function linkOpenEditor(path, target) {
-  const d = findDoc(`${viewKind(path)}:${path}`);
-  (d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor || d?.circuitEditor)?.setLink(target);
+  drawingEditor(path)?.setLink(target);
 }
 
 // ---- a drawing whose HDL file name is taken (#230)
@@ -708,7 +656,7 @@ export function syncBanner(path) {
   const link = h('a', { onclick: () => openView(sch) }, sch.split('/').pop());
   if (!why) return h('span', { class: 'gen-banner read-only', 'data-sync-banner': path }, 'Read-only, generated from ', link);
   return h('span', { class: 'gen-banner read-only out-of-sync', 'data-sync-banner': path }, 'Read-only, not in sync with ', link,
-    isTt(sch) || isFsm(sch) ? ` — ${why}` : ` — the ${viewNoun(sch)} has errors: ${why}`);
+    ` — ${why}`);
 }
 export function refreshSyncBanner(path) {
   for (const el of document.querySelectorAll('[data-sync-banner]')) if (el.dataset.syncBanner === path) el.replaceWith(syncBanner(path));
@@ -727,41 +675,6 @@ export { ucfPort };
 export function refreshOpenEditor(path, text) {
   const od = findDoc(`file:${path}`);
   if (od && !od.dirty) { od.editor.setValue(text); od.editor.markClean(); setDirty(od, false); }
-}
-
-export async function syncHdlFromSchematic(schPath, doc) {
-  const target = doc.generatedFile || S.schOwners?.[schPath];
-  if (!target) return;                    // (a schematic with errors: linked once it has none, #207)
-  if (!hdlInProject(target)) return;      // (its HDL file gone: not written back silently, #231)
-  if (await drawnHdlLanguage(schPath, { ...doc, generatedFile: target })) return;
-  const { generateHdl } = await import('/core/schdoc.js');
-  let g;
-  try { g = generateHdl(doc, { lang: doc.lang, modules: await schModules() }); }
-  catch (e) { log(hdlWarning(`WARNING: ${target} not updated from ${schPath}: ${e.message}`, schPath, e.message), 'warn'); return; }
-  const errs = (g.diagnostics || []).filter(x => x.severity === 'error');
-  S.outOfSync ||= {};
-  if (errs.length) {
-    // show it where the user works: the schematic's Check panel, the HDL editor's banner, the console
-    const why = errs.map(x => x.message).join('; ');
-    if (S.outOfSync[target] !== why) log(hdlWarning(`WARNING: ${target} not updated: the schematic ${schPath} has ${errs.length} error(s): ${why}`, schPath, `the schematic has ${errs.length} error(s): ${why}`), 'warn');
-    S.outOfSync[target] = why; staleHdl(target, schPath, `the schematic has errors: ${why}`);
-    findDoc(`sch:${schPath}`)?.schEditor?.check();
-    refreshSyncBanner(target);
-    hdlStatus(`${target.split('/').pop()} not updated: ${why}`);
-    return;
-  }
-  freshHdl(target);
-  if (S.outOfSync[target]) { delete S.outOfSync[target]; refreshSyncBanner(target); }
-  const cur = S.sources.find(x => x.path === target)?.text;
-  if (cur === g.code) return;
-  S.syncing = true;
-  try {
-    await api.writeFile(S.project.name, target, g.code);
-    const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
-    refreshOpenEditor(target, g.code);
-    compileProject(); renderHierarchy(); markStale();
-    hdlStatus(`${target} updated from ${schPath.split('/').pop()}`);
-  } finally { S.syncing = false; }
 }
 
 // HDL -> editable schematic, for any HDL module (#225). The schematic becomes the module's base and
@@ -786,15 +699,14 @@ export async function convertToSchematic(mod) {
     if (S.fileTree.includes(target) && !await confirmDlg('Convert to Schematic', `${target} already exists. Overwrite it?`)) return;
     const doc = { ...r.doc };
     delete doc.importDiagnostics;
-    S.syncing = true;
-    try {
+    await serialDrawings(async () => {
       for (const [p, text] of Object.entries(r.writes)) {
         if (text == null) { closeDocByPath(p); await api.deleteFile(S.project.name, p); continue; }
         await api.writeFile(S.project.name, p, text);
         refreshOpenEditor(p, text);
       }
       await api.writeFile(S.project.name, target, JSON.stringify(doc, null, 1));
-    } finally { S.syncing = false; }
+    });
     // a new file (a file of several design units split) keeps the role of the file it comes from
     const pj = await api.project(S.project.name);
     let roles = false;

@@ -1,16 +1,16 @@
 // The truth tables (#405: out of drawings.js): a table (.bool.json, .tt.json before #2065) opened in its editor and kept in sync with its HDL
 // module (the table its base, #1176), the module a table is read back from, a table loaded from a module, and the table's schematic
 // view (#694).
-import { S, activateDoc, compileProject, findDoc, flushDoc, openDoc, openFile, setDirty, status } from './app.js';
+import { S, activateDoc, findDoc, flushDoc, openDoc, openFile, setDirty, status } from './app.js';
 import { alertDlg, confirmDlg, dialog, h, popupMenu } from './ui.js';
 import { api } from './api.js';
 import { log, logError } from './console.js';
-import { hdlStatus, hdlWarning } from './design-only.js';
-import { markStale, saveAll } from './processes.js';
-import { removeModule, renderHierarchy, topMenuItem } from './design.js';
+import { hdlWarning } from './design-only.js';
+import { saveAll } from './processes.js';
+import { removeModule, topMenuItem } from './design.js';
 import { renameDialog } from './rename.js';
 import {
-  clashItem, drawnHdlLanguage, drawnTop, freshHdl, refreshOpenEditor, refreshSyncBanner, setViewAsTop, staleHdl
+  clashItem, drawnTop, setViewAsTop, syncDrawingHdl
 } from './drawings.js';
 import { designSources as ttDesignSources } from './tbwizard.js';
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
@@ -47,7 +47,7 @@ export async function openTt(path) {
         save: async () => {
           const m = ed.getModel();
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
-          if (!S.syncing) syncHdlFromTt(path, m).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
+          syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
         destroy: () => ed.destroy?.(),
       };
@@ -55,36 +55,6 @@ export async function openTt(path) {
   });
 }
 const ttModel = async path => { const d = findDoc(`tt:${path}`); if (d?.ttEditor) { await flushDoc(d); return d.ttEditor.getModel(); } return JSON.parse(await api.readFile(S.project.name, path)); };
-const refreshTtLink = ttPath => findDoc(`tt:${ttPath}`)?.ttEditor?.refreshLink();
-
-export async function syncHdlFromTt(ttPath, model) {
-  const target = model.generatedFile;
-  if (!target || !S.fileTree.includes(target)) return;
-  if (await drawnHdlLanguage(ttPath, model)) return;
-  const { generateTableHdl, validateTable, normalizeTable } = await import('/core/logic.js');
-  const m = normalizeTable(model);
-  S.outOfSync ||= {};
-  const errs = validateTable(m).filter(x => x.severity === 'error');
-  if (errs.length) {
-    const why = `the truth table has errors: ${errs.map(x => x.message).join('; ')}`;
-    if (S.outOfSync[target] !== why) log(hdlWarning(`WARNING: ${target} not updated: ${why}`, ttPath, why), 'warn');
-    S.outOfSync[target] = why; staleHdl(target, ttPath, why); refreshSyncBanner(target); refreshTtLink(ttPath);
-    return;
-  }
-  const g = generateTableHdl(m, /\.v$/i.test(target) ? 'verilog' : 'vhdl', { source: ttPath.split('/').pop() });
-  freshHdl(target);
-  if (S.outOfSync[target]) { delete S.outOfSync[target]; refreshSyncBanner(target); refreshTtLink(ttPath); }
-  const cur = S.sources.find(x => x.path === target)?.text;
-  if (cur === g.code) return;
-  S.syncing = true;
-  try {
-    await api.writeFile(S.project.name, target, g.code);
-    const src = S.sources.find(x => x.path === target); if (src) src.text = g.code;
-    refreshOpenEditor(target, g.code);
-    compileProject(); renderHierarchy(); markStale();
-    hdlStatus(`${target} updated from ${ttPath.split('/').pop()}`);
-  } finally { S.syncing = false; }
-}
 
 // the table `old` made again from its HDL module (by exhaustive simulation of it, the don't cares
 // written in its comments kept); throws why it cannot be
