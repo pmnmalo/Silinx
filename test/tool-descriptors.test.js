@@ -1,9 +1,9 @@
-// web/js/tool-descriptors.js (#2311): a descriptor per back end, the process tree and the task list built from it. The
+// core/tool-descriptors.js (#2311; web/js/'s until #4751): a descriptor per back end, the process tree and the task list built from it. The
 // trees below are the ones processes.js wrote by hand before: the interface stays as it was.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ISE, NO_FLOW, DESIGN_ONLY, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5, SILINX_GOWIN, SILINX_GATEMATE, VIVADO, TOOLS, allTasks, buildProcesses, hasTask, simModelsOf, toolOf, MESSAGE_LINE, EXTRA_STEPS, IMPL_IDS } from '../web/js/tool-descriptors.js';
+import { ISE, NO_FLOW, DESIGN_ONLY, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5, SILINX_GOWIN, SILINX_GATEMATE, VIVADO, TOOLS, allTasks, buildProcesses, hasTask, simModelsOf, toolOf, MESSAGE_LINE, EXTRA_STEPS, IMPL_IDS } from '../core/tool-descriptors.js';
 import { XILINX_STEPS, orderSteps } from '../packages/silinx-fpga/src/open-steps.js';
 import { ICE40_STEPS } from '../packages/silinx-fpga/src/open-flow-ice40.js';
 import { XC7_STEPS } from '../packages/silinx-fpga/src/open-flow-xc7.js';
@@ -287,8 +287,8 @@ test('#2311 the marks kept: every process of a run in IMPL_IDS, for every tool',
 });
 
 test('#2311 #1678 the descriptors import the toolchain\'s light entry only', () => {
-  const imports = [...read('web/js/tool-descriptors.js').matchAll(/^import .* from '([^']+)'/gm)].map(m => m[1]);
-  assert.deepEqual(imports, ['../../packages/silinx-fpga/src/parts.js']);   // (#1649's vivadoDevice too: the light entry's)
+  const imports = [...read('core/tool-descriptors.js').matchAll(/^import .* from '([^']+)'/gm)].map(m => m[1]);
+  assert.deepEqual(imports, ['../packages/silinx-fpga/src/parts.js']);   // (#1649's vivadoDevice too: the light entry's)
 });
 
 test('#2311 the mechanism of the disabled process is gone: absent, not disabled', () => {
@@ -389,4 +389,10 @@ test('#3704 Emulate in every flow, on the HDL and the board\'s pins; its models 
   assert.deepEqual(simModelsOf(SILINX), ['postsynth', 'posttrans', 'postmap', 'postpar']);
   for (const tool of [SILINX_ICE40, SILINX_ECP5, SILINX_GOWIN, SILINX_XC7]) assert.deepEqual(simModelsOf(tool), ['postsynth', 'postpar'], tool.id);
   for (const tool of [VIVADO, NO_FLOW]) assert.deepEqual(simModelsOf(tool), [], tool.id);
+});
+
+test('#4751 web/js/tool-descriptors.js re-exports every name of core/tool-descriptors.js, the same values', async () => {
+  const core = await import('../core/tool-descriptors.js'), web = await import('../web/js/tool-descriptors.js');
+  assert.deepEqual(Object.keys(web).sort(), Object.keys(core).sort());
+  for (const k of Object.keys(core)) assert.equal(web[k], core[k], k);
 });
