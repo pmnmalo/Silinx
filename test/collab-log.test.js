@@ -15,13 +15,16 @@ const COLLAB = /^(collab-.*|git(-.*)?|github-app|relay-.*|share-.*|short-links|l
 // collab-runs.js: a shared project's runs mirrored to its followers keep their processes' sources (Implementation,
 // Simulation…), as the owner's console shows them; collab-log.js: the helper itself
 const EXCEPT = new Set(['collab-runs.js', 'collab-log.js']);
-const modules = readdirSync(DIR).filter(f => COLLAB.test(f) && !EXCEPT.has(f)).sort();
+// (and every module that calls the collaboration's server, whatever its name, #4729: Merge Contribution's dialog)
+const COLLAB_API = /\bapi\.(mergePreview|mergeContribution|undoMerge|git[A-Z]\w*|share[A-Z]\w*|relay[A-Z]\w*|shortLinks?\w*)\(/;
+const modules = readdirSync(DIR).filter(f => f.endsWith('.js') && (COLLAB.test(f) || COLLAB_API.test(read(f))) && !EXCEPT.has(f)).sort();
 // (the code without its comments and strings' insides would be safer, but no module names log in a comment's call form)
 const CONSOLE_WRITERS = /(?<![\w.$])(log|logLine|logError|logWarning|logInfo)\(|\bapp\.log\b/;
 
 test('the collaboration modules are found (git, sharing, relay, links)', () => {
   for (const f of ['git.js', 'git-branch.js', 'git-signin.js', 'git-clone-exists.js', 'collab-share.js', 'collab-follow.js',
-    'collab-host.js', 'collab-meet.js', 'collab-leave.js', 'relay-setup.js', 'short-links.js', 'link-copy.js', 'share-how.js'])
+    'collab-host.js', 'collab-meet.js', 'collab-leave.js', 'relay-setup.js', 'short-links.js', 'link-copy.js', 'share-how.js',
+    'merge-dialog.js'])   // (found by the server's calls it makes, #4729)
     assert.ok(modules.includes(f), f);
 });
 
@@ -43,7 +46,7 @@ test('every collaboration module writes to the console through collabLog only', 
   // the modules that write messages (a new one adds itself here once it writes)
   assert.deepEqual(writers, ['collab-follow.js', 'collab-host.js', 'collab-leave.js', 'collab-meet.js', 'collab-share.js',
     'collab-try.js', 'collab-users.js', 'git-branch.js', 'git-clone-exists.js', 'git-repo-list.js', 'git-signin.js', 'git.js',
-    'link-copy.js', 'relay-setup.js', 'short-links.js']);
+    'link-copy.js', 'merge-dialog.js', 'relay-setup.js', 'short-links.js']);
 });
 
 test("collabLog's source is the console's Design filter, and log() keeps a writer's source", () => {

@@ -14,11 +14,14 @@ import { h, dialog } from './ui.js';
 import { compile, elaborate } from '/core/compile.js';
 import { Simulator } from '/core/simulator.js';
 import { S, closeDoc, findDoc, openDoc, projectBoard, withPrimitives } from './app.js';
-import { log } from './console.js';
+import { log as consoleLog } from './console.js';
 import { inView, saveProjectJson } from './design.js';
 import { field, select } from './wizards.js';
 import { boardClockOf, boardClockText, captureClockText } from '/core/ila-insert.js';
 import { clocksOf } from '/core/schematic.js';
+
+// the logic analyzer's lines: the board's, Implementation's (#4729), whatever process ran last
+const log = (text, cls = '', opts = {}) => consoleLog(text, cls, { ...opts, src: 'impl' });
 
 const DEPTHS = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384];
 const OPS = [['=', '='], ['!=', '≠'], ['rise', 'rises'], ['fall', 'falls'], ['change', 'changes']];

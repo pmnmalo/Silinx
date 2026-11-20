@@ -5,7 +5,7 @@
 // disk asks which to keep. The page's own writes are not told back to it. The browser edition has no events.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log } from './console.js';
+import { appLog as log } from './console.js';   // (the application's lines, under every filter, #4729)
 import { S, activateDoc, closeDoc, openFile, refreshSummary, setDirty, flushDoc } from './app.js';
 import { reloadProject } from './project.js';
 import { restoreImplStatus, saveImplStatus } from './processes.js';

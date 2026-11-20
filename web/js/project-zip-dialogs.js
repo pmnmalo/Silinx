@@ -6,6 +6,7 @@
 import { api } from './api.js';
 import { h, dialog, alertDlg } from './ui.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';   // (the application's lines, under every filter, #4729)
 import { prefKey } from './prefs.js';
 import { SOFTWARE, SUPPORTED, projectSoftware } from '/core/project-software.js';
 import { projectNameError, projectNameFrom } from '/core/project-name.js';
@@ -160,7 +161,7 @@ async function importIse(files, dirFiles, typed) {
     const res = await replaceProjectWith(pname, async () => {
       if (dirFiles.length) {
         const z = await zipFolderSelection(dirFiles);
-        app.log(`Importing folder '${z.rootName}': ${z.count} file(s)${z.skipped ? `, ${z.skipped} ISE output/hidden file(s) skipped` : ''}.`, 'info');
+        appLog(`Importing folder '${z.rootName}': ${z.count} file(s)${z.skipped ? `, ${z.skipped} ISE output/hidden file(s) skipped` : ''}.`, 'info');
         return api.importZip(pname, z.blob);
       }
       if (zf) return api.importZip(pname, zf);
@@ -171,9 +172,9 @@ async function importIse(files, dirFiles, typed) {
     await app.openProject(pname);
     app.showLeftPage('design');
     const n = res?.project?.files?.length ?? 0;
-    app.log(`Imported Xilinx ISE project '${pname}' (${n} source file(s)${res?.extra?.length ? `, ${res.extra.length} other file(s)` : ''}).`, 'ok');
-    if (res?.missing?.length) app.log(`WARNING: files referenced by the .xise but not found: ${res.missing.join(', ')}`, 'warn');
-    for (const w of res?.warnings || []) app.log(`WARNING: ${w}`, 'warn');
+    appLog(`Imported Xilinx ISE project '${pname}' (${n} source file(s)${res?.extra?.length ? `, ${res.extra.length} other file(s)` : ''}).`, 'ok');
+    if (res?.missing?.length) appLog(`WARNING: files referenced by the .xise but not found: ${res.missing.join(', ')}`, 'warn');
+    for (const w of res?.warnings || []) appLog(`WARNING: ${w}`, 'warn');
   } catch (e) { alertDlg('Import Project', e.message, 'error'); }
 }
 
@@ -187,14 +188,14 @@ async function importSilinx(zf, dirFiles, typed) {
       if (!dirFiles.length) return api.importZip(pname, zf);
       // the folder as its export's zip (#3965): through the same import, its checks and its messages
       const z = await zipFolderSelection(dirFiles, 'silinx');
-      app.log(`Importing folder '${z.rootName}': ${z.count} file(s)${z.skipped ? `, ${z.skipped} build/hidden file(s) skipped` : ''}.`, 'info');
+      appLog(`Importing folder '${z.rootName}': ${z.count} file(s)${z.skipped ? `, ${z.skipped} build/hidden file(s) skipped` : ''}.`, 'info');
       return api.importZip(pname, z.blob);
     });
     await app.openProject(pname);
     app.showLeftPage('design');
-    app.log(`Imported Silinx project '${pname}' (${res?.project?.files?.length ?? 0} source file(s)${res?.extra?.length ? `, ${res.extra.length} other file(s)` : ''}).`, 'ok');
-    if (res?.missing?.length) app.log(`WARNING: files listed in silinx.json but not in the ${dirFiles.length ? 'folder' : 'zip'}: ${res.missing.join(', ')}`, 'warn');
+    appLog(`Imported Silinx project '${pname}' (${res?.project?.files?.length ?? 0} source file(s)${res?.extra?.length ? `, ${res.extra.length} other file(s)` : ''}).`, 'ok');
+    if (res?.missing?.length) appLog(`WARNING: files listed in silinx.json but not in the ${dirFiles.length ? 'folder' : 'zip'}: ${res.missing.join(', ')}`, 'warn');
     // (what the import dropped: an entry that would leave the project, a broken silinx.json field, #483)
-    for (const w of res?.warnings || []) app.log(`WARNING: ${w}`, 'warn');
+    for (const w of res?.warnings || []) appLog(`WARNING: ${w}`, 'warn');
   } catch (e) { alertDlg('Import Project', e.message, 'error'); }
 }

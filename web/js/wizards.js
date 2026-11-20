@@ -6,6 +6,7 @@ import { PRODUCT, PRODUCT_FULL, VERSION, VERSION_LABEL, BUILD, REPOSITORY, compa
 import { icons } from './icons.js';
 import { h, dialog, alertDlg, confirmDlg, toast } from './ui.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';   // (the application's lines, under every filter, #4729)
 import { THIRD_PARTY } from '/core/third-party.js';
 import { drawnHdlPath, isView } from '/core/view-hdl.js';
 import { IMPORT_SOURCE_ACCEPT, IMPORT_SOURCE_ROLES, assignImported, importSourceFile } from '/core/import-source.js';
@@ -129,9 +130,9 @@ export async function replaceProjectWith(pname, fn) {
       if (backup?.zip) { await api.importZip(old, backup.zip); restored = true; }
     } catch { /* keep the import error */ }
     if (restored) {
-      app.log(`The previous project '${old}' was restored.`, 'info');
+      appLog(`The previous project '${old}' was restored.`, 'info');
       if (wasOpen) { try { await app.openProject(old); app.showLeftPage('design'); } catch { /* it is in the project list */ } }
-    } else if (exists && !deletesProjects()) app.log(`The previous project '${old}' is in the workspace .trash folder.`, 'info');
+    } else if (exists && !deletesProjects()) appLog(`The previous project '${old}' is in the workspace .trash folder.`, 'info');
     throw e;
   }
 }
@@ -141,7 +142,7 @@ async function removeExistingProject(name) {
   if (!pname) return;
   if (S.project?.name === pname) await app.closeProject();
   await api.deleteProject(pname);
-  app.log(`Project '${pname}' replaced${deletesProjects() ? '' : ' (the old one is in the workspace .trash folder)'}.`, 'info');
+  appLog(`Project '${pname}' replaced${deletesProjects() ? '' : ' (the old one is in the workspace .trash folder)'}.`, 'info');
 }
 
 // the synthesis tools of a project (Silinx: the Silinx toolchain's whole flow, no ISE; XST: Xilinx ISE)
@@ -278,7 +279,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     // a diagram / table top: its document and its synchronized HDL module 'top'
     const top = topType.value !== 'hdl' && tplSel.value === 'empty' ? await createTopSource(pj.name, topType.value, langSel.value) : null;
     await app.openProject(pj.name);
-    if (noFlowWarning(pj.device)) app.log(noFlowWarning(pj.device), 'warn');
+    if (noFlowWarning(pj.device)) appLog(noFlowWarning(pj.device), 'warn');
     if (api.standalone && tplSel.value !== 'empty') await app.boardUcf();   // (the chosen board's pins, as the server's, #2430)
     app.showLeftPage('design');
     if (top) {
@@ -418,10 +419,10 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
     // through the import gate (#2830): a file it refuses is not added, said in the console; a drawing named with a
     // reserved word refused (#679) (core/import-source.js)
     const c = importSourceFile(f.name, new Uint8Array(await f.arrayBuffer()), role.value);
-    if (c.refused === 'gate') { app.log(`WARNING: ${c.message}`, 'warn'); continue; }
+    if (c.refused === 'gate') { appLog(`WARNING: ${c.message}`, 'warn'); continue; }
     if (c.refused) { await alertDlg(title, c.message, 'error'); continue; }
     if (refusedHere(c.path)) continue;   // (an HDL file in a design and simulation project, #3780: the console says why)
-    if (c.warning) app.log(`WARNING: ${c.warning}`, 'warn');
+    if (c.warning) appLog(`WARNING: ${c.warning}`, 'warn');
     if ((S.diskTree || S.fileTree).includes(c.path) && !await confirmDlg(title, `${c.path} already exists in the project. Replace it with the copy of ${f.name}?`)) continue;
     await api.writeFile(S.project.name, c.path, c.text);
     written.push(c.path);
@@ -432,8 +433,8 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
   delete pj.fileTree;
   await api.saveProject(pj.name, pj);
   await app.reloadProject();
-  app.log(`Added ${written.length} source file(s).`, 'ok');
-  for (const d of reservedNameDiags().filter(d => written.includes(d.file))) app.log(`WARNING:${d.tool} - "${d.file}" Line ${d.line}: ${d.message}`, 'warn');
+  appLog(`Added ${written.length} source file(s).`, 'ok');
+  for (const d of reservedNameDiags().filter(d => written.includes(d.file))) appLog(`WARNING:${d.tool} - "${d.file}" Line ${d.line}: ${d.message}`, 'warn');
 }
 
 export async function sourceProperties(path) {
@@ -499,7 +500,7 @@ export async function projectProperties() {
   // a design and simulation project made (#3780), or one given a board or a device: an FPGA project then
   const topChanged = topSel.value !== top0;
   if (topChanged) pj.topSourceType = topSel.value;
-  const topLine = () => topChanged && app.log(`Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topSel.value).label}.`, 'info');
+  const topLine = () => topChanged && appLog(`Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topSel.value).label}.`, 'info');
   if (kindSel.value === DESIGN_KIND) {
     if (!isDesignOnly(pj)) return await makeDesignProject(pj) && topLine();
     if (topChanged) { await app.saveProjectJson(); topLine(); }
@@ -513,7 +514,7 @@ export async function projectProperties() {
   if (fromDesign) {   // (its kind dropped, its constraints file named: the device's format below)
     pj.constraints = asFpgaProject(pj, { device: dp.value() }).constraints;
     delete pj.kind;
-    app.log(`${pj.name}: an FPGA project now: its HDL and its implementation shown.`, 'info');
+    appLog(`${pj.name}: an FPGA project now: its HDL and its implementation shown.`, 'info');
   }
   pj.board = boardSel.value || null;
   pj.device = dp.value();
@@ -525,11 +526,11 @@ export async function projectProperties() {
   // every drawing in the new language, its HDL file made again in it (#1477)
   if (lang.value !== oldLang) {
     const n = (await (await import('./drawings-lang.js')).drawingsInLanguage(lang.value)).length;
-    app.log(`Preferred Language: ${lang.value === 'verilog' ? 'Verilog' : 'VHDL'}${n ? ` (${n} drawing(s) now in it, their HDL made again in it)` : ''}.`, 'info');
+    appLog(`Preferred Language: ${lang.value === 'verilog' ? 'Verilog' : 'VHDL'}${n ? ` (${n} drawing(s) now in it, their HDL made again in it)` : ''}.`, 'info');
   }
   await app.reloadProject();
-  app.log(`Device set to ${pj.device.part}${pj.device.speed}-${pj.device.package}${pj.board ? ` (board ${pj.board})` : ''}.`, 'info');
-  if (noFlowWarning(pj.device)) app.log(noFlowWarning(pj.device), 'warn');
+  appLog(`Device set to ${pj.device.part}${pj.device.speed}-${pj.device.package}${pj.board ? ` (board ${pj.board})` : ''}.`, 'info');
+  if (noFlowWarning(pj.device)) appLog(noFlowWarning(pj.device), 'warn');
   const changed = pj.board !== oldBoard || `${pj.device.part}-${pj.device.package}` !== oldDev;
   const board = app.projectBoard();
   // another board: its clock and its inputs' levels as the defaults of the top's generics (#3710)
@@ -538,7 +539,7 @@ export async function projectProperties() {
     `The target changed to the ${board.name}.\nPin locations (LOC) in the constraints file are board specific.\n\nRegenerate ${pj.constraints || 'the UCF'} from the ${board.name} pin table? (ports are matched by name: clk, led, sw, btn, seg, an…)`)) {
     await app.regenerateUcf(board);
   } else if (changed && !board && S.fileTree.includes(pj.constraints)) {
-    app.log(`WARNING: check the pin locations in ${pj.constraints} — they must exist on the ${pj.device.package.toUpperCase()} package.`, 'warn');
+    appLog(`WARNING: check the pin locations in ${pj.constraints} — they must exist on the ${pj.device.package.toUpperCase()} package.`, 'warn');
   }
 }
 
@@ -657,7 +658,7 @@ export async function toolchainDialog() {
   }
   try {
     S.toolchain = await api.saveToolchain(out);
-    app.log(`Toolchain settings saved (${S.toolchain.ise.mode}: ${S.toolchain.ise.reason}).`, S.toolchain.ise.available ? 'ok' : 'warn');
+    appLog(`Toolchain settings saved (${S.toolchain.ise.mode}: ${S.toolchain.ise.reason}).`, S.toolchain.ise.available ? 'ok' : 'warn');
     app.renderProcesses();
   } catch (e) { alertDlg('Toolchain Settings', e.message, 'error'); }
 }
@@ -827,12 +828,12 @@ export function setUpdateCheckEnabled(on) {
  * setting off, nothing leaves: one line in the console says so.
  */
 export async function checkUpdatesOnStart() {
-  if (!updateCheckEnabled()) { app.log('Check for updates at start-up is off (Help menu); Help > Check for Updates… checks now.', 'info'); return null; }
+  if (!updateCheckEnabled()) { appLog('Check for updates at start-up is off (Help menu); Help > Check for Updates… checks now.', 'info'); return null; }
   // on the site: the page open against the one it serves now
   const served = await siteVersion();
   if (served) {
     if (!sameBuild(served)) return checkUpdatesDialog({ served });
-    app.log(`${PRODUCT} ${VERSION_LABEL} is the version this site serves.`, 'info');
+    appLog(`${PRODUCT} ${VERSION_LABEL} is the version this site serves.`, 'info');
     return null;
   }
   let rel;
@@ -848,7 +849,7 @@ export async function checkUpdatesOnStart() {
   const latest = String(rel.tag_name || rel.name || '').replace(/^v/i, '');
   if (!latest) return null;
   if (compareVersions(latest, VERSION) > 0) return checkUpdatesDialog({ rel });
-  app.log(`${PRODUCT} ${VERSION} is up to date (latest release on GitHub: ${latest}).`, 'info');
+  appLog(`${PRODUCT} ${VERSION} is up to date (latest release on GitHub: ${latest}).`, 'info');
   return null;
 }
 
