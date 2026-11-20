@@ -25,6 +25,7 @@ import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js
 import { mountCircuitOptions } from './circuit-options.js';
 import { adoptOps, recordCircuit, replayCircuit, replayPlan, tryOps } from '/core/collab-try.js';
 import { mountCircuitClip } from './circuit-clip.js';
+import { mountCircuitKeys } from './circuit-keys.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { clone } from '/core/util.js';
@@ -264,21 +265,8 @@ export function mountCircuitEditor(container, opts = {}) {
     applyView();
   }
   function zoomBtn(f) { const r = svg.getBoundingClientRect(); zoomAt(f, r.left + r.width / 2, r.top + r.height / 2); }
-  root.addEventListener('keydown', (e) => {
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-    const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-    if (readOnly && (mod ? /^[zyxv]$/.test(k) : /^(Delete|Backspace|r)$/i.test(e.key))) return;
-    if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); undo(); }
-    else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); e.stopPropagation(); redo(); }
-    else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); }
-    else if (mod && (k === 'c' || k === 'x')) { if (sel?.kind === 'part') { e.preventDefault(); clip.copy(k === 'x'); } }
-    else if (mod && k === 'v' && !readOnly) clip.pasteKey();
-    else if (e.key === 'Escape') { if (sim) stopSim(); else if (tool === 'wire' && draft?.length >= 2) endWire(); else setTool('select'); }
-    else if (!mod && k === 'r') rotateSelection();
-    else if (!mod && (k === '+' || k === '=')) zoomBtn(1.25);
-    else if (!mod && k === '-') zoomBtn(0.8);
-    else if (!mod && k === 'f') fit();
-  });
+  // (its keys, circuit-keys.js)
+  mountCircuitKeys({ root, readOnly, sel: () => sel, sim: () => sim, tool: () => tool, draft: () => draft, clip, undo, redo, deleteSelection, stopSim, endWire, setTool, rotateSelection, zoomBtn, fit });
 
   function bounds() {
     const xs = [], ys = [];
