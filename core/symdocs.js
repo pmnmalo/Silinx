@@ -41,6 +41,7 @@ const UI = {
   'Equivalent HDL': 'HDL equivalente',
   'Symbol': 'Símbolo',
   'Xilinx library equivalents': 'Equivalentes na biblioteca Xilinx',
+  'Composition': 'Composição',
   'Formula': 'Fórmula',
   'input': 'entrada',
   'output': 'saída',

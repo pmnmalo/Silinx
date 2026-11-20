@@ -79,3 +79,31 @@ test('symbol_info: a device primitive\'s resource on the project\'s device; its 
   await fails('symbol_info', { project: 'fpga', symbol: '' }, 'symbol: a symbol\'s name (M4_1, FDCE, AND2…)');
   await fails('symbol_info', { project: 'nothing', symbol: 'M4_1' }, 'no project \'nothing\' in the workspace');
 });
+
+// #4807: a symbol built of others (core/symlib.js): its composition's levels in symbol_info, each level's drawing by
+// symbol_composition (the schematic it is, its modules the level below), in a design project too; its errors
+test('symbol_info ADD8: its composition\'s levels; symbol_composition draws each, down to the gates', async () => {
+  await setup();
+  const r = await ok('symbol_info', { project: 'fpga', symbol: 'ADD8', params: { cin: true, cout: true } });
+  assert.deepEqual(section(r.text, 'Composition:'), ['  ADD8 = 2 × ADD4', '  ADD4 = 4 × FA1', '  FA1 = 2 × XOR2 + 2 × AND2 + OR2']);
+  assert.deepEqual(r.data.composition, { top: 'ADD8', levels: [
+    { module: 'ADD8', parts: [{ name: 'ADD4', count: 2, module: true }] }, { module: 'ADD4', parts: [{ name: 'FA1', count: 4, module: true }] },
+    { module: 'FA1', parts: [{ name: 'XOR2', count: 2, module: false }, { name: 'AND2', count: 2, module: false }, { name: 'OR2', count: 1, module: false }] }] });
+  const pt = await ok('symbol_info', { project: 'drawn', symbol: 'sub', params: { width: 4 }, interface_language: 'pt' });
+  assert.deepEqual(section(pt.text, 'Composição:'), ['  SUB4_NOBI_NOBO = ADD4 + INV + VCC', '  ADD4 = 4 × FA1', '  FA1 = 2 × XOR2 + 2 × AND2 + OR2'], 'a design project\'s, in Portuguese');
+  const m4 = await ok('symbol_info', { project: 'fpga', symbol: 'M4_1' });
+  assert.equal(m4.data.composition, null, 'none yet');
+  assert.doesNotMatch(m4.text, /Composition/);
+  // the top, then a level below, by its name
+  const top = await ok('symbol_composition', { project: 'fpga', symbol: 'ADD8', params: { cin: true, cout: true } });
+  assert.deepEqual(top.text.split('\n').slice(0, 2), ['ADD8: ADD8 = 2 × ADD4', 'ADD8\'s drawing (a schematic, read-only; its modules: ADD4):']);
+  assert.deepEqual([top.data.module, top.data.levels, top.data.ports.map(q => `${q.name}:${q.dir}:${q.width}:${q.side}`)], ['ADD8', ['ADD8', 'ADD4', 'FA1'], ['A:in:8:W', 'B:in:8:W', 'S:out:8:E', 'CI:in:1:S', 'CO:out:1:N']]);
+  assert.deepEqual(top.data.doc.symbols.map(s => `${s.name} ${s.params.module}`), ['U1 ADD4', 'U0 ADD4']);
+  assert.deepEqual(JSON.parse(top.text.split('\n').slice(2).join('\n')), top.data.doc, 'the drawing, as read_file returns a schematic');
+  const fa = await ok('symbol_composition', { project: 'drawn', symbol: 'add', params: { width: 8, cin: true, cout: true }, module: 'fa1' });
+  assert.deepEqual(fa.text.split('\n').slice(0, 2), ['ADD8: FA1 = 2 × XOR2 + 2 × AND2 + OR2 (a level of ADD8)', 'FA1\'s drawing (a schematic, read-only; its modules: none, gates only):']);
+  assert.deepEqual(fa.data.doc.symbols.map(s => s.type).sort(), ['and2', 'and2', 'or2', 'xor2', 'xor2']);
+  await fails('symbol_composition', { project: 'fpga', symbol: 'ADD8', module: 'ADD16' }, 'no level \'ADD16\' in the composition of ADD8: one of ADD8, ADD4, FA1');
+  await fails('symbol_composition', { project: 'fpga', symbol: 'M4_1' }, 'M4_1: no composition (a symbol of the palette drawn as it is; the adders and subtractors have one)');
+  await fails('symbol_composition', { project: 'fpga', symbol: 'NOPE' }, 'no symbol \'NOPE\' in the palette');
+});

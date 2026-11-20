@@ -297,3 +297,28 @@ test('#1688 net names of bus bits: a(0) is bit 0 of a, a bus made of its bits b(
     "error: bus tap U1 takes bit 1 of 'a' but its wire is named a(0)",
   ]);
 });
+
+// #4846: a bus's I/O marker on a short wire of its own, its bits named on other wires (a(3:2), a(1:0)), as the palette's
+// compositions draw it (#4807): connected to them by name, no "I/O marker 'a' is not connected"; an output's too
+test('#4846 a bus marker whose bits are named on other wires is connected to them', () => {
+  const { normalizeDoc, netlist, symbolPins } = schdoc;
+  const d = { version: 6, name: 'parts', lang: 'vhdl', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [], ports: [] };
+  const named = (x, y, net) => { d.wires.push({ id: `W${d.wires.length + 1}`, points: [{ x, y }, { x: x - 40, y }] }); d.labels.push({ id: `L${d.labels.length + 1}`, x: x - 40, y, net }); };
+  for (const [i, [nm, dir]] of [['a', 'in'], ['s', 'out']].entries()) {
+    const x = dir === 'in' ? 100 : 1500, y = 100;
+    d.ports.push({ id: `P${i}`, name: nm, dir, width: 4, x, y: y + 60 * i });
+    d.wires.push({ id: `WP${i}`, points: [{ x, y: y + 60 * i }, { x: x + (dir === 'in' ? 40 : -40), y: y + 60 * i }] });
+  }
+  // s(3:2) = not a(3:2), s(1:0) = a(1:0)
+  [['inv', 'a(3:2)', 's(3:2)'], ['buf', 'a(1:0)', 's(1:0)']].forEach(([type, i, o], k) => {
+    const s = { id: `S${k + 1}`, type, x: 600, y: 300 + 100 * k, rot: 0, mirror: false, name: `U${k + 1}`, params: { width: 2 } };
+    d.symbols.push(s);
+    const pins = symbolPins(s), pi = pins.find((q) => q.name === 'I'), po = pins.find((q) => q.name === 'O');
+    named(pi.x, pi.y, i);
+    d.wires.push({ id: `W${d.wires.length + 1}`, points: [{ x: po.x, y: po.y }, { x: po.x + 40, y: po.y }] });
+    d.labels.push({ id: `L${d.labels.length + 1}`, x: po.x + 40, y: po.y, net: o });
+  });
+  const doc = normalizeDoc(d);
+  assert.deepEqual(netlist(doc).diagnostics, []);
+  for (const lang of ['vhdl', 'verilog']) assert.deepEqual(generateHdl({ ...doc, lang }, { lang }).diagnostics, [], lang);
+});
