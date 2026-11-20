@@ -18,6 +18,7 @@ import { FILE, FOLDER, exportZip, openImport, setFolder } from './zip-helpers.js
 import { emuNotes } from './emu-notes.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { buildInfo } from '../../scripts/build-info.mjs';
+import { NO_WEBUSB } from '../../core/webusb-support.js';
 // the builds here are development builds of their own, also in the CI of a pushed tag, whose GITHUB_REF would make them the
 // release's (#1354)
 const devEnv = () => { const e = { ...process.env }; delete e.GITHUB_REF; return e; };
@@ -165,22 +166,30 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   // nothing; no "install openFPGALoader…" at startup
   assert.doesNotMatch(await page.consoleText(), /Programmers found/);
   await page.eval(() => window.SilinxApp.openImpact());
-  await page.click('.doc:not([hidden]) .btn.primary', { text: 'Program FPGA' });
-  await page.waitDialog('Program FPGA');
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .msg-text').innerText), /Implement the design first\? When it ends without errors, the FPGA is programmed\./);
-  await page.dialogButton('No');
-  await page.waitNoDialog();
-  assert.doesNotMatch(await page.consoleText(), /Programming FPGA/);
-  // a build said done whose bitstream this browser does not have (its files were in the memory of a page since
-  // reloaded): asked again, with the reason (#1084, #1104); No programs nothing
-  await page.eval(() => { window.Silinx.status.bitgen = 'ok'; });
-  await page.click('.doc:not([hidden]) .btn.primary', { text: 'Program FPGA' });
-  await page.waitDialog('Program FPGA');
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .msg-text').innerText),
-    /^The programming file of 'top' is not in this browser any more \(a build is kept for the browser session only\)\.\s+Implement the design first\? When it ends without errors, the FPGA is programmed\.$/);
-  await page.dialogButton('No');
-  await page.waitNoDialog();
-  assert.doesNotMatch(await page.consoleText(), /Programming FPGA|see log/);
+  if (await page.eval(() => !navigator.usb)) {
+    // (Firefox, WebKit: no WebUSB; Program FPGA says so at once, no implementation offered, #4592)
+    await page.click('.doc:not([hidden]) .btn.primary', { text: 'Program FPGA' });
+    await page.waitConsole(/Programming FPGA \(SRAM\) failed: programming from the browser needs Chrome or Edge/);
+    assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay')), false);
+    assert.deepEqual((await page.consoleText()).split('\n').slice(-2), ['Programming FPGA (SRAM)...', `ERROR: Programming FPGA (SRAM) failed: ${NO_WEBUSB}`]);
+  } else {
+    await page.click('.doc:not([hidden]) .btn.primary', { text: 'Program FPGA' });
+    await page.waitDialog('Program FPGA');
+    assert.match(await page.eval(() => document.querySelector('.dlg-overlay .msg-text').innerText), /Implement the design first\? When it ends without errors, the FPGA is programmed\./);
+    await page.dialogButton('No');
+    await page.waitNoDialog();
+    assert.doesNotMatch(await page.consoleText(), /Programming FPGA/);
+    // a build said done whose bitstream this browser does not have (its files were in the memory of a page since
+    // reloaded): asked again, with the reason (#1084, #1104); No programs nothing
+    await page.eval(() => { window.Silinx.status.bitgen = 'ok'; });
+    await page.click('.doc:not([hidden]) .btn.primary', { text: 'Program FPGA' });
+    await page.waitDialog('Program FPGA');
+    assert.match(await page.eval(() => document.querySelector('.dlg-overlay .msg-text').innerText),
+      /^The programming file of 'top' is not in this browser any more \(a build is kept for the browser session only\)\.\s+Implement the design first\? When it ends without errors, the FPGA is programmed\.$/);
+    await page.dialogButton('No');
+    await page.waitNoDialog();
+    assert.doesNotMatch(await page.consoleText(), /Programming FPGA|see log/);
+  }
   // edits are kept across a reload (localStorage)
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   await page.waitFor(() => window.Silinx.active?.id === 'file:src/top.vhd' && window.Silinx.active.editor);

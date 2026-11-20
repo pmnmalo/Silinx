@@ -103,26 +103,27 @@ uiTest('#4593 browser edition: the WebUSB chooser asked for in the click itself 
   const calls = () => page.eval(() => window.__usbCalls);
 
   // no board granted yet: the chooser in the click (the old code asked after its awaits: Chrome's SecurityError, no chooser)
+  // (the job's error said once, by the operation's "… failed:" line, #4597)
   await mockUsb(page);
-  assert.deepEqual(await programFpga(), [`ERROR: ${OPENED}`, `ERROR: Programming FPGA (SRAM) failed: ${OPENED}`]);
+  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${OPENED}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
   // the chooser closed with no board
   await mockUsb(page, { choose: 'cancel' });
-  assert.deepEqual(await programFpga(), [`ERROR: ${NOT_CHOSEN}`, `ERROR: Programming FPGA (SRAM) failed: ${NOT_CHOSEN}`]);
+  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${NOT_CHOSEN}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
   // a board granted before: no chooser, the job takes it
   await mockUsb(page, { granted: true });
   await page.eval(() => new Promise((r) => setTimeout(r, 100)));   // (the page's getDevices answered)
-  assert.deepEqual(await programFpga(), [`ERROR: ${OPENED}`, `ERROR: Programming FPGA (SRAM) failed: ${OPENED}`]);
+  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${OPENED}`]);
   assert.deepEqual(await calls(), []);
   // Initialize Chain (Scan), and the PROM's Back up PROM: the chooser in their click too
   await mockUsb(page);
   assert.deepEqual(await program('Scan', () => page.click('.doc:not([hidden]) .btn', { text: 'Initialize Chain (Scan)' }), /Scanning JTAG chain failed/),
-    [`ERROR: ${OPENED}`, `ERROR: Scanning JTAG chain failed: ${OPENED}`]);
+    [`ERROR: Scanning JTAG chain failed: ${OPENED}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
   await page.click('.doc:not([hidden]) .impact-dev', { text: 'XCF02S' });   // (the chain's PROM selected: its operations)
   await mockUsb(page);
   assert.deepEqual(await program('Back up PROM', () => page.click('.doc:not([hidden]) .btn', { text: 'Back up PROM' }), /Backing up \w+ failed/),
-    [`ERROR: ${OPENED}`, `ERROR: Backing up XCF02S failed: ${OPENED}`]);
+    [`ERROR: Backing up XCF02S failed: ${OPENED}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
 }, { url: () => 'about:blank', timeout: 120000 });
