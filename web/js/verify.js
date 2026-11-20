@@ -112,7 +112,7 @@ export async function assertProcess(mod, { depth, timeLimit } = {}) {
 
 async function verifyInner(mod, { reference = null, depth, timeLimit }) {
   const id = reference ? 'verify' : 'verify-assert';
-  await saveAll();
+  if (!await saveAll()) { setStatus(id, 'err'); return null; }
   setStatus(id, 'running');
   const srcs = verifySources();
   // (Yosys: the page's workers, or the browser edition's own, as the emulator's compiled engine runs it)

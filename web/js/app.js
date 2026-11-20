@@ -220,7 +220,7 @@ export const history = createHistory(api, {
   project: () => S.project?.name,
   files: () => S.diskTree || S.fileTree || [],
   settings: () => { if (!S.project) return null; const pj = { ...S.project }; delete pj.fileTree; return JSON.stringify(pj); },
-  flush: () => saveAll(),
+  flush: () => saveAll({ quiet: true }),
   before: (changed) => confirmDlg('Undo / Redo', `Changed since:\n${changed.slice(0, 12).join('\n')}${changed.length > 12 ? '\n…' : ''}\n\nUndo / Redo anyway (those changes are lost)?`),
   restored: async (e, paths) => {
     // the documents of the files it changed: closed (without saving), opened again from the files
@@ -795,7 +795,7 @@ async function renameFolder(dir) {
   if (to.startsWith('/') || to.split('/').some(x => !x || x === '..' || x === '.')) return alertDlg('Rename Folder', 'Enter a folder path inside the project.');
   if (to.startsWith(`${dir}/`)) return alertDlg('Rename Folder', 'A folder cannot be moved into itself.');
   if (S.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return alertDlg('Rename Folder', `'${to}' already exists.`);
-  await saveAll();
+  if (!await saveAll()) return;
   const remap = p => (p && p.startsWith(`${dir}/`) ? to + p.slice(dir.length) : p);
   const views = S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f));
   // the editors of moved files are closed and reopened at their new paths

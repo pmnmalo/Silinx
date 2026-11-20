@@ -180,7 +180,7 @@ function mountExercise(el, doc, path, ex) {
   // Reference from the Project (#3831): the exercise's reference, the project's design as it is saved (its files by their
   // paths, read when the tests run; a drawing's HDL written in)
   async function referenceFromProject() {
-    await saveAll();
+    if (!await saveAll()) return;
     const { reference, problems } = projectReference(await projectSubmission(name), dir);
     if (problems.length) { for (const m of problems) log(`ERROR: no reference made: ${m}`, 'err'); return; }
     ex.reference = reference;
@@ -192,7 +192,7 @@ function mountExercise(el, doc, path, ex) {
   async function expectedOutputs() {
     const x = ex.tests?.[sel];
     if (x?.kind !== 'vectors') { log('ERROR: Expected from the Reference fills a vectors test: select one.', 'err'); return; }
-    await saveAll();
+    if (!await saveAll()) return;
     const read = await withFileTexts(ex, p => api.readFile(name, p), dir);
     const r = read.problems.length ? { problems: read.problems.map(m => `${path}: ${m}`) } : expectedFromReference(read.exercise, read.exercise.tests[sel]);
     if (r.problems.length) { for (const m of r.problems) log(`ERROR: test ${x.id}: ${m}`, 'err'); return; }
@@ -208,7 +208,7 @@ function mountExercise(el, doc, path, ex) {
     if (busy) return;
     busy = true; render();
     try {
-      await saveAll();   // (as Check Syntax: the documents saved first, the exercise too)
+      if (!await saveAll()) return;   // (as Check Syntax: the documents saved first, the exercise too)
       log(`\nStarted : "${visible ? 'Run Visible Tests' : 'Run All Tests'}" (${path}).\n`, 'hdr');
       // (its files beside it, as silinx grade reads them: from the project, the exercise's folder)
       const read = await withFileTexts(ex, p => api.readFile(name, p), dir);

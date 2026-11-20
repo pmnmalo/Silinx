@@ -123,7 +123,7 @@ export async function ucfDiagnostics(text, file) {
 // tab's, Check Syntax's kept)
 export async function checkUcfFile(path = S.project?.constraints, { quiet = false, warnings = null } = {}) {
   if (!path) return true;
-  await saveAll();
+  if (!await saveAll()) return false;
   let text;
   try { text = await api.readFile(S.project.name, path); } catch { return true; }
   const diags = await ucfDiagnostics(text, path);

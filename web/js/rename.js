@@ -43,7 +43,7 @@ const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 
 export async function renameDialog(file, mod = null) {
   if (!S.project) return;
-  await saveAll();
+  if (!await saveAll()) return;
   const mods = S.modules.filter(m => m.file === file && m.kind !== 'package').map(m => m.name);
   const modName = mod || (mods.length === 1 ? mods[0] : null);
   const base = file.slice(dirOf(file).length, file.length - extOf(file).length);

@@ -63,7 +63,7 @@ async function linkChanged(hash = location.hash) {
 
 // the student's work saved before anything is replaced or compared: a document that cannot be saved stops the link
 async function saved(what) {
-  await app.saveAll();
+  await app.saveAll({ quiet: true });   // (its own message below)
   const unsaved = S.docs.filter(d => d.dirty);
   if (unsaved.length) { app.log(`ERROR: ${what}: ${unsaved.map(d => d.path || d.title).join(', ')} could not be saved: the link was not opened; your changes are kept.`, 'err'); return false; }
   return true;

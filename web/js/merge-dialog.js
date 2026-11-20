@@ -58,7 +58,7 @@ export async function mergeContributionDialog() {
 async function mergeWith(zip, label, choices) {
   const name = S.project?.name;
   if (!name) return null;
-  await saveAll();
+  if (!await saveAll()) return null;
   let p;
   try { p = await api.mergePreview(name, zip); } catch (e) { err(e.message); return null; }
   for (const w of p.warnings) log(`WARNING: Merge Contribution: ${w}.`, 'warn');
@@ -158,7 +158,7 @@ async function merge(name, zip, label, resolve) {
 export async function undoMerge() {
   if (!S.project) return null;
   const name = S.project.name;
-  await saveAll();
+  if (!await saveAll()) return null;
   let r;
   try { r = await api.undoMerge(name); } catch (e) { log(`ERROR: Undo Merge: ${e.message}`, 'err'); return null; }
   log(`Undid the last merge of '${name}': ${r.restored.length} file(s) put back, ${r.removed.length} removed.`, 'ok');

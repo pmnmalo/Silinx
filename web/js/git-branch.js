@@ -53,7 +53,7 @@ async function chooseBranch({ title, label, hint, button, list }) {
 /** File ▸ Git ▸ New Branch…: a branch made from the project's last commit, the project on it (its changes kept). */
 async function newBranchDialog() {
   if (!S.project) return null;
-  await saveAll();
+  if (!await saveAll()) return null;
   const name = h('input', { type: 'text', class: 'git-branch-name', style: { width: '100%' } });
   const err = fieldError('git-branch-error');
   name.addEventListener('input', () => { err.textContent = ''; });
@@ -74,7 +74,7 @@ async function newBranchDialog() {
 /** File ▸ Git ▸ Switch Branch…: the project on another branch (its changes committed first), its files read again. */
 async function switchBranchDialog() {
   if (!S.project) return null;
-  await saveAll();
+  if (!await saveAll()) return null;
   const name = S.project.name;
   const list = await listBranches(name);
   if (!list) return null;
@@ -94,7 +94,7 @@ async function switchBranchDialog() {
  *  text file's lines in the merge view), then merged again with the choices. */
 async function mergeBranchDialog() {
   if (!S.project) return null;
-  await saveAll();
+  if (!await saveAll()) return null;
   const name = S.project.name;
   const list = await listBranches(name);
   if (!list) return null;
