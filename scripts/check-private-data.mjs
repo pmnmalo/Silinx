@@ -49,6 +49,7 @@ const ALLOW = [
     'bitstreams Project X-Ray\'s xc7frames2bit made (ISC), no Xilinx tool\'s: the 7-series writer\'s references (#3144)'],
   [/^test\/git(-core)?\.test\.js$/, /^(https:\/\/x:y@host\/a|ghp_secret@gitlab\.com|tok@github\.com|https:\/\/user:ghp_secret@gitlab\.com\/a\/b|https:\/\/ana:tok@github\.com\/a\/b\/\\?)$/,
     'made-up credentials in URLs, which git\'s messages lose (#3195)'],
+  ['test/launcher-page.test.js', /^C:\\+Users\\+A&B\^%x%$/, 'a made-up Windows home folder whose name holds & ^ %, the characters cmd /c start re-read (#4743)'],
   ['test/corpus/vloghammer-gen.mjs', 'claire@yosyshq.com', 'the copyright notice of VlogHammer (ISC licence), which a port must keep'],
   ['test/lang-vhdl-types.test.js', '6.4.2.3', 'a section of the VHDL standard'],
   [/^((core|packages\/silinx-hdl\/src)\/(elab-expr|elaborate)\.js|test\/vhdl-unconstrained-const\.test\.js)$/, '9.3.3.3', 'a section of the VHDL standard (#2559; in the HDL front end package since #1710)'],
