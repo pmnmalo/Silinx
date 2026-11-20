@@ -1,6 +1,6 @@
 // The MCP server's related views (#2834, server/mcp-views.js): related_view makes, read-only and writing nothing, the
 // views the interface shows beside a source: an HDL source's translation (traffic's VHDL to Verilog, pong's Verilog to
-// VHDL), a state diagram's ASM chart (traffic's), a truth table's schematic (traffic's lamps), a Petri net's state machine,
+// VHDL), a state diagram's ASM chart and schematic (traffic's, #4911), a truth table's schematic (traffic's lamps), a Petri net's state machine,
 // each the same as the core's converters make; a truth table's results, as the editor's results panel (#2927); an ASM chart that is not a plain state machine, a state diagram with errors
 // and the wrong kinds of source refused, each with its reason.
 import { test, before, after } from 'node:test';
@@ -14,6 +14,7 @@ import { schematicFromTable, normalizeTable, newTable, canonicalAsts, formatExpr
 import { newPetri } from '../core/petri.js';
 import { petriToFsm } from '../core/petri-fsm.js';
 import { circuitSchematic } from '../core/circuit-sch.js';
+import { fsmSchematic } from '../core/fsm-sch.js';
 import { halfAdder } from './circuit-helpers.mjs';
 
 let tmp;
@@ -56,6 +57,22 @@ test('related_view: traffic\'s translation, ASM chart and table\'s schematic, as
   const sch = await ok({ project: 't', path: 'src/lamps.bool.json', view: 'schematic' });
   assert.deepEqual(sch.data.model, schematicFromTable(normalizeTable(JSON.parse(read('t', 'src/lamps.bool.json')))));
   assert.deepEqual(files('t'), before);
+});
+
+test('related_view: a state diagram\'s schematic (#4911), as the core makes it; none for an encoding with no codes, with why', async () => {
+  await call('new_project_from_example', { name: 'f', example: 'traffic' });
+  const before = files('f');
+  const fsm = JSON.parse(read('f', 'src/traffic.fsm.json'));
+  const r = await ok({ project: 'f', path: 'src/traffic.fsm.json', view: 'schematic' });
+  assert.deepEqual(r.data.model, fsmSchematic(fsm).doc);
+  assert.equal(r.text, JSON.stringify(r.data.model, null, 2));
+  // (its state register: a flip-flop per state bit, its synchronous reset to the reset state's code)
+  assert.deepEqual(r.data.model.symbols.filter((s) => /^fd/.test(s.type)).map((s) => s.type), ['fdr', 'fdr', 'fdr']);
+  assert.deepEqual(files('f'), before);
+  await call('write_file', { project: 'f', path: 'src/e.fsm.json', text: JSON.stringify({ ...fsm, encoding: 'enum' }) });
+  await fails({ project: 'f', path: 'src/e.fsm.json', view: 'schematic' }, 'the schematic of e.fsm.json: The enumerated encoding has no state codes: choose binary or gray to see the schematic');
+  await call('write_file', { project: 'f', path: 'src/o.fsm.json', text: JSON.stringify({ ...fsm, encoding: 'onehot' }) });
+  await fails({ project: 'f', path: 'src/o.fsm.json', view: 'schematic' }, 'the schematic of o.fsm.json: The encoded table is made for the binary and gray encodings (choose one of them)');
 });
 
 test('related_view: a Verilog source in VHDL (an if generate\'s branches, #3501); a Petri net\'s state machine', async () => {
@@ -181,7 +198,7 @@ test('related_view refuses: an ASM chart that is not a plain state machine, a st
   assert.equal(r.isError, true);
   assert.match(r.text, /^related_view: the ASM chart of empty\.fsm\.json: /);
   await fails({ project: 'b', path: 'src/top.vhd', view: 'asm' }, 'src/top.vhd: a state diagram (.fsm.json) has an ASM chart');
-  await fails({ project: 'b', path: 'src/top.vhd', view: 'schematic' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) or a circuit (.circ.json) has a schematic');
+  await fails({ project: 'b', path: 'src/top.vhd', view: 'schematic' }, 'src/top.vhd: a truth table (.bool.json, .tt.json), a state diagram (.fsm.json) or a circuit (.circ.json) has a schematic');
   await fails({ project: 'b', path: 'src/top.vhd', view: 'results' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has results');
   await fails({ project: 'b', path: 'src/top.vhd', view: 'fsm' }, 'src/top.vhd: an ASM chart (.asm.json) or a Petri net (.pn.json) has a state diagram');
   await fails({ project: 'b', path: 'src/speed_ctrl.asm.json', view: 'translation' }, 'src/speed_ctrl.asm.json: an HDL source (.vhd, .v) is translated');

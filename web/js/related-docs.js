@@ -1,6 +1,6 @@
 // The views a drawing or a C source is made into that are not files of the project (#2834), read-only, each in a
 // document of its own, made again each time from the source (its open editor's model, saved or not): a state diagram's
-// ASM chart and an ASM chart's state diagram (core/fsm-asm.js, as the drawings' Convert commands and the MCP's
+// ASM chart and schematic (core/fsm-sch.js, #4911) and an ASM chart's state diagram (core/fsm-asm.js, as the drawings' Convert commands and the MCP's
 // convert_drawing make them, here not written to the project), a C source's synthesis report (core/c-report.js, as View
 // C Synthesis Report writes it in the console). What cannot be made is said in the console. Shown beside their source
 // by the tabs' Show … Beside (web/js/related-views.js).
@@ -40,6 +40,32 @@ export async function openFsmAsm(path) {
       el.append(host);
       d.asmEditor = mountAsmEditor(host, { model: fsmToAsm(m), readOnly: true, banner });
       return { destroy: () => d.asmEditor.destroy?.() };
+    },
+  });
+}
+
+/** A state diagram's schematic (#4911), read-only and simulated in place as a truth table's is: its state register and its
+ *  next-state and output logic in gates (core/fsm-sch.js); null, the reason in the console, when it has none (an encoding
+ *  with no codes, the diagram's errors, too many bits for its tables). */
+export async function openFsmSchematic(path) {
+  const { fsmSchematic } = await import('/core/fsm-sch.js');
+  const pj = S.project.name;
+  let r;
+  try { r = fsmSchematic(await model(path, 'fsm', 'fsmEditor')); } catch (e) { log(`ERROR: Cannot open ${path}: ${e.message}`, 'err'); return null; }
+  if (r.error) { log(`ERROR: The schematic of "${path}": ${r.error}`, 'err'); return null; }
+  const { mountSchEditor } = await import('./sch-editor.js');
+  if (S.project?.name !== pj) return null;
+  const id = `fsmsch:${path}`;
+  await fresh(id);
+  const name = `${base(path).replace(/\.fsm\.json$/i, '')} (Schematic)`;
+  return openDoc({
+    id, title: name, tooltip: `${name}, the schematic of ${path}`, icon: 'schematic',
+    create(el, d) {
+      const host = h('div', { class: 'doc-body' });
+      el.append(host);
+      d.viewer = mountSchEditor(host, { doc: r.doc, readOnly: true, simulate: true });
+      d.viewer.setBanner(h('span', { class: 'gen-banner read-only' }, 'Read-only, generated from ', h('a', { onclick: () => openFile(path) }, base(path))));
+      return { destroy: () => d.viewer.destroy?.() };
     },
   });
 }

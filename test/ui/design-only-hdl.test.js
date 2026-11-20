@@ -64,11 +64,11 @@ uiTest('#3891 a design project: Symbol Info without Equivalent HDL, the tabs\' m
   // a schematic's tab: no view beside (its HDL and its translation were its only ones)
   assert.deepEqual(await beside(page, 'mux.sch.json'), []);
   assert.deepEqual(await viewMenu(page), []);
-  // a state diagram's: its ASM chart, no HDL
+  // a state diagram's: its ASM chart and its schematic (#4911), no HDL
   await page.eval(() => window.SilinxApp.openFile('src/traffic.fsm.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/traffic.fsm.json', [], { what: 'the state diagram' });
-  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside']);
-  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside']);
+  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside', 'Show Schematic Beside']);
+  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside', 'Show Schematic Beside']);
 
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));

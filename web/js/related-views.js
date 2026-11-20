@@ -1,6 +1,6 @@
 // A document's related views (#2834): what it generates and what it comes from or shows, each an entry of its tab's
 // menu and of View, Show … Beside (web/js/split-view.js showBeside). Only the views that exist or can be made now:
-//   a drawing: what it converts to (Boolean algebra: its schematic; a state diagram: its ASM chart; an ASM chart: its
+//   a drawing: what it converts to (Boolean algebra: its schematic; a state diagram: its ASM chart, its schematic, #4911; an ASM chart: its
 //     state diagram; a Petri net: its state machine), its HDL and the HDL's translation;
 //   a view made from a drawing (the generated HDL, the table's schematic, a converted drawing): the drawing, its HDL;
 //   a C source: its HDL, its ASM chart (sequential), its synthesis report; the views made from it: the C, the others;
@@ -14,7 +14,7 @@ import { cSequential, isC, openCAsm, openCHdl } from './c-source.js';
 import { openTranslation } from './translation.js';
 import { openTtSchematic } from './drawings-tt.js';
 import { openPetriFsm } from './petri-fsm-doc.js';
-import { openAsmFsm, openCReportDoc, openFsmAsm } from './related-docs.js';
+import { openAsmFsm, openCReportDoc, openFsmAsm, openFsmSchematic } from './related-docs.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 
@@ -55,6 +55,7 @@ function drawingViews(p) {
   return [
     k === 'tt' ? entry('Show Schematic Beside', `ttsch:${p}`, () => openTtSchematic(p)) : null,
     k === 'fsm' ? entry('Show ASM Chart Beside', `fsmasm:${p}`, () => openFsmAsm(p)) : null,
+    k === 'fsm' ? entry('Show Schematic Beside', `fsmsch:${p}`, () => openFsmSchematic(p)) : null,
     k === 'asm' ? entry('Show State Diagram Beside', `asmfsm:${p}`, () => openAsmFsm(p)) : null,
     k === 'pn' ? entry('Show State Diagram Beside', `pnfsm:${p}`, () => openPetriFsm(p)) : null,
     ...hdlEntries(S.schOwners?.[p]),
@@ -96,7 +97,7 @@ export function relatedViews(doc) {
   const [, kind, rest] = /^([a-z]+):(.*)$/.exec(String(doc.id)) || [null, doc.id, ''];
   let list = [];
   if (KINDS[kind]) list = drawingViews(rest);
-  else if (['ttsch', 'fsmasm', 'asmfsm', 'pnfsm'].includes(kind)) list = [drawingEntry(rest), ...drawingViews(rest)];
+  else if (['ttsch', 'fsmasm', 'fsmsch', 'asmfsm', 'pnfsm'].includes(kind)) list = [drawingEntry(rest), ...drawingViews(rest)];
   else if (['chdl', 'casm', 'crep'].includes(kind)) list = [entry(cLabel(rest), `file:${rest}`, () => openFile(rest)), ...cViews(rest)];
   else if (kind === 'tr') list = [S.hdlToSch?.[rest] ? drawingEntry(S.hdlToSch[rest]) : null, fileEntry(rest)];
   else if (kind === 'file') {

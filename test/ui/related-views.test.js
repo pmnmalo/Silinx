@@ -1,6 +1,6 @@
 // UI (#2834): a tab's menu in Design and Simulate, Show … Beside for every view related to its document, the same
 // entries in View for the document in front. Per kind of document, the entries expected: a state diagram (its ASM chart,
-// its HDL, the HDL's translation), Boolean algebra (its schematic, HDL), the generated HDL (its drawing, its
+// its schematic, #4911, its HDL, the HDL's translation), Boolean algebra (its schematic, HDL), the generated HDL (its drawing, its
 // translation), the table's schematic (the table, its HDL), an ASM chart (its state diagram, HDL), a Petri net (its state
 // machine, HDL), a schematic (its HDL), an HDL source (its translation), a test bench (its translation, its unit under
 // test), a C source (its HDL, its synthesis report), the report (the C, the HDL), a waveform of a test bench (the bench, its
@@ -65,9 +65,9 @@ uiTest('#2834 drawings and their views: a state diagram, Boolean algebra, the ge
 
   // a state diagram: its ASM chart, its HDL and the HDL's translation
   await open(page, 'src/traffic.fsm.json', FSM);
-  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside', 'Show Schematic Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
   await page.closeMenus();
-  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside', 'Show Schematic Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
   assert.deepEqual(await show(page, 'traffic.fsm.json', 'Show ASM Chart Beside', 'fsmasm:src/traffic.fsm.json'), [`a:${FSM}*`, 'b:fsmasm:src/traffic.fsm.json']);
   // (read-only, the diagram's machine: its states)
   assert.deepEqual(await page.eval(() => { const d = window.Silinx.docs.find((x) => x.id === 'fsmasm:src/traffic.fsm.json'); return { banner: /Read-only, converted from/.test(d.el.querySelector('.gen-banner')?.textContent || ''), states: d.asmEditor.getModel().nodes.filter((n) => n.type === 'state').length > 1 }; }), { banner: true, states: true });
@@ -87,7 +87,7 @@ uiTest('#2834 drawings and their views: a state diagram, Boolean algebra, the ge
 
   // the converted chart: the diagram, its HDL; the generated HDL: its drawing, its translation
   await page.click(await tab(page, 'traffic.asm'));
-  assert.deepEqual(await beside(page, 'traffic.asm'), ['Show State Diagram Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  assert.deepEqual(await beside(page, 'traffic.asm'), ['Show State Diagram Beside', 'Show Schematic Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
   await page.closeMenus();
   await page.click(await tab(page, 'traffic.vhd'));
   assert.deepEqual(await beside(page, 'traffic.vhd'), ['Show State Diagram Beside', 'Show Verilog Beside']);
@@ -121,6 +121,42 @@ uiTest('#2834 drawings and their views: a state diagram, Boolean algebra, the ge
   await page.closeMenus();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await noWarnings(page);
+});
+
+uiTest('#4911 a state diagram\'s schematic beside it: read-only, its state register and its logic in gates; its views; an encoding with no codes says why; Portuguese; no warnings but that one', E, async (page) => {
+  await makeProject(env, { name: 'RelatedFsmSch', template: 'traffic' });
+  await page.openProject('RelatedFsmSch');
+  await page.waitFor(() => window.SilinxApp.S.modules.some((m) => m.name === 'traffic'), [], { what: 'the modules' });
+  const FSM = 'fsm:src/traffic.fsm.json', SCH = 'fsmsch:src/traffic.fsm.json';
+  await open(page, 'src/traffic.fsm.json', FSM);
+  assert.deepEqual(await show(page, 'traffic.fsm.json', 'Show Schematic Beside', SCH), [`a:${FSM}*`, `b:${SCH}`]);
+  // (read-only, generated from the diagram: a flip-flop per state bit, its synchronous reset; gates; a port per output bit)
+  assert.deepEqual(await page.eval((id) => {
+    const d = window.Silinx.docs.find((x) => x.id === id), doc = d.viewer.getDoc();
+    return { banner: d.el.querySelector('.gen-banner')?.textContent, flops: doc.symbols.filter((s) => /^fd/.test(s.type)).map((s) => s.type),
+      gates: doc.symbols.some((s) => /^(and|or)\d/.test(s.type)), ports: doc.ports.map((p) => p.name) };
+  }, SCH), { banner: 'Read-only, generated from traffic.fsm.json', flops: ['fdr', 'fdr', 'fdr'], gates: true, ports: ['clk', 'rst', 'req', 'done', 'night', 'phase_2', 'phase_1', 'phase_0'] });
+  // its views: the diagram, its ASM chart, its HDL
+  await page.click(await tab(page, 'traffic (Schematic)'));
+  assert.deepEqual(await beside(page, 'traffic (Schematic)'), ['Show State Diagram Beside', 'Show ASM Chart Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  await page.closeMenus();
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Mostrar o Fluxograma ASM ao Lado', 'Mostrar o Esquemático ao Lado', 'Mostrar o VHDL ao Lado', 'Mostrar o Verilog ao Lado']);
+  await page.closeMenus();
+  assert.match(await page.eval((id) => window.Silinx.docs.find((x) => x.id === id).el.querySelector('.gen-banner')?.textContent, SCH), /^Só de leitura, gerado a partir de traffic\.fsm\.json$/);
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  await noWarnings(page);
+  // the enumerated encoding: no codes, no schematic: why in the console, the split as it was
+  await close(page, [SCH]);
+  await page.click(await tab(page, 'traffic.fsm.json'));
+  await page.eval((id) => { const ed = window.Silinx.docs.find((x) => x.id === id).fsmEditor; ed.setModel({ ...ed.getModel(), encoding: 'enum' }); }, FSM);
+  await beside(page, 'traffic.fsm.json');
+  await page.click('body > .menu-popup .mi', { text: 'Show Schematic Beside' });
+  await page.waitFor(() => /The schematic of "src\/traffic\.fsm\.json"/.test(window.__console()), [], { what: 'the error in the console' });
+  assert.deepEqual(await problems(page), ['ERROR: The schematic of "src/traffic.fsm.json": The enumerated encoding has no state codes: choose binary or gray to see the schematic']);
+  assert.equal(await page.eval((id) => window.Silinx.docs.some((d) => d.id === id), SCH), false);
+  assert.equal(await page.eval(() => window.Silinx.active.id), FSM);
 });
 
 uiTest('#2834 an ASM chart that is not a plain state machine: Show State Diagram Beside says why in the console, the split as it was; a Petri net\'s state machine; a schematic\'s HDL', E, async (page) => {
