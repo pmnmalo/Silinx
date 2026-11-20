@@ -4,15 +4,28 @@
 import { asmLayout } from './asm-from-hdl.js';
 import { MAX_PATHS, exprToString, normalizeModel as normalizeAsm, parseAction, parseCaseChoices } from './asm.js';
 import {
-  clone, condNames, constValue, evalCond, fsmKind, inputCombos, isOtherwise, normalizeFsm, parseCond, placeNew, stateById,
+  clone, condNames, constValue, evalCond, fsmKind, inputCombos, isOtherwise, nameOf, normalizeFsm, parseCond, placeNew, stateById,
   transitionsFrom
 } from './fsm.js';
 import { sortedOutputs } from './fsm-hdl.js';
 import { writeCond } from './cond-notation.js';
+import { outputConst } from './fsm-value.js';
 
 // ---------------------------------------------------------------------------------------
 // FSM <-> ASM chart
 // ---------------------------------------------------------------------------------------
+
+/** Why the diagram has no ASM chart (#4891): its outputs set to a don't care (X), which an ASM chart's actions do not
+ *  have; [{ severity, message, state | transition }] as Check's, none when it has one. */
+export function asmDontCares(model) {
+  const m = normalizeFsm(model);
+  const dc = (v) => { const c = outputConst(v); return !!c && c.x !== 0n; };
+  const out = [];
+  for (const s of m.states) for (const [o, v] of Object.entries(s.outputs)) if (dc(v)) out.push({ severity: 'error', message: `State ${s.name}: ${o} = ${v} is a don't care (X), which an ASM chart does not have`, state: s.id });
+  for (const t of m.transitions) for (const [o, v] of Object.entries(t.outputs)) if (dc(v)) out.push({ severity: 'error', message: `Transition ${nameOf(m, t.from)} → ${nameOf(m, t.to)}: ${o} = ${v} is a don't care (X), which an ASM chart does not have`, transition: t.id });
+  for (const o of m.outputs) if (dc(o.default)) out.push({ severity: 'error', message: `Output '${o.name}': its default value ${o.default} is a don't care (X), which an ASM chart does not have` });
+  return out;
+}
 
 const actionsOf = (m, outs) => sortedOutputs(m, outs).map(([o, v]) => `${o.name} = ${v}`);
 

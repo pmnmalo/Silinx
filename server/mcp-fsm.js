@@ -10,7 +10,7 @@ import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js
 export const FSM_TOOLS = [
   {
     name: 'set_fsm_outputs', title: 'Set a state\'s or a transition\'s outputs (state diagram)',
-    description: 'Set the outputs of a state (Moore) or of a transition (Mealy) of a state diagram (.fsm.json), as its editor\'s Properties do: a value per output of the machine (a constant, e.g. 1, 5, 4\'b1010, that fits in the output\'s width), an empty value clears it (the state: the output\'s default; the transition: the state\'s value). A value refused is not written, with the reason. The diagram is written and its HDL file made again.',
+    description: 'Set the outputs of a state (Moore) or of a transition (Mealy) of a state diagram (.fsm.json), as its editor\'s Properties do: a value per output of the machine (a constant, e.g. 1, 5, 4\'b1010, that fits in the output\'s width; or a don\'t care, kept as written: X or - the whole output, "1X0" or 3\'b1x0 some of its bits, its HDL VHDL\'s \'-\' and Verilog\'s x), an empty value clears it (the state: the output\'s default; the transition: the state\'s value). A value refused is not written, with the reason. The diagram is written and its HDL file made again.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
       state: STR('The state, by its name (or give transition).'), transition: STR('The transition, by its id (as read_file shows it; or give state).'),

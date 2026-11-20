@@ -4,7 +4,8 @@
 // output not set left out), so files and the generated HDL stay as they were. The FSM editor's Properties
 // (web/js/fsm-side.js) and the MCP's set_fsm_outputs (server/mcp-fsm.js) set the values through these, with the same
 // checks: an output the machine has, a constant that fits in its width.
-import { constValue, outputProblems, stateById } from './fsm.js';
+import { outputProblems, stateById } from './fsm.js';
+import { outputConst, outputFits } from './fsm-value.js';
 
 /** The rows of `outs` ({ name: valueText }) for the machine `m`: [{ name, width, default, value, placeholder }], one per
  *  output of the machine in its order; `base` ({ name: valueText }, a transition's state's outputs): what an empty
@@ -15,13 +16,13 @@ export function outputRows(m, outs, base = null) {
 }
 
 /** Why `value` (text) cannot be the value of `output` ({ name, width }), or null: empty (its default), or a constant
- *  that fits in its width; the constant's message is Check's (outputProblems), the width's Check's warning. */
+ *  that fits in its width (a don't care too: X, "1X0", #4891); the constant's message is Check's (outputProblems), the width's Check's warning. */
 export function outputValueProblem(value, output) {
   const v = String(value ?? '').trim();
   if (!v) return null;
   const bad = outputProblems({ [output.name]: v }, [output]);
   if (bad.length) return bad[0];
-  if (constValue(v) >= 1n << BigInt(output.width)) return `the value ${v} of ${output.name} does not fit in ${output.width} bit(s)`;
+  if (!outputFits(outputConst(v), output.width)) return `the value ${v} of ${output.name} does not fit in ${output.width} bit(s)`;
   return null;
 }
 

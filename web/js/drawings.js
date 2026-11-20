@@ -267,9 +267,9 @@ export async function convertToFsm(mod) {
 
 // "Convert to ASM chart": a new (unlinked) ASM chart of the machine
 async function fsmToAsmChart(fsmPath) {
-  const { fsmToAsm, fsmErrors, normalizeFsm } = await import('/core/fsm.js');
+  const { asmDontCares, fsmToAsm, fsmErrors, normalizeFsm } = await import('/core/fsm.js');
   const m = normalizeFsm(await fsmModel(fsmPath));
-  const errs = fsmErrors(m);
+  const errs = [...fsmErrors(m), ...asmDontCares(m)];   // (a don't care: no ASM chart, #4891)
   if (errs.length) { alertDlg('Convert to ASM chart', errs.map(x => x.message).join('\n'), 'error'); return; }
   const dir = fsmDir(fsmPath);
   const name = freeName(dir, `${m.name}_asm`, '.asm.json');

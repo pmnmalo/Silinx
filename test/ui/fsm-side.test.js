@@ -79,7 +79,7 @@ uiTest('#405 FSM side panel: nothing, a state (name, outputs, code, initial, its
   assert.deepEqual(out.order, ['t4', 't3']);
   assert.deepEqual(out.prio2, ['Priority 2 of 2 in MID']);
   assert.deepEqual(out.t3, ['x && y', 's2', false, 'moore']);
-  assert.deepEqual(out.mealy, [{ z: '1' }, 'mealy', 'The value of each output while this transition is taken (empty: the state\'s value; a value makes the machine a Mealy machine).']);
+  assert.deepEqual(out.mealy, [{ z: '1' }, 'mealy', 'The value of each output while this transition is taken (empty: the state\'s value; X or "1X0": don\'t care; a value makes the machine a Mealy machine).']);
   assert.deepEqual(out.gone, [null, true, 0]);
   assert.deepEqual(out.commits, ['sname', 'souts:z', '', 'cond', '', '', 'touts:z']);
 });
@@ -131,14 +131,14 @@ uiTest('#3814 FSM side panel: a state\'s and a transition\'s outputs, a table of
     M.outputs = [{ name: 'z', width: 1, default: '0' }];
     return r;
   });
-  assert.deepEqual(out.state, [[['Name', 'Width', 'Value'], ['z', '1', '[|0]'], ['y', '2', "[2|2'b01]"]], 0, 'The value of each output while in this state (empty: its default value).']);
+  assert.deepEqual(out.state, [[['Name', 'Width', 'Value'], ['z', '1', '[|0]'], ['y', '2', "[2|2'b01]"]], 0, 'The value of each output while in this state (empty: its default value; X or "1X0": don\'t care).']);
   assert.deepEqual(out.set, { y: '3', z: '1' });
   assert.deepEqual(out.cleared, { z: '1' });
   assert.deepEqual(out.typed, [true, { z: '1' }, 0]);
   assert.deepEqual(out.left, [false, '', ['State S1: the value 4 of y does not fit in 2 bit(s)']]);
   assert.deepEqual(out.notConst, ['1', ["State S1: the value 'x' of z must be a constant (e.g. 0, 1, 4'b1010, 5)"], { z: '1' }]);
   assert.deepEqual(out.trans, [[['Name', 'Width', 'Value'], ['z', '1', '[|1]'], ['y', '2', "[|2'b01]"]],
-    'The value of each output while this transition is taken (empty: the state\'s value; a value makes the machine a Mealy machine).']);
+    'The value of each output while this transition is taken (empty: the state\'s value; X or "1X0": don\'t care; a value makes the machine a Mealy machine).']);
   assert.deepEqual(out.mealy, { y: '3' });
   assert.deepEqual(out.transMsg, [["Transition S1 → S2: the value 3'b100 of y does not fit in 2 bit(s)"], '3']);
   assert.deepEqual(out.transCleared, { y: '3' });
@@ -161,8 +161,8 @@ uiTest('#3814 FSM side panel: a state\'s and a transition\'s outputs, a table of
       M.outputs = [{ name: 'z', width: 1, default: '0' }];
       return r;
     });
-    assert.deepEqual(pt, [['Nome', 'Largura', 'Valor'], 'Saídas (Moore)', 'O valor de cada saída neste estado (vazio: o seu valor por omissão).',
-      'Saídas (Mealy)', 'O valor de cada saída enquanto esta transição é tomada (vazio: o valor do estado; um valor faz da máquina uma máquina de Mealy).', 'A máquina não tem saídas']);
+    assert.deepEqual(pt, [['Nome', 'Largura', 'Valor'], 'Saídas (Moore)', 'O valor de cada saída neste estado (vazio: o seu valor por omissão; X ou "1X0": indiferente).',
+      'Saídas (Mealy)', 'O valor de cada saída enquanto esta transição é tomada (vazio: o valor do estado; X ou "1X0": indiferente; um valor faz da máquina uma máquina de Mealy).', 'A máquina não tem saídas']);
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
 });
 

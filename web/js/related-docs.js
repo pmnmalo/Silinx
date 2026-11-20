@@ -21,11 +21,11 @@ async function fresh(id) { const old = findDoc(id); if (old) await closeDoc(old)
 
 /** A state diagram's ASM chart, read-only (null, the reason in the console: the diagram has errors). */
 export async function openFsmAsm(path) {
-  const { fsmToAsm, fsmErrors, normalizeFsm } = await import('/core/fsm.js');
+  const { asmDontCares, fsmToAsm, fsmErrors, normalizeFsm } = await import('/core/fsm.js');
   const pj = S.project.name;
   let m;
   try { m = normalizeFsm(await model(path, 'fsm', 'fsmEditor')); } catch (e) { log(`ERROR: Cannot open ${path}: ${e.message}`, 'err'); return null; }
-  const errs = fsmErrors(m);
+  const errs = [...fsmErrors(m), ...asmDontCares(m)];   // (a don't care: no ASM chart, #4891)
   if (errs.length) { log(`ERROR: The ASM chart of "${path}": ${errs.map((x) => x.message).join('; ')}`, 'err'); return null; }
   const { mountAsmEditor } = await import('./asm-editor.js');
   if (S.project?.name !== pj) return null;   // another project opened meanwhile

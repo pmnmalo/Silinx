@@ -40,9 +40,10 @@ import { generateFsm } from './fsm-hdl.js';
 import { clone } from './util.js';
 import { condAsText } from './cond-notation.js';
 import { normalizeStyle, styleProblems } from './fsm-style.js';
+import { atWidth, bitsText, outputConst, outputFits } from './fsm-value.js';
 export { clone };   // (core/util.js's)
 export { generateFsm } from './fsm-hdl.js';
-export { asmToFsm, fsmToAsm } from './fsm-asm.js';
+export { asmDontCares, asmToFsm, fsmToAsm } from './fsm-asm.js';
 
 const FSM_VERSION = 1;
 export const FSM_ENCODINGS = ['binary', 'gray', 'onehot', 'enum'];
@@ -98,7 +99,7 @@ export function outputProblems(outs, outputs) {
   const out = [];
   for (const [o, val] of Object.entries(outs || {})) {
     if (!names.has(o)) out.push(`'${o}' is not an output`);
-    else if (constValue(val) == null) out.push(`the value '${val}' of ${o} must be a constant (e.g. 0, 1, 4'b1010, 5)`);
+    else if (outputConst(val) == null) out.push(`the value '${val}' of ${o} must be a constant (e.g. 0, 1, 4'b1010, 5)`);
   }
   return out;
 }
@@ -417,9 +418,9 @@ export function validateFsm(model) {
   const outputs = new Map(m.outputs.map((o) => [o.name, o]));
   for (const o of m.outputs) {
     if (!widthOf.has(o.name)) continue;
-    const v = constValue(o.default);
+    const v = outputConst(o.default);   // (a don't care too, #4891)
     if (v == null) add('error', `Output '${o.name}': the default value '${o.default}' must be a constant (e.g. 0, 1, 4'b1010, 5)`);
-    else if (v >= 1n << BigInt(o.width)) add('warning', `Output '${o.name}': the default value ${o.default} does not fit in ${o.width} bit(s)`);
+    else if (!outputFits(v, o.width)) add('warning', `Output '${o.name}': the default value ${o.default} does not fit in ${o.width} bit(s)`);
   }
 
   // states
@@ -436,8 +437,8 @@ export function validateFsm(model) {
   const checkOutputs = (outs, where, ref) => {
     for (const e of outputProblems(outs, m.outputs)) add('error', `${where}: ${e}`, ref);
     for (const [o, val] of Object.entries(outs)) {
-      const p = outputs.get(o), v = constValue(val);
-      if (p && v != null && widthOf.has(o) && v >= 1n << BigInt(p.width)) add('warning', `${where}: the value ${val} of ${o} does not fit in ${p.width} bit(s)`, ref);
+      const p = outputs.get(o), v = outputConst(val);
+      if (p && v != null && widthOf.has(o) && !outputFits(v, p.width)) add('warning', `${where}: the value ${val} of ${o} does not fit in ${p.width} bit(s)`, ref);
     }
   };
   for (const s of m.states) checkOutputs(s.outputs, `State ${s.name || '?'}`, { state: s.id });
@@ -524,9 +525,11 @@ export function validateFsm(model) {
   // outputs that never change
   for (const o of m.outputs) {
     if (!widthOf.has(o.name)) continue;
-    const dv = constValue(o.default);
+    // (a value at the output's width, its don't cares too, #4891: an X where the default is 0 sets it)
+    const key = (text) => { const c = outputConst(text); if (c == null) return null; const a = atWidth(c, o.width); return `${a.v}:${a.x}`; };
+    const dv = key(o.default);
     const vals = [...m.states.map((s) => s.outputs[o.name]), ...m.transitions.map((t) => t.outputs[o.name])].filter((v) => v != null);
-    if (dv != null && !vals.some((v) => constValue(v) != null && mask(constValue(v), o.width) !== mask(dv, o.width))) {
+    if (dv != null && !vals.some((v) => key(v) != null && key(v) !== dv)) {
       add('warning', `Output '${o.name}' is never set: it always keeps its default value ${o.default}`);
     }
   }
@@ -594,27 +597,33 @@ function compiled(model) {
   const W = (n) => m.inputs.find((i) => i.name === n)?.width ?? 1;
   const asts = new Map(m.transitions.map((t) => [t.id, parseCond(t.cond).ast]));
   const ow = new Map(m.outputs.map((o) => [o.name, o.width]));
-  const val = (text, o) => mask(constValue(text) ?? 0n, ow.get(o) ?? 1);
-  return { m, W, asts, val };
+  // (a value's bits and its don't-care bits, #4891: an X bit 0 in val, 1 in dc)
+  const at = (text, o) => { const c = outputConst(text); return c ? atWidth(c, ow.get(o) ?? 1) : { v: 0n, x: 0n }; };
+  const val = (text, o) => at(text, o).v;
+  const dc = (text, o) => at(text, o).x;
+  return { m, W, asts, val, dc };
 }
 
 /**
  * One cycle of the machine in state `stateId` with inputs `env` ({ name: number|BigInt }):
- * { transition (taken, or null), next (state id), outputs: { name: BigInt } }.
+ * { transition (taken, or null), next (state id), outputs: { name: BigInt }, xs: { name: BigInt } } (xs: each output's
+ * don't-care bits, X, #4891; their bits 0 in outputs).
  */
 export function stepFsm(model, stateId, env, C = compiled(model)) {
-  const { m, W, asts, val } = C;
+  const { m, W, asts, val, dc } = C;
   const e = Object.fromEntries(Object.entries(env || {}).map(([k, v]) => [k, BigInt(v)]));
   const outs = Object.fromEntries(m.outputs.map((o) => [o.name, val(o.default, o.name)]));
+  const xs = Object.fromEntries(m.outputs.map((o) => [o.name, dc(o.default, o.name)]));
+  const set = (o, v) => { if (o in outs) { outs[o] = val(v, o); xs[o] = dc(v, o); } };
   const s = stateById(m, stateId);
-  if (s) for (const [o, v] of Object.entries(s.outputs)) if (o in outs) outs[o] = val(v, o);
+  if (s) for (const [o, v] of Object.entries(s.outputs)) set(o, v);
   let taken = null;
   for (const t of transitionsFrom(m, stateId)) {
     if (!stateById(m, t.to)) continue;
     if (evalCond(asts.get(t.id), e, W)) { taken = t; break; }
   }
-  if (taken) for (const [o, v] of Object.entries(taken.outputs)) if (o in outs) outs[o] = val(v, o);
-  return { transition: taken ? taken.id : null, next: taken ? taken.to : stateId, outputs: outs };
+  if (taken) for (const [o, v] of Object.entries(taken.outputs)) set(o, v);
+  return { transition: taken ? taken.id : null, next: taken ? taken.to : stateId, outputs: outs, xs };
 }
 
 /** Run from reset over a list of input vectors: [{ state, outputs, next }] (outputs before each clock edge). */
@@ -623,7 +632,7 @@ export function simulateFsm(model, vectors) {
   let st = C.m.initial;
   return vectors.map((v) => {
     const r = stepFsm(model, st, v, C);
-    const row = { state: st, outputs: r.outputs, next: r.next, transition: r.transition };
+    const row = { state: st, outputs: r.outputs, xs: r.xs, next: r.next, transition: r.transition };
     st = r.next;
     return row;
   });
@@ -633,7 +642,7 @@ export function simulateFsm(model, vectors) {
 // Tables
 // ---------------------------------------------------------------------------------------
 
-const outText = (m, o, v) => (o.width === 1 ? String(v) : bitsOf(v, o.width));
+const outText = (m, o, v, x = 0n) => (x ? bitsText(v, x, o.width) : o.width === 1 ? String(v) : bitsOf(v, o.width));
 
 /**
  * Transition table: one row per transition (in priority order) plus, per state, a row "otherwise"
@@ -708,9 +717,9 @@ export function stateTable(model) {
     for (let k = 0; k < combos.length; k++) {
       const r = stepFsm(m, s.id, envOfBits(ib, k), C);
       next.push(nameOf(m, r.next));
-      outs.push(m.outputs.map((o) => outText(m, o, r.outputs[o.name])).join(' '));
+      outs.push(m.outputs.map((o) => outText(m, o, r.outputs[o.name], r.xs[o.name])).join(' '));
     }
-    const moore = m.outputs.map((o) => outText(m, o, mask(constValue(s.outputs[o.name] ?? o.default) ?? 0n, o.width))).join(' ');
+    const moore = m.outputs.map((o) => outText(m, o, C.val(s.outputs[o.name] ?? o.default, o.name), C.dc(s.outputs[o.name] ?? o.default, o.name))).join(' ');
     return { state: s.name, code: m.encoding === 'enum' ? '' : e.bits, next, outputs: outs, moore };
   });
   return { inputs: ib.map((b) => b.name).join(' '), outputs: m.outputs.map((o) => o.name).join(' '), combos, rows, mealy: m.type === 'mealy' };
@@ -745,7 +754,7 @@ export function encodedTable(model) {
       const inb = ib.length ? k.toString(2).padStart(ib.length, '0') : '';
       if (!e) { rows.push({ q, in: inb, d: 'X'.repeat(w), out: 'X'.repeat(ob.length), unused: true }); continue; }
       const r = stepFsm(m, e.id, envOfBits(ib, k), C);
-      const out = ob.map((b) => String((r.outputs[b.output] >> BigInt(b.bit)) & 1n)).join('');
+      const out = ob.map((b) => ((r.xs[b.output] >> BigInt(b.bit)) & 1n ? 'X' : String((r.outputs[b.output] >> BigInt(b.bit)) & 1n))).join('');   // (a don't care: X, #4891)
       rows.push({ q, in: inb, d: enc.find((x) => x.id === r.next).bits, out, state: e.name, next: nameOf(m, r.next) });
     }
   }
