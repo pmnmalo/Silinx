@@ -11,6 +11,7 @@ import { partHoles } from '/core/circuit-parts.js';
 import { iecQualifier, ieeeGate } from '/core/symbol-standard.js';
 import { insideLayout } from '/core/circuit-inside.js';
 import { blocksLayout } from '/core/circuit-inside-blocks.js';
+import { drawnLayout } from '/core/circuit-inside-drawn.js';
 import { getSymbolStandard } from './symbol-standard.js';
 import { wireHops, hopD } from '/core/circuit-wires.js';
 
@@ -41,15 +42,16 @@ export function icInside(g, d, pins, box, std = getSymbolStandard(), { hops = fa
   // (its gates drawn: their pins' names left out; a gate IC its layout cannot draw, a 4023, #4397: every pin named)
   const L = d.gates ? insideLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) }))) : null;
   // (an IC with no gates, #4508: its functions' boxes, core/circuit-inside-blocks.js)
-  const B = d.gates ? null : blocksLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) })));
-  const used = new Set(L?.gates.length ? d.gates.flatMap((x) => [...x.ins, x.out, ...(x.en || []).map(([n]) => n)]) : B ? B.boxes.flatMap((b) => b.pins.map((q) => q.n)) : []);
+  // (a latch whose units share an enable, #4934: as its datasheet draws it, core/circuit-inside-drawn.js)
+  const B = d.gates ? null : drawnLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) }))) ?? blocksLayout(d, pins.map((q) => ({ n: q.n, x: px(q.x), y: px(q.y) })));
+  const used = new Set(L?.gates.length ? d.gates.flatMap((x) => [...x.ins, x.out, ...(x.en || []).map(([n]) => n)]) : B ? [...B.boxes.flatMap((b) => b.pins.map((q) => q.n)), ...(B.unnamed ?? [])] : []);
   for (const q of pins) {
     if (q.name === String(q.n) || used.has(q.n) || q.name === 'NC') continue;
     const [x, y] = at.get(q.n);
     const t = across ? [x, y + Math.sign(cy - y) * 11] : [x + Math.sign(cx - x) * 11, y];
     g.append(sv('text', { x: t[0], y: t[1] + 2.5, 'text-anchor': 'middle', class: 'circ-pin-name', 'data-no-i18n': 'true' }, q.name));
   }
-  if (B) blocksInside(g, B, std);
+  if (B) blocksInside(g, B, std, hops);
   if (!L) return;
   // (a crossing IC's lines, #4505: crossing as the circuit's wires do, Wire crossings: a hop-over, or plain; no dot)
   const hop = hops && L.crossings?.length ? wireHops(L.wires.map((w, i) => ({ id: i, pts: w.points }))) : new Map();
@@ -91,13 +93,19 @@ function iecInside(gt) {
 
 // an IC's functions' boxes (#4508): each box, its pins' lines into it, each pin's name (IEC's label) inside its edge, a
 // clock's ▷ (its bubble on a falling edge), an active-low input's bubble (IEC: a barred output's too); a whole IC's IEC qualifier in its middle
-function blocksInside(g, B, std) {
-  for (const w of B.wires) g.append(sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', 'data-pin': w.pin }));
+// (#4934, a drawing of core/circuit-inside-drawn.js: its pins on a box's sides too, its lines' branches' dots, their
+// crossings hop-overs when `hops`)
+function blocksInside(g, B, std, hops = false) {
+  const hop = hops && B.crossings?.length ? wireHops(B.wires.map((w, i) => ({ id: i, pts: w.points }))) : new Map();
+  B.wires.forEach((w, i) => g.append(hop.has(i) ? sv('path', { d: hopD(w.points, hop.get(i), 2.5), fill: 'none', class: 'circ-gate-line circ-gate-hop', 'data-pin': w.pin })
+    : sv('polyline', { points: w.points.map((q) => q.join(',')).join(' '), fill: 'none', class: 'circ-gate-line', 'data-pin': w.pin })));
+  for (const [cx, cy] of B.dots ?? []) g.append(sv('circle', { cx, cy, r: 1.5, class: 'circ-gate-dot' }));
   for (const b of B.boxes) {
     const box = sv('g', { class: 'circ-block', 'data-unit': b.unit ?? 'all', 'data-std': std });
     box.append(sv('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 1, class: 'circ-gate' }));
     if (std === 'iec' && b.qualifier) box.append(sv('text', { x: b.x + b.w / 2, y: b.y + b.h / 2 + 3, 'text-anchor': 'middle', class: 'circ-block-qual', 'data-no-i18n': 'true' }, b.qualifier));
     for (const p of b.pins) {
+      if (p.edge === 'left' || p.edge === 'right') { box.append(...sidePin(p, b, std)); continue; }
       const dir = p.edge === 'top' ? 1 : -1, ey = p.y;
       if (p.clock) box.append(sv('path', { d: `M${p.x - 3},${ey} L${p.x},${ey + dir * 4} L${p.x + 3},${ey}`, fill: 'none', class: 'circ-block-clock' }));
       // (IEC: a barred output's negation too, its label left out: Q̅)
@@ -111,4 +119,15 @@ function blocksInside(g, B, std) {
     }
     g.append(box);
   }
+}
+
+// a pin on a box's side (#4934): its name inside the edge; IEC: a barred output's bubble outside it
+function sidePin(p, b, std) {
+  const dir = p.edge === 'left' ? 1 : -1, out = [];
+  if (std === 'iec' && p.out && p.name.includes('\u0305')) out.push(sv('circle', { cx: p.x - dir * 2, cy: p.y, r: 2, class: 'circ-gate-bubble' }));
+  const label = std === 'iec' ? p.iec : p.name;
+  if (!label) return out;
+  const size = Math.min(6.5, (b.w - 2) / (0.62 * [...label.replace('\u0305', '')].length));
+  out.push(sv('text', { x: p.x + dir * 1.5, y: Math.round((p.y + size * 0.35) * 100) / 100, 'text-anchor': dir > 0 ? 'start' : 'end', class: 'circ-block-pin', 'font-size': Math.round(size * 10) / 10, 'data-pin': p.n, 'data-no-i18n': 'true' }, label));
+  return out;
 }
