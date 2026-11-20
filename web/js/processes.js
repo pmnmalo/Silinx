@@ -144,7 +144,12 @@ function emulateProcesses() {
   return top ? [constraintsProcs(top), emulateProcs(top)] : [];
 }
 
+// (drawn again whenever a process's state changes: said, for the toolbar's steps to follow it, #4764)
 export function renderProcesses() {
+  drawProcesses();
+  dispatchEvent(new Event('silinx:processes-drawn'));
+}
+function drawProcesses() {
   const host = $('procs');
   const { sel, view } = procsShown();
   $('proc-caption').textContent = `Processes: ${sel.module || (sel.file ? sel.file.split('/').pop() : '')}`;

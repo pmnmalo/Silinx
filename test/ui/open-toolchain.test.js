@@ -353,13 +353,12 @@ async function checkTechSchematic(page, { top, blocks, message, inside }) {
   assert.equal(v.nav[0], '⬆ Up', 'Up on inside the instance');
   const types = new Set(v.syms.map((x) => x.module));
   for (const t of ['FDRE', 'MUXCY', 'XORCY']) assert.ok(types.has(t), `${t} in ${inside}: ${[...types].join(' ')}`);
-  // a LUT: its function from its INIT, on demand (a collapsed section of its properties)
+  // a LUT: its function from its INIT (a plain section of its properties, #4764)
   const lut = v.syms.find((x) => x.module === 'LUT4');
   assert.match(lut.name, /^LUT4_\d+$/);
   await page.click(`${TECH} .se-svg [data-kind=sym][data-id="${lut.id}"]`);
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .se-lutfn'), [], { what: 'LUT function' });
-  assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .se-lutfn').open), false);
-  await page.click(`${TECH} .se-lutfn > summary`);
+  assert.deepEqual(await page.eval(() => { const s = document.querySelector('.doc:not([hidden]) .se-lutfn'); return [s.tagName, s.querySelector('.se-sec-title').textContent]; }), ['DIV', 'LUT function (INIT)']);
   const fn = await page.eval(async (init) => (await import('/core/fpga/techview.js')).lutFunction(init, 4), lut.generics.INIT);
   assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .se-lut-eq').textContent), fn.equation);
   assert.match(fn.equation, /^O = /);

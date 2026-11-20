@@ -82,7 +82,6 @@ export function mountEmuSide(ctx) {
   }
   const logEl = h('div', { class: 'emu-log' });
   side.append(h('div', { class: 'emu-box' }, h('h4', {}, 'Messages'), logEl));
-  side.append(h('div', { class: 'emu-hint' }, 'Buttons: press and hold; Shift+click keeps a button pressed.'));
   // what it says of the design, in the console (#2718): the engine and why, the timing, the ports on no pin of the board
   note(compiled()
     ? 'the design is compiled (its netlist, by Yosys) and runs at up to the board\'s clock rate; registers without an initial value start at 0, as on the FPGA; '

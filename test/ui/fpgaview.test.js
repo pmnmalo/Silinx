@@ -219,20 +219,16 @@ uiTest('#2668 FPGA view: the side panel as the Design editors\' Properties: fold
     const fv = document.querySelector(v), side = fv.querySelector('.fv-side'), shown = (e) => !!e && e.getClientRects().length > 0;
     const toggle = [...fv.querySelectorAll('.fv-bar .btn')].find((b) => /☰/.test(b.textContent));
     return { cap: side.querySelector('.asm-cap').textContent, width: side.offsetWidth, shown: shown(side), over: getComputedStyle(side).position === 'absolute',
-      folded: fv.classList.contains('props-folded'), secs: [...side.querySelectorAll('details.fv-sec')].map((d) => `${d.querySelector('summary').textContent}${d.open ? '' : ' (closed)'}`),
+      folded: fv.classList.contains('props-folded'), secs: [...side.querySelectorAll('.fv-sec')].map((d) => `${d.querySelector('.fv-sec-title').textContent}${d.tagName === 'DETAILS' ? ' (folds)' : ''}`),
+      selection: [...side.querySelectorAll('.fv-sec')].find((d) => d.querySelector('.fv-sec-title').textContent === 'Selection').querySelector('.fv-detail').textContent,
       toggle: shown(toggle) ? toggle.textContent : null, canvas: fv.querySelector('.fv-canvas').offsetWidth };
   }, V);
   // a wide window: the panel beside the chip, its four sections open, no ☰ Properties in the toolbar
   let L = await look();
-  assert.deepEqual({ ...L, canvas: undefined }, { cap: 'Properties', width: 330, shown: true, over: false, folded: false, secs: ['Device', 'Modules', 'Selection', 'Nets'], toggle: null, canvas: undefined });
+  // (its sections plain, with their heading: the panel folds as a whole, never a section of it; nothing selected, the
+  // Selection says nothing, #4764)
+  assert.deepEqual({ ...L, canvas: undefined }, { cap: 'Properties', width: 330, shown: true, over: false, folded: false, secs: ['Device', 'Modules', 'Selection', 'Nets'], selection: '', toggle: null, canvas: undefined });
   const wide = L.canvas;
-  // a section folded by its title, and unfolded
-  await page.click(`${V} .fv-sec > summary`, { text: 'Modules' });
-  L = await look();
-  assert.deepEqual(L.secs, ['Device', 'Modules (closed)', 'Selection', 'Nets']);
-  assert.equal(await page.eval((v) => document.querySelector(`${v} .fv-mod`).checkVisibility(), V), false, 'the legend hidden');
-  await page.click(`${V} .fv-sec > summary`, { text: 'Modules' });
-  assert.deepEqual((await look()).secs, ['Device', 'Modules', 'Selection', 'Nets']);
   // folded to a strip: the chip wider; remembered when the view opens again; a click on the strip expands it
   await page.click(`${V} .fv-side .asm-fold`);
   L = await look();

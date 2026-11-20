@@ -616,7 +616,7 @@ Object.assign(PT, {
   'Rotary encoder: ROT_A / ROT_B not connected in the UCF': 'Codificador rotativo: ROT_A / ROT_B não ligados no UCF',
   'Turn left (counter-clockwise)': 'Rodar para a esquerda (sentido anti-horário)', 'Turn right (clockwise)': 'Rodar para a direita (sentido horário)',
   'Watch': 'Observar', 'Add a signal to watch…': 'Adicionar um sinal a observar…', 'Timing generics': 'Genéricos de temporização',
-  'Buttons: press and hold; Shift+click keeps a button pressed.': 'Botões: carregue e mantenha; Shift+clique mantém um botão premido.', 'Messages': 'Mensagens', 'No clock input found': 'Nenhuma entrada de relógio encontrada',
+'Messages': 'Mensagens', 'No clock input found': 'Nenhuma entrada de relógio encontrada',
   // ASM chart editor
   'Value(s) of this exit: binary digits, a literal, a|b, or others': 'Valor(es) desta saída: dígitos binários, um literal, a|b, ou others',
   'Registered output (holds its value, readable in conditions)': 'Saída registada (mantém o valor, pode ser lida em condições)',

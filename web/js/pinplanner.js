@@ -155,7 +155,6 @@ export function mountPinPlanner(el, doc, top) {
   root.append(bar, h('div', { class: 'asm-body' }, portsSide, h('div', { class: 'asm-main' }, tableHost, boardHost), side), line.el);
   mountSideFold({ root, side, key: 'silinx.pins.props.folded', titles: { fold: 'Collapse the Board Resources panel', unfold: 'Expand the Board Resources panel' } });
   mountSideFold({ root, side: portsSide, key: 'silinx.pins.ports.folded', titles: { fold: 'Collapse the Ports panel', unfold: 'Expand the Ports panel' }, cls: 'ports-folded', toward: 'left' });
-  const closedGroups = new Set();   // (the groups folded, kept when the panel is drawn again: render)
 
   function used() {
     const m = new Map();
@@ -207,8 +206,6 @@ export function mountPinPlanner(el, doc, top) {
     const assigned = nets.filter(n => asg[n.net]?.loc).length;
     setStatus(`${assigned}/${nets.length} I/Os assigned`);
     // resources panel
-    // (the groups folded, read before they are drawn again)
-    for (const d of resHost.querySelectorAll('details.pp-grp')) { const name = d.dataset.grp; if (d.open) closedGroups.delete(name); else closedGroups.add(name); }
     resHost.innerHTML = '';
     if (!board) { resHost.append(h('div', { class: 'asm-section pp-none' }, 'No board selected. Choose one in Project ▸ Design Properties to see the board resources and auto-assign pins.')); return; }
     let grp = null, body = null;
@@ -217,7 +214,8 @@ export function mountPinPlanner(el, doc, top) {
         grp = r.group;
         const name = grp || 'Other';
         body = h('div', { class: 'asm-section-body' });
-        resHost.append(h('details', { class: 'asm-section pp-grp', 'data-grp': name, open: !closedGroups.has(name) }, h('summary', {}, name), body));
+        // (a plain section with its heading: the panel folds as a whole, never a group of it, #4764)
+        resHost.append(h('div', { class: 'asm-section pp-grp', 'data-grp': name }, h('h3', {}, name), body));
       }
       // (each pin a target of the Board view's drops, #2715: VGA, PS/2, the Pmods…; its right-click menu, the bits off it)
       r.pins.forEach((pin, i) => {

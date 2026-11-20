@@ -84,8 +84,11 @@ async function createExercise(name) {
 export async function openExercise(path) {
   const id = `exercise:${path}`;
   if (findDoc(id)) return openDoc({ id });
+  const pj = S.project.name;
   let text;
-  try { text = await api.readFile(S.project.name, path); } catch (e) { log(`ERROR: ${path} cannot be read: ${e.message}`, 'err'); return null; }
+  try { text = await api.readFile(pj, path); } catch (e) { log(`ERROR: ${path} cannot be read: ${e.message}`, 'err'); return null; }
+  // (another project opened meanwhile: not opened in it, #1231, #4764)
+  if (S.project?.name !== pj) return null;
   let ex;
   try { ex = JSON.parse(text); } catch (e) { log(`ERROR: ${path} is not JSON (${e.message}): open it as a text file.`, 'err'); return null; }
   return openDoc({ id, path, title: path.split('/').pop(), tooltip: path, icon: 'file', create: (el, doc) => mountExercise(el, doc, path, ex) });

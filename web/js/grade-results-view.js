@@ -27,8 +27,11 @@ function openResults(file, text, ex = null) {
 
 /** A results file of the project, from the Files. */
 export async function openResultsFile(path) {
+  const pj = S.project.name;
   let text;
-  try { text = await api.readFile(S.project.name, path); } catch (e) { log(`ERROR: ${path} cannot be read: ${e.message}`, 'err'); return null; }
+  try { text = await api.readFile(pj, path); } catch (e) { log(`ERROR: ${path} cannot be read: ${e.message}`, 'err'); return null; }
+  // (another project opened meanwhile: not opened in it, #1231, #4764)
+  if (S.project?.name !== pj) return null;
   return openResults(path, text);
 }
 
@@ -38,10 +41,13 @@ export async function classResultsDialog(ex) {
   const body = h('div', { class: 'ex-template' },
     h('p', {}, 'The class\'s results of a teacher\'s run: the JSON that silinx grade --json or silinx classroom grade --json writes.'),
     h('label', { class: 'ex-field' }, h('span', {}, 'Results file'), input));
+  const pj = S.project?.name;
   const ok = await dialog({ title: 'Class Results', body, width: 480, buttons: [{ label: 'Open', value: true, primary: true }, { label: 'Cancel', value: null }] });
   const f = input.files?.[0];
   if (!ok || !f) return null;
-  return openResults(f.name, await f.text(), ex);
+  const text = await f.text();
+  if (S.project?.name !== pj) return null;   // (another project opened meanwhile, #4764)
+  return openResults(f.name, text, ex);
 }
 
 function mountResults(el, file, results, ex) {

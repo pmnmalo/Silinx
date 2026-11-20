@@ -400,7 +400,7 @@ uiTest('board emulator: the compiled engine at the board\'s speed (a real timing
   assert.deepEqual([b.view, b.engine, b.compiledDisabled, b.speed], ['compiled', 'compiled', false, 'real']);
   assert.match(b.hints[0], /^the design is compiled \(its netlist, by Yosys\) and runs at up to the board's clock rate/);
   assert.deepEqual(b.hints.slice(1), ['the timing generics at their real values: the compiled engine runs the design at up to the board\'s clock rate.']);
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-hint')].map((e) => e.textContent)), ['Buttons: press and hold; Shift+click keeps a button pressed.']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-hint')].map((e) => e.textContent)), []);   // (no hint line, #4764)
   // the real generic (5 000 000 cycles a step): LD0 changes within a few seconds of the board's time
   await page.waitFor(() => window.Silinx.active.view.sim.now > 2.2e11, [], { what: '0.22 s of the board\'s time', timeout: 60000 });
   await page.waitFor(() => window.Silinx.active.view.outputs.leds.slice(0, 2).some((v) => v > 0), [], { what: 'the counter counts (LD0, LD1)' });

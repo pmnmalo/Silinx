@@ -368,7 +368,7 @@ html[data-ui="silinx"] .sch-editor .se-btn { height: var(--m-tool-h); min-width:
 html[data-ui="silinx"] .sch-editor .se-btn:hover:not(:disabled) { background: var(--m-hover); border: none; }
 html[data-ui="silinx"] .sch-editor .se-btn:active:not(:disabled), html[data-ui="silinx"] .sch-editor .se-btn.on { background: var(--m-accent-soft); border: none; }
 html[data-ui="silinx"] .sch-editor .se-sep { background: var(--m-border); box-shadow: none; }
-html[data-ui="silinx"] .sch-editor .se-ptitle, html[data-ui="silinx"] .sch-editor .se-sec > summary { color: var(--m-fg); }
+html[data-ui="silinx"] .sch-editor .se-ptitle, html[data-ui="silinx"] .sch-editor .se-sec > .se-sec-title { color: var(--m-fg); }
 html[data-ui="silinx"] .sch-editor .se-cap { height: 32px; padding: 0 10px; background: none; color: var(--m-muted); border-color: var(--m-border); font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
 html[data-ui="silinx"] .sch-editor :is(.se-left, .se-right) { border-color: var(--m-border); }
 html[data-ui="silinx"] .sch-editor .btn { height: var(--m-tool-h); padding: 0 10px; }
@@ -387,7 +387,7 @@ html[data-ui="silinx"] .asm-editor .asm-sep, html[data-ui="silinx"] .tt-toolbar 
 html[data-ui="silinx"] :is(.asm-editor, .fv-side, .tp-side, .emu-side) .asm-cap { height: 32px; padding: 0 10px; background: var(--m-surface); color: var(--m-muted); border-color: var(--m-border); font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
 html[data-ui="silinx"] .asm-editor .asm-section { border-color: var(--m-border); }
 html[data-ui="silinx"] .asm-editor :is(.asm-section h3, details.asm-section > summary) { color: var(--m-fg); }
-html[data-ui="silinx"] .fv-sec > summary { color: var(--m-fg); }
+html[data-ui="silinx"] .fv-sec > .fv-sec-title { color: var(--m-fg); }
 html[data-ui="silinx"] .fv-sec { border-color: var(--m-border); }
 html[data-ui="silinx"] .asm-editor .asm-input { border-radius: var(--m-radius-sm); }
 html[data-ui="silinx"] .tt-toolbar .tb-more-btn { height: var(--m-tool-h); border: none; border-radius: 6px; }
