@@ -106,6 +106,27 @@ test('the server: a failure in the middle moves everything back, the old project
   assert.ok(fs.existsSync(path.join(P.projectDir('f2'), 'f2.xise')));
 });
 
+// #4760: a failure at each step moves everything back; an undo that fails too is said (never the first error alone, as
+// if nothing had changed), with what it left and no path of the server's
+test('#4760 the server: a failure at each step undone; an undo that fails said, with what it left', async () => {
+  await P.createProject({ name: 'u1', template: 'gates' });
+  fs.writeFileSync(path.join(P.projectDir('u1'), 'u1.xise'), '<project/>\n');
+  const was = tree(P.projectDir('u1')), text = fs.readFileSync(path.join(P.projectDir('u1'), 'silinx.json'), 'utf8');
+  for (const at of ['moved', 'mark', 'files', 'json']) {
+    P.RENAME_TESTING.failAt = at;
+    try { await rejects(P.renameProject('u1', 'u2'), undefined, 'rename failed (test)'); } finally { P.RENAME_TESTING.failAt = null; }
+    assert.deepEqual(tree(P.projectDir('u1')), was, at);
+    assert.equal(fs.readFileSync(path.join(P.projectDir('u1'), 'silinx.json'), 'utf8'), text, at);
+    assert.ok(!fs.existsSync(P.projectDir('u2')), at);
+  }
+  // the moves back failing: the project left under its new name, said
+  Object.assign(P.RENAME_TESTING, { failAt: 'files', failUndo: true });
+  try {
+    await rejects(P.renameProject('u1', 'u2'), 500, 'could not rename the project \'u1\' to \'u2\' (rename failed (test)), and putting it back failed too: u2/u2.xise → u2/u1.xise (EPERM), u2 → u1 (EPERM). Look at the workspace\'s folders \'u1\' and \'u2\'.');
+  } finally { Object.assign(P.RENAME_TESTING, { failAt: null, failUndo: false }); }
+  assert.ok(fs.existsSync(path.join(P.projectDir('u2'), 'u2.xise')) && !fs.existsSync(P.projectDir('u1')));
+});
+
 test('the server: a git project, its .git moved with it, its remote and its history kept; the workspace repository\'s trust mark follows it', { skip: !hasGit && 'no git' }, async () => {
   await P.createProject({ name: 'g1', template: 'blinky' });
   const dir = P.projectDir('g1');

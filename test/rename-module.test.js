@@ -66,3 +66,24 @@ test('#4731 renameModule: before() with the plan, not on a refusal; a circuit re
   assert.equal(JSON.parse(await P.readFile('c', 'src/board1.circ.json')).generatedFile, r.file);
   assert.equal((await P.readProject('c')).top, 'board1');
 });
+
+// #4760: a move that fails undoes the moves done; "Nothing was changed" only when they were all undone, else the files
+// left under their new names said
+test('#4760 renameModule: a failed move undone, "Nothing was changed"; an undo that fails too said, never "Nothing was changed"', async () => {
+  await P.createProject({ name: 'u', template: 'blinky' });
+  const failing = ({ undo }) => {
+    let n = 0;
+    return { ...P, renameFile: async (name, a, b, o) => {
+      if (o?.checkName === false && undo) throw Object.assign(new Error('the disk is read-only'), { status: 500 });
+      if (o?.checkName !== false && ++n === 2) throw Object.assign(new Error('the disk is full'), { status: 500 });
+      return P.renameFile(name, a, b, o);
+    } };
+  };
+  const plan = 'src/speed_ctrl.asm.json → src/pace.asm.json, src/speed_ctrl.vhd → src/pace.vhd';
+  await assert.rejects(R.renameModule(failing({ undo: false }), 'u', 'speed_ctrl', 'pace', { to: 'src/pace.vhd' }),
+    { rename: true, message: `could not rename ${plan}: the disk is full. Nothing was changed.` });
+  assert.ok(fs.existsSync(path.join(P.projectDir('u'), 'src/speed_ctrl.asm.json')) && !fs.existsSync(path.join(P.projectDir('u'), 'src/pace.asm.json')));
+  await assert.rejects(R.renameModule(failing({ undo: true }), 'u', 'speed_ctrl', 'pace', { to: 'src/pace.vhd' }),
+    { rename: true, message: `could not rename ${plan}: the disk is full. Moving the files back failed too: src/pace.asm.json (the disk is read-only) kept its new name; rename it back by hand.` });
+  assert.ok(fs.existsSync(path.join(P.projectDir('u'), 'src/pace.asm.json')));
+});

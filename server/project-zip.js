@@ -23,11 +23,15 @@ import { parseDescription } from '../core/project-json.js';
 
 const xiseName = project => `${project.name}.xise`;
 
-/** The texts of a project's listed files: { path: text } (a missing one left out). */
-export async function sourcesOf(P, name, project) {
+// why a file was not read, with no path of the server's (#4760): an HTTP error's message, else the file system's code
+const whyNot = e => (e.status === 404 || e.code === 'ENOENT' ? 'not found' : e.status ? e.message : e.code || 'unreadable');
+
+/** The texts of a project's listed files: { path: text } (a missing or unreadable one left out, said in warnings when
+ *  given, #4760). */
+export async function sourcesOf(P, name, project, warnings = null) {
   const out = {};
   for (const f of project.files || []) {
-    try { out[f.path] = await P.readFile(name, f.path); } catch { /* missing */ }
+    try { out[f.path] = await P.readFile(name, f.path); } catch (e) { warnings?.push(`${f.path}: not read (${whyNot(e)}): left out of the export`); }
   }
   return out;
 }
@@ -44,11 +48,13 @@ export async function exportProjectZip(P, name, kind = 'xilinx', { copy = false 
     if (copy) await asCopy(P, name, entries);
     return { zip: await createZip(entries, NODE_CODEC), file: `${name}-silinx.zip`, warnings: [] };
   }
-  const sources = await sourcesOf(P, name, project);
+  const unread = [];
+  const sources = await sourcesOf(P, name, project, unread);
   // Silinx schematics go out as ISE schematics (.sch), listed in the .xise in place of their HDL
   const docs = {};
   for (const rel of tree.filter(f => /\.sch\.json$/i.test(f))) {
-    try { docs[rel] = JSON.parse(await fs.readFile(P.safeJoin(P.projectDir(name), rel), 'utf8')); } catch { /* skip */ }
+    try { docs[rel] = JSON.parse(await fs.readFile(P.safeJoin(P.projectDir(name), rel), 'utf8')); }
+    catch (e) { unread.push(`${rel}: not read (${e instanceof SyntaxError ? 'not JSON' : whyNot(e)}): no ISE schematic made of it`); }
   }
   const sch = exportIseSchematics(project, docs, sources);
   // C sources go out as their HDL (#2320)
@@ -58,7 +64,7 @@ export async function exportProjectZip(P, name, kind = 'xilinx', { copy = false 
   for (const f of c.files) sources[f.path] = f.text;
   const xml = exportXise(project, { sources, schematics: sch.schematics, extraFiles: [...sch.extraFiles, ...c.extraFiles], exists: p => tree.includes(p) });
   const entries = [];
-  const generated = [...sch.files, ...c.files], warnings = [...sch.warnings, ...c.warnings];
+  const generated = [...sch.files, ...c.files], warnings = [...unread, ...sch.warnings, ...c.warnings];
   const added = new Set(generated.map(f => f.path));
   for (const rel of tree) {
     if (rel === xiseName(project) || added.has(rel) || SILINX_ONLY.test(rel) || isCSource(rel)) continue;

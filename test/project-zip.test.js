@@ -111,3 +111,14 @@ test('#4356 importProjectEntries: a constraints file of its own not in the zip i
   assert.deepEqual((await imp({ device: S3E, constraints: 'constraints/board.ucf' }, [{ path: 'constraints/board.ucf', data: enc('NET "a" LOC = "P11";\n') }])).missing, []);
   assert.deepEqual((await imp({ device: S3E, constraints: 'constraints/board.ucf', files: [{ path: 'constraints/board.ucf', lang: 'ucf', role: 'constraints' }] })).missing, ['constraints/board.ucf']);
 });
+
+// #4760: a listed file missing, a schematic not read: said in the export's warnings, not left out silently (an
+// import's silinx.json that is not JSON: #4755's)
+test('#4760 exportProjectZip: a file left out said, a schematic not read said', async () => {
+  await P.createProject({ name: 'gz', template: 'gates' });
+  await P.updateProject('gz', p => ({ ...p, files: [...p.files, { path: 'src/gone.vhd' }] }));
+  fs.writeFileSync(`${P.projectDir('gz')}/src/broken.sch.json`, '{ not json');
+  const x = await exportProjectZip(P, 'gz');
+  assert.deepEqual(x.warnings, ['src/gone.vhd: not read (not found): left out of the export', 'src/broken.sch.json: not read (not JSON): no ISE schematic made of it']);
+  assert.ok((await names(x.zip)).includes('gz.xise'));
+});

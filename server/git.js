@@ -28,7 +28,7 @@ export class GitError extends Error {
 
 // the tests' remotes (a local bare repository, no network): a folder's absolute path taken for a URL; remoteOf: the
 // folder a GitHub address is cloned from (the UI tests', test/ui/serve.js); never set by the server or the MCP
-export const GIT_TESTING = { localRemotes: false, remoteOf: null };
+export const GIT_TESTING = { localRemotes: false, remoteOf: null, maxOut: null };
 
 /** git turned off (SILINX_GIT=off: a hosted server whose operator does not want its account's credentials used). */
 export const gitEnabled = () => String(process.env.SILINX_GIT || '').toLowerCase() !== 'off';
@@ -77,8 +77,10 @@ export async function git(args, { cwd, timeout = 60_000 } = {}) {
     let child;
     try { child = spawn('git', [...base, ...args], { cwd, env: gitEnv(), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, shell: false }); } catch (e) { reject(e); return; }
     const out = [], err = [];
-    let size = 0;
-    const take = (list, d) => { size += d.length; if (size <= MAX_OUT) list.push(d); };
+    // (an output past MAX_OUT: git stopped and an error, never its first 16 MB read as the whole, #4760)
+    let size = 0, over = false;
+    const max = GIT_TESTING.maxOut ?? MAX_OUT;
+    const take = (list, d) => { size += d.length; if (size <= max) list.push(d); else if (!over) { over = true; child.kill('SIGKILL'); } };
     child.stdout.on('data', d => take(out, d));
     child.stderr.on('data', d => take(err, d));
     let timedOut = false;
@@ -91,6 +93,7 @@ export async function git(args, { cwd, timeout = 60_000 } = {}) {
     child.on('close', code => {
       clearTimeout(timer);
       if (timedOut) { reject(new GitError(`git ${args[0]} took longer than ${Math.round(timeout / 1000)} s and was stopped`, 'Check the network and the repository\'s address, then try again.', 504)); return; }
+      if (over) { reject(new GitError(`git ${args[0]}: its answer is larger than ${max >= 2 ** 20 ? `${max / 2 ** 20} MB` : `${max} bytes`}, the most Silinx reads: stopped`, 'A file or a list this large is git\'s on the command line: run git there.', 413)); return; }
       resolve({ code, stdout: Buffer.concat(out).toString('utf8'), stderr: redact(Buffer.concat(err).toString('utf8')) });
     });
   });
@@ -480,10 +483,10 @@ function caseClashes(pulled, tracked) {
 }
 // the tracked files changed and not committed, before a pull: { path: their bytes } (a name clash's pull writes over
 // them on a case-insensitive file system, #3524)
-async function changedFiles(repo) {
-  const r = await git(['diff', '-z', '--name-only', '--diff-filter=M'], { cwd: repo.top });
+// (git diff failing: an error, the pull not made, never {} and no copy kept, #4760; exported for its test)
+export async function changedFiles(repo) {
   const out = {};
-  for (const f of r.code ? [] : r.stdout.split('\0').filter(Boolean)) {
+  for (const f of (await ok('diff', ['diff', '-z', '--name-only', '--diff-filter=M'], { cwd: repo.top })).split('\0').filter(Boolean)) {
     try { out[f] = await fsp.readFile(path.join(repo.top, ...f.split('/'))); } catch { /* (gone meanwhile) */ }
   }
   return out;
