@@ -79,34 +79,35 @@ const WINDOWS_DEVICE = /^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³]|conin\$|
  * operation's own: normalizePath for a name written, the stores' checks for one read.
  */
 export function filePath(p) {
-  const no = reason => ({ reason, message: reason === 'no name' ? 'missing path' : `'${p}': invalid path: ${reason}` });
-  if (typeof p !== 'string' || !p) return no('no name');
-  // eslint-disable-next-line no-control-regex
-  if (/[\0-\x1f\x7f]/.test(p)) return no('control character in the name');
-  if (/^[A-Za-z]:/.test(p)) return no('absolute path (a drive letter)');
-  if (p.includes('\\')) return no('backslash in the name');
-  if (p.startsWith('/')) return no('absolute path');
-  const parts = p.split('/').filter(s => s !== '' && s !== '.');
-  if (!parts.length) return no("the project's folder, not a file's path");
-  if (parts.includes('..')) return no("path leaves the project ('..')");
-  return { path: parts.join('/') };
+  const r = normalizePath(p, { names: false });
+  if (!r.reason) return r;
+  const reason = r.reason === 'no name' && typeof p === 'string' && p ? "the project's folder, not a file's path" : r.reason;
+  return { reason, message: reason === 'no name' ? 'missing path' : `'${p}': invalid path: ${reason}` };
 }
 
-/** A path of a project's file made canonical ('./a//b' -> 'a/b'): { path }, or { reason } it is refused. */
-export function normalizePath(p, { limits = GATE_LIMITS } = {}) {
+/**
+ * A path of a project's file made canonical ('./a//b' -> 'a/b'): { path }, or { reason } it is refused. The one syntax
+ * of a project-relative path (#4769): a string, no control character, relative (no drive letter, no leading '/'), '/'
+ * between its folders, no '..'. names: a name's own rules too (false: the syntax alone, filePath's and the browser
+ * store's); backslashes: a backslash read as '/' (a path a project of another system wrote), else refused.
+ */
+export function normalizePath(p, { limits = GATE_LIMITS, names = true, backslashes = false } = {}) {
   if (typeof p !== 'string' || !p) return { reason: 'no name' };
-  if (p.length > limits.maxPath) return { reason: `path longer than ${limits.maxPath} characters` };
+  if (names && p.length > limits.maxPath) return { reason: `path longer than ${limits.maxPath} characters` };
   // eslint-disable-next-line no-control-regex
   if (/[\0-\x1f\x7f]/.test(p)) return { reason: 'control character in the name' };
   // (the C1 controls, and the invisible and direction characters: a name that reads as another, a.vhd<U+202E>, or a
   // silinx.json followed by a zero-width space, #3414)
-  const hid = /[\p{Cc}\p{Cf}\u2028\u2029]/u.exec(p);
+  const hid = names && /[\p{Cc}\p{Cf}\u2028\u2029]/u.exec(p);
   if (hid) return { reason: `control, invisible or direction character in the name (U+${hid[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')})` };
-  if (/^[A-Za-z]:/.test(p)) return { reason: 'absolute path (a drive letter)' };
+  if (backslashes) p = p.replace(/\\/g, '/');
+  // (with backslashes, a drive only as a whole first folder, C: or C:/…, as the browser store read its lists)
+  if ((backslashes ? /^[A-Za-z]:(\/|$)/ : /^[A-Za-z]:/).test(p)) return { reason: 'absolute path (a drive letter)' };
   if (p.includes('\\')) return { reason: 'backslash in the name' };
   if (p.startsWith('/')) return { reason: 'absolute path' };
   const parts = p.split('/').filter(s => s !== '' && s !== '.');
   if (!parts.length) return { reason: 'no name' };
+  if (!names) return parts.includes('..') ? { reason: "path leaves the project ('..')" } : { path: parts.join('/') };
   for (const s of parts) {
     if (s === '..') return { reason: "path leaves the project ('..')" };
     if (/[<>:"|?*]/.test(s)) return { reason: `character not allowed in a name (< > : " | ? *): '${s}'` };
