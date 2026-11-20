@@ -65,3 +65,41 @@ uiTest('#688 schematic: a wire segment dragged moves alone, its neighbours stret
   assert.deepEqual(d.wires.find((w) => w.id === 'W1').points.at(-1), P(80, 140), 'W1 still ends on U1.I');
   await same('the part moved');
 });
+
+// #4920: a segment dragged onto the wire it continues (two wires meeting end to end): no stub left. W1 from the marker
+// in1 to (340, 180); W3 from there down and right to U1's input; W3's vertical segment dragged 60 to the left, onto
+// W1's corner: the two wires meet there, nothing drawn twice (no dangling stub), the HDL the same; Undo, Redo
+uiTest('#4920 schematic: a segment dragged onto the wire it continues leaves no stub; the HDL the same; Undo, Redo', E, async (page) => {
+  const doc = newDoc('stub', 'vhdl');
+  doc.symbols.push({ id: 'S1', type: 'inv', x: 500, y: 330, rot: 0, mirror: false, name: 'U1', params: { width: 1 } });
+  doc.ports.push({ id: 'P1', name: 'in1', dir: 'in', width: 1, x: 210, y: 120 }, { id: 'P2', name: 'y', dir: 'out', width: 1, x: 620, y: 340 });
+  doc.wires.push({ id: 'W1', points: [P(210, 120), P(280, 120), P(280, 180), P(340, 180)] },
+    { id: 'W3', points: [P(340, 180), P(340, 340), P(500, 340)] }, { id: 'W4', points: [P(580, 340), P(620, 340)] });
+  await makeProject(env, { name: 'StubPj', files: { 'src/stub.sch.json': JSON.stringify(doc) } });
+  await page.openProject('StubPj');
+  await page.eval(() => window.SilinxApp.openSch('src/stub.sch.json'));
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym`).length === 1, [ED], { what: 'drawn' });
+  const at = (x, y) => page.eval((ed, px, py) => { const l = document.querySelector(`${ed} svg [data-kind=wire] .whit`); const p = l.ownerSVGElement.createSVGPoint(); p.x = px; p.y = py; const q = p.matrixTransform(l.getScreenCTM()); return { x: q.x, y: q.y }; }, ED, x, y);
+  const getDoc = () => page.eval(() => window.Silinx.active.schEditor.getDoc());
+  const wires = async () => Object.fromEntries((await getDoc()).wires.map((w) => [w.id, w.points.map((p) => `${p.x},${p.y}`).join(' ')]));
+  const hdl0 = generateHdl(doc, { lang: 'vhdl' }).code;
+  const before = { W1: '210,120 280,120 280,180 340,180', W3: '340,180 340,340 500,340', W4: '580,340 620,340' };
+  assert.deepEqual(await wires(), before);
+
+  await page.drag(await at(340, 260), await at(280, 260));
+  await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wires.find((w) => w.id === 'W3').points[0].x === 280, [], { what: 'the segment moved' });
+  const after = { W1: '210,120 280,120 280,180', W3: '280,180 280,340 500,340', W4: '580,340 620,340' };
+  assert.deepEqual(await wires(), after, 'no stub: W3 starts where W1 now ends');
+  const d = await getDoc();
+  assert.deepEqual(netlist(d).diagnostics.map((x) => x.message), [], 'no warnings');
+  assert.equal(generateHdl(d, { lang: 'vhdl' }).code, hdl0, 'the same HDL');
+  // nothing drawn on (300, 180), where the stub was
+  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} svg [data-kind=wire]`)].length, ED), 3);
+
+  await page.menu('Edit', 'Undo');
+  await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wires.find((w) => w.id === 'W3').points[0].x === 340, [], { what: 'undone' });
+  assert.deepEqual(await wires(), before);
+  await page.menu('Edit', 'Redo');
+  await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wires.find((w) => w.id === 'W3').points[0].x === 280, [], { what: 'redone' });
+  assert.deepEqual(await wires(), after);
+});

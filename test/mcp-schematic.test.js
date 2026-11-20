@@ -206,3 +206,24 @@ test('set_wire_style: direct, curved, orthogonal (the field dropped, as an older
   }
   assert.equal((await ok('read_file', { project: 'ws', path: 'src/gates.vhd' })).text, hdl0);
 });
+
+// #4920: the wires drawn twice over (a stub a drag left, saved so) cleaned by the MCP's wire tools as by the editor
+// (normalizeDoc's clean-up): move_junction on the dot the stub starts from, the stub gone, the HDL the same
+test('move_junction: a doubled stub at the dot removed as the editor removes it, the HDL the same', async () => {
+  await ok('new_project', { name: 'fold' });
+  await ok('new_source', { project: 'fold', type: 'schematic', name: 'tee' });
+  const doc = JSON.parse((await ok('read_file', { project: 'fold', path: 'src/tee.sch.json' })).text);
+  doc.ports = [port('P1', 'a', 'in', 100, 200), port('P2', 'y', 'out', 400, 100), port('P3', 'z', 'out', 400, 300)];
+  doc.wires = [{ id: 'W1', points: [P(100, 200), P(200, 200)] }, { id: 'W2', points: [P(200, 200), P(200, 100), P(400, 100)] },
+    { id: 'W3', points: [P(200, 200), P(200, 300), P(400, 300)] }];
+  await ok('write_file', { project: 'fold', path: 'src/tee.sch.json', text: JSON.stringify(doc, null, 1) });
+  const hdl0 = (await ok('read_file', { project: 'fold', path: 'src/tee.vhd' })).text;
+  doc.wires.push({ id: 'W9', points: [P(200, 200), P(200, 250)] });   // (down over W3, ending in nothing)
+  await ok('write_file', { project: 'fold', path: 'src/tee.sch.json', text: JSON.stringify(doc, null, 1) });
+  const r = await ok('move_junction', { project: 'fold', path: 'src/tee.sch.json', at: P(200, 200), to: P(220, 200) });
+  assert.equal(r.text, 'The junction dot at (200, 200) moved to (220, 200)');
+  const sch = JSON.parse((await ok('read_file', { project: 'fold', path: 'src/tee.sch.json' })).text);
+  assert.deepEqual(sch.wires.map(w => [w.id, w.points]), [['W1', [P(100, 200), P(220, 200)]], ['W2', [P(220, 200), P(220, 100), P(400, 100)]],
+    ['W3', [P(220, 200), P(220, 300), P(400, 300)]]]);
+  assert.equal((await ok('read_file', { project: 'fold', path: 'src/tee.vhd' })).text, hdl0);
+});
