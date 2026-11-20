@@ -138,8 +138,15 @@ function showLast() {
 
 // a line of SSim's console or of the emulator's Messages box, written here with its source, each of its lines: its own
 // (#4729: the lines after it stay the process's, not the simulation's)
-function mirror(text, cls, src) {
+// (#4746: not the Errors tab's, which the simulator's own messages fill, web/js/console.js simDiagnostics; a line that
+// goes to its source, double-clicked, goes there here too)
+function mirror(text, cls, src, el) {
   app.log(text, cls, { diag: false, src });
+  if (!el?.classList.contains('link')) return;
+  const ln = $('console-log').lastElementChild;
+  ln.classList.add('mc-link');
+  ln.title = el.title;
+  ln.addEventListener('dblclick', () => el.dispatchEvent(new MouseEvent('dblclick')));
 }
 const ISIM_CLS = { 'k-error': 'err', 'k-failure': 'err', 'k-warning': 'warn', 'k-cmd': 'hdr' };
 const isimCls = el => Object.entries(ISIM_CLS).find(([k]) => el.classList.contains(k))?.[1] || '';
@@ -150,8 +157,8 @@ function follow() {
   for (const cons of document.querySelectorAll('#workspace .isim-console')) {
     if (followed.has(cons)) continue;
     followed.add(cons);
-    for (const el of cons.children) mirror(el.textContent, isimCls(el), 'sim');
-    new MutationObserver(ms => { if (built) for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1) mirror(el.textContent, isimCls(el), 'sim'); }).observe(cons, { childList: true });
+    for (const el of cons.children) mirror(el.textContent, isimCls(el), 'sim', el);
+    new MutationObserver(ms => { if (built) for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1) mirror(el.textContent, isimCls(el), 'sim', el); }).observe(cons, { childList: true });
   }
   for (const logEl of document.querySelectorAll('#workspace .emu-log')) {
     if (followed.has(logEl)) continue;

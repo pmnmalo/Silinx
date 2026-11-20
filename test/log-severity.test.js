@@ -69,8 +69,9 @@ test('run_process counts what the console counts: processMessages lists each lin
   assert.deepEqual(processMessages(log), {
     errors: [ERRORS[4], ERRORS[5]],
     warnings: [WARNINGS[5], WARNINGS[6], WARNINGS[8], WARNINGS[10]],
+    locations: [],   // (no project's paths: test/message-location.test.js, #4746)
   });
-  assert.deepEqual(processMessages([]), { errors: [], warnings: [] });
+  assert.deepEqual(processMessages([]), { errors: [], warnings: [], locations: [] });
 });
 
 test('the console\'s message parser reads ISE\'s INTERNAL_ERROR and FATAL_ERROR with their tool (#4730)', () => {

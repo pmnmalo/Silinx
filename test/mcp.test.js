@@ -288,7 +288,7 @@ test('new_project and set_top: an empty project for a board, its source written,
   assert.match(ucf, /TIMESPEC "TS_clk" = PERIOD "clk" 20 ns HIGH 50% ;/);
   // its test bench simulated, the counter implemented with no warning
   const sim = await srv.call('simulate', { project: 'Counter4', time_ns: 200 });
-  assert.deepEqual(sim.structuredContent.log, [{ timeNs: 105, kind: 'note', text: 'done' }]);
+  assert.deepEqual(sim.structuredContent.log, [{ timeNs: 105, kind: 'note', text: 'done', file: 'sim/tb_counter.vhd', line: 10 }]);   // (its file and line: the Errors tab's, #4746)
   assert.equal(sim.structuredContent.failed, false);
   const impl = await srv.call('run_process', { project: 'Counter4', process: 'implement', log_lines: 3 });
   assert.equal(impl.isError, false, impl.content[0].text);
