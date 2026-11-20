@@ -193,7 +193,8 @@ or writes can come from anyone: a course site, an e-mail, a forum, an assistant 
 treats them as untrusted, in three layers.
 
 **What such a file must not do:** run a script in the page (a name or a label shown as markup); read or write a
-file outside its own project (`..`, an absolute path, a symbolic link, a hidden folder such as `.git` with its hooks);
+file outside its own project (`..`, an absolute path, a symbolic link, also one changed by another process between the
+check and the open: the file opened is checked too, #4744; a hidden folder such as `.git` with its hooks);
 exhaust the memory or the stack (a zip bomb, a file far larger than it says, a billion-laughs XML, a deeply nested or
 endlessly chained source, #2577); read a local file or the network through the XML parser (XXE); replace another
 project or the user's settings; or run a program outside the browser's sandbox (ISE, Vivado, ssh, Docker, programming a

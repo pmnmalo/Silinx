@@ -9,7 +9,7 @@ import { primitiveSources } from '../core/unisim.js';
 import { boardAutoAssign, boardConstraintsText, constraintsExtOf } from '../packages/silinx-fpga/src/parts.js';
 import { resolveBoard } from './devices.js';
 import { topForBoard } from '../core/board-generics.js';
-import { realOf, nativeRealOf, hiddenName, within } from './paths.js';
+import { realOf, nativeRealOf, hiddenName, within, readWithin, createWithin } from './paths.js';
 import { topNameError } from './ident.js';
 import { filePath, normalizePath } from '../core/import-gate.js';
 import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
@@ -189,10 +189,12 @@ export async function renameOver(from, to, { tries = 10, wait = 15 } = {}) {
 
 /** A file written atomically (a hidden temp file beside it, then renamed over it): a concurrent reader (a watcher,
  *  another process, a shared project's followers, #3183) or a crash never sees it half-written or empty. */
-export async function writeAtomic(full, text) {
+// dir: the project's folder, the temporary file checked to be in it once open (#4744)
+export async function writeAtomic(full, text, dir = null) {
   const tmp = path.join(path.dirname(full), `.${path.basename(full)}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);   // hidden: not listed
   try {
-    await fs.writeFile(tmp, text);
+    if (dir) await createWithin(dir, tmp, text);
+    else await fs.writeFile(tmp, text);
     await renameOver(tmp, full);
   } catch (e) { await fs.rm(tmp, { force: true }).catch(() => {}); throw e; }
 }
@@ -496,8 +498,9 @@ export async function readFile(name, rel) {
   const dir = projectDir(name);
   const full = await spelledJoin(dir, rel);
   refuseHidden(dir, rel, full, 'read');
-  try { return await fs.readFile(full, 'utf8'); }
-  catch { throw new HttpError(404, `file '${rel}' not found`); }
+  // (the file opened checked too: its path's links may change once checked, #4744)
+  try { return await readWithin(dir, full, 'utf8'); }
+  catch (e) { throw e.status === 400 ? new HttpError(400, e.message) : new HttpError(404, `file '${rel}' not found`); }
 }
 
 export async function writeFile(name, rel0, text) {
@@ -520,7 +523,7 @@ export async function writeFile(name, rel0, text) {
   if ((await fs.stat(full).catch(() => null))?.isDirectory()) throw new HttpError(400, `'${rel}' is a folder, not a file`);
   try {
     await fs.mkdir(path.dirname(full), { recursive: true });
-    await writeAtomic(full, text);   // (a reader, or a crash, never sees a half-written / empty file)
+    await writeAtomic(full, text, dir);   // (a reader, or a crash, never sees a half-written / empty file)
   } catch (e) { throw await fsHttpError(e, dir, full); }
   // Register HDL files automatically (not the generated ones in build/, e.g. the netlists of the open
   // synthesis); a file written again is back in the project (not excluded).
