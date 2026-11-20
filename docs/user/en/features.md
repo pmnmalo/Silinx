@@ -179,8 +179,9 @@ for Xilinx FPGAs supported by ISE 14.7.
   filled in.
 - **Templates** of the FSM, ASM and Petri net wizards (their first page, *Template*; `core/chart-templates.js`): they
   fill in the next pages, which can still be changed. FSM: a counter of N states (its count on q), up/down (`up`), with
-  an enable (`en`), a ring (one-hot) and a Johnson counter, a sequence detector (a bit pattern, overlapping or not,
-  Moore or Mealy), a traffic light; ASM: a counter, an up/down counter, a start/done controller, a req/ack handshake;
+  an enable (`en`), a ring (one-hot) and a Johnson counter, a sequence detector (a bit pattern or a regular
+  expression over 0 and 1, such as `1(01)*1` or `10+1`, overlapping or not, Moore or Mealy: built by Thompson's NFA,
+  the subset construction and minimisation, `core/regex-automata.js`), a traffic light; ASM: a counter, an up/down counter, a start/done controller, a req/ack handshake;
   Petri net: a cycle of N places, producer/consumer with a buffer of N, mutual exclusion of two processes, fork/join,
   a semaphore of N resources for M users.
 - **FSM Wizard** and **ASM Wizard** (*New Source ▸ Finite State Machine (FSM) / Algorithmic State Machine (ASM) ▸

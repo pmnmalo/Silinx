@@ -18,7 +18,7 @@ export function templatePage(kind, list, onApply) {
     text.textContent = t.text;
     grid.replaceChildren(...(t.params || []).flatMap(p => {
       const ctl = p.options ? select(p.options, p.def)
-        : h('input', { type: p.key === 'pattern' ? 'text' : 'number', value: String(p.def), spellcheck: 'false', style: { width: '110px' }, ...(p.min != null ? { min: p.min, max: p.max } : {}) });
+        : h('input', { type: p.key === 'pattern' ? 'text' : 'number', value: String(p.def), spellcheck: 'false', style: { width: p.key === 'pattern' ? '200px' : '110px' }, ...(p.min != null ? { min: p.min, max: p.max } : {}) });
       ctl.classList.add(`tp-${p.key}`);
       ctl.addEventListener(p.options ? 'change' : 'input', () => { params[p.key] = p.options || p.key === 'pattern' ? ctl.value.trim() : ctl.value; });
       return field(p.label, ctl);

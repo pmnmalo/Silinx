@@ -4,10 +4,12 @@
 
 // (the Digital Electronic Circuit Wizard's, #4061: core/circuit-templates.js)
 import { CIRCUIT_TEMPLATES } from './circuit-templates.js';
+// (the sequence detector's automaton, a bit string or a regular expression, #4902)
+import { detectorTemplate, patternError } from './seq-detector.js';
 
-// a parameter: n / m a number (min, max, default), pattern a bit string, overlap a choice, type Moore / Mealy
+// a parameter: n / m a number (min, max, default), pattern a bit string or a regular expression over 0 and 1, overlap a choice, type Moore / Mealy
 const N = (label, def, min, max) => ({ key: 'n', label, def, min, max });
-const PATTERN = { key: 'pattern', label: 'Pattern (bits):', def: '1011' };
+const PATTERN = { key: 'pattern', label: 'Pattern (bits or regular expression):', def: '1011' };
 const OVERLAP = { key: 'overlap', label: 'Overlapping matches:', def: 'yes', options: [['yes', 'yes (1011011: two)'], ['no', 'no (1011011: one)']] };
 const TYPE = { key: 'type', label: 'Machine type:', def: 'moore', options: [['moore', 'Moore (the output on a state)'], ['mealy', 'Mealy (the output on a transition)']] };
 
@@ -18,7 +20,7 @@ export const FSM_TEMPLATES = [
   { id: 'enable', label: 'Counter with enable', text: 'N states in a cycle: it counts while en = 1 and stays while en = 0; the output q is the count.', params: [N('Number of states (N):', 8, 2, 64)] },
   { id: 'ring', label: 'Ring counter', text: 'N states in a cycle, the output q one-hot: one bit set, moving one place at each clock edge.', params: [N('Number of states (N):', 4, 2, 32)] },
   { id: 'johnson', label: 'Johnson counter', text: 'N states (an even number) in a cycle, the output q of N/2 bits a twisted ring: 000, 001, 011, 111, 110, 100…', params: [N('Number of states (N, even):', 6, 2, 64)] },
-  { id: 'detector', label: 'Sequence detector', text: 'The input x read one bit at each clock edge; the output z is 1 when the last bits read are the pattern.', params: [PATTERN, OVERLAP, TYPE] },
+  { id: 'detector', label: 'Sequence detector', text: 'The input x read one bit at each clock edge; the output z is 1 when the last bits read are the pattern: bits (1011) or a regular expression over 0 and 1, with . or [01] any bit, ( ), |, *, +, ?, {n}, {n,m} (1(01)*1, 10+1, 110|101).', params: [PATTERN, OVERLAP, TYPE] },
   { id: 'traffic', label: 'Traffic light', text: 'Green, yellow, red in turn, each until the input t (its time is up) is 1; the outputs green, yellow and red light the lamps.' },
 ];
 
@@ -79,14 +81,12 @@ export function templateError(kind, id, params) {
   for (const p of templateOf(kind, id).params || []) {
     const v = params[p.key];
     if (p.options) { if (!p.options.some(([k]) => k === v)) return `${p.label.replace(/:$/, '')}: choose one.`; continue; }
-    if (p.key === 'pattern') {
-      if (!/^[01]{1,16}$/.test(String(v ?? '').trim())) return 'Pattern: 1 to 16 bits, 0 and 1 only.';
-      continue;
-    }
+    if (p.key === 'pattern') continue;   // (after the options: the detector's states depend on them)
     const n = Number(v);
     if (!Number.isInteger(n) || n < p.min || n > p.max) return `${p.label.replace(/:$/, '')}: a whole number from ${p.min} to ${p.max}.`;
   }
   if (kind === 'fsm' && id === 'johnson' && Number(params.n) % 2) return 'A Johnson counter has an even number of states.';
+  if (kind === 'fsm' && id === 'detector') return patternError(params.pattern, params.overlap !== 'no', params.type === 'mealy' ? 'mealy' : 'moore');
   return null;
 }
 
@@ -130,7 +130,7 @@ export function fsmTemplate(id, params = {}) {
       const st = S(n);
       return { type: 'moore', ports: [port('q', 'out', w)], states: st, outputs: counting(st, i => vals[i].toString()), transitions: cycle(st), layout: 'circle' };
     }
-    case 'detector': return detector(String(params.pattern).trim(), params.overlap !== 'no', params.type === 'mealy' ? 'mealy' : 'moore');
+    case 'detector': return detectorTemplate(String(params.pattern).trim(), params.overlap !== 'no', params.type === 'mealy' ? 'mealy' : 'moore');
     case 'traffic': {
       const st = ['GO', 'CAUTION', 'STOP'];
       return { type: 'moore', ports: [port('t', 'in'), port('green', 'out'), port('yellow', 'out'), port('red', 'out')], states: st,
@@ -138,29 +138,6 @@ export function fsmTemplate(id, params = {}) {
     }
     default: return { type: 'moore', ports: [], states: ['S0', 'S1'], outputs: {}, transitions: [] };
   }
-}
-
-// a sequence detector of `p` (bits): the state Si has the first i bits of p matched (the longest prefix of p that the
-// bits read end with); Moore: S0..Sk, z = 1 in Sk; Mealy: S0..S(k-1), z = 1 on the transition that reads the last bit
-function detector(p, overlap, type) {
-  const k = p.length;
-  // the longest prefix of p, at most `max` bits, that `s` ends with
-  const prefixIn = (s, max) => { for (let j = Math.min(max, s.length); j > 0; j--) if (s.endsWith(p.slice(0, j))) return j; return 0; };
-  const after = (i, b) => {   // the state after reading b in Si (Si: i bits matched; i = k: Moore's match)
-    if (i === k) return overlap ? prefixIn(p.slice(1) + b, k) : prefixIn(b, k);
-    return prefixIn(p.slice(0, i) + b, k);
-  };
-  const count = type === 'moore' ? k + 1 : k;
-  const st = Array.from({ length: count }, (_, i) => `S${i}`);
-  const transitions = [];
-  for (let i = 0; i < count; i++) {
-    for (const b of ['1', '0']) {
-      let j = after(i, b), outputs;
-      if (type === 'mealy' && j === k) { outputs = { z: '1' }; j = overlap ? prefixIn(p.slice(1), k - 1) : 0; }
-      transitions.push({ from: st[i], to: st[j], cond: b === '1' ? 'x' : '!x', ...(outputs ? { outputs } : {}) });
-    }
-  }
-  return { type, ports: [port('x', 'in'), port('z', 'out')], states: st, outputs: type === 'moore' ? { [st[k]]: { z: '1' } } : {}, transitions, layout: 'circle' };
 }
 
 /** The place of state k of n on the drawing (a circle; else rows of 4, as typed in). */

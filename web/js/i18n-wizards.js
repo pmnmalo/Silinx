@@ -63,7 +63,7 @@ export const WIZARDS_PT = {
   'The digits of d shown one at a time, too fast to see: a tick every N clocks moves a counter, which chooses the digit and lights its anode; a multiplexer of constants gives its segments. seg (gfedcba) and an are active low.': 'Os dígitos de d mostrados um de cada vez, depressa demais para se notar: um tick em cada N relógios faz avançar um contador, que escolhe o dígito e acende o seu ânodo; um multiplexador de constantes dá os seus segmentos. seg (gfedcba) e an são ativos a 0.',
   'One bit added with XOR, AND and OR gates: s = a xor b xor ci, co = a and b, or (a xor b) and ci.': 'Um bit somado com portas XOR, AND e OR: s = a xor b xor ci, co = a and b, ou (a xor b) and ci.',
   'Number of states (N):': 'Número de estados (N):', 'Number of states (N, even):': 'Número de estados (N, par):', 'Number of places (N):': 'Número de lugares (N):',
-  'Buffer size (N):': 'Tamanho do buffer (N):', 'Resources (N):': 'Recursos (N):', 'Users (M):': 'Utilizadores (M):', 'Pattern (bits):': 'Padrão (bits):',
+  'Buffer size (N):': 'Tamanho do buffer (N):', 'Resources (N):': 'Recursos (N):', 'Users (M):': 'Utilizadores (M):', 'Pattern (bits or regular expression):': 'Padrão (bits ou expressão regular):',
   'Overlapping matches:': 'Ocorrências sobrepostas:', 'yes (1011011: two)': 'sim (1011011: duas)', 'no (1011011: one)': 'não (1011011: uma)',
   'Moore (the output on a state)': 'Moore (a saída num estado)', 'Mealy (the output on a transition)': 'Mealy (a saída numa transição)',
   'No inputs or outputs, two states: type in your own.': 'Sem entradas nem saídas, dois estados: escreva os seus.',
@@ -72,7 +72,8 @@ export const WIZARDS_PT = {
   'N states in a cycle: it counts while en = 1 and stays while en = 0; the output q is the count.': 'N estados em ciclo: conta enquanto en = 1 e fica enquanto en = 0; a saída q é a contagem.',
   'N states in a cycle, the output q one-hot: one bit set, moving one place at each clock edge.': 'N estados em ciclo, a saída q one-hot: um bit a 1, que avança uma posição a cada flanco do relógio.',
   'N states (an even number) in a cycle, the output q of N/2 bits a twisted ring: 000, 001, 011, 111, 110, 100…': 'N estados (um número par) em ciclo, a saída q de N/2 bits um anel torcido: 000, 001, 011, 111, 110, 100…',
-  'The input x read one bit at each clock edge; the output z is 1 when the last bits read are the pattern.': 'A entrada x lida um bit a cada flanco do relógio; a saída z é 1 quando os últimos bits lidos são o padrão.',
+  'The input x read one bit at each clock edge; the output z is 1 when the last bits read are the pattern: bits (1011) or a regular expression over 0 and 1, with . or [01] any bit, ( ), |, *, +, ?, {n}, {n,m} (1(01)*1, 10+1, 110|101).':
+    'A entrada x lida um bit a cada flanco do relógio; a saída z é 1 quando os últimos bits lidos são o padrão: bits (1011) ou uma expressão regular sobre 0 e 1, com . ou [01] qualquer bit, ( ), |, *, +, ?, {n}, {n,m} (1(01)*1, 10+1, 110|101).',
   'Green, yellow, red in turn, each until the input t (its time is up) is 1; the outputs green, yellow and red light the lamps.': 'Verde, amarelo, vermelho à vez, cada um até a entrada t (o seu tempo acabou) ser 1; as saídas green, yellow e red acendem as lâmpadas.',
   'No inputs or outputs, two state boxes chained: add your own.': 'Sem entradas nem saídas, duas caixas de estado encadeadas: acrescente as suas.',
   'N state boxes chained in a cycle, each one setting the output q to its count.': 'N caixas de estado encadeadas em ciclo, cada uma a pôr na saída q a sua contagem.',
@@ -85,7 +86,14 @@ export const WIZARDS_PT = {
   'Two processes share one token: req1 / req2 ask for it, grant1 / grant2 say who has it; never both.': 'Dois processos partilham uma marca: req1 / req2 pedem-na, grant1 / grant2 dizem quem a tem; nunca os dois.',
   'go splits the token into two branches, each going on with its input (a, b); they join again when both are done.': 'go divide a marca em dois ramos, cada um a avançar com a sua entrada (a, b); voltam a juntar-se quando ambos acabam.',
   'M users share N resources: req takes one (if any is free), rel gives one back; active while some user has one.': 'M utilizadores partilham N recursos: req toma um (se houver livre), rel devolve um; active enquanto algum utilizador tiver um.',
-  'Pattern: 1 to 16 bits, 0 and 1 only.': 'Padrão: 1 a 16 bits, só 0 e 1.', 'A Johnson counter has an even number of states.': 'Um contador Johnson tem um número par de estados.',
+  // the sequence detector's pattern refused (core/regex-automata.js, core/seq-detector.js, #4902; those with a position: WIZARDS_PT_PATTERNS)
+  'Pattern: a bit string (1011) or a regular expression over 0 and 1 (1(01)*1).': 'Padrão: uma sequência de bits (1011) ou uma expressão regular sobre 0 e 1 (1(01)*1).',
+  'Pattern: an empty alternative before the end.': 'Padrão: uma alternativa vazia antes do fim.',
+  'Pattern: it matches no bit string.': 'Padrão: não corresponde a nenhuma sequência de bits.',
+  'Pattern: it matches the empty string (no bits), so z would always be 1: make every match at least one bit long.':
+    'Padrão: corresponde à sequência vazia (sem bits), e z seria sempre 1: faça cada correspondência ter pelo menos um bit.',
+  'Pattern: too big: its automaton would have too many states.': 'Padrão: demasiado grande: o autómato teria estados a mais.',
+  'A Johnson counter has an even number of states.': 'Um contador Johnson tem um número par de estados.',
   "The template's state boxes, the first one the initial state (after the reset): rename them here; change the chart in the editor.":
     'As caixas de estado do modelo, a primeira o estado inicial (depois do reset): mude-lhes o nome aqui; mude o diagrama no editor.',
   // the UCF Wizard
@@ -113,6 +121,16 @@ export const WIZARDS_PT_PATTERNS = [
   [/^A project named '(.*)' already exists\.\n\nReplace it\? The existing project is moved to the workspace \.trash folder\.$/, "Já existe um projeto chamado '$1'.\n\nSubstituí-lo? O projeto existente é movido para a pasta .trash da pasta de trabalho."],
   [/^The template's port '(.*)' was removed: put it back, or choose another template or parameters on the Template page\.$/, "O porto '$1' do modelo foi removido: reponha-o, ou escolha outro modelo ou outros parâmetros na página Modelo."],
   [/^The port '(.*)' is wired by the template, with its direction and width: change them on the Template page, or in the schematic editor after creating it\.$/, "O porto '$1' é ligado pelo modelo, com a sua direção e largura: altere-as na página Modelo, ou no editor de esquemáticos depois de o criar."],
+  // the sequence detector's pattern refused at a position (core/regex-automata.js, #4902)
+  [/^Pattern: '(.)' at position (\d+): not a bit \(0, 1\) nor one of \. \[ \] \( \) \| \* \+ \? \{ \}\.$/, "Padrão: '$1' na posição $2: não é um bit (0, 1) nem um de . [ ] ( ) | * + ? { }."],
+  [/^Pattern: '(.)' at position (\d+) without its ([()])\.$/, "Padrão: '$1' na posição $2 sem o seu $3."],
+  [/^Pattern: '\(' at position (\d+): an empty group\.$/, "Padrão: '(' na posição $1: um grupo vazio."],
+  [/^Pattern: nothing before '(.)' at position (\d+) to repeat\.$/, "Padrão: nada antes de '$1' na posição $2 para repetir."],
+  [/^Pattern: an empty alternative before '(.)' at position (\d+)\.$/, "Padrão: uma alternativa vazia antes de '$1' na posição $2."],
+  [/^Pattern: '\[' at position (\d+): \[ \] holds the bits it allows, 0, 1 or both, then \]\.$/, "Padrão: '[' na posição $1: [ ] contém os bits que admite, 0, 1 ou ambos, e depois ]."],
+  [/^Pattern: '\{' at position (\d+): \{n\}, \{n,\} or \{n,m\}, whole numbers from 0 to (\d+), n ≤ m\.$/, "Padrão: '{' na posição $1: {n}, {n,} ou {n,m}, números inteiros de 0 a $2, n ≤ m."],
+  [/^Pattern: at most (\d+) characters\.$/, 'Padrão: no máximo $1 carateres.'],
+  [/^Pattern: its detector would have (\d+) states, more than (\d+)\.$/, 'Padrão: o detetor teria $1 estados, mais de $2.'],
   [/^(.*): a whole number from (-?\d+) to (-?\d+)\.$/, (m, what, lo, hi) => `${label(what)}: um número inteiro de ${lo} a ${hi}.`],
   [/^(.*): choose one\.$/, (m, what) => `${label(what)}: escolha um.`],
   [/^The names of the inputs \(1 to (\d+)\) and of the outputs, separated by commas; or an expression, whose variables are the inputs and whose name \(else f\) the output, its column filled in\.$/,

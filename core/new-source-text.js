@@ -15,7 +15,8 @@ const ident = n => String(n).replace(/[^A-Za-z0-9_]/g, '_');
  * The text of a new source of kind `kind` (SOURCE_KINDS) named `file` (no extension) in project `pj`. lang: 'vhdl' |
  * 'verilog'; a module's entity, arch (VHDL) and ports; a test bench's uut (core/uut-info.js uutInfo); a constraints file's
  * format (ucf, pcf, lpf, cst, ccf, xdc; the device's when not given); a circuit's template ({ id, params }: the Digital
- * Electronic Circuit Wizard's assembly; none, a half breadboard and its supply). Throws for an unknown kind.
+ * Electronic Circuit Wizard's assembly; none, a half breadboard and its supply), a state diagram's (the FSM Wizard's;
+ * none, an empty diagram). Throws for an unknown kind.
  */
 export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, arch, ports = [], uut, format, template } = {}) {
   const n = ident(file);
@@ -30,7 +31,9 @@ export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, a
     case 'cpp': return cppTemplate(n);
     case 'schematic': return JSON.stringify((await import('./schdoc.js')).newDoc(n, lang), null, 1);
     case 'asm': return JSON.stringify((await import('./asm.js')).normalizeModel({ name: n, lang }), null, 2);   // empty (#2176)
-    case 'fsm': return JSON.stringify((await import('./fsm.js')).normalizeFsm({ name: n, lang }), null, 2);   // empty (#2176)
+    // (empty, #2176; the FSM Wizard's template, #4902: a counter, a sequence detector of bits or of a regular expression…)
+    case 'fsm': return JSON.stringify(template ? (await import('./chart-wizard.js')).fsmFromSpec({ name: n, lang, ...(await import('./chart-templates.js')).fsmTemplate(template.id, template.params) })
+      : (await import('./fsm.js')).normalizeFsm({ name: n, lang }), null, 2);
     case 'petri': return JSON.stringify((await import('./petri.js')).normalizePetri({ name: n, lang }), null, 2);   // empty (#2176)
     // (a half breadboard and its supply, #3897; the Digital Electronic Circuit Wizard's assembly, #4061)
     case 'circuit': return JSON.stringify(template ? (await import('./circuit-templates.js')).circuitTemplate(template.id, template.params, { name: n, lang })
