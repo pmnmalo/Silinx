@@ -65,7 +65,7 @@ for (const theme of ['light', 'dark']) {
     await page.rightClick('.doc:not([hidden]) .isim-objs tbody tr');
     await page.click('.isim-menu-item', { text: 'Force Constant...' });
     await page.waitFor(() => document.querySelector('.isim-dlg')?.getClientRects().length > 0, [], { what: 'Force Selected Signal' });
-    const ssim = await look(page, '.isim-dlg', '.isim-dlg-title', '.isim-dlg-body', '.isim-dlg-btns .btn', '.isim-dlg-grid :is(input, select)');
+    const ssim = await look(page, '.isim-dlg', '.isim-dlg .dlg-title', '.isim-dlg .dlg-body', '.isim-dlg .dlg-buttons .btn', '.isim-dlg .isim-dlg-grid :is(input, select)');
     await page.click('.isim-dlg [data-a=cancel]');
     // the schematic editor's Symbol Info
     await page.openProject(`DlgSch-${theme}`);

@@ -14,6 +14,7 @@ import { truthTable } from '/core/symtables.js';
 import { composition, levelLine } from '/core/symlib.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
 import { esc, h } from './dom.js';
+import { dialog } from './ui.js';
 import { designKind } from './project-kind-flag.js';
 
 
@@ -28,22 +29,22 @@ export function openSymbolInfo(opts) {
   let tableTimer = null;
   let closed = false;
 
-  const modal = h('div', { class: 'se-modal se-symdoc-modal' });
-  const box = h('div', { class: 'se-dialog se-symdoc', 'data-no-i18n': '', role: 'dialog', tabindex: '-1' });
-  modal.append(box);
+  // (ui.js's dialog() over the editor, #4762: its stack, Esc, focus kept in it and given back; its own header, which
+  // follows the symbol and the language)
+  const box = h('div', { class: 'se-symdoc', 'data-no-i18n': '', tabindex: '-1' });
+  let closeDlg = null;
   const close = () => {
     if (closed) return;
     closed = true;
     clearTimeout(tableTimer);
     offLang();
-    modal.remove();
+    closeDlg?.(null);
     opts.onClose?.();
   };
-  modal.addEventListener('pointerdown', e => { if (e.target === modal) close(); });
-  // keys typed in the dialog stay in it (the editor shortcuts listen on the window)
-  modal.addEventListener('keydown', e => {
+  // keys typed in the dialog stay in it (the editor shortcuts listen on the window; Esc is the dialog's, before)
+  box.addEventListener('keydown', e => {
     e.stopPropagation();
-    if (e.key === 'Escape') { e.preventDefault(); close(); } else if (e.key === 'F1') e.preventDefault();
+    if (e.key === 'F1') e.preventDefault();
   });
   const offLang = onLanguageChange(() => render());
 
@@ -230,9 +231,9 @@ export function openSymbolInfo(opts) {
   const CAT_PT = { 'Logic': 'Lógica', 'Buffers': 'Buffers', 'Arithmetic': 'Aritmética', 'Flip-Flops': 'Flip-Flops', 'Mux': 'Multiplexadores', 'Decoders/Encoders': 'Descodificadores/Codificadores', 'Bus': 'Barramento', 'General': 'Geral', 'Device Primitives': 'Primitivas do Dispositivo', 'Project modules': 'Módulos do projeto' };
   function catPt(c) { return CAT_PT[c] || c; }
 
-  container.append(modal);
   render();
-  box.focus();
+  dialog({ title: 'Symbol Info', body: box, buttons: [], head: false, host: container, className: 'se-symdoc-dlg', width: 'min(1040px, 96%)',
+    onOpen: o => { closeDlg = o.close; queueMicrotask(() => box.focus()); } }).then(close);
   return {
     el: box,
     close,

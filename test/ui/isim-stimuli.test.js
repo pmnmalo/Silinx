@@ -50,8 +50,8 @@ const MOUNT = async (model = null, bits = false) => {
   const fields = () => Object.fromEntries([...root.querySelectorAll('.isim-dlg [name]')].map((e) => [e.name, e.hidden ? `${e.value} (hidden)` : e.disabled ? `${e.value} (disabled)` : e.value]));
   const set = (vals) => { for (const [n, v] of Object.entries(vals)) { const e = root.querySelector(`.isim-dlg [name="${n}"]`); e.value = v; e.dispatchEvent(new Event('change')); } };
   const press = (a) => root.querySelector(`.isim-dlg [data-a=${a}]`).click();
-  const title = () => root.querySelector('.isim-dlg-title')?.firstChild.textContent ?? null;
-  const err = () => root.querySelector('.isim-dlg-err')?.textContent ?? null;
+  const title = () => root.querySelector('.dlg-title')?.firstChild.textContent ?? null;
+  const err = () => root.querySelector('.dlg-err')?.textContent ?? null;
   const status = () => [stimBar.querySelector('.isim-stim-st').textContent, stimBar.querySelector('.isim-stim-st').classList.contains('bad')];
   const settle = () => new Promise((r) => setTimeout(r, 0));
   window.__stim = { stim, st, calls, stimBar, btn, root, cell, fields, set, press, title, err, status, settle };
@@ -239,7 +239,7 @@ uiTest('#919 ISim drawn stimuli: a bus expanded, a click on one of its bits as o
     r.b2 = [...st.stim.m.inputs.b];
     // the bus row: its value dialog, the note on its bits; h6 from cycle 1, up to the bus's next change (cycle 2)
     stim.stimClick(...cell(1, 1));
-    r.bus = { title: title(), notes: [...document.querySelectorAll('.isim-dlg-note')].map((n) => n.textContent) };
+    r.bus = { title: title(), notes: [...document.querySelectorAll('.dlg-note')].map((n) => n.textContent) };
     set({ value: 'h6' });
     press('ok');
     await settle();

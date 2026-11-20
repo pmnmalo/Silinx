@@ -413,11 +413,11 @@ export function mountISim(container, opts = {}) {
   const { toggleStim, timingDialog, fillStim, stimClick, drawStim, runStim } = mountStimuli({ st, sim, design, stimOpt, stimInst, topSig, stimPortOf,
     stimBar, btns, layout, invalidate, rowAtY, tOf, xOf, selectRow, setFont, flat, width: () => WW, colors: () => colors,
     api: () => api, echo: (...a) => echo(...a), enqueue: (...a) => enqueue(...a), runTo: (...a) => runTo(...a), logLine: (...a) => logLine(...a),
-    showDialog: (ov) => showDialog(ov), closeDialog: () => closeDialog() });
+    openDialog: (spec) => openDialog(spec), closeDialog: () => closeDialog() });
 
   // ---------------------------------------------------------------- dialogs (isim-dialogs.js)
   // (made here, in mount order; echo, made below, is called when a force is applied)
-  const { show: showDialog, closeDialog, forceDialog } = mountDialogs({ root, sim, addForce, echo: (...a) => echo(...a) });
+  const { openDialog, closeDialog, forceDialog } = mountDialogs({ root, sim, addForce, echo: (...a) => echo(...a) });
 
   // ---------------------------------------------------------------- console (isim-console.js)
   // (made here, in mount order: nothing logs before; api, made below, is read when a command runs)

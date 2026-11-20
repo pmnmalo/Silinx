@@ -97,10 +97,10 @@ uiTest('ISim stimuli (#336): Edit Stimuli, timing, clicks on the inputs, a bus v
   // ---- a bus: d = h9 from cycle 4, load 1 in cycle 4 only: q = 9 + 3 = 12 at the end
   await clickCycle(page, 'd', 4, P);
   await page.waitFor((d) => document.querySelector(`${d} .isim-stim-dlg [name=value]`), [DOC], { what: 'Input Value' });
-  assert.deepEqual(await page.eval((d) => [document.querySelector(`${d} .isim-dlg-title`).textContent, document.querySelector(`${d} .isim-stim-dlg [name=sig]`).value, document.querySelector(`${d} .isim-stim-dlg [name=k]`).value], DOC), ['Input Value✕', 'd', '4']);
+  assert.deepEqual(await page.eval((d) => [document.querySelector(`${d} .dlg-title`).textContent, document.querySelector(`${d} .isim-stim-dlg [name=sig]`).value, document.querySelector(`${d} .isim-stim-dlg [name=k]`).value], DOC), ['Input Value✕', 'd', '4']);
   await page.fill(`${DOC} .isim-stim-dlg [name=value]`, '2z0q');
   await page.click(`${DOC} .isim-stim-dlg [data-a=ok]`);
-  assert.equal(await page.eval((d) => document.querySelector(`${d} .isim-stim-dlg .isim-dlg-err`).textContent, DOC), "'2z0q' is not a value (bits 0 1 Z X, h… hexadecimal or d… decimal)");
+  assert.equal(await page.eval((d) => document.querySelector(`${d} .isim-stim-dlg .dlg-err`).textContent, DOC), "'2z0q' is not a value (bits 0 1 Z X, h… hexadecimal or d… decimal)");
   await page.fill(`${DOC} .isim-stim-dlg [name=value]`, 'h9');
   await page.click(`${DOC} .isim-stim-dlg [data-a=ok]`);
   await clickCycle(page, 'load', 4, P);
@@ -209,7 +209,7 @@ uiTest('ISim stimuli (#336) of a test bench: the inputs of its unit under test, 
   await page.waitFor((d) => document.querySelector(`${d} .isim-stim-dlg [name=cycles]`), [DOC], { what: 'Stimulus Timing' });
   // the unit under test's inputs (ctr: clk rst en d load), its clock found
   assert.deepEqual(await page.eval((d) => { const q = (n) => document.querySelector(`${d} .isim-stim-dlg [name=${n}]`); return [q('clock').value, [...q('clock').options].map((o) => o.value)]; }, DOC), ['clk', ['', 'clk', 'rst', 'en', 'load']]);
-  assert.match(await page.eval((d) => document.querySelector(`${d} .isim-stim-dlg .isim-dlg-hint`).textContent, DOC), /^The inputs of ctr \(tb_ctr\.uut\) as a grid of cycles/);
+  assert.match(await page.eval((d) => document.querySelector(`${d} .isim-stim-dlg .hint`).textContent, DOC), /^The inputs of ctr \(tb_ctr\.uut\) as a grid of cycles/);
   await page.fill(`${DOC} .isim-stim-dlg [name=cycles]`, '6');
   await page.click(`${DOC} .isim-stim-dlg [data-a=ok]`);
   await simTime(page, '120,000');
@@ -305,7 +305,7 @@ uiTest('#919 ISim stimuli: a bus expanded, its bits clicked one at a time (an in
   // the bus's row: its value dialog, the note on its bits; 0011 from cycle 2 up to d's next change (cycle 3)
   await clickLine(page, await lineOf(page, 'd'), 2, P);
   await page.waitFor((d) => document.querySelector(`${d} .isim-stim-dlg [name=value]`), [DOC], { what: 'Input Value' });
-  assert.deepEqual(await page.eval((d) => [...document.querySelectorAll(`${d} .isim-stim-dlg .isim-dlg-note`)].map((n) => n.textContent), DOC),
+  assert.deepEqual(await page.eval((d) => [...document.querySelectorAll(`${d} .isim-stim-dlg .dlg-note`)].map((n) => n.textContent), DOC),
     ['Bits, most significant first (0 1 Z X), h… hexadecimal or d… decimal; it holds up to the next change.', 'Expand the bus to change one of its bits: a click on its wave, as on a 1-bit signal.']);
   await page.eval(TEXTS);
   const setLang = (l) => page.eval(async (x) => { (await import('/js/i18n.js')).setLanguage(x); }, l);

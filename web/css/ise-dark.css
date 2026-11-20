@@ -163,8 +163,6 @@ html[data-ui="ise"][data-theme="dark"] .sch-editor .se-cathead { border-bottom-c
 html[data-ui="ise"][data-theme="dark"] .sch-editor .btn { background: var(--ise-btn); border-color: var(--ise-btn-line); color: var(--fg); }
 html[data-ui="ise"][data-theme="dark"] .sch-editor .btn:hover { background: var(--ise-hot); border-color: var(--ise-hot-line); }
 html[data-ui="ise"][data-theme="dark"] .sch-editor .se-prompt input { background: var(--m-surface); color: var(--fg); border-color: #555b66; }
-html[data-ui="ise"][data-theme="dark"] .sch-editor .se-modal { background: rgba(0, 0, 0, .45); }
-html[data-ui="ise"][data-theme="dark"] .sch-editor .se-dialog { border-color: #4c5a72; }
 html[data-ui="ise"][data-theme="dark"] .sch-editor .se-symdoc .sd-truth td.x { color: var(--muted); }
 html[data-ui="ise"][data-theme="dark"] .sch-editor .se-symdoc .sd-truth td.vZ { color: #79a8ff; }
 html[data-ui="ise"][data-theme="dark"] .sch-editor .lv-sep { background: rgba(76, 192, 107, .35); }
@@ -195,13 +193,12 @@ html[data-ui="ise"][data-theme="dark"] .sch-view .sch-tip .m { color: var(--mute
 html[data-ui="ise"][data-theme="dark"] .sch-view .sch-tip hr { border-top-color: #555b66; }
 
 /* ------------------------------------------------------------------ SSim */
-html[data-ui="ise"][data-theme="dark"] :is(.isim-title, .isim .ise-panel > .caption, .isim-dlg-title) { border-bottom-color: var(--ise-caption-line); }
+html[data-ui="ise"][data-theme="dark"] :is(.isim-title, .isim .ise-panel > .caption) { border-bottom-color: var(--ise-caption-line); }
 html[data-ui="ise"][data-theme="dark"] .isim-toolbar .tb-btn:hover:not(:disabled) { border-color: var(--ise-hot-line); background: var(--ise-hot); }
 html[data-ui="ise"][data-theme="dark"] .isim-toolbar .tb-btn:active:not(:disabled), html[data-ui="ise"][data-theme="dark"] .isim-toolbar .tb-btn.on { border-color: #5b8def; background: var(--ise-down); }
 html[data-ui="ise"][data-theme="dark"] .isim-toolbar .tb-sep { background: var(--ise-line); box-shadow: none; }
 html[data-ui="ise"][data-theme="dark"] .isim-stim-st.bad { color: var(--m-danger); }
-html[data-ui="ise"][data-theme="dark"] :is(.isim-rf-val, .isim-rf-unit, .isim-dlg-grid input, .isim-dlg-grid select) { background: var(--m-surface); color: var(--fg); border-color: #555b66; }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-grid input[readonly] { background: var(--m-surface-2); color: var(--muted); }
+html[data-ui="ise"][data-theme="dark"] :is(.isim-rf-val, .isim-rf-unit) { background: var(--m-surface); color: var(--fg); border-color: #555b66; }
 html[data-ui="ise"][data-theme="dark"] :is(.isim-split-v, .isim-split-h):hover { background: #3a4f70; }
 html[data-ui="ise"][data-theme="dark"] .isim .tree .row.sel .isim-mod { color: #dde6f7; }
 html[data-ui="ise"][data-theme="dark"] .isim .tree .twisty { color: var(--muted); }
@@ -219,10 +216,3 @@ html[data-ui="ise"][data-theme="dark"] .isim-menu { border-color: #4a4f58; box-s
 html[data-ui="ise"][data-theme="dark"] .isim-menu-item:hover:not(.dis) { background: var(--ise-hot); border-color: var(--ise-hot-line); }
 html[data-ui="ise"][data-theme="dark"] .isim-menu-item.dis { color: #858c98; }
 html[data-ui="ise"][data-theme="dark"] .isim-menu-sep { background: var(--ise-line); }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-overlay { background: rgba(0, 0, 0, .45); }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg { border-color: #4c5a72; }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-x { color: var(--fg); }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-hint { color: #c8cdd4; }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-btns .btn { background: var(--ise-btn); border-color: var(--ise-btn-line); color: var(--fg); }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-btns .btn:hover { background: var(--ise-hot); border-color: var(--ise-hot-line); }
-html[data-ui="ise"][data-theme="dark"] .isim-dlg-btns .btn.primary { border-color: #5b8def; }

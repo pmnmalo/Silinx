@@ -26,9 +26,9 @@ const MOUNT = async () => {
   const fields = () => Object.fromEntries([...root.querySelectorAll('.isim-dlg [name]')].map((e) => [e.name, e.disabled ? `${e.value} (disabled)` : e.value]));
   const set = (vals) => { for (const [n, v] of Object.entries(vals)) root.querySelector(`.isim-dlg [name="${n}"]`).value = v; };
   const press = (a) => root.querySelector(`.isim-dlg [data-a=${a}]`).click();
-  const open = () => root.querySelectorAll('.isim-dlg-overlay').length;
-  const title = () => root.querySelector('.isim-dlg-title')?.firstChild.textContent ?? null;
-  const err = () => root.querySelector('.isim-dlg-err')?.textContent ?? null;
+  const open = () => root.querySelectorAll('.dlg-overlay').length;
+  const title = () => root.querySelector('.dlg-title')?.firstChild.textContent ?? null;
+  const err = () => root.querySelector('.dlg-err')?.textContent ?? null;
   window.__dlg = { dlg, calls, root, sig, state, fields, set, press, open, title, err };
   return true;
 };
@@ -39,7 +39,7 @@ uiTest('#405 ISim dialogs: Force Constant, its fields, the force and its command
     const { dlg, calls, root, sig, state, fields, set, press, open, title, err } = window.__dlg;
     const r = {};
     dlg.forceDialog(sig, 'const');
-    r.first = { title: title(), fields: fields(), focus: document.activeElement.name, note: root.querySelector('.isim-dlg-note').textContent };
+    r.first = { title: title(), fields: fields(), focus: document.activeElement.name, note: root.querySelector('.dlg-note').textContent };
     set({ value: '0110', start: '5', cancel: '20' });
     press('apply');
     r.applied = { open: open(), err: err() };
@@ -81,7 +81,7 @@ uiTest('#405 ISim dialogs: Force Constant, its fields, the force and its command
 
 uiTest('#405 ISim dialogs: Force Clock, its pattern, repeat, duty cycle and their errors; one dialog at a time; Cancel, ✕ and a click outside close it', E, async (page) => {
   await page.eval(MOUNT);
-  const out = await page.eval(() => {
+  const out = await page.eval(async () => {
     const { dlg, calls, root, sig, fields, set, press, open, title, err } = window.__dlg;
     const r = {};
     dlg.forceDialog(sig, 'clock');
@@ -95,24 +95,27 @@ uiTest('#405 ISim dialogs: Force Clock, its pattern, repeat, duty cycle and thei
     set({ duty: '30', cancel: '100' });
     press('ok');
     r.closed = open();
-    // a second dialog replaces the first; Cancel, ✕ and a press outside it close it, adding nothing
+    // a second dialog replaces the first; Cancel and ✕ close it, adding nothing; a press outside it does not (ui.js's
+    // dialog(), as every dialog of the app, #4762)
     dlg.forceDialog(sig, 'clock');
     dlg.forceDialog(sig, 'const');
     r.one = [open(), title()];
     press('cancel');
     r.cancel = open();
     dlg.forceDialog(sig, 'const');
-    root.querySelector('.isim-dlg-x').click();
+    root.querySelector('.dlg-x').click();
     r.x = open();
     dlg.forceDialog(sig, 'const');
-    root.querySelector('.isim-dlg-overlay').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    root.querySelector('.dlg-overlay').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     r.outside = open();
-    // show(): any dialog of the window (the drawn stimuli's), closed by closeDialog
-    const other = document.createElement('div');
-    other.className = 'isim-dlg-overlay';
-    dlg.show(other);
+    press('cancel');
+    // openDialog(): any dialog of the window (the drawn stimuli's), closed by the next one and by closeDialog
+    let otherResult = 'open';
+    dlg.openDialog({ title: 'Other', body: document.createElement('div') }).then((v) => { otherResult = v; });
+    const other = root.querySelector('.dlg-overlay');
     dlg.forceDialog(sig, 'const');
-    r.shown = [other.isConnected, open()];
+    await Promise.resolve();
+    r.shown = [other.isConnected, open(), otherResult];
     dlg.closeDialog();
     dlg.closeDialog();
     r.none = open();
@@ -125,8 +128,8 @@ uiTest('#405 ISim dialogs: Force Clock, its pattern, repeat, duty cycle and thei
   assert.equal(out.duty, 'duty cycle must be between 0 and 100');
   assert.equal(out.closed, 0);
   assert.deepEqual(out.one, [1, 'Force Selected Signal']);
-  assert.deepEqual([out.cancel, out.x, out.outside], [0, 0, 0]);
-  assert.deepEqual(out.shown, [false, 1]);
+  assert.deepEqual([out.cancel, out.x, out.outside], [0, 0, 1]);
+  assert.deepEqual(out.shown, [false, 1, false]);
   assert.equal(out.none, 0);
   assert.deepEqual(out.calls, [
     ['addForce', 'q', { pattern: [{ off: 0, val: '0000' }, { off: 3000, val: '0001' }], start: 5000, repeat: 10000, cancel: 102000, desc: 'clock 0/1 period 10 ns duty 30%' }],

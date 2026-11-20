@@ -1,6 +1,6 @@
 // Command palette (Ctrl+K / Cmd+K, Ctrl+Shift+P): search the menu commands and the project files by
 // name and run / open the chosen one, all from the keyboard. Matching: web/js/silinx.js.
-import { h, runAction } from './ui.js';
+import { dialog, h, runAction } from './ui.js';
 import { t } from './i18n.js';
 import { rankEntries } from './silinx.js';
 
@@ -18,19 +18,19 @@ export function openPalette({ commands = [], files = [], placeholder = 'Search c
     'aria-controls': 'pal-list', 'aria-autocomplete': 'list', autocomplete: 'off', spellcheck: 'false' });
   const list = h('div', { class: 'pal-list', id: 'pal-list', role: 'listbox' });
   const empty = h('div', { class: 'pal-empty', hidden: true }, 'No matching commands or files');
-  const box = h('div', { class: 'pal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Command palette' },
+  const content = h('div', { class: 'pal-content' },
     h('div', { class: 'pal-search' }, input), list, empty,
     h('div', { class: 'pal-foot' }, h('span', {}, h('kbd', {}, '↑'), h('kbd', {}, '↓'), ' ', h('span', {}, 'to navigate')),
       h('span', {}, h('kbd', {}, '↵'), ' ', h('span', {}, 'to run')), h('span', {}, h('kbd', {}, 'Esc'), ' ', h('span', {}, 'to close'))));
-  const overlay = h('div', { class: 'pal-overlay' }, box);
 
-  let resolve;
-  const done = new Promise(r => { resolve = r; });
-  const close = (value = null) => {
-    overlay.remove(); current = null;
-    removeEventListener('keydown', onKey, true);
-    resolve(value);
-  };
+  // (ui.js's dialog(), #4762: its stack, Esc, focus kept in it and given back; the palette's own look, no title bar)
+  let closeDlg = null;
+  const close = (value = null) => closeDlg?.(value);
+  const done = dialog({ title: 'Command palette', body: content, buttons: [], head: false, className: 'pal', overlayClass: 'pal-overlay', width: 640,
+    onOpen: o => {
+      closeDlg = o.close;
+      o.dlg.parentElement.addEventListener('mousedown', e => { if (e.target === e.currentTarget) close(); });
+    } }).then(v => { current = null; removeEventListener('keydown', onKey, true); return v ?? null; });
   const run = e => {
     if (!e) return;
     close(e);
@@ -62,17 +62,15 @@ export function openPalette({ commands = [], files = [], placeholder = 'Search c
     empty.hidden = shown.length > 0;
     mark();
   };
+  // (Esc: the dialog's)
   const onKey = e => {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (shown.length) { sel = (sel + (e.key === 'ArrowDown' ? 1 : shown.length - 1)) % shown.length; mark(); }
     } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); run(shown[sel]); }
   };
   input.addEventListener('input', render);
-  overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(); });
   addEventListener('keydown', onKey, true);
-  document.body.append(overlay);
   render();
   input.focus();
   current = { input, done };
