@@ -12,7 +12,8 @@ export function repoList(url) {
   const status = h('div', { class: 'hint git-repos-status' }, 'Reading your GitHub repositories…');
   const list = h('ul', { class: 'git-repos', role: 'listbox', 'aria-label': 'Your GitHub repositories', style: { maxHeight: '180px', overflowY: 'auto', margin: '4px 0 0', padding: '0', listStyle: 'none', border: '1px solid var(--border)' } });
   list.hidden = true;
-  const box = h('div', { class: 'git-repos-box', style: { gridColumn: '1 / -1' } }, status, list);
+  // (data-loading until the list comes: its coming moves the dialog's buttons, which a click waits for, #4816)
+  const box = h('div', { class: 'git-repos-box', 'data-loading': '', style: { gridColumn: '1 / -1' } }, status, list);
   let all = null, picking = false;
   // (a repository picked: its address in the field, the list left as it is)
   const choose = (li, r) => {
@@ -44,10 +45,12 @@ export function repoList(url) {
   url.addEventListener('keydown', e => { if (e.key === 'ArrowDown' && list.firstElementChild) { e.preventDefault(); list.firstElementChild.focus(); } });
   // (asked each time the dialog opens: a repository made a minute ago is there)
   api.gitRepositories().then(r => {
+    delete box.dataset.loading;
     if (!url.isConnected) return;
     all = r.repositories;
     render();
   }, e => {
+    delete box.dataset.loading;
     if (!url.isConnected) return;
     status.textContent = 'Your GitHub repositories are not listed (the console says why): type the address.';
     collabLog(`${e.message.replace(/^./, c => c.toUpperCase())}.`, 'info');

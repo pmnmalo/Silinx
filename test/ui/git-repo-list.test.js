@@ -63,7 +63,10 @@ async function openDialog(page, { menu = 'File', item = 'Open from GitHub Reposi
 uiTest('#4653 Open from GitHub Repository…: the user\'s repositories listed, filtered as typed, one picked (a click, the arrows) and opened', E, async (page) => {
   bare('lab1');
   const n0 = (await page.consoleText()).length;
+  // (the list's box marked data-loading as the dialog opens, until the list comes: a click on a button waits for it, #4816)
+  await page.eval(() => { window.__loading = null; new MutationObserver(() => { const b = document.querySelector('.dlg-overlay .git-repos-box'); if (b && window.__loading === null) window.__loading = b.hasAttribute('data-loading'); }).observe(document.body, { childList: true, subtree: true }); });
   await openDialog(page);
+  assert.deepEqual(await page.eval(() => [window.__loading, document.querySelector('.dlg-overlay .git-repos-box').hasAttribute('data-loading')]), [true, false]);
   assert.deepEqual(await shown(page), { status: '3 of your 3 GitHub repositories, the most recently pushed first:', rows: ['test/lab2(private)', 'test/lab1', 'isel-sd/pong-ana(private)'] });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .git-repo').title), 'test/lab2 (private): Traffic lights');
   // typed: filtered (a name, a description); nothing matching said, the address kept

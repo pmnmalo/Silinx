@@ -448,6 +448,8 @@ class PageBase {
   /** Click a button of the topmost dialog by its label. */
   async dialogButton(label) {
     debug(`dialog button ${label}`);
+    // (a part of the dialog still loading, [data-loading]: its coming moves the buttons, a click by position then missing them)
+    await this.waitFor(() => !document.querySelector('.dlg-overlay [data-loading]'), [], { what: 'the dialog loaded' });
     await this.waitFor((l) => { const d = [...document.querySelectorAll('.dlg-overlay')].pop(); return d && [...d.querySelectorAll('.dlg-buttons .btn')].some((b) => b.textContent.trim() === l && !b.disabled); }, [label], { what: `dialog button '${label}'` });
     const idx = await this.eval((l) => {
       const all = [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')];
