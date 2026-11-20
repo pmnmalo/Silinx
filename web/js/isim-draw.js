@@ -4,6 +4,7 @@
 // scheduling of a frame (invalidate) stays there.
 import { ROW_H, RULER_H, fmtTime, trimNum, formatValue, clamp, isBitsType } from './isim.js';
 import { mountWaveDraw } from './isim-draw-wave.js';
+import { t } from './i18n.js';
 
 /** { drawNames, drawWaves, setFont, fitText } of an SSim window. */
 export function mountDraw(ctx) {
@@ -35,8 +36,9 @@ export function mountDraw(ctx) {
     ctx.beginPath(); ctx.moveTo(0, RULER_H - 0.5); ctx.lineTo(NW, RULER_H - 0.5);
     ctx.moveTo(st.nameW - 0.5, 0); ctx.lineTo(st.nameW - 0.5, NH); ctx.stroke();
     setFont(ctx, 12, false); ctx.fillStyle = colors.fgText; ctx.textBaseline = 'middle';
-    ctx.fillText('Name', 8, RULER_H / 2);
-    ctx.fillText('Value', st.nameW + 6, RULER_H / 2);
+    // (drawn: translated here, the page's translation does not reach a canvas, #4748)
+    ctx.fillText(t('Name'), 8, RULER_H / 2);
+    ctx.fillText(t('Value'), st.nameW + 6, RULER_H / 2);
     // rows
     ctx.save();
     ctx.beginPath(); ctx.rect(0, RULER_H, NW, NH - RULER_H); ctx.clip();

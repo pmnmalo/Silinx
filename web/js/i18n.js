@@ -36,7 +36,7 @@ import { GRADE_PT, GRADE_PT_PATTERNS } from './i18n-grade.js';
 import { CAPTURE_PT, CAPTURE_PT_PATTERNS } from './i18n-capture.js';
 import { PROGRAM_PT, PROGRAM_PT_PATTERNS } from './i18n-program.js';
 import { SUMMARY_PT, SUMMARY_PT_PATTERNS } from './i18n-summary.js';
-import { MESSAGES_PT } from './i18n-messages.js';
+import { MESSAGES_PT, MESSAGES_PT_PATTERNS } from './i18n-messages.js';
 import { prefKey } from './prefs.js';
 
 const PT = {
@@ -880,7 +880,7 @@ keep(GRADE_PT, GRADE_PT_PATTERNS);   // the graded exercises (#3192)
 keep(CAPTURE_PT, CAPTURE_PT_PATTERNS);   // the logic analyzer (#3176)
 keep(PROGRAM_PT, PROGRAM_PT_PATTERNS);   // the open families' Configure Target Device (#2298)
 keep(SUMMARY_PT, SUMMARY_PT_PATTERNS);   // the Design Summary's values (#4518)
-keep(MESSAGES_PT);   // toasts, dialogs, plain elements' texts (#3539)
+keep(MESSAGES_PT, MESSAGES_PT_PATTERNS);   // toasts, dialogs, plain elements' texts (#3539), template literals' (#4748)
 
 export const LOCALES = {
   en: { name: 'English', strings: {}, patterns: [] },
