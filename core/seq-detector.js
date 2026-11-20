@@ -8,7 +8,7 @@
 import { parseRegex, thompson, subsetDfa, minimize, languageOf, RegexError } from './regex-automata.js';
 
 /** The most states a detector may have. */
-export const MAX_DETECTOR_STATES = 64;
+const MAX_DETECTOR_STATES = 64;
 
 // the automaton of a pattern (a RegexError if it is refused)
 function automaton(pattern) {

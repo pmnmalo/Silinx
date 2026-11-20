@@ -4,7 +4,7 @@
 // The syntax: 0 and 1, . or [01] any bit ([0], [1] one, [] none), ( ) a group, | the alternatives, the repetitions
 // * + ? {n} {n,} {n,m} (n, m up to 16): JavaScript's own, so that RegExp is the tests' reference.
 
-export const MAX_REPEAT = 16;
+const MAX_REPEAT = 16;
 const MAX_TEXT = 64, MAX_NFA = 2000, MAX_DFA = 4096;
 
 /** An expression's error: its message, `Pattern: …` as the wizard shows it. */
