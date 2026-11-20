@@ -13,7 +13,8 @@
 // - #4745: a room whose open gives the owner's public key instead (`owner`) takes the editors' keys from the lists the
 //   owner signs (core/collab-editors.js: `{ type: 'editors', list }`, each one numbered past the last, checked with
 //   the owner's key): an edit is forwarded when the key it names is the last list's and its signature that key's; a
-//   follower of an older version is refused at its join (it would not know the list); a room opened by an older owner's page (`editors`, one key) is taken as before;
+//   follower of an older version is refused at its join (it would not know the list); a follower's enrol frame (its
+//   key's request to be listed, #4745) goes to the owner only, marked as the follower's, small, at an editor's rate; a room opened by an older owner's page (`editors`, one key) is taken as before;
 // - followers per room, rooms per host, the time to the first message, a follower's awareness's size and rate (#4173);
 // - an editor's edits (#4736): their rate (a token bucket), the ones waiting for their signature's check, the signatures
 //   that are not the room's (past `editsBad`, or `editsPending` waiting, or faster than the bucket: closed, 1008); a
@@ -211,6 +212,12 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
         if (!awarenessOk(bytes.length)) return;
         const f = fromFrame(me.client, bytes);
         for (const o of others()) o.send(f, { binary: true });
+        return;
+      }
+      // (#4745: a request to be listed, for the owner only)
+      if (data[0] === KIND.enrol && r.ownerKey) {
+        if (data.length > 1024 || !editOk()) return fail(ws, EDITS_REFUSED);
+        if (r.owner?.readyState === 1) r.owner.send(fromFrame(me.client, new Uint8Array(data)), { binary: true });
         return;
       }
       // (#4736: in a room without editors, dropped at once, the follower told once)

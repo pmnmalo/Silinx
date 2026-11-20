@@ -219,9 +219,11 @@ test('#3997 share_project promote / demote: a viewer an editor, an editor a view
   assert.equal((await ok('share_project', { project: 'trafficRole' })).data.editLink, renewed);
   await until(async () => !(await ok('follow_project', { link })).data.editor, 'Bot a viewer');
   await fails('follow_project', { link, write: { path: 'src/timer.vhd', text: 'x' } }, 'write: this link follows only (an editor\'s link, …#edit=…, writes)');
-  // the old editors' link: what it writes never reaches the disk; the renewed one's does
-  await ok('follow_project', { link: old, name: 'Old', write: { path: 'src/timer.vhd', text: `-- by the old link\n${timer}` } });
-  await new Promise(res => setTimeout(res, 400));
+  // the old editors' link: told it follows read only (#4745: the owner lists no one by it), its write refused; the
+  // renewed one's reaches the disk
+  await ok('follow_project', { link: old, name: 'Old' });
+  await until(async () => !(await ok('follow_project', { link: old })).data.editor, 'the old link read only');
+  await fails('follow_project', { link: old, write: { path: 'src/timer.vhd', text: `-- by the old link\n${timer}` } }, 'write: this link follows only (an editor\'s link, …#edit=…, writes)');
   assert.equal(await P.readFile('trafficRole', 'src/timer.vhd'), `-- by Bot\n${timer}`);
   await ok('follow_project', { link: renewed, name: 'New', write: { path: 'src/timer.vhd', text: `-- by the new link\n${timer}` } });
   await until(async () => (await P.readFile('trafficRole', 'src/timer.vhd')) === `-- by the new link\n${timer}`, 'the new link\'s edit on the disk', 8000);
@@ -241,6 +243,7 @@ test('#4110 an editor\'s quick edits written to the owner\'s disk in their order
   const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   try {
     await ed.ready;
+    await until(() => ed.listed, 'listed (#4745)');
     // (each round two changes of the owner's document: a large block put first, then replaced by a line: the large
     // text's write, the slower, finishing after the line's when nothing orders them)
     const yt = ed.doc.getMap('files').get('src/timer.vhd');

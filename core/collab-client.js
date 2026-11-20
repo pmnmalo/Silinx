@@ -39,8 +39,8 @@ import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwareness
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { newKey, keyOf, seal, unseal } from './collab-crypto.js';
-import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE, editIvs, pubOf } from './collab-sign.js';
-import { keyId, signList, checkList, editorKeys, signEdit, verifyEdit } from './collab-editors.js';
+import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE, PUB_RE, editIvs, pubOf } from './collab-sign.js';
+import { keyId, signList, checkList, editorKeys, signEdit, verifyEdit, signEnrol, checkEnrol, MAX_EDITORS } from './collab-editors.js';
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
@@ -185,6 +185,9 @@ async function applyEdit(doc, key, room, checked, frame, admit = () => true) {
   return true;
 }
 
+/** What a follower whose editor link is not the room's (another room's, or one the owner renewed) is told (#4745). */
+export const NOT_INVITED = 'this editor link is not this shared project\'s, or its owner renewed it: you follow it read only';
+
 // (#4745: an edit checked against the editors' one key, a room of an older owner's page's; or against the keys of the
 // owner's list of them)
 const byKey = (room, verifier) => async frame => { const v = await verifier(); return v ? verifyFrame(v, room, frame) : null; };
@@ -211,13 +214,15 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   // none: the room's one key, as before)
   const ownerKey = !signer ? null : resumed?.owner ? { key: await signerOf(resumed.owner), text: resumed.owner, pub: pubOf(resumed.owner) } : resumed?.sign ? null : await newSigner();
   let listN = Number.isSafeInteger(resumed?.n) ? resumed.n : 0, keys = new Map();
+  // (#4745: the editors' own keys the owner lists: public key -> the client id that gave it, null when not in now)
+  const listed = new Map((Array.isArray(resumed?.editors) ? resumed.editors : doc.getMap('meta').get('editorsList')?.editors ?? []).filter(k => PUB_RE.test(String(k))).map(k => [k, null]));
   // (the room's public key, for every participant: in the document; #4745: the owner's list instead)
   if (signer && !ownerKey) doc.getMap('meta').set('editors', signer.pub); else doc.getMap('meta').delete('editors');
   if (!ownerKey) doc.getMap('meta').delete('editorsList');
   let verifier = signer ? await verifierOf(signer.pub) : null;
   // (#4745: the editors' keys listed, signed, given to the room and to every participant)
   const publishList = async () => {
-    const list = await signList(ownerKey.key, room, ++listN, [signer.pub]);
+    const list = await signList(ownerKey.key, room, ++listN, [...listed.keys()]);
     keys = await editorKeys(list);
     doc.getMap('meta').set('editorsList', list);
     cur.control({ type: 'editors', list });
@@ -239,6 +244,9 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   let ended = null, stopped = false, lostAt = null, timer = null;   // (why it ended; close() called; since when lost)
   // a frame for one follower, on the connection `c` (a join's answer: on the connection it came on)
   const sendTo = (c, client, kind, bytes) => c.frame(async () => toFrame(client, await seal(key, room, kind, bytes)));
+  // (#3997: the owner's word to one participant of its role; #4745: a participant's own key, as its awareness gives it)
+  const sendRole = (c, client, msg) => sendTo(c, client, KIND.role, new TextEncoder().encode(JSON.stringify(msg)));
+  const keyOfPeer = client => { const k = awareness.getStates().get(client)?.key; return PUB_RE.test(String(k)) ? k : null; };
   const control = async (c, msg) => {
     if (c.first?.(msg)) { c.first = null; return; }
     if (msg.type === 'join') {   // (someone joined: the whole document and who is in, for them only, #3529)
@@ -259,6 +267,21 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     if (!from) return;
     const { kind, bytes } = await unseal(key, room, from.frame);
     if (kind === KIND.awareness) applyAwarenessFrom(awareness, bytes, from.client);
+    else if (kind === KIND.enrol && ownerKey) await enrolIn(bytes, from.client);
+  };
+  // (#4745: a follower's request to be listed, signed with the editor link's key: listed at once, MAX_EDITORS at most)
+  const enrolIn = async (bytes, client) => {
+    let req = null;
+    try { req = JSON.parse(new TextDecoder().decode(bytes)); } catch { return; }
+    if (!await checkEnrol(verifier, room, req)) { await sendRole(cur, client, { role: 'viewer', reason: NOT_INVITED }); return; }
+    if (listed.has(req.pub)) { listed.set(req.pub, client); return; }
+    if (listed.size >= MAX_EDITORS) {
+      onEvent({ type: 'error', message: `an editor could not join: this shared project has ${MAX_EDITORS} editors already` });
+      await sendRole(cur, client, { role: 'viewer', reason: `this shared project has ${MAX_EDITORS} editors already: you follow it read only` });
+      return;
+    }
+    listed.set(req.pub, client);
+    await publishList();
   };
   // a connection, opened and answered (`hello`: the open, or the resume): { c, answer }; its failure thrown
   const connect = async hello => {
@@ -326,14 +349,22 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   doc.on('update', onUpdate);
   // a participant's role changed (#3997): the editors' key given to one viewer (promote); or the room's signing key
   // renewed (demote): the document's and the room's public key the new one, every other editor given it, the one
-  // demoted told it is a viewer (its key, the old one, no longer the room's: the old editors' link then only views)
-  const sendRole = (client, msg) => sendTo(cur, client, KIND.role, new TextEncoder().encode(JSON.stringify(msg)));
+  // demoted told it is a viewer (its key, the old one, no longer the room's: the old editors' link then only views);
+  // #4745, a room whose owner lists its editors: the viewer's own key listed (promote), or the editor's out of the list
+  // and the editor link's key renewed, the other editors told nothing (demote)
   const known = client => p.peers().find(x => x.client === client && x.role !== 'owner');
   const roles = {
     promote: async client => {
       if (!signer) throw new Error('this project is shared with no editors');
       if (!known(client)) throw new Error('no such participant');
-      await sendRole(client, { role: 'editor', sign: signer.text });
+      if (!ownerKey) return sendRole(cur, client, { role: 'editor', sign: signer.text });
+      // (#4745: its own key listed, the one its awareness gives; no key sent to it)
+      const k = keyOfPeer(client);
+      if (!k) throw new Error('this participant\'s Silinx cannot edit: it should load the page again');
+      if (!listed.has(k) && listed.size >= MAX_EDITORS) throw new Error(`this shared project has ${MAX_EDITORS} editors already`);
+      listed.set(k, client);
+      await publishList();
+      await sendRole(cur, client, { role: 'editor' });
     },
     demote: async client => {
       if (!signer) throw new Error('this project is shared with no editors');
@@ -341,10 +372,18 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
       const others = p.peers().filter(x => x.role === 'editor' && x.client !== client).map(x => x.client);
       signer = await newSigner();
       verifier = await verifierOf(signer.pub);
-      if (ownerKey) await publishList();   // (#4745: a list without the old key)
-      else { doc.getMap('meta').set('editors', signer.pub); cur.control({ type: 'rekey', editors: signer.pub }); }
-      await sendRole(client, { role: 'viewer' });
-      for (const c of others) await sendRole(c, { role: 'editor', sign: signer.text });
+      if (ownerKey) {
+        // (#4745: its key out of the list, and the editor link's renewed, so that the old one lists no one again; the
+        // other editors keep their own keys, told nothing)
+        const k = keyOfPeer(client);
+        for (const [pub, c] of listed) if (pub === k || c === client) listed.delete(pub);
+        await publishList();
+        await sendRole(cur, client, { role: 'viewer' });
+        return signer.text;
+      }
+      doc.getMap('meta').set('editors', signer.pub); cur.control({ type: 'rekey', editors: signer.pub });
+      await sendRole(cur, client, { role: 'viewer' });
+      for (const c of others) await sendRole(cur, c, { role: 'editor', sign: signer.text });
       return signer.text;
     },
   };
@@ -363,8 +402,9 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     /** The owner's public key, which the links carry (#4745; null: a room with no editors, or one of before). */
     get ownerKey() { return ownerKey?.pub || null; },
     /** What resumes it once its page is loaded again (#4850: shareRoom's `resumed`, its document's state and client id
-     *  too): { client, doc, key, sign, owner (#4745: the owner's key), n (its last list's number), room, resume, clock }. */
-    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), key: text, sign: signer?.text || null, owner: ownerKey?.text || null, n: listN, room, resume, clock: clockOf(awareness) }),
+     *  too): { client, doc, key, sign, owner (#4745: the owner's key), n (its last list's number), editors (the keys it
+     *  lists), room, resume, clock }. */
+    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), key: text, sign: signer?.text || null, owner: ownerKey?.text || null, n: listN, editors: [...listed.keys()], room, resume, clock: clockOf(awareness) }),
     /** How many times its room was resumed (#4850: its connection lost, or its page reloaded: `resumed`). */
     resumes: () => resumes,
     closed: () => ended !== null,
@@ -403,12 +443,17 @@ const REFUSED = [1003, 1008, 1009];
  *  document lacks (its own updates past the owner's clock of it): nothing it changed meanwhile is lost. */
 export async function followRoom({ url, room, key: keyText, sign = null, owner: ownerPub = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null, viewMs = VIEW_MS, resumed = null }) {
   const key = await keyOf(keyText);
-  let signer = sign ? await signerOf(sign) : null, signText = signer ? sign : null;
+  // (#4745: a room whose owner lists its editors: this participant's own key, which it signs its edits with once the
+  // owner listed it; its link's key, an editor's, only invites it, `sign`: its request to be listed signed with it; a
+  // viewer promoted, its own key listed too)
+  const own = !ownerPub ? null : resumed?.own && SIGN_RE.test(resumed.own) ? { key: await signerOf(resumed.own), text: resumed.own, pub: pubOf(resumed.own) } : await newSigner();
+  const invite = ownerPub && sign ? await signerOf(sign) : null;
+  let signer = !sign && !(ownerPub && resumed?.editor) ? null : ownerPub ? own.key : await signerOf(sign), signText = sign || null;
   // (#4850: its page loaded again: its document as it was, its client id the same, its own changes kept)
   const doc = resumed?.doc || new Y.Doc();
   const awareness = new Awareness(doc);
   pastClock(awareness, resumed?.clock);
-  awareness.setLocalState({ user, role: signer ? 'editor' : 'follower', view: null });
+  awareness.setLocalState({ user, role: signer ? 'editor' : 'follower', view: null, ...(own ? { key: own.pub } : {}) });
   const activity = activityStore();   // (#4002: the owner's activity as it arrives)
   // (the room's public key, from the owner's document: an editor's edit checked with it; #4745: the owner's list of the
   // editors' keys, from the document, taken when its signature is the key's the link gives)
@@ -427,8 +472,10 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
     return listedKeys;
   };
   const checked = ownerPub ? byList(room, keysOfDoc) : byKey(room, verifierOfDoc);
-  // (#4745: the key this editor signs with, by its id)
-  let signerId = signer && ownerPub ? await keyId(pubOf(sign)) : null;
+  // (#4745: the key this editor signs with, by its id; whether the owner's last list has it)
+  const signerId = own ? await keyId(own.pub) : null;
+  const amListed = async () => (await keysOfDoc()).has(signerId?.text);
+  let wasListed = false;
   let synced, failed = null, arrived = false;
   const ready = new Promise((resolve, reject) => { synced = () => { arrived = true; resolve(); }; failed = reject; });
   ready.catch(() => {});
@@ -454,7 +501,22 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   const mine = resumed?.mine ? [resumed.mine] : [];
   // (#4736: sealed with this session's IVs, a counter in each, in the order they are sent)
   const nextIv = editIvs();
-  const sendEdit = u => cur.frame(async () => { const f = await seal(key, room, KIND.edit, u, nextIv()); return ownerPub ? signEdit({ key: signer, id: signerId }, room, f) : signFrame(signer, room, f); });
+  const sendEdit = u => cur.frame(async () => {
+    // (#4745: not listed yet, kept in `mine`, sent once it is)
+    if (ownerPub && !await amListed()) return null;
+    const f = await seal(key, room, KIND.edit, u, nextIv());
+    return ownerPub ? signEdit({ key: signer, id: signerId }, room, f) : signFrame(signer, room, f);
+  });
+  // (#4745: the owner's list changed: listed now, what of its own changes the owner lacks sent, said once; no longer
+  // listed, a viewer)
+  const onList = async () => {
+    if (!ownerPub || !signer) return;
+    const now = await amListed();
+    if (now && !wasListed && mine.length) sendEdit(Y.mergeUpdates(mine));
+    wasListed = now;
+  };
+  // (#4745: its request to be listed, at each join: the owner lists it once)
+  const enrol = async c => { if (invite && signer) c.frame(async () => seal(key, room, KIND.enrol, new TextEncoder().encode(JSON.stringify(await signEnrol(invite, room, own.pub))))); };
   let listening = false;
   const listen = on => { if (on && !listening) doc.on('update', onUpdate); else if (!on && listening) doc.off('update', onUpdate); listening = on; };
   const onUpdate = (u, origin) => {
@@ -514,11 +576,17 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   const roleIn = async bytes => {
     let msg = null;
     try { msg = JSON.parse(new TextDecoder().decode(bytes)); } catch { return; }
-    if (msg?.role === 'editor' && SIGN_RE.test(String(msg.sign))) {
+    if (ownerPub && msg?.role === 'editor') {
+      // (#4745: promoted, its own key listed)
+      signer = own.key;
+      listen(true);
+      awareness.setLocalStateField('role', 'editor');
+      await onList();
+      onEvent({ type: 'role', role: 'editor', sign: null, renewed: false });
+    } else if (msg?.role === 'editor' && SIGN_RE.test(String(msg.sign))) {
       const was = !!signer;
       signer = await signerOf(msg.sign);
       signText = msg.sign;
-      if (ownerPub) signerId = await keyId(pubOf(msg.sign));
       listen(true);
       awareness.setLocalStateField('role', 'editor');
       if (mine.length) sendEdit(Y.mergeUpdates(mine));
@@ -530,6 +598,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
       mine.length = 0;
       awareness.setLocalStateField('role', 'follower');
       onEvent({ type: 'role', role: 'viewer' });
+      if (typeof msg.reason === 'string') onEvent({ type: 'error', message: msg.reason.slice(0, 200) });
     }
   };
   // a connection, joined: { c, owner }; its failure thrown (the relay's answer: its message)
@@ -590,6 +659,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
     if (ended) { j.c.ws.close(); return; }
     lostAt = null;
     use(j.c);
+    enrol(j.c);   // (#4745)
     // (this participant's state, its clock past the one the others knew: theirs, removed at its leave, taken again)
     awareness.setLocalState({ ...awareness.getLocalState() });
     onEvent({ type: 'online' });
@@ -604,10 +674,15 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   if (reconnect) globalThis.addEventListener?.('online', now);
   p.send(KIND.awareness, encodeAwarenessUpdate(awareness, [doc.clientID]));
   if (signer) listen(true);
+  // (#4745: the owner's list, as it changes; this participant's request to be listed)
+  if (ownerPub) doc.getMap('meta').observe(() => { onList().catch(() => {}); });
+  enrol(first.c);
   return {
     ...p, ready,
     /** An editor now (its link's, or the owner's word since, #3997). */
     get editor() { return !!signer; },
+    /** Its own key in the owner's last list (#4745: an editor's changes sent; before it, kept and sent once it is). */
+    get listed() { return wasListed; },
     /** The editors' key it signs with (null: a viewer). */
     sign: () => (signer ? signText : null),
     /** The owner's activity on a channel, as it last arrived (#4002; null: none yet): untrusted, checked by its reader. */
@@ -622,7 +697,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
     resumes: () => backs,
     /** What follows it again once its page is loaded again (#4850: followRoom's `resumed`, its document's state and
      *  client id): { client, doc, mine (its own changes, an editor's), clock, sign (the editors' key it signs with now) }. */
-    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), mine: signer && mine.length ? Y.mergeUpdates(mine) : null, clock: clockOf(awareness), sign: signer ? signText : null }),
+    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), mine: signer && mine.length ? Y.mergeUpdates(mine) : null, clock: clockOf(awareness), sign: signer ? signText : null, ...(own ? { own: own.text, editor: !!signer } : {}) }),
     close: async () => {
       stopped = true;
       // (its own end, #4201: said as such, not as a connection lost)
