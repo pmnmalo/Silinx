@@ -52,7 +52,7 @@ test('#4809 the levels: a multiplexer a tree of M2_1, a decoder of D1_2E, a demu
   assert.deepEqual(lines('encoder', { n: 2, mode: 'priority' }), ['PENC4_2 = 2 × OR2 + INV + AND2 + OR4']);
   assert.deepEqual(lines('encoder', { n: 3, mode: 'priority' }).slice(0, 1), ['PENC8_3 = 2 × PENC4_2 + 2 × M2_1 + BUF + OR2']);
   assert.deepEqual(lines('encoder', { n: 4, mode: 'one-hot' }).slice(0, 3), ['ENC16_4 = 2 × ENC8_3 + 4 × OR2 + BUF', 'ENC8_3 = 2 × ENC4_2 + 3 × OR2 + BUF', 'ENC4_2 = 2 × OR2 + OR4']);
-  assert.deepEqual(['mux2', 'mux16', 'decoder', 'demux', 'encoder', 'compare', 'counter'].map(hasComposition), [true, true, true, true, true, false, false]);
+  assert.deepEqual(['mux2', 'mux16', 'decoder', 'demux', 'encoder', 'counter'].map(hasComposition), [true, true, true, true, true, false]);
   assert.equal(composition('decoder', { n: 9 }).top, 'D5_32E', 'n within the symbol\'s limits');
 });
 

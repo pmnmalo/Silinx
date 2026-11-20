@@ -113,7 +113,7 @@ export const SYMBOL_INFO_TOOLS = [
   },
   {
     name: 'symbol_composition', title: 'Symbol Composition',
-    description: 'A level of a palette symbol\'s composition, as a schematic (read-only, as read_file returns a schematic): the symbol built of the symbols of the level below, down to the gates (ADD8: two ADD4; ADD4: four FA1; FA1: two XOR2, two AND2 and an OR2; SUB8: an ADD8 with B and the borrows inverted). Its levels are symbol_info\'s Composition: a level by its module (left out: the top, the symbol itself), or by its path of instances from the top (["U1", "U2"]: the schematic editor\'s Push into, then into U2). With inputs (the symbol\'s input pins\' values), the level\'s values as a Try it of the symbol pushed into shows them: its inputs, from the levels above simulated with the symbol\'s, and its outputs. A view: the HDL generated for the symbol is its own, proved equivalent to the composition. The adders, subtractors, multiplexers, decoders, demultiplexers and encoders have one so far.',
+    description: 'A level of a palette symbol\'s composition, as a schematic (read-only, as read_file returns a schematic): the symbol built of the symbols of the level below, down to the gates (ADD8: two ADD4; ADD4: four FA1; FA1: two XOR2, two AND2 and an OR2; SUB8: an ADD8 with B and the borrows inverted). Its levels are symbol_info\'s Composition: a level by its module (left out: the top, the symbol itself), or by its path of instances from the top (["U1", "U2"]: the schematic editor\'s Push into, then into U2). With inputs (the symbol\'s input pins\' values), the level\'s values as a Try it of the symbol pushed into shows them: its inputs, from the levels above simulated with the symbol\'s, and its outputs. A view: the HDL generated for the symbol is its own, proved equivalent to the composition. The adders, subtractors, comparators, multiplexers, decoders, demultiplexers and encoders have one so far.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, symbol: STR('The symbol: its name in the palette or the Xilinx library (ADD8, SUB16), or its type (add, sub).'),
       params: { type: 'object', description: 'Its parameters, as Symbol Info\'s fields (e.g. { "width": 16, "cin": true }); left out: the symbol\'s.' },
@@ -129,7 +129,7 @@ export const SYMBOL_INFO_TOOLS = [
       const found = findSymbol(symbol, { SYMBOLS: Sch.SYMBOLS, XILINX_SYMBOLS: D.XILINX_SYMBOLS, titleOf: t => D.symbolDoc(t, {}, { withHdl: false }).title }, {});
       if (!found) throw toolError(`no symbol '${symbol}' in the palette`);
       const comp = L.composition(found.type, { ...found.params, ...params });
-      if (!comp) throw toolError(`${symbol}: no composition (a symbol of the palette drawn as it is; the adders, subtractors, multiplexers, decoders, demultiplexers and encoders have one)`);
+      if (!comp) throw toolError(`${symbol}: no composition (a symbol of the palette drawn as it is; the adders, subtractors, comparators, multiplexers, decoders, demultiplexers and encoders have one)`);
       const levelOf = n => comp.modules.find(m => m.name.toLowerCase() === String(n).toLowerCase());
       // (the path of instances from the top: each one an instance of a module of the level above)
       const steps = [{ module: comp.top, instance: null }];
