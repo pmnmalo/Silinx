@@ -5,6 +5,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, clip, redactor, projectPath, readProject, PROJECT } from './mcp-util.js';
 import { designUtilization } from '../core/summary-utilization.js';
+import { severityOf } from '../core/log-severity.js';
 import { MODEL_PROCESS, hasSimModels, noSimModelMessage, silinxFlowOf } from './mcp-hdl.js';
 
 export const PROCESSES = {
@@ -71,6 +72,12 @@ export function processText({ errors, warnings, lines, head, logLines = 40 }) {
   return clip([...(errors.length || warnings.length ? [...errors, ...warnings, '…'] : []), ...lines.slice(-Math.max(1, logLines)), head].join('\n'));
 }
 
+/** A process's log's errors and warnings, as the console classes them (#4730: core/log-severity.js, the interface's
+ *  console and its count of warnings): ISE's, Vivado's (its critical warnings too, #1649), Yosys's and nextpnr's. */
+export function processMessages(lines) {
+  return { errors: lines.filter(l => severityOf(l) === 'error'), warnings: lines.filter(l => severityOf(l) === 'warning') };
+}
+
 /** A process of the project's top run to its end (or stopped after timeoutS): its log redacted, its errors and
  *  warnings, whether it ended well, its toolchain. Errors: tool errors. */
 export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signal } = {}) {
@@ -94,8 +101,7 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   }
   const redact = await redactor();
   const lines = job.lines.map(redact);
-  // (Vivado's critical warnings too, #1649)
-  const errors = lines.filter(l => /^ERROR/.test(l)), warnings = lines.filter(l => /^(CRITICAL )?WARNING/.test(l));
+  const { errors, warnings } = processMessages(lines);
   const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
   return { top: pj.top, lines, errors, warnings, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
 }

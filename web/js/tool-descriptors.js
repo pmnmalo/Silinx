@@ -91,7 +91,7 @@ const LAB_TASKS = [
 
 // The log's lines, every tool's so far (run.sh's and the Silinx toolchain's): "ERROR:Tool:123 - msg", "WARNING:Tool - msg",
 // "ERROR: msg", "WARNING: msg"; a step's start and end said by the markers.
-export const MESSAGE_LINE = /^\s*(ERROR|WARNING|FATAL|CRITICAL WARNING)\s*:\s*(?:([A-Za-z][\w-]*(?::\d+)?)\s+-\s+)?(.*)$/i;
+export const MESSAGE_LINE = /^\s*(INTERNAL_ERROR|FATAL_ERROR|ERROR|WARNING|FATAL|CRITICAL WARNING)\s*:\s*(?:([A-Za-z][\w-]*(?::\d+)?)\s+-\s+)?(.*)$/i;
 const LOG_MESSAGES = { line: MESSAGE_LINE, stepStart: '=== SILINX STEP', stepFailed: '=== SILINX FAILED', done: '=== SILINX DONE ===' };
 
 // the back ends' lists of steps (the toolchain's open-steps.js XILINX_STEPS, open-flow-ice40.js ICE40_STEPS, open-flow-ecp5.js ECP5_STEPS, open-flow-gowin.js GOWIN_STEPS, open-flow-gatemate.js GATEMATE_STEPS: the same,
