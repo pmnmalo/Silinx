@@ -172,6 +172,40 @@ test('program: board default tool, bit header checks, explicit tools and positio
 
 // #2298: the iCE40's .bin, written into the iCEBreaker's SPI flash by openFPGALoader (its board ice40_generic: the
 // on-board FT2232H), no JTAG chain; its file's size in bitinfo; the errors
+// (#4683) a Zynq-7000 board's chain: TDI, the ARM DAP, the PL: openFPGALoader -b <board> picks the PL itself (its index 0 the
+// DAP), no --index-chain, the interface's position (the PL's, 2) or none; the Z7-10's .bit on the Z7-20 refused as any part
+test('#4683 program: a Zybo Z7 project\'s .bit with openFPGALoader -b zybo_z7_20, no --index-chain (the chain\'s ARM DAP skipped)', { skip: POSIX_ONLY }, async () => {
+  process.env.FAKE_PROG_LOG = path.join(tmp, 'prog-zynq.log');
+  await P.createProject({ name: 'Zy', board: 'zybo-z7' });
+  await P.updateProject('Zy', pj => { pj.top = 'top'; pj.device = { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }; });
+  const bit = path.join(P.projectDir('Zy'), 'build', 'top.bit');
+  await fs.mkdir(path.dirname(bit), { recursive: true });
+  await fs.writeFile(bit, makeBit({ part: '7z020clg400' }));
+  for (const position of [undefined, 2]) {
+    const j = await run('/program', { project: 'Zy', ...(position ? { position } : {}) });
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual([j.result.options.tool, j.result.warnings], ['openFPGALoader', []]);
+    assert.deepEqual(j.result.commands, [{ cmd: 'openFPGALoader', args: ['-b', 'zybo_z7_20', bit], code: 0 }], String(position));
+    assert.ok(j.lines.some(l => /device family: Zynq-7000/.test(l)), j.lines.join('\n'));
+    assert.ok(j.lines.includes("Programming (SRAM, volatile) with openFPGALoader position=the chain's FPGA"), j.lines.join('\n'));
+    assert.ok(!j.lines.some(l => /^WARNING/.test(l)), j.lines.join('\n'));
+  }
+  assert.match(await fs.readFile(process.env.FAKE_PROG_LOG, 'utf8'), /^openFPGALoader -b zybo_z7_20 .*top\.bit$/m);
+  // (the Arty Z7's alike: openFPGALoader -b arty_z7_20)
+  await P.createProject({ name: 'Az', board: 'arty-z7' });
+  await P.updateProject('Az', pj => { pj.top = 'top'; pj.device = { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }; });
+  const abit = path.join(P.projectDir('Az'), 'build', 'top.bit');
+  await fs.mkdir(path.dirname(abit), { recursive: true });
+  await fs.writeFile(abit, makeBit({ part: '7z020clg400' }));
+  const a = await run('/program', { project: 'Az', position: 2 });
+  assert.deepEqual([a.status, a.result.commands], ['ok', [{ cmd: 'openFPGALoader', args: ['-b', 'arty_z7_20', abit], code: 0 }]]);
+  // (the Z7-10's .bit on the Z7-20: refused, nothing run)
+  await fs.writeFile(bit, makeBit({ part: '7z010clg400' }));
+  const j = await run('/program', { project: 'Zy' });
+  assert.equal(j.status, 'error');
+  assert.match(j.error, /bitstream was built for '7z010clg400' but the target device is 'xc7z020-clg400': not programmed/);
+});
+
 test('program: an iCE40 project\'s .bin into the iCEBreaker\'s flash with openFPGALoader -b ice40_generic', { skip: POSIX_ONLY }, async () => {
   process.env.FAKE_PROG_LOG = path.join(tmp, 'prog-ice40.log');
   await P.createProject({ name: 'Ice', board: 'icebreaker', device: { family: 'ice40', part: 'ice40up5k', package: 'sg48', speed: '' } });

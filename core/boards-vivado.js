@@ -63,7 +63,8 @@ const ZYBO_Z7 = {
     { id: '10', label: 'Zybo Z7-10 (XC7Z010)', device: { family: 'zynq', part: 'xc7z010', package: 'clg400', speed: '-1' } },
   ],
   deviceNotes: 'The Zybo Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
-  jtagChain: [{ name: 'xc7z020', role: 'fpga' }],
+  // (#4683: in cascade, TDI first: the ARM DAP, the processing system's debug port, then the PL's TAP)
+  jtagChain: [{ name: 'arm_dap', role: 'dap' }, { name: 'xc7z020/xc7z010', role: 'fpga' }],
   flash: { type: 'spi', part: 'Quad-SPI flash, 128 Mbit (the processing system\'s)', sizeMbit: 128, xcf: false, verified: false, note: 'The PS boots from it: a boot image (an FSBL and the .bit, bootgen), not written from Silinx. The .bit is loaded over JTAG.' },
   programmer: {
     preferred: 'openFPGALoader',
@@ -98,7 +99,8 @@ const ARTY_Z7 = {
     { id: '10', label: 'Arty Z7-10 (XC7Z010)', device: { family: 'zynq', part: 'xc7z010', package: 'clg400', speed: '-1' } },
   ],
   deviceNotes: 'The Arty Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
-  jtagChain: [{ name: 'xc7z020', role: 'fpga' }],
+  // (#4683: the Zybo Z7's chain, the ARM DAP then the PL's TAP)
+  jtagChain: [{ name: 'arm_dap', role: 'dap' }, { name: 'xc7z020/xc7z010', role: 'fpga' }],
   flash: { type: 'spi', part: 'Quad-SPI flash, 128 Mbit (the processing system\'s)', sizeMbit: 128, xcf: false, verified: false, note: 'The PS boots from it: a boot image (an FSBL and the .bit, bootgen), not written from Silinx. The .bit is loaded over JTAG.' },
   programmer: {
     preferred: 'openFPGALoader',

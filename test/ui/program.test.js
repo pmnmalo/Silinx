@@ -175,6 +175,22 @@ uiTest('#1025 Program PROM: every operation shown, no More…; in Portuguese', E
   await noWarnings(page);
 }, { build: DEV, timeout: 120000 });
 
+// #4683: a Zynq-7000 board's chain (the Zybo Z7's): TDI, the ARM DAP (bypass), the PL's FPGA, selected, its .bit; in the Silinx
+// and ISE style interfaces
+uiTest('#4683 Program: the Zybo Z7\'s chain, the ARM DAP in bypass and the FPGA (its PL) selected with its .bit', E, async (page) => {
+  await makeProject(env, { name: 'ProgZybo', template: 'gates', board: 'zybo-z7', device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' } });
+  const chain = () => page.eval(() => [...document.querySelectorAll('#workspace > .doc:not([hidden]) .impact-chain .impact-dev')]
+    .map((d) => [d.querySelector('.chipbox').textContent, d.children[1].textContent, d.children[2].textContent, d.classList.contains('sel')]));
+  for (const ui of ['silinx', 'ise']) {
+    await useInterface(page, ui);
+    await page.openProject('ProgZybo');
+    await page.eval(() => window.SilinxApp.openImpact());
+    await page.waitFor(() => !!document.querySelector('#workspace > .doc:not([hidden]) .impact-chain .impact-dev'), [], { what: 'iMPACT' });
+    assert.deepEqual(await chain(), [['ARM_DAP', 'bypass', 'ARM DAP · position 1', false], ['XC7Z020/XC7Z010', 'gates.bit', 'FPGA · position 2', true]], ui);
+  }
+  await noWarnings(page);
+}, { build: DEV, timeout: 120000 });
+
 // #3711: on a board whose maker's tool writes its flash over its USB (the Mimas V2), the panel's note says that first:
 // the tool, build/<top>_prom.bin and its command; a Basys2's note has no such line; in the Silinx and ISE style interfaces
 uiTest('#3711 Program: on the Mimas V2, the note says how to program its flash with MimasV2Config and the .bin', E, async (page) => {

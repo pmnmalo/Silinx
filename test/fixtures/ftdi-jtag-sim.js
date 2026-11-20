@@ -10,10 +10,13 @@
 //     INIT_ADDR (12), XFER_WRITE (17: the bits taken, in that mode, after an erase), NOOP (02); on CONFIG_DISABLE the SRAM's
 //     bytes (MSB first) checked: its IDCODE command 06 00 00 00 <IDCODE> this device's, else ID_VERIFY_FAILED; DONE when it is.
 // What breaks the protocol (an erase or a write outside the configuration mode, a write before an erase) goes to errors.
-//   - an ECP5 (the ULX3S's, for test/fixtures/ft231x-sim.js): see Ecp5 below.
+//   - an ECP5 (the ULX3S's, for test/fixtures/ft231x-sim.js): see Ecp5 below;
+//   - a Zynq-7000's PL (#4683: the XC7Z010, the XC7Z020) as an Artix-7, and with dap: true the ARM DAP before it on the chain
+//     (TDI, the DAP, the PL, TDO, the Zynq's cascade): IR of 4 bits, its capture 0001, IDCODE (1110) at reset, BYPASS (1111);
+//     st.dapIrs: the DAP's instructions updated.
 //   const { usb, st } = ftdiJtagBoard({ device: 'xc7a35t' }); st.dev.config: the bytes taken, st.dev.done.
 
-const XC7 = { xc7a35t: 0x0362d093, xc7a100t: 0x13631093 };
+const XC7 = { xc7a35t: 0x0362d093, xc7a100t: 0x13631093, xc7z010: 0x03722093, xc7z020: 0x23727093 };
 const SYNC = 0xaa995566;
 const NEXT = {
   TLR: ['RTI', 'TLR'], RTI: ['RTI', 'SDS'], SDS: ['CDR', 'SIS'], CDR: ['SDR', 'E1D'], SDR: ['SDR', 'E1D'], E1D: ['PDR', 'UDR'],
@@ -49,7 +52,7 @@ class Artix7 {
       if (w !== SYNC || i < 31) continue;
       const cfg = msbBytes(bits.slice(i - 31));
       this.config = cfg;
-      for (let k = 4; k + 8 <= cfg.length; k += 4) if (word(cfg, k) === 0x30018001) { this.done = word(cfg, k + 4) === this.idcode; return; }
+      for (let k = 4; k + 8 <= cfg.length; k += 4) if (word(cfg, k) === 0x30018001) { this.done = ((word(cfg, k + 4) ^ this.idcode) & 0x0fffffff) === 0; return; }   // (its version bits not compared, as the FPGA does not)
       return;
     }
   }
@@ -144,6 +147,17 @@ class Ecp5 {
   }
 }
 
+// the Zynq-7000's ARM DAP (ARM's debug interface, its JTAG-DP): IDCODE and BYPASS only
+class ArmDap {
+  constructor(st) { Object.assign(this, { name: 'arm_dap', irLen: 4, idcode: 0x4ba00477, st }); this.reset(); }
+  reset() { this.ir = 0x0e; }
+  captureIr() { return 0x01; }
+  captureDr() { return this.ir === 0x0e ? [this.idcode, 32] : [0, 1]; }
+  update() { (this.st.dapIrs ??= []).push(this.ir); }
+  shiftedIn() {}
+  clock() {}
+}
+
 /** A device of the simulated chain by its name: an Artix-7, a Gowin GW1N or an ECP5. */
 export function simDevice(name, opts = {}) {
   return /^gw/.test(name) ? new Gw1n(name, opts) : /^lfe5/.test(name) ? new Ecp5(name, opts) : new Artix7(name, opts);
@@ -170,10 +184,13 @@ export function simTap(dev, st = {}) {
   return { tck, tdo: tdoNow };
 }
 
-export function ftdiJtagBoard({ device = 'xc7a35t', deviceOptions = {}, packet = 512, mpsse = true, claimError = null } = {}) {
+export function ftdiJtagBoard({ device = 'xc7a35t', deviceOptions = {}, packet = 512, mpsse = true, claimError = null, dap = false } = {}) {
   const dev = simDevice(device, deviceOptions);
   const st = { dev, tms: 0, low: null, high: null, mode: null, rx: [], controls: [], badCommands: [] };
-  const { tck } = simTap(dev, st);
+  const pl = simTap(dev, st);
+  // (dap: the ARM DAP nearer TDI, its TDO the PL's TDI, both TAPs on the same TMS and TCK)
+  const arm = dap ? simTap(new ArmDap(st), st.dapTap = {}) : null;
+  const tck = arm ? (tms, tdi) => { const mid = arm.tdo(); arm.tck(tms, tdi); return pl.tck(tms, mid); } : pl.tck;
   // a read of n bits: shifted in from bit 7
   const readBits = bits => { let v = 0; for (const b of bits) v = (v >> 1) | (b << 7); return v; };
 
