@@ -21,6 +21,7 @@ import { boxOf } from '/core/ink/segment.js';
 import { SYMBOLS } from '/core/ink/font.js';
 import { LogicError } from '/core/logic.js';
 import { prefKey } from './prefs.js';
+import { debounce } from './debounce.js';
 
 const SAMPLES_KEY = prefKey('silinx.ink.samples');
 const MAX_SAMPLES = 400;
@@ -56,19 +57,19 @@ export const inkGateTemplates = () => [...gateTemplates(), ...userGateTemplates(
 export function handwrittenExpression({ name = 'F', check = () => null, title = 'Handwritten Expression' } = {}) {
   let samples = loadSamples();
   let templates = inkTemplates();
-  let timer = null, last = null;
+  let last = null;
   const text = h('textarea', { class: 'ink-text', rows: 3, spellcheck: 'false', placeholder: 'The recognized text appears here, an expression a line' });
   const error = () => expressionError(text.value, { name, check });
   const msg = h('div', { class: 'ink-msg' });
   const padHost = h('div', { class: 'ink-pad' });
   // read after each stroke, a moment later (the next stroke may follow at once); at once before Insert
-  const pad = mountInkPad(padHost, { onStroke: () => { clearTimeout(timer); timer = setTimeout(recognize, 250); } });
-  const flush = () => { if (timer) { clearTimeout(timer); recognize(); } };
+  const reading = debounce(() => recognize(), 250);
+  const pad = mountInkPad(padHost, { onStroke: () => reading() });
+  const flush = () => reading.flush();
   // (a correction typed by hand: the reading still pending would write over it, #2389; the next stroke reads again)
-  const edited = () => { clearTimeout(timer); timer = null; };
+  const edited = () => reading.cancel();
   const showMsg = (lines, kind = 'warn') => { msg.className = `ink-msg ink-${kind}`; msg.replaceChildren(...lines.map(l => h('div', {}, l))); };
   function recognize() {
-    timer = null;
     const strokes = pad.strokes();
     last = null;
     if (!strokes.length) { text.value = ''; pad.setLabels([]); showMsg([]); return; }
@@ -141,5 +142,5 @@ export function handwrittenExpression({ name = 'F', check = () => null, title = 
       { label: 'Insert', primary: true, validate: () => { flush(); const e = error(); if (e) showMsg([e]); return !e; }, value: () => { learn(); return { text: text.value.trim(), ...tableFromEquations(text.value, { name }) }; } },
       { label: 'Cancel', value: null },
     ],
-  }).finally(() => { clearTimeout(timer); pad.destroy(); });
+  }).finally(() => { reading.cancel(); pad.destroy(); });
 }

@@ -13,6 +13,7 @@ import { mountSchExport } from './schematic-export.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { iecGate } from '/core/symbol-standard.js';
 import { getSymbolStandard, onSymbolStandard } from './symbol-standard.js';
+import { debounce } from './debounce.js';
 
 export const SVGNS = 'http://www.w3.org/2000/svg';
 const FONT = '11px Arial, Helvetica, sans-serif';
@@ -479,7 +480,7 @@ export function mountSchematic(container, opts = {}) {
   let bounds = { x: 0, y: 0, w: 0, h: 0 };
   let token = 0;
   let pendingFit = false;
-  let refitTimer = null;
+  const refitSoon = debounce(() => { if (autoFit) initialView(); }, 30);
   let autoFit = true; // keep fitting on resize until the user zooms or pans
   let destroyed = false;
   let content = '';                     // last rendered SVG markup (for export)
@@ -712,7 +713,7 @@ export function mountSchematic(container, opts = {}) {
     if (key === lastSize) return;
     lastSize = key;
     if (pendingFit) { fit(); return; }
-    if (autoFit && layout) { clearTimeout(refitTimer); refitTimer = setTimeout(() => { if (autoFit) initialView(); }, 30); }
+    if (autoFit && layout) refitSoon();
   }
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
   ro?.observe(container);

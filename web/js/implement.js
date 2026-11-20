@@ -21,6 +21,7 @@ import { EXTRA_STEPS, IMPL_IDS, SIM_MODEL_NAMES, checkSyntax, loadUcfText, openM
 import { inView, saveProjectJson, setTop } from './design.js';
 import { OPEN_SYNTH, SYNTH_OPEN } from './tool-descriptors.js';
 import { jobLog } from './job-log.js';
+import { downloadUrl } from './download.js';
 
 // Live per-step status from run.sh's "=== SILINX STEP <step> ===" markers and ISE WARNING/ERROR lines.
 const STEP_PROC = { synth: 'synth', translate: 'translate', map: 'map', par: 'par', trce: 'par', bitgen: 'bitgen', prombit: 'bitgen',
@@ -322,8 +323,7 @@ async function runImplInner(mod, steps, opts, pjName) {
       ok = true;
       // the browser edition: the bitstream is downloaded (there is no build folder to find it in)
       if (res.download && steps.includes('bitgen')) {
-        const a = h('a', { href: res.download.url, download: res.download.filename });
-        document.body.append(a); a.click(); a.remove();
+        downloadUrl(res.download.url, res.download.filename);
         log(`Bitstream downloaded: ${res.download.filename} (Configure Target Device programs the board with it).`, 'info');
       }
       countEvent(steps.includes('bitgen') ? 'bitstream' : 'implement');

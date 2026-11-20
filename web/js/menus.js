@@ -28,6 +28,7 @@ import { openEmulator, openSchematic, runSimulation } from './viewers.js';
 import { printActive, printable } from './print-doc.js';
 import { hasGit, hookGitStatus, openFromRepositoryDialog, gitMenuItems } from './git.js';
 import { besideItems, splitState, toggleSplit } from './split-view.js';
+import { downloadBlob } from './download.js';
 // (Print: the document in front, whichever it is, #1509)
 export { printActive, printable };
 
@@ -278,11 +279,6 @@ export function showPalette() {
   return openPalette({ commands: menuCommands(S.menus), files });
 }
 
-function downloadUrl(url, filename) {
-  const a = h('a', { href: url, download: filename });
-  document.body.append(a); a.click(); a.remove();
-}
-
 // kind 'xilinx': a Xilinx ISE 14.7 project (.xise + sources, opens in ISE);
 // kind 'silinx': the whole Silinx project (silinx.json + every file, ASM charts and schematics included)
 // (Export Project (.zip)…'s, the kind chosen in its window: project-zip-dialogs.js, #3703)
@@ -292,9 +288,7 @@ export async function exportProjectZip(kind = 'xilinx') {
   try {
     // (a copy given out: its origin, #4205; a back-up of the project, #4971)
     const { blob, filename, warnings = [] } = await api.exportZip(S.project.name, kind, { copy: true, backup: true });
-    const url = URL.createObjectURL(blob);
-    downloadUrl(url, filename);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    downloadBlob(filename, blob);
     log(kind === 'silinx'
       ? `Exported ${filename}: the whole Silinx project (silinx.json + all project files, ${Math.round(blob.size / 1024)} KB).`
       : `Exported ${filename}: Xilinx ISE project ${S.project.name}.xise + its sources (${Math.round(blob.size / 1024)} KB).`, 'ok');

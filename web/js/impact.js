@@ -15,6 +15,7 @@ import { openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
 import { vendorFlashText } from '/core/vendor-flash.js';
 import { refusedProject, isTrusted } from '/core/trust.js';
 import { noWebUsb } from '/core/webusb-support.js';
+import { downloadUrl } from './download.js';
 
 // (#4683: a Zynq-7000's ARM DAP, the processing system's debug port, kept in BYPASS)
 const roleOf = name => (/^arm_dap/i.test(name) ? 'dap' : /^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
@@ -183,8 +184,7 @@ export function mountImpact(el) {
     const r = await runJob(titles[op], () => api.prom({ project: pj?.name, board: board?.id, op, bitfile: bitfile.value.trim(), verify: verify.checked, reconfigure: reload.checked,
       ...(bitData ? { bitData } : {}) }), oks[op]);
     if (r?.status === 'ok' && op === 'read' && r.download) {   // the browser edition: the backup downloaded
-      const a = h('a', { href: r.download.url, download: r.download.filename });
-      document.body.append(a); a.click(); a.remove();
+      downloadUrl(r.download.url, r.download.filename);
     } else if (r?.status === 'ok' && op === 'read') app.reloadProject(false);
   };
 

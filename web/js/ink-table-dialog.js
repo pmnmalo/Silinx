@@ -12,18 +12,19 @@ import { drawingButtons } from './ink-drawing.js';
 import { inkTemplates } from './ink-dialog.js';
 import { readTable, tableFromText } from '/core/ink/table.js';
 import { InkError } from '/core/ink/segment.js';
+import { debounce } from './debounce.js';
 
 export function handwrittenTable({ check = () => null, title = 'Handwritten Boolean Algebra' } = {}) {
   const templates = inkTemplates();
-  let timer = null;
   const text = h('textarea', { class: 'ink-table-text', spellcheck: 'false', rows: 8, placeholder: 'A B | F\n0 0 | 0\n0 1 | 1' });
   const msg = h('div', { class: 'ink-msg' });
   const showMsg = (lines, kind = 'warn') => { msg.className = `ink-msg ink-${kind}`; msg.replaceChildren(...lines.map(l => h('div', {}, l))); };
   const padHost = h('div', { class: 'ink-pad ink-pad-table' });
-  const pad = mountInkPad(padHost, { onStroke: () => { clearTimeout(timer); timer = setTimeout(recognize, 350); } });
-  const flush = () => { if (timer) { clearTimeout(timer); recognize(); } };
+  const reading = debounce(() => recognize(), 350);
+  const pad = mountInkPad(padHost, { onStroke: () => reading() });
+  const flush = () => reading.flush();
   // (a correction typed by hand: the reading still pending would write over it, #2389; the next stroke reads again)
-  const edited = () => { clearTimeout(timer); timer = null; };
+  const edited = () => reading.cancel();
   // the errors and warnings of the text (and of the reading, after a stroke); ok: the table can fill the editor's
   const verdict = (readErrors = [], readWarnings = []) => {
     const r = tableFromText(text.value);
@@ -33,7 +34,6 @@ export function handwrittenTable({ check = () => null, title = 'Handwritten Bool
     return !r.errors.length && !e;
   };
   function recognize() {
-    timer = null;
     const strokes = pad.strokes();
     if (!strokes.length) { text.value = ''; showMsg([]); return; }
     try {
@@ -64,5 +64,5 @@ export function handwrittenTable({ check = () => null, title = 'Handwritten Bool
       { label: 'Fill Table', primary: true, validate: () => { flush(); return verdict(); }, value: () => ({ ...tableFromText(text.value), text: text.value }) },
       { label: 'Cancel', value: null },
     ],
-  }).finally(() => { clearTimeout(timer); pad.destroy(); });
+  }).finally(() => { reading.cancel(); pad.destroy(); });
 }
