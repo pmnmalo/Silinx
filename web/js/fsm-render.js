@@ -49,7 +49,7 @@ export function mountRender(ctx) {
     const used = loops.slice(0, loops.indexOf(t)).map((x) => x.angle ?? null).filter((x) => x != null);
     const dirs = M.transitions.filter((x) => x.from !== x.to && (x.from === s.id || x.to === s.id)).map((x) => stateById(x.from === s.id ? x.to : x.from)).filter(Boolean)
       .map((n) => Math.atan2(n.y - s.y, n.x - s.x) * 180 / Math.PI);
-    if (s.id === M.initial) dirs.push(180);           // the entry arrow
+    if (s.id === M.initial) dirs.push(M.entryAngle ?? 180);   // the entry arrow (dragged around it, #4903)
     const diff = (a, b) => { const d = Math.abs(((a - b) % 360 + 540) % 360 - 180); return d; };
     let best = -90, score = -1;
     const k = loops.indexOf(t);
@@ -135,8 +135,12 @@ export function mountRender(ctx) {
       const st = styleOf('state', s);
       const grp = sv('g', { class: cls, 'data-state': s.id, transform: `translate(${s.x},${s.y})`,
         style: vars([['--fsm-fill', st.fill], ['--fsm-stroke', st.stroke], ['--fsm-sw', st.strokeWidth]]) });
+      // (the reset's arrow into the initial state, from M.entryAngle: the left when none; dragged around it by its
+      // wider, unseen stroke, #4903)
+      const ea = (M.entryAngle ?? 180) * Math.PI / 180, ex = Math.cos(ea), ey = Math.sin(ea);
       if (s.id === M.initial) {
-        grp.append(sv('path', { class: 'fsm-entry', d: `M${-r - 38},0 L${-r - 6},0`, 'marker-end': `url(#${uid}-arr)` }));
+        const d = `M${ex * (r + 38)},${ey * (r + 38)} L${ex * (r + 6)},${ey * (r + 6)}`;
+        grp.append(sv('path', { class: 'fsm-entry', d, 'marker-end': `url(#${uid}-arr)` }), sv('path', { class: 'fsm-entry-hit', d }));
       }
       grp.append(sv('circle', { class: 'fsm-rim', r: r + 6 }), sv('circle', { class: 'fsm-circle', r }));
       if (s.id === M.initial) grp.append(sv('circle', { class: 'fsm-circle-in', r: r - 5 }));
@@ -150,7 +154,11 @@ export function mountRender(ctx) {
       const e = enc.get(s.id);
       if (e) grp.append(sv('text', { class: 'fsm-code', x: r * 0.72 + 4, y: -r * 0.72 - 2 }, e.bits));
       // (the reset's name on the start-up arrow, #2729)
-      if (s.id === M.initial) grp.append(sv('text', { class: 'fsm-reset', x: -r - 22, y: -5, 'text-anchor': 'middle' }, M.reset.name));
+      // (above the arrow when it is level, beside it when it is upright)
+      if (s.id === M.initial) {
+        const level = Math.abs(ex) >= Math.abs(ey), px = ex * (r + 22), py = ey * (r + 22);
+        grp.append(sv('text', { class: 'fsm-reset', x: level ? px : px + 6, y: level ? py - 5 : py + 4, 'text-anchor': level ? 'middle' : 'start' }, M.reset.name));
+      }
       gStates.append(grp);
     }
     updateToolbar();

@@ -61,6 +61,7 @@ export function mountFsmView(ctx) {
     const L = autoLayout(M());
     for (const s of M().states) { const p = L.states.find((x) => x.id === s.id); s.x = p.x; s.y = p.y; }
     for (const t of M().transitions) { delete t.bend; delete t.angle; }
+    delete M().entryAngle;   // (the reset's arrow back on the left, #4903)
     commit();
     requestAnimationFrame(fit);
   }
