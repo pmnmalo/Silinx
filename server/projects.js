@@ -17,6 +17,7 @@ import { fsFailure } from './fs-error.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
 import { DESIGN_KIND, asDesignProject } from '../core/project-kind.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
+import { withFileLock } from './project-lock.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -163,12 +164,13 @@ export async function readProject(name) {
 }
 
 // Per-project mutex: every read-modify-write of silinx.json runs under it, so concurrent requests
-// (API, CLI, several browser tabs) cannot lose each other's updates.
+// (API, CLI, several browser tabs) cannot lose each other's updates; and across processes (the MCP server's, the CLI's,
+// another server's: a lock file, #4726), once this process's turn came.
 const locks = new Map();
 function withProjectLock(name, fn) {
   name = String(name).toLowerCase();   // case-insensitive file systems: Foo and foo are one folder
   const prev = locks.get(name) || Promise.resolve();
-  const run = prev.then(() => fn());
+  const run = prev.then(() => withFileLock(workspaceDir(), name, fn));
   const tail = run.catch(() => {});
   locks.set(name, tail);
   tail.then(() => { if (locks.get(name) === tail) locks.delete(name); });
