@@ -29,6 +29,7 @@ import { BLOCK_MARK, blockMarkOf, declaredIn, generateHdl, isBlockSymbol } from 
 import { mergeNetWires } from './schdoc-place.js';
 import { normalizeCurve, splitCurve } from './schcurve.js';
 import { normalizeWireStyle } from './wire-style.js';
+import { trimFoldBacks } from './schwire-fold.js';
 import { normalizeGraphic } from './schgraphics.js';
 import { moveTaps, widenBuffers, widenJoins, widenMuxes } from './schdoc-upgrade.js';
 import { symbolDiff } from './schdoc-modsym.js';
@@ -199,6 +200,7 @@ export function normalizeDoc(d, { modules } = {}) {
     const m = findMod(mods, s.params.module);
     if (m) Object.assign(s.params, instanceParams(m));   // (its symbol's layout, when it has one of its own, #3755)
   }
+  if (!stays2) trimFoldBacks(doc, mods);   // (the wires drawn twice over by a drag: the doubled part removed, #4920)
   return doc;
 }
 
