@@ -17,8 +17,9 @@ test('implement.js: the job\'s error said once, its failure one entry, the user\
   assert.match(src, /log\('\\nProcess stopped by the user\.', 'info'\)/);
   assert.match(src, /log\('Stopping…', 'info'\)/);
   assert.doesNotMatch(src, /stopped by the user\.', 'warn'/);
-  // (the quiet constraints' check: the console's and the editors' entries left to setDiagnostics, which keeps them)
-  assert.match(src, /S\.diags\.filter\(d => d\.source !== 'console' && d\.source !== 'editor' && d\.tool !== 'ConstraintSystem'\)/);
+  // (the quiet constraints' check: the console's, the simulation's (#4746) and the editors' entries left to
+  // setDiagnostics, which keeps them)
+  assert.match(src, /S\.diags\.filter\(d => d\.source !== 'console' && d\.source !== 'sim' && d\.source !== 'editor' && d\.tool !== 'ConstraintSystem'\)/);
 });
 
 test('viewers.js: the elaboration errors listed by setDiagnostics only; "generated with errors" no entry', () => {
