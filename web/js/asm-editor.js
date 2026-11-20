@@ -62,7 +62,7 @@ export function nodeSize(n) {
     return { w: Math.max(140, ceilTo(tw + 32, 2 * GRID)), h: Math.max(60, ceilTo(lines.length * 17 + 26, GRID)) };
   }
   if (n.type === 'decision') {
-    const tw = Math.max(3, n.cond ? drawnLength(drawnCond(n.cond)) : 0) * CHW;   // (as drawn: #4417)
+    const tw = Math.max(3, n.cond ? drawnLength(drawnCond(n.cond)) : 0) * CHW;   // (as drawn: #4888)
     const w = Math.max(140, ceilTo(tw * 1.25 + 56, 2 * GRID));
     return { w, h: w > 260 ? 100 : 80 };
   }

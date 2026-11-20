@@ -4,7 +4,7 @@
 // drawn again when it changes (the 'silinx-notation' event). core/expr-notation.js writes the expressions.
 import { prefKey } from './prefs.js';
 import { readPref } from './silinx.js';
-import { DEFAULT_NOTATION, NOTATIONS, NOTATION_IDS, showCondText } from '/core/expr-notation.js';
+import { DEFAULT_NOTATION, NOTATIONS, NOTATION_IDS, drawnAsTyped } from '/core/expr-notation.js';
 
 export { NOTATIONS };
 export const NOTATION_KEY = prefKey('silinx.notation');
@@ -33,8 +33,9 @@ export function onNotation(fn) {
 /** The Settings menu's entry: the notations, the chosen one checked. */
 export const notationMenu = () => ({ label: 'Boolean Notation', submenu: NOTATIONS.map(([id, label]) => ({ label, checked: getNotation() === id, action: () => setNotation(id) })) });
 
-/** A drawing's condition as it is drawn (#4417): on a state diagram's arc, in an ASM chart's decision box, in the
- *  notation chosen (the Engineering one's bars too). Its Properties box and its inline edit keep the text it is in. */
-export const drawnCond = (text) => showCondText(text, getNotation());
+/** A drawing's condition as it is drawn: on a state diagram's arc, in an ASM chart's decision box, as it was typed
+ *  (#4888: its Properties box and its inline edit show the same text), the Engineering notation's NOTs typed as a
+ *  slash drawn as its bars (#4417). */
+export const drawnCond = (text) => drawnAsTyped(text, getNotation());
 /** A drawn text's length in characters: a bar (U+0305) takes no room. */
 export const drawnLength = (s) => String(s ?? '').replace(/\u0305/g, '').length;

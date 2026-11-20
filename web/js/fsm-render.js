@@ -89,7 +89,7 @@ export function mountRender(ctx) {
     const anchor = Math.abs(n.x * side) > 0.5 ? (n.x * side > 0 ? 'start' : 'end') : 'middle';
     return { d: `M${P0.x},${P0.y} Q${C.x},${C.y} ${P2.x},${P2.y}`, apex, lab, anchor, n, mid, out: { x: n.x * side, y: n.y * side } };
   }
-  // (a transition's label: its condition, in the notation chosen (#4417), then " /" and its outputs one per line; none:
+  // (a transition's label: its condition as typed (#4888), then " /" and its outputs one per line; none:
   // the condition alone; its state's otherwise: else, in italics, whatever its spelling, #4489)
   const labelLines = (M, t) => {
     const c = drawnAsElse(M, t) ? 'else' : t.cond ? drawnCond(t.cond) : '', o = outputLines(t.outputs);
