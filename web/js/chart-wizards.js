@@ -5,7 +5,7 @@
 // with them (core/chart-wizard.js) and opens it in its editor, where the rest is drawn.
 import { api } from './api.js';
 import { icons } from './icons.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, toast } from './ui.js';
 import { fsmFromSpec, asmFromSpec } from '/core/chart-wizard.js';
 import { FSM_TEMPLATES, ASM_TEMPLATES, fsmTemplate, asmTemplate } from '/core/chart-templates.js';
 import { templatePage } from './template-page.js';
@@ -201,10 +201,9 @@ export async function fsmWizard({ name = '', location = 'src', lang = null, name
     },
     validate: () => guard(p1.path()),
   };
-  const ok = await wizard('FSM Wizard', namedPages(p1.page, [p1.page, tpl.page, io.page, p3, pSum], named, p1.tail), { width: 860, back });
-  if (!ok) return;
   let m;
-  try { m = model(); } catch (e) { return alertDlg('FSM Wizard', e.message, 'error'); }
+  const ok = await wizard('FSM Wizard', namedPages(p1.page, [p1.page, tpl.page, io.page, p3, pSum], named, p1.tail), { width: 860, back, finish: () => { m = model(); } });
+  if (!ok) return;
   return create('FSM Wizard', p1.path(), m, p => app.openFsm(p), `${m.states.length} state(s)`);
 }
 
@@ -257,9 +256,8 @@ export async function asmWizard({ name = '', location = 'src', lang = null, name
     },
     validate: () => guard(p1.path()),
   };
-  const ok = await wizard('ASM Wizard', namedPages(p1.page, [p1.page, tpl.page, io.page, p3, pSum], named, p1.tail), { width: 820, back });
-  if (!ok) return;
   let m;
-  try { m = model(); } catch (e) { return alertDlg('ASM Wizard', e.message, 'error'); }
+  const ok = await wizard('ASM Wizard', namedPages(p1.page, [p1.page, tpl.page, io.page, p3, pSum], named, p1.tail), { width: 820, back, finish: () => { m = model(); } });
+  if (!ok) return;
   return create('ASM Wizard', p1.path(), m, p => app.openAsm(p), `${states.length} state(s)`);
 }

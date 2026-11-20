@@ -2,7 +2,7 @@
 // behavioural model or a netlist model, with its test bench and data files) and the Board Emulator.
 import { readPins } from './constraints-format.js';
 import { api } from './api.js';
-import { h, dialog, alertDlg, confirmDlg, promptDlg, toast } from './ui.js';
+import { h, dialog, confirmDlg, promptDlg, toast } from './ui.js';
 import { compile, elaborate } from '/core/compile.js';
 import { primitiveSources } from '/core/unisim.js';
 import { naturalCompare } from '/core/hier-order.js';
@@ -15,7 +15,7 @@ import { countEvent } from './analytics.js';
 import { S, activateDoc, app, closeDoc, findDoc, moduleInfo, openDoc, openFile, projectBoard, status, withPrimitives } from './app.js';
 import { asSsim, benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
-import { log, logError, logInfo, showConsolePage, setDiagnostics, simDiagnostics } from './console.js';
+import { commandError, commandInfo, log, logError, logInfo, setDiagnostics, showConsolePage, simDiagnostics } from './console.js';
 import { reloadProject } from './project.js';
 import { boardConstraints, generateSimModel, readBuildFile, runImpl } from './implement.js';
 import { ucfPort } from './drawings.js';
@@ -326,20 +326,20 @@ async function saveStimTestbench(mod, inst, m) {
   for (let k = 2; moduleInfo(dft); k++) dft = `tb_${mod}_${k}`;
   const name = String(await promptDlg(title, 'Test bench name:', dft) ?? '').trim();
   if (!name) return;
-  if (!isName(name)) return alertDlg(title, `'${name}' is not a valid name (a letter, then letters, digits or _).`, 'error');
+  if (!isName(name)) return commandError(title, `'${name}' is not a valid name (a letter, then letters, digits or _).`);
   const lang = (S.project.preferredLanguage || info?.lang) === 'verilog' ? 'verilog' : 'vhdl';
   const dir = String(info?.file || 'src/x').replace(/\/[^/]*$/, '');
   const path = `${dir}/${name}.${lang === 'verilog' ? 'v' : 'vhd'}`;
   const other = wiz.moduleElsewhere(name, path);
   // (a design project's: the test bench by its name, its HDL file never named, #3891)
   const named = designOnly() ? `The test bench ${name}` : path;
-  if (other) return alertDlg(title, designOnly() ? `The project already has a module '${other.name}'.` : `The project already has a module '${other.name}' (${other.file}).`, 'error');
+  if (other) return commandError(title, designOnly() ? `The project already has a module '${other.name}'.` : `The project already has a module '${other.name}' (${other.file}).`);
   if (S.fileTree?.includes(path) && !await confirmDlg(title, `${named} exists. Replace it?`)) return;
   let text;
   try {
     const types = Object.fromEntries((info?.portList || []).map(p => [p.name, p.type]));
     text = generateTestbench(testbenchOptions(m, { name, lang, uut: { name: mod }, ports: tbPorts({ top: inst }, types) }));
-  } catch (e) { return alertDlg(title, e.message, 'error'); }
+  } catch (e) { return commandError(title, e.message); }
   await wiz.closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, text);
   await reloadProject();
@@ -375,7 +375,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
   if (!mod) { logInfo('Select the top module first'); return; }
   if (!await saveAll()) return;
   const board = projectBoard();
-  if (!board) { alertDlg('Board Emulator', 'The project has no board. Choose one in Project ▸ Design Properties (e.g. Digilent Basys2).'); return; }
+  if (!board) { commandInfo('Board Emulator', 'The project has no board. Choose one in Project ▸ Design Properties (e.g. Digilent Basys2).'); return; }
   if (!await checkSyntax(mod, false, { hierarchy: true })) return;
   await loadUcfText();   // the pins as they are now (pin planner / editor changes)
   // (no pins set: said first, I/O Pin Planning one click away; a re-run on a change says nothing, #1508)
@@ -399,7 +399,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
     design = elaborate(lib, mod);
     if (!design.top) throw new Error(design.diags.map(d => d.message).join('; ') || `cannot elaborate '${mod}'`);
     gens = model ? [] : timingGenerics(design.top?.params);   // a netlist has its constants built in
-  } catch (e) { if (quiet) log(`ERROR: Board Emulator: cannot build the design: ${e.message}`, 'err'); else alertDlg('Board Emulator', `Cannot build the design: ${e.message}`, 'error'); return; }
+  } catch (e) { if (quiet) log(`ERROR: Board Emulator: cannot build the design: ${e.message}`, 'err'); else commandError('Board Emulator', `Cannot build the design: ${e.message}`); return; }
   if (quiet ? diagsFor(lib, design).some(d => (d.severity || 'error') === 'error') : !await confirmElabErrors('Board Emulator', lib, design)) return;
   const assignments = S.ucfText ? readPins(S.project.device, S.ucfText, { ports: design.top.ports.map(ucfPort) }).assignments : {};
   if (!S.ucfText) log('WARNING: the project has no UCF: the ports are not connected to the board (use I/O Pin Planning).', 'warn');
@@ -458,7 +458,8 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
         log(`Board Emulator: '${mod}' (${model ? `${SIM_MODEL_NAMES[model]} netlist` : 'RTL'}, ${view.engine === 'compiled' ? 'compiled' : 'event-driven'}) on ${board.name} — ${view.wiring.bits.length} port bit(s) on board resources${view.wiring.unmapped.length ? `, ${view.wiring.unmapped.length} not connected` : ''}.`, 'ok');
         headed = true;
         for (const [t, k] of notes) onNote(t, k);
-      }).catch((e) => { if (!closed) { wait.textContent = `Cannot build the design: ${e.message}`; log(`ERROR: Board Emulator: ${e.message}`, 'err'); } });
+      // (its error in the console only, its window left empty, #4747: no message in a viewer's window)
+      }).catch((e) => { if (!closed) { wait.textContent = ''; commandError('Board Emulator', `Cannot build the design: ${e.message}`); } });
       // the design or its pins changed (a source saved, a drawing, I/O Pin Planning, the UCF): its RTL emulation run again,
       // its settings kept, quietly; a netlist's says so instead (emulated again, the netlist is generated anew) (#1401)
       let soon = null, said = false;

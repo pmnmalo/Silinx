@@ -4,7 +4,7 @@
 // creates a .pn.json with those ports declared and the template's places (none: empty), and opens it in the Petri
 // net editor. The pages: web/js/modwizard.js (namePage, portEditor), web/js/template-page.js.
 import { api } from './api.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, toast } from './ui.js';
 import { petriErrors } from '/core/petri.js';
 import { petriFromPorts } from '/core/chart-wizard.js';
 import { PETRI_TEMPLATES, petriTemplate } from '/core/chart-templates.js';
@@ -75,10 +75,9 @@ export async function petriWizard({ name = '', location = 'src', lang = null, na
     },
     validate: () => guard(p1.path()),
   };
-  const ok = await wizard('Petri Net Wizard', namedPages(p1.page, [p1.page, tpl.page, p2, pSum], named, p1.tail), { width: 820, back });
-  if (!ok) return;
   let m;
-  try { m = net(); } catch (e) { return alertDlg('Petri Net Wizard', e.message, 'error'); }
+  const ok = await wizard('Petri Net Wizard', namedPages(p1.page, [p1.page, tpl.page, p2, pSum], named, p1.tail), { width: 820, back, finish: () => { m = net(); } });
+  if (!ok) return;
   const path = p1.path();
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2));

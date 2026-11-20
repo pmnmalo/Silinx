@@ -2,13 +2,13 @@
 // where the browser edition keeps the projects (#405: out of app.js).
 import { api } from './api.js';
 import { icon } from './icons.js';
-import { h, alertDlg, confirmDlg, toast, popupMenu } from './ui.js';
+import { h, confirmDlg, toast, popupMenu } from './ui.js';
 import * as wiz from './wizards.js';
 import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { isTrusted, untrustedNotice } from '/core/trust.js';
 import { S, closeAllDocs, compileProject, renderFilesPage, renderLibsPage, showLeftPage, fixMissingTops,
   restoreViewState, openSummary } from './app.js';
-import { appLog, log, logWarning, renderDiagnostics, trustAction } from './console.js';
+import { appLog, commandError, log, logWarning, renderDiagnostics, trustAction } from './console.js';
 import { newerProject } from '/core/doc-format.js';
 import { drawingsAsBase, adoptDrawnHdl, drawnHdlClashes } from './drawings.js';
 import { renderProcesses, restoreImplStatus, reservedNameDiags } from './processes.js';
@@ -36,7 +36,7 @@ function resetProjectState() {
 }
 function blockedByRun(what) {
   if (!S.busy && !S.currentJob) return false;
-  alertDlg(what, 'An implementation is running: stop it (or wait for it to finish) first.');
+  commandError(what, 'An implementation is running: stop it (or wait for it to finish) first.');
   return true;
 }
 
@@ -67,7 +67,7 @@ async function openProjectNow(name, { startup = false } = {}) {
   resetProjectState();
   try {
     S.project = await api.project(name);
-  } catch (e) { alertDlg('Open Project', e.message, 'error'); return; }
+  } catch (e) { commandError('Open Project', e.message); return; }
   // (a project followed, #3181: not one of this workspace's, neither the last nor a recent one)
   if (!api.following) {
     try { localStorage.setItem(prefKey('silinx.lastProject'), name); } catch { /* ignore */ }
@@ -352,7 +352,7 @@ async function switchStorage(what, fn) {
   if (blockedByRun(what)) return;
   if (S.project) { await closeProject(); if (S.project) return; }
   let st;
-  try { st = await fn(); } catch (e) { alertDlg(what, e.message, 'error'); return; }
+  try { st = await fn(); } catch (e) { commandError(what, e.message); return; }
   if (!st) return false;   // the folder picker was cancelled
   log(storageLine(st), 'ok');
   updateStorageStatus();
@@ -372,7 +372,7 @@ const useBrowserStorage = () => switchStorage('Use Browser Storage', () => api.u
 export async function copyBrowserProjects() {
   const what = 'Copy Browser Projects to the Folder';
   let r;
-  try { r = await api.copyBrowserProjectsToFolder(); } catch (e) { alertDlg(what, e.message, 'error'); return null; }
+  try { r = await api.copyBrowserProjectsToFolder(); } catch (e) { commandError(what, e.message); return null; }
   const folder = api.storage().folder;
   log(r.copied.length ? `Copied ${r.copied.length} project(s) from the browser's storage into the folder '${folder}': ${r.copied.join(', ')}.`
     : `No project copied into the folder '${folder}'.`, r.copied.length ? 'ok' : 'info');

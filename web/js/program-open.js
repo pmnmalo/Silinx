@@ -5,9 +5,9 @@
 // over WebUSB in the browser edition, where the board's tool says so (webusb: core/usb-program.js).
 import { api, followJob } from './api.js';
 import { jobLog } from './job-log.js';
-import { h, toast, alertDlg, confirmDlg } from './ui.js';
+import { h, toast, confirmDlg } from './ui.js';
 import { S, app } from './app.js';
-import { logError } from './console.js';
+import { commandError, logError } from './console.js';
 import { countEvent } from './analytics.js';
 import { runImpl } from './implement.js';
 import { projectTool } from './processes.js';
@@ -62,7 +62,7 @@ export function mountOpenProgram(page) {
     } catch (e) {
       // (an untrusted project's refusal, the server's: in the console, with its Trust Project button, #4583)
       if (refusedProject(e.message)) logError(`${flash ? 'Programming the SPI flash' : 'Programming the FPGA'} failed: ${e.message}`);
-      else alertDlg(prog.title, e.message, 'error');
+      else commandError(prog.title, e.message);
       return null;
     }
     finally { busy = false; }

@@ -21,7 +21,7 @@
 //   edited live (#3183, web/js/collab-drawing.js): ed.setShared({ push(model), undo(), redo(), canUndo(), canRedo() } | null)
 //   (each change pushed, Undo / Redo the shared history's), ed.applyModel(m, { mine }) (the merged table in place), ed.busy()
 // Styles: web/css/truthtable.css.
-import { h, linkModel, linkSnapshot } from './ui.js';
+import { h, linkModel, linkSnapshot, message } from './ui.js';
 import { ttDivider } from './tt-divider.js';
 import { ICON } from './editor-icons.js';
 import { setChoice, toolbarMenu } from './toolbar-menu.js';
@@ -124,18 +124,18 @@ export function mountTtEditor(container, opts = {}) {
   // ------------------------------------------------------------------ toolbar
   const inIn = h('input', { type: 'text', class: 'tt-inputs', title: `Input names (1 to ${MAX_EDIT_INPUTS}), separated by commas or spaces; the first is the most significant bit of a row`, spellcheck: 'false' });
   const outIn = h('input', { type: 'text', class: 'tt-outputs', title: 'Output names (1 or more), separated by commas or spaces', spellcheck: 'false' });
-  const shapeErr = h('span', { class: 'tt-err' });
+  // (a refused shape or expression: its error in the console, #4747: no message in the editor's window)
+  const refuse = text => message(text, 'error');
   const applyShape = () => {
     const ins = names(inIn.value), outs = names(outIn.value);
-    shapeErr.textContent = '';
-    if (ins.length < 1 || ins.length > MAX_EDIT_INPUTS) { shapeErr.textContent = `1 to ${MAX_EDIT_INPUTS} inputs`; return; }
-    if (outs.length < 1) { shapeErr.textContent = 'At least 1 output'; return; }
+    if (ins.length < 1 || ins.length > MAX_EDIT_INPUTS) { refuse(`1 to ${MAX_EDIT_INPUTS} inputs`); return; }
+    if (outs.length < 1) { refuse('At least 1 output'); return; }
     // a new name: not a reserved word of VHDL or Verilog, in any letter case (#679)
     const bad = [...ins, ...outs].filter(n => !M.inputs.includes(n) && !M.outputs.includes(n)).map(reservedError).find(Boolean);
-    if (bad) { shapeErr.textContent = `${bad}: choose another name.`; return; }
+    if (bad) { refuse(`${bad}: choose another name.`); return; }
     const next = normalizeTable(reshapeTable(M, ins, outs));
     const errs = validateTable(next).filter(x => x.severity === 'error');
-    if (errs.length) { shapeErr.textContent = errs[0].message; return; }
+    if (errs.length) { refuse(errs[0].message); return; }
     if (JSON.stringify(next) === JSON.stringify(M)) return;
     M = next;
     if (!M.outputs.includes(out)) out = M.outputs[0];
@@ -155,29 +155,27 @@ export function mountTtEditor(container, opts = {}) {
     ...(notationItems = notationChoice(M, v => { if (v) M.notation = v; else delete M.notation; changed(); })),
   ], { title: 'Fill the table, its notation' });
   const toolbar = h('div', { class: 'tt-toolbar' },
-    h('label', {}, 'Inputs:'), inIn, h('label', {}, 'Outputs:'), outIn, shapeErr,
+    h('label', {}, 'Inputs:'), inIn, h('label', {}, 'Outputs:'), outIn,
     h('span', { class: 'tt-sep' }),
     more.el,
     link);
 
   // ------------------------------------------------------------------ body
-  const tableHost = h('div', { class: 'tt-table-host' });
+  const tableHost = h('div', { class: 'tt-table-host', title: 'Click an output cell to change it: 0 → 1 → X (don\'t care).' });   // (its tip, no hint line, #4747)
   const notes = h('textarea', { class: 'tt-notes', placeholder: 'Notes (saved with the table)', rows: 3 });
   let notesT = null;
   notes.addEventListener('input', () => { M.notes = notes.value; opts.onChange?.(M); clearTimeout(notesT); notesT = setTimeout(() => { notesT = null; snap(); }, 600); });
-  const left = h('div', { class: 'tt-left' }, h('div', { class: 'tt-caption' }, 'Truth table'), h('div', { class: 'hint' }, 'Click an output cell to change it: 0 → 1 → X (don\'t care).'), tableHost, h('div', { class: 'tt-caption tt-cap-notes' }, 'Notes'), notes);
+  const left = h('div', { class: 'tt-left' }, h('div', { class: 'tt-caption' }, 'Truth table'), tableHost, h('div', { class: 'tt-caption tt-cap-notes' }, 'Notes'), notes);
   const tabs = h('div', { class: 'tt-tabs' });
   const exprIn = h('input', { type: 'text', class: 'tt-expr-in', spellcheck: 'false', placeholder: 'e.g. /a.b + c' });
-  const exprErr = h('div', { class: 'tt-err tt-expr-err' });
   const applyExpr = () => {
     const text = exprIn.value.trim();
-    exprErr.textContent = '';
     if (!text) return;
     try {
       const col = exprColumn(parseExpr(text, { vars: M.inputs }), M.inputs);
       M.table[out] = col; M.exprs[out] = text; delete M.solutions?.[out];   // (a new column: its first minimal solutions, #2950)
       changed();
-    } catch (e) { exprErr.textContent = e.message; }
+    } catch (e) { refuse(e.message); }
   };
   exprIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyExpr(); } });
   const exprLbl = h('span', { class: 'tt-expr-lbl' });
@@ -198,7 +196,7 @@ export function mountTtEditor(container, opts = {}) {
   const results = h('div', { class: 'tt-results' });
   const right = h('div', { class: 'tt-right' },
     tabs,
-    exprRow, h('div', { class: 'hint tt-ops' }, OPS), exprErr,   // (no caption over the function's field, #4093)
+    exprRow,   // (no caption over the function's field, #4093; its operators its field's tip, no hint line, #4747)
     h('div', { class: 'tt-caption tt-cap-results' }, 'Expressions'), results);
   const status = statusLine();   // (its inputs, outputs and rows, #2763)
   const divider = ttDivider(left);   // (the table's and the expressions' divider, #4099)
@@ -351,7 +349,6 @@ export function mountTtEditor(container, opts = {}) {
     }
     exprLbl.textContent = `${out} =`;
     if (document.activeElement !== exprIn || !exprIn.value) exprIn.value = M.exprs[out] || '';
-    exprErr.textContent = '';
     setChoice(notationItems, M.notation || '');   // (an undo, a merge, another table set)
     renderTabs(); renderTable(); renderKmap(); renderResults(); renderLink(); status.set([shapeText(M)]); notes3939();
   }

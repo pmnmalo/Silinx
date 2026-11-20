@@ -5,7 +5,8 @@
 // writes the module, its settings in its header: opening it from the Design pane reopens the wizard with them
 // (web/js/wizard-modules.js), and writes it again from the file's contents of then.
 import { api } from './api.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, toast } from './ui.js';
+import { commandError } from './console.js';
 import { memoryModule, planMemory, readInitFile, MEMORY_FAMILIES } from '/core/blockram.js';
 import { resourceCount } from '/packages/silinx-fpga/src/parts.js';
 import { familyProfile } from '/core/family-profile.js';
@@ -47,9 +48,9 @@ export async function blockMemoryWizard({ name = '', location = 'src', lang = nu
   if (!S.project) return;
   const pj = S.project;
   const family = old?.family || pj.device.family;
-  if (!MEMORY_FAMILIES.includes(family)) return alertDlg('Block Memory', 'The Block Memory wizard makes block RAMs of the Spartan-3E and the Spartan-6: choose one of them as the target device (Design Properties).', 'error');
+  if (!MEMORY_FAMILIES.includes(family)) return commandError('Block Memory', 'The Block Memory wizard makes block RAMs of the Spartan-3E and the Spartan-6: choose one of them as the target device (Design Properties).');
   if (old && old.family !== pj.device.family) {
-    return alertDlg('Block Memory', `${editPath} was made for another family of devices than the project's: create a new one with New Source ▸ Block Memory ▸ Wizard.`, 'error');
+    return commandError('Block Memory', `${editPath} was made for another family of devices than the project's: create a new one with New Source ▸ Block Memory ▸ Wizard.`);
   }
   const have = deviceBlocks(family);
   const halves = familyProfile(family).blockRam.halves;
@@ -157,12 +158,14 @@ export async function blockMemoryWizard({ name = '', location = 'src', lang = nu
     validate: () => (editPath ? null : guard(path())),
   };
   // (from New Source: the count under the memory, #2082)
-  const ok = await wizard('Block Memory', namedPages(p1, [p1, p2, pSum], named, countNote), { width: 820, back });
+  let code, plan;
+  const ok = await wizard('Block Memory', namedPages(p1, [p1, p2, pSum], named, countNote), { width: 820, back, finish: async () => {
+    spec.name = nameIn.value.trim(); spec.lang = langSel.value;
+    const c = await contentsOf(spec);
+    ({ code, plan } = memoryModule(spec, c.words));
+    return !code || c.errors.length ? [...plan.errors, ...c.errors].join(' ') : null;
+  } });
   if (!ok) return;
-  spec.name = nameIn.value.trim(); spec.lang = langSel.value;
-  const c = await contentsOf(spec);
-  const { code, plan } = memoryModule(spec, c.words);
-  if (!code || c.errors.length) return alertDlg('Block Memory', [...plan.errors, ...c.errors].join('\n'), 'error');
   const p = path();
   await closeBeforeReplace(p);
   await api.writeFile(pj.name, p, code);
