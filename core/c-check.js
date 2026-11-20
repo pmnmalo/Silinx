@@ -22,6 +22,9 @@ import { MATH, BITCASTS } from './c-float.js';
 import { Q_MODES, O_MODES } from './c-fixed.js';
 import { foldResetCtors } from './c-const-init.js';
 import { sizeofBytes } from './c-sizeof.js';
+import { constValue } from './c-const-value.js';
+
+export { constValue };   // (its own module: the interpreter's tasks need it without c-check, #4723)
 
 // the library calls Silinx HLS refuses in synthesized code (UG1399: no system calls), and the ones it ignores there
 const REFUSED = new Set(['malloc', 'calloc', 'realloc', 'free', 'exit', 'abort', 'rand', 'srand', 'time', 'clock', 'fopen', 'fclose',
@@ -36,39 +39,6 @@ const TB_LIB = new Set(['abs', 'labs', 'llabs', 'feof', 'fputs', 'fputc', 'putc'
 const STREAM_MEMBERS = new Set(['read', 'write', 'empty', 'full', 'read_nb', 'write_nb', 'size']);
 const AP_MEMBERS = new Set(['range', 'to_double', 'to_float', 'to_int', 'to_uint', 'to_long', 'to_ulong', 'to_int64', 'to_uint64', 'length', 'and_reduce', 'or_reduce', 'xor_reduce']);
 const MAX_AP_WIDTH = 1024;
-
-/** The value of a constant expression (numbers, the constants known, C's operators, sizeof if sizeOf is given), or null
- *  if it is not one. */
-export function constValue(e, consts = new Map(), sizeOf = null) {
-  if (!e) return null;
-  switch (e.kind) {
-    case 'num': case 'chr': return e.value;
-    case 'id': return consts.has(e.name) ? consts.get(e.name) : null;
-    case 'unary': {
-      const v = constValue(e.e, consts, sizeOf);
-      if (v === null) return null;
-      return e.op === '-' ? -v : e.op === '+' ? v : e.op === '!' ? (v ? 0n : 1n) : e.op === '~' ? ~v : null;
-    }
-    case 'sizeof': return sizeOf ? sizeOf(e) : null;   // (sizeOf(e): its bytes, core/c-sizeof.js, #2643)
-    case 'cast': return constValue(e.e, consts, sizeOf);
-    case 'cond': { const c = constValue(e.c, consts, sizeOf); return c === null ? null : constValue(c ? e.a : e.b, consts, sizeOf); }
-    case 'binary': {
-      const a = constValue(e.l, consts, sizeOf), b = constValue(e.r, consts, sizeOf);
-      if (a === null || b === null) return null;
-      switch (e.op) {
-        case '+': return a + b; case '-': return a - b; case '*': return a * b;
-        case '/': return b ? a / b : null; case '%': return b ? a % b : null;
-        case '<<': return b >= 0n && b < 4096n ? a << b : null; case '>>': return b >= 0n ? a >> b : null;
-        case '&': return a & b; case '|': return a | b; case '^': return a ^ b;
-        case '&&': return a && b ? 1n : 0n; case '||': return a || b ? 1n : 0n;
-        case '==': return a === b ? 1n : 0n; case '!=': return a !== b ? 1n : 0n;
-        case '<': return a < b ? 1n : 0n; case '>': return a > b ? 1n : 0n; case '<=': return a <= b ? 1n : 0n; case '>=': return a >= b ? 1n : 0n;
-        default: return null;
-      }
-    }
-    default: return null;
-  }
-}
 
 // (opts: headers, the project's own (#1597); top, the top function when no pragma names it)
 /** The warnings an hls::fft's function does not have: of its pragmas and arguments, from its first line to its call. */

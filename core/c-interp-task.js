@@ -5,7 +5,7 @@
 // read an empty stream is undone (its streams' reads and writes, its output, its persistent values) and tried again
 // later. f of the form `init; while (1) body` keeps its init's variables across its iterations, each iteration an
 // invocation; its other variables are each invocation's. The interpreter's methods (core/c-interp.js).
-import { constValue } from './c-check.js';
+import { constValue } from './c-const-value.js';
 
 /** A task's invocation that would read an empty stream: undone. */
 export class Block extends Error {}
