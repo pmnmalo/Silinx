@@ -57,7 +57,7 @@ export function templatePortsError(id, params, ports) {
 const STEP = 40, GAP = 20, MARGIN = 40;
 
 // the drawing being made: its symbols, wires and markers
-function sheet(doc, names, ins) {
+export function sheet(doc, names, ins) {
   const inW = Math.max(60, ...ins.map(p => portBox({ ...p, x: 0, y: 0 }).w));
   return {
     xIn: r10(MARGIN + inW),
@@ -136,7 +136,7 @@ function drawShift(d, p, top) {
 }
 
 // the full adder: two half adders (XOR, AND) and an OR
-function drawFullAdder(d, top) {
+export function drawFullAdder(d, top) {
   const gx = d.xIn + 100, hx = gx + 180, ox = hx + 160, xOut = ox + 200, y0 = top;
   const G = (type, x, y) => d.sym(type, { width: 1, bits: false }, x, y);
   const x1 = G('xor2', gx, y0), a1 = G('and2', gx, y0 + 200), x2 = G('xor2', hx, y0 + 10), a2 = G('and2', hx, y0 + 120), o1 = G('or2', ox, y0 + 130);

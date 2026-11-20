@@ -2,7 +2,9 @@
 // Info dialog shows it (web/js/symbol-info.js), through the same functions (core/symdocs.js symbolDoc, core/symtables.js
 // truthTable): its description and formula, its pins, its parameters, its truth table or mode table, its Xilinx library
 // equivalents, a device primitive's resource on the project's part, and its equivalent VHDL and Verilog. A design and
-// simulation project's (#3891): no HDL, no Xilinx equivalents, no device primitive nor HDL BLOCK, as its palette.
+// simulation project's (#3891): no HDL, no Xilinx equivalents, no device primitive nor HDL BLOCK, as its palette. A
+// symbol built of others (#4806, core/symlib.js: ADD8 of ADD4, ADD4 of FA1, FA1 of gates): its composition's levels, and
+// symbol_composition draws each one, as a schematic, for an assistant to walk down them as a student pushes into them.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { isDesignOnly } from '../core/project-kind.js';
@@ -96,12 +98,44 @@ export const SYMBOL_INFO_TOOLS = [
         const tl = truthLines(table, D.T, lang);
         if (tl.length) lines.push('', ...tl);
       }
+      const L = await import('../core/symlib.js');
+      const comp = found.type === 'module' ? null : L.composition(found.type, p);
+      if (comp) lines.push('', `${T('Composition')}:`, ...comp.modules.map(m => `  ${L.levelLine(m)}`));
       if (!design && d.xilinx.length) lines.push('', `${T('Xilinx library equivalents')}: ${d.xilinx.join(', ')}`);
       if (d.hdl) for (const l of ['vhdl', 'verilog']) if (d.hdl[l]) lines.push('', `${T('Equivalent HDL')} (${l === 'vhdl' ? 'VHDL' : 'Verilog'}):`, d.hdl[l].trimEnd());
       const data = { project: name, symbol: d.title, type: found.type, preset: d.preset, category: d.category, text: d.text, formula: d.formula, pins: d.pins,
         params: d.params.map(x => ({ name: x.name, label: x.label, value: x.value, default: x.default, meaning: x.meaning })), mode: d.mode || null,
-        truthTable: table && table.kind !== 'none' ? table : null, resource: d.resource || null, ...(design ? {} : { xilinx: d.xilinx, hdl: d.hdl || null }) };
+        truthTable: table && table.kind !== 'none' ? table : null, resource: d.resource || null,
+        composition: comp ? { top: comp.top, levels: comp.modules.map(m => ({ module: m.name, parts: L.levelParts(m) })) } : null,
+        ...(design ? {} : { xilinx: d.xilinx, hdl: d.hdl || null }) };
       return { text: lines.join('\n'), data, untrusted: found.type === 'module' ? 'the project\'s module\'s names' : undefined };
+    },
+  },
+  {
+    name: 'symbol_composition', title: 'Symbol Composition',
+    description: 'A level of a palette symbol\'s composition, as a schematic (read-only, as read_file returns a schematic): the symbol built of the symbols of the level below, down to the gates (ADD8: two ADD4; ADD4: four FA1; FA1: two XOR2, two AND2 and an OR2; SUB8: an ADD8 with B and the borrows inverted). Its levels are symbol_info\'s Composition; the module one of them (left out: the top, the symbol itself). A view: the HDL generated for the symbol is its own, proved equivalent to the composition. The adders and subtractors have one so far.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, symbol: STR('The symbol: its name in the palette or the Xilinx library (ADD8, SUB16), or its type (add, sub).'),
+      params: { type: 'object', description: 'Its parameters, as Symbol Info\'s fields (e.g. { "width": 16, "cin": true }); left out: the symbol\'s.' },
+      module: STR('The level: one of the composition\'s modules (ADD4, FA1…); left out: its top.'),
+    }, required: ['project', 'symbol'], additionalProperties: false },
+    annotations: { readOnlyHint: true },
+    async run({ project: name, symbol, params = {}, module = null }) {
+      await readProject(name);
+      if (!symbol) throw toolError('symbol: a symbol\'s name (ADD8, SUB16…)');
+      const [D, Sch, L] = await Promise.all([import('../core/symdocs.js'), import('../core/schdoc.js'), import('../core/symlib.js')]);
+      const found = findSymbol(symbol, { SYMBOLS: Sch.SYMBOLS, XILINX_SYMBOLS: D.XILINX_SYMBOLS, titleOf: t => D.symbolDoc(t, {}, { withHdl: false }).title }, {});
+      if (!found) throw toolError(`no symbol '${symbol}' in the palette`);
+      const comp = L.composition(found.type, { ...found.params, ...params });
+      if (!comp) throw toolError(`${symbol}: no composition (a symbol of the palette drawn as it is; the adders and subtractors have one)`);
+      const level = module == null ? comp.modules[0] : comp.modules.find(m => m.name.toLowerCase() === String(module).toLowerCase());
+      if (!level) throw toolError(`no level '${module}' in the composition of ${comp.symbol}: one of ${comp.modules.map(m => m.name).join(', ')}`);
+      const parts = L.levelParts(level);
+      const text = [`${comp.symbol}: ${L.levelLine(level)}${level === comp.modules[0] ? '' : ` (a level of ${comp.top})`}`,
+        `${level.name}'s drawing (a schematic, read-only; its modules: ${parts.filter(x => x.module).map(x => x.name).join(', ') || 'none, gates only'}):`,
+        JSON.stringify(level.doc, null, 1)].join('\n');
+      return { text, data: { project: name, symbol: comp.symbol, top: comp.top, module: level.name, levels: comp.modules.map(m => m.name), parts,
+        ports: level.ports, doc: level.doc } };
     },
   },
 ];

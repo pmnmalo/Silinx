@@ -574,7 +574,8 @@ export function netlist(docIn, { modules = {} } = {}) {
   }
   for (const p of doc.ports) {
     const net = portNet.get(p.id);
-    if (!net || net.endpoints.length <= 1) diags.push({ severity: 'warning', message: `I/O marker '${p.name}' is not connected`, ref: { kind: 'port', id: p.id }, x: p.x, y: p.y });
+    // (a bus's marker whose bits are named on other wires, a(7:4): connected to them by name, #4846)
+    if (!net || (net.endpoints.length <= 1 && !withBits.has(net.name))) diags.push({ severity: 'warning', message: `I/O marker '${p.name}' is not connected`, ref: { kind: 'port', id: p.id }, x: p.x, y: p.y });
   }
   // an instance whose module's ports changed (#1183): a warning (Update Symbol), an error for a pin connected to a port
   // the module no longer has, or has on the other side

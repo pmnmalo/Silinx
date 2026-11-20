@@ -72,7 +72,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(KICAD_TOOLS), ['part_libraries', 'import_part', 'export_part']);   // (a project's KiCad parts, #4280)
   assert.deepEqual(names(SCHEMATIC_TOOLS), ['rearrange_wires', 'rearrange_schematic', 'move_junction', 'add_markers', 'set_wire_style']);
   assert.deepEqual(names(SYMBOL_TOOLS), ['read_symbol', 'edit_symbol', 'update_symbols', 'place_instance', 'set_instance_width']);   // (a module's symbol, #3755; its instances' Width, #3950)
-  assert.deepEqual(names(SYMBOL_INFO_TOOLS), ['symbol_info']);   // (a symbol's datasheet, Symbol Info)
+  assert.deepEqual(names(SYMBOL_INFO_TOOLS), ['symbol_info', 'symbol_composition']);   // (a symbol's datasheet, Symbol Info; its composition, #4807)
   assert.deepEqual(names(SIMULATE_DRAWING_TOOLS), ['simulate_drawing']);
   assert.deepEqual(names(SOURCE_TOOLS), ['unset_top', 'remove_from_project', 'add_to_project', 'rename_file', 'rename_module', 'delete_file', 'delete_project', 'rename_project']);
   assert.deepEqual(names(FIND_TOOLS), ['find_in_project']);   // (Find in Project, #3546)
