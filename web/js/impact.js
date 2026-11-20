@@ -2,9 +2,9 @@
 // or the board's Platform Flash PROM (non-volatile: the design loads at power-up).
 import { api, followJob } from './api.js';
 import { jobLog } from './job-log.js';
-import { h, toast, alertDlg, confirmDlg, dialog } from './ui.js';
+import { h, toast, confirmDlg, dialog } from './ui.js';
 import { S, app } from './app.js';
-import { logError } from './console.js';
+import { commandError, logError } from './console.js';
 import { countEvent } from './analytics.js';
 import { runImpl } from './implement.js';
 import { programFileState, implementFirstText } from './impact-file.js';
@@ -124,7 +124,7 @@ export function mountImpact(el) {
       return r;
     } catch (e) {
       // (an untrusted project's refusal, the server's: in the console, with its Trust Project button, #4583)
-      if (refusedProject(e.message)) logError(`${title} failed: ${e.message}`); else alertDlg('iMPACT', e.message, 'error');
+      if (refusedProject(e.message)) logError(`${title} failed: ${e.message}`); else commandError('iMPACT', e.message);
       return null;
     }
     finally { busy = false; }

@@ -2,14 +2,14 @@
 // and schematics opened in their editors, each kept in sync with the HDL module it is the base of; the views of an
 // HDL file (schematic, ASM chart), the conversions between them, and a drawing whose HDL file name is taken.
 import { api } from './api.js';
-import { h, alertDlg, confirmDlg, popupMenu } from './ui.js';
+import { h, confirmDlg, popupMenu } from './ui.js';
 import { elaborate } from '/core/compile.js';
 import { viewHdl, drawnHdlPath, drawnHdlClash, drawingInLanguage } from '/core/view-hdl.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
 import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
-import { log, logError } from './console.js';
+import { commandError, commandWarning, log, logError } from './console.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { getNotation } from './notation.js';
 import { editorProblems } from './editor-problems.js';
@@ -117,7 +117,7 @@ export async function convertToAsm(mod) {
   if (!await saveAll()) return;
   let r;
   try { r = await asmFromHdlFile(info.file, { module: mod }); }
-  catch (e) { alertDlg('Convert to State Machine', `'${mod}' cannot be shown as an ASM chart:\n\n${e.message}`, 'error'); return; }
+  catch (e) { commandError('Convert to State Machine', `'${mod}' cannot be shown as an ASM chart: ${e.message}`); return; }
   const dir = info.file.includes('/') ? info.file.replace(/\/[^/]*$/, '') : 'src';
   const target = `${dir}/${mod}.asm.json`;
   if (S.fileTree.includes(target) && !await confirmDlg('Convert to State Machine', `${target} already exists. Overwrite it?`)) return;
@@ -253,7 +253,7 @@ export async function convertToFsm(mod) {
   const text = S.sources.find(x => x.path === info.file)?.text ?? await api.readFile(S.project.name, info.file);
   let r;
   try { r = fsmFromHdl(text, { path: info.file, module: mod, lang: info.lang, notation: getNotation() }); }
-  catch (e) { alertDlg('Convert to State Diagram', `'${mod}' cannot be shown as a state diagram:\n\n${e.message}`, 'error'); return; }
+  catch (e) { commandError('Convert to State Diagram', `'${mod}' cannot be shown as a state diagram: ${e.message}`); return; }
   const target = `${fsmDir(info.file)}/${mod}.fsm.json`;
   if (S.fileTree.includes(target) && !await confirmDlg('Convert to State Diagram', `${target} already exists. Overwrite it?`)) return;
   const model = { ...r.model, generatedFile: info.file };
@@ -269,7 +269,7 @@ async function fsmToAsmChart(fsmPath) {
   const { fsmToAsm, fsmErrors, normalizeFsm } = await import('/core/fsm.js');
   const m = normalizeFsm(await fsmModel(fsmPath));
   const errs = fsmErrors(m);
-  if (errs.length) { alertDlg('Convert to ASM chart', errs.map(x => x.message).join('\n'), 'error'); return; }
+  if (errs.length) { commandError('Convert to ASM chart', errs.map(x => x.message)); return; }
   const dir = fsmDir(fsmPath);
   const name = freeName(dir, `${m.name}_asm`, '.asm.json');
   const asm = { ...fsmToAsm(m), name };
@@ -288,7 +288,7 @@ async function asmToFsmDiagram(asmPath) {
   try { asm = JSON.parse(await api.readFile(S.project.name, asmPath)); } catch (e) { logError(`cannot open ${asmPath}: ${e.message}`); return; }
   let m;
   try { m = asmToFsm(asm, { notation: getNotation() }); }
-  catch (e) { alertDlg('Convert to State Diagram', `${asmPath.split('/').pop()} cannot be shown as a state diagram:\n\n${e.message}`, 'error'); return; }
+  catch (e) { commandError('Convert to State Diagram', `${asmPath.split('/').pop()} cannot be shown as a state diagram: ${e.message}`); return; }
   const dir = fsmDir(asmPath);
   const name = freeName(dir, `${asm.name || 'fsm'}_fsm`, '.fsm.json');
   m.name = name;
@@ -305,7 +305,7 @@ async function fsmTruthTables(fsmPath) {
   const { truthTablesOf, normalizeFsm } = await import('/core/fsm.js');
   const m = normalizeFsm(await fsmModel(fsmPath));
   const r = truthTablesOf(m);
-  if (r.error) { alertDlg('Create Boolean Algebra', r.error, 'error'); return; }
+  if (r.error) { commandError('Create Boolean Algebra', r.error); return; }
   const dir = fsmDir(fsmPath);
   const made = [];
   for (const t of r.tables) {
@@ -679,14 +679,14 @@ export async function resolveHdlClash(path) {
   const c = S.hdlClash?.[path];
   if (!c || !S.project) return false;
   const title = designOnly() ? 'Make Module' : 'Generate HDL File';
-  if (c.kind === 'drawn') { alertDlg(title, clashTip(c), 'warn'); return false; }
+  if (c.kind === 'drawn') { commandWarning(title, clashTip(c)); return false; }
   const name = path.split('/').pop();
   if (c.kind === 'same' && !await confirmDlg(title, designOnly() ? `Another file of the project folder defines the module ${c.module} already.\n\nReplace it with the module of ${name}? Its current contents will be lost.`
     : `${c.file} defines the module ${c.module} already.\n\nReplace it with the HDL generated from ${name}? Its current contents will be lost.`)) return false;
   if (c.kind === 'removed' && !await confirmDlg(title, designOnly() ? `The module of ${name} was removed from the project.\n\nMake it again from ${name} and put it back in the project?`
     : `${c.file}, the HDL file of ${name}, was removed from the project.\n\nMake it again from ${name} and put it back in the project? Its current contents will be lost.`)) return false;
   const r = viewHdl(path, S.viewTexts?.[path] ?? '', { modules: viewKind(path) === 'sch' ? await schModules() : {}, linked: hdlInProject });
-  if (!r?.text || r.errors.length) { alertDlg(title, `${name} has errors: correct them first.`, 'error'); return false; }
+  if (!r?.text || r.errors.length) { commandError(title, `${name} has errors: correct them first.`); return false; }
   const target = c.kind === 'same' || c.kind === 'removed' ? c.file : c.free;
   closeDocByPath(target);
   if (!await writeDrawnHdl(path, target, r.text)) return false;
@@ -812,7 +812,7 @@ export async function convertToSchematic(mod) {
     markStale();
     openSch(target);
   } catch (e) {
-    alertDlg('Convert to Schematic', e.message, 'error');
+    commandError('Convert to Schematic', e.message);
   } finally { status('Ready'); }
 }
 
@@ -885,7 +885,7 @@ export async function setViewAsTop(path) {
   }
   // it does not make a module (errors in it): say why
   const r = viewHdl(path, S.viewTexts?.[path] ?? await api.readFile(S.project.name, path), { linked: hdlInProject });
-  alertDlg('Set as Top Module', r?.errors?.length ? `${path.split('/').pop()} cannot be the top yet:\n${r.errors.slice(0, 8).join('\n')}` : `${path.split('/').pop()} defines no module that can be the top.`, 'error');
+  commandError('Set as Top Module', r?.errors?.length ? [`${path.split('/').pop()} cannot be the top yet:`, ...r.errors.slice(0, 8)] : `${path.split('/').pop()} defines no module that can be the top.`);
 }
 export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn', 'circ'].includes(S.sel?.type) ? S.sel.file : null);
 // the module a drawing is (its HDL file's, or its own while it has none): Set or Unset as Top Module (#1220)

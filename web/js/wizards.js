@@ -4,9 +4,9 @@ import { constraintsForDevice } from './constraints-format.js';
 import { api } from './api.js';
 import { PRODUCT, PRODUCT_FULL, VERSION, VERSION_LABEL, BUILD, REPOSITORY, compareVersions, versionLabel } from '/core/version.js';
 import { icons } from './icons.js';
-import { h, dialog, alertDlg, confirmDlg, toast } from './ui.js';
+import { h, dialog, confirmDlg, toast } from './ui.js';
 import { S, app } from './app.js';
-import { appLog } from './console.js';   // (the application's lines, under every filter, #4729)
+import { appLog, commandError } from './console.js';   // (the application's lines, under every filter, #4729)
 import { THIRD_PARTY } from '/core/third-party.js';
 import { drawnHdlPath, isView } from '/core/view-hdl.js';
 import { IMPORT_SOURCE_ACCEPT, IMPORT_SOURCE_ROLES, assignImported, importSourceFile } from '/core/import-source.js';
@@ -48,8 +48,9 @@ export function select(options, value) {
 // extra: a button before < Back on the pages it is shown on, closing the wizard with its value
 // ({ label, value, shown(page), disabled?(), validate?() -> string|null }; New Source's Wizard, #958)
 // back: < Back on the first page closes the wizard and calls it (a wizard opened by New Source goes back to it,
-// #2082); start: the page shown first
-export function wizard(title, pages, { width = 720, finishLabel = 'Finish', extra = null, bind = null, back = null, start = 0 } = {}) {
+// #2082); start: the page shown first; finish: () -> string|null, Finish's last check (#4747: what the wizard makes,
+// made; its error in the wizard, beside its fields, never a second box after it closed)
+export function wizard(title, pages, { width = 720, finishLabel = 'Finish', extra = null, bind = null, back = null, start = 0, finish = null } = {}) {
   const now = typeof pages === 'function' ? pages : () => pages;
   return new Promise(resolve => {
     let idx = start;
@@ -81,7 +82,12 @@ export function wizard(title, pages, { width = 720, finishLabel = 'Finish', extr
     const next = async () => {
       const msg = await now()[idx].validate?.();
       if (msg) { err.textContent = msg; return false; }
-      if (idx === now().length - 1) return true;
+      if (idx === now().length - 1) {
+        let fail = null;
+        try { fail = await finish?.(); } catch (e) { fail = e.message; }
+        if (fail) { err.textContent = fail; return false; }
+        return true;
+      }
       idx++; render();
       return false;
     };
@@ -291,7 +297,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       ({ sch: app.openSch, fsm: app.openFsm, asm: app.openAsm, tt: app.openTt, petri: app.openPetri })[topType.value]?.(top) ?? app.openFile(top);
     }
     toast(`Project ${pj.name} created`, 'ok');
-  } catch (e) { alertDlg('New Project', e.message, 'error'); }
+  } catch (e) { commandError('New Project', e.message); }
 }
 
 // Top-Level Source Type: what the top of a new (empty) project is (core/top-types.js, #4105)
@@ -422,7 +428,7 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
     // reserved word refused (#679) (core/import-source.js)
     const c = importSourceFile(f.name, new Uint8Array(await f.arrayBuffer()), role.value);
     if (c.refused === 'gate') { appLog(`WARNING: ${c.message}`, 'warn'); continue; }
-    if (c.refused) { await alertDlg(title, c.message, 'error'); continue; }
+    if (c.refused) { await commandError(title, c.message); continue; }
     if (refusedHere(c.path)) continue;   // (an HDL file in a design and simulation project, #3780: the console says why)
     if (c.warning) appLog(`WARNING: ${c.warning}`, 'warn');
     if ((S.diskTree || S.fileTree).includes(c.path) && !await confirmDlg(title, `${c.path} already exists in the project. Replace it with the copy of ${f.name}?`)) continue;
@@ -458,7 +464,7 @@ export async function sourceProperties(path) {
 
 export async function projectProperties() {
   const db = S.devices || (S.devices = await api.devices().catch(() => null));
-  if (!db) return alertDlg("Design Properties", "The device database could not be loaded (is the Silinx server running?).", "error");
+  if (!db) return commandError("Design Properties", "The device database could not be loaded (is the Silinx server running?).");
   const pj0 = S.project;
   let pj = pj0;
   // (the project's kind, New Project's choice: a design and simulation project, both ways, #3780, #4103)
@@ -662,7 +668,7 @@ export async function toolchainDialog() {
     S.toolchain = await api.saveToolchain(out);
     appLog(`Toolchain settings saved (${S.toolchain.ise.mode}: ${S.toolchain.ise.reason}).`, S.toolchain.ise.available ? 'ok' : 'warn');
     app.renderProcesses();
-  } catch (e) { alertDlg('Toolchain Settings', e.message, 'error'); }
+  } catch (e) { commandError('Toolchain Settings', e.message); }
 }
 
 const link = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);

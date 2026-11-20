@@ -5,7 +5,8 @@
 // gets, the nearest the primitive can make, and the ones near it it can) -> summary. It writes the module, its
 // settings in its header: opening it from the Design pane reopens the wizard with them (web/js/wizard-modules.js).
 import { api } from './api.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, toast } from './ui.js';
+import { commandError } from './console.js';
 import { clockModule, planClock, fxChoices, dvChoices, DCM_PINS, PLL_OUTPUTS } from '/core/clocking.js';
 import { resourceCount, periodNs } from '/packages/silinx-fpga/src/parts.js';
 import { familyProfile } from '/core/family-profile.js';
@@ -41,9 +42,9 @@ export async function clockWizard({ name = '', location = 'src', lang = null, pa
   const pj = S.project;
   const family = old?.family || pj.device.family;
   const clock = familyProfile(family).clock;   // (the device's clock manager, #2310)
-  if (!clock) return alertDlg('Clocking Wizard', 'The Clocking Wizard makes a DCM for the Spartan-3E and a PLL for the Spartan-6: choose one of them as the target device (Design Properties).', 'error');
+  if (!clock) return commandError('Clocking Wizard', 'The Clocking Wizard makes a DCM for the Spartan-3E and a PLL for the Spartan-6: choose one of them as the target device (Design Properties).');
   if (old && old.family !== pj.device.family) {
-    return alertDlg('Clocking Wizard', `${editPath} was made for another family of devices than the project's: create a new one with New Source ▸ Clock Manager (DCM / PLL) ▸ Wizard.`, 'error');
+    return commandError('Clocking Wizard', `${editPath} was made for another family of devices than the project's: create a new one with New Source ▸ Clock Manager (DCM / PLL) ▸ Wizard.`);
   }
   const part = S.devices?.parts?.find(p => p.part === pj.device.part) || null;
   const pll = clock.manager === 'pll', dcm = clock.manager === 'dcm';
@@ -239,11 +240,13 @@ export async function clockWizard({ name = '', location = 'src', lang = null, pa
     validate: () => (editPath ? null : guard(path())),
   };
   // (from New Source: the count under the input clock, #2082)
-  const ok = await wizard('Clocking Wizard', namedPages(p1, [p1, p2, p3, pSum], named, countNote), { width: 900, back });
+  let code, plan;
+  const ok = await wizard('Clocking Wizard', namedPages(p1, [p1, p2, p3, pSum], named, countNote), { width: 900, back, finish: () => {
+    spec.name = nameIn.value.trim(); spec.lang = langSel.value;
+    ({ code, plan } = clockModule(spec));
+    return code ? null : plan.errors.join(' ');
+  } });
   if (!ok) return;
-  spec.name = nameIn.value.trim(); spec.lang = langSel.value;
-  const { code, plan } = clockModule(spec);
-  if (!code) return alertDlg('Clocking Wizard', plan.errors.join('\n'), 'error');
   const p = path();
   await closeBeforeReplace(p);
   await api.writeFile(pj.name, p, code);

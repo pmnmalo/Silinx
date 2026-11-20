@@ -3,7 +3,7 @@
 // breadboards and a supply, switches and LEDs, the assemblies of ICs of core/circuit-assemblies.js; their parameters) -> summary; it creates the .circ.json and opens it
 // in the circuit editor. The pages: web/js/modwizard.js (namePage), web/js/template-page.js.
 import { api } from './api.js';
-import { alertDlg, toast } from './ui.js';
+import { toast } from './ui.js';
 import { circuitTemplate, CIRCUIT_TEMPLATES } from '/core/circuit-templates.js';
 import { circuitCounts } from '/core/circuit.js';
 import { templatePage } from './template-page.js';
@@ -41,10 +41,9 @@ export async function circuitWizard({ name = '', location = 'src', lang = null, 
     },
     validate: () => guard(p1.path()),
   };
-  const ok = await wizard('Digital Electronic Circuit Wizard', namedPages(p1.page, [p1.page, tpl.page, pSum], named, p1.tail), { width: 720, back });
-  if (!ok) return;
   let m;
-  try { m = made(); } catch (e) { return alertDlg('Digital Electronic Circuit Wizard', e.message, 'error'); }
+  const ok = await wizard('Digital Electronic Circuit Wizard', namedPages(p1.page, [p1.page, tpl.page, pSum], named, p1.tail), { width: 720, back, finish: () => { m = made(); } });
+  if (!ok) return;
   if (p1.desc.value.trim()) m.description = p1.desc.value.trim();
   const path = p1.path();
   await closeBeforeReplace(path);
