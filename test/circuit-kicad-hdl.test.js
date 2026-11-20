@@ -53,6 +53,11 @@ test('modelPins and portsProperty: the ports by name, overbar, Silinx.Ports; sup
   no([p('1', 'passive', 'D')], {}, 'its pin 1 (D) is passive: a module\'s port is an input or an output');
   no([p('1', 'input', 'A+')], {}, 'its pin 1\'s name \'A+\' is not an HDL name: give it one in Silinx.Ports (1=a)');
   no([p('1', 'input', 'IN')], {}, 'its pin 1\'s name \'IN\' is not an HDL name: give it one in Silinx.Ports (1=a)');
+  // any reserved word of VHDL or Verilog, not a short list of them (#4770)
+  for (const w of ['PROCESS', 'TYPE', 'CASE', 'BUFFER', 'LIBRARY', 'ASSIGN', 'ALWAYS', 'SIGNAL'])
+    no([p('1', 'input', w)], {}, `its pin 1's name '${w}' is not an HDL name: give it one in Silinx.Ports (1=a)`);
+  no([p('1', 'input', 'A')], { 'Silinx.Ports': '1=process' }, 'its pin 1\'s name \'A\' is not an HDL name: give it one in Silinx.Ports (1=a)');
+  assert.deepEqual(modelPins([p('1', 'input', 'PROCESS')], { 'Silinx.HDL': 'x', 'Silinx.Ports': '1=proc' }, places).pins.map((q) => q.port), ['proc']);
   no([p('1', 'input', 'A'), p('2', 'input', 'a')], {}, 'its pins 1 and 2 are both the port a');
   no([p('1', 'power_in', 'VCC')], {}, 'it has no pin that is an input or an output: no port for its module');
   no([p('1', 'input', 'A')], { 'Silinx.Ports': '1:a' }, 'its Silinx.Ports \'1:a\' is not a list of pin=port (1=a, 2=y)');
