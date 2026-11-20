@@ -152,6 +152,7 @@ test('#4850 a room the owner\'s page hosts (peer to peer), opened again with its
   const ev = [];
   const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' }, WebSocket: FollowerSocket, transport: async () => FollowerSocket, onEvent: e => ev.push(e), reconnect: FAST }));
   await f.ready;
+  await until(() => f.listed, 'the editor listed (#4745: its record, as a page\'s at its pagehide, after it)');
   const rec = through(ownerRecord({ project: 'traffic', name: 'Ana', via: 'host', host: { key: hk.text, pub: hk.pub }, session: owner.snapshot() }));
   assert.deepEqual(rec.host, { key: hk.text, pub: hk.pub });
   assert.equal((await hostKeyOf(rec.host.key)).pub, hk.pub);

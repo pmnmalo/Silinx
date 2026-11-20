@@ -70,6 +70,7 @@ export function readRecord(raw, now = Date.now()) {
       // (#4745: the owner's key of its editors' lists, and the last one's number; none in a record of before)
       if ((s.owner ?? null) !== null && !SIGN_RE.test(String(s.owner))) return null;
       if (s.n !== undefined && !(Number.isSafeInteger(s.n) && s.n >= 0)) return null;
+      if (s.editors !== undefined && !(Array.isArray(s.editors) && s.editors.length <= 64 && s.editors.every(k => PUB_RE.test(String(k))))) return null;
       if (r.relay !== null && !(r.relay && str(r.relay.address, 2000) && str(r.relay.key ?? '', 2000))) return null;
       if (r.host !== null && !(r.host && SIGN_RE.test(String(r.host.key)) && PUB_RE.test(String(r.host.pub)))) return null;
       if (!Array.isArray(r.bases) || !r.bases.every(([p, t]) => str(p, 1000) && typeof t === 'string')) return null;
@@ -78,6 +79,9 @@ export function readRecord(raw, now = Date.now()) {
     }
     if (r.role === 'follower') {
       if (!str(r.hash, 4000) || !b64(s.mine, true)) return null;
+      // (#4745: its own key, and whether it edits; none in a record of before)
+      if (s.own !== undefined && !SIGN_RE.test(String(s.own))) return null;
+      if (s.editor !== undefined && typeof s.editor !== 'boolean') return null;
       return { ...r, following: r.following !== false, session: { ...s, doc: fromB64(s.doc), mine: s.mine ? fromB64(s.mine) : null } };
     }
   } catch { return null; }

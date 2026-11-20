@@ -9,7 +9,7 @@ export const OLDER_PROTOCOL = 4;
 export const SUBPROTOCOL = 'silinx-collab';   // (the WebSockets', server/collab-relay.js's)
 /** A room's id (128 bits, base64url). */
 export const ROOM_RE = /^[A-Za-z0-9_-]{22}$/;
-export const KIND = Object.freeze({ update: 1, awareness: 2, edit: 3, from: 4, to: 5, role: 6, activity: 7 });
+export const KIND = Object.freeze({ update: 1, awareness: 2, edit: 3, from: 4, to: 5, role: 6, activity: 7, enrol: 8 });
 
 /** A follower's frame as the room forwards it (#3360): marked with the client id it joined with. */
 export function fromFrame(client, frame) {

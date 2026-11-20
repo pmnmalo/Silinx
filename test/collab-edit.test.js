@@ -10,7 +10,7 @@ import { scratchEnv } from './server-helpers.js';
 import { closable } from './server-close.js';
 import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, pubOf, SIGN_RE, PUB_RE } from '../core/collab-sign.js';
 import { newKey, seal } from '../core/collab-crypto.js';
-import { shareRoom, followRoom, KIND } from '../core/collab-client.js';
+import { shareRoom, followRoom, KIND, NOT_INVITED } from '../core/collab-client.js';
 import { projectDoc, publishProject, editFile, editablePath, docFile, FILE_MAX, gateEdit } from '../core/collab-doc.js';
 import { isTrusted, markEditedByEditor, untrustedMessage, untrustedNotice } from '../core/trust.js';
 import { relayUrl, followLink, parseFollowLink } from '../core/collab-link.js';
@@ -145,8 +145,8 @@ async function edits(t) {
   await until(() => docFile(fol.doc, 'src/top.vhd') === big && docFile(doc, 'src/top.vhd') === big, 'the large edit at the follower\'s and the owner\'s', 8000);
   assert.equal(ed.closed(), false);
   // the presence: the editor as an editor
-  await until(() => owner.peers().length === 3, 'all in');
-  assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Bo', 'editor'], ['Eva', 'viewer'], ['Rui', 'editor']]);   // (as they say; a follower a viewer, #3997)
+  await until(() => owner.peers().length === 3 && owner.peers().find(p => p.name === 'Bo').role === 'viewer', 'all in');
+  assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Bo', 'viewer'], ['Eva', 'viewer'], ['Rui', 'editor']]);   // (as they say; a follower a viewer, #3997; #4745: Bo's link not the room's, told so, a viewer)
   // a follower's own update (its link reads only): refused, applied nowhere
   const forged = new Y.Doc();
   Y.applyUpdate(forged, Y.encodeStateAsUpdate(fol.doc));
@@ -159,10 +159,12 @@ async function edits(t) {
   // an edit not signed, and one signed with another room's key: refused by the room, applied nowhere
   await fol.send(KIND.edit, u);
   await until(() => errors.fol.length === 2, 'the unsigned edit refused');
+  // (#4745: the pretender's request to be listed refused, said; its changes never sent)
   editFile(pre.doc, 'src/top.vhd', '-- hacked\n');
-  await until(() => errors.pre.length, 'the edit of another key refused');
+  await until(() => errors.pre.length, 'the pretender told');
   const NOT = 'read only: this link cannot change the shared project (not an editor\'s)';
-  assert.deepEqual([errors.fol[1], ...new Set(errors.pre)], [NOT, NOT]);   // (each of the pretender's updates: its deletion, its insertion)
+  assert.deepEqual([errors.fol[1], ...errors.pre], [NOT, NOT_INVITED]);
+  assert.equal(pre.editor, false);
   await sleep(50);
   for (const [who, d] of [['owner', doc], ['editor', ed.doc], ['follower', fol.doc]]) assert.ok(docFile(d, 'src/top.vhd') === big, `never applied (${who}'s: ${JSON.stringify(docFile(d, 'src/top.vhd').slice(0, 30))}, ${docFile(d, 'src/top.vhd').length} for ${big.length})`);
   assert.deepEqual(errors.ed, []);
@@ -185,10 +187,11 @@ test('an editor in a room the owner\'s page hosts: the same', async () => {
   await edits(t);
 });
 
-// #3997: a participant's role changed by the owner: a viewer promoted (the editors' key given to it alone: its edits
-// then reach everyone); an editor demoted (the room's signing key renewed: the demoted one a viewer again, its key, the
-// old one, refused by the room and by every participant, as the old editors' link's; another editor given the new key,
-// its edits through); the owner's editKey the new one; a share with no editors refuses both
+// #3997: a participant's role changed by the owner: a viewer promoted (#4745: its own key listed, no key sent to it: its
+// edits then reach everyone); an editor demoted (#4745: its key out of the list, the editor link's key renewed: the
+// demoted one a viewer again, its edits refused by the room and by every participant; the other editors keep their own
+// keys, told nothing, their edits through; the old editor link lists no one again, said); the owner's editKey the new
+// one; a share with no editors refuses both
 async function roles(open, join) {
   const doc = owned();
   const owner = keep(await open({ doc, user: { name: 'Ana' }, editors: true }));
@@ -199,34 +202,38 @@ async function roles(open, join) {
   const rui = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name: 'Rui' }, onEvent: on('rui') }));
   const bo = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name: 'Bo' }, onEvent: on('bo') }));
   await Promise.all([eva.ready, rui.ready, bo.ready]);
-  await until(() => owner.peers().length === 3, 'all in');
+  await until(() => owner.peers().length === 3 && rui.listed && bo.listed, 'all in, the editors listed');
   const client = n => owner.peers().find(p => p.name === n).client;
-  // promoted: Eva an editor, her edit at everyone's
+  // promoted: Eva an editor, her own key listed, her edit at everyone's
   await owner.promote(client('Eva'));
-  await until(() => eva.editor, 'Eva an editor');
+  await until(() => eva.editor && eva.listed, 'Eva an editor');
   assert.deepEqual(events.eva, ['editor']);
-  assert.equal(eva.sign(), old);
+  assert.equal(eva.sign(), null, 'no key sent to her');
   await until(() => owner.peers().find(p => p.name === 'Eva').role === 'editor', 'Eva an editor at the owner\'s');
   editFile(eva.doc, 'src/top.vhd', 'entity top is -- Eva\nend;\n');
   for (const d of [doc, rui.doc, bo.doc]) await until(() => docFile(d, 'src/top.vhd') === 'entity top is -- Eva\nend;\n', 'Eva\'s edit');
-  // demoted: Rui a viewer, the key renewed; Eva and Bo given the new one
+  // demoted: Rui a viewer, the editor link's key renewed; Eva and Bo told nothing, their keys the same
   const renewed = await owner.demote(client('Rui'));
   assert.match(renewed, SIGN_RE);
   assert.notEqual(renewed, old);
   assert.equal(owner.editKey, renewed);
-  await until(() => !rui.editor && eva.sign() === renewed && bo.sign() === renewed, 'the roles at everyone\'s');
-  assert.deepEqual([events.rui, events.eva, events.bo], [['viewer'], ['editor', 'editor (renewed)'], ['editor (renewed)']]);
+  await until(() => !rui.editor, 'Rui a viewer');
+  assert.deepEqual([events.rui, events.eva, events.bo], [['viewer'], ['editor'], []]);
   await until(() => owner.peers().find(p => p.name === 'Rui').role === 'viewer', 'Rui a viewer at the owner\'s');
-  // Bo's edit, with the new key: through
+  assert.equal(bo.sign(), old);
+  // Bo's edit, with his own key, as before: through
   editFile(bo.doc, 'src/top.ucf', 'NET "clk" LOC = "C8"; -- Bo\n');
   for (const d of [doc, rui.doc, eva.doc]) await until(() => docFile(d, 'src/top.ucf') === 'NET "clk" LOC = "C8"; -- Bo\n', 'Bo\'s edit');
-  // the old editors' link (a new page with it): its edits refused by the room, applied nowhere
+  // the old editor link (a new page with it): listed no more, said; its changes sent nowhere
   const errs = [];
   const stale = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name: 'Old' }, onEvent: e => { if (e.type === 'error') errs.push(e.message); } }));
   await stale.ready;
   editFile(stale.doc, 'src/top.vhd', '-- the old link\n');
-  await until(() => errs.length, 'the old key refused');
-  assert.deepEqual([...new Set(errs)], ['read only: this link cannot change the shared project (not an editor\'s)']);
+  await until(() => errs.length, 'the old link refused');
+  assert.deepEqual(errs, [NOT_INVITED]);
+  // the new one: listed
+  const fresh = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: renewed, user: { name: 'New' } }));
+  await until(() => fresh.listed, 'the new link\'s editor listed');
   await sleep(50);
   for (const d of [doc, rui.doc, eva.doc, bo.doc]) assert.equal(docFile(d, 'src/top.vhd'), 'entity top is -- Eva\nend;\n');
   // Rui, a viewer: nothing of his sent
@@ -261,7 +268,7 @@ test('#3527 regression: an editor\'s change of another part than the files, the 
   const doc = owned();
   const errors = [];
   const owner = keep(await shareRoom({ url: relayUrl(base, 'share'), token: 'the-token', doc, user: { name: 'Ana' }, editors: true, limits: { total: 8192 }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } }));
-  const editor = async () => { const e = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' } })); await e.ready; return e; };
+  const editor = async () => { const e = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' } })); await e.ready; await until(() => e.listed, 'listed (#4745)'); return e; };
   // (a follower whose limit is the owner's: what the owner refuses, it refuses too)
   const fol = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, limits: { files: 5000, total: 8192 } }));
   await fol.ready;

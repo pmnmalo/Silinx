@@ -6,7 +6,9 @@
 // its key is the last list's (a key never listed, or listed no longer: refused, said); a follower of the version before
 // is refused at its join, said; a room of an older owner's page (one key for every editor, `editors`) is taken as
 // before, its followers of either version; an owner's open giving both keys refused. Asleep (a platform's rooms made again
-// from their sockets), the list kept.
+// from their sockets), the list kept. A key per editor (#4745, second part): an editor link's page asks to be listed
+// with a key of its own, the request signed with the link's key, which the room gives to the owner only; listed, never
+// with the link's key; past MAX_EDITORS, told it follows read only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { keyId, isList, signList, checkList, editorKeys, signEdit, verifyEdit, MAX_EDITORS, KEY_ID } from '../core/collab-editors.js';
@@ -162,4 +164,63 @@ test('#4745 the links carry the owner\'s key: a viewer\'s and an editor\'s, befo
   assert.equal(parseFollowLink(followLink('https://silinx.example.org/', ROOM, key)).owner, undefined);
   assert.throws(() => parseFollowLink(`https://silinx.example.org/#view=${ROOM}.${key}&owner=short`), /the link to follow is broken/);
   assert.throws(() => followLink('https://silinx.example.org/', ROOM, key, 'relay', null, null, null, 'short'), /not an owner's key/);
+});
+
+test('#4745 a request to be listed: signed with the editor link\'s key over the room and the public key; anything else refused', async () => {
+  const { signEnrol, checkEnrol } = await import('../core/collab-editors.js');
+  const invite = await newSigner(), other = await newSigner(), a = await newSigner();
+  const v = await verifierOf(invite.pub);
+  const req = await signEnrol(invite.key, ROOM, a.pub);
+  assert.deepEqual(Object.keys(req), ['pub', 'sig'], 'its public key only, never its private half');
+  assert.equal(await checkEnrol(v, ROOM, req), true);
+  assert.equal(await checkEnrol(v, 'S'.repeat(22), req), false, 'another room');
+  assert.equal(await checkEnrol(v, ROOM, { ...req, pub: other.pub }), false, 'another key');
+  assert.equal(await checkEnrol(await verifierOf(other.pub), ROOM, req), false, 'another link\'s key');
+  for (const bad of [null, {}, { pub: 'x', sig: req.sig }, { pub: a.pub, sig: 'x' }]) assert.equal(await checkEnrol(v, ROOM, bad), false);
+});
+
+test('#4745 the room: a follower\'s request to be listed to the owner only, marked as its; one too large, closed', async () => {
+  const { os, join } = await listedRoom();
+  const [ws] = join(7), [es, pe] = join(8);
+  for (const s of [os, ws]) s.got.length = 0;
+  pe.message(Uint8Array.from([KIND.enrol, 1, 2, 3]), true);
+  await settle();
+  assert.deepEqual(binaries(os), [[KIND.from, 0, 0, 0, 8, KIND.enrol, 1, 2, 3]], 'at the owner\'s, from 8');
+  assert.deepEqual(binaries(ws), [], 'at no other follower\'s');
+  pe.message(new Uint8Array(1025).fill(KIND.enrol), true);
+  assert.equal(es.closed?.[0], 1008);
+});
+
+test('#4745 a key per editor: each editor link\'s page listed with a key of its own, never the link\'s; the 17th told it follows read only', async () => {
+  const { hostedRooms, socketPair } = await import('../core/collab-loop.js');
+  const { shareRoom, followRoom } = await import('../core/collab-client.js');
+  const { projectDoc, publishProject } = await import('../core/collab-doc.js');
+  const until = async (fn, what, ms = 5000) => { const t0 = Date.now(); for (;;) { if (await fn()) return; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await new Promise(r => setTimeout(r, 5)); } };
+  const h = hostedRooms();
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'p', files: [], fileTree: [] }, files: {}, owner: 'Ana' });
+  const ownerErrors = [];
+  const owner = await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors: true, WebSocket: h.owner, reconnect: false, onEvent: e => { if (e.type === 'error') ownerErrors.push(e.message); } });
+  const S = function S() { const { client, room } = socketPair(); h.follower(room); return client; };
+  const eds = [];
+  try {
+    for (let i = 0; i < MAX_EDITORS; i++) eds.push(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: `E${i}` }, WebSocket: S, reconnect: false }));
+    await until(() => eds.every(e => e.listed), 'every editor listed');
+    const list = doc.getMap('meta').get('editorsList');
+    assert.equal(list.editors.length, MAX_EDITORS);
+    assert.equal(new Set(list.editors).size, MAX_EDITORS, 'a key each');
+    const invitePub = owner.editKey.slice(43);
+    assert.ok(!list.editors.includes(invitePub), 'never the link\'s key');
+    assert.deepEqual(eds.map(e => e.snapshot().own.slice(43)).sort(), [...list.editors].sort(), 'each its own, kept for its reload');
+    const errs = [];
+    const late = await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Late' }, WebSocket: S, reconnect: false, onEvent: e => { if (e.type === 'error') errs.push(e.message); } });
+    eds.push(late);
+    await until(() => errs.length, 'the 17th told');
+    assert.deepEqual(errs, [`this shared project has ${MAX_EDITORS} editors already: you follow it read only`]);
+    assert.deepEqual(ownerErrors, [`an editor could not join: this shared project has ${MAX_EDITORS} editors already`]);
+    assert.equal(late.editor, false);
+  } finally {
+    for (const e of eds) await e.close().catch(() => {});
+    await owner.close();
+  }
 });
