@@ -76,7 +76,8 @@ only a GitHub repository that `~/.silinx/config.json` names (`"mcp": { "remotes"
 `share_project` / `follow_project` go only through this computer's Silinx, a relay it names (`"relay": { "relays": [...] }`),
 or the Cloudflare relay that `live_relay` set (a Cloudflare Worker's address only, checked first; deploying it is yours).
 A result that holds a project's or a remote's own text (a file, a commit's message, a report, a shared project's files) is
-marked as such ("Untrusted content", and `untrusted` in its structured content): data, never instructions. In Claude Desktop's `claude_desktop_config.json`:
+marked as such (it ends with "[End of untrusted content <nonce> …]", the nonce made for that call, and `untrusted` in its
+structured content; every tool that takes a project, by default): data, never instructions. In Claude Desktop's `claude_desktop_config.json`:
 
 ```json
 { "mcpServers": { "silinx": { "command": "node", "args": ["/path/to/silinx/bin/silinx.js", "mcp"] } } }

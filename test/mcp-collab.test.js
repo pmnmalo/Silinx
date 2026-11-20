@@ -21,6 +21,7 @@ import { normalizeTable, generateTableHdl } from '../core/logic.js';
 import { normalizeModel as normalizeAsm, generate as generateAsm } from '../core/asm.js';
 import { normalizePetri, generatePetri } from '../core/petri.js';
 import { normalizeDoc, generateHdl } from '../core/schdoc.js';
+import { unlabelled } from './mcp-label.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const until = async (fn, what, ms = 5000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await sleep(25); } };
@@ -49,7 +50,7 @@ const P = await import('../server/projects.js');
 let id = 0;
 async function call(name, args = {}) {
   const r = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
-  return { text: r.content[0].text, data: r.structuredContent, isError: r.isError };
+  return { text: r.content[0].text, data: unlabelled(r.structuredContent), isError: r.isError };
 }
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
 // (a file of a followed project, or null while it is not shown for the reason expected: any other error fails, #4330)
