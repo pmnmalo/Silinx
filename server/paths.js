@@ -79,6 +79,7 @@ export async function createWithin(dir, full, data) {
   try {
     if (!await opened(dir, full, fh)) throw refused();
     await fh.writeFile(data);
+    await fh.sync();   // (on the disk before it is renamed in: a crash never leaves a truncated file, #4758)
     ok = true;
   } finally {
     await fh.close().catch(() => {});

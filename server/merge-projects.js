@@ -34,7 +34,7 @@ export function mergeStorage(P) {
         const f = backupFile(P, name);
         if (data === null) { await fsp.rm(f, { force: true }); return; }
         await fsp.mkdir(path.dirname(f), { recursive: true });
-        await fsp.writeFile(f, JSON.stringify(data));
+        await P.writeAtomic(f, JSON.stringify(data));   // (whole or not at all: the pre-merge backup, #4758)
       },
     },
   };

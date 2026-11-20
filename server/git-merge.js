@@ -64,11 +64,11 @@ export async function resolveOnPull({ run, prefix, name, files, resolve = null }
   const dir = P.projectDir(name);
   for (const d of drawings) {
     const r = await resolveConflict(d.path, d.v.base, d.v.mine, d.v.theirs, resolve?.[d.path] || {});
-    await fsp.writeFile(P.safeJoin(dir, d.path), r.text);
+    await P.writeAtomic(P.safeJoin(dir, d.path), r.text, dir);   // (whole or not at all, #4758)
   }
   // (the HDL files: mine first, as they were, then each made from its drawing: one whose drawing has errors stays mine)
-  for (const f of rest.filter(x => generated.has(x))) { const m = await show(2, f); if (m !== null) await fsp.writeFile(P.safeJoin(dir, f), m); }
-  for (const t of texts) await fsp.writeFile(P.safeJoin(dir, t.path), resolveText(t.m, resolve?.[t.path] || {}));
+  for (const f of rest.filter(x => generated.has(x))) { const m = await show(2, f); if (m !== null) await P.writeAtomic(P.safeJoin(dir, f), m, dir); }
+  for (const t of texts) await P.writeAtomic(P.safeJoin(dir, t.path), resolveText(t.m, resolve?.[t.path] || {}), dir);
   // (an HDL file made again that was in no conflict: in the merge commit too)
   const written = [];
   for (const d of drawings) { const r = await syncDrawing(P, name, d.path); for (const f of [r?.written, r?.removed]) if (f) written.push(f); }

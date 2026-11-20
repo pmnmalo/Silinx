@@ -92,6 +92,16 @@ async function asCopy(P, name, entries) {
  *  bad(message): the error of an entry set that is not a project. */
 export async function importProjectEntries(P, name, gated, bad) {
   const entries = requireGated(gated, 'importProjectEntries');
+  // a project this import made and could not finish (a file that cannot be written, a full disk) removed again, so that
+  // a half-built project is never left and the import can be done again (no 409, #4758); one that was there, kept
+  const dir = P.projectDir(name);
+  const there = await fs.stat(dir).then(() => true, () => false);
+  try { return await importInto(P, name, gated, entries, bad); } catch (e) {
+    if (!there && e.status !== 409) await fs.rm(dir, { recursive: true, force: true }).catch(() => {});   // (409: another's, made meanwhile)
+    throw e;
+  }
+}
+async function importInto(P, name, gated, entries, bad) {
   const xiseEntry = entries.filter(e => /\.xise$/i.test(e.path)).sort((x, y) => x.path.split('/').length - y.path.split('/').length)[0];
   const pjEntry = entries.find(e => /(^|\/)silinx\.json$/i.test(e.path));
   const root = (xiseEntry || pjEntry) ? path.posix.dirname((xiseEntry || pjEntry).path) : '';
@@ -133,7 +143,7 @@ export async function importProjectEntries(P, name, gated, bad) {
     const to = P.safeJoin(P.projectDir(name), norm);
     if (await P.isProjectFileAt(P.projectDir(name), to)) continue;   // (silinx.json by another spelling: ſilinx.json, #2956)
     await fs.mkdir(path.dirname(to), { recursive: true });
-    await fs.writeFile(to, Buffer.from(e.data));
+    await P.writeAtomic(to, Buffer.from(e.data), P.projectDir(name));   // (whole or not at all, #4758)
     extra.push(norm);
   }
   // Silinx export: restore the settings ISE does not know about (board, stimuli, language...)

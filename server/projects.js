@@ -23,6 +23,7 @@ import { renameProblem, renamedFile } from '../core/project-rename.js';
 import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../core/project-entries.js';
+import { trashTime, expiredTrash } from '../core/trash.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
@@ -245,11 +246,18 @@ export async function renameOver(from, to, { tries = 10, wait = 15 } = {}) {
 /** A file written atomically (a hidden temp file beside it, then renamed over it): a concurrent reader (a watcher,
  *  another process, a shared project's followers, #3183) or a crash never sees it half-written or empty. */
 // dir: the project's folder, the temporary file checked to be in it once open (#4744)
+// a file written whole and flushed to the disk (#4758): renamed in only once its text is there, so that a crash (a
+// power cut) leaves the file before or the file after, never an empty or truncated one
+async function writeSynced(file, data) {
+  const fh = await fs.open(file, 'wx');
+  try { await fh.writeFile(data); await fh.sync(); } finally { await fh.close(); }
+}
+
 export async function writeAtomic(full, text, dir = null) {
   const tmp = path.join(path.dirname(full), `.${path.basename(full)}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);   // hidden: not listed
   try {
     if (dir) await createWithin(dir, tmp, text);
-    else await fs.writeFile(tmp, text);
+    else await writeSynced(tmp, text);
     noteWritten(full, text);   // (this server's own: not told to the page that asked, #4726)
     await renameOver(tmp, full);
   } catch (e) { await fs.rm(tmp, { force: true }).catch(() => {}); throw e; }
@@ -271,7 +279,7 @@ async function writeProjectUnlocked(name, pj) {
   const tmp = path.join(dir, `.${PROJECT_FILE}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
   const text = JSON.stringify(clean, null, 2) + '\n';
   try {
-    await fs.writeFile(tmp, text);
+    await writeSynced(tmp, text);
     noteWritten(file, text);
     await renameOver(tmp, file);
   } catch (e) {
@@ -419,7 +427,7 @@ export async function boardGenerics(dir, pj) {
     try { sources.push({ path: f.path, lang: f.lang, text: await fs.readFile(safeJoin(dir, f.path), 'utf8') }); } catch { /* missing (or outside the project): skipped */ }
   }
   const top = topForBoard(sources, pj.top, r);
-  if (top) await fs.writeFile(safeJoin(dir, top.path), top.text);
+  if (top) await writeAtomic(safeJoin(dir, top.path), top.text);
   return top ? { ...top, board: r.board.name } : null;
 }
 
@@ -453,22 +461,42 @@ export async function boardConstraints(dir, pj) {
   // (the project's own paths, as every other: inside its folder, #479; its folder made, as a test design has none, #1746)
   const file = safeJoin(dir, pj.constraints || `constraints/top${constraintsExtOf(r.device)}`);
   await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, text);
+  await writeAtomic(file, text);
 }
 
 export async function deleteProject(name) {
   const dir = projectDir(name);
   // (under its lock: a write in progress ends first, and one after it finds no project, #4755)
-  return withProjectLock(name, async () => {
+  await withProjectLock(name, async () => {
     // (a project's folder only: one with its silinx.json, never another folder of the workspace's)
     if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, 'not found');
     const trash = path.join(workspaceDir(), '.trash');
     await fs.mkdir(trash, { recursive: true });
     const key = trustStore.folderKey(dir);
-    await renameOver(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
+    const at = path.join(trash, `${path.basename(dir)}-${Date.now()}`);
+    await renameOver(dir, at);
     await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
     await trustStore.forget(key);   // (#4735: its trust record: restored from the .trash, it is untrusted)
+    // (its build's outputs not kept: a run makes them again, #4758)
+    await fs.rm(path.join(at, 'build'), { recursive: true, force: true }).catch(() => {});
   });
+  await emptyTrash();   // (what was deleted long ago, #4758)
+}
+
+/** The workspace's .trash emptied of what was deleted more than TRASH_DAYS days ago (core/trash.js, #4758); a Rename
+ *  Project's hidden folder that a crash left (.rename-<name>-<time>, an hour old: the project whole) moved into it, to
+ *  be moved back by hand. Its failures are not the caller's (a file another program holds: left for the next time). */
+export async function emptyTrash(now = Date.now()) {
+  const ws = workspaceDir(), trash = path.join(ws, '.trash');
+  for (const ent of await fs.readdir(ws).catch(() => [])) {
+    const t = ent.startsWith('.rename-') ? trashTime(ent) : null;
+    if (t === null || now - t < 60 * 60 * 1000) continue;
+    await fs.mkdir(trash, { recursive: true }).catch(() => {});
+    await renameOver(path.join(ws, ent), path.join(trash, ent.slice('.rename-'.length))).catch(() => {});
+  }
+  for (const ent of await fs.readdir(trash).catch(() => [])) {
+    if (expiredTrash(ent, now)) await fs.rm(path.join(trash, ent), { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 /** A failure made in the middle of a rename, by the tests (#4641, #4760): failAt 'moved' (after the folder moved), 'mark'
@@ -698,6 +726,7 @@ async function toTrash(dir, full, key) {
   const at = path.join(base, ...key.split('/'));
   await fs.mkdir(path.dirname(at), { recursive: true });
   await renameOver(full, at);
+  await emptyTrash();   // (what was deleted long ago, #4758)
   return relKey(workspaceDir(), at);
 }
 

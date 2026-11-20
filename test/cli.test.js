@@ -213,6 +213,19 @@ test('ucf: pins from a board written to the constraints file and the project upd
   assert.ok(fss.existsSync(path.join(dir2, 'pins', 'board.ucf')));
 });
 
+test('#4758 ucf: a project of the workspace changed under its lock (its fields kept, a field written meanwhile too), whole', async () => {
+  const dir = await project('UcfWs', { pj: { constraints: '', trusted: false, madeBy: 'mcp' } });
+  const ws = process.env.SILINX_WORKSPACE, at = path.join(ws, 'UcfWs');
+  await fs.mkdir(ws, { recursive: true });
+  await fs.cp(dir, at, { recursive: true });
+  const r = await cli(['ucf', at, '--board', 'basys2']);
+  assert.equal(r.code, 0, r.err);
+  const pj = JSON.parse(await fs.readFile(path.join(at, 'silinx.json'), 'utf8'));
+  assert.deepEqual([pj.board, pj.constraints, pj.trusted, pj.madeBy, pj.simTop], ['basys2', 'constraints/top.ucf', false, 'mcp', 'tb']);
+  assert.match(await fs.readFile(path.join(at, 'constraints', 'top.ucf'), 'utf8'), /NET "led<1>" LOC = "M11"/);
+  assert.deepEqual((await fs.readdir(at, { recursive: true })).filter(f => f.endsWith('.tmp')), []);
+});
+
 test('ucf: unknown / missing board and a top that does not elaborate exit 1', async () => {
   const dir = await project('UcfBad');
   let r = await cli(['ucf', dir, '--board', 'zx81']);

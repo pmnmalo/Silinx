@@ -89,7 +89,7 @@ function backend({ madeBy = null } = {}) {
       if (rel === P.PROJECT_FILE) return P.writeProject(name, parseDescription(text));
       const full = P.safeJoin(P.projectDir(name), rel);
       await fsp.mkdir(path.dirname(full), { recursive: true });
-      await fsp.writeFile(full, text);
+      await P.writeAtomic(full, text, P.projectDir(name));   // (whole or not at all, #4758)
     },
     remove: async (name, rel) => { if (rel !== P.PROJECT_FILE) await fsp.rm(P.safeJoin(P.projectDir(name), rel), { force: true }); },
     // a merged drawing's HDL file made from it again (#3197)

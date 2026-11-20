@@ -25,6 +25,7 @@ import { DESIGN_KIND, isDesignOnly } from '../../core/project-kind.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
 import { langOfPath } from '../../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../../core/project-entries.js';
+import { expiredTrash } from '../../core/trash.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -318,11 +319,19 @@ async function entryAt(root, path) {
   try { return { dir, name: last, handle: await dir.getDirectoryHandle(last) }; } catch (e) { if (!notFound(e)) throw e; }
   return null;
 }
-async function copyDir(src, dst) {
+async function copyDir(src, dst, { skip = () => false } = {}) {
   for await (const [name, h] of src.entries()) {
+    if (skip(name, h)) continue;
     if (h.kind === 'directory') await copyDir(h, await dst.getDirectoryHandle(name, { create: true }));
     else await writeAt(dst, name, new Uint8Array(await (await h.getFile()).arrayBuffer()));
   }
+}
+// the .trash's entries deleted more than TRASH_DAYS days ago removed (core/trash.js, as the server's, #4758); one that
+// cannot be removed is left for the next time
+async function emptyTrash(trash, now = Date.now()) {
+  const old = [];
+  for await (const [name] of trash.entries()) if (expiredTrash(name, now)) old.push(name);
+  for (const name of old) await trash.removeEntry(name, { recursive: true }).catch(() => {});
 }
 // the project's files (server/projects.js fileTree: no hidden entries, no build/ at the top, no silinx.json)
 async function walk(dir, base = '', out = {}) {
@@ -414,6 +423,7 @@ export function folderStore(root) {
           await copyDir(e.handle, await (await dirAt(into, parts, true)).getDirectoryHandle(last, { create: true }));
         } else await writeAt(into, path, new Uint8Array(await (await e.handle.getFile()).arrayBuffer()));
         trashed = `.trash/${base}/${cleanPath(path)}`;
+        await emptyTrash(bin);
       }
       if (e) await e.dir.removeEntry(e.name, { recursive: true });
       for (const k of Object.keys(p.files)) if (under(k, path)) delete p.files[k];
@@ -446,9 +456,11 @@ export function folderStore(root) {
     deleteProject: name => locked(name, async () => {
       const dir = await projectDir(name);
       const trash = await root.getDirectoryHandle('.trash', { create: true });
-      await copyDir(dir, await trash.getDirectoryHandle(`${name}-${Date.now()}`, { create: true }));
+      // (its build's outputs not kept, #4758: a run makes them again)
+      await copyDir(dir, await trash.getDirectoryHandle(`${name}-${Date.now()}`, { create: true }), { skip: (n, h) => n === 'build' && h.kind === 'directory' });
       await root.removeEntry(name, { recursive: true });
       cache.delete(name);
+      await emptyTrash(trash);
     }),
     // Rename Project… (#4641): its folder copied under the new name, then the old one removed (no move of a folder in the
     // File System Access API); a failure while copying removes the copy, the old project as it was. A complete copy is

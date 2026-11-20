@@ -126,11 +126,19 @@ async function main() {
       pj.constraints ||= 'constraints/top.ucf';
       const ucfFile = insideProject(dir, pj.constraints);
       fs.mkdirSync(path.dirname(ucfFile), { recursive: true });
-      fs.writeFileSync(ucfFile, text);
-      // atomic (temp + rename): a running server never reads a half-written silinx.json
-      const tmpPj = path.join(dir, `.silinx.json.${process.pid}.tmp`);
-      fs.writeFileSync(tmpPj, JSON.stringify(pj, null, 2) + '\n');
-      fs.renameSync(tmpPj, path.join(dir, 'silinx.json'));
+      // (whole or not at all, flushed to the disk, #4758; a project of the workspace's: its description changed under
+      // its lock, with the server's checks, its other fields as they are then)
+      const P = await import('../server/projects.js');
+      await P.writeAtomic(ucfFile, text, dir);
+      const name = path.basename(path.resolve(dir));
+      if (path.resolve(dir) === path.join(path.resolve(P.workspaceDir()), name)) {
+        await P.updateProject(name, cur => ({ ...cur, board: pj.board, device: pj.device, constraints: pj.constraints }));
+      } else {
+        const { topNameError } = await import('../server/ident.js');
+        const bad = topNameError(pj);
+        if (bad) { console.error(bad); process.exit(1); }
+        await P.writeAtomic(path.join(dir, 'silinx.json'), JSON.stringify(pj, null, 2) + '\n');
+      }
       console.log(`${pj.constraints}: ${matched.join(', ')} assigned for ${board.name}${unmatched.length ? `; NOT assigned: ${unmatched.join(', ')}` : ''}`);
       break;
     }
