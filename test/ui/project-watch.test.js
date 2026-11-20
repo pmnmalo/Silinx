@@ -128,7 +128,8 @@ uiTest('#3972 the same project in two tabs: a save in one is told to the other, 
       await p.eval(() => window.SilinxApp.openFile('src/a.vhd'));
       await p.waitFor(() => !!window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor, [], { what: 'the editor' });
     }
-    const told = (p) => p.eval(() => window.__console().match(/in another tab/g)?.length || 0);
+    // (the headlines only: each change told once, its reload's line after it)
+    const headlines = (p) => p.eval(() => window.__console().match(/^Changed in another tab:/gm)?.length || 0);
     // A saves: B's editor, with no changes of its own, shows it, clean
     await page.eval((t) => { window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.setValue(t); }, `${A()}-- tab A\n`);
     await page.waitFor(() => !window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty, [], { what: 'A saved' });
@@ -155,6 +156,7 @@ uiTest('#3972 the same project in two tabs: a save in one is told to the other, 
     await page.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor?.getValue() === t, [`${A()}-- tab B\n`], { what: 'A\'s editor reloaded' });
     assert.equal(await readWs(env, 'TwoTabs', 'src/a.vhd'), `${A()}-- tab B\n`);
     // both tabs save the file at once: whichever is written last, the other tab is told, and both show the disk's text
+    const before = [await headlines(page), await headlines(other)];
     await Promise.all([page, other].map((p, k) => p.eval((t) => {
       const d = window.SilinxApp.S.docs.find((o) => o.path === 'src/a.vhd');
       d.editor.setValue(t);
@@ -165,12 +167,65 @@ uiTest('#3972 the same project in two tabs: a save in one is told to the other, 
     const disk = await readWs(env, 'TwoTabs', 'src/a.vhd');
     assert.match(disk, /-- at once [01]\n$/);
     for (const p of [page, other]) await p.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.getValue() === t, [disk], { what: 'each editor the disk\'s text' });
+    // each told of the other's write once (the one written last already shows the disk's text, told later, #4859)
+    for (const [k, p] of [page, other].entries()) await p.waitFor((n) => (window.__console().match(/^Changed in another tab:/gm)?.length || 0) > n, [before[k]], { what: 'told of the other tab\'s write' });
+    assert.equal(await other.eval(() => !!document.querySelector('.dlg-overlay')), false, 'no File Changed on Disk');
     // settled: neither tab told again (the reloads are not saves), nor of its own saves
-    const [a0, b0] = [await told(page), await told(other)];
+    const [a0, b0] = [await headlines(page), await headlines(other)];
     await new Promise((r) => setTimeout(r, 2000));
-    assert.deepEqual([await told(page), await told(other)], [a0, b0]);
+    assert.deepEqual([await headlines(page), await headlines(other)], [a0, b0]);
     assert.deepEqual(await page.eval(() => window.__console().match(/(?:reloaded|Changed)[^\n]*outside Silinx/g)), null);
     assert.equal(await editorText(other, 'src/a.vhd'), disk);
+    assert.deepEqual([warnings(page), warnings(other)], [[], []]);
+  } finally { await other.close?.(); }
+});
+
+// #4859: two tabs saving at once, the server tells the second writer the first one's write while its own save is on its
+// way. That tab waits for its save, reads the disk again and finds its own text: no File Changed on Disk, nothing
+// reloaded; the other tab is told of its write and shows it. (The second tab's write held back in the page here, so the
+// other's notice always comes first.)
+uiTest('#4859 two tabs: a save on its way when the other tab\'s write is told: waited for, no File Changed on Disk asked', E, async (page) => {
+  await makeProject(env, { name: 'TwoSaving', top: 'a', files: { 'src/a.vhd': A() } });
+  const other = await env.newPage(undefined, { sibling: page });
+  try {
+    for (const p of [page, other]) {
+      await p.openProject('TwoSaving');
+      await p.eval(() => window.SilinxApp.openFile('src/a.vhd'));
+      await p.waitFor(() => !!window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')?.editor, [], { what: 'the editor' });
+    }
+    // B's write sent once A's is told to it
+    await other.eval(async () => {
+      const { api } = await import('/js/api.js');
+      const write = api.writeFile;
+      window.__toldA = new Promise((r) => { window.__toldAResolve = r; });
+      api.writeFile = async (...a) => { await window.__toldA; api.writeFile = write; return write(...a); };
+    });
+    const B = `${A()}-- B, saved last\n`, Atext = `${A()}-- A, saved first\n`;
+    const saving = other.eval((t) => {
+      const d = window.SilinxApp.S.docs.find((o) => o.path === 'src/a.vhd');
+      d.editor.setValue(t);
+      clearTimeout(d._autosave);
+      window.SilinxApp.saveAll();
+    }, B);
+    await saving;
+    await other.waitFor(() => !!window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')._saving, [], { what: 'B\'s save on its way' });
+    await page.eval((t) => {
+      const d = window.SilinxApp.S.docs.find((o) => o.path === 'src/a.vhd');
+      d.editor.setValue(t);
+      clearTimeout(d._autosave);
+      return window.SilinxApp.saveAll();
+    }, Atext);
+    await other.waitConsole(/^Changed in another tab: src\/a\.vhd\.$/m);
+    await other.eval(() => window.__toldAResolve());
+    await other.waitFor(() => !window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd')._saving, [], { what: 'B saved' });
+    await page.waitFor((t) => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').editor.getValue() === t, [B], { what: 'A\'s editor reloaded' });
+    assert.equal(await readWs(env, 'TwoSaving', 'src/a.vhd'), B);
+    assert.equal(await other.eval(() => !!document.querySelector('.dlg-overlay')), false, 'no File Changed on Disk');
+    assert.equal(await editorText(other, 'src/a.vhd'), B);
+    assert.equal(await other.eval(() => window.SilinxApp.S.docs.find((d) => d.path === 'src/a.vhd').dirty), false);
+    const lines = (p) => p.eval(() => window.__console().split('\n').filter((l) => /another tab|kept|reloaded/.test(l)));
+    assert.deepEqual(await lines(other), ['Changed in another tab: src/a.vhd.']);
+    assert.deepEqual(await lines(page), ['Changed in another tab: src/a.vhd.', 'src/a.vhd reloaded: changed in another tab.']);
     assert.deepEqual([warnings(page), warnings(other)], [[], []]);
   } finally { await other.close?.(); }
 });
