@@ -497,7 +497,7 @@ async function undoClashes(repo, before, clashes, kept, changed) {
   const was = new Set((await ok('ls-tree', ['ls-tree', '-r', '-z', '--name-only', before], { cwd: repo.top })).split('\0'));
   const back = [...new Set(clashes.map(([, q]) => q))].filter(q => was.has(q));
   if (back.length) await ok('checkout', ['checkout', before, '--', ...back], { cwd: repo.top });
-  for (const q of back) if (changed[q]) await fsp.writeFile(path.join(repo.top, ...q.split('/')), changed[q]);
+  for (const q of back) if (changed[q]) await P.writeAtomic(path.join(repo.top, ...q.split('/')), changed[q]);   // (whole or not at all, #4758)
 }
 // files of the repository out of the folder, and out of the commits (skip-worktree), the folders they leave empty too;
 // a file another tracked path names but for its case (the same file on a case-insensitive file system) left in the

@@ -316,6 +316,7 @@ export async function startServer({ port = 8642, host = '127.0.0.1', tls = null,
   // computer reaches 127.0.0.1 as well
   const token = crypto.randomBytes(18).toString('base64url');
   const app = await createApp({ host, token });
+  P.emptyTrash().catch(() => {});   // (the .trash's old entries, at every start too, #4758)
   const scheme = tls ? 'https' : 'http';
   const https = tls && await import('node:https');
   return new Promise((resolve, reject) => {
