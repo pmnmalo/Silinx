@@ -76,3 +76,50 @@ test('the status: available, here because the package is installed', () => {
   assert.equal(st.available, true);
   assert.equal(st.reason, 'ice40up5ksg48: nextpnr-ice40 and icepack');
 });
+
+// #4740: the folder kept is checked against package-lock.json's SHA-512 before its code runs (a folder of another version,
+// copied from one downloaded, is one this process has not checked yet)
+async function keptCopy() {
+  const first = setup();
+  await loadIce40({ pkg: first.pkg, fetchFn: first.fetchFn, installed: NOT_INSTALLED });
+  const next = setup(), dir = ice40CacheDir(next.pkg.version);
+  fs.cpSync(ice40CacheDir(first.pkg.version), dir, { recursive: true });
+  // (the first package's tarball, under this version's address)
+  const fetchFn = async url => { next.calls.push(url); return new Response(first.bytes); };
+  return { pkg: { ...next.pkg, integrity: first.pkg.integrity }, calls: next.calls, fetchFn, dir };
+}
+
+test('#4740 a kept module changed on disk is not run: written again from the kept tarball, said in the log, no download', async () => {
+  const { pkg, calls, fetchFn, dir } = await keptCopy(), log = [];
+  fs.writeFileSync(path.join(dir, 'gen/bundle.js'), 'export const runNextpnrIce40 = "changed";\n');
+  const m = await loadIce40({ pkg, fetchFn, installed: NOT_INSTALLED, log: l => log.push(l) });
+  assert.equal(m.runNextpnrIce40, 'the fake');
+  assert.deepEqual(calls, []);
+  assert.deepEqual(log, [`Place & Route: nextpnr-ice40's files kept in ${dir} are not those of its package (gen/bundle.js changed): written again from it`]);
+  assert.equal(fs.readFileSync(path.join(dir, 'gen/bundle.js'), 'utf8'), FILES['gen/bundle.js']);
+});
+
+test('#4740 a kept file missing: written again; the folder as downloaded: no message', async () => {
+  const a = await keptCopy(), log = [];
+  fs.rmSync(path.join(a.dir, 'package.json'));
+  await loadIce40({ pkg: a.pkg, fetchFn: a.fetchFn, installed: NOT_INSTALLED, log: l => log.push(l) });
+  assert.match(log[0], /\(package\.json missing\): written again from it$/);
+  assert.ok(fs.existsSync(path.join(a.dir, 'package.json')));
+  const b = await keptCopy(), quiet = [];
+  assert.equal((await loadIce40({ pkg: b.pkg, fetchFn: b.fetchFn, installed: NOT_INSTALLED, log: l => quiet.push(l) })).runNextpnrIce40, 'the fake');
+  assert.deepEqual(quiet, []);
+  assert.deepEqual(b.calls, []);
+});
+
+test('#4740 the kept tarball changed, or none (a folder of an earlier version): downloaded again, checked, then run', async () => {
+  for (const spoil of [dir => fs.writeFileSync(path.join(dir, '.silinx-package.tgz'), 'not it'), dir => fs.rmSync(path.join(dir, '.silinx-package.tgz'))]) {
+    const { pkg, dir, calls, fetchFn } = await keptCopy(), log = [];
+    fs.writeFileSync(path.join(dir, 'gen/bundle.js'), 'export const runNextpnrIce40 = "changed";\n');
+    spoil(dir);
+    const m = await loadIce40({ pkg, fetchFn, installed: NOT_INSTALLED, log: l => log.push(l) });
+    assert.equal(m.runNextpnrIce40, 'the fake');
+    assert.deepEqual(calls, [pkg.url]);
+    assert.match(log[0], /^Place & Route: downloading nextpnr-ice40/);
+    assert.ok(fs.existsSync(path.join(dir, '.silinx-package.tgz')));
+  }
+});
