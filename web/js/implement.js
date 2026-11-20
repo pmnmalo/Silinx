@@ -7,6 +7,7 @@ import { api, followJob } from './api.js';
 import { h, alertDlg, confirmDlg } from './ui.js';
 import { compile, elaborate } from '/core/compile.js';
 import { primitiveSources } from '/core/unisim.js';
+import { severityOf } from '/core/log-severity.js';
 import { countEvent } from './analytics.js';
 import { S, closeDoc, findDoc, moduleInfo, openDoc, openSummary, projectBoard, refreshSummary, setDirty, status } from './app.js';
 import { log, logError, logInfo, logLine, showConsolePage, showProblems, setDiagnostics } from './console.js';
@@ -72,8 +73,8 @@ export function stepTracker(steps) {
       finish(false);
     } else if (/^=== SILINX DONE ===/.test(line)) {
       finish();
-    } else if (/^\s*(CRITICAL )?WARNING\b/i.test(line)) {
-      // any warning line counts (ISE "WARNING:Tool:N - ..." and Silinx "WARNING: ..."); the line
+    } else if (severityOf(line) === 'warning') {
+      // any warning line counts (ISE "WARNING:Tool:N - ...", Silinx "WARNING: ...", Yosys "Warning: ...", #4730); the line
       // itself reaches the Warnings tab through log()
       t.warnings++;
       if (cur) warns++;

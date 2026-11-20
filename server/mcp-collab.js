@@ -44,6 +44,7 @@ import { ownerSecrets } from './owner-secrets.js';
 import { followedSim, simLines } from '../core/collab-sim.js';
 import { followedEmu, emuLines } from '../core/collab-emu.js';
 import { followedTry, tryLines } from '../core/collab-try.js';
+import { severityOf } from '../core/log-severity.js';
 
 const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
@@ -453,7 +454,7 @@ export async function sharedRun(name, { steps, ok, warnings = [], lines = [] }) 
   const secrets = await ownerSecrets();
   let summary = null;
   try { const r = await (await import('./impl-routes.js')).projectReports(name); summary = r?.available === false ? null : redactAll(r, secrets); } catch { /* none */ }
-  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [redact(l, secrets), /^ERROR/.test(l) ? 'err' : /^(CRITICAL )?WARNING/.test(l) ? 'warn' : '']), summary }));
+  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [redact(l, secrets), { error: 'err', warning: 'warn' }[severityOf(l)] || '']), summary }));
 }
 
 // an editor's write (#3182, #3183): a text file's text (core/collab-doc.js editFile), or a drawing's JSON merged

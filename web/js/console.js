@@ -9,6 +9,7 @@ import { S, app } from './app.js';
 import { MESSAGE_LINE } from './tool-descriptors.js';
 import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
+import { severityOf } from '/core/log-severity.js';
 
 const $ = id => document.getElementById(id);
 
@@ -83,8 +84,9 @@ function renderDiagnosticsSoon() {
 }
 export function logLine(line, opts) {
   let cls = '';
-  if (/^(ERROR|FATAL)|\bERROR:/i.test(line) || /=== SILINX FAILED/.test(line)) cls = 'err';
-  else if (/^WARNING|\bWARNING:/i.test(line)) cls = 'warn';
+  const sev = severityOf(line);   // (the process's count's and the MCP's, #4730)
+  if (sev === 'error' || /=== SILINX FAILED/.test(line)) cls = 'err';
+  else if (sev === 'warning') cls = 'warn';
   else if (/=== SILINX (STEP|DONE)/.test(line) || /completed successfully/i.test(line)) cls = 'ok';
   log(line, cls, opts);
 }
