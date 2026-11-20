@@ -18,6 +18,7 @@ import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
 import { DESIGN_KIND, asDesignProject } from '../core/project-kind.js';
+import { NEW_IMPL } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
 import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
@@ -349,7 +350,7 @@ export async function createProject({ name, template = 'empty', device, board, k
   const json = {
     name, version: 1, device: device || DEFAULT_DEVICE, board: board ?? null,
     top: '', simTop: '', files: [], constraints: `constraints/top${constraintsExtOf(device)}`,
-    stimuli: {}, impl: { optMode: 'Area', optLevel: 2, startupClk: 'JtagClk' },
+    stimuli: {}, impl: { ...NEW_IMPL },   // (Optimization Fast, #4828)
     ...(fromOutside ? { trusted: false } : {}),
     ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}),
   };

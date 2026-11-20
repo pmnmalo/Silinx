@@ -1,5 +1,6 @@
 // The Optimization in the Silinx toolchain (#2470): Fast, the usual mapping alone; Area, the smaller of its netlist and Speed's;
-// both one placement, no register replication; Speed, Effort High as before; the projects made before them Fast, new ones Area
+// both one placement, no register replication; Speed, Effort High as before; the projects made before them Fast, new ones
+// Fast too (#4828)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,11 +11,12 @@ import { DEEP_RULE, logicLevels, criticalDelay, pathEnds, sliceCount } from '../
 import { compile, elaborate } from '../core/compile.js';
 import { compareNetlist } from './diff-synth.js';
 import { yosysNode } from '../packages/silinx-fpga/src/node.js';
-import { emptyProjectJson } from '../web/js/project-store.js';
+import { emptyProjectJson, normalizeProjectJson } from '../web/js/project-store.js';
+import { NEW_IMPL } from '../core/project-defaults.js';
 import { flowFrontEnd, synthesisInput } from '../core/synth-front.js';
 import { example, exampleProject, silinxFlow } from './examples-lib.mjs';
 
-test('synthGoal: Fast, Area, Speed of the two ISE properties; every project before them Fast; new projects Area', () => {
+test('synthGoal: Fast, Area, Speed of the two ISE properties; every project before them Fast; new projects Fast (#4828)', () => {
   assert.equal(synthGoal({ optMode: 'Speed', optLevel: 1 }), 'fast');
   assert.equal(synthGoal({}), 'fast');
   assert.equal(synthGoal(undefined), 'fast');
@@ -25,7 +27,15 @@ test('synthGoal: Fast, Area, Speed of the two ISE properties; every project befo
   for (const g of ['fast', 'area', 'speed']) assert.equal(synthGoal(GOAL_IMPL[g]), g, g);
   assert.deepEqual(GOAL_IMPL, { fast: { optMode: 'Speed', optLevel: 1 }, area: { optMode: 'Area', optLevel: 2 }, speed: { optMode: 'Speed', optLevel: 2 } });
   assert.equal(synthEffort(GOAL_IMPL.area), 'high', 'Area\'s mappings for speed as at High');
-  assert.deepEqual(emptyProjectJson('a').impl, { optMode: 'Area', optLevel: 2, startupClk: 'JtagClk' });
+  assert.deepEqual(emptyProjectJson('a').impl, { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' });
+  assert.equal(synthGoal(emptyProjectJson('a').impl), 'fast');
+  assert.equal(synthEffort(emptyProjectJson('a').impl), 'normal', 'the synthesis effort Normal, as before');
+  assert.deepEqual({ ...NEW_IMPL }, { ...GOAL_IMPL.fast, startupClk: 'JtagClk' });
+  assert.ok(Object.isFrozen(NEW_IMPL) && emptyProjectJson('a').impl !== emptyProjectJson('b').impl, 'each project its own copy');
+  // a project read keeps its own; one with none stored (made before the Optimization) reads as Fast
+  assert.deepEqual(normalizeProjectJson({ impl: { optMode: 'Area', optLevel: 2, startupClk: 'CCLK' } }, 'a').json.impl, { optMode: 'Area', optLevel: 2, startupClk: 'CCLK' });
+  assert.equal(synthGoal(normalizeProjectJson({ impl: { optLevel: 2 } }, 'a').json.impl), 'speed');
+  for (const saved of [{}, { impl: {} }, { impl: 'x' }]) assert.equal(synthGoal(normalizeProjectJson(saved, 'a').json.impl), 'fast', JSON.stringify(saved));
 });
 
 // the examples' sizes (Spartan-3E, Normal; LUTs): the usual mapping's, Speed's. Neither is always the smaller. (The
