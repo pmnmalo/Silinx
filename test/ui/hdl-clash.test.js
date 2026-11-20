@@ -147,10 +147,9 @@ uiTest('#230 two drawings of the same module: the second has no HDL file, warned
   await page.closeMenus();
   // the badge says what to do; nothing written
   await page.click('#hier .badge.warn');
-  await page.waitDialog('Generate HDL File');
-  assert.match(await topText(page), /No HDL file: its module ctl is the module of src\/ctl\.pn\.json\. Rename one of them\./);
-  await page.dialogButton('OK');
-  await page.waitNoDialog();
+  // (a warning of the console, no box, #4747)
+  await page.waitConsole(/^WARNING: Generate HDL File: No HDL file: its module ctl is the module of src\/ctl\.pn\.json\. Rename one of them\./m);
+  assert.equal(await page.dialogCount(), 0);
   assert.equal(await readWs(env, 'C_two', 'src/other.tt.json'), TT2);
   assert.equal(await readWs(env, 'C_two', 'src/ctl.vhd'), viewHdl('src/ctl.pn.json', PN).text);
 });

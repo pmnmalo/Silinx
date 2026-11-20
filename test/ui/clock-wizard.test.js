@@ -11,7 +11,7 @@ import { TEXTS, untranslated } from './i18n-check.js';
 import { compile, elaborate } from '../../core/compile.js';
 import { primitiveSources } from '../../core/unisim.js';
 import { clockModule, readWizardSpec } from '../../core/clocking.js';
-import { newSourceWizardOf } from './new-source-helpers.js';
+import { newSourceWizardOf, pickSourceType, waitNewSourcePage } from './new-source-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -189,11 +189,17 @@ uiTest('Clocking Wizard on the Nexys3 (Spartan-6): a PLL_BASE module in Verilog,
 uiTest('Clocking Wizard: another family than the Spartan-3E or the Spartan-6 refused', E, async (page) => {
   await makeProject(env, { name: 'CwS3', device: { family: 'spartan3', part: 'xc3s200', package: 'ft256', speed: '-4' } });
   await page.openProject('CwS3');
-  await openClockWizard(page);
-  // (the wizard's own dialog is the alert)
-  await page.waitFor(() => /makes a DCM for the Spartan-3E/.test(document.querySelector('.dlg-overlay .dlg-body')?.textContent || ''), [], { what: 'the refusal' });
-  await page.dialogButton('OK');
+  // New Source's Wizard >: no Clocking Wizard, its refusal in the console, no dialog (#4747)
+  await page.menu('Project', 'New Source…');
+  await page.waitDialog('New Source');
+  await pickSourceType(page, 'Clock Manager (DCM / PLL)');
+  await page.dialogButton('Next >');
+  await waitNewSourcePage(page, 'File Name and Location');
+  await page.fill('.dlg-overlay .wiz-main input[type=text]', 'clkgen');
+  await page.dialogButton('Wizard >');
   await page.waitNoDialog();
+  await page.waitConsole(/^ERROR: Clocking Wizard: The Clocking Wizard makes a DCM for the Spartan-3E/m);
+  assert.equal(await page.dialogCount(), 0);
 });
 
 uiTest('Portuguese: the Clocking Wizard\'s pages, its messages, the Design pane\'s badge and the process are translated', E, async (page) => {
