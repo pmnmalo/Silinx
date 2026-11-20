@@ -25,12 +25,13 @@ uiTest('#4828 New Project: an empty project\'s Optimization Fast (Speed, Normal)
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'NewFast');
-  // Next > to the last page, then Finish
-  for (let i = 0; i < 6; i++) {
-    const last = await page.eval(() => [...document.querySelectorAll('.dlg-overlay button')].some((b) => b.textContent === 'Finish' && !b.disabled));
-    if (last) break;
-    await page.dialogButton('Next >');
-  }
+  // its three pages, each waited for by its heading: Create New Project, Project Settings, Project Summary
+  const heading = (t) => page.waitFor((x) => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === x, [t], { what: `the page ${t}` });
+  await heading('Create New Project');
+  await page.dialogButton('Next >');
+  await heading('Project Settings');
+  await page.dialogButton('Next >');
+  await heading('Project Summary');
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor((n) => window.Silinx.project?.name === n, ['NewFast'], { what: 'the new project open' });
