@@ -1,16 +1,16 @@
 // The Spartan-6's JTAG user access (#3766, the logic analyzer's link), in Silinx's Map: a BSCAN_SPARTAN6 synthesized with
 // no global buffer on DRCK (synth-brams-s6.js S6_CLOCK_DRIVERS: no switch from the fabric into a BUFGMUX is known), packed
-// onto a site of its own (pack.js, phys.js: kind bscan, its pins the primitive's, its chain), placed by Silinx's placer on
-// its JTAG chain's site, BSCAN_X0Y<chain - 1> (sites.js, place.js: the site decides the chain, as ISE's bitgen shows) and
+// onto a site of its own (pack.js, phys.js: kind bscan, its pins the primitive's, its chain), fixed on its JTAG chain's
+// site for nextpnr, BSCAN_X0Y<chain - 1> (sites.js, fixed-sites.js: the site decides the chain, as ISE's bitgen shows) and
 // written as ISE's XDL writes it (xdl.js: BSCAN, JTAG_CHAIN, JTAG_TEST), on both parts; two on one chain refused; the BEL
 // handed to nextpnr's packer (nextpnr-pack.js packInput).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { placeS6 } from '../packages/silinx-fpga/src/fpga/s6/place.js';
+import { fixedSitesS6 } from '../packages/silinx-fpga/src/fpga/s6/fixed-sites.js';
 import { placedXdlS6 } from '../packages/silinx-fpga/src/fpga/s6/xdl.js';
 import { S6_CLOCK_DRIVERS } from '../packages/silinx-fpga/src/synth-brams-s6.js';
 import { packInput } from '../packages/silinx-fpga/src/fpga/s6/nextpnr-pack.js';
-import { s6Device, s6Verilog, s6Phys, S6_BOARDS, NEXYS3_LD } from './s6-lib.mjs';
+import { s6Device, s6Verilog, s6Phys, s6PlaceNextpnr, S6_BOARDS, NEXYS3_LD } from './s6-lib.mjs';
 
 // BSCANs on the chains given (1 … n by default), each one's DRCK clocking a counter that SHIFT enables, TDO its top bit;
 // the LEDs the first's
@@ -42,7 +42,8 @@ test('#3766 the BSCAN packed onto a site of its own (its pins the primitive\'s),
     // (its pins as the site's: DRCK and SHIFT out, TDO in)
     const pins = phys.nets.flatMap(n => [...(n.driver?.inst === b ? [`${n.driver.pin}>`] : []), ...n.loads.filter(l => l.inst === b).map(l => `>${l.pin}`)]).sort();
     assert.deepEqual(pins, ['>TDO', 'DRCK>', 'SHIFT>'], part);
-    const placement = placeS6(phys, sites, { seed: 1 });
+    const placement = await s6PlaceNextpnr({ nl, packed, phys }, part);
+    assert.equal(fixedSitesS6(phys, sites).fixed.get(phys.insts[b].name), 'BSCAN_X0Y0', part);
     assert.deepEqual([placement.site[b], placement.tile[b].replace(/_X\d+Y\d+$/, '')], ['BSCAN_X0Y0', 'UR_UPPER'], part);
     const xdl = placedXdlS6(nl, packed, phys, placement, { part, name: 'm' });
     const inst = xdl.insts.find(i => i.type === 'BSCAN');
@@ -55,7 +56,7 @@ test('#3766 each BSCAN on its JTAG chain\'s site (chains 4 and 2: BSCAN_X0Y3, X0
   const nl = await s6Verilog(design(2, [4, 2]));
   const { packed, phys } = s6Phys(nl);
   assert.deepEqual(phys.insts.filter(i => i.kind === 'bscan').map(i => i.chain).sort(), [2, 4]);
-  const placement = placeS6(phys, sites, { seed: 1 });
+  const placement = await s6PlaceNextpnr({ nl, packed, phys }, 'xc6slx16csg324-3');
   const xdl = placedXdlS6(nl, packed, phys, placement, { part: 'xc6slx16csg324-3', name: 'm' });
   assert.deepEqual(xdl.insts.filter(i => i.type === 'BSCAN').map(i => [i.site, i.cfg.find(c => c.attr === 'JTAG_CHAIN').value]).sort(), [['BSCAN_X0Y1', '2'], ['BSCAN_X0Y3', '4']]);
   // (nextpnr's packer: each BSCAN_SPARTAN6 with the BEL of its chain's site, nextpnr-spartan6 0.5.1)
@@ -63,7 +64,7 @@ test('#3766 each BSCAN on its JTAG chain\'s site (chains 4 and 2: BSCAN_X0Y3, X0
   const cells = Object.values(packInput(text, phys, device).modules.m.cells).filter(c => c.type === 'BSCAN_SPARTAN6');
   assert.deepEqual(cells.map(c => c.attributes.BEL).sort(), ['X58Y2/S1_BSCAN', 'X58Y3/S1_BSCAN']);
   const same = s6Phys(await s6Verilog(design(2, [3, 3])));
-  assert.throws(() => placeS6(same.phys, sites, { seed: 1 }), /place: two BSCANs on the JTAG chain 3 \(u\d, u\d\)/);
+  assert.throws(() => fixedSitesS6(same.phys, sites), /place: two BSCANs on the JTAG chain 3 \(u\d, u\d\)/);
   const far = s6Phys(await s6Verilog(design(1, [5])));
-  assert.throws(() => placeS6(far.phys, sites, { seed: 1 }), /place: u0: its JTAG_CHAIN 5 is not one of the xc6slx16csg324-3's 1 to 4/);
+  assert.throws(() => fixedSitesS6(far.phys, sites), /place: u0: its JTAG_CHAIN 5 is not one of the xc6slx16csg324-3's 1 to 4/);
 });

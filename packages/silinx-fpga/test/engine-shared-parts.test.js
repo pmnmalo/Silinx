@@ -1,6 +1,6 @@
 // The parts of Silinx's placer and router that other modules use (#2137: moved out of packages/silinx-fpga/src/fpga/place.js
 // and route.js, removed with the Spartan-3E's engine): the device's sites and its I/O banks (device-sites.js), the placers'
-// error, random numbers and crossing correction (place-common.js, the Spartan-6's placer's), a routed design's check
+// error (place-common.js, the Spartan-6's fixed sites'), a routed design's check
 // (route-check.js, the nextpnr flow's and the Spartan-6's). Mounted alone on the test devices.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { parseXdl, parseXdlrc } from '../src/xdl.js';
 import { packDevice, loadDevice } from '../src/fpga/device.js';
 import { deviceSites, bankOfPad, vccoOfStandard } from '../src/fpga/device-sites.js';
-import { PlaceError, rng, crossing } from '../src/fpga/place-common.js';
+import { PlaceError } from '../src/fpga/place-common.js';
 import { checkRouting, netEndpoints } from '../src/fpga/route-check.js';
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fpga');
@@ -37,16 +37,7 @@ test('#2137 the device\'s sites: its slices, bonded pads and clock buffers, as i
   assert.deepEqual(['LVCMOS33', 'lvcmos25', 'SSTL18_I', 'LVCMOS15', 'LVCMOS12', 'NOPE', undefined].map(vccoOfStandard), [3.3, 2.5, 1.8, 1.5, 1.2, null, null]);
 });
 
-test('#2137 the placers\' common parts: the random numbers repeat from a seed, the crossing correction, the error\'s hint', () => {
-  const a = rng(7), b = rng(7), c = rng(8);
-  const xs = Array.from({ length: 5 }, a);
-  assert.deepEqual(Array.from({ length: 5 }, b), xs);
-  assert.notDeepEqual(Array.from({ length: 5 }, c), xs);
-  assert.ok(xs.every(x => x >= 0 && x < 1));
-  assert.deepEqual(Array.from({ length: 2 }, rng(0)), Array.from({ length: 2 }, rng(1)), 'seed 0 is seed 1');
-  // VPR's table up to 50 pins, then its straight line
-  assert.deepEqual([1, 3, 4, 9, 10, 50].map(crossing), [1, 1, 1.0828, 1.3991, 1.4493, 2.7933]);
-  assert.equal(crossing(60), 2.7933 + 0.2616);
+test('#2137 a placement\'s error and its hint (place-common.js; the placers\' random numbers and crossing correction gone, #4776)', () => {
   const e = new PlaceError('too many slices', 'a larger device');
   assert.deepEqual([e instanceof Error, e.message, e.hint], [true, 'too many slices', 'a larger device']);
   assert.equal('hint' in new PlaceError('x'), false);

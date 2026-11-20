@@ -12,9 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { s6Device, s6Phys, s6Verilog, NEXYS3_LD, NEXYS3_SW } from './s6-lib.mjs';
 import { loadBitDbS6 } from '../packages/silinx-fpga/src/fpga/s6/bitdb-node.js';
-import { padPathsS6, padFits } from '../packages/silinx-fpga/src/fpga/s6/pad-paths.js';
-import { placeS6 } from '../packages/silinx-fpga/src/fpga/s6/place.js';
-import { checkPlacementS6 } from '../packages/silinx-fpga/src/fpga/s6/place-check.js';
+import { padPathsS6 } from '../packages/silinx-fpga/src/fpga/s6/pad-paths.js';
 
 const paths = part => { const { device, sites } = s6Device(part); return { sites, paths: padPathsS6(device, loadBitDbS6(part), sites) }; };
 const without = (m, d) => [...m].filter(([, v]) => !v[d]).map(([n]) => n).sort();
@@ -44,33 +42,6 @@ describe('the Spartan-6 pads\' known I/O paths (#3152)', () => {
     // (the Nexys3's switches and LEDs: both ways)
     const { paths: m } = paths('xc6slx16csg324-3');
     assert.ok([...NEXYS3_SW, ...NEXYS3_LD].every(p => m.get(p).in && m.get(p).out));
-  });
-
-  test('padFits: an output needs the O path, an input the I path, a bidirectional port both; no paths: every pad', () => {
-    const m = new Map([['A2', { in: true, out: false }], ['G9', { in: false, out: true }], ['F9', { in: false, out: false }], ['T10', { in: true, out: true }]]);
-    assert.deepEqual(['in', 'out', 'inout'].map(d => ['A2', 'G9', 'F9', 'T10'].map(p => padFits(m, p, d))),
-      [[true, false, false, true], [false, true, false, true], [false, false, false, true]]);
-    assert.equal(padFits(null, 'A2', 'out'), true);
-    assert.equal(padFits(m, 'B1', 'out'), true);   // (a pad the map has not)
-  });
-
-  test('the placer gives the ports without a LOC pads with their path only, on every seed; a LOC is kept', async () => {
-    // (the pads without a path: the former ones, taken away from the paths)
-    const part = 'xc6slx16csg324-3', { sites, paths: all } = paths(part), m = formerPaths(all, part);
-    const d = s6Phys(await s6Verilog('module m(input clk, input [31:0] d, output reg [63:0] q); always @(posedge clk) q <= {q[31:0], d}; endmodule'),
-      'NET "clk" LOC = "V10";\nNET "q<0>" LOC = "A2";');
-    for (let seed = 1; seed <= 8; seed++) {
-      const r = placeS6(d.phys, sites, { seed, effort: 0, timing: 0, padPaths: m });
-      assert.deepEqual(checkPlacementS6(d.phys, sites, r), []);
-      const iobs = d.phys.insts.map((inst, i) => [inst, r.site[i]]).filter(([inst]) => inst.kind === 'iob');
-      assert.equal(iobs.length, 97);
-      for (const [inst, pad] of iobs) if (!inst.loc) assert.ok(padFits(m, pad, inst.dir), `seed ${seed}: ${inst.name} (${inst.dir}) on ${pad}`);
-      assert.equal(r.site[d.phys.insts.findIndex(i => i.port === 'q<0>')], 'A2');
-    }
-    // (without the paths, as before: a seed puts an output on such a pad; with every pad's paths, every placement fits)
-    const r = placeS6(d.phys, sites, { seed: 1, effort: 0, timing: 0 });
-    assert.ok(d.phys.insts.some((inst, i) => inst.kind === 'iob' && !inst.loc && !padFits(m, r.site[i], inst.dir)));
-    assert.ok(d.phys.insts.every((inst, i) => inst.kind !== 'iob' || padFits(all, r.site[i], inst.dir)));
   });
 });
 

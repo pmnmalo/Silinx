@@ -86,7 +86,7 @@ export function siteNetlist(design, { top = design.name, fixed = new Map(), chai
 
 const moduleOf = json => Object.entries(json.modules).find(([, m]) => m.attributes?.top)?.[1] ?? Object.values(json.modules)[0];
 
-/** The sites nextpnr's result gives the instances of a physical design: { site, tile, pos } by phys.insts, as placeS6's. */
+/** The sites nextpnr's result gives the instances of a physical design: { site, tile, pos } by phys.insts. */
 export function placementOf(json, phys, device) {
   const mod = moduleOf(json);
   const at = new Map();

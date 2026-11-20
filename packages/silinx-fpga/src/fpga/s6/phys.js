@@ -29,7 +29,7 @@
 //   chains: [[inst, bottom to top]]   the carry chains (each link a COUT -> CIN)
 //   lutPins: [inst] -> { A: { o6: [site pin of each LUT input I0 …], o5: […] } … }   (slices)
 //   conns:  [{ src, dst (cells), dstPin, srcInst, dstInst, internal (inside a slice) }]   every connection of
-//            the netlist but the clocks', for the timing estimate (place-timing.js)
+//            the netlist but the clocks'
 //   cellInst: [cell] -> inst (-1: a constant, a pull)
 //   warnings: [] }
 import { constraintsFor } from '../../constraints.js';

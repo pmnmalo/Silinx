@@ -5,11 +5,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { lutEquation, placedXdlS6 } from '../packages/silinx-fpga/src/fpga/s6/xdl.js';
-import { placeS6 } from '../packages/silinx-fpga/src/fpga/s6/place.js';
 import { parseXdl, writeXdl, evalLut } from '../packages/silinx-fpga/src/xdl.js';
 import { paramBits } from '../packages/silinx-fpga/src/fpga/netlist.js';
 import { S6_EXAMPLES as EXAMPLES } from './examples-lib.mjs';
-import { S6_BOARDS, s6Device, s6Example, s6Phys, s6Verilog } from './s6-lib.mjs';
+import { S6_BOARDS, s6Device, s6Example, s6Phys, s6PlaceNextpnr, s6Verilog } from './s6-lib.mjs';
 
 test('lutEquation: the sum of the ones or the complement of the zeros, constant inputs folded, any pin order', () => {
   // AND2 of I0, I1 on A1, A2
@@ -37,10 +36,10 @@ const VALUES = {
 
 test('every example as placed XDL on both parts: every LUT\'s equation its INIT, the configurations ISE\'s, the XDL read back, the pins the sites\'', { timeout: 600000 }, async () => {
   for (const { board, part } of S6_BOARDS) {
-    const { device, sites } = s6Device(part);
+    const { device } = s6Device(part);
     for (const name of EXAMPLES) {
       const d = await s6Example(name, board);
-      const r = placeS6(d.phys, sites, { nl: d.nl, seed: 1 });
+      const r = await s6PlaceNextpnr(d, part);
       const x = placedXdlS6(d.nl, d.packed, d.phys, r, { part, device, name });
       const text = writeXdl(x);
       const back = parseXdl(text);
@@ -108,8 +107,7 @@ test('a slice\'s configuration: a carry stage (CY0 O5 for a constant DI, PRECYIN
   always @(negedge clk) n <= d;
 endmodule`);
   const d = s6Phys(nl);
-  const { sites } = s6Device('xc6slx16csg324-3');
-  const r = placeS6(d.phys, sites, { nl, seed: 1 });
+  const r = await s6PlaceNextpnr(d, 'xc6slx16csg324-3');
   const x = placedXdlS6(nl, d.packed, d.phys, r, { part: 'xc6slx16csg324-3' });
   const cfgOf = i => Object.fromEntries(x.insts[i].cfg.map(c => [c.attr, c.value]));
   const carry = d.phys.insts.findIndex(i => i.type === 'SLICEL');
@@ -136,8 +134,7 @@ endmodule`);
 test('an adder\'s carry in: PRECYINIT AX, ACY0 O5, A5LUT a route-through of DI<0> on the S LUT\'s own pin, A6 high, as map writes it (#2638)', async () => {
   const nl = await s6Verilog('module m(input clk, input c, input [3:0] a, input [3:0] b, output reg [3:0] q); always @(posedge clk) q <= a + b + c; endmodule');
   const d = s6Phys(nl);
-  const { sites } = s6Device('xc6slx16csg324-3');
-  const x = placedXdlS6(nl, d.packed, d.phys, placeS6(d.phys, sites, { nl, seed: 1 }), { part: 'xc6slx16csg324-3' });
+  const x = placedXdlS6(nl, d.packed, d.phys, await s6PlaceNextpnr(d, 'xc6slx16csg324-3'), { part: 'xc6slx16csg324-3' });
   const carry = d.phys.insts.findIndex(i => i.type === 'SLICEL');
   const c = Object.fromEntries(x.insts[carry].cfg.map(a => [a.attr, a.value]));
   assert.equal(c.PRECYINIT, 'AX');

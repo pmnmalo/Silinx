@@ -2,8 +2,9 @@
 // the general interconnect, an input pad's I pin reaching it, through PIPs whose bits Silinx knows (bitgen.js
 // knownPipS6) and the I/O logic's route-throughs (route-nets.js FREE_ROUTETHRU). nextpnr's chip database leaves the
 // other PIPs out (nextpnr-export.js unknownPipsS6), so a pad without such a path cannot be routed: on the XC6SLX16 the
-// slave OLOGIC2's D1 -> OQ in the top bank's TIOI_INNER tiles (the master's known), 30 pads' outputs. The placer gives
-// a port without a LOC a pad that has its path (place.js) (browser + Node).
+// slave OLOGIC2's D1 -> OQ in the top bank's TIOI_INNER tiles (the master's known), 30 pads' outputs, until #3349
+// measured them. nextpnr gives a port without a LOC any free pad (#4776: Silinx's placer, which kept such ports off the
+// pads without their path, removed): test/s6-pad-paths.test.js checks that every pad of the parts has both (browser + Node).
 //
 //   padPathsS6(device, db, sites) -> Map pad name -> { in: bool, out: bool }
 import { PIP_ROUTETHRU } from '../device.js';
@@ -67,9 +68,3 @@ export function padPathsS6(device, db, sites) {
   cache.set(device, paths);
   return paths;
 }
-
-/** Does pad `name` take an IOB of direction dir ('in', 'out', 'inout')? (paths: padPathsS6's, or null: every pad.) */
-export const padFits = (paths, name, dir) => {
-  const p = paths?.get(name);
-  return !p || ((dir === 'in' || p.out) && (dir === 'out' || p.in));
-};

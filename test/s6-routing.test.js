@@ -1,21 +1,20 @@
 // The Spartan-6's routing modules nextpnr's Place & Route uses (#730, #2824): route-nets.js (the nets, the general
 // interconnect, the route-throughs, the TIEOFFs), route-output.js (the routed design as XDL: nextpnr's PIPs, the I/O logic's
-// route-throughs, the power nets from TIEOFFs), route-check.js (its rules), on designs the Spartan-6's placer placed and
-// nextpnr routed on the Nexys3's XC6SLX16 (test/s6-lib.mjs s6RouteNextpnr).
+// route-throughs, the power nets from TIEOFFs), route-check.js (its rules), on designs nextpnr placed and routed on the
+// Nexys3's XC6SLX16 (test/s6-lib.mjs s6PlaceNextpnr, #4776, and s6RouteNextpnr).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { placeS6 } from '../packages/silinx-fpga/src/fpga/s6/place.js';
 import { placedXdlS6 } from '../packages/silinx-fpga/src/fpga/s6/xdl.js';
 import { routingResources } from '../packages/silinx-fpga/src/fpga/s6/route-nets.js';
 import { checkRoutingS6 } from '../packages/silinx-fpga/src/fpga/s6/route-check.js';
 import { parseXdl, writeXdl } from '../packages/silinx-fpga/src/xdl.js';
-import { s6Device, s6Phys, s6Netlist, s6Verilog, s6RouteNextpnr, NEXYS3_SW, NEXYS3_LD } from './s6-lib.mjs';
+import { s6Device, s6Phys, s6Netlist, s6Verilog, s6PlaceNextpnr, s6RouteNextpnr, NEXYS3_SW, NEXYS3_LD } from './s6-lib.mjs';
 
 const LX16 = 'xc6slx16csg324-3';
 // placed, routed by nextpnr, the routed design read back from its XDL, checked
 async function routed(d, part = LX16) {
-  const { device, sites } = s6Device(part);
-  const pl = placeS6(d.phys, sites, { nl: d.nl, seed: 1 });
+  const { device } = s6Device(part);
+  const pl = await s6PlaceNextpnr(d, part);
   const x = placedXdlS6(d.nl, d.packed, d.phys, pl, { part, device });
   const out = parseXdl(writeXdl(await s6RouteNextpnr(x, part)));
   return { x, out, check: checkRoutingS6(out, device), device };

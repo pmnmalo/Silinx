@@ -65,7 +65,8 @@ On a Spartan-6, nextpnr's Map is the default since its parity (#3138, #3139, #31
 sites of Silinx's packer and places them, its pads and clocks by its own rules (`fpga/s6/nextpnr-pack.js`); Silinx checks
 the sites are the same, then routes with nextpnr. Process Properties' Map (Spartan-6) can still be Silinx (`impl.s6Map`
 `silinx`, the MCP tool `set_process_properties`'s `s6_map`): nextpnr then places the sites of Silinx's packer, the pads,
-global buffers, block RAMs and DSPs placed by Silinx's rules first; it is removed next (#3140).
+global buffers and the JTAG's BSCANs fixed by Silinx's rules first (the ports without a LOC on bonded pads of their bank's
+VCCO, #4950), the rest, the block RAMs and DSPs too, by nextpnr (Silinx's own Spartan-6 placer removed, #4776).
 
 There is no fallback: where nextpnr cannot start (its chip database not downloaded yet, offline) Place & Route fails,
 saying so. **nextpnr replaced Silinx's placer and router** (decided in #2131; parity in #2135, #2797; removed in #2137, the

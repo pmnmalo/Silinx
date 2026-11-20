@@ -1,6 +1,6 @@
-// The Spartan-6 designs of the placer's and the routing's tests (#729, #730): a design synthesized for the Spartan-6
-// (the open synthesis, Yosys xc6s), packed, its physical design, on the boards' parts; a placed design routed by
-// nextpnr, as the flow's Place & Route routes it (#2824).
+// The Spartan-6 designs of the placement's and the routing's tests (#729, #730): a design synthesized for the Spartan-6
+// (the open synthesis, Yosys xc6s), packed, its physical design, on the boards' parts; placed by nextpnr as the flow's
+// Place & Route places Silinx's Map (#4776), and a placed design routed by nextpnr, as the flow routes it (#2824).
 import { compile, elaborate } from '../core/compile.js';
 import { primitiveSources } from '../core/unisim.js';
 import { synthesizeOpen } from '../core/synth-front.js';
@@ -10,7 +10,9 @@ import { loadDeviceCache } from '../packages/silinx-fpga/src/fpga/device-node.js
 import { packS6 } from '../packages/silinx-fpga/src/fpga/s6/pack.js';
 import { physS6 } from '../packages/silinx-fpga/src/fpga/s6/phys.js';
 import { s6Sites } from '../packages/silinx-fpga/src/fpga/s6/sites.js';
-import { siteNetlist, routedDesignS6 } from '../packages/silinx-fpga/src/fpga/s6/nextpnr.js';
+import { siteNetlist, routedDesignS6, placementOf } from '../packages/silinx-fpga/src/fpga/s6/nextpnr.js';
+import { fixedSitesS6 } from '../packages/silinx-fpga/src/fpga/s6/fixed-sites.js';
+import { placedXdlS6 } from '../packages/silinx-fpga/src/fpga/s6/xdl.js';
 import { nextpnrS6Node } from '../packages/silinx-fpga/src/nextpnr-s6-node.js';
 import { example, exampleUcf } from './examples-lib.mjs';
 
@@ -59,22 +61,40 @@ export async function s6Example(name, board) {
 }
 
 let nextpnr = null;
-/** A design the Spartan-6's placer placed (placedXdlS6's, for its part) routed by nextpnr, as the flow's Place & Route
+// one run of nextpnr on a design (siteNetlist's): its output design (nextpnr's ERROR lines in the error)
+async function runNextpnr(part, input, args, what) {
+  const name = part.replace(/-\d+$/, ''), lines = [];
+  nextpnr ||= nextpnrS6Node();
+  let files;
+  try {
+    files = await nextpnr.run(['--device', name, '--chipdb', 'chipdb.bin', '--json', 'design.json', '--write', 'out.json', ...args, '--timing-allow-fail'],
+      { 'design.json': JSON.stringify(input), 'chipdb.bin': await nextpnr.chipdb(name, () => {}) }, l => lines.push(l));
+  } catch (e) {
+    throw new Error(`nextpnr's ${what} failed: ${e?.message ?? lines.filter(l => /^ERROR:/.test(l)).join(' ')}`);
+  }
+  const out = files['out.json'];
+  return JSON.parse(typeof out === 'string' ? out : new TextDecoder().decode(out));
+}
+
+/** A physical design ({ nl, packed, phys }, s6Phys's) placed by nextpnr on a part, as the flow's Place & Route places
+ *  Silinx's Map (open-flow-nextpnr-s6.js: its run with --no-route; the pads with a LOC, the global buffers and the BSCANs
+ *  on fixedSitesS6's sites; the carry chains): the placement, { site, tile, pos } by instance (placementOf's). */
+export async function s6PlaceNextpnr(d, part, { seed = 1 } = {}) {
+  const { device, sites } = s6Device(part), { nl, packed, phys } = d;
+  const { fixed } = fixedSitesS6(phys, sites);
+  const generalOk = new Set(phys.insts.filter(i => fixed.has(i.name) && sites.pads.has(fixed.get(i.name)) && !sites.pads.get(fixed.get(i.name)).bufg.length).map(i => i.name));
+  const chains = phys.chains.filter(c => c.length > 1).map(c => c.map(i => phys.insts[i].name));
+  const unplaced = placedXdlS6(nl, packed, phys, { site: [], tile: [], pos: [] }, { part, name: 'top' });
+  const json = await runNextpnr(part, siteNetlist(unplaced, { top: 'top', fixed, chains, generalOk, device }), ['--no-route', '--seed', String(seed)], 'placement');
+  return placementOf(json, phys, device);
+}
+
+/** A placed design (placedXdlS6's of s6PlaceNextpnr's placement, for its part) routed by nextpnr, as the flow's Place & Route
  *  routes the placement it keeps (open-flow-nextpnr-s6.js: its run with --no-place; a pad off a global buffer's
  *  dedicated path GENERAL_OK): the routed design (routedDesignS6's, for writeXdl). nextpnr's ERROR lines in the error. */
 export async function s6RouteNextpnr(placed, part, { seed = 1 } = {}) {
-  const { device, sites } = s6Device(part), name = part.replace(/-\d+$/, '');
-  nextpnr ||= nextpnrS6Node();
+  const { device, sites } = s6Device(part);
   const generalOk = new Set(placed.insts.filter(i => i.placed && sites.pads.has(i.site) && !sites.pads.get(i.site).bufg.length).map(i => i.name));
-  const input = siteNetlist(placed, { top: 'top', generalOk, chains: [], device });
-  const lines = [];
-  let files;
-  try {
-    files = await nextpnr.run(['--device', name, '--chipdb', 'chipdb.bin', '--json', 'design.json', '--write', 'out.json', '--no-place', '--seed', String(seed), '--timing-allow-fail'],
-      { 'design.json': JSON.stringify(input), 'chipdb.bin': await nextpnr.chipdb(name, () => {}) }, l => lines.push(l));
-  } catch (e) {
-    throw new Error(`nextpnr's routing failed: ${e?.message ?? lines.filter(l => /^ERROR:/.test(l)).join(' ')}`);
-  }
-  const out = files['out.json'];
-  return routedDesignS6(JSON.parse(typeof out === 'string' ? out : new TextDecoder().decode(out)), placed, device);
+  const json = await runNextpnr(part, siteNetlist(placed, { top: 'top', generalOk, chains: [], device }), ['--no-place', '--seed', String(seed)], 'routing');
+  return routedDesignS6(json, placed, device);
 }
