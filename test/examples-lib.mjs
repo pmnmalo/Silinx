@@ -52,8 +52,12 @@ export const GATEMATE_TARGETS = [{ board: 'gatemate-evb' }];
 // the 7-series' boards (#3142): an experimental family, its constraints XDC; every example built by the Silinx toolchain
 // (test/open-flow-xc7-server.test.js, #3147) and by Vivado (#1649); not in TARGETS (ISE's)
 export const XC7_TARGETS = [{ board: 'basys3' }, { board: 'nexys-a7' }];
+// the Zynq-7000's boards (#4681): the Zybo Z7-20's and Z7-10's programmable logic (no processing system set up) through the
+// Silinx toolchain's 7-series back end (#4680); the examples' display, LEDs and switches the board lacks on its Pmods
+// (#3709); Vivado's builds too (VIVADO_TARGETS)
+export const ZYNQ_TARGETS = [{ board: 'zybo-z7', variant: '20' }, { board: 'zybo-z7', variant: '10' }];
 // the boards of Vivado ML Standard's other 7-series (#3895): the Arty S7 (a Spartan-7), the Zybo Z7 (a Zynq-7000's PL); Vivado's
-// only (no Silinx toolchain of theirs); the examples' display, LEDs and switches the boards lack on their Pmods (#3709)
+// (the Arty S7's alone; the Zybo Z7's the Silinx toolchain's too: ZYNQ_TARGETS); the examples' display, LEDs and switches the boards lack on their Pmods (#3709)
 export const VIVADO_TARGETS = [{ board: 'arty-s7' }, { board: 'zybo-z7' }];
 /** The board an example runs on for a target: vga on the iCEBreaker with its PmodVGA, on the ULX3S with its VGA. */
 const VGA_BOARDS = { icebreaker: 'icebreaker-vga', ulx3s: 'ulx3s-vga', tangnano9k: 'tangnano9k-vga', 'gatemate-evb': 'gatemate-evb-vga' };
