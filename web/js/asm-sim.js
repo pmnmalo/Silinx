@@ -36,7 +36,7 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
     btn('⟲ Reset', 'Back to the initial state', () => { reset(); update(); }, 'asm-small asm-sim-reset'),
     btn('Clock ↑', 'Apply one rising clock edge: the machine follows the path shown in color', () => step(), 'asm-small asm-primary asm-sim-step'),
     runBtn, rateSel, backBtn);
-  const state = h('b', { class: 'fsm-sim-state' });
+  const state = h('b', { class: 'fsm-sim-state', 'data-no-i18n': '' });   // (a state's name, never translated, #4964)
   const next = h('span', { class: 'asm-muted asm-sim-next' });
   const outs = h('div', { class: 'fsm-sim-outputs' });
   const regs = h('div', { class: 'fsm-sim-outputs asm-sim-regs' });

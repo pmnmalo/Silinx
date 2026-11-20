@@ -121,7 +121,7 @@ export function mountInspector(ctx) {
     const states = M().nodes.filter((n) => n.type === 'state');
     machineBody.append(field('Initial state', h('select', { class: 'asm-input', onchange: (ev) => { M().initial = ev.target.value; commit('m-init'); renderInspector(); } },
       !states.some((s) => s.id === M().initial) ? h('option', { value: '', selected: true }, '(none)') : null,
-      ...states.map((s) => h('option', { value: s.id, selected: s.id === M().initial }, s.name || s.id)))));
+      ...states.map((s) => h('option', { value: s.id, selected: s.id === M().initial, 'data-no-i18n': '' }, s.name || s.id)))));   // (a state's name never translated, #4964)
 
     // ports, generics and registers tables
     const usedNames = () => new Set([...M().inputs, ...M().outputs, ...(M().generics || []), ...(M().registers || [])].map((x) => x.name));
