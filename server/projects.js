@@ -24,6 +24,8 @@ import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
 import { registerWritten } from '../core/project-entries.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
+import { UNRECORDED } from '../core/trust.js';
+import * as trustStore from './trust-store.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -164,6 +166,25 @@ const etags = new WeakMap();   // a description read or written -> its revision
 /** The revision of a description readProject read or writeProject wrote (undefined for any other object). */
 export const etagOf = pj => etags.get(pj);
 
+// The trust records (#4735, server/trust-store.js): the first time, the workspace's projects trusted until then (their
+// silinx.json and their repository's mark) recorded, once
+let migrating = null;
+async function migrateTrust() {
+  const list = [];
+  for (const n of await fs.readdir(workspaceDir()).catch(() => [])) {
+    const dir = path.join(workspaceDir(), n);
+    if (n.startsWith('.') || projectNameError(n)) continue;
+    let pj;
+    try { pj = JSON.parse(await fs.readFile(path.join(dir, PROJECT_FILE), 'utf8')); } catch { continue; }
+    if (pj?.trusted !== false && !cloneTrust(dir)) list.push({ dir, id: typeof pj?.id === 'string' ? pj.id : null });
+  }
+  await trustStore.migrate(list);
+}
+async function recordedTrust(dir, id) {
+  if (!trustStore.hasRecords()) { migrating ||= migrateTrust().finally(() => { migrating = null; }); await migrating; }
+  return trustStore.isRecorded(dir, typeof id === 'string' ? id : null);
+}
+
 export async function readProject(name) {
   const dir = projectDir(name);
   let pj, text;
@@ -172,6 +193,8 @@ export async function readProject(name) {
   etags.set(pj, descriptionEtag(text));
   const ct = cloneTrust(dir);
   if (ct) Object.assign(pj, { trusted: false }, ct.madeBy ? { madeBy: ct.madeBy } : {});
+  // (#4735: and a record of its folder outside it, server/trust-store.js; none: untrusted, said as one Silinx did not make)
+  if (pj.trusted !== false && !await recordedTrust(dir, pj.id)) Object.assign(pj, { trusted: false, madeBy: UNRECORDED });
   pj.name = name;
   pj.files ||= [];
   return pj;
@@ -226,6 +249,9 @@ async function writeProjectUnlocked(name, pj) {
   delete clean.fileTree;
   const ct = cloneTrust(dir);
   if (ct) { delete clean.trusted; delete clean.madeBy; }   // (a clone's: in .git, #3195)
+  // (#4735: a project with no trust record: untrusted by the record's absence, nothing of it written)
+  const unrecorded = clean.madeBy === UNRECORDED;
+  if (unrecorded) { delete clean.trusted; delete clean.madeBy; }
   const file = path.join(dir, PROJECT_FILE);
   const tmp = path.join(dir, `.${PROJECT_FILE}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
   const text = JSON.stringify(clean, null, 2) + '\n';
@@ -237,7 +263,8 @@ async function writeProjectUnlocked(name, pj) {
     await fs.rm(tmp, { force: true }).catch(() => {});
     throw e;
   }
-  const out = ct ? { ...clean, trusted: false, ...(ct.madeBy ? { madeBy: ct.madeBy } : {}) } : clean;
+  const out = ct ? { ...clean, trusted: false, ...(ct.madeBy ? { madeBy: ct.madeBy } : {}) }
+    : unrecorded ? { ...clean, trusted: false, madeBy: UNRECORDED } : clean;
   etags.set(out, descriptionEtag(text));
   return out;
 }
@@ -267,6 +294,7 @@ export function writeProject(name, pj, { ifMatch = null } = {}) {
 export async function trustProject(name) {
   const out = await updateProject(name, pj => { const { trusted, madeBy, ...rest } = pj; return rest; });   // eslint-disable-line no-unused-vars
   for (const f of trustMarks(projectDir(name))) await fs.rm(f, { force: true });
+  await trustStore.record(projectDir(name), out.id);   // (#4735: its record, outside it)
   return out;
 }
 
@@ -309,7 +337,7 @@ async function copyDir(src, dst, { skipRoot = null } = {}) {
 }
 
 // fromOutside: an import's project, trusted: false from its first write, so an import that fails halfway leaves no
-// trusted project (#2956, core/trust.js)
+// trusted project (#2956, core/trust.js); the user's own (neither an import's nor the MCP's) recorded as trusted (#4735)
 // madeBy 'mcp': a project the MCP server makes, untrusted too, its messages saying so (#2981)
 // kind 'design': a design and simulation project (#3780, core/project-kind.js): an empty one, no board, no constraints
 export async function createProject({ name, template = 'empty', device, board, kind = null, fromOutside = false, madeBy = null }) {
@@ -342,6 +370,7 @@ export async function createProject({ name, template = 'empty', device, board, k
     }
     if (fromOutside) pj.trusted = false;
     if (madeBy === 'mcp') Object.assign(pj, { trusted: false, madeBy });
+    await recordMade(dir, { fromOutside, madeBy });
     const out = await writeProject(name, pj);
     // another board or device than the example's: its pins are the chosen board's (#36)
     if (pj.board && `${pj.board}|${pj.device?.part}|${pj.device?.package}` !== was) await boardConstraints(dir, pj);
@@ -357,7 +386,16 @@ export async function createProject({ name, template = 'empty', device, board, k
     ...(fromOutside ? { trusted: false } : {}),
     ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}),
   };
+  await recordMade(dir, { fromOutside, madeBy });
   return writeProject(name, kind ? asDesignProject({ ...json, device: DEFAULT_DEVICE }) : json);
+}
+
+// (#4735: a project the user makes, recorded as trusted before its silinx.json is written; an import's and the MCP
+// server's never)
+async function recordMade(dir, { fromOutside, madeBy }) {
+  if (fromOutside || madeBy === 'mcp') return;
+  if (!trustStore.hasRecords()) await recordedTrust(dir, null);   // (the migration first: this project is not yet one)
+  await trustStore.record(dir, null);
 }
 
 /** Writes the board's values (its clock, CLK_HZ; its buttons' and switches' levels, BTN_LOW, SW_LOW; its digit enables'
@@ -415,8 +453,10 @@ export async function deleteProject(name) {
   if (!await exists(dir) || !await exists(await projectFile(dir))) throw new HttpError(404, 'not found');
   const trash = path.join(workspaceDir(), '.trash');
   await fs.mkdir(trash, { recursive: true });
+  const key = trustStore.folderKey(dir);
   await renameOver(dir, path.join(trash, `${path.basename(dir)}-${Date.now()}`));
   await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
+  await trustStore.forget(key);   // (#4735: its trust record: restored from the .trash, it is untrusted)
 }
 
 /** A failure made in the middle of a rename, by the tests (#4641): 'moved', after the folder moved. */
@@ -432,6 +472,7 @@ export async function renameProject(from, to) {
   const problem = renameProblem(from, to, await fs.readdir(workspaceDir()).catch(() => []));
   if (problem) throw new HttpError(problem.status, problem.message);
   const dst = projectDir(to), caseOnly = from.toLowerCase() === to.toLowerCase();
+  const key = trustStore.folderKey(dir);   // (#4735: its trust record, moved last)
   const run = async () => {
     if (!caseOnly && await exists(dst)) throw new HttpError(409, `a project named '${to}' already exists: choose another name`);
     const undo = [];
@@ -452,6 +493,7 @@ export async function renameProject(from, to) {
       const file = path.join(dst, PROJECT_FILE), text = await fs.readFile(file, 'utf8');
       await writeAtomic(file, JSON.stringify({ ...JSON.parse(text), name: to }, null, 2) + '\n');
       undo.unshift(() => writeAtomic(file, text));
+      await trustStore.move(key, dst);
     } catch (e) {
       for (const u of undo) await u().catch(() => {});
       throw e;
