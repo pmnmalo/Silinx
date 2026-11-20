@@ -180,7 +180,7 @@ uiTest('Handwritten expressions: a truth table from the New Source wizard, the e
   const shape = () => page.eval((t) => [document.querySelector(`${t} .tt-inputs`).value, document.querySelector(`${t} .tt-outputs`).value], T);
   assert.deepEqual(await shape(), ['A, C', 'F']);
   assert.equal(await cells(page, 'F'), '0111');
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-err`).textContent, T), '');
+  assert.equal(await page.eval(() => document.querySelectorAll('#console-log .ln.err').length), 0);   // (no error: in the console, #4747)
   // two equations, a line each, with names the table does not have: the editor's inputs, outputs and expressions
   await page.click(`${T} .tb-more-btn`);
   await page.click(`${T} .tt-ink`);
