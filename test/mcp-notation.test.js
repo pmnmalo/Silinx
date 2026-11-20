@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
 import { newTable, normalizeTable } from '../core/logic.js';
+import { unlabelled } from './mcp-label.js';
 
 let tmp;
 before(async () => { tmp = await scratchEnv('silinx-mcp-notation-'); });
@@ -19,7 +20,7 @@ const { handle } = await import('../server/mcp.js');
 let id = 0;
 async function call(name, args = {}) {
   const r = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
-  return { text: r.content[0].text, data: r.structuredContent, isError: r.isError };
+  return { text: r.content[0].text, data: unlabelled(r.structuredContent), isError: r.isError };
 }
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
 const B = '̅';

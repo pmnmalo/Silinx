@@ -82,10 +82,11 @@ export const LAB_TOOLS = [
         const rows = labs.map(l => { const p = labProgress(all, l.lab); return { id: l.id, title: localize(l.lab.title, lang), source: l.source, example: l.example, steps: l.lab.steps.length, done: l.lab.steps.filter(s => p.done[s.id]).length, step: p.step }; });
         const lines = [...rows.map(r => `${r.id}: "${r.title}" (${r.source === 'silinx' ? `Silinx's, for the ${r.example} example` : r.source}), ${r.done} of ${r.steps} step(s) done`), ...problems.map(m => `WARNING: ${m}`)];
         const own = rows.some(r => r.source !== 'silinx') || problems.length;
-        return { text: lines.join('\n') || `The project '${name}' has no lab.`, data: { project: name, labs: rows, problems }, untrusted: own ? 'the project\'s own labs: their titles, and the problems of its lab files' : undefined };
+        return { text: lines.join('\n') || `The project '${name}' has no lab.`, data: { project: name, labs: rows, problems }, untrusted: own ? 'the project\'s own labs: their titles, and the problems of its lab files' : false };   // (Silinx's labs only: its own text, #4738)
       }
       const found = await findLab(name, id), lab = found.lab;
-      const untrusted = found.source === 'silinx' ? undefined : OWN;
+      // (a lab of Silinx's: its own text, #4738; but a check's results, which quote the project's files)
+      const untrusted = found.source === 'silinx' ? false : OWN;
       if (action === 'restart') {
         delete all[lab.id];
         await P.writeFile(name, PROGRESS_FILE, progressText(all));
@@ -108,7 +109,7 @@ export const LAB_TOOLS = [
       const lines = checkLines(lab, step, result, lang);
       if (!result.ok && step.hint) lines.push(`Hint: ${localize(step.hint, lang)}`);
       if (result.ok) lines.push(next ? `Next: step ${next}, ${localize(lab.steps[next - 1].title, lang)}.` : 'Every step of the lab is done.');
-      return { text: lines.join('\n'), data: { project: name, lab: lab.id, step: stepJson(lab, step, p, lang), ok: result.ok, results: result.results, next: next || null, labDone: !nextOpen(lab, p) }, untrusted };
+      return { text: lines.join('\n'), data: { project: name, lab: lab.id, step: stepJson(lab, step, p, lang), ok: result.ok, results: result.results, next: next || null, labDone: !nextOpen(lab, p) }, untrusted: untrusted || undefined };
     },
   },
 ];

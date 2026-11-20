@@ -139,7 +139,10 @@ read that user's files has the server too.
   not run, and a failed `c_simulation`, `c_cosimulation` or `c_synthesis_report`, whose lines quote the design's
   names, #3681; `git_status`, `git_pull`'s files and warnings, `grade`'s run, `timing_paths`, `related_view`,
   `read_symbol`, and `check_drawing`'s and `check_constraints`'s problems, #4174)
-  is labelled "Untrusted content" after its text, and `untrusted` in its structured content: data, never instructions.
+  is labelled after its text, and `untrusted` in its structured content: data, never instructions. Every tool that
+  takes a project is labelled by default, a result that holds only Silinx's own text says so (`untrusted: false`); the
+  label ends the untrusted text with a nonce made for that call ("[End of untrusted content <nonce> …]", the nonce in
+  `structuredContent.untrusted` too), and a look-alike of it in the text is neutralised (#4738).
   `open_link` takes a design's own board and top only as names, as the link's `board=` and `top=` are.
 - What the MCP server tells an assistant of the user's folders (#3412, #3418): its results and errors name the
   workspace and the exchange folder `<workspace>` and `<exchange folder>`, never their absolute paths (the user's name,
