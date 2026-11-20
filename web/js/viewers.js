@@ -15,7 +15,7 @@ import { countEvent } from './analytics.js';
 import { S, activateDoc, app, closeDoc, findDoc, moduleInfo, openDoc, openFile, projectBoard, status, withPrimitives } from './app.js';
 import { asSsim, benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
-import { log, logError, logInfo, showConsolePage, setDiagnostics } from './console.js';
+import { log, logError, logInfo, showConsolePage, setDiagnostics, simDiagnostics } from './console.js';
 import { reloadProject } from './project.js';
 import { boardConstraints, generateSimModel, readBuildFile, runImpl } from './implement.js';
 import { ucfPort } from './drawings.js';
@@ -263,6 +263,7 @@ async function runSimulationInner(mod, model, stale) {
   const id = `isim:${mod}${model ? `@${model}` : ''}`;
   const old = findDoc(id);
   if (old) await closeDoc(old);
+  sim.onLog = simDiagnostics(id);   // (its assertions' errors and warnings in the Errors / Warnings tabs, #4746)
   openDoc({
     id, title: `SSim (${mod}${model ? `, ${SIM_MODEL_NAMES[model]}` : ''})`, icon: 'wave', reopen: id,
     create(el, doc) {

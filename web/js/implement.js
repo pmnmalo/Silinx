@@ -129,7 +129,7 @@ export async function checkUcfFile(path = S.project?.constraints, { quiet = fals
   const line = d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}:ConstraintSystem - "${d.file}" Line ${d.line}: ${d.message}`;
   if (quiet && warnings && !ne) {
     // (the console's and the open editors' entries: setDiagnostics keeps them itself, not listed twice, #4728)
-    setDiagnostics([...S.diags.filter(d => d.source !== 'console' && d.source !== 'editor' && d.tool !== 'ConstraintSystem'), ...diags]);
+    setDiagnostics([...S.diags.filter(d => d.source !== 'console' && d.source !== 'sim' && d.source !== 'editor' && d.tool !== 'ConstraintSystem'), ...diags]);
     warnings.push(...diags.map(line));
     return true;
   }

@@ -25,7 +25,8 @@ export function initCheckMessages(showConsole, log) {
   document.addEventListener('silinx-diagnostics', e => {
     const { what, name, diags, focus } = e.detail;
     for (const l of checkLines(what, name, diags)) {
-      log(l.text, l.cls, { diag: !!l.diag });   // (the Errors and Warnings tabs: its errors and warnings, not its result)
+      // (the Errors and Warnings tabs: its errors and warnings, not its result; an entry clicked shows its item, #4746)
+      log(l.text, l.cls, { diag: !!l.diag, ...(l.diag ? { goto: () => show(e.target, () => focus(l.diag)) } : {}) });
       if (!l.diag) continue;
       const ln = document.getElementById('console-log').lastElementChild;
       ln.classList.add('mc-link');
@@ -33,6 +34,12 @@ export function initCheckMessages(showConsole, log) {
       ln.addEventListener('click', () => focus(l.diag));
     }
     showConsole(diags);
+  });
+  // (the drawing brought to the front first: an entry of the Errors tab is clicked with another document in front)
+  const show = (el, then) => import('./app.js').then(({ S, activateDoc }) => {
+    const doc = S.docs.find(d => d.el?.contains(el));
+    if (doc && S.active !== doc) activateDoc(doc);
+    then();
   });
   onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link')) ln.title = t(SHOW); });
 }

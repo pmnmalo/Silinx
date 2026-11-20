@@ -247,7 +247,7 @@ export const HDL_TOOLS = [
       // a long run in bounded memory, no recording's limit); with a VCD, every change (the recording's limit then)
       const shown = new Set(wanted.map(n => byPath.get(n) ?? byPath.get(String(n).toLowerCase())));
       const waveTail = vcd ? null : sig => (shown.has(sig) ? maxChanges : 1);
-      const sim = new Simulator(design, { files: await dataFiles(name, simSrcs), waveTail, onLog: e => { if (log.length < 500) log.push({ timeNs: e.time / 1000, kind: e.kind, text: e.text }); } });
+      const sim = new Simulator(design, { files: await dataFiles(name, simSrcs), waveTail, onLog: e => { if (log.length < 500) log.push({ timeNs: e.time / 1000, kind: e.kind, text: e.text, ...(e.file ? { file: e.file, line: e.line || 0 } : {}) }); } });   // (its file and line: the Errors tab's, #4746)
       if (forces) for (const line of applyForces(sim, design, forces)) head.push(line);
       const { st, limit } = await runBounded(sim, timeNs * 1000, { timeoutS, signal });
       const fmt = (s, v) => (s.t?.w === 1 ? V.toBin(v) : `${V.toBin(v).length <= 16 ? `"${V.toBin(v)}"` : `x"${V.format(v, 'hex')}"`}`);

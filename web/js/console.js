@@ -10,6 +10,7 @@ import { MESSAGE_LINE } from './tool-descriptors.js';
 import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
 import { severityOf } from '/core/log-severity.js';
+import { messageLocation, projectPath } from '/core/message-location.js';
 
 const $ = id => document.getElementById(id);
 
@@ -29,7 +30,9 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // src: the line's source in the console's filters (web/js/messages.js), kept whatever process ran last (the collaboration's,
 // Design, #4632: web/js/collab-log.js; the application's, #4729: appLog, logError…); none: the process's whose header came
 // last, or the application's (none running)
-export function log(text, cls = '', { diag = true, action = null, src = null } = {}) {
+// goto: what its entry of the Errors / Warnings tabs does when clicked (#4746: a drawing's Check, its item shown); none:
+// the file and line its text names, when the project has that file
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
@@ -37,7 +40,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null } =
   for (const line of String(text).split('\n')) {
     startsRun(line);
     el.append(h('div', { class: `ln ${cls}`, ...(src ? { 'data-src': src, 'data-own-src': '' } : {}) }, line));
-    if (diag) consoleMessage(line, cls);
+    if (diag) consoleMessage(line, cls, goto);
     if (RUN_END.test(line)) { consoleRun = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }
@@ -80,7 +83,7 @@ const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.
 let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
-function consoleMessage(line, cls) {
+function consoleMessage(line, cls, goto) {
   if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
   if (lastConsoleDiag && !cls && continuesDiag(lastConsoleDiag, line)) {
     lastConsoleDiag.message += ' ' + line.trim();
@@ -94,11 +97,39 @@ function consoleMessage(line, cls) {
   if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
   else if (/=== SILINX FAILED/.test(line)) return;
   if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console', run: consoleRun };
+  const d = { severity, tool, message, file: null, line: 0, source: 'console', run: consoleRun, ...(goto ? { goto } : located(message)) };
   if (consoleRun === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
   renderDiagnosticsSoon();
+}
+
+// the project's file and line a message names (#4746: ISE's `"…/f.vhd" Line 12`, Vivado's `[…/f.vhd:12]`, a
+// compiler's `f.vhd:12:5:`), its row clicked opening it; written in its text already (inText: not again before it)
+function located(message) {
+  const at = messageLocation(message);
+  const file = at && projectPath(at.file, (S.sources || []).map(s => s.path));
+  return file ? { file, line: at.line, ...(at.col ? { col: at.col } : {}), inText: true } : {};
+}
+
+// A simulation's messages in the Errors / Warnings tabs (#4746): its assertions' and reports' errors and failures
+// (VHDL's `severity error / failure`, Verilog's $error / $fatal), its warnings, each with its file and line; `run` the
+// simulation's (its document's id), run again replacing its own entries. Returns the simulator's onLog: an entry
+// listed once (an assertion in a loop: not a thousand times), at most SIM_ENTRIES of a run.
+const SIM_SEVERITY = { error: 'error', failure: 'error', fatal: 'error', warning: 'warning' }, SIM_ENTRIES = 200;
+export function simDiagnostics(run) {
+  S.diags = S.diags.filter(d => !(d.source === 'sim' && d.run === run));
+  renderDiagnosticsSoon();
+  const seen = new Set();
+  return e => {
+    const severity = SIM_SEVERITY[e?.kind];
+    if (!severity || seen.size >= SIM_ENTRIES) return;
+    const d = { severity, tool: 'SSim', message: String(e.text ?? ''), file: e.file || null, line: e.line || 0, source: 'sim', run };
+    if (seen.has(diagKey(d))) return;
+    seen.add(diagKey(d));
+    S.diags.push(d);
+    renderDiagnosticsSoon();
+  };
 }
 
 let diagTimer = null;
@@ -146,7 +177,7 @@ export function setDiagnostics(diags, { keepConsole = true } = {}) {
   diags = diags.map(shownDiag);   // (a design project's: its drawings', never its HDL's, #3891)
   // a check replaces its own entries; warnings/errors collected from the console (e.g. a running
   // implementation) are kept unless keepConsole is false, and the open editors' problems (editor-problems.js) always
-  S.diags = [...diags, ...S.diags.filter(d => (keepConsole && d.source === 'console') || d.source === 'editor')];
+  S.diags = [...diags, ...S.diags.filter(d => (keepConsole && (d.source === 'console' || d.source === 'sim')) || d.source === 'editor')];
   lastConsoleDiag = null;
   renderDiagnostics();
   // push file-local diagnostics to open editors
@@ -178,8 +209,8 @@ export function renderDiagnostics() {
       const hint = hintRow(d);   // plain-language explanation + fix, expandable under the message
       const row = h('div', { class: 'diag' }, icon(ico),
         h('span', {}, `${sevWord(d)}:${d.tool || 'HDLCompiler'} - `),
-        d.file ? h('span', { class: 'loc' }, d.line ? `"${d.file}" Line ${d.line}` : `"${d.file}"`) : null,
-        h('span', { 'data-no-i18n': true }, d.file ? `: ${d.message}` : d.message), hint?.toggle,
+        d.file && !d.inText ? h('span', { class: 'loc' }, d.line ? `"${d.file}" Line ${d.line}` : `"${d.file}"`) : null,
+        h('span', { 'data-no-i18n': true }, d.file && !d.inText ? `: ${d.message}` : d.message), hint?.toggle,
         ...diagFixes(d).map(f => h('span', { class: 'diag-fix', role: 'button', 'data-no-i18n': true, onclick: e => { e.stopPropagation(); applyDiagFix(d, f); } }, `${t('Fix:')} ${t(f.title)}`)),
         trustButton(d));
       // (an editor's problem: its item selected, editor-problems.js)
