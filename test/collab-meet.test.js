@@ -101,7 +101,7 @@ test('at the meeting point: two followers find the owner, the project arrives, a
   const ended = [];
   const find = async name => {
     const WS = await meetOwner({ meeting: m, room: o.session.room, key: o.session.key, host: o.hk.pub, ms: 3000 });
-    return keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, user: { name }, WebSocket: WS, onEvent: ev => { if (ev.type === 'closed') ended.push(`${name}: ${ev.reason}`); } }));
+    return keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, owner: o.session.ownerKey, user: { name }, WebSocket: WS, onEvent: ev => { if (ev.type === 'closed') ended.push(`${name}: ${ev.reason}`); } }));
   };
   const [rui, eva] = await Promise.all([find('Rui'), find('Eva')]);
   await rui.ready; await eva.ready;
@@ -124,7 +124,7 @@ test('#3835 a follower\'s connection to the owner lost: found again at the meeti
   const o = await owner(m);
   const ev = [];
   const again = () => meetOwner({ meeting: m, room: o.session.room, key: o.session.key, host: o.hk.pub, ms: 3000 });
-  const rui = keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, user: { name: 'Rui' }, WebSocket: await again(), onEvent: e => { if (e.type !== 'peers') ev.push(e.type); }, reconnect: { delays: [10, 20], for: 5000 }, transport: again }));
+  const rui = keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, owner: o.session.ownerKey, user: { name: 'Rui' }, WebSocket: await again(), onEvent: e => { if (e.type !== 'peers') ev.push(e.type); }, reconnect: { delays: [10, 20], for: 5000 }, transport: again }));
   await rui.ready;
   await until(() => o.session.peers().length === 1, 'Rui in');
   const id = rui.doc.clientID;
@@ -160,7 +160,7 @@ test('an impostor with the link, posing as the owner: its proof (forged, or the 
     imp.send(id, '{"type":"joined"}');
   });
   const WS = await meetOwner({ meeting: m, room: o.session.room, key: o.session.key, host: o.hk.pub, ms: 3000 });
-  const rui = keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, user: { name: 'Rui' }, WebSocket: WS }));
+  const rui = keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, owner: o.session.ownerKey, user: { name: 'Rui' }, WebSocket: WS }));
   await rui.ready;
   assert.equal(docProject(rui.doc).owner, 'Ana');
   await sleep(50);

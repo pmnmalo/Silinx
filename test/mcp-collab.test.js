@@ -84,7 +84,7 @@ test('share_project start: a page follows it (the project, its files, the owner\
   assert.equal(decodeSvg((await ok('share_project', { project: 'traffic', action: 'status', qr: true })).data.qr), link);
   assert.equal((await ok('share_project', { project: 'traffic', action: 'status' })).data.qr, undefined);
   const l = parseFollowLink(link);
-  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Rui' } });
+  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, user: { name: 'Rui' } });
   await page.ready;
   const d = docProject(page.doc);
   assert.equal(d.owner, 'Teacher');
@@ -141,8 +141,8 @@ test('#3631 share_project top (Share Module…): the links open on the module; f
   await ok('new_project_from_example', { name: 'blinkyMod', example: 'blinky' });
   const r = await ok('share_project', { project: 'blinkyMod', name: 'Ana', server: base, top: 'speed_ctrl', editors: true });
   const { link, editLink } = r.data;
-  assert.match(link, /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&top=speed_ctrl$/);
-  assert.match(editLink, /#edit=[^&]+&top=speed_ctrl$/);
+  assert.match(link, /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&owner=[A-Za-z0-9_-]{86}&top=speed_ctrl$/);
+  assert.match(editLink, /#edit=[^&]+&owner=[A-Za-z0-9_-]{86}&top=speed_ctrl$/);
   assert.equal(r.data.top, 'speed_ctrl');
   assert.equal(r.text, `Sharing 'blinkyMod' live via the Silinx server's relay as Ana, opening on speed_ctrl. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
   assert.deepEqual(parseFollowLink(link), { ...parseFollowLink(link.replace(/&top=.*$/, '')), top: 'speed_ctrl' });
@@ -238,7 +238,7 @@ test('#4110 an editor\'s quick edits written to the owner\'s disk in their order
   const { data: { editLink } } = await ok('share_project', { project: 'trafficOrder', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
   const timer = await P.readFile('trafficOrder', 'src/timer.vhd');
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   try {
     await ed.ready;
     // (each round two changes of the owner's document: a large block put first, then replaced by a line: the large
@@ -265,7 +265,7 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   await ok('new_project_from_example', { name: 'trafficEd', example: 'traffic' });
   const r = await ok('share_project', { project: 'trafficEd', name: 'Ana', server: base, editors: true });
   const { link, editLink } = r.data;
-  assert.match(editLink, new RegExp(`^${base}/#edit=${parseFollowLink(link).room}\\.[A-Za-z0-9_-]{43}\\.[A-Za-z0-9_-]{129}$`));
+  assert.match(editLink, new RegExp(`^${base}/#edit=${parseFollowLink(link).room}\\.[A-Za-z0-9_-]{43}\\.[A-Za-z0-9_-]{129}&owner=${parseFollowLink(link).owner}$`));
   assert.equal(r.text, `Sharing 'trafficEd' live via the Silinx server's relay as Ana. Anyone with this link follows it (until share_project stop):\n${link}\nAnyone with this one edits its text files and drawings too:\n${editLink}`);
   // (#3996: the viewers' and the editors' links differ, the viewers' with no signing key, nothing of the editors' in it;
   // both QR codes, as Share Project… shows them)
@@ -275,7 +275,7 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   const q = await ok('share_project', { project: 'trafficEd', server: base, qr: true });
   assert.deepEqual([decodeSvg(q.data.qr), decodeSvg(q.data.editQr)], [link, editLink]);
   const l = parseFollowLink(link);
-  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Eva' } });
+  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, user: { name: 'Eva' } });
   await page.ready;
   // the MCP client as an editor: a text file written, merged, on the disk, at the follower's
   const f = await ok('follow_project', { link: editLink, name: 'Bot' });
@@ -296,7 +296,7 @@ test('#3182 editors: share_project gives an editor\'s link; follow_project write
   fs.writeFileSync(path.join(P.projectDir('trafficEd'), 'notes.txt'), big);
   const lamps = await P.readFile('trafficEd', 'src/traffic.vhd');
   await ok('follow_project', { link: editLink, write: { path: 'src/traffic.vhd', text: `-- mine\n${lamps}` } });
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: parseFollowLink(editLink).sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: parseFollowLink(editLink).sign, user: { name: 'Rui' } });
   await ed.ready;
   ed.doc.transact(() => ed.doc.getMap('files').set('notes.txt', new Y.Text('mine\n')));
   await until(() => docFile(page.doc, 'src/traffic.vhd') === lamps && docFile(ed.doc, 'notes.txt') === null && docFile(page.doc, 'notes.txt') === null, 'both undone', 8000);
@@ -313,7 +313,7 @@ test('#4418 an editor adds, removes, renames and deletes sources and sets the pr
   await P.createProject({ name: 'srcEd', template: 'traffic' });
   const { data: { link, editLink } } = await ok('share_project', { project: 'srcEd', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(link);
-  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Eva' } });
+  const page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, user: { name: 'Eva' } });
   await page.ready;
   const listed = async p => (await P.readProject('srcEd')).files.find(f => f.path === p) || null;
   const onDisk = p => fs.existsSync(path.join(P.projectDir('srcEd'), p));
@@ -382,7 +382,7 @@ test('#3355 an editor\'s change of a trusted project: through the import gate, t
   const nul = 'binary content (a NUL byte) in a text file';
   // (#4330: at the MCP client's, its own change until the owner's undo reaches it: read back with it, not shown)
   await fails('follow_project', { link: editLink, name: 'Bot', write: { path: 'src/timer.vhd', text: `-- \0\n${timer}` }, path: 'src/timer.vhd' }, `src/timer.vhd: not shown: ${nul}`);
-  const page = await followRoom({ url: relayUrl(parseFollowLink(link).base, 'follow'), room: parseFollowLink(link).room, key: parseFollowLink(link).key, user: { name: 'Eva' } });
+  const page = await followRoom({ url: relayUrl(parseFollowLink(link).base, 'follow'), room: parseFollowLink(link).room, key: parseFollowLink(link).key, owner: parseFollowLink(link).owner ?? null, user: { name: 'Eva' } });
   await page.ready;
   await until(async () => (await ok('share_project', { project: 'trustedEd', action: 'status' })).data.warnings.length, 'the refusal said');
   await until(() => docFile(page.doc, 'src/timer.vhd') === timer, 'the refused change undone');
@@ -418,7 +418,7 @@ test('#3183 a state diagram edited live: an editor\'s page and the MCP client ch
   const FSM = 'src/traffic.fsm.json';
   const { data: { link, editLink } } = await ok('share_project', { project: 'trafficFsm', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   await ed.ready;
   const disk0 = JSON.parse(await P.readFile('trafficFsm', FSM));
   assert.deepEqual(drawingModel(ed.doc, FSM).model, normalizeFsm(disk0));
@@ -471,7 +471,7 @@ test('#3183 a truth table edited live: a page and the MCP client change two cell
   const TT = 'src/lamps.bool.json';
   const { data: { editLink } } = await ok('share_project', { project: 'trafficTt', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   await ed.ready;
   const disk0 = normalizeTable(JSON.parse(await P.readFile('trafficTt', TT)));
   assert.deepEqual(drawingModel(ed.doc, TT).model, disk0);
@@ -531,7 +531,7 @@ test('#3183 an ASM chart edited live: a page renames a state while the MCP clien
   const F = 'src/speed_ctrl.asm.json';
   const { data: { editLink } } = await ok('share_project', { project: 'blinkyAsm', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   await ed.ready;
   const disk0 = normalizeAsm(JSON.parse(await P.readFile('blinkyAsm', F)));
   assert.deepEqual(drawingModel(ed.doc, F).model, disk0);
@@ -561,7 +561,7 @@ test('#3183 a Petri net edited live: a page adds a place while the MCP client ad
   const F = 'src/ctl.pn.json';
   const { data: { editLink } } = await ok('share_project', { project: 'netPn', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   await ed.ready;
   const disk0 = normalizePetri(JSON.parse(await P.readFile('netPn', F)));
   assert.deepEqual(drawingModel(ed.doc, F).model, disk0);
@@ -589,7 +589,7 @@ test('#3183 a schematic edited live: a page moves a symbol while the MCP client 
   const F = 'src/gates.sch.json';
   const { data: { editLink } } = await ok('share_project', { project: 'gatesSch', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   await ed.ready;
   const disk0 = normalizeDoc(JSON.parse(await P.readFile('gatesSch', F)));
   const C = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
@@ -891,7 +891,7 @@ test('#3527 regression: follow_project leaves a room whose owner sends a part of
   await P.createProject({ name: 'rootsEd', template: 'traffic' });
   const { data: { link, editLink } } = await ok('share_project', { project: 'rootsEd', name: 'Ana', server: base, editors: true });
   const l = parseFollowLink(editLink);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   await ed.ready;
   ed.doc.getMap('meta').set('owner', 'Eve');
   await until(async () => (await ok('share_project', { project: 'rootsEd', action: 'status' })).data.warnings.length, 'the refusal said');
@@ -949,7 +949,7 @@ test('#3835 share_project: its connection to the relay lost, its room resumed; m
     globalThis.WebSocket = Base;
     const l = parseFollowLink(link);
     const ev = [];
-    page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Rui' }, onEvent: e => { if (e.type !== 'peers') ev.push(e.type); } });
+    page = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, user: { name: 'Rui' }, onEvent: e => { if (e.type !== 'peers') ev.push(e.type); } });
     await page.ready;
     assert.equal((await ok('share_project', { project: 'trafficRs', action: 'status' })).data.connected, true);
     globalThis.WebSocket = class FlakyWebSocket extends Base { constructor(...a) { super(...a); socks.push(this); if (down) this.close(); } };

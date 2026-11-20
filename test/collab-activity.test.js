@@ -32,7 +32,7 @@ after(async () => { await closeSrv(); const fs = await import('node:fs'); fs.rmS
 const FILES = { 'src/top.vhd': 'entity top is end;\n' };
 const owned = () => { const doc = projectDoc(); publishProject(doc, { project: { name: 'traffic', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' }, fileTree: Object.keys(FILES) }, files: FILES, owner: 'Ana' }); return doc; };
 const share = (doc, o = {}) => shareRoom({ url: relayUrl(base, 'share'), token: 'the-token', doc, user: { name: 'Ana' }, ...o });
-const follow = (owner, o = {}) => followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, user: { name: 'Rui' }, ...o });
+const follow = (owner, o = {}) => followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, ...o });
 
 test('frames: a channel\'s value round trips; a bad channel, a value too large refused; bytes that are no activity read as none', () => {
   assert.deepEqual(activityOf(activityBytes('design', { sel: 'm:top', open: [] })), { ch: 'design', v: { sel: 'm:top', open: [] } });

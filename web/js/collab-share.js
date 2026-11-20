@@ -185,7 +185,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   const base = location.origin + location.pathname, pub = hostKey?.pub ?? null;
   // (#4643: the way chosen; a relay of the browser edition's is the Cloudflare one: hosted, Live's choice, or a Worker's)
   const mode = shareMode({ hosted: !!host, relay: other, cloudflare: !!other && (!!host || workersRelay(other)) });
-  share = { name, project, session, doc, made: resumed ? { ...resumed.made } : {}, base, via, mode, other, pub, relay, hostText: hostKey?.text ?? null, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: resumed ? new Map(resumed.known) : new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
+  share = { name, project, session, doc, made: resumed ? { ...resumed.made } : {}, base, via, mode, other, pub, relay, hostText: hostKey?.text ?? null, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub, session.ownerKey), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub, session.ownerKey), known: resumed ? new Map(resumed.known) : new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share;
@@ -268,7 +268,7 @@ async function setRole(peer, role) {
   if (!s) return;
   try {
     if (role === 'editor') await s.session.promote(peer.client);
-    else { await s.session.demote(peer.client); s.editLink = followLink(s.base, s.session.room, s.session.key, s.via, s.session.editKey, s.other, s.pub); }
+    else { await s.session.demote(peer.client); s.editLink = followLink(s.base, s.session.room, s.session.key, s.via, s.session.editKey, s.other, s.pub, s.session.ownerKey); }
   } catch (e) { collabLog(`ERROR: Sharing: ${e.message}.`, 'err'); return; }
   collabLog(role === 'editor' ? `${peer.name} is an editor now: they edit the project's text files and drawings with you.` : `${peer.name} is a viewer now: the editors' link was renewed (the old one only follows); your other editors keep editing.`, 'ok');
 }

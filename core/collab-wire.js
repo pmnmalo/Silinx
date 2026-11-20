@@ -3,7 +3,9 @@
 // protocol's version, the WebSockets' subprotocol, the binary frames' kinds and the frames the room marks with a
 // participant's client id. The protocol itself: core/collab-client.js.
 
-export const PROTOCOL = 4;   // (2: an editor's signed edits, #3182; 3: a follower's awareness marked with its sender, #3360; 4: the owner's frame for one follower, #3529)
+export const PROTOCOL = 5;   // (2: an editor's signed edits, #3182; 3: a follower's awareness marked with its sender, #3360; 4: the owner's frame for one follower, #3529; 5: the editors the owner lists, each with a key of its own, #4745)
+/** The version before (#4745): its participants still taken, its owner's rooms as they were (one key for every editor). */
+export const OLDER_PROTOCOL = 4;
 export const SUBPROTOCOL = 'silinx-collab';   // (the WebSockets', server/collab-relay.js's)
 /** A room's id (128 bits, base64url). */
 export const ROOM_RE = /^[A-Za-z0-9_-]{22}$/;

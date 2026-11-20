@@ -24,7 +24,11 @@
 //                                    participant, in a KIND.to frame, of its role: { role: 'editor', sign } (the
 //                                    editors' signing key: a viewer promoted, or an editor given the key renewed) or
 //                                    { role: 'viewer' } (an editor demoted); the owner's { type: 'rekey', editors }
-//                                    tells the room the editors' new public key, the old one's edits refused from then),
+//                                    tells the room the editors' new public key, the old one's edits refused from then;
+//                                    #4745: the owner's open gives its own key instead, `owner`, and its signed lists
+//                                    of the editors' keys follow, { type: 'editors', list } (core/collab-editors.js),
+//                                    in the document's meta too, `editorsList`: an edit names its key, which must be
+//                                    the last list's; a demotion is a list without the old key),
 //                                    KIND.activity (#4002: the owner's activity, { ch, v }: what it does by channel,
 //                                    core/collab-activity.js; each channel's latest value sent again, for it only, to
 //                                    a follower that joins; the room forwards none of a follower's, as any frame of
@@ -36,6 +40,7 @@ import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { newKey, keyOf, seal, unseal } from './collab-crypto.js';
 import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE, editIvs, pubOf } from './collab-sign.js';
+import { keyId, signList, checkList, editorKeys, signEdit, verifyEdit } from './collab-editors.js';
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
@@ -163,17 +168,21 @@ function participant({ conn, room, key, doc, awareness, owner, onEvent, viewMs =
   };
 }
 
-// an editor's edit, at its arrival: applied when its signature is the room's (the key: `verifier()`) and `admit(bytes)`
-// (#3527: what it changes, its size)
-async function applyEdit(doc, key, room, verifier, frame, admit = () => true) {
-  const v = await verifier();
-  const f = v && await verifyFrame(v, room, frame);
+// an editor's edit, at its arrival: applied when `checked(frame)` gives it back (its signature the room's; null: not)
+// and `admit(bytes)` (#3527: what it changes, its size)
+async function applyEdit(doc, key, room, checked, frame, admit = () => true) {
+  const f = await checked(frame);
   if (!f) return false;
   const { bytes } = await unseal(key, room, f);
   if (!admit(bytes)) return false;
   Y.applyUpdate(doc, bytes, 'remote');
   return true;
 }
+
+// (#4745: an edit checked against the editors' one key, a room of an older owner's page's; or against the keys of the
+// owner's list of them)
+const byKey = (room, verifier) => async frame => { const v = await verifier(); return v ? verifyFrame(v, room, frame) : null; };
+const byList = (room, keys) => async frame => (await verifyEdit(await keys(), room, frame))?.frame ?? null;
 
 /** The owner shares `doc`: the room opened on the relay at `url` (its share endpoint, with the server's token).
  *  Returns { room, key (the link's), editKey (an editor link's, with `editors`), peers(), setView(), connected(),
@@ -192,9 +201,21 @@ async function applyEdit(doc, key, room, verifier, frame, admit = () => true) {
 export async function shareRoom({ url, token = null, doc, user, editors = false, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, viewMs = OWNER_VIEW_MS, resumed = null }) {
   const { key, text } = resumed ? { key: await keyOf(resumed.key), text: resumed.key } : await newKey();
   let signer = !editors ? null : resumed?.sign ? { key: await signerOf(resumed.sign), text: resumed.sign, pub: pubOf(resumed.sign) } : await newSigner();
-  // (the room's public key, for every participant: in the document)
-  if (signer) doc.getMap('meta').set('editors', signer.pub); else doc.getMap('meta').delete('editors');
+  // (#4745: the owner's own key, which signs its lists of the editors' keys; a page resumed from a record of before,
+  // none: the room's one key, as before)
+  const ownerKey = !signer ? null : resumed?.owner ? { key: await signerOf(resumed.owner), text: resumed.owner, pub: pubOf(resumed.owner) } : resumed?.sign ? null : await newSigner();
+  let listN = Number.isSafeInteger(resumed?.n) ? resumed.n : 0, keys = new Map();
+  // (the room's public key, for every participant: in the document; #4745: the owner's list instead)
+  if (signer && !ownerKey) doc.getMap('meta').set('editors', signer.pub); else doc.getMap('meta').delete('editors');
+  if (!ownerKey) doc.getMap('meta').delete('editorsList');
   let verifier = signer ? await verifierOf(signer.pub) : null;
+  // (#4745: the editors' keys listed, signed, given to the room and to every participant)
+  const publishList = async () => {
+    const list = await signList(ownerKey.key, room, ++listN, [signer.pub]);
+    keys = await editorKeys(list);
+    doc.getMap('meta').set('editorsList', list);
+    cur.control({ type: 'editors', list });
+  };
   // (#3527: an editor's edit refused, said, when it changes another part than the files and the drawings, or would take
   // the document past what a follower takes)
   const meter = docMeter(doc);
@@ -225,7 +246,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     else if (msg.type === 'error') onEvent({ type: 'error', message: String(msg.message || '') });
   };
   const frameIn = async frame => {
-    if (frame[0] === KIND.edit) { await applyEdit(doc, key, room, () => verifier, frame, admit).catch(() => false); return; }
+    if (frame[0] === KIND.edit) { await applyEdit(doc, key, room, ownerKey ? byList(room, () => keys) : byKey(room, () => verifier), frame, admit).catch(() => false); return; }
     // (a follower's awareness, marked by the room with who sent it: that follower's own state only, #3360; a follower's
     // update: never applied)
     const from = senderOf(frame);
@@ -287,11 +308,14 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   function now() { if (timer !== null) { clearTimeout(timer); timer = null; attempt(0); } }
   let first;
   if (resumed?.resume) room = resumed.room;
-  try { first = await connect(resumed?.resume ? { type: 'resume', room, resume: resumed.resume } : { type: 'open', ...(signer ? { editors: signer.pub } : {}) }); } catch (e) { awareness.destroy(); meter.stop(); throw e; }
+  try { first = await connect(resumed?.resume ? { type: 'resume', room, resume: resumed.resume } : { type: 'open', ...(ownerKey ? { owner: ownerKey.pub } : signer ? { editors: signer.pub } : {}) }); } catch (e) { awareness.destroy(); meter.stop(); throw e; }
   ({ room } = first.answer);
   resume = typeof first.answer.resume === 'string' ? first.answer.resume : null;
   p = participant({ conn: () => cur, room, key, doc, awareness, owner: () => doc.clientID, onEvent, viewMs });
   use(first.c);
+  // (#4745: a room opened, its first list; resumed, the relay has the last one, the document too)
+  if (ownerKey && !resumed?.resume) await publishList();
+  else if (ownerKey) keys = await editorKeys(doc.getMap('meta').get('editorsList'));
   if (reconnect) globalThis.addEventListener?.('online', now);
   doc.on('update', onUpdate);
   // a participant's role changed (#3997): the editors' key given to one viewer (promote); or the room's signing key
@@ -311,8 +335,8 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
       const others = p.peers().filter(x => x.role === 'editor' && x.client !== client).map(x => x.client);
       signer = await newSigner();
       verifier = await verifierOf(signer.pub);
-      doc.getMap('meta').set('editors', signer.pub);
-      cur.control({ type: 'rekey', editors: signer.pub });
+      if (ownerKey) await publishList();   // (#4745: a list without the old key)
+      else { doc.getMap('meta').set('editors', signer.pub); cur.control({ type: 'rekey', editors: signer.pub }); }
       await sendRole(client, { role: 'viewer' });
       for (const c of others) await sendRole(c, { role: 'editor', sign: signer.text });
       return signer.text;
@@ -330,9 +354,11 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     },
     /** An editor link's key (with `editors`; renewed by a demotion, #3997). */
     get editKey() { return signer?.text || null; },
+    /** The owner's public key, which the links carry (#4745; null: a room with no editors, or one of before). */
+    get ownerKey() { return ownerKey?.pub || null; },
     /** What resumes it once its page is loaded again (#4850: shareRoom's `resumed`, its document's state and client id
-     *  too): { client, doc, key, sign, room, resume, clock }. */
-    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), key: text, sign: signer?.text || null, room, resume, clock: clockOf(awareness) }),
+     *  too): { client, doc, key, sign, owner (#4745: the owner's key), n (its last list's number), room, resume, clock }. */
+    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), key: text, sign: signer?.text || null, owner: ownerKey?.text || null, n: listN, room, resume, clock: clockOf(awareness) }),
     /** How many times its room was resumed (#4850: its connection lost, or its page reloaded: `resumed`). */
     resumes: () => resumes,
     closed: () => ended !== null,
@@ -369,7 +395,7 @@ const REFUSED = [1003, 1008, 1009];
  *  again later; default: `WebSocket` again): an event { type: 'offline', reason } at its loss, { type: 'online' } once joined again. The owner
  *  sends the whole document again, as at any join; an editor then sends, signed, what of its own changes the owner's
  *  document lacks (its own updates past the owner's clock of it): nothing it changed meanwhile is lost. */
-export async function followRoom({ url, room, key: keyText, sign = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null, viewMs = VIEW_MS, resumed = null }) {
+export async function followRoom({ url, room, key: keyText, sign = null, owner: ownerPub = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null, viewMs = VIEW_MS, resumed = null }) {
   const key = await keyOf(keyText);
   let signer = sign ? await signerOf(sign) : null, signText = signer ? sign : null;
   // (#4850: its page loaded again: its document as it was, its client id the same, its own changes kept)
@@ -378,13 +404,25 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   pastClock(awareness, resumed?.clock);
   awareness.setLocalState({ user, role: signer ? 'editor' : 'follower', view: null });
   const activity = activityStore();   // (#4002: the owner's activity as it arrives)
-  // (the room's public key, from the owner's document: an editor's edit checked with it)
+  // (the room's public key, from the owner's document: an editor's edit checked with it; #4745: the owner's list of the
+  // editors' keys, from the document, taken when its signature is the key's the link gives)
   let verifier = null, verifierPub = null;
   const verifierOfDoc = async () => {
     const pub = doc.getMap('meta').get('editors');
     if (pub !== verifierPub) { verifierPub = pub; verifier = typeof pub === 'string' ? await verifierOf(pub).catch(() => null) : null; }
     return verifier;
   };
+  const ownerVerifier = ownerPub ? verifierOf(ownerPub) : null;
+  ownerVerifier?.catch(() => {});
+  let listed = null, listedKeys = new Map();
+  const keysOfDoc = async () => {
+    const list = doc.getMap('meta').get('editorsList');
+    if (list?.sig !== listed?.sig && (list?.n ?? 0) > (listed?.n ?? 0) && await checkList(await ownerVerifier.catch(() => null), room, list)) { listed = list; listedKeys = await editorKeys(list); }
+    return listedKeys;
+  };
+  const checked = ownerPub ? byList(room, keysOfDoc) : byKey(room, verifierOfDoc);
+  // (#4745: the key this editor signs with, by its id)
+  let signerId = signer && ownerPub ? await keyId(pubOf(sign)) : null;
   let synced, failed = null, arrived = false;
   const ready = new Promise((resolve, reject) => { synced = () => { arrived = true; resolve(); }; failed = reject; });
   ready.catch(() => {});
@@ -410,7 +448,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   const mine = resumed?.mine ? [resumed.mine] : [];
   // (#4736: sealed with this session's IVs, a counter in each, in the order they are sent)
   const nextIv = editIvs();
-  const sendEdit = u => cur.frame(async () => signFrame(signer, room, await seal(key, room, KIND.edit, u, nextIv())));
+  const sendEdit = u => cur.frame(async () => { const f = await seal(key, room, KIND.edit, u, nextIv()); return ownerPub ? signEdit({ key: signer, id: signerId }, room, f) : signFrame(signer, room, f); });
   let listening = false;
   const listen = on => { if (on && !listening) doc.on('update', onUpdate); else if (!on && listening) doc.off('update', onUpdate); listening = on; };
   const onUpdate = (u, origin) => {
@@ -445,7 +483,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   };
   const frameIn = async (c, frame) => {
     if (left || ended) return;
-    if (frame[0] === KIND.edit) { let n = 0; if (await applyEdit(doc, key, room, verifierOfDoc, frame, b => { n = b.length; return !editOutside(doc, b) && !meter.over(limits.total, n); }).catch(() => false)) capped(c, n); return; }
+    if (frame[0] === KIND.edit) { let n = 0; if (await applyEdit(doc, key, room, checked, frame, b => { n = b.length; return !editOutside(doc, b) && !meter.over(limits.total, n); }).catch(() => false)) capped(c, n); return; }
     // (another follower's awareness, marked by the room with who sent it, #3360; anything else is the owner's)
     const from = senderOf(frame);
     let m;
@@ -474,6 +512,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
       const was = !!signer;
       signer = await signerOf(msg.sign);
       signText = msg.sign;
+      if (ownerPub) signerId = await keyId(pubOf(msg.sign));
       listen(true);
       awareness.setLocalStateField('role', 'editor');
       if (mine.length) sendEdit(Y.mergeUpdates(mine));

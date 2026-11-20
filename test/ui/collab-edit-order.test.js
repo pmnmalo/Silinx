@@ -24,7 +24,7 @@ uiTest('#4110 an editor\'s quick edits written to the owner\'s disk in their ord
   await page.openProject('Order');
   const edit = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana'); return m.editorsLink(); });
   const l = parseFollowLink(edit);
-  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, sign: l.sign, user: { name: 'Rui' } });
+  const ed = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, sign: l.sign, user: { name: 'Rui' } });
   try {
     await ed.ready;
     await page.waitConsole(/^Rui edits your project "Order" with you\.$/m);

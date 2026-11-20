@@ -31,7 +31,7 @@ async function setup({ grace = 2000, editors = false, reconnect = FAST } = {}) {
   const ownerEv = [];
   const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors, WebSocket: OwnerSocket, onEvent: e => ownerEv.push(e), reconnect }));
   const ev = [];
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, sign: editors ? owner.editKey : null, user: { name: 'Rui' }, WebSocket: followerSocket(h), onEvent: e => ev.push(e) }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: editors ? owner.editKey : null, user: { name: 'Rui' }, WebSocket: followerSocket(h), onEvent: e => ev.push(e) }));
   await f.ready;
   await until(() => owner.peers().length === 1 && f.owner(), 'both see each other');
   return { h, socks, doc, owner, ownerEv, f, ev };
