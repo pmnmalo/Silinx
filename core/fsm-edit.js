@@ -11,7 +11,7 @@ import { condAsText } from './cond-notation.js';
 import { setOutputValues } from './fsm-outputs.js';
 
 /** A new id with the prefix `p` ('s', 't'), used by no state and no transition of `m`. */
-export function newFsmId(m, p) {
+function newFsmId(m, p) {
   const used = new Set([...m.states.map((s) => s.id), ...m.transitions.map((t) => t.id)]);
   let i = 1;
   while (used.has(`${p}${i}`)) i++;
