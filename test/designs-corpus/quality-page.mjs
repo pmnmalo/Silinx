@@ -43,9 +43,9 @@ function epflSection(epfl) {
 
 // what each Optimization of the comparison builds (#2470), for the page's introduction
 const ABOUT = {
-  area: '(the default of a new project: the smaller of the usual mapping\'s netlist and the mappings for speed, one placement)',
+  area: '(the smaller of the usual mapping\'s netlist and the mappings for speed, one placement)',
   speed: '(the mappings for speed for every design and several placements, the faster circuit)',
-  fast: '(the usual mapping alone, one placement)',
+  fast: '(the default of a new project, #4828: the usual mapping alone, one placement)',
 };
 
 // the names of Silinx's two builds in the page (#2941): the results' Optimizations (Area and Speed), or before #2941 Normal
