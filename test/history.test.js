@@ -143,3 +143,31 @@ test('a command run while an Undo is still writing: the stacks stay right (the U
   assert.equal(b.files.get('src/b.v'), 'B');
   assert.equal(b.files.get('src/a.vhd'), 'A');
 });
+
+test('#4817 settled: nothing running nor finishing; an Undo while a command that changed nothing finishes undoes nothing', async () => {
+  let slow = null;
+  const b = backend();
+  const project = b.api.project;
+  b.api.project = async (...a) => { if (slow) await slow; return project(...a); };
+  const h = createHistory(b.api, { project: () => 'P', files: () => [...b.files.keys()] });
+  assert.equal(h.settled(), true);
+  await h.run('Design Properties', () => b.api.saveProject('P', { ...b.pj(), top: 'b' }));
+  assert.equal(h.settled(), true);
+  await new Promise(r => setTimeout(r, 5));   // (another millisecond: a step is known by its time)
+  // a dialog cancelled: a command that changes nothing, its end (the settings read again) slow
+  let go;
+  slow = new Promise(r => { go = r; });
+  const cancelled = h.run('Design Properties', () => {});
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(h.settled(), false, 'finishing');
+  const swallowed = h.undo();
+  go();
+  await cancelled;
+  assert.equal(await swallowed, null, 'waited for the cancelled one, which changed nothing');
+  assert.equal(b.pj().top, 'b');
+  assert.equal(h.settled(), true);
+  // settled: the Undo undoes the last step
+  slow = null;
+  assert.equal((await h.undo()).label, 'Design Properties');
+  assert.equal(b.pj().top, 'a');
+});

@@ -137,6 +137,9 @@ export function createHistory(api, hooks) {
     recording: () => !!cur,
     /** a command, an Undo or a Redo is writing (its changes to the open documents are not the user's edits) */
     busy: () => !!cur || applying > 0,
+    /** nothing running nor finishing: an Undo now undoes the last step (one clicked while a command finishes waits for
+     *  it, and undoes nothing if it changed nothing: a dialog cancelled, #4817) */
+    settled: () => !cur && !finishing && !pending && applying === 0,
     // (a command still finishing counts: its Undo waits for it)
     canUndo: () => !!running() || (live() && undoStack.length > 0),
     canRedo: () => !running() && live() && redoStack.length > 0,

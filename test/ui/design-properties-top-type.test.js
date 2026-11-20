@@ -48,6 +48,9 @@ uiTest('#4105 Design Properties: the Top-Level Source Type a choice, saved, noth
   assert.equal((await form(page)).value, 'petri');
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
+  // (the cancelled Design Properties is a command too, still finishing a moment: an Undo clicked then waits for it and
+  // undoes nothing, it changed nothing, web/js/history.js; the tag v15.29.0's CI, #4817)
+  await page.waitFor(() => window.SilinxApp.history.settled(), [], { what: 'the history settled' });
   await page.menu('Edit', 'Undo Design Properties');
   await page.waitFor(() => (window.Silinx.project.topSourceType || 'hdl') === 'hdl', [], { what: 'undone' });
   // a design project: the drawings' types only; the kind "no FPGA" chosen hides the HDL's and C's at once
