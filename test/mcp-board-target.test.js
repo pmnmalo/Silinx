@@ -138,7 +138,7 @@ test('#4751 toolchain_info: the mode, available and why, never a host, a user, a
   await fs.writeFile(settings, '#!/bin/sh\n');
   try {
     for (const cfg of [
-      { mode: 'ssh', ssh: { host: HOST, user: USER, remoteDir: '/home/someone/silinx', settings: '/opt/Xilinx/14.7/ISE_DS/settings64.sh' } },
+      { mode: 'ssh', ssh: { host: HOST, user: USER, remoteDir: '/srv/silinx-build', settings: '/opt/Xilinx/14.7/ISE_DS/settings64.sh' } },
       { mode: 'docker', docker: { image: `${USER}/ise:14.7`, command: 'docker' } },
       { mode: 'local', local: { settings } },
       { mode: 'silinx' },
@@ -150,7 +150,7 @@ test('#4751 toolchain_info: the mode, available and why, never a host, a user, a
       assert.equal(typeof r.data.ise.available, 'boolean');
       assert.match(r.text, new RegExp(`^ISE: mode ${cfg.mode}, (not )?available: .+\\.\\nAMD Vivado: (not )?available`));
       const all = JSON.stringify(r);
-      for (const secret of [HOST, USER, tmp, '/opt/Xilinx', '/home/']) assert.ok(!all.includes(secret), `${cfg.mode}: ${secret} in ${all}`);
+      for (const secret of [HOST, USER, tmp, '/opt/Xilinx', '/srv/']) assert.ok(!all.includes(secret), `${cfg.mode}: ${secret} in ${all}`);
     }
     // (silinx: the Silinx toolchain, available)
     assert.equal((await call('toolchain_info')).data.ise.available, true);
