@@ -5,7 +5,7 @@
 // cursors) under the new name. Refused, said in the console, while a process of it runs or while it is shared live.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { log } from './console.js';
+import { log, logInfo } from './console.js';
 import { S } from './app.js';
 import { prefKey } from './prefs.js';
 import { reloadProject, updateTitle, renderStartPage } from './project.js';
@@ -48,7 +48,7 @@ function renameRefusal(name = S.project?.name) {
 export async function renameProjectDialog(from = S.project?.name) {
   if (!from) return;
   const no = renameRefusal(from);
-  if (no) { log(`Rename Project: ${no}.`, 'warn'); return; }
+  if (no) { logInfo(`Rename Project: ${no}.`); return; }   // (a refusal: why the command does nothing, #3591, #4728)
   const input = h('input', { type: 'text', value: from, style: { width: '100%' }, spellcheck: 'false', 'data-no-i18n': '' });
   const err = h('div', { class: 'hint rename-project-error', style: { color: 'var(--error-fg)', minHeight: '16px' } });
   const names = (await api.projects().catch(() => [])).map(p => p.name);

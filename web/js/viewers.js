@@ -153,7 +153,7 @@ export async function openSchematic(mod, { netlist = null, task = netlist ? null
   const diags = diagsFor(lib, design);
   setDiagnostics(diags);
   if (!design.top) { log(`ERROR: cannot elaborate '${mod}'`, 'err'); showConsolePage('errors'); return; }
-  if (diags.some(d => d.severity === 'error')) log(`Schematic of '${mod}' generated with errors (see Errors tab).`, 'warn');
+  if (diags.some(d => d.severity === 'error')) log(`Schematic of '${mod}' generated with errors (see Errors tab).`, 'err', { diag: false });   // (its errors listed: #4728)
   setStatus(netlist ? 'tech' : sim ? 'rtl-sim' : 'rtl', diags.some(d => d.severity === 'error') ? 'warn' : 'ok');
   const kindName = netlist ? 'Technology' : 'RTL';
   const { mountSchEditor } = await import('./sch-editor.js');
@@ -355,8 +355,9 @@ async function confirmElabErrors(title, lib, design) {
   const errs = diagsFor(lib, design).map(shownDiag).filter(d => (d.severity || 'error') === 'error');   // (a design project's: its drawings, #3891)
   if (!errs.length) return true;
   setDiagnostics(diagsFor(lib, design));
-  for (const d of errs.slice(0, 20)) log(`ERROR: ${d.file ? `${d.file}${d.line ? `:${d.line}` : ''}: ` : ''}${d.message}`, 'err');
-  if (errs.length > 20) log(`… ${errs.length - 20} more error(s) in the Errors tab.`, 'err');
+  // (listed in the Errors tab by setDiagnostics: not again, #4728)
+  for (const d of errs.slice(0, 20)) log(`ERROR: ${d.file ? `${d.file}${d.line ? `:${d.line}` : ''}: ` : ''}${d.message}`, 'err', { diag: false });
+  if (errs.length > 20) log(`… ${errs.length - 20} more error(s) in the Errors tab.`, 'err', { diag: false });
   const missing = errs.filter(d => /not found/.test(d.message)).length;
   return !!await confirmDlg(title, `The design has ${errs.length} elaboration error(s)${missing ? `, ${missing} of them instances of cells or entities that have no model (they would do nothing)` : ''}:\n\n`
     + `${errs.slice(0, 5).map(d => `• ${d.message}`).join('\n')}${errs.length > 5 ? '\n• …' : ''}\n\nThe results will not match the hardware. Run anyway?`);
