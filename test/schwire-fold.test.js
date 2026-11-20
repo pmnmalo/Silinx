@@ -4,7 +4,7 @@
 // #4920: a schematic's wires drawn twice over (core/schwire-fold.js, by normalizeDoc after every edit): two wires meeting
 // end to end, the one's end segment lying on the other's (a segment dragged onto the wire it continues), trimmed to meet
 // at the far end of the overlap; a wire turning back on itself; at a junction dot (the shorter one's doubled part
-// removed, the longer one split where it then meets it); the net names on the doubled part kept on the wire; the
+// removed when it ends in nothing, a doubled wire that goes on left with its dot); the net names on the doubled part kept on the wire; the
 // connections and the generated HDL (VHDL and Verilog) the same, no warnings. What stays: a wire left unconnected on a
 // stretch of its own, a doubled part with a pin or another wire's end on it.
 import { test } from 'node:test';
@@ -129,7 +129,7 @@ function tee() {
   return normalizeDoc(doc);
 }
 
-test('#4920 at a junction dot: a stub lying on a branch removed, that branch whole; a doubled wire that goes on: the branch split where it leaves', () => {
+test('#4920 at a junction dot: a stub lying on a branch removed, that branch whole; a doubled wire that goes on stays', () => {
   const doc = tee();
   assert.deepEqual(diags(doc), []);
   // a stub from the dot down over W3, ending in nothing
@@ -138,19 +138,14 @@ test('#4920 at a junction dot: a stub lying on a branch removed, that branch who
   const after = normalizeDoc(raw);
   assert.deepEqual(wires(after), wires(doc), 'the stub removed, W3 not split');
   sameDesign(doc, after, 'the stub at the dot');
-  // a third inverter's wire from the dot, down over W3 to (200, 250), then right to its input
+  // a third inverter's wire from the dot, down over W3 to (200, 250), then right to its input: it goes on, it stays (the dot
+  // where it was put, as a dot dragged with a jog leaves it, #3806)
   const d2 = clone(doc);
   d2.symbols.push({ id: 'S3', type: 'inv', x: 400, y: 240, rot: 0, mirror: false, name: 'U3', params: { width: 1 } });
   d2.ports.push(port('P4', 'w', 'out', 480, 250));
-  const ref = clone(d2);
-  ref.wires.push({ id: 'W9', points: [P(200, 250), P(400, 250)] });   // (the reference: drawn without the doubled part, W3 split)
-  ref.wires.splice(2, 1, { id: 'W3', points: [P(200, 200), P(200, 250)] }, { id: 'W10', points: [P(200, 250), P(200, 300), P(400, 300)] });
   d2.wires.push({ id: 'W9', points: [P(200, 200), P(200, 250), P(400, 250)] });
-  const after2 = normalizeDoc(d2);
-  assert.deepEqual(doubled(after2), []);
-  assert.deepEqual(new Set(Object.values(wires(after2))), new Set(Object.values(wires(normalizeDoc(ref)))));
-  sameDesign(normalizeDoc(ref), after2, 'the doubled wire at the dot');
-  assert.deepEqual(netlist(after2).junctions.map(j => [j.x, j.y]).sort(), [[200, 200], [200, 250]]);
+  assert.equal(trimFoldBacks(clone(d2)), 0);
+  assert.deepEqual(wires(normalizeDoc(d2)).W9, '200,200 200,250 400,250');
 });
 
 test('#4920 what stays: a wire left unconnected on a stretch of its own, a doubled part with another wire\'s end on it', () => {
@@ -173,15 +168,15 @@ test('#4920 what stays: a wire left unconnected on a stretch of its own, a doubl
   assert.equal(trimFoldBacks(d), 0);
 });
 
-test('#4920 a bus: the branch split at a dot stays a bus; a curved wire trimmed loses its own curve', () => {
+test('#4920 a bus: a doubled stub at its dot removed, the bus whole; a curved wire trimmed loses its own curve', () => {
   const doc = newDoc('bus', 'vhdl');
-  doc.ports.push(port('P1', 'a', 'in', 100, 200, 4), port('P2', 'y', 'out', 400, 100, 4), port('P3', 'z', 'out', 400, 300, 4), port('P4', 'w', 'out', 400, 250, 4));
+  doc.ports.push(port('P1', 'a', 'in', 100, 200, 4), port('P2', 'y', 'out', 400, 100, 4), port('P3', 'z', 'out', 400, 300, 4));
   doc.wires.push({ id: 'W1', points: [P(100, 200), P(200, 200)], bus: true }, { id: 'W2', points: [P(200, 200), P(200, 100), P(400, 100)], bus: true },
-    { id: 'W3', points: [P(200, 200), P(200, 300), P(400, 300)], bus: true }, { id: 'W4', points: [P(200, 200), P(200, 250), P(400, 250)], bus: true });
+    { id: 'W3', points: [P(200, 200), P(200, 300), P(400, 300)], bus: true }, { id: 'W4', points: [P(200, 200), P(200, 250)], bus: true });
   const n = normalizeDoc(doc);
-  assert.ok(n.wires.every(w => w.bus), 'every piece a bus');
-  assert.deepEqual(doubled(n), []);
-  assert.equal(n.wires.length, 5);
+  assert.deepEqual(wires(n), { W1: '100,200 200,200', W2: '200,200 200,100 400,100', W3: '200,200 200,300 400,300' });
+  assert.ok(n.wires.every(w => w.bus), 'every wire a bus');
+  assert.deepEqual(diags(n), []);
   const c = newDoc('curve', 'vhdl');
   c.wires.push({ id: 'W1', points: [P(100, 100), P(200, 100)] }, { id: 'W2', points: [P(200, 100), P(150, 100), P(150, 200)], curve: [{ u: 0.5, v: 0.2 }] });
   const cn = normalizeDoc(c);
