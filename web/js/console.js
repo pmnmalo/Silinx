@@ -33,8 +33,10 @@ export function log(text, cls = '', { diag = true, action = null, src = null } =
   const refused = !action && cls === 'err' && refusedProject(text);
   if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
   for (const line of String(text).split('\n')) {
+    startsRun(line);
     el.append(h('div', { class: `ln ${cls}`, ...(src ? { 'data-src': src, 'data-own-src': '' } : {}) }, line));
     if (diag) consoleMessage(line, cls);
+    if (RUN_END.test(line)) { run = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }
   if (action) {
@@ -49,7 +51,26 @@ export function log(text, cls = '', { diag = true, action = null, src = null } =
   if (atBottom) el.scrollTop = el.scrollHeight;
 }
 
-// Every warning/error shown in the console also goes to the Warnings / Errors tabs.
+// The run that writes the console's lines (#4728): a process's header ("Started : "Check Schematic" of gates.") starts
+// it, and its rerun first drops the entries the previous one gave the Errors / Warnings tabs (a fixed error is not
+// listed again, nor N times after N runs); none before any header, nor after a run's result ("Process … completed /
+// failed / stopped"). An entry of no run listed again replaces the same entry (a refusal said twice: listed once).
+let run = null;
+const RUN_HEADER = /^\s*Started : "[^"]+".*$/, RUN_END = /^\s*Process ("[^"]*" (completed|failed|stopped)|(failed|stopped)\b)/;
+// a run's result, never an entry ("Process failed: <the job's error>" is: implement.js's jobLog leaves the error to it)
+const RUN_SUMMARY = /^\s*Process "[^"]*" (completed|failed|stopped)/;
+function startsRun(line) {
+  if (!RUN_HEADER.test(line)) return;
+  run = line.trim().replace(/[.\s]+$/, '');
+  const n = S.diags.length;
+  S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === run));
+  lastConsoleDiag = null;
+  if (S.diags.length !== n) renderDiagnosticsSoon();
+}
+const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.message === b.message;
+
+// Every warning/error shown in the console also goes to the Warnings / Errors tabs (but a run's result, "Process "…"
+// failed", and the scripts' "=== SILINX FAILED step" marker, #4728: the errors are their own lines).
 // Recognised forms: "ERROR:Tool:123 - msg", "WARNING:Tool - msg", "ERROR: msg", "WARNING: msg";
 // indented lines right after one are its continuation (ISE wraps long messages) — unless the
 // message is already complete (ends a sentence) or the line is report output (XST's indented
@@ -58,6 +79,7 @@ let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
 function consoleMessage(line, cls) {
+  if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
   if (lastConsoleDiag && !cls && continuesDiag(lastConsoleDiag, line)) {
     lastConsoleDiag.message += ' ' + line.trim();
     renderDiagnosticsSoon();
@@ -68,9 +90,10 @@ function consoleMessage(line, cls) {
   const m = MESSAGE_LINE.exec(line);
   let severity = cls === 'err' ? 'error' : 'warning', tool = 'Silinx', message = line.trim();
   if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
-  else if (/=== SILINX FAILED/.test(line)) { tool = 'Silinx'; message = line.replace(/=+/g, '').trim(); }
+  else if (/=== SILINX FAILED/.test(line)) return;
   if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console' };
+  const d = { severity, tool, message, file: null, line: 0, source: 'console', run };
+  if (run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
   renderDiagnosticsSoon();

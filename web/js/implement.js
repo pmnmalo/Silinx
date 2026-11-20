@@ -17,6 +17,7 @@ import { EXTRA_STEPS, IMPL_IDS, SIM_MODEL_NAMES, checkSyntax, loadUcfText, openM
   saveAll, saveImplStatus, setStatus, synthFingerprint } from './processes.js';
 import { inView, saveProjectJson, setTop } from './design.js';
 import { OPEN_SYNTH, SYNTH_OPEN } from './tool-descriptors.js';
+import { jobLog } from './job-log.js';
 
 // Live per-step status from run.sh's "=== SILINX STEP <step> ===" markers and ISE WARNING/ERROR lines.
 const STEP_PROC = { synth: 'synth', translate: 'translate', map: 'map', par: 'par', trce: 'par', bitgen: 'bitgen', prombit: 'bitgen',
@@ -131,7 +132,8 @@ export async function checkUcfFile(path = S.project?.constraints, { quiet = fals
   if (quiet && !diags.length) return true;
   const line = d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}:ConstraintSystem - "${d.file}" Line ${d.line}: ${d.message}`;
   if (quiet && warnings && !ne) {
-    setDiagnostics([...S.diags.filter(d => d.source !== 'console' && d.tool !== 'ConstraintSystem'), ...diags]);
+    // (the console's and the open editors' entries: setDiagnostics keeps them itself, not listed twice, #4728)
+    setDiagnostics([...S.diags.filter(d => d.source !== 'console' && d.source !== 'editor' && d.tool !== 'ConstraintSystem'), ...diags]);
     warnings.push(...diags.map(line));
     return true;
   }
@@ -300,7 +302,10 @@ async function runImplInner(mod, steps, opts, pjName) {
     S.currentJob = job;
     S.stopRequested = false;
     renderProcesses();
-    const res = await followJob(job, track.line);
+    // (the job's error said once, #4597, #4728: "Process failed: <error>" says it, its one entry in the Errors tab)
+    const jl = jobLog(track.line);
+    const res = await followJob(job, jl.line);
+    jl.end(res);
     const stopped = S.stopRequested;
     track.end(res.status === 'ok');
     if (stopped) {
@@ -309,7 +314,7 @@ async function runImplInner(mod, steps, opts, pjName) {
       if (track.current) S.status[STEP_PROC[track.current]] = null;
       for (const [id, st] of Object.entries(track.result)) if (st === 'err') S.status[id] = null;
       renderProcesses();
-      log('\nProcess stopped by the user.', 'warn');
+      log('\nProcess stopped by the user.', 'info');   // (the user's own Stop: no warning, #4728)
       return;
     }
     if (S.project?.name !== pjName) { log(`Implementation of '${pjName}' finished (another project is open now).`, 'info'); return res.status === 'ok'; }
@@ -333,7 +338,7 @@ async function runImplInner(mod, steps, opts, pjName) {
       log(`\nScripts generated in ${S.project.name}/build (ISE not run).`, 'warn');
     } else {
       if (!track.failed) setStatus(procId, 'err');
-      log(`\nProcess failed: ${res.error || 'see log'}`, 'err');
+      log(`\nProcess failed: ${res.error || 'see log'}`, 'err', { diag: !!res.error });   // (see log: its errors are listed)
     }
     if (track.failed) showConsolePage('errors');
     refreshSummary();
@@ -462,6 +467,6 @@ export async function showTextDoc(title, text) {
 export async function stopProcesses() {
   if (!S.currentJob) { logInfo('No process is running'); return; }
   S.stopRequested = true;
-  log('Stopping…', 'warn');
+  log('Stopping…', 'info');
   try { await api.cancelJob(S.currentJob); } catch (e) { log(`ERROR: cannot stop the process: ${e.message}`, 'err'); }
 }
