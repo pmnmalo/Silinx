@@ -11,7 +11,7 @@ const CARRY_SIDES = { A: 'W', B: 'W', CI: 'S', S: 'E', CO: 'N', BI: 'S', D: 'E',
 const XM = 100, GAP = 60, ROW = 40;
 
 /** FA1: a full adder, two half adders (XOR, AND) and an OR (the Schematic Wizard's, core/sch-templates.js). */
-export function fullAdder(lib) {
+function fullAdder(lib) {
   return lib.use('FA1', () => {
     const c = canvas('FA1', 'FA1: a full adder. S = A xor B xor CI; CO = 1 when two or three of A, B, CI are 1. Two half adders (XOR, AND) and an OR.');
     const ins = ['A', 'B', 'CI'].map(name => ({ name, dir: 'in', width: 1 }));
@@ -31,7 +31,7 @@ export function addBlocks(n) {
 }
 
 /** ADD n with its carries (CI, CO) and buses: ADD1 is FA1. */
-export function adder(lib, n) {
+function adder(lib, n) {
   if (n === 1) return fullAdder(lib);
   return lib.use(`ADD${n}`, () => chain(lib, `ADD${n}`, n, { ci: 'pin', co: 'pin' }));
 }

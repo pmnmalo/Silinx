@@ -5,7 +5,7 @@
 // bus's bits are joined to it by their wires' names (A(7:4)), as ISE names them (#1688). Isomorphic (no DOM).
 import { newDoc, normalizeDoc, symbolDef, symbolPins, joinOnWires, r10, instanceParams } from './schdoc.js';
 
-export const LIB_LANG = 'vhdl';   // (a composition's drawings: their HDL is generated in either language)
+const LIB_LANG = 'vhdl';   // (a composition's drawings: their HDL is generated in either language)
 
 /** A library being built: its modules by name, each { name, ports: [{ name, dir, width, side }], symbol, doc } (symbol:
  *  its pins' sides, as a module's symbol file has them, core/symbol-layout.js). */
@@ -37,7 +37,7 @@ function finish(doc) {
 }
 
 /** The instance parameters of a library module: its pins on their sides. */
-export const instParams = mod => ({ module: mod.name, generics: {}, ...instanceParams({ ports: mod.ports.map(({ side, ...q }) => q), symbol: mod.symbol }) });
+const instParams = mod => ({ module: mod.name, generics: {}, ...instanceParams({ ports: mod.ports.map(({ side, ...q }) => q), symbol: mod.symbol }) });
 
 /** A drawing being made, named `name`: its symbols, instances, wires, wires' names and markers. */
 export function canvas(name, description = '') {
