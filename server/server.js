@@ -81,8 +81,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     if (token && !tokenless(req) && !tokenOk(req.headers['x-silinx-token']))
       return res.status(403).json({ error: 'this Silinx server needs its token: open the URL it printed at start-up' });
     // a request another site's page made (an <img>, a link, a form: the browser says so in
-    // Sec-Fetch-Site) is refused, a GET too: some GETs write a file or start a process
-    if (req.headers['sec-fetch-site'] === 'cross-site') return res.status(403).json({ error: 'cross-site request refused' });
+    // Sec-Fetch-Site) is refused, a GET too: some GETs write a file or start a process; a page of the same site on
+    // another port or subdomain ('same-site') is another origin too (#4739)
+    if (['cross-site', 'same-site'].includes(req.headers['sec-fetch-site'])) return res.status(403).json({ error: 'cross-site request refused' });
     if (tokenless(req) && req.method === 'POST' && !req.headers.origin) return res.status(403).json({ error: 'cross-origin request refused' });
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers.origin) {
       let oh = '';
@@ -97,8 +98,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // key opening a room as the token does
   const relayKeyOk = t => !!relay.key && typeof t === 'string' && crypto.timingSafeEqual(digest(t), digest(relay.key));
   const listen = app.listen.bind(app);
-  app.listen = (...a) => {
-    const srv = listen(...a);
+  app.listen = (...a) => app.locals.serveOn(listen(...a));
+  // (an HTTPS server made by startServer, #4739, has the relay too)
+  app.locals.serveOn = srv => {
     app.locals.relay = attachRelay(srv, {
       allowed: req => {
         const hostName = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
@@ -283,14 +285,28 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
  *  double-clicked twice) opens the running server with it; readable by its owner only. */
 export const tokenFile = port => path.join(configDir(), `server-${port}.token`);
 
-export async function startServer({ port = 8642, host = '127.0.0.1' } = {}) {
+/** Why a server on `host` cannot start as asked (#4739): on another computer's reach over plain HTTP, its token would
+ *  cross the network in clear (a classroom's Wi-Fi), unless TLS is given or the user says so; null when it can. */
+export function exposedRefusal(host, { tls = null, insecureHttp = false } = {}) {
+  if (isLoopback(host) || tls || insecureHttp) return null;
+  return `serve --host ${host}: other computers would reach this server over plain HTTP, and its token, which gives the whole server, `
+    + 'would cross the network unencrypted. Give a certificate (--tls-cert <file.pem> --tls-key <file.pem>), '
+    + 'or add --insecure-http to accept it (a network you trust)';
+}
+
+// tls: { cert, key } (PEM) for HTTPS; insecureHttp: plain HTTP on a non-loopback address accepted (#4739)
+export async function startServer({ port = 8642, host = '127.0.0.1', tls = null, insecureHttp = false } = {}) {
+  const refusal = exposedRefusal(host, { tls, insecureHttp });
+  if (refusal) throw Object.assign(new Error(refusal), { code: 'SILINX_EXPOSED_HTTP' });
   // a token for the API, made anew at every start, on loopback too (#2564): another user of this
   // computer reaches 127.0.0.1 as well
   const token = crypto.randomBytes(18).toString('base64url');
   const app = await createApp({ host, token });
+  const scheme = tls ? 'https' : 'http';
+  const https = tls && await import('node:https');
   return new Promise((resolve, reject) => {
     // Express 5 calls the listen callback with the error too (a port in use): not "running"
-    const srv = app.listen(port, host, err => {
+    const onListening = err => {
       if (err) return reject(err);
       const real = srv.address().port;
       const file = tokenFile(real);
@@ -304,18 +320,21 @@ export async function startServer({ port = 8642, host = '127.0.0.1' } = {}) {
         srv.on('close', () => fs.rmSync(file, { force: true }));
       } catch { /* no configuration folder: a second launch only says it is running */ }
       const shown = ['0.0.0.0', '::'].includes(host) ? '127.0.0.1' : host;
-      srv.silinxUrl = `http://${shown}:${real}/#token=${token}`;
+      srv.silinxUrl = `${scheme}://${shown}:${real}/#token=${token}`;
       // the address to open in the browser: a one-time code, not the token, on the opener's command line (#2955)
-      srv.silinxOpenUrl = () => `http://${shown}:${real}/#code=${app.locals.openCode()}`;
-      console.log(`Silinx running at http://${host}:${port}  (workspace: ${P.workspaceDir()})`);
+      srv.silinxOpenUrl = () => `${scheme}://${shown}:${real}/#code=${app.locals.openCode()}`;
+      console.log(`Silinx running at ${scheme}://${host}:${port}  (workspace: ${P.workspaceDir()})`);
       if (!isLoopback(host)) {
         console.log(`WARNING: listening on ${host}, not only on this machine. Other computers that can reach this port need the address below (with its token);`);
         console.log('         anyone who has it can change your projects and run the toolchain. Use the default (127.0.0.1) unless you need this.');
-        console.log(`         http://${['0.0.0.0', '::'].includes(host) ? '<this computer>' : host}:${real}/#token=${token}`);
+        if (!tls) console.log('         Over plain HTTP (--insecure-http): the token crosses the network unencrypted.');
+        console.log(`         ${scheme}://${['0.0.0.0', '::'].includes(host) ? '<this computer>' : host}:${real}/#token=${token}`);
       } else console.log(`Open it at ${srv.silinxUrl}`);
       srv.silinxToken = token;
       resolve(srv);
-    });
+    };
+    const srv = tls ? app.locals.serveOn(https.createServer({ cert: tls.cert, key: tls.key }, app)).listen(port, host, () => onListening())
+      : app.listen(port, host, onListening);
     srv.on('error', reject);
   });
 }

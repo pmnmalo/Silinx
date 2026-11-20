@@ -22,7 +22,10 @@ makes one at every start and prints the address with it (`…/#token=…`); the 
 one-time code instead (`…/#code=…`, which the page exchanges for the token: no token on a command line, #2955);
 the page keeps it, so the plain address works afterwards in the same browser (#2564). Another user of the
 same computer has no token. With `serve --host 0.0.0.0` (or another address) other computers can reach it:
-it then prints a warning, and the address with the token is the only way they can use it. The toolchain settings that run a program
+it then prints a warning, and the address with the token is the only way they can use it. It then needs a certificate
+and its key (`--tls-cert cert.pem --tls-key key.pem`: HTTPS), or `--insecure-http` to accept plain HTTP, where the
+token crosses the network unencrypted (#4739); a page of another port or subdomain of the same site is refused as
+another site's (`Sec-Fetch-Site: same-site`). The toolchain settings that run a program
 (`docker.command`, `docker.extraArgs`, `ssh.sshArgs`, `ssh.identity`, `paths`) are set in
 `~/.silinx/config.json` only, never from the page; so is an absolute `ssh.remoteDir` (from the page, a folder
 inside the remote home, #2958).
