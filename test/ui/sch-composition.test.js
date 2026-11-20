@@ -109,3 +109,36 @@ uiTest('#4808 an ADD8 pushed into: its composition, level by level, read-only; d
   assert.match(await page.eval(() => document.querySelector('.doc:not([hidden]) [data-nav="up"]').textContent), /Subir/);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
 });
+
+// #4809: a multiplexer pushed into as the adder is: M4_1 of three M2_1, down to its gates; during a Try it, S = 2 picks D2
+uiTest('#4809 an M4_1 pushed into: three M2_1, then the gates; its values from the Try it', E, async (page) => {
+  const doc = newDoc('top', 'vhdl');
+  const s = { id: 'S1', type: 'mux4', x: 400, y: 300, rot: 0, mirror: false, name: 'U1', params: { width: 1, en: false, selBus: false, bits: false } };
+  doc.symbols.push(s);
+  for (const q of symbolPins(s)) {
+    const [dx, dy] = q.side === 'S' ? [0, 80] : q.dir === 'in' ? [-80, 0] : [80, 0];
+    doc.ports.push({ id: `P${q.name}`, name: q.name, dir: q.dir, width: 1, x: q.x + dx, y: q.y + dy });
+    doc.wires.push({ id: `W${q.name}`, points: [{ x: q.x + dx, y: q.y + dy }, { x: q.x, y: q.y }] });
+  }
+  await makeProject(env, { name: 'CompMux', files: { 'src/top.sch.json': JSON.stringify(normalizeDoc(doc)) } });
+  await page.openProject('CompMux');
+  await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
+  await page.waitFor((ed) => document.querySelector(`${ed} svg .sym[data-id="S1"]`), [ED], { what: 'drawn' });
+  // a Try it: D2 = 1, the others 0, S = 2 (S1 = 1, S0 = 0)
+  await page.eval(async () => {
+    const ed = window.Silinx.active.schEditor, one = (v) => ({ width: 1, value: BigInt(v) });
+    await ed.tryWith({ PD0: one(0), PD1: one(0), PD2: one(1), PD3: one(0), PS0: one(0), PS1: one(1) });
+  });
+  await page.waitFor(() => window.Silinx.active?.schEditor?.simulating, [], { what: 'Try it' });
+  await page.dblclick(`${ED} svg .sym[data-id="S1"] .hitbox`);
+  await page.waitFor(() => window.Silinx.active?.id === 'comp:M4_1' && window.Silinx.active.viewer?.simulating, [], { what: 'its composition, simulated' });
+  const out = () => page.eval(() => { const d = window.Silinx.active, L = d.viewer.liveSim; const p = d.viewer.getDoc().ports.find((x) => x.name === 'O'); return L?.portValue(p.id)?.v?.toString(); });
+  await page.waitFor(async () => { const d = window.Silinx.active, L = d.viewer.liveSim; return L?.portValue(d.viewer.getDoc().ports.find((x) => x.name === 'O').id)?.v === 1n; }, [], { what: 'O = D2 = 1' });
+  assert.equal((await comp(page)).banner, 'Read-only, how M4_1 is built: M4_1, its values U1\'s in the Try it of top');
+  // into U1 (D2, D3), an M2_1: S0 = 0 picks its D0, D2 of the top
+  await page.dblclick(`${ED} svg .sym[data-id="S2"] .hitbox`);
+  await page.waitFor(() => window.Silinx.active?.composition?.path.join('/') === 'M4_1/M2_1', [], { what: 'into U1' });
+  await page.waitFor(async () => { const d = window.Silinx.active, L = d.viewer.liveSim; return L?.portValue(d.viewer.getDoc().ports.find((x) => x.name === 'D0').id)?.v === 1n; }, [], { what: 'its D0 = D2 = 1' });
+  assert.equal(await out(), '1');
+  assert.deepEqual(await page.eval(() => window.Silinx.active.viewer.getDoc().symbols.map((x) => x.type).sort()), ['and2', 'and2', 'inv', 'or2']);
+});

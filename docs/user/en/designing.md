@@ -21,9 +21,10 @@ pane) adds a module of any kind, most of them with a wizard.
 
 Gates, multiplexers, adders, counters, registers and your own modules as symbols, wired as in ISE's Schematic Editor.
 *Simulate* in the editor runs it live: click an input, see the wires change. Every symbol has its datasheet
-(*Symbol Info*). The adders and subtractors can be pushed into (*Push into*, or a double-click in a simulation): how
-they are built, level by level down to the gates (ADD8 of two ADD4, ADD4 of four FA1), each level simulated, with the
-symbol's values when it is pushed into from a simulation.
+(*Symbol Info*). The adders, subtractors, multiplexers, decoders, demultiplexers and encoders can be pushed into (*Push
+into*, or a double-click in a simulation): how they are built, level by level down to the gates (ADD8 of two ADD4,
+ADD4 of four FA1; M8_1 of two M4_1 and an M2_1), each level simulated, with the symbol's values when it is pushed into
+from a simulation.
 
 ## State machines and ASM charts
 

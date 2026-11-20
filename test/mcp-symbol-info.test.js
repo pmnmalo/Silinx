@@ -91,9 +91,12 @@ test('symbol_info ADD8: its composition\'s levels; symbol_composition draws each
     { module: 'FA1', parts: [{ name: 'XOR2', count: 2, module: false }, { name: 'AND2', count: 2, module: false }, { name: 'OR2', count: 1, module: false }] }] });
   const pt = await ok('symbol_info', { project: 'drawn', symbol: 'sub', params: { width: 4 }, interface_language: 'pt' });
   assert.deepEqual(section(pt.text, 'Composição:'), ['  SUB4_NOBI_NOBO = ADD4 + INV + VCC', '  ADD4 = 4 × FA1', '  FA1 = 2 × XOR2 + 2 × AND2 + OR2'], 'a design project\'s, in Portuguese');
+  // (#4809: the multiplexers too; a flip-flop has none)
   const m4 = await ok('symbol_info', { project: 'fpga', symbol: 'M4_1' });
-  assert.equal(m4.data.composition, null, 'none yet');
-  assert.doesNotMatch(m4.text, /Composition/);
+  assert.deepEqual(section(m4.text, 'Composition:'), ['  M4_1 = 3 × M2_1', '  M2_1 = 2 × AND2 + INV + OR2']);
+  const ff = await ok('symbol_info', { project: 'fpga', symbol: 'FDCE' });
+  assert.equal(ff.data.composition, null, 'none');
+  assert.doesNotMatch(ff.text, /Composition/);
   // the top, then a level below, by its name
   const top = await ok('symbol_composition', { project: 'fpga', symbol: 'ADD8', params: { cin: true, cout: true } });
   assert.deepEqual(top.text.split('\n').slice(0, 2), ['ADD8: ADD8 = 2 × ADD4', 'ADD8\'s drawing (a schematic, read-only; its modules: ADD4):']);
@@ -104,7 +107,7 @@ test('symbol_info ADD8: its composition\'s levels; symbol_composition draws each
   assert.deepEqual(fa.text.split('\n').slice(0, 2), ['ADD8: FA1 = 2 × XOR2 + 2 × AND2 + OR2 (a level of ADD8)', 'FA1\'s drawing (a schematic, read-only; its modules: none, gates only):']);
   assert.deepEqual(fa.data.doc.symbols.map(s => s.type).sort(), ['and2', 'and2', 'or2', 'xor2', 'xor2']);
   await fails('symbol_composition', { project: 'fpga', symbol: 'ADD8', module: 'ADD16' }, 'no level \'ADD16\' in the composition of ADD8: one of ADD8, ADD4, FA1');
-  await fails('symbol_composition', { project: 'fpga', symbol: 'M4_1' }, 'M4_1: no composition (a symbol of the palette drawn as it is; the adders and subtractors have one)');
+  await fails('symbol_composition', { project: 'fpga', symbol: 'FDCE' }, 'FDCE: no composition (a symbol of the palette drawn as it is; the adders, subtractors, multiplexers, decoders, demultiplexers and encoders have one)');
   await fails('symbol_composition', { project: 'fpga', symbol: 'NOPE' }, 'no symbol \'NOPE\' in the palette');
 });
 
@@ -133,4 +136,17 @@ test('symbol_composition: a level by its path; with inputs, its values; their er
   await fails('symbol_composition', { ...add8, inputs: { B: 'ten' } }, 'inputs: B: \'ten\' is not a number');
   await fails('symbol_composition', { ...add8, module: 'FA1', inputs: { A: 1 } }, 'inputs: the level by its path (["U1", …]), so that its instance is known');
   await fails('symbol_composition', { ...add8, module: 'FA1', path: ['U1'] }, 'module FA1 is not the path\'s level, ADD4');
+});
+
+// #4809: a multiplexer's and an encoder's levels, their values from the symbol's inputs as for an adder
+test('symbol_composition M8_1 and PENC8_3: a level by its path, its values', async () => {
+  await setup();
+  const m8 = await ok('symbol_composition', { project: 'fpga', symbol: 'mux8', params: { width: 1 }, path: ['U1'], inputs: { D5: 1, S0: 1, S2: 1 } });
+  assert.deepEqual([m8.data.module, m8.data.values], ['M4_1', { D0: '0', D1: '1', D2: '0', D3: '0', S0: '1', S1: '0', O: '1' }], 'S = 5: the upper M4_1\'s D1, D5');
+  assert.equal(m8.text.split('\n')[0], 'M8_1: M4_1 = 3 × M2_1 (a level of M8_1: U1)');
+  // a priority encoder, I1 and I6 at 1: its upper PENC4_2 says 2 (I6), V = 1
+  const enc = await ok('symbol_composition', { project: 'fpga', symbol: 'encoder', params: { n: 3, mode: 'priority' }, path: ['U1'], inputs: { I1: 1, I6: 1 } });
+  assert.deepEqual([enc.data.module, enc.data.values], ['PENC4_2', { I0: '0', I1: '0', I2: '1', I3: '0', A0: '0', A1: '1', V: '1' }]);
+  const top = await ok('symbol_composition', { project: 'fpga', symbol: 'encoder', params: { n: 3, mode: 'priority' }, inputs: { I1: 1, I6: 1 } });
+  assert.deepEqual(top.data.values, { I0: '0', I1: '1', I2: '0', I3: '0', I4: '0', I5: '0', I6: '1', I7: '0', A0: '0', A1: '1', A2: '1', V: '1' }, 'A = 6');
 });

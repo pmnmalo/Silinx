@@ -6,9 +6,12 @@
 import { defaultParams, generateHdl, int, symbolTypeName } from './schdoc.js';
 import { library } from './symlib-draw.js';
 import { addTop, subTop } from './symlib-add.js';
+import { decoderTop, demuxTop, muxTop } from './symlib-mux.js';
+import { encoderTop } from './symlib-enc.js';
 
 // the families composed so far, each a function (library, parameters) → its top module
-const FAMILIES = { add: addTop, sub: subTop };
+const FAMILIES = { add: addTop, sub: subTop, mux2: (l, p) => muxTop(l, 'mux2', p), mux4: (l, p) => muxTop(l, 'mux4', p), mux8: (l, p) => muxTop(l, 'mux8', p),
+  mux16: (l, p) => muxTop(l, 'mux16', p), decoder: decoderTop, demux: demuxTop, encoder: encoderTop };
 // (wiring, not parts: left out of a level's list)
 const WIRING = new Set(['slice', 'busjoin']);
 
@@ -24,6 +27,10 @@ export function composition(type, params = {}) {
   if (!hasComposition(type)) return null;
   const p = { ...defaultParams(type), ...params };
   p.width = Math.max(1, int(p.width, 1));
+  // (a decoder's or an encoder's address bits, a demultiplexer's select bits: within the symbol's limits)
+  if (type === 'decoder') p.n = Math.max(1, Math.min(5, int(p.n, 2)));
+  if (type === 'encoder') p.n = Math.max(2, Math.min(5, int(p.n, 2)));
+  if (type === 'demux') p.sel = Math.max(1, Math.min(4, int(p.sel, 1)));
   const lib = library();
   const top = FAMILIES[type](lib, p);
   // (the modules in the order of a walk from the top: a level before the ones it holds)

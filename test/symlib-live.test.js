@@ -45,3 +45,20 @@ test('#4808 unknown values (X, Z) left out; a wrong instance said', () => {
   assert.deepEqual(Object.values(savedInputs(c.modules[0], { A: 3n, B: null, CI: 1n })).map(x => `${x.width}:${x.value}`), ['4:3', '1:1']);
   assert.deepEqual(derivedValues(c).levelValues([{ module: 'ADD4' }, { module: 'FA1', instance: 'U9' }], { A: 1n, B: 1n, CI: 0n }), { values: {}, error: 'no instance U9 in ADD4' });
 });
+
+// #4809: a multiplexer's and a decoder's levels take their inputs the same way (the selects shared by their names)
+test('#4809 an M8_1\'s upper M4_1 takes D4 … D7 and the selects below the top one; a D3_8E\'s upper D2_4E its enable from A2', () => {
+  const mux = composition('mux8', { width: 1 }), D = derivedValues(mux), r = rng(4);
+  for (let k = 0; k < 8; k++) {
+    const d = r(8), s = r(3), top = { ...Object.fromEntries([...Array(8).keys()].map(i => [`D${i}`, bits(d, i, i)])), S0: bits(s, 0, 0), S1: bits(s, 1, 1), S2: bits(s, 2, 2) };
+    assert.deepEqual(D.levelValues([{ module: 'M8_1' }, { module: 'M4_1', instance: 'U1' }], top).values,
+      { D0: bits(d, 4, 4), D1: bits(d, 5, 5), D2: bits(d, 6, 6), D3: bits(d, 7, 7), S0: bits(s, 0, 0), S1: bits(s, 1, 1) });
+    // the M2_1 choosing between the two halves: their outputs and S2
+    assert.deepEqual(D.levelValues([{ module: 'M8_1' }, { module: 'M2_1', instance: 'U2' }], top).values, { D0: bits(d, Number(s & 3n), Number(s & 3n)), D1: bits(d, 4 + Number(s & 3n), 4 + Number(s & 3n)), S0: bits(s, 2, 2) });
+  }
+  const dec = composition('decoder', { n: 3, en: true }), DD = derivedValues(dec);
+  for (const [a, e] of [[5n, 1n], [2n, 1n], [6n, 0n]]) {
+    const top = { A0: a & 1n, A1: (a >> 1n) & 1n, A2: a >> 2n, E: e };
+    assert.deepEqual(DD.levelValues([{ module: 'D3_8E' }, { module: 'D2_4E', instance: 'U2' }], top).values, { A0: a & 1n, A1: (a >> 1n) & 1n, E: e & (a >> 2n) }, `A = ${a}, E = ${e}`);
+  }
+});
