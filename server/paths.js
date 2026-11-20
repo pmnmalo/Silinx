@@ -1,6 +1,7 @@
 // A project's paths stay inside its folder, also once their symbolic links are followed (#1234): a folder put in
 // the workspace by hand (a clone, a copy) may hold a link to a file of the user's (src/top.vhd -> ~/.ssh/id_rsa).
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 
 /** Where a path really is: its deepest part that exists, with its symbolic links resolved, then the rest. real: the
@@ -37,4 +38,44 @@ const isIn = (dir, full) => full === dir || full.startsWith(dir + path.sep);
 /** Is `full` (absolute) the folder `dir` or inside it, by name and once the links of both are followed? */
 export function within(dir, full) {
   return isIn(dir, full) && isIn(realOf(dir), realOf(full));
+}
+
+const refused = () => Object.assign(new Error('path escapes project'), { status: 400 });
+
+/** Is the open file `fh` the file `full` names once its links are followed, inside the folder `dir`? A path checked
+ *  then opened can be swapped in between (a link changed by another process, #4744): the file opened is checked too. */
+async function opened(dir, full, fh) {
+  const real = realOf(full), [st, at] = [await fh.stat({ bigint: true }), await fsp.stat(real, { bigint: true }).catch(() => null)];
+  return !!at && at.dev === st.dev && at.ino === st.ino && isIn(realOf(dir), real);
+}
+
+/** A file of the folder `dir` (`full`: its absolute path, already checked by name) opened with `flags` (fs.open's),
+ *  then checked (#4744): refused (400, 'path escapes project') when the file opened is not the one inside `dir`. */
+export async function openWithin(dir, full, flags = 'r') {
+  const fh = await fsp.open(full, flags);
+  try {
+    if (!await opened(dir, full, fh)) throw refused();
+    return fh;
+  } catch (e) { await fh.close().catch(() => {}); throw e; }
+}
+
+/** The contents of a file of the folder `dir`, opened then checked (openWithin); encoding: readFile's. */
+export async function readWithin(dir, full, encoding) {
+  const fh = await openWithin(dir, full);
+  try { return await fh.readFile(encoding); } finally { await fh.close(); }
+}
+
+/** A new file of the folder `dir` written whole at `full` (never an existing one, nor a link: 'wx'), checked once
+ *  open (#4744: its folder swapped for a link out of `dir` since the path was checked), the file removed if not. */
+export async function createWithin(dir, full, data) {
+  const fh = await fsp.open(full, 'wx');
+  let ok = false;
+  try {
+    if (!await opened(dir, full, fh)) throw refused();
+    await fh.writeFile(data);
+    ok = true;
+  } finally {
+    await fh.close().catch(() => {});
+    if (!ok) await fsp.rm(full, { force: true }).catch(() => {});
+  }
 }
