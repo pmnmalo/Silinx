@@ -194,6 +194,11 @@ test('#4729 isShown: the application\'s lines under every filter and task; the o
   }
 });
 
+test('#4749 the messages\' sources (core/message.js) are the filters\' and the application\'s', async () => {
+  const { MESSAGE_SOURCES } = await import('../core/message.js');
+  assert.deepEqual(MESSAGE_SOURCES, [...M.SOURCES, 'app']);
+});
+
 test('#4729 the application\'s own messages state their source: logError / logWarning / logInfo, appLog, the trust notice; mirrored lines their own', () => {
   const read = (f) => readFileSync(new URL(f, ROOT), 'utf8');
   const con = read('web/js/console.js');

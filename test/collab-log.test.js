@@ -58,6 +58,8 @@ test("collabLog's source is the console's Design filter, and log() keeps a write
   assert.equal(M.SOURCE_LABEL[src], 'Design');
   assert.match(helper, /log\(text, cls, \{ \.\.\.opts, src: COLLAB_SOURCE \}\)/);
   // (console.js's log marks the line: its source kept, whatever process ran last; messages.js keeps it)
-  assert.match(read('console.js'), /'data-src': src, 'data-own-src': ''/);
-  assert.match(read('messages.js'), /ln\.dataset\.ownSrc !== undefined/);
+  // (#4749: each line's source decided in log(), a writer's its own)
+  assert.match(read('console.js'), /let source = src;\n\s+if \(!source\) \[source, lineCur\] = lineSource\(line, lineCur\);/);
+  assert.match(read('console.js'), /'data-src': source, \.\.\.\(src \? \{ 'data-own-src': '' \} : \{\}\)/);
+  assert.match(read('messages.js'), /ln\.dataset\.ownSrc === undefined/);
 });
