@@ -223,6 +223,20 @@ test('#4744 a file read: swapped for a link out of the project once checked, ref
   assert.equal(await P.readFile('Race', 'src/a.vhd'), 'entity b is end;\n');
 });
 
+test('#4744 a file read while another writer replaces it whole (its temporary file renamed over it, once open): read again, the new text', async () => {
+  await P.createProject({ name: 'RaceR' });
+  await P.writeFile('RaceR', 'src/a.vhd', 'entity a is end;\n');
+  const file = path.join(ws, 'RaceR', 'src', 'a.vhd'), fsp = fs.promises, open = fsp.open;
+  let opens = 0;
+  fsp.open = async (p, ...a) => {
+    const fh = await open.call(fsp, p, ...a);
+    if (String(p) === file && ++opens === 1) { fs.writeFileSync(file + '.new', 'entity b is end;\n'); fs.renameSync(file + '.new', file); }
+    return fh;
+  };
+  try { assert.equal(await P.readFile('RaceR', 'src/a.vhd'), 'entity b is end;\n'); } finally { fsp.open = open; }
+  assert.equal(opens, 2);
+});
+
 test('#4744 a file written: its folder swapped for a link out of the project once checked, refused, nothing written out', { skip: !canLinkFiles }, async () => {
   await P.createProject({ name: 'RaceW' });
   await P.writeFile('RaceW', 'src/a.vhd', 'entity a is end;\n');

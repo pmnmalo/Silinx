@@ -50,13 +50,19 @@ async function opened(dir, full, fh) {
 }
 
 /** A file of the folder `dir` (`full`: its absolute path, already checked by name) opened with `flags` (fs.open's),
- *  then checked (#4744): refused (400, 'path escapes project') when the file opened is not the one inside `dir`. */
-export async function openWithin(dir, full, flags = 'r') {
-  const fh = await fsp.open(full, flags);
-  try {
-    if (!await opened(dir, full, fh)) throw refused();
-    return fh;
-  } catch (e) { await fh.close().catch(() => {}); throw e; }
+ *  then checked (#4744): refused (400, 'path escapes project') when the file opened is not the one inside `dir`.
+ *  A file replaced whole between the open and the check (another writer's temporary file renamed over it) is opened
+ *  again, a few times: each file kept has passed the check. */
+export async function openWithin(dir, full, flags = 'r', tries = 4) {
+  for (let i = 1; ; i++) {
+    const fh = await fsp.open(full, flags);
+    let ok = false;
+    try { ok = await opened(dir, full, fh); }
+    catch (e) { await fh.close().catch(() => {}); throw e; }
+    if (ok) return fh;
+    await fh.close().catch(() => {});
+    if (i >= tries) throw refused();
+  }
 }
 
 /** The contents of a file of the folder `dir`, opened then checked (openWithin); encoding: readFile's. */
