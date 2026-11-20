@@ -141,7 +141,8 @@ const PRODUCERS = {
 };
 const ROOT = new URL('../', import.meta.url);
 const producersFound = () => ['web/js', 'core'].flatMap((d) => readdirSync(new URL(`${d}/`, ROOT)).filter((f) => f.endsWith('.js')).map((f) => `${d}/${f}`))
-  .filter((f) => f !== 'web/js/messages.js' && /Started : \\?"/.test(readFileSync(new URL(f, ROOT), 'utf8'))).sort();
+  // (messages.js and console.js read the headers, #4728: console.js's runs, they write none)
+  .filter((f) => !['web/js/messages.js', 'web/js/console.js'].includes(f) && /Started : \\?"/.test(readFileSync(new URL(f, ROOT), 'utf8'))).sort();
 
 test('#4729 every module writing a process\'s header is known, and each of its processes has its intended source', () => {
   assert.deepEqual(producersFound(), Object.keys(PRODUCERS).sort());

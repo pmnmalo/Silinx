@@ -202,12 +202,20 @@ export function renderDiagnostics() {
 // to the Console once it lists nothing (cleared, another project opened: the start-up checks' warnings); one the viewer
 // picked stays. The Tasks interface opens its folded messages on the event (web/js/tasks.js).
 let listedDiags = new Map(), broughtForward = null;
+// (a console line's entry seen already: one written again replaces its twin since #4728, the count unchanged, and is new)
+const seenConsoleDiags = new WeakSet();
 const diagKey = d => `${d.severity}|${d.tool || ''}|${d.file || ''}|${d.line || 0}|${d.message}`;
 const pageShown = () => document.querySelector('#console-tabs .tab.active')?.dataset.page;
 function focusNewDiagnostics(errs, warns) {
   const before = listedDiags;
   listedDiags = new Map();   // (each message's count: one listed more times than before is new)
-  const isNew = d => { const k = diagKey(d), n = (listedDiags.get(k) || 0) + 1; listedDiags.set(k, n); return n > (before.get(k) || 0); };
+  const isNew = d => {
+    const k = diagKey(d), n = (listedDiags.get(k) || 0) + 1;
+    listedDiags.set(k, n);
+    const fresh = d.source === 'console' && !seenConsoleDiags.has(d);
+    if (d.source === 'console') seenConsoleDiags.add(d);
+    return n > (before.get(k) || 0) || fresh;
+  };
   const newErr = errs.map(isNew).some(Boolean), newWarn = warns.map(d => isNew(d) && d.severity === 'warning').some(Boolean);
   const page = newErr ? 'errors' : newWarn && !(errs.length && pageShown() === 'errors') ? 'warnings' : null;
   if (!page) {

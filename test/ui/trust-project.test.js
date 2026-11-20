@@ -89,13 +89,13 @@ uiTest('#4583 an imported project\'s refusals carry the Trust Project button: on
   const lines = (await page.consoleText()).split('\n');
   assert.deepEqual(lines.slice(-3), ['', 'Programming FPGA (SRAM)...', `ERROR: Programming FPGA (SRAM) failed: ${REFUSAL} Trust Project`]);
   assert.deepEqual((await trustLines(page)).at(-1), [`ERROR: Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]);
-  // the Errors tab: the two refusals, each with its button
-  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 2, [], { what: 'the two refusals listed' });
-  assert.deepEqual(await errorRows(page), [[`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true], [`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
+  // the Errors tab: the refusal, with its button (said twice: listed once, #4728)
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag .ln-trust').length === 1, [], { what: 'the refusal listed' });
+  assert.deepEqual(await errorRows(page), [[`Programming FPGA (SRAM) failed: ${REFUSAL}`, 'Trust Project', true]]);
   // Portuguese: the buttons, the question; No trusts nothing, the button enabled again
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#console-errors .ln-trust').textContent === 'Confiar no Projeto', [], { what: 'in Portuguese' });
-  assert.equal(await page.eval(() => [...document.querySelectorAll('#console-errors .ln-trust')].map((b) => b.textContent).join()), 'Confiar no Projeto,Confiar no Projeto');
+  assert.equal(await page.eval(() => [...document.querySelectorAll('#console-errors .ln-trust')].map((b) => b.textContent).join()), 'Confiar no Projeto');
   await page.openProject(NAME);
   await page.waitFor(() => document.querySelectorAll('#console-log .ln-trust').length === 4, [], { what: 'the line said again' });
   assert.equal(await page.eval(() => [...document.querySelectorAll('#console-log .ln-trust')].at(-1).textContent), 'Confiar no Projeto');

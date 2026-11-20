@@ -30,10 +30,11 @@ uiTest('a drawing that is not JSON, and a file that is gone: ERROR lines of the 
   assert.equal(await front(page), 'errors');
   await page.eval(async () => (await import('/js/app.js')).openFile('src/gone.v'));
   await page.waitConsole(/^ERROR: cannot open src\/gone\.v: .+$/m);
-  await page.waitFor(() => document.querySelectorAll('#console-errors .diag').length === 3, [], { what: 'the Errors tab listing them' });
+  // (bad.json's error said twice, by the ASM chart's and the truth table's opening: listed once, #4728)
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag').length === 2, [], { what: 'the Errors tab listing them' });
   const errs = await errorsTab(page);
-  assert.equal(errs.length, 3, errs.join('\n'));
-  assert.deepEqual(errs.map((e) => /cannot open (\S+):/.exec(e)?.[1]), ['notes/bad.json', 'notes/bad.json', 'src/gone.v']);
+  assert.equal(errs.length, 2, errs.join('\n'));
+  assert.deepEqual(errs.map((e) => /cannot open (\S+):/.exec(e)?.[1]), ['notes/bad.json', 'src/gone.v']);
   assert.equal(await front(page), 'errors');
   assert.deepEqual(await toasts(page), []);
   // no document opened for them, and no warning
