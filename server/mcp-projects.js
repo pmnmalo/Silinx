@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
+import { readWithin } from './paths.js';
 import { orderExamples } from '../core/examples.js';
 import { TEST_DESIGNS, orderTestDesigns } from '../core/test-designs.js';
 import { nameUnnamed } from '../core/schname.js';
@@ -194,7 +195,8 @@ export const PROJECT_TOOLS = [
       await readProject(name);
       const full = await projectPath(name, rel);
       let text;
-      try { text = await fsp.readFile(full, 'utf8'); } catch { throw toolError(`no file '${rel}' in the project '${name}'`); }
+      // (the file opened checked too, #4744)
+      try { text = await readWithin(P.projectDir(name), full, 'utf8'); } catch (e) { throw toolError(e.status === 400 ? `'${rel}' is outside the project '${name}'` : `no file '${rel}' in the project '${name}'`); }
       // (a report or a log of build/ redacted as get_report's: the ISE machine's address never in a result, #3418)
       if (/^build\//i.test(P.relKey(P.projectDir(name), full))) text = (await redactor())(text);
       return { text: clip(text), data: { project: name, path: rel, length: text.length }, untrusted: `the file ${rel}` };

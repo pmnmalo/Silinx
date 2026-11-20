@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
-import { hiddenName, nativeRealOf } from './paths.js';
+import { hiddenName, nativeRealOf, readWithin } from './paths.js';
 
 // ------------------------------------------------------------------ helpers
 export const toolError = (message) => Object.assign(new Error(message), { toolError: true });
@@ -114,7 +114,7 @@ export async function projectPath(name, rel, verb = 'read', { last = true } = {}
 export async function projectText(name, rel, missing) {
   let full;
   try { full = await projectPath(name, rel); } catch (e) { throw e.hidden ? e : toolError(missing); }
-  try { return await fsp.readFile(full, 'utf8'); } catch { throw toolError(missing); }
+  try { return await readWithin(P.projectDir(name), full, 'utf8'); } catch { throw toolError(missing); }   // (checked once open, #4744)
 }
 
 export async function readProject(name) {

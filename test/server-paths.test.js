@@ -198,3 +198,57 @@ test('hiddenIn; a project\'s silinx.json that lists a hidden file: not built, no
   const ok = await ise.generateBuild({ name: 'hid', top: 'top', device, files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] }, d, { sourcesOnly: true });
   assert.deepEqual([ok.sources.map(s => s.buildPath), ok.warnings], [['src/src/top.vhd'], []]);
 });
+
+// #4744: a path checked, then its link swapped by another process before the file is opened: the file opened is
+// checked too (the swap made between the check and the open by the test's hook on fs.promises)
+async function swappedAt(match, swap, run) {
+  const fsp = fs.promises, saved = { open: fsp.open, readFile: fsp.readFile, writeFile: fsp.writeFile };
+  let done = false;
+  for (const k of Object.keys(saved)) fsp[k] = async (p, ...a) => { if (!done && match(String(p))) { done = true; swap(); } return saved[k].call(fsp, p, ...a); };
+  try { return await run(); } finally { Object.assign(fsp, saved); }
+}
+
+test('#4744 a file read: swapped for a link out of the project once checked, refused; not swapped, read', { skip: !canLinkFiles }, async () => {
+  await P.createProject({ name: 'Race' });
+  await P.writeFile('Race', 'src/a.vhd', 'entity a is end;\n');
+  const secret = path.join(tmp, 'secret.txt'), file = path.join(ws, 'Race', 'src', 'a.vhd');
+  fs.writeFileSync(secret, 'not the project\'s');
+  assert.equal(await P.readFile('Race', 'src/a.vhd'), 'entity a is end;\n');
+  await swappedAt(p => p === file, () => { fs.rmSync(file); fs.symlinkSync(secret, file); },
+    () => assert.rejects(P.readFile('Race', 'src/a.vhd'), { status: 400, message: 'path escapes project' }));
+  // (a link inside the project, swapped for another inside: read)
+  fs.rmSync(file);
+  fs.writeFileSync(path.join(ws, 'Race', 'src', 'b.vhd'), 'entity b is end;\n');
+  fs.symlinkSync(path.join(ws, 'Race', 'src', 'b.vhd'), file);
+  assert.equal(await P.readFile('Race', 'src/a.vhd'), 'entity b is end;\n');
+});
+
+test('#4744 a file written: its folder swapped for a link out of the project once checked, refused, nothing written out', { skip: !canLinkFiles }, async () => {
+  await P.createProject({ name: 'RaceW' });
+  await P.writeFile('RaceW', 'src/a.vhd', 'entity a is end;\n');
+  const out = path.join(tmp, 'outw'), src = path.join(ws, 'RaceW', 'src');
+  fs.mkdirSync(out);
+  await swappedAt(p => p.startsWith(src + path.sep) && p.endsWith('.tmp'), () => { fs.renameSync(src, path.join(ws, 'RaceW', 'src-old')); fs.symlinkSync(out, src); },
+    () => assert.rejects(P.writeFile('RaceW', 'src/a.vhd', 'entity changed is end;\n'), { status: 400 }));
+  assert.deepEqual(fs.readdirSync(out), []);
+  assert.equal(fs.readFileSync(path.join(ws, 'RaceW', 'src-old', 'a.vhd'), 'utf8'), 'entity a is end;\n');
+});
+
+test('#4744 readWithin / openWithin / createWithin: the file opened inside the folder, else refused', { skip: !canLinkFiles }, async () => {
+  const { readWithin, openWithin, createWithin } = await import('../server/paths.js');
+  const d = path.join(tmp, 'ow'), outside = path.join(tmp, 'ow-out.txt');
+  fs.mkdirSync(d);
+  fs.writeFileSync(path.join(d, 'a.txt'), 'a');
+  fs.writeFileSync(outside, 'out');
+  fs.symlinkSync(outside, path.join(d, 'away.txt'));
+  fs.symlinkSync(path.join(d, 'a.txt'), path.join(d, 'here.txt'));
+  assert.equal(await readWithin(d, path.join(d, 'a.txt'), 'utf8'), 'a');
+  assert.equal(await readWithin(d, path.join(d, 'here.txt'), 'utf8'), 'a');
+  await assert.rejects(readWithin(d, path.join(d, 'away.txt'), 'utf8'), { status: 400, message: 'path escapes project' });
+  await assert.rejects(openWithin(d, path.join(d, 'away.txt'), 'r+'), { status: 400 });
+  await assert.rejects(readWithin(d, path.join(d, 'none.txt')), { code: 'ENOENT' });
+  await createWithin(d, path.join(d, 'new.txt'), 'n');
+  assert.equal(fs.readFileSync(path.join(d, 'new.txt'), 'utf8'), 'n');
+  await assert.rejects(createWithin(d, path.join(d, 'away.txt'), 'x'), { code: 'EEXIST' });   // (never through a link)
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'out');
+});
