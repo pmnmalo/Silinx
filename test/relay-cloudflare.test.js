@@ -39,8 +39,9 @@ const roomOf = (r, room) => r.namespaces.ROOMS.objects.get(room).obj.host.rooms.
 test('its room\'s logic is core/\'s, copied as it is (node scripts/sync-relay-cloudflare.mjs); its limits Silinx\'s relay\'s, one room an object', () => {
   assert.deepEqual(staleCopies(), []);
   assert.deepEqual(RELAY_CORE, ['collab-room.js', 'collab-meeting.js', 'collab-wire.js', 'collab-crypto.js', 'collab-sign.js']);
-  const { ping, ...node } = NODE_LIMITS;
-  assert.equal(ping, 30_000);
+  // (the server's ping, and its cap on the connections waiting for their first message, #4736: an object holds one room)
+  const { ping, waiting, ...node } = NODE_LIMITS;
+  assert.deepEqual([ping, waiting], [30_000, 256]);
   assert.deepEqual({ ...RELAY_LIMITS, rooms: node.rooms }, node);
   assert.equal(RELAY_LIMITS.rooms, 1);
   assert.deepEqual(originsOf(' https://a.example/, http://127.0.0.1:8642  https://b.example'), ['https://a.example', 'http://127.0.0.1:8642', 'https://b.example']);
@@ -146,7 +147,7 @@ test('its key: an owner without it, or with another, refused, said; a relay with
   assert.deepEqual(got, [{ type: 'error', message: NEEDS_KEY }]);
 });
 
-test('its checks before a room: the origins, the paths, a WebSocket, the subprotocol, the room\'s id in the address', async () => {
+test('its checks before a room: the origins, the paths, a WebSocket, the subprotocol, the room\'s id in the address (#4736: never a meeting point\'s)', async () => {
   const upgrade = (path, headers = {}, protocols = [SUBPROTOCOL]) => new Promise(resolve => {
     const ws = new WebSocket(`${relay.url.replace(/^http/, 'ws')}${path}`, protocols, { headers });
     ws.on('open', () => { ws.close(); resolve('open'); });
@@ -164,7 +165,8 @@ test('its checks before a room: the origins, the paths, a WebSocket, the subprot
   assert.equal(res.status, 426);
   assert.match(await (await fetch(`${relay.url}/`)).text(), /^A relay of Silinx's shared projects/);
   // (no room in the address, an id that is not one, a room never opened: no longer shared, as Silinx's relay says)
-  for (const q of ['', '?room=x', `?room=${room}`]) {
+  // (#4736: nor a meeting point's object, which only its host and peers reach)
+  for (const q of ['', '?room=x', `?room=${room}`, '?room=meet.anything', `?room=meet.${'T'.repeat(32)}`]) {
     const ws = new WebSocket(`${follow()}${q}`, [SUBPROTOCOL]);
     const got = [];
     ws.on('message', d => got.push(JSON.parse(String(d))));

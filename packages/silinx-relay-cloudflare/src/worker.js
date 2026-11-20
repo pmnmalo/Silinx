@@ -11,7 +11,8 @@
 // Its root (GET /) answers what it is to any page, with the origins it lets in (#4574).
 // The owner's open gets a new room (its id chosen here: the Durable Object's name); its resume (#3835) names its room.
 // Its meeting points (#4542): /api/collab/meet/host (a hosted room's owner's page: the relay's key, as an owner's) and
-// /api/collab/meet/peer (a follower), with their topic (`?topic=`), each topic's sockets to the object `meet.<topic>`.
+// /api/collab/meet/peer (a follower), with their topic (`?topic=`, TOPIC_RE), each topic's sockets to the object
+// `meet.<topic>`; an owner or a follower names a room's id only (#4736: never a `meet.` object).
 import { RelayRoom, RELAY_LIMITS } from './room-object.js';
 import { SUBPROTOCOL, ROOM_RE, NOT_SHARED } from './core/collab-wire.js';
 import { TOPIC_RE } from './core/collab-meeting.js';
@@ -75,7 +76,9 @@ export default {
       // (an open: a new room; a resume: its own)
       if (room === null) room = b64url(crypto.getRandomValues(new Uint8Array(16)));
     }
-    if (!ROOM_RE.test(String(room)) && !String(room).startsWith('meet.')) return refused(NOT_SHARED);
+    // (#4736: an owner's or a follower's room is a room's id, never a meeting point's object, which only its host and
+    // peers reach, by their checked topic)
+    if (role !== 'host' && role !== 'peer' && !ROOM_RE.test(String(room))) return refused(NOT_SHARED);
     const headers = new Headers(req.headers);
     headers.set('x-silinx-role', role);
     headers.set('x-silinx-room', room);

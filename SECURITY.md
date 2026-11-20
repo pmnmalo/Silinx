@@ -343,7 +343,14 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   who is in) goes to the follower that joined only (#3529): joining and leaving again multiplies nobody else's
   download. Its limits: a
   follower's message 64 KB, the owner's 16 MB, a follower's presence 8 KB and 10 a second after a burst of 40 (the
-  rest dropped, the follower told once, #4173), followers per room, rooms per server. An owner's connection lost, its
+  rest dropped, the follower told once, #4173), followers per room, rooms per server. An editor's edits (#4736): 50 a
+  second after a burst of 200, 64 at most waiting for their signature's check, 8 signatures that are not the room's at
+  most (past any of them the connection is closed, 1008); in a room without editors a follower's frames are dropped at
+  once, the follower told once. Each editor's session seals its frames with IVs of its own, 8 random bytes then a
+  counter, signed with the frame, and the relay or host forwards a session's frame only past the last one it forwarded:
+  a frame replayed by whoever saw it goes no further. The server's relay takes at most 256 connections waiting for
+  their first message, all rooms and meeting points together; the Cloudflare relay gives an owner or a follower a room's
+  object only, never a meeting point's, which only its host and peers reach, by a topic of the meeting's format. An owner's connection lost, its
   room is kept for 2 minutes (`RELAY_LIMITS.grace`) for the owner's resume (#3835): only with the room's resume secret
   (128 random bits the relay gives the owner alone when the room opens, compared in constant time, `same()`), the
   owner's client id and the server's token again (`core/collab-room.js`); anything else is refused as a room not
