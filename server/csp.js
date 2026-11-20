@@ -39,13 +39,15 @@ export const relaySources = origins => origins.flatMap(o => [o, o.replace(/^http
  * site of a single file), `connect` (other origins fetched), `meta` (in a <meta> element: without the
  * directives a <meta> cannot carry, which the browser reports as errors: frame-ancestors).
  */
-export function contentSecurityPolicy({ hashes = [], scripts = [], connect = [], meta = false } = {}) {
+export function contentSecurityPolicy({ hashes = [], scripts = [], connect = [], meta = false, evalInWorkers = false } = {}) {
   return [
     "default-src 'self'",
-    // 'unsafe-eval': the compiled simulator (core/compiled-sim.js, #384) runs the JavaScript it writes
-    // for the design (new Function); 'wasm-unsafe-eval': Yosys in WebAssembly; a script injected into a
-    // page still cannot run
-    ["script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'", ...scripts, ...hashes].join(' '),
+    // 'wasm-unsafe-eval': Yosys in WebAssembly; a script injected into a page cannot run. The compiled simulator
+    // (core/compiled-sim.js, #384) runs the JavaScript it writes for the design (new Function) in the Board
+    // Emulator's worker, which the local server starts from its file, with no policy of the page's: the page itself
+    // evaluates no code (#4741). evalInWorkers: 'unsafe-eval' kept, for the static editions, whose workers start
+    // from Blobs (a file:// page cannot start one from a file, #512) and so run under the page's policy
+    ["script-src 'self'", ...(evalInWorkers ? ["'unsafe-eval'"] : []), "'wasm-unsafe-eval'", ...scripts, ...hashes].join(' '),
     // the Silinx toolchain, Yosys and the board emulator run in workers started from Blobs
     "worker-src 'self' blob:",
     // the update check (GitHub's releases and the CHANGELOG), the iCE40's nextpnr from npm's registry (#2444), the KiCad

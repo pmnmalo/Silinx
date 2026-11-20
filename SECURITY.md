@@ -231,9 +231,13 @@ board or a PROM) without the user's say.
    `web/js` and the pages' inline scripts; the SVG and HTML templates of `core/` and `server/` too, #2986), and
    `test/ui/safe-output.test.js` opens every kind of drawing and an HDL source with a payload in each text field. The
    Content Security Policy (`server/csp.js`) runs no inline script but the page's own, by hash, so an injection that
-   slipped through still could not run. Its `'unsafe-eval'` is the compiled simulator's (`core/compiled-sim.js`), whose
-   generated code holds no name of the design, only its own variables and numbers: the test lists the application's
-   only dynamic code.
+   slipped through still could not run. The local server's pages have no `'unsafe-eval'` (#4741): the compiled simulator
+   (`core/compiled-sim.js`), whose generated code holds no name of the design, only its own variables and numbers, runs
+   in the Board Emulator's worker, started from its file with no policy of the page's; the page only checks the
+   design. The static editions keep `'unsafe-eval'`, for their workers started from Blobs, which run under the page's
+   policy (a `file:` page cannot start one from a file). Their `connect-src` keeps `*.workers.dev`: the Cloudflare
+   relay is set by the user at run time, which a policy written at build time cannot name. The test lists the
+   application's only dynamic code.
 3. **Trust for outside projects** (`core/trust.js`): an imported project (a zip, an ISE project, a design link, the
    MCP's `import_project`) is marked `trusted: false` in its `silinx.json` from the import's first write (an import that
    stops halfway leaves no trusted project), whatever the zip's own `silinx.json` says; no file route or MCP tool

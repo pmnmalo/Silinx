@@ -19,10 +19,12 @@ export class CompiledBoard {
   /**
    * json, top: the netlist (netlistOf); design: the elaborated design (its top's ports and signals);
    * wiring: boardWiring's; clock: the main clock's port (null: none); period: its period (ps); board: its
-   * resources (the VGA connector's widths, #420); model: compileNetlist's, already compiled (this.model, in
-   * the Board Emulator's worker: core/emulate-remote.js), in place of json and top.
+   * resources (the VGA connector's widths, #420); model: compileNetlist's, already compiled (this.model), in place
+   * of json and top. check: only compiled, to know what cannot be and its warnings, no code of the design run
+   * (CompiledBoard.checked: the page's side, its policy with no 'unsafe-eval', #4741; the Board Emulator's worker
+   * compiles and runs it, core/emulate-remote.js).
    */
-  constructor({ json, top, design, wiring, clock = null, period = 20000, board = null, model = null }) {
+  constructor({ json, top, design, wiring, clock = null, period = 20000, board = null, model = null, check = false }) {
     this.wiring = wiring;
     this.period = period;
     this.clock = clock;
@@ -42,16 +44,22 @@ export class CompiledBoard {
         uart: this.uartTx && { tx: bit(this.uartTx) },
         vga: this.vgaPins && { hs: bit(this.vgaPins.hs), vs: bit(this.vgaPins.vs), rgb: [...this.vgaPins.red, ...this.vgaPins.green, ...this.vgaPins.blue].map(bit) },
       },
+      // (checked only: no activity profile, which runs the code it writes)
+      ...(check ? { activity: false } : {}),
     });
+    this.warnings = model.warnings;
+    if (check) { Object.assign(this, { check, json, top }); return; }
     this.model = model;
     this.cs = new CompiledSim(model);
-    this.warnings = model.warnings;
     this.portOf = new Map(design.top.ports.filter((p) => p.dir === 'in').map((p) => [p.sig, p.name]));
     const pre = `${design.top.path || design.top.name}.`;
     this.netOf = (s) => (String(s.path || '').startsWith(pre) ? model.nets.get(s.path.slice(pre.length)) : model.nets.get(s.name)) || null;
     this.log = [];
     this.reset();
   }
+  /** A design checked for the compiled engine, none of its code run (#4741): its warnings, palette, clock and period, and
+   *  what the worker compiles it from (json, top); throws what cannot be compiled. */
+  static checked(opts) { return new CompiledBoard({ ...opts, model: null, check: true }); }
   /** Back to the start (the inputs kept, as the FPGA after a new configuration). */
   reset() {
     this.cs.reset();

@@ -251,7 +251,8 @@ export function mountEmulator(container, { design, board, assignments, title = '
   if (engine?.netlist && wiring.clocks.length > 1) engineNote = `more than one clock on the board (${wiring.clocks.map((c) => c.port).join(', ')})`;
   else if (engine?.netlist) {
     try {
-      const local = new CompiledBoard({ json: engine.netlist.json, top: engine.netlist.top, design, wiring, clock: wiring.clocks[0]?.port || null, period, board });
+      // (checked on the page, compiled and run by the worker: the page's policy has no 'unsafe-eval', #4741)
+      const local = CompiledBoard.checked({ json: engine.netlist.json, top: engine.netlist.top, design, wiring, clock: wiring.clocks[0]?.port || null, period, board });
       host = compiledHost();
       compiled = new RemoteBoard(host.port, local, { design, wiring, board, hasLcd, close: host.close });
     } catch (e) { engineNote = e.message; host?.close(); host = null; }

@@ -26,7 +26,7 @@ const ucfPort = (p) => { const t = p.sig.t, bus = t.w > 1 || (t.kind === 'logic'
 const lcdLines = (st) => (lcdText(st) || []).map((row) => String.fromCharCode(...row).trimEnd());
 
 // a CompiledBoard driven directly (ref) and one behind a MessageChannel (remote), on the same netlist
-async function pair(t, { sources, top, generics, ucf, board }) {
+async function pair(t, { sources, top, generics, ucf, board, checked = false }) {
   const design = designOf(sources, top, { generics });
   const { json, top: ntop } = await netlistOf(design, { run: yosysNode });
   const wiring = boardWiring({ ports: design.top.ports, assignments: parseUcf(ucf, { ports: design.top.ports.map(ucfPort) }).assignments, board });
@@ -37,7 +37,9 @@ async function pair(t, { sources, top, generics, ucf, board }) {
   const { port1, port2 } = new MessageChannel();
   hostBoard(port2);
   const closed = { n: 0 };
-  const remote = new RemoteBoard(port1, ref, { design, wiring, board, hasLcd, close: () => { closed.n++; port1.close(); port2.close(); } });
+  // (checked: the page's side only checks the design, the host compiles it, #4741)
+  const local = checked ? CompiledBoard.checked({ json, top: ntop, design, wiring, clock: wiring.clocks[0]?.port || null, period, board }) : ref;
+  const remote = new RemoteBoard(port1, local, { design, wiring, board, hasLcd, close: () => { closed.n++; port1.close(); port2.close(); } });
   t.after(() => remote.destroy());
   const state = { prev: null, lcd: lcdState() };
   const sig = (name) => design.top.ports.find((p) => p.name === name).sig;
@@ -250,4 +252,46 @@ test('an engine that fails: the error in the log, the board stopped; destroy() e
   b.remote.destroy();
   assert.equal(await p, null);
   assert.equal(b.closed.n, 1);
+});
+
+// #4741: the page checks the design, none of its code run (its policy has no 'unsafe-eval'); the worker compiles and runs it
+test('#4741 a board checked on the page: its init carries the netlist, not code; behind the port what the board shows is the CompiledBoard\'s', async (t) => {
+  for (const name of ['blinky', 'vga']) {
+    const ex = example(name);
+    const gens = timingGenerics(designOf(ex.design, ex.project.top).top.params);
+    const generics = gens.length ? scaledGenerics(gens, autoTimeScale(gens) * 50) : undefined;
+    const { text } = exampleUcf(name, { board: 'basys2', variant: '250' });
+    const b = await pair(t, { sources: ex.design, top: ex.project.top, generics, ucf: text, board: boardOf('basys2'), checked: true });
+    assert.deepEqual([b.remote.warnings, b.remote.palette, b.remote.clock, b.remote.period], [b.ref.warnings, b.ref.palette, b.ref.clock, b.ref.period], name);
+    const init = boardInit({ ...b.ref, check: true, json: { modules: {} }, top: 'x' }, { design: b.design, wiring: b.wiring, board: null });
+    assert.deepEqual([init.model, init.json, init.top], [undefined, { modules: {} }, 'x']);
+    for (let k = 0; k < 6; k++) {
+      const st = await b.window(1 + 97 * k);
+      assert.deepEqual(round(st.outputs), round(b.state.prev), `${name} window ${k}`);
+      assert.equal(st.now, b.ref.now);
+    }
+  }
+});
+
+test('#4741 checked with no code generated from strings (node --disallow-code-generation-from-strings, as a page with no \'unsafe-eval\'): its warnings; a CompiledBoard that runs it refused', async () => {
+  const ex = example('blinky');
+  const design = designOf(ex.design, ex.project.top);
+  const { json, top } = await netlistOf(design, { run: yosysNode });
+  const dir = fs.mkdtempSync(path.join((await import('node:os')).tmpdir(), 'silinx-noeval-'));
+  const file = path.join(dir, 'netlist.json');
+  fs.writeFileSync(file, JSON.stringify({ json, top, ports: design.top.ports.map(p => ({ name: p.name, dir: p.dir, sig: p.name })), name: design.top.name }));
+  const url = f => new URL(`../${f}`, import.meta.url).href;
+  const script = `import fs from 'node:fs';
+    import { CompiledBoard } from ${JSON.stringify(url('core/emulate-compiled.js'))};
+    const { json, top, ports, name } = JSON.parse(fs.readFileSync(${JSON.stringify(file)}, 'utf8'));
+    const opts = { json, top, design: { top: { name, ports } }, wiring: { bits: [] }, clock: 'clk', period: 20000 };
+    const c = CompiledBoard.checked(opts);
+    let refused = '';
+    try { new CompiledBoard(opts); } catch (e) { refused = e.constructor.name; }
+    console.log(JSON.stringify({ check: c.check, warnings: c.warnings, cs: c.cs ?? null, refused }));`;
+  const { execFileSync } = await import('node:child_process');
+  try {
+    const out = JSON.parse(execFileSync(process.execPath, ['--disallow-code-generation-from-strings', '--input-type=module', '-e', script], { encoding: 'utf8' }));
+    assert.deepEqual(out, { check: true, warnings: new CompiledBoard({ json, top, design: { top: { name: design.top.name, ports: [] } }, wiring: { bits: [] }, clock: 'clk', period: 20000 }).warnings, cs: null, refused: 'EvalError' });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
