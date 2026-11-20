@@ -8,6 +8,9 @@
 // (flow-models.js synthesizes the design again, without the capture). A capture on the board's clock (#3481): its port's
 // constraints (pin, period) added to the design's, unless the design has a port on that pin already (an error).
 import { runFlow } from '../packages/silinx-fpga/src/index.js';
+import { UCF } from '../packages/silinx-fpga/src/constraints.js';
+import { XDC } from '../packages/silinx-fpga/src/xdc.js';
+import { pinsTaken } from './auto-pins.js';
 import { flowFrontEnd } from './synth-front.js';
 import { mountSimModels } from './flow-models.js';
 import { captureFrontEnd, captureClockText, boardClockUcf, boardClockXdc, boardClockText, bscanCell } from './ila-insert.js';
@@ -38,14 +41,11 @@ function captureReport(c) {
 export function captureUcf(capture, ucf, { xdc = false } = {}) {
   const bc = capture?.boardClock;
   if (!bc) return { ucf, error: null };
-  const pin = bc.pin.replace(/[^A-Za-z0-9]/g, '');
-  if (xdc) {
-    const on = new RegExp(`PACKAGE_PIN\\s+${pin}\\b[^\\n]*\\[get_ports\\s+\\{?([^}\\s\\]]+)`, 'i').exec(ucf || '');
-    if (on) return { ucf, error: `capture: ${boardClockText(bc)} is the design's port ${on[1]} already: choose ${on[1]} as the capture's clock (Logic Analyzer Settings, capture_settings)` };
-    return { ucf: `${ucf ? `${ucf.replace(/\s*$/, '')}\n\n` : ''}${boardClockXdc(bc)}\n`, error: null };
-  }
-  const taken = new RegExp(`^\\s*NET\\s+"?([^"\\s;]+)"?\\s+LOC\\s*=\\s*"?${pin}"?\\s*[;|]`, 'im').exec(ucf || '');
-  if (taken) return { ucf, error: `capture: ${boardClockText(bc)} is the design's port ${taken[1]} already: choose ${taken[1]} as the capture's clock (Logic Analyzer Settings, capture_settings)` };
+  // (the design's port on the clock's pin, as the constraints' own reader reads them, #4771)
+  const pin = bc.pin.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const taken = pinsTaken(ucf, xdc ? XDC : UCF).get(pin);
+  if (taken) return { ucf, error: `capture: ${boardClockText(bc)} is the design's port ${taken} already: choose ${taken} as the capture's clock (Logic Analyzer Settings, capture_settings)` };
+  if (xdc) return { ucf: `${ucf ? `${ucf.replace(/\s*$/, '')}\n\n` : ''}${boardClockXdc(bc)}\n`, error: null };
   return { ucf: `${ucf ? `${ucf.replace(/\s*$/, '')}\n\n` : ''}${boardClockUcf(bc, { iostandard: /\bIOSTANDARD\b/i.test(ucf || '') })}\n`, error: null };
 }
 

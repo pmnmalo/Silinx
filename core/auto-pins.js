@@ -3,6 +3,7 @@
 // Silinx toolchain (web/js/open-flow-browser.js) check them before an implementation.
 import { compile, elaborate } from './compile.js';
 import { parseUcf, bitName } from '../packages/silinx-fpga/src/parts.js';
+import { readConstraints, UCF } from '../packages/silinx-fpga/src/constraints.js';
 import { clocksOf, latchGates } from './schematic.js';
 import { primitiveSources } from './unisim.js';
 
@@ -20,6 +21,21 @@ export function portWidth(t) {
 function busBits(t) {
   if (t.kind === 'int') return { lo: 0, hi: portWidth(t) - 1 };
   return t.w > 1 || (t.kind === 'logic' && !t.scalar) ? { lo: Math.min(t.left, t.right), hi: Math.max(t.left, t.right) } : null;
+}
+
+/**
+ * The pins a design's constraints put its ports on (#4771), read by the format's own reader (UCF by default; XDC's
+ * PACKAGE_PIN): Map(PIN in upper case → the net on it, the last one written). A comment, a pin given in lower case or
+ * after another attribute (NET "clk" IOSTANDARD = … | LOC = …; set_property -dict { … } [get_ports { clk }]) as the
+ * reader reads them; an unreadable text none (the flow says why).
+ */
+export function pinsTaken(text, format = UCF) {
+  const out = new Map();
+  let model = null;
+  try { model = readConstraints(format, text || ''); } catch { /* unreadable: none */ }
+  for (const st of model?.netStatements || []) if (st.attrs?.loc) out.set(String(st.attrs.loc).toUpperCase(), st.net);
+  for (const [net, a] of Object.entries(model?.assignments || {})) if (a.loc && !out.has(String(a.loc).toUpperCase())) out.set(String(a.loc).toUpperCase(), net);
+  return out;
 }
 
 /** Top-level port bits ({ net, dir }) that have no LOC in the given UCF text. */

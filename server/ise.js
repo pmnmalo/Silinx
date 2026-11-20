@@ -271,12 +271,13 @@ if has postsynth; then
 fi
 if has translate && [ -s autopins.txt ]; then
   # Pins for ports without a LOC (no board selected): free general-purpose I/O pins of the package,
-  # skipping dual-purpose configuration pins and pins already used in the UCF.
+  # skipping dual-purpose configuration pins and pins already used in the UCF (usedpins.txt: as its reader reads
+  # them, #4771).
   echo "=== SILINX STEP autopins ==="
   # partgen deletes files in its working directory: run it in its own folder
   rm -rf _partgen && mkdir -p _partgen && ( cd _partgen && partgen -v ${ps.bitPart.replace(/^/, 'xc')} > /dev/null 2>&1 ) || { echo "ERROR: partgen failed"; exit 1; }
   awk -v ucf=${shQuote(top + '.ucf')} '
-    FILENAME == ucf { if (match($0, /LOC *= *"?[A-Za-z0-9]+/)) { l = substr($0, RSTART, RLENGTH); sub(/LOC *= *"?/, "", l); used[toupper(l)] = 1 } next }
+    FILENAME == "usedpins.txt" { if (NF) used[toupper($1)] = 1; next }
     FILENAME ~ /\\.pkg$/ {
       if ($1 != "pin" || (toupper($3) in used)) next
       if ($6 ~ /GCLK/ && $6 ~ /^I[OP]/) clk[++nclk] = $3                                    # global clock inputs
@@ -293,7 +294,7 @@ if has translate && [ -s autopins.txt ]; then
       if ($3 == "clock" && clk[kc] != pin) printf "NET \\"%s\\" CLOCK_DEDICATED_ROUTE = FALSE ; # no free GCLK pin\\n", $1 >> ucf
       printf "WARNING: %s -> pin %s (assigned automatically%s, no LOC constraint)\\n", $1, pin, ($3 == "clock" ? ", global clock pin" : "")
     }
-  ' ${shQuote(top + '.ucf')} _partgen/*.pkg autopins.txt || exit 1
+  ' usedpins.txt _partgen/*.pkg autopins.txt || exit 1
 fi
 if has translate; then
   run_step translate ngdbuild -intstyle xflow -dd _ngo -nt timestamp ${uc}-p ${ps.impl} ${shQuote(top + '.ngc')} ${shQuote(top + '.ngd')}
@@ -353,7 +354,7 @@ const DEFAULT_SETTINGS_SH = '/opt/Xilinx/14.7/ISE_DS/settings64.sh';
 
 // (the ports without a pin location: core/auto-pins.js, shared with the browser edition)
 export { unconstrainedPorts } from '../core/auto-pins.js';
-import { unconstrainedPorts } from '../core/auto-pins.js';
+import { unconstrainedPorts, pinsTaken } from '../core/auto-pins.js';
 import { isGeneratedSource, viewHdl } from '../core/view-hdl.js';
 import { blackboxesIn, blackboxModels } from '../core/c-blackbox.js';
 import { modulesFromLibrary } from '../core/schdoc.js';
@@ -491,9 +492,11 @@ export async function generateBuild(project, projectDir, { steps, sourcesOnly = 
   // would put signals on arbitrary board pins, so it is refused instead.
   const unplaced = await unconstrainedPorts(sources.map(f => ({ ...f, text: fss.readFileSync(path.join(buildDir, f.buildPath), 'utf8') })), top, ucfText);
   await fs.rm(path.join(buildDir, 'autopins.txt'), { force: true });
+  await fs.rm(path.join(buildDir, 'usedpins.txt'), { force: true });
   if (unplaced.length) {
     if (project.board) throw Object.assign(new Error(`${unplaced.length} top-level port bit(s) have no pin location (LOC) for the ${project.board} board: ${unplaced.slice(0, 12).map(u => u.net).join(', ')}${unplaced.length > 12 ? ', …' : ''}. Assign them in I/O Pin Planning (or remove the board in Design Properties).`), { status: 400 });
     await fs.writeFile(path.join(buildDir, 'autopins.txt'), unplaced.map(u => `${u.net} ${u.dir} ${u.clock ? 'clock' : 'io'}`).join('\n') + '\n');
+    await fs.writeFile(path.join(buildDir, 'usedpins.txt'), [...pinsTaken(ucfText).keys()].map(p => `${p}\n`).join(''));
     warnings.push(`${unplaced.length} port bit(s) have no LOC constraint (${unplaced.slice(0, 8).map(u => u.net).join(', ')}${unplaced.length > 8 ? ', …' : ''}): Silinx assigns free I/O pins automatically - do NOT program real hardware with this bitstream`);
     hasUcf = true;
   } else if (!hasUcf) {

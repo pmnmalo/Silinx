@@ -44,3 +44,14 @@ test('unconstrainedPorts: an integer port with a range has only its range\'s bit
   assert.deepEqual(left.data_in, range(0, 6));
   assert.deepEqual(left.addr, [...range(0, 2), ...range(5, 19)]);
 });
+
+test('pinsTaken: the pins a design\'s constraints take, as the format\'s reader reads them (#4771)', async () => {
+  const { pinsTaken } = await import('../core/auto-pins.js');
+  const { XDC } = await import('../packages/silinx-fpga/src/xdc.js');
+  const ucf = '# NET "x" LOC = "P3" ;\nnet clk iostandard = lvcmos33 | loc = b8 ;\nNET "sw<0>" LOC=P11 | PULLUP;\nNET "led<*>" LOC = "M5" ;\n';
+  assert.deepEqual([...pinsTaken(ucf)], [['B8', 'clk'], ['P11', 'sw<0>'], ['M5', 'led<*>']]);
+  assert.deepEqual([...pinsTaken('set_property -dict { PACKAGE_PIN W5 IOSTANDARD LVCMOS33 } [get_ports { clk }]\n# set_property PACKAGE_PIN U16 [get_ports led]\n', XDC)], [['W5', 'clk']]);
+  // none: no text
+  assert.deepEqual([...pinsTaken(null)], []);
+  assert.deepEqual([...pinsTaken('')], []);
+});
