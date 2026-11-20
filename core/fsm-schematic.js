@@ -5,7 +5,7 @@
 // state bits and the inputs, outputs the next-state bits (the flip-flops' D) and the outputs, unused state codes don't
 // cares, as the diagram's Create Boolean Algebra writes them (core/fsm.js truthTablesOf). The state and next-state bits
 // are net labels (q1, d1…), the clock, the reset, the inputs and the outputs I/O markers (a bus's bits labels of its
-// bits, phase(2), #1688). Made when the machine allows it: no errors, a binary or gray encoding, at most 16 table inputs;
+// bits, phase(2), #1688). Made when the machine allows it: no errors, an encoding of codes (encodedTable's), at most 16 table inputs;
 // else why not. Read-only, shown beside the diagram, and the MCP's related_view. Isomorphic module.
 import { normalizeFsm, encodedTable, fsmEncoding } from './fsm.js';
 import { schematicFromTable } from './logic-sch.js';
@@ -13,17 +13,10 @@ import { joinOnWires, symbolDef, symbolPins } from './schdoc.js';
 
 const MAX_INPUTS = 16;   // (a truth table's, core/logic.js)
 
-/** Why the diagram `m` (normalized) has no schematic, or null. */
-function notDrawable(m) {
-  if (m.encoding !== 'binary' && m.encoding !== 'gray') return `its encoding is ${m.encoding}: a schematic is drawn for the binary and gray encodings`;
-  return null;
-}
-
 /** The state diagram `model`'s schematic: { doc } (a schematic document), or { error } when it cannot be drawn. */
 export function fsmSchematic(model) {
   const m = normalizeFsm(model);
-  const why = notDrawable(m);
-  if (why) return { error: `No schematic: ${why}` };
+  // (the encodings with codes of their own, as Create Boolean Algebra's: encodedTable's)
   const t = encodedTable(m);
   if (t.error) return { error: `No schematic: ${t.error[0].toLowerCase()}${t.error.slice(1)}` };
   const ins = [...t.stateBits, ...t.inputBits], outs = [...t.nextBits, ...t.outputBits];

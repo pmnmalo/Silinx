@@ -75,7 +75,7 @@ for (const lang of ['vhdl', 'verilog']) {
 }
 
 test('no schematic, why said: one-hot, a diagram with errors, too many bits, a signal named as a state bit', () => {
-  assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'onehot' }), { error: 'No schematic: its encoding is onehot: a schematic is drawn for the binary and gray encodings' });
+  assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'onehot' }), { error: 'No schematic: the encoded table is made for the binary and gray encodings (choose one of them)' });
   assert.deepEqual(fsmSchematic({ ...TRAFFIC, states: TRAFFIC.states.map((x) => ({ ...x, name: 'S' })) }), { error: 'No schematic: correct the errors of the diagram first' });
   assert.deepEqual(fsmSchematic({ ...MEALY, inputs: [...MEALY.inputs, { name: 'w', width: 8 }] }),
     { error: 'No schematic: too many bits for a table: 2 state bit(s) + 11 input bit(s) (at most 10)' });

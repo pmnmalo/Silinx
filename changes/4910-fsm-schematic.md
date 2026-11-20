@@ -16,6 +16,6 @@ In detail:
   - a Schematic badge on the diagram's row in the Design pane, between the drawing's and the HDL's;
   - Show Schematic Beside, in the tab's menu and in View;
   - the MCP's `related_view` with the view `schematic`.
-- **When:** it is read-only and redrawn as the diagram changes. It is drawn whenever it can be: a binary or gray encoding, no
+- **When:** it is read-only and redrawn as the diagram changes. It is drawn whenever it can be: an encoding of codes (binary, gray), no
   errors, at most 10 bits of state and inputs; otherwise it is not drawn and the console says why. It works in a design
   and simulation project too.

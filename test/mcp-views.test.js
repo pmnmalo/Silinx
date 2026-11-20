@@ -188,7 +188,7 @@ test('related_view: a state diagram\'s schematic, its gate-level implementation 
     assert.deepEqual(JSON.parse(r.text).symbols.filter((x) => /^fd/.test(x.type)).map((x) => x.type), ['fdr', 'fdr', 'fdr']);
     assert.deepEqual(files(pj), before);
     await call('write_file', { project: pj, path: 'src/hot.fsm.json', text: JSON.stringify({ ...fsm, name: 'hot', encoding: 'onehot' }, null, 2) });
-    await fails({ project: pj, path: 'src/hot.fsm.json', view: 'schematic' }, 'hot.fsm.json: No schematic: its encoding is onehot: a schematic is drawn for the binary and gray encodings');
+    await fails({ project: pj, path: 'src/hot.fsm.json', view: 'schematic' }, 'hot.fsm.json: No schematic: the encoded table is made for the binary and gray encodings (choose one of them)');
   }
 });
 
