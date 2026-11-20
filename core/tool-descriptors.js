@@ -82,7 +82,7 @@ const SILINX_CHANGE = { synth: { label: OPEN_SYNTH, title: SILINX_TIP }, impl: {
 // The tasks of a lab session (#782): every tool's so far. step: the design-flow button of the Silinx toolbar (web/js/menus.js,
 // data-step); action: its name; dots: the processes that say the task's state.
 const LAB_TASKS = [
-  // (the first task is Design, its id 'edit' kept: the kept state, the documents; 'Design' in Portuguese too, #1046)
+  // (the first task is Design, its id 'edit' kept: the kept state, the documents; 'Projetar' in Portuguese, #1046, #4953)
   { id: 'edit', label: 'Design', step: 'check', action: 'Check', hint: 'Open a source from the Design panel.', dots: ['check'] },   // (no Check here: Check Design is under the tree, #1349)
   { id: 'sim', label: 'Simulate', step: 'simulate', action: 'Simulate', hint: 'Simulate the design: its waves open here.', dots: ['sim-check'] },
   { id: 'emu', label: 'Emulate', step: 'emulate', action: 'Emulate', hint: 'Emulate the design on the board: the board opens here.', dots: [] },

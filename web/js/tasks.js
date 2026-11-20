@@ -291,7 +291,7 @@ function tagDocs() {
   if (empty) {
     empty.hidden = !on() || mine > 0;
     empty.querySelector('h2').textContent = TASK_LABEL[current()];
-    empty.querySelector('h2').dataset.i18nKeep = 'Design';   // (not "Projeto": the Project menu's, #1046)
+    empty.querySelector('h2').dataset.i18nTask = 'Design';   // ("Projetar", not "Projeto": the Design pane's, #1046, #4953)
     // (Simulate with no test bench yet: one to create, or a module simulated with stimuli drawn in SSim: #917, #1291)
     const noBench = current() === 'sim' && !!app.S.project && !simChoices(app.S.project, app.S.modules).benches.length;
     empty.querySelector('p').textContent = noBench ? NO_BENCH : HINT[current()];
@@ -376,7 +376,7 @@ function refreshDots() {
 }
 
 function taskButton(t) {
-  return h('button', { class: 'task-btn', type: 'button', 'data-task': t, title: TASK_LABEL[t], 'data-i18n-keep': 'Design', onclick: () => setTask(t) },
+  return h('button', { class: 'task-btn', type: 'button', 'data-task': t, title: TASK_LABEL[t], 'data-i18n-task': 'Design', onclick: () => setTask(t) },
     h('span', { class: 'ico-inline', html: ICON[t] }), h('span', { class: 'lbl' }, TASK_LABEL[t]), h('span', { class: 'task-dot' }));
 }
 

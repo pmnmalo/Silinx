@@ -245,11 +245,13 @@ uiTest('Tasks in Portuguese: the switcher, the task\'s bar and its page translat
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#task-switch .task-btn[data-task="sim"] .lbl').textContent === 'Simular', [], { what: 'Portuguese' });
   const pt = await texts();
-  assert.deepEqual(untranslated(en, pt), ['@Design', 'Design'], 'Design: the task\'s name in Portuguese too (#1046), its text and its tooltip');
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .lbl')].map((l) => l.textContent)), ['Design', 'Simular', 'Emular', 'Implementar']);   // (Design: not "Projeto", the Project menu's, #1046)
+  assert.deepEqual(untranslated(en, pt), [], 'the Design task too: Projetar, its text and its tooltip (#4953)');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .lbl')].map((l) => l.textContent)), ['Projetar', 'Simular', 'Emular', 'Implementar']);   // (Projetar: not "Projeto", the Design pane's, #4953)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.title)), ['Projetar', 'Simular', 'Emular', 'Implementar'], 'the tooltips');
+  assert.equal(await page.eval(() => document.querySelector('#task-empty h2').textContent), 'Projetar', 'the task\'s page: its name as its button\'s');
   assert.equal(await page.eval(() => document.querySelector('#task-empty p').textContent), 'Abra uma fonte no painel Projeto.');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#mc-filters .filt')].map((b) => b.textContent)),
-    ['Todas', 'Projeto', 'Simulação', 'Emulação', 'Implementação']);
+    ['Todas', 'Projeto', 'Simulação', 'Emulação', 'Implementação']);   // (the console's filter: Projeto, not the task, #4716)
   // the longer labels (the menus too) fit the header: a laptop, a tablet in landscape (the switcher's labels giving
   // way once the header has measured itself, #839)
   for (const [w, hgt] of [[1280, 800], [1180, 820], [1025, 768]]) {
@@ -309,7 +311,7 @@ uiTest('#839 Tasks in a development build: with the Development menu, in Portugu
   const last = await fit(page);
   if (current && last.fit === 'current') assert.deepEqual(last.labels, ['edit']);
   else assert.deepEqual(last.labels, ['edit', 'sim', 'emu', 'impl'], current ? `back to every label at ${current} px` : 'every label down to 1040 px');
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.title)), ['Design', 'Simular', 'Emular', 'Implementar']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.title)), ['Projetar', 'Simular', 'Emular', 'Implementar']);
   // with room again (a lab desktop): every label
   await page.setViewport(1920, 1080);
   await page.waitFor(() => document.getElementById('topbar').dataset.fit === '', [], { what: 'every label' });
@@ -417,7 +419,7 @@ uiTest('#991 Tasks: a task\'s dot explained by its button\'s tooltip; in Portugu
   assert.equal(await tip('edit'), 'Design — done, no warnings');
   assert.equal(await tip('emu'), 'Emulate', 'no dot: the task\'s name');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#task-switch .task-btn[data-task="edit"]').title === 'Design — concluído, sem avisos', [], { what: 'Portuguese' });
+  await page.waitFor(() => document.querySelector('#task-switch .task-btn[data-task="edit"]').title === 'Projetar — concluído, sem avisos', [], { what: 'Portuguese' });
   assert.equal(await tip('emu'), 'Emular');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await noWarnings(page);
