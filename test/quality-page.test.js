@@ -140,7 +140,7 @@ test('ISE comparison: Silinx at Optimizations Area and Speed, by their ISE prope
     { name: 'serv', silinx: { error: 'out of memory' }, silinxHigh: { error: 'no room' }, ise: { luts: 330, slices: 210, ffs: 350, periodNs: 13 } },
   ] };
   const page = qualityPage(res);
-  assert.match(page, /^Silinx is built at two of its Optimizations \(Process Properties of \*Synthesize\*\): \*\*Area\*\*\n\(the default of a new project: .*\), and \*\*Speed\*\*\n\(the mappings for speed for every design and several placements, the faster circuit\); ISE at its default\. \*Silinx\* in the summary is Area; \*Area\* and \*Speed\* in the tables are the two\.$/m);
+  assert.match(page, /^Silinx is built at two of its Optimizations \(Process Properties of \*Synthesize\*\): \*\*Area\*\*\n\(the smaller .*\), and \*\*Speed\*\*\n\(the mappings for speed for every design and several placements, the faster circuit\); ISE at its default\. \*Silinx\* in the summary is Area; \*Area\* and \*Speed\* in the tables are the two\.$/m);
   assert.doesNotMatch(page, /Normal|Effort High|\| High|High \(trce\)/);
   assert.match(page, /^- \*\*Size:\*\* 1 designs built by both\. Logic LUTs: Silinx −13% against ISE/m);
   assert.match(page, /^- \*\*At Optimization Speed:\*\* logic LUTs −7%, slices −17% against ISE \(1 designs\);\n {2}critical path \+21%, as fast or faster on 0 of 1\.$/m);
@@ -263,9 +263,9 @@ test('ISE comparison: each Optimization against ISE at the same goal, per goal i
   ] };
   const page = qualityPage(res);
   assert.match(page, /nextpnr's\npack, place and route/);
-  assert.match(page, /^- \*\*Area\*\* \(the default of a new project: .*\), against ISE at XST's `-opt_mode Area -opt_level 2`;$/m);
+  assert.match(page, /^- \*\*Area\*\* \(the smaller .*\), against ISE at XST's `-opt_mode Area -opt_level 2`;$/m);
   assert.match(page, /^- \*\*Speed\*\* .*, against ISE at XST's `-opt_mode Speed -opt_level 2`, ISE's \*Timing Performance\*;$/m);
-  assert.match(page, /^- \*\*Fast\*\* \(the usual mapping alone, one placement\), against ISE at XST's `-opt_mode Speed -opt_level 1`, XST's default;$/m);
+  assert.match(page, /^- \*\*Fast\*\* \(the default of a new project, #4828: the usual mapping alone, one placement\), against ISE at XST's `-opt_mode Speed -opt_level 1`, XST's default;$/m);
   // a's ratios: Area LUTs 0.8, slices 0.8, period 1.25, time 0.5
   assert.match(page, /^- \*\*Area:\*\* 1 designs built by both\. Logic LUTs −20%, flip-flops \+0%, slices\n {2}−20%; as few LUTs or fewer on 1 of 1\. Critical path \+25% \(1 designs timed\n {2}by both\), as fast or faster on 0 of 1\. Run time −50%\.$/m);
   assert.match(page, /^- \*\*Speed:\*\* .*\n.*\n {2}by both\), as fast or faster on 0 of 1\. Run time \+50%\.$/m);
