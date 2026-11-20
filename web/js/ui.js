@@ -24,10 +24,15 @@ const TABBABLE = 'button:not([disabled]), input:not([disabled]):not([type=hidden
 // a modal dialog (Ctrl+P printed it, #4761)
 const FIELD_KEYS = new Set(['a', 'c', 'v', 'x', 'z', 'y']);
 // A modal dialog (#4761): role dialog, aria-modal, named by its title; Tab and Shift+Tab kept inside it; the focus
-// back where it was when it closes; the app's shortcuts not reaching the document behind it.
-export function dialog({ title, body, buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }], width = 460, onOpen, className = '' }) {
+// back where it was when it closes; the app's shortcuts not reaching the document behind it. Every dialog of the app is
+// one (#4762: SSim's, Symbol Info, the command palette), so all share its stack, its keys and its close-once guard:
+//   host: the element it is put over (default the page; SSim's window, a schematic editor), head: false, no title bar
+//   (the body has its own header: Symbol Info's), overlayClass: the overlay's own look (the palette's);
+//   a button: { label, value, primary, validate, disabled, keep (runs validate / value, the dialog left open: Apply),
+//   attrs (its own attributes) }.
+export function dialog({ title, body, buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }], width = 460, onOpen, className = '', host = null, head = true, overlayClass = '' }) {
   return new Promise(resolve => {
-    const overlay = h('div', { class: 'dlg-overlay', style: { zIndex: ++dialogZ } });
+    const overlay = h('div', { class: `dlg-overlay${overlayClass ? ` ${overlayClass}` : ''}`, style: { zIndex: ++dialogZ } });
     const content = typeof body === 'function' ? body() : body;
     // once only: a second click or key (a button pressed twice) must not close another dialog (#490)
     let closed = false;
@@ -41,15 +46,18 @@ export function dialog({ title, body, buttons = [{ label: 'OK', value: true, pri
     };
     const btnRow = h('div', { class: 'dlg-buttons' });
     const titleId = `dlg-title-${++dialogIds}`;
-    const dlg = h('div', { class: `dlg ${className}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, style: { width: typeof width === 'number' ? `${width}px` : width } },
-      h('div', { class: 'dlg-title' }, h('span', { id: titleId }, title), h('button', { class: 'dlg-x', onclick: () => close(null), title: 'Close', 'aria-label': 'Close' }, '✕')),
+    const dlg = h('div', { class: `dlg ${className}`, role: 'dialog', 'aria-modal': 'true', ...(head ? { 'aria-labelledby': titleId } : { 'aria-label': title }), style: { width: typeof width === 'number' ? `${width}px` : width } },
+      head ? h('div', { class: 'dlg-title' }, h('span', { id: titleId }, title), h('button', { class: 'dlg-x', onclick: () => close(null), title: 'Close', 'aria-label': 'Close' }, '✕')) : null,
       h('div', { class: 'dlg-body' }, content),
-      btnRow,
+      buttons.length ? btnRow : null,
     );
     for (const b of buttons) {
-      const el = h('button', { class: `btn${b.primary ? ' primary' : ''}`, onclick: async () => {
-        if (b.validate) { const ok = await b.validate(); if (!ok) return; }
-        close(typeof b.value === 'function' ? b.value() : b.value);
+      const el = h('button', { ...(b.attrs || {}), class: `btn${b.primary ? ' primary' : ''}`, onclick: async () => {
+        // (a validation that is not async: closed at once, in the click, #4762)
+        const ok = b.validate ? b.validate() : true;
+        if (ok instanceof Promise ? !(await ok) : !ok) return;
+        const v = typeof b.value === 'function' ? b.value() : b.value;
+        if (!b.keep) close(v);
       } }, b.label);
       if (b.disabled) el.disabled = true;
       b.el = el;
@@ -72,10 +80,10 @@ export function dialog({ title, body, buttons = [{ label: 'OK', value: true, pri
     document.addEventListener('keydown', onKey, true);
     dialogStack.push(overlay);
     overlay.append(dlg);
-    document.body.append(overlay);
+    (host || document.body).append(overlay);
     // drag by title: pointer events, so a finger drags it too (#264)
     const t = dlg.querySelector('.dlg-title');
-    t.addEventListener('pointerdown', e => {
+    t?.addEventListener('pointerdown', e => {
       if (e.target.closest('button') || !e.isPrimary) return;
       const r = dlg.getBoundingClientRect();
       const ox = e.clientX - r.left, oy = e.clientY - r.top;
@@ -86,7 +94,8 @@ export function dialog({ title, body, buttons = [{ label: 'OK', value: true, pri
       addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', up);
     });
     onOpen?.({ dlg, close, buttons });
-    const first = dlg.querySelector('.dlg-body input, .dlg-body select, .dlg-body textarea');
+    // (the field marked data-autofocus, else the first: #4762)
+    const first = dlg.querySelector('.dlg-body [data-autofocus]') || dlg.querySelector('.dlg-body input, .dlg-body select, .dlg-body textarea');
     (first || btnRow.querySelector('.primary'))?.focus();
   });
 }

@@ -166,24 +166,3 @@
 .isim-menu-sep { height: 1px; background: #d7d7d7; margin: 3px 2px 3px 24px; }
 
 /* dialogs */
-.isim-dlg-overlay { position: absolute; inset: 0; z-index: 50; background: rgba(0,0,0,.18); display: flex; align-items: center; justify-content: center; }
-.isim-dlg { width: 420px; max-width: calc(100% - 20px); background: var(--bg, #f0f0f0); border: 1px solid #6d8bb8; box-shadow: 0 6px 24px rgba(0,0,0,.35); border-radius: 4px 4px 2px 2px; user-select: none; }
-.isim-dlg-title { height: 26px; display: flex; align-items: center; padding: 0 4px 0 10px; font-weight: bold; color: var(--title-fg, #15428b); background: var(--title-grad, linear-gradient(#e9eff8, #c9d7ed)); border-bottom: 1px solid #99bbe8; border-radius: 4px 4px 0 0; }
-.isim-dlg-x { margin-left: auto; border: 1px solid transparent; background: none; width: 22px; height: 20px; color: #444; }
-.isim-dlg-x:hover { background: #e04343; color: #fff; }
-.isim-dlg-body { padding: 10px 12px 6px; }
-.isim-dlg-hint { margin-bottom: 10px; color: #333; }
-.isim-dlg-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 10px; align-items: center; }
-.isim-dlg-grid label { text-align: right; }
-.isim-dlg-grid input, .isim-dlg-grid select { height: 22px; border: 1px solid #a5acb5; padding: 0 4px; background: #fff; font: inherit; min-width: 0; }
-.isim-dlg-grid input[readonly] { background: #f4f4f4; color: #333; }
-.isim-dlg-grid input:focus, .isim-dlg-grid select:focus { outline: 1px solid var(--accent, #316ac5); border-color: var(--accent, #316ac5); }
-.isim-dlg-note { margin-top: 8px; color: var(--muted, #6d6d6d); font-size: 11px; }
-.isim-dlg-err { min-height: 16px; margin-top: 4px; color: var(--danger, #c00000); }
-.isim-dlg-btns { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px 10px; }
-.isim-dlg-btns .btn {
-  border: 1px solid #707070; border-radius: 3px; padding: 3px 12px; min-width: 72px;
-  background: linear-gradient(#f2f2f2, #dddddd); color: #000;
-}
-.isim-dlg-btns .btn:hover { background: linear-gradient(#eaf6fd, #bee6fd); border-color: #3c7fb1; }
-.isim-dlg-btns .btn.primary { border-color: #3c7fb1; }

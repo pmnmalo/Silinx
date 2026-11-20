@@ -5,13 +5,14 @@
 // and a bus's value in dialogs. mountStimuli(ctx) is called by mountISim where this code was.
 import * as V from '/core/values.js';
 import { newStimuli, normalizeStimuli, combinationCycles, cyclePs, editInput, editExpected, editInputBit, editExpectedBit, checkExpected, fillExpected, stimulusPlan, parseCellValue } from '/core/stimuli.js';
-import { esc, h } from './dom.js';
+import { h } from './dom.js';
 import { fmtTime, ROW_H, RULER_H } from './isim.js';
+import { field } from './isim-dialogs.js';
 
 /** { toggleStim, timingDialog, fillStim, stimClick, drawStim, runStim } of an SSim window. */
 export function mountStimuli(ctx) {
   const { st, sim, design, stimOpt, stimInst, topSig, stimPortOf, stimBar, btns, layout, invalidate, rowAtY, tOf, xOf, selectRow, setFont,
-    flat, width, colors, api, echo, enqueue, runTo, logLine, showDialog, closeDialog } = ctx;
+    flat, width, colors, api, echo, enqueue, runTo, logLine, openDialog } = ctx;
 
   function toggleStim(on = !st.stim.on) {
     st.stim.on = on;
@@ -119,29 +120,19 @@ export function mountStimuli(ctx) {
     ctx.textBaseline = 'middle';
   }
   function timingDialog() {
-    closeDialog();
     const m = st.stim.m;
     const clocks = stimOpt.ports.filter(p => p.dir === 'in' && p.width === 1);
     const guess = m ? m.clock : (clocks.find(p => /^(clk|clock)/i.test(p.name))?.name || null);
-    const ov = h('div', { class: 'isim-dlg-overlay' });
-    ov.innerHTML = `
-      <div class="isim-dlg isim-stim-dlg" role="dialog">
-        <div class="isim-dlg-title">Stimulus Timing<button class="isim-dlg-x" title="Close">✕</button></div>
-        <div class="isim-dlg-body">
-          <div class="isim-dlg-hint">The inputs of ${esc(stimInst === design.top ? design.top.name : `${stimInst.module || stimInst.name} (${stimInst.path})`)} as a grid of cycles: with a clock, the inputs change at its falling edge and the outputs are checked before the next one; without one, they change at every cycle, one for each combination of the inputs.</div>
-          <div class="isim-dlg-grid">
-            <label>Clock:</label><select name="clock"><option value="">None (combinational)</option>${clocks.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select>
-            <label>Clock Period (ns):</label><input name="period" value="${esc(m?.periodNs ?? 20)}">
-            <label>Time Step (ns):</label><input name="step" value="${esc(m?.stepNs ?? 10)}">
-            <label>Cycles:</label><input name="cycles" value="${esc(m?.cycles ?? 16)}">
-          </div>
-          <div class="isim-dlg-err"></div>
-        </div>
-        <div class="isim-dlg-btns"><button class="btn primary" data-a="ok">OK</button><button class="btn" data-a="cancel">Cancel</button></div>
-      </div>`;
-    showDialog(ov);
-    const q = (n) => ov.querySelector(`[name="${n}"]`);
-    q('clock').value = guess || '';
+    const clock = h('select', { name: 'clock' }, h('option', { value: '' }, 'None (combinational)'), ...clocks.map(p => h('option', { value: p.name, 'data-no-i18n': '' }, p.name)));
+    clock.value = guess || '';
+    const err = h('div', { class: 'dlg-err' });
+    const body = h('div', {},
+      h('div', { class: 'hint' }, `The inputs of ${stimInst === design.top ? design.top.name : `${stimInst.module || stimInst.name} (${stimInst.path})`} as a grid of cycles: with a clock, the inputs change at its falling edge and the outputs are checked before the next one; without one, they change at every cycle, one for each combination of the inputs.`),
+      h('div', { class: 'form-grid isim-dlg-grid' }, h('label', {}, 'Clock:'), clock,
+        ...field('Clock Period (ns):', 'period', { value: String(m?.periodNs ?? 20) }), ...field('Time Step (ns):', 'step', { value: String(m?.stepNs ?? 10) }),
+        ...field('Cycles:', 'cycles', { value: String(m?.cycles ?? 16) })),
+      err);
+    const q = (n) => body.querySelector(`[name="${n}"]`);
     // no clock (#1478): the period, the step and the cycles hidden; the step kept, one cycle per combination of the
     // inputs (the saved ones when they were already combinational)
     const combCycles = m && !m.clock ? m.cycles : combinationCycles(stimOpt.ports);
@@ -150,58 +141,45 @@ export function mountStimuli(ctx) {
       for (const n of ['period', 'step', 'cycles']) q(n).hidden = q(n).previousElementSibling.hidden = !clk;
       q('step').disabled = clk;
     };
-    q('clock').onchange = sync; sync();
+    clock.onchange = sync; sync();
+    let o = null;
     const ok = () => {
       const num = (n, lo) => { const v = Number(q(n).value); if (!Number.isInteger(v) || v < lo) throw new Error(`${n === 'cycles' ? 'Cycles' : n === 'period' ? 'Clock Period' : 'Time Step'}: a whole number of at least ${lo}`); return v; };
       try {
-        const o = q('clock').value ? { clock: q('clock').value, periodNs: num('period', 2), stepNs: num('step', 1), cycles: num('cycles', 1) }
+        o = q('clock').value ? { clock: q('clock').value, periodNs: num('period', 2), stepNs: num('step', 1), cycles: num('cycles', 1) }
           : { clock: null, periodNs: m?.periodNs ?? 20, stepNs: m?.stepNs ?? 10, cycles: combCycles };
-        st.stim.m = st.stim.m ? normalizeStimuli({ ...st.stim.m, ...o }, stimOpt.ports) : newStimuli(stimOpt.ports, o);
-        closeDialog();
-        stimChanged(true);
-      } catch (e) { ov.querySelector('.isim-dlg-err').textContent = e.message; }
+        return true;
+      } catch (e) { err.textContent = e.message; return false; }
     };
-    const cancel = () => { closeDialog(); if (!st.stim.m) toggleStim(false); };
-    ov.querySelector('.isim-dlg-x').onclick = cancel;
-    ov.querySelector('[data-a=cancel]').onclick = cancel;
-    ov.querySelector('[data-a=ok]').onclick = ok;
-    ov.addEventListener('keydown', (e) => { if (e.key === 'Enter') ok(); else if (e.key === 'Escape') cancel(); });
-    (q('clock').value ? q('cycles') : q('clock')).focus();
+    openDialog({
+      title: 'Stimulus Timing', width: 460, body, className: 'isim-stim-dlg',
+      buttons: [{ label: 'OK', primary: true, value: true, validate: ok, attrs: { 'data-a': 'ok' } }, { label: 'Cancel', value: null, attrs: { 'data-a': 'cancel' } }],
+      onOpen: () => { (q('clock').value ? q('cycles') : q('clock')).dataset.autofocus = ''; },
+    }).then(v => {
+      if (v === true) { st.stim.m = st.stim.m ? normalizeStimuli({ ...st.stim.m, ...o }, stimOpt.ports) : newStimuli(stimOpt.ports, o); stimChanged(true); }
+      // (cancelled, Esc, its ✕: no stimuli made, none shown; closed by another dialog: left as it is)
+      else if (v === null && !st.stim.m) toggleStim(false);
+    });
   }
   // the value of a bus from cycle k: an input's (bits 0 1 Z X, h… / d…) or an output's expected one (or -)
   function cellDialog(p, k, isIn) {
-    closeDialog();
     const m = st.stim.m, list = isIn ? m.inputs[p.name] : m.expected[p.name];
-    const ov = h('div', { class: 'isim-dlg-overlay' });
-    ov.innerHTML = `
-      <div class="isim-dlg isim-stim-dlg" role="dialog">
-        <div class="isim-dlg-title">${isIn ? 'Input Value' : 'Expected Value'}<button class="isim-dlg-x" title="Close">✕</button></div>
-        <div class="isim-dlg-body">
-          <div class="isim-dlg-grid">
-            <label>Signal Name:</label><input name="sig" value="${esc(p.name)}" readonly>
-            <label>From Cycle:</label><input name="k" value="${esc(k)}" readonly>
-            <label>Value:</label><input name="value" value="${esc(list[k])}">
-          </div>
-          <div class="isim-dlg-note">${isIn ? 'Bits, most significant first (0 1 Z X), h… hexadecimal or d… decimal; it holds up to the next change.' : 'Bits, most significant first (0 1, - not checked), h… hexadecimal or d… decimal; - alone: not checked.'}</div>
-          <div class="isim-dlg-note">Expand the bus to change one of its bits: a click on its wave, as on a 1-bit signal.</div>
-          <div class="isim-dlg-err"></div>
-        </div>
-        <div class="isim-dlg-btns"><button class="btn primary" data-a="ok">OK</button><button class="btn" data-a="cancel">Cancel</button></div>
-      </div>`;
-    showDialog(ov);
-    const inp = ov.querySelector('[name=value]');
-    const ok = () => {
-      try {
-        const bits = parseCellValue(inp.value, p.width, { expected: !isIn });
-        closeDialog();
-        if (isIn ? editInput(m, p.name, k, bits) : editExpected(m, p.name, k, bits)) stimChanged(isIn);
-      } catch (e) { ov.querySelector('.isim-dlg-err').textContent = e.message; }
-    };
-    ov.querySelector('.isim-dlg-x').onclick = closeDialog;
-    ov.querySelector('[data-a=cancel]').onclick = closeDialog;
-    ov.querySelector('[data-a=ok]').onclick = ok;
-    ov.addEventListener('keydown', (e) => { if (e.key === 'Enter') ok(); else if (e.key === 'Escape') closeDialog(); });
-    inp.focus(); inp.select();
+    const err = h('div', { class: 'dlg-err' });
+    const body = h('div', {},
+      h('div', { class: 'form-grid isim-dlg-grid' },
+        ...field('Signal Name:', 'sig', { value: p.name, readonly: true, 'data-no-i18n': '' }), ...field('From Cycle:', 'k', { value: String(k), readonly: true }),
+        ...field('Value:', 'value', { value: list[k] })),
+      h('div', { class: 'dlg-note' }, isIn ? 'Bits, most significant first (0 1 Z X), h… hexadecimal or d… decimal; it holds up to the next change.' : 'Bits, most significant first (0 1, - not checked), h… hexadecimal or d… decimal; - alone: not checked.'),
+      h('div', { class: 'dlg-note' }, 'Expand the bus to change one of its bits: a click on its wave, as on a 1-bit signal.'),
+      err);
+    const inp = body.querySelector('[name=value]');
+    let bits = null;
+    const ok = () => { try { bits = parseCellValue(inp.value, p.width, { expected: !isIn }); return true; } catch (e) { err.textContent = e.message; return false; } };
+    openDialog({
+      title: isIn ? 'Input Value' : 'Expected Value', width: 420, body, className: 'isim-stim-dlg',
+      buttons: [{ label: 'OK', primary: true, value: true, validate: ok, attrs: { 'data-a': 'ok' } }, { label: 'Cancel', value: null, attrs: { 'data-a': 'cancel' } }],
+      onOpen: () => { inp.dataset.autofocus = ''; inp.select(); },
+    }).then(v => { if (v === true && (isIn ? editInput(m, p.name, k, bits) : editExpected(m, p.name, k, bits))) stimChanged(isIn); });
   }
 
   return { toggleStim, timingDialog, fillStim, stimClick, drawStim, runStim };

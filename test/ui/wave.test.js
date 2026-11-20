@@ -148,7 +148,7 @@ uiTest('ISim Wave window: zoom, markers, radix, force constant / clock / remove,
     await page.waitForSelector('.isim-dlg');
   };
   await forceMenu('Force Constant...');
-  assert.equal(await page.eval(() => document.querySelector('.isim-dlg-title').firstChild.textContent), 'Force Selected Signal');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-title').firstChild.textContent), 'Force Selected Signal');
   assert.equal(await page.eval(() => document.querySelector('.isim-dlg [name=sig]').value), '/tb/clk');
   assert.equal(await page.eval(() => document.querySelector('.isim-dlg [name=value]').value), '0', 'prefilled with the value now');
   await page.fill('.isim-dlg [name=value]', '0');
@@ -168,7 +168,7 @@ uiTest('ISim Wave window: zoom, markers, radix, force constant / clock / remove,
   assert.equal(await qShown(), '6E');
   // ---- force clock 20 ns
   await forceMenu('Force Clock...');
-  assert.equal(await page.eval(() => document.querySelector('.isim-dlg-title').firstChild.textContent), 'Define Clock');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-title').firstChild.textContent), 'Define Clock');
   await page.fill('.isim-dlg [name=period]', '20 ns');
   await page.click('.isim-dlg [data-a=ok]');
   await page.waitFor(() => !document.querySelector('.isim-dlg'));
