@@ -22,8 +22,25 @@ import { instName, renameError } from '/core/schname.js';
 import { arrayName, arrayOf, arrayWidth, withArrayWidth, sharedPins } from '/core/sch-array.js';
 import { graphicProps } from './sch-graphics.js';
 import { isFreeStyle } from '/core/wire-style.js';
+import { hasComposition } from '/core/symlib.js';
 
-/** { renderProps, openSelected, renamed, joinByName, renameLabel } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
+/** A schematic editor's Push into a palette symbol built of others (#4808, web/js/sch-composition.js): its composition
+ *  opened by the host (opts.onOpenComposition), during a Try it with the symbol's values; and, in a composition's Try
+ *  it, a module's instance pushed into with its values (opts.onOpenModuleLive). { pushInto(s), canPushInto(s) }. */
+function opener(opts, live) {
+  const canPushInto = s => !!s && ((hasComposition(s.type) && !!opts.onOpenComposition) || (s.type === 'module' && !!live() && !!opts.onOpenModuleLive));
+  const pushInto = s => {
+    if (!canPushInto(s)) return false;
+    if (s.type === 'module') opts.onOpenModuleLive(s.params.module, { instance: s.name });
+    else opts.onOpenComposition({ type: s.type, params: JSON.parse(JSON.stringify(s.params || {})), symId: s.id, instance: s.name });
+    return true;
+  };
+  return { pushInto, canPushInto };
+}
+// the Properties' Push into of a palette symbol built of others, or nothing
+const intoButton = (s, { pushInto, canPushInto }) => (s.type !== 'module' && canPushInto(s) ? h('button', { class: 'btn ro-ok se-pushinto', type: 'button', text: 'Push into', title: 'How it is built: its composition, down to the gates', onclick: () => pushInto(s) }) : null);
+
+/** { renderProps, openSelected, renamed, joinByName, renameLabel, pushInto, canPushInto } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
 export function mountProps(ctx) {
   const { opts, container, propBody, readOnly, doc, sel, nl, live, modules, setGenLang, edit, flash, rotateSel, mirrorSel, deleteSel, nextId,
     openInfo, infoTarget, joinMarker, segSel } = ctx;
@@ -158,7 +175,7 @@ export function mountProps(ctx) {
     const title = s.type === 'module' ? `Module ${s.params.module}` : (sd.shape === 'lib' || sd.shape === 'demux' || sd.shape === 'tbuf') ? `${sd.title} (${S.title})` : `${S?.title || s.type}`;
     const sum = s.type === 'module' ? (S?.description || '') : symbolSummary(s.type, s.params, getLanguage());
     propBody.append(h('div', { class: 'se-ptitle', text: title }), h('div', { class: 'se-note se-sum', 'data-no-i18n': '', text: sum }),
-      h('div', { class: 'se-pbtns' }, h('button', { class: 'btn ro-ok se-infobtn', type: 'button', text: 'Symbol Info…', title: 'Symbol Info (F1)', onclick: () => openInfo(infoTarget()) })));
+      h('div', { class: 'se-pbtns' }, h('button', { class: 'btn ro-ok se-infobtn', type: 'button', text: 'Symbol Info…', title: 'Symbol Info (F1)', onclick: () => openInfo(infoTarget()) }), intoButton(s, opener(opts, live))));
     // (cleared: a fresh automatic name, inst_n, not drawn, #3300)
     propBody.append(field('Instance name', inp(s.name, v => { s.name = String(v).trim() ? newName(v, s.name, s.type === 'module' && arrayName(v)) : instName(doc(), s.id, ''); })), ...arrayWidthField(s, { inp, field, doc }), ...sharedPinsField(s, sd, { field, edit }));   // (reg(3:0): an arrayed instance, #3755; its Width, #3950; its Shared pins, #3966)
     for (const p of symbolParams(s)) {
@@ -322,7 +339,7 @@ export function mountProps(ctx) {
     propBody.append(h('div', { class: 'se-note', text: `Net '${n.name}', ${n.width} bit${n.width > 1 ? 's' : ''}` }), h('pre', { class: 'se-pins', text: eps.join('\n') || '(no connections)' }));
   }
 
-  return { renderProps, openSelected, renamed, joinByName, renameLabel };
+  return { renderProps, openSelected, renamed, joinByName, renameLabel, ...opener(opts, live) };
 }
 
 // a bus tap's MSB / LSB index (#1815): it takes the bits MSB downto LSB, so an MSB below its LSB (or an LSB above its

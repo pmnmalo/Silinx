@@ -107,3 +107,30 @@ test('symbol_info ADD8: its composition\'s levels; symbol_composition draws each
   await fails('symbol_composition', { project: 'fpga', symbol: 'M4_1' }, 'M4_1: no composition (a symbol of the palette drawn as it is; the adders and subtractors have one)');
   await fails('symbol_composition', { project: 'fpga', symbol: 'NOPE' }, 'no symbol \'NOPE\' in the palette');
 });
+
+// #4808: a level by its path of instances, as the schematic editor's Push into reaches it; with the symbol's inputs, its
+// values as a Try it of the symbol pushed into shows them (the levels above simulated with the symbol's)
+test('symbol_composition: a level by its path; with inputs, its values; their errors', async () => {
+  await setup();
+  const add8 = { project: 'fpga', symbol: 'add', params: { width: 8, cin: true, cout: true } };
+  const top = await ok('symbol_composition', { ...add8, inputs: { A: '0x5F', B: 33, CI: 1 } });
+  assert.deepEqual([top.data.module, top.data.path, top.data.values], ['ADD8', [], { A: '95', B: '33', S: '129', CI: '1', CO: '0' }]);
+  assert.equal(top.text.split('\n')[2], 'Values (A = 95, B = 33, S = 129, CI = 1, CO = 0): the symbol\'s.');
+  // U1, bits 7:4: A = 5, B = 2, the carry of F + 1 + 1; its FA1 U2 (bit 6): 1 + 0 + the carry of bits 5:0 (1F + 21 + 1)
+  const u1 = await ok('symbol_composition', { ...add8, path: ['U1'], inputs: { A: 0x5f, B: 0x21, CI: 1 } });
+  assert.deepEqual([u1.data.module, u1.data.path, u1.data.values], ['ADD4', ['U1'], { A: '5', B: '2', S: '8', CI: '1', CO: '0' }]);
+  assert.equal(u1.text.split('\n')[0], 'ADD8: ADD4 = 4 × FA1 (a level of ADD8: U1)');
+  const fa = await ok('symbol_composition', { ...add8, path: ['u1', 'U2'], inputs: { A: 0x5f, B: 0x21, CI: 1 } });
+  assert.deepEqual([fa.data.module, fa.data.values], ['FA1', { A: '1', B: '0', CI: '1', S: '0', CO: '1' }]);
+  const sub = await ok('symbol_composition', { project: 'fpga', symbol: 'sub', params: { width: 8, bin: true, bout: true }, path: ['U0'], inputs: { A: 5, B: 9, BI: 0 } });
+  assert.deepEqual(sub.data.values, { A: '5', B: '246', S: '252', CI: '1', CO: '0' }, 'its adder: A + not B + 1, 5 − 9 = 252 with a borrow');
+  const half = await ok('symbol_composition', { ...add8, inputs: { A: 1 } });
+  assert.deepEqual(half.data.values, { A: '1', B: '0', S: '1', CI: '0', CO: '0' }, 'the inputs left out: 0, as a Try it starts');
+  await fails('symbol_composition', { ...add8, path: ['U7'] }, 'path: no instance \'U7\' in ADD8: one of U1, U0');
+  await fails('symbol_composition', { ...add8, path: ['U1', 'U0', 'X'] }, 'path: no instance \'X\' in FA1: one of none (gates only)');
+  await fails('symbol_composition', { ...add8, inputs: { Q: 1 } }, 'inputs: no input pin \'Q\' (A, B, CI)');
+  await fails('symbol_composition', { ...add8, inputs: { A: 256 } }, 'inputs: A: 256 does not fit in its 8 bit(s)');
+  await fails('symbol_composition', { ...add8, inputs: { B: 'ten' } }, 'inputs: B: \'ten\' is not a number');
+  await fails('symbol_composition', { ...add8, module: 'FA1', inputs: { A: 1 } }, 'inputs: the level by its path (["U1", …]), so that its instance is known');
+  await fails('symbol_composition', { ...add8, module: 'FA1', path: ['U1'] }, 'module FA1 is not the path\'s level, ADD4');
+});

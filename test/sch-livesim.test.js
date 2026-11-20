@@ -502,3 +502,28 @@ test('#2015 Try it: a bus as a decimal unsigned, in two\'s complement, in one\'s
   // typed: a negative decimal its two's complement, or its one's complement in c1dec
   assert.deepEqual([parseValue('-2', 4, 'sdec'), parseValue('-1', 4, 'c1dec'), parseValue('-0', 4, 'c1dec'), parseValue('7', 4, 'c1dec'), parseValue('-8', 4, 'sdec')], [14n, 14n, 15n, 7n, 8n]);
 });
+
+// #4858: a wire named by some bits of a bus (a(3:2), a(1:0), #1688) has those bits' value in Try it, as any net
+test('#4858 a net of a bus\'s bits (a(3:2)) has the value of those bits of its bus', () => {
+  const d = { version: 6, name: 'parts', lang: 'vhdl', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [], ports: [] };
+  const named = (x, y, dx, net) => { d.wires.push({ id: `W${d.wires.length + 1}`, points: [{ x, y }, { x: x + dx, y }] }); d.labels.push({ id: `L${d.labels.length + 1}`, x: x + dx, y, net }); };
+  for (const [i, [nm, dir]] of [['a', 'in'], ['s', 'out']].entries()) {
+    const x = dir === 'in' ? 100 : 1500, y = 100 + 60 * i;
+    d.ports.push({ id: `P${nm}`, name: nm, dir, width: 4, x, y });
+    d.wires.push({ id: `WP${i}`, points: [{ x, y }, { x: x + (dir === 'in' ? 40 : -40), y }] });
+  }
+  // s(3:2) = not a(3:2), s(1:0) = a(1:0)
+  [['inv', 'a(3:2)', 's(3:2)'], ['buf', 'a(1:0)', 's(1:0)']].forEach(([type, i, o], k) => {
+    const s = { id: `S${k + 1}`, type, x: 600, y: 300 + 100 * k, rot: 0, mirror: false, name: `U${k + 1}`, params: { width: 2 } };
+    d.symbols.push(s);
+    const pins = symbolPins(s), pi = pins.find((q) => q.name === 'I'), po = pins.find((q) => q.name === 'O');
+    named(pi.x, pi.y, -40, i);
+    named(po.x, po.y, 40, o);
+  });
+  const r = buildLiveSim(normalizeDoc(d), { lang: 'vhdl' });
+  assert.equal(r.ok, true, r.errors.join('; '));
+  const L = r.live;
+  L.set('Pa', 0b1001n);
+  const val = (name) => { const n = L.nl.nets.find((x) => x.name === name); const v = L.netValue(n); return v && `${v.w}:${v.v.toString(2)}`; };
+  assert.deepEqual(['a', 'a(3:2)', 'a(1:0)', 's(3:2)', 's(1:0)', 's'].map(val), ['4:1001', '2:10', '2:1', '2:1', '2:1', '4:101']);
+});

@@ -6,19 +6,23 @@ import { KEYS } from './sch-editor.js';
 import { TITLES } from './sch-rename.js';
 import { updateSymbol } from './sch-modsym.js';
 import { symbolDiff } from '/core/schdoc.js';
+import { hasComposition } from '/core/symlib.js';
 
 /** { contextMenu } of mountSchEditor (doc(), live(), sel(), tool(): its current values). */
 export function mountSchContext(ctx) {
   const {
     readOnly, doc, live, segSel, sel, tool, setSel, render, renderProps, rename, duplicateSel, rotateSel, mirrorSel, deleteSel,
-    openInfo, symTarget, opts = {}, modules = () => ({}), edit, flash
+    openInfo, symTarget, opts = {}, modules = () => ({}), edit, flash, pushInto
   } = ctx;
 
   function contextMenu(e, it) {
     if (live() || tool() !== 'select' || !it || !TITLES[it.kind] || !doc()[KEYS[it.kind]]?.some(o => o.id === it.id)) return;
     // (a symbol's datasheet: the symbol clicked's, also when it is part of a larger selection)
     const info = it.kind === 'sym' && { label: 'Symbol Info…', shortcut: 'F1', action: () => openInfo(symTarget(it.id)) };
-    if (readOnly) { if (info) popupMenu([info], e.clientX, e.clientY); return; }
+    // (a palette symbol built of others: its composition, #4808)
+    const sym0 = it.kind === 'sym' && doc().symbols.find(o => o.id === it.id);
+    const into = sym0 && hasComposition(sym0.type) && opts.onOpenComposition && pushInto && { label: 'Push into', action: () => pushInto(sym0) };
+    if (readOnly) { if (info) popupMenu([info, into], e.clientX, e.clientY); return; }
     const key = `${it.kind}:${it.id}`;
     if (!sel().has(key)) setSel(it.kind === 'wire' ? segSel.branch(it.id) : new Set([key]));
     render(); renderProps();
@@ -31,7 +35,7 @@ export function mountSchContext(ctx) {
     const stale = s?.type === 'module' && !!symbolDiff(s, modules());
     const update = s?.type === 'module' && edit && { label: 'Update Symbol', disabled: !stale, ...(stale ? {} : { title: 'The symbol is up to date' }), action: () => updateSymbol(s, { doc, modules, edit, flash }) };
     popupMenu([
-      info, symbol, update, (info || symbol || update) && '-',
+      info, into, symbol, update, (info || into || symbol || update) && '-',
       { label: 'Rename…', action: () => rename(it) },
       '-',
       parts && { label: 'Duplicate', action: duplicateSel },

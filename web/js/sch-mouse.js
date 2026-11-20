@@ -19,13 +19,14 @@ export function mountSchMouse(ctx) {
     cursor, destroyed, doc, drag, finishSegMove, finishWire, flash, hoverPin, ioBand, ioClick, itemAt, keepConn, live, modules,
     netClick, pinNear, placeAt, propBody, pushUndo, readOnly, refusedShort, render, renderOverlay, renderProps, segSel, sel,
     setTool, spaceDown, startPlace, svg, toSheet, tool, updateStatus, view, wireClick, wholeBranch, wireDraw, zoomAt, setCursor, setDoc, setDrag,
-    setHoverPin, setSel, setWireDraw
+    setHoverPin, setSel, setWireDraw, pushInto
   } = ctx;
   // a wire drawn as a freehand stroke (#1052)
   // the drawings with no function (#2593)
   const graphics = mountSchGraphics({ doc, drag, setDrag, tool, edit, nextId, promptBox, renderOverlay });
   const { strokeStart, strokeMove, strokeEnd, strokeCancel } = mountStroke({ doc, modules, view, curve: () => curve, pinNear, finishWire, renderOverlay, setWireDraw });
 
+  let lastSymPress = null;   // (a Try it's last press on a symbol: its double-click, #4808)
   function onDown(e) {
     if (e.button === 2) { e.preventDefault(); if (wireDraw()) finishWire(); else if (tool() !== 'select') setTool('select'); return; }
     container.focus({ preventScroll: true });
@@ -38,6 +39,11 @@ export function mountSchMouse(ctx) {
     if (live()) {
       const it = itemAt(e.target);
       if (live().pointerDown(e, it)) return;
+      // (double-clicked: a palette symbol built of others opened, its values these, #4808; two presses timed here, since
+      // the first one draws the sheet again and the browser's dblclick never comes)
+      const again = it?.kind === 'sym' && lastSymPress?.id === it.id && e.timeStamp - lastSymPress.t < 500;
+      lastSymPress = it?.kind === 'sym' ? { id: it.id, t: e.timeStamp } : null;
+      if (again && pushInto?.(doc().symbols.find(x => x.id === it.id))) { e.preventDefault(); lastSymPress = null; return; }
       if (it?.kind === 'sym') { e.preventDefault(); setSel(new Set([`sym:${it.id}`])); render(); return; }
       setDrag({ kind: 'pan', cx: e.clientX, cy: e.clientY, tx: view().tx, ty: view().ty }); return;
     }
