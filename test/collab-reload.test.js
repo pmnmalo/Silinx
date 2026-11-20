@@ -123,6 +123,7 @@ test('#4850 an editor\'s page reloaded: its client id the same, its change that 
   assert.equal(rec.session.sign, owner.editKey);
   assert.ok(rec.session.mine);
   sock.close();   // (the page gone)
+  await f.close();   // (#4745: and its session with it, which would otherwise join again with its client id first)
   await until(() => owner.peers().length === 0, 'the owner sees it leave');
   assert.equal(docFile(doc, 'src/tb.vhd'), '-- the test bench\n-- one\n');
   const ev = [];
