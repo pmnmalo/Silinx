@@ -317,8 +317,8 @@ async function addNow(file) {
 
 // ------------------------------------------------------------------ documents
 function docTab(doc) {
-  const tab = h('div', { class: 'tab', title: tabTip(doc), tabindex: '0' }, icon(doc.icon || 'file'), h('span', { class: 'tlabel', ...(doc.path && { 'data-no-i18n': '' }) }, doc.title),   // a file's name: not translated (#4705)
-    h('span', { class: 'tclose', title: 'Close' }, '✕'));
+  const tab = h('div', { class: 'tab', role: 'tab', 'aria-selected': 'false', title: tabTip(doc), tabindex: '0' }, icon(doc.icon || 'file'), h('span', { class: 'tlabel', ...(doc.path && { 'data-no-i18n': '' }) }, doc.title),   // a file's name: not translated (#4705)
+    h('span', { class: 'tclose', title: 'Close', 'aria-hidden': 'true' }, '✕'));
   tab.addEventListener('mousedown', e => { if (e.button === 0 && !e.target.closest('.tclose')) activateDoc(doc); });
   tab.querySelector('.tclose').addEventListener('click', e => { e.stopPropagation(); closeDoc(doc); });
   tab.addEventListener('auxclick', e => { if (e.button === 1) closeDoc(doc); });
@@ -363,7 +363,7 @@ export function openDoc(spec) {
 // background: opened with the project, not by the user (a narrow screen's drawer stays open)
 export function activateDoc(doc, { background = false } = {}) {
   S.active = doc;
-  for (const d of S.docs) { d.el.hidden = d !== doc; d.tab.classList.toggle('active', d === doc); }
+  for (const d of S.docs) { d.el.hidden = d !== doc; d.tab.classList.toggle('active', d === doc); d.tab.setAttribute('aria-selected', String(d === doc)); }
   placeSplit(doc);   // (on its side, the other side's document shown beside it, #1619, #1652)
   // (its tab in sight in a full strip, once the Tasks layout and the split have placed it: web/js/tab-sight.js, #3304)
   tabInSight();
@@ -821,7 +821,7 @@ export function renderLibsPage() {
   const host = $('libs-page');
   host.innerHTML = '';
   if (!S.lib) return;
-  const tree = h('ul', { class: 'tree' });
+  const tree = h('ul', { class: 'tree', role: 'tree', 'aria-label': 'Libraries' });
   const work = treeItem({ label: 'work', ico: 'folder', open: true, key: 'lib:work' });
   tree.append(work.li);
   for (const m of S.modules) {
