@@ -33,9 +33,10 @@ const GCD = `unsigned gcd(unsigned a, unsigned b) {
 
 // the notice of the document in front: its text; the right-most of its toolbar's line (the ⋮ menu apart), at the end of
 // the toolbar's content (its padding the ⋮'s room), before the ⋮; the toolbar not overflowing
-const notice = (page) => page.eval(() => {
+const notice = (page) => page.waitFor(() => {
   const doc = document.querySelector('.doc:not([hidden])');
-  const b = doc.querySelector('.gen-banner.read-only'), bar = b.parentElement;
+  const b = doc?.querySelector('.gen-banner.read-only'), bar = b?.parentElement;
+  if (!bar) return null;   // (#4860: the document's toolbar being drawn again, the follower's view following the owner's)
   // the toolbar the document's first (no bar above it), with no name
   const r = b.getBoundingClientRect(), br = bar.getBoundingClientRect(), cs = getComputedStyle(bar);
   const end = br.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
@@ -52,7 +53,7 @@ const notice = (page) => page.eval(() => {
     // (its status line, one, at the document's bottom, #2763)
     status: [...doc.querySelectorAll('.doc-status')].map((x) => Math.abs(x.getBoundingClientRect().bottom - doc.getBoundingClientRect().bottom) < 1.5),
   };
-});
+}, [], { what: 'the read-only notice' });
 const OK = { rightmost: true, atEnd: true, beforeMore: true, fits: true, first: true, named: false, status: [true] };
 async function check(page, text, what) {
   assert.deepEqual(await notice(page), { text, ...OK }, what);
