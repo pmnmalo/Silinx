@@ -471,7 +471,7 @@ export async function sharedRun(name, { steps, ok, warnings = [], lines = [] }) 
   const secrets = await ownerSecrets();
   let summary = null;
   try { const r = await (await import('./impl-routes.js')).projectReports(name); summary = r?.available === false ? null : redactAll(r, secrets); } catch { /* none */ }
-  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [redact(l, secrets), { error: 'err', warning: 'warn' }[severityOf(l)] || '']), summary }));
+  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [redact(l, secrets), { error: 'err', warning: 'warn' }[severityOf(l)] || '', 'impl']), summary }));
 }
 
 // an editor's write (#3182, #3183): a text file's text (core/collab-doc.js editFile), or a drawing's JSON merged
