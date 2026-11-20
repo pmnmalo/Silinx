@@ -4,6 +4,7 @@
 // called by mountISim where the rows model was.
 import * as V from '/core/values.js';
 import { isBitsType } from './isim.js';
+import { t } from './i18n.js';
 
 const RADIXES = [
   ['default', 'Default'], ['bin', 'Binary'], ['hex', 'Hexadecimal'], ['oct', 'Octal'],
@@ -126,9 +127,10 @@ export function mountRows(ctx) {
   function newGroup() {
     const its = selectedItems().filter(f => !f.bit && f.row.kind !== 'group');
     if (!its.length) return;
-    const n = prompt('Group name:', 'New Group');
+    // (the browser's own prompt: its texts in the interface's language, #4748)
+    const n = prompt(t('Group name:'), t('New Group'));
     if (n == null) return;
-    const g = { id: st.rowSeq++, kind: 'group', name: n.trim() || 'New Group', expanded: true };
+    const g = { id: st.rowSeq++, kind: 'group', name: n.trim() || t('New Group'), expanded: true };
     // (where the first of them is, or its group; normalizeGroups puts the members after it, in the window's order)
     const first = its[0].row;
     st.rows.splice(st.rows.indexOf(first.group != null ? st.rows.find(r => r.id === first.group) : first), 0, g);
@@ -137,7 +139,7 @@ export function mountRows(ctx) {
     rebuildFlat(); updateVScroll(); invalidate();
   }
   function renameGroup(g) {
-    const n = prompt('Group name:', g.name);
+    const n = prompt(t('Group name:'), g.name);
     if (n != null && n.trim()) { g.name = n.trim(); invalidate(false); }
   }
   function ungroup(gs) {
@@ -149,13 +151,13 @@ export function mountRows(ctx) {
     st.sel.clear(); rebuildFlat(); updateVScroll(); invalidate();
   }
   function renameDivider(row) {
-    const n = prompt('Divider name:', row.name);
+    const n = prompt(t('Divider name:'), row.name);
     if (n != null) { row.name = n; invalidate(false); }
   }
   function addDivider() {
     const sel = flat.findIndex(f => st.sel.has(f.key));
     const at = sel >= 0 ? st.rows.indexOf(flat[sel].row) : st.rows.length;
-    const row = { id: st.rowSeq++, kind: 'div', name: 'New Divider' };
+    const row = { id: st.rowSeq++, kind: 'div', name: t('New Divider') };
     st.rows.splice(at, 0, row); rebuildFlat(); invalidate();
     renameDivider(row);
   }

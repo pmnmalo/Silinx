@@ -10,6 +10,7 @@ import { graphicSvg } from '/core/schgraphics.js';
 import { arrayedDef } from '/core/sch-array.js';
 import { GRAPHIC_TOOLS, graphicGhost } from './sch-graphics.js';
 import { setChoice } from './toolbar-menu.js';
+import { t } from './i18n.js';
 
 /** { renderSheet, render, renderOverlay, updateToolbar, updateStatus } of a schematic editor (state(): its current
  *  document, netlist, selection, tool, … at the time of the call; refreshNetlist() computes the netlist again). */
@@ -25,8 +26,8 @@ export function mountRender(ctx) {
       + `<rect class="frame" x="10" y="10" width="${W - 20}" height="${H - 20}"/>`
       + `<g class="titleblock"><rect x="${W - 10 - tbw}" y="${H - 10 - tbh}" width="${tbw}" height="${tbh}"/>`
       + `<line x1="${W - 10 - tbw}" y1="${H - 10 - tbh / 2}" x2="${W - 10}" y2="${H - 10 - tbh / 2}"/>`
-      + `<text x="${W - tbw}" y="${H - 10 - tbh / 2 - 9}" class="tb-l">SHEET</text><text x="${W - tbw + 50}" y="${H - 10 - tbh / 2 - 9}" class="tb-v">${esc(doc.name)}</text>`
-      + `<text x="${W - tbw}" y="${H - 19}" class="tb-l">LANGUAGE</text><text x="${W - tbw + 70}" y="${H - 19}" class="tb-v">${esc(doc.lang.toUpperCase())}</text>`
+      + `<text x="${W - tbw}" y="${H - 10 - tbh / 2 - 9}" class="tb-l">${esc(t('SHEET'))}</text><text x="${W - tbw + 50}" y="${H - 10 - tbh / 2 - 9}" class="tb-v">${esc(doc.name)}</text>`
+      + `<text x="${W - tbw}" y="${H - 19}" class="tb-l">${esc(t('LANGUAGE'))}</text><text x="${W - tbw + 70}" y="${H - 19}" class="tb-v">${esc(doc.lang.toUpperCase())}</text>`
       + `<text x="${W - 20}" y="${H - 19}" class="tb-l" text-anchor="end">Silinx</text></g>`
       // the sheet description (Schematic Wizard / sheet properties), top left
       + (String(doc.description || '').trim() ? `<text class="se-desc" x="30" y="40">${String(doc.description).trim().split(/\r?\n/).map((l, i) => `<tspan x="30" dy="${i ? 16 : 0}">${esc(l)}</tspan>`).join('')}</text>` : '');

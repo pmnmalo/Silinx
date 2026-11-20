@@ -1,6 +1,11 @@
 // Portuguese strings of the texts the label scan of test/web-i18n.test.js did not reach before #3539: toasts, dialogs'
 // titles and messages, the errors a dialog returns, plain elements' texts (div, p, span, option) and texts set through
-// textContent (merged into the dictionary of i18n.js).
+// textContent (merged into the dictionary of i18n.js); and (#4748) the messages written as template literals, which the
+// scan reads since: the commands' errors, the documents' tab titles, the wizards' "created", SSim's status line, a
+// schematic's title block. A part of a message that is a message of its own (an error's text) is translated too, by
+// t(), read when a text is translated, never on load.
+import { t } from './i18n.js';
+
 export const MESSAGES_PT = {
   // toasts (web/js/app.js, viewers.js)
   'Use Ctrl+V to paste': 'Use Ctrl+V para colar',
@@ -37,4 +42,63 @@ export const MESSAGES_PT = {
     'Uma linha por vetor de teste: as entradas a aplicar e as saídas esperadas. Preencha os valores esperados à mão (o que o projeto deve fazer), ou tire-os de uma simulação do projeto atual (passa então a ser um teste de regressão: verifique-os).',
   'Simulating the current design…': 'A simular o projeto atual…',
   'Expected values filled in from the current design: check them!': 'Valores esperados preenchidos a partir do projeto atual: verifique-os!',
+  // (#4748)
+  // a schematic's title block (drawn in SVG: web/js/sch-render.js)
+  SHEET: 'FOLHA', LANGUAGE: 'LINGUAGEM',
+  // SSim's Force dialog's empty offset, its error (web/js/isim-dialogs.js), its console's button
+  '(never)': '(nunca)', 'Clear console': 'Limpar a consola',
+  'invalid time offset': 'desvio de tempo inválido',
+  'Open Circuit': 'Abrir Circuito',
 };
+
+// (an error's or a list's text, a name kept as it is)
+const tr = s => t(s);
+// (the device a job is of: "da FPGA", "da flash SPI", "da PROM", "de xc3s250e")
+const of = x => ({ 'the FPGA': 'da FPGA', 'the SPI flash': 'da flash SPI', 'the PROM': 'da PROM' }[x] || `de ${x}`);
+const failure = e => (e === 'see log' ? 'veja o registo' : tr(e));
+export const MESSAGES_PT_PATTERNS = [
+  // the commands' errors (their console lines: web/js/console.js logError, commandError)
+  [/^cannot open (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível abrir ${p}: ${tr(e)}`],
+  [/^Cannot open (.+) in (.+): ([\s\S]*)$/, (m, p, l, e) => `Não foi possível abrir ${p} em ${l}: ${tr(e)}`],
+  [/^cannot parse (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível ler ${p}: ${tr(e)}`],
+  [/^Cannot build the design: ([\s\S]*)$/, (m, e) => `Não foi possível construir o projeto: ${tr(e)}`],
+  [/^Cannot save the stimuli: ([\s\S]*)$/, (m, e) => `Não foi possível guardar os estímulos: ${tr(e)}`],
+  // (iMPACT's and Program's jobs, web/js/impact.js, program-open.js)
+  [/^(Programming|Verifying|Erasing|Backing up) (.+?) failed: ([\s\S]*)$/, (m, w, x, e) => `${{ Programming: 'A programação', Verifying: 'A verificação', Erasing: 'O apagamento', 'Backing up': 'A cópia de segurança' }[w]} ${of(x)} falhou: ${failure(e)}`],
+  [/^Reloading the FPGA from the PROM failed: ([\s\S]*)$/, (m, e) => `O recarregamento da FPGA a partir da PROM falhou: ${failure(e)}`],
+  [/^(Browse KiCad Libraries|KiCad catalogue|Export Parts as KiCad Package|Import KiCad Part|Edit Symbol|Rename Project|I\/O Pin Planning): ([\s\S]*?)(\.?)$/,
+    (m, w, e, dot) => `${{ 'KiCad catalogue': 'Catálogo KiCad' }[w] || tr(w)}: ${tr(e + dot)}`],
+  [/^(.+) could not be saved\. Close it and lose the unsaved changes\?$/, '$1 não pôde ser guardado. Fechá-lo e perder as alterações não guardadas?'],
+  [/^New path of the folder '(.+)':$/, "Novo caminho da pasta '$1':"],
+  [/^(\S+) is too large: (\d+) bytes \(at most (\d+)\)$/, '$1 é demasiado grande: $2 bytes (no máximo $3)'],
+  [/^'(.+)' is not a \.kicad_symdir folder$/, "'$1' não é uma pasta .kicad_symdir"],
+  [/^'(.+)' is not a \.kicad_sym nor a \.kicad_mod file's name \(letters, digits, \. _ -\)$/, "'$1' não é o nome de um ficheiro .kicad_sym nem .kicad_mod (letras, algarismos, . _ -)"],
+  [/^no module '(.+)' in the project's sources$/, "nenhum módulo '$1' nas fontes do projeto"],
+  [/^module '(.+)' has no symbol of its own \(a followed project is read only\)$/, "o módulo '$1' não tem um símbolo seu (um projeto seguido é só de leitura)"],
+  [/^(\d+) I\/Os assigned from (.+?)((?:; .*)?)\.?$/, (m, n, b, rest) => `${n} E/S atribuídas a partir de ${b}${rest.replace(/; not assigned: /, '; não atribuídas: ').replace(/ by direction /, ' pela direção ')}.`],
+  [/^Erase the whole (.+)\? The board will no longer boot a design from flash\.$/, (m, w) => `Apagar toda a ${w === 'SPI flash' ? 'flash SPI' : w}? A placa deixa de arrancar um projeto a partir da flash.`],
+  // asked before replacing
+  [/^([\s\S]+?)\. Replace the files of the library\?$/, (m, e) => `${tr(e)}. Substituir os ficheiros da biblioteca?`],
+  [/^(\S+) is in the project already\. Replace it\?$/, '$1 já está no projeto. Substituí-lo?'],
+  [/^(\S+) exists\. Replace it\?$/, '$1 existe. Substituí-lo?'],
+  [/^(\S+) already exists in the project\. Replace it with the copy of (.+)\?$/, '$1 já existe no projeto. Substituí-lo pela cópia de $2?'],
+  [/^([\s\S]+?)\. Replace it\?$/, (m, e) => `${tr(e)}. Substituí-lo?`],
+  [/^Replace the contents of (\S+) by the truth table of '(.+)' \((\d+) input\(s\), (\d+) output\(s\)\)\?$/, "Substituir o conteúdo de $1 pela tabela de verdade de '$2' ($3 entrada(s), $4 saída(s))?"],
+  [/^(\d+) object\(s\) changed (.+): choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/,
+    (m, n, w) => `${n} objeto(s) alterado(s) ${w === 'on both sides' ? 'dos dois lados' : tr(w)}: escolha a versão que cada um mantém. O resto de cada desenho é juntado sozinho.`],
+  // what was made (the wizards' toasts and console lines)
+  [/^(Module|Schematic|Circuit|Petri net|Test bench|Project) (\S+) created$/, (m, k, n) => `${{ Module: 'Módulo', Schematic: 'Esquemático', Circuit: 'Circuito', 'Petri net': 'Rede de Petri', 'Test bench': 'Test bench', Project: 'Projeto' }[k]} ${n} criado`],
+  [/^(\S+) created$/, '$1 criado'],
+  // the documents' tab titles
+  [/^(ASM chart|State diagram|Petri net|Circuit) (\S+)$/, (m, k, n) => `${{ 'ASM chart': 'Fluxograma ASM', 'State diagram': 'Diagrama de estados', 'Petri net': 'Rede de Petri', Circuit: 'Circuito' }[k]} ${n}`],
+  [/^(\S+) \(Schematic\)$/, '$1 (Esquemático)'],
+  [/^(\S+) \(compare\)$/, '$1 (comparação)'],
+  [/^Source Properties - (.+)$/, 'Propriedades da Fonte - $1'],
+  [/^as it was in the commit (\w+)$/, 'como estava no commit $1'],
+  // the editors
+  [/^(\d+) boxes selected$/, '$1 caixas selecionadas'],
+  [/^(Undo|Redo) (.+)$/, (m, w, a) => `${w === 'Undo' ? 'Anular' : 'Refazer'} ${tr(a)}`],
+  [/^(\S+) \((.+), (.+)\): click it to import it into the project$/, '$1 ($2, $3): clique para o importar para o projeto'],
+  // SSim's status line
+  [/^Sim Time: (.+)$/, 'Tempo de Simulação: $1'],
+];
