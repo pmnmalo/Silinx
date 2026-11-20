@@ -30,7 +30,7 @@ const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132'
 export { DEV_SITE };
 // (one entry per project, #4725; before, every project in the one entry BROWSER_KEY, which is read and moved out)
 const BROWSER_KEY = DEV_SITE ? 'silinx.dev.standalone.fs' : 'silinx.standalone.fs';
-export const BROWSER_PROJECT_PREFIX = DEV_SITE ? 'silinx.dev.standalone.project:' : 'silinx.standalone.project:';
+const BROWSER_PROJECT_PREFIX = DEV_SITE ? 'silinx.dev.standalone.project:' : 'silinx.standalone.project:';
 
 const fail = msg => { throw new Error(msg); };
 const langOf = p => (/\.(v|vh|sv)$/i.test(p) ? 'verilog' : /\.(vhd|vhdl)$/i.test(p) ? 'vhdl' : /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(p) ? 'ucf' : 'text');
