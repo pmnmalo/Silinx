@@ -7,7 +7,7 @@
 // scan, the bitstream's header; and what Toolchain Settings found, read only (the settings themselves are the user's, in the
 // interface: core/mcp-parity.js).
 import { toolError, readProject, redactor, PROJECT, STR } from './mcp-util.js';
-import { TOOLS, VALUE } from './programmer-values.js';
+import { TOOLS } from './programmer-values.js';
 
 // (the most a programming waits: openFPGALoader writing a flash of 16 MB, iMPACT's Identify)
 const TIMEOUT_MS = 600000;
@@ -89,7 +89,7 @@ export const BOARD_TOOLS = [
       project: { ...PROJECT, description: 'A project whose board is scanned (or board).' },
       board: STR('A board\'s id (list_devices), when no project is given.'),
       tool: { type: 'string', enum: TOOLS, description: 'The programmer (default: the board\'s, else Toolchain Settings\').' },
-      cable: { type: 'string', pattern: VALUE.source, maxLength: 64, description: 'The programmer\'s cable (its own name: digilent_hs2, nexys2, usb21…; default: the board\'s).' },
+      cable: { type: 'string', description: 'The programmer\'s cable (its own name: digilent_hs2, nexys2, usb21…; default: the board\'s).' },
     }, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async run({ project: name, board, tool, cable }, { signal } = {}) {
