@@ -129,9 +129,14 @@ export async function collectActions(page, files) {
       await enter(page, s);
       await selectTop(page);
       await settle(page);
-      const tabs = await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length).map((t) => t.dataset.page));
+      // (a tab by its page; Implement's and Emulate's Files tab, #4609, by its flow page: the files' menus there)
+      const tabs = await page.eval(() => [...document.querySelectorAll('#left-tabs .tab')].filter((t) => t.getClientRects().length)
+        .map((t) => (t.dataset.page ? t.dataset.page : `flow-${t.dataset.flowPage}`)));
       for (const tab of tabs.length ? tabs : [null]) {
-        if (tab) { await page.eval((p) => document.querySelector(`#left-tabs .tab[data-page="${p}"]`).click(), tab); await settle(page); }
+        if (tab) {
+          await page.eval((p) => document.querySelector(/^flow-/.test(p) ? `#left-tabs .tab:not([data-page])[data-flow-page="${p.slice(5)}"]` : `#left-tabs .tab[data-page="${p}"]`).click(), tab);
+          await settle(page);
+        }
         all.push(...await page.eval(scanPage, `${what} ${s.task || s.view}${tab ? `/${tab}` : ''}`, opts));
       }
     }
