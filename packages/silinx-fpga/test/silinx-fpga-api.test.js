@@ -21,7 +21,7 @@ test('#1678 silinx-fpga: its entries, the API, its light part and the API in Nod
 });
 
 // the API's names: a change to them is a change of the API (its version, #1681), made on purpose
-const API = ['CCF', 'CST', 'ECP5_PARTS', 'ECP5_STEPS', 'FAMILY_INFO', 'FAST_SYNTH', 'GATEMATE_PARTS', 'GATEMATE_STEPS', 'GOAL_IMPL', 'GOWIN_DEVICES', 'GOWIN_PARTS', 'GOWIN_STEPS', 'ICE40_PARTS', 'ICE40_STEPS', 'ISE_HINT', 'LPF', 'PCF', 'MODEL_VERSION', 'OPEN_CHAIN', 'OPEN_STEPS', 'PackError', 'S3E_DEVICES', 'SPEED_4', 'StepError', 'XC7_STEPS', 'XC7_TIMING_MODEL', 'XDC', 'XILINX_STEPS',
+const API = ['CCF', 'UCF', 'readConstraints', 'CST', 'ECP5_PARTS', 'ECP5_STEPS', 'FAMILY_INFO', 'FAST_SYNTH', 'GATEMATE_PARTS', 'GATEMATE_STEPS', 'GOAL_IMPL', 'GOWIN_DEVICES', 'GOWIN_PARTS', 'GOWIN_STEPS', 'ICE40_PARTS', 'ICE40_STEPS', 'ISE_HINT', 'LPF', 'PCF', 'MODEL_VERSION', 'OPEN_CHAIN', 'OPEN_STEPS', 'PackError', 'S3E_DEVICES', 'SPEED_4', 'StepError', 'XC7_STEPS', 'XC7_TIMING_MODEL', 'XDC', 'XILINX_STEPS',
   'analyzeTiming', 'asText', 'backAnnotateUcf', 'backendOf', 'betweenPaths', 'bitDbS6', 'bitDbXc7', 'bitIndexXc7', 'bitName', 'bitgen', 'bitstreamExtOf', 'boardAutoAssign', 'boardConstraintsText', 'cellCounts', 'checkBitXc7', 'checkRouting', 'checkUcf', 'constraintsExtOf', 'constraintsFormatOf',
   'dbFileNames', 'dbFilesFrom', 'deviceChangeIssues', 'ecp5Io', 'deviceFamily', 'deviceGrid', 'engineOf', 'estimatePower', 'experimentalDevice', 'familyFromXise', 'familyName',
   'familyOfPart', 'fetchBitDbS6', 'fpgaModel', 'framesToFeatures', 'gateAssignments', 'gatemateIo', 'generateUcf', 'gowinIo', 'gowinPack', 'ice40Io', 'instArcs', 'isIseFamily', 'knownRouting', 'loadDevice', 'loadGowinChipdb', 'locsNotOnBoard', 'lutTable', 'makeBitDb',
@@ -32,7 +32,7 @@ const API = ['CCF', 'CST', 'ECP5_PARTS', 'ECP5_STEPS', 'FAMILY_INFO', 'FAST_SYNT
 const NODE = ['DB_DIR', 'S6_DB_DIR', 'SHIPPED_DEVICES_DIR', 'XC7_DB_DIR', 'loadBitDbXc7', 'nextpnrXc7Node', 'xc7Parts', 'buildDeviceCache', 'chipdbCacheDir', 'dbPackages', 'devicesDir', 'findDeviceGraph', 'hasBitDb', 'leaveOutChipdbs', 'loadBitDbS6', 'loadDb',
   'loadDeviceCache', 'nextpnrEcp5Node', 'nextpnrGatemateNode', 'nextpnrGowinNode', 'nextpnrIce40Node', 'nextpnrNode', 'nextpnrS6Node', 'shippedDevicePath', 'yosysNode', 'yosysWorkers'];   // (nextpnrNode: the nextpnr engine's io.nextpnr, #2136; nextpnrS6Node: its io.nextpnrS6, #2138; leaveOutChipdbs: the release zip's, #2356; chipdbCacheDir: its downloads' folder, #3215)
 
-const PARTS = ['CCF', 'CST', 'FAMILY_INFO', 'LPF', 'MODEL_VERSION', 'OPEN_CHAIN', 'OPEN_STEPS', 'PCF', 'XDC', 'XILINX_STEPS', 'backAnnotateUcf', 'bitName', 'bitstreamExtOf', 'boardAutoAssign', 'boardConstraintsText', 'checkUcf',
+const PARTS = ['CCF', 'UCF', 'readConstraints', 'CST', 'FAMILY_INFO', 'LPF', 'MODEL_VERSION', 'OPEN_CHAIN', 'OPEN_STEPS', 'PCF', 'XDC', 'XILINX_STEPS', 'backAnnotateUcf', 'bitName', 'bitstreamExtOf', 'boardAutoAssign', 'boardConstraintsText', 'checkUcf',
   'constraintsExtOf', 'constraintsFormatOf', 'deviceChangeIssues', 'deviceFamily', 'deviceGrid', 'engineOf', 'experimentalDevice', 'familyFromXise', 'familyName', 'familyOfPart', 'fpgaModel', 'generateUcf',
   'isIseFamily', 'locsNotOnBoard', 'lutTable', 'noFlowMessage', 'noOpenFlowMessage', 'openFamilyOf', 'openFlowDevice', 'openOnlyDevice', 'orderOpenSteps', 'orderSteps', 'parseUcf', 'parseXdl', 'parseXdlrc', 'periodNs', 'primitiveInstances',
   'readXdc', 'resourceCount', 'resourceOfPrimitive', 'resourcesOf', 's6MapOf', 'splitBitPart', 'ucfPlacesPins', 'usedOfReport', 'vivadoDevice', 'writeXdc', 'writeXdl', 'xc7SeedsOf'];
@@ -73,7 +73,7 @@ test('#1678 ./parts: light, nothing of Node and none of the synthesis, pack, pla
   const { seen, nodeOnly } = modulesOf('parts.js');
   assert.deepEqual(nodeOnly, []);
   const rel = [...seen].map(f => path.relative(path.join(DIR, 'src'), f).split(path.sep).join('/')).sort();
-  assert.deepEqual(rel, ['board-constraints.js', 'ccf.js', 'cst.js', 'family.js', 'lpf.js', 'open-steps.js', 'parts.js', 'pcf.js', 'resource-check.js', 'resources.js', 'ucf.js', 'xdc.js', 'xdl.js']);   // (xdc.js: the 7-series' constraints, #3142; lpf.js the ECP5's, #2302; cst.js the Gowin's, #2303; ccf.js the GateMate's, #2431)
+  assert.deepEqual(rel, ['board-constraints.js', 'ccf.js', 'constraints.js', 'cst.js', 'family.js', 'lpf.js', 'open-steps.js', 'parts.js', 'pcf.js', 'resource-check.js', 'resources.js', 'ucf.js', 'xdc.js', 'xdl.js']);   // (xdc.js: the 7-series' constraints, #3142; lpf.js the ECP5's, #2302; cst.js the Gowin's, #2303; ccf.js the GateMate's, #2431); constraints.js the reader of them all, #4771
 });
 
 const COUNTER = 'module cnt(input clk, input rst, output reg [3:0] q);\n  always @(posedge clk) if (rst) q <= 0; else q <= q + 1;\nendmodule\n';
