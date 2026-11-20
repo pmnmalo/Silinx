@@ -223,7 +223,8 @@ test('#4744 a file read: swapped for a link out of the project once checked, ref
   assert.equal(await P.readFile('Race', 'src/a.vhd'), 'entity b is end;\n');
 });
 
-test('#4744 a file read while another writer replaces it whole (its temporary file renamed over it, once open): read again, the new text', async () => {
+// (not on Windows: a file open there cannot be replaced by a rename, the writer's rename fails instead, EPERM)
+test('#4744 a file read while another writer replaces it whole (its temporary file renamed over it, once open): read again, the new text', { skip: process.platform === 'win32' }, async () => {
   await P.createProject({ name: 'RaceR' });
   await P.writeFile('RaceR', 'src/a.vhd', 'entity a is end;\n');
   const file = path.join(ws, 'RaceR', 'src', 'a.vhd'), fsp = fs.promises, open = fsp.open;
