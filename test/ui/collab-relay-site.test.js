@@ -72,7 +72,7 @@ uiTest('#4543 Share Project… via your Cloudflare relay: the page hosts it, its
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
   await page.dialogButton('Close');
   await page.waitNoDialog();
-  assert.match(link, new RegExp(`^${re(site.url)}(index\\.html)?#view=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}\\.host\\.[A-Za-z0-9_-]{86}&relay=${re(encodeURIComponent(relayBase))}$`));
+  assert.match(link, new RegExp(`^${re(site.url)}(index\\.html)?#view=[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}\\.host\\.[A-Za-z0-9_-]{86}&owner=[A-Za-z0-9_-]{86}&relay=${re(encodeURIComponent(relayBase))}$`));
   await page.waitConsole(new RegExp(`^This page hosts the shared project: its followers meet it at the relay at ${re(host)}, then connect to it directly when they can, through the relay otherwise; it sees no file\\. It lasts while this page is open\\.$`, 'm'));
   await page.waitFor(() => true, []);
   assert.equal(relay.meetings.size, 1, 'the owner\'s page at the relay\'s meeting point');

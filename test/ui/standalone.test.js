@@ -643,7 +643,7 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });
-  assert.ok(link.startsWith(siteUrl) && /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/.test(link), link);
+  assert.ok(link.startsWith(siteUrl) && /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}&owner=[A-Za-z0-9_-]{86}$/.test(link), link);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Start Sharing', 'Stop Sharing', 'Close']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-hosted').hidden), false);
   await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code/m);

@@ -81,7 +81,7 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   const link = await gen(page, 'link');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="edit-link"]').value), '', 'the editors\' link not made by the viewers\' Generate');
   const editLink = await gen(page, 'edit-link');
-  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/);
+  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}&owner=[A-Za-z0-9_-]{86}$/);
   assert.match(editLink, /#edit=/);
   assert.notEqual(link, editLink);
   assert.ok(!link.includes(editLink.split('.').pop()), 'nothing of the editors\' key in the viewers\' link');
@@ -157,7 +157,7 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   await page.eval(() => { window.__shared = import('/js/collab-share.js').then((m) => m.shareProjectDialog({ module: 'gates' })); });
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=link]').value), `${again}&top=gates`);
-  assert.match(await gen(page, 'edit-link'), /#edit=[^&]+&top=gates$/);
+  assert.match(await gen(page, 'edit-link'), /#edit=[^&]+&owner=[A-Za-z0-9_-]{86}&top=gates$/);
   assert.equal((await qrOfField(page, 'link')).text, `${again}&top=gates`);
   await page.dialogButton('Stop Sharing');
   await page.waitConsole(/Stopped sharing "qrlive"/);
@@ -252,7 +252,7 @@ uiTest('#4190 #4576 Share Project and Share Module, live: each link\'s buttons i
         links.push(await page.eval((x) => document.querySelector(`.dlg-overlay input[data-field="${x}"]`).value, f));
       }
       const want = [await linesOf(page, 'link', links[0].length), await linesOf(page, 'edit-link', links[1].length)];
-      assert.ok(want.every((n) => n >= 1 && n <= 6), `${what}: ${want}`);
+      assert.ok(want.every((n) => n >= 1 && n <= 8), `${what}: ${want}`);   // (#4745: the owner's key in the links, an editor's 8 lines on a phone)
       // hidden: a dot for each of the link's characters, all in view, the box as many lines as the link takes; the
       // buttons on one row below it
       const hidden = await boxes(page);

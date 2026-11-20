@@ -31,7 +31,7 @@ uiTest('#3227 the owner\'s page hosts the shared project: the codes exchanged, t
   await noStun(page);
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   const link = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana', { via: 'host' }); return m.sharedLink(); });
-  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}$/);
+  assert.match(link, /^http:\/\/[^/]+\/#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}&owner=[A-Za-z0-9_-]{86}$/);
   await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code \(Add a User…, in the toolbar, takes it\); it lasts while this page is open\.$/m);
   // the follower opens the link: their name, then their code
   const fp = await env.newPage(env.server.url);
