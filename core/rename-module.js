@@ -36,10 +36,11 @@ export async function projectModules(P, name, { parts = false } = {}) {
 export const followingFile = (file, oldName, newName) => (eq(baseOf(file), oldName) ? dirOf(file) + newName + extOf(file) : null);
 
 /**
- * Rename the module `oldName` to `newName`, and its file to `to` (null: kept). Errors: Error with `rename: true`
+ * Rename the module `oldName` to `newName`, and its file to `to` (null: kept). `before({ changed, moved })`: called once
+ * the checks passed, before a file moves (the interface closes their editors, #4731). Errors: Error with `rename: true`
  * (the dialog's messages). Returns { module: newName, file, changed: [paths written], moved: [[from, to]], message, hdl }.
  */
-export async function renameModule(P, name, oldName, newName, { to = null, hidden = null } = {}) {
+export async function renameModule(P, name, oldName, newName, { to = null, hidden = null, before = null } = {}) {
   const fail = message => Object.assign(new Error(message), { rename: true });
   const mods = await projectModules(P, name);
   const mod = mods.find(m => eq(m.name, oldName) && m.kind !== 'package');
@@ -100,6 +101,7 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
     if (sym.to !== sym.from) moved.set(sym.from, sym.to);
   }
   for (const [a, b] of moved) if (a !== b && tree.some(f => eq(f, b)) && !eq(a, b)) throw fail(`${b} already exists.`);
+  if (before) await before({ changed: [...changed.keys()], moved: [...moved] });
   // 1. the files moved, all or nothing (a failure undoes the moves already done)
   const done = [];
   try {

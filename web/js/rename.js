@@ -6,7 +6,6 @@ import { renameSymbolAtCursor, applyEdits } from './refactor.js';
 import { S, closeDoc, compileProject, openFile } from './app.js';
 import { log } from './console.js';
 import { reloadProject } from './project.js';
-import { isFsm, isTt, syncHdlFromAsm, syncHdlFromFsm, syncHdlFromSchematic, syncHdlFromTt } from './drawings.js';
 import { markStale, saveAll } from './processes.js';
 import { reservedError } from '/core/reserved.js';
 import { isName } from '/core/ident.js';
@@ -85,91 +84,70 @@ export async function renameDialog(file, mod = null) {
   await renameSource(file, fIn.value.trim(), modName, mIn ? mIn.value.trim() : null);
 }
 
-async function renameSource(from, to, oldMod, newMod) {
-  const pj = structuredClone(S.project);           // project settings to save (only if everything worked)
-  const { renameModuleInSource, renameModuleInSchematic } = await import('/core/rename.js');
-  const changed = new Map();                      // path -> new text
-  const moved = new Map();                        // old path -> new path
-  const views = {};                               // .sch.json / .asm.json -> parsed
-  for (const f of S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
-    try { views[f] = JSON.parse(await api.readFile(pj.name, f)); } catch { /* skip */ }
+// the project store core/rename-module.js works on, over the server's API (as git-browser.js's, core/drawing-sync.js's)
+const pageStore = () => ({
+  readProject: n => api.project(n), fileTree: async n => (await api.project(n)).fileTree, readSources: n => api.sources(n),
+  readFile: (n, p) => api.readFile(n, p), writeFile: (n, p, t) => api.writeFile(n, p, t), deleteFile: (n, p) => api.deleteFile(n, p),
+  renameFile: (n, a, b) => api.renameFile(n, a, b),
+  updateProject: async (n, fn) => { const pj = await api.project(n); delete pj.fileTree; return api.saveProject(n, fn(pj) || pj); },
+});
+
+// close the editors of the files that move or change: the paths to reopen after, the active one first
+async function closeTouched(paths, moved) {
+  const reopen = [];
+  for (const d of [...S.docs]) {
+    if (d.path && (paths.has(d.path) || moved.has(d.path))) {
+      if (S.active === d) reopen.unshift(moved.get(d.path) || d.path); else reopen.push(moved.get(d.path) || d.path);
+      d.dirty = false; clearTimeout(d._autosave); await closeDoc(d);
+    }
   }
+  return reopen;
+}
+
+// A module (and its file): core/rename-module.js, the MCP's rename_module's (#4731): its references, its drawing (its
+// HDL made again by its kind, core/drawing-sync.js), its symbol, the project's top; the files moved all or nothing.
+async function renameModuleNow(from, to, oldMod, newMod) {
+  const { renameModule } = await import('/core/rename-module.js');
+  let reopen = [];
   S.syncing = true;
   try {
-    if (newMod && oldMod && newMod !== oldMod) {
-      for (const src of S.sources.filter(x => x.lang === 'vhdl' || x.lang === 'verilog')) {
-        const t = renameModuleInSource(src.text, src.lang, oldMod, newMod);
-        if (t !== src.text) changed.set(src.path, t);
-      }
-      for (const [f, d] of Object.entries(views)) {
-        const linked = d.generatedFile === from;
-        let ch = false;
-        if (/\.sch\.json$/i.test(f)) ch = renameModuleInSchematic(d, oldMod, newMod, { linked });
-        else if (linked && String(d.name).toLowerCase() === oldMod.toLowerCase()) { d.name = newMod; ch = true; }
-        if (ch) changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1));
-        // a synchronized view named after the module follows it
-        const vb = f.slice(dirOf(f).length, f.length - extOf(f).length);
-        if (linked && vb.toLowerCase() === oldMod.toLowerCase()) moved.set(f, dirOf(f) + newMod + extOf(f));
-      }
-      const eq = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
-      if (eq(pj.top, oldMod)) pj.top = newMod;
-      if (eq(pj.simTop, oldMod)) pj.simTop = newMod;
-      if (pj.stimuli && pj.stimuli[oldMod]) { pj.stimuli[newMod] = pj.stimuli[oldMod]; delete pj.stimuli[oldMod]; }
-    }
+    const r = await renameModule(pageStore(), S.project.name, oldMod, newMod, {
+      to: to !== from ? to : null, hidden: designOnly() ? hdlSideFile : null,
+      before: async ({ changed, moved }) => { reopen = await closeTouched(new Set(changed), new Map(moved)); },
+    });
+    await reloadProject(false);
+    markStale();
+    log(r.message, 'ok');
+    for (const m of r.hdl) log(m, /^ERROR/.test(m) ? 'err' : /^WARNING/.test(m) ? 'warn' : 'info');
+    for (const p of reopen.reverse()) await openFile(p);
+  } catch (e) {
+    alertDlg('Rename', e.message, 'error');
+    await reloadProject(false);
+  } finally { S.syncing = false; }
+}
+
+async function renameSource(from, to, oldMod, newMod) {
+  if (oldMod && newMod) return renameModuleNow(from, to, oldMod, newMod);
+  // a file that defines no module, or several: the file alone, the drawings' links to it following it
+  const pj = S.project;
+  const changed = new Map();                      // path -> new text
+  const moved = new Map();                        // old path -> new path
+  S.syncing = true;
+  try {
     if (to && to !== from) {
       moved.set(from, to);
-      for (const [f, d] of Object.entries(views)) {
+      for (const f of S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
+        let d;
+        try { d = JSON.parse(await api.readFile(pj.name, f)); } catch { continue; }
         if (d.generatedFile === from) { d.generatedFile = to; changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1)); }
       }
     }
-    // its symbol (#3829): the module's name in it, the file named after the module following it and its file
-    if (oldMod && (moved.has(from) || (newMod && newMod !== oldMod))) {
-      const { isSymbolFile, renameSymbolFile } = await import('/core/symbol-layout.js');
-      const syms = {};
-      for (const f of S.fileTree.filter(isSymbolFile)) { try { syms[f] = await api.readFile(pj.name, f); } catch { /* skip */ } }
-      const sym = renameSymbolFile(syms, moved.get(from) || from, oldMod, newMod || oldMod);
-      if (sym && sym.text !== syms[sym.from]) changed.set(sym.from, sym.text);
-      if (sym && sym.to !== sym.from) moved.set(sym.from, sym.to);
-    }
-    // close the editors of files that move or change (reopened below)
-    const reopen = [];
-    for (const d of [...S.docs]) {
-      if (d.path && (changed.has(d.path) || moved.has(d.path))) {
-        if (S.active === d) reopen.unshift(moved.get(d.path) || d.path); else reopen.push(moved.get(d.path) || d.path);
-        d.dirty = false; clearTimeout(d._autosave); await closeDoc(d);
-      }
-    }
-    // 1. move the files (all or nothing: a failure undoes the moves already done)
-    const done = [];
-    try {
-      for (const [a, b] of moved) { await api.renameFile(pj.name, a, b); done.push([a, b]); }
-    } catch (e) {
-      for (const [a, b] of done.reverse()) await api.renameFile(pj.name, b, a).catch(() => {});
-      throw new Error(`could not rename ${[...moved].map(([a, b]) => `${a} → ${b}`).join(', ')}: ${e.message}. Nothing was changed.`);
-    }
-    // 2. the updated contents, at their new paths
-    for (const [p, text] of changed) await api.writeFile(pj.name, moved.get(p) || p, text);
-    // 3. project settings (top, sim top, stimuli) on top of the file list the moves produced
-    const fresh = await api.project(pj.name);
-    delete fresh.fileTree;
-    Object.assign(fresh, { top: pj.top, simTop: pj.simTop, stimuli: pj.stimuli });
-    S.project = await api.saveProject(pj.name, fresh);
+    const reopen = await closeTouched(new Set(changed.keys()), moved);
+    for (const [a, b] of moved) await api.renameFile(pj.name, a, b);
+    for (const [p, text] of changed) await api.writeFile(pj.name, p, text);
     await reloadProject(false);
-    // synchronized HDL of a renamed chart/schematic: regenerate it so its header names match
-    if (newMod && newMod !== oldMod) {
-      S.syncing = false;
-      for (const [f, d] of Object.entries(views)) {
-        if (!changed.has(f) || !d.generatedFile) continue;
-        const vp = moved.get(f) || f;
-        if (/\.asm\.json$/i.test(vp)) await syncHdlFromAsm(vp, d).catch(() => {});
-        else if (isTt(vp)) await syncHdlFromTt(vp, d).catch(() => {});
-        else if (isFsm(vp)) await syncHdlFromFsm(vp, d).catch(() => {});
-        else await syncHdlFromSchematic(vp, d).catch(() => {});
-      }
-    }
     markStale();
     const parts = [];
-    if (newMod && newMod !== oldMod) parts.push(`module '${oldMod}' renamed to '${newMod}' (${[...changed.keys()].filter(p => !designOnly() || !hdlSideFile(p)).length} file(s) updated)`);
     for (const [a, b] of moved) if (!designOnly() || !hdlSideFile(a)) parts.push(`${a} → ${b}`);   // (a design project's HDL: never named, #3891)
     log(`Rename: ${parts.join('; ')}.`, 'ok');
     for (const p of reopen.reverse()) await openFile(p);
