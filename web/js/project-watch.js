@@ -81,6 +81,12 @@ async function reloadDoc(d, { path, kind }, by = null, where = null) {
   const gone = kind === 'deleted';
   let text = null;
   if (!gone) { try { text = await api.readFile(S.project.name, path); } catch { return; } }
+  // its own save on its way (two tabs saving at once, #4859: the server told this one the other's write first): waited
+  // for, and the disk read again; its write the later one, nothing left to reload or ask
+  if (d._saving && !gone && !(d.editor && d.editor.getValue() === text)) {
+    await d._saving.catch(() => {});
+    try { text = await api.readFile(S.project.name, path); } catch { return; }
+  }
   if (d.editor && !gone && d.editor.getValue() === text) { if (d.dirty) { d.editor.markClean(); setDirty(d, false); } return; }
   if (d.dirty || d._saving) {
     // (not saved over the disk's while the user chooses)
