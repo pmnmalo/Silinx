@@ -10,6 +10,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import * as P from './projects.js';
+import { intoNewProjectDir } from './new-project-dir.js';
 import { githubClient, textOf, GitHubError } from '../core/github-api.js';
 import { restGit } from '../core/git-rest.js';
 import { markUntrusted, markMadeByMcp } from '../core/trust.js';
@@ -71,19 +72,17 @@ function backend({ madeBy = null } = {}) {
     },
     // a clone: written into a folder of its own, then moved into place; untrusted
     create: async (name, files) => {
-      const dir = P.projectDir(name), ws = P.workspaceDir();
-      await fsp.mkdir(ws, { recursive: true });
-      const tmp = path.join(ws, `.silinx-clone-${crypto.randomBytes(6).toString('hex')}`);
-      try {
+      const dir = P.projectDir(name);
+      await intoNewProjectDir(dir, async tmp => {
         for (const [rel, text] of Object.entries(files)) {
           const json = rel === P.PROJECT_FILE ? parseDescription(text) : null;
           const full = P.safeJoin(tmp, rel);
           await fsp.mkdir(path.dirname(full), { recursive: true });
           await fsp.writeFile(full, json ? render(madeBy === 'mcp' ? markMadeByMcp(json) : markUntrusted(json)) : text);
         }
+      }, async () => {
         if (fs.existsSync(dir)) throw new GitHubError(`project '${name}' already exists`, 'Choose another name for the project.', 409);
-        await fsp.rename(tmp, dir);
-      } finally { await fsp.rm(tmp, { recursive: true, force: true }).catch(() => {}); }
+      });
     },
     write: async (name, rel, text) => {
       if (rel === P.PROJECT_FILE) return P.writeProject(name, parseDescription(text));
