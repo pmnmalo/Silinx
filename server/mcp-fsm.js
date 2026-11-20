@@ -3,7 +3,8 @@
 // same function (core/fsm-outputs.js setOutputValues: an output the machine has, a constant that fits in its width),
 // an empty one cleared (its default); the diagram written as its editor saves it and its HDL file made again.
 // set_fsm_look: a state's or a transition's look (#3883) as its Properties' Look sets it (core/fsm-style.js setStyle:
-// the same checks and messages); the HDL made from the diagram does not change.
+// the same checks and messages); the HDL made from the diagram does not change. set_fsm_encoding: the state encoding
+// and the states' codes of the user's (#4908), as the machine's and a state's Properties set them (core/fsm-codes.js).
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 
@@ -121,6 +122,43 @@ export const FSM_TOOLS = [
       }
       return { text: [`${where}: ${changed ? 'condition set' : 'its condition is already this'}: ${shown}`, ...problems, ...(sync?.messages || [])].join('\n'),
         data: { project: name, path: rel, transition, condition: cond, otherwise: F.isOtherwise(cond), problems,
+          ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
+    },
+  },
+  {
+    name: 'set_fsm_encoding', title: 'Set the state encoding and the states\' codes (state diagram)',
+    description: 'Set the state encoding of a state diagram (.fsm.json), as its machine\'s Properties do: binary, gray, onehot, enum (the synthesis tool\'s codes) or user (each state\'s code given: the states with none get the one they had); and the codes of states (codes: { state name: binary digits }, as a state\'s Properties\' Code: a code given makes the encoding user, the other states keeping the codes they had; an empty one clears it). The codes must be binary digits, all as wide, none twice (Check\'s errors otherwise, returned; the diagram written as the interface writes it). The diagram is written and its HDL file made again.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
+      encoding: { type: 'string', enum: ['binary', 'gray', 'onehot', 'enum', 'user'], description: 'The encoding (or give codes, or both).' },
+      codes: { type: 'object', additionalProperties: { type: 'string' }, description: 'States\' codes: { state name: binary digits } (the encoding made user).' },
+    }, required: ['project', 'path'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    async run({ project: name, path: rel, encoding, codes }) {
+      await readProject(name);
+      if (!/\.fsm\.json$/i.test(rel)) throw toolError(`${rel}: not a state diagram (.fsm.json)`);
+      if (encoding == null && codes == null) throw toolError('give encoding, codes or both');
+      const text = await projectText(name, rel, `no file '${rel}' in the project '${name}'`);
+      const F = await import('../core/fsm.js');
+      let m;
+      try { m = F.normalizeFsm(JSON.parse(text)); } catch (e) { throw toolError(`${rel}: ${e.message}`); }
+      for (const k of Object.keys(codes || {})) if (!m.states.some(s => s.name === k)) throw toolError(`no state '${k}' in ${rel}`);
+      const before = JSON.stringify(m);
+      const bitsOf = (id) => F.fsmEncoding(m).find(e => e.id === id)?.bits;
+      if (encoding != null) F.setEncoding(m, encoding, bitsOf);
+      for (const [k, v] of Object.entries(codes || {})) F.setStateCode(m, m.states.find(s => s.name === k).id, String(v ?? ''), bitsOf);
+      const changed = JSON.stringify(m) !== before;
+      const enc = F.fsmEncoding(m);
+      const shown = m.encoding === 'enum' ? '' : `: ${enc.map(e => `${e.name} = ${e.bits}`).join(', ')}`;
+      const problems = F.validateFsm(m).filter(d => d.severity === 'error').map(d => `ERROR: ${d.message}`);
+      let sync = null;
+      if (changed) {
+        await P.writeFile(name, rel, JSON.stringify(m, null, 2));
+        const { syncDrawing } = await import('./drawing-sync.js');
+        sync = await syncDrawing(P, name, rel);
+      }
+      return { text: [`${changed ? 'Encoding set' : 'The encoding is already this'}: ${m.encoding}${shown}`, ...problems, ...(sync?.messages || [])].join('\n'),
+        data: { project: name, path: rel, encoding: m.encoding, codes: Object.fromEntries(enc.map(e => [e.name, m.encoding === 'enum' ? null : e.bits])), problems,
           ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
   },

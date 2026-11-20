@@ -9,11 +9,12 @@
 //     version: 1, kind: 'fsm', name: 'det11', lang: 'vhdl' | 'verilog',
 //     type: 'moore' | 'mealy',                   (derived from the outputs: fsmKind, #2728)
 //     clock: 'clk', reset: { name: 'rst', active: 'high' | 'low', sync: false },
-//     encoding: 'binary' | 'gray' | 'onehot' | 'enum',
+//     encoding: 'binary' | 'gray' | 'onehot' | 'enum' | 'user',   (user: each state's code, #4908)
 //     style: '3process' | '2process',            (HDL style: separate or combined logic processes)
 //     inputs:  [{ name: 'x', width: 1 }],
 //     outputs: [{ name: 'z', width: 1, default: '0' }],
 //     states: [{ id, name: 'S0', x, y, outputs: { z: '1' },              (Moore outputs)
+//                code?: '01',                                             (its code, in the encoding of the user's)
 //                look?: { fill, stroke, … } }],                           (its look: core/fsm-style.js, #3883)
 //     transitions: [{ id, from, to, cond: 'x && !y', outputs: { z: '1' },  (Mealy outputs)
 //                     bend?: px, angle?: deg, look?: { stroke, dash, … } }], (drawing of the arc, its look)
@@ -41,12 +42,16 @@ import { clone } from './util.js';
 import { condAsText } from './cond-notation.js';
 import { normalizeStyle, styleProblems } from './fsm-style.js';
 import { atWidth, bitsText, outputConst, outputFits } from './fsm-value.js';
+import { USER_ENCODING, cleanCode, userCodeProblems, userCodes } from './fsm-codes.js';
 export { clone };   // (core/util.js's)
 export { generateFsm } from './fsm-hdl.js';
 export { asmDontCares, asmToFsm, fsmToAsm } from './fsm-asm.js';
+export { USER_ENCODING, setEncoding, setStateCode } from './fsm-codes.js';
 
 const FSM_VERSION = 1;
 export const FSM_ENCODINGS = ['binary', 'gray', 'onehot', 'enum'];
+/** Every encoding, the user's too (its codes typed per state, #4908): the Properties' choice. */
+export const FSM_ALL_ENCODINGS = [...FSM_ENCODINGS, USER_ENCODING];
 export const FSM_STYLES = ['3process', '2process'];
 const MAX_WIDTH = 32;
 export const STATE_R = 34;            // radius of a state circle (drawing units)
@@ -156,6 +161,7 @@ export function normalizeFsm(m) {
   const states = arr(src.states).map((s, i) => {
     const o = { id: String(s?.id ?? `s${i + 1}`), name: String(s?.name ?? ''), x: num(s?.x), y: num(s?.y), outputs: normOutputs(s?.outputs) };
     if (s?.comment) o.comment = String(s.comment);
+    if (cleanCode(s?.code)) o.code = cleanCode(s.code);   // (its code, in the encoding of the user's, #4908)
     const st = normalizeStyle('state', s?.look);
     if (st) o.look = st;
     return o;
@@ -177,7 +183,7 @@ export function normalizeFsm(m) {
     type: fsmKind({ transitions }),
     clock: String(src.clock || 'clk'),
     reset: { name: String(rs.name || 'rst'), active: rs.active === 'low' ? 'low' : 'high', sync: !!rs.sync },
-    encoding: FSM_ENCODINGS.includes(src.encoding) ? src.encoding : 'binary',
+    encoding: FSM_ALL_ENCODINGS.includes(src.encoding) ? src.encoding : 'binary',
     style: src.style === '2process' ? '2process' : '3process',
     inputs: arr(src.inputs).map((p) => ({ name: String(p?.name ?? ''), width: num(p?.width, 1) })),
     outputs: arr(src.outputs).map((p) => ({ name: String(p?.name ?? ''), width: num(p?.width, 1),
@@ -240,9 +246,10 @@ export function fsmEncoding(model) {
   const init = states.findIndex((s) => s.id === m.initial);
   if (init > 0) states.unshift(states.splice(init, 1)[0]);
   const N = states.length;
-  const width = m.encoding === 'onehot' ? Math.max(1, N) : (N <= 1 ? 1 : (N - 1).toString(2).length);
+  const user = m.encoding === USER_ENCODING ? userCodes(states) : null;   // (the user's codes, #4908)
+  const width = user ? user[0]?.width ?? 1 : m.encoding === 'onehot' ? Math.max(1, N) : (N <= 1 ? 1 : (N - 1).toString(2).length);
   return states.map((s, i) => {
-    const code = m.encoding === 'onehot' ? 1n << BigInt(i) : m.encoding === 'gray' ? BigInt(i ^ (i >> 1)) : BigInt(i);
+    const code = user ? user[i].code : m.encoding === 'onehot' ? 1n << BigInt(i) : m.encoding === 'gray' ? BigInt(i ^ (i >> 1)) : BigInt(i);
     return { id: s.id, name: s.name, constName: `S_${s.name}`, index: i, width, code, bits: bitsOf(code, width) };
   });
 }
@@ -433,6 +440,8 @@ export function validateFsm(model) {
     names.set(k, s.id);
   }
   if (m.states.length && !stateById(m, m.initial)) add('error', 'The initial (reset) state is not set', {});
+  // (the encoding of the user's: each state's code, binary, the same width, none twice, #4908)
+  if (m.encoding === USER_ENCODING) for (const p of userCodeProblems(m.states)) add('error', p.message, p.state ? { state: p.state } : {});
 
   const checkOutputs = (outs, where, ref) => {
     for (const e of outputProblems(outs, m.outputs)) add('error', `${where}: ${e}`, ref);
@@ -733,7 +742,8 @@ export function stateTable(model) {
  */
 export function encodedTable(model) {
   const m = normalizeFsm(model);
-  if (m.encoding !== 'binary' && m.encoding !== 'gray') return { error: 'The encoded table is made for the binary and gray encodings (choose one of them)' };
+  // (the user's codes too, #4908: the unused codes don't cares, as the binary encoding's)
+  if (!['binary', 'gray', USER_ENCODING].includes(m.encoding)) return { error: 'The encoded table is made for the binary, gray and user-defined encodings (choose one of them)' };
   if (fsmErrors(m).length) return { error: 'Correct the errors of the diagram first' };
   const enc = fsmEncoding(m);
   const w = enc[0]?.width ?? 1;

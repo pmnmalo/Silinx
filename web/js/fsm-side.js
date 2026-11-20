@@ -6,7 +6,8 @@
 // deleted as any selection is, by the Delete key or the toolbar's (#3882). Its look last: web/js/fsm-look.js (#3883).
 import { h } from './ui.js';
 import { lookFields } from './fsm-look.js';
-import { drawnAsElse, ELSE_COND, isElseWord, outputLines } from '/core/fsm.js';
+import { drawnAsElse, ELSE_COND, FSM_ALL_ENCODINGS, isElseWord, outputLines, setEncoding, setStateCode, USER_ENCODING } from '/core/fsm.js';
+import { FSM_ENCODING_NAMES } from './fsm-editor.js';
 import { condAsText } from '/core/cond-notation.js';
 import { drawnCond, onNotation } from './notation.js';
 import { drawBarsIn } from './overbar.js';
@@ -77,13 +78,22 @@ export function mountSide(ctx) {
       const init = h('input', { type: 'checkbox', class: 'fsm-initial', checked: M().initial === s.id, disabled: M().initial === s.id });
       init.addEventListener('change', () => { if (init.checked) { M().initial = id; commit(); renderSelection(); } });
       const ts = M().transitions.filter((t) => t.from === s.id);
+      // (its code, #4908: the encoding's, or the user's; one typed makes the encoding the user's, the other states
+      // keeping the codes they had; none in the enumerated encoding, the synthesis tool's)
+      const user = M().encoding === USER_ENCODING;
+      const code = M().encoding === 'enum' ? null : input(user ? (s.code ?? '') : e?.bits ?? '', (v, done) => {
+        if (!cur()) return;
+        setStateCode(M(), id, v, (sid) => encOf().get(sid)?.bits);
+        commit('scode');
+        if (done || !user) renderMachine();
+      }, { cls: 'mono fsm-scode', key: 'scode', title: user ? 'The state\'s code: binary digits, as wide as the other states\'' : 'The state\'s code: one typed makes the encoding User-defined' });
       // (a state with no comment, or no code: nothing there, not the text "null", #2722)
       selSection.append(...[h('h3', {}, 'State'),
         field('Name', name),
         s.comment ? h('p', { class: 'asm-muted fsm-scomment' }, s.comment) : null,
         outputsField('Outputs (Moore)', outs, 'The value of each output while in this state (empty: its default value; X or "1X0": don\'t care).'),
         h('label', { class: 'asm-check' }, init, 'Initial (reset) state'),
-        e && M().encoding !== 'enum' ? h('p', { class: 'asm-muted' }, `Code: ${e.bits} (${M().encoding})`) : null,
+        code ? field('Code', code) : null,
         h('div', { class: 'asm-label' }, `Transitions out of ${s.name} (the first true condition is taken)`),
         // (a transition's outputs one per line under it, #3882)
         h('ol', { class: 'fsm-tlist' }, ...ts.map((t) => h('li', { class: 'link', onclick: () => { setSel({ type: 'trans', id: t.id }); render(); renderSide(); } },
@@ -176,6 +186,12 @@ export function mountSide(ctx) {
       list.push({ name: n, width: 1, ...extra });
       commit(); renderMachine();
     };
+    // (the state encoding, #4908: out of the ⋮ menu; the user's: each state's code in its Properties, those it had kept)
+    const enc = h('select', { class: 'asm-select fsm-encoding' }, ...FSM_ALL_ENCODINGS.map((v) => h('option', { value: v, selected: M().encoding === v }, FSM_ENCODING_NAMES[v])));
+    enc.addEventListener('change', () => {
+      setEncoding(M(), enc.value, (sid) => encOf().get(sid)?.bits);
+      commit('enc'); renderSide();
+    });
     const desc = h('textarea', { class: 'asm-input', rows: 2, placeholder: designKind() ? 'What the machine does' : 'What the machine does (written in the HDL header)' }, M().description || '');
     desc.addEventListener('change', () => { if (desc.value.trim()) M().description = desc.value.trim(); else delete M().description; commit(); });
     machineBody.append(
@@ -184,6 +200,7 @@ export function mountSide(ctx) {
       h('div', { class: 'asm-ports fsm-outputs' }, h('div', { class: 'asm-ports-head' }, h('span', { class: 'asm-label' }, 'Outputs'), btn('+ Output', 'Add an output', addPort('out', 'z', { default: '0' }), 'asm-small fsm-add-out')), ports(M().outputs, 'out')),
       h('div', { class: 'asm-grid2' }, field('Clock', clk), field('Reset signal', rst)),
       h('div', { class: 'asm-grid2' }, field('Reset level', act), h('label', { class: 'asm-check', style: { marginTop: '18px' } }, sync, 'Synchronous reset')),
+      field('Encoding', enc),
       field('Description', desc));
   }
 

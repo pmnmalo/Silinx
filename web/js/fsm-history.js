@@ -8,7 +8,7 @@ import { clone, FSM_ENCODING_NAMES } from './fsm-editor.js';
 /** { applyModel, commit, redo, setShared, undo, updateToolbar } of mountFsmEditor (M(), destroyed(), hi(), hist(), lastKey(), lastT(), panel(), sel(): its current values). */
 export function mountFsmHistory(ctx) {
   const {
-    opts, M, delBtn, destroyed, encSel, hi, hist, lastKey, lastT, panel, render, renderPanel,
+    opts, M, delBtn, destroyed, hi, hist, lastKey, lastT, panel, render, renderPanel,
     renderSide, sel, stateById, status, styleSel, tabBtns, timers, transById, validateSoon, setM,
     setHist, setHi, setLastKey, setLastT, setSel, shared = () => null, setSharedRef = () => {}, simGone = () => {},
     locked = () => false, lockable = () => []
@@ -46,7 +46,7 @@ export function mountFsmHistory(ctx) {
     // (the tools that change the diagram disabled while it is locked: in Try it, #3793)
     delBtn.disabled = !sel() || locked();
     for (const b of lockable()) b.disabled = locked();
-    encSel.value = M().encoding; styleSel.value = M().style;
+    styleSel.value = M().style;
     for (const [k, b] of Object.entries(tabBtns)) b.classList.toggle('on', panel() === k);
     status.set([{ text: `${M().states.length} state(s), ${M().transitions.length} transition(s)`, cls: 'fsm-info' },
       M().type === 'mealy' ? 'Mealy' : 'Moore', `Encoding: ${FSM_ENCODING_NAMES[M().encoding] || M().encoding}`]);

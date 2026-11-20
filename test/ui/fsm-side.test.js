@@ -44,7 +44,7 @@ uiTest('#405 FSM side panel: nothing, a state (name, outputs, code, initial, its
     r.none = [S.hidden, S.childElementCount, calls.splice(0)];
     // the state S1: renamed, its outputs (an error shown, then valid), made initial
     select({ type: 'state', id: 's2' }); side.renderSide();
-    r.state = [S.querySelector('h3').textContent, S.querySelector('.asm-muted').textContent, [...S.querySelectorAll('.fsm-tlist li')].map((li) => li.textContent)];
+    r.state = [S.querySelector('h3').textContent, field(S, 'Code').value, [...S.querySelectorAll('.fsm-tlist li')].map((li) => li.textContent)];
     set(field(S, 'Name'), ' MID ');
     set(field(S, 'Outputs (Moore)'), '2');
     r.err = [field(S, 'Outputs (Moore)').classList.contains('bad'), M.states[1].outputs];
@@ -71,7 +71,7 @@ uiTest('#405 FSM side panel: nothing, a state (name, outputs, code, initial, its
     return r;
   });
   assert.deepEqual(out.none, [true, 0, ['toolbar']]);   // (nothing selected: no section, #2729)
-  assert.deepEqual(out.state, ['State', 'Code: 01 (binary)', ['x → S2', '!x → S0']]);   // (as typed, #4888)
+  assert.deepEqual(out.state, ['State', '01', ['x → S2', '!x → S0']]);   // (as typed, #4888; its code a field, #4908)
   assert.deepEqual(out.err, [true, {}]);
   assert.deepEqual(out.s2, ['MID', { z: '1' }, 's2', false]);
   assert.deepEqual(out.opened, [{ type: 'trans', id: 't3' }, 'Transition', ['toolbar', 'render', 'toolbar']]);   // (the state's panel, then the transition's)

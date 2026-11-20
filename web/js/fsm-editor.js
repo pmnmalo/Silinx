@@ -28,7 +28,7 @@ import { pressTool } from './editor-tools.js';
 import { sv } from './dom.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
 import {
-  normalizeFsm, newFsm, validateFsm, outputLines, FSM_ENCODINGS, STATE_R,
+  normalizeFsm, newFsm, validateFsm, outputLines, STATE_R,
 } from '/core/fsm.js';
 import { styleOf } from '/core/fsm-style.js';
 import { mountSide } from './fsm-side.js';
@@ -89,7 +89,7 @@ function fsmTools(btn, setTool) {
   return tools;
 }
 /** The encodings' names, in the toolbar's select and the status line (#2763). */
-export const FSM_ENCODING_NAMES = { binary: 'Binary', gray: 'Gray', onehot: 'One-hot', enum: 'Enumerated' };
+export const FSM_ENCODING_NAMES = { binary: 'Binary', gray: 'Gray', onehot: 'One-hot', enum: 'Enumerated', user: 'User-defined' };
 
 export function mountFsmEditor(container, opts = {}) {
   const uid = `fsm${++instances}`;
@@ -115,11 +115,8 @@ export function mountFsmEditor(container, opts = {}) {
   const sep = () => h('span', { class: 'asm-sep' });
 
   // ---------------------------------------------------------------------------- toolbar
-  // (the state encoding and the generated HDL's style, rarely changed: choices of the ⋮ menu, #3289; encSel.value = …
-  // and styleSel.value = … move their ✓; the encoding stays in the status line, #2763)
-  const encItems = menuChoice('Encoding', FSM_ENCODINGS.map((e) => ({ value: e, label: FSM_ENCODING_NAMES[e] })),
-    { value: M.encoding, title: 'State encoding', onChange: (v) => { M.encoding = v; commit('enc'); } });
-  const encSel = { set value(v) { setChoice(encItems, v); } };
+  // (the generated HDL's style, rarely changed: a choice of the ⋮ menu, #3289; styleSel.value = … moves its ✓; the
+  // state encoding: in the machine's Properties, #4908, and in the status line, #2763)
   const styleItems = menuChoice('Coding Style', [{ value: '3process', label: '3 processes' }, { value: '2process', label: '2 processes' }],
     { value: M.style, title: 'Style of the generated HDL', onChange: (v) => { M.style = v; commit('style'); } });
   const styleSel = { set value(v) { setChoice(styleItems, v); } };
@@ -153,7 +150,7 @@ export function mountFsmEditor(container, opts = {}) {
       btn('Convert to ASM chart', 'Make an ASM chart (.asm.json) of this state machine', () => opts.onToAsm?.()),
       // (Verify Property, #3177: web/js/verify-props.js)
       ...(opts.onVerify ? [btn('Verify Property…', 'Prove a property of the state machine: a state never reached, a state reached, outputs never 1 together', () => opts.onVerify(clone(M)))] : []),
-      ...encItems, ...(designKind() ? [] : styleItems),   // (no HDL coding style in a design project, #3780)
+      ...(designKind() ? [] : styleItems),   // (no HDL coding style in a design project, #3780)
     ], { title: 'Layout and conversion', btnClass: 'asm-btn' }).el,
     linkHost);
   const readOnly = !!opts.readOnly;
@@ -266,14 +263,14 @@ export function mountFsmEditor(container, opts = {}) {
 
   // ---------------------------------------------------------------------------- history (fsm-history.js)
   const { applyModel, commit, redo, setShared, undo, updateToolbar } = mountFsmHistory({
-    opts, M: () => M, delBtn, destroyed: () => destroyed, encSel, hi: () => hi, hist: () => hist,
+    opts, M: () => M, delBtn, destroyed: () => destroyed, hi: () => hi, hist: () => hist,
     lastKey: () => lastKey, lastT: () => lastT, panel: () => panel, render: (...a) => render(...a),
     renderPanel: (...a) => renderPanel(...a), renderSide: (...a) => renderSide(...a), sel: () => sel, stateById,
     status, styleSel, tabBtns, timers, transById, validateSoon: (...a) => validateSoon(...a),
     setM: (v) => { M = v; }, setHist: (v) => { hist = v; }, setHi: (v) => { hi = v; },
     setLastKey: (v) => { lastKey = v; }, setLastT: (v) => { lastT = v; }, setSel: (v) => { sel = v; },
     shared: () => shared, setSharedRef: (v) => { shared = v; }, simGone: () => { if (sim && !stateById(sim.state)) resetSim(); },
-    locked, lockable: () => [tools.state, arrangeBtn, ...encItems, ...styleItems].filter((b) => b.tagName === 'BUTTON')
+    locked, lockable: () => [tools.state, arrangeBtn, ...styleItems].filter((b) => b.tagName === 'BUTTON')
   });
 
   // (a text typed in place that is not valid: to the console, by the document, #2729, as every message, #2718)
