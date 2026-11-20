@@ -45,7 +45,7 @@ test('openStatus: the xc7a35t (Basys 3) and the xc7a100t (Nexys A7) are availabl
   // (another package of the xc7a100t: no bit database)
   const ftg = openStatus({ family: 'artix7', part: 'xc7a100t', package: 'ftg256', speed: '-1' });
   assert.equal(ftg.available, false);
-  assert.equal(ftg.reason, 'no 7-series bit database for the xc7a100tftg256-1 yet (only xc7a100tcsg324-1, xc7a35tcpg236-1): use AMD Vivado for this device');
+  assert.equal(ftg.reason, 'no 7-series bit database for the xc7a100tftg256-1 yet (only xc7a100tcsg324-1, xc7a35tcpg236-1, xc7z010clg400-1, xc7z020clg400-1): use AMD Vivado for this device');
 });
 
 test('#4680 openStatus: the Zynq-7000\'s XC7Z010 and XC7Z020 (the Zybo Z7\'s) are the 7-series\'; its other parts AMD Vivado\'s alone', () => {
