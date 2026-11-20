@@ -49,8 +49,8 @@ const U = await import('../server/mcp-util.js');
 
 const names = tools => tools.map(t => t.name);
 
-test('server/mcp.js exports what it did before the split', () => {
-  assert.deepEqual(Object.keys(mcp).sort(), ['OPEN_REPORTS', 'PROTOCOL_VERSIONS', 'TOOLS', 'handle', 'serveMcp']);
+test('server/mcp.js exports what it did before the split, and its requests\' order (#4734: laneOf, lanes)', () => {
+  assert.deepEqual(Object.keys(mcp).sort(), ['OPEN_REPORTS', 'PROTOCOL_VERSIONS', 'TOOLS', 'handle', 'laneOf', 'lanes', 'serveMcp']);
   assert.equal(mcp.OPEN_REPORTS, OPEN_REPORTS);
   assert.deepEqual(mcp.PROTOCOL_VERSIONS, ['2025-06-18', '2025-03-26', '2024-11-05']);
 });
