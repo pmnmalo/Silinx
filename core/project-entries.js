@@ -50,6 +50,34 @@ export function registerWritten(pj, path) {
   return changed;
 }
 
+/** A file or a folder of the project renamed (or moved) from `from` to `to` (paths of the project), on `pj` (changed, and
+ *  returned; #4766, one for the server and the browser): a file's path maps exactly, a folder's every path under it; a
+ *  listed source's language follows its new name when that is an HDL one (`.vh` too), else it is kept; the constraints
+ *  path, the files removed from the project (#1228) and the sources' languages follow. */
+export function renameEntries(pj, from, to) {
+  const remap = p => (p === from ? to : typeof p === 'string' && p.startsWith(`${from}/`) ? to + p.slice(from.length) : null);
+  pj.files = (pj.files || []).map(f => {
+    const np = remap(f.path);
+    return np === null ? f : { ...f, path: np, lang: hdlLangOf(np) || f.lang };
+  });
+  if (pj.constraints) pj.constraints = remap(pj.constraints) ?? pj.constraints;
+  if (pj.excluded) pj.excluded = pj.excluded.map(p => remap(p) ?? p);
+  if (pj.sourceLanguage) pj.sourceLanguage = Object.fromEntries(Object.entries(pj.sourceLanguage).map(([p, l]) => [remap(p) ?? p, l]));
+  return pj;
+}
+
+/** A file or a folder of the project deleted (`path`), on `pj` (changed): what was in it leaves the list, the excluded
+ *  files and the constraints (none when it was there, #1230; #4766, one for the server and the browser). True when
+ *  `pj` changed. */
+export function deleteEntries(pj, path) {
+  const gone = p => p === path || (typeof p === 'string' && p.startsWith(`${path}/`));
+  const before = JSON.stringify(pj);
+  pj.files = (pj.files || []).filter(f => !gone(f.path));
+  if (pj.constraints && gone(pj.constraints)) pj.constraints = null;
+  if (pj.excluded) pj.excluded = pj.excluded.filter(p => !gone(p));
+  return JSON.stringify(pj) !== before;
+}
+
 /** Set as Top's one rule (#4733, the interface's): any module of the view can be the top, even one with errors; a name
  *  no source of the view declares (`has(name)` false) is refused, with this message (null: set). */
 export const topRefusal = (mod, sim, has) => (has(mod) ? null : `no entity or module '${mod}' in the project's ${sim ? 'simulation' : 'design'} sources`);

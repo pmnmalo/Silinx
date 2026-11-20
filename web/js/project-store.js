@@ -13,7 +13,7 @@ import { DEV_SITE } from './prefs.js';
 import { constraintsExtOf } from '../../packages/silinx-fpga/src/parts.js';
 import { topForBoard } from '../../core/board-generics.js';
 import { resolveBoard } from '../../core/devices.js';
-import { NEW_IMPL } from '../../core/project-defaults.js';
+import { DEFAULT_DEVICE, newProjectJson, projectJsonText } from '../../core/project-defaults.js';
 import { clone } from '../../core/util.js';   // (a relative path: Node imports this module too, as api-local.js)
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../../core/project-name.js';
 import { renameProblem, renamedFile } from '../../core/project-rename.js';
@@ -21,13 +21,12 @@ import { filePath, gateMessages, normalizePath, requireGated } from '../../core/
 import { markUntrusted } from '../../core/trust.js';
 import * as trustRecords from './trust-records.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
-import { DESIGN_KIND, asDesignProject, isDesignOnly } from '../../core/project-kind.js';
+import { DESIGN_KIND, isDesignOnly } from '../../core/project-kind.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
 import { langOfPath } from '../../core/file-kinds.js';
-import { registerWritten } from '../../core/project-entries.js';
+import { registerWritten, renameEntries, deleteEntries } from '../../core/project-entries.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
-const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
 // own browser storage, so that a development build never touches the stable edition's projects
 // (a workspace folder on the disk can still be opened by both); its settings too (web/js/prefs.js)
@@ -54,17 +53,10 @@ export function cleanPath(p) { const r = filePath(p); return r.reason ? fail(r.m
 // folded name, as a case-insensitive file system reads it: SILINX.JSON, ſilinx.json are the same file, #3034)
 const isDescriptor = foldsToProjectFile;
 const notDescriptor = p => (isDescriptor(p) ? fail(`${PROJECT_FILE} is the project's description`) : p);
-/** silinx.json's text, as server/projects.js writes it (2-space JSON, a final newline, no fileTree). */
-export function projectJsonText(name, pj) {
-  const clean = { ...pj, name };
-  delete clean.fileTree;
-  return JSON.stringify(clean, null, 2) + '\n';
-}
-/** A new empty project's silinx.json (server/projects.js createProject). */
-export const emptyProjectJson = (name, { device, board } = {}) => ({
-  name, version: 1, device: device || DEFAULT_DEVICE, board: board ?? null, top: '', simTop: '', files: [],
-  constraints: `constraints/top${constraintsExtOf(device)}`, stimuli: {}, impl: { ...NEW_IMPL },
-});
+// silinx.json's text, a new empty project's silinx.json: core/project-defaults.js's, as the local server's (#4766)
+export { projectJsonText };
+/** A new empty project's silinx.json (core/project-defaults.js newProjectJson, as the local server's, #4766). */
+export const emptyProjectJson = (name, { device, board } = {}) => newProjectJson(name, { device, board });
 const under = (k, dir) => k === dir || k.startsWith(`${dir}/`);
 // the names in a project's folder ('' its root), from its files' paths: the paths spelled as the project spells its
 // folders and files (core/fold-name.js spelledAs, as the local server does, #3536)
@@ -617,7 +609,7 @@ export function projectOps(getStore, examples = {}) {
         await S().create(name, json, files);
         return clone(json);
       }
-      const json = kind ? asDesignProject(emptyProjectJson(name)) : emptyProjectJson(name, { device, board });
+      const json = newProjectJson(name, { device, board, kind });   // (core/project-defaults.js, as the server's, #4766)
       await recordOwn(name);
       await S().create(name, json, {}, { dirs: kind ? ['src', 'sim'] : ['src', 'sim', 'constraints'] });
       return clone(json);
@@ -698,24 +690,10 @@ export function projectOps(getStore, examples = {}) {
       const { parts, last } = split(to), folder = parts.join('/');
       const taken = sameNameIn(last, namesOf(p.files)(folder));
       if (taken && (folder ? `${folder}/${taken}` : taken) !== from) fail(`'${to}' already exists`);
-      if (isDir) {
-        // a folder: every file under it moves, registrations and the constraints path follow
-        const remap = k => (k.startsWith(`${from}/`) ? to + k.slice(from.length) : k);
-        await move();
-        json.files = json.files.map(f => ({ ...f, path: remap(f.path) }));
-        if (json.constraints) json.constraints = remap(json.constraints);
-        // the files removed from the project stay removed at their new paths (#1228)
-        if (json.excluded) json.excluded = json.excluded.map(remap);
-        if (json.sourceLanguage) json.sourceLanguage = Object.fromEntries(Object.entries(json.sourceLanguage).map(([f, l]) => [remap(f), l]));
-        await S().saveJson(name, json);
-        return clone(json);
-      }
+      // a file, or a folder (every file under it): the registrations, the constraints path, the files removed from the
+      // project (#1228) and the sources' languages follow (core/project-entries.js renameEntries, as the server's, #4766)
       await move();
-      const lang = /\.vhdl?$/i.test(to) ? 'vhdl' : /\.(v|sv)$/i.test(to) ? 'verilog' : null;
-      json.files = json.files.map(f => (f.path === from ? { ...f, path: to, lang: lang || f.lang } : f));
-      if (json.constraints === from) json.constraints = to;
-      if (json.excluded) json.excluded = json.excluded.map(f => (f === from ? to : f));
-      if (json.sourceLanguage?.[from]) { json.sourceLanguage[to] = json.sourceLanguage[from]; delete json.sourceLanguage[from]; }
+      renameEntries(json, from, to);
       await S().saveJson(name, json);
       return clone(json);
     },
@@ -725,9 +703,7 @@ export function projectOps(getStore, examples = {}) {
       path = notDescriptor(await spelled(p, cleanPath(path)));
       const trashed = (await S().removePath(name, path, { trash })) || null;
       const json = clone(p.json);
-      json.files = json.files.filter(f => !under(f.path, path));
-      if (json.constraints && under(json.constraints, path)) json.constraints = null;
-      if (json.excluded) json.excluded = json.excluded.filter(f => !under(f, path));
+      deleteEntries(json, path);   // (core/project-entries.js, as the server's, #4766)
       await S().saveJson(name, json);
       return { ok: true, ...(trashed ? { trashed } : {}) };
     },
