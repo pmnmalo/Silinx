@@ -32,10 +32,8 @@ const REVIEWED = {
   'web/js/emulator-board.js': 1,      // an LCD's dots: numbers of the simulation
   'web/js/emulator-pcb.js': 1,        // the board's own art, its text through svgText
   'web/js/fsm-editor.js': 1,          // constant definitions, a counter in their ids
-  'web/js/isim-dialogs.js': 1,        // names and values through esc
   'web/js/isim-menu.js': 1,           // the item's label through esc
   'web/js/isim-objects.js': 1,        // signal names and values through esc
-  'web/js/isim-stimuli.js': 2,        // signal names and values through esc
   'web/js/isim-toolbar.js': 1,        // the time units (a fixed list) through esc
   'web/js/isim-tree.js': 3,           // instance and process names through esc; constant icons
   'web/js/isim.js': 1,                // the wave window's frame: constant

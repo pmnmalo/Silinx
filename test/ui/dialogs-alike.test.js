@@ -76,7 +76,7 @@ for (const theme of ['light', 'dark']) {
     await page.waitFor(() => document.querySelector('.doc:not([hidden]) .se-props .se-infobtn')?.getClientRects().length > 0, [], { what: 'its properties' });
     await page.click('.doc:not([hidden]) .se-props .se-infobtn');
     await page.waitFor(() => document.querySelector('.se-symdoc .se-dhead'), [], { what: 'Symbol Info' });
-    const info = await look(page, '.se-symdoc', '.se-dhead', null, '.se-dhead .btn', null);
+    const info = await look(page, '.se-symdoc-dlg', '.se-dhead', null, '.se-dhead .btn', null);   // (ui.js's dialog(), its own header, #4762)
     await page.key('Escape');
     const want = { radius: '14px', title: 48, titleText: '14px 650', body: '16px 18px', buttons: [32] };
     assert.deepEqual({ ...app, fields: undefined, primary: undefined }, { ...want, fields: undefined, primary: undefined }, 'the app\'s dialog');
