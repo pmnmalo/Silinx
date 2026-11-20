@@ -141,8 +141,7 @@ export function mountProps(ctx) {
       inp(doc().sheet.w, v => { doc().sheet.w = Math.max(400, +v || 1700); }, { type: 'number', step: 100 }),
       h('span', { text: '×' }), inp(doc().sheet.h, v => { doc().sheet.h = Math.max(300, +v || 1100); }, { type: 'number', step: 100 }))));
     const hd = doc().hdl || {};
-    // (a plain section with its heading: the panel folds as a whole, never a section of it, #4764)
-    const sec = h('div', { class: 'se-sec' });
+    const sec = h('div', { class: 'se-sec' });   // (a plain section: the panel folds as a whole, #4764)
     sec.append(h('div', { class: 'se-sec-title', text: `HDL kept with the schematic${hd.lang ? ` (${hd.lang.toUpperCase()})` : ''}` }));
     const ensure = () => { doc().hdl ||= { lang: doc().lang, context: '', generics: [], decls: '', arch: '' }; return doc().hdl; };
     sec.append(field(hd.lang === 'verilog' ? 'Compiler directives' : 'Context clause', ta(hd.context || '', v => { ensure().context = v; }, 3)));

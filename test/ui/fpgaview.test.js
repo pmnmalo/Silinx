@@ -202,7 +202,7 @@ uiTest('FPGA view: not placed and routed yet asks to run Implement Design (No: n
 
 // #2668: the side panel as the Design editors' Properties: its title folds it to a strip (remembered), each section folds
 // by its title; on a narrow window it goes over the chip, shown and hidden by the toolbar's ☰ Properties; in Portuguese
-uiTest('#2668 FPGA view: the side panel as the Design editors\' Properties: folded to a strip and remembered, its sections folded, over the chip from the toolbar on a narrow window; Portuguese', E, async (page) => {
+uiTest('#2668 FPGA view: the side panel as the Design editors\' Properties: folded to a strip and remembered, its sections plain (#4764), over the chip from the toolbar on a narrow window; Portuguese', E, async (page) => {
   await routedProject('PanelPj');
   await page.setViewport(1366, 768);
   await page.eval(async () => {
@@ -220,7 +220,7 @@ uiTest('#2668 FPGA view: the side panel as the Design editors\' Properties: fold
     const toggle = [...fv.querySelectorAll('.fv-bar .btn')].find((b) => /☰/.test(b.textContent));
     return { cap: side.querySelector('.asm-cap').textContent, width: side.offsetWidth, shown: shown(side), over: getComputedStyle(side).position === 'absolute',
       folded: fv.classList.contains('props-folded'), secs: [...side.querySelectorAll('.fv-sec')].map((d) => `${d.querySelector('.fv-sec-title').textContent}${d.tagName === 'DETAILS' ? ' (folds)' : ''}`),
-      selection: [...side.querySelectorAll('.fv-sec')].find((d) => d.querySelector('.fv-sec-title').textContent === 'Selection').querySelector('.fv-detail').textContent,
+      selection: side.querySelector('.fv-sec .fv-detail').textContent,
       toggle: shown(toggle) ? toggle.textContent : null, canvas: fv.querySelector('.fv-canvas').offsetWidth };
   }, V);
   // a wide window: the panel beside the chip, its four sections open, no ☰ Properties in the toolbar
