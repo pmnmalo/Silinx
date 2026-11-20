@@ -162,7 +162,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   const kept = api.standalone ? api.storage() : null;
   const where = !kept ? { location: '<workspace>/', hint: 'Projects are stored in the Silinx workspace folder (default ~/Silinx-projects).' }
     : kept.kind === 'folder' ? { location: `${kept.folder}/`, hint: `Projects are kept in the folder ${kept.folder} on the disk (File ▸ Open Workspace Folder… to change it).` }
-      : { location: 'this browser: ', hint: kept.supported ? "Projects are kept in this browser's storage (File ▸ Open Workspace Folder… keeps them in a folder on the disk)." : "Projects are kept in this browser's storage (a folder on the disk needs Chrome or Edge)." };
+      : { location: 'this browser: ', browser: true, hint: kept.supported ? "Projects are kept in this browser's storage (File ▸ Open Workspace Folder… keeps them in a folder on the disk)." : "Projects are kept in this browser's storage (a folder on the disk needs Chrome or Edge)." };
   const name = h('input', { type: 'text', value: st.name, placeholder: 'project name' });
   const tplSel = select([['empty', 'Empty project'], ...templates.map(t => [t, `Example: ${t}`]), ...tests.map(t => [t, `Test design: ${t}`])], template);
   // the project's kind (#3780): an FPGA project, or a design and simulation one (no board, no device, no HDL); an example's
@@ -180,7 +180,8 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
         ...field('Location:', h('input', { type: 'text', value: where.location + (st.name || '…'), disabled: true })),
         ...field('Start from:', tplSel),
         ...field('Project Kind:', kindSel)),
-      h('div', { class: 'hint', style: { marginTop: '14px' } }, where.hint)),
+      // (in the browser's storage, in red: clearing the browser's data loses them, #4957)
+      h('div', { class: where.browser ? 'hint storage-browser' : 'hint', style: { marginTop: '14px' } }, where.hint)),
     validate: async () => {
       const bad = projectNameError(name.value.trim());   // (the server's rule and message, core/project-name.js, #3538)
       if (bad) return bad;
