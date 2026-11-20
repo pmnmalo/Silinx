@@ -308,10 +308,20 @@ export function exposedRefusal(host, { tls = null, insecureHttp = false } = {}) 
     + 'or add --insecure-http to accept it (a network you trust)';
 }
 
+// (#4759: a promise rejected that nothing handles, in a route, a relay's room or a watcher, said on the console; the
+// server, and every share it runs, goes on rather than end with it, as Node does by default)
+let strayKept = false;
+const keepOnStray = () => {
+  if (strayKept) return;
+  strayKept = true;
+  process.on('unhandledRejection', e => console.error(`ERROR: an unexpected failure (the server goes on): ${e?.stack || e}`));
+};
+
 // tls: { cert, key } (PEM) for HTTPS; insecureHttp: plain HTTP on a non-loopback address accepted (#4739)
 export async function startServer({ port = 8642, host = '127.0.0.1', tls = null, insecureHttp = false } = {}) {
   const refusal = exposedRefusal(host, { tls, insecureHttp });
   if (refusal) throw Object.assign(new Error(refusal), { code: 'SILINX_EXPOSED_HTTP' });
+  keepOnStray();
   // a token for the API, made anew at every start, on loopback too (#2564): another user of this
   // computer reaches 127.0.0.1 as well
   const token = crypto.randomBytes(18).toString('base64url');

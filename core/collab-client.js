@@ -76,17 +76,23 @@ const OPEN_WAIT = 10_000;
 const pastClock = (awareness, clock) => { if (Number.isSafeInteger(clock) && clock > 0) awareness.meta.set(awareness.clientID, { clock, lastUpdated: Date.now() }); };
 const clockOf = awareness => awareness.meta.get(awareness.clientID)?.clock ?? 0;
 
-function connection(url, WS, protocols, onControl, onFrame) {
+// (#4759: a message, a frame or a send that fails said once per kind and connection, through `onFailure`, the next ones
+// still handled: a failure never stops the chain)
+function connection(url, WS, protocols, onControl, onFrame, onFailure = () => {}) {
   const ws = new WS(url, protocols);
   ws.binaryType = 'arraybuffer';
   const at = String(url).split('?')[0];   // (the relay's address, said without the room, #4541)
   let chain = Promise.resolve();   // (frames opened in their order: unsealing is asynchronous)
+  const said = new Set();
+  const failed = what => e => { if (said.has(what)) return; said.add(what); try { onFailure(`${what}: ${e?.message || e}`); } catch { /* the caller's */ } };
+  const onMsg = failed('a message of the relay could not be handled'), onIn = failed('a change received could not be read');
+  const onOut = failed('a change could not be sent');
   ws.addEventListener('message', ev => {
     if (typeof ev.data === 'string') {
       let msg = null;
       try { msg = JSON.parse(ev.data); } catch { /* not ours */ }
-      if (msg && typeof msg.type === 'string') chain = chain.then(() => onControl(msg));
-    } else chain = chain.then(() => onFrame(new Uint8Array(ev.data))).catch(() => {});
+      if (msg && typeof msg.type === 'string') chain = chain.then(() => onControl(msg)).catch(onMsg);
+    } else chain = chain.then(() => onFrame(new Uint8Array(ev.data))).catch(onIn);
   });
   const opened = new Promise((resolve, reject) => {
     ws.addEventListener('open', resolve, { once: true });
@@ -99,7 +105,7 @@ function connection(url, WS, protocols, onControl, onFrame) {
   return {
     ws, opened,
     control: msg => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); },
-    frame: make => { out = out.then(make).then(f => { if (f && ws.readyState === 1) ws.send(f); }).catch(() => {}); return out; },
+    frame: make => { out = out.then(make).then(f => { if (f && ws.readyState === 1) ws.send(f); }).catch(onOut); return out; },
   };
 }
 
@@ -235,7 +241,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   };
   // a connection, opened and answered (`hello`: the open, or the resume): { c, answer }; its failure thrown
   const connect = async hello => {
-    const c = connection(hello.type === 'resume' ? roomUrl(url, room) : url, WS, [SUBPROTOCOL, ...(token ? [`token.${token}`] : [])], msg => control(c, msg), frameIn);
+    const c = connection(hello.type === 'resume' ? roomUrl(url, room) : url, WS, [SUBPROTOCOL, ...(token ? [`token.${token}`] : [])], msg => control(c, msg), frameIn, message => onEvent({ type: 'error', message }));
     try { await c.opened; } catch (e) { c.ws.close?.(); throw e; }
     const answer = firstAnswer(c, 'opened');
     c.control({ v: PROTOCOL, client: doc.clientID, ...hello });
@@ -489,7 +495,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   };
   // a connection, joined: { c, owner }; its failure thrown (the relay's answer: its message)
   const join = async S => {
-    const c = connection(roomUrl(url, room), S, [SUBPROTOCOL], msg => control(c, msg), f => frameIn(c, f));
+    const c = connection(roomUrl(url, room), S, [SUBPROTOCOL], msg => control(c, msg), f => frameIn(c, f), message => onEvent({ type: 'error', message }));
     try { await c.opened; } catch (e) { c.ws.close?.(); throw e; }
     const answer = firstAnswer(c, 'joined');
     c.control({ type: 'join', v: PROTOCOL, room, client: doc.clientID });

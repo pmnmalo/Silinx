@@ -351,7 +351,7 @@ function hookApi(project, doc, s) {
       putFile(doc, path, text);
       // (a bound drawing's save may have been made before the others' last change: the merge written after it)
       if (liveDrawing(path)) syncDrawing(doc, path, text, s.bases);
-      if (liveDrawing(path) && drawn(path)) s.drawing = s.drawing.then(() => writeMerged(s, path)).catch(() => {});
+      if (liveDrawing(path) && drawn(path)) s.drawing = s.drawing.then(() => writeMerged(s, path)).catch(e => collabLog(`ERROR: ${path}: the drawing merged with the others' changes was not written: ${e.message}.`, 'err'));   // (#4759)
       if (!doc.getMap('files').has(path)) resync();
     }
     return r;
