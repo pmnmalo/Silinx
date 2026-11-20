@@ -41,7 +41,7 @@ test('#3409 the opener\'s arguments hold no code and no token: the path of a pag
 });
 
 test('#4743 Windows: the page opened through url.dll\'s handler, one argument, no cmd to re-read `&`, `^` or `%` in its path', () => {
-  const odd = 'C:\\Users\\A&B^%x%\\.silinx\\open-abc.html';
+  const odd = 'D:\\Silinx A&B^%x%\\open-abc.html';
   assert.deepEqual(openerCommand(URL_, { platform: 'win32', target: () => odd }), ['rundll32', ['url.dll,FileProtocolHandler', odd]]);
   assert.deepEqual(openerCommand('http://127.0.0.1:8642/', { platform: 'win32', target: u => u }),
     ['rundll32', ['url.dll,FileProtocolHandler', 'http://127.0.0.1:8642/']]);
