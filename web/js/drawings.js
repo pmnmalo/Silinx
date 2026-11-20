@@ -27,7 +27,8 @@ export {
 };
 import { openPetriFsm } from './petri-fsm-doc.js';
 import { openCircuitSchematic, refreshCircuitSchematic } from './drawings-circ-sch.js';
-export { openCircuitSchematic };
+import { openFsmSchematic, refreshFsmSchematic } from './drawings-fsm-sch.js';
+export { openCircuitSchematic, openFsmSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
 import { ucfPort } from '/core/board-constraints.js';
 export { openPetriFsm };
@@ -200,7 +201,7 @@ export async function openFsm(path) {
       const offLang = onLanguageChange(() => setProblems(last));
       const ed = mountFsmEditor(host, {
         model, ...followOnly(path),
-        onChange: () => setDirty(d, true),
+        onChange: () => { setDirty(d, true); refreshFsmSchematic(path, ed.getModel()); },   // (its schematic, when open, follows: #4910)
         linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
         onTruthTables: () => fsmTruthTables(path),

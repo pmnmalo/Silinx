@@ -67,13 +67,13 @@ uiTest('#3891 a design project: Symbol Info without Equivalent HDL, the tabs\' m
   // a state diagram's: its ASM chart, no HDL
   await page.eval(() => window.SilinxApp.openFile('src/traffic.fsm.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/traffic.fsm.json', [], { what: 'the state diagram' });
-  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside']);
-  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside']);
+  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside', 'Show Schematic Beside']);
+  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside', 'Show Schematic Beside']);
 
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Mostrar o Fluxograma ASM ao Lado']);
+    assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Mostrar o Fluxograma ASM ao Lado', 'Mostrar o Esquemático ao Lado']);
     await page.eval(() => window.SilinxApp.openSch('src/mux.sch.json'));
     await page.waitFor(() => window.Silinx.active?.id === 'sch:src/mux.sch.json', [], { what: 'the schematic' });
     assert.deepEqual(await symbolInfo(page), { titles: ['Descrição', 'Pinos', 'Parâmetros e atributos', 'Tabela de verdade', 'Composição'], hdl: false,

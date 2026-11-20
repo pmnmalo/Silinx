@@ -65,9 +65,9 @@ uiTest('#2834 drawings and their views: a state diagram, Boolean algebra, the ge
 
   // a state diagram: its ASM chart, its HDL and the HDL's translation
   await open(page, 'src/traffic.fsm.json', FSM);
-  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Show ASM Chart Beside', 'Show Schematic Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
   await page.closeMenus();
-  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  assert.deepEqual(await viewMenu(page), ['Show ASM Chart Beside', 'Show Schematic Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
   assert.deepEqual(await show(page, 'traffic.fsm.json', 'Show ASM Chart Beside', 'fsmasm:src/traffic.fsm.json'), [`a:${FSM}*`, 'b:fsmasm:src/traffic.fsm.json']);
   // (read-only, the diagram's machine: its states)
   assert.deepEqual(await page.eval(() => { const d = window.Silinx.docs.find((x) => x.id === 'fsmasm:src/traffic.fsm.json'); return { banner: /Read-only, converted from/.test(d.el.querySelector('.gen-banner')?.textContent || ''), states: d.asmEditor.getModel().nodes.filter((n) => n.type === 'state').length > 1 }; }), { banner: true, states: true });
@@ -87,7 +87,7 @@ uiTest('#2834 drawings and their views: a state diagram, Boolean algebra, the ge
 
   // the converted chart: the diagram, its HDL; the generated HDL: its drawing, its translation
   await page.click(await tab(page, 'traffic.asm'));
-  assert.deepEqual(await beside(page, 'traffic.asm'), ['Show State Diagram Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
+  assert.deepEqual(await beside(page, 'traffic.asm'), ['Show State Diagram Beside', 'Show Schematic Beside', 'Show VHDL Beside', 'Show Verilog Beside']);
   await page.closeMenus();
   await page.click(await tab(page, 'traffic.vhd'));
   assert.deepEqual(await beside(page, 'traffic.vhd'), ['Show State Diagram Beside', 'Show Verilog Beside']);
