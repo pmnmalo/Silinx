@@ -12,6 +12,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { scratchEnv } from './server-helpers.js';
 import { fakeDirectory, dump } from './fixtures/fs-access-fake.js';
+import { failing } from './fixtures/fs-access-failing.js';
 import { renameProblem, renamedMessage, renamedFile, runningProblem, sharedProblem, followedProblem } from '../core/project-rename.js';
 import { browserStore, folderStore, projectOps } from '../web/js/project-store.js';
 
@@ -191,12 +192,11 @@ test('a workspace folder on the disk: the folder copied under the new name, the 
   await store.writeBuild('p', 'build/top.bit', new Uint8Array([1, 2, 3]));
   await store.create('q', JSON0, {});
   await assert.rejects(ops.renameProject('p', 'q'), { message: 'a project named \'q\' already exists: choose another name' });
-  // the old folder not removed: the copy removed, the old project as it was
+  // the old folder not removed at all (its silinx.json kept): the copy removed, the old project as it was
   const was = await dump(root);
-  const remove = root.removeEntry.bind(root);
-  root.removeEntry = async (name, o) => { if (name === 'p') throw new Error('NoModificationAllowedError'); return remove(name, o); };
+  const undo = failing(root, 'removeEntry', (dir, name) => dir.name === 'p' && name === 'silinx.json');
   await assert.rejects(ops.renameProject('p', 'p2'), /NoModificationAllowedError/);
-  root.removeEntry = remove;
+  undo();
   assert.deepEqual(await dump(root), was);
   await ops.renameProject('p', 'p2');
   const after = await dump(root);
@@ -212,4 +212,115 @@ test('a workspace folder on the disk: the folder copied under the new name, the 
   await ops.renameProject('p2', 'P2');
   const keys = Object.keys(await dump(root));
   assert.ok(keys.includes('P2/src/top.vhd') && !keys.some(k => k.startsWith('p2/') || k.startsWith('.rename-')));
+});
+
+// ---- #4724: a workspace folder's Rename Project never removes the only complete copy, whichever step fails
+const projectOf = (tree, name) => Object.fromEntries(Object.entries(tree).filter(([k]) => k.startsWith(`${name}/`) && !k.endsWith('silinx.json'))
+  .map(([k, v]) => [k.slice(name.length + 1), v]));
+async function folderWithP() {
+  const root = fakeDirectory('Silinx-projects');
+  const store = folderStore(root), ops = projectOps(() => store);
+  await store.create('p', JSON0, FILES, { dirs: ['sim'] });
+  await store.writeBuild('p', 'build/top.bit', new Uint8Array([1, 2, 3]));
+  return { root, store, ops, was: projectOf(await dump(root), 'p') };
+}
+// (the old folder's removal stopped half way: its src/ gone, then an error, as a file held open by another program)
+const halfRemoved = (root, name) => failing(root, 'removeEntry', async (dir, n, o, real) => {
+  if (dir !== root || n !== name || !o?.recursive) return false;
+  await (await real.getDirectoryHandle.call(root, name)).removeEntry('src', { recursive: true });
+  return true;
+}, { once: true });
+
+test('#4724 a workspace folder: Rename Project with the copy failing leaves the old project as it was, no copy', async () => {
+  const { root, ops } = await folderWithP();
+  const before = await dump(root);
+  const undo = failing(root, 'getFileHandle', (dir, n, o) => dir.name === 'p2' && o?.create && n === 'p.xise');
+  await assert.rejects(ops.renameProject('p', 'p2'), /NoModificationAllowedError/);
+  undo();
+  assert.deepEqual(await dump(root), before);
+});
+
+test('#4724 a workspace folder: the old folder removed only half way keeps the new, complete copy, and says what is left', async () => {
+  const { root, store, ops, was } = await folderWithP();
+  const undo = halfRemoved(root, 'p');
+  await assert.rejects(ops.renameProject('p', 'p2'), { message: '\'p\' was renamed \'p2\', but its old folder could not be removed entirely (NoModificationAllowedError): \'p2\' is complete, remove what is left of the folder \'p\'' });
+  undo();
+  const after = await dump(root);
+  const { 'p.xise': xise, ...rest } = was;
+  assert.deepEqual(projectOf(after, 'p2'), { ...rest, 'p2.xise': xise });
+  assert.equal(JSON.parse(after['p2/silinx.json']).name, 'p2');
+  // (what is left of the old folder is no project: its silinx.json went first)
+  assert.deepEqual((await store.list()).map(p => p.name), ['p2']);
+  assert.equal(after['p/silinx.json'], undefined);
+});
+
+test('#4724 a workspace folder: a change of case alone, each step failing, never loses the project', async () => {
+  // the old folder's silinx.json not removed: the old project whole, the hidden copy removed
+  {
+    const { root, ops } = await folderWithP();
+    const before = await dump(root);
+    const undo = failing(root, 'removeEntry', (dir, n) => dir.name === 'p' && n === 'silinx.json');
+    await assert.rejects(ops.renameProject('p', 'P'), /NoModificationAllowedError/);
+    undo();
+    assert.deepEqual(await dump(root), before);
+  }
+  // the old folder removed half way: the project made whole again under its old name, from the hidden copy
+  {
+    const { root, store, ops, was } = await folderWithP();
+    const undo = halfRemoved(root, 'p');
+    await assert.rejects(ops.renameProject('p', 'P'), { message: '\'p\' was not renamed: NoModificationAllowedError' });
+    undo();
+    const after = await dump(root);
+    const { 'p.xise': xise, ...rest } = was;
+    assert.deepEqual(projectOf(after, 'p'), { ...rest, 'p.xise': xise, 'P.xise': xise });
+    assert.ok(!Object.keys(after).some(k => k.startsWith('.rename-') || k.startsWith('P/')));
+    assert.deepEqual((await store.list()).map(p => p.name), ['p']);
+  }
+  // the copy under the new name failing: the project made again under its old name, the partial copy and the hidden one removed
+  {
+    const { root, store, ops, was } = await folderWithP();
+    const undo = failing(root, 'getFileHandle', (dir, n, o) => dir.name === 'P' && o?.create && n === 'P.xise');
+    await assert.rejects(ops.renameProject('p', 'P'), { message: '\'p\' was not renamed: NoModificationAllowedError' });
+    undo();
+    const after = await dump(root);
+    assert.deepEqual(projectOf(after, 'p'), { ...Object.fromEntries(Object.entries(was).filter(([k]) => k !== 'p.xise')), 'P.xise': was['p.xise'] });
+    assert.ok(!Object.keys(after).some(k => k.startsWith('.rename-') || k.startsWith('P/')));
+    assert.deepEqual((await store.list()).map(p => p.name), ['p']);
+  }
+  // neither made again: the hidden copy, the only complete one, kept and named
+  {
+    const { root, ops, was } = await folderWithP();
+    const undo = failing(root, 'getFileHandle', (dir, n, o) => (dir.name === 'P' || dir.name === 'p') && o?.create && /\.xise$/.test(n));
+    const e = await ops.renameProject('p', 'P').then(() => null, x => x);
+    undo();
+    const tmp = /the folder '(\.rename-P-\d+)'$/.exec(e?.message)?.[1];
+    assert.ok(tmp, e?.message);
+    assert.match(e.message, /^Rename Project: 'p' could not be made again \(NoModificationAllowedError\): its complete copy is the folder '\.rename-P-\d+'$/);
+    const { 'p.xise': xise, ...rest } = was;
+    assert.deepEqual(projectOf(await dump(root), tmp), { ...rest, 'P.xise': xise });
+  }
+});
+
+test('#4724 a workspace folder: Rename of a file or a folder in a project, a step failing, loses nothing', async () => {
+  const { root, store, ops } = await folderWithP();
+  await ops.writeFile('p', 'lib/a.vhd', 'a');
+  await ops.writeFile('p', 'lib/b.vhd', 'b');
+  const before = await dump(root);
+  // a folder's copy failing: no partial copy left, the folder as it was
+  let undo = failing(root, 'getFileHandle', (dir, n, o) => dir.name === 'rtl' && o?.create && n === 'b.vhd');
+  await assert.rejects(ops.renameFile('p', 'lib', 'rtl'), /NoModificationAllowedError/);
+  undo();
+  assert.deepEqual(await dump(root), before);
+  // a file not removed: its copy removed, the file as it was
+  undo = failing(root, 'removeEntry', (dir, n) => dir.name === 'lib' && n === 'a.vhd');
+  await assert.rejects(ops.renameFile('p', 'lib/a.vhd', 'lib/c.vhd'), /NoModificationAllowedError/);
+  undo();
+  assert.deepEqual(await dump(root), before);
+  // a folder not removed: its copy kept, complete, and said; the project read again
+  undo = failing(root, 'removeEntry', (dir, n) => dir.name === 'p' && n === 'lib');
+  await assert.rejects(ops.renameFile('p', 'lib', 'rtl'), { message: '\'lib\' was copied to \'rtl\', but \'lib\' could not be removed entirely (NoModificationAllowedError): the copy is complete, remove what is left of \'lib\'' });
+  undo();
+  const p = await store.load('p');
+  assert.equal(p.files['rtl/a.vhd'], 'a');
+  assert.equal(p.files['rtl/b.vhd'], 'b');
 });
