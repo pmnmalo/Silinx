@@ -37,7 +37,8 @@ const MOUNT = async (model = null, bits = false) => {
   const st = { stim: { on: false, m: model && normalizeStimuli(model, ports), bad: [] }, t0: 0 };
   // (a bit's line as isim-rows.js makes it: bit { index, pos }, pos 0 the LSB)
   const flat = ports.flatMap((p) => { const row = { kind: 'sig', sig: sigs[p.name] }; return [{ row, bit: null }, ...(bits && p.width > 1 ? [...Array(p.width)].map((_, j) => ({ row, bit: { index: p.width - 1 - j, pos: p.width - 1 - j } })) : [])]; });
-  let dlg = null;
+  // (SSim's dialogs, ui.js's dialog() over the window: isim-dialogs.js, #4762)
+  const dialogs = (await import('/js/isim-dialogs.js')).mountDialogs({ root, sim, addForce: () => {}, echo: () => {} });
   const rec = (name) => (...a) => { calls.push([name, ...a]); };
   const stim = mountStimuli({ st, sim, design: { top }, stimOpt: { ports, onChange: (m) => calls.push(['onChange', m]) }, stimInst: top, topSig, stimPortOf,
     stimBar, btns: { stim: btn }, layout: rec('layout'), invalidate: rec('invalidate'),
@@ -45,7 +46,7 @@ const MOUNT = async (model = null, bits = false) => {
     setFont: () => {}, flat: () => flat, width: () => 800, colors: () => ({ grid: '#888' }),
     api: () => ({ restart: (q) => { sim.now = 0; calls.push(['restart', q]); } }), echo: rec('echo'),
     enqueue: (s, fn) => { calls.push(['enqueue', s]); return fn(); }, runTo: (ps, label) => { sim.now = ps; calls.push(['runTo', ps, label]); },
-    logLine: rec('logLine'), showDialog: (ov) => { dlg?.remove(); root.append(ov); dlg = ov; }, closeDialog: () => { dlg?.remove(); dlg = null; } });
+    logLine: rec('logLine'), openDialog: dialogs.openDialog });
   const cell = (row, k) => [k * 100 + 50, RULER_H + row * ROW_H + ROW_H / 2];
   const fields = () => Object.fromEntries([...root.querySelectorAll('.isim-dlg [name]')].map((e) => [e.name, e.hidden ? `${e.value} (hidden)` : e.disabled ? `${e.value} (disabled)` : e.value]));
   const set = (vals) => { for (const [n, v] of Object.entries(vals)) { const e = root.querySelector(`.isim-dlg [name="${n}"]`); e.value = v; e.dispatchEvent(new Event('change')); } };

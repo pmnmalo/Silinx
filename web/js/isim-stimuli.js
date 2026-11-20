@@ -151,15 +151,15 @@ export function mountStimuli(ctx) {
         return true;
       } catch (e) { err.textContent = e.message; return false; }
     };
+    // (applied in the click, as the dialog closes)
+    const apply = () => { st.stim.m = st.stim.m ? normalizeStimuli({ ...st.stim.m, ...o }, stimOpt.ports) : newStimuli(stimOpt.ports, o); stimChanged(true); return true; };
+    // cancelled, Esc, its ✕: no stimuli made, none shown (closed by another dialog: left as it is)
+    const cancel = () => { if (!st.stim.m) toggleStim(false); return 'cancelled'; };
     openDialog({
       title: 'Stimulus Timing', width: 460, body, className: 'isim-stim-dlg',
-      buttons: [{ label: 'OK', primary: true, value: true, validate: ok, attrs: { 'data-a': 'ok' } }, { label: 'Cancel', value: null, attrs: { 'data-a': 'cancel' } }],
+      buttons: [{ label: 'OK', primary: true, value: apply, validate: ok, attrs: { 'data-a': 'ok' } }, { label: 'Cancel', value: cancel, attrs: { 'data-a': 'cancel' } }],
       onOpen: () => { (q('clock').value ? q('cycles') : q('clock')).dataset.autofocus = ''; },
-    }).then(v => {
-      if (v === true) { st.stim.m = st.stim.m ? normalizeStimuli({ ...st.stim.m, ...o }, stimOpt.ports) : newStimuli(stimOpt.ports, o); stimChanged(true); }
-      // (cancelled, Esc, its ✕: no stimuli made, none shown; closed by another dialog: left as it is)
-      else if (v === null && !st.stim.m) toggleStim(false);
-    });
+    }).then(v => { if (v === null) cancel(); });
   }
   // the value of a bus from cycle k: an input's (bits 0 1 Z X, h… / d…) or an output's expected one (or -)
   function cellDialog(p, k, isIn) {
@@ -175,11 +175,13 @@ export function mountStimuli(ctx) {
     const inp = body.querySelector('[name=value]');
     let bits = null;
     const ok = () => { try { bits = parseCellValue(inp.value, p.width, { expected: !isIn }); return true; } catch (e) { err.textContent = e.message; return false; } };
+    // (applied in the click, as the dialog closes)
+    const apply = () => { if (isIn ? editInput(m, p.name, k, bits) : editExpected(m, p.name, k, bits)) stimChanged(isIn); return true; };
     openDialog({
       title: isIn ? 'Input Value' : 'Expected Value', width: 420, body, className: 'isim-stim-dlg',
-      buttons: [{ label: 'OK', primary: true, value: true, validate: ok, attrs: { 'data-a': 'ok' } }, { label: 'Cancel', value: null, attrs: { 'data-a': 'cancel' } }],
+      buttons: [{ label: 'OK', primary: true, value: apply, validate: ok, attrs: { 'data-a': 'ok' } }, { label: 'Cancel', value: null, attrs: { 'data-a': 'cancel' } }],
       onOpen: () => { inp.dataset.autofocus = ''; inp.select(); },
-    }).then(v => { if (v === true && (isIn ? editInput(m, p.name, k, bits) : editExpected(m, p.name, k, bits))) stimChanged(isIn); });
+    });
   }
 
   return { toggleStim, timingDialog, fillStim, stimClick, drawStim, runStim };

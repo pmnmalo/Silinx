@@ -212,6 +212,7 @@ html:not([data-ui="silinx"]) .tree .row.sel .twisty { color: #dde; }   /* (reada
 .form-grid input[type=text], .form-grid select { width: 100%; }
 /* (a field never wider than its column: a file input's text, a long option, #1326) */
 .form-grid > * { min-width: 0; }
+.form-grid > [hidden] { display: none; }   /* (a field hidden with its label: SSim's Stimulus Timing, #4762) */
 /* a project's documents reopening (a reload, a project opened): out of sight until they are in place (#1339) */
 html[data-restoring] :is(#workspace, #doc-tabs, #task-empty) { visibility: hidden; }
 html[data-starting] #app { visibility: hidden; }   /* (at start-up, the last project reopening: #1403) */
