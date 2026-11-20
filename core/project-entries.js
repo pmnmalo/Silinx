@@ -50,6 +50,10 @@ export function registerWritten(pj, path) {
   return changed;
 }
 
+/** Set as Top's one rule (#4733, the interface's): any module of the view can be the top, even one with errors; a name
+ *  no source of the view declares (`has(name)` false) is refused, with this message (null: set). */
+export const topRefusal = (mod, sim, has) => (has(mod) ? null : `no entity or module '${mod}' in the project's ${sim ? 'simulation' : 'design'} sources`);
+
 // an HDL text without its comments (a module named in a comment declares nothing)
 const uncommented = text => String(text || '').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(--|\/\/).*$/gm, ' ');
 

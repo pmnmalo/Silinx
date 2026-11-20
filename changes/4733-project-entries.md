@@ -2,6 +2,8 @@ In short:
 
 - **Add to Project of any constraints file:** a PCF, LPF, CST, CCF or XDC added to a project with no constraints file is
   its constraints, as a UCF was (the iCE40, ECP5, Gowin, GateMate and 7-series boards).
+- **The MCP server's Set as Top as the interface's:** `set_top` sets a module with errors, as Set as Top Module does
+  (Check Syntax says them), and the interface refuses a name no source declares with the same words.
 - **Live share:** an editor can edit an iCE40's, ECP5's, Gowin's or GateMate's constraints file.
 
 In detail:
@@ -13,3 +15,6 @@ In detail:
   the constraints file; the MCP's `remove_from_project` reset an HLS project's top that the interface keeps (a C
   source whose HDL cannot be made for now, #2995); the live share could not edit a `.pcf`, `.lpf`, `.cst` or `.ccf`;
   the server's store did not count a `.ccf` as constraints; a module named in a comment no longer keeps a removed top.
+- **Set as Top: one rule (#4733):** any module of the view can be the top, even one with errors; a name no source of the
+  view declares is refused (`core/project-entries.js` `topRefusal`), by the interface and by the MCP's `set_top`, which
+  refused a module that did not elaborate (an HLS module whose HDL cannot be made for now among them).
