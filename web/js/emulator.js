@@ -245,13 +245,12 @@ export function mountEmulator(container, { design, board, assignments, title = '
   const period = wiring.clocks[0]?.period || 20000;
   // the engine: the compiled cycle simulator when the design was compiled (engine.netlist: core/compiled-sim.js
   // netlistOf's), else the event-driven one; engineNote: why not compiled
-  // (compiled on the page, which reports what cannot be; run by the worker: the RemoteBoard)
+  // (checked on the page, which reports what cannot be; compiled and run by the worker, the RemoteBoard, #4741)
   const hasLcd = wiring.bits.some((b) => b.res.name === 'lcd_e');
   let compiled = null, host = null, engineNote = engine?.reason || null;
   if (engine?.netlist && wiring.clocks.length > 1) engineNote = `more than one clock on the board (${wiring.clocks.map((c) => c.port).join(', ')})`;
   else if (engine?.netlist) {
     try {
-      // (checked on the page, compiled and run by the worker: the page's policy has no 'unsafe-eval', #4741)
       const local = CompiledBoard.checked({ json: engine.netlist.json, top: engine.netlist.top, design, wiring, clock: wiring.clocks[0]?.port || null, period, board });
       host = compiledHost();
       compiled = new RemoteBoard(host.port, local, { design, wiring, board, hasLcd, close: host.close });
