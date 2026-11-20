@@ -13,7 +13,7 @@ import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import * as P from './projects.js';
 import { loadConfig } from './toolchain.js';
-import { adepttoolPaths } from './programmer.js';
+import { adepttoolEnv, adepttoolPaths } from './programmer.js';
 
 const ILA_SCAN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'ila-scan.py');
 const CAPTURE_FILE = 'build/capture.json';
@@ -23,8 +23,7 @@ export async function boardLink(spec, { cfg = null, device = 0 } = {}) {
   const { planCapture } = await import('../core/ila.js');
   const a = adepttoolPaths(cfg ?? await loadConfig());
   if (!a.ok) throw new Error('The capture reads the board through adepttool, which is not installed: run scripts/install-adepttool.sh.');
-  const libdirs = ['/opt/homebrew/lib', '/usr/local/lib'];
-  const env = { ...process.env, PYTHONPATH: a.src, DYLD_FALLBACK_LIBRARY_PATH: [process.env.DYLD_FALLBACK_LIBRARY_PATH, ...libdirs].filter(Boolean).join(':') };
+  const env = adepttoolEnv(a);
   const child = spawn(a.py, [ILA_SCAN, '--bits', String(planCapture(spec).regBits), '--device', String(device)], { cwd: a.src, env, stdio: ['pipe', 'pipe', 'pipe'] });
   let stderr = '';
   child.stderr.on('data', d => { stderr += d; });

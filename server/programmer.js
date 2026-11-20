@@ -270,6 +270,13 @@ export function adepttoolPaths(cfg) {
 }
 function configDirFor() { return configDir(); }
 
+/** The environment adepttool's Python runs in (the programmer's and the logic analyzer's, #4772): its modules on PYTHONPATH,
+ *  Homebrew's libusb found (DYLD_FALLBACK_LIBRARY_PATH, its folders that exist). a: adepttoolPaths'. */
+export function adepttoolEnv(a) {
+  const libdirs = ['/opt/homebrew/lib', '/usr/local/lib'].filter(d => fss.existsSync(d));
+  return { ...process.env, PYTHONPATH: a.src, DYLD_FALLBACK_LIBRARY_PATH: [process.env.DYLD_FALLBACK_LIBRARY_PATH, ...libdirs].filter(Boolean).join(':') };
+}
+
 export function toolAvailable(name, cfg) {
   if (name === 'adepttool') return adepttoolPaths(cfg).ok;
   return !!resolveTool(name, cfg, detectIse(cfg));
@@ -280,8 +287,7 @@ export function toolAvailable(name, cfg) {
 function runAdepttool(job, c, cfg) {
   const a = adepttoolPaths(cfg);
   if (!a.ok) throw new Error(`adepttool is not installed (expected ${path.join(a.src, 'basys2_prog.py')} and ${a.py}). Run scripts/install-adepttool.sh.`);
-  const libdirs = ['/opt/homebrew/lib', '/usr/local/lib'].filter(d => fss.existsSync(d));
-  const env = { ...process.env, PYTHONPATH: a.src, DYLD_FALLBACK_LIBRARY_PATH: [process.env.DYLD_FALLBACK_LIBRARY_PATH, ...libdirs].filter(Boolean).join(':') };
+  const env = adepttoolEnv(a);
   const script = path.isAbsolute(c.script) ? c.script : path.join(a.src, c.script);
   return runCommand(job, a.py, [script, ...c.args], { cwd: a.src, env });
 }
