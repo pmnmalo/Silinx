@@ -46,7 +46,7 @@ for (const [design, proc, message] of [
   test(`check_syntax of a drawing that makes no module (${design ? 'a design project' : 'an FPGA project'}): its errors on the drawing, as the interface's`, async () => {
     const name = design ? 'dd' : 'df';
     await ok('new_project', design ? { name, design_only: true } : { name });
-    // (its top set while it was correct: set_top refuses a top that does not elaborate, saying why)
+    // (its top set while it was correct)
     await ok('write_file', { project: name, path: 'src/traffic.fsm.json', text: (() => { const m = JSON.parse(FSM); delete m.generatedFile; return JSON.stringify(m, null, 2); })() });
     await ok('set_top', { project: name, top: 'traffic' });
     await call('delete_file', { project: name, path: 'src/traffic.vhd' });

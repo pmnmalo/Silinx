@@ -270,8 +270,8 @@ test('new_project and set_top: an empty project for a board, its source written,
   await srv.call('write_file', { project: 'Counter4', path: 'sim/tb_counter.vhd', text: 'library ieee;\nuse ieee.std_logic_1164.all;\nentity tb_counter is end;\narchitecture t of tb_counter is\n  signal clk, btn : std_logic := \'0\';\n  signal led : std_logic_vector(3 downto 0);\nbegin\n  uut: entity work.counter port map (clk, btn, led);\n  clk <= not clk after 10 ns;\n  process begin wait for 105 ns; assert led = "0101" report "led wrong" severity error; report "done"; wait; end process;\nend;\n' });
   // refused: nothing to set, a module that is not there, a test bench as the top, constraints without a board
   assert.equal((await srv.call('set_top', { project: 'Counter4' })).content[0].text, 'set_top: give top, sim_top or both');
-  assert.equal((await srv.call('set_top', { project: 'Counter4', top: 'nothere' })).content[0].text, 'set_top: no entity or module \'nothere\' in the project\'s design sources (project_info)');
-  assert.equal((await srv.call('set_top', { project: 'Counter4', top: 'tb_counter' })).content[0].text, 'set_top: no entity or module \'tb_counter\' in the project\'s design sources (project_info)');
+  assert.equal((await srv.call('set_top', { project: 'Counter4', top: 'nothere' })).content[0].text, 'set_top: no entity or module \'nothere\' in the project\'s design sources');
+  assert.equal((await srv.call('set_top', { project: 'Counter4', top: 'tb_counter' })).content[0].text, 'set_top: no entity or module \'tb_counter\' in the project\'s design sources');
   assert.equal((await srv.call('set_top', { project: 'Nope', top: 'counter' })).content[0].text, 'set_top: no project \'Nope\' in the workspace');
   await srv.call('write_file', { project: 'Bare', path: 'src/inv.v', text: 'module inv(input a, output y); assign y = ~a; endmodule\n' });
   assert.equal((await srv.call('set_top', { project: 'Bare', top: 'inv', update_constraints: true })).content[0].text, 'set_top: the project \'Bare\' has no board: its constraints cannot come from a board\'s pins');

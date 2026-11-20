@@ -26,7 +26,7 @@ import { gitMark, gitMenuItems, gitStartItems, hasGit } from './git.js';
 import { checkLabel, designOnly, shownFiles, withoutHdlBadges } from './design-only.js';
 import { editorItem, projectEditorItem } from './open-editor.js';
 import { hdlSideFile } from '/core/project-kind.js';
-import { removeFromProject as removeEntries } from '/core/project-entries.js';
+import { removeFromProject as removeEntries, topRefusal } from '/core/project-entries.js';
 import { HDL_RE } from '/core/file-kinds.js';
 import { flowFileRows } from './flow-files-tree.js';
 import { renderFlowFiles } from './tasks-flow-files.js';
@@ -471,6 +471,12 @@ function projectContextMenu(e) {
 }
 
 export async function setTop(mod, sim = S.view === 'sim') {
+  // (core/project-entries.js topRefusal, the MCP's set_top's rule, #4733: a module of the view, even one with errors; a C
+  // source's module not made for now too, #2995)
+  const same = n => String(n || '').toLowerCase() === String(mod).toLowerCase();
+  const has = () => { const m = moduleInfo(mod); return (!!m && inView(m.role || 'design', sim)) || Object.values(S.cFailed || {}).some(c => same(c.module)); };
+  const refusal = topRefusal(mod, sim, has);
+  if (refusal) { log(`ERROR: Set as Top Module: ${refusal}.`, 'err'); return; }
   if (sim) S.project.simTop = mod; else S.project.top = mod;
   await saveProjectJson();
   markStale();

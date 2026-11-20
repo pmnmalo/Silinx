@@ -295,3 +295,18 @@ test('#4733 remove_from_project keeps the top of a C source whose HDL cannot be 
   assert.equal(r.text, 'Removed src/extra.vhd from the project (the file is kept in the project folder).');
   assert.equal(r.data.top, 'top');
 });
+
+// (#4733) Set as Top's one rule, the interface's: a module with errors is set (check_syntax says them); a C source's module
+// whose HDL cannot be made for now too; a name no source of the view declares refused, the interface's words
+test('#4733 set_top: a module with errors set, an HLS module not made set, another name refused', async () => {
+  await ok('new_project', { name: 'st' });
+  await ok('write_file', { project: 'st', path: 'src/bad.vhd', text: 'entity bad is port (y : out bit); end;\narchitecture a of bad is begin y <= nope; end;\n' });
+  assert.equal((await ok('set_top', { project: 'st', top: 'bad' })).text, 'st: top bad, test bench (none).');
+  const c = await call('check_syntax', { project: 'st' });
+  assert.deepEqual(c.data.errors.map(e => e.message), ['\'nope\' is not declared']);
+  await fails('set_top', { project: 'st', top: 'nothere' }, 'no entity or module \'nothere\' in the project\'s design sources');
+  await fails('set_top', { project: 'st', sim_top: 'nothere' }, 'no entity or module \'nothere\' in the project\'s simulation sources');
+  // (the HLS project of the test above: its C module's HDL not made, still a top)
+  await ok('set_top', { project: 'hlstop', top: 'msum' });
+  assert.equal((await ok('set_top', { project: 'hlstop', top: 'top' })).data.top, 'top');
+});

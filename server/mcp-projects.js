@@ -14,7 +14,8 @@ import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
 import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
 import { flowFiles } from '../core/flow-files.js';
-import { toolError, clip, projectPath, readProject, elaborateView, viewSourcesOf, diagLine, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
+import { topRefusal } from '../core/project-entries.js';
+import { toolError, clip, projectPath, readProject, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 
 // a project the MCP server makes is untrusted (#2981): its tools' results say so
 const UNTRUSTED = ' It is untrusted, as every project an assistant makes: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.';
@@ -133,19 +134,24 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'set_top', title: 'Set the top module and the test bench',
-    description: 'Choose a project\'s top module (what run_process synthesizes and implements) and / or its test bench (what simulate runs), as Set as Top Module does; each must elaborate. With update_constraints, the constraints file is written again from the board\'s pins for the new top\'s ports (clk, led, sw, btn, seg, an…), as Update Constraints does: its pin locations are replaced.',
+    description: 'Choose a project\'s top module (what run_process synthesizes and implements) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors (check_syntax says them). With update_constraints, the constraints file is written again from the board\'s pins for the new top\'s ports (clk, led, sw, btn, seg, an…), as Update Constraints does: its pin locations are replaced.',
     inputSchema: { type: 'object', properties: { project: PROJECT, top: STR('The top module (an entity or module of the project\'s design sources).'), sim_top: STR('The test bench (a simulation source\'s entity or module).'), update_constraints: { type: 'boolean', description: 'Write the constraints file again from the board\'s pins (default false).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, top, sim_top: simTop, update_constraints: constraints = false }) {
       const before = await readProject(name);
       if (!top && !simTop) throw toolError('give top, sim_top or both');
-      // each must elaborate in its view (the test bench with the new top's sources)
+      // each a module of its view, even one with errors (core/project-entries.js topRefusal, the interface's rule, #4733:
+      // check_syntax says its errors); a C source's or a drawing's module not made for now too (#2995)
       for (const [mod, sim] of [[top, false], [simTop, true]]) {
         if (!mod) continue;
-        const { design, diags } = await elaborateView(name, { top: mod, sim });
-        const errors = diags.filter(d => d.severity === 'error');
-        if (errors.length === 1 && /^top module '.*' not found$/.test(errors[0].message)) throw toolError(`no entity or module '${mod}' in the project's ${sim ? 'simulation' : 'design'} sources (project_info)`);
-        if (errors.length || !design?.top) throw toolError(`<${mod}> does not elaborate${sim ? ' as a test bench' : ''}: ${errors.map(diagLine).join('; ') || 'not found'}`);
+        const { compile } = await import('../core/compile.js');
+        const failed = [];
+        const srcs = await viewSourcesOf(name, before, sim, failed);
+        let names = [];
+        try { names = [...compile(srcs).modules.values()].filter(m => m.kind !== 'package').map(m => m.name); } catch { /* none */ }
+        const same = a => String(a || '').toLowerCase() === String(mod).toLowerCase();
+        const refusal = topRefusal(mod, sim, () => names.some(same) || failed.some(v => same(v.module)));
+        if (refusal) throw toolError(refusal);
       }
       if (constraints && !before.board) throw toolError(`the project '${name}' has no board: its constraints cannot come from a board's pins`);
       await P.updateProject(name, pj => ({ ...pj, ...(top ? { top } : {}), ...(simTop ? { simTop } : {}) }));
