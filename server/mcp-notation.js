@@ -29,8 +29,8 @@ const LIST = NOTATIONS.map(([id, name, ex]) => `${id} (${name}: ${ex})`).join(',
 export const NOTATION_TOOLS = [
   {
     name: 'set_notation', title: 'Boolean Notation',
-    description: `The notation of the Boolean expressions Silinx shows (a truth table's results, its K-map groups, a state diagram's tables, the conditions a conversion writes: convert_module, convert_drawing, related_view's state diagrams): ${LIST}; the first the default. As the interface's Settings ▸ Boolean Notation, for this MCP server (kept in its configuration). With a project and the path of a truth table (.bool.json, .tt.json): that table's own notation, as its editor's ⋮ menu sets it (settings: none of its own, the one set). Without notation: the one set (or the table's). Expressions are typed in any of them.`,
-    inputSchema: { type: 'object', properties: { notation: { type: 'string', enum: [...NOTATION_IDS, 'settings'], description: 'The notation to set (settings: a table\'s, none of its own).' },
+    description: `The notation of the Boolean expressions Silinx shows (truth tables, K-map groups, state diagrams' tables, the conditions conversions write): ${LIST}; the first the default. As Settings ▸ Boolean Notation, for this MCP server (kept in its configuration). With project and path of a truth table: that table's own notation, as its editor's ⋮ menu sets it (settings: none of its own). Without notation: the one set (or the table's). Expressions are typed in any of them.`,
+    inputSchema: { type: 'object', properties: { notation: { type: 'string', enum: [...NOTATION_IDS, 'settings'], description: 'The notation to set (settings: a table with none of its own).' },
       project: PROJECT, path: STR('A truth table of the project (.bool.json, .tt.json): its own notation.') }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ notation, project, path } = {}) {
@@ -46,7 +46,7 @@ export const NOTATION_TOOLS = [
   },
   {
     name: 'set_schematic_symbols', title: 'Schematic Symbols',
-    description: `The standard the schematics' logic gates, inverters and buffers are drawn in: ${SYMBOL_STANDARDS.map(([id, n]) => `${id} (${n})`).join(', ')}; the first the default. IEC: a rectangle with its qualifier (& AND, ≥1 OR, =1 XOR, 1 an inverter or a buffer), a negation as a bubble. As the interface's Settings ▸ Schematic Symbols, for this MCP server (kept in its configuration). The look only: the pins stay where they are, and the schematic's file, its netlist, its HDL and its ISE export are the same in both. Without symbols: the one set.`,
+    description: `The standard the schematics' gates, inverters and buffers are drawn in: ${SYMBOL_STANDARDS.map(([id, n]) => `${id} (${n})`).join(', ')}; the first the default. As Settings ▸ Schematic Symbols, for this MCP server (kept in its configuration). The look only: the pins, the file, its netlist, HDL and ISE export are the same. Without symbols: the one set.`,
     inputSchema: { type: 'object', properties: { symbols: { type: 'string', enum: [...SYMBOL_STANDARD_IDS], description: 'The standard to set.' } }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ symbols } = {}) {

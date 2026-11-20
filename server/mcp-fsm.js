@@ -10,11 +10,11 @@ import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js
 export const FSM_TOOLS = [
   {
     name: 'set_fsm_outputs', title: 'Set a state\'s or a transition\'s outputs (state diagram)',
-    description: 'Set the outputs of a state (Moore) or of a transition (Mealy) of a state diagram (.fsm.json), as its editor\'s Properties do: a value per output of the machine (a constant, e.g. 1, 5, 4\'b1010, that fits in the output\'s width; or a don\'t care, kept as written: X or - the whole output, "1X0" or 3\'b1x0 some of its bits, its HDL VHDL\'s \'-\' and Verilog\'s x), an empty value clears it (the state: the output\'s default; the transition: the state\'s value). A value refused is not written, with the reason. The diagram is written and its HDL file made again.',
+    description: 'Set the outputs of a state (Moore) or a transition (Mealy) of a state diagram (.fsm.json), as its editor\'s Properties do: a constant per output (1, 5, 4\'b1010) that fits its width, or a don\'t care (X or - the whole output, "1X0" or 3\'b1x0 some bits); empty clears it (to the output\'s default, or the state\'s value). A value refused is not written, with the reason. The diagram is written, its HDL made again.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
       state: STR('The state, by its name (or give transition).'), transition: STR('The transition, by its id (as read_file shows it; or give state).'),
-      values: { type: 'object', additionalProperties: { type: 'string' }, description: 'The outputs\' values: { output: value }, an empty value clears it; the outputs not given stay as they are.' },
+      values: { type: 'object', additionalProperties: { type: 'string' }, description: '{ output: value }; empty clears it; outputs not given stay.' },
     }, required: ['project', 'path', 'values'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, state, transition, values }) {
@@ -48,11 +48,11 @@ export const FSM_TOOLS = [
   },
   {
     name: 'set_fsm_look', title: 'Set a state\'s or a transition\'s look (state diagram)',
-    description: 'Set the look of a state or of a transition of a state diagram (.fsm.json), as its editor\'s Properties (Look) do; the HDL made from it does not change. A state: fill (its circle\'s colour), stroke (its border\'s colour), strokeWidth (0.5 to 10, default 1.6), color (its texts\'), fontSize (6 to 48, its name\'s, default 13; its outputs\' scaled with it), textStyle (regular, bold, italic, bold-italic; default: its name bold), font (sans-serif, serif, monospace; default: its name sans-serif, its outputs monospace). A transition: stroke (its arc\'s colour), strokeWidth, dash (solid, dashed, dotted), color (its label\'s), fontSize (default 12), textStyle (default regular), font (default monospace). Colours: #rrggbb (or #rgb). An empty value or null puts it back to its default (a colour: the theme\'s). A value refused is not written, with the reason.',
+    description: 'Set the look of a state or transition of a state diagram (.fsm.json), as its editor\'s Look does; its HDL does not change. A state: fill, stroke, strokeWidth (0.5 to 10), color, fontSize (6 to 48), textStyle (regular, bold, italic, bold-italic), font (sans-serif, serif, monospace). A transition: stroke, strokeWidth, dash (solid, dashed, dotted), color, fontSize, textStyle, font. Colours #rrggbb or #rgb. Empty or null: the default. A value refused is not written, with the reason.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
       state: STR('The state, by its name (or give transition).'), transition: STR('The transition, by its id (as read_file shows it; or give state).'),
-      look: { type: 'object', additionalProperties: { type: ['string', 'number', 'null'] }, description: 'The look\'s values: { property: value }, an empty value or null back to its default; the properties not given stay as they are.' },
+      look: { type: 'object', additionalProperties: { type: ['string', 'number', 'null'] }, description: '{ property: value }; empty or null: its default; properties not given stay.' },
     }, required: ['project', 'path', 'look'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, state, transition, look }) {
@@ -87,12 +87,12 @@ export const FSM_TOOLS = [
   },
   {
     name: 'set_fsm_condition', title: 'Set a transition\'s condition (state diagram)',
-    description: 'Set the condition of a transition of a state diagram (.fsm.json), as its editor\'s Properties do: condition, a Boolean expression over the inputs (x, !x, x && y, x || !y, a == 2\'b01, b[0]; also and, or, not, =, the Boolean-algebra notation a.b\', /a + b; an overbar written as /), empty: always; or otherwise: true, the state\'s otherwise, as its Else (every other case) box (the condition else; also typed as @else, StateCAD\'s @ELSE, others, otherwise, default): taken in every case its other transitions are not, tried last, one per state; otherwise: false empties it, as unticking the box. The diagram is written and its HDL file made again; Check\'s problems of the transition and of its state are returned.',
+    description: 'Set a transition\'s condition in a state diagram (.fsm.json), as its editor\'s Properties do: condition, a Boolean expression over the inputs (x, !x, x && y, x || !y, a == 2\'b01, b[0], and, or, not, a.b\', /a + b), empty: always; or otherwise: true, the state\'s Else box (also typed else, @else, others, default): taken when its other transitions are not, one per state; false empties it. The diagram is written, its HDL made again; Check\'s problems of the transition and its state are returned.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
       transition: STR('The transition, by its id (as read_file shows it).'),
       condition: STR('The condition (or give otherwise).'),
-      otherwise: { type: 'boolean', description: 'true: the state\'s otherwise (the condition else); false: an empty condition (or give condition).' },
+      otherwise: { type: 'boolean', description: 'true: the state\'s otherwise (else); false: an empty condition (or give condition).' },
     }, required: ['project', 'path', 'transition'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, transition, condition, otherwise }) {

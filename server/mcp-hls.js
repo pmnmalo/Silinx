@@ -37,7 +37,7 @@ const PATH = STR('The C or C++ source (e.g. src/fir.c).');
 export const HLS_TOOLS = [
   {
     name: 'c_simulation', title: 'C Simulation',
-    description: 'Run a C or C++ source\'s main() (its test bench) as C Simulation does: its output, what main() returned, how many calls of the top function it made; the files it writes stay in memory, the project\'s as they are.',
+    description: 'Run a C or C++ source\'s main() (its test bench) as C Simulation does: its output, what main() returned, its calls of the top function; the files it writes stay in memory, the project\'s untouched.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: PATH }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, path: rel }) {
@@ -59,7 +59,7 @@ export const HLS_TOOLS = [
   },
   {
     name: 'c_cosimulation', title: 'C/RTL Co-simulation',
-    description: 'Replay the C test bench\'s calls of the top function on the HDL made from it and compare, as C/RTL Co-simulation does (in the project\'s Preferred Language, or the one given): PASS or FAIL with each mismatch, and the latency in cycles.',
+    description: 'Replay the C test bench\'s calls of the top function on the HDL made from it and compare, as C/RTL Co-simulation does: PASS or FAIL with each mismatch, and the latency in cycles.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: PATH, language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The HDL\'s language (default: the project\'s Preferred Language).' } }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, path: rel, language }) {
@@ -81,7 +81,7 @@ export const HLS_TOOLS = [
   },
   {
     name: 'c_synthesis_report', title: 'View C Synthesis Report',
-    description: 'What a C or C++ source is made into, as View C Synthesis Report says it: the module (sequential, its states and register bits, or combinational; its control interface), the target clock, its ports, processes, functions, memories, loops (their pragmas, II and cycles) and multipliers, and its warnings (a path over the clock).',
+    description: 'What a C or C++ source is made into, as View C Synthesis Report says it: the module (sequential, its states and register bits, or combinational; its control interface), the target clock, its ports, processes, functions, memories, loops (pragmas, II, cycles), multipliers and warnings.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: PATH }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, path: rel }) {
@@ -98,7 +98,7 @@ export const HLS_TOOLS = [
   },
   {
     name: 'c_generated', title: 'The HDL or the ASM chart made from a C source',
-    description: 'What Silinx HLS makes of a C or C++ source, read-only, as its badges show it: hdl (its VHDL or Verilog, in the project\'s Preferred Language) or asm (a sequential module\'s state machine as an ASM chart, its JSON).',
+    description: 'What Silinx HLS makes of a C or C++ source, read-only, as its badges show it: hdl (in the project\'s Preferred Language) or asm (a sequential module\'s state machine as an ASM chart\'s JSON).',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: PATH, what: { type: 'string', enum: ['hdl', 'asm'], description: 'hdl (default) or asm.' } }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, path: rel, what = 'hdl' }) {

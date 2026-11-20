@@ -61,7 +61,7 @@ test('the handshake: the protocol version, the server, its tools with their sche
   assert.match(init.result.instructions, /The Silinx toolchain needs no Xilinx ISE\./);
   // an older client's version is answered with it; an unknown one with the newest
   assert.equal((await srv.send('initialize', { protocolVersion: '2024-11-05' })).result.protocolVersion, '2024-11-05');
-  assert.equal((await srv.send('initialize', { protocolVersion: '1999-01-01' })).result.protocolVersion, '2025-06-18');
+  assert.equal((await srv.send('initialize', { protocolVersion: '1999-01-01' })).result.protocolVersion, '2025-11-25');
   srv.p.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');   // (a notification: no answer)
   const { tools } = (await srv.send('tools/list')).result;
   assert.deepEqual(tools.map(t => t.name), ['list_examples', 'list_projects', 'new_project_from_example', 'new_project', 'set_top', 'project_info', 'read_file', 'write_file',

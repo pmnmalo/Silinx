@@ -43,13 +43,13 @@ const hitJson = (f, m) => (f.drawing ? { where: m.where, col: m.col, length: m.l
 export const FIND_TOOLS = [
   {
     name: 'find_in_project', title: 'Find in Project',
-    description: 'Search every source of a project, as Find in Project (the toolbar\'s Find, Ctrl+Shift+F) does: its HDL, constraints, test benches and data files (each result its line and column) and the texts of its drawings (names, labels, expressions, notes: each result where it is in the drawing, as states[2].label). With replace, Replace All: every match in the text sources is replaced and the files written; an HDL file generated from a drawing is found but not replaced (replace in its drawing: read_file / write_file).',
+    description: 'Search every source of a project, as Find in Project does: its text files (each result\'s line and column) and its drawings\' texts (names, labels, expressions, notes: each result\'s place, as states[2].label). With replace, Replace All: every match in the text sources is replaced and the files written; an HDL file generated from a drawing is found but not replaced (edit its drawing).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, text: STR('The text to find (a regular expression with regex).'),
       match_case: { type: 'boolean', description: 'Match case (default: not).' },
       whole_word: { type: 'boolean', description: 'Whole word (default: not).' },
-      regex: { type: 'boolean', description: 'text is a regular expression (JavaScript\'s; default: not).' },
-      replace: STR('Replace All with this text ($1… a regular expression\'s groups, with regex); left out: find only.'),
+      regex: { type: 'boolean', description: 'text is a JavaScript regular expression (default: not).' },
+      replace: STR('Replace All with this text ($1… the groups, with regex); left out: find only.'),
     }, required: ['project', 'text'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name, text, match_case: matchCase = false, whole_word: word = false, regex = false, replace }) {
