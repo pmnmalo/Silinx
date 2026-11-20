@@ -39,6 +39,8 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
 ## HTTP API (server/)
 
 All under `/api`. JSON in/out. Errors: `{ error: "message" }` with 4xx/5xx.
+A page sends its version (`X-Silinx-Version`); a server of another version answers with its own, and the page offers a
+reload (#4754).
 
 | Method | Path | Description |
 |---|---|---|
@@ -56,7 +58,12 @@ All under `/api`. JSON in/out. Errors: `{ error: "message" }` with 4xx/5xx.
 | PUT | /toolchain | save toolchain settings (`~/.silinx/config.json`) |
 | POST | /projects/:p/implement | `{ steps?: ['synth','translate','map','par','trce','bitgen','prombit'] }` -> `{ job }` |
 | GET | /projects/:p/reports | parsed utilization / timing summaries of last run |
-| POST | /program | `{ project?, bitfile?, tool?, cable?, board?, position? }` -> `{ job }` |
+| POST | /projects/:p/program | `{ bitfile?, tool?, cable?, board?, position? }` -> `{ job }` (`POST /program` with `project` in the body: its older form, kept, #4754) |
+| POST | /projects/:p/prom | `{ op, board?, bitfile?, verify?, reconfigure? }` -> `{ job }` (`POST /prom` with `project`: kept) |
+| POST | /projects/:p/editor/open | `{ path?, line? }`: Open in VS Code (`POST /editor/open` with `project`: kept) |
+| POST | /import-zip?name= | a project's zip (the body) imported as the project `name` (`/projects/import-zip`: kept) |
+| POST | /import-xise | `{ name, xise, files }` (`/projects/import-xise`: kept) |
+| POST | /projects/:p/merge | `{ zip (base64), resolve?, label? }`: Merge Contribution… (the zip as the body with `?label=` and `X-Silinx-Resolve`: kept) |
 | POST | /jtag/scan | `{ tool?, cable? }` -> `{ job }` |
 | GET | /jobs/:id?since=N | `{ id, kind, status:'running'|'ok'|'error', lines:[...since N], next, result }` |
 

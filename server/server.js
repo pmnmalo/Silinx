@@ -19,6 +19,7 @@ import { tightenConfigFolder, tightenedMessage } from './config-folder.js';
 import { attachRelay } from './collab-relay.js';
 import { partsScope } from './parts-scope.js';
 import { sendError } from './http-errors.js';
+import { VERSION } from '../core/version.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -77,6 +78,11 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   app.use('/api', (req, res, next) => {
     // never cached (#1434): a project's text would stay in the browser's disk cache after the project is deleted
     res.set('Cache-Control', 'no-store');
+    // (a page of another version, X-Silinx-Version its own: told the server's, before its token is checked, so that a
+    // page left open across an upgrade offers a reload rather than a refusal, #4754; to a client that names no version,
+    // no word of the server's software, #1236)
+    const pageVersion = req.get('X-Silinx-Version');
+    if (pageVersion && pageVersion !== VERSION) res.set('X-Silinx-Version', VERSION);
     const hostName = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
     if (!exposed && hostName && !LOCAL.has(hostName) && hostName !== String(host).toLowerCase()) return res.status(403).json({ error: 'forbidden host' });
     if (token && !tokenless(req) && !tokenOk(req.headers['x-silinx-token']))
@@ -129,8 +135,11 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   const TOLD = /^\/projects\/[^/]+\/git\/pull$/;
   // (the requests whose writes are all recorded, server/own-writes.js: another process's changes meanwhile told, #4726)
   const KNOWN = /^(PUT \/projects\/[^/]+(\/file)?|DELETE \/projects\/[^/]+\/file|POST \/projects\/[^/]+\/(rename|trust))$/;
+  // (an import's project is the one it makes, ?name=, never a project named import-zip, #4754; import-xise's name is in its
+  // body: no lock, as a new project's)
+  const IMPORT = /^\/(?:projects\/)?import-(?:zip|xise)$/;
   app.use('/api', (req, res, next) => {
-    const m = /^\/projects\/([^/]+)/.exec(req.path);
+    const m = IMPORT.test(req.path) ? (typeof req.query.name === 'string' && req.query.name ? [null, encodeURIComponent(req.query.name)] : null) : /^\/projects\/([^/]+)/.exec(req.path);
     if (m && !TOLD.test(req.path) && (!['GET', 'HEAD'].includes(req.method) || WRITING_GET.test(req.path))) {
       let name = '';
       try { name = decodeURIComponent(m[1]); } catch { /* a bad name: refused by its route */ }
@@ -146,7 +155,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     }
     next();
   });
-  app.use('/api', express.json({ limit: '20mb' }));
+  // (a merge's JSON carries its zip, in base64: read by its route, server/merge-routes.js, up to the zip's own limit, #4754)
+  const jsonBody = express.json({ limit: '20mb' }), OWN_JSON = /^\/projects\/[^/]+\/merge$/;
+  app.use('/api', (req, res, next) => (OWN_JSON.test(req.path) ? next() : jsonBody(req, res, next)));
   app.use('/api', express.text({ type: 'text/*', limit: '20mb' }));
 
   // Content-Security-Policy of the pages: scripts only from the server itself (and the pages' own

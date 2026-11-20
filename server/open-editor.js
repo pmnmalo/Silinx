@@ -134,4 +134,10 @@ export function registerEditorRoutes(api, { wrap }) {
     if (typeof project !== 'string' || !project) throw new P.HttpError(400, 'project is required');
     return openInEditor({ project, path: rel, line, remote: req.socket.remoteAddress });
   }));
+  // (the project in the path, as every project's route, #4754; /editor/open with { project } its older form, kept)
+  api.post('/projects/:p/editor/open', wrap(req => {
+    const { project, path: rel, line } = req.body || {};
+    if (project !== undefined && project !== req.params.p) throw new P.HttpError(400, `project: '${project}' in the body, '${req.params.p}' in the address`);
+    return openInEditor({ project: req.params.p, path: rel, line, remote: req.socket.remoteAddress });
+  }));
 }

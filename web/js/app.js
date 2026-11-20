@@ -24,6 +24,7 @@ import { primitiveTemplates } from '/core/prim-templates.js';
 import { deviceFamily, openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
 import { setActionRunner, longPressMenu } from './ui.js';
 import { clearConsole, commandError, commandInfo, commandWarning, log, logError, logInfo, logLine, logWarning, renderDiagnostics, setDiagnostics, showConsolePage } from './console.js';
+import { watchStale } from './stale-page.js';
 import { isOwnFailure } from './own-error.js';
 import { renderTeachingPage } from './teaching-page.js';
 import { renderCollabPage } from './collab-tab.js';
@@ -915,6 +916,7 @@ async function boot() {
   // Edit ▸ Paste where the system clipboard cannot be read (#677)
   for (const ev of ['copy', 'cut']) addEventListener(ev, e => { const ed = S.active?.editor; if (ed && e.target.closest?.('.cm-editor') && ed.somethingSelected()) noteCopy(ed.getSelection()); }, true);
   addEventListener('beforeunload', e => { if (S.docs.some(d => d.dirty)) { e.preventDefault(); e.returnValue = ''; } });
+  watchStale({ logWarning, confirmDlg });   // (a server of another version: a reload offered, #4754)
 
   updateTitle();
   // (the hash the start-up reads: a link given while it starts, after that, opened once the links are watched, #4234)

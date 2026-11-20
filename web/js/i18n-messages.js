@@ -49,6 +49,8 @@ export const MESSAGES_PT = {
   '(never)': '(nunca)', 'Clear console': 'Limpar a consola',
   'invalid time offset': 'desvio de tempo inválido',
   'Open Circuit': 'Abrir Circuito',
+  // a page left open across an upgrade (#4754)
+  'Silinx was updated': 'O Silinx foi atualizado', 'Later': 'Mais tarde',
 };
 
 // (an error's or a list's text, a name kept as it is)
@@ -107,4 +109,7 @@ export const MESSAGES_PT_PATTERNS = [
   [/^Sim Time: (.+)$/, 'Tempo de Simulação: $1'],
   // SSim's Force dialogs' note (#5018)
   [/^Time offsets are relative to the current simulation time \((.+)\); default unit is ns\.$/, 'Os tempos são relativos ao tempo atual da simulação ($1); a unidade por omissão é ns.'],
+  // a page left open across an upgrade (#4754)
+  [/^This page is Silinx (\S+); the server is Silinx (\S+)\. Reload the page\?$/, 'Esta página é do Silinx $1; o servidor é do Silinx $2. Recarregar a página?'],
+  [/^This page is Silinx (\S+), the server Silinx (\S+): reload the page to use it \(its requests may be refused until then\)\.$/, 'Esta página é do Silinx $1, o servidor do Silinx $2: recarregue a página para o usar (até lá, os seus pedidos podem ser recusados).'],
 ];

@@ -22,7 +22,8 @@ export function registerGitRoutes(api) {
   // a short link's gist (#3223): made with the server's GitHub token (GH_TOKEN), never the page's
   api.get('/gist', (req, res) => res.json({ available: GH.gistAvailable() }));
   api.post('/gist', (req, res) => Promise.resolve().then(() => {
-    const { design: d, expires_days: days = 0 } = body(req);
+    // (expiresDays, as the API's other names; expires_days its older name, kept, #4754)
+    const { design: d, expiresDays, expires_days: older } = body(req), days = expiresDays ?? older ?? 0;
     if (typeof d !== 'string' || !d) throw Object.assign(new Error('design: the encoded design (Share Project\'s)'), { status: 400 });
     return GH.makeGist(d, { days });   // (an expiry, #3629: checked by core/gist-link.js expiryDate)
   }).then(({ id, key, expires, deleted }) => res.json({ id, key, expires, deleted: deleted.length }), err => sendError(res, err.status ? err : Object.assign(new Error('internal server error'), { status: 500, hint: err.hint }))));

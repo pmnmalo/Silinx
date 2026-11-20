@@ -2,6 +2,7 @@
 
 import { prefKey } from './prefs.js';
 import { mergeDescription } from '../../core/project-desc-merge.js';
+import { VERSION } from '../../core/version.js';
 
 // The server answers only with its token, made at every start (#2564) and given in the address it
 // prints (…/#token=…); the address a launcher opens has a one-time code instead (…/#code=…, #2955: not the token,
@@ -26,8 +27,29 @@ const READY = (async () => {
 // this page (a tab, until it is closed or reloaded): its own writes are not told back to it, but to the project's
 // other pages (#3972)
 const CLIENT = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-const auth = (headers = {}) => ({ ...headers, 'X-Silinx-Client': CLIENT, ...(TOKEN ? { 'X-Silinx-Token': TOKEN } : {}) });
+const auth = (headers = {}) => ({ ...headers, 'X-Silinx-Client': CLIENT, 'X-Silinx-Version': VERSION, ...(TOKEN ? { 'X-Silinx-Token': TOKEN } : {}) });
 const authed = async (headers = {}) => { await READY; return auth(headers); };
+
+// a server of another version (#4754): it says its own (X-Silinx-Version) to a page that sent another; the page left
+// open across an upgrade told once, a 'silinx-stale' event ({ page, server }) the app offers a reload on
+let staleTold = false;
+export function staleCheck(r) {
+  const server = r?.headers?.get?.('X-Silinx-Version');
+  if (server && server !== VERSION && !staleTold) {
+    staleTold = true;
+    globalThis.dispatchEvent?.(new CustomEvent('silinx-stale', { detail: { page: VERSION, server } }));
+  }
+  return r;
+}
+const call = async (url, opts) => staleCheck(await fetch(url, opts));
+
+/** A zip (a Blob or bytes) in base64, for a JSON body. */
+async function base64Of(zip) {
+  const b = zip instanceof Uint8Array ? zip : new Uint8Array(await new Response(zip).arrayBuffer());
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 
 /** The token an address gives (null when refused or the server is not reached): a one-time code exchanged for it
  *  (POST /api/token), or a token the server accepts (GET /api/workspace with it). */
@@ -45,7 +67,7 @@ export async function tokenOf(kind, value, f = fetch) {
 
 // a zip posted as the body (the import's, the merge's), JSON back
 async function zipPost(url, zip, headers = {}) {
-  const r = await fetch(url, { method: 'POST', headers: await authed({ 'Content-Type': 'application/zip', ...headers }), body: zip });
+  const r = await call(url, { method: 'POST', headers: await authed({ 'Content-Type': 'application/zip', ...headers }), body: zip });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { status: r.status });
   return j;
@@ -58,7 +80,7 @@ async function req(method, url, body, { text = false, headers = {}, tagged = fal
     else { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
   }
   let r;
-  try { r = await fetch(url, opts); }
+  try { r = await call(url, opts); }
   catch { throw Object.assign(new Error('the Silinx server is not running (start it with: node bin/silinx.js serve)'), { offline: true }); }
   if (!r.ok) {
     let msg = `${r.status} ${r.statusText}`, more = {};
@@ -142,10 +164,10 @@ export const api = {
   gistAccount: (name = null) => req('GET', `/api/gist/account${name ? `?project=${enc(name)}` : ''}`),   // (#3995: where a short link is made)
   gistList: () => req('GET', '/api/gists'),   // (#3635: the short links of the server's token)
   gistDelete: ({ ids = [], expired = false } = {}) => req('POST', '/api/gists/delete', { ids, expired }).then(r => r.deleted),
-  gistSave: (design, days = 0) => req('POST', '/api/gist', { design, ...(days ? { expires_days: days } : {}) }),
+  gistSave: (design, days = 0) => req('POST', '/api/gist', { design, ...(days ? { expiresDays: days } : {}) }),
   // Open in VS Code (#4017, the server edition: server/open-editor.js): whether a page here can, and a file opened
   editorInfo: () => req('GET', '/api/editor'),
-  openInEditor: (name, path = null, line = null) => req('POST', '/api/editor/open', { project: name, ...(path ? { path } : {}), ...(line ? { line } : {}) }),
+  openInEditor: (name, path = null, line = null) => req('POST', `/api/projects/${enc(name)}/editor/open`, { ...(path ? { path } : {}), ...(line ? { line } : {}) }),
   // git (#3195, the server editions: server/git-routes.js)
   gitEnabled: () => req('GET', '/api/git'),
   // (opts: ifExists, discardChanges: a project of the name opened, replaced or both kept, #4618)
@@ -173,23 +195,24 @@ export const api = {
   reports: name => req('GET', `/api/projects/${enc(name)}/reports`),
   fpgaView: name => req('GET', `/api/projects/${enc(name)}/fpga-view`),
   bitinfo: name => req('GET', `/api/projects/${enc(name)}/bitinfo`),
-  program: body => req('POST', '/api/program', body),
+  // (the project in the address, as every project's route, #4754)
+  program: ({ project, ...body }) => (project ? req('POST', `/api/projects/${enc(project)}/program`, body) : req('POST', '/api/program', body)),
   scan: body => req('POST', '/api/jtag/scan', body),
-  prom: body => req('POST', '/api/prom', body),
+  prom: ({ project, ...body }) => (project ? req('POST', `/api/projects/${enc(project)}/prom`, body) : req('POST', '/api/prom', body)),
   job: (id, since = 0) => req('GET', `/api/jobs/${enc(id)}?since=${since}`),
   cancelJob: id => req('POST', `/api/jobs/${enc(id)}/cancel`),
-  importXise: body => req('POST', '/api/projects/import-xise', body),
+  importXise: body => req('POST', '/api/import-xise', body),
   // whole project as a zip (.xise + silinx.json + all files)
   // (backup: Export Project (.zip)…'s, a Silinx project's recorded as its back-up, #4971)
   exportZip: async (name, kind = 'xilinx', { copy = false, backup = false } = {}) => {
-    const r = await fetch(`/api/projects/${enc(name)}/export.zip?kind=${enc(kind)}${copy ? '&copy=1' : ''}${backup ? '&backup=1' : ''}`, { headers: await authed() });
+    const r = await call(`/api/projects/${enc(name)}/export.zip?kind=${enc(kind)}${copy ? '&copy=1' : ''}${backup ? '&backup=1' : ''}`, { headers: await authed() });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
     let warnings = [];
     try { warnings = JSON.parse(decodeURIComponent(r.headers.get('X-Silinx-Warnings') || '[]')); } catch { /* none */ }
     return { blob: await r.blob(), filename: kind === 'silinx' ? `${name}-silinx.zip` : `${name}.zip`, warnings };
   },
   importZip: async (name, file) => {
-    const r = await fetch(`/api/projects/import-zip?name=${enc(name)}`, { method: 'POST', headers: await authed({ 'Content-Type': 'application/zip' }), body: file });
+    const r = await call(`/api/import-zip?name=${enc(name)}`, { method: 'POST', headers: await authed({ 'Content-Type': 'application/zip' }), body: file });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || r.statusText);
     return j;
@@ -198,12 +221,13 @@ export const api = {
   // Merge Contribution… (#4206): a contribution's zip (Blob) compared with the project, merged (resolve: the choices),
   // the last merge undone
   mergePreview: (name, zip) => zipPost(`/api/projects/${enc(name)}/merge-preview`, zip),
-  mergeContribution: (name, zip, resolve = {}, label = '') => zipPost(`/api/projects/${enc(name)}/merge?label=${enc(label)}`, zip, { 'X-Silinx-Resolve': encodeURIComponent(JSON.stringify(resolve)) }),
+  // (the choices in the body, with the zip, not in a header: no limit of a header's size, #4754)
+  mergeContribution: async (name, zip, resolve = {}, label = '') => req('POST', `/api/projects/${enc(name)}/merge`, { zip: await base64Of(zip), resolve, label }),
   undoMerge: name => req('POST', `/api/projects/${enc(name)}/undo-merge`),
   // what another process changes in the project (#2843): onEvent({ project, changes: [{ path, kind }] }) for each,
   // until the stream ends or `signal` aborts (server-sent events read through fetch: the token in a header, not in the URL)
   events: async (name, onEvent, signal) => {
-    const r = await fetch(`/api/projects/${enc(name)}/events`, { headers: await authed(), signal });
+    const r = await call(`/api/projects/${enc(name)}/events`, { headers: await authed(), signal });
     if (!r.ok || !r.body) throw Object.assign(new Error(`${r.status} ${r.statusText}`), { status: r.status });
     const reader = r.body.getReader(), dec = new TextDecoder();
     let buf = '';

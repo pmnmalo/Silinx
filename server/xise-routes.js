@@ -33,7 +33,8 @@ export function mountXiseRoutes(ctx) {
     res.attachment(xiseName(project)).type('application/xml').send(xml);
   }));
 
-  api.post('/projects/import-xise', wrap(async req => {
+  // (POST /import-xise; /projects/import-xise its older name, kept, #4754)
+  api.post(['/import-xise', '/projects/import-xise'], wrap(async req => {
     const b = req.body || {};
     if (!b.name) throw bad('missing project name');
     if (typeof b.xise !== 'string' || !b.xise.trim()) throw bad('missing xise text');
@@ -63,7 +64,8 @@ export function mountXiseRoutes(ctx) {
   const uploadMb = ZIP_LIMITS.maxEntry >> 20;
   const tooLarge = (err, req, res, next) => (err?.type === 'entity.too.large'
     ? res.status(413).json({ error: `the zip is larger than ${uploadMb} MB, the most an import takes` }) : next(err));
-  api.post('/projects/import-zip', express.raw({ type: () => true, limit: ZIP_LIMITS.maxEntry }), tooLarge, wrap(async req => {
+  // (POST /import-zip; /projects/import-zip its older name, kept, #4754)
+  api.post(['/import-zip', '/projects/import-zip'], express.raw({ type: () => true, limit: ZIP_LIMITS.maxEntry }), tooLarge, wrap(async req => {
     const name = String(req.query.name || '');
     if (!name) throw bad('missing project name (?name=)');
     if (!Buffer.isBuffer(req.body) || !req.body.length) throw bad('empty upload');
