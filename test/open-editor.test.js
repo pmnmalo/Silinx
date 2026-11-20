@@ -10,6 +10,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { scratchEnv, writeConfig, startApp, POSIX_ONLY } from './server-helpers.js';
+import { unlabelled } from './mcp-label.js';
 
 let tmp, srv, P, E, fake, log;
 before(async () => {
@@ -177,7 +178,7 @@ test('the MCP tool open_in_editor: the same function, its text and data, its ref
   let r = await call({ project: 'ed', path: 'src/top.vhd', line: 3 });
   assert.ok(!r.isError);
   assert.equal(r.content[0].text, 'Opened src/top.vhd:3 in fake-editor.');
-  assert.deepEqual(r.structuredContent, { project: 'ed', path: 'src/top.vhd', line: 3, editor: 'fake-editor' });
+  assert.deepEqual(unlabelled(r.structuredContent), { project: 'ed', path: 'src/top.vhd', line: 3, editor: 'fake-editor' });
   const dir = P.projectDir('ed');
   assert.deepEqual(await ran(), [dir, '--goto', `${path.join(dir, 'src', 'top.vhd')}:3`]);
   r = await call({ project: 'ed' });
