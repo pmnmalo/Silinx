@@ -26,7 +26,7 @@ uiTest('#3182 an editor edits a text file live with the owner: the same text on 
   await page.openProject('Live');
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   const edit = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana'); return m.editorsLink(); });
-  assert.match(edit, /^http:\/\/[^/]+\/#edit=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{129}$/);
+  assert.match(edit, /^http:\/\/[^/]+\/#edit=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{129}&owner=[A-Za-z0-9_-]{86}$/);
   // the editor opens the editors' link
   const ep = await env.newPage(env.server.url);
   try {
