@@ -55,7 +55,8 @@ export function diffScans(before, after) {
  *   hold(name, client) -> release: the changes made until release() are this server's own: not told to the page
  *     `client` (the page that asked), told to the project's other pages that name theirs; a hold of no page's, to none
  *   acquire(name, client) -> Promise<release>: hold(), once the other pages' holds of the project ended and what they
- *     changed was read (two tabs' requests at once: each one's told to the other, #3972); after `wait` ms, held anyway
+ *     changed was read (two tabs' requests at once: each one's told to the other, #3972); after `wait` ms, held anyway,
+ *     what the overlapping holds changed then told to both pages (#4873)
  */
 export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan, wait = 2000 } = {}) {
   const watched = new Map();   // key -> { name, dir, listeners, snap, holds, writers, timer, inflight, next, wasBusy, resync, releases, ready }
@@ -79,7 +80,10 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     // read the folder before the request's writes: the next look too (#2913). The requests' changes are told to the
     // pages that did not ask (#3972); a run's to none
     if (held || w.wasBusy || w.resync) {
-      if (!ran && !w.wasBusy && !w.writers.has(NOBODY)) tell(w, changes, client => client != null && !w.writers.has(client), { tab: true });
+      // (two pages' requests at once, one held after waiting `wait`: their changes not told apart, told to both, #4873;
+      // a page whose editor shows the disk's text already reloads nothing)
+      const overlap = w.writers.size > 1;
+      if (!ran && !w.wasBusy && !w.writers.has(NOBODY)) tell(w, changes, client => client != null && (overlap || !w.writers.has(client)), { tab: true });
       w.wasBusy = held && busy(w.name); w.resync = w.releases !== releases;
       if (!w.holds && !w.resync) { w.writers.clear(); wake(w); }   // (all they wrote read, and told unless a run's)
       return;
