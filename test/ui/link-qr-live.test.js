@@ -3,7 +3,8 @@
 // the editors' links, each made by its own Generate (none before), different (#view=, #edit=), hidden (Generate, Copy,
 // Show, Show QR Code) with its QR code by Show QR Code only (#3637, decoded back: the link; no small one in the window);
 // Stop Sharing keeps the window, Start Sharing again; no Add a User… in it: the toolbar's Sharing menu's (Viewer or
-// Editor, that role's link by Generate), and its Copy View Link; Share Module…'s links (#3631, opening on the module);
+// Editor, that role's link by Generate), and its Show Sharing Link… (#4851: Viewer or Editor, the share's link of that
+// role shown at once, no Generate: Copy, Show, Show QR Code); Share Module…'s links (#3631, opening on the module);
 // the labels in Portuguese; each link's Generate named for it (Generate View-Only, Generate Edit Link: #4613), its buttons in a
 // row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too, a copy's laid out the same (#4612);
 // the window's size the same as a copy's, switching, sharing or generating (#4617). A server with its relay. Both
@@ -108,9 +109,25 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .link-out')].map((o) => o.value)), [link, editLink]);
   await page.dialogButton('Close');
   await page.waitNoDialog();
-  // the toolbar's menu: Copy View Link; Add a User…: Viewer first, its link by Generate; Editor, the editors' link
-  await menuPick(page, 'Copy View Link');
-  await page.waitConsole(/^Shared project's link copied: whoever opens it follows it live, read only\.$/m);
+  // the toolbar's menu: Show Sharing Link… (#4851): Viewer first, the share's link at once (no Generate), shown, its QR
+  // code; Editor, the editors' link, copied
+  await menuPick(page, 'Show Sharing Link…');
+  await page.waitDialog('Sharing Link');
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay .collab-dlg > p').textContent, document.querySelector('.dlg-overlay input[data-field="role-viewer"]').checked]),
+    ['The links of this share: give each user the link of their role; they open it in Silinx.', true]);
+  assert.deepEqual(await fieldButtons(page, 'user-link'), ['Copy', 'Show', 'Show QR Code']);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="user-link"]').value), link);
+  await page.click('.dlg-overlay .link-field:has([data-field="user-link"]) .link-show');
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field="user-link"]').type, document.querySelector('.dlg-overlay .link-field:has([data-field="user-link"]) .link-show').textContent]), ['text', 'Hide']);
+  assert.equal((await qrOfField(page, 'user-link')).text, link);
+  await page.click('.dlg-overlay input[data-field="role-editor"]');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="user-link"]').value), editLink, 'Editor: the editors\' link at once');
+  await page.click('.dlg-overlay .link-field:has([data-field="user-link"]) .link-copy');
+  await page.waitConsole(/^Sharing Link: the editors' link copied: whoever opens it edits the project's text files and drawings with you\.$/m);
+  assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay .collab-hosted') || [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent).join()), 'Close');
+  await page.dialogButton('Close');
+  await page.waitNoDialog();
+  // Add a User…: Viewer first, its link by Generate; Editor, the editors' link
   await menuPick(page, 'Add a User…');
   await page.waitDialog('Add a User');
   assert.deepEqual(await fieldButtons(page, 'user-link'), ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
@@ -169,7 +186,7 @@ uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s
     await page.waitNoDialog();
     await page.click('.collab-presence .collab-btn');
     await page.waitForSelector('body > .menu-popup');
-    assert.ok((await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi .lbl')].map((l) => l.textContent))).includes('Copiar Ligação de Visualização'));
+    assert.ok((await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi .lbl')].map((l) => l.textContent))).includes('Mostrar a Ligação de Partilha…'));
     await page.click('body > .menu-popup .mi', { text: 'Adicionar um Utilizador…' });
     await page.waitDialog('Adicionar um Utilizador');
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how label')].map((l) => l.textContent)), ['Papel:', 'Espectador', 'Editor']);

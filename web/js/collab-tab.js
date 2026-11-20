@@ -7,7 +7,7 @@
 // with no repository: Store Project in a GitHub Repository…, Open from GitHub Repository…. The same items as the Git submenu's
 // (gitMenuItems), which keeps them. Its Sharing box (#4259): Share a Copy… (File ▸ Share Project…'s copy, enabled as it
 // is), and live sharing (#3181): what the toolbar's presence shows and its commands
-// (web/js/collab-presence.js: who is in, Copy View Link, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
+// (web/js/collab-presence.js: who is in, Show Sharing Link…, Stop Sharing, Follow, Stop Following…), Share Live… otherwise. Every message goes to the console (docs/UI-GUIDELINES.md); a followed project (read only) shows the
 // read-only notice and its Live box only. The browser edition's Cloudflare Relay box (#4574, web/js/relay-setup.js): the
 // relay its live shares meet their followers at, set up, checked, forgotten. Sharing first, the relay under it, then Git
 // Repository (#4636). While sharing, its mode at the top and each follower's path beside them, P2P or Relay (#4643),
