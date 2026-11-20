@@ -9,10 +9,11 @@ import { addTop, subTop } from './symlib-add.js';
 import { decoderTop, demuxTop, muxTop } from './symlib-mux.js';
 import { encoderTop } from './symlib-enc.js';
 import { compareTop } from './symlib-comp.js';
+import { counterTop } from './symlib-cnt.js';
 
 // the families composed so far, each a function (library, parameters) → its top module
 const FAMILIES = { add: addTop, sub: subTop, mux2: (l, p) => muxTop(l, 'mux2', p), mux4: (l, p) => muxTop(l, 'mux4', p), mux8: (l, p) => muxTop(l, 'mux8', p),
-  mux16: (l, p) => muxTop(l, 'mux16', p), decoder: decoderTop, demux: demuxTop, encoder: encoderTop, compare: compareTop };
+  mux16: (l, p) => muxTop(l, 'mux16', p), decoder: decoderTop, demux: demuxTop, encoder: encoderTop, compare: compareTop, counter: counterTop };
 // (wiring, not parts: left out of a level's list)
 const WIRING = new Set(['slice', 'busjoin']);
 

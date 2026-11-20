@@ -113,13 +113,13 @@ export const SYMBOL_INFO_TOOLS = [
   },
   {
     name: 'symbol_composition', title: 'Symbol Composition',
-    description: 'A level of a palette symbol\'s composition, as a schematic (read-only, as read_file returns a schematic): the symbol built of the symbols of the level below, down to the gates (ADD8: two ADD4; ADD4: four FA1; FA1: two XOR2, two AND2 and an OR2; SUB8: an ADD8 with B and the borrows inverted). Its levels are symbol_info\'s Composition: a level by its module (left out: the top, the symbol itself), or by its path of instances from the top (["U1", "U2"]: the schematic editor\'s Push into, then into U2). With inputs (the symbol\'s input pins\' values), the level\'s values as a Try it of the symbol pushed into shows them: its inputs, from the levels above simulated with the symbol\'s, and its outputs. A view: the HDL generated for the symbol is its own, proved equivalent to the composition. The adders, subtractors, comparators, multiplexers, decoders, demultiplexers and encoders have one so far.',
+    description: 'A level of a palette symbol\'s composition, as a schematic (read-only, as read_file returns a schematic): the symbol built of the symbols of the level below, down to the gates (ADD8: two ADD4; ADD4: four FA1; FA1: two XOR2, two AND2 and an OR2; SUB8: an ADD8 with B and the borrows inverted). Its levels are symbol_info\'s Composition: a level by its module (left out: the top, the symbol itself), or by its path of instances from the top (["U1", "U2"]: the schematic editor\'s Push into, then into U2). With inputs (the symbol\'s input pins\' values; a counter\'s count Q too, its state), the level\'s values as a Try it of the symbol pushed into shows them: its inputs, from the levels above simulated with the symbol\'s, and its outputs. A view: the HDL generated for the symbol is its own, proved equivalent to the composition. The adders, subtractors, comparators, counters, multiplexers, decoders, demultiplexers and encoders have one so far.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, symbol: STR('The symbol: its name in the palette or the Xilinx library (ADD8, SUB16), or its type (add, sub).'),
       params: { type: 'object', description: 'Its parameters, as Symbol Info\'s fields (e.g. { "width": 16, "cin": true }); left out: the symbol\'s.' },
       module: STR('The level: one of the composition\'s modules (ADD4, FA1…); left out: its top (or the path\'s).'),
       path: { type: 'array', items: { type: 'string' }, description: 'The level by the instances pushed into from the top, in order (["U1", "U2"]).' },
-      inputs: { type: 'object', description: 'The symbol\'s input pins\' values, as numbers or "0x5F" / "0b101" texts (e.g. { "A": 95, "B": 33, "CI": 1 }): the level\'s values are given.' },
+      inputs: { type: 'object', description: 'The symbol\'s input pins\' values (a counter\'s count Q too: its state), as numbers or "0x5F" / "0b101" texts (e.g. { "A": 95, "B": 33, "CI": 1 }): the level\'s values are given.' },
     }, required: ['project', 'symbol'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, symbol, params = {}, module = null, path = null, inputs = null }) {
@@ -129,7 +129,7 @@ export const SYMBOL_INFO_TOOLS = [
       const found = findSymbol(symbol, { SYMBOLS: Sch.SYMBOLS, XILINX_SYMBOLS: D.XILINX_SYMBOLS, titleOf: t => D.symbolDoc(t, {}, { withHdl: false }).title }, {});
       if (!found) throw toolError(`no symbol '${symbol}' in the palette`);
       const comp = L.composition(found.type, { ...found.params, ...params });
-      if (!comp) throw toolError(`${symbol}: no composition (a symbol of the palette drawn as it is; the adders, subtractors, comparators, multiplexers, decoders, demultiplexers and encoders have one)`);
+      if (!comp) throw toolError(`${symbol}: no composition (a symbol of the palette drawn as it is; the adders, subtractors, comparators, counters, multiplexers, decoders, demultiplexers and encoders have one)`);
       const levelOf = n => comp.modules.find(m => m.name.toLowerCase() === String(n).toLowerCase());
       // (the path of instances from the top: each one an instance of a module of the level above)
       const steps = [{ module: comp.top, instance: null }];
@@ -149,21 +149,23 @@ export const SYMBOL_INFO_TOOLS = [
       if (inputs) {
         if (module != null && !path && level !== comp.modules[0]) throw toolError(`inputs: the level by its path (["U1", …]), so that its instance is known`);
         const LV = await import('../core/symlib-live.js'), { buildLiveSim } = await import('../core/schlive.js');
-        const ins = comp.modules[0].ports.filter(q => q.dir === 'in'), top = {};
-        for (const [k, v] of Object.entries(inputs)) if (!ins.some(q => q.name.toLowerCase() === k.toLowerCase())) throw toolError(`inputs: no input pin '${k}' (${ins.map(q => q.name).join(', ')})`);
-        for (const q of ins) {
+        // (an output given: a sequential symbol's state, a counter's count Q, #4811)
+        const ins = comp.modules[0].ports.filter(q => q.dir === 'in'), outs = found.type === 'counter' ? comp.modules[0].ports.filter(q => q.dir !== 'in') : [], pins = [...ins, ...outs], top = {}, state = {};
+        for (const [k, v] of Object.entries(inputs)) if (!pins.some(q => q.name.toLowerCase() === k.toLowerCase())) throw toolError(`inputs: no pin '${k}' (${ins.map(q => q.name).join(', ')}${outs.length ? `; a count, a state: ${outs.map(q => q.name).join(', ')}` : ''})`);
+        for (const q of pins) {
           const k = Object.keys(inputs).find(x => x.toLowerCase() === q.name.toLowerCase());
-          if (k == null) { top[q.name] = null; continue; }
+          if (k == null) { if (q.dir === 'in') top[q.name] = null; continue; }
           let v;
           try { v = BigInt(typeof inputs[k] === 'number' ? Math.trunc(inputs[k]) : String(inputs[k]).trim()); } catch { throw toolError(`inputs: ${q.name}: '${inputs[k]}' is not a number`); }
           if (v < 0n || v >> BigInt(q.width) !== 0n) throw toolError(`inputs: ${q.name}: ${inputs[k]} does not fit in its ${q.width} bit(s)`);
-          top[q.name] = v;
+          (q.dir === 'in' ? top : state)[q.name] = v;
         }
-        const Dv = LV.derivedValues(comp), r = Dv.levelValues(steps, top);
+        const Dv = LV.derivedValues(comp), r = Dv.levelValues(steps, top, state);
         if (r.error) throw toolError(r.error);
         const b = buildLiveSim(level.doc, { modules: Dv.modules, sources: Dv.sources, lang: 'vhdl' });
         if (!b.ok) throw toolError(b.errors.join('; '));
         b.live.restoreInputs(LV.savedInputs(level, r.values));
+        if (steps.length === 1) LV.forceOutputs(b.live, level, state);
         const show = v => (LV.knownValue(v) == null ? 'X' : LV.knownValue(v).toString());
         values = Object.fromEntries(level.doc.ports.map(p => [p.name, show(b.live.portValue(p.id))]));
         text.splice(2, 0, `Values (${level.doc.ports.map(p => `${p.name} = ${values[p.name]}`).join(', ')}): ${steps.length > 1 ? 'its inputs from the levels above simulated with the symbol\'s' : 'the symbol\'s'}.`);

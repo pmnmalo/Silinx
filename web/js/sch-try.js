@@ -111,12 +111,14 @@ export function mountSchTry(ctx) {
     return plan;
   }
 
-  // Try it with the inputs given (a composition's, from its symbol's pins, #4808): started with them, or set
-  async function tryWith(inputs) {
+  // Try it with the inputs given (a composition's, from its symbol's pins, #4808): started with them, or set; then
+  // after(LiveSim) (its outputs forced to a counter's count, #4811)
+  async function tryWith(inputs, after = null) {
     lastInputs = inputs;
-    if (!live()) { await enterSim(); return; }
-    live().live.reset({ inputs: true });
-    live().live.restoreInputs(inputs);
+    if (!live()) await enterSim();
+    else { live().live.reset({ inputs: true }); live().live.restoreInputs(inputs); }
+    if (!live()) return;
+    after?.(live().live);
     live().update(true);
   }
 

@@ -64,8 +64,10 @@ export async function openComposition(sym, from = null) {
         const L0 = tab.from.editor.liveSim;
         if (!L0) { tab.from = null; banner(); return; }   // (that Try it ended: this one's own from now on)
         const top = Object.fromEntries(comp.modules[0].ports.filter(q => q.dir === 'in').map(q => [q.name, LV.knownValue(L0.pinValue(tab.from.symId, q.name))]));
-        const r = D.levelValues(path, top);
-        if (!r.error) await ed.tryWith(LV.savedInputs(cur(), r.values));
+        // (its outputs too: a counter's count, its state, which the composition's own simulation does not have, #4811)
+        const outs = Object.fromEntries(comp.modules[0].ports.filter(q => q.dir === 'out').map(q => [q.name, LV.knownValue(L0.pinValue(tab.from.symId, q.name))]));
+        const r = D.levelValues(path, top, outs);
+        if (!r.error) await ed.tryWith(LV.savedInputs(cur(), r.values), path.length === 1 ? L => LV.forceOutputs(L, cur(), outs) : null);
       };
       let timer = null;
       const tab = { from, refresh, later: () => { clearTimeout(timer); timer = setTimeout(refresh, 30); } };
