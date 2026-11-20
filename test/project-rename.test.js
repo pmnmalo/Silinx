@@ -155,6 +155,29 @@ test('the server\'s checks (the route\'s, the MCP\'s): a process running refused
   assert.deepEqual(fs.readdirSync(path.join(cfg, ws)), ['m2.json']);
 });
 
+test('#4866 GitHub\'s record of a project: a project\'s name only, its file in its workspace\'s folder; any other name refused, no file moved', async () => {
+  const { moveGithubMeta, metaFile } = await import('../server/git-github.js');
+  const crypto = await import('node:crypto');
+  const ws = crypto.createHash('sha256').update(path.resolve(P.workspaceDir())).digest('hex').slice(0, 16);
+  const dir = path.join(process.env.SILINX_CONFIG_DIR, 'github-git', ws);
+  assert.equal(await metaFile('r1'), path.join(path.resolve(dir), 'r1.json'));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'r1.json'), '{"repo":"a/b"}');
+  // (outside the workspace's folder: a record a name with .. or an absolute path would reach)
+  fs.writeFileSync(path.join(dir, '..', 'evil.json'), '{"repo":"c/d"}');
+  const abs = path.join(tmp, 'outside');
+  const message = n => `invalid project name '${n}': a letter, then up to 63 letters, digits, - and _`;
+  for (const bad of ['../evil', '..', `${abs}`, 'r1/../../evil', 'a\\..\\evil', '', 'r1.json']) {
+    await rejects(metaFile(bad), 400, message(bad));
+    await rejects(moveGithubMeta(bad, 'r2'), 400, message(bad));
+    await rejects(moveGithubMeta('r1', bad), 400, message(bad));
+  }
+  assert.equal(fs.readFileSync(path.join(dir, 'r1.json'), 'utf8'), '{"repo":"a/b"}');
+  assert.ok(!fs.existsSync(path.join(dir, 'r2.json')));
+  assert.equal(fs.readFileSync(path.join(dir, '..', 'evil.json'), 'utf8'), '{"repo":"c/d"}');
+  assert.ok(!fs.existsSync(`${abs}.json`));
+});
+
 // ---- the browser edition
 import { memStorage } from './fixtures/mem-storage.js';   // (localStorage's interface, #4725)
 const JSON0 = { version: 1, device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, board: null, top: 'top', simTop: '', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], constraints: null };

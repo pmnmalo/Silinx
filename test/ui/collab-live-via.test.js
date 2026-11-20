@@ -176,7 +176,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   assert.deepEqual([(await ways(page)).how, await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons button')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`))], ['live-relay', ['Start Sharing (off)', 'Stop Sharing', 'Close']]);
   await step('shared, opened again');
   assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay .share-via').hidden, ...['copy', 'live-relay', 'live-peer'].map((x) => document.querySelector(`.dlg-overlay input[data-field="how-${x}"]`).disabled)]), [true, false, false, true]);
-  await page.waitConsole(new RegExp(`^This page hosts the shared project: its followers meet it at the relay at ${host.replace(/\./g, '\\.')}, then connect to it directly when they can, through the relay otherwise; it sees no file\\. It lasts while this page is open\\.$`, 'm'));
+  await page.waitConsole(new RegExp(`^This page hosts the shared project: its followers meet it at the relay at ${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, then connect to it directly when they can, through the relay otherwise; it sees no file\\. It lasts while this page is open\\.$`, 'm'));
   await page.dialogButton('Stop Sharing');
   await page.waitFor(() => document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'stopped' });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="how-live-peer"]').disabled), false, 'unlocked once stopped');
