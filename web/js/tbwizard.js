@@ -5,7 +5,8 @@
 // ports have two columns: what the bench drives on the bus (a value, or Z / empty = released so
 // that the design drives it) and the value expected on the bus. Generator: core/testbench.js.
 import { api } from './api.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, toast } from './ui.js';
+import { commandError } from './console.js';
 import { compile, elaborate } from '/core/compile.js';
 import { clocksOf } from '/core/schematic.js';
 import { reservedError } from '/core/reserved.js';
@@ -24,7 +25,7 @@ export async function testBenchWizard({ module, name = null, location = null, la
   await app.saveAll?.();
   const guard = replaceGuard('Test Bench Wizard');
   const mods = S.modules.filter(m => m.role === 'design' && m.kind !== 'package');
-  if (!mods.length) return alertDlg('Test Bench Wizard', 'The project has no design modules to test.', 'error');
+  if (!mods.length) return commandError('Test Bench Wizard', 'The project has no design modules to test.');
   let uut = mods.find(m => m.name === module) || mods.find(m => m.name === S.project.top) || mods[0];
 
   // ---------------------------------------------------------------- state
@@ -236,10 +237,10 @@ export async function testBenchWizard({ module, name = null, location = null, la
   const all = [p1, p2, p3, p4, pSum];
   const list = () => (p4skip ? [p1, p2, p3, pSum] : all);
   const proxy = new Proxy(all, { get: (t, k) => (k === 'length' ? list().length : (typeof k === 'string' && /^\d+$/.test(k) ? list()[+k] : t[k])) });
-  const ok = await wizard('Test Bench Wizard', proxy, { width: 820, back });
-  if (!ok) return;
   let text;
-  try { text = st.mode === 'none' ? generateSkeleton(tbOpts([])) : generateTestbench(tbOpts(vectorsBits())); } catch (e) { return alertDlg('Test Bench Wizard', e.message, 'error'); }
+  const ok = await wizard('Test Bench Wizard', proxy, { width: 820, back,
+    finish: () => { text = st.mode === 'none' ? generateSkeleton(tbOpts([])) : generateTestbench(tbOpts(vectorsBits())); } });
+  if (!ok) return;
   const pj = S.project;
   await closeBeforeReplace(path());
   await api.writeFile(pj.name, path(), text);   // registers the file (role: simulation)

@@ -11,6 +11,7 @@ import { curveNearest, curvePointAt } from '/core/schcurve.js';
 import { isFreeStyle } from '/core/wire-style.js';
 import { t } from './i18n.js';
 import { esc } from './dom.js';
+import { message } from './ui.js';
 import { mountLiveInputs } from './sch-live-inputs.js';
 import { mountLiveInstance } from './sch-live-instance.js';
 import { prefKey } from './prefs.js';
@@ -223,9 +224,9 @@ function liveController(ctx, live) {
     if (err !== errorText) {
       errorText = err;
       errEl.hidden = !err;
-      errEl.textContent = err ? `Stopped: ${err.split('\n')[0]}` : '';
-      errEl.title = err || '';
-      if (err) stopAll();
+      // (its state here, its error in the console, #4747: no message in the editor's window)
+      errEl.textContent = err ? 'Stopped' : '';
+      if (err) { stopAll(); message(`Try it: ${err}`, 'error'); }
     }
     renderInstance();
     ctx.onRepaint?.();

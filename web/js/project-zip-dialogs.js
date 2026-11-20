@@ -4,14 +4,17 @@
 // (core/project-software.js). The import preselects the software of the zip or the files picked; the choice last made
 // is kept per viewer (Silinx by default). The export itself: menus.js exportProjectZip.
 import { api } from './api.js';
-import { h, dialog, alertDlg } from './ui.js';
+import { h, dialog } from './ui.js';
 import { S, app } from './app.js';
-import { appLog } from './console.js';   // (the application's lines, under every filter, #4729)
+import { appLog, commandError } from './console.js';   // (the application's lines, under every filter, #4729)
 import { prefKey } from './prefs.js';
 import { SOFTWARE, SUPPORTED, projectSoftware } from '/core/project-software.js';
 import { projectNameError, projectNameFrom } from '/core/project-name.js';
 import { askReplaceProject, field, replaceProjectWith, zipFolderSelection } from './wizards.js';
 import { isDesignOnly } from '/core/project-kind.js';
+
+// what Import Project needs (#4747: said in its dialog, else in the console)
+const PICK_ISE = 'Select the project folder, a .zip, or a .xise with its sources.', PICK_SILINX = 'Select the project folder or the .zip of the Silinx project.';
 
 const IMPORT_KEY = prefKey('silinx.import-software'), EXPORT_KEY = prefKey('silinx.export-software');
 const saved = key => { try { const v = localStorage.getItem(key); return SUPPORTED.includes(v) ? v : 'silinx'; } catch { return 'silinx'; } };
@@ -133,6 +136,13 @@ export async function importProjectDialog() {
     else folderInfo();
     if (files.length && !SUPPORTED.includes(found)) info.textContent = found ? softwareOf(found).reason : NOT_A_FOLDER;
   });
+  const importProblem = () => {
+    const files = [...fileInp.files], some = dirInp.files.length > 0;
+    if (software === 'xilinx' && !some && !files.some(f => /\.(zip|xise)$/i.test(f.name))) return PICK_ISE;
+    if (software !== 'xilinx' && !some && !files.length) return PICK_SILINX;
+    const typed = name.value.trim();
+    return typed ? projectNameError(typed) : null;
+  };
   const r = await dialog({
     title: 'Import Project', width: 600,
     body: h('div', {},
@@ -142,7 +152,8 @@ export async function importProjectDialog() {
         dirLabel, dirInp, fileLabel, fileInp,
         ...field('Project name:', name)),
       info),
-    buttons: [{ label: 'Import', primary: true, value: true }, { label: 'Cancel', value: null }],
+    // (what is missing, or a name refused: said in the dialog, beside the fields, #4747; not in a box after it closed)
+    buttons: [{ label: 'Import', primary: true, value: true, validate: () => { const m = importProblem(); if (m) info.textContent = m; return !m; } }, { label: 'Cancel', value: null }],
   });
   if (!r) return;
   keep(IMPORT_KEY, software);
@@ -152,10 +163,10 @@ export async function importProjectDialog() {
 async function importIse(files, dirFiles, typed) {
   const zf = files.find(f => /\.zip$/i.test(f.name));
   const xf = files.find(f => /\.xise$/i.test(f.name));
-  if (!dirFiles.length && !zf && !xf) return alertDlg('Import Project', 'Select the project folder, a .zip, or a .xise with its sources.', 'error');
+  if (!dirFiles.length && !zf && !xf) return commandError('Import Project', PICK_ISE);
   const folder = (dirFiles[0]?.webkitRelativePath || '').split('/')[0];
   const pname = typed || projectNameFrom((zf || xf)?.name || folder) || 'imported';
-  if (projectNameError(pname)) return alertDlg('Import Project', projectNameError(pname), 'error');
+  if (projectNameError(pname)) return commandError('Import Project', projectNameError(pname));
   if (!await askReplaceProject(pname)) return;
   try {
     const res = await replaceProjectWith(pname, async () => {
@@ -175,13 +186,13 @@ async function importIse(files, dirFiles, typed) {
     appLog(`Imported Xilinx ISE project '${pname}' (${n} source file(s)${res?.extra?.length ? `, ${res.extra.length} other file(s)` : ''}).`, 'ok');
     if (res?.missing?.length) appLog(`WARNING: files referenced by the .xise but not found: ${res.missing.join(', ')}`, 'warn');
     for (const w of res?.warnings || []) appLog(`WARNING: ${w}`, 'warn');
-  } catch (e) { alertDlg('Import Project', e.message, 'error'); }
+  } catch (e) { commandError('Import Project', e.message); }
 }
 
 async function importSilinx(zf, dirFiles, typed) {
-  if (!dirFiles.length && !zf) return alertDlg('Import Project', 'Select the project folder or the .zip of the Silinx project.', 'error');
+  if (!dirFiles.length && !zf) return commandError('Import Project', PICK_SILINX);
   const pname = typed || projectNameFrom(zf?.name || folderName(dirFiles)) || 'imported';
-  if (projectNameError(pname)) return alertDlg('Import Project', projectNameError(pname), 'error');
+  if (projectNameError(pname)) return commandError('Import Project', projectNameError(pname));
   if (!await askReplaceProject(pname)) return;
   try {
     const res = await replaceProjectWith(pname, async () => {
@@ -197,5 +208,5 @@ async function importSilinx(zf, dirFiles, typed) {
     if (res?.missing?.length) appLog(`WARNING: files listed in silinx.json but not in the ${dirFiles.length ? 'folder' : 'zip'}: ${res.missing.join(', ')}`, 'warn');
     // (what the import dropped: an entry that would leave the project, a broken silinx.json field, #483)
     for (const w of res?.warnings || []) appLog(`WARNING: ${w}`, 'warn');
-  } catch (e) { alertDlg('Import Project', e.message, 'error'); }
+  } catch (e) { commandError('Import Project', e.message); }
 }

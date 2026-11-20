@@ -4,7 +4,8 @@
 // (web/js/viewers.js runSimulation); the paths (wcfgPath, wcfgList) are core/wcfg.js's.
 import { wcfgList, wcfgPath } from '/core/wcfg.js';
 import { api } from './api.js';
-import { h, alertDlg, confirmDlg, dialog, promptDlg } from './ui.js';
+import { h, confirmDlg, dialog, promptDlg } from './ui.js';
+import { commandError, commandInfo } from './console.js';
 import { S, moduleInfo } from './app.js';
 import { reloadProject } from './project.js';
 
@@ -21,7 +22,7 @@ export function wcfgFiles(mod) {
       const v = await promptDlg(SAVE, 'File name in the project:', last || `${dir()}${mod}.wcfg`);
       if (v == null) return null;
       const path = wcfgPath(v);
-      if (!path) { await alertDlg(SAVE, `'${v}' is not a valid file name (letters, digits, _ . - and folders; .wcfg).`, 'error'); return null; }
+      if (!path) { await commandError(SAVE, `'${v}' is not a valid file name (letters, digits, _ . - and folders; .wcfg).`); return null; }
       if (projectFiles().includes(path) && !await confirmDlg(SAVE, `${path} already exists. Overwrite it?`)) return null;
       await api.writeFile(S.project.name, path, text);
       last = path;
@@ -30,7 +31,7 @@ export function wcfgFiles(mod) {
     },
     async load() {
       const files = wcfgList(projectFiles(), mod);
-      if (!files.length) { await alertDlg(LOAD, 'The project has no wave configuration (.wcfg) yet: save one first.'); return null; }
+      if (!files.length) { await commandInfo(LOAD, 'The project has no wave configuration (.wcfg) yet: save one first.'); return null; }
       const sel = h('select', { style: { width: '100%' }, 'data-no-i18n': true }, ...files.map(f => h('option', { value: f }, f)));
       if (last && files.includes(last)) sel.value = last;
       const path = await dialog({ title: LOAD, width: 420, body: h('div', {}, h('label', {}, 'Wave configuration:'), sel),
