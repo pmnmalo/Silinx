@@ -45,6 +45,11 @@ export const COLLAB_PT = {
     '2. Instale-o: entre no Cloudflare (ou registe-se, é gratuito) e dê a chave quando lhe pedir RELAY_KEY.',
   'Deploy to Cloudflare': 'Instalar no Cloudflare', '3. Its address, which Cloudflare shows at the end:': '3. O seu endereço, que o Cloudflare mostra no fim:',
   'New Key': 'Nova Chave', 'Check and Save': 'Verificar e Guardar',
+  // (#4737: the relay kept as the GitHub sign-in)
+  'Remember the relay in this browser (kept after this tab closes, where every page of this site\'s address can read its key)':
+    'Lembrar o retransmissor neste navegador (guardado depois de fechar este separador, onde todas as páginas do endereço deste sítio podem ler a sua chave)',
+  'A Silinx opened from a file keeps the relay in this tab only: every page opened from the disk can read what this browser keeps for files.':
+    'Um Silinx aberto de um ficheiro guarda o retransmissor só neste separador: todas as páginas abertas do disco podem ler o que este navegador guarda para ficheiros.',
   // (Cloudflare's screens, step by step, #4630; Cloudflare's own labels kept as Cloudflare shows them)
   'Cloudflare\'s screens, step by step': 'Os ecrãs do Cloudflare, passo a passo',
   'Deploy to Cloudflare opens Cloudflare\'s "Set up your application" page in a new tab: sign in, or create a free account.':

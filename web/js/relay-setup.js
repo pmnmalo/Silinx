@@ -6,7 +6,7 @@
 // again; Forget Relay forgets it. Every result in the console; the key in no link, address or message.
 import { h, dialog } from './ui.js';
 import { writeClip } from './clipboard.js';
-import { savedRelay, keepRelay } from './relay-setting.js';
+import { savedRelay, keepRelay, canRememberRelay } from './relay-setting.js';
 import { checkRelay, newRelayKey, DEPLOY_URL } from '/core/relay-setup.js';
 import { relayAddress } from '/core/collab-link.js';
 import { collabLog } from './collab-log.js';
@@ -23,6 +23,13 @@ const DEPLOY_STEPS = [
   'Click Deploy. Cloudflare sets up the repository, then builds the relay (Initializing, Cloning, Installing, Deploying): about 2 to 3 minutes. Wait for "Success! Build completed."',
   'The address: in the build log, under "Deployed silinx-relay triggers", or the Worker\'s Overview ▸ Domains & Routes. Paste it below and click Check and Save.',
 ];
+
+// Remember: the relay kept in this browser, as the GitHub sign-in (#4737); at file: unticked and disabled (#3530)
+const REMEMBER = 'Remember the relay in this browser (kept after this tab closes, where every page of this site\'s address can read its key)';
+const NO_REMEMBER = 'A Silinx opened from a file keeps the relay in this tab only: every page opened from the disk can read what this browser keeps for files.';
+const rememberBox = remembered => (canRememberRelay()
+  ? h('input', { type: 'checkbox', 'data-field': 'relay-remember', checked: remembered })
+  : h('input', { type: 'checkbox', 'data-field': 'relay-remember', checked: false, disabled: true, title: NO_REMEMBER }));
 
 const hostOf = a => { try { return new URL(a).host; } catch { return a; } };
 
@@ -66,6 +73,7 @@ export async function relaySetupDialog() {
   const copy = h('button', { class: 'btn', 'data-action': 'copy-key', onclick: () => { writeClip('text', key.value); collabLog('Relay key copied: give it to Cloudflare when it asks for RELAY_KEY, and keep it somewhere safe.', 'ok'); } }, 'Copy');
   const fresh = h('button', { class: 'btn', 'data-action': 'new-key', onclick: () => { key.value = newRelayKey(); } }, 'New Key');
   const address = h('input', { type: 'text', 'data-field': 'relay', 'data-no-i18n': '', value: r0.address, placeholder: 'https://silinx-relay.<you>.workers.dev', autocomplete: 'off', spellcheck: 'false', style: { width: '100%' } });
+  const remember = rememberBox(!r0.address || r0.remembered);
   const err = h('div', { class: 'wiz-error relay-setup-error', 'data-no-i18n': '' });   // (the console's message, as it is)
   let kept = null;
   const save = async () => {
@@ -73,7 +81,7 @@ export async function relaySetupDialog() {
     const r = said(await checkHere({ address: address.value, key: key.value }));
     if (!r.ok) { err.textContent = r.error; return false; }
     kept = { address: r.address, key: key.value };
-    keepRelay(kept);
+    keepRelay({ ...kept, remember: remember.checked });
     return true;
   };
   await dialog({
@@ -89,7 +97,8 @@ export async function relaySetupDialog() {
         h('summary', {}, 'Cloudflare\'s screens, step by step'),
         h('ol', {}, ...DEPLOY_STEPS.map(s => h('li', {}, s))),
         h('p', {}, 'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.')),
-      h('p', {}, '3. Its address, which Cloudflare shows at the end:'), address, err),
+      h('p', {}, '3. Its address, which Cloudflare shows at the end:'), address,
+      h('label', { class: 'relay-remember', style: { display: 'block', marginTop: '6px' } }, remember, ' ', canRememberRelay() ? REMEMBER : NO_REMEMBER), err),
     buttons: [{ label: 'Check and Save', primary: true, validate: save, value: () => kept }, { label: 'Cancel', value: null }],
   });
   return kept;

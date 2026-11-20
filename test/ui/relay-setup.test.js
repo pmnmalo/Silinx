@@ -3,7 +3,7 @@
 // its key made in the page (43 characters), Show, Copy (said in the console), New Key, the Deploy to Cloudflare button
 // (a new tab), Cloudflare's screens step by step (#4630: open until a relay is set, in order); a relay that does not let the site in refused, the exact ORIGINS line in the console and the window,
 // nothing kept; once it does, checked and kept: the box shows it; Share Project… ▸ Live via your Cloudflare relay
-// chosen, the relay shown (#4634); Check Cloudflare Relay; Forget Cloudflare Relay; the key in no console line; in Portuguese, the box and the
+// chosen, the relay shown (#4634); Remember the relay in this browser, ticked by default, unticked: this tab only (#4737); Check Cloudflare Relay; Forget Cloudflare Relay; the key in no console line; in Portuguese, the box and the
 // window translated. The relay is the real Worker (packages/silinx-relay-cloudflare) on the Workers shim
 // (test/workers-shim.js), among the site's relays. No warnings but those asserted.
 import { before, after } from 'node:test';
@@ -57,7 +57,7 @@ const loaded = async (page) => {
 };
 const boot = async (page, pt = false) => {
   await loaded(page);
-  await page.eval((p) => { localStorage.removeItem('silinx.collab.relay'); localStorage.removeItem('silinx.dev.collab.relay'); if (p) localStorage.setItem('silinx.lang', 'pt'); }, pt);
+  await page.eval((p) => { localStorage.removeItem('silinx.collab.relay'); localStorage.removeItem('silinx.dev.collab.relay'); sessionStorage.removeItem('silinx.collab.relay'); if (p) localStorage.setItem('silinx.lang', 'pt'); }, pt);
   if (pt) await loaded(page);   // (the language read when the page loads)
 };
 const newProject = async (page, name, pt = false) => {
@@ -108,6 +108,9 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   assert.deepEqual(await page.eval(() => { const a = document.querySelector('.dlg-overlay a.relay-deploy'); return [a.textContent, a.href, a.target, a.rel]; }), ['Deploy to Cloudflare', DEPLOY_URL, '_blank', 'noopener noreferrer']);
   // Cloudflare's screens, step by step, in order: open, as no relay is set yet (#4630)
   assert.deepEqual(await stepsOf(page), ["Cloudflare's screens, step by step", true, STEPS, [TRAPS]]);
+  // Remember the relay in this browser (#4737): ticked by default, as the GitHub sign-in's Remember me
+  assert.deepEqual(await page.eval(() => { const l = document.querySelector('.dlg-overlay label.relay-remember'); return [l.textContent, l.querySelector('input').checked, l.querySelector('input').disabled]; }),
+    [' Remember the relay in this browser (kept after this tab closes, where every page of this site\'s address can read its key)', true, false]);
   // (Cloudflare's relay deployed with the key: here, the shim's, whose key is KEY)
   await page.fill('.dlg-overlay input[data-field=relay-key]', KEY);
   await page.fill('.dlg-overlay input[data-field=relay]', relay.url);
@@ -132,6 +135,17 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   await page.waitDialog('Set Up a Cloudflare Relay');
   assert.deepEqual(await stepsOf(page), ["Cloudflare's screens, step by step", false, STEPS, [TRAPS]]);
   assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[data-field=relay]').value, document.querySelector('.dlg-overlay input[data-field=relay-key]').value]), [relay.url, KEY]);
+  // Remember unticked (#4737): the relay kept in this tab only, none in localStorage; the box still shows it
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=relay-remember]').checked), true);
+  await page.click('.dlg-overlay input[data-field=relay-remember]');
+  await page.dialogButton('Check and Save');
+  await page.waitNoDialog();
+  await page.waitFor((t) => window.__console().split(t).length === 3, [ok], { what: 'the relay checked when saved again' });
+  assert.deepEqual(await page.eval(() => [localStorage.getItem('silinx.collab.relay'), JSON.parse(sessionStorage.getItem('silinx.collab.relay'))]), [null, { address: relay.url, key: KEY }]);
+  await waitBox(page, 'Cloudflare Relay', [`Cloudflare relay: ${host}`, 'Check Cloudflare Relay', 'Change Cloudflare Relay…', 'Forget Cloudflare Relay']);
+  await tabCommand(page, 'Change Cloudflare Relay…');
+  await page.waitDialog('Set Up a Cloudflare Relay');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=relay-remember]').checked), false, 'kept unticked');
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   // Share Project… ▸ Live: via your Cloudflare relay, chosen, the relay shown by its address (#4634)
@@ -144,11 +158,11 @@ uiTest('#4574 Collaboration tab ▸ Cloudflare Relay: Set Up a Cloudflare Relay�
   await page.waitNoDialog();
   // Check Cloudflare Relay; Forget Cloudflare Relay
   await tabCommand(page, 'Check Cloudflare Relay');
-  await page.waitFor((t) => window.__console().split(t).length === 3, [ok], { what: 'the relay checked again' });
+  await page.waitFor((t) => window.__console().split(t).length === 4, [ok], { what: 'the relay checked again' });
   await tabCommand(page, 'Forget Cloudflare Relay');
   await page.waitConsole(/Relay forgotten: Share Project… ▸ Live meets your followers at the public meeting point\./);
   await waitBox(page, 'Cloudflare Relay', ['No Cloudflare relay: your followers find you at the public meeting point.', 'Set Up a Cloudflare Relay…']);
-  assert.equal(await page.eval(() => localStorage.getItem('silinx.collab.relay')), null);
+  assert.deepEqual(await page.eval(() => [localStorage.getItem('silinx.collab.relay'), sessionStorage.getItem('silinx.collab.relay')]), [null, null]);
   assert.ok(!(await page.consoleText()).includes(KEY) && !(await page.consoleText()).includes(key), 'the key in no console line');
   assert.deepEqual(await warnings(page), [`ERROR: Relay: ${refused}.`]);
 }, { url: () => 'about:blank', timeout: 180000 });
@@ -169,6 +183,8 @@ uiTest('#4574 in Portuguese: the Cloudflare Relay box and its window translated;
     '3. O seu endereço, que o Cloudflare mostra no fim:']);
   assert.deepEqual(await stepsOf(page), ['Os ecrãs do Cloudflare, passo a passo', true, PASSOS, [
     'Use o botão Instalar no Cloudflare: Create ▸ Import a repository do Cloudflare só lista os repositórios que já tem. A sua cópia não segue a do Silinx: para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor para o seu repositório, e o Cloudflare instala-o de novo.']]);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay label.relay-remember').textContent),
+    ' Lembrar o retransmissor neste navegador (guardado depois de fechar este separador, onde todas as páginas do endereço deste sítio podem ler a sua chave)');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay button')].map((b) => b.textContent).filter((t) => t !== '✕')), ['Mostrar', 'Copiar', 'Nova Chave', 'Verificar e Guardar', 'Cancelar']);
   await page.fill('.dlg-overlay input[data-field=relay]', relay.url);
   await page.dialogButton('Verificar e Guardar');

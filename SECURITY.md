@@ -348,6 +348,13 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   (128 random bits the relay gives the owner alone when the room opens, compared in constant time, `same()`), the
   owner's client id and the server's token again (`core/collab-room.js`); anything else is refused as a room not
   shared. Its followers stay meanwhile; past the 2 minutes they are told and closed.
+- **A relay of one's own on Cloudflare** (#4574, `packages/silinx-relay-cloudflare`, `web/js/relay-setting.js`): the
+  browser edition keeps its address and its key (the Worker's `RELAY_KEY`, which opens a room there and so spends the
+  user's Cloudflare quota) as it keeps the GitHub sign-in (#4737): in `localStorage` when the set-up window's
+  **Remember the relay in this browser** is ticked (the default; readable by any page of the origin, as its label
+  says), in the tab's `sessionStorage` when unticked; at a `file:` address in the tab only, Remember unticked and
+  disabled, and a relay an older Silinx left in `localStorage` there is moved to the tab when read. The key is in no
+  link, no address and no console line.
 - **A room the owner's page hosts** (the browser edition, `#view=….host`; `#follow=…` in the links made before #4073): the followers reach it over WebRTC. With
   the owner's key in the link, the follower's page looks for the owner at a public meeting point: Trystero's WebTorrent
   trackers (`core/collab-meet.js` `TRACKERS`), and the owner proves itself with a signature only it can make. Without
