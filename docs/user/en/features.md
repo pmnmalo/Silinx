@@ -322,7 +322,9 @@ for Xilinx FPGAs supported by ISE 14.7.
   transitions true at once: the first listed wins), incomplete conditions (the machine stays),
   transitions never taken, outputs never set, invalid names and expressions. *Tables*: transition
   table, classic state table and, for binary/gray, the encoded transition table (state bits, next
-  state bits, outputs; unused codes as don't cares) — CSV export and *Create Boolean Algebra* of the
+  state bits, outputs; unused codes as don't cares). The transition table is also an editor: a
+  row's condition (kept as typed), next state and outputs changed in place, a row (a transition)
+  added or removed, a state added or renamed, each change undone like a drawn one — CSV export and *Create Boolean Algebra* of the
   next-state bits and outputs for the K-map exercise. Its HDL: readable VHDL or Verilog (2- or
   3-process style; changing the language in the editor makes it again in that one) kept in sync
   both ways like ASM charts (an HDL edit that is no longer a plain state machine shows the reason); *Convert to State Diagram (FSM)* reads an HDL module or an
