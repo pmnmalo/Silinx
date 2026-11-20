@@ -412,9 +412,12 @@ export async function programJob(job, req) {
   if (!bp || !familyOfPart(bp.part)) { const w = `unrecognised part '${info.part}' in the bitstream header`; warnings.push(w); job.log(`WARNING: ${w}`); }
   else job.log(`  device family: ${familyName(familyOfPart(bp.part))}`);
   if (/StartUpClk:Cclk|-g StartUpClk:CCLK/i.test(info.rawDesign || '')) { /* not encoded in header; nothing to check */ }
+  // (#4683: a Zynq-7000's chain, TDI first, the ARM DAP then the PL's TAP: openFPGALoader numbers it from TDI, its index 0
+  // the DAP; it picks the chain's one FPGA itself, so no --index-chain: neither its default 0 nor the interface's position)
+  if (o.tool === 'openFPGALoader' && bp && familyOfPart(bp.part) === 'zynq') o.position = null;
   if (o.note) job.log(`NOTE: ${o.note}`);
   if (!o.verified) job.log(`NOTE: the ${o.tool} defaults for this board are not verified on real hardware.`);
-  job.log(`Programming (SRAM, volatile) with ${o.tool}${o.cable ? ` cable=${o.cable}` : ''}${o.device ? ` device=${o.device}` : ''} position=${o.position}`);
+  job.log(`Programming (SRAM, volatile) with ${o.tool}${o.cable ? ` cable=${o.cable}` : ''}${o.device ? ` device=${o.device}` : ''} position=${o.position ?? 'the chain\'s FPGA'}`);
 
   const commands = [];
   let failText = null;

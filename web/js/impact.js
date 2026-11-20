@@ -16,7 +16,8 @@ import { vendorFlashText } from '/core/vendor-flash.js';
 import { refusedProject, isTrusted } from '/core/trust.js';
 import { noWebUsb } from '/core/webusb-support.js';
 
-const roleOf = name => (/^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
+// (#4683: a Zynq-7000's ARM DAP, the processing system's debug port, kept in BYPASS)
+const roleOf = name => (/^arm_dap/i.test(name) ? 'dap' : /^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
 
 export function mountImpact(el) {
   const page = h('div', { class: 'page' });
@@ -67,7 +68,7 @@ export function mountImpact(el) {
       const dev = h('div', { class: `impact-dev${i === selPos ? ' sel' : ''}`, title: d.role === 'prom' ? 'Platform Flash PROM: holds the design across power cycles' : d.role === 'fpga' ? 'FPGA (configuration is lost at power-off)' : '' },
         h('div', { class: 'chipbox' }, d.name.toUpperCase()),
         h('div', {}, file && i === selPos ? h('b', {}, bitfile.value.split('/').pop() || '(no file)') : file ? h('span', {}, file.split('/').pop()) : h('span', { class: 'bypass' }, 'bypass')),
-        h('div', { style: { color: 'var(--grey-6)', fontSize: '11px' } }, `${d.role === 'prom' ? 'PROM' : d.role === 'fpga' ? 'FPGA' : d.role} · position ${i + 1}`));
+        h('div', { style: { color: 'var(--grey-6)', fontSize: '11px' } }, `${d.role === 'prom' ? 'PROM' : d.role === 'fpga' ? 'FPGA' : d.role === 'dap' ? 'ARM DAP' : d.role} · position ${i + 1}`));
       dev.addEventListener('click', () => selectDevice(i));
       chainHost.append(dev);
     });

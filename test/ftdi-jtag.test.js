@@ -65,6 +65,29 @@ test('an Artix-7 configured with a .bit: the bytes from its sync word taken, DON
   assert.equal(n.st.dev.done, true);
 });
 
+// (#4683) a Zynq-7000's chain in cascade: TDI, the ARM DAP, the PL's TAP, TDO (UG585); the PL configured as an Artix-7, the
+// DAP in BYPASS throughout (each of its IR updates 1111), one bypass bit after the PL's in every DR shift
+test('#4683 a Zynq-7000 (the Zybo Z7\'s, the Arty Z7\'s): its chain scanned, the ARM DAP and the PL; the PL configured with the DAP in BYPASS', async () => {
+  const s = logOf();
+  assert.deepEqual(await scanFtdi(ftdiJtagBoard({ device: 'xc7z020', dap: true }).usb, { cable: 'digilent', log: s.log }),
+    { devices: [{ name: 'arm_dap', idcode: 0x4ba00477, kind: 'dap' }, { name: 'xc7z020', idcode: 0x23727093, kind: 'fpga' }] });
+  assert.deepEqual(s.lines.slice(1), ['Position 1: ARM_DAP (IDCODE 0x4ba00477)', 'Position 2: XC7Z020 (IDCODE 0x23727093)']);
+  for (const [part, idcode] of [['xc7z020', 0x03727093], ['xc7z010', 0x03722093]]) {
+    const { usb, st } = ftdiJtagBoard({ device: part, dap: true });
+    const bit = xc7Bitstream(idcode), l = logOf();
+    assert.deepEqual(await programFtdiXilinx(usb, bit, opts({ log: l.log, part })), { fpga: part });
+    assert.equal(st.dev.done, true, part);
+    assert.deepEqual(st.dev.config, bit.subarray(20), `${part}: the bytes from the sync word, none lost to the DAP's bypass bit`);
+    noWarnings(l.lines);
+    assert.deepEqual(l.lines.slice(1, 3), [`JTAG chain: ARM_DAP → ${part.toUpperCase()}`, 'JPROGRAM: clearing the configuration']);
+    assert.ok(st.dapIrs.length > 0 && st.dapIrs.every(ir => ir === 0x0f), `the DAP's instructions: ${st.dapIrs}`);
+  }
+  // (a bitstream for the other part: refused before JPROGRAM)
+  const z = ftdiJtagBoard({ device: 'xc7z020', dap: true }), l = logOf();
+  await assert.rejects(programFtdiXilinx(z.usb, xc7Bitstream(0x03722093), opts({ log: l.log, part: 'xc7z010' })), /the board's FPGA is a XC7Z020, the bitstream is for a XC7Z010/);
+  assert.equal(z.st.dev.done, false);
+});
+
 test('an Artix-7\'s errors: a bitstream for another part, one the FPGA refuses, INIT never back, no MPSSE, the board in use', async () => {
   await assert.rejects(programFtdiXilinx(ftdiJtagBoard({ device: 'xc7a35t' }).usb, xc7Bitstream(), opts({ part: 'xc7a100t' })),
     /^Error: FTDI USB: the board's FPGA is a XC7A35T, the bitstream is for a XC7A100T$/);

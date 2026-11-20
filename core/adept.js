@@ -166,6 +166,9 @@ const JTAG_DEVICES = [
   [0x05044093, 'xcf01s', 8, 'prom'], [0x05045093, 'xcf02s', 8, 'prom'], [0x05046093, 'xcf04s', 8, 'prom'],
   [0x0362e093, 'xc7a15t', 6, 'fpga'], [0x0362d093, 'xc7a35t', 6, 'fpga'], [0x0362c093, 'xc7a50t', 6, 'fpga'],
   [0x03632093, 'xc7a75t', 6, 'fpga'], [0x03631093, 'xc7a100t', 6, 'fpga'], [0x03636093, 'xc7a200t', 6, 'fpga'],
+  // (#4683) a Zynq-7000's chain in cascade (its boards' mode): TDI, the ARM DAP (the processing system's debug port, IR of 4
+  // bits, ARM's IDCODE), the PL's TAP (configured as an Artix-7 is, UG470; the chain UG585's), TDO; the DAP left in BYPASS when the PL is configured
+  [0x03722093, 'xc7z010', 6, 'fpga'], [0x03727093, 'xc7z020', 6, 'fpga'], [0x0ba00477, 'arm_dap', 4, 'dap'],
   [0x1100481b, 'gw1nr-9c', 8, 'fpga', 0xffffffff],
   // (the ULX3S's ECP5, core/ft231x-jtag.js: Lattice's top bits tell the parts apart, kept; core/open-bitstream.js ECP5_IDCODES)
   ...Object.entries(ECP5_IDCODES).map(([name, id]) => [id, name, 8, 'fpga', 0xffffffff]),

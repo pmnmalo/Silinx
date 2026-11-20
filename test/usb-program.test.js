@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { programUsb, scanUsb, usbOf, usbTarget } from '../core/usb-program.js';
-import { findBoard } from '../core/devices.js';
+import { findBoard, resolveBoard } from '../core/devices.js';
 import { ftdiJtagBoard, xc7Bitstream } from './fixtures/ftdi-jtag-sim.js';
 import { ftdiBoard, ice40Image } from './fixtures/ftdi-sim.js';
 import { SimAdeptBoard } from './fixtures/adept-sim.js';
@@ -35,6 +35,21 @@ test('the Basys 3: a .bit through its Digilent FT2232H (JTAG), the FPGA configur
   const n = ftdiJtagBoard({ device: 'xc7a100t' });
   await assert.rejects(programUsb({ board: B('nexys-a7'), device: { part: 'xc7a35t' }, file: 'build/top.bit', data: xc7Bitstream(), getUsb: chooser(n.usb).getUsb }),
     /^Error: FTDI USB: the board's FPGA is a XC7A100T, the bitstream is for a XC7A35T$/);
+});
+
+// (#4683) the Zybo Z7 and the Arty Z7: their Digilent FT2232H as the Basys 3's, the chain the ARM DAP and the PL; the PL configured, the Z7-10's too
+test('#4683 the Zybo Z7 and the Arty Z7: a .bit through their Digilent FT2232H (JTAG), the PL configured past the ARM DAP; the FTDI device asked for', async () => {
+  for (const id of ['zybo-z7', 'arty-z7']) for (const [variant, part, idcode] of [['20', 'xc7z020', 0x03727093], ['10', 'xc7z010', 0x03722093]]) {
+    const board = B(id), device = resolveBoard(id, { variant }).device;
+    const { usb, st } = ftdiJtagBoard({ device: part, dap: true }), c = chooser(usb), l = logOf();
+    assert.equal(usbOf(board), 'digilent');
+    const r = await programUsb({ board, device, file: 'build/top.bit', data: xc7Bitstream(idcode), getUsb: c.getUsb, log: l.log });
+    assert.deepEqual(r, { fpga: part });
+    assert.equal(st.dev.done, true, part);
+    assert.deepEqual(c.asked, [[0x0403, [{ vendorId: 0x0403, productId: 0x6010 }]]]);
+    assert.deepEqual(l.lines.filter(x => /WARNING|ERROR/.test(x)), []);
+    assert.ok(l.lines.includes(`JTAG chain: ARM_DAP → ${part.toUpperCase()}`), l.lines.join('\n'));
+  }
 });
 
 test('the Tang Nano 9K: a .fs into its SRAM through the BL702; another device\'s refused, forced: the FPGA refuses it', async () => {
