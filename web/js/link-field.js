@@ -16,7 +16,8 @@ import { qrSvg } from '/core/qr.js';
  *  generated }. `label` Generate's label; `row`: its buttons in a row below a box as tall as the link (`expected()`, the
  *  length of the link Generate will make, the box's before; `maxLines`: at most so many lines, scrolled beyond, #4612). `field` its data-field; `generate()` makes the link (#4073: a link exists only once Generate is
  *  clicked; it resolves to the link, or null: not made, said by the window); `onCopy(link)` copies it (and says so);
- *  `title` the QR code's window's. set(link) shows a link made (Generate then disabled); set(null) none, Generate on. */
+ *  `title` the QR code's window's. set(link) shows a link made (Generate then disabled); set(null) none, Generate on.
+ *  No `generate`: no Generate (a link that exists already, set(link): the Sharing menu's Show Sharing Link…, #4851). */
 export function linkField({ field = 'link', onCopy, generate, title = 'QR Code', label = 'Generate', row = false, expected = () => 0, maxLines = Infinity } = {}) {
   let link = null, shown = false, busy = false;
   const input = h('input', { type: 'password', readonly: '', class: 'link-out', 'data-field': field, 'data-no-i18n': '', autocomplete: 'off', spellcheck: false });
@@ -76,7 +77,7 @@ export function linkField({ field = 'link', onCopy, generate, title = 'QR Code',
   };
   draw();
   return {
-    el: h('div', { class: row ? 'link-field link-row' : 'link-field' }, input, full, h('div', { class: 'link-buttons' }, make, copy, show, qrButton)),
+    el: h('div', { class: row ? 'link-field link-row' : 'link-field' }, input, full, h('div', { class: 'link-buttons' }, generate ? make : null, copy, show, qrButton)),
     get link() { return link; },
     set(l) { link = l || null; input.value = full.value = link || ''; draw(); },
     fit,

@@ -241,6 +241,8 @@ export const editorsLink = () => share?.editLink || null;
 const copyLink = (link = share.link) => { writeClip('text', link); collabLog('Shared project\'s link copied: whoever opens it follows it live, read only.', 'ok'); };
 const copyEditorLink = (editLink = share.editLink) => { writeClip('text', editLink); collabLog('Shared project\'s editors\' link copied: whoever opens it edits its text files and drawings with you.', 'ok'); };
 const addUser = (module = null) => { const s = share; if (s) import('./collab-users.js').then(m => m.addUserDialog(s, module)); };
+// (the share's links, Viewer's or Editor's, shown with Copy, Show, Show QR Code: #4851, in place of Copy View Link and Copy Editor Link)
+const showLinks = () => { const s = share; if (s) import('./collab-users.js').then(m => m.sharingLinkDialog(s)); };
 // a participant made an editor or a viewer (#3997): the editors' key given to them, or renewed (the link with it)
 async function setRole(peer, role) {
   const s = share;
@@ -253,8 +255,7 @@ async function setRole(peer, role) {
 }
 // (a participant's role: the Collaboration tab's Viewer | Editor on their row, #4646, setPresenceRoles)
 const commands = () => [
-  { label: 'Copy View Link', action: () => copyLink() },
-  { label: 'Copy Editor Link', action: () => copyEditorLink() },
+  { label: 'Show Sharing Link…', action: () => showLinks() },
   { label: 'Add a User…', action: () => addUser() },
   { label: 'Stop Sharing', action: () => stopSharing() },
 ];

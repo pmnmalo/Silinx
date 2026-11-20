@@ -1,5 +1,5 @@
 // UI: a shared project's text files edited live (#3182, phase 2), the owner and an editor in one test, in both
-// interfaces: the owner shares (its editors' link, Copy Editor Link); the editor opens that link and edits a text file
+// interfaces: the owner shares (its editors' link, Show Sharing Link…); the editor opens that link and edits a text file
 // with the owner at once (their text editors bound to the shared text: the same text on both sides, each one's change
 // in it); each one's Undo undoes their own change only; the owner's page writes the merged text to the disk; a large
 // paste reaches the owner in pieces (no connection lost); the owner renames a file the editor has open; the owner's
@@ -71,13 +71,13 @@ uiTest('#3182 an editor edits a text file live with the owner: the same text on 
     await page.eval(async () => { await (await import('/js/api.js')).api.renameFile('Live', 'src/pass1.vhd', 'src/pass2.vhd'); });
     await ep.waitConsole(/^src\/pass1\.vhd was deleted by Ana: closed\.$/m, { timeout: 15000 });
     await ep.waitFor(() => window.SilinxApp.S.fileTree.includes('src/pass2.vhd'), [], { what: 'the renamed file at the editor\'s' });
-    // the owner's presence, in Portuguese: the editor as an editor, Copy Editor Link and Add a User… (#3996) among its
+    // the owner's presence, in Portuguese: the editor's Viewer | Editor (#4849), Show Sharing Link… (#4851) and Add a User… (#3996) among its
     // commands (no role command: the Collaboration tab's Viewer | Editor, #4646)
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     await page.click('.collab-presence .collab-btn');
     await page.waitForSelector('body > .menu-popup');
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi')].map((m) => [m.querySelector('.lbl').textContent, m.querySelector('.sc').textContent])),
-      [['Ana', 'você'], ['Rui', 'editor'], ['Copiar Ligação de Visualização', ''], ['Copiar Ligação de Editor', ''], ['Adicionar um Utilizador…', ''], ['Parar de Partilhar', '']]);
+      [['Ana', 'você'], ['Rui', 'EspectadorEditor'], ['Mostrar a Ligação de Partilha…', ''], ['Adicionar um Utilizador…', ''], ['Parar de Partilhar', '']]);
     await page.key('Escape');
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
     // (#3355) the owner's project, trusted, untrusted by the editor's first change written: said once, with its button

@@ -352,7 +352,7 @@ uiTest('#4215 the Collaboration tab\'s Sharing: Share a Copy…, Share Live…, 
   await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.leftTab('collab');
-  const OWNER = ['Copy View Link', 'Copy Editor Link', 'Add a User…', 'Stop Sharing'];
+  const OWNER = ['Show Sharing Link…', 'Add a User…', 'Stop Sharing'];
   // (#4643: the mode at the top, this server's relay; each follower's path beside them, its relay's room: through it)
   const MODE = 'Live via the Silinx server\'s relay';
   await waitBox(page, 'Sharing', [MODE, 'Sharing', 'A Ana you', 'Share a Copy…', ...OWNER], 'sharing');

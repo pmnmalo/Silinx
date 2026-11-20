@@ -27,7 +27,7 @@ export const COLLAB_PT = {
   'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).':
     'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e o que o seu dono faz (os seus documentos, vistas, simulações, emuladores e processos).',
   // (editors, #3182: web/js/collab-share.js)
-  'Copy Editor Link': 'Copiar Ligação de Editor', 'Copy View Link': 'Copiar Ligação de Visualização', 'editor': 'editor',
+  'Show Sharing Link…': 'Mostrar a Ligação de Partilha…', 'Sharing Link': 'Ligação de Partilha', 'editor': 'editor',   // (#4851)
   // (and every drawing: state diagrams, truth tables, ASM charts, Petri nets, schematics, #3183)
   'Anyone with the editors\' link edits its text files and drawings with you, live.':
     'Quem tiver a ligação de editores edita os ficheiros de texto e os desenhos consigo, em direto.',
@@ -75,6 +75,7 @@ export const COLLAB_PT = {
   'Add a User…': 'Adicionar um Utilizador…', 'Add a User': 'Adicionar um Utilizador', 'Connect': 'Ligar', 'Take a Code…': 'Receber um Código…',
   'Role:': 'Papel:', 'Viewer': 'Espectador', 'Editor': 'Editor',
   'Give them the link of their role: they open it in Silinx.': 'Dê-lhe a ligação do seu papel: abre-a no Silinx.',
+  'The links of this share: give each user the link of their role; they open it in Silinx.': 'As ligações desta partilha: dê a cada utilizador a ligação do seu papel; abre-a no Silinx.',
   'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.':
     'Um editor edita os ficheiros de texto e os desenhos consigo, em direto. Dê esta ligação só a quem lhos confia.',
   'A viewer follows the project live, read only: its files and drawings, and what you do (your documents and cursor, your views, simulations, emulators and runs).':
