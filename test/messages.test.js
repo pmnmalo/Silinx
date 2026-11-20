@@ -200,6 +200,8 @@ test('#4729 the application\'s own messages state their source: logError / logWa
   for (const [fn, cls] of [['logError', 'err'], ['logWarning', 'warn'], ['logInfo', 'info']]) {
     assert.match(con, new RegExp(`export function ${fn}\\(text\\) \\{\\n  log\\(\`[A-Z]+: \\$\\{t\\(text\\)\\}\`, '${cls}', \\{ src: 'app' \\}\\);`), fn);
   }
+ // (a command's failure, warning, information, #4747: the application's too)
+  assert.match(con, /function commandLines\(tag, cls, title, message\) \{\n[^\n]*\n[^\n]*log\([^\n]*, cls, \{ src: 'app' \}\);\n\}/);
   assert.match(con, /export const appLog = \(text, cls = '', opts = \{\}\) => log\(text, cls, \{ \.\.\.opts, src: 'app' \}\);/);
   assert.match(read('web/js/project.js'), /appLog\(untrustedNotice\(name, S\.project\), 'info', \{ action: trustAction\(name\) \}\)/);
   // the modules of the application's own lines, whatever ran last; the logic analyzer's: Implementation's
@@ -207,7 +209,7 @@ test('#4729 the application\'s own messages state their source: logError / logWa
   for (const f of ['link-hash.js', 'project-zip-dialogs.js', 'wizards.js']) {
     const src = read(`web/js/${f}`);
     assert.doesNotMatch(src, /\bapp\.log\(/, f);
-    assert.match(src, /import \{ appLog \} from '\.\/console\.js';/, f);
+    assert.match(src, /import \{ appLog(, \w+)* \} from '\.\/console\.js';/, f);
   }
   assert.match(read('web/js/capture-ui.js'), /const log = \(text, cls = '', opts = \{\}\) => consoleLog\(text, cls, \{ \.\.\.opts, src: 'impl' \}\);/);
   assert.match(read('web/js/messages.js'), /app\.log\(text, cls, \{ diag: false, src \}\);/);

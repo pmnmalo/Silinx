@@ -112,10 +112,9 @@ uiTest('#1214 Tasks ▸ Files: Add to Project… (the folder\'s files not in the
   assert.deepEqual(await bar(page), { labels: ['Add to Project…', 'Add Copy to Project…'], enabled: [true, true], whole: true, above: true });
   // every file in the project: said so
   await page.click('#task-files-bar button:nth-child(1)');
-  await page.waitDialog('Add to Project');
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay').textContent), /Every file of the project folder is in the project\./);
-  await page.dialogButton('OK');
-  await page.waitNoDialog();
+  // (in the console, no box, #4747)
+  await page.waitConsole(/^INFO: Add to Project: Every file of the project folder is in the project\.$/m);
+  assert.equal(await page.dialogCount(), 0);
   // a file removed from the project: listed, chosen, added back
   await fileMenu(page, 'src/b.v', 'Remove from Project');
   await page.waitDialog('Remove Source');

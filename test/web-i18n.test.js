@@ -93,8 +93,8 @@ test('t(): exact strings, patterns, surrounding whitespace, unknown text unchang
 // errors a dialog's check returns (a sentence)
 const LABEL_FORMS = [/\blabel: '([^'$`]+)'/g, /\btitle: '([^'$`]+)'/g, /\bfield\('([^'$`]+)'/g, /\bplaceholder: '([^'$`]+)'/g,
   /\bh\('(?:h2|h3|h4|th|label|button|summary|caption)', \{[^{}]*\}, '([^'$`]+)'\)/g,
-  /\btoast\(\s*'([^'$`]+)'/g, /\b(?:log(?:Error|Warning|Info)|message)\(\s*'([^'$`]+)'/g, /\b(?:alertDlg|confirmDlg|promptDlg)\(\s*'([^'$`]+)'/g,
-  /\b(?:alertDlg|confirmDlg|promptDlg)\(\s*(?:'[^'$`]*'|[\w.]+),\s*'([^'$`]+)'/g,
+  /\btoast\(\s*'([^'$`]+)'/g, /\b(?:log(?:Error|Warning|Info)|message)\(\s*'([^'$`]+)'/g, /\b(?:command(?:Error|Warning|Info)|confirmDlg|promptDlg)\(\s*'([^'$`]+)'/g,
+  /\b(?:command(?:Error|Warning|Info)|confirmDlg|promptDlg)\(\s*(?:'[^'$`]*'|[\w.]+),\s*'([^'$`]+)'/g,
   /\bh\('(?:div|p|span|option|b|small|em|strong|li|legend|td)', \{(?![^{}]*no-i18n)[^{}]*\}, '([^'$`]+)'\)/g,
   /\btextContent = '([^'$`]+)'/g, /\breturn '([A-Z][^'$`]* [^'$`]*[.!?…])';/g];
 function labelsOf(src, add) {
@@ -110,9 +110,9 @@ function sourceLabels() {
 }
 
 test('#3539 the label scan reaches toasts, dialogs, plain elements, textContent and a dialog\'s returned error', () => {
-  const src = `toast('Use Ctrl+V to paste', 'info'); alertDlg('Rename Folder', 'A folder cannot be moved into itself.');
+  const src = `toast('Use Ctrl+V to paste', 'info'); commandError('Rename Folder', 'A folder cannot be moved into itself.');
     confirmDlg('Replace Project',
-      'x'); alertDlg(title, 'Select a top-level module first.', 'warn'); h('option', { value: '' }, '(no board / generic JTAG)');
+      'x'); commandWarning(title, 'Select a top-level module first.'); h('option', { value: '' }, '(no board / generic JTAG)');
     h('td', { 'data-no-i18n': '' }, 'integer'); busy.textContent = 'Simulating the current design…';
     if (!to) return 'Enter a file path inside the project.'; return 'sim';`;
   const found = [];
