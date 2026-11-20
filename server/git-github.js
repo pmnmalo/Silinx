@@ -38,11 +38,15 @@ const render = json => `${JSON.stringify(json, null, 2)}\n`;
 const exists = name => fs.existsSync(path.join(P.projectDir(name), P.PROJECT_FILE));
 
 // what a project was at its last commit or pull: one file per project, one folder per workspace (the same project name in
-// two workspaces is two projects)
-const metaFile = async name => {
+// two workspaces is two projects); a project's name only (P.projectDir's message for any other), and the check after it
+// says so where CodeQL's js/path-injection sees it, as projectDir's (#4866)
+export const metaFile = async name => {
+  P.projectDir(name);
   const { configDir } = await import('./toolchain.js');
   const ws = crypto.createHash('sha256').update(path.resolve(P.workspaceDir())).digest('hex').slice(0, 16);
-  return path.join(configDir(), 'github-git', ws, `${P.projectDir(name) && name}.json`);
+  const dir = path.resolve(configDir(), 'github-git', ws), file = path.resolve(dir, `${name}.json`);
+  if (!file.startsWith(dir + path.sep)) throw new P.HttpError(400, `invalid project name '${name}'`);
+  return file;
 };
 /** A project renamed (#4641): its record follows it (none: nothing done). */
 export async function moveGithubMeta(from, to) {
