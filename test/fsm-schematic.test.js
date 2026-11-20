@@ -49,6 +49,7 @@ function stepped(model, cycles = 200) {
   const m = normalizeFsm(model);
   const { doc, error } = fsmSchematic(m);
   assert.equal(error, undefined);
+  assert.deepEqual(netlist(doc).diagnostics, [], 'no schematic diagnostic');
   const r = buildLiveSim(doc, {});
   assert.deepEqual([r.ok, r.errors, r.warnings], [true, [], []], 'simulated, no warning');
   const live = r.live;
