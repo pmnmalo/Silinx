@@ -26,6 +26,7 @@ import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } fro
 import { langOfPath } from '../../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../../core/project-entries.js';
 import { expiredTrash } from '../../core/trash.js';
+import { downgradeRefusal } from '../../core/doc-format.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -674,6 +675,9 @@ export function projectOps(getStore, examples = {}) {
       // (a name by the import gate's rules, as the local server's, #3414; build/'s files by the rest of their path)
       const gated = normalizePath(/^build\//.test(path) ? `b${path.slice(5)}` : path);   // (build/x as b/x)
       if (gated.reason) fail(`'${path}': not written: ${gated.reason}`);
+      // (a drawing a newer Silinx saved never written over in an older format, as the local server's, #4756)
+      const refused = downgradeRefusal(path, p.files[path] ?? null, text);
+      if (refused) throw Object.assign(new Error(refused), { status: 409 });
       await S().writeFile(name, path, text);
       const json = clone(p.json);
       if (registerWritten(json, path)) await S().saveJson(name, json);   // (core/project-entries.js, as the server's, #4733)

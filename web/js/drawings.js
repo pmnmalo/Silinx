@@ -9,7 +9,8 @@ import { modulesFromLibrary } from '/core/schdoc.js';
 import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
-import { log, logError } from './console.js';
+import { log, logError, logWarning } from './console.js';
+import { newerDrawing } from '/core/doc-format.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { getNotation } from './notation.js';
 import { editorProblems } from './editor-problems.js';
@@ -35,7 +36,18 @@ export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
 // (its Try it there, a schematic's too: the owner's followed, or the follower's own, #4244)
-const followOnly = (path = null) => (following() && !(path && editsDrawingHere(path)) ? { readOnly: true, simulate: true, banner: followNotice() } : {});
+// a drawing a newer Silinx saved (#4756, core/doc-format.js): read only too, its notice at the end of its toolbar and
+// why in the console's warnings, so that it is not saved in the older format, losing what that Silinx added
+const followOnly = (path = null, model = null) => {
+  if (following() && !(path && editsDrawingHere(path))) return { readOnly: true, simulate: true, banner: followNotice() };
+  return newerOnly(path, model);
+};
+export function newerOnly(path, model) {
+  const n = path && newerDrawing(path, model);
+  if (!n) return {};
+  logWarning(n.message);
+  return { readOnly: true, simulate: true, banner: h('span', { class: 'gen-banner read-only', 'data-newer-notice': '' }, 'Read-only, saved by a newer Silinx') };
+}
 
 // ---- ASM
 export async function openAsm(path) {
@@ -55,7 +67,7 @@ export async function openAsm(path) {
       // (its problems in the console's Errors and Warnings, a click selecting the box, #2730)
       const problems = editorProblems({ file: path, tool: 'ASM', goto: (x) => { activateDoc(d); if (x.nodeId) ed.focusNode(x.nodeId); } });
       const ed = mountAsmEditor(host, {
-        model, ...followOnly(path),
+        model, ...followOnly(path, model),
         onChange: () => setDirty(d, true),
         onProblems: (diags) => problems.set(diags),
         onValidate: (diags) => problems.log(diags),
@@ -200,7 +212,7 @@ export async function openFsm(path) {
       const setProblems = (diags) => { last = diags; problems.set(inLanguage(diags)); };
       const offLang = onLanguageChange(() => setProblems(last));
       const ed = mountFsmEditor(host, {
-        model, ...followOnly(path),
+        model, ...followOnly(path, model),
         onChange: () => { setDirty(d, true); refreshFsmSchematic(path, ed.getModel()); },   // (its schematic, when open, follows: #4910)
         linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
@@ -347,7 +359,7 @@ export async function openPetri(path) {
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),   // (Check: in the Console too, #2803)
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
-        ...followOnly(path),
+        ...followOnly(path, model),
       });
       d.petriEditor = ed;
       return {
@@ -411,7 +423,7 @@ export async function openCircuit(path) {
         hdl: circuitModules,   // (a KiCad part modelled by a module of the project, #4283, #4284)
         importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null, importCatalogue: KC.importCatalogue, kicadExport: { ics: KX.exportIcsDialog, pkg: KX.exportPackageDialog },   // (Import KiCad Part…, #4281;
         // Browse KiCad Libraries…, #4285; the KiCad catalogue, #4305; the ⋮ menu's KiCad exports, #4282)
-        ...followOnly(path),
+        ...followOnly(path, model),
       });
       d.circuitEditor = ed;
       return {
@@ -479,8 +491,9 @@ export async function openSch(path) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
       const save = async m => { await api.writeFile(S.project.name, path, JSON.stringify(m, null, 1)); setDirty(d, false); };
+      const only = followOnly(path, doc);   // (followed, or saved by a newer Silinx, #4756)
       const ed = mountSchEditor(host, {
-        doc, modules, device: projectPart(), ...followOnly(path),
+        doc, modules, device: projectPart(), ...only,
         simSources: () => S.sources,   // live simulation: bodies of the module symbols
         onChange: () => setDirty(d, true),
         // (its drawing when it has one, as its Design row's double-click, else its HDL, #2046)
@@ -494,6 +507,7 @@ export async function openSch(path) {
       });
       d.schEditor = ed;
       if (following()) ed.setBanner(followNotice(path));
+      else if (only.banner) ed.setBanner(only.banner);
       return {
         save: async () => {
           const m = ed.getDoc();

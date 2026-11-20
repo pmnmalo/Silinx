@@ -25,6 +25,7 @@ import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../core/project-entries.js';
 import { trashTime, expiredTrash } from '../core/trash.js';
+import { formatVersion, downgradeRefusal } from '../core/doc-format.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
@@ -658,6 +659,11 @@ export async function writeFile(name, rel0, text) {
   await withProjectLock(name, async () => {
     await requireProject(name);
     if ((await fs.stat(full).catch(() => null))?.isDirectory()) throw new HttpError(400, `'${rel}' is a folder, not a file`);
+    // (a drawing a newer Silinx saved never written over in an older format: what it added would be lost, #4756)
+    if (formatVersion(rel) !== null) {
+      const refused = downgradeRefusal(rel, await fs.readFile(full, 'utf8').catch(() => null), text);
+      if (refused) throw new HttpError(409, refused);
+    }
     try {
       await fs.mkdir(path.dirname(full), { recursive: true });
       await writeAtomic(full, text, dir);   // (a reader, or a crash, never sees a half-written / empty file)
