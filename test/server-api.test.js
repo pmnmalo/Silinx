@@ -164,6 +164,28 @@ test('projects: invalid names, duplicates and unknown templates', async () => {
 // files
 // ------------------------------------------------------------------------------------------------
 
+test('files: a body that is neither text nor JSON with a string text is refused, the file kept (#4727)', async () => {
+  await call('POST', '/projects', { name: 'Body' });
+  await call('PUT', '/projects/Body/file?path=src/top.v', 'module top; endmodule\n');
+  const bad = [
+    [{}, {}],                                                    // JSON without text
+    [{ text: 42 }, {}],                                          // text not a string
+    [{ text: null }, {}],
+    ['module x; endmodule\n', { 'content-type': 'application/octet-stream' }],
+    [new Uint8Array([109, 111]), { 'content-type': 'application/zip' }],
+  ];
+  for (const [body, headers] of bad) {
+    const r = await call('PUT', '/projects/Body/file?path=src/top.v', body, headers);
+    assert.equal(r.status, 400, JSON.stringify(body));
+    assert.equal(r.body.error, 'text: the whole text of the file');
+  }
+  const r = await call('PUT', '/projects/Body/file?path=src/top.v');   // no body at all
+  assert.equal(r.status, 400);
+  assert.equal((await call('GET', '/projects/Body/file?path=src/top.v')).body, 'module top; endmodule\n');
+  assert.equal(await fs.readFile(path.join(P.projectDir('Body'), 'src/top.v'), 'utf8'), 'module top; endmodule\n');
+  assert.equal(fss.existsSync(path.join(P.projectDir('Body'), 'src/none.v')), false);
+});
+
 test('files: write (text and JSON bodies) registers HDL with a role, read back, sources', async () => {
   await call('POST', '/projects', { name: 'Files' });
   let r = await call('PUT', '/projects/Files/file?path=src/top.v', 'module top; endmodule\n');
@@ -174,7 +196,7 @@ test('files: write (text and JSON bodies) registers HDL with a role, read back, 
   await call('PUT', '/projects/Files/file?path=src/tb_top.vhd', 'entity tb_top is end;\n');
   await call('PUT', '/projects/Files/file?path=src/top_tb.v', 'module top_tb; endmodule\n');
   await call('PUT', '/projects/Files/file?path=notes/readme.txt', 'hello\n');
-  await call('PUT', '/projects/Files/file?path=src/empty.v', {});   // JSON without text: empty file
+  await call('PUT', '/projects/Files/file?path=src/empty.v', '');   // an empty text body: an empty file
   await call('PUT', '/projects/Files/file?path=src/top.v', 'module top(); endmodule\n');   // rewrite: registered once
   const pj = await P.readProject('Files');
   assert.deepEqual(pj.files, [

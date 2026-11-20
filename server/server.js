@@ -219,7 +219,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     res.type('text/plain').send(text);
   }));
   api.put('/projects/:p/file', wrap(async req => {
-    const body = typeof req.body === 'string' ? req.body : (req.body?.text ?? '');
+    // a text body, or JSON's text; anything else (no content type, octet-stream, JSON without text) is P.writeFile's
+    // 400, never an empty file (#4727)
+    const body = typeof req.body === 'string' ? req.body : req.body?.text;
     await P.writeFile(req.params.p, req.query.path, body);
     return { ok: true };
   }));
