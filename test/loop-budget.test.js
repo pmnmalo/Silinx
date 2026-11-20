@@ -94,12 +94,14 @@ after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 test('#3525 MCP: check_syntax\'s error of a constant function\'s loop; simulate stopped at its timeout_s inside a process\'s run', async () => {
   assert.equal((await call('new_project', { name: 'b' })).isError, false);
   assert.equal((await call('write_file', { project: 'b', path: 'src/t.vhd', text: vhdl("integer'high").text })).isError, false);
+  const diagText = d => `ERROR:${d.tool} - "${d.file}" Line ${d.line}: ${d.message}`;
   const errors = `ERROR:HDLCompiler - "src/t.vhd" Line 6: ${MSG}; ERROR:HDLCompiler - "src/t.vhd" Line 13: 'c' is not declared`;
+  // (set_top sets a module with errors, as the interface's Set as Top Module, #4733: check_syntax says them)
   const st = await call('set_top', { project: 'b', top: 't' });
-  assert.deepEqual([st.isError, st.text], [true, `set_top: <t> does not elaborate: ${errors}`]);
+  assert.deepEqual([st.isError, st.text], [false, 'b: top t, test bench (none).']);
   const cs = await call('check_syntax', { project: 'b', top: 't' });
   assert.equal(cs.isError, false, cs.text);
-  assert.ok(cs.text.includes(`"src/t.vhd" Line 6: ${MSG}`), cs.text);
+  assert.deepEqual([cs.data.errors.map(diagText).join('; '), cs.data.warnings], [errors, []]);
   // a run of about 4M iterations of a few statements each (several seconds), then a wait, again and again
   const tb = `entity tb is end tb;\narchitecture a of tb is\nbegin\n  process\n    variable s, u, v : integer := 0;\n  begin\n    for i in 1 to 4000000 loop\n      s := s + 1; u := s mod 7; v := u + s; u := v - s; v := u;\n    end loop;\n    wait for 1 ns;\n  end process;\nend a;\n`;
   await call('write_file', { project: 'b', path: 'sim/tb.vhd', text: tb });

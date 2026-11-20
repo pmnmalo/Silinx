@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { hdlLangOf, langOfPath, isConstraintsFile, roleOfPath, HDL_RE, C_RE } from '../core/file-kinds.js';
-import { fileEntry, addToProject, addsToProject, removeFromProject, registerWritten, declares, missingTops } from '../core/project-entries.js';
+import { fileEntry, addToProject, addsToProject, removeFromProject, registerWritten, declares, missingTops, topRefusal } from '../core/project-entries.js';
 import { editablePath } from '../core/collab-doc.js';
 
 const FORMATS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
@@ -89,4 +89,10 @@ test('missingTops: kept while the project has it; else the one root left, none w
 test('the live share: an editor may edit every family\'s constraints file', () => {
   for (const f of FORMATS) assert.equal(editablePath(`src/pins.${f}`), true, f);
   assert.equal(editablePath('src/a.sch.json'), false);
+});
+
+test('topRefusal: a module of the view is set, even with errors; another name refused, the view named', () => {
+  assert.equal(topRefusal('a', false, () => true), null);
+  assert.equal(topRefusal('nothere', false, () => false), 'no entity or module \'nothere\' in the project\'s design sources');
+  assert.equal(topRefusal('tb', true, () => false), 'no entity or module \'tb\' in the project\'s simulation sources');
 });
