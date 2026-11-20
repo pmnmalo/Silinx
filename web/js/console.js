@@ -36,7 +36,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null } =
     startsRun(line);
     el.append(h('div', { class: `ln ${cls}`, ...(src ? { 'data-src': src, 'data-own-src': '' } : {}) }, line));
     if (diag) consoleMessage(line, cls);
-    if (RUN_END.test(line)) { run = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
+    if (RUN_END.test(line)) { consoleRun = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }
   if (action) {
@@ -55,15 +55,15 @@ export function log(text, cls = '', { diag = true, action = null, src = null } =
 // it, and its rerun first drops the entries the previous one gave the Errors / Warnings tabs (a fixed error is not
 // listed again, nor N times after N runs); none before any header, nor after a run's result ("Process … completed /
 // failed / stopped"). An entry of no run listed again replaces the same entry (a refusal said twice: listed once).
-let run = null;
+let consoleRun = null;
 const RUN_HEADER = /^\s*Started : "[^"]+".*$/, RUN_END = /^\s*Process ("[^"]*" (completed|failed|stopped)|(failed|stopped)\b)/;
 // a run's result, never an entry ("Process failed: <the job's error>" is: implement.js's jobLog leaves the error to it)
 const RUN_SUMMARY = /^\s*Process "[^"]*" (completed|failed|stopped)/;
 function startsRun(line) {
   if (!RUN_HEADER.test(line)) return;
-  run = line.trim().replace(/[.\s]+$/, '');
+  consoleRun = line.trim().replace(/[.\s]+$/, '');
   const n = S.diags.length;
-  S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === run));
+  S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === consoleRun));
   lastConsoleDiag = null;
   if (S.diags.length !== n) renderDiagnosticsSoon();
 }
@@ -92,8 +92,8 @@ function consoleMessage(line, cls) {
   if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
   else if (/=== SILINX FAILED/.test(line)) return;
   if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console', run };
-  if (run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
+  const d = { severity, tool, message, file: null, line: 0, source: 'console', run: consoleRun };
+  if (consoleRun === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
   renderDiagnosticsSoon();
