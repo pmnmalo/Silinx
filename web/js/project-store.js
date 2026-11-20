@@ -367,16 +367,27 @@ export function folderStore(root) {
       for (const k of Object.keys(p.files)) if (under(k, path)) delete p.files[k];
       return trashed;
     }),
-    // a file or a folder (copied, then the original removed: a folder handle cannot be moved)
+    // a file or a folder (copied, then the original removed: a folder handle cannot be moved). A copy that fails is
+    // removed, the original as it was; an original that is not removed: a file's copy removed (a file goes at once, so
+    // the original is whole), a folder's copy kept, complete, and said (what is left of the original is, #4724)
     renamePath: (name, from, to) => locked(name, async () => {
       const p = await get(name);
       const dir = await projectDir(name);
       const e = await entryAt(dir, from) || fail(`file '${from}' not found`);
-      if (e.handle.kind === 'directory') {
+      const isDir = e.handle.kind === 'directory';
+      if (isDir) {
         const { parts, last } = split(to);
-        await copyDir(e.handle, await (await dirAt(dir, parts, true)).getDirectoryHandle(last, { create: true }));
+        const parent = await dirAt(dir, parts, true);
+        try { await copyDir(e.handle, await parent.getDirectoryHandle(last, { create: true })); } catch (err) {
+          await parent.removeEntry(last, { recursive: true }).catch(() => {});
+          throw err;
+        }
       } else await writeAt(dir, to, new Uint8Array(await (await e.handle.getFile()).arrayBuffer()));
-      await e.dir.removeEntry(e.name, { recursive: true });
+      try { await e.dir.removeEntry(e.name, { recursive: true }); } catch (err) {
+        if (!isDir) { const c = await entryAt(dir, to); await c?.dir.removeEntry(c.name).catch(() => {}); throw err; }
+        cache.delete(name);
+        fail(`'${from}' was copied to '${to}', but '${from}' could not be removed entirely (${err.message}): the copy is complete, remove what is left of '${from}'`);
+      }
       for (const k of Object.keys(p.files).filter(x => under(x, from))) { const v = p.files[k]; delete p.files[k]; p.files[to + k.slice(from.length)] = v; }
     }),
     // as the server: the project folder goes to <folder>/.trash/<name>-<time> (recoverable)
@@ -388,13 +399,17 @@ export function folderStore(root) {
       cache.delete(name);
     }),
     // Rename Project… (#4641): its folder copied under the new name, then the old one removed (no move of a folder in the
-    // File System Access API); a failure on the way removes the copy, the old project as it was. A change of case alone
-    // (one folder on a case-insensitive disk) through a hidden copy, the old folder made again from it on a failure.
+    // File System Access API); a failure while copying removes the copy, the old project as it was. A complete copy is
+    // never removed (#4724): the old folder's silinx.json goes first (a single file: the old project whole until it is
+    // gone), then the rest; what is left of it when that fails is said, the new project kept. A change of case alone
+    // (one folder on a case-insensitive disk) through a hidden copy, removed only once the project is whole again
+    // under one of its names; kept, and named in the error, when it is the only complete copy.
     renameProject: (from, to) => locked(from, async () => {
       const src = await projectDir(from);
       if (projectNameError(to)) fail(projectNameError(to));
       const caseOnly = from.toLowerCase() === to.toLowerCase();
-      const copy = async (dir, name, json) => {
+      // (fresh: a folder of its own, removed when the copy fails; else a restore over what is there, never removed)
+      const copy = async (dir, name, json, { fresh = true } = {}) => {
         const dst = await root.getDirectoryHandle(name, { create: true });
         try {
           await copyDir(dir, dst);
@@ -409,21 +424,41 @@ export function folderStore(root) {
               await dst.removeEntry(n);
             }
           }
-        } catch (e) { await root.removeEntry(name, { recursive: true }).catch(() => {}); throw e; }
+        } catch (e) { if (fresh) await root.removeEntry(name, { recursive: true }).catch(() => {}); throw e; }
         return dst;
       };
+      // the old folder removed: false when its silinx.json is still there (the old project whole), else true, or the
+      // error that stopped the rest
+      const removeOld = async () => {
+        try { await src.removeEntry(PROJECT_FILE); } catch (e) { if (!notFound(e)) return { kept: e }; }
+        try { await root.removeEntry(from, { recursive: true }); return {}; } catch (e) { return notFound(e) ? {} : { left: e }; }
+      };
       const json = await readJson(src);
+      cache.delete(from); cache.delete(to);
       if (!caseOnly) {
         if (await store.exists(to)) fail(`a project named '${to}' already exists: choose another name`);
         await copy(src, to, json);
-        try { await root.removeEntry(from, { recursive: true }); } catch (e) { await root.removeEntry(to, { recursive: true }).catch(() => {}); throw e; }
-      } else {
-        const tmp = `.rename-${to}-${Date.now()}`, held = await copy(src, tmp, json);
-        await root.removeEntry(from, { recursive: true });
-        try { await copy(held, to, null); } catch (e) { await copy(held, from, null).catch(() => {}); await root.removeEntry(tmp, { recursive: true }).catch(() => {}); throw e; }
-        await root.removeEntry(tmp, { recursive: true }).catch(() => {});
+        const r = await removeOld();
+        if (r.kept) { await root.removeEntry(to, { recursive: true }).catch(() => {}); throw r.kept; }
+        if (r.left) fail(`'${from}' was renamed '${to}', but its old folder could not be removed entirely (${r.left.message}): '${to}' is complete, remove what is left of the folder '${from}'`);
+        return;
       }
-      cache.delete(from); cache.delete(to);
+      const tmp = `.rename-${to}-${Date.now()}`, held = await copy(src, tmp, json);
+      const r = await removeOld();
+      if (r.kept) { await root.removeEntry(tmp, { recursive: true }).catch(() => {}); throw r.kept; }
+      // the project whole again under `to`, else under `from` (over what is left of it); the hidden copy removed only then
+      let made = null, cause = r.left;
+      for (const name of r.left ? [from, to] : [to, from]) {
+        try { made = await copy(held, name, null, { fresh: false }); break; } catch (e) { cause ||= e; }
+      }
+      if (!made) fail(`Rename Project: '${from}' could not be made again (${cause.message}): its complete copy is the folder '${tmp}'`);
+      // (a copy left under the other name, a folder of its own on a case-sensitive disk: removed)
+      for (const name of [from, to]) {
+        const h = await root.getDirectoryHandle(name).catch(() => null);
+        if (h && !await h.isSameEntry(made)) await root.removeEntry(name, { recursive: true }).catch(() => {});
+      }
+      await root.removeEntry(tmp, { recursive: true }).catch(() => {});
+      if (cause) fail(`'${from}' was not renamed: ${cause.message}`);
     }),
     // the build's outputs (build/…), as the full application writes them
     writeBuild: (name, path, data) => locked(name, async () => writeAt(await projectDir(name), path, data)),
