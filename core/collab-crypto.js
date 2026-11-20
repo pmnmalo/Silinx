@@ -31,8 +31,7 @@ export async function keyOf(text) {
 }
 
 /** A message sealed: its frame (Uint8Array). */
-export async function seal(key, room, kind, bytes) {
-  const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV));
+export async function seal(key, room, kind, bytes, iv = globalThis.crypto.getRandomValues(new Uint8Array(IV))) {
   const ct = new Uint8Array(await subtle().encrypt({ name: ALG, iv, additionalData: aad(kind, room) }, key, bytes));
   const out = new Uint8Array(1 + IV + ct.length);
   out[0] = kind;

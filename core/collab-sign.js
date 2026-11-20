@@ -61,4 +61,48 @@ export async function verifyFrame(key, room, signed) {
   try { return (await subtle().verify(HASH, key, s.subarray(s.length - SIG), message(room, frame))) ? frame : null; } catch { return null; }
 }
 
+// An editor's frames in order (#4736): each editor's sealed frames have an IV of their own kind, 8 random bytes of the
+// editor's session then a 32-bit counter (a deterministic IV: unique under the room's key as the random ones are, the
+// session's part being random), signed with the frame. The relay or host remembers the last counter of each session
+// whose signed frames it forwarded and drops one at or below it: a frame replayed, by whoever saw it, goes no further.
+// An older page's random IV is a session of its own (never dropped but replayed); a rekey (#3997) changes nothing.
+const SESSION = 8, IV = 12;
+
+/** The IVs of an editor's session: a function giving the next one ([8 random bytes][counter, 32 bits, big-endian]). */
+export function editIvs() {
+  const session = globalThis.crypto.getRandomValues(new Uint8Array(SESSION));
+  let n = 0;
+  return () => {
+    if (n > 0xFFFFFFFF) throw new Error('an editor\'s session sent 2^32 edits: share the project again');
+    const iv = new Uint8Array(IV);
+    iv.set(session);
+    new DataView(iv.buffer).setUint32(SESSION, n++);
+    return iv;
+  };
+}
+
+/** A sealed frame's session and counter (its IV's): { session (text), n }, or null for a frame too short. */
+export function editSeq(frame) {
+  const f = frame instanceof Uint8Array ? frame : new Uint8Array(frame);
+  if (f.length < 1 + IV) return null;
+  return { session: b64url(f.subarray(1, 1 + SESSION)), n: new DataView(f.buffer, f.byteOffset + 1 + SESSION, 4).getUint32(0) };
+}
+
+/** A room's filter of its editors' frames (#4736): fresh(frame) says whether a frame whose signature is the room's comes
+ *  after the last one of its session (then remembered), false for one already passed (a replay). `sessions` most
+ *  recently seen remembered. */
+export function editsSeen(sessions = 1024) {
+  const last = new Map();
+  return frame => {
+    const s = editSeq(frame);
+    if (!s) return false;
+    const was = last.get(s.session);
+    if (was !== undefined && s.n <= was) return false;
+    last.delete(s.session);
+    last.set(s.session, s.n);
+    if (last.size > sessions) last.delete(last.keys().next().value);
+    return true;
+  };
+}
+
 export { b64url };

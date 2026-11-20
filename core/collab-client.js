@@ -35,7 +35,7 @@ import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwareness
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { newKey, keyOf, seal, unseal } from './collab-crypto.js';
-import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE } from './collab-sign.js';
+import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE, editIvs } from './collab-sign.js';
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
@@ -390,7 +390,9 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   // an editor's own changes, signed (what arrives is 'remote': never sent again), and kept (#3835: what of them the
   // owner lacks sent again at a rejoin, those sent into a connection that was already lost included)
   const mine = [];
-  const sendEdit = u => cur.frame(async () => signFrame(signer, room, await seal(key, room, KIND.edit, u)));
+  // (#4736: sealed with this session's IVs, a counter in each, in the order they are sent)
+  const nextIv = editIvs();
+  const sendEdit = u => cur.frame(async () => signFrame(signer, room, await seal(key, room, KIND.edit, u, nextIv())));
   let listening = false;
   const listen = on => { if (on && !listening) doc.on('update', onUpdate); else if (!on && listening) doc.off('update', onUpdate); listening = on; };
   const onUpdate = (u, origin) => {

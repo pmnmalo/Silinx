@@ -7,6 +7,7 @@
 //   accepted (in its subprotocols: `silinx-collab`, `token.<token>`); joining one needs its room id;
 // - frames: RELAY_LIMITS, by role: each endpoint its own maximum, so a follower's frame larger than theirs closes its
 //   connection (1009) before it is received whole, and only a token opens a socket that takes the owner's;
+// - the connections waiting for their first message: RELAY_LIMITS.waiting at most, all together (#4736: one more refused);
 // - a connection that no longer answers its pings: closed (an owner's room kept RELAY_LIMITS.grace for its resume,
 //   #3835, then closed).
 // Its meeting points (#4542, core/collab-meeting.js) at /api/collab/meet/host (a hosted room's owner's page: the
@@ -19,7 +20,10 @@ import { collabMeetings, MEET_LIMITS, TOPIC_RE } from '../core/collab-meeting.js
 const RELAY_PATH = '/api/collab';
 export { SUBPROTOCOL };
 // (grace: an owner's connection lost, its room kept that long for its resume, #3835)
-export const RELAY_LIMITS = Object.freeze({ ownerFrame: 16 << 20, followerFrame: 64 << 10, ...ROOM_LIMITS, ping: 30_000, grace: 120_000 });
+// (waiting: the connections that have not sent their first message yet, all rooms and meeting points together, #4736)
+export const RELAY_LIMITS = Object.freeze({ ownerFrame: 16 << 20, followerFrame: 64 << 10, ...ROOM_LIMITS, ping: 30_000, grace: 120_000, waiting: 256 });
+/** What a connection is told when too many wait for their first message (#4736). */
+export const BUSY = 'this relay has too many connections starting: try again';
 // the token an owner's upgrade carries in its subprotocols (`token.<token>`), or null
 const tokenOfUpgrade = req => String(req.headers['sec-websocket-protocol'] || '').split(',').map(s => s.trim()).find(s => s.startsWith('token.'))?.slice(6) || null;
 const ROLES = { [`${RELAY_PATH}/share`]: 'owner', [`${RELAY_PATH}/follow`]: 'follower', [`${RELAY_PATH}/meet/host`]: 'host', [`${RELAY_PATH}/meet/peer`]: 'peer' };
@@ -52,12 +56,17 @@ export function attachRelay(server, { allowed = () => null, tokenOk = () => true
     servers[role].handleUpgrade(req, socket, head, ws => welcome(ws, role, topic));
   });
 
+  let waiting = 0;   // (the connections whose first message has not come yet, #4736)
   function welcome(ws, role, topic) {
+    if (waiting >= (limits.waiting ?? RELAY_LIMITS.waiting)) { ws.on('error', () => {}); fail(ws, BUSY); return; }
+    waiting++;
+    let first = true;
+    const started = () => { if (first) { first = false; waiting--; } };
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
     const p = role === 'host' || role === 'peer' ? meetings.welcome(ws, role, topic) : host.welcome(ws, role);
-    ws.on('message', p.message);
-    ws.on('close', p.close);
+    ws.on('message', (data, binary) => { started(); p.message(data, binary); });
+    ws.on('close', () => { started(); p.close(); });
     ws.on('error', () => {});
   }
 
@@ -72,5 +81,5 @@ export function attachRelay(server, { allowed = () => null, tokenOk = () => true
   beat.unref?.();
   const close = () => { clearInterval(beat); for (const id of [...rooms.keys()]) closeRoom(id, 'the Silinx server stopped'); servers.owner.close(); servers.follower.close(); servers.peer.close(); };
   server.on('close', close);
-  return { rooms, meetings: meetings.topics, close };
+  return { rooms, meetings: meetings.topics, waiting: () => waiting, close };
 }
