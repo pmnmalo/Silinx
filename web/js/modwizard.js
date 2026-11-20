@@ -11,7 +11,7 @@
 // Generators: core/modgen.js.
 import { api } from './api.js';
 import { icons } from './icons.js';
-import { h, alertDlg, toast } from './ui.js';
+import { h, toast } from './ui.js';
 import { generateModule, schematicFromPorts, checkPorts, identError, guessClockReset, MAX_WIDTH } from '/core/modgen.js';
 import { SCH_TEMPLATES } from '/core/chart-templates.js';
 import { schematicTemplatePorts, schematicFromTemplate, templatePortsError } from '/core/sch-templates.js';
@@ -272,10 +272,9 @@ export async function moduleWizard({ name = '', location = 'src', lang = null, n
     },
   };
 
-  const ok = await wizard('Module Wizard', namedPages(p1.page, [p1.page, p2, p3, pSum], named, p1.tail), { width: 820, back });
-  if (!ok) return;
   let code;
-  try { code = text(); } catch (e) { return alertDlg('Module Wizard', e.message, 'error'); }
+  const ok = await wizard('Module Wizard', namedPages(p1.page, [p1.page, p2, p3, pSum], named, p1.tail), { width: 820, back, finish: () => { code = text(); } });
+  if (!ok) return;
   const path = p1.path();
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, code);   // registers the new file in silinx.json
@@ -335,10 +334,9 @@ export async function schematicWizard({ name = '', location = 'src', lang = null
     },
     validate: () => guard(p1.path()),
   };
-  const ok = await wizard('Schematic Wizard', namedPages(p1.page, [p1.page, tpl.page, p2, pSum], named, p1.tail), { width: 820, back });
-  if (!ok) return;
   let d;
-  try { d = doc(); } catch (e) { return alertDlg('Schematic Wizard', e.message, 'error'); }
+  const ok = await wizard('Schematic Wizard', namedPages(p1.page, [p1.page, tpl.page, p2, pSum], named, p1.tail), { width: 820, back, finish: () => { d = doc(); } });
+  if (!ok) return;
   const path = p1.path();
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(d, null, 1));

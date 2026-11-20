@@ -174,6 +174,6 @@ export const FSM_PT_PATTERNS = [
   [/^no transition is true: stays in (.+)$/, 'nenhuma transição é verdadeira: fica em $1'],
   [/^— the diagram cannot show it: ([\s\S]*)$/, '— o diagrama não o consegue representar: $1'],
   [/^— the state diagram has errors: ([\s\S]*)$/, '— o diagrama de estados tem erros: $1'],
-  [/^'(.*)' cannot be shown as a state diagram:\n\n([\s\S]*)$/, "'$1' não pode ser representado como diagrama de estados:\n\n$2"],
-  [/^(\S+) cannot be shown as a state diagram:\n\n([\s\S]*)$/, '$1 não pode ser representado como diagrama de estados:\n\n$2'],
+  [/^'(.*)' cannot be shown as a state diagram: (.*)$/, "'$1' não pode ser representado como diagrama de estados: $2"],
+  [/^(\S+) cannot be shown as a state diagram: (.*)$/, '$1 não pode ser representado como diagrama de estados: $2'],
 ];

@@ -1,7 +1,7 @@
 // Silinx Project Navigator — main application shell (ISE-like).
 import { api, followJob } from './api.js';
 import { icons, icon } from './icons.js';
-import { h, dialog, alertDlg, confirmDlg, promptDlg, popupMenu, splitter, setMessageSink, LEFT_SPLIT } from './ui.js';
+import { h, dialog, confirmDlg, promptDlg, popupMenu, splitter, setMessageSink, LEFT_SPLIT } from './ui.js';
 import { createEditor, instTemplate, snippetsFor, typeText } from './editor.js';
 import { cRunButtons, hlsClock, hlsFamily, hlsMults, isC, noteFailedC } from './c-source.js';
 import { compile, implRoots, topCandidates } from '/core/compile.js';
@@ -23,7 +23,7 @@ import { isLabFile } from '/core/labs.js';
 import { primitiveTemplates } from '/core/prim-templates.js';
 import { deviceFamily, openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
 import { setActionRunner, longPressMenu } from './ui.js';
-import { log, logError, logInfo, logLine, logWarning, showConsolePage, setDiagnostics, renderDiagnostics, clearConsole } from './console.js';
+import { clearConsole, commandError, commandInfo, commandWarning, log, logError, logInfo, logLine, logWarning, renderDiagnostics, setDiagnostics, showConsolePage } from './console.js';
 import { isOwnFailure } from './own-error.js';
 import { renderTeachingPage } from './teaching-page.js';
 import { renderCollabPage } from './collab-tab.js';
@@ -643,14 +643,14 @@ export async function openFpgaView(mod = S.project?.top) {
   const title = 'View Implemented Design (FPGA)';
   let m = await api.fpgaView(S.project.name).catch(e => ({ available: false, reason: 'error', error: e.message }));
   if (!m.available) {
-    if (m.reason === 'error') { alertDlg(title, m.error, 'error'); return; }
-    if (m.reason === 'no-top') { alertDlg(title, 'Set the top module of the project first.'); return; }
+    if (m.reason === 'error') { commandError(title, m.error); return; }
+    if (m.reason === 'no-top') { commandInfo(title, 'Set the top module of the project first.'); return; }
     // placed and routed and up to date: only the XDL export; otherwise the flow up to Place & Route first
     const routed = m.reason !== 'no-ncd' && ['ok', 'warn'].includes(S.status.par);
     if (!routed && !await confirmDlg(title, 'The FPGA view shows the design after Place & Route. Run Implement Design (Synthesize, Translate, Map, Place & Route) now?')) return;
     if (!await runImpl(mod, routed ? ['fpgaview'] : [...FLOW_UP_TO.par, 'fpgaview'])) return;
     m = await api.fpgaView(S.project.name).catch(e => ({ available: false, error: e.message }));
-    if (!m.available) { alertDlg(title, `The implemented design could not be read${m.error ? `: ${m.error}` : ''}.`, 'error'); return; }
+    if (!m.available) { commandError(title, `The implemented design could not be read${m.error ? `: ${m.error}` : ''}.`); return; }
   }
   const { mountFpgaView } = await import('./fpgaview.js');
   const old = findDoc('fpgaview');
@@ -709,7 +709,7 @@ export function refreshSummary() { const d = findDoc('summary'); d?.refresh?.();
 export async function openPinPlanner(mod) {
   const { mountPinPlanner } = await import('./pinplanner.js');
   const top = mod || S.project.top;
-  if (!top) { alertDlg('I/O Pin Planning', 'Select a top-level module first.', 'warn'); return; }
+  if (!top) { commandWarning('I/O Pin Planning', 'Select a top-level module first.'); return; }
   const old = findDoc('pins');
   if (old) await closeDoc(old);
   openDoc({ id: 'pins', title: 'I/O Pin Planning', icon: 'pins', create: (el, d) => mountPinPlanner(el, d, top) });
@@ -778,9 +778,9 @@ async function renameFolder(dir) {
   if (!S.project) return;
   const to = (await promptDlg('Rename Folder', `New path of the folder '${dir}':`, dir))?.trim().replace(/\/+$/, '');
   if (!to || to === dir) return;
-  if (to.startsWith('/') || to.split('/').some(x => !x || x === '..' || x === '.')) return alertDlg('Rename Folder', 'Enter a folder path inside the project.');
-  if (to.startsWith(`${dir}/`)) return alertDlg('Rename Folder', 'A folder cannot be moved into itself.');
-  if (S.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return alertDlg('Rename Folder', `'${to}' already exists.`);
+  if (to.startsWith('/') || to.split('/').some(x => !x || x === '..' || x === '.')) return commandError('Rename Folder', 'Enter a folder path inside the project.');
+  if (to.startsWith(`${dir}/`)) return commandError('Rename Folder', 'A folder cannot be moved into itself.');
+  if (S.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return commandError('Rename Folder', `'${to}' already exists.`);
   if (!await saveAll()) return;
   const remap = p => (p && p.startsWith(`${dir}/`) ? to + p.slice(dir.length) : p);
   const views = S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f));

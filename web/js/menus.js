@@ -2,7 +2,7 @@
 // palette, printing the document in front, and exporting or importing a project as a zip file.
 import { api } from './api.js';
 import { icons, icon } from './icons.js';
-import { h, alertDlg, menuBar, toast, runAction } from './ui.js';
+import { h, menuBar, toast, runAction } from './ui.js';
 import * as wiz from './wizards.js';
 import { setLanguage, getLanguage, LOCALES } from './i18n.js';
 import { notationMenu } from './notation.js';
@@ -16,7 +16,7 @@ import { developmentMenu } from './devmenu.js';
 import { S, activateDoc, app, canCopyAny, canDeleteAny, canPasteAny, closeDoc, copyAny, cutAny, deleteAny, docEditor, history, openFile,
   openFpgaView, openImpact, openPinPlanner, openSummary, pasteAny, projectRedo, projectUndo, redoAny, redoesProject, setView,
   undoAny, undoesProject } from './app.js';
-import { log } from './console.js';
+import { commandError, log } from './console.js';
 import { openProject, closeProject, recent, clearRecent, storageMenuItems } from './project.js';
 import { runImpl, stopProcesses } from './implement.js';
 import { setViewAsTop, topOfView, viewSel } from './drawings.js';
@@ -299,5 +299,5 @@ export async function exportProjectZip(kind = 'xilinx') {
       ? `Exported ${filename}: the whole Silinx project (silinx.json + all project files, ${Math.round(blob.size / 1024)} KB).`
       : `Exported ${filename}: Xilinx ISE project ${S.project.name}.xise + its sources (${Math.round(blob.size / 1024)} KB).`, 'ok');
     for (const w of warnings) log(`WARNING: ${w}`, 'warn');
-  } catch (e) { alertDlg(title, e.message, 'error'); }
+  } catch (e) { commandError(title, e.message); }
 }

@@ -2,7 +2,7 @@
 // one row per vector (the inputs, the drive of each bidirectional port, the expected values), Fill Expected from
 // Current Design (a simulation of the design), and the vectors as bits for the generator.
 import { MAX_VECTORS, expectedFromTrace, generateTestbench, parseDrive, parseValue, showValue } from '/core/testbench.js';
-import { alertDlg, h } from './ui.js';
+import { h } from './ui.js';
 import { primitiveSources } from '/core/unisim.js';
 import { simulate } from '/core/compile.js';
 import { designSources } from './tbwizard.js';
@@ -77,7 +77,7 @@ export function mountVectorsPage(ctx) {
   // expected values = what the current design does (a regression test)
   const fillFromDesign = async () => {
     let vectors;
-    try { vectors = vectorsBits({ withExp: false }); } catch (e) { return alertDlg('Test Bench Wizard', e.message, 'error'); }
+    try { vectors = vectorsBits({ withExp: false }); } catch (e) { busy.textContent = e.message; return; }   // (in the wizard, #4747)
     busy.textContent = 'Simulating the current design…';
     await new Promise(r => setTimeout(r, 20));
     try {
@@ -92,8 +92,7 @@ export function mountVectorsPage(ctx) {
       busy.textContent = 'Expected values filled in from the current design: check them!';
       renderTable();
     } catch (e) {
-      busy.textContent = '';
-      alertDlg('Test Bench Wizard', `Cannot simulate the design: ${e.message}`, 'error');
+      busy.textContent = `Cannot simulate the design: ${e.message}`;   // (in the wizard, beside the vectors, #4747)
     }
   };
   const p4 = {

@@ -1,6 +1,6 @@
 // Silinx - printing of diagrams (ASM charts, schematics): the whole drawing as a standalone SVG,
 // printed on one page or tiled over several pages (the browser's print dialog also saves PDF).
-import { h, dialog, alertDlg, toast, downloadText } from './ui.js';
+import { h, dialog, toast, downloadText, message } from './ui.js';
 import { esc } from './dom.js';
 
 const STYLE_PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity',
@@ -187,7 +187,7 @@ export async function printDiagram({ title, snapshot, filename = 'diagram' }) {
   if (r === 'svg') { downloadText(`${filename}.svg`, snapshot.svg, 'image/svg+xml'); return; }
   if (r === 'png') {
     try { const p = await snapshotPng(snapshot, +pngK.value); downloadBlob(`${filename}.png`, p.blob); toast(`${filename}.png: ${p.width} × ${p.height} px`); }
-    catch (e) { alertDlg('Save PNG', e.message); }
+    catch (e) { message(`Save PNG: ${e.message}`, 'error'); }
     return;
   }
   if (r !== 'print') return;
