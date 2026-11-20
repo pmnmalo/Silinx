@@ -88,7 +88,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(WCFG_TOOLS), ['save_wave_config', 'load_wave_config']);
   assert.deepEqual(names(HLS_TOOLS), ['c_simulation', 'c_cosimulation', 'c_synthesis_report', 'c_generated']);
   assert.deepEqual(names(PROCESS_TOOLS), ['run_process', 'get_report']);
-  assert.deepEqual(names(BOARD_TOOLS), ['program_board']);   // (Configure Target Device, #2674, #2298)
+  assert.deepEqual(names(BOARD_TOOLS), ['program_board', 'program_prom', 'jtag_scan', 'bitstream_info', 'toolchain_info']);   // (Configure Target Device, #2674, #2298; its PROM, scan and file, Toolchain Settings read, #4751)
   assert.deepEqual(names(CAPTURE_TOOLS), ['capture_settings', 'capture']);   // (the logic analyzer, #3176)
   assert.deepEqual(names(TIMING_TOOLS), ['timing_paths']);
   assert.deepEqual(names(LAB_TOOLS), ['lab']);   // (the guided labs, #3179)
@@ -106,6 +106,11 @@ test('the tools: those of the areas, the ones of before the split in their order
 test('the processes: run_process\'s choices, and a report for each of the two toolchains', () => {
   assert.deepEqual(PROCESS_TOOLS.find(t => t.name === 'run_process').inputSchema.properties.process.enum, Object.keys(PROCESSES));
   assert.deepEqual(PROCESSES.implement, ['synth', 'translate', 'map', 'par']);
+  // (#4751: the interface's tree's, core/tool-descriptors.js processSteps: as they were written here before)
+  assert.deepEqual(PROCESSES, { synthesize: ['synth'], implement: ['synth', 'translate', 'map', 'par'], bitstream: ['synth', 'translate', 'map', 'par', 'bitgen'],
+    timing: ['synth', 'translate', 'map', 'par', 'trce'], power: ['synth', 'translate', 'map', 'par', 'xpwr'], pins: ['synth', 'translate', 'map', 'par', 'pin2ucf'],
+    post_synthesis_model: ['synth', 'postsynth'], post_translate_model: ['synth', 'translate', 'posttrans'], post_map_model: ['synth', 'translate', 'map', 'postmap'],
+    post_par_model: ['synth', 'translate', 'map', 'par', 'postpar'] });
   assert.deepEqual(Object.keys(REPORT_FILES.open), Object.keys(REPORT_FILES.ise));
   assert.equal(REPORT_FILES.ise.timing('top'), 'build/top.twr');
   assert.equal(REPORT_FILES.open.timing('top'), 'build/open/timing.txt');

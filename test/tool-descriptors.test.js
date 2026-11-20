@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ISE, NO_FLOW, DESIGN_ONLY, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5, SILINX_GOWIN, SILINX_GATEMATE, VIVADO, TOOLS, allTasks, buildProcesses, hasTask, simModelsOf, toolOf, MESSAGE_LINE, EXTRA_STEPS, IMPL_IDS } from '../core/tool-descriptors.js';
+import { processSteps, ISE, NO_FLOW, DESIGN_ONLY, SILINX, SILINX_ICE40, SILINX_XC7, SILINX_ECP5, SILINX_GOWIN, SILINX_GATEMATE, VIVADO, TOOLS, allTasks, buildProcesses, hasTask, simModelsOf, toolOf, MESSAGE_LINE, EXTRA_STEPS, IMPL_IDS } from '../core/tool-descriptors.js';
 import { XILINX_STEPS, orderSteps } from '../packages/silinx-fpga/src/open-steps.js';
 import { ICE40_STEPS } from '../packages/silinx-fpga/src/open-flow-ice40.js';
 import { XC7_STEPS } from '../packages/silinx-fpga/src/open-flow-xc7.js';
@@ -395,4 +395,17 @@ test('#4751 web/js/tool-descriptors.js re-exports every name of core/tool-descri
   const core = await import('../core/tool-descriptors.js'), web = await import('../web/js/tool-descriptors.js');
   assert.deepEqual(Object.keys(web).sort(), Object.keys(core).sort());
   for (const k of Object.keys(core)) assert.equal(web[k], core[k], k);
+});
+
+test('#4751 processSteps: the steps a process of the tree runs, its flow or its parent\'s and itself; none for the others', () => {
+  assert.deepEqual(processSteps(ISE, 'synth'), ['synth']);
+  assert.deepEqual(processSteps(ISE, 'impl'), ['synth', 'translate', 'map', 'par']);
+  assert.deepEqual(processSteps(ISE, 'bitgen'), ['synth', 'translate', 'map', 'par', 'bitgen']);
+  assert.deepEqual(processSteps(ISE, 'trce'), ['synth', 'translate', 'map', 'par', 'trce']);
+  assert.deepEqual(processSteps(ISE, 'posttrans'), ['synth', 'translate', 'posttrans']);
+  assert.deepEqual(processSteps(ISE, 'postsynth'), ['synth', 'postsynth']);
+  // (a process of its own, not a step: none; a process the tree has not: none)
+  for (const id of ['check', 'rtl', 'impact', 'no-such']) assert.equal(processSteps(ISE, id), null, id);
+  // (the Silinx toolchain's own tree: its flows, its models)
+  assert.deepEqual(processSteps(SILINX_ICE40, 'postpar'), [...processSteps(SILINX_ICE40, 'par'), 'postpar']);
 });

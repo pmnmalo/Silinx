@@ -10,19 +10,16 @@ import { isDesignOnly } from '../core/project-kind.js';
 import { designDiags } from './mcp-design-only.js';
 import { parseTime, parseValue } from '../core/ssim-values.js';
 import { findSignalIn, injectForceIn } from '../core/ssim-forces.js';
-import { deviceFamily, experimentalDevice, familyName, openFamilyOf, openOnlyDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
+import { deviceFamily, familyName, openFlowDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
+import { simModelsOf, toolOf } from '../core/tool-descriptors.js';
 
 const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', postmap: 'Post-Map', postpar: 'Post-Place & Route' };
 // the process that makes each model (run_process), and the stage it comes after
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
-// the models each flow makes (#3707), as the interface's tools (web/js/tool-descriptors.js simModelsOf, toolOf): the Spartan
-// flows', ISE's and the Silinx toolchain's, all four; the iCE40's, ECP5's and Gowin's the post-synthesis and post-place & route
-// ones (#2299, #4362, core/flow-models-nextpnr.js), the GateMate's the post-synthesis one (#2431); the Artix-7's the Silinx toolchain's post-synthesis and post-place & route ones (#4362), AMD
-// Vivado's flow none; none on the other experimental families
-const NEXTPNR_MODELS = { ice40: ['postsynth', 'postpar'], ecp5: ['postsynth', 'postpar'], gowin: ['postsynth', 'postpar'], gatemate: ['postsynth'] };
-const simModelsOfDevice = (device, silinx) => (openFamilyOf(deviceFamily(device)) === 'artix7' ? (silinx ? ['postsynth', 'postpar'] : [])
-  : vivadoDevice(device) || experimentalDevice(device) ? []
-  : openOnlyDevice(device) ? NEXTPNR_MODELS[deviceFamily(device)] || [] : Object.keys(SIM_MODELS));
+// the models each flow makes (#3707): the interface's tool's (core/tool-descriptors.js toolOf, simModelsOf, #4751): a
+// device's Silinx toolchain, but a 7-series one's AMD Vivado unless `silinx` (the Silinx toolchain asked for, on a device it
+// implements); none on the experimental families
+const simModelsOfDevice = (device, silinx) => simModelsOf(toolOf(device, vivadoDevice(device) ? silinx : true));
 /** True if the 7-series' flow is the Silinx toolchain's: the toolchain asked for (run_process), else the project's synthesis tool
  *  (as impl-routes.js startImplementation chooses it). */
 export const silinxFlowOf = (pj, toolchain) => ['silinx', 'open'].includes(toolchain || (pj?.synthTool === 'silinx' ? 'silinx' : ''));
@@ -31,7 +28,7 @@ export const hasSimModels = (device, model, { silinx = false } = {}) => (model ?
 export const noSimModelMessage = (device, model, { silinx = false } = {}) => {
   const made = simModelsOfDevice(device, silinx);
   const names = made.map(m => SIM_MODELS[m].toLowerCase());
-  if (openFamilyOf(deviceFamily(device)) === 'artix7' && !silinx) return `AMD Vivado's flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model of the ${familyName(deviceFamily(device))} (the Silinx toolchain's makes its post-synthesis and post-place & route ones: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`;
+  if (vivadoDevice(device) && openFlowDevice(device) && !silinx) return `AMD Vivado's flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model of the ${familyName(deviceFamily(device))} (the Silinx toolchain's makes its post-synthesis and post-place & route ones: toolchain 'silinx', or the project's synthesis tool Silinx): simulate the behavioral model`;
   return `the ${familyName(deviceFamily(device))} flow makes no ${SIM_MODELS[model].toLowerCase()} simulation model (${made.length ? `only the ${names.join(' and ')} one${made.length > 1 ? 's' : ''}` : 'only the Spartan flows make them'}): simulate the behavioral model${made.length ? ` or the ${names.join(' or the ')} one` : ''}`;
 };
 const STAGE = { postsynth: 'synth', posttrans: 'translate', postmap: 'map', postpar: 'par' };

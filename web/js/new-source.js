@@ -5,14 +5,12 @@ import { constraintsFormatOf } from '/packages/silinx-fpga/src/parts.js';
 import { api } from './api.js';
 import { icons, icon } from './icons.js';
 import { h } from './ui.js';
-import * as T from './templates.js';
 import { uutInfo } from '/core/uut-info.js';
 import { S, app } from './app.js';
 import { isView } from '/core/view-hdl.js';
 import { reservedError } from '/core/reserved.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
 import { NAME_RE, FILE_RE, sourceBase } from '/core/ident.js';
-import { cTemplate, cppTemplate } from './c-templates.js';
 import { designOnly } from './design-only.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
@@ -50,6 +48,11 @@ const DESIGN_TYPES = ['tt', 'circuit', 'sch', 'fsm', 'asm', 'petri', 'lab'];
 const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
 
 // name, location, lang, atFile: a wizard's < Back (#2082): New Source again at the File Name and Location page, as left
+// New Source's types as core/new-source-text.js (the MCP's new_source) names them
+const KIND_OF = { hdl: 'module', 'vhdl-pkg': 'package', tb: 'test_bench', ucf: 'constraints', pcf: 'constraints', lpf: 'constraints',
+  cst: 'constraints', ccf: 'constraints', xdc: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', sch: 'schematic', asm: 'asm',
+  fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean' };
+
 export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false } = {}) {
   if (!S.project) return;
   // old type ids (vhdl, verilog, vhdl-tb, verilog-tb) still accepted: they preset the language; the old wizard types
@@ -238,58 +241,16 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     back: () => newSourceWizard({ type: st.id, name: fname.value.trim(), location: loc.value.trim(), lang: langSel.value, atFile: true }) });
   const n = nameOf();
   const path = `${loc.value.trim().replace(/\/+$/, '')}/${n}${extOf(st)}`;
-  let text;
   const pj = S.project;
-  switch (st.id) {
-    case 'hdl': text = langSel.value === 'vhdl' ? T.vhdlModule(entName.value.trim(), archName.value.trim(), ports, pj) : T.vlogModule(entName.value.trim(), ports, pj); break;
-    case 'vhdl-pkg': text = T.vhdlPackage(n, pj); break;
-    case 'tb': {
-      const m = S.modules.find(x => x.name === uutName);
-      const uut = uutInfo(m);
-      text = langSel.value === 'vhdl' ? T.vhdlTestbench(n, uut, pj) : T.vlogTestbench(n, uut, pj);
-      break;
-    }
-    case 'ucf': text = T.ucfTemplate(pj); break;
-    case 'pcf': text = T.pcfTemplate(pj); break;
-    case 'lpf': text = T.lpfTemplate(pj); break;
-    case 'cst': text = T.cstTemplate(pj); break;
-    case 'ccf': text = T.ccfTemplate(pj); break;
-    case 'xdc': text = T.xdcTemplate(pj); break;
-    case 'mem': text = '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n'; break;
-    case 'lab': { const { newLab } = await import('/core/labs.js'); text = `${JSON.stringify(newLab(n, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`; break; }
-    case 'c': text = cTemplate(n.replace(/[^A-Za-z0-9_]/g, '_')); break;
-    case 'cpp': text = cppTemplate(n.replace(/[^A-Za-z0-9_]/g, '_')); break;
-    case 'sch': {
-      const { newDoc } = await import('/core/schdoc.js');
-      text = JSON.stringify(newDoc(n.replace(/[^A-Za-z0-9_]/g, '_'), langSel.value), null, 1);
-      break;
-    }
-    case 'asm': {
-      const { normalizeModel } = await import('/core/asm.js');
-      text = JSON.stringify(normalizeModel({ name: n.replace(/[^A-Za-z0-9_]/g, '_'), lang: langSel.value }), null, 2);   // empty (#2176)
-      break;
-    }
-    case 'fsm': {
-      const { normalizeFsm } = await import('/core/fsm.js');
-      text = JSON.stringify(normalizeFsm({ name: n.replace(/[^A-Za-z0-9_]/g, '_'), lang: langSel.value }), null, 2);   // empty (#2176)
-      break;
-    }
-    case 'petri': {
-      const { normalizePetri } = await import('/core/petri.js');
-      text = JSON.stringify(normalizePetri({ name: n.replace(/[^A-Za-z0-9_]/g, '_'), lang: langSel.value }), null, 2);   // empty (#2176)
-      break;
-    }
-    case 'circuit': {   // (a half breadboard and its supply, #3897)
-      const { newCircuit } = await import('/core/circuit.js');
-      text = JSON.stringify(newCircuit(n.replace(/[^A-Za-z0-9_]/g, '_'), langSel.value), null, 2);
-      break;
-    }
-    case 'tt': {
-      const { newTable } = await import('/core/logic.js');
-      text = JSON.stringify({ ...newTable(n.replace(/[^A-Za-z0-9_]/g, '_'), ['a', 'b', 'c'], ['f']), lang: langSel.value }, null, 2);
-      break;
-    }
-  }
+  // its text: core/new-source-text.js, the MCP's new_source's (#4751)
+  const kind = KIND_OF[st.id];
+  const { sourceText } = await import('/core/new-source-text.js');
+  const text = await sourceText(kind, {
+    file: n, lang: langSel.value, pj,
+    ...(kind === 'module' ? { entity: entName.value.trim(), arch: archName.value.trim(), ports } : {}),
+    ...(kind === 'test_bench' ? { uut: uutInfo(S.modules.find(x => x.name === uutName)) } : {}),
+    ...(kind === 'constraints' ? { format: st.id } : {}),
+  });
   const noUcf = !S.fileTree.includes(pj.constraints);
   await closeBeforeReplace(path);
   await api.writeFile(pj.name, path, text);   // registers the new file in silinx.json

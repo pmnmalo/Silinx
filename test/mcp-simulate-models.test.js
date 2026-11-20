@@ -109,7 +109,7 @@ test('#3707 #2299 #4362 simulate model and run_process …_model: refused on a f
 
 test('#3707 #2299 hasSimModels: the models the interface\'s tools list, on every board and with no device', async () => {
   const { hasSimModels } = await import('../server/mcp-hdl.js');
-  const { simModelsOf, toolOf } = await import('../web/js/tool-descriptors.js');
+  const { simModelsOf, toolOf } = await import('../core/tool-descriptors.js');
   const { BOARDS } = await import('../core/boards.js');
   const { openOnlyDevice } = await import('../packages/silinx-fpga/src/parts.js');
   const ALL = ['postsynth', 'posttrans', 'postmap', 'postpar'];
@@ -128,4 +128,13 @@ test('#3707 #2299 hasSimModels: the models the interface\'s tools list, on every
   assert.equal(hasSimModels({ part: 'xc7s50' }, 'postsynth', { silinx: true }), false);
   assert.deepEqual(['postsynth', 'postpar'].map(m => hasSimModels({ part: 'gw1nr-9c' }, m)), [true, true]);
   assert.deepEqual(['postsynth', 'posttrans', 'postpar'].map(m => hasSimModels({ part: 'ice40up5k' }, m)), [true, false, true]);
+});
+
+test('#4751 hasSimModels from core/tool-descriptors.js: a Zynq the Silinx toolchain does not implement has none, as the interface says', async () => {
+  const { hasSimModels, noSimModelMessage } = await import('../server/mcp-hdl.js');
+  // (xc7z030: AMD Vivado's only; its Silinx toolchain asked for: none, it was given the Artix-7's two before #4751)
+  for (const silinx of [false, true]) assert.equal(hasSimModels({ family: 'zynq', part: 'xc7z030' }, null, { silinx }), false, String(silinx));
+  // (the xc7z020: the Silinx toolchain's two)
+  assert.deepEqual(['postsynth', 'posttrans', 'postpar'].map(m => hasSimModels({ family: 'zynq', part: 'xc7z020' }, m, { silinx: true })), [true, false, true]);
+  assert.match(noSimModelMessage({ family: 'zynq', part: 'xc7z030' }, 'postsynth', { silinx: true }), /flow makes no post-synthesis simulation model \(only the Spartan flows make them\)/);
 });

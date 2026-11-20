@@ -111,6 +111,55 @@ export async function startProgramming(b = {}) {
   return createJob('program', j => programJob(j, opts), { meta: { project: b.project || null, bitfile, board } });
 }
 
+/** The project's bitstream (GET /projects/:p/bitinfo, the MCP server's bitstream_info, #4751): { available, path, its
+ *  header's design, part, date and time, a warning when it was built for another device; an open family's size }. */
+export async function bitInfo(name) {
+  const P = Projects;
+  const project = await P.readProject(name);
+  if (!topOf(project)) return { available: false, reason: 'no top module' };
+  // (an open family's bitstream, the iCE40's .bin, the ECP5's .bit: no Xilinx header, its size, #2298, #2302; its family's flag)
+  if (openOnlyDevice(project.device)) {
+    const bin = path.join(P.projectDir(name), 'build', `${project.top}${bitstreamExtOf(project.device)}`), own = { [deviceFamily(project.device)]: true };
+    const st = await fs.stat(bin).catch(() => null);
+    return st ? { available: true, path: bin, size: st.size, ...own } : { available: false, path: bin, ...own };
+  }
+  const bit = path.join(P.projectDir(name), 'build', `${project.top}.bit`);
+  if (!fss.existsSync(bit)) return { available: false, path: bit };
+  try {
+    const info = await readBitInfo(bit);
+    return { available: true, ...info, warning: checkBitPart(info, project.device) };
+  } catch (e) { return { available: false, path: bit, error: e.message }; }
+}
+
+/** The board's Platform Flash PROM (XCF0xS): POST /prom, and the MCP server's program_prom (#4751). b: { project, op
+ *  (program, verify, erase, read: a backup, reconfigure), bitfile (the project's file, else build/<top>_prom.bit), board,
+ *  verify, reconfigure, force }; the project trusted (#2830). Returns the job (server/programmer.js promJob). */
+export async function startProm(b = {}) {
+  const P = Projects, bad = (msg, status = 400) => new P.HttpError(status, msg);
+  if (!b.project) throw bad('give a project');
+  const project = await P.readProject(b.project);
+  if (!isTrusted(project)) throw bad(untrustedMessage(b.project, 'programming the PROM', project), 403);   // (#2830)
+  const dir = P.projectDir(b.project);
+  const board = b.board || project.board || null;
+  if (board && !resolveBoard(board)) throw bad(`unknown board '${board}'`);
+  const opts = { op: b.op, device: b.device, verify: b.verify !== false, reconfigure: !!b.reconfigure, board, expectDevice: expectedDevice(project, board), force: b.force === true };
+  if (b.op === 'program' || b.op === 'verify') {
+    if (!topOf(project) && !b.bitfile) throw bad('project has no top module; cannot locate build/<top>_prom.bit');
+    opts.bitfile = b.bitfile ? P.safeJoin(dir, b.bitfile) : path.join(dir, 'build', `${project.top}_prom.bit`);
+    if (!/\.bit$/i.test(opts.bitfile)) throw bad('only .bit files can be written to the PROM');
+  }
+  if (b.op === 'read') opts.outfile = path.join(dir, 'build', 'prom-backup', `prom-${new Date().toISOString().replace(/[:.]/g, '-')}.bin`);
+  return createJob('prom', j => promJob(j, opts), { meta: { project: b.project, op: b.op } });
+}
+
+/** The JTAG chain's devices: POST /jtag/scan, and the MCP server's jtag_scan (#4751). b: { tool, cable, device, board }.
+ *  Returns the job (server/programmer.js scanJob). */
+export async function startScan(b = {}) {
+  const P = Projects, bad = (msg, status = 400) => new P.HttpError(status, msg);
+  if (b.board && !resolveBoard(b.board)) throw bad(`unknown board '${b.board}'`);
+  return createJob('scan', j => scanJob(j, { tool: b.tool, cable: b.cable, device: b.device, board: b.board }), { meta: { board: b.board || null } });
+}
+
 /**
  * Start an implementation of a project: POST /projects/:p/implement, and the MCP server's run_process
  * (server/mcp.js). body: { steps, toolchain ('silinx' | 'ise' | 'vivado'), synthUpToDate, generateOnly }. A 7-series device's
@@ -274,52 +323,15 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
     return model;
   }));
 
-  api.get('/projects/:p/bitinfo', wrap(async req => {
-    const project = await P.readProject(req.params.p);
-    if (!topOf(project)) return { available: false, reason: 'no top module' };
-    // (an open family's bitstream, the iCE40's .bin, the ECP5's .bit: no Xilinx header, its size, #2298, #2302; its family's flag)
-    if (openOnlyDevice(project.device)) {
-      const bin = path.join(P.projectDir(req.params.p), 'build', `${project.top}${bitstreamExtOf(project.device)}`), own = { [deviceFamily(project.device)]: true };
-      const st = await fs.stat(bin).catch(() => null);
-      return st ? { available: true, path: bin, size: st.size, ...own } : { available: false, path: bin, ...own };
-    }
-    const bit = path.join(P.projectDir(req.params.p), 'build', `${project.top}.bit`);
-    if (!fss.existsSync(bit)) return { available: false, path: bit };
-    try {
-      const info = await readBitInfo(bit);
-      return { available: true, ...info, warning: checkBitPart(info, project.device) };
-    } catch (e) { return { available: false, path: bit, error: e.message }; }
-  }));
+  api.get('/projects/:p/bitinfo', wrap(req => bitInfo(req.params.p)));
 
   // ----- programming / JTAG -------------------------------------------------------------------
   api.post('/program', wrap(async req => ({ job: (await startProgramming(req.body || {})).id })));
 
   // Platform Flash PROM (XCF0xS) of the board: program / verify / erase / read (backup) / reconfigure.
-  api.post('/prom', wrap(async req => {
-    const b = req.body || {};
-    if (!b.project) throw bad('give a project');
-    const project = await P.readProject(b.project);
-    if (!isTrusted(project)) throw bad(untrustedMessage(b.project, 'programming the PROM', project), 403);   // (#2830)
-    const dir = P.projectDir(b.project);
-    const board = b.board || project.board || null;
-    if (board && !resolveBoard(board)) throw bad(`unknown board '${board}'`);
-    const opts = { op: b.op, device: b.device, verify: b.verify !== false, reconfigure: !!b.reconfigure, board, expectDevice: expectedDevice(project, board), force: b.force === true };
-    if (b.op === 'program' || b.op === 'verify') {
-      if (!topOf(project) && !b.bitfile) throw bad('project has no top module; cannot locate build/<top>_prom.bit');
-      opts.bitfile = b.bitfile ? P.safeJoin(dir, b.bitfile) : path.join(dir, 'build', `${project.top}_prom.bit`);
-      if (!/\.bit$/i.test(opts.bitfile)) throw bad('only .bit files can be written to the PROM');
-    }
-    if (b.op === 'read') opts.outfile = path.join(dir, 'build', 'prom-backup', `prom-${new Date().toISOString().replace(/[:.]/g, '-')}.bin`);
-    const job = createJob('prom', j => promJob(j, opts), { meta: { project: b.project, op: b.op } });
-    return { job: job.id };
-  }));
+  api.post('/prom', wrap(async req => ({ job: (await startProm(req.body || {})).id })));
 
-  api.post('/jtag/scan', wrap(async req => {
-    const b = req.body || {};
-    if (b.board && !resolveBoard(b.board)) throw bad(`unknown board '${b.board}'`);
-    const job = createJob('scan', j => scanJob(j, { tool: b.tool, cable: b.cable, device: b.device, board: b.board }), { meta: { board: b.board || null } });
-    return { job: job.id };
-  }));
+  api.post('/jtag/scan', wrap(async req => ({ job: (await startScan(req.body || {})).id })));
 
   // ----- jobs ---------------------------------------------------------------------------------
   api.get('/jobs', wrap(async () => listJobs()));

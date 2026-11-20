@@ -31,30 +31,10 @@ const TYPES = {
 const ident = n => n.replace(/[^A-Za-z0-9_]/g, '_');
 const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean', 'circuit'];
 
-// the source's text, as the wizard's Finish writes it
-async function sourceText(type, { file, lang, pj, entity, arch, ports, uut, template }) {
-  const T = await import('../core/templates.js');
-  const n = ident(file);
-  switch (type) {
-    case 'module': return lang === 'vhdl' ? T.vhdlModule(entity, arch, ports, pj) : T.vlogModule(entity, ports, pj);
-    case 'package': return T.vhdlPackage(file, pj);
-    case 'test_bench': return lang === 'vhdl' ? T.vhdlTestbench(file, uut, pj) : T.vlogTestbench(file, uut, pj);
-    // (the device's format, as New Source's: UCF, the iCE40's PCF, the ECP5's LPF, the Gowin's CST, the GateMate's CCF, the 7-series' XDC)
-    case 'constraints': return ({ pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate }[(await import('../packages/silinx-fpga/src/parts.js')).constraintsFormatOf(pj.device)] || T.ucfTemplate)(pj);
-    case 'mem': return '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n';
-    case 'c': return (await import('../core/c-templates.js')).cTemplate(n);
-    case 'cpp': return (await import('../core/c-templates.js')).cppTemplate(n);
-    case 'schematic': return JSON.stringify((await import('../core/schdoc.js')).newDoc(n, lang), null, 1);
-    case 'asm': return JSON.stringify((await import('../core/asm.js')).normalizeModel({ name: n, lang }), null, 2);
-    case 'fsm': return JSON.stringify((await import('../core/fsm.js')).normalizeFsm({ name: n, lang }), null, 2);
-    case 'petri': return JSON.stringify((await import('../core/petri.js')).normalizePetri({ name: n, lang }), null, 2);
-    // (the Digital Electronic Circuit Wizard's assembly, #4061; none: a half breadboard and its supply, as New Source's)
-    case 'circuit': return JSON.stringify(template ? (await import('../core/circuit-templates.js')).circuitTemplate(template.id, template.params, { name: n, lang })
-      : (await import('../core/circuit.js')).newCircuit(n, lang), null, 2);
-    case 'boolean': return JSON.stringify({ ...(await import('../core/logic.js')).newTable(n, ['a', 'b', 'c'], ['f']), lang }, null, 2);
-    case 'lab': return `${JSON.stringify((await import('../core/labs.js')).newLab(file, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`;
-    default: throw toolError(`type: one of ${Object.keys(TYPES).join(', ')}`);
-  }
+// the source's text, as the wizard's Finish writes it: core/new-source-text.js, the interface's (#4751)
+async function sourceText(type, opts) {
+  if (!Object.hasOwn(TYPES, type)) throw toolError(`type: one of ${Object.keys(TYPES).join(', ')}`);
+  return (await import('../core/new-source-text.js')).sourceText(type, opts);
 }
 
 // a module's ports from the tool's [{ name, dir, msb, lsb }] (a bus when msb is given)
