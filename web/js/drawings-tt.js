@@ -113,7 +113,7 @@ async function pickModule(title, exclude) {
   return ok ? sel.value : null;
 }
 async function moduleTable(title, mod) {
-  await saveAll();
+  if (!await saveAll()) return null;
   const { truthTableFromModule } = await import('/core/logic.js');
   try { return truthTableFromModule(ttDesignSources(), mod); }
   catch (e) { alertDlg(title, e.message, 'error'); return null; }

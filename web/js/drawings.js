@@ -114,7 +114,7 @@ async function asmFromHdlFile(hdlPath, opts = {}) {
 export async function convertToAsm(mod) {
   const info = moduleInfo(mod);
   if (!info) return;
-  await saveAll();
+  if (!await saveAll()) return;
   let r;
   try { r = await asmFromHdlFile(info.file, { module: mod }); }
   catch (e) { alertDlg('Convert to State Machine', `'${mod}' cannot be shown as an ASM chart:\n\n${e.message}`, 'error'); return; }
@@ -248,7 +248,7 @@ async function fsmFromHdlFile(hdlPath, old) {
 export async function convertToFsm(mod) {
   const info = moduleInfo(mod);
   if (!info) return;
-  await saveAll();
+  if (!await saveAll()) return;
   const { fsmFromHdl } = await import('/core/fsm.js');
   const text = S.sources.find(x => x.path === info.file)?.text ?? await api.readFile(S.project.name, info.file);
   let r;
@@ -770,7 +770,7 @@ export async function syncHdlFromSchematic(schPath, doc) {
 export async function convertToSchematic(mod) {
   const info = moduleInfo(mod);
   if (!info) return;
-  await saveAll();
+  if (!await saveAll()) return;
   const { convertModuleToSchematic } = await import('/core/hdl-to-sch.js');
   status(`Converting ${mod} to a schematic…`);
   try {

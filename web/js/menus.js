@@ -281,7 +281,7 @@ function downloadUrl(url, filename) {
 // kind 'silinx': the whole Silinx project (silinx.json + every file, ASM charts and schematics included)
 // (Export Project (.zip)…'s, the kind chosen in its window: project-zip-dialogs.js, #3703)
 export async function exportProjectZip(kind = 'xilinx') {
-  await saveAll();
+  if (!await saveAll()) return;
   const title = 'Export Project';
   try {
     const { blob, filename, warnings = [] } = await api.exportZip(S.project.name, kind, { copy: true });   // (a copy given out: its origin, #4205)

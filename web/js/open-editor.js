@@ -26,8 +26,8 @@ async function openInEditor(path = null, line = null) {
   const pj = S.project?.name, label = editorLabel() || 'VS Code';
   if (!pj) return;
   // (the open document saved first: the editor opens what Silinx shows)
-  if (path) await import('./processes.js').then(m => m.saveAll()).catch(() => {});
   try {
+    if (path && !await (await import('./processes.js')).saveAll()) return;
     const r = await api.openInEditor(pj, path, line);
     // (no program the server can run: the editor's link, which the browser on the same computer opens)
     if (r.url) h('a', { href: r.url }).click();

@@ -277,8 +277,14 @@ export function diagsFor(lib, design, extra = []) {
     .map(d => ({ ...d, tool: d.tool || 'HDLCompiler' }));
 }
 
-export async function saveAll() {
-  for (const d of S.docs) await flushDoc(d);
+// the open documents saved: false when one of the project's could not be (flushDoc said why, and retries), said in an
+// ERROR line naming them (quiet: not said), and what saved them first stops: a process run, a commit, an export… on the
+// older file on disk is not what the editor shows (#4722)
+export async function saveAll({ quiet = false } = {}) {
+  const unsaved = [];
+  for (const d of S.docs) if (!await flushDoc(d) && !(d.project && d.project !== S.project?.name)) unsaved.push(d.path || d.title);
+  if (unsaved.length && !quiet) log(`ERROR: ${unsaved.join(', ')} could not be saved: stopped, so as not to use the older ${unsaved.length > 1 ? 'files' : 'file'} on disk`, 'err');
+  return !unsaved.length;
 }
 
 // hierarchy: the Check Syntax a run of `mod` starts with (Implement Design, its processes, the Board Emulator, a
@@ -289,7 +295,7 @@ export async function checkSyntax(mod, sim = false, { hierarchy = false } = {}) 
   catch (e) { setStatus(id, 'err'); log(`ERROR: ${e.message}`, 'err'); return false; }
 }
 async function checkSyntaxInner(mod, sim, id, hierarchy) {
-  await saveAll();
+  if (!await saveAll()) { setStatus(id, 'err'); return false; }
   setStatus(id, 'running');
   log(`\nStarted : "${checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax')}".\n`, 'hdr');
   const srcs = S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
@@ -349,7 +355,7 @@ export function hdlDiagnostics(path, text, info = []) {
 }
 
 export async function checkFileSyntax(path) {
-  await saveAll();
+  if (!await saveAll()) return false;
   log(`\nStarted : "Check Syntax" of ${path}.\n`, 'hdr');
   const cFile = isC(path);
   log(cFile ? `Analyzing Silinx HLS file "${path}"` : `${/\.vhdl?$/i.test(path) ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${path}" into library work`);

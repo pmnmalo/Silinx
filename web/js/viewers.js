@@ -144,7 +144,7 @@ async function openSilinxTechSchematic(mod) {
 // Synthesize: Implement, #1063, #1483); null: its id's, Implement. The Technology Schematic's, Implement's always)
 const taskNow = () => { const d = document.documentElement.dataset; return d.layout === 'tasks' && d.task || undefined; };
 export async function openSchematic(mod, { netlist = null, task = netlist ? null : taskNow() } = {}) {
-  await saveAll();
+  if (!await saveAll()) return;
   const sim = S.view === 'sim';
   const srcs = netlist || S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
   const all = withPrimitives(srcs);
@@ -238,7 +238,7 @@ export async function runSimulation(mod, model, { stale } = {}) {
   catch (e) { setStatus(model ? `sim-${model}` : 'sim-run', 'err'); log(`ERROR: simulation: ${e.message}`, 'err'); }
 }
 async function runSimulationInner(mod, model, stale) {
-  await saveAll();
+  if (!await saveAll()) return;
   if (!await checkSyntax(mod, true, { hierarchy: true })) return;
   const net = model ? await netlistSources(model) : null;
   if (model && !net) return;
@@ -275,7 +275,7 @@ async function runSimulationInner(mod, model, stale) {
       if (bench && S.project.stimuli?.[mod]) {   // (kept before #1380: dropped)
         const { [mod]: _, ...rest } = S.project.stimuli;
         S.project.stimuli = rest;
-        saveProjectJson().catch(() => {});
+        saveProjectJson().catch(e => logError(`Cannot save the stimuli: ${e.message}`));
       }
       const stimuli = {
         model: bench ? null : S.project.stimuli?.[mod] || null, inst,
@@ -371,7 +371,7 @@ const designNow = () => JSON.stringify([S.sources.filter(s => s.lang === 'vhdl' 
 // `quiet`: run again on a change of the design (#1401), behind the document in front, no dialog
 export async function openEmulator(mod, { scale, model = null, engine = null, quiet = false } = {}) {
   if (!mod) { logInfo('Select the top module first'); return; }
-  await saveAll();
+  if (!await saveAll()) return;
   const board = projectBoard();
   if (!board) { alertDlg('Board Emulator', 'The project has no board. Choose one in Project ▸ Design Properties (e.g. Digilent Basys2).'); return; }
   if (!await checkSyntax(mod, false, { hierarchy: true })) return;

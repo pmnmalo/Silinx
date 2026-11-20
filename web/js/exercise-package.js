@@ -14,7 +14,7 @@ import { createZip, browserCodec } from '/core/zip.js';
 
 // the exercise as it is saved, with its files beside it read (or its problems said in the console: null)
 async function readExercise(name, path, ex, what) {
-  await saveAll();
+  if (!await saveAll()) return null;
   const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
   const read = await withFileTexts(ex, p => api.readFile(name, p), dir);
   const problems = [...read.problems.map(m => `${path}: ${m}`), ...exerciseProblems(read.exercise, path)];

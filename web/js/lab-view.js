@@ -62,7 +62,7 @@ const saidProblems = new Map();   // (a lab file's problems last said, by its pa
 
 /** Check Syntax of a lab file: its problems in the console. Resolves to true when it has none. */
 export async function checkLabFile(path) {
-  await saveAll();
+  if (!await saveAll()) return false;
   log(`\nStarted : "Check Syntax" of ${path}.\n`, 'hdr');
   const { problems } = parseLab(await api.readFile(S.project.name, path), path);
   saidProblems.set(path, problems.join('\n'));
@@ -177,10 +177,11 @@ function mountLab(el, doc, lab) {
   }
   async function check() {
     if (busy) return;
+    // (as Check Syntax: the documents saved first; one that cannot be: not checked, #4722)
+    if (!await saveAll()) return;
     busy = true; render();
     const step = lab.steps[p.step - 1];
     try {
-      await saveAll();   // (as Check Syntax: the documents saved first)
       const result = await checkStep(step, io);
       recordTry(all, lab, step, result.ok);
       const lines = checkLines(lab, step, result, lang());

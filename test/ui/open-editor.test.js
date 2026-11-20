@@ -98,6 +98,36 @@ uiTest('#4017 Open in VS Code: a module, the tab at its line, the project\'s fol
   assert.deepEqual(warnings(page), []);
 }, { skip: WIN });
 
+uiTest('#4722 Open in VS Code with a document that cannot be saved: not opened, an ERROR naming it, the changes kept', E, async (page) => {
+  const dir = await makeProject(env, { name: 'EdFail', top: 'a', files: { 'src/a.vhd': A } })
+    .then(() => path.join(env.server.workspace, 'EdFail'));
+  await page.openProject('EdFail');
+  await page.eval(() => window.SilinxApp.openFile('src/a.vhd'));
+  await page.waitFor(new Function(`return !!${doc}?.editor`), [], { what: 'the editor' });
+  // the server refuses every write; an edit, its autosave held back
+  await page.eval(async () => { const { api } = await import('/js/api.js'); window.__writeFile = api.writeFile; api.writeFile = async () => { throw new Error('the disk is full'); }; });
+  await page.eval(new Function(`const d = ${doc}; d.editor.setValue(d.editor.getValue() + '-- here\\n'); clearTimeout(d._autosave);`));
+  await tabMenu(page, 'a.vhd');
+  await page.click('body > .menu-popup .mi', { text: 'Open in VS Code' });
+  const lines = async () => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|ERROR)/.test(l));
+  await page.waitFor((m) => window.__console().includes('src/a.vhd could not be saved'), [], { what: 'the stop' });
+  const said = await lines();
+  assert.equal(said[0], 'ERROR: cannot save src/a.vhd: the disk is full. Your changes are kept and saved as soon as it is possible again.');
+  assert.equal(said.length, 2, said.join('\n'));
+  assert.match(said[1], /^ERROR: src\/a\.vhd could not be saved: stopped, so as not to use the older file on disk$/);
+  assert.equal(await fs.access(log).then(() => true, () => false), false, 'the editor not run');
+  assert.equal(await fs.readFile(path.join(dir, 'src', 'a.vhd'), 'utf8'), A);
+  assert.equal(await page.eval(new Function(`return ${doc}.dirty`)), true);
+  // the server writes again: saved, then opened
+  await page.eval(async () => { const { api } = await import('/js/api.js'); api.writeFile = window.__writeFile; });
+  await tabMenu(page, 'a.vhd');
+  await page.click('body > .menu-popup .mi', { text: 'Open in VS Code' });
+  assert.deepEqual(await ran(), [dir, '--goto', `${path.join(dir, 'src', 'a.vhd')}:1`]);
+  assert.equal(await fs.readFile(path.join(dir, 'src', 'a.vhd'), 'utf8'), `${A}-- here\n`);
+  assert.deepEqual(await lines(), said);
+  assert.deepEqual(warnings(page), []);
+}, { skip: WIN });
+
 uiTest('#4017 Open in VS Code: a file of the Files page, none for a drawing\'s module; in Portuguese', E, async (page) => {
   await makeProject(env, { name: 'EdPt', top: 'a', files: { 'src/a.vhd': A, 'constraints/top.ucf': 'NET "x" LOC = "P11";\n' } });
   await page.openProject('EdPt');

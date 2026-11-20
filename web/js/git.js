@@ -164,7 +164,7 @@ export async function openFromRepositoryDialog() {
 /** File ▸ Git ▸ Commit…: the project's changes with a message. */
 async function commitDialog() {
   if (!S.project) return null;
-  await saveAll();
+  if (!await saveAll()) return null;
   const s = await refreshGitStatus();
   if (!s) { collabLog(`ERROR: the project '${S.project.name}' is not in a git repository`, 'err'); collabLog('Hint: Store Project in a GitHub Repository… puts it in one, or Open from GitHub Repository… opens a project from GitHub.', 'info'); return null; }
   const STATE = { modified: 'changed', new: 'new', deleted: 'deleted', conflict: 'in conflict' };
@@ -226,7 +226,7 @@ async function gitPush() {
  *  again with the choices. */
 async function gitPull({ resolve = null } = {}) {
   if (!S.project) return null;
-  await saveAll();
+  if (!await saveAll()) return null;
   const name = S.project.name;
   try {
     const p = await api.gitPull(name, resolve ? { resolve } : {});

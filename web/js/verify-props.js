@@ -64,7 +64,7 @@ export async function propertyProcess(m, { property, depth, timeLimit } = {}) {
     ({ property, depth, timeLimit } = a);
   }
   try {
-    await saveAll();
+    if (!await saveAll()) return null;
     const run = await (await import('./emulator.js')).emulatorYosys(api.standalone);
     const r = await verifyProperty(verifySources(), { drawing: m, property, depth: depth ?? VERIFY_DEPTH, timeLimit, run });
     const b = r.status === 'failed' ? propertyBench(r) : null;

@@ -70,7 +70,7 @@ export async function renameProjectDialog(from = S.project?.name) {
 /** The project `from` renamed `to`, the open one kept open: true when done (its error said in the console otherwise). */
 async function renameOpenProject(from, to) {
   const open = S.project?.name === from;
-  if (open) { await saveAll(); stopWatching(); }
+  if (open) { if (!await saveAll()) return false; stopWatching(); }
   try { await api.renameProject(from, to); } catch (e) {
     if (open) watchProject(from);
     log(`ERROR: Rename Project: ${e.message}`, 'err');

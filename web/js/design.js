@@ -417,7 +417,7 @@ async function deleteFile(file) {
   const trash = !api.standalone || api.keepsTrash;
   if (!await confirmDlg('Delete File', trash ? `Delete '${file}'?\n(It is moved to the workspace's .trash folder, from where you can move it back. Remove from Project keeps the file in the project folder.)`
     : `Delete '${file}' from the disk?\n(It cannot be undone: Remove from Project keeps the file in the project folder.)`)) return;
-  await saveAll();
+  if (!await saveAll()) return;
   for (const d of [...S.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) { d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
   return serialOp(async () => {
     const pj = S.project;
@@ -517,7 +517,7 @@ export function serialOp(fn) {
 const shownName = file => (designOnly() && HDL_RE.test(file) && S.modules?.find(m => m.file === file)?.name) || file;
 export async function removeFile(file) {
   if (!await confirmDlg('Remove Source', `Remove '${shownName(file)}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`)) return;
-  await saveAll();
+  if (!await saveAll()) return;
   for (const d of [...S.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) await closeDoc(d);
   return serialOp(() => removeNow(file));
 }
@@ -531,7 +531,7 @@ export async function removeModule(file) {
   if (!hdl) return removeFile(file);
   if (!await confirmDlg('Remove Source', designOnly() ? `Remove '${drawing}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`
     : `Remove '${drawing}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)`)) return;
-  await saveAll();
+  if (!await saveAll()) return;
   for (const d of [...S.docs]) if ([drawing, hdl].some(f => d.path === f || String(d.id || '').endsWith(`:${f}`))) await closeDoc(d);
   return serialOp(() => removeNow(drawing, hdl));
 }
