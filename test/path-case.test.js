@@ -72,7 +72,7 @@ test('#3536 the local server: written, renamed, read and deleted by the project\
   await assert.rejects(P.writeFile('Cases', 'BUILD/x.vhd', '-- x\n'), { status: 400, message: "'BUILD/x.vhd': not written: the project's build folder (build/) is Silinx's own" });
 });
 
-const memStorage = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; };
+import { memStorage } from './fixtures/mem-storage.js';   // (localStorage's interface, #4725)
 
 test('#3536 the browser\'s stores: the same paths as the server\'s', async () => {
   const stores = [['browser', browserStore(memStorage())], ['folder', folderStore(fakeDirectory('Silinx-projects'))]];

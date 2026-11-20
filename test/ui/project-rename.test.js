@@ -152,6 +152,8 @@ uiTest('#4641 the browser edition: a project of the browser\'s storage renamed t
   await page.eval((p) => window.SilinxApp.openFile(p), SRC);
   await page.waitFor((p) => window.Silinx.active?.id === `file:${p}`, [SRC], { what: 'the source open' });
   const from = (await page.consoleText()).length;
+  // (its snapshots, #4725: one planted, to follow it)
+  await page.eval(() => localStorage.setItem('silinx.snapshots:browser::WebOne', JSON.stringify({ r1: { at: 'x' } })));
   await page.menu('File', 'Rename Project…');
   await page.waitDialog('Rename Project');
   await fillName(page, 'WebTwo');
@@ -162,7 +164,7 @@ uiTest('#4641 the browser edition: a project of the browser\'s storage renamed t
   assert.deepEqual({ ...s, recent: s.recent.slice(0, 1) }, { name: 'WebTwo', title: 'WebTwo - [top.vhd]', tab: 'WebTwo', recent: ['WebTwo'], last: 'WebTwo', open: true });
   assert.ok(!s.recent.includes('WebOne'));
   // kept in the browser's storage under its new name only
-  const kept = await page.eval(() => Object.keys(JSON.parse(localStorage.getItem('silinx.standalone.fs') || '{}')));
-  assert.ok(kept.includes('WebTwo') && !kept.includes('WebOne'), kept.join(', '));
+  const kept = await page.eval(() => Object.keys(localStorage).filter((k) => /^silinx\.(standalone\.project|snapshots:browser:):Web/.test(k)).sort());
+  assert.deepEqual(kept, ['silinx.snapshots:browser::WebTwo', 'silinx.standalone.project:WebTwo']);
   assert.deepEqual(await problems(page, from), []);
 });

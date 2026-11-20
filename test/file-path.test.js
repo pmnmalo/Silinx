@@ -15,7 +15,7 @@ after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 const P = await import('../server/projects.js');
 const { handle } = await import('../server/mcp.js');
 const VHD = 'entity x is end;\narchitecture a of x is begin end;\n';
-const memStorage = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; };
+import { memStorage } from './fixtures/mem-storage.js';   // (localStorage's interface, #4725)
 
 // each path, and what the rule makes of it: its canonical path, or the message every operation throws
 const CASES = {

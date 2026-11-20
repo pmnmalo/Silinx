@@ -43,7 +43,7 @@ function diskTree(dir, base = '', out = {}) {
 }
 const sorted = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
 const under = (tree, name) => sorted(Object.fromEntries(Object.entries(tree).filter(([k]) => k.startsWith(`${name}/`) && k !== `${name}/`).map(([k, v]) => [k.slice(name.length + 1), v])));
-const memStorage = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), m }; };
+import { memStorage } from './fixtures/mem-storage.js';   // (localStorage's interface, #4725)
 const folder = () => { const root = fakeDirectory('Silinx-projects'); const store = folderStore(root); return { root, store, ops: projectOps(() => store, EXAMPLES) }; };
 
 test('#3780 a design and simulation project: the server\'s (silinx.json text, src/ sim/, no constraints/); its kind kept by an import', async () => {
@@ -217,7 +217,7 @@ test('folder: listing (no hidden folders, no folders without silinx.json), readi
   assert.equal(Object.keys(await dump(root)).filter((k) => k.startsWith('.trash/')).length, Object.keys(after).filter((k) => k.startsWith('.trash/')).length);
 });
 
-test('browser storage: the same operations, kept in localStorage under silinx.standalone.fs (the format of earlier versions)', async () => {
+test('browser storage: the same operations, each project in its own localStorage entry (#4725), the one entry of earlier versions moved out', async () => {
   const ls = memStorage();
   ls.setItem('silinx.standalone.fs', JSON.stringify({ Old: { json: { name: 'Old', version: 1, files: [], top: 'x' }, files: { 'src/x.vhd': '-- x' } } }));
   const s = browserStore(ls);
@@ -226,12 +226,13 @@ test('browser storage: the same operations, kept in localStorage under silinx.st
   await ops.create({ name: 'New', template: 'pong' });
   await ops.writeFile('New', 'src/extra.v', 'module extra; endmodule');
   await ops.renameFile('New', 'src', 'rtl');
-  const saved = JSON.parse(ls.getItem('silinx.standalone.fs'));
-  assert.deepEqual(Object.keys(saved), ['Old', 'New']);
-  assert.ok(saved.New.json.files.every((f) => f.path.startsWith('rtl/') || f.path.startsWith('sim/')));
-  assert.equal(saved.New.files['rtl/extra.v'], 'module extra; endmodule');
+  assert.deepEqual([...ls.m.keys()].sort(), ['silinx.standalone.project:New', 'silinx.standalone.project:Old']);
+  const saved = JSON.parse(ls.getItem('silinx.standalone.project:New'));
+  assert.ok(saved.json.files.every((f) => f.path.startsWith('rtl/') || f.path.startsWith('sim/')));
+  assert.equal(saved.files['rtl/extra.v'], 'module extra; endmodule');
+  assert.equal(JSON.parse(ls.getItem('silinx.standalone.project:Old')).files['src/x.vhd'], '-- x');
   await ops.deleteProject('Old');
-  assert.deepEqual(Object.keys(JSON.parse(ls.getItem('silinx.standalone.fs'))), ['New']);
+  assert.deepEqual([...ls.m.keys()], ['silinx.standalone.project:New']);
   // a full localStorage: why, and what to do
   const full = browserStore({ getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); } });
   await assert.rejects(() => projectOps(() => full).create({ name: 'Big' }),
@@ -566,7 +567,7 @@ test('#1156 byLastUsed: the newest change or opening first, then by name; the br
   assert.deepEqual(byLastUsed(list, { b: 500, e: 50, x: 900 }).map((p) => [p.name, p.used]), [['b', 500], ['a', 300], ['e', 200], ['c', 0], ['d', 0]]);
   assert.deepEqual(byLastUsed([]), []);
   // the browser's storage: each write dates its project; one saved before has none (0)
-  const mem = new Map(), storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  const storage = memStorage(), mem = storage.m;
   const s = browserStore(storage);
   const t0 = Date.now();
   await s.create('p1', { name: 'p1', files: [] }, { 'src/a.vhd': 'x' });
@@ -579,9 +580,9 @@ test('#1156 byLastUsed: the newest change or opening first, then by name; the br
     assert.ok((await s.list())[0].modified > before);
   }
   mem.set('silinx.standalone.fs', JSON.stringify({ old: { json: { name: 'old', files: [] }, files: {} } }));
-  assert.deepEqual((await browserStore(storage).list()).map((p) => [p.name, p.modified]), [['old', 0]]);
+  assert.deepEqual((await browserStore(storage).list()).map((p) => [p.name, p.modified === 0]), [['old', true], ['p1', false]]);
   // the listing of the operations passes it on
-  assert.deepEqual((await projectOps(() => browserStore(storage)).list()).map((p) => p.modified), [0]);
+  assert.deepEqual((await projectOps(() => browserStore(storage)).list()).map((p) => p.modified === 0), [true, false]);
 });
 
 // ---- #2894: a design's link (and a Silinx export's zip) imported in the browser keeps its constraints
@@ -756,4 +757,113 @@ test('#4356 projectFromZip: a constraints file of its own not in the zip is miss
   // (in the zip: not missing; listed among the files too: named once)
   assert.deepEqual(imp({ device: S3E, constraints: 'constraints/board.ucf' }, [E('constraints/board.ucf', 'NET "a" LOC = "P11";\n')]).missing, []);
   assert.deepEqual(imp({ device: S3E, constraints: 'constraints/board.ucf', files: [{ path: 'constraints/board.ucf', lang: 'ucf', role: 'constraints' }] }).missing, ['constraints/board.ucf']);
+});
+
+// ---- #4725: the browser edition's storage, one entry per project, nothing cached: two tabs keep each other's work
+test('#4725 two tabs (two stores on one storage) keep each other\'s projects and changes', async () => {
+  const ls = memStorage();
+  const a = browserStore(ls), b = browserStore(ls);
+  const A = projectOps(() => a, EXAMPLES), B = projectOps(() => b, EXAMPLES);
+  await A.create({ name: 'One' });
+  assert.deepEqual((await B.list()).map(p => p.name), ['One']);   // (tab B listed before: it reads again)
+  await B.create({ name: 'Two' });
+  await A.writeFile('One', 'src/a.vhd', '-- a\n');
+  await B.writeFile('Two', 'src/b.vhd', '-- b\n');
+  // tab B, which loaded One before tab A's change, changes another of its files: tab A's change kept
+  await B.load('One');
+  await A.writeFile('One', 'src/c.vhd', '-- c\n');
+  await B.writeFile('One', 'src/d.vhd', '-- d\n');
+  for (const s of [a, b, browserStore(ls)]) {
+    assert.deepEqual((await s.list()).map(p => p.name), ['One', 'Two']);
+    assert.deepEqual(Object.keys((await s.load('One')).files).sort(), ['src/a.vhd', 'src/c.vhd', 'src/d.vhd']);
+    assert.equal((await s.load('Two')).files['src/b.vhd'], '-- b\n');
+  }
+  await A.deleteProject('Two');
+  assert.deepEqual((await B.list()).map(p => p.name), ['One']);
+  await assert.rejects(B.writeFile('Two', 'src/b.vhd', 'x'), { message: 'project \'Two\' not found' });
+});
+
+test('#4725 a damaged or unreadable entry is said, never written over; a write that fails changes nothing', async () => {
+  let full = false;
+  const ls = memStorage(() => full);
+  const s = browserStore(ls), ops = projectOps(() => s, EXAMPLES);
+  await ops.create({ name: 'Good' });
+  await ops.writeFile('Good', 'src/a.vhd', '-- a\n');
+  ls.setItem('silinx.standalone.project:Bad', '{"json": {"name": "Bad"}, "files": {"src/x.vhd": "-- x');
+  const bad = ls.getItem('silinx.standalone.project:Bad');
+  // (not listed, its name taken, not opened, not written: kept as it is for the user to export or repair)
+  assert.deepEqual((await ops.list()).map(p => p.name), ['Good']);
+  await assert.rejects(ops.create({ name: 'Bad' }), { message: 'project \'Bad\' already exists' });
+  await assert.rejects(ops.project('Bad'), { message: 'project \'Bad\' is damaged in the browser storage: not read (nor written over)' });
+  await assert.rejects(ops.writeFile('Bad', 'src/x.vhd', 'y'), { message: 'project \'Bad\' is damaged in the browser storage: not read (nor written over)' });
+  await ops.writeFile('Good', 'src/b.vhd', '-- b\n');
+  assert.equal(ls.getItem('silinx.standalone.project:Bad'), bad);
+  // a storage that cannot be read: an error, not "no projects"
+  const broken = browserStore({ ...ls, getItem: () => { throw new Error('SecurityError'); }, key: ls.key, get length() { return ls.length; } });
+  await assert.rejects(broken.list(), { message: 'the browser storage could not be read (SecurityError)' });
+  await assert.rejects(projectOps(() => broken).create({ name: 'New' }), { message: 'the browser storage could not be read (SecurityError)' });
+  assert.equal(ls.m.size, 2);
+  // a write that fails (a full storage): the project as it was, read again
+  full = true;
+  await assert.rejects(ops.writeFile('Good', 'src/c.vhd', '-- c\n'), /^Error: browser storage is full or unavailable \(QuotaExceededError\)/);
+  await assert.rejects(ops.renameProject('Good', 'Better'), /QuotaExceededError/);
+  full = false;
+  assert.deepEqual(Object.keys((await s.load('Good')).files).sort(), ['src/a.vhd', 'src/b.vhd']);
+  assert.deepEqual((await ops.list()).map(p => p.name), ['Good']);
+});
+
+test('#4725 the one entry of earlier versions: moved out project by project; one that does not fit stays, read as before; a damaged one left', async () => {
+  const old = { A: { json: { name: 'A', files: [] }, files: { 'src/a.vhd': '-- a' }, modified: 5 }, B: { json: { name: 'B', files: [] }, files: { 'src/b.vhd': '-- b'.repeat(100) } } };
+  // (B does not fit in its own entry: only the old entry's room)
+  let room = true;
+  const ls = memStorage((k, v) => !room || (k === 'silinx.standalone.project:B' && v.length > 300));
+  ls.m.set('silinx.standalone.fs', JSON.stringify(old));
+  const s = browserStore(ls), ops = projectOps(() => s, EXAMPLES);
+  assert.deepEqual((await ops.list()).map(p => [p.name, p.modified]), [['A', 5], ['B', 0]]);
+  assert.deepEqual(JSON.parse(ls.getItem('silinx.standalone.project:A')), old.A);
+  assert.deepEqual(Object.keys(JSON.parse(ls.getItem('silinx.standalone.fs'))), ['B']);
+  assert.equal(await ops.readFile('B', 'src/b.vhd'), old.B.files['src/b.vhd']);
+  // B changed while it does not fit: an error, B as it was in the old entry
+  await assert.rejects(ops.writeFile('B', 'src/c.vhd', 'x'), /browser storage is full or unavailable/);
+  assert.deepEqual(JSON.parse(ls.getItem('silinx.standalone.fs')).B, old.B);
+  // room again: B moved out at its next change, the old entry gone
+  const roomy = memStorage();
+  for (const [k, v] of ls.m) roomy.m.set(k, v);
+  const s2 = browserStore(roomy);
+  await projectOps(() => s2).writeFile('B', 'src/c.vhd', 'x');
+  assert.equal(roomy.getItem('silinx.standalone.fs'), null);
+  assert.equal(JSON.parse(roomy.getItem('silinx.standalone.project:B')).files['src/c.vhd'], 'x');
+  // a damaged old entry: left as it is, its projects not shown, nothing written over it
+  const dam = memStorage();
+  dam.m.set('silinx.standalone.fs', '{"A": {"json"');
+  const s3 = browserStore(dam);
+  assert.deepEqual(await s3.list(), []);
+  await projectOps(() => s3).create({ name: 'C' });
+  assert.equal(dam.getItem('silinx.standalone.fs'), '{"A": {"json"');
+});
+
+test('#4725 the browser\'s snapshots: one budget for every project (UTF-16 units), moved with a renamed project, forgotten', async () => {
+  const { localSnapshots, LOCAL_SNAPSHOT_LIMITS } = await import('../web/js/snapshots-local.js');
+  const { giveCopy } = await import('../core/project-rev.js');
+  const ls = memStorage();
+  const snap = async (name, text, i = 0) => (await giveCopy({ ...emptyProjectJson(name), top: `t${i}` }, { 'src/a.v': text }, { at: `2026-01-01T00:00:0${i}Z` })).snapshot;
+  // (just over 40% of the budget each, in UTF-16 units: 'é' is one unit, two UTF-8 bytes)
+  const big = 'é'.repeat(Math.ceil(LOCAL_SNAPSHOT_LIMITS.total * 0.42));
+  const A = localSnapshots(() => ls, 'browser:', 'A'), B = localSnapshots(() => ls, 'browser:', 'B'), C = localSnapshots(() => ls, 'folder:work', 'C');
+  assert.equal(A.save(await snap('A', big)), true);
+  assert.equal(B.save(await snap('B', big)), true);
+  assert.equal(C.save(await snap('C', big)), false);   // (over the budget left: not kept)
+  assert.equal(C.list().length, 0);
+  // a project's newer snapshot takes the place of its older one within the budget
+  assert.equal(B.save(await snap('B', big + 'x', 1)), true);
+  assert.equal(B.list().length, 1);
+  // moved with its project
+  const rev = A.list()[0].rev;
+  assert.equal(A.moveTo('A2'), true);
+  assert.deepEqual(A.list(), []);
+  assert.equal((await localSnapshots(() => ls, 'browser:', 'A2').read(rev))?.rev, rev);
+  // forgotten: its room free again
+  localSnapshots(() => ls, 'browser:', 'A2').forget();
+  assert.equal(C.save(await snap('C', big)), true);
+  assert.deepEqual([...ls.m.keys()].sort(), ['silinx.snapshots:browser::B', 'silinx.snapshots:folder:work:C']);
 });
