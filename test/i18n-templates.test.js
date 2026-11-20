@@ -104,7 +104,6 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   "cannot open ${path}: ${errors.join('; ')}": 'cannot open src/fa.sym.json: no pins',
   'Test bench ${path()} created': 'Test bench sim/tb_top.vhd created',
   'Translated to ${label(lang)} (read-only)': 'Translated to Verilog (read-only)',
-  '${bad}: choose another name.': "'end' is a reserved word of VHDL and Verilog: choose another name.",
   '${made.name} created': 'fa created',
   "${path.split('/').pop()} created": 'top.ucf created',
   '${named} exists. Replace it?': 'sim/tb_top.vhd exists. Replace it?',
