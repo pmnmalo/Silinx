@@ -65,7 +65,8 @@ Traps:
   the repositories you already have: it does not make the copy.
 - Your copy does not follow Silinx's. To update the relay, push the relay's new files
   ([`packages/silinx-relay-cloudflare`](../../../packages/silinx-relay-cloudflare/README.md)) to your repository:
-  Cloudflare deploys each push.
+  Cloudflare deploys each push. Do so when Silinx's release notes say the relay changed: a relay older than the
+  Silinx that shares refuses its projects (as when the editors got a key each).
 - The free plan has daily limits (below).
 
 Silinx checks the relay before it keeps it: it answers as a relay of Silinx's shared projects, it lets the Silinx site

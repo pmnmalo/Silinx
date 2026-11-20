@@ -387,8 +387,21 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
       return signer.text;
     },
   };
+  // (#4745: the editor link renewed, the editors not in the room now out of the list: copies of the old link, and the
+  // editors away, edit no more; those in it keep their keys. Returns the editor link's new key and how many were out.)
+  const renew = async () => {
+    if (!signer) throw new Error('this project is shared with no editors');
+    if (!ownerKey) throw new Error('this share was started by an older Silinx: stop sharing and share it again to renew its editor link');
+    const here = new Set(p.peers().map(x => keyOfPeer(x.client)).filter(Boolean));
+    let out = 0;
+    for (const pub of [...listed.keys()]) if (!here.has(pub)) { listed.delete(pub); out++; }
+    signer = await newSigner();
+    verifier = await verifierOf(signer.pub);
+    await publishList();
+    return { editKey: signer.text, removed: out };
+  };
   return {
-    ...p, key: text, ...roles,
+    ...p, key: text, ...roles, renew,
     /** The owner's activity on a channel (#4002): sent to every follower when it changed, kept for those who join.
      *  Throws when the channel's name or the value's size is not one; false: unchanged (or past the channels' number). */
     publish: (ch, value) => {
