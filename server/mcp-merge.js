@@ -12,10 +12,10 @@ import { applyMerge, previewMerge, undoMerge, mergeLines } from '../core/merge-a
 import { mergeStorage } from './merge-projects.js';
 import { hunkLines } from '../core/git-messages.js';
 
-const FROM = STR('The contribution: a Silinx project\'s .zip, or its folder, in the exchange folder (its name, a path in it, or an absolute path inside it).');
+const FROM = STR('The contribution: a Silinx project\'s .zip or folder in the exchange folder (its name, a path in it, or an absolute path inside it).');
 const RESOLVE = {
   type: 'object', additionalProperties: true,
-  description: 'The conflicts\' choices, as merge_preview lists them: { "<file>": "mine" | "theirs" } for a whole file, { "<text file>": { "<hunk id>": "mine" | "theirs" | "both" | { "text": "…" } } } for a text file\'s hunks (both: mine\'s lines, then theirs\'; text: the hunk\'s lines written), { "<drawing>": { "<object id>": "mine" | "theirs" } } for a drawing\'s objects (or "mine" | "theirs" for the whole drawing), { "silinx.json": { "<field>": "mine" | "theirs" } } for the project\'s description.',
+  description: 'Per merge_preview\'s conflicts: { "<file>": "mine"|"theirs" }, or by a text file\'s hunk { "<hunk id>": "mine"|"theirs"|"both"|{ "text": "…" } }, a drawing\'s object { "<object id>": "mine"|"theirs" }, silinx.json\'s field.',
 };
 
 // the contribution, through the import gate (a zip's caps checked while it is read)
@@ -55,7 +55,7 @@ const rowLines = f => [`  ${f.path}: ${STATE[f.state]}${f.renamedTo ? ` to ${f.r
 export const MERGE_TOOLS = [
   {
     name: 'merge_preview', title: 'Merge Contribution: preview',
-    description: 'What Merge Contribution… would do with a contribution (another person\'s copy of the project: a Silinx .zip or folder in the exchange folder): how its ancestor was found (three-way, or two-way), each file\'s state (taken, kept, removed, merged, a conflict) and the conflicts to choose (a file\'s, a drawing\'s objects\', silinx.json\'s fields), for merge_contribution\'s resolve. Changes nothing.',
+    description: 'What Merge Contribution… would do with a contribution (another person\'s copy of the project): how its ancestor was found (three-way or two-way), each file\'s state (taken, kept, removed, merged, a conflict) and the conflicts to choose (a file\'s, a drawing\'s objects\', silinx.json\'s fields) for merge_contribution\'s resolve. Changes nothing.',
     inputSchema: { type: 'object', properties: { project: PROJECT, from: FROM }, required: ['project', 'from'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, from }) {
@@ -72,7 +72,7 @@ export const MERGE_TOOLS = [
   },
   {
     name: 'merge_contribution', title: 'Merge Contribution',
-    description: 'Merge a contribution (another person\'s copy of the project: a Silinx .zip or folder in the exchange folder) into the project, as the Project menu\'s Merge Contribution… does: what only one side changed taken, a drawing both changed merged by its objects and its HDL made again, a text file both changed merged by its lines (a file renamed on one side merged as a rename), every conflict chosen in resolve (a text file\'s per hunk, or whole) (merge_preview lists them; one left: nothing merged). The project as it was is kept for undo_merge; a merge that takes the contribution\'s files makes the project untrusted (only the user trusts it, in the interface).',
+    description: 'Merge a contribution (another person\'s copy of the project) into the project, as the Project menu\'s Merge Contribution… does: what one side changed taken, a drawing both changed merged by its objects (its HDL made again), a text file by its lines, a rename kept; every conflict chosen in resolve (merge_preview lists them; one left: nothing merged). The project as it was is kept for undo_merge; a merge that takes the contribution\'s files makes the project untrusted (only the user trusts it, in the interface).',
     inputSchema: { type: 'object', properties: { project: PROJECT, from: FROM, resolve: RESOLVE }, required: ['project', 'from'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },   // (it replaces and removes files: undo_merge puts them back)
     async run({ project: name, from, resolve = {} }) {
@@ -86,7 +86,7 @@ export const MERGE_TOOLS = [
   },
   {
     name: 'undo_merge', title: 'Undo Merge',
-    description: 'Put the project back as it was before its last merge (merge_contribution, or Merge Contribution… in the interface), as the Project menu\'s Undo Merge does; refused when there is none, or when the project changed since. A project the merge made untrusted stays so.',
+    description: 'Put the project back as it was before its last merge, as the Project menu\'s Undo Merge does; refused when there is none or the project changed since. A project the merge made untrusted stays so.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name }) {

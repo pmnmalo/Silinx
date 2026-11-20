@@ -12,7 +12,7 @@ const TIMEOUT_MS = 600000;
 export const BOARD_TOOLS = [
   {
     name: 'program_board', title: 'Program the board',
-    description: 'Program the project\'s board (Configure Target Device: Program FPGA, or Program Flash on an iCE40) with the file Generate Programming File made (run_process bitstream first): a Spartan-3E / 6 or 7-series .bit and an ECP5\'s .bit (the ULX3S) loaded into the FPGA (SRAM, until the board is powered off), a Gowin\'s .fs (the Tang Nano 9K) into its SRAM, an iCE40\'s .bin (the iCEBreaker) written into the board\'s SPI flash (kept at power-up). Through the board\'s USB, with the board\'s programmer (openFPGALoader, Digilent\'s djtgcfg, adepttool, xc3sprog or iMPACT; tool to choose another). A bitstream built for another device than the project\'s is refused unless force. Only a trusted project. Returns the programmer\'s log.',
+    description: 'Program the project\'s board (Configure Target Device: Program FPGA, or Program Flash on an iCE40) with the file run_process bitstream made: a .bit loaded into the FPGA\'s SRAM (Spartan-3E / 6, 7-series, the ECP5\'s ULX3S), a Gowin\'s .fs into its SRAM, an iCE40\'s .bin written into the board\'s SPI flash. Through the board\'s USB and its programmer (openFPGALoader, djtgcfg, adepttool, xc3sprog or iMPACT; tool to choose another). A bitstream built for another device than the project\'s is refused unless force. Only a trusted project. Returns the programmer\'s log.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       tool: { type: 'string', enum: TOOLS, description: 'The programmer (default: the board\'s, else Toolchain Settings\').' },

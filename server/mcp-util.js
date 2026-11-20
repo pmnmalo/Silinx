@@ -193,7 +193,8 @@ export async function elaborateView(name, { top, sim = false, lint = true, hiera
 }
 
 export const STR = (description) => ({ type: 'string', description });
-export const PROJECT = STR('The project\'s name in the Silinx workspace (list_projects).');
+// (a workspace's project: its name, as list_projects lists it; no longer than a folder's name can be, #4752)
+export const PROJECT = { type: 'string', minLength: 1, maxLength: 255, description: 'The project (list_projects).' };
 export const deviceName = d => (d ? `${d.part}${d.package}${d.speed}` : 'no device');
 
 // a board (list_devices') and its variant: { board, device } for a new project

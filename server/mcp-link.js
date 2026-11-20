@@ -40,15 +40,15 @@ const accountLine = a => `Signed in to GitHub as ${a.login || '?'}; ${!a.reposit
 export const LINK_TOOLS = [
   {
     name: 'project_link', title: 'A project\'s link (Share Project…, a copy)',
-    description: `The link that opens a project in Silinx, as Share Project… does with A copy chosen (Share Module… with top) (for lecture slides): the whole project inside the link (compressed; the HDL its drawings make again and the KiCad part files no drawing uses left out), and what it opens in: view try (Try it: a schematic's or a circuit's live simulation, a state diagram's, a Petri net's or an ASM chart's simulation), simulate (its test bench's simulation) or emulate (the board emulator); top: the module (default the project's top). A link longer than ${LINK_LIMITS.slides} characters works in a browser but some slide tools cut it; one above ${LINK_LIMITS.maxEncoded} cannot be made (export_project kind silinx, a zip hosted elsewhere, and its link #open=<its https address>). Anyone with the link has the whole project, its comments included.`,
+    description: `The link that opens a project in Silinx, as Share Project… with A copy (Share Module… with top), for slides: the whole project compressed in the link, opening in view try (live simulation), simulate or emulate. Over ${LINK_LIMITS.slides} characters some slide tools cut it; over ${LINK_LIMITS.maxEncoded} it cannot be made (export_project kind silinx, hosted, opened by #open=<its https address>). Anyone with the link has the whole project, comments included.`,
     inputSchema: { type: 'object', properties: {
       project: PROJECT, view: { type: 'string', enum: LINK_VIEWS, description: 'What the link opens: try, simulate or emulate (default: the project only).' },
-      top: STR('The module to open (default: the project\'s top); with view simulate, the test bench to simulate (default: the project\'s); a test bench only with simulate.'),
-      base: STR(`The address of Silinx the link opens (default ${SITE_URL}, the site's latest release; e.g. a local server's http://localhost:3000/).`),
+      top: STR('The module to open (default: the project\'s top); with view simulate, the test bench (default: the project\'s).'),
+      base: STR(`The address of Silinx the link opens (default ${SITE_URL}; e.g. http://localhost:3000/).`),
       lab: STR('A guided lab of the project to open beside it (its id: lab action list).'),
-      short: { type: 'boolean', description: 'A short link (#gist=…, about 140 characters): the project encrypted and saved as a secret gist of the GitHub account of the server\'s token (GH_TOKEN); only the link opens it.' },
-      qr: { type: 'boolean', description: `The link's QR code too, as the interface shows it (#3637): qr, an SVG (black on white). A link longer than a QR code holds (${QR_MAX_BYTES} bytes) has none, a warning saying so (a short link has one).` },
-      expires_days: { type: 'integer', minimum: 0, maximum: 3650, description: 'With short: the link expires after this many days, opening it then refused (0 or none: never; Share Project… offers 7, 30, 182, 365). Making a short link deletes the account\'s expired Silinx gists.' },
+      short: { type: 'boolean', description: 'A short link (#gist=…): the project encrypted in a secret gist of the server\'s GH_TOKEN account; only the link opens it.' },
+      qr: { type: 'boolean', description: `The link's QR code too, an SVG. A link longer than a QR code holds (${QR_MAX_BYTES} bytes) has none, a warning saying so.` },
+      expires_days: { type: 'integer', minimum: 0, maximum: 3650, description: 'With short: the link expires after this many days (0 or none: never). Making one deletes the account\'s expired Silinx gists.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async run({ project: name, view, top, base = SITE_URL, lab, short = false, expires_days: days = 0, qr = false }) {
@@ -93,7 +93,7 @@ export const LINK_TOOLS = [
   },
   {
     name: 'open_link', title: 'Open a design from a link',
-    description: 'Make a project of the workspace from a Silinx link (#design=… with the project inside it, #gist=… a short link\'s, or #open=example:<name>), as the interface does when opened at that link; returns what the link opens (view, top, lab: a guided lab). The project is named after the design (or name); one of that name with the same files is the link\'s already (kept as it is), one that differs is never replaced (give another name, or delete_project first). A link to a zip at an address (#open=https://…) is not fetched: download it into the exchange folder and import_project it.',
+    description: 'Make a project from a Silinx link (#design=…, #gist=…, #open=example:<name>), as opening it in the interface does; returns what it opens (view, top, lab). Named after the design (or name); one of that name with the same files is kept, one that differs never replaced. A #open=https://… zip is not fetched: download it to the exchange folder, then import_project.',
     inputSchema: { type: 'object', properties: {
       link: STR('The link (the whole address, or its part from #).'),
       name: STR('The new project\'s name (default: the design\'s, or the example\'s).'),
@@ -165,7 +165,7 @@ export const LINK_TOOLS = [
   // File ▸ Short Links… (#3635, web/js/short-links.js): the short links of the account of the server's GH_TOKEN
   {
     name: 'short_links', title: 'Short Links (list)',
-    description: 'The short links (#gist=…) of the GitHub account of the server\'s token (GH_TOKEN), as File ▸ Short Links… lists them: its Silinx gists, the newest first, each with when it was made, when it expires (or never) and whether it has expired. The link itself is not on GitHub (its key is only in the link): project_link short\'s answer is the only copy.',
+    description: 'The short links (#gist=…) of the server\'s GH_TOKEN account, as File ▸ Short Links… lists them, newest first, each with when it was made and expires. The link itself is not on GitHub (its key is only in the link).',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
     async run() {
@@ -179,7 +179,7 @@ export const LINK_TOOLS = [
   },
   {
     name: 'delete_short_link', title: 'Short Links (delete)',
-    description: 'Delete short links of the account of the server\'s token (GH_TOKEN), as Short Links…\'s Delete Selected and Delete Expired do: gists (their ids, from short_links), the expired ones (expired: true), or every one (all: true, its header\'s check box then Delete Selected, #3994); only Silinx\'s gists of the account, any other id refused before anything is deleted. A deleted link no longer opens.',
+    description: 'Delete short links of the server\'s GH_TOKEN account, as Short Links…\'s Delete Selected and Delete Expired do: gists (ids from short_links), the expired ones, or all; only Silinx\'s gists, any other id refused before anything is deleted. A deleted link no longer opens.',
     inputSchema: { type: 'object', properties: {
       gists: { type: 'array', items: { type: 'string' }, description: 'The gists\' ids (short_links).' },
       expired: { type: 'boolean', description: 'Delete every expired short link instead.' },

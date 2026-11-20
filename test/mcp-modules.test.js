@@ -52,7 +52,7 @@ const names = tools => tools.map(t => t.name);
 test('server/mcp.js exports what it did before the split, and its requests\' order (#4734: laneOf, lanes)', () => {
   assert.deepEqual(Object.keys(mcp).sort(), ['OPEN_REPORTS', 'PROTOCOL_VERSIONS', 'TOOLS', 'handle', 'laneOf', 'lanes', 'serveMcp']);
   assert.equal(mcp.OPEN_REPORTS, OPEN_REPORTS);
-  assert.deepEqual(mcp.PROTOCOL_VERSIONS, ['2025-06-18', '2025-03-26', '2024-11-05']);
+  assert.deepEqual(mcp.PROTOCOL_VERSIONS, ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']);
 });
 
 test('the tools: those of the areas, the ones of before the split in their order', () => {

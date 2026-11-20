@@ -57,7 +57,7 @@ const stepJson = (lab, s, p, lang) => ({ number: lab.steps.indexOf(s) + 1, id: s
 export const LAB_TOOLS = [
   {
     name: 'lab', title: 'Guided labs',
-    description: 'The guided labs of a project, as its Lab document (Project ▸ Guided Labs…): list (the labs shipped with Silinx, each for an example, and the project\'s own labs/*.lab.json, with each one\'s steps done), show (a step: its text, its hint, its checks, done or not), check (run a step\'s checks on the project, as Check Step does: the reasons it is not done, its hint then; the try recorded in labs/progress.json; a step with no checks is marked done), restart (the lab\'s progress cleared), validate (a teacher\'s lab file, labs/<name>.lab.json: its problems, as the file\'s Check Syntax says them; new_source type lab writes one to start from).',
+    description: 'The guided labs of a project, as its Lab document (Project ▸ Guided Labs…): list (Silinx\'s labs and the project\'s labs/*.lab.json, with their steps done), show (a step\'s text, hint, checks, done or not), check (a step\'s checks run, as Check Step does: why it is not done, then its hint; recorded in labs/progress.json), restart (the lab\'s progress cleared), validate (a teacher\'s lab file\'s problems, as its Check Syntax says them).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, action: { type: 'string', enum: ACTIONS, description: 'list, show, check, restart or validate.' },
       file: STR('validate: the lab file (labs/<name>.lab.json).'),

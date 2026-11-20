@@ -52,8 +52,8 @@ async function hierarchyOf(name, pj, sim) {
 export const PROJECT_TOOLS = [
   {
     name: 'list_examples', title: 'List the example projects',
-    description: 'The example projects a new project can start from (new_project_from_example), in the order of the interface, with their top module, device and board; '
-      + 'then the test designs (the designs Silinx is tested with: schematics, state diagrams, C programs for Silinx HLS, each with its test), which a new project can start from too.',
+    description: 'The example projects a new project can start from (new_project_from_example), in the interface\'s order, with their top module, device and board; '
+      + 'then the test designs (schematics, state diagrams, C programs for Silinx HLS, each with its test), which a new project can start from too.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run() {
@@ -77,7 +77,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'list_projects', title: 'List the projects',
-    description: 'The projects of the Silinx workspace (the folder the Project Navigator uses), with their top module, device and board, and where each is kept (the workspace folder, its GitHub repository).',
+    description: 'The projects of the Silinx workspace, with their top module, device and board, and where each is kept (the workspace folder, its GitHub repository).',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run() {
@@ -91,7 +91,7 @@ export const PROJECT_TOOLS = [
   {
     name: 'new_project_from_example', title: 'New project from an example',
     description: 'Make a new project in the workspace from an example or a test design (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s.',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example, or test design (list_examples).'), board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (list_devices; default: the board\'s default), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example, or test design (list_examples).'), board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ name, example, board, variant }) {
       // (an example, or a test design: #1746)
@@ -109,16 +109,15 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices: basys2, nexys2, basys3…; default: the Basys2-250\'s device, no board). Then write its sources with write_file (a test bench in sim/) and choose its top module and test bench with set_top. With kind design, a design and simulation project, as New Project\'s "Design and simulation only (no FPGA)": no board, no device, no constraints; its sources are drawings (new_source), simulated with test_bench_wizard and simulate; no implementation, emulation or programming, and its HDL is not shown (set_design_properties with a board makes it an FPGA project). With top_source_type, as New Project\'s Top-Level Source Type: the project starts with that top document, the top module \'top\' (src/top.sch.json, .fsm.json, .asm.json, .bool.json: with its HDL module, generated from it, in the language; src/top.pn.json, .circ.json: the drawing, its HDL made when the project is loaded; src/top.c, .cpp: the C or C++ function top, Silinx HLS\'s; hdl: none, the sources written by hand).',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (list_devices; default: the board\'s default), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', 'design'], description: 'Its kind, as New Project\'s Project Kind: fpga (default), or design, a design and simulation project: drawings and simulation only, no board.' }, design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design.' },
-      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (#4105): hdl, sch (schematic), fsm, asm, tt (Boolean algebra), petri, circuit, c, cpp (a design and simulation project\'s a drawing\'s); saved as the project\'s, and its top document made.' },
-      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl; a design and simulation project\'s vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
+    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. kind design: as New Project\'s "Design and simulation only (no FPGA)": no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: the project starts with that top document, module \'top\' (a drawing: its HDL generated from it; top.c / .cpp: Silinx HLS\'s function top; hdl: none).',
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', 'design'], description: 'Its kind, as New Project\'s Project Kind: fpga (default), or design, a design and simulation project: drawings and simulation only, no board.' },
+      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s: hdl, sch (schematic), fsm, asm, tt (Boolean algebra), petri, circuit, c, cpp (a design and simulation project\'s: a drawing); saved as the project\'s, its top document made.' },
+      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, kind: given, design_only: alias, top_source_type: type, language }) {
-      // (its kind, #4103: design_only its deprecated alias)
-      if (given !== undefined && alias !== undefined) throw toolError('give kind, not design_only too (design_only is kind\'s deprecated alias)');
-      const designOnly = (given ?? (alias ? DESIGN_KIND : 'fpga')) === DESIGN_KIND;
-      if (designOnly && (board || variant)) throw toolError(`a design and simulation project has no board: give ${given !== undefined ? 'kind design' : 'design_only'} or a board, not both`);
+    async run({ name, board, variant, kind: given, top_source_type: type, language }) {
+      // (its kind, #4103; design_only, its deprecated name: server/mcp-aliases.js)
+      const designOnly = (given ?? 'fpga') === DESIGN_KIND;
+      if (designOnly && (board || variant)) throw toolError('a design and simulation project has no board: give kind design or a board, not both');
       const refusal = type !== undefined && topTypeRefusal({ kind: designOnly ? DESIGN_KIND : null }, type);
       if (refusal) throw toolError(refusal);
       let device;
@@ -135,7 +134,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'set_top', title: 'Set the top module and the test bench',
-    description: 'Choose a project\'s top module (what run_process synthesizes and implements) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors (check_syntax says them). With update_constraints, the constraints file is written again from the board\'s pins for the new top\'s ports (clk, led, sw, btn, seg, an…), as Update Constraints does: its pin locations are replaced.',
+    description: 'Choose a project\'s top module (what run_process builds) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors. update_constraints: the constraints file written again from the board\'s pins for the new top\'s ports, as Update Constraints does: its pin locations replaced.',
     inputSchema: { type: 'object', properties: { project: PROJECT, top: STR('The top module (an entity or module of the project\'s design sources).'), sim_top: STR('The test bench (a simulation source\'s entity or module).'), update_constraints: { type: 'boolean', description: 'Write the constraints file again from the board\'s pins (default false).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, top, sim_top: simTop, update_constraints: constraints = false }) {
@@ -163,7 +162,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'A project\'s top module, test bench (simulation top), device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and the Simulation view, as the Design pane lists them (the top first, then the names in natural order: x_2 before x_10), and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images; under the top module in the Implementation view and in Implement\'s and Emulate\'s panels); shared live by share_project: sharing, its mode and its followers, each with its path (p2p or relay, #4643).',
+    description: 'A project\'s top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
@@ -204,7 +203,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'write_file', title: 'Write a file of a project',
-    description: 'Write (create or replace) a file of a project. A new VHDL or Verilog file is added to the project (a test bench in sim/ or named tb_… as a simulation source). A drawing (a .sch, .asm, .fsm, .tt, .bool or .pn .json) makes its HDL file again, as its editor does when it is saved; one with errors leaves it as it was (Check Syntax then stops on it); one with no "generatedFile" whose HDL file is taken, or whose module another file defines, has none, said with its way out (#4693). A truth table\'s view options are in it too: "kmapOrder": "rows" lays its Karnaugh maps\' variables out MSB → LSB by rows, then columns (left out: by columns, then rows). A state diagram\'s transition is drawn as its editor draws a stroke (#3286): "bend" (px: its arc\'s bow from the straight line, signed; left out: straight, or beside a transition the other way) and a self-loop\'s "angle" (degrees: the direction of its loop from the state; left out: away from the other arrows); neither changes its HDL. A schematic\'s instance with an empty "name" is given its automatic name, inst_n (the next free one, not drawn), as its editor gives it when its name is cleared. The application\'s open editor of that file keeps its own text until it is reopened.',
+    description: 'Write (create or replace) a file of a project. A new HDL file is added to the project (in sim/ or named tb_…: a simulation source). A drawing (.sch, .asm, .fsm, .tt, .bool or .pn .json) makes its HDL file again, as its editor does on save; one with errors leaves it as it was; one whose HDL file is taken gets none (said). A truth table\'s "kmapOrder": "rows" lays its Karnaugh maps\' variables out MSB → LSB by rows, then columns (left out: by columns, then rows). A state diagram\'s transition: "bend" (px, a signed bow) and a self-loop\'s "angle" (degrees); neither changes its HDL. A schematic instance with an empty "name" gets the next free inst_n. An open editor keeps its text until reopened.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project, e.g. src/counter.vhd.'), text: STR('The whole text of the file.') }, required: ['project', 'path', 'text'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, path: rel, text }) {

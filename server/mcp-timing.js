@@ -65,13 +65,13 @@ const ITEM = { state: 'state', trans: 'transition', node: 'box', edge: 'arrow', 
 export const TIMING_TOOLS = [
   {
     name: 'timing_paths', title: 'Timing paths (Show Path)',
-    description: 'The slowest paths of the last timing analysis (run_process timing: the Silinx toolchain\'s, Xilinx ISE\'s trce or AMD Vivado\'s report_timing_summary, the newest; each stage of ISE\'s and Vivado\'s back to the project\'s HDL by their netlists\' names), as the Static Timing Report\'s Paths panel: the worst path into each flip-flop, slowest first, with its clock, its delay, its PERIOD and its slack; or, with from and / or to, the worst path between two registers. With path (1 = the slowest), that path\'s stages (clock-to-out, net, logic, setup: each one\'s delay and arrival, its instance, site and net, and the source lines of its logic) and what Show Path highlights: the source lines by file, the sites and the nets, and the elements of the drawings those lines are generated from (a state diagram\'s states and transitions, an ASM chart\'s boxes and arrows, a schematic\'s symbols and wires).',
+    description: 'The slowest paths of the newest timing analysis (run_process timing: the Silinx toolchain\'s, ISE\'s trce or Vivado\'s), as the Static Timing Report\'s Paths panel: the worst path into each flip-flop, slowest first, with its clock, delay, PERIOD and slack; with from and / or to, the worst paths between registers. With path, that path\'s stages (clock-to-out, net, logic, setup: delay, arrival, instance, site, net, the source lines of its logic) and what Show Path highlights: the source lines by file, the sites, the nets, and the drawings\' elements those lines come from (states and transitions, ASM boxes and arrows, symbols and wires).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
-      count: { type: 'integer', description: 'How many paths to list (default 10, at most the 20 the analysis keeps).' },
-      path: { type: 'integer', description: 'A path\'s number in the list (1 = the slowest): its stages and its highlight.' },
-      from: { type: 'string', description: 'Between two registers: the register the paths start from (a flip-flop\'s signal, as the list\'s registers name it, or its last part: level for u_speed.level). The list is then the worst path from it into each register it reaches (with to: into that one).' },
-      to: { type: 'string', description: 'Between two registers: the register the paths end in (the worst path into it from each register that reaches it; with from: from that one).' },
+      count: { type: 'integer', description: 'How many paths (default 10, at most 20).' },
+      path: { type: 'integer', description: 'A path\'s number (1 = the slowest): its stages and highlight.' },
+      from: { type: 'string', description: 'The register the paths start from (its signal as the list names it, or its last part: level for u_speed.level): the worst path from it into each register it reaches (with to: into that one).' },
+      to: { type: 'string', description: 'The register the paths end in: the worst path into it from each register reaching it (with from: from that one).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, count = 10, path, from, to }) {

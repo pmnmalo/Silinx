@@ -63,7 +63,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'remove_from_project', title: 'Remove from Project',
-    description: 'Remove a source from the project, as Remove from Project does: the file stays in the project folder (add_to_project brings it back). With its HDL file, a drawing\'s HDL file (generated from it) leaves the project with it, as the Design pane\'s module does. A top module the project then no longer has becomes the one root of its view, else none.',
+    description: 'Remove a source from the project, as Remove from Project does: the file stays in the project folder (add_to_project brings it back); a drawing\'s generated HDL file leaves with it. A top module no longer in the project becomes the one root of its view, else none.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project (project_info).'), with_hdl: { type: 'boolean', description: 'A drawing: its HDL file removed too (default true).' } }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, with_hdl: withHdl = true }) {
@@ -88,7 +88,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'add_to_project', title: 'Add to Project',
-    description: 'Add a file of the project folder that is not in the project (removed from it, or put there) back into it, as Add to Project does: a VHDL or Verilog file as a source (a test bench in sim/ or named tb_… as a simulation source), a constraints file (UCF, PCF, LPF, CST, CCF, XDC) as the constraints when the project has none.',
+    description: 'Add a file of the project folder into the project, as Add to Project does: an HDL file as a source (a test bench in sim/ or named tb_… as a simulation source), a constraints file (UCF, PCF, LPF, CST, CCF, XDC) as the constraints when there are none.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project folder.') }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel }) {
@@ -104,7 +104,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'rename_file', title: 'Rename a file or a folder',
-    description: 'Rename or move a file or a folder of a project, as Rename does: the project\'s list of files, its constraints file and the drawings\' links to an HDL file (generated from them) follow. To rename the module a file defines, edit its text (write_file).',
+    description: 'Rename or move a file or a folder of a project, as Rename does: the project\'s list of files, its constraints file and the drawings\' links to their HDL follow. A module is renamed by rename_module.',
     inputSchema: { type: 'object', properties: { project: PROJECT, from: STR('The file\'s or folder\'s path in the project.'), to: STR('Its new path in the project.') }, required: ['project', 'from', 'to'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project: name, from, to }) {
@@ -132,7 +132,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'rename_module', title: 'Rename a module',
-    description: 'Rename a module (an entity or a module of the project\'s HDL files), as Rename does: its declaration and its instances in every source, the schematics\' symbols of it (their layout kept), its symbol file (<module>.sym.json: the module\'s name in it, a file named after the module following it, beside its file), the drawing it is generated from (named after it, it follows), the project\'s top and test bench. Its file follows the new name when it is named after the module (file: another path, or keep to leave it); the drawings changed make their HDL again.',
+    description: 'Rename a module, as Rename does: its declaration and instances in every source, its schematic symbols (layout kept) and symbol file, the drawing it is generated from, the project\'s top and test bench. Its file follows when named after the module (file: another path, or keep); the changed drawings make their HDL again.',
     inputSchema: { type: 'object', properties: { project: PROJECT, module: STR('The module\'s name now.'), to: STR('Its new name (a letter, then letters, digits and _).'), file: STR('Its file\'s new path, or keep (default: the file with the new name when it is named after the module).') }, required: ['project', 'module', 'to'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project: name, module: oldName, to: newName, file }) {
@@ -152,7 +152,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'delete_file', title: 'Delete a file or a folder',
-    description: 'Delete a file or a folder (with everything in it) of a project, as Delete File / Delete Folder does: it is moved to the workspace\'s .trash folder (.trash/<project>-<time>/<its path>, named in the result), from where it can be moved back by hand, as delete_project does (remove_from_project keeps the file in the project folder). A top module the project then no longer has becomes the one root of its view, else none.',
+    description: 'Delete a file or folder of a project, as Delete File / Delete Folder does: moved to the workspace\'s .trash (its place named in the result), from where it can be moved back by hand. A top module no longer in the project becomes the one root of its view, else none.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s or folder\'s path in the project.') }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name, path: rel }) {
@@ -170,7 +170,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'delete_project', title: 'Delete a project',
-    description: 'Delete a project of the workspace: its folder is moved to the workspace\'s .trash folder (from where it can be taken back by hand), as replacing a project of the same name in New Project does.',
+    description: 'Delete a project of the workspace: its folder is moved to the workspace\'s .trash folder (from where it can be taken back by hand).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name }) {
@@ -181,7 +181,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'rename_project', title: 'Rename a project',
-    description: 'Rename a project of the workspace, as Rename Project… does (#4641): to, its new name (New Project\'s rule: a letter, then up to 63 letters, digits, - and _; no other project\'s, in any case; a change of case alone is a rename). Its folder is moved whole (a git repository\'s .git with it, its remote kept; a failure leaves it as it was), its silinx.json\'s name and a <name>.xise kept in it follow. Refused while a process of it runs or while it is shared live (share_project stop first).',
+    description: 'Rename a project, as Rename Project… does: to, a letter, then up to 63 letters, digits, - and _, no other project\'s in any case. Its folder moves whole (.git too; a failure leaves it as it was), silinx.json\'s name and <name>.xise follow. Refused while a process of it runs or it is shared live.',
     inputSchema: { type: 'object', properties: { project: PROJECT, to: STR('The project\'s new name.') }, required: ['project', 'to'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project: name, to }) {

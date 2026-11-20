@@ -36,7 +36,7 @@ const pinsText = sym => ['W', 'E', 'N', 'S'].map(s => [s, sym.pins.filter(q => q
 export const SYMBOL_TOOLS = [
   {
     name: 'read_symbol', title: 'Read a module\'s symbol',
-    description: 'A module\'s symbol in the schematics, as the Symbol Editor shows it: its pins in order on each side (W left, E right, N top, S bottom; top to bottom, left to right), each pin\'s direction and width, the spacing between pins, the body\'s width and height (null: automatic) and where the module\'s name is drawn (title: top, center, bottom). Its symbol file (<module>.sym.json beside its source) when it has one, else the default symbol (inputs on the left, outputs on the right).',
+    description: 'A module\'s symbol, as the Symbol Editor shows it: its pins in order on each side (W, E, N, S) with direction and width, the spacing, the body\'s size (null: automatic) and the title\'s place; from <module>.sym.json when it has one, else the default (inputs left, outputs right).',
     inputSchema: { type: 'object', properties: { project: PROJECT, module: STR('The module (entity) whose symbol to read.') }, required: ['project', 'module'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, module }) {
@@ -48,7 +48,7 @@ export const SYMBOL_TOOLS = [
   },
   {
     name: 'edit_symbol', title: 'Edit a module\'s symbol',
-    description: 'Edit a module\'s symbol, as the Symbol Editor does, and save it (<module>.sym.json beside its source, made when it has none): pins, its pins in their new order with their sides (every pin of the symbol, or some of them: those given first on their sides, the others after them, as they were); spacing (between pins: 20 to 100, a multiple of 10); width and height (the body\'s, 40 to 2000; null: automatic); title (where the module\'s name is drawn: top, center, bottom); reset: true, the default symbol first. The schematics\' instances of the module are then out of date: update_symbols draws them with it, their connections kept.',
+    description: 'Edit a module\'s symbol, as the Symbol Editor does, and save it (<module>.sym.json beside its source): pins in their new order with their sides (those given first, the others after, as they were), spacing, size, title; reset: the default first. The schematics\' instances are then out of date: update_symbols redraws them, connections kept.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, module: STR('The module (entity) whose symbol to edit.'),
       pins: { type: 'array', items: { type: 'object', properties: { name: STR('The pin (a port of the module).'), side: SIDES }, required: ['name'], additionalProperties: false }, description: 'Pins in their new order, with their side (left out: the side it has).' },
@@ -87,7 +87,7 @@ export const SYMBOL_TOOLS = [
   },
   {
     name: 'update_symbols', title: 'Update a schematic\'s out-of-date symbols',
-    description: 'Update Symbol in a schematic (.sch.json), as its editor\'s Properties do (Update Symbol, Update All): the instances whose module changed its ports or its symbol drawn from their module again (its symbol\'s pins\' order, sides and layout when it has one), the wires, I/O markers and net names on a pin that stays following it; a pin whose port is gone or turned keeps its wire where it was, unconnected. With symbols (instance ids), only those. The schematic is written and its HDL file made again.',
+    description: 'Update Symbol in a schematic (.sch.json), as its Properties\' Update Symbol / Update All do: the instances whose module changed redrawn, the wires, markers and net names on a kept pin following it; a pin whose port is gone keeps its wire, unconnected. The schematic is written and its HDL made again.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'),
       symbols: { type: 'array', items: { type: 'string' }, description: 'The instances to update (their ids: S1); left out: every out-of-date one.' },
@@ -106,12 +106,12 @@ export const SYMBOL_TOOLS = [
   },
   {
     name: 'place_instance', title: 'Place a module\'s instance in a schematic',
-    description: 'Place an instance of a module of the project in a schematic (.sch.json), as its Symbols palette does (with its symbol: its own, Symbol Editor\'s, when it has one): at x, y (on the 10 px grid), turned rot (0, 90, 180, 270), named name (its automatic name inst_n when left out). A name with a range, reg(3:0), or a width, makes an arrayed instance, as ISE\'s: that many copies of the module (reg_3 … reg_0 in the HDL); the instance\'s width defines its pins\': each pin takes its slice of a bus N times its width for each copy (D on d(3:0): reg_i\'s D is d(i)), its net adapting to it (a net name with no range, a wire, a marker added on it: that bus); one on a net whose width is fixed elsewhere at its own (a 1-bit marker) is shared by the copies, said in a warning, unless it is in shared (a clock, an enable). connect: { pin: net name } connects pins to nets by name (a short wire and that net name on it: d(3:0) for a 4-bit bus, the same name as an I/O marker joins it). The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
+    description: 'Place an instance of a module of the project in a schematic (.sch.json), as its Symbols palette does, at x, y (10 px grid), turned rot. A name with a range, reg(3:0), or a width makes an arrayed instance, as ISE\'s: copies reg_3 … reg_0, each pin taking its slice of a bus N times its width; a pin on a net whose width is fixed at its own is shared, said in a warning, unless in shared. connect joins pins to nets by name. The schematic is written and its HDL made again; its check\'s errors and warnings said.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), module: STR('The module (entity) to instantiate.'),
-      name: STR('The instance name; with a range, reg(3:0), an arrayed instance.'),
-      width: { type: 'integer', description: 'Its width, as its Properties\' Width: that many copies, the instance named with the range, reg(7:0) for 8 (1: a single instance).' },
-      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s, #3966), as its Properties\' tick boxes: its inputs only (#4053), each shared by every copy whatever its net (a single pin, not sliced in the HDL; its net the pin\'s own width); [] none.' },
+      name: STR('The instance name (default inst_n); with a range, reg(3:0), an arrayed instance.'),
+      width: { type: 'integer', description: 'Its width, as its Properties\' Width: that many copies (1: a single instance).' },
+      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s inputs, as its Properties\' tick boxes), each shared by every copy, not sliced; [] none.' },
       x: { type: 'integer', description: 'Its left (sheet coordinates).' }, y: { type: 'integer', description: 'Its top (sheet coordinates).' },
       rot: { type: 'integer', enum: [0, 90, 180, 270], description: 'Its turn, degrees clockwise.' },
       connect: { type: 'object', additionalProperties: { type: 'string' }, description: 'Pins connected to nets by name: { "d": "d(3:0)", "c": "clk" }.' },
@@ -155,11 +155,11 @@ export const SYMBOL_TOOLS = [
   },
   {
     name: 'set_instance_width', title: 'Set a module instance\'s width (its copies) and shared pins',
-    description: 'Set the Width of a module\'s instance in a schematic (.sch.json), as its Properties\' Width field does: that many copies of its module, an arrayed instance, its name given the range (reg becomes reg(7:0) for 8; 1 makes it a single instance again, reg). Each pin takes its slice of a bus N times its width for each copy, its net adapting to it; one on a net whose width is fixed elsewhere at its own is shared by the copies, said in a warning unless it is in shared; shared: its Shared pins, as its Properties\' tick boxes (its inputs only, each shared by every copy whatever its net; [] none). Either width or shared, or both. The schematic is written and its HDL file made again; its check\'s errors and warnings said.',
+    description: 'Set the Width of a module\'s instance in a schematic (.sch.json), as its Properties\' Width does: that many copies, named with the range (reg(7:0); 1: a single instance), each pin its slice of a bus, as place_instance; shared: its Shared pins. Width, shared or both. The schematic is written and its HDL made again; its check\'s errors and warnings said.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), instance: STR('The instance\'s name (an arrayed one with its range, reg(7:0), or its base, reg).'),
       width: { type: 'integer', description: 'Its width: its number of copies (1: a single instance).' },
-      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s, #3966), as its Properties\' tick boxes: its inputs only (#4053), each shared by every copy whatever its net (a single pin, not sliced in the HDL; its net the pin\'s own width); [] none.' },
+      shared: { type: 'array', items: { type: 'string' }, description: 'Its Shared pins (an arrayed instance\'s inputs, as its Properties\' tick boxes), each shared by every copy, not sliced; [] none.' },
     }, required: ['project', 'path', 'instance'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, instance, width, shared }) {
