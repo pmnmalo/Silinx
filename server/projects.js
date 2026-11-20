@@ -18,6 +18,8 @@ import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-
 import { DESIGN_KIND, asDesignProject } from '../core/project-kind.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
 import { withFileLock } from './project-lock.js';
+import { langOfPath } from '../core/file-kinds.js';
+import { registerWritten } from '../core/project-entries.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -526,19 +528,11 @@ export async function writeFile(name, rel0, text) {
   } catch (e) { throw await fsHttpError(e, dir, full); }
   // Register HDL files automatically (not the generated ones in build/, e.g. the netlists of the open
   // synthesis); a file written again is back in the project (not excluded).
-  const lang = langOf(rel);
-  {
-    const pj0 = await readProject(name);
-    if ((pj0.excluded || []).includes(rel)) await updateProject(name, pj => { pj.excluded = (pj.excluded || []).filter(f => f !== rel); });
-  }
-  if ((lang === 'verilog' || lang === 'vhdl') && !/^build\//.test(rel)) {
+  // (core/project-entries.js registerWritten, as the browser edition's store, #4733; locked only when it changes)
+  if (registerWritten(await readProject(name), rel)) {
     await withProjectLock(name, async () => {
       const pj = await readProject(name);
-      if (!pj.files.some(f => f.path === rel)) {
-        const role = /^(sim|tb|test)\//.test(rel) || /(^|\/)tb_|_tb\.|_tb$/.test(rel) ? 'sim' : 'design';
-        pj.files.push({ path: rel, lang, role });
-        await writeProjectUnlocked(name, pj);
-      }
+      if (registerWritten(pj, rel)) await writeProjectUnlocked(name, pj);
     });
   }
 }

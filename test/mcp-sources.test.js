@@ -264,3 +264,34 @@ test('rename_project: as Rename Project… (#4641): renamed, its files and check
   // a change of case alone
   assert.equal((await ok('rename_project', { project: 'rn2', to: 'Rn2' })).text, 'Project \'rn2\' renamed to \'Rn2\'.');
 });
+
+// (#4733) Add to Project of a constraints file, any family's format, makes it the project's constraints when it has none
+// (the .ucf alone did), as the interface's; Remove from Project leaves none
+test('#4733 add_to_project: a constraints file of every format is the project\'s constraints when it has none', async () => {
+  for (const f of ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc']) {
+    const name = `k${f}`;
+    await ok('new_project', { name });
+    await P.updateProject(name, pj => ({ ...pj, constraints: '' }));
+    await ok('write_file', { project: name, path: `pins.${f}`, text: '' });
+    const a = await ok('add_to_project', { project: name, path: `pins.${f}` });
+    assert.equal(a.text, `pins.${f} added to the project.`, f);
+    assert.equal((await P.readProject(name)).constraints, `pins.${f}`, f);
+    assert.equal((await ok('add_to_project', { project: name, path: `pins.${f}` })).text, `pins.${f} is in the project already.`, f);
+    assert.equal((await ok('remove_from_project', { project: name, path: `pins.${f}` })).text, `Removed pins.${f} from the project (the file is kept in the project folder).`, f);
+    assert.deepEqual([(await P.readProject(name)).constraints, (await P.readProject(name)).excluded], ['', [`pins.${f}`]], f);
+  }
+});
+
+// (#4733) a removal keeps an HLS top whose HDL cannot be made for now (#2995), as the interface's fixMissingTops does: the
+// MCP's reset it, nothing declaring it in the HDL
+test('#4733 remove_from_project keeps the top of a C source whose HDL cannot be made for now', async () => {
+  const { MSUM_C, MSUM_V, MDESC, EXT } = await import('./hls-blackbox-ports-lib.mjs');
+  await ok('new_project', { name: 'hlstop' });
+  for (const [p, text] of [['src/msum.json', JSON.stringify(MDESC(), null, 2)], ['src/msum.cpp', MSUM_C], ['src/msum.v', MSUM_V], ['src/top.cpp', EXT], ['src/extra.vhd', 'entity extra is end;\narchitecture a of extra is begin end;\n']]) await ok('write_file', { project: 'hlstop', path: p, text });
+  await ok('set_top', { project: 'hlstop', top: 'top' });
+  // (the blackbox refused: top's HDL not made)
+  await ok('write_file', { project: 'hlstop', path: 'src/msum.v', text: MSUM_V.split('m_q0').join('m_qq') });
+  const r = await ok('remove_from_project', { project: 'hlstop', path: 'src/extra.vhd' });
+  assert.equal(r.text, 'Removed src/extra.vhd from the project (the file is kept in the project folder).');
+  assert.equal(r.data.top, 'top');
+});

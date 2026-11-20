@@ -26,6 +26,8 @@ import { gitMark, gitMenuItems, gitStartItems, hasGit } from './git.js';
 import { checkLabel, designOnly, shownFiles, withoutHdlBadges } from './design-only.js';
 import { editorItem, projectEditorItem } from './open-editor.js';
 import { hdlSideFile } from '/core/project-kind.js';
+import { removeFromProject as removeEntries } from '/core/project-entries.js';
+import { HDL_RE } from '/core/file-kinds.js';
 import { flowFileRows } from './flow-files-tree.js';
 import { renderFlowFiles } from './tasks-flow-files.js';
 
@@ -506,7 +508,7 @@ export function serialOp(fn) {
 }
 
 // (a design project's hidden HDL file, a test bench's: its module named, #3891)
-const shownName = file => (designOnly() && /\.(vhdl?|v|sv)$/i.test(file) && S.modules?.find(m => m.file === file)?.name) || file;
+const shownName = file => (designOnly() && HDL_RE.test(file) && S.modules?.find(m => m.file === file)?.name) || file;
 export async function removeFile(file) {
   if (!await confirmDlg('Remove Source', `Remove '${shownName(file)}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`)) return;
   await saveAll();
@@ -529,13 +531,7 @@ export async function removeModule(file) {
 }
 // (hdl: the drawing's HDL file, removed with it)
 async function removeNow(file, hdl = null) {
-  const pj = S.project;
-  for (const f of [file, hdl].filter(Boolean)) {
-    const entry = pj.files.find(x => x.path === f) || null;
-    if (entry) pj.files = pj.files.filter(x => x.path !== f);
-    if (pj.constraints === f) pj.constraints = '';
-    if (!entry) pj.excluded = [...new Set([...(pj.excluded || []), f])];
-  }
+  removeEntries(S.project, [file, hdl]);   // (core/project-entries.js, as the MCP's remove_from_project, #4733)
   await saveProjectJson();
   await reloadProject();
   await fixMissingTops();   // (the top module removed, #253)

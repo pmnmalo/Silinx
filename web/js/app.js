@@ -6,6 +6,7 @@ import { createEditor, instTemplate, snippetsFor, typeText } from './editor.js';
 import { cRunButtons, hlsClock, hlsFamily, hlsMults, isC, noteFailedC } from './c-source.js';
 import { compile, implRoots, topCandidates } from '/core/compile.js';
 import { genChain } from '/core/util.js';
+import { addToProject as addEntry, declares, missingTops } from '/core/project-entries.js';
 import { primitiveSources } from '/core/unisim.js';
 import * as wiz from './wizards.js';
 import { PRODUCT, VERSION_LABEL } from '/core/version.js';
@@ -165,28 +166,16 @@ export function viewRoots(sim) {
 }
 
 // A top-level module the project no longer has (its source removed from the project, #253): the
-// top becomes the one root of its view left, else none (several: the user chooses, a warning); true
-// when it changed. (Not while a source of the project still declares it: one being edited.)
+// top becomes the one root of its view left, else none (core/project-entries.js missingTops, as the MCP's, #4733); true
+// when it changed. (Not while a source of the project still declares it, nor a C source's module not made, #2995.)
 export async function fixMissingTops() {
-  const pj = S.project;
-  const declared = name => (S.sources || []).some(f => new RegExp(`\\b(entity|module)\\s+${String(name).replace(/[^\w$]/g, '')}\\b`, 'i').test(f.text || ''));
-  // (the module of a C source whose HDL cannot be made for now, #2995: still its top)
   const cMade = name => Object.values(S.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(name).toLowerCase());
-  let changed = false;
-  for (const sim of [false, true]) {
-    const key = sim ? 'simTop' : 'top';
-    const old = pj[key];
-    if (!old || moduleInfo(old) || declared(old) || cMade(old)) continue;
-    const roots = viewRoots(sim);
-    pj[key] = roots.length === 1 ? roots[0] : '';
-    changed = true;
-    const what = `The top-level ${sim ? 'simulation ' : ''}module '${old}' is no longer in the project`;
-    if (pj[key]) log(`${what}: the top is now '${pj[key]}' (another one: Set as Top Module).`, 'info');
-    else if (roots.length) log(`${what}: set the top module (a module's right-click menu: Set as Top Module).`, 'warn');
-    else log(`${what}, nor any other module.`, 'info');
-  }
-  if (changed) { await saveProjectJson(); markStale(); renderHierarchy(); }
-  return changed;
+  const has = name => !!moduleInfo(name) || (S.sources || []).some(f => declares(f.text, name)) || cMade(name);
+  const { set, messages } = missingTops(S.project, { has, roots: viewRoots });
+  Object.assign(S.project, set);
+  for (const m of messages) log(m.text, m.level);
+  if (messages.length) { await saveProjectJson(); markStale(); renderHierarchy(); }
+  return messages.length > 0;
 }
 
 // Static hierarchy (from instances in the source, like ISE's Design view).
@@ -317,11 +306,7 @@ export const deleteAny = () => clipEditor(S.active)?.deleteSelection();
 // put a file of the project folder (back) into the project
 export function addToProject(file) { return refusedHere(file) ? Promise.resolve(false) : serialOp(() => addNow(file)); }   // (no HDL in a design project, #3780)
 async function addNow(file) {
-  const pj = S.project;
-  pj.excluded = (pj.excluded || []).filter(f => f !== file);
-  const lang = /\.vhdl?$/i.test(file) ? 'vhdl' : /\.(v|sv)$/i.test(file) ? 'verilog' : null;
-  if (lang && !pj.files.some(f => f.path === file)) pj.files.push({ path: file, lang, role: /^(sim|tb|test)\//.test(file) || /(^|\/)tb_|_tb\./.test(file) ? 'sim' : 'design' });
-  if (/\.ucf$/i.test(file) && !pj.constraints) pj.constraints = file;
+  addEntry(S.project, file);   // (core/project-entries.js, as the MCP's add_to_project, #4733)
   await saveProjectJson();
   await reloadProject();
 }

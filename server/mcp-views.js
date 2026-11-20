@@ -7,6 +7,7 @@
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { isDesignOnly } from '../core/project-kind.js';
+import { hdlLangOf } from '../core/file-kinds.js';
 import { notationSetting } from './mcp-notation.js';
 import { NOTATION_IDS, showExpr } from '../core/expr-notation.js';
 import { MAX_NODES, litsOf, part, sizeOf } from '../core/expr-part.js';
@@ -38,7 +39,7 @@ async function relatedView({ project: name, path: rel, view, notation }) {
   const text = await source(name, rel);
   if (view === 'translation') {
     const { translateSource, translatedPath, translationLang } = await import('../core/translate.js');
-    const from = /\.vhdl?$/i.test(rel) ? 'vhdl' : /\.s?v$/i.test(rel) ? 'verilog' : null;
+    const from = hdlLangOf(rel);
     if (!from) throw toolError(`${rel}: an HDL source (.vhd, .v) is translated`);
     const to = translationLang(rel, from === 'vhdl' ? 'verilog' : 'vhdl');
     const sources = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));

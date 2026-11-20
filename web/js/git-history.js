@@ -9,8 +9,9 @@ import { S, findDoc, activateDoc, openDoc } from './app.js';
 import { createEditor } from './editor.js';
 import { logGitError } from './git.js';
 import { shortCommit, stateWord } from '/core/git-messages.js';
+import { C_RE, langOfPath } from '/core/file-kinds.js';
 
-const langOf = p => (/\.(v|vh|sv)$/i.test(p) ? 'verilog' : /\.vhdl?$/i.test(p) ? 'vhdl' : /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(p) ? 'ucf' : /\.(c|cc|cpp|cxx|h|hpp)$/i.test(p) ? 'c' : 'text');
+const langOf = p => (C_RE.test(p) ? 'c' : langOfPath(p));   // (core/file-kinds.js, #4733)
 const day = iso => String(iso || '').slice(0, 10);
 
 /** A file of the project as it was in a commit: read only, in a document of its own (one per commit and file). */
