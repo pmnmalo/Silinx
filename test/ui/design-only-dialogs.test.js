@@ -95,7 +95,7 @@ uiTest('#3891 a design project\'s drawn module: Rename…, Source Properties…,
   assert.deepEqual(row.slice(0, 3), ['DrawnDlg', '', 'Design and simulation only (no FPGA)']);   // (no Top column, #4314)
   await cancel(page);
   // its badge's tip
-  assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent === 'traffic').querySelectorAll('.badge')].map((b) => [b.textContent, b.title])), [['FSM', 'Open']]);
+  assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent === 'traffic').querySelectorAll('.badge')].map((b) => [b.textContent, b.title])), [['FSM', 'Open'], ['Schematic', 'Its gate-level implementation: the state flip-flops and the logic in gates']]);
   // the Command Palette: the drawing, not its HDL
   page.eval(async () => (await import('/js/menus.js')).showPalette()).catch(() => {});
   await page.waitFor(() => document.querySelector('.pal-input'), [], { what: 'the palette' });

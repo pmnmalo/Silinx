@@ -88,7 +88,7 @@ const EXAMPLES = {
       '  chip xc3s250e-4-cp132',
       '    moduleTop top [VHDL*] (top.vhd)',
       '      verilog u_display - sevenseg [Verilog*] [VHDL] (sevenseg.v)',
-      '      fsm u_fsm - traffic [FSM*] [VHDL] (traffic.fsm.json)',
+      '      fsm u_fsm - traffic [FSM*] [Schematic] [VHDL] (traffic.fsm.json)',
       '      algebra u_lamps - lamps [Algebra*] [Schematic] [VHDL] (lamps.bool.json)',
       '      vhdl u_timer - timer [VHDL*] (timer.vhd)',
       '      ucf traffic.ucf',
@@ -99,14 +99,14 @@ const EXAMPLES = {
       '    vhdl tb_traffic [VHDL*] (tb_traffic.vhd)',
       '      vhdl uut - top [VHDL*] (top.vhd)',
       '        verilog u_display - sevenseg [Verilog*] [VHDL] (sevenseg.v)',
-      '        fsm u_fsm - traffic [FSM*] [VHDL] (traffic.fsm.json)',
+      '        fsm u_fsm - traffic [FSM*] [Schematic] [VHDL] (traffic.fsm.json)',
       '        algebra u_lamps - lamps [Algebra*] [Schematic] [VHDL] (lamps.bool.json)',
       '        vhdl u_timer - timer [VHDL*] (timer.vhd)',
     ],
     tips: [
       'top: VHDL (Open)',
       'u_display - sevenseg: Verilog (Open) VHDL (Translated to VHDL (read-only))',
-      'u_fsm - traffic: FSM (Base: its HDL is generated from it) VHDL (Generated from the state diagram)',
+      'u_fsm - traffic: FSM (Base: its HDL is generated from it) Schematic (Its gate-level implementation: the state flip-flops and the logic in gates) VHDL (Generated from the state diagram)',
       'u_lamps - lamps: Algebra (Base: its HDL is generated from it) Schematic (Generated from the Boolean algebra, in its HDL logic form) VHDL (Generated from the Boolean algebra)',
       'u_timer - timer: VHDL (Open)',
     ],
@@ -233,7 +233,7 @@ uiTest('Design pane (#220, #2872): a badge opens its view; a right-click shows t
   await makeProject(env, { name: 'H_badges2', template: 'traffic' });
   await page.openProject('H_badges2');
   const TRAFFIC = withDrawing(MODULE, 'Convert to ASM chart');
-  for (const b of [null, 'FSM', 'VHDL']) assert.deepEqual(await (b ? badgeMenu(page, 'u_fsm - traffic', b) : rowMenu(page, 'u_fsm - traffic')), TRAFFIC, b);
+  for (const b of [null, 'FSM', 'Schematic', 'VHDL']) assert.deepEqual(await (b ? badgeMenu(page, 'u_fsm - traffic', b) : rowMenu(page, 'u_fsm - traffic')), TRAFFIC, b);
   for (const b of [null, 'Algebra', 'Schematic', 'VHDL']) assert.deepEqual(await (b ? badgeMenu(page, 'u_lamps - lamps', b) : rowMenu(page, 'u_lamps - lamps')), MODULE, b);
   const PLAIN = ['Set as Top Module', 'Open', 'Rename…', 'Check Syntax', 'View RTL Schematic', 'Edit Symbol', 'Verify Equivalence…', 'Verify Assertions…', ...TB,
     'Convert to Schematic (editable)…', 'Convert to State Machine (ASM)…', 'Convert to State Diagram (FSM)…', 'Share Module…', 'New Source…', `${IMPORT}…`, 'Remove from Project', 'Source Properties…'];
@@ -306,7 +306,7 @@ uiTest('every source has its HDL (#207): a schematic without an HDL file gets it
 const KINDS = [
   { type: 'sch', name: 'g1', file: 'src/g1.sch.json', ico: 'schematic', badge: 'Schematic', id: 'sch:src/g1.sch.json' },
   { type: 'asm', name: 'c1', file: 'src/c1.asm.json', ico: 'asm', badge: 'ASM', id: 'asm:src/c1.asm.json' },
-  { type: 'fsm', name: 'f1', file: 'src/f1.fsm.json', ico: 'fsm', badge: 'FSM', id: 'fsm:src/f1.fsm.json' },
+  { type: 'fsm', name: 'f1', file: 'src/f1.fsm.json', ico: 'fsm', badge: 'FSM', views: ' [Schematic]', id: 'fsm:src/f1.fsm.json' },   // ([Schematic]: its gate-level implementation, #4910)
   { type: 'tt', name: 't1', file: 'src/t1.bool.json', ico: 'algebra', badge: 'Algebra', views: ' [Schematic]', id: 'tt:src/t1.bool.json' },
   { type: 'petri', name: 'p1', file: 'src/p1.pn.json', ico: 'petri', badge: 'Petri', views: ' [FSM]', id: 'pn:src/p1.pn.json' },   // ([FSM]: its state machine, #2696)
 ];
@@ -395,17 +395,19 @@ uiTest('Design pane (#207) from the keyboard: ↑ / ↓ select, ← / → collap
   // Enter: the base (the state diagram)
   await page.key('Enter');
   await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/traffic.fsm.json', [], { what: 'the state diagram opened from the keyboard' });
-  // Tab: the badges of the selected row ([FSM] first, then [VHDL]), Enter opens it
+  // Tab: the badges of the selected row ([FSM] first, then [Schematic], #4910, then [VHDL]), Enter opens it
   await page.eval(() => document.querySelector('#hier .tree').focus());
   const at = () => page.eval(() => document.activeElement.closest('.row')?.querySelector('.lbl').textContent + ' ' + document.activeElement.textContent);
   await page.key('Tab');
   assert.equal(await at(), 'u_fsm - traffic FSM');
   await page.key('Tab');
+  assert.equal(await at(), 'u_fsm - traffic Schematic');
+  await page.key('Tab');
   assert.equal(await at(), 'u_fsm - traffic VHDL');
   await page.key('Enter');
   await page.waitFor(() => window.Silinx.active?.id === 'file:src/traffic.vhd', [], { what: 'the HDL opened from its badge' });
   // only the selected row's badges are on the Tab path
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#hier .badge[tabindex="0"]')].map((b) => b.closest('.row').querySelector('.lbl').textContent + ':' + b.textContent)), ['u_fsm - traffic:FSM', 'u_fsm - traffic:VHDL']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#hier .badge[tabindex="0"]')].map((b) => b.closest('.row').querySelector('.lbl').textContent + ':' + b.textContent)), ['u_fsm - traffic:FSM', 'u_fsm - traffic:Schematic', 'u_fsm - traffic:VHDL']);
 });
 
 uiTest('Design pane (#207, #220) in Portuguese: the badges [FSM] [Álgebra] [VHDL] [Verilog] and their tips; a badge\'s menu', E, async (page) => {
@@ -417,7 +419,7 @@ uiTest('Design pane (#207, #220) in Portuguese: the badges [FSM] [Álgebra] [VHD
     assert.deepEqual(await tips(page), [
       'top: VHDL (Abrir)',
       'u_display - sevenseg: Verilog (Abrir) VHDL (Traduzido para VHDL (só de leitura))',
-      'u_fsm - traffic: FSM (Base: o seu HDL é gerado a partir daqui) VHDL (Gerado a partir do diagrama de estados)',
+      'u_fsm - traffic: FSM (Base: o seu HDL é gerado a partir daqui) Esquemático (A sua implementação em portas lógicas: os flip-flops do estado e a lógica em portas) VHDL (Gerado a partir do diagrama de estados)',
       'u_lamps - lamps: Álgebra (Base: o seu HDL é gerado a partir daqui) Esquemático (Gerado a partir da álgebra booleana, na sua forma da lógica do HDL) VHDL (Gerado a partir da álgebra booleana)',
       'u_timer - timer: VHDL (Abrir)',
     ]);

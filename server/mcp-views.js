@@ -2,7 +2,8 @@
 // (its tabs' Show … Beside, web/js/related-views.js) that are no file of the project, made as the interface makes them,
 // nothing written: an HDL source's translation to the other language (core/translate.js, #2711), a state diagram's ASM
 // chart and an ASM chart's state diagram (core/fsm-asm.js), a Petri net's state machine (core/petri-fsm.js, #2696), a
-// truth table's schematic (core/logic.js, #694) and its results, the editor's results panel (#2927). The others are read_file's (a drawing's HDL), c_generated's and
+// truth table's schematic (core/logic.js, #694), a state diagram's (its gate-level implementation, core/fsm-schematic.js,
+// #4910) and a truth table's results, the editor's results panel (#2927). The others are read_file's (a drawing's HDL), c_generated's and
 // c_synthesis_report's (a C source's).
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
@@ -25,7 +26,7 @@ const json = (text, rel) => { try { return JSON.parse(text); } catch (e) { throw
 export const VIEW_TOOLS = [
   {
     name: 'related_view', title: 'A read-only view related to a source',
-    description: 'A view the interface shows beside a source, made from it and read-only, nothing written to the project: translation (an HDL source in the other language: VHDL to Verilog, Verilog to VHDL), asm (a state diagram\'s ASM chart, its JSON), fsm (an ASM chart\'s state diagram, or a Petri net\'s state machine: a state per marking, its JSON), schematic (a Boolean algebra / truth table\'s schematic, or a circuit\'s, its HDL in its logic form drawn, #4069; its JSON), results (a Boolean algebra / truth table\'s results, as its editor shows them, per output: the forms of least gates and of least delay, the Karnaugh map\'s SOP and POS (up to 6 inputs) with every minimal solution when there are several (up to 64; the one used marked), Quine-McCluskey\'s SOP and POS (every table, up to 16 inputs) with their prime implicants, the essential ones and whether proven minimal, the canonical SOP and POS, the minterm and maxterm lists, the XOR form when simpler, the NAND and NOR forms, each form with its terms, literals and gates by type, each output\'s HDL logic (set_output_logic changes it)). A drawing\'s HDL is read_file\'s, a C source\'s c_generated\'s and c_synthesis_report\'s; convert_drawing makes a drawing a new module.',
+    description: 'A view the interface shows beside a source, made from it and read-only, nothing written to the project: translation (an HDL source in the other language: VHDL to Verilog, Verilog to VHDL), asm (a state diagram\'s ASM chart, its JSON), fsm (an ASM chart\'s state diagram, or a Petri net\'s state machine: a state per marking, its JSON), schematic (a Boolean algebra / truth table\'s schematic, or a circuit\'s, its HDL in its logic form drawn, #4069, or a state diagram\'s, its gate-level implementation, not the RTL: a D flip-flop per state bit and the next-state and output logic in gates, #4910, when it can be drawn: a binary or gray encoding, no errors, at most 10 bits of state and inputs; its JSON), results (a Boolean algebra / truth table\'s results, as its editor shows them, per output: the forms of least gates and of least delay, the Karnaugh map\'s SOP and POS (up to 6 inputs) with every minimal solution when there are several (up to 64; the one used marked), Quine-McCluskey\'s SOP and POS (every table, up to 16 inputs) with their prime implicants, the essential ones and whether proven minimal, the canonical SOP and POS, the minterm and maxterm lists, the XOR form when simpler, the NAND and NOR forms, each form with its terms, literals and gates by type, each output\'s HDL logic (set_output_logic changes it)). A drawing\'s HDL is read_file\'s, a C source\'s c_generated\'s and c_synthesis_report\'s; convert_drawing makes a drawing a new module.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The source: an HDL file (.vhd, .v), a state diagram (.fsm.json), an ASM chart (.asm.json), a Petri net (.pn.json), a truth table (.bool.json, .tt.json) or a circuit (.circ.json).'), view: { type: 'string', enum: VIEWS, description: 'The view.' }, notation: { type: 'string', enum: NOTATIONS, description: 'results, fsm: the notation of the expressions (default: for results the table\'s own, as its editor\'s menu sets it, else the one set_notation set, as the Settings ▸ Boolean Notation; engineering, a̅.b + c, when none is).' } }, required: ['project', 'path', 'view'], additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false },
     // (every view holds the source's names, a translation its text: labelled, #4174)
@@ -61,7 +62,13 @@ async function relatedView({ project: name, path: rel, view, notation }) {
       if (r.errors) throw toolError(`the schematic of ${base(rel)}: ${r.errors.join('; ')}`);
       return reply(name, rel, view, r.doc);
     }
-    if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json) or a circuit (.circ.json) has a schematic`);
+    // (a state diagram's, #4910: its gate-level implementation)
+    if (/\.fsm\.json$/i.test(rel)) {
+      const r = (await import('../core/fsm-schematic.js')).fsmSchematic(json(text, rel));
+      if (r.error) throw toolError(`${base(rel)}: ${r.error}`);
+      return reply(name, rel, view, r.doc);
+    }
+    if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json), a circuit (.circ.json) or a state diagram (.fsm.json) has a schematic`);
     const { schematicFromTable, validateTable, normalizeTable } = await import('../core/logic.js');
     const m = normalizeTable(json(text, rel));
     const errs = validateTable(m).filter(x => x.severity !== 'warning');

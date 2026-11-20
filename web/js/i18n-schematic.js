@@ -2,6 +2,8 @@
 // and Technology Schematics (#130): the symbol palette and its tooltips (the descriptions of
 // core/schdoc.js SYMBOLS), the properties panel, the status bar; merged into web/js/i18n.js.
 export const SCH_PT = {
+  // a state diagram's schematic, its badge's tip (#4910)
+  'Its gate-level implementation: the state flip-flops and the logic in gates': 'A sua implementação em portas lógicas: os flip-flops do estado e a lógica em portas',
   // Rename… of the right-click menu (#1546)
   'Rename Instance': 'Mudar o Nome da Instância', 'Rename I/O Marker': 'Mudar o Nome do Marcador de E/S', 'Rename Net Name': 'Mudar o Nome da Rede',
   'Type a name.': 'Escreva um nome.', 'Duplicate': 'Duplicar',

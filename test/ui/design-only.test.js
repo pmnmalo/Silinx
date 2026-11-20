@@ -82,7 +82,7 @@ uiTest('#3780 a design project: its HDL opened is its drawing, an HDL file added
   await makeProject(env, { name: 'DrawnFsm', kind: 'design', files: { 'src/traffic.fsm.json': FSM }, top: 'traffic' });
   await page.openProject('DrawnFsm');
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/traffic.vhd'] === 'src/traffic.fsm.json', [], { what: 'the drawing\'s HDL' });
-  assert.deepEqual((await shown(page)).rows.find(r => r[0] === 'traffic'), ['traffic', ['FSM']]);
+  assert.deepEqual((await shown(page)).rows.find(r => r[0] === 'traffic'), ['traffic', ['FSM', 'Schematic']]);
   // its HDL file opened (a message's link, a search's result): the state diagram instead
   await page.eval(async () => (await import('/js/app.js')).openFile('src/traffic.vhd', 3));
   await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/traffic.fsm.json', [], { what: 'the state diagram open' });
@@ -137,7 +137,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   await page.waitFor(() => !window.Silinx.project.kind && window.Silinx.project.board === 'basys2' && !document.documentElement.dataset.projectKind, [], { what: 'an FPGA project' });
   await page.waitConsole(/DrawnBoth: an FPGA project now: its HDL and its implementation shown\./);
   let s = await shown(page);
-  assert.deepEqual(s.rows.find(r => r[0] === 'traffic'), ['traffic', ['FSM', 'VHDL']]);
+  assert.deepEqual(s.rows.find(r => r[0] === 'traffic'), ['traffic', ['FSM', 'Schematic', 'VHDL']]);
   assert.ok(s.process.includes('Implement Top Module') && s.steps.includes('implement') && s.kind === null, JSON.stringify(s));
   assert.equal((await page.eval(() => window.Silinx.project.constraints)), 'constraints/top.ucf');
   // and back: its sources all drawings
@@ -148,7 +148,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project.kind === 'design' && document.documentElement.dataset.projectKind === 'design', [], { what: 'a design project again' });
   s = await shown(page);
-  assert.deepEqual([s.rows.find(r => r[0] === 'traffic'), s.steps], [['traffic', ['FSM']], ['check', 'simulate']]);
+  assert.deepEqual([s.rows.find(r => r[0] === 'traffic'), s.steps], [['traffic', ['FSM', 'Schematic']], ['check', 'simulate']]);
   assert.deepEqual(await page.eval(() => [window.Silinx.project.board, window.Silinx.project.constraints]), [null, null]);
   assert.deepEqual(await warnings(page), []);
   // an FPGA project with an HDL source of its own: refused, the console says which
