@@ -23,7 +23,7 @@ export function onLogLine(fn) { lineWatchers.add(fn); return () => lineWatchers.
  *  process for it (#4583). */
 export const trustAction = name => ({ label: 'Trust Project', trust: name, run: () => import('./project.js').then(m => m.trustProject(name)) });
 
-// action: { label, run, trust? (a Trust Project's project) }, a button at the end of the (last) line: what the line asks
+// action: { label, run, trust? (a Trust Project's project) }, or a list of them, a button at the end of the (last) line: what the line asks
 // of the user (Trust Project, #2830); it is disabled once run (again enabled when run says false: the user said No).
 // A refusal for an untrusted project carries its Trust Project button (#4583: the line said when it opened may be
 // long gone), one per refusal (its "… failed:" line right after it shares the error's).
@@ -44,12 +44,16 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
     if (RUN_END.test(line)) { consoleRun = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
   }
-  if (action) {
-    const b = h('button', { type: 'button', class: `btn ln-action${action.trust !== undefined ? ' ln-trust' : ''}`, onclick: async () => {
-      b.disabled = true;
-      try { if (await action.run() === false) b.disabled = false; } catch (e) { b.disabled = false; log(`ERROR: ${e.message}`, 'err'); }
-    } }, t(action.label));
-    if (action.trust !== undefined) b.dataset.trust = action.trust;
+  // (several: the line's choices, #4962, all disabled once one is run)
+  const buttons = [];
+  for (const a of [action].flat().filter(Boolean)) {
+    const enable = on => { for (const x of buttons) x.disabled = !on; };
+    const b = h('button', { type: 'button', class: `btn ln-action${a.trust !== undefined ? ' ln-trust' : ''}`, onclick: async () => {
+      enable(false);
+      try { if (await a.run() === false) enable(true); } catch (e) { enable(true); log(`ERROR: ${e.message}`, 'err'); }
+    } }, t(a.label));
+    if (a.trust !== undefined) b.dataset.trust = a.trust;
+    buttons.push(b);
     el.lastElementChild.append(' ', b);
   }
   while (el.childElementCount > 5000) el.firstChild.remove();

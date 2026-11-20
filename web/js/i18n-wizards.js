@@ -2,6 +2,10 @@
 // web/js/chart-wizards.js, template-page.js, ucf-wizard.js, tt-wizard.js, core/chart-templates.js; merged into the
 // dictionary of i18n.js); a project's name and Replace Project (New Project's, the imports', #3538); Rename Project… (#4641).
 export const WIZARDS_PT = {
+  // the browser edition's first run: a workspace folder offered (#4962, web/js/storage-offer.js)
+  'Choose a Workspace Folder…': 'Escolher uma Pasta de Trabalho…', 'Keep in This Browser': 'Manter Neste Navegador',
+  'Projects in This Browser': 'Projetos Neste Navegador', 'Move…': 'Mover…', 'Not Now': 'Agora Não',
+  'Delete from This Browser': 'Apagar Deste Navegador', 'Keep Them': 'Mantê-los',
   'Wizard >': 'Assistente >',   // New Source's button (#958, #2082)
   'Damaged: silinx.json cannot be read': 'Danificado: o silinx.json não pode ser lido',   // (Open Project's damaged project, #4755)
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
@@ -107,6 +111,11 @@ export const WIZARDS_PT = {
 const label = what => (WIZARDS_PT[`${what}:`] || `${what}:`).replace(/:$/, '');
 
 export const WIZARDS_PT_PATTERNS = [
+  // (the browser edition's first run, #4962)
+  [/^This browser's storage has (\d+) project\(s\): (.*)\. Copy them into the folder '(.*)'\? Move… copies them, then deletes them from this browser's storage once you confirm\.$/,
+    "O armazenamento deste navegador tem $1 projeto(s): $2. Copiá-los para a pasta '$3'? Mover… copia-os e depois apaga-os do armazenamento deste navegador, depois de confirmar."],
+  [/^Delete (\d+) project\(s\) from this browser's storage: (.*)\? They are now in the folder '(.*)'; this cannot be undone\.$/,
+    "Apagar $1 projeto(s) do armazenamento deste navegador: $2? Estão agora na pasta '$3'; não se pode desfazer."],
   // a design and simulation project's refusals (core/project-kind.js, the MCP server's too, #3780)
   [/^(.*): a design and simulation project has drawings only: choose a board in Design Properties to add HDL sources$/, '$1: um projeto só de desenho e simulação tem apenas desenhos: escolha uma placa nas Propriedades do Desenho para acrescentar fontes HDL'],
   [/^(.*): a design and simulation project does not show its HDL \(its drawings are its sources\)$/, '$1: um projeto só de desenho e simulação não mostra o HDL (as fontes são os desenhos)'],

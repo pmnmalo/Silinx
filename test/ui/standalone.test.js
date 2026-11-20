@@ -1493,7 +1493,7 @@ uiTest('#483 browser edition: a hostile zip (paths leaving the project, a broken
   await page.waitFor(() => window.Silinx.project?.name === 'Hostile' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
   await page.waitConsole(/Imported Silinx project 'Hostile' \(2 source file\(s\)\)\./);
   // a project from outside (#2830): the browser edition says what waits for the user's trust, with its button
-  assert.equal(await page.eval(() => document.querySelector('#console-log .ln .ln-action')?.textContent), 'Trust Project');
+  assert.equal(await page.eval(() => document.querySelector('#console-log .ln .ln-trust')?.textContent), 'Trust Project');
   assert.equal(await page.eval(() => window.Silinx.project.trusted), false);
   // what was dropped, in the order found: the zip's entries, then silinx.json's fields; the files it
   // lists that the zip has not
