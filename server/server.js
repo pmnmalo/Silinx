@@ -18,14 +18,15 @@ import { launchTarget } from './open-page.js';
 import { tightenConfigFolder, tightenedMessage } from './config-folder.js';
 import { attachRelay } from './collab-relay.js';
 import { partsScope } from './parts-scope.js';
+import { sendError } from './http-errors.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // (an error with no status that is the system's or Node's own, whose message names the server's paths: "internal server
-// error", as the final handler answers, #3537)
+// error", as the final handler answers, #3537; the envelope every router answers with, its hint and details, #4753)
 const wrap = fn => (req, res) => Promise.resolve().then(() => fn(req, res)).then(
   out => { if (out !== undefined && !res.headersSent) res.json(out); },
-  err => res.status(err.status || 500).json({ error: !err.status && (err.syscall || /^ERR_/.test(err.code || '')) ? 'internal server error' : err.message }),
+  err => sendError(res, err),
 );
 
 const cspCache = new Map();
@@ -123,7 +124,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     busy: name => listJobs().some(j => j.status === 'running' && String(j.meta?.project || '').toLowerCase() === name.toLowerCase()),
   });
   app.locals.watcher = watcher;
-  const WRITING_GET = /^\/projects\/[^/]+\/(export\.xise|fpga-view)$/;
+  const WRITING_GET = /^\/projects\/[^/]+\/fpga-view$/;   // (export.xise writes nothing since #1432, #4753)
   // (a pull writes what GitHub had, not what the page sent: told to the page, its open documents read again, #3195)
   const TOLD = /^\/projects\/[^/]+\/git\/pull$/;
   // (the requests whose writes are all recorded, server/own-writes.js: another process's changes meanwhile told, #4726)

@@ -77,7 +77,7 @@ test('the MCP tool capture on blinky: the samples around the trigger, build/capt
   assert.equal((await call('capture', { project: 'b' })).text, 'capture: The board\'s core is not this capture\'s: 12 bit(s) x 64 samples, not 9 x 16: Implement the design with its capture and program the board again.');
   process.env.SILINX_ILA_STUB = JSON.stringify({ width: 9, depth: 16, fill: 1e9, samples: [] });
   assert.equal((await call('capture', { project: 'b', timeout_s: 0.2 })).text, 'capture: The trigger has not come in 0.2 s: the capture stays armed (run capture with arm: false to wait again).');
-  assert.equal((await call('capture', { project: 'b', timeout_s: 0 })).text, 'capture: timeout_s: a number of seconds above 0');
+  assert.equal((await call('capture', { project: 'b', timeout_s: 0 })).text, 'capture: timeout_s: at least 0.1');   // (the HTTP route's limits too, #4753)
 });
 
 test('the MCP tool capture with no adepttool: says how to install it', async () => {

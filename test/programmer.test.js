@@ -171,7 +171,7 @@ test('program: board default tool, bit header checks, explicit tools and positio
 });
 
 // #2298: the iCE40's .bin, written into the iCEBreaker's SPI flash by openFPGALoader (its board ice40_generic: the
-// on-board FT2232H), no JTAG chain; its file's size in bitinfo; the errors
+// on-board FT2232H), no JTAG chain; its file's size in bitinfo (its path the project's, #4753); the errors
 // (#4683) a Zynq-7000 board's chain: TDI, the ARM DAP, the PL: openFPGALoader -b <board> picks the PL itself (its index 0 the
 // DAP), no --index-chain, the interface's position (the PL's, 2) or none; the Z7-10's .bit on the Z7-20 refused as any part
 test('#4683 program: a Zybo Z7 project\'s .bit with openFPGALoader -b zybo_z7_20, no --index-chain (the chain\'s ARM DAP skipped)', { skip: POSIX_ONLY }, async () => {
@@ -212,9 +212,9 @@ test('program: an iCE40 project\'s .bin into the iCEBreaker\'s flash with openFP
   await P.updateProject('Ice', pj => { pj.top = 'top'; });
   const bin = path.join(P.projectDir('Ice'), 'build', 'top.bin');
   await fs.mkdir(path.dirname(bin), { recursive: true });
-  assert.deepEqual((await app.call('GET', '/projects/Ice/bitinfo')).body, { available: false, path: bin, ice40: true });
+  assert.deepEqual((await app.call('GET', '/projects/Ice/bitinfo')).body, { available: false, path: 'build/top.bin', ice40: true });
   await fs.writeFile(bin, Buffer.alloc(104090, 0xff));
-  assert.deepEqual((await app.call('GET', '/projects/Ice/bitinfo')).body, { available: true, path: bin, size: 104090, ice40: true });
+  assert.deepEqual((await app.call('GET', '/projects/Ice/bitinfo')).body, { available: true, path: 'build/top.bin', size: 104090, ice40: true });
   let j = await run('/program', { project: 'Ice' });
   assert.equal(j.status, 'ok', j.lines.join('\n'));
   assert.equal(j.result.options.tool, 'openFPGALoader');
@@ -249,10 +249,10 @@ test('program: an ECP5 project\'s .bit into the ULX3S\'s SRAM with openFPGALoade
   await P.updateProject('Ecp', pj => { pj.top = 'top'; });
   const bit = path.join(P.projectDir('Ecp'), 'build', 'top.bit');
   await fs.mkdir(path.dirname(bit), { recursive: true });
-  assert.deepEqual((await app.call('GET', '/projects/Ecp/bitinfo')).body, { available: false, path: bit, ecp5: true });
+  assert.deepEqual((await app.call('GET', '/projects/Ecp/bitinfo')).body, { available: false, path: 'build/top.bit', ecp5: true });
   assert.equal((await app.call('POST', '/program', { project: 'Ecp' })).status, 404);
   await fs.writeFile(bit, ecp5Bit({ size: 1927725 }));
-  assert.deepEqual((await app.call('GET', '/projects/Ecp/bitinfo')).body, { available: true, path: bit, size: 1927725, ecp5: true });
+  assert.deepEqual((await app.call('GET', '/projects/Ecp/bitinfo')).body, { available: true, path: 'build/top.bit', size: 1927725, ecp5: true });
   let j = await run('/program', { project: 'Ecp' });
   assert.equal(j.status, 'ok', j.lines.join('\n'));
   assert.deepEqual([j.result.options.tool, j.result.family, j.result.target, j.result.size], ['openFPGALoader', 'ecp5', 'sram', 1927725]);
@@ -291,11 +291,11 @@ test('program: a Gowin project\'s .fs into the Tang Nano 9K\'s SRAM with openFPG
   await P.createProject({ name: 'Gw', board: 'tangnano9k', device: { family: 'gowin', part: 'gw1nr-9c', package: 'qn88', speed: '-6' } });
   await P.updateProject('Gw', pj => { pj.top = 'top'; });
   const fsFile = path.join(P.projectDir('Gw'), 'build', 'top.fs');
-  assert.deepEqual((await app.call('GET', '/projects/Gw/bitinfo')).body, { available: false, path: fsFile, gowin: true });
+  assert.deepEqual((await app.call('GET', '/projects/Gw/bitinfo')).body, { available: false, path: 'build/top.fs', gowin: true });
   await fs.mkdir(path.dirname(fsFile), { recursive: true });
   const text = gowinFs();
   await fs.writeFile(fsFile, text);
-  assert.deepEqual((await app.call('GET', '/projects/Gw/bitinfo')).body, { available: true, path: fsFile, size: text.length, gowin: true });
+  assert.deepEqual((await app.call('GET', '/projects/Gw/bitinfo')).body, { available: true, path: 'build/top.fs', size: text.length, gowin: true });
   let j = await run('/program', { project: 'Gw' });
   assert.equal(j.status, 'ok', j.lines.join('\n'));
   assert.deepEqual([j.result.family, j.result.target, j.result.warnings], ['gowin', 'sram', []]);

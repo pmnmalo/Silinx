@@ -5,6 +5,7 @@
 // (server/ila-board.js captureProject: armed, its trigger waited for, read, saved in build/capture.json).
 import * as P from './projects.js';
 import { toolError, readProject, viewSourcesOf, PROJECT } from './mcp-util.js';
+import { CAPTURE_TIMEOUT_S } from './http-errors.js';
 
 const OPS = ['=', '!=', 'rise', 'fall', 'change'];
 
@@ -118,8 +119,8 @@ export const CAPTURE_TOOLS = [
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       arm: { type: 'boolean', description: 'Arm a new capture (default true); false: wait for the one armed.' },
-      timeout_s: { type: 'number', description: 'How long to wait for the trigger (seconds, default 10).' },
-      device: { type: 'integer', description: 'The Adept board\'s index when several are connected (default 0).' },
+      timeout_s: { type: 'number', minimum: 0.1, maximum: CAPTURE_TIMEOUT_S, description: `How long to wait for the trigger (seconds, default 10, at most ${CAPTURE_TIMEOUT_S}).` },
+      device: { type: 'integer', minimum: 0, description: 'The Adept board\'s index when several are connected (default 0).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async run({ project: name, arm = true, timeout_s: timeout = 10, device = 0 }, { link = null } = {}) {

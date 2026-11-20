@@ -99,6 +99,7 @@ test('docker mode: the whole flow (incl. optional steps) runs, steps are tracked
   const bi = await app.call('GET', '/projects/Flow1/bitinfo');
   assert.equal(bi.body.available, true);
   assert.equal(bi.body.part, '3s250ecp132');
+  assert.equal(bi.body.path, 'build/top.bit');
   assert.equal(bi.body.warning, null);
   await fs.writeFile(path.join(dir, 'build', 'top.bit'), makeBit({ part: '3s500efg320' }));
   assert.match((await app.call('GET', '/projects/Flow1/bitinfo')).body.warning, /built for '3s500efg320'/);
@@ -371,7 +372,7 @@ test('implement / reports / bitinfo / jobs: error paths', async () => {
   await P.updateProject('NoTop', pj => { pj.top = 'top'; });
   const bi = await app.call('GET', '/projects/NoTop/bitinfo');
   assert.equal(bi.body.available, false);
-  assert.match(bi.body.path, /build[/\\]top\.bit$/);
+  assert.equal(bi.body.path, 'build/top.bit');   // (the project's path, never the server's, #4753)
   // generateOnly with no HDL file fails inside the job
   const j = await waitJob(jobs, (await app.call('POST', '/projects/NoTop/implement', { generateOnly: true })).body.job);
   assert.equal(j.status, 'error');
