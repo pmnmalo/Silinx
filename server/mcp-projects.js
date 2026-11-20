@@ -83,9 +83,10 @@ export const PROJECT_TOOLS = [
     async run() {
       // (a design project's: no board, no device, its kind instead, #3891)
       // (where each is kept, as Open Project's Stored In: the workspace folder, its GitHub repository, #4314)
-      const projects = (await withPlaces(await P.listProjects())).map(p => ({ ...(isDesignOnly(p) ? { name: p.name, top: p.top || null, kind: DESIGN_KIND, board: null, device: null }
+      // (a damaged one, its silinx.json unreadable: listed with why, #4755)
+      const projects = (await withPlaces(await P.listProjects())).map(p => ({ ...(p.damaged ? { name: p.name, damaged: p.damaged } : isDesignOnly(p) ? { name: p.name, top: p.top || null, kind: DESIGN_KIND, board: null, device: null }
         : { name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }), stored: p.stored, github: p.github }));
-      return { text: projects.length ? projects.map(p => `${p.name}: top ${p.top || '(none)'}, ${p.kind ? 'a design and simulation project (no FPGA)' : `${p.board || 'no board'} (${p.device})`}; ${placeText(p)}`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
+      return { text: projects.length ? projects.map(p => p.damaged ? `${p.name}: damaged, ${p.damaged}; ${placeText(p)}` : `${p.name}: top ${p.top || '(none)'}, ${p.kind ? 'a design and simulation project (no FPGA)' : `${p.board || 'no board'} (${p.device})`}; ${placeText(p)}`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
     },
   },
   {

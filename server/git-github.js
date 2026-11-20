@@ -13,6 +13,7 @@ import * as P from './projects.js';
 import { githubClient, textOf, GitHubError } from '../core/github-api.js';
 import { restGit } from '../core/git-rest.js';
 import { markUntrusted, markMadeByMcp } from '../core/trust.js';
+import { parseDescription } from '../core/project-json.js';
 
 export { GitHubError as GitError };
 // the tests' GitHub (test/fake-github.mjs): its fetch; never set by the server or the MCP
@@ -61,7 +62,7 @@ function backend({ madeBy = null } = {}) {
     files: async name => {
       const dir = P.projectDir(name);
       const files = await walk(dir);
-      try { const { trusted, madeBy: m, ...json } = JSON.parse(files[P.PROJECT_FILE]); files[P.PROJECT_FILE] = render(json); } catch { /* as it is */ }   // eslint-disable-line no-unused-vars
+      try { const { trusted, madeBy: m, ...json } = parseDescription(files[P.PROJECT_FILE]); files[P.PROJECT_FILE] = render(json); } catch { /* as it is */ }   // eslint-disable-line no-unused-vars
       return files;
     },
     // a clone: written into a folder of its own, then moved into place; untrusted
@@ -71,7 +72,7 @@ function backend({ madeBy = null } = {}) {
       const tmp = path.join(ws, `.silinx-clone-${crypto.randomBytes(6).toString('hex')}`);
       try {
         for (const [rel, text] of Object.entries(files)) {
-          const json = rel === P.PROJECT_FILE ? JSON.parse(text) : null;
+          const json = rel === P.PROJECT_FILE ? parseDescription(text) : null;
           const full = P.safeJoin(tmp, rel);
           await fsp.mkdir(path.dirname(full), { recursive: true });
           await fsp.writeFile(full, json ? render(madeBy === 'mcp' ? markMadeByMcp(json) : markUntrusted(json)) : text);
@@ -81,7 +82,7 @@ function backend({ madeBy = null } = {}) {
       } finally { await fsp.rm(tmp, { recursive: true, force: true }).catch(() => {}); }
     },
     write: async (name, rel, text) => {
-      if (rel === P.PROJECT_FILE) return P.writeProject(name, JSON.parse(text));
+      if (rel === P.PROJECT_FILE) return P.writeProject(name, parseDescription(text));
       const full = P.safeJoin(P.projectDir(name), rel);
       await fsp.mkdir(path.dirname(full), { recursive: true });
       await fsp.writeFile(full, text);

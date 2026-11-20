@@ -3,6 +3,7 @@
 // dictionary of i18n.js); a project's name and Replace Project (New Project's, the imports', #3538); Rename Project… (#4641).
 export const WIZARDS_PT = {
   'Wizard >': 'Assistente >',   // New Source's button (#958, #2082)
+  'Damaged: silinx.json cannot be read': 'Danificado: o silinx.json não pode ser lido',   // (Open Project's damaged project, #4755)
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
   'Project Kind:': 'Tipo de Projeto:', 'FPGA design (a board and a device)': 'Projeto para FPGA (uma placa e um dispositivo)',
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',

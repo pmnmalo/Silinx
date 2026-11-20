@@ -170,6 +170,7 @@ export async function needRepo(name) {
 // the tools' outputs and Silinx's .gitignore (core/git-ignore.js, the browser's back end's too)
 import { GLOBS, EXCLUDE, isOutput, GITIGNORE } from '../core/git-ignore.js';
 import { repoConfigProblem } from './git-repo-config.js';
+import { parseDescription } from '../core/project-json.js';
 export { GITIGNORE };
 
 async function ensureGitignore(dir) {
@@ -598,7 +599,7 @@ export async function gitClone({ url, name = null, madeBy = null, replace = null
     let gated;
     try { gated = gateEntries(await cloneEntries(tmp)); } catch (e) { throw e instanceof GateError ? new GitError(`not opened: ${e.message}`, null, 422) : e; }
     if (gated.refusals.length) throw new GitError(`not opened: ${gateMessages({ refusals: gated.refusals, warnings: [] }).join('; ')}`, null, 422);
-    try { JSON.parse(await fsp.readFile(path.join(tmp, P.PROJECT_FILE), 'utf8')); } catch { throw new GitError('not opened: its silinx.json is not valid JSON', null, 422); }
+    try { parseDescription(await fsp.readFile(path.join(tmp, P.PROJECT_FILE), 'utf8')); } catch { throw new GitError('not opened: its silinx.json is not valid JSON', null, 422); }
     await fsp.writeFile(path.join(tmp, P.CLONE_TRUST), JSON.stringify({ trusted: false, ...(madeBy ? { madeBy } : {}) }) + '\n');
     if (fs.existsSync(dir)) {
       if (!replace) throw new GitError(`project '${project}' already exists`, 'Choose another name for the project.', 409);

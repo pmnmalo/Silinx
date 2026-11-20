@@ -9,6 +9,7 @@ import { PROJECT_FILE } from '../core/fold-name.js';
 import { markMerged } from '../core/trust.js';
 import { readSnapshot } from './project-snapshots.js';
 import { syncDrawing } from './drawing-sync.js';
+import { parseDescription } from '../core/project-json.js';
 
 const backupFile = (P, name) => path.join(P.projectDir(name), '.silinx', 'merges', 'last.json');
 
@@ -16,7 +17,7 @@ const backupFile = (P, name) => path.join(P.projectDir(name), '.silinx', 'merges
 export function mergeStorage(P) {
   return {
     async read(name) {
-      const json = JSON.parse(await fsp.readFile(path.join(P.projectDir(name), PROJECT_FILE), 'utf8'));
+      const json = parseDescription(await fsp.readFile(path.join(P.projectDir(name), PROJECT_FILE), 'utf8'));
       const files = {};
       for (const rel of await P.fileTree(name)) if (!/\.xise$/i.test(rel)) files[rel] = await fsp.readFile(P.safeJoin(P.projectDir(name), rel), 'utf8');
       return { json, files };
