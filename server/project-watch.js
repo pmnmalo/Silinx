@@ -6,10 +6,14 @@
 // time; a poll, the same on every system, where fs.watch is not), the build's outputs aside but its summary
 // (build/reports.json) and the processes' marks (build/silinx-status.json). The changes this server makes itself
 // (the page's own requests, its runs) are not told: while one of them runs the project is held, and once it ends
-// what it changed is taken as known, silently. A request that names its page (X-Silinx-Client, #3972) is known to
+// what it changed is taken as known, silently. Known by what this server wrote (server/own-writes.js, #4726): a change
+// made meanwhile that is not one of its writes (the MCP server's, an editor's) is told to every page, the one that asked
+// too; a run's build summary is its own. A request whose writes are not all recorded (git's, a merge's, an import's:
+// not `known`) takes every change made while it runs for its own, as before. A request that names its page (X-Silinx-Client, #3972) is known to
 // that page only: what it changed is told to the project's other pages (another tab on the same project).
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { isOwnChange } from './own-writes.js';
 
 /** The build's files told: the Design Summary of the last run, the processes' marks the page saved. */
 export const BUILD_WATCHED = ['build/reports.json', 'build/silinx-status.json'];
@@ -52,12 +56,13 @@ export function diffScans(before, after) {
  * A watcher of the projects: dirOf(name) is a project's folder; busy(name), whether this server runs something
  * in it now (a run: its changes are its own).
  *   subscribe(name, onChange, { client }) -> unsubscribe; onChange({ project, changes, tab }) (tab: another page's)
- *   hold(name, client) -> release: the changes made until release() are this server's own: not told to the page
- *     `client` (the page that asked), told to the project's other pages that name theirs; a hold of no page's, to none
+ *   hold(name, client, { known }) -> release: the changes made until release() are this server's own: not told to the
+ *     page `client` (the page that asked), told to the project's other pages that name theirs; a hold of no page's, to
+ *     none. known: only those this server recorded writing (server/own-writes.js), another process's told to all
  *   acquire(name, client) -> Promise<release>: hold(), once the other pages' holds of the project ended and what they
  *     changed was read (two tabs' requests at once: each one's told to the other, #3972); after `wait` ms, held anyway
  */
-export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan, wait = 2000 } = {}) {
+export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan, wait = 2000, ownChange = isOwnChange } = {}) {
   const watched = new Map();   // key -> { name, dir, listeners, snap, holds, writers, timer, inflight, next, wasBusy, resync, releases, ready }
   const NOBODY = Symbol('a hold of no page');
   const keyOf = name => String(name).toLowerCase();   // (case-insensitive file systems: one folder)
@@ -71,21 +76,37 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
   async function look(w) {
     await w.ready;
     const ranBefore = busy(w.name), heldBefore = w.holds > 0 || ranBefore, releases = w.releases;
+    const opaqueBefore = w.opaque > 0 || w.opaqueResync, opaqueReleases = w.opaqueReleases;
     const now = await scanDir(w.dir);
     const ran = ranBefore || busy(w.name), held = heldBefore || w.holds > 0 || ran;   // (held during the scan: its files may be our own)
+    const opaque = opaqueBefore || w.opaque > 0;
     const changes = diffScans(w.snap, now);
     w.snap = now;
     // held, or just released by a run: what changed is known, not told; released during the scan, the scan may have
     // read the folder before the request's writes: the next look too (#2913). The requests' changes are told to the
     // pages that did not ask (#3972); a run's to none
     if (held || w.wasBusy || w.resync) {
-      if (!ran && !w.wasBusy && !w.writers.has(NOBODY)) tell(w, changes, client => client != null && !w.writers.has(client), { tab: true });
+      // (what this server did not write: another process's, told to every page)
+      const foreign = opaque ? [] : await notOwn(w, changes, ran || w.wasBusy);
+      const own = foreign.length ? changes.filter(c => !foreign.includes(c)) : changes;
+      if (!ran && !w.wasBusy && !w.writers.has(NOBODY)) tell(w, own, client => client != null && !w.writers.has(client), { tab: true });
+      tell(w, foreign, () => true);
       w.wasBusy = held && busy(w.name); w.resync = w.releases !== releases;
+      w.opaqueResync = w.opaque > 0 || w.opaqueReleases !== opaqueReleases;
       if (!w.holds && !w.resync) { w.writers.clear(); wake(w); }   // (all they wrote read, and told unless a run's)
       return;
     }
     w.writers.clear();
     tell(w, changes, () => true);
+  }
+  // the changes this server did not make itself (a run's build summary is the run's)
+  async function notOwn(w, changes, run) {
+    const out = [];
+    for (const c of changes) {
+      if (run && BUILD_WATCHED.includes(c.path)) continue;
+      if (!await ownChange(path.join(w.dir, c.path), c.kind)) out.push(c);
+    }
+    return out;
   }
   function tell(w, changes, told, by = {}) {
     if (!changes.length) return;
@@ -96,7 +117,7 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     const key = keyOf(name);
     let w = watched.get(key);
     if (!w) {
-      w = { name, dir: dirOf(name), listeners: new Map(), snap: new Map(), holds: 0, writers: new Set(), waiters: [], inflight: null, next: null, wasBusy: false, resync: false, releases: 0 };
+      w = { name, dir: dirOf(name), listeners: new Map(), snap: new Map(), holds: 0, writers: new Set(), waiters: [], inflight: null, next: null, wasBusy: false, resync: false, releases: 0, opaque: 0, opaqueResync: false, opaqueReleases: 0 };
       w.ready = scanDir(w.dir).then(s => { w.snap = s; });
       w.timer = setInterval(() => { poll(w, { after: false }).catch(() => {}); }, interval);
       w.timer.unref?.();
@@ -110,7 +131,7 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
   }
 
   const wake = w => { for (const r of w.waiters.splice(0)) r(); };
-  async function acquire(name, client = null) {
+  async function acquire(name, client = null, opts = {}) {
     const key = keyOf(name), w = watched.get(key);
     const others = () => [...w.writers].some(c => c !== client);
     const until = Date.now() + wait;
@@ -123,16 +144,25 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
         clearTimeout(timer);
       } else await poll(w).catch(() => {});
     }
-    return hold(name, client);
+    return hold(name, client, opts);
   }
 
-  function hold(name, client = null) {
+  // known: every write of the request recorded (server/own-writes.js), so that another process's changes meanwhile are
+  // told; else (a request of git's, a merge's) every change made while it holds the project is taken for its own
+  function hold(name, client = null, { known = false } = {}) {
     const w = watched.get(keyOf(name));
     if (!w) return () => {};
     w.holds++;
+    if (!known) w.opaque++;
     w.writers.add(client || NOBODY);
     let done = false;
-    return () => { if (done) return; done = true; w.holds--; w.resync = true; w.releases++; if (!w.holds) wake(w); poll(w).catch(() => {}); };
+    return () => {
+      if (done) return;
+      done = true; w.holds--; w.resync = true; w.releases++;
+      if (!known) { w.opaque--; w.opaqueResync = true; w.opaqueReleases++; }
+      if (!w.holds) wake(w);
+      poll(w).catch(() => {});
+    };
   }
 
   /** Looks at the project now (the tests; a page told sooner). */

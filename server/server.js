@@ -124,6 +124,8 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   const WRITING_GET = /^\/projects\/[^/]+\/(export\.xise|fpga-view)$/;
   // (a pull writes what GitHub had, not what the page sent: told to the page, its open documents read again, #3195)
   const TOLD = /^\/projects\/[^/]+\/git\/pull$/;
+  // (the requests whose writes are all recorded, server/own-writes.js: another process's changes meanwhile told, #4726)
+  const KNOWN = /^(PUT \/projects\/[^/]+(\/file)?|DELETE \/projects\/[^/]+\/file|POST \/projects\/[^/]+\/(rename|trust))$/;
   app.use('/api', (req, res, next) => {
     const m = /^\/projects\/([^/]+)/.exec(req.path);
     if (m && !TOLD.test(req.path) && (!['GET', 'HEAD'].includes(req.method) || WRITING_GET.test(req.path))) {
@@ -132,7 +134,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
       // (the page that asked: told to the others, and its request after another page's on the project, #3972)
       let ended = false;
       res.once('close', () => { ended = true; });
-      return watcher.acquire(name, req.get('X-Silinx-Client')).then(release => {
+      return watcher.acquire(name, req.get('X-Silinx-Client'), { known: KNOWN.test(`${req.method} ${req.path}`) }).then(release => {
         res.once('finish', release);
         res.once('close', release);
         if (ended) release();   // (the page gone while it waited)

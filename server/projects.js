@@ -21,6 +21,7 @@ import { renameProblem, renamedFile } from '../core/project-rename.js';
 import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
 import { registerWritten } from '../core/project-entries.js';
+import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -198,6 +199,7 @@ export async function writeAtomic(full, text) {
   const tmp = path.join(path.dirname(full), `.${path.basename(full)}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);   // hidden: not listed
   try {
     await fs.writeFile(tmp, text);
+    noteWritten(full, text);   // (this server's own: not told to the page that asked, #4726)
     await renameOver(tmp, full);
   } catch (e) { await fs.rm(tmp, { force: true }).catch(() => {}); throw e; }
 }
@@ -215,7 +217,9 @@ async function writeProjectUnlocked(name, pj) {
   const file = path.join(dir, PROJECT_FILE);
   const tmp = path.join(dir, `.${PROJECT_FILE}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
   try {
-    await fs.writeFile(tmp, JSON.stringify(clean, null, 2) + '\n');
+    const text = JSON.stringify(clean, null, 2) + '\n';
+    await fs.writeFile(tmp, text);
+    noteWritten(file, text);
     await renameOver(tmp, file);
   } catch (e) {
     await fs.rm(tmp, { force: true }).catch(() => {});
@@ -560,6 +564,7 @@ export async function renameFile(name, from, to, { checkName = true } = {}) {
     if (taken && path.join(path.dirname(dst), taken) !== src) throw new HttpError(409, `'${to}' already exists`);
     try {
       await fs.mkdir(path.dirname(dst), { recursive: true });
+      await noteMoving(src, dst);
       await renameOver(src, dst);
     } catch (e) { throw await fsHttpError(e, dir, dst); }
     const pj = await readProject(name);
@@ -599,6 +604,7 @@ export async function deleteFile(name, rel, { trash = false, mustExist = false }
     await refuseHiddenInside(dir, rel, full, 'deleted');
     const there = await fs.lstat(full).then(() => true, () => false);
     if (mustExist && !there) throw new HttpError(404, `no file or folder '${key}' in the project '${name}'`);
+    noteRemoved(full);
     try {
       if (trash && there) trashed = await toTrash(dir, full, key);
       else await fs.rm(full, { recursive: true, force: true });
