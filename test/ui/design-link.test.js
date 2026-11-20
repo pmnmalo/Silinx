@@ -537,7 +537,7 @@ uiTest('#2826 in Portuguese: Copy Link… and the replace question', E, async (p
   assert.equal(await page.waitDialog('Partilhar Projeto'), 'Partilhar Projeto');
   await genLink(page);
   const t = await page.eval(() => document.querySelector('.dlg-overlay .dlg-body').innerText);
-  for (const s of ['Abrir em:', 'Abrir só o projeto', 'Experimentar (a simulação de um desenho)', 'Incluir a vista atual: os separadores abertos, a divisão, os painéis', 'Módulo:', 'Vista:', 'Uma cópia', 'Uma ligação com o projeto lá dentro', 'Em direto', 'Os outros seguem-no enquanto trabalha', 'Uma ligação que abre \'gates\' no Silinx', 'caracteres']) assert.ok(t.includes(s), `${s} in:\n${t}`);
+  for (const s of ['Abrir em:', 'Abrir só o projeto', 'Experimentar (a simulação de um desenho)', 'Incluir a vista atual: os separadores abertos, a divisão, os painéis', 'Módulo:', 'Vista:', 'Uma cópia', 'Uma ligação com o projeto lá dentro', 'Em direto', 'Os outros seguem-no enquanto trabalha', 'Uma ligação que abre o projeto no Silinx', 'caracteres']) assert.ok(t.includes(s), `${s} in:\n${t}`);
   for (const s of ['Placa:', 'Laboratório:']) assert.ok(!t.includes(s), `${s} (#3995: no Board, no Lab) in:\n${t}`);
   // the simulation's Module list: the test bench, marked the project's (#2878)
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = 'simulate'; v.dispatchEvent(new Event('change')); });
