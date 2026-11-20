@@ -47,7 +47,9 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   joined to its pins, so that a circuit is easier to wire. An IC with no gates (#4508, `core/circuit-inside-blocks.js`)
   as its datasheet's connection diagram too: a dual or quad flip-flop, latch or decoder a box a unit beside its pins (the
   7474's two D flip-flops), another IC one box over its body; each pin's line into its box, its name inside (IEC: 1D, C1,
-  S, R, and the box's qualifier CTR, SRG, RG, X/Y, MUX, Σ, COMP), a clock's ▷, a bubble on an active-low input. A
+  S, R, and the box's qualifier CTR, SRG, RG, X/Y, MUX, Σ, COMP), a clock's ▷, a bubble on an active-low input. The
+  latches whose units share an enable (#4934, `core/circuit-inside-drawn.js`: the 7475, 7477, 74375) as their datasheets
+  draw them: a box a latch (D, G, Q, Q̅), each pair's enable a line between the two boxes, a dot, into both. A
   KiCad part that behaves as a library IC is drawn as it. A 4023, 4025, 4073 or 4075
   (#4505), whose first gate takes 1C from the upper row past its output 1Y, has that gate in the body's middle and 1C's
   line over it, crossing 1Y's once as the circuit's wires cross (Wire crossings: a hop-over or plain, never a dot); the
