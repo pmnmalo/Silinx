@@ -710,9 +710,6 @@ Object.assign(PT, {
 });
 // the ISE style title bar (web/js/project.js updateTitle, #987): "<project> - [Design Summary]", its name translated (#1007)
 PT_PATTERNS.push([/^(.+) - \[Design Summary\]$/, (m, pj) => `${pj} - [${PT['Design Summary']}]`]);
-// the Design task's name (its button, its page's title: data-i18n-task): a verb as its neighbours, not the Design pane's
-// "Projeto" (#4953)
-const TASK_PT = { Design: 'Projetar' };
 // a task's button with its dot (web/js/tasks.js taskTitle, #991): "Implement — done with warnings"
 PT_PATTERNS.push([/^(Design|Simulate|Implement) — (done, no warnings|done with warnings|errors|out of date \(a source changed\)|running…)$/, (m, a, b) => `${a === 'Design' ? TASK_PT.Design : PT[a]} — ${PT[b]}`]);   // (the Design task: Projetar, #4953)
 PT_PATTERNS.push(
@@ -921,8 +918,8 @@ const attrState = new WeakMap();   // element -> { [attr]: { orig, last } }
 function skipEl(el) { return !el || (el.closest && el.closest(SKIP)); }
 // a text box: its text (the user's) left as it is, its own attributes (placeholder, tip) translated as an input's (#3931)
 const isBox = el => el?.tagName === 'TEXTAREA';
-// a task's name inside an element that says so (data-i18n-task="Design": the Design task, "Projetar", a verb as Simular,
-// Emular, Implementar, not "Projeto" as the Design pane, #1046, #4953); other texts there translated as usual
+// a task's name inside an element that says so (data-i18n-task="Design": the Design task's button and page, #4953)
+const TASK_PT = { Design: 'Projetar' };   // (a verb as Simular, Emular, Implementar; not the Design pane's "Projeto")
 const asTask = (el, text) => lang === 'pt' && el?.closest?.('[data-i18n-task]')?.dataset.i18nTask === text.trim() ? text.replace(text.trim(), TASK_PT[text.trim()]) : null;
 
 function translateText(node) {
