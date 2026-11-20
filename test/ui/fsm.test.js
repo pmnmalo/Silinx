@@ -489,7 +489,9 @@ uiTest('State diagram (FSM): priority (▼ Later), Straighten, Export CSV, simul
   await page.waitForSelector(`${ED} .fsm-ttable`);
   const fs = await import('node:fs/promises');
   const csv = {};
-  for (const [i, name] of ['transitions', 'states', 'encoded'].entries()) {
+  // (the state table first, then the transition table, the encoded table, #4966)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-tcap b`)].map((b) => b.textContent), ED), ['State table', 'Transition table', 'Encoded transition table']);
+  for (const [i, name] of ['states', 'transitions', 'encoded'].entries()) {
     await page.click(`${ED} .fsm-tcap .asm-btn`, { text: 'Export CSV', index: i });
     csv[name] = await fs.readFile(await waitDownload(page, `pri_${name}.csv`), 'utf8');
   }

@@ -121,7 +121,7 @@ uiTest('#405 FSM editor parts: the view, the history, the inline editing, the po
   // ---- the bottom panel: the tables, the HDL, the simulation (x = 1, a clock edge: A -> B)
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-stable`), [ED], { what: 'the tables' });
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-tables .fsm-table`)].map((t) => t.className), ED), ['fsm-table fsm-ttable', 'fsm-table fsm-stable', 'fsm-table fsm-etable']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-tables .fsm-table`)].map((t) => t.className), ED), ['fsm-table fsm-stable', 'fsm-table fsm-ttable', 'fsm-table fsm-etable']);   // (the state table first, #4966)
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Try it' });
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-sim-state`), [ED], { what: 'the simulation' });
   assert.match(await page.eval((ed) => document.querySelector(`${ed} .fsm-sim-state`).textContent, ED), /A/);
