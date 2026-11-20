@@ -246,6 +246,15 @@ board or a PROM) without the user's say.
    bitstream of the workspace named by its path takes its project's trust (#3039), also when named in another case on a
    case-insensitive file system (#3358), and a bitstream built for another device than the project's is not
    programmed, by the server as by the browser, unless the request forces it (#3040).
+   Trust is recorded outside the project (#4735): `trusted-projects.json` in the configuration folder (`~/.silinx`,
+   `server/trust-store.js`) lists the folders (where they really are) and ids of the projects the user made in Silinx
+   (New Project, an example) or trusted. A project without a record is untrusted, whatever its `silinx.json` says, so
+   a folder that reaches the workspace outside Silinx's imports (unzipped by hand, cloned with command-line git, a
+   synced folder, one restored from the `.trash`) waits for the button too; its notice says why, and nothing of that
+   mark is written into its `silinx.json`. Rename Project moves its record, Delete Project removes it. The first run
+   with no records file records the workspace's projects trusted until then, once (an update untrusts none of the
+   user's own); a records file that cannot be read trusts nothing. The browser edition keeps the same records for a
+   folder on the disk in the browser's storage (`web/js/trust-records.js`); its own storage needs none.
    Saving the project's description does not make it trusted; only that button does. The MCP server has no tool to
    trust a project, by design: an assistant led astray by what it read cannot. Its `run_process` runs the Silinx
    toolchain, or Xilinx ISE as Toolchain Settings configure it (a local install, Docker, ssh) when asked for

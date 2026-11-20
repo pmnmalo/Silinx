@@ -18,6 +18,7 @@ import { PROJECT_NAME_RE, projectNameError, sameProject } from '../../core/proje
 import { renameProblem, renamedFile } from '../../core/project-rename.js';
 import { filePath, gateMessages, normalizePath, requireGated } from '../../core/import-gate.js';
 import { markUntrusted } from '../../core/trust.js';
+import * as trustRecords from './trust-records.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
 import { DESIGN_KIND, asDesignProject, isDesignOnly } from '../../core/project-kind.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
@@ -310,6 +311,9 @@ export function folderStore(root) {
     let json;
     try { json = await readJson(dir); } catch { fail(`project '${name}' not found`); }
     json.name = name;
+    // (#4735: trusted only with this browser's record of it, the folder's projects recorded once the first time)
+    await trustRecords.migrateOnce(root.name, () => store.list());
+    trustRecords.marked(root.name, name, json);
     if (!Array.isArray(json.files)) json.files = [];
     const p = { json, files: await walk(dir) };
     cache.set(name, p);
@@ -336,13 +340,13 @@ export function folderStore(root) {
       const dir = await projectDir(name, true);
       for (const d of dirs) await dirAt(dir, d.split('/'), true);
       for (const [path, data] of Object.entries(files)) if (!isDescriptor(cleanPath(path))) await writeAt(dir, path, data);
-      await writeAt(dir, PROJECT_FILE, projectJsonText(name, json));
+      await writeAt(dir, PROJECT_FILE, projectJsonText(name, trustRecords.unmarked(json)));
       return read(name);
     }),
     saveJson: (name, json) => locked(name, async () => {
       const p = await get(name);
-      await writeAt(await projectDir(name), PROJECT_FILE, projectJsonText(name, json));
-      p.json = JSON.parse(projectJsonText(name, json));
+      await writeAt(await projectDir(name), PROJECT_FILE, projectJsonText(name, trustRecords.unmarked(json)));
+      p.json = trustRecords.marked(root.name, name, JSON.parse(projectJsonText(name, trustRecords.unmarked(json))));
     }),
     writeFile: (name, path, text) => locked(name, async () => {
       const p = await get(name);
@@ -516,6 +520,14 @@ export async function readBuildResults(store, name, { modelVersion }) {
 /** The API's project calls on the store `getStore()` returns (the one in use). */
 export function projectOps(getStore, examples = {}) {
   const S = () => getStore();
+  // (#4735: a folder on the disk's projects: the user's own recorded as trusted, the migration first; none in the
+  // browser's own storage, which nothing but Silinx writes)
+  const folder = () => (S().kind === 'folder' ? S().label : null);
+  const recordOwn = async name => {
+    if (folder() === null) return;
+    await trustRecords.migrateOnce(folder(), () => S().list());
+    trustRecords.record(folder(), name);
+  };
   const ops = {
     list: async () => (await S().list()).map(j => ({ name: j.name, device: j.device, top: j.top, board: j.board, modified: j.modified || 0 })),
     load: name => S().load(name),
@@ -547,10 +559,12 @@ export function projectOps(getStore, examples = {}) {
           const top = topForBoard(design.map(f => ({ path: f.path, lang: f.lang, text: files[f.path] })), json.top, resolveBoard(json.board, { part: json.device?.part }));
           if (top) files[top.path] = top.text;
         }
+        await recordOwn(name);
         await S().create(name, json, files);
         return clone(json);
       }
       const json = kind ? asDesignProject(emptyProjectJson(name)) : emptyProjectJson(name, { device, board });
+      await recordOwn(name);
       await S().create(name, json, {}, { dirs: kind ? ['src', 'sim'] : ['src', 'sim', 'constraints'] });
       return clone(json);
     },
@@ -585,6 +599,7 @@ export function projectOps(getStore, examples = {}) {
     // the user trusts a project from outside (#2830): Xilinx ISE and programming may run for it
     trustProject: async (name) => {
       const { trusted, madeBy, ...json } = (await S().load(name)).json;   // eslint-disable-line no-unused-vars
+      if (folder() !== null) trustRecords.record(folder(), name, typeof json.id === 'string' ? json.id : null);
       await S().saveJson(name, json);
       return clone({ ...json, name });
     },
@@ -662,13 +677,14 @@ export function projectOps(getStore, examples = {}) {
       await S().saveJson(name, json);
       return { ok: true, ...(trashed ? { trashed } : {}) };
     },
-    deleteProject: async name => { await S().deleteProject(name); return { ok: true }; },
+    deleteProject: async name => { await S().deleteProject(name); if (folder() !== null) trustRecords.forget(folder(), name); return { ok: true }; },
     // Rename Project… (#4641): the server's checks and messages (core/project-rename.js)
     renameProject: async (from, to) => {
       if (!await S().exists(from)) fail(`project '${from}' not found`);
       const problem = renameProblem(from, to, (await S().list()).map(j => j.name));
       if (problem) fail(problem.message);
-      await S().renameProject(from, to);
+      if (folder() !== null) trustRecords.moveRecord(folder(), from, to);
+      try { await S().renameProject(from, to); } catch (e) { if (folder() !== null) trustRecords.moveRecord(folder(), to, from); throw e; }
       return { name: to };
     },
     sources: async name => {
