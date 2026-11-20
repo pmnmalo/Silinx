@@ -220,6 +220,15 @@ test('#3481 the board\'s clock: the oscillator found on a board, its constraints
   assert.deepEqual(captureUcf({ boardClock: MCLK }, 'NET "clk" LOC = "B8" ;\n'), { ucf: 'NET "clk" LOC = "B8" ;\n',
     error: 'capture: the board\'s clock mclk (B8, 20 ns) is the design\'s port clk already: choose clk as the capture\'s clock (Logic Analyzer Settings, capture_settings)' });
   assert.deepEqual(captureUcf({ clock: 'clk' }, ucf), { ucf, error: null });
+  // the pin taken as the constraints' reader reads it (#4771): after another attribute, in lower case; XDC's -dict and
+  // get_ports { clk }; a comment none
+  const took = (port) => `capture: the board's clock mclk (B8, 20 ns) is the design's port ${port} already: choose ${port} as the capture's clock (Logic Analyzer Settings, capture_settings)`;
+  for (const t of ['NET "clk" IOSTANDARD = LVCMOS33 | LOC = "B8" ;\n', 'net clk loc = b8 ;\n', 'NET "clk" LOC=B8;\n'])
+    assert.deepEqual(captureUcf({ boardClock: MCLK }, t), { ucf: t, error: took('clk') }, t);
+  assert.equal(captureUcf({ boardClock: MCLK }, '# NET "clk" LOC = "B8" ;\n').error, null);
+  for (const t of ['set_property -dict { PACKAGE_PIN B8 IOSTANDARD LVCMOS33 } [get_ports { clk }]\n', 'set_property PACKAGE_PIN B8 [get_ports {clk}]\n'])
+    assert.deepEqual(captureUcf({ boardClock: MCLK }, t, { xdc: true }), { ucf: t, error: took('clk') }, t);
+  assert.equal(captureUcf({ boardClock: MCLK }, '# set_property PACKAGE_PIN B8 [get_ports clk]\n', { xdc: true }).error, null);
 });
 
 test('#3481 a combinational design\'s capture on the board\'s clock: the wrapper\'s own clock port, simulated (sw\'s changes, y\'s rise the trigger)', () => {

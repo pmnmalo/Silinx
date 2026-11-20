@@ -173,6 +173,21 @@ test('local mode: run.sh runs the ISE tools found on PATH; ports without LOC get
   assert.match(calls, /^trce -intstyle xflow -v 1 -s 4 -n 20 -fastpaths -xml top.twx top.ncd -o top.twr top.pcf -ucf top.ucf$/m);
 });
 
+// #4771: the pins taken as the UCF's reader reads them: a LOC in lower case or after another attribute taken, a
+// commented one free (the awk's own regex read neither)
+test('local mode: the pins Silinx assigns skip the UCF\'s pins as its reader reads them (lower case, after IOSTANDARD; a comment none) (#4771)', { skip: POSIX_ONLY }, async () => {
+  await writeConfig({ mode: 'local' });
+  const dir = await makeProject('Flow4u', { board: null, ucf: '# NET "x" LOC = "P2" ;\nnet clk iostandard = lvcmos33 | loc = p1 ;\n' });
+  const j = await waitJob(jobs, await implement('Flow4u', { steps: ['translate'] }));
+  assert.equal(j.status, 'ok', j.lines.join('\n'));
+  assert.deepEqual(j.result.completedSteps, ['autopins', 'translate']);
+  assert.ok(j.result.warnings.includes('4 port bit(s) have no LOC constraint (sw<0>, sw<1>, led<0>, led<1>): Silinx assigns free I/O pins automatically - do NOT program real hardware with this bitstream'), j.result.warnings.join('\n'));
+  assert.equal(await fs.readFile(path.join(dir, 'build', 'usedpins.txt'), 'utf8'), 'P1\n');
+  const ucf = await fs.readFile(path.join(dir, 'build', 'top.ucf'), 'utf8');
+  assert.match(ucf, /NET "sw<0>" LOC = "P2" ; # assigned by Silinx/);
+  assert.doesNotMatch(ucf, /LOC = "P1" ; # assigned/);
+});
+
 // #34: the EPFL benchmarks' escaped port names (\opcode[0] ): XST calls them _opcode[0]_, the
 // only spelling ngdbuild finds (measured with ISE 14.7); Silinx's Check Constraints accepts it
 test('local mode: pins for escaped port names are written with XST\'s names (_opcode[0]_), which Check Constraints accepts', { skip: POSIX_ONLY }, async () => {

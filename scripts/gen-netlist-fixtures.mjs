@@ -38,6 +38,7 @@ process.env.SILINX_CONFIG_DIR = path.join(work, 'cfg');
 const { saveConfig } = await import('../server/toolchain.js');
 await saveConfig({ mode: 'docker', docker: { image, platform: 'linux/amd64', settings: '/opt/Xilinx/14.7/ISE_DS/settings64.sh' } });
 const { runImplementation, SIM_MODELS, unconstrainedPorts, DOCKER_ISOLATION } = await import('../server/ise.js');
+const { pinsTaken } = await import('../core/auto-pins.js');
 const { runCommand } = await import('../server/jobs.js');
 
 const langOf = (f) => (/\.(vhd|vhdl)$/i.test(f) ? 'vhdl' : 'verilog');
@@ -80,7 +81,7 @@ async function pinConstraints(spec, dir) {
   const ucf = spec.ucf ? await fs.readFile(path.join(dir, spec.ucf), 'utf8') : '';
   const free = await unconstrainedPorts(srcs, spec.top, ucf);
   if (!free.length) return ucf;
-  const used = new Set([...ucf.matchAll(/LOC\s*=\s*"?(\w+)/gi)].map((m) => m[1].toUpperCase()));
+  const used = new Set(pinsTaken(ucf).keys());   // (as the UCF's reader reads them, #4771)
   const pins = (await packagePins(spec.device)).filter((p) => !used.has(p.pin.toUpperCase()));
   const ip = pins.filter((p) => p.inputOnly), io = pins.filter((p) => !p.inputOnly);
   const out = [ucf.trimEnd(), '', '# pins assigned by scripts/gen-netlist-fixtures.mjs'];
