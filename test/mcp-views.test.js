@@ -1,6 +1,7 @@
 // The MCP server's related views (#2834, server/mcp-views.js): related_view makes, read-only and writing nothing, the
 // views the interface shows beside a source: an HDL source's translation (traffic's VHDL to Verilog, pong's Verilog to
-// VHDL), a state diagram's ASM chart (traffic's), a truth table's schematic (traffic's lamps), a Petri net's state machine,
+// VHDL), a state diagram's ASM chart and its schematic (traffic's, its gate-level implementation, #4910), a truth table's
+// schematic (traffic's lamps), a Petri net's state machine,
 // each the same as the core's converters make; a truth table's results, as the editor's results panel (#2927); an ASM chart that is not a plain state machine, a state diagram with errors
 // and the wrong kinds of source refused, each with its reason.
 import { test, before, after } from 'node:test';
@@ -14,6 +15,7 @@ import { schematicFromTable, normalizeTable, newTable, canonicalAsts, formatExpr
 import { newPetri } from '../core/petri.js';
 import { petriToFsm } from '../core/petri-fsm.js';
 import { circuitSchematic } from '../core/circuit-sch.js';
+import { fsmSchematic } from '../core/fsm-schematic.js';
 import { halfAdder } from './circuit-helpers.mjs';
 
 let tmp;
@@ -173,6 +175,23 @@ test('related_view: a circuit\'s schematic, as its Design row\'s badge shows it 
   await fails({ project: 'cs', path: 'src/bad.circ.json', view: 'schematic' }, 'the schematic of bad.circ.json: D2: its label \'s\' is D1\'s too');
 });
 
+test('related_view: a state diagram\'s schematic, its gate-level implementation (#4910), in a design project too; one that cannot be drawn refused, why said', async () => {
+  for (const kind of ['fpga', 'design']) {
+    const pj = `fs_${kind}`;
+    await call('new_project', { name: pj, kind });
+    const fsm = JSON.parse(fs.readFileSync(new URL('../examples/traffic/src/traffic.fsm.json', import.meta.url), 'utf8'));
+    await call('write_file', { project: pj, path: 'src/traffic.fsm.json', text: JSON.stringify(fsm, null, 2) });
+    const before = files(pj);
+    const r = await ok({ project: pj, path: 'src/traffic.fsm.json', view: 'schematic' });
+    assert.equal(r.data.view, 'schematic');
+    assert.deepEqual(JSON.parse(r.text), fsmSchematic(fsm).doc);
+    assert.deepEqual(JSON.parse(r.text).symbols.filter((x) => /^fd/.test(x.type)).map((x) => x.type), ['fdr', 'fdr', 'fdr']);
+    assert.deepEqual(files(pj), before);
+    await call('write_file', { project: pj, path: 'src/hot.fsm.json', text: JSON.stringify({ ...fsm, name: 'hot', encoding: 'onehot' }, null, 2) });
+    await fails({ project: pj, path: 'src/hot.fsm.json', view: 'schematic' }, 'hot.fsm.json: No schematic: its encoding is onehot: a schematic is drawn for the binary and gray encodings');
+  }
+});
+
 test('related_view refuses: an ASM chart that is not a plain state machine, a state diagram with errors, the wrong kind of source, a file not there', async () => {
   await call('new_project_from_example', { name: 'b', example: 'blinky' });
   await fails({ project: 'b', path: 'src/speed_ctrl.asm.json', view: 'fsm' }, 'speed_ctrl.asm.json cannot be shown as a state diagram: it is not a plain state machine: it has internal registers (cnt_f, deb_f, cnt_s, deb_s, level, ticks); it has generics/parameters (DEBOUNCE); it has registered outputs (step); it synchronises inputs; it has logic that runs on every cycle besides the states');
@@ -181,7 +200,7 @@ test('related_view refuses: an ASM chart that is not a plain state machine, a st
   assert.equal(r.isError, true);
   assert.match(r.text, /^related_view: the ASM chart of empty\.fsm\.json: /);
   await fails({ project: 'b', path: 'src/top.vhd', view: 'asm' }, 'src/top.vhd: a state diagram (.fsm.json) has an ASM chart');
-  await fails({ project: 'b', path: 'src/top.vhd', view: 'schematic' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) or a circuit (.circ.json) has a schematic');
+  await fails({ project: 'b', path: 'src/top.vhd', view: 'schematic' }, 'src/top.vhd: a truth table (.bool.json, .tt.json), a circuit (.circ.json) or a state diagram (.fsm.json) has a schematic');
   await fails({ project: 'b', path: 'src/top.vhd', view: 'results' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has results');
   await fails({ project: 'b', path: 'src/top.vhd', view: 'fsm' }, 'src/top.vhd: an ASM chart (.asm.json) or a Petri net (.pn.json) has a state diagram');
   await fails({ project: 'b', path: 'src/speed_ctrl.asm.json', view: 'translation' }, 'src/speed_ctrl.asm.json: an HDL source (.vhd, .v) is translated');
