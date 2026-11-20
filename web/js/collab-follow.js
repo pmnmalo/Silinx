@@ -51,7 +51,7 @@ let fol = null;   // { name, session, following, driven (the owner's view last f
 
 /** Whether a link's relay is unknown (#4742): neither one of this Silinx's (the site's, config.json's) nor the relay of
  *  this browser's settings. Whoever runs it sees the follower's address and name, so following through it is confirmed. */
-export const unknownRelay = async r => !!r && !(await relaysHere()).includes(r) && relayAddress(savedRelay().address || '') !== r;
+const unknownRelay = async r => !!r && !(await relaysHere()).includes(r) && relayAddress(savedRelay().address || '') !== r;
 
 const d0 = p => S.docs.find(x => x.path === p && x.editor?.view);
 const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
