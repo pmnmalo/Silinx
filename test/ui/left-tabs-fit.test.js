@@ -48,9 +48,10 @@ uiTest('#4625 no project: the Start and Collaboration tabs both whole, sharing t
   const silinx = await page.eval(() => document.documentElement.dataset.ui === 'silinx');
   const wide = await page.eval(() => Math.round(document.getElementById('left').getBoundingClientRect().width));
   await both(page, ['Start', 'Collaboration'], 'the default panel');
-  // a panel too narrow for both names (120 px): the tabs as with a project, the active one's name alone (the other: its
-  // icon, the Silinx interface; its name cut, the ISE style)
-  await setWidth(page, 120);
+  // a panel too narrow for both names (120 px; the ISE style, whose tabs not sharing the row keep their own widths, 90:
+  // both names fitted whole in 120 with Linux's fonts): the tabs as with a project, the active one's name alone (the
+  // other: its icon, the Silinx interface; its name cut, the ISE style)
+  await setWidth(page, silinx ? 120 : 90);
   await page.waitFor(() => !document.getElementById('left-tabs').hasAttribute('data-fit'), [], { what: 'not sharing the row' });
   const narrow = await row(page);
   assert.deepEqual(narrow.tabs.map((t) => [t.page, t.name]), [['start', 'Start'], ['collab', null]]);
