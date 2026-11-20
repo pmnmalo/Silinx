@@ -26,6 +26,7 @@ import { mountCircuitOptions } from './circuit-options.js';
 import { adoptOps, recordCircuit, replayCircuit, replayPlan, tryOps } from '/core/collab-try.js';
 import { mountCircuitClip } from './circuit-clip.js';
 import { mountCircuitKeys } from './circuit-keys.js';
+import { wireDragStart, wireDragTo, bendRemoved } from './circuit-wire-drag.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { clone } from '/core/util.js';
@@ -174,7 +175,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
@@ -201,7 +202,7 @@ export function mountCircuitEditor(container, opts = {}) {
   const hit = (e) => { const g = e.target.closest?.('[data-kind]'), i = e.target.closest?.('[data-input]'); return g ? { kind: g.dataset.kind, id: g.dataset.id, input: i?.dataset.input, lever: Number(i?.dataset.lever ?? 0) } : null; };
   // (the schematic's gestures, #4291: the wheel's and the pinch's smooth zoom, the trackpad's pan, Space or the middle button)
   viewGestures(svg, {
-    cancel: () => { const d = drag; drag = null; if (d?.kind === 'move') { M = normalizeCircuit(JSON.parse(hist[hi])); render(); } },
+    cancel: () => { const d = drag; drag = null; if (d?.kind === 'move' || d?.kind === 'wire') { M = normalizeCircuit(JSON.parse(hist[hi])); render(); } },
     pan: (dx, dy) => { fitted = true; view.tx += dx; view.ty += dy; applyView(); },
     zoom: (...a) => zoomAt(...a), keyEl: root,
   });
@@ -227,7 +228,8 @@ export function mountCircuitEditor(container, opts = {}) {
     if (t) {
       sel = { kind: t.kind, id: t.id };
       const p = M.parts.find((x) => x.id === t.id);
-      if (p && !readOnly) drag = { kind: 'move', id: p.id, dx: g[0] - p.x, dy: g[1] - p.y, at: [p.x, p.y], base: M, moved: false };
+      // (the selected wire's end or bend dragged, #4930, #4931: circuit-wire-drag.js)
+      drag = (!readOnly && wireDragStart(e, sel, M)) || (p && !readOnly ? { kind: 'move', id: p.id, dx: g[0] - p.x, dy: g[1] - p.y, at: [p.x, p.y], base: M, moved: false } : null);
     } else {
       sel = null;
       drag = { kind: 'pan', x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
@@ -241,6 +243,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (tool === 'wire' && draft) { render(); const last = draft[draft.length - 1]; if (last[0] !== g[0] || last[1] !== g[1]) world.append(draftSvg(M, [...draft, g])); return; }
     if (!drag) return;
     if (drag.kind === 'pan') { view.tx = drag.tx + e.clientX - drag.x; view.ty = drag.ty + e.clientY - drag.y; applyView(); }
+    else if (drag.kind === 'wire') { const m = wireDragTo(drag, g); if (m) { M = m; render(); } }
     else if (drag.kind === 'move') {
       // (shown as it will be: a breadboard with the parts on it, the wires' ends with them while Keep connections, #4059)
       const nx = g[0] - drag.dx, ny = g[1] - drag.dy, p = M.parts.find((x) => x.id === drag.id);
@@ -254,9 +257,11 @@ export function mountCircuitEditor(container, opts = {}) {
     const d = drag;
     drag = null;
     if (d?.kind === 'press' && sim) setInput(d.id, false);
-    if (d?.kind === 'move') { if (d.moved) commit(); else { M = d.base; render(); } }
+    if (d?.kind === 'move' || d?.kind === 'wire') { if (d.moved) commit(); else { M = d.base; render(); } }
   });
   svg.addEventListener('dblclick', () => { if (tool === 'wire' && draft) endWire(); });
+  // (a double click on the selected wire's bend: removed, #4931; its second press, the drag it started dropped)
+  svg.addEventListener('mousedown', (e) => { if (e.detail === 2 && drag?.kind === 'wire') { drag = null; const r = bendRemoved(toGrid(toWorld(e.clientX, e.clientY)), sel, M); if (r) applyEdit(r, sel); } });
   function zoomAt(f, cx, cy) {
     fitted = true;
     const r = svg.getBoundingClientRect(), mx = cx - r.left, my = cy - r.top;
@@ -314,7 +319,7 @@ export function mountCircuitEditor(container, opts = {}) {
       render(); if (mine) opts.onChange?.(clone(M));
     },
     // (a change under way the merge must wait for: a part moved, a wire being drawn, a field of the side panel typed)
-    busy: () => drag?.kind === 'move' || !!draft || side.contains(document.activeElement),
+    busy: () => drag?.kind === 'move' || drag?.kind === 'wire' || !!draft || side.contains(document.activeElement),
     // (Cut, Copy and Paste, #4066: circuit-clip.js)
     copy: () => clip.copy(), cut: () => clip.copy(true), paste: () => clip.paste(),
     canCopy: () => sel?.kind === 'part', canPaste: () => !readOnly && clip.has(), canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),

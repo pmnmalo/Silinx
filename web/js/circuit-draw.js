@@ -10,6 +10,7 @@ import { portName } from '/core/circuit.js';
 import { drawPart2 } from './circuit-draw-parts.js';
 import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
+import { wireHandles } from '/core/circuit-wire-edit.js';
 import { wireStyleOf } from '/core/wire-style.js';
 import { routeOrthogonal } from '/core/circuit-route.js';
 import { shapePath } from '/core/kicad-mod.js';
@@ -20,7 +21,7 @@ const px = (v) => v * P;
 
 /** The circuit drawn: a <g> of its breadboards, wires and parts. `levels(partId, pin)`: a pin's level while simulating;
  *  `inside`: the ICs' gates or pin names and the breadboards' strips shown (#4060); `hops`: the wires' hop-overs (#4064). */
-export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs = null, draft = null, ghost = null, inside = false, hops = false } = {}) {
+export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs = null, draft = null, ghost = null, inside = false, hops = false, handles = false } = {}) {
   const g = sv('g', { class: `circ-drawing${inside ? ' circ-inside' : ''}` });
   const isSel = (id) => sel?.id === id;
   for (const p of m.parts) if (partDef(p.type)?.kind === 'breadboard') g.append(breadboardSvg(p, isSel(p.id), inside));
@@ -28,6 +29,9 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, inputs 
   const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { style: wireStyleOf(m, 'direct'), hops });
   for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
   for (const p of m.parts) if (partDef(p.type) && partDef(p.type).kind !== 'breadboard') g.append(partSvg(p, isSel(p.id), { levels, leds, inputs, inside, hops }));
+  // (the selected wire's handles while editing, #4930, #4931: over the parts, an end on a pin)
+  const hw = handles && sel?.kind === 'wire' ? m.wires.find((w) => w.id === sel.id) : null;
+  if (hw) g.append(handlesSvg(hw));
   if (draft?.length >= 2) g.append(draftSvg(m, draft));
   if (ghost) { const e = partSvg(ghost, false, {}); e.classList.add('circ-ghost'); g.append(e); }
   return g;
@@ -98,6 +102,14 @@ function wireSvg(w, selected, d) {
     sv('path', { d, class: 'circ-wire-hit' }),
     sv('path', { d, class: `circ-wire circ-w-${w.color}` }),
     ...[a, b].map(([x, y]) => sv('circle', { cx: px(x), cy: px(y), r: 3.2, class: `circ-wire-end circ-w-${w.color}` })));
+}
+
+// a selected wire's handles (#4930, #4931): its ends and bends dragged, a segment's middle dragged out into a new bend;
+// a group of the wire's own (its data-kind and data-id), drawn last
+function handlesSvg(w) {
+  return sv('g', { class: 'circ-wire-handles', 'data-kind': 'wire', 'data-id': w.id }, ...wireHandles(w).map((h) => sv(h.kind === 'bend' ? 'rect' : 'circle', {
+    ...(h.kind === 'bend' ? { x: px(h.at[0]) - 3.5, y: px(h.at[1]) - 3.5, width: 7, height: 7 } : { cx: px(h.at[0]), cy: px(h.at[1]), r: h.kind === 'end' ? 4.5 : 3 }),
+    class: `circ-wire-handle circ-handle-${h.kind}`, 'data-handle': `${h.kind}:${h.index}` })));
 }
 
 // A project's KiCad part drawn only (#4281), or modelled by a module of the project (#4283): its footprint's drawing to
