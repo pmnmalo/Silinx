@@ -13,6 +13,7 @@
 //     "ONE2C" (a carry in of 1) are the ALU's LUT (RAW_ALU_LUT) 0 and 15, as Apicula's chip database gives their bits.
 //
 // Isomorphic ES module (browser + Node), no DOM.
+import { escRegExp } from './escape.js';
 
 const text = (v) => (typeof v === 'string' ? v : new TextDecoder().decode(v));
 
@@ -45,14 +46,13 @@ export function padNets(verilog) {
 
 // a global buffer's instance (Yosys's write_verilog: its pins one a line), its nets (an escaped name ends with its space)
 const GB = /^ {2}SB_GB (\S+) \(\n {4}\.GLOBAL_BUFFER_OUTPUT\((\\\S+ |[A-Za-z_][\w$]*(?:\[\d+\])?)\),\n {4}\.USER_SIGNAL_TO_GLOBAL_BUFFER\((\\\S+ |[A-Za-z_][\w$]*(?:\[\d+\])?)\)\n {2}\);\n/gm;
-const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The netlist with its global buffers (SB_GB) left out, their output nets their input's (but in their declarations). */
 export function globalBuffers(verilog) {
   const alias = [];
   let v = verilog.replace(GB, (all, name, o, i) => { alias.push([o, i]); return ''; });
   for (const [o, i] of alias) {
-    const re = o.startsWith('\\') ? new RegExp(escapeRe(o), 'g') : new RegExp(`(?<![\\w$\\\\])${escapeRe(o)}(?![\\w$])`, 'g');
+    const re = o.startsWith('\\') ? new RegExp(escRegExp(o), 'g') : new RegExp(`(?<![\\w$\\\\])${escRegExp(o)}(?![\\w$])`, 'g');
     v = v.replace(re, (m, at, str) => (/^\s*wire\b/.test(str.slice(str.lastIndexOf('\n', at) + 1, at)) ? m : (o.startsWith('\\') && !i.endsWith(' ') ? `${i} ` : i)));
   }
   return v;

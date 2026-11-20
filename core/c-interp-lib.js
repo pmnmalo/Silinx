@@ -7,6 +7,7 @@ import { convert } from './c-interp-expr.js';
 import { MATH, F64, F32, BITCASTS } from './c-float.js';
 import { fftFixed, fftFloat } from './hls-fft.js';
 import { TbRun } from './cpp-tb-run.js';
+import { escRegExp } from './escape.js';
 
 const INT = { w: 32, s: true };
 const num = (v) => ({ v: BigInt(v), t: INT });
@@ -17,10 +18,9 @@ export class Exit { constructor(code) { this.code = code; } }
  *  format's conversions any text, "out_%03d.dat"), not the build's.
  *  The app reads them for the C simulation's in-memory files (web/js/c-source.js). */
 export function testBenchFiles(source, paths) {
-  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const words = [...source.matchAll(/"((?:[^"\\\n]|\\.)*)"/g)].flatMap((m) => m[1].split(/\s+/));   // (system("diff a b")'s names too)
   const names = new Set(words.map((w) => w.split('/').pop()).filter((n) => /[^%\s]\.[A-Za-z]\w*$/.test(n)));   // (a name with its extension)
-  const pats = [...names].map((n) => new RegExp(`^${n.split(/%[-+ 0#]*\d*(?:\.\d+)?(?:hh|h|ll|l|z|j)?[diuxXoscfFeEgG]/).map(esc).join('.*')}$`));
+  const pats = [...names].map((n) => new RegExp(`^${n.split(/%[-+ 0#]*\d*(?:\.\d+)?(?:hh|h|ll|l|z|j)?[diuxXoscfFeEgG]/).map(escRegExp).join('.*')}$`));
   return paths.filter((p) => !/^build\//.test(p) && pats.some((re) => re.test(p.split('/').pop())));
 }
 

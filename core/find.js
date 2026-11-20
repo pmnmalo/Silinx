@@ -1,12 +1,13 @@
 // Silinx find in the project (#1430): what is matched in a source's text (its lines) and in a drawing (the texts of
 // its document: names, labels, expressions, notes), and the text with the matches replaced. No DOM: the page, its
 // sources and its documents are web/js/find-project.js's.
+import { escRegExp } from './escape.js';
 
 /** The expression of a search: { text, matchCase, word, regex } → a global RegExp, or null (nothing to find, or a
  *  regular expression with an error: `error` its message). */
 export function findPattern({ text = '', matchCase = false, word = false, regex = false } = {}) {
   if (!text) return { re: null };
-  let src = regex ? text : text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let src = regex ? text : escRegExp(text);
   if (word) src = `(?<![A-Za-z0-9_])(?:${src})(?![A-Za-z0-9_])`;
   try { return { re: new RegExp(src, matchCase ? 'g' : 'gi') }; } catch (e) { return { re: null, error: e.message }; }
 }

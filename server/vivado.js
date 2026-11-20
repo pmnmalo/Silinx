@@ -27,6 +27,7 @@ import { capture, runCommand } from './jobs.js';
 import { IDENT } from './ident.js';
 import { hiddenIn, within } from './paths.js';
 import { parseUtilization, utilizationSummary, summaryRows, parseRouteStatus, parseTimingSummary, parseDrc, parsePower, logMessages, logCommands } from './vivado-reports.js';
+import { escRegExp } from '../core/escape.js';
 
 const VIVADO_VERSION = '2025.2';
 /** Is a device's family one Vivado implements (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000: its back end in FAMILY_INFO,
@@ -73,8 +74,7 @@ export function configProperties(board = {}) {
 }
 
 // the properties an XDC sets on the design itself: left to it (the property's name escaped in full, #3280)
-const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const xdcSets = (xdc, prop) => new RegExp(`set_property\\s+(?:-dict\\s*\\{[^}]*\\b${reEsc(prop)}\\b|${reEsc(prop)}\\s)[^\\n]*current_design`, 'i').test(xdc || '');
+const xdcSets = (xdc, prop) => new RegExp(`set_property\\s+(?:-dict\\s*\\{[^}]*\\b${escRegExp(prop)}\\b|${escRegExp(prop)}\\s)[^\\n]*current_design`, 'i').test(xdc || '');
 
 /** A path in braces in Tcl: none of the characters that would end it (ise.js's scriptSafe already refuses "{} and controls). */
 const tclPath = p => { if (/[{}\\\r\n]/.test(p)) throw Object.assign(new Error(`file path not allowed in Vivado's script: ${JSON.stringify(p)}`), { status: 400 }); return `{${p}}`; };

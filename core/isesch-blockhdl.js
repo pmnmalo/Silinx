@@ -3,8 +3,8 @@
 // functions, localparams, `define macros …) in doc.hdl; a block exported as an ISE symbol with an HDL file of its own
 // takes them all, but of the module's signals (VHDL signal; Verilog reg, wire, logic, integer) only the ones its code
 // uses that are not its pins (its own temporaries): the others are its ports, or not its business. Isomorphic.
+import { escRegExp } from './escape.js';
 
-const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // split at the commas outside brackets, braces and parentheses
 function topCommas(s) {
   const out = [];
@@ -29,7 +29,7 @@ export function blockHdlDecls(hdl, code, ports, lang) {
   const vh = (hdl.lang || lang) === 'vhdl';
   const text = String(code || '');
   const pin = n => [...ports].some(p => (vh ? p.toLowerCase() === n.toLowerCase() : p === n));
-  const used = n => new RegExp(`(^|[^\\w$])${reEsc(n)}(?![\\w$])`, vh ? 'i' : '').test(text);
+  const used = n => new RegExp(`(^|[^\\w$])${escRegExp(n)}(?![\\w$])`, vh ? 'i' : '').test(text);
   const keep = n => used(n) && !pin(n);
   const dropped = new Set();
   let decls = String(hdl.decls || '');

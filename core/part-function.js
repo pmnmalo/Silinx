@@ -2,6 +2,7 @@
 // for every part ("74LS259: 8-bit addressable latch", not "…, DIP-16/SOIC-16, obsolete"), and that function in
 // Portuguese by a small vocabulary of the logic ICs' words (hex, quad, inverter, flip-flop, counter, decoder…), applied
 // by rule; a description the vocabulary does not cover has none (the interface shows it in English). Isomorphic module.
+import { escRegExp } from './escape.js';
 
 // a clause that is only a package, a rating or a note: dropped (DIP-16/SOIC-16, TO-92, 100mW/Output, NRND, small symbol)
 const PACKAGE = /^(?:(?:P?DIP|SOIC|SSOP|TSSOP|SO|TO|SOT|QFN|PLCC|SIL)[-\d]*W?(?:\/|$))+|^(?:small symbol|NRND|obsolete|PTH|outputs?|inputs?)$/i;
@@ -139,7 +140,7 @@ function clausePt(clause, agree = { f: false, pl: false }) {
   const wt = whole && (typeof whole[1] === 'function' ? whole[1](...s.match(whole[0])) : whole[1]);
   if (wt && !m[1]) return { text: whole[2] === 'adj' ? inflect(wt, agree.f, agree.pl) : wt };
   const at = NOUNS.map(([en, pt]) => {
-    const i = rest.search(new RegExp(`(?:^| )${en.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(?= |$)`));
+    const i = rest.search(new RegExp(`(?:^| )${escRegExp(en)}(?= |$)`));
     return i < 0 ? null : { i: i && i + 1, en, pt };
   }).filter(Boolean).sort((a, b) => a.i - b.i || b.en.length - a.en.length)[0];
   if (!at) {

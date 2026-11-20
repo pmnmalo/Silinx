@@ -16,18 +16,18 @@
 import { fileURLToPath } from 'node:url';
 import { scanText } from './check-private-data.mjs';
 import { codeBlock, ownIssue } from './github-text.mjs';
+import { escRegExp } from '../core/escape.js';
 
 // the runner's own name and folders, from its environment (set on a self-hosted runner, and in Actions; the
 // GitHub-hosted ones' are harmless but no less replaced): each a literal, replaced by its placeholder
 const RUNNER_ENV = [['RUNNER_NAME', '<runner>'], ['HOSTNAME', '<host>'], ['RUNNER_DIR', '<runner dir>'], ['RUNNER_TEMP', '<runner temp>'],
   ['RUNNER_WORKSPACE', '<workspace>'], ['GITHUB_WORKSPACE', '<workspace>'], ['RUNNER_TOOL_CACHE', '<tool cache>']];
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** The runner's names and folders to replace: [RegExp, placeholder]; a value shorter than three characters or a
  *  plain number would hit everything, and is not. */
 function runnerLiterals(env = process.env) {
   return RUNNER_ENV.flatMap(([name, to]) => {
     const v = (env[name] || '').trim().replace(/[\\/]+$/, '');
-    return v.length >= 3 && !/^\d+$/.test(v) ? [[new RegExp(escapeRe(v), 'gi'), to]] : [];
+    return v.length >= 3 && !/^\d+$/.test(v) ? [[new RegExp(escRegExp(v), 'gi'), to]] : [];
   });
 }
 
