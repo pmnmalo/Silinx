@@ -294,7 +294,7 @@ edit names its key and passes only when that key is the last list's. Each editor
 and never sends its private half; an editor's link carries an invitation key, with which the page signs its request
 to be listed (the room gives it to the owner only), and a viewer promoted is listed by its own key. Demoting an editor
 takes its key out of the list and renews the invitation, so that the old link lists no one again; the other editors
-keep their keys. A room lists 16 editors at most. An editor's link writes: its holder changes
+keep their keys. A room lists 32 editors at most. An editor's link writes: its holder changes
 the text of the project's text files (HDL, constraints, C / C++, notes) and its drawings (#3183: their states and
 transitions, a table's outputs and cells, merged per field into the drawing's structure, `core/collab-model.js`), signed with the link's key; anything
 else an editor changes (another drawing, the project's settings, a new file) is undone from the owner's disk. An editor's link is a
