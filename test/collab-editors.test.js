@@ -8,7 +8,7 @@
 // before, its followers of either version; an owner's open giving both keys refused. Asleep (a platform's rooms made again
 // from their sockets), the list kept. A key per editor (#4745, second part): an editor link's page asks to be listed
 // with a key of its own, the request signed with the link's key, which the room gives to the owner only; listed, never
-// with the link's key; past MAX_EDITORS, told it follows read only.
+// with the link's key; past MAX_EDITORS (32), told it follows read only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { keyId, isList, signList, checkList, editorKeys, signEdit, verifyEdit, MAX_EDITORS, KEY_ID } from '../core/collab-editors.js';
@@ -191,7 +191,7 @@ test('#4745 the room: a follower\'s request to be listed to the owner only, mark
   assert.equal(es.closed?.[0], 1008);
 });
 
-test('#4745 a key per editor: each editor link\'s page listed with a key of its own, never the link\'s; the 17th told it follows read only', async () => {
+test('#4745 a key per editor: each editor link\'s page listed with a key of its own, never the link\'s; the 33rd told it follows read only', async () => {
   const { hostedRooms, socketPair } = await import('../core/collab-loop.js');
   const { shareRoom, followRoom } = await import('../core/collab-client.js');
   const { projectDoc, publishProject } = await import('../core/collab-doc.js');
@@ -215,7 +215,7 @@ test('#4745 a key per editor: each editor link\'s page listed with a key of its 
     const errs = [];
     const late = await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Late' }, WebSocket: S, reconnect: false, onEvent: e => { if (e.type === 'error') errs.push(e.message); } });
     eds.push(late);
-    await until(() => errs.length, 'the 17th told');
+    await until(() => errs.length, 'the 33rd told');
     assert.deepEqual(errs, [`this shared project has ${MAX_EDITORS} editors already: you follow it read only`]);
     assert.deepEqual(ownerErrors, [`an editor could not join: this shared project has ${MAX_EDITORS} editors already`]);
     assert.equal(late.editor, false);

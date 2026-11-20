@@ -13,7 +13,7 @@ import { serveWorker } from './workers-shim.js';
 import worker, { RelayRoom, RELAY_LIMITS, NEEDS_KEY, NO_KEY, originsOf } from '../packages/silinx-relay-cloudflare/src/worker.js';
 import { RELAY_LIMITS as NODE_LIMITS } from '../server/collab-relay.js';
 import { staleCopies, RELAY_CORE } from '../scripts/sync-relay-cloudflare.mjs';
-import { projectDoc, publishProject, putFile, docFile, docProject } from '../core/collab-doc.js';
+import { projectDoc, publishProject, putFile, docFile, docProject, editFile } from '../core/collab-doc.js';
 import { shareRoom, followRoom, KIND, PROTOCOL, SUBPROTOCOL, NOT_SHARED } from '../core/collab-client.js';
 import { relayUrl, ROOM_RE } from '../core/collab-link.js';
 import { roomUrl } from '../core/collab-wire.js';
@@ -108,7 +108,7 @@ test('asleep (the Hibernation API): the room made again from its sockets; edits,
   await fol.ready; await editor.ready;
   await until(() => owner.peers().length === 2, 'both in');
   const before = relay.namespaces.ROOMS.objects.get(owner.room).obj;
-  relay.hibernate();
+  await relay.hibernate();
   const after = relay.namespaces.ROOMS.objects.get(owner.room).obj;
   assert.notEqual(after, before, 'a new object');
   assert.deepEqual([...roomOf(relay, owner.room).followers.values()].sort(), [fol.doc.clientID, editor.doc.clientID].sort());
@@ -118,16 +118,42 @@ test('asleep (the Hibernation API): the room made again from its sockets; edits,
   await until(() => docFile(doc, 'src/top.vhd')?.startsWith('-- Eva'), 'the editor\'s edit (the room\'s key made again)');
   fol.setView({ path: 'src/top.ucf', line: 1, ch: 0 });
   await until(() => owner.peers().find(p => p.name === 'Rui')?.view?.path === 'src/top.ucf', 'the follower\'s view');
-  relay.hibernate();
+  await relay.hibernate();
   const late = await followRoom({ url: follow(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Leo' }, onEvent: errorsOf(errors) });
   await late.ready;
   assert.match(docFile(late.doc, 'src/top.vhd'), /^-- Eva\n/);
-  relay.hibernate();
+  await relay.hibernate();
   await editor.close();
   await until(() => owner.peers().length === 2 && fol.peers().length === 2, 'Eva gone');
-  relay.hibernate();
+  await relay.hibernate();
   await owner.close();
   await until(() => fol.closed() && late.closed(), 'the followers closed');
+  assert.deepEqual(errors, []);
+});
+
+test('#4745 evicted: the editors\' list in the object\'s storage, not in a socket\'s attachment; the room made again with it, the owner\'s resume too; removed with the room', async () => {
+  const doc = owned(), errors = [];
+  const owner = await shareRoom({ url: share(), token: KEY, doc, user: { name: 'Ana' }, editors: true, onEvent: errorsOf(errors) });
+  const ed = await followRoom({ url: follow(), room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Eva' }, onEvent: errorsOf(errors) });
+  await ed.ready;
+  await until(() => ed.listed, 'the editor listed');
+  const o = relay.namespaces.ROOMS.objects.get(owner.room);
+  const { stored } = o.state.ctx.storage;
+  await until(() => stored.get('editors')?.editors?.length === 1, 'the list stored');
+  for (const w of o.state.ctx.getWebSockets()) assert.equal(w.deserializeAttachment().state?.list, undefined, 'no list in an attachment');
+  await relay.hibernate();   // (evicted: its memory lost, the room made again from its sockets and its storage)
+  editFile(ed.doc, 'src/top.vhd', '-- evicted\n');
+  await until(() => docFile(doc, 'src/top.vhd') === '-- evicted\n', 'the editor\'s edit after the eviction');
+  // the owner's connection lost, resumed into an object evicted again
+  await relay.hibernate();
+  [...o.obj.ends.values()].find(e => e.role === 'owner').close(1001, 'gone');
+  await until(() => owner.resumes() === 1 && owner.connected(), 'the owner\'s room resumed', 8000);
+  await relay.hibernate();
+  editFile(ed.doc, 'src/top.vhd', '-- resumed\n');
+  await until(() => docFile(doc, 'src/top.vhd') === '-- resumed\n', 'the editor\'s edit after the resume');
+  await ed.close();
+  await owner.close();
+  await until(() => !stored.has('editors'), 'the list removed with the room');
   assert.deepEqual(errors, []);
 });
 

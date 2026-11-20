@@ -15,7 +15,10 @@ In detail:
 - **Promote and demote:** promoting a viewer lists the key that viewer's page gives in its awareness, and no key is
   sent to it. Demoting an editor takes its key out of the list and renews the invitation key; the other editors keep
   their keys and are told nothing.
-- **Limits and reloads:** a room lists 16 editors at most (`MAX_EDITORS`: the Cloudflare relay keeps the list in a
-  socket's attachment, 2 KB at most); the 17th is told it follows read only. A page reloaded keeps its key (its record's
-  `own`), as does a promoted viewer's editing.
+- **Limits and reloads:** a room lists 32 editors at most (`MAX_EDITORS`); the 33rd is told it follows read only. A
+  page reloaded keeps its key (its record's `own`), as does a promoted viewer's editing.
+- **The list on Cloudflare:** the Cloudflare relay keeps the list in the Durable Object's storage, not in the owner's
+  socket's attachment (2 KB at most). The room's logic gives it to the platform (`collabRooms`'s `keepList`) and takes
+  it back when the object wakes, its events waiting for it (`blockConcurrencyWhile`). The list is removed when the room
+  ends. The test runtime of the Workers keeps an object's storage while it sleeps.
 - **The Cloudflare relay:** its copy of the room's logic is synced, so a relay deployed before must be deployed again.

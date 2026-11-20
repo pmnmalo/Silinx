@@ -17,8 +17,8 @@ import { PUB_RE, SIG, signFrame, verifyFrame, verifierOf } from './collab-sign.j
 const subtle = () => globalThis.crypto.subtle;
 const HASH = { name: 'ECDSA', hash: 'SHA-256' };
 export const KEY_ID = 8;
-/** The editors a list names at most (#4745: a list the Cloudflare relay keeps in a socket's attachment, 2 KB at most). */
-export const MAX_EDITORS = 16;
+/** The editors a list names at most (#4745). */
+export const MAX_EDITORS = 32;
 const SIG_RE = /^[A-Za-z0-9_-]{86}$/;
 const listText = (room, n, editors) => new TextEncoder().encode(`silinx-collab:editors:${room}:${n}:${editors.join('.')}`);
 const fromB64url = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - t.length % 4) % 4)), c => c.charCodeAt(0));

@@ -4,9 +4,10 @@
 // WebSocket, and the WebSocket Hibernation API (ctx.acceptWebSocket, getWebSockets, the sockets' attachments, the
 // handlers webSocketMessage / webSocketClose). `hibernate()` puts every object to sleep, as Cloudflare does with an
 // idle one: its memory lost (a new object made from its class), its sockets kept open with their attachments, given to
-// it again as other objects.
+// it again as other objects. An object's storage (ctx.storage: get, put, delete) is kept while it sleeps; its events wait
+// for what its ctx.blockConcurrencyWhile runs (#4745), and come in their order.
 //   serveWorker({ worker, env, objects: { BINDING: ctx => object } }) -> { url (http://127.0.0.1:<port>), env,
-//   namespaces, hibernate(), sockets() (the WebSockets of the Node side), close() }
+//   namespaces, hibernate() (a promise: once every object is awake again), sockets() (the WebSockets of the Node side), close() }
 import http from 'node:http';
 import { WebSocketServer } from 'ws';
 
@@ -53,6 +54,10 @@ class WorkerResponse extends BaseResponse {
 function objectState(target) {
   const sockets = new Set();
   let generation = 0, views = new Map();
+  // (its storage, kept while it sleeps; its events, in their order, after what blockConcurrencyWhile runs, #4745)
+  const stored = new Map();
+  let gate = Promise.resolve();
+  const later = fn => { gate = gate.then(fn).catch(() => {}); return gate; };
   const view = end => {
     if (!views.has(end)) {
       views.set(end, {
@@ -70,13 +75,16 @@ function objectState(target) {
       acceptWebSocket(end) {
         sockets.add(end);
         end.listen({
-          data: v => target().webSocketMessage(view(end), v),
-          end: (code, reason) => { sockets.delete(end); target().webSocketClose?.(view(end), code, reason, true); },
+          data: v => later(() => target().webSocketMessage(view(end), v)),
+          end: (code, reason) => { sockets.delete(end); later(() => target().webSocketClose?.(view(end), code, reason, true)); },
         });
       },
       getWebSockets: () => [...sockets].filter(e => e.readyState === 1).map(view),
-      storage: { get: async () => undefined, put: async () => {}, delete: async () => {} },
+      storage: { stored, get: async k => structuredClone(stored.get(k)), put: async (k, v) => { stored.set(k, structuredClone(v)); }, delete: async k => stored.delete(k) },
+      blockConcurrencyWhile(fn) { const p = Promise.resolve().then(fn); gate = gate.then(() => p).catch(() => {}); return p; },
     },
+    later,
+    settled: () => gate,
   };
 }
 
@@ -95,8 +103,8 @@ function namespace(make) {
   return {
     objects,
     idFromName: name => ({ name: String(name), toString: () => String(name) }),
-    get: id => ({ fetch: req => of(id.name).obj.fetch(req) }),
-    hibernate() { for (const o of objects.values()) { o.state.sleep(); o.obj = make(o.state.ctx); } },
+    get: id => ({ fetch: req => { const o = of(id.name); let r; return o.state.later(async () => { r = await o.obj.fetch(req); }).then(() => r); } }),
+    hibernate() { for (const o of objects.values()) { o.state.sleep(); o.obj = make(o.state.ctx); } return Promise.all([...objects.values()].map(o => o.state.settled())); },
   };
 }
 
@@ -135,7 +143,7 @@ export async function serveWorker({ worker, env = {}, objects = {} }) {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   return {
     url: `http://127.0.0.1:${server.address().port}`, env, namespaces,
-    hibernate: () => { for (const n of Object.values(namespaces)) n.hibernate(); },
+    hibernate: () => Promise.all(Object.values(namespaces).map(n => n.hibernate())),
     sockets: () => [...nodeSockets],
     close: async () => {
       for (const ws of nodeSockets) ws.terminate();

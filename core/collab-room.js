@@ -71,7 +71,7 @@ const clientId = v => (Number.isSafeInteger(v) && v >= 0 && v <= 0xFFFFFFFF ? v 
  *  secret), grace (its timer while lost) }), welcome(socket, role) -> { message(data, binary), close() },
  *  restore([[socket, state], …]) -> Map<socket, { message, close }>, closeRoom(id, reason) }. role: 'owner' |
  *  'follower'. */
-export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = null, keep = () => {} } = {}) {
+export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = null, keep = () => {}, keepList = null } = {}) {
   limits = { ...ROOM_LIMITS, ...limits };
   const rooms = new Map();   // room -> { owner, ownerClient, followers: Map<ws, client> }
   const randomId = () => b64url(crypto.getRandomValues(new Uint8Array(16)));
@@ -83,13 +83,16 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
     return r;
   };
   // (what a socket is, for a platform whose rooms sleep: the owner's with its room's secrets)
-  const kept = (ws, me) => { const r = rooms.get(me.room); keep(ws, me.role === 'owner' ? { ...me, editors: r.editors, owner: r.ownerKey, list: r.list, resume: r.resume } : { ...me }); };
+  // (#4745: a platform that keeps the editors' list on its own, `keepList(room, list)`, null once the room ended: not in the
+  // owner's state, which a socket's attachment holds, 2 KB at most on Cloudflare)
+  const kept = (ws, me) => { const r = rooms.get(me.room); keep(ws, me.role === 'owner' ? { ...me, editors: r.editors, owner: r.ownerKey, ...(keepList ? {} : { list: r.list }), resume: r.resume } : { ...me }); };
 
   function closeRoom(id, reason) {
     const r = rooms.get(id);
     if (!r) return;
     rooms.delete(id);
     clearTimeout(r.grace);
+    if (r.ownerKey) keepList?.(id, null);
     for (const ws of r.followers.keys()) { json(ws, { type: 'closed', reason }); ws.close(1000, 'closed'); }
     // (the owner told why too: its connection's end is no loss to resume, #3835)
     if (r.owner?.readyState === 1) { json(r.owner, { type: 'closed', reason }); r.owner.close(1000, 'closed'); }
@@ -189,6 +192,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
               if (list.n <= (r.list?.n ?? 0) || !await checkList(await r.ownerVerify.catch(() => null), me.room, list)) return;
               r.keys = await editorKeys(list);
               r.list = list;
+              keepList?.(me.room, list);
               kept(ws, me);
             });
           }
@@ -267,11 +271,11 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
   // the rooms again, from what their sockets are (a platform's rooms awake, #4541): each owner's room, then its
   // followers; a follower whose owner is not among them told the room ended (an owner lost does not sleep: its grace's
   // timer keeps the room awake)
-  function restore(entries) {
+  function restore(entries, { lists = new Map() } = {}) {
     const out = new Map();
     for (const [ws, s] of entries) {
       if (s?.role !== 'owner' || rooms.has(s.room)) continue;
-      rooms.set(s.room, newRoomOf(ws, s.client, { editors: s.editors ?? null, ownerKey: s.owner ?? null, list: s.list ?? null, resume: s.resume }));
+      rooms.set(s.room, newRoomOf(ws, s.client, { editors: s.editors ?? null, ownerKey: s.owner ?? null, list: s.list ?? lists.get(s.room) ?? null, resume: s.resume }));
       out.set(ws, welcome(ws, 'owner', s));
     }
     for (const [ws, s] of entries) {
