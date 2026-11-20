@@ -189,7 +189,7 @@ test('#405 viewers.js: the RTL and technology schematics, ISim and the Board Emu
 
 test('#405 rename.js: Rename Symbol and renaming a source left app.js', () => {
   const code = read('rename.js');
-  for (const s of ['renameSymbolAtCursor(', 'renameModuleInSource(']) assert.ok(code.includes(s) && !app.includes(s), s);
+  for (const s of ['renameSymbolAtCursor(', 'renameModule(']) assert.ok(code.includes(s) && !app.includes(s), s);   // (a module's: core/rename-module.js, #4731)
   assert.ok(importedFrom(read('design.js'), 'rename.js').includes('renameDialog'));
 });
 
