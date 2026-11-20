@@ -45,14 +45,17 @@ test('#3413 a JSON-RPC batch: its requests in order, the second seeing the first
   const done = serveMcp({ input, output });
   const lines = [];
   output.on('data', d => lines.push(...String(d).split('\n').filter(Boolean)));
+  // (a batch: protocol version 2025-03-26's, initialized first, #4752)
+  input.write(`${JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-03-26' } })}\n`);
   input.write(`${JSON.stringify([
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'new_project', arguments: { name: 'Batch1' } } },
     { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'project_info', arguments: { project: 'Batch1' } } },
   ])}\n`);
   input.end();
   await done;
-  assert.equal(lines.length, 1);
-  const out = JSON.parse(lines[0]);
+  assert.equal(lines.length, 2);
+  assert.equal(JSON.parse(lines[0]).result.protocolVersion, '2025-03-26');
+  const out = JSON.parse(lines[1]);
   assert.deepEqual(out.map(m => [m.id, m.result?.isError ?? false]), [[1, false], [2, false]]);
   assert.match(out[1].result.content[0].text, /Batch1/);
 });
