@@ -5,6 +5,9 @@
 // - the Digilent Zybo Z7 (-20: XC7Z020, -10: XC7Z010; CLG400), a Zynq-7000, its programmable logic only (no processing system
 //   set up): its 125 MHz clock (from the Ethernet PHY), 4 LEDs, an RGB LED (LED6; LED5 the Z7-20's only: left out), 4
 //   switches, 4 buttons; its USB-UART is the PS's (MIO), none in the PL.
+// - the Digilent Arty Z7 (-20: XC7Z020, -10: XC7Z010; CLG400), a Zynq-7000, its programmable logic only (#4682): its 125 MHz
+//   clock (from the Ethernet PHY), 4 LEDs, 2 RGB LEDs, 2 switches, 4 buttons, the Pmods JA and JB and the shield header's
+//   IO0..IO13 (the Z7-20's other shield pins, on its bank 13, left out); its USB-UART the PS's (MIO).
 // No seven-segment display, VGA or 8 LEDs: the examples' ports with no pin on the board on its Pmods (group 'Headers', #3709: an
 // input with a pull-down), as Vivado's write_bitstream refuses a port with no pin (UCIO-1). The Zybo Z7's Pmod JB is the
 // Z7-20's only: left out.
@@ -85,4 +88,39 @@ const ZYBO_Z7 = {
   ],
 };
 
-export const VIVADO_BOARDS = [ARTY_S7, ZYBO_Z7];
+const ARTY_Z7 = {
+  id: 'arty-z7',
+  name: 'Digilent Arty Z7',
+  vendor: 'Digilent',
+  device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' },
+  variants: [
+    { id: '20', label: 'Arty Z7-20 (XC7Z020)', device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, default: true },
+    { id: '10', label: 'Arty Z7-10 (XC7Z010)', device: { family: 'zynq', part: 'xc7z010', package: 'clg400', speed: '-1' } },
+  ],
+  deviceNotes: 'The Arty Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
+  jtagChain: [{ name: 'xc7z020', role: 'fpga' }],
+  flash: { type: 'spi', part: 'Quad-SPI flash, 128 Mbit (the processing system\'s)', sizeMbit: 128, xcf: false, verified: false, note: 'The PS boots from it: a boot image (an FSBL and the .bit, bootgen), not written from Silinx. The .bit is loaded over JTAG.' },
+  programmer: {
+    preferred: 'openFPGALoader',
+    tools: {
+      openFPGALoader: { board: 'arty_z7_20', usb: 'FT2232H', webusb: 'digilent', onboard: true, verified: false, note: 'The on-board USB-JTAG (FTDI FT2232HQ): the .bit into the PL; openFPGALoader\'s arty_z7_10 for the Z7-10.' },
+    },
+  },
+  source: 'Digilent Arty-Z7-20-Master.xdc (Rev. B; the Arty-Z7-10-Master.xdc\'s pins are the same, the Z7-20\'s bank 13 apart)',
+  sourceUrl: `${DIGILENT_XDC}Arty-Z7-20-Master.xdc`,
+  // (a Zynq's PL: none of an FPGA's configuration properties, server/vivado.js)
+  xdc: { config: {} },
+  resources: [
+    io('clk', '125 MHz clock (sysclk, from the Ethernet PHY)', ['H16'], 'in', 'Clock', { period: '8 ns' }),
+    io('led', 'LEDs LD0..LD3', ['R14', 'P14', 'N16', 'M14'], 'out', 'LEDs', { activeHigh: true }),
+    io('led4_rgb', 'RGB LED LD4 (red, green, blue)', ['N15', 'G17', 'L15'], 'out', 'LEDs', { activeHigh: true }),
+    io('led5_rgb', 'RGB LED LD5 (red, green, blue)', ['M15', 'L14', 'G14'], 'out', 'LEDs', { activeHigh: true }),
+    io('sw', 'Slide switches SW0..SW1', ['M20', 'M19'], 'in', 'Switches'),
+    io('btn', 'Push buttons BTN0..BTN3', ['D19', 'D20', 'L20', 'L19'], 'in', 'Buttons', { activeHigh: true }),
+    pmod('ja', ['Y18', 'Y19', 'Y16', 'Y17', 'U18', 'U19', 'W18', 'W19']),
+    pmod('jb', ['W14', 'Y14', 'T11', 'T10', 'V16', 'W16', 'V12', 'W13']),
+    io('ck_io', 'Shield header IO0..IO13 (ck_io0-13)', ['T14', 'U12', 'U13', 'V13', 'V15', 'T15', 'R16', 'U17', 'V17', 'V18', 'T16', 'R17', 'P18', 'N17'], 'inout', 'Headers'),
+  ],
+};
+
+export const VIVADO_BOARDS = [ARTY_S7, ZYBO_Z7, ARTY_Z7];

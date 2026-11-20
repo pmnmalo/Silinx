@@ -82,7 +82,9 @@ instead of 2.19 MB on the Basys 3 (#3876). The Zynq-7000's programmable logic go
 Zybo Z7-20 / 10** (XC7Z020 / XC7Z010-CLG400, #4680), AMD Vivado still the local server's default; its processing system,
 the Cortex-A9, is not set up yet (#4679). Every example builds on both with no warning, its clock at the board's 125 MHz,
 but pong, stopwatch and micro80, which reach 97–113 MHz on nextpnr's estimate (#4877; Vivado meets 125 MHz on them) and
-say so; the Z7-20's stopwatch warns of a hold violation too (#4878).
+say so; the Z7-20's stopwatch warns of a hold violation too (#4878). So does **the Digilent Arty Z7-20 / 10** (#4682; its
+programmable logic, the same parts), its examples' display and extra switches on its Pmods and its shield header, the same
+three below 125 MHz (101–109 MHz), no hold violation.
 It takes **the Radiona ULX3S-12f / 25f / 45f / 85f** too (Lattice ECP5, LFE5U in CABGA381): Yosys's `synth_ecp5`, nextpnr-ecp5
 and ecppack (Project Trellis), to `build/<top>.bit`, its pins written as an LPF, loaded into the FPGA by *Configure Target Device* (the
 local server's openFPGALoader -b ulx3s, or the browser over WebUSB, #2298). The examples run on it with their seven-segment display on its GPIO header J1; vga on the
