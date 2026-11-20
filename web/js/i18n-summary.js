@@ -29,5 +29,6 @@ export const SUMMARY_PT_PATTERNS = [
   [/^clock (\S+)$/, 'relógio $1'],
   [/^Not met \((\d+) errors, score (\d+)\)$/, 'Não cumpridas ($1 erros, pontuação $2)'],
   [/^(\d+) block RAM\(s\), in the utilization above$/, '$1 RAM(s) de bloco, na utilização acima'],
-  [/^(Total )?Number of (.+)$/, (m, total, noun) => `${total ? 'Número total de' : 'Número de'} ${NOUN_PT[noun] || noun}`],
+  // (no colon: a wizard's "Number of states (N): a whole number…" is its own pattern's, these being tried first, #4829)
+  [/^(Total )?Number of ([^:]+)$/, (m, total, noun) => `${total ? 'Número total de' : 'Número de'} ${NOUN_PT[noun] || noun}`],
 ];
