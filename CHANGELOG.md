@@ -3,6 +3,422 @@
 What changed in each version of Silinx ISE. The newest version is first. Each section is also
 the "What's new" text of its GitHub release.
 
+## 15.29.0
+
+Live sharing grows up: Share Project… offers three ways side by side (a copy, live peer to peer, live through a
+Cloudflare relay of your own, set up from the Collaboration tab in a few steps), followers see the owner's cursor at
+once and become editors in one click. A project can be renamed, Open from GitHub Repository… lists your repositories,
+Implement and Emulate show the files of their flow, the browser edition opens faster and programs the board more
+reliably, and the co-design roadmap starts with its system co-simulation scheduler.
+
+In short:
+
+- **Share Project…: three ways in one row:** *A copy*, *Live peer to peer (no relay)* and *Live via your Cloudflare
+  relay*, each explained in one sentence; it opens on A copy unless the project is shared live.
+- **Set Up a Cloudflare Relay…** in the Collaboration tab: a relay of your own for live sharing, Cloudflare's screens
+  explained step by step; Silinx makes its key, checks it once deployed and remembers it.
+- **Live sharing, faster and clearer:** the owner's cursor and selection reach followers about a frame after the key or
+  click; each follower's row has a **Viewer | Editor** switch and a **P2P** or **Relay** tag.
+- **Rename Project…** (File menu, the Design pane's project menu, the Start page's recent projects): the folder renamed,
+  the project kept open with its tabs.
+- **Open from GitHub Repository…** lists your repositories, the most recently pushed first, filtered as you type, and
+  asks what to do when a project of the same name exists.
+- **The Collaboration tab:** Sharing first, then the Cloudflare Relay and one Git Repository box; Changes… in a window of
+  its own; usable with no project open; its messages under the console's Design filter.
+- **Implement and Emulate ▸ Files:** the constraints file and memory images under the top module, as ISE's
+  Implementation view lists them.
+- **The browser edition:** opens faster (the toolchain downloaded once the page is idle, kept across releases), a
+  workspace folder reopens with its project, Chrome's USB chooser shows again at Program FPGA, and Firefox or Safari
+  say first that they cannot program a board.
+- **Trust Project where it is refused:** the console's and the Errors tab's refusal lines carry the button.
+- **Portuguese:** names you give are never translated; the Design Summary is translated in full.
+- **Co-design:** the system co-simulation scheduler, the first phase of the FPGA and microcontroller roadmap.
+
+In detail:
+
+- **Share Project…'s ways described in three sentences (#4714):** the description below the Share row is now three
+  sentences for each way (A copy, Live peer to peer, Live via your Cloudflare relay; A copy and Live in the server
+  edition): what the others get, how they connect, and the way's limit. Each is about the same length as the others, in
+  English and Portuguese, and laid out in the same place, so switching moves nothing below.
+- **Share Project… ▸ Live: your relay below your name (#4714):** "Your relay: … Change…" (or the note that none is set
+  up) moved from above "Your name, as they see it" to just below it; peer to peer still keeps its place unseen.
+- **Share Project…'s Share row first, then the way's sentence (#4712):** the introductions above the row (A copy's and
+  Live's) and Live's two longer explanations below it are replaced by one sentence per way, shown right below the row:
+  A copy, Live peer to peer (no relay) and Live via your Cloudflare relay (A copy and Live in the server edition), of
+  the same length in English and Portuguese. Every way's sentence is laid out in the same place, the others unseen, so
+  the place is as tall as the tallest at any width: switching moves nothing below it.
+- **User data is never translated (#4705):** the interface's translation changed every text equal to one of its labels,
+  and some labels are words users also give their projects, files and ports (`clock`: relógio, `Counter`, `Top`,
+  `Display`, `input`, `enable`…). The elements that show them are marked `data-no-i18n`: Open Project's names, the Start
+  page's and File ▸ Recent Projects, Design Properties' Name, a file's tab, the Test Bench and Module Wizards' port
+  lists, the FSM editor's states and registers, the Petri net simulation's places, a chip's pins, the logic analyzer's
+  probes and the merge view's files. `test/web-i18n.test.js` lists the dictionary's words that can be such a name.
+- **Co-design: the system co-simulation scheduler (#4696, phase 1 of #4695):** `core/system-sim.js` simulates the nodes
+  of a system together on one global time in ps, each engine behind an adapter (`advanceTo`, `setPin`, its pins'
+  changes with their times, `nextEventTime`), the links exchanged pin by pin in windows: a conservative
+  synchronisation with an adaptive quantum (a sixteenth of a UART bit while a link is active, wide while the links are
+  idle), each burst of a link's changes delivered with one lag so that its waveform keeps its shape; a link with a fixed
+  latency is exact (the same run at every quantum). Deterministic, synchronous, no SharedArrayBuffer: the whole system
+  in one Web Worker (`core/system-sim-remote.js`). The adapters of Silinx's compiled engine
+  (`core/system-sim-compiled.js`, one per FPGA node with its own clock; the engine's `watch.pins` records the pins'
+  changes with their cycles) and of the event-driven simulator (`core/system-sim-event.js`, its waveforms).
+  `scripts/bench-system-sim.mjs` measures two `uart` example nodes linked by a UART both ways, against the quantum
+  (the AVR node's hook for #4698).
+- **Co-design's decisions after the validation (#4695):** docs/CODESIGN.md's Decided: the ESP32 in MicroPython
+  WebAssembly with a time per line, the Pico first; one FPGA node until phase 3; the microcontrollers as the masters
+  of SPI and I²C; a link's fixed latency the default.
+- **Co-design's design (#4695):** docs/CODESIGN.md, the roadmap's design: a System document of FPGA and
+  microcontroller nodes and typed links, one co-simulation scheduler (avr8js, rp2040js, MicroPython), the System
+  Emulator, the real boards over Web Serial, the MCP tools, the phases.
+- **The browser's silence about the workspace folder said (#4694):** Chrome, stuck on a remembered folder, answered nothing
+  about it (`queryPermission`, even `isSameEntry`) until it was restarted, and the project kept there did not reopen, with
+  no word why. After 10 s with no answer (`web/js/storage-late.js`, `web/js/silent-answer.js`) the console warns once: "The
+  browser has not answered about the workspace folder '<folder>' for 10 s: quit it completely (Cmd+Q on a Mac, ⋮ ▸ Exit on
+  Windows and Linux; closing its window is not enough) and open it again." (in Portuguese too); the wait goes on, and a
+  late answer still reopens the project where it was (#4656). A UI test checks that a reload reopens the project where it
+  was at once, with the site out of reach and nothing of the toolchain kept.
+- **MCP `write_file`, `new_source`, `import_source`: a drawing with no `generatedFile` whose HDL file is in the way
+  says why (#4693):** when its HDL file exists already (its module's, by hand, or holding something else), another
+  file defines its module or another drawing's HDL file is its module's, the drawing is written and its HDL left as
+  it was, as before, now with the interface's warning (#230) and, for a module defined elsewhere, its way out: the
+  drawing written with that file as its `generatedFile` replaces it; `write_file`'s `hdl` says the clash (its kind,
+  the file).
+- **Share Project…'s switch drawn with no frame between (#4676):** switching between A copy and Live (either way, the
+  Cloudflare relay or peer to peer) closed the window first and opened the other one once it was ready (A copy's
+  once its link is made), so for a frame or more there was no window at all. The other way's window now opens first
+  and replaces this one in the same frame.
+- **Share Project…'s texts the same height on either side of a switch (#4676):** A copy's and Live's introductions,
+  and Live's two ways' explanations (peer to peer, the Cloudflare relay), are reworded to about the same length, in
+  English and Portuguese, and each is laid out over its twin unseen, so it takes the taller one's lines at any width:
+  switching moves nothing below them.
+- **Share Project… ▸ Live: your relay on a row of its own (#4676):** "Your relay: … Change…" (or the note that none
+  is set up) moved down, out of the relay's explanation, to a row of its own just above "Your name, as they see it",
+  shown when the Cloudflare relay is chosen; peer to peer keeps its place unseen, so switching moves nothing below.
+- **Open from GitHub Repository…'s list of repositories: its border in the theme's colour (#4673):** `var(--border)`
+  alone, with no colour written in the code (#159), so it follows the dark theme too.
+- **The Share row's Live ways swapped (#4670):** the Silinx site's row reads A copy | Live peer to peer (no relay) |
+  Live via your Cloudflare relay, their explanations and the keyboard's order (Tab, the arrow keys) with them.
+- **Share Project… and Share Module… open on A copy (#4669):** no longer on the way last chosen; while the project is
+  shared live, on Live, the way in use. The Live way last chosen (relay or peer to peer, #4634) is still the one the
+  Collaboration tab's Share Live… preselects. The MCP's share_project, which only shares live (a copy is
+  project_link), is unchanged.
+- **Share Project… ▸ Live's links set apart (#4668):** once shared, a rule (the dialog's dividers' line, a little
+  space above and below) comes before "Anyone with this link follows …" and before "Anyone with the editors' link …":
+  the name, the view-only link and the editors' link read as three parts. The window keeps its size across A copy and
+  Live (#4617), on a phone too.
+- **Reopen <folder> reopens the project the start-up left closed (#4667):** after a refresh, Chrome often answers a
+  remembered folder's permission with "prompt", so the app starts on the browser's storage with no project. Reopen
+  <folder> (the Start page, the File menu) used to switch the storage only. Now it also reopens this tab's project where
+  it was, unless another project was opened meanwhile (`web/js/storage-late.js` `reopenWaiting`, as the late grant of
+  #4656 does).
+- **`test/ui/git-clone-exists.test.js` with GitHub's command line faked (#4666):** since Open from GitHub Repository…
+  lists the user's repositories (#4653), the UI tests' server has no `gh` unless a test gives it the stand-in
+  (`test/fake-gh.mjs`), so the dialog's console said "Your repositories are not listed…" and the test's exact lines
+  failed, on CI and locally. The test now gives the server the stand-in with no repository: the list says nothing in the
+  console, whatever `gh` the machine has.
+- **A test made steady: the frames to meet a relay's meeting point bounded by what they are (#4660):** the session of
+  three in `test/collab-meet-relay.test.js` asserted fewer than 40 frames to meet and connect. The count is the
+  signalling, always 24 frames, plus the room's own frames that go through the relay before a follower's data channel
+  opens; the timing decides how many (28 to 40 frames measured). The count is now bounded by the signalling plus what
+  the opening and the joins take through a relay's room, measured in the same test.
+- **The browser edition's prefetch test waits for the download to end (#4658):** its files are in the cache a moment
+  before it ends, and an Implement started in between joined it, its "Downloading the Silinx toolchain…" lines in the
+  run's log; `window.SILINX_PREPARING` (the downloads in progress) says when it has.
+- **The workspace folder's permission not waited for at start-up (#4656):** Chrome may answer a remembered folder's
+  `queryPermission` seconds late (10 s measured); the start-up waits 1.5 s at most (`PERMISSION_WAIT`,
+  `web/js/api-local.js`), saying "Waiting for the browser's permission to the workspace folder '<folder>'…", and goes on
+  with the browser's storage. The late answer, granted, makes the folder the storage again and reopens the project that was
+  open, its documents and task where they were (`web/js/storage-late.js`), unless one was opened meanwhile; not granted, it
+  says the folder needs the permission again (Start page ▸ Reopen <folder>), as before. Reopen <folder> no longer waits for
+  such an answer either.
+- **The user's repositories in Open from GitHub Repository… (#4653):** those the account owns, collaborates on or has
+  through an organization (a GitHub Classroom assignment's), from GitHub's API: in the browser edition with its sign-in,
+  on a server with its token (GH_TOKEN), and on the local server with the system's git through GitHub's command line
+  (`gh api`, with gh's own sign-in: no token passes through Silinx). When they cannot be listed (gh not installed or not
+  signed in, the browser not signed in), the console says why and how to have them, and the address is typed as before.
+  `core/github-repos.js` reads and filters them; the MCP server's new `git_repositories` tool lists them the same way.
+- **`test/mcp.test.js`'s list of the destructive tools has `git_clone` (#4654):** #4618 made it destructive.
+- **Implement's and Emulate's Files page: the files under the top module (#4651):** the top's row (its source's name;
+  a double-click opens it, its twisty folds the files) with the constraints and the memory images under it; with no top
+  module, the files at the root (`web/js/tasks-flow-files.js`).
+- **A shared project's latency, owner to follower, measured; the presence sent at once (#4647):**
+  `node scripts/collab-latency.mjs` measures the time from an owner's action to a follower's seeing it: a keystroke,
+  a drawing edit, the cursor, an editor's keystroke back, the owner's activity, a large paste and a large file. It
+  runs on each path (p2p, Silinx's relay, the Cloudflare relay on the Workers shim), with a round trip of 0, 20 or
+  80 ms added. It also times each stage on its own: the Yjs update, sealing, signing, splitting into parts and
+  applying. `--webrtc` adds a real data channel in Firefox and WebKit. Content changes already took the network's
+  time plus less than 1 ms. The cursor and the activity waited for the page's look every 300 ms, then for a view
+  sent at most every 250 ms. Now the pages of the owner and of a follower look at themselves 16 ms after a key, a
+  click or a selection (`core/collab-pace.js`), with the 300 ms look kept for what no event reports. The owner's page
+  also looks again when the participants change, and a follower's page looks once the project has arrived. The
+  owner's view is sent at most every 50 ms, a follower's every 125 ms (under the relay's 10 a second). The cursor's
+  median went from 136 to 242 ms to 18 to 100 ms (0 to 80 ms of round trip). The wire is unchanged.
+- **A Viewer | Editor switch on each follower's row (#4646):** in the Collaboration tab's Sharing box, the owner sees
+  on each follower's row a two-state switch, the current role pressed, beside their P2P / Relay tag; a click on the
+  other state makes them an editor or a viewer, with the same change and console lines as the former commands (the
+  editors' link renewed when an editor is made a viewer). A share with no editors' key keeps Editor disabled, its tip
+  saying why. Followers see the roles read only. The commands "Make … an Editor" / "Make … a Viewer" are gone from the
+  tab and from the toolbar's Sharing menu. The MCP's share_project promote / demote are unchanged.
+- **Each follower's path and the share's mode in the Collaboration tab (#4643):** the Sharing box, while sharing, shows
+  the mode first, then each follower with a P2P or Relay tag and a tip explaining it (through the Cloudflare relay: no
+  direct path, counting against its free plan). A follower met at the Cloudflare relay starts through it and turns P2P
+  once its WebRTC channel opens, or goes back to Relay when that path is lost: the tab follows it, with no console line
+  (many followers would flood the console). A long list of participants is folded: its first ten, then "N more…" and
+  "Show fewer" (core/list-fold.js again). The relay's meeting tells the page when a follower's path changes
+  (core/collab-meet-relay.js `onVia`; core/collab-paths.js), with no change to the protocol.
+- **share_project and project_info report them (#4643):** share_project's start and status give the share's `mode`
+  (cloudflare or server: the MCP server shares through a relay's room) and each follower's `path` (`p2p` or `relay`),
+  its text saying it; project_info gives a shared project's `sharing`: its mode and its followers with their paths.
+- **Rename Project… (#4641):** the name checked as New Project's (a clash with another project in any case said in the
+  dialog; a change of case alone is a rename); the project's folder moved whole (the local server's workspace, a
+  workspace folder on the disk: copied then the old one removed; the browser's storage: its entry), a failure on the way
+  leaving the old project as it was; a git repository's `.git` moved with it (its remote kept), `silinx.json`'s name, a
+  `<name>.xise` kept in it, an untrusted project's mark in the workspace's repository and its GitHub record
+  (`SILINX_GIT=github`, the browser edition) following it; the title, Recent Projects, the last project, the documents'
+  view and cursors under the new name; the console says it. Refused, said in the console, while an implementation runs
+  or while the project is shared live (or followed). The MCP server's `rename_project` does it with the same checks and
+  messages (`server/project-rename.js`).
+- **Share Project…'s Share: row, three ways (#4640, after #4634):** in the browser edition the row offers A copy, Live
+  via your Cloudflare relay and Live peer to peer (no relay), each with its short note (`web/js/share-how.js`); the
+  Connection: row is gone. Live's window explains the way chosen right below the row, then the name and the links
+  (`web/js/share-via.js`: with the relay set up, its address and *Change…*; with none, where to set one up, *Set Up a
+  Cloudflare Relay…*, *Start Sharing* disabled). Choosing the other live way keeps the window (the name typed kept);
+  while shared it is locked; a live way chosen from A copy's window opens Live's with that way. The server edition
+  keeps A copy | Live. The window keeps its size (#4617). The user guide's *Cloudflare relay* page says so. Tests:
+  `test/ui/collab-live-via.test.js`, `test/ui/collab-relay-site.test.js`, `test/ui/relay-setup.test.js`,
+  `test/ui/standalone.test.js`.
+- **Share Project… ▸ A copy: the link's box fitted as the window opens (#4639):** the box is the size of the link
+  from the window's first frame rather than one frame later, so its buttons stay where they are first shown. Its
+  tests (test/ui/link-qr.test.js, test/ui/gist-link.test.js) also let the window's layout settle before they click a
+  button by its position, which made them flaky on a slow machine.
+- **The Collaboration tab's sections reordered (#4636):** Sharing at the top, the Cloudflare Relay right under it (where
+  live shares meet their followers), Git Repository last, with a project open and with none; a followed project keeps
+  its read-only notice and its Sharing box.
+- **Share Project… ▸ Live's two ways (#4634):** in the browser edition, two radio choices under *Connection:*, each with
+  its explanation (`web/js/share-via.js`). Through your Cloudflare relay: the relay set up in the Collaboration tab
+  (#4574) shown by its address with *Change…* (its key never shown); with none, the window says so and where to set one
+  up, offers *Set Up a Cloudflare Relay…*, and *Start Sharing* is disabled while it is chosen; set up while the window is
+  open, shown at once. Peer to peer: the public meeting point or a code (#3227). By default the Cloudflare relay when
+  one is set up, peer to peer otherwise; the way chosen last remembered. The relay's address and key fields are gone
+  from the window, which keeps its size (#4617). The MCP's `share_project` takes the same choice, `via: cloudflare`
+  (the same as `relay: true`) or `server`; peer to peer is a page's only. The user guide's *Cloudflare relay* page says
+  so. Tests: `test/ui/collab-live-via.test.js`, `test/ui/collab-relay-site.test.js`, `test/ui/relay-setup.test.js`,
+  `test/mcp-relay.test.js`.
+- **The collaboration's messages in the console's Design filter (#4632):** the Collaboration tab is the Design pane's, but
+  its messages took the source of the last process run (or the application's), so the Design filter hid them. Every
+  collaboration module (git: clone, commit, push, pull, branches, merges; GitHub's sign-in and GitHub Checks; live sharing:
+  share, follow, the editors' edits, who is in; the Cloudflare relay's set-up and checks; Share Project…'s links and short
+  links; Short Links…; Open from GitHub Repository…'s list of repositories) now writes through one helper, `collabLog` (`web/js/collab-log.js`), whose lines keep Design's
+  source whatever process ran before (`log()`'s new `src`, kept by `web/js/messages.js`); `test/collab-log.test.js`
+  checks that every collaboration module writes through it. Their errors and warnings are listed in the Errors and
+  Warnings tabs as before. A shared project's runs, mirrored to its followers, keep their processes' sources.
+- **Cloudflare's screens, step by step (#4630):** the Set Up a Cloudflare Relay window has a foldable list of the nine
+  screens Deploy to Cloudflare goes through, in order, with what to click and what to type (open while no relay is
+  set, folded in Change Cloudflare Relay…), and its traps: Create ▸ Import a repository makes no copy, and the copy is
+  updated by pushing to it. Translated into Portuguese; the relay's README and the user's guide (`live-relay`, in
+  English and Portuguese) give the same steps.
+- **The relay's `wrangler.toml` says `workers_dev = true` and `preview_urls = false` (#4630):** a deploy's build log
+  no longer warns that neither is set.
+- **The toolchain's background download after the opening (#4628):** it starts once the page is loaded, 15 to 45 seconds
+  later (at random: a classroom's browsers do not download together) and when the browser is idle
+  (`web/js/prefetch-schedule.js`); never on a metered or slow connection (Save-Data, 2G/3G, a cellular one). The first
+  Implement or Synthesize downloads what is not kept yet before it runs (`prepareBrowserFlow`, forced), its console saying
+  "Downloading the Silinx toolchain for the <part> (<size> MB: once, then kept by this browser)…" and each quarter of it
+  (the files' sizes: the build's `sizes`, beside their SHA-256); a download under way is joined, not started again; Stop
+  ends the wait.
+- **Unchanged assets kept across releases (#4628):** the device descriptions and the bit databases, whose path names the
+  release (`assets/<version>/`), are kept in Cache Storage under their SHA-256 (`assetKey`: `assets/sha256/<it>/<name>`), so
+  that a release that did not change them finds them; `pruneAssetCache` deletes those whose SHA-256 the page no longer has.
+  Yosys and nextpnr, under their own version's path, were already kept by a release that did not update them (now tested).
+  A copy that differs from its SHA-256 is never used. The service worker no longer keeps a second copy of them by their URL
+  (`sw-policy.js`: Yosys's and nextpnr's files only).
+- **Simulate's side panel's width dragged (#4627):** a handle over its right edge (`web/js/tasks-sim-split.js`), the
+  side panel's splitter's own (`ui.js` `splitter`, its limits and key now `LEFT_SPLIT`, which gained `size`, a `max`
+  function and `onSize`): one width for every task (180–700 px, at most 45 % of the work area in Simulate, `xl.leftW`),
+  remembered across a task switch and a reload, hidden when the panel is folded or the document maximized; SSim's
+  Instances and Objects follow it (`isim.js`), SSim's own splitter not shown in the Tasks interface. The ISE style
+  interface is unchanged. Test: `test/ui/tasks-side-resize.test.js`, every task's side panel.
+- **The side panel's tabs with no project open (#4625):** Start and Collaboration (#4619) both whole (their icon and
+  name) and sharing the row's width, in both interfaces (`web/js/left-tabs-fit.js`); where the panel is too narrow for
+  both names, the tabs as with a project: the active one whole, the other its icon (the Silinx interface) or its name
+  cut (the ISE style). Measured again when the panel is resized, a project opens or closes, or the language changes.
+- **Implement's and Emulate's Files page: the flow's files only (#4622):** the project's constraints, then the `.mem`,
+  `.hex` and `.coe` memory images (`core/flow-files.js` `flowFiles`, as the ISE style's Implementation view lists them
+  under the top); no longer the design's sources (#4609); `flowPageFiles` removed.
+- **The Collaboration tab shown with no project open (#4619):** beside the Start tab (the other tabs still come with a
+  project, #4257), with its Git Repository box (Sign in / Sign out of GitHub, Open from GitHub Repository…, Store Project in
+  a GitHub Repository… disabled until a project opens), its Sharing box (how to follow a live share; Share a Copy… and
+  Share Live… disabled) and, in the browser edition, its Cloudflare Relay box, so that a relay can be set up beforehand.
+  The Start page's GitHub group (Sign in with GitHub…, Open from GitHub Repository…, Store Project in a GitHub
+  Repository…) removed: they are the tab's, the File menu's and the Design tree's. The tab no longer fails to draw when
+  GitHub's checks have not been asked yet and no project is open. The user guide updated.
+- **A clone onto an existing project (#4618):** the question names whether the project is a clone of the same
+  repository and what a replace would lose (uncommitted changes, commits not pushed to GitHub, or all of it when it is
+  in no repository); Replace asks again, naming them, when there is any. The clone is made and checked before the old
+  project is removed (to the workspace's .trash folder; deleted in the browser edition), so a clone that fails leaves it
+  as it was. Keep Both suggests a free name (`lab1-2`), which can be edited. The choices are worked out in
+  `core/git-clone-exists.js`, for the server editions, the browser edition and the MCP server alike.
+- **The MCP's `git_clone` has the same choices (#4618):** `if_exists` (`"error"`, the default, as before, now also
+  describing the existing project; `"open"`, `"replace"`, `"rename"`), and `discard_changes` for a replace that would
+  lose changes.
+- **Share Project… ▸ A copy's link in a row layout (#4612):** Generate, Copy, Show and Show QR Code are in one row
+  below the link's box (wrapping on a narrow screen), no longer in a column beside a tall box, as Live's links since
+  #4576 (`web/js/link-field.js`'s row field). The box spans the window's content and is as tall as the link, hidden (a
+  dot for each character) or shown, and before Generate as tall as the link it will make; a full link of thousands of
+  characters takes at most 8 lines, scrolled beyond, which keeps the window's Close in view. Manage short links… stays
+  below.
+- **Share Project… ▸ A copy: Generate Full Link or Generate Short Link (#4615):** Generate is named for the link the
+  Link: choice makes (in Portuguese Gerar a Ligação Completa, Gerar a Ligação Curta).
+- **Share Project… ▸ Live: Generate Edit Link (#4613):** the editors' link's Generate is named Generate Edit Link (in
+  Portuguese Gerar Ligação de Edição).
+- **Share Project…'s window keeps its size (#4617):** A copy's and Live's windows are the same size, 720 pixels wide and
+  as tall as a copy's with its link made (at most 90% of the screen's height, the content scrolled beyond), so switching
+  between them, Start Sharing and Generate no longer resize it.
+- **The README's last features, Collaboration and Classroom ready (#4610):** two cells in place of "Made for the
+  classroom": Collaboration (live sharing, peer to peer or through a relay of one's own, a design in a link, GitHub, a
+  group's copies merged) with Share Project's live window, and Classroom ready (the examples, guided labs, automatic
+  grading, GitHub Classroom) with New Project; English and Portuguese. A new screenshot, `share` (both languages):
+  the traffic example shared live, its links made and hidden.
+- **The README's Simulate, said in full (#4610):** SSim runs VHDL and Verilog in the browser, test benches from a
+  wizard or drawn on the waveforms, any instance's signals, cursors and markers, and Try it steps a drawing; English
+  and Portuguese.
+- **Implement's and Emulate's Files page (#4609):** a tab after the task's own, as Simulate's Files beside Simulation
+  (`web/js/tasks-flow-files.js`, `core/flow-files.js` flowPageFiles): the design's sources (a drawing in place of the
+  HDL generated from it), then the project's constraints and the `.mem`, `.hex` and `.coe` memory images
+  (`core/flow-files.js`); a double-click opens a file, its menu is the file's (a drawing's, the drawing's); the page
+  in front is the same in both tasks. It replaces the tree #4591 put above their processes, which have the whole panel
+  again. The ISE style's Implementation view keeps the constraints under the top module (#4591).
+- **The README's features, shorter (#4606):** the schematics' cell removed (its picture back on "Design your way"),
+  and "Made for the classroom" says an intuitive interface instead of listing the two interfaces and their languages,
+  across the table's last row; English and Portuguese. README.pt.md's table, broken by #4537 (a cell cut into another
+  tag), whole again; `test/docs.test.js` checks that the READMEs' HTML is well formed.
+- **Every circuit part checked against its datasheet, a repository-wide test (#4602):** `test/circuit-coverage.test.js`
+  fails, naming the part, when a part of the library (its 178 ICs and 16 other parts) or a KiCad catalogue symbol's
+  part has no test against a reference of its own, or when a test's table names a part that is no longer the
+  library's; each group's tables are read from its test's source (`test/circuit-references.mjs`), a gap would need an
+  issue in its allowlist, and the catalogue's symbols drawn only (152, 48 of them 74xx / 4xxx logic ICs) are counted,
+  not failed. It is one of the repository's checks of every pull request (`REPO_WIDE`). The 8-lever DIP switch gets its
+  test (its levers each on its own, through the engine and the HDL), the one part that had none.
+- **Schematic editor: Try it no longer left at every compile of the project (#4601):** the schematic editor's
+  `setModules`, called after every compile, left a running Try it even when the modules and the sources were those it
+  was built from. So any project reload ended it, such as silinx.json written by another process. One example: a
+  design link's Try it, which the project watch read again just after it started (about one run in two of the #2876
+  test of `test/ui/design-link.test.js`). Try it now remembers the sources it was built from (`web/js/sch-try.js`
+  `sourcesChanged`) and is left only when they or the modules changed.
+- **A job's error said once (#4597):** a failed job's last line, its error ("ERROR: …", the server's and the browser
+  edition's jobs), is no longer shown before the operation's "… failed: <error>" line that says it again
+  (`web/js/job-log.js`, in iMPACT's operations and an open family's Program); its other lines are shown as before.
+- **The WebUSB chooser asked for at the click itself (#4593):** Chrome shows it only while the click's activation lasts,
+  and the browser edition asked for the board after its awaits (the pins, the bitstream, the project's file,
+  `getDevices()`, the implementation the click may run first): a `SecurityError`, no list. The click now asks for it
+  before any await (`web/js/api-local.js` `usbPick`, the devices granted before kept from `getDevices()` and its connect /
+  disconnect events; the device by the board and the file: `core/usb-program.js` `usbTarget`), and the job takes the
+  board chosen. The browser's refusals in the console with the next step (`core/webusb-support.js` `usbError`: the list
+  closed with no board, a list not shown); a board that cannot be opened, Adept's or an FTDI's (now `open()` too, Windows'
+  "Access denied."), names WinUSB and Zadig (`WINUSB_HINT`). UI test `test/ui/webusb-gesture.test.js`, a `navigator.usb`
+  that refuses the chooser after any await.
+- **A browser with no WebUSB said first (#4592):** the browser edition's Program FPGA, the PROM's operations and an open
+  family's Program, in a browser with no WebUSB (Firefox, Safari, an iPad or iPhone): its reason first, then an
+  untrusted project's refusal with its Trust Project button; a trusted project gets the reason at once, without the
+  questions asked before programming (implement the design first, the pins, writing the SPI flash) or a missing
+  bitstream's message.
+- **Implementation and Emulation: the files their flow reads (#4591):** `core/flow-files.js` lists them (the
+  project's constraints, then the `.mem`, `.hex` and `.coe` memory images; none in a design and simulation project);
+  the Implementation view's top module has them after its instances (the constraints' row selected shows Edit
+  Constraints (Text), Check Constraints and I/O Pin Planning; the menu is the file's), the Simulation view none;
+  Implement's and Emulate's side panels have the top module's row with its badges and the files under it
+  (`web/js/flow-files-tree.js`); the Silinx interface's Design page stays without them (#1250). The MCP's
+  `project_info` reports them (`flowFiles`).
+- **tasks.test.js's tab row (#4591):** its two assertions of the side panel's tabs follow #4577's order (Collaboration
+  before Teaching), in English and in Portuguese.
+- **The Errors tab's refusals carry the Trust Project button (#4589):** #4583 gave it to the Console tab's lines only,
+  but an error brings the Errors tab to the front; there, each refusal for an untrusted project has the button (asked
+  first), disabled once the project is trusted.
+- **A refusal for an untrusted project carries its Trust Project button (#4583):** every console line refusing a
+  process for an untrusted project has the button (one per refusal: the error and its "… failed:" line share it);
+  the local server's refusal of Program FPGA, of the PROM's operations and of an open family's Program is said in the
+  console, no longer in a dialog; Trust Project asks first, and once the project is trusted every Trust Project button
+  of it is disabled.
+- **Changes…, a window of the changes, instead of the Collaboration tab's Changes box (#4581):** a command before
+  History… (the tab, with how many files changed, and the Git menus) opens a window listing the files changed since the
+  last commit with the Design pane's marks and their states, the files in conflict first and in red; a click compares a
+  file with the last commit, and the window follows git's status while it is open. The tab's Changes box and its folding
+  (#4571) are gone; its Repository box says how many files are in conflict. The MCP's git_status lists the files in the
+  same order, the conflicts first and counted.
+- **The Collaboration tab's Git Repository box (#4581):** the Repository box is now Git Repository, and the GitHub box's
+  sign-in (its first line: Sign in with GitHub… or Sign out of GitHub in the browser edition, how git signs in on a
+  server) and GitHub Checks with the last push's result moved into it; the GitHub box is gone.
+- **The Design pane's tab row: Collaboration before Teaching (#4577):** the two tabs and their pages swapped in
+  `web/index.html`; only the tab last chosen is kept, not the order, so nothing to migrate; the UI tests of the row
+  (left-tabs-no-project, teaching-tab, collab-tab) assert the new order.
+- **Share Project… ▸ Live's links in a row layout (#4576):** the followers' and the editors' links each have their
+  Generate named for them (Generate View-Only, Generate Edit; in Portuguese Gerar Só de Leitura, Gerar Edição). Their
+  buttons are in one row below the box, wrapping on a narrow screen, no longer in a column beside it. The box spans the
+  window's width and is as tall as the link needs, the whole link in view, hidden (a dot for each character) or shown,
+  and before Generate as tall as the link it will make (`web/js/link-field.js`'s row field). A copy's link and Add a
+  User…'s are as they were.
+- **The Collaboration tab's Cloudflare Relay box (#4574):** in the browser edition, the relay set (or none) and Set Up
+  a Cloudflare Relay…: a key made in the page (WebCrypto, 43 characters) with Show, Copy and New Key, the Deploy to
+  Cloudflare button in a new tab, then the relay's address; Check and Save checks it (core/relay-setup.js: its root
+  answers "A relay of Silinx's shared projects", it lets the page's site in, its key opens a meeting point, nothing
+  kept) and keeps it in this browser's settings. A site it does not let in: the exact `ORIGINS = "…"` line to set.
+  Check Cloudflare Relay, Change Cloudflare Relay…, Forget Cloudflare Relay. Every result in the console; the key in no
+  link, address or message.
+- **Share Project… ▸ Live:** its fields say Cloudflare (Cloudflare relay (optional):, Its key (RELAY_KEY):), filled
+  with the relay set, and a Set Up a Cloudflare Relay… link.
+- **The Cloudflare relay's Worker:** its root answers any page (CORS) and lists the origins it lets in
+  (`Silinx-Origins`); its `.dev.vars.example` says where Silinx makes the key. A relay deployed
+  earlier must be deployed again for Silinx's check.
+- **The MCP's live_relay (#2674):** status, new_key, set (a Cloudflare Worker's address and its key, checked first,
+  kept in config.json's `liveRelay`), check, forget; `share_project` with `relay: true` shares through it (the links on
+  the Silinx site, naming the relay), and `follow_project` follows its links.
+- **The docs:** the live relay page and the relay's README show the Collaboration tab's way first, the terminal's
+  second.
+- **A copy's link leaves out the KiCad parts no drawing uses (#4573):** a project whose `parts/` folder held whole
+  imported KiCad libraries (hundreds of kilobytes, of which a circuit uses a few symbols) went over the link's 64 000
+  characters, so Generate made neither the full link nor the short one, signed in to GitHub or not. The link now
+  carries each symbol a drawing uses, the symbols it extends and its footprint (`core/link-parts.js`). A library in one
+  `.kicad_sym` file is kept whole, and so is a library that does not read, with every footprint. The files left out
+  are said in the console, and by MCP `project_link` (its `parts`).
+- **Why there is no link, red and in the console (#4573):** a design too large for a link is said in red above the
+  link's box, no longer below it, and as an ERROR in the console. So is a short link that cannot be made (no GitHub
+  sign-in or token, GitHub's refusal).
+- **Windows: a file moved into the .trash, renamed, or a project deleted while another operation has it open is
+  retried (#4569):** Windows refuses to rename a file another operation has open at that moment (a concurrent read of
+  it, an antivirus scan of a file just written: EPERM / EACCES / EBUSY). Writing a file over another was already
+  retried a few times (`renameOver`); Delete File… into the .trash, Rename… and Delete Project were not, and failed at
+  once. On a shared project, an editor's rename or deletion of a source was then not made at the owner's (the old
+  file kept, its deletion's warning in the share's status). They now go through `renameOver` too
+  (`server/projects.js`). It made the #4418 test of `test/mcp-collab.test.js` time out on the Windows runner.
+- **The ISE interop test of an arrayed instance ticks its shared pins (#4568):** since #4451 an arrayed instance's pin
+  on a net fixed at its own width (a 1-bit I/O marker) is shared by the copies with a warning unless ticked in Shared
+  pins; the test of #3828 and #3870 (test/ise/xise-interop.test.js), whose `reg(3:0)` has its clock and enable on
+  1-bit markers and asserted no warnings, now ticks them, as #4486 did for simulate_drawing's test (the HDL the same).
+- **A relay in Share Project… ▸ Live (#4543):** the Relay: field (its address, one of the site's relays offered) and its
+  key replace "Through a relay": with a relay, the page hosts the room and its followers meet it at that relay's
+  meeting point (#4542); without one, at the public meeting point or with codes, as before. The link names the relay
+  (`…host.<owner's key>&relay=<address>`). The Silinx site's Content-Security-Policy lets its pages reach any Cloudflare
+  Worker's relay (`https://*.workers.dev`, `wss://*.workers.dev`); a link through another relay is still refused. The
+  MCP's follow_project follows such a link through the relay (no WebRTC there); its relay must be one the user's
+  settings name (#3363). share_project goes through a Cloudflare relay already, with its key.
+- **The Design Summary's values in Portuguese (#4518):** "Silinx … (toolchain Silinx, sem ISE)" (and the ISE and
+  Vivado flows), "… ns (frequência máxima … MHz)", a constraint's row ("PERIOD 20 ns em clk — cumprida, 6.781 ns",
+  "… — 2 erros, nenhum caminho entre flip-flops a temporizar"), nextpnr's clocks ("relógio clk"), ISE's "Not met (…
+  errors, score …)", the logic analyzer's block RAMs, and the utilization's rows with the resources' names kept as
+  the reports' and the words around them translated ("Número de LUTs de 4 entradas", "Número de Slices ocupadas",
+  "Número de IOBs ligados a pinos"). The texts are in `web/js/i18n-summary.js`.
+- **CodeQL's alerts 204–209 resolved (#4515, #4516, #4586, #4587, #4588):** a part's function in Portuguese finds its
+  nouns with every character of theirs escaped, not only `/` and `.` (`core/part-function.js`, the nouns a constant
+  table; CodeQL's js/incomplete-sanitization); three tests' expressions built from a message or a symbol's name
+  escaped completely too (`test/kicad-library.test.js`, `test/collab-meet-relay.test.js`,
+  `test/relay-cloudflare.test.js`). The GateMate's CCF reads a clock's comment in linear time (#4587, #4588: its
+  blanks either side of an optional `;` were quadratic on a long line, js/polynomial-redos; silinx-fpga's changelog).
+- **The Device Utilization Summary's rows the family's own (#4512):** the part's resources a report leaves out are
+  added at 0 only when the report names its rows as the part's resources (ISE's MAP, the Silinx toolchain's
+  Spartan-3E, Spartan-6 and 7-series); nextpnr's reports of the iCE40, the ECP5, the Gowin and the GateMate keep
+  their own rows alone. The rows are worked out in `core/summary-utilization.js`, read by the Design Summary and by the
+  MCP's `get_report` summary (its `designSummary.utilization`: the caption and rows the interface shows).
+
 ## 15.28.0
 
 The Cologne Chip GateMate joins the Silinx toolchain, and every family now simulates after synthesis and after Place &
