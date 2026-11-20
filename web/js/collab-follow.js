@@ -15,21 +15,23 @@
 // open documents opened again, editable or read only. The owner's activity followed too (#4002, collab-activity.js):
 // the documents it has open (a simulation run again here, from the same files), the one in front, the split, the left
 // pane's page, the Design view, the task, the Design pane's rows expanded and selected; the follower's own action there
-// is browsing alone.
+// is browsing alone. A link's relay that is neither this Silinx's nor this browser's own is marked unknown in the
+// follow dialog, Follow enabled only once the follower ticks that they know who runs it (#4742).
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { S, app, activateDoc, closeDoc } from './app.js';
 import { collab, editsDrawingHere } from './collab-state.js';
 import { renderPresence, setPresenceCommands } from './collab-presence.js';
 import { followApi } from './collab-follow-api.js';
-import { NAME_KEY, cleanName, relayOk, notHere } from './collab-share.js';
+import { NAME_KEY, cleanName, relayOk, notHere, relaysHere } from './collab-share.js';
+import { savedRelay } from './relay-setting.js';
 import { docProject } from '/core/collab-doc.js';
 import { keepBound, unbindAll } from './collab-bind.js';
 import { keepDrawingsBound, unbindDrawings } from './collab-drawing.js';
 import { gateEdit } from '/core/collab-doc.js';
 import { drawingText } from '/core/collab-model.js';
 import { followRoom, colorOf } from '/core/collab-client.js';
-import { parseFollowLink, relayUrl } from '/core/collab-link.js';
+import { parseFollowLink, relayUrl, relayAddress } from '/core/collab-link.js';
 import { followActivity, followState, watchOwnActions } from './collab-activity.js';
 import { viewKeyOf } from './view-state.js';
 import { watchLeave, canKeep, keepCopy, followEnded } from './collab-leave.js';
@@ -46,6 +48,10 @@ let fol = null;   // { name, session, following, driven (the owner's view last f
                   //   once the project is, #3631), act (the owner's activity put on the page, #4002), front (the
                   //   document in front, as this page left it: another one brought there, once the project has opened (settled), is the
 //   follower's) }
+
+/** Whether a link's relay is unknown (#4742): neither one of this Silinx's (the site's, config.json's) nor the relay of
+ *  this browser's settings. Whoever runs it sees the follower's address and name, so following through it is confirmed. */
+export const unknownRelay = async r => !!r && !(await relaysHere()).includes(r) && relayAddress(savedRelay().address || '') !== r;
 
 const d0 = p => S.docs.find(x => x.path === p && x.editor?.view);
 const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
@@ -65,14 +71,20 @@ export async function startFollowing(hash = location.hash) {
   const input = h('input', { type: 'text', value: saved, 'data-field': 'name', maxlength: 40, style: { width: '100%' } });
   // (a room the owner's page hosts: the public servers its follower reaches, named first, #3361)
   const servers = link.via === 'host' ? (await import('./collab-meet.js')).publicServers(link) : null;
+  // (#4742: an unknown relay marked, Follow only once the follower confirms it)
+  const unknown = await unknownRelay(link.relay), at = link.relay ? new URL(link.relay).host : '';
+  const follow = { label: 'Follow', primary: true, disabled: unknown, value: () => cleanName(input.value) || 'Guest' };
+  const trust = unknown ? h('input', { type: 'checkbox', 'data-field': 'trust-relay', onchange: () => { follow.el.disabled = !trust.checked; } }) : null;
   const name = await dialog({
     title: 'Follow a Shared Project',
     body: h('div', { class: 'collab-dlg' },
       h('p', {}, 'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).'),
-      link.relay ? h('p', {}, `Through the relay at ${new URL(link.relay).host}.`) : null,
+      link.relay && !unknown ? h('p', {}, `Through the relay at ${at}.`) : null,
+      unknown ? h('p', { class: 'collab-unknown-relay' }, `Through an unknown relay at ${at}: it is neither yours nor this Silinx's. Whoever runs it sees your IP address and the name you give here (not the project, which is encrypted).`) : null,
+      unknown ? h('label', { class: 'collab-trust-relay', style: { display: 'block', margin: '0 0 8px' } }, trust, ' ', `I know who runs the relay at ${at}: follow through it`) : null,
       servers ? h('p', { class: 'collab-servers' }, servers) : null,
       h('label', {}, 'Your name, as they see it:'), input),
-    buttons: [{ label: 'Follow', primary: true, value: () => cleanName(input.value) || 'Guest' }, { label: 'Cancel', value: null }],
+    buttons: [follow, { label: 'Cancel', value: null }],
   });
   if (!name) return null;
   try { localStorage.setItem(NAME_KEY, name); } catch { /* this page only */ }

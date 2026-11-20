@@ -114,6 +114,10 @@ export const COLLAB_PT_PATTERNS = [
   [/^Read-only, following (.+)'s project$/, 'Só de leitura, a seguir o projeto de $1'],
   [/^Sharing \((\d+)\)$/, 'A partilhar ($1)'],
   [/^Through the relay at (.+)\.$/, 'Através do retransmissor em $1.'],
+  // (#4742: a link's relay neither this Silinx's nor this browser's)
+  [/^Through an unknown relay at (.+): it is neither yours nor this Silinx's\. Whoever runs it sees your IP address and the name you give here \(not the project, which is encrypted\)\.$/,
+    'Através de um retransmissor desconhecido em $1: não é seu nem deste Silinx. Quem o gere vê o seu endereço IP e o nome que der aqui (não o projeto, que é cifrado).'],
+  [/^I know who runs the relay at (.+): follow through it$/, 'Sei quem gere o retransmissor em $1: seguir através dele'],
   // (the public servers a hosted room's follower reaches, #3361: web/js/collab-meet.js publicServers)
   [/^This page connects to public servers, which see your IP address: (?:the WebTorrent trackers (.+) \(to find its owner\)(?: and )?)?(?:the STUN servers? (.+))?\.$/,
     (_, t, s) => `Esta página liga-se a servidores públicos, que veem o seu endereço IP: ${[t ? `os rastreadores WebTorrent ${t} (para encontrar o dono)` : null,
