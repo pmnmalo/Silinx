@@ -1175,13 +1175,14 @@ uiTest('Tasks: the message centre: every line\'s source, the filter following th
   // (the Design Summary opened behind with the project does not bring Implement: the task stays Edit)
   await page.waitFor(() => document.querySelector('#doc-tabs > .tab.active')?.textContent.includes('Design Summary'), [], { what: 'the Design Summary behind' });
   assert.equal((await state(page)).task, 'edit');
-  // Edit: Check (the task's action, enabled once the project is there): its lines only; All shows the application's too
+  // Edit: Check (the task's action, enabled once the project is there): its lines and the application's (#4729: shown
+  // under every filter), no other source's
   await page.waitFor(() => document.querySelector('#toolbar .m-step[data-step="check"]')._enabled(), [], { what: 'Check enabled' });
   await taskAction(page);
   await page.waitConsole(/Process "Check Syntax" completed successfully/);
   assert.deepEqual(await pressed(page), ['check']);
   let lines = await shownLines(page);
-  assert.ok(lines.length >= 4 && lines.every(([src]) => src === 'check'), JSON.stringify(lines));
+  assert.ok(lines.filter(([src]) => src === 'check').length >= 4 && lines.every(([src]) => src === 'check' || src === 'app'), JSON.stringify(lines));
   assert.ok(lines.some(([, t]) => t === 'Started : "Check Syntax".'));
   await page.click('#mc-filters .filt[data-src="all"]');
   assert.deepEqual(await pressed(page), ['all']);
@@ -1218,7 +1219,7 @@ uiTest('Tasks: the message centre: every line\'s source, the filter following th
   // (its messages shown at first, #1429)
   assert.deepEqual(await pressed(page), ['emu']);
   lines = await shownLines(page);
-  assert.ok(lines.length && lines.every(([src]) => src === 'emu') && lines.some(([, t]) => /^Board Emulator: 'top'/.test(t)), JSON.stringify(lines));
+  assert.ok(lines.length && lines.every(([src]) => src === 'emu' || src === 'app') && lines.some(([, t]) => /^Board Emulator: 'top'/.test(t)), JSON.stringify(lines));
   assert.ok(!(await shown(page, '.doc:not([hidden]) .emu-log')), 'the emulator\'s Messages box hidden');
   // Implement: Synthesis and Implementation; the command line outside ISim: the command palette
   await page.click('#task-switch .task-btn[data-task="impl"]');

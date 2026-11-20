@@ -55,7 +55,7 @@ export function sourceOf(line, cur = 'app') {
 
 /** Whether a line ends its process (#4729): its result ("Process "…" completed successfully", "… failed", "… stopped"),
  *  the emulator's one line; the lines after it, until the next header, are the application's, not that process's. */
-export function endsProcess(line) {
+function endsProcess(line) {
   const s = String(line).trim();
   return /^Process "[^"]*" (completed|failed|stopped)|^Process (failed|stopped)\b|^(ERROR: )?Board Emulator:/.test(s);
 }
