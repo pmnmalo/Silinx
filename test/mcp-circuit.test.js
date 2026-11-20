@@ -95,7 +95,7 @@ test('edit_circuit: a half adder built on New Source\'s breadboard, its HDL made
   const before = read('src/half_adder.circ.json');
   await fails('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: [{ op: 'add', type: '7404', at: 'BB1.f22' }, { op: 'wire', from: 'U9.1', to: 'BB1.a1' }] },
     'operation 1 (wire): \'U9.1\': no part U9 in the circuit (nothing written)');
-  await fails('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: [{ op: 'paint' }] }, 'operations[0].op: one of add, move, rotate, copy, delete, wire, set, wires');
+  await fails('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: [{ op: 'paint' }] }, 'operations[0].op: one of add, move, rotate, copy, delete, wire, reconnect, reshape, set, wires');
   await fails('edit_circuit', { project: 'c', path: 'src/x.pn.json', operations: [{ op: 'delete', id: 'U1' }] }, 'src/x.pn.json: not a circuit (.circ.json)');
   assert.equal(read('src/half_adder.circ.json'), before);
   // a 7404 added beside the breadboard, unpowered: its error, its HDL not made again
@@ -170,6 +170,23 @@ test('edit_circuit: a wire\'s colour by default (#4932, #4933): red to VCC or a 
     { op: 'wire', id: 'wp4', from: 'BB1.a29', to: 'BB1.c29' }, { op: 'wire', id: 'wp5', from: 'BB1.a27', to: 'BB1.tp27', color: 'orange' }] });
   assert.deepEqual(r.text.split('\n').slice(0, 2), ['wp1 wired from "U2.14" to "BB1.tp20"', 'wp2 wired from "U2.GND" to "BB1.bn22"']);
   assert.deepEqual([w('wp1'), w('wp2'), w('wp3'), w('wp4'), w('wp5')], ['red', 'black', 'red', 'blue', 'orange']);
+});
+
+test('edit_circuit: a wire\'s end reconnected, its bends reshaped, as the editor\'s handles (#4930, #4931); the refusals, nothing written', async () => {
+  const P = 'src/reshape.circ.json', w = (id) => JSON.parse(read(P)).wires.find((x) => x.id === id);
+  await ok('write_file', { project: 'c', path: P, text: JSON.stringify({ ...halfAdder(), name: 'reshape' }, null, 2) });
+  const r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'reconnect', id: 'wk2', end: 'end', at: 'BB1.tn29' },
+    { op: 'reshape', id: 'ws', via: [[6, 13], [24, 13]] }, { op: 'reshape', id: 'wb1', via: [] }, { op: 'reconnect', id: 'wc', end: 'start', at: 'U2.3' }] });
+  assert.deepEqual(r.text.split('\n').slice(0, 5), ['wk2\'s end reconnected to "BB1.tn29"', 'ws reshaped: [[6,9],[6,13],[24,13],[24,4]]', 'wb1 reshaped: [[-6,10],[5,11]]',
+    'wc\'s start reconnected to "U2.3"', 'Process "Check Circuit" of reshape.circ.json completed successfully.']);
+  assert.deepEqual([r.data.errors, r.data.warnings], [[], []]);
+  assert.deepEqual([w('wk2').points, w('ws').points, w('wc').color], [[[27, 1], [28, -3]], [[6, 9], [6, 13], [24, 13], [24, 4]], halfAdder().wires.find((x) => x.id === 'wc').color]);
+  const before = read(P);
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'reconnect', id: 'wc', end: 'middle', at: [0, 0] }] }, 'operation 0 (reconnect): end: start or end (nothing written)');
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'reconnect', id: 'wc', end: 'end', at: 'U2.3' }] }, 'operation 0 (reconnect): a wire joins two different places (nothing written)');
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'reshape', id: 'ws', via: [[1, 2, 3]] }] }, 'operation 0 (reshape): via: the bends, a list of grid points [[x, y], …] (nothing written)');
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'reshape', id: 'w99', via: [] }] }, 'operation 0 (reshape): no wire w99 in the circuit (nothing written)');
+  assert.equal(read(P), before);
 });
 
 test('simulate_drawing: a circuit\'s steps, its switches by their labels, its LEDs and time; a floating input; its refusals', async () => {

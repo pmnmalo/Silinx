@@ -297,6 +297,9 @@ folder, with `libraries` to choose among them.
   A new wire is red when it joins VCC (an IC's VCC or VDD pin, the supply's +, a + rail, or what they are joined to), black
   when it joins GND (GND, VSS, −), blue otherwise (#4932, #4933); its Properties' Colour changes it.
   The Wire tool draws it point by point (a click on each bend, a double click or a click on a pin or hole to end it).
+  A selected wire shows its handles (#4930, #4931): drag an end to another hole, pin or grid point and the wire
+  reconnects there; drag a bend to move it, a segment's middle to add a bend there, or double-click a bend to remove it.
+  The MCP's edit_circuit does the same with its `reconnect` and `reshape` operations.
 - **A breadboard's strips:** each column's five holes a–e are one strip, its five holes f–j another; the channel
   between e and f separates them, and a DIP IC straddles it. Each power rail (top +, top −, bottom +, bottom −) is one
   strip along its length (a full breadboard's rails split in the middle, as many real ones: phase 2).
