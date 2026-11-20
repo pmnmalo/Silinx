@@ -57,7 +57,8 @@ test('a Mealy machine\'s: FDC (an asynchronous reset), an inverter for the activ
 });
 
 for (const lang of ['vhdl', 'verilog']) {
-  for (const [what, model] of [['the traffic example', TRAFFIC], ['the Mealy machine', MEALY], ['the Mealy machine, from B with a synchronous reset', { ...MEALY, initial: 'b', reset: { name: 'r', active: 'high', sync: true } }]]) {
+  for (const [what, model] of [['the traffic example', TRAFFIC], ['the traffic example in gray', { ...TRAFFIC, encoding: 'gray' }],
+    ['the Mealy machine, a synchronous active-low reset', { ...MEALY, reset: { name: 'rst_n', active: 'low', sync: true } }], ['the Mealy machine', MEALY], ['the Mealy machine, from B with a synchronous reset', { ...MEALY, initial: 'b', reset: { name: 'r', active: 'high', sync: true } }]]) {
     test(`${what}'s schematic in ${lang === 'vhdl' ? 'VHDL' : 'Verilog'}: compiled and elaborated with no warnings, simulated as the diagram`, () => {
       const m = normalizeFsm({ ...model, lang });
       const g = generateHdl(normalizeDoc(fsmSchematic(m).doc), { lang });
@@ -74,7 +75,13 @@ for (const lang of ['vhdl', 'verilog']) {
   }
 }
 
-test('no schematic, why said: one-hot, a diagram with errors, too many bits, a signal named as a state bit', () => {
+test('a synchronous active-low reset: FDR, after an inverter', () => {
+  const doc = fsmSchematic({ ...MEALY, reset: { name: 'rst_n', active: 'low', sync: true } }).doc;
+  assert.deepEqual([ff(doc), types(doc).filter((t) => t === 'inv').length > 0, doc.labels.some((l) => l.net === 'rst_n_i')], [['fdr:0', 'fdr:0'], true, true]);
+});
+
+test('no schematic, why said: one-hot, enumerated, a diagram with errors, too many bits, a signal named as a state bit', () => {
+  assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'enum' }), { error: 'No schematic: the enumerated encoding has no state codes: choose binary or gray to see the schematic' });
   assert.deepEqual(fsmSchematic({ ...TRAFFIC, encoding: 'onehot' }), { error: 'No schematic: the encoded table is made for the binary and gray encodings (choose one of them)' });
   assert.deepEqual(fsmSchematic({ ...TRAFFIC, states: TRAFFIC.states.map((x) => ({ ...x, name: 'S' })) }), { error: 'No schematic: correct the errors of the diagram first' });
   assert.deepEqual(fsmSchematic({ ...MEALY, inputs: [...MEALY.inputs, { name: 'w', width: 8 }] }),

@@ -16,6 +16,7 @@ const MAX_INPUTS = 16;   // (a truth table's, core/logic.js)
 /** The state diagram `model`'s schematic: { doc } (a schematic document), or { error } when it cannot be drawn. */
 export function fsmSchematic(model) {
   const m = normalizeFsm(model);
+  if (m.encoding === 'enum') return { error: 'No schematic: the enumerated encoding has no state codes: choose binary or gray to see the schematic' };
   // (the encodings with codes of their own, as Create Boolean Algebra's: encodedTable's)
   const t = encodedTable(m);
   if (t.error) return { error: `No schematic: ${t.error[0].toLowerCase()}${t.error.slice(1)}` };
