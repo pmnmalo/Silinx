@@ -166,7 +166,7 @@ function drawingWrites(name, doc, owner, warn, bases) {
 // (its selection too, #4192: the text selected, a drawing's objects)
 const peerLines = peers => (peers.length ? peers.map(p => `${p.name} (${p.role}${p.path ? `, ${p.path === 'p2p' ? 'peer to peer' : 'through the relay'}` : ''})${p.view ? `: ${p.view.path}${p.view.line !== null ? ` line ${p.view.line + 1}` : ''}${p.view.sel ? `, selected: ${selectionWords(p.view.sel)}` : ''}` : ''}`).join('\n') : 'nobody');
 
-const ACTIONS = ['start', 'status', 'promote', 'demote', 'stop'];
+const ACTIONS = ['start', 'status', 'promote', 'demote', 'renew', 'stop'];
 // a participant made an editor (promote) or a viewer (demote), as the Sharing menu does (#3997): the editors' key given
 // to them, or renewed, the share's editors' link with it
 async function setRole(name, cur, action, user) {
@@ -186,13 +186,23 @@ async function setRole(name, cur, action, user) {
   return { text: `'${user}' is a viewer of '${name}' now. The editors' link was renewed (the old one only follows); the other editors keep editing:\n${cur.editLink}`, data: { project: name, user, role: 'viewer', editLink: cur.editLink }, untrusted: 'the participant\'s name' };
 }
 
+// the editors' link renewed, the editors away out of the list, as the Sharing menu's Renew Editor Link does (#4745)
+async function renewLink(name, cur) {
+  if (!cur || cur.session.closed()) throw toolError(`'${name}' is not shared`);
+  if (!cur.editLink) throw toolError(`'${name}' is shared with no editors (share_project start editors: true)`);
+  let r;
+  try { r = await cur.session.renew(); } catch (e) { throw toolError(e.message); }
+  cur.editLink = followLink(`${cur.server}/`, cur.session.room, cur.session.key, 'relay', r.editKey, null, null, cur.session.ownerKey);
+  return { text: `The editors' link of '${name}' was renewed: the old one no longer lets anyone edit; the editors in it now keep editing${r.removed ? ` (${r.removed} away no longer edit${r.removed === 1 ? 's' : ''})` : ''}:\n${cur.editLink}`, data: { project: name, editLink: cur.editLink, removed: r.removed } };
+}
+
 export const COLLAB_TOOLS = [
   {
     name: 'share_project', title: 'Share a project live',
-    description: 'Share a project of the workspace live, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it, read only (in Silinx, or follow_project), its files and drawings as they change on disk, and with editors: true an editor\'s link too (the interface\'s Live share always makes both; here the default is no editors, and promote then refused); status, who follows it (each a viewer or an editor, and its path, #4643: p2p or relay) and what they look at; start and status give the share\'s mode too (cloudflare: through the Cloudflare relay; server: a Silinx server\'s relay; p2p: an interface\'s page peer to peer), as the Collaboration tab shows them; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile, resumed: how many times it was; its followers, told it is away, get what changed once it is back, #4850).',
+    description: 'Share a project of the workspace live, as the interface\'s Share Project… does with Live chosen (Share Module… with top): action start gives the link that anyone opens to follow it, read only (in Silinx, or follow_project), its files and drawings as they change on disk, and with editors: true an editor\'s link too (the interface\'s Live share always makes both; here the default is no editors, and promote then refused); status, who follows it (each a viewer or an editor, and its path, #4643: p2p or relay) and what they look at; start and status give the share\'s mode too (cloudflare: through the Cloudflare relay; server: a Silinx server\'s relay; p2p: an interface\'s page peer to peer), as the Collaboration tab shows them; promote / demote (user: a participant\'s name) make a viewer an editor or an editor a viewer, as the interface\'s Sharing menu does (#3997: a demotion renews the editors\' link, the old one only follows then; the other editors keep editing); renew (#4745), as the Sharing menu\'s Renew Editor Link: the editors\' link renewed (copies of the old one no longer edit), the editors not in the share now no longer edit, those in it keep editing; stop ends it for them all. It goes through the relay of a running Silinx server (server: its address, default http://127.0.0.1:8642; on this computer, its token read from the configuration folder; another computer\'s relay only when the user\'s settings name it, relay.relays in config.json); the relay reads nothing of the project (end-to-end encrypted with a key in the link\'s fragment). Its builds (build/) are not shared. Its connection to the relay lost, its room is resumed on its own (status: connected: false meanwhile, resumed: how many times it was; its followers, told it is away, get what changed once it is back, #4850).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
-      action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'stop'], description: 'start (default), status, promote, demote or stop.' },
+      action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'renew', 'stop'], description: 'start (default), status, promote, demote, renew or stop.' },
       user: STR('promote, demote: the participant, by the name status lists (a share with editors only).'),
       name: STR('The name the followers see (default: "MCP agent").'),
       server: STR(`The address of the Silinx server whose relay shares it (default ${DEFAULT_SERVER}).`),
@@ -209,7 +219,7 @@ export const COLLAB_TOOLS = [
       const withQr = link => (qr ? { qr: qrSvg(link) } : {});
       // (the editors' link's QR code too, as Share Project… shows it, #3996)
       const withEditQr = link => (qr && link ? { editQr: qrSvg(link) } : {});
-      if (!ACTIONS.includes(action)) throw toolError('action: start, status, promote, demote or stop');
+      if (!ACTIONS.includes(action)) throw toolError('action: start, status, promote, demote, renew or stop');
       if (user !== undefined && action !== 'promote' && action !== 'demote') throw toolError('user: with action promote or demote only');
       if (top !== undefined && action !== 'start') throw toolError('top: with action start only');
       if (relay && action !== 'start') throw toolError('relay: with action start only');
@@ -228,6 +238,7 @@ export const COLLAB_TOOLS = [
         return { text: `Stopped sharing '${name}': its followers no longer see it.`, data: { project: name, shared: false } };
       }
       if (action === 'promote' || action === 'demote') return setRole(name, cur, action, user);
+      if (action === 'renew') return renewLink(name, cur);
       if (action === 'status') {
         if (!cur || cur.session.closed()) { if (cur) { shares.delete(name); cur.off(); } return { text: `'${name}' is not shared.`, data: { project: name, shared: false } }; }
         const peers = withPaths(cur.session.peers());   // (#4643: each follower's path: a relay's room's, through it)

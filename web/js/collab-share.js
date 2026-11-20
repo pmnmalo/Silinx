@@ -273,9 +273,19 @@ async function setRole(peer, role) {
   } catch (e) { collabLog(`ERROR: Sharing: ${e.message}.`, 'err'); return; }
   collabLog(role === 'editor' ? `${peer.name} is an editor now: they edit the project's text files and drawings with you.` : `${peer.name} is a viewer now: the editors' link was renewed (the old one only follows); your other editors keep editing.`, 'ok');
 }
+// the editors' link renewed (#4745): copies of the old one no longer edit, nor the editors away; those in it keep editing
+async function renewLink() {
+  const s = share;
+  if (!s) return;
+  let r;
+  try { r = await s.session.renew(); } catch (e) { collabLog(`ERROR: Renew Editor Link: ${e.message}.`, 'err'); return; }
+  s.editLink = followLink(s.base, s.session.room, s.session.key, s.via, r.editKey, s.other, s.pub, s.session.ownerKey);
+  collabLog(`The editors' link was renewed: the old one no longer lets anyone edit; your editors in the project now keep editing${r.removed ? ` (${r.removed} away no longer edit${r.removed === 1 ? 's' : ''})` : ''}. Show Sharing Link… shows the new one.`, 'ok');
+}
 // (a participant's role: the Collaboration tab's Viewer | Editor on their row, #4646, setPresenceRoles)
 const commands = () => [
   { label: 'Show Sharing Link…', action: () => showLinks() },
+  ...(share?.session?.ownerKey ? [{ label: 'Renew Editor Link', action: () => renewLink() }] : []),
   { label: 'Add a User…', action: () => addUser() },
   { label: 'Stop Sharing', action: () => stopSharing() },
 ];

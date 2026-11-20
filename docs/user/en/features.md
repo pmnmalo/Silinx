@@ -442,7 +442,9 @@ editors' (`#edit=…`), who edit it with you; the toolbar's Sharing menu shows e
 chosen, its link with *Copy*, *Show* and *Show QR Code*), *Add a User…* gives the link of the role you choose, and it
 lists who is in, each a viewer or an editor with its *Viewer | Editor* switch, which makes a viewer an editor or an
 editor a viewer and renews the editors' link: the old one then only
-follows, the other editors keep editing; the Collaboration tab's **Sharing** box shows the same, who is in and
+follows, the other editors keep editing; *Renew Editor Link* renews it too, for a link that reached people it should
+not: copies of the old one no longer edit, nor do editors who are not in the project now, while those in it keep
+editing; the Collaboration tab's **Sharing** box shows the same, who is in and
 those commands, *Share Live…* opens the window with Live chosen, and *Share a Copy…* with A copy chosen). A live share outlives a dropped connection: its owner's page reconnects on
 its own (*Reconnecting…* in the toolbar; the relay keeps the room for 2 minutes and the followers keep the project), and
 so does a follower of a room the owner's page hosts (#3835). The whole project goes inside the link (`#design=…`, compressed: 5 to 25 KB for the examples; anyone with the
