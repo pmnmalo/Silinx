@@ -46,18 +46,8 @@ export function mountFsmBottom(ctx) {
   function renderTables() {
     panelTitle.textContent = 'Tables';
     const wrap = h('div', { class: 'fsm-tables' });
-    // transition table
-    // (the conditions in the Settings' notation, #3915: the drawing keeps them as typed)
-    const tt = transitionTable(M());
-    for (const r of tt.rows) if (!r.stays) r.cond = showCondText(r.cond, getNotation());
     const showCode = M().encoding !== 'enum';
-    const t1 = h('table', { class: 'fsm-table fsm-ttable' },
-      h('tr', {}, h('th', {}, 'Present state'), showCode ? h('th', {}, 'Code') : null, h('th', {}, 'Input condition'), h('th', {}, 'Next state'), showCode ? h('th', {}, 'Next code') : null, h('th', {}, 'Outputs')),
-      ...tt.rows.map((r) => h('tr', { class: r.stays ? 'stays' : '' }, h('td', {}, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null,
-        h('td', { class: 'mono' }, r.cond === 'otherwise' ? h('i', {}, 'otherwise (stays)') : r.cond), h('td', {}, r.next), showCode ? h('td', { class: 'mono' }, r.nextCode) : null, h('td', { class: 'mono' }, r.outputs))));
-    drawBarsIn(t1, 'td.mono');   // (the bars drawn, #4058)
-    wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, [tt.columns, ...tt.rows.map((r) => [r.state, r.code, r.cond, r.next, r.nextCode, r.outputs])])), t1);
-    // state table (classic form)
+    // state table (classic form), first (#4966: as the course's)
     const st = stateTable(M());
     if (st) {
       const head = h('tr', {}, h('th', { rowspan: 2 }, 'Present state'), showCode ? h('th', { rowspan: 2 }, 'Code') : null,
@@ -71,6 +61,16 @@ export function mountFsmBottom(ctx) {
         ...st.rows.map((r) => [r.state, r.code, ...r.next, ...(M().type === 'mealy' ? r.outputs : [r.moore])])];
       wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'State table'), csvButton(`${M().name}_states.csv`, csv)), t2);
     }
+    // transition table
+    // (the conditions in the Settings' notation, #3915: the drawing keeps them as typed)
+    const tt = transitionTable(M());
+    for (const r of tt.rows) if (!r.stays) r.cond = showCondText(r.cond, getNotation());
+    const t1 = h('table', { class: 'fsm-table fsm-ttable' },
+      h('tr', {}, h('th', {}, 'Present state'), showCode ? h('th', {}, 'Code') : null, h('th', {}, 'Input condition'), h('th', {}, 'Next state'), showCode ? h('th', {}, 'Next code') : null, h('th', {}, 'Outputs')),
+      ...tt.rows.map((r) => h('tr', { class: r.stays ? 'stays' : '' }, h('td', {}, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null,
+        h('td', { class: 'mono' }, r.cond === 'otherwise' ? h('i', {}, 'otherwise (stays)') : r.cond), h('td', {}, r.next), showCode ? h('td', { class: 'mono' }, r.nextCode) : null, h('td', { class: 'mono' }, r.outputs))));
+    drawBarsIn(t1, 'td.mono');   // (the bars drawn, #4058)
+    wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, [tt.columns, ...tt.rows.map((r) => [r.state, r.code, r.cond, r.next, r.nextCode, r.outputs])])), t1);
     // encoded table
     const et = encodedTable(M());
     if (et.error) wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Encoded transition table')), h('p', { class: 'asm-muted' }, et.error));
