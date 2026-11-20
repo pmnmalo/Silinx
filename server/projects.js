@@ -17,12 +17,12 @@ import { filePath, normalizePath } from '../core/import-gate.js';
 import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
-import { DESIGN_KIND, asDesignProject } from '../core/project-kind.js';
-import { NEW_IMPL } from '../core/project-defaults.js';
+import { DESIGN_KIND } from '../core/project-kind.js';
+import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
 import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
-import { registerWritten } from '../core/project-entries.js';
+import { registerWritten, renameEntries, deleteEntries } from '../core/project-entries.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
@@ -93,13 +93,8 @@ export function safeJoin(dir, rel) {
   return full;
 }
 
-export function langOf(p) {
-  const ext = path.extname(p).toLowerCase();
-  if (ext === '.v' || ext === '.vh' || ext === '.sv') return 'verilog';
-  if (ext === '.vhd' || ext === '.vhdl') return 'vhdl';
-  if (ext === '.ucf' || ext === '.pcf' || ext === '.lpf' || ext === '.cst' || ext === '.xdc') return 'ucf';
-  return 'text';
-}
+// (core/file-kinds.js's one rule, as the browser edition's: a GateMate's .ccf a constraints file too, #4766)
+export const langOf = langOfPath;
 
 async function exists(p) { try { await fs.access(p); return true; } catch { return false; } }
 
@@ -245,8 +240,7 @@ async function writeProjectUnlocked(name, pj) {
   const dir = projectDir(name);
   const badTop = topNameError(pj);
   if (badTop) throw new HttpError(400, badTop);
-  const clean = { ...pj, name };
-  delete clean.fileTree;
+  const clean = JSON.parse(projectJsonText(name, pj));   // (core/project-defaults.js, as the browser edition's, #4766)
   const ct = cloneTrust(dir);
   if (ct) { delete clean.trusted; delete clean.madeBy; }   // (a clone's: in .git, #3195)
   // (#4735: a project with no trust record: untrusted by the record's absence, nothing of it written)
@@ -325,7 +319,6 @@ export async function fileTree(name) {
   return (await walk(projectDir(name))).filter(f => f !== PROJECT_FILE).sort();
 }
 
-const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
 
 async function copyDir(src, dst, { skipRoot = null } = {}) {
   await fs.mkdir(dst, { recursive: true });
@@ -379,15 +372,10 @@ export async function createProject({ name, template = 'empty', device, board, k
   await fs.mkdir(path.join(dir, 'src'), { recursive: true });
   await fs.mkdir(path.join(dir, 'sim'), { recursive: true });
   if (!kind) await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
-  const json = {
-    name, version: 1, device: device || DEFAULT_DEVICE, board: board ?? null,
-    top: '', simTop: '', files: [], constraints: `constraints/top${constraintsExtOf(device)}`,
-    stimuli: {}, impl: { ...NEW_IMPL },   // (Optimization Fast, #4828)
-    ...(fromOutside ? { trusted: false } : {}),
-    ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}),
-  };
+  // (core/project-defaults.js, as the browser edition's, #4766; Optimization Fast, #4828)
+  const json = { ...newProjectJson(name, { device, board, kind }), ...(fromOutside ? { trusted: false } : {}), ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}) };
   await recordMade(dir, { fromOutside, madeBy });
-  return writeProject(name, kind ? asDesignProject({ ...json, device: DEFAULT_DEVICE }) : json);
+  return writeProject(name, json);
 }
 
 // (#4735: a project the user makes, recorded as trusted before its silinx.json is written; an import's and the MCP
@@ -629,23 +617,8 @@ export async function renameFile(name, from, to, { checkName = true } = {}) {
       await noteMoving(src, dst);
       await renameOver(src, dst);
     } catch (e) { throw await fsHttpError(e, dir, dst); }
-    const pj = await readProject(name);
-    // a file maps exactly; a folder maps every path below it
-    const remap = p => {
-      if (p === fromKey) return toKey;
-      if (isDir && p.startsWith(fromKey + '/')) return toKey + p.slice(fromKey.length);
-      return null;
-    };
-    pj.files = pj.files.map(f => {
-      const np = remap(f.path);
-      if (np === null) return f;
-      const lang = langOf(np);
-      return { ...f, path: np, lang: lang === 'vhdl' || lang === 'verilog' ? lang : f.lang };
-    });
-    if (pj.constraints) pj.constraints = remap(pj.constraints) ?? pj.constraints;
-    // the files removed from the project stay removed at their new paths (#1228)
-    if (pj.excluded) pj.excluded = pj.excluded.map(p => remap(p) ?? p);
-    if (pj.sourceLanguage) pj.sourceLanguage = Object.fromEntries(Object.entries(pj.sourceLanguage).map(([p, l]) => [remap(p) ?? p, l]));
+    // (core/project-entries.js renameEntries, as the browser edition's, #4766)
+    const pj = renameEntries(await readProject(name), fromKey, toKey);
     return writeProjectUnlocked(name, pj);
   });
 }
@@ -671,14 +644,9 @@ export async function deleteFile(name, rel, { trash = false, mustExist = false }
       if (trash && there) trashed = await toTrash(dir, full, key);
       else await fs.rm(full, { recursive: true, force: true });
     } catch (e) { throw await fsHttpError(e, dir, full); }
+    // (core/project-entries.js deleteEntries, as the browser edition's, #4766: the constraints file deleted, none)
     const pj = await readProject(name);
-    const gone = p => p === key || p.startsWith(key + '/');
-    const before = JSON.stringify(pj);
-    pj.files = pj.files.filter(f => !gone(f.path));
-    // the constraints file deleted: none (as the browser store does, #1230); nothing left to exclude there
-    if (pj.constraints && gone(pj.constraints)) pj.constraints = null;
-    if (pj.excluded) pj.excluded = pj.excluded.filter(p => !gone(p));
-    if (JSON.stringify(pj) !== before) await writeProjectUnlocked(name, pj);
+    if (deleteEntries(pj, key)) await writeProjectUnlocked(name, pj);
   });
   return { trashed };
 }
