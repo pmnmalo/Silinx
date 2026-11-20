@@ -15,9 +15,9 @@ import { collabLog } from './collab-log.js';
 const codeField = (value, field) => h('textarea', { class: 'collab-code', rows: 4, readonly: value !== undefined ? '' : null, spellcheck: 'false', 'data-field': field, 'data-no-i18n': '', style: { width: '100%' } }, value ?? '');
 const copyButton = (text, what) => h('button', { type: 'button', class: 'btn collab-copy', onclick: () => { writeClip('text', text); collabLog(`${what} copied.`, 'ok'); } }, 'Copy Code');
 
-/** The room of a share hosted by this page, and the owner's socket to it. */
-export function hostRoom() {
-  const hosted = hostedRooms();
+/** The room of a share hosted by this page, and the owner's socket to it (room: its id, #4850: the page loaded again). */
+export function hostRoom(room = null) {
+  const hosted = hostedRooms({ room });
   return { hosted, WebSocket: hosted.owner };
 }
 

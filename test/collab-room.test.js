@@ -108,9 +108,11 @@ test('#3835 the owner\'s connection lost, with a grace: the room kept, its follo
   assert.equal(host.rooms.has(id), true);
   assert.equal(a.closed, null);
   assert.equal(host.rooms.get(id).owner, null);
-  // meanwhile: another follower joins, a follower's awareness reaches the others only (no owner), one leaves
+  assert.deepEqual(a.got.at(-1), { type: 'away', grace: 60_000 });   // (#4850: told it is away, for how long at most)
+  // meanwhile: another follower joins (told the owner is away), a follower's awareness reaches the others only (no
+  // owner), one leaves
   const [b] = join(8);
-  assert.deepEqual(b.got, [{ type: 'joined', owner: 1 }]);
+  assert.deepEqual(b.got, [{ type: 'joined', owner: 1 }, { type: 'away', grace: 60_000 }]);
   pa.message(frame(KIND.awareness, 9), true);
   assert.deepEqual(b.got.at(-1), [...fromFrame(7, frame(KIND.awareness, 9))]);
   const [c, pc] = join(9);
@@ -127,6 +129,7 @@ test('#3835 the owner\'s connection lost, with a grace: the room kept, its follo
   const s = socket(), ps = host.welcome(s, 'owner');
   ps.message(text({ type: 'resume', room: id, resume: secret, client: 1 }), false);
   assert.deepEqual(s.got, [{ type: 'opened', room: id, resume: secret }, { type: 'join', client: 7 }, { type: 'join', client: 8 }]);
+  assert.deepEqual([a.got.at(-1), b.got.at(-1)], [{ type: 'back' }, { type: 'back' }]);   // (#4850)
   ps.message(frame(KIND.update, 5), true);
   assert.deepEqual([a.got.at(-1), b.got.at(-1)], [[KIND.update, 5], [KIND.update, 5]]);
   // (and it ends as any: Stop Sharing)

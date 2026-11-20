@@ -47,7 +47,8 @@ Classroom. Veja [a avaliação automática](../en/grading.md) e [o GitHub Classr
   Experimentar, na simulação ou no emulador da placa, o projeto inteiro dentro do link. Ou um código QR.
 - **Ao vivo**: partilhe o projeto enquanto trabalha; a turma acompanha só a ver, ou edita consigo. A partir do sítio,
   quem o segue liga-se diretamente a si; [um retransmissor seu](live-relay.md), gratuito no Cloudflare, encontra-os e leva
-  as mensagens de quem está numa rede que bloqueia o caminho direto.
+  as mensagens de quem está numa rede que bloqueia o caminho direto. Recarregar a página, a sua ou a de quem o segue,
+  retoma a partilha: as mesmas ligações, quem o segue de volta sozinho.
 - **Juntar Contribuição…** traz de volta para o projeto a cópia de um aluno ou de um grupo, um desenho juntado pelos
   seus objetos.
 - **GitHub**: um projeto num repositório (commit, push, pull, ramos), também um trabalho do GitHub Classroom.

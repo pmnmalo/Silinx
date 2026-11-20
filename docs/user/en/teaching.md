@@ -47,7 +47,8 @@ programs: in the interface, on the command line for a whole class, or as a GitHu
   Try it, the simulation or the board emulator, the whole project inside the link. Or a QR code.
 - **Live**: share the project as you work; the class follows read only, or edits with you. From the site, your
   followers connect to you directly; [a relay of your own](live-relay.md), free on Cloudflare, finds them and carries
-  the messages of those whose network blocks a direct path.
+  the messages of those whose network blocks a direct path. Reloading the page, yours or a follower's, resumes it:
+  the same links, the followers back by themselves.
 - **Merge Contribution…** brings a student's or a group's copy back into the project, a drawing merged by its
   objects.
 - **GitHub**: a project in a repository (commit, push, pull, branches), a GitHub Classroom assignment too.

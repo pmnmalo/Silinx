@@ -917,7 +917,11 @@ async function boot() {
   // (the hash the start-up reads: a link given while it starts, after that, opened once the links are watched, #4234)
   const seen = location.hash;
   // a shared project's link (#3181): followed, read only, instead of the workspace's projects
-  const followed = /^#(view|follow|edit)=/.test(location.hash) && await (await import('./collab-follow.js')).startFollowing();
+  // (#4850: a share or a follow this tab had before its reload, resumed: a link given wins)
+  let resumed = null;
+  try { if (sessionStorage.getItem(prefKey('silinx.collab.resume'))) resumed = (await import('./collab-resume.js')).takeRecord(); } catch { /* none */ }
+  const followed = /^#(view|follow|edit)=/.test(location.hash) ? await (await import('./collab-follow.js')).startFollowing()
+    : resumed?.role === 'follower' && await (await import('./collab-follow.js')).resumeFollowing(resumed);
   // (one pasted into this tab's address bar later: only the fragment changes, the page is not loaded again, #3318)
   log(`${PRODUCT} ${VERSION_LABEL} Project Navigator — HDL design, schematics, behavioural simulation and Xilinx FPGA implementation/programming.`, 'info');
   if (api.standalone) {
@@ -965,6 +969,7 @@ async function boot() {
     } finally { delete document.documentElement.dataset.restoring; delete document.documentElement.dataset.starting; }   // (the work area shown, where the user was: #1339; the whole app, #1403)
   }
   else if (!asked) showLeftPage('start');
+  if (resumed?.role === 'owner' && !followed) await (await import('./collab-share.js')).resumeSharing(resumed);
   if (api.standalone && !followed && !asked && !link) import('./storage-late.js').then(m => m.reopenWhenGranted(last)).catch(() => {});   // (#4656)
   delete document.documentElement.dataset.starting;   // (no project reopened: the app shown at once, #1403)
   if (link) await (await import('./link-open.js')).openFromLink(link).finally(() => { S.linkOpened = true; });   // (the UI tests wait for it)

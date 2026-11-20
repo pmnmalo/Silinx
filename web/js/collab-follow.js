@@ -42,6 +42,8 @@ import { reportPath } from '/core/collab-runs.js';
 import { keepWireStyles } from './collab-wire-view.js';
 import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 import { collabLog } from './collab-log.js';
+import { followerRecord, restoredDoc } from '/core/collab-resume.js';
+import { keepOnReload, forgetRecord } from './collab-resume.js';
 
 const ARRIVE_MS = 20_000;
 let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
@@ -57,7 +59,8 @@ const d0 = p => S.docs.find(x => x.path === p && x.editor?.view);
 const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
 
 /** At start-up, an address to follow (#follow=…): joined, the project's name returned once it arrived (null: not a
- *  link to follow, broken, refused, or the follower did not agree). The hash is cleared (a reload does not join again). */
+ *  link to follow, broken, refused, or the follower did not agree). The hash is cleared (a reload does not join again
+ *  from it: from the record the page kept, #4850, resumeFollowing). */
 export async function startFollowing(hash = location.hash) {
   let link;
   try { link = parseFollowLink(hash); } catch (e) { history.replaceState(null, '', location.pathname + location.search); collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
@@ -91,14 +94,53 @@ export async function startFollowing(hash = location.hash) {
   const WS = link.via === 'host' ? await (await import('./collab-host.js')).hostSocket(link) : undefined;
   if (link.via === 'host' && !WS) return null;
   let session;
+  try { session = await joined(link, WS, name, link.sign, null, ARRIVE_MS); } catch (e) { collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
+  return followed(session, { hash, link, name });
+}
+
+// the room joined, the project arrived (`ms` at most): the session; its failure thrown
+async function joined(link, WS, name, sign, resumed, ms) {
+  let session;
   try {
     // (#3835: a relay's connection made again; a room the owner's page hosts, through the meeting point when the owner
     // was found there, never when the codes were exchanged by hand: they would have to be again)
-    session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign: link.sign, user: { name }, onEvent: ev => onEvent(ev), ...(WS ? (WS.rejoin ? { transport: WS.rejoin } : { reconnect: false }) : {}) });
-    await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ARRIVE_MS))]);
-  } catch (e) { session?.close(); collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
+    session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign, user: { name }, onEvent: ev => onEvent(ev), resumed, ...(WS ? (WS.rejoin ? { transport: WS.rejoin } : { reconnect: false }) : {}) });
+    await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ms))]);
+  } catch (e) { session?.close(); throw e; }
+  return session;
+}
+
+/** A follow resumed after its page was reloaded (#4850): the record taken back at start-up (collab-resume.js): the
+ *  same link, the name given then, no dialog; the document as it was, its client id the same (an editor's changes
+ *  neither lost nor sent twice); the project's name once it arrived as it is now (null: not resumed, said). */
+export async function resumeFollowing(rec) {
+  const no = why => { collabLog(`WARNING: Following the shared project did not resume after the page was reloaded (${why}): open its link again.`, 'warn'); return null; };
+  let link;
+  try { link = parseFollowLink(rec.hash); } catch (e) { return no(e.message); }
+  if (!link) return no('not a link to follow');
+  if (link.relay && !await relayOk(link.relay)) return no(notHere(link.relay));
+  if (link.via === 'host' && !link.host) return no('its codes were exchanged by hand');
+  let WS;
+  if (link.via === 'host') { try { WS = await (await import('./collab-meet.js')).ownerFound(link, RESUME_MS); } catch (e) { return no(e.message); } }
+  // (the relay may not have seen the page's old connection end yet: its client id still in the room, tried again)
+  let session = null, last = null;
+  for (const t0 = Date.now(); !session && Date.now() - t0 < 5000;) {
+    try { session = await joined(link, WS, rec.name, rec.session.sign, { ...rec.session, doc: restoredDoc(rec.session) }, RESUME_MS); } catch (e) {
+      last = e;
+      if (!/has this client id/.test(e.message)) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  if (!session) return no(last?.message || 'the project did not arrive');
+  return followed(session, { hash: rec.hash, link, name: rec.name, resumed: rec });
+}
+// (a follow resumed waits for the owner as long as the relay keeps its room for it: its page may be loading again too)
+const RESUME_MS = 150_000;
+
+// the project followed, its session joined: the page follows it
+function followed(session, { hash, link, name, resumed = null }) {
   const { project, owner } = docProject(session.doc);
-  fol = { name, session, following: true, driven: null, bound: new Map(), drawn: new Map(), top: link.top || null, act: followState(), front: undefined };
+  fol = { name, hash, session, following: resumed ? resumed.following : true, driven: null, bound: new Map(), drawn: new Map(), top: resumed ? null : link.top || null, act: followState(), front: undefined };
   Object.assign(collab, { role: 'follower', owner: owner || session.owner()?.name || '?', project: project.name, session, editor: session.editor });
   const real = { ...api };   // (its own backend, for a copy kept once following ends, #4198)
   Object.assign(api, followApi(api, session.doc, { warn: text => collabLog(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
@@ -109,7 +151,9 @@ export async function startFollowing(hash = location.hash) {
   trackOnEvents(document, tracking.poke);   // (#4647: a key, a click, a selection: looked at a frame later)
   tracking.poke();   // (what arrived with the project: put now, not at the next look)
   draw();
-  if (session.editor) collabLog(`Editing ${collab.owner}'s project "${project.name}" with them: its text files and drawings change as you all edit them (Following ${collab.owner}, in the toolbar).`, 'ok');
+  keepOnReload(kept);
+  if (resumed) collabLog(session.editor ? `Editing ${collab.owner}'s project "${project.name}" with them again after the page was reloaded.` : `Following ${collab.owner}'s project "${project.name}" again after the page was reloaded.`, 'ok');
+  else if (session.editor) collabLog(`Editing ${collab.owner}'s project "${project.name}" with them: its text files and drawings change as you all edit them (Following ${collab.owner}, in the toolbar).`, 'ok');
   else collabLog(`Following ${collab.owner}'s project "${project.name}", read only: their changes appear as they make them, and what they do (their documents, views and selection) while you follow them (Following ${collab.owner}, in the toolbar).`, 'ok');
   return project.name;
 }
@@ -160,12 +204,17 @@ function setFollowing(on) {
 /** Stops following: the project stays as it was, read only. */
 async function stopFollowing() {
   if (!fol?.session || fol.session.closed()) return;
+  forgetRecord();   // (#4850: a reload resumes nothing)
   await fol.session.close();
 }
+// (the follow as its page keeps it for a reload, #4850)
+const kept = () => (fol?.session && !fol.session.closed()
+  ? followerRecord({ hash: fol.hash, name: fol.name, session: fol.session.snapshot(), following: fol.following })
+  : null);
 
 function draw() {
   if (!fol) return;
-  const closed = fol.session.closed(), lost = !closed && !fol.session.connected();
+  const closed = fol.session.closed(), lost = !closed && (!fol.session.connected() || fol.session.away());
   const label = closed ? 'Not shared any more' : lost ? `Reconnecting to ${collab.owner}…` : fol.following ? `Following ${collab.owner}` : `Follow ${collab.owner}`;
   renderPresence({ label, me: { name: fol.name, role: fol.session.editor ? 'editor' : 'viewer', color: colorOf(fol.session.doc.clientID), me: true }, peers: closed || lost ? [] : fol.session.peers() });
 }
@@ -177,7 +226,14 @@ function onEvent(ev) {
     collabLog(`WARNING: The connection to ${collab.owner}'s project "${collab.project}" was lost: reconnecting${collab.editor ? ' (your changes meanwhile are sent once it is back)' : ' (what you see is as it was then until it is back)'}.`, 'warn');
     draw();
     clearShown();
-  } else if (ev.type === 'online') { collabLog(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
+  } else if (ev.type === 'away') {
+    // (#4850: the owner's page loading again, or its connection lost: the relay keeps its room for it a while)
+    const wait = ev.grace ? ` (at most ${Math.round(ev.grace / 60_000)} minute${Math.round(ev.grace / 60_000) === 1 ? '' : 's'})` : '';
+    collabLog(`WARNING: ${collab.owner}'s connection to the shared project "${collab.project}" was lost: reconnecting, waiting for them to come back${wait}; what you see is as it was then.`, 'warn');
+    draw();
+    clearShown();
+  } else if (ev.type === 'back') { collabLog(`${collab.owner} is back: "${collab.project}" as it is now.`, 'ok'); draw(); track(); }
+  else if (ev.type === 'online') { collabLog(`Reconnected to ${collab.owner}'s project "${collab.project}"${collab.editor ? ': your changes made meanwhile are sent' : ''}.`, 'ok'); draw(); track(); }
   else if (ev.type === 'closed') {
     // (one's own Stop Following: said, not warned, #4201; the owner's end or a connection lost for good: warned)
     if (ev.stopped) collabLog(`Stopped following ${collab.owner}'s project "${collab.project}": what you see is as it was then.`, 'info');

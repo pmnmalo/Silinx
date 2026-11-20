@@ -20,7 +20,7 @@
 //   -> a WebSocket (followRoom's) to the owner; channelMeeting(name): a meeting point of a page's own, between the
 //   pages of one browser (a BroadcastChannel: the tests', no network); trysteroMeeting({ joinRoom, selfId, … }).
 import { b64url } from './collab-crypto.js';
-import { newSigner, PUB_RE, SIG } from './collab-sign.js';
+import { newSigner, signerOf, pubOf, PUB_RE, SIG } from './collab-sign.js';
 import { withLoopback } from './collab-loopback.js';
 
 const subtle = () => globalThis.crypto.subtle;
@@ -42,10 +42,15 @@ export async function meetTopic(room) {
   return b64url(new Uint8Array(await subtle().digest('SHA-256', new TextEncoder().encode(`silinx-collab:meet:${room}`)))).slice(0, 32);
 }
 
-/** The owner's new key pair: { key (to sign, never leaves the page), pub (the link's) }. */
+/** The owner's new key pair: { key (to sign, never leaves the page), pub (the link's), text (the key's, kept in its
+ *  own tab only, for its page loaded again: hostKeyOf, #4850) }. */
 export async function newHostKey() {
-  const { key, pub } = await newSigner();
-  return { key, pub };
+  const { key, pub, text } = await newSigner();
+  return { key, pub, text };
+}
+/** The owner's key pair again from its text (#4850: its page loaded again, its followers' links the same). */
+export async function hostKeyOf(text) {
+  return { key: await signerOf(text), pub: pubOf(text), text };
 }
 
 /** The key that checks the owner's proofs (an error for a link's owner's key that is not one). */

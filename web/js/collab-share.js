@@ -35,7 +35,9 @@ import { liveDrawing, drawingKind, drawingText, sameDrawing, drawingModel, drawi
 import { shareRoom, colorOf } from '/core/collab-client.js';
 import { followLink, relayUrl, relayAddress, withTop, workersRelay } from '/core/collab-link.js';
 import { shareMode, hostedPaths, withPaths } from '/core/collab-paths.js';
-import { newHostKey } from '/core/collab-meet.js';
+import { newHostKey, hostKeyOf } from '/core/collab-meet.js';
+import { ownerRecord, restoredDoc } from '/core/collab-resume.js';
+import { keepOnReload, forgetRecord } from './collab-resume.js';
 import { linkField } from './link-field.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
 import { hdlWarning } from './design-only.js';
@@ -162,24 +164,28 @@ async function readAll(name) {
 
 /** Shares the open project as `name` (the link: share.link); via: 'relay' (the server's: a server edition's default;
  *  with `relay`, { address, key }, another Silinx's, that lets this site in, #3227) or 'host' (this page hosts the room:
- *  the browser edition's default; with `relay`, its followers met at that relay, #4543, else at the public meeting point). */
-export async function startSharing(name, { via = api.collab ? 'relay' : 'host', relay = null } = {}) {
+ *  the browser edition's default; with `relay`, its followers met at that relay, #4543, else at the public meeting point).
+ *  resumed: the record its page kept before it was reloaded (#4850, core/collab-resume.js): the same room and links. */
+export async function startSharing(name, { via = api.collab ? 'relay' : 'host', relay = null, resumed = null } = {}) {
   const other = relay ? relayAddress(relay.address) : null;
   if (relay && !other) throw new Error(`the relay's address is not an http(s) address: '${relay.address}'`);
   if (other && !await relayOk(other)) throw new Error(notHere(other));
   if (via === 'relay' && !other && !api.collab) throw new Error('the browser edition shares through a relay of its settings, or its own page');
   const project = S.project.name;
-  const doc = projectDoc(), bases = new Map();
+  // (#4850: the document as it was, its client id the same, the disk's changes since put into it as any)
+  const doc = resumed ? restoredDoc(resumed.session) : projectDoc(), bases = resumed ? new Map(resumed.bases) : new Map();
   publishProject(doc, { ...await readAll(project), owner: name, bases });
-  const host = via === 'host' ? (await import('./collab-host.js')).hostRoom() : null;
-  const hostKey = host ? await newHostKey() : null;
+  const host = via === 'host' ? (await import('./collab-host.js')).hostRoom(resumed?.session.room) : null;
+  const hostKey = host ? (resumed?.host ? await hostKeyOf(resumed.host.key) : await newHostKey()) : null;
+  // (a relay's room resumed with its secret; one this page hosts opened again with the same id and keys)
+  const again = resumed && { ...resumed.session, resume: host ? null : resumed.session.resume };
   const session = host
-    ? await shareRoom({ url: 'silinx-host:', WebSocket: host.WebSocket, doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) })
-    : await shareRoom({ url: relayUrl(other || location.href, 'share'), token: other ? relay.key || null : await api.collabToken(), doc, user: { name }, editors: true, onEvent: ev => onEvent(ev) });
+    ? await shareRoom({ url: 'silinx-host:', WebSocket: host.WebSocket, doc, user: { name }, editors: true, onEvent: ev => onEvent(ev), resumed: again })
+    : await shareRoom({ url: relayUrl(other || location.href, 'share'), token: other ? relay.key || null : await api.collabToken(), doc, user: { name }, editors: true, onEvent: ev => onEvent(ev), resumed: again });
   const base = location.origin + location.pathname, pub = hostKey?.pub ?? null;
   // (#4643: the way chosen; a relay of the browser edition's is the Cloudflare one: hosted, Live's choice, or a Worker's)
   const mode = shareMode({ hosted: !!host, relay: other, cloudflare: !!other && (!!host || workersRelay(other)) });
-  share = { name, project, session, doc, made: {}, base, via, mode, other, pub, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
+  share = { name, project, session, doc, made: resumed ? { ...resumed.made } : {}, base, via, mode, other, pub, relay, hostText: hostKey?.text ?? null, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub), known: resumed ? new Map(resumed.known) : new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share;
@@ -196,26 +202,39 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   setPresenceCommands(commands);
   setPresenceRoles({ set: (peer, role) => setRole(peer, role), editors: () => !!share?.session.editKey });   // (#4646)
   draw();
-  collabLog(`Sharing project "${project}": anyone with its link follows it live, read only (Share Project… shows the link; Stop Sharing ends it).`, 'ok');
-  if (other && !host) collabLog(`Shared through the relay at ${new URL(other).host}: it sees no file, only who is in.`, 'info');
-  if (host && other) {
-    collabLog(`This page hosts the shared project: its followers meet it at the relay at ${new URL(other).host}, then connect to it directly when they can, through the relay otherwise; it sees no file. It lasts while this page is open.`, 'info');
-    share.meet = (await import('./collab-meet.js')).meetFollowers(share, hostKey.key);
-  } else if (host) {
-    collabLog('This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code (Add a User…, in the toolbar, takes it); it lasts while this page is open.', 'info');
-    const s = share;
-    s.meet = (await import('./collab-meet.js')).meetFollowers(s, hostKey.key);
-  }
+  keepOnReload(kept);
+  if (resumed) collabLog(`Sharing project "${project}" again after the page was reloaded: the same links; its followers reconnect by themselves.`, 'ok');
+  else collabLog(`Sharing project "${project}": anyone with its link follows it live, read only (Share Project… shows the link; Stop Sharing ends it).`, 'ok');
+  // (the way it goes said once, at its start: not again when it resumes)
+  if (other && !host && !resumed) collabLog(`Shared through the relay at ${new URL(other).host}: it sees no file, only who is in.`, 'info');
+  if (host && other && !resumed) collabLog(`This page hosts the shared project: its followers meet it at the relay at ${new URL(other).host}, then connect to it directly when they can, through the relay otherwise; it sees no file. It lasts while this page is open.`, 'info');
+  else if (host && !resumed) collabLog('This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code (Add a User…, in the toolbar, takes it); it lasts while this page is open.', 'info');
+  if (host) share.meet = (await import('./collab-meet.js')).meetFollowers(share, hostKey.key);
   // (a hosted room's meeting: its followers' paths, drawn again as they change, #4643)
   if (host) { const s = share; s.onVia = () => { if (share === s) draw(); }; s.meet.then(m => { s.met = m; s.onVia(); }).catch(() => {}); }
   return share.link;
 }
+
+/** The share resumed after its page was reloaded (#4850): the record taken back at start-up (collab-resume.js), once
+ *  the project is open again; said in the console when it cannot be (new links then: Share Project…). */
+export async function resumeSharing(rec) {
+  if (share) return false;
+  const no = why => { collabLog(`WARNING: Sharing "${rec.project}" did not resume after the page was reloaded (${why}): Share Project… shares it again, with new links.`, 'warn'); return false; };
+  if (S.project?.name !== rec.project) return no('the project is not open');
+  try { await startSharing(rec.name, { via: rec.via, relay: rec.relay, resumed: rec }); } catch (e) { return no(e.message); }
+  return true;
+}
+// (the share as its page keeps it for a reload, #4850)
+const kept = () => (share && !share.session.closed()
+  ? ownerRecord({ project: share.project, name: share.name, via: share.via, relay: share.relay, host: share.hostText ? { key: share.hostText, pub: share.pub } : null, session: share.session.snapshot(), bases: share.bases, known: share.known, made: share.made })
+  : null);
 
 /** Stops sharing: the followers are told, and see the project no longer. */
 export async function stopSharing(why = null) {
   if (!share) return;
   const s = share;
   share = null;
+  forgetRecord();   // (#4850: a reload resumes nothing)
   s.hosted = null;
   clearInterval(s.timer);
   s.soon.cancel();

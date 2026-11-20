@@ -11,6 +11,7 @@
 //                    follower's path changed at a relay's: share.onVia() (#4643)
 //   findOwner(link) -> a WebSocket class for followRoom, 'codes' (the codes instead) or null (cancelled); the class's
 //                    rejoin(): the owner found there again, with no dialog (#3835: its connection lost, made again)
+//   ownerFound(link, ms) -> that class, the owner found there with no dialog, tried for `ms` (#4850: a page reloaded)
 //   publicServers(link) -> the follow dialog's line naming the public servers a hosted room's follower reaches (#3361)
 import { h, dialog } from './ui.js';
 import { prefKey } from './prefs.js';
@@ -61,6 +62,14 @@ export async function meetFollowers(share, hostKey) {
  *  lost, core/collab-client.js followRoom's transport): a WebSocket class; an error when not found (tried again later). */
 async function ownerAgain(link) {
   return meetOwner({ meeting: await meetingPoint(link.relay ? { address: link.relay } : null), room: link.room, key: link.key, host: link.host, ms: MEET_MS, maxReceive: OWNER_MAX });
+}
+
+/** The owner looked for at the meeting point, with no dialog, again and again for `ms` at most (#4850: a follower's
+ *  page reloaded, its owner's maybe too): a WebSocket class (its rejoin(): ownerAgain); the last error thrown. */
+export async function ownerFound(link, ms) {
+  for (const t0 = Date.now(); ;) {
+    try { const ws = await ownerAgain(link); ws.rejoin = () => ownerAgain(link); return ws; } catch (e) { if (Date.now() - t0 + MEET_MS > ms) throw e; await new Promise(r => setTimeout(r, 1000)); }
+  }
 }
 
 /** A follower looking for the owner at the meeting point, MEET_MS at most; the codes on their choice or after. */

@@ -4,7 +4,7 @@
 // change made meanwhile and the owner's both on both sides once it is back, on the disk too; the console's return; the
 // owner sees the editor again, its project untrusted by the editor's change (#3355). A follower's page in Portuguese: "A religar a Ana…". The owner's
 // connection cut and back (#3835, 4c): "Reconnecting…" in its toolbar, its room resumed, its change made meanwhile at
-// the follower's, who is told nothing; in Portuguese, "A religar…". The exact console lines; no warnings but those asserted.
+// the follower's, who is told only that the owner was away and is back (#4850); in Portuguese, "A religar…". The exact console lines; no warnings but those asserted.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
@@ -109,7 +109,7 @@ const LOST = (p) => `WARNING: Sharing "${p}": the connection to the relay was lo
 const exactly = (line) => new RegExp(`^${line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm');
 const BACK = (p) => new RegExp(`^Sharing "${p}": reconnected to the relay: your followers see your changes made meanwhile\\.$`, 'm');
 
-uiTest('#3835 the owner\'s connection lost: Reconnecting… in its toolbar, its room resumed; its change made meanwhile at the follower\'s, who is told nothing', E, async (page) => {
+uiTest('#3835 the owner\'s connection lost: Reconnecting… in its toolbar, its room resumed; its change made meanwhile at the follower\'s, who is told only that Ana was away and is back (#4850)', E, async (page) => {
   await makeProject(env, { name: 'Resumed', top: 'top', files: { 'src/top.vhd': TOP } });
   await page.openProject('Resumed');
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
@@ -128,8 +128,9 @@ uiTest('#3835 the owner\'s connection lost: Reconnecting… in its toolbar, its 
     await fp.waitFor((t) => window.Silinx.active?.editor?.getValue() === t, [`-- by Ana, meanwhile\n${TOP}`], { what: 'the owner\'s change made meanwhile' });
     await page.waitFor(() => document.querySelector('.collab-presence .collab-btn')?.textContent === 'Sharing (1)', [], { what: 'Sharing (1) again', timeout: 30000 });
     assert.equal(await label(fp), 'Following Ana');
+    await fp.waitConsole(/^Ana is back: "Resumed" as it is now\.$/m);
     assert.deepEqual(await warnings(page), [LOST('Resumed')]);
-    assert.deepEqual(await warnings(fp), []);
+    assert.deepEqual(await warnings(fp), ['WARNING: Ana\'s connection to the shared project "Resumed" was lost: reconnecting, waiting for them to come back (at most 2 minutes); what you see is as it was then.']);
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); }
   await page.eval(async () => (await import('/js/collab-share.js')).stopSharing());

@@ -18,7 +18,8 @@
 // - a room ends with its owner: at once when it stops sharing; its connection lost, after `limits.grace` (#3835: 0, at
 //   once, but on the relay), in which the owner resumes it with the secret its open was answered with (`resume`, a
 //   connection of its own, the relay's token again): its followers stay, and each is a join again for the owner (the
-//   whole document sent again); past it, its followers are told and closed.
+//   whole document sent again); past it, its followers are told and closed. Its followers are told it is away
+//   (#4850: { type: 'away', grace }, a follower joining meanwhile too) and back ({ type: 'back' }) once it resumed.
 // A participant is a socket: send(data, { binary }), close(code, reason), readyState (1: open), as a WebSocket of
 // `ws`; its transport gives each message to `message(data, binary)` (binary: a Uint8Array, or a Buffer) and its end to
 // `close()`. A platform whose rooms sleep (#4541: the Cloudflare relay's Durable Objects, whose memory is lost while
@@ -136,7 +137,8 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
           me = { role: 'owner', room: msg.room, client: msg.client };
           kept(ws, me);
           json(ws, { type: 'opened', room: msg.room, resume: r.resume });
-          for (const client of r.followers.values()) json(ws, { type: 'join', client });
+          // (#4850: the followers told it was away, told it is back)
+          for (const [f, client] of r.followers) { if (!old) json(f, { type: 'back' }); json(ws, { type: 'join', client }); }
           return;
         }
         if (msg.type === 'join') {
@@ -148,6 +150,8 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
           me = { role: 'follower', room: msg.room, client: msg.client };
           kept(ws, me);
           json(ws, { type: 'joined', owner: r.ownerClient });
+          // (#4850: a room whose owner is away, its follower told so: the project comes once it is back)
+          if (!r.owner) return json(ws, { type: 'away', grace: limits.grace });
           return json(r.owner, { type: 'join', client: msg.client });
         }
         return fail(ws, 'not a Silinx participant of this version');
@@ -208,10 +212,11 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
         const r = rooms.get(me.room);
         if (!r || r.owner !== ws) return;   // (a connection the owner's resume replaced)
         if (!limits.grace) return closeRoom(me.room, 'the owner stopped sharing');
-        // (#3835: kept for the owner's resume, its followers with it)
+        // (#3835: kept for the owner's resume, its followers with it; #4850: told it is away, and for how long at most)
         r.owner = null;
         r.grace = setTimeout(() => closeRoom(me.room, OWNER_LOST), limits.grace);
         r.grace.unref?.();
+        for (const f of r.followers.keys()) json(f, { type: 'away', grace: limits.grace });
         return;
       }
       const r = rooms.get(me.room);
