@@ -142,3 +142,38 @@ uiTest('#4809 an M4_1 pushed into: three M2_1, then the gates; its values from t
   assert.equal(await out(), '1');
   assert.deepEqual(await page.eval(() => window.Silinx.active.viewer.getDoc().symbols.map((x) => x.type).sort()), ['and2', 'and2', 'inv', 'or2']);
 });
+
+// #4811: a counter pushed into during a Try it: its count is the symbol's (forced: the composition's own register starts
+// at 0), its incrementer computing the next one, both following the clock edges of the schematic's Try it
+uiTest('#4811 a CB4CE pushed into: its count the symbol\'s in the Try it, its INC4 the next value, following the clock', E, async (page) => {
+  const doc = newDoc('top', 'vhdl');
+  const s = { id: 'S1', type: 'counter', x: 400, y: 300, rot: 0, mirror: false, name: 'U1', params: { width: 4, en: true, reset: 'async', dir: 'up', bits: false } };
+  doc.symbols.push(s);
+  for (const q of symbolPins(s)) {
+    const dx = q.dir === 'in' ? -80 : 80;
+    doc.ports.push({ id: `P${q.name}`, name: q.name, dir: q.dir, width: q.width || 1, x: q.x + dx, y: q.y });
+    doc.wires.push({ id: `W${q.name}`, points: [{ x: q.x + dx, y: q.y }, { x: q.x, y: q.y }] });
+  }
+  await makeProject(env, { name: 'CompCnt', files: { 'src/top.sch.json': JSON.stringify(normalizeDoc(doc)) } });
+  await page.openProject('CompCnt');
+  await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
+  await page.waitFor((ed) => document.querySelector(`${ed} svg .sym[data-id="S1"]`), [ED], { what: 'drawn' });
+  // a Try it, CE = 1, three clock edges: Q = 3
+  const edges = (k) => page.eval(async (n) => { const d = window.Silinx.docs.find((x) => x.id === 'sch:src/top.sch.json'), L = d.schEditor.liveSim; for (let i = 0; i < n; i++) L.cycle('PC'); d.schEditor.tryState?.(); }, k);
+  await page.eval(async () => { await window.Silinx.active.schEditor.tryWith({ PCE: { width: 1, value: 1n }, PCLR: { width: 1, value: 0n } }); });
+  await page.waitFor(() => window.Silinx.active?.schEditor?.simulating, [], { what: 'Try it' });
+  await edges(3);
+  await page.dblclick(`${ED} svg .sym[data-id="S1"] .hitbox`);
+  const val = (name) => page.eval((n) => { const d = window.Silinx.docs.find((x) => x.id === 'comp:CB4CE'), L = d?.viewer?.liveSim; const p = d?.viewer?.getDoc().ports.find((x) => x.name === n); return p && L?.portValue(p.id)?.v?.toString(); }, name);
+  await page.waitFor(async () => { const d = window.Silinx.docs.find((x) => x.id === 'comp:CB4CE'), L = d?.viewer?.liveSim; const p = d?.viewer?.getDoc().ports.find((x) => x.name === 'Q'); return L?.portValue(p.id)?.v === 3n; }, [], { what: 'its Q = 3, the symbol\'s' });
+  // into its INC4: A = 3, S = 4
+  await page.dblclick(`${ED} svg .sym[data-id="S1"] .hitbox`);
+  await page.waitFor(() => window.Silinx.active?.composition?.path.join('/') === 'CB4CE/INC4', [], { what: 'into U0' });
+  await page.waitFor(async () => { const d = window.Silinx.active, L = d.viewer.liveSim; return L?.portValue(d.viewer.getDoc().ports.find((x) => x.name === 'S').id)?.v === 4n; }, [], { what: 'S = 4' });
+  assert.equal(await val('A'), '3');
+  // two more edges in the schematic's Try it: A = 5, S = 6
+  await edges(2);
+  await page.eval(async () => (await import('/js/sch-composition.js')).liveUpdated(window.Silinx.docs.find((x) => x.id === 'sch:src/top.sch.json').schEditor));
+  await page.waitFor(async () => { const d = window.Silinx.active, L = d.viewer.liveSim; return L?.portValue(d.viewer.getDoc().ports.find((x) => x.name === 'A').id)?.v === 5n; }, [], { what: 'A follows: 5' });
+  assert.equal(await val('S'), '6');
+});

@@ -45,16 +45,14 @@ function describeChain(name, n, blocks) {
 }
 
 // an adder of n bits drawn as its blocks, the most significant on top: each block's operands and sum by their bits'
-// names (A(7:4)), its carry from the block below; CI a marker or GND, CO a marker or open
-function chain(lib, name, n, { ci, co }) {
-  const blocks = addBlocks(n), mods = blocks.map(b => adder(lib, b.w));
-  const c = canvas(name, describeChain(name, n, blocks) + (ci === 'gnd' ? ' No carry in: CI is 0.' : '') + (co === 'open' ? ' No carry out: CO open.' : ''));
+// names (A(7:4)), its carry from the block below; CI a marker, GND or VCC, CO a marker or open. `kind`: another chain of
+// the same shape (an incrementer of half adders, #4811): { block(w), ops, describe(name, n, blocks) }
+export function chain(lib, name, n, { ci, co }, kind = { block: w => adder(lib, w), ops: ['A', 'B'], describe: describeChain }) {
+  const blocks = addBlocks(n), mods = blocks.map(b => kind.block(b.w));
+  const c = canvas(name, kind.describe(name, n, blocks) + (ci === 'gnd' ? ' No carry in: CI is 0.' : ci === 'vcc' ? ' Its carry in 1.' : '') + (co === 'open' ? ' No carry out: CO open.' : ''));
   const X = 260, wMax = Math.max(...mods.map(m => instDef(m).w)), xOut = r10(X + wMax + 180);
   // (the buses' markers, below the description, their wires named by the blocks' bits)
-  c.marker('A', 'in', n, XM, TOP);
-  c.wire({ x: XM, y: TOP }, { x: XM + 60, y: TOP });
-  c.marker('B', 'in', n, XM, TOP + ROW);
-  c.wire({ x: XM, y: TOP + ROW }, { x: XM + 60, y: TOP + ROW });
+  kind.ops.forEach((g, i) => { c.marker(g, 'in', n, XM, TOP + ROW * i); c.wire({ x: XM, y: TOP + ROW * i }, { x: XM + 60, y: TOP + ROW * i }); });
   c.marker('S', 'out', n, xOut, TOP);
   c.wire({ x: xOut - 60, y: TOP }, { x: xOut, y: TOP });
   let y = TOP + 160, below = null;
@@ -63,7 +61,7 @@ function chain(lib, name, n, { ci, co }) {
     const b = blocks[i], I = c.inst(mods[i], X, y, `U${i}`);
     placed[i] = I;
     const bits = g => bitsName(g, n, b.lsb + b.w - 1, b.lsb);
-    for (const g of ['A', 'B']) { const p = I.pin(g); c.wire({ x: p.x - 60, y: p.y }, p); c.label(bits(g), p.x - 60, p.y); }
+    for (const g of kind.ops) { const p = I.pin(g); c.wire({ x: p.x - 60, y: p.y }, p); c.label(bits(g), p.x - 60, p.y); }
     const s = I.pin('S');
     c.wire(s, { x: s.x + 60, y: s.y });
     c.label(bits('S'), s.x + 60, s.y);
@@ -79,6 +77,9 @@ function chain(lib, name, n, { ci, co }) {
   if (ci === 'pin') {
     c.marker('CI', 'in', 1, XM, cin.y + ROW);
     c.wire(cin, { x: cin.x, y: cin.y + ROW }, { x: XM, y: cin.y + ROW });
+  } else if (ci === 'vcc') {
+    c.sym('vcc', { width: 1 }, cin.x - 70, cin.y + ROW - 30);
+    c.wire(cin, { x: cin.x, y: cin.y + ROW }, { x: cin.x - 60, y: cin.y + ROW });
   } else {
     c.sym('gnd', { width: 1 }, cin.x - 10, cin.y + ROW);
     c.wire(cin, { x: cin.x, y: cin.y + ROW });

@@ -107,7 +107,7 @@ test('symbol_info ADD8: its composition\'s levels; symbol_composition draws each
   assert.deepEqual(fa.text.split('\n').slice(0, 2), ['ADD8: FA1 = 2 × XOR2 + 2 × AND2 + OR2 (a level of ADD8)', 'FA1\'s drawing (a schematic, read-only; its modules: none, gates only):']);
   assert.deepEqual(fa.data.doc.symbols.map(s => s.type).sort(), ['and2', 'and2', 'or2', 'xor2', 'xor2']);
   await fails('symbol_composition', { project: 'fpga', symbol: 'ADD8', module: 'ADD16' }, 'no level \'ADD16\' in the composition of ADD8: one of ADD8, ADD4, FA1');
-  await fails('symbol_composition', { project: 'fpga', symbol: 'FDCE' }, 'FDCE: no composition (a symbol of the palette drawn as it is; the adders, subtractors, comparators, multiplexers, decoders, demultiplexers and encoders have one)');
+  await fails('symbol_composition', { project: 'fpga', symbol: 'FDCE' }, 'FDCE: no composition (a symbol of the palette drawn as it is; the adders, subtractors, comparators, counters, multiplexers, decoders, demultiplexers and encoders have one)');
   await fails('symbol_composition', { project: 'fpga', symbol: 'NOPE' }, 'no symbol \'NOPE\' in the palette');
 });
 
@@ -131,7 +131,7 @@ test('symbol_composition: a level by its path; with inputs, its values; their er
   assert.deepEqual(half.data.values, { A: '1', B: '0', S: '1', CI: '0', CO: '0' }, 'the inputs left out: 0, as a Try it starts');
   await fails('symbol_composition', { ...add8, path: ['U7'] }, 'path: no instance \'U7\' in ADD8: one of U1, U0');
   await fails('symbol_composition', { ...add8, path: ['U1', 'U0', 'X'] }, 'path: no instance \'X\' in FA1: one of none (gates only)');
-  await fails('symbol_composition', { ...add8, inputs: { Q: 1 } }, 'inputs: no input pin \'Q\' (A, B, CI)');
+  await fails('symbol_composition', { ...add8, inputs: { Q: 1 } }, 'inputs: no pin \'Q\' (A, B, CI)');
   await fails('symbol_composition', { ...add8, inputs: { A: 256 } }, 'inputs: A: 256 does not fit in its 8 bit(s)');
   await fails('symbol_composition', { ...add8, inputs: { B: 'ten' } }, 'inputs: B: \'ten\' is not a number');
   await fails('symbol_composition', { ...add8, module: 'FA1', inputs: { A: 1 } }, 'inputs: the level by its path (["U1", …]), so that its instance is known');
@@ -159,4 +159,16 @@ test('symbol_composition COMP8 signed: its SUB8\'s operands, the sign bits inver
   assert.deepEqual([top.data.module, top.data.values], ['COMP8_LT_S', { A: '128', B: '1', O: '1' }]);
   const sub = await ok('symbol_composition', { ...p, path: ['U1'] });
   assert.deepEqual([sub.data.module, sub.data.values], ['SUB8_NOBI', { A: '0', B: '129', D: '127', BO: '1' }], '0x00 − 0x81: a borrow');
+});
+
+// #4811: a counter's count given as its state: its incrementer takes it
+test('symbol_composition CB8CE: its INC8 takes the count Q given, and the next value', async () => {
+  await setup();
+  const p = { project: 'fpga', symbol: 'counter', params: { width: 8, en: true, reset: 'async', dir: 'up' } };
+  const inc = await ok('symbol_composition', { ...p, path: ['U0'], inputs: { CE: 1, Q: '0x5F' } });
+  assert.deepEqual([inc.data.module, inc.data.values], ['INC8', { A: '95', S: '96', CI: '1', CO: '0' }]);
+  const top = await ok('symbol_composition', { ...p, inputs: { CE: 1, Q: 255 } });
+  assert.deepEqual(top.data.values, { CE: '1', C: '0', CLR: '0', Q: '255' }, 'the count as given');
+  await fails('symbol_composition', { ...p, inputs: { Q: 256 } }, 'inputs: Q: 256 does not fit in its 8 bit(s)');
+  await fails('symbol_composition', { ...p, inputs: { D: 1 } }, 'inputs: no pin \'D\' (CE, C, CLR; a count, a state: Q)');
 });

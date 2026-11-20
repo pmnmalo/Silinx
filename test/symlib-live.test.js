@@ -62,3 +62,14 @@ test('#4809 an M8_1\'s upper M4_1 takes D4 … D7 and the selects below the top 
     assert.deepEqual(DD.levelValues([{ module: 'D3_8E' }, { module: 'D2_4E', instance: 'U2' }], top).values, { A0: a & 1n, A1: (a >> 1n) & 1n, E: e & (a >> 2n) }, `A = ${a}, E = ${e}`);
   }
 });
+
+// #4811: a counter's level below takes its inputs from the symbol's count (its output, forced: the composition's own
+// simulation starts at 0), not from a register of its own
+test('#4811 a CB8CE\'s INC8 takes the count Q of the symbol, and its carry in 1; forced outputs released on the next call', () => {
+  const c = composition('counter', { width: 8, en: true, reset: 'async', dir: 'up' }), D = derivedValues(c);
+  const path = [{ module: 'CB8CE' }, { module: 'INC8', instance: 'U0' }];
+  assert.deepEqual(D.levelValues(path, { CE: 1n, C: 0n, CLR: 0n }, { Q: 0x5An }).values, { A: 0x5An, CI: 1n });
+  assert.deepEqual(D.levelValues(path, { CE: 1n, C: 0n, CLR: 0n }, { Q: 0xFFn }).values, { A: 0xFFn, CI: 1n });
+  assert.deepEqual(D.levelValues([...path, { module: 'INC4', instance: 'U1' }], { CE: 1n, C: 0n, CLR: 0n }, { Q: 0x5An }).values, { A: 5n, CI: 0n }, 'the upper nibble: no carry from A');
+  assert.deepEqual(D.levelValues(path, { CE: 1n, C: 0n, CLR: 0n }).values, { A: 0n, CI: 1n }, 'no count given: the register\'s own, 0');
+});
