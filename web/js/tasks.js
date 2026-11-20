@@ -26,6 +26,7 @@
 // taskDot) have no DOM and are unit tested (test/tasks.test.js).
 
 import { h } from './ui.js';
+import { api } from './api.js';
 import { icons } from './icons.js';
 import { layoutToggled } from './layout-fit.js';
 import { messagesTask, initMessages } from './messages.js';
@@ -347,9 +348,11 @@ function followActive() {
 let implDot = null;
 function refreshDots() {
   const st = app?.S.status || {};
-  // an implementation ended while Implement is in front: its Design Summary comes forward (#802)
+  // an implementation ended while Implement is in front: its Design Summary comes forward (#802); not on a follower's
+  // page, whose marks are the owner's run's and whose document in front is the owner's (#4862: brought forward there,
+  // it was taken for the follower's own choice, browsing alone)
   const now = taskDot('impl', st);
-  if (implementationEnded(implDot, now) && on() && current() === 'impl' && app.S.project) app.openSummary({ wanted: () => current() === 'impl' });
+  if (implementationEnded(implDot, now) && on() && current() === 'impl' && app.S.project && !api.following) app.openSummary({ wanted: () => current() === 'impl' });
   implDot = now;
   if (on()) arrangeProgram(true);   // (Program's iMPACT, also once its document has its task: #803)
   // no top module: no Design Summary, whether opened behind with the project or restored with its documents (#1295)

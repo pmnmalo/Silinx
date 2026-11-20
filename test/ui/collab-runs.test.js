@@ -86,3 +86,38 @@ uiTest('#4002 a viewer follows the owner\'s runs: the marks, the run\'s lines on
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
 });
+
+// #4862: the owner's run ending while the viewer is on Implement (a report of the owner's in front) does not bring the
+// viewer's own Design Summary forward (#802's, the page's own): that was taken, at its next look, for the viewer's
+// choice, and it browsed alone, its console then without the owner's lines (a slow page saw the run's running mark).
+// The owner's page brings its own forward: the viewer follows it there.
+uiTest('#4862 the owner\'s run ending while the viewer follows it on Implement: the viewer still follows, the owner\'s document in front', E, async (page) => {
+  await makeProject(env, { name: 'GatesFront', template: 'gates' });
+  const pj = await env.server.api('GET', '/api/projects/GatesFront');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/GatesFront', { ...pj, synthTool: 'silinx' });
+  await page.openProject('GatesFront');
+  await synth(page);
+  await page.waitFor(() => ['ok', 'warn'].includes(window.SilinxApp.S.status.synth) && !window.SilinxApp.S.busy, [], { what: 'the owner\'s synthesis', timeout: 60000 });
+  const link = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana'); return m.sharedLink(); });
+  const fp = await join(link, 'Rui');
+  try {
+    await page.eval(() => window.SilinxApp.openSummary());
+    await page.eval(() => window.SilinxApp.openFile('build/open/gates_stat.txt'));
+    await fp.waitFor(() => window.Silinx.active?.path === 'build/open/gates_stat.txt', [], { what: 'the owner\'s report in front at the viewer\'s' });
+    const done = await page.eval(() => window.SilinxApp.S.status.synth);
+    // a run of the owner's, its running mark seen by the viewer, then its end
+    await page.eval(() => { const S = window.SilinxApp.S; S.busy = true; S.status.synth = 'running'; });
+    await fp.waitFor(() => window.SilinxApp.S.status.synth === 'running', [], { what: 'the viewer sees it running' });
+    await page.eval((d) => { const S = window.SilinxApp.S; S.status.synth = d; S.busy = false; }, done);
+    await fp.waitFor((d) => window.SilinxApp.S.status.synth === d, [done], { what: 'the viewer sees it end' });
+    await new Promise((r) => setTimeout(r, 2000));   // (a few looks of the follower's)
+    const front = await page.eval(() => window.Silinx.active?.id);
+    await fp.waitFor((id) => window.Silinx.active?.id === id, [front], { what: 'the owner\'s document in front at the viewer\'s' });
+    assert.equal(await fp.eval(() => document.querySelector('.collab-presence .collab-btn')?.textContent), 'Following Ana');
+    assert.doesNotMatch(await fp.consoleText(), /Browsing alone/);
+    assert.deepEqual(await warnings(fp), []);
+    assert.deepEqual(await warnings(page), []);
+    assert.deepEqual(fp.errors, []);
+  } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
+});
