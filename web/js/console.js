@@ -11,12 +11,14 @@ import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
 import { severityOf } from '/core/log-severity.js';
 import { messageLocation, projectPath } from '/core/message-location.js';
+import { makeMessage, severityOfClass } from '/core/message.js';
+import { lineSource, isShown, shownSourcesNow } from './messages.js';
 
 const $ = id => document.getElementById(id);
 
 const lineWatchers = new Set();
-/** Calls fn(line, class) for each line the console shows from now on (#4002: a shared project's runs, for its
- *  followers); returns the function that stops it. */
+/** Calls fn(line, class, message) for each line the console shows from now on (#4002: a shared project's runs, for
+ *  its followers; #4749: the line's message, core/message.js); returns the function that stops it. */
 export function onLogLine(fn) { lineWatchers.add(fn); return () => lineWatchers.delete(fn); }
 
 /** The Trust Project button's action of an untrusted project (#2830): its line said when it opens, every refusal of a
@@ -32,18 +34,26 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // last, or the application's (none running)
 // goto: what its entry of the Errors / Warnings tabs does when clicked (#4746: a drawing's Check, its item shown); none:
 // the file and line its text names, when the project has that file
+// Each line is a message (#4749, core/message.js), made here, its source decided here once (not read again from its
+// text by the message centre): its line's data-src, its entry's src, what the watchers get; the line's element holds it.
 export function log(text, cls = '', { diag = true, action = null, src = null, goto = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
   if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
-  for (const line of String(text).split('\n')) {
+  const lines = String(text).split('\n');
+  lines.forEach((line, i) => {
     startsRun(line);
-    el.append(h('div', { class: `ln ${cls}`, ...(src ? { 'data-src': src, 'data-own-src': '' } : {}) }, line));
-    if (diag) consoleMessage(line, cls, goto);
-    if (RUN_END.test(line)) { consoleRun = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
-    for (const fn of lineWatchers) { try { fn(line, cls); } catch { /* a watcher's own error: not the console's */ } }
-  }
+    let source = src;
+    if (!source) [source, lineCur] = lineSource(line, lineCur);
+    const msg = makeMessage({ text: line, severity: severityOfClass(cls), source, action: i === lines.length - 1 ? action : null, process: consoleProcess, run: consoleRun });
+    const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, line);
+    div.message = msg;
+    el.append(div);
+    if (diag) consoleMessage(line, cls, source, goto);
+    if (RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
+    for (const fn of lineWatchers) { try { fn(line, cls, msg); } catch { /* a watcher's own error: not the console's */ } }
+  });
   if (action) {
     const b = h('button', { type: 'button', class: `btn ln-action${action.trust !== undefined ? ' ln-trust' : ''}`, onclick: async () => {
       b.disabled = true;
@@ -60,13 +70,17 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
 // it, and its rerun first drops the entries the previous one gave the Errors / Warnings tabs (a fixed error is not
 // listed again, nor N times after N runs); none before any header, nor after a run's result ("Process … completed /
 // failed / stopped"). An entry of no run listed again replaces the same entry (a refusal said twice: listed once).
-let consoleRun = null;
-const RUN_HEADER = /^\s*Started : "[^"]+".*$/, RUN_END = /^\s*Process ("[^"]*" (completed|failed|stopped)|(failed|stopped)\b)/;
+let consoleRun = null, consoleProcess = null;
+// (the source the next line carries on, a line of no source given: its process's, else the application's, #4749)
+let lineCur = 'app';
+const RUN_HEADER = /^\s*Started : "([^"]+)".*$/, RUN_END = /^\s*Process ("[^"]*" (completed|failed|stopped)|(failed|stopped)\b)/;
 // a run's result, never an entry ("Process failed: <the job's error>" is: implement.js's jobLog leaves the error to it)
 const RUN_SUMMARY = /^\s*Process "[^"]*" (completed|failed|stopped)/;
 function startsRun(line) {
-  if (!RUN_HEADER.test(line)) return;
+  const m = RUN_HEADER.exec(line);
+  if (!m) return;
   consoleRun = line.trim().replace(/[.\s]+$/, '');
+  consoleProcess = m[1];
   const n = S.diags.length;
   S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === consoleRun));
   lastConsoleDiag = null;
@@ -83,7 +97,7 @@ const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.
 let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
-function consoleMessage(line, cls, goto) {
+function consoleMessage(line, cls, src, goto) {
   if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
   if (lastConsoleDiag && !cls && continuesDiag(lastConsoleDiag, line)) {
     lastConsoleDiag.message += ' ' + line.trim();
@@ -97,7 +111,7 @@ function consoleMessage(line, cls, goto) {
   if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
   else if (/=== SILINX FAILED/.test(line)) return;
   if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console', run: consoleRun, ...(goto ? { goto } : located(message)) };
+  const d = { severity, tool, message, file: null, line: 0, source: 'console', run: consoleRun, src, ...(goto ? { goto } : located(message)) };
   if (consoleRun === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
@@ -124,7 +138,7 @@ export function simDiagnostics(run) {
   return e => {
     const severity = SIM_SEVERITY[e?.kind];
     if (!severity || seen.size >= SIM_ENTRIES) return;
-    const d = { severity, tool: 'SSim', message: String(e.text ?? ''), file: e.file || null, line: e.line || 0, source: 'sim', run };
+    const d = { severity, tool: 'SSim', message: String(e.text ?? ''), file: e.file || null, line: e.line || 0, source: 'sim', run, src: 'sim' };   // (src: Simulation's filter, #4749)
     if (seen.has(diagKey(d))) return;
     seen.add(diagKey(d));
     S.diags.push(d);
@@ -199,9 +213,12 @@ function trustButton(d) {
   return b;
 }
 
-export function renderDiagnostics() {
+// (the tabs list the entries of the sources the console's filter shows, #4749: an entry of the console's lines its
+// line's source; the checks' and the editors' entries, of no source, always)
+export function renderDiagnostics({ quiet = false } = {}) {
   const diags = S.diags;
   const errs = diags.filter(d => d.severity === 'error'), warns = diags.filter(d => d.severity !== 'error');
+  const set = shownSourcesNow(), shown = d => !d.src || isShown(set, d.src);
   const fill = (el, list, ico) => {
     el.innerHTML = '';
     if (!list.length) { el.append(h('div', { class: 'ln info' }, t('No messages.'))); return; }
@@ -219,11 +236,12 @@ export function renderDiagnostics() {
       if (hint) el.append(hint.box);
     }
   };
-  fill($('console-errors'), errs, 'err');
-  fill($('console-warnings'), warns, 'warn');
-  $('err-count').textContent = errs.length ? `(${errs.length})` : '';
-  $('warn-count').textContent = warns.length ? `(${warns.length})` : '';
-  focusNewDiagnostics(errs, warns);
+  const shownErrs = errs.filter(shown), shownWarns = warns.filter(shown);
+  fill($('console-errors'), shownErrs, 'err');
+  fill($('console-warnings'), shownWarns, 'warn');
+  $('err-count').textContent = shownErrs.length ? `(${shownErrs.length})` : '';
+  $('warn-count').textContent = shownWarns.length ? `(${shownWarns.length})` : '';
+  focusNewDiagnostics(shownErrs, shownWarns, quiet);
 }
 
 // A new error brings the Errors tab forward, else a new warning the Warnings one (#2733), whoever wrote it: once per
@@ -237,7 +255,8 @@ let listedDiags = new Map(), broughtForward = null;
 const seenConsoleDiags = new WeakSet();
 const diagKey = d => `${d.severity}|${d.tool || ''}|${d.file || ''}|${d.line || 0}|${d.message}`;
 const pageShown = () => document.querySelector('#console-tabs .tab.active')?.dataset.page;
-function focusNewDiagnostics(errs, warns) {
+// (quiet: the filter changed, the entries it shows again not new: no tab brought forward)
+function focusNewDiagnostics(errs, warns, quiet = false) {
   const before = listedDiags;
   listedDiags = new Map();   // (each message's count: one listed more times than before is new)
   const isNew = d => {
@@ -248,6 +267,7 @@ function focusNewDiagnostics(errs, warns) {
     return n > (before.get(k) || 0) || fresh;
   };
   const newErr = errs.map(isNew).some(Boolean), newWarn = warns.map(d => isNew(d) && d.severity === 'warning').some(Boolean);
+  if (quiet) return;
   const page = newErr ? 'errors' : newWarn && !(errs.length && pageShown() === 'errors') ? 'warnings' : null;
   if (!page) {
     if (broughtForward && pageShown() === broughtForward && !(broughtForward === 'errors' ? errs : warns).length) showConsolePage('console');
@@ -293,7 +313,10 @@ async function applyDiagFix(d, f) {
 // the Clear button: the console's lines and the messages of the tabs
 export function clearConsole() {
   $('console-log').innerHTML = '';
+  lineCur = 'app';
   S.diags = [];
   lastConsoleDiag = null;
   renderDiagnostics();
 }
+// (the console's filter changed, web/js/messages.js: the tabs list its sources' entries, #4749)
+document.addEventListener('silinx:console-filter', () => renderDiagnostics({ quiet: true }));
