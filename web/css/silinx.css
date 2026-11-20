@@ -421,7 +421,8 @@ html[data-ui="silinx"] .xl-editor .cm-tooltip-autocomplete > ul > li { color: va
 html[data-ui="silinx"] .xl-editor .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--m-accent-soft); color: var(--m-fg); }
 
 /* SSim: the waveform stays black (as in ISim); the rest follows the interface */
-html[data-ui="silinx"] { --wave-names-bg: var(--m-surface); --wave-head-1: var(--m-surface-2); --wave-head-2: var(--m-surface-2); --wave-ruler-fg: var(--m-fg); --wave-ruler-tick: var(--m-muted); }
+html[data-ui="silinx"] { --wave-names-bg: var(--m-surface); --wave-head-1: var(--m-surface-2); --wave-head-2: var(--m-surface-2); --wave-ruler-fg: var(--m-fg); --wave-ruler-tick: var(--m-muted);
+  --wave-row-line: var(--m-border); --wave-divider-fg: var(--m-accent); --wave-twisty: var(--m-muted); --wave-count: var(--m-muted); --wave-forced: var(--m-warning); }
 html[data-ui="silinx"] .isim .ise-panel { border: none; }
 html[data-ui="silinx"] .isim .ise-panel > .caption { border-bottom: 1px solid var(--m-border); }
 html[data-ui="silinx"] .isim-toolbar .tb-btn:hover:not(:disabled) { background: var(--m-hover); }
