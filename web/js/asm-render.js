@@ -141,7 +141,7 @@ export function mountRender(ctx) {
           `<rect width="${tw}" height="20" rx="4"/><text x="8" y="10.5" dominant-baseline="central">${esc(label)}</text></g>`;
       } else if (n.type === 'decision') {
         inner += `<polygon class="asm-shape" points="0,${-hh / 2} ${w / 2},0 0,${hh / 2} ${-w / 2},0"/>`;
-        inner += `<text class="asm-text" x="0" y="0" dominant-baseline="central" text-anchor="middle">${esc(n.cond ? drawnCond(n.cond) : '?')}</text>`;   // (in the notation chosen: #4417)
+        inner += `<text class="asm-text" x="0" y="0" dominant-baseline="central" text-anchor="middle">${esc(n.cond ? drawnCond(n.cond) : '?')}</text>`;   // (as typed, #4888)
       } else if (n.type === 'case') {
         const k = hh / 2;
         inner += `<polygon class="asm-shape" points="${-w / 2},0 ${-w / 2 + k},${-hh / 2} ${w / 2 - k},${-hh / 2} ${w / 2},0 ${w / 2 - k},${hh / 2} ${-w / 2 + k},${hh / 2}"/>`;

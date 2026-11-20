@@ -12,7 +12,7 @@ import { setupUi, uiTest, makeProject } from './harness.js';
 import { newTable, normalizeTable, analyzeOutput } from '../../core/logic.js';
 import { showExpr } from '../../core/expr-notation.js';
 import { overlineToSlash, OVERLINE, barRuns } from '../../core/overline.js';
-import { showCondText } from '../../core/expr-notation.js';
+import { drawnAsTyped } from '../../core/expr-notation.js';
 import { fsmToAsm, normalizeFsm } from '../../core/fsm.js';
 
 let env;
@@ -141,13 +141,14 @@ uiTest('#4484 the Engineering notation\'s bars on a state diagram\'s arcs and an
   const fsm = {
     name: 'mul', lang: 'vhdl', inputs: [{ name: 'equal', width: 1 }, { name: 'a', width: 1 }, { name: 'b', width: 1 }], outputs: [{ name: 'inc', width: 1, default: '0' }],
     states: [{ id: 's', name: 'MUL2', x: 100, y: 100 }, { id: 'u', name: 'MUL3', x: 340, y: 100, outputs: { inc: '1' } }, { id: 'v', name: 'MUL4', x: 340, y: 300 }],
-    transitions: [{ id: 't1', from: 's', to: 'u', cond: '!equal' }, { id: 't2', from: 'u', to: 'v', cond: '!(!a && b)' }, { id: 't3', from: 'v', to: 's', cond: '!a && !b' }], initial: 's',
+    transitions: [{ id: 't1', from: 's', to: 'u', cond: '/equal' }, { id: 't2', from: 'u', to: 'v', cond: '/(/a.b)' }, { id: 't3', from: 'v', to: 's', cond: '/a./b' }], initial: 's',
   };
   const asm = fsmToAsm(normalizeFsm(fsm));
   await makeProject(env, { name: 'SvgBars', files: { 'src/mul.fsm.json': JSON.stringify(fsm, null, 2), 'src/mul.asm.json': JSON.stringify(asm, null, 2) } });
   await page.openProject('SvgBars');
   await page.eval(async () => (await import('/js/notation.js')).notationMenu().submenu[0].action());   // (Electronics / Engineering)
-  const written = fsm.transitions.map((t) => showCondText(t.cond, 'engineering'));
+  // (typed with the slash NOT: drawn as typed, its bars, #4888)
+  const written = fsm.transitions.map((t) => drawnAsTyped(t.cond, 'engineering'));
   assert.ok(written.every((w) => w.includes(OVERLINE)) && written.some((w) => barRuns(w).bars.some((b) => b.level === 2)), 'the conditions: bars, one nested');
   try {
     // ---- the state diagram's arcs, at its fitted zoom and zoomed in, in both themes

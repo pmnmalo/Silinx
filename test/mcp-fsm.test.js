@@ -6,6 +6,7 @@
 // transition's look set (the HDL unchanged), the same again (nothing written), a value refused (nothing written), back
 // to the default (no look in the file), Check's error on a look not valid written by write_file. A state diagram whose
 // conditions are in every notation of the logic operators (#3907), written by write_file: check_drawing, simulate_drawing.
+// A condition and an output's value kept as typed (#4888): oper == "000" not written again as 3'b000.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -191,5 +192,38 @@ test('#4489 set_fsm_condition: a transition\'s condition typed, its Else box tic
     [{ transition: 't9', otherwise: true }, `no transition 't9' in ${F}`], [{ path: 'src/el.v', transition: 't1', otherwise: true }, 'src/el.v: not a state diagram (.fsm.json)']]) {
     const r = await set(args);
     assert.deepEqual([r.isError, r.text], [true, `set_fsm_condition: ${why}`]);
+  }
+});
+
+test('#4888 set_fsm_condition and set_fsm_outputs keep what was typed (oper == "000", oper = 3\'b001 and go, "010"), returned and read back as typed; the HDL each language\'s', async () => {
+  const machine = (lang) => ({
+    name: 'ops', lang, inputs: [{ name: 'oper', width: 3 }, { name: 'go', width: 1 }], outputs: [{ name: 'z', width: 3, default: '0' }],
+    states: [{ id: 's', name: 'S', x: 100, y: 100 }, { id: 'u', name: 'U', x: 340, y: 100, outputs: { z: '1' } }],
+    transitions: [{ id: 't1', from: 's', to: 'u', cond: 'go' }, { id: 't2', from: 'u', to: 's', cond: '' }], initial: 's',
+  });
+  for (const lang of ['vhdl', 'verilog']) {
+    const pj = `typed${lang}`, F = 'src/ops.fsm.json', H = `src/ops.${lang === 'vhdl' ? 'vhd' : 'v'}`;
+    await ok('new_project', { name: pj });
+    await ok('write_file', { project: pj, path: F, text: JSON.stringify(machine(lang), null, 2) });
+    const saved = async () => JSON.parse((await ok('read_file', { project: pj, path: F })).text);
+    const test = async () => (await ok('read_file', { project: pj, path: H })).text.split('\n').filter((l) => /\bif\b/.test(l) && /\boper\b/.test(l)).map((l) => l.trim());
+    for (const [typed, want] of [
+      ['oper == "000"', lang === 'vhdl' ? 'if unsigned(oper) = 0 then' : "if (oper == 3'b000) begin"],
+      ["oper = 3'b001 and go", lang === 'vhdl' ? "if (unsigned(oper) = 1) and (go = '1') then" : "if ((oper == 3'b001) && go) begin"],
+      ["oper == 'h5 || go == '1'", lang === 'vhdl' ? "if (unsigned(oper) = 5) or (go = '1') then" : "if ((oper == 4'h5) || (go == 1'b1)) begin"],
+    ]) {
+      const r = await ok('set_fsm_condition', { project: pj, path: F, transition: 't1', condition: typed });
+      assert.deepEqual(r, { isError: false, text: `Transition S → U: condition set: ${typed}\n${H} updated from ${F}`,
+        data: { project: pj, path: F, transition: 't1', condition: typed, otherwise: false, problems: [], hdl: { file: H, written: true } } });
+      assert.equal((await saved()).transitions[0].cond, typed);
+      assert.deepEqual(await test(), [want], `${lang}: ${typed}`);
+    }
+    // an output's value as typed: VHDL's bit string kept, the HDL its language's
+    const o = await ok('set_fsm_outputs', { project: pj, path: F, state: 'U', values: { z: '"010"' } });
+    assert.deepEqual([o.text.split('\n')[0], o.data.outputs], ['State U: outputs set: z = "010"', { z: '"010"' }]);
+    assert.deepEqual((await saved()).states[1].outputs, { z: '"010"' });
+    assert.match((await ok('read_file', { project: pj, path: H })).text, lang === 'vhdl' ? /z <= "010";/ : /z = 3'b010;/);
+    // Check: no error, no warning
+    assert.equal((await ok('check_drawing', { project: pj, file: F })).text, 'Process "Check State Diagram" of ops.fsm.json completed successfully.');
   }
 });
