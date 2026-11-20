@@ -483,7 +483,7 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
    (one below the other on a phone); Live's way explained below the row, the relay set (its address, Change…) or none
    (said, Set Up a Cloudflare Relay…) below the Cloudflare one's */
 .share-how-three .share-how-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 16px; }
-.share-via { margin: 0 0 12px; }
+.share-via { margin: 8px 0 12px; }   /* (below Your name, #4714) */
 .share-via > [hidden] { display: none; }
 .share-via-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .share-via-at { font: 11px var(--mono, monospace); overflow-wrap: anywhere; }

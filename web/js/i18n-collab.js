@@ -18,12 +18,12 @@ export const COLLAB_PT = {
   'Shared project: who is in it, and its commands': 'Projeto partilhado: quem está nele, e os seus comandos',
   'Your name, as they see it:': 'O seu nome, como o veem:', 'you': 'você', 'owner': 'dono', 'follower': 'seguidor', 'viewer': 'espectador',
   // (each way of sharing in one sentence, of the same length, #4712: web/js/share-how.js)
-  'Others follow the project live, read only, through this Silinx server: its files, its drawings and what you do.':
-    'Outros seguem o projeto em direto, só de leitura, por este servidor Silinx: os ficheiros, os desenhos e o que faz.',
-  'Others follow the project live, read only, connected straight to your browser: no setup, but some networks block it.':
-    'Outros seguem o projeto em direto, só de leitura, ligados ao seu navegador: sem configuração, mas há redes que o bloqueiam.',
-  'Others follow the project live, read only, through your own Cloudflare relay: it works on any network, schools too.':
-    'Outros seguem o projeto em direto, só de leitura, pelo seu retransmissor Cloudflare: funciona em qualquer rede, até escolas.',
+  'Others follow the project live, read only: its files and drawings as they change, and what you do. They connect through this Silinx server, with nothing to set up. Anyone who can reach this server and has the link can follow it as you work.':
+    'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Ligam-se através deste servidor Silinx, sem nada a configurar. Quem consegue chegar a este servidor e tem a ligação pode segui-lo enquanto trabalha.',
+  'Others follow the project live, read only: its files and drawings as they change, and what you do. They connect straight to your browser through the public meeting point, with no setup. Some school and office networks block these connections.':
+    'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Ligam-se diretamente ao seu navegador pelo ponto de encontro público, sem configuração. Algumas redes de escolas e empresas bloqueiam estas ligações.',
+  'Others follow the project live, read only: its files and drawings as they change, and what you do. They meet you at your own relay on Cloudflare, set up once in the Collaboration tab. It works on any network, schools included, on the free plan.':
+    'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Encontram-no num retransmissor seu no Cloudflare, configurado uma vez no separador Colaboração. Funciona em qualquer rede, escolas incluídas, no plano gratuito.',
   'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).':
     'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e o que o seu dono faz (os seus documentos, vistas, simulações, emuladores e processos).',
   // (editors, #3182: web/js/collab-share.js)

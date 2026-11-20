@@ -49,10 +49,10 @@ const menuPick = async (page, label) => {
 };
 
 // each way of sharing in one sentence, of the same length (#4712)
-const COPY_ABOUT = 'A link with the whole project inside, as it is now: whoever opens it gets a copy of every file, with nothing to host.';
-const LIVE_ABOUT = 'Others follow the project live, read only, through this Silinx server: its files, its drawings and what you do.';
-const COPY_PT = 'Uma ligação com o projeto todo lá dentro, tal como está: quem a abre recebe uma cópia de cada ficheiro, sem nada a alojar.';
-const LIVE_PT = 'Outros seguem o projeto em direto, só de leitura, por este servidor Silinx: os ficheiros, os desenhos e o que faz.';
+const COPY_ABOUT = 'A link that opens the project in Silinx, for slides or a message, with the whole project inside it: no file to host. Whoever opens it gets a copy of every file and its comments, as it is now. Later changes are not in it: share it again to send them.';
+const LIVE_ABOUT = 'Others follow the project live, read only: its files and drawings as they change, and what you do. They connect through this Silinx server, with nothing to set up. Anyone who can reach this server and has the link can follow it as you work.';
+const COPY_PT = 'Uma ligação que abre o projeto no Silinx, para diapositivos ou uma mensagem, com o projeto todo lá dentro: nenhum ficheiro a alojar. Quem a abre recebe uma cópia de cada ficheiro e dos comentários, tal como está. As alterações seguintes não vão: partilhe-o de novo.';
+const LIVE_PT = 'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Ligam-se através deste servidor Silinx, sem nada a configurar. Quem consegue chegar a este servidor e tem a ligação pode segui-lo enquanto trabalha.';
 
 uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, each link made by its Generate, hidden, its QR code; Stop Sharing; Add a User… in the menu', E, async (page) => {
   await make(page, 'qrlive', 'gates');
@@ -428,7 +428,7 @@ uiTest('#4676 Share Project: Live to A copy and back, one window in every frame,
       await same(`A copy, ${width} px`, 'copy', COPY_ABOUT);
       await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
       try {
-        await page.waitFor(() => /^Uma ligação com o projeto todo/.test(document.querySelector('.dlg-overlay .share-about > p[data-way=copy]')?.textContent || ''), [], { what: 'Portuguese' });
+        await page.waitFor(() => /^Uma ligação que abre o projeto no Silinx/.test(document.querySelector('.dlg-overlay .share-about > p[data-way=copy]')?.textContent || ''), [], { what: 'Portuguese' });
         await same(`A copy, ${width} px, Portuguese`, 'copy', COPY_PT);
         checkFrames(await framesOf(page, 'how-live', 'live'), 'copy', 'live', `A copy to Live, ${width} px, Portuguese`);
         await same(`Live, ${width} px, Portuguese`, 'live', LIVE_PT);

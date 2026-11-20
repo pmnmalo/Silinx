@@ -139,8 +139,9 @@ export async function shareProjectDialog({ module = null, view = null, via = und
     title: action, width: SHARE_WIDTH, className: 'share-dlg',   // (a copy's size: switching keeps the window as it is, #4617)
     onOpen: ({ close }) => { closeIt = () => close(null); draw(); shown?.(); setTimeout(() => { if (!share) { input.focus(); input.select(); } }, 0); },
     body: h('div', { class: 'collab-dlg' },
-      way.el, ways?.el ?? null,   // (the Share: row first, the way's sentence below it, #4712)
-      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr, links),
+      way.el,   // (the Share: row first, the way's sentence below it, #4712)
+      h('label', {}, 'Your name, as they see it:'), nameBox, nameErr,
+      ways?.el ?? null, links),   // (the relay set below the name, #4714)
     buttons: btns,
   });
   ways?.off();

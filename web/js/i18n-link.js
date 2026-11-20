@@ -7,8 +7,8 @@ export const LINK_PT = {
   'Share:': 'Partilhar:', 'A copy': 'Uma cópia', 'A link with the project in it': 'Uma ligação com o projeto lá dentro',
   'Others follow it as you work': 'Os outros seguem-no enquanto trabalha',
   // (A copy in one sentence, of the same length as Live's ways', #4712: web/js/share-how.js)
-  'A link with the whole project inside, as it is now: whoever opens it gets a copy of every file, with nothing to host.':
-    'Uma ligação com o projeto todo lá dentro, tal como está: quem a abre recebe uma cópia de cada ficheiro, sem nada a alojar.',
+  'A link that opens the project in Silinx, for slides or a message, with the whole project inside it: no file to host. Whoever opens it gets a copy of every file and its comments, as it is now. Later changes are not in it: share it again to send them.':
+    'Uma ligação que abre o projeto no Silinx, para diapositivos ou uma mensagem, com o projeto todo lá dentro: nenhum ficheiro a alojar. Quem a abre recebe uma cópia de cada ficheiro e dos comentários, tal como está. As alterações seguintes não vão: partilhe-o de novo.',
   'This edition of Silinx does not share a project live.': 'Esta edição do Silinx não partilha um projeto em direto.',
   'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.':
     'Um Silinx aberto a partir de um ficheiro não tem um endereço que os outros possam abrir: abra o Silinx a partir do seu sítio para partilhar um projeto em direto.',
