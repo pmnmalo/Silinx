@@ -45,7 +45,9 @@ That's all. Things to know:
   are kept. The first time Silinx opens in Chrome or Edge, the console offers **Choose a Workspace
   Folder…** or **Keep in This Browser**; with a folder chosen, the projects already in the browser can
   be copied or moved into it (a move asks before deleting them from the browser). Firefox and Safari
-  cannot open a folder: there the projects stay in the browser.
+  cannot open a folder: there the projects stay in the browser. A project kept only in the browser and not
+  backed up for 7 days (exported as a Silinx project, or committed to GitHub) is said once in the console when
+  it opens, with **Export Project (.zip)** and **Store Project in a GitHub Repository…** buttons.
 - **Implement Design** and **Generate Programming File** run the Silinx toolchain in the browser
   (Basys2, Nexys2, Nexys3, Atlys and iCEBreaker boards; the first run downloads its tools from the site, about 100 MB, then the
   browser keeps them; the downloaded `Silinx.html` too): the bitstream (`<top module>.bit`, e.g. `blinky.bit`) is downloaded.

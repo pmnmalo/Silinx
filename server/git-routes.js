@@ -3,6 +3,8 @@
 // hint ({ error, hint, files }), which the console shows.
 import * as Git from './git.js';
 import * as GH from './git-github.js';
+import * as backupStore from './backup-store.js';
+import { projectDir } from './projects.js';
 
 // the back end: the system's git, or GitHub's API (SILINX_GIT=github, #3196)
 const B = () => (GH.githubBackend() ? GH : Git);
@@ -39,7 +41,8 @@ export function registerGitRoutes(api) {
   api.get('/projects/:p/git/status', route(req => B().gitStatus(req.params.p)));
   api.post('/projects/:p/git/init', route(req => B().gitInit(req.params.p, { remote: body(req).remote || null })));
   api.post('/projects/:p/git/commit', route(req => B().gitCommit(req.params.p, body(req).message)));
-  api.post('/projects/:p/git/push', route(req => B().gitPush(req.params.p)));
+  // (a push: the project's back-up on GitHub, #4971)
+  api.post('/projects/:p/git/push', route(async req => { const r = await B().gitPush(req.params.p); await backupStore.record(projectDir(req.params.p), 'github'); return r; }));
   api.post('/projects/:p/git/pull', route(async req => B().gitPull(req.params.p, { resolve: (await import('../core/git-resolve.js')).checkChoices(body(req).resolve) })));
   // the branches (#4213): listed, made, switched, merged (Merge Branch…'s conflicts resolved as a pull's)
   api.get('/projects/:p/git/branches', route(req => B().gitBranches(req.params.p)));

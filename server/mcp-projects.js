@@ -17,8 +17,16 @@ import { designProjectInfo } from './mcp-design-only.js';
 import { flowFiles } from '../core/flow-files.js';
 import { topRefusal } from '../core/project-entries.js';
 import { toolError, clip, projectPath, readProject, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
+import { backupOfDir } from './backup-store.js';
+import { lastBackup, BACKUP_HOW } from '../core/backup.js';
 
 // a project the MCP server makes is untrusted (#2981): its tools' results say so
+/** project_info's result with where the project is stored and its last back-up (#4971). */
+function withBackup(name, r) {
+  const folder = P.projectDir(name), last = lastBackup(backupOfDir(folder));
+  return { ...r, text: `${r.text}\n  stored in the folder ${folder} on the disk; last back-up: ${last ? `${last.at}, ${BACKUP_HOW[last.how]}` : 'none recorded'}`,
+    data: { ...r.data, stored: { kind: 'folder', folder }, lastBackup: last } };
+}
 const UNTRUSTED = ' It is untrusted, as every project an assistant makes: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.';
 
 // a schematic's text with its unnamed instances named (#3300): { text, names }, or null when none is (or not JSON)
@@ -164,14 +172,15 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'A project\'s top module, test bench (simulation top), device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and the Simulation view, as the Design pane lists them (the top first, then the names in natural order: x_2 before x_10), and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images; under the top module in the Implementation view and in Implement\'s and Emulate\'s panels); shared live by share_project: sharing, its mode and its followers, each with its path (p2p or relay, #4643).',
+    description: 'Where a project is stored (stored: its folder on the disk) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded: an Export Project (.zip) as a Silinx project or export_project kind silinx, a Push to GitHub or git_push); its top module, test bench (simulation top), device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and the Simulation view, as the Design pane lists them (the top first, then the names in natural order: x_2 before x_10), and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images; under the top module in the Implementation view and in Implement\'s and Emulate\'s panels); shared live by share_project: sharing, its mode and its followers, each with its path (p2p or relay, #4643).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
       const pj = await readProject(name);
       // (a design and simulation project, #3780: its HDL not shown, nor its internal device)
       // (shared live by share_project, #4643: its mode, its followers and their paths)
-      const shared = async r => (await import('./mcp-collab.js')).withSharing(name, r);
+      // (where it is kept and its last back-up, #4971: the application's own, as its Start page's)
+      const shared = async r => (await import('./mcp-collab.js')).withSharing(name, withBackup(name, r));
       if (isDesignOnly(pj)) return shared(designProjectInfo(name, pj, await P.fileTree(name)));
       const files = (pj.files || []).map(f => ({ path: f.path, lang: f.lang, role: f.role || 'design' }));
       const all = (await P.fileTree(name)).filter(f => !/^build\//.test(f));

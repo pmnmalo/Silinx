@@ -63,8 +63,10 @@ test('a design project: its drawings, Check Syntax, the Test Bench Wizard and th
   assert.match(sim.text, /^\[200\.000 ns\] NOTE: TEST PASSED: 8 vector\(s\) \(no expected values\)\nSimulation of <tb_traffic> stopped at 400 ns\.\n/);
   assert.doesNotMatch(sim.text, /ERROR|WARNING/);
   const info = await ok('project_info', { project: 'd1' });
-  assert.equal(info.text, 'd1: a design and simulation project (no FPGA), top traffic, test bench tb_traffic\n  src/traffic.fsm.json');
-  assert.deepEqual(info.data, { project: 'd1', kind: 'design', top: 'traffic', simTop: 'tb_traffic', device: null, board: null, constraints: null, files: ['src/traffic.fsm.json'], untrusted: info.data.untrusted });
+  // (where it is stored and its last back-up, #4971)
+  assert.equal(info.text, 'd1: a design and simulation project (no FPGA), top traffic, test bench tb_traffic\n  src/traffic.fsm.json\n  stored in the folder <workspace>/d1 on the disk; last back-up: none recorded');
+  assert.deepEqual(info.data, { project: 'd1', kind: 'design', top: 'traffic', simTop: 'tb_traffic', device: null, board: null, constraints: null, files: ['src/traffic.fsm.json'], untrusted: info.data.untrusted,
+    stored: { kind: 'folder', folder: '<workspace>/d1' }, lastBackup: null });
 });
 
 test('a design project: the flow\'s tools refused', async () => {

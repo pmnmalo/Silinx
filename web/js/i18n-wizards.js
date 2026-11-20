@@ -6,6 +6,8 @@ export const WIZARDS_PT = {
   'Choose a Workspace Folder…': 'Escolher uma Pasta de Trabalho…', 'Keep in This Browser': 'Manter Neste Navegador',
   'Projects in This Browser': 'Projetos Neste Navegador', 'Move…': 'Mover…', 'Not Now': 'Agora Não',
   'Delete from This Browser': 'Apagar Deste Navegador', 'Keep Them': 'Mantê-los',
+  // the back-up reminder's button (#4971, web/js/backup-reminder.js)
+  'Export Project (.zip)': 'Exportar Projeto (.zip)',
   'Wizard >': 'Assistente >',   // New Source's button (#958, #2082)
   'Damaged: silinx.json cannot be read': 'Danificado: o silinx.json não pode ser lido',   // (Open Project's damaged project, #4755)
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)

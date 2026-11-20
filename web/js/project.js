@@ -79,6 +79,8 @@ async function openProjectNow(name, { startup = false } = {}) {
   log(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
   // a project from outside (#2830): what waits for the user's trust, and the button that gives it
   if (!isTrusted(S.project)) appLog(untrustedNotice(name, S.project), 'info', { action: trustAction(name) });   // (shown under every filter and task, #4729)
+  // (the browser edition: a project kept only in the browser's storage and not backed up for days, said once, #4971)
+  if (api.standalone) import('./backup-reminder.js').then(m => m.remindBackup(name)).catch(() => {});
   warnReservedNames();
   // the processes' status of the last run, its synthesis up to date or not (#280), restored before the project is
   // used: not awaited, it drew the Processes panel again under a double-click on a process and Implement Design
