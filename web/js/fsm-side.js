@@ -87,7 +87,7 @@ export function mountSide(ctx) {
         h('div', { class: 'asm-label' }, `Transitions out of ${s.name} (the first true condition is taken)`),
         // (a transition's outputs one per line under it, #3882)
         h('ol', { class: 'fsm-tlist' }, ...ts.map((t) => h('li', { class: 'link', onclick: () => { setSel({ type: 'trans', id: t.id }); render(); renderSide(); } },
-          h('span', {}, h('span', { class: 'fsm-tcond' }, drawnAsElse(M(), t) ? 'else' : t.cond ? drawnCond(t.cond) : '1'), ` → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`),
+          h('span', {}, h('span', { class: 'fsm-tcond', 'data-no-i18n': '' }, drawnAsElse(M(), t) ? 'else' : t.cond ? drawnCond(t.cond) : '1'), ` → ${stateById(t.to)?.name ?? '?'}${outputLines(t.outputs).length ? ' /' : ''}`),
           ...outputLines(t.outputs).map((o) => h('div', { class: 'mono fsm-tout' }, o))))),
         ...look('state', cur, id)].filter(Boolean));
       drawBarsIn(selSection, '.fsm-tcond');   // (the Engineering notation's bars, #4484)

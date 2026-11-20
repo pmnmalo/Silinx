@@ -44,6 +44,8 @@ export function mountFsmBottom(ctx) {
   function csvButton(name, rows) {
     return btn('Export CSV', 'Download this table as a CSV file (opens in a spreadsheet)', () => downloadText(name, toCsv(rows), 'text/csv'), 'asm-small');
   }
+  // (the signals' and the states' names never translated: up is not 'crescente', #4964)
+  const NAME = { 'data-no-i18n': '' }, NAME_MONO = { class: 'mono', 'data-no-i18n': '' };
   function renderTables() {
     panelTitle.textContent = 'Tables';
     const wrap = h('div', { class: 'fsm-tables' });
@@ -54,8 +56,8 @@ export function mountFsmBottom(ctx) {
     const showCode = M().encoding !== 'enum';
     const t1 = h('table', { class: 'fsm-table fsm-ttable' },
       h('tr', {}, h('th', {}, 'Present state'), showCode ? h('th', {}, 'Code') : null, h('th', {}, 'Input condition'), h('th', {}, 'Next state'), showCode ? h('th', {}, 'Next code') : null, h('th', {}, 'Outputs')),
-      ...tt.rows.map((r) => h('tr', { class: r.stays ? 'stays' : '' }, h('td', {}, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null,
-        h('td', { class: 'mono' }, r.cond === 'otherwise' ? h('i', {}, 'otherwise (stays)') : r.cond), h('td', {}, r.next), showCode ? h('td', { class: 'mono' }, r.nextCode) : null, h('td', { class: 'mono' }, r.outputs))));
+      ...tt.rows.map((r) => h('tr', { class: r.stays ? 'stays' : '' }, h('td', NAME, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null,
+        r.cond === 'otherwise' ? h('td', { class: 'mono' }, h('i', {}, 'otherwise (stays)')) : h('td', NAME_MONO, r.cond), h('td', NAME, r.next), showCode ? h('td', { class: 'mono' }, r.nextCode) : null, h('td', NAME_MONO, r.outputs))));
     drawBarsIn(t1, 'td.mono');   // (the bars drawn, #4058)
     wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, [tt.columns, ...tt.rows.map((r) => [r.state, r.code, r.cond, r.next, r.nextCode, r.outputs])])), t1);
     // state table (classic form)
@@ -66,7 +68,7 @@ export function mountFsmBottom(ctx) {
         M().type === 'mealy' ? h('th', { colspan: st.combos.length }, `Outputs ${st.outputs}`) : h('th', { rowspan: 2 }, `Outputs ${st.outputs}`));
       const head2 = h('tr', {}, ...st.combos.map((c) => h('th', { class: 'mono' }, c)), ...(M().type === 'mealy' ? st.combos.map((c) => h('th', { class: 'mono' }, c)) : []));
       const t2 = h('table', { class: 'fsm-table fsm-stable' }, head, head2,
-        ...st.rows.map((r) => h('tr', {}, h('td', {}, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null, ...r.next.map((n) => h('td', {}, n)),
+        ...st.rows.map((r) => h('tr', {}, h('td', NAME, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null, ...r.next.map((n) => h('td', NAME, n)),
           ...(M().type === 'mealy' ? r.outputs.map((o) => h('td', { class: 'mono' }, o)) : [h('td', { class: 'mono' }, r.moore)]))));
       const csv = [['Present state', 'Code', ...st.combos.map((c) => `next (${st.inputs}=${c})`), ...(M().type === 'mealy' ? st.combos.map((c) => `outputs (${st.inputs}=${c})`) : ['outputs'])],
         ...st.rows.map((r) => [r.state, r.code, ...r.next, ...(M().type === 'mealy' ? r.outputs : [r.moore])])];
@@ -80,9 +82,9 @@ export function mountFsmBottom(ctx) {
       const t3 = h('table', { class: 'fsm-table fsm-etable' },
         h('tr', {}, h('th', { colspan: et.stateBits.length }, 'Present state'), et.inputBits.length ? h('th', { colspan: et.inputBits.length }, 'Inputs') : null,
           h('th', { colspan: et.nextBits.length }, 'Next state'), et.outputBits.length ? h('th', { colspan: et.outputBits.length }, 'Outputs') : null, h('th', { rowspan: 2 }, '')),
-        h('tr', {}, ...cols.map((c) => h('th', { class: 'mono' }, c))),
+        h('tr', {}, ...cols.map((c) => h('th', NAME_MONO, c))),
         ...et.rows.map((r) => h('tr', { class: r.unused ? 'unused' : '' }, ...[...r.q, ...r.in, ...r.d, ...r.out].map((b, i) => h('td', { class: `mono${i === et.stateBits.length + et.inputBits.length ? ' sepl' : ''}` }, b)),
-          h('td', { class: 'fsm-note' }, r.unused ? 'unused code' : `${r.state} → ${r.next}`))));
+          r.unused ? h('td', { class: 'fsm-note' }, 'unused code') : h('td', { class: 'fsm-note', 'data-no-i18n': '' }, `${r.state} → ${r.next}`))));
       const csv = [cols, ...et.rows.map((r) => [...r.q, ...r.in, ...r.d, ...r.out])];
       wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Encoded transition table'), csvButton(`${M().name}_encoded.csv`, csv),
         btn('Create Boolean Algebra', 'Create Boolean Algebra sources (.bool.json) of the next-state bits and of the outputs, to simplify them with Karnaugh maps', () => opts.onTruthTables?.(), 'asm-small fsm-mktt')),
@@ -119,9 +121,9 @@ export function mountFsmBottom(ctx) {
   }, 'asm-small');
   const simTools = [btn('⟲ Reset', 'Back to the initial state', () => { resetSim(); render(); renderPanel(); }, 'asm-small fsm-sim-reset'),
     btn('Clock ↑', 'Apply one rising clock edge: the machine takes the transition shown in color', () => clockStep(), 'asm-small asm-primary fsm-sim-step'), runBtn];
-  const simState = h('b', { class: 'fsm-sim-state' });
+  const simState = h('b', { class: 'fsm-sim-state', 'data-no-i18n': '' });   // (a state's name, #4964)
   const simNext = h('span', { class: 'asm-muted' });
-  const simOuts = h('div', { class: 'fsm-sim-outputs' });
+  const simOuts = h('div', { class: 'fsm-sim-outputs', 'data-no-i18n': '' });
   const simTrace = h('div', { class: 'fsm-sim-trace' });
   const simInputs = simInputControls({ inputs: () => M().inputs, values: () => sim().inputs, changed: () => { render(); renderPanel(); } });
   let simView = null;   // the panel's body while simulating: its rows, kept

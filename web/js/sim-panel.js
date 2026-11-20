@@ -3,6 +3,7 @@
 // last cycles.
 import { h } from './dom.js';
 
+const NAME = { 'data-no-i18n': '' }, NAME_MONO = { class: 'mono', 'data-no-i18n': '' };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /**
@@ -48,6 +49,7 @@ export function simTraceTable(trace, n = 12) {
   const pairs = (o) => Object.entries(o).map(([k, v]) => `${k}=${v}`).join(' ');
   return [h('table', { class: 'fsm-table fsm-trace' },
     h('tr', {}, h('th', {}, 'Cycle'), h('th', {}, 'State'), h('th', {}, 'Inputs'), h('th', {}, 'Outputs'), h('th', {}, 'Next state')),
-    ...trace.slice(-n).reverse().map((x) => h('tr', {}, h('td', {}, String(x.cycle)), h('td', {}, x.state), h('td', { class: 'mono' }, pairs(x.inputs)),
-      h('td', { class: 'mono' }, pairs(x.outputs)), h('td', {}, x.next))))];
+    // (the states' and the signals' names never translated, #4964)
+    ...trace.slice(-n).reverse().map((x) => h('tr', {}, h('td', {}, String(x.cycle)), h('td', NAME, x.state), h('td', NAME_MONO, pairs(x.inputs)),
+      h('td', NAME_MONO, pairs(x.outputs)), h('td', NAME, x.next))))];
 }
