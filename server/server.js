@@ -206,10 +206,22 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // the other relays this server's pages may share and follow through (config.json's relay.relays, #3227)
   api.get('/collab/relays', wrap(() => ({ relays: relayConfig().relays })));
   api.post('/projects', wrap(req => P.createProject(req.body || {})));
-  api.get('/projects/:p', wrap(async req => ({ ...await P.readProject(req.params.p), fileTree: await P.fileTree(req.params.p) })));
-  api.put('/projects/:p', wrap(req => {
+  // (its revision, ETag: a PUT with If-Match writes over that one only, else a 412 with the current one, #4726)
+  api.get('/projects/:p', wrap(async (req, res) => {
+    const pj = await P.readProject(req.params.p);
+    res.set({ ETag: P.etagOf(pj), 'Cache-Control': 'no-store' });
+    return { ...pj, fileTree: await P.fileTree(req.params.p) };
+  }));
+  api.put('/projects/:p', wrap(async (req, res) => {
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) throw Object.assign(new Error('expected a JSON project object'), { status: 400 });
-    return P.writeProject(req.params.p, req.body);
+    try {
+      const pj = await P.writeProject(req.params.p, req.body, { ifMatch: req.get('If-Match') || null });
+      res.set('ETag', P.etagOf(pj));
+      return pj;
+    } catch (e) {
+      if (e.status !== 412) throw e;
+      res.status(412).set('ETag', e.etag).json({ error: e.message, project: e.project, etag: e.etag });
+    }
   }));
   // the user trusts a project from outside (#2830, core/trust.js): the interface's Trust Project, no MCP tool
   api.post('/projects/:p/trust', wrap(req => P.trustProject(req.params.p)));

@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { compile, elaborate } from '../core/compile.js';
 import { primitiveSources } from '../core/unisim.js';
@@ -154,11 +155,19 @@ export async function keepTrustInRepo(name, root, { fromOutside = false } = {}) 
   return true;
 }
 
+// the revision of a description (#4726): its file's text hashed, an HTTP entity tag. A page writes its description back
+// only over the one it read (If-Match), so that a change made meanwhile (the MCP server's, another tab's) is not lost
+const descriptionEtag = text => `"${crypto.createHash('sha256').update(text).digest('base64url').slice(0, 27)}"`;
+const etags = new WeakMap();   // a description read or written -> its revision
+/** The revision of a description readProject read or writeProject wrote (undefined for any other object). */
+export const etagOf = pj => etags.get(pj);
+
 export async function readProject(name) {
   const dir = projectDir(name);
-  let pj;
-  try { pj = JSON.parse(await fs.readFile(await projectFile(dir), 'utf8')); }
+  let pj, text;
+  try { text = await fs.readFile(await projectFile(dir), 'utf8'); pj = JSON.parse(text); }
   catch { throw new HttpError(404, `project '${name}' not found`); }
+  etags.set(pj, descriptionEtag(text));
   const ct = cloneTrust(dir);
   if (ct) Object.assign(pj, { trusted: false }, ct.madeBy ? { madeBy: ct.madeBy } : {});
   pj.name = name;
@@ -214,23 +223,31 @@ async function writeProjectUnlocked(name, pj) {
   if (ct) { delete clean.trusted; delete clean.madeBy; }   // (a clone's: in .git, #3195)
   const file = path.join(dir, PROJECT_FILE);
   const tmp = path.join(dir, `.${PROJECT_FILE}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
+  const text = JSON.stringify(clean, null, 2) + '\n';
   try {
-    await fs.writeFile(tmp, JSON.stringify(clean, null, 2) + '\n');
+    await fs.writeFile(tmp, text);
     await renameOver(tmp, file);
   } catch (e) {
     await fs.rm(tmp, { force: true }).catch(() => {});
     throw e;
   }
-  return ct ? { ...clean, trusted: false, ...(ct.madeBy ? { madeBy: ct.madeBy } : {}) } : clean;
+  const out = ct ? { ...clean, trusted: false, ...(ct.madeBy ? { madeBy: ct.madeBy } : {}) } : clean;
+  etags.set(out, descriptionEtag(text));
+  return out;
 }
 
-export function writeProject(name, pj) {
+/** The page's description written whole. ifMatch (#4726): only over the revision it read, else a 412 whose `project`
+ *  and `etag` are the current ones (the page merges its change into it and writes again). */
+export function writeProject(name, pj, { ifMatch = null } = {}) {
   projectDir(name);
   return withProjectLock(name, async () => {
     // a project from outside stays so until the user trusts it (trustProject, #2830): a description written whole (the
     // interface's) does not make it trusted
     let cur = null;
     try { cur = await readProject(name); } catch { /* a new project */ }
+    if (ifMatch && cur && etagOf(cur) !== ifMatch) {
+      throw Object.assign(new HttpError(412, `the project '${name}' was changed meanwhile (by another tab or process)`), { project: cur, etag: etagOf(cur) });
+    }
     // (and who made it, the MCP server: its messages, #2981)
     const kept = cur?.trusted === false ? { ...pj, trusted: false, ...(cur.madeBy ? { madeBy: cur.madeBy } : {}) } : pj;
     // its id and origin are the copies' record (#4205), never the interface's to change: a project's current ones kept

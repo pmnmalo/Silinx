@@ -1,6 +1,7 @@
 // Thin REST client for the Silinx server.
 
 import { prefKey } from './prefs.js';
+import { mergeDescription } from '../../core/project-desc-merge.js';
 
 // The server answers only with its token, made at every start (#2564) and given in the address it
 // prints (…/#token=…); the address a launcher opens has a one-time code instead (…/#code=…, #2955: not the token,
@@ -49,8 +50,9 @@ async function zipPost(url, zip, headers = {}) {
   if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { status: r.status });
   return j;
 }
-async function req(method, url, body, { text = false } = {}) {
-  const opts = { method, headers: await authed() };
+// (tagged: the answer with its revision, { body, etag }, #4726)
+async function req(method, url, body, { text = false, headers = {}, tagged = false } = {}) {
+  const opts = { method, headers: await authed(headers) };
   if (body !== undefined) {
     if (typeof body === 'string') { opts.body = body; opts.headers['Content-Type'] = 'text/plain'; }
     else { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
@@ -61,12 +63,46 @@ async function req(method, url, body, { text = false } = {}) {
   if (!r.ok) {
     let msg = `${r.status} ${r.statusText}`, more = {};
     // (git's failures carry a hint for the console, and a conflict its files: #3195)
-    try { const j = await r.json(); if (j.error) msg = j.error; if (j.hint) more.hint = j.hint; if (j.files) more.files = j.files; if (j.drawings) more.drawings = j.drawings; if (j.texts) more.texts = j.texts; if (j.resolvable !== undefined) more.resolvable = j.resolvable; if (j.existing) more.existing = j.existing; } catch { /* not json */ }
+    try { const j = await r.json(); if (j.error) msg = j.error; if (j.hint) more.hint = j.hint; if (j.files) more.files = j.files; if (j.drawings) more.drawings = j.drawings; if (j.texts) more.texts = j.texts; if (j.resolvable !== undefined) more.resolvable = j.resolvable; if (j.existing) more.existing = j.existing; if (j.project && j.etag) Object.assign(more, { project: j.project, etag: j.etag }); } catch { /* not json */ }
     throw Object.assign(new Error(msg), { status: r.status }, more);
   }
   if (text) return r.text();
   const ct = r.headers.get('content-type') || '';
-  return ct.includes('json') ? r.json() : r.text();
+  const out = await (ct.includes('json') ? r.json() : r.text());
+  return tagged ? { body: out, etag: r.headers.get('ETag') } : out;
+}
+
+// a project's description as the page read or wrote it last, and its revision (#4726): written back over that revision
+// only (If-Match); refused (412: changed meanwhile by the MCP server or another tab), the page's change is merged into
+// the current one (core/project-desc-merge.js) and written again, and the description the caller sent becomes it
+const bases = new Map();
+const baseKey = name => String(name).toLowerCase();
+const keepBase = (name, etag, pj) => { if (etag && pj && typeof pj === 'object') bases.set(baseKey(name), { etag, pj: structuredClone(pj) }); };
+// (the caller's object made the one written: a caller that keeps its own S.project keeps the others' changes too)
+function becomes(pj, saved) {
+  for (const k of Object.keys(pj)) if (k !== 'fileTree' && !(k in saved)) delete pj[k];
+  Object.assign(pj, saved);
+}
+async function readProject(name) {
+  const { body, etag } = await req('GET', `/api/projects/${enc(name)}`, undefined, { tagged: true });
+  keepBase(name, etag, body);
+  return body;
+}
+async function saveProject(name, pj) {
+  let body = pj;
+  for (let k = 0; ; k++) {
+    const base = bases.get(baseKey(name));
+    try {
+      const { body: saved, etag } = await req('PUT', `/api/projects/${enc(name)}`, body, { tagged: true, headers: base ? { 'If-Match': base.etag } : {} });
+      keepBase(name, etag, saved);
+      if (body !== pj) becomes(pj, saved);
+      return saved;
+    } catch (e) {
+      if (e.status !== 412 || !e.project || !base || k >= 4) throw e;
+      body = mergeDescription(base.pj, body, e.project);
+      keepBase(name, e.etag, e.project);
+    }
+  }
 }
 
 const enc = encodeURIComponent;
@@ -83,8 +119,8 @@ export const api = {
   testDesigns: () => req('GET', '/api/test-designs'),
   exampleFiles: name => req('GET', `/api/templates/${enc(name)}/files`),
   createProject: p => req('POST', '/api/projects', p),
-  project: name => req('GET', `/api/projects/${enc(name)}`),
-  saveProject: (name, pj) => req('PUT', `/api/projects/${enc(name)}`, pj),
+  project: readProject,
+  saveProject,
   trustProject: name => req('POST', `/api/projects/${enc(name)}/trust`),
   deleteProject: name => req('DELETE', `/api/projects/${enc(name)}`),
   renameProject: (name, to) => req('POST', `/api/projects/${enc(name)}/rename-project`, { to }),   // (Rename Project…, #4641)
