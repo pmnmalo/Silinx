@@ -48,6 +48,11 @@
   --wave-cursor: #ffff00;
   --wave-marker: #00c0ff;
   --wave-names-bg: #ffffff;
+  --wave-row-line: #ececec;     /* SSim's names: their rows' lines, a divider's text, a twisty, a group's count, a forced F (#4763) */
+  --wave-divider-fg: #15428b;
+  --wave-twisty: #555555;
+  --wave-count: #888888;
+  --wave-forced: #c06000;
 
   /* the pages' and dialogs' own colours, light (the dark theme's in silinx.css): never a colour
      written in the code, so that no light patch or dark text is left in the dark theme (#159) */

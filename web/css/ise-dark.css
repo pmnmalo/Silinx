@@ -38,6 +38,11 @@ html[data-ui="ise"][data-theme="dark"] {
   /* SSim: the waveform stays black (as in ISim), its names and ruler dark */
   --wave-names-bg: var(--m-surface);
   --wave-head-1: #2c3036;
+  --wave-row-line: #33373e;
+  --wave-divider-fg: var(--ise-head);
+  --wave-twisty: #b8bec6;
+  --wave-count: #9aa0a8;
+  --wave-forced: #ff9a3c;
   --wave-head-2: #23262b;
   --wave-ruler-fg: var(--m-fg);
   --wave-ruler-tick: var(--m-muted);

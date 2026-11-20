@@ -19,6 +19,10 @@ export function mountColors(ctx) {
       borderLight: g('--border-light', '#d4d0c8'), fgText: g('--fg', '#000'), muted: g('--muted', '#6d6d6d'),
       header: g('--bg', '#f0f0f0'),
       // the header of the names and the time ruler (themes: web/css/silinx.css)
+      // the names' rows: their lines, a divider's text, a twisty, a group's count, a forced signal's F (#4763: the
+      // theme's, dark in the dark themes)
+      rowLine: g('--wave-row-line', '#ececec'), divider: g('--wave-divider-fg', '#15428b'), twisty: g('--wave-twisty', '#555'),
+      count: g('--wave-count', '#888'), forced: g('--wave-forced', '#c06000'),
       head1: g('--wave-head-1', '#fbfbfb'), head2: g('--wave-head-2', '#e3e3e3'), rulerFg: g('--wave-ruler-fg', '#000'), rulerTick: g('--wave-ruler-tick', '#555'),
       font: g('--font', 'Tahoma, Arial, sans-serif'), mono: g('--mono', 'Consolas, monospace'),
     });

@@ -12,6 +12,7 @@ const PAPER = {
   bg: '#ffffff', grid: '#e2e2e2', fg: '#007a1f', x: '#d00000', z: '#0050d0', text: '#000000', cursor: '#e0a800',
   marker: '#0090c8', names: '#ffffff', head1: '#f7f7f7', head2: '#e6e6e6', rulerFg: '#000000', rulerTick: '#555555',
   fgText: '#000000', muted: '#666666', delta: '#333333',
+  rowLine: '#ececec', divider: '#15428b', twisty: '#555555', count: '#888888', forced: '#c06000',   // (the names' rows on paper, #4763)
 };
 const MAX_ROWS = 200;   // (a print of more rows: the first ones)
 const SCALE = 2;        // pixels per CSS pixel of the images (sharp on paper)

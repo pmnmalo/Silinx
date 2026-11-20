@@ -47,19 +47,19 @@ export function mountDraw(ctx) {
       const sel = st.sel.has(it.key);
       if (sel) { ctx.fillStyle = colors.accent; ctx.fillRect(0, y, NW, ROW_H); }
       else if (i % 2 === 1) { ctx.fillStyle = 'rgba(0,0,0,0.025)'; ctx.fillRect(0, y, NW, ROW_H); }
-      ctx.strokeStyle = sel ? colors.accent : '#ececec';
+      ctx.strokeStyle = sel ? colors.accent : colors.rowLine;
       ctx.beginPath(); ctx.moveTo(0, y + ROW_H - 0.5); ctx.lineTo(NW, y + ROW_H - 0.5); ctx.stroke();
       const fg = sel ? colors.accentFg : colors.fgText;
       const cy = y + ROW_H / 2;
       if (it.row.kind === 'div') {
-        setFont(ctx, 12, true); ctx.fillStyle = sel ? colors.accentFg : '#15428b';
+        setFont(ctx, 12, true); ctx.fillStyle = sel ? colors.accentFg : colors.divider;
         ctx.textAlign = 'center'; ctx.fillText(fitText(ctx, it.row.name, NW - 10), NW / 2, cy); ctx.textAlign = 'left';
         continue;
       }
       if (it.row.kind === 'group') {
         // its twisty, a folder, its name (bold) and the number of its signals
         const gx = 4;
-        ctx.fillStyle = sel ? colors.accentFg : '#555';
+        ctx.fillStyle = sel ? colors.accentFg : colors.twisty;
         ctx.beginPath();
         if (it.row.expanded) { ctx.moveTo(gx, cy - 2); ctx.lineTo(gx + 8, cy - 2); ctx.lineTo(gx + 4, cy + 3); }
         else { ctx.moveTo(gx + 2, cy - 4); ctx.lineTo(gx + 7, cy); ctx.lineTo(gx + 2, cy + 4); }
@@ -68,7 +68,7 @@ export function mountDraw(ctx) {
         ctx.beginPath(); ctx.rect(gx + 15.5, cy - 4.5, 13, 9); ctx.fill(); ctx.stroke();
         setFont(ctx, 12, true); ctx.fillStyle = fg;
         ctx.fillText(fitText(ctx, it.row.name, st.nameW - gx - 38), gx + 34, cy);
-        setFont(ctx, 12); ctx.fillStyle = sel ? colors.accentFg : '#888';
+        setFont(ctx, 12); ctx.fillStyle = sel ? colors.accentFg : colors.count;
         ctx.fillText(`(${st.rows.filter(r => r.group === it.row.id).length})`, st.nameW + 6, cy);
         continue;
       }
@@ -76,7 +76,7 @@ export function mountDraw(ctx) {
       let x = 4 + it.depth * 16;
       const expandable = !it.bit && sig.wave && isBitsType(sig.t) && sig.t.w > 1;
       if (expandable) {
-        ctx.fillStyle = sel ? colors.accentFg : '#555';
+        ctx.fillStyle = sel ? colors.accentFg : colors.twisty;
         ctx.beginPath();
         if (it.row.expanded) { ctx.moveTo(x, cy - 2); ctx.lineTo(x + 8, cy - 2); ctx.lineTo(x + 4, cy + 3); }
         else { ctx.moveTo(x + 2, cy - 4); ctx.lineTo(x + 7, cy); ctx.lineTo(x + 2, cy + 4); }
@@ -89,7 +89,7 @@ export function mountDraw(ctx) {
       const forced = !it.bit && isForced(sig);
       const label = it.bit ? `[${it.bit.index}]` : it.row.name + (sig.t.kind === 'logic' && sig.t.w > 1 ? `[${sig.t.left ?? sig.t.w - 1}:${sig.t.right ?? 0}]` : '');
       ctx.fillText(fitText(ctx, label, st.nameW - x - (forced ? 16 : 4)), x, cy);
-      if (forced) { ctx.fillStyle = sel ? colors.accentFg : '#c06000'; setFont(ctx, 10, true); ctx.fillText('F', st.nameW - 12, cy); }
+      if (forced) { ctx.fillStyle = sel ? colors.accentFg : colors.forced; setFont(ctx, 10, true); ctx.fillText('F', st.nameW - 12, cy); }
       // value at cursor
       setFont(ctx, 12); ctx.fillStyle = fg;
       let vt;
@@ -100,7 +100,7 @@ export function mountDraw(ctx) {
     const dragRow = getDragRow();
     if (dragRow) {
       const y = RULER_H + dragRow.y - st.scrollY;
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+      ctx.strokeStyle = colors.fgText; ctx.lineWidth = 2;   // (the theme's text colour: seen in the dark themes too, #4763)
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(NW, y); ctx.stroke();
       ctx.lineWidth = 1;
     }
@@ -115,7 +115,7 @@ export function mountDraw(ctx) {
     const c = sel ? '#fff' : '#108010';
     ctx.strokeStyle = c;
     if (!sig.wave) {
-      ctx.strokeStyle = sel ? '#fff' : '#666';
+      ctx.strokeStyle = sel ? '#fff' : colors.twisty;
       ctx.strokeRect(x + 0.5, cy - 5.5, 12, 11);
       ctx.beginPath(); ctx.moveTo(x + 0.5, cy - 0.5); ctx.lineTo(x + 12.5, cy - 0.5); ctx.moveTo(x + 6.5, cy - 5.5); ctx.lineTo(x + 6.5, cy + 5.5); ctx.stroke();
     } else if (it.bit || (sig.t.w === 1 && sig.t.kind === 'logic')) {
