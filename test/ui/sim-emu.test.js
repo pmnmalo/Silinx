@@ -131,10 +131,10 @@ uiTest('#925 message centre: ISim\'s console and command line, the emulator\'s M
   // its history: ↑ brings the command back
   await page.key('ArrowUp');
   assert.equal(await page.eval(() => document.querySelector('#mc-cmd input').value), 'run 2 us');
-  // the Simulation filter: ISim's lines only
+  // the Simulation filter: ISim's lines and the application's (#4729: shown under every filter), no other source's
   await page.click('#mc-filters .filt[data-src="sim"]');
   const shownSrc = await page.eval(() => [...new Set([...document.querySelectorAll('#console-log .ln')].filter((l) => l.getClientRects().length).map((l) => l.dataset.src))]);
-  assert.deepEqual(shownSrc, ['sim']);
+  assert.deepEqual(shownSrc.sort(), ['app', 'sim']);
   await page.click('#mc-filters .filt[data-src="all"]');
   // another document in front: the command palette's line
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
