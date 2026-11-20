@@ -61,6 +61,7 @@ export const notHere = r => `the relay at ${new URL(r).host} is not among this S
 export const cleanName = n => String(n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
 
 let share = null;   // { name, session, doc, link, editLink, restore, orig, timer, known: Map<client, name>, view, hosted (a room of the page's), bound, unwatch,
+const RESUME_SETTLE_MS = 30_000;   // (a share resumed: the time its followers have to be seen again, #4759)
                     //   bases (a drawing's text last put into its structure, #3183), drawn (its drawings bound), drawing (their writes, one after the other) }
 
 /** Share Project…'s window, live (#3996): one window, the name on it (filled with the last one, the cursor in it; once
@@ -185,7 +186,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   const base = location.origin + location.pathname, pub = hostKey?.pub ?? null;
   // (#4643: the way chosen; a relay of the browser edition's is the Cloudflare one: hosted, Live's choice, or a Worker's)
   const mode = shareMode({ hosted: !!host, relay: other, cloudflare: !!other && (!!host || workersRelay(other)) });
-  share = { name, project, session, doc, made: resumed ? { ...resumed.made } : {}, base, via, mode, other, pub, relay, hostText: hostKey?.text ?? null, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub, session.ownerKey), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub, session.ownerKey), known: resumed ? new Map(resumed.known) : new Map(), view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
+  share = { name, project, session, doc, made: resumed ? { ...resumed.made } : {}, base, via, mode, other, pub, relay, hostText: hostKey?.text ?? null, meetAt: host && other ? { address: other, key: relay.key || '' } : null, link: followLink(base, session.room, session.key, via, null, other, pub, session.ownerKey), editLink: followLink(base, session.room, session.key, via, session.editKey, other, pub, session.ownerKey), known: resumed ? new Map(resumed.known) : new Map(), seen: new Set(), settleUntil: resumed ? Date.now() + RESUME_SETTLE_MS : 0, view: null, hosted: host?.hosted || null, bound: new Map(), bases, drawn: new Map(), drawing: Promise.resolve() };
   Object.assign(collab, { role: 'owner', owner: name, project, session });
   ({ restore: share.restore, orig: share.orig } = hookApi(project, doc, share));
   const s0 = share;
@@ -294,8 +295,12 @@ function onEvent(ev) {
     const now = new Map(share.session.peers().map(p => [p.client, p.name]));
     const role = new Map(share.session.peers().map(p => [p.client, p.role]));
     for (const [c, n] of now) if (!share.known.has(c)) collabLog(role.get(c) === 'editor' ? `${n} edits your project "${share.project}" with you.` : `${n} follows your project "${share.project}".`, 'info');
-    for (const [c, n] of share.known) if (!now.has(c)) collabLog(`${n} no longer follows your project.`, 'info');
-    share.known = now;
+    // (#4759: a share resumed after its page reloaded, #4850: a follower it knew, not seen again yet (its awareness comes
+    // after this page's own changes), neither said gone nor, once back, said again, for RESUME_SETTLE_MS)
+    for (const c of now.keys()) share.seen.add(c);
+    const waiting = Date.now() < share.settleUntil ? [...share.known].filter(([c]) => !now.has(c) && !share.seen.has(c)) : [];
+    for (const [c, n] of share.known) if (!now.has(c) && !waiting.some(([w]) => w === c)) collabLog(`${n} no longer follows your project.`, 'info');
+    share.known = new Map([...now, ...waiting]);
     draw();
     share.soon.poke();   // (their cursors in this page's editors, #4647)
   } else if (ev.type === 'offline') { collabLog(`WARNING: Sharing "${share.project}": the connection to the relay was lost: reconnecting (your followers see the project as it was until it is back).`, 'warn'); draw(); }
