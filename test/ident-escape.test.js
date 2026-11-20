@@ -1,13 +1,13 @@
-// The identifier rules and the XML escapes, one copy of each (#3545: core/ident.js, core/escape.js). Each shared
-// helper does what every copy it replaced did, on the same texts (the copies, as they were, are the reference here),
-// and no module writes a copy again (the ones left are listed, each with its reason).
+// The identifier rules, the XML escapes and the RegExp escape, one copy of each (#3545, #4772: core/ident.js,
+// core/escape.js). Each shared helper does what every copy it replaced did, on the same texts (the copies, as they were,
+// are the reference here), and no module writes a copy again (the ones left are listed, each with its reason).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NAME_RE, isName, IDENT_RE, isIdent, FILE_RE, sourceBase } from '../core/ident.js';
-import { escXml, escXmlApos, escXmlText } from '../core/escape.js';
+import { escXml, escXmlApos, escXmlText, escRegExp } from '../core/escape.js';
 import { IDENT } from '../server/ident.js';
 import { iseIdent } from '../core/isesch-export.js';
 import { signalOf } from '../core/path-drawing.js';
@@ -100,4 +100,41 @@ test('no module writes the identifier rules or an XML escape of its own (#3545)'
   });
   const found = ['server', 'core', 'web', 'packages', 'scripts', 'bin'].flatMap(files).filter(f => COPY.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
   assert.deepEqual(found.sort(), Object.keys(LEFT).sort());
+});
+
+test('escRegExp: the copies\' text, every special character escaped, matched literally (#4772)', () => {
+  const copy = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');   // (the copies, as they were)
+  const texts = ['a.b', 'x*y+z?', '^$', '{1}', '(a|b)', '[0]', 'a\\b', 'opcode[0] ', 'out_%03d.dat', 'plain', '', 'a/b', '-'];
+  for (const t of texts) {
+    assert.equal(escRegExp(t), copy(t), t);
+    assert.ok(new RegExp(`^${escRegExp(t)}$`).test(t), t);
+  }
+  assert.equal(escRegExp('a.b'), 'a\\.b');
+  assert.ok(!new RegExp(escRegExp('a.b')).test('axb'));
+  assert.equal(escRegExp(12), '12');
+  // (part-function.js's copy escaped / too: the same RegExp)
+  assert.ok(new RegExp(`(?:^| )${escRegExp('a/b')}(?= |$)`).test('x a/b y'));
+});
+
+// the RegExp escape's copies left, each with its reason (#4772); a module that writes one again fails here
+const RE_LEFT = {
+  'core/escape.js': 'the escape',
+  'core/schlive.js': 'definesModule, the next part of #4772',
+  'core/view-hdl.js': 'definesModule, the next part of #4772',
+  'scripts/related-tests.mjs': 'self-contained: its test copies it alone into a repository of its own',
+  'packages/silinx-fpga/src/fpga/timing-paths.js': 'the toolchain\'s package, which imports nothing from core/',
+  'core/trust.js': 'the trust session\'s area (#4772 left it)',
+  'server/git-merge.js': 'the storage session\'s area (#4772 left it)',
+  'server/mcp-util.js': 'the MCP session\'s area (#4772 left it)',
+  'web/js/i18n-circuit.js': 'the console session\'s area (#4772 left it)',
+};
+test('no module writes a RegExp escape of its own but those listed (#4772)', () => {
+  const COPY = "replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')";
+  const files = dir => fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).flatMap(e => {
+    const rel = `${dir}/${e.name}`;
+    if (e.isDirectory()) return e.name === 'node_modules' || e.name === 'devices' || e.name === 'research' || e.name === 'test' ? [] : files(rel);
+    return /\.m?js$/.test(e.name) ? [rel] : [];
+  });
+  const found = ['server', 'core', 'web', 'packages', 'scripts', 'bin'].flatMap(files).filter(f => fs.readFileSync(path.join(ROOT, f), 'utf8').includes(COPY));
+  assert.deepEqual(found.sort(), Object.keys(RE_LEFT).sort());
 });

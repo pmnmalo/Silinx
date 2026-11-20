@@ -14,6 +14,7 @@ import { compile, langOfPath } from './compile.js';
 import { modulesFromLibrary } from './schdoc.js';
 import { isCSource, viewHdl } from './view-hdl.js';
 import { escXml } from './escape.js';
+import { escRegExp } from './escape.js';
 
 const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>';
 
@@ -22,7 +23,7 @@ const unesc = s => String(s ?? '').replace(/&quot;/g, '"').replace(/&apos;/g, "'
 
 const STARTUP = { JtagClk: 'JTAG Clock', Cclk: 'CCLK', CCLK: 'CCLK', UserClk: 'User Clock' };
 // a name inside a regular expression, as text (a top module name with metacharacters: no syntax error, #479)
-const reEsc = s => String(s ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const reEsc = s => escRegExp(s ?? '');
 
 /** Find "architecture <arch> of <entity>" in VHDL text. */
 function vhdlArch(text, entity) {
