@@ -1,6 +1,7 @@
 // Silinx schematic documents - the HDL text helpers (names, constants, a token stream, statements) and the IR expression
 // printers of core/schdoc.js's HDL generation and import, moved from core/schdoc.js (#4765).
 import { VHDL93_WORDS, VERILOG_WORDS, reservedError } from './reserved.js';
+import { BLOCK_MARK } from './schdoc-hdl.js';
 
 // ===================================================================== HDL text helpers
 // (the shared lists, core/reserved.js, #679: a name the HDL of its language refuses is an error; one that is

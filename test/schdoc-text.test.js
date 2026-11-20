@@ -52,6 +52,16 @@ test('comments, spaces and indentation', () => {
   assert.equal(text.unparen('(a) + (b)'), '(a) + (b)');
 });
 
+test('withComments: a statement with the comment lines above it and its line\'s comment, not the generated HDL\'s own', () => {
+  const src = '-- silinx-symbol\n-- the sum\n-- of a and b\ny <= a xor b; -- here\nz <= a;\n';
+  const s0 = src.indexOf('y <='), e0 = src.indexOf(';', s0) + 1;
+  const [s, e] = text.withComments(src, s0, e0, 'vhdl');
+  assert.equal(src.slice(s, e), '-- the sum\n-- of a and b\ny <= a xor b; -- here');
+  const v = '// u1: HDL block\n(* keep *) assign y = a; // why\n';
+  const s1 = v.indexOf('assign'), e1 = v.indexOf(';') + 1;
+  assert.equal(v.slice(...text.withComments(v, s1, e1, 'verilog')), '(* keep *) assign y = a; // why');
+});
+
 test('tokenize, skipParen and toSemi on a VHDL statement', () => {
   const src = "y <= f(a, (b)) when s = '1' else c;";
   const toks = text.tokenize(src, 'vhdl');
