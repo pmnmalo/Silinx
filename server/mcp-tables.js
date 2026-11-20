@@ -6,14 +6,14 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { notationSetting } from './mcp-notation.js';
 
-const FORMS_TEXT = 'sop, pos (the minimal SOP / POS: the Karnaugh map\'s; past 6 inputs, Quine-McCluskey\'s), qsop, qpos (Quine-McCluskey\'s SOP / POS), xor (the XOR form when simpler, else the minimal SOP), nand, nor (NAND / NOR gates only), gates (the form of least gates), delay (of least delay), csop, cpos (the canonical SOP / POS)';
+const FORMS_TEXT = 'sop, pos (minimal: Karnaugh\'s, past 6 inputs Quine-McCluskey\'s), qsop, qpos (Quine-McCluskey\'s), xor (when simpler, else the SOP), nand, nor, gates (least gates), delay (least delay), csop, cpos (canonical)';
 
 export const TABLE_TOOLS = [
   {
     name: 'set_output_logic', title: 'Set a truth table output\'s HDL logic or minimal solution',
-    description: `Set what a Boolean algebra / truth table (.bool.json, .tt.json) generates for one output, as its editor's tick box on a result and its Karnaugh map's solution selector do: its HDL logic, the form of its expression in the table's HDL module and schematic (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses when it has several ({ "sop": k } or { "pos": k }, k from 0 as related_view's results list them). The table is written and its HDL file made again. Returns the output's expression in its HDL.`,
+    description: `Set what a truth table (.bool.json, .tt.json) generates for one output, as its editor's tick box on a result and Karnaugh map's solution selector do: its HDL logic, its expression's form in the HDL and schematic (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses when there are several (k from 0, as related_view's results list them). The table is written and its HDL made again. Returns the output's expression.`,
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, path: STR('The truth table: a .bool.json or .tt.json file of the project.'), output: STR('The output\'s name.'),
+      project: PROJECT, path: STR('The truth table (.bool.json or .tt.json).'), output: STR('The output\'s name.'),
       form: { type: 'string', enum: ['sop', 'pos', 'qsop', 'qpos', 'xor', 'nand', 'nor', 'gates', 'delay', 'csop', 'cpos'], description: 'The output\'s HDL logic.' },
       solution: { type: 'object', properties: { sop: { type: 'integer', minimum: 0 }, pos: { type: 'integer', minimum: 0 } }, additionalProperties: false, description: 'The minimal solution used, from 0: { "sop": k } and / or { "pos": k }.' },
     }, required: ['project', 'path', 'output'], additionalProperties: false },

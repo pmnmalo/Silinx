@@ -13,17 +13,17 @@ const MODES = ['exhaustive', 'random', 'count', 'walking', 'vectors', 'none'];
 export const TEST_BENCH_TOOLS = [
   {
     name: 'test_bench_wizard', title: 'Test Bench Wizard',
-    description: 'Make a self-checking test bench of a module, as the Test Bench Wizard does: it applies input vectors to the module and compares its outputs with the expected values, reporting each mismatch and TEST PASSED / TEST FAILED (run it with simulate). The clock and the reset are guessed from the ports (clk, rst…) or given ("" for none: a combinational test). The vectors: exhaustive (every combination), random, count, walking (ones and zeros), vectors (given: { inputs: { port: value }, drive: { inout port: value or Z }, expected: { port: value } }; values binary 0101, hex 0x1F, decimal d12; - or x a bit not checked) or none (a skeleton). expected: design takes the expected outputs from a simulation of the module as it is (a regression test), none leaves them unchecked (only reported).',
+    description: 'Make a self-checking test bench of a module, as the Test Bench Wizard does: input vectors applied, the outputs compared with the expected values, each mismatch and TEST PASSED / TEST FAILED reported (run it with simulate). The clock and reset are guessed from the ports or given ("" for none: a combinational test). Given vectors: { inputs: { port: value }, drive: { inout port: value or Z }, expected: { port: value } }, values 0101, 0x1F, d12, - or x a bit not checked; none: a skeleton. expected design: a regression test.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, module: STR('The module to test (default: the project\'s top).'), name: STR('The test bench\'s name (default tb_<module>).'),
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (default: the project\'s Preferred Language).' }, location: STR('Its folder (default sim).'),
       clock: STR('The clock port, or "" for none (default: guessed).'), period_ns: { type: 'number', description: 'The clock\'s period (default 20 ns).' },
       reset: STR('The reset port, or "" for none (default: guessed).'), reset_active: { type: 'string', enum: ['1', '0'], description: 'The reset\'s active level (default: guessed).' },
-      reset_cycles: { type: 'integer', description: 'How long the reset is applied, in clock cycles (default 2).' }, settle_ns: { type: 'number', description: 'A combinational test\'s settling time (default 10 ns).' },
+      reset_cycles: { type: 'integer', description: 'The reset\'s length in clock cycles (default 2).' }, settle_ns: { type: 'number', description: 'A combinational test\'s settling time (default 10 ns).' },
       stimulus: { type: 'string', enum: MODES, description: 'The vectors (default exhaustive, random when there are too many).' },
       count: { type: 'integer', description: 'random and count: how many vectors (default 32).' }, seed: { type: 'integer', description: 'random: the seed (default 1).' },
-      vectors: { type: 'array', items: { type: 'object' }, description: 'stimulus vectors: the vectors, each { inputs, drive, expected }.' },
-      expected: { type: 'string', enum: ['design', 'none'], description: 'The expected outputs of generated vectors: design (a simulation of the module) or none (default; given vectors keep their own).' },
+      vectors: { type: 'array', items: { type: 'object' }, description: 'stimulus vectors: the vectors.' },
+      expected: { type: 'string', enum: ['design', 'none'], description: 'Generated vectors\' expected outputs: design (simulated) or none (default; unchecked). Given vectors keep their own.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run(a) {

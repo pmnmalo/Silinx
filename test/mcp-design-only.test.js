@@ -39,12 +39,13 @@ async function designProject(name) {
 
 test('new_project design_only: no board, no device, no constraints; refused with a board', async () => {
   const r = await ok('new_project', { name: 'd0', design_only: true });
-  assert.equal(r.text, 'Empty design and simulation project \'d0\' made (no FPGA). Add its drawings with new_source, then set_top.');
+  // (design_only, kind's deprecated name: kind design, said, #4752)
+  assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give kind (true is kind design).\nEmpty design and simulation project \'d0\' made (no FPGA). Add its drawings with new_source, then set_top.');
   assert.deepEqual(r.data, { project: 'd0', kind: 'design', board: null, device: null, trusted: false });
   const pj = await P.readProject('d0');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   assert.equal(fs.existsSync(path.join(P.projectDir('d0'), 'constraints')), false, 'no constraints folder');
-  await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a design and simulation project has no board: give design_only or a board, not both');
+  await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a design and simulation project has no board: give kind design or a board, not both');
   // (an FPGA project as before)
   const f = await ok('new_project', { name: 'f0' });
   assert.equal((await P.readProject('f0')).kind, undefined);
@@ -115,7 +116,7 @@ test('set_design_properties: a board makes a design project an FPGA project, des
   assert.match((await ok('project_info', { project: 'd4' })).text, /^d4: top traffic, test bench \(none\), basys2 \(xc3s250ecp132-4\), constraints constraints\/top\.ucf/);
   // (and back: its sources all drawings; the constraints left on the disk)
   const b = await ok('set_design_properties', { project: 'd4', design_only: true });
-  assert.equal(b.text, 'd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project).');
+  assert.equal(b.text, 'WARNING: design_only is deprecated (#4103): give kind (true is kind design, false kind fpga).\nd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project).');
   pj = await P.readProject('d4');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   await fails('set_design_properties', { project: 'd4', design_only: true }, 'the project \'d4\' is a design and simulation project already');
@@ -129,7 +130,7 @@ test('set_design_properties design_only: refused with HDL sources of the user\'s
   await ok('new_project_from_example', { name: 'e1', example: 'traffic' });
   await fails('set_design_properties', { project: 'e1', design_only: true },
     'the project \'e1\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/timer.vhd, src/sevenseg.v, src/top.vhd)');
-  await fails('set_design_properties', { project: 'e1', design_only: true, board: 'basys2' }, 'design_only: a design and simulation project has no board');
+  await fails('set_design_properties', { project: 'e1', design_only: true, board: 'basys2' }, 'kind: a design and simulation project has no board');
   assert.equal((await P.readProject('e1')).kind, undefined, 'unchanged');
 });
 

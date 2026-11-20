@@ -64,15 +64,15 @@ async function write(name, path, code, created) {
 export const WIZARD_TOOLS = [
   {
     name: 'clock_manager', title: 'Clocking Wizard (DCM / PLL)',
-    description: 'Make a clock module as the Clocking Wizard does: a DCM_SP on a Spartan-3E (its outputs CLK0, CLK90, CLK180, CLK270, CLK2X, CLK2X180, CLKDV and CLKFX at the nearest frequency it can, CLKFX180), a PLL_BASE on a Spartan-6 (up to six outputs from one VCO frequency, with their phase), each output on a global buffer; the input from a pin (IBUFG) or not, its reset and LOCKED ports. Or edit: a module the wizard made, made again with the settings given changed. Returns the frequency of each output.',
+    description: 'Make a clock module as the Clocking Wizard does: a DCM_SP on a Spartan-3E (CLKDV and CLKFX at the nearest frequency it can), a PLL_BASE on a Spartan-6 (up to six outputs from one VCO frequency, with their phase), each output on a global buffer; the input from a pin (IBUFG) or not, its reset and LOCKED ports. Or edit: one it made, made again with the settings given changed. Returns each output\'s frequency.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, name: STR('The module\'s name (default clkgen; its file is named after it).'), location: STR('Its folder (default src).'), language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (default: the project\'s Preferred Language).' },
-      edit: STR('A module the wizard made (its file): made again with the settings given.'),
+      edit: STR('A module the wizard made (its file).'),
       input_mhz: { type: 'number', description: 'The input clock\'s frequency (default: the board\'s oscillator, else 50 MHz).' },
       input: STR('The input port (default clk_in).'), ibufg: { type: 'boolean', description: 'The input from a pin, through an IBUFG (default true).' },
       reset: STR('The reset input port, or "" for none (default rst).'), locked: STR('The LOCKED output port, or "" for none (default locked).'),
       divide_input_by_2: { type: 'boolean', description: 'Spartan-3E: CLKIN_DIVIDE_BY_2.' }, phase_shift: { type: 'integer', description: 'Spartan-3E: a fixed phase shift, -255 to 255 (256ths of the period).' },
-      outputs: { type: 'array', items: { type: 'object', properties: { pin: { type: 'string' }, port: { type: 'string' }, mhz: { type: 'number' }, phase: { type: 'number' } }, required: ['port'] }, description: 'The outputs: Spartan-3E { pin (CLK0, CLK90, CLK180, CLK270, CLK2X, CLK2X180, CLKDV, CLKFX, CLKFX180), port, mhz (CLKDV and CLKFX: asked) }; Spartan-6 { port, mhz, phase (degrees) }. Default: CLK0 (Spartan-3E), one output at the input frequency (Spartan-6).' },
+      outputs: { type: 'array', items: { type: 'object', properties: { pin: { type: 'string' }, port: { type: 'string' }, mhz: { type: 'number' }, phase: { type: 'number' } }, required: ['port'] }, description: 'Spartan-3E { pin (CLK0, CLK90, CLK180, CLK270, CLK2X, CLK2X180, CLKDV, CLKFX, CLKFX180), port, mhz (CLKDV, CLKFX) }; Spartan-6 { port, mhz, phase (degrees) }. Default: CLK0; on a Spartan-6 one output at the input frequency.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name, name: modName, location, language, edit, input_mhz: inMHz, input, ibufg, reset, locked, divide_input_by_2: div2, phase_shift: phaseShift, outputs }) {
@@ -115,10 +115,10 @@ export const WIZARD_TOOLS = [
   },
   {
     name: 'block_memory', title: 'Block Memory wizard',
-    description: 'Make a memory module as the Block Memory wizard does: a RAM or a ROM of the device\'s block RAMs (Spartan-3E, Spartan-6), one port or two, its width and depth, its write mode, written as the block RAM primitives or as inferable HDL, its initial contents from a .mem or .coe file of the project. Or edit: a module the wizard made, made again with the settings given changed. Returns the block RAMs it takes.',
+    description: 'Make a memory module as the Block Memory wizard does: a RAM or ROM of the device\'s block RAMs (Spartan-3E, Spartan-6), one port or two, its width, depth and write mode, as block RAM primitives or inferable HDL, its initial contents from a .mem or .coe file of the project. Or edit: one it made, made again with the settings given changed. Returns the block RAMs it takes.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, name: STR('The module\'s name (default bram; its file is named after it).'), location: STR('Its folder (default src).'), language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (default: the project\'s Preferred Language).' },
-      edit: STR('A module the wizard made (its file): made again with the settings given.'),
+      edit: STR('A module the wizard made (its file).'),
       kind: { type: 'string', enum: ['ram', 'rom'], description: 'RAM (default) or ROM.' }, ports: { type: 'string', enum: ['single', 'dual'], description: 'One port (default) or two.' },
       width: { type: 'integer', description: 'The word\'s bits (default 8).' }, depth: { type: 'integer', description: 'The words (default 1024).' },
       write_mode: { type: 'string', enum: ['READ_FIRST', 'WRITE_FIRST', 'NO_CHANGE'], description: 'The write mode (default READ_FIRST).' },
@@ -163,7 +163,7 @@ export const WIZARD_TOOLS = [
   },
   {
     name: 'constraints_wizard', title: 'Constraints Wizard (UCF, PCF, LPF, CST, CCF, XDC)',
-    description: 'Write a constraints file for a module\'s ports in the device\'s format, as the UCF Wizard does (the PCF Wizard on an iCE40, the LPF Wizard on an ECP5, the CST Wizard on a Gowin, the CCF Wizard on a GateMate, the XDC Wizard on a 7-series): each bit of its ports on a pin of the project\'s board, assigned by their names (clk, led, sw, btn, seg, an…) and directions, the clock\'s period from the board; pins given override them (a net: x, or x<3> for a bit of a bus), and with no board they are all given. A PCF, an LPF or a CST takes the attributes its format writes (a PCF: pull up; an LPF: iostandard, pull, drive, slew; a CST: iostandard, pull, drive) and is refused with a pin that is no pin of the package or an I/O standard at another voltage than its bank\'s on the board. The project\'s constraints file when it has none. A file that exists is not replaced (set_top with update_constraints writes the project\'s again).',
+    description: 'Write a constraints file for a module\'s ports in the device\'s format, as the UCF Wizard does (PCF, LPF, CST, CCF, XDC Wizard on an iCE40, ECP5, Gowin, GateMate, 7-series): each port bit on a pin of the board, by its name (clk, led, sw, btn, seg, an…) and direction, the clock\'s period from the board; pins given override them (x, or x<3> for a bit), and with no board all are given. A PCF, LPF or CST takes its format\'s attributes and is refused with a pin not of the package or an I/O standard at another voltage than its bank\'s. It becomes the project\'s constraints file when it has none. An existing file is not replaced (set_top with update_constraints writes the project\'s again).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, module: STR('The module (default: the project\'s top).'), name: STR('The file\'s name (default: the module\'s).'), location: STR('Its folder (default constraints).'),
       pins: { type: 'object', additionalProperties: { type: 'string' }, description: 'Pins given: { net: pin }, e.g. { "led<0>": "M5", "clk": "B8" }.' },

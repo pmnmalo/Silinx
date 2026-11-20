@@ -44,7 +44,7 @@ async function allowedRemote(remote) {
   throw toolError(`remote: ${r.owner}/${r.repo} is not among the repositories the user lets the MCP server set (mcp.remotes in config.json: "owner/repo" or "owner/*"); the user sets another in the interface (File ▸ Git ▸ Store Project in a GitHub Repository…)`);
 }
 // the choices of a pull's or a merge's conflicts (git_pull, git_merge)
-const RESOLVE = (what) => ({ type: 'object', description: `The choices of the ${what}'s conflicts: a drawing's objects { "src/ctl.fsm.json": { "transitions/t1": "theirs", "states/s2": "mine" } }, a text file's hunks { "src/top.vhd": { "h1": "both", "h2": { "text": "  y <= a or b;\\n" } } }.`, additionalProperties: { type: 'object', additionalProperties: { anyOf: [{ type: 'string', enum: ['mine', 'theirs', 'both'] }, { type: 'object', properties: { text: { type: 'string' } }, required: ['text'], additionalProperties: false }] } } });
+const RESOLVE = (what) => ({ type: 'object', description: `The choices of the ${what}'s conflicts, by file: a drawing's objects { "src/ctl.fsm.json": { "transitions/t1": "theirs" } }, a text file's hunks { "src/top.vhd": { "h1": "both", "h2": { "text": "y <= a;\\n" } } }.`, additionalProperties: { type: 'object', additionalProperties: { anyOf: [{ type: 'string', enum: ['mine', 'theirs', 'both'] }, { type: 'object', properties: { text: { type: 'string' } }, required: ['text'], additionalProperties: false }] } } });
 const choicesOf = resolve => { try { return checkChoices(resolve); } catch (e) { throw toolError(e.message); } };
 // a project of the name already there (#4618): what the interface's question shows, for if_exists
 const existingLines = e => (e.existing ? [
@@ -56,10 +56,10 @@ const UNTRUSTED = ' It is untrusted, as every project from outside: Xilinx ISE a
 export const GIT_TOOLS = [
   {
     name: 'git_clone', title: 'Open a project from a GitHub repository',
-    description: 'Clone a GitHub repository (https://github.com/owner/repo, git@github.com:owner/repo.git; a GitHub Classroom assignment\'s repository) into the workspace as a project, as File ▸ Open from GitHub Repository… does. Its root must hold the project (silinx.json); its files pass the import gate. The credentials are git\'s own (its credential helper, an SSH key). A project of the name already there (#4618): if_exists says what to do, as the interface\'s question: "error" (the default: nothing done, the existing project described), "open" (it opened as it is; git_pull brings it up to date when it is a clone of the same repository), "replace" (the clone made and checked first, then the old project moved to the workspace\'s .trash folder; refused when it has uncommitted changes, unpushed commits or is in no repository, named, unless discard_changes is true), "rename" (both kept: the clone under a free name, name-2…).',
+    description: 'Clone a GitHub repository (an https or git@ address; a GitHub Classroom assignment\'s) into the workspace as a project, as File ▸ Open from GitHub Repository… does. Its root must hold silinx.json; its files pass the import gate; git\'s own credentials. A project of the name already there: if_exists, as the interface asks: "error" (default: nothing done), "open" (as it is), "replace" (the clone checked first, the old project moved to the workspace\'s .trash; refused with uncommitted changes, unpushed commits or no repository, unless discard_changes), "rename" (the clone as name-2…).',
     inputSchema: { type: 'object', properties: { url: STR('The repository\'s address on GitHub.'), name: STR('The project\'s name (default: the repository\'s).'),
       if_exists: { type: 'string', enum: IF_EXISTS, description: 'A project of the name already there: "error" (default), "open", "replace" or "rename".' },
-      discard_changes: { type: 'boolean', description: 'With if_exists "replace": replace the project even though it has changes nowhere else (the error named them), losing them. Only when the user said so.' } }, required: ['url'], additionalProperties: false },
+      discard_changes: { type: 'boolean', description: 'With if_exists "replace": replace the project although it has changes nowhere else, losing them. Only when the user said so.' } }, required: ['url'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async run({ url, name, if_exists: ifExists = 'error', discard_changes: discardChanges = false }) {
       const r = await run(() => gitCloneChoosing({ url, name: name || null, ifExists, discardChanges: discardChanges === true, madeBy: 'mcp' }), existingLines);
@@ -70,8 +70,8 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_repositories', title: 'The user\'s GitHub repositories',
-    description: 'The user\'s GitHub repositories (owned, a collaborator\'s, an organization\'s: a GitHub Classroom assignment\'s), the most recently pushed first, as File ▸ Open from GitHub Repository… lists them: to choose the one git_clone opens. Listed with the server\'s GitHub token (GH_TOKEN), or else with GitHub\'s command line (gh) and its own sign-in; with neither, the error says how to have them. query: only those whose owner/name or description has it.',
-    inputSchema: { type: 'object', properties: { query: STR('Only the repositories whose owner/name or description has this (any case); an address: its owner/name.') }, additionalProperties: false },
+    description: 'The user\'s GitHub repositories (owned, a collaborator\'s, an organization\'s), most recently pushed first, as File ▸ Open from GitHub Repository… lists them, for git_clone. Listed with the server\'s GH_TOKEN, or else gh; with neither, the error says how.',
+    inputSchema: { type: 'object', properties: { query: STR('Only the repositories whose owner/name or description has this (any case).') }, additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
     async run({ query }) {
       const r = await run(async () => (await import('./git-repos.js')).gitRepositories());
@@ -82,8 +82,8 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_init', title: 'Make a git repository of a project',
-    description: 'Make a git repository of a project (git init, branch main, a .gitignore that leaves build/ and the tools\' outputs out), as File ▸ Git ▸ Store Project in a GitHub Repository… does; remote: its GitHub repository (origin), which a project already in a repository with no remote gets too: only one the user\'s settings let the MCP server set (mcp.remotes in config.json).',
-    inputSchema: { type: 'object', properties: { project: PROJECT, remote: STR('The GitHub repository\'s address (optional): origin, where git_push pushes; one of the user\'s settings (mcp.remotes).') }, required: ['project'], additionalProperties: false },
+    description: 'Make a git repository of a project (branch main, a .gitignore leaving build/ out), as File ▸ Git ▸ Store Project in a GitHub Repository… does; remote: its GitHub repository (origin), only one the user\'s settings allow (mcp.remotes in config.json).',
+    inputSchema: { type: 'object', properties: { project: PROJECT, remote: STR('The GitHub repository\'s address (optional): origin; one of mcp.remotes.') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project, remote }) {
       await readProject(project);
@@ -94,7 +94,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_status', title: 'A project\'s changes',
-    description: 'A project\'s files changed, new, deleted or in conflict since the last commit (the Design pane\'s marks; the conflicts first, as Changes… lists them), its GitHub repository (owner/repository), its branch and how many commits it is ahead of or behind GitHub: what the Collaboration tab and its Changes… window show.',
+    description: 'A project\'s files changed, new, deleted or in conflict since the last commit, its GitHub repository, its branch and its commits ahead of or behind GitHub, as the Collaboration tab and Changes… show them.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project }) {
@@ -111,7 +111,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_commit', title: 'Commit a project\'s changes',
-    description: 'Commit every change of the project\'s folder (its files only; build/ and the tools\' outputs never), with a message, as File ▸ Git ▸ Commit… does. A project with no .gitignore gets Silinx\'s first.',
+    description: 'Commit every change of the project\'s folder (never build/ or the tools\' outputs), with a message, as File ▸ Git ▸ Commit… does. A project with no .gitignore gets Silinx\'s first.',
     inputSchema: { type: 'object', properties: { project: PROJECT, message: STR('What changed, in a few words.') }, required: ['project', 'message'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project, message }) {
@@ -134,7 +134,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_pull', title: 'Pull a project from GitHub',
-    description: 'Pull the commits of the project\'s GitHub repository into it (a merge), as File ▸ Git ▸ Pull does. A drawing changed on both sides is merged by its objects (never as text), its HDL made again; an object both sides changed differently is a conflict, named with its id: Pull again with resolve, "mine" or "theirs" for each (the result checked as Check Drawing checks it). A text file (HDL, a test bench, constraints, C/C++) changed on both sides is merged by its lines: changes apart at once; the same lines a conflict per hunk, named with its id (h1, h2…), its line and both sides\' lines: Pull again with resolve, "mine", "theirs", "both" (mine\'s lines, then theirs\') or { "text": "…" } (the hunk\'s lines written) for each; never conflict markers. A file renamed on one side and changed on the other is merged as a rename. Any other conflict (a file removed on one side and changed on the other) pulls nothing: the project\'s files stay as they were, and the files in conflict are named. The pulled files pass the import gate: a hidden file, a tool\'s output or another spelling of silinx.json stays out of the project\'s folder (a WARNING each); another file it refuses pulls nothing.',
+    description: 'Pull the commits of the project\'s GitHub repository into it (a merge), as File ▸ Git ▸ Pull does. Drawings merge by their objects (their HDL made again), text files by their lines. A conflict (an object both sides changed, by its id; the same lines, a hunk h1, h2…) is named: pull again with resolve ("mine", "theirs", "both" or { "text" } each); never conflict markers. Any other conflict (removed on one side, changed on the other) pulls nothing. Pulled files pass the import gate: a hidden file, a tool\'s output or another spelling of silinx.json stays out (a WARNING each); another refused file pulls nothing.',
     inputSchema: { type: 'object', properties: { project: PROJECT, resolve: RESOLVE('pull') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async run({ project, resolve }) {
@@ -146,7 +146,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_log', title: 'A project\'s history',
-    description: 'The project\'s commits, the newest first (hash, author, date, message, the files each changed), as File ▸ Git ▸ History… lists them; path: a file\'s text as it was in a commit (commit required), read only.',
+    description: 'The project\'s commits, newest first (hash, author, date, message, files changed), as File ▸ Git ▸ History… lists them; with commit and path: that file\'s text in the commit, read only.',
     inputSchema: { type: 'object', properties: { project: PROJECT, limit: { type: 'integer', description: 'How many commits (default 100, at most 1000).' }, commit: STR('A commit\'s hash: with path, that file as it was.'), path: STR('A file of the project, e.g. src/top.vhd: its text in the commit.') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project, limit, commit, path: rel }) {
@@ -162,7 +162,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_checks', title: 'What GitHub said of the last push',
-    description: 'The checks GitHub ran on the project\'s last pushed commit, as File ▸ Git ▸ GitHub Checks says them: each workflow\'s state (queued, running, its conclusion) and its annotations; a GitHub Classroom assignment\'s workflow gives each visible test\'s verdict (Accepted, Wrong Answer and its first difference). A check still running: ask again later. A private repository\'s needs the server\'s GitHub token (GH_TOKEN).',
+    description: 'The checks GitHub ran on the project\'s last pushed commit, as File ▸ Git ▸ GitHub Checks says them: each workflow\'s state and annotations; a GitHub Classroom assignment\'s visible tests\' verdicts. A private repository needs the server\'s GH_TOKEN.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
     async run({ project }) {
@@ -173,7 +173,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_diff', title: 'What changed in a file',
-    description: 'A file of the project between two versions, as the history\'s Compare shows it: a drawing (schematic, ASM chart, state diagram, truth table, Boolean function, Petri net) by its objects (added, removed, moved, changed: each by its id), any other file by its lines (a unified diff). from: a commit (default: the last one); to: a commit (default: the project as it is now).',
+    description: 'A file of the project between two versions, as the history\'s Compare shows it: a drawing by its objects (added, removed, moved, changed: each by its id), any other file as a unified diff.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('A file of the project, e.g. src/ctl.fsm.json.'), from: STR('A commit\'s hash (default: the last commit).'), to: STR('A commit\'s hash (default: the project now).') }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project, path: rel, from, to }) {
@@ -200,7 +200,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_branch', title: 'A project\'s branches, or a new one',
-    description: 'Each person of a group works on a branch of their own. Without branch: the project\'s branches, its own marked, and GitHub\'s (fetched first; one only GitHub has: "on GitHub"), as Switch Branch… lists them. With branch: a new branch made from the project\'s last commit, the project on it (its changes not committed kept), as File ▸ Git ▸ New Branch… does; git_push then sends it to GitHub. A branch\'s name: letters, digits, -, _, . and /, no spaces.',
+    description: 'Without branch: the project\'s branches, its own marked, and GitHub\'s (fetched first), as Switch Branch… lists them. With branch: a new branch from the last commit, the project on it (uncommitted changes kept), as File ▸ Git ▸ New Branch… does; git_push sends it. A name: letters, digits, -, _, . and /.',
     inputSchema: { type: 'object', properties: { project: PROJECT, branch: STR('The new branch\'s name (e.g. ana): made, the project on it. None: the branches listed.') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     async run({ project, branch }) {
@@ -215,7 +215,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_switch', title: 'Switch a project to another branch',
-    description: 'The project on another branch, its files those of the branch\'s last commit, as File ▸ Git ▸ Switch Branch… does; a branch only GitHub has (another person\'s, listed by git_branch) is made here, following GitHub\'s. The project\'s changes must be committed first (git_commit). The files it brings pass the import gate, as a pull\'s.',
+    description: 'The project on another branch, its files the branch\'s last commit\'s, as File ▸ Git ▸ Switch Branch… does; a branch only GitHub has is made here, following GitHub\'s. The project\'s changes must be committed first. The files it brings pass the import gate.',
     inputSchema: { type: 'object', properties: { project: PROJECT, branch: STR('The branch\'s name, as git_branch lists it.') }, required: ['project', 'branch'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async run({ project, branch }) {
@@ -226,7 +226,7 @@ export const GIT_TOOLS = [
   },
   {
     name: 'git_merge', title: 'Merge another branch into a project\'s',
-    description: 'Another branch (another person\'s, as git_branch lists it; GitHub\'s version when it is newer) merged into the project\'s, as File ▸ Git ▸ Merge Branch… does, the way git_pull merges: a drawing changed on both branches by its objects, its HDL made again; a text file by its lines; a conflict (an object both changed differently, named by its id; the same lines, a hunk h1, h2…) merges nothing: Merge again with resolve, as git_pull\'s. A merge commit records it. The project\'s changes must be committed first.',
+    description: 'Another branch merged into the project\'s (GitHub\'s when newer), as File ▸ Git ▸ Merge Branch… does, the way git_pull merges; a conflict merges nothing: merge again with resolve. A merge commit records it. The project\'s changes must be committed first.',
     inputSchema: { type: 'object', properties: { project: PROJECT, branch: STR('The branch to merge in.'), resolve: RESOLVE('merge') }, required: ['project', 'branch'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     async run({ project, branch, resolve }) {

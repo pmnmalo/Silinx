@@ -37,9 +37,9 @@ const hdlOf = sync => (sync ? { hdl: { file: sync.target, written: !!sync.writte
 export const SCHEMATIC_TOOLS = [
   {
     name: 'rearrange_wires', title: 'Rearrange a schematic\'s wires',
-    description: 'Rearrange Wires of a schematic (.sch.json), as its editor\'s menu does: the wires drawn again with few bends and crossings, the wires side by side in a channel ordered with the fewest crossings and spread at an even pitch; the symbols, I/O markers and net names where they are, the connections the same. With wires, symbols or markers (their ids, as read_file shows them), only the wires they take in (the wires, and the wires ending on the symbols\' pins and on the markers). The schematic is written and its HDL file made again.',
+    description: 'Rearrange Wires of a schematic (.sch.json), as its editor\'s menu does: the wires drawn again with few bends and crossings, those side by side in a channel ordered and spread at an even pitch; the symbols, I/O markers and net names stay, the connections the same. With wires, symbols or markers (their ids), only those wires and the wires ending on them. The schematic is written and its HDL file made again.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'),
+      project: PROJECT, path: STR('The schematic (.sch.json).'),
       wires: IDS('Wires to rearrange (their ids: W1).'), symbols: IDS('Symbols whose wires to rearrange (their ids: S1).'), markers: IDS('I/O markers whose wires to rearrange (their ids: P1).'),
     }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
@@ -57,8 +57,8 @@ export const SCHEMATIC_TOOLS = [
   },
   {
     name: 'rearrange_schematic', title: 'Rearrange a whole schematic',
-    description: 'Rearrange Schematic of a schematic (.sch.json), as its editor\'s menu does: the whole schematic laid out again (the inputs on the left, the outputs on the right, the symbols moved in the order of the signals, ELK\'s layered layout), then its wires rearranged; taken only when it means the same (the same nets, diagnostics and HDL) with no symbols overlapping, otherwise only the wires drawn again. The schematic is written and its HDL file made again.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The schematic: a .sch.json file of the project.') }, required: ['project', 'path'], additionalProperties: false },
+    description: 'Rearrange Schematic of a schematic (.sch.json), as its editor\'s menu does: the whole schematic laid out again (inputs on the left, outputs on the right, ELK\'s layered layout), then its wires rearranged; taken only when it means the same (nets, diagnostics, HDL) with no symbols overlapping, otherwise only the wires drawn again. The schematic is written and its HDL file made again.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The schematic (.sch.json).') }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel }) {
       const { doc, modules } = await openSchematic(name, rel);
@@ -75,9 +75,9 @@ export const SCHEMATIC_TOOLS = [
   },
   {
     name: 'move_junction', title: 'Move a junction dot of a schematic',
-    description: 'Move a junction dot of a schematic (.sch.json), where three or more wires, pins or I/O markers meet, as its editor\'s drag does: the wires ending on it follow it (their end segment moved across, or a jog added, square, on the grid); a pin or a marker under it stays, joined to it by a wire. The connections the same (a move that would short two named nets refused; one that changes them said). The schematic is written and its HDL file made again.',
+    description: 'Move a junction dot of a schematic (.sch.json), where three or more wires, pins or I/O markers meet, as its editor\'s drag does: the wires ending on it follow (their end segment moved, or a square jog added); a pin or marker under it stays, joined by a wire. A move that would short two named nets is refused; one that changes the connections said. The schematic is written and its HDL file made again.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'),
+      project: PROJECT, path: STR('The schematic (.sch.json).'),
       at: POINT('The junction dot (its sheet coordinates, as read_file shows the wires\' points).'), to: POINT('Where it goes (on the grid: multiples of 10).'),
     }, required: ['project', 'path', 'at', 'to'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
@@ -95,11 +95,11 @@ export const SCHEMATIC_TOOLS = [
   },
   {
     name: 'add_markers', title: 'Add I/O markers to every open pin',
-    description: 'Add an I/O marker to every open end of a schematic (.sch.json), as its Add I/O Marker tool\'s rectangle does: the pins of the instance named instance, or every pin and wire end inside the region, connected to nothing. Each marker takes the direction of its pin (a wire end: of the pins on its net; an output pin there makes it an output; no pin, the end is skipped) and its width (a bus: in1(7:0)), and the next free default name: in1, in2… for an input, out1… for an output, io1… for a bidirectional one, the first number no marker, net name or instance of the drawing takes (any letter case); a wire end on a named net takes that name. The schematic is written and its HDL file made again; the markers added, the ends skipped (and why) and its check\'s errors and warnings said.',
+    description: 'Add an I/O marker to every open end of a schematic (.sch.json), as its Add I/O Marker tool\'s rectangle does: the unconnected pins of instance, or every unconnected pin and wire end inside region. Each marker takes its pin\'s direction (a wire end: its net\'s pins\'; none: skipped) and width (in1(7:0)), and the next free name (in1…, out1…, io1…); a wire end on a named net takes that name. The schematic is written and its HDL file made again; the markers added, the ends skipped (and why) and its check\'s errors and warnings said.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'), instance: STR('The instance whose open pins get markers (its name: U1).'),
+      project: PROJECT, path: STR('The schematic (.sch.json).'), instance: STR('The instance whose open pins get markers (its name: U1).'),
       region: { type: 'object', properties: { x: { type: 'integer' }, y: { type: 'integer' }, w: { type: 'integer' }, h: { type: 'integer' } }, required: ['x', 'y', 'w', 'h'], additionalProperties: false,
-        description: 'The rectangle whose open pins and wire ends get markers: its left, top, width and height (sheet coordinates).' },
+        description: 'The rectangle: its left, top, width and height (sheet coordinates).' },
     }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel, instance, region }) {
@@ -118,9 +118,9 @@ export const SCHEMATIC_TOOLS = [
   },
   {
     name: 'set_wire_style', title: 'Set how a schematic\'s wires are drawn',
-    description: 'How the wires of a schematic (.sch.json) are drawn, as its editor\'s ⋮ menu\'s Wires does: direct (a straight line from end to end, or through the wire\'s own points), orthogonal (horizontal and vertical lines, the technical drawing, the default) or curved (smooth curves). The look only: each wire keeps its rectilinear path, so what it connects, the nets and the HDL are the same; an undoable edit in the editor.',
+    description: 'How the wires of a schematic (.sch.json) are drawn, as its editor\'s ⋮ menu\'s Wires does: direct (straight lines through the wire\'s points), orthogonal (the default) or curved. The look only: the paths, nets and HDL stay the same.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, path: STR('The schematic: a .sch.json file of the project.'),
+      project: PROJECT, path: STR('The schematic (.sch.json).'),
       style: { type: 'string', enum: ['direct', 'orthogonal', 'curved'], description: 'How the wires are drawn.' },
     }, required: ['project', 'path', 'style'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },

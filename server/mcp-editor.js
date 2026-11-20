@@ -8,7 +8,7 @@ import { openInEditor } from './open-editor.js';
 export const EDITOR_TOOLS = [
   {
     name: 'open_in_editor', title: 'Open in VS Code',
-    description: 'Open a project\'s file (an HDL, C / C++, constraints or any text file) at a line, or the project\'s folder (no path), in the user\'s editor on this computer: VS Code, or the one config.json\'s "editor" names (code-insiders, codium, cursor, a program\'s path; "off" turns it off). The user sees it open; what they save there is the project\'s file (read_file reads it). Refused for a hidden file or folder, a path outside the project, or when the editor is turned off or not found.',
+    description: 'Open a project\'s text file at a line, or its folder (no path), in the user\'s editor on this computer: VS Code, or the one config.json\'s "editor" names ("off" turns it off). What they save there is the project\'s file. Refused for a hidden file or folder, a path outside the project, or when the editor is off or not found.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       path: { type: 'string', description: 'The file, relative to the project folder (src/top.vhd); none: the project\'s folder.' },

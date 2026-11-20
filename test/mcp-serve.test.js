@@ -28,13 +28,15 @@ before(async () => {
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 // a server on two streams: send(m), the answers and notifications received, until(cond)
-function served() {
+// (initialized first, as a client does, #4752: version, the protocol version asked; null: not initialized)
+function served(version = '2025-06-18') {
   const input = new PassThrough(), output = new PassThrough();
   const done = serveMcp({ input, output });
   const got = [];
   let buf = '';
   output.on('data', d => { buf += d; for (let i; (i = buf.indexOf('\n')) >= 0; buf = buf.slice(i + 1)) got.push(JSON.parse(buf.slice(0, i))); });
-  const send = m => input.write(`${JSON.stringify({ jsonrpc: '2.0', ...m })}\n`);
+  const send = m => input.write(`${JSON.stringify(Array.isArray(m) ? m : { jsonrpc: '2.0', ...m })}\n`);
+  if (version) send({ id: 'init', method: 'initialize', params: { protocolVersion: version } });
   const until = async (cond, ms = 10000) => { const end = Date.now() + ms; while (!cond() && Date.now() < end) await new Promise(r => setTimeout(r, 20)); return cond(); };
   return { send, got, until, end: () => { input.end(); return done; } };
 }
@@ -119,4 +121,29 @@ test('#4734 run_process with a progressToken: notifications/progress with its to
   assert.ok(await s.until(() => s.got.some(a => a.id === 2), 300000));
   assert.equal(s.got.filter(a => a.method === 'notifications/progress').length, notes.length);
   await s.end();
+});
+
+test('#4752 on the streams: nothing but ping before initialize; a batch refused in 2025-06-18, answered in 2025-03-26', async () => {
+  const s = served(null);
+  s.send({ id: 1, method: 'tools/list' });
+  s.send({ id: 2, method: 'ping' });
+  s.send(call(3, 'list_projects', {}));
+  assert.ok(await s.until(() => s.got.length === 3), JSON.stringify(s.got));
+  assert.deepEqual(s.got.find(a => a.id === 1).error, { code: -32002, message: 'not initialized: send initialize first' });
+  assert.deepEqual(s.got.find(a => a.id === 2).result, {});
+  assert.equal(s.got.find(a => a.id === 3).error.code, -32002);
+  // (initialized: the same requests answered)
+  s.send({ id: 4, method: 'initialize', params: { protocolVersion: '2025-06-18' } });
+  s.send({ id: 5, method: 'tools/list' });
+  assert.ok(await s.until(() => s.got.some(a => a.id === 5)));
+  assert.ok(s.got.find(a => a.id === 5).result.tools.length > 50);
+  s.send([{ jsonrpc: '2.0', id: 6, method: 'ping' }, { jsonrpc: '2.0', id: 7, method: 'ping' }]);
+  assert.ok(await s.until(() => s.got.some(a => a.id === null && a.error)));
+  assert.match(s.got.find(a => a.id === null).error.message, /^batches are not part of protocol version 2025-06-18/);
+  await s.end();
+  const old = served('2025-03-26');
+  old.send([{ jsonrpc: '2.0', id: 1, method: 'ping' }, { jsonrpc: '2.0', id: 2, method: 'ping' }]);
+  assert.ok(await old.until(() => old.got.some(Array.isArray)));
+  assert.deepEqual(old.got.find(Array.isArray).map(a => a.id), [1, 2]);
+  await old.end();
 });

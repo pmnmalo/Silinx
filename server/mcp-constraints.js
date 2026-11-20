@@ -24,8 +24,8 @@ async function topPorts(name, pj) {
 export const CONSTRAINTS_TOOLS = [
   {
     name: 'check_constraints', title: 'Check Constraints',
-    description: 'Check a constraints file (default: the project\'s) as the interface\'s Check Constraints does, in the device\'s format: UCF (Spartan), PCF (iCE40), LPF (ECP5), CST (Gowin), CCF (GateMate) or XDC (7-series). Its errors and warnings with their line: the syntax, the names that are no port of the top, the ports with no pin, and the pins (one that is no pin of the device\'s package, one given to two ports, one on no resource of the board, an I/O standard at another voltage than its bank\'s on the board).',
-    inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The constraints file (default: the project\'s constraints file).') }, required: ['project'], additionalProperties: false },
+    description: 'Check a constraints file as Check Constraints does, in the device\'s format (UCF, PCF, LPF, CST, CCF or XDC): its errors and warnings with their line: the syntax, names that are no port of the top, ports with no pin, and the pins (not in the package, given to two ports, on no resource of the board, an I/O standard at another voltage than its bank\'s).',
+    inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The constraints file (default: the project\'s).') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
       const pj = await readProject(name);
