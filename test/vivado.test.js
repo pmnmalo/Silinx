@@ -274,7 +274,8 @@ test('a 7-series project is implemented by Vivado (POST implement, run_process):
   fs.cpSync(path.join(ROOT, 'examples', 'gates'), path.join(process.env.SILINX_WORKSPACE, 'Gates2'), { recursive: true });
   await assert.rejects(startImplementation('Gates2', { toolchain: 'vivado' }), /^Error: AMD Vivado implements the 7-series devices of Vivado ML Standard \(the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000\), not the XC3S250E$/);
   // #3895 a Spartan-7 / Zynq-7000 project: Vivado's whatever its synthesis tool says; the Silinx toolchain or ISE asked for: refused
-  for (const [nm, device] of [['S7Blinky', { family: 'spartan7', part: 'xc7s50', package: 'csga324', speed: '-1' }], ['Z7Blinky', { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }]]) {
+  // (a Zynq-7000 part with no bit database, the XC7Z030: the XC7Z010 and the XC7Z020 are the Silinx toolchain's too, #4680)
+  for (const [nm, device] of [['S7Blinky', { family: 'spartan7', part: 'xc7s50', package: 'csga324', speed: '-1' }], ['Z7Blinky', { family: 'zynq', part: 'xc7z030', package: 'sbg485', speed: '-1' }]]) {
     blinkyProject(nm, { device, synthTool: 'silinx' });
     const g = await wait(await startImplementation(nm, { generateOnly: true }));
     assert.equal(g.meta.toolchain, 'vivado', nm);

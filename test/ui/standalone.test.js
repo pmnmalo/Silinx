@@ -1893,7 +1893,8 @@ uiTest('#487 static editions: a Content-Security-Policy with the inline scripts\
   assert.deepEqual(await ls(`assets/vendor/nextpnr-spartan6/${nextpnrS6Version}/chipdb`), ['chipdb-xc6slx16.bin.gz', 'chipdb-xc6slx45.bin.gz']);
   // (the 7-series', nextpnr-himbaechel-xc7, and its bit databases, gzipped, in bitdb/xc7: #3143)
   assert.deepEqual(await ls(`assets/vendor/nextpnr-xc7/${nextpnrXc7Version}`), ['chipdb', 'gen', 'package.json']);
-  assert.deepEqual(await ls(`assets/vendor/nextpnr-xc7/${nextpnrXc7Version}/chipdb`), ['chipdb-xc7a100t.bin.gz', 'chipdb-xc7a50t.bin.gz']);
+  // (the Zynq-7000's xc7z010 and xc7z020 too, their programmable logic: 0.4.0, #4680)
+  assert.deepEqual(await ls(`assets/vendor/nextpnr-xc7/${nextpnrXc7Version}/chipdb`), ['chipdb-xc7a100t.bin.gz', 'chipdb-xc7a50t.bin.gz', 'chipdb-xc7z010.bin.gz', 'chipdb-xc7z020.bin.gz']);
   assert.ok(xc7Parts.includes('xc7a35tcpg236-1'), xc7Parts.join());
   assert.deepEqual(await ls(`assets/${dir}bitdb/xc7`), xc7Parts.map((p) => `${p}.json.gz`));
   // #1237: each published asset's SHA-256 in the page (the cache checks it), and no other
