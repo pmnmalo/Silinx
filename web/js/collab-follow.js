@@ -309,14 +309,14 @@ async function track() {
     // (another document brought to the front by the follower: they browse alone)
     if (fol.following && fol.settled && fol.front !== undefined && viewKeyOf(S.active) !== fol.front) setFollowing(false);
     // (the owner's activity, #4002: its documents, the one in front, its views, its selection)
-    if (fol.following && S.project?.name === collab.project) await followActivity(fol.act, ch => fol.session.activity(ch));
+    if (fol.following && S.project?.name === collab.project) await followActivity(fol.act, ch => fol.session.activity(ch), () => fol.following);
     if (fol.following && v?.path && S.project?.name === collab.project) {
       const key = JSON.stringify(v);
       if (fol.drivenKey !== key) {
         fol.drivenKey = key;
         // (a report of the owner's build: once its text has come, #4002)
         if (mine !== v.path) await (reportPath(v.path) ? openReport(`file:${v.path}`, ch => fol.session.activity(ch)) : app.openFile(v.path));
-        const d = S.docs.find(x => docPath(x) === v.path);
+        const d = fol.following ? S.docs.find(x => docPath(x) === v.path) : null;   // (browsing alone meanwhile, #4865)
         if (d && S.active !== d) activateDoc(d);
         if (d?.editor && v.line !== null) d.editor.setCursor({ line: v.line, ch: v.ch ?? 0 });
         fol.driven = v;
