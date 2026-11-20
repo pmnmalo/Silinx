@@ -361,6 +361,8 @@ export const api = {
     return copyProjects(browser, store);
   },
   browserProjects: async () => (await browser.list()).map(j => j.name),
+  // the projects of the browser's storage deleted from it (moved into the folder, confirmed: #4962)
+  deleteBrowserProjects: async names => { for (const n of names) await browser.deleteProject(n); },
 
   // ---- projects
   // (with where each is kept, as the server's: this browser's storage or the folder opened, its GitHub repository, #4314)

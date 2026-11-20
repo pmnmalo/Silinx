@@ -42,7 +42,10 @@ That's all. Things to know:
   the folder; when it asks for permission again, click **Reopen Silinx-projects** on the Start page.
   **File ▸ Copy Browser Projects to the Folder** copies the projects you already had in the browser,
   and **File ▸ Use Browser Storage** goes back to the browser. The status bar shows where the projects
-  are kept. Firefox and Safari cannot open a folder: there the projects stay in the browser.
+  are kept. The first time Silinx opens in Chrome or Edge, the console offers **Choose a Workspace
+  Folder…** or **Keep in This Browser**; with a folder chosen, the projects already in the browser can
+  be copied or moved into it (a move asks before deleting them from the browser). Firefox and Safari
+  cannot open a folder: there the projects stay in the browser.
 - **Implement Design** and **Generate Programming File** run the Silinx toolchain in the browser
   (Basys2, Nexys2, Nexys3, Atlys and iCEBreaker boards; the first run downloads its tools from the site, about 100 MB, then the
   browser keeps them; the downloaded `Silinx.html` too): the bitstream (`<top module>.bit`, e.g. `blinky.bit`) is downloaded.

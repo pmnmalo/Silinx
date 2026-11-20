@@ -353,7 +353,8 @@ async function switchStorage(what, fn) {
   showLeftPage('start');
   return true;
 }
-const openWorkspaceFolder = () => switchStorage('Open Workspace Folder', () => api.openWorkspaceFolder());
+// (true: the folder is the storage; false: the picker cancelled; undefined: refused, said; the first run's offer, #4962)
+export const openWorkspaceFolder = () => switchStorage('Open Workspace Folder', () => api.openWorkspaceFolder());
 // (#4667: the project the start-up left closed for want of the folder's permission reopened where it was, unless the
 // user opened another one meanwhile; nothing awaited before the browser's request: the click's activation)
 async function reopenWorkspaceFolder() {
@@ -361,13 +362,15 @@ async function reopenWorkspaceFolder() {
   if (await switchStorage('Open Workspace Folder', () => api.reopenWorkspaceFolder())) await reopenWaiting();
 }
 const useBrowserStorage = () => switchStorage('Use Browser Storage', () => api.useBrowserStorage());
-async function copyBrowserProjects() {
+// ({ copied, skipped }, null when it failed: the first run's offer moves the copied ones, #4962)
+export async function copyBrowserProjects() {
   const what = 'Copy Browser Projects to the Folder';
   let r;
-  try { r = await api.copyBrowserProjectsToFolder(); } catch (e) { alertDlg(what, e.message, 'error'); return; }
+  try { r = await api.copyBrowserProjectsToFolder(); } catch (e) { alertDlg(what, e.message, 'error'); return null; }
   const folder = api.storage().folder;
   log(r.copied.length ? `Copied ${r.copied.length} project(s) from the browser's storage into the folder '${folder}': ${r.copied.join(', ')}.`
     : `No project copied into the folder '${folder}'.`, r.copied.length ? 'ok' : 'info');
   for (const n of r.skipped) log(`WARNING: project '${n}' was not copied: the folder '${folder}' already has a project of that name.`, 'warn');
   if (!document.querySelector('.left-page[data-page=start]').hidden) renderStartPage();
+  return r;
 }

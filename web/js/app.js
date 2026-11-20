@@ -975,6 +975,8 @@ async function boot() {
   else if (!asked) showLeftPage('start');
   if (resumed?.role === 'owner' && !followed) await (await import('./collab-share.js')).resumeSharing(resumed);
   if (api.standalone && !followed && !asked && !link) import('./storage-late.js').then(m => m.reopenWhenGranted(last)).catch(() => {});   // (#4656)
+  // (a workspace folder on the disk offered at the first run, where the browser can give one, #4962: one console line)
+  if (api.standalone && !followed && !link) import('./storage-offer.js').then(m => m.offerFolder()).catch(() => {});
   delete document.documentElement.dataset.starting;   // (no project reopened: the app shown at once, #1403)
   if (link) await (await import('./link-open.js')).openFromLink(link).finally(() => { S.linkOpened = true; });   // (the UI tests wait for it)
   (await import('./link-hash.js')).watchLinks(window, seen);   // a link given to the running app: opened as at start-up (#3316)
