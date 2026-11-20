@@ -702,9 +702,13 @@ export async function runSsh(job, cfg, det, project, gen, steps, onLine, { clean
   code = await runPipe(job,
     ['ssh', [...opts, '--', target, `tar -C ${rq} --exclude=./src -cf - .`]],
     ['tar', ['-C', gen.buildDir, '-xf', '-']]);
-  if (code !== 0) job.log('WARNING: downloading results failed');
   if (cleanup) await runCommand(job, 'ssh', [...opts, '--', target, `rm -rf ${rq}`]).catch(() => {});
-  return flow;
+  if (code === 0) return flow;
+  // the build/ here still holds an earlier run's outputs (a .bit, the reports): a flow that ran but whose results did
+  // not come back fails, never shown nor programmed as this run's (#4721); a failed flow keeps its own exit code
+  if (flow !== 0) { job.log(`WARNING: downloading results from the ssh host failed (exit code ${code})`); return flow; }
+  job.log(`ERROR: downloading results from the ssh host failed (exit code ${code}): the flow ran there, but its results are not here`);
+  return code;
 }
 
 /**

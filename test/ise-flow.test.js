@@ -230,6 +230,35 @@ test('ssh mode: build dir is uploaded with tar over ssh, run remotely and the re
   assert.ok(j2.lines.some(l => /Connection refused/.test(l)));
 });
 
+test('ssh mode: results that fail to download fail the job, the earlier run\'s outputs never taken for this one\'s (#4721)', { skip: POSIX_ONLY }, async () => {
+  await writeConfig({ mode: 'ssh', ssh: { host: 'build-box', user: 'me' } });
+  const dir = await makeProject('FlowDl');
+  // an ssh that fails the download only (tar -cf on the host), the fake ssh otherwise
+  const wrap = path.join(tmp, 'ssh-dl-fail');
+  await fs.mkdir(wrap, { recursive: true });
+  await fs.writeFile(path.join(wrap, 'ssh'), `#!/bin/sh\nfor a in "$@"; do last="$a"; done\ncase "$last" in\n  *"--exclude=./src -cf - ."*) echo "fake ssh: connection reset" >&2; exit 1 ;;\nesac\nexec "${path.join(fakes.ssh, 'ssh')}" "$@"\n`, { mode: 0o755 });
+  const old = process.env.PATH;
+  process.env.PATH = `${wrap}${path.delimiter}${old}`;
+  try {
+    await fs.mkdir(path.join(dir, 'build'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'build', 'top.syr'), 'an earlier run\'s report\n');
+    const j = await waitJob(jobs, await implement('FlowDl', { steps: ['synth'] }));
+    assert.equal(j.status, 'error', j.lines.join('\n'));
+    assert.equal(j.error, 'ISE flow failed (exit code 1)');
+    assert.ok(fss.existsSync(path.join(process.env.FAKE_SSH_HOME, 'silinx-build', 'FlowDl', 'top.syr')), 'the flow ran on the host');
+    assert.equal(await fs.readFile(path.join(dir, 'build', 'top.syr'), 'utf8'), 'an earlier run\'s report\n');
+    assert.ok(j.lines.includes('ERROR: downloading results from the ssh host failed (exit code 1): the flow ran there, but its results are not here'));
+    assert.ok(!j.lines.some(l => /^WARNING: /.test(l)), j.lines.filter(l => /^WARNING: /.test(l)).join('\n'));
+    // the flow fails too: its own exit code, the download's failure a warning
+    process.env.FAKE_ISE_FAIL = 'xst';
+    const j2 = await waitJob(jobs, await implement('FlowDl', { steps: ['synth'] }));
+    assert.equal(j2.status, 'error');
+    assert.match(j2.error, /^ISE flow failed in step 'synth' \(exit code [02-9]\d*\)$/);
+    assert.ok(j2.lines.includes('WARNING: downloading results from the ssh host failed (exit code 1)'));
+    assert.ok(!j2.lines.some(l => /^ERROR: downloading/.test(l)));
+  } finally { process.env.PATH = old; }
+});
+
 test('ssh mode: an unreachable host with a large build dir fails at once (tar does not block on the closed pipe, #499)', { skip: POSIX_ONLY }, async () => {
   await writeConfig({ mode: 'ssh', ssh: { host: 'build-box', user: 'me' } });
   const dir = await makeProject('FlowBig');
