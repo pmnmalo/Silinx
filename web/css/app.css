@@ -221,6 +221,10 @@ html[data-starting] #app { visibility: hidden; }   /* (at start-up, the last pro
 .wiz-main { flex: 1; min-width: 0; }
 .wiz-main h3 { margin: 0 0 10px; font-size: 14px; color: #1e395b; }
 .wiz-main .hint { color: #555; margin-bottom: 8px; }
+/* the projects kept in the browser's storage (the New Project wizard's notice, the Start page's Where Projects Are Kept,
+   the status line's Storage): in red, both interfaces and themes, over their own colours (#4957) */
+html:root .dlg-overlay .wiz-main .hint.storage-browser, html:root #start-page .start-storage .entry.storage-browser,
+html:root #statusbar #status-storage.storage-browser { color: var(--error-fg); }
 .src-types { border: 1px solid #abadb3; background: #fff; height: 260px; overflow: auto; }
 .src-types .st { display: flex; align-items: center; gap: 6px; padding: 3px 6px; }
 .src-types .st:hover { background: var(--hover); }

@@ -308,7 +308,8 @@ async function storageBox() {
   const entry = (label, ic, fn, attrs = {}) => h('div', { class: 'entry', ...attrs }, icon(ic), fn ? h('a', { onclick: fn }, label) : h('span', { class: 'disabled' }, label));
   const inBrowser = st.kind === 'folder' ? (await api.browserProjects().catch(() => [])).length : 0;
   return h('div', { class: 'start-box start-storage' }, h('h3', {}, 'Where Projects Are Kept'),
-    h('div', { class: 'entry' }, st.kind === 'folder' ? `In the folder ${st.folder} on the disk.` : 'In this browser\'s storage.'),
+    // (the browser's storage in red: clearing the browser's data loses the projects, #4957)
+    h('div', { class: st.kind === 'folder' ? 'entry' : 'entry storage-browser' }, st.kind === 'folder' ? `In the folder ${st.folder} on the disk.` : 'In this browser\'s storage.'),
     st.kind !== 'folder' && st.remembered && st.supported ? entry(`Reopen ${st.remembered}`, 'open', () => reopenWorkspaceFolder()) : null,
     st.supported ? entry('Open Workspace Folder…', 'open', () => openWorkspaceFolder())
       : entry('Open Workspace Folder…', 'open', null, { title: st.unsupportedReason }),
@@ -337,6 +338,7 @@ export function updateStorageStatus() {
   if (!el || !api.standalone) return;
   const st = api.storage();
   el.textContent = st.kind === 'folder' ? `Storage: folder ${st.folder}` : 'Storage: this browser';
+  el.classList.toggle('storage-browser', st.kind !== 'folder');   // (in red: clearing the browser's data loses them, #4957)
   el.title = st.kind === 'folder' ? 'Projects are kept in a folder on the disk (File > Use Browser Storage to go back)' : 'Projects are kept in the browser\'s storage (File > Open Workspace Folder… keeps them in a folder on the disk)';
 }
 // the open project belongs to the storage left: closed first
