@@ -8,8 +8,7 @@
 // (flow-models.js synthesizes the design again, without the capture). A capture on the board's clock (#3481): its port's
 // constraints (pin, period) added to the design's, unless the design has a port on that pin already (an error).
 import { runFlow } from '../packages/silinx-fpga/src/index.js';
-import { UCF } from '../packages/silinx-fpga/src/constraints.js';
-import { XDC } from '../packages/silinx-fpga/src/xdc.js';
+import { UCF, XDC } from '../packages/silinx-fpga/src/parts.js';
 import { pinsTaken } from './auto-pins.js';
 import { flowFrontEnd } from './synth-front.js';
 import { mountSimModels } from './flow-models.js';
