@@ -8,7 +8,8 @@ import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { isTrusted, untrustedNotice } from '/core/trust.js';
 import { S, closeAllDocs, compileProject, renderFilesPage, renderLibsPage, showLeftPage, fixMissingTops,
   restoreViewState, openSummary } from './app.js';
-import { appLog, log, renderDiagnostics, trustAction } from './console.js';
+import { appLog, log, logWarning, renderDiagnostics, trustAction } from './console.js';
+import { newerProject } from '/core/doc-format.js';
 import { drawingsAsBase, adoptDrawnHdl, drawnHdlClashes } from './drawings.js';
 import { renderProcesses, restoreImplStatus, reservedNameDiags } from './processes.js';
 import { projectSaved, renderHierarchy } from './design.js';
@@ -82,6 +83,9 @@ async function openProjectNow(name, { startup = false } = {}) {
   // (the browser edition: a project kept only in the browser's storage and not backed up for days, said once, #4971)
   if (api.standalone) import('./backup-reminder.js').then(m => m.remindBackup(name)).catch(() => {});
   warnReservedNames();
+  // (saved by a newer Silinx: said, #4756, core/doc-format.js)
+  const newer = newerProject(S.project);
+  if (newer) logWarning(newer);
   // the processes' status of the last run, its synthesis up to date or not (#280), restored before the project is
   // used: not awaited, it drew the Processes panel again under a double-click on a process and Implement Design
   // then did not start, or synthesized again (#346)

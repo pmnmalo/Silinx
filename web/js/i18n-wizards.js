@@ -10,6 +10,7 @@ export const WIZARDS_PT = {
   'Export Project (.zip)': 'Exportar Projeto (.zip)',
   'Wizard >': 'Assistente >',   // New Source's button (#958, #2082)
   'Damaged: silinx.json cannot be read': 'Danificado: o silinx.json não pode ser lido',   // (Open Project's damaged project, #4755)
+  'Read-only, saved by a newer Silinx': 'Só de leitura, guardado por um Silinx mais recente',   // (a drawing a newer Silinx saved, #4756)
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
   'Project Kind:': 'Tipo de Projeto:', 'FPGA design (a board and a device)': 'Projeto para FPGA (uma placa e um dispositivo)',
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',
@@ -118,6 +119,10 @@ export const WIZARDS_PT_PATTERNS = [
     "O armazenamento deste navegador tem $1 projeto(s): $2. Copiá-los para a pasta '$3'? Mover… copia-os e depois apaga-os do armazenamento deste navegador, depois de confirmar."],
   [/^Delete (\d+) project\(s\) from this browser's storage: (.*)\? They are now in the folder '(.*)'; this cannot be undone\.$/,
     "Apagar $1 projeto(s) do armazenamento deste navegador: $2? Estão agora na pasta '$3'; não se pode desfazer."],
+  // a document a newer Silinx saved (core/doc-format.js, #4756)
+  [/^(.+) was saved by a newer Silinx \(its format (\d+); this one reads up to (\d+)\): opened read-only, so that it is not saved in the older format and loses nothing: update Silinx to change it$/, '$1 foi guardado por um Silinx mais recente (o seu formato $2; este lê até ao $3): aberto só de leitura, para não ser guardado no formato antigo nem perder nada: atualize o Silinx para o alterar'],
+  [/^the project was saved by a newer Silinx \(its format (\d+); this one reads up to (\d+)\): what that Silinx added to it may be lost when it is saved here: update Silinx$/, 'o projeto foi guardado por um Silinx mais recente (o seu formato $1; este lê até ao $2): o que esse Silinx lhe acrescentou pode perder-se ao guardá-lo aqui: atualize o Silinx'],
+  [/^'(.+)' was saved by a newer Silinx \(its format (\d+); this one writes (\d+)\): not written in the older format, which would lose what that Silinx added: update Silinx to change it$/, "'$1' foi guardado por um Silinx mais recente (o seu formato $2; este escreve o $3): não escrito no formato antigo, que perderia o que esse Silinx acrescentou: atualize o Silinx para o alterar"],
   // a design and simulation project's refusals (core/project-kind.js, the MCP server's too, #3780)
   [/^(.*): a design and simulation project has drawings only: choose a board in Design Properties to add HDL sources$/, '$1: um projeto só de desenho e simulação tem apenas desenhos: escolha uma placa nas Propriedades do Desenho para acrescentar fontes HDL'],
   [/^(.*): a design and simulation project does not show its HDL \(its drawings are its sources\)$/, '$1: um projeto só de desenho e simulação não mostra o HDL (as fontes são os desenhos)'],
