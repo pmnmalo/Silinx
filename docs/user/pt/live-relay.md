@@ -85,9 +85,9 @@ Na [pasta do retransmissor](../../../packages/silinx-relay-cloudflare/README.md)
 ## Partilhar através dele
 
 A linha *Partilhar:* de *Partilhar Projeto…*, no topo da janela, oferece três formas: **Uma cópia**, **Em direto ponto
-a ponto (sem retransmissor)** e **Em direto pelo seu retransmissor Cloudflare**; uma frase logo abaixo da linha diz o que
-faz a forma escolhida. **Em direto pelo seu retransmissor Cloudflare** vem escolhida por omissão quando o retransmissor está configurado: a janela mostra o seu
-endereço (nunca a chave), e *Alterar…* abre de novo *Configurar um Retransmissor Cloudflare…*. Sem retransmissor
+a ponto (sem retransmissor)** e **Em direto pelo seu retransmissor Cloudflare**; algumas frases logo abaixo da linha dizem o
+que faz a forma escolhida. **Em direto pelo seu retransmissor Cloudflare** vem escolhida por omissão quando o retransmissor está configurado: a janela mostra o seu
+endereço (nunca a chave) abaixo de *O seu nome*, e *Alterar…* abre de novo *Configurar um Retransmissor Cloudflare…*. Sem retransmissor
 configurado, a janela di-lo e oferece *Configurar um Retransmissor Cloudflare…*, e *Começar a Partilhar* espera até haver
 um. **Em direto ponto a ponto (sem retransmissor)** não precisa de configuração: quem o segue encontra-o no ponto de
 encontro público e liga-se de navegador a navegador, ou envia-lhe um código (*Adicionar um Utilizador…*); pode falhar em

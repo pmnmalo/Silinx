@@ -12,13 +12,14 @@ import { getLanguage } from './i18n.js';
  *  between them does not resize the window. */
 export const SHARE_WIDTH = 720;
 
-/** Each way of sharing in one sentence, of the same length (#4676, #4712): shown below the Share: row, the way checked
+/** Each way of sharing described in three sentences, of about the same length (#4676, #4712, #4714): shown below the
+ *  Share: row, the way checked
  *  (A copy; Live, the server's; the browser edition's Live peer to peer and Live via the Cloudflare relay). */
 const SHARE_ABOUT = Object.freeze({
-  copy: 'A link with the whole project inside, as it is now: whoever opens it gets a copy of every file, with nothing to host.',
-  live: 'Others follow the project live, read only, through this Silinx server: its files, its drawings and what you do.',
-  'live-peer': 'Others follow the project live, read only, connected straight to your browser: no setup, but some networks block it.',
-  'live-relay': 'Others follow the project live, read only, through your own Cloudflare relay: it works on any network, schools too.',
+  copy: 'A link that opens the project in Silinx, for slides or a message, with the whole project inside it: no file to host. Whoever opens it gets a copy of every file and its comments, as it is now. Later changes are not in it: share it again to send them.',
+  live: 'Others follow the project live, read only: its files and drawings as they change, and what you do. They connect through this Silinx server, with nothing to set up. Anyone who can reach this server and has the link can follow it as you work.',
+  'live-peer': 'Others follow the project live, read only: its files and drawings as they change, and what you do. They connect straight to your browser through the public meeting point, with no setup. Some school and office networks block these connections.',
+  'live-relay': 'Others follow the project live, read only: its files and drawings as they change, and what you do. They meet you at your own relay on Cloudflare, set up once in the Collaboration tab. It works on any network, schools included, on the free plan.',
 });
 
 /** The window's title, and its console messages' name: Share Project, or Share Module (a module's). */

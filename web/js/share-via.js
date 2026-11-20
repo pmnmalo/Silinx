@@ -40,7 +40,7 @@ export function viaPart({ via = defaultVia(), changed = () => {} } = {}) {
       : [h('span', { class: 'share-via-none' }, 'No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.'),
         h('button', { class: 'btn', 'data-action': 'relay-setup', onclick: setUp }, 'Set Up a Cloudflare Relay…')]));
   };
-  // (the relay set, a row of its own below the way's sentence, just above the name, #4676: shown for the relay, its place
+  // (the relay set, a row of its own just below the name, #4714: shown for the relay, its place
   // kept unseen for peer to peer, so that switching between them moves nothing below)
   const el = h('div', { class: 'share-via' }, status);
   const show = () => {

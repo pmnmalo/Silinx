@@ -95,22 +95,23 @@ const ways = (page) => page.eval(() => {
     radios: [...new Set([...document.querySelectorAll('.dlg-overlay input[type=radio]')].map((r) => r.name))],
   };
 });
-// (#4676) the relay set's row: the last of Live's way's part, right above Your name, below the way's sentence; Your name's
-// top (the same for either way: nothing moves below the row)
+// (#4714) the relay set's row: Live's way's part, right below Your name (its label, box and error line); the buttons' top
+// (the same for either way: nothing moves below the row, #4676)
 const relayRow = (page) => page.eval(() => {
-  const via = document.querySelector('.dlg-overlay .share-via'), st = via.querySelector('.share-via-status'), name = via.nextElementSibling;
-  const about = document.querySelector('.dlg-overlay .share-about');
-  return { last: via.lastElementChild === st, name: name.textContent, below: st.getBoundingClientRect().top >= about.getBoundingClientRect().bottom - 1, above: st.getBoundingClientRect().bottom <= name.getBoundingClientRect().top + 1, nameTop: Math.round(name.getBoundingClientRect().top) };
+  const via = document.querySelector('.dlg-overlay .share-via'), st = via.querySelector('.share-via-status');
+  const label = [...document.querySelectorAll('.dlg-overlay .collab-dlg > label')].find((l) => l.nextElementSibling?.classList.contains('collab-name-box'));
+  const box = document.querySelector('.dlg-overlay .collab-name-box');
+  return { last: via.lastElementChild === st, name: label.textContent, after: via.previousElementSibling?.classList.contains('collab-name-error'), below: st.getBoundingClientRect().top >= box.getBoundingClientRect().bottom - 1, buttonsTop: Math.round(document.querySelector('.dlg-overlay .dlg-buttons').getBoundingClientRect().top) };
 });
 // (#4712: the Share: row the window's first, the way's sentence below it; every way's sentence as many lines)
 const twins = async (page, what) => { assert.ok((await shareAbout(page)).first, `${what}: the Share: row first`); await sameLines(page, what); };
 const warnings = async (page) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|AVISO|ERROR|ERRO)/.test(l));
 
 const ROW = ['Share:', ['A copy', 'A link with the project in it'], ['Live peer to peer (no relay)', 'Others follow it as you work, with no setup'], ['Live via your Cloudflare relay', 'Others follow it as you work, on any network']];
-const RELAY = 'Others follow the project live, read only, through your own Cloudflare relay: it works on any network, schools too.';
-const PEER = 'Others follow the project live, read only, connected straight to your browser: no setup, but some networks block it.';
-const PEER_PT = 'Outros seguem o projeto em direto, só de leitura, ligados ao seu navegador: sem configuração, mas há redes que o bloqueiam.';
-const RELAY_PT = 'Outros seguem o projeto em direto, só de leitura, pelo seu retransmissor Cloudflare: funciona em qualquer rede, até escolas.';
+const RELAY = 'Others follow the project live, read only: its files and drawings as they change, and what you do. They meet you at your own relay on Cloudflare, set up once in the Collaboration tab. It works on any network, schools included, on the free plan.';
+const PEER = 'Others follow the project live, read only: its files and drawings as they change, and what you do. They connect straight to your browser through the public meeting point, with no setup. Some school and office networks block these connections.';
+const PEER_PT = 'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Ligam-se diretamente ao seu navegador pelo ponto de encontro público, sem configuração. Algumas redes de escolas e empresas bloqueiam estas ligações.';
+const RELAY_PT = 'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Encontram-no num retransmissor seu no Cloudflare, configurado uma vez no separador Colaboração. Funciona em qualquer rede, escolas incluídas, no plano gratuito.';
 const NONE = ['No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.', 'Set Up a Cloudflare Relay…'];
 const SET = (a, k) => { localStorage.setItem('silinx.collab.relay', JSON.stringify({ address: a, key: k })); dispatchEvent(new CustomEvent('silinx:relay-changed')); };
 
@@ -141,7 +142,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   // the Cloudflare relay from A copy's window: none set up, said, the guide offered, Start Sharing disabled
   await choose(page, 'live-relay'); await step('Cloudflare, none set up');
   const rowRelay = await relayRow(page);
-  assert.deepEqual([rowRelay.last, rowRelay.name, rowRelay.below, rowRelay.above], [true, 'Your name, as they see it:', true, true]);
+  assert.deepEqual([rowRelay.last, rowRelay.name, rowRelay.after, rowRelay.below], [true, 'Your name, as they see it:', true, true]);
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-relay', about: [RELAY], relay: NONE, start: false, radios: ['share-how'] });
   await page.click('.dlg-overlay [data-action=relay-setup]');
   await page.waitDialog('Set Up a Cloudflare Relay');
@@ -151,7 +152,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   // peer to peer in the same window (not reopened: the name typed kept)
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana Live');
   await choose(page, 'live-peer'); await step('peer to peer');
-  assert.equal((await relayRow(page)).nameTop, rowRelay.nameTop, 'Your name where it was, peer to peer');
+  assert.equal((await relayRow(page)).buttonsTop, rowRelay.buttonsTop, 'the buttons where they were, peer to peer');
   assert.deepEqual(await ways(page), { row: ROW, how: 'live-peer', about: [PEER], relay: null, start: true, radios: ['share-how'] });
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field=name]').value), 'Ana Live');
   // a relay set up meanwhile (the Collaboration tab's Relay box): its address, Change…; its key nowhere
