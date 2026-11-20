@@ -51,14 +51,18 @@ export function followState() {
   return st;
 }
 
-/** The owner's activity put on the follower's page (`get`: the session's activity), what changed since the last time. */
-export async function followActivity(st, get) {
+/** The owner's activity put on the follower's page (`get`: the session's activity), what changed since the last time;
+ *  `live()` false once the follower browses alone (#4865: their own action while a document was opening here, the rest
+ *  not put on the page, not the owner's document brought to the front over the follower's). */
+export async function followActivity(st, get, live = () => true) {
   if (await followRuns(st, get)) st.applied.ui = null;   // (its reports changed: a report the owner has open may open now)
+  if (!live()) return;
   const ui = get('ui'), uiKey = JSON.stringify(ui);
   if (ui !== null && st.applied.ui !== uiKey) {
     st.applied.ui = uiKey;
     const u = followedUi(ui);
-    if (u) { await applyUi(st, u, get); st.applied.design = null; }   // (a view changed: its selection put again)
+    if (u) { await applyUi(st, u, get, live); st.applied.design = null; }   // (a view changed: its selection put again)
+    if (!live()) return;
   }
   const design = get('design'), designKey = JSON.stringify(design);
   if (design !== null && st.applied.design !== designKey) {
@@ -67,19 +71,24 @@ export async function followActivity(st, get) {
     if (d) applyDesign(d);
   }
   await followSim(st, get);
+  if (!live()) return;
   followEmu(get);
   await followTry(st, get);
 }
 
-async function applyUi(st, { view: v, layout }, get) {
+async function applyUi(st, { view: v, layout }, get, live) {
   if (v.view && v.view !== S.view) setView(v.view);
   if (v.page && v.page !== S.leftPage) showLeftPage(v.page);
   const have = new Set(S.docs.map(viewKeyOf));
-  for (const id of v.open) if (!have.has(id) && (await openReport(id, get) || await reopenDoc(id))) st.opened.add(id);
+  for (const id of v.open) {
+    if (!have.has(id) && (await openReport(id, get) || await reopenDoc(id))) st.opened.add(id);
+    if (!live()) return;   // (the follower's own document in front meanwhile stays there, #4865)
+  }
   for (const d of [...S.docs]) {
     const k = viewKeyOf(d);
     if (st.opened.has(k) && !v.open.includes(k)) { st.opened.delete(k); await closeDoc(d); }
   }
+  if (!live()) return;
   const find = k => S.docs.find(d => viewKeyOf(d) === k);
   restoreSplit(v.split, find, v.open);
   const front = v.active && find(v.active);

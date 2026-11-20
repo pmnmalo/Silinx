@@ -118,3 +118,43 @@ uiTest('#4002 in Portuguese: the viewer follows the owner\'s selection; its own 
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
 });
+
+// #4865: the viewer's own click while the owner's document was still opening at the viewer's (its Design Summary, its
+// summary.js held here by CDP's Fetch: a loaded machine): browsing alone, the document the viewer opens then stays in
+// front, the owner's Design Summary opening behind it, not brought over it once it has opened
+uiTest('#4865 a viewer browsing alone while the owner\'s Design Summary was opening: the viewer\'s own document stays in front', E, async (page) => {
+  await makeProject(env, { name: 'GatesActLate', template: 'gates' });
+  await page.openProject('GatesActLate');
+  await page.waitFor(() => window.Silinx.active?.id === 'summary', [], { what: 'the owner\'s Design Summary in front' });
+  const link = await shareNow(page);
+  const p = await env.newPage(env.server.url);
+  const held = [];
+  const off = p.cdp.on((m) => { if (m.sessionId === p.sessionId && m.method === 'Fetch.requestPaused') held.push(m.params.requestId); });
+  try {
+    await p.waitFor(() => window.SilinxApp && window.Silinx?.startupChecked, [], { what: 'app boot' });
+    await p.send('Network.enable');
+    await p.send('Network.setCacheDisabled', { cacheDisabled: true });
+    await p.send('Fetch.enable', { patterns: [{ urlPattern: '*/js/summary.js*', requestStage: 'Request' }] });
+    await p.goto(`${new URL(link).origin}/?f=1${new URL(link).hash}`);
+    await p.waitDialog('Follow a Shared Project');
+    await p.fill('.dlg-overlay input[data-field=name]', 'Rui');
+    await p.dialogButton('Follow');
+    await p.waitFor(() => window.Silinx?.project?.name && window.Silinx.startupChecked, [], { what: 'the project open', timeout: 30000 });
+    await p.waitFor(() => !!document.querySelector('#hier .row[data-key="project"] .lbl')?.getClientRects().length, [], { what: 'the Design pane' });
+    assert.ok(held.length > 0, 'summary.js held');
+    await p.click('#hier .row[data-key="project"] .lbl');
+    await p.waitConsole(/^Browsing alone: Ana is no longer followed \(Follow Ana, in the toolbar, follows them again\)\.$/m);
+    await p.eval(() => window.SilinxApp.openFile('src/gates.vhd'));
+    await p.waitFor(() => window.Silinx.active?.id === 'file:src/gates.vhd', [], { what: 'the viewer\'s own document' });
+    off();
+    await p.send('Fetch.disable');
+    for (const id of held) await p.send('Fetch.continueRequest', { requestId: id }).catch(() => {});
+    await p.waitFor(() => window.Silinx.docs.some((d) => d.id === 'summary'), [], { what: 'the owner\'s Design Summary opened' });
+    // (the opening's end, and the page's next frames: what the follow did after it)
+    await p.eval(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 400)))));
+    assert.equal(await p.eval(() => window.Silinx.active?.id), 'file:src/gates.vhd', 'the viewer\'s document still in front');
+    assert.equal(await presence(p), 'Follow Ana');
+    assert.deepEqual(await warnings(p), []);
+    assert.deepEqual(p.errors, []);
+  } finally { off(); await p.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
+});
