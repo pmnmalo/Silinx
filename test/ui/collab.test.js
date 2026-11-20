@@ -300,11 +300,13 @@ uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and dev
   assert.equal(await page.waitDialog('Share Project'), 'Share Project');
   assert.deepEqual(await howState(page), ['copy *', 'live']);
   assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how > label, .dlg-overlay .share-how-choices > label')].map((l) => (l.parentElement.classList.contains('share-how') ? l.textContent : [...l.children].filter((c) => c.tagName === 'SPAN').map((c) => c.textContent).join(' · '))).join(' | ')), 'Share: | A copy · A link with the project in it | Live · Others follow it as you work');
-  // (#3995: the window's explanation first, then the two ways side by side, each one's explanation below its button)
+  // (#3995: the two ways side by side, each one's explanation below its button; #4712: the row the window's first, the
+  // way's sentence below it)
   assert.deepEqual(await page.eval(() => {
     const [c, l] = [...document.querySelectorAll('.dlg-overlay .share-how-choices > label')].map((x) => ({ radio: x.querySelector('input').getBoundingClientRect(), note: x.querySelector('.share-how-note').getBoundingClientRect() }));
-    const hint = document.querySelector('.dlg-overlay .dlg-body .hint'), how = document.querySelector('.dlg-overlay .share-how');
-    return [Math.abs(c.radio.top - l.radio.top) < 2, l.radio.left > c.note.left, c.note.top >= c.radio.bottom - 2, l.note.top >= l.radio.bottom - 2, !!(hint.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING), /^A link that opens /.test(hint.textContent)];
+    const head = document.querySelector('.dlg-overlay .dlg-body > div > .share-head'), how = document.querySelector('.dlg-overlay .share-how');
+    const about = [...document.querySelectorAll('.dlg-overlay .share-about > p')].find((p) => getComputedStyle(p).visibility !== 'hidden');
+    return [Math.abs(c.radio.top - l.radio.top) < 2, l.radio.left > c.note.left, c.note.top >= c.radio.bottom - 2, l.note.top >= l.radio.bottom - 2, head?.parentElement.firstElementChild === head && head.firstElementChild === how && about.getBoundingClientRect().top >= how.getBoundingClientRect().bottom - 1, /^A link with the whole project inside, /.test(about.textContent)];
   }), [true, true, true, true, true, true]);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].map((x) => x.textContent)), ['Open in:', 'Module:', 'View:', 'Include the current view: the open tabs, the split, the panels', 'Link:', 'Expires:']);
   assert.ok(await page.eval(() => !!document.querySelector('.dlg-overlay select[data-field=view]')), 'the copy\'s link');

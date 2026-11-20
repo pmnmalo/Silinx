@@ -32,10 +32,24 @@ export const checkFrames = (frames, from, to, what) => {
   if (to === 'copy') assert.deepEqual([...new Set(frames.slice(first).map((f) => f[0].link))].length, 1, `${what}: the link box as tall from the first frame`);
 };
 
-/** The top window's texts laid out with their twin (#4676: the intros, Live's ways' explanations): each one's
- *  [text, its lines, its twin's lines], the lines measured as the text wraps. */
-export const twinLines = (page) => page.eval(() => {
+/** The top window's Share: row and the way's sentence (#4712): `first`, the row (and the sentence below it) the window's
+ *  first; `way` and `text`, the sentence shown; `lines`, every way's sentence's lines as it wraps (laid out in one
+ *  place, the others unseen: all as many lines as one another, #4676). */
+export const shareAbout = (page) => page.eval(() => {
   const lines = (e) => { const cs = getComputedStyle(e); return Math.round((e.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / parseFloat(cs.lineHeight)); };
-  return [...[...document.querySelectorAll('.dlg-overlay')].pop().querySelectorAll('.share-twin')].filter((t) => !t.closest('[hidden]'))
-    .map((t) => [t.firstElementChild.textContent.slice(0, 24), lines(t.firstElementChild), lines(t.lastElementChild)]);
+  const dlg = [...document.querySelectorAll('.dlg-overlay')].pop(), head = dlg.querySelector('.share-head');
+  const all = [...head.querySelectorAll('.share-about > p')], on = all.filter((p) => getComputedStyle(p).visibility !== 'hidden');
+  return {
+    // (the window's body: its content, whose first child the head is)
+    first: head.parentElement.parentElement.classList.contains('dlg-body') && head.parentElement.firstElementChild === head
+      && head.firstElementChild.classList.contains('share-how') && head.lastElementChild.classList.contains('share-about'),
+    way: on.map((p) => p.dataset.way).join(), text: on.map((p) => p.textContent).join(),
+    lines: Object.fromEntries(all.map((p) => [p.dataset.way, lines(p)])),
+  };
 });
+
+/** Every way's sentence as many lines as the others (#4712), at the window's width now. */
+export const sameLines = async (page, what) => {
+  const { lines } = await shareAbout(page);
+  assert.equal(new Set(Object.values(lines)).size, 1, `${what}: ${JSON.stringify(lines)}`);
+};

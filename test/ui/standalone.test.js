@@ -630,7 +630,7 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   await page.waitFor(() => !!document.querySelector('.dlg-overlay input[data-field=name]'), [], { what: 'the live window' });
   // (#4543, #4634: no Cloudflare relay set up: peer to peer chosen, Start Sharing enabled; this page hosts it, met at
   // the meeting point)
-  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-how]:checked')?.value, !!document.querySelector('.dlg-overlay .share-via-peer:not([hidden])'), document.querySelector('.dlg-overlay .dlg-buttons button.primary').disabled]), ['live-peer', true, false]);
+  assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay input[name=share-how]:checked')?.value, [...document.querySelectorAll('.dlg-overlay .share-about > p')].find((p) => getComputedStyle(p).visibility !== 'hidden')?.dataset.way === 'live-peer', document.querySelector('.dlg-overlay .dlg-buttons button.primary').disabled]), ['live-peer', true, false]);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
   await page.dialogButton('Start Sharing');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' });

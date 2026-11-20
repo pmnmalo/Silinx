@@ -6,6 +6,9 @@ export const LINK_PT = {
   'Share Project…': 'Partilhar Projeto…', 'Share Module…': 'Partilhar Módulo…', 'Share Project': 'Partilhar Projeto', 'Share Module': 'Partilhar Módulo',
   'Share:': 'Partilhar:', 'A copy': 'Uma cópia', 'A link with the project in it': 'Uma ligação com o projeto lá dentro',
   'Others follow it as you work': 'Os outros seguem-no enquanto trabalha',
+  // (A copy in one sentence, of the same length as Live's ways', #4712: web/js/share-how.js)
+  'A link with the whole project inside, as it is now: whoever opens it gets a copy of every file, with nothing to host.':
+    'Uma ligação com o projeto todo lá dentro, tal como está: quem a abre recebe uma cópia de cada ficheiro, sem nada a alojar.',
   'This edition of Silinx does not share a project live.': 'Esta edição do Silinx não partilha um projeto em direto.',
   'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.':
     'Um Silinx aberto a partir de um ficheiro não tem um endereço que os outros possam abrir: abra o Silinx a partir do seu sítio para partilhar um projeto em direto.',
@@ -43,8 +46,6 @@ export const LINK_PT = {
 export const LINK_PT_PATTERNS = [
   [/^Expired (\d{4}-\d\d-\d\d)$/, 'Expirou a $1'], [/^Until (\d{4}-\d\d-\d\d)$/, 'Até $1'],   // (Short Links…, #3635)
   [/^(\d+) short links? of your GitHub account, the newest first; (\d+) expired\.$/, '$1 ligação(ões) curta(s) da sua conta do GitHub, a mais recente primeiro; $2 expirada(s).'],
-  [/^A link that opens '(.+)' in Silinx, for slides or a message: the whole project is inside it, no file to host\. Anyone with the link has every file of the project, its comments too, as it is now\.$/,
-    'Uma ligação que abre \'$1\' no Silinx, para diapositivos ou uma mensagem: o projeto inteiro vai dentro dela, sem ficheiro para alojar. Quem tiver a ligação tem todos os ficheiros do projeto, também os comentários, como está agora.'],
   [/^(\d+) characters\.$/, '$1 caracteres.'],
   [/^The link is (\d+) characters, too long for a QR code$/, 'A ligação tem $1 caracteres, demasiado longa para um código QR'],   // (#3995)
   // (where a short link is made, #3995)

@@ -194,9 +194,9 @@ html:not([data-ui="silinx"]) .tree .row.sel .twisty { color: #dde; }   /* (reada
 .dlg-body { padding: 12px 14px; overflow: auto; min-height: 0; }
 .dlg-title, .dlg-buttons { flex: none; }   /* (not shrunk by a tall body: #1409) */
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 12px 10px; border-top: 1px solid #dfdfdf; }
-.share-twin { display: grid; }   /* (a text and the other way's, unseen, in one place: as tall as the taller, #4676) */
-.share-twin > * { grid-area: 1 / 1; }
-.share-twin-ghost { visibility: hidden; }
+.share-about { display: grid; margin: 8px 0 10px; }   /* (every way's sentence in one place, the others unseen: as tall as the tallest, #4712) */
+.share-about > p { grid-area: 1 / 1; margin: 0; }
+.share-about > .share-about-ghost { visibility: hidden; }
 .collab-dlg .collab-rule { border: none; border-top: 1px solid #dfdfdf; margin: 10px 0; }   /* (Share Project… ▸ Live's parts, #4668: the dialog's dividers' line) */
 .dlg label { display: block; margin: 6px 0 2px; }
 .dlg input[type=text], .dlg input[type=number], .dlg select, .dlg textarea { border: 1px solid #abadb3; padding: 2px 4px; background: #fff; height: 22px; }
@@ -485,7 +485,6 @@ th.th-expected { background: var(--expected-bg); }   /* … and the expected out
 .share-how-three .share-how-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 16px; }
 .share-via { margin: 0 0 12px; }
 .share-via > [hidden] { display: none; }
-.share-via p { margin: 0 0 6px; }
 .share-via-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .share-via-at { font: 11px var(--mono, monospace); overflow-wrap: anywhere; }
 .share-via-none { flex: 1 1 100%; }
