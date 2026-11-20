@@ -100,10 +100,9 @@ for (const ui of ['silinx', 'ise', 'tasks']) {
     // Load chosen with the keyboard, none saved yet: said; the menu closed
     await page.key('End');
     await page.key('Enter');
-    await page.waitDialog('Load Wave Configuration');
-    assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text').textContent), /^The project has no wave configuration \(\.wcfg\) yet: save one first\.$/);
-    await page.dialogButton('OK');
-    await page.waitNoDialog();
+    // (in the console, no box, #4747)
+    await page.waitConsole(/^INFO: Load Wave Configuration: The project has no wave configuration \(\.wcfg\) yet: save one first\.$/m);
+    assert.equal(await page.dialogCount(), 0);
     assert.equal(await menuOpen(page), false);
     // a divider, a radix and two markers; saved next to the test bench (its name offered)
     await page.eval(() => {
