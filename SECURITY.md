@@ -286,7 +286,11 @@ viewer who forges one is refused). Share Project… shows each link only when as
 code only in a window of its own. The owner changes a participant's role (#3997): a viewer made an editor is sent the
 signing key alone (a frame the room gives to that participant only); an editor made a viewer renews the room's signing
 key (the room and every participant told the new public key, the other editors given its private half): the old key's
-edits, the demoted participant's and the old editors' link's, are refused from then. An editor's link writes: its holder changes
+edits, the demoted participant's and the old editors' link's, are refused from then. The editors' public keys are the
+owner's to say (#4745): the owner's page makes a key of its own and signs with it a numbered list of the editors' keys
+(`core/collab-editors.js`), which the relay or host takes from the owner only, each list past the last, and which every
+participant checks against the owner's public key that the links carry (not one the relay or the document gives); an
+edit names its key and passes only when that key is the last list's. An editor's link writes: its holder changes
 the text of the project's text files (HDL, constraints, C / C++, notes) and its drawings (#3183: their states and
 transitions, a table's outputs and cells, merged per field into the drawing's structure, `core/collab-model.js`), signed with the link's key; anything
 else an editor changes (another drawing, the project's settings, a new file) is undone from the owner's disk. An editor's link is a

@@ -67,6 +67,9 @@ export function readRecord(raw, now = Date.now()) {
     if (r.role === 'owner') {
       if (!str(r.project) || !['relay', 'host'].includes(r.via) || !KEY_RE.test(String(s.key)) || !ROOM_RE.test(String(s.room))) return null;
       if (s.resume !== null && !str(s.resume, 64)) return null;
+      // (#4745: the owner's key of its editors' lists, and the last one's number; none in a record of before)
+      if ((s.owner ?? null) !== null && !SIGN_RE.test(String(s.owner))) return null;
+      if (s.n !== undefined && !(Number.isSafeInteger(s.n) && s.n >= 0)) return null;
       if (r.relay !== null && !(r.relay && str(r.relay.address, 2000) && str(r.relay.key ?? '', 2000))) return null;
       if (r.host !== null && !(r.host && SIGN_RE.test(String(r.host.key)) && PUB_RE.test(String(r.host.pub)))) return null;
       if (!Array.isArray(r.bases) || !r.bases.every(([p, t]) => str(p, 1000) && typeof t === 'string')) return null;

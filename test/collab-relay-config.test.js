@@ -70,7 +70,7 @@ test('the relay\'s key opens a room, a wrong one does not; a link through that r
   assert.equal(link, `${SITE}/#view=${owner.room}.${owner.key}&relay=${encodeURIComponent(base)}`);
   const l = parseFollowLink(link);
   assert.equal(l.relay, base);
-  const fol = await followRoom({ url: relayUrl(l.relay, 'follow'), room: l.room, key: l.key, user: { name: 'Rui' } });
+  const fol = await followRoom({ url: relayUrl(l.relay, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, user: { name: 'Rui' } });
   await fol.ready;
   assert.equal(docFile(fol.doc, 'src/a.vhd'), 'entity a is end;\n');
   await owner.close();

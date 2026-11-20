@@ -127,7 +127,7 @@ test('through the relay: the owner\'s selection with its view; a follower\'s dra
   publishProject(doc, { project: { name: 'p', top: 'top', files: [], fileTree: ['src/top.sch.json'] }, files: { 'src/top.sch.json': '{}' }, owner: 'Ana' });
   const events = [];
   const owner = await shareRoom({ url: relayUrl(base, 'share'), token: 'the-token', doc, user: { name: 'Ana' } });
-  const fol = await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, user: { name: 'Rui' }, onEvent: ev => events.push(ev) });
+  const fol = await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, onEvent: ev => events.push(ev) });
   try {
     await fol.ready;
     owner.setView({ path: 'src/top.sch.json', line: null, ch: null, sel: { items: ['sym:S1', 'wire:W2'], junk: 1 } });

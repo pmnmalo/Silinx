@@ -42,7 +42,7 @@ async function setup({ grace = 2000, editors = true } = {}) {
   // (a page's sessions: no reconnect of their own, as a page that is gone)
   const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors, WebSocket: OwnerSocket, onEvent: e => ownerEv.push(e), reconnect: false }));
   const ev = [];
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, sign: editors ? owner.editKey : null, user: { name: 'Rui' }, WebSocket: FollowerSocket, onEvent: e => ev.push(e), reconnect: FAST }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: editors ? owner.editKey : null, user: { name: 'Rui' }, WebSocket: FollowerSocket, onEvent: e => ev.push(e), reconnect: FAST }));
   await f.ready;
   await until(() => owner.peers().length === 1 && f.owner(), 'both see each other');
   return { h, owners, follows, OwnerSocket, FollowerSocket, doc, owner, ownerEv, f, ev };
@@ -103,7 +103,7 @@ test('#4850 a follower joining while the owner is away is told so; the project c
   owners.at(-1).close();
   await until(() => owner.closed(), 'gone');
   const ev = [];
-  const g = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Eva' }, WebSocket: FollowerSocket, onEvent: e => ev.push(e) }));
+  const g = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, WebSocket: FollowerSocket, onEvent: e => ev.push(e) }));
   await until(() => g.away(), 'told the owner is away');
   const owner2 = keep(await shareRoom({ url: 'silinx-host:', doc: restoredDoc(rec.session), user: { name: 'Ana' }, editors: true, WebSocket: OwnerSocket, reconnect: false, resumed: rec.session }));
   await g.ready;
@@ -126,7 +126,7 @@ test('#4850 an editor\'s page reloaded: its client id the same, its change that 
   await until(() => owner.peers().length === 0, 'the owner sees it leave');
   assert.equal(docFile(doc, 'src/tb.vhd'), '-- the test bench\n-- one\n');
   const ev = [];
-  const f2 = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, sign: rec.session.sign, user: { name: 'Rui' }, WebSocket: FollowerSocket, onEvent: e => ev.push(e), resumed: { ...rec.session, doc: restoredDoc(rec.session) } }));
+  const f2 = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: rec.session.sign, user: { name: 'Rui' }, WebSocket: FollowerSocket, onEvent: e => ev.push(e), resumed: { ...rec.session, doc: restoredDoc(rec.session) } }));
   await f2.ready;
   assert.equal(f2.doc.clientID, f.doc.clientID);
   await until(() => docFile(doc, 'src/tb.vhd') === '-- the test bench\n-- one\n-- two\n', 'the change that never left, once');
@@ -149,7 +149,7 @@ test('#4850 a room the owner\'s page hosts (peer to peer), opened again with its
   const ends = [];
   const FollowerSocket = function FollowerSocket() { const { client, room } = socketPair(); ends.push(room); h.follower(room); return client; };
   const ev = [];
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, sign: owner.editKey, user: { name: 'Rui' }, WebSocket: FollowerSocket, transport: async () => FollowerSocket, onEvent: e => ev.push(e), reconnect: FAST }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' }, WebSocket: FollowerSocket, transport: async () => FollowerSocket, onEvent: e => ev.push(e), reconnect: FAST }));
   await f.ready;
   const rec = through(ownerRecord({ project: 'traffic', name: 'Ana', via: 'host', host: { key: hk.text, pub: hk.pub }, session: owner.snapshot() }));
   assert.deepEqual(rec.host, { key: hk.text, pub: hk.pub });

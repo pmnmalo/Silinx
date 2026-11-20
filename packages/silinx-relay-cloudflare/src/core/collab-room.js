@@ -10,6 +10,10 @@
 //   a follower's awareness speaks for that follower only, never for the owner nor another); and, when the owner lets editors in (its open
 //   gives the room's public key, #3182), an editor's edits whose signature is the room's (core/collab-sign.js),
 //   each sender's in its order; the owner's rekey (#3997: an editor demoted) makes another key the room's;
+// - #4745: a room whose open gives the owner's public key instead (`owner`) takes the editors' keys from the lists the
+//   owner signs (core/collab-editors.js: `{ type: 'editors', list }`, each one numbered past the last, checked with
+//   the owner's key): an edit is forwarded when the key it names is the last list's and its signature that key's; a
+//   follower of an older version is refused at its join (it would not know the list); a room opened by an older owner's page (`editors`, one key) is taken as before;
 // - followers per room, rooms per host, the time to the first message, a follower's awareness's size and rate (#4173);
 // - an editor's edits (#4736): their rate (a token bucket), the ones waiting for their signature's check, the signatures
 //   that are not the room's (past `editsBad`, or `editsPending` waiting, or faster than the bucket: closed, 1008); a
@@ -24,11 +28,12 @@
 // `ws`; its transport gives each message to `message(data, binary)` (binary: a Uint8Array, or a Buffer) and its end to
 // `close()`. A platform whose rooms sleep (#4541: the Cloudflare relay's Durable Objects, whose memory is lost while
 // their sockets stay open) keeps what each socket is (`keep(socket, state)`, at each change: { role, room, client }, and
-// the owner's { editors, resume }) and gives it back when it wakes (`restore([[socket, state], …])`); it names its room
+// the owner's { editors, owner, list, resume }) and gives it back when it wakes (`restore([[socket, state], …])`); it names its room
 // (`newRoom()`: the one id its rooms open with).
-import { KIND, PROTOCOL, NOT_SHARED, fromFrame, senderOf } from './collab-wire.js';
+import { KIND, PROTOCOL, OLDER_PROTOCOL, NOT_SHARED, fromFrame, senderOf } from './collab-wire.js';
 import { b64url } from './collab-crypto.js';
 import { verifierOf, verifyFrame, editsSeen, PUB_RE } from './collab-sign.js';
+import { isList, checkList, editorKeys, verifyEdit } from './collab-editors.js';
 
 // (a follower's awareness, #4173: a frame of `awarenessFrame` bytes at most, `awarenessRate` a second after a burst of
 // `awarenessBurst`; who they are and what they look at is a few hundred bytes, renewed every 15 s and at each move)
@@ -45,6 +50,8 @@ export const READ_ONLY = 'read only: a follower cannot change the shared project
 /** What a participant whose edits come too fast, too many at once, or too often not signed with the room's key is told
  *  (its connection closed, #4736). */
 export const EDITS_REFUSED = 'too many edits too fast, or not signed with the room\'s key: this connection is closed';
+/** A follower of an older version joining a room whose editors the owner lists (#4745), as it is told. */
+export const NEWER_NEEDED = 'this shared project needs a newer Silinx: load the page again';
 
 const json = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
 // (two secrets compared in a time that does not depend on where they differ)
@@ -68,8 +75,14 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
   const rooms = new Map();   // room -> { owner, ownerClient, followers: Map<ws, client> }
   const randomId = () => b64url(crypto.getRandomValues(new Uint8Array(16)));
   const verifierFor = pub => { const v = verifierOf(pub); v.catch(() => {}); return v; };
+  // (a room: its editors' one key, or its owner's key and the last list it signed, #4745)
+  const newRoomOf = (owner, ownerClient, { editors = null, ownerKey = null, list = null, resume }) => {
+    const r = { owner, ownerClient, followers: new Map(), editors, verify: editors && verifierFor(editors), ownerKey, ownerVerify: ownerKey && verifierFor(ownerKey), list: null, keys: new Map(), listing: Promise.resolve(), seen: editsSeen(), resume, grace: null };
+    if (ownerKey && isList(list)) { r.list = list; r.listing = editorKeys(list).then(k => { r.keys = k; }); }
+    return r;
+  };
   // (what a socket is, for a platform whose rooms sleep: the owner's with its room's secrets)
-  const kept = (ws, me) => { const r = rooms.get(me.room); keep(ws, me.role === 'owner' ? { ...me, editors: r.editors, resume: r.resume } : { ...me }); };
+  const kept = (ws, me) => { const r = rooms.get(me.room); keep(ws, me.role === 'owner' ? { ...me, editors: r.editors, owner: r.ownerKey, list: r.list, resume: r.resume } : { ...me }); };
 
   function closeRoom(id, reason) {
     const r = rooms.get(id);
@@ -110,16 +123,18 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
       if (!me) {
         let msg = null;
         if (!binary) { try { msg = JSON.parse(String(data)); } catch { /* below */ } }
-        if (!msg || msg.v !== PROTOCOL || clientId(msg.client) === null) return fail(ws, 'not a Silinx participant of this version');
+        if (!msg || (msg.v !== PROTOCOL && msg.v !== OLDER_PROTOCOL) || clientId(msg.client) === null) return fail(ws, 'not a Silinx participant of this version');
         clearTimeout(hello);
         if (!(role === 'owner' ? ['open', 'resume'] : ['join']).includes(msg.type)) return fail(ws, 'not a Silinx participant of this version');
         if (msg.type === 'open') {
           if (rooms.size >= limits.rooms) return fail(ws, `this Silinx server shares ${limits.rooms} projects already`);
           if (msg.editors !== undefined && !PUB_RE.test(String(msg.editors))) return fail(ws, 'not a Silinx participant of this version');
+          // (#4745: the owner's key, its lists to come; never with the one key of before)
+          if (msg.owner !== undefined && (msg.v !== PROTOCOL || msg.editors !== undefined || !PUB_RE.test(String(msg.owner)))) return fail(ws, 'not a Silinx participant of this version');
           const editors = msg.editors === undefined ? null : String(msg.editors);
           const room = newRoom ? newRoom() : randomId();
           const resume = randomId();
-          rooms.set(room, { owner: ws, ownerClient: msg.client, followers: new Map(), editors, verify: editors && verifierFor(editors), seen: editsSeen(), resume, grace: null });
+          rooms.set(room, newRoomOf(ws, msg.client, { editors, ownerKey: msg.owner === undefined ? null : String(msg.owner), resume }));
           me = { role: 'owner', room, client: msg.client };
           kept(ws, me);
           return json(ws, { type: 'opened', room, resume });
@@ -144,6 +159,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
         if (msg.type === 'join') {
           const r = typeof msg.room === 'string' ? rooms.get(msg.room) : null;
           if (!r) return fail(ws, NOT_SHARED);
+          if (r.ownerKey && msg.v !== PROTOCOL) return fail(ws, NEWER_NEEDED);
           if (r.followers.size >= limits.followers) return fail(ws, `this shared project has ${limits.followers} followers already`);
           if (msg.client === r.ownerClient || [...r.followers.values()].includes(msg.client)) return fail(ws, 'another participant of this shared project has this client id');
           r.followers.set(ws, msg.client);
@@ -165,6 +181,16 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
           if (msg?.type === 'close') closeRoom(me.room, 'the owner stopped sharing');
           // (#3997: the editors' key renewed, an editor demoted: the old key's edits refused from now)
           else if (msg?.type === 'rekey' && r.verify && PUB_RE.test(String(msg.editors))) { r.editors = msg.editors; r.verify = verifierFor(msg.editors); kept(ws, me); }
+          // (#4745: the owner's list of its editors, signed, past the last one: the editors' keys from now)
+          else if (msg?.type === 'editors' && r.ownerKey && isList(msg.list)) {
+            const list = msg.list;
+            r.listing = r.listing.then(async () => {
+              if (list.n <= (r.list?.n ?? 0) || !await checkList(await r.ownerVerify.catch(() => null), me.room, list)) return;
+              r.keys = await editorKeys(list);
+              r.list = list;
+              kept(ws, me);
+            });
+          }
           return;
         }
         // (a frame for one follower: to it only, its mark taken off; to no one when it has left, #3529)
@@ -188,14 +214,19 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
         return;
       }
       // (#4736: in a room without editors, dropped at once, the follower told once)
-      if (data[0] !== KIND.edit || !r.verify) { if (!toldReadOnly) { toldReadOnly = true; json(ws, { type: 'error', message: READ_ONLY }); } return; }
+      if (data[0] !== KIND.edit || !(r.verify || r.ownerKey)) { if (!toldReadOnly) { toldReadOnly = true; json(ws, { type: 'error', message: READ_ONLY }); } return; }
       // an editor's edit: forwarded once its signature is the room's (in the order they came), and once only (#4736: a
       // replay dropped); too fast, too many waiting: the connection closed
       if (!editOk()) return fail(ws, EDITS_REFUSED);
       const frame = new Uint8Array(data);
       pending++;
       chain = chain.then(async () => {
-        const ok = await verifyFrame(await r.verify, me.room, frame).catch(() => null);
+        let ok;
+        if (r.ownerKey) {
+          // (#4745: the key it names the last list's)
+          await r.listing;
+          ok = (await verifyEdit(r.keys, me.room, frame))?.frame ?? null;
+        } else ok = await verifyFrame(await r.verify, me.room, frame).catch(() => null);
         pending--;
         if (!ok) {
           if (++bad >= limits.editsBad) return fail(ws, EDITS_REFUSED);
@@ -233,7 +264,7 @@ export function collabRooms({ limits = ROOM_LIMITS, now = Date.now, newRoom = nu
     const out = new Map();
     for (const [ws, s] of entries) {
       if (s?.role !== 'owner' || rooms.has(s.room)) continue;
-      rooms.set(s.room, { owner: ws, ownerClient: s.client, followers: new Map(), editors: s.editors ?? null, verify: s.editors ? verifierFor(s.editors) : null, seen: editsSeen(), resume: s.resume, grace: null });
+      rooms.set(s.room, newRoomOf(ws, s.client, { editors: s.editors ?? null, ownerKey: s.owner ?? null, list: s.list ?? null, resume: s.resume }));
       out.set(ws, welcome(ws, 'owner', s));
     }
     for (const [ws, s] of entries) {

@@ -182,7 +182,7 @@ async function setRole(name, cur, action, user) {
   if (action === 'demote' && p.role !== 'editor') throw toolError(`user: '${user}' is a viewer already`);
   try { await cur.session[action](p.client); } catch (e) { throw toolError(e.message); }
   if (action === 'promote') return { text: `'${user}' is an editor of '${name}' now: they edit its text files and drawings.`, data: { project: name, user, role: 'editor' }, untrusted: 'the participant\'s name' };
-  cur.editLink = followLink(`${cur.server}/`, cur.session.room, cur.session.key, 'relay', cur.session.editKey);
+  cur.editLink = followLink(`${cur.server}/`, cur.session.room, cur.session.key, 'relay', cur.session.editKey, null, null, cur.session.ownerKey);
   return { text: `'${user}' is a viewer of '${name}' now. The editors' link was renewed (the old one only follows); the other editors keep editing:\n${cur.editLink}`, data: { project: name, user, role: 'viewer', editLink: cur.editLink }, untrusted: 'the participant\'s name' };
 }
 
@@ -273,8 +273,8 @@ export const COLLAB_TOOLS = [
       });
       const off = () => { unsub(); writes?.off(); watcher.close?.(); };
       const base = own ? SITE_URL : `${origin}/`, meetAt = own ? own.address : null;
-      const link = followLink(base, session.room, session.key, 'relay', null, meetAt);
-      const editLink = session.editKey ? followLink(base, session.room, session.key, 'relay', session.editKey, meetAt) : null;
+      const link = followLink(base, session.room, session.key, 'relay', null, meetAt, null, session.ownerKey);
+      const editLink = session.editKey ? followLink(base, session.room, session.key, 'relay', session.editKey, meetAt, null, session.ownerKey) : null;
       // (#4643: the Cloudflare relay's or a Silinx server's room: every follower through the relay)
       const mode = shareMode({ relay: origin, cloudflare: !!own });
       shares.set(name, { session, link, editLink, server: origin, mode, off, warnings });
@@ -336,8 +336,8 @@ export const COLLAB_TOOLS = [
           if (l.via === 'host') {
             const meeting = relayMeeting({ url: origin, WebSocket: await WebSocketImpl(), RTC: null });
             const owner = () => meetOwner({ meeting, room: l.room, key: l.key, host: l.host, ms: ARRIVE_MS, maxReceive: 16 << 20 });
-            session = await followRoom({ url: 'silinx-host:', room: l.room, key: l.key, sign: l.sign, user, WebSocket: await owner(), transport: owner });
-          } else session = await followRoom({ url: relayUrl(origin, 'follow'), room: l.room, key: l.key, sign: l.sign, user, WebSocket: await WebSocketImpl() });
+            session = await followRoom({ url: 'silinx-host:', room: l.room, key: l.key, sign: l.sign, owner: l.owner ?? null, user, WebSocket: await owner(), transport: owner });
+          } else session = await followRoom({ url: relayUrl(origin, 'follow'), room: l.room, key: l.key, sign: l.sign, owner: l.owner ?? null, user, WebSocket: await WebSocketImpl() });
           await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ARRIVE_MS))]);
         } catch (e) { session?.close(); throw toolError(`cannot follow: ${e.message}`); }
         // (who is in it comes right after the project: the owner awaited a little)

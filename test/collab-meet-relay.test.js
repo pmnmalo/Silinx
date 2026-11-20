@@ -145,7 +145,7 @@ async function hostAt(meeting, onEvent = () => {}) {
 }
 const followAt = async (meeting, o, name, more = {}) => {
   const WS = await meetOwner({ meeting, room: o.session.room, key: o.session.key, host: o.hk.pub, ms: 4000, maxReceive: 16 << 20 });
-  const f = keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, user: { name }, WebSocket: WS, ...more }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: o.session.room, key: o.session.key, owner: o.session.ownerKey, user: { name }, WebSocket: WS, ...more }));
   await f.ready;
   return f;
 };
@@ -282,7 +282,7 @@ test('the frames a relay carries for a session of three (20 edits, 60 moves): th
   const a = counted();
   const owner = keep(await shareRoom({ url: relayUrl(r.base, 'share'), token: 'tok', doc: owned(), user: { name: 'Ana' }, WebSocket: a.WebSocket }));
   const fs = [];
-  for (const name of ['Rui', 'Eva']) { const f = keep(await followRoom({ url: relayUrl(r.base, 'follow'), room: owner.room, key: owner.key, user: { name }, WebSocket: a.WebSocket })); await f.ready; fs.push(f); }
+  for (const name of ['Rui', 'Eva']) { const f = keep(await followRoom({ url: relayUrl(r.base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name }, WebSocket: a.WebSocket })); await f.ready; fs.push(f); }
   const a0 = a.n.frames;
   await script(owner, fs);
   const viaRoom = a.n.frames - a0;

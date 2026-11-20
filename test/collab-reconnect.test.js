@@ -30,7 +30,7 @@ async function setup({ editors = false, reconnect = FAST } = {}) {
   const ownerEv = [];
   const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors, WebSocket: h.owner, onEvent: e => ownerEv.push(e) }));
   const ends = [], ev = [];
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, sign: editors ? owner.editKey : null, user: { name: 'Rui' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: editors ? owner.editKey : null, user: { name: 'Rui' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect }));
   await f.ready;
   await until(() => owner.peers().length === 1 && f.owner(), 'both see each other');
   return { h, doc, owner, ownerEv, f, ends, ev };
@@ -178,7 +178,7 @@ test('a transport that gives no socket (a room reached by codes): the session en
   const doc = owned();
   const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, WebSocket: h.owner }));
   const ends = [], ev = [];
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Rui' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect: FAST, transport: async () => null }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect: FAST, transport: async () => null }));
   await f.ready;
   ends.at(-1).close();
   await until(() => f.closed(), 'closed');
@@ -193,7 +193,7 @@ test('#3835 a transport that fails (the owner not found at the meeting point yet
   const ends = [], ev = [];
   let tries = 0;
   const transport = async () => { if (++tries < 3) throw new Error('the owner was not found at the meeting point'); return followerSocket(h, ends); };
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Rui' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect: FAST, transport }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect: FAST, transport }));
   await f.ready;
   ends.at(-1).close();
   await until(() => types(ev).includes('offline'), 'offline');
@@ -202,7 +202,7 @@ test('#3835 a transport that fails (the owner not found at the meeting point yet
   assert.equal(ends.length, 2);
   assert.deepEqual(types(ev), ['offline', 'online']);
   // (and one that keeps failing: given up after `for`, as any)
-  const g = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Eva' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect: { delays: [5], for: 60 }, transport: async () => { throw new Error('not found'); } }));
+  const g = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, WebSocket: followerSocket(h, ends), onEvent: e => ev.push(e), reconnect: { delays: [5], for: 60 }, transport: async () => { throw new Error('not found'); } }));
   await g.ready;
   ends.at(-1).close();
   await until(() => g.closed(), 'given up');
@@ -216,7 +216,7 @@ test('a connection lost before the project arrived is not made again: the join f
   const ends = [], ev = [];
   // (the room's end closed as soon as the join is answered, before the document)
   const S = function CutSocket() { const { client, room } = socketPair(); const end = h.follower(room); const m = end.onmessage; end.onmessage = (d, b) => { m(d, b); setTimeout(() => end.close(), 0); }; ends.push(end); return client; };
-  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Rui' }, WebSocket: S, onEvent: e => ev.push(e), reconnect: FAST }));
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, WebSocket: S, onEvent: e => ev.push(e), reconnect: FAST }));
   await assert.rejects(f.ready);
   await until(() => f.closed(), 'closed');
   assert.deepEqual(types(ev), ['closed']);

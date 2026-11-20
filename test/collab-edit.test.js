@@ -121,10 +121,10 @@ async function scene(open, join) {
   assert.match(owner.editKey, SIGN_RE);
   const errors = { ed: [], fol: [], pre: [] };
   const on = k => e => { if (e.type === 'error') errors[k].push(e.message); };
-  const ed = keep(await join({ room: owner.room, key: owner.key, sign: owner.editKey, user: { name: 'Rui' }, onEvent: on('ed') }));
-  const fol = keep(await join({ room: owner.room, key: owner.key, user: { name: 'Eva' }, onEvent: on('fol') }));
+  const ed = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' }, onEvent: on('ed') }));
+  const fol = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, onEvent: on('fol') }));
   // (a pretender: the room's key, and the editor key of another room)
-  const pre = keep(await join({ room: owner.room, key: owner.key, sign: (await newSigner()).text, user: { name: 'Bo' }, onEvent: on('pre') }));
+  const pre = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: (await newSigner()).text, user: { name: 'Bo' }, onEvent: on('pre') }));
   await Promise.all([ed.ready, fol.ready, pre.ready]);
   assert.equal(ed.editor, true);
   assert.equal(fol.editor, false);
@@ -195,9 +195,9 @@ async function roles(open, join) {
   const events = { eva: [], rui: [], bo: [] };
   const on = k => e => { if (e.type === 'role' || e.type === 'error') events[k].push(e.type === 'role' ? `${e.role}${e.renewed ? ' (renewed)' : ''}` : e.message); };
   const old = owner.editKey;
-  const eva = keep(await join({ room: owner.room, key: owner.key, user: { name: 'Eva' }, onEvent: on('eva') }));
-  const rui = keep(await join({ room: owner.room, key: owner.key, sign: old, user: { name: 'Rui' }, onEvent: on('rui') }));
-  const bo = keep(await join({ room: owner.room, key: owner.key, sign: old, user: { name: 'Bo' }, onEvent: on('bo') }));
+  const eva = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, onEvent: on('eva') }));
+  const rui = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name: 'Rui' }, onEvent: on('rui') }));
+  const bo = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name: 'Bo' }, onEvent: on('bo') }));
   await Promise.all([eva.ready, rui.ready, bo.ready]);
   await until(() => owner.peers().length === 3, 'all in');
   const client = n => owner.peers().find(p => p.name === n).client;
@@ -222,7 +222,7 @@ async function roles(open, join) {
   for (const d of [doc, rui.doc, eva.doc]) await until(() => docFile(d, 'src/top.ucf') === 'NET "clk" LOC = "C8"; -- Bo\n', 'Bo\'s edit');
   // the old editors' link (a new page with it): its edits refused by the room, applied nowhere
   const errs = [];
-  const stale = keep(await join({ room: owner.room, key: owner.key, sign: old, user: { name: 'Old' }, onEvent: e => { if (e.type === 'error') errs.push(e.message); } }));
+  const stale = keep(await join({ room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name: 'Old' }, onEvent: e => { if (e.type === 'error') errs.push(e.message); } }));
   await stale.ready;
   editFile(stale.doc, 'src/top.vhd', '-- the old link\n');
   await until(() => errs.length, 'the old key refused');
@@ -261,9 +261,9 @@ test('#3527 regression: an editor\'s change of another part than the files, the 
   const doc = owned();
   const errors = [];
   const owner = keep(await shareRoom({ url: relayUrl(base, 'share'), token: 'the-token', doc, user: { name: 'Ana' }, editors: true, limits: { total: 8192 }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } }));
-  const editor = async () => { const e = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, sign: owner.editKey, user: { name: 'Rui' } })); await e.ready; return e; };
+  const editor = async () => { const e = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' } })); await e.ready; return e; };
   // (a follower whose limit is the owner's: what the owner refuses, it refuses too)
-  const fol = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, user: { name: 'Eva' }, limits: { files: 5000, total: 8192 } }));
+  const fol = keep(await followRoom({ url: relayUrl(base, 'follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, limits: { files: 5000, total: 8192 } }));
   await fol.ready;
   const REFUSED = 'an editor\'s change was refused: ';
   // (a root of its own, the meta: refused; what the editor inserts after it, built on a refused change, refused too;

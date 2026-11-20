@@ -208,7 +208,7 @@ test('two participants on the server\'s relay: the project arrives, an edit arri
   const link = followLink(base, owner.room, owner.key);
   const l = parseFollowLink(link);
   owner.setView({ path: 'src/top.vhd', line: 0, ch: 7 });
-  const fol = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, user: { name: 'Rui' } });
+  const fol = await followRoom({ url: relayUrl(l.base, 'follow'), room: l.room, key: l.key, owner: l.owner ?? null, user: { name: 'Rui' } });
   await fol.ready;
   assert.deepEqual(docProject(fol.doc), { version: 1, owner: 'Ana', project: PROJECT, fileTree: ['src/top.ucf', 'src/top.vhd'] });
   assert.equal(docFile(fol.doc, 'src/top.vhd'), FILES['src/top.vhd']);
@@ -223,7 +223,7 @@ test('two participants on the server\'s relay: the project arrives, an edit arri
   await until(() => owner.peers()[0]?.view?.path === 'src/top.ucf', 'the follower\'s view');
   assert.deepEqual(owner.peers().map(p => [p.name, p.role]), [['Rui', 'viewer']]);
   // a second follower sees the owner and the first
-  const fol2 = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Eva' } });
+  const fol2 = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' } });
   await fol2.ready;
   await until(() => fol2.peers().length === 2, 'Eva sees both');
   assert.deepEqual(fol2.peers().map(p => [p.name, p.role]), [['Ana', 'owner'], ['Rui', 'viewer']]);
@@ -240,7 +240,7 @@ test('read only: a follower\'s edit is refused by the relay and never reaches th
   const doc = owned();
   const owner = await shareRoom({ url: url(), token: 'the-token', doc, user: { name: 'Ana' } });
   const errors = [];
-  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Rui' }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
+  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
   await fol.ready;
   // (a real update made with the room's key, sent as a follower)
   const other = projectDoc();
@@ -271,8 +271,8 @@ test('a follower\'s awareness speaks for that follower only (#3360): the owner\'
   const doc = owned();
   const owner = await shareRoom({ url: url(), token: 'the-token', doc, user: { name: 'Ana' } });
   owner.setView({ path: 'src/top.vhd', line: 3, ch: 0 });
-  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Rui' } });
-  const eva = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Eva' } });
+  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' } });
+  const eva = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' } });
   await Promise.all([fol.ready, eva.ready]);
   await until(() => eva.peers().length === 2 && owner.peers().length === 2 && eva.owner()?.view, 'everyone in');
   // Rui, with the room's key, seals an update that names the owner, Eva and a ghost, and his own state
@@ -310,7 +310,7 @@ test('#3361 a followed room\'s files through the import gate: a web page, a NUL 
   plant(doc, 'src/a.sch', '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><x>&e;</x>');
   plant(doc, 'src/big.vhd', `-- ${'x'.repeat(FILE_MAX)}\n`);
   const owner = await shareRoom({ url: url(), token: 'the-token', doc, user: { name: 'Ana' } });
-  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Rui' } });
+  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' } });
   await fol.ready;
   const g = p => gatedDocFile(fol.doc, p);
   assert.deepEqual(g('src/top.vhd'), { text: FILES['src/top.vhd'] });
@@ -331,13 +331,13 @@ test('#3361 a followed room past its caps (files, total size): left at once, sai
   plant(doc, 'src/b.vhd', 'b'); plant(doc, 'src/c.vhd', 'c');
   const owner = await shareRoom({ url: url(), token: 'the-token', doc, user: { name: 'Ana' } });
   const evs = [];
-  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Rui' }, limits, onEvent: e => evs.push(e) });
+  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, limits, onEvent: e => evs.push(e) });
   await assert.rejects(fol.ready, { message: 'the shared project has more files than a follower takes (4, at most 3)' });
   await until(() => fol.closed(), 'left');
   // (said once; before it arrived, the page's console says it from ready's rejection)
   assert.deepEqual(evs.filter(e => e.type === 'error'), [{ type: 'error', message: 'the shared project has more files than a follower takes (4, at most 3)', fatal: true }]);
   // (the total past its cap after it arrived: left, nothing more applied)
-  const fol2 = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Eva' }, limits: { files: 10, total: 4096 }, onEvent: e => evs.push(e) });
+  const fol2 = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, limits: { files: 10, total: 4096 }, onEvent: e => evs.push(e) });
   await fol2.ready;
   evs.length = 0;
   putFile(doc, 'src/top.vhd', 'x'.repeat(5000));
@@ -363,7 +363,7 @@ test('#3527 regression: a followed room\'s whole document bounded: a root of no 
   const doc = owned();
   doc.getMap('evil').set('k', 'v');
   const owner = await shareRoom({ url: url(), token: 'the-token', doc, user: { name: 'Ana' } });
-  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Rui' }, limits, onEvent: e => evs.push(e) });
+  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, limits, onEvent: e => evs.push(e) });
   // (bounded: the old code's follower stayed, its ready never settled)
   await assert.rejects(Promise.race([fol.ready.then(() => { throw new Error('followed'); }), sleep(5000).then(() => { throw new Error('not left'); })]), { message: 'the shared project holds a part that no shared project has ("evil")' });
   await until(() => fol.closed(), 'left');
@@ -374,7 +374,7 @@ test('#3527 regression: a followed room\'s whole document bounded: a root of no 
   const owner2 = await shareRoom({ url: url(), token: 'the-token', doc: doc2, user: { name: 'Ana' } });
   for (const put of [d => d.getMap('meta').set('junk', 'x'.repeat(5000)), d => d.getMap('files').set('src/a.vhd', 'x'.repeat(5000)), d => d.getMap('project').set('more', new Y.Map([['k', 'x'.repeat(5000)]]))]) {
     evs.length = 0;
-    const f2 = await followRoom({ url: furl(), room: owner2.room, key: owner2.key, user: { name: 'Eva' }, limits, onEvent: e => evs.push(e) });
+    const f2 = await followRoom({ url: furl(), room: owner2.room, key: owner2.key, owner: owner2.ownerKey, user: { name: 'Eva' }, limits, onEvent: e => evs.push(e) });
     await f2.ready;
     put(doc2);
     await until(() => evs.some(e => e.type === 'closed'), 'Eva left');   // (its end's event, #3614)
@@ -385,7 +385,7 @@ test('#3527 regression: a followed room\'s whole document bounded: a root of no 
   }
   // (under the total: followed, no error)
   evs.length = 0;
-  const f3 = await followRoom({ url: furl(), room: owner2.room, key: owner2.key, user: { name: 'Bo' }, limits, onEvent: e => evs.push(e) });
+  const f3 = await followRoom({ url: furl(), room: owner2.room, key: owner2.key, owner: owner2.ownerKey, user: { name: 'Bo' }, limits, onEvent: e => evs.push(e) });
   await f3.ready;
   doc2.getMap('meta').set('junk', 'x'.repeat(1000));
   await until(() => f3.doc.getMap('meta').get('junk'), 'the value arrived');
@@ -402,11 +402,11 @@ test('a wrong key, an unknown room, a room no longer shared: refused, said', asy
   assert.deepEqual(errors, ['a message that the link\'s key does not open']);
   assert.deepEqual(docProject(bad.doc).fileTree, []);
   await bad.close();
-  await assert.rejects(followRoom({ url: furl(), room: 'Z'.repeat(22), key: owner.key, user: { name: 'Rui' } }), /no longer shared/);
+  await assert.rejects(followRoom({ url: furl(), room: 'Z'.repeat(22), key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' } }), /no longer shared/);
   const room = owner.room;
   await owner.close();
   await sleep(50);
-  await assert.rejects(followRoom({ url: furl(), room, key: owner.key, user: { name: 'Rui' } }), /no longer shared/);
+  await assert.rejects(followRoom({ url: furl(), room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' } }), /no longer shared/);
 });
 
 test('the server: opening a room needs its token, at the upgrade; the host, the origin and the path checked as the API\'s', async () => {
@@ -444,7 +444,7 @@ test('the server: opening a room needs its token, at the upgrade; the host, the 
 test('#3529 a follower\'s join: the whole document to that follower only; one already in gets nothing of it while others join and leave', async () => {
   const doc = owned();
   const owner = await shareRoom({ url: url(), token: 'the-token', doc, user: { name: 'Ana' } });
-  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: 'Eva' } });
+  const fol = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' } });
   await fol.ready;
   // (a raw follower already in: what reaches it counted, by kind)
   const raw = new WebSocket(furl(), [SUBPROTOCOL]);
@@ -458,7 +458,7 @@ test('#3529 a follower\'s join: the whole document to that follower only; one al
   frames.length = 0;
   // (five joins and leaves: each joiner has the project; the one in gets their awareness only, never a snapshot)
   for (let k = 0; k < 5; k++) {
-    const other = await followRoom({ url: furl(), room: owner.room, key: owner.key, user: { name: `Rui ${k}` } });
+    const other = await followRoom({ url: furl(), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: `Rui ${k}` } });
     await other.ready;
     assert.equal(docFile(other.doc, 'src/top.vhd'), FILES['src/top.vhd']);
     await other.close();
@@ -511,7 +511,7 @@ test('the relay\'s limits: followers per room, rooms, a follower\'s frame size (
   const owner = await shareRoom({ url: at('share'), doc: owned(), user: { name: 'Ana' } });
   await assert.rejects(shareRoom({ url: at('share'), doc: owned(), user: { name: 'Bo' } }), /shares 1 projects already/);
   const errors = [];
-  const fol = await followRoom({ url: at('follow'), room: owner.room, key: owner.key, user: { name: 'Rui' }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
+  const fol = await followRoom({ url: at('follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
   await fol.ready;
   // a second follower whose frame is larger than a follower's maximum: closed by the relay (1009), as soon as its
   // frame's length is read
@@ -519,7 +519,7 @@ test('the relay\'s limits: followers per room, rooms, a follower\'s frame size (
   await new Promise(r => big.on('open', r));
   big.send(JSON.stringify({ type: 'join', v: PROTOCOL, room: owner.room, client: 9 }));
   await until(() => relay.rooms.get(owner.room).followers.size === 2, 'the second follower in');
-  await assert.rejects(followRoom({ url: at('follow'), room: owner.room, key: owner.key, user: { name: 'Eva' } }), /has 2 followers already/);
+  await assert.rejects(followRoom({ url: at('follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' } }), /has 2 followers already/);
   big.send(new Uint8Array(200));
   assert.equal(await new Promise(r => big.on('close', c => r(c))), 1009);
   await until(() => relay.rooms.get(owner.room).followers.size === 1, 'the large one gone');
@@ -553,7 +553,7 @@ test('#3835 the relay keeps a room its owner\'s connection left for RELAY_LIMITS
   const at = role => `ws://127.0.0.1:${s.address().port}/api/collab/${role}`;
   const owner = await shareRoom({ url: at('share'), doc: owned(), user: { name: 'Ana' }, reconnect: false });
   let why = null;
-  const fol = await followRoom({ url: at('follow'), room: owner.room, key: owner.key, user: { name: 'Rui' }, onEvent: e => { if (e.type === 'closed') why = e.reason; } });
+  const fol = await followRoom({ url: at('follow'), room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, onEvent: e => { if (e.type === 'closed') why = e.reason; } });
   await fol.ready;
   const t0 = Date.now();
   [...relay.rooms.values()][0].owner.terminate();

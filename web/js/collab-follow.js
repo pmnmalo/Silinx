@@ -104,7 +104,7 @@ async function joined(link, WS, name, sign, resumed, ms) {
   try {
     // (#3835: a relay's connection made again; a room the owner's page hosts, through the meeting point when the owner
     // was found there, never when the codes were exchanged by hand: they would have to be again)
-    session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign, user: { name }, onEvent: ev => onEvent(ev), resumed, ...(WS ? (WS.rejoin ? { transport: WS.rejoin } : { reconnect: false }) : {}) });
+    session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign, owner: link.owner ?? null, user: { name }, onEvent: ev => onEvent(ev), resumed, ...(WS ? (WS.rejoin ? { transport: WS.rejoin } : { reconnect: false }) : {}) });
     await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ms))]);
   } catch (e) { session?.close(); throw e; }
   return session;

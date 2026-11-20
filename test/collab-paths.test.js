@@ -70,7 +70,7 @@ test('#4643 at a relay\'s meeting: through the relay first, direct once the chan
   const paths = () => new Map(withPaths(session.peers(), hostedPaths(h.rooms, at.ends, at.meeting.via)).map(p => [p.name, p.path]));
   const follow = async (name, RTC) => {
     const WS = await meetOwner({ meeting: relayMeeting({ url: base, WebSocket, RTC }), room: session.room, key: session.key, host: hk.pub, ms: 4000, maxReceive: 16 << 20 });
-    const f = keep(await followRoom({ url: 'silinx-host:', room: session.room, key: session.key, user: { name }, WebSocket: WS }));
+    const f = keep(await followRoom({ url: 'silinx-host:', room: session.room, key: session.key, owner: session.ownerKey, user: { name }, WebSocket: WS }));
     await f.ready;
     return f;
   };

@@ -12,6 +12,8 @@
 // A hosted room met at a relay (#4543: the relay of the owner's settings as its meeting point, core/collab-meet-relay.js)
 // names that relay too: …#view=<room>.<key>.host.<owner's key>&relay=<the relay's address>.
 // A module's link (#3631, Share Module…) names the module its follower opens on, last: …#view=…&top=<module>.
+// A room whose owner lists its editors (#4745, core/collab-editors.js) carries the owner's public key, which checks the
+// list, before the relay: …#view=<room>.<key>&owner=<the owner's public key>, …#edit=<room>.<key>.<signing key>&owner=….
 import { KEY_RE } from './collab-crypto.js';
 import { SIGN_RE, PUB_RE } from './collab-sign.js';
 import { MODULE_RE } from './design-link.js';
@@ -43,16 +45,17 @@ export function relayList(text = '', what = 'the relays') {
 
 /** The link that follows a room (via: 'relay', its server's; 'host', the owner's page); with `sign`, an editor's; with
  *  `relay`, through that Silinx's relay (its address), not the link's own; with `host` (via 'host'), the owner's public
- *  key, for the meeting point. */
-export function followLink(base, room, key, via = 'relay', sign = null, relay = null, host = null) {
+ *  key, for the meeting point; with `owner` (#4745), the owner's key that signs its list of the editors. */
+export function followLink(base, room, key, via = 'relay', sign = null, relay = null, host = null, owner = null) {
   if (!ROOM_RE.test(room) || !KEY_RE.test(key)) throw new Error('not a room and its key');
   if (!VIAS.includes(via)) throw new Error(`a room is reached through a relay or its host (not ${via})`);
   if (sign !== null && !SIGN_RE.test(sign)) throw new Error('not an editor\'s key');
   const r = relay === null ? null : relayAddress(relay);
   if (relay !== null && (!r || (via === 'host' && host === null))) throw new Error(`not a relay's address: ${relay}`);
   if (host !== null && (via !== 'host' || !PUB_RE.test(host))) throw new Error('not an owner\'s key of a hosted room');
+  if (owner !== null && !PUB_RE.test(owner)) throw new Error('not an owner\'s key');
   const u = new URL(base);
-  u.hash = `${sign ? 'edit' : 'view'}=${room}.${key}${sign ? `.${sign}` : ''}${via === 'host' ? '.host' : ''}${host ? `.${host}` : ''}${r ? `&relay=${encodeURIComponent(r)}` : ''}`;
+  u.hash = `${sign ? 'edit' : 'view'}=${room}.${key}${sign ? `.${sign}` : ''}${via === 'host' ? '.host' : ''}${host ? `.${host}` : ''}${owner ? `&owner=${owner}` : ''}${r ? `&relay=${encodeURIComponent(r)}` : ''}`;
   u.search = '';
   return u.href;
 }
@@ -67,7 +70,8 @@ export function withTop(link, top) {
 
 /** A link's (or an address's hash's) room: { base (the address without its fragment), room, key, via, sign (an
  *  editor's link's key, or null), relay (another Silinx's relay's address: only when the link names one), host (a
- *  hosted room's owner's key: only when the link carries one), top (the module it opens on: only when the link names
+ *  hosted room's owner's key: only when the link carries one), owner (#4745: the owner's key of its editors' list: only
+ *  when the link carries one), top (the module it opens on: only when the link names
  *  one, #3631) }, or null when it is not a link to follow; an error when
  *  it is one but broken. */
 export function parseFollowLink(text) {
@@ -75,12 +79,12 @@ export function parseFollowLink(text) {
   const at = s.indexOf('#');
   const hash = at >= 0 ? s.slice(at + 1) : '';
   if (!/^(view|follow|edit)=/.test(hash)) return null;
-  const m = /^(view|follow|edit)=([^.&]+)\.([^.&]+)(?:\.([^.&]+))??(\.host(?:\.([^.&]+))?)?(?:&relay=([^&]+))?(?:&top=([^&]+))?$/.exec(hash);
+  const m = /^(view|follow|edit)=([^.&]+)\.([^.&]+)(?:\.([^.&]+))??(\.host(?:\.([^.&]+))?)?(?:&owner=([^&]+))?(?:&relay=([^&]+))?(?:&top=([^&]+))?$/.exec(hash);
   const sign = m?.[1] === 'edit' ? m[4] : null;
   let relay = null;
-  if (m?.[7] !== undefined) { try { relay = relayAddress(decodeURIComponent(m[7])); } catch { relay = null; } }
-  if (!m || !ROOM_RE.test(m[2]) || !KEY_RE.test(m[3]) || (m[1] === 'edit' ? !SIGN_RE.test(sign || '') : m[4] !== undefined) || (m[6] !== undefined && !PUB_RE.test(m[6])) || (m[7] !== undefined && (!relay || (m[5] && m[6] === undefined))) || (m[8] !== undefined && !MODULE_RE.test(m[8]))) throw new Error('the link to follow is broken (copy it again from the owner\'s Share Project)');
-  return { base: at > 0 ? s.slice(0, at) : null, room: m[2], key: m[3], via: m[5] ? 'host' : 'relay', sign, ...(relay ? { relay } : {}), ...(m[6] ? { host: m[6] } : {}), ...(m[8] ? { top: m[8] } : {}) };
+  if (m?.[8] !== undefined) { try { relay = relayAddress(decodeURIComponent(m[8])); } catch { relay = null; } }
+  if (!m || !ROOM_RE.test(m[2]) || !KEY_RE.test(m[3]) || (m[1] === 'edit' ? !SIGN_RE.test(sign || '') : m[4] !== undefined) || (m[6] !== undefined && !PUB_RE.test(m[6])) || (m[7] !== undefined && !PUB_RE.test(m[7])) || (m[8] !== undefined && (!relay || (m[5] && m[6] === undefined))) || (m[9] !== undefined && !MODULE_RE.test(m[9]))) throw new Error('the link to follow is broken (copy it again from the owner\'s Share Project)');
+  return { base: at > 0 ? s.slice(0, at) : null, room: m[2], key: m[3], via: m[5] ? 'host' : 'relay', sign, ...(relay ? { relay } : {}), ...(m[6] ? { host: m[6] } : {}), ...(m[7] ? { owner: m[7] } : {}), ...(m[9] ? { top: m[9] } : {}) };
 }
 
 /** A Cloudflare Worker's origin (https://<name>.<account>.workers.dev, #4543): a relay the Silinx site's pages may use

@@ -58,14 +58,14 @@ test('the owner\'s page hosts the room: the project arrives at two followers, an
   assert.match(owner.room, ROOM_RE);
   assert.equal(h.rooms.size, 1);
   owner.setView({ path: 'src/top.vhd', line: 0, ch: 3 });
-  const fol = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Rui' }, WebSocket: followerSocket(h) }));
+  const fol = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, WebSocket: followerSocket(h) }));
   await fol.ready;
   assert.deepEqual(docProject(fol.doc), { version: 1, owner: 'Ana', project: PROJECT, fileTree: ['src/top.vhd'] });
   putFile(doc, 'src/top.vhd', 'entity top is end entity;\n');
   await until(() => docFile(fol.doc, 'src/top.vhd') === 'entity top is end entity;\n', 'the edit');
   const o = await until(() => fol.owner()?.view && fol.owner(), 'the owner\'s view');
   assert.deepEqual([o.name, o.role, o.view], ['Ana', 'owner', { path: 'src/top.vhd', line: 0, ch: 3 }]);
-  const fol2 = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Eva' }, WebSocket: followerSocket(h) }));
+  const fol2 = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, WebSocket: followerSocket(h) }));
   await fol2.ready;
   await until(() => owner.peers().length === 2 && fol2.peers().length === 2, 'all in');
   assert.deepEqual(owner.peers().map(p => [p.name, p.role]).sort(), [['Eva', 'viewer'], ['Rui', 'viewer']]);
@@ -82,7 +82,7 @@ test('read only in the page\'s room: a follower\'s edit refused, never at the ow
   const doc = owned();
   const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, WebSocket: h.owner }));
   const errors = [];
-  const fol = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Rui' }, WebSocket: followerSocket(h), onEvent: e => { if (e.type === 'error') errors.push(e.message); } }));
+  const fol = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, WebSocket: followerSocket(h), onEvent: e => { if (e.type === 'error') errors.push(e.message); } }));
   await fol.ready;
   // (an edit forged by the follower's page: its client never sends one)
   const other = new Y.Doc();
@@ -96,7 +96,7 @@ test('read only in the page\'s room: a follower\'s edit refused, never at the ow
   assert.equal(docFile(doc, 'src/top.vhd'), FILES['src/top.vhd']);
   // a second follower whose frame is too large: closed (1009), the room, the owner and the first follower kept
   const ends = [];
-  const big = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, user: { name: 'Eva' }, WebSocket: followerSocket(h, ends) }));
+  const big = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Eva' }, WebSocket: followerSocket(h, ends) }));
   await big.ready;
   await big.send(KIND.awareness, new Uint8Array(300));
   await until(() => big.closed(), 'the large one closed');

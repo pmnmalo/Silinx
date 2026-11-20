@@ -103,7 +103,7 @@ test('a follower moving its cursor without a pause, on a room whose bucket holds
   const owner = await shareRoom({ url: 'silinx-host:', WebSocket: h.owner, doc: owned(), user: { name: 'Ana' }, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
   const Follower = function FollowerSocket() { const { socketPair } = FollowerSocket; const { client, room } = socketPair(); h.follower(room); return client; };
   Follower.socketPair = (await import('../core/collab-loop.js')).socketPair;
-  const fol = await followRoom({ url: 'silinx-host:', WebSocket: Follower, room: owner.room, key: owner.key, user: { name: 'Rui' }, reconnect: false, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
+  const fol = await followRoom({ url: 'silinx-host:', WebSocket: Follower, room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, reconnect: false, onEvent: e => { if (e.type === 'error') errors.push(e.message); } });
   await fol.ready;
   try {
     const t0 = Date.now();
