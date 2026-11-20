@@ -8,7 +8,7 @@ import { processMessages } from '../server/mcp-processes.js';
 
 test('each tool\'s form: its file and line (and column) (#4746)', () => {
   const cases = [
-    ['ERROR:HDLCompiler:806 - "/home/u/pj/src/top.vhd" Line 12: Syntax error near "end".', { file: '/home/u/pj/src/top.vhd', line: 12 }],
+    ['ERROR:HDLCompiler:806 - "/work/pj/src/top.vhd" Line 12: Syntax error near "end".', { file: '/work/pj/src/top.vhd', line: 12 }],
     ['WARNING:Xst:2211 - "top.v" line 7: Instantiating black box module <counterx>.', { file: 'top.v', line: 7 }],
     ['ERROR:HDLParsers:164 - "C:/pj/src/top.vhd" Line 30. parse error, unexpected END', { file: 'C:/pj/src/top.vhd', line: 30 }],
     ['ERROR: [Synth 8-439] module \'counterx\' not found [/p/src/top.v:12]', { file: '/p/src/top.v', line: 12 }],
@@ -36,7 +36,7 @@ test('the project\'s path of the file a tool named: the same, a path ending with
   const paths = ['src/top.vhd', 'src/counter.vhd', 'sim/tb_top.vhd', 'src/a/util.vhd', 'src/b/util.vhd', 'top.ucf'];
   assert.equal(projectPath('src/top.vhd', paths), 'src/top.vhd');
   assert.equal(projectPath('./src/top.vhd', paths), 'src/top.vhd');
-  assert.equal(projectPath('/home/u/Silinx/pj/src/top.vhd', paths), 'src/top.vhd');
+  assert.equal(projectPath('/work/Silinx/pj/src/top.vhd', paths), 'src/top.vhd');
   assert.equal(projectPath('C:\\pj\\sim\\tb_top.vhd', paths), 'sim/tb_top.vhd');
   assert.equal(projectPath('counter.vhd', paths), 'src/counter.vhd');
   assert.equal(projectPath('/remote/build/top.ucf', paths), 'top.ucf');
