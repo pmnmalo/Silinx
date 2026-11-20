@@ -8,9 +8,9 @@
 // the project's modules (a module missing, a port without a pin, a pin without a port, their directions): checkModels.
 // Isomorphic module.
 import { pinText } from './kicad-sym.js';
+import { breaksHdl } from './reserved.js';
 
 const NAME = /^[a-z][a-z0-9_]*$/;
-const RESERVED = new Set(['in', 'out', 'inout', 'input', 'output', 'wire', 'reg', 'signal', 'entity', 'module', 'begin', 'end', 'is', 'of', 'port', 'map', 'not', 'and', 'or', 'xor', 'open']);
 // (a KiCad pin's type as a module's port: in, out; a supply or no-connect pin none)
 const PORT_DIR = { input: 'in', output: 'out', tri_state: 'out', open_collector: 'out', open_emitter: 'out' };
 
@@ -44,7 +44,8 @@ export function modelPins(pins, props, places) {
     const dir = PORT_DIR[p.type];
     if (!dir) return { error: `its pin ${p.number} (${t.text || 'no name'}) is ${p.type}: a module's port is an input or an output` };
     const port = mapped.get(p.number) ?? `${t.text.toLowerCase()}${t.low ? '_n' : ''}`;
-    if (!NAME.test(port) || RESERVED.has(port) || /__|_$/.test(port)) return { error: `its pin ${p.number}'s name '${t.text}' is not an HDL name: give it one in Silinx.Ports (${p.number}=a)` };
+    // (a reserved word of VHDL or Verilog, whichever the circuit's HDL is generated in, #4770)
+    if (!NAME.test(port) || breaksHdl(port, 'vhdl') || breaksHdl(port, 'verilog') || /__|_$/.test(port)) return { error: `its pin ${p.number}'s name '${t.text}' is not an HDL name: give it one in Silinx.Ports (${p.number}=a)` };
     if (seen.has(port)) return { error: `its pins ${seen.get(port)} and ${p.number} are both the port ${port}` };
     seen.set(port, p.number);
     out.push({ ...base, dir, port });
