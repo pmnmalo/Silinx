@@ -21,6 +21,8 @@ import { markUntrusted } from '../../core/trust.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
 import { DESIGN_KIND, asDesignProject, isDesignOnly } from '../../core/project-kind.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
+import { langOfPath } from '../../core/file-kinds.js';
+import { registerWritten } from '../../core/project-entries.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
@@ -31,7 +33,7 @@ export { DEV_SITE };
 const BROWSER_KEY = DEV_SITE ? 'silinx.dev.standalone.fs' : 'silinx.standalone.fs';
 
 const fail = msg => { throw new Error(msg); };
-const langOf = p => (/\.(v|vh|sv)$/i.test(p) ? 'verilog' : /\.(vhd|vhdl)$/i.test(p) ? 'vhdl' : /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(p) ? 'ucf' : 'text');
+const langOf = langOfPath;   // (core/file-kinds.js, #4733)
 /**
  * A project-relative path normalised: forward slashes, no empty or '.' segments. null when it would
  * leave the project (#483): not a string, empty, absolute ('/x', '\\\\host\\x', 'C:\\x'), a '..' segment,
@@ -594,21 +596,14 @@ export function projectOps(getStore, examples = {}) {
     },
     writeFile: async (name, path, text) => {
       const p = await S().load(name);
-      let json = null;
       // written again: back in the project
       path = notDescriptor(await spelled(p, cleanPath(path)));
       // (a name by the import gate's rules, as the local server's, #3414; build/'s files by the rest of their path)
       const gated = normalizePath(/^build\//.test(path) ? `b${path.slice(5)}` : path);   // (build/x as b/x)
       if (gated.reason) fail(`'${path}': not written: ${gated.reason}`);
-      if ((p.json.excluded || []).includes(path)) { json = clone(p.json); json.excluded = json.excluded.filter(f => f !== path); }
       await S().writeFile(name, path, text);
-      const lang = langOf(path);
-      if ((lang === 'vhdl' || lang === 'verilog') && !/^build\//.test(path) && !p.json.files.some(f => f.path === path)) {   // not the generated files in build/
-        json ||= clone(p.json);
-        const role = /^(sim|tb|test)\//.test(path) || /(^|\/)tb_|_tb\.|_tb$/.test(path) ? 'sim' : 'design';
-        json.files.push({ path, lang, role });
-      }
-      if (json) await S().saveJson(name, json);
+      const json = clone(p.json);
+      if (registerWritten(json, path)) await S().saveJson(name, json);   // (core/project-entries.js, as the server's, #4733)
       return { ok: true };
     },
     renameFile: async (name, from, to) => {

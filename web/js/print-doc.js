@@ -6,6 +6,7 @@
 import { S } from './app.js';
 import { t } from './i18n.js';
 import { setPrintMeta } from './print.js';
+import { hdlLangOf } from '/core/file-kinds.js';
 import { TEXT_CSS, domSnapshot, metaLine, openPrintView, printOptions, printPageHtml, textBody } from './print-view.js';
 
 // what a copy of a document leaves out: its toolbars, buttons and fields of commands, tips and menus
@@ -14,7 +15,7 @@ const CHROME = ['.doc-toolbar', '.doc-status', '.editor-bar', '.tb-btn', 'button
 /** The project and file of document `d` (its header's line). */
 const docMeta = (d) => metaLine({ project: d.project || S.project?.name || '', file: d.path || '' });
 
-const langOf = (p) => (/\.(vhd|vhdl)$/i.test(p) ? 'vhdl' : /\.(v|vh|sv)$/i.test(p) ? 'verilog' : null);
+const langOf = hdlLangOf;   // (core/file-kinds.js, #4733)
 
 // The print view of a document that is not a diagram: `{ title, meta, html, fit }`, the page printed; null for a
 // diagram (it prints from its own window). d.printView() (or its view's, its editor's), when it has one, gives `{ title, body, css, app, fit }`
