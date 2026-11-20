@@ -6,13 +6,13 @@ import { boardConstraintsFile } from '/core/board-constraints.js';
 import { constraintsFileDiagnostics } from '/core/constraints-diagnostics.js';
 import { noFlowWarning } from './device-picker.js';
 import { api, followJob } from './api.js';
-import { h, alertDlg, confirmDlg } from './ui.js';
+import { h, confirmDlg } from './ui.js';
 import { compile, elaborate } from '/core/compile.js';
 import { primitiveSources } from '/core/unisim.js';
 import { severityOf } from '/core/log-severity.js';
 import { countEvent } from './analytics.js';
 import { S, closeDoc, findDoc, moduleInfo, openDoc, openSummary, projectBoard, refreshSummary, setDirty, status } from './app.js';
-import { log, logError, logInfo, logLine, showConsolePage, showProblems, setDiagnostics } from './console.js';
+import { commandInfo, log, logError, logInfo, logLine, setDiagnostics, showConsolePage, showProblems } from './console.js';
 import { showCommandLines } from './messages.js';
 import { reloadProject } from './project.js';
 import { refreshOpenEditor, topUcfPorts, ucfPort } from './drawings.js';
@@ -358,7 +358,7 @@ export { SYNTH_OPEN };
 let synthOpenRunning = false;
 export async function synthOpen(mod) {
   if (!S.project || !mod) return;
-  if (api.standalone) { alertDlg(SYNTH_OPEN, 'In the browser edition, choose Silinx as the synthesis tool (Project > Design Properties): Synthesize then runs Yosys in the browser, and so does Implement Design.'); return; }
+  if (api.standalone) { commandInfo(SYNTH_OPEN, 'In the browser edition, choose Silinx as the synthesis tool (Project > Design Properties): Synthesize then runs Yosys in the browser, and so does Implement Design.'); return; }
   if (synthOpenRunning) return;
   synthOpenRunning = true;
   try {

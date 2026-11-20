@@ -134,6 +134,18 @@ export function logInfo(text) {
   log(`INFO: ${t(text)}`, 'info', { src: 'app' });
   bringForward('console');
 }
+/** A command's failure (#4747: in the console, never a modal box, docs/UI-GUIDELINES.md): `ERROR: <command>: <message>`,
+ *  each line of the message (a list of a design's errors) a line and an entry of its own, the Errors tab in front; the
+ *  command's name and each message translated apart. */
+export function commandError(title, message) { commandLines('ERROR', 'err', title, message); bringForward('errors'); }
+/** A command's warning (#4747): `WARNING: <command>: <message>`, the Warnings tab in front. */
+export function commandWarning(title, message) { commandLines('WARNING', 'warn', title, message); bringForward('warnings'); }
+/** Why a command does nothing (#4747): `INFO: <command>: <message>`, the console in front. */
+export function commandInfo(title, message) { commandLines('INFO', 'info', title, message); bringForward('console'); }
+function commandLines(tag, cls, title, message) {
+  const lines = (Array.isArray(message) ? message : String(message ?? '').split('\n')).map(m => String(m).trim()).filter(Boolean);
+  for (const m of lines.length ? lines : ['']) log(`${tag}: ${t(title)}: ${t(m)}`.replace(/: $/, ''), cls, { src: 'app' });
+}
 export function showConsolePage(page) {
   // (a tab of the console only: the keyboard's focus stays where it is, an editor's typing goes on)
   broughtForward = null;

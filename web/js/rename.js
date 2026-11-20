@@ -1,10 +1,10 @@
 // Renaming (#405: out of app.js): Rename Symbol (F2) in an HDL editor, and renaming a source (its file and / or the
 // module it defines) with everything that refers to it updated: instances, the drawings' links, the constraints.
 import { api } from './api.js';
-import { h, dialog, alertDlg } from './ui.js';
+import { h, dialog } from './ui.js';
 import { renameSymbolAtCursor, applyEdits } from './refactor.js';
 import { S, closeDoc, compileProject, openFile } from './app.js';
-import { log } from './console.js';
+import { commandError, log } from './console.js';
 import { reloadProject } from './project.js';
 import { markStale, saveAll } from './processes.js';
 import { reservedError } from '/core/reserved.js';
@@ -121,7 +121,7 @@ async function renameModuleNow(from, to, oldMod, newMod) {
     for (const m of r.hdl) log(m, /^ERROR/.test(m) ? 'err' : /^WARNING/.test(m) ? 'warn' : 'info');
     for (const p of reopen.reverse()) await openFile(p);
   } catch (e) {
-    alertDlg('Rename', e.message, 'error');
+    commandError('Rename', e.message);
     await reloadProject(false);
   } finally { S.syncing = false; }
 }
@@ -152,7 +152,7 @@ async function renameSource(from, to, oldMod, newMod) {
     log(`Rename: ${parts.join('; ')}.`, 'ok');
     for (const p of reopen.reverse()) await openFile(p);
   } catch (e) {
-    alertDlg('Rename', e.message, 'error');
+    commandError('Rename', e.message);
     await reloadProject(false);
   } finally { S.syncing = false; }
 }

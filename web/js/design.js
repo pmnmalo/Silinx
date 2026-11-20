@@ -3,14 +3,14 @@
 // source, and saving the project's settings (silinx.json) one save at a time.
 import { api } from './api.js';
 import { icon } from './icons.js';
-import { h, alertDlg, confirmDlg, dialog, popupMenu, toast, longPressMenu } from './ui.js';
+import { h, confirmDlg, dialog, popupMenu, toast, longPressMenu } from './ui.js';
 import * as wiz from './wizards.js';
 import { drawnModule } from '/core/view-hdl.js';
 import { hierarchyOrder, instanceOrder } from '/core/hier-order.js';
 import { isUnisimPrimitive } from '/core/unisim.js';
 import { S, addToProject, closeDoc, fixMissingTops, instancesOf, moduleInfo, openFile, projectUndo, syncFpgaView,
   viewRoots } from './app.js';
-import { log } from './console.js';
+import { commandInfo, log } from './console.js';
 import { closeProject, reloadProject } from './project.js';
 import { checkUcfFile } from './implement.js';
 import { asmContextMenu, clashTip, convertToAsm, convertToFsm, convertToSchematic, fsmContextMenu, openAsm, openFsm,
@@ -438,7 +438,7 @@ export async function addFromFolderDialog() {
   if (!S.project) return;
   const listed = new Set(S.fileTree);
   const free = shownFiles((S.diskTree || []).filter(f => !listed.has(f))).sort((a, b) => a.localeCompare(b));   // (no HDL in a design project, #3780)
-  if (!free.length) return alertDlg('Add to Project', 'Every file of the project folder is in the project.');
+  if (!free.length) return commandInfo('Add to Project', 'Every file of the project folder is in the project.');
   const boxes = free.map(f => h('input', { type: 'checkbox', value: f }));
   const r = await dialog({
     title: 'Add to Project', width: 480,

@@ -28,6 +28,14 @@ const consoleAfterOpen = async (page) => {
   const lines = (await page.consoleText()).split('\n');
   return lines.slice(lines.findIndex((l) => /^Project ".*" opened/.test(l)) + 1);
 };
+/** The error a change was refused with, in the console (#4747: never in the editor's window), or '' (none): its new
+ *  ERROR lines. */
+const refusedWith = async (page, act) => {
+  const errs = () => page.eval(() => [...document.querySelectorAll('#console-log .ln.err')].map((l) => l.textContent.replace(/^ERROR: /, '')));
+  const n = (await errs()).length;
+  await act();
+  return (await errs()).slice(n).join('\n');
+};
 const problemRows = (page) => page.eval(() => [...document.querySelectorAll('#console-errors .diag, #console-warnings .diag')].map((d) => d.textContent));
 /** An output's HDL logic (#2951): the tick box of its result (`form`: tt-kmap-res, tt-xor, tt-nand, …), each of `outs` in turn. */
 const tickForm = async (page, form, outs) => {
@@ -220,13 +228,13 @@ uiTest('Truth Table with many outputs (#176): 4 -> 16 outputs, cells of output 6
   await page.waitFor(() => window.Silinx.active?.id === 'tt:src/many.bool.json' && document.querySelector('.doc:not([hidden]) .tt-editor'), [], { what: 'truth table editor' });
   const T = '.doc:not([hidden]) .tt-editor';
   // no outputs: refused
-  await page.fill(`${T} .tt-outputs`, ' ');
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-toolbar .tt-err`).textContent, T), 'At least 1 output');
+  assert.equal(await refusedWith(page, () => page.fill(`${T} .tt-outputs`, ' ')), 'At least 1 output');
   // 16 outputs: the 4 columns kept, 12 new ones at 0
   const outs = Array.from({ length: 16 }, (_, i) => `y${i}`);
-  await page.fill(`${T} .tt-outputs`, outs.join(', '));
-  await page.waitFor((t) => document.querySelectorAll(`${t} .tt-table th.tt-out`).length === 16, [T], { what: '16 output columns' });
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-toolbar .tt-err`).textContent, T), '');
+  assert.equal(await refusedWith(page, async () => {
+    await page.fill(`${T} .tt-outputs`, outs.join(', '));
+    await page.waitFor((t) => document.querySelectorAll(`${t} .tt-table th.tt-out`).length === 16, [T], { what: '16 output columns' });
+  }), '');
   assert.deepEqual(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-tab`)].map((b) => b.dataset.out), T), outs);
   assert.equal(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-cell[data-out=y3]`)].map((c) => c.textContent).join(''), T), '00010111');
   // output 6 (y5): rows 0 and 6 at 1, row 1 a don't care
@@ -272,12 +280,12 @@ uiTest('Truth Table with many outputs (#176): 4 -> 16 outputs, cells of output 6
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/many.vhd'] === 'src/many.bool.json', [], { what: 'linked HDL' });
   await page.waitFor(async () => /y15 = Σm\(2\)/.test(await (await fetch('/api/projects/TtMany/file?path=src%2Fmany.vhd')).text()), [], { what: 'the HDL follows the table', timeout: 15000 });
   const vhd = await readWs(env, 'TtMany', 'src/many.vhd');
-  assert.deepEqual(await consoleAfterOpen(page), []);
+  assert.deepEqual(await consoleAfterOpen(page), ['ERROR: At least 1 output']);   // (the refused shape's, above: the console's, #4747)
   // the old schematic: a module of its own, beside the table's (Table, Schematic, VHDL)
   const rows = await page.eval(() => Object.fromEntries([...document.querySelectorAll('#hier .row')].filter((r) => /^many/.test(r.querySelector('.lbl').textContent)).map((r) => [r.querySelector('.lbl').textContent, [...r.querySelectorAll('.badge')].map((b) => `${b.textContent}${b.classList.contains('base') ? '*' : ''}`)])));
   assert.deepEqual(rows, { many: ['Algebra*', 'Schematic', 'VHDL'], many_sch: ['Schematic*', 'VHDL'] });
   await page.eval(() => window.SilinxApp.openFile('src/many.vhd'));
-  assert.deepEqual(await problemRows(page), []);
+  assert.deepEqual(await problemRows(page), ['ERROR:Silinx - At least 1 output']);   // (the refused shape's only, #4747)
   assert.match(vhd, /y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15 : out std_logic/);
   const st = simTable(vhd, 'many.vhd', 'many');
   assert.deepEqual(Object.keys(st), outs);
@@ -291,14 +299,14 @@ uiTest('Truth Table with many outputs (#176): 4 -> 16 outputs, cells of output 6
   await page.waitFor(() => window.Silinx.active?.id === 'ttsch:src/many.bool.json' && window.Silinx.active.viewer, [], { what: 'schematic opened' });
   const sch = await ttSchematic(page, 'src/many.bool.json');
   assert.deepEqual(netlist(sch).diagnostics, []);
-  assert.deepEqual(await problemRows(page), []);
+  assert.deepEqual(await problemRows(page), ['ERROR:Silinx - At least 1 output']);   // (the refused shape's only, #4747)
   assert.deepEqual(sch.ports.filter((p) => p.dir === 'out').map((p) => p.name), outs);
   const ss = simTable(generateHdl(sch).code, 'many.vhd', 'many');
   assert.deepEqual([ss.y3, ss.y15, ss.y9], ['00010111', '00100000', '00000000']);
   assert.ok([...'1X000011'].every((c, i) => c === 'X' || c === ss.y5[i]), ss.y5);
   // the old schematic unchanged
   assert.deepEqual(JSON.parse(await readWs(env, 'TtMany', 'src/many_sch.sch.json')).symbols.map((x) => x.type), old.symbols.map((x) => x.type));
-  assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR/);
+  assert.doesNotMatch((await page.consoleText()).replace('ERROR: At least 1 output', ''), /WARNING|ERROR/);   // (but the refused shape's, #4747)
 });
 
 uiTest("Truth Table expressions (#180): '/' NOT and '.' AND typed in the Expression field fill the XOR's column; the operators shown", E, async (page) => {
@@ -307,18 +315,22 @@ uiTest("Truth Table expressions (#180): '/' NOT and '.' AND typed in the Express
   await page.eval(() => window.SilinxApp.openTt('src/ops.bool.json'));
   await page.waitFor(() => window.Silinx.active?.id === 'tt:src/ops.bool.json' && document.querySelector('.doc:not([hidden]) .tt-editor'), [], { what: 'truth table editor' });
   const T = '.doc:not([hidden]) .tt-editor';
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-ops`).textContent, T), "Operators: / ' ~ (NOT), . · * (AND), ⊕ ^ or xor (XOR), xnor, + (OR)");
-  await page.fill(`${T} .tt-expr-in`, '/a.b + a./b');
-  await page.click(`${T} .tt-btn`, { text: 'Fill Table' });
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-err`).textContent, T), '');
+  // (the operators: the field's tip, no hint line, #4747)
+  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-in`).title, T), "Operators: / ' ~ (NOT), . · * (AND), ⊕ ^ or xor (XOR), xnor, + (OR)");
+  assert.equal(await page.eval((t) => document.querySelectorAll(`${t} .hint.tt-ops, ${t} .tt-err`).length, T), 0);
+  assert.equal(await refusedWith(page, async () => {
+    await page.fill(`${T} .tt-expr-in`, '/a.b + a./b');
+    await page.click(`${T} .tt-btn`, { text: 'Fill Table' });
+  }), '');
   assert.equal(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-cell[data-out=f]`)].map((c) => c.textContent).join(''), T), '00111100');
   assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-kmap-res .tt-expr`).textContent, T), "f = /a.b + a./b");
   // its NAND and NOR forms (#694)
   assert.deepEqual(await page.eval((t) => [`${t} .tt-nand`, `${t} .tt-nor`].map((q) => document.querySelector(`${q} .tt-expr`).textContent), T), ['f = /(/(/(a.a).b)./(a./(b.b)))', 'f = /(/(a + b) + /(/(a + a) + /(b + b)))']);
   // an invalid expression: where it stops
-  await page.fill(`${T} .tt-expr-in`, 'a..b');
-  await page.click(`${T} .tt-btn`, { text: 'Fill Table' });
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-err`).textContent, T), "expected a variable, 0, 1 or ( but found '.' (at position 3)");
+  assert.equal(await refusedWith(page, async () => {
+    await page.fill(`${T} .tt-expr-in`, 'a..b');
+    await page.click(`${T} .tt-btn`, { text: 'Fill Table' });
+  }), "expected a variable, 0, 1 or ( but found '.' (at position 3)");
   await page.waitFor(async () => (await (await fetch('/api/projects/TtOps/file?path=src%2Fops.bool.json')).json()).exprs?.f === '/a.b + a./b', [], { what: 'saved' });
 });
 
@@ -402,13 +414,12 @@ uiTest('Truth Table (#196, #2107): input / output names applied on leaving the f
   // the inputs set, the outputs typed, then Enter or leaving the field (the notes focused: the browser's change
   // event); no Apply button (#2107)
   let leave = false;
-  const apply = async (ins, outs) => {
+  const apply = (ins, outs) => refusedWith(page, async () => {
     await page.eval((t, a) => { document.querySelector(`${t} .tt-inputs`).value = a; const o = document.querySelector(`${t} .tt-outputs`); o.value = ''; o.focus(); }, T, ins);
     if (outs) await page.type(outs);
     if (leave && outs) await page.eval((t) => document.querySelector(`${t} .tt-notes`).focus(), T); else await page.key('Enter');
     leave = !leave;
-    return page.eval((t) => document.querySelector(`${t} .tt-err`).textContent, T);
-  };
+  });
   assert.equal(await page.eval((t) => [...document.querySelectorAll(`${t} .tt-toolbar button`)].filter((b) => b.textContent === 'Apply').length, T), 0);
   // the Inputs and Outputs boxes wide enough for several names (#3815: 140 px before)
   for (const w of await page.eval((t) => ['.tt-inputs', '.tt-outputs'].map((c) => document.querySelector(`${t} ${c}`).getBoundingClientRect().width), T)) assert.ok(w >= 250, `a text box ${w} px wide`);
@@ -455,7 +466,9 @@ uiTest('Truth Table (#196, #2107): input / output names applied on leaving the f
   await page.click(`${T} .tt-cell[data-out=g][data-row="0"]`);
   await page.waitFor(async () => /g = Σm\(0, 6, 7\)/.test(await (await fetch('/api/projects/TtVlog/file?path=src%2Ftv.v')).text()), [], { what: 'Verilog regenerated' });
   assert.deepEqual(simTable(await readWs(env, 'TtVlog', 'src/tv.v'), 'tv.v', 'tv'), { f: '01010101', g: '10000011' });
-  assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR/);
+  // (but the refused shapes' errors, above: the console's, #4747)
+  const refused = /^ERROR: (1 to 16 inputs|At least 1 output|the name '\w+' is used twice|'\w+' is a reserved word of [\w ]+: choose another name\.)$/;
+  assert.doesNotMatch((await page.consoleText()).split('\n').filter((l) => !refused.test(l)).join('\n'), /WARNING|ERROR/);
 });
 
 uiTest('Truth Table (#434, #435): the / notation by default (results, K-map groups), the others selectable; the XOR form when simpler, its HDL; in Portuguese', E, async (page) => {
@@ -609,7 +622,7 @@ end rtl;
   // the Design pane's badges and the schematic's bar
   assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl').textContent === 'u_fa - fa').querySelectorAll('.badge')].map((b) => b.textContent)), ['Álgebra', 'Esquemático', 'VHDL']);
   assert.equal(await page.eval(() => window.Silinx.docs.find((d) => d.id === 'ttsch:src/fa.bool.json').el.querySelector('.se-banner').textContent), 'Só de leitura, gerado a partir de fa.bool.json');
-  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-ops`).textContent, T), "Operadores: / ' ~ (NOT), . · * (AND), ⊕ ^ ou xor (XOR), xnor, + (OR)");
+  assert.equal(await page.eval((t) => document.querySelector(`${t} .tt-expr-in`).title, T), "Operadores: / ' ~ (NOT), . · * (AND), ⊕ ^ ou xor (XOR), xnor, + (OR)");
   await setLang('en');
 });
 

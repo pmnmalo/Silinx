@@ -242,8 +242,8 @@ export function mountPinPlanner(el, doc, top) {
     const msg = [`${n} I/Os assigned from ${board.name}`];
     if (dirN) msg.push(`${dirN} by direction (${r.byDirection.map(d => `${d.port} → ${d.nets.map(([, l]) => l).join(', ')}`).join('; ')})`);
     if (r.unmatched.length) msg.push(`not assigned: ${r.unmatched.join(', ')}`);
-    // (an action done: a toast; nothing assigned: a warning of the console, #3591)
-    if (n) { toast(msg.join('; '), 'ok', 8000); app.log(`I/O Pin Planning: ${msg.join('; ')}.`, r.unmatched.length ? 'warn' : 'ok'); }
+    // (an action done: a toast; nothing assigned, or some not: a warning of the console, #3591, never a "done" toast, #4747)
+    if (n && !r.unmatched.length) { toast(msg.join('; '), 'ok', 8000); app.log(`I/O Pin Planning: ${msg.join('; ')}.`, 'ok'); }
     else logWarning(`I/O Pin Planning: ${msg.join('; ')}.`);
   }
 
