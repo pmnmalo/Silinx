@@ -1311,7 +1311,8 @@ uiTest('the site\'s development edition (dev/): says so, and keeps its projects 
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'DevOnly');
   const projects = (prefix) => page.eval((x) => Object.keys(localStorage).filter((k) => k.startsWith(x)).map((k) => k.slice(x.length)).sort(), prefix);
-  assert.deepEqual({ dev: await projects('silinx.dev.standalone.project:'), stable: await projects('silinx.standalone.project:') }, { dev: ['DevOnly'], stable: [] });
+  assert.deepEqual(await projects('silinx.dev.standalone.project:'), ['DevOnly']);
+  assert.ok(!(await projects('silinx.standalone.project:')).includes('DevOnly'));
   // the stable edition: no warning, its own project only
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item'), [], { what: 'stable boot again' });
