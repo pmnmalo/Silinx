@@ -277,6 +277,7 @@ test('a 7-series project is implemented by Vivado (POST implement, run_process):
   // (a Zynq-7000 part with no bit database, the XC7Z030: the XC7Z010 and the XC7Z020 are the Silinx toolchain's too, #4680)
   for (const [nm, device] of [['S7Blinky', { family: 'spartan7', part: 'xc7s50', package: 'csga324', speed: '-1' }], ['Z7Blinky', { family: 'zynq', part: 'xc7z030', package: 'sbg485', speed: '-1' }]]) {
     blinkyProject(nm, { device, synthTool: 'silinx' });
+    await P.trustProject(nm);   // (#4735: written by hand, the user trusts it)
     const g = await wait(await startImplementation(nm, { generateOnly: true }));
     assert.equal(g.meta.toolchain, 'vivado', nm);
     assert.equal(g.status, 'ok', nm);
