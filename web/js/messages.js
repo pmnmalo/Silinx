@@ -3,10 +3,11 @@
 // - Each line of the Console says where it comes from (data-src): Check Syntax (Design), Simulation, Emulation,
 //   Implementation (synthesis, implementation, the constraints' checks (#2692) and programming the board: one filter,
 //   #1173), or the application
-//   ('app'), or the one its writer gave it (data-own-src: the collaboration's messages, Design's, #4632); sourceOf() reads
-//   the others' from the processes'
-//   headers ("Started : …", "=== SILINX STEP …", iMPACT's "Programming FPGA (SRAM)..."): the lines after a
-//   header are its process's.
+//   ('app'), or the one its writer gave it (data-own-src: the collaboration's messages, Design's, #4632); the others'
+//   from the processes' headers ("Started : …", "=== SILINX STEP …", iMPACT's "Programming FPGA (SRAM)..."): the lines
+//   after a header are its process's (sourceOf, lineSource). Each line's source is decided once, where it is written,
+//   with its message (#4749: web/js/console.js log, core/message.js), and the Errors / Warnings tabs list the entries of
+//   the sources the filter shows.
 // - Filters by source follow the task in front in the Tasks interface (Implement: Implementation)
 //   until the viewer picks one; All shows every line (the Silinx and ISE style interfaces' default: no task). A
 //   process started whose source the viewer's filter hides turns that filter to its source (#1852, #1867); a C
@@ -94,29 +95,30 @@ export function filterForCommand(src, filter, task) {
 }
 
 // ------------------------------------------------------------------ the page
-let app = null, picked = null, task = null, built = false, cur = 'app';
+let app = null, picked = null, task = null, built = false;
 const $ = id => document.getElementById(id);
 const shownSources = () => filterSources(picked, task);
+/** The sources the console's filter shows now (null: every one; the message centre not built: every one), for the
+ *  Errors / Warnings tabs (#4749: web/js/console.js renderDiagnostics). */
+export const shownSourcesNow = () => (built ? shownSources() : null);
 // (the simulation in front: there may be several, #1161)
 const isimInput = () => document.querySelector('#workspace > .doc:not([hidden]) .isim .isim-cmdline input');
 // SSim's commands: in the Tasks interface while Simulate is in front, in the others while an SSim window is
 const simulating = () => !!isimInput() && (task === 'sim' || (task === null && /^isim(:|$)/.test(app?.S.active?.id || '')));
 
-function tag(ln) {
-  if (ln.dataset.ownSrc !== undefined) { /* its writer's source (#4632): the lines after it stay the process's */ }
-  else if (!ln.dataset.src) {
-    [ln.dataset.src, cur] = lineSource(ln.textContent, cur);
-    // (a process started: shown, the filter turned to its source if it hid it, #1852)
-    if (/^Started : "/.test(ln.textContent.trim()) && built && ln.dataset.src !== 'app') {
-      const f = filterForProcess(ln.dataset.src, picked, task);
-      if (f !== picked) { picked = f; refilter(); return; }
-    }
-  } else cur = ln.dataset.src;
+// (a line's source: its message's, decided where it was written, #4749: web/js/console.js log; a line of none, the
+// application's)
+function tag(ln, started = true) {
+  ln.dataset.src ||= 'app';
+  // (a process started: shown, the filter turned to its source if it hid it, #1852)
+  if (started && ln.dataset.ownSrc === undefined && /^Started : "/.test(ln.textContent.trim()) && built && ln.dataset.src !== 'app') {
+    const f = filterForProcess(ln.dataset.src, picked, task);
+    if (f !== picked) { picked = f; refilter(); return; }
+  }
   ln.classList.toggle('mc-off', !isShown(shownSources(), ln.dataset.src));
 }
 function retagAll() {
-  cur = 'app';
-  for (const ln of $('console-log').children) { if (ln.dataset.ownSrc === undefined) delete ln.dataset.src; tag(ln); }
+  for (const ln of $('console-log').children) tag(ln, false);
 }
 function refilter() {
   const set = shownSources();
@@ -126,6 +128,7 @@ function refilter() {
   showLast();
   const log = $('console-log');
   log.scrollTop = log.scrollHeight;
+  document.dispatchEvent(new CustomEvent('silinx:console-filter'));   // (the Errors / Warnings tabs follow it, #4749)
 }
 // the folded panel's line: the last one of the filter
 function showLast() {
@@ -234,8 +237,7 @@ export function initMessages(a) {
   build();
   new MutationObserver(ms => {
     if (!built) return;
-    for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1 && (!el.dataset.src || el.dataset.ownSrc !== undefined)) tag(el);
-    if (ms.some(m => m.removedNodes.length) && !$('console-log').childElementCount) cur = 'app';   // (cleared)
+    for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1) tag(el);
     showLast();
   }).observe($('console-log'), { childList: true });
   // (SSim and the emulator build their windows after their documents open: looked for once a frame at most)
