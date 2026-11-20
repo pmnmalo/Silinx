@@ -763,9 +763,12 @@ export function byLastUsed(list, opened = {}) {
  *  copied. Returns { copied: [names], skipped: [names] }. */
 export async function copyProjects(from, to) {
   const copied = [], skipped = [];
+  // (#4735: into a folder on the disk, a project trusted here recorded as trusted there, the folder's migration first)
+  if (to.kind === 'folder') await trustRecords.migrateOnce(to.label, () => to.list());
   for (const j of await from.list()) {
     if (await to.exists(j.name)) { skipped.push(j.name); continue; }
     const p = await from.load(j.name);
+    if (to.kind === 'folder' && p.json.trusted !== false) trustRecords.record(to.label, j.name, typeof p.json.id === 'string' ? p.json.id : null);
     await to.create(j.name, p.json, { ...p.files });
     copied.push(j.name);
   }
