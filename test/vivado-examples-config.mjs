@@ -36,17 +36,19 @@ export const VIVADO_WARNINGS = {
   basys3: warnings, 'nexys-a7': warnings,
   'arty-s7': { ...warnings, vga: [removed('pace', 'vga_sync.vhd', 50)] },
   'zybo-z7': warnings,
+  // (#4682: the Arty Z7's 125 MHz and XC7Z020 as the Zybo Z7's: the same; not yet run on a Vivado)
+  'arty-z7': warnings,
 };
 // the design rule check's findings on each example: none, but stopwatch's DSP48 multipliers (its division by constants)
 // not pipelined, Vivado's performance advice: [rule, severity, description, checks]
 export const VIVADO_DRC = { stopwatch: [['DPIP-1', 'Warning', 'Input pipelining', 3], ['DPOP-2', 'Warning', 'MREG Output pipelining', 3]] };
 // (#3895) on the Arty S7's 12 MHz clock stopwatch's multipliers' output registers are fine (no DPOP-2); a Zynq-7000's PL alone
-// (the Zybo Z7's: no processing system set up) has Vivado's advice ZPS7-1 on every design
+// (the Zybo Z7's, the Arty Z7's: no processing system set up) has Vivado's advice ZPS7-1 on every design
 const ZPS7 = ['ZPS7-1', 'Warning', 'PS7 block required', 1];
 /** A board's example's DRC findings: VIVADO_DRC's, the board's. */
 export const vivadoDrc = (board, name) => {
   const own = VIVADO_DRC[name] || [];
   if (board === 'arty-s7') return own.filter(r => r[0] !== 'DPOP-2');
-  if (board === 'zybo-z7') return [...own, ZPS7];
+  if (board === 'zybo-z7' || board === 'arty-z7') return [...own, ZPS7];
   return own;
 };

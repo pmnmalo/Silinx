@@ -151,7 +151,7 @@ const boardsOf = pred => BOARDS.flatMap(b => (b.variants || [null]).map(v => {
 })).filter(x => pred(openStatus(x.device).available));
 const SUPPORTED = boardsOf(a => a);
 // 'Basys2-100 / 250 and Nexys2-500 / 1200' → Basys2-100, Basys2-250, Nexys2-500, Nexys2-1200 (the ULX3S's sizes too, #2302)
-const named = text => [...text.matchAll(/\b(Basys2|Nexys2|Nexys3|Atlys|Zybo Z7|ULX3S(?: \+ VGA)?)-(\w+)((?: \/ \w+)*)/g)]
+const named = text => [...text.matchAll(/\b(Basys2|Nexys2|Nexys3|Atlys|Zybo Z7|Arty Z7|ULX3S(?: \+ VGA)?)-(\w+)((?: \/ \w+)*)/g)]
   .flatMap(([, b, v, more]) => [v, ...more.split(' / ').slice(1)].map(x => `${b}-${x}`));
 
 test('docs: the Silinx toolchain\'s name and default mode are the code\'s', () => {

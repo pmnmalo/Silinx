@@ -12,7 +12,7 @@
 //
 //   SILINX_VIVADO_TESTS=1 SILINX_ISE_HOST=user@host node --test test/vivado/examples.test.js
 //   SILINX_ISE_HOST=local: the image on this machine; SILINX_VIVADO_IMAGE (default xilinx/vitis-hls:2025.2);
-//   SILINX_VIVADO_BOARDS=arty-s7,zybo-z7: those boards only (default: all four)
+//   SILINX_VIVADO_BOARDS=arty-s7,zybo-z7: those boards only (default: all five)
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -38,7 +38,7 @@ before(() => {
   fs.writeFileSync(path.join(process.env.SILINX_CONFIG_DIR, 'config.json'), JSON.stringify(config));
 });
 
-const PARTS = { basys3: ['xc7a35t', '7a35tcpg236'], 'nexys-a7': ['xc7a100t', '7a100tcsg324'], 'arty-s7': ['xc7s50', '7s50csga324'], 'zybo-z7': ['xc7z020', '7z020clg400'] };
+const PARTS = { basys3: ['xc7a35t', '7a35tcpg236'], 'nexys-a7': ['xc7a100t', '7a100tcsg324'], 'arty-s7': ['xc7s50', '7s50csga324'], 'zybo-z7': ['xc7z020', '7z020clg400'], 'arty-z7': ['xc7z020', '7z020clg400'] };
 const ONLY = process.env.SILINX_VIVADO_BOARDS ? process.env.SILINX_VIVADO_BOARDS.split(',') : null;
 for (const { board: b } of [...XC7_TARGETS, ...VIVADO_TARGETS].filter(t => !ONLY || ONLY.includes(t.board))) for (const name of EXAMPLES) {
   test(`Vivado builds example ${name} for the ${b} with no warnings, routed, timed, DRC clean`, { skip, timeout: 60 * 60000 }, async () => {
