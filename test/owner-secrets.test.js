@@ -12,6 +12,7 @@ let tmp;
 before(async () => { tmp = await scratchEnv('silinx-owner-secrets-'); fs.mkdirSync(process.env.SILINX_WORKSPACE, { recursive: true }); });
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 const { ownerSecrets } = await import('../server/owner-secrets.js');
+const { redact } = await import('../core/collab-runs.js');
 
 test('ownerSecrets: the folders as given and resolved, the home folder, the ISE machine; the longest first', async () => {
   await writeConfig({ mode: 'ssh', ssh: { host: 'buildbox.example', user: 'ana', remoteDir: '/srv/ise/builds' } });
@@ -27,4 +28,25 @@ test('ownerSecrets: the folders as given and resolved, the home folder, the ISE 
   await writeConfig({ mode: 'ssh', ssh: { host: 'buildbox.example', user: 'ana', remoteDir: 'silinx-build' } });
   const t = await ownerSecrets({ env: { SILINX_ISE_HOST: 'local' }, home: '/' });
   assert.equal(t.some(([k, v]) => v === '<ISE build folder>' || k === 'local' || k === '/'), false);
+});
+
+test('#4777 ownerSecrets on a Windows computer: its drive letters and backslashes, each folder as itself (the configuration inside the home folder first); a drive\'s root never', async () => {
+  await writeConfig({ mode: 'local' });
+  const P = path.win32, home = 'C:\\Users\\user', config = 'C:\\Users\\user\\AppData\\Roaming\\silinx', workspace = 'D:\\work\\silinx';
+  const s = await ownerSecrets({ env: { SILINX_MCP_FOLDER: 'E:\\share' }, home, path: P, workspace, config });
+  assert.deepEqual(s, [[config, '<Silinx configuration>'], [workspace, '<workspace>'], [home, '~'], ['E:\\share', '<exchange folder>']]);
+  assert.equal(redact(`Bitstream: ${workspace}\\p\\build\\top.bit; settings ${config}\\config.json; ${home}\\Desktop\\x.vhd; E:\\share\\in.zip`, s),
+    'Bitstream: <workspace>\\p\\build\\top.bit; settings <Silinx configuration>\\config.json; ~\\Desktop\\x.vhd; <exchange folder>\\in.zip');
+  // (no exchange folder given: the home folder's Downloads, inside it; a home folder that is a drive's root: none)
+  const t = await ownerSecrets({ env: {}, home: 'C:\\', path: P, workspace, config: 'C:\\silinx' });
+  assert.deepEqual(t, [[workspace, '<workspace>'], ['C:\\Downloads', '<exchange folder>'], ['C:\\silinx', '<Silinx configuration>']]);
+});
+
+test('#4777 ownerSecrets for a user whose workspace and exchange folder are outside the home folder: each replaced as itself, never as ~', async () => {
+  await writeConfig({ mode: 'local' });
+  const P = path.posix, home = '/home/user', workspace = '/data/silinx/ws', config = '/home/user/.config/silinx';
+  const s = await ownerSecrets({ env: { SILINX_MCP_FOLDER: '/mnt/share' }, home, path: P, workspace, config });
+  assert.deepEqual(s, [[config, '<Silinx configuration>'], [workspace, '<workspace>'], ['/mnt/share', '<exchange folder>'], [home, '~']]);
+  assert.equal(redact('ghdl -a /data/silinx/ws/p/src/top.vhd (/home/user/lib/x.vhd, /mnt/share/t.zip); /data/silinx/other', s),
+    'ghdl -a <workspace>/p/src/top.vhd (~/lib/x.vhd, <exchange folder>/t.zip); /data/silinx/other');
 });
