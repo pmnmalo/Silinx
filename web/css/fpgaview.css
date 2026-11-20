@@ -44,10 +44,7 @@
 .fv-side .asm-fold { border: 0; background: none; padding: 0 2px; margin-right: -2px; color: inherit; display: inline-flex; align-items: center; cursor: pointer; opacity: .75; }
 .fv-side .asm-fold:hover { opacity: 1; }
 .fv-sec { border-bottom: 1px solid var(--border-light, #d4d0c8); }
-.fv-sec > summary { padding: 4px 8px; cursor: default; font-weight: bold; color: var(--title-fg, #15428b); list-style: none; user-select: none; }
-.fv-sec > summary::-webkit-details-marker { display: none; }
-.fv-sec > summary::before { content: "▸"; display: inline-block; width: 14px; transition: transform .12s; }
-.fv-sec[open] > summary::before { transform: rotate(90deg); }
+.fv-sec > .fv-sec-title { padding: 4px 8px; cursor: default; font-weight: bold; color: var(--title-fg, #15428b); user-select: none; }
 .fv-sec-body { padding: 0 10px 8px; }
 @media (min-width: 1024px) {
   .fv.props-folded :is(.fv-side, .fv-side.wide) { width: 24px; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; }

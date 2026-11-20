@@ -18,7 +18,6 @@ export const FPGA_PT = {
   'Modules': 'Módulos', 'Nets': 'Redes',
   'IOBs': 'IOBs (pinos)', 'Global clock buffers': 'Buffers de relógio globais', 'Slices': 'Slices (blocos lógicos)', 'DCMs / PLLs': 'DCMs / PLLs',
   'Block RAMs': 'Block RAMs (memórias)', 'Multipliers / DSPs': 'Multiplicadores / DSPs',
-  'Click a site on the chip to see its logic and connections.': 'Clique num sítio do chip para ver a sua lógica e ligações.',
   'Site': 'Sítio', 'Tile': 'Bloco (tile)', 'Port': 'Porto', 'Package pin': 'Pino do encapsulamento', 'I/O standard': 'Norma de E/S', 'Slew rate': 'Velocidade de transição',
   'Look-up tables (LUTs)': 'Tabelas de consulta (LUTs)', 'used as distributed RAM': 'usada como RAM distribuída', 'used as ROM': 'usada como ROM',
   'Signal names without the module path': 'Nomes dos sinais sem o caminho do módulo',

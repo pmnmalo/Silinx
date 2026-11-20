@@ -221,7 +221,8 @@ export function mountFpgaView(el, { model, top = '', entities = new Map(), onSel
   }
   const entityOf = path => entities.get(String(path).toLowerCase()) || null;
   const moduleLabel = k => (k === '' ? `${top || 'top'} (top level)` : `${k}${entityOf(k) ? ` — ${entityOf(k)}` : ''}`);
-  const sec = (title, ...kids) => h('details', { class: 'fv-sec', open: true }, h('summary', {}, title), h('div', { class: 'fv-sec-body' }, ...kids));
+  // (plain sections with their heading: the panel folds as a whole, #4764)
+  const sec = (title, ...kids) => h('div', { class: 'fv-sec' }, h('div', { class: 'fv-sec-title' }, title), h('div', { class: 'fv-sec-body' }, ...kids));
   const legendBox = h('div', { class: 'fv-legend' });
   function legend() {
     legendBox.innerHTML = '';
@@ -261,7 +262,8 @@ export function mountFpgaView(el, { model, top = '', entities = new Map(), onSel
   const util = h('table', { class: 'fv-util' }, ...Object.entries(model.util).filter(([, u]) => u.total).map(([k, u]) => h('tr', {},
     h('td', {}, k), h('td', { class: 'num' }, `${u.used} / ${u.total}`),
     h('td', {}, h('div', { class: 'fv-bar-u' }, h('div', { style: { width: `${Math.min(100, (100 * u.used) / u.total)}%` } }))))));
-  const selBox = h('div', { class: 'fv-detail' }, h('div', { class: 'fv-hint' }, 'Click a site on the chip to see its logic and connections.'));
+  // (nothing selected: it says nothing, #4764)
+  const selBox = h('div', { class: 'fv-detail' });
   const netsBox = h('div', { class: 'fv-nets' });
   side.append(
     sec('Device', h('div', { class: 'fv-dev', 'data-no-i18n': '' }, `${model.device.part || model.design.part} · ${model.design.name || top}`), util),

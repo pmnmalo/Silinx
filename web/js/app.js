@@ -891,8 +891,10 @@ async function boot() {
   $('settings-btn').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); popupMenu(settingsItems(), r.right, r.bottom + 4); });   // (#1314)
   document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.click(); } }));
   initTasks(app);   // the Tasks interface's switchers and bar (built in every interface, shown in that one: #804)
-  for (const ev of ['click', 'keyup']) addEventListener(ev, () => setTimeout(refreshSteps), true);
-  setInterval(refreshSteps, 1000);
+  // (the toolbar's steps follow what changes them: a click, a key, the focus, a document, a project, a process's state;
+  // no polling, which wrote their labels again every second, #4764)
+  for (const ev of ['click', 'keyup', 'focusin']) addEventListener(ev, () => setTimeout(refreshSteps), true);
+  for (const ev of ['silinx:doc-activated', 'silinx:project-opened', 'silinx:project-closed', 'silinx:processes-drawn']) addEventListener(ev, () => setTimeout(refreshSteps));
   addEventListener('keydown', e => {
     // Ctrl/Cmd+K, Ctrl/Cmd+Shift+P: the command palette (not while a dialog is open)
     if ((e.metaKey || e.ctrlKey) && !e.altKey && ((e.key === 'k' || e.key === 'K') && !e.shiftKey || (e.shiftKey && (e.key === 'p' || e.key === 'P')))

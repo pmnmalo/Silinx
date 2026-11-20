@@ -1294,9 +1294,7 @@ uiTest('browser edition: View Technology Schematic of blinky and pong: the netli
     assert.ok(v.syms.some((x) => x.module === 'FDRE'), `${name}/${inside}: flip-flops`);
     const lut = v.syms.find((x) => /^LUT[1-4]$/.test(x.module));
     await page.click(`.doc:not([hidden]) .se-svg [data-kind=sym][data-id="${lut.id}"]`);
-    await page.waitFor(() => document.querySelector('.doc:not([hidden]) .se-lutfn > summary')?.getClientRects().length, [], { what: 'the LUT function' });
-    await page.click('.doc:not([hidden]) .se-lutfn > summary');
-    await page.waitFor(() => document.querySelector('.doc:not([hidden]) .se-lutfn[open] .se-lut-eq')?.getClientRects().length, [], { what: 'the LUT equation' });
+    await page.waitFor(() => document.querySelector('.doc:not([hidden]) .se-lutfn .se-lut-eq')?.getClientRects().length, [], { what: 'the LUT equation' });
     assert.match(await page.eval(() => document.querySelector('.doc:not([hidden]) .se-lut-eq').textContent), /^O = (0|1|!?I\d)/);
   }
 }, { url: () => 'about:blank', timeout: 400000 });

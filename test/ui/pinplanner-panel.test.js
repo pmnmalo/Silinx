@@ -36,7 +36,7 @@ uiTest('#2671 I/O Pin Planning: the diagram editors\' toolbar and side panel: Bo
       buttons: [...pp.querySelectorAll('.pp-bar .asm-btn')].filter(shown).map((b) => `${b.querySelector('svg') ? '[icon] ' : ''}${b.textContent}${b.disabled ? ' (off)' : ''}`),
       status: pp.querySelector('.pp-status').textContent, cap: side.querySelector('.asm-cap').textContent, width: side.offsetWidth, shown: shown(side),
       over: getComputedStyle(side).position === 'absolute', folded: pp.classList.contains('props-folded'),
-      groups: [...side.querySelectorAll('details.pp-grp')].map((d) => `${d.querySelector('summary').textContent}${d.open ? '' : ' (closed)'}`),
+      groups: [...side.querySelectorAll('.pp-grp')].map((d) => `${d.querySelector('h3').textContent}${d.tagName === 'DETAILS' ? ' (folds)' : ''}`),
       table: pp.querySelector('.pp-table').offsetWidth,
     };
   }, P);
@@ -47,13 +47,13 @@ uiTest('#2671 I/O Pin Planning: the diagram editors\' toolbar and side panel: Bo
   assert.deepEqual({ cap: L.cap, shown: L.shown, over: L.over, folded: L.folded }, { cap: 'Board Resources', shown: true, over: false, folded: false });
   assert.deepEqual(L.groups.slice(0, 4), ['Clock', 'LEDs', 'Switches', 'Buttons']);
   const wide = L.table, width = L.width;
-  // a group folded by its title: kept folded when the panel is drawn again (an assignment)
-  await page.click(`${P} .pp-grp > summary`, { text: 'LEDs' });
+  // the groups plain sections with their heading, none folding (the panel folds as a whole, #4764): all shown after the
+  // panel is drawn again (an assignment)
   await page.click(`${P} .pp-bar .asm-btn`, { text: 'Auto-assign from Board' });
   await page.waitFor((p) => document.querySelector(`${p} .pp-status`).textContent === '5/5 I/Os assigned', [P], { what: 'assigned' });
   L = await look();
-  assert.deepEqual(L.groups.slice(0, 3), ['Clock', 'LEDs (closed)', 'Switches']);
-  assert.equal(await page.eval((p) => [...document.querySelectorAll(`${p} .pp-grp`)][1].querySelector('.res').checkVisibility(), P), false, 'the LEDs hidden');
+  assert.deepEqual(L.groups.slice(0, 3), ['Clock', 'LEDs', 'Switches']);
+  assert.equal(await page.eval((p) => [...document.querySelectorAll(`${p} .pp-grp`)][1].querySelector('.res').checkVisibility(), P), true, 'the LEDs shown');
   // folded to a strip: the table wider; remembered when the planner opens again; a click on the strip expands it
   await page.click(`${P} .pp-side .asm-fold`);
   L = await look();

@@ -141,8 +141,9 @@ export function mountProps(ctx) {
       inp(doc().sheet.w, v => { doc().sheet.w = Math.max(400, +v || 1700); }, { type: 'number', step: 100 }),
       h('span', { text: '×' }), inp(doc().sheet.h, v => { doc().sheet.h = Math.max(300, +v || 1100); }, { type: 'number', step: 100 }))));
     const hd = doc().hdl || {};
-    const sec = h('details', { class: 'se-sec', open: !!(hd.decls || hd.generics?.length) });
-    sec.append(h('summary', { text: `HDL kept with the schematic${hd.lang ? ` (${hd.lang.toUpperCase()})` : ''}` }));
+    // (a plain section with its heading: the panel folds as a whole, never a section of it, #4764)
+    const sec = h('div', { class: 'se-sec' });
+    sec.append(h('div', { class: 'se-sec-title', text: `HDL kept with the schematic${hd.lang ? ` (${hd.lang.toUpperCase()})` : ''}` }));
     const ensure = () => { doc().hdl ||= { lang: doc().lang, context: '', generics: [], decls: '', arch: '' }; return doc().hdl; };
     sec.append(field(hd.lang === 'verilog' ? 'Compiler directives' : 'Context clause', ta(hd.context || '', v => { ensure().context = v; }, 3)));
     sec.append(field(hd.lang === 'verilog' ? 'Parameters' : 'Generics', ta((hd.generics || []).map(g => `${g.name}${g.type ? ` : ${g.type}` : ''}${g.default ? ` := ${g.default}` : ''}`).join('\n'), v => {
@@ -153,10 +154,10 @@ export function mountProps(ctx) {
     if (!designKind()) propBody.append(sec);   // (no HDL kept with it in a design project, #3891)
     propBody.append(h('div', { class: 'se-note', text: 'Tip: drag symbols from the Symbols panel; double-click a module symbol to open its source.' }));
   }
-  // the function of a LUT: its equation and truth table (a collapsed section, opened on demand)
+  // the function of a LUT: its equation and truth table (a plain section, #4764)
   function lutSection(fn) {
-    const sec = h('details', { class: 'se-sec se-lutfn' });
-    sec.append(h('summary', { text: 'LUT function (INIT)' }), h('div', { class: 'se-lut-eq', 'data-no-i18n': '', text: fn.equation }));
+    const sec = h('div', { class: 'se-sec se-lutfn' });
+    sec.append(h('div', { class: 'se-sec-title', text: 'LUT function (INIT)' }), h('div', { class: 'se-lut-eq', 'data-no-i18n': '', text: fn.equation }));
     const tbl = h('table', { class: 'se-lut-tt' });
     tbl.append(h('tr', {}, ...[...fn.inputs, 'O'].map(x => h('th', { 'data-no-i18n': '', text: x }))));
     for (const r of fn.rows) tbl.append(h('tr', { class: r.out ? 'one' : '' }, ...[...r.in, r.out].map(v => h('td', { text: String(v) }))));
@@ -269,7 +270,7 @@ export function mountProps(ctx) {
       code.addEventListener('keydown', e => { if (e.key === 'Tab') { e.preventDefault(); const p = code.selectionStart; code.setRangeText('  ', p, code.selectionEnd, 'end'); } });
     }
     const nets = symbolPins(s, modules()).map(p => `${p.name} → ${nl()?.pinNet.get(`${s.id}/${p.name}`)?.name ?? '(unconnected)'}`);
-    if (nets.length) propBody.append(h('details', { class: 'se-sec' }, h('summary', { text: `Pins (${nets.length})` }), h('pre', { class: 'se-pins', text: nets.join('\n') })));
+    if (nets.length) propBody.append(h('div', { class: 'se-sec' }, h('div', { class: 'se-sec-title', text: `Pins (${nets.length})` }), h('pre', { class: 'se-pins', text: nets.join('\n') })));
   }
   // a name typed in the properties (an I/O marker, a net): the old one kept when it is empty or a reserved
   // word of VHDL or Verilog, in any letter case (#679), said

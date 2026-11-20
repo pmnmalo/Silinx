@@ -17,7 +17,7 @@ export function mountSiteDetails(ctx) {
   const mono = t => h('span', { class: 'fv-mono', 'data-no-i18n': '' }, t);
   function details() {
     selBox.innerHTML = '';
-    if (selInst() < 0) { selBox.append(h('div', { class: 'fv-hint' }, 'Click a site on the chip to see its logic and connections.')); return; }
+    if (selInst() < 0) return;   // (nothing selected: nothing said, #4764)
     const inst = model.insts[selInst()];
     const tbl = h('table', { class: 'fv-kv' },
       kv('Site', mono(`${inst.site} (${inst.type})`)),
