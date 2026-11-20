@@ -328,9 +328,17 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   api.get('/projects/:p/bitinfo', wrap(req => bitInfo(req.params.p)));
 
   // ----- programming / JTAG -------------------------------------------------------------------
+  // (the project in the path, as every project's route, its lock taken; POST /program with { project } its older form, kept, #4754)
+  const inPath = req => {
+    const b = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    if (b.project !== undefined && b.project !== req.params.p) throw bad(`project: '${b.project}' in the body, '${req.params.p}' in the address`);
+    return { ...b, project: req.params.p };
+  };
+  api.post('/projects/:p/program', wrap(async req => ({ job: (await startProgramming(inPath(req))).id })));
   api.post('/program', wrap(async req => ({ job: (await startProgramming(req.body || {})).id })));
 
   // Platform Flash PROM (XCF0xS) of the board: program / verify / erase / read (backup) / reconfigure.
+  api.post('/projects/:p/prom', wrap(async req => ({ job: (await startProm(inPath(req))).id })));
   api.post('/prom', wrap(async req => ({ job: (await startProm(req.body || {})).id })));
 
   api.post('/jtag/scan', wrap(async req => ({ job: (await startScan(req.body || {})).id })));
