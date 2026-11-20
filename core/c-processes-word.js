@@ -9,6 +9,7 @@
 //   wordAdapter(name, word, lang, stall) -> the adapter's module, its lines
 //     word: { dir: 'in' | 'out', w, members: [{ off, w }] } (its ports w_dout / w_empty_n / w_read, or w_din / w_full_n /
 //     w_write; each member k's m<k>_dout / m<k>_empty_n / m<k>_read, or m<k>_din / m<k>_full_n / m<k>_write)
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 /** The adapter's ports: [name, dir, w], the clock's first. */
 export function wordPorts(word, stall = false) {
@@ -27,7 +28,7 @@ export function wordAdapter(name, word, lang, stall = false) {
 }
 
 function vhdlWord(name, word, stall) {
-  const T = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
+  const T = vhdlType;
   const ps = wordPorts(word, stall);
   const ks = word.members.map((m, k) => k);
   const bits = (s, m) => (m.w === 1 && word.w === 1 ? s : m.w === 1 ? `${s}(${m.off})` : `${s}(${m.off + m.w - 1} downto ${m.off})`);
@@ -59,7 +60,7 @@ function vhdlWord(name, word, stall) {
 }
 
 function verilogWord(name, word, stall) {
-  const W = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+  const W = vlogRange;
   const ps = wordPorts(word, stall);
   const ks = word.members.map((m, k) => k);
   const bits = (s, m) => (word.w === 1 ? s : m.w === 1 ? `${s}[${m.off}]` : `${s}[${m.off + m.w - 1}:${m.off}]`);

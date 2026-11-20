@@ -17,6 +17,7 @@ import { BOOL, typeOf } from './c-types.js';
 import { checkC } from './c-check.js';
 import { parse as parseVerilog } from './verilog/parser.js';
 import { parse as parseVhdl } from './vhdl/parser.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 const KEYS = new Set(['c_function_name', 'rtl_top_module_name', 'c_files', 'rtl_files', 'c_parameters', 'c_return', 'rtl_common_signal', 'rtl_performance', 'rtl_resource_usage']);
 const SCALAR = new Set(['data_read_in', 'data_write_out', 'data_write_valid']);
@@ -441,8 +442,8 @@ export const blackboxMethods = {
   },
 };
 
-const vec = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
-const vvec = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+const vec = vhdlType;
+const vvec = vlogRange;
 
 /** The instances' HDL: { inner: signals, decls: { vhdl, verilog } (before the logic), vhdl, verilog }. */
 export function blackboxHdl(insts) {

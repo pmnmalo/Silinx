@@ -10,10 +10,11 @@
 //   blackboxProcess(fn, { lang, module, file }) -> a process's module, as cToHdl's result
 import { portOf } from './c-names.js';
 import { blackboxHdl } from './c-blackbox.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 const clog2 = (n) => Math.max(1, (n - 1).toString(2).length);
-const T = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
-const V = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+const T = vhdlType;
+const V = vlogRange;
 const CTRL = [['ap_clk', 'in'], ['ap_rst', 'in'], ['ap_start', 'in'], ['ap_done', 'out'], ['ap_idle', 'out'], ['ap_ready', 'out']];
 
 /** fn: the C function the blackbox replaces (applyBlackboxes made it: fn.blackbox); module: the process's module's name. */
