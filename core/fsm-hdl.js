@@ -1,6 +1,7 @@
 // Silinx FSM diagrams' HDL (#405: out of core/fsm.js): the VHDL or Verilog of a diagram, in three or two processes,
 // its states encoded as binary, Gray, one-hot or an enumeration, with the conditions and outputs written.
 import { portExprCoder } from './asm.js';
+import { atWidth, bitsText, outputConst } from './fsm-value.js';
 import {
   analyzeFsm, constValue, fsmEncoding, fsmErrors, isOtherwise, mask, nameOf, normalizeFsm, pad, stateById, transitionsFrom
 } from './fsm.js';
@@ -47,7 +48,16 @@ export function generateFsm(model, lang, { source } = {}) {
   const encById = new Map(enc.map((e) => [e.id, e]));
   const coderN = portExprCoder(m, lang), coderO = portExprCoder(m, lang);
   const ow = new Map(m.outputs.map((o) => [o.name, o.width]));
-  const lit = (text, o) => coderN.lit(mask(constValue(text) ?? 0n, ow.get(o)), ow.get(o), /^\d+$/.test(String(text).trim()) && ow.get(o) > 1 ? 'd' : 'b');
+  // (a don't care, #4891: VHDL's '-', std_logic's don't care, which XST and the open flow take as one; Verilog's x)
+  const dontCare = (c, w) => {
+    const b = bitsText(c.v, c.x, w);
+    return V ? (w === 1 ? `'${b === 'X' ? '-' : b}'` : `"${b.replace(/X/g, '-')}"`) : `${w}'b${b.toLowerCase()}`;
+  };
+  const lit = (text, o) => {
+    const c = outputConst(text), w = ow.get(o);
+    if (c && atWidth(c, w).x) return dontCare(atWidth(c, w), w);
+    return coderN.lit(mask(constValue(text) ?? 0n, w), w, /^\d+$/.test(String(text).trim()) && w > 1 ? 'd' : 'b');
+  };
   const asg = (o, text) => (V ? `${o} <= ${lit(text, o)};` : `${o} = ${lit(text, o)};`);
   const setState = (id) => (V ? `state_next <= ${encById.get(id).constName};` : `state_next = ${encById.get(id).constName};`);
   const two = m.style === '2process';

@@ -9,6 +9,7 @@ import { showCondText } from '/core/expr-notation.js';
 import { drawBarsIn } from './overbar.js';
 import { getNotation, onNotation } from './notation.js';
 import { inputValues, traceRows } from '/core/collab-try.js';
+import { bitsText } from '/core/fsm-value.js';
 
 /** { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values). */
 export function mountFsmBottom(ctx) {
@@ -102,7 +103,9 @@ export function mountFsmBottom(ctx) {
   function clockStep() {
     if (!sim() || !stateById(sim().state)) resetSim();
     const r = stepFsm(M(), sim().state, sim().inputs);
-    sim().trace.push({ cycle: sim().cycle, state: stateById(sim().state)?.name, inputs: { ...sim().inputs }, outputs: r.outputs, next: stateById(r.next)?.name });
+    // (an output with a don't care: its bits, X, #4891)
+    const outs = Object.fromEntries(Object.entries(r.outputs).map(([k, v]) => [k, r.xs[k] ? bitsText(v, r.xs[k], M().outputs.find((o) => o.name === k).width) : v]));
+    sim().trace.push({ cycle: sim().cycle, state: stateById(sim().state)?.name, inputs: { ...sim().inputs }, outputs: outs, next: stateById(r.next)?.name });
     if (sim().trace.length > 200) sim().trace.shift();
     sim().state = r.next; sim().cycle++;
     render(); renderPanel();
@@ -150,7 +153,7 @@ export function mountFsmBottom(ctx) {
     simState.textContent = cur?.name ?? '?';
     simNext.textContent = r.transition ? `next clock edge → ${stateById(r.next)?.name}` : `no transition is true: stays in ${cur?.name ?? '?'}`;
     simOuts.replaceChildren(...M().outputs.map((o) => h('span', { class: `fsm-led${r.outputs[o.name] ? ' on' : ''}`, 'data-output': o.name },
-      `${o.name} = ${o.width === 1 ? r.outputs[o.name] : r.outputs[o.name].toString(2).padStart(o.width, '0')}`)));
+      `${o.name} = ${bitsText(r.outputs[o.name], r.xs[o.name], o.width)}`)));   // (a don't care: X, #4891)
     simTrace.replaceChildren(...simTraceTable(sim().trace));
   }
 
@@ -161,7 +164,7 @@ export function mountFsmBottom(ctx) {
     if (panel() !== 'sim' || !sim()) return null;
     const s = sim();
     let outputs = {};
-    try { const r = stepFsm(M(), s.state, s.inputs); outputs = Object.fromEntries(M().outputs.map((o) => [o.name, bits(r.outputs[o.name], o.width)])); } catch { /* errors: none shown */ }
+    try { const r = stepFsm(M(), s.state, s.inputs); outputs = Object.fromEntries(M().outputs.map((o) => [o.name, bitsText(r.outputs[o.name], r.xs[o.name], o.width)])); } catch { /* errors: none shown */ }
     const sum = { state: stateById(s.state)?.name ?? null, steps: s.cycle, outputs, inputs: Object.fromEntries(M().inputs.map((i) => [i.name, bits(s.inputs[i.name] ?? 0, i.width)])) };
     return { kind: 'fsm', sum, snap: { state: s.state, inputs: { ...s.inputs }, cycle: s.cycle, trace: traceRows(s.trace) } };
   }

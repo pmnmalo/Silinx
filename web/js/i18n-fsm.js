@@ -30,13 +30,13 @@ export const FSM_PT = {
   'Else (every other case)': 'Senão (todos os outros casos)',
   'The state\'s otherwise (StateCAD\'s @ELSE): taken in every case its other transitions are not; its condition is else': 'O "caso contrário" do estado (o @ELSE do StateCAD): a transição tomada em todos os casos em que as outras não o são; a sua condição é else',
   'Name': 'Nome', 'Outputs (Moore)': 'Saídas (Moore)',
-  'The value of each output while in this state (empty: its default value).': 'O valor de cada saída neste estado (vazio: o seu valor por omissão).',
+  'The value of each output while in this state (empty: its default value; X or "1X0": don\'t care).': 'O valor de cada saída neste estado (vazio: o seu valor por omissão; X ou "1X0": indiferente).',
   'The machine has no outputs': 'A máquina não tem saídas',
   'Transition': 'Transição', 'From': 'De', 'To': 'Para', 'Condition': 'Condição',
   "Boolean expression over the inputs: x, !x, x && y, x || !y, a == 2'b01, b[0] (also and, or, not, =). Empty: always.":
     "Expressão booleana das entradas: x, !x, x && y, x || !y, a == 2'b01, b[0] (também and, or, not, =). Vazia: sempre.",
   'Outputs (Mealy)': 'Saídas (Mealy)',
-  'The value of each output while this transition is taken (empty: the state\'s value; a value makes the machine a Mealy machine).': 'O valor de cada saída enquanto esta transição é tomada (vazio: o valor do estado; um valor faz da máquina uma máquina de Mealy).',
+  'The value of each output while this transition is taken (empty: the state\'s value; X or "1X0": don\'t care; a value makes the machine a Mealy machine).': 'O valor de cada saída enquanto esta transição é tomada (vazio: o valor do estado; X ou "1X0": indiferente; um valor faz da máquina uma máquina de Mealy).',
   'e.g. x && !y   (empty = always)': 'p.ex. x && !y   (vazia = sempre)',
   '▲ Earlier': '▲ Antes', 'Try this condition before the previous one': 'Testar esta condição antes da anterior', '▼ Later': '▼ Depois',
   'Try this condition after the next one': 'Testar esta condição depois da seguinte', 'Straighten': 'Endireitar', 'Default shape of the arrow': 'Forma original da seta',
@@ -111,6 +111,9 @@ export const FSM_PT_PATTERNS = [
   [/^(State .+|Transition .+ → .+): '(.*)' is not an output$/, (m, w, o) => `${where(w)}: '${o}' não é uma saída`],
   [/^(State .+|Transition .+ → .+): the value '(.*)' of (\S+) must be a constant \(e\.g\. 0, 1, 4'b1010, 5\)$/, (m, w, v, o) => `${where(w)}: o valor '${v}' de ${o} tem de ser uma constante (p.ex. 0, 1, 4'b1010, 5)`],
   [/^(State .+|Transition .+ → .+): the value (.*) of (\S+) does not fit in (\d+) bit\(s\)$/, (m, w, v, o, k) => `${where(w)}: o valor ${v} de ${o} não cabe em ${k} bit(s)`],
+  // (a don't care, which an ASM chart does not have: core/fsm-asm.js asmDontCares, #4891)
+  [/^(State .+|Transition .+ → .+): (\S+) = (.*) is a don't care \(X\), which an ASM chart does not have$/, (m, w, o, v) => `${where(w)}: ${o} = ${v} é um valor indiferente (X), que um fluxograma ASM não tem`],
+  [/^Output '(.*)': its default value (.*) is a don't care \(X\), which an ASM chart does not have$/, "Saída '$1': o seu valor por omissão $2 é um valor indiferente (X), que um fluxograma ASM não tem"],
   // (the Outputs fields' own errors, core/fsm.js parseOutputs, #3288)
   [/^'(.*)' is not an output$/, "'$1' não é uma saída"],
   [/^the value (.*) of (\S+) does not fit in (\d+) bit\(s\)$/, 'o valor $1 de $2 não cabe em $3 bit(s)'],

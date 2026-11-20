@@ -29,7 +29,8 @@ function inputsOf(cycles, ins) {
 }
 
 const bitsText = (v, w) => (w === 1 ? String(v) : v.toString(2).padStart(w, '0'));
-const pairs = (list, vals) => list.map((x) => `${x.name}=${bitsText(vals[x.name], x.width)}`).join(' ') || 'none';
+// (a state diagram's output with a don't care, #4891: its bits, X, by `xBits`, core/fsm-value.js's)
+const pairs = (list, vals, xs = {}, xBits = null) => list.map((x) => `${x.name}=${xs[x.name] ? xBits(vals[x.name], xs[x.name], x.width) : bitsText(vals[x.name], x.width)}`).join(' ') || 'none';
 
 async function simulateAsmFile(m, cycles, base) {
   const { prepareAsmSim, asmSimReset, asmSimStep, asmSimValue } = await import('../core/asm-sim.js');
@@ -68,6 +69,8 @@ async function simulateAsmFile(m, cycles, base) {
 
 async function simulateFsmFile(m0, cycles, base) {
   const { fsmErrors, normalizeFsm, stepFsm } = await import('../core/fsm.js');
+  const { bitsText: xBits } = await import('../core/fsm-value.js');
+  const width = (n) => m.outputs.find((o) => o.name === n)?.width ?? 1;
   const m = normalizeFsm(m0);
   const errs = fsmErrors(m);
   if (errs.length) throw toolError([...errs.map((d) => `ERROR: ${d.message}`), 'Correct the errors of the diagram to simulate it.'].join('\n'));
@@ -77,9 +80,10 @@ async function simulateFsmFile(m0, cycles, base) {
   const lines = [`${base} from its reset, ${vectors.length} clock cycle(s):`];
   const rows = vectors.map((v, k) => {
     const r = stepFsm(m, st, v);
-    lines.push(`cycle ${k}: state ${name(st)}; inputs ${pairs(m.inputs, v)}; outputs ${pairs(m.outputs, r.outputs)}; ${r.transition ? `transition ${r.transition}` : 'no transition is true'}; next state ${name(r.next)}`);
+    lines.push(`cycle ${k}: state ${name(st)}; inputs ${pairs(m.inputs, v)}; outputs ${pairs(m.outputs, r.outputs, r.xs, xBits)}; ${r.transition ? `transition ${r.transition}` : 'no transition is true'}; next state ${name(r.next)}`);
     const row = { cycle: k, state: name(st), inputs: Object.fromEntries(Object.entries(v).map(([n, x]) => [n, Number(x)])),
-      outputs: Object.fromEntries(Object.entries(r.outputs).map(([n, x]) => [n, Number(x)])), transition: r.transition, next: name(r.next) };
+      // (an output with a don't care, #4891: its bits, X, as text)
+      outputs: Object.fromEntries(Object.entries(r.outputs).map(([n, x]) => [n, r.xs[n] ? xBits(x, r.xs[n], width(n)) : Number(x)])), transition: r.transition, next: name(r.next) };
     st = r.next;
     return row;
   });
@@ -89,7 +93,7 @@ async function simulateFsmFile(m0, cycles, base) {
 export const SIMULATE_DRAWING_TOOLS = [
   {
     name: 'simulate_drawing', title: 'Simulate a drawing (a state machine, a schematic, a circuit)',
-    description: 'Step an ASM chart (.asm.json) or a state diagram (.fsm.json) clock edge by clock edge from its reset, as its editor\'s Try it panel does: one object of inputs per cycle ({ name: value }, a value a non-negative integer or binary digits; an input not given is 0; an ASM chart\'s reset by its name, not given: inactive). Per cycle, before its clock edge: the state, the inputs, the outputs (Moore and Mealy), an ASM chart\'s registers and the path taken through its decisions and conditional outputs (a state diagram\'s transition), and the next state. Its semantics are the generated HDL\'s. A schematic (.sch.json) is simulated as its editor\'s Try it does, with the project\'s modules: per cycle its input markers set (by name; its clock inputs not given, they are cycled once), then its outputs and every module instance\'s pins (an arrayed instance\'s, reg(3:0), its copies\' values side by side, as on its bus). A circuit (.circ.json) is run as its editor\'s Try it runs it, from time 0 (its switches as saved, its buttons released): per step (an object of cycles) its switches and buttons set by their labels (0 or 1; one not given keeps its place), then the circuit run until it is quiet (at most 1 µs, its gates\' delays): the time, the LEDs, the logic probes\' levels (0, 1, Z open, X), the shorts and an oscillation. A drawing with errors is not simulated: its errors are returned.',
+    description: 'Step an ASM chart (.asm.json) or a state diagram (.fsm.json) clock edge by clock edge from its reset, as its editor\'s Try it panel does: one object of inputs per cycle ({ name: value }, a value a non-negative integer or binary digits; an input not given is 0; an ASM chart\'s reset by its name, not given: inactive). Per cycle, before its clock edge: the state, the inputs, the outputs (Moore and Mealy; a state diagram\'s don\'t care X, its value then its bits as text, "1X0"), an ASM chart\'s registers and the path taken through its decisions and conditional outputs (a state diagram\'s transition), and the next state. Its semantics are the generated HDL\'s. A schematic (.sch.json) is simulated as its editor\'s Try it does, with the project\'s modules: per cycle its input markers set (by name; its clock inputs not given, they are cycled once), then its outputs and every module instance\'s pins (an arrayed instance\'s, reg(3:0), its copies\' values side by side, as on its bus). A circuit (.circ.json) is run as its editor\'s Try it runs it, from time 0 (its switches as saved, its buttons released): per step (an object of cycles) its switches and buttons set by their labels (0 or 1; one not given keeps its place), then the circuit run until it is quiet (at most 1 µs, its gates\' delays): the time, the LEDs, the logic probes\' levels (0, 1, Z open, X), the shorts and an oscillation. A drawing with errors is not simulated: its errors are returned.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, file: STR('The drawing, a path in the project (src/ctl.asm.json).'),
       cycles: { type: 'array', maxItems: MAX_CYCLES, items: { type: 'object', additionalProperties: { type: ['integer', 'string'] } }, description: 'The inputs of each clock cycle, in order, from the reset.' },
