@@ -179,7 +179,7 @@ uiTest('State diagram (FSM): New Source, states and transitions drawn and edited
   await page.waitFor(() => window.Silinx.active?.id === 'file:src/det.vhd' && /^Read-only, generated from det\.fsm\.json$/.test(document.querySelector('.doc:not([hidden]) [data-sync-banner]')?.textContent || ''), [], { what: 'HDL editor banner' });
   assert.equal(await page.eval(() => window.Silinx.active.editor.readOnly()), true);
   // the hierarchy shows the module with its diagram the base, its views as badges (#207)
-  await page.waitFor(() => [...document.querySelectorAll('#hier .row')].some((x) => x.querySelector('.lbl').textContent === 'det' && x.querySelector('.meta')?.textContent === '(det.fsm.json)' && [...x.querySelectorAll('.badge')].map((b) => b.textContent).join(' ') === 'FSM VHDL'), [], { what: 'det [FSM] [VHDL] (det.fsm.json)' });
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row')].some((x) => x.querySelector('.lbl').textContent === 'det' && x.querySelector('.meta')?.textContent === '(det.fsm.json)' && [...x.querySelectorAll('.badge')].map((b) => b.textContent).join(' ') === 'FSM Schematic VHDL'), [], { what: 'det [FSM] [Schematic] [VHDL] (det.fsm.json)' });   // (its schematic's badge, #4910)
 
   // ---- diagram -> HDL: an edited condition rewrites the module
   await page.eval(() => window.SilinxApp.openFsm('src/det.fsm.json'));
@@ -241,7 +241,7 @@ uiTest('State diagram (FSM): step-by-step simulation, Mealy labels, module -> di
   await page.eval(() => window.SilinxApp.openFsm('src/m.fsm.json'));
   await page.waitFor((ed) => window.Silinx.active?.id === 'fsm:src/m.fsm.json' && document.querySelector(ed), [ED]);
   // Mealy label "condition /" and its outputs, one per line (#3882)
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans=t2] .fsm-label tspan`)].map((t) => t.textContent), ED), ['/x /', 'z=1']);   // (the tests' notation: #4417)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-trans=t2] .fsm-label tspan`)].map((t) => t.textContent), ED), ['!x /', 'z=1']);   // (as typed, #4888)
   // ---- simulation: x = 1, clock -> B; x = 0: z = 1 (Mealy) and the transition back to A is shown
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Try it' });
   await page.waitForSelector(`${ED} .fsm-sim`);
