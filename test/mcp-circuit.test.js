@@ -80,7 +80,7 @@ test('edit_circuit: a half adder built on New Source\'s breadboard, its HDL made
   await ok('new_source', { project: 'c', type: 'circuit', name: 'half_adder', language: 'vhdl' });
   const ref = halfAdder();
   const ops = [...ref.parts.filter((p) => !['BB1', 'P1'].includes(p.id)).map((p) => ({ op: 'add', type: p.type, at: [p.x, p.y], id: p.id, ...(p.label ? { label: p.label } : {}) })),
-    // the VCC wires by the pins' and holes' names
+    // the VCC wires by the pins' and holes' names (New Source's own: its supply's two, its rails' jumpers, #4929)
     ...ref.wires.filter((w) => !['w1', 'w2'].includes(w.id)).map((w) => (w.id === 'wv1' ? { op: 'wire', id: w.id, from: 'U1.14', to: 'BB1.tp5', color: 'red' }
       : { op: 'wire', id: w.id, from: w.points[0], to: w.points.at(-1), via: w.points.slice(1, -1) }))];
   const r = await ok('edit_circuit', { project: 'c', path: 'src/half_adder.circ.json', operations: ops });
@@ -88,7 +88,7 @@ test('edit_circuit: a half adder built on New Source\'s breadboard, its HDL made
   assert.equal(lines[0], 'U1 (7486) added');
   assert.equal(lines[6], 'wv1 wired from "U1.14" to "BB1.tp5"');
   assert.deepEqual(lines.slice(-2), ['Process "Check Circuit" of half_adder.circ.json completed successfully.', 'src/half_adder.vhd updated from src/half_adder.circ.json']);
-  assert.deepEqual([r.data.parts, r.data.wires, r.data.errors, r.data.warnings, r.data.hdl], [8, 15, [], [], { file: 'src/half_adder.vhd', written: true }]);
+  assert.deepEqual([r.data.parts, r.data.wires, r.data.errors, r.data.warnings, r.data.hdl], [8, 17, [], [], { file: 'src/half_adder.vhd', written: true }]);
   assert.match(read('src/half_adder.vhd'), /^entity half_adder is\n  port \(\n    a : in std_logic;/m);
   assert.equal((await ok('check_drawing', { project: 'c', file: 'src/half_adder.circ.json' })).text, 'Process "Check Circuit" of half_adder.circ.json completed successfully.');
   // a refused operation: the reason, its index, nothing written
@@ -160,6 +160,16 @@ test('edit_circuit: a wire\'s colour set, as its Properties\' Colour (#4121); an
   await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'ws', label: 'x' }] }, 'operation 0 (set): wire ws has no property \'label\' (color) (nothing written)');
   await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'set', id: 'w99', color: 'red' }] }, 'operation 0 (set): no part or wire w99 in the circuit (nothing written)');
   assert.equal(read(P), before);
+});
+
+test('edit_circuit: a wire\'s colour by default (#4932, #4933): red to VCC or a + rail, black to GND or a − rail, blue otherwise; a colour given kept', async () => {
+  const P = 'src/power.circ.json', w = (id) => JSON.parse(read(P)).wires.find((x) => x.id === id).color;
+  await ok('write_file', { project: 'c', path: P, text: JSON.stringify({ ...halfAdder(), name: 'power' }, null, 2) });
+  const r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wire', id: 'wp1', from: 'U2.14', to: 'BB1.tp20' },
+    { op: 'wire', id: 'wp2', from: 'U2.GND', to: 'BB1.bn22' }, { op: 'wire', id: 'wp3', from: 'BB1.a23', to: 'BB1.bp23' },
+    { op: 'wire', id: 'wp4', from: 'BB1.a29', to: 'BB1.c29' }, { op: 'wire', id: 'wp5', from: 'BB1.a27', to: 'BB1.tp27', color: 'orange' }] });
+  assert.deepEqual(r.text.split('\n').slice(0, 2), ['wp1 wired from "U2.14" to "BB1.tp20"', 'wp2 wired from "U2.GND" to "BB1.bn22"']);
+  assert.deepEqual([w('wp1'), w('wp2'), w('wp3'), w('wp4'), w('wp5')], ['red', 'black', 'red', 'blue', 'orange']);
 });
 
 test('simulate_drawing: a circuit\'s steps, its switches by their labels, its LEDs and time; a floating input; its refusals', async () => {

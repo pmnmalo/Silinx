@@ -324,9 +324,9 @@ test('the edits: a part added on a hole or by its pin, moved, turned, deleted; a
   assert.deepEqual(addPart(m, { type: 'resistor' }), { error: 'no part \'resistor\' in the library' });
   assert.deepEqual(addPart(m, { type: 'led', id: 'U1' }), { error: 'U1: the circuit has a part or a wire named so' });
   r = addWire(m, { from: 'U1.14', to: 'BB1.tp5', color: 'red' });
-  assert.equal(r.id, 'w3');
+  assert.equal(r.id, 'w5');
   m = r.model;
-  assert.deepEqual(m.wires.at(-1), { id: 'w3', points: [[4, 4], [4, -4]], color: 'red' });
+  assert.deepEqual(m.wires.at(-1), { id: 'w5', points: [[4, 4], [4, -4]], color: 'red' });
   assert.deepEqual(addWire(m, { from: 'U1.1', to: 'U1.1' }), { error: 'a wire joins two different places' });
   assert.deepEqual(addWire(m, { from: 'U1.1', to: 'U1.2', color: 'pink' }), { error: 'color: one of red, black, blue, green, yellow, orange, white, purple' });
   assert.deepEqual(addWire(m, { from: 'U1.1', to: 'U1.2', via: [[1]] }), { error: 'via: the bends, a list of grid points [[x, y], …]' });
@@ -345,7 +345,7 @@ test('the edits: a part added on a hole or by its pin, moved, turned, deleted; a
   assert.equal(setPartProps(m, 'D1', { color: 'green' }).model.parts.at(-1).color, 'green');
   m = deleteItem(m, 'U1').model;
   assert.equal(m.parts.some((p) => p.id === 'U1'), false);
-  assert.equal(m.wires.some((w) => w.id === 'w3'), true, 'its wire stays');
+  assert.equal(m.wires.some((w) => w.id === 'w5'), true, 'its wire stays');
   assert.deepEqual(deleteItem(m, 'U1'), { error: 'no part or wire U1 in the circuit' });
 });
 

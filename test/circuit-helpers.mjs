@@ -6,6 +6,7 @@ import { partDef, partPins } from '../core/circuit-parts.js';
 /** The half adder on a half breadboard: a 7486 (U1, from f5) and a 7408 (U2, from f14), switches a and b, LEDs s and c. */
 export function halfAdder(lang = 'vhdl') {
   const m = newCircuit('half_adder', lang);
+  m.wires = m.wires.slice(0, 2);   // (the supply to the top rails only: its own jumper joins the − rails, wgg)
   m.parts.push({ id: 'U1', type: '7486', x: 4, y: 7 }, { id: 'U2', type: '7408', x: 13, y: 7 },
     { id: 'S1', type: 'logic-switch', x: -6, y: 9, label: 'a' }, { id: 'S2', type: 'logic-switch', x: -6, y: 10, label: 'b' },
     { id: 'D1', type: 'led', x: 24, y: 2, label: 's' }, { id: 'D2', type: 'led', x: 26, y: 2, label: 'c' });

@@ -190,8 +190,8 @@ export function mountCircuitEditor(container, opts = {}) {
   function endWire() {
     const pts = draft;
     draft = null;
-    // (in the circuit's style, #4083: routed when Orthogonal; its warning, a leg drawn straight, in the console)
-    if (pts?.length >= 2) { const r = addStyledWire(M, { from: pts[0], to: pts[pts.length - 1], via: pts.slice(1, -1), color: 'blue' }); if (applyEdit(r, null) && r.warning) status(r.warning, true); }
+    // (in the circuit's style, #4083: routed when Orthogonal, its warning in the console; its colour its net's, #4932)
+    if (pts?.length >= 2) { const r = addStyledWire(M, { from: pts[0], to: pts[pts.length - 1], via: pts.slice(1, -1) }); if (applyEdit(r, null) && r.warning) status(r.warning, true); }
     else render();
   }
 

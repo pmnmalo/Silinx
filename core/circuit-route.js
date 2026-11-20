@@ -66,7 +66,7 @@ export function routeOrthogonal(m, pts) {
 
 /** A wire added from a place to a place (A to B, through the places `via`), drawn in the circuit's style: orthogonal,
  *  routed (`via` its waypoints); direct or curved, through them. { model, id, warning? } or { error } (addWire's). */
-export function addStyledWire(m, { from, to, via = [], color = 'blue', id } = {}) {
+export function addStyledWire(m, { from, to, via = [], color, id } = {}) {
   if (m.wireStyle !== 'orthogonal') return addWire(m, { from, to, via, color, id });
   const a = pointOf(m, from), b = pointOf(m, to);
   if (a.error) return a;
