@@ -117,6 +117,8 @@ test('the workspace\'s repository: its untrusted project stays so, and a project
   sh(tmp, 'clone', '--quiet', bare, wsDir);
   process.env.SILINX_WORKSPACE = wsDir;
   try {
+    // (#4735: a workspace cloned by command-line git is untrusted until the user trusts its projects: a)
+    await P.trustProject('a');
     // b untrusted, its mark in its silinx.json, committed and pushed
     await P.updateProject('b', pj => ({ ...pj, trusted: false }));
     sh(wsDir, 'commit', '--quiet', '-am', 'b untrusted'); sh(wsDir, 'push', '--quiet');
@@ -154,6 +156,7 @@ test('the workspace\'s repository: a pull that brings a folder with an invalid p
   sh(tmp, 'clone', '--quiet', bare, wsDir);
   process.env.SILINX_WORKSPACE = wsDir;
   try {
+    await P.trustProject('mine');   // (#4735: cloned by command-line git, trusted by the user)
     // another author: '0bad' (no project's name, listed before the others) and the project 'zz'
     const theirs = path.join(tmp, 'theirs-ws3');
     sh(tmp, 'clone', '--quiet', bare, theirs);
