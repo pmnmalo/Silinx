@@ -235,6 +235,31 @@ test('#3997 share_project promote / demote: a viewer an editor, an editor a view
   await ok('share_project', { project: 'trafficRole', action: 'stop' });
 });
 
+test('#4745 share_project renew: the editors\' link renewed; an editor in the share keeps editing, the old link edits no more, the new one does; a share with no editors refused', async () => {
+  await ok('new_project_from_example', { name: 'trafficRenew', example: 'traffic' });
+  const { data: { editLink: old } } = await ok('share_project', { project: 'trafficRenew', name: 'Ana', server: base, editors: true });
+  const timer = await P.readFile('trafficRenew', 'src/timer.vhd');
+  await ok('follow_project', { link: old, name: 'Bot' });
+  await until(async () => /Bot \(editor/.test((await ok('share_project', { project: 'trafficRenew', action: 'status' })).text), 'Bot in, an editor');
+  const r = await ok('share_project', { project: 'trafficRenew', action: 'renew' });
+  const renewed = r.data.editLink;
+  assert.notEqual(renewed, old);
+  assert.deepEqual([parseFollowLink(renewed).room, r.data.removed], [parseFollowLink(old).room, 0]);
+  assert.equal(r.text, `The editors' link of 'trafficRenew' was renewed: the old one no longer lets anyone edit; the editors in it now keep editing:\n${renewed}`);
+  assert.equal((await ok('share_project', { project: 'trafficRenew' })).data.editLink, renewed);
+  // Bot, in the share: still writes
+  await ok('follow_project', { link: old, write: { path: 'src/timer.vhd', text: `-- by Bot\n${timer}` } });
+  await until(async () => (await P.readFile('trafficRenew', 'src/timer.vhd')) === `-- by Bot\n${timer}`, 'Bot\'s edit on the disk', 8000);
+  // (refused: a user with it, renew not shared, a share with no editors)
+  await fails('share_project', { project: 'trafficRenew', action: 'renew', user: 'Bot' }, 'user: with action promote or demote only');
+  for (const l of [old]) await ok('follow_project', { link: l, stop: true });
+  await ok('share_project', { project: 'trafficRenew', action: 'stop' });
+  await fails('share_project', { project: 'trafficRenew', action: 'renew' }, '\'trafficRenew\' is not shared');
+  await ok('share_project', { project: 'trafficRenew', name: 'Ana', server: base });
+  await fails('share_project', { project: 'trafficRenew', action: 'renew' }, '\'trafficRenew\' is shared with no editors (share_project start editors: true)');
+  await ok('share_project', { project: 'trafficRenew', action: 'stop' });
+});
+
 test('#4110 an editor\'s quick edits written to the owner\'s disk in their order: the file ends as the shared text, never an earlier one', async () => {
   await ok('new_project_from_example', { name: 'trafficOrder', example: 'traffic' });
   const { data: { editLink } } = await ok('share_project', { project: 'trafficOrder', name: 'Ana', server: base, editors: true });

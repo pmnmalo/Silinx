@@ -91,7 +91,7 @@ const follow = async (link, name, { rtc = true } = {}) => {
   return fp;
 };
 
-const OWNER = ['Share a Copy…', 'Show Sharing Link…', 'Add a User…', 'Stop Sharing'];
+const OWNER = ['Share a Copy…', 'Show Sharing Link…', 'Renew Editor Link', 'Add a User…', 'Stop Sharing'];
 const P2P_TIP = 'Peer to peer: directly between your browsers';
 const RELAY_TIP = 'Through your Cloudflare relay: no direct path; counts against its free plan';
 

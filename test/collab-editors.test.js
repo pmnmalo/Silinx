@@ -224,3 +224,37 @@ test('#4745 a key per editor: each editor link\'s page listed with a key of its 
     await owner.close();
   }
 });
+
+test('#4745 the editor link renewed: copies of the old one, and the editors away, edit no more; the editors in the room keep editing', async () => {
+  const { hostedRooms, socketPair } = await import('../core/collab-loop.js');
+  const { shareRoom, followRoom, NOT_INVITED } = await import('../core/collab-client.js');
+  const { projectDoc, publishProject, docFile, editFile } = await import('../core/collab-doc.js');
+  const until = async (fn, what, ms = 5000) => { const t0 = Date.now(); for (;;) { if (await fn()) return; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await new Promise(r => setTimeout(r, 5)); } };
+  const h = hostedRooms();
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'p', files: [{ path: 'a.vhd', lang: 'vhdl' }], fileTree: ['a.vhd'] }, files: { 'a.vhd': '-- a\n' }, owner: 'Ana' });
+  const owner = await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors: true, WebSocket: h.owner, reconnect: false });
+  const S = function S() { const { client, room } = socketPair(); h.follower(room); return client; };
+  const join = (name, sign, onEvent = () => {}) => followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign, user: { name }, WebSocket: S, reconnect: false, onEvent });
+  const old = owner.editKey;
+  const here = await join('Rui', old), away = await join('Bo', old);
+  await until(() => here.listed && away.listed && owner.peers().length === 2, 'both listed');
+  await away.close();
+  await until(() => owner.peers().length === 1, 'Bo away');
+  const r = await owner.renew();
+  assert.deepEqual([r.removed, r.editKey === owner.editKey, r.editKey !== old], [1, true, true]);
+  assert.equal(doc.getMap('meta').get('editorsList').editors.length, 1, 'Rui\'s key only');
+  editFile(here.doc, 'a.vhd', '-- Rui\n');
+  await until(() => docFile(doc, 'a.vhd') === '-- Rui\n', 'Rui still edits');
+  // Bo back with his old link: not listed again, told; a copy of the old link too; the new one listed
+  const errs = [];
+  const back = await join('Bo', old, e => { if (e.type === 'error') errs.push(e.message); });
+  await until(() => errs.length, 'Bo told');
+  assert.deepEqual(errs, [NOT_INVITED]);
+  const fresh = await join('New', r.editKey);
+  await until(() => fresh.listed, 'the new link\'s editor listed');
+  // a share with no editors: refused
+  const plain = await shareRoom({ url: 'silinx-host:', doc: projectDoc(), user: { name: 'Ana' }, WebSocket: hostedRooms().owner, reconnect: false });
+  await assert.rejects(plain.renew(), /this project is shared with no editors/);
+  for (const p of [here, back, fresh, plain, owner]) await p.close();
+});

@@ -65,7 +65,9 @@ Armadilhas:
   repositórios que já tem: não faz a cópia.
 - A sua cópia não segue a do Silinx. Para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor
   ([`packages/silinx-relay-cloudflare`](../../../packages/silinx-relay-cloudflare/README.md)) para o seu repositório:
-  o Cloudflare instala cada push.
+  o Cloudflare instala cada push. Faça-o quando as notas de versão do Silinx disserem que o retransmissor mudou: um
+  retransmissor mais antigo do que o Silinx que partilha recusa os seus projetos (como quando os editores passaram a
+  ter cada um a sua chave).
 - O plano gratuito tem limites diários (abaixo).
 
 O Silinx verifica o retransmissor antes de o guardar: responde como um retransmissor dos projetos partilhados do Silinx,
