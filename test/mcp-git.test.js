@@ -50,7 +50,12 @@ test('git_clone, git_status, git_commit, git_push, git_pull, git_log: a Classroo
   assert.equal((await ok('git_status', { project: 'lab1' })).text, 'lab1: main, 0 commit(s) ahead of and 0 behind origin/main (GitHub: local/lab1); 2 change(s):\n  silinx.json (changed)\n  src/extra.v (new)');
   const m = await ok('git_commit', { project: 'lab1', message: 'Lab 1 done' });
   assert.equal(m.text, `Committed ${m.data.commit.slice(0, 7)} on main: 3 file(s).\n  .gitignore (new)\n  silinx.json (changed)\n  src/extra.v (new)`);
+  assert.equal((await ok('project_info', { project: 'lab1' })).data.lastBackup, null);
   assert.equal((await ok('git_push', { project: 'lab1' })).text, 'Pushed main to local/lab1.');
+  // (the push: the project's back-up on GitHub, project_info's last back-up, #4971)
+  const pushed = (await ok('project_info', { project: 'lab1' })).data.lastBackup;
+  assert.equal(pushed.how, 'github');
+  assert.ok(Math.abs(Date.parse(pushed.at) - Date.now()) < 60000, pushed.at);
   assert.equal((await ok('git_push', { project: 'lab1' })).text, 'Nothing to push: local/lab1 has every commit of main.');
   const upToDate = await ok('git_pull', { project: 'lab1' });
   assert.deepEqual([upToDate.text, upToDate.data.untrusted], ['Already up to date: main has every commit of GitHub\'s.', undefined]);

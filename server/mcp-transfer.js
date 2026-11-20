@@ -100,6 +100,7 @@ export const TRANSFER_TOOLS = [
       const { zip, warnings } = await exportProjectZip(P, name, kind, { copy: true });   // (a copy given out, as the menu's: #4205)
       // (a file that appeared meanwhile is not replaced either)
       try { await fsp.writeFile(file, zip, { flag: 'wx' }); } catch (e) { throw toolError(e.code === 'EEXIST' ? `'${file}' exists: an export does not replace a file (give another path)` : e.message); }
+      if (kind === 'silinx') await (await import('./backup-store.js')).record(P.projectDir(name), 'export');   // (its back-up, #4971)
       const lines = [...warnings.map(w => `WARNING: ${w}`), `Exported '${name}' as ${KINDS[kind]}: ${file} (${zip.length} bytes).`];
       return { text: lines.join('\n'), data: { project: name, kind, path: file, folder: exchangeDir(), bytes: zip.length, warnings } };
     },

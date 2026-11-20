@@ -5,6 +5,8 @@
 // credential helper's: no tool takes or gives one.
 import * as Git from './git.js';
 import * as GH from './git-github.js';
+import * as P from './projects.js';
+import * as backupStore from './backup-store.js';
 import { toolError, clip, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { mcpRemotes } from './toolchain.js';
 import { drawingKind, diffDrawings } from '../core/drawing-merge.js';
@@ -126,6 +128,7 @@ export const GIT_TOOLS = [
     async run({ project }) {
       await readProject(project);
       const r = await run(() => B().gitPush(project));
+      await backupStore.record(P.projectDir(project), 'github');   // (its back-up on GitHub, #4971)
       return { text: pushText(r), data: r };
     },
   },

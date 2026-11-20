@@ -28,6 +28,7 @@ import { trashTime, expiredTrash } from '../core/trash.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
+import * as backupStore from './backup-store.js';
 import { parseDescription } from '../core/project-json.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -491,6 +492,7 @@ export async function deleteProject(name) {
     await renameOver(dir, at);
     await fs.rm(trustMarks(dir)[1], { force: true });   // (the workspace repository's mark, #2830)
     await trustStore.forget(key);   // (#4735: its trust record: restored from the .trash, it is untrusted)
+    await backupStore.forget(key);   // (#4971: its back-ups' record)
     // (its build's outputs not kept: a run makes them again, #4758)
     await fs.rm(path.join(at, 'build'), { recursive: true, force: true }).catch(() => {});
   });
@@ -557,6 +559,7 @@ export async function renameProject(from, to) {
       undo.unshift({ what: `${rel(file)}'s name`, run: () => writeAtomic(file, text) });
       failAt('json');
       await trustStore.move(key, dst);
+      await backupStore.move(key, dst);   // (#4971)
     } catch (e) {
       // (an undo that failed said, with what it left, never swallowed, #4760: its file system's code, not its paths)
       const left = [];

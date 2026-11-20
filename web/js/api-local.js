@@ -32,6 +32,7 @@ import { promAdept, PROM_OPS } from '../../core/xcf.js';
 import { noWebUsb, usbError } from '../../core/webusb-support.js';
 import { browserGit } from './git-browser.js';
 import { renamedMessage } from '../../core/project-rename.js';
+import { backupKey, backupRecord, sawProject, recordProjectBackup, moveProjectBackup, forgetProjectBackup } from './backup-record.js';
 import { browserStore, folderStore, projectOps, copyProjects, emptyProjectJson, projectFromZip, bundleEntries, safePath, saveBuildResults, readBuildResults, BUILD_VIEW, DEV_SITE } from './project-store.js';
 
 const fail = msg => { throw new Error(msg); };
@@ -361,6 +362,11 @@ export const api = {
     return copyProjects(browser, store);
   },
   browserProjects: async () => (await browser.list()).map(j => j.name),
+  // a project's back-ups (#4971): seen (opened: its first sight kept), its record ({ since, last?, how? }); a commit pushed
+  // to GitHub (the browser edition's commit is pushed at once) recorded
+  sawProject: name => sawProject(backupKey(store, name)),
+  backupOf: name => backupRecord(backupKey(store, name)),
+  gitCommit: async (name, message) => { const c = await git.gitCommit(name, message); if (c?.pushed) recordProjectBackup(backupKey(store, name), 'github'); return c; },
   // the projects of the browser's storage deleted from it (moved into the folder, confirmed: #4962)
   deleteBrowserProjects: async names => { for (const n of names) await browser.deleteProject(n); },
 
@@ -377,12 +383,14 @@ export const api = {
   trustProject: name => ops.trustProject(name),
   renameFile: (name, from, to) => ops.renameFile(name, from, to),
   // (its snapshots too, #4725)
-  deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); snapshotsOf(name).forget(); return r; },
+  // (its back-up record too, #4971)
+  deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); snapshotsOf(name).forget(); forgetProjectBackup(backupKey(store, name)); return r; },
   // Rename Project… (#4641): its GitHub record, its build and captures of this session, its snapshots (#4725) follow it
   renameProject: async (name, to) => {
     const r = await ops.renameProject(name, to);
     await git.gitMove(name, to);
     snapshotsOf(name).moveTo(to);
+    moveProjectBackup(backupKey(store, name), backupKey(store, to));   // (#4971)
     for (const m of [builds, sessionCaptures]) if (m.has(name)) { const v = m.get(name); m.delete(name); m.set(to, v); }
     return { ...r, message: renamedMessage(name, to) };
   },
@@ -556,9 +564,11 @@ export const api = {
     return { project: await ops.put(name, markUntrusted(r.json), r.files), warnings: [...gateMessages(g), ...r.warnings] };
   },
   syncXise: async () => fail('not available in the standalone edition (use File > Export Project (.zip)…, Xilinx ISE)'),
-  exportZip: async (name, kind = 'xilinx', { copy = false } = {}) => {
+  // (backup: Export Project (.zip)…'s, a Silinx project's a back-up of it, recorded: #4971)
+  exportZip: async (name, kind = 'xilinx', { copy = false, backup = false } = {}) => {
     const p = await store.load(name);
     if (kind === 'silinx') {   // the whole Silinx project as it is
+      if (backup) recordProjectBackup(backupKey(store, name), 'export');
       // (a copy given out: its origin, its ancestor carried and kept, #4205)
       const c = copy ? await giveCopyLocal(name, p) : null;
       const entries = [{ path: 'silinx.json', data: JSON.stringify(c ? c.copy : p.json, null, 2) + '\n' },

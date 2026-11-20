@@ -46,7 +46,9 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
   projetos. Da primeira vez que o Silinx abre no Chrome ou no Edge, a consola propõe **Choose a
   Workspace Folder…** ou **Keep in This Browser**; escolhida uma pasta, os projetos que já estavam no
   browser podem ser copiados ou movidos para lá (mover pergunta antes de os apagar do browser). O
-  Firefox e o Safari não abrem pastas: aí os projetos ficam no browser.
+  Firefox e o Safari não abrem pastas: aí os projetos ficam no browser. Um projeto guardado só no browser e
+  sem cópia há 7 dias (exportado como projeto Silinx, ou enviado para o GitHub) é dito uma vez na consola quando
+  abre, com os botões **Export Project (.zip)** e **Store Project in a GitHub Repository…**.
 - **Implement Design** e **Generate Programming File** correm a cadeia de ferramentas Silinx no
   browser (placas Basys2, Nexys2, Nexys3, Atlys e iCEBreaker; a primeira vez descarrega as ferramentas do site, cerca de 100 MB,
   que o browser guarda; também no `Silinx.html` descarregado): o bitstream (`<módulo de topo>.bit`, por exemplo
