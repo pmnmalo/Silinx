@@ -156,7 +156,7 @@ test('the server\'s checks (the route\'s, the MCP\'s): a process running refused
 });
 
 // ---- the browser edition
-const memStorage = (fail = () => false) => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => { if (fail()) throw new Error('QuotaExceededError'); m.set(k, String(v)); }, removeItem: k => m.delete(k), m }; };
+import { memStorage } from './fixtures/mem-storage.js';   // (localStorage's interface, #4725)
 const JSON0 = { version: 1, device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, board: null, top: 'top', simTop: '', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], constraints: null };
 const FILES = { 'src/top.vhd': 'entity top is end;\narchitecture a of top is begin end;\n', 'p.xise': '<project/>\n' };
 

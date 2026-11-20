@@ -1190,7 +1190,7 @@ uiTest('browser edition without the File System Access API (Firefox, Safari): Op
   ]);
   // the browser's storage works as before
   await newProject(page, 'NoFolder', 'blinky');
-  assert.ok(await page.eval(() => JSON.parse(localStorage.getItem('silinx.standalone.fs')).NoFolder.json.name === 'NoFolder'));
+  assert.ok(await page.eval(() => JSON.parse(localStorage.getItem('silinx.standalone.project:NoFolder')).json.name === 'NoFolder'));
 }, { url: () => 'about:blank', skip: chromeOnly, ui: 'ise' });
 
 // a new project from an example in the browser edition (the site): the New Project wizard
@@ -1293,7 +1293,7 @@ uiTest('browser edition: View Technology Schematic of blinky and pong: the netli
 }, { url: () => 'about:blank', timeout: 400000 });
 
 uiTest('the site\'s development edition (dev/): says so, and keeps its projects apart from the stable edition\'s', E, async (page) => {
-  // a project in the stable edition's storage
+  // a project in the stable edition's storage (in the one entry of the versions before #4725: moved to its own)
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item'), [], { what: 'stable boot' });
   await page.eval(() => localStorage.setItem('silinx.standalone.fs', JSON.stringify({ Stable: { json: { name: 'Stable', version: 1, device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, files: [], top: '' }, files: {} } })));
@@ -1310,13 +1310,14 @@ uiTest('the site\'s development edition (dev/): says so, and keeps its projects 
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'DevOnly');
-  const ls = await page.eval(() => ({ dev: Object.keys(JSON.parse(localStorage.getItem('silinx.dev.standalone.fs') || '{}')), stable: Object.keys(JSON.parse(localStorage.getItem('silinx.standalone.fs') || '{}')) }));
-  assert.deepEqual(ls, { dev: ['DevOnly'], stable: ['Stable'] });
+  const projects = (prefix) => page.eval((x) => Object.keys(localStorage).filter((k) => k.startsWith(x)).map((k) => k.slice(x.length)).sort(), prefix);
+  assert.deepEqual({ dev: await projects('silinx.dev.standalone.project:'), stable: await projects('silinx.standalone.project:') }, { dev: ['DevOnly'], stable: [] });
   // the stable edition: no warning, its own project only
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item'), [], { what: 'stable boot again' });
   assert.doesNotMatch(await page.consoleText(), /Development edition/);
-  assert.deepEqual(await page.eval(() => Object.keys(JSON.parse(localStorage.getItem('silinx.standalone.fs')))), ['Stable']);
+  await page.waitFor(() => localStorage.getItem('silinx.standalone.fs') === null, [], { what: 'the old entry moved out' });
+  assert.deepEqual(await projects('silinx.standalone.project:'), ['Stable']);
 }, { url: () => 'about:blank' });
 
 // View ▸ Interface, View ▸ Language: a submenu's entry chosen
@@ -1788,7 +1789,7 @@ uiTest('#2894 regression, browser edition (the Pages site): a link opened in a n
   // each opened in a browser that has none of it (a student's): imported, its constraints with it
   let n = 2;
   for (const [what, link] of Object.entries(links)) {
-    await page.eval(() => localStorage.removeItem('silinx.standalone.fs'));
+    await page.eval(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('silinx.standalone.project:')) localStorage.removeItem(k); });
     await page.goto(link.replace('#', `?l=${n++}#`));
     await boot();
     await page.waitConsole(/Opened 'pong' from a link \(a new project\)/);

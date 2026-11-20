@@ -374,11 +374,13 @@ export const api = {
   saveProject: (name, pj) => ops.saveProject(name, pj),
   trustProject: name => ops.trustProject(name),
   renameFile: (name, from, to) => ops.renameFile(name, from, to),
-  deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); return r; },
-  // Rename Project… (#4641): its GitHub record, its build and captures of this session follow it
+  // (its snapshots too, #4725)
+  deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); snapshotsOf(name).forget(); return r; },
+  // Rename Project… (#4641): its GitHub record, its build and captures of this session, its snapshots (#4725) follow it
   renameProject: async (name, to) => {
     const r = await ops.renameProject(name, to);
     await git.gitMove(name, to);
+    snapshotsOf(name).moveTo(to);
     for (const m of [builds, sessionCaptures]) if (m.has(name)) { const v = m.get(name); m.delete(name); m.set(to, v); }
     return { ...r, message: renamedMessage(name, to) };
   },

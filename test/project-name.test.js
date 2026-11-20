@@ -47,7 +47,7 @@ test('#3538 sameProject: by any case, names or { name }', () => {
   assert.equal(sameProject([], 'x'), undefined);
 });
 
-const memStorage = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; };
+import { memStorage } from './fixtures/mem-storage.js';   // (localStorage's interface, #4725)
 let id = 0;
 const mcp = async (name, args) => (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
 

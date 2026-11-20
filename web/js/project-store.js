@@ -1,5 +1,5 @@
 // Project storage of the browser (single-file) edition, behind one interface (web/js/api-local.js):
-// - browserStore: every project in the browser's localStorage (one JSON value), as before;
+// - browserStore: the projects in the browser's localStorage, one entry per project (#4725);
 // - folderStore: the projects in a folder on the disk that the user picked (File System Access API,
 //   Chrome / Edge: a FileSystemDirectoryHandle), each one a normal project folder in the full
 //   application's format (silinx.json, src/, sim/, constraints/, build/… as server/projects.js
@@ -30,7 +30,9 @@ const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132'
 // own browser storage, so that a development build never touches the stable edition's projects
 // (a workspace folder on the disk can still be opened by both); its settings too (web/js/prefs.js)
 export { DEV_SITE };
+// (one entry per project, #4725; before, every project in the one entry BROWSER_KEY, which is read and moved out)
 const BROWSER_KEY = DEV_SITE ? 'silinx.dev.standalone.fs' : 'silinx.standalone.fs';
+export const BROWSER_PROJECT_PREFIX = DEV_SITE ? 'silinx.dev.standalone.project:' : 'silinx.standalone.project:';
 
 const fail = msg => { throw new Error(msg); };
 const langOf = langOfPath;   // (core/file-kinds.js, #4733)
@@ -191,62 +193,116 @@ export function bundleEntries(text) {
 }
 
 // ------------------------------------------------------------------ the browser's storage
-/** Projects in localStorage (`storage`): { [name]: { json, files: { path: text } } }. */
+const storageFull = e => new Error(`browser storage is full or unavailable (${e.message}); export your project (File > Export Project (.zip)…) to keep it`);
+const unreadable = e => new Error(`the browser storage could not be read (${e.message})`);
+/** The keys of a Storage (a localStorage), [] when it cannot say. */
+export function storageKeys(st) {
+  if (typeof st?.key !== 'function') return [];
+  const out = [];
+  for (let i = 0; i < st.length; i++) { const k = st.key(i); if (k != null) out.push(k); }
+  return out;
+}
+/**
+ * Projects in localStorage (`storage`), one entry per project (#4725): BROWSER_PROJECT_PREFIX + name holds
+ * { json, files: { path: text }, modified }. Nothing is cached: every operation reads its project's entry again and
+ * writes it whole, so two tabs (two stores on one storage) keep each other's projects and changes. An entry that cannot
+ * be read (the storage failing, its JSON damaged) is an error, never a project to write over; a write that fails
+ * changes nothing. The projects of earlier versions, all in the one entry BROWSER_KEY, are moved out to their own
+ * entries one by one (each written before it leaves the old entry); one that does not fit stays there, read as before.
+ */
 export function browserStore(storage = () => globalThis.localStorage) {
-  let mem = null;
   const ls = () => (typeof storage === 'function' ? storage() : storage);
-  const all = () => {
-    if (mem) return mem;
-    try { mem = JSON.parse(ls().getItem(BROWSER_KEY) || '{}'); } catch { mem = {}; }
-    return mem;
+  const keyOf = name => BROWSER_PROJECT_PREFIX + name;
+  const getItem = k => { try { return ls().getItem(k); } catch (e) { throw unreadable(e); } };
+  const setItem = (k, v) => { try { ls().setItem(k, v); } catch (e) { throw storageFull(e); } };
+  const parse = (name, text) => {
+    let p;
+    try { p = JSON.parse(text); } catch { p = null; }
+    return plain(p) && plain(p.json) && plain(p.files) ? p : fail(`project '${name}' is damaged in the browser storage: not read (nor written over)`);
   };
-  const persist = () => {
-    try { ls().setItem(BROWSER_KEY, JSON.stringify(mem)); }
-    catch (e) { throw new Error(`browser storage is full or unavailable (${e.message}); export your project (File > Export Project (.zip)…) to keep it`); }
+  // the old entry's projects ({} when none; null when it cannot be read: left as it is)
+  const legacy = () => {
+    const t = getItem(BROWSER_KEY);
+    if (t == null) return {};
+    try { const v = JSON.parse(t); return plain(v) ? v : null; } catch { return null; }
   };
-  const get = name => all()[name] || fail(`project '${name}' not found`);
-  return {
+  // the old entry's projects moved to entries of their own, each written before it leaves the old entry (a project
+  // with an entry already: the entry is the newer); one that does not fit stays
+  const migrate = () => {
+    const old = legacy();
+    if (!old || !Object.keys(old).length) return;
+    const left = { ...old };
+    for (const [name, p] of Object.entries(old)) {
+      try { if (getItem(keyOf(name)) == null) ls().setItem(keyOf(name), JSON.stringify(p)); } catch { continue; }
+      delete left[name];
+    }
+    try { if (Object.keys(left).length) ls().setItem(BROWSER_KEY, JSON.stringify(left)); else ls().removeItem(BROWSER_KEY); } catch { /* moved again next time */ }
+  };
+  const read = name => {
+    migrate();
+    const t = getItem(keyOf(name));
+    if (t != null) return parse(name, t);
+    const old = legacy()?.[name];
+    return old && plain(old.json) && plain(old.files) ? old : null;
+  };
+  const get = name => read(name) || fail(`project '${name}' not found`);
+  // the project read again, changed, written whole (out of the old entry too when it was there)
+  const change = (name, fn) => {
+    const p = get(name);
+    fn(p);
+    p.modified = Date.now();
+    setItem(keyOf(name), JSON.stringify(p));
+    migrate();
+  };
+  const names = () => {
+    migrate();
+    const out = new Set(storageKeys(ls()).filter(k => k.startsWith(BROWSER_PROJECT_PREFIX)).map(k => k.slice(BROWSER_PROJECT_PREFIX.length)));
+    for (const n of Object.keys(legacy() || {})) out.add(n);
+    return [...out];
+  };
+  const store = {
     kind: 'browser', label: null,
-    // (modified: when it last changed, ms, kept beside it; 0 for one saved before, #1156)
-    list: async () => Object.values(all()).map(p => ({ ...p.json, modified: p.modified || 0 })).sort((a, b) => a.name.localeCompare(b.name)),
-    exists: async name => !!all()[name],
+    // (modified: when it last changed, ms, kept beside it; 0 for one saved before, #1156; a damaged one not listed)
+    list: async () => names().flatMap(n => { try { const p = read(n); return p ? [{ ...p.json, name: n, modified: p.modified || 0 }] : []; } catch { return []; } })
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    // (a damaged entry is there: its name taken)
+    exists: async name => getItem(keyOf(name)) != null || !!legacy()?.[name],
     load: async name => get(name),
     create: async (name, json, files = {}) => {
-      if (all()[name]) fail(`project '${name}' already exists`);
-      mem[name] = { json: { ...clone(json), name }, files: Object.fromEntries(Object.entries(files).map(([k, v]) => [cleanPath(k), v])), modified: Date.now() };
-      persist();
+      if (getItem(keyOf(name)) != null || legacy()?.[name]) fail(`project '${name}' already exists`);
+      const p = { json: { ...clone(json), name }, files: Object.fromEntries(Object.entries(files).map(([k, v]) => [cleanPath(k), v])), modified: Date.now() };
+      setItem(keyOf(name), JSON.stringify(p));
     },
-    saveJson: async (name, json) => { const p = get(name); p.json = { ...clone(json), name }; delete p.json.fileTree; p.modified = Date.now(); persist(); },
-    writeFile: async (name, path, text) => { const p = get(name); p.files[cleanPath(path)] = text; p.modified = Date.now(); persist(); },
+    saveJson: async (name, json) => change(name, p => { p.json = { ...clone(json), name }; delete p.json.fileTree; }),
+    writeFile: async (name, path, text) => change(name, p => { p.files[cleanPath(path)] = text; }),
     // a file, or a folder (everything under it)
-    removePath: async (name, path) => {
-      const p = get(name);
+    removePath: async (name, path) => change(name, p => {
       path = cleanPath(path);
       for (const k of Object.keys(p.files)) if (under(k, path)) delete p.files[k];
-      p.modified = Date.now();
-      persist();
-    },
-    renamePath: async (name, from, to) => {
-      const p = get(name);
+    }),
+    renamePath: async (name, from, to) => change(name, p => {
       from = cleanPath(from); to = cleanPath(to);
       for (const k of Object.keys(p.files).filter(x => under(x, from))) { const v = p.files[k]; delete p.files[k]; p.files[to + k.slice(from.length)] = v; }
-      p.modified = Date.now();
-      persist();
+    }),
+    deleteProject: async name => {
+      get(name);
+      try { ls().removeItem(keyOf(name)); } catch (e) { throw storageFull(e); }
+      const old = legacy();
+      if (old?.[name]) { delete old[name]; setItem(BROWSER_KEY, JSON.stringify(old)); }
     },
-    deleteProject: async name => { get(name); delete mem[name]; persist(); },
-    // Rename Project… (#4641): its entry under the new name, kept only once stored (the old one back when it is not)
+    // Rename Project… (#4641): its entry under the new name, the old one removed only once that is stored
     renameProject: async (from, to) => {
-      const p = get(from), was = mem;
+      const p = get(from);
       const files = Object.fromEntries(Object.entries(p.files).map(([k, v]) => [renamedFile(k, from, to) && !(renamedFile(k, from, to) in p.files) ? renamedFile(k, from, to) : k, v]));
-      mem = Object.fromEntries(Object.entries(mem).filter(([k]) => k !== from));
-      mem[to] = { ...p, json: { ...p.json, name: to }, files, modified: Date.now() };
-      try { persist(); } catch (e) { mem = was; throw e; }
+      setItem(keyOf(to), JSON.stringify({ ...p, json: { ...p.json, name: to }, files, modified: Date.now() }));
+      if (keyOf(from) !== keyOf(to)) await store.deleteProject(from).catch(() => {});
     },
     // the build's outputs stay in memory in this storage (too large for localStorage)
     writeBuild: async () => {},
     readBinary: async () => null,
     readText: async () => null,
   };
+  return store;
 }
 
 // ------------------------------------------------------------------ a folder on the disk
