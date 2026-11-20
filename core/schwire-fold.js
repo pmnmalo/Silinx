@@ -8,7 +8,7 @@
 // Where the line is: only what is drawn twice is removed. A wire that ends in nothing on a stretch of its own (a wire
 // the user left unconnected, Check Syntax's "dangling wire" or "connects only") stays as it is. A doubled part with
 // something on it that would lose its connection (a pin, an I/O marker or another wire's end at its tip, or on it) stays
-// too.
+// too, and so does a doubled wire that goes on from a junction dot (trimming it would move the dot back, #3806).
 import { symbolPins } from './schdoc-symbols.js';
 
 const same = (p, q) => p.x === q.x && p.y === q.y;
@@ -70,7 +70,8 @@ function unbend(P, i) {
 }
 
 // two wires with an end at the same point p whose end segments leave p the same way: the shorter one's end segment
-// (s, from p to q) lies on the longer one's (l); s's end moved to q, l's too (only those two meet at p) or l split at q
+// (s, from p to q) lies on the longer one's (l); s's end moved to q, l's too (only those two meet at p), or s removed
+// (a stub ending in nothing on a branch of a junction dot)
 function overlapOnce(doc, pinPts) {
   const at = new Map();
   doc.wires.forEach(w => [0, w.points.length - 1].forEach(i => {
@@ -96,6 +97,9 @@ function overlapOnce(doc, pinPts) {
         const atQ = attachedAt(doc, pinPts, q, [S.w, L.w]);
         if ((!qEnd && atQ) || attachedOn(doc, pinPts, p, q, [S.w, L.w], false)) continue;
         const pass = list.length === 2 && !pinPts().some(e => same(e, p));
+        // (at a junction dot, or a pin: only a stub ending in nothing there; a doubled wire that goes on stays, the dot
+        // where it was put, #3806)
+        if (!pass && !(qEnd && !atQ)) continue;
         // s: its end at q (no wire left when it was that segment alone)
         const sRest = S.P.slice(1);
         if (sRest.length < 2) doc.wires.splice(doc.wires.indexOf(S.w), 1);
@@ -106,24 +110,10 @@ function overlapOnce(doc, pinPts) {
           const lRest = same(q, L.P[1]) ? L.P.slice(1) : [q, ...L.P.slice(1)];
           if (lRest.length < 2) doc.wires.splice(doc.wires.indexOf(L.w), 1);
           else setPoints(L.w, L.rev ? lRest.reverse() : lRest);
-        } else if (!qEnd || atQ) splitAt(doc, L, q);   // (s gone with nothing at q: l stays whole)
+        }
         return true;
       }
     }
   }
   return false;
-}
-// l split at q (on its first segment, or its first bend), so that what met s at q meets l there
-function splitAt(doc, L, q) {
-  const k = same(q, L.P[1]) ? 1 : 0;
-  if (k === 1 && L.P.length === 2) return;   // (q is l's end)
-  const head = [...L.P.slice(0, k + 1), ...(k ? [] : [{ x: q.x, y: q.y }])];
-  const tail = [{ x: q.x, y: q.y }, ...L.P.slice(k + 1)];
-  const used = new Set(doc.wires.map(w => w.id));
-  let n = doc.wires.length + 1;
-  while (used.has(`W${n}`)) n++;
-  const t = { id: `W${n}`, points: L.rev ? tail.reverse() : tail };
-  if (L.w.bus) t.bus = true;
-  setPoints(L.w, L.rev ? head.reverse() : head);
-  doc.wires.splice(doc.wires.indexOf(L.w) + 1, 0, t);
 }
