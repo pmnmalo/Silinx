@@ -8,7 +8,7 @@
 /** The encoding of the user's. */
 export const USER_ENCODING = 'user';
 /** A state register's widest code (bits). */
-export const MAX_CODE_BITS = 32;
+const MAX_CODE_BITS = 32;
 
 /** A code as kept: its binary digits, the blanks and _ left out ('' when none). */
 export const cleanCode = (text) => String(text ?? '').replace(/[\s_]/g, '');

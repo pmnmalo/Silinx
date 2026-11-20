@@ -291,7 +291,7 @@ uiTest('State diagram (FSM): step-by-step simulation, Mealy labels, module -> di
   // ---- diagram -> ASM chart
   // (#2260) no Language; Convert to ASM chart in the menu at the right of the first line, closed by the command
   const menu = () => page.eval((ed) => { const m = document.querySelector(`${ed} .tb-more-menu`), b = document.querySelector(`${ed} .tb-more-btn`).getBoundingClientRect(), t = document.querySelector(`${ed} .asm-toolbar`).getBoundingClientRect(); return { open: !m.hidden, buttons: [...m.querySelectorAll('button:not([data-lang])')].map((x) => x.textContent), right: t.right - b.right < 20, firstLine: b.top - t.top < 20, lang: !!document.querySelector(`${ed} .fsm-lang`) }; }, ED);
-  assert.deepEqual(await menu(), { open: false, buttons: ['Arrange', 'Convert to ASM chart', 'Verify Property…', '✓Binary', 'Gray', 'One-hot', 'Enumerated', '✓3 processes', '2 processes'], right: true, firstLine: true, lang: false });
+  assert.deepEqual(await menu(), { open: false, buttons: ['Arrange', 'Convert to ASM chart', 'Verify Property…', '✓3 processes', '2 processes'], right: true, firstLine: true, lang: false });   // (no Encoding: the machine's Properties', #4908)
   await page.click(`${ED} .tb-more-btn`);
   assert.equal((await menu()).open, true);
   await page.click(`${ED} .asm-btn`, { text: 'Convert to ASM chart' });
