@@ -50,7 +50,7 @@ const keepName = n => { try { localStorage.setItem(NAME_KEY, n); } catch { /* th
 // this browser's (web/js/relay-setting.js)
 /** The relays this Silinx's pages may share and follow through (their Content-Security-Policy's too): the site's, set
  *  when it is built, or config.json's relay.relays. */
-const relaysHere = async () => { try { return (await api.collabRelays?.()) || []; } catch { return []; } };
+export const relaysHere = async () => { try { return (await api.collabRelays?.()) || []; } catch { return []; } };
 /** A relay this page may use (#4543): one of this Silinx's, or, on the site, any Cloudflare Worker's (its CSP's). */
 export const relayOk = async r => (api.standalone && workersRelay(r)) || (await relaysHere()).includes(r);
 /** Why a relay is refused here. */

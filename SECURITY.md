@@ -354,6 +354,10 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   it, the codes are exchanged by hand. Either way a STUN server (`stun.l.google.com`, or this browser's own list)
   finds the connection's addresses. Those servers see the follower's IP address, so the follow dialog names them
   before anything is sent.
+  A link may name a relay (`&relay=…`), which sees the follower's IP address and the name they give: on the site any
+  Cloudflare Worker's relay is accepted, so the follow dialog marks one that is neither this Silinx's (the site's, or
+  `config.json`'s `relay.relays`) nor the relay of this browser's settings as unknown, and Follow waits until the
+  follower ticks that they know who runs it (#4742).
   Two browsers of one computer reach each other through loopback (#4494, `core/collab-loopback.js`): each hides its
   host address behind an mDNS name (`<uuid>.local`) the other does not resolve, so a remote host candidate at such a
   name gets a twin at 127.0.0.1 on the same port. This makes the browser send ICE's connectivity checks to a port of
