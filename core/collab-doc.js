@@ -49,7 +49,7 @@ const shareable = (path, text) => sharedPath(path) && typeof text === 'string' &
 
 /** The text files an editor may change (#3182, phase 2): HDL, constraints, C / C++ (Silinx HLS), notes; never a
  *  drawing (phase 3, #3183) nor the project's settings. */
-const EDITABLE_RE = /\.(vhd|vhdl|v|vh|sv|ucf|xdc|c|cc|cpp|h|hpp|txt|md)$/i;
+const EDITABLE_RE = /\.(vhd|vhdl|v|vh|sv|ucf|pcf|lpf|cst|ccf|xdc|c|cc|cpp|h|hpp|txt|md)$/i;   // (every family's constraints, #4733)
 export const editablePath = p => sharedPath(p) && EDITABLE_RE.test(String(p));
 
 /** An editor's text of a file, at the owner's, before it is written (#3355): through the import gate, as any file from

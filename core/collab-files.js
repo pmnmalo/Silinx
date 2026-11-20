@@ -12,6 +12,7 @@
 // a file an editor does not change as text (a drawing's generated HDL, a drawing edited live), what the gate refuses.
 import { sharedPath, editablePath, docFile, putFile, dropFile, putProject, gateEdit, FILE_MAX } from './collab-doc.js';
 import { liveDrawing } from './collab-kinds.js';
+import { addToProject, removeFromProject } from './project-entries.js';
 import { drawingModel } from './collab-model.js';
 
 const fail = m => new Error(m);
@@ -45,9 +46,6 @@ function docDescription(doc) {
   try { const j = JSON.parse(doc.getMap('project').get('json') ?? 'null'); return j && typeof j === 'object' && !Array.isArray(j) ? j : null; } catch { return null; }
 }
 
-// a source's entry, as Add to Project makes it (an HDL file: its language, a test bench's role)
-const langOf = p => (/\.vhdl?$/i.test(p) ? 'vhdl' : /\.(v|sv)$/i.test(p) ? 'verilog' : null);
-const roleOf = p => (/^(sim|tb|test)\//.test(p) || /(^|\/)tb_|_tb\./.test(p) ? 'sim' : 'design');
 
 /** The MCP's change of a source, at an editor's (follow_project's source): add (a new file with `text`, or a file of the
  *  room's, put in the project as Add to Project does), remove (out of the project, the file kept), delete (out of the
@@ -56,13 +54,9 @@ export function sourceChange(doc, { action, path, to, text }) {
   const pj = docDescription(doc);
   if (!pj) throw fail('the shared project has not arrived yet');
   const files = Array.isArray(pj.files) ? pj.files : [];
-  const listed = files.some(f => f?.path === path);
   if (action === 'add') {
     if (text === undefined && docFile(doc, path) === null) throw fail(`${path}: not a file of the project (text: a new file's)`);
-    const lang = langOf(path);
-    const excluded = (pj.excluded || []).filter(f => f !== path);
-    const next = { ...pj, excluded, files: lang && !listed ? [...files, { path, lang, role: roleOf(path) }] : files };
-    if (/\.ucf$/i.test(path) && !pj.constraints) next.constraints = path;
+    const next = addToProject({ ...pj, files: [...files] }, path);   // (core/project-entries.js, as the interface's, #4733)
     // (one change: the file and the description together)
     doc.transact(() => { if (text !== undefined) createFile(doc, path, String(text)); setDescription(doc, next); });
     const e = next.files.find(f => f.path === path);
@@ -70,9 +64,7 @@ export function sourceChange(doc, { action, path, to, text }) {
   }
   if (action === 'remove' || action === 'delete') {
     if (docFile(doc, path) === null) throw fail(`${path}: not a file of the project`);
-    const next = { ...pj, files: files.filter(f => f?.path !== path) };
-    if (pj.constraints === path) next.constraints = '';
-    if (action === 'remove' && !listed) next.excluded = [...new Set([...(pj.excluded || []), path])];
+    const next = removeFromProject({ ...pj, files: files.filter(f => f) }, [path]);   // (core/project-entries.js, #4733)
     if (action === 'delete') next.excluded = (pj.excluded || []).filter(f => f !== path);
     doc.transact(() => { setDescription(doc, next); if (action === 'delete') dropFile(doc, path); });
     return action === 'remove' ? `Removed ${path} from the project (the file is kept in the project folder).` : `${path} deleted.`;

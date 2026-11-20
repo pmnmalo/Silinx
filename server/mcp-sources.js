@@ -7,32 +7,30 @@
 import * as P from './projects.js';
 import { toolError, projectPath, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
 import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
+import { addToProject, addsToProject, declares, missingTops, removeFromProject } from '../core/project-entries.js';
 
 const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i;
 
 // the tops of a project no longer declared by its sources: the view's one root, else none; the messages of the
-// interface's console
+// interface's console (core/project-entries.js missingTops, the interface's, #4733: a C source's or a drawing's module
+// not made for now is still the top, #2995)
 async function fixMissingTops(name) {
   const { compile } = await import('../core/compile.js');
   const { topCandidates } = await import('../core/elaborate.js');
   const pj = await P.readProject(name);
-  const lines = [], set = {};
+  const views = {};
   for (const sim of [false, true]) {
-    const key = sim ? 'simTop' : 'top';
-    const old = pj[key];
-    if (!old) continue;
-    const srcs = await viewSourcesOf(name, pj, sim);
-    const word = String(old).replace(/[^\w$]/g, '');
-    if (srcs.some(s => new RegExp(`\\b(entity|module)\\s+${word}\\b`, 'i').test(s.text || ''))) continue;
+    const failed = [];
+    const srcs = await viewSourcesOf(name, pj, sim, failed);
     let roots = [];
     try { roots = topCandidates(compile(srcs)); } catch { /* none */ }
-    set[key] = roots.length === 1 ? roots[0] : '';
-    const what = `The top-level ${sim ? 'simulation ' : ''}module '${old}' is no longer in the project`;
-    lines.push(set[key] ? `INFO: ${what}: the top is now '${set[key]}' (another one: set_top).`
-      : roots.length ? `WARNING: ${what}: set the top module (set_top).` : `INFO: ${what}, nor any other module.`);
+    views[sim] = { srcs, failed, roots };
   }
+  const same = (a, b) => String(a || '').toLowerCase() === String(b).toLowerCase();
+  const has = (mod, sim) => views[sim].srcs.some(s => declares(s.text, mod)) || views[sim].failed.some(v => same(v.module, mod));
+  const { set, messages } = missingTops(pj, { has, roots: sim => views[sim].roots }, { another: 'set_top', set: 'set_top' });
   if (Object.keys(set).length) await P.updateProject(name, p => ({ ...p, ...set }));
-  return lines;
+  return messages.map(m => `${m.level === 'warn' ? 'WARNING' : 'INFO'}: ${m.text}`);
 }
 
 // a path of the project as the project lists it, inside it, not hidden; not silinx.json nor build/ (verb: what the
@@ -80,15 +78,7 @@ export const SOURCE_TOOLS = [
       if (withHdl && VIEW_RE.test(file)) {
         try { const g = JSON.parse(await P.readFile(name, file)).generatedFile; if (g && tree.includes(g) && pj0.files.some(f => f.path === g)) hdl = g; } catch { /* not a drawing's JSON */ }
       }
-      await P.updateProject(name, pj => {
-        for (const f of [file, hdl].filter(Boolean)) {
-          const entry = pj.files.find(x => x.path === f) || null;
-          if (entry) pj.files = pj.files.filter(x => x.path !== f);
-          if (pj.constraints === f) pj.constraints = '';
-          if (!entry) pj.excluded = [...new Set([...(pj.excluded || []), f])];
-        }
-        return pj;
-      });
+      await P.updateProject(name, pj => removeFromProject(pj, [file, hdl]));
       const lines = await fixMissingTops(name);
       // (a design project's: the drawing alone named, its HDL never shown, as the interface's, #3891)
       if (isDesignOnly(pj0)) return { text: [...lines, `Removed ${file} from the project (the file is kept in the project folder).`].join('\n'), data: { project: name, removed: [file], ...await tops(name), messages: lines } };
@@ -98,7 +88,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'add_to_project', title: 'Add to Project',
-    description: 'Add a file of the project folder that is not in the project (removed from it, or put there) back into it, as Add to Project does: a VHDL or Verilog file as a source (a test bench in sim/ or named tb_… as a simulation source), a UCF as the constraints when the project has none.',
+    description: 'Add a file of the project folder that is not in the project (removed from it, or put there) back into it, as Add to Project does: a VHDL or Verilog file as a source (a test bench in sim/ or named tb_… as a simulation source), a constraints file (UCF, PCF, LPF, CST, CCF, XDC) as the constraints when the project has none.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project folder.') }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, path: rel }) {
@@ -106,15 +96,8 @@ export const SOURCE_TOOLS = [
       const file = await sourcePath(name, rel, 'added');
       if (/^build(\/|$)/i.test(file)) throw toolError(`'${file}' is written by Silinx itself`);
       if (!(await P.fileTree(name)).includes(file)) throw toolError(`no file '${file}' in the project folder of '${name}'`);
-      const lang = /\.vhdl?$/i.test(file) ? 'vhdl' : /\.(v|sv)$/i.test(file) ? 'verilog' : null;
-      const before = await P.readProject(name);
-      if (!(before.excluded || []).includes(file) && (!lang || before.files.some(f => f.path === file))) return { text: `${file} is in the project already.`, data: { project: name, added: false } };
-      await P.updateProject(name, pj => {
-        pj.excluded = (pj.excluded || []).filter(f => f !== file);
-        if (lang && !pj.files.some(f => f.path === file)) pj.files.push({ path: file, lang, role: /^(sim|tb|test)\//.test(file) || /(^|\/)tb_|_tb\./.test(file) ? 'sim' : 'design' });
-        if (/\.ucf$/i.test(file) && !pj.constraints) pj.constraints = file;
-        return pj;
-      });
+      if (!addsToProject(await P.readProject(name), file)) return { text: `${file} is in the project already.`, data: { project: name, added: false } };
+      await P.updateProject(name, pj => addToProject(pj, file));
       const entry = (await P.readProject(name)).files.find(f => f.path === file);
       return { text: `${file} added to the project${entry ? ` (${entry.lang}, ${entry.role})` : ''}.`, data: { project: name, added: true, path: file, role: entry?.role || null } };
     },
