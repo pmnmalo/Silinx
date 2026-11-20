@@ -1726,9 +1726,7 @@ uiTest('#3548 browser edition: no project bundle in the File menu (English, Port
   await page.dialogButton('Import');
   await page.waitDialog('Replace Project');
   await page.dialogButton('Yes');
-  await page.waitFor(() => document.querySelector('.dlg-overlay .msg-error'), [], { what: 'the import\'s error' });
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay').innerText), /cannot read zip/);
-  await page.dialogButton('OK');
+  await page.waitConsole(/^ERROR: Import Project: .*cannot read zip/m);   // (in the console, no box, #4747)
   await page.waitNoDialog();
   await page.waitConsole(/The previous project 'OldLab' was restored\./);
   await page.waitFor(() => window.Silinx.project?.name === 'OldLab' && document.querySelector('#hier .row'), [], { what: 'the project open again' });

@@ -70,12 +70,7 @@ export function dialog({ title, body, buttons = [{ label: 'OK', value: true, pri
   });
 }
 
-export const alertDlg = (title, message, kind = 'info') => dialog({
-  title, width: 420,
-  body: h('div', { class: `msg msg-${kind}` }, h('div', { class: 'msg-icon' }, kind === 'error' ? '✖' : kind === 'warn' ? '!' : 'i'), h('div', { class: 'msg-text' }, message)),
-  buttons: [{ label: 'OK', value: true, primary: true }],
-});
-
+// (no alert box: a message goes to the console, #4747: commandError…, message())
 // the answers' labels: Yes / No, or others (`{ yes: 'Replace', no: 'Cancel' }`, #1467)
 export const confirmDlg = (title, message, { yes = 'Yes', no = 'No' } = {}) => dialog({
   title, width: 420,
