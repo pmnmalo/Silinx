@@ -1,12 +1,13 @@
 // Silinx toolchain - the Spartan-6's Place & Route by nextpnr (#2138; the plan: #2131), the one engine since Silinx's
 // own router was removed (#2824). Silinx's Map stays (open-flow-s6.js: the netlist packed into sites); nextpnr-himbaechel with the spartan6
 // micro-architecture (the fork pmnmalo/nextpnr-spartan, its WebAssembly package through io.nextpnr.spartan6) places those sites,
-// and, the placed design written with its constants' sources (fpga/s6/xdl.js), routes it.
+// and, the placed design written with its constants' sources (fpga/s6/xdl.js), routes it. Silinx's own placer is removed
+// (#4776): with Silinx's Map nextpnr places every site but the pads, the global buffers and the BSCANs, which Silinx's
+// rules fix (fpga/s6/fixed-sites.js); with nextpnr's Map it places them all.
 import { parseXdl, writeXdl } from './xdl.js';
 import { loadChipdb } from './nextpnr-io.js';
 import { s6Sites } from './fpga/s6/sites.js';
-import { placeS6 } from './fpga/s6/place.js';
-import { padPathsS6 } from './fpga/s6/pad-paths.js';
+import { fixedSitesS6 } from './fpga/s6/fixed-sites.js';
 import { placedXdlS6 } from './fpga/s6/xdl.js';
 import { checkRoutingS6 } from './fpga/s6/route-check.js';
 import { analyzeTimingS6 } from './fpga/s6/timing.js';
@@ -14,10 +15,6 @@ import { placementOf, routedDesignS6, siteNetlist } from './fpga/s6/nextpnr.js';
 import { packInput, samePacking } from './fpga/s6/nextpnr-pack.js';
 
 const PLACE_SEEDS = 3;
-// who places the block RAMs and DSP48A1s (#3137): nextpnr, since its spartan6 0.2.0 (the timing model's delays in its
-// chip database, its annealing refinement reaching 40 tiles: the examples' periods 3 % shorter on average than with
-// Silinx's placement, every PERIOD met); spec.hardByNextpnr false: Silinx's (placeS6, timing-driven, the sites fixed)
-export const S6_HARD_BY_NEXTPNR = true;
 // a routed design's minimum period by Silinx's timing model (ns; 0: no clocked paths)
 const periodOf = (routed, device) => analyzeTimingS6(parseXdl(writeXdl(routed)), device).clocks.reduce((a, c) => Math.max(a, c.period), 0);
 
@@ -50,24 +47,19 @@ export function mountNextpnrS6(ctx) {
     const db = await loadChipdb(io.nextpnr.spartan6, part, log, StepError);
     // nextpnr's Map (#3138, the default since #3140): it packs Yosys's netlist into the sites of Silinx's Map and places
     // them, its pads and clocks by its own rules (#3135, #3136); with spec.s6Map 'silinx' it places the sites of Silinx's
-    // Map, the pads and global buffers fixed by Silinx's
+    // Map, the pads, the global buffers and the BSCANs fixed by Silinx's rules (#4776, fixedSitesS6: the ports without a
+    // LOC too, on bonded pads, #4950), the rest (the block RAMs and DSP48A1s, #3137) as with its own Map
     const byPacker = spec.s6Map !== 'silinx';
-    // the pads and the global buffers, by Silinx's rules (the banks' VCCO, a clock pad's dedicated path); the block RAMs
-    // and DSP48A1s by nextpnr (#3137), or with hardByNextpnr false from Silinx's timing-driven placement, a DSP48A1
-    // cascade with them (nextpnr 0.1's analytical placer left them columns apart: the stopwatch on the Atlys missed its
-    // 10 ns on every seed); a port without a LOC on a pad whose I/O path the bit database knows (#3152)
-    const byNextpnr = spec.hardByNextpnr ?? S6_HARD_BY_NEXTPNR;
-    const hard = !byNextpnr && phys.insts.some(i => i.kind === 'bram' || i.kind === 'dsp');
-    let legal = { site: [] };
-    // (nextpnr's Map, #4374: the ports without a LOC on the pads Silinx's placement gives them, as with Silinx's Map; left
-    // to nextpnr's simulated annealing, 62 free IOBs took it some 40 s a seed, the rest of the design 0.2 s)
-    const freePads = byPacker && phys.insts.some(i => i.kind === 'iob' && !i.loc);
-    if (!byPacker || freePads) try { legal = placeS6(phys, sites, { seed: spec.seed || 1, effort: hard ? 1 : 0, timing: hard ? 0.1 : 0, nl, padPaths: padPathsS6(device, io.bitDb(), sites) }); } catch (e) { throw new StepError(`placement failed: ${e.message}`, [], e.hint); }
-    for (const w of legal.warnings || []) log(`WARNING:Place - ${w}`);
+    let fixed = new Map();
+    if (!byPacker) {
+      let r;
+      try { r = fixedSitesS6(phys, sites); } catch (e) { throw new StepError(`placement failed: ${e.message}`, [], e.hint); }
+      fixed = r.fixed;
+      for (const w of r.warnings) log(`WARNING:Place - ${w}`);
+    }
     // (an I/O buffer on a pad with no dedicated path to a global buffer: GENERAL_OK, spartan6.cc's)
-    const generalOkOf = site => new Set(phys.insts.filter((inst, i) => inst.kind === 'iob' && !sites.pads.get(site[i])?.bufg.length).map(i => i.name));
-    const fixed = new Map(), generalOk = generalOkOf(legal.site);
-    phys.insts.forEach((inst, i) => { if (!byPacker && (hard ? ['iob', 'bufg', 'bram', 'dsp', 'bscan'] : ['iob', 'bufg', 'bscan']).includes(inst.kind)) fixed.set(inst.name, legal.site[i]); });
+    const generalOkOf = site => new Set(phys.insts.filter((inst, i) => inst.kind === 'iob' && site[i] && !sites.pads.get(site[i])?.bufg.length).map(i => i.name));
+    const generalOk = generalOkOf(phys.insts.map(inst => fixed.get(inst.name)));
     const chains = phys.chains.filter(c => c.length > 1).map(c => c.map(i => phys.insts[i].name));
     let mhz = null;
     try { const c = constraints()?.clocks || []; if (c.length) mhz = 1000 / Math.min(...c.map(x => x.period)); } catch { /* translate's */ }
@@ -75,8 +67,7 @@ export function mountNextpnrS6(ctx) {
     const unplaced = placedXdlS6(nl, packed, phys, { site: [], tile: [], pos: [] }, { part: spec.part, name: spec.top });
     // 1. the placements and their routings, of the placed design with its constants' sources. The seeds differ by up
     // to 20 %, and nextpnr's estimates do not rank them: PLACE_SEEDS of them, the one Silinx's timing model finds fastest.
-    const padLocs = freePads ? new Map(phys.insts.flatMap((inst, i) => (inst.kind === 'iob' && !inst.loc ? [[inst.name, legal.site[i]]] : []))) : null;
-    const netlistIn = byPacker ? packInput(netlistText(), phys, device, padLocs) : siteNetlist(unplaced, { top: spec.top, fixed, chains, generalOk, device });
+    const netlistIn = byPacker ? packInput(netlistText(), phys, device) : siteNetlist(unplaced, { top: spec.top, fixed, chains, generalOk, device });
     // (a seed nextpnr cannot route, #2131: the next one; the step fails only when none routes)
     let best = null, failed = null;
     const seedOf = async seed => {
@@ -89,7 +80,7 @@ export function mountNextpnrS6(ctx) {
         placement = placementOf(placedRun.json, phys, device);
         placed = placedXdlS6(nl, packed, phys, placement, { part: spec.part, name: spec.top, device });
       } catch (e) { throw new StepError(`nextpnr's placement cannot be read: ${e.message}`); }
-      const routedRun = await run('routing', ['--no-place', '--seed', seed, ...freq], siteNetlist(placed, { top: spec.top, generalOk: byPacker ? generalOkOf(placement.site) : generalOk, chains: [], device }), db);
+      const routedRun = await run('routing', ['--no-place', '--seed', seed, ...freq], siteNetlist(placed, { top: spec.top, generalOk: generalOkOf(placement.site), chains: [], device }), db);
       let routed;
       try { routed = routedDesignS6(routedRun.json, placed, device); } catch (e) { throw new StepError(`nextpnr's routed design cannot be read: ${e.message}`); }
       return { period: periodOf(routed, device), placed, placement, routed, lines: [...placedRun.lines, ...routedRun.lines] };

@@ -16,7 +16,6 @@ import { checkRoutingS6 } from '../src/fpga/s6/route-check.js';
 import { placementOf, siteBel, siteNetlist, timingParam } from '../src/fpga/s6/nextpnr.js';
 import { unknownPipsS6, timingExportS6 } from '../src/fpga/s6/nextpnr-export.js';
 import { nextpnrIo } from '../src/nextpnr-io.js';
-import { S6_HARD_BY_NEXTPNR } from '../src/open-flow-nextpnr-s6.js';
 import { wireDelay, pathCounts } from '../src/fpga/s6/timing.js';
 import { netTree, treePath } from '../src/fpga/timing.js';
 import { S6_SPEED_3 } from '../src/fpga/s6/timing-model.js';
@@ -213,9 +212,9 @@ test('Place & Route with no Map step: the design packed first, placed and routed
   assert.ok(checkRoutingS6(parseXdl(files['open/routed.xdl']), dv).ok);
 });
 
-// (#3137) who places the block RAMs and DSP48A1s with Silinx's Map (spec.s6Map 'silinx'; nextpnr's packer places them all,
-// the default since #3140): nextpnr (S6_HARD_BY_NEXTPNR, since its spartan6 0.2.0), or Silinx with spec.hardByNextpnr
-// false (their sites fixed for nextpnr, attribute BEL); the pads and global buffers are Silinx's either way
+// (#3137, #4776) with Silinx's Map (spec.s6Map 'silinx'; nextpnr's packer places everything, the default since #3140)
+// nextpnr places the block RAMs and DSP48A1s (since its spartan6 0.2.0), the pads with a LOC and the global buffers fixed
+// by Silinx's rules (fixed-sites.js, attribute BEL; Silinx's own placer removed)
 const RAM_MUL = `module top(input clk, input we, output reg [3:0] led);
   reg [7:0] mem [0:1023];
   reg [9:0] a = 0; reg [17:0] x = 0, y = 0; reg [7:0] q; reg [35:0] p;
@@ -226,34 +225,30 @@ const RAM_MUL = `module top(input clk, input we, output reg [3:0] led);
   end
 endmodule
 `;
-for (const option of [undefined, false]) {
-  const byNextpnr = option ?? true;
-  test(`a block RAM and a DSP48A1 placed by ${byNextpnr ? 'nextpnr (the default)' : 'Silinx, fixed for nextpnr (hardByNextpnr false)'}; the pads by Silinx; routed, no warnings`, { timeout: 600000 }, async () => {
-    const part = 'xc6slx16csg324-3', dv = loadDeviceCache(part), files = {}, lines = [], inputs = [];
-    const np = nextpnrS6Node();
-    const io = {
-      log: l => lines.push(String(l)), sources: () => [{ path: 'top.v', lang: 'verilog', text: RAM_MUL }], ucf: UCF.xc6slx16csg324.replace('"rst"', '"we"'), ucfName: 't.ucf',
-      device: () => dv, bitDb: () => loadBitDbS6(part), yosys: yosysNode,
-      nextpnr: { spartan6: { ...np, run: (args, f, onLine) => { if (args.includes('--no-route')) inputs.push(JSON.parse(f['design.json'])); return np.run(args, f, onLine); } } },
-      write: (n, d) => { files[n] = d; return n; }, read: n => files[n] ?? null, save: () => {},
-    };
-    assert.equal(S6_HARD_BY_NEXTPNR, true);
-    const r = await runFlow({ top: 'top', part, device: 'xc6slx16', pkg: 'csg324', family: 'spartan6', steps: ['synth', 'translate', 'map', 'par'], seed: 1, effort: 1,
-      synthEffort: 'normal', startupClk: 'JtagClk', s6Map: 'silinx', hardByNextpnr: option }, io);
-    assert.ok(r.ok, `${r.error}\n${lines.filter(l => /ERROR|nextpnr, seed/.test(l)).join('\n')}`);
-    assert.deepEqual(lines.filter(l => /^WARNING/.test(l)), []);
-    assert.equal(inputs.length, 3);
-    for (const input of inputs) {
-      const cells = Object.values(Object.values(input.modules)[0].cells);
-      const fixed = type => cells.filter(c => c.type === type).map(c => !!c.attributes?.BEL);
-      assert.deepEqual(fixed('RAMB16BWER').concat(fixed('RAMB8BWER')), [!byNextpnr]);
-      assert.deepEqual(fixed('DSP48A1'), Array(3).fill(!byNextpnr));   // (Yosys's unsigned 18 x 18 product in three)
-      assert.deepEqual(fixed('IOB'), Array(6).fill(true));
-      assert.deepEqual(fixed('BUFGMUX'), [true]);
-    }
-    assert.ok(checkRoutingS6(parseXdl(files['open/routed.xdl']), dv).ok);
-  });
-}
+test('a block RAM and a DSP48A1 placed by nextpnr; the pads and the clock\'s buffer fixed by Silinx; routed, no warnings', { timeout: 600000 }, async () => {
+  const part = 'xc6slx16csg324-3', dv = loadDeviceCache(part), files = {}, lines = [], inputs = [];
+  const np = nextpnrS6Node();
+  const io = {
+    log: l => lines.push(String(l)), sources: () => [{ path: 'top.v', lang: 'verilog', text: RAM_MUL }], ucf: UCF.xc6slx16csg324.replace('"rst"', '"we"'), ucfName: 't.ucf',
+    device: () => dv, bitDb: () => loadBitDbS6(part), yosys: yosysNode,
+    nextpnr: { spartan6: { ...np, run: (args, f, onLine) => { if (args.includes('--no-route')) inputs.push(JSON.parse(f['design.json'])); return np.run(args, f, onLine); } } },
+    write: (n, d) => { files[n] = d; return n; }, read: n => files[n] ?? null, save: () => {},
+  };
+  const r = await runFlow({ top: 'top', part, device: 'xc6slx16', pkg: 'csg324', family: 'spartan6', steps: ['synth', 'translate', 'map', 'par'], seed: 1, effort: 1,
+    synthEffort: 'normal', startupClk: 'JtagClk', s6Map: 'silinx' }, io);
+  assert.ok(r.ok, `${r.error}\n${lines.filter(l => /ERROR|nextpnr, seed/.test(l)).join('\n')}`);
+  assert.deepEqual(lines.filter(l => /^WARNING/.test(l)), []);
+  assert.equal(inputs.length, 3);
+  for (const input of inputs) {
+    const cells = Object.values(Object.values(input.modules)[0].cells);
+    const fixed = type => cells.filter(c => c.type === type).map(c => !!c.attributes?.BEL);
+    assert.deepEqual(fixed('RAMB16BWER').concat(fixed('RAMB8BWER')), [false]);
+    assert.deepEqual(fixed('DSP48A1'), Array(3).fill(false));   // (Yosys's unsigned 18 x 18 product in three)
+    assert.deepEqual(fixed('IOB'), Array(6).fill(true));
+    assert.deepEqual(fixed('BUFGMUX'), [true]);
+  }
+  assert.ok(checkRoutingS6(parseXdl(files['open/routed.xdl']), dv).ok);
+});
 
 // (#2131) a seed nextpnr cannot route: the next one, the step failing only when none routes; nextpnr's WebAssembly
 // exception has no message, so its own ERROR line says why

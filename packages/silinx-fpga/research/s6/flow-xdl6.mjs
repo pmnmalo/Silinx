@@ -8,16 +8,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { placeS6 } from '../../src/fpga/s6/place.js';
 import { placedXdlS6 } from '../../src/fpga/s6/xdl.js';
 import { writeXdl } from '../../src/xdl.js';
 import { EXAMPLES } from '../../../../test/examples-lib.mjs';
-import { S6_BOARDS, s6Device, s6Example, s6RouteNextpnr } from '../../../../test/s6-lib.mjs';
+import { S6_BOARDS, s6Device, s6Example, s6PlaceNextpnr, s6RouteNextpnr } from '../../../../test/s6-lib.mjs';
 
-/** An example placed by the Spartan-6's placer and routed by nextpnr, as the open flow routes a placement: { xdl (text) }. */
+/** An example placed and routed by nextpnr, as the open flow places Silinx's Map (#4776): { xdl (text) }. */
 export async function flowXdl(name, board, part) {
-  const { device, sites } = s6Device(part), d = await s6Example(name, board);
-  const x = placedXdlS6(d.nl, d.packed, d.phys, placeS6(d.phys, sites, { nl: d.nl, seed: 1 }), { part, device, name: 'top' });
+  const { device } = s6Device(part), d = await s6Example(name, board);
+  const x = placedXdlS6(d.nl, d.packed, d.phys, await s6PlaceNextpnr(d, part), { part, device, name: 'top' });
   return { xdl: writeXdl(await s6RouteNextpnr(x, part)) };
 }
 

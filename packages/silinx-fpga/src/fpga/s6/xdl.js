@@ -54,7 +54,7 @@ const hexOf = (v, bits) => {
 };
 const strOf = v => String(v ?? '').replace(/^"|"$/g, '');
 
-/** The placed design as XDL (see above). placement: placeS6's result. */
+/** The placed design as XDL (see above). placement: { site, tile, pos } by phys.insts (nextpnr.js placementOf's). */
 export function placedXdlS6(nl, packed, phys, placement, { part, name = 'top', device = null } = {}) {
   const cells = nl.cells, { insts } = phys;
   const netByNl = new Map(phys.nets.filter(n => n.net !== null).map(n => [n.net, n]));

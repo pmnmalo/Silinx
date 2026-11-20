@@ -152,6 +152,10 @@ up by a switch of its own tile (`XL_COUT -> XL_COUT_N`, the CIN of the slice abo
 
 ### The placer (#729, 2026-10-24)
 
+(Removed in #4776, 2026-11-20: nextpnr places Silinx's Map too, the pads with a LOC, the global buffers and the BSCANs
+fixed by the placer's rules, `fixed-sites.js`; `place*.js`, `compare-place.mjs` and `place-xdl.mjs` went with it. The record
+below is the placer's.)
+
 `core/fpga/s6/`: `phys.js` (the packed slices and the cells of their own sites as site instances, the nets as site
 pins, the constants as power nets), `sites.js` (the device's sites: a carry chain's next stage and a DSP cascade from
 the routing graph, the 32 GCLK pads and the BUFGMUX each reaches, the banks), `place.js` / `place-moves.js` (the
@@ -997,8 +1001,6 @@ Silinx toolchain's Spartan-6 bitstream writer reads them there.
 | `night1-remote.sh` | Night 1 on the machine with Docker and ISE (`SILINX_ISE_HOST` on the command line) |
 | `summarize-night1.mjs` | Night 1's results as `measured/night1.json` (counts and observations, no Xilinx file) |
 | `bits6.mjs` | Reads a Spartan-6 `.bit`: its header and the UG380 packets (16-bit words) |
-| `compare-place.mjs` | The placer against ISE's placement of the same netlists (night 1): `measured/place-compare.json` |
-| `place-xdl.mjs` | The examples placed (and with `--route`, routed by nextpnr, #2824) as XDL, for ISE's check |
 | `ise-place-check.sh` | Inside the ISE container: `xdl -xdl2ncd`, `par -k` and `drc` of the placed XDL, `drc` of the routed one |
 | `summarize-ise-check.mjs` | That check's logs as `measured/ise-check.json` (the messages by id and count) |
 | `ise-format.sh` | Inside the ISE container: the empty designs through bitgen with Silinx's options and their variants (#724) |

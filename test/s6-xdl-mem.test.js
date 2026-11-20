@@ -5,14 +5,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { placeS6 } from '../packages/silinx-fpga/src/fpga/s6/place.js';
 import { placedXdlS6 } from '../packages/silinx-fpga/src/fpga/s6/xdl.js';
 import { memContents } from '../packages/silinx-fpga/src/fpga/s6/xdl-mem.js';
 import { checkSlice } from '../packages/silinx-fpga/src/fpga/s6/pack.js';
 import { writeXdl } from '../packages/silinx-fpga/src/xdl.js';
 import { MEM_DESIGNS } from '../packages/silinx-fpga/research/s6/gen-mem6.mjs';
 import { memSummary } from '../packages/silinx-fpga/research/s6/ana-mem6.mjs';
-import { s6Device, s6Example, s6Netlist, s6Phys, s6Verilog } from './s6-lib.mjs';
+import { s6Device, s6Example, s6Netlist, s6Phys, s6PlaceNextpnr, s6Verilog } from './s6-lib.mjs';
 
 const ISE = JSON.parse(fs.readFileSync(new URL('../packages/silinx-fpga/research/s6/measured/mem.json', import.meta.url), 'utf8'));
 const PART = 'xc6slx16csg324-3';
@@ -21,8 +20,8 @@ const PART = 'xc6slx16csg324-3';
 async function implement(text) {
   const nl = await s6Netlist([{ path: 'top.v', lang: 'verilog', text }], 'top');
   const d = s6Phys(nl);
-  const { device, sites } = s6Device(PART);
-  const r = placeS6(d.phys, sites, { nl, seed: 1 });
+  const { device } = s6Device(PART);
+  const r = await s6PlaceNextpnr(d, PART);
   return { d, text: writeXdl(placedXdlS6(nl, d.packed, d.phys, r, { part: PART, device, name: 'top' })) };
 }
 
