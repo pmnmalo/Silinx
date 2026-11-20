@@ -1,7 +1,7 @@
 // A tool call's arguments checked against the tool's inputSchema (server/mcp.js, #3535), before the tool runs: the
-// missing and the unknown ones, then each value's type, enum, minimum and maximum, an array's items and size, an object's
-// properties (a JSON Schema's subset the tools use: type, enum, minimum, maximum, maxItems, items, properties, required,
-// additionalProperties, anyOf). One message for every tool: the argument named, with what it must be
+// missing and the unknown ones, then each value's type, enum, minimum and maximum, a string's length and pattern (#4752),
+// an array's items and size, an object's properties (a JSON Schema's subset the tools use: type, enum, minimum, maximum,
+// minLength, maxLength, pattern, maxItems, items, properties, required, additionalProperties, anyOf). One message for every tool: the argument named, with what it must be
 // ("language: one of vhdl, verilog", "rows[2].radix: a string").
 
 const A = { string: 'a string', number: 'a number', integer: 'an integer', boolean: 'true or false', array: 'an array', object: 'an object', null: 'null' };
@@ -29,6 +29,11 @@ export function schemaErrors(value, schema, where) {
   if (schema.enum && !schema.enum.includes(value)) return [`${where}: one of ${schema.enum.join(', ')}`];
   if (schema.minimum !== undefined && typeof value === 'number' && value < schema.minimum) return [`${where}: at least ${schema.minimum}`];
   if (schema.maximum !== undefined && typeof value === 'number' && value > schema.maximum) return [`${where}: at most ${schema.maximum}`];
+  if (typeof value === 'string') {
+    if (schema.minLength !== undefined && value.length < schema.minLength) return [`${where}: at least ${schema.minLength} character(s)`];
+    if (schema.maxLength !== undefined && value.length > schema.maxLength) return [`${where}: at most ${schema.maxLength} character(s)`];
+    if (schema.pattern !== undefined && !new RegExp(schema.pattern, 'u').test(value)) return [`${where}: matching ${schema.pattern}`];
+  }
   if (Array.isArray(value)) {
     if (schema.maxItems !== undefined && value.length > schema.maxItems) return [`${where}: at most ${schema.maxItems} item(s)`];
     return schema.items ? value.flatMap((v, i) => schemaErrors(v, schema.items, `${where}[${i}]`)) : [];

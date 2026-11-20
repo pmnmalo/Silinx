@@ -34,8 +34,8 @@ export async function checkDrawing(file, m, ctx = {}) {
 export const CHECK_TOOLS = [
   {
     name: 'check_drawing', title: 'Check a drawing',
-    description: 'Check an ASM chart (.asm.json: its Validate), a state diagram (.fsm.json) a Petri net (.pn.json: its token game too, the transitions that never fire and the deadlocks) or a circuit (.circ.json: its short circuits, unpowered ICs, floating inputs, parts and wires that join nothing) as its editor\'s Check does: its errors and warnings, each with the item it is about. A schematic is checked by check_syntax.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The drawing, a path in the project (src/ctl.pn.json).') }, required: ['project', 'file'], additionalProperties: false },
+    description: 'Check an ASM chart (.asm.json: its Validate), a state diagram (.fsm.json), a Petri net (.pn.json: also transitions that never fire, deadlocks) or a circuit (.circ.json: short circuits, unpowered ICs, floating inputs, unconnected parts and wires) as its editor\'s Check does: its errors and warnings and their items. A schematic is checked by check_syntax.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The drawing (e.g. src/ctl.pn.json).') }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
       const kind = KINDS.find(k => k.re.test(file));

@@ -11,11 +11,12 @@
 // toolchain 'ise') only for a trusted project, as the interface's (SECURITY.md); programming a board too (program_board,
 // server/mcp-board.js, #2674).
 // The ISE machine's address never appears in a result (the logs are redacted).
-import readline from 'node:readline';
 import { VERSION } from '../core/version.js';
 import { pathNamer, redactor, untrustedOf, labelled } from './mcp-util.js';
 import { inPartsScope } from './parts-scope.js';
 import { checkArgs } from './mcp-args.js';
+import { withAliases } from './mcp-aliases.js';
+import { PROTOCOL_VERSIONS, negotiate, sessionRefusal, readLines } from './mcp-protocol.js';
 import { checkDesignOnly } from './mcp-design-only.js';
 import { PROJECT_TOOLS } from './mcp-projects.js';
 import { HDL_TOOLS } from './mcp-hdl.js';
@@ -57,7 +58,7 @@ import { EDITOR_TOOLS } from './mcp-editor.js';
 
 export { OPEN_REPORTS } from './mcp-processes.js';
 
-export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+export { PROTOCOL_VERSIONS };
 const SERVER_INFO = { name: 'silinx', title: 'Silinx', version: VERSION };
 const INSTRUCTIONS = 'Silinx: FPGA design for teaching (the Spartan-3E\'s Basys2 and Nexys2 first; the other boards and devices: list_devices), design and simulation projects with no FPGA (new_project kind design), digital circuits on a breadboard. Projects live in the Silinx workspace: '
   + 'list_projects, new_project_from_example, or new_project (empty, or with its top document: top_source_type, as New Project\'s Top-Level Source Type) then new_source (clock_manager, block_memory, test_bench_wizard, constraints_wizard) / write_file and set_top; then read_file / write_file, find_in_project, open_in_editor (the file in the user\'s VS Code), import_source (a file of the exchange folder copied in), check_syntax, check_constraints, simulate (the project\'s test bench; its wave configurations: save_wave_config / load_wave_config), verify (a module\'s equivalence with a reference module, or its own assertions proved; the counterexample as a test bench), '
@@ -85,16 +86,20 @@ export async function handle(msg, state = {}, { signal, notify } = {}) {
   if (isNotification) return null;   // notifications/initialized, notifications/cancelled…: nothing to answer
   switch (msg.method) {
     case 'initialize': {
-      const asked = msg.params?.protocolVersion;
+      const version = negotiate(msg.params?.protocolVersion);
       state.initialized = true;
-      return reply({ protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0], capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO, instructions: INSTRUCTIONS });
+      state.protocolVersion = version;
+      return reply({ protocolVersion: version, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO, instructions: INSTRUCTIONS });
     }
     case 'ping': return reply({});
     case 'tools/list': return reply({ tools: TOOLS.map(({ run, ...t }) => t) });
     case 'tools/call': {
       const tool = TOOLS.find(t => t.name === msg.params?.name);
       if (!tool) return fail(-32602, `unknown tool '${msg.params?.name}'`);
-      const args = msg.params?.arguments || {};
+      // (a renamed argument's old name, deprecated: the new one's value, said in the result, #4752)
+      const aliased = withAliases(tool, msg.params?.arguments || {});
+      if (aliased.error) return reply({ content: [{ type: 'text', text: aliased.error }], isError: true });
+      const { args } = aliased;
       // (every argument checked against the tool's schema first, #3535: no tool runs on a wrong value)
       const wrong = checkArgs(tool, args);
       if (wrong) return reply({ content: [{ type: 'text', text: wrong }], isError: true });
@@ -105,7 +110,7 @@ export async function handle(msg, state = {}, { signal, notify } = {}) {
         await checkDesignOnly(tool.name, args);
         // (its own project parts, #4294: another call's do not reach it)
         const r = await inPartsScope(() => tool.run(args, { signal, progress: progressOf(msg, notify, name) }));
-        r.text = name(r.text);
+        r.text = name([...aliased.warnings, r.text].join('\n'));
         r.data = name(r.data);
         // (text from outside, #3363: labelled, in the text and in the structured content; every tool that takes a
         // project by default, #4738)
@@ -179,15 +184,17 @@ export function lanes() {
 export function serveMcp({ input = process.stdin, output = process.stdout } = {}) {
   const state = {};
   const send = m => output.write(`${JSON.stringify(m)}\n`);
-  const rl = readline.createInterface({ input, crlfDelay: Infinity });
   const order = lanes();
   // the requests waiting or running, by id: a cancellation aborts its request at once, which is then not answered (#3408)
   const running = new Map();
-  rl.on('line', line => {
+  const onLine = line => {
     if (!line.trim()) return;
     let msg;
     try { msg = JSON.parse(line); } catch { send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'parse error' } }); return; }
     if (msg?.method === 'notifications/cancelled' && msg.id === undefined) { running.get(msg.params?.requestId)?.abort(); return; }
+    // (the session's rules, #4752: initialize first, a batch only in the version that has them)
+    const refused = sessionRefusal(msg, state);
+    if (refused) { send({ jsonrpc: '2.0', id: Array.isArray(msg) ? null : msg.id, error: refused }); return; }
     const one = !Array.isArray(msg) && msg?.id !== undefined && msg.id !== null ? new AbortController() : null;
     if (one) running.set(msg.id, one);
     // (in order by project, ping and the lists at once: laneOf, #4734)
@@ -200,7 +207,11 @@ export function serveMcp({ input = process.stdin, output = process.stdout } = {}
       for (const m of batch) { const r = await handle(m, state, { signal: one?.signal, notify: send }); if (r) out.push(r); }
       if (out.length && !one?.signal.aborted) send(Array.isArray(msg) ? out : out[0]);
     })).catch(e => process.stderr.write(`silinx mcp: ${e?.stack || e}\n`)).finally(() => { if (one && running.get(msg.id) === one) running.delete(msg.id); });
-  });
-  // (its shared projects end with it, #3181)
-  return new Promise(resolve => rl.on('close', () => order.idle().then(endCollab).then(resolve)));
+  };
+  // (one message a line, none read whole past MAX_LINE, #4752; its shared projects end with it, #3181)
+  return new Promise(resolve => readLines(input, {
+    onLine,
+    onTooLong: () => send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'invalid request: the message is too large' } }),
+    onEnd: () => order.idle().then(endCollab).then(resolve),
+  }));
 }

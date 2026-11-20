@@ -26,7 +26,7 @@ const checked = async (r, deps) => checkRelay({ address: r.address, key: r.key, 
 export function relayTool(deps = {}) {
   return {
     name: 'live_relay', title: 'Cloudflare relay of live sharing',
-    description: 'The Cloudflare relay of one\'s own that live sharing goes through, as the interface\'s Collaboration tab ▸ Cloudflare Relay box: status (the relay set, never its key; the Deploy to Cloudflare button\'s address), new_key (a strong random key for the user to give Cloudflare as RELAY_KEY when deploying: packages/silinx-relay-cloudflare; deploying it is the user\'s), set (address: its https://….workers.dev address, key: its RELAY_KEY; checked first: it answers as a relay of Silinx\'s shared projects and its key opens a meeting point; kept in config.json), check (the relay set, checked again), forget. share_project shares through it with relay: true, and follow_project follows its links.',
+    description: 'The Cloudflare relay of one\'s own for live sharing, as the Collaboration tab\'s Cloudflare Relay box: status (never its key), new_key (a random RELAY_KEY for the user to deploy with; deploying is the user\'s), set (address and key, checked first: a Silinx relay its key opens; kept in config.json), check, forget. share_project uses it with relay: true.',
     inputSchema: { type: 'object', properties: {
       action: { type: 'string', enum: ACTIONS, description: 'status (default), new_key, set, check or forget.' },
       address: STR('set: the relay\'s address, a Cloudflare Worker\'s (https://silinx-relay.<account>.workers.dev).'),

@@ -59,8 +59,8 @@ async function deviceChangeMessages(name, pj, next) {
 export const SETTINGS_TOOLS = [
   {
     name: 'list_devices', title: 'The devices and boards',
-    description: 'The boards (with their variants and devices) and the devices (part, packages, speed grades, by family) a project can target, as Design Properties and New Project offer them; family narrows the devices to one family (spartan3e, spartan6, ice40…).',
-    inputSchema: { type: 'object', properties: { family: STR('Only the devices of this family (its id, e.g. spartan3e).') }, additionalProperties: false },
+    description: 'The boards (variants, devices) and the devices (part, packages, speed grades, by family) a project can target, as Design Properties and New Project offer them.',
+    inputSchema: { type: 'object', properties: { family: STR('Only this family\'s devices (e.g. spartan3e).') }, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ family }) {
       const D = await devices();
@@ -81,25 +81,23 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_design_properties', title: 'Design Properties',
-    description: 'Change a project\'s target as Design Properties does: its board (its device then the board\'s; none: no board) or its device (part, package, speed), its synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the 7-series\': the Artix-7\'s and the Zynq-7000\'s default (the Zynq\'s programmable logic), their Silinx toolchain on trial; the Spartan-7\'s and the Kintex-7\'s only) and its Preferred Language (the drawings\' HDL made again in it); its Project Kind (kind: an FPGA project, or a design and simulation project) and its Top-Level Source Type (top_source_type). A new device is checked against the design first (the primitives its family lacks, the resources it has too few of: warnings). With update_constraints, a new board\'s pins are written into the constraints file for the top\'s ports, as Update Constraints does: its pin locations are replaced.',
+    description: 'Change a project\'s target as Design Properties does: its board (none: no board) or device (part, package, speed), synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the Artix-7\'s and Zynq-7000\'s default, their Silinx toolchain on trial, the Spartan-7\'s and Kintex-7\'s only), Preferred Language (the drawings\' HDL made again in it), Project Kind (kind) and Top-Level Source Type. A new device is checked against the design (missing primitives, too few resources: warnings). update_constraints writes a new board\'s pins for the top\'s ports into the constraints file, as Update Constraints does, replacing its pin locations.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, board: STR('The board (list_devices), or none for no board.'), variant: STR('The board\'s variant (list_devices; default: the board\'s default).'),
-      part: STR('The device (list_devices), e.g. xc3s500e; with no board.'), package: STR('The device\'s package, e.g. fg320.'), speed: STR('The speed grade, e.g. -4.'),
+      project: PROJECT, board: STR('The board (list_devices), or none for no board.'), variant: STR('The board\'s variant (default: the board\'s default).'),
+      part: STR('The device, e.g. xc3s500e; with no board.'), package: STR('The package, e.g. fg320.'), speed: STR('The speed grade, e.g. -4.'),
       synth_tool: { type: 'string', enum: SYNTH_TOOLS, description: 'The synthesis tool.' },
-      preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The Preferred Language: the drawings\' HDL (the drawings with no language of their own) made again in it.' },
+      preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The drawings\' HDL made again in it (those with no language of their own).' },
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
-      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type, as Design Properties\' (#4105): a setting of the project, saved, nothing made (hdl, sch, fsm, asm, tt: Boolean algebra, petri, circuit, c, cpp; a design and simulation project\'s a drawing\'s).' },
-      kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design makes it a design and simulation project (no FPGA: no board, no constraints, its HDL hidden), refused when it has HDL or C sources of its own; fpga makes a design and simulation project an FPGA project (with board, or a device; else no board, the default device).' },
-      design_only: { type: 'boolean', description: 'Deprecated (#4103): kind instead; true is kind design, false kind fpga.' },
+      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type: a setting of the project, saved, nothing made (tt: Boolean algebra; a design and simulation project\'s is a drawing).' },
+      kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design (no FPGA: no board, no constraints, its HDL hidden; refused with HDL or C sources of its own) or fpga (a design project made an FPGA project, with board or a device).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run(args) {
       const { project: name, board, variant, part, package: pkg, speed, synth_tool: synthTool, preferred_language: language, update_constraints: constraints = false } = args;
       let pj = await readProject(name);
-      // (the project's kind, #3780, #4103: kind, or design_only its deprecated alias; a design and simulation project made
-      // one; or made an FPGA project by kind fpga, a board or a device)
-      if (args.kind !== undefined && args.design_only !== undefined) throw toolError('give kind, not design_only too (design_only is kind\'s deprecated alias)');
-      const kind = args.kind ?? (args.design_only === true ? DESIGN_KIND : args.design_only === false ? 'fpga' : undefined);
+      // (the project's kind, #3780, #4103: kind (design_only, its deprecated name: server/mcp-aliases.js); a design and
+      // simulation project made one; or made an FPGA project by kind fpga, a board or a device)
+      const kind = args.kind;
       if (kind !== undefined && !['fpga', DESIGN_KIND].includes(kind)) throw toolError('kind: fpga or design');
       // (the Top-Level Source Type, #4105: checked against the kind the project will have; saved with the rest, or alone)
       const tst = args.top_source_type;
@@ -205,7 +203,7 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_process_properties', title: 'Process Properties',
-    description: 'Change a project\'s Process Properties: the Optimization (fast: one mapping and one placement, the quickest build; area: the smallest circuit; speed: the fastest circuit, several placements tried), and the FPGA start-up clock (jtag when programming over JTAG; cclk when booting from the PROM or flash; user); on a Spartan-6, its Map (s6_map: nextpnr, the default: nextpnr packs Yosys\'s netlist too; silinx, Silinx\'s own); on a 7-series, its Place & Route\'s seeds (xc7_seeds: 1, the default; 3: nextpnr\'s router2 with seeds 1, 2 and 3, the best Fmax kept, ties to the lowest seed). The Silinx toolchain places and routes with nextpnr.',
+    description: 'Change a project\'s Process Properties: the Optimization (fast: the quickest build; area: the smallest circuit; speed: the fastest, several placements tried), the FPGA start-up clock (jtag; cclk booting from the PROM or flash; user); a Spartan-6\'s Map (s6_map: nextpnr, the default, or silinx, Silinx\'s own); a 7-series\' Place & Route seeds (xc7_seeds: 1, the default; 3: nextpnr\'s router2 with seeds 1, 2 and 3, the best Fmax kept, ties to the lowest seed).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       optimization: { type: 'string', enum: OPTIMIZATIONS, description: 'The Optimization.' },
@@ -242,7 +240,7 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_source_properties', title: 'Source Properties',
-    description: 'Choose a drawing\'s language, as Source Properties does: vhdl or verilog (its own: it keeps it when the Preferred Language changes), or project (the project\'s Preferred Language, following it). Its HDL file is then made in that language, the one in the other language removed. A drawing (or its HDL file); HDL written by hand, or a drawing made from its HDL, has no choice.',
+    description: 'Choose a drawing\'s language, as Source Properties does: vhdl or verilog (its own, kept when the Preferred Language changes), or project (following the Preferred Language). Its HDL file is made again in it, the other removed. HDL written by hand, or a drawing made from its HDL, has no choice.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The drawing (e.g. src/traffic.fsm.json) or its HDL file.'), language: { type: 'string', enum: ['vhdl', 'verilog', 'project'], description: 'Its language, or project (the Preferred Language).' } }, required: ['project', 'path', 'language'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, path: rel, language }) {

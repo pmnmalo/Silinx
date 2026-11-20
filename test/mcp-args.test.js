@@ -63,7 +63,7 @@ test('schemaErrors: each keyword the tools use, the place of the wrong value nam
 });
 
 test('every tool\'s schema is of the kinds checked (an object, its keywords known), its required arguments among its properties', () => {
-  const KNOWN = new Set(['type', 'properties', 'required', 'additionalProperties', 'items', 'enum', 'minimum', 'maximum', 'maxItems', 'anyOf', 'description']);
+  const KNOWN = new Set(['type', 'properties', 'required', 'additionalProperties', 'items', 'enum', 'minimum', 'maximum', 'maxItems', 'anyOf', 'description', 'minLength', 'maxLength', 'pattern']);
   const walk = (s, where) => {
     for (const k of Object.keys(s)) assert.ok(KNOWN.has(k), `${where}: ${k}`);
     for (const [k, v] of Object.entries(s.properties || {})) walk(v, `${where}.${k}`);

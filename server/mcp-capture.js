@@ -65,11 +65,11 @@ const dataOf = (name, settings, r) => ({ project: name, capture: settings, probe
 export const CAPTURE_TOOLS = [
   {
     name: 'capture_settings', title: 'Logic Analyzer Settings',
-    description: 'Show, change or clear a project\'s logic analyzer capture (as ChipScope / Vivado\'s ILA): the signals of the design to watch on the board (probes: each signal\'s path below the top, e.g. count, u_ctl.state, g[1].q; vectors, integers, states, bits), the clock it samples on (a signal, or the board\'s oscillator for a design with no clock), the depth (samples, a power of 2 from 16 to 16384), the samples kept before the trigger (pre), and the trigger (conditions on the probes: = / != a value, rise / fall of a bit, change; combined by and / or; none: the first sample). Implement adds the capture core to the design (its sources unchanged) with a BSCAN, through which the PC reads it over the JTAG cable. Checked on the design\'s top: each probe\'s width, the block RAMs it takes against the device\'s (one kept for the design). No settings given: the current ones; clear: none.',
+    description: 'Show, change or clear a project\'s logic analyzer capture (as ChipScope / Vivado\'s ILA): probes (signals by path below the top: count, u_ctl.state), clock, depth, pre (samples before the trigger), trigger. Implement adds the capture core with a BSCAN (sources unchanged), read over the JTAG cable. Checked on the top: each probe\'s width, the block RAMs against the device\'s. No settings given: the current ones; clear: none.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       probes: { type: 'array', items: { type: 'string' }, description: 'The signals to watch, by their path below the top (count, u_ctl.state).' },
-      clock: { type: 'string', description: 'The clock the samples are taken on: a signal of one bit (e.g. clk), or board: the board\'s own oscillator (e.g. the Basys2\'s MCLK, 50 MHz), for a design with no clock (a combinational one); Implement then puts the capture\'s clock port on its pin.' },
+      clock: { type: 'string', description: 'The clock the samples are taken on: a 1-bit signal (clk), or board: the board\'s oscillator, for a design with no clock.' },
       depth: { type: 'integer', description: 'The samples of a capture: a power of 2 from 16 to 16384.' },
       pre: { type: 'integer', description: 'The samples kept before the trigger (0 to depth - 1; default 0).' },
       trigger: { type: 'object', properties: {
@@ -115,7 +115,7 @@ export const CAPTURE_TOOLS = [
   },
   {
     name: 'capture', title: 'Logic Analyzer Capture',
-    description: 'Capture the design\'s signals on the board with its logic analyzer: the board must be programmed with the design Implement built with its capture (capture_settings). Arms the capture over the JTAG cable (the Digilent Adept USB of the Basys2 / Nexys2, through adepttool), waits for its trigger (timeout_s), reads the samples and saves them in build/capture.json: each probe\'s values, oldest first, the trigger\'s sample at index pre. arm: false waits again for a capture already armed (after a timeout). Returns each probe\'s samples around the trigger, and all of them in its data.',
+    description: 'Capture the design\'s signals on the board with its logic analyzer, the board programmed with the design built with capture_settings: armed over the JTAG cable (Digilent Adept, adepttool), the trigger awaited, the samples saved in build/capture.json (the trigger at index pre). Returns each probe\'s samples around the trigger, all of them in data.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       arm: { type: 'boolean', description: 'Arm a new capture (default true); false: wait for the one armed.' },

@@ -51,7 +51,7 @@ function rowsOut(design, rows) {
 export const WCFG_TOOLS = [
   {
     name: 'save_wave_config', title: 'Save Wave Configuration',
-    description: 'Save a wave configuration of the simulation (ISim\'s .wcfg, as the simulator\'s ⋮ ▸ Save Wave Configuration): the signals shown, in order, with their radix, dividers and groups, and the markers; a file of the project, next to the test bench\'s source by default. load_wave_config reads it back.',
+    description: 'Save a wave configuration of the simulation (ISim\'s .wcfg, as the simulator\'s ⋮ ▸ Save Wave Configuration): the signals shown, in order, with their radix, dividers and groups, and the markers; a file of the project.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, top: STR('The simulation top (default: the project\'s test bench).'),
       file: STR('The file in the project (default: <the top\'s folder>/<top>.wcfg; .wcfg added when missing).'),
@@ -83,10 +83,10 @@ export const WCFG_TOOLS = [
   },
   {
     name: 'load_wave_config', title: 'Load Wave Configuration',
-    description: 'Load a wave configuration (.wcfg) of the project onto the simulation\'s design, as the simulator\'s ⋮ ▸ Load Wave Configuration: its rows (the signals by the names simulate takes, with their radix; dividers, groups) and markers; a signal the design has not is said and left out. Its signals can be given to simulate.',
+    description: 'Load a wave configuration (.wcfg) of the project onto the simulation\'s design, as the simulator\'s ⋮ ▸ Load Wave Configuration: its rows (signals by the names simulate takes, radix, dividers, groups) and markers; a signal the design has not is said and left out.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, top: STR('The simulation top (default: the project\'s test bench).'),
-      file: STR('The .wcfg file in the project (default: the top\'s own, <top>.wcfg, else the first one).'),
+      file: STR('The .wcfg file in the project (default: <top>.wcfg, else the first one).'),
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, top, file }) {

@@ -83,10 +83,10 @@ export async function folderEntries(dir, skip = () => false) {
 export const TRANSFER_TOOLS = [
   {
     name: 'export_project', title: 'Export a project (.zip)',
-    description: 'Write a project as a .zip into the exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names), as the File menu\'s Export Project (.zip)… does, kind being the software chosen in its window: xilinx (Xilinx ISE: its .xise, its sources, the schematics as ISE schematics, a C source as its HDL; no Silinx-only file) or silinx (Silinx: the whole project, silinx.json and every file, for Import Project…). No AMD Vivado nor Intel Quartus project yet. The file must not exist: an export never replaces one.',
+    description: 'Write a project as a .zip into the exchange folder (the user\'s Downloads, or SILINX_MCP_FOLDER), as the File menu\'s Export Project (.zip)… does, kind the software chosen in its window: xilinx (an ISE project: its .xise, its sources, the schematics as ISE\'s, a C source as its HDL) or silinx (the whole project, for Import Project…). The file must not exist: an export never replaces one.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, kind: { type: 'string', enum: Object.keys(KINDS), description: 'xilinx (default) or silinx (a design and simulation project: silinx alone, its default).' },
-      path: STR('The .zip to write, in the exchange folder: its name (e.g. traffic.zip), a path in it, or an absolute path inside it; a file that does not exist yet.'),
+      path: STR('The .zip to write, in the exchange folder: its name (traffic.zip), a path in it, or an absolute path inside it; it must not exist yet.'),
     }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ project: name, kind: given, path: to }) {
@@ -108,7 +108,7 @@ export const TRANSFER_TOOLS = [
   },
   {
     name: 'import_project', title: 'Import a project',
-    description: 'Make a new project in the workspace from a project in the exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names), as the File menu\'s Import Project… does, the software read from the files: a .zip (a Xilinx ISE project with its .xise, or a Silinx project exported with its silinx.json), an ISE project\'s .xise (its folder\'s files with it: a folder of its own, not the exchange folder\'s root) or a project folder (an ISE project\'s, with its .xise; a Silinx project\'s, with its silinx.json: imported as its .zip, its build folder left out). Its sources, constraints and other files are copied (not ISE\'s own outputs, nor hidden files); returns the files the project lists but were not found, and the import\'s warnings.',
+    description: 'Make a new project in the workspace from one in the exchange folder (the user\'s Downloads, or SILINX_MCP_FOLDER), as the File menu\'s Import Project… does, the software read from the files: a .zip (an ISE project with its .xise, or a Silinx one with its silinx.json), an ISE project\'s .xise (in a folder of its own) or a project folder (ISE\'s or Silinx\'s, its build folder left out). Its sources, constraints and other files are copied (not ISE\'s outputs nor hidden files); returns the files listed but not found, and the import\'s warnings.',
     inputSchema: { type: 'object', properties: {
       name: STR('The new project\'s name (letters, digits, - and _).'),
       from: STR('The .zip, the .xise or the project folder, in the exchange folder: its name, a path in it, or an absolute path inside it.'),
@@ -168,12 +168,12 @@ export const TRANSFER_TOOLS = [
   },
   {
     name: 'import_source', title: 'Import Source (Add Copy of Source)',
-    description: 'Copy files of the exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names) into a project, as Import Source / Add Copy of Source does (Import Test Bench: association sim): a VHDL or Verilog file to src/ (sim/ with association sim), a constraints file (.ucf, .pcf, .lpf, .cst, .ccf) to constraints/ (the project\'s constraints when its own is not in it), a memory file (.mem, .hex) or a drawing (.json, its HDL made) to src/ (sim/). Each file through the import gate (a file it refuses is not copied: a warning); a drawing named with a reserved word of VHDL or Verilog is refused; a file the project has already is replaced only with replace.',
+    description: 'Copy files of the exchange folder (the user\'s Downloads, or SILINX_MCP_FOLDER) into a project, as Import Source / Add Copy of Source does (Import Test Bench: association sim): HDL, memory files (.mem, .hex) and drawings (.json, HDL made) to src/ (sim/ with sim), a constraints file to constraints/ (the project\'s when it has none). Each through the import gate (one refused is not copied: a warning); a drawing named with a VHDL or Verilog reserved word is refused; an existing file is replaced only with replace.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
-      files: { type: 'array', items: { type: 'string' }, description: 'The files to copy (one or more), in the exchange folder: each its name, a path in it, or an absolute path inside it.' },
+      files: { type: 'array', items: { type: 'string' }, description: 'The files to copy, in the exchange folder: names, paths in it, or absolute paths inside it.' },
       association: { type: 'string', enum: ['design', 'impl', 'sim'], description: 'design (All: Implementation + Simulation, default), impl (Implementation only) or sim (Simulation only: Import Test Bench).' },
-      replace: { type: 'boolean', description: 'Replace a file the project has already (default: it is left as it is, a warning).' },
+      replace: { type: 'boolean', description: 'Replace a file the project has already (default: left as it is, a warning).' },
     }, required: ['project', 'files'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: name, files, association: role = 'design', replace = false }) {
