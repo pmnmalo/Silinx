@@ -129,6 +129,28 @@ test('set_process_properties: the Optimization, the start-up clock; no place and
   await fails('set_process_properties', { project: 'p1', pr_engine: 'silinx' }, 'unknown pr_engine');
 });
 
+// (#4828) a new project's Optimization: Fast (Speed, Normal), as its Process Properties and its .xise say; a project from an
+// example keeps the example's; one stored with none reads as Fast (made before the Optimization)
+test('#4828 new_project: the Optimization Fast; new_project_from_example the example\'s; a project with none stored Fast', async () => {
+  const n = await ok('new_project', { name: 'nf', board: 'basys2' });
+  assert.equal(n.text, "Empty project 'nf' made: basys2 (xc3s250ecp132-4). Write its sources with write_file, then set_top. It is untrusted, as every project an assistant makes: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.");
+  assert.deepEqual((await P.readProject('nf')).impl, { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' });
+  const c = await ok('set_process_properties', { project: 'nf', startup_clock: 'jtag' });
+  assert.equal(c.text, 'nf: Optimization fast, FPGA start-up clock jtag.');
+  const { exportXise } = await import('../core/xise.js');
+  const xise = exportXise(await P.readProject('nf'), { sources: {} });
+  assert.match(xise, /xil_pn:name="Optimization Goal" xil_pn:value="Speed"/);
+  assert.match(xise, /xil_pn:name="Optimization Effort" xil_pn:value="Normal"/);
+  // a project from an example: the example's setting; a stored one kept
+  await ok('new_project_from_example', { name: 'nx', example: 'blinky' });
+  assert.deepEqual((await P.readProject('nx')).impl, JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../examples/blinky/silinx.json'), 'utf8')).impl);
+  await P.updateProject('nx', p => ({ ...p, impl: { optMode: 'Area', optLevel: 2, startupClk: 'JtagClk' } }));
+  assert.equal((await ok('set_process_properties', { project: 'nx', startup_clock: 'jtag' })).text, 'nx: Optimization area, FPGA start-up clock jtag.');
+  // a project stored with none (made before the Optimization): Fast, as before
+  await P.updateProject('nx', p => ({ ...p, impl: {} }));
+  assert.equal((await ok('set_process_properties', { project: 'nx', startup_clock: 'jtag' })).text, 'nx: Optimization fast, FPGA start-up clock jtag.');
+});
+
 // (#3710) a board change: the top's generics CLK_HZ, BTN_LOW and SW_LOW the new board's (the clock example: on the
 // Mimas V2, 100 MHz and its active-low inputs), said in the text and in the data, as the dialog does; back to the
 // Basys2, its values again; a board with the same values (Nexys2: 50 MHz, active high), nothing written or said; the

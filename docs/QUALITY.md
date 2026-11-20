@@ -11,9 +11,9 @@ Measured 2026-11-08 (Silinx 15.22.1, ISE 14.7), with
 `test/designs-corpus/compare-ise.mjs`. Each design is built at each of Silinx's Optimizations (Process Properties
 of *Synthesize*), and by ISE at the same goal:
 
-- **Area** (the default of a new project: the smaller of the usual mapping's netlist and the mappings for speed, one placement), against ISE at XST's `-opt_mode Area -opt_level 2`;
+- **Area** (the smaller of the usual mapping's netlist and the mappings for speed, one placement), against ISE at XST's `-opt_mode Area -opt_level 2`;
 - **Speed** (the mappings for speed for every design and several placements, the faster circuit), against ISE at XST's `-opt_mode Speed -opt_level 2`, ISE's *Timing Performance*;
-- **Fast** (the usual mapping alone, one placement), against ISE at XST's `-opt_mode Speed -opt_level 1`, XST's default;
+- **Fast** (the default of a new project, #4828: the usual mapping alone, one placement), against ISE at XST's `-opt_mode Speed -opt_level 1`, XST's default;
 
 ISE's map and par are the same for every goal, its best chance: map packs the slices as tightly as it can
 (`-c 1`, as nextpnr packs them) and the clock constraint is tightened to 5 ns, so that its place

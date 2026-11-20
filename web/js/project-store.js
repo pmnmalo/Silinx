@@ -13,6 +13,7 @@ import { DEV_SITE } from './prefs.js';
 import { constraintsExtOf } from '../../packages/silinx-fpga/src/parts.js';
 import { topForBoard } from '../../core/board-generics.js';
 import { resolveBoard } from '../../core/devices.js';
+import { NEW_IMPL } from '../../core/project-defaults.js';
 import { clone } from '../../core/util.js';   // (a relative path: Node imports this module too, as api-local.js)
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../../core/project-name.js';
 import { renameProblem, renamedFile } from '../../core/project-rename.js';
@@ -64,7 +65,7 @@ export function projectJsonText(name, pj) {
 /** A new empty project's silinx.json (server/projects.js createProject). */
 export const emptyProjectJson = (name, { device, board } = {}) => ({
   name, version: 1, device: device || DEFAULT_DEVICE, board: board ?? null, top: '', simTop: '', files: [],
-  constraints: `constraints/top${constraintsExtOf(device)}`, stimuli: {}, impl: { optMode: 'Area', optLevel: 2, startupClk: 'JtagClk' },
+  constraints: `constraints/top${constraintsExtOf(device)}`, stimuli: {}, impl: { ...NEW_IMPL },
 });
 const under = (k, dir) => k === dir || k.startsWith(`${dir}/`);
 // the names in a project's folder ('' its root), from its files' paths: the paths spelled as the project spells its
@@ -109,7 +110,7 @@ export function normalizeProjectJson(saved, name) {
   const excluded = (Array.isArray(saved.excluded) ? saved.excluded : []).map(safePath).filter(Boolean);
   if (excluded.length) json.excluded = excluded;
   json.stimuli = plain(saved.stimuli) ? saved.stimuli : {};
-  // (a project read, made before the Optimization or saying none: Fast, Speed at Normal; a new one is Area, #2470)
+  // (a project read, made before the Optimization or saying none: Fast, Speed at Normal, #2470; a new one Fast too, #4828)
   json.impl = { ...base.impl, optMode: 'Speed', optLevel: 1, ...(plain(saved.impl) ? saved.impl : {}) };
   if (saved.preferredLanguage === 'vhdl' || saved.preferredLanguage === 'verilog') json.preferredLanguage = saved.preferredLanguage;
   if (plain(saved.sourceLanguage)) json.sourceLanguage = saved.sourceLanguage;
