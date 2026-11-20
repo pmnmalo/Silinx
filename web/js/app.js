@@ -27,6 +27,7 @@ import { log, logError, logInfo, logLine, logWarning, showConsolePage, setDiagno
 import { isOwnFailure } from './own-error.js';
 import { renderTeachingPage } from './teaching-page.js';
 import { renderCollabPage } from './collab-tab.js';
+import { persistBrowserStorage } from './storage-persist.js';
 import { openProject, closeProject, projectRequested, reloadProject, updateTitle, renderStartPage, updateStorageStatus, refreshBlackboxes } from './project.js';
 import { FLOW_UP_TO, boardUcf, checkUcfFile, regenerateUcf, runImpl, stepTracker, ucfDiagnostics } from './implement.js';
 import { adoptDrawnHdl, drawnHdlClashes, freshHdl, openAsm, openFsm, openPetri, openSch,
@@ -934,6 +935,7 @@ async function boot() {
     if (st.needsPermission) log(st.permissionPending ? `Waiting for the browser's permission to the workspace folder '${st.remembered}'…` : `The workspace folder '${st.remembered}' needs the browser's permission again: Start page > Reopen ${st.remembered}.`, st.permissionPending ? 'info' : 'warn');   // (late: web/js/storage-late.js, #4656)
     if (api.devSite) log(`Development edition (built from main, not a release): its projects are kept apart from the stable edition's, ${new URL('../', location).href} (a workspace folder on the disk can be opened by both).`, 'warn');
     updateStorageStatus();
+    persistBrowserStorage(st, log);   // (the browser's storage kept when the disk runs short, #4960: not waited for)
   }
   try { S.devices = await api.devices(); } catch (e) { log(`ERROR: cannot reach the Silinx server: ${e.message}`, 'err'); }
   // the start-up checks' warnings are in the Warnings tab until a project opens, as the lines written before
