@@ -62,7 +62,7 @@ uiTest('#405 FSM drawing: states, transitions, codes, selection, problems, the s
   assert.deepEqual(out.outs, ['z=1']);
   assert.equal(out.entry, 1);
   assert.deepEqual(out.edges, ['t1:fsm-edge', 't2:fsm-edge', 't3:fsm-edge sel', 't4:fsm-edge err', 't5:fsm-edge', 't6:fsm-edge']);
-  assert.deepEqual(out.labels, ['x', '/x', 'x', '/x', 'x', '/x']);   // (in the tests' notation, text only: #4417)
+  assert.deepEqual(out.labels, ['x', '!x', 'x', '!x', 'x', '!x']);   // (as typed, #4888)
   assert.equal(out.marker, 'url(#fsm7-arr-sel)');
   assert.equal(out.start, true);
   assert.deepEqual(out.loop, [true, true]);
@@ -126,7 +126,7 @@ uiTest('#3882 FSM drawing: a state\'s and a transition\'s outputs one per line, 
   assert.deepEqual([out.b.outs, out.b.ys, out.b.name, out.b.r, out.b.inside], [['y=1'], [17], -4, 34, true]);
   assert.deepEqual([out.c.outs, out.c.name, out.c.r, out.c.inside], [[], 5, 34, true]);
   assert.deepEqual(out.t1.lines, ['x /', 'y=0', 'z=1']);
-  assert.deepEqual(out.t2.lines, ['/x']);
+  assert.deepEqual(out.t2.lines, ['!x']);   // (as typed, #4888)
   assert.deepEqual(out.t3.lines, ['else /', 'z=1']);   // (its state's otherwise, no condition: else, #4489)
   assert.deepEqual(out.t4.lines, ['x /', 'y=1', 'z=1']);
   for (const k of ['t1', 't2', 't3', 't4']) assert.deepEqual([k, out[k].covered, out[k].apexOut], [k, true, true]);
