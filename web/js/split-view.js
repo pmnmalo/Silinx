@@ -187,7 +187,7 @@ function layout() {
   bar.classList.toggle('split-v', vertical);
   center.style.setProperty('--split', `${(ratio * 100).toFixed(2)}%`);
   // each side's tabs (not split: one row, as they were opened)
-  if (on && !groups) groups = { a: h('div', { class: 'tab-group', 'data-side': 'a' }), b: h('div', { class: 'tab-group', 'data-side': 'b' }) };
+  if (on && !groups) groups = { a: h('div', { class: 'tab-group', role: 'none', 'data-side': 'a' }), b: h('div', { class: 'tab-group', role: 'none', 'data-side': 'b' }) };
   if (on) for (const s of ['a', 'b']) if (groups[s].parentNode !== bar) bar.append(groups[s]);
   orderTabs(tabParent);   // (in S.docs's order, #2887)
   if (!on && groups) { groups.a.remove(); groups.b.remove(); groups = null; }

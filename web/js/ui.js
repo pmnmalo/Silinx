@@ -16,18 +16,33 @@ export function linkModel(m, file) {
 export const linkSnapshot = (s, file, norm = m => m) => JSON.stringify(norm(linkModel(JSON.parse(s), file)));
 
 // ------------------------------------------------------------------ dialogs
-let dialogZ = 1000;
+let dialogZ = 1000, dialogIds = 0;
 const dialogStack = [];   // open dialogs, innermost last: only it reacts to Enter / Escape
+// what Tab goes through in a dialog (#4761: kept in it, Shift+Tab too)
+const TABBABLE = 'button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+// the keys with Ctrl / Cmd a field in a dialog keeps; the others are the app's shortcuts, not for the document behind
+// a modal dialog (Ctrl+P printed it, #4761)
+const FIELD_KEYS = new Set(['a', 'c', 'v', 'x', 'z', 'y']);
+// A modal dialog (#4761): role dialog, aria-modal, named by its title; Tab and Shift+Tab kept inside it; the focus
+// back where it was when it closes; the app's shortcuts not reaching the document behind it.
 export function dialog({ title, body, buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }], width = 460, onOpen, className = '' }) {
   return new Promise(resolve => {
     const overlay = h('div', { class: 'dlg-overlay', style: { zIndex: ++dialogZ } });
     const content = typeof body === 'function' ? body() : body;
     // once only: a second click or key (a button pressed twice) must not close another dialog (#490)
     let closed = false;
-    const close = v => { if (closed) return; closed = true; overlay.remove(); document.removeEventListener('keydown', onKey, true); dialogStack.splice(dialogStack.indexOf(overlay), 1); resolve(v); };
+    const opener = remember(document.activeElement);
+    const close = v => {
+      if (closed) return;
+      closed = true; overlay.remove(); document.removeEventListener('keydown', onKey, true); dialogStack.splice(dialogStack.indexOf(overlay), 1);
+      // (the focus back where it was, unless something else took it meanwhile: another dialog)
+      if (opener && (!document.activeElement || document.activeElement === document.body)) focusBack(opener);
+      resolve(v);
+    };
     const btnRow = h('div', { class: 'dlg-buttons' });
-    const dlg = h('div', { class: `dlg ${className}`, style: { width: typeof width === 'number' ? `${width}px` : width } },
-      h('div', { class: 'dlg-title' }, h('span', {}, title), h('button', { class: 'dlg-x', onclick: () => close(null), title: 'Close' }, '✕')),
+    const titleId = `dlg-title-${++dialogIds}`;
+    const dlg = h('div', { class: `dlg ${className}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, style: { width: typeof width === 'number' ? `${width}px` : width } },
+      h('div', { class: 'dlg-title' }, h('span', { id: titleId }, title), h('button', { class: 'dlg-x', onclick: () => close(null), title: 'Close', 'aria-label': 'Close' }, '✕')),
       h('div', { class: 'dlg-body' }, content),
       btnRow,
     );
@@ -43,6 +58,12 @@ export function dialog({ title, body, buttons = [{ label: 'OK', value: true, pri
     const onKey = e => {
       if (dialogStack[dialogStack.length - 1] !== overlay) return;
       if (e.key === 'Escape') { e.stopPropagation(); close(null); }
+      if (e.key === 'Tab') {
+        const list = [...dlg.querySelectorAll(TABBABLE)].filter(x => x.getClientRects().length);
+        const at = list.indexOf(document.activeElement);
+        if (list.length && (at < 0 || (e.shiftKey ? at === 0 : at === list.length - 1))) { e.preventDefault(); list[e.shiftKey ? list.length - 1 : 0].focus(); }
+      }
+      if ((e.ctrlKey || e.metaKey) && String(e.key).length === 1 && !FIELD_KEYS.has(e.key.toLowerCase())) e.preventDefault();
       if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
         const p = buttons.find(b => b.primary);
         if (p && !p.el.disabled) { e.preventDefault(); p.el.click(); }
@@ -91,9 +112,58 @@ export async function promptDlg(title, label, value = '') {
 
 // ------------------------------------------------------------------ menus
 let openMenu = null;
-export function closeMenus() { if (openMenu) { openMenu.remove(); openMenu = null; } document.querySelectorAll('.menubar .item.open').forEach(e => e.classList.remove('open')); }
+// where the focus goes back when the menus close (#4761): what had it before the keyboard went into a menu (F10, Alt,
+// an arrow on a menu opened), so that a command acts on it (Edit ▸ Copy on the field, #677)
+let menuReturn = null;
+// an element the focus goes back to, or, when it was drawn again meanwhile (the Design tree, redrawn as a row is
+// selected), the first one of the same place that takes the focus
+const SAME_PLACE = '[tabindex="0"], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
+function focusBack(el) {
+  if (!el) return;
+  if (!el.isConnected) {
+    const host = el.focusHost && document.getElementById(el.focusHost);
+    el = host && (host.matches(SAME_PLACE) ? host : host.querySelector(SAME_PLACE));
+    if (!el) return;
+  }
+  el.focus({ preventScroll: true });
+}
+// (where the focus was: the element, and the id of the place it is in, for focusBack)
+const remember = el => { if (el && el !== document.body) el.focusHost = el.closest('[id]')?.id; return el; };
+export function closeMenus() {
+  if (openMenu) { openMenu.remove(); openMenu = null; }
+  document.querySelectorAll('.menubar .item.open').forEach(e => { e.classList.remove('open'); e.setAttribute('aria-expanded', 'false'); });
+  const back = menuReturn;
+  menuReturn = null;
+  if (back && (!document.activeElement || document.activeElement === document.body || document.activeElement.closest?.('.menu-popup, .menubar'))) focusBack(back);
+}
 addEventListener('mousedown', e => { if (!e.target.closest('.menu-popup') && !e.target.closest('.menubar')) closeMenus(); });
 addEventListener('blur', closeMenus);
+// a menu's entries the arrows go through, and moves between them (↑ ↓ Home End; wrapping)
+const menuRows = m => [...m.querySelectorAll(':scope > .mi:not(.disabled)')];
+function moveIn(m, to) {
+  const rows = menuRows(m);
+  if (!rows.length) return;
+  const at = rows.indexOf(document.activeElement);
+  rows[to === 'next' ? (at + 1) % rows.length : to === 'prev' ? (at - 1 + rows.length) % rows.length : to === 'last' ? rows.length - 1 : 0].focus();
+}
+// a menu open (a context menu, one of the menu bar's): ↓ / ↑ take the keyboard into it, Esc closes it
+addEventListener('keydown', e => {
+  if (!openMenu) return;
+  if (e.key === 'Escape') {
+    e.preventDefault(); e.stopPropagation();
+    // (a menu of the bar the keyboard took: back on its name in the bar; else back where the focus was)
+    const item = barReturn && document.querySelector('.menubar .item.open');
+    if (item) menuReturn = null;
+    closeMenus();
+    item?.focus();
+    return;
+  }
+  if (!openMenu.contains(document.activeElement) && !document.activeElement?.closest?.('.menubar') && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault(); e.stopPropagation();
+    menuReturn ||= remember(document.activeElement);
+    moveIn(openMenu, e.key === 'ArrowDown' ? 0 : 'last');
+  }
+}, true);
 
 // items: [{ label, action, shortcut, disabled, checked, icon }|'-'|{label, submenu:[...]}]
 // how a menu command runs (the app records the ones that change the project: Undo / Redo)
@@ -118,18 +188,20 @@ export function popupMenu(items, x, y) {
 }
 
 function buildMenu(items) {
-  const m = h('div', { class: 'menu-popup' });
+  const m = h('div', { class: 'menu-popup', role: 'menu' });
   // a menu pressed leaves the focus where it is, as the menu bar does (Edit ▸ Copy takes the selection of the
   // text field in focus, #677)
   m.addEventListener('mousedown', e => e.preventDefault());
   for (const it of items) {
-    if (it === '-') { m.append(h('div', { class: 'sep' })); continue; }
+    if (it === '-') { m.append(h('div', { class: 'sep', role: 'separator' })); continue; }
     if (!it) continue;
     const disabled = typeof it.disabled === 'function' ? it.disabled() : it.disabled;
-    const row = h('div', { class: `mi${disabled ? ' disabled' : ''}` },
-      h('span', { class: 'chk' }, it.checked ? '✓' : (it.icon || '')),
+    // (its role, #4761: a checkable item's, its ✓ said; a submenu's)
+    const row = h('div', { class: `mi${disabled ? ' disabled' : ''}`, role: 'checked' in it ? 'menuitemcheckbox' : 'menuitem', tabindex: '-1',
+      ...('checked' in it && { 'aria-checked': String(!!it.checked) }), ...(disabled && { 'aria-disabled': 'true' }), ...(it.submenu && { 'aria-haspopup': 'menu', 'aria-expanded': 'false' }) },
+      h('span', { class: 'chk', 'aria-hidden': 'true' }, it.checked ? '✓' : (it.icon || '')),
       h('span', { class: 'lbl', ...(it.raw && { 'data-no-i18n': '' }) }, it.label),   // raw: a name or a title, not translated
-      h('span', { class: 'sc' }, it.submenu ? '▸' : (it.shortcut || '')),
+      h('span', { class: 'sc', ...(it.submenu && { 'aria-hidden': 'true' }) }, it.submenu ? '▸' : (it.shortcut || '')),
     );
     if (typeof it.icon === 'object' && it.icon instanceof Node) { row.firstChild.textContent = ''; row.firstChild.append(it.icon); }
     if (it.title) row.title = it.title;   // e.g. why the item is disabled
@@ -137,6 +209,8 @@ function buildMenu(items) {
       let sub = null;
       row.addEventListener('mouseenter', () => {
         m.querySelectorAll(':scope > .menu-popup').forEach(s => s.remove());
+        m.querySelectorAll(':scope > .mi[aria-expanded]').forEach(r => r.setAttribute('aria-expanded', 'false'));
+        row.setAttribute('aria-expanded', 'true');
         sub = buildMenu(it.submenu);
         sub.classList.add('sub');
         m.append(sub);
@@ -157,6 +231,19 @@ function buildMenu(items) {
     } else {
       row.addEventListener('mouseenter', () => m.querySelectorAll(':scope > .menu-popup').forEach(s => s.remove()));
     }
+    // (the keyboard on a menu's entry, #4761: → opens its submenu on its first entry, ← goes back to the menu above,
+    // Enter or Space runs it)
+    row.addEventListener('keydown', e => {
+      if (e.target !== row) return;
+      const k = e.key;
+      if (it.submenu && (k === 'ArrowRight' || k === 'Enter' || k === ' ')) { row.dispatchEvent(new Event('mouseenter')); if (sub) moveIn(sub, 0); }
+      else if ((k === 'Enter' || k === ' ') && !disabled) row.click();
+      else if (k === 'ArrowLeft' && m.classList.contains('sub')) { const up = m.parentElement.querySelector(':scope > .mi[aria-expanded="true"]'); m.remove(); up?.setAttribute('aria-expanded', 'false'); up?.focus(); }
+      else if (k === 'ArrowLeft' || k === 'ArrowRight') { const bar = document.querySelector('.menubar .item.open'); if (!bar) return; e.preventDefault(); e.stopPropagation(); stepBar(bar, k === 'ArrowRight' ? 1 : -1, true); return; }
+      else if ({ ArrowDown: 1, ArrowUp: 1, Home: 1, End: 1 }[k]) moveIn(m, { ArrowDown: 'next', ArrowUp: 'prev', Home: 0, End: 'last' }[k]);
+      else return;
+      e.preventDefault(); e.stopPropagation();
+    });
     if (!disabled && it.action) row.addEventListener('click', e => {
       e.stopPropagation(); closeMenus();
       Promise.resolve().then(() => runAction(it.label, it.action)).catch(err => { console.error(err); message(`${it.label}: ${err.message || err}`, 'error'); });
@@ -282,14 +369,28 @@ export function twoFingerView(el, { cancel, pan, zoom }) {
   return el;
 }
 
+// The menu bar (#4761): role menubar, its menus' names menuitems; the keyboard: F10 or Alt alone takes it (the focus
+// back where it was when it leaves: Esc), ← → move between its menus, Enter, Space or ↓ opens one on its first entry,
+// ← → in an open menu go to the menu beside it.
+const barItems = item => [...item.parentElement.querySelectorAll(':scope > .item')].filter(x => x.getClientRects().length);
+function stepBar(item, d, open) {
+  const list = barItems(item), next = list[(list.indexOf(item) + d + list.length) % list.length];
+  if (open) { next.dispatchEvent(new CustomEvent('menu-open')); return; }
+  item.tabIndex = -1; next.tabIndex = 0; next.focus();
+}
 export function menuBar(el, menus) {
   el.classList.add('menubar');
+  el.setAttribute('role', 'menubar');
   el.innerHTML = '';
   for (const menu of menus) {
-    const item = h('div', { class: 'item', 'data-menu': menu.label }, menu.label);   // (its name, whatever the language: #1217)
+    const item = h('div', { class: 'item', 'data-menu': menu.label, role: 'menuitem', 'aria-haspopup': 'menu', 'aria-expanded': 'false', tabindex: '-1' }, menu.label);   // (its name, whatever the language: #1217)
     const open = () => {
+      const back = menuReturn;
+      menuReturn = null;
       closeMenus();
+      menuReturn = back;
       item.classList.add('open');
+      item.setAttribute('aria-expanded', 'true');
       const r = item.getBoundingClientRect();
       openMenu = buildMenu(typeof menu.items === 'function' ? menu.items() : menu.items);
       openMenu.style.left = `${r.left}px`; openMenu.style.top = `${r.bottom}px`;
@@ -300,9 +401,44 @@ export function menuBar(el, menus) {
     };
     item.addEventListener('mousedown', e => { e.preventDefault(); if (item.classList.contains('open')) closeMenus(); else open(); });
     item.addEventListener('mouseenter', () => { if (openMenu && !item.classList.contains('open')) open(); });
+    // (from the keyboard: opened on its first entry)
+    item.addEventListener('menu-open', () => { open(); menuReturn = barReturn || menuReturn; item.tabIndex = 0; moveIn(openMenu, 0); });
+    item.addEventListener('keydown', e => {
+      const k = e.key;
+      if (k === 'ArrowRight' || k === 'ArrowLeft') stepBar(item, k === 'ArrowRight' ? 1 : -1, false);
+      else if (k === 'Enter' || k === ' ' || k === 'ArrowDown') item.dispatchEvent(new CustomEvent('menu-open'));
+      else if (k === 'Escape' || k === 'Tab') { if (k === 'Escape') e.preventDefault(); leaveBar(item); return; }
+      else return;
+      e.preventDefault(); e.stopPropagation();
+    });
     el.append(item);
   }
 }
+// the keyboard leaves the menu bar: the focus back where it was
+function leaveBar(item) {
+  const back = barReturn;
+  barReturn = null;
+  item.tabIndex = -1;
+  if (back) focusBack(back); else item.blur();
+}
+let barReturn = null, altAlone = false;
+function enterBar() {
+  const bar = document.querySelector('.menubar');
+  const first = bar && barItems(bar.firstElementChild || bar)[0];
+  if (!first || document.querySelector('.dlg-overlay')) return false;
+  if (!document.activeElement?.closest?.('.menubar, .menu-popup')) barReturn = remember(document.activeElement);
+  closeMenus();
+  first.tabIndex = 0; first.focus();
+  return true;
+}
+addEventListener('keydown', e => {
+  altAlone = e.key === 'Alt' && !e.ctrlKey && !e.metaKey && !e.shiftKey;
+  if (e.key === 'F10' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && enterBar()) e.preventDefault();
+}, true);
+addEventListener('keyup', e => { if (e.key === 'Alt' && altAlone) { altAlone = false; if (enterBar()) e.preventDefault(); } }, true);
+addEventListener('pointerdown', () => { altAlone = false; }, true);
+// (a command run from a menu the keyboard opened from the bar: the focus back where it was before the bar)
+addEventListener('focusin', e => { if (barReturn && !e.target.closest?.('.menubar, .menu-popup') && e.target !== barReturn) barReturn = null; });
 
 // ------------------------------------------------------------------ splitters
 // Drag handle between two flex children; `target` is the element whose size changes. `size`: its size when a drag
@@ -344,13 +480,19 @@ export function splitter(handle, target, { dir = 'h', min = 80, max = 2000, inve
 }
 
 // action (optional): { label, run } — a button in the toast (e.g. Undo)
+// (#4761: said by a screen reader, an error at once; kept while the pointer is over it or its button has the focus, then
+// its time again)
 export function toast(msg, kind = 'info', ms = 3000, action = null) {
   let host = document.querySelector('.toasts');
-  if (!host) { host = h('div', { class: 'toasts' }); document.body.append(host); }
-  const t = h('div', { class: `toast toast-${kind}` }, msg);
+  if (!host) { host = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' }); document.body.append(host); }
+  const t = h('div', { class: `toast toast-${kind}`, ...(kind === 'error' && { role: 'alert' }) }, msg);
   if (action) t.append(' ', h('button', { class: 'btn toast-action', onclick: () => { t.remove(); action.run(); } }, action.label));
   host.append(t);
-  setTimeout(() => t.remove(), ms);
+  let timer = setTimeout(() => t.remove(), ms);
+  const hold = () => { clearTimeout(timer); timer = 0; };
+  const resume = () => { if (!timer && !t.matches(':hover') && !t.contains(document.activeElement)) timer = setTimeout(() => t.remove(), ms); };
+  t.addEventListener('pointerenter', hold); t.addEventListener('focusin', hold);
+  t.addEventListener('pointerleave', resume); t.addEventListener('focusout', () => setTimeout(resume));
 }
 
 export function downloadText(filename, text, type = 'text/plain') {

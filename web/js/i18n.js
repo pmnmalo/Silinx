@@ -423,7 +423,7 @@ const PT = {
   'Implement': 'Implementar', 'Emulate': 'Emular', 'Design flow': 'Fluxo de projeto',
   'Check Syntax of the selected module': 'Verificar a sintaxe do módulo selecionado',
   'Simulate Behavioral Model of the selected module': 'Simular o modelo comportamental do módulo selecionado',
-  'No project open': 'Nenhum projeto aberto', 'Main menu': 'Menu principal', 'Panels': 'Painéis',
+  'No project open': 'Nenhum projeto aberto', 'Main menu': 'Menu principal', 'Documents': 'Documentos', 'Panels': 'Painéis',
   'Search commands and files (Ctrl+K)': 'Procurar comandos e ficheiros (Ctrl+K)', 'Search commands and files…': 'Procurar comandos e ficheiros…',
   'Search commands and files': 'Procurar comandos e ficheiros',
   'Open a source from the Design panel, or search for any command or file.': 'Abra uma fonte no painel Projeto, ou procure qualquer comando ou ficheiro.',

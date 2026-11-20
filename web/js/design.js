@@ -52,7 +52,7 @@ export function renderHierarchy() {
   }
   const pj = S.project;
   const one = oneTree(), sim = S.view === 'sim' && !one;
-  const tree = h('ul', { class: 'tree', tabindex: '0', 'aria-label': 'Design hierarchy', onkeydown: treeKeys });
+  const tree = h('ul', { class: 'tree', role: 'tree', tabindex: '0', 'aria-label': 'Design hierarchy', onkeydown: treeKeys });
   const dev = `${pj.device.part}${pj.device.speed}-${pj.device.package}`;
   const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(S.git ? S.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
   tree.append(root.li);
@@ -240,10 +240,12 @@ function viewOfModule(name, file) {
 // that view, a right-click shows its commands; the base's is marked. Tab reaches the selected row's badges.
 // mark: git's (#3195, web/js/git.js gitMark): M changed, N new, C in conflict since the last commit, at the row's end
 export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onContext, cls = '', key, badges = [], module = null, mark = null }) {
-  const li = h('li');
+  // (a tree's item, #4761: its row the selection, said by the tree's aria-activedescendant; expanded or not, when it has
+  // items under it)
+  const li = h('li', { role: 'treeitem', id: `tree-item-${++treeIds}`, 'aria-selected': 'false' });
   // what the user collapsed / expanded is remembered across redraws
   if (key && S.treeOpen.has(key)) open = S.treeOpen.get(key);
-  const tw = h('span', { class: 'twisty' }, open ? '▾' : '▸');
+  const tw = h('span', { class: 'twisty', 'aria-hidden': 'true' }, open ? '▾' : '▸');
   const views = badges.map(b => {
     const el = h('button', { type: 'button', class: `badge${b.base ? ' base' : ''}${b.warn ? ' warn' : ''}`, tabindex: '-1', title: b.title }, b.text);
     el.addEventListener('click', e => { e.stopPropagation(); selectRow(row, key, onSelect); b.open(); });
@@ -256,9 +258,12 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
   const row = h('div', { class: `row ${cls}`, 'data-key': key, ...(module ? { 'data-module': module } : {}) }, tw, icon(ico), h('span', { class: 'lbl' }, label),
     views.length ? h('span', { class: 'badges' }, views) : null, meta ? h('span', { class: 'meta' }, meta) : null,
     mark ? h('span', { class: `git-mark git-${mark.state}`, title: mark.title }, mark.text) : null);
-  const ul = h('ul');
+  const ul = h('ul', { role: 'group' });
   if (!open) ul.hidden = true;
   li.append(row, ul);
+  // (expanded or not: once it has items under it)
+  new MutationObserver(() => expanded()).observe(ul, { childList: true, attributes: true, attributeFilter: ['hidden'] });
+  const expanded = () => { if (ul.childElementCount) li.setAttribute('aria-expanded', String(!ul.hidden)); else li.removeAttribute('aria-expanded'); };
   tw.addEventListener('click', e => {
     e.stopPropagation();
     ul.hidden = !ul.hidden;
@@ -272,6 +277,7 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
   longPressMenu(row);   // (its badges' menus too: a touch's long press, #263)
   return { li, ul, row, setLeaf() { tw.textContent = ''; } };
 }
+let treeIds = 0;
 function selectRow(row, key, onSelect) {
   markSelRow(row);
   if (row.closest('#hier')) S.selKey = key;
@@ -279,9 +285,11 @@ function selectRow(row, key, onSelect) {
 }
 function markSelRow(row) {
   const tree = row.closest('.tree');
-  tree?.querySelectorAll('.row.sel').forEach(r => r.classList.remove('sel'));
+  tree?.querySelectorAll('.row.sel').forEach(r => { r.classList.remove('sel'); r.parentElement.setAttribute('aria-selected', 'false'); });
   tree?.querySelectorAll('.badge[tabindex="0"]').forEach(b => b.setAttribute('tabindex', '-1'));
   row.classList.add('sel');
+  row.parentElement.setAttribute('aria-selected', 'true');
+  if (tree && row.parentElement.id) tree.setAttribute('aria-activedescendant', row.parentElement.id);
   row.querySelectorAll('.badge').forEach(b => b.setAttribute('tabindex', '0'));
 }
 
