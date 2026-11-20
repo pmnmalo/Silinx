@@ -81,6 +81,15 @@ export function mountFsmPointer(ctx) {
       capture(ev);
       return;
     }
+    // the reset's arrow: dragged around the initial state (#4903)
+    if (ev.target.closest('.fsm-entry-hit')) {
+      const s = stateById(M().initial);
+      setSel({ type: 'state', id: s.id }); render(); renderSide();
+      if (locked()) return;
+      setDrag({ kind: 'entry', sel0, s, angle: M().entryAngle, moved: false });
+      capture(ev);
+      return;
+    }
     const sEl = ev.target.closest('[data-state]');
     if (sEl) {
       const s = stateById(sEl.dataset.state);
@@ -112,6 +121,11 @@ export function mountFsmPointer(ctx) {
       view().tx = drag().tx + ev.clientX - drag().x; view().ty = drag().ty + ev.clientY - drag().y; applyView();
     } else if (drag().kind === 'move') {
       drag().s.x = snapV(w.x - drag().dx); drag().s.y = snapV(w.y - drag().dy); drag().moved = true; render();
+    } else if (drag().kind === 'entry') {
+      const s = drag().s;
+      if (Math.hypot(w.x - s.x, w.y - s.y) < 4) return;
+      const a = snapAngle(Math.atan2(w.y - s.y, w.x - s.x) * 180 / Math.PI);
+      if (a !== M().entryAngle) { M().entryAngle = a; drag().moved = true; render(); }
     } else if (drag().kind === 'bend') {
       const t = drag().t, g = geom(t);
       if (!g) return;
@@ -150,6 +164,7 @@ export function mountFsmPointer(ctx) {
     if (!d) return;
     if (d.kind === 'move' && d.moved) commit('move');
     else if (d.kind === 'bend' && d.moved) commit('bend');
+    else if (d.kind === 'entry' && d.moved) commit('entry');
     else if (d.dbl && d.kind === 'move') editAt(ev, () => editState(d.s));
     else if (d.dbl && d.kind === 'bend') editAt(ev, () => editLabel(d.t));
     else if (d.dbl && d.kind === 'connect' && Math.hypot(ev.clientX - d.x, ev.clientY - d.y) < 4) {
@@ -175,6 +190,7 @@ export function mountFsmPointer(ctx) {
     for (const el of gStates.querySelectorAll('.fsm-state.drop')) el.classList.remove('drop');
     if (d.kind === 'move') Object.assign(d.s, { x: d.x, y: d.y });
     else if (d.kind === 'bend') Object.assign(d.t, { bend: d.bend, angle: d.angle });
+    else if (d.kind === 'entry') { if (d.angle == null) delete M().entryAngle; else M().entryAngle = d.angle; }
     setSel(d.sel0);
     render(); renderSide();
   }

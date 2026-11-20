@@ -19,6 +19,8 @@
 .fsm-editor .fsm-circle { fill: var(--fsm-fill, var(--fsm-state-fill)); stroke: var(--fsm-stroke, var(--asm-fg)); stroke-width: var(--fsm-sw, 1.6); }
 .fsm-editor .fsm-circle-in { fill: none; stroke: var(--fsm-stroke, var(--asm-fg)); stroke-width: 1.3; pointer-events: none; }
 .fsm-editor .fsm-entry { fill: none; stroke: var(--asm-fg); stroke-width: 1.6; pointer-events: none; }
+/* the reset's arrow, dragged around the initial state by a wider unseen stroke (#4903) */
+.fsm-editor .fsm-entry-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; cursor: grab; }
 .fsm-editor .fsm-name { fill: var(--asm-fg); font: 700 13px system-ui, -apple-system, "Segoe UI", sans-serif; pointer-events: none; }
 .fsm-editor .fsm-outs { fill: var(--asm-fg); font: 12px var(--asm-mono); pointer-events: none; }
 .fsm-editor .fsm-divider { stroke: color-mix(in srgb, var(--asm-fg) 55%, transparent); stroke-width: 1; pointer-events: none; }

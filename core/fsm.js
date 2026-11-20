@@ -19,6 +19,8 @@
 //     transitions: [{ id, from, to, cond: 'x && !y', outputs: { z: '1' },  (Mealy outputs)
 //                     bend?: px, angle?: deg, look?: { stroke, dash, … } }], (drawing of the arc, its look)
 //     initial: '<state id>',
+//     entryAngle?: deg,                          (where the reset's arrow comes into the initial state from: 180, the
+//                                                 left, when none; dragged around it, #4903)
 //     description?, generatedFile?, base?
 //   }
 //
@@ -43,6 +45,7 @@ import { condAsText } from './cond-notation.js';
 import { normalizeStyle, styleProblems } from './fsm-style.js';
 import { atWidth, bitsText, outputConst, outputFits } from './fsm-value.js';
 import { USER_ENCODING, cleanCode, userCodeProblems, userCodes } from './fsm-codes.js';
+import { snapAngle } from './fsm-stroke.js';
 export { clone };   // (core/util.js's)
 export { generateFsm } from './fsm-hdl.js';
 export { asmDontCares, asmToFsm, fsmToAsm } from './fsm-asm.js';
@@ -193,6 +196,7 @@ export function normalizeFsm(m) {
     initial: src.initial == null ? '' : String(src.initial),
   };
   if (!states.some((s) => s.id === out.initial)) out.initial = states[0]?.id ?? '';
+  if (src.entryAngle != null && src.entryAngle !== '' && Number.isFinite(Number(src.entryAngle))) out.entryAngle = snapAngle(Number(src.entryAngle));
   if (src.description) out.description = String(src.description);
   if (src.generatedFile) out.generatedFile = String(src.generatedFile);
   if (src.base === 'hdl') out.base = 'hdl';
@@ -844,6 +848,7 @@ export function autoLayout(model) {
     order.forEach((id, i) => { const s = stateById(m, id); s.x = 120 + (i % cols) * 190; s.y = 120 + Math.floor(i / cols) * 170; });
   }
   for (const t of m.transitions) { delete t.bend; delete t.angle; }
+  delete m.entryAngle;
   return m;
 }
 
