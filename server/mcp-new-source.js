@@ -11,6 +11,7 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { NAME_RE, FILE_RE, sourceBase } from '../core/ident.js';
 import { CIRCUIT_TEMPLATES } from '../core/circuit-templates.js';
+import { FSM_TEMPLATES } from '../core/chart-templates.js';
 
 const TYPES = {
   module: { label: 'Module (HDL)', ext: null, dir: 'src' },
@@ -46,7 +47,9 @@ async function sourceText(type, { file, lang, pj, entity, arch, ports, uut, temp
     case 'cpp': return (await import('../core/c-templates.js')).cppTemplate(n);
     case 'schematic': return JSON.stringify((await import('../core/schdoc.js')).newDoc(n, lang), null, 1);
     case 'asm': return JSON.stringify((await import('../core/asm.js')).normalizeModel({ name: n, lang }), null, 2);
-    case 'fsm': return JSON.stringify((await import('../core/fsm.js')).normalizeFsm({ name: n, lang }), null, 2);
+    // (the FSM Wizard's template, #4902: a counter, a sequence detector of bits or of a regular expression…)
+    case 'fsm': return JSON.stringify(template ? (await import('../core/chart-wizard.js')).fsmFromSpec({ name: n, lang, ...(await import('../core/chart-templates.js')).fsmTemplate(template.id, template.params) })
+      : (await import('../core/fsm.js')).normalizeFsm({ name: n, lang }), null, 2);
     case 'petri': return JSON.stringify((await import('../core/petri.js')).normalizePetri({ name: n, lang }), null, 2);
     // (the Digital Electronic Circuit Wizard's assembly, #4061; none: a half breadboard and its supply, as New Source's)
     case 'circuit': return JSON.stringify(template ? (await import('../core/circuit-templates.js')).circuitTemplate(template.id, template.params, { name: n, lang })
@@ -74,7 +77,7 @@ function portsOf(list) {
 export const NEW_SOURCE_TOOLS = [
   {
     name: 'new_source', title: 'New Source',
-    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (a test bench of a module of the project), package (a VHDL package), constraints (the device\'s format: UCF, the iCE40\'s PCF, the ECP5\'s LPF, the Gowin\'s CST, the 7-series\' XDC), mem, c or cpp (a C / C++ function for Silinx HLS), or an empty drawing: schematic, fsm, asm, petri, boolean (a truth table), circuit (a digital electronic circuit: a half breadboard and its supply, or the Digital Electronic Circuit Wizard\'s assembly, template), or lab (a guided lab, labs/<name>.lab.json: a template of its steps to edit, then the lab tool runs it). In VHDL or Verilog (default: the project\'s Preferred Language). It is written from the wizard\'s templates (a header with the date), added to the project; then edit it with write_file. A file that exists is not replaced.',
+    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (a test bench of a module of the project), package (a VHDL package), constraints (the device\'s format: UCF, the iCE40\'s PCF, the ECP5\'s LPF, the Gowin\'s CST, the 7-series\' XDC), mem, c or cpp (a C / C++ function for Silinx HLS), or an empty drawing: schematic, fsm (or the FSM Wizard\'s template: a counter, a sequence detector…), asm, petri, boolean (a truth table), circuit (a digital electronic circuit: a half breadboard and its supply, or the Digital Electronic Circuit Wizard\'s assembly, template), or lab (a guided lab, labs/<name>.lab.json: a template of its steps to edit, then the lab tool runs it). In VHDL or Verilog (default: the project\'s Preferred Language). It is written from the wizard\'s templates (a header with the date), added to the project; then edit it with write_file. A file that exists is not replaced.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, type: { type: 'string', enum: Object.keys(TYPES), description: 'The source\'s type.' },
       name: STR('Its file name, without the extension (letters, digits, _ and -; a letter first).'),
@@ -82,8 +85,11 @@ export const NEW_SOURCE_TOOLS = [
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (a module, a test bench, a drawing).' },
       module: STR('A module: its name (default: the file name). A test bench: the module it tests (default: the project\'s top).'),
       architecture: STR('A VHDL module: its architecture\'s name (default Behavioral).'),
-      template: { type: 'string', enum: CIRCUIT_TEMPLATES.map((t) => t.id), description: 'A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]); on a full breadboard, its chips wired (#4164): seg7 (switches bcd[k], a BCD decoder, a 7-segment display), counter (a clock, a counter, a decoder and a display; a button rst), adder (switches a[k], b[k], LEDs s[k] and cout), gates (a gate IC, its inputs on switches a[k], b[k], its outputs on LEDs y[k]), comparator (a 7485, LEDs lt, eq, gt), decoder (a 74138 on 8 LEDs y[k], or a 74151 and its data switches d[k]), shift (buttons clk and clr, a switch din, a shift register on LEDs q[k]), flipflop (a 7474: a button clk, switches d, pre_n, clr_n, LEDs q and qn). Default: a half breadboard and its supply.' },
-      template_params: { type: 'object', description: 'The assembly\'s parameters: boards { n: 1–4, size: half | full }; io { n: 1–8 switches, m: 1–8 LEDs }; seg7 { display: ca (7447) | cc (7448) }; counter { chip: 7490 | 74161, hz: 1–50 }; adder { chip: 7483 | 74283 }; gates { chip: 7400 | 7402 | 7404 | 7408 | 7432 | 7486 }; decoder { chip: 74138 | 74151 }; shift { chip: 74164 | 74194 }; comparator and flipflop: none.' },
+      template: { type: 'string', enum: [...new Set([...CIRCUIT_TEMPLATES, ...FSM_TEMPLATES].map((t) => t.id))], description: 'An fsm: the FSM Wizard\'s template: ' +
+        'empty, counter, updown, enable, ring, johnson (N states), detector (a sequence detector: the input x, the output z 1 when the bits read end with the pattern), traffic. A circuit: the Digital Electronic Circuit Wizard\'s assembly: boards (N breadboards, half or full, and a supply, their rails joined), io (a half breadboard and its supply, N switches sw[k] and M LEDs led[k]); on a full breadboard, its chips wired (#4164): seg7 (switches bcd[k], a BCD decoder, a 7-segment display), counter (a clock, a counter, a decoder and a display; a button rst), adder (switches a[k], b[k], LEDs s[k] and cout), gates (a gate IC, its inputs on switches a[k], b[k], its outputs on LEDs y[k]), comparator (a 7485, LEDs lt, eq, gt), decoder (a 74138 on 8 LEDs y[k], or a 74151 and its data switches d[k]), shift (buttons clk and clr, a switch din, a shift register on LEDs q[k]), flipflop (a 7474: a button clk, switches d, pre_n, clr_n, LEDs q and qn). Default: a half breadboard and its supply.' },
+      template_params: { type: 'object', description: 'An fsm template\'s parameters: counter, updown, enable, ring, johnson { n: the number of states }; ' +
+        'detector { pattern: bits (1011) or a regular expression over 0 and 1 (1(01)*1, 10+1, 1[01]1, 110|101: . or [01] any bit, ( ), |, *, +, ?, {n}, {n,m}), overlap: yes | no (the search goes on after a match, or starts again after it), type: moore | mealy }. ' +
+        'A circuit\'s, the assembly\'s parameters: boards { n: 1–4, size: half | full }; io { n: 1–8 switches, m: 1–8 LEDs }; seg7 { display: ca (7447) | cc (7448) }; counter { chip: 7490 | 74161, hz: 1–50 }; adder { chip: 7483 | 74283 }; gates { chip: 7400 | 7402 | 7404 | 7408 | 7432 | 7486 }; decoder { chip: 74138 | 74151 }; shift { chip: 74164 | 74194 }; comparator and flipflop: none.' },
       ports: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, dir: { type: 'string', enum: ['in', 'out', 'inout'] }, msb: { type: 'integer' }, lsb: { type: 'integer' } }, required: ['name'] }, description: 'A module: its ports (a bus with msb and lsb; default: clk and rst).' },
     }, required: ['project', 'type', 'name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
@@ -146,12 +152,14 @@ export const NEW_SOURCE_TOOLS = [
         opts.uut = uutInfo({ name: m.name, lang: m.lang, mod: m });
       } else if (module !== undefined && type !== 'module') throw toolError('module: a module\'s name, or the module a test bench tests');
       if (template !== undefined || tparams !== undefined) {
-        if (type !== 'circuit') throw toolError('template and template_params: a circuit\'s');
+        if (type !== 'circuit' && type !== 'fsm') throw toolError('template and template_params: a circuit\'s or a state diagram\'s (fsm)');
         const C = await import('../core/chart-templates.js');
-        const id = template ?? 'boards';
-        if (!CIRCUIT_TEMPLATES.some((t) => t.id === id)) throw toolError(`template: one of ${CIRCUIT_TEMPLATES.map((t) => t.id).join(', ')}`);   // (no empty one, #4161)
-        const params = { ...C.templateDefaults('circuit', id), ...(tparams || {}) };
-        const e = C.templateError('circuit', id, params);
+        const list = type === 'fsm' ? FSM_TEMPLATES : CIRCUIT_TEMPLATES;
+        const id = template ?? list[0].id;
+        if (!list.some((t) => t.id === id)) throw toolError(`template: one of ${list.map((t) => t.id).join(', ')}`);   // (no empty circuit, #4161)
+        const params = { ...C.templateDefaults(type, id), ...(tparams || {}) };
+        if (type === 'fsm' && params.pattern !== undefined) params.pattern = String(params.pattern).trim();   // (as the wizard's field)
+        const e = C.templateError(type, id, params);
         if (e) throw toolError(e);
         opts.template = { id, params };
       }

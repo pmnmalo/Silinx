@@ -58,7 +58,7 @@ uiTest('#2149 FSM Wizard templates: a counter of 5 (its pages filled in), N refu
   await page.fill('.dlg-overlay .tp-pattern', '1012');
   await page.dialogButton('Next >');
   await page.waitFor(() => /^Pattern:/.test(document.querySelector('.dlg-overlay .wiz-main').nextElementSibling.textContent), [], { what: 'the pattern refused' });
-  assert.equal(await errText(page), 'Pattern: 1 to 16 bits, 0 and 1 only.');
+  assert.equal(await errText(page), 'Pattern: \'2\' at position 4: not a bit (0, 1) nor one of . [ ] ( ) | * + ? { }.');
   await page.fill('.dlg-overlay .tp-pattern', '101');
   await page.fill('.dlg-overlay .tp-type', 'mealy');
   await go(page, 'Next >', 'Inputs and Outputs');
@@ -124,6 +124,47 @@ uiTest('#2149 Petri Net Wizard template: mutual exclusion; the net created with 
     [['idle1:1', 'cs1:0', 'free:1', 'idle2:1', 'cs2:0'], ['enter1:req1', 'leave1:!req1', 'enter2:req2', 'leave2:!req2'], 12]);
   await page.waitFor(() => window.Silinx.project.files.some((f) => f.path === 'src/arb.vhd'), [], { what: 'its VHDL', timeout: 15000 });
   assert.deepEqual(await diags('PtPj', 'src/arb.vhd', 'arb'), []);
+  assert.deepEqual(await logWarnings(page), []);
+});
+
+uiTest('#4902 FSM Wizard: a sequence detector of a regular expression, its errors (in Portuguese too); the diagram created, its VHDL compiling', E, async (page) => {
+  await makeProject(env, { name: 'RePj', top: '' });
+  await page.openProject('RePj');
+  await newSourceWizardOf(page, 'Finite State Machine (FSM)', 'det', 'FSM Wizard', { lang: 'vhdl' });
+  await page.fill('.dlg-overlay .tp-template', 'detector');
+  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .tp-text').textContent), /or a regular expression over 0 and 1/);
+  const refused = async (pattern, message) => {
+    await page.fill('.dlg-overlay .tp-pattern', pattern);
+    await page.dialogButton('Next >');
+    await page.waitFor((m) => document.querySelector('.dlg-overlay .wiz-main').nextElementSibling.textContent === m, [message], { what: `${pattern} refused` });
+    assert.equal(await h3(page), 'Template');
+  };
+  await refused('1(0', 'Pattern: \'(\' at position 2 without its ).');
+  await refused('0*', 'Pattern: it matches the empty string (no bits), so z would always be 1: make every match at least one bit long.');
+  await refused('1[01]{6}', 'Pattern: its detector would have 128 states, more than 64.');
+  // in Portuguese
+  const setLang = (l) => page.eval(async (x) => { (await import('/js/i18n.js')).setLanguage(x); }, l);
+  await setLang('pt');
+  await page.fill('.dlg-overlay .tp-pattern', '1|*');
+  await page.dialogButton('Seguinte >');
+  await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main').nextElementSibling.textContent === 'Padrão: nada antes de \'*\' na posição 3 para repetir.', [], { what: 'the pattern refused in Portuguese' });
+  await setLang('en');
+  // 10+1 overlapping, Moore: S0, S1 (a 1), S2 (1 then 0s), S3 (a match)
+  await page.fill('.dlg-overlay .tp-pattern', ' 10+1 ');
+  await go(page, 'Next >', 'Inputs and Outputs');
+  assert.deepEqual(await portRows(page), ['x:in:1', 'z:out:1']);
+  await go(page, 'Next >', 'States and Transitions');
+  assert.deepEqual(await stateNames(page), ['S0', 'S1', 'S2', 'S3']);
+  assert.deepEqual(await transRows(page), ['S0 S1 x', 'S0 S0 !x', 'S1 S1 x', 'S1 S2 !x', 'S2 S3 x', 'S2 S2 !x', 'S3 S1 x', 'S3 S2 !x']);
+  await go(page, 'Next >', 'Summary');
+  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .mw-summary').textContent), /\nModule: det \(VHDL\), Moore machine\nTemplate: Sequence detector\nInputs: x\nOutputs: z\n/);
+  await go(page, 'Finish');
+  await page.waitNoDialog();
+  await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/det.fsm.json', [], { what: 'the diagram opened' });
+  const m = JSON.parse(await readWs(env, 'RePj', 'src/det.fsm.json'));
+  assert.deepEqual([m.type, m.states.filter((st) => st.outputs?.z === '1').map((st) => st.name)], ['moore', ['S3']]);
+  await page.waitFor(() => window.Silinx.project.files.some((f) => f.path === 'src/det.vhd'), [], { what: 'its VHDL', timeout: 15000 });
+  assert.deepEqual(await diags('RePj', 'src/det.vhd', 'det'), []);
   assert.deepEqual(await logWarnings(page), []);
 });
 

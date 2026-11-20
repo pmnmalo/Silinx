@@ -96,8 +96,33 @@ test('new_source: a circuit from the Digital Electronic Circuit Wizard\'s assemb
   await fails({ type: 'circuit', name: 'blank', template: 'empty' }, 'template: one of boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop');
   assert.equal(fs.existsSync(path.join(P.projectDir('p'), 'src/blank.circ.json')), false);
   await fails({ type: 'circuit', name: 'big', template: 'boards', template_params: { n: 7 } }, 'Breadboards (N): a whole number from 1 to 4.');
-  await fails({ type: 'schematic', name: 'sx', template: 'io' }, 'template and template_params: a circuit\'s');
-  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop');
+  await fails({ type: 'schematic', name: 'sx', template: 'io' }, 'template and template_params: a circuit\'s or a state diagram\'s (fsm)');
+  // (not a template at all: the schema's list, the circuits' and the state diagrams', #4902)
+  await fails({ type: 'circuit', name: 'cx', template: 'nope' }, 'template: one of boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop, empty, updown, enable, ring, johnson, detector, traffic');
+});
+
+test('#4902 new_source: a state diagram from the FSM Wizard\'s templates, the sequence detector of a regular expression; its HDL checked; the refusals', async () => {
+  for (const [lang, ext] of [['vhdl', 'vhd'], ['verilog', 'v']]) {
+    const r = await ok('new_source', { project: 'p', type: 'fsm', name: `det_${ext}`, language: lang, template: 'detector', template_params: { pattern: ' 10+1 ', overlap: 'no', type: 'mealy' } });
+    assert.equal(r.text, `Created Finite State Machine (FSM) 'src/det_${ext}.fsm.json'.\nsrc/det_${ext}.${ext} generated from src/det_${ext}.fsm.json`);
+    const m = JSON.parse(read(`src/det_${ext}.fsm.json`));
+    // as the wizard makes it (core/seq-detector.js): S0, S1 (a 1), S2 (1 then 0s); z on the move that reads the last 1, back to S0
+    assert.deepEqual([m.type, m.states.map((s) => s.name), m.inputs.map((i) => i.name), m.outputs.map((o) => o.name)], ['mealy', ['S0', 'S1', 'S2'], ['x'], ['z']]);
+    const name = Object.fromEntries(m.states.map((s) => [s.id, s.name]));
+    assert.deepEqual(m.transitions.map((t) => `${name[t.from]}-${t.cond}->${name[t.to]}${t.outputs?.z ? '/z' : ''}`), ['S0-x->S1', 'S0-!x->S0', 'S1-x->S1', 'S1-!x->S2', 'S2-x->S0/z', 'S2-!x->S2']);
+    assert.equal(await checks(`det_${ext}`), `Process "Check Syntax" of <det_${ext}> completed successfully (6 signals, 3 processes).`);
+  }
+  // the defaults: 1011, overlapping, Moore (five states); another template: a counter of 5
+  await ok('new_source', { project: 'p', type: 'fsm', name: 'det_def', template: 'detector' });
+  assert.deepEqual(JSON.parse(read('src/det_def.fsm.json')).states.map((s) => s.name), ['S0', 'S1', 'S2', 'S3', 'S4']);
+  await ok('new_source', { project: 'p', type: 'fsm', name: 'cnt5', template: 'counter', template_params: { n: 5 } });
+  assert.equal(JSON.parse(read('src/cnt5.fsm.json')).states.length, 5);
+  // the wizard's refusals, nothing written
+  await fails({ type: 'fsm', name: 'dx', template: 'detector', template_params: { pattern: '1(0' } }, 'Pattern: \'(\' at position 2 without its ).');
+  await fails({ type: 'fsm', name: 'dx', template: 'detector', template_params: { pattern: '0*' } }, 'Pattern: it matches the empty string (no bits), so z would always be 1: make every match at least one bit long.');
+  await fails({ type: 'fsm', name: 'dx', template: 'detector', template_params: { pattern: '1', type: 'both' } }, 'Machine type: choose one.');
+  await fails({ type: 'fsm', name: 'dx', template: 'boards' }, 'template: one of empty, counter, updown, enable, ring, johnson, detector, traffic');
+  assert.equal(fs.existsSync(path.join(P.projectDir('p'), 'src/dx.fsm.json')), false);
 });
 
 test('new_source: the Digital Electronic Circuit Wizard\'s assemblies of ICs (#4164), their parameters; their refusals; no warnings', async () => {

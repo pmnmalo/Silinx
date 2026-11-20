@@ -154,8 +154,9 @@ test('#2149 the templates\' parameters refused with their messages; an unknown t
   assert.equal(templateError('fsm', 'counter', { n: 1 }), 'Number of states (N): a whole number from 2 to 64.');
   assert.equal(templateError('fsm', 'counter', { n: '4.5' }), 'Number of states (N): a whole number from 2 to 64.');
   assert.equal(templateError('fsm', 'johnson', { n: 5 }), 'A Johnson counter has an even number of states.');
-  assert.equal(templateError('fsm', 'detector', { pattern: '102', overlap: 'yes', type: 'moore' }), 'Pattern: 1 to 16 bits, 0 and 1 only.');
-  assert.equal(templateError('fsm', 'detector', { pattern: '', overlap: 'yes', type: 'moore' }), 'Pattern: 1 to 16 bits, 0 and 1 only.');
+  // (a regular expression too since #4902: its errors in test/seq-detector.test.js)
+  assert.equal(templateError('fsm', 'detector', { pattern: '102', overlap: 'yes', type: 'moore' }), 'Pattern: \'2\' at position 3: not a bit (0, 1) nor one of . [ ] ( ) | * + ? { }.');
+  assert.equal(templateError('fsm', 'detector', { pattern: '', overlap: 'yes', type: 'moore' }), 'Pattern: a bit string (1011) or a regular expression over 0 and 1 (1(01)*1).');
   assert.equal(templateError('fsm', 'detector', { pattern: '11', overlap: 'maybe', type: 'moore' }), 'Overlapping matches: choose one.');
   assert.equal(templateError('petri', 'semaphore', { n: 2, m: 0 }), 'Users (M): a whole number from 1 to 255.');
   assert.equal(templateOf('asm', 'nope').id, 'empty');
