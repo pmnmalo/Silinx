@@ -119,6 +119,9 @@ export async function startFollowing(hash = location.hash) {
 export async function openFollowedTop() {
   // (#4002: the project open, with what its opening opened: a document brought to the front from now on is the follower's)
   if (fol) { fol.settled = true; fol.front = undefined; }
+  // (#4647: the owner's view looked at now that the project is open, not at the next look: the look when it arrived
+  // found no project open yet on a slow page, and nothing changes the owner's view meanwhile)
+  if (fol) tracking.poke();
   if (!fol?.top) return;
   const top = fol.top;
   fol.top = null;
