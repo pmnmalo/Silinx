@@ -11,7 +11,7 @@ import { fmtValue } from '/core/schlive.js';
 /** { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged } of mountSchEditor (destroyed(), doc(), genLang(), lastDiags(), live(), liveStarting(), modules(), nl(), sel(), tool(), view(), wireDraw(): its current values). */
 export function mountSchTry(ctx) {
   const {
-    container, opts, canSim, canvas, centerOn, contentG, destroyed, doc, finishWire, flash, genLang, hint,
+    container, opts, pushInto, canPushInto, canSim, canvas, centerOn, contentG, destroyed, doc, finishWire, flash, genLang, hint,
     lastDiags, live, liveStarting, modules, nl, render, renderProps, sel, setTool, simBar, simG, tool, updateStatus,
     view, wireDraw, setLive, setLiveStarting, setLastDiags, setSel
   } = ctx;
@@ -41,6 +41,7 @@ export function mountSchTry(ctx) {
       const res = startLiveSim({
         doc: clone(doc()), modules: modules(), sources: sources || [], lang: opts.simLang || genLang(), generics: opts.simGenerics?.(), h,
         layer: simG, content: contentG, bar: simBar, canvas, toCanvas, onExit: leaveSim, inputs: lastInputs,
+        onRepaint: () => opts.onLiveUpdate?.(), pushInto, canPushInto,
       });
       if (!res.ok) {
         setLastDiags(res.diagnostics?.length ? res.diagnostics : res.errors.map(message => ({ severity: 'error', message })));
@@ -73,6 +74,7 @@ export function mountSchTry(ctx) {
     container.classList.remove('sim-mode');
     render(); renderProps();
     opts.onSimulate?.(false);
+    opts.onLiveUpdate?.();   // (its end: a composition opened from it keeps its own, #4808)
     container.focus({ preventScroll: true });
   }
   function showDiags(what = 'Check Schematic') {
@@ -109,5 +111,14 @@ export function mountSchTry(ctx) {
     return plan;
   }
 
-  return { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged };
+  // Try it with the inputs given (a composition's, from its symbol's pins, #4808): started with them, or set
+  async function tryWith(inputs) {
+    lastInputs = inputs;
+    if (!live()) { await enterSim(); return; }
+    live().live.reset({ inputs: true });
+    live().live.restoreInputs(inputs);
+    live().update(true);
+  }
+
+  return { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged, tryWith };
 }

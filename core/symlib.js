@@ -55,16 +55,22 @@ export function levelParts(level) {
 export const levelLine = level => `${level.name} = ${levelParts(level).map(p => (p.count > 1 ? `${p.count} × ${p.name}` : p.name)).join(' + ')}`;
 
 /**
- * The HDL of a composition in `lang` (vhdl / verilog): every level's, the lowest first, as generateHdl writes a
- * schematic's; { code, diagnostics } (each diagnostic with its module).
+ * The HDL of each module of a composition in `lang` (vhdl / verilog), as generateHdl writes a schematic's: [{ name,
+ * path, code, diagnostics }], the lowest level first.
  */
-export function compositionHdl(comp, lang) {
-  const modules = Object.fromEntries(comp.modules.map(m => [m.name, { name: m.name, ports: m.ports.map(({ side, ...q }) => q), symbol: m.symbol }]));
-  const parts = [], diagnostics = [];
-  for (const m of [...comp.modules].reverse()) {
+export function moduleHdls(comp, lang) {
+  const modules = compositionModules(comp);
+  return [...comp.modules].reverse().map(m => {
     const r = generateHdl(m.doc, { lang, modules });
-    parts.push(r.code);
-    for (const d of r.diagnostics) diagnostics.push({ ...d, module: m.name });
-  }
-  return { code: parts.join('\n'), diagnostics };
+    return { name: m.name, path: `${m.name}.${lang === 'vhdl' ? 'vhd' : 'v'}`, code: r.code, diagnostics: r.diagnostics };
+  });
 }
+
+/** The HDL of a composition in `lang`: every level's, the lowest first; { code, diagnostics } (each with its module). */
+export function compositionHdl(comp, lang) {
+  const parts = moduleHdls(comp, lang);
+  return { code: parts.map(p => p.code).join('\n'), diagnostics: parts.flatMap(p => p.diagnostics.map(d => ({ ...d, module: p.name }))) };
+}
+
+/** The modules of a composition as a schematic's modules (findMod's): { name: { name, ports, symbol } }. */
+export const compositionModules = comp => Object.fromEntries(comp.modules.map(m => [m.name, { name: m.name, ports: m.ports.map(({ side, ...q }) => q), symbol: m.symbol }]));

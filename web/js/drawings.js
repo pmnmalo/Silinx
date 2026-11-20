@@ -508,6 +508,9 @@ export async function openSch(path) {
         // (its drawing when it has one, as its Design row's double-click, else its HDL, #2046)
         onOpenModule: name => openModuleSource(name),
         onEditSymbol: name => import('./symbol-doc.js').then(m => m.editSymbol(name)),   // (#3755)
+        // (a palette symbol built of others: its composition, its values the symbol's in a Try it, #4808)
+        onOpenComposition: s => import('./sch-composition.js').then(m => m.openComposition(s, s.symId ? { editor: ed, symId: s.symId, instance: s.instance, docName: path.split('/').pop().replace(/\.sch\.json$/i, '') } : null)),
+        onLiveUpdate: () => import('./sch-composition.js').then(m => m.liveUpdated(ed)),
         // (its tools' messages: the markers a rectangle added, #4000)
         onMessage: text => { const w = /^WARNING: (.*)$/s.exec(text); log(w ? `WARNING: ${path.split('/').pop()}: ${t(w[1])}` : `${path.split('/').pop()}: ${t(text)}`, w ? 'warn' : 'info'); },
       });

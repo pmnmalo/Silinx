@@ -207,7 +207,7 @@ export function mountSchEditor(container, opts = {}) {
 
   // ---------------- properties panel (sch-props.js); an I/O marker given a net's name (sch-join.js, #2170)
   const { joinMarker } = mountSchJoin({ doc: () => doc, nl: () => nl, container });
-  const { renderProps, openSelected, renamed, joinByName, renameLabel } = mountProps({ joinMarker, segSel, opts, container, propBody, readOnly, doc: () => doc, sel: () => sel, nl: () => nl,
+  const { renderProps, openSelected, renamed, joinByName, renameLabel, pushInto, canPushInto } = mountProps({ joinMarker, segSel, opts, container, propBody, readOnly, doc: () => doc, sel: () => sel, nl: () => nl,
     live: () => live, modules: () => modules, setGenLang: (v) => { genLang = v; }, edit: (...a) => edit(...a),
     flash: (...a) => flash(...a), rotateSel: (...a) => rotateSel(...a), mirrorSel: (...a) => mirrorSel(...a),
     deleteSel: (...a) => deleteSel(...a), nextId: (...a) => nextId(...a), openInfo: (...a) => openInfo(...a),
@@ -270,7 +270,7 @@ export function mountSchEditor(container, opts = {}) {
   // the right-click menu (sch-context.js): Rename… (sch-rename.js, #1546), the selection's commands (#1556)
   const { rename } = mountSchRename({ doc: () => doc, nl: () => nl, edit, joinByName, joinMarker, renameLabel });
   const { contextMenu } = mountSchContext({ readOnly, doc: () => doc, live: () => live, segSel, sel: () => sel, tool: () => tool, render, renderProps,
-    rename, duplicateSel, rotateSel, mirrorSel, deleteSel, setSel: (v) => { sel = v; }, openInfo: (...a) => openInfo(...a), symTarget: (...a) => symTarget(...a), opts, modules: () => modules, edit: (...a) => edit(...a), flash: (...a) => flash(...a) });
+    rename, duplicateSel, rotateSel, mirrorSel, deleteSel, setSel: (v) => { sel = v; }, openInfo: (...a) => openInfo(...a), symTarget: (...a) => symTarget(...a), opts, modules: () => modules, edit: (...a) => edit(...a), flash: (...a) => flash(...a), pushInto });
   const { finishMove, onMove, onUp } = mountSchMouse({
     junction, segSel, wholeBranch, container, opts, applyMove, applySegMove, applyView, bandRect, bandSelect, beginMove, beginSegMove, canvas, changed, contextMenu, curve,
     cursor: () => cursor, destroyed: () => destroyed, doc: () => doc, drag: () => drag, finishSegMove, finishWire,
@@ -279,7 +279,7 @@ export function mountSchEditor(container, opts = {}) {
     renderOverlay, renderProps, sel: () => sel, setTool, spaceDown: () => spaceDown, startPlace, svg, toSheet, tool: () => tool,
     updateStatus, view: () => view, wireClick, wireDraw: () => wireDraw, zoomAt, setCursor: (v) => { cursor = v; },
     setDoc: (v) => { doc = v; }, setDrag: (v) => { drag = v; }, setHoverPin: (v) => { hoverPin = v; },
-    setSel: (v) => { sel = v; }, setWireDraw: (v) => { wireDraw = v; }, edit, nextId, promptBox: (...a) => promptBox(...a)
+    setSel: (v) => { sel = v; }, setWireDraw: (v) => { wireDraw = v; }, edit, nextId, promptBox: (...a) => promptBox(...a), pushInto
   });
 
   // ---------------- keyboard (sch-keys.js)
@@ -298,8 +298,8 @@ export function mountSchEditor(container, opts = {}) {
   });
 
   // ---------------- live simulation (Logisim style): web/js/sch-live.js on core/schlive.js (sch-try.js)
-  const { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged } = mountSchTry({
-    container, opts, canSim, canvas, centerOn, contentG, destroyed: () => destroyed, doc: () => doc,
+  const { enterSim, leaveSim, showDiags, tryState, setTryState, sourcesChanged, tryWith } = mountSchTry({
+    container, opts, pushInto, canPushInto, canSim, canvas, centerOn, contentG, destroyed: () => destroyed, doc: () => doc,
     finishWire, flash: (...a) => flash(...a), genLang: () => genLang, hint, lastDiags: () => lastDiags,
     live: () => live, liveStarting: () => liveStarting, modules: () => modules, nl: () => nl, render, renderProps,
     sel: () => sel, setTool, simBar, simG, tool: () => tool, updateStatus, view: () => view, wireDraw: () => wireDraw,
@@ -313,7 +313,7 @@ export function mountSchEditor(container, opts = {}) {
   const { infoTarget, openInfo, symTarget } = mountSchInfo({
     container, destroyed: () => destroyed, device: () => device, doc: () => doc, genLang: () => genLang,
     infoDlg: () => infoDlg, infoItem: () => infoItem, itemTarget, modules: () => modules, placing: () => placing,
-    sel: () => sel, selected, tool: () => tool, setInfoDlg: (v) => { infoDlg = v; }
+    sel: () => sel, selected, tool: () => tool, setInfoDlg: (v) => { infoDlg = v; }, onOpenComposition: opts.onOpenComposition
   });
 
   const offLang = onLanguageChange(() => { if (infoItem) showSymInfo(infoItem); if (!live) renderProps(); });
@@ -379,7 +379,7 @@ export function mountSchEditor(container, opts = {}) {
     openSelected,
     fit,
     print,
-    simulate: enterSim, tryState, setTryState,   // (its Try it shared live, #4244)
+    simulate: enterSim, tryState, setTryState, tryWith, pushInto: id => pushInto(doc.symbols.find(s => s.id === id)),   // (its Try it shared live, #4244; with inputs given, a symbol's composition opened, #4808)
     stopSimulation: leaveSim,
     get simulating() { return !!live; },
     get liveSim() { return live?.live || null; },

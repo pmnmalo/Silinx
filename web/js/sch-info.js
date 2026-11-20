@@ -12,7 +12,7 @@ import { clone } from './sch-editor.js';
 export function mountSchInfo(ctx) {
   const {
     container, destroyed, device, doc, genLang, infoDlg, infoItem, itemTarget, modules, placing, sel, selected, tool,
-    setInfoDlg
+    setInfoDlg, onOpenComposition
   } = ctx;
 
   // a symbol of the schematic's Symbol Info (by its id; the right-click menu's, #2953)
@@ -37,7 +37,7 @@ export function mountSchInfo(ctx) {
     infoDlg()?.close();
     setInfoDlg(openSymbolInfo({
       container, ...target, modules: modules(), lang: genLang(), highlight: highlightHdl, ...primUse(target),
-      draw: (sym, def) => symbolDrawingSvg(sym, def),
+      draw: (sym, def) => symbolDrawingSvg(sym, def), onOpenComposition,   // (its composition, #4808)
       onClose: () => { setInfoDlg(null); if (container.isConnected) container.focus({ preventScroll: true }); },
     }));
     return infoDlg();

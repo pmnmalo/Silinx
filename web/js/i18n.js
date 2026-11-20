@@ -500,7 +500,7 @@ const PT_PATTERNS = [
   [/^(Logic|Buffers|Arithmetic|Flip-Flops|Mux|Decoders\/Encoders|Bus|General|Device Primitives|Project modules) \((\d+)\)$/, (m, c, n) => `${t(c)} (${n})`],
   [/^Silinx - (.*) - \[(.*)\]$/, (m, a, b) => `Silinx - ${a} - [${t(b)}]`],
   [/^(.*) \(RTL\)$/, '$1 (RTL)'],
-  [/^(.*) \(Technology\)$/, '$1 (Tecnológico)'],
+  [/^(.*) \(Technology\)$/, '$1 (Tecnológico)'], [/^(.*) \(composition\)$/, '$1 (composição)'], [/^Read-only, how (.+) is built$/, 'Só de leitura, como $1 é construído'], [/^, its values (.+)'s in the Try it of (.+)$/, ', com os valores de $1 no Experimentar de $2'],   // (a palette symbol's composition, #4808)
   [/^Processes: (.*)$/, 'Processos: $1'],
   [/^HDL kept with the schematic \((VHDL|VERILOG)\)$/, 'HDL guardado com o esquemático ($1)'],
   [/^Language: (.*)$/, 'Idioma: $1'],
@@ -543,7 +543,7 @@ for (const k of Object.keys(PT)) { const tk = k.trim(); if (tk !== k) { if (!(tk
 Object.assign(PT, {
   'Not in sync with': 'Não sincronizado com', 'Generated from': 'Gerado a partir de', 
   // the HDL editor's banner of a file generated from a drawing (#1176)
-  'Read-only, generated from': 'Só de leitura, gerado a partir de', 'Read-only, translated from': 'Só de leitura, traduzido de', 'Cannot be translated from': 'Não pode ser traduzido de', 'Read-only, not in sync with': 'Só de leitura, não sincronizado com',
+  'Push into': 'Entrar', 'How it is built: its composition, down to the gates': 'Como é construído: a sua composição, até às portas lógicas', 'How it is built, with these values (or double-click it)': 'Como é construído, com estes valores (ou duplo clique)', 'Up to the level above (Backspace)': 'Subir para o nível acima (Backspace)', 'Read-only, generated from': 'Só de leitura, gerado a partir de', 'Read-only, translated from': 'Só de leitura, traduzido de', 'Cannot be translated from': 'Não pode ser traduzido de', 'Read-only, not in sync with': 'Só de leitura, não sincronizado com',
   
   
   

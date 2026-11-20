@@ -23,7 +23,9 @@ Projeto) acrescenta um módulo de qualquer tipo, quase todos com um assistente.
 
 Portas, multiplexadores, somadores, contadores, registos e os seus próprios módulos como símbolos, ligados como no
 Schematic Editor do ISE. *Simular* no editor põe-no a funcionar: clique numa entrada e veja os fios mudarem. Cada
-símbolo tem a sua folha de características (*Informação do Símbolo*).
+símbolo tem a sua folha de características (*Informação do Símbolo*). Nos somadores e subtratores pode entrar-se
+(*Entrar*, ou um duplo clique numa simulação): como são construídos, nível a nível até às portas lógicas (ADD8 de dois
+ADD4, ADD4 de quatro FA1), cada nível simulado, com os valores do símbolo quando se entra a partir de uma simulação.
 
 ## Máquinas de estados e fluxogramas ASM
 

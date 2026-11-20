@@ -42,6 +42,8 @@ const UI = {
   'Symbol': 'Símbolo',
   'Xilinx library equivalents': 'Equivalentes na biblioteca Xilinx',
   'Composition': 'Composição',
+  'Open the composition': 'Abrir a composição',
+  'How the symbol is built, down to the gates: a view, its HDL is the symbol\'s own.': 'Como o símbolo é construído, até às portas lógicas: uma vista, o seu HDL é o do próprio símbolo.',
   'Formula': 'Fórmula',
   'input': 'entrada',
   'output': 'saída',

@@ -241,7 +241,7 @@ function liveController(ctx, live) {
 
   // ------------------------------------------------------------------ module instances (sch-live-instance.js)
   const { renderInstance, renderProps } = mountLiveInstance({
-    live, h, modules, propEl: () => propEl, radix: () => radix, selSym: () => selSym, setPropEl: (v) => { propEl = v; }
+    live, h, modules, pushInto: ctx.pushInto, canPushInto: ctx.canPushInto, propEl: () => propEl, radix: () => radix, selSym: () => selSym, setPropEl: (v) => { propEl = v; }
   });
 
   // ------------------------------------------------------------------ pointer

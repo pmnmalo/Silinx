@@ -8,7 +8,7 @@ import { canvas, instDef, bitsName } from './symlib-draw.js';
 import { r10 } from './schdoc.js';
 
 const CARRY_SIDES = { A: 'W', B: 'W', CI: 'S', S: 'E', CO: 'N', BI: 'S', D: 'E', BO: 'N' };
-const XM = 100, GAP = 60, ROW = 40;
+const XM = 100, GAP = 60, ROW = 40, TOP = 120;   // (TOP: below the sheet's description)
 
 /** FA1: a full adder, two half adders (XOR, AND) and an OR (the Schematic Wizard's, core/sch-templates.js). */
 function fullAdder(lib) {
@@ -50,14 +50,14 @@ function chain(lib, name, n, { ci, co }) {
   const blocks = addBlocks(n), mods = blocks.map(b => adder(lib, b.w));
   const c = canvas(name, describeChain(name, n, blocks) + (ci === 'gnd' ? ' No carry in: CI is 0.' : '') + (co === 'open' ? ' No carry out: CO open.' : ''));
   const X = 260, wMax = Math.max(...mods.map(m => instDef(m).w)), xOut = r10(X + wMax + 180);
-  // (the buses' markers, their wires named by the blocks' bits)
-  c.marker('A', 'in', n, XM, 60);
-  c.wire({ x: XM, y: 60 }, { x: XM + 60, y: 60 });
-  c.marker('B', 'in', n, XM, 100);
-  c.wire({ x: XM, y: 100 }, { x: XM + 60, y: 100 });
-  c.marker('S', 'out', n, xOut, 60);
-  c.wire({ x: xOut - 60, y: 60 }, { x: xOut, y: 60 });
-  let y = 200, below = null;
+  // (the buses' markers, below the description, their wires named by the blocks' bits)
+  c.marker('A', 'in', n, XM, TOP);
+  c.wire({ x: XM, y: TOP }, { x: XM + 60, y: TOP });
+  c.marker('B', 'in', n, XM, TOP + ROW);
+  c.wire({ x: XM, y: TOP + ROW }, { x: XM + 60, y: TOP + ROW });
+  c.marker('S', 'out', n, xOut, TOP);
+  c.wire({ x: xOut - 60, y: TOP }, { x: xOut, y: TOP });
+  let y = TOP + 160, below = null;
   const placed = [];
   for (let i = blocks.length - 1; i >= 0; i--) {
     const b = blocks[i], I = c.inst(mods[i], X, y, `U${i}`);

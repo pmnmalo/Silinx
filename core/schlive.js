@@ -196,6 +196,11 @@ class LiveSim {
       for (const pid of net.ports) { const p = doc.ports.find(q => q.id === pid); sig = p && find(p.name); if (sig) break; }
       if (!sig && net.endpoints.length) sig = find(net.name);
       this.netSig.set(net.id, sig);
+      // (a net of a bus's bits, a(7:4), #1688: those bits of its bus's signal, #4858)
+      if (!sig && net.part) {
+        const bus = find(net.part.bus ? (net.part.bus.ports.map(pid => doc.ports.find(q => q.id === pid)?.name).find(Boolean) || net.part.bus.name) : net.part.base);
+        if (bus) (this.netPart ||= new Map()).set(net.id, { sig: bus, lo: Math.min(net.part.msb, net.part.lsb), w: Math.abs(net.part.msb - net.part.lsb) + 1 });
+      }
     }
     this.portSig = new Map(doc.ports.map(p => [p.id, find(p.name)]));
     // instances of module symbols (their port values; pins left open have no net)
@@ -333,6 +338,8 @@ class LiveSim {
   sigValue(sig) { return sig ? sig.val : null; }
   netValue(net) {
     if (!net) return null;
+    const part = this.netPart?.get(net.id);
+    if (part) { const v = this.sigValue(part.sig); return v ? V.getBits(v, part.lo, part.w) : null; }
     return this.sigValue(this.netSig.get(net.id) ?? null);
   }
   netById(id) { return (this.netMap ||= new Map(this.nl.nets.map(n => [n.id, n]))).get(id) || null; }

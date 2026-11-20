@@ -5,11 +5,13 @@
 // by core/symtables.js (simulation of the HDL of the symbol alone).
 //
 //   import { openSymbolInfo } from './symbol-info.js';
-//   openSymbolInfo({ container, type, params, preset, hdl, modules, lang: 'vhdl', draw(sym, def) -> svg, highlight(code, lang) -> html, onClose });
+//   openSymbolInfo({ container, type, params, preset, hdl, modules, lang: 'vhdl', draw(sym, def) -> svg, highlight(code, lang) -> html, onClose,
+//     onOpenComposition({ type, params }) });
 //   -> { close(), setParams(p), get params(), el }
 import { SYMBOLS, compareOps, defaultParams } from '/core/schdoc.js';
 import { symbolDoc, presetOf, modeQText, T } from '/core/symdocs.js';
 import { truthTable } from '/core/symtables.js';
+import { composition, levelLine } from '/core/symlib.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
 import { esc, h } from './dom.js';
 import { designKind } from './project-kind-flag.js';
@@ -211,6 +213,13 @@ export function openSymbolInfo(opts) {
         box.dataset.table = tt.kind;
       }, 0);
     } else ttBox.remove();
+    // (a symbol built of others: its levels, down to the gates, and its composition opened, #4808)
+    const comp = type === 'module' ? null : composition(type, params);
+    if (comp) {
+      main.append(h('h3', { text: T('Composition', lang) }), h('div', { class: 'sd-comp' }, ...comp.modules.map(m => h('div', { class: 'mono', 'data-level': m.name, text: levelLine(m) }))),
+        h('div', { class: 'sd-note', text: T('How the symbol is built, down to the gates: a view, its HDL is the symbol\'s own.', lang) }),
+        opts.onOpenComposition ? h('div', { class: 'se-pbtns' }, h('button', { class: 'btn', type: 'button', 'data-act': 'composition', text: T('Open the composition', lang), onclick: () => { const p = { ...params }; close(); opts.onOpenComposition({ type, params: p }); } })) : null);
+    }
     const hd = !designKind() && hdlEl(d, lang);   // (none in a design and simulation project, #3891)
     if (hd) main.append(h('h3', { text: T('Equivalent HDL', lang) }), hd);
     const body = h('div', { class: 'sd-body' }, side, main);

@@ -8,7 +8,7 @@ import { lvClass } from './sch-live.js';
 /** { renderInstance, renderProps } of liveController (propEl(), radix(), selSym(): its current values). */
 export function mountLiveInstance(ctx) {
   const {
-    live, h, modules, propEl, radix, selSym, setPropEl
+    live, h, modules, pushInto, canPushInto, propEl, radix, selSym, setPropEl
   } = ctx;
 
   // ------------------------------------------------------------------ module instances
@@ -27,6 +27,8 @@ export function mountLiveInstance(ctx) {
       })();
     box.innerHTML = `<div class="se-ptitle" data-no-i18n>${esc(selSym().name)} : ${esc(selSym().type === 'module' ? selSym().params.module : (SYMBOLS[selSym().type]?.title || selSym().type))}</div>`
       + `<table class="lv-ports" data-no-i18n><tbody>${rows}</tbody></table>`;
+    // (a palette symbol built of others: its composition, its values these, #4808)
+    if (canPushInto?.(selSym())) box.append(h('div', { class: 'se-pbtns' }, h('button', { class: 'btn lv-push', type: 'button', text: 'Push into', title: 'How it is built, with these values (or double-click it)', onclick: () => pushInto(selSym()) })));
   }
   function renderProps(el) {
     setPropEl(el);
