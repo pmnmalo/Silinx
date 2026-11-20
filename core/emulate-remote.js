@@ -19,12 +19,15 @@ import { lcdState } from './emulate.js';
 const nowMs = () => globalThis.performance?.now() ?? Date.now();
 
 /**
- * What a CompiledBoard needs, in a form a message carries (structured clone): the compiled model, the
+ * What a CompiledBoard needs, in a form a message carries (structured clone): the compiled model (or the netlist
+ * to compile, of a board checked only: the page runs none of the design's code, #4741), the
  * wiring's bits without their simulator signals, the top's ports by name.
  */
 export function boardInit(compiled, { design, wiring, board, hasLcd = false }) {
+  // (a board checked only, CompiledBoard.checked: its netlist, the host compiles it, #4741)
+  const what = compiled.check ? { json: compiled.json, top: compiled.top } : { model: compiled.model };
   return {
-    model: compiled.model, clock: compiled.clock, period: compiled.period, board, hasLcd,
+    ...what, clock: compiled.clock, period: compiled.period, board, hasLcd,
     wiring: { bits: wiring.bits.map(({ sig, ...b }) => b) },
     design: { top: { name: design.top.name, path: design.top.path, ports: design.top.ports.map((p) => ({ name: p.name, dir: p.dir, sig: p.name })) } },
   };
@@ -43,7 +46,7 @@ export function hostBoard(port) {
   };
   const handle = {
     init({ opts }) {
-      board = new CompiledBoard({ ...opts, json: null, top: null });
+      board = new CompiledBoard(opts.model ? { ...opts, json: null, top: null } : opts);
       lcd = opts.hasLcd ? lcdState() : null;
       post({ type: 'ready', warnings: board.warnings, palette: board.palette });
     },

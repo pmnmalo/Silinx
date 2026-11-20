@@ -220,11 +220,13 @@ if (!html.includes(safeJs(appJs))) throw new Error('the app bundle was not inser
 {
   // (the assets' site's folder, never its whole origin: other GitHub Pages sites of the account share it)
   const site = siteSource(LAYOUT.site, PUBLISHED);
+  // (the workers started from Blobs run under the page's policy: 'unsafe-eval' for the compiled simulator's, #4741;
+  // *.workers.dev: the Cloudflare relay the user sets at run time, which a policy written now cannot name)
   // (the GitHub sign-in's relay, when the edition has one: web/js/github-app.js, #3196; Cloudflare Workers' relays of a
   // shared project, #4543)
   const { GITHUB_DEVICE_RELAY, relayOrigin } = await import('../web/js/github-app.js');
   const relay = relayOrigin(GITHUB_DEVICE_RELAY);
-  html = withMetaCsp(html, contentSecurityPolicy({ hashes: inlineScriptHashes(html), scripts: [site], connect: [site, ...(relay ? [relay] : []), ...relaySources(SITE_RELAYS), ...WORKERS_SOURCES], meta: true }));
+  html = withMetaCsp(html, contentSecurityPolicy({ hashes: inlineScriptHashes(html), scripts: [site], connect: [site, ...(relay ? [relay] : []), ...relaySources(SITE_RELAYS), ...WORKERS_SOURCES], meta: true, evalInWorkers: true }));
 }
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html);

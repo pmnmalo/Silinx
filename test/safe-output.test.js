@@ -7,8 +7,9 @@
 //   parseFromString, setHTMLUnsafe…), in web/js and in the pages' inline scripts (web/*.html); the SVG and HTML
 //   templates of core/ and server/ (graphicSvg…) escape their values too, or are reviewed;
 // - the pages' Content Security Policy runs no inline script but the page's own (by hash), so an injection that
-//   slipped through still could not run; 'unsafe-eval' is there for the compiled simulator alone, whose generated code
-//   holds no name of the design (variables v<n>, numbers): the only dynamic code of the application is listed below.
+//   slipped through still could not run; the local server's pages have no 'unsafe-eval' (#4741: the compiled
+//   simulator runs in its worker), the static editions keep it for their workers (started from Blobs, under the page's
+//   policy); the dynamic code, whose generated code holds no name of the design (variables v<n>, numbers), is listed below.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -326,7 +327,7 @@ test('the Content Security Policy runs no injected script: no unsafe-inline scri
   }
 });
 
-// 'unsafe-eval' stays for the compiled simulator alone: the application's dynamic code, each reviewed (#2830)
+// the application's dynamic code, each reviewed (#2830), run in workers (#4741: none on the local server's pages)
 const DYNAMIC = {
   'core/compiled-sim.js': 2,              // new Function of the simulator's generated code: v<n>, m<k>, f<k> and numbers, no design name
   'web/js/nextpnr-ice40-browser.js': 1,   // AsyncFunction of the toolchain's own module, fetched from the application's URLs

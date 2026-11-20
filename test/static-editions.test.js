@@ -27,7 +27,8 @@ test('#487 contentSecurityPolicy: the server\'s header and a page\'s <meta> (no 
   assert.deepEqual(TRACKER_SOURCES, ['wss://open.ftorrent.com', 'wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.files.fm:7073']);
   assert.deepEqual(header, {
     'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", "'sha256-x'"],
+    // (#4741: no 'unsafe-eval': the page evaluates no code, the compiled simulator runs in its worker)
+    'script-src': ["'self'", "'wasm-unsafe-eval'", "'sha256-x'"],
     'worker-src': ["'self'", 'blob:'],
     'connect-src': ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES],
     'img-src': ["'self'", 'data:', 'blob:'],
@@ -40,7 +41,9 @@ test('#487 contentSecurityPolicy: the server\'s header and a page\'s <meta> (no 
   });
   const meta = directives(contentSecurityPolicy({ hashes: ["'sha256-y'"], scripts: ['https://a.test'], connect: ['https://a.test'], meta: true }));
   assert.equal(meta['frame-ancestors'], undefined);
-  assert.deepEqual(meta['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'https://a.test', "'sha256-y'"]);
+  assert.deepEqual(meta['script-src'], ["'self'", "'wasm-unsafe-eval'", 'https://a.test', "'sha256-y'"]);
+  // (the static editions' workers start from Blobs, under the page's policy: 'unsafe-eval' kept there, #4741)
+  assert.deepEqual(directives(contentSecurityPolicy({ hashes: ["'sha256-y'"], meta: true, evalInWorkers: true }))['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", "'sha256-y'"]);
   assert.deepEqual(meta['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, 'https://a.test']);
 });
 
@@ -68,7 +71,7 @@ test('#487 the usage counter added to a page with a policy: its loader\'s hash, 
   const d = directives(metaCsp(out));
   // every inline script of the page is allowed by its hash: the application's and the loader; the counter's script by
   // its one versioned URL (#1439), not its host
-  assert.deepEqual(d['script-src'], ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'", ...inlineScriptHashes(out), 'https://gc.zgo.at/count.v5.js']);
+  assert.deepEqual(d['script-src'], ["'self'", "'wasm-unsafe-eval'", ...inlineScriptHashes(out), 'https://gc.zgo.at/count.v5.js']);
   assert.deepEqual(d['connect-src'], ["'self'", 'https://api.github.com', 'https://raw.githubusercontent.com', 'https://registry.npmjs.org', 'https://gitlab.com', ...TRACKER_SOURCES, 'https://silinx.goatcounter.com']);
   assert.deepEqual(d['img-src'], ["'self'", 'data:', 'blob:', 'https://silinx.goatcounter.com']);
   assert.equal(addAnalytics(out, 'silinx'), out, 'once');

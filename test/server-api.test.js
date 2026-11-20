@@ -705,9 +705,12 @@ test('pages carry a Content-Security-Policy: scripts only from the server and th
   assert.deepEqual(dir['object-src'], ["'none'"]);
   assert.deepEqual(dir['frame-ancestors'], ["'none'"]);
   assert.deepEqual(dir['base-uri'], ["'none'"]);
-  // no inline script but the page's own (by hash); 'unsafe-eval' for the compiled simulator (#384)
+  // no inline script but the page's own (by hash); no 'unsafe-eval' (#4741: the compiled simulator runs in the Board
+  // Emulator's worker, started from its file, which the server sends with no policy of the page's)
   assert.ok(!dir['script-src'].includes("'unsafe-inline'"));
-  assert.deepEqual(dir['script-src'].filter(x => !x.startsWith("'sha256-")), ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'"]);
+  assert.deepEqual(dir['script-src'].filter(x => !x.startsWith("'sha256-")), ["'self'", "'wasm-unsafe-eval'"]);
+  const worker = await fetch(`${app.origin}/js/emulator-worker.js`);
+  assert.deepEqual([worker.status, worker.headers.get('content-security-policy')], [200, null]);
   // every inline script of index.html is allowed by its hash, nothing else inline
   const html = await r.text();
   const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
