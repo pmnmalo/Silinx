@@ -12,15 +12,14 @@ import { getLanguage } from './i18n.js';
  *  between them does not resize the window. */
 export const SHARE_WIDTH = 720;
 
-/** The windows' introductions (#4676: of about the same length, each laid out over the other's, twinText): A copy's
- *  (the project's name), Live's. */
-export const copyIntro = name => `A link that opens '${name}' in Silinx, for slides or a message: the whole project is inside it, no file to host. Anyone with the link has every file of the project, its comments too, as it is now.`;
-export const liveIntro = () => 'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents, views, simulations and runs. Of its builds, only the reports you open.';
-/** A text and its twin, the other way's, laid out in one place (#4676): the twin unseen, the place as tall as the
- *  taller of the two at any width and in any language, so that switching between them moves nothing below.
- *  `attrs` the text's element's (its class the twin's too). */
-export const twinText = (tag, attrs, text, other) => h('div', { class: 'share-twin' }, h(tag, attrs, text),
-  h(tag, { ...attrs, class: `${attrs.class ? `${attrs.class} ` : ''}share-twin-ghost`, 'aria-hidden': 'true' }, other));
+/** Each way of sharing in one sentence, of the same length (#4676, #4712): shown below the Share: row, the way checked
+ *  (A copy; Live, the server's; the browser edition's Live peer to peer and Live via the Cloudflare relay). */
+const SHARE_ABOUT = Object.freeze({
+  copy: 'A link with the whole project inside, as it is now: whoever opens it gets a copy of every file, with nothing to host.',
+  live: 'Others follow the project live, read only, through this Silinx server: its files, its drawings and what you do.',
+  'live-peer': 'Others follow the project live, read only, connected straight to your browser: no setup, but some networks block it.',
+  'live-relay': 'Others follow the project live, read only, through your own Cloudflare relay: it works on any network, schools too.',
+});
 
 /** The window's title, and its console messages' name: Share Project, or Share Module (a module's). */
 export const shareTitle = module => (module ? 'Share Module' : 'Share Project');
@@ -70,7 +69,7 @@ async function openHow(how, opts) {
  *  this one's caller then sees `wanted` and returns `switched()`, the other way's window. The browser edition's (#4634) has three: A copy, Live peer
  *  to peer (no relay), Live via your Cloudflare relay (#4670: in that order, the keyboard's too); Live's window's `via` checked, the
  *  other live one chosen there given to `onVia` (the window kept), locked while shared (`lock`). Returns { el, wanted,
- *  switched, lock }. */
+ *  switched, lock }, `el` the row and the way's sentence below it (#4712). */
 export function howRow(how, { module = null, view = null, close, via = null, onVia = () => {} }) {
   let wanted = null, next = null;
   const live = liveProblem(module);
@@ -82,7 +81,7 @@ export function howRow(how, { module = null, view = null, close, via = null, onV
     const r = h('input', { type: 'radio', name: 'share-how', value: way ? `${value}-${way}` : value, 'data-field': `how-${way ? `${value}-${way}` : value}`, checked: on, disabled: value === 'live' && !!live });
     r.addEventListener('change', () => {
       if (!r.checked) return;
-      if (value === how && way) { via = way; onVia(way); return; }   // (Live's other way, in Live's window)
+      if (value === how && way) { via = way; showAbout(); onVia(way); return; }   // (Live's other way, in Live's window)
       if (value !== how && !next) {
         wanted = value;
         next = openHow(value, { module, view, ...(way ? { via: way } : {}), shown: close });
@@ -92,7 +91,7 @@ export function howRow(how, { module = null, view = null, close, via = null, onV
     radios.push({ r, way });
     return h('label', { class: `share-how-${way ? `${value}-${way}` : value}`, title: value === 'live' && live ? live : '' }, r, label, h('span', { class: 'share-how-note' }, note));
   };
-  const el = h('div', { class: `share-how${three ? ' share-how-three' : ''}` },
+  const row = h('div', { class: `share-how${three ? ' share-how-three' : ''}` },
     h('label', {}, 'Share:'),
     h('div', { class: 'share-how-choices' },
       radio('copy', h('span', {}, 'A copy'), 'A link with the project in it'),
@@ -101,6 +100,16 @@ export function howRow(how, { module = null, view = null, close, via = null, onV
           radio('live', h('span', {}, 'Live via your Cloudflare relay'), 'Others follow it as you work, on any network', 'relay')]
         // ('Live' is the Petri net's liveness elsewhere, Viva: this one's word given here)
         : [radio('live', h('span', { 'data-no-i18n': '' }, getLanguage() === 'pt' ? 'Em direto' : 'Live'), 'Others follow it as you work')])));
+  // (the way checked described below the row, #4712: every way's sentence laid out in one place, the others unseen, so
+  // that the place is as tall as the tallest at any width and in any language, and switching moves nothing below)
+  const keys = three ? ['copy', 'live-peer', 'live-relay'] : ['copy', 'live'];
+  const texts = keys.map(k => h('p', { 'data-way': k }, SHARE_ABOUT[k]));
+  const showAbout = () => {
+    const on = how === 'live' && three ? `live-${via || 'peer'}` : how;
+    for (const t of texts) { const off = t.dataset.way !== on; t.classList.toggle('share-about-ghost', off); t.setAttribute('aria-hidden', String(off)); }
+  };
+  showAbout();
+  const el = h('div', { class: 'share-head' }, row, h('div', { class: 'share-about' }, ...texts));
   return {
     el,
     get wanted() { return wanted; },

@@ -12,7 +12,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
 import { decodeSvg } from '../qr-helpers.js';
-import { framesOf, checkFrames, twinLines } from './share-frames.js';
+import { framesOf, checkFrames, shareAbout } from './share-frames.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -47,6 +47,12 @@ const menuPick = async (page, label) => {
   await page.waitForSelector('body > .menu-popup');
   await page.click('body > .menu-popup .mi', { text: label });
 };
+
+// each way of sharing in one sentence, of the same length (#4712)
+const COPY_ABOUT = 'A link with the whole project inside, as it is now: whoever opens it gets a copy of every file, with nothing to host.';
+const LIVE_ABOUT = 'Others follow the project live, read only, through this Silinx server: its files, its drawings and what you do.';
+const COPY_PT = 'Uma ligação com o projeto todo lá dentro, tal como está: quem a abre recebe uma cópia de cada ficheiro, sem nada a alojar.';
+const LIVE_PT = 'Outros seguem o projeto em direto, só de leitura, por este servidor Silinx: os ficheiros, os desenhos e o que faz.';
 
 uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, each link made by its Generate, hidden, its QR code; Stop Sharing; Add a User… in the menu', E, async (page) => {
   await make(page, 'qrlive', 'gates');
@@ -410,17 +416,22 @@ uiTest('#4676 Share Project: Live to A copy and back, one window in every frame,
       await page.eval(async () => { (await import('/js/share-how.js')).shareLiveDialog(); });
       await page.waitDialog('Share Project');
       await page.waitFor(() => !!document.querySelector('.dlg-overlay .collab-dlg'), [], { what: 'Live\'s window' });
-      // (#4676: the intros the same number of lines, Live's and A copy's, in English and Portuguese)
-      const same = async (what) => { const t = await twinLines(page); assert.equal(t.length, 1, what); assert.equal(t[0][1], t[0][2], `${what}: ${JSON.stringify(t)}`); };
-      await same(`Live, ${width} px`);
+      // (#4712: the Share: row first, the way's sentence below it, A copy's and Live's the same number of lines, in
+      // English and Portuguese)
+      const same = async (what, way, text) => {
+        const a = await shareAbout(page);
+        assert.deepEqual([a.first, a.way, a.text], [true, way, text], what);
+        assert.equal(a.lines.copy, a.lines.live, `${what}: ${JSON.stringify(a.lines)}`);
+      };
+      await same(`Live, ${width} px`, 'live', LIVE_ABOUT);
       checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', `Live to A copy, ${width} px`);
-      await same(`A copy, ${width} px`);
+      await same(`A copy, ${width} px`, 'copy', COPY_ABOUT);
       await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
       try {
-        await page.waitFor(() => /^Uma ligação que abre/.test(document.querySelector('.dlg-overlay .share-twin .hint')?.textContent || ''), [], { what: 'Portuguese' });
-        await same(`A copy, ${width} px, Portuguese`);
+        await page.waitFor(() => /^Uma ligação com o projeto todo/.test(document.querySelector('.dlg-overlay .share-about > p[data-way=copy]')?.textContent || ''), [], { what: 'Portuguese' });
+        await same(`A copy, ${width} px, Portuguese`, 'copy', COPY_PT);
         checkFrames(await framesOf(page, 'how-live', 'live'), 'copy', 'live', `A copy to Live, ${width} px, Portuguese`);
-        await same(`Live, ${width} px, Portuguese`);
+        await same(`Live, ${width} px, Portuguese`, 'live', LIVE_PT);
         checkFrames(await framesOf(page, 'how-copy', 'copy'), 'live', 'copy', `Live to A copy, ${width} px, Portuguese`);
       } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
       checkFrames(await framesOf(page, 'how-live', 'live'), 'copy', 'live', `A copy to Live, ${width} px`);

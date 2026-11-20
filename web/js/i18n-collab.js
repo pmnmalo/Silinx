@@ -17,8 +17,13 @@ export const COLLAB_PT = {
   'Not shared any more': 'Já não partilhado', 'Shared project': 'Projeto partilhado',
   'Shared project: who is in it, and its commands': 'Projeto partilhado: quem está nele, e os seus comandos',
   'Your name, as they see it:': 'O seu nome, como o veem:', 'you': 'você', 'owner': 'dono', 'follower': 'seguidor', 'viewer': 'espectador',
-  'Others follow this project live with its link, read only: its files and drawings as they change, and what you do: your documents, views, simulations and runs. Of its builds, only the reports you open.':
-    'Outros seguem este projeto em direto com a sua ligação, só de leitura: os ficheiros e os desenhos à medida que mudam, e o que faz: os seus documentos, vistas, simulações e processos. Das compilações, só os relatórios que abrir.',
+  // (each way of sharing in one sentence, of the same length, #4712: web/js/share-how.js)
+  'Others follow the project live, read only, through this Silinx server: its files, its drawings and what you do.':
+    'Outros seguem o projeto em direto, só de leitura, por este servidor Silinx: os ficheiros, os desenhos e o que faz.',
+  'Others follow the project live, read only, connected straight to your browser: no setup, but some networks block it.':
+    'Outros seguem o projeto em direto, só de leitura, ligados ao seu navegador: sem configuração, mas há redes que o bloqueiam.',
+  'Others follow the project live, read only, through your own Cloudflare relay: it works on any network, schools too.':
+    'Outros seguem o projeto em direto, só de leitura, pelo seu retransmissor Cloudflare: funciona em qualquer rede, até escolas.',
   'This link follows a project someone shares: you see its files and drawings as they change, read only, and what its owner does (their documents, views, simulations, emulators and runs).':
     'Esta ligação segue um projeto que alguém partilha: vê os ficheiros e os desenhos à medida que mudam, só de leitura, e o que o seu dono faz (os seus documentos, vistas, simulações, emuladores e processos).',
   // (editors, #3182: web/js/collab-share.js)
@@ -87,10 +92,6 @@ export const COLLAB_PT = {
   // (Share Project… ▸ Live's two ways, #4634: web/js/share-via.js)
   'Others follow it as you work, on any network': 'Os outros seguem-no enquanto trabalha, em qualquer rede', 'Others follow it as you work, with no setup': 'Os outros seguem-no enquanto trabalha, sem configuração',
   'Live via your Cloudflare relay': 'Em direto pelo seu retransmissor Cloudflare', 'Live peer to peer (no relay)': 'Em direto ponto a ponto (sem retransmissor)',
-  'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.':
-    'Quem o segue encontra-o num retransmissor seu no Cloudflare e liga-se depois diretamente a si quando pode e, senão, através do retransmissor. Funciona nas redes das escolas e noutras redes restritas, e conta para o seu plano gratuito do Cloudflare.',
-  'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on school and other networks that block direct connections.':
-    'Sem configuração: quem o segue encontra-o no ponto de encontro público e liga-se de navegador a navegador (WebRTC), ou envia-lhe um código, que Adicionar um Utilizador… recebe. Pode falhar nas redes das escolas e noutras que bloqueiam ligações diretas.',
   'No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.':
     'Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.',
   'Your relay:': 'O seu retransmissor:', 'Change…': 'Alterar…',

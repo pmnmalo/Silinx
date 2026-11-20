@@ -14,7 +14,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest } from './harness.js';
-import { framesOf, checkFrames, twinLines } from './share-frames.js';
+import { framesOf, checkFrames, shareAbout, sameLines } from './share-frames.js';
 import { buildSite } from './site-lib.js';
 import { serveWorker } from '../workers-shim.js';
 import worker, { RelayRoom } from '../../packages/silinx-relay-cloudflare/src/worker.js';
@@ -81,34 +81,36 @@ const choose = async (page, how) => {
   await page.waitFor((x) => document.querySelectorAll('.dlg-overlay').length === 1 && document.querySelector(`.dlg-overlay input[data-field="how-${x}"]`)?.checked && (x === 'copy' ? !document.querySelector('.dlg-overlay .collab-dlg') : !!document.querySelector('.dlg-overlay .collab-dlg .share-via')), [how], { what: `${how} chosen` });
 };
 const windowBox = (page) => page.eval(() => { const r = [...document.querySelectorAll('.dlg-overlay .dlg')].pop().getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v)); });
-// the Share: row (its label, each choice and its note), the one chosen, Live's way explained (its paragraphs shown, the
-// relay's part), Start Sharing's state; no other row of radios
+// the Share: row (its label, each choice and its note), the one chosen, the way's sentence shown below it (#4712), the
+// relay's part, Start Sharing's state; no other row of radios
 const ways = (page) => page.eval(() => {
   const q = (s) => document.querySelector(`.dlg-overlay ${s}`);
   const shown = (e) => !!e && !e.closest('[hidden]');
   return {
     row: [q('.share-how > label').textContent, ...[...document.querySelectorAll('.dlg-overlay .share-how-choices > label')].map((l) => [l.firstElementChild.nextElementSibling.textContent, l.querySelector('.share-how-note').textContent])],
     how: q('input[name=share-how]:checked')?.value,
-    about: [...document.querySelectorAll('.dlg-overlay .share-via p:not(.share-twin-ghost)')].filter(shown).map((p) => p.textContent),
+    about: [...document.querySelectorAll('.dlg-overlay .share-about > p')].filter((p) => getComputedStyle(p).visibility !== 'hidden').map((p) => p.textContent),
     relay: shown(q('.share-via-status')) && getComputedStyle(q('.share-via-status')).visibility !== 'hidden' ? [...q('.share-via-status').children].map((e) => e.textContent) : null,
     start: !q('.dlg-buttons button.primary').disabled,
     radios: [...new Set([...document.querySelectorAll('.dlg-overlay input[type=radio]')].map((r) => r.name))],
   };
 });
-// (#4676) the relay set's row: the last of Live's way's part, right above Your name, below the explanations; Your name's
+// (#4676) the relay set's row: the last of Live's way's part, right above Your name, below the way's sentence; Your name's
 // top (the same for either way: nothing moves below the row)
 const relayRow = (page) => page.eval(() => {
   const via = document.querySelector('.dlg-overlay .share-via'), st = via.querySelector('.share-via-status'), name = via.nextElementSibling;
-  const shownAbout = [...via.querySelectorAll(':scope > .share-via-relay, :scope > .share-via-peer')].find((e) => !e.hidden);
-  return { last: via.lastElementChild === st, name: name.textContent, below: st.getBoundingClientRect().top >= shownAbout.getBoundingClientRect().bottom - 1, above: st.getBoundingClientRect().bottom <= name.getBoundingClientRect().top + 1, nameTop: Math.round(name.getBoundingClientRect().top) };
+  const about = document.querySelector('.dlg-overlay .share-about');
+  return { last: via.lastElementChild === st, name: name.textContent, below: st.getBoundingClientRect().top >= about.getBoundingClientRect().bottom - 1, above: st.getBoundingClientRect().bottom <= name.getBoundingClientRect().top + 1, nameTop: Math.round(name.getBoundingClientRect().top) };
 });
-// (#4676: each text laid out with a twin, the same number of lines as it)
-const twins = async (page, what) => { for (const [text, n, m] of await twinLines(page)) assert.equal(n, m, `${what}: ${text}…`); };
+// (#4712: the Share: row the window's first, the way's sentence below it; every way's sentence as many lines)
+const twins = async (page, what) => { assert.ok((await shareAbout(page)).first, `${what}: the Share: row first`); await sameLines(page, what); };
 const warnings = async (page) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|AVISO|ERROR|ERRO)/.test(l));
 
 const ROW = ['Share:', ['A copy', 'A link with the project in it'], ['Live peer to peer (no relay)', 'Others follow it as you work, with no setup'], ['Live via your Cloudflare relay', 'Others follow it as you work, on any network']];
-const RELAY = 'Your followers meet you at a relay of your own on Cloudflare, then connect to you directly when they can, through the relay otherwise. It works on school and other locked-down networks, and counts against your free Cloudflare plan.';
-const PEER = 'No setup: your followers find you at the public meeting point and connect browser to browser (WebRTC), or send you a code, which Add a User… takes. It may fail on school and other networks that block direct connections.';
+const RELAY = 'Others follow the project live, read only, through your own Cloudflare relay: it works on any network, schools too.';
+const PEER = 'Others follow the project live, read only, connected straight to your browser: no setup, but some networks block it.';
+const PEER_PT = 'Outros seguem o projeto em direto, só de leitura, ligados ao seu navegador: sem configuração, mas há redes que o bloqueiam.';
+const RELAY_PT = 'Outros seguem o projeto em direto, só de leitura, pelo seu retransmissor Cloudflare: funciona em qualquer rede, até escolas.';
 const NONE = ['No Cloudflare relay is set up yet: set one up first, here or in the Collaboration tab ▸ Cloudflare Relay.', 'Set Up a Cloudflare Relay…'];
 const SET = (a, k) => { localStorage.setItem('silinx.collab.relay', JSON.stringify({ address: a, key: k })); dispatchEvent(new CustomEvent('silinx:relay-changed')); };
 
@@ -208,15 +210,15 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   assert.deepEqual(page.errors, []);
 }, { url: () => 'about:blank', timeout: 180000 });
 
-uiTest('#4640 in Portuguese: the Share row\'s three ways, their notes and Live\'s explanations translated; none set up, said; one set up, its address and Alterar…', E, async (page) => {
+uiTest('#4640 in Portuguese: the Share row\'s three ways, their notes and the ways\' sentences translated; none set up, said; one set up, its address and Alterar…', E, async (page) => {
   await boot(page, true);
   await newProject(page, 'via-pt', true);
   await openLive(page, true);
   const ROW_PT = ['Partilhar:', ['Uma cópia', 'Uma ligação com o projeto lá dentro'], ['Em direto ponto a ponto (sem retransmissor)', 'Os outros seguem-no enquanto trabalha, sem configuração'], ['Em direto pelo seu retransmissor Cloudflare', 'Os outros seguem-no enquanto trabalha, em qualquer rede']];
-  assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-peer', about: ['Sem configuração: quem o segue encontra-o no ponto de encontro público e liga-se de navegador a navegador (WebRTC), ou envia-lhe um código, que Adicionar um Utilizador… recebe. Pode falhar nas redes das escolas e noutras que bloqueiam ligações diretas.'], relay: null, start: true, radios: ['share-how'] });
+  assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-peer', about: [PEER_PT], relay: null, start: true, radios: ['share-how'] });
   await twins(page, 'Portuguese, peer to peer');
   await choose(page, 'live-relay');
-  assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-relay', about: ['Quem o segue encontra-o num retransmissor seu no Cloudflare e liga-se depois diretamente a si quando pode e, senão, através do retransmissor. Funciona nas redes das escolas e noutras redes restritas, e conta para o seu plano gratuito do Cloudflare.'], relay: ['Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.', 'Configurar um Retransmissor Cloudflare…'], start: false, radios: ['share-how'] });
+  assert.deepEqual(await ways(page), { row: ROW_PT, how: 'live-relay', about: [RELAY_PT], relay: ['Ainda não há nenhum retransmissor Cloudflare configurado: configure um primeiro, aqui ou no separador Colaboração ▸ Retransmissor Cloudflare.', 'Configurar um Retransmissor Cloudflare…'], start: false, radios: ['share-how'] });
   await twins(page, 'Portuguese, the relay');
   await page.setViewport(375, 812);
   try { await twins(page, 'Portuguese, the relay, 375 px'); } finally { await page.setViewport(1400, 900); }
