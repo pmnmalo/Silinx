@@ -44,7 +44,9 @@ test('delayed(): a WebSocket whose messages go and come that much later, in thei
 test('on each path, no delay: a keystroke, a drawing\'s edit and an editor\'s keystroke in a few ms; the cursor and the activity within the owner\'s pace', async () => {
   for (const path of PATHS) {
     const r = await measure({ path, rtt: 0, cases: ['keystroke', 'drawing', 'editor', 'cursor', 'activity', 'file'], n: 10 });
-    for (const c of ['keystroke', 'drawing', 'editor']) assert.ok(r[c].median < 15, `${path} ${c}: ${JSON.stringify(r[c])}`);
+    // (Windows' timers tick every 15.6 ms: a message's wait can take one tick, the manual CI's 15.5 ms, #4938)
+    const tick = process.platform === 'win32' ? 16 : 0;
+    for (const c of ['keystroke', 'drawing', 'editor']) assert.ok(r[c].median < 15 + tick, `${path} ${c}: ${JSON.stringify(r[c])}`);
     assert.ok(r.file.median < 60, `${path} file: ${JSON.stringify(r.file)}`);
     // (a frame after the event, then at once: the views are 50 to 150 ms apart, more than OWNER_VIEW_MS; before #4647:
     // 140 ms and more)
