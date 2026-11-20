@@ -75,8 +75,9 @@ const ERROR_UNTRUSTED = 'the error, which may name a project\'s files and module
 
 // ------------------------------------------------------------------ the protocol
 /** One request (or notification) of a client: its answer, or null for a notification. signal: aborted when the client
- *  cancels the request (notifications/cancelled), for the tools that run long (simulate, run_process, #3408). */
-export async function handle(msg, state = {}, { signal } = {}) {
+ *  cancels the request (notifications/cancelled), for the tools that run long (simulate, run_process, #3408); notify: sends
+ *  a notification to the client (a tool's progress, when the request asks for it: _meta.progressToken, #4734). */
+export async function handle(msg, state = {}, { signal, notify } = {}) {
   const reply = result => ({ jsonrpc: '2.0', id: msg.id, result });
   const fail = (code, message) => ({ jsonrpc: '2.0', id: msg.id ?? null, error: { code, message } });
   if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return fail(-32600, 'invalid request');
@@ -103,7 +104,7 @@ export async function handle(msg, state = {}, { signal } = {}) {
         // (a design and simulation project, #3780: the flow's and the HDL's tools refused, as the interface hides them)
         await checkDesignOnly(tool.name, args);
         // (its own project parts, #4294: another call's do not reach it)
-        const r = await inPartsScope(() => tool.run(args, { signal }));
+        const r = await inPartsScope(() => tool.run(args, { signal, progress: progressOf(msg, notify, name) }));
         r.text = name(r.text);
         r.data = name(r.data);
         // (text from outside, #3363: labelled, in the text and in the structured content)
@@ -124,12 +125,64 @@ export async function handle(msg, state = {}, { signal } = {}) {
   }
 }
 
+// a request's progress reporter (#4734): (progress, message) sent as notifications/progress with the request's
+// progressToken, the progress always increasing, the message's paths named as the results'; undefined when the request
+// asks for none
+function progressOf(msg, notify, name) {
+  const token = msg.params?._meta?.progressToken;
+  if (!notify || (typeof token !== 'string' && typeof token !== 'number')) return undefined;
+  let last = -Infinity;
+  return (progress, message) => {
+    if (!(progress > last)) return;
+    last = progress;
+    notify({ jsonrpc: '2.0', method: 'notifications/progress', params: { progressToken: token, progress, ...(message ? { message: name(String(message)) } : {}) } });
+  };
+}
+
+// The order of the requests (#4734): ping, initialize, tools/list and the other methods answered at once; a tool's call
+// waits for the calls before it on the same project (a process and a read of its report do not overlap), and a call on
+// no project (list_projects, new_project, import_project…: the workspace's) for every call before it, the calls after it
+// waiting for it; the calls on two projects run together. A batch is one call on the workspace (#3413: its requests in
+// order, each seeing the one before it done).
+export function laneOf(msg) {
+  if (Array.isArray(msg)) return msg.some(m => m?.method === 'tools/call') ? WORKSPACE : null;
+  if (msg?.method !== 'tools/call') return null;
+  const p = msg.params?.arguments?.project;
+  return typeof p === 'string' && p ? `project:${p.toLowerCase()}` : WORKSPACE;
+}
+const WORKSPACE = 'workspace';
+
+/** A scheduler of the calls by lane (laneOf): run(lane, fn) runs fn after the calls it waits for; null runs it at once.
+ *  idle(): every call done. */
+export function lanes() {
+  let workspace = Promise.resolve();
+  const tails = new Map();
+  const quiet = p => p.catch(() => {});
+  return {
+    run(lane, fn) {
+      if (lane === null) return fn();
+      if (lane === WORKSPACE) {
+        const run = Promise.all([workspace, ...tails.values()]).then(fn);
+        tails.clear();
+        workspace = quiet(run);
+        return run;
+      }
+      const run = Promise.all([workspace, tails.get(lane)]).then(fn);
+      const tail = quiet(run);
+      tails.set(lane, tail);
+      tail.then(() => { if (tails.get(lane) === tail) tails.delete(lane); });
+      return run;
+    },
+    idle: () => Promise.all([workspace, ...tails.values()]),
+  };
+}
+
 /** Serve MCP on a pair of streams (stdin / stdout): one JSON-RPC message a line; the log on stderr. */
 export function serveMcp({ input = process.stdin, output = process.stdout } = {}) {
   const state = {};
   const send = m => output.write(`${JSON.stringify(m)}\n`);
   const rl = readline.createInterface({ input, crlfDelay: Infinity });
-  let pending = Promise.resolve();
+  const order = lanes();
   // the requests waiting or running, by id: a cancellation aborts its request at once, which is then not answered (#3408)
   const running = new Map();
   rl.on('line', line => {
@@ -139,17 +192,17 @@ export function serveMcp({ input = process.stdin, output = process.stdout } = {}
     if (msg?.method === 'notifications/cancelled' && msg.id === undefined) { running.get(msg.params?.requestId)?.abort(); return; }
     const one = !Array.isArray(msg) && msg?.id !== undefined && msg.id !== null ? new AbortController() : null;
     if (one) running.set(msg.id, one);
-    // (one at a time, in order: a process and a read of its report do not overlap)
-    pending = pending.then(async () => {
+    // (in order by project, ping and the lists at once: laneOf, #4734)
+    Promise.resolve(order.run(laneOf(msg), async () => {
       if (one?.signal.aborted) return;
       const batch = Array.isArray(msg) ? msg : [msg];
       // (a batch's requests in order too, each seeing the one before it done: a project's creation and a process on it
       // never overlap, #3413)
       const out = [];
-      for (const m of batch) { const r = await handle(m, state, { signal: one?.signal }); if (r) out.push(r); }
+      for (const m of batch) { const r = await handle(m, state, { signal: one?.signal, notify: send }); if (r) out.push(r); }
       if (out.length && !one?.signal.aborted) send(Array.isArray(msg) ? out : out[0]);
-    }).catch(e => process.stderr.write(`silinx mcp: ${e?.stack || e}\n`)).finally(() => { if (one && running.get(msg.id) === one) running.delete(msg.id); });
+    })).catch(e => process.stderr.write(`silinx mcp: ${e?.stack || e}\n`)).finally(() => { if (one && running.get(msg.id) === one) running.delete(msg.id); });
   });
   // (its shared projects end with it, #3181)
-  return new Promise(resolve => rl.on('close', () => pending.then(endCollab).then(resolve)));
+  return new Promise(resolve => rl.on('close', () => order.idle().then(endCollab).then(resolve)));
 }

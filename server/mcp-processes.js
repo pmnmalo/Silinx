@@ -73,7 +73,7 @@ export function processText({ errors, warnings, lines, head, logLines = 40 }) {
 
 /** A process of the project's top run to its end (or stopped after timeoutS): its log redacted, its errors and
  *  warnings, whether it ended well, its toolchain. Errors: tool errors. */
-export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signal } = {}) {
+export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signal, progress } = {}) {
   const pj = await readProject(name);
   const steps = PROCESSES[proc];
   if (!steps) throw toolError(`process: one of ${Object.keys(PROCESSES).join(', ')}`);
@@ -86,7 +86,11 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   let job;
   try { job = await startImplementation(name, { steps, ...(toolchain ? { toolchain } : {}) }); } catch (e) { throw toolError(e.message); }
   const end = Date.now() + timeoutS * 1000;
-  while (job.status === 'running' && Date.now() < end && !signal?.aborted) await new Promise(r => setTimeout(r, 250));
+  // (its log's lines as its progress, when the client asks for it: the count, the last line redacted, #4734)
+  const redactLine = progress ? await redactor() : null;
+  const tell = () => { if (progress && job.lines.length) progress(job.lines.length, redactLine(job.lines[job.lines.length - 1])); };
+  while (job.status === 'running' && Date.now() < end && !signal?.aborted) { tell(); await new Promise(r => setTimeout(r, 250)); }
+  tell();
   if (job.status === 'running') {
     const { cancelJob } = await import('./jobs.js');
     cancelJob(job.id);
@@ -114,10 +118,10 @@ export const PROCESS_TOOLS = [
       timeout_s: { type: 'integer', description: `How long to wait, in seconds (default 1800; from 1 to ${PROCESS_LIMITS.timeoutS}): then the process is stopped.` },
     }, required: ['project', 'process'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async run({ project: name, process: proc, toolchain, log_lines: logLines = 40, timeout_s: timeoutS = 1800 }, { signal } = {}) {
+    async run({ project: name, process: proc, toolchain, log_lines: logLines = 40, timeout_s: timeoutS = 1800 }, { signal, progress } = {}) {
       if (!Number.isInteger(logLines) || logLines < 1 || logLines > PROCESS_LIMITS.logLines) throw toolError(`log_lines: from 1 to ${PROCESS_LIMITS.logLines}`);
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > PROCESS_LIMITS.timeoutS) throw toolError(`timeout_s: from 1 to ${PROCESS_LIMITS.timeoutS} s`);
-      const { top, lines, errors, warnings, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal });
+      const { top, lines, errors, warnings, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal, progress });
       // (a project shared live: its followers see the run, #4002)
       await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc], ok, warnings, lines }).catch(() => {});
       const pj = { top };
