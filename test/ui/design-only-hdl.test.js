@@ -59,7 +59,7 @@ uiTest('#3891 a design project: Symbol Info without Equivalent HDL, the tabs\' m
   // Symbol Info: its description, pins, parameters and truth table; no HDL
   await page.eval(() => window.SilinxApp.openSch('src/mux.sch.json'));
   await page.waitFor((sel) => window.Silinx.active?.id === 'sch:src/mux.sch.json' && document.querySelector(`${sel} g.sym[data-id="S1"]`), [ED], { what: 'the schematic' });
-  assert.deepEqual(await symbolInfo(page), { titles: ['Description', 'Pins', 'Parameters and attributes', 'Truth table'], hdl: false,
+  assert.deepEqual(await symbolInfo(page), { titles: ['Description', 'Pins', 'Parameters and attributes', 'Truth table', 'Composition'], hdl: false,
     note: 'Change the parameters to see the tables update (the placed symbol is not changed).' });
   // a schematic's tab: no view beside (its HDL and its translation were its only ones)
   assert.deepEqual(await beside(page, 'mux.sch.json'), []);
@@ -76,7 +76,7 @@ uiTest('#3891 a design project: Symbol Info without Equivalent HDL, the tabs\' m
     assert.deepEqual(await beside(page, 'traffic.fsm.json'), ['Mostrar o Fluxograma ASM ao Lado']);
     await page.eval(() => window.SilinxApp.openSch('src/mux.sch.json'));
     await page.waitFor(() => window.Silinx.active?.id === 'sch:src/mux.sch.json', [], { what: 'the schematic' });
-    assert.deepEqual(await symbolInfo(page), { titles: ['Descrição', 'Pinos', 'Parâmetros e atributos', 'Tabela de verdade'], hdl: false,
+    assert.deepEqual(await symbolInfo(page), { titles: ['Descrição', 'Pinos', 'Parâmetros e atributos', 'Tabela de verdade', 'Composição'], hdl: false,
       note: 'Altere os parâmetros para ver as tabelas atualizarem (o símbolo colocado não é alterado).' });
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
