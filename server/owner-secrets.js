@@ -10,17 +10,19 @@ import { workspaceDir } from './projects.js';
 import { configDir, loadConfig } from './toolchain.js';
 
 // a folder as given and as the system names it (its links followed, a short name expanded)
-const spellings = dir => {
+const spellings = (dir, P) => {
   const real = f => { try { return f(dir); } catch { return dir; } };
-  return [...new Set([path.resolve(dir), real(fs.realpathSync), real(fs.realpathSync.native)])];
+  return [...new Set([P.resolve(dir), real(fs.realpathSync), real(fs.realpathSync.native)])];
 };
 
-/** [[secret, placeholder]], the longest secret first (a folder inside another replaced as itself). */
-export async function ownerSecrets({ env = process.env, home = os.homedir() } = {}) {
+/** [[secret, placeholder]], the longest secret first (a folder inside another replaced as itself). path: the
+ *  system's path functions (path.win32: a Windows computer's names, tested anywhere), workspace and config: its
+ *  folders. */
+export async function ownerSecrets({ env = process.env, home = os.homedir(), path: P = path, workspace = workspaceDir(), config = configDir() } = {}) {
   const out = [];
-  const exchange = path.resolve(env.SILINX_MCP_FOLDER || path.join(home, 'Downloads'));
-  for (const [dir, label] of [[workspaceDir(), '<workspace>'], [exchange, '<exchange folder>'], [configDir(), '<Silinx configuration>'], [home, '~']]) {
-    for (const d of spellings(dir)) out.push([d, label]);
+  const exchange = P.resolve(env.SILINX_MCP_FOLDER || P.join(home, 'Downloads'));
+  for (const [dir, label] of [[workspace, '<workspace>'], [exchange, '<exchange folder>'], [config, '<Silinx configuration>'], [home, '~']]) {
+    for (const d of spellings(dir, P)) out.push([d, label]);
   }
   try {
     const ssh = (await loadConfig()).ssh || {};
@@ -31,6 +33,6 @@ export async function ownerSecrets({ env = process.env, home = os.homedir() } = 
   const ise = env.SILINX_ISE_HOST;
   if (ise && ise !== 'local') out.push([ise, '<ISE host>'], [ise.replace(/^.*@/, ''), '<ISE host>']);
   const seen = new Set();
-  return out.filter(([s]) => typeof s === 'string' && s.length > 2 && s !== path.parse(s).root && !seen.has(s) && seen.add(s))
+  return out.filter(([s]) => typeof s === 'string' && s.length > 2 && s !== P.parse(s).root && !seen.has(s) && seen.add(s))
     .sort((a, b) => b[0].length - a[0].length);
 }
