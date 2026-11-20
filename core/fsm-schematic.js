@@ -11,8 +11,6 @@ import { normalizeFsm, encodedTable, fsmEncoding } from './fsm.js';
 import { schematicFromTable } from './logic-sch.js';
 import { joinOnWires, symbolDef, symbolPins } from './schdoc.js';
 
-const MAX_INPUTS = 16;   // (a truth table's, core/logic.js)
-
 /** The state diagram `model`'s schematic: { doc } (a schematic document), or { error } when it cannot be drawn. */
 export function fsmSchematic(model) {
   const m = normalizeFsm(model);
@@ -21,7 +19,6 @@ export function fsmSchematic(model) {
   const t = encodedTable(m);
   if (t.error) return { error: `No schematic: ${t.error[0].toLowerCase()}${t.error.slice(1)}` };
   const ins = [...t.stateBits, ...t.inputBits], outs = [...t.nextBits, ...t.outputBits];
-  if (ins.length > MAX_INPUTS) return { error: `No schematic: a truth table has at most ${MAX_INPUTS} inputs; this machine needs ${ins.length}` };
   const clash = [m.clock, m.reset.name].find((n) => [...ins, ...outs].some((x) => x.toLowerCase() === n.toLowerCase()));
   if (clash) return { error: `No schematic: the signal ${clash} is named as a state bit` };
   const table = {};
@@ -42,29 +39,33 @@ export function fsmSchematic(model) {
   for (const p of buses) for (let b = 0; b < p.width; b++) bitOf.set(`${p.name}_${b}`, `${p.name}(${b})`);
   for (const p of doc.ports.filter((q) => bitOf.has(q.name))) label(p.x, p.y, bitOf.get(p.name));
   doc.ports = doc.ports.filter((q) => !bitOf.has(q.name));
-  // the state register, right of the logic
+  // the inputs on the left: the clock, the reset and the input buses under the logic, at the input markers' x; the state
+  // register right of the logic, the output buses under it
   const right = Math.max(...doc.ports.map((p) => p.x), ...doc.labels.map((l) => l.x)) + 200;
+  const left = Math.min(...doc.ports.filter((p) => p.dir === 'in').map((p) => p.x), ...doc.labels.map((l) => l.x));
+  const bottom = Math.max(...doc.wires.flatMap((w) => w.points.map((q) => q.y))) + 60;
   const top = 40, x0 = right + 120;
   const used = new Set([...ins, ...outs, m.clock, m.reset.name].map((n) => n.toLowerCase()));
   const fresh = (base) => { let n = base, k = 1; while (used.has(n.toLowerCase())) n = `${base}_${++k}`; used.add(n.toLowerCase()); return n; };
   const port = (name, dir, x, y, width = 1) => doc.ports.push({ id: `P${++pid}`, name, dir, width, x, y });
   // the clock and the reset: markers, a stub and a label (the reset through an inverter when active low)
-  port(m.clock, 'in', right, top); wire([{ x: right, y: top }, { x: right + 40, y: top }]); label(right + 40, top, m.clock);
+  port(m.clock, 'in', left, bottom); wire([{ x: left, y: bottom }, { x: left + 40, y: bottom }]); label(left + 40, bottom, m.clock);
   let rst = m.reset.name;
-  port(m.reset.name, 'in', right, top + 40);
+  const yr = bottom + 40;
+  port(m.reset.name, 'in', left, yr);
   if (m.reset.active === 'low') {
     rst = fresh(`${m.reset.name}_i`);
-    const inv = { id: `S${++sid}`, type: 'inv', x: right + 20, y: top + 30, rot: 0, mirror: false, name: `U${sid}`, params: { width: 1 } };
+    const inv = { id: `S${++sid}`, type: 'inv', x: left + 20, y: yr - 10, rot: 0, mirror: false, name: `U${sid}`, params: { width: 1 } };
     doc.symbols.push(inv);
-    wire([{ x: right, y: top + 40 }, { x: right + 20, y: top + 40 }]);
-    wire([{ x: right + 100, y: top + 40 }, { x: right + 120, y: top + 40 }]); label(right + 120, top + 40, rst);
-  } else { wire([{ x: right, y: top + 40 }, { x: right + 40, y: top + 40 }]); label(right + 40, top + 40, rst); }
+    wire([{ x: left, y: yr }, { x: left + 20, y: yr }]);
+    wire([{ x: left + 100, y: yr }, { x: left + 120, y: yr }]); label(left + 120, yr, rst);
+  } else { wire([{ x: left, y: yr }, { x: left + 40, y: yr }]); label(left + 40, yr, rst); }
   const init = fsmEncoding(m).find((e) => e.id === m.initial)?.bits || '0'.repeat(t.stateBits.length);
   const pins = { D: (b) => t.nextBits[b], Q: (b) => t.stateBits[b], C: () => m.clock, CLR: () => rst, PRE: () => rst, R: () => rst, S: () => rst };
   t.stateBits.forEach((q, b) => {
     const one = init[b] === '1';
     const type = m.reset.sync ? (one ? 'fds' : 'fdr') : (one ? 'fdp' : 'fdc');
-    const s = { id: `S${++sid}`, type, x: x0, y: top + 100 + b * 120, rot: 0, mirror: false, name: `U${sid}`, params: { width: 1, init: one ? '1' : '0' } };
+    const s = { id: `S${++sid}`, type, x: x0, y: top + b * 120, rot: 0, mirror: false, name: `U${sid}`, params: { width: 1, init: one ? '1' : '0' } };
     doc.symbols.push(s);
     for (const p of symbolPins(s, {}, symbolDef(s))) {
       const dx = p.dir === 'out' ? 20 : -20;
@@ -72,14 +73,17 @@ export function fsmSchematic(model) {
       label(p.x + dx, p.y, pins[p.name](b));
     }
   });
-  // the buses' markers, under the register: a stub to a label of the whole bus
-  buses.forEach((p, i) => {
-    const y = top + 100 + t.stateBits.length * 120 + 40 * i, dx = p.dir === 'in' ? 40 : -40, x = p.dir === 'in' ? right : x0 + 130;
-    port(p.name, p.dir, x, y, p.width);
-    wire([{ x, y }, { x: x + dx, y }]);
-    label(x + dx, y, `${p.name}(${p.width - 1}:0)`);
+  // the buses' markers: a stub to a label of the whole bus (the inputs' on the left, the outputs' under the register)
+  const ins2 = buses.filter((p) => p.dir === 'in'), outs2 = buses.filter((p) => p.dir === 'out');
+  ins2.forEach((p, i) => {
+    const y = yr + 40 * (i + 1);
+    port(p.name, 'in', left, y, p.width); wire([{ x: left, y }, { x: left + 40, y }]); label(left + 40, y, `${p.name}(${p.width - 1}:0)`);
   });
-  const yEnd = top + 100 + t.stateBits.length * 120 + 40 * buses.length;
+  outs2.forEach((p, i) => {
+    const y = top + t.stateBits.length * 120 + 40 * i, x = x0 + 130;
+    port(p.name, 'out', x, y, p.width); wire([{ x, y }, { x: x - 40, y }]); label(x - 40, y, `${p.name}(${p.width - 1}:0)`);
+  });
+  const yEnd = Math.max(yr + 40 * ins2.length, top + t.stateBits.length * 120 + 40 * outs2.length);
   doc.sheet = { w: Math.max(doc.sheet.w, Math.ceil((x0 + 200) / 100) * 100), h: Math.max(doc.sheet.h, Math.ceil((yEnd + 60) / 100) * 100) };
   joinOnWires(doc);
   return { doc };
