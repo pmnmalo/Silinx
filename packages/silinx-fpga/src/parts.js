@@ -10,6 +10,7 @@ export { usedOfReport, primitiveInstances, deviceChangeIssues } from './resource
 
 // the constraints
 export { boardConstraintsText } from './board-constraints.js';
+export { UCF, readConstraints } from './constraints.js';
 export { parseUcf, generateUcf, checkUcf, bitName, boardAutoAssign, periodNs, ucfPlacesPins, backAnnotateUcf, locsNotOnBoard } from './ucf.js';
 
 export { PCF } from './pcf.js';
