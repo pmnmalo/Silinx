@@ -177,3 +177,33 @@ uiTest('#4811 a CB4CE pushed into: its count the symbol\'s in the Try it, its IN
   await page.waitFor(async () => { const d = window.Silinx.active, L = d.viewer.liveSim; return L?.portValue(d.viewer.getDoc().ports.find((x) => x.name === 'A').id)?.v === 5n; }, [], { what: 'A follows: 5' });
   assert.equal(await val('S'), '6');
 });
+
+// #4981: a double-click on a palette symbol built of others enters it, as on a module's instance (#2046); its
+// Properties a click's; a gate's double-click as before (its first field); in Portuguese
+uiTest('#4981 a double-click on an ADD8 enters its composition; on a gate, its Properties; Portuguese', E, async (page) => {
+  const doc = adderDoc();
+  doc.symbols.push({ id: 'S2', type: 'and2', x: 400, y: 600, rot: 0, mirror: false, name: 'G1', params: { width: 1, bits: false } });
+  await makeProject(env, { name: 'CompDbl', files: { 'src/top.sch.json': JSON.stringify(normalizeDoc(doc)) } });
+  await page.openProject('CompDbl');
+  for (const lang of ['en', 'pt']) {
+    await page.eval(async (l) => (await import('/js/i18n.js')).setLanguage(l), lang);
+    await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
+    await page.waitFor((ed) => document.querySelector(`${ed} svg .sym[data-id="S1"]`), [ED], { what: 'drawn' });
+    // a click: its Properties, with its Push into
+    await page.click(`${ED} svg .sym[data-id="S1"] .hitbox`);
+    await page.waitFor((ed) => document.querySelector(`${ed} .se-pushinto`), [ED], { what: 'its Properties' });
+    await page.dblclick(`${ED} svg .sym[data-id="S1"] .hitbox`);
+    await page.waitFor(() => window.Silinx.active?.id === 'comp:ADD8', [], { what: 'entered' });
+    // (its tab's title as shown, translated)
+    await page.waitFor((t) => document.querySelector('#doc-tabs .tab.active')?.textContent.includes(t), [lang === 'en' ? 'ADD8 (composition)' : 'ADD8 (composição)'], { what: `its tab (${lang})` });
+    const c = await comp(page);
+    assert.deepEqual([c.path, c.banner], lang === 'en' ? ['ADD8', 'Read-only, how ADD8 is built: ADD8'] : ['ADD8', 'Só de leitura, como ADD8 é construído: ADD8'], lang);
+  }
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  // a gate: no composition, its first field in focus, the tab the schematic's
+  await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
+  await page.waitFor((ed) => document.querySelector(`${ed} svg .sym[data-id="S2"]`), [ED], { what: 'drawn again' });
+  await page.dblclick(`${ED} svg .sym[data-id="S2"] .hitbox`);
+  await page.waitFor((ed) => document.activeElement?.closest?.(`${ed} .se-props`) && document.activeElement.tagName === 'INPUT', [ED], { what: 'the gate\'s first field' });
+  assert.equal(await page.eval(() => window.Silinx.active.id), 'sch:src/top.sch.json');
+});

@@ -223,6 +223,8 @@ export function mountSchMouse(ctx) {
     if (it.kind === 'sym') {
       const s = doc().symbols.find(x => x.id === it.id);
       if (s?.type === 'module' && opts.onOpenModule) opts.onOpenModule(s.params.module, { instance: s.name, symbol: clone(s) });
+      // (a palette symbol built of others entered as a module is: its composition, #4981; its Properties a click's)
+      else if (s && s.type !== 'module' && pushInto?.(s)) return;
       else if (s?.type === 'hdlblock') setTimeout(() => propBody.querySelector('textarea.code')?.focus(), 0);
       else setTimeout(() => propBody.querySelector('input')?.focus(), 0);
     } else setTimeout(() => propBody.querySelector('input')?.focus(), 0);
