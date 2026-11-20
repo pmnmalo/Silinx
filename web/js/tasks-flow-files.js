@@ -10,15 +10,17 @@ import { h } from './ui.js';
 import { icon, icons } from './icons.js';
 import { designKind } from './project-kind-flag.js';
 import { flowFiles } from '../../core/flow-files.js';
-// (design.js imports this module too: neither reads the other's names at load time, as web/js/flow-files-tree.js)
-import { fileContextMenu } from './design.js';
 
 let page = 'procs';   // ('procs': the task's processes; 'files')
 let app = null;
+let fileMenu = null;   // (design.js's fileContextMenu, once loaded)
 
 /** The Files tab in `tabs` (#left-tabs: after Implement's and Emulate's, the same page; its lists the panels' .task-flow-files). */
 export function mountFlowFiles(a, { tabs }) {
   app = a;
+  // (design.js loaded now, not imported: tasks.js loads in Node too, test/tool-descriptors.test.js, #4843; the menu then
+  // opened in the right-click itself, #4827)
+  import('./design.js').then(d => { fileMenu = d.fileContextMenu; }, () => {});
   const tab = h('div', { id: 'task-flow-files-tab', class: 'tab', role: 'tab', 'data-flow-page': 'files', title: 'Files' },
     h('span', { class: 'ico-inline tab-ico', html: icons.mFiles }), h('span', { class: 'tab-lbl' }, 'Files'));
   tabs.append(tab);
@@ -74,4 +76,4 @@ function pick(ul, row, onOpen, onMenu) {
 }
 const open = path => app.openFile(path);
 // (opened in the right-click itself, as the Design pane's rows', not a module load later)
-const menu = (e, path) => fileContextMenu(e, path);
+const menu = (e, path) => (fileMenu ? fileMenu(e, path) : import('./design.js').then(d => d.fileContextMenu(e, path)));
