@@ -26,7 +26,9 @@ relay of the GitHub sign-in (`relay/`), the GitHub workflows (`.github/workflows
 Out of scope: Xilinx ISE itself and its Docker image (the project only drives them; report their
 problems to their vendors); the user's operating system and browser; a server the user exposed to
 other computers with `serve --host 0.0.0.0` (or another address), which the printed token protects:
-whoever has the address with its token has the server, as the warning says at start. On this computer, the
+whoever has the address with its token has the server, as the warning says at start. Such a server needs HTTPS
+(`--tls-cert <file.pem> --tls-key <file.pem>`), or `--insecure-http` to accept plain HTTP, where the token crosses the
+network unencrypted; without either it does not start (#4739). On this computer, the
 token is in the configuration folder (`~/.silinx`) while the server runs, readable by its owner only (the folder
 0700 and `config.json` 0600, a folder made before or by hand tightened when the server starts, #3410): whoever can
 read that user's files has the server too.

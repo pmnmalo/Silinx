@@ -10,6 +10,8 @@ const opt = (name, def) => { const i = args.indexOf(`--${name}`); return i >= 0 
 
 const USAGE = `usage:
   silinx serve [--port 8642] [--host 127.0.0.1] [--open]   start the Project Navigator web UI
+               [--tls-cert cert.pem --tls-key key.pem]   over HTTPS (another --host than this computer's needs it,
+               [--insecure-http]                         or --insecure-http to accept plain HTTP there)
   silinx check <projectDir> [--top name]            parse + elaborate the design
   silinx sim   <projectDir> [--top tb] [--time ns] [--vcd out.vcd]   run a behavioural simulation
   silinx ucf   <projectDir> --board <board> [--part xc3s100e]   pins from the board (basys2, nexys2, s3e-starter…)
@@ -51,11 +53,15 @@ async function main() {
     case 'serve': {
       const { startServer, openBrowser, tokenFile } = await import('../server/server.js');
       const port = +opt('port', process.env.PORT || 8642), host = opt('host', '127.0.0.1');
-      const url = `http://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}`;
+      const certFile = opt('tls-cert'), keyFile = opt('tls-key');
+      if (!certFile !== !keyFile) { console.error('serve: --tls-cert and --tls-key go together'); process.exit(1); }
+      const tls = certFile ? { cert: fs.readFileSync(certFile), key: fs.readFileSync(keyFile) } : null;
+      const url = `${tls ? 'https' : 'http'}://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}`;
       let srv;
       try {
-        srv = await startServer({ port, host });
+        srv = await startServer({ port, host, tls, insecureHttp: args.includes('--insecure-http') });
       } catch (e) {
+        if (e.code === 'SILINX_EXPOSED_HTTP') { console.error(e.message); process.exit(1); }
         if (e.code !== 'EADDRINUSE') throw e;
         // already running (e.g. the launcher was double-clicked twice): opened, with a one-time code it gives for
         // the token it wrote for its owner (#2564), only when it proves it holds that token (#2955): a server

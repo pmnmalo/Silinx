@@ -306,11 +306,19 @@ test('serve: starts on the given port with the scratch workspace and opens the b
     assert.deepEqual(await (await fetch(`http://127.0.0.1:${port}/api/token`, page)).json(), { token });
   } finally { await stop(s.proc); }
   await fs.rm(env.FAKE_OPEN_LOG, { force: true });
+  // host 0.0.0.0 over plain HTTP: refused unless --insecure-http says so (#4739), nothing listening
+  const refused = await cli(['serve', '--host', '0.0.0.0', '--port', String(await freePort())]);
+  assert.equal(refused.code, 1);
+  assert.equal(refused.out, '');
+  assert.match(refused.err, /^serve --host 0\.0\.0\.0: other computers would reach this server over plain HTTP, .*--tls-cert <file\.pem> --tls-key <file\.pem>.*--insecure-http to accept it/);
+  const half = await cli(['serve', '--host', '0.0.0.0', '--tls-cert', 'c.pem']);
+  assert.deepEqual([half.code, half.err.trim()], [1, 'serve: --tls-cert and --tls-key go together']);
   // PORT from the environment, host 0.0.0.0 shown as 127.0.0.1 in the URL
-  const s2 = await serveOnFreePort(() => ['serve', '--host', '0.0.0.0'], /Keep this window open/, { env: (p) => ({ PORT: String(p) }) });
+  const s2 = await serveOnFreePort(() => ['serve', '--host', '0.0.0.0', '--insecure-http'], /Keep this window open/, { env: (p) => ({ PORT: String(p) }) });
   const port2 = s2.port;
   try {
     assert.match(s2.out(), new RegExp(`Silinx running at http://0.0.0.0:${port2}`));
+    assert.match(s2.out(), /Over plain HTTP \(--insecure-http\): the token crosses the network unencrypted\./);
     const token2 = /\/#token=([\w-]+)$/m.exec(s2.out())?.[1];
     assert.equal((await fetch(`http://127.0.0.1:${port2}/api/templates`)).status, 403);
     assert.equal((await fetch(`http://127.0.0.1:${port2}/api/templates`, { headers: { 'X-Silinx-Token': token2 } })).status, 200);

@@ -11,6 +11,8 @@ import os from 'node:os';
 import zlib from 'node:zlib';
 import { scratchEnv, startApp, makeFakes, sleep, HERE, POSIX_ONLY } from './server-helpers.js';
 import { createZip, readZip, textOf } from '../core/zip.js';
+import { spawnSync } from 'node:child_process';
+const hasOpenssl = () => spawnSync('openssl', ['version'], { stdio: 'ignore' }).status === 0;
 
 const codec = { deflate: d => zlib.deflateRawSync(d), inflate: d => zlib.inflateRawSync(d) };
 const zip = async files => Buffer.from(await createZip(files, codec));
@@ -532,7 +534,10 @@ test('security: foreign Host headers and cross-origin writes are refused', async
   // writes a file, GET /toolchain starts docker); the app's own requests are same-origin
   r = await app.raw('GET', '/api/projects/Alpha/export.xise', { headers: { 'sec-fetch-site': 'cross-site' } });
   assert.deepEqual([r.status, r.body], [403, { error: 'cross-site request refused' }]);
-  for (const site of ['same-origin', 'same-site', 'none'])
+  // (#4739: a page of the same site, another port of this computer, is another origin: refused as cross-site)
+  r = await app.raw('GET', '/api/templates', { headers: { 'sec-fetch-site': 'same-site' } });
+  assert.deepEqual([r.status, r.body], [403, { error: 'cross-site request refused' }]);
+  for (const site of ['same-origin', 'none'])
     assert.equal((await app.raw('GET', '/api/templates', { headers: { 'sec-fetch-site': site } })).status, 200, site);
   // same origin write: allowed
   r = await app.raw('POST', '/api/projects', { headers: { ...json, origin: app.origin }, body: JSON.stringify({ name: 'SameOrigin' }) });
@@ -593,12 +598,50 @@ test('security: bound to another address than loopback, the API needs the token 
   } finally { await named.close(); }
 });
 
+test('#4739 serve on another address than loopback over plain HTTP: refused, nothing listening; accepted with insecureHttp or TLS', async () => {
+  const { startServer, exposedRefusal } = await import('../server/server.js');
+  for (const host of ['0.0.0.0', '::', '192.0.2.7'])
+    await assert.rejects(startServer({ port: 0, host }), { code: 'SILINX_EXPOSED_HTTP', message: exposedRefusal(host) });
+  assert.equal(exposedRefusal('0.0.0.0'), 'serve --host 0.0.0.0: other computers would reach this server over plain HTTP, and its token, which gives '
+    + 'the whole server, would cross the network unencrypted. Give a certificate (--tls-cert <file.pem> --tls-key <file.pem>), or add '
+    + '--insecure-http to accept it (a network you trust)');
+  for (const host of ['127.0.0.1', 'localhost', '::1']) assert.equal(exposedRefusal(host), null, host);
+  assert.equal(exposedRefusal('0.0.0.0', { insecureHttp: true }), null);
+  assert.equal(exposedRefusal('0.0.0.0', { tls: { cert: 'c', key: 'k' } }), null);
+});
+
+test('#4739 serve over HTTPS (tls: a certificate and its key): the addresses printed are https, the API answers with its token', { skip: !hasOpenssl() }, async () => {
+  const { startServer } = await import('../server/server.js');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'silinx-tls-'));
+  const { execFileSync } = await import('node:child_process');
+  execFileSync('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes', '-days', '1', '-subj', '/CN=localhost',
+    '-keyout', path.join(dir, 'key.pem'), '-out', path.join(dir, 'cert.pem')], { stdio: 'ignore' });
+  const tls = { cert: fss.readFileSync(path.join(dir, 'cert.pem')), key: fss.readFileSync(path.join(dir, 'key.pem')) };
+  const out = [], log = console.log;
+  console.log = (...a) => out.push(a.join(' '));
+  let srv;
+  try { srv = await startServer({ port: 0, host: '0.0.0.0', tls }); } finally { console.log = log; }
+  try {
+    const port = srv.address().port;
+    assert.equal(srv.silinxUrl, `https://127.0.0.1:${port}/#token=${srv.silinxToken}`);
+    assert.match(out.join('\n'), new RegExp(`Silinx running at https://0\\.0\\.0\\.0:0`));
+    assert.ok(out.some(l => l.trim() === `https://<this computer>:${port}/#token=${srv.silinxToken}`));
+    assert.ok(!out.some(l => /plain HTTP/.test(l)));
+    const https = await import('node:https');
+    const get = headers => new Promise((resolve, reject) => https.get({ host: '127.0.0.1', port, path: '/api/templates', ca: tls.cert, servername: 'localhost', headers },
+      r => { r.resume(); resolve(r.statusCode); }).on('error', reject));
+    assert.equal(await get({}), 403);
+    assert.equal(await get({ 'X-Silinx-Token': srv.silinxToken }), 200);
+    assert.ok(srv.listeners('upgrade').length > 0, 'the relay of shared projects on the HTTPS server too');
+  } finally { await new Promise(r => srv.close(r)); await fs.rm(dir, { recursive: true, force: true }); }
+});
+
 test('security: serve on 0.0.0.0 makes a token at every start and prints the address with it', async () => {
   const { startServer } = await import('../server/server.js');
   const out = [], log = console.log;
   console.log = (...a) => out.push(a.join(' '));
   let srv;
-  try { srv = await startServer({ port: 0, host: '0.0.0.0' }); } finally { console.log = log; }
+  try { srv = await startServer({ port: 0, host: '0.0.0.0', insecureHttp: true }); } finally { console.log = log; }
   try {
     assert.match(srv.silinxToken, /^[\w-]{24}$/);
     assert.match(out.join('\n'), /WARNING: listening on 0\.0\.0\.0, not only on this machine/);
