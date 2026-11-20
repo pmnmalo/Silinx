@@ -27,7 +27,9 @@ const ok = async (name, args) => {
 const GATE = 'library ieee; use ieee.std_logic_1164.all;\nentity g is port (a, b : in std_logic; y : out std_logic; q : out std_logic_vector(1 downto 0)); end g;\narchitecture r of g is begin y <= a and b; q <= a & b; end r;\n';
 const portsOf = (text, top) => elaborate(compile([{ path: 'g.vhd', lang: 'vhdl', text }]), top).top.ports.map(ucfPort);
 
-test('ucfPort: a bit, a vector, its bounds', () => {
+test('ucfPort: a bit, a vector, its bounds; web/js/drawings.js\'s the core\'s (#4732, it moved there)', async () => {
+  const src = fs.readFileSync(new URL('../web/js/drawings.js', import.meta.url), 'utf8');
+  assert.ok(/^import \{ ucfPort \} from '\/core\/board-constraints\.js';$/m.test(src) && /^export \{ ucfPort \};$/m.test(src) && !/function ucfPort\(/.test(src));
   assert.deepEqual(portsOf(GATE, 'g'), [
     { name: 'a', dir: 'in', width: 1, msb: null, lsb: null }, { name: 'b', dir: 'in', width: 1, msb: null, lsb: null },
     { name: 'y', dir: 'out', width: 1, msb: null, lsb: null }, { name: 'q', dir: 'out', width: 2, msb: 1, lsb: 0 }]);

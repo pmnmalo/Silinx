@@ -39,7 +39,7 @@ const PARTS = {
     'isPn', 'viewNoun', 'viewTitle', 'viewIcon', 'viewKind', 'viewContextMenu', 'openView', 'viewBadge',
     'drawingCommands', 'drawnHdlLanguage', 'adoptDrawnHdl', 'writeDrawnHdl', 'linkOpenEditor', 'clashTip',
     'drawnHdlClashes', 'clashItem', 'resolveHdlClash', 'syncBanner', 'refreshSyncBanner',
-    'topUcfPorts', 'ucfPort', 'refreshOpenEditor', 'syncHdlFromSchematic',
+    'topUcfPorts', 'refreshOpenEditor', 'syncHdlFromSchematic',
     'convertToSchematic', 'drawingsAsBase', 'setViewAsTop', 'viewSel', 'topOfView', 'schContextMenu'],
   'processes.js': ['STATUS_ICON', 'SUMMARY_PROC', 'openMode',
     'processDefs', 'selectionProcesses', 'renderProcesses', 'ISE_PROCS', 'runProcess',
