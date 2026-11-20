@@ -5,11 +5,13 @@
 // following). Shown in both interfaces, while the project is shared; the Collaboration tab's Live box shows the same (#4215).
 import { h, popupMenu } from './ui.js';
 import { collab } from './collab-state.js';
+import { roleSwitch } from './collab-roles.js';
 
 let box = null;
 let commands = () => [];   // the menu's commands (collab-share.js, collab-follow.js)
 let roles = null;   // the owner's role changes (#4646, collab-share.js): { set(peer, role), editors() }
-let shown = { label: '', all: [], mode: null };   // what the presence shows (the Collaboration tab's Live box too, #4215)
+let shown = { label: '', all: [], mode: null };
+let menu = null;   // the menu, while open (its Viewer | Editor switches drawn again as the roles change, #4849)   // what the presence shows (the Collaboration tab's Live box too, #4215)
 
 /** The menu's commands while a project is shared or followed: () => [items]. */
 export function setPresenceCommands(fn) { commands = fn; }
@@ -53,12 +55,29 @@ export function renderPresence({ label = '', me = null, peers = [], mode = null 
   watch();
   const { all } = shown;
   const btn = h('button', { class: 'tb-btn collab-btn', title: 'Shared project: who is in it, and its commands', 'aria-haspopup': 'menu' }, label);
-  btn.addEventListener('click', () => { const r = btn.getBoundingClientRect(); popupMenu(menuItems(all), r.left, r.bottom + 2); });
+  btn.addEventListener('click', () => { const r = btn.getBoundingClientRect(); menu = popupMenu(menuItems(all), r.left, r.bottom + 2); });
   box.replaceChildren(h('span', { class: 'collab-badges' }, ...all.map(badge)), btn);
+  redrawSwitches();
+}
+
+// the owner's role changes for a follower (#4849: the Collaboration tab's Viewer | Editor, the same function)
+const ownerRoles = () => (collab.role === 'owner' ? roles : null);
+// the open menu's switches drawn again in place (the menu kept open: no flicker), each with its follower's role now
+function redrawSwitches() {
+  if (!menu?.isConnected) { menu = null; return; }
+  const r = ownerRoles();
+  for (const el of menu.querySelectorAll('.collab-roles')) {
+    const p = shown.all.find(x => String(x.client) === el.dataset.client);
+    if (p && r) el.replaceWith(roleSwitch(p, r, redrawSwitches));
+  }
 }
 
 function menuItems(all) {
   // (a name is the participant's, not translated; their role beside it)
-  const people = all.map(p => ({ label: p.name, raw: true, shortcut: p.me ? 'you' : p.role === 'owner' ? 'owner' : p.role === 'editor' ? 'editor' : 'viewer', disabled: true }));
+  // (the owner's menu: each follower's Viewer | Editor, #4849, the row itself no command)
+  const r = ownerRoles();
+  const people = all.map(p => (r && !p.me && p.role !== 'owner'
+    ? { label: p.name, raw: true, shortcut: roleSwitch(p, r, redrawSwitches) }
+    : { label: p.name, raw: true, shortcut: p.me ? 'you' : p.role === 'owner' ? 'owner' : p.role === 'editor' ? 'editor' : 'viewer', disabled: true }));
   return [...people, '-', ...commands()];
 }

@@ -53,9 +53,9 @@ uiTest('#3997 the Sharing menu: a viewer made an editor, then a viewer again (th
     await rp.waitFor(() => window.Silinx.active?.path === 'src/top.vhd', [], { what: 'the owner\'s editor followed' });
     assert.equal(await readOnly(rp), true);
     await page.waitConsole(/^Rui follows your project "Roles"\.$/m);
-    // the owner's menu: Rui a viewer; no role command in it (#4646)
+    // the owner's menu: Rui's Viewer | Editor (#4849, test/ui/collab-roles-menu.test.js); no role command in it (#4646)
     await page.waitFor(() => document.querySelector('.collab-presence .collab-btn')?.textContent === 'Sharing (1)', [], { what: 'Sharing (1)' });
-    assert.deepEqual(await menu(page), [['Ana', 'you'], ['Rui', 'viewer'], '-', ['Copy View Link', ''], ['Copy Editor Link', ''], ['Add a User…', ''], ['Stop Sharing', '']]);
+    assert.deepEqual(await menu(page), [['Ana', 'you'], ['Rui', 'ViewerEditor'], '-', ['Copy View Link', ''], ['Copy Editor Link', ''], ['Add a User…', ''], ['Stop Sharing', '']]);
     await page.eval(() => document.body.click());
     // (the viewer's own menu: themselves a viewer)
     assert.deepEqual((await menu(rp)).slice(0, 2), [['Ana', 'owner'], ['Rui', 'you']]);
@@ -85,7 +85,7 @@ uiTest('#3997 the Sharing menu: a viewer made an editor, then a viewer again (th
     await type(rp, '-- by Rui\n');
     for (let t = Date.now(); Date.now() - t < 8000 && await readWs(env, 'Roles', 'src/top.vhd') !== `-- by Rui\n${TOP}`;) await new Promise((r) => setTimeout(r, 100));
     assert.equal(await readWs(env, 'Roles', 'src/top.vhd'), `-- by Rui\n${TOP}`);
-    assert.deepEqual((await menu(page)).slice(1, 3), [['Rui', 'editor'], '-']);
+    assert.deepEqual((await menu(page)).slice(1, 3), [['Rui', 'ViewerEditor'], '-']);
     await page.eval(() => document.body.click());
     // made a viewer again (the tab's Viewer): read only; the editors' link renewed
     await page.leftTab('collab');
@@ -115,7 +115,7 @@ uiTest('#3997 the Sharing menu: a viewer made an editor, then a viewer again (th
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     try {
       await page.waitFor(() => document.querySelectorAll('.collab-presence .collab-badge').length === 2, [], { what: 'the old link\'s page gone' });
-      assert.deepEqual((await menu(page)).slice(0, 4), [['Ana', 'você'], ['Rui', 'espectador'], '-', ['Copiar Ligação de Visualização', '']]);
+      assert.deepEqual((await menu(page)).slice(0, 4), [['Ana', 'você'], ['Rui', 'EspectadorEditor'], '-', ['Copiar Ligação de Visualização', '']]);
       await page.eval(() => document.body.click());
       await page.leftTab('collab');
       await page.waitFor(() => document.querySelector('#collab-page .collab-role-state[data-role="viewer"]')?.textContent === 'Espectador', [], { what: 'the control in Portuguese' });
