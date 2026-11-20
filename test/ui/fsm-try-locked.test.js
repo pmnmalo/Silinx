@@ -1,6 +1,6 @@
 // UI: the FSM editor while Try it is open (#3793): the diagram locked as a read-only one is. A state not moved, an arrow
 // not bent, no transition drawn, no state added by a double-click, nothing edited in place; Delete, Cut, Paste, Undo
-// and the toolbar's State, Delete, Arrange, Encoding and Coding Style disabled; a state or a transition still selected,
+// and the toolbar's State, Delete, Arrange and Coding Style disabled (the Encoding: a field of the Properties, #4908); a state or a transition still selected,
 // its properties shown with their fields disabled and their buttons hidden; the simulation still stepped, the view
 // zoomed. Try it closed: all of it again.
 import { before, after } from 'node:test';
@@ -27,7 +27,7 @@ const statePos = (page, id) => page.eval((ed, sid) => {
 }, ED, id);
 const model = (page) => page.eval(() => window.Silinx.active.fsmEditor.getModel());
 const shape = (m) => JSON.stringify([m.states, m.transitions]);
-// the toolbar's tools that change the diagram: State, Delete, the ⋮ menu's Arrange, Encoding and Coding Style
+// the toolbar's tools that change the diagram: State, Delete, the ⋮ menu's Arrange and Coding Style
 const tools = (page) => page.eval((ed) => {
   const r = document.querySelector(ed);
   const menu = [...r.querySelectorAll('.asm-toolbar button')].filter((b) => b.textContent === 'Arrange' || b.dataset.value !== undefined);

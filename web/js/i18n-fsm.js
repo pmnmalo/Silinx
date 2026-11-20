@@ -8,6 +8,10 @@ export const FSM_PT = {
   
   // toolbar
   'State encoding': 'Codificação de estados', 'Binary': 'Binária', 'Gray': 'Gray', 'One-hot': 'One-hot', 'Enumerated': 'Enumerada',
+  // (the encoding of the user's, #4908: the machine's Properties, a state's code)
+  'User-defined': 'Definida pelo utilizador',
+  'The state\'s code: binary digits, as wide as the other states\'': 'O código do estado: dígitos binários, com a largura dos dos outros estados',
+  'The state\'s code: one typed makes the encoding User-defined': 'O código do estado: escrever um torna a codificação Definida pelo utilizador',
   'Style of the generated HDL': 'Estilo do HDL gerado', '3 processes': '3 processos', '2 processes': '2 processos', 'HDL language': 'Linguagem HDL',
   'Zoom level': 'Nível de zoom',
   'Delete the selected state or transition (Del)': 'Apagar o estado ou a transição selecionada (Del)',
@@ -52,7 +56,7 @@ export const FSM_PT = {
   'Present state': 'Estado presente', 'Code': 'Código', 'Input condition': 'Condição das entradas', 'Next state': 'Estado seguinte', 'Next code': 'Código seguinte',
   'otherwise (stays)': 'caso contrário (fica)', 'unused code': 'código não usado',
   'Create Boolean Algebra sources (.bool.json) of the next-state bits and of the outputs, to simplify them with Karnaugh maps': 'Criar fontes de Álgebra Booleana (.bool.json) dos bits do estado seguinte e das saídas, para as simplificar com mapas de Karnaugh',
-  'The encoded table is made for the binary and gray encodings (choose one of them)': 'A tabela codificada é feita para as codificações binária e Gray (escolha uma delas)',
+  'The encoded table is made for the binary, gray and user-defined encodings (choose one of them)': 'A tabela codificada é feita para as codificações binária, Gray e definida pelo utilizador (escolha uma delas)',
   'Correct the errors of the diagram first': 'Corrija primeiro os erros do diagrama',
   // simulation
   'Simulation': 'Simulação', 'Correct the errors of the diagram to simulate it.': 'Corrija os erros do diagrama para o simular.',
@@ -114,6 +118,12 @@ export const FSM_PT_PATTERNS = [
   // (a don't care, which an ASM chart does not have: core/fsm-asm.js asmDontCares, #4891)
   [/^(State .+|Transition .+ → .+): (\S+) = (.*) is a don't care \(X\), which an ASM chart does not have$/, (m, w, o, v) => `${where(w)}: ${o} = ${v} é um valor indiferente (X), que um fluxograma ASM não tem`],
   [/^Output '(.*)': its default value (.*) is a don't care \(X\), which an ASM chart does not have$/, "Saída '$1': o seu valor por omissão $2 é um valor indiferente (X), que um fluxograma ASM não tem"],
+  // (the codes of the user's, core/fsm-codes.js, #4908)
+  [/^State (.+) has no code: in the encoding of the user's each state has its own$/, 'O estado $1 não tem código: na codificação definida pelo utilizador cada estado tem o seu'],
+  [/^State (.+): its code '(.*)' must be binary digits \(0 and 1\)$/, "Estado $1: o seu código '$2' tem de ser dígitos binários (0 e 1)"],
+  [/^State (.+): its code has (\d+) bits; a code has (\d+) at most$/, 'Estado $1: o seu código tem $2 bits; um código tem $3 no máximo'],
+  [/^The states' codes must all have the same width: (.+)$/, (m, l) => `Os códigos dos estados têm de ter todos a mesma largura: ${l}`],
+  [/^States (.+) and (.+) have the same code ([01]+)$/, 'Os estados $1 e $2 têm o mesmo código $3'],
   // (the Outputs fields' own errors, core/fsm.js parseOutputs, #3288)
   [/^'(.*)' is not an output$/, "'$1' não é uma saída"],
   [/^the value (.*) of (\S+) does not fit in (\d+) bit\(s\)$/, 'o valor $1 de $2 não cabe em $3 bit(s)'],

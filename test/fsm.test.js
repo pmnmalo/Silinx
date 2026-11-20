@@ -443,7 +443,7 @@ test('encoded transition table (binary and gray) and the truth tables of the nex
   // unused codes: don't cares
   const d3 = encodedTable(mealy101());
   assert.deepEqual(d3.rows.filter((r) => r.unused).map((r) => [r.q, r.d, r.out]), [['11', 'XX', 'X'], ['11', 'XX', 'X']]);
-  assert.match(encodedTable({ ...m, encoding: 'onehot' }).error, /binary and gray/);
+  assert.match(encodedTable({ ...m, encoding: 'onehot' }).error, /binary, gray and user-defined/);   // (the user's codes too, #4908)
   // truth tables: inputs = state bits + input bits
   const tt = truthTablesOf(mealy101());
   assert.deepEqual(tt.tables.map((x) => [x.doc.name, x.doc.inputs, x.doc.outputs]), [['det101_next', ['q1', 'q0', 'x'], ['d1', 'd0']], ['det101_out', ['q1', 'q0', 'x'], ['z']]]);

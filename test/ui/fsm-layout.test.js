@@ -1,5 +1,5 @@
 // UI: the FSM editor laid out as the other editors (#2729, docs/UI-GUIDELINES.md), on the traffic example: no hint line
-// line; no selector in the toolbar (the Encoding and the Coding Style in the ⋮ menu, #3289), the zoom level beside the zoom tools;
+// line; no selector in the toolbar (the Coding Style in the ⋮ menu, #3289; the Encoding in the machine's Properties, #4908), the zoom level beside the zoom tools;
 // "7 state(s), 8 transition(s)", Moore or Mealy and the encoding in its status line (#2763), none in its toolbar, counted
 // again on a change; the reset's name on the start-up arrow, following the Properties' Reset signal; a text typed in
 // place that is not valid: a warning in the console; a Petri net's state machine (read-only) the same; in Portuguese.
@@ -29,6 +29,9 @@ const pickChoice = async (page, value) => {
   await page.click(`${ED} .tb-more-btn`);
   await page.click(`${ED} .tb-more-menu [data-value="${value}"]`);
 };
+// the machine's Properties' Encoding (#4908): its options [label, selected], one chosen
+const encodings = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} select.fsm-encoding option`)].map((o) => [o.textContent, o.selected]), ED);
+const pickEncoding = (page, value) => page.eval((ed, v) => { const s = document.querySelector(`${ed} select.fsm-encoding`); s.value = v; s.dispatchEvent(new Event('change')); }, ED, value);
 
 async function openTraffic(page, name) {
   await makeProject(env, { name, template: 'traffic' });
@@ -60,7 +63,7 @@ uiTest('#2729 FSM editor: no hint line; labelled selectors and the zoom in the t
   await page.eval(() => window.Silinx.active.fsmEditor.undo());
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-info`).textContent === '7 state(s), 8 transition(s)', [ED], { what: 'undone' });
   // the encoding changed: in the status line too
-  await pickChoice(page, 'onehot');
+  await pickEncoding(page, 'onehot');
   assert.deepEqual(await status(page), ['7 state(s), 8 transition(s)', 'Moore', 'Encoding: One-hot']);
   await page.eval(() => window.Silinx.active.fsmEditor.undo());
   // the Properties: nothing selected, no section of the selection; the Machine section a title, not a fold; a state
@@ -106,14 +109,16 @@ uiTest('#2729 FSM editor: no hint line; labelled selectors and the zoom in the t
 });
 
 
-uiTest('#3289 FSM editor: the Encoding and the Coding Style choices of the ⋮ menu, not in the toolbar; the HDL made in them; undone; in Portuguese', E, async (page) => {
+uiTest('#3289 FSM editor: the Coding Style a choice of the ⋮ menu, the Encoding in the machine\'s Properties (#4908), not in the toolbar; the HDL made in them; undone; in Portuguese', E, async (page) => {
   await openTraffic(page, 'FsmStyle');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .asm-toolbar .asm-group select`), ED), null);
-  const ENC = ['Encoding', '✓ Binary', 'Gray', 'One-hot', 'Enumerated'];
-  const menu = async () => (await choices(page)).slice(-8);
-  assert.deepEqual(await menu(), [...ENC, 'Coding Style', '✓ 3 processes', '2 processes']);
-  // a line above each title, Encoding's after the commands as Coding Style's after the encodings (#3306)
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title`)].map((t) => getComputedStyle(t).borderTopStyle), ED), ['solid', 'solid']);
+  const ENC = (sel) => [['Binary', sel === 'binary'], ['Gray', sel === 'gray'], ['One-hot', sel === 'onehot'], ['Enumerated', sel === 'enum'], ['User-defined', sel === 'user']];
+  const menu = async () => (await choices(page)).slice(-3);
+  // the ⋮ menu: the Coding Style only (no Encoding), a line above its title (#3306)
+  assert.deepEqual(await menu(), ['Coding Style', '✓ 3 processes', '2 processes']);
+  assert.ok(!(await choices(page)).includes('Encoding'));
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .tb-more-menu .tb-menu-title`)].map((t) => getComputedStyle(t).borderTopStyle), ED), ['solid']);
+  assert.deepEqual(await encodings(page), ENC('binary'));
   const model = await page.eval(() => window.Silinx.active.fsmEditor.getModel());
   const hdl = (m) => generateFsm({ ...model, ...m }, 'vhdl', { source: 'traffic.fsm.json' }).code;
   const vhdl = async (want, what) => {
@@ -126,25 +131,27 @@ uiTest('#3289 FSM editor: the Encoding and the Coding Style choices of the ⋮ m
   assert.notEqual(hdl({ style: '2process' }), hdl({ style: '3process' }));
   await pickChoice(page, '2process');
   assert.deepEqual(await got(), ['binary', '2process']);
-  assert.deepEqual(await menu(), [...ENC, 'Coding Style', '3 processes', '✓ 2 processes']);
+  assert.deepEqual(await menu(), ['Coding Style', '3 processes', '✓ 2 processes']);
   await vhdl(hdl({ style: '2process' }), 'the VHDL in 2 processes');
   // Gray: the encoding, in the status line too (#2763), the VHDL in both
-  await pickChoice(page, 'gray');
+  await pickEncoding(page, 'gray');
   assert.deepEqual(await got(), ['gray', '2process']);
-  assert.deepEqual(await menu(), ['Encoding', 'Binary', '✓ Gray', 'One-hot', 'Enumerated', 'Coding Style', '3 processes', '✓ 2 processes']);
+  assert.deepEqual(await encodings(page), ENC('gray'));
   assert.deepEqual(await status(page), ['7 state(s), 8 transition(s)', 'Moore', 'Encoding: Gray']);
   await vhdl(hdl({ encoding: 'gray', style: '2process' }), 'the VHDL in Gray, 2 processes');
-  // undone twice: the ✓ back on Binary and 3 processes, and each chosen again
+  // undone twice: Binary and 3 processes again, and each chosen again
   await page.eval(() => window.Silinx.active.fsmEditor.undo());
   await page.eval(() => window.Silinx.active.fsmEditor.undo());
   assert.deepEqual(await got(), ['binary', '3process']);
-  assert.deepEqual(await menu(), [...ENC, 'Coding Style', '✓ 3 processes', '2 processes']);
+  assert.deepEqual(await encodings(page), ENC('binary'));
+  assert.deepEqual(await menu(), ['Coding Style', '✓ 3 processes', '2 processes']);
   await pickChoice(page, '2process');
-  await pickChoice(page, 'gray');
+  await pickEncoding(page, 'gray');
   assert.deepEqual(await got(), ['gray', '2process'], 'chosen again after the undo');
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
-  assert.deepEqual(await menu(), ['Codificação', 'Binário', '✓ Gray', 'One-hot', 'Enumerada', 'Estilo de Código', '3 processos', '✓ 2 processos']);
+  assert.deepEqual(await menu(), ['Estilo de Código', '3 processos', '✓ 2 processos']);
+  assert.deepEqual((await encodings(page)).map(([l]) => l), ['Binário', 'Gray', 'One-hot', 'Enumerada', 'Definida pelo utilizador']);
   assert.deepEqual(await status(page), ['7 estado(s), 8 transição(ões)', 'Moore', 'Codificação: Gray']);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(warnings(page), []);
