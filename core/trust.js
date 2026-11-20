@@ -3,7 +3,8 @@
 // silinx.json by the import. It opens, is edited, checked, simulated and implemented with the Silinx toolchain, in the
 // browser's sandbox; what runs outside it (Xilinx ISE over Docker or ssh, programming a board or a PROM) waits until the
 // user trusts it: the console's line with its Trust Project button, said when the project opens. A project the user
-// made is trusted from the start (no `trusted` field). Only the user trusts a project, in the interface: the MCP server
+// made is trusted from the start (no `trusted` field), and recorded as such outside it (#4735): a project with no record
+// (a folder unzipped by hand, cloned by command-line git, restored from the .trash) is untrusted whatever it says. Only the user trusts a project, in the interface: the MCP server
 // has no tool for it, so that an assistant led astray by what it read cannot. A project the MCP server makes holds what an
 // assistant wrote: untrusted from the start too, `madeBy: "mcp"` saying so (#2981). A shared project an editor of its
 // link changed (#3355): untrusted from that editor's first change written, `madeBy: "editor"` saying so. Isomorphic
@@ -13,7 +14,11 @@
 export const isTrusted = pj => pj?.trusted !== false;
 
 // where an untrusted project came from, as its messages say it (pj: its description, #2981)
-const ORIGINS = { mcp: 'was made through the MCP server (by an assistant)', editor: 'was changed by an editor of its shared link', merge: 'had a contribution merged into it (Merge Contribution)' };
+/** A project with no trust record outside it (#4735: server/trust-store.js, web/js/trust-records.js): its folder reached
+ *  the workspace other than through Silinx (madeBy as the server reads it, never written into its silinx.json). */
+export const UNRECORDED = 'unrecorded';
+const ORIGINS = { mcp: 'was made through the MCP server (by an assistant)', editor: 'was changed by an editor of its shared link', merge: 'had a contribution merged into it (Merge Contribution)',
+  [UNRECORDED]: 'was not made in Silinx nor trusted here (its folder reached the workspace outside Silinx)' };
 const origin = pj => ORIGINS[pj?.madeBy] || 'came from outside (imported)';
 
 /** The refusal of `what` (Xilinx ISE, programming the board…) for an untrusted project. */
