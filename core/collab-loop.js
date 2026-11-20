@@ -6,7 +6,7 @@
 //   socketPair() -> { client, room }: `client` as a WebSocket (readyState, binaryType, send, close, its events open,
 //                   message, close, error); `room` as a room's socket (readyState, send(data, { binary }), close(code,
 //                   reason)), whose messages and end go to its `onmessage(data, binary)` and `onclose()`
-//   hostedRooms({ limits }) -> { rooms, owner (a WebSocket class for shareRoom), follower(end) (a room's socket of a
+//   hostedRooms({ limits, room }) -> { rooms, owner (a WebSocket class for shareRoom), follower(end) (a room's socket of a
 //                   follower attached: its frames larger than limits.followerFrame close it, 1009), closeRoom }
 import { collabRooms, ROOM_LIMITS } from './collab-room.js';
 
@@ -53,8 +53,9 @@ export function socketPair() {
 }
 
 /** The rooms of a page that hosts them. */
-export function hostedRooms({ limits = HOST_LIMITS } = {}) {
-  const host = collabRooms({ limits });
+export function hostedRooms({ limits = HOST_LIMITS, room = null } = {}) {
+  // (room: the id its room opens with, #4850: the owner's page loaded again, its followers' links the same)
+  const host = collabRooms({ limits, ...(room ? { newRoom: () => room } : {}) });
   const attach = (end, role, max = Infinity) => {
     const p = host.welcome(end, role);
     const size = d => (typeof d === 'string' ? d.length : d.byteLength);

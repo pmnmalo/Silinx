@@ -1,7 +1,7 @@
 // The owner's connection lost and its room resumed (#3835, phase 4c of #3180: core/collab-client.js shareRoom's
 // reconnect, core/collab-room.js's grace and resume): over the room a page hosts (core/collab-loop.js, sockets in the
 // page, no network), given a grace as the relay's, whose owner's socket the test closes as a network would. The room is
-// kept, its followers with it, none of them told; the owner resumes it with its secret: what it changed meanwhile
+// kept, its followers with it, told only that the owner is away and back (#4850); the owner resumes it with its secret: what it changed meanwhile
 // reaches every follower, an editor's change made meanwhile reaches the owner, who is in comes back on both sides. A
 // room the relay no longer keeps (no grace), close() while lost, and reconnect: false end the session, with reasons.
 import { test, after } from 'node:test';
@@ -37,7 +37,7 @@ async function setup({ grace = 2000, editors = false, reconnect = FAST } = {}) {
   return { h, socks, doc, owner, ownerEv, f, ev };
 }
 
-test('#3835 the owner\'s connection lost: the room resumed, the owner\'s change meanwhile reaches the follower, who is in comes back; the follower never told', async () => {
+test('#3835 the owner\'s connection lost: the room resumed, the owner\'s change meanwhile reaches the follower, who is in comes back; the follower told only that it was away and is back (#4850)', async () => {
   const { h, socks, doc, owner, ownerEv, f, ev } = await setup();
   socks.at(-1).close();   // (the network's end)
   await until(() => types(ownerEv).includes('offline'), 'offline');
@@ -51,7 +51,7 @@ test('#3835 the owner\'s connection lost: the room resumed, the owner\'s change 
   await until(() => owner.peers().map(p => p.name).join() === 'Rui' && f.owner()?.name === 'Ana', 'who is in, both sides');
   assert.deepEqual(types(ownerEv), ['offline', 'online']);
   assert.deepEqual(ownerEv.find(e => e.type === 'offline'), { type: 'offline', reason: 'the connection to the relay was lost' });
-  assert.deepEqual(types(ev), []);   // (the follower: no loss, no error)
+  assert.deepEqual(types(ev), ['away', 'back']);   // (the follower: the owner away and back, #4850; no loss, no error)
   assert.equal(f.connected(), true);
   // (and the later changes too; then Stop Sharing ends it for the follower, as before)
   putFile(doc, 'src/tb.vhd', '-- later\n');

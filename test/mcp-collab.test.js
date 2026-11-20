@@ -965,13 +965,45 @@ test('#3835 share_project: its connection to the relay lost, its room resumed; m
     await until(async () => (await ok('share_project', { project: 'trafficRs', action: 'status' })).data.connected, 'back', 10_000);
     await until(() => docFile(page.doc, 'src/timer.vhd') === text, 'the change made meanwhile at the follower\'s', 8000);
     const st = await until(async () => { const r = await ok('share_project', { project: 'trafficRs', action: 'status' }); return r.data.followers.length ? r : null; }, 'Rui in the status again', 20_000);
-    assert.equal(st.text, `'trafficRs' is shared via the Silinx server's relay: ${link}\nFollowers:\nRui (viewer, through the relay)`);
+    assert.equal(st.text, `'trafficRs' is shared via the Silinx server's relay: ${link}\nIts room was resumed once (its connection lost): the same links, its followers reconnected.\nFollowers:\nRui (viewer, through the relay)`);
+    assert.equal(st.data.resumed, 1);   // (#4850)
     assert.deepEqual(st.data.warnings, []);
     assert.equal(page.closed(), false);
-    assert.deepEqual(ev, []);   // (the follower: no loss, no error)
+    assert.deepEqual(ev, ['away', 'back']);   // (the follower: told the owner was away and is back, #4850; no loss, no error)
   } finally { globalThis.WebSocket = Base; }
   await ok('share_project', { project: 'trafficRs', action: 'stop' });
   await until(() => page.closed(), 'the page told');
+});
+
+test('#4850 follow_project: the owner\'s page reloaded: ownerAway meanwhile, said; then back with the same link, ownerResumed, its change since', async () => {
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'traffic', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' }, fileTree: ['src/top.vhd'] }, files: { 'src/top.vhd': 'entity top is end;\n' }, owner: 'Ana' });
+  const socks = [];
+  const PageSocket = class extends globalThis.WebSocket { constructor(...a) { super(...a); socks.push(this); } };
+  // (the owner's page: its session ends with the page, no reconnect of its own)
+  const owner = await shareRoom({ url: relayUrl(`${base}/`, 'share'), token: 'tok-mcp', doc, user: { name: 'Ana' }, WebSocket: PageSocket, reconnect: false });
+  const link = followLink(`${base}/`, owner.room, owner.key);
+  const f = await ok('follow_project', { link, name: 'Bot' });
+  assert.deepEqual([f.data.ownerAway, f.data.ownerResumed], [false, 0]);
+  assert.ok(!f.text.includes('waiting for them'), f.text);
+  const snap = owner.snapshot();
+  socks.at(-1).close();   // (the page reloading: its socket gone with no word)
+  const away = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerAway ? r : null; }, 'the owner away');
+  assert.equal(away.data.connected, true);
+  assert.ok(away.text.includes('\nAna\'s connection was lost: reconnecting, waiting for them to come back (the relay keeps the share for 2 minutes; what this shows is as it was then).'), away.text);
+  // (the page again: its document as it was, a change since)
+  const { restoredDoc } = await import('../core/collab-resume.js');
+  const doc2 = restoredDoc(snap);
+  const { putFile } = await import('../core/collab-doc.js');
+  putFile(doc2, 'src/top.vhd', '-- since\nentity top is end;\n');
+  const owner2 = await shareRoom({ url: relayUrl(`${base}/`, 'share'), token: 'tok-mcp', doc: doc2, user: { name: 'Ana' }, resumed: snap });
+  const back = await until(async () => { const r = await ok('follow_project', { link, path: 'src/top.vhd' }); return !r.data.ownerAway && r.data.text === '-- since\nentity top is end;\n' ? r : null; }, 'back, its change since');
+  assert.equal(back.data.ownerResumed, 1);
+  assert.ok(back.text.includes('\nAna came back once after their connection was lost: the project as it is now.'), back.text);
+  assert.ok(!back.text.includes('waiting for them'), back.text);
+  await ok('follow_project', { link, stop: true });
+  await owner2.close();
+  await owner.close();
 });
 
 // #4543: a project its owner's page hosts (core/collab-loop.js), its followers met at a relay (the server's on this

@@ -35,7 +35,7 @@ import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwareness
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { newKey, keyOf, seal, unseal } from './collab-crypto.js';
-import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE, editIvs } from './collab-sign.js';
+import { newSigner, signerOf, verifierOf, signFrame, verifyFrame, SIGN_RE, editIvs, pubOf } from './collab-sign.js';
 import { docTooLarge, docMeter, editOutside, updateOutside, FOLLOW_LIMITS } from './collab-doc.js';
 import { activityBytes, activityOf, activityStore } from './collab-activity.js';
 import { selectionValue, selectionPacer } from './collab-select.js';
@@ -71,6 +71,10 @@ function applyAwarenessFrom(awareness, update, only = null) {
 export const COLORS = ['#d9480f', '#1971c2', '#2f9e44', '#9c36b5', '#e8590c', '#0c8599', '#c2255c', '#5c940d'];
 export const colorOf = client => COLORS[Math.abs(Number(client) || 0) % COLORS.length];
 const OPEN_WAIT = 10_000;
+// (#4850: a participant's page loaded again, its awareness's clock taken past the one the others knew of it, which they
+// would otherwise keep, ignoring its state until its clock passed it)
+const pastClock = (awareness, clock) => { if (Number.isSafeInteger(clock) && clock > 0) awareness.meta.set(awareness.clientID, { clock, lastUpdated: Date.now() }); };
+const clockOf = awareness => awareness.meta.get(awareness.clientID)?.clock ?? 0;
 
 function connection(url, WS, protocols, onControl, onFrame) {
   const ws = new WS(url, protocols);
@@ -180,10 +184,14 @@ async function applyEdit(doc, key, room, verifier, frame, admit = () => true) {
  *  resumed (`reconnect`: RECONNECT; false: never) with the secret its open was answered with, through a new
  *  connection: an event { type: 'offline' } at its loss, { type: 'online' } once resumed; each follower then a join
  *  again (the whole document sent to it: what changed meanwhile). A room the relay no longer keeps (its grace past,
- *  the relay restarted): the session ends. viewMs: its view sent at most that often (core/collab-pace.js, #4647). */
-export async function shareRoom({ url, token = null, doc, user, editors = false, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, viewMs = OWNER_VIEW_MS }) {
-  const { key, text } = await newKey();
-  let signer = editors ? await newSigner() : null;
+ *  the relay restarted): the session ends. viewMs: its view sent at most that often (core/collab-pace.js, #4647).
+ *  resumed (#4850: its page loaded again, `doc` its document as it was, its client id the same): { key, sign (the
+ *  editors' key), room, resume (the relay's secret: the room resumed, its links the same; null: a room the page hosts,
+ *  opened again, the host naming it), clock (its awareness's) }, as snapshot() gave them; a room the relay no longer
+ *  keeps: NOT_SHARED thrown. */
+export async function shareRoom({ url, token = null, doc, user, editors = false, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, viewMs = OWNER_VIEW_MS, resumed = null }) {
+  const { key, text } = resumed ? { key: await keyOf(resumed.key), text: resumed.key } : await newKey();
+  let signer = !editors ? null : resumed?.sign ? { key: await signerOf(resumed.sign), text: resumed.sign, pub: pubOf(resumed.sign) } : await newSigner();
   // (the room's public key, for every participant: in the document)
   if (signer) doc.getMap('meta').set('editors', signer.pub); else doc.getMap('meta').delete('editors');
   let verifier = signer ? await verifierOf(signer.pub) : null;
@@ -197,9 +205,10 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     return true;
   };
   const awareness = new Awareness(doc);
+  pastClock(awareness, resumed?.clock);
   awareness.setLocalState({ user, role: 'owner', view: null });
   const activity = activityStore();   // (#4002: the owner's activity, each channel's latest value)
-  let p = null, room = null, resume = null, cur = null;
+  let p = null, room = null, resume = null, cur = null, resumes = resumed ? 1 : 0;   // (#4850: its room resumed, times)
   let ended = null, stopped = false, lostAt = null, timer = null;   // (why it ended; close() called; since when lost)
   // a frame for one follower, on the connection `c` (a join's answer: on the connection it came on)
   const sendTo = (c, client, kind, bytes) => c.frame(async () => toFrame(client, await seal(key, room, kind, bytes)));
@@ -268,6 +277,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     }
     if (ended) { j.c.ws.close(); return; }
     lostAt = null;
+    resumes++;
     use(j.c);
     // (this participant's state, its clock past the one the followers knew: taken again where it timed out)
     awareness.setLocalState({ ...awareness.getLocalState() });
@@ -276,7 +286,8 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   // (the browser back online: the next try at once)
   function now() { if (timer !== null) { clearTimeout(timer); timer = null; attempt(0); } }
   let first;
-  try { first = await connect({ type: 'open', ...(signer ? { editors: signer.pub } : {}) }); } catch (e) { awareness.destroy(); meter.stop(); throw e; }
+  if (resumed?.resume) room = resumed.room;
+  try { first = await connect(resumed?.resume ? { type: 'resume', room, resume: resumed.resume } : { type: 'open', ...(signer ? { editors: signer.pub } : {}) }); } catch (e) { awareness.destroy(); meter.stop(); throw e; }
   ({ room } = first.answer);
   resume = typeof first.answer.resume === 'string' ? first.answer.resume : null;
   p = participant({ conn: () => cur, room, key, doc, awareness, owner: () => doc.clientID, onEvent, viewMs });
@@ -319,6 +330,11 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     },
     /** An editor link's key (with `editors`; renewed by a demotion, #3997). */
     get editKey() { return signer?.text || null; },
+    /** What resumes it once its page is loaded again (#4850: shareRoom's `resumed`, its document's state and client id
+     *  too): { client, doc, key, sign, room, resume, clock }. */
+    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), key: text, sign: signer?.text || null, room, resume, clock: clockOf(awareness) }),
+    /** How many times its room was resumed (#4850: its connection lost, or its page reloaded: `resumed`). */
+    resumes: () => resumes,
     closed: () => ended !== null,
     /** Connected now (false: its connection lost, the room being resumed, or the session ended). */
     connected: () => !ended && lostAt === null,
@@ -353,11 +369,13 @@ const REFUSED = [1003, 1008, 1009];
  *  again later; default: `WebSocket` again): an event { type: 'offline', reason } at its loss, { type: 'online' } once joined again. The owner
  *  sends the whole document again, as at any join; an editor then sends, signed, what of its own changes the owner's
  *  document lacks (its own updates past the owner's clock of it): nothing it changed meanwhile is lost. */
-export async function followRoom({ url, room, key: keyText, sign = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null, viewMs = VIEW_MS }) {
+export async function followRoom({ url, room, key: keyText, sign = null, user, WebSocket: WS = globalThis.WebSocket, onEvent = () => {}, limits = FOLLOW_LIMITS, reconnect = RECONNECT, transport = null, viewMs = VIEW_MS, resumed = null }) {
   const key = await keyOf(keyText);
   let signer = sign ? await signerOf(sign) : null, signText = signer ? sign : null;
-  const doc = new Y.Doc();
+  // (#4850: its page loaded again: its document as it was, its client id the same, its own changes kept)
+  const doc = resumed?.doc || new Y.Doc();
   const awareness = new Awareness(doc);
+  pastClock(awareness, resumed?.clock);
   awareness.setLocalState({ user, role: signer ? 'editor' : 'follower', view: null });
   const activity = activityStore();   // (#4002: the owner's activity as it arrives)
   // (the room's public key, from the owner's document: an editor's edit checked with it)
@@ -371,7 +389,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   const ready = new Promise((resolve, reject) => { synced = () => { arrived = true; resolve(); }; failed = reject; });
   ready.catch(() => {});
   let warned = false, left = false;
-  let cur = null, owner = null;   // (the connection now; the owner's client id)
+  let cur = null, owner = null, away = false, backs = 0;   // (the connection now; the owner's client id; the owner away, back how often, #4850)
   let ended = null, stopped = false, lostAt = null, timer = null;   // (why it ended; close() called; since when lost)
   // (the document past what a follower takes: left, said once; #3527: its bytes, whatever they hold, the updates and
   // the edits received counted; an editor's edit the owner refuses, refused here too, not applied)
@@ -389,7 +407,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
   };
   // an editor's own changes, signed (what arrives is 'remote': never sent again), and kept (#3835: what of them the
   // owner lacks sent again at a rejoin, those sent into a connection that was already lost included)
-  const mine = [];
+  const mine = resumed?.mine ? [resumed.mine] : [];
   // (#4736: sealed with this session's IVs, a counter in each, in the order they are sent)
   const nextIv = editIvs();
   const sendEdit = u => cur.frame(async () => signFrame(signer, room, await seal(key, room, KIND.edit, u, nextIv())));
@@ -417,6 +435,13 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
     if (msg.type === 'leave') removeAwarenessStates(awareness, [Number(msg.client)], 'relay');
     else if (msg.type === 'closed') c.closedReason = msg.reason;
     else if (msg.type === 'error') onEvent({ type: 'error', message: String(msg.message || '') });
+    // (#4850: the owner's connection lost, its room kept for its resume (its page loaded again): its state forgotten,
+    // its clock too (taken again as it comes back); back, the whole document comes again)
+    else if (msg.type === 'away' && !away) {
+      away = true;
+      if (owner !== null) { removeAwarenessStates(awareness, [owner], 'relay'); awareness.meta.delete(owner); }
+      onEvent({ type: 'away', grace: Number.isSafeInteger(msg.grace) && msg.grace > 0 ? msg.grace : null });
+    } else if (msg.type === 'back' && away) { away = false; backs++; onEvent({ type: 'back' }); }
   };
   const frameIn = async (c, frame) => {
     if (left || ended) return;
@@ -489,6 +514,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
       // (the room's own end of it, a refusal or a frame too large: never made again)
       if (stopped || left || c.closedReason || REFUSED.includes(e?.code) || !reconnect || !arrived) { end(why); return; }
       lostAt = Date.now();
+      away = false;   // (#4850: told again once joined)
       // (the others gone until the owner says again who is in: their clocks forgotten, so that their states, sent
       // again as they are, are taken)
       const others = [...awareness.getStates().keys()].filter(k => k !== doc.clientID);
@@ -545,6 +571,13 @@ export async function followRoom({ url, room, key: keyText, sign = null, user, W
     closed: () => ended !== null,
     /** Joined now (false: its connection lost, being made again, or the session ended). */
     connected: () => !ended && lostAt === null,
+    /** The owner away (#4850): its connection lost, the relay keeping its room for its resume (events 'away', 'back'). */
+    away: () => !ended && lostAt === null && away,
+    /** How many times the owner came back (#4850: its room resumed after it was away). */
+    resumes: () => backs,
+    /** What follows it again once its page is loaded again (#4850: followRoom's `resumed`, its document's state and
+     *  client id): { client, doc, mine (its own changes, an editor's), clock, sign (the editors' key it signs with now) }. */
+    snapshot: () => ({ client: doc.clientID, doc: Y.encodeStateAsUpdate(doc), mine: signer && mine.length ? Y.mergeUpdates(mine) : null, clock: clockOf(awareness), sign: signer ? signText : null }),
     close: async () => {
       stopped = true;
       // (its own end, #4201: said as such, not as a connection lost)
