@@ -25,7 +25,8 @@ the code and the lessons learnt.
 - **The examples are the test designs**: gates, breadboard, traffic, blinky, pong, stopwatch, clock,
   vga, isqrt, uart, micro80 (`examples/`, in that order). Each must run on every device of the Silinx toolchain
   (Basys2-100/250, Nexys2-500/1200, Nexys3, Atlys: `TARGETS` in `test/examples-lib.mjs`; the iCE40's, ECP5's, Gowin's
-  and 7-series' boards: `ICE40_TARGETS`, `ECP5_TARGETS`, `GOWIN_TARGETS`, `XC7_TARGETS`; Vivado's: `VIVADO_TARGETS`)
+  and 7-series' boards: `ICE40_TARGETS`, `ECP5_TARGETS`, `GOWIN_TARGETS`, `XC7_TARGETS`, the Zynq-7000's `ZYNQ_TARGETS`; Vivado's:
+  `VIVADO_TARGETS`)
   and build with ISE with no warnings (but micro80: XST's warnings on the light8080 core's unused parts, the core kept as it is, #2544). A new
   source style or
   feature should be exercised by an example where it fits.

@@ -7,32 +7,26 @@
 // checked against nextpnr's FASM with no Vivado (#3145, readback.js and roundtrip.js, apart from the generator): its frames
 // the ones fasm2frames makes of the FASM, and read back into features no bit lost and none stray; its pins (pins.js) each
 // port's IOB at its XDC pin, with its direction and IO standard, and no other. A pin the package does not have: Place &
-// Route's failure, no bitstream.
+// Route's failure, no bitstream. (The examples' tests: test/xc7-examples-lib.mjs, the Zybo Z7's in
+// test/open-flow-zynq-server.test.js, #4681.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openStatus, openSteps, runOpenImplementation } from '../server/open-flow.js';
-import { parseBitHeader } from '../server/programmer.js';
+import { openStatus, openSteps } from '../server/open-flow.js';
 import { loadBitDbXc7 } from '../packages/silinx-fpga/src/node.js';
-import { readBitXc7 } from '../packages/silinx-fpga/src/fpga/xc7/bitstream.js';
-import { bitIndexXc7, readBitFramesXc7 } from '../packages/silinx-fpga/src/fpga/xc7/readback.js';
-import { referenceFrames, roundTrip } from '../packages/silinx-fpga/src/fpga/xc7/roundtrip.js';
-import { xdcPins, ioConfig, checkPins } from '../packages/silinx-fpga/src/fpga/xc7/pins.js';
-import { readXdc } from '../packages/silinx-fpga/src/xdc.js';
-import { XC7_DB_DIR } from '../packages/silinx-fpga/src/fpga/xc7/bitdb-node.js';
 import { xc7BscanCells, xc7BscanTile } from '../packages/silinx-fpga/src/open-flow-xc7.js';
-import zlib from 'node:zlib';
-import { EXAMPLES, exampleProject, XC7_TARGETS } from './examples-lib.mjs';
+import { exampleProject, XC7_TARGETS } from './examples-lib.mjs';
+import { run, xc7ExampleTests } from './xc7-examples-lib.mjs';
 
 const BASYS3 = { family: 'artix7', part: 'xc7a35t', package: 'cpg236', speed: '-1' };
 const NEXYSA7 = { family: 'artix7', part: 'xc7a100t', package: 'csg324', speed: '-1' };
 // each board's part: its slices and their registers, its pins, its .bit's name and ID code, its frames (the part's, the
-// tiles' fasm2frames writes)
+// tiles' fasm2frames writes), its clock (MHz)
 const PARTS = {
-  basys3: { part: 'xc7a35tcpg236-1', slices: 5200, regs: 41600, iobs: 106, bitPart: '7a35tcpg236', idcode: 0x362d093, frames: [5408, 4974] },
-  'nexys-a7': { part: 'xc7a100tcsg324-1', slices: 15850, regs: 126800, iobs: 210, bitPart: '7a100tcsg324', idcode: 0x3631093, frames: [9448, 9012] },
+  basys3: { part: 'xc7a35tcpg236-1', slices: 5200, regs: 41600, iobs: 106, bitPart: '7a35tcpg236', idcode: 0x362d093, frames: [5408, 4974], mhz: 100 },
+  'nexys-a7': { part: 'xc7a100tcsg324-1', slices: 15850, regs: 126800, iobs: 210, bitPart: '7a100tcsg324', idcode: 0x3631093, frames: [9448, 9012], mhz: 100 },
 };
 
 test('openStatus: the xc7a35t (Basys 3) and the xc7a100t (Nexys A7) are available with their steps; another part has no bit database', () => {
@@ -88,13 +82,6 @@ test('openSteps: the 7-series\' list (nextpnr maps in its Place & Route); the Sp
   assert.ok(openSteps(['par'], { family: 'spartan3e' }).includes('map'));
 });
 
-async function run(dir, project, steps = ['synth', 'translate', 'par', 'trce', 'bitgen']) {
-  const lines = [];
-  const job = { log: l => lines.push(l), result: null, cancelled: false, procs: new Set() };
-  try {
-    return { lines, result: await runOpenImplementation(job, { project, projectDir: dir, steps }) };
-  } catch (e) { return { lines, error: e }; }
-}
 // each example's LUTs, registers and frequency (MHz, nextpnr's estimate, router2) on each board (#3147), measured with
 // @silinx/nextpnr-himbaechel-xc7 0.3.0 (#3875; stopwatch with the best of 3 seeds, its project's): a build may have up
 // to 15 % more LUTs, its registers 10 % apart (an example's counters sized from its clock, #3710), its frequency 15 %
@@ -109,117 +96,8 @@ const QUALITY = {
     pong: [251, 215, 107.42], stopwatch: [170, 207, 100.84], clock: [141, 164, 133.9], vga: [115, 58, 131.8],
     isqrt: [69, 87, 157.93], uart: [107, 142, 156.27], micro80: [157, 187, 106.19] },
 };
-// each example's pins (its ports with a pin in the XDC, a bit each), the same on both boards
-const PINS = { gates: 6, breadboard: 11, traffic: 24, blinky: 27, pong: 27, stopwatch: 26, clock: 27, vga: 16, isqrt: 23, uart: 24, micro80: 29 };
-const warnings = lines => lines.join('\n').split('\n').filter(l => /WARNING|ERROR/.test(l));
 
-for (const { board } of XC7_TARGETS) test(`every example on the ${board} through the 7-series' back end: no warning, its .bit, 100 MHz met by nextpnr's estimate, its LUTs, registers and frequency the table's`, async t => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-xc7-'));
-  const P = PARTS[board];
-  const db = loadBitDbXc7(P.part);
-  const index = bitIndexXc7(JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(XC7_DB_DIR, `${P.part}.json.gz`))).toString('utf8')));
-  try {
-    for (const name of EXAMPLES) {
-      await t.test(name, async t => {
-        const { dir, project } = exampleProject(name, { board }, tmp);
-        const { lines, result, error } = await run(dir, project);
-        assert.equal(error, undefined, error?.message);
-        assert.deepEqual(warnings(lines), [], name);
-        assert.deepEqual(result.completedSteps, ['synth', 'translate', 'par', 'trce', 'bitgen']);
-        const r = result.reports;
-        assert.equal(r.source, 'open');
-        assert.equal(r.par.engine, 'nextpnr');
-        assert.equal(r.par.router, 'router2');
-        // the resources: the synthesis's, then nextpnr's held to the part's (the xc7a35t's slices' 41,600 registers, its
-        // 106 pins; the xc7a100t's 126,800 and 210)
-        assert.ok(r.synthesis.utilization.find(u => u.name === 'Number of Slice LUTs').used > 0, name);
-        const row = n => r.map.utilization.find(u => u.name === n), regs = row('Number of Slice Registers'), iob = row('Number of bonded IOBs');
-        if (name !== 'gates') assert.ok(row('Number of Slice LUTs').used > 0 && row('Number of occupied Slices').total === P.slices, name);
-        assert.equal(iob.total, P.iobs);
-        if (name !== 'gates') assert.equal(regs.total, P.regs);
-        // the timing: nextpnr's estimate; gates has no clock
-        assert.match(r.timing.model, /^nextpnr's estimate/);
-        if (name === 'gates') assert.deepEqual([r.timing.met, r.timing.constraints], [null, []]);
-        else {
-          assert.equal(r.timing.met, true, name);
-          assert.deepEqual(r.timing.constraints.map(c => c.name), ['clk']);
-          assert.ok(r.timing.maxFreqMHz >= 100, `${name}: ${r.timing.maxFreqMHz} MHz`);
-        }
-        // the quality (#3147): the LUTs, the registers and the frequency reported, held to the table's (a regression of
-        // the packer's, #3160's feed-throughs, or of the router's fails)
-        const q = { luts: row('Number of Slice LUTs').used, regs: regs?.used ?? 0, mhz: r.timing.maxFreqMHz ?? null };
-        t.diagnostic(`${board} ${name}: ${q.luts} LUTs (${row('LUTs as feed-throughs (nextpnr)')?.used ?? 0} feed-throughs), ${q.regs} registers, ${row('Number of occupied Slices').used} slices${q.mhz ? `, ${q.mhz} MHz` : ''}`);
-        const [luts, nregs, mhz] = QUALITY[board][name];
-        assert.ok(q.luts <= Math.ceil(luts * 1.15), `${name}: ${q.luts} LUTs, the table's ${luts}`);
-        assert.ok(Math.abs(q.regs - nregs) <= Math.ceil(nregs * 0.1), `${name}: ${q.regs} registers, the table's ${nregs}`);
-        if (mhz) assert.ok(q.mhz >= mhz * 0.85, `${name}: ${q.mhz} MHz, the table's ${mhz}`);
-        assert.ok(fs.readFileSync(path.join(dir, 'build/open/timing.txt'), 'utf8').startsWith(`Timing of ${P.part} after Place & Route: nextpnr's estimate`));
-        // the .bit: the part's, its frames read back
-        const bit = fs.readFileSync(path.join(dir, `build/${project.top}.bit`));
-        assert.equal(r.bit.size, bit.length);
-        const h = parseBitHeader(bit);
-        assert.deepEqual([h.designName, h.rawDesign, h.part], [project.top, `${project.top};Generator=silinx-fpga`, P.bitPart]);
-        assert.ok([...readBitXc7(new Uint8Array(bit), db).values()].filter(w => w.some(Boolean)).length > 0, name);
-        // checked against nextpnr's FASM (#3145): its frames fasm2frames' (the part's others zeros), the round trip by bits
-        // clean, nothing added (no STEPDOWN in a bank of LVCMOS33, no required feature, no PUDC_B pull-up asked)
-        const fasm = fs.readFileSync(path.join(dir, 'build/open/routed.fasm'), 'utf8');
-        const ref = referenceFrames(index, fasm), back = readBitFramesXc7(new Uint8Array(bit), index);
-        assert.equal(back.idcode, P.idcode);
-        let differ = 0;
-        for (const [a, w] of back.frames) if (!(ref.get(a) ?? new Uint32Array(101)).every((x, i) => x === w[i])) differ++;
-        assert.deepEqual([differ, back.frames.size, ref.size], [0, ...P.frames], `${name}: frames not fasm2frames'`);
-        const rt = roundTrip(index, fasm, back.frames);
-        assert.deepEqual([rt.lost, rt.stray, rt.unknown, rt.missing, rt.extra], [[], [], [], [], []], name);
-        assert.deepEqual([rt.counts.aliases, rt.counts.added], [0, { required: 0, pudc: 0, stepdown: 0 }], name);
-        assert.ok(rt.counts.pseudoPips > 0 && rt.counts.zeroEncodings > 0, `${name}: ${JSON.stringify(rt.counts)}`);
-        // its pins (#3145): each port's IOB at its XDC pin, its direction and IO standard the XDC's, no other IOB configured
-        const netlist = fs.readFileSync(path.join(dir, r.files.netlist), 'utf8');
-        const pins = xdcPins(readXdc(fs.readFileSync(path.join(dir, project.constraints), 'utf8')), netlist, project.top);
-        assert.deepEqual(checkPins(db.pins, pins, ioConfig(rt.features)), { ok: true, checked: PINS[name], errors: [] }, name);
-        // (no ISE file in the build folder, the XDC's name kept)
-        const build = fs.readdirSync(path.join(dir, 'build'));
-        assert.ok(build.includes(path.basename(project.constraints)), build.join(' '));
-        assert.deepEqual(build.filter(f => /\.(xst|prj|ut|ucf|sh)$/.test(f)), []);
-      });
-    }
-  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
-});
-
-// (#4680) the Zynq-7000's programmable logic: blinky on the Zybo Z7-20 and Z7-10 (their PL; no processing system), its .bit
-// the part's (its ID code), its frames fasm2frames' and read back clean, its pins the XDC's, no warning
-const ZYNQ = { 20: { part: 'xc7z020clg400-1', bitPart: '7z020clg400', idcode: 0x3727093 }, 10: { part: 'xc7z010clg400-1', bitPart: '7z010clg400', idcode: 0x3722093 } };
-for (const variant of ['20', '10']) test(`#4680 blinky on the Zybo Z7-${variant} through the 7-series' back end: no warning, its .bit the ${ZYNQ[variant].part}'s, checked against nextpnr's FASM`, async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-zynq-'));
-  const Z = ZYNQ[variant];
-  try {
-    const db = loadBitDbXc7(Z.part);
-    const index = bitIndexXc7(JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(XC7_DB_DIR, `${Z.part}.json.gz`))).toString('utf8')));
-    const { dir, project } = exampleProject('blinky', { board: 'zybo-z7', variant }, tmp);
-    assert.equal(project.device.family, 'zynq');
-    const { lines, result, error } = await run(dir, project);
-    assert.equal(error, undefined, error?.message);
-    assert.deepEqual(warnings(lines), []);
-    assert.deepEqual(result.completedSteps, ['synth', 'translate', 'par', 'trce', 'bitgen']);
-    const r = result.reports;
-    assert.deepEqual([r.source, r.par.engine], ['open', 'nextpnr']);
-    // (the Zybo's 125 MHz clock met by nextpnr's estimate)
-    assert.equal(r.timing.met, true);
-    assert.ok(r.timing.maxFreqMHz >= 125, `${r.timing.maxFreqMHz} MHz`);
-    const bit = fs.readFileSync(path.join(dir, `build/${project.top}.bit`));
-    assert.deepEqual([parseBitHeader(bit).part], [Z.bitPart]);
-    const fasm = fs.readFileSync(path.join(dir, 'build/open/routed.fasm'), 'utf8');
-    const ref = referenceFrames(index, fasm), back = readBitFramesXc7(new Uint8Array(bit), index);
-    assert.equal(back.idcode, Z.idcode);
-    let differ = 0;
-    for (const [a, w] of back.frames) if (!(ref.get(a) ?? new Uint32Array(101)).every((x, i) => x === w[i])) differ++;
-    assert.equal(differ, 0, 'frames not fasm2frames\'');
-    const rt = roundTrip(index, fasm, back.frames);
-    assert.deepEqual([rt.lost, rt.stray, rt.unknown, rt.missing, rt.extra], [[], [], [], [], []]);
-    const netlist = fs.readFileSync(path.join(dir, r.files.netlist), 'utf8');
-    const pins = xdcPins(readXdc(fs.readFileSync(path.join(dir, project.constraints), 'utf8')), netlist, project.top);
-    assert.deepEqual(checkPins(db.pins, pins, ioConfig(rt.features)), { ok: true, checked: PINS.blinky, errors: [] });
-  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
-});
+xc7ExampleTests(XC7_TARGETS, { parts: PARTS, quality: QUALITY });
 
 test('the 7-series\' failure in the server: a pin the package does not have, Place & Route\'s error, no bitstream', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-xc7-'));
