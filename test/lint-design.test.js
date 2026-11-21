@@ -52,6 +52,30 @@ test('#405 design checks, the later rules: each one found, exactly (Verilog)', (
   ]);
 });
 
+// #5112: a clock copied as it is (a digital circuit's clock source, n <= clk) is a name of it, not logic: not warned;
+// the clock in an expression still is
+test('#5112 design checks: a clock copied as it is not "used as data"; in an expression it is, in VHDL and in Verilog', () => {
+  const vhdl = `library ieee; use ieee.std_logic_1164.all;
+entity c is port (clk, en, d : in std_logic; q, y : out std_logic); end;
+architecture r of c is signal n : std_logic; begin
+  process (clk) begin if rising_edge(clk) then q <= d; end if; end process;
+  n <= clk;
+  y <= n and en;
+end;`;
+  assert.deepEqual(findings('vhdl', vhdl, 'c', 'c.vhd').filter((f) => /^clock-as-data/.test(f)), []);
+  assert.deepEqual(findings('vhdl', vhdl.replace('n <= clk;', 'n <= clk and en;'), 'c', 'c.vhd').filter((f) => /^clock-as-data/.test(f)),
+    ['clock-as-data warning 5: Clock signal <clk> is used as data (in logic), not only as a clock edge.']);
+  const vlog = `module c(input clk, input en, input d, output reg q, output y);
+  always @(posedge clk) q <= d;
+  wire n;
+  assign n = clk;
+  assign y = n & en;
+endmodule`;
+  assert.deepEqual(findings('verilog', vlog, 'c', 'c.v').filter((f) => /^clock-as-data/.test(f)), []);
+  assert.deepEqual(findings('verilog', vlog.replace('assign n = clk;', 'assign n = clk & en;'), 'c', 'c.v').filter((f) => /^clock-as-data/.test(f)),
+    ['clock-as-data warning 4: Clock signal <clk> is used as data (in logic), not only as a clock edge.']);
+});
+
 test('#405 design checks, the later rules: an integer without a range (VHDL)', () => {
   assert.deepEqual(findings('vhdl', VHDL, 't', 't.vhd'), ['integer-range info 3: Signal <n> is an integer without a range: synthesis makes it 32 bits wide.']);
 });

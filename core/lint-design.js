@@ -202,6 +202,8 @@ export function mountDesignRules(ctx) {
       eachStmt(p.body, (s) => {
         for (const e of exprsOf(s)) {
           if (hasEdgeOf(e)) continue;
+          // (a clock copied as it is, x <= clk: a name of the clock, not logic; a circuit's clock source, #5112)
+          if (s.k === 'asg' && e === s.value && e.k === 'sig') continue;
           for (const x of readsOf(e)) if (clocks.has(x) && !p.writes.has(x))   // (a divider toggling its own output: data-as-clock)
             add('clock-as-data', 'warning', fileOf(p), s.loc?.line ?? p.loc?.line, `Clock signal <${short(x)}> is used as data (in logic), not only as a clock edge.`);
         }
