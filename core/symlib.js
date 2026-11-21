@@ -3,7 +3,7 @@
 // for a student to open and push into level by level. They are views: the HDL Silinx generates for a symbol is its
 // own, unchanged (its synthesis and simulation as they are, #4806's measurements), each composition proved equivalent
 // to it by the tests (test/symlib.test.js). Each level is an ordinary schematic (core/symlib-draw.js). Isomorphic.
-import { defaultParams, generateHdl, int, symbolTypeName } from './schdoc.js';
+import { defaultParams, generateHdl, int, symbolDef, symbolTypeName } from './schdoc.js';
 import { library } from './symlib-draw.js';
 import { addTop, subTop } from './symlib-add.js';
 import { decoderTop, demuxTop, muxTop } from './symlib-mux.js';
@@ -44,7 +44,9 @@ export function composition(type, params = {}) {
     for (const s of m.doc.symbols) if (s.type === 'module') walk(s.params.module);
   };
   walk(top.name);
-  return { symbol: symbolTypeName({ type, params: p }), top: top.name, modules: order };
+  // (its name the one it draws on itself, D2_4E, M4_1, PENC8_3, else its library's with its width, ADD8, #4984)
+  const drawn = symbolDef({ type, x: 0, y: 0, rot: 0, mirror: false, params: p }).title;
+  return { symbol: drawn || symbolTypeName({ type, params: p }), top: top.name, modules: order };
 }
 
 /** The parts of a level: [{ name, count, module }] (a module of the composition, or a gate / constant by its title). */

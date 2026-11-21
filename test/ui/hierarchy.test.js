@@ -270,7 +270,7 @@ function esqDoc() {
   return doc;
 }
 
-uiTest('every source has its HDL (#207): a schematic without an HDL file gets it when the project is opened; its block is a plain HDL module, never with the schematic\'s badge', E, async (page) => {
+uiTest('every source has its HDL (#207): a schematic without an HDL file gets it when the project is opened; its block shown as its composition (#4984), never with the schematic\'s badge', E, async (page) => {
   const doc = esqDoc();
   const text = JSON.stringify(doc, null, 1);
   await makeProject(env, { name: 'teste', files: { 'src/esq.sch.json': text }, top: 'esq' });
@@ -288,15 +288,15 @@ uiTest('every source has its HDL (#207): a schematic without an HDL file gets it
     'project teste',
     '  chip xc3s250e-4-cp132',
     '    moduleTop esq [Schematic*] [VHDL] (esq.sch.json)',
-    '      vhdl xlxi_1 - esq_d2_4e [VHDL*] (esq.vhd)',
+    // (the decoder's block: its composition, not the HDL entity generated for it, esq_d2_4e, #4984)
+    '      schematic xlxi_1 - D2_4E [Composition*] (composition)',
+    '        schematic U0 - D1_2E [Composition*] (composition)',
+    '        schematic U1 - D1_2E [Composition*] (composition)',
+    '        schematic U2 - D1_2E [Composition*] (composition)',
   ]);
-  // the block's commands: the HDL module's, none of the schematic's
-  await page.treeRow('#hier', 'xlxi_1 - esq_d2_4e', { right: true });
-  assert.deepEqual(await menuLabels(page), ['Set as Top Module', 'Open', 'Rename…', 'Check Syntax', 'View RTL Schematic', 'Edit Symbol', 'Verify Equivalence…', 'Verify Assertions…', ...TB, 'Share Module…', 'New Source…', `${IMPORT}…`, 'Remove from Project', 'Source Properties…']);
-  await page.closeMenus();
   // opened again: nothing more to generate, the same rows
   await page.openProject('teste');
-  await page.waitFor(() => document.querySelectorAll('#hier .row').length === 4);
+  await page.waitFor(() => document.querySelectorAll('#hier .row').length === 7);
   assert.equal((await page.consoleText()).match(/generated from src\/esq\.sch\.json/g).length, 1);
   assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR/);
 });
