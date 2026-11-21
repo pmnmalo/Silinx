@@ -7,13 +7,14 @@
 //   its reports open in Implement (web/js/tasks.js taskOfDoc: a build file is Implement's).
 // - It comes to the front when an implementation ends while Implement is in front (implementationEnded).
 // implementationEnded has no DOM and is unit tested (test/tasks.test.js).
+import { panes } from './state-panes.js';
 
 /** The Processes list of the top module in the Implementation view (Implement's side panel). */
 export function showTopProcesses(app) {
   const S = app.S, top = S.project?.top;
   S.view = 'impl';
   // (no top: none selected, the panel drawn so, not left as it was, #1162)
-  S.sel = top ? { type: 'module', module: top, file: S.modules.find(m => m.name === top)?.file } : null;
+  panes.sel = top ? { type: 'module', module: top, file: S.modules.find(m => m.name === top)?.file } : null;
   app.renderProcesses();
 }
 

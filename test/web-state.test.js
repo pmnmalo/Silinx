@@ -87,3 +87,28 @@ test('the C sources\' slice (state-c.js): S\'s fields are its own, both ways; a 
   const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(hls|bbUndeclared|cFailed|cFailedSaid)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
+
+test('the selection and the panes\' slice (state-panes.js): S\'s fields are its own, both ways, with their first values', async () => {
+  const { panes } = await import('../web/js/state-panes.js');
+  const FIELDS = ['sel', 'selKey', 'selProc', 'leftPage', 'leftChosen', 'fpgaSyncing', 'menus', 'procCollapsed', 'treeOpen'];
+  assert.deepEqual(Object.keys(panes), FIELDS);
+  // (as S declared them: nothing selected, the trees empty, the others undefined)
+  assert.equal(panes.sel, null);
+  assert.ok(panes.procCollapsed instanceof Set && !panes.procCollapsed.size && panes.treeOpen instanceof Map && !panes.treeOpen.size);
+  assert.ok(FIELDS.slice(1, 7).every(k => panes[k] === undefined));
+  assert.throws(() => { panes.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return panes.${k}; }, set ${k}(v) { panes.${k} = v; }`), k);
+  const re = new RegExp(`(?<![\\w.$])S\\.(${FIELDS.join('|')})\\b`);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
+  // (S's declaration evaluated, app.js itself needs a page: its getters and setters reach the slice)
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const S = new Function('panes', 'cState', 'syncState', `return ${block.slice('export const S = '.length)}\n};`)(panes, cState, syncState);
+  const v = { type: 'project' };
+  S.sel = v;
+  assert.equal(panes.sel, v);
+  panes.selKey = 'device';
+  assert.equal(S.selKey, 'device');
+  assert.equal(S.treeOpen, panes.treeOpen);
+});

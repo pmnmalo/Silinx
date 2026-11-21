@@ -7,6 +7,7 @@ import { commandError, commandInfo, commandWarning } from './console.js';
 import { FLOW_UP_TO, runImpl } from './implement.js';
 import { projectTool } from './processes.js';
 import { S, activateDoc, closeDoc, findDoc, instancesOf, moduleInfo, openDoc } from './app.js';
+import { panes } from './state-panes.js';
 
 // ---- View Implemented Design (FPGA): web/js/fpgaview.js over the XDL of the routed design
 // The hierarchy paths of the design as XST names them ('Inst_data/u1', from the top's instance
@@ -49,12 +50,12 @@ export async function openFpgaView(mod = S.project?.top) {
         onSelectModule: path => selectHierarchyPath(path) });
       return { view, destroy: () => view.destroy() };
     } });
-  syncFpgaView(S.sel);
+  syncFpgaView(panes.sel);
 }
 // stage 4: the Design hierarchy and the FPGA view select each other's modules
 export function syncFpgaView(sel) {
   const v = findDoc('fpgaview')?.view;
-  if (!v || S.fpgaSyncing) return;
+  if (!v || panes.fpgaSyncing) return;
   const top = S.project?.top;
   if (sel?.type !== 'module' || !sel.path) return;
   const [root, ...rest] = sel.path.split('/');
@@ -69,8 +70,8 @@ function selectHierarchyPath(path) {
   if (!row) return;
   // show it: expand its ancestors
   for (let ul = row.parentElement.parentElement; ul && ul.id !== 'hier'; ul = ul.parentElement) if (ul.tagName === 'UL' && ul.hidden) { ul.hidden = false; const tw = ul.previousElementSibling?.querySelector('.twisty'); if (tw) tw.textContent = '▾'; }
-  S.fpgaSyncing = true;
-  try { row.click(); } finally { S.fpgaSyncing = false; }
+  panes.fpgaSyncing = true;
+  try { row.click(); } finally { panes.fpgaSyncing = false; }
   row.scrollIntoView({ block: 'nearest' });
 }
 

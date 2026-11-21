@@ -42,6 +42,7 @@ import { mountFlowFiles } from './tasks-flow-files.js';
 import { prefKey } from './prefs.js';
 import { isNarrow } from './narrow.js';
 import { ISE, allTasks, hasTask } from './tool-descriptors.js';
+import { panes } from './state-panes.js';
 
 // the tasks, from the tools' descriptors (#2311; a tool shows its own: refreshDots)
 const TASK_DEFS = allTasks();
@@ -315,7 +316,7 @@ const mainEnabled = () => (current() === 'sim' ? !!app?.S.project && !!simTarget
 async function runMain() {
   if (!mainEnabled()) return;
   if (current() === 'sim') { simulate(app); return; }
-  const b = stepButton(), S = app.S, mod = S.sel?.module;
+  const b = stepButton(), S = app.S, mod = panes.sel?.module;
   if (current() === 'edit' && mod && S.modules.find(m => m.name === mod)?.role === 'sim') {
     const { checkSyntax } = await import('./processes.js');   // (not at load: processes.js loads the app)
     checkSyntax(mod, true);

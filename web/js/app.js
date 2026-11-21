@@ -50,6 +50,7 @@ import { following, followNotice, editsHere } from './collab-state.js';
 import { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView } from './impl-views.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
+import { panes } from './state-panes.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -85,16 +86,16 @@ export const S = {
   get staleSeen() { return syncState.staleSeen; }, set staleSeen(v) { syncState.staleSeen = v; },
   get hdlClash() { return syncState.hdlClash; }, set hdlClash(v) { syncState.hdlClash = v; },
   get hdlClashWarned() { return syncState.hdlClashWarned; }, set hdlClashWarned(v) { syncState.hdlClashWarned = v; },
-  // the selection and the panes
-  sel: null,
-  selKey: undefined,          // the Design pane's selected row (design.js)
-  selProc: undefined,         // the Processes panel's selected process (processes.js)
-  leftPage: undefined,        // the left pane's page shown (app.js showLeftPage)
-  leftChosen: undefined,      // the left page the user chose (app.js)
-  fpgaSyncing: undefined,     // the FPGA view selecting the Design pane's row (impl-views.js)
-  menus: undefined,           // the menu bar's menus (menus.js)
-  procCollapsed: new Set(),   // ids of the collapsed groups of the Processes panel
-  treeOpen: new Map(),        // Design hierarchy / Files trees: key -> expanded? (as the user left it)
+  // the selection and the panes: web/js/state-panes.js's slice (#4767), its fields here as getters and setters onto it
+  get sel() { return panes.sel; }, set sel(v) { panes.sel = v; },
+  get selKey() { return panes.selKey; }, set selKey(v) { panes.selKey = v; },
+  get selProc() { return panes.selProc; }, set selProc(v) { panes.selProc = v; },
+  get leftPage() { return panes.leftPage; }, set leftPage(v) { panes.leftPage = v; },
+  get leftChosen() { return panes.leftChosen; }, set leftChosen(v) { panes.leftChosen = v; },
+  get fpgaSyncing() { return panes.fpgaSyncing; }, set fpgaSyncing(v) { panes.fpgaSyncing = v; },
+  get menus() { return panes.menus; }, set menus(v) { panes.menus = v; },
+  get procCollapsed() { return panes.procCollapsed; }, set procCollapsed(v) { panes.procCollapsed = v; },
+  get treeOpen() { return panes.treeOpen; }, set treeOpen(v) { panes.treeOpen = v; },
   // the documents
   docs: [], active: null,
   // the processes and their results
@@ -677,7 +678,7 @@ export { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, 
 
 // ------------------------------------------------------------------ left pages
 export function showLeftPage(page) {
-  S.leftPage = page;
+  panes.leftPage = page;
   saveViewState();
   document.querySelectorAll('#left-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.page === page));
   document.querySelectorAll('.left-page').forEach(p => { p.hidden = p.dataset.page !== page; });
@@ -808,7 +809,7 @@ function showInSim(mod) {
 export function setView(v) {
   S.view = v;
   document.querySelectorAll('input[name=view]').forEach(r => { r.checked = r.value === v; });
-  S.selKey = null;
+  panes.selKey = null;
   renderHierarchy();
   renderProcesses();
   saveViewState();
@@ -828,9 +829,9 @@ async function boot() {
   splitter($('left-split'), $('proc-panel'), { dir: 'v', min: 80, max: 900, invert: true, storageKey: 'xl.procH' });
   splitter($('h-split'), $('console-wrap'), { dir: 'v', min: 60, max: 700, invert: true, storageKey: 'xl.consoleH' });
   initDrawer();
-  document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('click', () => { leftTabClicked(t.dataset.page, document.querySelector('#left-tabs .tab.active')?.dataset.page); S.leftChosen = t.dataset.page; showLeftPage(t.dataset.page); }));
+  document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('click', () => { leftTabClicked(t.dataset.page, document.querySelector('#left-tabs .tab.active')?.dataset.page); panes.leftChosen = t.dataset.page; showLeftPage(t.dataset.page); }));
   // (no project, the Start tab alone: its page only; a project opened brings the others back on the one last chosen, #4257, #4322)
-  addEventListener('silinx:project-opened', () => { if (S.leftPage === 'start' && S.leftChosen && S.leftChosen !== 'start') showLeftPage(S.leftChosen); });
+  addEventListener('silinx:project-opened', () => { if (panes.leftPage === 'start' && panes.leftChosen && panes.leftChosen !== 'start') showLeftPage(panes.leftChosen); });
   // (the Teaching page's commands of a project enabled or disabled with it, #3533)
   for (const ev of ['silinx:project-opened', 'silinx:project-closed']) addEventListener(ev, () => renderTeachingPage());
   document.querySelectorAll('#console-tabs .tab').forEach(t => t.addEventListener('click', () => showConsolePage(t.dataset.page)));

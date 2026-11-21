@@ -29,6 +29,7 @@ import { printActive, printable } from './print-doc.js';
 import { hasGit, hookGitStatus, openFromRepositoryDialog, gitMenuItems } from './git.js';
 import { besideItems, splitState, toggleSplit } from './split-view.js';
 import { downloadBlob } from './download.js';
+import { panes } from './state-panes.js';
 // (Print: the document in front, whichever it is, #1509)
 export { printActive, printable };
 
@@ -65,7 +66,7 @@ export const settingsItems = () => [
 export function setupMenus() {
   const hasPj = () => !S.project;
   hookGitStatus();   // (git, the server editions: the Design pane's marks, #3195)
-  menuBar($('menubar'), S.menus = [
+  menuBar($('menubar'), panes.menus = [
     { label: 'File', items: () => [
       { label: 'New Project…', icon: icon('newProject'), action: () => wiz.newProjectWizard() },
       { label: 'Open Project…', icon: icon('open'), action: () => wiz.openProjectDialog() },
@@ -141,9 +142,9 @@ export function setupMenus() {
       '-',
       // the implementation top (the Simulation view has none: Simulate runs the selected module)
       // (the selected module the top: Unset as Top Module, #1220)
-      S.view === 'sim' ? null : (S.project?.top && (S.sel?.module || (viewSel() && topOfView(viewSel()))) === S.project.top
+      S.view === 'sim' ? null : (S.project?.top && (panes.sel?.module || (viewSel() && topOfView(viewSel()))) === S.project.top
         ? { label: 'Unset as Top Module', action: () => unsetTop() }
-        : { label: 'Set as Top Module', action: () => (S.sel?.module ? setTop(S.sel.module, false) : viewSel() && setViewAsTop(viewSel())), disabled: () => !S.sel?.module && !viewSel() }),
+        : { label: 'Set as Top Module', action: () => (panes.sel?.module ? setTop(panes.sel.module, false) : viewSel() && setViewAsTop(viewSel())), disabled: () => !panes.sel?.module && !viewSel() }),
       { label: 'Design Properties…', action: () => wiz.projectProperties(), disabled: hasPj },
       '-',
       // (step-by-step tutorials on the project, each step checked on it, #3179)
@@ -154,20 +155,20 @@ export function setupMenus() {
     { label: 'Process', items: () => [
       ...flowOnly({ label: 'Implement Top Module', icon: icon('run'), action: () => S.project?.top && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), disabled: () => !S.project?.top || S.busy || !toolHas('impl') }),
       { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: () => !S.currentJob },
-      { label: 'Run', action: () => S.selProc && runProcess(S.selProc), disabled: () => !S.selProc?.run },
-      { label: checkLabel(), action: () => S.sel?.module && checkSyntax(S.sel.module, S.view === 'sim'), disabled: () => !S.sel?.module },
-      { label: 'Simulate Behavioral Model', icon: icon('wave'), action: () => S.sel?.module && runSimulation(S.sel.module), disabled: () => !S.sel?.module },
+      { label: 'Run', action: () => panes.selProc && runProcess(panes.selProc), disabled: () => !panes.selProc?.run },
+      { label: checkLabel(), action: () => panes.sel?.module && checkSyntax(panes.sel.module, S.view === 'sim'), disabled: () => !panes.sel?.module },
+      { label: 'Simulate Behavioral Model', icon: icon('wave'), action: () => panes.sel?.module && runSimulation(panes.sel.module), disabled: () => !panes.sel?.module },
     ] },
     { label: 'Tools', items: () => [
       { label: 'ASM State Machine Editor…', icon: icon('asm'), action: () => wiz.newSourceWizard({ type: 'asm' }), disabled: hasPj },
       { label: 'Boolean Algebra / Karnaugh Map…', icon: icon('algebra'), action: () => wiz.newSourceWizard({ type: 'tt' }), disabled: hasPj },
       { label: 'FSM State Diagram Editor…', icon: icon('fsm'), action: () => wiz.newSourceWizard({ type: 'fsm' }), disabled: hasPj },
       { label: 'Petri Net Editor…', icon: icon('petri'), action: () => wiz.newSourceWizard({ type: 'petri' }), disabled: hasPj },
-      ...flowOnly({ label: 'I/O Pin Planning', icon: icon('pins'), action: () => openPinPlanner(S.sel?.module), disabled: hasPj },
+      ...flowOnly({ label: 'I/O Pin Planning', icon: icon('pins'), action: () => openPinPlanner(panes.sel?.module), disabled: hasPj },
         { label: 'iMPACT (Configure Target Device)', icon: icon('impact'), action: () => openImpact() },
         { label: 'Board Emulator', icon: icon('board'), action: () => openEmulator(S.project.top), disabled: hasPj }),
       // (a design project's: no RTL schematic nor toolchain, #3891)
-      ...flowOnly({ label: 'RTL Schematic', icon: icon('schematic'), action: () => S.sel?.module && openSchematic(S.sel.module), disabled: () => !S.sel?.module },
+      ...flowOnly({ label: 'RTL Schematic', icon: icon('schematic'), action: () => panes.sel?.module && openSchematic(panes.sel.module), disabled: () => !panes.sel?.module },
         { label: 'Implemented Design (FPGA View)', icon: icon('chip'), action: () => openFpgaView(), disabled: () => !S.project?.top },
         '-',
         { label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() }),
@@ -222,7 +223,7 @@ export function setupToolbar() {
     h('div', { class: 'tb-sep' }),
     btn('run', 'Implement Top Module', () => S.project?.top && !S.busy && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen'])),
     btn('stop', 'Stop the running process', () => stopProcesses()),
-    btn('wave', 'Simulate Behavioral Model', () => S.sel?.module && runSimulation(S.sel.module)),
+    btn('wave', 'Simulate Behavioral Model', () => panes.sel?.module && runSimulation(panes.sel.module)),
     btn('impact', 'Configure Target Device (iMPACT)', () => openImpact()),
     h('div', { class: 'tb-sep' }),
     btn('gear', 'Toolchain Settings', () => wiz.toolchainDialog()),
@@ -234,7 +235,7 @@ export function setupToolbar() {
     b._enabled = enabled;
     return b;
   };
-  const mod = () => S.sel?.module || (S.view === 'sim' ? null : S.project?.top);
+  const mod = () => panes.sel?.module || (S.view === 'sim' ? null : S.project?.top);
   // only Implement waits for a running implementation (one ISE build at a time); checking,
   // simulating, emulating and programming run in the browser or independently of it
   tb.append(h('div', { class: 'm-steps', role: 'group', 'aria-label': 'Design flow' },
@@ -276,7 +277,7 @@ export function refreshSteps() {
 export function showPalette() {
   // (a design project's: a drawn module's drawing for its HDL file, the rest of the HDL side left out, #3891)
   const files = S.project ? shownFiles([...new Set(S.project.files.map(f => (designOnly() && S.hdlToSch?.[f.path]) || f.path))]).sort().map(path => ({ path, open: () => openFile(path) })) : [];
-  return openPalette({ commands: menuCommands(S.menus), files });
+  return openPalette({ commands: menuCommands(panes.menus), files });
 }
 
 // kind 'xilinx': a Xilinx ISE 14.7 project (.xise + sources, opens in ISE);
