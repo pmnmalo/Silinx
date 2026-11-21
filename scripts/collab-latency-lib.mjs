@@ -129,10 +129,13 @@ function ownedDoc() {
 }
 
 // a value awaited: `check()` true, looked at at each of `on`'s events (and at once)
-function arrival(subscribe, check) {
-  return new Promise(resolve => {
+// (a change that never arrives fails after ARRIVAL_MS, the rooms closed, never waited for: an edit refused, #5015)
+const ARRIVAL_MS = 10000;
+function arrival(subscribe, check, ms = ARRIVAL_MS) {
+  return new Promise((resolve, reject) => {
     if (check()) { resolve(now()); return; }
-    const off = subscribe(() => { if (check()) { off(); resolve(now()); } });
+    const timer = setTimeout(() => { off(); reject(new Error(`the change did not arrive in ${ms} ms`)); }, ms);
+    const off = subscribe(() => { if (check()) { off(); clearTimeout(timer); resolve(now()); } });
   });
 }
 const onDoc = doc => fn => { doc.on('afterTransaction', fn); return () => doc.off('afterTransaction', fn); };
@@ -219,9 +222,9 @@ export async function measure({ path = 'node', rtt = 0, cases = CASES, n = 30, p
   const p = await pathOf(path, rtt);
   const events = new Set();
   const owner = await shareRoom({ ...p.owner, doc: ownedDoc(), user: { name: 'Ana' }, editors: true, viewMs: pace.owner });
-  const fol = await followRoom({ ...p.follower, room: owner.room, key: owner.key, user: { name: 'Rui' }, viewMs: pace.view, onEvent: e => { if (e.type === 'activity') for (const f of events) f(); } });
+  const fol = await followRoom({ ...p.follower, room: owner.room, key: owner.key, owner: owner.ownerKey, user: { name: 'Rui' }, viewMs: pace.view, onEvent: e => { if (e.type === 'activity') for (const f of events) f(); } });
   await fol.ready;
-  const ed = cases.includes('editor') ? await followRoom({ ...p.follower, room: owner.room, key: owner.key, sign: owner.editKey, user: { name: 'Eva' }, viewMs: pace.view }) : null;
+  const ed = cases.includes('editor') ? await followRoom({ ...p.follower, room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Eva' }, viewMs: pace.view }) : null;
   if (ed) await ed.ready;
   const ctx = { owner, fol, ed };
   const out = {};
