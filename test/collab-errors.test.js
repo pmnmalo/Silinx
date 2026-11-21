@@ -9,7 +9,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { shareRoom } from '../core/collab-client.js';
 import { projectDoc, publishProject } from '../core/collab-doc.js';
 
@@ -50,8 +50,9 @@ test('#4759 a control message whose handling fails: said once, the later ones st
 test('#4759 the server: a stray rejection said on its console, the server goes on', async () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-stray-'));
+  // (a file: URL, which Windows's ESM loader needs: an absolute path's D: is taken for a scheme, #5023)
   const script = `
-    const { startServer } = await import(${JSON.stringify(path.join(here, '..', 'server', 'server.js'))});
+    const { startServer } = await import(${JSON.stringify(pathToFileURL(path.join(here, '..', 'server', 'server.js')).href)});
     const srv = await startServer({ port: 0 });
     Promise.reject(new Error('a stray failure'));
     await new Promise(r => setTimeout(r, 200));
