@@ -179,7 +179,8 @@ uiTest('every menu opens and every enabled item acts or opens its dialog', E, as
       // what it did: an error message box is a failure
       await page.waitFor(() => !window.Silinx.busy, [], { timeout: 30000 });
       const what = await page.eval(() => ({
-        dialogs: [...document.querySelectorAll('.dlg-overlay')].map((d) => `${d.querySelector('.dlg-title span').textContent}${d.querySelector('.msg-error') ? ` [ERROR: ${d.querySelector('.msg-text').textContent}]` : ''}`),
+        // (a dialog with no title bar, the command palette's, named by its aria-label: #4762)
+        dialogs: [...document.querySelectorAll('.dlg-overlay')].map((d) => `${d.querySelector('.dlg-title span')?.textContent ?? d.querySelector('[role=dialog]')?.getAttribute('aria-label')}${d.querySelector('.msg-error') ? ` [ERROR: ${d.querySelector('.msg-text').textContent}]` : ''}`),
         docs: window.Silinx.docs.map((d) => d.title),
         last: document.getElementById('console-log').lastElementChild?.textContent,
       }));
