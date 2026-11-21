@@ -7,6 +7,6 @@ In short:
 In detail:
 
 - **The ISE style interface's main toolbar (#5114):** no New ASM State Diagram button; an Emulate Behavioral Model
-  (RTL) button after Simulate Behavioral Model, the Processes pane's process of that name (the top module's Board
+  button after Simulate Behavioral Model, the Processes pane's Emulate Behavioral Model (RTL) (the top module's Board
   Emulator), disabled with no top module or when the project's tool has no emulator, hidden in a design and
   simulation project as Implement and Configure Target Device; the Silinx interface's toolbar unchanged.

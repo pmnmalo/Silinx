@@ -1,5 +1,5 @@
 // UI: the main toolbar's buttons (#5114, web/js/menus.js setupToolbar): the ISE style interface's without New ASM State
-// Diagram, its Emulate Behavioral Model (RTL) between Simulate Behavioral Model and Configure Target Device (the Processes
+// Diagram, its Emulate Behavioral Model between Simulate Behavioral Model and Configure Target Device (the Processes
 // pane's process: the top module's Board Emulator), disabled with no project, hidden in a design and simulation project,
 // in Portuguese; the Silinx interface's toolbar as it was. Both interfaces.
 import { before, after } from 'node:test';
@@ -19,7 +19,7 @@ uiTest('#5114 the ISE style toolbar: no New ASM State Diagram, Emulate Behaviora
   const silinx = await page.eval(() => document.documentElement.dataset.ui === 'silinx');
   assert.equal(await page.eval(() => document.querySelector('#toolbar .tb-btn[data-cmd=asm]')), null, 'no New ASM State Diagram button');
   // (no project: disabled)
-  assert.deepEqual(await emulate(page), { title: 'Emulate Behavioral Model (RTL)', disabled: true, hidden: false });
+  assert.deepEqual(await emulate(page), { title: 'Emulate Behavioral Model', disabled: true, hidden: false });
   await makeProject(env, { name: 'TbEmu', template: 'blinky' });
   await page.openProject('TbEmu');
   await page.waitFor(() => window.SilinxApp.S.project?.top && !document.querySelector('#toolbar .tb-btn[data-cmd=board]').disabled, [], { what: 'Emulate on with a top module' });
@@ -33,9 +33,9 @@ uiTest('#5114 the ISE style toolbar: no New ASM State Diagram, Emulate Behaviora
     'run', 'stop', 'wave', 'board', 'impact', 'gear', 'help']);
   // its tooltip in Portuguese, the process's
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#toolbar .tb-btn[data-cmd=board]').title === 'Emular Modelo Comportamental (RTL)', [], { what: 'Emular Modelo Comportamental (RTL)' });
+  await page.waitFor(() => document.querySelector('#toolbar .tb-btn[data-cmd=board]').title === 'Emular Modelo Comportamental', [], { what: 'Emular Modelo Comportamental' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
-  await page.waitFor(() => document.querySelector('#toolbar .tb-btn[data-cmd=board]').title === 'Emulate Behavioral Model (RTL)', [], { what: 'back in English' });
+  await page.waitFor(() => document.querySelector('#toolbar .tb-btn[data-cmd=board]').title === 'Emulate Behavioral Model', [], { what: 'back in English' });
   // the click: the top module's Board Emulator, as the process
   await page.click('#toolbar .tb-btn[data-cmd=board]');
   await page.waitFor(() => window.SilinxApp.S.active?.id === 'emulator', [], { what: 'the Board Emulator opened' });
