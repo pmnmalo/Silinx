@@ -26,24 +26,26 @@ export function userCodeProblems(states) {
     else if (c.length > MAX_CODE_BITS) add(`State ${s.name || '?'}: its code has ${c.length} bits; a code has ${MAX_CODE_BITS} at most`);
     else ok.push({ id: s.id, name: s.name || '?', c });
   }
-  const widths = [...new Set(ok.map((x) => x.c.length))];
-  if (widths.length > 1) out.push({ message: `The states' codes must all have the same width: ${ok.map((x) => `${x.name} ${x.c.length} bit(s)`).join(', ')}` });
-  else {
-    const seen = new Map();
-    for (const x of ok) {
-      if (seen.has(x.c)) out.push({ message: `States ${seen.get(x.c)} and ${x.name} have the same code ${x.c}`, state: x.id });
-      else seen.set(x.c, x.name);
-    }
+  // (codes of different widths, #5026: the register as wide as the widest, the others zero-extended on the left; two codes
+  // the same once extended, 011 and 0011, are one code)
+  const width = Math.max(0, ...ok.map((x) => x.c.length));
+  const seen = new Map();
+  for (const x of ok) {
+    const v = BigInt(`0b${x.c}`), first = seen.get(v);
+    if (!first) { seen.set(v, x); continue; }
+    out.push({ message: first.c === x.c ? `States ${first.name} and ${x.name} have the same code ${x.c}`
+      : `States ${first.name} (${first.c}) and ${x.name} (${x.c}) have the same code once zero-extended to ${width} bits: ${x.c.padStart(width, '0')}`, state: x.id });
   }
   return out;
 }
 
-/** The states' codes in the encoding of the user's: [{ code: BigInt, width }] in their order (a code not valid: the
- *  state's index, as binary, Check saying why). */
+/** The states' codes in the encoding of the user's: [{ code: BigInt, width, typed }] in their order, the register as wide as
+ *  the widest code, the shorter ones zero-extended (#5026); typed: the code as written (cleaned), shown in the tables and
+ *  the drawing (a code not valid: the state's index, as binary, Check saying why). */
 export function userCodes(states) {
   const cs = states.map((s) => cleanCode(s.code));
   const width = Math.max(1, ...cs.filter((c) => /^[01]+$/.test(c)).map((c) => c.length), (states.length - 1).toString(2).length);
-  return cs.map((c, i) => ({ code: /^[01]+$/.test(c) && c.length <= MAX_CODE_BITS ? BigInt(`0b${c}`) : BigInt(i), width }));
+  return cs.map((c, i) => (/^[01]+$/.test(c) && c.length <= MAX_CODE_BITS ? { code: BigInt(`0b${c}`), width, typed: c } : { code: BigInt(i), width, typed: null }));
 }
 
 /** The machine `m`'s encoding set to `enc`, in place: made the user's, each state with no code given the one it had

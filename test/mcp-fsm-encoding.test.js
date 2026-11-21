@@ -56,6 +56,13 @@ test('#4908 set_fsm_encoding: an encoding chosen, the user\'s codes kept, a code
   // Check's errors: returned, written as the interface writes them
   const twice = await set({ codes: { C: '010' } });
   assert.deepEqual([twice.isError, twice.data.problems], [false, ['ERROR: States B and C have the same code 010']]);
+  // codes of different widths (#5026): valid, as typed, the HDL's zero-extended; the same once extended: Check's error
+  const mixed = await set({ codes: { A: '0', B: '1_0', C: '1001' } });
+  assert.deepEqual([mixed.text.split('\n')[0], mixed.data.codes, mixed.data.problems], ['Encoding set: user: A = 0, B = 10, C = 1001', { A: '0', B: '10', C: '1001' }, []]);
+  assert.deepEqual(await consts(), ["localparam [3:0] S_A = 4'b0000;", "localparam [3:0] S_B = 4'b0010;", "localparam [3:0] S_C = 4'b1001;"]);
+  assert.equal((await ok('check_drawing', { project: pj, file: F })).data.ok, true);
+  const ext = await set({ codes: { C: '0010' } });
+  assert.deepEqual(ext.data.problems, ['ERROR: States B (10) and C (0010) have the same code once zero-extended to 4 bits: 0010']);
   const bad = await set({ codes: { C: '1x0' } });
   assert.deepEqual(bad.data.problems, ["ERROR: State C: its code '1x0' must be binary digits (0 and 1)"]);
   assert.equal((await saved()).states[2].code, '1x0');

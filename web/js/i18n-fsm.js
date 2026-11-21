@@ -132,7 +132,7 @@ export const FSM_PT_PATTERNS = [
   [/^State (.+) has no code: in the encoding of the user's each state has its own$/, 'O estado $1 não tem código: na codificação definida pelo utilizador cada estado tem o seu'],
   [/^State (.+): its code '(.*)' must be binary digits \(0 and 1\)$/, "Estado $1: o seu código '$2' tem de ser dígitos binários (0 e 1)"],
   [/^State (.+): its code has (\d+) bits; a code has (\d+) at most$/, 'Estado $1: o seu código tem $2 bits; um código tem $3 no máximo'],
-  [/^The states' codes must all have the same width: (.+)$/, (m, l) => `Os códigos dos estados têm de ter todos a mesma largura: ${l}`],
+  [/^States (.+) \(([01]+)\) and (.+) \(([01]+)\) have the same code once zero-extended to (\d+) bits: ([01]+)$/, 'Os estados $1 ($2) e $3 ($4) têm o mesmo código, completado com zeros à esquerda até $5 bits: $6'],
   [/^States (.+) and (.+) have the same code ([01]+)$/, 'Os estados $1 e $2 têm o mesmo código $3'],
   // (the Outputs fields' own errors, core/fsm.js parseOutputs, #3288)
   [/^'(.*)' is not an output$/, "'$1' não é uma saída"],

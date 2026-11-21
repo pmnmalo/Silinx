@@ -85,3 +85,31 @@ for (const lang of ['vhdl', 'verilog']) {
     } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   });
 }
+
+uiTest('#5026 FSM: codes of different widths typed (0, 10, 1001): no error, shown as typed in the drawing and the tables; 0010 too: the same code once extended, Check\'s exact error', E, async (page) => {
+  await makeProject(env, { name: 'FsmWidths', files: { 'src/ue.fsm.json': JSON.stringify({ ...machine('vhdl'), encoding: 'user',
+    states: machine('vhdl').states.map((s, i) => ({ ...s, code: ['00', '01', '10'][i] })) }, null, 2) } });
+  await page.openProject('FsmWidths');
+  await page.eval(() => window.SilinxApp.openFsm('src/ue.fsm.json'));
+  await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/ue.fsm.json' && window.Silinx.active.fsmEditor?.fitted(), [], { what: 'the editor, fitted' });
+  for (const [id, code] of [['a', '0'], ['b', '10'], ['c', '1001']]) {
+    await select(page, id);
+    await page.fill(`${ED} .fsm-scode`, code);
+    await page.waitFor((i, c) => window.Silinx.active.fsmEditor.getModel().states.find((s) => s.id === i).code === c, [id, code], { what: `${id}'s code` });
+  }
+  assert.deepEqual(await codes(page), ['user', ['0', '10', '1001']]);
+  // the drawing's codes and the transition table's as typed; the encoded table's at 4 bits
+  await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .fsm-code`)].map((t) => t.textContent).join() === '0,10,1001', [ED], { what: 'the drawing\'s codes as typed' });
+  await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
+  await page.waitForSelector(`${ED} .fsm-etable`);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr[data-trans]`)].map((r) => {
+    const c = [...r.children].map((x) => x.querySelector('input')?.value ?? x.textContent); return `${c[1]}>${c[4]}`; }), ED), ['0>10', '10>1001', '1001>0']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-etable tr`)].slice(0, 2).map((r) => r.children.length), ED), [5, 10]);   // (q3…q0)
+  await new Promise((r) => setTimeout(r, 300));   // (Check's run after a change)
+  assert.deepEqual(await problems(page), []);
+  // C 0010: B's 10 once extended
+  await select(page, 'c');
+  await page.fill(`${ED} .fsm-scode`, '0010');
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag').length > 0, [], { what: 'Check\'s error' });
+  assert.deepEqual(await problems(page), ['ERROR:FSM - "src/ue.fsm.json": States B (10) and C (0010) have the same code once zero-extended to 4 bits: 0010']);
+});
