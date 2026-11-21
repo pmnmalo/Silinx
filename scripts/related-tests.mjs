@@ -236,6 +236,8 @@ export const REPO_WIDE = [
   'test/docs.test.js',                  // 1.2 s: every Markdown file's links, paths and menus
   'test/family-conditions.test.js',     // 0.2 s: web/js's conditions on a family's name
   'test/layering.test.js',              // 0.7 s: every source's imports (the research)
+  'test/mcp-tools-size.test.js',        // 0.2 s: every MCP tool's descriptions, of server/mcp.js's TOOLS (#4752): a tool's module
+                                        // changed (server/mcp-board.js) selects it through no import (#5096)
   'test/old-name.test.js',              // 0.5 s: the tracked files, the old name (#2624)
   'test/private-data.test.js',          // 17 s: the tracked files, no private data, secrets or Xilinx files
   'test/safe-output.test.js',           // 0.4 s: web/js, the pages, core/ and server/: markup from a value

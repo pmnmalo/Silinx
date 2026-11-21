@@ -339,8 +339,8 @@ test('#3461 related tests: the repository\'s checks, for every change — each o
   for (const f of REPO_WIDE) {
     assert.match(f, /^test\/[^/]+\.test\.js$/, f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), `${f} is there`);
-    // it reads the tracked files or a folder of the repository, not one module
-    assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /\breaddirSync\(|'ls-files'|\bscanRepo\(/, f);
+    // it reads the tracked files or a folder of the repository, not one module; or every MCP tool (#5096)
+    assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /\breaddirSync\(|'ls-files'|\bscanRepo\(|import \{ TOOLS \} from '\.\.\/server\/mcp\.js'/, f);
   }
   // added to the tests of a change, each once; those not in the repository left out
   const files = { 'test/a.test.js': '', 'test/old-name.test.js': '', 'test/docs.test.js': '' };
@@ -353,6 +353,16 @@ test('#3461 related tests: the repository\'s checks, for every change — each o
   for (const f of REPO_WIDE) assert.ok(all.unit.includes(f), f);
   assert.ok(!all.unit.includes('test/hdl-boundary.test.js'), 'the front end\'s boundary: its modules named in it');
   assert.equal(planShards(all, readTimings()).n, 1);
+});
+
+// #5096: the MCP tools' descriptions checked (test/mcp-tools-size.test.js, server/mcp.js's TOOLS) for a change to one
+// tool's module, which that test does not import: program_board's (server/mcp-board.js, #5089's break), new_project's
+test('#5096 related tests: a change to one MCP tool\'s module selects mcp-tools-size', () => {
+  const repo = sources();
+  for (const changed of ['server/mcp-board.js', 'server/mcp-projects.js', 'README.md']) {
+    assert.ok(withRepoWide(relatedTests(repo, [changed]), repo).unit.includes('test/mcp-tools-size.test.js'), changed);
+  }
+  assert.ok(!relatedTests(repo, ['server/mcp-board.js']).unit.includes('test/mcp-tools-size.test.js'), 'not through its imports');
 });
 
 test('PR tests: every pull request, its parts planned (#1982), the related-tests verdict main requires', () => {
