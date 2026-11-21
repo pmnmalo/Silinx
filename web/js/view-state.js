@@ -8,6 +8,7 @@ import { prefKey } from './prefs.js';
 import { restoreSplit, splitKeys } from './split-view.js';
 import { S, activateDoc, closeDoc, moduleInfo, openFile, openImpact, openPinPlanner, openSummary, setView, showLeftPage } from './app.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 
 // ---- where the user was (#160, #163): the open documents of a project, the one in front, the left pane
 // and the Design view, kept in this browser (per project) so that a reload of the page, or opening
@@ -16,7 +17,7 @@ import { panes } from './state-panes.js';
 // and the simulation (SSim) and the board emulator, run again for the same module and model (a
 // netlist model only while it exists); not a report or a technology schematic (a run's output).
 const VIEW_KEY = name => prefKey(`silinx.view.${name}`);
-const inProject = p => S.fileTree?.includes(p);
+const inProject = p => filesState.fileTree?.includes(p);
 const REOPEN = [
   [/^file:(.+)$/, p => inProject(p) && openFile(p)], [/^sch:(.+)$/, p => inProject(p) && openSch(p)],
   [/^asm:(.+)$/, p => inProject(p) && openAsm(p)], [/^tt:(.+)$/, p => inProject(p) && openTt(p)], [/^ttsch:(.+)$/, p => inProject(p) && openTtSchematic(p)],

@@ -44,6 +44,7 @@ import { hdlWarning } from './design-only.js';
 import { ownerActivity } from './collab-activity.js';
 import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 import { collabLog } from './collab-log.js';
+import { filesState } from './state-files.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; } };
@@ -378,8 +379,8 @@ function hookApi(project, doc, s) {
 }
 
 // the files an editor may change here: a text file of the project's that no drawing generates; a drawing edited live
-const editableHere = p => editablePath(p) && !S.hdlToSch?.[p] && S.fileTree?.includes(p);
-const drawingHere = p => liveDrawing(p) && !!S.fileTree?.includes(p);
+const editableHere = p => editablePath(p) && !S.hdlToSch?.[p] && filesState.fileTree?.includes(p);
+const drawingHere = p => liveDrawing(p) && !!filesState.fileTree?.includes(p);
 const sayLine = text => collabLog(text, /^WARNING/.test(text) ? 'warn' : 'info');
 
 // what the editors change (the document's remote transactions, core/collab-files.js applyEdits): a text file's, written

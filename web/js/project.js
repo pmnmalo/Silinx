@@ -25,6 +25,7 @@ import { resetSync } from './state-sync.js';
 import { cState, resetC } from './state-c.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -34,7 +35,7 @@ const $ = id => document.getElementById(id);
 // per-project UI state (cleared when another project is opened or the project is closed)
 function resetProjectState() {
   S.diagsCleared++;   // (the start-up checks' lines coming later: not in the tabs, #339)
-  S.status = {}; panes.sel = null; panes.selKey = null; panes.selProc = null; S.diags = []; S.ucfText = null;
+  S.status = {}; panes.sel = null; panes.selKey = null; panes.selProc = null; S.diags = []; filesState.ucfText = null;
   resetSync();   // (the drawings' HDL kept in step: state-sync.js)
   resetC();   // (the C sources': state-c.js)
   renderDiagnostics();
@@ -135,15 +136,15 @@ function warnReservedNames() {
 // Project then Undo) could otherwise finish out of order and leave the older state on screen.
 export function reloadProject(render = true) {
   const run = () => reloadProjectNow(render);
-  S.reloadChain = (S.reloadChain || Promise.resolve()).then(run, run);
-  return S.reloadChain;
+  filesState.reloadChain = (filesState.reloadChain || Promise.resolve()).then(run, run);
+  return filesState.reloadChain;
 }
 
 // The project once the reloads asked so far are done: a dialog applies its choices to it, not to the project it read
 // on opening, which a reload may have replaced meanwhile (#2281).
 export async function currentProject() {
   let c;
-  do { c = S.reloadChain; await c; } while (c !== S.reloadChain);
+  do { c = filesState.reloadChain; await c; } while (c !== filesState.reloadChain);
   return S.project;
 }
 
@@ -153,27 +154,27 @@ async function reloadProjectNow(render = true, depth = 0) {
   await projectSaved();
   const pj = await api.project(S.project.name);
   // the files on disk; the project ignores the ones removed from it (project.excluded, unregistered HDL)
-  S.diskTree = pj.fileTree || [];
+  filesState.diskTree = pj.fileTree || [];
   const out = new Set(pj.excluded || []);
   const hdlIn = new Set((pj.files || []).map(f => f.path));
-  S.fileTree = S.diskTree.filter(f => !out.has(f) && (!/\.(vhdl?|v|sv)$/i.test(f) || hdlIn.has(f)));
+  filesState.fileTree = filesState.diskTree.filter(f => !out.has(f) && (!/\.(vhdl?|v|sv)$/i.test(f) || hdlIn.has(f)));
   delete pj.fileTree;
   S.project = pj;
   S.sources = await api.sources(pj.name);
   // schematics (.sch.json) and ASM charts (.asm.json) linked to an HDL file ("views" kept in sync); the maps made first
   // and set together, never empty while the drawings are read (#1543)
   const schOwners = {}, hdlToSch = {}, viewModule = {}, viewTexts = {};
-  for (const f of S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$|\.(c|cpp|cc|cxx)$/.test(f))) {   // (.c: Silinx HLS, its HDL made in memory, #1531; C++ too, #1590)
+  for (const f of filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$|\.(c|cpp|cc|cxx)$/.test(f))) {   // (.c: Silinx HLS, its HDL made in memory, #1531; C++ too, #1590)
     try {
       const t = await api.readFile(pj.name, f);
       viewTexts[f] = t;
       const d = JSON.parse(t);
-      if (d.generatedFile && S.fileTree.includes(d.generatedFile) && !hdlToSch[d.generatedFile]) { schOwners[f] = d.generatedFile; hdlToSch[d.generatedFile] = f; viewModule[f] = d.name; }
+      if (d.generatedFile && filesState.fileTree.includes(d.generatedFile) && !hdlToSch[d.generatedFile]) { schOwners[f] = d.generatedFile; hdlToSch[d.generatedFile] = f; viewModule[f] = d.name; }
     } catch { /* unreadable */ }
   }
   // (the modules' symbols of their own, <module>.sym.json, #3755: the schematics' module symbols drawn from them)
   const symbolFiles = {};
-  for (const f of S.fileTree.filter(f => /\.sym\.json$/i.test(f))) { try { symbolFiles[f] = await api.readFile(pj.name, f); } catch { /* unreadable */ } }
+  for (const f of filesState.fileTree.filter(f => /\.sym\.json$/i.test(f))) { try { symbolFiles[f] = await api.readFile(pj.name, f); } catch { /* unreadable */ } }
   // (the RTL blackboxes of its C functions, as it opens, #1903)
   const hls = await readBlackboxes(pj.name);
   Object.assign(S, { schOwners, hdlToSch, viewModule, viewTexts, symbolFiles, hls });
@@ -200,7 +201,7 @@ async function reloadProjectNow(render = true, depth = 0) {
 // the project's RTL blackboxes (core/c-blackbox.js, #1903): its descriptions, with the files they name and its headers
 async function readBlackboxes(name) {
   const { blackboxesIn } = await import('/core/c-blackbox.js');
-  return blackboxesIn(S.diskTree, f => api.readFile(name, f)).catch(() => null);
+  return blackboxesIn(filesState.diskTree, f => api.readFile(name, f)).catch(() => null);
 }
 
 /** A file saved in its editor that a blackbox reads (its description, its RTL module, its C model): the descriptions

@@ -12,6 +12,7 @@ import { wizardTitle, wizardText, wizardError } from '/core/constraints-wizard.j
 import { elaborate } from '/core/compile.js';
 import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { S, app } from './app.js';
+import { filesState } from './state-files.js';
 
 // the ports of module `name` as I/O Pin Planning reads them (web/js/pinplanner.js), or the error that stops it
 function portsOf(name) {
@@ -120,14 +121,14 @@ export async function ucfWizard({ path, back = null }) {
   const preview = h('pre', { class: 'uw-preview code-box', style: { maxHeight: '300px', overflow: 'auto', whiteSpace: 'pre' } });
   const pSum = {
     title: 'Summary',
-    render: () => h('div', {}, h('div', {}, `The wizard will create ${path}${pj.constraints && S.fileTree.includes(pj.constraints) ? '' : ', the project\'s constraints file'}:`), preview),
+    render: () => h('div', {}, h('div', {}, `The wizard will create ${path}${pj.constraints && filesState.fileTree.includes(pj.constraints) ? '' : ', the project\'s constraints file'}:`), preview),
     onShow: () => { preview.textContent = text(); },
     validate: () => guard(path),
   };
   load();
   const ok = await wizard(title, [p1, pSum], { width: COLS.length ? 900 : 760, back });
   if (!ok) return;
-  const noUcf = !S.fileTree.includes(pj.constraints);
+  const noUcf = !filesState.fileTree.includes(pj.constraints);
   await closeBeforeReplace(path);
   await api.writeFile(pj.name, path, text());
   await app.reloadProject();

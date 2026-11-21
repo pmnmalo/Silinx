@@ -10,6 +10,7 @@ import { h } from './ui.js';
 import { icon, icons } from './icons.js';
 import { designKind } from './project-kind-flag.js';
 import { flowFiles } from '../../core/flow-files.js';
+import { filesState } from './state-files.js';
 
 let page = 'procs';   // ('procs': the task's processes; 'files')
 let app = null;
@@ -45,7 +46,7 @@ function apply() {
 export function renderFlowFiles() {
   const S = app?.S;
   for (const ul of document.querySelectorAll('.task-flow-files')) {
-    const files = S?.project ? flowFiles(S.project, S.fileTree || []) : [];
+    const files = S?.project ? flowFiles(S.project, filesState.fileTree || []) : [];
     const top = files.length && S.project.top ? S.project.top : '';
     const topFile = top ? (S.modules || []).find(m => m.name.toLowerCase() === top.toLowerCase())?.file || '' : '';
     const key = [top, topFile, ...files.map(f => f.path)].join();

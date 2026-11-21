@@ -8,10 +8,11 @@ import { h, confirmDlg, dialog, promptDlg } from './ui.js';
 import { commandError, commandInfo } from './console.js';
 import { S, moduleInfo } from './app.js';
 import { reloadProject } from './project.js';
+import { filesState } from './state-files.js';
 
 const SAVE = 'Save Wave Configuration', LOAD = 'Load Wave Configuration';
 
-const projectFiles = () => S.diskTree || S.fileTree || [];
+const projectFiles = () => filesState.diskTree || filesState.fileTree || [];
 
 /** SSim's opts.wcfg for a simulation of `mod`: { save(text), load() }. */
 export function wcfgFiles(mod) {

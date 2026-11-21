@@ -9,13 +9,14 @@ import { gitMarks, refreshGitStatus } from './git.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { changesFirst, conflictCount, stateWord } from '/core/git-messages.js';
+import { filesState } from './state-files.js';
 
 /** The changes Changes… lists, the conflicts first (a design project's HDL never: committed with its drawings, #3891). */
-export const shownChanges = () => (S.git ? changesFirst(S.git.files.filter(f => !designOnly() || !hdlSideFile(f.path))) : []);
+export const shownChanges = () => (filesState.git ? changesFirst(filesState.git.files.filter(f => !designOnly() || !hdlSideFile(f.path))) : []);
 
 /** Changes…: the changed files; a click on one compares it with the last commit (the window closed for it). */
 export async function changesDialog() {
-  if (!S.git) return null;
+  if (!filesState.git) return null;
   let compare = null, close = null;
   const body = h('div', { class: 'git-changes-window' });
   const item = f => h('li', { class: 'git-change', 'data-state': f.state },
@@ -24,10 +25,10 @@ export async function changesDialog() {
       onclick: e => { e.preventDefault(); compare = f.path; close?.(); } }, f.path),
     h('span', { class: 'git-state' }, `(${stateWord(f.state)})`));
   const draw = () => {
-    if (!S.git) { close?.(); return; }   // (the project closed, or no longer a repository)
+    if (!filesState.git) { close?.(); return; }   // (the project closed, or no longer a repository)
     const files = shownChanges(), conflicts = conflictCount(files);
     body.replaceChildren(
-      h('div', { class: 'hint' }, files.length ? `${files.length} change(s) on ${S.git.branch || 'no branch'}: a click compares a file with the last commit.` : 'No change since the last commit.'),
+      h('div', { class: 'hint' }, files.length ? `${files.length} change(s) on ${filesState.git.branch || 'no branch'}: a click compares a file with the last commit.` : 'No change since the last commit.'),
       ...(conflicts ? [h('div', { class: 'git-conflicts' }, `${conflicts} file(s) in conflict: resolve each, then commit.`)] : []),
       h('ul', { class: 'git-changes' }, ...files.map(item)));
   };

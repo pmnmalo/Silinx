@@ -23,6 +23,7 @@ import { OPEN_SYNTH, SYNTH_OPEN } from './tool-descriptors.js';
 import { jobLog } from './job-log.js';
 import { downloadUrl } from './download.js';
 import { runState } from './state-run.js';
+import { filesState } from './state-files.js';
 
 // Live per-step status from run.sh's "=== SILINX STEP <step> ===" markers and ISE WARNING/ERROR lines.
 const STEP_PROC = { synth: 'synth', translate: 'translate', map: 'map', par: 'par', trce: 'par', bitgen: 'bitgen', prombit: 'bitgen',
@@ -152,7 +153,7 @@ export async function checkUcfFile(path = S.project?.constraints, { quiet = fals
 async function checkConstraints(warnings = null) {
   const pj = S.project;
   const board = projectBoard(pj);
-  if (pj.constraints && S.fileTree.includes(pj.constraints) && !await checkUcfFile(pj.constraints, { quiet: true, warnings })) {
+  if (pj.constraints && filesState.fileTree.includes(pj.constraints) && !await checkUcfFile(pj.constraints, { quiet: true, warnings })) {
     log(`ERROR: fix the errors in ${pj.constraints} before implementing (see the Errors tab).`, 'err');
     return false;
   }
@@ -173,7 +174,7 @@ async function checkConstraints(warnings = null) {
  */
 export async function boardConstraints(board, { emulate = false, quiet = false } = {}) {
   const pj = S.project;
-  if (!board || !pj.constraints || !S.fileTree.includes(pj.constraints)) return true;
+  if (!board || !pj.constraints || !filesState.fileTree.includes(pj.constraints)) return true;
   const { locsNotOnBoard } = await import('/packages/silinx-fpga/src/parts.js');
   let bad = [];
   // (in the device's format: a PCF's, an LPF's, a CST's pins too, #2296)
@@ -212,8 +213,8 @@ export async function regenerateUcf(board = projectBoard()) {
  *  from the board's pin table when its pins are not on the board (#2430). */
 export async function boardUcf() {
   const pj = S.project, board = projectBoard(pj);
-  if (board && pj.top && pj.constraints && !S.fileTree.includes(pj.constraints) && !/\.ucf$/i.test(pj.constraints)) return regenerateUcf(board);   // (an XDC or a PCF: the board's, #3142)
-  if (!board || !pj.top || !pj.constraints || !S.fileTree.includes(pj.constraints)) return false;
+  if (board && pj.top && pj.constraints && !filesState.fileTree.includes(pj.constraints) && !/\.ucf$/i.test(pj.constraints)) return regenerateUcf(board);   // (an XDC or a PCF: the board's, #3142)
+  if (!board || !pj.top || !pj.constraints || !filesState.fileTree.includes(pj.constraints)) return false;
   const { parseUcf, locsNotOnBoard } = await import('/packages/silinx-fpga/src/parts.js');
   let bad = [];
   try { bad = locsNotOnBoard(parseUcf(await api.readFile(pj.name, pj.constraints), { ports: topUcfPorts() }).assignments, board); } catch { return false; }
@@ -435,13 +436,13 @@ export async function backAnnotatePins(mod) {
   await loadUcfText();
   const { backAnnotateUcf } = await import('/packages/silinx-fpga/src/parts.js');
   let r;
-  try { r = backAnnotateUcf(S.ucfText, await readBuildFile(`build/${S.project.top}_pins.ucf`), { ports: topUcfPorts(), tool: openMode() ? 'Silinx toolchain' : 'pin2ucf' }); } catch (e) { log(`WARNING: no pin file: ${e.message}`, 'warn'); return; }
+  try { r = backAnnotateUcf(filesState.ucfText, await readBuildFile(`build/${S.project.top}_pins.ucf`), { ports: topUcfPorts(), tool: openMode() ? 'Silinx toolchain' : 'pin2ucf' }); } catch (e) { log(`WARNING: no pin file: ${e.message}`, 'warn'); return; }
   const { added: add, lines, text } = r;
   if (!add.length) { log('Back-annotate Pin Locations: every port already has a LOC in the UCF (nothing to add).', 'ok'); return; }
   if (!await confirmDlg('Back-annotate Pin Locations', `Add the ${add.length} pin location(s) chosen by the tools to ${S.project.constraints || 'the UCF'}?\n\n${lines.slice(0, 12).join('\n')}${add.length > 12 ? '\n…' : ''}`)) return;
   const file = S.project.constraints || `${S.project.top}.ucf`;
   await api.writeFile(S.project.name, file, text);
-  S.ucfText = text;
+  filesState.ucfText = text;
   refreshOpenEditor(file, text);
   if (!S.project.constraints) { S.project.constraints = file; await saveProjectJson(); }
   await reloadProject(false);

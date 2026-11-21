@@ -16,6 +16,7 @@ import { logGitError, refreshGitStatus, chooseConflicts } from './git.js';
 import { designOnly } from './design-only.js';
 import { newBranchText, switchText, mergeBranchText, pullMergeLines } from '/core/git-messages.js';
 import { checkBranchName } from '/core/git-branch-name.js';
+import { filesState } from './state-files.js';
 
 // a field's error, beside it (the dialog stays open)
 const fieldError = cls => h('div', { class: `hint git-error ${cls}`, style: { gridColumn: '1 / -1', minHeight: '16px' } });
@@ -24,7 +25,7 @@ const fieldError = cls => h('div', { class: `hint git-error ${cls}`, style: { gr
 // edition's open documents told here)
 async function reread(name, files) {
   if (S.project?.name !== name || !files.length) return;
-  if (api.standalone) await applyChanges({ project: name, changes: files.map(f => ({ path: f, kind: S.diskTree?.includes(f) ? 'changed' : 'added' })) });
+  if (api.standalone) await applyChanges({ project: name, changes: files.map(f => ({ path: f, kind: filesState.diskTree?.includes(f) ? 'changed' : 'added' })) });
   else await reloadProject();
 }
 
@@ -120,7 +121,7 @@ async function mergeBranch(name, branch, mine, resolve = null) {
 
 /** The Git submenu's branch commands (web/js/git.js gitMenuItems), for a project in a repository. */
 export const branchMenuItems = () => [
-  { label: 'New Branch…', action: () => newBranchDialog(), disabled: !S.git },
-  { label: 'Switch Branch…', action: () => switchBranchDialog(), disabled: !S.git },
-  { label: 'Merge Branch…', action: () => mergeBranchDialog(), disabled: !S.git },
+  { label: 'New Branch…', action: () => newBranchDialog(), disabled: !filesState.git },
+  { label: 'Switch Branch…', action: () => switchBranchDialog(), disabled: !filesState.git },
+  { label: 'Merge Branch…', action: () => mergeBranchDialog(), disabled: !filesState.git },
 ];

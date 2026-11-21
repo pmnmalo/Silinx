@@ -13,6 +13,7 @@ import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewher
 import { NAME_RE, FILE_RE, sourceBase } from '/core/ident.js';
 import { designOnly } from './design-only.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -252,7 +253,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     ...(kind === 'test_bench' ? { uut: uutInfo(S.modules.find(x => x.name === uutName)) } : {}),
     ...(kind === 'constraints' ? { format: st.id } : {}),
   });
-  const noUcf = !S.fileTree.includes(pj.constraints);
+  const noUcf = !filesState.fileTree.includes(pj.constraints);
   await closeBeforeReplace(path);
   await api.writeFile(pj.name, path, text);   // registers the new file in silinx.json
   // reload first: saving the project settings from the old copy would drop that registration

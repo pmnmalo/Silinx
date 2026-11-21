@@ -26,6 +26,7 @@ import { prefKey } from './prefs.js';
 import { pinsReady } from './pins-check.js';
 import { isName } from '/core/ident.js';
 import { designOnly, shownDiag } from './design-only.js';
+import { filesState } from './state-files.js';
 
 // ---- schematic
 // Netlist written by netgen for `step` (postsynth / posttrans / postmap / postpar) with the
@@ -222,7 +223,7 @@ export async function openSchematic(mod, { netlist = null, task = netlist ? null
 // ---- simulation (SSim)
 async function readDataFiles() {
   const map = new Map(S.sources.map(s => [s.path, s.text]));
-  for (const f of S.fileTree.filter(f => /\.(mem|hex|txt|dat|coe|bin)$/i.test(f))) {
+  for (const f of filesState.fileTree.filter(f => /\.(mem|hex|txt|dat|coe|bin)$/i.test(f))) {
     try { map.set(f, await api.readFile(S.project.name, f)); } catch { /* ignore */ }
   }
   return map;
@@ -337,7 +338,7 @@ async function saveStimTestbench(mod, inst, m) {
   // (a design project's: the test bench by its name, its HDL file never named, #3891)
   const named = designOnly() ? `The test bench ${name}` : path;
   if (other) return commandError(title, designOnly() ? `The project already has a module '${other.name}'.` : `The project already has a module '${other.name}' (${other.file}).`);
-  if (S.fileTree?.includes(path) && !await confirmDlg(title, `${named} exists. Replace it?`)) return;
+  if (filesState.fileTree?.includes(path) && !await confirmDlg(title, `${named} exists. Replace it?`)) return;
   let text;
   try {
     const types = Object.fromEntries((info?.portList || []).map(p => [p.name, p.type]));
@@ -372,7 +373,7 @@ async function confirmElabErrors(title, lib, design) {
 const enginePref = () => { try { return localStorage.getItem(prefKey(ENGINE_KEY)); } catch { return null; } };
 const setEnginePref = (e) => { try { localStorage.setItem(prefKey(ENGINE_KEY), e); } catch { /* ignore */ } };
 // the design as the emulator runs it: its sources and its pins (#1401)
-const designNow = () => JSON.stringify([S.sources.filter(s => s.lang === 'vhdl' || s.lang === 'verilog').map(s => [s.path, s.text]), S.ucfText || '']);
+const designNow = () => JSON.stringify([S.sources.filter(s => s.lang === 'vhdl' || s.lang === 'verilog').map(s => [s.path, s.text]), filesState.ucfText || '']);
 // `quiet`: run again on a change of the design (#1401), behind the document in front, no dialog
 export async function openEmulator(mod, { scale, model = null, engine = null, quiet = false } = {}) {
   if (!mod) { logInfo('Select the top module first'); return; }
@@ -382,7 +383,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
   if (!await checkSyntax(mod, false, { hierarchy: true })) return;
   await loadUcfText();   // the pins as they are now (pin planner / editor changes)
   // (no pins set: said first, I/O Pin Planning one click away; a re-run on a change says nothing, #1508)
-  if (!quiet && !await pinsReady(S.ucfText, 'emulate', () => app.openPinPlanner(mod), S.project.device)) return;
+  if (!quiet && !await pinsReady(filesState.ucfText, 'emulate', () => app.openPinPlanner(mod), S.project.device)) return;
   // (constraints made for another board: said, their regeneration offered, as Implement does; not run on their pins, #3742)
   if (!await boardConstraints(board, { emulate: true, quiet })) return;
   await loadUcfText();
@@ -404,8 +405,8 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
     gens = model ? [] : timingGenerics(design.top?.params);   // a netlist has its constants built in
   } catch (e) { if (quiet) log(`ERROR: Board Emulator: cannot build the design: ${e.message}`, 'err', EMU); else commandError('Board Emulator', `Cannot build the design: ${e.message}`); return; }
   if (quiet ? diagsFor(lib, design).some(d => (d.severity || 'error') === 'error') : !await confirmElabErrors('Board Emulator', lib, design)) return;
-  const assignments = S.ucfText ? readPins(S.project.device, S.ucfText, { ports: design.top.ports.map(ucfPort) }).assignments : {};
-  if (!S.ucfText) log('WARNING: the project has no UCF: the ports are not connected to the board (use I/O Pin Planning).', 'warn');
+  const assignments = filesState.ucfText ? readPins(S.project.device, filesState.ucfText, { ports: design.top.ports.map(ucfPort) }).assignments : {};
+  if (!filesState.ucfText) log('WARNING: the project has no UCF: the ports are not connected to the board (use I/O Pin Planning).', 'warn');
   const files = await readDataFiles();
   const { mountEmulator, emulatorYosys } = await import('./emulator.js');
   // the engine: the one asked for (the Engine selector), else the user's last choice, else the compiled one,
