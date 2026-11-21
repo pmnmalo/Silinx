@@ -15,11 +15,10 @@ export const zynqTargets = board => ZYNQ_TARGETS.filter(t => t.board === board);
 const XC7Z020 = { part: 'xc7z020clg400-1', device: 'xc7z020', pkg: 'clg400', slices: 13300, regs: 106400, iobs: 125, bitPart: '7z020clg400', idcode: 0x3727093, frames: [9996, 7802], mhz: 125, required: 3 };
 const XC7Z010 = { part: 'xc7z010clg400-1', device: 'xc7z010', pkg: 'clg400', slices: 4400, regs: 35200, iobs: 100, bitPart: '7z010clg400', idcode: 0x3722093, frames: [5144, 2952], mhz: 125, required: 3 };
 export const zynqParts = board => Object.fromEntries(zynqTargets(board).map(t => [targetName(t), t.variant === '10' ? XC7Z010 : XC7Z020]));
-// the warnings of the examples below the 125 MHz clock (#4877): nextpnr's own, then the timing's; a hold violation's first
-// (#4878). The clocks' net names are Yosys's: any.
+// the warnings of the examples below the 125 MHz clock (#4877): nextpnr's own, then the timing's. The clocks' net names
+// are Yosys's: any.
 export const FMAX = /^WARNING:Place - Max frequency for clock '.+': [\d.]+ MHz \(FAIL at 125\.00 MHz\)$/;
 export const SLOW = /^WARNING:Timing - the clock clk reaches [\d.]+ MHz, not the 125 MHz of its constraint \(nextpnr's estimate\)\.$/;
-export const HOLD = /^WARNING:Place - Hold\/min time violation for clock 'posedge .+laps_ram.+CLKARDCLK':$/;
 export const SLOW_ONES = { pong: [FMAX, SLOW], stopwatch: [FMAX, SLOW], micro80: [FMAX, SLOW] };
 
 // (one nextpnr run at a time, in this thread: the best of 1 seed)
