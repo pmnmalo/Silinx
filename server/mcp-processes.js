@@ -6,6 +6,7 @@ import * as P from './projects.js';
 import { toolError, clip, redactor, projectPath, readProject, PROJECT } from './mcp-util.js';
 import { designUtilization } from '../core/summary-utilization.js';
 import { severityOf } from '../core/log-severity.js';
+import { lineMessage, messageData } from '../core/message.js';
 import { messageLocation, projectPath as sourcePath } from '../core/message-location.js';
 import { MODEL_PROCESS, hasSimModels, noSimModelMessage, silinxFlowOf } from './mcp-hdl.js';
 import { ISE, processSteps } from '../core/tool-descriptors.js';
@@ -84,6 +85,14 @@ export function processMessages(lines, paths = []) {
   return { errors, warnings, locations };
 }
 
+/** A process's messages (#4749: as the interface's console makes them, core/message.js lineMessage): its errors' and
+ *  warnings' lines, Implementation's, each with its tool and location (the project's file its text names), then its
+ *  result's line. */
+export function processMessageList({ errors, warnings, head, ok, process, paths = [] }) {
+  const of = (text, cls) => messageData(lineMessage(text, { cls, source: 'impl', process, paths }));
+  return [...errors.map(l => of(l, 'err')), ...warnings.map(l => of(l, 'warn')), of(head, ok ? 'ok' : 'err')];
+}
+
 /** A process of the project's top run to its end (or stopped after timeoutS): its log redacted, its errors and
  *  warnings, whether it ended well, its toolchain. Errors: tool errors. */
 export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signal, progress } = {}) {
@@ -114,7 +123,7 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   const paths = (await P.readSources(name).catch(() => [])).map(s => s.path);
   const { errors, warnings, locations } = processMessages(lines, paths);
   const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
-  return { top: pj.top, lines, errors, warnings, locations, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
+  return { top: pj.top, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
 }
 
 // run_process's bounds (#3408): how long it waits (then the process is stopped), the lines of the log returned
@@ -134,13 +143,13 @@ export const PROCESS_TOOLS = [
     async run({ project: name, process: proc, toolchain, log_lines: logLines = 40, timeout_s: timeoutS = 1800 }, { signal, progress } = {}) {
       if (!Number.isInteger(logLines) || logLines < 1 || logLines > PROCESS_LIMITS.logLines) throw toolError(`log_lines: from 1 to ${PROCESS_LIMITS.logLines}`);
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > PROCESS_LIMITS.timeoutS) throw toolError(`timeout_s: from 1 to ${PROCESS_LIMITS.timeoutS} s`);
-      const { top, lines, errors, warnings, locations, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal, progress });
+      const { top, lines, errors, warnings, locations, paths, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal, progress });
       // (a project shared live: its followers see the run, #4002)
       await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc], ok, warnings, lines }).catch(() => {});
       const pj = { top };
       const head = `Process "${proc}" of <${pj.top}> ${ok ? `completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''}` : `failed (${errors.length} error(s), ${warnings.length} warning(s))`} (${TOOLCHAIN_NAMES[tc]}).`;
       return { text: processText({ errors, warnings, lines, head, logLines }),
-        data: { project: name, process: proc, toolchain: tc, ok, errors, warnings, locations, log: lines.slice(-Math.max(1, logLines)) }, isError: !ok,
+        data: { project: name, process: proc, toolchain: tc, ok, errors, warnings, locations, log: lines.slice(-Math.max(1, logLines)), messages: processMessageList({ errors, warnings, head, ok, process: proc, paths }) }, isError: !ok,
         // (a failure's errors and log quote the design's names and files: the project's own text, #3681)
         untrusted: ok ? undefined : 'the process\'s messages, which quote the design\'s names and files' };
     },

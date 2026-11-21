@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
+import { diagLocation, makeMessage, messageData } from '../core/message.js';
 import { hiddenName, nativeRealOf, readWithin, realOf, within } from './paths.js';
 
 // ------------------------------------------------------------------ helpers
@@ -139,6 +140,11 @@ export async function viewSourcesOf(name, project, sim, failed = null) {
 }
 
 export const diagLine = d => `${d.severity === 'error' ? 'ERROR' : d.severity === 'info' ? 'INFO' : 'WARNING'}:${d.tool || 'HDLCompiler'} - "${d.file}"${d.drawn ? '' : ` Line ${d.line}`}: ${d.message}`;   // (drawn: a design project's drawing's, #3891)
+/** A check's message as data (#4749: the console's line of it, the interface's Check Syntax's and simulation's, its
+ *  run's source and process; core/message.js). */
+export const diagMessage = (d, { source = 'check', process = null } = {}) => messageData(makeMessage({ text: diagLine(d), source, process,
+  severity: d.severity === 'error' ? 'error' : d.severity === 'info' ? 'info' : 'warning', tool: d.tool || 'HDLCompiler',
+  location: diagLocation(d) }));
 export const diagJson = d => ({ severity: d.severity, file: d.file, line: d.line, col: d.col ?? null, tool: d.tool || 'HDLCompiler', message: d.message, ...(d.check ? { check: d.check } : {}) });
 
 // compile and elaborate a view of a project: { lib, design, top, diags } (the design checks included; lint: their lint

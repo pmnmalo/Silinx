@@ -5,7 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './projects.js';
-import { toolError, clip, elaborateView, diagLine, diagJson, STR, PROJECT } from './mcp-util.js';
+import { toolError, clip, elaborateView, diagLine, diagJson, diagMessage, STR, PROJECT } from './mcp-util.js';
+import { makeMessage, messageData } from '../core/message.js';
 import { isDesignOnly } from '../core/project-kind.js';
 import { designDiags } from './mcp-design-only.js';
 import { parseTime, parseValue } from '../core/ssim-values.js';
@@ -152,6 +153,9 @@ export async function runBounded(sim, until, { timeoutS, signal, steps: maxSteps
   }
 }
 
+// a simulation's messages' severities (#4749: its log's kinds, as the Errors / Warnings tabs list them, #4746)
+const SIM_SEVERITY = { error: 'error', failure: 'error', fatal: 'error', warning: 'warning', note: 'info' };
+
 // what a failed check_syntax or simulate holds (#3681): the compiler's lines, which quote the design's names and files
 const FAILED = 'the compiler\'s messages, which quote the design\'s names and files';
 
@@ -174,8 +178,10 @@ export const HDL_TOOLS = [
       const lines = [...diags.map(diagLine),
         ok ? `Process "${proc}" of <${mod}> completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''} (${design.signals.length} signals, ${design.procs.length} processes).`
           : `Process "${proc}" of <${mod}> failed (${errors.length} error(s), ${warnings.length} warning(s)).`];
+      // (its messages, #4749: the console's lines of the interface's run, its result's too)
+      const messages = [...diags.map(d => diagMessage(d, { process: proc })), messageData(makeMessage({ text: lines.at(-1), severity: ok ? 'ok' : 'error', source: 'check', process: proc }))];
       // (a failure's lines quote the design's names and files: the project's own text, #3681)
-      return { untrusted: ok ? undefined : FAILED, text: lines.join('\n'), data: { project: name, top: mod, ok, errors: errors.map(diagJson), warnings: warnings.map(diagJson) }, isError: false };
+      return { untrusted: ok ? undefined : FAILED, text: lines.join('\n'), data: { project: name, top: mod, ok, errors: errors.map(diagJson), warnings: warnings.map(diagJson), messages }, isError: false };
     },
   },
   {
@@ -273,10 +279,17 @@ export const HDL_TOOLS = [
         if (!fs.existsSync(path.dirname(vcdPath))) throw toolError(`no folder '${path.dirname(vcdPath)}'`);
         try { fs.writeFileSync(vcdPath, toVCD(design, sim), { flag: 'wx' }); } catch (e) { throw toolError(e.code === 'EEXIST' ? `'${vcdPath}' exists: a VCD does not replace a file (give another name)` : e.message); }
       }
-      const text = [...head, ...diags.filter(d => d.severity !== 'error').map(diagLine), ...log.map(l => `[${l.timeNs.toFixed(3)} ns] ${l.kind === 'print' ? '' : `${l.kind.toUpperCase()}: `}${l.text}`), stopped, ...(limitLine ? [limitLine] : []),
+      const logText = l => `[${l.timeNs.toFixed(3)} ns] ${l.kind === 'print' ? '' : `${l.kind.toUpperCase()}: `}${l.text}`;
+      // (its messages, #4749: the interface's simulation's, its process's title; the design's with their file and line)
+      const process = model === 'behavioral' ? 'Simulate Behavioral Model' : `Simulate ${SIM_MODELS[model]} Model`;
+      const simMessage = (text, severity, location = null) => messageData(makeMessage({ text, severity, source: 'sim', process, location }));
+      const messages = [...head.map(t => simMessage(t, /^WARNING\b/.test(t) ? 'warning' : 'info')), ...diags.filter(d => d.severity !== 'error').map(d => diagMessage(d, { source: 'sim', process })),
+        ...log.map(l => simMessage(logText(l), SIM_SEVERITY[l.kind] ?? 'text', l.file ? { file: l.file, line: l.line } : null)),
+        simMessage(stopped, failed ? 'error' : 'info'), ...(limitLine ? [simMessage(limitLine, 'warning')] : [])];
+      const text = [...head, ...diags.filter(d => d.severity !== 'error').map(diagLine), ...log.map(logText), stopped, ...(limitLine ? [limitLine] : []),
         ...Object.entries(sigs).map(([n, s]) => `${n} = ${s.final ?? '(no value)'}${s.totalChanges > 1 ? ` (${s.totalChanges} changes)` : ''}`), ...(vcdPath ? [`Waves written: ${vcdPath}.`] : [])].join('\n');
       // (the lines the design prints, report / $display: the project's own text, #3528)
-      return { untrusted: log.length ? 'the design\'s messages (report, $display, assertions)' : undefined, text: clip(text), data: { project: name, top: mod, model, started: true, stoppedAtNs: st.now / 1000, finished: st.finished || null, limit: limit ? { kind: limit, ...(limit === 'time' ? { seconds: timeoutS } : { steps: SIM_LIMITS.steps }) } : null, failed, log, signals: sigs, warnings: diags.filter(d => d.severity !== 'error').map(diagJson), notes: head, ...(vcdPath ? { vcd: vcdPath } : {}) }, isError: false };
+      return { untrusted: log.length ? 'the design\'s messages (report, $display, assertions)' : undefined, text: clip(text), data: { project: name, top: mod, model, started: true, stoppedAtNs: st.now / 1000, finished: st.finished || null, limit: limit ? { kind: limit, ...(limit === 'time' ? { seconds: timeoutS } : { steps: SIM_LIMITS.steps }) } : null, failed, log, signals: sigs, warnings: diags.filter(d => d.severity !== 'error').map(diagJson), notes: head, messages, ...(vcdPath ? { vcd: vcdPath } : {}) }, isError: false };
     },
   },
 ];
