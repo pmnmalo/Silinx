@@ -91,9 +91,11 @@ uiTest('#3538 Import Project…, Silinx and Xilinx ISE: the name suggested from 
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[type=text]').value), 'p_2026-lab');
   await page.fill('.dlg-overlay input[type=text]', 'lab.1');
   await page.dialogButton('Import');
-  await page.waitFor(() => [...document.querySelectorAll('.dlg-overlay .msg-error')].length, [], { what: 'the error' });
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay').innerText), new RegExp(`invalid project name 'lab\\.1': ${RULE.replace(/[-.*+?^${}()|[\]\\]/g, '\\$&')}`));   // (every special character escaped, backslashes too, #3692)
-  await page.dialogButton('OK');
+  // (said in the Import Project dialog, which stays open, #4747)
+  const info = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-body > div > .hint')].pop()?.textContent || '');
+  await page.waitFor(() => /invalid project name/.test([...document.querySelectorAll('.dlg-overlay .dlg-body > div > .hint')].pop()?.textContent || ''), [], { what: 'the error' });
+  assert.match(await info(), new RegExp(`invalid project name 'lab\\.1': ${RULE.replace(/[-.*+?^${}()|[\]\\]/g, '\\$&')}`));   // (every special character escaped, backslashes too, #3692)
+  await page.dialogButton('Cancel');
   await page.waitNoDialog();
   assert.equal((await env.server.api('GET', '/api/projects')).some((p) => p.name === 'lab.1'), false);
 });

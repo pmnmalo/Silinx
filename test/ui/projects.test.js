@@ -519,10 +519,8 @@ uiTest('#2973 Files view: Rename to a name the import gate refuses (CON.vhd): th
   await page.waitDialog('Rename');
   await page.fill('.dlg-overlay input[type=text]', 'src/CON.vhd', { index: 1 });
   await page.dialogButton('Rename');
-  await page.waitFor(() => /not renamed/.test([...document.querySelectorAll('.dlg-overlay')].pop()?.innerText || ''), [], { what: 'the refusal' });
-  assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().innerText),
-    /could not rename src\/a\.vhd → src\/CON\.vhd: 'src\/CON\.vhd': not renamed: reserved name \('CON\.vhd'\)\. Nothing was changed\./);
-  await page.dialogButton('OK');
+  // (the refusal in the console, no box, #4747)
+  await page.waitConsole(/^ERROR: Rename: could not rename src\/a\.vhd → src\/CON\.vhd: 'src\/CON\.vhd': not renamed: reserved name \('CON\.vhd'\)\. Nothing was changed\./m);
   await page.waitNoDialog();
   assert.match(await readWs(env, 'GateRen', 'src/a.vhd'), /entity a is/);
   assert.deepEqual(await page.eval(() => window.Silinx.project.files.map((f) => f.path)), ['src/a.vhd']);
@@ -796,9 +794,7 @@ uiTest('Silinx and Xilinx zip: export, import as a new project, and a failing im
   await page.dialogButton('Import');
   await page.waitDialog('Replace Project');
   await page.dialogButton('Yes');
-  await page.waitFor(() => [...document.querySelectorAll('.dlg-overlay .msg-error')].length);
-  assert.match(await page.eval(() => document.querySelector('.dlg-overlay').innerText), /cannot read zip/);
-  await page.dialogButton('OK');
+  await page.waitConsole(/^ERROR: Import Project: .*cannot read zip/m);   // (in the console, no box, #4747)
   await page.waitNoDialog();
   const kept = await env.server.api('GET', '/api/projects/ZipCopy');
   assert.deepEqual(kept.fileTree, srcTree, 'the project that the import would have replaced is kept');
