@@ -17,6 +17,9 @@ const store = {
   set: t => { try { localStorage.setItem(TOKEN_KEY, t); } catch { /* not kept: this page only */ } },
 };
 let TOKEN = store.get();
+// the capture's body as the server takes it (server/http-errors.js's CAPTURE_BODY, #4753): its own options only, not
+// the core's spec, probes, top and clock the page gives the browser edition's capture (web/js/api-local.js, #5128)
+export const captureBody = ({ arm, timeoutS, device } = {}) => ({ arm, timeoutS, device });
 const READY = (async () => {
   let m;
   try { m = /^#(token|code)=([\w-]+)$/.exec(location.hash); } catch { return; }
@@ -188,7 +191,7 @@ export const api = {
   openStatus: name => req('GET', `/api/projects/${enc(name)}/open-status`),
   implement: (name, body) => req('POST', `/api/projects/${enc(name)}/implement`, body),
   // the logic analyzer's capture on the board (#3176): { job }, its result { capture, file }
-  capture: (name, body) => req('POST', `/api/projects/${enc(name)}/capture`, body),
+  capture: (name, opts) => req('POST', `/api/projects/${enc(name)}/capture`, captureBody(opts)),
   reports: name => req('GET', `/api/projects/${enc(name)}/reports`),
   fpgaView: name => req('GET', `/api/projects/${enc(name)}/fpga-view`),
   bitinfo: name => req('GET', `/api/projects/${enc(name)}/bitinfo`),

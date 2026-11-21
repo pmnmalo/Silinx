@@ -38,6 +38,19 @@ test('bodyError: the MCP\'s messages; the bodies of implement and capture', () =
   assert.equal(bodyError({ device: 1.5, arm: 'no' }, CAPTURE_BODY), 'device: an integer; arm: true or false');
 });
 
+// #5128: the page's capture (web/js/capture-ui.js) gives the browser edition's fields too (the core's spec, probes, top,
+// clock); the server's client sends its own options only, which CAPTURE_BODY takes
+test('the page\'s capture body: the server\'s options only, accepted; the browser edition\'s fields refused if sent', async () => {
+  const { captureBody } = await import('../web/js/api.js');
+  const page = { arm: true, timeoutS: 10, spec: { width: 8 }, probes: [{ path: 'led', name: 'led', width: 8 }], top: 'top', clock: 'clk' };
+  const sent = JSON.parse(JSON.stringify(captureBody(page)));
+  assert.deepEqual(sent, { arm: true, timeoutS: 10 });
+  assert.equal(bodyError(sent, CAPTURE_BODY), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(captureBody({ device: 1 }))), { device: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(captureBody())), {});
+  assert.equal(bodyError(page, CAPTURE_BODY), 'unknown spec, probes, top, clock');
+});
+
 test('the routes: implement and capture refused with the MCP\'s message, before anything runs; the one envelope', async () => {
   await app.call('POST', '/projects', { name: 'H', template: 'gates' });
   let r = await app.call('POST', '/projects/H/implement', { toolchain: 'quartus' });

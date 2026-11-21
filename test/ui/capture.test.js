@@ -67,7 +67,8 @@ uiTest('#3176 the logic analyzer: its settings (a problem beside the fields, the
   assert.deepEqual(await state(page), ['9 bits × 16 samples: 1 block RAM(s) of the device\'s 12', '', true]);
   await page.eval(d => document.querySelector(`${d} .dlg-buttons .btn.primary`).click(), D);
   await page.waitFor(d => !document.querySelector(d), [D], { what: 'the dialog closed' });
-  await page.waitFor(async () => /"capture"/.test(await (await fetch('/api/projects/Ila/file?path=silinx.json')).text().catch(() => '')) || true);
+  // (saved: the line Save logs once silinx.json is written)
+  await page.waitConsole(/Logic analyzer: u_knight\.dir, u_knight\.count; 16 samples on clk\. Implement the design and program the board to capture them\./);
   const pj = JSON.parse(await readWs(env, 'Ila', 'silinx.json'));
   assert.deepEqual(pj.capture, { probes: ['u_knight.dir', 'u_knight.count'], clock: 'clk', depth: 16, pre: 2, trigger: { combine: 'and', conditions: [{ probe: 'u_knight.dir', op: 'rise' }] } });
   // ---- the capture on the board, its window
