@@ -26,6 +26,7 @@ import { cState, resetC } from './state-c.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -184,11 +185,11 @@ async function reloadProjectNow(render = true, depth = 0) {
   if (depth < 2 && (await drawingsAsBase() || await adoptDrawnHdl())) return reloadProjectNow(render, depth + 1);
   await drawnHdlClashes();
   // the open drawings show their links as they are now (one linked meanwhile, #245)
-  for (const d of S.docs) (d.ttEditor || d.fsmEditor || d.petriEditor)?.refreshLink?.();
+  for (const d of docsState.docs) (d.ttEditor || d.fsmEditor || d.petriEditor)?.refreshLink?.();
   // the open HDL editors: read-only when their file is generated from a drawing (#1176)
-  for (const d of S.docs) d.applyReadOnly?.();
+  for (const d of docsState.docs) d.applyReadOnly?.();
   // the open simulations: their trees list the project's test benches as they are now (#1364)
-  for (const d of S.docs) d.onProject?.();
+  for (const d of docsState.docs) d.onProject?.();
   updateTitle();
   renderHierarchy();
   renderFilesPage();
@@ -234,7 +235,7 @@ export function updateTitle() {
   const pj = S.project;
   // the header: the project and its document, not the product and version (#987): those are the logo's tooltip, the
   // window's title, Help ▸ About
-  $('title-text').textContent = pj ? `${pj.name} - [${S.active?.title || 'Design Summary'}]` : 'Project Navigator';
+  $('title-text').textContent = pj ? `${pj.name} - [${docsState.active?.title || 'Design Summary'}]` : 'Project Navigator';
   document.querySelector('#titlebar .app-logo').title = `${PRODUCT} ${VERSION_LABEL}`;
   // (the browser tab: the product and its version, no "Project Navigator", #3224)
   document.title = pj ? `${pj.name} — ${PRODUCT} ${VERSION_LABEL}` : `${PRODUCT} ${VERSION_LABEL}`;

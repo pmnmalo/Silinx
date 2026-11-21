@@ -11,6 +11,7 @@ import { reloadProject } from './project.js';
 import { following, followNotice } from './collab-state.js';
 import { findMod, newSymbol, readSymbol, symbolFileOf, symbolText } from '/core/schdoc.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 /** Edit Symbol of the module `name`: its symbol file opened, made first when it has none. */
 export async function editSymbol(name) {
@@ -31,7 +32,7 @@ export async function editSymbol(name) {
 /** The schematics' module symbols drawn again from the project's symbols. */
 async function refreshSchematics() {
   const mods = await schModules();
-  for (const d of S.docs) d.schEditor?.setModules(mods);
+  for (const d of docsState.docs) d.schEditor?.setModules(mods);
 }
 
 export async function openSymbol(path) {

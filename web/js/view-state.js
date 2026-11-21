@@ -9,6 +9,7 @@ import { restoreSplit, splitKeys } from './split-view.js';
 import { S, activateDoc, closeDoc, moduleInfo, openFile, openImpact, openPinPlanner, openSummary, setView, showLeftPage } from './app.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 // ---- where the user was (#160, #163): the open documents of a project, the one in front, the left pane
 // and the Design view, kept in this browser (per project) so that a reload of the page, or opening
@@ -55,8 +56,8 @@ export async function closeAllDocs() {
 }
 /** The open project's view state now: { open, active, page, view, split } (kept per project; a design link's, #2886). */
 export function currentViewState() {
-  const open = S.docs.filter(d => d.project === S.project.name && REOPEN.some(([re]) => re.test(reopenKey(d)))).map(reopenKey);
-  const active = S.active && reopenKey(S.active);
+  const open = docsState.docs.filter(d => d.project === S.project.name && REOPEN.some(([re]) => re.test(reopenKey(d)))).map(reopenKey);
+  const active = docsState.active && reopenKey(docsState.active);
   return { open, active: open.includes(active) ? active : null, page: panes.leftPage || null, view: S.view, split: splitKeys(reopenKey, open) };
 }
 export function saveViewState() {
@@ -85,8 +86,8 @@ export async function applyViewState(v) {
       if (!re) continue;
       try { await open(...re.exec(id).slice(1)); } catch { /* a document that cannot open any more */ }
     }
-    restoreSplit(v.split, k => S.docs.find(d => reopenKey(d) === k), v.open);   // (in the kept order, #2887)
-    const active = v.active && S.docs.find(d => reopenKey(d) === v.active);
+    restoreSplit(v.split, k => docsState.docs.find(d => reopenKey(d) === k), v.open);   // (in the kept order, #2887)
+    const active = v.active && docsState.docs.find(d => reopenKey(d) === v.active);
     if (active) activateDoc(active);
   } finally { keepView = false; }
   saveViewState();

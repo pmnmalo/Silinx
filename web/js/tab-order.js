@@ -4,11 +4,12 @@
 // and the other tabs make room; Escape, or a drop outside the rows and the panes, leaves it where it was. A press that
 // moves less than the threshold is a click (it selects the tab, app.js docTab); the close button is never a drag. Pointer
 // events: a mouse, a finger or a pen. A focused tab moves one place left or right with Alt+Shift+← / → (or
-// Ctrl+Shift+PageUp / PageDown where the browser leaves them to the page). The order is S.docs's: each view's (the Design
+// Ctrl+Shift+PageUp / PageDown where the browser leaves them to the page). The order is docsState.docs's: each view's (the Design
 // task's, Simulate's) is its documents' in it, and it is kept with the open documents (app.js saveViewState, which keeps
 // them in that order, and web/js/split-view.js restoreSplit). View-only: no MCP tool (#2674).
 import { S, activateDoc, saveViewState } from './app.js';
 import { setSide, splitState, tabParent } from './split-view.js';
+import { docsState } from './state-docs.js';
 
 const SLOP = 8;   // (px: a press that moves less is a click)
 /** A tab's tooltip: its document's, and how to move it. */
@@ -17,13 +18,13 @@ export const tabTip = doc => `${doc.tooltip || doc.title}\n${TAB_HINT}`;
 
 const shown = d => d.tab.getClientRects().length > 0;
 const sideOf = d => (d.side === 'b' ? 'b' : 'a');
-const docOf = tab => tab && S.docs.find(d => d.tab === tab);
+const docOf = tab => tab && docsState.docs.find(d => d.tab === tab);
 
-/** The documents' tabs in S.docs's order, each in its row (`parentOf`: split-view.js tabParent): moved only where they
+/** The documents' tabs in docsState.docs's order, each in its row (`parentOf`: split-view.js tabParent): moved only where they
  *  are out of place (a tab moved loses the focus). */
 export function orderTabs(parentOf = tabParent) {
   const rows = new Map();
-  for (const d of S.docs) { const p = parentOf(d); if (p) { if (!rows.has(p)) rows.set(p, []); rows.get(p).push(d.tab); } }
+  for (const d of docsState.docs) { const p = parentOf(d); if (p) { if (!rows.has(p)) rows.set(p, []); rows.get(p).push(d.tab); } }
   for (const [p, tabs] of rows) {
     tabs.forEach((t, i) => {
       if (i) { if (tabs[i - 1].nextElementSibling !== t) tabs[i - 1].after(t); return; }
@@ -38,23 +39,23 @@ export function orderTabs(parentOf = tabParent) {
 export function moveTab(doc, side, ref = null) {
   const on = splitState().on, s = on ? side : 'a';
   const inRow = d => !on || sideOf(d) === s;
-  S.docs.splice(S.docs.indexOf(doc), 1);
-  let i = ref && ref !== doc ? S.docs.indexOf(ref) : -1;
+  docsState.docs.splice(docsState.docs.indexOf(doc), 1);
+  let i = ref && ref !== doc ? docsState.docs.indexOf(ref) : -1;
   if (i < 0) {
     // (after the row's last tab shown: its other tasks' documents behind it keep their place)
-    const last = S.docs.findLastIndex(d => inRow(d) && shown(d));
-    i = (last >= 0 ? last : S.docs.findLastIndex(inRow)) + 1 || S.docs.length;
+    const last = docsState.docs.findLastIndex(d => inRow(d) && shown(d));
+    i = (last >= 0 ? last : docsState.docs.findLastIndex(inRow)) + 1 || docsState.docs.length;
   }
-  S.docs.splice(i, 0, doc);
+  docsState.docs.splice(i, 0, doc);
   if (on && sideOf(doc) !== s) return setSide(doc, s);   // (its new side's layout orders the tabs)
   orderTabs();
-  if (S.active !== doc) activateDoc(doc); else saveViewState();
+  if (docsState.active !== doc) activateDoc(doc); else saveViewState();
 }
 
 /** A tab one place left (-1) or right (+1) in its row; false at the row's end. */
 function nudgeTab(doc, dir) {
   const on = splitState().on;
-  const row = S.docs.filter(d => (d === doc || shown(d)) && (!on || sideOf(d) === sideOf(doc)));
+  const row = docsState.docs.filter(d => (d === doc || shown(d)) && (!on || sideOf(d) === sideOf(doc)));
   const j = row.indexOf(doc) + dir;
   if (j < 0 || j >= row.length) return false;
   moveTab(doc, sideOf(doc), dir < 0 ? row[j] : row[j + 1] || null);
@@ -144,7 +145,7 @@ function dragStart(e) {
     // where it lands: the first tab shown after the slot in its row (none: the row's end)
     let ref = slot.nextElementSibling;
     while (ref && !(ref.classList.contains('tab') && ref !== tab && ref.getClientRects().length)) ref = ref.nextElementSibling;
-    const to = commit && drop && !slot.hidden && S.docs.includes(doc) ? { side: drop.side, ref: docOf(ref) || null } : null;
+    const to = commit && drop && !slot.hidden && docsState.docs.includes(doc) ? { side: drop.side, ref: docOf(ref) || null } : null;
     slot.remove(); ghost.remove(); mark(null);
     tab.classList.remove('tab-drag-src');
     document.body.classList.remove('dragging-tab');

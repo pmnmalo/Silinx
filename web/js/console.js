@@ -11,6 +11,7 @@ import { isTrusted, refusedProject } from '/core/trust.js';
 import { severityOf } from '/core/log-severity.js';
 import { lineMessage, entryOf } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
+import { docsState } from './state-docs.js';
 
 const $ = id => document.getElementById(id);
 
@@ -257,7 +258,7 @@ export function setDiagnostics(diags, { keepConsole = true } = {}) {
   lastConsoleDiag = null;
   renderDiagnostics();
   // push file-local diagnostics to open editors
-  for (const doc of S.docs) if (doc.editor) doc.editor.setDiagnostics(diags.filter(d => d.file === doc.path && d.source !== 'parse'));
+  for (const doc of docsState.docs) if (doc.editor) doc.editor.setDiagnostics(diags.filter(d => d.file === doc.path && d.source !== 'parse'));
 }
 
 // an entry's action (#4749: its message's, the console line's first; #4589: an untrusted project's refusal, its Trust
@@ -368,7 +369,7 @@ function diagFixes(d) {
   const src = d.file && S.sources.find(s => s.path === d.file);
   // (not a drawing's generated HDL, with a file of its own or not: read-only, #1176)
   if (!src || src.view || S.hdlToSch?.[src.path] || (src.lang !== 'vhdl' && src.lang !== 'verilog')) return [];
-  const text = S.docs.find(o => o.path === d.file && o.editor)?.editor.getValue() ?? src.text;
+  const text = docsState.docs.find(o => o.path === d.file && o.editor)?.editor.getValue() ?? src.text;
   try { return quickFixes(text, src.lang, d, { modules: fixModules() }).slice(0, 3); } catch { return []; }
 }
 async function applyDiagFix(d, f) {

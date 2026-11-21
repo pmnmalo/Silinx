@@ -181,3 +181,30 @@ test('the project\'s files slice (state-files.js): S\'s fields are its own, both
   filesState.git = null;
   assert.equal(S.git, null);
 });
+
+test('the documents\' slice (state-docs.js): S\'s fields are its own, both ways, none open at the start', async () => {
+  const { docsState } = await import('../web/js/state-docs.js');
+  assert.deepEqual(Object.keys(docsState), ['docs', 'active']);
+  assert.deepEqual(docsState.docs, []);
+  assert.equal(docsState.active, null);
+  assert.throws(() => { docsState.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of ['docs', 'active']) assert.ok(block.includes(`get ${k}() { return docsState.${k}; }, set ${k}(v) { docsState.${k} = v; }`), k);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(docs|active)\b/.test(read(f))), []);
+  // (S's declaration evaluated, app.js itself needs a page: a document pushed through S, the list filtered and the one in
+  // front set through it, are the slice's; and the other way)
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const S = new Function('docsState', 'cState', 'syncState', `return ${block.slice('export const S = '.length)}\n};`)(docsState, cState, syncState);
+  const a = { id: 'a' }, b = { id: 'b' };
+  S.docs.push(a, b);
+  S.active = b;
+  assert.deepEqual(docsState.docs, [a, b]);
+  assert.equal(docsState.active, b);
+  S.docs = S.docs.filter(d => d !== b);
+  docsState.active = a;
+  assert.deepEqual(S.docs, [a]);
+  assert.equal(S.active, a);
+  docsState.docs = [];
+  docsState.active = null;
+});

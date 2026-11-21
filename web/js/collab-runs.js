@@ -9,6 +9,7 @@ import { S, closeDoc, openFile, refreshSummary } from './app.js';
 import { log, onLogLine } from './console.js';
 import { renderProcesses } from './processes.js';
 import { RUN_LIMITS, followedReports, followedRuns, redact, redactAll, reportPath, reportsActivity, runSecrets, runsActivity } from '/core/collab-runs.js';
+import { docsState } from './state-docs.js';
 
 const RUNS_MS = 1000;
 
@@ -38,7 +39,7 @@ export function runsPublisher(session) {
         last = now;
         try { const v = runsActivity({ ...run, status: S.status, summary }); v.from += run.dropped; session.publish('runs', v); } catch { /* not sent */ }
       }
-      const open = S.docs.filter(d => reportPath(d.path) && d.editor?.getValue);
+      const open = docsState.docs.filter(d => reportPath(d.path) && d.editor?.getValue);
       const key = open.map(d => `${d.path}:${d.editor.getValue().length}`).join('\n');
       if (key !== reportsKey) {
         reportsKey = key;

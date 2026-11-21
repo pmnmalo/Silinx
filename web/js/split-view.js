@@ -16,6 +16,7 @@ import { prefKey } from './prefs.js';
 import { moveTab, mountTabOrder, orderTabs } from './tab-order.js';
 import { mountTabSight } from './tab-sight.js';
 import { layoutToggled } from './layout-fit.js';
+import { docsState } from './state-docs.js';
 
 export { tabTip } from './tab-order.js';
 export { tabInSight } from './tab-sight.js';
@@ -37,14 +38,14 @@ const ofTask = d => !tasks() || taskOf(d) === document.documentElement.dataset.t
 const sideOf = d => (d.side === 'b' ? 'b' : 'a');
 const other = s => (s === 'a' ? 'b' : 'a');
 // a side's document in front: the last one brought to the front (in the Tasks interface, of the current task)
-const frontOf = s => [...seen].reverse().find(d => S.docs.includes(d) && sideOf(d) === s && ofTask(d)) || S.docs.filter(d => sideOf(d) === s && ofTask(d)).at(-1) || null;
+const frontOf = s => [...seen].reverse().find(d => docsState.docs.includes(d) && sideOf(d) === s && ofTask(d)) || docsState.docs.filter(d => sideOf(d) === s && ofTask(d)).at(-1) || null;
 /** The documents in front of the two sides ({ a, b }, null for an empty side), or null when not split. In the Tasks
  *  interface a side whose documents are all of other tasks gives way to the other. */
 function sides() {
   if (!on) return null;
   const p = { a: frontOf('a'), b: frontOf('b') };
   if (!p.a && !p.b) return null;
-  for (const s of ['a', 'b']) if (!p[s] && S.docs.some(d => sideOf(d) === s)) return null;
+  for (const s of ['a', 'b']) if (!p[s] && docsState.docs.some(d => sideOf(d) === s)) return null;
   return p;
 }
 /** Split, and the documents shown side by side ({ a, b }) when it shows. */
@@ -53,7 +54,7 @@ export const splitState = () => ({ on, target, sides: sides() });
 /** activateDoc's placement (app.js): `doc` brought to the front, on its side (a document opened: the side worked in). */
 export function placeSplit(doc) {
   if (!doc.side) doc.side = on ? target : 'a';
-  seen = [...seen.filter(d => d !== doc && S.docs.includes(d)), doc];
+  seen = [...seen.filter(d => d !== doc && docsState.docs.includes(d)), doc];
   target = sideOf(doc);
   layout();
 }
@@ -64,7 +65,7 @@ export function splitClosed(doc) {
   seen = seen.filter(d => d !== doc);
   if (!on) return null;
   const s = sideOf(doc);
-  if (!S.docs.some(d => sideOf(d) === s)) { end(); return frontOf('a'); }
+  if (!docsState.docs.some(d => sideOf(d) === s)) { end(); return frontOf('a'); }
   layout();
   return frontOf(s);
 }
@@ -87,7 +88,7 @@ function closeSplit() {
 function end() {
   on = false;
   target = 'a';
-  for (const d of S.docs) d.side = 'a';
+  for (const d of docsState.docs) d.side = 'a';
   layout();
 }
 
@@ -96,7 +97,7 @@ export function moveToSide(doc, s) {
   on = true;
   moveTab(doc, s);
 }
-/** tab-order.js moveTab: `doc`, placed in S.docs already, on side `s` (splitting), in front there. */
+/** tab-order.js moveTab: `doc`, placed in docsState.docs already, on side `s` (splitting), in front there. */
 export function setSide(doc, s) {
   on = true;
   doc.side = s;
@@ -114,22 +115,22 @@ async function showBeside(doc, view) {
   let g = view.find();
   on = true;
   // (in the Tasks interface, of the document's task: a waveform's HDL beside it in Simulate)
-  const place = () => { if (g !== doc) { if (sideOf(g) !== s) S.docs.push(...S.docs.splice(S.docs.indexOf(g), 1)); g.side = s; g.task = taskOf(doc); } };   // (at its new row's end)
+  const place = () => { if (g !== doc) { if (sideOf(g) !== s) docsState.docs.push(...S.docs.splice(docsState.docs.indexOf(g), 1)); g.side = s; g.task = taskOf(doc); } };   // (at its new row's end)
   if (g) { place(); await g.refresh?.(); activateDoc(g); }
   else {
     target = s;
     try { await view.open(); } finally { g = view.find(); if (!g) { on = was; target = sideOf(doc); layout(); } }
     if (g) place();   // (open already, on the same side: moved)
   }
-  if (S.docs.includes(doc)) activateDoc(doc);
+  if (docsState.docs.includes(doc)) activateDoc(doc);
   return g || null;
 }
 
 /** The Show … Beside commands of a document (its tab's menu, View). */
-export const besideItems = (doc = S.active) => relatedViews(doc).map(v => ({ label: v.label, action: () => showBeside(doc, v) }));
+export const besideItems = (doc = docsState.active) => relatedViews(doc).map(v => ({ label: v.label, action: () => showBeside(doc, v) }));
 
 /** The commands of a document's tab. */
-export function splitItems(doc = S.active) {
+export function splitItems(doc = docsState.active) {
   return [
     '-',
     on ? { label: 'Move to the Other Side', action: () => moveToSide(doc, other(sideOf(doc))) } : null,
@@ -141,17 +142,17 @@ export function splitItems(doc = S.active) {
 // ---- kept with the open documents (app.js saveViewState, restoreViewState)
 /** The split as kept: the right side's documents' keys (`key`: a document's reopen key; `open`: the ones kept), or null. */
 export function splitKeys(key, open) {
-  return on ? { b: S.docs.filter(d => sideOf(d) === 'b').map(key).filter(k => open.includes(k)) } : null;
+  return on ? { b: docsState.docs.filter(d => sideOf(d) === 'b').map(key).filter(k => open.includes(k)) } : null;
 }
 /** The kept split back (`find`: a document by its key), before the one in front is brought there, and the kept documents
  *  in their order (`open`: their keys, #2887; the others keep their places). (#1619 kept the two documents shown, [a, b]: b
  *  on the right side.) */
 export function restoreSplit(kept, find, open = []) {
-  const docs = open.map(find).filter(d => d && S.docs.includes(d)), slots = S.docs.map((d, i) => (docs.includes(d) ? i : -1)).filter(i => i >= 0);
-  slots.forEach((i, k) => { S.docs[i] = docs[k]; });
+  const docs = open.map(find).filter(d => d && docsState.docs.includes(d)), slots = docsState.docs.map((d, i) => (docs.includes(d) ? i : -1)).filter(i => i >= 0);
+  slots.forEach((i, k) => { docsState.docs[i] = docs[k]; });
   const right = Array.isArray(kept) ? kept.slice(1) : Array.isArray(kept?.b) ? kept.b : null;
   on = !!right;
-  for (const d of S.docs) d.side = 'a';
+  for (const d of docsState.docs) d.side = 'a';
   for (const k of right || []) { const d = find(k); if (d) d.side = 'b'; }
   target = 'a';
   seen = [];
@@ -189,7 +190,7 @@ function layout() {
   // each side's tabs (not split: one row, as they were opened)
   if (on && !groups) groups = { a: h('div', { class: 'tab-group', role: 'none', 'data-side': 'a' }), b: h('div', { class: 'tab-group', role: 'none', 'data-side': 'b' }) };
   if (on) for (const s of ['a', 'b']) if (groups[s].parentNode !== bar) bar.append(groups[s]);
-  orderTabs(tabParent);   // (in S.docs's order, #2887)
+  orderTabs(tabParent);   // (in docsState.docs's order, #2887)
   if (!on && groups) { groups.a.remove(); groups.b.remove(); groups = null; }
   if (vertical) placeStacked(ws, bar);
   if (p && !divider) {
@@ -203,14 +204,14 @@ function layout() {
   if (vacant) showEmpty(ws, vacant, p[other(vacant)]);
   else if (empty) empty.hidden = true;
   const front = p && target;
-  for (const d of S.docs) {
+  for (const d of docsState.docs) {
     const side = p && p[sideOf(d)] === d ? sideOf(d) : null;
-    const appears = !!side && d !== S.active && d.el.hidden;
+    const appears = !!side && d !== docsState.active && d.el.hidden;
     d.el.classList.toggle('pane-a', side === 'a');
     d.el.classList.toggle('pane-b', side === 'b');
     d.el.classList.toggle('pane-front', !!side && side === front);
-    d.el.hidden = d !== S.active && !side;
-    d.tab.classList.toggle('beside', !!side && d !== S.active);
+    d.el.hidden = d !== docsState.active && !side;
+    d.tab.classList.toggle('beside', !!side && d !== docsState.active);
     if (appears) d.onActivate?.();   // (a text editor laid out again once shown)
   }
   if (empty) empty.classList.toggle('pane-front', !!vacant && vacant === front);
@@ -232,7 +233,7 @@ function showEmpty(ws, side, beside) {
     empty.addEventListener('pointerdown', () => { if (target !== empty.dataset.side) { target = empty.dataset.side; layout(); } });
   }
   // (the other side's documents, one click to bring here)
-  const docs = S.docs.filter(d => d !== beside && ofTask(d)).slice(-6);
+  const docs = docsState.docs.filter(d => d !== beside && ofTask(d)).slice(-6);
   empty.replaceChildren(
     // (how to bring a document here, under a large pen as the Design task's page, #1720)
     h('span', { class: 'split-ico', html: DESIGN_ICON }),
@@ -251,7 +252,7 @@ function watch(ws) {
   ws.addEventListener('pointerdown', e => {
     const p = sides();
     const d = p && [p.a, p.b].find(x => x?.el.contains(e.target));
-    if (d && d !== S.active) activateDoc(d);
+    if (d && d !== docsState.active) activateDoc(d);
   }, true);
   let wasV = null;
   new ResizeObserver(() => { const v = ws.clientWidth < NARROW; if (sides() && (v !== wasV || v)) { wasV = v; layout(); } }).observe(ws);

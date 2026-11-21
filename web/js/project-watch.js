@@ -13,6 +13,7 @@ import { editsDrawingHere } from './collab-state.js';
 import { editorOf, modelOf } from './collab-drawing.js';
 import { withView } from '/core/collab-model.js';
 import { runState } from './state-run.js';
+import { docsState } from './state-docs.js';
 
 const REPORTS = 'build/reports.json', STATUS = 'build/silinx-status.json';
 // (a drawing's document: its path in its id, as app.js's docPath)
@@ -55,7 +56,7 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
   const run = changes.some(c => c.path === REPORTS);
   if (files.length) {
     log(`${by ? `Changed by ${by}` : where ? `Changed ${where}` : 'Changed outside Silinx'}: ${files.map(c => `${c.path}${c.kind === 'changed' ? '' : ` (${c.kind})`}`).join(', ')}.`, 'info');
-    for (const c of files) for (const d of S.docs.filter(o => docPath(o) === c.path)) await reloadDoc(d, c, by, where);
+    for (const c of files) for (const d of docsState.docs.filter(o => docPath(o) === c.path)) await reloadDoc(d, c, by, where);
     await reloadProject();
   }
   if (by) return;   // (a project followed: its runs are its owner's, not shared)
@@ -71,8 +72,8 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
 // whether an open text editor of `path` shows its file's text already (a drawing an editor's link edits: bound live to
 // its structure, #3183)
 async function shownLive(path) {
-  if (editsDrawingHere(path) && S.docs.some(o => docPath(o) === path && editorOf(o))) return true;
-  const d = S.docs.find(o => docPath(o) === path && o.editor);
+  if (editsDrawingHere(path) && docsState.docs.some(o => docPath(o) === path && editorOf(o))) return true;
+  const d = docsState.docs.find(o => docPath(o) === path && o.editor);
   if (!d) return false;
   try { return d.editor.getValue() === await api.readFile(S.project.name, path); } catch { return false; }
 }
@@ -107,10 +108,10 @@ async function reloadDoc(d, { path, kind }, by = null, where = null) {
     d.liveCheck?.();
   } else if (!(api.following && inPlace(d, text))) {
     // a drawing: opened again from its file, where it was among the documents (a followed one: in place, #4193)
-    const front = S.active === d ? null : S.active;
+    const front = docsState.active === d ? null : docsState.active;
     await closeDoc(d);
     await openFile(path);
-    if (front && S.docs.includes(front)) activateDoc(front);
+    if (front && docsState.docs.includes(front)) activateDoc(front);
   }
   log(by ? `${path} reloaded: changed by ${by}.` : `${path} reloaded: changed ${where || 'outside Silinx'}.`, 'info');
 }

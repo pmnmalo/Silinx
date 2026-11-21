@@ -5,6 +5,7 @@
 // and when the strip's room changes (the window, a panel, the split's divider resized). Only the strip scrolls, never the
 // page. View-only: no MCP tool (#2674).
 import { S, activateDoc } from './app.js';
+import { docsState } from './state-docs.js';
 
 const $ = id => document.getElementById(id);
 let mounted = false, pending = false;
@@ -26,11 +27,11 @@ function scrollTabIntoRow(tab) {
 export function tabInSight() {
   if (pending) return;
   pending = true;
-  requestAnimationFrame(() => { pending = false; scrollTabIntoRow(S.active?.tab); });
+  requestAnimationFrame(() => { pending = false; scrollTabIntoRow(docsState.active?.tab); });
 }
 
 // the document an event's target is in
-const docAt = t => (t instanceof Node ? S.docs.find(d => d.el.contains(t)) : null);
+const docAt = t => (t instanceof Node ? docsState.docs.find(d => d.el.contains(t)) : null);
 
 /** On the page from the start (split-view.js mountSplit). */
 export function mountTabSight() {
@@ -38,7 +39,7 @@ export function mountTabSight() {
   if (mounted || !ws || !bar) return;
   mounted = true;
   // a click or the focus in a document: its tab the active one, in sight
-  const used = e => { const d = docAt(e.target); if (!d || d.closed) return; if (d !== S.active) activateDoc(d); else tabInSight(); };
+  const used = e => { const d = docAt(e.target); if (!d || d.closed) return; if (d !== docsState.active) activateDoc(d); else tabInSight(); };
   ws.addEventListener('pointerdown', used, true);
   ws.addEventListener('focusin', used);
   // the strip's room changed, or the view

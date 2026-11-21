@@ -13,6 +13,7 @@ import { hdlSideFile } from '/core/project-kind.js';
 import { designOnly } from './design-only.js';
 import { pageStore, serialDrawings } from './page-store.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 // ---- Rename Symbol (F2) in an HDL editor: the name under the cursor, everywhere it means the same
 // object in the file; a port / generic also in the instances of its module in the other files
@@ -22,13 +23,13 @@ export function renameSymbolIn(d, lang, path) {
   return renameSymbolAtCursor({
     editor: d.editor, lang, path,
     // (not the HDL generated from a drawing, with a file of its own or not: it follows the drawing, read-only, #1176)
-    sources: () => S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && !s.view && !S.hdlToSch?.[s.path]).map(s => ({ ...s, text: S.docs.find(o => o.path === s.path && o.editor)?.editor.getValue() ?? s.text })),
+    sources: () => S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && !s.view && !S.hdlToSch?.[s.path]).map(s => ({ ...s, text: docsState.docs.find(o => o.path === s.path && o.editor)?.editor.getValue() ?? s.text })),
     drawings: () => S.sources.filter(s => s.view || S.hdlToSch?.[s.path]).map(s => (s.view ? s : { ...s, path: S.hdlToSch[s.path] })),
     isModule: name => !!findModule(name),
     renameModule: name => renameDialog(findModule(name)?.file || path, findModule(name)?.name || name),
     // an open file is edited in its editor (its own Undo); the others are written
     writeSource: async (p, text, edits, name) => {
-      const od = S.docs.find(o => o.path === p && o.editor);
+      const od = docsState.docs.find(o => o.path === p && o.editor);
       if (od) { applyEdits(od.editor, edits, name); return; }
       await api.writeFile(S.project.name, p, text);
       const src = S.sources.find(x => x.path === p);
@@ -91,7 +92,7 @@ async function closeTouched(paths, moved) {
   const reopen = [];
   for (const d of [...S.docs]) {
     if (d.path && (paths.has(d.path) || moved.has(d.path))) {
-      if (S.active === d) reopen.unshift(moved.get(d.path) || d.path); else reopen.push(moved.get(d.path) || d.path);
+      if (docsState.active === d) reopen.unshift(moved.get(d.path) || d.path); else reopen.push(moved.get(d.path) || d.path);
       d.dirty = false; clearTimeout(d._autosave); await closeDoc(d);
     }
   }

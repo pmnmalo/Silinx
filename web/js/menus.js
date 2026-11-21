@@ -31,6 +31,7 @@ import { besideItems, splitState, toggleSplit } from './split-view.js';
 import { downloadBlob } from './download.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
+import { docsState } from './state-docs.js';
 // (Print: the document in front, whichever it is, #1509)
 export { printActive, printable };
 
@@ -98,10 +99,10 @@ export function setupMenus() {
       // one Undo: the last removal from the project when that was the last action, else the editor's undo
       undoesProject()
         ? { label: `Undo ${history.undoLabel()}`, icon: icon('undo'), action: () => projectUndo(), shortcut: 'Ctrl+Z' }
-        : { label: 'Undo', icon: icon('undo'), action: () => undoAny(), shortcut: 'Ctrl+Z', disabled: () => !docEditor(S.active) },
+        : { label: 'Undo', icon: icon('undo'), action: () => undoAny(), shortcut: 'Ctrl+Z', disabled: () => !docEditor(docsState.active) },
       redoesProject()
         ? { label: `Redo ${history.redoLabel()}`, icon: icon('redo'), action: () => projectRedo(), shortcut: 'Ctrl+Y' }
-        : { label: 'Redo', icon: icon('redo'), action: () => redoAny(), shortcut: 'Ctrl+Y', disabled: () => !docEditor(S.active) },
+        : { label: 'Redo', icon: icon('redo'), action: () => redoAny(), shortcut: 'Ctrl+Y', disabled: () => !docEditor(docsState.active) },
       '-',
       // the active editor's selection (#677): text, schematic, the other drawings
       { label: 'Cut', icon: icon('cut'), action: () => cutAny(), shortcut: 'Ctrl+X', disabled: () => !canCopyAny() || !canDeleteAny() },
@@ -109,12 +110,12 @@ export function setupMenus() {
       { label: 'Paste', icon: icon('paste'), action: () => pasteAny(), shortcut: 'Ctrl+V', disabled: () => !canPasteAny() },
       { label: 'Delete', icon: icon('remove'), action: () => deleteAny(), shortcut: 'Del', disabled: () => !canDeleteAny() },
       '-',
-      { label: 'Find…', icon: icon('find'), action: () => S.active?.editor?.exec('findPersistent'), shortcut: 'Ctrl+F', disabled: () => !S.active?.editor },
-      { label: 'Replace…', action: () => S.active?.editor?.exec('replace'), disabled: () => !S.active?.editor },
+      { label: 'Find…', icon: icon('find'), action: () => docsState.active?.editor?.exec('findPersistent'), shortcut: 'Ctrl+F', disabled: () => !docsState.active?.editor },
+      { label: 'Replace…', action: () => docsState.active?.editor?.exec('replace'), disabled: () => !docsState.active?.editor },
       { label: 'Find in Project…', icon: icon('find'), action: () => openFindInProject(), shortcut: 'Ctrl+Shift+F', disabled: () => !S.project },   // (#1430)
-      { label: 'Go to Line…', action: () => S.active?.editor?.exec('jumpToLine'), shortcut: 'Ctrl+G', disabled: () => !S.active?.editor },
+      { label: 'Go to Line…', action: () => docsState.active?.editor?.exec('jumpToLine'), shortcut: 'Ctrl+G', disabled: () => !docsState.active?.editor },
       '-',
-      { label: 'Design Checks (Lint Warnings)', checked: lintEnabled(), action: () => { setLintEnabled(!lintEnabled()); toast(lintEnabled() ? (designOnly() ? 'Design checks on: Check Design and the editor show the lint warnings' : 'Design checks on: Check Syntax and the editor show the lint warnings') : 'Design checks off: only errors are shown'); for (const d of S.docs) d.liveCheck?.(); } },
+      { label: 'Design Checks (Lint Warnings)', checked: lintEnabled(), action: () => { setLintEnabled(!lintEnabled()); toast(lintEnabled() ? (designOnly() ? 'Design checks on: Check Design and the editor show the lint warnings' : 'Design checks on: Check Syntax and the editor show the lint warnings') : 'Design checks off: only errors are shown'); for (const d of docsState.docs) d.liveCheck?.(); } },
     ] },
     { label: 'View', items: () => [
       { label: designOnly() ? 'Design' : 'Implementation', checked: S.view === 'impl', action: () => setView('impl') },   // (a design project's: no implementation, #3891)
@@ -126,7 +127,7 @@ export function setupMenus() {
       // (two documents side by side, each side with its tabs, #1619, #1652)
       { label: 'Split Editor', checked: splitState().on, action: () => toggleSplit() },
       // (the document in front's related views, as its tab's menu, #2834)
-      ...besideItems(S.active),
+      ...besideItems(docsState.active),
       '-',
       languageMenu(), interfaceMenu(), themeMenu(), notationMenu(), symbolsMenu(),
       '-',
@@ -175,9 +176,9 @@ export function setupMenus() {
         { label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() }),
     ] },
     { label: 'Window', items: () => [
-      ...S.docs.map(d => ({ label: d.title, checked: d === S.active, action: () => activateDoc(d) })),
-      S.docs.length ? '-' : null,
-      { label: 'Close All Documents', action: () => [...S.docs].forEach(closeDoc), disabled: () => !S.docs.length },
+      ...S.docs.map(d => ({ label: d.title, checked: d === docsState.active, action: () => activateDoc(d) })),
+      docsState.docs.length ? '-' : null,
+      { label: 'Close All Documents', action: () => [...S.docs].forEach(closeDoc), disabled: () => !docsState.docs.length },
     ].filter(Boolean) },
     { label: 'Help', items: () => [
       { label: 'About Silinx', icon: icon('help'), action: () => wiz.aboutDialog() },
@@ -211,8 +212,8 @@ export function setupToolbar() {
     btn('share', 'Share Project', () => import('./share-how.js').then(m => m.shareDialog()), () => canShare()),   // as File ▸ Share Project…: a copy or live (#3716; after Close Project, #3719)
     btn('print', 'Print', () => printActive(), printable),   // as File ▸ Print… (#1251)
     h('div', { class: 'tb-sep' }),
-    btn('undo', 'Undo', () => undoAny(), () => undoesProject() || !!docEditor(S.active)),   // as Edit ▸ Undo (enabled as it is, #1192)
-    btn('redo', 'Redo', () => redoAny(), () => redoesProject() || !!docEditor(S.active)),   // as Edit ▸ Redo
+    btn('undo', 'Undo', () => undoAny(), () => undoesProject() || !!docEditor(docsState.active)),   // as Edit ▸ Undo (enabled as it is, #1192)
+    btn('redo', 'Redo', () => redoAny(), () => redoesProject() || !!docEditor(docsState.active)),   // as Edit ▸ Redo
     h('div', { class: 'tb-sep' }),
     // as Edit ▸ Cut / Copy / Paste (#677), enabled as they are
     btn('cut', 'Cut', () => cutAny(), () => canCopyAny() && canDeleteAny()),

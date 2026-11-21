@@ -44,6 +44,7 @@ import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 import { collabLog } from './collab-log.js';
 import { followerRecord, restoredDoc } from '/core/collab-resume.js';
 import { keepOnReload, forgetRecord } from './collab-resume.js';
+import { docsState } from './state-docs.js';
 
 const ARRIVE_MS = 20_000;
 let fol = null;   // { name, session, following, driven (the owner's view last followed), top (a module's link's module, opened
@@ -55,7 +56,7 @@ let fol = null;   // { name, session, following, driven (the owner's view last f
  *  this browser's settings. Whoever runs it sees the follower's address and name, so following through it is confirmed. */
 const unknownRelay = async r => !!r && !(await relaysHere()).includes(r) && relayAddress(savedRelay().address || '') !== r;
 
-const d0 = p => S.docs.find(x => x.path === p && x.editor?.view);
+const d0 = p => docsState.docs.find(x => x.path === p && x.editor?.view);
 const docPath = d => d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
 
 /** At start-up, an address to follow (#follow=…): joined, the project's name returned once it arrived (null: not a
@@ -260,7 +261,7 @@ async function roleChanged(ev) {
 }
 
 // the others' carets and the owner's selection, no longer shown (the connection lost, the sharing ended)
-const clearShown = () => { for (const d of S.docs) { d.editor?.setPeers?.([]); showPeerSelection(d, []); } };
+const clearShown = () => { for (const d of docsState.docs) { d.editor?.setPeers?.([]); showPeerSelection(d, []); } };
 
 // the open documents opened again (an editor's role changed, #3997; following ended, #4198: read only), the one in front
 // kept in front; not the follower's own documents
@@ -272,7 +273,7 @@ async function reopenDocs() {
   for (const d of [...S.docs]) {
     const p = docPath(d);
     if (!p) continue;
-    if (S.active === d) open.push(p); else open.unshift(p);
+    if (docsState.active === d) open.push(p); else open.unshift(p);
     d.dirty = false;
     await closeDoc(d);
   }
@@ -305,9 +306,9 @@ async function track() {
   try {
     const owner = fol.session.owner();
     const v = owner?.view;
-    const mine = docPath(S.active);
+    const mine = docPath(docsState.active);
     // (another document brought to the front by the follower: they browse alone)
-    if (fol.following && fol.settled && fol.front !== undefined && viewKeyOf(S.active) !== fol.front) setFollowing(false);
+    if (fol.following && fol.settled && fol.front !== undefined && viewKeyOf(docsState.active) !== fol.front) setFollowing(false);
     // (the owner's activity, #4002: its documents, the one in front, its views, its selection)
     if (fol.following && S.project?.name === collab.project) await followActivity(fol.act, ch => fol.session.activity(ch), () => fol.following);
     if (fol.following && v?.path && S.project?.name === collab.project) {
@@ -316,29 +317,29 @@ async function track() {
         fol.drivenKey = key;
         // (a report of the owner's build: once its text has come, #4002)
         if (mine !== v.path) await (reportPath(v.path) ? openReport(`file:${v.path}`, ch => fol.session.activity(ch)) : app.openFile(v.path));
-        const d = fol.following ? S.docs.find(x => docPath(x) === v.path) : null;   // (browsing alone meanwhile, #4865)
-        if (d && S.active !== d) activateDoc(d);
+        const d = fol.following ? docsState.docs.find(x => docPath(x) === v.path) : null;   // (browsing alone meanwhile, #4865)
+        if (d && docsState.active !== d) activateDoc(d);
         if (d?.editor && v.line !== null) d.editor.setCursor({ line: v.line, ch: v.ch ?? 0 });
         fol.driven = v;
       }
     }
-    fol.front = viewKeyOf(S.active);
+    fol.front = viewKeyOf(docsState.active);
     // (the open text editors, live, #3182: an editor's own files to edit, the others read only)
-    keepBound(fol.bound, S.docs, fol.session.doc.getMap('files'), p => !!d0(p) && api.shown(p));
+    keepBound(fol.bound, docsState.docs, fol.session.doc.getMap('files'), p => !!d0(p) && api.shown(p));
     // (an editor's drawings edited live, #3183: a merged model shown once it passes the import gate, as any file, #3361)
-    keepDrawingsBound(fol.drawn, S.docs, fol.session.doc, editsDrawingHere, { say: text => collabLog(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
+    keepDrawingsBound(fol.drawn, docsState.docs, fol.session.doc, editsDrawingHere, { say: text => collabLog(text, 'warn'), accept: (m, path) => shownDrawing(path, m) });
     // (the wires' style of its schematics and circuits: this participant's own, remembered for this project, #4239)
-    if (S.project?.name === collab.project) keepWireStyles(S.docs, { owner: collab.owner, project: collab.project });
-    const here = docPath(S.active);
-    fol.session.setView(here ? { path: here, line: S.active?.editor?.getCursor?.().line ?? null, ch: S.active?.editor?.getCursor?.().ch ?? null, sel: selectionOfDoc(S.active) } : null);
+    if (S.project?.name === collab.project) keepWireStyles(docsState.docs, { owner: collab.owner, project: collab.project });
+    const here = docPath(docsState.active);
+    fol.session.setView(here ? { path: here, line: docsState.active?.editor?.getCursor?.().line ?? null, ch: docsState.active?.editor?.getCursor?.().ch ?? null, sel: selectionOfDoc(docsState.active) } : null);
     const peers = fol.session.peers();
-    for (const d of S.docs) {
+    for (const d of docsState.docs) {
       if (!d.editor?.setPeers) continue;
       const p = docPath(d);
       d.editor.setPeers(peers.filter(x => x.view?.path === p && x.view.line !== null).map(x => ({ name: x.name, color: x.color, line: x.view.line, ch: x.view.ch ?? 0 })));
     }
     // (the owner's selection while they are followed, #4192: in their colour, the follower's own unchanged)
-    for (const d of S.docs) {
+    for (const d of docsState.docs) {
       const sel = fol.following && owner ? selectionAt(owner.view, docPath(d)) : null;
       showPeerSelection(d, sel ? [{ name: owner.name, color: owner.color, sel }] : []);
     }
