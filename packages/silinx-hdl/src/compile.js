@@ -18,6 +18,33 @@ function parseOne(lang, s, parse) {
   }
 }
 
+// The parses kept (#4773): a file's parse used again while its text, its language, the texts it includes and the
+// SystemVerilog package types it was read with are the same, so that a live check as one types parses the file
+// changed only. The last KEEP files' (by path and language); what compile adds to a parse is put on a copy.
+const KEEP = 512;
+const parses = new Map();   // `${lang}\0${path}\0${types}` -> { text, includes: [[name, text]], result }, the oldest first
+const stats = { parsed: 0, reused: 0 };
+/** How many files compile parsed and how many parses it used again (tests). */
+export const parseStats = () => ({ ...stats });
+
+function parseKept(lang, s, include, typeNames) {
+  const key = `${lang}\0${s.path}\0${typeNames ? [...typeNames].sort().join(',') : ''}`;
+  const kept = parses.get(key);
+  parses.delete(key);
+  if (kept && kept.text === s.text && kept.includes.every(([name, text]) => include(name) === text)) {
+    parses.set(key, kept);
+    stats.reused++;
+    return { ...kept.result };
+  }
+  const includes = [];
+  const inc = name => { const text = include(name); includes.push([name, text]); return text; };
+  const result = parseOne(lang, s, () => (lang === 'vhdl' ? parseVhdl(s.text, s.path) : parseVerilog(s.text, s.path, typeNames ? { include: inc, typeNames } : { include: inc })));
+  stats.parsed++;
+  parses.set(key, { text: s.text, includes, result });
+  while (parses.size > KEEP) parses.delete(parses.keys().next().value);
+  return { ...result };
+}
+
 export function compile(sources) {
   // ieee.math_real: its VHDL part (constants, UNIFORM) compiled with the design that uses it
   if (sources.some(s => (s.lang || langOfPath(s.path)) === 'vhdl' && s !== MATH_REAL_SOURCE && usesMathReal(s.text)) && !sources.includes(MATH_REAL_SOURCE)) sources = [MATH_REAL_SOURCE, ...sources];
@@ -31,7 +58,7 @@ export function compile(sources) {
   for (const s of sources) {
     const lang = s.lang || langOfPath(s.path);
     if (lang !== 'vhdl' && lang !== 'verilog') continue;
-    const r = parseOne(lang, s, () => (lang === 'vhdl' ? parseVhdl(s.text, s.path) : parseVerilog(s.text, s.path, { include })));
+    const r = parseKept(lang, s, include);
     r.role = s.role || 'design';
     r.text = s.text;   // (design checks: suppression comments, use clauses)
     r.src = s;
@@ -49,7 +76,7 @@ export function compile(sources) {
     for (let k = 0; k < parsed.length; k++) {
       const r = parsed[k];
       if (r.lang !== 'verilog' || !r.errors.some(e => e.severity === 'error')) continue;
-      const again = parseOne('verilog', r.src, () => parseVerilog(r.src.text, r.src.path, { include, typeNames }));
+      const again = parseKept('verilog', r.src, include, typeNames);
       Object.assign(again, { role: r.role, text: r.text, src: r.src });
       parsed[k] = again;
     }
