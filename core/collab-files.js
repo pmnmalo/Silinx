@@ -145,7 +145,7 @@ export async function applyEdits(doc, { changes = [], project = false, descripti
     if (out.refused) { out.undone.push(c.path); continue; }
     try { await store.remove(c.path); out.removed.push(c.path); } catch (e) { warn(`${c.path}: an editor's deletion not made: ${e.message}`); out.refused = true; }
   }
-  if (project) { console.log('DBG', JSON.stringify({ changes, description: description && JSON.parse(description).files?.map(f => f.path), json: JSON.parse(doc.getMap('project').get('json') ?? 'null')?.files?.map(f => f.path) }));
+  if (project) {
     const next = editorDescription(disk.json, typeof description === 'string' ? description : doc.getMap('project').get('json') ?? '');
     if (!next) out.undone.push('silinx.json');
     else if (fieldsOf(next) !== fieldsOf(disk.json)) {
