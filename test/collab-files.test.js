@@ -279,6 +279,29 @@ test('#4480 editQueue: an editor\'s change arriving while the disk is read again
   assert.equal(docFile(editor, 'src/top.vhd'), null);
 });
 
+test('#5103 an editor\'s description saved as the document has it (Rename\'s, after the file renamed): no change for the owner, its rename kept', async () => {
+  const { owner, editor } = pair();
+  const seen = [];
+  const off = watchDoc(owner, (ev) => seen.push(ev));
+  // (the editor's Rename: the file renamed in the document; the owner renames its entry on its side)
+  renameFile(editor, 'src/top.vhd', 'src/main.vhd');
+  const { d, store } = disk({ json: { ...PROJECT, files: [{ path: 'src/main.vhd', lang: 'vhdl', role: 'design' }] } });
+  for (const ev of seen.splice(0)) await applyEdits(owner, ev, store);
+  // (then its project's settings saved: the description it read, the document's, the old entry in it)
+  const read = docProject(editor).project;
+  assert.equal(read.files[0].path, 'src/top.vhd');
+  setDescription(editor, { ...read, fileTree: ['src/main.vhd'] });
+  assert.deepEqual(seen, [], 'nothing changed for the owner');
+  assert.equal([...editor.getMap('project').keys()].some((k) => k.startsWith('edit:')), false, 'no description proposed');
+  assert.deepEqual(d.json.files.map((f) => f.path), ['src/main.vhd'], 'the owner\'s rename kept');
+  // a description changed is proposed (#5064), the fileTree left out
+  setDescription(editor, { ...read, top: 'main', fileTree: ['src/main.vhd'] });
+  assert.equal(seen.length, 1);
+  assert.equal(JSON.parse(seen[0].description).top, 'main');
+  assert.equal(JSON.parse(seen[0].description).fileTree, undefined);
+  off();
+});
+
 test('#5064 an editor\'s description at the same time as the owner\'s published again: the editor\'s still applied, whichever of the two the shared value keeps', async () => {
   for (const ownerFirst of [true, false]) {
     const owner = owned(), editor = new Y.Doc();
