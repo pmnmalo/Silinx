@@ -29,6 +29,7 @@ import { shortCommit, conflictCount } from '/core/git-messages.js';
 import { relayEntries } from './relay-setup.js';
 import { foldList } from '/core/list-fold.js';
 import { roleSwitch } from './collab-roles.js';
+import { panes } from './state-panes.js';
 
 // the last GitHub Checks' answer, its project's (File ▸ Git ▸ GitHub Checks or the tab's)
 let checks = null;
@@ -60,7 +61,7 @@ export function renderCollabPage() {
   const tab = document.querySelector('#left-tabs .tab[data-page="collab"]');
   const none = gitOff() && !liveHere();
   if (tab) tab.hidden = none;
-  if (none && S.leftPage === 'collab') showLeftPage('design');
+  if (none && panes.leftPage === 'collab') showLeftPage('design');
   const page = h('div', { class: 'page' }, ...boxes());
   if (host.firstElementChild?.outerHTML === page.outerHTML) return;
   host.replaceChildren(page);
