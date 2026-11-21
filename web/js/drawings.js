@@ -34,6 +34,7 @@ import { following, followNotice, editsDrawingHere } from './collab-state.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { syncState } from './state-sync.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
@@ -172,7 +173,7 @@ export async function convertToAsm(mod) {
   catch (e) { commandError('Convert to State Machine', `'${mod}' cannot be shown as an ASM chart: ${e.message}`); return; }
   const dir = info.file.includes('/') ? info.file.replace(/\/[^/]*$/, '') : 'src';
   const target = `${dir}/${mod}.asm.json`;
-  if (S.fileTree.includes(target) && !await confirmDlg('Convert to State Machine', `${target} already exists. Overwrite it?`)) return;
+  if (filesState.fileTree.includes(target) && !await confirmDlg('Convert to State Machine', `${target} already exists. Overwrite it?`)) return;
   const model = { ...r.model, generatedFile: info.file };
   await api.writeFile(S.project.name, target, JSON.stringify(model, null, 2));
   log(`'${mod}' converted to the ASM chart ${target}; it stays in sync with ${info.file}.`, 'ok');
@@ -247,7 +248,7 @@ const fsmDir = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '') : 'src');
 function freeName(dir, base, ext) {
   let name = base, k = 1;
   // (a circuit's ICs' modules taken too, #4216)
-  while (S.fileTree.includes(`${dir}/${name}${ext}`) || S.modules.some(x => x.name.toLowerCase() === name.toLowerCase()) || S.partModules?.has(name.toLowerCase())) name = `${base}${++k}`;
+  while (filesState.fileTree.includes(`${dir}/${name}${ext}`) || S.modules.some(x => x.name.toLowerCase() === name.toLowerCase()) || S.partModules?.has(name.toLowerCase())) name = `${base}${++k}`;
   return name;
 }
 
@@ -275,7 +276,7 @@ export async function convertToFsm(mod) {
   try { r = fsmFromHdl(text, { path: info.file, module: mod, lang: info.lang, notation: getNotation() }); }
   catch (e) { commandError('Convert to State Diagram', `'${mod}' cannot be shown as a state diagram: ${e.message}`); return; }
   const target = `${fsmDir(info.file)}/${mod}.fsm.json`;
-  if (S.fileTree.includes(target) && !await confirmDlg('Convert to State Diagram', `${target} already exists. Overwrite it?`)) return;
+  if (filesState.fileTree.includes(target) && !await confirmDlg('Convert to State Diagram', `${target} already exists. Overwrite it?`)) return;
   const model = { ...r.model, generatedFile: info.file };
   await api.writeFile(S.project.name, target, JSON.stringify(model, null, 2));
   log(`'${mod}' converted to the state diagram ${target}; it stays in sync with ${info.file}.`, 'ok');
@@ -560,10 +561,10 @@ export async function adoptDrawnHdl() {
   for (const v of S.viewSources || []) {
     if (v.errors || !v.module || !S.project) continue;
     const target = drawnHdlPath(v.path, v.module, v.lang);
-    if ((S.diskTree || S.fileTree || []).includes(target)) continue;
+    if ((filesState.diskTree || filesState.fileTree || []).includes(target)) continue;
     if (!await writeDrawnHdl(v.path, target, v.text)) continue;
     // (#231: its HDL file was deleted, or removed from the project and another name is free)
-    if (!designOnly()) log(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(S.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
+    if (!designOnly()) log(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(filesState.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
     n++;
   }
   return n;
@@ -610,7 +611,7 @@ export const clashTip = c => (designOnly() ? designClash(c) : c.kind === 'same'
 export async function drawnHdlClashes() {
   syncState.hdlClash = {};
   if (!S.project) return;
-  const disk = new Set(S.diskTree || S.fileTree || []);
+  const disk = new Set(filesState.diskTree || filesState.fileTree || []);
   const texts = {};
   const cands = [
     ...(S.viewSources || []).filter(v => !v.errors && v.module).map(v => ({ path: v.path, module: v.module, lang: v.lang, definedIn: null, lost: v.lost })),
@@ -715,9 +716,9 @@ export async function convertToSchematic(mod) {
     // (the drawn sources without an HDL file of their own too: modules of the project, #177)
     const sources = S.sources.filter(s => s.lang === 'vhdl' || s.lang === 'verilog')
       .map(s => ({ ...s, role: S.project.files.find(f => f.path === s.path)?.role || s.role || 'design' }));
-    const r = await convertModuleToSchematic({ sources, module: info.name, layout: elk ? g => elk.layout(g) : undefined, exists: p => (S.diskTree || S.fileTree || []).includes(p) });
+    const r = await convertModuleToSchematic({ sources, module: info.name, layout: elk ? g => elk.layout(g) : undefined, exists: p => (filesState.diskTree || filesState.fileTree || []).includes(p) });
     const target = r.schPath;
-    if (S.fileTree.includes(target) && !await confirmDlg('Convert to Schematic', `${target} already exists. Overwrite it?`)) return;
+    if (filesState.fileTree.includes(target) && !await confirmDlg('Convert to Schematic', `${target} already exists. Overwrite it?`)) return;
     const doc = { ...r.doc };
     delete doc.importDiagnostics;
     await serialDrawings(async () => {

@@ -30,6 +30,7 @@ import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -401,7 +402,7 @@ const STATUS_FILE = 'build/silinx-status.json';
 
 function sourcesFingerprint() {
   const parts = S.sources.filter(f => f.role !== 'sim').map(f => `${f.path}\n${f.text}`).sort();
-  parts.push(`ucf\n${S.project.constraints}\n${S.ucfText ?? ''}`, `top\n${S.project.top}`, `dev\n${JSON.stringify(S.project.device)}`);
+  parts.push(`ucf\n${S.project.constraints}\n${filesState.ucfText ?? ''}`, `top\n${S.project.top}`, `dev\n${JSON.stringify(S.project.device)}`);
   let h = 2166136261;                                    // FNV-1a, enough to detect changes
   for (const c of parts.join('\0')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
   return h.toString(16);
@@ -422,10 +423,10 @@ export function synthFingerprint(sources) {
 
 export async function loadUcfText() {
   let text = null;
-  if (S.project?.constraints && S.fileTree?.includes(S.project.constraints)) {
+  if (S.project?.constraints && filesState.fileTree?.includes(S.project.constraints)) {
     try { text = await api.readFile(S.project.name, S.project.constraints); } catch { /* none */ }
   }
-  S.ucfText = text;
+  filesState.ucfText = text;
   return text;
 }
 

@@ -14,6 +14,7 @@ import { identError } from '/core/modgen.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere } from './wizards.js';
 import { S, app } from './app.js';
 import { cleanLoc, namedPages } from './wizard-util.js';
+import { filesState } from './state-files.js';
 
 const LANGS = [['vhdl', 'VHDL'], ['verilog', 'Verilog']];
 const INIT_RE = /\.(mem|coe)$/i;
@@ -99,7 +100,7 @@ export async function blockMemoryWizard({ name = '', location = 'src', lang = nu
   const depthIn = h('input', { type: 'number', class: 'bw-depth', value: String(spec.depth), min: '2', step: '1', style: { width: '90px' } });
   const modeSel = select([['READ_FIRST', 'Read first (the old word is read)'], ['WRITE_FIRST', 'Write first (the new word is read)']], spec.writeMode);
   const styleSel = select([['primitive', 'Block RAM primitives'], ['inferred', 'Inferable HDL (an array)']], spec.style);
-  const files = (S.fileTree || []).filter(f => INIT_RE.test(f));
+  const files = (filesState.fileTree || []).filter(f => INIT_RE.test(f));
   const initSel = select([['', '(none: zeros)'], ...files.map(f => [f, f])], files.includes(spec.init) ? spec.init : '');
   [...initSel.options].slice(1).forEach(o => { o.dataset.noI18n = ''; });   // (file names)
   [kindSel, portsSel, modeSel, styleSel, initSel].forEach((e, i) => e.classList.add(['bw-kind', 'bw-ports', 'bw-mode', 'bw-style', 'bw-init'][i]));

@@ -10,6 +10,7 @@ import { S } from './app.js';
 import { log, logError } from './console.js';
 import { importCataloguePart, browserUrl } from '/core/kicad-catalogue.js';
 import { loadCircuitParts, kicadStore } from './circuit-kicad-import.js';
+import { filesState } from './state-files.js';
 
 const lineClass = (l) => (/^ERROR: /.test(l) ? 'err' : /^WARNING: /.test(l) ? 'warn' : 'info');
 // (the browser alone: a CORS host's file)
@@ -33,7 +34,7 @@ export async function importCatalogue(id) {
     if (!await confirmDlg('KiCad catalogue', `${e.message.replace(/ \(replace: true replaces it\)$/, '')}. Replace it?`)) return null;
     try { r = await run(true); } catch (e2) { logError(`KiCad catalogue: ${e2.message}`); return null; }
   }
-  for (const f of r.written) if (S.fileTree && !S.fileTree.includes(f)) S.fileTree.push(f);
+  for (const f of r.written) if (filesState.fileTree && !filesState.fileTree.includes(f)) filesState.fileTree.push(f);
   for (const l of [`${r.type}: imported`, ...r.lines]) log(l, lineClass(l));
   await loadCircuitParts();
   return r.type;

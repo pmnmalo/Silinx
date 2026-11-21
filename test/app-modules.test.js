@@ -102,7 +102,7 @@ test('#405 project.js: open / close / reload keep their call order (the queues o
   // (a project asked for noted, for the start-up not to reopen the last one over it: #2492)
   assert.match(code, /^export function openProject\(name, \{ startup = false \} = \{\}\) \{\n  if \(!startup\) requested = true;\n  return inOrder\(\(\) => openProjectNow\(name, \{ startup \}\)\);\n\}$/m);
   assert.match(code, /^export function closeProject\(\) \{ return inOrder\(closeProjectNow\); \}$/m);
-  assert.match(code, /S\.reloadChain = \(S\.reloadChain \|\| Promise\.resolve\(\)\)\.then\(run, run\);/);
+  assert.match(code, /filesState\.reloadChain = \(filesState\.reloadChain \|\| Promise\.resolve\(\)\)\.then\(run, run\);/);
   // every document closed through app.js (its view state kept as it was), never by project.js itself
   assert.equal((code.match(/if \(!await closeAllDocs\(\)\) return;/g) || []).length, 2);
   assert.doesNotMatch(code, /keepView|closeDoc\(/);

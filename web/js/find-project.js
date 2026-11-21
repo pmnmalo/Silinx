@@ -11,13 +11,14 @@ import { logInfo } from './console.js';
 import { findPattern, findPaths, findInProject, replaceInText } from '/core/find.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
+import { filesState } from './state-files.js';
 
 /** The project's texts to search: [{ path, text, drawing, generated }], the open editors' as they are. */
 async function projectTexts() {
   const pj = S.project;
   // (the project's files: its sources, its drawings (not in its files' list), its constraints)
   const out = [];
-  for (const { path, drawing } of findPaths(S.fileTree || [], pj.files || [], pj.constraints)) {
+  for (const { path, drawing } of findPaths(filesState.fileTree || [], pj.files || [], pj.constraints)) {
     if (drawing) { const t = S.viewTexts?.[path]; if (t != null) out.push({ path, text: t, drawing: true }); continue; }
     if (designOnly() && hdlSideFile(path)) continue;   // (a design project's HDL never searched nor shown, #3891)
     const ed = findDoc(`file:${path}`)?.editor;

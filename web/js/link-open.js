@@ -12,6 +12,7 @@ import { applyLayout } from './tasks.js';
 import { TRY_DRAWING, decodeDesign, decodeUi, designZip, freeName, parseLink, sameFiles, tryDrawing, viewProblem } from '/core/design-link.js';
 import { browserCodec, textOf } from '/core/zip.js';
 import { gateMessages, gateZip } from '/core/import-gate.js';
+import { filesState } from './state-files.js';
 
 /** The most a zip at an address may be (bytes). */
 const LINK_ZIP_MAX = 16 << 20;
@@ -121,7 +122,7 @@ export async function openFromLink(opts, { prepare = null } = {}) {
     await app.openProject(d.name);
     app.showLeftPage('design');
     if (!d.project) {   // (a zip's: its drawings and HDL read now, for its view)
-      d.files = Object.fromEntries(await Promise.all((S.fileTree || []).filter(p => TRY_DRAWING.test(p) || /\.(vhdl?|s?v)$/i.test(p)).map(async p => [p, await api.readFile(d.name, p)])));
+      d.files = Object.fromEntries(await Promise.all((filesState.fileTree || []).filter(p => TRY_DRAWING.test(p) || /\.(vhdl?|s?v)$/i.test(p)).map(async p => [p, await api.readFile(d.name, p)])));
       const problem = viewProblem(S.project, d.files, { view, top });
       if (problem) throw fail(problem);
     }

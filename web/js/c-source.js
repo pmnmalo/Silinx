@@ -9,6 +9,7 @@ import { showCommandLines } from './messages.js';
 import { cReportLines, hlsClockOf, hlsFamilyOf, hlsMultsOf } from '/core/c-report.js';
 import { blackboxModels, undeclaredBlackboxes } from '/core/c-blackbox.js';
 import { cState } from './state-c.js';
+import { filesState } from './state-files.js';
 
 export const isC = (p) => /\.(c|cpp|cc|cxx)$/i.test(p || '');
 // (its badge: C or C++, #1590)
@@ -107,7 +108,7 @@ const hdlLang = () => (S.project?.preferredLanguage === 'verilog' ? 'verilog' : 
  *  only, the C simulation's in-memory files (in the browser edition too). */
 async function tbFiles(src) {
   const { testBenchFiles } = await import('/core/c-interp-lib.js');
-  const paths = testBenchFiles(src, S.diskTree || S.fileTree || []);
+  const paths = testBenchFiles(src, filesState.diskTree || filesState.fileTree || []);
   return Object.fromEntries(await Promise.all(paths.map(async (p) => [p, await text(p)])));
 }
 

@@ -19,6 +19,7 @@ import { reloadProject } from './project.js';
 import { saveAll } from './processes.js';
 import { field, zipFolderSelection } from './wizards.js';
 import { applyChanges } from './project-watch.js';
+import { filesState } from './state-files.js';
 
 const STATES = {
   theirs: 'Changed there: taken', added: 'Added there: taken', removed: 'Removed there: removed', mine: 'Changed here: kept',
@@ -149,7 +150,7 @@ async function merge(name, zip, label, resolve) {
   lines.forEach((l, i) => (l.startsWith('WARNING') ? collabLog(l, 'warn') : collabLog(l, 'ok', i === lines.length - 1 && r.taken.length ? { action: { label: 'Undo Merge', run: () => undoMerge() } } : undefined)));
   if (r.untrusted) collabLog(r.lines.at(-1), 'info', { action: trustAction(name) });
   if (S.project?.name === name) {
-    const changes = [...r.written, ...r.regenerated].map(f => ({ path: f, kind: S.diskTree?.includes(f) ? 'changed' : 'added' })).concat(r.removed.map(f => ({ path: f, kind: 'removed' })));
+    const changes = [...r.written, ...r.regenerated].map(f => ({ path: f, kind: filesState.diskTree?.includes(f) ? 'changed' : 'added' })).concat(r.removed.map(f => ({ path: f, kind: 'removed' })));
     if (api.standalone) await applyChanges({ project: name, changes });
     await reloadProject();
   }

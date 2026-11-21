@@ -158,3 +158,26 @@ test('the page\'s start slice (state-start.js): S\'s fields are its own, both wa
   S.linkOpened = false;
   assert.equal(startState.linkOpened, false);
 });
+
+test('the project\'s files slice (state-files.js): S\'s fields are its own, both ways; S.project stays S\'s', async () => {
+  const { filesState } = await import('../web/js/state-files.js');
+  const FIELDS = ['diskTree', 'fileTree', 'ucfText', 'git', 'reloadChain', 'opChain'];
+  assert.deepEqual(Object.keys(filesState), FIELDS);
+  assert.ok(Object.values(filesState).every(v => v === undefined), 'undefined until a project opens');
+  assert.throws(() => { filesState.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return filesState.${k}; }, set ${k}(v) { filesState.${k} = v; }`), k);
+  assert.match(block, /^\s*project: null, devices: null, toolchain: null,$/m);
+  const re = new RegExp(`(?<![\\w.$])S\\.(${FIELDS.join('|')})\\b`);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
+  // (S's declaration evaluated, app.js itself needs a page: its getters and setters reach the slice, a list pushed
+  // through S is the slice's)
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const S = new Function('filesState', 'cState', 'syncState', `return ${block.slice('export const S = '.length)}\n};`)(filesState, cState, syncState);
+  S.fileTree = ['top.vhd'];
+  S.fileTree.push('top.ucf');
+  assert.deepEqual(filesState.fileTree, ['top.vhd', 'top.ucf']);
+  filesState.git = null;
+  assert.equal(S.git, null);
+});

@@ -8,6 +8,7 @@ import { api } from './api.js';
 import { S } from './app.js';
 import { log, logError } from './console.js';
 import { loadCircuitParts } from './circuit-kicad-import.js';
+import { filesState } from './state-files.js';
 
 const mb = (n) => (n ? `${(n / 1048576).toFixed(n < 1048576 ? 2 : 1)} MB` : '');
 const lineClass = (l) => (/^ERROR: /.test(l) ? 'err' : /^WARNING: /.test(l) ? 'warn' : 'info');
@@ -65,7 +66,7 @@ export async function browseKicadDialog() {
     if (!/the project has it already/.test(e.message) || !await confirmDlg('Browse KiCad Libraries', `${e.message.replace(/ \(replace: true replaces it\)$/, '')}. Replace the files of the library?`)) { if (!/the project has it already/.test(e.message)) logError(e.message); return null; }
     try { r = await api.kicadImport(S.project.name, { ...body, replace: true }); } catch (e2) { logError(e2.message); return null; }
   }
-  for (const f of r.written) if (S.fileTree && !S.fileTree.includes(f)) S.fileTree.push(f);
+  for (const f of r.written) if (filesState.fileTree && !filesState.fileTree.includes(f)) filesState.fileTree.push(f);
   for (const l of r.lines) log(l, lineClass(l));
   await loadCircuitParts();
   return true;
