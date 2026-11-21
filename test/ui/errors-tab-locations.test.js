@@ -65,6 +65,8 @@ uiTest('#4746 a simulation\'s assertions in the Errors / Warnings tabs with thei
 uiTest('#4746 a process\'s message naming a file of the project opens it at its line; one naming none is no link; a drawing\'s Check\'s entry shows its item', E, async (page) => {
   await makeProject(env, { name: 'LocPj', top: 'blink', files: { 'src/blink.v': BLINK } });
   await page.openProject('LocPj');
+  // (every source's entries listed: the tabs follow the console's filter, #4749, the Design task's Design's only)
+  await page.eval(() => document.querySelector('#mc-filters .filt[data-src=all]')?.click());
   await page.eval(() => import('/js/console.js').then((c) => {
     c.log('\nStarted : "Synthesize - XST".', 'hdr');
     c.logLine('ERROR:HDLCompiler:806 - "/remote/LocPj/src/blink.v" Line 2: Syntax error near "always".');
