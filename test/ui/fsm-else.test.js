@@ -43,7 +43,7 @@ uiTest('#4489 FSM: the Else (every other case) box, StateCAD\'s @ELSE, the other
     return e ? `${l.textContent} [${getComputedStyle(e).fontStyle}]` : l.textContent;
   }), ED);
   const problems = () => page.eval(() => [...document.querySelectorAll('#console-errors .diag, #console-warnings .diag')].map((d) => d.textContent));
-  assert.deepEqual(await labels(), ['a', '/a', 'b', '/b', '1']);
+  assert.deepEqual(await labels(), ['a', '!a', 'b', '!b', '1']);   // (as typed, #4888)
 
   // ---- ticked: else, the condition disabled; drawn else in italics
   await select('t2');
@@ -73,7 +73,7 @@ uiTest('#4489 FSM: the Else (every other case) box, StateCAD\'s @ELSE, the other
   await page.fill(`${ED} .fsm-cond`, 'b');
   await page.fill(`${ED} .fsm-cond`, '!b');
   assert.deepEqual(await conds(), ['a', 'else', 'b', '!b', '1']);
-  assert.deepEqual(await labels(), ['a', 'else [italic]', 'b', '/b', '1']);
+  assert.deepEqual(await labels(), ['a', 'else [italic]', 'b', '!b', '1']);
 
   // ---- saved; its HDL compiled and elaborated with no warnings; no problem
   const saved = await page.waitFor(async (p) => {

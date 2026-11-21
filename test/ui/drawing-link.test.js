@@ -107,7 +107,8 @@ uiTest('#245 regression, a Petri net linked to its HDL file on the save that cle
   await page.waitFor(() => window.Silinx.active.petriEditor.getModel().places[0].capacity === 2, [], { what: 'redone' });
   await untilSaved('Lk_pn', 'src/ctl.pn.json', (m) => m.places[0].capacity === 2 && m.generatedFile === 'src/ctl.vhd', 'the redo saved with the link');
   assert.equal(await readWs(env, 'Lk_pn', 'src/ctl.vhd'), viewHdl('src/ctl.pn.json', JSON.stringify({ ...net, places: [{ ...net.places[0], capacity: 2 }, net.places[1]] })).text);
-  assert.deepEqual(await warnings(page), []);
+  // (the undo's net, its error again: its HDL not made, said, as every editor's drawing with errors, #4750)
+  assert.deepEqual(await warnings(page), ['WARNING: src/ctl.vhd not updated: src/ctl.pn.json has errors: place idle: 2 initial tokens, more than its capacity 1']);
 });
 
 // a schematic: an AND gate between three ports
