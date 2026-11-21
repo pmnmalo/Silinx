@@ -55,6 +55,7 @@ export const FSM_PT = {
   'empty = always': 'vazia = sempre', 'e.g. z=1': 'p.ex. z=1', '+ State': '+ Estado',
   'Add a row after this one: a transition from this state (to itself, always; set its condition and next state)': 'Acrescentar uma linha a seguir a esta: uma transição deste estado (para ele mesmo, sempre; defina a sua condição e o estado seguinte)',
   'Remove this row (its transition)': 'Remover esta linha (a sua transição)',
+  'Click to edit the condition (as typed)': 'Clique para editar a condição (como foi escrita)',
   'Add a state (S0, S1…), placed beside the others; rename it in its first row': 'Acrescentar um estado (S0, S1…), posto ao lado dos outros; mude-lhe o nome na sua primeira linha',
   'Create Boolean Algebra sources (.bool.json) of the next-state bits and of the outputs, to simplify them with Karnaugh maps': 'Criar fontes de Álgebra Booleana (.bool.json) dos bits do estado seguinte e das saídas, para as simplificar com mapas de Karnaugh',
   'The encoded table is made for the binary and gray encodings (choose one of them)': 'A tabela codificada é feita para as codificações binária e Gray (escolha uma delas)',

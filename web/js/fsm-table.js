@@ -37,6 +37,22 @@ export function transitionTableView({ M, editable, commit, flash, redraw, btn })
     el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { el.value = value; el.blur(); } });
     return el;
   };
+  // a condition: shown in the Settings' notation (#3915), its field the text as typed (#4888) once the cell is clicked
+  // (or reached by Tab and Enter), as the diagram's label edited in place; left unchanged: shown again
+  const condCell = (r) => {
+    const td = h('td', { ...NAME_MONO, class: 'mono fsm-tt-condcell', tabindex: '0', title: 'Click to edit the condition (as typed)' }, r.cond);
+    const open = () => {
+      if (td.querySelector('input')) return;
+      const el = text(condAsText(r.typed), 'fsm-tt-cond', `tt-cond:${r.transition}`, (m, v) => setCondition(m, r.transition, v), 'empty = always');
+      el.addEventListener('blur', () => { if (el.isConnected && el.value === condAsText(r.typed)) redraw(); });
+      td.removeAttribute('data-no-i18n');   // (its placeholder translated; the field's value never is)
+      td.replaceChildren(el);
+      el.focus(); el.select();
+    };
+    td.addEventListener('click', open);
+    td.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === 'F2') && ev.target === td) { ev.preventDefault(); open(); } });
+    return td;
+  };
   const nextList = (r) => {
     const el = h('select', { class: 'asm-select fsm-tt-next' }, ...M().states.map((s) => h('option', { value: s.id, selected: s.id === r.nextId, 'data-no-i18n': '' }, s.name)));
     el.addEventListener('change', () => apply('tt-next', (m) => (r.stays ? setStayNext(m, r.stateId, el.value) : setNextState(m, r.transition, el.value))));
@@ -48,8 +64,7 @@ export function transitionTableView({ M, editable, commit, flash, redraw, btn })
     const first = i === 0 || tt.rows[i - 1].stateId !== r.stateId;
     const state = edit && first ? h('td', {}, text(r.state, 'fsm-tt-state', `tt-name:${r.stateId}`, (m, v) => renameState(m, r.stateId, v))) : h('td', NAME, r.state);
     const cond = r.cond === 'otherwise' ? h('td', { class: 'mono' }, h('i', {}, 'otherwise (stays)'))
-      : edit && !r.stays ? h('td', {}, text(condAsText(r.typed), 'fsm-tt-cond', `tt-cond:${r.transition}`, (m, v) => setCondition(m, r.transition, v), 'empty = always'))
-        : h('td', NAME_MONO, r.cond);
+      : edit && !r.stays ? condCell(r) : h('td', NAME_MONO, r.cond);
     const outs = edit ? h('td', {}, text(r.outputs, 'fsm-tt-outs', `tt-outs:${r.transition || r.stateId}`, (m, v) => setRowOutputs(m, r, v), 'e.g. z=1')) : h('td', NAME_MONO, r.outputs);
     const tools = edit ? h('td', { class: 'fsm-tt-tools' },
       btn('+', 'Add a row after this one: a transition from this state (to itself, always; set its condition and next state)', () => apply('tt-add', (m) => addTransition(m, r.stateId, r.stateId, '', r.transition || null)), 'asm-small fsm-tt-add'),

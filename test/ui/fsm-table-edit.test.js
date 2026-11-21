@@ -32,6 +32,8 @@ const rows = (page) => page.eval((ed) => [...document.querySelectorAll(`${ed} .f
   .map((c) => { const f = c.querySelector('input, select'); return f ? (f.tagName === 'SELECT' ? f.selectedOptions[0].textContent : f.value) : c.textContent; }).join('|')), ED);
 /** Type `text` in the field `sel` of the row `row` (a transition's id, or a state's for its first row), then Enter. */
 async function typeIn(page, row, sel, text) {
+  // (a condition: its cell clicked first, its field the text as typed, #3915 / #4888)
+  if (sel === '.fsm-tt-cond') await page.click(`${ED} .fsm-ttable tr[data-trans="${row}"] .fsm-tt-condcell`);
   await page.eval((ed, r, s) => { const f = document.querySelector(`${ed} .fsm-ttable tr[data-trans="${r}"] ${s}, ${ed} .fsm-ttable tr[data-state="${r}"]:not([data-trans]) ${s}`) || document.querySelector(`${ed} .fsm-ttable tr[data-state="${r}"] ${s}`); f.focus(); f.select(); }, ED, row, sel);
   await page.type(text);
   await page.key('Enter');
@@ -77,7 +79,7 @@ uiTest('#4974 the transition table edited in place: condition, next state, outpu
   // ---- a row added after S0's first, then removed
   await page.click(`${ED} .fsm-ttable tr[data-trans=t1] .fsm-tt-add`);
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-ttable tr[data-trans=t4]`), [ED], { what: 'the row added' });
-  assert.deepEqual((await rows(page)).slice(0, 3), ['S0|0|up|S1|1|q=0', 'S0|0||S0|0|q=0', 'S1|1|up|S0|0|q=X']);   // (empty: always, S0 stays no more)
+  assert.deepEqual((await rows(page)).slice(0, 3), ['S0|0|up|S1|1|q=0', 'S0|0|1|S0|0|q=0', 'S1|1|up|S0|0|q=X']);   // (empty: always, 1; S0 stays no more)
   await page.click(`${ED} .fsm-ttable tr[data-trans=t4] .fsm-tt-del`);
   await page.waitFor((ed) => !document.querySelector(`${ed} .fsm-ttable tr[data-trans=t4]`), [ED], { what: 'the row removed' });
   // ---- a state added (S2), renamed Wait; s0 refused (S0's name, whatever its case)
@@ -118,6 +120,8 @@ uiTest('#4974 the transition table edited in place, in Portuguese: its labels an
   try {
     const pt = await texts();
     assert.deepEqual(untranslated(en, pt, [/^(S0|S1|up|q=\d)$/]), []);
+    await page.click(`${ED} .fsm-ttable tr[data-trans=t1] .fsm-tt-condcell`);
+    await page.waitFor((ed) => document.querySelector(`${ed} .fsm-tt-cond`)?.placeholder === 'vazia = sempre', [ED], { what: 'the field\'s tip translated' });
     assert.deepEqual(await page.eval((ed) => [document.querySelector(`${ed} .fsm-tt-addstate`).textContent, document.querySelector(`${ed} .fsm-tt-cond`).placeholder,
       document.querySelector(`${ed} .fsm-tt-del`).title], ED), ['+ Estado', 'vazia = sempre', 'Remover esta linha (a sua transição)']);
     // the fields: the names and the conditions as they are (up, not 'crescente')
