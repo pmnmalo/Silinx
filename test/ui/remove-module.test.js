@@ -61,7 +61,7 @@ const DRAWN = [
   { kind: 'schematic', file: 'src/gate.sch.json', mod: 'gate', ico: 'schematic', badge: 'Schematic', model: newDoc('gate', 'vhdl') },
   { kind: 'truth table', file: 'src/maj.tt.json', mod: 'maj', ico: 'algebra', badge: 'Algebra', views: ' [Schematic]', model: { ...newTable('maj', ['a', 'b', 'c'], ['f']), lang: 'vhdl', table: { f: '00010111' } } },
   { kind: 'ASM chart', file: 'src/seq.asm.json', mod: 'seq', ico: 'asm', badge: 'ASM', model: newModel('seq', 'vhdl') },
-  { kind: 'state diagram', file: 'src/st.fsm.json', mod: 'st', ico: 'fsm', badge: 'FSM', model: newFsm('st', 'vhdl') },
+  { kind: 'state diagram', file: 'src/st.fsm.json', mod: 'st', ico: 'fsm', badge: 'FSM', views: ' [Schematic]', model: newFsm('st', 'vhdl') },   // (its schematic, #4910)
 ];
 const QUESTION = (d, hdl) => `Remove '${d}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)`;
 const REMOVED = (d, hdl) => `Removed ${d} and its HDL file ${hdl} from the project (the files are kept in the project folder).`;
