@@ -56,6 +56,8 @@ const PARTS = {
   'rename.js': ['renameSymbolIn', 'extOf', 'dirOf', 'renameDialog', 'renameSource'],
   // where the user was (#160, #163; moved as it was, #2886)
   'view-state.js': ['VIEW_KEY', 'inProject', 'REOPEN', 'reopenable', 'reopenKey', 'viewKept', 'closeAllDocs', 'saveViewState', 'savedViewState', 'restoreViewState'],
+  // the implemented design's documents (moved as they were, #4765)
+  'impl-views.js': ['hierarchyEntities', 'openFpgaView', 'syncFpgaView', 'selectHierarchyPath', 'openSummary', 'refreshSummary', 'openPinPlanner', 'openImpact'],
 };
 // every module out of app.js, the ones split out of a part included
 const MODULES = [...Object.keys(PARTS), ...Object.values(SPLIT).flat()];
