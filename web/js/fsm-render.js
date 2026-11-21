@@ -152,7 +152,7 @@ export function mountRender(ctx) {
         for (const o of tx.outs) grp.append(sv('text', { class: 'fsm-outs', x: 0, y: o.y, 'text-anchor': 'middle', style: textCss(st, 13, 12) || null }, o.text));
       }
       const e = enc.get(s.id);
-      if (e) grp.append(sv('text', { class: 'fsm-code', x: r * 0.72 + 4, y: -r * 0.72 - 2 }, e.bits));
+      if (e) grp.append(sv('text', { class: 'fsm-code', x: r * 0.72 + 4, y: -r * 0.72 - 2 }, e.shown));   // (a code of the user's as typed, #5026)
       // (the reset's name on the start-up arrow, #2729)
       // (above the arrow when it is level, beside it when it is upright)
       if (s.id === M.initial) {

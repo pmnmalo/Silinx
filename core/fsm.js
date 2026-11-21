@@ -243,7 +243,9 @@ export function drawnAsElse(m, t) {
   return isOtherwise(t.cond) && m.transitions.some((x) => x !== t && x.from === t.from && stateById(m, x.to));
 }
 
-/** States in code order (the initial state first) with their codes: [{ id, name, constName, index, width, code, bits }]. */
+/** States in code order (the initial state first) with their codes: [{ id, name, constName, index, width, code, bits, shown }]
+ *  (bits: the code at the register's width, for the HDL, the encoded table and the schematic; shown: as the tables and the
+ *  drawing show it, a code of the user's as typed, #5026). */
 export function fsmEncoding(model) {
   const m = model.kind === 'fsm' && model.states ? model : normalizeFsm(model);
   const states = [...m.states];
@@ -254,7 +256,8 @@ export function fsmEncoding(model) {
   const width = user ? user[0]?.width ?? 1 : m.encoding === 'onehot' ? Math.max(1, N) : (N <= 1 ? 1 : (N - 1).toString(2).length);
   return states.map((s, i) => {
     const code = user ? user[i].code : m.encoding === 'onehot' ? 1n << BigInt(i) : m.encoding === 'gray' ? BigInt(i ^ (i >> 1)) : BigInt(i);
-    return { id: s.id, name: s.name, constName: `S_${s.name}`, index: i, width, code, bits: bitsOf(code, width) };
+    const bits = bitsOf(code, width);
+    return { id: s.id, name: s.name, constName: `S_${s.name}`, index: i, width, code, bits, shown: user?.[i].typed ?? bits };
   });
 }
 
@@ -668,12 +671,12 @@ export function transitionTable(model) {
   const an = fsmErrors(m).length ? null : analyzeFsm(m);
   const rows = [];
   for (const s of fsmEncoding(m).map((e) => stateById(m, e.id))) {
-    const code = m.encoding === 'enum' ? '' : enc.get(s.id).bits;
+    const code = m.encoding === 'enum' ? '' : enc.get(s.id).shown;
     const moore = m.outputs.filter((o) => s.outputs[o.name] != null).map((o) => `${o.name}=${s.outputs[o.name]}`);
     const merged = (t) => { const all = { ...s.outputs, ...t.outputs }; return m.outputs.filter((o) => all[o.name] != null).map((o) => `${o.name}=${all[o.name]}`).join(', '); };
     const ts = transitionsFrom(m, s.id).filter((t) => stateById(m, t.to));
     for (const t of ts) {
-      rows.push({ state: s.name, code, cond: t.cond || '1', next: nameOf(m, t.to), nextCode: m.encoding === 'enum' ? '' : enc.get(t.to).bits, outputs: merged(t), transition: t.id, stateId: s.id, nextId: t.to });
+      rows.push({ state: s.name, code, cond: t.cond || '1', next: nameOf(m, t.to), nextCode: m.encoding === 'enum' ? '' : enc.get(t.to).shown, outputs: merged(t), transition: t.id, stateId: s.id, nextId: t.to });
     }
     const st = an?.states.find((x) => x.id === s.id);
     if (!ts.length || (st && st.stay.count)) {
@@ -733,7 +736,7 @@ export function stateTable(model) {
       outs.push(m.outputs.map((o) => outText(m, o, r.outputs[o.name], r.xs[o.name])).join(' '));
     }
     const moore = m.outputs.map((o) => outText(m, o, C.val(s.outputs[o.name] ?? o.default, o.name), C.dc(s.outputs[o.name] ?? o.default, o.name))).join(' ');
-    return { state: s.name, code: m.encoding === 'enum' ? '' : e.bits, next, outputs: outs, moore };
+    return { state: s.name, code: m.encoding === 'enum' ? '' : e.shown, next, outputs: outs, moore };
   });
   return { inputs: ib.map((b) => b.name).join(' '), outputs: m.outputs.map((o) => o.name).join(' '), combos, rows, mealy: m.type === 'mealy' };
 }

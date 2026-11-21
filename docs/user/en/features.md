@@ -318,7 +318,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   `default` / `true` / `1` for the state's otherwise transition, taken when no other one is (its Properties' *Else
   (every other case)* box; drawn *else* on its arc, #4489),
   inputs and outputs (bits and buses, default values), clock, reset (sync/async, active level),
-  encoding (binary, gray, one-hot, enumerated), auto-layout, zoom/pan/fit, undo/redo, print / SVG.
+  encoding (binary, gray, one-hot, enumerated, or User-defined: a code typed per state, of any width, the shorter
+  ones zero-extended to the widest, each different), auto-layout, zoom/pan/fit, undo/redo, print / SVG.
   Plain-language checks: unreachable states, states with no exit, overlapping conditions (two
   transitions true at once: the first listed wins), incomplete conditions (the machine stays),
   transitions never taken, outputs never set, invalid names and expressions. *Tables*: transition

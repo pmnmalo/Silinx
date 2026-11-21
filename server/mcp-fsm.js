@@ -151,7 +151,7 @@ export const FSM_TOOLS = [
       for (const [k, v] of Object.entries(codes || {})) F.setStateCode(m, m.states.find(s => s.name === k).id, String(v ?? ''), bitsOf);
       const changed = JSON.stringify(m) !== before;
       const enc = F.fsmEncoding(m);
-      const shown = m.encoding === 'enum' ? '' : `: ${enc.map(e => `${e.name} = ${e.bits}`).join(', ')}`;
+      const shown = m.encoding === 'enum' ? '' : `: ${enc.map(e => `${e.name} = ${e.shown}`).join(', ')}`;   // (the user's as typed, #5026)
       const problems = F.validateFsm(m).filter(d => d.severity === 'error').map(d => `ERROR: ${d.message}`);
       let sync = null;
       if (changed) {
@@ -160,7 +160,7 @@ export const FSM_TOOLS = [
         sync = await syncDrawing(P, name, rel);
       }
       return { text: [`${changed ? 'Encoding set' : 'The encoding is already this'}: ${m.encoding}${shown}`, ...problems, ...(sync?.messages || [])].join('\n'),
-        data: { project: name, path: rel, encoding: m.encoding, codes: Object.fromEntries(enc.map(e => [e.name, m.encoding === 'enum' ? null : e.bits])), problems,
+        data: { project: name, path: rel, encoding: m.encoding, codes: Object.fromEntries(enc.map(e => [e.name, m.encoding === 'enum' ? null : e.shown])), problems,
           ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
   },
