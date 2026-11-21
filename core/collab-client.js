@@ -501,18 +501,25 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   const mine = resumed?.mine ? [resumed.mine] : [];
   // (#4736: sealed with this session's IVs, a counter in each, in the order they are sent)
   const nextIv = editIvs();
-  const sendEdit = u => cur.frame(async () => {
-    // (#4745: not listed yet, kept in `mine`, sent once it is)
-    if (ownerPub && !await amListed()) return null;
-    const f = await seal(key, room, KIND.edit, u, nextIv());
-    return ownerPub ? signEdit({ key: signer, id: signerId }, room, f) : signFrame(signer, room, f);
-  });
-  // (#4745: the owner's list changed: listed now, what of its own changes the owner lacks sent, said once; no longer
-  // listed, a viewer)
+  // (#4745: each edit in its order, sent once this editor is listed, one frame each (a merge of many could pass a
+  // follower's frame); no longer an editor meanwhile: dropped. The others' frames (its awareness) do not wait for it.)
+  let edits = Promise.resolve(), waiters = [];
+  const untilListed = async () => (await amListed()) || new Promise(res => waiters.push(res));
+  const sendEdit = u => {
+    edits = edits.then(async () => {
+      if (ownerPub && !(await untilListed() && signer)) return;
+      await cur.frame(async () => {
+        const f = await seal(key, room, KIND.edit, u, nextIv());
+        return ownerPub ? signEdit({ key: signer, id: signerId }, room, f) : signFrame(signer, room, f);
+      });
+    }).catch(() => {});
+    return edits;
+  };
+  // (#4745: the owner's list changed: the edits waiting go once listed; no longer an editor, dropped)
   const onList = async () => {
-    if (!ownerPub || !signer) return;
-    const now = await amListed();
-    if (now && !wasListed && mine.length) sendEdit(Y.mergeUpdates(mine));
+    if (!ownerPub) return;
+    const now = !!signer && await amListed();
+    if (now || !signer) for (const w of waiters.splice(0)) w(now);
     wasListed = now;
   };
   // (#4745: its request to be listed, at each join: the owner lists it once)
@@ -596,6 +603,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
       signText = null;
       listen(false);
       mine.length = 0;
+      for (const w of waiters.splice(0)) w(false);   // (#4745: its edits waiting, dropped)
       awareness.setLocalStateField('role', 'follower');
       onEvent({ type: 'role', role: 'viewer' });
       if (typeof msg.reason === 'string') onEvent({ type: 'error', message: msg.reason.slice(0, 200) });
@@ -679,6 +687,8 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   enrol(first.c);
   return {
     ...p, ready,
+    /** Once what this participant sent before is on its way (#4745: its edits waiting to be listed too). */
+    flush: async () => { await edits; return p.flush(); },
     /** An editor now (its link's, or the owner's word since, #3997). */
     get editor() { return !!signer; },
     /** Its own key in the owner's last list (#4745: an editor's changes sent; before it, kept and sent once it is). */
