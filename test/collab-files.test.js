@@ -278,3 +278,29 @@ test('#4480 editQueue: an editor\'s change arriving while the disk is read again
   assert.equal(docFile(owner, 'src/top.vhd'), null, 'not put back in the document');
   assert.equal(docFile(editor, 'src/top.vhd'), null);
 });
+
+test('#5064 an editor\'s description at the same time as the owner\'s published again: the editor\'s still applied, whichever of the two the shared value keeps', async () => {
+  for (const ownerFirst of [true, false]) {
+    const owner = owned(), editor = new Y.Doc();
+    Y.applyUpdate(editor, Y.encodeStateAsUpdate(owner), 'remote');
+    // (both from the same state; then, unseen by the other, the owner publishes its description again and the editor renames)
+    const ownerJson = { ...JSON.parse(owner.getMap('project').get('json')), trusted: false, madeBy: 'editor' };
+    const before = Y.encodeStateVector(owner);
+    owner.getMap('project').set('json', JSON.stringify(ownerJson));
+    const ownerUpdate = Y.encodeStateAsUpdate(owner, before);
+    const sv = Y.encodeStateVector(editor);
+    sourceChange(editor, { action: 'rename', path: 'src/top.vhd', to: 'src/main.vhd' });
+    const editorUpdate = Y.encodeStateAsUpdate(editor, sv);
+    // (the shared value keeps one of the two: the test makes each win in turn)
+    if (!ownerFirst) Y.applyUpdate(editor, ownerUpdate, 'remote');
+    const got = nextChange(owner);
+    Y.applyUpdate(owner, editorUpdate, 'remote');
+    const ev = await got;
+    assert.equal(typeof ev.description, 'string', 'the editor\'s own description in the change');
+    const { d, store } = disk({ json: ownerJson });
+    await applyEdits(owner, ev, store);
+    assert.ok(d.json.files.some(f => f.path === 'src/main.vhd') && !d.json.files.some(f => f.path === 'src/top.vhd'), `renamed in the description (${ownerFirst ? 'the owner\'s value first' : 'the editor\'s first'})`);
+    assert.deepEqual([d.files['src/main.vhd'] !== undefined, d.files['src/top.vhd'] === undefined], [true, true]);
+    assert.deepEqual([d.json.trusted, d.json.madeBy], [false, 'editor'], 'the owner\'s fields kept');
+  }
+});

@@ -39,7 +39,13 @@ export function renameFile(doc, from, to) {
   doc.transact(() => { putFile(doc, to, text); dropFile(doc, from); });
 }
 /** The project's description changed, at an editor's (its fileTree left out). */
-export const setDescription = (doc, json) => putProject(doc, json);
+// (#5064: and under a key of this participant's own, which only it sets: the owner's description published again at the
+// same time wins the shared value, whose concurrent writes keep one, and would hide this change; the owner applies the
+// editor's own, watchDoc's `description`)
+export const setDescription = (doc, json) => {
+  const { fileTree, ...pj } = json || {};   // eslint-disable-line no-unused-vars
+  doc.transact(() => { putProject(doc, json); doc.getMap('project').set(`edit:${doc.clientID}`, JSON.stringify(pj)); });
+};
 
 // the project's description in the document (null: none, or not one)
 function docDescription(doc) {
@@ -104,14 +110,14 @@ const fieldsOf = pj => { const { fileTree, ...rest } = pj || {}; return JSON.str
  *  changes that no drawing generates (`generated`), or a drawing of no structure yet (one just created, as text). */
 export const textEditable = (doc, path, generated = new Set()) => (editablePath(path) && !generated.has(path)) || (liveDrawing(path) && !drawingModel(doc, path));
 
-/** An editor's changes the owner received (core/collab-doc.js watchDoc's: { changes, project }), written to its disk:
+/** An editor's changes the owner received (core/collab-doc.js watchDoc's: { changes, project, description }), written to its disk:
  *  store { read() -> { json (its description), fileTree (its folder's files) }, write(path, text), remove(path),
  *  saveJson(json), untrust() (the project untrusted, said, once) }; opts { generated (its drawings' HDL files: never an
  *  editor's text to change), warn(text) }. A new or changed file through the import gate, the project untrusted before
  *  it is written; a file deleted (the caller's remove: into the .trash where there is one); the description as
  *  editorDescription takes it. Returns { written, removed, project (written), undone (paths: what was not taken, the
  *  caller publishes the project again from the disk), refused (the gate refused one) }. */
-export async function applyEdits(doc, { changes = [], project = false }, store, { generated = new Set(), warn = () => {} } = {}) {
+export async function applyEdits(doc, { changes = [], project = false, description = null }, store, { generated = new Set(), warn = () => {} } = {}) {
   const out = { written: [], removed: [], project: false, undone: [], refused: false };
   let disk = await store.read();
   const onDisk = new Set(disk.fileTree || []);
@@ -136,7 +142,7 @@ export async function applyEdits(doc, { changes = [], project = false }, store, 
     try { await store.remove(c.path); out.removed.push(c.path); } catch (e) { warn(`${c.path}: an editor's deletion not made: ${e.message}`); out.refused = true; }
   }
   if (project) {
-    const next = editorDescription(disk.json, doc.getMap('project').get('json') ?? '');
+    const next = editorDescription(disk.json, typeof description === 'string' ? description : doc.getMap('project').get('json') ?? '');
     if (!next) out.undone.push('silinx.json');
     else if (fieldsOf(next) !== fieldsOf(disk.json)) {
       try {

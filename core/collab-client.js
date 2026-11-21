@@ -517,7 +517,8 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   // (#4745: each edit in its order, sent once this editor is listed, one frame each (a merge of many could pass a
   // follower's frame); no longer an editor meanwhile: dropped. The others' frames (its awareness) do not wait for it.)
   let edits = Promise.resolve(), waiters = [];
-  const untilListed = async () => (await amListed()) || new Promise(res => waiters.push(res));
+  // (#5064: the list checked again once waiting: one that came during a first check would wake no one)
+  const untilListed = () => new Promise(res => { waiters.push(res); onList().catch(() => {}); });
   const sendEdit = u => {
     edits = edits.then(async () => {
       if (ownerPub && !(await untilListed() && signer)) return;
