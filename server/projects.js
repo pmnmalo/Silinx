@@ -17,6 +17,7 @@ import { topNameError } from './ident.js';
 import { filePath, normalizePath } from '../core/import-gate.js';
 import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
+import { mapLimit, filesOf } from './concurrent.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
 import { DESIGN_KIND } from '../core/project-kind.js';
 import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
@@ -103,36 +104,33 @@ export const langOf = langOfPath;
 
 async function exists(p) { try { await fs.access(p); return true; } catch { return false; } }
 
-// when a project last changed (ms): its newest file, the build's outputs and hidden folders aside (#1156)
+// when a project last changed (ms): its newest file, the build's outputs and hidden folders aside (#1156); its folders
+// read and its files statted a few at a time, not one after another (#4775)
 async function lastChange(dir) {
-  let t = 0;
-  for (const ent of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
-    if (ent.name.startsWith('.') || ent.name === 'build') continue;
-    const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) t = Math.max(t, await lastChange(p));
-    else if (ent.isFile()) t = Math.max(t, (await fs.stat(p).catch(() => null))?.mtimeMs || 0);
-  }
-  return Math.round(t);
+  const files = await filesOf(dir, { skip: name => name.startsWith('.') || name === 'build' });
+  const times = await mapLimit(files, STATS, async rel => (await fs.stat(path.join(dir, rel)).catch(() => null))?.mtimeMs || 0);
+  return Math.round(Math.max(0, ...times));
 }
+const STATS = 32;   // (the file-system calls waiting at once)
 
 export async function listProjects() {
   const ws = workspaceDir();
   await fs.mkdir(ws, { recursive: true });
-  const out = [];
-  for (const ent of await fs.readdir(ws, { withFileTypes: true })) {
-    // (a folder whose name is no project's is none, whatever it holds: no route opens it, #3522)
-    if (!ent.isDirectory() || ent.name.startsWith('.') || !NAME_RE.test(ent.name)) continue;
+  // (a folder whose name is no project's is none, whatever it holds: no route opens it, #3522)
+  const ents = (await fs.readdir(ws, { withFileTypes: true })).filter(ent => ent.isDirectory() && !ent.name.startsWith('.') && NAME_RE.test(ent.name));
+  // (the projects looked at a few at a time, #4775)
+  const out = await mapLimit(ents, 4, async ent => {
     const dir = path.join(ws, ent.name);
     let text;
-    try { text = await fs.readFile(await projectFile(dir), 'utf8'); } catch { continue; }   // (not a project)
+    try { text = await fs.readFile(await projectFile(dir), 'utf8'); } catch { return null; }   // (not a project)
     // a silinx.json that is no description (a merge's conflict marks, an editor's mistake, #4755): the project listed,
     // damaged, with why, its name taken; never hidden as if it were none
     let pj;
     try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
-    catch (e) { out.push({ name: ent.name, damaged: damagedText(e), modified: await lastChange(dir) }); continue; }
-    out.push({ name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), modified: await lastChange(dir) });
-  }
-  return out.sort((a, b) => a.name.localeCompare(b.name));
+    catch (e) { return { name: ent.name, damaged: damagedText(e), modified: await lastChange(dir) }; }
+    return { name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), modified: await lastChange(dir) };
+  });
+  return out.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // a project cloned from a repository (#3195, server/git.js): untrusted until the user trusts it (#2830), its mark kept in
@@ -142,10 +140,11 @@ export async function listProjects() {
 // repository of several projects). A mark that cannot be read is an untrusted one.
 export const CLONE_TRUST = path.join('.git', 'silinx-trust.json');
 const trustMarks = dir => [path.join(dir, CLONE_TRUST), path.join(path.dirname(dir), '.git', 'silinx-trust', `${path.basename(dir)}.json`)];
-const cloneTrust = dir => {
+// (read without holding the server's thread, #4775)
+const cloneTrust = async dir => {
   for (const f of trustMarks(dir)) {
     let text;
-    try { text = fsSync.readFileSync(f, 'utf8'); } catch { continue; }
+    try { text = await fs.readFile(f, 'utf8'); } catch { continue; }
     try { const m = JSON.parse(text); return m && typeof m === 'object' ? m : { trusted: false }; } catch { return { trusted: false }; }
   }
   return null;
@@ -180,7 +179,7 @@ async function migrateTrust() {
     if (n.startsWith('.') || projectNameError(n)) continue;
     let pj;
     try { pj = parseDescription(await fs.readFile(path.join(dir, PROJECT_FILE), 'utf8')); } catch { continue; }
-    if (pj?.trusted !== false && !cloneTrust(dir)) list.push({ dir, id: typeof pj?.id === 'string' ? pj.id : null });
+    if (pj?.trusted !== false && !await cloneTrust(dir)) list.push({ dir, id: typeof pj?.id === 'string' ? pj.id : null });
   }
   await trustStore.migrate(list);
 }
@@ -200,7 +199,7 @@ export async function readProject(name) {
   try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
   catch (e) { throw new HttpError(422, damagedMessage(name, e)); }
   etags.set(pj, descriptionEtag(text));
-  const ct = cloneTrust(dir);
+  const ct = await cloneTrust(dir);
   if (ct) Object.assign(pj, { trusted: false }, ct.madeBy ? { madeBy: ct.madeBy } : {});
   // (#4735: and a record of its folder outside it, server/trust-store.js; none: untrusted, said as one Silinx did not make)
   if (pj.trusted !== false && !await recordedTrust(dir, pj.id)) Object.assign(pj, { trusted: false, madeBy: UNRECORDED });
@@ -286,7 +285,7 @@ async function writeProjectUnlocked(name, pj) {
   const badTop = topNameError(pj);
   if (badTop) throw new HttpError(400, badTop);
   const clean = JSON.parse(projectJsonText(name, pj));   // (core/project-defaults.js, as the browser edition's, #4766)
-  const ct = cloneTrust(dir);
+  const ct = await cloneTrust(dir);
   if (ct) { delete clean.trusted; delete clean.madeBy; }   // (a clone's: in .git, #3195)
   // (#4735: a project with no trust record: untrusted by the record's absence, nothing of it written)
   const unrecorded = clean.madeBy === UNRECORDED;
