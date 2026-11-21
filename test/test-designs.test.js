@@ -1,5 +1,5 @@
 // The test designs (test-designs/<name>, core/test-designs.js, #1746): the designs Silinx is tested with, offered as
-// projects apart from the examples. Each is made into a project of the workspace as New Project makes it (server/
+// projects apart from the examples (not by New Project nor the MCP server since #5108). Each is made into a project of the workspace as New Project makes it (server/
 // projects.js), then: Check Syntax with its exact warnings (the MCP server's check_syntax: the application's, the design
 // checks included); a schematic or a state diagram: its self-checking test bench passes in Silinx's simulator with no
 // warning; a C / C++ program: C simulation (main() returns 0, PASS), C synthesis to VHDL and Verilog with no message,
@@ -126,15 +126,15 @@ test('#1746 a test design for a board: its UCF written (its constraints folder m
   assert.match(fs.readFileSync(path.join(P.projectDir('Adder'), 'constraints', 'top.ucf'), 'utf8'), /^# UCF for top 'full_adder' on Digilent Basys2/m);
 });
 
-test('#1746 the MCP server: list_examples lists the test designs apart; new_project_from_example makes one', async () => {
+test('#5108 the MCP server as New Project: list_examples lists the examples only; new_project_from_example refuses a test design', async () => {
   const ex = await tool('list_examples', {});
   assert.deepEqual(ex.data.examples.map((e) => e.name), EXAMPLE_ORDER);
-  assert.deepEqual(ex.data.testDesigns.map((e) => e.name), TEST_DESIGN_ORDER);
-  assert.deepEqual(ex.data.testDesigns.find((e) => e.name === 'gcd'), { name: 'gcd', top: 'gcd', simTop: null, board: null, device: 'xc3s250ecp132-4', kind: 'c', about: TEST_DESIGNS.find((x) => x.name === 'gcd').about });
-  assert.match(ex.text, /\n\nTest designs \(the designs Silinx is tested with; its own, with their test\):\nbus_taps \(schematic\): bus taps of one bit and of several, [^\n]*; top bus_taps, test bench tb_bus_taps\n/);
-  assert.match(ex.text, /\ngcd \(c\): C: the greatest common divisor, [^\n]*; top gcd, its test the C's main\(\)\n/);
-  const made = await tool('new_project_from_example', { name: 'Vend', example: 'vending' });
-  assert.equal(made.text, 'Project \'Vend\' made from the test design vending: top vending, no board (xc3s250ecp132-4). It is untrusted, as every project an assistant makes: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.');
-  assert.ok(fs.existsSync(path.join(P.projectDir('Vend'), 'sim', 'tb_vending.vhd')));
+  assert.deepEqual(Object.keys(ex.data), ['examples']);
+  assert.deepEqual(ex.text.split('\n').map((l) => l.split(':')[0]), EXAMPLE_ORDER);
+  assert.doesNotMatch(ex.text, /Test design|vending|gcd/);
+  for (const d of ['vending', 'gcd', 'full_adder']) await assert.rejects(tool('new_project_from_example', { name: 'X', example: d }), new RegExp(`^Error: unknown example '${d}' \\(list_examples\\)$`));
   await assert.rejects(tool('new_project_from_example', { name: 'X', example: '../test-designs/gcd' }), /unknown example '\.\.\/test-designs\/gcd' \(list_examples\)/);
+  assert.equal(fs.existsSync(P.projectDir('X')), false);
+  const made = await tool('new_project_from_example', { name: 'Gates', example: 'gates' });
+  assert.match(made.text, /^Project 'Gates' made from the example gates: top gates, /);
 });

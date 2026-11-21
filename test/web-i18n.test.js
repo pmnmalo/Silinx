@@ -66,9 +66,6 @@ test('t(): exact strings, patterns, surrounding whitespace, unknown text unchang
     "Apagar 'src/a.vhd'?\n(É movido para a pasta .trash da área de trabalho, de onde o pode repor. Remover do Projeto mantém o ficheiro na pasta do projeto.)");
   assert.equal(t("Delete the folder 'old' and the 2 file(s) in it from the project?\n(They are moved to the workspace's .trash folder, from where you can move them back.)\n\nold/a.v\nold/b.v"),
     "Apagar a pasta 'old' e o(s) 2 ficheiro(s) que contém do projeto?\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)\n\nold/a.v\nold/b.v");
-  // the test designs in New Project (#1746)
-  assert.equal(t('Test design: full_adder'), 'Projeto de teste: full_adder');
-  assert.equal(t("The test design has its own sources and its test: a test bench (Simulate), or the C program's main() (C Simulation)."), 'O projeto de teste tem as suas próprias fontes e o seu teste: uma bancada de teste (Simular), ou o main() do programa em C (Simulação de C).');
   // a task's button with its dot (#991): the task and its state
   assert.equal(t('Implement — done with warnings'), 'Implementar — concluído com avisos');
   assert.equal(t('Design — done, no warnings'), 'Projetar — concluído, sem avisos', 'the Design task: Projetar, a verb as its neighbours (#4953)');

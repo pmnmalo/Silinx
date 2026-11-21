@@ -69,7 +69,6 @@ export function followApi(api, doc, { warn = () => {}, activity = () => null } =
     // (the browser edition's storage, as it is: only read, at start-up and by the Start page; none reopened, #3320)
     ...(storage ? { storage, initStorage: async () => storage() } : {}),
     templates: async () => [],
-    testDesigns: async () => [],
     // (the device database, the boards: data of Silinx's own, not the server's, #4002: the owner's Design Summary)
     devices: async () => (await import('/core/devices.js')).getDeviceDb(),
     toolchain: async () => ({ ise: { mode: 'silinx', available: false, reason: `following ${collab.owner}'s project: its processes run in their Silinx` }, programmers: {} }),

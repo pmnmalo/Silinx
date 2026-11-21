@@ -1,9 +1,10 @@
-// UI (#1746): the test designs in New Project's templates, after the examples ("Test design: …", its note), in
-// Portuguese too; a schematic test design opened (its drawings given their HDL files) and its test bench run (Simulation
-// finished OK); a C test design opened and its C Simulation run (PASS). Both interfaces. No warnings.
+// UI: New Project's Start from lists Empty project and the examples only, not the test designs (#5108), in Portuguese
+// too; the test designs (#1746), opened through the API as the tests make them: a schematic test design (its drawings
+// given their HDL files) and its test bench run (Simulation finished OK); a C test design and its C Simulation run
+// (PASS). Both interfaces. No warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, readWs } from './harness.js';
+import { setupUi, uiTest, readWs, makeProject } from './harness.js';
 import { EXAMPLE_ORDER } from '../../core/examples.js';
 import { TEST_DESIGN_ORDER } from '../../core/test-designs.js';
 
@@ -13,48 +14,38 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 const SEL = '.dlg-overlay .wiz-main select';
-const NOTE = 'The test design has its own sources and its test: a test bench (Simulate), or the C program\'s main() (C Simulation).';
-const NOTE_PT = 'O projeto de teste tem as suas próprias fontes e o seu teste: uma bancada de teste (Simular), ou o main() do programa em C (Simulação de C).';
-// (the note under the Top-Level Source Type, on the wizard's second page)
-const note = () => document.querySelector('.dlg-overlay .wiz-main .form-grid .hint')?.textContent || '';
+const options = (page) => page.eval((s) => [...document.querySelector(s).options].map((o) => [o.value, o.textContent]), SEL);
 const setLanguage = (page, l) => page.eval(async (x) => (await import('/js/i18n.js')).setLanguage(x), l);
 
-// New Project ▸ Start from: the test design `name`, no board: the project open. check(): on the first page; pt: the
-// second page's note in Portuguese too
-async function newFromTestDesign(page, name, { check, pt = false } = {}) {
-  await page.menu('File', 'New Project…');
-  await page.waitDialog('New Project Wizard');
-  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
-  await page.fill(SEL, name, { index: 0 });
-  await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
-  if (check) await check();
-  await page.dialogButton('Next >');
-  await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
-  assert.equal(await page.eval(note), NOTE);
-  if (pt) {
-    await setLanguage(page, 'pt');
-    await page.waitFor((t) => document.querySelector('.dlg-overlay .wiz-main .form-grid .hint')?.textContent === t, [NOTE_PT], { what: 'the note in Portuguese' });
-    await setLanguage(page, 'en');
-    await page.waitFor((t) => document.querySelector('.dlg-overlay .wiz-main .form-grid .hint')?.textContent === t, [NOTE], { what: 'the note in English again' });
-  }
-  await page.dialogButton('Next >');
-  await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Summary');
-  await page.dialogButton('Finish');
-  await page.waitNoDialog();
+// a test design made a project of the workspace (the server's, as the tests make them), then opened
+async function openTestDesign(page, name) {
+  await makeProject(env, { name, template: name });
+  await page.openProject(name);
   await page.waitFor((n) => window.Silinx.project?.name === n, [name], { what: `project ${name} open` });
 }
 
-uiTest('#1746 New Project: the test designs after the examples, in Portuguese too; full_adder (two schematics) opens, its test bench passes', E, async (page) => {
-  await newFromTestDesign(page, 'full_adder', { pt: true, check: async () => {
-    const options = await page.eval((s) => [...document.querySelector(s).options].map((o) => [o.value, o.textContent]), SEL);
-    assert.deepEqual(options, [['empty', 'Empty project'], ...EXAMPLE_ORDER.map((t) => [t, `Example: ${t}`]), ...TEST_DESIGN_ORDER.map((t) => [t, `Test design: ${t}`])]);
-    // in Portuguese
-    await setLanguage(page, 'pt');
-    await page.waitFor((s) => [...document.querySelector(s).options].some((o) => o.textContent === 'Projeto de teste: full_adder'), [SEL], { what: 'Portuguese' });
-    assert.ok(await page.eval((s) => [...document.querySelector(s).options].some((o) => o.textContent === 'Exemplo: gates'), SEL));
-    await setLanguage(page, 'en');
-    await page.waitFor((s) => [...document.querySelector(s).options].some((o) => o.textContent === 'Test design: full_adder'), [SEL], { what: 'English again' });
-  } });
+uiTest('#5108 New Project: Start from lists Empty project and the examples only, no test design; in Portuguese too', E, async (page) => {
+  await page.menu('File', 'New Project…');
+  await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
+  await page.waitFor((s) => document.querySelector(s)?.options.length > 1, [SEL], { what: 'Start from' });
+  const EN = [['empty', 'Empty project'], ...EXAMPLE_ORDER.map((t) => [t, `Example: ${t}`])];
+  assert.deepEqual(await options(page), EN);
+  assert.ok(!(await options(page)).some(([v]) => TEST_DESIGN_ORDER.includes(v)));
+  // in Portuguese
+  await setLanguage(page, 'pt');
+  const PT = [['empty', 'Projeto vazio'], ...EXAMPLE_ORDER.map((t) => [t, `Exemplo: ${t}`])];
+  await page.waitFor((s, x) => JSON.stringify([...document.querySelector(s).options].map((o) => [o.value, o.textContent])) === x, [SEL, JSON.stringify(PT)], { what: 'Portuguese' });
+  await setLanguage(page, 'en');
+  await page.waitFor((s, x) => JSON.stringify([...document.querySelector(s).options].map((o) => [o.value, o.textContent])) === x, [SEL, JSON.stringify(EN)], { what: 'English again' });
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
+  assert.doesNotMatch(await page.consoleText(), /WARNING|ERROR/);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+});
+
+uiTest('#1746 the test design full_adder (two schematics) opened: its drawings linked to their HDL, its test bench passes', E, async (page) => {
+  await openTestDesign(page, 'full_adder');
   // the schematics given their HDL files (every source has its HDL), the top full_adder, its test bench tb_full_adder
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/full_adder.vhd'] === 'src/full_adder.sch.json' && window.Silinx.hdlToSch?.['src/half_adder.vhd'] === 'src/half_adder.sch.json', [], { what: 'the schematics linked to their VHDL', timeout: 20000 });
   const pj = await page.eval(() => window.Silinx.project);
@@ -71,8 +62,8 @@ uiTest('#1746 New Project: the test designs after the examples, in Portuguese to
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
 
-uiTest('#1746 New Project from the test design gcd (C): its C Simulation passes', E, async (page) => {
-  await newFromTestDesign(page, 'gcd');
+uiTest('#1746 the test design gcd (C) opened: its C Simulation passes', E, async (page) => {
+  await openTestDesign(page, 'gcd');
   const pj = await page.eval(() => window.Silinx.project);
   assert.deepEqual([pj.top, pj.board], ['gcd', null]);
   await page.showMessages();

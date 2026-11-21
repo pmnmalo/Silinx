@@ -28,7 +28,6 @@ import crypto from 'node:crypto';
 import { createZip, readZip } from '../../core/zip.js';
 import { TRACKER_SOURCES, WORKERS_SOURCES } from '../../server/csp.js';
 import { EXAMPLE_ORDER } from '../../core/examples.js';
-import { TEST_DESIGN_ORDER } from '../../core/test-designs.js';
 
 let env, plain, html, site, server, siteUrl, build, skip = null;
 const served = [];   // (the paths the site served, #967)
@@ -126,8 +125,8 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   // where the project goes: this browser's storage, not the full application's workspace folder (#125)
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main .hint:last-child').textContent), /^Projects are kept in this browser's storage \(/);
-  // the templates: the examples, then the test designs (#1746), embedded too
-  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => o.value)), ['empty', ...EXAMPLE_ORDER, ...TEST_DESIGN_ORDER]);
+  // the templates: the examples, embedded too, and nothing else (not the test designs, #5108)
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => o.value)), ['empty', ...EXAMPLE_ORDER]);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Solo');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
