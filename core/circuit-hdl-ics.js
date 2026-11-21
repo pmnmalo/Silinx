@@ -3,6 +3,7 @@
 // real chip reads them (a floating 74LS input high, a 4000's X), an open collector output a 0 or nothing, nothing driven
 // while unpowered. VHDL and Verilog. Isomorphic module.
 import { vhdlCoreIc, verilogCoreIc, vhdlCoreDigital } from './circuit-hdl-core.js';
+import { vhdlEntity, vlogModule } from './hdl-emit.js';
 
 /** A pin's port name: 1A → a1, 2Y → y2, A → a, VCC → vcc, VDD → vdd. */
 export const pinPort = (p) => p.port ?? (/^\d/.test(p.name) ? `${p.name.slice(1).toLowerCase()}${p.name[0]}` : p.name.toLowerCase());
@@ -24,9 +25,9 @@ export function vhdlIc(L, name, d) {
   if (d.model || d.seq) return vhdlMsi(L, name, d);
   const pin = new Map(d.pins.map((p) => [p.n, p]));
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, '  port (');
-  // (a transceiver's pin, #4397: read and driven, inout)
-  L.push(icPorts(d).map((p) => `    ${pinPort(p)} : ${p.io ? "inout std_logic := 'Z'" : isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
+  L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, ...vhdlEntity(name, {
+    // (a transceiver's pin, #4397: read and driven, inout)
+    ports: icPorts(d).map((p) => ({ name: pinPort(p), dir: p.io ? 'inout' : isOut(p) ? 'out' : 'in', type: 'std_logic', init: p.io ? "'Z'" : isOut(p) ? "'X'" : null })) }), '');
   L.push(`architecture model of ${name} is`);
   if (d.family === 'ttl') {
     L.push('  -- a 74LS input reads a floating (Z) level high', '  function rd(s : std_logic) return std_logic is', '  begin', '    case s is', "      when '0' | 'L' => return '0';",
@@ -56,7 +57,7 @@ export function verilogIc(L, name, d) {
   if (d.model || d.seq) return verilogMsi(L, name, d);
   const pin = new Map(d.pins.map((p) => [p.n, p]));
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} (${icPorts(d).map((p) => `${p.io ? 'inout' : isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`);
+  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, ...vlogModule(name, { inline: true, ports: icPorts(d).map((p) => ({ name: pinPort(p), dir: p.io ? 'inout' : isOut(p) ? 'out' : 'in', range: '' })) }));
   if (d.family === 'ttl') L.push('  // a 74LS input reads a floating (z) level high', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'b1 : s;", '  endfunction');
   else L.push('  // a CMOS input reads a floating (z) level unknown (x)', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'bx : s;", '  endfunction');
   if (d.oc) L.push('  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction');
@@ -93,8 +94,8 @@ const slvSubtypes = (lines) => [...new Set([...lines.join('\n').matchAll(/\bslv(
 function vhdlMsi(L, name, d) {
   const ins = d.pins.filter((p) => p.dir === 'in'), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, ...controlGenerics(d, true), '  port (');
-  L.push(icPorts(d).map((p) => `    ${pinPort(p)} : ${isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
+  L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, ...vhdlEntity(name, { genericClause: controlGenerics(d, true),
+    ports: icPorts(d).map((p) => ({ name: pinPort(p), dir: isOut(p) ? 'out' : 'in', type: 'std_logic', init: isOut(p) ? "'X'" : null })) }), '');
   L.push(`architecture model of ${name} is`, ...(d.family === 'cmos' ? CMOS_RD : TTL_RD), '  -- whether a level is unknown', '  function anyx(v : std_logic_vector) return boolean is', '  begin', '    for k in v\'range loop',
     "      if v(k) /= '0' and v(k) /= '1' then return true; end if;", '    end loop;', '    return false;', '  end function anyx;', ...slvSubtypes(d.seq ? d.vhdl.body : d.vhdl));
   if (outs.some((p) => p.dir === 'oc')) L.push('  -- an open collector output: a 0, or nothing', '  function oc(s : std_logic) return std_logic is', '  begin', "    if s = '0' then return '0'; elsif s = '1' then return 'Z'; else return 'X'; end if;", '  end function oc;');
@@ -110,7 +111,7 @@ function vhdlMsi(L, name, d) {
 function verilogMsi(L, name, d) {
   const ins = d.pins.filter((p) => p.dir === 'in'), outs = d.pins.filter(isOut);
   const vcc = pinPort(d.pins.find((p) => p.dir === 'vcc')), gnd = pinPort(d.pins.find((p) => p.dir === 'gnd'));
-  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} ${controlGenerics(d, false).join('')}(${icPorts(d).map((p) => `${isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`,
+  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, ...vlogModule(name, { inline: true, paramClause: controlGenerics(d, false).join(''), ports: icPorts(d).map((p) => ({ name: pinPort(p), dir: isOut(p) ? 'out' : 'in', range: '' })) }),
     ...(d.family === 'cmos' ? ['  // a CMOS input reads a floating (z) level unknown (x)', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'bx : s;", '  endfunction']
       : ['  // a 74LS input reads a floating (z) level high', '  function rd(input s);', "    rd = (s === 1'bz) ? 1'b1 : s;", '  endfunction']));
   if (outs.some((p) => p.dir === 'oc')) L.push('  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction');

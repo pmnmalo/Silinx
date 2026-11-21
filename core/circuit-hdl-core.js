@@ -6,6 +6,7 @@
 // ports themselves, its outputs while powered.
 // Isomorphic module.
 import { translateSource } from './translate.js';
+import { vhdlEntity, vlogModule } from './hdl-emit.js';
 
 const pinPort = (p) => p.port;
 const isOut = (p) => p.dir === 'out' || p.dir === 'oc';
@@ -43,8 +44,7 @@ export function coreText(L, name, d, V) {
 /** The VHDL entity of an IC with a core and its simulation architecture (model): its lines pushed on L. */
 export function vhdlCoreIc(L, name, d, rd) {
   const ins = icPins(d).filter((p) => p.dir === 'in'), outs = icPins(d).filter(isOut), [vcc, gnd] = supplyOf(d);
-  L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `entity ${name} is`, '  port (',
-    icPins(d).map((p) => `    ${pinPort(p)} : ${isOut(p) ? "out std_logic := 'X'" : 'in std_logic'}`).join(';\n'), '  );', `end entity ${name};`, '');
+  L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `-- ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, ...vhdlEntity(name, { ports: icPins(d).map((p) => ({ name: pinPort(p), dir: isOut(p) ? 'out' : 'in', type: 'std_logic', init: isOut(p) ? "'X'" : null })) }), '');
   L.push(`architecture model of ${name} is`, ...rd, `  signal ${ins.map((p) => `i_${pinPort(p)}`).join(', ')} : std_logic := 'X';`, `  signal ${outs.map((p) => `o_${pinPort(p)}`).join(', ')} : std_logic;`,
     ...(outs.some((p) => p.dir === 'oc') ? ['  -- an open collector output: a 0, or nothing', '  function oc(s : std_logic) return std_logic is', '  begin', "    if s = '0' then return '0'; elsif s = '1' then return 'Z'; else return 'X'; end if;", '  end function oc;'] : []),
     '  signal pw : boolean;', 'begin', `  pw <= ${vcc} = '1' and ${gnd} = '0';`, ...ins.map((p) => `  i_${pinPort(p)} <= rd(${pinPort(p)});`),
@@ -65,7 +65,7 @@ export function vhdlCoreDigital(L, name, d) {
 /** The Verilog module of an IC with a core, its simulation body (before its `else): its lines pushed on L. */
 export function verilogCoreIc(L, name, d, rd) {
   const ins = icPins(d).filter((p) => p.dir === 'in'), outs = icPins(d).filter(isOut), [vcc, gnd] = supplyOf(d);
-  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, `module ${name} (${icPins(d).map((p) => `${isOut(p) ? 'output' : 'input'} ${pinPort(p)}`).join(', ')});`, ...rd,
+  L.push(`// ${d.chip}: ${d.title.toLowerCase()} (typical delay ${d.tpd} ns)`, ...vlogModule(name, { inline: true, ports: icPins(d).map((p) => ({ name: pinPort(p), dir: isOut(p) ? 'out' : 'in', range: '' })) }), ...rd,
     ...(outs.some((p) => p.dir === 'oc') ? ['  // an open collector output: a 0, or nothing', '  function oc(input s);', "    oc = (s === 1'b0) ? 1'b0 : (s === 1'b1) ? 1'bz : 1'bx;", '  endfunction'] : []),
     `  wire pw = (${vcc} === 1'b1) && (${gnd} === 1'b0);`, `  wire ${outs.map((p) => `o_${pinPort(p)}`).join(', ')};`,
     `  ${coreOf(name)} u_core (${[...coreIns(d, ins).map((p) => `.${pinPort(p)}(rd(${pinPort(p)}))`), ...outs.map((p) => `.${pinPort(p)}(o_${pinPort(p)})`)].join(', ')});`,

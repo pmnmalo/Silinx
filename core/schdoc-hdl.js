@@ -9,7 +9,7 @@ import {
   symbolDef, validIdent, vhdlBits, vlogBits,
 } from './schdoc.js';
 import { mountSymbolHdl } from './schdoc-hdl-symbol.js';
-import { vhdlType } from './hdl-emit.js';
+import { vhdlEntity, vhdlType, vlogModule, vlogRange } from './hdl-emit.js';
 
 // ===================================================================== HDL generation
 // VHDL type class of a type text: 'sl' | 'slv' | 'u' | 's' | 'other'
@@ -297,13 +297,12 @@ export function generateHdl(docIn, opts = {}) {
       const ty = p.type && verbatimOK ? p.type : vtype(p.width);
       const iv = p.dir === 'out' && p.net && regNets.has(p.net) && !outRead.has(p.net) ? init.get(p.net) : null;
       const mode = p.dir === 'out' && p.mode === 'buffer' ? 'buffer' : p.dir;
-      const dv = p.default && verbatimOK && p.type ? ` := ${p.default}` : iv ? ` := ${vhdlClass(ty) === 'sl' ? vhdlBits(iv, true) : vhdlBits(iv, false)}` : '';
-      return `${p.name} : ${mode} ${ty}${dv}`;
+      const dv = p.default && verbatimOK && p.type ? p.default : iv ? (vhdlClass(ty) === 'sl' ? vhdlBits(iv, true) : vhdlBits(iv, false)) : null;
+      return { name: p.name, dir: mode, type: ty, init: dv };
     });
-    const L = [`-- ${header}`, ...descC('--'), ctx, '', `entity ${name} is`];
-    if (generics.length) L.push(`  generic (\n${generics.map(g => `    ${g.name} : ${g.type || 'integer'}${g.default ? ` := ${g.default}` : ''}`).join(';\n')}\n  );`);
-    if (plist.length) L.push(`  port (\n${plist.map(x => `    ${x}`).join(';\n')}\n  );`);
-    L.push(`end entity ${name};`, '', `architecture ${arch} of ${name} is`);
+    const L = [`-- ${header}`, ...descC('--'), ctx, ''];
+    L.push(...vhdlEntity(name, { generics: generics.map(g => ({ name: g.name, type: g.type || 'integer', value: g.default ? g.default : null })), ports: plist.length ? plist : null }));
+    L.push('', `architecture ${arch} of ${name} is`);
     if (vdecls) L.push(vdecls);
     if (components.size) L.push('  attribute BOX_TYPE : string;', ...[...components.values()].map(c => indent(c, '  ')));
     L.push(...sigDecls, 'begin', stmts, `end architecture ${arch};`, '');
@@ -313,12 +312,13 @@ export function generateHdl(docIn, opts = {}) {
     const plist = ports.map(p => {
       const reg = p.dir === 'out' && p.net && regNets.has(p.net);
       const sg = /\bsigned\b/.test(p.type || '') ? ' signed' : '';
-      const rng = verbatimOK && p.type && /\[.*\]/.test(p.type) ? ` ${/\[.*\]/.exec(p.type)[0]}` : (p.width > 1 ? ` [${p.width - 1}:0]` : '');
-      return `${p.dir === 'in' ? 'input' : p.dir === 'out' ? 'output' : 'inout'} ${reg ? 'reg' : 'wire'}${sg}${rng} ${p.name}`;
+      const range = verbatimOK && p.type && /\[.*\]/.test(p.type) ? `${/\[.*\]/.exec(p.type)[0]} ` : vlogRange(p.width);
+      return { name: p.name, dir: p.dir === 'in' ? 'in' : p.dir === 'out' ? 'out' : 'inout', kind: `${reg ? 'reg' : 'wire'}${sg}`, range };
     });
     const L = [`// ${header}`, ...descC('//'), ctx, ''];
-    const gtxt = generics.length ? ` #(\n${generics.map(g => `  parameter ${g.type ? g.type + ' ' : ''}${g.name} = ${g.default || 0}`).join(',\n')}\n)` : '';
-    L.push(`module ${name}${gtxt} (\n${plist.map(x => `  ${x}`).join(',\n')}\n);`);
+    const head = vlogModule(name, { params: generics.map(g => ({ name: g.name, type: g.type || null, value: g.default || 0 })), ports: plist });
+    if (!plist.length) head.splice(-1, 0, '');   // (no port: an empty line between its parentheses, as before)
+    L.push(...head);
     if (vdecls) L.push(vdecls);
     L.push(...sigDecls);
     // initial values of output-port registers

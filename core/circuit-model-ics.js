@@ -7,6 +7,7 @@
 // asynchronous controls first, then its clock's edge. A register starts unknown (X), as the other ICs' do.
 // Isomorphic module.
 import { dip } from './circuit-ics.js';
+import { vhdlEntity } from './hdl-emit.js';
 
 export const BAR = '̅';
 const P = (at) => (n, name, dir, port) => ({ n, name, dir, ...at(n), port: port ?? name.replace(BAR, '_n').toLowerCase() });
@@ -63,7 +64,7 @@ function storeVhdl(e, k) {
 function coreVhdl(name, pins, stores) {
   const ins = pins.filter((p) => p.dir === 'in').map((p) => p.port), outs = pins.filter((p) => p.dir === 'out' || p.dir === 'oc').map((p) => p.port);
   const raw = !Array.isArray(stores);
-  const L = ['library ieee;', 'use ieee.std_logic_1164.all;', ...(raw ? ['use ieee.numeric_std.all;'] : []), '', `entity ${name} is`, '  port (', `    ${ins.join(', ')} : in std_logic;`, `    ${outs.join(', ')} : out std_logic`, '  );', `end entity ${name};`, '',
+  const L = ['library ieee;', 'use ieee.std_logic_1164.all;', ...(raw ? ['use ieee.numeric_std.all;'] : []), '', ...vhdlEntity(name, { ports: [{ name: ins.join(', '), dir: 'in', type: 'std_logic' }, { name: outs.join(', '), dir: 'out', type: 'std_logic' }] }), '',
     `architecture rtl of ${name} is`];
   if (raw) {
     L.push(...stores.decl.map((l) => `  ${l}`), 'begin', ...stores.body.map((l) => `  ${l}`), 'end architecture rtl;', '');
