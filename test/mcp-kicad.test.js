@@ -91,7 +91,8 @@ test('import_part: a footprint, then a library and its symbols said, its Silinx 
 test('edit_circuit places the project\'s KiCad parts; its check, its HDL file, simulate_drawing', async () => {
   const e = await ok('edit_circuit', { project: 'k', path: 'src/kc.circ.json', operations: [{ op: 'add', type: T('74HC00'), at: [40, 20] }, { op: 'wire', from: 'U1.14', to: 'BB1.tp30' },
     { op: 'wire', from: 'U1.7', to: 'BB1.tn29' }, { op: 'add', type: T('SENSOR'), at: [40, 30] }] });
-  assert.deepEqual(e.text.split('\n'), [`U1 (${T('74HC00')}) added`, 'w3 wired from "U1.14" to "BB1.tp30"', 'w4 wired from "U1.7" to "BB1.tn29"', `U2 (${T('SENSOR')}) added`,
+  // (w5, w6: a new circuit has w1 to w4 already, its supply's two wires and its rails' jumpers, #4929)
+  assert.deepEqual(e.text.split('\n'), [`U1 (${T('74HC00')}) added`, 'w5 wired from "U1.14" to "BB1.tp30"', 'w6 wired from "U1.7" to "BB1.tn29"', `U2 (${T('SENSOR')}) added`,
     'WARNING: U2 (TEST-SENSOR) is drawn only: it is not simulated and its pins drive nothing', 'Process "Check Circuit" of kc.circ.json completed successfully with 1 warning(s).', 'src/kc.vhd updated from src/kc.circ.json']);
   assert.deepEqual([e.data.errors, e.data.warnings], [[], [{ message: 'U2 (TEST-SENSOR) is drawn only: it is not simulated and its pins drive nothing', item: 'U2' }]]);
   assert.match(read('src/kc.vhd'), /^-- Parts {7}: U1 \(74HC00, as the SN74LS00\), U2 \(TEST-SENSOR, drawn only\)$/m);
