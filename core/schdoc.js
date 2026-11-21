@@ -40,14 +40,14 @@ import {
 } from './schdoc-from-hdl.js';
 import {
   FF_INPUTS, MUX_INPUTS, PORT_SIDES, ROT_OK, SIDE_V, SYMBOLS, SYMBOL_CATEGORIES, arithIo, attrParam, defaultParams,
-  ffVariant, findMod, freePortName, gateVariant, int, normModules, oppositeSide, pinList, portBox, portSide, rotSize, symbolBox,
+  ffVariant, findMod, freePortName, regAsFf, gateVariant, int, normModules, oppositeSide, pinList, portBox, portSide, rotSize, symbolBox,
   symbolDef, symbolParams, symbolPins, symbolTypeName, turnSide, xform, xformSide
 } from './schdoc-symbols.js';
 import { clone, lineStarts } from './util.js';
 export { lineStarts };   // (core/util.js's)
 export {
   FF_INPUTS, MUX_INPUTS, PORT_SIDES, SIDE_V, SYMBOLS, SYMBOL_CATEGORIES, arithIo, attrParam, defaultParams, ffVariant,
-  findMod, freePortName, gateVariant, int, normModules, oppositeSide, pinList, portBox, portSide, rotSize, symbolBox, symbolDef,
+  findMod, freePortName, gateVariant, int, normModules, regAsFf, oppositeSide, pinList, portBox, portSide, rotSize, symbolBox, symbolDef,
   symbolParams, symbolPins, symbolTypeName, turnSide, xform, xformSide
 };
 export { BUF_OLD_W, COMPARE_OPS, COMPARE_SYM, compareOps, comparePin, constWidth, JOIN_BAR, JOIN_OLD_W, JOIN_W, MUX_BODY_W, MUX_OLD_BODY_W, MUX_SEL_X } from './schdoc-symbols.js';
@@ -118,6 +118,8 @@ export function normalizeDoc(d, { modules } = {}) {
     ids.add(id); o.id = id;
   };
   doc.symbols = (Array.isArray(doc.symbols) ? doc.symbols : []).filter(s => s && s.type).map(s => {
+    // (a REG of before, #5030: the FD flip-flop of its options)
+    if (s.type === 'register') s = { ...s, ...regAsFf(plainObj(s.params) ? s.params : {}) };
     const sp = plainObj(s.params) ? s.params : {}, dp = defaultParams(s.type);
     const o = { id: s.id, type: String(s.type), x: snap(+s.x || 0), y: snap(+s.y || 0), rot: ROT_OK.has(+s.rot) ? +s.rot : 0, mirror: !!s.mirror, name: String(s.name ?? ''), params: { ...dp, ...sp } };
     for (const [k, d] of Object.entries(dp)) if (typeof d === 'string') o.params[k] = asText(o.params[k], d);

@@ -3,7 +3,7 @@
 // name, with their .sym files), wires, bus taps, net names and I/O markers. isesch.js re-exports exportIseSch,
 // decodeXlSymbol and iseTimestamp. Isomorphic (no DOM, no Node APIs).
 import {
-  JOIN_BAR, SYMBOLS, compareOps, normalizeDoc, symbolDef, symbolPins, symbolBox, portBox, portSide, netlist, normModules, generateHdl, constBits, newDoc, xform,
+  JOIN_BAR, SYMBOLS, compareOps, normalizeDoc, symbolDef, symbolPins, symbolBox, portBox, portSide, netlist, normModules, generateHdl, constBits, newDoc, regAsFf, xform,
 } from './schdoc.js';
 import { LIB_GFX, LIB_TS, findModule, gfxShapes, iomarkerOrien, iseXform, lc, libPins, xaiToIseOrien } from './isesch.js';
 import { blockHdlDecls } from './isesch-blockhdl.js';
@@ -62,6 +62,8 @@ function iseSymbolFor(s, def, netW, modules) {
     const d0 = S.params[0].default, iv = String(p.init ?? d0) === '1' ? '1' : '0';
     const lp = libPins(t);
     if (W === 1 && iv === d0 && lp && def.pins.every(q => lp[q.name] && lp[q.name][1] != null)) return { lib: true, name: t, pins: Object.fromEntries(def.pins.map(q => [q.name, q.name])) };
+    // (an FDCE / FDRE of 8 or 16 bits, INIT 0: the library's FD8CE … FD16RE, #5030: once a REG's)
+    if ((t === 'fdce' || t === 'fdre') && (W === 8 || W === 16) && iv === '0' && /^0+$/.test(constBits(p.init ?? '0', W) || '0') && !p.qn) return { lib: true, name: `fd${W}${t.slice(2)}`, pins: { D: `D(${W - 1}:0)`, Q: `Q(${W - 1}:0)`, C: 'C', CE: 'CE', CLR: 'CLR', R: 'R' } };
     return { lib: false, name: `xl_${t}_i${iv}${W > 1 ? `_w${W}` : ''}${p.qn ? '_qn' : ''}` };   // (QN: no library flip-flop has it, #2161)
   }
   switch (t) {
@@ -101,17 +103,6 @@ function iseSymbolFor(s, def, netW, modules) {
     case 'encoder': {
       const n = Math.max(2, Math.min(5, parseInt(p.n, 10) || 2));
       return { lib: false, name: `xl_${p.mode === 'one-hot' ? 'enc' : 'penc'}${n}${p.bus ? '_bus' : ''}` };
-    }
-    case 'register': {
-      const bits = constBits(p.init ?? '0', W) || '0'.repeat(W);
-      const zero = /^0+$/.test(bits);
-      const rs = p.reset === 'async' ? '_ar' : p.reset === 'sync' ? '_sr' : '';
-      if (zero && W === 1) {
-        const nm = p.en ? (p.reset === 'async' ? 'fdce' : p.reset === 'sync' ? 'fdre' : null) : (p.reset === 'async' ? 'fdc' : p.reset === 'sync' ? 'fdr' : 'fd');
-        if (nm) return { lib: true, name: nm, pins: { D: 'D', C: 'C', CE: 'CE', CLR: 'CLR', R: 'R', Q: 'Q' } };
-      }
-      if (zero && p.en && (W === 8 || W === 16) && p.reset !== 'none') return { lib: true, name: `fd${W}${p.reset === 'async' ? 'ce' : 're'}`, pins: { D: `D(${W - 1}:0)`, Q: `Q(${W - 1}:0)`, C: 'C', CE: 'CE', CLR: 'CLR', R: 'R' } };
-      return { lib: false, name: `xl_reg${W}${p.en ? '_ce' : ''}${rs}_h${hexOf(bits)}` };
     }
     case 'counter': {
       const rs = p.reset === 'async' ? '_ar' : p.reset === 'sync' ? '_sr' : '';
@@ -171,7 +162,8 @@ export function decodeXlSymbol(name) {
   if ((m = /^xl_mux(8|16)(e?)(s?)_w(\d+)(_bits)?$/.exec(s))) return { type: `mux${m[1]}`, params: { width: +m[4], en: !!m[2], selBus: !m[3], ...(m[5] ? { bits: true } : {}) } };
   if ((m = /^xl_mux4(e?)(s?)_w(\d+)(_bits)?$/.exec(s))) return { type: 'mux4', params: { width: +m[3], en: !!m[1], selBus: !m[2], ...(m[4] ? { bits: true } : {}) } };
   if ((m = /^xl_(inv|buf)_w(\d+)(_bits)?$/.exec(s))) return { type: m[1], params: { width: +m[2], ...(m[3] ? { bits: true } : {}) } };
-  if ((m = /^xl_reg(\d+)(_ce)?(_ar|_sr)?_h([0-9a-f]+)$/.exec(s))) return { type: 'register', params: { width: +m[1], en: !!m[2], reset: m[3] === '_ar' ? 'async' : m[3] === '_sr' ? 'sync' : 'none', init: m[4] === '0' ? '0' : `0x${m[4]}` } };
+  // (a REG exported before #5030: the FD flip-flop of its options)
+  if ((m = /^xl_reg(\d+)(_ce)?(_ar|_sr)?_h([0-9a-f]+)$/.exec(s))) return regAsFf({ width: +m[1], en: !!m[2], reset: m[3] === '_ar' ? 'async' : m[3] === '_sr' ? 'sync' : 'none', init: m[4] === '0' ? '0' : `0x${m[4]}` });
   if ((m = /^xl_cnt(\d+)(_ce)?(_ar|_sr)?(_dn)?(_bits)?$/.exec(s))) return { type: 'counter', params: { width: +m[1], en: !!m[2], reset: m[3] === '_ar' ? 'async' : m[3] === '_sr' ? 'sync' : 'none', dir: m[4] ? 'down' : 'up', ...(m[5] ? { bits: true } : {}) } };
   if ((m = /^xl_add(\d+)(_ci)?(_co)?(_bits)?$/.exec(s))) return { type: 'add', params: { width: +m[1], cin: !!m[2], cout: !!m[3], ...(m[4] ? { bits: true } : {}) } };
   if ((m = /^xl_sub(\d+)(_bi)?(_bo)?(_bits)?$/.exec(s))) return { type: 'sub', params: { width: +m[1], ...(m[2] ? { bin: true } : {}), ...(m[3] ? { bout: true } : {}), ...(m[4] ? { bits: true } : {}) } };

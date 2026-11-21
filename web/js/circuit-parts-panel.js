@@ -28,22 +28,22 @@ const r2 = (v) => Math.round(v * 100) / 100;
 // the schematic's symbol of an MSI or sequential IC (core/schdoc.js SYMBOLS)
 const BLOCK = { 7447: 'decoder', 7448: 'decoder', 4511: 'decoder', 74138: 'decoder', 74139: 'decoder', 74151: 'mux8', 74153: 'mux4', 74157: 'mux2',
   7483: 'add', 74283: 'add', 7485: 'compare', 7474: 'fdcp', 7476: 'fjkcp', 74112: 'fjkcp', 7490: 'counter', 7493: 'counter', 74161: 'counter',
-  74163: 'counter', 74191: 'counter', 74193: 'counter', 4017: 'counter', 74164: 'register', 74165: 'register', 74194: 'register', 74595: 'register',
+  74163: 'counter', 74191: 'counter', 74193: 'counter', 4017: 'counter', 74164: 'fdce', 74165: 'fdce', 74194: 'fdce', 74595: 'fdce',
   // (#4397's group C, #4498: the J-K and D flip-flops, the D registers)
   7473: 'fjkcp', 7478: 'fjkcp', 74107: 'fjkcp', 74109: 'fjkcp', 74113: 'fjkcp', 74114: 'fjkcp', 4027: 'fjkcp', 4013: 'fdcp',
-  74173: 'register', 74174: 'register', 74175: 'register', 74273: 'register', 74374: 'register', 74377: 'register', 74378: 'register',
-  74379: 'register', 74574: 'register',
+  74173: 'fdce', 74174: 'fdce', 74175: 'fdce', 74273: 'fdce', 74374: 'fdce', 74377: 'fdce', 74378: 'fdce',
+  74379: 'fdce', 74574: 'fdce',
   // (group D's counters, #4440)
   ...Object.fromEntries([74160, 74162, 74168, 74169, 74190, 74192, 74196, 74197, 74290, 74390, 74393, 7492, 74590, 4020, 4040, 4022, 4029, 4510, 4518, 4520].map((t) => [t, 'counter'])),
   // (group E's shift registers, #4397)
-  ...Object.fromEntries([7491, 7495, 74166, 74195, 74295, 74594, 74596, 4021].map((t) => [t, 'register'])),
+  ...Object.fromEntries([7491, 7495, 74166, 74195, 74295, 74594, 74596, 4021].map((t) => [t, 'fdce'])),
   // (group F's decoders and encoders, #4397)
   ...Object.fromEntries([7442, 74145, 74137, 74237, 74238, 74154, 74155, 74156, 7446, 7449].map((t) => [t, 'decoder'])), 74147: 'encoder', 74148: 'encoder',
   // (group F's multiplexers, ALU, carry generator, parity and comparator, #4397: the 74280's parity an XOR)
-  74158: 'mux2', 74257: 'mux2', 74258: 'mux2', 74253: 'mux4', 74352: 'mux4', 74353: 'mux4', 74251: 'mux8', 74298: 'register', 74181: 'add', 74182: 'add',
+  74158: 'mux2', 74257: 'mux2', 74258: 'mux2', 74253: 'mux4', 74352: 'mux4', 74353: 'mux4', 74251: 'mux8', 74298: 'fdce', 74181: 'add', 74182: 'add',
   74280: 'xor4', 74688: 'compare',
   // (group F's register files and shift register, #4397; its addressable latches the panel's latch, as the 7475's)
-  74670: 'register', 74170: 'register', 74395: 'register',
+  74670: 'fdce', 74170: 'fdce', 74395: 'fdce',
   // (group F's decoders read from their datasheets, #4397)
   4028: 'decoder', 74246: 'decoder', 74247: 'decoder', 74248: 'decoder', 4543: 'decoder', 74348: 'encoder' };
 /** The schematic symbol of an IC: its gate's (and2…, nand4, inv), or its block's; null for another part. */

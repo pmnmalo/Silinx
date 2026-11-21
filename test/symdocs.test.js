@@ -50,7 +50,6 @@ test('every symbol type and preset of the palette has a datasheet in English and
     if (k.type === 'add') assert.match(pt.text.join(' '), /somador/);
     if (k.type === 'compare') assert.match(pt.text.join(' '), /compara/);
     if (SYMBOLS[k.type].ff) assert.match(pt.text.join(' '), /báscula \(flip-flop\)/);
-    if (k.type === 'register') assert.match(pt.text.join(' '), /registo/);
     if (k.type === 'counter') assert.match(pt.text.join(' '), /contador/);
   }
 });
@@ -58,7 +57,7 @@ test('every symbol type and preset of the palette has a datasheet in English and
 test('pin tables are the real pins of the symbol at the shown parameters', () => {
   const cases = [...docKeys().map(k => [k.type, paramsFor(k)]),
     ['mux4', { width: 8 }], ['decoder', { n: 3, en: false, bus: true }], ['encoder', { n: 4, bus: true }], ['add', { width: 16, cin: true, cout: true }],
-    ['register', { width: 4, en: false, reset: 'sync' }], ['counter', { width: 3, en: true, reset: 'none' }], ['busjoin', { widths: '3,1,4' }], ['slice', { msb: 7, lsb: 4 }],
+    ['fdre', { width: 4 }], ['counter', { width: 3, en: true, reset: 'none' }], ['busjoin', { widths: '3,1,4' }], ['slice', { msb: 7, lsb: 4 }],
     ['hdlblock', { inputs: [{ name: 'clk', width: 1, clock: true }, { name: 'd', width: 8 }], outputs: [{ name: 'q', width: 8 }] }]];
   for (const [type, params] of cases) {
     const d = symbolDoc(type, params, { modules: MODULES, withHdl: false });
@@ -125,7 +124,8 @@ test('Xilinx library symbols imported from ISE schematics share the docs of thei
   assert.deepEqual(xilinxEquivalents('compare', { width: 8, op: 'lt' }), ['COMPM8']);
   assert.deepEqual(xilinxEquivalents('add', { width: 8 }), []);
   assert.ok(xilinxEquivalents('buf', { width: 1 }).includes('BUFG'));
-  assert.deepEqual(xilinxEquivalents('register', { width: 16, en: true, reset: 'sync', init: '0' }), ['FD16RE']);
+  // (an FDRE of 16 bits, once a REG's, #5030)
+  assert.deepEqual(xilinxEquivalents('fdre', { width: 16 }), ['FDRE', 'FD16RE']);
 });
 
 // ------------------------------------------------------------------ equivalent HDL
@@ -338,7 +338,6 @@ test('compactRows: prime cubes covering each output group', () => {
 const FF_TYPES = Object.keys(SYMBOLS).filter(t => SYMBOLS[t].ff);
 const SEQ_CASES = [
   ...FF_TYPES.flatMap(t => ['0', '1'].map(init => [t, { init }])),
-  ...[true, false].flatMap(en => ['none', 'async', 'sync'].map(reset => ['register', { width: 4, en, reset, init: '5' }])),
   ...[true, false].flatMap(en => ['none', 'async', 'sync'].flatMap(reset => ['up', 'down'].map(dir => ['counter', { width: 4, en, reset, dir }]))),
 ];
 const qOf = sim => { const v = sim.read().Q; assert.ok(!v.x, 'Q is 0/1'); return Number(v.v); };
@@ -352,7 +351,7 @@ test('mode tables of every flip-flop, register and counter agree with the simula
     assert.ok(sim.ok, `${type}: ${sim.error}`);
     const ins = sim.ins.map(p => p.pin);
     assert.deepEqual([...ins].sort(), [...m.cols].sort(), `${type}: the table has a column per input`);
-    const W = type === 'register' || type === 'counter' ? 4 : 1;
+    const W = type === 'counter' ? 4 : 1;
     const mask = (1 << W) - 1;
     const zeros = Object.fromEntries(ins.map(p => [p, 0n]));
     const p = { ...defaultParams(type), ...params };
@@ -360,10 +359,8 @@ test('mode tables of every flip-flop, register and counter agree with the simula
       // power-up state, then (registers / counters) a known non-zero state loaded with clock edges
       sim.apply(zeros);
       sim.live.reset();
-      if (type === 'register') { sim.apply({ ...zeros, D: 0b0110n, CE: 1n }); sim.apply({ C: 1n }); sim.apply({ C: 0n }); }
       if (type === 'counter') for (let k = 0; k < 3; k++) { sim.apply({ ...zeros, CE: 1n }); sim.apply({ C: 1n }); sim.apply({ C: 0n }); }
       const q0 = qOf(sim);
-      if (type === 'register') assert.equal(q0, 0b0110);
       if (type === 'counter') assert.equal(q0, p.dir === 'down' ? 13 : 3);
       // apply the row: X = xc everywhere (and a clock edge when C = X and xc = 1), D of a register = a pattern
       const pat = xc ? 0b1010 : 0b0101;
@@ -396,11 +393,10 @@ test('mode tables: Xilinx layout and priorities', () => {
   assert.deepEqual(rows('ftsre').slice(0, 2), ['1XXX↑:1', '01XX↑:0']);
   assert.deepEqual(rows('fjk'), ['00↑:nc', '01↑:0', '10↑:1', '11↑:toggle']);
   assert.deepEqual(rows('ft'), ['0↑:nc', '1↑:toggle']);
-  assert.deepEqual(rows('register', { reset: 'sync', en: true }), ['1XX↑:init', '00XX:nc', '01D↑:D']);
   assert.deepEqual(rows('counter', { reset: 'async', en: true, dir: 'down' }), ['1XX:zero', '00X:nc', '01↑:dec']);
   assert.equal(modeQText('nc', 'fdce', {}, 'pt'), 'Sem alteração');
   assert.equal(modeQText('toggle', 'ftce', {}, 'en'), "Toggle (Q')");
-  assert.equal(modeQText('init', 'register', { init: '0x3' }), 'INIT (0x3)');
+  assert.equal(modeQText('init', 'fdce', { init: '1' }), 'INIT (1)');
   assert.equal(modeTable('and2'), null);
   assert.match(modeTable('fdcpe', {}, 'pt').notes.join(' '), /Prioridade, da mais alta para a mais baixa: CLR > PRE > CE > dados/);
 });

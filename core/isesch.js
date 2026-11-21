@@ -701,7 +701,8 @@ export function mapSymbol(blk, modules, warn, geo = {}) {
   if ((m = /^(inv|buf|ibuf|obuf)(8|16|32)$/.exec(sym))) return direct(m[1] === 'inv' ? 'inv' : 'buf', { width: +m[2] });
   // FD*, FT*, FJK*: native flip-flop symbols with the library pin names (INIT: the block attribute, else the Xilinx default)
   if (SYMBOLS[sym]?.ff) return direct(sym, { init: blk.attrs.INIT != null ? init : SYMBOLS[sym].params[0].default });
-  if ((m = /^fd(8|16|32)(ce|re)$/.exec(sym))) return direct('register', { width: +m[1], en: true, reset: m[2] === 'ce' ? 'async' : 'sync', init: '0' });
+  // (FD8CE, FD16RE…: an FDCE / FDRE of 8, 16 bits, #5030)
+  if ((m = /^fd(8|16|32)(ce|re)$/.exec(sym))) return direct(`fd${m[2]}`, { width: +m[1], init: '0', qn: false });
   if (sym === 'm2_1') return direct('mux2', { width: 1 });
   // the Xilinx M2_1E / M4_1E: the native multiplexers with their enable E (#301)
   if (sym === 'm2_1e') return direct('mux2', { width: 1, en: true });

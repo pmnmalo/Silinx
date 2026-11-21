@@ -2,7 +2,7 @@
 // arithmetic, I/O, module and HDL blocks, the device's primitives), their parameters and local geometry, the I/O
 // markers' geometry. Isomorphic (no DOM).
 import { DEVICE_PRIMITIVES, primitiveOf } from './primitives.js';
-import { parseNetName, r10 } from './schdoc.js';
+import { constBits, parseNetName, r10 } from './schdoc.js';
 import { intOr as int } from './util.js';
 import { layoutDef } from './symbol-layout.js';
 export { int };   // (core/util.js's intOr)
@@ -196,12 +196,16 @@ export function ffVariant(type, f) {
   return (all.find(([, S]) => !S.ff.sp) || all[0])?.[0] || null;
 }
 // (not in the palette: a flip-flop with Width > 1 is a register, #315; kept for the schematics that have it)
-SYMBOLS.register = {
-  category: 'Flip-Flops', title: 'REG', hidden: true, description: 'N-bit register',
-  params: [{ ...P_WIDTH, default: 8 }, { name: 'en', label: 'Clock enable', kind: 'bool', default: true },
-    { name: 'reset', label: 'Reset', kind: 'select', options: ['none', 'async', 'sync'], default: 'async' },
-    { name: 'init', label: 'Reset/INIT value', kind: 'text', default: '0' }],
-};
+/**
+ * The REG of before (#5030: removed; hidden since #315) as the flip-flop of the FD family of its options, with its
+ * Width (the same pins: D, CE, C, CLR / R, Q): { type, params }. Its INIT an FD's, a bit for all of them: 1 when the
+ * word was all ones, else 0 (a reset clears an FD to 0).
+ */
+export function regAsFf(p = {}) {
+  const en = p.en ?? true, reset = p.reset ?? 'async', width = Math.max(1, int(p.width, 8));
+  const bits = String(p.init ?? '0') === '1' && width > 1 ? null : constBits(String(p.init ?? '0'), width);
+  return { type: ffVariant('fd', { ce: !!en, clr: reset === 'async', r: reset === 'sync' }), params: { init: bits && /^1+$/.test(bits) ? '1' : '0', width, qn: false } };
+}
 SYMBOLS.counter = {
   category: 'Arithmetic', title: 'CNT', description: 'N-bit binary counter',
   params: [{ ...P_WIDTH, default: 8 }, { name: 'en', label: 'Clock enable', kind: 'bool', default: true },
@@ -299,7 +303,7 @@ function boxDef(west, east, title, minW = 80, top = 20) {
 
 // The type name drawn on a symbol: its library title, with its width for the symbols whose width is part of
 // the Xilinx name (ADD8, SUB16, COMP4, CNT8, REG8, #681)
-const WIDE_NAMED = new Set(['add', 'sub', 'compare', 'register', 'counter']);
+const WIDE_NAMED = new Set(['add', 'sub', 'compare', 'counter']);
 export function symbolTypeName(sym) {
   const nm = SYMBOLS[sym.type]?.title || String(sym.type || '').toUpperCase();
   if (!WIDE_NAMED.has(sym.type)) return nm;
@@ -449,7 +453,7 @@ export function symbolDef(sym, modules = {}) {
     const op = t === 'add' ? '+' : t === 'sub' ? '−' : COMPARE_SYM[cmp[0]];
     return { w: 80, h, shape: 'arith', op, body: { x: 20, y: 0, w: 40, h }, pins };
   }
-  if (S && (S.ff || t === 'register' || t === 'counter')) {
+  if (S && (S.ff || t === 'counter')) {
     let ce, clr, pre, r, st, west = [];
     const f = S.ff;
     if (f) ({ ce, clr, pre, r, s: st } = f);

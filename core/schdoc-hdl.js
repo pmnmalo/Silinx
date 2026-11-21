@@ -5,7 +5,7 @@
 import { parse as parseVerilog } from './verilog/parser.js';
 import { parse as parseVhdl } from './vhdl/parser.js';
 import {
-  SYMBOLS, constBits, dedentBlock, findMod, indent, netlist, normModules, normalizeDoc, rsvd, squash, stripComments,
+  SYMBOLS, constBits, dedentBlock, findMod, indent, netlist, normModules, normalizeDoc, regAsFf, rsvd, squash, stripComments,
   symbolDef, validIdent, vhdlBits, vlogBits,
 } from './schdoc.js';
 import { mountSymbolHdl } from './schdoc-hdl-symbol.js';
@@ -64,16 +64,18 @@ export function declaredIn(decls, lang) {
 // The schematic's blocks that the HDL keeps as blocks (#175): an entity / module of their own per kind,
 // instanced where the schematic has them (as ISE does with its library macros); the gates,
 // constants and bus pieces stay expressions, the project modules and HDL blocks what they are.
-const BLOCK_TYPES = new Set(['mux2', 'mux4', 'mux8', 'mux16', 'demux', 'decoder', 'encoder', 'add', 'sub', 'compare', 'register', 'counter']);   // (tri-state buffers: on shared buses, like the gates)
+const BLOCK_TYPES = new Set(['mux2', 'mux4', 'mux8', 'mux16', 'demux', 'decoder', 'encoder', 'add', 'sub', 'compare', 'counter']);   // (tri-state buffers: on shared buses, like the gates)
 export const isBlockSymbol = t => BLOCK_TYPES.has(t) || !!SYMBOLS[t]?.ff;
 // the first line of a block's own entity: what it was drawn as, so that the HDL turns back into it
 export const BLOCK_MARK = 'silinx-symbol';
 export function blockMarkOf(text, name) {
   const re = new RegExp(`(?:--|//) ${BLOCK_MARK} ([a-z0-9_]+) (\\{[^\\n]*\\})[^\\n]*\\n(?:[^\\n]*\\n){0,8}?\\s*(?:entity|module)\\s+${name}\\b`, 'i');
   const m = re.exec(String(text || ''));
-  if (!m || !SYMBOLS[m[1]]) return null;
+  if (!m || (!SYMBOLS[m[1]] && m[1] !== 'register')) return null;
   let params;
   try { params = JSON.parse(m[2]); } catch { return null; }
+  // (a REG's block of before, #5030: the FD flip-flop of its options)
+  if (m[1] === 'register') return regAsFf(params);
   // (a M4_1 / DEMUX of an HDL file generated before #301: its bus pin S)
   if ((m[1] === 'mux4' || m[1] === 'demux') && params && !('selBus' in params)) params.selBus = true;
   return { type: m[1], params };
@@ -163,7 +165,7 @@ export function generateHdl(docIn, opts = {}) {
 
   // procedural drivers (Verilog reg) and initial values
   const regNets = new Set(), init = new Map();
-  const FF = new Set(['fd', 'fdc', 'fdce', 'fdre', 'register', 'counter']);
+  const FF = new Set(['fd', 'fdc', 'fdce', 'fdre', 'counter']);
   for (const s of doc.symbols) {
     const def = defs.get(s.id);
     if (isBlock(s)) continue;   // (its own entity holds the register)

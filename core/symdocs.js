@@ -142,8 +142,9 @@ export const XILINX_SYMBOLS = (() => {
   X.VCC = { type: 'vcc', params: {} };
   X.GND = { type: 'gnd', params: {} };
   for (const w of [8, 16]) {
-    X[`FD${w}CE`] = { type: 'register', params: { width: w, en: true, reset: 'async', init: '0' } };
-    X[`FD${w}RE`] = { type: 'register', params: { width: w, en: true, reset: 'sync', init: '0' } };
+    // (an FDCE / FDRE of 8 or 16 bits, #5030: once a REG)
+    X[`FD${w}CE`] = { type: 'fdce', params: { width: w } };
+    X[`FD${w}RE`] = { type: 'fdre', params: { width: w } };
     X[`CB${w}CE`] = { type: 'counter', params: { width: w, en: true, reset: 'async', dir: 'up' }, note: 'CEO / TC' };
     X[`CB${w}RE`] = { type: 'counter', params: { width: w, en: true, reset: 'sync', dir: 'up' }, note: 'CEO / TC' };
     X[`COMP${w}`] = { type: 'compare', params: { width: w, op: 'eq', signed: false } };
@@ -353,12 +354,6 @@ function describe(type, p, tx, preset) {
       `CONSTANT impõe um valor fixo na saída O (${W} bit${W > 1 ? 's' : ''}): o Valor escrito em decimal, hexadecimal (0x…) ou binário (0b…). Define operandos fixos (p. ex. o valor final de um contador para um comparador), fixa entradas não usadas e seleciona modos fixos.`)], formula: `O = ${p.value ?? 0}` };
     case 'vcc': return { text: [tx('VCC is the logic 1 source: every one of its Width bits is 1 (a Width above 1 ties a whole bus). It ties inputs to 1, e.g. an enable that must always be active.', 'VCC é a fonte do 1 lógico: todos os seus bits (Width) ficam a 1 (uma Width acima de 1 fixa um barramento inteiro). Fixa entradas a 1, p. ex. uma habilitação que tem de estar sempre ativa.')], formula: 'P = 1…1' };
     case 'gnd': return { text: [tx('GND is the logic 0 source: every one of its Width bits is 0 (a Width above 1 ties a whole bus). It ties inputs to 0, e.g. an unused reset or the carry in of an adder.', 'GND é a fonte do 0 lógico: todos os seus bits (Width) ficam a 0 (uma Width acima de 1 fixa um barramento inteiro). Fixa entradas a 0, p. ex. um reset não usado ou o transporte de entrada de um somador.')], formula: 'G = 0…0' };
-    case 'register': {
-      const rs = p.reset === 'async' ? tx(' CLR = 1 loads the Reset/INIT value immediately (asynchronous).', ' CLR = 1 carrega o valor de Reset/INIT imediatamente (assíncrono).') : p.reset === 'sync' ? tx(' R = 1 loads the Reset/INIT value at the next rising edge (synchronous).', ' R = 1 carrega o valor de Reset/INIT no flanco ascendente seguinte (síncrono).') : '';
-      return { text: [tx(`REG is a ${W}-bit register: ${W} D flip-flops sharing the clock C. At each rising edge of C${p.en ? ' with CE = 1' : ''} the output Q takes the word on D; otherwise Q keeps its value.${rs} At power-up Q starts with the Reset/INIT value (${p.init ?? 0}).`,
-        `REG é um registo de ${W} bits: ${W} básculas D com o relógio C em comum. Em cada flanco ascendente de C${p.en ? ' com CE = 1' : ''} a saída Q toma a palavra presente em D; caso contrário Q mantém o valor.${rs} No arranque Q começa com o valor de Reset/INIT (${p.init ?? 0}).`),
-      tx('Registers hold the data of a synchronous circuit: operands and results of a data path, pipeline stages, the state of a state machine, outputs that must stay stable.', 'Os registos guardam os dados de um circuito síncrono: operandos e resultados de um caminho de dados, andares de pipeline, o estado de uma máquina de estados, saídas que têm de ficar estáveis.')], formula: `Q⁺ = ${p.en ? 'CE ? D : Q' : 'D'}` };
-    }
     case 'counter': {
       const up = p.dir !== 'down';
       const rs = p.reset === 'async' ? tx(' CLR = 1 clears the count to 0 immediately (asynchronous).', ' CLR = 1 coloca a contagem a 0 imediatamente (assíncrono).') : p.reset === 'sync' ? tx(' R = 1 clears the count to 0 at the next rising edge (synchronous).', ' R = 1 coloca a contagem a 0 no flanco ascendente seguinte (síncrono).') : '';
@@ -489,7 +484,7 @@ function pinFunc(type, p, pin, tx) {
     case 'module': return pin.dir === 'out' ? tx('Output port of the module', 'Porto de saída do módulo') : pin.dir === 'inout' ? tx('Bidirectional port of the module', 'Porto bidirecional do módulo') : tx('Input port of the module', 'Porto de entrada do módulo');
     case 'hdlblock': return pin.dir === 'out' ? tx('Output written by the HDL statements of the block', 'Saída escrita pelas instruções HDL do bloco') : pin.clock ? tx('Clock input read by the HDL statements of the block', 'Entrada de relógio lida pelas instruções HDL do bloco') : tx('Input read by the HDL statements of the block', 'Entrada lida pelas instruções HDL do bloco');
   }
-  if (S?.ff || type === 'register' || type === 'counter') {
+  if (S?.ff || type === 'counter') {
     // (a counter with a pin per bit, #319)
     if (type === 'counter' && /^Q\d+$/.test(n)) return tx(`Bit ${n.slice(1)} of the count (weight ${2 ** +n.slice(1)})`, `Bit ${n.slice(1)} da contagem (peso ${2 ** +n.slice(1)})`);
     const reg = !S?.ff;
@@ -523,7 +518,7 @@ function paramMeaning(type, d, p, tx) {
     case 'width':
       if (type === 'constant' || type === 'vcc' || type === 'gnd') return tx('Number of bits of the output', 'Número de bits da saída');
       if (type === 'add' || type === 'sub' || type === 'compare') return tx('Number of bits of the operands (and of the result)', 'Número de bits dos operandos (e do resultado)');
-      if (type === 'register' || type === 'counter') return tx('Number of bits (flip-flops) of the register / counter', 'Número de bits (básculas) do registo / contador');
+      if (type === 'counter') return tx('Number of bits (flip-flops) of the register / counter', 'Número de bits (básculas) do registo / contador');
       return tx('Number of bits of the data pins: > 1 makes them buses and the function bitwise', 'Número de bits dos pinos de dados: > 1 torna-os barramentos e a função bit a bit');
     case 'init':
       if (S?.ff) return tx('Value of Q at power-up (FPGA configuration): 0 or 1', 'Valor de Q no arranque (configuração da FPGA): 0 ou 1');
@@ -574,11 +569,11 @@ export function modeTable(type, params = {}, lang = 'en') {
   const p = { ...defaultParams(type), ...params };
   let f;
   if (S.ff) f = S.ff;
-  else if (type === 'register' || type === 'counter') f = { k: type, ce: !!p.en, clr: p.reset === 'async', r: p.reset === 'sync' };
+  else if (type === 'counter') f = { k: type, ce: !!p.en, clr: p.reset === 'async', r: p.reset === 'sync' };
   else return null;
   const asyncL = [f.clr && ['CLR', type === 'counter' ? 'zero' : S.ff ? '0' : 'init'], f.pre && ['PRE', '1']].filter(Boolean);
   const syncL = (f.sp ? [f.s && ['S', '1'], f.r && ['R', '0']] : [f.r && ['R', type === 'counter' ? 'zero' : S.ff ? '0' : 'init'], f.s && ['S', '1']]).filter(Boolean);
-  const data = f.k === 'd' || f.k === 'register' ? ['D'] : f.k === 't' ? ['T'] : f.k === 'jk' ? ['J', 'K'] : [];
+  const data = f.k === 'd' ? ['D'] : f.k === 't' ? ['T'] : f.k === 'jk' ? ['J', 'K'] : [];
   const cols = [...asyncL.map(a => a[0]), ...syncL.map(a => a[0]), ...(f.ce ? ['CE'] : []), ...data, 'C'];
   const rows = [];
   const row = (set, q) => { const r = { in: Object.fromEntries(cols.map(c => [c, set[c] ?? 'X'])), q }; rows.push(r); };
@@ -591,7 +586,6 @@ export function modeTable(type, params = {}, lang = 'en') {
   if (f.k === 'd') { row({ ...on, D: '0' }, '0'); row({ ...on, D: '1' }, '1'); }
   else if (f.k === 't') { row({ ...on, T: '0' }, 'nc'); row({ ...on, T: '1' }, 'toggle'); }
   else if (f.k === 'jk') { row({ ...on, J: '0', K: '0' }, 'nc'); row({ ...on, J: '0', K: '1' }, '0'); row({ ...on, J: '1', K: '0' }, '1'); row({ ...on, J: '1', K: '1' }, 'toggle'); }
-  else if (f.k === 'register') row({ ...on, D: 'D' }, 'D');
   else row(on, p.dir === 'down' ? 'dec' : 'inc');
   const notes = [];
   notes.push(tx('↑ = rising edge of C (0 → 1); X = any value. Without a rising edge of C (and no asynchronous input active) Q keeps its value.', '↑ = flanco ascendente de C (0 → 1); X = qualquer valor. Sem flanco ascendente de C (e sem entradas assíncronas ativas) Q mantém o valor.'));

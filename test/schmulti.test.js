@@ -87,13 +87,14 @@ test('symbols: the parameters they all have (the width of gates of different kin
   assert.deepEqual(doc.symbols.map(s => `${s.name}:${s.type}`), ['U1:inv', 'U2:inv', 'U3:and2', 'U4:fd']);
 });
 
-test('the same parameter name with other choices: not common (a flip-flop\'s INIT, a select; a register\'s, a text)', () => {
+test('the same parameter name with other choices: not common (a DCM_SP\'s CLK_FEEDBACK and a PLL_BASE\'s; once a REG\'s INIT, #5030)', () => {
   const doc = extra();
-  doc.symbols.push({ id: 'S5', type: 'fdc', name: 'U5', x: 600, y: 400 }, { id: 'S6', type: 'register', name: 'R1', x: 800, y: 400 });
+  doc.symbols.push({ id: 'S5', type: 'fdc', name: 'U5', x: 600, y: 400 }, { id: 'S6', type: 'dcm_sp', name: 'D1', x: 800, y: 400 }, { id: 'S7', type: 'pll_base', name: 'P1', x: 1000, y: 400 });
   const d = normalizeDoc(doc);
   assert.deepEqual(brief(commonProps(d, ['sym:S4', 'sym:S5'])), ['param:init="0"', 'param:width=1', 'param:qn=false']);   // (QN, #2161)
-  assert.deepEqual(['sym:S4', 'sym:S6'].map(k => symbolParams(d.symbols.find(s => s.id === k.slice(4))).find(p => p.name === 'init').kind), ['select', 'text']);
-  assert.deepEqual(brief(commonProps(d, ['sym:S4', 'sym:S6'])), ['param:width=(mixed)']);
+  const fb = k => symbolParams(d.symbols.find(s => s.id === k.slice(4))).find(p => p.name === 'CLK_FEEDBACK');
+  assert.notDeepEqual(fb('sym:S6').options, fb('sym:S7').options);
+  assert.ok(!brief(commonProps(d, ['sym:S6', 'sym:S7'])).some(x => x.startsWith('param:CLK_FEEDBACK')), 'CLK_FEEDBACK not common');
 });
 
 test('#1705 wires: nothing in common (no "Draw as bus": a wire drawn by its net\'s width); applyProp of bus changes nothing', () => {

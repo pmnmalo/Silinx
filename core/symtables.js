@@ -17,7 +17,7 @@ import { intOr as int } from './util.js';
 const MAX_FULL = 6;          // input bits of a complete table shown row by row
 const MAX_EXHAUSTIVE = 8;    // input bits simulated exhaustively (larger: representative rows)
 const MAX_COMPACT = 16;      // rows of a compact table of more than MAX_FULL input bits
-const isSeq = type => !!SYMBOLS[type]?.ff || type === 'register' || type === 'counter';
+const isSeq = type => !!SYMBOLS[type]?.ff || type === 'counter';
 const bitwise = type => !!SYMBOLS[type]?.gate || ['mux2', 'mux4', 'mux8', 'mux16', 'demux', 'tbuf'].includes(type);
 const big = n => BigInt(n);
 

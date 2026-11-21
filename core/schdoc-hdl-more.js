@@ -143,7 +143,7 @@ export function mountSymbolCasesMore(ctx) {
         if (ci) body.push(`${o} <= ${ins.join(' & ')};`); else assign(o, `{${ins.join(', ')}}`);
         break;
       }
-      case 'register': case 'counter': {
+      case 'counter': {
         // (a counter with a pin per bit, #319: its count in a signal of its own, Q0 .. its bits)
         const perQ = s.type === 'counter' && p.bits && Math.max(1, int(p.width, 1)) > 1;
         const qBits = perQ ? [...Array(Math.max(1, int(p.width, 1))).keys()].map(i => OUTN(s, `Q${i}`)) : null;

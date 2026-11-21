@@ -285,10 +285,10 @@ endmodule`;
     assert.ok(logOf(r).includes('print:errs=0'), `${logOf(r).join('\n')}\n${g.code}`);
   });
 
-  test(`generateHdl ${lang}: register + adder counter with clock and reset`, () => {
+  test(`generateHdl ${lang}: register (an FDCE of 8 bits) + adder counter with clock and reset`, () => {
     // q <= q + 1 every clock when en, async reset
     const doc = newDoc('cnt8', lang);
-    const reg = sym(doc, 'register', 400, 300, { width: 8, en: true, reset: 'async', init: '0' });   // D 310, CE 330, C 350, CLR 370, Q (490,310)
+    const reg = sym(doc, 'fdce', 400, 300, { width: 8, init: '0' });   // D 310, CE 330, C 350, CLR 370, Q (490,310) (an FDCE of 8 bits, #5030)
     const add = sym(doc, 'add', 200, 100, { width: 8 });                                            // A (200,110) B (200,130) S (280,130)
     const one = sym(doc, 'constant', 60, 200, { value: '1', width: 8 });                              // O (100,210)
     port(doc, 'clk', 'in', 100, 400); port(doc, 'rst', 'in', 100, 440); port(doc, 'en', 'in', 100, 480);
@@ -717,13 +717,34 @@ test('Verilog names stay as written and case-sensitive (#131): Clk and clk are t
 });
 
 test('symbol library covers the documented set', () => {
-  for (const t of ['and2', 'and5', 'or5', 'nand4', 'nor4', 'xor2', 'xnor2', 'inv', 'buf', 'mux2', 'mux4', 'add', 'sub', 'compare', 'constant', 'vcc', 'gnd', 'fd', 'fdc', 'fdce', 'fdre', 'register', 'counter', 'slice', 'busjoin', 'module', 'hdlblock'])
+  for (const t of ['and2', 'and5', 'or5', 'nand4', 'nor4', 'xor2', 'xnor2', 'inv', 'buf', 'mux2', 'mux4', 'add', 'sub', 'compare', 'constant', 'vcc', 'gnd', 'fd', 'fdc', 'fdce', 'fdre', 'counter', 'slice', 'busjoin', 'module', 'hdlblock'])
     assert.ok(SYMBOLS[t], t);
   for (const t of Object.keys(SYMBOLS)) {
     const def = symbolDef({ type: t, params: {} });
     for (const p of def.pins) assert.ok(p.x % 10 === 0 && p.y % 10 === 0, `${t}.${p.name} on grid`);
     assert.ok(def.w % 10 === 0 && def.h % 10 === 0, `${t} size on grid`);
   }
+});
+
+// #5030: no REG symbol any more; a REG of a drawing of before read as the FD flip-flop of its options, its Width and its
+// INIT (its pins the same: D, CE, C, CLR / R, Q), saved so
+test('#5030 a REG of before: the FD, FDE, FDCE or FDRE of its options, its Width and INIT; its HDL and its pins as they were', () => {
+  assert.equal(SYMBOLS.register, undefined);
+  const reg = (params) => normalizeDoc({ name: 'r', lang: 'vhdl', symbols: [{ id: 'S1', type: 'register', x: 400, y: 300, name: 'R1', params }], wires: [], ports: [], labels: [] }).symbols[0];
+  assert.deepEqual([reg({ width: 8, en: true, reset: 'async', init: '0' }), reg({ width: 4, en: true, reset: 'sync', init: '0x5' }), reg({ width: 2, en: false, reset: 'none', init: '3' }), reg({ width: 16, en: false, reset: 'async' }), reg({})]
+    .map((s) => [s.type, s.params.width, s.params.init, s.name, s.x]),
+  [['fdce', 8, '0', 'R1', 400], ['fdre', 4, '0', 'R1', 400], ['fd', 2, '1', 'R1', 400], ['fdc', 16, '0', 'R1', 400], ['fdce', 8, '0', 'R1', 400]], 'REG\'s defaults: 8 bits, CE, CLR');
+  // (its INIT an FD's, a bit for all of them: 1 for a word of ones, 3 of 2 bits; 0 else, 0x5)
+  // its pins where they were: the same D, CE, C, CLR, Q
+  assert.deepEqual(symbolDef(reg({ width: 8, en: true, reset: 'async' })).pins.map((p) => [p.name, p.x, p.y, p.width]), [['D', 0, 10, 8], ['CE', 0, 30, 1], ['C', 0, 50, 1], ['CLR', 0, 70, 1], ['Q', 90, 10, 8]]);
+  // its INIT of ones its power-up value, as REG's was: q starts at 1111
+  const d = newDoc('r', 'vhdl');
+  d.symbols.push({ id: 'S1', type: 'register', x: 400, y: 300, name: 'R1', params: { width: 4, en: false, reset: 'none', init: '0xF' } });
+  const nd = normalizeDoc(d);
+  for (const q of symbolPins(nd.symbols[0])) nd.ports.push({ id: `P${q.name}`, name: q.name.toLowerCase(), dir: q.dir, width: q.width || 1, x: q.x, y: q.y });
+  const g = generateHdl(normalizeDoc(nd), { lang: 'vhdl' });
+  assert.deepEqual(g.diagnostics, []);
+  assert.match(g.code, /:= "1111"/);
 });
 
 test('a pin dropped onto a wire connects there (#170): a bus tap in the middle of a bus, a gate onto a wire; a dot shows it', () => {
