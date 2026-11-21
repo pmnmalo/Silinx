@@ -201,7 +201,10 @@ export function mountTtEditor(container, opts = {}) {
   const status = statusLine();   // (its inputs, outputs and rows, #2763)
   const divider = ttDivider(left);   // (the table's and the expressions' divider, #4099)
   root.append(toolbar, h('div', { class: 'tt-body' }, left, divider, right), status.el);
-  if (readOnly) ttReadOnlyChrome({ root, toolbar, fields: [inIn, outIn, notes, exprIn], hide: [more.el, exprRow.querySelector('.tt-btn'), left.querySelector(':scope > .hint')], banner: opts.banner });
+  if (readOnly) {
+    ttReadOnlyChrome({ root, toolbar, fields: [inIn, outIn, notes, exprIn], hide: [more.el, exprRow.querySelector('.tt-btn')], banner: opts.banner });
+    tableHost.removeAttribute('title');   // (its cells' tip, #4747: nothing to click, #5061)
+  }
   root.tabIndex = -1;
   root.addEventListener('keydown', e => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;   // (their own undo)

@@ -154,9 +154,11 @@ uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the r
     const T = '.doc:not([hidden]) .tt-editor';
     assert.deepEqual(await fp.eval((t) => ({
       readOnly: [...document.querySelectorAll(`${t} :is(.tt-inputs, .tt-outputs, .tt-notes, .tt-expr-in)`)].map((x) => x.readOnly),
-      shown: ['.tt-toolbar .tb-more', '.tt-row .tt-btn', '.tt-left > .hint'].map((s) => !!document.querySelector(`${t} ${s}`)?.getClientRects().length),
+      shown: ['.tt-toolbar .tb-more', '.tt-row .tt-btn'].map((s) => !!document.querySelector(`${t} ${s}`)?.getClientRects().length),
+      // (the cells' hint: its table's tip since #4747, none read only, #5061)
+      tip: document.querySelector(`${t} .tt-table-host`).title,
       ticks: [...document.querySelectorAll(`${t} .tt-hdl`)].every((x) => x.disabled),
-    }), T), { readOnly: [true, true, true, true], shown: [false, false, false], ticks: true });
+    }), T), { readOnly: [true, true, true, true], shown: [false, false], tip: '', ticks: true });
     await fp.click(`${T} .tt-cell[data-out=f][data-row="0"]`);
     assert.equal(await fp.eval((t) => document.querySelector(`${t} .tt-cell[data-out=f][data-row="0"]`).textContent, T), '0');
     assert.equal(await fp.eval(() => window.Silinx.active.ttEditor.getModel().table.f), '00010111');
