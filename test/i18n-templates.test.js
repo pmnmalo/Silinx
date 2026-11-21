@@ -123,6 +123,7 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   'Source Properties - ${shown}': 'Source Properties - src/top.vhd',
   'This site now serves ${PRODUCT} ${servedLabel(served)}.': 'This site now serves Silinx 15.30.0.',
   'Reachability graph${states > 200 ? \' (the first 200 markings)\' : \'\'}': 'Reachability graph (the first 200 markings)',
+  'Time offsets are relative to the current simulation time (${fmtTime(sim.now)}); default unit is ns.': 'Time offsets are relative to the current simulation time (1.5 us); default unit is ns.',
 };
 // the same in both languages (a name, a number, a unit)
 const SAME = new Set(['${b} baud', 'Cursor: ${fmtTime(st.cursor)}', 'FPGA (${top})', '${filename}.png: ${p.width} × ${p.height} px',

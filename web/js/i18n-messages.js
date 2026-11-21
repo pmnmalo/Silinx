@@ -101,4 +101,6 @@ export const MESSAGES_PT_PATTERNS = [
   [/^(\S+) \((.+), (.+)\): click it to import it into the project$/, '$1 ($2, $3): clique para o importar para o projeto'],
   // SSim's status line
   [/^Sim Time: (.+)$/, 'Tempo de Simulação: $1'],
+  // SSim's Force dialogs' note (#5018)
+  [/^Time offsets are relative to the current simulation time \((.+)\); default unit is ns\.$/, 'Os tempos são relativos ao tempo atual da simulação ($1); a unidade por omissão é ns.'],
 ];
