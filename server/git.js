@@ -171,7 +171,7 @@ export async function needRepo(name) {
 }
 
 // the tools' outputs and Silinx's .gitignore (core/git-ignore.js, the browser's back end's too)
-import { GLOBS, EXCLUDE, isOutput, GITIGNORE } from '../core/git-ignore.js';
+import { GLOBS, EXCLUDE, isOutput, isWriteTemp, WRITE_TEMP, GITIGNORE } from '../core/git-ignore.js';
 import { repoConfigProblem } from './git-repo-config.js';
 import { parseDescription } from '../core/project-json.js';
 export { GITIGNORE };
@@ -260,7 +260,7 @@ export async function gitStatus(name) {
       else continue;
       if (!file.startsWith(repo.prefix)) continue;
       const rel = file.slice(repo.prefix.length);
-      if (!isOutput(rel)) s.files.push({ path: rel, state });
+      if (!isOutput(rel) && !isWriteTemp(rel)) s.files.push({ path: rel, state });   // (a write's temporary file, #5016)
     }
   }
   s.files.sort((a, b) => a.path.localeCompare(b.path));
@@ -298,11 +298,13 @@ export async function gitCommit(name, message) {
   if (!(await gitStatus(name)).files.length) throw nothing();
   const gitignore = await ensureGitignore(repo.dir);
   // (everything added, then the outputs taken out again: git add refuses a pathspec its .gitignore ignores)
-  await ok('add', ['add', '--all', '--', '.'], { cwd: repo.dir });
+  // (a write's temporary file never added: git refuses one outside a clone's sparse checkout, #5016)
+  const out = [...EXCLUDE, `:(exclude,glob)${WRITE_TEMP}`];
+  await ok('add', ['add', '--all', '--', '.', `:(exclude,glob)${WRITE_TEMP}`], { cwd: repo.dir });
   await ok('reset', ['reset', '--quiet', '--', ...GLOBS.map(g => `:(glob)${g}`)], { cwd: repo.dir });
-  const staged = (await ok('diff', ['diff', '--cached', '--name-status', '--relative', '--', '.', ...EXCLUDE], { cwd: repo.dir })).split('\n').filter(Boolean);
+  const staged = (await ok('diff', ['diff', '--cached', '--name-status', '--relative', '--', '.', ...out], { cwd: repo.dir })).split('\n').filter(Boolean);
   if (!staged.length) throw nothing();
-  await ok('commit', ['commit', '--quiet', '--no-verify', '-m', msg, '--', '.', ...EXCLUDE], { cwd: repo.dir });
+  await ok('commit', ['commit', '--quiet', '--no-verify', '-m', msg, '--', '.', ...out], { cwd: repo.dir });
   const files = staged.map(l => { const [st, ...p] = l.split('\t'); return { path: p.pop(), state: st[0] === 'A' || st[0] === 'R' ? 'new' : st[0] === 'D' ? 'deleted' : 'modified' }; });
   return { project: name, commit: await headOf(repo.dir), branch: await branchOf(repo.dir), files, gitignore };
 }

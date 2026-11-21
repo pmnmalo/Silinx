@@ -517,3 +517,18 @@ test('#4760 git: an answer past the limit an error; changedFiles: git diff faili
   fs.mkdirSync(none, { recursive: true });
   await assert.rejects(G.changedFiles({ top: none }), e => e instanceof G.GitError && /^git diff: /.test(e.message));
 });
+
+test('#5016 a write\'s temporary file (writeAtomic\'s, before its rename) is no change: not in the status, not committed', async () => {
+  const bare = bareWith('tmpwrite', gates);
+  await G.gitClone({ url: bare, name: 'tmpwrite' });
+  const dir = path.join(ws, 'tmpwrite');
+  const temps = ['src/.gates.vhd.4242.k3j9x0q.tmp', '.silinx.json.4242.a1b2.tmp'];
+  for (const f of temps) write(path.join(dir, f), 'half written');
+  assert.deepEqual((await G.gitStatus('tmpwrite')).files, []);
+  await rejects(G.gitCommit('tmpwrite', 'Nothing'), 'nothing to commit: the project has no change since the last commit');
+  write(path.join(dir, 'src', 'extra.v'), 'module extra; endmodule\n');
+  assert.deepEqual((await G.gitStatus('tmpwrite')).files, [{ path: 'src/extra.v', state: 'new' }]);
+  assert.deepEqual((await G.gitCommit('tmpwrite', 'Extra')).files, [{ path: '.gitignore', state: 'new' }, { path: 'src/extra.v', state: 'new' }]);
+  assert.equal(sh(dir, 'ls-files', ...temps), '');
+  assert.deepEqual((await G.gitStatus('tmpwrite')).files, []);
+});

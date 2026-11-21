@@ -11,6 +11,12 @@ export const isOutput = rel => {
   return OUTPUTS.some(p => (p.startsWith('*') ? rel.toLowerCase().endsWith(p.slice(1)) : parts[0] === p));
 };
 
+// a write's temporary file (server/projects.js writeAtomic: .<name>.<pid>.<random>.tmp beside the file, renamed over it
+// once flushed, #4758): no change of the project's, never listed nor committed, though a status read during the write
+// sees it (#5016)
+export const WRITE_TEMP = '**/.*.tmp';
+export const isWriteTemp = rel => /(^|\/)\.[^/]+\.\d+\.[0-9a-z]*\.tmp$/.test(rel);
+
 /** The .gitignore Silinx writes into a project (Store Project in a GitHub Repository…, and before a commit when it has none). */
 export const GITIGNORE = `# Silinx (#3195): what the tools make again from the sources is not committed
 build/
