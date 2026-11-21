@@ -84,8 +84,6 @@ export const MESSAGES_PT_PATTERNS = [
   [/^(\S+) already exists in the project\. Replace it with the copy of (.+)\?$/, '$1 já existe no projeto. Substituí-lo pela cópia de $2?'],
   [/^([\s\S]+?)\. Replace it\?$/, (m, e) => `${tr(e)}. Substituí-lo?`],
   [/^Replace the contents of (\S+) by the truth table of '(.+)' \((\d+) input\(s\), (\d+) output\(s\)\)\?$/, "Substituir o conteúdo de $1 pela tabela de verdade de '$2' ($3 entrada(s), $4 saída(s))?"],
-  [/^(\d+) object\(s\) changed (.+): choose whose version each one keeps\. The rest of each drawing is merged by itself\.$/,
-    (m, n, w) => `${n} objeto(s) alterado(s) ${w === 'on both sides' ? 'dos dois lados' : tr(w)}: escolha a versão que cada um mantém. O resto de cada desenho é juntado sozinho.`],
   // what was made (the wizards' toasts and console lines)
   [/^(Module|Schematic|Circuit|Petri net|Test bench|Project) (\S+) created$/, (m, k, n) => `${{ Module: 'Módulo', Schematic: 'Esquemático', Circuit: 'Circuito', 'Petri net': 'Rede de Petri', 'Test bench': 'Test bench', Project: 'Projeto' }[k]} ${n} criado`],
   [/^(\S+) created$/, '$1 criado'],
