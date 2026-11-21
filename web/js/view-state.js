@@ -52,7 +52,7 @@ export const viewKept = () => keepView;
 // every document closed, the view state kept as it was (a project closed or another opened): false when one stays open
 export async function closeAllDocs() {
   keepView = true;
-  try { for (const d of [...S.docs]) if (!await closeDoc(d)) return false; } finally { keepView = false; }
+  try { for (const d of [...docsState.docs]) if (!await closeDoc(d)) return false; } finally { keepView = false; }
   return true;
 }
 /** The open project's view state now: { open, active, page, view, split } (kept per project; a design link's, #2886). */

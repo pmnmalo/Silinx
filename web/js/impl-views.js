@@ -9,6 +9,7 @@ import { projectTool } from './processes.js';
 import { S, activateDoc, closeDoc, findDoc, instancesOf, moduleInfo, openDoc } from './app.js';
 import { panes } from './state-panes.js';
 import { docsState } from './state-docs.js';
+import { procState } from './state-proc.js';
 
 // ---- View Implemented Design (FPGA): web/js/fpgaview.js over the XDL of the routed design
 // The hierarchy paths of the design as XST names them ('Inst_data/u1', from the top's instance
@@ -35,7 +36,7 @@ export async function openFpgaView(mod = S.project?.top) {
     if (m.reason === 'error') { commandError(title, m.error); return; }
     if (m.reason === 'no-top') { commandInfo(title, 'Set the top module of the project first.'); return; }
     // placed and routed and up to date: only the XDL export; otherwise the flow up to Place & Route first
-    const routed = m.reason !== 'no-ncd' && ['ok', 'warn'].includes(S.status.par);
+    const routed = m.reason !== 'no-ncd' && ['ok', 'warn'].includes(procState.status.par);
     if (!routed && !await confirmDlg(title, 'The FPGA view shows the design after Place & Route. Run Implement Design (Synthesize, Translate, Map, Place & Route) now?')) return;
     if (!await runImpl(mod, routed ? ['fpgaview'] : [...FLOW_UP_TO.par, 'fpgaview'])) return;
     m = await api.fpgaView(S.project.name).catch(e => ({ available: false, error: e.message }));
@@ -47,7 +48,7 @@ export async function openFpgaView(mod = S.project?.top) {
   const top = S.project.top;
   openDoc({ id: 'fpgaview', title: `FPGA (${top})`, icon: 'chip', printFit: 'page', tooltip: `${title}: ${m.device.part}`,
     create: el => {
-      const view = mountFpgaView(el, { model: m, top, entities: hierarchyEntities(top), stale: S.status.par === 'stale',
+      const view = mountFpgaView(el, { model: m, top, entities: hierarchyEntities(top), stale: procState.status.par === 'stale',
         onSelectModule: path => selectHierarchyPath(path) });
       return { view, destroy: () => view.destroy() };
     } });

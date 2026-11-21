@@ -28,6 +28,7 @@ import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -36,15 +37,15 @@ const $ = id => document.getElementById(id);
 
 // per-project UI state (cleared when another project is opened or the project is closed)
 function resetProjectState() {
-  S.diagsCleared++;   // (the start-up checks' lines coming later: not in the tabs, #339)
-  S.status = {}; panes.sel = null; panes.selKey = null; panes.selProc = null; S.diags = []; filesState.ucfText = null;
+  procState.diagsCleared++;   // (the start-up checks' lines coming later: not in the tabs, #339)
+  procState.status = {}; panes.sel = null; panes.selKey = null; panes.selProc = null; procState.diags = []; filesState.ucfText = null;
   resetSync();   // (the drawings' HDL kept in step: state-sync.js)
   resetC();   // (the C sources': state-c.js)
   renderDiagnostics();
   renderProcesses();   // (not the last project's processes and states, until a state of this one is restored: #1162)
 }
 function blockedByRun(what) {
-  if (!S.busy && !runState.currentJob) return false;
+  if (!procState.busy && !runState.currentJob) return false;
   commandError(what, 'An implementation is running: stop it (or wait for it to finish) first.');
   return true;
 }

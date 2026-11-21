@@ -14,6 +14,7 @@ import { watchProject, stopWatching } from './project-watch.js';
 import { collab, following } from './collab-state.js';
 import { renameProblem, renamedMessage, runningProblem, sharedProblem, followedProblem } from '/core/project-rename.js';
 import { runState } from './state-run.js';
+import { procState } from './state-proc.js';
 
 /** What this browser keeps by a project's name moved to its new one: Recent Projects, when it was opened, the last
  *  project (this browser's, this tab's), its documents and view, its sources' cursors. */
@@ -40,7 +41,7 @@ function renameRefusal(name = S.project?.name) {
   if (S.project?.name !== name) return null;
   if (following()) return followedProblem(name);
   if (collab.role === 'owner') return sharedProblem(name);
-  if (S.busy || runState.currentJob) return runningProblem(name);
+  if (procState.busy || runState.currentJob) return runningProblem(name);
   return null;
 }
 

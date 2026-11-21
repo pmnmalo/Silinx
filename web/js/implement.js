@@ -25,6 +25,7 @@ import { downloadUrl } from './download.js';
 import { runState } from './state-run.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 // Live per-step status from run.sh's "=== SILINX STEP <step> ===" markers and ISE WARNING/ERROR lines.
 const STEP_PROC = { synth: 'synth', translate: 'translate', map: 'map', par: 'par', trce: 'par', bitgen: 'bitgen', prombit: 'bitgen',
@@ -38,10 +39,10 @@ async function applyReportWarnings(track) {
   try { rep = await api.reports(S.project.name); } catch { return; }
   if (!rep || rep.available === false) return;
   const mapWarn = (rep.map?.utilization || []).find(u => /warnings/i.test(u.name))?.used;
-  const bump = (id, n) => { if (n > 0 && (S.status[id] === 'ok')) { S.status[id] = 'warn'; track.result[id] = 'warn'; } };
+  const bump = (id, n) => { if (n > 0 && (procState.status[id] === 'ok')) { procState.status[id] = 'warn'; track.result[id] = 'warn'; } };
   bump('synth', rep.synthesis?.warnings);
   bump('map', mapWarn);
-  if (S.status.impl && S.status.impl !== 'running') S.status.impl = worst(S.status.translate, S.status.map, S.status.par);
+  if (procState.status.impl && procState.status.impl !== 'running') procState.status.impl = worst(procState.status.translate, procState.status.map, procState.status.par);
   renderProcesses();
 }
 
@@ -53,11 +54,11 @@ export function stepTracker(steps, out = logLine) {
   let cur = null, warns = 0;
   const early = {};               // warnings printed before the step they concern has started
   const t = { warnings: 0, failed: false, diags: [], result, get current() { return cur; } };
-  const setProc = (id, st) => { result[id] = st === 'running' ? result[id] : worst(result[id], st); S.status[id] = st === 'running' ? 'running' : result[id]; };
+  const setProc = (id, st) => { result[id] = st === 'running' ? result[id] : worst(result[id], st); procState.status[id] = st === 'running' ? 'running' : result[id]; };
   const refreshGroups = () => {
-    if (['translate', 'map', 'par'].some(k => result[k] || S.status[k] === 'running')) {
-      const done = result.par && S.status.par !== 'running';
-      S.status.impl = done || t.failed ? worst(result.translate, result.map, result.par) : 'running';
+    if (['translate', 'map', 'par'].some(k => result[k] || procState.status[k] === 'running')) {
+      const done = result.par && procState.status.par !== 'running';
+      procState.status.impl = done || t.failed ? worst(result.translate, result.map, result.par) : 'running';
     }
   };
   const finish = (ok = true) => {
@@ -134,7 +135,7 @@ export async function checkUcfFile(path = S.project?.constraints, { quiet = fals
   const line = d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}:ConstraintSystem - "${d.file}" Line ${d.line}: ${d.message}`;
   if (quiet && warnings && !ne) {
     // (the console's and the open editors' entries: setDiagnostics keeps them itself, not listed twice, #4728)
-    setDiagnostics([...S.diags.filter(d => d.source !== 'console' && d.source !== 'sim' && d.source !== 'editor' && d.tool !== 'ConstraintSystem'), ...diags]);
+    setDiagnostics([...procState.diags.filter(d => d.source !== 'console' && d.source !== 'sim' && d.source !== 'editor' && d.tool !== 'ConstraintSystem'), ...diags]);
     warnings.push(...diags.map(line));
     return true;
   }
@@ -223,13 +224,13 @@ export async function boardUcf() {
 }
 export async function runImpl(mod, steps, opts = {}) {
   // one ISE run at a time (one build directory): checked and taken before any await
-  if (S.busy) { logError('An implementation is already running (use Stop to cancel it)'); return false; }
+  if (procState.busy) { logError('An implementation is already running (use Stop to cancel it)'); return false; }
   // (an experimental family: no flow runs it yet, #3142; the server and the MCP server refuse it too)
   if (projectTool().id === 'no-flow' && noFlowWarning(S.project?.device)) { log(noFlowWarning(S.project.device).replace(/^WARNING/, 'ERROR'), 'err'); return false; }
-  S.busy = true;
+  procState.busy = true;
   const pjName = S.project.name;
   try { return await runImplInner(mod, steps, opts, pjName); }
-  finally { S.busy = false; }
+  finally { procState.busy = false; }
 }
 async function runImplInner(mod, steps, opts, pjName) {
   let ok = false;
@@ -237,7 +238,7 @@ async function runImplInner(mod, steps, opts, pjName) {
     if (!await confirmDlg('Set Top Module', `'${mod}' is not the top-level module of the implementation.\nSet it as top and continue?`)) return;
     await setTop(mod, false);
   }
-  S.diags = S.diags.filter(d => d.source !== 'console');   // new run: drop the previous run's messages
+  procState.diags = procState.diags.filter(d => d.source !== 'console');   // new run: drop the previous run's messages
   const extra = [...steps].reverse().find(st => EXTRA_STEPS[st] && st !== 'trce') || (opts.timing ? 'trce' : null);
   const procId = extra || (steps.includes('bitgen') ? 'bitgen' : steps.includes('translate') ? 'impl' : 'synth');
   const procName = EXTRA_STEPS[procId] || { synth: openMode() ? OPEN_SYNTH : vivadoMode() ? 'Synthesize - Vivado' : 'Synthesize - XST', impl: 'Implement Design', bitgen: 'Generate Programming File' }[procId];
@@ -279,7 +280,7 @@ async function runImplInner(mod, steps, opts, pjName) {
   }
   // Clear the icons of the processes this run will redo (they get running/ok/warn/err as it goes).
   const runs = new Set([...(steps.includes('synth') ? ['synth'] : []), ...(steps.includes('translate') ? ['translate', 'impl'] : []), ...(steps.includes('map') ? ['map'] : []), ...(steps.includes('par') ? ['par'] : []), ...(steps.includes('bitgen') ? ['bitgen'] : [])]);
-  for (const id of runs) S.status[id] = null;
+  for (const id of runs) procState.status[id] = null;
   setStatus(procId, 'running');
   status(`Running ${procId}…`);
   const R = startRun({ process: procName, source: 'impl' });   // (its lines its own, #4749)
@@ -298,7 +299,7 @@ async function runImplInner(mod, steps, opts, pjName) {
       R.log(`Xilinx ISE toolchain not available (${tc.ise.mode} mode): ${tc.ise.reason}`, 'warn');
       R.log('The build directory and run.sh are still generated so they can be run on a machine with ISE 14.7. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
     }
-    if (synthUpToDate) { S.status.synth = runState.synthDone.status; renderProcesses(); }
+    if (synthUpToDate) { procState.status.synth = runState.synthDone.status; renderProcesses(); }
     const { job } = await api.implement(S.project.name, { steps, generateOnly: !ran, ...(synthUpToDate && { synthUpToDate }) });
     runState.currentJob = job;
     runState.stopRequested = false;
@@ -311,9 +312,9 @@ async function runImplInner(mod, steps, opts, pjName) {
     track.end(res.status === 'ok');
     if (stopped) {
       // stopped by the user: the interrupted step and the ones not reached are left unmarked
-      for (const id of IMPL_IDS) if (S.status[id] === 'running') S.status[id] = null;
-      if (track.current) S.status[STEP_PROC[track.current]] = null;
-      for (const [id, st] of Object.entries(track.result)) if (st === 'err') S.status[id] = null;
+      for (const id of IMPL_IDS) if (procState.status[id] === 'running') procState.status[id] = null;
+      if (track.current) procState.status[STEP_PROC[track.current]] = null;
+      for (const [id, st] of Object.entries(track.result)) if (st === 'err') procState.status[id] = null;
       renderProcesses();
       R.log('\nProcess stopped by the user.', 'info');   // (the user's own Stop: no warning, #4728)
       return;
@@ -347,8 +348,8 @@ async function runImplInner(mod, steps, opts, pjName) {
     R.log(`ERROR: ${e.message}`, 'err');
   } finally {
     // processes that never got to run in this execution must not keep the "running" spinner
-    for (const id of IMPL_IDS) if (S.status[id] === 'running') S.status[id] = null;
-    S.busy = false;
+    for (const id of IMPL_IDS) if (procState.status[id] === 'running') procState.status[id] = null;
+    procState.busy = false;
     runState.currentJob = null;
     status('Ready');
     renderProcesses();
@@ -374,7 +375,7 @@ export async function synthOpen(mod) {
       log(`Process "${SYNTH_OPEN}" stopped: Check Syntax found errors (see the Errors tab).`, 'err');
       return;
     }
-    S.diags = S.diags.filter(d => d.source !== 'console');
+    procState.diags = procState.diags.filter(d => d.source !== 'console');
     setStatus('synth-open', 'running');
     R = startRun({ process: SYNTH_OPEN, source: 'impl' });
     const family = S.project.device?.family || 'spartan3e';

@@ -33,6 +33,7 @@ import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 // (Print: the document in front, whichever it is, #1509)
 export { printActive, printable };
 
@@ -156,7 +157,7 @@ export function setupMenus() {
       { label: 'Exercise…', icon: icon('run'), action: async () => (await import('./exercise-view.js')).exerciseDialog(), disabled: hasPj },
     ] },
     { label: 'Process', items: () => [
-      ...flowOnly({ label: 'Implement Top Module', icon: icon('run'), action: () => S.project?.top && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), disabled: () => !S.project?.top || S.busy || !toolHas('impl') }),
+      ...flowOnly({ label: 'Implement Top Module', icon: icon('run'), action: () => S.project?.top && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), disabled: () => !S.project?.top || procState.busy || !toolHas('impl') }),
       { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: () => !runState.currentJob },
       { label: 'Run', action: () => panes.selProc && runProcess(panes.selProc), disabled: () => !panes.selProc?.run },
       { label: checkLabel(), action: () => panes.sel?.module && checkSyntax(panes.sel.module, designState.view === 'sim'), disabled: () => !panes.sel?.module },
@@ -177,9 +178,9 @@ export function setupMenus() {
         { label: 'Toolchain Settings (ISE / Programmers)…', icon: icon('gear'), action: () => wiz.toolchainDialog() }),
     ] },
     { label: 'Window', items: () => [
-      ...S.docs.map(d => ({ label: d.title, checked: d === docsState.active, action: () => activateDoc(d) })),
+      ...docsState.docs.map(d => ({ label: d.title, checked: d === docsState.active, action: () => activateDoc(d) })),
       docsState.docs.length ? '-' : null,
-      { label: 'Close All Documents', action: () => [...S.docs].forEach(closeDoc), disabled: () => !docsState.docs.length },
+      { label: 'Close All Documents', action: () => [...docsState.docs].forEach(closeDoc), disabled: () => !docsState.docs.length },
     ].filter(Boolean) },
     { label: 'Help', items: () => [
       { label: 'About Silinx', icon: icon('help'), action: () => wiz.aboutDialog() },
@@ -222,7 +223,7 @@ export function setupToolbar() {
     btn('paste', 'Paste', () => pasteAny(), canPasteAny),
     btn('find', 'Find in Project', () => openFindInProject(), () => !!S.project),   // (every source of the project, #1430; an editor's own Find in its bar)
     h('div', { class: 'tb-sep' }),
-    btn('run', 'Implement Top Module', () => S.project?.top && !S.busy && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen'])),
+    btn('run', 'Implement Top Module', () => S.project?.top && !procState.busy && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen'])),
     btn('stop', 'Stop the running process', () => stopProcesses()),
     btn('wave', 'Simulate Behavioral Model', () => panes.sel?.module && runSimulation(panes.sel.module)),
     // the Processes pane's Emulate on Board ▸ Emulate Behavioral Model (RTL), named without its "(RTL)": the top module's, enabled as it is (#5114)
@@ -244,7 +245,7 @@ export function setupToolbar() {
   tb.append(h('div', { class: 'm-steps', role: 'group', 'aria-label': 'Design flow' },
     step('mCheck', 'Check', 'Check Syntax of the selected module', () => checkSyntax(mod(), designState.view === 'sim'), () => !!S.project && !!mod()),
     step('mWave', 'Simulate', 'Simulate Behavioral Model of the selected module', () => runSimulation(mod()), () => !!S.project && !!mod()),
-    step('mBolt', 'Implement', 'Implement Top Module', async () => await topConfirmed('Implement', 'implements') && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), () => !!S.project?.top && !S.busy && toolHas('impl')),
+    step('mBolt', 'Implement', 'Implement Top Module', async () => await topConfirmed('Implement', 'implements') && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), () => !!S.project?.top && !procState.busy && toolHas('impl')),
     step('mBoard', 'Emulate', 'Board Emulator', async () => await topConfirmed('Emulate', 'emulates') && openEmulator(S.project.top), () => !!S.project?.top && toolHas('emu')),
     step('mUpload', 'Program', 'Configure Target Device (iMPACT)', () => openImpact(), () => !S.project || !!projectTool().program),
   ));

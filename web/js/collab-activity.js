@@ -87,7 +87,7 @@ async function applyUi(st, { view: v, layout }, get, live) {
     if (!have.has(id) && (await openReport(id, get) || await reopenDoc(id))) st.opened.add(id);
     if (!live()) return;   // (the follower's own document in front meanwhile stays there, #4865)
   }
-  for (const d of [...S.docs]) {
+  for (const d of [...docsState.docs]) {
     const k = viewKeyOf(d);
     if (st.opened.has(k) && !v.open.includes(k)) { st.opened.delete(k); await closeDoc(d); }
   }

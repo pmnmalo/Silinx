@@ -19,7 +19,7 @@ test('implement.js: the job\'s error said once, its failure one entry, the user\
   assert.doesNotMatch(src, /stopped by the user\.', 'warn'/);
   // (the quiet constraints' check: the console's, the simulation's (#4746) and the editors' entries left to
   // setDiagnostics, which keeps them)
-  assert.match(src, /S\.diags\.filter\(d => d\.source !== 'console' && d\.source !== 'sim' && d\.source !== 'editor' && d\.tool !== 'ConstraintSystem'\)/);
+  assert.match(src, /procState\.diags\.filter\(d => d\.source !== 'console' && d\.source !== 'sim' && d\.source !== 'editor' && d\.tool !== 'ConstraintSystem'\)/);
 });
 
 test('viewers.js: the elaboration errors listed by setDiagnostics only; "generated with errors" no entry', () => {
@@ -31,7 +31,7 @@ test('viewers.js: the elaboration errors listed by setDiagnostics only; "generat
 
 test('console.js: a run\'s header drops its previous entries; its result and SILINX FAILED no entries', () => {
   const src = read('console.js');
-  assert.match(src, /S\.diags = S\.diags\.filter\(d => !\(d\.source === 'console' && d\.run === run\)\);/);   // (dropRun, #4749)
+  assert.match(src, /procState\.diags = procState\.diags\.filter\(d => !\(d\.source === 'console' && d\.run === run\)\);/);   // (dropRun, #4749)
   assert.match(src, /if \(RUN_SUMMARY\.test\(line\)\) return;/);
   assert.match(readFileSync(new URL('../core/message.js', import.meta.url), 'utf8'), /if \(!m && \/=== SILINX FAILED\/\.test\(msg\.text\)\) return null;/);   // (entryOf, #4749)
   assert.match(read('project-rename.js'), /if \(no\) \{ logInfo\(`Rename Project: \$\{no\}\.`\); return; \}/);

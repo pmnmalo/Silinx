@@ -270,7 +270,7 @@ async function reopenDocs() {
   unbindAll(fol.bound);
   unbindDrawings(fol.drawn);
   const open = [];
-  for (const d of [...S.docs]) {
+  for (const d of [...docsState.docs]) {
     const p = docPath(d);
     if (!p) continue;
     if (docsState.active === d) open.push(p); else open.unshift(p);

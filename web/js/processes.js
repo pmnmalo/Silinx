@@ -36,6 +36,7 @@ import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -181,7 +182,7 @@ function noTopNote() {
 /** Set Top Module…: the top chosen among the design's modules, the hierarchy's roots first (#1224). */
 async function chooseTop() {
   const roots = viewRoots(false).sort(naturalCompare);   // (in their names' order, not the files'; natural: x_2 before x_10, #3819)
-  const names = [...new Set([...roots, ...S.modules.filter(m => m.kind !== 'package' && m.role !== 'sim').map(m => m.name).sort(naturalCompare)])];
+  const names = [...new Set([...roots, ...designState.modules.filter(m => m.kind !== 'package' && m.role !== 'sim').map(m => m.name).sort(naturalCompare)])];
   if (!names.length) return logInfo('The project has no module that can be the top yet');
   const sel = h('select', { style: { width: '100%' } }, ...names.map(n => h('option', { value: n, 'data-no-i18n': true }, n)));
   const r = await dialog({
@@ -201,7 +202,7 @@ function renderProcessTree(host, defs) {
   const tree = h('ul', { class: 'tree' });
   const add = (ul, p) => {
     const li = h('li', { 'data-proc': p.id || null });   // (the Tasks interface leaves other tasks' groups out of Implement: #923)
-    const st = S.status[p.id];
+    const st = procState.status[p.id];
     // collapsed groups are remembered: the panel is redrawn on every status change
     const key = p.id || p.label;
     const collapsed = panes.procCollapsed.has(key);
@@ -229,8 +230,8 @@ function renderProcessTree(host, defs) {
     row.addEventListener('contextmenu', e => {
       e.preventDefault(); row.click();
       popupMenu([
-        { label: 'Run', action: () => runProcess(p), disabled: !p.run || p.disabled || (S.busy && ISE_PROCS.includes(p.id)) },
-        { label: 'Rerun', action: () => runProcess(p), disabled: !p.run || p.disabled || (S.busy && ISE_PROCS.includes(p.id)) },
+        { label: 'Run', action: () => runProcess(p), disabled: !p.run || p.disabled || (procState.busy && ISE_PROCS.includes(p.id)) },
+        { label: 'Rerun', action: () => runProcess(p), disabled: !p.run || p.disabled || (procState.busy && ISE_PROCS.includes(p.id)) },
         { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: !runState.currentJob },
         '-',
         { label: 'Process Properties…', action: () => wiz.implProperties(), disabled: !['synth', 'impl', 'bitgen', 'map', 'par', 'translate'].includes(p.id) },
@@ -248,7 +249,7 @@ function renderProcessTree(host, defs) {
 // schematics, editors and programming run in the browser or independently and stay available.
 const ISE_PROCS = FLOW_PROCS;
 export async function runProcess(p) {
-  if (S.busy && ISE_PROCS.includes(p.id)) { logError('An implementation is already running (use Stop to cancel it)'); return; }
+  if (procState.busy && ISE_PROCS.includes(p.id)) { logError('An implementation is already running (use Stop to cancel it)'); return; }
   if (p.onTop && !await topConfirmed(p.label, p.onTop)) return;
   try { await p.run(); }
   catch (e) { log(`ERROR: ${e.message}`, 'err'); console.error(e); }
@@ -270,9 +271,9 @@ export async function topConfirmed(title, verb) {
   });
 }
 
-export function setStatus(id, st) { S.status[id] = st; renderProcesses(); }
+export function setStatus(id, st) { procState.status[id] = st; renderProcesses(); }
 export function markStale() {
-  for (const k of Object.keys(S.status)) if (S.status[k] && S.status[k] !== 'running') S.status[k] = 'stale';
+  for (const k of Object.keys(procState.status)) if (procState.status[k] && procState.status[k] !== 'running') procState.status[k] = 'stale';
   renderProcesses();
   dispatchEvent(new Event('silinx:design-changed'));   // (the Board Emulator refreshed, #1401)
 }
@@ -282,7 +283,7 @@ export function markStale() {
 // warning each, the drawing first (the HDL generated from it follows its name)
 export function reservedNameDiags() {
   const drawn = Object.entries(designState.viewTexts || {}).map(([file, t]) => { try { return { name: JSON.parse(t).name, file }; } catch { return null; } });
-  return reservedModuleDiags([...drawn.filter(m => m?.name), ...S.modules.map(m => ({ name: m.name, file: m.file, line: m.line }))]);
+  return reservedModuleDiags([...drawn.filter(m => m?.name), ...designState.modules.map(m => ({ name: m.name, file: m.file, line: m.line }))]);
 }
 
 export function diagsFor(lib, design, extra = []) {
@@ -440,7 +441,7 @@ export async function loadUcfText() {
 export async function saveImplStatus() {
   try {
     await loadUcfText();
-    const status = Object.fromEntries(IMPL_IDS.filter(id => S.status[id] && S.status[id] !== 'running').map(id => [id, S.status[id]]));
+    const status = Object.fromEntries(IMPL_IDS.filter(id => procState.status[id] && procState.status[id] !== 'running').map(id => [id, procState.status[id]]));
     await api.writeFile(S.project.name, STATUS_FILE, JSON.stringify({ top: S.project.top, fingerprint: sourcesFingerprint(), time: new Date().toISOString(), status, ...(runState.synthDone && { synth: runState.synthDone }) }, null, 2));
   } catch { /* best effort */ }
 }
@@ -452,7 +453,7 @@ export async function restoreImplStatus({ fromReports = false } = {}) {
   await loadUcfText();
   if (!S.project?.top) return;
   let saved = null;
-  if (fromReports) for (const id of IMPL_IDS) delete S.status[id];
+  if (fromReports) for (const id of IMPL_IDS) delete procState.status[id];
   else try { saved = JSON.parse(await api.readFile(S.project.name, STATUS_FILE)); } catch { /* none */ }
   await loadUcfText();
   let status = {};
@@ -472,7 +473,7 @@ export async function restoreImplStatus({ fromReports = false } = {}) {
     if (sum.bitstream) status.bitgen = 'ok';
   }
   const fresh = !saved || saved.fingerprint === sourcesFingerprint();
-  for (const id of IMPL_IDS) if (status[id]) S.status[id] = fresh || status[id] === 'err' ? status[id] : 'stale';
+  for (const id of IMPL_IDS) if (status[id]) procState.status[id] = fresh || status[id] === 'err' ? status[id] : 'stale';
   if (!fresh) log('Sources changed since the last implementation run: processes marked out of date.', 'info');
   renderProcesses();
 }

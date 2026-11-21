@@ -30,6 +30,7 @@ import { projectNameError, projectNameFrom, sameProject } from '/core/project-na
 import { silinxFolderError, silinxFolderSkips } from '/core/project-folder.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
+import { docsState } from './state-docs.js';
 
 // Device used when no evaluation board is selected.
 const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
@@ -389,7 +390,7 @@ export async function closeBeforeReplace(path) {
   let owned = null;
   if (isView(path)) { try { owned = JSON.parse(designState.viewTexts?.[path] ?? '').generatedFile || null; } catch { /* not read */ } }
   for (const p of [path, owned].filter(Boolean)) {
-    for (const d of [...S.docs]) {
+    for (const d of [...docsState.docs]) {
       if (d.path === p || String(d.id || '').endsWith(`:${p}`)) { d.dirty = false; clearTimeout(d._autosave); await app.closeDoc(d); }
     }
   }
@@ -426,7 +427,7 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
   });
   if (!r) return;
   const written = [];
-  const tree = [...S.fileTree];
+  const tree = [...filesState.fileTree];
   for (const f of inp.files) {
     // through the import gate (#2830): a file it refuses is not added, said in the console; a drawing named with a
     // reserved word refused (#679) (core/import-source.js)

@@ -1,7 +1,8 @@
 // The programming file of Program FPGA (iMPACT, web/js/impact.js, #1024): is it there and up to date with the
-// sources, from the implementation processes' state (S.status)? When it is not, Program FPGA asks whether to
+// sources, from the implementation processes' state (procState.status)? When it is not, Program FPGA asks whether to
 // implement the design first and programs once it is built (as Generate and Simulate, #490). No DOM: unit tested
 // (test/impact-file.test.js).
+import { procState } from './state-proc.js';
 
 // (the processes of Implement Top Module: Synthesize, Translate, Map, Place & Route, Generate Programming File)
 const IMPL = ['synth', 'translate', 'map', 'par', 'bitgen'];

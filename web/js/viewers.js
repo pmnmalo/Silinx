@@ -29,6 +29,7 @@ import { designOnly, shownDiag } from './design-only.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 // ---- schematic
 // Netlist written by netgen for `step` (postsynth / posttrans / postmap / postpar) with the
@@ -49,7 +50,7 @@ async function netlistSources(step, { hier = false, action = 'Simulate', title =
     if (!m) return null;
   }
   const stage = { postsynth: 'synth', posttrans: 'translate', postmap: 'map', postpar: 'par' }[step];
-  if (S.status[stage] === 'stale' || S.status[step] === 'stale') log(`WARNING: the ${name.toLowerCase()} model is older than the sources (run "${EXTRA_STEPS[step]}" again to update it).`, 'warn');
+  if (procState.status[stage] === 'stale' || procState.status[step] === 'stale') log(`WARNING: the ${name.toLowerCase()} model is older than the sources (run "${EXTRA_STEPS[step]}" again to update it).`, 'warn');
   // the Board Emulator runs the design's own model when the simulation's has the test bench's generics (#622:
   // blinky's divider of 2 would make it blink millions of times a second)
   const file = action === 'Emulate' && m.board?.path ? m.board.path : m.path;
@@ -119,7 +120,7 @@ async function openSilinxTechSchematic(mod) {
     const rep = await api.reports(S.project.name).catch(() => null);
     return rep && rep.top === top && rep.files?.netlist ? rep.files.netlist : null;
   };
-  let file = ['ok', 'warn'].includes(S.status.synth) && mod === top ? await netlistOf() : null;
+  let file = ['ok', 'warn'].includes(procState.status.synth) && mod === top ? await netlistOf() : null;
   if (!file) {
     if (!await runImpl(mod, ['synth'])) return;
     top = S.project.top;

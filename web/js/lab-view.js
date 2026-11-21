@@ -21,6 +21,7 @@ import { PROCESSES } from '/core/labs-check.js';
 import { PROGRESS_FILE, checkLines, checkStep, labFileLines, labProgress, listLabs, localize, nextOpen, parseLab, parseProgress, progressText, recordTry } from '/core/labs.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 export const STEPS_KEY = 'silinx.narrow.labsteps';   // (the Steps panel shown on a narrow screen)
 const lang = () => (getLanguage() === 'pt' ? 'pt' : 'en');
@@ -38,7 +39,7 @@ function projectIo(name) {
     // the last run's reports, current while the Processes pane marks none of its steps out of date or failed
     reports: async process => {
       const r = await api.reports(name).catch(() => null);
-      return { reports: r?.summary ? r : null, current: !PROCESSES[process].marks.some(m => S.status?.[m] === 'stale' || S.status?.[m] === 'err') };
+      return { reports: r?.summary ? r : null, current: !PROCESSES[process].marks.some(m => procState.status?.[m] === 'stale' || procState.status?.[m] === 'err') };
     },
   };
 }
