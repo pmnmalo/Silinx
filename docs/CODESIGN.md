@@ -36,17 +36,18 @@ What the others teach us:
 
 ## The System document
 
-A **System** (`<name>.sys.json`) is a design source of an ordinary project, made with New Source (its type: System) and shown
-in the Design pane as `[System]`.
+A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **co-design project**, a project kind of
+Silinx (#5041): New Project asks the kind first, and its co-design choice stays disabled until phase 1 is usable. A
+co-design project has one System, shown in the Design pane as `[System]`.
 
 - **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md).
 - **It holds nodes and links.**
-- **The project keeps its one `board`** for the classic flow. Each FPGA node names its own board and pins, and is
-  built with the flow of that board's family.
+- **A co-design project has no `board` of its own.** Each FPGA node is a module of the co-design project itself (HDL
+  or a drawing), names its own board and pins, and is built with the flow of that board's family.
 
 | Node | Holds | Board |
 |---|---|---|
-| FPGA | a module of the project (HDL or a drawing) as the node's top | a Silinx board and its pins |
+| FPGA | a module of the co-design project (HDL or a drawing) as the node's top | a Silinx board and its pins |
 | Microcontroller | its firmware: an `.hex` / `.elf` / `.uf2` given, later a C / Arduino sketch compiled on the server, or MicroPython (`.py`) | Arduino Uno / Nano (ATmega328P), Raspberry Pi Pico (RP2040), ESP32 DevKit, ESP32-C3 |
 | Circuit | a `.circ.json` (breadboards, 74xx, an Arduino on a breadboard) | — |
 | Peripheral | a model: a serial terminal, a potentiometer (ADC), an I²C sensor, an OLED, a servo, an MQTT broker, a VGA monitor | — |
@@ -70,7 +71,30 @@ in the Design pane as `[System]`.
 - on a microcontroller, as a peripheral and its board's pins (`Serial` on D0 / D1, `SPI` on D10–D13);
 - on a connector, as a pin map (a Pmod on the Arduino's header).
 
-The check runs when the system is saved and when it is built, its messages in the console as every check's.
+The check (`core/system-check.js`, the MCP's `check_system`) runs when the system is saved and when it is built, its
+messages in the console as every check's: a node's or a link's id, kind, board, module or firmware unknown; an
+interface's baud, frame, pins and direction; an FPGA node's port not of its module, of the wrong direction (a TX that is
+an input: TX and RX crossed), with no pin or a pin not on its board; the baud and the frame equal at both ends; a wire
+driven twice or by nothing (a warning); a pin used by two links; a 5 V output on a 3.3 V FPGA input (a warning); a node
+that joins nothing (a warning).
+
+The format (version 1):
+
+```json
+{ "format": "silinx-system", "version": 1, "name": "uart_avr",
+  "nodes": [
+    { "id": "fpga", "kind": "fpga", "module": "uart", "board": "basys2", "variant": "250", "pins": { "rx": "J3", "tx": "A3" },
+      "interfaces": [{ "name": "uart", "kind": "uart", "tx": "tx", "rx": "rx", "baud": 9600, "frame": "8N1" }], "x": 0, "y": 0 },
+    { "id": "uno", "kind": "mcu", "board": "arduino-uno", "firmware": "firmware/echo.hex",
+      "interfaces": [{ "name": "Serial", "kind": "uart", "baud": 9600, "frame": "8N1" },
+                     { "name": "btn", "kind": "gpio", "pins": ["D2"], "dir": "in" }], "x": -200, "y": 0 },
+    { "id": "term", "kind": "terminal", "interfaces": [{ "name": "serial", "kind": "uart", "baud": 9600, "frame": "8N1" }], "x": 0, "y": 200 } ],
+  "links": [{ "id": "serial", "kind": "uart", "a": "uno.Serial", "b": "fpga.uart" }] }
+```
+
+An FPGA node's interfaces name its module's ports (`led<0>`, a bus's bit) and `pins` puts each on a pin of its board;
+a microcontroller's name its board's pins, its UART the board's (`Serial`: TX D1, RX D0). A UART link joins a's TX to
+b's RX and b's TX to a's RX; a GPIO link its ends' pins in order.
 
 **A register map** is the advanced interface. The student declares the registers once: name, address, width,
 read / write. Silinx generates both sides:
@@ -247,10 +271,9 @@ The existing `program_board` and `capture` serve the FPGA nodes.
   - One MicroPython node can call the scheduler from inside its `sleep`.
   - Several need to be suspended and resumed, through JSPI, or each needs a Worker of its own.
 - **Web Serial** is not on Safari nor on the iPad. Windows needs drivers for the CH340 USB-serial chips.
-- **Several boards in a project** touch the build flow. Until phase 3, a System has one FPGA node on the project's
-  board (as most course systems: one FPGA, one or more microcontrollers); several FPGA nodes are simulated only.
-  Later, the project keeps its one `board`, and the FPGA nodes are
-  built one by one.
+- **Several boards in a project** touch the build flow. Until phase 3, a System has one FPGA node built (as most
+  course systems: one FPGA, one or more microcontrollers); several FPGA nodes are simulated only. Later, the FPGA
+  nodes are built one by one, each on its own board.
 
 ## Phases
 
@@ -288,16 +311,16 @@ The existing `program_board` and `capture` serve the FPGA nodes.
 
 ## Decided
 
-- The System is a document in a project, not a set of projects.
+- The System is a co-design project's top, its one System document (#5041); its FPGA nodes are modules of that project.
 - The AVR comes first; the ESP32 comes in MicroPython.
 - The firmware is a given `.hex` first; a compiler on the server comes later.
 - Links are pins on the FPGA's side, the microcontrollers' peripherals converted by the links' adapters; one
   window, bounded by the links' lookahead (measured, see Speed).
-- The boards' drawings are Silinx's own; New Source names the document "System".
+- The boards' drawings are Silinx's own; co-design is a project kind, chosen in New Project (#5041).
 - One scheduler serves the circuit's Arduino, the System's nodes and the Zynq's processors.
 - The ESP32 runs MicroPython in WebAssembly, with a virtual time per line through `sys.settrace`. It needs JSPI, so
   it is not simulated in Safari. The Pico runs MicroPython's real firmware on rp2040js and comes first in phase 4.
-- A System has one FPGA node, on the project's board, until phase 3.
+- A System has one FPGA node built until phase 3.
 - The AVR and the Pico are the masters of SPI and I²C links, and the FPGA is the peripheral.
 - A link's synchronisation is a property of the link. A fixed latency is exact at every quantum and is the default,
   because grading needs determinism. An adaptive quantum is faster, but its timing-sensitive exchanges depend on the
