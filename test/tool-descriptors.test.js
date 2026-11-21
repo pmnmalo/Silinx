@@ -254,7 +254,7 @@ test('#2311 each descriptor\'s programming: its process in its tree, the file it
   assert.deepEqual(['ice40', 'ecp5', 'gowin'].map(f => familyProfile(f).program), ['spi-flash', 'sram', 'sram']);
   for (const tool of [SILINX_ECP5, SILINX_GOWIN]) assert.ok(tool.steps.find(s => s.id === 'bitgen').produces.includes(tool.program.file), tool.id);
   assert.ok(fs.existsSync(new URL('../web/js/program-open.js', import.meta.url)));
-  assert.match(read('web/js/app.js'), /projectTool\(\)\.program\?\.title \|\| 'iMPACT' : 'iMPACT'/);
+  assert.match(read('web/js/impl-views.js'), /projectTool\(\)\.program\?\.title \|\| 'iMPACT' : 'iMPACT'/);
 });
 
 test('#2311 the task list: every tool has the four tasks of a lab session, each with its button and its dot', () => {
