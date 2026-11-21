@@ -37,11 +37,12 @@ const SAME = [
   ['toolchain settings', 'toolchain settings (ise / programmers)'],   // (the same)
   ['configure target device (impact)', 'impact (configure target device)'],   // the toolbar's; Tools ▸ iMPACT
   ['stop the running process', 'stop'],   // the toolbar's; Process ▸ Stop
-  ['new asm state diagram', 'asm state machine editor'],   // the toolbar's; Tools ▸ ASM State Machine Editor… (both the
-  // New Source wizard on an ASM chart)
   ['import source', 'add copy of source'],   // Project ▸ Add Copy of Source… is Import Source… in the Silinx interface (#1501)
   ['search commands and files', 'command palette'],   // the Silinx header's search; View ▸ Command Palette…
   ['check design', 'check syntax'],
+  // the ISE style's toolbar's Emulate Behavioral Model: Processes ▸ Emulate on Board ▸ Emulate Behavioral Model (RTL),
+  // named without its "(RTL)" (#5114)
+  ['emulate behavioral model', 'emulate behavioral model (rtl)'],
   ['emulate on board', 'process:emulate'],   // Emulate's button: Processes ▸ Emulate on Board   // Design's Check Design: the top module's Check Syntax (#1309)
   ['new test bench', 'create test bench (wizard)'],   // Simulate's New Test Bench…: the Test Bench wizard
   ['import test bench', 'add copy of source'],   // Simulate's Import Test Bench…: a source imported
