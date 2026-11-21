@@ -57,9 +57,11 @@ function drawBars(el) {
   if (!el || el.children.length || !el.textContent.includes(OVERLINE)) return el;
   const text = el.textContent;
   el.textContent = '';
-  el.append(barNodes(barsOf(text)));
-  el.classList.add('ob-text');
-  el.addEventListener('copy', copyAsWritten);
+  // (a table's cell stays a cell, its text drawn in a span of its own: the cell an inline box no more, #5024)
+  const host = /^T[DH]$/.test(el.tagName) ? el.appendChild(document.createElement('span')) : el;
+  host.append(barNodes(barsOf(text)));
+  host.classList.add('ob-text');
+  host.addEventListener('copy', copyAsWritten);
   return el;
 }
 

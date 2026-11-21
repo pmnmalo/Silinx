@@ -86,8 +86,12 @@ uiTest('#4058 Electronics / Engineering notation: the bars drawn, nested, the te
   await page.waitFor(() => window.Silinx.active?.id === 'fsm:src/nt.fsm.json' && window.Silinx.active.fsmEditor?.fitted(), [], { what: 'the state diagram' });
   await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-ttable td.mono .ob`), [ED], { what: 'the transition table, its bars drawn' });
-  const conds = (await drawn(page, `${ED} .fsm-ttable td.ob-text`));
+  const conds = (await drawn(page, `${ED} .fsm-ttable td .ob-text`));
   assert.equal(conds.length, 2);
+  // (their cells still cells, centred as the others: the text drawn in a span inside, not the cell an inline box, #5024)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable td .ob-text`)].map((s) => { const td = s.closest('td'), cs = getComputedStyle(td);
+    return [cs.display, cs.textAlign, td.classList.contains('ob-text'), Math.abs((s.getBoundingClientRect().left + s.getBoundingClientRect().right) / 2 - (td.getBoundingClientRect().left + td.getBoundingClientRect().right) / 2) < 2]; }), ED),
+  [['table-cell', 'center', false, true], ['table-cell', 'center', false, true]]);
   for (const d of conds) assert.ok(d.slash === overlineToSlash(d.text) && d.depth === depthOf(d.text) && d.depth >= 1 && d.above && d.hidden, JSON.stringify(d));
   assert.equal(Math.max(...conds.map((d) => d.depth)), 2, 'NOT (a AND NOT b): two deep');
   await page.eval(async () => (await import('/js/notation.js')).notationMenu().submenu.find((x) => /^Text/.test(x.label))?.action());

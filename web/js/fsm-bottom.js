@@ -50,7 +50,10 @@ export function mountFsmBottom(ctx) {
     panelTitle.textContent = 'Tables';
     const wrap = h('div', { class: 'fsm-tables' });
     const showCode = M().encoding !== 'enum';
-    // state table (classic form), first (#4966: as the course's)
+    // transition table, edited in place (web/js/fsm-table.js, #4974), first (#5024: the one to edit)
+    const tv = transitionTableView({ M, editable: () => !locked(), commit, flash, redraw: () => renderPanel(), btn });
+    wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, tv.csv)), tv.table, tv.add);
+    // state table (classic form)
     const st = stateTable(M());
     if (st) {
       const head = h('tr', {}, h('th', { rowspan: 2 }, 'Present state'), showCode ? h('th', { rowspan: 2 }, 'Code') : null,
@@ -64,9 +67,6 @@ export function mountFsmBottom(ctx) {
         ...st.rows.map((r) => [r.state, r.code, ...r.next, ...(M().type === 'mealy' ? r.outputs : [r.moore])])];
       wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'State table'), csvButton(`${M().name}_states.csv`, csv)), t2);
     }
-    // transition table, edited in place (web/js/fsm-table.js, #4974)
-    const tv = transitionTableView({ M, editable: () => !locked(), commit, flash, redraw: () => renderPanel(), btn });
-    wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, tv.csv)), tv.table, tv.add);
     // encoded table
     const et = encodedTable(M());
     if (et.error) wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Encoded transition table')), h('p', { class: 'asm-muted' }, et.error));
