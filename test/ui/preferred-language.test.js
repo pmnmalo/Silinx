@@ -77,7 +77,8 @@ uiTest('Design Properties, Preferred Language Verilog: the state diagram and the
   assert.ok(before.includes('verilog u_display - sevenseg [Verilog*] [VHDL] (sevenseg.v)'), before.join('\n'));
   assert.deepEqual(await rows(page), before.map((r) => (/^(fsm|algebra) /.test(r) ? r.replace('[VHDL]', '[Verilog]')
     : r.replace('[VHDL*] (', '[VHDL*] [Verilog] (').replace('[Verilog*] [VHDL] (', '[Verilog*] ('))));
-  assert.ok(before.some((r) => /^fsm .*\[FSM\*\] \[VHDL\]/.test(r)) && before.some((r) => /^algebra .*\[VHDL\]/.test(r)), before.join('\n'));
+  // (a state diagram's row: its Schematic badge between, #4910, #4977)
+  assert.ok(before.some((r) => /^fsm .*\[FSM\*\] (\[Schematic\] )?\[VHDL\]/.test(r)) && before.some((r) => /^algebra .*\[VHDL\]/.test(r)), before.join('\n'));
   // the open editor follows: its model in Verilog, linked to the Verilog file (its next edit keeps them)
   assert.deepEqual(await page.eval(() => { const m = window.Silinx.docs.find((d) => d.fsmEditor).fsmEditor.getModel(); return [m.lang, m.generatedFile]; }), ['verilog', 'src/traffic.v']);
 
