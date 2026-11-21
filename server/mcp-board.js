@@ -42,14 +42,15 @@ export const BOARD_TOOLS = [
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       tool: { type: 'string', enum: TOOLS, description: 'The programmer (default: the board\'s, else Toolchain Settings\').' },
+      position: { type: 'integer', minimum: 1, maximum: 32, description: 'The FPGA\'s position in the board\'s JTAG chain, iMPACT\'s numbering from 1 (the Program view\'s "position N"), whatever the programmer (default: the board\'s FPGA). A Spartan-3E / 6 or 7-series .bit only: a Zynq-7000\'s, an iCE40\'s, an ECP5\'s or a Gowin\'s has none.' },
       force: { type: 'boolean', description: 'Program a bitstream built for another device than the project\'s anyway (default false), warned.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-    async run({ project: name, tool, force = false }, { signal } = {}) {
+    async run({ project: name, tool, position, force = false }, { signal } = {}) {
       const pj = await readProject(name);
       if (!pj.top) throw toolError(`'${name}' has no top module: set_top first`);
       const { startProgramming } = await import('./impl-routes.js');
-      const job = await waited(() => startProgramming({ project: name, ...(tool && { tool }), force }), signal, 'programming');
+      const job = await waited(() => startProgramming({ project: name, ...(tool && { tool }), ...(position != null && { position }), force }), signal, 'programming');
       const redact = await redactor(), lines = job.lines.map(redact), ok = job.status === 'ok', r = job.result || {};
       const warnings = r.warnings || [], file = r.bitfile ? `build/${r.bitfile.split(/[\\/]/).pop()}` : null;
       const head = ok ? `Programmed the board${pj.board ? ` (${pj.board})` : ''} with ${file}${r.target === 'flash' ? ' (its SPI flash)' : ''}.` : `Programming failed: ${redact(job.error || 'see the log')}`;

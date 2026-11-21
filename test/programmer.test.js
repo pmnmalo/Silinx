@@ -139,7 +139,7 @@ test('program: board default tool, bit header checks, explicit tools and positio
   assert.equal(j.status, 'ok');
   assert.deepEqual(j.result.warnings, [mismatch]);
   assert.ok(j.lines.includes(`WARNING: ${mismatch}`));
-  assert.deepEqual(j.result.commands[0].args, ['-c', 'digilent_hs2', '--index-chain', '1', bitPath('top.bit')]);
+  assert.deepEqual(j.result.commands[0].args, ['-c', 'digilent_hs2', '--index-chain', '0', bitPath('top.bit')]);   // (position 1, #4940)
   assert.ok(j.lines.some(l => /defaults for this board are not verified/.test(l)));
   // the request's expected device is not taken: the project's says (#3040)
   j = await run('/program', { project: 'Prog', tool: 'xc3sprog', cable: 'jtaghs1', expectDevice: { part: 'xc3s250e', package: 'cp132' } });
@@ -317,6 +317,37 @@ test('program: a Gowin project\'s .fs into the Tang Nano 9K\'s SRAM with openFPG
   // (a .fs by an absolute path: only a project's)
   assert.equal((await app.call('POST', '/program', { bitfile: fsFile })).status, 400);
   assert.equal((await app.call('POST', '/program', { project: 'Gw', bitfile: 'src/top.v' })).body.error, "only .bit files, or a project's .bin (the iCE40) or .fs (the Gowin), can be programmed");
+});
+
+// #4940: the request's position is iMPACT's (1-based, the Program view's "position N", program_board's), the tool's
+// own counted from 0 but iMPACT's: each tool's command line for positions 1 to 3 (the Basys 3's one FPGA, the Nexys2's
+// FPGA and PROM, the Nexys2-500's FPGA, PROM and CPLD); the board's defaults already the tool's; 0 and 33 refused
+test('#4940 toolPosition and the command lines: iMPACT\'s position 1, 2, 3 as each tool counts', () => {
+  assert.deepEqual([1, 2, 3, '2'].map(p => prog.toolPosition('openFPGALoader', p)), [0, 1, 2, 1]);
+  for (const tool of ['xc3sprog', 'djtgcfg']) assert.deepEqual([1, 2, 3].map(p => prog.toolPosition(tool, p)), [0, 1, 2], tool);
+  assert.deepEqual([1, 2, 3].map(p => prog.toolPosition('impact', p)), [1, 2, 3]);
+  for (const p of [undefined, null, '']) assert.equal(prog.toolPosition('djtgcfg', p), null);
+  for (const p of [0, -1, 33, 'x']) assert.throws(() => prog.toolPosition('djtgcfg', p), e => e.status === 400 && e.message === `invalid chain position '${p}'`, String(p));
+  const cmd = (tool, board, position) => {
+    const o = prog.resolveOptions({ tool, ...(position !== undefined && { position }) }, {}, board);
+    const c = prog.buildCommands('program', { ...o, bitfile: '/p/top.bit' })[0];
+    return c.impactScript ? c.impactScript.split('\n').filter(l => / -p /.test(l)) : c.args;
+  };
+  // the Basys 3's one FPGA (openFPGALoader -b basys3): position 1, index 0, as with none given
+  assert.deepEqual(cmd('openFPGALoader', 'basys3', 1), ['-b', 'basys3', '--index-chain', '0', '/p/top.bit']);
+  assert.deepEqual(cmd('openFPGALoader', 'basys3'), ['-b', 'basys3', '--index-chain', '0', '/p/top.bit']);
+  // the Nexys2's FPGA, its PROM, its CPLD (the Nexys2-500's chain): positions 1, 2, 3
+  for (const [pos, i] of [[1, '0'], [2, '1'], [3, '2']]) {
+    assert.deepEqual(cmd('djtgcfg', 'nexys2', pos), ['prog', '-d', 'Nexys2', '-i', i, '-f', '/p/top.bit'], `djtgcfg ${pos}`);
+    assert.deepEqual(cmd('xc3sprog', 'nexys2', pos), ['-c', 'jtaghs1', '-v', '-p', i, '/p/top.bit'], `xc3sprog ${pos}`);
+    assert.deepEqual(cmd('openFPGALoader', 'nexys2', pos), ['-c', 'digilent_hs2', '--index-chain', i, '/p/top.bit'], `openFPGALoader ${pos}`);
+    assert.deepEqual(cmd('impact', 'nexys2', pos), [`assignFile -p ${pos} -file "/p/top.bit"`, `Program -p ${pos}`], `impact ${pos}`);
+  }
+  // none given: the board's defaults, the tool's own numbering (djtgcfg's 0, iMPACT's 1)
+  assert.deepEqual(cmd('djtgcfg', 'nexys2'), ['prog', '-d', 'Nexys2', '-i', '0', '-f', '/p/top.bit']);
+  assert.deepEqual(cmd('impact', 'nexys2'), ['assignFile -p 1 -file "/p/top.bit"', 'Program -p 1']);
+  // adepttool finds the FPGA itself: its --device is the USB board's, whatever the position
+  assert.deepEqual(cmd('adepttool', 'basys2', 2), ['--device', '0', '/p/top.bit']);
 });
 
 // #2298: openFPGALoader's command lines: an open family's file, no JTAG chain position; a Xilinx .bit's, its position
