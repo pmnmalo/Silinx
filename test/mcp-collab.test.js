@@ -60,7 +60,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 test('the tools are listed, with their schemas', () => {
   const byName = Object.fromEntries(TOOLS.map(t => [t.name, t]));
   assert.deepEqual(byName.share_project.inputSchema.required, ['project']);
-  assert.deepEqual(byName.share_project.inputSchema.properties.action.enum, ['start', 'status', 'promote', 'demote', 'stop']);
+  assert.deepEqual(byName.share_project.inputSchema.properties.action.enum, ['start', 'status', 'promote', 'demote', 'renew', 'stop']);
   assert.deepEqual(byName.follow_project.inputSchema.required, ['link']);
   // (an editor's link writes, #3182)
   assert.equal(byName.follow_project.annotations.readOnlyHint, false);
@@ -166,7 +166,7 @@ test('#3631 share_project top (Share Module…): the links open on the module; f
 
 test('the errors: a project not shared, a bad action, no project, a bad server, no server there, a broken link, a link of a page\'s host', async () => {
   await fails('share_project', { project: 'traffic', action: 'stop' }, '\'traffic\' is not shared');
-  await fails('share_project', { project: 'traffic', action: 'pause' }, 'action: one of start, status, promote, demote, stop');
+  await fails('share_project', { project: 'traffic', action: 'pause' }, 'action: one of start, status, promote, demote, renew, stop');
   const r = await call('share_project', { project: 'nope', server: base });
   assert.equal(r.isError, true);
   assert.match(r.text, /^share_project: no project 'nope'/);
