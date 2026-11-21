@@ -13,6 +13,7 @@ import { partInputs, partLamps, portRef, portDecls } from './circuit-io.js';
 import { circuitErrors } from './circuit-check.js';
 import { pinPort, icPorts, vhdlIc, verilogIc, vhdlDigital, verilogDigital } from './circuit-hdl-ics.js';
 import { digitalTop } from './circuit-digital.js';
+import { vhdlEntity, vlogModule } from './hdl-emit.js';
 import { coreText, verilogCoreDigital } from './circuit-hdl-core.js';
 
 // (a KiCad part modelled by a module of the project, #4283: that module)
@@ -69,10 +70,9 @@ export function generateCircuit(model, lang, { source } = {}) {
   const lamps = m.parts.flatMap((p) => partLamps(p).map((x) => [portRef(x.port, V), plan.pinNet(p.id, x.a), plan.pinNet(p.id, x.k)]));
   const dig = digitalTop(m, V, (d) => entityOf(m, d));
   if (V) {
-    L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${m.name} is`);
-    const ps = decls.map((x) => `${x.name} : ${x.dir} ${x.width == null ? 'std_logic' : `std_logic_vector(${x.width - 1} downto 0)`}`);
-    if (ps.length) L.push('  port (', ps.map((x) => `    ${x}`).join(';\n'), '  );');
-    L.push(`end entity ${m.name};`, '', `architecture digital of ${m.name} is`, ...dig.decl.map((x) => `  ${x}`), 'begin', ...dig.body.map((x) => `  ${x}`), 'end architecture digital;', '',
+    const ps = decls.map((x) => ({ name: x.name, dir: x.dir, type: x.width == null ? 'std_logic' : `std_logic_vector(${x.width - 1} downto 0)` }));
+    L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', ...vhdlEntity(m.name, { ports: ps.length ? ps : null }));
+    L.push('', `architecture digital of ${m.name} is`, ...dig.decl.map((x) => `  ${x}`), 'begin', ...dig.body.map((x) => `  ${x}`), 'end architecture digital;', '',
       OFF, `architecture circuit of ${m.name} is`);
     if (plan.signals.length) L.push(`  signal ${plan.signals.join(', ')} : std_logic := 'X';`);   // (unknown at first: no instant read as floating)
     if (plan.watched.length) L.push('  -- silinx: ignore unused-signal (watched by a logic probe)', `  signal ${plan.watched.join(', ')} : std_logic := 'X';`);
@@ -82,7 +82,8 @@ export function generateCircuit(model, lang, { source } = {}) {
     for (const [o, a, k] of lamps) L.push(`  ${o} <= '1' when to_x01(${a}) = '1' and to_x01(${k}) = '0' else '0';`);
     L.push('end architecture circuit;', ON);
   } else {
-    L.push(`module ${m.name}${decls.length ? ` (${decls.map((x) => `${x.dir === 'in' ? 'input' : 'output'} ${x.width == null ? '' : `[${x.width - 1}:0] `}${x.name}`).join(', ')})` : ''};`, `\`ifdef ${SIM}`);
+    const ps = decls.map((x) => ({ name: x.name, dir: x.dir === 'in' ? 'in' : 'out', range: x.width == null ? '' : `[${x.width - 1}:0] ` }));
+    L.push(...vlogModule(m.name, { inline: true, ports: ps }), `\`ifdef ${SIM}`);
     if (plan.signals.length) L.push(`  wire ${plan.signals.join(', ')};`);
     if (plan.watched.length) L.push('  // silinx: ignore unused-signal (watched by a logic probe)', `  wire ${plan.watched.join(', ')};`);
     for (const [n, e, why] of plan.assigns) L.push(`  assign ${n} = ${e};   // ${why}`);
