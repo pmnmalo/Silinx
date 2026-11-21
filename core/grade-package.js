@@ -8,24 +8,23 @@ import { visibleCopy } from './grade-format.js';
 import { workflowYaml, readmeText, WORKFLOW } from './classroom-template.js';
 import { VERSION } from './version.js';
 import { foldsToProjectFile } from './fold-name.js';
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vhdlEntity, vhdlType, vlogModule } from './hdl-emit.js';
 
 export const STARTER_LANGUAGES = ['vhdl', 'verilog'];
 const DEVICE = Object.freeze({ family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' });
 
 function vhdlTop(ex) {
-  const type = p => vhdlType(p.width);
-  const ports = ex.ports.map((p, k) => `    ${p.name} : ${p.dir} ${type(p)}${k < ex.ports.length - 1 ? ';' : ''}`);
+  const ports = ex.ports.map(p => ({ name: p.name, dir: p.dir, type: vhdlType(p.width) }));
   return ['library ieee;', 'use ieee.std_logic_1164.all;', '',
     `-- ${ex.top}: the exercise's top module, with the statement's ports. Its design is yours to write.`,
-    `entity ${ex.top} is`, '  port (', ...ports, '  );', 'end entity;', '',
+    ...vhdlEntity(ex.top, { ports, end: 'bare' }), '',
     `architecture rtl of ${ex.top} is`, 'begin', 'end architecture;', ''].join('\n');
 }
 
 function verilogTop(ex) {
-  const ports = ex.ports.map((p, k) => `  ${p.dir === 'inout' ? 'inout' : p.dir === 'in' ? 'input' : 'output'} wire ${vlogRange(p.width)}${p.name}${k < ex.ports.length - 1 ? ',' : ''}`);
+  const ports = ex.ports.map(p => ({ name: p.name, dir: p.dir === 'inout' ? 'inout' : p.dir === 'in' ? 'in' : 'out', width: p.width }));
   return [`// ${ex.top}: the exercise's top module, with the statement's ports. Its design is yours to write.`,
-    `module ${ex.top} (`, ...ports, ');', 'endmodule', ''].join('\n');
+    ...vlogModule(ex.top, { ports, kind: 'wire' }), 'endmodule', ''].join('\n');
 }
 
 /**

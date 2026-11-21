@@ -7,6 +7,7 @@ import { isIdent } from './ident.js';
 import { vhLitP } from './asm-emit.js';
 import { clog2Lines } from './asm-width.js';
 import { vhdlType, vlogRange } from './hdl-emit.js';
+import { VHDL_USER_ENCODING, machineEntity, machineModule, vhdlStates, vlogStates } from './hdl-emit-fsm.js';
 
 // ---------------------------------------------------------------------------------------
 // Generators
@@ -414,25 +415,10 @@ export function generateVerilog(model) {
   const vec = vlogRange;
   const L = headerLines(a, 'verilog');
   L.push('');
-  if (a.generics.length) {
-    L.push(`module ${m.name} #(`);
-    const gw = Math.max(...a.generics.map((g) => g.name.length));
-    a.generics.forEach((g, i) => L.push(`    parameter ${pad(g.name, gw)} = ${g.default}${i < a.generics.length - 1 ? ',' : ''}`));
-    L.push(') (');
-  } else L.push(`module ${m.name} (`);
-  const portLines = [];
-  const vw = Math.max(0, ...[...m.inputs, ...m.outputs].map((p) => vec(p.width).length));
-  portLines.push(`    input  wire ${pad('', vw)}${m.clock}`);
-  portLines.push(`    input  wire ${pad('', vw)}${rst}`);
-  for (const p of m.inputs) portLines.push(`    input  wire ${pad(vec(p.width), vw)}${p.name}`);
-  for (const p of m.outputs) portLines.push(`    output ${p.registered ? 'wire' : 'reg '} ${pad(vec(p.width), vw)}${p.name}`);
-  L.push(portLines.map((l, i) => l + (i < portLines.length - 1 ? ',' : '')).join('\n'));
-  L.push(');');
+  L.push(...machineModule(m, { generics: a.generics, outKind: (p) => (p.registered ? 'wire' : 'reg ') }));
   L.push('');
   if (a.registers.some((r) => r.p?.clog2)) L.push(...clog2Lines('verilog'), '');
-  L.push('    // ---------------------------------------------------------------- state encoding');
-  const cw = Math.max(...enc.map((s) => s.constName.length));
-  for (const s of enc) L.push(`    localparam ${vec(W)}${pad(s.constName, cw)} = ${W}'b${s.bits};`);
+  L.push(...vlogStates(enc, W));
   L.push('');
   // initial values = reset values: the FPGA powers up as after a reset (XST uses them as INIT)
   L.push(`    reg ${vec(W)}state_reg = ${enc[0].constName};`);
@@ -536,41 +522,17 @@ export function generateVhdl(model) {
   L.push('use ieee.std_logic_1164.all;');
   L.push('use ieee.numeric_std.all;');
   L.push('');
-  L.push(`entity ${m.name} is`);
-  if (a.generics.length) {
-    L.push('    generic (');
-    const gw = Math.max(...a.generics.map((g) => g.name.length));
-    a.generics.forEach((g, i) => L.push(`        ${pad(g.name, gw)} : integer := ${g.default}${i < a.generics.length - 1 ? ';' : ''}`));
-    L.push('    );');
-  }
-  L.push('    port (');
-  const ports = [[m.clock, 'in ', 'std_logic'], [rst, 'in ', 'std_logic'],
-    ...m.inputs.map((p) => [p.name, 'in ', typ(p.width)]), ...m.outputs.map((p) => [p.name, 'out', typ(p.width)])];
-  const pw = Math.max(...ports.map((p) => p[0].length));
-  ports.forEach((p, i) => L.push(`        ${pad(p[0], pw)} : ${p[1]} ${p[2]}${i < ports.length - 1 ? ';' : ''}`));
-  L.push('    );');
-  L.push(`end entity ${m.name};`);
+  L.push(...machineEntity(m, { generics: a.generics }));
   L.push('');
   L.push(`architecture rtl of ${m.name} is`);
   L.push('');
   if (a.registers.some((r) => r.p?.clog2)) L.push(...clog2Lines('vhdl'), '');
-  L.push('    -- state encoding');
-  if (m.encoding === 'enum') {
-    L.push(`    type state_t is (${enc.map((s) => s.constName).join(', ')});`);
-  } else {
-    L.push(`    subtype state_t is std_logic_vector(${W - 1} downto 0);`);
-    const cw = Math.max(...enc.map((s) => s.constName.length));
-    for (const s of enc) L.push(`    constant ${pad(s.constName, cw)} : state_t := "${s.bits}";`);
-  }
+  L.push(...vhdlStates(enc, W, m.encoding));
   L.push('');
   // initial values = reset values: the FPGA powers up as after a reset (XST uses them as INIT)
   L.push(`    signal state_reg  : state_t := ${enc[0].constName};`);
   L.push('    signal state_next : state_t;');
-  if (m.encoding !== 'enum') {
-    L.push('');
-    L.push('    attribute fsm_encoding : string;');
-    L.push('    attribute fsm_encoding of state_reg : signal is "user";');
-  }
+  if (m.encoding !== 'enum') L.push('', ...VHDL_USER_ENCODING);
   const regs = m.outputs.filter((o) => o.registered);
   if (regs.length) {
     L.push('');

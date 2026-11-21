@@ -19,7 +19,7 @@ import { parseCond, evalCond, parseOutputs, constValue } from './fsm.js';
 import { clone } from './util.js';
 import { pnmlTag, pnmlStartTag, pnmlAttr, pnmlElements, pnmlPosition } from './pnml-scan.js';
 import { escXml } from './escape.js';
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vhdlEntity, vhdlType, vlogModule, vlogRange } from './hdl-emit.js';
 
 const PETRI_VERSION = 1;
 export const PLACE_R = 22;          // radius of a place (drawing units)
@@ -246,10 +246,9 @@ export function generatePetri(model, lang, { source } = {}) {
     `${c} Transitions : ${m.transitions.map(t => `${t.name}${t.guard ? ` [${t.guard}]` : ''}`).join(', ')}`, rule, '');
   const ins = [m.clock, m.reset.name], inW = n => m.inputs.find(p => p.name === n)?.width || 1;
   if (V) {
-    L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `entity ${m.name} is`, '  port (');
-    const ps = [...ins.map(n => `${n} : in std_logic`), ...m.inputs.map(p => `${p.name} : in ${vhdlType(p.width)}`),
-      ...m.outputs.map(p => `${p.name} : out ${vhdlType(p.width)}`)];
-    L.push(ps.map(x => `    ${x}`).join(';\n'), '  );', `end entity ${m.name};`, '', `architecture petri of ${m.name} is`);
+    const ps = [...ins.map(n => ({ name: n, dir: 'in', type: 'std_logic' })), ...m.inputs.map(p => ({ name: p.name, dir: 'in', type: vhdlType(p.width) })),
+      ...m.outputs.map(p => ({ name: p.name, dir: 'out', type: vhdlType(p.width) }))];
+    L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', ...vhdlEntity(m.name, { ports: ps }), '', `architecture petri of ${m.name} is`);
     for (const p of m.places) L.push(`  signal ${reg(p)} : ${W(p) === 1 ? 'std_logic' : `unsigned(${W(p) - 1} downto 0)`} := ${num(p.tokens, W(p))};`);
     for (const t of m.transitions) if (Object.keys(t.outputs).length) L.push(`  signal ${fr(t)} : std_logic := '0';`);
     L.push('begin', `  process (${m.clock})`);
@@ -298,10 +297,9 @@ export function generatePetri(model, lang, { source } = {}) {
     }
     L.push(`end architecture petri;`, '');
   } else {
-    L.push('`timescale 1ns / 1ps', '', `module ${m.name} (`);
-    const ps = [...ins.map(n => `input wire ${n}`), ...m.inputs.map(p => `input wire ${vlogRange(p.width)}${p.name}`),
-      ...m.outputs.map(p => `output wire ${vlogRange(p.width)}${p.name}`)];
-    L.push(ps.map(x => `  ${x}`).join(',\n'), ');', '');
+    const ps = [...ins.map(n => ({ name: n, dir: 'in', range: '' })), ...m.inputs.map(p => ({ name: p.name, dir: 'in', width: p.width })),
+      ...m.outputs.map(p => ({ name: p.name, dir: 'out', width: p.width }))];
+    L.push('`timescale 1ns / 1ps', '', ...vlogModule(m.name, { ports: ps, kind: 'wire' }), '');
     for (const p of m.places) L.push(`  reg ${vlogRange(W(p))}${reg(p)} = ${num(p.tokens, W(p))};`);
     for (const t of m.transitions) if (Object.keys(t.outputs).length) L.push(`  reg ${fr(t)} = 1'b0;`);
     for (const p of m.places) L.push(`  reg [8:0] v_${p.name}, add_${p.name};`);
