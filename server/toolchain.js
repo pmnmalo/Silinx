@@ -39,6 +39,22 @@ export function configDir() {
 }
 export const configPath = () => path.join(configDir(), 'config.json');
 
+// config.json as it is on disk (null: none, or not JSON), for the settings read per request (the relay's, a page's CSP:
+// server/server.js; the MCP server's remotes): read and parsed once per change of the file, its status looked at
+// only, not its text (#4775). Its callers read it, never change it.
+let configSeen = null;   // { path, sig, value }
+export function configFile() {
+  const file = configPath();
+  let st;
+  try { st = fss.statSync(file); } catch { st = null; }
+  const sig = st ? `${st.ino}:${st.size}:${st.mtimeMs}:${st.ctimeMs}` : '';
+  if (configSeen?.path === file && configSeen.sig === sig) return configSeen.value;
+  let value = null;
+  if (st) try { value = JSON.parse(fss.readFileSync(file, 'utf8')); } catch { /* not JSON */ }
+  configSeen = { path: file, sig, value };
+  return value;
+}
+
 /** A test run (node --test, or a *.test.js file run alone) never writes the user's own configuration (#3420): a test
  *  that saves settings without its own SILINX_CONFIG_DIR (or HOME) wrote its placeholder ssh host, user, port and
  *  settings script into the developer's ~/.silinx/config.json. The user's own: their account's home's .silinx (not
@@ -59,7 +75,7 @@ export function refuseUserConfigInTests({ env = process.env, execArgv = process.
  *  else `fallback` in the remote home; without a leading '~/' or a trailing '/'. */
 export function iseWorkBase(fallback, env = process.env) {
   let dir = env.SILINX_ISE_REMOTE_DIR;
-  if (!dir) try { dir = JSON.parse(fss.readFileSync(configPath(), 'utf8')).ssh?.remoteDir; } catch { /* no config */ }
+  if (!dir) dir = configFile()?.ssh?.remoteDir;
   return String(dir || '').replace(/^~\/?/, '').replace(/(.)\/+$/, '$1') || fallback;
 }
 
@@ -90,7 +106,7 @@ function originsOf(list) {
  *  only) }. */
 export function relayConfig(cfg = null) {
   let r = cfg?.relay;
-  if (cfg === null) try { r = JSON.parse(fss.readFileSync(configPath(), 'utf8')).relay; } catch { r = null; }
+  if (cfg === null) r = configFile()?.relay;
   const key = typeof r?.key === 'string' && r.key.length >= 24 ? r.key : '';
   return { origins: originsOf(r?.origins), key, relays: originsOf(r?.relays) };
 }
@@ -120,7 +136,7 @@ const EARLIER_DIRS = 100;
  *  "owner/*"], in lower case. */
 export function mcpRemotes(cfg = null) {
   let list = cfg?.mcp?.remotes;
-  if (cfg === null) try { list = JSON.parse(fss.readFileSync(configPath(), 'utf8')).mcp?.remotes; } catch { list = null; }
+  if (cfg === null) list = configFile()?.mcp?.remotes;
   return (Array.isArray(list) ? list : []).map(x => String(x).trim().toLowerCase()).filter(x => /^[\w.-]+\/(\*|[\w.-]+)$/.test(x));
 }
 /** A settings script ISE's way: …/settings64.sh or …/settings32.sh ('' = auto-detect). */
@@ -278,6 +294,7 @@ export async function saveConfig(partial, { fromApi = false } = {}) {
   const { tightenConfigFolder } = await import('./config-folder.js');
   tightenConfigFolder();
   await fs.writeFile(configPath(), JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
+  configSeen = null;
   await fs.chmod(configPath(), 0o600).catch(() => {});   // a file written before with another mode
   return cfg;
 }

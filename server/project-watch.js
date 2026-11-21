@@ -3,9 +3,10 @@
 // that they show it without opening the project again.
 //
 // A project is watched while a page listens to it: its files are looked at every `interval` ms (their size and
-// time; a poll, the same on every system, where fs.watch is not), the build's outputs aside but its summary
-// (build/reports.json) and the processes' marks (build/silinx-status.json). The changes this server makes itself
-// (the page's own requests, its runs) are not told: while one of them runs the project is held, and once it ends
+// time; a poll, the same on every system, where fs.watch is not; a big project's less often, its looks SLOW times
+// their length apart at least, #4775), the build's outputs aside but its summary (build/reports.json) and the
+// processes' marks (build/silinx-status.json). The changes this server makes itself (the page's own requests, its
+// runs) are not told: while one of them runs the project is held, and once it ends
 // what it changed is taken as known, silently. Known by what this server wrote (server/own-writes.js, #4726): a change
 // made meanwhile that is not one of its writes (the MCP server's, an editor's) is told to every page, the one that asked
 // too; a run's build summary is its own. A request whose writes are not all recorded (git's, a merge's, an import's:
@@ -14,30 +15,21 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { isOwnChange } from './own-writes.js';
+import { mapLimit, filesOf } from './concurrent.js';
 
 /** The build's files told: the Design Summary of the last run, the processes' marks the page saved. */
 export const BUILD_WATCHED = ['build/reports.json', 'build/silinx-status.json'];
 
 // the project's files as the Files page lists them (server/projects.js's walk, hidden files and build/ aside),
-// with the build's files above: rel -> 'size:mtime'
+// with the build's files above: rel -> 'size:mtime'; its folders read and its files statted a few at a time (#4775)
 async function scan(dir) {
   const out = new Map();
-  const walk = async base => {
-    let ents;
-    try { ents = await fs.readdir(path.join(dir, base), { withFileTypes: true }); } catch { return; }
-    for (const ent of ents) {
-      if (ent.name.startsWith('.') || (base === '' && ent.name === 'build')) continue;
-      const rel = base ? `${base}/${ent.name}` : ent.name;
-      if (ent.isDirectory()) await walk(rel);
-      else if (ent.isFile()) await stamp(rel);
-    }
-  };
-  const stamp = async rel => {
+  const files = await filesOf(dir, { skip: (name, rel) => name.startsWith('.') || rel === 'build' });
+  const stamps = await mapLimit([...files, ...BUILD_WATCHED], 32, async rel => {
     const st = await fs.stat(path.join(dir, rel)).catch(() => null);
-    if (st?.isFile()) out.set(rel, `${st.size}:${st.mtimeMs}`);
-  };
-  await walk('');
-  for (const rel of BUILD_WATCHED) await stamp(rel);
+    return st?.isFile() ? `${st.size}:${st.mtimeMs}` : null;
+  });
+  [...files, ...BUILD_WATCHED].forEach((rel, i) => { if (stamps[i]) out.set(rel, stamps[i]); });
   return out;
 }
 
@@ -63,6 +55,9 @@ export function diffScans(before, after) {
  *     changed was read (two tabs' requests at once: each one's told to the other, #3972); after `wait` ms, held anyway,
  *     what the overlapping holds changed then told to both pages (#4873)
  */
+// the timer's next look after SLOW times the last one's length at least
+const SLOW = 4;
+
 export function createProjectWatcher({ dirOf, busy = () => false, interval = 500, scanDir = scan, wait = 2000, ownChange = isOwnChange } = {}) {
   const watched = new Map();   // key -> { name, dir, listeners, snap, holds, writers, timer, inflight, next, wasBusy, resync, releases, ready }
   const NOBODY = Symbol('a hold of no page');
@@ -78,7 +73,9 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     await w.ready;
     const ranBefore = busy(w.name), heldBefore = w.holds > 0 || ranBefore, releases = w.releases;
     const opaqueBefore = w.opaque > 0 || w.opaqueResync, opaqueReleases = w.opaqueReleases;
+    const t0 = Date.now();
     const now = await scanDir(w.dir);
+    w.lookedAt = Date.now(); w.took = w.lookedAt - t0;
     const ran = ranBefore || busy(w.name), held = heldBefore || w.holds > 0 || ran;   // (held during the scan: its files may be our own)
     const opaque = opaqueBefore || w.opaque > 0;
     const changes = diffScans(w.snap, now);
@@ -123,7 +120,8 @@ export function createProjectWatcher({ dirOf, busy = () => false, interval = 500
     if (!w) {
       w = { name, dir: dirOf(name), listeners: new Map(), snap: new Map(), holds: 0, writers: new Set(), waiters: [], inflight: null, next: null, wasBusy: false, resync: false, releases: 0, opaque: 0, opaqueResync: false, opaqueReleases: 0 };
       w.ready = scanDir(w.dir).then(s => { w.snap = s; });
-      w.timer = setInterval(() => { poll(w, { after: false }).catch(() => {}); }, interval);
+      // (a project whose look takes long, a big one: looked at less often, the server's time spent mostly elsewhere, #4775)
+      w.timer = setInterval(() => { if (Date.now() - (w.lookedAt || 0) >= SLOW * (w.took || 0)) poll(w, { after: false }).catch(() => {}); }, interval);
       w.timer.unref?.();
       watched.set(key, w);
     }
