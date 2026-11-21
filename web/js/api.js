@@ -136,7 +136,6 @@ export const api = {
   projects: () => req('GET', '/api/projects'),
   workspace: () => req('GET', '/api/workspace'),
   templates: () => req('GET', '/api/templates'),
-  testDesigns: () => req('GET', '/api/test-designs'),
   exampleFiles: name => req('GET', `/api/templates/${enc(name)}/files`),
   createProject: p => req('POST', '/api/projects', p),
   project: readProject,

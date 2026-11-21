@@ -54,9 +54,9 @@ test('projects: create (empty + template), list, read with file tree, write, del
 
   const tpl = await call('GET', '/templates');
   assert.deepEqual(tpl.body, ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80']);   // the order the interface lists them
-  // the test designs, apart (#1746): a new project from one, a C design's top its function
-  const { TEST_DESIGN_ORDER } = await import('../core/test-designs.js');
-  assert.deepEqual((await call('GET', '/test-designs')).body, TEST_DESIGN_ORDER);
+  // the test designs (#1746): not listed (New Project offers the examples only, #5108); a new project from one still
+  // made (the tests open them so), a C design's top its function
+  assert.equal((await call('GET', '/test-designs')).status, 404);
   r = await call('POST', '/projects', { name: 'Gcd', template: 'gcd' });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.deepEqual([r.body.top, r.body.board, r.body.simTop], ['gcd', null, '']);

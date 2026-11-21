@@ -1,12 +1,13 @@
-// The test designs (test-designs/<name>, #1746): designs Silinx itself is tested with, offered as projects to open and
-// run, to see what Silinx does with each kind of source: schematics of the schematic corpus (test/schematic-corpus/
-// hand/), state diagrams of the diagram corpus's machines (test/diagram-corpus/fsm/*.kiss2) and C / C++ programs for
-// Silinx HLS. Each has its test: a self-checking test bench (Simulate: "Simulation finished OK"), or the C's main()
-// (C Simulation, C/RTL Co-simulation: it returns 0 when every result is right). They are listed apart from the
-// examples (core/examples.js), whose rules they are not held to (every board, ISE with no warnings): none has a board.
+// The test designs (test-designs/<name>, #1746): designs Silinx itself is tested with, projects its tests open and run
+// to see what Silinx does with each kind of source: schematics of the schematic corpus (test/schematic-corpus/hand/),
+// state diagrams of the diagram corpus's machines (test/diagram-corpus/fsm/*.kiss2) and C / C++ programs for Silinx HLS.
+// Each has its test: a self-checking test bench (Simulate: "Simulation finished OK"), or the C's main() (C Simulation,
+// C/RTL Co-simulation: it returns 0 when every result is right). They are kept apart from the examples
+// (core/examples.js), whose rules they are not held to (every board, ISE with no warnings): none has a board. New
+// Project and the MCP server offer the examples only, not these (#5108).
 // All are Silinx's own (AGPL-3.0-only), never third-party code. Isomorphic.
 
-/** The test designs in the order the interface lists them: [{ name, kind, about }] (kind: schematic, fsm, c). */
+/** The test designs in their order: [{ name, kind, about }] (kind: schematic, fsm, c). */
 export const TEST_DESIGNS = [
   { name: 'bus_taps', kind: 'schematic', about: 'bus taps of one bit and of several, bits reversed through a bus join, a tap into a gate' },
   { name: 'bus_join', kind: 'schematic', about: 'bus joins of parts of several widths, a join of joins, a bus split again' },

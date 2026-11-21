@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 import * as P from './projects.js';
 import { withPlaces } from './project-places.js';
 import { orderExamples } from '../core/examples.js';
-import { orderTestDesigns } from '../core/test-designs.js';
 import { importMapPackages } from './import-map.js';
 import { contentSecurityPolicy, inlineScriptHashes, relaySources } from './csp.js';
 import { configDir, relayConfig } from './toolchain.js';
@@ -281,8 +280,6 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     .map(d => d.name))));
   // an example's files (#2826: a link to it opens the project of that name as it is when it has the same files)
   api.get('/templates/:name/files', wrap(req => P.exampleFiles(req.params.name)));
-  // the test designs (#1746), a category of their own (core/test-designs.js)
-  api.get('/test-designs', wrap(() => orderTestDesigns(P.templateNames(P.TEST_DESIGNS_DIR))));
 
   // Implementation (ISE) + programming routes live in impl-routes.js.
   const { registerImplRoutes } = await import('./impl-routes.js');

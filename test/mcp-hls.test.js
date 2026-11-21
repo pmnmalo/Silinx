@@ -9,6 +9,7 @@ import { MSUM_C, MSUM_V, MDESC, EXT, INC_C, INC_V, IDESC, CHAIN } from './hls-bl
 
 let tmp;
 const { handle } = await import('../server/mcp.js');
+const P = await import('../server/projects.js');
 let id = 0;
 async function call(name, args = {}) {
   const r = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
@@ -19,7 +20,8 @@ const DESIGNS = [['fir', 'src/fir.c', 12], ['gcd', 'src/gcd.c', 6], ['sort', 'sr
 
 before(async () => {
   tmp = await scratchEnv('silinx-mcp-hls-');
-  for (const [d] of DESIGNS) await ok('new_project_from_example', { name: d, example: d });
+  // (the test designs opened as the server makes them: not offered by new_project_from_example, #5108)
+  for (const [d] of DESIGNS) await P.createProject({ name: d, template: d, madeBy: 'mcp' });
 });
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 

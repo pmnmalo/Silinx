@@ -124,7 +124,6 @@ const PT_PATTERNS = [
   [/^Folder '(.*)': (\d+) file\(s\) — no (silinx\.json|\.xise) found!$/, "Pasta '$1': $2 ficheiro(s) — sem $3!"],
   [/^Balanced \((Speed|Area)\)$/, (m, g) => `Equilibrado (${g === 'Speed' ? 'Velocidade' : 'Área'})`],
   [/^Example: (.*)$/, 'Exemplo: $1'],
-  [/^Test design: (.*)$/, 'Projeto de teste: $1'],
   [/^Settings file: (.*)$/, 'Ficheiro de definições: $1'],
   // the Silinx toolchain: the status of the project's device
   // I/O Pin Planning without its top (#253)

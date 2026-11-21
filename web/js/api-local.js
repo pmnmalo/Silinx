@@ -17,8 +17,6 @@ import { exportCSources, exportXise, importXise, importIseSchematics, iseModuleS
 import EXAMPLES from 'silinx-examples';
 import { isCSource } from '../../core/view-hdl.js';
 import { orderExamples } from '../../core/examples.js';
-import TEST_DESIGNS from 'silinx-test-designs';
-import { orderTestDesigns } from '../../core/test-designs.js';
 import { createZip, browserCodec, textOf } from '../../core/zip.js';
 import { GATE_LIMITS, gateEntries, gateMessages, gateZip } from '../../core/import-gate.js';
 import { isTrusted, markUntrusted, untrustedMessage } from '../../core/trust.js';
@@ -62,8 +60,8 @@ async function giveCopyLocal(name, p) {
   if (c.keep) snapshotsOf(name).save(c.snapshot);
   return c;
 }
-// (a new project from an example, or from a test design: #1746)
-const ops = projectOps(() => store, { ...TEST_DESIGNS, ...EXAMPLES });
+// (a new project from an example; not from a test design, not offered by New Project: #5108)
+const ops = projectOps(() => store, EXAMPLES);
 const projectJson = async name => (await store.load(name)).json;
 // the logic analyzer's captures of this session (#3176), as build/capture.json by project
 const sessionCaptures = new Map();
@@ -374,7 +372,6 @@ export const api = {
   // (with where each is kept, as the server's: this browser's storage or the folder opened, its GitHub repository, #4314)
   projects: async () => Promise.all((await ops.list()).map(async p => ({ ...p, stored: store.kind === 'folder' ? 'folder' : 'browser', github: await git.gitRemote(p.name).catch(() => null) }))),
   templates: async () => orderExamples(Object.keys(EXAMPLES)),
-  testDesigns: async () => orderTestDesigns(Object.keys(TEST_DESIGNS)),
   // an example's description and files ({ project, files: { path: text } }, #2826)
   exampleFiles: async name => (Object.hasOwn(EXAMPLES, name) ? { project: structuredClone(EXAMPLES[name].json), files: { ...EXAMPLES[name].files } } : fail(`unknown example '${name}'`)),
   createProject: p => ops.create(p),

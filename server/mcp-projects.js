@@ -6,7 +6,6 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { readWithin } from './paths.js';
 import { orderExamples } from '../core/examples.js';
-import { TEST_DESIGNS, orderTestDesigns } from '../core/test-designs.js';
 import { nameUnnamed } from '../core/schname.js';
 import { CODESIGN_KIND, CODESIGN_NOT_YET, DESIGN_KIND, PROJECT_KINDS, isDesignOnly } from '../core/project-kind.js';
 import { placeText } from '../core/project-place.js';
@@ -60,8 +59,7 @@ async function hierarchyOf(name, pj, sim) {
 export const PROJECT_TOOLS = [
   {
     name: 'list_examples', title: 'List the example projects',
-    description: 'The example projects a new project can start from (new_project_from_example), in the interface\'s order, with their top module, device and board; '
-      + 'then the test designs (schematics, state diagrams, C programs for Silinx HLS, each with its test), which a new project can start from too.',
+    description: 'The example projects a new project can start from (new_project_from_example), in the interface\'s order, with their top module, device and board.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run() {
@@ -69,18 +67,10 @@ export const PROJECT_TOOLS = [
         const pj = JSON.parse(fs.readFileSync(path.join(dir, n, 'silinx.json'), 'utf8'));
         return { name: n, top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
       };
+      // (the examples only, as New Project's Start from: not the test designs, #5108)
       const examples = orderExamples(P.templateNames(P.EXAMPLES_DIR)).map(n => about(P.EXAMPLES_DIR, n));
-      // the test designs (#1746): their kind and what each shows (core/test-designs.js); the sources of a drawing or a C
-      // program are not in the project's list of HDL files
-      const testDesigns = orderTestDesigns(P.templateNames(P.TEST_DESIGNS_DIR)).map(n => {
-        const { kind = null, about: shows = null } = TEST_DESIGNS.find(d => d.name === n) || {};
-        const { files, ...rest } = about(P.TEST_DESIGNS_DIR, n);
-        return { ...rest, kind, about: shows };
-      });
-      const text = [...examples.map(e => `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)`),
-        '', 'Test designs (the designs Silinx is tested with; its own, with their test):',
-        ...testDesigns.map(d => `${d.name} (${d.kind}): ${d.about}; top ${d.top}${d.simTop ? `, test bench ${d.simTop}` : ', its test the C\'s main()'}`)];
-      return { text: text.join('\n'), data: { examples, testDesigns } };
+      const text = examples.map(e => `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)`);
+      return { text: text.join('\n'), data: { examples } };
     },
   },
   {
@@ -99,13 +89,13 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project_from_example', title: 'New project from an example',
-    description: 'Make a new project in the workspace from an example or a test design (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s.',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example, or test design (list_examples).'), board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
+    description: 'Make a new project in the workspace from an example (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s.',
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example (list_examples).'), board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ name, example, board, variant }) {
-      // (an example, or a test design: #1746)
-      const dir = [P.EXAMPLES_DIR, P.TEST_DESIGNS_DIR].find(d => /^[a-z0-9_-]+$/i.test(String(example || '')) && fs.existsSync(path.join(d, example, 'silinx.json')));
-      if (!dir) throw toolError(`unknown example '${example}' (list_examples)`);
+      // (an example, as New Project's Start from: not a test design, #5108)
+      const dir = P.EXAMPLES_DIR;
+      if (!/^[a-z0-9_-]+$/i.test(String(example || '')) || !fs.existsSync(path.join(dir, example, 'silinx.json'))) throw toolError(`unknown example '${example}' (list_examples)`);
       let device;
       if (board || variant) {
         const ex = JSON.parse(fs.readFileSync(path.join(dir, example, 'silinx.json'), 'utf8'));
@@ -113,7 +103,7 @@ export const PROJECT_TOOLS = [
       }
       try { await P.createProject({ name, template: example, device, board, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
       const pj = await P.readProject(name);
-      return { text: `Project '${name}' made from the ${dir === P.EXAMPLES_DIR ? 'example' : 'test design'} ${example}: top ${pj.top}, ${pj.board || 'no board'} (${pj.device.part}${pj.device.package}${pj.device.speed}).${UNTRUSTED}`, data: { project: name, top: pj.top, simTop: pj.simTop || null, board: pj.board, device: pj.device, trusted: false } };
+      return { text: `Project '${name}' made from the example ${example}: top ${pj.top}, ${pj.board || 'no board'} (${pj.device.part}${pj.device.package}${pj.device.speed}).${UNTRUSTED}`, data: { project: name, top: pj.top, simTop: pj.simTop || null, board: pj.board, device: pj.device, trusted: false } };
     },
   },
   {

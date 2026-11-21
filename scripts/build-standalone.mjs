@@ -142,7 +142,6 @@ function templates(folder) {
   return out;
 }
 const examples = templates('examples');
-const testDesigns = templates('test-designs');
 
 // ---- bundle the app with the local (server-less) API
 const plugin = {
@@ -150,8 +149,8 @@ const plugin = {
   setup(b) {
     b.onResolve({ filter: /^\/(core|packages)\// }, a => ({ path: path.join(ROOT, a.path) }));
     b.onResolve({ filter: /^\.\/api\.js$/ }, a => (a.importer.includes(`${path.sep}web${path.sep}js${path.sep}`) ? { path: path.join(ROOT, 'web/js/api-local.js') } : undefined));
-    b.onResolve({ filter: /^silinx-(examples|test-designs)$/ }, a => ({ path: a.path, namespace: 'virtual' }));
-    b.onLoad({ filter: /.*/, namespace: 'virtual' }, a => ({ contents: `export default ${JSON.stringify(a.path === 'silinx-test-designs' ? testDesigns : examples)};`, loader: 'js' }));
+    b.onResolve({ filter: /^silinx-examples$/ }, a => ({ path: a.path, namespace: 'virtual' }));
+    b.onLoad({ filter: /.*/, namespace: 'virtual' }, a => ({ contents: `export default ${JSON.stringify(examples)};`, loader: 'js' }));
   },
 };
 // a development build's changes since the last release, its Development menu (#707): a release has none
