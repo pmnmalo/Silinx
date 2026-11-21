@@ -673,11 +673,11 @@ export function transitionTable(model) {
     const merged = (t) => { const all = { ...s.outputs, ...t.outputs }; return m.outputs.filter((o) => all[o.name] != null).map((o) => `${o.name}=${all[o.name]}`).join(', '); };
     const ts = transitionsFrom(m, s.id).filter((t) => stateById(m, t.to));
     for (const t of ts) {
-      rows.push({ state: s.name, code, cond: t.cond || '1', next: nameOf(m, t.to), nextCode: m.encoding === 'enum' ? '' : enc.get(t.to).bits, outputs: merged(t), transition: t.id });
+      rows.push({ state: s.name, code, cond: t.cond || '1', next: nameOf(m, t.to), nextCode: m.encoding === 'enum' ? '' : enc.get(t.to).bits, outputs: merged(t), transition: t.id, stateId: s.id, nextId: t.to });
     }
     const st = an?.states.find((x) => x.id === s.id);
     if (!ts.length || (st && st.stay.count)) {
-      rows.push({ state: s.name, code, cond: ts.length ? 'otherwise' : '1', next: s.name, nextCode: code, outputs: moore.join(', '), stays: true });
+      rows.push({ state: s.name, code, cond: ts.length ? 'otherwise' : '1', next: s.name, nextCode: code, outputs: moore.join(', '), stays: true, stateId: s.id, nextId: s.id });
     }
   }
   return { columns: ['Present state', 'Code', 'Input condition', 'Next state', 'Next code', 'Outputs'], rows };

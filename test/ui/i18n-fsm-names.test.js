@@ -53,7 +53,9 @@ uiTest('#4964 the signals and the states named up, enable, clock, Counter…: un
     await page.waitForSelector(`${ED} .fsm-etable`);
     assert.deepEqual(await leaks(page, ED), []);
     // the transition table: the states and the conditions as they are (in the tests' notation, /up)
-    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr`)].slice(1).map((r) => [...r.children].map((c) => c.textContent).join('|')), ED),
+    // (the transition table edited in place, #4974: its fields' values, its last column the + / ✕ buttons)
+    assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-ttable tr`)].slice(1).map((r) => [...r.children].slice(0, -1)
+    .map((c) => { const f = c.querySelector('input, select'); return f ? (f.tagName === 'SELECT' ? f.selectedOptions[0].textContent : f.value) : c.textContent; }).join('|')), ED),
       ['Counter|0|up|Top|1|', 'Counter|0|/up|Counter|0|', 'Top|1|enable|Counter|0|clock=1, down=1', 'Top|1|/enable|Top|1|clock=1, down=1']);
     // the encoded table's headers: the inputs' names, its labels translated
     assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .fsm-etable tr`)].slice(0, 2).map((r) => [...r.children].map((c) => c.textContent).join('|')), ED),

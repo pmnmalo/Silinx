@@ -324,7 +324,7 @@ export function mountFsmEditor(container, opts = {}) {
   const { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } = mountFsmBottom({
     opts, M: () => M, bottom, btn, destroyed: () => destroyed, diags: () => diags, fit, flash, panel: () => panel,
     panelBody, panelTitle, panelTools, render, sim: () => sim, stateById, updateToolbar,
-    setPanel: (v) => { panel = v; }, setSim: (v) => { sim = v; }, closeInline, renderSide: () => renderSide()
+    setPanel: (v) => { panel = v; }, setSim: (v) => { sim = v; }, closeInline, renderSide: () => renderSide(), commit, locked
   });
 
   // ---------------------------------------------------------------------------- link

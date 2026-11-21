@@ -55,6 +55,12 @@ export const FSM_PT = {
   'Transition table': 'Tabela de transições', 'State table': 'Tabela de estados', 'Encoded transition table': 'Tabela de transições codificada',
   'Present state': 'Estado presente', 'Code': 'Código', 'Input condition': 'Condição das entradas', 'Next state': 'Estado seguinte', 'Next code': 'Código seguinte',
   'otherwise (stays)': 'caso contrário (fica)', 'unused code': 'código não usado',
+  // the transition table edited in place (#4974)
+  'empty = always': 'vazia = sempre', 'e.g. z=1': 'p.ex. z=1', '+ State': '+ Estado',
+  'Add a row after this one: a transition from this state (to itself, always; set its condition and next state)': 'Acrescentar uma linha a seguir a esta: uma transição deste estado (para ele mesmo, sempre; defina a sua condição e o estado seguinte)',
+  'Remove this row (its transition)': 'Remover esta linha (a sua transição)',
+  'Click to edit the condition (as typed)': 'Clique para editar a condição (como foi escrita)',
+  'Add a state (S0, S1…), placed beside the others; rename it in its first row': 'Acrescentar um estado (S0, S1…), posto ao lado dos outros; mude-lhe o nome na sua primeira linha',
   'Create Boolean Algebra sources (.bool.json) of the next-state bits and of the outputs, to simplify them with Karnaugh maps': 'Criar fontes de Álgebra Booleana (.bool.json) dos bits do estado seguinte e das saídas, para as simplificar com mapas de Karnaugh',
   'The encoded table is made for the binary, gray and user-defined encodings (choose one of them)': 'A tabela codificada é feita para as codificações binária, Gray e definida pelo utilizador (escolha uma delas)',
   'Correct the errors of the diagram first': 'Corrija primeiro os erros do diagrama',
@@ -104,6 +110,9 @@ export const FSM_PT_PATTERNS = [
   [new RegExp(`^${WHAT_RE} has no name$`), (m, w) => `${WHAT[w]} não tem nome`],
   [new RegExp(`^${WHAT_RE} '(.*)' is not a valid name: use a letter, then letters, digits and single _ \\(not at the end\\)$`), (m, w, n) => `${WHAT[w]} '${n}' não é um nome válido: use uma letra, seguida de letras, dígitos e _ simples (não no fim)`],
   [new RegExp(`^${WHAT_RE} '(.*)' is a reserved word in (.+)$`), (m, w, n, l) => `${WHAT[w]} '${n}' é uma palavra reservada em ${langs(l)}`],
+  // (the transition table's and edit_fsm's refusals, #4974)
+  [/^(?:(State .+): )?The name '(.*)' is used twice \(letter case does not count\)$/, (m, w, n) => `${w ? `${where(w)}: ` : ''}O nome '${n}' é usado duas vezes (maiúsculas e minúsculas não contam)`],
+  [/^(State .+): a name is needed$/, (m, w) => `${where(w)}: é preciso um nome`],
   [/^The name '(.*)' is used twice \(letter case does not count; state_reg, state_next and state_t are used by the generated HDL\)$/, "O nome '$1' é usado duas vezes (maiúsculas e minúsculas não contam; state_reg, state_next e state_t são usados pelo HDL gerado)"],
   [/^(Input|Output) '(.*)': the width must be a whole number from 1 to (\d+)$/, (m, w, n, k) => `${WHAT[w]} '${n}': a largura tem de ser um número inteiro de 1 a ${k}`],
   [/^Output '(.*)': the default value '(.*)' must be a constant \(e\.g\. 0, 1, 4'b1010, 5\)$/, "Saída '$1': o valor por omissão '$2' tem de ser uma constante (p.ex. 0, 1, 4'b1010, 5)"],
