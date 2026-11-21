@@ -1,6 +1,6 @@
 // UI: File ▸ Open Project…'s row of a damaged project (#4755): its silinx.json no description (a merge's conflict marks),
 // the project listed, not hidden, "Damaged: silinx.json cannot be read" across its Device and Board, why in its tip;
-// opened, its window says why (Open Project's error, as any project that cannot be read); in both interfaces (SILINX_UI_INTERFACE); in Portuguese; no warnings.
+// opened, the console says why (Open Project's ERROR line, as any project that cannot be read, #4747: no modal box); in both interfaces (SILINX_UI_INTERFACE); in Portuguese; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -28,13 +28,13 @@ uiTest('#4755 Open Project: a damaged project listed with why; opened, why said;
   assert.deepEqual(cell.slice(0, 2), ['Damaged: silinx.json cannot be read', '2']);
   assert.match(cell[2], /^its silinx\.json cannot be read: .*JSON/);
   assert.equal(place[0], 'Workspace Folder', 'its Stored In next, as any project\'s');
-  // opened: Open Project's error says why
+  // opened: Open Project's ERROR line in the console says why (#4747: a command's failure no modal box), the dialog closed
   await page.eval(() => [...document.querySelectorAll('.dlg-overlay table.grid tr')].find((x) => x.children[0].textContent === 'Damaged').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })));
-  await page.waitFor(() => /is damaged/.test(document.querySelector('.dlg-overlay')?.textContent || ''));
-  const said = await page.eval(() => document.querySelector('.dlg-overlay').textContent);
-  assert.match(said, /the project 'Damaged' is damaged: its silinx\.json cannot be read: .* \(correct it in a text editor, or delete the project\)/);
-  await page.dialogButton('OK');
+  await page.waitConsole(/ERROR: Open Project: the project 'Damaged' is damaged/);
   await page.waitNoDialog();
+  const said = await page.eval(() => [...document.querySelectorAll('#console-log .ln.err')].map((l) => l.textContent));
+  assert.equal(said.length, 1, said.join('\n'));
+  assert.match(said[0], /^ERROR: Open Project: the project 'Damaged' is damaged: its silinx\.json cannot be read: .*JSON.* \(correct it in a text editor, or delete the project\)$/);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
   assert.equal(await page.eval(() => document.getElementById('warn-count').textContent), '');
   // in Portuguese
