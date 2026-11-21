@@ -16,6 +16,7 @@ import { appLog } from './console.js';   // (the application's lines, under ever
 import { confirmDlg } from './ui.js';
 import { collab } from './collab-state.js';
 import { runState } from './state-run.js';
+import { startState } from './state-start.js';
 
 const TOKEN = /^#(?:token|code)=/, FOLLOW = /^#(?:view|follow|edit)=/;   // (#view=, a viewer's, #4073; #follow=, the links before it)
 let queue = Promise.resolve();
@@ -59,8 +60,8 @@ async function linkChanged(hash = location.hash) {
   const { linkOptions, openFromLink } = await import('./link-open.js');
   const opts = linkOptions(hash);
   if (!opts) return false;   // (no link, or a broken one: said, nothing saved)
-  S.linkOpened = false;
-  try { return await openFromLink(opts, { prepare: d => agreed(d, opts.source, what) }); } finally { S.linkOpened = true; }   // (the UI tests wait for it)
+  startState.linkOpened = false;
+  try { return await openFromLink(opts, { prepare: d => agreed(d, opts.source, what) }); } finally { startState.linkOpened = true; }   // (the UI tests wait for it)
 }
 
 // the student's work saved before anything is replaced or compared: a document that cannot be saved stops the link
