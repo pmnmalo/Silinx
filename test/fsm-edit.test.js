@@ -5,7 +5,7 @@
 // simulated as a counter by hand.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeFsm, validateFsm, transitionTable, generateFsm, nameOf } from '../core/fsm.js';
+import { normalizeFsm, validateFsm, transitionTable, generateFsm, nameOf, setEncoding, fsmEncoding } from '../core/fsm.js';
 import { compile, elaborate } from '../core/compile.js';
 import * as E from '../core/fsm-edit.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
@@ -149,6 +149,39 @@ for (const lang of ['vhdl', 'verilog']) {
     let q = 0;
     const want = vectors.map((v) => { const out = q.toString(2).padStart(3, '0'); q = (q + (v.up ? 1 : 7)) % 8; return out; });
     assert.deepEqual(runModel(m, vectors), want);
+    assert.deepEqual(runHdl(g.code, lang, m, vectors), want);
+  });
+}
+
+test('#5002 a state\'s code through the table: only the user\'s encoding; cleaned; its problems Check\'s', () => {
+  const m = counter('vhdl');
+  assert.deepEqual(E.setCode(m, m.states[0].id, '101'), { error: 'State S0: the codes follow the encoding binary; choose User-defined to give them' });
+  setEncoding(m, 'user', (id) => fsmEncoding(m).find((e) => e.id === id)?.bits);
+  assert.deepEqual(m.states.map((s) => s.code), ['000', '001', '010', '011', '100', '101', '110', '111']);   // (the codes they had)
+  assert.deepEqual(E.setCode(m, m.states[1].id, ' 1_11 '), { message: 'State S1: code 111' });
+  assert.equal(m.states[1].code, '111');
+  assert.ok(problems(m).some((p) => p.startsWith('error:') && /111/.test(p)), problems(m).join('\n'));   // (used twice: S1 and S7)
+  assert.deepEqual(E.setCode(m, m.states[1].id, ''), { message: 'State S1: code (none)' });
+  assert.equal('code' in m.states[1], false);
+  assert.deepEqual(E.setCode(m, 'zz', '1'), { error: "no state 'zz'" });
+});
+
+for (const lang of ['vhdl', 'verilog']) {
+  test(`#5002 the counter given Gray codes through the table, its ${lang === 'vhdl' ? 'VHDL' : 'Verilog'}: the codes as typed, compiled, elaborated with no warnings, simulated as a counter`, () => {
+    const m = counter(lang);
+    setEncoding(m, 'user', (id) => fsmEncoding(m).find((e) => e.id === id)?.bits);
+    const gray = ['000', '001', '011', '010', '110', '111', '101', '100'];
+    m.states.forEach((s, i) => assert.equal(E.setCode(m, s.id, gray[i]).error, undefined));
+    assert.deepEqual(problems(m), []);
+    assert.deepEqual(transitionTable(m).rows.filter((r) => r.cond === 'up').map((r) => r.code), gray);
+    const g = generateFsm(m, lang);
+    assert.match(g.code, lang === 'vhdl' ? /"110"/ : /3'b110/);
+    const lib = compile([{ path: g.filename, lang, text: g.code }]);
+    assert.deepEqual(lib.errors.map((e) => `${e.severity}: ${e.message}`), []);
+    assert.deepEqual(elaborate(lib, 'updown').diags.map((e) => `${e.severity}: ${e.message}`), []);
+    const vectors = randomVectors(m, 120, lang === 'vhdl' ? 5 : 6);
+    let q = 0;
+    const want = vectors.map((v) => { const out = q.toString(2).padStart(3, '0'); q = (q + (v.up ? 1 : 7)) % 8; return out; });
     assert.deepEqual(runHdl(g.code, lang, m, vectors), want);
   });
 }

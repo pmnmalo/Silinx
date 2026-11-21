@@ -3,13 +3,14 @@
 // outputs ("z=1, y=X"), a row added after it (a transition from its state) or removed, a state added below the table.
 // Each change goes through core/fsm-edit.js, as the MCP's edit_fsm, set_fsm_condition and set_fsm_outputs, and is
 // committed as a change of the diagram (undone, redone, the diagram and its HDL made again); a change refused is said
-// in the console and the table drawn again as it was. The codes follow the encoding: read only. Locked (Try it open, a
+// in the console and the table drawn again as it was. The codes follow the encoding, read only, but the user's (#5002),
+// a field on a state's first row. Locked (Try it open, a
 // diagram to read) or read only: the table as text.
 import { h } from './ui.js';
 import { transitionTable } from '/core/fsm.js';
 import { showCondText } from '/core/expr-notation.js';
 import { condAsText } from '/core/cond-notation.js';
-import { addState, addTransition, removeTransition, renameState, setCondition, setNextState, setRowOutputs, setStayNext } from '/core/fsm-edit.js';
+import { addState, addTransition, removeTransition, renameState, setCode, setCondition, setNextState, setRowOutputs, setStayNext } from '/core/fsm-edit.js';
 import { drawBarsIn } from './overbar.js';
 import { getNotation } from './notation.js';
 
@@ -53,6 +54,10 @@ export function transitionTableView({ M, editable, commit, flash, redraw, btn })
     td.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === 'F2') && ev.target === td) { ev.preventDefault(); open(); } });
     return td;
   };
+  // a state's code: its field on its first row under the encoding of the user's (#5002); else as the encoding gives it
+  const codeCell = (r, first) => (edit && first && M().encoding === 'user'
+    ? h('td', {}, text(r.code, 'fsm-tt-code', `tt-code:${r.stateId}`, (m, v) => setCode(m, r.stateId, v), 'e.g. 101'))
+    : h('td', { class: 'mono' }, r.code));
   const nextList = (r) => {
     const el = h('select', { class: 'asm-select fsm-tt-next' }, ...M().states.map((s) => h('option', { value: s.id, selected: s.id === r.nextId, 'data-no-i18n': '' }, s.name)));
     el.addEventListener('change', () => apply('tt-next', (m) => (r.stays ? setStayNext(m, r.stateId, el.value) : setNextState(m, r.transition, el.value))));
@@ -70,7 +75,7 @@ export function transitionTableView({ M, editable, commit, flash, redraw, btn })
       btn('+', 'Add a row after this one: a transition from this state (to itself, always; set its condition and next state)', () => apply('tt-add', (m) => addTransition(m, r.stateId, r.stateId, '', r.transition || null)), 'asm-small fsm-tt-add'),
       r.stays ? null : btn('✕', 'Remove this row (its transition)', () => apply('tt-del', (m) => removeTransition(m, r.transition)), 'asm-small asm-danger fsm-tt-del')) : null;
     return h('tr', { class: r.stays ? 'stays' : '', 'data-trans': r.transition || null, 'data-state': r.stateId },
-      state, showCode ? h('td', { class: 'mono' }, r.code) : null, cond, edit ? h('td', {}, nextList(r)) : h('td', NAME, r.next),
+      state, showCode ? codeCell(r, first) : null, cond, edit ? h('td', {}, nextList(r)) : h('td', NAME, r.next),
       showCode ? h('td', { class: 'mono' }, r.nextCode) : null, outs, tools);
   });
   const table = h('table', { class: `fsm-table fsm-ttable${edit ? ' fsm-tt-edit' : ''}` }, head, ...rows);

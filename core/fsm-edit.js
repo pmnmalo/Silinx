@@ -9,6 +9,7 @@
 import { ELSE_COND, isElseWord, fsmKind, nameOf, parseOutputs, placeNew, stateById } from './fsm.js';
 import { condAsText } from './cond-notation.js';
 import { setOutputValues } from './fsm-outputs.js';
+import { USER_ENCODING, cleanCode, setStateCode } from './fsm-codes.js';
 
 /** A new id with the prefix `p` ('s', 't'), used by no state and no transition of `m`. */
 function newFsmId(m, p) {
@@ -131,4 +132,15 @@ export function renameState(m, id, name) {
   const was = s.name;
   s.name = n;
   return { message: `State ${was} renamed ${n}` };
+}
+
+/** State `id`'s code (binary digits; blanks and _ left out; empty: none), as its Properties set it (#5002): only under the
+ *  encoding of the user's (the others give the codes); a code not valid, of another width or used twice is Check's
+ *  error, as the Properties'. */
+export function setCode(m, id, text) {
+  const s = stateById(m, id);
+  if (!s) return { error: `no state '${id}'` };
+  if (m.encoding !== USER_ENCODING) return { error: `State ${s.name}: the codes follow the encoding ${m.encoding}; choose User-defined to give them` };
+  setStateCode(m, id, text, () => '');
+  return { message: `State ${s.name}: code ${cleanCode(text) || '(none)'}` };
 }
