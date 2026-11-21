@@ -119,8 +119,6 @@ test('escRegExp: the copies\' text, every special character escaped, matched lit
 // the RegExp escape's copies left, each with its reason (#4772); a module that writes one again fails here
 const RE_LEFT = {
   'core/escape.js': 'the escape',
-  'core/schlive.js': 'definesModule, the next part of #4772',
-  'core/view-hdl.js': 'definesModule, the next part of #4772',
   'scripts/related-tests.mjs': 'self-contained: its test copies it alone into a repository of its own',
   'packages/silinx-fpga/src/fpga/timing-paths.js': 'the toolchain\'s package, which imports nothing from core/',
   'core/trust.js': 'the trust session\'s area (#4772 left it)',

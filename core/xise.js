@@ -15,6 +15,7 @@ import { modulesFromLibrary } from './schdoc.js';
 import { isCSource, viewHdl } from './view-hdl.js';
 import { escXml } from './escape.js';
 import { escRegExp } from './escape.js';
+import { definesUnit } from './hdl-defines.js';
 
 const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>';
 
@@ -38,12 +39,12 @@ function topValue(project, name, sources) {
   for (const f of files) {
     if (f.lang !== 'vhdl') continue;
     const txt = sources?.[f.path];
-    if (txt && new RegExp(`\\bentity\\s+${reEsc(name)}\\s+is\\b`, 'i').test(txt)) {
+    if (txt && definesUnit(txt, name, 'vhdl')) {
       const arch = vhdlArch(txt, name);
       if (arch) return { value: `Architecture|${name}|${arch}`, file: f.path };
     }
   }
-  const vf = files.find(f => f.lang === 'verilog' && sources?.[f.path] && new RegExp(`\\bmodule\\s+${reEsc(name)}\\b`).test(sources[f.path]));
+  const vf = files.find(f => f.lang === 'verilog' && sources?.[f.path] && definesUnit(sources[f.path], name, 'verilog'));
   return { value: `Module|${name}`, file: vf?.path || null };
 }
 

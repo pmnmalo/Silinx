@@ -9,6 +9,7 @@
 //
 // Isomorphic ES module (browser + Node), no DOM.
 import { periodNs } from '../packages/silinx-fpga/src/parts.js';
+import { definesUnit } from './hdl-defines.js';
 
 // a board resource by its name, else the first of its group (as boardAutoAssign finds a port's: Numato's "dip")
 const resourceOf = (resources, name, group) => resources.find(r => r.name === name) || resources.find(r => r.group === group) || null;
@@ -72,8 +73,7 @@ export function setGenericDefaults(text, lang, values) {
 export function topFileOf(sources, top) {
   const t = String(top || '').replace(/[^\w$]/g, '');
   if (!t) return null;
-  const vhdl = new RegExp(`^\\s*entity\\s+${t}\\s+is\\b`, 'im'), verilog = new RegExp(`^\\s*module\\s+${t}\\b`, 'm');
-  return sources.find(s => (s.lang === 'verilog' ? verilog : vhdl).test(s.text || '')) || null;
+  return sources.find(s => definesUnit(s.text, t, s.lang === 'verilog' ? 'verilog' : 'vhdl')) || null;
 }
 
 /** The top's file with the board's values (resolveBoard's result), or null when nothing changes: { path, lang, text,
