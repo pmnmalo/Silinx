@@ -11,6 +11,7 @@
 //
 // Isomorphic ES module (browser + Node), no DOM.
 import { GOWIN_VHDL } from './gowin-prims.js';
+import { vhdlModels } from './vhdl-models.js';
 
 const text = (v) => (typeof v === 'string' ? v : new TextDecoder().decode(v));
 
@@ -18,17 +19,7 @@ const text = (v) => (typeof v === 'string' ? v : new TextDecoder().decode(v));
 let PORTS = null;
 function ports() {
   if (PORTS) return PORTS;
-  PORTS = new Map();
-  for (const m of GOWIN_VHDL.matchAll(/^entity\s+(\w+)\s+is\b([\s\S]*?)^end\s+\1\s*;/gim)) {
-    const clause = /\bport\s*\(([\s\S]*)\)\s*;\s*$/i.exec(m[2].trim());
-    const map = new Map();
-    for (const decl of (clause ? clause[1] : '').split(';')) {
-      const d = /^\s*([\w\s,]+?)\s*:\s*(?:in|out|inout)\s+(\w+)(?:\((\d+)\s+downto\s+0\))?/i.exec(decl);
-      if (!d) continue;
-      for (const n of d[1].split(',')) map.set(n.trim(), d[3] !== undefined ? Number(d[3]) + 1 : 0);
-    }
-    PORTS.set(m[1], map);
-  }
+  PORTS = new Map([...vhdlModels(GOWIN_VHDL)].map(([name, m]) => [name, m.ports]));
   return PORTS;
 }
 

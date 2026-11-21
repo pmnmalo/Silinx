@@ -16,42 +16,16 @@
 //
 // Isomorphic ES module (browser + Node), no DOM.
 import { UNISIM_VHDL } from './unisim.js';
+import { vhdlModels } from './vhdl-models.js';
 
 const text = (v) => (typeof v === 'string' ? v : new TextDecoder().decode(v));
-
-// the text inside the parentheses that open at `i` (its '(')
-function inParens(s, i) {
-  for (let d = 0, j = i; j < s.length; j++) {
-    if (s[j] === '(') d++;
-    else if (s[j] === ')' && --d === 0) return s.slice(i + 1, j);
-  }
-  return '';
-}
-// a clause's declarations (split at the semicolons outside parentheses)
-const declarations = (clause) => clause.replace(/--[^\n]*/g, '').split(';').map((d) => d.trim()).filter(Boolean);
 
 // the UNISIM models: name -> { generics: Set, ports: Map(port -> its width, 0 a scalar), defaults: Set (the inputs with a
 // default) }, from their VHDL
 let MODELS = null;
 export function unisimModels() {
   if (MODELS) return MODELS;
-  MODELS = new Map();
-  for (const m of UNISIM_VHDL.matchAll(/^entity\s+(\w+)\s+is\b([\s\S]*?)^end\s+\1\s*;/gim)) {
-    const body = m[2], g = /\bgeneric\s*\(/i.exec(body), p = /\bport\s*\(/i.exec(body);
-    const generics = new Set(), ports = new Map(), defaults = new Set();
-    for (const d of declarations(g ? inParens(body, g.index + g[0].length - 1) : '')) {
-      for (const n of d.split(':')[0].split(',')) generics.add(n.trim().toUpperCase());
-    }
-    for (const d of declarations(p ? inParens(body, p.index + p[0].length - 1) : '')) {
-      const x = /^([\w\s,]+?)\s*:\s*(?:in|out|inout)\s+\w+(?:\s*\(\s*(\d+)\s+downto\s+0\s*\))?/i.exec(d);
-      if (!x) continue;
-      for (const n of x[1].split(',')) {
-        ports.set(n.trim(), x[2] !== undefined ? Number(x[2]) + 1 : 0);
-        if (/:=/.test(d)) defaults.add(n.trim());
-      }
-    }
-    MODELS.set(m[1].toUpperCase(), { generics, ports, defaults });
-  }
+  MODELS = new Map([...vhdlModels(UNISIM_VHDL)].map(([name, m]) => [name.toUpperCase(), m]));
   return MODELS;
 }
 
