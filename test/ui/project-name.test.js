@@ -50,6 +50,7 @@ uiTest('#3538 New Project wizard: the server\'s name rule and message, in Portug
   try {
     await page.menu('Ficheiro', 'Novo Projeto…');
     await page.waitDialog('Assistente de Novo Projeto');
+    await page.dialogButton('Seguinte >');   // (its kind: Com FPGA, #5041)
     await page.fill('.dlg-overlay .wiz-main input[type=text]', '1lab');
     await page.dialogButton('Seguinte >');
     await page.waitFor(() => /^nome de projeto inválido '1lab': uma letra, depois até 63 letras, dígitos, - e _$/.test(document.querySelector('.dlg-overlay .wiz-main')?.nextElementSibling?.textContent || ''), [], { what: 'the message in Portuguese' });
