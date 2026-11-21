@@ -210,42 +210,69 @@ uiTest('#4981 a double-click on an ADD8 enters its composition; on a gate, its P
 
 // #4984: the Design pane shows a palette symbol's block as its composition (ADD8, then its ADD4s, then their FA1s), not
 // as the HDL generated for it; a row opens the composition at its level; in Portuguese
-uiTest('#4984 the Design pane: an ADD8 of the top schematic as its composition, each level a row opening it there; Portuguese', E, async (page) => {
-  await makeProject(env, { name: 'CompHier', files: { 'src/top.sch.json': JSON.stringify(adderDoc()) }, top: 'top' });
+// (the top schematic of the Design pane's tests: an ADD8, and an FDCE wired too, its block an atomic symbol's, #5033)
+function adderFfDoc() {
+  const doc = adderDoc();
+  const s = { id: 'S2', type: 'fdce', x: 400, y: 700, rot: 0, mirror: false, name: 'F1', params: { init: '0', width: 1, qn: false } };
+  doc.symbols.push(s);
+  for (const q of symbolPins(s)) {
+    const dx = q.dir === 'in' ? -80 : 80;
+    doc.ports.push({ id: `PF${q.name}`, name: `f_${q.name.toLowerCase()}`, dir: q.dir, width: 1, x: q.x + dx, y: q.y });
+    doc.wires.push({ id: `WF${q.name}`, points: [{ x: q.x + dx, y: q.y }, { x: q.x, y: q.y }] });
+  }
+  return normalizeDoc(doc);
+}
+// the Design pane's rows: their depth, name, badges (* the base) and meta
+const hierRows = (page) => page.eval(() => [...document.querySelectorAll('#hier .row')].map((r) => {
+  let d = 0;
+  for (let u = r.parentElement.parentElement; u && u.id !== 'hier'; u = u.parentElement) if (u.tagName === 'UL') d++;
+  const b = [...r.querySelectorAll('.badge')].map((x) => `[${x.textContent}${x.classList.contains('base') ? '*' : ''}]`);
+  return `${'  '.repeat(d - 1)}${r.querySelector('.lbl').textContent}${b.length ? ` ${b.join(' ')}` : ''}${r.querySelector('.meta') ? ` ${r.querySelector('.meta').textContent}` : ''}`;
+}));
+// a badge of a composition's row under the ADD4 U1 (its FA1 U2)
+const faBadge = (page, text) => page.eval((t) => {
+  const u1 = [...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
+  if (u1.querySelector(':scope > .row .twisty')?.textContent === '▸') u1.querySelector(':scope > .row .twisty').click();
+  [...[...u1.querySelectorAll('li > .row')].find((r) => r.querySelector('.lbl').textContent === 'U2 - FA1').querySelectorAll('.badge')].find((b) => b.textContent === t).click();
+}, text);
+
+// #4984: the Design pane shows a palette symbol's block as its composition (ADD8, then its ADD4s, then their FA1s), not
+// as the HDL generated for it; a row opens the composition at its level. #5033: its badge [Schematic], its HDL badge
+// (dashed) in an FPGA project, opening the level's HDL; an atomic symbol's block (an FDCE's) no row; in Portuguese
+uiTest('#4984 #5033 the Design pane: an ADD8 as its composition, [Schematic] and its HDL; an FDCE no row; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'CompHier', files: { 'src/top.sch.json': JSON.stringify(adderFfDoc()) }, top: 'top' });
   await page.openProject('CompHier');
-  const rows = () => page.eval(() => [...document.querySelectorAll('#hier .row')].map((r) => {
-    let d = 0;
-    for (let u = r.parentElement.parentElement; u && u.id !== 'hier'; u = u.parentElement) if (u.tagName === 'UL') d++;
-    const b = [...r.querySelectorAll('.badge')].map((x) => `[${x.textContent}${x.classList.contains('base') ? '*' : ''}]`);
-    return `${'  '.repeat(d - 1)}${r.querySelector('.lbl').textContent}${b.length ? ` ${b.join(' ')}` : ''}${r.querySelector('.meta') ? ` ${r.querySelector('.meta').textContent}` : ''}`;
-  }));
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent === 'u1 - ADD8'), [], { what: 'its composition\'s row' });
-  const all = await rows();
+  const all = await hierRows(page);
   const at = all.findIndex((r) => r.trim().startsWith('u1 - ADD8'));
-  assert.deepEqual(all.slice(at, at + 11).map((r) => r.slice(all[at].indexOf('u1'))), [
-    'u1 - ADD8 [Composition*] (composition)',
-    '  U0 - ADD4 [Composition*] (composition)', '    U0 - FA1 [Composition*] (composition)', '    U1 - FA1 [Composition*] (composition)', '    U2 - FA1 [Composition*] (composition)', '    U3 - FA1 [Composition*] (composition)',
-    '  U1 - ADD4 [Composition*] (composition)', '    U0 - FA1 [Composition*] (composition)', '    U1 - FA1 [Composition*] (composition)', '    U2 - FA1 [Composition*] (composition)', '    U3 - FA1 [Composition*] (composition)']);
-  assert.ok(!all.some((r) => /top_add/i.test(r)), 'not the HDL generated for it');
-  // the FA1 U2 of the ADD4 U1, opened: the composition there
-  await page.eval(() => {
-    const lis = [...document.querySelectorAll('#hier li')];
-    const u1 = lis.find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
-    u1.querySelector(':scope > .row .twisty')?.click();
-  });
-  const fa = await page.eval(() => {
-    const u1 = [...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
-    return [...u1.querySelectorAll('li > .row')].find((r) => r.querySelector('.lbl').textContent === 'U2 - FA1').querySelector('.badge').getBoundingClientRect().width > 0;
-  });
-  assert.ok(fa, 'its FA1 U2 shown');
-  await page.eval(() => {
-    const u1 = [...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
-    [...u1.querySelectorAll('li > .row')].find((r) => r.querySelector('.lbl').textContent === 'U2 - FA1').querySelector('.badge').click();
-  });
+  const fa = (i) => `    U${i} - FA1 [Schematic*] [VHDL] (composition)`;
+  assert.deepEqual(all.slice(at).map((r) => r.slice(all[at].indexOf('u1'))), [
+    'u1 - ADD8 [Schematic*] [VHDL] (composition)',
+    '  U0 - ADD4 [Schematic*] [VHDL] (composition)', fa(0), fa(1), fa(2), fa(3),
+    '  U1 - ADD4 [Schematic*] [VHDL] (composition)', fa(0), fa(1), fa(2), fa(3)], 'the FDCE\'s block no row');
+  assert.ok(!all.some((r) => /top_add|top_fdce/i.test(r)), 'not the HDL generated for them');
+  // its schematic badge: the composition at U1 › U2
+  await faBadge(page, 'Schematic');
   await page.waitFor(() => window.Silinx.active?.id === 'comp:ADD8' && window.Silinx.active.composition?.path.join('/') === 'ADD8/ADD4/FA1', [], { what: 'opened at U1 › U2' });
   assert.equal((await comp(page)).banner, 'Read-only, how ADD8 is built: ADD8 › U1 (ADD4) › U2 (FA1)');
+  // its HDL badge: FA1's VHDL, read-only, as generated from its drawing
+  await faBadge(page, 'VHDL');
+  await page.waitFor(() => window.Silinx.active?.id === 'comphdl:ADD8:FA1:vhdl', [], { what: 'FA1.vhd' });
+  assert.match(await page.eval(() => window.Silinx.active.editor.getValue()), /entity FA1 is[\s\S]*S <= /);
+  assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .gen-banner').textContent), 'Read-only, generated from FA1 (composition)');
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => [...document.querySelectorAll('#hier .row')].some((r) => r.querySelector('.lbl').textContent === 'u1 - ADD8' && /Composição/.test(r.textContent) && /\(composição\)/.test(r.textContent)), [], { what: 'its rows in Portuguese' });
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row')].some((r) => r.querySelector('.lbl').textContent === 'u1 - ADD8' && /Esquemático/.test(r.textContent) && /\(composição\)/.test(r.textContent)), [], { what: 'its rows in Portuguese' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+});
+
+// #5033: a design and simulation project (#3780): its composition's rows with no HDL badge
+uiTest('#5033 a design project: a composition\'s rows [Schematic] only, no HDL badge', E, async (page) => {
+  await makeProject(env, { name: 'CompHierD', kind: 'design', files: { 'src/top.sch.json': JSON.stringify(adderFfDoc()) } });
+  await page.openProject('CompHierD');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent === 'u1 - ADD8'), [], { what: 'its composition\'s row' });
+  const all = await hierRows(page), at = all.findIndex((r) => r.trim().startsWith('u1 - ADD8'));
+  assert.equal(all[at].trim(), 'u1 - ADD8 [Schematic*] (composition)');
+  assert.ok(all.filter((r) => /\(composition\)/.test(r)).every((r) => !/VHDL|Verilog/.test(r)), 'no HDL badge');
+  assert.ok(!all.some((r) => /fdce/i.test(r)), 'the FDCE no row');
 });

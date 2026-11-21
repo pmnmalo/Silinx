@@ -1,18 +1,20 @@
 // The Design pane's rows of a palette symbol built of others (#4984, #4806): the block an adder, a multiplexer, a
 // counter… of a schematic is in its generated HDL (its own entity, marked with what it was drawn as: core/schdoc-hdl.js
 // blockMarkOf) is shown as its composition, ADD8 of two ADD4 of four FA1, not as that HDL; each row opens the
-// composition at its level (web/js/sch-composition.js).
+// composition at its level (web/js/sch-composition.js), its HDL badge the level's HDL (#5033). An atomic symbol's block
+// (a flip-flop's) is no row, as a gate is none.
 import { blockMarkOf } from '/core/schdoc.js';
 import { composition } from '/core/symlib.js';
 import { S } from './app.js';
+import { withoutHdlBadges } from './design-only.js';
 
-/** The palette symbol module `info` (moduleInfo's) is the block of, when it has a composition: { type, params, comp }. */
+/** The palette symbol module `info` (moduleInfo's) is the block of: { type, params, comp (null: an atomic symbol), lang },
+ *  or null (not a symbol's block). */
 export function compositionOf(info) {
   if (!info || !/\.(vhdl?|v)$/i.test(info.file || '')) return null;
   const text = S.sources?.find(s => s.path === info.file)?.text;
   const blk = text ? blockMarkOf(text, info.name) : null;
-  const comp = blk ? composition(blk.type, blk.params) : null;
-  return comp ? { ...blk, comp } : null;
+  return blk ? { ...blk, comp: composition(blk.type, blk.params), lang: info.lang === 'verilog' ? 'verilog' : 'vhdl' } : null;
 }
 
 /**
@@ -23,12 +25,16 @@ export function compositionOf(info) {
 export function compositionRows(parentUl, { blk, instName, path, depth, treeItem, select }) {
   const { comp } = blk;
   const levelOf = name => comp.modules.find(m => m.name === name);
-  const open = at => import('./sch-composition.js').then(m => m.openComposition({ type: blk.type, params: blk.params }, null, at));
+  const sym = { type: blk.type, params: blk.params };
+  const open = at => import('./sch-composition.js').then(m => m.openComposition(sym, null, at));
+  const hdl = module => import('./sch-composition.js').then(m => m.openCompositionHdl(sym, module, blk.lang));
   const add = (ul, module, label, at, key, d) => {
     const kids = levelOf(module).doc.symbols.filter(s => s.type === 'module');
     const it = treeItem({
       label, meta: '(composition)', ico: 'schematic', key, open: d < 2, module,
-      badges: [{ text: 'Composition', base: true, title: 'How it is built, down to the gates (read-only)', open: () => open(at) }],
+      // (its schematic, the base; its HDL generated from it, dashed, but in a design project, #3780)
+      badges: withoutHdlBadges([{ text: 'Schematic', base: true, title: 'How it is built, down to the gates (read-only)', open: () => open(at) },
+        { text: blk.lang === 'vhdl' ? 'VHDL' : 'Verilog', title: 'Generated from its schematic (read-only)', open: () => hdl(module) }]),
       onSelect: select, onOpen: () => open(at),
     });
     ul.append(it.li);
