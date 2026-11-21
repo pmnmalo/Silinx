@@ -55,8 +55,7 @@ function portsOf(list) {
 export const NEW_SOURCE_TOOLS = [
   {
     name: 'new_source', title: 'New Source',
-      template: { type: 'string', enum: [...new Set([...CIRCUIT_TEMPLATES, ...FSM_TEMPLATES].map((t) => t.id))], description: 'An fsm: the FSM Wizard\'s template: empty, counter, updown, enable, ring, johnson (N states), detector (z 1 when the bits read end with the pattern), traffic. A circuit: the circuit wizard\'s assembly: boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop.' },
-      template_params: { type: 'object', description: 'An fsm\'s: counter, updown, enable, ring, johnson {n}; detector {pattern: bits or a regular expression over 0 and 1, overlap: yes|no, type: moore|mealy}. A circuit\'s: boards {n: 1-4, size: half|full}, io {n, m: 1-8}, others {chip} as the wizard.' },
+    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (of a module of the project), package (VHDL), constraints (in the device\'s format: UCF, PCF, LPF, CST, XDC), mem, c or cpp (a function for Silinx HLS), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly), or lab (labs/<name>.lab.json, a guided lab\'s steps to edit). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates, added to the project; then edit it with write_file. An existing file is not replaced.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, type: { type: 'string', enum: Object.keys(TYPES), description: 'The source\'s type.' },
       name: STR('Its file name, without the extension (letters, digits, _ and -; a letter first).'),
@@ -64,7 +63,7 @@ export const NEW_SOURCE_TOOLS = [
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (a module, a test bench, a drawing).' },
       module: STR('A module: its name (default: the file name). A test bench: the module it tests (default: the project\'s top).'),
       architecture: STR('A VHDL module: its architecture\'s name (default Behavioral).'),
-      template: { type: 'string', enum: [...new Set([...CIRCUIT_TEMPLATES, ...FSM_TEMPLATES].map((t) => t.id))], description: 'An fsm: the FSM Wizard\'s template: empty, counter, updown, enable, ring, johnson (N states), detector (z 1 when the bits read end with the pattern), traffic. A circuit: the circuit wizard\'s assembly: boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop.' },
+      template: { type: 'string', enum: [...new Set([...CIRCUIT_TEMPLATES, ...FSM_TEMPLATES].map((t) => t.id))], description: 'An fsm: the FSM Wizard\'s template: empty, counter, updown, enable, ring, johnson (N states), detector (of a pattern), traffic. A circuit: the circuit wizard\'s assembly: boards, io, seg7, counter, adder, gates, comparator, decoder, shift, flipflop.' },
       template_params: { type: 'object', description: 'An fsm\'s: counter, updown, enable, ring, johnson {n}; detector {pattern: bits or a regular expression over 0 and 1, overlap: yes|no, type: moore|mealy}. A circuit\'s: boards {n: 1-4, size: half|full}, io {n, m: 1-8}, others {chip} as the wizard.' },
       ports: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, dir: { type: 'string', enum: ['in', 'out', 'inout'] }, msb: { type: 'integer' }, lsb: { type: 'integer' } }, required: ['name'] }, description: 'A module: its ports (a bus with msb and lsb; default: clk and rst).' },
     }, required: ['project', 'type', 'name'], additionalProperties: false },
