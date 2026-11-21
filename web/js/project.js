@@ -21,6 +21,7 @@ import { setKindFlag } from './project-kind-flag.js';
 import { isDesignOnly } from '/core/project-kind.js';
 import { reopenWaiting, forgetWaiting } from './storage-late.js';
 import { afterOpening } from './prefetch-schedule.js';
+import { resetSync } from './state-sync.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -30,7 +31,8 @@ const $ = id => document.getElementById(id);
 // per-project UI state (cleared when another project is opened or the project is closed)
 function resetProjectState() {
   S.diagsCleared++;   // (the start-up checks' lines coming later: not in the tabs, #339)
-  S.status = {}; S.sel = null; S.selKey = null; S.selProc = null; S.diags = []; S.outOfSync = {}; S.staleHdl = {}; S.staleSeen = new Map(); S.cFailed = {}; S.cFailedSaid = new Map(); S.ucfText = null; S.hdlClash = {}; S.hdlClashWarned = new Set();
+  S.status = {}; S.sel = null; S.selKey = null; S.selProc = null; S.diags = []; S.cFailed = {}; S.cFailedSaid = new Map(); S.ucfText = null;
+  resetSync();   // (the drawings' HDL kept in step: state-sync.js)
   renderDiagnostics();
   renderProcesses();   // (not the last project's processes and states, until a state of this one is restored: #1162)
 }

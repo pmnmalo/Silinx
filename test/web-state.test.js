@@ -15,7 +15,9 @@ function declared() {
   const start = app.indexOf('export const S = {'), end = app.indexOf('\n};', start);
   assert.ok(start >= 0 && end > start, 'app.js declares S');
   const body = app.slice(start, end).replace(/\/\/[^\n]*/g, '');
-  return [...body.matchAll(/(?:^|[{,\s])([A-Za-z_]\w*)\s*:/g)].map(m => m[1]);
+  // (a plain field, `name: value`, or a slice's, `get name() {…}, set name(v) {…}`: #4767)
+  const keys = [...body.matchAll(/(?:^|[{,\s])([A-Za-z_]\w*)\s*:|\bget ([A-Za-z_]\w*)\(\)/g)].map(m => m[1] || m[2]);
+  return keys;
 }
 // the modules that share S: app.js and those that import it from there
 function users() {
@@ -49,4 +51,23 @@ test('the undeclared field of a module is found (the check itself)', () => {
   const used = [...code.matchAll(/(?<![\w.$])S\.([A-Za-z_]\w*)/g)].map(m => m[1]);
   for (const m of code.matchAll(/Object\.assign\(S,\s*\{([^}]*)\}/g)) used.push(...m[1].split(',').map(x => x.trim().split(/\s*:/)[0]).filter(Boolean));
   assert.deepEqual(used.filter(k => !keys.has(k)), ['newThing', 'other']);
+});
+
+// the slices (#4767): a slice's module owns its fields, S reads and writes them through getters and setters
+test('the drawings\' HDL slice (state-sync.js): S\'s fields are its own, both ways; a project opened resets it', async () => {
+  globalThis.window ??= {};
+  const { syncState, resetSync } = await import('../web/js/state-sync.js');
+  assert.deepEqual(Object.keys(syncState), ['outOfSync', 'staleHdl', 'staleSeen', 'hdlClash', 'hdlClashWarned']);
+  assert.ok(Object.values(syncState).every(v => v === undefined), 'undefined until a project opens');
+  assert.throws(() => { syncState.other = 1; }, TypeError, 'its fields only');
+  resetSync();
+  assert.deepEqual([syncState.outOfSync, syncState.staleHdl, syncState.hdlClash], [{}, {}, {}]);
+  assert.ok(syncState.staleSeen instanceof Map && syncState.hdlClashWarned instanceof Set);
+  // (S's getters and setters, as app.js writes them, onto the slice)
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of Object.keys(syncState)) assert.ok(block.includes(`get ${k}() { return syncState.${k}; }, set ${k}(v) { syncState.${k} = v; }`), k);
+  // no module reads them through S any more but through the slice
+  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js'))
+    .filter(f => /(?<![\w.$])S\.(outOfSync|staleHdl|staleSeen|hdlClash|hdlClashWarned)\b/.test(read(f)));
+  assert.deepEqual(through, []);
 });

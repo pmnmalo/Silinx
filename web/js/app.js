@@ -48,6 +48,7 @@ import { mountSplit, placeSplit, splitClosed, splitItems, tabInSight, tabTip } f
 import { closeAllDocs, restoreViewState, saveViewState, viewKept } from './view-state.js';
 import { following, followNotice, editsHere } from './collab-state.js';
 import { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView } from './impl-views.js';
+import { syncState } from './state-sync.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -76,12 +77,12 @@ export const S = {
   bbUndeclared: undefined,    // the black boxes no HDL declares (c-source.js)
   cFailed: undefined,         // a C source -> its failure (c-source.js)
   cFailedSaid: undefined,     // the C failures already said in the console (c-source.js)
-  // the drawings' HDL kept in step (drawings.js)
-  outOfSync: undefined,       // a drawing whose HDL file is older than it
-  staleHdl: undefined,        // an HDL file to make again, from what
-  staleSeen: undefined,       // a stale HDL file -> what was already said of it (app.js)
-  hdlClash: undefined,        // an HDL file a drawing and another file both define
-  hdlClashWarned: undefined,  // the clashes already said
+  // the drawings' HDL kept in step: web/js/state-sync.js's slice (#4767), its fields here as getters and setters onto it
+  get outOfSync() { return syncState.outOfSync; }, set outOfSync(v) { syncState.outOfSync = v; },
+  get staleHdl() { return syncState.staleHdl; }, set staleHdl(v) { syncState.staleHdl = v; },
+  get staleSeen() { return syncState.staleSeen; }, set staleSeen(v) { syncState.staleSeen = v; },
+  get hdlClash() { return syncState.hdlClash; }, set hdlClash(v) { syncState.hdlClash = v; },
+  get hdlClashWarned() { return syncState.hdlClashWarned; }, set hdlClashWarned(v) { syncState.hdlClashWarned = v; },
   // the selection and the panes
   sel: null,
   selKey: undefined,          // the Design pane's selected row (design.js)
@@ -104,7 +105,8 @@ export const S = {
   linkOpened: undefined,      // a design link in the address opened (link-hash.js)
   linksWatched: undefined,    // the address's links watched (the UI tests wait for it, #3331)
   startupChecked: undefined,  // the start-up's checks written (the UI tests wait for it)
-};window.Silinx = S; // handy for debugging from the console
+};
+window.Silinx = S; // handy for debugging from the console
 
 const $ = id => document.getElementById(id);
 
@@ -161,11 +163,11 @@ export function compileProject() {
   // text once (an edit in its editor says it as it syncs)
   let lazyMods = hdlModules;
   for (const [f, t] of Object.entries(S.viewTexts || {})) {
-    if (S.staleSeen?.get(f) === t) continue;
+    if (syncState.staleSeen?.get(f) === t) continue;
     let m;
     try { m = JSON.parse(t); } catch { continue; }
     if (!m.generatedFile || !hdlInProject(m.generatedFile)) continue;
-    (S.staleSeen ||= new Map()).set(f, t);
+    (syncState.staleSeen ||= new Map()).set(f, t);
     if (!lazyMods) { try { lazyMods = modulesFromLibrary(compile(srcs), { sources: Object.fromEntries(srcs.map(s => [s.path, s.text])) }); } catch { lazyMods = {}; } }
     let r = null;
     try { r = viewHdl(f, t, { modules: lazyMods, linked: () => false }); } catch { /* not a drawing */ }

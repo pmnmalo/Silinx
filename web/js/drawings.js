@@ -32,6 +32,7 @@ import { openFsmSchematic, refreshFsmSchematic } from './drawings-fsm-sch.js';
 export { openCircuitSchematic, openFsmSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
 import { ucfPort } from '/core/board-constraints.js';
+import { syncState } from './state-sync.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
@@ -88,11 +89,11 @@ export async function openAsm(path) {
 }
 
 // ---- ASM chart -> HDL synchronization (the chart is the base: its HDL file is read-only, #1176)
-// The HDL files a drawing could not generate again (it has errors, #303): S.staleHdl[file] = { from, why }.
+// The HDL files a drawing could not generate again (it has errors, #303): syncState.staleHdl[file] = { from, why }.
 // Check Syntax (and so the simulation and the implementation) stops on them: they no longer say what the
 // drawing does (a schematic net with two drivers, its HDL as it was before)
-export function staleHdl(target, from, why) { (S.staleHdl ||= {})[target] = { from, why }; }
-export function freshHdl(target) { if (S.staleHdl) delete S.staleHdl[target]; }
+export function staleHdl(target, from, why) { (syncState.staleHdl ||= {})[target] = { from, why }; }
+export function freshHdl(target) { if (syncState.staleHdl) delete syncState.staleHdl[target]; }
 
 // A drawing's HDL file made again from it as its editor saves it (#4750): core/drawing-sync.js syncDrawing, the MCP
 // server's, with its messages; a drawing in another language than its file's gets its HDL file in that language, the
@@ -106,7 +107,7 @@ export function syncDrawingHdl(path) {
     if (!r) return null;
     const { target } = r;
     const relink = () => drawingEditor(path)?.refreshLink?.();
-    S.outOfSync ||= {};
+    syncState.outOfSync ||= {};
     if (r.removed) {
       closeDocByPath(r.removed);
       linkOpenEditor(path, target);
@@ -118,8 +119,8 @@ export function syncDrawingHdl(path) {
     }
     if (r.stale) {
       const why = `the ${STALE_NOUN[viewKind(path)]} has errors: ${r.stale}`;
-      if (S.outOfSync[target] !== why) for (const m of r.messages) log(m, 'warn');
-      S.outOfSync[target] = why;
+      if (syncState.outOfSync[target] !== why) for (const m of r.messages) log(m, 'warn');
+      syncState.outOfSync[target] = why;
       staleHdl(target, path, `it has errors: ${r.stale}`);
       findDoc(`sch:${path}`)?.schEditor?.check();
       refreshSyncBanner(target);
@@ -130,7 +131,7 @@ export function syncDrawingHdl(path) {
     // (its HDL not made in the drawing's language: that file there already)
     if (!r.written && r.messages.length) { for (const m of r.messages) log(m, 'warn'); return r; }
     freshHdl(target);
-    if (S.outOfSync[target]) { delete S.outOfSync[target]; refreshSyncBanner(target); relink(); }
+    if (syncState.outOfSync[target]) { delete syncState.outOfSync[target]; refreshSyncBanner(target); relink(); }
     if (!r.written) return r;
     const text = await api.readFile(S.project.name, target);
     const src = S.sources.find(x => x.path === target); if (src) src.text = text;
@@ -214,7 +215,7 @@ export async function openFsm(path) {
       const ed = mountFsmEditor(host, {
         model, ...followOnly(path, model),
         onChange: () => { setDirty(d, true); refreshFsmSchematic(path, ed.getModel()); },   // (its schematic, when open, follows: #4910)
-        linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
+        linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: syncState.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
         onTruthTables: () => fsmTruthTables(path),
         onToAsm: () => fsmToAsmChart(path),
@@ -586,7 +587,7 @@ function linkOpenEditor(path, target) {
 // ---- a drawing whose HDL file name is taken (#230)
 // A drawn source (no errors) left without its HDL file because a file is in the way: the file of its
 // name (src/<module>.vhd) holds something else, or a file (that one or another HDL file of the project)
-// defines its module already. Found after every load (S.hdlClash: drawing -> drawnHdlClash), said once
+// defines its module already. Found after every load (syncState.hdlClash: drawing -> drawnHdlClash), said once
 // in the console per opening of the project (never a dialog then), shown on its Design-pane row (a
 // [No HDL] badge, its tip says why) and resolved from its menu, Generate HDL File… (resolveHdlClash).
 // (a design project's: its module named, never its HDL file; Make Module… for Generate HDL File…, #3891)
@@ -602,7 +603,7 @@ export const clashTip = c => (designOnly() ? designClash(c) : c.kind === 'same'
     ? `No HDL file: its module ${c.module} is the module of ${c.other}. Rename one of them.`
     : `No HDL file: ${c.target} holds something else. Generate HDL File… (right-click) writes its HDL to ${c.free}.`);
 export async function drawnHdlClashes() {
-  S.hdlClash = {};
+  syncState.hdlClash = {};
   if (!S.project) return;
   const disk = new Set(S.diskTree || S.fileTree || []);
   const texts = {};
@@ -621,10 +622,10 @@ export async function drawnHdlClashes() {
     if (c.kind === 'same' && S.hdlToSch?.[c.file] && S.hdlToSch[c.file] !== v.path) c = { ...c, kind: 'drawn', other: S.hdlToSch[c.file] };
     // (#231: that file is its own HDL file, removed from the project: made again from it, once the user says so)
     else if (c.kind === 'same' && c.file === v.lost && !hdlInProject(c.file)) c = { ...c, kind: 'removed' };
-    S.hdlClash[v.path] = c;
+    syncState.hdlClash[v.path] = c;
     const key = `${S.project.name}|${v.path}|${c.kind}|${c.file}`;
-    if (S.hdlClashWarned?.has(key)) continue;
-    (S.hdlClashWarned ||= new Set()).add(key);
+    if (syncState.hdlClashWarned?.has(key)) continue;
+    (syncState.hdlClashWarned ||= new Set()).add(key);
     log(designOnly() ? `WARNING: ${v.path}: ${designClash(c)}` : c.kind === 'same'
       ? `WARNING: ${v.path} has no HDL file: ${c.file} exists already and defines its module ${c.module}. Generate HDL File… (its right-click menu in the Design pane) replaces ${c.file} with the HDL generated from it.`
       : c.kind === 'removed'
@@ -635,11 +636,11 @@ export async function drawnHdlClashes() {
   }
 }
 // the menu item of a drawing without its HDL file
-export const clashItem = file => (S.hdlClash?.[file] && S.hdlClash[file].kind !== 'drawn' ? { label: designOnly() ? 'Make Module…' : 'Generate HDL File…', action: () => resolveHdlClash(file) } : null);
+export const clashItem = file => (syncState.hdlClash?.[file] && syncState.hdlClash[file].kind !== 'drawn' ? { label: designOnly() ? 'Make Module…' : 'Generate HDL File…', action: () => resolveHdlClash(file) } : null);
 // Generate HDL File…: the file that defines its module replaced (once the user says so) or the free
 // name written; the drawing linked to it
 export async function resolveHdlClash(path) {
-  const c = S.hdlClash?.[path];
+  const c = syncState.hdlClash?.[path];
   if (!c || !S.project) return false;
   const title = designOnly() ? 'Make Module' : 'Generate HDL File';
   if (c.kind === 'drawn') { commandWarning(title, clashTip(c)); return false; }
@@ -667,7 +668,7 @@ export async function resolveHdlClash(path) {
 export function syncBanner(path) {
   const sch = S.hdlToSch?.[path];
   if (!sch) return h('span', { class: 'gen-banner', hidden: true, 'data-sync-banner': path });
-  const why = S.outOfSync?.[path];
+  const why = syncState.outOfSync?.[path];
   const link = h('a', { onclick: () => openView(sch) }, sch.split('/').pop());
   if (!why) return h('span', { class: 'gen-banner read-only', 'data-sync-banner': path }, 'Read-only, generated from ', link);
   return h('span', { class: 'gen-banner read-only out-of-sync', 'data-sync-banner': path }, 'Read-only, not in sync with ', link,
