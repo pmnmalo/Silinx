@@ -62,6 +62,8 @@ export const MESSAGES_PT_PATTERNS = [
   [/^Cannot open (.+) in (.+): ([\s\S]*)$/, (m, p, l, e) => `Não foi possível abrir ${p} em ${l}: ${tr(e)}`],
   [/^cannot parse (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível ler ${p}: ${tr(e)}`],
   [/^Cannot build the design: ([\s\S]*)$/, (m, e) => `Não foi possível construir o projeto: ${tr(e)}`],
+  // (SSim's Force dialog's note, #5034)
+  [/^Time offsets are relative to the current simulation time \((.+)\); default unit is ns\.$/, 'Os desvios de tempo são relativos ao tempo de simulação atual ($1); a unidade por omissão é ns.'],
   [/^Cannot simulate the design: ([\s\S]*)$/, (m, e) => `Não foi possível simular o projeto: ${tr(e)}`],
   [/^'(.+)' cannot be shown as an ASM chart: ([\s\S]*)$/, (m, n, e) => `'${n}' não pode ser representado como fluxograma ASM: ${tr(e)}`],
   // (an editor's message, #4747: the command's name, then its error)
