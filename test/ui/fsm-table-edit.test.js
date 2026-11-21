@@ -60,6 +60,8 @@ uiTest('#4974 the transition table edited in place: condition, next state, outpu
   await page.waitForSelector(`${ED} .fsm-tt-edit`);
   // (the tests' notation: an overbar as /, #4417)
   assert.deepEqual(await rows(page), ['S0|0|up|S1|1|q=0', 'S0|0|otherwise (stays)|S0|0|q=0', 'S1|1|up|S0|0|q=1', 'S1|1|otherwise (stays)|S1|1|q=1']);
+  // (binary: the codes follow the encoding, no field, #5002)
+  assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} .fsm-tt-code`).length, ED), 0);
   // ---- a condition, kept as typed
   await typeIn(page, 't1', '.fsm-tt-cond', 'up and !up');
   await page.waitFor((ed) => window.Silinx.active.fsmEditor && document.querySelector(`${ed} [data-trans=t1] .fsm-label`)?.textContent.includes('up and !up'), [ED], { what: 'the arc drawn with the condition typed' });
@@ -142,4 +144,28 @@ uiTest('#4974 a read-only state diagram\'s transition table: text, no field to e
     return out;
   }, MACHINE);
   assert.deepEqual(r, { table: true, fields: 0 });
+});
+
+uiTest('#5002 a state\'s code edited in the transition table under the user\'s encoding: set, its HDL made again; used twice: Check\'s error', E, async (page) => {
+  const user = normalizeFsm({ ...MACHINE, encoding: 'user', states: MACHINE.states.map((s, i) => ({ ...s, code: ['01', '10'][i] })) });
+  await makeProject(env, { name: 'TtCodes', files: { [F]: JSON.stringify(user, null, 2), [H]: generateFsm(user, 'vhdl').code } });
+  await page.openProject('TtCodes');
+  await page.eval((f) => window.SilinxApp.openFsm(f), F);
+  await page.waitFor((ed, f) => window.Silinx.active?.id === `fsm:${f}` && document.querySelector(ed), [ED, F], { what: 'the state diagram' });
+  await page.click(`${ED} .fsm-tab-btn`, { text: 'Tables' });
+  await page.waitForSelector(`${ED} .fsm-tt-edit`);
+  // a field on each state's first row; the next codes follow
+  assert.deepEqual(await rows(page), ['S0|01|up|S1|10|q=0', 'S0|01|otherwise (stays)|S0|01|q=0', 'S1|10|up|S0|01|q=1', 'S1|10|otherwise (stays)|S1|10|q=1']);
+  assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} .fsm-tt-code`).length, ED), 2);
+  await typeIn(page, 's2', '.fsm-tt-code', '1_1');
+  let m;
+  for (let i = 0; i < 50; i++) { m = await model('TtCodes'); if (m.states[1].code === '11' && (await readWs(env, 'TtCodes', H)) === generateFsm(m, 'vhdl').code) break; await new Promise((r) => setTimeout(r, 100)); }
+  assert.deepEqual(m.states.map((s) => s.code), ['01', '11']);
+  assert.equal(await readWs(env, 'TtCodes', H), generateFsm(m, 'vhdl').code);
+  assert.deepEqual((await rows(page)).map((r) => r.split('|')[4]), ['11', '01', '01', '11']);
+  assert.deepEqual(await consoleRows(page), [[], []]);   // (no warnings)
+  // S1's code S0's: Check's error, as for the Properties
+  await typeIn(page, 's2', '.fsm-tt-code', '01');
+  await page.waitFor(() => document.querySelectorAll('#console-errors .diag').length > 0, [], { what: 'Check\'s error' });
+  assert.deepEqual(await consoleRows(page), [[`ERROR:FSM - "${F}": States S0 and S1 have the same code 01`], []]);
 });
