@@ -204,10 +204,11 @@ test('#4729 the application\'s own messages state their source: logError / logWa
   const read = (f) => readFileSync(new URL(f, ROOT), 'utf8');
   const con = read('web/js/console.js');
   for (const [fn, cls] of [['logError', 'err'], ['logWarning', 'warn'], ['logInfo', 'info']]) {
-    assert.match(con, new RegExp(`export function ${fn}\\(text\\) \\{\\n  log\\(\`[A-Z]+: \\$\\{t\\(text\\)\\}\`, '${cls}', \\{ src: 'app' \\}\\);`), fn);
+    // (its text English, drawn translated, #4749: console.js appText)
+    assert.match(con, new RegExp(`export function ${fn}\\(text\\) \\{\\n  log\\(\`[A-Z]+: \\$\\{text\\}\`, '${cls}', \\{ src: 'app' \\}\\);`), fn);
   }
  // (a command's failure, warning, information, #4747: the application's too)
-  assert.match(con, /function commandLines\(tag, cls, title, message\) \{\n[^\n]*\n[^\n]*log\([^\n]*, cls, \{ src: 'app' \}\);\n\}/);
+  assert.match(con, /function commandLines\(tag, cls, title, message\) \{\n[^\n]*\n[^\n]*\n[^\n]*log\([^\n]*, cls, \{ src: 'app', draw: [^\n]*\}\);\n\}/);
   assert.match(con, /export const appLog = \(text, cls = '', opts = \{\}\) => log\(text, cls, \{ \.\.\.opts, src: 'app' \}\);/);
   assert.match(read('web/js/project.js'), /appLog\(untrustedNotice\(name, S\.project\), 'info', \{ action: trustAction\(name\) \}\)/);
   // the modules of the application's own lines, whatever ran last; the logic analyzer's: Implementation's
