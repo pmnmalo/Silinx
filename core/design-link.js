@@ -19,6 +19,7 @@ import { gateEntries, gateMessages, normalizePath } from './import-gate.js';
 import { foldsToProjectFile, PROJECT_FILE } from './fold-name.js';
 import { PROJECT_NAME_RE } from './project-name.js';
 import { unusedPartFiles } from './link-parts.js';
+import { toBase64url, fromBase64url } from './base64.js';
 
 /** The limits of a link: the design's encoded length (characters), its JSON inflated (bytes), its files; `slides`:
  *  the length above which some slide tools cut a link (it is still made, with a warning). */
@@ -37,17 +38,10 @@ const dec = new TextDecoder('utf-8', { fatal: true });
 const linkError = msg => Object.assign(new Error(msg), { linkError: true });
 
 // ------------------------------------------------------------------ base64url
-function toB64url(bytes) {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+const toB64url = toBase64url;
 function fromB64url(text) {
   if (!/^[A-Za-z0-9_-]*$/.test(text) || text.length % 4 === 1) throw linkError('the design in the link is not base64url');
-  const s = atob(text.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (text.length % 4)) % 4));
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
+  return fromBase64url(text);
 }
 
 // ------------------------------------------------------------------ the HDL a drawing makes again

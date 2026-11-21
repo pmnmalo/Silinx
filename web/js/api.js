@@ -3,6 +3,7 @@
 import { prefKey } from './prefs.js';
 import { mergeDescription } from '../../core/project-desc-merge.js';
 import { VERSION } from '../../core/version.js';
+import { toBase64 } from '../../core/base64.js';
 
 // The server answers only with its token, made at every start (#2564) and given in the address it
 // prints (…/#token=…); the address a launcher opens has a one-time code instead (…/#code=…, #2955: not the token,
@@ -45,10 +46,7 @@ const call = async (url, opts) => staleCheck(await fetch(url, opts));
 
 /** A zip (a Blob or bytes) in base64, for a JSON body. */
 async function base64Of(zip) {
-  const b = zip instanceof Uint8Array ? zip : new Uint8Array(await new Response(zip).arrayBuffer());
-  let s = '';
-  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
-  return btoa(s);
+  return toBase64(zip instanceof Uint8Array ? zip : new Uint8Array(await new Response(zip).arrayBuffer()));
 }
 
 /** The token an address gives (null when refused or the server is not reached): a one-time code exchanged for it

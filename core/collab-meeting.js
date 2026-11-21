@@ -15,6 +15,7 @@
 // A participant is a socket, as a room's; `keep(socket, state)` and `restore([[socket, state], …])` as a room's (a
 // platform whose meeting points sleep: the Cloudflare relay's Durable Objects).
 import { b64url } from './collab-crypto.js';
+import { fromBase64url } from './base64.js';
 
 export const MEET_PROTOCOL = 1;
 export const ID_BYTES = 16;
@@ -30,7 +31,7 @@ export const PEER_DROPPED = 'this follower\'s messages come too fast: some were 
 
 const json = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
 const refuse = (ws, message) => { json(ws, { type: 'error', message }); ws.close(1008, 'refused'); };
-const unb64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const unb64 = fromBase64url;
 
 /** Meeting points: { topics (Map: topic -> { host, hostId, peers: Map<id, socket> }), welcome(socket, role, topic)
  *  -> { message(data, binary), close() }, restore(entries) -> Map<socket, handlers> }. role: 'host' | 'peer'. */

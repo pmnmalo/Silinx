@@ -38,7 +38,11 @@ const roomOf = (r, room) => r.namespaces.ROOMS.objects.get(room).obj.host.rooms.
 
 test('its room\'s logic is core/\'s, copied as it is (node scripts/sync-relay-cloudflare.mjs); its limits Silinx\'s relay\'s, one room an object', () => {
   assert.deepEqual(staleCopies(), []);
-  assert.deepEqual(RELAY_CORE, ['collab-room.js', 'collab-meeting.js', 'collab-wire.js', 'collab-crypto.js', 'collab-sign.js', 'collab-editors.js']);
+  assert.deepEqual(RELAY_CORE, ['collab-room.js', 'collab-meeting.js', 'collab-wire.js', 'collab-crypto.js', 'collab-sign.js', 'collab-editors.js', 'base64.js']);
+  // (every module a copied one imports is copied too: core/base64.js since #4772)
+  for (const f of RELAY_CORE) {
+    for (const [, dep] of readFileSync(new URL(`../core/${f}`, import.meta.url), 'utf8').matchAll(/^import [^'"]*['"]\.\/([\w-]+\.js)['"]/gm)) assert.ok(RELAY_CORE.includes(dep), `${f} imports ${dep}`);
+  }
   // (the server's ping, and its cap on the connections waiting for their first message, #4736: an object holds one room)
   const { ping, waiting, ...node } = NODE_LIMITS;
   assert.deepEqual([ping, waiting], [30_000, 256]);
