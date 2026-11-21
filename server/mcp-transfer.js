@@ -31,7 +31,8 @@ export async function exchangePath(p, what) {
   if (typeof p === 'string' && /^<exchange folder>(?:[\\/]|$)/.test(p)) p = p.replace(/^<exchange folder>[\\/]?/, '') || '.';
   if (typeof p !== 'string' || !p) throw toolError(`${what}: a path in the exchange folder`);
   let root;
-  try { root = await fsp.realpath(dir); } catch { throw toolError('no exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names)'); }
+  // (resolved as realOf resolves the path, not by the system's realpath, which expands a short name the path keeps, #5023)
+  try { await fsp.access(dir); root = realOf(dir); } catch { throw toolError('no exchange folder (the user\'s Downloads, or the folder SILINX_MCP_FOLDER names)'); }
   const full = path.resolve(dir, p);
   const outside = () => toolError(`${what}: '${p}' is outside the exchange folder (SILINX_MCP_FOLDER sets another)`);
   const under = (f, d) => f === d || f.startsWith(d + path.sep);
