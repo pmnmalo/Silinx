@@ -50,15 +50,61 @@ import { following, followNotice, editsHere } from './collab-state.js';
 import { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView } from './impl-views.js';
 
 // ------------------------------------------------------------------ state
+// Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
+// they were declared here: code reads them with ?., ||, ??, never by their presence.
 export const S = {
+  // the project and its files
   project: null, devices: null, toolchain: null,
+  diskTree: undefined,        // the project folder's files (project.js)
+  fileTree: undefined,        // the files shown: the folder's, less the HDL the project leaves out (project.js)
+  ucfText: undefined,         // the constraints file's text (project.js, implement.js)
+  git: undefined,             // the project's repository status, or null (git.js)
+  reloadChain: undefined,     // reloadProject's calls one after another (project.js)
+  opChain: undefined,         // the Design pane's commands one after another (design.js serialOp)
+  // the compiled design
   view: 'impl', sources: [], lib: null, modules: [],
-  sel: null, docs: [], active: null, status: {}, diags: [], busy: false,
-  diagsCleared: 0,            // how many times the Errors / Warnings tabs were cleared (a project opened or closed)
+  viewSources: undefined,     // the drawings' generated HDL, compiled with the sources (app.js compileProject)
+  viewTexts: undefined,       // a drawing's file -> its text (project.js, app.js)
+  viewElsewhere: undefined,   // a drawing whose module another file defines -> that module (app.js compileProject)
+  viewModule: undefined,      // a drawing's file -> its module (project.js)
+  schOwners: undefined,       // a drawing linked to its HDL file -> that file (project.js)
+  hdlToSch: undefined,        // a drawing's HDL file -> the drawing (project.js)
+  symbolFiles: undefined,     // a symbol file -> its text (project.js, symbol-doc.js)
+  partModules: undefined,     // a circuit's parts as modules (app.js compileProject)
+  failedDrawings: undefined,  // the drawings whose module cannot be made (#3934)
+  hls: undefined,             // the C sources' black boxes (project.js, c-source.js)
+  bbUndeclared: undefined,    // the black boxes no HDL declares (c-source.js)
+  cFailed: undefined,         // a C source -> its failure (c-source.js)
+  cFailedSaid: undefined,     // the C failures already said in the console (c-source.js)
+  // the drawings' HDL kept in step (drawings.js)
+  outOfSync: undefined,       // a drawing whose HDL file is older than it
+  staleHdl: undefined,        // an HDL file to make again, from what
+  staleSeen: undefined,       // a stale HDL file -> what was already said of it (app.js)
+  hdlClash: undefined,        // an HDL file a drawing and another file both define
+  hdlClashWarned: undefined,  // the clashes already said
+  // the selection and the panes
+  sel: null,
+  selKey: undefined,          // the Design pane's selected row (design.js)
+  selProc: undefined,         // the Processes panel's selected process (processes.js)
+  leftPage: undefined,        // the left pane's page shown (app.js showLeftPage)
+  leftChosen: undefined,      // the left page the user chose (app.js)
+  fpgaSyncing: undefined,     // the FPGA view selecting the Design pane's row (impl-views.js)
+  menus: undefined,           // the menu bar's menus (menus.js)
   procCollapsed: new Set(),   // ids of the collapsed groups of the Processes panel
   treeOpen: new Map(),        // Design hierarchy / Files trees: key -> expanded? (as the user left it)
-};
-window.Silinx = S; // handy for debugging from the console
+  // the documents
+  docs: [], active: null,
+  // the processes and their results
+  status: {}, diags: [], busy: false,
+  diagsCleared: 0,            // how many times the Errors / Warnings tabs were cleared (a project opened or closed)
+  currentJob: undefined,      // the implementation's job running (implement.js)
+  stopRequested: undefined,   // Stop pressed during it (implement.js)
+  synthDone: undefined,       // the synthesis's result kept for the next steps (processes.js)
+  // the page's start
+  linkOpened: undefined,      // a design link in the address opened (link-hash.js)
+  linksWatched: undefined,    // the address's links watched (the UI tests wait for it, #3331)
+  startupChecked: undefined,  // the start-up's checks written (the UI tests wait for it)
+};window.Silinx = S; // handy for debugging from the console
 
 const $ = id => document.getElementById(id);
 
