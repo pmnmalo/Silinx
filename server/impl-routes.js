@@ -16,6 +16,7 @@ import { runOpenImplementation, openStatus, openSteps, buildDeviceJob, reportPar
 import { programJob, scanJob, promJob, readBitInfo, checkBitPart, expectedDevice, parseBitHeader } from './programmer.js';
 import { importXise, importIseSchematics, iseModuleSymbols } from './xise.js';
 import { within, nativeRealOf } from './paths.js';
+import { fpgaViewModel } from './fpga-view.js';
 import { ownerSecrets } from './owner-secrets.js';
 import * as Projects from './projects.js';
 import { mountXiseRoutes } from './xise-routes.js';
@@ -250,17 +251,16 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
     const dir = path.join(P.projectDir(req.params.p), 'build');
     if (!within(P.projectDir(req.params.p), dir)) return { available: false, reason: 'no-ncd' };   // (a link out of the project: its cache is written there)
     const f = name => path.join(dir, name);
-    const mtime = p => { try { return fss.statSync(p).mtimeMs; } catch { return 0; } };
+    const mtime = async p => (await fs.stat(p).catch(() => null))?.mtimeMs || 0;
     const { MODEL_VERSION } = await import('../packages/silinx-fpga/src/parts.js');
-    const ncd = mtime(f(`${project.top}.ncd`)), xdl = mtime(f(`${project.top}.xdl`)), dev = mtime(f('device.xdlrc'));
-    const openXdl = mtime(f('open/routed.xdl'));
+    const [ncd, xdl, dev, openXdl] = await Promise.all([f(`${project.top}.ncd`), f(`${project.top}.xdl`), f('device.xdlrc'), f('open/routed.xdl')].map(mtime));
     if (openXdl && openXdl >= ncd) {
       const st = openStatus(project.device || {});
       if (!st.graph) return { available: false, reason: 'error', error: st.reason };
-      const key = `open:${MODEL_VERSION}:${openXdl}:${st.graph}:${mtime(st.graph)}`;
+      const graphMtime = await mtime(st.graph), key = `open:${MODEL_VERSION}:${openXdl}:${st.graph}:${graphMtime}`;
       try { const c = JSON.parse(await fs.readFile(f('open/fpga-view.json'), 'utf8')); if (c.key === key) return c.model; } catch { /* not cached */ }
-      const { parseXdl, fpgaModel, deviceGrid, loadDeviceCache } = await import('../packages/silinx-fpga/src/node.js');
-      const model = { available: true, source: 'open', ...fpgaModel(parseXdl(await fs.readFile(f('open/routed.xdl'), 'utf8')), deviceGrid(loadDeviceCache(st.graph))) };
+      // (built in a worker thread, the device's graph parsed there: the server answers meanwhile, #4774)
+      const model = await fpgaViewModel({ source: 'open', xdl: f('open/routed.xdl'), graph: st.graph, graphMtime }, `${dir}:${key}`);
       await fs.writeFile(f('open/fpga-view.json'), JSON.stringify({ key, model }));
       return model;
     }
@@ -268,8 +268,7 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
     if (!xdl || !dev || xdl < ncd) return { available: false, reason: xdl ? 'stale' : 'no-xdl' };
     const key = `${MODEL_VERSION}:${ncd}:${xdl}:${dev}`;   // a new model format rebuilds the cache
     try { const c = JSON.parse(await fs.readFile(f('fpga-view.json'), 'utf8')); if (c.key === key) return c.model; } catch { /* not cached */ }
-    const { parseXdl, parseXdlrc, fpgaModel } = await import('../packages/silinx-fpga/src/parts.js');
-    const model = { available: true, ...fpgaModel(parseXdl(await fs.readFile(f(`${project.top}.xdl`), 'utf8')), parseXdlrc(await fs.readFile(f('device.xdlrc'), 'utf8'))) };
+    const model = await fpgaViewModel({ source: 'ise', xdl: f(`${project.top}.xdl`), xdlrc: f('device.xdlrc'), xdlrcMtime: dev }, `${dir}:${key}`);
     await fs.writeFile(f('fpga-view.json'), JSON.stringify({ key, model }));
     return model;
   }));
