@@ -108,7 +108,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. kind: New Project\'s first page (fpga, design, codesign). kind design: no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: the project starts with that top document, module \'top\' (a drawing: its HDL generated from it; top.c / .cpp: Silinx HLS\'s function top; hdl: none).',
+    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. kind: New Project\'s first page (fpga, design, codesign). kind design (Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: the project starts with that top document, module \'top\' (a drawing: its HDL generated from it; top.c / .cpp: Silinx HLS\'s function top; hdl: none).',
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', DESIGN_KIND, CODESIGN_KIND], description: `Its kind, New Project's first page: ${PROJECT_KINDS.map(k => `${k.id} (${k.name}: ${k.short})`).join(', ')}.` },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s: hdl, sch (schematic), fsm, asm, tt (Boolean algebra), petri, circuit, c, cpp (a design and simulation project\'s: a drawing); saved as the project\'s, its top document made.' },
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
@@ -117,7 +117,7 @@ export const PROJECT_TOOLS = [
       // (its kind, #4103; design_only, its deprecated name: server/mcp-aliases.js)
       if (given === CODESIGN_KIND) throw toolError(`kind codesign: ${CODESIGN_NOT_YET}`);   // (New Project's card, #5041)
       const designOnly = (given ?? 'fpga') === DESIGN_KIND;
-      if (designOnly && (board || variant)) throw toolError('a design and simulation project has no board: give kind design or a board, not both');
+      if (designOnly && (board || variant)) throw toolError('a Digital Logic project (kind design) has no board: give kind design or a board, not both');
       const refusal = type !== undefined && topTypeRefusal({ kind: designOnly ? DESIGN_KIND : null }, type);
       if (refusal) throw toolError(refusal);
       let device;
@@ -128,7 +128,7 @@ export const PROJECT_TOOLS = [
       const pj = await P.readProject(name);
       const made = top ? ` It starts with ${top} (the top module 'top').` : '';
       const more = flow ? { topSourceType: pj.topSourceType ?? null, preferredLanguage: pj.preferredLanguage, top: pj.top || null, topFile: top } : {};
-      if (designOnly) return { text: `${top ? 'D' : 'Empty d'}esign and simulation project '${name}' made (no FPGA).${made} Add its drawings with new_source${top ? '' : ', then set_top'}.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, ...more, trusted: false } };
+      if (designOnly) return { text: `${top ? '' : 'Empty '}Digital Logic project '${name}' made (a design and simulation project).${made} Add its drawings with new_source${top ? '' : ', then set_top'}.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, ...more, trusted: false } };
       return { text: `${top ? 'P' : 'Empty p'}roject '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}).${made} Write its sources with write_file${top ? '' : ', then set_top'}.${UNTRUSTED}`, data: { project: name, board: pj.board || null, device: pj.device, ...more, trusted: false } };
     },
   },

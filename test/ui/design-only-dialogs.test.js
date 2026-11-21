@@ -72,7 +72,7 @@ uiTest('#3891 a design project\'s wizards: no Language, no HDL in their hints an
   // New Project, a design project: its note without the HDL module
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
-  await page.click('.dlg-overlay .kind-card[data-kind=design] input');   // (its kind first: No FPGA, #5041)
+  await page.click('.dlg-overlay .kind-card[data-kind=design] input');   // (its kind first: Digital Logic, #5041, #5133)
   await page.dialogButton('Next >');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Drawn2');
   await page.dialogButton('Next >');
@@ -93,7 +93,7 @@ uiTest('#3891 a design project\'s drawn module: Rename…, Source Properties…,
   page.eval(async () => (await import('/js/wizards.js')).openProjectDialog()).catch(() => {});
   await page.waitDialog('Open Project');
   const row = await page.eval(() => [...document.querySelectorAll('.dlg-overlay table tr')].map((r) => [...r.cells].map((c) => c.textContent)).find((c) => c[0] === 'DrawnDlg'));
-  assert.deepEqual(row.slice(0, 3), ['DrawnDlg', '', 'Design and simulation only (no FPGA)']);   // (no Top column, #4314)
+  assert.deepEqual(row.slice(0, 3), ['DrawnDlg', '', 'Digital Logic']);   // (no Top column, #4314)
   await cancel(page);
   // its badge's tip
   assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent === 'traffic').querySelectorAll('.badge')].map((b) => [b.textContent, b.title])), [['FSM', 'Open'], ['Schematic', 'Its gate-level implementation: the state flip-flops and the logic in gates']]);

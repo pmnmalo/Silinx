@@ -53,7 +53,7 @@ test('new_project top_source_type in a design and simulation project: a drawing\
   const r = await ok('new_project', { name: 'D_fsm', kind: 'design', top_source_type: 'fsm', language: 'verilog' });
   const pj = await P.readProject('D_fsm');
   assert.deepEqual([pj.kind, pj.topSourceType, pj.preferredLanguage, pj.top], ['design', 'fsm', 'vhdl', 'top']);
-  assert.equal(r.text, 'Design and simulation project \'D_fsm\' made (no FPGA). It starts with src/top.fsm.json (the top module \'top\'). Add its drawings with new_source.');
+  assert.equal(r.text, 'Digital Logic project \'D_fsm\' made (a design and simulation project). It starts with src/top.fsm.json (the top module \'top\'). Add its drawings with new_source.');
   assert.equal(read('D_fsm', 'src/top.fsm.json'), (await topSourceFiles('fsm', 'verilog')).files[0].text);
   // the language alone: the Preferred Language saved, no top made
   await ok('new_project', { name: 'L_only', language: 'verilog' });

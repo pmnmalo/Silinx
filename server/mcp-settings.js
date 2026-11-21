@@ -89,7 +89,7 @@ export const SETTINGS_TOOLS = [
       preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The drawings\' HDL made again in it (those with no language of their own).' },
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type: a setting of the project, saved, nothing made (tt: Boolean algebra; a design and simulation project\'s is a drawing).' },
-      kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design (no FPGA: no board, no constraints, its HDL hidden; refused with HDL or C sources of its own) or fpga (a design project made an FPGA project, with board or a device).' },
+      kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design (Digital Logic: no board, no constraints, its HDL hidden; refused with HDL or C sources of its own) or fpga (FPGA: a design project made an FPGA one, with a board or a device).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run(args) {

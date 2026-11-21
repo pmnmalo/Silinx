@@ -1,5 +1,5 @@
-// Silinx - New Project's first page, the project's kind (#5041): a project with no FPGA (the design and simulation
-// project, #3780, #3891), with an FPGA (a board and a device), or co-design (FPGA and microcontroller nodes linked,
+// Silinx - New Project's first page, the project's kind (#5041): Digital Logic (the design and simulation project,
+// #3780, #3891: no FPGA or HDL in its card, #5133), FPGA (a board and a device), or co-design (FPGA and microcontroller nodes linked,
 // roadmap #4695), each said in a few words: what it is for, what it shows. Co-design is shown but cannot be chosen yet
 // (its System document, #4697, and its editor, #4700, are still being built): its reason in its card, as the MCP
 // server's new_project says it (core/project-kind.js).

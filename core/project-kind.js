@@ -6,19 +6,21 @@
 // MCP server. Isomorphic module (browser + Node).
 
 export const DESIGN_KIND = 'design';
-/** The New Project and Design Properties choice. */
-export const DESIGN_ONLY_LABEL = 'Design and simulation only (no FPGA)';
+/** The design and simulation project's kind, as New Project, Design Properties and Open Project name it (#5133: for
+ *  the introductory courses, whose students need not know what an FPGA is: no FPGA or HDL in its name). */
+export const DESIGN_ONLY_LABEL = 'Digital Logic';
 
 /** A co-design project's kind (roadmap #4695): FPGA and microcontroller nodes; none can be made yet. */
 export const CODESIGN_KIND = 'codesign';
 /** Why a co-design project cannot be made yet (New Project's card, the MCP server's new_project, #5041). */
 export const CODESIGN_NOT_YET = 'Not available yet: a co-design project needs the System document and its editor, still being built.';
-/** New Project's first page (#5041): the three kinds, each with what it is for and what it shows; `short`, the MCP server's
+/** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (#5133: Digital Logic's
+ *  says nothing of FPGA, HDL or a board); `short`, the MCP server's
  *  new_project's words for its kind (its arguments' size limits, #4752, #5097). */
 export const PROJECT_KINDS = [
-  { id: DESIGN_KIND, name: 'No FPGA', about: 'Digital logic for the introductory courses: schematics, truth tables, state machines, circuits on a breadboard, drawn and simulated. It shows no HDL, no board and no FPGA flow.',
+  { id: DESIGN_KIND, name: DESIGN_ONLY_LABEL, about: 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.',
     short: 'drawings and simulation, no board, no HDL shown' },
-  { id: 'fpga', name: 'With an FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.',
+  { id: 'fpga', name: 'FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.',
     short: 'the default' },
   { id: CODESIGN_KIND, name: 'Co-design', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.',
     short: 'not available yet, refused' },

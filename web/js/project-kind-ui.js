@@ -4,7 +4,7 @@
 // design (a board, or None Specified and a device) makes a design project an FPGA project, the reverse is refused while
 // the project has HDL or C sources of its own (the console says which). Design Properties says what a change of kind
 // does as it is chosen (#5041): the refusal and its sources, OK disabled; or what leaves the project, none deleted.
-import { CODESIGN_KIND, DESIGN_KIND, DESIGN_ONLY_MESSAGES, ownSources, toDesignProject } from '/core/project-kind.js';
+import { CODESIGN_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, ownSources, toDesignProject } from '/core/project-kind.js';
 import { HDL_TOP_TYPES } from '/core/top-types.js';
 import { S, app } from './app.js';
 import { h } from './ui.js';
@@ -12,7 +12,7 @@ import { logError } from './console.js';
 import { designState } from './state-design.js';
 
 /** Design Properties' Project Kind choices: New Project's first page's (#5041), co-design not chosen yet. */
-export const KIND_OPTIONS = [[DESIGN_KIND, 'No FPGA'], ['fpga', 'With an FPGA'], [CODESIGN_KIND, 'Co-design (not available yet)']];
+export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'], [CODESIGN_KIND, 'Co-design (not available yet)']];
 
 /**
  * Design Properties' note under its Project Kind (`kindSel`, the project `pj`): what the kind chosen does to the project,

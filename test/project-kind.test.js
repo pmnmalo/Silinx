@@ -5,19 +5,26 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES as M, addRefusal, asDesignProject, asFpgaProject, hdlFile, hdlSideFile, isDesignOnly, ownSources, toDesignProject } from '../core/project-kind.js';
+import { DESIGN_KIND, DESIGN_ONLY_LABEL, PROJECT_KINDS, DESIGN_ONLY_MESSAGES as M, addRefusal, asDesignProject, asFpgaProject, hdlFile, hdlSideFile, isDesignOnly, ownSources, toDesignProject } from '../core/project-kind.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const design = { name: 'd', kind: 'design', board: null, constraints: null, device: { part: 'xc3s250e' }, files: [] };
 
 test('isDesignOnly: the kind design only; an FPGA project has none (every project before)', () => {
   assert.equal(DESIGN_KIND, 'design');
-  assert.equal(DESIGN_ONLY_LABEL, 'Design and simulation only (no FPGA)');
+  assert.equal(DESIGN_ONLY_LABEL, 'Digital Logic');   // (#5133: no FPGA or HDL in its name)
   assert.deepEqual([design, { kind: 'fpga' }, {}, null, undefined].map(isDesignOnly), [true, false, false, false, false]);
   // (every example an FPGA project)
   for (const ex of fs.readdirSync(path.join(ROOT, 'examples')).filter(e => fs.existsSync(path.join(ROOT, 'examples', e, 'silinx.json')))) {
     assert.equal(isDesignOnly(JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', ex, 'silinx.json'), 'utf8'))), false, ex);
   }
+});
+
+test('#5133 the kinds\' names: Digital Logic, FPGA, Co-design; Digital Logic\'s name and words say nothing of FPGA, HDL or a board', () => {
+  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['codesign', 'Co-design']]);
+  const d = PROJECT_KINDS[0];
+  assert.equal(d.about, 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.');
+  assert.doesNotMatch(`${d.name} ${d.about}`, /FPGA|HDL|\bboard\b/i);
 });
 
 test('hdlSideFile / hdlFile: HDL, C, constraints and memory files; the drawings, labs and documents not', () => {
