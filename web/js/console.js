@@ -38,8 +38,11 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // location: the project's file and line the line is of, its writer's (#4749: SSim's line of an assertion); none: the
 // ones its text names. Its entry of the Errors / Warnings tabs is made from its message (core/message.js entryOf: its
 // tool, location and action), its text not read again.
+// draw: the line as it is drawn, in the interface's language (#4749, step 5: its message's text stays English, what the
+// followers and the MCP get; drawn again when the language changes); none: an application's line (src 'app') its
+// translation (appText), any other line (a tool's output) as it is.
 // Returns the lines' elements.
-export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null } = {}) {
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null, draw = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
@@ -49,6 +52,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   if (refused && !shared) action = msgAction;
   const lines = String(text).split('\n'), divs = [];
   const paths = (S.sources || []).map(s => s.path);
+  const drawn = draw || (src === 'app' ? appText : null);
   lines.forEach((line, i) => {
     if (run === undefined) startsRun(line);
     else if (RUN_HEADER.test(line)) dropRun(run);   // (a run's own header: its last run's entries dropped, #4728)
@@ -57,11 +61,12 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
     if (!source) [source, lineCur] = lineSource(line, lineCur);
     // (its action: the first of the line's, #4962)
     const msg = lineMessage(line, { cls, source, location, paths, action: i === lines.length - 1 ? msgAction : null, process: lineProcess, run: lineRun });
-    const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, line);
+    const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, drawn ? drawn(line) : line);
     div.message = msg;
+    if (drawn) div.draw = () => drawn(line);
     el.append(div);
     divs.push(div);
-    if (diag) consoleMessage(msg, goto);
+    if (diag) consoleMessage(msg, goto, div.draw);
     if (run === undefined && RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls, msg); } catch { /* a watcher's own error: not the console's */ } }
   });
@@ -74,12 +79,27 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
       try { if (await a.run() === false) enable(true); } catch (e) { enable(true); log(`ERROR: ${e.message}`, 'err'); }
     } }, t(a.label));
     if (a.trust !== undefined) b.dataset.trust = a.trust;
+    b.label = a.label;   // (drawn again in another language)
     buttons.push(b);
     el.lastElementChild.append(' ', b);
   }
   while (el.childElementCount > 5000) el.firstChild.remove();
   if (atBottom) el.scrollTop = el.scrollHeight;
   return divs;
+}
+
+// An application's line as it is drawn (#4749, step 5): its translation, its ERROR: / WARNING: / INFO: tag kept.
+const TAGGED = /^(\s*(?:ERROR|WARNING|INFO)\s*:\s*)(.*)$/s;
+function appText(line) {
+  const m = TAGGED.exec(line);
+  return m ? m[1] + t(m[2]) : t(line);
+}
+// (the language changed: the lines drawn again, their texts and their buttons' labels, from their English)
+function redrawLines() {
+  for (const ln of $('console-log')?.children || []) {
+    if (ln.draw && ln.firstChild?.nodeType === 3) ln.firstChild.nodeValue = ln.draw();
+    for (const b of ln.querySelectorAll('.ln-action')) if (b.label) b.textContent = t(b.label);
+  }
 }
 
 // The run that writes the console's lines (#4728): a process's header ("Started : "Check Schematic" of gates.") starts
@@ -118,7 +138,7 @@ const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.
 let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
-function consoleMessage(msg, goto) {
+function consoleMessage(msg, goto, draw = null) {
   const line = msg.text;
   if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
   if (lastConsoleDiag && msg.severity === 'text' && continuesDiag(lastConsoleDiag, line)) {
@@ -131,6 +151,8 @@ function consoleMessage(msg, goto) {
   if (!e) return;
   // (a drawing's Check: its item shown, not a file opened)
   const d = { ...e, source: 'console', ...(goto ? { goto, file: null, line: 0, inText: false } : {}) };
+  // (an application's: drawn in the interface's language, its tag left out as its message's, #4749)
+  if (draw) Object.defineProperty(d, 'draw', { value: () => draw().replace(TAGGED, '$2').trim(), enumerable: false });
   if (e.run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
@@ -192,18 +214,18 @@ export const appLog = (text, cls = '', opts = {}) => log(text, cls, { ...opts, s
 /** An error of the app's own (#3540: a file it cannot read; #3591: a refusal, a menu action's error): an ERROR line
  *  of the console, in the interface's language, its Errors tab in front (no toasted message). */
 export function logError(text) {
-  log(`ERROR: ${t(text)}`, 'err', { src: 'app' });
+  log(`ERROR: ${text}`, 'err', { src: 'app' });
   bringForward('errors');
 }
 /** A warning of the app's own (#3591): a WARNING line of the console, its Warnings tab in front. */
 export function logWarning(text) {
-  log(`WARNING: ${t(text)}`, 'warn', { src: 'app' });
+  log(`WARNING: ${text}`, 'warn', { src: 'app' });
   bringForward('warnings');
 }
 /** A piece of information of the app's own (#3591: why a command does nothing): an INFO line of the console, the
  *  console's page in front. */
 export function logInfo(text) {
-  log(`INFO: ${t(text)}`, 'info', { src: 'app' });
+  log(`INFO: ${text}`, 'info', { src: 'app' });
   bringForward('console');
 }
 /** A command's failure (#4747: in the console, never a modal box, docs/UI-GUIDELINES.md): `ERROR: <command>: <message>`,
@@ -216,7 +238,8 @@ export function commandWarning(title, message) { commandLines('WARNING', 'warn',
 export function commandInfo(title, message) { commandLines('INFO', 'info', title, message); bringForward('console'); }
 function commandLines(tag, cls, title, message) {
   const lines = (Array.isArray(message) ? message : String(message ?? '').split('\n')).map(m => String(m).trim()).filter(Boolean);
-  for (const m of lines.length ? lines : ['']) log(`${tag}: ${t(title)}: ${t(m)}`.replace(/: $/, ''), cls, { src: 'app' });
+  // (its English the message's text, #4749: drawn translated, the command's name and the message apart)
+  for (const m of lines.length ? lines : ['']) log(`${tag}: ${title}: ${m}`.replace(/: $/, ''), cls, { src: 'app', draw: () => `${tag}: ${t(title)}: ${t(m)}`.replace(/: $/, '') });
 }
 export function showConsolePage(page) {
   // (a tab of the console only: the keyboard's focus stays where it is, an editor's typing goes on)
@@ -269,7 +292,7 @@ export function renderDiagnostics({ quiet = false } = {}) {
       const row = h('div', { class: 'diag' }, icon(ico),
         h('span', {}, `${sevWord(d)}:${d.tool || 'HDLCompiler'} - `),
         d.file && !d.inText ? h('span', { class: 'loc' }, d.line ? `"${d.file}" Line ${d.line}` : `"${d.file}"`) : null,
-        h('span', { 'data-no-i18n': true }, d.file && !d.inText ? `: ${d.message}` : d.message), hint?.toggle,
+        h('span', { 'data-no-i18n': true }, d.file && !d.inText ? `: ${d.draw?.() ?? d.message}` : d.draw?.() ?? d.message), hint?.toggle,
         ...diagFixes(d).map(f => h('span', { class: 'diag-fix', role: 'button', 'data-no-i18n': true, onclick: e => { e.stopPropagation(); applyDiagFix(d, f); } }, `${t('Fix:')} ${t(f.title)}`)),
         actionButton(d));
       // (an editor's problem: its item selected, editor-problems.js)
@@ -336,7 +359,7 @@ export function showProblems(diags) {
   if (page) bringForward(page);
   return page;
 }
-onLanguageChange(() => renderDiagnostics());
+onLanguageChange(() => { redrawLines(); renderDiagnostics(); });
 
 // Quick fixes of a message (core/quickfix.js): "Fix: …" in its row of the Errors / Warnings tabs.
 // Applied in the file's editor (one Undo there); the file's messages are then checked again.
