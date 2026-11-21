@@ -491,6 +491,19 @@ test('prom: program (+verify, +reconfigure), verify, erase, read backup, reconfi
   await P.updateProject('Prog', pj => { pj.device = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }; });
 });
 
+test('#4992 prom: the bitstream\'s path an argument of adepttool\'s Python as it is, no shell (its characters a shell would read kept, nothing run)', { skip: POSIX_ONLY }, async () => {
+  process.env.FAKE_PROG_LOG = path.join(tmp, 'prom-shell.log');
+  const rel = 'build/a b;$(touch PWNED)`touch PWNED2`\'q"_prom.bit';
+  await fs.copyFile(bitPath('top_prom.bit'), path.join(P.projectDir('Prog'), rel));
+  try {
+    const j = await run('/prom', { project: 'Prog', op: 'verify', bitfile: rel });
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    const log = await fs.readFile(process.env.FAKE_PROG_LOG, 'utf8');
+    assert.ok(log.split('\n').includes(`python xcf_prog.py --device 0 verify ${path.join(P.projectDir('Prog'), rel)}`), log);
+    assert.deepEqual(fss.readdirSync(tmp, { recursive: true }).filter(f => /^PWNED2?$/.test(path.basename(f))), []);   // (anywhere: the job's folders, the adepttool's)
+  } finally { await fs.rm(path.join(P.projectDir('Prog'), rel), { force: true }); delete process.env.FAKE_PROG_LOG; }
+});
+
 test('prom: failures and request errors', { skip: POSIX_ONLY }, async () => {
   process.env.FAKE_XCF_NOVERIFY = '1';
   let j = await run('/prom', { project: 'Prog', op: 'verify' });

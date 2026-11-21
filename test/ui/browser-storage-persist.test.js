@@ -71,10 +71,9 @@ uiTest('#4960 browser edition: the browser asked to keep its storage; refused, o
 }, { url: () => 'about:blank', skip: chromeOnly, timeout: 180000 });
 
 uiTest('#4960 browser edition: the projects in a workspace folder on the disk: the browser\'s storage not asked for', E, async (page) => {
-  const fake = `${site.url}__test/fs-access-fake.js`;
   // (the folder remembered from a previous visit: the start-up opens it, its permission granted)
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `${FAKE_STORAGE}
-    window.SILINX_WORKSPACE_HANDLES = { load: async () => (await import(${JSON.stringify(fake)})).fakeDirectory('Silinx-projects'), save: async () => {} };` });
+    window.SILINX_WORKSPACE_HANDLES = { load: async () => (await import(new URL('/__test/fs-access-fake.js', location.href).href)).fakeDirectory('Silinx-projects'), save: async () => {} };` });
   await page.goto(site.url);
   await page.eval(() => localStorage.setItem('silinx.standalone.storage', 'folder'));
   await boot(page, 'refused');

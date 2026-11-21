@@ -78,8 +78,8 @@ uiTest('#4957 browser edition: the projects kept in the browser\'s storage said 
 }, { url: () => 'about:blank', timeout: 180000 });
 
 uiTest('#4957 browser edition: the projects in a workspace folder on the disk: no notice in red', E, async (page) => {
-  const fake = `${site.url}__test/fs-access-fake.js`;
-  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.showDirectoryPicker = async () => (await import(${JSON.stringify(fake)})).fakeDirectory('Silinx-projects');
+  // (the fake folder's module beside the site's page, at the page's origin: no value built into the script, #4993)
+  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.showDirectoryPicker = async () => (await import(new URL('/__test/fs-access-fake.js', location.href).href)).fakeDirectory('Silinx-projects');
     window.SILINX_WORKSPACE_HANDLES = { load: async () => null, save: async () => {} };` });
   await boot(page);
   await page.menu('File', 'Open Workspace Folder…');
