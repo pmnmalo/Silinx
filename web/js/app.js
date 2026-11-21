@@ -50,6 +50,7 @@ import { following, followNotice, editsHere } from './collab-state.js';
 import { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView } from './impl-views.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
+import { startState } from './state-start.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -103,10 +104,10 @@ export const S = {
   currentJob: undefined,      // the implementation's job running (implement.js)
   stopRequested: undefined,   // Stop pressed during it (implement.js)
   synthDone: undefined,       // the synthesis's result kept for the next steps (processes.js)
-  // the page's start
-  linkOpened: undefined,      // a design link in the address opened (link-hash.js)
-  linksWatched: undefined,    // the address's links watched (the UI tests wait for it, #3331)
-  startupChecked: undefined,  // the start-up's checks written (the UI tests wait for it)
+  // the page's start: web/js/state-start.js's slice (#4767), its fields here as getters and setters onto it
+  get linkOpened() { return startState.linkOpened; }, set linkOpened(v) { startState.linkOpened = v; },
+  get linksWatched() { return startState.linksWatched; }, set linksWatched(v) { startState.linksWatched = v; },
+  get startupChecked() { return startState.startupChecked; }, set startupChecked(v) { startState.startupChecked = v; },
 };
 window.Silinx = S; // handy for debugging from the console
 
@@ -906,7 +907,7 @@ async function boot() {
     if (api.standalone || api.following) return;
     const progs = Object.entries(tc.programmers).filter(([, v]) => v.found).map(([k]) => k);
     log(`Programmers found: ${progs.length ? progs.join(', ') : 'none (install openFPGALoader, xc3sprog, Digilent Adept or ISE iMPACT)'}`, progs.length ? 'ok' : 'warn', opts);
-  }).catch(() => {}).finally(() => { S.startupChecked = true; });   // (the start-up lines all written: the UI tests wait for it)
+  }).catch(() => {}).finally(() => { startState.startupChecked = true; });   // (the start-up lines all written: the UI tests wait for it)
   renderHierarchy();
   renderProcesses();
   let last = null;
@@ -932,9 +933,9 @@ async function boot() {
   // (a workspace folder on the disk offered at the first run, where the browser can give one, #4962: one console line)
   if (api.standalone && !followed && !link) import('./storage-offer.js').then(m => m.offerFolder()).catch(() => {});
   delete document.documentElement.dataset.starting;   // (no project reopened: the app shown at once, #1403)
-  if (link) await (await import('./link-open.js')).openFromLink(link).finally(() => { S.linkOpened = true; });   // (the UI tests wait for it)
+  if (link) await (await import('./link-open.js')).openFromLink(link).finally(() => { startState.linkOpened = true; });   // (the UI tests wait for it)
   (await import('./link-hash.js')).watchLinks(window, seen);   // a link given to the running app: opened as at start-up (#3316)
-  S.linksWatched = true;   // (the UI tests wait for it before they change the hash, #3331)
+  startState.linksWatched = true;   // (the UI tests wait for it before they change the hash, #3331)
   // check for updates at start-up (a newer release opens the update dialog) unless the setting is off; not awaited
   if (!window.SILINX_NO_UPDATE_CHECK) wiz.checkUpdatesOnStart().catch(() => {});
 }

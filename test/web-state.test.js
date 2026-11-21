@@ -87,3 +87,22 @@ test('the C sources\' slice (state-c.js): S\'s fields are its own, both ways; a 
   const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(hls|bbUndeclared|cFailed|cFailedSaid)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
+
+test('the page\'s start slice (state-start.js): S\'s fields are its own, both ways, as the UI tests wait for them', async () => {
+  const { startState } = await import('../web/js/state-start.js');
+  const FIELDS = ['linkOpened', 'linksWatched', 'startupChecked'];
+  assert.deepEqual(Object.keys(startState), FIELDS);
+  assert.ok(Object.values(startState).every(v => v === undefined), 'undefined until the start-up gets there');
+  assert.throws(() => { startState.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return startState.${k}; }, set ${k}(v) { startState.${k} = v; }`), k);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(linkOpened|linksWatched|startupChecked)\b/.test(read(f))), []);
+  // (S's declaration evaluated, app.js itself needs a page: window.Silinx.startupChecked is the slice's)
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const S = new Function('startState', 'cState', 'syncState', `return ${block.slice('export const S = '.length)}\n};`)(startState, cState, syncState);
+  startState.startupChecked = true;
+  assert.equal(S.startupChecked, true);
+  S.linkOpened = false;
+  assert.equal(startState.linkOpened, false);
+});
