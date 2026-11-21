@@ -10,6 +10,9 @@ import { scratchEnv } from './server-helpers.js';
 
 let tmp;
 const { handle, serveMcp, laneOf, lanes } = await import('../server/mcp.js');
+const { SIM_TESTING } = await import('../server/mcp-hdl.js');
+// (the budgets of the answers "at once": a slower machine's, SILINX_UI_THROTTLE times, #5065)
+const SLOW = Math.max(1, Number(process.env.SILINX_UI_THROTTLE) || 1);
 let id = 0;
 const ok = async (name, args) => {
   const r = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
@@ -37,7 +40,7 @@ function served(version = '2025-06-18') {
   output.on('data', d => { buf += d; for (let i; (i = buf.indexOf('\n')) >= 0; buf = buf.slice(i + 1)) got.push(JSON.parse(buf.slice(0, i))); });
   const send = m => input.write(`${JSON.stringify(Array.isArray(m) ? m : { jsonrpc: '2.0', ...m })}\n`);
   if (version) send({ id: 'init', method: 'initialize', params: { protocolVersion: version } });
-  const until = async (cond, ms = 10000) => { const end = Date.now() + ms; while (!cond() && Date.now() < end) await new Promise(r => setTimeout(r, 20)); return cond(); };
+  const until = async (cond, ms = 10000 * SLOW) => { const end = Date.now() + ms; while (!cond() && Date.now() < end) await new Promise(r => setTimeout(r, 20)); return cond(); };
   return { send, got, until, end: () => { input.end(); return done; } };
 }
 const call = (n, name, args, meta) => ({ id: n, method: 'tools/call', params: { name, arguments: args, ...(meta ? { _meta: meta } : {}) } });
@@ -77,8 +80,12 @@ test('lanes: one project\'s calls in order, two projects\' together, the workspa
 
 test('#4734 while a simulation runs: ping, initialize, tools/list and another project\'s call answered at once; the same project\'s waits', async () => {
   const s = served();
+  // (the others sent once the simulation runs, its design elaborated: no fixed wait, #5065)
+  let running = false;
+  SIM_TESTING.onRun = () => { running = true; };
   s.send(call(1, 'simulate', { project: 'd', time_ns: 1e9, timeout_s: 600 }));
-  await new Promise(r => setTimeout(r, 300));
+  assert.ok(await s.until(() => running || s.got.some(a => a.id === 1)) && running, JSON.stringify(s.got.find(a => a.id === 1)));
+  SIM_TESTING.onRun = null;
   s.send({ id: 2, method: 'ping' });
   s.send({ id: 3, method: 'initialize', params: { protocolVersion: '2025-06-18' } });
   s.send({ id: 4, method: 'tools/list' });
@@ -96,6 +103,27 @@ test('#4734 while a simulation runs: ping, initialize, tools/list and another pr
   assert.ok(!s.got.some(a => a.id === 1), 'the cancelled request not answered');
   assert.ok(!s.got.some(a => a.method), 'no notification');
   await s.end();
+});
+
+// #5065: a simulation's yield lets the event loop wait for the file system, so that another call's reads, one after
+// another, go through at its yields several at a time, not one read a yield (project_info then took 5 s, not 40 ms);
+// counted by the yields, not timed
+test('#5065 while a simulation runs, another call\'s reads go through several at each of its yields', async () => {
+  const s = served();
+  let running = false, yields = 0;
+  SIM_TESTING.onRun = () => { running = true; };
+  SIM_TESTING.onYield = () => { yields++; };
+  s.send(call(1, 'simulate', { project: 'd', time_ns: 1e9, timeout_s: 600 }));
+  try {
+    assert.ok(await s.until(() => running || s.got.some(a => a.id === 1)) && running, JSON.stringify(s.got.find(a => a.id === 1)));
+    const from = yields;
+    for (let i = 0; i < 40; i++) await fs.promises.stat(tmp);
+    assert.ok(yields - from < 20, `40 reads over ${yields - from} of the simulation's yields`);
+  } finally {
+    SIM_TESTING.onRun = SIM_TESTING.onYield = null;
+    s.send({ method: 'notifications/cancelled', params: { requestId: 1 } });
+    await s.end();
+  }
 });
 
 test('#4734 run_process with a progressToken: notifications/progress with its token, increasing, its last line; none without one', async () => {

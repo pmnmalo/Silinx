@@ -89,7 +89,8 @@ test('run_process post_synthesis_model on the evaluation board: blinky\'s model,
   const syn = await ok('run_process', { project: 'models', process: 'post_synthesis_model' });
   assert.deepEqual([syn.data.warnings, syn.data.errors], [[], []]);
   assert.match(syn.text, /^Post-Synthesis Simulation Model: build\/netgen\/synthesis\/top_synthesis\.v \(Verilog, the GateMate cells\), \d+ cells$/m);
-  const s = await ok('simulate', { project: 'models', model: 'postsynth', time_ns: 2000000, signals: [] });
+  // (its time limit the longest: some 6 s on an idle machine, 60 s, the default, reached on a loaded one, #5065)
+  const s = await ok('simulate', { project: 'models', model: 'postsynth', time_ns: 2000000, signals: [], timeout_s: 600 });
   assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed], [['Simulation finished OK'], [], false]);
   const message = 'the GateMate flow makes no post-place & route simulation model (only the post-synthesis one): simulate the behavioral model or the post-synthesis one';
   await fails('run_process', { project: 'models', process: 'post_par_model' }, message);

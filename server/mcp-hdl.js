@@ -124,6 +124,8 @@ function applyForces(sim, design, list) {
 // interface's (core/simulator.js: maxWaveEvents, maxDeltas); the changes returned are bounded
 export const SIM_LIMITS = Object.freeze({ timeoutS: 60, maxTimeoutS: 600, steps: 20_000_000, maxChanges: 1000, changes: 100_000 });
 const SIM_CHUNK = 20_000;   // time steps between two looks at the clock and at a cancellation
+/** The tests' hooks: onRun() when a simulation starts running (its design elaborated), onYield() at each of its yields. */
+export const SIM_TESTING = { onRun: null, onYield: null };
 const nth = n => n.toLocaleString('en-US');
 
 /** The simulation run to `until` (ps) in chunks: its status, and the limit that stopped it (null: none; steps: the
@@ -133,6 +135,7 @@ export async function runBounded(sim, until, { timeoutS, signal, steps: maxSteps
   // (the clock looked at inside a process's run too, #3525: one that does not wait stops at the deadline)
   sim.deadline = deadline;
   let steps = 0, lastYield = Date.now(), st;
+  SIM_TESTING.onRun?.();
   for (;;) {
     const n = Math.min(SIM_CHUNK, maxSteps - steps);
     st = sim.run(until, { maxSteps: n });
@@ -141,8 +144,10 @@ export async function runBounded(sim, until, { timeoutS, signal, steps: maxSteps
     steps += n;
     if (steps >= maxSteps) return { st, limit: 'steps' };
     if (Date.now() >= deadline) return { st, limit: 'time' };
-    // (the server reads a cancellation between two chunks)
-    if (Date.now() - lastYield > 50) { await new Promise(r => setImmediate(r)); lastYield = Date.now(); }
+    // (the server reads a cancellation between two chunks; a timer's wait, not setImmediate's, so that the event loop
+    // waits for the file system there and another project's call goes on through its reads at once, not one read a
+    // chunk, #5065: 1 s, not 5, to answer project_info during a simulation; no slower a simulation)
+    if (Date.now() - lastYield > 50) { await new Promise(r => setTimeout(r, 1)); lastYield = Date.now(); SIM_TESTING.onYield?.(); }
     if (signal?.aborted) throw toolError('cancelled');
   }
 }
