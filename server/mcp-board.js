@@ -42,7 +42,7 @@ export const BOARD_TOOLS = [
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       tool: { type: 'string', enum: TOOLS, description: 'The programmer (default: the board\'s, else Toolchain Settings\').' },
-      position: { type: 'integer', minimum: 1, maximum: 32, description: 'The FPGA\'s position in the board\'s JTAG chain, iMPACT\'s numbering from 1 (the Program view\'s "position N"), whatever the programmer (default: the board\'s FPGA). A Spartan-3E / 6 or 7-series .bit only: a Zynq-7000\'s, an iCE40\'s, an ECP5\'s or a Gowin\'s has none.' },
+      position: { type: 'integer', minimum: 1, maximum: 32, description: 'The FPGA\'s position in the JTAG chain, iMPACT\'s numbering from 1 (the Program view\'s "position N"), whatever the programmer (default: the board\'s FPGA). A Spartan-3E / 6 or 7-series .bit only: a Zynq\'s, iCE40\'s, ECP5\'s or Gowin\'s has none.' },
       force: { type: 'boolean', description: 'Program a bitstream built for another device than the project\'s anyway (default false), warned.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
