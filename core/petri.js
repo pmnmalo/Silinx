@@ -247,8 +247,8 @@ export function generatePetri(model, lang, { source } = {}) {
   const ins = [m.clock, m.reset.name], inW = n => m.inputs.find(p => p.name === n)?.width || 1;
   if (V) {
     L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `entity ${m.name} is`, '  port (');
-    const ps = [...ins.map(n => `${n} : in std_logic`), ...m.inputs.map(p => `${p.name} : in ${p.width > 1 ? `std_logic_vector(${p.width - 1} downto 0)` : 'std_logic'}`),
-      ...m.outputs.map(p => `${p.name} : out ${p.width > 1 ? `std_logic_vector(${p.width - 1} downto 0)` : 'std_logic'}`)];
+    const ps = [...ins.map(n => `${n} : in std_logic`), ...m.inputs.map(p => `${p.name} : in ${vhdlType(p.width)}`),
+      ...m.outputs.map(p => `${p.name} : out ${vhdlType(p.width)}`)];
     L.push(ps.map(x => `    ${x}`).join(';\n'), '  );', `end entity ${m.name};`, '', `architecture petri of ${m.name} is`);
     for (const p of m.places) L.push(`  signal ${reg(p)} : ${W(p) === 1 ? 'std_logic' : `unsigned(${W(p) - 1} downto 0)`} := ${num(p.tokens, W(p))};`);
     for (const t of m.transitions) if (Object.keys(t.outputs).length) L.push(`  signal ${fr(t)} : std_logic := '0';`);
