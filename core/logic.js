@@ -27,6 +27,7 @@ import { circuitCost, costOrder, leastCandidates } from './logic-cost.js';
 import { formOf, normalizeChoices, newOutputForms, solutionOf } from './logic-choice.js';
 import { qmForm, qmMinimize, qmResults } from './logic-qm.js';
 import { minimizeXor } from './logic-xor.js';
+import { vhdlEntity, vlogModule } from './hdl-emit.js';
 export { circuitCost, formCost } from './logic-cost.js';
 export { gateForm, schematicErrors, schematicFromTable } from './logic-sch.js';
 export { FORM_NAMES, formName, formOf, setOutputLogic, solutionOf } from './logic-choice.js';
@@ -725,13 +726,15 @@ export function generateTableHdl(docIn, lang = docIn.lang || 'vhdl', { form, sou
   }
   const L = [...head, ''];
   if (lang === 'verilog') {
-    L.push(`module ${doc.name} (`, `    input  wire ${doc.inputs.join(', ')},`, `    output wire ${doc.outputs.join(', ')}`, ');', '');
+    L.push(...vlogModule(doc.name, { ports: [{ name: doc.inputs.join(', '), dir: 'in', range: '' }, { name: doc.outputs.join(', '), dir: 'out', range: '' }],
+      indent: '    ', dirWidth: 6, kind: 'wire' }), '');
     for (const { o, m } of res) L.push(`    assign ${o} = ${formatExpr(m.ast, 'verilog')};`);
     L.push('', 'endmodule', '');
     return { code: L.join('\n'), filename: `${doc.name}.v`, lang };
   }
-  L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${doc.name} is`, '    port (',
-    `        ${doc.inputs.join(', ')} : in  std_logic;`, `        ${doc.outputs.join(', ')} : out std_logic`, '    );', `end ${doc.name};`, '',
+  L.push('library ieee;', 'use ieee.std_logic_1164.all;', '', ...vhdlEntity(doc.name, {
+    ports: [{ name: doc.inputs.join(', '), dir: 'in', type: 'std_logic' }, { name: doc.outputs.join(', '), dir: 'out', type: 'std_logic' }],
+    indent: '    ', dirWidth: 3, end: 'name' }), '',
     `architecture truth_table of ${doc.name} is`, 'begin');
   for (const { o, m } of res) L.push(`    ${o} <= ${formatExpr(m.ast, 'vhdl')};`);
   L.push('end truth_table;', '');

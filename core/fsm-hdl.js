@@ -5,7 +5,8 @@ import { atWidth, bitsText, outputConst } from './fsm-value.js';
 import {
   analyzeFsm, constValue, fsmEncoding, fsmErrors, isOtherwise, mask, nameOf, normalizeFsm, pad, stateById, transitionsFrom
 } from './fsm.js';
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vlogRange } from './hdl-emit.js';
+import { VHDL_USER_ENCODING, machineEntity, machineModule, vhdlStates, vlogStates } from './hdl-emit-fsm.js';
 
 // ---------------------------------------------------------------------------------------
 // HDL generation
@@ -183,22 +184,10 @@ export function generateFsm(model, lang, { source } = {}) {
   const defaults = m.outputs.map((o) => asg(o.name, o.default));
 
   if (V) {
-    const typ = vhdlType;
     L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '');
-    L.push(`entity ${m.name} is`, '    port (');
-    const ports = [[m.clock, 'in ', 'std_logic'], [m.reset.name, 'in ', 'std_logic'],
-      ...m.inputs.map((p) => [p.name, 'in ', typ(p.width)]), ...m.outputs.map((p) => [p.name, 'out', typ(p.width)])];
-    const pw = Math.max(...ports.map((p) => p[0].length));
-    ports.forEach((p, i) => L.push(`        ${pad(p[0], pw)} : ${p[1]} ${p[2]}${i < ports.length - 1 ? ';' : ''}`));
-    L.push('    );', `end entity ${m.name};`, '', `architecture rtl of ${m.name} is`, '', '    -- state encoding');
-    if (m.encoding === 'enum') L.push(`    type state_t is (${enc.map((e) => e.constName).join(', ')});`);
-    else {
-      L.push(`    subtype state_t is std_logic_vector(${W - 1} downto 0);`);
-      const cw = Math.max(...enc.map((e) => e.constName.length));
-      for (const e of enc) L.push(`    constant ${pad(e.constName, cw)} : state_t := "${e.bits}";`);
-    }
+    L.push(...machineEntity(m), '', `architecture rtl of ${m.name} is`, '', ...vhdlStates(enc, W, m.encoding));
     L.push('', `    signal state_reg  : state_t := ${resetState};   -- present state`, '    signal state_next : state_t;                -- next state');
-    if (m.encoding !== 'enum') L.push('', '    attribute fsm_encoding : string;', '    attribute fsm_encoding of state_reg : signal is "user";');
+    if (m.encoding !== 'enum') L.push('', ...VHDL_USER_ENCODING);
     L.push('', 'begin', '');
     L.push('    -- ------------------------------------------------------------------ state register');
     if (m.reset.sync) {
@@ -228,15 +217,8 @@ export function generateFsm(model, lang, { source } = {}) {
     L.push('', 'end architecture rtl;', '');
   } else {
     const vec = vlogRange;
-    L.push(`module ${m.name} (`);
-    const vw = Math.max(0, ...[...m.inputs, ...m.outputs].map((p) => vec(p.width).length));
-    const pl = [`    input  wire ${pad('', vw)}${m.clock}`, `    input  wire ${pad('', vw)}${m.reset.name}`,
-      ...m.inputs.map((p) => `    input  wire ${pad(vec(p.width), vw)}${p.name}`),
-      ...m.outputs.map((p) => `    output reg  ${pad(vec(p.width), vw)}${p.name}`)];
-    L.push(pl.map((l, i) => l + (i < pl.length - 1 ? ',' : '')).join('\n'), ');', '');
-    L.push('    // ---------------------------------------------------------------- state encoding');
-    const cw = Math.max(...enc.map((e) => e.constName.length));
-    for (const e of enc) L.push(`    localparam ${vec(W)}${pad(e.constName, cw)} = ${W}'b${e.bits};`);
+    L.push(...machineModule(m), '');
+    L.push(...vlogStates(enc, W));
     L.push('', `    reg ${vec(W)}state_reg = ${resetState};   // present state`);
     if (m.encoding !== 'enum') L.push('    // synthesis attribute fsm_encoding of state_reg is user');
     L.push(`    reg ${vec(W)}state_next;              // next state`, '');

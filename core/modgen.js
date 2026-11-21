@@ -14,7 +14,7 @@
 import { newDoc, normalizeDoc, portBox, GRID } from './schdoc.js';
 import { reservedError } from './reserved.js';
 import { isName } from './ident.js';
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vhdlPortLines, vhdlType, vlogPortLines, vlogRange } from './hdl-emit.js';
 
 // ===================================================================== identifiers
 export const MAX_WIDTH = 256;
@@ -187,8 +187,8 @@ function vhdlBody(o, arch) {
     L.push('  generic (', ...withComments(rows, '--'), '  );');
   }
   if (o.ports.length) {
-    const nw = Math.max(...o.ports.map(p => p.name.length));
-    const rows = o.ports.map((p, k) => [`    ${p.name.padEnd(nw)} : ${p.dir.padEnd(3)} ${vhdlType(p.width)}${k < o.ports.length - 1 ? ';' : ''}`,
+    const lines = vhdlPortLines(o.ports.map(p => ({ name: p.name, dir: p.dir, type: vhdlType(p.width) })), { align: true, dirWidth: 3 });
+    const rows = o.ports.map((p, k) => [lines[k],
       p.desc || (p === o.clock ? 'clock' : p === o.reset ? `reset (active ${o.active === '1' ? 'high' : 'low'})` : p === o.enable ? 'enable' : '')]);
     L.push('  port (', ...withComments(rows, '--'), '  );');
   }
@@ -347,9 +347,9 @@ function vlogBody(o) {
     L.push(`${head} #(`, ...withComments(rows, '//'), ') (');
   } else L.push(`${head} (`);
   if (o.ports.length) {
-    const decl = p => `${p.dir === 'in' ? 'input ' : p.dir === 'inout' ? 'inout ' : 'output'} ${p.dir === 'out' && regOut ? 'reg ' : 'wire'} ${vlogRange(p.width)}`;
-    const dw = Math.max(...o.ports.map(p => decl(p).length));
-    const rows = o.ports.map((p, k) => [`    ${decl(p).padEnd(dw)}${p.name}${k < o.ports.length - 1 ? ',' : ''}`,
+    const ports = o.ports.map(p => ({ name: p.name, dir: p.dir === 'in' ? 'in' : p.dir === 'inout' ? 'inout' : 'out', kind: p.dir === 'out' && regOut ? 'reg ' : 'wire', width: p.width }));
+    const lines = vlogPortLines(ports, { indent: '    ', align: true, dirWidth: 6 });
+    const rows = o.ports.map((p, k) => [lines[k],
       p.desc || (p === o.clock ? 'clock' : p === o.reset ? `reset (active ${o.active === '1' ? 'high' : 'low'})` : p === o.enable ? 'enable' : '')]);
     L.push(...withComments(rows, '//'));
   }
