@@ -160,8 +160,10 @@ uiTest('Handwritten expressions: a truth table from the New Source wizard, the e
     const q = (s) => document.querySelector(`${d} ${s}`);
     q('.ink-undo').click(); q('.ink-redo').click();
     q('.ink-text').value = 'F = A + B'; q('.ink-text').dispatchEvent(new Event('input'));
+    // (the field held: the dialog closes in the click, its validation not async since #4762)
+    const field = q('.ink-text');
     [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].find((b) => b.textContent.trim() === 'Insert').click();
-    return q('.ink-text').value;
+    return field.value;
   }, D), 'F = A + B');
   await page.waitNoDialog();
   await page.waitFor((t) => document.querySelector(`${t} .tt-expr-in`).value === 'A + B', [T], { what: 'the correction inserted' });
