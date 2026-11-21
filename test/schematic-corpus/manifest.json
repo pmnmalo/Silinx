@@ -80,7 +80,7 @@
       "ref": [
         "hand/flipflops.ref.vhd"
       ],
-      "covers": "Flip-flops (FD, FDC, FDCE, FDRE, FDPE, FTCE), a register and up / down counters, the clock through a BUFG."
+      "covers": "Flip-flops (FD, FDC, FDCE, FDRE, FDPE, FTCE), a register (an FDCE of 4 bits) and up / down counters, the clock through a BUFG."
     },
     {
       "name": "tristate",

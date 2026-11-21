@@ -355,7 +355,7 @@ class LiveSim {
   /** Stored value of a flip-flop / register / counter symbol (its Q), or null. */
   stored(symId) {
     const s = this.doc.symbols.find(x => x.id === symId);
-    if (!s || !(SYMBOLS[s.type]?.ff || s.type === 'register' || s.type === 'counter')) return null;
+    if (!s || !(SYMBOLS[s.type]?.ff || s.type === 'counter')) return null;
     return this.pinValue(symId, 'Q');
   }
   /** Ports of a module instance with their values: [{ name, dir, value }]. */

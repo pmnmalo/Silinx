@@ -452,7 +452,7 @@ function nativeDoc(lang) {
   const port = (name, dir, x, y, width = 1) => doc.ports.push({ id: `P${doc.ports.length + 1}`, name, dir, width, x, y });
   // q <= q + d (8 bit) when en, async reset; lo = q(3:0) and m(3:0); hi = {q(7:4), "1010"} ; par = xor of q(1:0) via HDL block
   const add = sym('add', 300, 100, { width: 8 }, 'ADD1');
-  const reg = sym('register', 500, 100, { width: 8, en: true, reset: 'async', init: '0' }, 'REG1');
+  const reg = sym('fdce', 500, 100, { width: 8, init: '0' }, 'REG1');   // (a register: an FDCE of 8 bits, #5030)
   const sl = sym('slice', 700, 300, { msb: 3, lsb: 0 }, 'SL1');
   const sh = sym('slice', 700, 400, { msb: 7, lsb: 4 }, 'SL2');
   const g = sym('and2', 820, 290, { width: 4 }, 'G1');
@@ -503,7 +503,7 @@ for (const lang of ['vhdl', 'verilog']) {
     assert.equal(m.sheets[0].bustaps.length, 3);
     for (const n of ['q(3:0)', 'q(7:4)', 'q(1:0)']) assert.ok(m.signals.some(s => s.name === n), n);
     assert.deepEqual(m.ports.map(p => `${p.polarity} ${p.name}`).sort(), ['Input clk', 'Input d(7:0)', 'Input en', 'Input m(3:0)', 'Input rst', 'Output hi(7:0)', 'Output lo(3:0)', 'Output par', 'Output q(7:0)']);
-    // register 8 bit with CE and async clear is the library FD8CE (pins C CE CLR D(7:0) Q(7:0))
+    // an FDCE of 8 bits is the library FD8CE (pins C CE CLR D(7:0) Q(7:0)), and back an FDCE of 8 bits (#5030)
     assert.deepEqual(m.blocks.find(b => b.symbol === 'fd8ce').pins.map(p => p.name).sort(), ['C', 'CE', 'CLR', 'D(7:0)', 'Q(7:0)']);
     // custom symbols: an HDL module and an ISE symbol each
     const ext = lang === 'vhdl' ? 'vhd' : 'v';
@@ -527,7 +527,8 @@ for (const lang of ['vhdl', 'verilog']) {
     const back = importIseSch(ex.xml, { name: 'accu', lang, modules, symbols });
     assert.deepEqual(back.warnings.filter(w => /^connectivity|schematic check/.test(w)), []);
     const types = back.doc.symbols.map(s => s.type).sort();
-    assert.deepEqual(types, ['add', 'and2', 'busjoin', 'constant', 'fdc', 'module', 'register', 'slice', 'slice', 'slice'].sort());
+    assert.deepEqual(types, ['add', 'and2', 'busjoin', 'constant', 'fdc', 'fdce', 'module', 'slice', 'slice', 'slice'].sort());
+    assert.equal(back.doc.symbols.find(s => s.type === 'fdce').params.width, 8);
     const g1 = generateHdl(back.doc, { lang, modules });
     assert.deepEqual(g1.diagnostics.filter(d => d.severity === 'error').map(d => d.message), [], g1.code);
     // simulate the original and the round-tripped design with the same testbench

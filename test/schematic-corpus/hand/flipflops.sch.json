@@ -115,17 +115,16 @@
   },
   {
    "id": "S9",
-   "type": "register",
+   "type": "fdce",
    "x": 410,
    "y": 980,
    "rot": 0,
    "mirror": false,
    "name": "XLXI_9",
    "params": {
+    "init": "0",
     "width": 4,
-    "en": true,
-    "reset": "async",
-    "init": "0"
+    "qn": false
    }
   },
   {

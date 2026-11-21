@@ -47,7 +47,10 @@ test('what the corpus covers: the bus taps, the library, the hierarchy, the draw
   // the symbols they have between them
   const types = new Set(items.flatMap(it => it.doc?.symbols.map(s => s.type) || []));
   for (const t of ['slice', 'busjoin', 'inv', 'buf', 'and2b1', 'or3b2', 'nand3b1', 'nor2', 'xor3', 'xnor2', 'and4b2', 'or5', 'vcc', 'gnd', 'constant', 'add', 'sub', 'compare',
-    'mux2', 'mux4', 'mux8', 'decoder', 'encoder', 'demux', 'fd', 'fdc', 'fdce', 'fdre', 'fdpe', 'ftce', 'register', 'counter', 'bufg', 'tbuf', 'module']) assert.ok(types.has(t), t);
+    'mux2', 'mux4', 'mux8', 'decoder', 'encoder', 'demux', 'fd', 'fdc', 'fdce', 'fdre', 'fdpe', 'ftce', 'counter', 'bufg', 'tbuf', 'module']) assert.ok(types.has(t), t);
+  // (a register an FDCE of 4 bits, no REG any more, #5030)
+  assert.ok(items.some(it => it.doc?.symbols.some(s => s.type === 'fdce' && +s.params.width === 4)), 'an FDCE of 4 bits');
+  assert.ok(!types.has('register'), 'no REG');
   // turned and mirrored taps, markers on every side, curves and crossings
   const turned = items.find(i => i.name === 'bus_taps_turned').doc;
   assert.deepEqual([...new Set(turned.symbols.map(s => `${s.rot}${s.mirror ? 'm' : ''}`))].sort(), ['0m', '180', '270', '90', '90m']);

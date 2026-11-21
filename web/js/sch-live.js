@@ -22,7 +22,7 @@ export const lvClass = v => `lv-${level(v) ?? 'n'}`;
 const RATES = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
 const rateText = r => (r >= 1000 ? `${r / 1000} kHz` : `${r} Hz`);
 const textW = s => String(s).length * 6.2 + 8;
-const isReg = s => !!(SYMBOLS[s.type]?.ff || s.type === 'register' || s.type === 'counter');
+const isReg = s => !!(SYMBOLS[s.type]?.ff || s.type === 'counter');
 
 /**
  * Start the live simulation of a schematic.

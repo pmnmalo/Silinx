@@ -527,11 +527,11 @@ test('#304 adders with a pin per bit: ADD1 (full adder), ADD2, ADD4, with and wi
 });
 
 // #315: the palette's flip-flops are FD, FT and FJK; a variant is one of them with its inputs, as the Xilinx
-// library has them; REG no longer in the palette
-test('#315 flip-flops: FD / FT / FJK in the palette, the variant of a choice of inputs (or none), REG hidden', async () => {
+// library has them; REG no longer a symbol (#5030)
+test('#315 flip-flops: FD / FT / FJK in the palette, the variant of a choice of inputs (or none), no REG', async () => {
   const { ffVariant, FF_INPUTS } = await import('../core/schdoc.js');
   assert.deepEqual(Object.entries(SYMBOLS).filter(([, S]) => S.category === 'Flip-Flops' && !S.hidden).map(([t]) => t), ['fd', 'ft', 'fjk']);
-  assert.equal(SYMBOLS.register.hidden, true);
+  assert.equal(SYMBOLS.register, undefined);
   assert.deepEqual(FF_INPUTS.map(([q]) => q), ['ce', 'clr', 'pre', 'r', 's']);
   const v = (t, f) => ffVariant(t, f);
   assert.deepEqual([v('fd', {}), v('fd', { ce: true }), v('fd', { ce: true, clr: true }), v('fd', { clr: true, pre: true, ce: true }), v('fd', { r: true }), v('fd', { r: true, s: true, ce: true })],
@@ -584,16 +584,15 @@ test('#322 subtractors: borrow in / out, a pin per bit; pins', () => {
   check('subs322', cases, 64);
 });
 
-// #681: the type drawn on the adder, subtractor, comparator, register and counter carries their width (as the
+// #681: the type drawn on the adder, subtractor, comparator and counter carries their width (as the
 // Xilinx ADD8 / COMP4 / CB8CE), their bus pins Width bits; the other symbols keep their library title
-test('#681 symbols with a width in their name: ADD8, SUB16, COMP4, CNT8, REG8; bus pins of Width bits', () => {
+test('#681 symbols with a width in their name: ADD8, SUB16, COMP4, CNT8; bus pins of Width bits', () => {
   const name = (type, params) => symbolTypeName({ type, params });
   for (const w of [1, 2, 4, 8, 16, 32]) {
     assert.equal(name('add', { width: w }), `ADD${w}`);
     assert.equal(name('sub', { width: w, bin: true }), `SUB${w}`);
     assert.equal(name('compare', { width: w, op: 'lt' }), `COMP${w}`);
     assert.equal(name('counter', { width: w }), `CNT${w}`);
-    assert.equal(name('register', { width: w }), `REG${w}`);
     const pins = t => Object.fromEntries(symbolDef({ type: t, params: { width: w } }).pins.map(p => [p.name, p.width]));
     assert.deepEqual(pins('add'), { A: w, B: w, S: w });
     assert.deepEqual(pins('sub'), { A: w, B: w, D: w });
