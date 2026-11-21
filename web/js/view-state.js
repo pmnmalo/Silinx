@@ -7,6 +7,7 @@ import { openEmulator, openSchematic, runSimulation } from './viewers.js';
 import { prefKey } from './prefs.js';
 import { restoreSplit, splitKeys } from './split-view.js';
 import { S, activateDoc, closeDoc, moduleInfo, openFile, openImpact, openPinPlanner, openSummary, setView, showLeftPage } from './app.js';
+import { panes } from './state-panes.js';
 
 // ---- where the user was (#160, #163): the open documents of a project, the one in front, the left pane
 // and the Design view, kept in this browser (per project) so that a reload of the page, or opening
@@ -55,7 +56,7 @@ export async function closeAllDocs() {
 export function currentViewState() {
   const open = S.docs.filter(d => d.project === S.project.name && REOPEN.some(([re]) => re.test(reopenKey(d)))).map(reopenKey);
   const active = S.active && reopenKey(S.active);
-  return { open, active: open.includes(active) ? active : null, page: S.leftPage || null, view: S.view, split: splitKeys(reopenKey, open) };
+  return { open, active: open.includes(active) ? active : null, page: panes.leftPage || null, view: S.view, split: splitKeys(reopenKey, open) };
 }
 export function saveViewState() {
   if (keepView || !S.project) return;

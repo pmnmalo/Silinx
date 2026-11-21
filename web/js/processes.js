@@ -29,6 +29,7 @@ import { hierarchyDiags } from '/core/top-hierarchy.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { runState } from './state-run.js';
+import { panes } from './state-panes.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -53,7 +54,7 @@ export const projectTool = () => toolOf(S.project?.device, openMode(), { standal
 const implTop = () => { const d = document.documentElement.dataset; return d.layout === 'tasks' && d.task === 'impl'; };
 /** The item whose processes are shown and the view: the selection's, or in Implement the top module's. */
 function procsShown() {
-  if (!implTop()) return { sel: S.sel || {}, view: S.view };
+  if (!implTop()) return { sel: panes.sel || {}, view: S.view };
   const top = S.project?.top;
   return { sel: top ? { type: 'module', module: top, file: S.modules.find(m => m.name === top)?.file } : {}, view: 'impl' };
 }
@@ -197,18 +198,18 @@ function renderProcessTree(host, defs) {
     const st = S.status[p.id];
     // collapsed groups are remembered: the panel is redrawn on every status change
     const key = p.id || p.label;
-    const collapsed = S.procCollapsed.has(key);
+    const collapsed = panes.procCollapsed.has(key);
     const group = !!p.children?.length;
     const tw = h('span', { class: 'twisty' }, group ? (collapsed ? '▸' : '▾') : '');
-    const isSel = S.selProc?.id === p.id && S.selProc?.label === p.label;
+    const isSel = panes.selProc?.id === p.id && panes.selProc?.label === p.label;
     const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl' }, p.label));
     const sub = h('ul');
     if (collapsed) sub.style.display = 'none';
     li.append(row, sub);
     const toggle = () => {
       if (!p.children?.length) return;
-      if (S.procCollapsed.has(key)) S.procCollapsed.delete(key); else S.procCollapsed.add(key);
-      const c = S.procCollapsed.has(key);
+      if (panes.procCollapsed.has(key)) panes.procCollapsed.delete(key); else panes.procCollapsed.add(key);
+      const c = panes.procCollapsed.has(key);
       sub.style.display = c ? 'none' : '';
       tw.textContent = c ? '▸' : '▾';
     };
@@ -217,7 +218,7 @@ function renderProcessTree(host, defs) {
     // the icon of a group also expands / collapses it (single click; double-click on the name runs it)
     const ico = row.children[2];
     if (group && ico) { ico.style.cursor = 'pointer'; ico.addEventListener('click', e => { e.stopPropagation(); toggle(); }); ico.addEventListener('dblclick', e => e.stopPropagation()); }
-    row.addEventListener('click', () => { host.querySelectorAll('.row.sel').forEach(r => r.classList.remove('sel')); row.classList.add('sel'); S.selProc = p; });
+    row.addEventListener('click', () => { host.querySelectorAll('.row.sel').forEach(r => r.classList.remove('sel')); row.classList.add('sel'); panes.selProc = p; });
     row.addEventListener('dblclick', () => { if (p.disabled && p.title) logInfo(p.title); else if (p.run && !p.disabled) runProcess(p); });
     row.addEventListener('contextmenu', e => {
       e.preventDefault(); row.click();
@@ -251,7 +252,7 @@ export async function runProcess(p) {
 // selected in the Design pane is another one, the user is told first (OK runs it on the top, Cancel
 // does nothing). title: the process; verb: what it does to the top ('implements', 'synthesizes', 'emulates').
 export async function topConfirmed(title, verb) {
-  const top = S.project?.top, sel = S.sel?.module;
+  const top = S.project?.top, sel = panes.sel?.module;
   if (implTop()) return true;   // (Implement's processes are the top's, #1208)
   if (!top || !sel || sel.toLowerCase() === top.toLowerCase()) return true;
   return !!await dialog({

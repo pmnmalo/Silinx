@@ -12,6 +12,7 @@ import { reservedError } from '/core/reserved.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
 import { NAME_RE, FILE_RE, sourceBase } from '/core/ident.js';
 import { designOnly } from './design-only.js';
+import { panes } from './state-panes.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -281,7 +282,7 @@ async function openWizard(wiz, { name, location, lang, ext, back }) {
     case 'asm': return (await import('./chart-wizards.js')).asmWizard(o);
     case 'ucf': return (await import('./ucf-wizard.js')).ucfWizard({ path: `${location}/${name}${ext}`, back });
     case 'boolean': return (await import('./tt-wizard.js')).booleanWizard({ path: `${location}/${name}${ext}`, name: o.name, lang, back });
-    case 'testbench': return (await import('./tbwizard.js')).testBenchWizard({ module: S.sel?.module, name: name || null, location, lang, back });
+    case 'testbench': return (await import('./tbwizard.js')).testBenchWizard({ module: panes.sel?.module, name: name || null, location, lang, back });
     case 'clock': return (await import('./clock-wizard.js')).clockWizard(o);
     case 'memory': return (await import('./bram-wizard.js')).blockMemoryWizard(o);
   }
