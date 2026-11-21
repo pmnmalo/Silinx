@@ -3,6 +3,38 @@
 What changed in each version of silinx-fpga, the Silinx toolchain. The newest version is first. Its versions
 are its own (semver, 0.x until its API is stable), apart from Silinx ISE's.
 
+## 0.6.2
+
+In short:
+
+- **The Spartan-6's own placer removed:** with Silinx's Map (spec `s6Map` `silinx`) nextpnr places the design too; the
+  pads, the global buffers and the BSCANs are fixed by Silinx's rules first, as before. The spec option `hardByNextpnr`
+  is gone (nextpnr places the block RAMs and DSP48A1s).
+
+In detail:
+
+- **The 7-series' clock tree balanced (#4878):** `@silinx/nextpnr-himbaechel-xc7` 0.5.0 (pmnmalo/nextpnr-spartan#57):
+  the global clock's spine (the BUFG tiles', the rebuffers', the CLK_HROW's, the HCLK's leaves) of the least delay in its
+  chip databases, so a register one clock region further is no longer 1.05 ns late (the Zybo Z7-20's stopwatch's hold
+  violation gone).
+- **fpga/s6/place.js, place-moves.js, place-check.js and place-timing.js removed (#4776):** Silinx's annealing placer of
+  the Spartan-6, a second placement engine after nextpnr's, used only before nextpnr: with Silinx's Map, and with
+  nextpnr's Map for the ports without a LOC (#4374). `fpga/s6/fixed-sites.js` keeps its rules, its errors and its warning
+  without the annealing: the I/O buffers with a LOC on their pads (bonded, one a pad, one VCCO a bank), a global buffer
+  driven by a pad on that pad's dedicated BUFGMUX (a clock without a LOC on a free GCLK pad), the BSCANs on their JTAG
+  chains' sites, and the ports without a LOC on the first free bonded pad of their bank's VCCO (nextpnr puts a site
+  cell's I/O buffer on unbonded pads too, #4950). With nextpnr's Map, nextpnr places the ports without a LOC itself (the
+  pad LOCs `packInput` took, its `padLocs`, removed): a design of 62 such ports takes about 35 s a seed. `S6_ESTIMATE`
+  moved to `fpga/s6/timing.js`, its one user; `S6_HARD_BY_NEXTPNR`, `padFits`, `rng` and `crossing` removed; the
+  research scripts `compare-place.mjs` and `place-xdl.mjs` with them.
+- **The constraints' reader in the light entry (#4771):** `parts.js` exports `readConstraints` and `UCF`
+  (`constraints.js`), so the IDE reads the pins a design's UCF or XDC takes through the package's API.
+- **The Zynq-7000's programmable logic (#4680):** the bit databases of the `xc7z010clg400-1` and the `xc7z020clg400-1`
+  (Project X-Ray's `zynq7`; `research/xc7/build-db.mjs` takes the family's folder from the part), the family `zynq`'s
+  back end the 7-series' (`openFamilyOf`: `'artix7'`), its open parts the XC7Z010 and the XC7Z020 (`openFlowDevice`),
+  the BSCAN's tile of the part (`xc7BscanTile`), nextpnr-himbaechel-xc7 0.4.0 (the chip databases of the xc7z010 and the
+  xc7z020).
+
 ## 0.6.1
 
 In detail:

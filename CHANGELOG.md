@@ -3,6 +3,1112 @@
 What changed in each version of Silinx ISE. The newest version is first. Each section is also
 the "What's new" text of its GitHub release.
 
+## 15.30.0
+
+The first course's own project: New Project asks first which kind of project it makes, Digital Logic (drawn and
+simulated, no HDL nor FPGA in sight) or FPGA, and the co-design roadmap's first phase is in. State diagrams are made and
+edited from their tables, with codes of your own; a schematic's adders, counters and multiplexers can be pushed into
+down to the gates; circuits on the breadboard are easier to wire; live sharing is signed and survives a reload; the
+Zynq-7000 and Arty Z7 boards join the Silinx toolchain; and a twelfth example, lock, uses every kind of source at once.
+
+In short:
+
+- **New Project asks the kind first:** Digital Logic, for the introductory courses (nothing of HDL or FPGA shown), or
+  FPGA; Design Properties' Project Kind offers the same and says what a change does. Start from lists the empty project
+  and the examples only.
+- **A new example, lock:** a combination lock made of every kind of source at once (VHDL and Verilog, a schematic, a
+  state diagram, an ASM chart, a truth table, a Petri net, a circuit, C).
+- **State diagrams:** made and edited from their transition table; the encoding in their Properties, with each state's
+  code of your choice (of any width); outputs that are don't cares; conditions shown as written; the reset's arrow
+  movable; the FSM Wizard's sequence detector takes a regular expression; the gate-level schematic of a state machine.
+- **Schematics:** the palette's adders, subtractors, comparators, counters and multiplexers pushed into, level by level
+  down to the gates, and shown as their composition in the Design pane; no more dangling stubs after dragging a wire.
+- **Circuits on the breadboard:** the 7475 and its kin drawn inside as their datasheets do; wires with handles on their
+  ends and bends; red and black wires to power; both rails powered.
+- **Live sharing:** each editor signs their changes, the owner signs who may edit, Renew Editor Link and Show Sharing
+  Link… in the Sharing menu, a share that survives a reload, a follower's role switched from the toolbar.
+- **The Zynq-7000 and the Arty Z7:** the Zybo Z7-10/20 and Arty Z7-10/20 implemented by the Silinx toolchain or Vivado,
+  their programmable logic programmed over JTAG from the browser too.
+- **The ISE style interface:** Emulate Behavioral Model in its toolbar, and the Board Emulator's board at the Silinx
+  interface's size.
+- **The Logic Analyzer works again with the Silinx server.**
+- **The browser edition:** its storage kept persistent, a folder on the disk offered at the first run, a back-up
+  reminder for a project kept only in the browser.
+- **Messages in the console:** failures and refusals there rather than in boxes, every message with a file and line
+  clickable, the Errors and Warnings tabs following the console's filter and no longer keeping fixed errors.
+- **The keyboard and screen readers:** the menus, dialogs, tabs and Design tree; every dialog behaves the same.
+- **The MCP server:** a smaller list of tools, answers while a process runs, the board's PROM and JTAG chain, and the
+  same checks as the interface (Set as Top, constraints from the board).
+- **Portuguese:** more of the interface translated, the Design task reads Projetar.
+
+In detail:
+
+- **The project kinds' names (#5133):** "No FPGA" is now **Digital Logic** ("Lógica Digital"), its description
+  "Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard,
+  drawn and simulated." (no FPGA, HDL or board); "With an FPGA" is now **FPGA**. The same names in New Project's
+  cards, Design Properties' Project Kind, the Project Summary page, Open Project's list, the MCP server's
+  new_project and set_design_properties (their descriptions, new_project's refusal of a board and its result) and the
+  user guide (en, pt). The kinds' ids (`design`, `fpga`, `codesign`) do not change.
+- **The page's capture sends the server its own options only (#5128):** since #4753 `POST /projects/:p/capture`
+  refuses a field it does not know, and the page's capture (`web/js/capture-ui.js`) gave the server the browser
+  edition's fields too (the core's spec, its probes, the top, the clock: `web/js/api-local.js` reads the board with
+  them). `web/js/api.js`'s `captureBody` keeps the server's options (`arm`, `timeoutS`, `device`). The UI test of the
+  logic analyzer's settings waits for the Save's line before reading silinx.json (its wait never waited).
+- **The interfaces' parity test and the ISE style toolbar's Emulate Behavioral Model (#5127):**
+  `test/ui/interface-parity.test.js` (#2450) takes the toolbar's Emulate Behavioral Model (#5114) for what it is,
+  Processes ▸ Emulate on Board ▸ Emulate Behavioral Model (RTL) named without its "(RTL)", which both interfaces have.
+  The New ASM State Diagram toolbar button is gone (#5114), so its entry is gone too.
+- **Open Project's damaged project: its UI test reads the console (#5126):** since #4747 a command's failure is an
+  ERROR line of the console, not a modal box, and `test/ui/open-project-damaged.test.js` (#4755) still waited for the
+  box. It now waits for Open Project's one ERROR line (the project is damaged, why, what to do), with the dialog closed.
+- **The ISE style interface's emulator board fitted to its room (#5118):** `web/js/tasks-emu.js` fits the board of
+  every open emulator in the ISE style interface with the Silinx interface's rule (`boardZoom`: its room, from 0.7 to
+  1.5), refitted when the window or the workspace change and when its board appears (the observer of a new board
+  watching in both interfaces); `.emu-board-wrap` is `flex: none` in both. A Basys2 in a 1400×900 window is 731×484 px
+  in both interfaces (840×556 before in the ISE style one), in a 2560×1600 one 1260×834 px.
+- **The ISE style interface's main toolbar (#5114):** no New ASM State Diagram button; an Emulate Behavioral Model
+  button after Simulate Behavioral Model, the Processes pane's Emulate Behavioral Model (RTL) (the top module's Board
+  Emulator), disabled with no top module or when the project's tool has no emulator, hidden in a design and
+  simulation project as Implement and Configure Target Device; the Silinx interface's toolbar unchanged.
+- **A Petri net's Verilog with no warnings (#5113):** its step (the tokens taken and put, the transitions that fire) is a
+  combinational block (`always @(*)`, blocking assignments) and its clocked block only registers the new marking
+  (non-blocking), so Check Syntax no more warns "Blocking assignment (=) … in a clocked always block" twice for each
+  place; the net behaves the same.
+- **Check Syntax: a clock copied as it is not "used as data" (#5112):** a plain copy of a clock (`n <= clk`, `assign n = clk`),
+  as a digital circuit's clock source in its HDL, is a name of the clock, no more warned as `Clock signal <clk> is used as
+  data`; the clock in an expression still is.
+- **The lock example (#5111):** `examples/lock`, last of the examples: the digit's switches synchronised by a 74175 on a
+  breadboard (`sync.circ.json`), the buttons debounced (VHDL), the controller's parts wired in a schematic
+  (`control.sch.json`): the lock's state diagram, the code's truth table, the failures counted by a Petri net's token,
+  the lock-out timer an ASM chart; the penalty's seconds a C function and the digits typed a C++ function with a
+  static variable (Silinx HLS), the display Verilog. A self-checking test bench (the code, three failures, the alarm,
+  reset), in VHDL and with the drawings' HDL in Verilog; Check Syntax with no warning; it runs on every board of the
+  Silinx toolchain (ISE: the nightly's).
+- **New Project's Start from: Empty project and the examples only (#5108):** the test designs (#1746) are no
+  more in the list, nor their note on the Project Settings page; the MCP server as the interface: `list_examples`
+  lists the examples only and `new_project_from_example` makes a project from an example only. The listing of the
+  test designs (`/api/test-designs`, `api.testDesigns`) and the browser edition's copy of them go; the test designs
+  stay in `test-designs/`, where the tests open them through the server.
+- **An editor's unchanged description no longer proposed (#5103):** since #5064 an editor's description went to the
+  owner under a key of its own on every save, even when it was the document's already. Rename… at an editor's saves the
+  description it read, whose file list still has the old name (the owner renames the entry on its side), so the owner
+  applied it after its own rename and put the old name back in silinx.json. `setDescription` now proposes nothing when
+  the description is the document's already. Tests: collab-files (the owner's rename kept, nothing sent; a changed
+  description still proposed); collab-sources, the UI test that found it, passes again in both interfaces.
+- **The MCP server's `new_project` within the tools' size limits again (#5097, after #5041):** its description and its
+  `kind` argument's say the three kinds in fewer words (the dialog's names; each kind's short words in
+  `core/project-kind.js`), under 700 and 250 characters (`test/mcp-tools-size.test.js`, #4752).
+- **The MCP tools' descriptions checked by every pull request (#5096):** `test/mcp-tools-size.test.js` (#4752) is one of
+  the related tests' repository-wide checks (`REPO_WIDE` of `scripts/related-tests.mjs`): it imports `server/mcp.js`
+  only, so a change to one tool's module (`server/mcp-board.js`, `server/mcp-projects.js`) did not select it, and two
+  pull requests merged green with a description over its limit (#5089).
+- **program_board's `position` described in at most 250 characters (#5089):** its description, added by #4940, was 260
+  characters, over the MCP's limit for an argument's (#4752); shortened, the same meaning.
+- **The HDL generators' shared port lists and headers (#5076):** core/hdl-emit.js now also writes a port (`vhdlPort`,
+  `vlogPort`), a port list (`vhdlPortLines`, `vlogPortLines`: aligned columns, indents, a mode's or a direction's width)
+  and an entity's or a module's header (`vhdlEntity`, its generics and its three ends; `vlogModule`, its parameters, or
+  on one line), and the C generators' ports of a width (`vhdlWidthPorts`, `vlogWidthPorts`); core/hdl-emit-fsm.js the
+  state machines' skeleton the ASM chart's and the state diagram's generators shared (the entity and the module, clock
+  and reset first in an aligned table; the state type and its constants). The generators use them instead of their own
+  copies (43 port lists, one family at a time): the drawings' (core/asm-gen.js, core/fsm-hdl.js, core/petri.js,
+  core/logic.js, core/grade-package.js, core/modgen.js), the schematics' and the circuits' (core/schdoc-hdl.js,
+  core/circuit-hdl.js, core/circuit-hdl-ics.js, core/circuit-hdl-core.js, core/circuit-model-ics.js) and the C / HLS
+  ones (core/c-hdl.js, core/c-hdl-seq.js, core/c-axi-rtl.js, core/c-axis.js, core/c-processes.js,
+  core/c-processes-word.js, core/c-blackbox-process.js, core/hls-fir-hdl.js, core/hls-fft-hdl.js,
+  core/hls-fft-float-hdl.js). The generated HDL is the same, byte for byte.
+- **A new error of a source the console's filter hides (#5074):** since the Errors / Warnings tabs follow the filter
+  (#4749), an error of another source (the Board Emulator's while editing) brought no tab forward; now it turns the
+  filter to its source, as a process started does (#1852), and its tab comes forward listing it. The entries are
+  counted all, the hidden ones too, so a filter's change still brings no tab forward.
+- **Another project's MCP call during a simulation answered at once (#5065):** a simulation running in the MCP server
+  yields to the event loop with a timer, not `setImmediate`, so the event loop waits for the file system there: another
+  call's reads go through several at each yield, not one a yield (`project_info` of another project took about 5 s
+  during a simulation, now about 1 s; the simulation no slower). The tests that timed out under load wait for events or
+  have a budget that fits: mcp-serve's #4734 test waits for the simulation to run (`SIM_TESTING.onRun`), not 300 ms, its
+  budget scaled by `SILINX_UI_THROTTLE`, and counts the yields in a new test; mcp-gatemate's post-synthesis simulation
+  has the longest time limit.
+- **An editor's description kept (#5064):** the project's description is one shared value, and when two participants
+  set it at the same time one of the two is kept. The owner publishes the description again after each editor's change
+  that touches it, so the editor's next change, set at that moment, could be the one lost. Its files were moved on the
+  owner's disk, but the description no longer listed the renamed file, and nothing said so. The editor now also
+  proposes its description under a key of its own (`core/collab-files.js` `setDescription`). `watchDoc` gives that
+  proposal with the change, and the owner applies it rather than the shared value (`applyEdits`). This is what made
+  `test/mcp-collab.test.js`'s #4418 test time out under load ("renamed at the owner's", after #4480 and #4569).
+- **An editor waiting to be listed (#5064, #4745):** an editor's changes waiting for the owner to list its key no
+  longer wait for ever when the list arrives during their first check: the list is checked again once they wait.
+- **The UI tests that waited for a box (#5061):** Rename's refusal, a broken zip's import and Import Project's invalid
+  name are read where #4747 puts them (the console, Import Project's dialog); a followed truth table no longer hides its
+  cells' hint line, gone since #4747 (its table's tip, removed when read only), which failed it.
+- **Schematic, wires drawn twice over: doubled pieces of the same length (#5042):** #4920's clean-up
+  (`core/schwire-fold.js`) tried only the first wire in the document as the one to trim when the two doubled end
+  segments were equally long. When that wire could not be trimmed (the other piece's end on its bend), the stub stayed,
+  depending on the wires' order in the file. Both are now tried: the stub piece is removed, and the result is the same
+  whatever the wires' order.
+- **New Project's first page, the project's kind (#5041):** three cards, each with what it is for and what it shows; No
+  FPGA is the design and simulation project (#3780, #3891), its Start from (the examples, FPGA projects) not shown; the
+  Project Kind field of the Create New Project page goes. Co-design is shown but cannot be chosen until the System
+  document (#4697) and its editor (#4700) are built, its reason in its card. The MCP server's `new_project` takes
+  `kind codesign` and refuses it with the same reason; its description says the three kinds with the dialog's words
+  (`core/project-kind.js`). A UI test checks that a project with no FPGA made there shows nothing of HDL or FPGA (no VHDL /
+  Verilog badges, no synthesis, implementation or bitstream processes, no board, device or constraints), in English and
+  in Portuguese, in both interfaces.
+- **Design Properties' Project Kind (#5041):** its choices New Project's (No FPGA, With an FPGA, Co-design not
+  available yet). A note under it says what the kind chosen does before OK: to No FPGA, the board and the constraints
+  file leave the project (the file stays on the disk), the drawings stay, their HDL and the test benches hidden, none
+  deleted (Undo brings it back); to With an FPGA, the HDL and the flow shown, nothing lost. A project with HDL or C
+  sources of its own cannot become a No FPGA one: the note says which sources, in red, and OK is disabled (before, the
+  console said it after OK).
+- **SSim's Force dialog's time-offset note in Portuguese (#5034):** its pattern in `web/js/i18n-messages.js`, the
+  template scan of #4748 failing on main without it.
+- **The Design pane's composition rows (#5033, after #4984):**
+  - An atomic symbol's block (a flip-flop's, FDCE…: #4806's D2) is not a row, as a gate is none.
+  - A composition's base badge is [Schematic]: each level is one.
+  - In an FPGA project each row also has its HDL badge, dashed: the level's HDL as generated from its drawing, in the
+    schematic's language, read-only (`openCompositionHdl`), its notice linking to the drawing. A design and simulation
+    project has no HDL badge (#3780).
+- **The hidden REG symbol removed (#5030, #4806's D2):** a register is a flip-flop of the FD family with a Width (FD,
+  FDE, FDC, FDCE, FDR, FDRE…). What still reads a REG reads it as the FD of its options, its Width kept and its pins
+  the same (D, CE, C, CLR / R, Q):
+  - a drawing saved with a REG, when it is opened;
+  - an HDL file whose block was a REG's (`silinx-symbol register`), turned back into a schematic;
+  - an ISE schematic's FD8CE / FD16CE / FD8RE / FD16RE;
+  - a schematic exported to ISE as a REG (`xl_reg…`) and imported back.
+- An FDCE / FDRE of 8 or 16 bits with INIT 0 is exported to ISE as the library's FD8CE … FD16RE, and has them among
+  its Xilinx equivalents.
+- A REG's INIT word becomes the FD's INIT, one bit for all of them: 1 when it was all ones, else 0.
+- The parts panel draws a register IC (74164, 74374…) as an FDCE.
+- **Codes of any width (#5026):** under the encoding User-defined, Check no longer requires the states' codes to have
+  one width: the state register is as wide as the widest code, the shorter ones zero-extended on the left, and two codes
+  are the same once extended (`011` and `0011`: "States A (011) and B (0011) have the same code once zero-extended to 4
+  bits: 0011"). The codes are shown as typed in the transition and state tables, the drawing and the MCP's
+  `set_fsm_encoding` (`fsmEncoding`'s `shown`); the extended ones (`bits`) in the generated HDL, the encoded transition
+  table and the gate-level schematic.
+- **A barred text in a table's cell (#5024):** the bars' drawing (`web/js/overbar.js` `drawBars`) gave the cell itself
+  the class `ob-text` (an inline box), so the cell was no longer a table cell: drawn at the cell's left, as a box inside
+  it. A cell's text is now drawn in a span of its own, the cell staying a cell.
+- **The transition table first (#5024):** the Tables panel shows the transition table (edited in place, #4974), then
+  the state table and the encoded transition table (`web/js/fsm-bottom.js`; the order of #4966 revised).
+- **The stray-rejection test on Windows (#5023):** `test/collab-errors.test.js`'s child process imports the server by a
+  `file:` URL, not its absolute path, which Windows's ESM loader refuses (`D:` taken for a URL's scheme, #4759's test).
+- **The MCP's files on Windows under a short-named folder (#5023, #5021):** a project's file and the exchange folder's
+  are checked against their folder as `paths.js` `realOf` resolves both, not the folder by the system's realpath: under
+  `C:\Users\RUNNER~1\…` (a short name the system expands and the file's path keeps) every project file was refused as
+  hidden, and the exchange folder's files as outside it, since #4769.
+- **Resolve Conflicts in Portuguese again (#5019):** the dialog's line, "N object(s) changed both here and on GitHub…"
+  (Pull from GitHub) or "… on both branches…" (Merge Branch), was half English in Portuguese since #4748: its broader
+  pattern in `web/js/i18n-messages.js`, matched first, left "both here and on GitHub" untranslated. That pattern is
+  gone; `web/js/i18n-git.js`'s own two, one for each place the objects changed, translate it whole.
+- **SSim's Force dialogs' note in Portuguese (#5018):** the note, a template literal since the dialogs moved to
+  `ui.js`'s `dialog()` (#4762), has its pattern in `web/js/i18n-messages.js`, its real text in `test/i18n-templates.test.js`.
+- **A write's temporary file is no change of git's (#5016):** a status read while a file was being written (#4758's
+  `writeAtomic`: a hidden `.<name>.<pid>.<random>.tmp` beside it, flushed, then renamed over it) listed that file as
+  new, the Design pane's project row marked N; and a commit at that moment failed on `git add` in a cloned project (its
+  hidden files outside the sparse checkout). `core/git-ignore.js`'s `isWriteTemp` / `WRITE_TEMP`: `server/git.js`'s
+  status leaves it out and its commit never adds it.
+- **The menus' UI test names a dialog with no title bar (#5016):** the command palette is one of ui.js's dialogs since
+  #4762, with no title bar (its name its aria-label), so the test walking every menu item reads that name instead of
+  failing on the title it does not have (the ISE interface's View ▸ Command Palette…).
+- **The latency benchmark follows with the owner's key (#5015, #5012, #5022):** `scripts/collab-latency-lib.mjs`'s
+  follower and editor join with the owner's key, as #4745's editors list asks (the editor's keystrokes were refused,
+  and the benchmark waited for them: `test/collab-latency.test.js` hung its CI part until it was cancelled); a change
+  that never arrives now fails after 10 s, the rooms closed.
+- **The handwriting UI tests read the corrected field the dialog held (#5010, #5013, #5014, #5017):** Fill Table and
+  Insert close their dialog in the click since the one dialog framework (#4762: a validation that is not async closes
+  it at once), so the tests keep the text field before the click and read it there, not from a dialog already gone.
+- **The private-data check's history (#5009):** two made-up home folders of tonight's tests, in
+  `test/mcp-board-target.test.js` (#4751) and `test/message-location.test.js` (#4746), placeholders since, are in
+  `scripts/check-private-data.mjs`'s `ALLOW` list with their reasons, as #4916's were.
+- **A drawing's HDL warnings withdrawn when its HDL is made again (#5008):** an editor's save of a drawing with errors
+  (a state diagram, an ASM chart, a truth table… often its autosave in the middle of an edit) writes "WARNING:
+  src/x.vhd not updated: … has errors"; its entry stayed in the Warnings tab after the drawing was corrected and its
+  HDL made again. The sync's warnings are now a run of their own per HDL file, dropped from the Errors / Warnings tabs
+  when that file is up to date (console.js's dropRun, as a process's rerun drops its last run's, #4728). This was the
+  nightly's Firefox failure of the ASM chart editor's UI test: on a slow runner the autosave caught the chart half
+  drawn, and its stale fifth warning kept the test from seeing its four. Test: drawing-sync-editors (the warning in
+  the Warnings tab, out of it once fixed, its Console line kept, listed again when broken again).
+- **The collaboration console test leaves the back-up reminder out (#5006):** `web/js/backup-reminder.js` writes the
+  application's line about the browser's storage (#4971); its `api.gitRemote` call only chooses its button's label.
+- **The branches' UI test waits longer for Merge Branch…'s conflict (#5003):** 30 s instead of 10 s, since the merge
+  fetches the other branch first; it timed out once on a loaded CI runner.
+- **The user's codes in the transition table (#5002):** under the encoding User-defined (#4908), a state's code is a field
+  on its first row of the transition table, set as its Properties set it (`setStateCode`: binary digits, blanks and `_`
+  left out) through `core/fsm-edit.js` `setCode`; Check reports a code not valid, of another width or used twice. The
+  Next code column follows the next state; under the other encodings the codes stay read only.
+- **CodeQL's code scanning alerts of the PROM's programming and of a UI test (#4992, #4993):** a Platform Flash
+  PROM's job runs adepttool's Python itself, never through the programmers' other runner and its iMPACT wrapper (it
+  ran no shell before either: the bitstream's path was already an argument as it is); the browser edition's UI tests
+  of the workspace folder build their page script with no value in it (the fake folder's module at the page's
+  origin).
+- **The Design pane's rows of a palette symbol built of others (#4984, #4806):** `web/js/design-comp.js`.
+  - The block entity generated for the symbol (`top_add`) is recognized by its mark (`blockMarkOf`).
+  - It is listed as the symbol (`u1 - ADD8`), its composition's levels' instances under it, each row with a
+    Composition badge.
+  - Opening a row (Enter, a double-click, its badge) opens the composition at that level (`openComposition`'s new
+    `at`: the instances pushed into).
+  - Symbols with no composition (the flip-flops) stay as they were.
+  - A composition is named as its symbol draws itself (D2_4E, M4_1, PENC8_3; ADD8, COMP8), in its rows, its tab and
+    the MCP's `symbol_composition` (no more DECODER, ENCODER).
+- **A double-click on a palette symbol built of others enters its composition (#4981, #4806):** as Push into does,
+  and as a double-click on a module's instance opens its drawing (#2046). Before, it put the focus in the first
+  field of its Properties, which stay a click's (with their Push into button). A symbol with no composition (a gate,
+  a flip-flop, a bus tap) keeps its double-click as it was.
+- **The Preferred Language's UI test with the state diagram's Schematic badge (#4977):** its row's badges read
+  `[FSM*] [Schematic] [VHDL]` since #4910; the test allows the badge.
+- **The transition table edited in place (#4974):** `web/js/fsm-table.js` draws the table with a field per cell: the
+  present state's name (its first row), the condition (kept as typed, #4888), the next state (a list of the states; the
+  "otherwise (stays)" row given another next state becomes a transition `else`), the outputs (`z=1, y=X`: a Moore
+  machine's on the state, a Mealy machine's on the transition, #4891); `+` adds a row after a row (a transition from its
+  state), `✕` removes one, `+ State` adds a state beside the others. The codes follow the encoding, read only. Every
+  change goes through the new `core/fsm-edit.js` and is committed as a change of the diagram (undo, redo, the drawing and
+  the HDL made again, Check's problems in the console); a change refused (a name used twice, a value that does not fit)
+  is said in the console and nothing changes. A read-only diagram's table stays text. The transition table's rows carry
+  their state's and next state's ids (`stateId`, `nextId`).
+- **MCP: `edit_fsm` (#4974):** a transition's next state (or a state's otherwise given one), a transition added or
+  removed, a state added or renamed, through the same functions; Check's warnings of the machine returned; the
+  conditions and outputs keep `set_fsm_condition` and `set_fsm_outputs`.
+- **The projects' last back-ups (#4971):** a Silinx export (Export Project (.zip)…, `export_project` kind silinx)
+  or a push to GitHub (the browser edition's Commit and Push, Push to GitHub, `git_push`) recorded outside the project
+  (`core/backup.js`; the browser's localStorage, `web/js/backup-record.js`; the configuration folder's `backups.json`,
+  `server/backup-store.js`), moved with a rename, removed with a delete; the browser edition's reminder
+  (`web/js/backup-reminder.js`) after 7 days from the last back-up or the project's first sight, at most once in a
+  session, its buttons the Silinx export and Store Project in a GitHub Repository… (Commit and Push… for a project in
+  one); `project_info` reports `stored` and `lastBackup`.
+- **The state table first (#4966):** the Tables panel shows the state table, then the transition table, then the encoded
+  transition table (`web/js/fsm-bottom.js`); their names and contents are unchanged.
+- **Signals' and states' names never translated (#4964):** the interface's translator rewrote every text equal to one of
+  its labels, and the state diagram's tables (the transition table's states, conditions and outputs, the state table's
+  states, the encoded table's headers and notes), its Try it (the state, the outputs, the trace, shared with the ASM
+  chart's), a transition's condition in Properties and the ASM chart's Initial state and Try it state hold only the user's
+  names: they are now marked `data-no-i18n`. A UI test, in Portuguese, on a machine whose names are words of the
+  dictionary.
+- **The browser edition offers a workspace folder at its first run (#4962):** where the browser can give one (the File
+  System Access API), with no folder set nor remembered, one console line with two buttons (a console line's actions,
+  several now: all disabled once one runs); the answer remembered, the picker cancelled none (offered again); a folder
+  chosen with projects in the browser's storage: Copy, or Move… (the ones copied deleted from the browser's storage
+  once confirmed); Firefox and Safari offered nothing (`web/js/storage-offer.js`, `web/js/storage-choice.js`).
+- **Persistent storage in the browser edition (#4960):** at start-up, with the projects in the browser's storage,
+  `navigator.storage.persisted()`, then `persist()` when it is not persistent yet (not waited for: Firefox asks the
+  user); a refusal is one line in the console, with the way to keep a copy; a browser without the API is asked nothing,
+  and a workspace folder on the disk needs nothing (`web/js/storage-persist.js`).
+- **The browser edition's storage notice in red (#4957):** the New Project wizard's notice, the Start page's "Where
+  Projects Are Kept" and the status line's Storage in the theme's error colour (`--error-fg`), both interfaces and
+  themes, while the projects are in the browser's storage; not in a workspace folder on the disk.
+- **The Design task named Projetar in Portuguese (#4953):** the Silinx interface's first task kept its English name in
+  Portuguese (#1046), since "Projeto", the Design pane's name, is a noun. It is now "Projetar", a verb as its
+  neighbours: its button, its tooltip (with its dot's state: "Projetar — concluído, sem avisos") and the title of its
+  page with no document open (`data-i18n-task` in `web/js/i18n.js`, in place of `data-i18n-keep`). The Design pane, the
+  console's filter, Design Summary and Design Properties keep "Projeto"; the user guide's Portuguese page names the
+  task Projetar.
+- **The circuit editor's keys in a module of their own (#4945):** its keydown handler moved, as it was, from
+  mountCircuitEditor (at 300 lines) into web/js/circuit-keys.js, with a test of its own; no change of behaviour.
+- **The JTAG chain position counted as each programmer counts (#4940):** a request's position, the Program view's and
+  now program_board's (its `position`, from 1), is iMPACT's numbering; `server/programmer.js` `toolPosition` turns it
+  into the tool's in one place: iMPACT's `-p` as it is, openFPGALoader's `--index-chain`, djtgcfg's `-i` and
+  xc3sprog's `-p` from 0. A position outside 1 to 32 refused. The boards' programmer defaults were already the tools'
+  own, unchanged; a Zynq-7000's openFPGALoader still runs with no `--index-chain` (#4683), adepttool and the PROM's
+  operations take no position.
+- **The latches sharing an enable drawn as their datasheets (#4934):** core/circuit-inside-drawn.js, the 7475's
+  connection diagram (its four latches, the enables 1-2 and 3-4 between their pairs, a dot, their crossings hopped), the
+  7477's and the 74375's; IEEE and IEC labels (D, G, Q, Q̅; 1D, C1); a KiCad part behaving as one drawn the same. The
+  review of every IC's inside is on the issue; the flip-flops and registers sharing a clock are next (#4951).
+- **A wire's end moved (#4930) and its shape (#4931):** core/circuit-wire-edit.js (`moveWireEnd`, `setWireBends`,
+  `dragWireHandle`, `removeWireBend`), the editor's handles (web/js/circuit-wire-drag.js, drawn over the parts, one
+  edit each for Undo) and edit_circuit's `reconnect` and `reshape` operations; the wire's colour and id kept, in every
+  wire style.
+- **A new circuit's bottom rails powered (#4929):** `newCircuit` (New Source, the editor's empty model, the MCP's
+  new_source) joins the top rails to the bottom ones on the right, + to + red and − to − black, as the Breadboards
+  template does.
+- **A wire's colour by default (#4932, #4933):** a wire added with no colour (the Wire tool, edit_circuit's wire) takes
+  its net's: red when it joins an IC's VCC or VDD pin, the supply's + or a + rail, black when it joins GND, VSS, − or a −
+  rail, blue otherwise or when it joins both (`wireColorOf`, core/circuit-edit.js).
+- **Schematic: the wires drawn twice over trimmed (#4920):** two wires meeting end to end, one segment of the second
+  dragged onto the first wire's corner: the dragged wire's end stayed where it was, joined back by a short segment lying
+  on the first wire, drawn as a stub that leads nowhere. After every edit (and as a schematic is opened, so also by the
+  MCP's wire tools) the part drawn twice is now removed (`core/schwire-fold.js`, called by `normalizeDoc`): two wires
+  that leave their meeting point the same way meet at the far end of the overlap instead, a stub lying on a branch of a
+  junction dot and ending in nothing is removed, and a wire that turns back on itself loses the spike.
+  The net names on the doubled part stay on the wire; the connections and the HDL are the same. A wire left unconnected
+  on a stretch of its own stays, as does a doubled part with a pin, a marker or another wire's end on it, and a doubled
+  wire that goes on from a junction dot (trimming it would move the dot back).
+- **A state diagram's schematic (#4910, #4911):** the textbook implementation of the machine (core/fsm-schematic.js):
+  - a D flip-flop per state bit, in the diagram's encoding: FDR for a synchronous reset, FDC for an asynchronous one,
+    set to the initial state's code; an inverter before them for an active-low reset;
+  - the next-state and output logic in minimal gates, from one truth table (the present state bits and the inputs in;
+    the next-state bits, the flip-flops' D, and the outputs out), unused codes don't cares, as Create Boolean Algebra
+    writes them;
+  - the state bits as net labels (`q1`, `d1`), a bus as its I/O marker and labels of its bits (`phase(2)`).
+- **Where it shows:**
+  - a Schematic badge on the diagram's row in the Design pane, between the drawing's and the HDL's;
+  - Show Schematic Beside, in the tab's menu and in View;
+  - the MCP's `related_view` with the view `schematic`.
+- **When:** it is read-only and redrawn as the diagram changes. It is drawn whenever it can be: an encoding of codes (binary, gray), no
+  errors, at most 10 bits of state and inputs; otherwise it is not drawn and the console says why. It works in a design
+  and simulation project too.
+- **The encoding in the machine's Properties (#4908):** the state diagram's Encoding (binary, Gray, one-hot,
+  enumerated) is a field of the machine's Properties and no longer a choice of the ⋮ menu; the status line still
+  shows it. The module name stays in the Properties.
+- **A code of the user's for each state (#4908):** a new User-defined encoding (`encoding: 'user'`) takes each state's
+  code from the state (`code`, binary digits; blanks and `_` left out, `core/fsm-codes.js`). A state's Properties show
+  its code in every encoding but the enumerated one. Typing a code makes the encoding User-defined, and the other
+  states keep the codes they had; choosing User-defined does the same. Check reports an error for a state with no
+  code, a code that is not binary digits, more than 32 bits, codes of different widths and a code used twice. The HDL
+  writes the codes as given, and the encoded table and Create Boolean Algebra use them, the unused codes as don't
+  cares. The MCP's new `set_fsm_encoding` sets the encoding and the states' codes, with the same checks.
+- **The reset's arrow dragged around the initial state (#4903):** the arrow into the initial state, and the reset's
+  name with it, can be dragged around the state in steps of 5°, like a self-loop. Its direction is saved with the
+  diagram (`entryAngle`; none: the left, as before), shared live, undone and redone; Arrange puts it back on the left,
+  and a self-loop's default direction avoids it. The HDL is unchanged.
+- **Sequence detector from a regular expression (#4902):** the FSM Wizard's *Sequence detector* template accepts a
+  regular expression over 0 and 1: `|`, `( )`, `*`, `+`, `?`, `.` or `[01]` for any bit, `{n}`, `{n,}`, `{n,m}`. The
+  detector is built the textbook way (`core/regex-automata.js`, `core/seq-detector.js`): Thompson's NFA, the subset
+  construction of the DFA of `.*R` (z = 1 when the bits read end with a match), a Moore or a Mealy machine, minimised by
+  partition refinement, its states numbered breadth-first. Overlapping, the search goes on after a match; not
+  overlapping, it starts again after the match's last bit. A bit string gives the same diagram as before. The wizard
+  refuses, with the position, a syntax error, a pattern that matches nothing or matches the empty string, and a detector
+  of more than 64 states. The MCP server's `new_source` makes a state diagram from the FSM Wizard's templates too
+  (`template`, `template_params`), the detector of a regular expression among them.
+- **An output set to a don't care (#4891):** a state's or a transition's output, or an output's default, can be a
+  whole don't care (`X`, `-`, `'X'`, `'-'`, `1'bx`) or some bits of a vector (`"1X0"`, `"1-0"`, `3'b1x0`, `8'hx5`; a
+  Verilog literal's leftmost x extended to its width). A lower-case `x` alone is a name and is still refused. The
+  values are read by the new `core/fsm-value.js` and kept as written: Check, the Properties, the text typed on the
+  drawing and the MCP's `set_fsm_outputs` all take them.
+- **The don't care in the HDL and the views (#4891):** the generated HDL writes VHDL `'-'` / `"1-0"` and Verilog
+  `1'bx` / `3'b1x0`. Both simulate with the output shown as x, and the open flow passes it to Yosys as `x`. The
+  reference simulation (`stepFsm`'s `xs`), Try it, the MCP's `simulate_drawing`, the state table, the encoded table
+  and Create Boolean Algebra show X; the Karnaugh maps use these bits as don't cares. An X counts as a set value for
+  Check's "never set" warning.
+- **No ASM chart of a diagram with a don't care (#4891):** an ASM chart has no don't care yet (#4895), so Convert to
+  ASM chart, its view and the MCP refuse such a diagram and give the reasons (Portuguese too).
+- **A transition's condition drawn as it was typed (#4888):** the arc, the state's list of transitions and an ASM
+  chart's decision box draw the condition's text as typed (`core/expr-notation.js` `drawnAsTyped`), whatever the
+  Boolean notation (`"000"`, `=`, `3'b000`, `'1'`, `and`, `&&`). They no longer print it again from its tree in the
+  notation, as #4417 had them do. In the Electronics / Engineering notation, a NOT typed as a slash (`/a`, `/(a + b)`,
+  the form the conversions write) is still drawn as its bar. The notation still applies to what Silinx derives: the
+  transition table, the truth table's results and groups. The stored text, the Properties box, the inline edit and
+  the MCP's `set_fsm_condition` and `set_fsm_outputs` already kept what was typed; drawings saved with the normalised
+  text are drawn as they were saved.
+- **No hold violation on the Zybo Z7-20's stopwatch, the 7-series' clock tree balanced (#4878):**
+  `@silinx/nextpnr-himbaechel-xc7` 0.5.0 (pmnmalo/nextpnr-spartan#57). Its chip databases gave every node of the global
+  clock's tree the timing fit's 525.7 ps, so a register one clock region further, two nodes more, was 1.05 ns late:
+  stopwatch's debouncer had a register pair across a region's edge with a hold slack of −0.04 ns. The silicon's tree is
+  balanced; its spine (the BUFG tiles', the rebuffers', the CLK_HROW's, the HCLK's leaves) is now of the least delay, the
+  sinks' skew none of its own. The examples' tables on the 7-series' boards measured again (micro80 112.9 MHz on the
+  Basys 3, 113.8 on the Nexys A7; the Arty Z7-20's clock 134.0); the Zybo Z7-20's expected warnings without the hold one.
+- **Two pages' writes overlapping, told to both (#4873):** a page's request on the project waits at most 2 s for another
+  page's to end (`server/project-watch.js` `acquire`, #3972), then holds the project anyway. What the two overlapping
+  requests changed was told to neither page, so the page whose write came first kept a text no longer on disk. Their
+  changes can't be told apart, so they are now told to both pages: each reads the disk, and a page whose editor already
+  shows it reloads nothing. Holds of no page (a run, the MCP server) are still told to no page.
+- **CodeQL's code scanning alerts of GitHub's record of a project and of a UI test (#4866, #4867, #4868, #4869, #4870,
+  #4871, #4872):** the file that keeps what a project was at its last commit or pull (SILINX_GIT=github) is checked to
+  be in its workspace's folder where the analysis sees it, as a project's folder is (the name was already checked
+  first: no name but a project's ever reached it); `test/ui/collab-live-via.test.js` escapes every special character
+  of the relay's host in its expected message, not only its dots.
+- **A follower's look at the owner's activity stops when the follower browses alone (#4865):** the look that puts the
+  owner's documents and view on a follower's page (web/js/collab-activity.js `followActivity`, from
+  web/js/collab-follow.js) went on to the end after awaiting a document's opening, even when the follower had gone
+  browsing alone meanwhile: the owner's document in front (their Design Summary) was then brought over the follower's
+  own. Since #4820 the look runs as soon as the project is open, so on a slow page it was still opening the owner's
+  Design Summary when the follower's own click came: the read-only notice UI test (#3181) found the Design Summary in
+  front instead of its text file. The look now checks after every opening that the follower still follows, and stops
+  there; the document opened stays behind. A UI test holds the follower's summary.js (CDP's Fetch) to make the race
+  certain, in both interfaces.
+- **A follower's page brings no Design Summary forward of its own (#4862):** the end of an implementation while
+  Implement is in front brings the Design Summary forward (#802), but not on a follower's page (web/js/tasks.js): its
+  marks are the owner's run's, its document in front the owner's; brought forward there, at the follower's next look it
+  was taken for the follower's own choice and the follower browsed alone, the owner's run lines no longer shown (a
+  slow page saw the run's running mark: the #4002 runs UI test under load).
+- **A steadier read-only notice test (#4860):** the UI test of a followed project's read-only notice (#3181) waits for the
+  notice and measures it in one step, so a toolbar drawn again in between (the follower's view following the owner's) no
+  longer fails it.
+- **Two tabs saving a file at once: no File Changed on Disk (#4859):** when the server told a tab of the other tab's write
+  while its own save was still on its way, the tab read the disk before its write landed and asked which version to
+  keep. It now waits for its own save, reads the disk again and finds its own text; the other tab is told of it and
+  reloads. The two-tabs UI test also waits until each tab has been told of the other's write before checking that
+  nothing more is told.
+- **Try it: a wire named by a bus's bits (#4858):** a net named A(7:4) or A(0) (#1688) had no value in a schematic's
+  Try it, drawn unlit and shown empty; it has those bits of its bus's signal (`core/schlive.js`).
+- **The Sharing menu's Show Sharing Link… (#4851):** the toolbar's Sharing menu (and the Collaboration tab's Sharing
+  box) had Copy View Link and Copy Editor Link, which copied a link without showing it. One command, Show Sharing Link…,
+  takes their place: a window like Add a User…'s, the role chosen (Viewer or Editor) and that role's link, the share's
+  own, already made, shown at once (no Generate) with Copy, Show / Hide and Show QR Code.
+- **A live share and a follow that survive their page reloaded (#4850):** at `pagehide` the owner's page keeps its
+  share in the tab's sessionStorage (core/collab-resume.js: the document's state and client id, the room, the links'
+  keys, the relay's resume secret or the hosted room's meeting key, the followers it has said), a follower's page its
+  follow (the link, its name, the document's state and client id, an editor's own changes); a reload takes it back and
+  resumes (web/js/collab-resume.js), nothing otherwise (a new tab, a tab restored, Stop Sharing, Stop Following).
+  core/collab-client.js: shareRoom's and followRoom's `resumed` and `snapshot()`, their awareness's clock past the old
+  one (who is in seen again at once), an editor's change that never left sent once, nothing twice; the hosted room
+  opened again with its id (core/collab-loop.js), its followers back through the meeting point. The relay
+  (core/collab-room.js, the Cloudflare relay's copy too) tells the followers the owner is away (`{ type: 'away',
+  grace }`, a follower joining meanwhile too) and back; the follower's toolbar says "Reconnecting to <owner>…", its
+  console one line, then that the owner is back. MCP: share_project's status gives `resumed` (its room resumed, times),
+  follow_project `ownerAway` and `ownerResumed`, each said in its text.
+- **The Sharing menu's Viewer | Editor (#4849):** for the owner, each follower's row of the toolbar's Sharing menu now has
+  the same Viewer | Editor selector as the Collaboration tab's Sharing box (#4646): the current role pressed, the other
+  one a click away, Editor disabled in a share with no editors' link. Both use one function (`web/js/collab-roles.js`),
+  through the same role change as the MCP's. The menu stays open when the selector is clicked; a change made in it shows
+  at once in the Collaboration tab, and one made in the tab shows at once in an open menu. The owner's own row keeps
+  "you".
+- **Check Syntax: a bus's I/O marker joined to its bits by name (#4846):** a marker (A, 8 bits) on a short wire of its
+  own, its bits named on other wires as ISE names them (A(7:4), A(3:0), #1688), was reported "I/O marker 'A' is not
+  connected" though its HDL connected them; it is connected to them, no warning.
+- **A wizard's parameter message in Portuguese whole again (#4829):** the FSM, ASM and Petri net wizards' "Number of
+  states (N): a whole number from 2 to 64." came out as "Número de states (N, even): a whole number…" since the Design
+  Summary's own "Number of …" pattern (#4518), tried before every other, took it; that pattern now takes no text with a
+  colon.
+- **A new project's Optimization Fast (#4828):** a new empty project's `silinx.json` stores Optimization Goal Speed at
+  Effort Normal (Optimization Fast), the same for the local server and the browser edition (`core/project-defaults.js`,
+  `NEW_IMPL`), and its `.xise` says so; Area (Goal Area, Effort High) was the default before. A project keeps the setting
+  it stores, a project from an example the example's (Fast), and a project that stores none (made before the
+  Optimization) reads as Fast, as before. The synthesis effort's default stays Normal.
+- **The compositions of the counters (#4811, part of #4806):** `core/symlib-cnt.js`.
+  - A counter is a register (FD, FDE, FDCE or FDRE, as its enable and its reset ask) and an incrementer, Q ← Q + 1.
+  - INC n is a chain of half adders (HA: XOR2, AND2), drawn as the adder's chain (`chain` of `core/symlib-add.js` now
+    takes another block), its carry in 1.
+  - A down counter's DEC n is a chain of half subtractors (HS: XOR2, INV, AND2).
+  - Pins per bit are taps of the count's bus.
+- **Tests:** every width, enable, reset and direction is proved equivalent to the symbol's own HDL by Yosys's
+  structural proof (sequential, VHDL and Verilog) and simulated clock edge by clock edge against a model. They are
+  views: the HDL generated for the symbol is unchanged.
+- **Opened from a Try it, a counter's composition shows the symbol's count:** its outputs are forced
+  (`core/symlib-live.js` `forceOutputs`), since its own register starts at 0, and the levels below take it.
+- **MCP:** `symbol_composition` takes a counter's count Q among its inputs.
+- **The compositions of the comparators (#4810, part of #4806):** `core/symlib-comp.js`, generated from the symbol's
+  parameters as the adders' are:
+  - EQ: COMP4 is four XNOR2 (each bit's A = B) and an AND4; a wider one is blocks of COMP4 (COMP16 of four, COMP64 of
+    four COMP16) and an AND of their EQ.
+  - LT: the borrow out of A − B, an SUB n's (#4807). Signed operands have their sign bits inverted first, through a bus
+    join: the order of two's complement numbers is the unsigned order with their sign bits flipped.
+  - The other results come from these two: NE = not EQ, GE = not LT, LE = LT or EQ, GT = not LE.
+  - Pins per bit are joined into buses by bus joins.
+- **Tests:** every operation, signed and not, is proved equivalent to the symbol's own HDL (Yosys, VHDL and Verilog)
+  and simulated against a two's complement model, every level drawn with no warnings. They are views: the HDL
+  generated for the symbol is unchanged.
+- **The compositions of the multiplexers, decoders, demultiplexers and encoders (#4809, part of #4806):**
+  `core/symlib-mux.js` and `core/symlib-enc.js`, generated from the symbols' parameters as the adders' are:
+  - M2_1 is an inverter, two AND and an OR; M4_1 is three M2_1 in a tree; M8_1 is two M4_1 and an M2_1; M16_1 is two
+    M8_1 and an M2_1. An enable is an AND at the output (M4_1E).
+  - D1_2E is an inverter and two AND; D(n) is a D1_2E on the top address bit enabling two D(n−1). With no enable, E
+    is at 1.
+  - A demultiplexer is the decoder of its select, enabled by its data (and its enable, through an AND).
+  - The encoders of four inputs are gates. A larger one is two halves: the upper half's V is the top address bit and
+    chooses the bits below it (an M2_1 each, priority) or ORs them (one-hot).
+  - A bus of w bits is w one-bit blocks sharing their selects, at most four to a drawing (M4_1E_X16: four M4_1E_X4),
+    since a gate has no one-bit input for a bus.
+  - The selects, the buses' bits and the pins per bit are joined by their wires' names.
+- **Tests:** every option is proved equivalent to the symbol's own HDL (Yosys, VHDL and Verilog) and simulated against
+  a model, every level drawn with no warnings and no wire crossing. They are views, as the adders' are: the HDL
+  generated for the symbols is unchanged.
+- **D1_2E** joins its enable to its second AND by name, M2_1 its select between the two AND.
+- **The MCP's `symbol_info` and `symbol_composition`** list and draw them as the adders'; Push into works on them in
+  the schematic editor, its values from a Try it.
+- **A palette symbol's composition opened (#4808, part of #4806):** `web/js/sch-composition.js`, from the Properties'
+  Push into, the right-click menu, Symbol Info's Composition section (its levels and Open the composition) and a
+  double-click during a Try it (two presses timed: the first one draws the sheet again). A read-only tab, "ADD8
+  (composition)", its notice at the end of the toolbar ("Read-only, how ADD8 is built: ADD8 › U1 (ADD4)"), ⬆ Up
+  (Backspace) and ⬇ Push into (Enter, a double-click), as the RTL Schematic's (#2667); its own Try it simulates the
+  level shown. Opened from a Try it, its values are the symbol's there: the levels above the one shown simulated with
+  them (`core/symlib-live.js`), followed as they change; that Try it ended, it keeps its own. The schematic editor's
+  `tryWith(inputs)` starts a Try it with given inputs.
+- **MCP:** `symbol_composition` takes a level by its path of instances (["U1", "U2"]) and the symbol's inputs, and
+  gives the level's values, as the tab shows them.
+- The derived signals in the waves and the RTL Schematic's links to the compositions follow (#4857).
+- **The palette's compositions, the adders and subtractors (#4807, part of #4806):** `core/symlib.js` gives a symbol's
+  composition, generated from its parameters: a small library of modules, each an ordinary schematic whose instances
+  are the modules of the level below (`core/symlib-draw.js`, `core/symlib-add.js`). ADD n is a ripple-carry chain of at
+  most four blocks (FA1 up to 4 bits, ADD4 up to 16, ADD16 up to 64…, the rest a smaller block: ADD10 is two ADD4 and an
+  ADD2), the carries running upwards (a block's carry in below it, its carry out above it), the operands' and the sum's
+  bits joined to each block by their wires' names (A(7:4)); no carry in: GND; no carry out: open; a pin per bit: the
+  bus form between bus joins and bus taps. SUB n = A + not B + not BI on an ADD n (no borrow in: 1). They are views: the
+  HDL generated for a symbol stays its own (#4806's measurements: composed arithmetic is slower with XST and with the
+  Silinx toolchain), each composition proved equivalent to it (Yosys, in VHDL and in Verilog) and simulated against a
+  model by `test/symlib.test.js`, every level drawn with no warnings, no clash and no wire crossing.
+- **MCP:** `symbol_info` lists a symbol's composition's levels (ADD8 = 2 × ADD4, …); `symbol_composition` returns a
+  level's drawing, as `read_file` returns a schematic, for an assistant to walk down them as a student will.
+- **Tests for the redaction of the owner's computer's names, and for a pull's merge through GitHub's API (#4777):**
+  `test/owner-secrets.test.js` checks a Windows computer's folders (drive letters, backslashes, the configuration inside
+  the home folder replaced as itself, a drive's root never) and a workspace and exchange folder outside the home folder
+  (`ownerSecrets` takes the system's path functions and its folders as options, the defaults as before);
+  `test/git-rest-merge.test.js` tests `core/git-rest-merge.js` on its own: the text files merged by their lines, a
+  conflict waiting for its choice, removed and binary files left, a file added on both sides, a drawing merged by its
+  objects and its HDL file made again, and a file renamed on GitHub or here and changed on the other side.
+- **The Spartan-6's own placer removed (#4776):** with Process Properties' Map (Spartan-6) set to Silinx, nextpnr places
+  the design as with its own Map; the pads, the global buffers and the JTAG's BSCANs are still fixed by Silinx's rules
+  first, with the same errors and warning, the ports without a LOC on bonded pads of their bank's VCCO (#4950). With
+  nextpnr's Map (the default) nextpnr places the ports without a LOC itself. The toolchain's package's changelog has
+  the details.
+- **The projects' listing, the watcher and the per-request reads without holding the server (#4775):** a project's
+  last change (the projects' list) and the watcher's look at an open project read its folders and stat its files a few
+  at a time (`server/concurrent.js`), not one after another; a project whose look is slow is looked at less often (its
+  looks four times their length apart at least, a quick one still every 500 ms); `config.json`'s settings read per
+  request (the relay's, a page's Content-Security-Policy, the MCP server's remotes, the ISE work folder) are read and
+  parsed once per change of the file; a cloned project's trust mark is read asynchronously.
+- **The FPGA view's model off the server's thread (#4774):** `GET /projects/:p/fpga-view` builds it in a worker thread
+  (`server/fpga-view.js`, `server/fpga-view-worker.js`): the routed design and the device's grid (the Silinx
+  toolchain's routing graph, ISE's `device.xdlrc`) are read and parsed there, the last two grids kept by their file
+  and time; the requests for the same model while it is built share one build, and the route's file times are read
+  asynchronously. An idle worker does not keep the server running.
+- **The live HDL check in a Web Worker, with kept parses (#4773):** the check of the file being edited
+  (`core/hdl-check.js`, shared by Check Syntax) runs in `web/js/hdl-check-worker.js` (embedded in the standalone
+  edition, as the toolchain's and the emulator's workers; in the page where no worker starts); `core/compile.js`
+  keeps there the last 512 files' parses (each compile given a copy of its own), by their path, text, included
+  texts and package types, so that a key typed parses its file only; the file's modules are elaborated once it reads without an error (Check Syntax elaborates
+  them still).
+- **Base64 and base64url, one copy (#4772):** core/base64.js (`toBase64`, `fromBase64`, `toBase64url`, `fromBase64url`,
+  by chunks of 32 KiB) replaces the copies of the shared project's modules (collab-crypto's `b64url`, collab-codes,
+  collab-editors, collab-meeting, collab-meet-relay, collab-resume's `toB64` / `fromB64`), the design link, the gist
+  link, GitHub's blobs (github-api's `fromBase64`) and Merge Contribution's upload (web/js/api.js); the old names are
+  still exported, with the same results; the Cloudflare relay's copy of the room's logic takes core/base64.js too
+  (scripts/sync-relay-cloudflare.mjs). Tests: base64 (against Node's Buffer on every padding, a chunk's edge and
+  1 MiB; the old names; no module writing a copy again).
+- **"Does this file define module X", one copy (#4772):** core/hdl-defines.js `definesUnit` (outside comments, a
+  declaration starting its line; VHDL's names in any letter case, Verilog's as written, `macromodule` too) for the
+  drawings' HDL files, the schematic's live simulation, the exported .xise project's top and the board's generics. The
+  .xise top no longer takes an entity named only in a comment (its architecture was then the wrong file's), and the
+  board's generics find a top declared as a `macromodule`.
+- **One RegExp escape (#4772):** `escRegExp` in core/escape.js replaces the copies of eight modules (the C test bench's
+  files, Find, the ISE schematic's blocks, the netlist's Verilog, a part's function, the .xise project, Vivado's
+  constraints, the CI's failure report); the copies left are listed in test/ident-escape.test.js, each with its reason.
+- **A new project's folder and adepttool's environment, one copy each (#4772):** server/new-project-dir.js makes a
+  cloned project in a folder of its own and moves it into place, for Open from GitHub Repository's two clones (git's and
+  GitHub's REST API); server/programmer.js `adepttoolEnv` is the programmer's and the logic analyzer's environment for
+  adepttool (the analyzer's now also leaves out the library folders that do not exist).
+- **The VHDL models' ports, one reader (#4772):** core/vhdl-models.js `vhdlModels` (an entity's generics, its ports and
+  their widths, the inputs with a default) for the routed design's readers of the Gowin (core/gowin-routed.js) and of the
+  7-series (core/xc7-routed.js, its `unisimModels` still exported), which each had their own; the same models read.
+  Tests: vhdl-models (the rules; the Gowin's copy, as it was, the reference on its models; the UNISIM models by name).
+- **A debounce and a download, one copy each (#4772):** web/js/debounce.js (a call a moment after the last of a burst,
+  with cancel and flush) for the three handwriting dialogs' reading, the composition tab's refresh and the schematic
+  view's refit; web/js/download.js (`downloadUrl`, `downloadBlob`) for Export Project, the print dialog's PNG, the
+  waveform's VCD, iMPACT's PROM backup and Implement's bitstream in the browser edition (the VCD's URL now revoked after
+  5 s, as the others').
+- **The pins a design's constraints take, read by the constraints' own readers (#4771):** the logic analyzer's check
+  that the board's clock pin is not a port of the design already (core/flow-ide.js captureUcf), the pins ISE's flow
+  assigns to ports with no LOC (server/ise.js, its awk) and the netlist fixtures' (scripts/gen-netlist-fixtures.mjs)
+  read the UCF or XDC with regular expressions of their own, which missed `NET "clk" IOSTANDARD = … | LOC = …`, a LOC in
+  lower case and XDC's `set_property -dict { PACKAGE_PIN … }` and `get_ports { clk }`, and took a commented-out LOC; they
+  now read it with the format's reader (`readConstraints`), through `pinsTaken` (core/auto-pins.js). ISE's awk reads the
+  pins taken from `usedpins.txt`, written beside `autopins.txt`.
+- **A KiCad part's pin named by any reserved word of VHDL or Verilog refused (#4770):** a part modelled by a module of
+  the project (Silinx.HDL) had its pin names checked against a short list of 21 words, so a pin named `process`, `type`,
+  `case`, `buffer`, `library` or `assign` made a circuit HDL that did not compile; they are now checked by `breaksHdl`
+  (core/reserved.js) in both languages, the part refused with "its pin's name is not an HDL name: give it one in
+  Silinx.Ports".
+- **One syntax check and one containment check for a project's paths (#4769):** a project-relative path's syntax is
+  `core/import-gate.js` `normalizePath`'s alone, with options (`names: false`: the syntax without a name's rules;
+  `backslashes: true`: a backslash read as '/'), behind a file operation's `filePath`, the browser store's `safePath` and a
+  design link's paths; whether a path is inside a folder, once its links are followed, is `server/paths.js`'s (`within`,
+  `realOf`), also for the MCP's project files and its exchange folder, which walked the path themselves. A path with a DEL
+  character, which the browser store took, is now refused as everywhere else.
+- **The HDL generators' shared primitives, the C / HLS family first (#4768):** core/hdl-emit.js holds a width's VHDL type
+  (`vhdlType`) and Verilog range (`vlogRange`), which 13 modules of the C / HLS generators (core/c-*.js, core/hls-*.js)
+  each wrote with a copy of their own (29 copies); the generated HDL is the same, byte for byte. The other generator
+  families follow, one at a time.
+- **The HDL generators' shared primitives, the drawings' family (#4768):** the ASM chart's and the state diagram's
+  generators (core/asm-gen.js, core/fsm-hdl.js), the Petri net's (core/petri.js), the exercise's grading package
+  (core/grade-package.js) and the module generator's Verilog ranges (core/modgen.js) use core/hdl-emit.js's `vhdlType`
+  and `vlogRange` instead of their own copies (11); the generated HDL is the same, byte for byte.
+- **The HDL generators' shared primitives, the last copies (#4768):** the module generator's VHDL type (core/modgen.js)
+  and the Petri net's ports (core/petri.js) use core/hdl-emit.js's `vhdlType` too; the generated HDL is the same, byte
+  for byte (their copies wrote `w > 1 ? … : 'std_logic'`, the same for every width, 1 to 256, a port can have).
+- **The HDL generators' shared primitives, the schematics' family (#4768):** the schematic's HDL (core/schdoc-hdl.js,
+  its symbols' registers in core/schdoc-hdl-symbol.js), the ISE library's flip-flops (core/isesch-hdl.js) and the logic
+  analyzer's capture bench (core/ila-capture.js) use core/hdl-emit.js's `vhdlType` and `vlogRange` instead of their own
+  copies (5; theirs wrote `w > 1 ? … : 'std_logic'`, the same text for every width of a design, 1 or more); the
+  generated HDL is the same, byte for byte.
+- **The page's state, the C sources' slice (#4767):** the C sources' black boxes and failures (what the console already
+  said of them too) are web/js/state-c.js's, which its modules (c-source.js, design.js, processes.js, related-docs.js,
+  app.js) read and write; web/js/app.js's `S` keeps those four fields as getters and setters onto it, and a project opened
+  or closed resets the failures through it, as before.
+- **The page's state declared (#4767, part 1):** web/js/app.js's `S` declares every field the page's modules use (52,
+  16 before), grouped by concern (the project and its files, the compiled design, the drawings' HDL, the selection and the
+  panes, the documents, the processes, the page's start), each with what it holds and who writes it; the fields first
+  set later start undefined, as before. test/web-state.test.js keeps it so.
+- **The page's state, the compiled design's slice (#4767):** the Design pane's view, the sources, the compiled library
+  and its modules, and the drawings' generated HDL and maps (their texts, modules, linked HDL files, symbols, circuits'
+  parts, failed drawings) are web/js/state-design.js's, which their 45 modules read and write; web/js/app.js's `S` keeps
+  those thirteen fields as getters and setters onto it, as before.
+- **The page's state, the documents' slice (#4767):** the open documents and the one in front are
+  web/js/state-docs.js's, which their 30 modules read and write; web/js/app.js's `S` keeps those two fields as getters
+  and setters onto it, as before.
+- **The page's state, the project's files slice (#4767):** the project folder's files, the files shown, the constraints
+  file's text, the repository's status and the queues of reloadProject and of the Design pane's commands are
+  web/js/state-files.js's, which their 31 modules read and write; web/js/app.js's `S` keeps those six fields as getters
+  and setters onto it, as before (the project itself stays `S.project`).
+- **The page's state, the selection and the panes' slice (#4767):** the Design pane's selection and its row, the
+  Processes panel's process and collapsed groups, the left pane's page, the trees as the user left them, the menus and
+  the FPGA view's syncing are web/js/state-panes.js's, which their modules read and write; web/js/app.js's `S` keeps those
+  nine fields as getters and setters onto it, as before.
+- **The page's state, the processes' slice, the last (#4767):** the processes' states, the Errors / Warnings tabs'
+  messages, a process running and the tabs' clearings are web/js/state-proc.js's, which their modules read and write;
+  web/js/app.js's `S` keeps those four fields as getters and setters onto it, as before, and now holds only the project,
+  its devices and its toolchain itself. The earlier slices' fields read in a spread (`...S.docs`, `...S.fileTree`,
+  `...S.modules` …: 29 of them, in 14 modules) are read through their slices too.
+- **The page's state, the implementation's run slice (#4767):** the job running, Stop pressed during it and the
+  synthesis's result kept for the next steps are web/js/state-run.js's, which its modules (implement.js, processes.js,
+  menus.js, link-hash.js, project.js, project-rename.js, project-watch.js) read and write; web/js/app.js's `S` keeps those
+  three fields as getters and setters onto it, as before.
+- **The page's state, the page's start slice (#4767):** a design link of the address opened, the address's links
+  watched and the start-up's checks written are web/js/state-start.js's, which app.js and link-hash.js write;
+  web/js/app.js's `S` keeps those three fields as getters and setters onto it (the UI tests wait for them there).
+- **The page's state, its first slice (#4767):** the drawings' HDL kept in step (what is out of step, stale or clashing,
+  and what was already said) is web/js/state-sync.js's, which its modules (drawings.js, design.js, processes.js, app.js)
+  read and write; web/js/app.js's `S` keeps those five fields as getters and setters onto it, and a project opened or
+  closed resets them through it, as before.
+- **The project operations' transforms in core, one for the server and the browser (#4766):** a new project's
+  silinx.json and its text (`newProjectJson`, `projectJsonText`, `DEFAULT_DEVICE`: core/project-defaults.js) and what a
+  file or a folder renamed or deleted does to it (`renameEntries`, `deleteEntries`: core/project-entries.js) are now
+  the local server's and the browser edition's stores' alike, where each had its own. Their differences are gone: a
+  source renamed to another HDL's name (`.vhd` to `.vh`) takes that language in the browser too, and the server reads
+  a GateMate's `.ccf` as a constraints file, as the browser did.
+- **web/js/app.js split (#4765):** the implemented design's documents (View Implemented Design (FPGA) and its selection
+  kept in step with the Design pane's, the Design Summary, I/O Pin Planning, iMPACT) moved as they were to
+  web/js/impl-views.js, still exported by app.js (998 -> 900 lines).
+- **web/js/i18n.js split under the 1000-line limit (#4765):** its general Portuguese dictionary moved as it was to
+  web/js/i18n-general.js (1000 -> 607 lines), the same strings, patterns and translations as before; and
+  test/code-size.test.js now holds every source file under 1000 lines, as CLAUDE.md says (it let exactly 1000 through).
+- **core/isesch.js split under the 1000-line limit (#4765):** its readers of ISE's schematic and symbol files (`parseXml`,
+  `parseIseSch`, `parseIseSym`, the text format of ISE 6) moved as they were to core/isesch-parse.js, still exported by
+  core/isesch.js (995 -> 793 lines); the same imports and exports as before on the repository's ISE files and schematics.
+- **core/logic.js split under the 1000-line limit (#4765):** its XOR / XNOR forms (`minimizeXor`, `exprCost`,
+  `MAX_XOR_INPUTS`) moved as they were to core/logic-xor.js, still exported by core/logic.js (1000 -> 817 lines); the
+  same results as before on the repository's truth tables and random columns.
+- **core/schdoc.js split under the 1000-line limit (#4765):** its HDL text helpers (names, constants, the token stream,
+  comments and indentation) and its IR expression printers moved as they were to core/schdoc-text.js, still exported by
+  core/schdoc.js (997 -> 710 lines); the same HDL and netlists as before on the repository's schematics.
+- **Side panels as the interface's rules say (#4764):** the sections of the Schematic editor's Properties (HDL kept
+  with the schematic, LUT function, Pins), the FPGA view's (Device, Modules, Selection, Nets) and I/O Pin Planning's
+  Board Resources groups are plain sections with their heading, no longer `<details>` that fold one by one; the FPGA
+  view's "Click a site on the chip…" placeholder and the Board Emulator's hint line ("Buttons: press and hold…", which the
+  buttons' tips already say) are gone.
+- **An exercise or a results file not opened in another project (#4764):** read while another project opened, it is
+  no longer opened in that one (#1231).
+- **The toolbar's steps without polling (#4764):** they followed the app through a refresh every second that wrote
+  their labels again (translated again each time in Portuguese); they now follow a click, a key, the focus, a document
+  in front, a project opened or closed and a process's state, and a label is written only when it changes.
+- **SSim's names drawn with the theme's colours (#4763):** their rows' lines, a divider's text, a twisty, a group's
+  count, a forced signal's F and a dragged row's line were colours written in the code (`#ececec`, `#15428b`, `#555`,
+  `#888`, `#c06000`, `#000`), light on the dark themes' dark background; they are now the theme's variables
+  (`--wave-row-line`, `--wave-divider-fg`, `--wave-twisty`, `--wave-count`, `--wave-forced`: web/css/theme.css, the ISE
+  style's dark theme, the Silinx interface's), with their paper colours in a print.
+- **The hex colours in web/js only go down (#4763):** `test/hex-colours.test.js` counts the quoted hex colour literals
+  of each file of web/js: no file may have more than its limit, a file not listed none, and a file with fewer has its
+  limit lowered (the ratchet kept tight).
+- **One dialog framework (#4762):** SSim's dialogs (Force Constant, Force Clock, Stimulus Timing, a stimulus' value),
+  the schematic editor's Symbol Info and the command palette had their own overlay, keys and focus rules; they are now
+  ui.js's `dialog()`, with its stack (the innermost alone answers Esc and Enter), its close-once guard (#490), its
+  role, name and focus (#4761). `dialog()` takes a host (the element it is put over: SSim's window, the editor), no
+  title bar (Symbol Info's own header), the overlay's own look (the palette's), a field to focus first
+  (`data-autofocus`) and a button that leaves it open (SSim's Apply); a button's validation that is not async closes it
+  at once. SSim's dialogs look like the app's (its own dialog styles removed) and no longer close on a press outside
+  them, as no other dialog of the app does.
+- **Accessibility of the menu bar, the menus, the dialogs, the document tabs, the Design tree and the messages
+  (#4761):** the menu bar is a `menubar` (its menus `menuitem`s, F10 or Alt alone takes it, ← → between its menus, Enter,
+  Space or ↓ opens one, Esc back where the focus was, and a command acts there: Edit ▸ Copy on the field); a menu is a
+  `menu` (its entries `menuitem`s or `menuitemcheckbox`es, ↑ ↓ Home End, → and ← into and out of a submenu, ↓ into a
+  context menu, Esc closes it). A dialog is a modal `dialog` named by its title; Tab and Shift+Tab stay in it, the app's
+  shortcuts do not reach the document behind it (Ctrl+P printed it), and the focus goes back where it was when it
+  closes. The document tabs are a `tablist` of `tab`s (`aria-selected`), the Design tree and the Libraries a `tree`
+  (`treeitem`s, `aria-expanded`, the selected row its `aria-activedescendant`); the console is a polite live `log`, the
+  toasts a live `status` (an error an `alert`), a toast kept while the pointer is over it or its button has the focus.
+- **Errors no longer dropped on the way (#4760):** a module's rename (Rename…, the MCP's rename_module) whose moves
+  failed said "Nothing was changed" even when moving the files back failed too: it now names the files left under their
+  new names (core/rename-module.js); Rename Project… whose undo failed threw only the first error, as if the project
+  were as it was: it now says what could not be put back, by the file system's code, not the server's paths
+  (server/projects.js, `RENAME_TESTING` failing at each step and its undo). Export Project… (and the MCP's
+  export_project) left out a listed file missing or a schematic not read without a word: each is a warning. git's answer past 16 MB was read as its first 16 MB: it is an
+  error now; and a failing `git diff` before a pull was read as no changes, the files a name clash's pull writes over
+  then not kept (#3524): it stops the pull (server/git.js).
+- **Live sharing's errors said, not lost (#4759):** a control message of the relay whose handling fails no longer
+  stops every later one (the client's chain went on rejected); the failure is said once in the console, as are a change
+  received that cannot be read and one that cannot be sent (`core/collab-client.js`). The owner's write of a drawing
+  merged with the others' changes that fails is said as an error (`web/js/collab-share.js`), not dropped. The local
+  server says a promise rejected that nothing handled on its console and goes on (`server/server.js`), rather than end
+  with it, as Node does by default, and every share with it.
+- **A share resumed says nothing of a follower that comes back late (#4759):** after the owner's page reloaded
+  (#4850), the owner's own view could change before a follower's presence came back. The follower was then said to
+  have left, and to join again once its presence came. Now the followers the share knew are kept, unsaid, for 30
+  seconds after the resume (`web/js/collab-share.js`). The UI test of the reload, which the related tests run, failed
+  on it under load.
+- **Project writes whole or not at all (#4758):** every write of a project's file is flushed to the disk before it is
+  renamed in (`writeAtomic`, and the description's write, fsync the temporary file), so a crash or a power cut leaves
+  the file before or the file after, never an empty or truncated one. The writes that went around it go through it
+  now: a git merge's drawings, texts and HDL, a GitHub-held project's files, the pre-merge backup of Merge
+  Contribution, an import's files, the files a pull put back, a new project's top, the constraints a board writes,
+  and the `silinx ucf` command (a project of the workspace's description changed under its lock, its other fields
+  kept). An import that fails halfway (a file that cannot be written, a full disk) removes the project it made, so it
+  can be done again (no longer a 409 on a half-built project). The workspace's `.trash` is emptied of what was
+  deleted more than 30 days ago (at the server's start and at each deletion; the browser edition's folder too), a
+  deleted project's `build/` is not kept, and the hidden folder a crashed Rename Project left goes into it.
+- **Merge Contribution and Undo Merge transactional (#4757):** a merge that stops halfway (a file that cannot be
+  written, a crash) no longer loses the project as it was before it: doing the merge again used to write the
+  half-merged project over that backup, and Undo Merge was then refused for good. Another merge is now refused until
+  Undo Merge puts the project back. An undo that stops halfway is done again until it ends, file by file, where it
+  used to be refused ("changed since the merge"). On the local server a merge and its undo hold the project's lock
+  from the first write to the last (another tab's, the MCP server's or another process's write waits for them; the
+  project's lock may be taken again by what runs under it, #4757), and a binary file of the project (an image, not
+  UTF-8 text) is left out of the merge, as a contribution's binary files are: it is never written back decoded as
+  text.
+- **Documents a newer Silinx saved (#4756):** `core/doc-format.js` knows each kind of drawing's format (schematic 7,
+  state diagram, ASM chart, truth table, Petri net and circuit 1) and silinx.json's (1). A drawing whose version is
+  greater opens read-only ("Read-only, saved by a newer Silinx" at the end of its toolbar), and the console's warning
+  says why; a project a newer Silinx saved is said when it opens. A write that would put a newer drawing back in an
+  older format is refused, with why, by the local server (a 409: the interface, the MCP server) and by the browser
+  edition's stores, so that nothing that newer Silinx added is dropped; the drawing written in its own format, or a
+  newer one, is written as before.
+- **Project folders (#4755):** a silinx.json starting with a byte order mark (UTF-8 with BOM, an editor's on Windows) is
+  read wherever a description is read (`core/project-json.js`: the server, an import, a clone, a merge, the
+  `silinx` command). One that is no description (not JSON, or not an object) lists its project as damaged, with why
+  (`damaged`: Open Project's row, the MCP's `list_projects`), its name still taken; opening it is a 422 that says why
+  and how to mend it, and the page's description is never written over it as a new project's. An import whose
+  silinx.json is no JSON warns that its settings were not restored. Delete Project takes the project's lock, and a
+  file written, renamed or deleted checks inside the lock that the project is still there: one after Delete Project or
+  Rename Project is a 404, no longer a folder made again. Rename Project takes its two names' locks in one order, so
+  two renames crossed (A to B, B to A, in two processes) no longer wait for each other until the lock's timeout.
+- **The HTTP API's names and a version header (#4754):** the routes of a project that took it in their body take it in
+  the address, as every other project's route, its lock with it: `POST /projects/:p/program`, `/projects/:p/prom`,
+  `/projects/:p/editor/open` (the older `/program`, `/prom`, `/editor/open` with `{ project }` kept). The imports are
+  `POST /import-zip?name=` and `/import-xise`, and an import takes the lock of the project it makes, never of a project
+  named `import-zip` (the older `/projects/import-zip` and `/projects/import-xise` kept). Merge Contribution… sends its
+  choices and label with the zip in a JSON body, not in a header (refused past 16 KB; the older form kept). `POST /gist`
+  takes `expiresDays` (`expires_days` kept). The page sends its version (`X-Silinx-Version`), and a server of another
+  version answers with its own, even with a refused token: the page says it in the console and offers a reload
+  (web/js/stale-page.js); a client that names no version is told none.
+- **The HTTP API's refusals, one envelope, checked bodies, no server paths (#4753):** every router answers a refused
+  request with `{ error, hint?, …details }` (server/http-errors.js: the server's routes, git's, the KiCad
+  libraries'), and a file system's own error is never sent with the server's paths (an internal error; the KiCad
+  routes' and PUT /toolchain's rewrapped errors by what failed and its code). `POST /projects/:p/implement` and
+  `POST /projects/:p/capture` check their body as the MCP's run_process and capture check their arguments, with the
+  same messages ("toolchain: one of silinx, open, ise, vivado"; an unknown field refused); a capture's timeout is at
+  most 600 s, in the MCP's capture too. `PUT /toolchain` refuses a setting it does not know rather than keep it in
+  config.json. `GET /projects/:p/bitinfo` says the bitstream's path in the project (`build/top.bit`), not the
+  server's. `GET /projects/:p/export.xise`, which writes nothing since #1432, no longer takes the project's lock.
+- The MCP server's protocol (#4752, server/mcp-protocol.js): the versions it speaks in one place, 2025-11-25 the newest;
+  JSON-RPC batches only in 2025-03-26 (the version that had them); nothing but ping before initialize; a message (a line
+  of stdin) never read whole past 32 MiB.
+- A renamed argument's old name (design_only, #4103) is still accepted and said deprecated, from one table for every
+  tool (server/mcp-aliases.js); the schemas list only the new names.
+- The argument check knows a string's minLength, maxLength and pattern; a project's name is at most 255 characters.
+- `tools/list` trimmed: its tools' and arguments' descriptions shortened, under a budget a test keeps (128 KiB; 700
+  characters a tool, 250 an argument).
+- The MCP server's new tools (#4751): `program_prom` (the Platform Flash PROM: program, verify, read a backup, erase,
+  reconfigure), `jtag_scan`, `bitstream_info` and `toolchain_info` (read only: ISE's mode, whether ISE and Vivado can run and
+  why; never a host, a user or a path). They go through the server's functions iMPACT's window calls
+  (server/impl-routes.js `startProm`, `startScan`, `bitInfo`), with the same checks.
+- Toolchain Settings has no tool that writes: this computer's settings are the user's, as trusting a project is (#2830).
+  core/mcp-parity.js lists every menu action with its MCP tools or the reason it has none, and a UI test walks the menus
+  in both interfaces (#4751).
+- core/tool-descriptors.js (moved from web/js/): the MCP server's `run_process` processes and the simulation models each
+  flow makes come from it, as the interface's; a Zynq the Silinx toolchain does not implement no longer claims its two
+  models (#4751).
+- New Source's text is made by one function, core/new-source-text.js, for the interface and `new_source` (#4751).
+- The editors (schematic, ASM chart, state diagram, truth table, Petri net, circuit) make their HDL again through
+  core/drawing-sync.js `syncDrawing`, the MCP server's, over the page's project store (web/js/page-store.js): one
+  implementation, one set of messages, a drawing in another language than its file's included (#4750).
+- `S.syncing`, a flag set and cleared across awaits that skipped a drawing's sync while it was set, is replaced by one
+  queue (`serialDrawings`) for what rewrites drawings or their HDL files: a drawing's sync, Rename, Convert to Schematic
+  (#4750).
+- **The console's entries made from its messages (#4749, step 3):** a console line's message holds the tool that
+  said it, its location (the project's file and line its text names, or its writer's own) and its action
+  (`core/message.js`: `lineMessage`), and its entry of the Errors / Warnings tabs is made from it (`entryOf`): the
+  console no longer reads the line's text again (`MESSAGE_LINE` read once, in core), and an entry's button is its
+  message's action, not a refusal read back from its text. SSim's and the Board Emulator's lines hold their messages
+  (their locations: the design's line that said them), which their copies in the console keep, each line of SSim's a
+  link.
+- **The console's runs (#4749, step 2):** `startRun({ process, source, of })` (`web/js/console.js`) writes a process's
+  header and returns its `log`, `line` and `end`: every line it writes carries its source, its run and its process,
+  whatever else writes meanwhile, so two processes at once no longer mix their lines under one filter; its header
+  written again drops its last run's entries. Check Syntax, Check Constraints, a drawing's Check, the simulations, the
+  C simulations and report, an exercise's tests, a lab's Check Syntax, Implement and its steps and the Silinx
+  synthesis write through runs; iMPACT's, Program's and the Board Emulator's lines state their source.
+- **The console's lines translated where they are drawn (#4749, step 5):** an application's line (`logError`,
+  `logWarning`, `logInfo`, a command's error, warning or information, `appLog`'s) keeps its English as its message's
+  text, what a shared project's followers and the MCP get, and is drawn translated, its `ERROR:` / `WARNING:` /
+  `INFO:` tag kept (`web/js/console.js`: `appText`, a writer's own `draw`); its entry of the Errors / Warnings tabs
+  is shown in the language too, its message English. A change of language draws every such line, and every line's
+  buttons, again from their English. A tool's output is never translated.
+- **The console's typed message, its first step (#4749):** `core/message.js` (`makeMessage`: severity, source, text,
+  location, action, process, run); `web/js/console.js` `log()` makes each line's message, its source decided there once
+  (`lineSource` of its process's header, a writer's own), the line's element holding it and the watchers getting it;
+  `web/js/messages.js` no longer reads the sources again from the lines' text (no global `cur`). The Errors / Warnings
+  tabs list the entries of the sources the filter shows (`shownSourcesNow`), a filter's change bringing no tab forward.
+  The runs a shared project's owner sends carry each line's source (`core/collab-runs.js`: `[text, class, source]`; the
+  MCP's runs Implementation's). The processes stating their messages themselves and the MCP's results as messages are
+  the next steps (the pull request's design).
+- **The MCP's results as messages (#4749, step 4):** check_syntax's, simulate's and run_process's results hold
+  `messages` beside their other fields, as does follow_project's `ownerActivity.runs`. Each message is
+  `{ text, severity, source, tool, location, action, process, run }` (`core/message.js`'s `messageData`: the action by
+  its label, the text in English), made as the interface's console makes it from the same line:
+  - check_syntax: each diagnostic, then the result;
+  - simulate: the design's messages with their file and line, then where it stopped;
+  - run_process: the errors' and warnings' lines, then the result;
+  - follow_project: each line of the owner's run, with the owner's source.
+- **Check Syntax's locations (#4749):** the interface's Check Syntax lines now give their diagnostic's location with its column (`diagLocation`), as
+  check_syntax does.
+- **The texts the i18n scan could not see (#4748):** `test/i18n-templates.test.js` reads the template literals of the
+  label forms (a label, a title, a toast, a console line, a dialog's message, an element's text) and the texts of an
+  element's `innerHTML`, each translated with sample values in its `${…}` (a conditional's own strings) or its real
+  text listed; about 60 of them were English in Portuguese, now patterns of `web/js/i18n-messages.js`, a message's own
+  part (an error's text) translated with it. `t()` before a canvas's `fillText` (SSim's Name / Value), in a schematic's
+  SVG title block, and around the browser's prompt of SSim's New Group and dividers.
+- **No modal box for a message (#4747, docs/UI-GUIDELINES.md):** `commandError` / `commandWarning` / `commandInfo`
+  (`web/js/console.js`) write `ERROR: <command>: <message>`, each line of a list its own, the command's name and the
+  message translated apart, its tab in front; every `alertDlg` of a command's failure or refusal uses them. `wizard()`'s
+  `finish` (Finish's last check: what the wizard makes, made) keeps its error in the wizard (the Petri net, circuit,
+  FSM, ASM, module, schematic, test bench, clocking and block memory wizards); the Test Bench Wizard's vectors' errors in
+  its page; Import Project's `validate`. The editors' messages through `message()`: the truth table's (its shape's and
+  expression's errors; its hint lines its table's and field's tips), Try it's (the toolbar says Stopped), Save PNG's, the
+  command palette's. I/O Pin Planning with pins left unassigned: a warning, not a "done" toast. "Cannot be shown as a
+  state diagram" as the MCP says it, on one line.
+- **The Errors / Warnings tabs' locations (#4746):** `core/message-location.js` reads a message's file and line
+  (`messageLocation`) and finds the project's file a tool named (`projectPath`: the same path, a path ending with it,
+  the only file of that name); the console's entries carry it (`located`), written once (its text's). A simulation's
+  messages come from the simulator (`simDiagnostics`, source `sim`, its document's run: run again, replaced; an entry
+  listed once, at most 200 a run), not from the console's copy of SSim's lines, which keeps their double-click to the
+  source in the message centre. `log(…, { goto })`: a drawing's Check's entry shows its item, its drawing brought to
+  the front. The MCP's `run_process` returns `locations` (its errors' and warnings' files and lines), and `simulate`'s
+  log entries their file and line.
+- **A key per editor (#4745, second part):** a follower's page makes a key of its own (ECDSA P-256) and never sends its
+  private half. An editor's link now carries an invitation key. With it, the page signs a request to be listed: a new
+  frame, `KIND.enrol`, which the room gives to the owner only, at an editor's rate and 1 KB at most
+  (`core/collab-room.js`). The owner lists the key at once, and the page sends its changes once listed (those made
+  before are kept and sent then). A request not signed with the room's invitation key is answered with "this editor
+  link is not this shared project's, or its owner renewed it: you follow it read only".
+- **Promote and demote:** promoting a viewer lists the key that viewer's page gives in its awareness, and no key is
+  sent to it. Demoting an editor takes its key out of the list and renews the invitation key; the other editors keep
+  their keys and are told nothing.
+- **Limits and reloads:** a room lists 32 editors at most (`MAX_EDITORS`); the 33rd is told it follows read only. A
+  page reloaded keeps its key (its record's `own`), as does a promoted viewer's editing.
+- **The list on Cloudflare:** the Cloudflare relay keeps the list in the Durable Object's storage, not in the owner's
+  socket's attachment (2 KB at most). The room's logic gives it to the platform (`collabRooms`'s `keepList`) and takes
+  it back when the object wakes, its events waiting for it (`blockConcurrencyWhile`). The list is removed when the room
+  ends. The test runtime of the Workers keeps an object's storage while it sleeps.
+- **Each key imported once:** the list is published again each time an editor is listed, so its keys are imported once
+  and kept (the last 512), not at every list.
+- **The Cloudflare relay:** its copy of the room's logic is synced, so a relay deployed before must be deployed again.
+- **The editors listed by the owner (#4745, first part):** a project shared with editors gets a key of the owner's
+  own (ECDSA P-256), and the owner signs with it a numbered list of the editors' public keys (`core/collab-editors.js`).
+  The list goes to the relay or host in a new control message, `{ type: 'editors', list }`, which it takes only past the
+  last one and only with the owner's signature (`core/collab-room.js`). It also goes into the project's document
+  (`meta.editorsList`), where every participant checks it against the owner's public key from the link. A link now
+  carries that key (`&owner=…`, viewers' links too, `core/collab-link.js`). An editor's change names its key by an
+  8-byte id, and passes only when that key is the last list's. Demoting an editor publishes a list without the old key
+  (it was `rekey`). The protocol's version is 5. The relay still takes the pages of version 4: a room their owner
+  opened works as before (one key for every editor), and a follower of version 4 joining a listed room is told to load
+  the page again. The Cloudflare relay's copy of the room's logic is synced (`scripts/sync-relay-cloudflare.mjs`, now
+  with `collab-editors.js`). The editors still share one key in this part; a key per editor, and removing one editor or
+  renewing the editor link without touching the others, follow.
+- **Renew Editor Link (#4745, third part):** the Sharing menu's new command, in a share whose owner lists its editors,
+  renews the editor link's invitation key and takes out of the list the editors whose pages are not in the project now
+  (`core/collab-client.js` `renew()`, `web/js/collab-share.js`). The editors in it keep their keys. The console says it
+  was renewed, and Show Sharing Link… shows the new link. A page opening the old link is told it follows read only.
+  The MCP server's `share_project` does the same with action `renew`, which gives the new link (#2674). The command is
+  in Portuguese too, and the user's guide says when to use it and that a Cloudflare relay of one's own must be updated
+  when the relay changes.
+- **A project's file checked once open, not only by its path (#4744):** reading a file (the file route, MCP's
+  `read_file` and the tools that read a project's text) and writing one (the file route, MCP's `write_file`) check that
+  the file opened is the one inside the project its path named, so a symbolic link changed by another process between
+  the check and the open no longer reaches a file outside it; a file is written through a new temporary file that is
+  never a link; a file replaced whole by another writer while it is read (its temporary file renamed over it) is
+  opened again and checked again, not refused (`server/paths.js` `openWithin`, `readWithin`, `createWithin`).
+- **The launcher's browser on Windows without `cmd /c start` (#4743):** the page that leads to the server's address is
+  opened through `rundll32 url.dll,FileProtocolHandler`, given as one argument, so no shell re-reads the characters of
+  its path.
+- **The follow dialog and a link's relay (#4742):** a link to follow may name a Cloudflare Worker's relay, which sees
+  the follower's IP address and name. Follow a Shared Project now marks a relay that is neither one of this Silinx's
+  nor the relay of this browser's settings as unknown, with Follow disabled until the follower confirms it (English
+  and Portuguese). The MCP's `follow_project` already follows through the user's own relays only. SECURITY.md says so.
+- **The local server's pages without `'unsafe-eval'` in their Content-Security-Policy (#4741):** the Board Emulator's
+  compiled engine is compiled and run in its worker only; the page checks the design (what cannot be compiled, its
+  warnings) without running any of its generated code (`CompiledBoard.checked`). The static editions keep
+  `'unsafe-eval'` for their workers, started from Blobs, which run under the page's policy; SECURITY.md says why, and
+  why their `connect-src` keeps `*.workers.dev`.
+- **`serve` on another address than loopback: HTTPS, or plain HTTP said explicitly (#4739):** without a certificate
+  (`--tls-cert <file.pem> --tls-key <file.pem>`, the server and its relay of shared projects then over HTTPS and WSS) or
+  `--insecure-http`, it does not start and says why; with `--insecure-http` its warning says the token crosses the
+  network unencrypted. SECURITY.md and docs/DEVELOPMENT.md say so.
+- **A request a page of the same site made (`Sec-Fetch-Site: same-site`, another port or subdomain) is refused as
+  another site's (#4739).**
+- **MCP server: the "untrusted content" label with a nonce, and on every tool that takes a project (#4738):** a result
+  that holds a project's or a remote's text ends with "[End of untrusted content <nonce> (…)]", its nonce random for
+  each call and in `structuredContent.untrusted` too, so a file cannot imitate it; look-alikes of the label in the
+  result's text and structured content are neutralised ("(quoted: …"). Every tool that takes a project is labelled by
+  default (simulate_drawing, the wave configurations, capture, the state diagrams', schematics' and circuits' tools…);
+  a result with Silinx's own text only opts out (`untrusted: false`: the guided labs of Silinx). SECURITY.md and the
+  MCP guide say so.
+- **The relay's key kept as the GitHub token (#4737):** the browser edition kept its Cloudflare relay (address and
+  key) in `localStorage` always, `file:` included, where every page opened from the disk reads it. It now follows the
+  GitHub sign-in's policy (#3530): Remember (the default) in `localStorage`, otherwise the tab's `sessionStorage`; at
+  `file:` the tab only, and a relay left in `localStorage` there is moved to the tab. SECURITY.md says so.
+- **Live sharing's relay against floods and replays (#4736):** an editor's edits are limited (50 a second after a burst
+  of 200, 64 waiting for their signature's check, 8 bad signatures; past any of them the connection is closed); a
+  follower's frames in a room without editors are dropped at once, the follower told once; each editor's session seals
+  its edits with IVs of its own (random, then a counter) and the relay or host forwards each once, so a frame replayed
+  by whoever saw it goes no further (older pages' frames still pass); the server's relay takes at most 256 connections
+  waiting for their first message; the Cloudflare relay opens a meeting point's object only for its host and peers.
+  The Cloudflare relay's copies of `core/` follow (`scripts/sync-relay-cloudflare.mjs`). SECURITY.md says so.
+- **Trust recorded outside the project (#4735):** a project was trusted unless its `silinx.json` said otherwise, so a
+  folder placed in the workspace outside Silinx's imports ran ISE and programmed the board with no prompt. Trust is now
+  a record in the configuration folder (`~/.silinx/trusted-projects.json`: the project's folder and id,
+  `server/trust-store.js`); a project without one is untrusted, its notice and refusals saying why (`core/trust.js`
+  `UNRECORDED`), nothing of it written into its `silinx.json`. New Project and the examples record the project; Trust
+  Project records it; Rename Project moves the record, Delete Project removes it; the MCP server's, an import's and a
+  clone's projects get none (no MCP tool trusts, #2830). The first run records the workspace's projects trusted until
+  then, once. The browser edition does the same for a folder on the disk (Open Workspace Folder…), its records in this
+  browser (`web/js/trust-records.js`).
+- **The MCP server: its requests in order by project, its progress (#4734):** `ping`, `initialize` and `tools/list` were
+  answered only after the calls before them, a `run_process` taking minutes; they are answered at once. The tools' calls
+  wait for the calls before them on the same project (a process and the read of its report never overlap), a call on no
+  project (`list_projects`, `new_project`…) and a batch for every call before them, and two projects' calls run together.
+  `run_process` sends `notifications/progress` (its log's lines: their count, the last one) when the request gives a
+  `_meta.progressToken`.
+- **Add / Remove from Project, a file written, the missing tops: one implementation (#4733):** `core/file-kinds.js`
+  (a file's language, a constraints file of every format, a test bench's role) and `core/project-entries.js` (Add to
+  Project, Remove from Project, a file written, the tops a removal leaves missing), used by the interface, the MCP
+  server, both projects' stores and the live share, which each had their own copy. Add to Project made only a `.ucf`
+  the constraints file; the MCP's `remove_from_project` reset an HLS project's top that the interface keeps (a C
+  source whose HDL cannot be made for now, #2995); the live share could not edit a `.pcf`, `.lpf`, `.cst` or `.ccf`;
+  the server's store did not count a `.ccf` as constraints; a module named in a comment no longer keeps a removed top.
+- **Set as Top: one rule (#4733):** any module of the view can be the top, even one with errors; a name no source of the
+  view declares is refused (`core/project-entries.js` `topRefusal`), by the interface and by the MCP's `set_top`, which
+  refused a module that did not elaborate (an HLS module whose HDL cannot be made for now among them).
+- **Constraints from the board and Check Constraints: one implementation (#4732):** `core/board-constraints.js`
+  (`ucfPort`, the board of a project, the constraints file from its pins) and `core/constraints-diagnostics.js` (Check
+  Constraints of a file in its format), used by the interface (Update Constraints, Check Constraints), the MCP server
+  (`check_constraints`) and the server's store (the constraints written on a board change, `set_top
+  update_constraints`), which matched the ports to the board by name only.
+- **Rename Module: one implementation (#4731):** `server/rename-module.js` moved to `core/rename-module.js`, over a
+  project store; the interface's Rename of a module calls it through its page store, as the MCP's `rename_module` does.
+  The interface made a renamed drawing's HDL again with the schematic's generator for anything not an ASM chart, a
+  truth table or a state diagram, its error swallowed (a Petri net, a circuit); the drawing's own kind makes it now
+  (core/drawing-sync.js), and its messages are in the console. Its files move all or nothing, as the MCP's.
+- **One classifier of a log's lines (#4730):** `core/log-severity.js` `severityOf(line)` is used by the console's
+  `logLine`, the processes' count of warnings (`web/js/implement.js`), the MCP's `run_process` (`processMessages`) and a
+  shared project's runs; the three regular expressions it replaces disagreed (start of line or anywhere, case or no
+  case), and none read `INTERNAL_ERROR:` (no word boundary after `_`). The console's message parser reads
+  `INTERNAL_ERROR` and `FATAL_ERROR` with their tool.
+- **The console's channels (#4729):** a line after a process's result ("Process … completed / failed / stopped", the
+  Board Emulator's line) is the application's until the next process's header, never the last process's; an unknown
+  process is the application's, not Implementation's; Try it and an exercise's Run Tests are Design's, Verify
+  Equivalence / Property / Assertions Simulation's; the application's lines are shown under every filter and task. Its
+  own messages say their source: `logError`, `logWarning`, `logInfo` and the new `appLog` (the Trust Project notice,
+  the changes made outside Silinx, opening a link, importing a project, the wizards' lines), Merge Contribution
+  through `collabLog` (Design's), the logic analyzer Implementation's; SSim's and the emulator's mirrored lines keep
+  their own source without changing the lines after them. `test/collab-log.test.js` finds the collaboration's modules
+  by the server calls they make too.
+- **The Errors / Warnings tabs' entries by run (#4728):** each entry the console collects carries the run that wrote
+  it (the process's header, `Started : "…" of …`), and the run's header, written again, first drops that run's
+  entries; an entry of no run said again replaces the same one (a refusal said twice: listed once). A run's result
+  (`Process "…" failed / stopped`) and `=== SILINX FAILED step` are no entries; Implement's job error is said once
+  (`jobLog`, its "Process failed: <error>" the entry); the elaboration errors given to the Errors tab are not listed again
+  from their console lines; the constraints' quiet check no longer lists an open drawing's problems twice; Stop,
+  "Stopping…" and Rename Project's refusal are information; "Schematic … generated with errors" is no entry.
+- **`PUT /api/projects/:p/file` refuses a body that is not the file's text (#4727):** a body with no content type,
+  `application/octet-stream`, or JSON without a string `text` answered `{ ok: true }` and emptied the file; it is now
+  a 400 ("text: the whole text of the file", as the MCP's `write_file`) and the file is kept. An empty text body
+  still writes an empty file.
+- **The project's lock across processes (#4726):** every read-modify-write of `silinx.json` (`updateProject`,
+  `writeProject`, a file written, renamed or deleted) runs under a lock file as well as the process's own queue, so
+  that the server, `silinx mcp` and the CLI take turns (`server/project-lock.js`). The locks are kept in the system's
+  temporary folder, one folder per workspace (never in the workspace: a repository, a synced folder); a lock whose
+  process is no longer running, or one not touched for 10 s, is taken over; one held for a minute gives a 503
+  "the project '…' is busy (another Silinx process holds it): try again".
+- **The project's description written over the revision the page read (#4726):** `GET /api/projects/:p` sends the
+  description's `ETag` (its file's text hashed); the page's `PUT` sends `If-Match`, and one changed meanwhile is
+  refused with a 412 that holds the current description. The page then merges its change into it, three ways (a
+  field, an object's key, a file by its path, an excluded file by its name; the page's wins where both changed one
+  thing: `core/project-desc-merge.js`), writes it again and keeps it as its own. A `PUT` without `If-Match` (the CLI,
+  an older page) writes as before; the browser edition is unchanged.
+- **The server's own writes known by path and by what it wrote (#4726):** the server records what it writes in a
+  project (a file, `silinx.json`, a rename, a deletion: `server/own-writes.js`, by the text's hash); while a page's
+  request (a save, Set Top, a rename, a deletion) or a run of the server's holds the project, a change that is not one
+  of these (the MCP server's, `silinx mcp`, another process; an editor's) is told to every page, the one that asked
+  too, and a run's build summary stays the run's. A request whose writes are not all recorded (a git pull, a merge,
+  an import) still takes every change made while it runs for its own.
+- **The browser's storage: one entry per project, nothing cached per tab (#4725):** every project was in one
+  localStorage entry that each tab cached and wrote whole, so a tab opened earlier wrote back its stale copy over the
+  other tab's new projects and edits, and a read that failed was taken as "no projects" and the next save wiped them.
+  Each project now has its own entry (`silinx.standalone.project:<name>`), read again before each change and written
+  whole; an entry that cannot be read is an error (not listed, its name kept, never written over); a write that fails
+  changes nothing. The entry of earlier versions is moved out project by project, each written before it leaves the
+  old entry; one that does not fit stays there and is read as before.
+- **The browser's snapshots within one budget, following their project (#4725):** the snapshots of the copies given
+  out (#4205) are kept within 1 M UTF-16 units for every project together (2 MB per project before), so that they
+  never take the projects' room; they move with a renamed project and go with a deleted one.
+- **A workspace folder's Rename Project keeps a complete copy whichever step fails (#4724):** the old folder's
+  silinx.json is removed first, so that the old project stays whole until it is gone; when the rest of the old folder
+  is not removed, the new, complete copy is kept and the error names what is left (it used to remove the new copy,
+  leaving a half-deleted old one). A change of case alone removes its hidden copy only once the project is whole
+  again under one of its names, and keeps and names it otherwise. Renaming a folder of a project removes a partial
+  copy when the copy fails, and keeps the complete copy when the old folder is not removed.
+- **The C interpreter's modules import alone (#4723):** `core/c-interp-lib.js` (imported by itself, as the MCP's HLS
+  tools and the C source view do) threw "Cannot access 'exprMethods' before initialization": c-interp-task imported
+  c-check for `constValue`, closing the cycle c-interp → c-check → c-const-init → c-interp, whose methods were mixed in
+  at load before c-interp-expr had run. `constValue` has a module of its own (`core/c-const-value.js`, c-check
+  exporting it as before); a new test imports every module of `core/` alone, each in a fresh worker.
+- **`saveAll()` reports the documents that failed to save (#4722):** it ignored `flushDoc`'s failure, so the 32
+  actions that save the open documents first carried on with the file on disk. It now returns false and logs
+  `ERROR: <documents> could not be saved: stopped, so as not to use the older file on disk`, and each of those actions
+  stops (a process's status failed); Open in VS Code no longer swallows the failure, and a failed save of the
+  simulation's dropped stimuli is said in the console instead of ignored.
+- **A failed download of an ssh build's results fails the job (#4721):** `runSsh` (ISE, Vivado and the device report
+  over ssh) logged a warning and returned the remote flow's exit code 0 when copying the results back failed, so the
+  local `build/` kept the earlier run's `.bit` and reports as this run's. The job now fails with
+  `ERROR: downloading results from the ssh host failed (exit code N): the flow ran there, but its results are not here`;
+  a flow that failed itself keeps its own exit code, the download's failure a warning.
+- **Co-design's AVR node (#4698, roadmap #4695):** `core/system-sim-avr.js`, the co-simulation scheduler's adapter of
+  an Arduino Uno or Nano's ATmega328P at 16 MHz run by avr8js (MIT, a new dependency: NOTICE and
+  THIRD-PARTY-NOTICES), its firmware a given Intel `.hex` or `.elf` (`core/avr-firmware.js`, no compiler). Its pins are
+  the board's (D0..D13, A0..A5), each an input and an output of the node; its timers run; its USART is pins: the bytes
+  the program sends become D1's frames at its baud (from UBRR), and D0's frames are sampled at the USART's settings back
+  into bytes (a wrong baud gives garbage, as on a real board). A firmware that is not a program, a broken record or a
+  program too big for the flash stops the node with its error; a framing error and a byte not read are warnings. The
+  browser's bundle of avr8js comes with the System's simulation view (#4701).
+- **Co-design's System document and its check (#4697, roadmap #4695):** `core/system-doc.js` reads and writes a
+  co-design project's System (`<name>.sys.json`, version 1): its FPGA nodes (a module of the project, its board and
+  its ports' pins), microcontroller nodes (an Arduino Uno or Nano, its firmware) and serial terminals, their UART and
+  GPIO interfaces and the links between them. `core/system-check.js` checks it: the nodes' ids, kinds, boards, modules
+  and firmware; the interfaces' baud, frame, pins and directions (an FPGA's TX that is an input of its module: TX and
+  RX crossed); the baud and the frame equal at both ends of a UART; a wire driven twice, a pin used by two links, an
+  FPGA pin not on its board; warnings for a non-standard baud, a wire nothing drives, a 5 V output on a 3.3 V FPGA input
+  and a node that joins nothing. The MCP server's `check_system` runs it with the project's modules (elaborated) and
+  files. docs/CODESIGN.md and docs/PROJECT.md say co-design is a project kind (#5041), its System the top, its FPGA
+  nodes modules of the project; New Project's co-design choice stays disabled until phase 1 is usable.
+- **The Zynq-7000's JTAG chain (#4683, #4679):** in cascade, TDI first, the ARM DAP (the processing system's debug port: IR
+  of 4 bits, IDCODE 0x4BA00477) then the PL's TAP (UG585). The chain's IDCODEs know the DAP, the XC7Z010's and the
+  XC7Z020's (`core/adept.js`), so the browser edition's FT2232H programming (`core/ftdi-jtag.js`) finds both and configures
+  the PL as an Artix-7, the DAP in BYPASS throughout. The Zybo Z7's and the Arty Z7's `jtagChain` list both (the Program view: the ARM DAP
+  in bypass, the FPGA selected). On the local server openFPGALoader picks the chain's one FPGA itself (its index 0, from
+  TDI, is the DAP): no `--index-chain` for a Zynq's `.bit`. The test board's simulator has the DAP before the PL. The
+  position the Program view sends to the other tools, an older mismatch, is #4940.
+- **The Arty Z7 board (#4682, #4679):** the Digilent Arty Z7-20 (XC7Z020) and Z7-10 (XC7Z010), both CLG400, their pins from
+  Digilent's master XDC (Rev. B, the commit the other boards' are from): the 125 MHz clock, 4 LEDs, the RGB LEDs LD4 and
+  LD5, 2 switches, 4 buttons, the Pmods JA and JB and the shield header's IO0..IO13 (the Z7-20's other shield pins, on its
+  bank 13, left out), as `core/boards-vivado.js`'s Zybo Z7: its programmable logic only, the USB-UART and the QSPI flash the
+  processing system's. The examples' ports the board lacks go to its Pmods and its shield header (#3709). Every example
+  builds on both variants through the Silinx toolchain (`test/open-flow-arty-z7-server.test.js`, its post-place & route
+  models `test/arty-z7-routed.test.js`): eight meet 125 MHz with no warning, pong, stopwatch and micro80 reach 101–109 MHz
+  on nextpnr's estimate and warn of it (#4877). Among Vivado's boards too (`VIVADO_TARGETS`; its expected warnings and DRC
+  findings the Zybo Z7's, not yet run on a Vivado). Each board pin checked against the part's package in Project X-Ray's
+  bit database (an IOB of a 3.3 V bank). The Zynq boards' tests share `test/zynq-examples-lib.mjs`.
+- **The examples on the Zybo Z7 through the Silinx toolchain (#4681, #4679):** every example, gates … micro80, built for the
+  Zybo Z7-20 (XC7Z020) and the Z7-10 (XC7Z010) and checked as on the Artix-7's boards: its `.bit` the part's (its ID code),
+  its frames Project X-Ray's `fasm2frames`', the round trip clean, its pins the XDC's, its LUTs, registers and frequency held
+  to a table (`ZYNQ_TARGETS`, `test/open-flow-zynq-server.test.js`), and its post-place & route model simulated against
+  its test bench (`test/zynq-routed.test.js`). Eight meet the board's 125 MHz with no warning; pong, stopwatch and micro80
+  reach 97–113 MHz on nextpnr's estimate (Vivado meets 125 MHz on them) and warn of it (#4877), and the Z7-20's stopwatch
+  warns of a hold violation on its laps RAM (#4878). The 7-series' examples' tests shared by the two boards' files
+  (`test/xc7-examples-lib.mjs`).
+- **The Zynq-7000's programmable logic in the Silinx toolchain (#4680, #4679):** the XC7Z010 and the XC7Z020 (CLG400) are
+  implemented by the 7-series' back end (Yosys, nextpnr-himbaechel's xilinx, Silinx's bitstream) as the Artix-7 is:
+  Project X-Ray's bit databases of the `xc7z010clg400-1` and the `xc7z020clg400-1` (its `zynq7`), nextpnr's chip
+  databases of the xc7z010 and the xc7z020 (`@silinx/nextpnr-himbaechel-xc7` 0.4.0, pmnmalo/nextpnr-spartan#55 and #56). AMD
+  Vivado stays the default of the local server, the Silinx toolchain on trial (the project's synthesis tool Silinx);
+  the browser edition's flow is the Silinx toolchain's. The other Zynq-7000 parts (the XC7Z007S, XC7Z012S, XC7Z014S,
+  XC7Z015, XC7Z030) stay Vivado's alone. The logic analyzer's BSCAN on the Zynq's own tile. Its processing system is
+  not set up yet (#4686).
+
 ## 15.29.0
 
 Live sharing grows up: Share Project… offers three ways side by side (a copy, live peer to peer, live through a
