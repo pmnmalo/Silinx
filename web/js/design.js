@@ -33,6 +33,7 @@ import { renderFlowFiles } from './tasks-flow-files.js';
 import { compositionOf, compositionRows } from './design-comp.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
+import { panes } from './state-panes.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -196,7 +197,7 @@ export function renderHierarchy() {
   }
   host.append(tree);
   // restore selection (a test bench's: the Test page's tree, #1016)
-  const key = S.selKey;
+  const key = panes.selKey;
   const row = key && host.querySelector(`[data-key="${CSS.escape(key)}"]`);
   if (row) markSelRow(row);
   else {
@@ -253,7 +254,7 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
   // items under it)
   const li = h('li', { role: 'treeitem', id: `tree-item-${++treeIds}`, 'aria-selected': 'false' });
   // what the user collapsed / expanded is remembered across redraws
-  if (key && S.treeOpen.has(key)) open = S.treeOpen.get(key);
+  if (key && panes.treeOpen.has(key)) open = panes.treeOpen.get(key);
   const tw = h('span', { class: 'twisty', 'aria-hidden': 'true' }, open ? '▾' : '▸');
   const views = badges.map(b => {
     const el = h('button', { type: 'button', class: `badge${b.base ? ' base' : ''}${b.warn ? ' warn' : ''}`, tabindex: '-1', title: b.title }, b.text);
@@ -277,7 +278,7 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
     e.stopPropagation();
     ul.hidden = !ul.hidden;
     tw.textContent = ul.hidden ? '▸' : '▾';
-    if (key) S.treeOpen.set(key, !ul.hidden);
+    if (key) panes.treeOpen.set(key, !ul.hidden);
   });
   tw.addEventListener('dblclick', e => e.stopPropagation());
   row.addEventListener('click', () => selectRow(row, key, onSelect));
@@ -289,7 +290,7 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
 let treeIds = 0;
 function selectRow(row, key, onSelect) {
   markSelRow(row);
-  if (row.closest('#hier')) S.selKey = key;
+  if (row.closest('#hier')) panes.selKey = key;
   onSelect?.();
 }
 function markSelRow(row) {
@@ -327,7 +328,7 @@ function treeKeys(e) {
 }
 
 export function select(sel) {
-  S.sel = sel;
+  panes.sel = sel;
   renderProcesses();
   syncFpgaView(sel);
 }

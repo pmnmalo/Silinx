@@ -20,6 +20,7 @@ import { followRuns, openReport, runsPublisher } from './collab-runs.js';
 import { followSim, simNow } from './collab-sim.js';
 import { emuNow, followEmu, watchBoards } from './collab-emu.js';
 import { followTry, tryNow } from './collab-try.js';
+import { panes } from './state-panes.js';
 
 /** The owner's page: its activity sent (each channel only when it changed: core/collab-client.js publish), by
  *  publish() in its sharing's tracking; stop() at its end. */
@@ -32,7 +33,7 @@ export function ownerActivity(session) {
       runs.publish();   // (its reports before its view: a report open there is known when the view comes)
       try {
         session.publish('ui', encodeUi(currentViewState(), layoutNow()));
-        session.publish('design', designActivity(S.selKey, S.treeOpen));
+        session.publish('design', designActivity(panes.selKey, panes.treeOpen));
         session.publish('sim', simNow());
         session.publish('emu', emuNow());
         session.publish('try', tryNow());   // (its Try it, #4244)
@@ -78,7 +79,7 @@ export async function followActivity(st, get, live = () => true) {
 
 async function applyUi(st, { view: v, layout }, get, live) {
   if (v.view && v.view !== S.view) setView(v.view);
-  if (v.page && v.page !== S.leftPage) showLeftPage(v.page);
+  if (v.page && v.page !== panes.leftPage) showLeftPage(v.page);
   const have = new Set(S.docs.map(viewKeyOf));
   for (const id of v.open) {
     if (!have.has(id) && (await openReport(id, get) || await reopenDoc(id))) st.opened.add(id);
@@ -97,9 +98,9 @@ async function applyUi(st, { view: v, layout }, get, live) {
 }
 
 function applyDesign(d) {
-  for (const [k, on] of d.open) S.treeOpen.set(k, on);
+  for (const [k, on] of d.open) panes.treeOpen.set(k, on);
   if (!S.project) return;
-  S.selKey = d.sel;
+  panes.selKey = d.sel;
   renderHierarchy();
   const row = d.sel && document.querySelector(`#hier [data-key="${CSS.escape(d.sel)}"]`);
   if (row) row.dispatchEvent(new MouseEvent('click'));   // (its selection: its Processes; not the follower's own click)

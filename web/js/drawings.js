@@ -33,6 +33,7 @@ export { openCircuitSchematic, openFsmSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { syncState } from './state-sync.js';
+import { panes } from './state-panes.js';
 export { openPetriFsm };
 // a project followed (#3181): its drawings read only, the follower's notice at the end of their toolbar; but those an
 // editor's link edits live (#3183, `path`: collab-drawing.js binds them)
@@ -819,7 +820,7 @@ export async function setViewAsTop(path) {
   const r = viewHdl(path, S.viewTexts?.[path] ?? await api.readFile(S.project.name, path), { linked: hdlInProject });
   commandError('Set as Top Module', r?.errors?.length ? [`${path.split('/').pop()} cannot be the top yet:`, ...r.errors.slice(0, 8)] : `${path.split('/').pop()} defines no module that can be the top.`);
 }
-export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn', 'circ'].includes(S.sel?.type) ? S.sel.file : null);
+export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn', 'circ'].includes(panes.sel?.type) ? panes.sel.file : null);
 // the module a drawing is (its HDL file's, or its own while it has none): Set or Unset as Top Module (#1220)
 export const drawnTop = path => S.modules.find(m => m.file === path && m.kind !== 'package')?.name || topOfView(path);
 export const topOfView = path => { const gen = S.schOwners?.[path] || path; return S.modules.find(m => m.file === gen && m.kind !== 'package')?.name || null; };
