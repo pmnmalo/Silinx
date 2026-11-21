@@ -23,6 +23,7 @@ import { reopenWaiting, forgetWaiting } from './storage-late.js';
 import { afterOpening } from './prefetch-schedule.js';
 import { resetSync } from './state-sync.js';
 import { cState, resetC } from './state-c.js';
+import { runState } from './state-run.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -39,7 +40,7 @@ function resetProjectState() {
   renderProcesses();   // (not the last project's processes and states, until a state of this one is restored: #1162)
 }
 function blockedByRun(what) {
-  if (!S.busy && !S.currentJob) return false;
+  if (!S.busy && !runState.currentJob) return false;
   commandError(what, 'An implementation is running: stop it (or wait for it to finish) first.');
   return true;
 }

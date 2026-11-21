@@ -50,6 +50,7 @@ import { following, followNotice, editsHere } from './collab-state.js';
 import { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView } from './impl-views.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
+import { runState } from './state-run.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -100,9 +101,10 @@ export const S = {
   // the processes and their results
   status: {}, diags: [], busy: false,
   diagsCleared: 0,            // how many times the Errors / Warnings tabs were cleared (a project opened or closed)
-  currentJob: undefined,      // the implementation's job running (implement.js)
-  stopRequested: undefined,   // Stop pressed during it (implement.js)
-  synthDone: undefined,       // the synthesis's result kept for the next steps (processes.js)
+  // the implementation's run: web/js/state-run.js's slice (#4767), its fields here as getters and setters onto it
+  get currentJob() { return runState.currentJob; }, set currentJob(v) { runState.currentJob = v; },
+  get stopRequested() { return runState.stopRequested; }, set stopRequested(v) { runState.stopRequested = v; },
+  get synthDone() { return runState.synthDone; }, set synthDone(v) { runState.synthDone = v; },
   // the page's start
   linkOpened: undefined,      // a design link in the address opened (link-hash.js)
   linksWatched: undefined,    // the address's links watched (the UI tests wait for it, #3331)

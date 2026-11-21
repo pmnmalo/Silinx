@@ -124,7 +124,7 @@ test('#405 app.js split: a module\'s top-level constants use nothing imported fr
 
 test('#405 implement.js: the implementation processes, Check Constraints and Stop left app.js', () => {
   const code = read('implement.js');
-  for (const s of ['=== SILINX STEP', 'pin location(s) chosen by the tools', 'api.cancelJob(S.currentJob)'])
+  for (const s of ['=== SILINX STEP', 'pin location(s) chosen by the tools', 'api.cancelJob(runState.currentJob)'])
     assert.ok(code.includes(s) && !app.includes(s), s);
   // the processes panel's runners (processes.js since the fifth part) still reach them
   for (const name of ['runImpl', 'synthOpen', 'checkUcfFile', 'stopProcesses']) assert.match(read('processes.js'), new RegExp(`\\b${name}\\(`), name);

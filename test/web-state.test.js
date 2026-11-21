@@ -87,3 +87,30 @@ test('the C sources\' slice (state-c.js): S\'s fields are its own, both ways; a 
   const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(hls|bbUndeclared|cFailed|cFailedSaid)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
+
+test('the implementation\'s run slice (state-run.js): S\'s fields are its own, both ways', async () => {
+  const { runState } = await import('../web/js/state-run.js');
+  assert.deepEqual(Object.keys(runState), ['currentJob', 'stopRequested', 'synthDone']);
+  assert.ok(Object.values(runState).every(v => v === undefined), 'undefined until the first run');
+  assert.throws(() => { runState.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of Object.keys(runState)) assert.ok(block.includes(`get ${k}() { return runState.${k}; }, set ${k}(v) { runState.${k} = v; }`), k);
+  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(currentJob|stopRequested|synthDone)\b/.test(read(f)));
+  assert.deepEqual(through, []);
+});
+
+test('S\'s getters and setters reach their slice\'s fields, as the UI tests and window.Silinx read them', async () => {
+  // (S as app.js declares it, its slices' modules for the getters' names: app.js itself needs a page)
+  const { runState } = await import('../web/js/state-run.js');
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const start = app.indexOf('export const S = {'), end = app.indexOf('\n};', start);
+  const S = new Function('runState', 'cState', 'syncState', `return ${app.slice(start + 'export const S = '.length, end + 2)};`)(runState, cState, syncState);
+  for (const [slice, k] of [[runState, 'currentJob'], [runState, 'synthDone'], [cState, 'cFailed'], [syncState, 'staleHdl']]) {
+    const v = { k };
+    S[k] = v;
+    assert.equal(slice[k], v, `S.${k} written: the slice's`);
+    slice[k] = null;
+    assert.equal(S[k], null, `the slice's read through S.${k}`);
+  }
+});

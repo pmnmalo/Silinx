@@ -22,6 +22,7 @@ import { inView, saveProjectJson, setTop } from './design.js';
 import { OPEN_SYNTH, SYNTH_OPEN } from './tool-descriptors.js';
 import { jobLog } from './job-log.js';
 import { downloadUrl } from './download.js';
+import { runState } from './state-run.js';
 
 // Live per-step status from run.sh's "=== SILINX STEP <step> ===" markers and ISE WARNING/ERROR lines.
 const STEP_PROC = { synth: 'synth', translate: 'translate', map: 'map', par: 'par', trce: 'par', bitgen: 'bitgen', prombit: 'bitgen',
@@ -269,7 +270,7 @@ async function runImplInner(mod, steps, opts, pjName) {
   let synthFp = null, synthUpToDate = false;
   if (openMode() && steps.includes('synth')) {
     try { synthFp = synthFingerprint(await api.sources(S.project.name)); } catch { /* run it */ }
-    if (synthFp && steps.includes('translate') && !steps.includes('postsynth') && S.synthDone?.fingerprint === synthFp) {
+    if (synthFp && steps.includes('translate') && !steps.includes('postsynth') && runState.synthDone?.fingerprint === synthFp) {
       steps = steps.filter(st => st !== 'synth');
       synthUpToDate = true;
     }
@@ -295,16 +296,16 @@ async function runImplInner(mod, steps, opts, pjName) {
       R.log(`Xilinx ISE toolchain not available (${tc.ise.mode} mode): ${tc.ise.reason}`, 'warn');
       R.log('The build directory and run.sh are still generated so they can be run on a machine with ISE 14.7. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
     }
-    if (synthUpToDate) { S.status.synth = S.synthDone.status; renderProcesses(); }
+    if (synthUpToDate) { S.status.synth = runState.synthDone.status; renderProcesses(); }
     const { job } = await api.implement(S.project.name, { steps, generateOnly: !ran, ...(synthUpToDate && { synthUpToDate }) });
-    S.currentJob = job;
-    S.stopRequested = false;
+    runState.currentJob = job;
+    runState.stopRequested = false;
     renderProcesses();
     // (the job's error said once, #4597, #4728: "Process failed: <error>" says it, its one entry in the Errors tab)
     const jl = jobLog(track.line);
     const res = await followJob(job, jl.line);
     jl.end(res);
-    const stopped = S.stopRequested;
+    const stopped = runState.stopRequested;
     track.end(res.status === 'ok');
     if (stopped) {
       // stopped by the user: the interrupted step and the ones not reached are left unmarked
@@ -317,8 +318,8 @@ async function runImplInner(mod, steps, opts, pjName) {
     }
     if (S.project?.name !== pjName) { R.log(`Implementation of '${pjName}' finished (another project is open now).`, 'info'); return res.status === 'ok'; }
     // the synthesis this run made: kept as up to date when it ended ok (#280)
-    if (synthFp && ['ok', 'warn'].includes(track.result.synth)) S.synthDone = { fingerprint: synthFp, status: track.result.synth };
-    else if (track.result.synth === 'err') S.synthDone = null;
+    if (synthFp && ['ok', 'warn'].includes(track.result.synth)) runState.synthDone = { fingerprint: synthFp, status: track.result.synth };
+    else if (track.result.synth === 'err') runState.synthDone = null;
     if (ran) { await applyReportWarnings(track); await saveImplStatus(); }
     if (res.status === 'ok' && ran) {
       R.log(`\nProcess "${procName}" completed successfully${track.warnings ? ` with ${track.warnings} warning(s)` : ''}`, 'ok');
@@ -346,7 +347,7 @@ async function runImplInner(mod, steps, opts, pjName) {
     // processes that never got to run in this execution must not keep the "running" spinner
     for (const id of IMPL_IDS) if (S.status[id] === 'running') S.status[id] = null;
     S.busy = false;
-    S.currentJob = null;
+    runState.currentJob = null;
     status('Ready');
     renderProcesses();
   }
@@ -463,8 +464,8 @@ export async function showTextDoc(title, text) {
 
 // Stop the running implementation (kills the ISE tool / container run.sh via the job manager).
 export async function stopProcesses() {
-  if (!S.currentJob) { logInfo('No process is running'); return; }
-  S.stopRequested = true;
+  if (!runState.currentJob) { logInfo('No process is running'); return; }
+  runState.stopRequested = true;
   log('Stopping…', 'info');
-  try { await api.cancelJob(S.currentJob); } catch (e) { log(`ERROR: cannot stop the process: ${e.message}`, 'err'); }
+  try { await api.cancelJob(runState.currentJob); } catch (e) { log(`ERROR: cannot stop the process: ${e.message}`, 'err'); }
 }
