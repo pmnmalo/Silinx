@@ -1,7 +1,8 @@
 // UI: a drawing's HDL made again as its editor saves it (#4750), through core/drawing-sync.js syncDrawing, the MCP's: a
 // state diagram's, an ASM chart's and a truth table's errors said in the console in the words of the MCP's write_file on
 // a twin project (the ASM chart's were said nowhere, the others in words of their own), once, and on its HDL editor's
-// banner; fixed, its HDL the twin's again, nothing stale. A drawing saved while a Rename runs gets its HDL made after it
+// banner and in the Warnings tab; fixed, its HDL the twin's again, nothing stale, the warning out of the Warnings tab (its
+// Console line kept, #5008), broken again listed again. A drawing saved while a Rename runs gets its HDL made after it
 // (S.syncing, a flag, skipped its sync).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,6 +25,8 @@ const mcp = async (name, args) => {
   return r;
 };
 const warnings = async (page) => (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)\b/.test(l));
+// the Warnings tab's entries
+const listed = (page) => page.eval(() => [...document.querySelectorAll('#console-warnings .diag')].map((r) => r.textContent));
 const pause = (page, ms) => page.eval((t) => new Promise((r) => setTimeout(r, t)), ms);
 
 // the drawing open in its editor saved with the model `m` (as an edit of it would)
@@ -73,6 +76,10 @@ for (const k of KINDS) {
     const why = said[0].slice(`WARNING: ${k.hdl} not updated: ${k.path} has errors: `.length);
     await page.waitConsole(/^WARNING: /m);
     assert.deepEqual(await warnings(page), said);
+    // (in the Warnings tab too, until it is fixed, #5008)
+    const entry = `WARNING:Silinx - ${said[0].slice('WARNING: '.length)}`;
+    await page.waitFor((e) => [...document.querySelectorAll('#console-warnings .diag')].some((r) => r.textContent === e), [entry], { what: 'the Warnings tab' });
+    assert.deepEqual(await listed(page), [entry]);
     assert.equal(await readWs(env, name, k.hdl), hdl, 'its HDL left as it was');
     const st = await page.eval((h) => ({ stale: window.Silinx.staleHdl?.[h], why: window.Silinx.outOfSync?.[h] }), k.hdl);
     assert.deepEqual(st, { stale: { from: k.path, why: `it has errors: ${why}` }, why: `the ${k.what} has errors: ${why}` });
@@ -91,6 +98,14 @@ for (const k of KINDS) {
     await mcp('write_file', { project: twin, path: k.path, text: JSON.stringify(good, null, 2) });
     assert.equal(await readWs(env, name, k.hdl), await readWs(env, twin, k.hdl));
     assert.deepEqual(await warnings(page), said);
+    // (no longer in the Warnings tab: its HDL is up to date, the Console's line kept, #5008)
+    await page.waitFor(() => !document.querySelectorAll('#console-warnings .diag').length, [], { what: 'the Warnings tab empty' });
+    assert.deepEqual(await listed(page), []);
+    // broken again: listed again, once
+    await saveAs(page, k.kind, k.path, bad);
+    await page.waitFor((e) => [...document.querySelectorAll('#console-warnings .diag')].some((r) => r.textContent === e), [entry], { what: 'listed again' });
+    assert.deepEqual(await listed(page), [entry]);
+    assert.deepEqual(await warnings(page), [...said, ...said]);
   });
 }
 
