@@ -71,3 +71,19 @@ test('the drawings\' HDL slice (state-sync.js): S\'s fields are its own, both wa
     .filter(f => /(?<![\w.$])S\.(outOfSync|staleHdl|staleSeen|hdlClash|hdlClashWarned)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
+
+test('the C sources\' slice (state-c.js): S\'s fields are its own, both ways; a project opened resets its failures', async () => {
+  const { cState, resetC } = await import('../web/js/state-c.js');
+  assert.deepEqual(Object.keys(cState), ['hls', 'bbUndeclared', 'cFailed', 'cFailedSaid']);
+  assert.ok(Object.values(cState).every(v => v === undefined), 'undefined until a project opens');
+  assert.throws(() => { cState.other = 1; }, TypeError, 'its fields only');
+  cState.hls = { models: 1 };
+  resetC();
+  assert.deepEqual(cState.cFailed, {});
+  assert.ok(cState.cFailedSaid instanceof Map);
+  assert.deepEqual(cState.hls, { models: 1 }, 'its black boxes kept: read again as the project opens');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of Object.keys(cState)) assert.ok(block.includes(`get ${k}() { return cState.${k}; }, set ${k}(v) { cState.${k} = v; }`), k);
+  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(hls|bbUndeclared|cFailed|cFailedSaid)\b/.test(read(f)));
+  assert.deepEqual(through, []);
+});

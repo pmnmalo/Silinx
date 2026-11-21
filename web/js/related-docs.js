@@ -9,6 +9,7 @@ import { S, closeDoc, findDoc, openDoc, openFile } from './app.js';
 import { api } from './api.js';
 import { log } from './console.js';
 import { getNotation } from './notation.js';
+import { cState } from './state-c.js';
 
 const base = (p) => p.split('/').pop();
 // a drawing's model: its open editor's (saved or not), else the project's file
@@ -76,7 +77,7 @@ export async function openCReportDoc(path) {
   const d0 = findDoc(`file:${path}`);
   const text = d0?.editor ? d0.editor.getValue() : await api.readFile(S.project.name, path);
   const lang = S.project?.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl', clock = hlsClock();
-  const r = cToHdl(text, { file: path, lang, clock, family: hlsFamily(), mults: hlsMults(), ...(S.hls || {}) });
+  const r = cToHdl(text, { file: path, lang, clock, family: hlsFamily(), mults: hlsMults(), ...(cState.hls || {}) });
   const errors = r.diagnostics.filter((x) => x.severity === 'error');
   if (!r.ok) { log(`ERROR:SilinxC - "${path}" ${errors.map((x) => `line ${x.line}: ${x.message}`).join('; ') || 'cannot be synthesized'}`, 'err'); return null; }
   const { lines, warnings } = cReportLines(r, { path, lang, clock });

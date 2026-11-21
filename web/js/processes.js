@@ -27,6 +27,7 @@ import { checkLabel, designOnly, shownDiag } from './design-only.js';
 import { failedModule, withDrawingErrors } from '/core/drawing-diags.js';
 import { hierarchyDiags } from '/core/top-hierarchy.js';
 import { syncState } from './state-sync.js';
+import { cState } from './state-c.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -315,7 +316,7 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   const cErrs = failedCDiags();
   // (a drawing whose module cannot be made, #3934: its errors on it, the design needing it; its module, the top, then not
   // elaborated either)
-  const cTop = Object.values(S.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase()) || failedModule(S.failedDrawings, mod);
+  const cTop = Object.values(cState.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase()) || failedModule(S.failedDrawings, mod);
   const design = cTop ? null : elaborate(lib, mod);
   // (an HDL file its drawing could not generate again, #303: an error of the file, the drawing's errors in it)
   const stale = srcs.filter(s => syncState.staleHdl?.[s.path]).map(s => {
@@ -326,7 +327,7 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   // (+ the modules named with a reserved word, #679)
   // (a design project's: its drawings named, #3891)
   const all = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), S.failedDrawings, { top: mod, design: designOnly() });   // + design checks (core/lint.js)
-  const owners = Object.entries(S.cFailed || {}).map(([file, c]) => ({ file, module: c.module }));
+  const owners = Object.entries(cState.cFailed || {}).map(([file, c]) => ({ file, module: c.module }));
   const diags = (hierarchy ? hierarchyDiags(all, lib, mod, owners) : all).map(shownDiag);
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
@@ -384,7 +385,7 @@ async function cDiagnostics(path, info) {
   const r = checkC(text, path);
   if (r.top) info.push(`Top function: ${r.top}`);
   // (the descriptions of the RTL blackboxes it calls too, as its synthesis checks them, #2995: in their own files)
-  const bb = r.ok && S.hls ? blackboxChecks(r, S.hls) : [];
+  const bb = r.ok && cState.hls ? blackboxChecks(r, cState.hls) : [];
   return [...r.diagnostics.map(d => ({ ...d, file: path, tool: 'SilinxC' })), ...bb.map(d => ({ ...d, tool: 'SilinxC' }))];
 }
 

@@ -8,6 +8,7 @@ import { log, showConsolePage, startRun } from './console.js';
 import { showCommandLines } from './messages.js';
 import { cReportLines, hlsClockOf, hlsFamilyOf, hlsMultsOf } from '/core/c-report.js';
 import { blackboxModels, undeclaredBlackboxes } from '/core/c-blackbox.js';
+import { cState } from './state-c.js';
 
 export const isC = (p) => /\.(c|cpp|cc|cxx)$/i.test(p || '');
 // (its badge: C or C++, #1590)
@@ -47,7 +48,7 @@ export async function openCAsm(path) {
   const old = findDoc(id);
   if (old) await closeDoc(old);
   const { cAsm } = await import('/core/c-asm.js');
-  const r = cAsm(await text(path), { file: path, lang: hdlLang(), clock: hlsClock(), family: hlsFamily(), mults: hlsMults(), ...(S.hls || {}) });
+  const r = cAsm(await text(path), { file: path, lang: hdlLang(), clock: hlsClock(), family: hlsFamily(), mults: hlsMults(), ...(cState.hls || {}) });
   if (!r.ok) { log(`ERROR:SilinxC - "${path}" ${r.diagnostics.filter((d) => d.severity === 'error').map((d) => `line ${d.line}: ${d.message}`).join('; ')}`, 'err'); return null; }
   const { mountAsmEditor } = await import('./asm-editor.js');
   const name = `${r.model.name}.asm`;
@@ -75,19 +76,19 @@ export function cBadges(file, lang, context) {
   ];
 }
 
-/** The C sources whose HDL cannot be made (#2995: a C error, a blackbox refused): S.cFailed[path] = { module, diagnostics }
+/** The C sources whose HDL cannot be made (#2995: a C error, a blackbox refused): cState.cFailed[path] = { module, diagnostics }
  *  (failed: [[path, viewHdl's result]] of compileProject), each said in the Console once for its errors; their Design rows
  *  marked (web/js/design.js), their errors Check Syntax's. A blackbox's C model is not a module (#2854): not one.
  *  sources: the project's C sources, { path: text }. */
 export function noteFailedC(failed, sources = {}) {
-  const models = blackboxModels(S.hls);
+  const models = blackboxModels(cState.hls);
   // (a blackbox no C source declares: a warning of its description, Check Syntax's, #3022)
-  S.bbUndeclared = undeclaredBlackboxes(S.hls, sources);
-  S.cFailed = {};
-  for (const [f, r] of failed) if (r?.errors?.length && !models.has(f)) S.cFailed[f] = { module: r.module || null, diagnostics: r.diagnostics || [] };
-  const said = (S.cFailedSaid ||= new Map());
-  for (const f of [...said.keys()]) if (!S.cFailed[f]) said.delete(f);
-  for (const [f, c] of Object.entries(S.cFailed)) {
+  cState.bbUndeclared = undeclaredBlackboxes(cState.hls, sources);
+  cState.cFailed = {};
+  for (const [f, r] of failed) if (r?.errors?.length && !models.has(f)) cState.cFailed[f] = { module: r.module || null, diagnostics: r.diagnostics || [] };
+  const said = (cState.cFailedSaid ||= new Map());
+  for (const f of [...said.keys()]) if (!cState.cFailed[f]) said.delete(f);
+  for (const [f, c] of Object.entries(cState.cFailed)) {
     const key = c.diagnostics.map((d) => `${d.file}:${d.line}:${d.message}`).join('\n');
     if (said.get(f) === key) continue;
     said.set(f, key);
@@ -97,7 +98,7 @@ export function noteFailedC(failed, sources = {}) {
 }
 /** The errors of the C sources whose HDL cannot be made, and the blackboxes no C source declares (#3022), as Check
  *  Syntax's diagnostics. */
-export const failedCDiags = () => [...Object.values(S.cFailed || {}).flatMap((c) => c.diagnostics), ...(S.bbUndeclared || [])].map((d) => ({ ...d, tool: 'SilinxC' }));
+export const failedCDiags = () => [...Object.values(cState.cFailed || {}).flatMap((c) => c.diagnostics), ...(cState.bbUndeclared || [])].map((d) => ({ ...d, tool: 'SilinxC' }));
 
 // ------------------------------------------------------------------ C simulation and C/RTL co-simulation (#1528)
 const text = async (path) => { const d = findDoc(`file:${path}`); if (d?.editor) return d.editor.getValue(); return (await import('./api.js')).api.readFile(S.project.name, path); };
@@ -117,7 +118,7 @@ async function runCSimulation(path) {
   showConsolePage('console');
   showCommandLines('sim');   // (in the Edit task too, #2262)
   const src = await text(path);
-  const r = simulateC(src, { file: path, files: await tbFiles(src), ...(S.hls || {}) });
+  const r = simulateC(src, { file: path, files: await tbFiles(src), ...(cState.hls || {}) });
   if (r.output) for (const l of r.output.replace(/\n$/, '').split('\n')) R.log(l);
   // (the files it wrote: in memory, the project's left as they are)
   const wrote = Object.keys(r.files || {});
@@ -141,7 +142,7 @@ async function runCosimulation(path) {
   showConsolePage('console');
   showCommandLines('sim');
   const src = await text(path);
-  const r = cosimulate(src, { file: path, lang, files: await tbFiles(src), clock: hlsClock(), family: hlsFamily(), mults: hlsMults(), ...(S.hls || {}) });
+  const r = cosimulate(src, { file: path, lang, files: await tbFiles(src), clock: hlsClock(), family: hlsFamily(), mults: hlsMults(), ...(cState.hls || {}) });
   for (const e of r.errors) R.log(`ERROR:SilinxC - "${path}" ${e}`, 'err');
   if (!r.ok || r.errors.length) { R.log('\nProcess "C/RTL Co-simulation" failed', 'err', { diag: false }); return false; }
   R.log(`C simulation: ${r.calls} call(s) of '${r.gen.top}' replayed on its ${lang === 'vhdl' ? 'VHDL' : 'Verilog'}.`);
@@ -181,7 +182,7 @@ async function runCReport(path) {
   showConsolePage('console');
   showCommandLines('impl');
   const clock = hlsClock();
-  const r = cToHdl(await text(path), { file: path, lang, clock, family: hlsFamily(), mults: hlsMults(), ...(S.hls || {}) });
+  const r = cToHdl(await text(path), { file: path, lang, clock, family: hlsFamily(), mults: hlsMults(), ...(cState.hls || {}) });
   for (const d of r.diagnostics) R.log(`${d.severity === 'error' ? 'ERROR' : 'WARNING'}:SilinxC - "${path}" line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn');
   if (!r.ok) { R.log('\nProcess "View C Synthesis Report" failed', 'err', { diag: false }); return false; }
   // (its lines and its warnings: core/c-report.js, #2674)
