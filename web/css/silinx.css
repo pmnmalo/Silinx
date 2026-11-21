@@ -334,6 +334,9 @@ html[data-ui="silinx"] .wiz-side .step { color: var(--m-muted); opacity: 1; }
 html[data-ui="silinx"] .wiz-side .step.cur { color: var(--m-accent); }
 html[data-ui="silinx"] .wiz-main h3 { color: var(--m-fg); font-size: 15px; font-weight: 650; }
 html[data-ui="silinx"] .wiz-main .hint { color: var(--m-muted); }
+html[data-ui="silinx"] .kind-card { border: 1px solid var(--m-border); border-radius: var(--m-radius); background: var(--m-surface); }
+html[data-ui="silinx"] .kind-card:has(input:checked) { background: var(--m-accent-soft); border-color: var(--m-accent); box-shadow: none; }
+html[data-ui="silinx"] .kind-about, html[data-ui="silinx"] .kind-not-yet { color: var(--m-muted); }
 html[data-ui="silinx"] .src-types { border: 1px solid var(--m-border); border-radius: var(--m-radius); background: var(--m-surface); padding: 4px; }
 html[data-ui="silinx"] .src-types .st { border-radius: 6px; padding: 5px 8px; }
 html[data-ui="silinx"] .src-types .st.sel { background: var(--m-accent-soft); color: var(--m-fg); }

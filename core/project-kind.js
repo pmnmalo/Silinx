@@ -9,6 +9,18 @@ export const DESIGN_KIND = 'design';
 /** The New Project and Design Properties choice. */
 export const DESIGN_ONLY_LABEL = 'Design and simulation only (no FPGA)';
 
+/** A co-design project's kind (roadmap #4695): FPGA and microcontroller nodes; none can be made yet. */
+export const CODESIGN_KIND = 'codesign';
+/** Why a co-design project cannot be made yet (New Project's card, the MCP server's new_project, #5041). */
+export const CODESIGN_NOT_YET = 'Not available yet: a co-design project needs the System document and its editor, still being built.';
+/** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (the MCP server's
+ *  new_project describes its kind with the same words). */
+export const PROJECT_KINDS = [
+  { id: DESIGN_KIND, name: 'No FPGA', about: 'Digital logic for the introductory courses: schematics, truth tables, state machines, circuits on a breadboard, drawn and simulated. It shows no HDL, no board and no FPGA flow.' },
+  { id: 'fpga', name: 'With an FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.' },
+  { id: CODESIGN_KIND, name: 'Co-design', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.' },
+];
+
 /** Whether a project (its silinx.json) is a design and simulation project. */
 export const isDesignOnly = pj => pj?.kind === DESIGN_KIND;
 

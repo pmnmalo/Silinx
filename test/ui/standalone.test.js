@@ -123,6 +123,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   served.length = 0;
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   // where the project goes: this browser's storage, not the full application's workspace folder (#125)
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main .hint:last-child').textContent), /^Projects are kept in this browser's storage \(/);
   // the templates: the examples, then the test designs (#1746), embedded too
@@ -230,6 +231,7 @@ uiTest('browser edition (the site over HTTP): Generate Programming File runs the
   await page.eval(() => { window.goatcounter = { count: (e) => (window.__gc ||= []).push(e.path) }; });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Web');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -406,6 +408,7 @@ const fileMenu = async (page) => {
 const newProject = async (page, name, template) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.fill('.dlg-overlay .wiz-main select', template, { index: 0 });
   await page.dialogButton('Next >');
@@ -424,6 +427,7 @@ uiTest('browser edition: Stop during Generate Programming File stops the flow, a
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Stop');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -457,6 +461,7 @@ uiTest('browser edition: a simulation model stays generated after another run of
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Models');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -494,6 +499,7 @@ uiTest('standalone edition (file://): the Board Emulator runs blinky on the comp
   assert.equal(await page.eval(() => window.SILINX_ASSET_LAYOUT.site), siteUrl, 'the assets from the site the build named');
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'SoloEmu');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -534,6 +540,7 @@ uiTest('#3530 regression, standalone edition (file://): Sign in with GitHub… k
   await boot();
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'SoloGit');
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.dialogButton('Next >');
@@ -589,6 +596,7 @@ uiTest('standalone edition (file://) in a user\'s browser (Chrome without --allo
   assert.equal(await page.eval(() => window.SILINX_ASSET_LAYOUT.site), siteUrl, 'the assets from the site the build named');
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'SoloPlain');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -622,6 +630,7 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'WebShare');
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.dialogButton('Next >');
@@ -677,6 +686,7 @@ uiTest('browser edition: the Board Emulator runs blinky on the compiled engine, 
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'WebEmu');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -700,6 +710,7 @@ uiTest('#280 browser edition: Generate Programming File again, the design unchan
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Again');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -765,6 +776,7 @@ uiTest('#967 #4628 browser edition: what Implement needs is downloaded once the 
   servedAt.clear();
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Kept');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -886,6 +898,7 @@ uiTest('#1051 the site installable as an app: its manifest, icons and service wo
   await page.eval(() => { window.SILINX_PREPARE_DELAY = 0; });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Away');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -928,6 +941,7 @@ uiTest('#4694 browser edition: a reload reopens the project where it was at once
   await page.eval(async () => { await caches.delete('silinx-assets'); });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Back');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -983,6 +997,7 @@ uiTest('browser edition: File ▸ Open Workspace Folder… keeps the projects in
   // the New Project wizard names the folder (#125)
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   assert.deepEqual(await page.eval(() => [document.querySelector('.dlg-overlay .wiz-main .form-grid input[disabled]').value, document.querySelector('.dlg-overlay .wiz-main .hint:last-child').textContent]),
     ['Silinx-projects/…', 'Projects are kept in the folder Silinx-projects on the disk (File ▸ Open Workspace Folder… to change it).']);
   await page.dialogButton('Cancel');
@@ -1208,6 +1223,7 @@ async function newSiteProject(page, name, example) {
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.fill('.dlg-overlay .wiz-main select', example, { index: 0 });
   await page.dialogButton('Next >');
@@ -1310,6 +1326,7 @@ uiTest('the site\'s development edition (dev/): says so, and keeps its projects 
   await page.waitConsole(/Development edition \(built from main, not a release\): its projects are kept apart from the stable edition's, http:\/\/127\.0\.0\.1:\d+\/ /);
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'DevOnly');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -1952,6 +1969,7 @@ uiTest('#2136 browser edition: the nextpnr engine places and routes in the brows
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'WebNextpnr');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -1981,6 +1999,7 @@ uiTest('#2288 browser edition: the nextpnr engine places and routes a design of 
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'WebNextpnrS6');
   await page.fill('.dlg-overlay .wiz-main select', 'traffic', { index: 0 });
   await page.dialogButton('Next >');

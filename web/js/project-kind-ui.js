@@ -1,6 +1,6 @@
 // Silinx - the project's kind in New Project and Design Properties (#3780, core/project-kind.js): an FPGA project (a
 // board and a device), or a design and simulation project (no board, no device, no flow, no HDL shown). New Project
-// asks it first on its Project Settings page; Design Properties as its Project Kind field too (#4103), both ways: FPGA
+// asks it on its first page (web/js/project-kind-step.js, #5041); Design Properties as its Project Kind field too (#4103), both ways: FPGA
 // design (a board, or None Specified and a device) makes a design project an FPGA project, the reverse is refused while
 // the project has HDL or C sources of its own (the console says which).
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, toDesignProject } from '/core/project-kind.js';

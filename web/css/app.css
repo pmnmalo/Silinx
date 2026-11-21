@@ -229,6 +229,15 @@ html[data-starting] #app { visibility: hidden; }   /* (at start-up, the last pro
    the status line's Storage): in red, both interfaces and themes, over their own colours (#4957) */
 html:root .dlg-overlay .wiz-main .hint.storage-browser, html:root #start-page .start-storage .entry.storage-browser,
 html:root #statusbar #status-storage.storage-browser { color: var(--error-fg); }
+/* New Project's first page, the project's kind (#5041): one card per kind, co-design's not chosen yet */
+.kind-cards { display: flex; flex-direction: column; gap: 8px; }
+.kind-card { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid #abadb3; background: #fff; cursor: pointer; }
+.kind-card:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.kind-card input { margin-top: 2px; }
+.kind-card.off { cursor: default; opacity: .7; }
+.kind-name { font-weight: 600; margin-bottom: 2px; }
+.kind-about { color: #555; }
+.kind-not-yet { color: #555; font-style: italic; margin-top: 4px; }
 .src-types { border: 1px solid #abadb3; background: #fff; height: 260px; overflow: auto; }
 .src-types .st { display: flex; align-items: center; gap: 6px; padding: 3px 6px; }
 .src-types .st:hover { background: var(--hover); }

@@ -24,6 +24,7 @@ const setLanguage = (page, l) => page.eval(async (x) => (await import('/js/i18n.
 async function newFromTestDesign(page, name, { check, pt = false } = {}) {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill(SEL, name, { index: 0 });
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   if (check) await check();

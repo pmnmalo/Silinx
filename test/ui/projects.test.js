@@ -19,6 +19,7 @@ const E = () => env;
 async function newProject(page, { name, template = 'empty', board = '', family, part, lang, top }) {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   if (template !== 'empty') await page.fill('.dlg-overlay .wiz-main select', template, { index: 0 });
   await page.dialogButton('Next >');
@@ -89,6 +90,7 @@ uiTest('New Project wizard: the synthesis tool, Silinx by default (no ISE); Desi
   const procs = () => page.eval(() => [...document.querySelectorAll('#procs .row .lbl')].map((e) => e.textContent));
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'SynthTool');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -369,6 +371,7 @@ uiTest('open, switch and close projects (Open Project dialog, Recent Projects, S
   await page.waitNoDialog();
   await page.eval(() => document.querySelector('#hier [data-act=new-project]').click());
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.key('Escape');
   await page.waitNoDialog();
   assert.equal(await page.eval(() => window.Silinx.docs.length), 0);
@@ -698,6 +701,7 @@ uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on to
   await page.waitNoDialog();
   await page.click('#start-page .start-btns .btn', { text: 'New Project…' });
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   // a project open: the exports enabled, downloading its zips
@@ -1081,6 +1085,7 @@ uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth 
   // an example: the type stays HDL (the example has its own sources); the types (#4105), the circuit's named as New Source's (#4061)
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Top_ex');
   await page.dialogButton('Next >');

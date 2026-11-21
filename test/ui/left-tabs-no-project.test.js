@@ -93,6 +93,7 @@ uiTest('#4257 #4322 #4619 the browser edition: the Start and Collaboration tabs 
     await startShown(page);
     await page.menu('File', 'New Project…');
     await page.waitDialog('New Project Wizard');
+    await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
     await page.fill('.dlg-overlay .wiz-main input[type=text]', 'WebTabs');
     await page.dialogButton('Next >');
     await page.dialogButton('Next >');

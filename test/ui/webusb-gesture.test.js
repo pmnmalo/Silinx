@@ -33,6 +33,7 @@ async function boot(page) {
 async function newProject(page, name, template, board) {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.fill('.dlg-overlay .wiz-main select', template, { index: 0 });
   await page.dialogButton('Next >');

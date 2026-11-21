@@ -134,6 +134,8 @@ for (const theme of ['dark', 'light']) {
     }
     await page.menu('File', 'New Project…');
     await page.waitDialog('New Project Wizard');
+    await check('New Project\'s kind');   // (its first page, #5041)
+    await page.dialogButton('Next >');
     await page.dialogButton('Next >');
     await page.fill('.dlg-overlay .wiz-main input[type=text]', 'DarkNew');
     for (let k = 1; ; k++) {

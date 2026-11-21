@@ -182,6 +182,7 @@ uiTest('#4017 the browser edition: no Open in VS Code', S, async (page) => {
   // File ▸ New Project… from gates
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'EdWeb');
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.dialogButton('Next >');

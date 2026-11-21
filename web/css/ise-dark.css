@@ -111,6 +111,8 @@ html[data-ui="ise"][data-theme="dark"] .wiz-side { background: linear-gradient(#
 html[data-ui="ise"][data-theme="dark"] .wiz-main h3 { color: var(--ise-head); }
 html[data-ui="ise"][data-theme="dark"] .wiz-main .hint { color: var(--muted); }
 html[data-ui="ise"][data-theme="dark"] .src-types { background: var(--panel); border-color: #555b66; }
+html[data-ui="ise"][data-theme="dark"] .kind-card { background: var(--panel); border-color: #555b66; }
+html[data-ui="ise"][data-theme="dark"] :is(.kind-about, .kind-not-yet) { color: var(--muted, #aab); }
 html[data-ui="ise"][data-theme="dark"] table.grid { background: var(--panel); }
 html[data-ui="ise"][data-theme="dark"] table.grid th { background: linear-gradient(#2e3238, #26292e); border-color: var(--ise-line); color: var(--fg); }
 html[data-ui="ise"][data-theme="dark"] table.grid td { border-color: #2c3037; }

@@ -47,6 +47,8 @@ const wizardHint = async (page, l = EN) => {
   // (the single file's menus run from their definitions where no menu bar is shown: by the English label there)
   await page.menu(l.file, l.item).catch(() => page.menu(l.file, EN.item));
   await page.waitDialog(null);
+  await page.click('.dlg-overlay .dlg-buttons button', { index: 1 });   // (Next >: its kind, With an FPGA, #5041)
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main input[type=text]'), [], { what: 'its name' });
   await page.eval(RED);
   const hint = await page.eval(() => window.__red(document.querySelector('.dlg-overlay .wiz-main .hint:last-child')));
   await page.dialogButton(l.cancel);

@@ -61,7 +61,9 @@ uiTest('#920 SSim: the New Project wizard\'s simulator and summary, in English a
   for (const lang of ['en', 'pt']) {
     await page.eval(async (l) => (await import('/js/i18n.js')).setLanguage(l), lang);
     await page.menu(lang === 'en' ? 'File' : 'Ficheiro', lang === 'en' ? 'New Project…' : 'Novo Projeto…');
-    await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main input[type=text]'), [], { what: 'the wizard' });
+    await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main .kind-cards'), [], { what: 'the wizard' });
+    await page.dialogButton(lang === 'en' ? 'Next >' : 'Seguinte >');   // (its kind: With an FPGA, #5041)
+    await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main input[type=text]'), [], { what: 'its name' });
     await page.fill('.dlg-overlay .wiz-main input[type=text]', `SSimWiz_${lang}`);
     await page.dialogButton(lang === 'en' ? 'Next >' : 'Seguinte >');
     await page.waitFor(() => document.querySelectorAll('.dlg-overlay .wiz-main select').length > 8, [], { what: 'Project Settings' });

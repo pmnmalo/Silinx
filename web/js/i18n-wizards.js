@@ -14,6 +14,17 @@ export const WIZARDS_PT = {
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
   'Project Kind:': 'Tipo de Projeto:', 'FPGA design (a board and a device)': 'Projeto para FPGA (uma placa e um dispositivo)',
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',
+  // New Project's first page, the project's kind (#5041, web/js/project-kind-step.js, core/project-kind.js)
+  'Project Kind': 'Tipo de Projeto', 'Choose the kind of project to create.': 'Escolha o tipo de projeto a criar.',
+  'No FPGA': 'Sem FPGA', 'With an FPGA': 'Com FPGA', 'Co-design': 'Co-design',
+  'Digital logic for the introductory courses: schematics, truth tables, state machines, circuits on a breadboard, drawn and simulated. It shows no HDL, no board and no FPGA flow.':
+    'Lógica digital para as disciplinas introdutórias: esquemáticos, tabelas de verdade, máquinas de estados, circuitos numa breadboard, desenhados e simulados. Não mostra HDL, nem placa, nem o fluxo da FPGA.',
+  'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.':
+    'Um projeto que corre numa placa: fontes HDL e desenhos, simulados, sintetizados, implementados e programados na FPGA, ou emulados.',
+  'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.':
+    'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.',
+  'Not available yet: a co-design project needs the System document and its editor, still being built.':
+    'Ainda não disponível: um projeto de co-design precisa do documento de Sistema e do seu editor, ainda em construção.',
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
   // Rename Project… (#4641)
   'Rename Project…': 'Mudar o Nome do Projeto…', 'Rename Project': 'Mudar o Nome do Projeto',
