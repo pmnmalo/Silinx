@@ -22,6 +22,7 @@ import { isDesignOnly } from '/core/project-kind.js';
 import { reopenWaiting, forgetWaiting } from './storage-late.js';
 import { afterOpening } from './prefetch-schedule.js';
 import { resetSync } from './state-sync.js';
+import { cState, resetC } from './state-c.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -31,8 +32,9 @@ const $ = id => document.getElementById(id);
 // per-project UI state (cleared when another project is opened or the project is closed)
 function resetProjectState() {
   S.diagsCleared++;   // (the start-up checks' lines coming later: not in the tabs, #339)
-  S.status = {}; S.sel = null; S.selKey = null; S.selProc = null; S.diags = []; S.cFailed = {}; S.cFailedSaid = new Map(); S.ucfText = null;
+  S.status = {}; S.sel = null; S.selKey = null; S.selProc = null; S.diags = []; S.ucfText = null;
   resetSync();   // (the drawings' HDL kept in step: state-sync.js)
+  resetC();   // (the C sources': state-c.js)
   renderDiagnostics();
   renderProcesses();   // (not the last project's processes and states, until a state of this one is restored: #1162)
 }
@@ -203,9 +205,9 @@ async function readBlackboxes(name) {
  *  read again, so that the C sources' HDL and their C simulation are made with it (#2342). (A file added, removed or
  *  renamed, or changed outside, reloads the project, which reads them.) */
 export async function refreshBlackboxes(path) {
-  const h = S.hls;
+  const h = cState.hls;
   if (!S.project || !h || !(path in (h.headers || {}) || h.blackboxes.some(b => b.file === path))) return false;
-  S.hls = await readBlackboxes(S.project.name);
+  cState.hls = await readBlackboxes(S.project.name);
   return true;
 }
 

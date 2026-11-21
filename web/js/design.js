@@ -32,6 +32,7 @@ import { flowFileRows } from './flow-files-tree.js';
 import { renderFlowFiles } from './tasks-flow-files.js';
 import { compositionOf, compositionRows } from './design-comp.js';
 import { syncState } from './state-sync.js';
+import { cState } from './state-c.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -166,7 +167,7 @@ export function renderHierarchy() {
   }
   // a C source whose HDL cannot be made (#2995: a C error, a blackbox refused): its row, marked, its errors in the Console;
   // [No HDL] opens the first one's file
-  for (const [f, c] of Object.entries(S.cFailed || {})) {
+  for (const [f, c] of Object.entries(cState.cFailed || {})) {
     if (S.modules.some(m => m.file === f)) continue;
     const at = c.diagnostics[0], menu = e => fileContextMenu(e, f);
     const it = treeItem({ label: c.module || f.split('/').pop(), meta: `(${f.split('/').pop()})`, ico: 'err', cls: c.module && isTopName(c.module) ? 'top-mod' : '', key: `c:${f}`, mark: gitMark([f]),
@@ -490,7 +491,7 @@ export async function setTop(mod, sim = S.view === 'sim') {
   // (core/project-entries.js topRefusal, the MCP's set_top's rule, #4733: a module of the view, even one with errors; a C
   // source's module not made for now too, #2995)
   const same = n => String(n || '').toLowerCase() === String(mod).toLowerCase();
-  const has = () => { const m = moduleInfo(mod); return (!!m && inView(m.role || 'design', sim)) || Object.values(S.cFailed || {}).some(c => same(c.module)); };
+  const has = () => { const m = moduleInfo(mod); return (!!m && inView(m.role || 'design', sim)) || Object.values(cState.cFailed || {}).some(c => same(c.module)); };
   const refusal = topRefusal(mod, sim, has);
   if (refusal) { log(`ERROR: Set as Top Module: ${refusal}.`, 'err'); return; }
   if (sim) S.project.simTop = mod; else S.project.top = mod;

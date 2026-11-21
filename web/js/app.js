@@ -49,6 +49,7 @@ import { closeAllDocs, restoreViewState, saveViewState, viewKept } from './view-
 import { following, followNotice, editsHere } from './collab-state.js';
 import { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView } from './impl-views.js';
 import { syncState } from './state-sync.js';
+import { cState } from './state-c.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -73,10 +74,11 @@ export const S = {
   symbolFiles: undefined,     // a symbol file -> its text (project.js, symbol-doc.js)
   partModules: undefined,     // a circuit's parts as modules (app.js compileProject)
   failedDrawings: undefined,  // the drawings whose module cannot be made (#3934)
-  hls: undefined,             // the C sources' black boxes (project.js, c-source.js)
-  bbUndeclared: undefined,    // the black boxes no HDL declares (c-source.js)
-  cFailed: undefined,         // a C source -> its failure (c-source.js)
-  cFailedSaid: undefined,     // the C failures already said in the console (c-source.js)
+  // the C sources': web/js/state-c.js's slice (#4767), its fields here as getters and setters onto it
+  get hls() { return cState.hls; }, set hls(v) { cState.hls = v; },
+  get bbUndeclared() { return cState.bbUndeclared; }, set bbUndeclared(v) { cState.bbUndeclared = v; },
+  get cFailed() { return cState.cFailed; }, set cFailed(v) { cState.cFailed = v; },
+  get cFailedSaid() { return cState.cFailedSaid; }, set cFailedSaid(v) { cState.cFailedSaid = v; },
   // the drawings' HDL kept in step: web/js/state-sync.js's slice (#4767), its fields here as getters and setters onto it
   get outOfSync() { return syncState.outOfSync; }, set outOfSync(v) { syncState.outOfSync = v; },
   get staleHdl() { return syncState.staleHdl; }, set staleHdl(v) { syncState.staleHdl = v; },
@@ -151,7 +153,7 @@ export function compileProject() {
     const hdlMods = new Set(Object.keys(mods).map(n => n.toLowerCase()));
     // (a drawing whose HDL file is gone, deleted or removed from the project, is one without it: #231)
     for (const [f, t] of views) {
-      const r = viewHdl(f, t, { modules: mods, linked: hdlInProject, lang: S.project.preferredLanguage, clock: hlsClock(), family: hlsFamily(), hls: S.hls, mults: hlsMults() });
+      const r = viewHdl(f, t, { modules: mods, linked: hdlInProject, lang: S.project.preferredLanguage, clock: hlsClock(), family: hlsFamily(), hls: cState.hls, mults: hlsMults() });
       if (!r?.text) { if (isC(f)) failedC.push([f, r]); else if (r?.errors?.length) S.failedDrawings.push({ path: f, module: r.module, errors: r.errors }); continue; }
       if (!hdlMods.has(String(r.module).toLowerCase())) { S.viewSources.push({ path: f, lang: r.lang, text: r.text, role: 'design', view: true, module: r.module, errors: r.errors.length, lost: r.lost || null, ...(r.sequential ? { sequential: true } : {}) }); continue; }
       const m = !r.errors.length && [...(lib0?.modules.values() || [])].find(x => x.name.toLowerCase() === String(r.module).toLowerCase());
@@ -220,7 +222,7 @@ export function viewRoots(sim) {
 // top becomes the one root of its view left, else none (core/project-entries.js missingTops, as the MCP's, #4733); true
 // when it changed. (Not while a source of the project still declares it, nor a C source's module not made, #2995.)
 export async function fixMissingTops() {
-  const cMade = name => Object.values(S.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(name).toLowerCase());
+  const cMade = name => Object.values(cState.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(name).toLowerCase());
   const has = name => !!moduleInfo(name) || (S.sources || []).some(f => declares(f.text, name)) || cMade(name);
   const { set, messages } = missingTops(S.project, { has, roots: viewRoots });
   Object.assign(S.project, set);
