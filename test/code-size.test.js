@@ -146,10 +146,10 @@ test('#3542 code size: an arrow function, a function expression or a method over
   assert.deepEqual(functions.find(([name]) => name === 'ok'), ['ok', 300]);
 });
 
-test('#405 code size: no new file over 1000 lines, no listed one under it', () => {
+test('#405 code size: no new file of 1000 lines or more (#4765: under 1000), no listed one under it', () => {
   const files = sources();
-  const over = files.filter((f) => measureFile(f).lines > MAX_FILE);
-  assert.deepEqual(over.filter((f) => !BIG_FILES.has(f)), [], `over ${MAX_FILE} lines: split them (CLAUDE.md ▸ Programming)`);
+  const over = files.filter((f) => measureFile(f).lines >= MAX_FILE);   // (under 1000 lines, as CLAUDE.md says: #4765)
+  assert.deepEqual(over.filter((f) => !BIG_FILES.has(f)), [], `${MAX_FILE} lines or more: split them (CLAUDE.md ▸ Programming)`);
   assert.deepEqual([...BIG_FILES].filter((f) => !over.includes(f)), [], `under ${MAX_FILE} lines now (or gone): remove them from BIG_FILES`);
 });
 
