@@ -19,6 +19,7 @@ import { parseCond, evalCond, parseOutputs, constValue } from './fsm.js';
 import { clone } from './util.js';
 import { pnmlTag, pnmlStartTag, pnmlAttr, pnmlElements, pnmlPosition } from './pnml-scan.js';
 import { escXml } from './escape.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 const PETRI_VERSION = 1;
 export const PLACE_R = 22;          // radius of a place (drawing units)
@@ -284,7 +285,7 @@ export function generatePetri(model, lang, { source } = {}) {
     const sens = [...m.places.map(reg), ...m.transitions.filter(t => Object.keys(t.outputs).length).map(fr)];
     if (m.outputs.length) {
       L.push(`  process (${sens.join(', ') || m.clock})`);
-      for (const o of m.outputs) L.push(`    variable o_${o.name} : ${ow.get(o.name) === 1 ? 'std_logic' : `std_logic_vector(${ow.get(o.name) - 1} downto 0)`};`);
+      for (const o of m.outputs) L.push(`    variable o_${o.name} : ${vhdlType(ow.get(o.name))};`);
       L.push('  begin');
       for (const o of m.outputs) {
         const w = ow.get(o.name);
@@ -298,10 +299,10 @@ export function generatePetri(model, lang, { source } = {}) {
     L.push(`end architecture petri;`, '');
   } else {
     L.push('`timescale 1ns / 1ps', '', `module ${m.name} (`);
-    const ps = [...ins.map(n => `input wire ${n}`), ...m.inputs.map(p => `input wire ${p.width > 1 ? `[${p.width - 1}:0] ` : ''}${p.name}`),
-      ...m.outputs.map(p => `output wire ${p.width > 1 ? `[${p.width - 1}:0] ` : ''}${p.name}`)];
+    const ps = [...ins.map(n => `input wire ${n}`), ...m.inputs.map(p => `input wire ${vlogRange(p.width)}${p.name}`),
+      ...m.outputs.map(p => `output wire ${vlogRange(p.width)}${p.name}`)];
     L.push(ps.map(x => `  ${x}`).join(',\n'), ');', '');
-    for (const p of m.places) L.push(`  reg ${W(p) > 1 ? `[${W(p) - 1}:0] ` : ''}${reg(p)} = ${num(p.tokens, W(p))};`);
+    for (const p of m.places) L.push(`  reg ${vlogRange(W(p))}${reg(p)} = ${num(p.tokens, W(p))};`);
     for (const t of m.transitions) if (Object.keys(t.outputs).length) L.push(`  reg ${fr(t)} = 1'b0;`);
     for (const p of m.places) L.push(`  reg [8:0] v_${p.name}, add_${p.name};`);
     L.push('', `  always @(posedge ${m.clock}) begin`, `    if (${rstOn}) begin`);
