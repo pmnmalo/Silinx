@@ -24,9 +24,11 @@ export function checkLines(what, name, diags) {
 export function initCheckMessages(showConsole, log) {
   document.addEventListener('silinx-diagnostics', e => {
     const { what, name, diags, focus } = e.detail;
+    // (its run's lines, #4749: Design's, whatever else writes meanwhile; run again, its entries replaced, #4728)
+    const own = { src: 'check', run: `Started : "${what}" of ${name}`, process: what };
     for (const l of checkLines(what, name, diags)) {
       // (the Errors and Warnings tabs: its errors and warnings, not its result; an entry clicked shows its item, #4746)
-      log(l.text, l.cls, { diag: !!l.diag, ...(l.diag ? { goto: () => show(e.target, () => focus(l.diag)) } : {}) });
+      log(l.text, l.cls, { diag: !!l.diag, ...own, ...(l.diag ? { goto: () => show(e.target, () => focus(l.diag)) } : {}) });
       if (!l.diag) continue;
       const ln = document.getElementById('console-log').lastElementChild;
       ln.classList.add('mc-link');

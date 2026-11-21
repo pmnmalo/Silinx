@@ -48,15 +48,17 @@ export function mountOpenProgram(page) {
     // (the flash, non-volatile: asked first; the SRAM, as iMPACT's Program FPGA, not)
     if (flash && !(api.standalone && noWebUsb()) && !await confirmDlg(prog.title, `Write ${file} into the board's SPI flash? The FPGA then loads it, and again at every power-up.`)) return null;
     busy = true;
-    app.log(flash ? '\nProgramming the SPI flash...' : '\nProgramming the FPGA (SRAM)...', 'hdr');
+    // (its lines Implementation's, the board's, said here, not read from their phrasing, #4749)
+    const own = { src: 'impl' };
+    app.log(flash ? '\nProgramming the SPI flash...' : '\nProgramming the FPGA (SRAM)...', 'hdr', own);
     try {
       const { job } = await api.program({ project: pj.name, board: board?.id, bitfile: file });
       // (the job's error left to the "… failed:" line below, said once, #4597)
-      const jl = jobLog(app.logLine);
+      const jl = jobLog((l, o) => app.logLine(l, { ...o, ...own }));
       let r;
       try { r = await followJob(job, jl.line); } finally { jl.end(r); }
       const done = flash ? 'Flash programmed: the FPGA loads the design.' : 'FPGA programmed: the design runs until the board is powered off.';
-      if (r.status === 'ok') { app.log(done, 'ok'); toast(done, 'ok'); countEvent('program'); }
+      if (r.status === 'ok') { app.log(done, 'ok', own); toast(done, 'ok'); countEvent('program'); }
       else logError(`${flash ? 'Programming the SPI flash' : 'Programming the FPGA'} failed: ${r.error || 'see log'}`);
       return r;
     } catch (e) {

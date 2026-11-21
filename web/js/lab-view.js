@@ -9,7 +9,7 @@
 import { h, dialog } from './ui.js';
 import { api } from './api.js';
 import { S, findDoc, openDoc } from './app.js';
-import { log } from './console.js';
+import { log, startRun } from './console.js';
 import { saveAll } from './processes.js';
 import { inView } from './design.js';
 import { getLanguage, onLanguageChange, t } from './i18n.js';
@@ -63,13 +63,13 @@ const saidProblems = new Map();   // (a lab file's problems last said, by its pa
 /** Check Syntax of a lab file: its problems in the console. Resolves to true when it has none. */
 export async function checkLabFile(path) {
   if (!await saveAll()) return false;
-  log(`\nStarted : "Check Syntax" of ${path}.\n`, 'hdr');
+  const R = startRun({ process: 'Check Syntax', source: 'check', of: ` of ${path}` });   // (its lines its own, #4749)
   const { problems } = parseLab(await api.readFile(S.project.name, path), path);
   saidProblems.set(path, problems.join('\n'));
   const lines = labFileLines(path, problems);
-  for (const l of lines.slice(0, -1)) log(l, 'err');
-  log(lines.at(-1), problems.length ? 'err' : 'ok', { diag: false });
-  log(problems.length ? `\nProcess "Check Syntax" failed (${problems.length} error(s), 0 warning(s))` : '\nProcess "Check Syntax" completed successfully', problems.length ? 'err' : 'ok', { diag: false });
+  for (const l of lines.slice(0, -1)) R.log(l, 'err');
+  R.log(lines.at(-1), problems.length ? 'err' : 'ok', { diag: false });
+  R.log(problems.length ? `\nProcess "Check Syntax" failed (${problems.length} error(s), 0 warning(s))` : '\nProcess "Check Syntax" completed successfully', problems.length ? 'err' : 'ok', { diag: false });
   return !problems.length;
 }
 

@@ -12,7 +12,7 @@ import { primitiveSources } from '/core/unisim.js';
 import { severityOf } from '/core/log-severity.js';
 import { countEvent } from './analytics.js';
 import { S, closeDoc, findDoc, moduleInfo, openDoc, openSummary, projectBoard, refreshSummary, setDirty, status } from './app.js';
-import { commandInfo, log, logError, logInfo, logLine, setDiagnostics, showConsolePage, showProblems } from './console.js';
+import { commandInfo, log, logError, logInfo, logLine, setDiagnostics, showConsolePage, showProblems, startRun } from './console.js';
 import { showCommandLines } from './messages.js';
 import { reloadProject } from './project.js';
 import { refreshOpenEditor, topUcfPorts, ucfPort } from './drawings.js';
@@ -44,7 +44,8 @@ async function applyReportWarnings(track) {
 
 // (steps: the run's; a warning of the constraints counts in Translate's icon when the run has it,
 // else in the first step's: #129)
-export function stepTracker(steps) {
+// out: where its lines go (a run's, #4749: its line; the console's logLine)
+export function stepTracker(steps, out = logLine) {
   const result = {};              // process id -> ok | warn | err (this run)
   let cur = null, warns = 0;
   const early = {};               // warnings printed before the step they concern has started
@@ -64,7 +65,7 @@ export function stepTracker(steps) {
   };
   // (opts: log()'s, e.g. { diag: false } for a line already in the Warnings tab)
   t.line = (line, opts) => {
-    logLine(line, opts);
+    out(line, opts);
     let m;
     if ((m = /^=== SILINX STEP (\w+) ===/.exec(line))) {
       finish();
@@ -135,11 +136,13 @@ export async function checkUcfFile(path = S.project?.constraints, { quiet = fals
     return true;
   }
   setDiagnostics(diags);
-  if (!quiet) { log(`\nStarted : "Check Constraints" of ${path}.\n`, 'hdr'); showCommandLines('impl'); }   // (Implementation's, in the Design task too, #2692)
-  for (const d of diags) log(line(d), d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  // (Implementation's, in the Design task too, #2692; a run, its lines its own, #4749; quiet: no header, the lines the console's)
+  const R = quiet ? { log } : startRun({ process: 'Check Constraints', source: 'impl', of: ` of ${path}` });
+  if (!quiet) showCommandLines('impl');
+  for (const d of diags) R.log(line(d), d.severity === 'error' ? 'err' : 'warn', { diag: false });
   if (ne || !quiet) showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
-  if (ne) { log(`\nProcess "Check Constraints" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); status(`${path.split('/').pop()}: ${ne} error(s)`); return false; }
-  if (!quiet) log(`\nProcess "Check Constraints" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
+  if (ne) { R.log(`\nProcess "Check Constraints" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); status(`${path.split('/').pop()}: ${ne} error(s)`); return false; }
+  if (!quiet) R.log(`\nProcess "Check Constraints" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
   status(`Check Constraints: ${path.split('/').pop()} OK${nw ? ` (${nw} warning(s))` : ''}`);
   return true;
 }
@@ -254,10 +257,10 @@ async function runImplInner(mod, steps, opts, pjName) {
     const st = await api.openStatus(S.project.name).catch(e => ({ available: false, reason: e.message }));
     if (!st.available) {
       setStatus(procId, 'err');
-      log(`\nStarted : "${procName}" (Silinx toolchain).\n`, 'hdr');
-      for (const l of ucfWarnings) log(l, 'warn', { diag: false });
-      log(`ERROR: the Silinx toolchain cannot implement this design: ${st.reason}.`, 'err');
-      log(`\nProcess "${procName}" failed`, 'err');
+      const R0 = startRun({ process: procName, source: 'impl', of: ' (Silinx toolchain)' });   // (its lines its own, #4749)
+      for (const l of ucfWarnings) R0.log(l, 'warn', { diag: false });
+      R0.log(`ERROR: the Silinx toolchain cannot implement this design: ${st.reason}.`, 'err');
+      R0.end(`\nProcess "${procName}" failed`, 'err');
       return;
     }
   }
@@ -276,8 +279,8 @@ async function runImplInner(mod, steps, opts, pjName) {
   for (const id of runs) S.status[id] = null;
   setStatus(procId, 'running');
   status(`Running ${procId}…`);
-  log(`\nStarted : "${procName}".\n`, 'hdr');
-  const track = stepTracker(steps);
+  const R = startRun({ process: procName, source: 'impl' });   // (its lines its own, #4749)
+  const track = stepTracker(steps, R.line);
   for (const l of ucfWarnings) track.line(l, { diag: false });
   try {
     const tc = S.toolchain || await api.toolchain();
@@ -286,11 +289,11 @@ async function runImplInner(mod, steps, opts, pjName) {
     const vivado = vivadoMode();
     const ran = openMode() || (vivado ? !!tc.vivado?.available : tc.ise.available);
     if (!ran && vivado) {
-      log(`AMD Vivado not available (${tc.vivado?.mode} mode): ${tc.vivado?.reason}`, 'warn');
-      log('The build directory, run.tcl and run.sh are still generated so they can be run on a machine with Vivado 2025.2. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
+      R.log(`AMD Vivado not available (${tc.vivado?.mode} mode): ${tc.vivado?.reason}`, 'warn');
+      R.log('The build directory, run.tcl and run.sh are still generated so they can be run on a machine with Vivado 2025.2. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
     } else if (!ran) {
-      log(`Xilinx ISE toolchain not available (${tc.ise.mode} mode): ${tc.ise.reason}`, 'warn');
-      log('The build directory and run.sh are still generated so they can be run on a machine with ISE 14.7. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
+      R.log(`Xilinx ISE toolchain not available (${tc.ise.mode} mode): ${tc.ise.reason}`, 'warn');
+      R.log('The build directory and run.sh are still generated so they can be run on a machine with ISE 14.7. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
     }
     if (synthUpToDate) { S.status.synth = S.synthDone.status; renderProcesses(); }
     const { job } = await api.implement(S.project.name, { steps, generateOnly: !ran, ...(synthUpToDate && { synthUpToDate }) });
@@ -309,36 +312,36 @@ async function runImplInner(mod, steps, opts, pjName) {
       if (track.current) S.status[STEP_PROC[track.current]] = null;
       for (const [id, st] of Object.entries(track.result)) if (st === 'err') S.status[id] = null;
       renderProcesses();
-      log('\nProcess stopped by the user.', 'info');   // (the user's own Stop: no warning, #4728)
+      R.log('\nProcess stopped by the user.', 'info');   // (the user's own Stop: no warning, #4728)
       return;
     }
-    if (S.project?.name !== pjName) { log(`Implementation of '${pjName}' finished (another project is open now).`, 'info'); return res.status === 'ok'; }
+    if (S.project?.name !== pjName) { R.log(`Implementation of '${pjName}' finished (another project is open now).`, 'info'); return res.status === 'ok'; }
     // the synthesis this run made: kept as up to date when it ended ok (#280)
     if (synthFp && ['ok', 'warn'].includes(track.result.synth)) S.synthDone = { fingerprint: synthFp, status: track.result.synth };
     else if (track.result.synth === 'err') S.synthDone = null;
     if (ran) { await applyReportWarnings(track); await saveImplStatus(); }
     if (res.status === 'ok' && ran) {
-      log(`\nProcess "${procName}" completed successfully${track.warnings ? ` with ${track.warnings} warning(s)` : ''}`, 'ok');
+      R.log(`\nProcess "${procName}" completed successfully${track.warnings ? ` with ${track.warnings} warning(s)` : ''}`, 'ok');
       if (extra) setStatus(procId, track.warnings ? 'warn' : 'ok');
       ok = true;
       // the browser edition: the bitstream is downloaded (there is no build folder to find it in)
       if (res.download && steps.includes('bitgen')) {
         downloadUrl(res.download.url, res.download.filename);
-        log(`Bitstream downloaded: ${res.download.filename} (Configure Target Device programs the board with it).`, 'info');
+        R.log(`Bitstream downloaded: ${res.download.filename} (Configure Target Device programs the board with it).`, 'info');
       }
       countEvent(steps.includes('bitgen') ? 'bitstream' : 'implement');
     } else if (res.status === 'ok') {
       setStatus(procId, 'warn');
-      log(`\nScripts generated in ${S.project.name}/build (ISE not run).`, 'warn');
+      R.log(`\nScripts generated in ${S.project.name}/build (ISE not run).`, 'warn');
     } else {
       if (!track.failed) setStatus(procId, 'err');
-      log(`\nProcess failed: ${res.error || 'see log'}`, 'err', { diag: !!res.error });   // (see log: its errors are listed)
+      R.log(`\nProcess failed: ${res.error || 'see log'}`, 'err', { diag: !!res.error });   // (see log: its errors are listed)
     }
     if (track.failed) showConsolePage('errors');
     refreshSummary();
   } catch (e) {
     setStatus(procId, 'err');
-    log(`ERROR: ${e.message}`, 'err');
+    R.log(`ERROR: ${e.message}`, 'err');
   } finally {
     // processes that never got to run in this execution must not keep the "running" spinner
     for (const id of IMPL_IDS) if (S.status[id] === 'running') S.status[id] = null;
@@ -361,6 +364,7 @@ export async function synthOpen(mod) {
   if (api.standalone) { commandInfo(SYNTH_OPEN, 'In the browser edition, choose Silinx as the synthesis tool (Project > Design Properties): Synthesize then runs Yosys in the browser, and so does Implement Design.'); return; }
   if (synthOpenRunning) return;
   synthOpenRunning = true;
+  let R = { log, line: logLine };   // (its run's once started, #4749)
   try {
     if (!await checkSyntax(mod, false, { hierarchy: true })) {
       setStatus('synth-open', 'err');
@@ -369,36 +373,36 @@ export async function synthOpen(mod) {
     }
     S.diags = S.diags.filter(d => d.source !== 'console');
     setStatus('synth-open', 'running');
-    log(`\nStarted : "${SYNTH_OPEN}".\n`, 'hdr');
+    R = startRun({ process: SYNTH_OPEN, source: 'impl' });
     const family = S.project.device?.family || 'spartan3e';
     // (as synthesis reads them: no translate_off region, #3901)
     const srcs = (await import('/core/translate-off.js')).synthesisSources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)));
     const design = elaborate(compile([...primitiveSources(srcs), ...srcs]), mod);
     const [{ synthesizeOpen, synthesisInput }, { synthEffort, synthGoal, synthesizeArea, synthesizeFast }] = await Promise.all([import('/core/synth-front.js'), import('/packages/silinx-fpga/src/index.js')]);
     const { yosysBrowser } = await import('./yosys-client.js');
-    log(`Writing <${mod}> as one flat module for Yosys; Yosys (WebAssembly) maps it onto the ${family} cells.`);
+    R.log(`Writing <${mod}> as one flat module for Yosys; Yosys (WebAssembly) maps it onto the ${family} cells.`);
     const t0 = performance.now();
     let shown = -1;
     const run = Object.assign((args, files, onLine) => yosysBrowser(args, files, onLine, p => { if (p - shown >= 0.1 || p === 1) { shown = p; status(`Loading Yosys… ${Math.round(p * 100)}%`); } }),
       { parallel: yosysBrowser.parallel });
-    const goal = synthGoal(S.project.impl), opts = { family, run, onLine: logLine, effort: synthEffort(S.project.impl) };
+    const goal = synthGoal(S.project.impl), opts = { family, run, onLine: R.line, effort: synthEffort(S.project.impl) };
     const res = goal === 'area' ? await synthesizeArea(synthesisInput(design), opts) : goal === 'fast' ? await synthesizeFast(synthesisInput(design), opts) : await synthesizeOpen(design, opts);
     status(`Saving the netlist of ${mod}…`);
     for (const [name, text] of Object.entries(res.files)) await api.writeFile(S.project.name, `build/open/${name}`, text);
     const u = res.util;
-    log(`\nDevice utilization (open synthesis, ${family}):`);
+    R.log(`\nDevice utilization (open synthesis, ${family}):`);
     for (const [k, label] of [['luts', 'LUTs'], ['flipFlops', 'Flip-flops'], ['latches', 'Latches'], ['muxes', 'F5-F8 multiplexers'], ['carry', 'Carry logic'],
       ['shiftRegisters', 'Shift registers'], ['distributedRam', 'Distributed RAM'], ['blockRam', 'Block RAMs'], ['multipliers', 'Multipliers'],
-      ['clockBuffers', 'Global clock buffers'], ['dcms', 'DCMs'], ['ios', 'I/O buffers']]) if (u[k]) log(`  ${label}: ${u[k]}`);
-    log(`  Cells: ${u.cells}`);
-    log(`Netlist: build/open/${res.top}.json (and ${res.top}_yosys.v, ${res.top}_stat.txt) in ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
+      ['clockBuffers', 'Global clock buffers'], ['dcms', 'DCMs'], ['ios', 'I/O buffers']]) if (u[k]) R.log(`  ${label}: ${u[k]}`);
+    R.log(`  Cells: ${u.cells}`);
+    R.log(`Netlist: build/open/${res.top}.json (and ${res.top}_yosys.v, ${res.top}_stat.txt) in ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
     const nw = res.warnings.length;
-    log(`\nProcess "${SYNTH_OPEN}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
+    R.log(`\nProcess "${SYNTH_OPEN}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
     setStatus('synth-open', nw ? 'warn' : 'ok');
   } catch (e) {
-    for (const l of e.lines || []) logLine(l);
-    log(`ERROR: ${e.message}`, 'err');
-    log(`\nProcess "${SYNTH_OPEN}" failed`, 'err');
+    for (const l of e.lines || []) R.line(l);
+    R.log(`ERROR: ${e.message}`, 'err');
+    R.log(`\nProcess "${SYNTH_OPEN}" failed`, 'err');
     setStatus('synth-open', 'err');
   } finally {
     synthOpenRunning = false;

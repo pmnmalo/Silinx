@@ -13,7 +13,7 @@
 import { h, dialog } from './ui.js';
 import { api } from './api.js';
 import { S, findDoc, openDoc, setDirty } from './app.js';
-import { log } from './console.js';
+import { log, startRun } from './console.js';
 import { saveAll } from './processes.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
 import { mountSideFold } from './side-fold.js';
@@ -212,25 +212,25 @@ function mountExercise(el, doc, path, ex) {
     busy = true; render();
     try {
       if (!await saveAll()) return;   // (as Check Syntax: the documents saved first, the exercise too)
-      log(`\nStarted : "${visible ? 'Run Visible Tests' : 'Run All Tests'}" (${path}).\n`, 'hdr');
+      const R = startRun({ process: visible ? 'Run Visible Tests' : 'Run All Tests', source: 'check', of: ` (${path})` });   // (its lines its own, #4749)
       // (its files beside it, as silinx grade reads them: from the project, the exercise's folder)
       const read = await withFileTexts(ex, p => api.readFile(name, p), dir);
       const problems = [...read.problems.map(m => `${path}: ${m}`), ...exerciseProblems(read.exercise, path)];
-      if (problems.length) { for (const m of problems) log(`ERROR: ${m}`, 'err'); log('Process "Run Tests" failed: the exercise has problems.', 'err', { diag: false }); return; }
+      if (problems.length) { for (const m of problems) R.log(`ERROR: ${m}`, 'err'); R.log('Process "Run Tests" failed: the exercise has problems.', 'err', { diag: false }); return; }
       const full = read.exercise;
       const run = testsOf(full, { visible });
       const vectors = {};
       for (const x of run.filter(y => y.kind === 'reference')) {
         const v = referenceVectors(full, x);
-        if (v.problems.length) { for (const m of v.problems) log(`ERROR: test ${x.id}: ${m}`, 'err'); log('Process "Run Tests" failed: the exercise has problems.', 'err', { diag: false }); return; }
+        if (v.problems.length) { for (const m of v.problems) R.log(`ERROR: test ${x.id}: ${m}`, 'err'); R.log('Process "Run Tests" failed: the exercise has problems.', 'err', { diag: false }); return; }
         vectors[x.id] = v;
       }
       const sub = await projectSubmission(name);
       const r = summarize(full, name, await gradeTests(full, sub, { visible, vectors, exerciseUnits: exerciseUnitNames(full), synthesize: browserSynthesize(full, { name, file: path }), yosys }), { visible });
       results = r;
-      for (const l of textReport(r, { teacher: true }).trimEnd().split('\n')) log(l, /^\s*(-|WARNING|Compile|Interface)/.test(l) ? 'warn' : '', { diag: /WARNING/.test(l) });
-      log(`Process "${visible ? 'Run Visible Tests' : 'Run All Tests'}" completed: ${num(r.points)} / ${num(r.max)} points.`, r.verdict === 'AC' ? 'ok' : 'warn', { diag: false });
-    } catch (e) { log(`ERROR: ${e.message}`, 'err'); }
+      for (const l of textReport(r, { teacher: true }).trimEnd().split('\n')) R.log(l, /^\s*(-|WARNING|Compile|Interface)/.test(l) ? 'warn' : '', { diag: /WARNING/.test(l) });
+      R.log(`Process "${visible ? 'Run Visible Tests' : 'Run All Tests'}" completed: ${num(r.points)} / ${num(r.max)} points.`, r.verdict === 'AC' ? 'ok' : 'warn', { diag: false });
+    } catch (e) { R.log(`ERROR: ${e.message}`, 'err'); }
     finally { busy = false; render(); }
   }
   const off = onLanguageChange(() => { render(); props.render(); });

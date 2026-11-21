@@ -36,23 +36,26 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // the file and line its text names, when the project has that file
 // Each line is a message (#4749, core/message.js), made here, its source decided here once (not read again from its
 // text by the message centre): its line's data-src, its entry's src, what the watchers get; the line's element holds it.
-export function log(text, cls = '', { diag = true, action = null, src = null, goto = null } = {}) {
+// run / process: the run the line is of (#4749: a run's own, startRun; none: the one whose header came last)
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
   if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
   const lines = String(text).split('\n');
   lines.forEach((line, i) => {
-    startsRun(line);
+    if (run === undefined) startsRun(line);
+    else if (RUN_HEADER.test(line)) dropRun(run);   // (a run's own header: its last run's entries dropped, #4728)
+    const lineRun = run === undefined ? consoleRun : run, lineProcess = process === undefined ? consoleProcess : process;
     let source = src;
     if (!source) [source, lineCur] = lineSource(line, lineCur);
     // (its action: the first of the line's, #4962)
-    const msg = makeMessage({ text: line, severity: severityOfClass(cls), source, action: i === lines.length - 1 ? [action].flat().find(Boolean) ?? null : null, process: consoleProcess, run: consoleRun });
+    const msg = makeMessage({ text: line, severity: severityOfClass(cls), source, action: i === lines.length - 1 ? [action].flat().find(Boolean) ?? null : null, process: lineProcess, run: lineRun });
     const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, line);
     div.message = msg;
     el.append(div);
-    if (diag) consoleMessage(line, cls, source, goto);
-    if (RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
+    if (diag) consoleMessage(line, cls, source, goto, lineRun);
+    if (run === undefined && RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls, msg); } catch { /* a watcher's own error: not the console's */ } }
   });
   // (several: the line's choices, #4962, all disabled once one is run)
@@ -86,8 +89,11 @@ function startsRun(line) {
   if (!m) return;
   consoleRun = line.trim().replace(/[.\s]+$/, '');
   consoleProcess = m[1];
+  dropRun(consoleRun);
+}
+function dropRun(run) {
   const n = S.diags.length;
-  S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === consoleRun));
+  S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === run));
   lastConsoleDiag = null;
   if (S.diags.length !== n) renderDiagnosticsSoon();
 }
@@ -102,7 +108,7 @@ const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.
 let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
-function consoleMessage(line, cls, src, goto) {
+function consoleMessage(line, cls, src, goto, run = consoleRun) {
   if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
   if (lastConsoleDiag && !cls && continuesDiag(lastConsoleDiag, line)) {
     lastConsoleDiag.message += ' ' + line.trim();
@@ -116,8 +122,8 @@ function consoleMessage(line, cls, src, goto) {
   if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
   else if (/=== SILINX FAILED/.test(line)) return;
   if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console', run: consoleRun, src, ...(goto ? { goto } : located(message)) };
-  if (consoleRun === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
+  const d = { severity, tool, message, file: null, line: 0, source: 'console', run, src, ...(goto ? { goto } : located(message)) };
+  if (run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
   renderDiagnosticsSoon();
@@ -163,6 +169,22 @@ export function logLine(line, opts) {
   else if (sev === 'warning') cls = 'warn';
   else if (/=== SILINX (STEP|DONE)/.test(line) || /completed successfully/i.test(line)) cls = 'ok';
   log(line, cls, opts);
+}
+/** A process's run (#4749): its header written (`Started : "<process>"<of>.`), every line it writes then its own —
+ *  its source, its run (its header: a rerun drops the entries the last one listed), whatever else writes meanwhile
+ *  (another run's lines, the application's). `{ log(text, cls, opts), line(toolLine, opts), end(text, cls) }`: end
+ *  writes its result, the lines after it no more its. */
+export function startRun({ process, source, of = '' }) {
+  const header = `Started : "${process}"${of}`;
+  const run = header.replace(/[.\s]+$/, '');
+  const own = { src: source, run, process };
+  log(`\n${header}.\n`, 'hdr', own);
+  let open = true;
+  return {
+    log: (text, cls = '', opts = {}) => log(text, cls, { ...opts, ...own }),
+    line: (line, opts = {}) => logLine(line, { ...opts, ...own }),
+    end(text, cls = '') { if (!open) return; open = false; log(text, cls, own); },
+  };
 }
 /** A line of the application's own (`cls`, `opts` as log's), outside any process (#4729): its source the application's,
  *  shown under every filter and task, whatever process ran last. */
