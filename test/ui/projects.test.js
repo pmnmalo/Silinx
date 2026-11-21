@@ -139,6 +139,7 @@ async function newFromExample(page, t) {
     await page.click('#start-page .start-btns .btn', { text: 'New Project…' });   // (a button at the top, #1216)
     try { await page.waitDialog('New Project Wizard', { timeout: 3000 }); break; } catch (e) { if (k >= 4) throw e; }
   }
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main select', t);
 }
 

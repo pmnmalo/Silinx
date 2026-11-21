@@ -107,6 +107,7 @@ uiTest('#3895 in Portuguese: the Spartan-7 in the New Project wizard, marked exp
   try {
     await page.menu('Ficheiro', 'Novo Projeto…');
     await page.waitDialog('Assistente de Novo Projeto');
+    await page.dialogButton('Seguinte >');   // (its kind: Com FPGA, #5041)
     await page.fill('.dlg-overlay .wiz-main input[type=text]', 'S7Pt');
     await page.dialogButton('Seguinte >');
     await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Definições do Projeto');
