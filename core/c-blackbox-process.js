@@ -10,7 +10,7 @@
 //   blackboxProcess(fn, { lang, module, file }) -> a process's module, as cToHdl's result
 import { portOf } from './c-names.js';
 import { blackboxHdl } from './c-blackbox.js';
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vhdlEntity, vhdlType, vhdlWidthPorts, vlogModule, vlogRange, vlogWidthPorts } from './hdl-emit.js';
 
 const clog2 = (n) => Math.max(1, (n - 1).toString(2).length);
 const T = vhdlType;
@@ -58,14 +58,13 @@ export function blackboxProcess(fn, { lang = 'vhdl', module, file = 'input.c' })
   let hdl;
   if (lang === 'vhdl') {
     const conv = (s, sw, dw) => (sw === dw ? s : dw === 1 ? `${s}(0)` : `${s}(${dw - 1} downto 0)`);
-    hdl = [`-- ${head}`, 'library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', `entity ${module} is`, '  port (',
-      ...ports.map((p, k) => `    ${p.name} : ${p.dir} ${T(p.w)}${k < ports.length - 1 ? ';' : ''}`), '  );', `end ${module};`, '', `architecture behav of ${module} is`,
+    hdl = [`-- ${head}`, 'library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '', ...vhdlEntity(module, { ports: vhdlWidthPorts(ports), end: 'name' }), '', `architecture behav of ${module} is`,
       ...bb.inner.map((s) => `  signal ${s.name} : ${T(s.w)};`), ...bb.decls.vhdl, 'begin',
       `  ${P}_go <= ap_start;`, `  ap_done <= ${P}_done;`, `  ap_ready <= ${P}_done;`, `  ap_idle <= not ${P}_started;`,
       ...ties.map(([dst, dw, s, sw]) => `  ${dst} <= ${conv(s, sw, dw)};`), ...bb.vhdl, 'end behav;', ''].join('\n');
   } else {
     const conv = (s, sw, dw) => (sw === dw ? s : `${s}[${dw - 1}:0]`);
-    hdl = [`// ${head}`, `module ${module} (`, ...ports.map((p, k) => `  ${p.dir === 'in' ? 'input' : 'output'} ${V(p.w)}${p.name}${k < ports.length - 1 ? ',' : ''}`), ');',
+    hdl = [`// ${head}`, ...vlogModule(module, { ports: vlogWidthPorts(ports) }),
       ...bb.inner.map((s) => `  wire ${V(s.w)}${s.name};`), ...bb.decls.verilog,
       `  assign ${P}_go = ap_start;`, `  assign ap_done = ${P}_done;`, `  assign ap_ready = ${P}_done;`, `  assign ap_idle = ~${P}_started;`,
       ...ties.map(([dst, dw, s, sw]) => `  assign ${dst} = ${conv(s, sw, dw)};`), ...bb.verilog, 'endmodule', ''].join('\n');
