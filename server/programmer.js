@@ -249,7 +249,7 @@ export async function promJob(job, req) {
   if (op === 'program' && req.reconfigure) args.push('--reconfigure');
   job.log(`Platform Flash: ${op}${req.reconfigure && op === 'program' ? ' + reload FPGA from PROM' : ''}`);
   const start = job.lines.length;
-  const code = await execTool(job, { cmd: 'adepttool', script: XCF_PROG, args }, cfg);
+  const code = await runAdepttool(job, { script: XCF_PROG, args }, cfg);
   const log = job.lines.slice(start).join('\n');
   let fail = code !== 0 ? `xcf_prog exited with code ${code}` : null;
   if (!fail && (op === 'verify' || (op === 'program' && req.verify !== false)) && !/verify OK/.test(log)) fail = 'verification did not complete';
@@ -275,15 +275,19 @@ export function toolAvailable(name, cfg) {
   return !!resolveTool(name, cfg, detectIse(cfg));
 }
 
+// an adepttool script run by its virtualenv's Python, no shell: a PROM's job calls it directly, never through execTool's
+// iMPACT wrapper (#4992)
+function runAdepttool(job, c, cfg) {
+  const a = adepttoolPaths(cfg);
+  if (!a.ok) throw new Error(`adepttool is not installed (expected ${path.join(a.src, 'basys2_prog.py')} and ${a.py}). Run scripts/install-adepttool.sh.`);
+  const libdirs = ['/opt/homebrew/lib', '/usr/local/lib'].filter(d => fss.existsSync(d));
+  const env = { ...process.env, PYTHONPATH: a.src, DYLD_FALLBACK_LIBRARY_PATH: [process.env.DYLD_FALLBACK_LIBRARY_PATH, ...libdirs].filter(Boolean).join(':') };
+  const script = path.isAbsolute(c.script) ? c.script : path.join(a.src, c.script);
+  return runCommand(job, a.py, [script, ...c.args], { cwd: a.src, env });
+}
+
 async function execTool(job, c, cfg) {
-  if (c.cmd === 'adepttool') {
-    const a = adepttoolPaths(cfg);
-    if (!a.ok) throw new Error(`adepttool is not installed (expected ${path.join(a.src, 'basys2_prog.py')} and ${a.py}). Run scripts/install-adepttool.sh.`);
-    const libdirs = ['/opt/homebrew/lib', '/usr/local/lib'].filter(d => fss.existsSync(d));
-    const env = { ...process.env, PYTHONPATH: a.src, DYLD_FALLBACK_LIBRARY_PATH: [process.env.DYLD_FALLBACK_LIBRARY_PATH, ...libdirs].filter(Boolean).join(':') };
-    const script = path.isAbsolute(c.script) ? c.script : path.join(a.src, c.script);
-    return runCommand(job, a.py, [script, ...c.args], { cwd: a.src, env });
-  }
+  if (c.cmd === 'adepttool') return runAdepttool(job, c, cfg);
   const ise = detectIse(cfg);
   const bin = resolveTool(c.cmd, cfg, ise);
   let cmd = bin, args = c.args, cleanup = null;
