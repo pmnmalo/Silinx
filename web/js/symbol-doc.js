@@ -12,6 +12,7 @@ import { following, followNotice } from './collab-state.js';
 import { findMod, newSymbol, readSymbol, symbolFileOf, symbolText } from '/core/schdoc.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 /** Edit Symbol of the module `name`: its symbol file opened, made first when it has none. */
 export async function editSymbol(name) {
@@ -65,7 +66,7 @@ export async function openSymbol(path) {
         save: async () => {
           const t = symbolText(ed.getSymbol());
           await api.writeFile(S.project.name, path, t);
-          S.symbolFiles = { ...(S.symbolFiles || {}), [path]: t };
+          designState.symbolFiles = { ...(designState.symbolFiles || {}), [path]: t };
           setDirty(d, false);
           await refreshSchematics();
         },

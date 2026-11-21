@@ -27,6 +27,7 @@ import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 // (the background download of the last project opened, cancelled when another opens: #4628)
 let cancelPrefetch = () => {};
@@ -161,7 +162,7 @@ async function reloadProjectNow(render = true, depth = 0) {
   filesState.fileTree = filesState.diskTree.filter(f => !out.has(f) && (!/\.(vhdl?|v|sv)$/i.test(f) || hdlIn.has(f)));
   delete pj.fileTree;
   S.project = pj;
-  S.sources = await api.sources(pj.name);
+  designState.sources = await api.sources(pj.name);
   // schematics (.sch.json) and ASM charts (.asm.json) linked to an HDL file ("views" kept in sync); the maps made first
   // and set together, never empty while the drawings are read (#1543)
   const schOwners = {}, hdlToSch = {}, viewModule = {}, viewTexts = {};
@@ -178,7 +179,8 @@ async function reloadProjectNow(render = true, depth = 0) {
   for (const f of filesState.fileTree.filter(f => /\.sym\.json$/i.test(f))) { try { symbolFiles[f] = await api.readFile(pj.name, f); } catch { /* unreadable */ } }
   // (the RTL blackboxes of its C functions, as it opens, #1903)
   const hls = await readBlackboxes(pj.name);
-  Object.assign(S, { schOwners, hdlToSch, viewModule, viewTexts, symbolFiles, hls });
+  Object.assign(designState, { schOwners, hdlToSch, viewModule, viewTexts, symbolFiles });
+  cState.hls = hls;
   compileProject();
   // a drawing whose base was its HDL (before #220) is made the base; a drawn source without its HDL
   // file gets it (#207): read the project again with them
@@ -221,7 +223,7 @@ async function closeProjectNow() {
   if (api.following && !await (await import('./collab-leave.js')).leaveFollowed()) return;
   if (!await closeAllDocs()) return;
   stopWatching();
-  S.project = null; S.lib = null; S.sources = []; S.modules = [];
+  S.project = null; designState.lib = null; designState.sources = []; designState.modules = [];
   setKindFlag(null);
   resetProjectState();
   try { localStorage.removeItem(prefKey('silinx.lastProject')); } catch { /* ignore */ }

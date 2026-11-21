@@ -22,6 +22,7 @@ import { emuNow, followEmu, watchBoards } from './collab-emu.js';
 import { followTry, tryNow } from './collab-try.js';
 import { panes } from './state-panes.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 /** The owner's page: its activity sent (each channel only when it changed: core/collab-client.js publish), by
  *  publish() in its sharing's tracking; stop() at its end. */
@@ -79,7 +80,7 @@ export async function followActivity(st, get, live = () => true) {
 }
 
 async function applyUi(st, { view: v, layout }, get, live) {
-  if (v.view && v.view !== S.view) setView(v.view);
+  if (v.view && v.view !== designState.view) setView(v.view);
   if (v.page && v.page !== panes.leftPage) showLeftPage(v.page);
   const have = new Set(docsState.docs.map(viewKeyOf));
   for (const id of v.open) {

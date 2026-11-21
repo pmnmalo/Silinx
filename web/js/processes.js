@@ -35,6 +35,7 @@ import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -59,9 +60,9 @@ export const projectTool = () => toolOf(S.project?.device, openMode(), { standal
 const implTop = () => { const d = document.documentElement.dataset; return d.layout === 'tasks' && d.task === 'impl'; };
 /** The item whose processes are shown and the view: the selection's, or in Implement the top module's. */
 function procsShown() {
-  if (!implTop()) return { sel: panes.sel || {}, view: S.view };
+  if (!implTop()) return { sel: panes.sel || {}, view: designState.view };
   const top = S.project?.top;
-  return { sel: top ? { type: 'module', module: top, file: S.modules.find(m => m.name === top)?.file } : {}, view: 'impl' };
+  return { sel: top ? { type: 'module', module: top, file: designState.modules.find(m => m.name === top)?.file } : {}, view: 'impl' };
 }
 function processDefs(sel, view) {
   if (!S.project) return [];
@@ -280,7 +281,7 @@ export function markStale() {
 // The modules named with a reserved word of VHDL or Verilog (a project made before #679, or imported): a
 // warning each, the drawing first (the HDL generated from it follows its name)
 export function reservedNameDiags() {
-  const drawn = Object.entries(S.viewTexts || {}).map(([file, t]) => { try { return { name: JSON.parse(t).name, file }; } catch { return null; } });
+  const drawn = Object.entries(designState.viewTexts || {}).map(([file, t]) => { try { return { name: JSON.parse(t).name, file }; } catch { return null; } });
   return reservedModuleDiags([...drawn.filter(m => m?.name), ...S.modules.map(m => ({ name: m.name, file: m.file, line: m.line }))]);
 }
 
@@ -312,18 +313,18 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   if (!await saveAll()) { setStatus(id, 'err'); return false; }
   setStatus(id, 'running');
   const R = startRun({ process: checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax'), source: 'check' });   // (its lines its own, #4749)
-  const srcs = S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
+  const srcs = designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
   // (a design and simulation project, #3780: its drawings named, not their HDL files)
   for (const s of srcs) {
     if (!designOnly()) R.log(`${s.lang === 'vhdl' ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${s.path}" into library work`);
-    else if (S.hdlToSch?.[s.path]) R.log(`Checking drawing "${S.hdlToSch[s.path]}"`);
+    else if (designState.hdlToSch?.[s.path]) R.log(`Checking drawing "${designState.hdlToSch[s.path]}"`);
   }
   const lib = compile(withPrimitives(srcs));
   // (a C source whose HDL cannot be made, #2995: its errors; its module, the top, then not elaborated)
   const cErrs = failedCDiags();
   // (a drawing whose module cannot be made, #3934: its errors on it, the design needing it; its module, the top, then not
   // elaborated either)
-  const cTop = Object.values(cState.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase()) || failedModule(S.failedDrawings, mod);
+  const cTop = Object.values(cState.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase()) || failedModule(designState.failedDrawings, mod);
   const design = cTop ? null : elaborate(lib, mod);
   // (an HDL file its drawing could not generate again, #303: an error of the file, the drawing's errors in it)
   const stale = srcs.filter(s => syncState.staleHdl?.[s.path]).map(s => {
@@ -333,7 +334,7 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   });
   // (+ the modules named with a reserved word, #679)
   // (a design project's: its drawings named, #3891)
-  const all = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), S.failedDrawings, { top: mod, design: designOnly() });   // + design checks (core/lint.js)
+  const all = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), designState.failedDrawings, { top: mod, design: designOnly() });   // + design checks (core/lint.js)
   const owners = Object.entries(cState.cFailed || {}).map(([file, c]) => ({ file, module: c.module }));
   const diags = (hierarchy ? hierarchyDiags(all, lib, mod, owners) : all).map(shownDiag);
   setDiagnostics(diags);
@@ -364,7 +365,7 @@ export async function liveHdlDiagnostics(path, text) {
 // the check's data (plain, for the worker): the sources in the file's view, the primitives' models with them
 function hdlJob(path, text) {
   const sim = S.project.files.find(f => f.path === path)?.role === 'sim';
-  const srcs = S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && (inView(s.role, sim) || s.path === path))
+  const srcs = designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && (inView(s.role, sim) || s.path === path))
     .map(s => (s.path === path && text != null ? { ...s, text } : s));
   return { path, sources: withPrimitives(srcs).map(plainSource), lint: lintEnabled() };
 }
@@ -407,7 +408,7 @@ export const SIM_MODEL_NAMES = { postsynth: 'Post-Synthesis', posttrans: 'Post-T
 const STATUS_FILE = 'build/silinx-status.json';
 
 function sourcesFingerprint() {
-  const parts = S.sources.filter(f => f.role !== 'sim').map(f => `${f.path}\n${f.text}`).sort();
+  const parts = designState.sources.filter(f => f.role !== 'sim').map(f => `${f.path}\n${f.text}`).sort();
   parts.push(`ucf\n${S.project.constraints}\n${filesState.ucfText ?? ''}`, `top\n${S.project.top}`, `dev\n${JSON.stringify(S.project.device)}`);
   let h = 2166136261;                                    // FNV-1a, enough to detect changes
   for (const c of parts.join('\0')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }

@@ -16,15 +16,16 @@ import { S, app } from './app.js';
 import { mountVectorsPage } from './tbwizard-vectors.js';
 import { NAME_RE } from '/core/ident.js';
 import { designOnly } from './design-only.js';
+import { designState } from './state-design.js';
 
 
-export const designSources = () => S.sources.filter(s => s.role === 'design' && (s.lang === 'vhdl' || s.lang === 'verilog'));
+export const designSources = () => designState.sources.filter(s => s.role === 'design' && (s.lang === 'vhdl' || s.lang === 'verilog'));
 
 export async function testBenchWizard({ module, name = null, location = null, lang: langPick = null, task = null, back = null } = {}) {
   if (!S.project) return;
   await app.saveAll?.();
   const guard = replaceGuard('Test Bench Wizard');
-  const mods = S.modules.filter(m => m.role === 'design' && m.kind !== 'package');
+  const mods = designState.modules.filter(m => m.role === 'design' && m.kind !== 'package');
   if (!mods.length) return commandError('Test Bench Wizard', 'The project has no design modules to test.');
   let uut = mods.find(m => m.name === module) || mods.find(m => m.name === S.project.top) || mods[0];
 
@@ -62,7 +63,7 @@ export async function testBenchWizard({ module, name = null, location = null, la
   const chk = () => [...outs, ...ios];   // what is checked: the outputs and the bidirectional buses
 
   // ---------------------------------------------------------------- page 1: unit under test
-  const modSel = select(mods.map(m => [m.name, `${m.name} (${(designOnly() && S.hdlToSch?.[m.file]) || m.file})`]), uut.name);   // (a design project's: its drawing, #3780)
+  const modSel = select(mods.map(m => [m.name, `${m.name} (${(designOnly() && designState.hdlToSch?.[m.file]) || m.file})`]), uut.name);   // (a design project's: its drawing, #3780)
   const tbName = h('input', { type: 'text', value: name || `tb_${uut.name}` });
   const lang = select([['vhdl', 'VHDL'], ['verilog', 'Verilog']], langPick || S.project.preferredLanguage || uut.lang || 'vhdl');
   const loc = h('input', { type: 'text', value: location || 'sim' });

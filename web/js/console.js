@@ -12,6 +12,7 @@ import { severityOf } from '/core/log-severity.js';
 import { lineMessage, entryOf } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 const $ = id => document.getElementById(id);
 
@@ -52,7 +53,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   const msgAction = refused ? trustAction(refused) : [action].flat().find(Boolean) ?? null;
   if (refused && !shared) action = msgAction;
   const lines = String(text).split('\n'), divs = [];
-  const paths = (S.sources || []).map(s => s.path);
+  const paths = (designState.sources || []).map(s => s.path);
   const drawn = draw || (src === 'app' ? appText : null);
   lines.forEach((line, i) => {
     if (run === undefined) startsRun(line);
@@ -364,11 +365,11 @@ onLanguageChange(() => { redrawLines(); renderDiagnostics(); });
 
 // Quick fixes of a message (core/quickfix.js): "Fix: …" in its row of the Errors / Warnings tabs.
 // Applied in the file's editor (one Undo there); the file's messages are then checked again.
-const fixModules = () => S.modules.map(m => ({ name: m.name, ports: (m.portList || []).map(p => p.name), params: m.paramList || [] }));
+const fixModules = () => designState.modules.map(m => ({ name: m.name, ports: (m.portList || []).map(p => p.name), params: m.paramList || [] }));
 function diagFixes(d) {
-  const src = d.file && S.sources.find(s => s.path === d.file);
+  const src = d.file && designState.sources.find(s => s.path === d.file);
   // (not a drawing's generated HDL, with a file of its own or not: read-only, #1176)
-  if (!src || src.view || S.hdlToSch?.[src.path] || (src.lang !== 'vhdl' && src.lang !== 'verilog')) return [];
+  if (!src || src.view || designState.hdlToSch?.[src.path] || (src.lang !== 'vhdl' && src.lang !== 'verilog')) return [];
   const text = docsState.docs.find(o => o.path === d.file && o.editor)?.editor.getValue() ?? src.text;
   try { return quickFixes(text, src.lang, d, { modules: fixModules() }).slice(0, 3); } catch { return []; }
 }

@@ -17,6 +17,7 @@ import { betweenPaths, pathHighlight } from '/packages/silinx-fpga/src/index.js'
 import { clearDrawings, showInDrawings } from './drawing-path.js';
 import { iseTimingPaths } from '/core/twr-paths.js';
 import { vivadoTimingPaths } from '/core/vivado-paths.js';
+import { designState } from './state-design.js';
 
 const TIMING_REPORT = 'build/open/timing.txt';
 const PATHS_FILE = 'build/open/paths.json';
@@ -62,7 +63,7 @@ async function showPath(p, { fpga = false, from = null } = {}) {
 // the paths of a timing report: the Silinx toolchain's (its analysis's paths.json), ISE's and Vivado's (their reports',
 // back to the project's HDL by their netlists' names: core/twr-paths.js, core/vivado-paths.js)
 async function pathsOf(pj, file) {
-  const sources = () => S.sources.filter(s => !s.view && s.role !== 'sim');
+  const sources = () => designState.sources.filter(s => !s.view && s.role !== 'sim');
   const text = await api.readFile(pj, file.endsWith('.twr') || file.endsWith('_timing.rpt') ? file : PATHS_FILE);
   const r = file.endsWith('.twr') ? iseTimingPaths(text, sources(), S.project.top)
     : file.endsWith('_timing.rpt') ? vivadoTimingPaths(text, sources(), S.project.top) : JSON.parse(text);

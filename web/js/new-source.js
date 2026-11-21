@@ -14,6 +14,7 @@ import { NAME_RE, FILE_RE, sourceBase } from '/core/ident.js';
 import { designOnly } from './design-only.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -197,11 +198,11 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     },
   };
   // UUT association page (test benches)
-  let uutName = S.project.top || S.modules.find(m => m.role === 'design')?.name || '';
+  let uutName = S.project.top || designState.modules.find(m => m.role === 'design')?.name || '';
   const uutList = h('div', { class: 'src-types' });
   const renderUut = () => {
     uutList.innerHTML = '';
-    for (const m of S.modules.filter(m => m.role === 'design')) {
+    for (const m of designState.modules.filter(m => m.role === 'design')) {
       const row = h('div', { class: `st${m.name === uutName ? ' sel' : ''}` }, icon(m.lang === 'vhdl' ? 'vhdl' : 'verilog'), `${m.name} (${m.file})`);
       row.addEventListener('click', () => { uutName = m.name; renderUut(); });
       uutList.append(row);
@@ -211,7 +212,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   const p2tb = {
     title: 'Associate Source',
     render: () => { renderUut(); return h('div', {}, h('div', { class: 'hint' }, 'Select the source (Unit Under Test) to associate with the new test bench.'), uutList); },
-    validate: () => (S.modules.some(m => m.name === uutName) ? null : 'Select a module.'),
+    validate: () => (designState.modules.some(m => m.name === uutName) ? null : 'Select a module.'),
   };
   const summary = h('pre', { class: 'code-box' });
   const pSum = {
@@ -250,7 +251,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   const text = await sourceText(kind, {
     file: n, lang: langSel.value, pj,
     ...(kind === 'module' ? { entity: entName.value.trim(), arch: archName.value.trim(), ports } : {}),
-    ...(kind === 'test_bench' ? { uut: uutInfo(S.modules.find(x => x.name === uutName)) } : {}),
+    ...(kind === 'test_bench' ? { uut: uutInfo(designState.modules.find(x => x.name === uutName)) } : {}),
     ...(kind === 'constraints' ? { format: st.id } : {}),
   });
   const noUcf = !filesState.fileTree.includes(pj.constraints);

@@ -7,6 +7,7 @@ import { h } from './dom.js';
 import { S, findDoc, closeDoc, openDoc, openFile, activateDoc } from './app.js';
 import { createEditor } from './editor.js';
 import { translateSource, translatedPath, translationLang } from '/core/translate.js';
+import { designState } from './state-design.js';
 
 const preferred = () => (S.project?.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
 const label = lang => (lang === 'vhdl' ? 'VHDL' : 'Verilog');
@@ -22,11 +23,11 @@ export function translationBadge(file, context) {
 async function sourceText(path) {
   const d = findDoc(`file:${path}`);
   if (d?.editor) return d.editor.getValue();
-  const s = S.sources.find(x => x.path === path && !x.view);
+  const s = designState.sources.find(x => x.path === path && !x.view);
   if (s?.text != null) return s.text;
   return (await import('./api.js')).api.readFile(S.project.name, path);
 }
-const translate = (path, text, to) => translateSource(text, { path, to, sources: S.sources.filter(s => !s.view) });
+const translate = (path, text, to) => translateSource(text, { path, to, sources: designState.sources.filter(s => !s.view) });
 
 /** The source translated to `to` (the preferred language when not given), read-only, in a document of its own. */
 export async function openTranslation(path, to = null) {

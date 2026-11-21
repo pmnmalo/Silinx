@@ -14,6 +14,7 @@ import { identError } from '/core/modgen.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere } from './wizards.js';
 import { S, app } from './app.js';
 import { cleanLoc, namedPages } from './wizard-util.js';
+import { designState } from './state-design.js';
 
 const LANGS = [['vhdl', 'VHDL'], ['verilog', 'Verilog']];
 const mhzText = x => `${(+x).toFixed(3).replace(/\.?0+$/, '')} MHz`;
@@ -66,7 +67,7 @@ export async function clockWizard({ name = '', location = 'src', lang = null, pa
   langSel.addEventListener('change', syncFile);
   if (editPath) [nameIn, langSel, locIn].forEach(e => { e.disabled = true; });
   // a module changed by hand since the wizard wrote it: said, Finish writes it again from the settings
-  const edited = editPath && (S.sources || []).find(s => s.path === editPath)?.text !== clockModule(old).code;
+  const edited = editPath && (designState.sources || []).find(s => s.path === editPath)?.text !== clockModule(old).code;
   const countNote = () => (count === null ? '' : h('div', { class: 'hint cw-count', style: { marginTop: '10px' } }, pll ? `PLLs on this device: ${count}` : `DCMs on this device: ${count}`));
   const p1 = {
     title: 'Name and Language',

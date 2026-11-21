@@ -19,6 +19,7 @@ import { openFsmSchematic } from './drawings-fsm-sch.js';
 import { openAsmFsm, openCReportDoc, openFsmAsm } from './related-docs.js';
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
+import { designState } from './state-design.js';
 
 const KINDS = { sch: 'Show Schematic Beside', asm: 'Show ASM Chart Beside', fsm: 'Show State Diagram Beside', tt: 'Show Boolean Algebra Beside', pn: 'Show Petri Net Beside' };
 const DRAWING = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
@@ -26,8 +27,8 @@ const DRAWING = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
 export const drawingKind = (p) => { const k = DRAWING.exec(p || '')?.[1].toLowerCase(); return k === 'bool' ? 'tt' : k || null; };
 const hdlLabel = (p) => (/\.vhdl?$/i.test(p) ? 'Show VHDL Beside' : 'Show Verilog Beside');
 const cLabel = (p) => (/\.c$/i.test(p) ? 'Show C Source Beside' : 'Show C++ Source Beside');
-const projectSource = (p) => S.sources?.some((s) => s.path === p && !s.view);
-const cSource = (p) => isC(p) && S.sources?.find((s) => s.view && s.path === p);
+const projectSource = (p) => designState.sources?.some((s) => s.path === p && !s.view);
+const cSource = (p) => isC(p) && designState.sources?.find((s) => s.view && s.path === p);
 // (each label written out whole: web/js/i18n.js translates it, test/web-i18n.test.js finds it here)
 const entry = (label, id, open, find = () => findDoc(id)) => ({ label, id, open, find });
 
@@ -60,14 +61,14 @@ function drawingViews(p) {
     k === 'fsm' ? entry('Show Schematic Beside', `fsmsch:${p}`, () => openFsmSchematic(p)) : null,
     k === 'asm' ? entry('Show State Diagram Beside', `asmfsm:${p}`, () => openAsmFsm(p)) : null,
     k === 'pn' ? entry('Show State Diagram Beside', `pnfsm:${p}`, () => openPetriFsm(p)) : null,
-    ...hdlEntries(S.schOwners?.[p]),
+    ...hdlEntries(designState.schOwners?.[p]),
   ];
 }
 // a module's base (its drawing, its C, its HDL file), under `label` (the kind's when not given)
 function baseEntry(name, label) {
   const f = moduleInfo(name)?.file;
   if (!f) return null;
-  const drawing = S.hdlToSch?.[f];
+  const drawing = designState.hdlToSch?.[f];
   if (drawing) return drawingEntry(drawing, label);
   if (isC(f)) return entry(label || cLabel(f), `file:${f}`, () => openFile(f));
   return fileEntry(f, label);
@@ -76,7 +77,7 @@ function baseEntry(name, label) {
 function moduleViews(name) {
   const f = moduleInfo(name)?.file;
   if (!f) return [];
-  const drawing = S.hdlToSch?.[f];
+  const drawing = designState.hdlToSch?.[f];
   if (drawing) return [drawingEntry(drawing), ...hdlEntries(f)];
   if (isC(f)) return [baseEntry(name), ...cViews(f)];
   return hdlEntries(f);
@@ -101,12 +102,12 @@ export function relatedViews(doc) {
   if (KINDS[kind]) list = drawingViews(rest);
   else if (['ttsch', 'fsmasm', 'fsmsch', 'asmfsm', 'pnfsm'].includes(kind)) list = [drawingEntry(rest), ...drawingViews(rest)];
   else if (['chdl', 'casm', 'crep'].includes(kind)) list = [entry(cLabel(rest), `file:${rest}`, () => openFile(rest)), ...cViews(rest)];
-  else if (kind === 'tr') list = [S.hdlToSch?.[rest] ? drawingEntry(S.hdlToSch[rest]) : null, fileEntry(rest)];
+  else if (kind === 'tr') list = [designState.hdlToSch?.[rest] ? drawingEntry(designState.hdlToSch[rest]) : null, fileEntry(rest)];
   else if (kind === 'file') {
     if (cSource(rest)) list = cViews(rest);
-    else if (S.hdlToSch?.[rest]) list = [drawingEntry(S.hdlToSch[rest]), translationEntry(rest)];
+    else if (designState.hdlToSch?.[rest]) list = [drawingEntry(designState.hdlToSch[rest]), translationEntry(rest)];
     else {
-      const mods = (S.modules || []).filter((m) => m.file === rest && m.kind !== 'package');
+      const mods = (designState.modules || []).filter((m) => m.file === rest && m.kind !== 'package');
       const bench = mods.find((m) => m.role === 'sim');
       const uut = bench && uutOf(bench.name);
       list = [translationEntry(rest), uut ? baseEntry(uut, 'Show Unit Under Test Beside') : null];

@@ -6,11 +6,12 @@ import { S, closeDoc, findDoc, openDoc, withPrimitives } from './app.js';
 import { createEditor } from './editor.js';
 import { log, showConsolePage } from './console.js';
 import { compile, elaborate } from '/core/compile.js';
+import { designState } from './state-design.js';
 
 /** View C Model: the module's C model, generated, read-only. */
 export async function openCModel(mod) {
   const { hdlToCSafe } = await import('/core/hdl-c.js');
-  const srcs = S.sources.filter((s) => (s.lang === 'vhdl' || s.lang === 'verilog') && s.role !== 'sim');
+  const srcs = designState.sources.filter((s) => (s.lang === 'vhdl' || s.lang === 'verilog') && s.role !== 'sim');
   const design = elaborate(compile(withPrimitives(srcs)), mod);
   if (!design.top || design.diags.some((d) => d.severity === 'error')) {
     log(`ERROR: '${mod}' does not elaborate: correct it first.`, 'err');

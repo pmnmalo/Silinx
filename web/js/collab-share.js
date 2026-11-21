@@ -46,6 +46,7 @@ import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 import { collabLog } from './collab-log.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; } };
@@ -380,7 +381,7 @@ function hookApi(project, doc, s) {
 }
 
 // the files an editor may change here: a text file of the project's that no drawing generates; a drawing edited live
-const editableHere = p => editablePath(p) && !S.hdlToSch?.[p] && filesState.fileTree?.includes(p);
+const editableHere = p => editablePath(p) && !designState.hdlToSch?.[p] && filesState.fileTree?.includes(p);
 const drawingHere = p => liveDrawing(p) && !!filesState.fileTree?.includes(p);
 const sayLine = text => collabLog(text, /^WARNING/.test(text) ? 'warn' : 'info');
 
@@ -404,7 +405,7 @@ async function onEdits(s, ev) {
     saveJson: json => s.orig.saveProject(s.project, json),
     untrust: () => untrustEdited(s),
   };
-  const r = await applyEdits(s.doc, ev, store, { generated: new Set(Object.keys(S.hdlToSch || {})), warn: text => collabLog(`WARNING: ${text}.`, 'warn') });
+  const r = await applyEdits(s.doc, ev, store, { generated: new Set(Object.keys(designState.hdlToSch || {})), warn: text => collabLog(`WARNING: ${text}.`, 'warn') });
   if (share !== s) return false;
   if (r.undone.length) collabLog(`WARNING: An editor's change undone (a file of the project folder that is not shared, or the text of a file an editor does not change as text): ${r.undone.join(', ')}.`, 'warn');
   // (the page's project as the disk has it now: its Design pane, its open documents; said as an owner's change is; the

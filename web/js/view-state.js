@@ -10,6 +10,7 @@ import { S, activateDoc, closeDoc, moduleInfo, openFile, openImpact, openPinPlan
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 // ---- where the user was (#160, #163): the open documents of a project, the one in front, the left pane
 // and the Design view, kept in this browser (per project) so that a reload of the page, or opening
@@ -58,7 +59,7 @@ export async function closeAllDocs() {
 export function currentViewState() {
   const open = docsState.docs.filter(d => d.project === S.project.name && REOPEN.some(([re]) => re.test(reopenKey(d)))).map(reopenKey);
   const active = docsState.active && reopenKey(docsState.active);
-  return { open, active: open.includes(active) ? active : null, page: panes.leftPage || null, view: S.view, split: splitKeys(reopenKey, open) };
+  return { open, active: open.includes(active) ? active : null, page: panes.leftPage || null, view: designState.view, split: splitKeys(reopenKey, open) };
 }
 export function saveViewState() {
   if (keepView || !S.project) return;
@@ -79,7 +80,7 @@ export async function restoreViewState(name) {
 export async function applyViewState(v) {
   keepView = true;
   try {
-    if (v.view === 'sim' || v.view === 'impl') { if (v.view !== S.view) setView(v.view); }
+    if (v.view === 'sim' || v.view === 'impl') { if (v.view !== designState.view) setView(v.view); }
     if (['design', 'files', 'libs', 'teaching', 'collab'].includes(v.page)) showLeftPage(v.page);
     for (const id of v.open) {
       const [re, open] = REOPEN.find(([r]) => r.test(id)) || [];

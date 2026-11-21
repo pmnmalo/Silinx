@@ -20,19 +20,20 @@ import { toolbarMenu } from './toolbar-menu.js';
 import { PROCESSES } from '/core/labs-check.js';
 import { PROGRESS_FILE, checkLines, checkStep, labFileLines, labProgress, listLabs, localize, nextOpen, parseLab, parseProgress, progressText, recordTry } from '/core/labs.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 export const STEPS_KEY = 'silinx.narrow.labsteps';   // (the Steps panel shown on a narrow screen)
 const lang = () => (getLanguage() === 'pt' ? 'pt' : 'en');
 
 /** The project `name` as a lab's checks read it (core/labs-check.js `io`): as it is saved, its HDL as Check Syntax takes
- *  it (the HDL files of the view, and the views' HDL made in the browser, S.viewSources). */
+ *  it (the HDL files of the view, and the views' HDL made in the browser, designState.viewSources). */
 function projectIo(name) {
   const pj = () => api.project(name);
   return {
     project: pj,
     files: async () => (await pj()).fileTree || [],
     read: rel => api.readFile(name, rel),
-    sources: async sim => [...(await api.sources(name)).filter(s => !s.missing && !s.view), ...(S.viewSources || [])]
+    sources: async sim => [...(await api.sources(name)).filter(s => !s.missing && !s.view), ...(designState.viewSources || [])]
       .filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role || 'design', sim)),
     // the last run's reports, current while the Processes pane marks none of its steps out of date or failed
     reports: async process => {

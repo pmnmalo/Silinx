@@ -7,12 +7,13 @@ import { blockMarkOf } from '/core/schdoc.js';
 import { composition } from '/core/symlib.js';
 import { S } from './app.js';
 import { withoutHdlBadges } from './design-only.js';
+import { designState } from './state-design.js';
 
 /** The palette symbol module `info` (moduleInfo's) is the block of: { type, params, comp (null: an atomic symbol), lang },
  *  or null (not a symbol's block). */
 export function compositionOf(info) {
   if (!info || !/\.(vhdl?|v)$/i.test(info.file || '')) return null;
-  const text = S.sources?.find(s => s.path === info.file)?.text;
+  const text = designState.sources?.find(s => s.path === info.file)?.text;
   const blk = text ? blockMarkOf(text, info.name) : null;
   return blk ? { ...blk, comp: composition(blk.type, blk.params), lang: info.lang === 'verilog' ? 'verilog' : 'vhdl' } : null;
 }

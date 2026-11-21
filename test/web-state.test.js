@@ -208,3 +208,32 @@ test('the documents\' slice (state-docs.js): S\'s fields are its own, both ways,
   docsState.docs = [];
   docsState.active = null;
 });
+
+test('the compiled design\'s slice (state-design.js): S\'s fields are its own, both ways, with their first values', async () => {
+  const { designState } = await import('../web/js/state-design.js');
+  const FIELDS = ['view', 'sources', 'lib', 'modules', 'viewSources', 'viewTexts', 'viewElsewhere', 'viewModule', 'schOwners', 'hdlToSch',
+    'symbolFiles', 'partModules', 'failedDrawings'];
+  assert.deepEqual(Object.keys(designState), FIELDS);
+  // (as S declared them: the Implementation's view, nothing compiled, the drawings' fields undefined)
+  assert.deepEqual([designState.view, designState.sources, designState.lib, designState.modules], ['impl', [], null, []]);
+  assert.ok(FIELDS.slice(4).every(k => designState[k] === undefined));
+  assert.throws(() => { designState.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return designState.${k}; }, set ${k}(v) { designState.${k} = v; }`), k);
+  assert.match(block, /^\s*project: null, devices: null, toolchain: null,$/m, 'the project stays S\'s');
+  const re = new RegExp(`(?<![\\w.$])S\\.(${FIELDS.join('|')})\\b`);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
+  // (project.js: the drawings' maps into the slice, the C sources' black boxes into theirs, as Object.assign(S, …) did)
+  assert.match(read('project.js'), /Object\.assign\(designState, \{ schOwners, hdlToSch, viewModule, viewTexts, symbolFiles \}\);\n\s*cState\.hls = hls;/);
+  // (S's declaration evaluated, app.js itself needs a page: its getters and setters reach the slice, and back)
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const S = new Function('designState', 'cState', 'syncState', `return ${block.slice('export const S = '.length)}\n};`)(designState, cState, syncState);
+  const m = { name: 'top' };
+  S.modules.push(m);
+  S.view = 'sim';
+  assert.deepEqual([designState.modules, designState.view], [[m], 'sim']);
+  designState.hdlToSch = { 'top.vhd': 'top.sch.json' };
+  assert.equal(S.hdlToSch['top.vhd'], 'top.sch.json');
+  Object.assign(designState, { view: 'impl', modules: [], hdlToSch: undefined });
+});

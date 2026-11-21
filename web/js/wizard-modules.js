@@ -3,6 +3,7 @@
 // and opening it reopens the wizard with them.
 import { readWizardSpec } from '/core/clocking.js';
 import { S } from './app.js';
+import { designState } from './state-design.js';
 
 // the wizards that write such modules: their name (the Design pane's badge) and how they open
 const WIZARDS = {
@@ -12,7 +13,7 @@ const WIZARDS = {
 
 /** The spec of the wizard that made the HDL file `path` (from its text in the project), or null. */
 function wizardSpecOf(path) {
-  const text = (S.sources || []).find(s => s.path === path)?.text;
+  const text = (designState.sources || []).find(s => s.path === path)?.text;
   const spec = text ? readWizardSpec(text) : null;
   return spec && WIZARDS[spec.wizard] ? spec : null;
 }

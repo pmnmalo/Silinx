@@ -9,6 +9,7 @@ import { HDL_TOP_TYPES } from '/core/top-types.js';
 import { S, app } from './app.js';
 import { h } from './ui.js';
 import { logError } from './console.js';
+import { designState } from './state-design.js';
 
 /** Design Properties' Project Kind choices: New Project's first page's (#5041), co-design not chosen yet. */
 export const KIND_OPTIONS = [[DESIGN_KIND, 'No FPGA'], ['fpga', 'With an FPGA'], [CODESIGN_KIND, 'Co-design (not available yet)']];
@@ -25,7 +26,7 @@ export function kindNote(kindSel, pj) {
   let refused = false;
   const update = () => {
     const to = kindSel.value;
-    const own = to === DESIGN_KIND && from !== DESIGN_KIND ? ownSources(pj, Object.keys(S.hdlToSch || {})) : [];
+    const own = to === DESIGN_KIND && from !== DESIGN_KIND ? ownSources(pj, Object.keys(designState.hdlToSch || {})) : [];
     refused = own.length > 0;
     el.textContent = to === from ? '' : refused ? DESIGN_ONLY_MESSAGES.toDesign(pj.name, own)
       : to === DESIGN_KIND ? DESIGN_ONLY_MESSAGES.toDesignNote : DESIGN_ONLY_MESSAGES.toFpgaNote;
@@ -57,7 +58,7 @@ export function kindFields(isDesign, fpga, topType = null) {
 /** Design Properties' "Design and simulation only" on an FPGA project: the project made a design project, or the
  *  refusal in the console (its HDL or C sources of its own). Returns whether it was made one. */
 export async function makeDesignProject(pj) {
-  const r = toDesignProject(pj, Object.keys(S.hdlToSch || {}));
+  const r = toDesignProject(pj, Object.keys(designState.hdlToSch || {}));
   if (r.error) { logError(r.error); return false; }
   Object.assign(S.project, r.project);
   await app.saveProjectJson();

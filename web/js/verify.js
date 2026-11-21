@@ -16,6 +16,7 @@ import { inView } from './design.js';
 import { saveAll, setStatus } from './processes.js';
 import { runSimulation } from './viewers.js';
 import { designOnly } from './design-only.js';
+import { designState } from './state-design.js';
 
 // the reference proposed for a module: one named after it (<m>_ref, ref_<m>, <m>_reference, <m>_golden), else the last one chosen
 const REF_NAMES = m => [`${m}_ref`, `ref_${m}`, `${m}_reference`, `${m}_golden`].map(n => n.toLowerCase());
@@ -46,7 +47,7 @@ const limits = {};
 
 /** The reference module, the depth and the time limit, asked: { reference, depth, timeLimit }, or null (cancelled). */
 async function askReference(mod) {
-  const names = [...new Set(S.modules.filter(m => m.kind !== 'package' && m.name.toLowerCase() !== mod.toLowerCase() && !isVerifyBench(S.sources.find(s => s.path === m.file)?.text)).map(m => m.name))]
+  const names = [...new Set(designState.modules.filter(m => m.kind !== 'package' && m.name.toLowerCase() !== mod.toLowerCase() && !isVerifyBench(designState.sources.find(s => s.path === m.file)?.text)).map(m => m.name))]
     .sort(naturalCompare);   // (natural order, #3819)
   if (!names.length) { logInfo('The project has no other module to be the reference: add the reference module first'); return null; }
   const proposed = names.find(n => REF_NAMES(mod).includes(n.toLowerCase())) || (names.includes(last[mod]) ? last[mod] : names[0]);
@@ -133,14 +134,14 @@ async function verifyInner(mod, { reference = null, depth, timeLimit }) {
  * when a file or a module of the user's is in its place (a warning).
  */
 export async function writeBench(tb, bench, text) {
-  const mine = S.sources.find(s => s.path === bench);
-  const other = S.modules.find(m => m.name.toLowerCase() === tb.toLowerCase() && !isVerifyBench(S.sources.find(x => x.path === m.file)?.text));
+  const mine = designState.sources.find(s => s.path === bench);
+  const other = designState.modules.find(m => m.name.toLowerCase() === tb.toLowerCase() && !isVerifyBench(designState.sources.find(x => x.path === m.file)?.text));
   if ((mine && !isVerifyBench(mine.text)) || other) {
     log(`WARNING:Verify - the counterexample's test bench is not written: ${other ? `a module named '${tb}' already exists${designOnly() ? '' : ` (${other.file})`}` : `${designOnly() ? `the test bench ${tb}` : bench} exists and is not a test bench of Verify`}.`, 'warn');
     return null;
   }
   // (an earlier one in the other language, the MCP server's: replaced by this one)
-  const twin = S.sources.find(s => s.path !== bench && s.path.replace(/\.(vhd|v)$/, '') === bench.replace(/\.(vhd|v)$/, '') && isVerifyBench(s.text));
+  const twin = designState.sources.find(s => s.path !== bench && s.path.replace(/\.(vhd|v)$/, '') === bench.replace(/\.(vhd|v)$/, '') && isVerifyBench(s.text));
   if (twin) await api.deleteFile(S.project.name, twin.path);
   await api.writeFile(S.project.name, bench, text());   // (registers it: a simulation source)
   await app.reloadProject();
@@ -148,4 +149,4 @@ export async function writeBench(tb, bench, text) {
 }
 
 /** The sources Verify reads: the simulation view's (a reference may be a simulation-only one), but its test benches. */
-export const verifySources = () => S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true) && !isVerifyBench(s.text));
+export const verifySources = () => designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true) && !isVerifyBench(s.text));

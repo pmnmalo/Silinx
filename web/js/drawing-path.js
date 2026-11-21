@@ -8,6 +8,7 @@ import { S, findDoc, openFile } from './app.js';
 import { drawingPath, pathNames } from '/core/path-drawing.js';
 import { drawingKind } from './related-views.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 // an element of each type in the editors' drawings
 const SELECTOR = { state: id => `[data-state="${CSS.escape(id)}"]`, trans: id => `[data-trans="${CSS.escape(id)}"]`,
@@ -17,7 +18,7 @@ const KINDS = new Set(['fsm', 'asm', 'sch']);
 
 /** The drawing (a project's state diagram, ASM chart or schematic) whose HDL file is `file`, or null. */
 function drawingOf(file) {
-  const p = S.hdlToSch?.[file];
+  const p = designState.hdlToSch?.[file];
   return p && KINDS.has(drawingKind(p)) ? p : null;
 }
 
@@ -49,7 +50,7 @@ export async function showInDrawings(p, files) {
     const dr = drawingOf(f);
     if (!dr) continue;
     let model;
-    try { model = JSON.parse(S.viewTexts[dr]); } catch { continue; }
+    try { model = JSON.parse(designState.viewTexts[dr]); } catch { continue; }
     const items = drawingPath(drawingKind(dr), model, pathNames(p, f));
     out[dr] = items;
     await openFile(dr);

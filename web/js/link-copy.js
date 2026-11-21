@@ -27,6 +27,7 @@ import { linkField } from './link-field.js';
 import { QR_MAX_BYTES, qrSvg } from '/core/qr.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
 import { collabLog } from './collab-log.js';
+import { designState } from './state-design.js';
 
 // (the link's box at most so many lines, scrolled beyond: a full link is thousands of characters, #4612)
 const LINK_LINES = 8;
@@ -51,8 +52,8 @@ export async function copyLinkDialog({ module = null, view = null, shown = null 
   // the Module list follows Open in (#2878): the simulation's, the test benches (the project's first); the others', the
   // design's modules (its top first), no test bench
   const pj = S.project;
-  const benches = [...new Set([pj.simTop, ...(S.modules || []).filter(m => m.role === 'sim').map(m => m.name).sort(naturalCompare)].filter(Boolean))];
-  const designMods = [...new Set([pj.top, ...(S.modules || []).filter(m => m.role !== 'sim').map(m => m.name)].filter(Boolean))];
+  const benches = [...new Set([pj.simTop, ...(designState.modules || []).filter(m => m.role === 'sim').map(m => m.name).sort(naturalCompare)].filter(Boolean))];
+  const designMods = [...new Set([pj.top, ...(designState.modules || []).filter(m => m.role !== 'sim').map(m => m.name)].filter(Boolean))];
   const viewSel = h('select', { 'data-field': 'view' }, ...VIEWS.map(([v, l]) => h('option', { value: v, selected: v === (view || '') }, l)));
   const modSel = h('select', { 'data-field': 'module' });
   // (a test bench given, from the Simulation hierarchy's menu: the simulation, that test bench chosen, #2883)

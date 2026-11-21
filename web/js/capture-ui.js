@@ -19,6 +19,7 @@ import { inView, saveProjectJson } from './design.js';
 import { field, select } from './wizards.js';
 import { boardClockOf, boardClockText, captureClockText } from '/core/ila-insert.js';
 import { clocksOf } from '/core/schematic.js';
+import { designState } from './state-design.js';
 
 // the logic analyzer's lines: the board's, Implementation's (#4729), whatever process ran last
 const log = (text, cls = '', opts = {}) => consoleLog(text, cls, { ...opts, src: 'impl' });
@@ -32,7 +33,7 @@ function implDesign() {
   const pj = S.project;
   if (!pj?.top) return null;
   try {
-    const srcs = S.sources.filter(s => inView(s.role, false) && (s.lang === 'vhdl' || s.lang === 'verilog'));
+    const srcs = designState.sources.filter(s => inView(s.role, false) && (s.lang === 'vhdl' || s.lang === 'verilog'));
     const d = elaborate(compile(withPrimitives(srcs)), pj.top);
     return d.top ? d : null;
   } catch { return null; }

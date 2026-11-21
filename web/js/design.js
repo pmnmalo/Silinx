@@ -35,6 +35,7 @@ import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -56,7 +57,7 @@ export function renderHierarchy() {
     return;
   }
   const pj = S.project;
-  const one = oneTree(), sim = S.view === 'sim' && !one;
+  const one = oneTree(), sim = designState.view === 'sim' && !one;
   const tree = h('ul', { class: 'tree', role: 'tree', tabindex: '0', 'aria-label': 'Design hierarchy', onkeydown: treeKeys });
   const dev = `${pj.device.part}${pj.device.speed}-${pj.device.package}`;
   const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(filesState.git ? filesState.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
@@ -65,7 +66,7 @@ export function renderHierarchy() {
   const devItem = treeItem({ label: designOnly() ? 'Design' : !sim ? dev : 'Behavioral', ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: e => projectContextMenu(e) });
   root.ul.append(devItem.li);
 
-  const lib = S.lib;
+  const lib = designState.lib;
   const topName = !sim ? pj.top : null;   // the Simulation view has no top: Simulate runs the selected module
   const isTopName = n => !!topName && String(n).toLowerCase() === String(topName).toLowerCase();
   // (the top first, then in natural order: x_2 before x_10, #3819)
@@ -125,7 +126,7 @@ export function renderHierarchy() {
     const files = isTop && !sim && !one ? flowFileRows() : [];
     if (info && depth < 30) {
       // (by their names in natural order, then their modules', #3819; a circuit's ICs none of its rows, #4216)
-      const kids = instanceOrder(instancesOf(info.mod)).filter(k => !S.partModules?.has(String(k.module).toLowerCase()));
+      const kids = instanceOrder(instancesOf(info.mod)).filter(k => !designState.partModules?.has(String(k.module).toLowerCase()));
       if (!kids.length && !files.length) it.setLeaf();
       for (const k of kids) addModule(it.ul, k.module, k.name, depth + 1, `${path}/${k.name}`);
     } else if (!files.length) it.setLeaf();
@@ -142,35 +143,35 @@ export function renderHierarchy() {
     const it = treeItem({ label: p.name, meta: `(${p.file.split('/').pop()})`, ico: 'vhdl', key: `pkg:${p.name}`, onSelect: () => select({ type: 'file', file: p.file }), onOpen: () => openFile(p.file, p.loc?.line), onContext: e => fileContextMenu(e, p.file) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.sch\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.sch\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
     const owned = null;
     const it = treeItem({ label: f.split('/').pop(), meta: owned ? `(→ ${owned.split('/').pop()})` : '', ico: 'schematic', key: `sch:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'sch', file: f }), onOpen: () => openSch(f), onContext: e => schContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'asm', key: `asm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'asm', file: f }), onOpen: () => openAsm(f), onContext: e => asmContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'algebra', key: `tt:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'tt', file: f }), onOpen: () => openTt(f), onContext: e => ttContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'fsm', key: `fsm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'fsm', file: f }), onOpen: () => openFsm(f), onContext: e => fsmContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => isCirc(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {   // (a circuit, #3897)
+  for (const f of (filesState.fileTree || []).filter(f => isCirc(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {   // (a circuit, #3897)
     const it = treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
   // a C source whose HDL cannot be made (#2995: a C error, a blackbox refused): its row, marked, its errors in the Console;
   // [No HDL] opens the first one's file
   for (const [f, c] of Object.entries(cState.cFailed || {})) {
-    if (S.modules.some(m => m.file === f)) continue;
+    if (designState.modules.some(m => m.file === f)) continue;
     const at = c.diagnostics[0], menu = e => fileContextMenu(e, f);
     const it = treeItem({ label: c.module || f.split('/').pop(), meta: `(${f.split('/').pop()})`, ico: 'err', cls: c.module && isTopName(c.module) ? 'top-mod' : '', key: `c:${f}`, mark: gitMark([f]),
       badges: [{ text: cBadge(f), base: true, title: 'Open', open: () => openFile(f), context: menu },
@@ -191,7 +192,7 @@ export function renderHierarchy() {
     if (!used || used === u || used.file === p.file) continue;
     const f = S.project.files.find(x => x.path === p.file);
     if (!f || !(one || inView(f.role, sim))) continue;
-    const drawn = S.hdlToSch?.[p.file];
+    const drawn = designState.hdlToSch?.[p.file];
     const it = treeItem({ label: u.name, meta: `(${(drawn || p.file).split('/').pop()}, redefined in ${used.file.split('/').pop()})`, ico: 'warn', key: `dup:${p.file}:${u.name}`,
       onSelect: () => select({ type: 'file', file: p.file }), onOpen: () => (drawn ? openView(drawn) : openFile(p.file, u.loc?.line)), onContext: e => fileContextMenu(e, p.file) });
     it.setLeaf(); devItem.ul.append(it.li);
@@ -241,10 +242,10 @@ export function openModuleSource(name) {
   return sch ? openView(sch) : wz ? openWizardModule(info.file) : openFile(info.file, info.line);
 }
 function viewOfModule(name, file) {
-  const v = S.hdlToSch?.[file];
+  const v = designState.hdlToSch?.[file];
   if (!v) return null;
-  const mods = S.modules.filter(m => m.file === file && m.kind !== 'package').map(m => ({ name: m.name, instances: instancesOf(m.mod).map(i => i.module) }));
-  return String(drawnModule(mods, S.viewModule?.[v])).toLowerCase() === String(name).toLowerCase() ? v : null;
+  const mods = designState.modules.filter(m => m.file === file && m.kind !== 'package').map(m => ({ name: m.name, instances: instancesOf(m.mod).map(i => i.module) }));
+  return String(drawnModule(mods, designState.viewModule?.[v])).toLowerCase() === String(name).toLowerCase() ? v : null;
 }
 
 // badges: the views of a module ({ text, base, title, open, context }), after its name: a click opens
@@ -368,13 +369,13 @@ function ownDrawingCommands(mod, file) {
   return v ? drawingCommands(v) : [];
 }
 function moduleContextMenu(e, mod, file) {
-  const isSimView = S.view === 'sim';
+  const isSimView = designState.view === 'sim';
   popupMenu([
     isSimView ? null : topMenuItem(mod, () => setTop(mod, false)),
     // (what a double-click opens: its drawing, else its HDL, #2872)
     { label: 'Open', action: () => openModuleSource(mod) },
     // (its HDL or C in the user's editor, #4017: not a drawing's, which the drawing makes)
-    S.hdlToSch?.[file] || designOnly() ? null : editorItem(file),
+    designState.hdlToSch?.[file] || designOnly() ? null : editorItem(file),
     { label: 'Rename…', action: () => renameDialog(file, mod) },
     { label: checkLabel(), action: () => checkSyntax(mod, isSimView) },
     designOnly() ? null : { label: 'View RTL Schematic', action: () => openSchematic(mod) },   // (none in a design project, #3891)
@@ -388,7 +389,7 @@ function moduleContextMenu(e, mod, file) {
     // a plain HDL module can be drawn (the drawing then its base); a drawing's module has the drawing's commands
     // (#2872: here, on its name and on every badge alike); a block of a drawing's HDL (#175: its file is the
     // drawing's) neither
-    ...(S.hdlToSch?.[file] ? ownDrawingCommands(mod, file) : designOnly() ? [] : [
+    ...(designState.hdlToSch?.[file] ? ownDrawingCommands(mod, file) : designOnly() ? [] : [
       { label: 'Convert to Schematic (editable)…', action: () => convertToSchematic(mod) },
       { label: 'Convert to State Machine (ASM)…', action: () => convertToAsm(mod) },
       { label: 'Convert to State Diagram (FSM)…', action: () => convertToFsm(mod) },
@@ -396,7 +397,7 @@ function moduleContextMenu(e, mod, file) {
     isSimView ? { label: 'Simulate Behavioral Model', action: () => runSimulation(mod) } : null,
     // (a schematic's, a state diagram's, a Petri net's, an ASM chart's or a circuit's module: its Try it or simulation, #2826, #2869, #2881, #4119)
     // (a copy, or live opening on this module, #3631: chosen in its window, #3698)
-    { label: 'Share Module…', action: () => import('./share-how.js').then(m => m.shareDialog({ module: mod, view: /\.(sch|fsm|pn|asm|circ)\.json$/i.test(S.hdlToSch?.[file] || file) ? 'try' : null })) },
+    { label: 'Share Module…', action: () => import('./share-how.js').then(m => m.shareDialog({ module: mod, view: /\.(sch|fsm|pn|asm|circ)\.json$/i.test(designState.hdlToSch?.[file] || file) ? 'try' : null })) },
     '-',
     { label: 'New Source…', action: () => wiz.newSourceWizard() },
     { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog() },
@@ -426,7 +427,7 @@ export function fileContextMenu(e, file) {
     /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
     { label: 'Remove from Project', action: () => removeFile(file) },
     { label: 'Delete File…', action: () => deleteFile(file) },
-    { label: 'Source Properties…', action: () => wiz.sourceProperties(file), disabled: !S.project.files.some(f => f.path === file) && S.viewTexts?.[file] === undefined },
+    { label: 'Source Properties…', action: () => wiz.sourceProperties(file), disabled: !S.project.files.some(f => f.path === file) && designState.viewTexts?.[file] === undefined },
   ].filter(Boolean), e.clientX, e.clientY);
 }
 // Delete File…: out of the project if it was in it, and off the project folder (#1215; Remove from Project keeps the
@@ -489,7 +490,7 @@ function projectContextMenu(e) {
   ].filter(Boolean), e.clientX, e.clientY);
 }
 
-export async function setTop(mod, sim = S.view === 'sim') {
+export async function setTop(mod, sim = designState.view === 'sim') {
   // (core/project-entries.js topRefusal, the MCP's set_top's rule, #4733: a module of the view, even one with errors; a C
   // source's module not made for now too, #2995)
   const same = n => String(n || '').toLowerCase() === String(mod).toLowerCase();
@@ -533,7 +534,7 @@ export function serialOp(fn) {
 }
 
 // (a design project's hidden HDL file, a test bench's: its module named, #3891)
-const shownName = file => (designOnly() && HDL_RE.test(file) && S.modules?.find(m => m.file === file)?.name) || file;
+const shownName = file => (designOnly() && HDL_RE.test(file) && designState.modules?.find(m => m.file === file)?.name) || file;
 export async function removeFile(file) {
   if (!await confirmDlg('Remove Source', `Remove '${shownName(file)}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`)) return;
   if (!await saveAll()) return;
@@ -545,8 +546,8 @@ export async function removeFile(file) {
 // linked as before, #234). The Files view removes the one file: a drawing's HDL file alone leaves the
 // drawing a module by itself ([No HDL], #231); a drawing alone leaves its HDL file a plain HDL module.
 export async function removeModule(file) {
-  const drawing = S.hdlToSch?.[file] || (S.schOwners?.[file] ? file : null);
-  const hdl = drawing ? S.schOwners?.[drawing] : null;
+  const drawing = designState.hdlToSch?.[file] || (designState.schOwners?.[file] ? file : null);
+  const hdl = drawing ? designState.schOwners?.[drawing] : null;
   if (!hdl) return removeFile(file);
   if (!await confirmDlg('Remove Source', designOnly() ? `Remove '${drawing}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`
     : `Remove '${drawing}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)`)) return;

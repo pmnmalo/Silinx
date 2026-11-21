@@ -7,6 +7,7 @@ import { h } from './ui.js';
 import { S } from './app.js';
 import { log, logError } from './console.js';
 import { t } from './i18n.js';
+import { designState } from './state-design.js';
 
 let info = null, asking = null;
 /** What the server says of its editor ({ available, label, reason }); a failed ask (no token yet) asked again later. */
@@ -43,7 +44,7 @@ export function editorItem(path, line = null) {
 /** A document tab's menu items: a project's text file (its id file:…; not the HDL a drawing makes) at the cursor's line. */
 export function docEditorItems(doc) {
   const path = doc.path, ed = doc.editor;
-  if (!path || doc.id !== `file:${path}` || !ed?.getCursor || S.hdlToSch?.[path] || !editorLabel()) return [];
+  if (!path || doc.id !== `file:${path}` || !ed?.getCursor || designState.hdlToSch?.[path] || !editorLabel()) return [];
   return ['-', editorItem(path, ed.getCursor().line + 1)];
 }
 /** The project's menu item: its folder. */
