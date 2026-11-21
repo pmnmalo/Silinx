@@ -2,8 +2,8 @@
 // from the line's English text. Its source is decided once (web/js/console.js log): its line's filter, its entry's in
 // the Errors / Warnings tabs (they follow the filter), what a shared project's followers get (core/collab-runs.js).
 // Its entry of the Errors / Warnings tabs is made from it (entryOf: its severity, tool, location and action), the
-// console reading nothing back from the line drawn. (The MCP's results as messages are the next step: the pull request
-// of #4749.) A message:
+// console reading nothing back from the line drawn. The MCP's results hold their messages as data (messageData: step 4
+// of #4749): check_syntax's, simulate's, run_process's, follow_project's runs'. A message:
 //   severity: 'error' | 'warning' | 'info' | 'ok' | 'header' | 'text' (the console's classes: err, warn, info, ok, hdr, none)
 //   source:   'check' | 'sim' | 'emu' | 'impl' | 'app' (the console's filters, web/js/messages.js; 'app': the application's,
 //             shown under every filter)
@@ -77,3 +77,11 @@ export function entryOf(msg) {
     src: msg.source, run: msg.run, action: msg.action,
   };
 }
+
+/** A check's diagnostic's location ({ severity, file, line, col… } of core/diag.js: its file, line and column), as its
+ *  console line's message holds it (#4749: the interface's Check Syntax's and the MCP's check_syntax's), or null. */
+export const diagLocation = d => (d?.file && d.line > 0 ? { file: d.file, line: d.line, ...(d.col > 0 ? { col: d.col } : {}) } : null);
+
+/** A message as data (#4749: the MCP's results, server/mcp-*.js): its fields, its action by its label (its button's
+ *  function no data), its text in English. */
+export const messageData = m => ({ ...m, action: m.action?.label ?? null });

@@ -163,7 +163,8 @@ test('read_file / write_file: a source read and written, a new HDL file added to
 test('check_syntax: the design as the application checks it, then an error and a warning with their file and line', async () => {
   const ok = await srv.call('check_syntax', { project: 'Blinky' });
   assert.equal(ok.content[0].text, 'Process "Check Syntax" of <top> completed successfully (53 signals, 26 processes).');
-  assert.deepEqual(ok.structuredContent, { project: 'Blinky', top: 'top', ok: true, errors: [], warnings: [] });
+  // (its messages, #4749: its result's line only; test/mcp-messages.test.js)
+  assert.deepEqual(ok.structuredContent, { project: 'Blinky', top: 'top', ok: true, errors: [], warnings: [], messages: [{ text: ok.content[0].text, severity: 'ok', source: 'check', tool: null, location: null, action: null, process: 'Check Syntax', run: null }] });
   assert.equal((await srv.call('check_syntax', { project: 'Blinky', simulation: true })).structuredContent.top, 'tb_top');
   // a missing ';' and an unused signal
   await srv.call('write_file', { project: 'Blinky', path: 'src/inv.vhd', text: 'library ieee; use ieee.std_logic_1164.all;\nentity inv is port (a : in std_logic; y : out std_logic); end inv;\narchitecture rtl of inv is\n  signal spare : std_logic;\nbegin\n  y <= not a\nend rtl;\n' });

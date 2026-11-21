@@ -39,7 +39,7 @@ import { qrSvg } from '../core/qr.js';
 import { followedUi, followedDesign, activityLines } from '../core/collab-channels.js';
 import { selectionWords } from '../core/collab-select.js';
 import { followedCopy, copyName } from '../core/collab-keep.js';
-import { runsActivity, followedRuns, runLines, redact, redactAll } from '../core/collab-runs.js';
+import { runsActivity, followedRuns, runLines, runMessages, redact, redactAll } from '../core/collab-runs.js';
 import { ownerSecrets } from './owner-secrets.js';
 import { followedSim, simLines } from '../core/collab-sim.js';
 import { followedEmu, emuLines } from '../core/collab-emu.js';
@@ -409,7 +409,7 @@ export const COLLAB_TOOLS = [
         ...(text !== null ? [`${path}:`, text] : []),
         ...(check ? check.lines : []),
       ];
-      return { text: lines.join('\n'), data: { following: true, connected: cur.session.connected(), ownerAway: cur.session.away(), ownerResumed: cur.session.resumes(), editor: cur.session.editor, owner, project: project?.name ?? null, files: fileTree, participants: peers, ownerView: view, ownerActivity: ownerActivity(cur.session), ...(l.top ? { top: l.top } : {}), ...(text !== null ? { path, text } : {}), ...(check ? { check: { errors: check.errors, warnings: check.warnings } } : {}) }, untrusted: text !== null ? `the shared project's files, names and the file ${path}` : 'the shared project\'s files and names' };
+      return { text: lines.join('\n'), data: { following: true, connected: cur.session.connected(), ownerAway: cur.session.away(), ownerResumed: cur.session.resumes(), editor: cur.session.editor, owner, project: project?.name ?? null, files: fileTree, participants: peers, ownerView: view, ownerActivity: ownerActivity(cur.session, fileTree), ...(l.top ? { top: l.top } : {}), ...(text !== null ? { path, text } : {}), ...(check ? { check: { errors: check.errors, warnings: check.warnings } } : {}) }, untrusted: text !== null ? `the shared project's files, names and the file ${path}` : 'the shared project\'s files and names' };
     },
   },
 ];
@@ -430,8 +430,11 @@ async function keptCopy(doc) {
 // the owner's activity (#4002), as a follower's page takes it: { view: { open, active, split, page, view }, layout: {
 // task, … } | null, design: { sel, open } | null } (null: none yet, an owner of no interface: share_project's)
 // (the runs: { id, status, from, lines, summary }, the run's last lines only, its log's end)
-function ownerActivity(session) {
-  const ui = followedUi(session.activity('ui')), design = followedDesign(session.activity('design')), runs = followedRuns(session.activity('runs'));
+// (the runs' lines as messages too, #4749: as the follower's console makes them, their sources the owner's, their
+// locations the shared project's files)
+function ownerActivity(session, paths = []) {
+  const ui = followedUi(session.activity('ui')), design = followedDesign(session.activity('design')), r = followedRuns(session.activity('runs'));
+  const runs = r && { ...r, messages: runMessages(r, paths) };
   const sim = followedSim(session.activity('sim')), emu = followedEmu(session.activity('emu'));
   // (its Try it, #4244: each document's, as it shows it: its state, steps, inputs and outputs)
   const t = followedTry(session.activity('try')), tries = t ? Object.fromEntries(Object.entries(t.docs).map(([id, d]) => [id, { kind: d.kind, ...d.sum }])) : null;
