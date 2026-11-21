@@ -17,6 +17,8 @@ import { relayUrl, followLink, parseFollowLink } from '../core/collab-link.js';
 import { hostedRooms, socketPair } from '../core/collab-loop.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// (#5011: checked at every turn of the event loop, the moment fn holds: what the page sees then, its events said)
+const whenTrue = async (fn, what, ms = 4000) => { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await new Promise(r => setImmediate(r)); } };
 const until = async (fn, what, ms = 4000) => { const t0 = Date.now(); for (;;) { const v = fn(); if (v) return v; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await sleep(10); } };
 const PROJECT = { name: 'traffic', top: 'top', files: [{ path: 'src/top.vhd', lang: 'vhdl' }], device: { part: 'xc3s250e' } };
 const FILES = { 'src/top.vhd': 'entity top is end;\n', 'src/top.ucf': 'NET "clk" LOC = "B8";\n', 'src/top.fsm.json': '{"states":[]}\n' };
@@ -203,8 +205,8 @@ async function roles(open, join) {
   const client = n => owner.peers().find(p => p.name === n).client;
   // promoted: Eva an editor, her edit at everyone's
   await owner.promote(client('Eva'));
-  await until(() => eva.editor, 'Eva an editor');
-  assert.deepEqual(events.eva, ['editor']);
+  await whenTrue(() => eva.sign() === old, 'Eva an editor');
+  assert.deepEqual(events.eva, ['editor']);   // (said with the key, not after it, #5011)
   assert.equal(eva.sign(), old);
   await until(() => owner.peers().find(p => p.name === 'Eva').role === 'editor', 'Eva an editor at the owner\'s');
   editFile(eva.doc, 'src/top.vhd', 'entity top is -- Eva\nend;\n');
@@ -214,7 +216,9 @@ async function roles(open, join) {
   assert.match(renewed, SIGN_RE);
   assert.notEqual(renewed, old);
   assert.equal(owner.editKey, renewed);
-  await until(() => !rui.editor && eva.sign() === renewed && bo.sign() === renewed, 'the roles at everyone\'s');
+  await whenTrue(() => bo.sign() === renewed, 'Bo given the new key');
+  assert.deepEqual(events.bo, ['editor (renewed)']);   // (said with the key, not after it, #5011)
+  await until(() => !rui.editor && eva.sign() === renewed, 'the roles at everyone\'s');
   assert.deepEqual([events.rui, events.eva, events.bo], [['viewer'], ['editor', 'editor (renewed)'], ['editor (renewed)']]);
   await until(() => owner.peers().find(p => p.name === 'Rui').role === 'viewer', 'Rui a viewer at the owner\'s');
   // Bo's edit, with the new key: through

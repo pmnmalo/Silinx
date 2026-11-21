@@ -515,10 +515,13 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
     let msg = null;
     try { msg = JSON.parse(new TextDecoder().decode(bytes)); } catch { return; }
     if (msg?.role === 'editor' && SIGN_RE.test(String(msg.sign))) {
+      // (the key, its text and its id taken at once, the role said with them: an edit sent in between named the old
+      // key's id with the new key, and a page saw the new key before its role, #5011)
+      const next = await signerOf(msg.sign), id = ownerPub ? await keyId(pubOf(msg.sign)) : signerId;
       const was = !!signer;
-      signer = await signerOf(msg.sign);
+      signer = next;
       signText = msg.sign;
-      if (ownerPub) signerId = await keyId(pubOf(msg.sign));
+      signerId = id;
       listen(true);
       awareness.setLocalStateField('role', 'editor');
       if (mine.length) sendEdit(Y.mergeUpdates(mine));
