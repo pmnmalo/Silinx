@@ -103,7 +103,7 @@ uiTest('#4213 New Branch…, Merge Branch… through the merge view, Switch Bran
     hint: 'What only the other branch changed is taken; a drawing changed on both is merged by its objects, a file by its lines; for the same objects or lines, you choose. Commit your changes first.' });
   await page.eval(() => { document.querySelector('.dlg-overlay .git-branch-choice').value = 'rui'; });
   await page.dialogButton('Merge');
-  await page.waitConsole(/ERROR: git merge: a conflict in src\/timer\.vhd: nothing was merged, the project's files are as they were\nHint: The same lines of a file changed on both branches: choose mine, theirs or both for each conflict, or write its lines, then Merge Branch… again\.\nMerge: 1 conflict\(s\) in 1 file\(s\), the same lines changed on both sides: choose Mine, Theirs or Both for each, or edit its lines, then Merge Branch\./);
+  await page.waitConsole(/ERROR: git merge: a conflict in src\/timer\.vhd: nothing was merged, the project's files are as they were\nHint: The same lines of a file changed on both branches: choose mine, theirs or both for each conflict, or write its lines, then Merge Branch… again\.\nMerge: 1 conflict\(s\) in 1 file\(s\), the same lines changed on both sides: choose Mine, Theirs or Both for each, or edit its lines, then Merge Branch\./, { timeout: 30000 });   // (the merge fetches rui's branch first: a loaded runner's longer, #5003)
   const v = await page.waitFor(() => document.querySelector('.merge-view .merge-choice') && {
     tab: window.SilinxApp.S.active?.title,
     bar: [...document.querySelectorAll('.merge-bar button')].map(b => b.textContent),
