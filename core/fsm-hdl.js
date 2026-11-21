@@ -5,6 +5,7 @@ import { atWidth, bitsText, outputConst } from './fsm-value.js';
 import {
   analyzeFsm, constValue, fsmEncoding, fsmErrors, isOtherwise, mask, nameOf, normalizeFsm, pad, stateById, transitionsFrom
 } from './fsm.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 // ---------------------------------------------------------------------------------------
 // HDL generation
@@ -182,7 +183,7 @@ export function generateFsm(model, lang, { source } = {}) {
   const defaults = m.outputs.map((o) => asg(o.name, o.default));
 
   if (V) {
-    const typ = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
+    const typ = vhdlType;
     L.push('library ieee;', 'use ieee.std_logic_1164.all;', 'use ieee.numeric_std.all;', '');
     L.push(`entity ${m.name} is`, '    port (');
     const ports = [[m.clock, 'in ', 'std_logic'], [m.reset.name, 'in ', 'std_logic'],
@@ -226,7 +227,7 @@ export function generateFsm(model, lang, { source } = {}) {
     }
     L.push('', 'end architecture rtl;', '');
   } else {
-    const vec = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+    const vec = vlogRange;
     L.push(`module ${m.name} (`);
     const vw = Math.max(0, ...[...m.inputs, ...m.outputs].map((p) => vec(p.width).length));
     const pl = [`    input  wire ${pad('', vw)}${m.clock}`, `    input  wire ${pad('', vw)}${m.reset.name}`,

@@ -14,6 +14,7 @@
 import { newDoc, normalizeDoc, portBox, GRID } from './schdoc.js';
 import { reservedError } from './reserved.js';
 import { isName } from './ident.js';
+import { vlogRange } from './hdl-emit.js';
 
 // ===================================================================== identifiers
 export const MAX_WIDTH = 256;
@@ -111,7 +112,6 @@ function withComments(rows, c) {
 
 const vhdlType = w => (w > 1 ? `std_logic_vector(${w - 1} downto 0)` : 'std_logic');
 const vhdlZero = w => (w > 1 ? "(others => '0')" : "'0'");
-const vlogRange = w => (w > 1 ? `[${w - 1}:0] ` : '');
 const vlogZero = w => `${w}'b0`;
 const vhdlHighZ = w => (w > 1 ? "(others => 'Z')" : "'Z'");
 const vlogHighZ = w => `${w}'bz`;

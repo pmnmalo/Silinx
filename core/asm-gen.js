@@ -6,6 +6,7 @@ import { MAX_PATHS, analyze, bits, buildIndex, flatten, joinPoints, normalizeMod
 import { isIdent } from './ident.js';
 import { vhLitP } from './asm-emit.js';
 import { clog2Lines } from './asm-width.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 // ---------------------------------------------------------------------------------------
 // Generators
@@ -410,7 +411,7 @@ export function generateVerilog(model) {
   const W = enc[0].width;
   const rst = m.reset.name;
   const rstActive = m.reset.active === 'high' ? rst : `!${rst}`;
-  const vec = (w) => (w > 1 ? `[${w - 1}:0] ` : '');
+  const vec = vlogRange;
   const L = headerLines(a, 'verilog');
   L.push('');
   if (a.generics.length) {
@@ -528,7 +529,7 @@ export function generateVhdl(model) {
   const { m, enc } = a;
   const W = enc[0].width;
   const rst = m.reset.name;
-  const typ = (w) => (w === 1 ? 'std_logic' : `std_logic_vector(${w - 1} downto 0)`);
+  const typ = vhdlType;
   const L = headerLines(a, 'vhdl');
   L.push('');
   L.push('library ieee;');
