@@ -230,7 +230,8 @@ export function docProject(doc) {
 }
 
 /** What each update received changes (the follower's page reloads it, as #2843's changes on disk): onChange({ changes:
- *  [{ path, kind: 'created' | 'changed' | 'deleted' }], project (its silinx.json changed) }). inOrder (#4110: an
+ *  [{ path, kind: 'created' | 'changed' | 'deleted' }], project (its silinx.json changed), description (#5064: the one an
+ *  editor proposed in it, its JSON text, when it did) }). inOrder (#4110: an
  *  asynchronous onChange, the owner's writes of an editor's changes): each call once the one before has ended, so an
  *  earlier change's write never finishes after a later one's. Returns the unwatch. */
 export function watchDoc(doc, onChange, { inOrder = false } = {}) {
@@ -251,7 +252,9 @@ export function watchDoc(doc, onChange, { inOrder = false } = {}) {
     for (const [p, k] of changes) { if (k === 'deleted') known.delete(p); else known.add(p); }
     const list = [...changes].filter(([p]) => sharedPath(p)).map(([path, kind]) => ({ path, kind })).sort((x, y) => x.path.localeCompare(y.path));
     const pj = tr.changed.has(project);
-    if (list.length || pj) onChange({ changes: list, project: pj });
+    // (#5064: the description an editor proposed in this change, under its own key: core/collab-files.js setDescription)
+    const own = pj ? [...tr.changed.get(project)].filter(k => typeof k === 'string' && k.startsWith('edit:')).map(k => project.get(k)).filter(v => typeof v === 'string') : [];
+    if (list.length || pj) onChange({ changes: list, project: pj, ...(own.length ? { description: own.at(-1) } : {}) });
   };
   doc.on('afterTransaction', fn);
   return () => doc.off('afterTransaction', fn);
