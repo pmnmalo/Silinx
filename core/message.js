@@ -1,17 +1,21 @@
 // The console's typed message (#4749): what a line says, made where it is written and drawn from it, never read back
 // from the line's English text. Its source is decided once (web/js/console.js log): its line's filter, its entry's in
 // the Errors / Warnings tabs (they follow the filter), what a shared project's followers get (core/collab-runs.js).
-// (The processes stating their messages' fields themselves, without the console reading them from the lines, and the
-// MCP's results as messages are the next steps: the pull request of #4749.) A message:
+// Its entry of the Errors / Warnings tabs is made from it (entryOf: its severity, tool, location and action), the
+// console reading nothing back from the line drawn. (The MCP's results as messages are the next step: the pull request
+// of #4749.) A message:
 //   severity: 'error' | 'warning' | 'info' | 'ok' | 'header' | 'text' (the console's classes: err, warn, info, ok, hdr, none)
 //   source:   'check' | 'sim' | 'emu' | 'impl' | 'app' (the console's filters, web/js/messages.js; 'app': the application's,
 //             shown under every filter)
 //   text:     the line, in English (translated where it is drawn)
+//   tool:     the tool that said it ("Xst:528" of "ERROR:Xst:528 - …", "Par"), or null
 //   location: { file, line, col? } of the project, or null
 //   action:   { label, run } a button of the line (Trust Project), or null
 //   process:  the process that wrote it ("Synthesize - XST"), or null
 //   run:      the run of that process it belongs to (its header's line: a rerun replaces its entries), or null
 // No DOM nor Node API: the page, the server and the MCP server import it.
+import { MESSAGE_LINE } from './tool-descriptors.js';
+import { messageLocation, projectPath } from './message-location.js';
 
 export const SEVERITIES = Object.freeze(['error', 'warning', 'info', 'ok', 'header', 'text']);
 export const MESSAGE_SOURCES = Object.freeze(['check', 'sim', 'emu', 'impl', 'app']);
@@ -22,16 +26,54 @@ const OF_CLASS = Object.freeze({ err: 'error', warn: 'warning', info: 'info', ok
 export const severityOfClass = cls => OF_CLASS[cls] ?? 'text';
 
 /** A message (its fields above; a field out of its values: its default, a source the application's). */
-export function makeMessage({ text = '', severity = 'text', source = 'app', location = null, action = null, process = null, run = null } = {}) {
+export function makeMessage({ text = '', severity = 'text', source = 'app', tool = null, location = null, action = null, process = null, run = null } = {}) {
   const loc = location && typeof location.file === 'string' && location.file && Number.isInteger(location.line) && location.line > 0
     ? { file: location.file, line: location.line, ...(Number.isInteger(location.col) && location.col > 0 ? { col: location.col } : {}) } : null;
   return {
     severity: SEVERITIES.includes(severity) ? severity : 'text',
     source: MESSAGE_SOURCES.includes(source) ? source : 'app',
     text: String(text),
+    tool: typeof tool === 'string' && tool ? tool : null,
     location: loc,
     action: action && typeof action.label === 'string' ? action : null,
     process: typeof process === 'string' && process ? process : null,
     run: typeof run === 'string' && run ? run : null,
+  };
+}
+
+/** A console line's message (#4749: made where it is written, web/js/console.js log): its severity its class's (`cls`),
+ *  an error's or a warning's line's its prefix's ("WARNING: …" written as an error: a warning, as ISE's tools say);
+ *  its tool its prefix's ("ERROR:Xst:528 - …": Xst:528); its location the one its writer gives, else the project's
+ *  file and line its text names (`paths`: the project's files; #4746's forms, core/message-location.js); the other
+ *  fields (source, action, process, run) as given. */
+export function lineMessage(text, { cls = '', location = null, paths = [], ...fields } = {}) {
+  text = String(text);
+  const m = MESSAGE_LINE.exec(text);
+  let severity = severityOfClass(cls);
+  if (m && (severity === 'error' || severity === 'warning')) severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning';
+  if (!location) {
+    const at = messageLocation(m ? m[3] : text), file = at && projectPath(at.file, paths);
+    location = file ? { file, line: at.line, ...(at.col ? { col: at.col } : {}) } : null;
+  }
+  return makeMessage({ ...fields, text, severity, tool: m?.[2] ?? null, location });
+}
+
+/** A message's entry of the Errors / Warnings tabs (#4749: made from the message, its line never read again): an
+ *  error's or a warning's `{ severity, tool, message, file, line, col?, inText, src, run, action }` (the text without
+ *  its prefix; its tool's, else Silinx; its location's file and line, inText when its text names them already; src its
+ *  source, the console's filter; action its button), else null (a line of the scripts' "=== SILINX FAILED" marker
+ *  neither: the errors are their own lines, #4728). */
+export function entryOf(msg) {
+  if (msg.severity !== 'error' && msg.severity !== 'warning') return null;
+  const m = MESSAGE_LINE.exec(msg.text);
+  if (!m && /=== SILINX FAILED/.test(msg.text)) return null;
+  const message = m ? m[3] : msg.text.trim();
+  if (!message) return null;
+  const at = msg.location;
+  return {
+    severity: msg.severity, tool: msg.tool || 'Silinx', message,
+    file: at?.file ?? null, line: at?.line ?? 0, ...(at?.col ? { col: at.col } : {}),
+    inText: !!at && messageLocation(message)?.line === at.line,
+    src: msg.source, run: msg.run, action: msg.action,
   };
 }

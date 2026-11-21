@@ -142,14 +142,15 @@ function showLast() {
 // a line of SSim's console or of the emulator's Messages box, written here with its source, each of its lines: its own
 // (#4729: the lines after it stay the process's, not the simulation's)
 // (#4746: not the Errors tab's, which the simulator's own messages fill, web/js/console.js simDiagnostics; a line that
-// goes to its source, double-clicked, goes there here too)
+// goes to its source, double-clicked, goes there here too, each line of it, with its message's location, #4749)
 function mirror(text, cls, src, el) {
-  app.log(text, cls, { diag: false, src });
+  const lines = app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null });
   if (!el?.classList.contains('link')) return;
-  const ln = $('console-log').lastElementChild;
-  ln.classList.add('mc-link');
-  ln.title = el.title;
-  ln.addEventListener('dblclick', () => el.dispatchEvent(new MouseEvent('dblclick')));
+  for (const ln of lines) {
+    ln.classList.add('mc-link');
+    ln.title = el.title;
+    ln.addEventListener('dblclick', () => el.dispatchEvent(new MouseEvent('dblclick')));
+  }
 }
 const ISIM_CLS = { 'k-error': 'err', 'k-failure': 'err', 'k-warning': 'warn', 'k-cmd': 'hdr' };
 const isimCls = el => Object.entries(ISIM_CLS).find(([k]) => el.classList.contains(k))?.[1] || '';
@@ -167,8 +168,8 @@ function follow() {
     if (followed.has(logEl)) continue;
     followed.add(logEl);
     const cls = el => (el.classList.contains('error') ? 'err' : el.classList.contains('warning') ? 'warn' : '');
-    for (const el of logEl.children) mirror(el.textContent, cls(el), 'emu');
-    new MutationObserver(ms => { if (built) for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1) mirror(el.textContent, cls(el), 'emu'); }).observe(logEl, { childList: true });
+    for (const el of logEl.children) mirror(el.textContent, cls(el), 'emu', el);
+    new MutationObserver(ms => { if (built) for (const m of ms) for (const el of m.addedNodes) if (el.nodeType === 1) mirror(el.textContent, cls(el), 'emu', el); }).observe(logEl, { childList: true });
   }
 }
 

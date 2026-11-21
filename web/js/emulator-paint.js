@@ -5,6 +5,9 @@ import * as V from '/core/values.js';
 import { formatTime } from '/core/interp.js';
 import { h } from './dom.js';
 import { lcdText } from '/core/emulate.js';
+import { makeMessage } from '/core/message.js';
+
+const EMU_SEVERITY = { error: 'error', failure: 'error', fatal: 'error', warning: 'warning', note: 'info' };
 
 /** { paint, setStat } of mountEmulator (compiled(), dirty(), lcd(), lcdDirty(), lcdView(), logN(), paints(), powered(), prev(), rateWin(), running(), serialView(), vgaView(): its current values). */
 // an LED's colour at brightness v (0..1): green, or red (data-colour="red": the iCEBreaker's LED1 and LEDR_N, #2511)
@@ -60,7 +63,12 @@ export function mountEmuPaint(ctx) {
   function logLines() {
     const log = sim.log;
     if (log.length !== logN()) {
-      for (const e of log.slice(Math.max(logN(), log.length - 50))) logEl.append(h('div', { class: e.kind }, `${formatTime(e.time)}  ${e.kind === 'print' ? '' : `${e.kind.toUpperCase()}: `}${e.text}`));
+      for (const e of log.slice(Math.max(logN(), log.length - 50))) {
+        const text = `${formatTime(e.time)}  ${e.kind === 'print' ? '' : `${e.kind.toUpperCase()}: `}${e.text}`;
+        const el = logEl.appendChild(h('div', { class: e.kind }, text));
+        // (its message, #4749: the console's copy made from it, its location the design's line that said it)
+        el.message = makeMessage({ text, severity: EMU_SEVERITY[e.kind] ?? 'text', source: 'emu', location: e.file ? { file: e.file, line: e.line } : null });
+      }
       setLogN(log.length);
       while (logEl.childElementCount > 200) logEl.firstChild.remove();
       logEl.scrollTop = logEl.scrollHeight;
