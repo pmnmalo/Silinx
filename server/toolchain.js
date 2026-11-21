@@ -43,7 +43,7 @@ export const configPath = () => path.join(configDir(), 'config.json');
 // server/server.js; the MCP server's remotes): read and parsed once per change of the file, its status looked at
 // only, not its text (#4775). Its callers read it, never change it.
 let configSeen = null;   // { path, sig, value }
-export function configFile() {
+function configFile() {
   const file = configPath();
   let st;
   try { st = fss.statSync(file); } catch { st = null; }
