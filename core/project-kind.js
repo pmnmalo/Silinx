@@ -41,6 +41,9 @@ export const DESIGN_ONLY_MESSAGES = {
   flow: name => `the project '${name}' is a design and simulation project (no FPGA): choose a board in Design Properties to implement, emulate or program it`,
   language: () => 'a design and simulation project has no HDL language (its drawings are its sources)',
   toDesign: (name, files) => `the project '${name}' cannot become a design and simulation project: its HDL and C sources are not drawings (${files.join(', ')})`,
+  // what a change of kind does, said in Design Properties as the kind is chosen (#5041): nothing is deleted
+  toDesignNote: 'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.',
+  toFpgaNote: 'Its HDL and the FPGA flow are shown, nothing lost: choose its board or its device.',
 };
 
 /** Why `path` cannot be added to the project `pj` (an HDL-side file in a design project), or null. */

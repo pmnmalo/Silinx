@@ -12,7 +12,7 @@ export const WIZARDS_PT = {
   'Damaged: silinx.json cannot be read': 'Danificado: o silinx.json não pode ser lido',   // (Open Project's damaged project, #4755)
   'Read-only, saved by a newer Silinx': 'Só de leitura, guardado por um Silinx mais recente',   // (a drawing a newer Silinx saved, #4756)
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
-  'Project Kind:': 'Tipo de Projeto:', 'FPGA design (a board and a device)': 'Projeto para FPGA (uma placa e um dispositivo)',
+  'Project Kind:': 'Tipo de Projeto:',
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',
   // New Project's first page, the project's kind (#5041, web/js/project-kind-step.js, core/project-kind.js)
   'Project Kind': 'Tipo de Projeto', 'Choose the kind of project to create.': 'Escolha o tipo de projeto a criar.',
@@ -23,6 +23,12 @@ export const WIZARDS_PT = {
     'Um projeto que corre numa placa: fontes HDL e desenhos, simulados, sintetizados, implementados e programados na FPGA, ou emulados.',
   'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.':
     'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.',
+  // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
+  'Co-design (not available yet)': 'Co-design (ainda não disponível)',
+  'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':
+    'A placa e o ficheiro de restrições saem do projeto (o ficheiro fica no disco); os desenhos ficam, o seu HDL e as bancadas de teste escondidos, nada apagado.',
+  'Its HDL and the FPGA flow are shown, nothing lost: choose its board or its device.':
+    'O HDL e o fluxo da FPGA passam a ver-se, nada se perde: escolha a placa ou o dispositivo.',
   'Not available yet: a co-design project needs the System document and its editor, still being built.':
     'Ainda não disponível: um projeto de co-design precisa do documento de Sistema e do seu editor, ainda em construção.',
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
