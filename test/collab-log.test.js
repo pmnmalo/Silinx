@@ -61,5 +61,5 @@ test("collabLog's source is the console's Design filter, and log() keeps a write
   // (#4749: each line's source decided in log(), a writer's its own)
   assert.match(read('console.js'), /let source = src;\n\s+if \(!source\) \[source, lineCur\] = lineSource\(line, lineCur\);/);
   assert.match(read('console.js'), /'data-src': source, \.\.\.\(src \? \{ 'data-own-src': '' \} : \{\}\)/);
-  assert.match(read('messages.js'), /ln\.dataset\.ownSrc === undefined/);
+  assert.match(read('messages.js'), /ln\.dataset\.src \|\|= 'app';/);
 });

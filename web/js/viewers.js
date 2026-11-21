@@ -15,7 +15,7 @@ import { countEvent } from './analytics.js';
 import { S, activateDoc, app, closeDoc, findDoc, moduleInfo, openDoc, openFile, projectBoard, status, withPrimitives } from './app.js';
 import { asSsim, benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
-import { commandError, commandInfo, log, logError, logInfo, setDiagnostics, showConsolePage, simDiagnostics } from './console.js';
+import { commandError, commandInfo, log, logError, logInfo, setDiagnostics, showConsolePage, simDiagnostics, startRun } from './console.js';
 import { reloadProject } from './project.js';
 import { boardConstraints, generateSimModel, readBuildFile, runImpl } from './implement.js';
 import { ucfPort } from './drawings.js';
@@ -245,7 +245,8 @@ async function runSimulationInner(mod, model, stale) {
   const procId = model ? `sim-${model}` : 'sim-run';
   const title = model ? `Simulate ${SIM_MODEL_NAMES[model]} Model` : 'Simulate Behavioral Model';
   setStatus(procId, 'running');
-  log(`\nStarted : "${title}".\n\nBuilding simulation model for top '${mod}'${model ? ` with the ${SIM_MODEL_NAMES[model].toLowerCase()} netlist of '${S.project.top}'` : ''}...`, 'hdr');
+  const R = startRun({ process: title, source: 'sim' });   // (its lines its own, #4749)
+  R.log(`Building simulation model for top '${mod}'${model ? ` with the ${SIM_MODEL_NAMES[model].toLowerCase()} netlist of '${S.project.top}'` : ''}...`, 'hdr');
   // (no implementation-only files; the test bench's hierarchy only, #4421)
   const srcs = [...hierarchySources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true)), mod).sources, ...(net || [])];
   const lib = compile(withPrimitives(srcs));
@@ -253,9 +254,9 @@ async function runSimulationInner(mod, model, stale) {
   const design = elaborate(lib, mod);
   const files = await readDataFiles();
   const sim = new Simulator(design, { files });
-  if (!design.top) { setStatus(procId, 'err'); log(`ERROR: cannot elaborate '${mod}': ${design.diags.map(d => d.message).join('; ')}`, 'err'); return; }
+  if (!design.top) { setStatus(procId, 'err'); R.log(`ERROR: cannot elaborate '${mod}': ${design.diags.map(d => d.message).join('; ')}`, 'err'); return; }
   if (!await confirmElabErrors(title, lib, design)) { setStatus(procId, 'err'); return; }
-  log(`Simulation model ready: ${design.signals.length} signals, ${design.procs.length} processes. Launching SSim view.`, 'ok');
+  R.log(`Simulation model ready: ${design.signals.length} signals, ${design.procs.length} processes. Launching SSim view.`, 'ok');
   setStatus(procId, 'ok');
   const { mountISim } = await import('./isim.js');
   if (stale?.()) return;
@@ -312,6 +313,8 @@ async function runSimulationInner(mod, model, stale) {
   });
 }
 
+// (the emulator's lines Emulation's, said here, not read from their phrasing, #4749)
+const EMU = { src: 'emu' };
 const tasksOn = () => document.documentElement.dataset.layout === 'tasks';
 
 // The stimuli drawn in SSim saved as a self-checking test bench (#336, core/stimuli.js -> core/testbench.js): next
@@ -399,7 +402,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
     design = elaborate(lib, mod);
     if (!design.top) throw new Error(design.diags.map(d => d.message).join('; ') || `cannot elaborate '${mod}'`);
     gens = model ? [] : timingGenerics(design.top?.params);   // a netlist has its constants built in
-  } catch (e) { if (quiet) log(`ERROR: Board Emulator: cannot build the design: ${e.message}`, 'err'); else commandError('Board Emulator', `Cannot build the design: ${e.message}`); return; }
+  } catch (e) { if (quiet) log(`ERROR: Board Emulator: cannot build the design: ${e.message}`, 'err', EMU); else commandError('Board Emulator', `Cannot build the design: ${e.message}`); return; }
   if (quiet ? diagsFor(lib, design).some(d => (d.severity || 'error') === 'error') : !await confirmElabErrors('Board Emulator', lib, design)) return;
   const assignments = S.ucfText ? readPins(S.project.device, S.ucfText, { ports: design.top.ports.map(ucfPort) }).assignments : {};
   if (!S.ucfText) log('WARNING: the project has no UCF: the ports are not connected to the board (use I/O Pin Planning).', 'warn');
@@ -447,7 +450,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
         // (what the emulator says of the design, in the console after the line that opens it, #2718)
         const notes = [];
         let headed = false;   // (its first line written)
-        const onNote = (text, kind = '') => (headed ? log(`Board Emulator: ${text}`, kind) : notes.push([text, kind]));
+        const onNote = (text, kind = '') => (headed ? log(`Board Emulator: ${text}`, kind, EMU) : notes.push([text, kind]));
         const view = mountEmulator(el, { onNote, design: r.design, board, assignments, title: `${mod}${model ? ` — ${SIM_MODEL_NAMES[model]} netlist` : ''}`, files,
           timing: { gens, scale: r.scale, onChange: (k) => setTimeout(() => openEmulator(mod, { scale: k, model, engine }), 0) },
           model: { current: model, available: models, names: SIM_MODEL_NAMES,
@@ -455,7 +458,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
           engine: { netlist: r.netlist, reason: r.reason, auto: chosen.auto, onChange: (e) => { setEnginePref(e); setTimeout(() => openEmulator(mod, { model, engine: e }), 0); } } });
         doc.view = view;
         doc.scale = r.scale;   // (kept when run again, #1401)
-        log(`Board Emulator: '${mod}' (${model ? `${SIM_MODEL_NAMES[model]} netlist` : 'RTL'}, ${view.engine === 'compiled' ? 'compiled' : 'event-driven'}) on ${board.name} — ${view.wiring.bits.length} port bit(s) on board resources${view.wiring.unmapped.length ? `, ${view.wiring.unmapped.length} not connected` : ''}.`, 'ok');
+        log(`Board Emulator: '${mod}' (${model ? `${SIM_MODEL_NAMES[model]} netlist` : 'RTL'}, ${view.engine === 'compiled' ? 'compiled' : 'event-driven'}) on ${board.name} — ${view.wiring.bits.length} port bit(s) on board resources${view.wiring.unmapped.length ? `, ${view.wiring.unmapped.length} not connected` : ''}.`, 'ok', EMU);
         headed = true;
         for (const [t, k] of notes) onNote(t, k);
       // (its error in the console only, its window left empty, #4747: no message in a viewer's window)
@@ -470,7 +473,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
           await loadUcfText();
           if (closed || designNow() === ran) return;
           if (!model) { openEmulator(mod, { scale: doc.scale, model, engine, quiet: true }); return; }
-          if (!said) { said = true; log(`Board Emulator: the design changed — the ${SIM_MODEL_NAMES[model]} netlist emulated is the one before; emulate it again to update it.`, 'warn'); }
+          if (!said) { said = true; log(`Board Emulator: the design changed — the ${SIM_MODEL_NAMES[model]} netlist emulated is the one before; emulate it again to update it.`, 'warn', EMU); }
         }, 800);
       };
       addEventListener('silinx:design-changed', changed);

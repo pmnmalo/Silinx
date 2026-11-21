@@ -4,7 +4,7 @@ import { h } from './dom.js';
 import { S, findDoc, closeDoc, openDoc, openFile } from './app.js';
 import { createEditor } from './editor.js';
 import { icons } from './icons.js';
-import { log, showConsolePage } from './console.js';
+import { log, showConsolePage, startRun } from './console.js';
 import { showCommandLines } from './messages.js';
 import { cReportLines, hlsClockOf, hlsFamilyOf, hlsMultsOf } from '/core/c-report.js';
 import { blackboxModels, undeclaredBlackboxes } from '/core/c-blackbox.js';
@@ -113,23 +113,23 @@ async function tbFiles(src) {
 /** C Simulation: the C source's main() run (core/c-interp.js), its output in the Console. */
 async function runCSimulation(path) {
   const { simulateC } = await import('/core/c-interp.js');
-  log(`\nStarted : "C Simulation" of ${path}.\n`, 'hdr');
+  const R = startRun({ process: 'C Simulation', source: 'sim', of: ` of ${path}` });   // (its lines its own, #4749)
   showConsolePage('console');
   showCommandLines('sim');   // (in the Edit task too, #2262)
   const src = await text(path);
   const r = simulateC(src, { file: path, files: await tbFiles(src), ...(S.hls || {}) });
-  if (r.output) for (const l of r.output.replace(/\n$/, '').split('\n')) log(l);
+  if (r.output) for (const l of r.output.replace(/\n$/, '').split('\n')) R.log(l);
   // (the files it wrote: in memory, the project's left as they are)
   const wrote = Object.keys(r.files || {});
-  if (wrote.length) log(`${wrote.length} file(s) written by the test bench, in memory (not saved to the project): ${wrote.slice(0, 5).join(', ')}${wrote.length > 5 ? ', …' : ''}`);
+  if (wrote.length) R.log(`${wrote.length} file(s) written by the test bench, in memory (not saved to the project): ${wrote.slice(0, 5).join(', ')}${wrote.length > 5 ? ', …' : ''}`);
   if (!r.ok) {
     const why = r.error ? `line ${r.error.line}: ${r.error.message}` : r.diagnostics.filter((d) => d.severity === 'error').map((d) => `line ${d.line}: ${d.message}`).join('; ');
-    log(`ERROR:SilinxC - "${path}" ${why}`, 'err');
-    log('\nProcess "C Simulation" failed', 'err', { diag: false });
+    R.log(`ERROR:SilinxC - "${path}" ${why}`, 'err');
+    R.log('\nProcess "C Simulation" failed', 'err', { diag: false });
     return false;
   }
-  log(`main() returned ${r.exitCode}; ${r.calls.length} call(s) of '${r.top || '?'}'.`);
-  log('\nProcess "C Simulation" completed successfully', 'ok');
+  R.log(`main() returned ${r.exitCode}; ${r.calls.length} call(s) of '${r.top || '?'}'.`);
+  R.log('\nProcess "C Simulation" completed successfully', 'ok');
   return true;
 }
 
@@ -137,20 +137,20 @@ async function runCSimulation(path) {
 async function runCosimulation(path) {
   const { cosimulate } = await import('/core/c-cosim.js');
   const lang = hdlLang();
-  log(`\nStarted : "C/RTL Co-simulation" of ${path} (${lang === 'vhdl' ? 'VHDL' : 'Verilog'}).\n`, 'hdr');
+  const R = startRun({ process: 'C/RTL Co-simulation', source: 'sim', of: ` of ${path} (${lang === 'vhdl' ? 'VHDL' : 'Verilog'})` });   // (its lines its own, #4749)
   showConsolePage('console');
   showCommandLines('sim');
   const src = await text(path);
   const r = cosimulate(src, { file: path, lang, files: await tbFiles(src), clock: hlsClock(), family: hlsFamily(), mults: hlsMults(), ...(S.hls || {}) });
-  for (const e of r.errors) log(`ERROR:SilinxC - "${path}" ${e}`, 'err');
-  if (!r.ok || r.errors.length) { log('\nProcess "C/RTL Co-simulation" failed', 'err', { diag: false }); return false; }
-  log(`C simulation: ${r.calls} call(s) of '${r.gen.top}' replayed on its ${lang === 'vhdl' ? 'VHDL' : 'Verilog'}.`);
-  if (r.latency) log(`Latency: ${r.latency.min} to ${r.latency.max} cycles (average ${r.latency.avg.toFixed(1)}).`);
-  for (const m of r.mismatches.slice(0, 20)) log(`ERROR:SilinxC - call ${m.call ?? '-'}, ${m.port}: the C gives ${m.expected}, the HDL ${m.got ?? 'X'}`, 'err');
-  if (r.mismatches.length > 20) log(`… ${r.mismatches.length - 20} more mismatch(es)`, 'err');
-  if (!r.pass) { log(`\nC/RTL co-simulation FAIL: ${r.mismatches.length} mismatch(es)`, 'err'); log('\nProcess "C/RTL Co-simulation" failed', 'err', { diag: false }); return false; }
-  log(`\nC/RTL co-simulation PASS: ${r.calls} call(s), the same results`, 'ok');
-  log('\nProcess "C/RTL Co-simulation" completed successfully', 'ok');
+  for (const e of r.errors) R.log(`ERROR:SilinxC - "${path}" ${e}`, 'err');
+  if (!r.ok || r.errors.length) { R.log('\nProcess "C/RTL Co-simulation" failed', 'err', { diag: false }); return false; }
+  R.log(`C simulation: ${r.calls} call(s) of '${r.gen.top}' replayed on its ${lang === 'vhdl' ? 'VHDL' : 'Verilog'}.`);
+  if (r.latency) R.log(`Latency: ${r.latency.min} to ${r.latency.max} cycles (average ${r.latency.avg.toFixed(1)}).`);
+  for (const m of r.mismatches.slice(0, 20)) R.log(`ERROR:SilinxC - call ${m.call ?? '-'}, ${m.port}: the C gives ${m.expected}, the HDL ${m.got ?? 'X'}`, 'err');
+  if (r.mismatches.length > 20) R.log(`… ${r.mismatches.length - 20} more mismatch(es)`, 'err');
+  if (!r.pass) { R.log(`\nC/RTL co-simulation FAIL: ${r.mismatches.length} mismatch(es)`, 'err'); R.log('\nProcess "C/RTL Co-simulation" failed', 'err', { diag: false }); return false; }
+  R.log(`\nC/RTL co-simulation PASS: ${r.calls} call(s), the same results`, 'ok');
+  R.log('\nProcess "C/RTL Co-simulation" completed successfully', 'ok');
   return true;
 }
 
@@ -177,18 +177,18 @@ export function hlsMults() {
 async function runCReport(path) {
   const { cToHdl } = await import('/core/c-hdl.js');
   const lang = hdlLang();
-  log(`\nStarted : "View C Synthesis Report" of ${path}.\n`, 'hdr');
+  const R = startRun({ process: 'View C Synthesis Report', source: 'impl', of: ` of ${path}` });   // (its lines its own, #4749)
   showConsolePage('console');
   showCommandLines('impl');
   const clock = hlsClock();
   const r = cToHdl(await text(path), { file: path, lang, clock, family: hlsFamily(), mults: hlsMults(), ...(S.hls || {}) });
-  for (const d of r.diagnostics) log(`${d.severity === 'error' ? 'ERROR' : 'WARNING'}:SilinxC - "${path}" line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn');
-  if (!r.ok) { log('\nProcess "View C Synthesis Report" failed', 'err', { diag: false }); return false; }
+  for (const d of r.diagnostics) R.log(`${d.severity === 'error' ? 'ERROR' : 'WARNING'}:SilinxC - "${path}" line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn');
+  if (!r.ok) { R.log('\nProcess "View C Synthesis Report" failed', 'err', { diag: false }); return false; }
   // (its lines and its warnings: core/c-report.js, #2674)
   const { lines, warnings } = cReportLines(r, { path, lang, clock });
-  for (const l of lines) log(l);
-  for (const w of warnings) log(w, 'warn');
-  log('\nProcess "View C Synthesis Report" completed successfully', 'ok');
+  for (const l of lines) R.log(l);
+  for (const w of warnings) R.log(w, 'warn');
+  R.log('\nProcess "View C Synthesis Report" completed successfully', 'ok');
   return true;
 }
 

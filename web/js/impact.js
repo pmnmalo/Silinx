@@ -114,14 +114,16 @@ export function mountImpact(el) {
   const runJob = async (title, start, okMsg) => {
     if (busy) { logError('Another operation is running'); return null; }
     busy = true;
-    app.log(`\n${title}...`, 'hdr');
+    // (its lines Implementation's, the board's, said here, not read from their phrasing, #4749)
+    const own = { src: 'impl' };
+    app.log(`\n${title}...`, 'hdr', own);
     try {
       const { job } = await start();
       // (the job's error left to the "… failed:" line below, said once, #4597)
-      const jl = jobLog(app.logLine);
+      const jl = jobLog((l, o) => app.logLine(l, { ...o, ...own }));
       let r;
       try { r = await followJob(job, jl.line); } finally { jl.end(r); }
-      if (r.status === 'ok') { app.log(okMsg, 'ok'); toast(okMsg, 'ok'); }
+      if (r.status === 'ok') { app.log(okMsg, 'ok', own); toast(okMsg, 'ok'); }
       else logError(`${title} failed: ${r.error || 'see log'}`);
       return r;
     } catch (e) {

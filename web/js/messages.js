@@ -111,7 +111,7 @@ const simulating = () => !!isimInput() && (task === 'sim' || (task === null && /
 function tag(ln, started = true) {
   ln.dataset.src ||= 'app';
   // (a process started: shown, the filter turned to its source if it hid it, #1852)
-  if (started && ln.dataset.ownSrc === undefined && /^Started : "/.test(ln.textContent.trim()) && built && ln.dataset.src !== 'app') {
+  if (started && /^Started : "/.test(ln.textContent.trim()) && built && ln.dataset.src !== 'app') {
     const f = filterForProcess(ln.dataset.src, picked, task);
     if (f !== picked) { picked = f; refilter(); return; }
   }

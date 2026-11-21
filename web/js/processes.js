@@ -13,7 +13,7 @@ import * as wiz from './wizards.js';
 import { designDiags, sevWord } from './diaghelp.js';
 import { S, flushDoc, openFile, openFpgaView, openImpact, openPinPlanner, openSummary, openUcf,
   status, viewRoots, withPrimitives } from './app.js';
-import { log, logError, logInfo, showProblems, setDiagnostics } from './console.js';
+import { log, logError, logInfo, showProblems, setDiagnostics, startRun } from './console.js';
 import { backAnnotatePins, checkUcfFile, generateSimModel, postParTiming, runImpl, stopProcesses,
   synthOpen, textPowerReport, worst } from './implement.js';
 import { isAsm, isFsm, isPn, isTt, openAsm, openFsm, openPetri, openSch, openTt } from './drawings.js';
@@ -302,12 +302,12 @@ export async function checkSyntax(mod, sim = false, { hierarchy = false } = {}) 
 async function checkSyntaxInner(mod, sim, id, hierarchy) {
   if (!await saveAll()) { setStatus(id, 'err'); return false; }
   setStatus(id, 'running');
-  log(`\nStarted : "${checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax')}".\n`, 'hdr');
+  const R = startRun({ process: checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax'), source: 'check' });   // (its lines its own, #4749)
   const srcs = S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
   // (a design and simulation project, #3780: its drawings named, not their HDL files)
   for (const s of srcs) {
-    if (!designOnly()) log(`${s.lang === 'vhdl' ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${s.path}" into library work`);
-    else if (S.hdlToSch?.[s.path]) log(`Checking drawing "${S.hdlToSch[s.path]}"`);
+    if (!designOnly()) R.log(`${s.lang === 'vhdl' ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${s.path}" into library work`);
+    else if (S.hdlToSch?.[s.path]) R.log(`Checking drawing "${S.hdlToSch[s.path]}"`);
   }
   const lib = compile(withPrimitives(srcs));
   // (a C source whose HDL cannot be made, #2995: its errors; its module, the top, then not elaborated)
@@ -329,11 +329,11 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   const diags = (hierarchy ? hierarchyDiags(all, lib, mod, owners) : all).map(shownDiag);
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
-  if (ne) { log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
-  log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
-  log(`\nProcess "${checkLabel()}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
+  if (ne) { R.log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
+  R.log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
+  R.log(`\nProcess "${checkLabel()}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
   setStatus(id, nw ? 'warn' : 'ok');
   return true;
 }
@@ -361,18 +361,18 @@ export function hdlDiagnostics(path, text, info = []) {
 
 export async function checkFileSyntax(path) {
   if (!await saveAll()) return false;
-  log(`\nStarted : "Check Syntax" of ${path}.\n`, 'hdr');
+  const R = startRun({ process: 'Check Syntax', source: 'check', of: ` of ${path}` });   // (its lines its own, #4749)
   const cFile = isC(path);
-  log(cFile ? `Analyzing Silinx HLS file "${path}"` : `${/\.vhdl?$/i.test(path) ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${path}" into library work`);
+  R.log(cFile ? `Analyzing Silinx HLS file "${path}"` : `${/\.vhdl?$/i.test(path) ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${path}" into library work`);
   const info = [];
   const diags = cFile ? await cDiagnostics(path, info) : hdlDiagnostics(path, null, info);
-  for (const l of info) log(l);
+  for (const l of info) R.log(l);
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
-  if (ne) { log(`\nProcess "Check Syntax" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); status(`Check Syntax: ${ne} error(s)`); return false; }
-  log(`\nProcess "Check Syntax" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
+  if (ne) { R.log(`\nProcess "Check Syntax" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); status(`Check Syntax: ${ne} error(s)`); return false; }
+  R.log(`\nProcess "Check Syntax" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
   status(`Check Syntax: ${path.split('/').pop()} OK${nw ? ` (${nw} warning(s))` : ''}`);
   return true;
 }

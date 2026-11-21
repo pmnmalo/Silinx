@@ -31,7 +31,7 @@ test('viewers.js: the elaboration errors listed by setDiagnostics only; "generat
 
 test('console.js: a run\'s header drops its previous entries; its result and SILINX FAILED no entries', () => {
   const src = read('console.js');
-  assert.match(src, /S\.diags = S\.diags\.filter\(d => !\(d\.source === 'console' && d\.run === consoleRun\)\);/);
+  assert.match(src, /S\.diags = S\.diags\.filter\(d => !\(d\.source === 'console' && d\.run === run\)\);/);   // (dropRun, #4749)
   assert.match(src, /if \(RUN_SUMMARY\.test\(line\)\) return;/);
   assert.match(src, /else if \(\/=== SILINX FAILED\/\.test\(line\)\) return;/);
   assert.match(read('project-rename.js'), /if \(no\) \{ logInfo\(`Rename Project: \$\{no\}\.`\); return; \}/);
