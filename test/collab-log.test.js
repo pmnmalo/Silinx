@@ -13,8 +13,9 @@ const read = f => readFileSync(new URL(f, DIR), 'utf8');
 // the collaboration's modules, by their names: a new one is checked too
 const COLLAB = /^(collab-.*|git(-.*)?|github-app|relay-.*|share-.*|short-links|link-copy)\.js$/;
 // collab-runs.js: a shared project's runs mirrored to its followers keep their processes' sources (Implementation,
-// Simulation…), as the owner's console shows them; collab-log.js: the helper itself
-const EXCEPT = new Set(['collab-runs.js', 'collab-log.js']);
+// Simulation…), as the owner's console shows them; collab-log.js: the helper itself; backup-reminder.js: the application's
+// line about the browser's storage (#4971), its api.gitRemote only choosing its button's label (#5006)
+const EXCEPT = new Set(['collab-runs.js', 'collab-log.js', 'backup-reminder.js']);
 // (and every module that calls the collaboration's server, whatever its name, #4729: Merge Contribution's dialog)
 const COLLAB_API = /\bapi\.(mergePreview|mergeContribution|undoMerge|git[A-Z]\w*|share[A-Z]\w*|relay[A-Z]\w*|shortLinks?\w*)\(/;
 const modules = readdirSync(DIR).filter(f => f.endsWith('.js') && (COLLAB.test(f) || COLLAB_API.test(read(f))) && !EXCEPT.has(f)).sort();
