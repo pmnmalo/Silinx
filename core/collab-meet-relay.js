@@ -16,11 +16,12 @@ import { keyOf, seal, unseal, b64url } from './collab-crypto.js';
 import { SUBPROTOCOL } from './collab-wire.js';
 import { MEET_PROTOCOL, ID_BYTES } from './collab-meeting.js';
 import { splitFrame, frameJoiner } from './collab-frag.js';
+import { fromBase64url } from './base64.js';
 
 const M = Object.freeze({ text: 1, bytes: 2, signal: 3, switch: 4 });   // (a sealed message's kinds)
 const LABEL = 'silinx-meet';
 const GATHER_MS = 4000, CONNECT_MS = 20_000, WELCOME_MS = 10_000;
-const unb64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const unb64 = fromBase64url;
 const enc = new TextEncoder(), dec = new TextDecoder();
 
 /** A relay's meeting point's WebSocket address (role: 'host' | 'peer'). */

@@ -9,6 +9,7 @@
 // (AES-GCM's additional data), and in the gist's description in the clear, so that making a short link deletes the
 // user's expired ones without their keys. Isomorphic (Web Crypto).
 import { LINK_LIMITS, parseGistRef } from './design-link.js';
+import { toBase64url, fromBase64url } from './base64.js';
 
 export { parseGistRef };
 
@@ -27,12 +28,8 @@ export const GIST_MAX = Math.ceil((LINK_LIMITS.maxEncoded + 16) * 4 / 3) + 256;
 export const GIST_ANSWER_MAX = 2 * GIST_MAX + (64 << 10);
 
 const fail = (msg, status = 400) => Object.assign(new Error(msg), { linkError: true, status });
-const b64u = bytes => {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-};
-const unb64u = s => { const t = atob(String(s).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(t, c => c.charCodeAt(0)); };
+const b64u = toBase64url;
+const unb64u = s => fromBase64url(String(s));
 const subtle = () => globalThis.crypto.subtle;
 const aesKey = (raw, use) => subtle().importKey('raw', raw, { name: 'AES-GCM' }, false, [use]);
 

@@ -4,18 +4,16 @@
 // later) sees opaque bytes and their kind, never a file. The same code in the browser and in Node (Web Crypto).
 //   frame = [kind (1 byte)][iv (12 bytes)][ciphertext]   the kind and the room authenticated with it (AES-GCM's
 //                                                         additional data): a frame cannot change kind nor room
+import { toBase64url, fromBase64url } from './base64.js';
+
 const subtle = () => globalThis.crypto.subtle;
 const ALG = 'AES-GCM';
 const IV = 12;
 export const KEY_RE = /^[A-Za-z0-9_-]{43}$/;   // (32 bytes, base64url, no padding)
 
 /** Bytes as base64url, no padding (a key's text, a room's id). */
-export const b64url = bytes => {
-  let s = '';
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-};
-const unb64url = text => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+export const b64url = toBase64url;
+const unb64url = fromBase64url;
 const aad = (kind, room) => new TextEncoder().encode(`silinx-collab:${kind}:${room}`);
 
 /** A new room key: { key (CryptoKey), text (base64url, the link's) }. */

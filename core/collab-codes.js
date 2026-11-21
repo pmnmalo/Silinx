@@ -5,13 +5,14 @@
 // one the other side takes: an offer is not taken as an answer, nor a code of another shared project.
 //   sealCode(key, room, kind, sdp) -> 'S1.<base64url>'      openCode(key, room, kind, code) -> sdp (or an error)
 import { seal, unseal, b64url } from './collab-crypto.js';
+import { fromBase64url } from './base64.js';
 
 export const CODE_KINDS = Object.freeze({ offer: 16, answer: 17 });   // (never a frame's kind: core/collab-client.js KIND)
 const PREFIX = 'S1.';
 export const CODE_MAX = 64 << 10;   // (a code's length at most: an SDP is a few kilobytes)
 export const SDP_MAX = 256 << 10;   // (its description inflated, at most: never a bomb)
 
-const unb64url = text => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const unb64url = fromBase64url;
 // bytes through a (de)compression stream, `max` bytes out at most (an error past them)
 async function through(stream, bytes, max = Infinity) {
   const reader = new Blob([bytes]).stream().pipeThrough(stream).getReader();

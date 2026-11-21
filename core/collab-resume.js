@@ -14,6 +14,7 @@ import * as Y from 'yjs';
 import { KEY_RE } from './collab-crypto.js';
 import { SIGN_RE, PUB_RE } from './collab-sign.js';
 import { ROOM_RE } from './collab-wire.js';
+import { toBase64 as toB64, fromBase64 as fromB64 } from './base64.js';
 
 export const RECORD_VERSION = 1;
 /** A record kept longer than this is not resumed (the relay keeps a room 2 minutes for its owner). */
@@ -22,12 +23,7 @@ export const RECORD_MAX_AGE = 10 * 60_000;
 const RECORD_MAX = 2_000_000;
 
 // (bytes as base64, by chunks: a document's state is too large for one String.fromCharCode call)
-export const toB64 = bytes => {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-};
-export const fromB64 = text => Uint8Array.from(atob(text), c => c.charCodeAt(0));
+export { toB64, fromB64 };
 
 const str = (v, max = 200) => typeof v === 'string' && v.length <= max;
 const client = v => Number.isSafeInteger(v) && v >= 0 && v <= 0xFFFFFFFF;

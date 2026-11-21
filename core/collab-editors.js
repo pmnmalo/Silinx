@@ -12,6 +12,7 @@
 // request signed with the invitation key (an enrol frame, sealed, which the room gives to the owner only); the owner
 // lists it at once. A viewer promoted is listed by the public key its awareness gives.
 import { b64url } from './collab-crypto.js';
+import { fromBase64url } from './base64.js';
 import { PUB_RE, SIG, signFrame, verifyFrame, verifierOf } from './collab-sign.js';
 
 const subtle = () => globalThis.crypto.subtle;
@@ -21,7 +22,7 @@ export const KEY_ID = 8;
 export const MAX_EDITORS = 32;
 const SIG_RE = /^[A-Za-z0-9_-]{86}$/;
 const listText = (room, n, editors) => new TextEncoder().encode(`silinx-collab:editors:${room}:${n}:${editors.join('.')}`);
-const fromB64url = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - t.length % 4) % 4)), c => c.charCodeAt(0));
+const fromB64url = fromBase64url;
 
 const enrolText = (room, pub) => new TextEncoder().encode(`silinx-collab:enrol:${room}:${pub}`);
 

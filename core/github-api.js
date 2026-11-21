@@ -4,6 +4,8 @@
 // client ID of Silinx's GitHub OAuth App and no secret. The token is the caller's (token(): kept in the user's browser
 // only): sent in the Authorization header to the API, never in a URL, never in a message. Isomorphic (fetch given).
 
+import { fromBase64 as bytesOfBase64 } from './base64.js';
+
 /** A request's failure: its message, a hint for the user, the HTTP status (GitHub's), as server/git.js's GitError. */
 export class GitHubError extends Error {
   constructor(message, hint = null, status = 400, extra = {}) { super(message); Object.assign(this, { hint, status }, extra); }
@@ -126,10 +128,7 @@ export async function blobSha(data) {
 
 /** A blob's content from GitHub (base64) -> its bytes. */
 export function fromBase64(b64) {
-  const s = atob(String(b64 || '').replace(/\s+/g, ''));
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
+  return bytesOfBase64(String(b64 || '').replace(/\s+/g, ''));
 }
 
 /** Bytes as text when they are UTF-8 (a project's file), else null (a binary file: left as it is in the repository). */
