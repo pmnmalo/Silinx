@@ -12,6 +12,8 @@
 // - The emulator's own bar stays its controls (Model, Engine, Run, Step, Power cycle, Clock), right under the task's
 //   bar; its status (the emulated time and rate) in its status line, its last line, as every document's and as in the
 //   ISE style interface (#2763, #3920: no longer below the board, #1022); its Messages box is in the message centre (#798).
+// - The ISE style interface's emulators (#5118): their boards fitted the same way, to the room of their documents, so
+//   that both interfaces draw a board at the same size (the Silinx interface's is the reference).
 // boardZoom has no DOM and is unit tested (test/tasks.test.js).
 
 export const MAX_ZOOM = 1.5, MIN_ZOOM = 0.7;   // (smaller on a tablet, but not below 0.7: its labels kept legible, #1999)
@@ -27,8 +29,9 @@ export function boardZoom(room, board) {
 }
 
 const shown = el => !!el && el.getClientRects().length > 0;
-/** Zooms each open emulator's board to its room (`on`: the Tasks interface's Emulate; else its own size). */
-export function fitBoard(on) {
+/** Zooms each open emulator's board to its room (`on`: the Tasks interface's Emulate, or the ISE style interface; else
+ *  its own size). */
+function fitBoard(on) {
   for (const emu of document.querySelectorAll('#workspace .doc .emu')) {
     const wrap = emu.querySelector('.emu-board-wrap');
     if (!wrap) continue;
@@ -41,19 +44,16 @@ export function fitBoard(on) {
   }
 }
 
-/** Fits the boards whenever the workspace's size changes or an emulator's board appears (in the Tasks interface). */
+/** Fits the boards whenever the workspace's size changes or an emulator's board appears. */
 export function initEmulate(on) {
   const ws = document.getElementById('workspace');
   let soon = false;
   const later = () => { if (soon) return; soon = true; requestAnimationFrame(() => { soon = false; fitBoard(on()); }); };
   new ResizeObserver(later).observe(ws);
   addEventListener('resize', later);   // (also an emulator's side panel folded or expanded: side-fold.js)
-  // (an emulator builds its board after its document opens, once its design is compiled: a board appearing is watched
-  // in the Tasks interface only, by one observer and no timer, so that no closed document is kept: #879)
+  // (an emulator builds its board after its document opens, once its design is compiled: a board appearing is watched,
+  // in both interfaces since #5118, by one observer and no timer, so that no closed document is kept: #879)
   const isBoard = n => n.nodeType === 1 && (n.matches('.emu-board-wrap') || !!n.querySelector('.emu-board-wrap'));
-  const boards = new MutationObserver(ms => { if (ms.some(m => [...m.addedNodes].some(isBoard))) later(); });
-  const watch = () => { if (document.documentElement.dataset.layout === 'tasks') boards.observe(ws, { childList: true, subtree: true }); else boards.disconnect(); };
-  new MutationObserver(watch).observe(document.documentElement, { attributes: true, attributeFilter: ['data-layout'] });
-  watch();
+  new MutationObserver(ms => { if (ms.some(m => [...m.addedNodes].some(isBoard))) later(); }).observe(ws, { childList: true, subtree: true });
   return later;
 }

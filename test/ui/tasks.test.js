@@ -615,11 +615,11 @@ uiTest('#801 #2713 Tasks ▸ Emulate: the board fits, its switches and buttons o
   await page.waitFor(() => +document.querySelector('.doc:not([hidden]) .emu-board-wrap').style.zoom > 1, [], { what: 'a larger board' });
   f = await boardFit(page);
   assert.ok(f.inside && f.aim && f.side === 'beside', JSON.stringify(f));
-  // the Silinx interface: the board at its own size again
+  // the ISE style interface: the board fitted to its room too, as the Silinx interface's (#5118)
   await page.setViewport(1366, 768);
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
-  assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-board-wrap').style.zoom), '');
+  await page.waitFor(() => +document.querySelector('.doc:not([hidden]) .emu-board-wrap').style.zoom >= 0.7, [], { what: 'the board fitted in the ISE style interface' });
   await noWarnings(page);
 }, { build: DEV });
 
@@ -638,7 +638,7 @@ const emuLayout = (page) => page.eval(() => {
     watch: where(emu.querySelector('.emu-side')), vga: where(emu.querySelector('.emu-vga')),
     scrollsDown: scrolls('Height'), scrollsAcross: scrolls('Width') };
 });
-uiTest('#1021 #1999 #2666 #2713 Tasks ▸ Emulate: the board fits the window; the VGA monitor wraps below it, scrolling down; the Watch at its right, behind ☰ Properties when narrow; ISE style as before', E, async (page) => {
+uiTest('#1021 #1999 #2666 #2713 Tasks ▸ Emulate: the board fits the window; the VGA monitor wraps below it, scrolling down; the Watch at its right, behind ☰ Properties when narrow; ISE style fitted too', E, async (page) => {
   await makeProject(env, { name: 'TasksWrap', template: 'vga' });
   await page.setViewport(1280, 800);
   await tasksInterface(page);
@@ -682,14 +682,16 @@ uiTest('#1021 #1999 #2666 #2713 Tasks ▸ Emulate: the board fits the window; th
   L = await emuLayout(page);
   // (the board fitting the height: a little smaller than its proper size, #1999)
   assert.ok(L.zoom >= 0.7 && L.watch === 'beside' && L.vga === 'below' && !L.scrollsAcross, JSON.stringify(L));
-  // the Silinx and ISE style interfaces: the board at its own size, the side column and the VGA monitor in their order
+  // the ISE style interface: the board fitted to its room as the Silinx interface's (#5118), the side column and the VGA
+  // monitor in their order
   for (const ui of ['ise']) {
     await page.eval(async (u) => (await import('/js/silinx.js')).setInterface(u), ui);
     await page.waitFor(() => !document.documentElement.dataset.layout);
+    await page.waitFor(() => +document.querySelector('.doc:not([hidden]) .emu-board-wrap').style.zoom >= 0.7, [], { what: 'the board fitted' });
     assert.deepEqual(await page.eval(() => {
       const emu = document.querySelector('.doc:not([hidden]) .emu'), cs = (s) => getComputedStyle(emu.querySelector(s));
-      return [emu.querySelector('.emu-board-wrap').style.zoom, cs('.emu-main').flexWrap, cs('.emu-side').order, cs('.emu-vga').order, cs('.emu-side').width !== '300px'];
-    }), ['', 'wrap', '0', '0', true], ui);
+      return [cs('.emu-main').flexWrap, cs('.emu-side').order, cs('.emu-vga').order, cs('.emu-side').width !== '300px'];
+    }), ['wrap', '0', '0', true], ui);
   }
   await noWarnings(page);
 }, { build: DEV });
