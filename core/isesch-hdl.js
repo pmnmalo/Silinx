@@ -2,6 +2,7 @@
 // decoders, comparators, adders, counters, flip-flops, tri-states and multipliers of the Xilinx libraries written
 // as the HDL Silinx generates for them.
 import { GATE_RE } from './isesch.js';
+import { vhdlType, vlogRange } from './hdl-emit.js';
 
 // ===================================================================== exact HDL for library symbols without a Silinx twin
 // Each template gets (lang, P, T, W): P(isePin) -> pin identifier, T(suffix) -> fresh temp identifier,
@@ -151,7 +152,7 @@ function ffTpl(o) {
     let next = o.toggle ? (vh ? `not ${q}` : `~${q}`) : dv;
     const en = [o.ce && P('CE'), o.toggle && P('T')].filter(Boolean);
     if (vh) {
-      const decls = [`signal ${q} : ${w > 1 ? `std_logic_vector(${msb} downto 0)` : 'std_logic'} := ${iv};`];
+      const decls = [`signal ${q} : ${vhdlType(w)} := ${iv};`];
       const sens = [C, o.clr && P('CLR'), o.pre && P('PRE')].filter(Boolean);
       L.push(`process (${sens.join(', ')})`, 'begin');
       const asyn = [];
@@ -173,7 +174,7 @@ function ffTpl(o) {
       if (o.bits) for (let i = 0; i < w; i++) L.push(`${P(`Q${i}`)} <= ${q}(${i});`); else L.push(`${P(o.qName || 'Q')} <= ${q};`);
       return { code: L.join('\n'), decls };
     }
-    const decls = [`reg ${w > 1 ? `[${msb}:0] ` : ''}${q} = ${iv};`];
+    const decls = [`reg ${vlogRange(w)}${q} = ${iv};`];
     const ev = [`${o.neg ? 'negedge' : 'posedge'} ${C}`, o.clr && `posedge ${P('CLR')}`, o.pre && `posedge ${P('PRE')}`].filter(Boolean);
     L.push(`always @(${ev.join(' or ')})`);
     const ch = [];

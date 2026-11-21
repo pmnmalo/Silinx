@@ -21,6 +21,7 @@
 //   replayBench(spec, capture, { lang, period })   the capture as a module of signals, one sample per period (ps)
 
 import { planCapture } from './ila.js';
+import { vlogRange } from './hdl-emit.js';
 
 export const CAPTURE_CMD = { status: 0, arm: 1, read: 2, rewind: 3 };
 
@@ -84,7 +85,7 @@ export function replayBench(spec, capture, { lang = spec.lang, period = 20000 } 
   const head = `Capture of ${spec.name} (Silinx, #3176): ${D} samples, one per ${period} ps, the trigger at ${capture.trigger * period} ps.`;
   if (v) {
     return ['`timescale 1ps / 1ps', `// ${head}`, `module ${name};`,
-      ...spec.probes.map((p, i) => `  reg ${ws[i] > 1 ? `[${ws[i] - 1}:0] ` : ''}${p.name} = ${lit(0n, ws[i])};`),
+      ...spec.probes.map((p, i) => `  reg ${vlogRange(ws[i])}${p.name} = ${lit(0n, ws[i])};`),
       // (a sample with no change: the delay alone, `#…;`, a statement of its own, #3340)
       '  initial begin', ...steps.map((s, k) => `    ${k ? `#${period}${s ? ' ' : ';'}` : ''}${s}`.trimEnd()), '  end', 'endmodule', ''].join('\n');
   }

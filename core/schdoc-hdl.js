@@ -9,6 +9,7 @@ import {
   symbolDef, validIdent, vhdlBits, vlogBits,
 } from './schdoc.js';
 import { mountSymbolHdl } from './schdoc-hdl-symbol.js';
+import { vhdlType } from './hdl-emit.js';
 
 // ===================================================================== HDL generation
 // VHDL type class of a type text: 'sl' | 'slv' | 'u' | 's' | 'other'
@@ -144,7 +145,7 @@ export function generateHdl(docIn, opts = {}) {
     // (not an arrayed instance's pin sliced over its net: the net N times as wide, #4451)
     for (const q of m?.ports || []) if (q.type) { const n = nl.pinNet.get(`${s.id}/${q.name}`); if (n && !pinType.has(n) && !n.endpoints.some(e => e.sym === s.id && e.pin === q.name && e.sliced)) pinType.set(n, q.type); }
   }
-  const vtype = w => (w > 1 ? `std_logic_vector(${w - 1} downto 0)` : 'std_logic');
+  const vtype = vhdlType;
   const netType = net => {
     const p = portOf.get(net);
     if (p) return p.type && verbatimOK ? p.type : vtype(p.width);

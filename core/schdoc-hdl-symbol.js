@@ -6,6 +6,7 @@ import { componentDecl, genericValue, initWords, primitiveOf } from './primitive
 import { mountSymbolCases } from './schdoc-hdl-cases.js';
 import { mountSymbolCasesMore } from './schdoc-hdl-more.js';
 import { BLOCK_MARK, generateHdl } from './schdoc-hdl.js';
+import { vhdlType } from './hdl-emit.js';
 
 /** { subs, symbolHdl, syms } of generateHdl. */
 export function mountSymbolHdl(ctx) {
@@ -187,7 +188,7 @@ export function mountSymbolHdl(ctx) {
       let q = qo;
       if (!qo || (ci && !isolated(qNet) && (f.k !== 'd' || qno))) {
         q = fresh(`${s.name}_q`);
-        extra.push(ci ? { name: q, type: W > 1 ? `std_logic_vector(${W - 1} downto 0)` : 'std_logic', init: iv.repeat(W) } : { name: q, width: W, reg: true, init: iv.repeat(W) });
+        extra.push(ci ? { name: q, type: vhdlType(W), init: iv.repeat(W) } : { name: q, width: W, reg: true, init: iv.repeat(W) });
       }
       const B = v => (W > 1 ? (ci ? `(others => '${v}')` : `{${W}{1'b${v}}}`) : ci ? `'${v}'` : `1'b${v}`);
       const next = f.k === 'd' ? INN(s, 'D')
