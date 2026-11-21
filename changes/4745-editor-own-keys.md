@@ -21,4 +21,6 @@ In detail:
   socket's attachment (2 KB at most). The room's logic gives it to the platform (`collabRooms`'s `keepList`) and takes
   it back when the object wakes, its events waiting for it (`blockConcurrencyWhile`). The list is removed when the room
   ends. The test runtime of the Workers keeps an object's storage while it sleeps.
+- **Each key imported once:** the list is published again each time an editor is listed, so its keys are imported once
+  and kept (the last 512), not at every list.
 - **The Cloudflare relay:** its copy of the room's logic is synced, so a relay deployed before must be deployed again.

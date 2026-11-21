@@ -59,15 +59,24 @@ export async function checkList(ownerVerifier, room, list) {
   try { return await subtle().verify(HASH, ownerVerifier, fromB64url(list.sig), listText(room, list.n, list.editors)); } catch { return false; }
 }
 
-/** A list's keys, by their ids' text: Map<id, a promise of the verifying key>. */
-export async function editorKeys(list) {
-  const keys = new Map();
-  for (const pub of list?.editors ?? []) {
+// (each key imported once: a list renewed at each editor listed takes its keys again, 32 at most; the last few hundred
+// kept)
+const known = new Map();
+const keyOf = pub => {
+  let k = known.get(pub);
+  if (!k) {
     const v = verifierOf(pub);
     v.catch(() => {});
-    keys.set((await keyId(pub)).text, v);
+    k = keyId(pub).then(id => [id.text, v]);
+    known.set(pub, k);
+    if (known.size > 512) known.delete(known.keys().next().value);
   }
-  return keys;
+  return k;
+};
+
+/** A list's keys, by their ids' text: Map<id, a promise of the verifying key>. */
+export async function editorKeys(list) {
+  return new Map(await Promise.all((list?.editors ?? []).map(keyOf)));
 }
 
 /** An editor's sealed frame signed with its key (`signer`: { key, id (keyId's) }): the frame, its key's id, the signature. */
