@@ -97,7 +97,10 @@ export async function pathNamer() {
 export async function projectPath(name, rel, verb = 'read', { last = true } = {}) {
   const dir = P.projectDir(name);
   const full = await P.spelledJoin(dir, rel, { last });   // (its folders as the project spells them, #3536)
-  const root = await fsp.realpath(dir).catch(() => { throw toolError(`no project '${name}' in the workspace`); });
+  await fsp.access(dir).catch(() => { throw toolError(`no project '${name}' in the workspace`); });
+  // (resolved as realOf resolves the file, fs.realpathSync's: fsp.realpath is the system's, which expands a short name
+  // of a folder above, Windows's RUNNER~1, that the file's path keeps, and the relative path climbed through it, #5023)
+  const root = realOf(dir);
   // (inside it by name and once its links are followed: paths.js within, #4769)
   if (!within(dir, full)) throw toolError(`'${rel}' is outside the project '${name}'`);
   const real = realOf(full);
