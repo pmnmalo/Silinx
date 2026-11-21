@@ -33,7 +33,7 @@ import { messagesTask, initMessages } from './messages.js';
 import { mountSimPanel } from './tasks-sim-panel.js';
 import { mountSimSplit } from './tasks-sim-split.js';
 import { fitSimTabs, placeSimSide, placeSimToolbar, refreshBench, simChoices, simTarget, simulate } from './tasks-sim.js';
-import { fitBoard, initEmulate } from './tasks-emu.js';
+import { initEmulate } from './tasks-emu.js';
 import { implementationEnded, showTopProcesses } from './tasks-impl.js';
 import { arrangeProgram, initProgram } from './tasks-prog.js';
 import { initCheckMessages } from './tasks-check.js';
@@ -222,7 +222,7 @@ export function applyLayout({ task, side, console, max } = {}) {
 /** Puts the current task and its arrangement on the page. */
 function apply() {
   const r = root();
-  if (!on()) { if (document.getElementById('task-bar')) { unbuild(); placeSimToolbar(false); fitBoard(false); arrangeProgram(false); dispatchEvent(new Event('resize')); } return; }
+  if (!on()) { if (document.getElementById('task-bar')) { unbuild(); placeSimToolbar(false); arrangeProgram(false); dispatchEvent(new Event('resize')); } return; }
   build();
   // (the side panel's width, as the viewer left it, for Simulate's own panel too, #1409)
   const lw = document.getElementById('left')?.style.width;
@@ -510,7 +510,7 @@ export function initTasks(a) {
   load();
   startTask = state.task;   // (the task in front when the page was left: back to it once the project reopens, #1337)
   initMessages(app);   // (the message centre: every interface's, #925)
-  fitSoon = initEmulate(() => on() && current() === 'emu');
+  fitSoon = initEmulate(() => !on() || current() === 'emu');   // (the ISE style interface's emulators too, #5118)
   initProgram(() => arrangeProgram(on()));
   // (its Errors, else Warnings tab in front, #2803: console.js, imported when used, as tasks.js is in node's tests)
   initCheckMessages((diags) => { import('./console.js').then((c) => c.showProblems(diags)); if (on() && !arr().console) arrange({ console: true }); }, (...a) => app.log(...a));

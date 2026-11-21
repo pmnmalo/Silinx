@@ -99,7 +99,7 @@ export function injectStyle() {
 .emu-log { font-family: var(--mono, monospace); max-height: 140px; overflow: auto; white-space: pre-wrap; color: var(--grey-1); }
 .emu-log .error { color: var(--log-error); } .emu-log .warning { color: var(--log-warning); }
 .emu-hint { color: var(--grey-4); }
-.emu-board-wrap { display: flex; flex-direction: column; gap: 6px; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.emu-board-wrap { flex: none; display: flex; flex-direction: column; gap: 6px; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .emu-board-note { color: var(--grey-3); font-size: 11px; }
 .emu-pcb { position: relative; flex: none; }
 .emu-pcb-art { position: absolute; left: 0; top: 0; }
