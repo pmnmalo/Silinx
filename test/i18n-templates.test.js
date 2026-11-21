@@ -75,7 +75,7 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   "initial value ${init === 'INIT1' ? '1' : '0'}": 'initial value 1',
   'State diagram ${M().name}': 'State diagram traffic',
   'as it was in the commit ${shortCommit(commit)}': 'as it was in the commit 1a2b3c4',
-  '${total} object(s) changed ${where}: choose whose version each one keeps. The rest of each drawing is merged by itself.': '3 object(s) changed on both sides: choose whose version each one keeps. The rest of each drawing is merged by itself.',
+  '${total} object(s) changed ${where}: choose whose version each one keeps. The rest of each drawing is merged by itself.': '3 object(s) changed on both branches: choose whose version each one keeps. The rest of each drawing is merged by itself.',
   '${title} failed: ${e.message}': 'Programming the PROM failed: no cable',
   "${title} failed: ${r.error || 'see log'}": 'Verifying xc3s250e failed: see log',
   'Erase the whole ${name}? The board will no longer boot a design from flash.': 'Erase the whole SPI flash? The board will no longer boot a design from flash.',
@@ -180,4 +180,11 @@ test('#4748 the canvas\'s, the SVG\'s and the browser prompt\'s texts through t(
   assert.equal(t('cannot open src/a.vhd: Select the top module first'), 'não foi possível abrir src/a.vhd: Selecione primeiro o módulo de topo');
   assert.equal(t('Programming the FPGA failed: see log'), 'A programação da FPGA falhou: veja o registo');
   assert.equal(t('Verifying xc3s250e failed: no cable found'), 'A verificação de xc3s250e falhou: no cable found');
+});
+
+test('#5019 the Resolve Conflicts dialog\'s line in Portuguese, wherever the objects changed (a pull, a branch merged)', () => {
+  assert.equal(t('1 object(s) changed both here and on GitHub: choose whose version each one keeps. The rest of each drawing is merged by itself.'),
+    '1 objeto(s) alterado(s) aqui e no GitHub: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.');
+  assert.equal(t('3 object(s) changed on both branches: choose whose version each one keeps. The rest of each drawing is merged by itself.'),
+    '3 objeto(s) alterado(s) nos dois ramos: escolha a versão que cada um mantém. O resto de cada desenho junta-se por si.');
 });
