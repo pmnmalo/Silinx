@@ -26,6 +26,7 @@ import { EXTRA_STEPS, FLOW_PROCS, IMPL_IDS, buildProcesses, simModelsOf, toolOf 
 import { checkLabel, designOnly, shownDiag } from './design-only.js';
 import { failedModule, withDrawingErrors } from '/core/drawing-diags.js';
 import { hierarchyDiags } from '/core/top-hierarchy.js';
+import { syncState } from './state-sync.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -317,8 +318,8 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   const cTop = Object.values(S.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(mod).toLowerCase()) || failedModule(S.failedDrawings, mod);
   const design = cTop ? null : elaborate(lib, mod);
   // (an HDL file its drawing could not generate again, #303: an error of the file, the drawing's errors in it)
-  const stale = srcs.filter(s => S.staleHdl?.[s.path]).map(s => {
-    const { from, why } = S.staleHdl[s.path];
+  const stale = srcs.filter(s => syncState.staleHdl?.[s.path]).map(s => {
+    const { from, why } = syncState.staleHdl[s.path];
     return { severity: 'error', file: s.path, line: 1, col: 1, tool: 'Silinx', message: designOnly() ? `${from}: its module is not up to date: ${why}. Fix ${from}.`   // (#3891)
       : `${s.path} is not up to date: ${from} cannot generate it, ${why}. Fix ${from} (its HDL is then generated again).` };
   });

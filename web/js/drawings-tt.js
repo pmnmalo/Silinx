@@ -14,6 +14,7 @@ import {
 } from './drawings.js';
 import { designSources as ttDesignSources } from './tbwizard.js';
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
+import { syncState } from './state-sync.js';
 
 // ---- truth tables (.bool.json, .tt.json): table -> HDL module, synchronized like ASM charts
 // The generated HDL module is linked by generatedFile: every change of the table rewrites it (its HDL
@@ -36,7 +37,7 @@ export async function openTt(path) {
       const ed = mountTtEditor(host, {
         model,   // (its ⋮ menu: its Notation, no HDL Language, #4159: Source Properties choose it)
         onChange: (m, o) => { setDirty(d, true, o); refreshTtSchematic(path, m); },
-        linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: S.outOfSync?.[f] } : null; },
+        linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: syncState.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
         onFromModule: () => loadTtFromModule(path),
         log: (text, cls) => log(text, cls),   // (its notes: no K-map past 6 inputs, a result not proven minimal, #3939)

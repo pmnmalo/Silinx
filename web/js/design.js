@@ -31,6 +31,7 @@ import { HDL_RE } from '/core/file-kinds.js';
 import { flowFileRows } from './flow-files-tree.js';
 import { renderFlowFiles } from './tasks-flow-files.js';
 import { compositionOf, compositionRows } from './design-comp.js';
+import { syncState } from './state-sync.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -208,7 +209,7 @@ export function renderHierarchy() {
 // a drawing without its HDL file because a file is in the way (#230): a warning badge, its tip says
 // why; a click resolves it (Generate HDL File…)
 function clashBadge(f) {
-  const c = S.hdlClash?.[f];
+  const c = syncState.hdlClash?.[f];
   return c ? { text: designOnly() ? 'Not made' : 'No HDL', warn: true, title: clashTip(c), open: () => resolveHdlClash(f), context: e => viewContextMenu(e, f) } : null;
 }
 
