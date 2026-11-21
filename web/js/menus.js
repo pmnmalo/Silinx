@@ -32,6 +32,7 @@ import { downloadBlob } from './download.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 // (Print: the document in front, whichever it is, #1509)
 export { printActive, printable };
 
@@ -118,8 +119,8 @@ export function setupMenus() {
       { label: 'Design Checks (Lint Warnings)', checked: lintEnabled(), action: () => { setLintEnabled(!lintEnabled()); toast(lintEnabled() ? (designOnly() ? 'Design checks on: Check Design and the editor show the lint warnings' : 'Design checks on: Check Syntax and the editor show the lint warnings') : 'Design checks off: only errors are shown'); for (const d of docsState.docs) d.liveCheck?.(); } },
     ] },
     { label: 'View', items: () => [
-      { label: designOnly() ? 'Design' : 'Implementation', checked: S.view === 'impl', action: () => setView('impl') },   // (a design project's: no implementation, #3891)
-      { label: 'Simulation', checked: S.view === 'sim', action: () => setView('sim') },
+      { label: designOnly() ? 'Design' : 'Implementation', checked: designState.view === 'impl', action: () => setView('impl') },   // (a design project's: no implementation, #3891)
+      { label: 'Simulation', checked: designState.view === 'sim', action: () => setView('sim') },
       '-',
       // (a design and simulation project, #3780: no flow, no board, no HDL: their items left out, web/js/design-only.js)
       ...flowOnly({ label: 'Design Summary', icon: icon('summary'), action: () => openSummary(), disabled: hasPj }),
@@ -144,7 +145,7 @@ export function setupMenus() {
       '-',
       // the implementation top (the Simulation view has none: Simulate runs the selected module)
       // (the selected module the top: Unset as Top Module, #1220)
-      S.view === 'sim' ? null : (S.project?.top && (panes.sel?.module || (viewSel() && topOfView(viewSel()))) === S.project.top
+      designState.view === 'sim' ? null : (S.project?.top && (panes.sel?.module || (viewSel() && topOfView(viewSel()))) === S.project.top
         ? { label: 'Unset as Top Module', action: () => unsetTop() }
         : { label: 'Set as Top Module', action: () => (panes.sel?.module ? setTop(panes.sel.module, false) : viewSel() && setViewAsTop(viewSel())), disabled: () => !panes.sel?.module && !viewSel() }),
       { label: 'Design Properties…', action: () => wiz.projectProperties(), disabled: hasPj },
@@ -158,7 +159,7 @@ export function setupMenus() {
       ...flowOnly({ label: 'Implement Top Module', icon: icon('run'), action: () => S.project?.top && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), disabled: () => !S.project?.top || S.busy || !toolHas('impl') }),
       { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: () => !runState.currentJob },
       { label: 'Run', action: () => panes.selProc && runProcess(panes.selProc), disabled: () => !panes.selProc?.run },
-      { label: checkLabel(), action: () => panes.sel?.module && checkSyntax(panes.sel.module, S.view === 'sim'), disabled: () => !panes.sel?.module },
+      { label: checkLabel(), action: () => panes.sel?.module && checkSyntax(panes.sel.module, designState.view === 'sim'), disabled: () => !panes.sel?.module },
       { label: 'Simulate Behavioral Model', icon: icon('wave'), action: () => panes.sel?.module && runSimulation(panes.sel.module), disabled: () => !panes.sel?.module },
     ] },
     { label: 'Tools', items: () => [
@@ -237,11 +238,11 @@ export function setupToolbar() {
     b._enabled = enabled;
     return b;
   };
-  const mod = () => panes.sel?.module || (S.view === 'sim' ? null : S.project?.top);
+  const mod = () => panes.sel?.module || (designState.view === 'sim' ? null : S.project?.top);
   // only Implement waits for a running implementation (one ISE build at a time); checking,
   // simulating, emulating and programming run in the browser or independently of it
   tb.append(h('div', { class: 'm-steps', role: 'group', 'aria-label': 'Design flow' },
-    step('mCheck', 'Check', 'Check Syntax of the selected module', () => checkSyntax(mod(), S.view === 'sim'), () => !!S.project && !!mod()),
+    step('mCheck', 'Check', 'Check Syntax of the selected module', () => checkSyntax(mod(), designState.view === 'sim'), () => !!S.project && !!mod()),
     step('mWave', 'Simulate', 'Simulate Behavioral Model of the selected module', () => runSimulation(mod()), () => !!S.project && !!mod()),
     step('mBolt', 'Implement', 'Implement Top Module', async () => await topConfirmed('Implement', 'implements') && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), () => !!S.project?.top && !S.busy && toolHas('impl')),
     step('mBoard', 'Emulate', 'Board Emulator', async () => await topConfirmed('Emulate', 'emulates') && openEmulator(S.project.top), () => !!S.project?.top && toolHas('emu')),
@@ -278,7 +279,7 @@ export function refreshSteps() {
 // Command palette: every enabled menu command and every project file
 export function showPalette() {
   // (a design project's: a drawn module's drawing for its HDL file, the rest of the HDL side left out, #3891)
-  const files = S.project ? shownFiles([...new Set(S.project.files.map(f => (designOnly() && S.hdlToSch?.[f.path]) || f.path))]).sort().map(path => ({ path, open: () => openFile(path) })) : [];
+  const files = S.project ? shownFiles([...new Set(S.project.files.map(f => (designOnly() && designState.hdlToSch?.[f.path]) || f.path))]).sort().map(path => ({ path, open: () => openFile(path) })) : [];
   return openPalette({ commands: menuCommands(panes.menus), files });
 }
 

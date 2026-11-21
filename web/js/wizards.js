@@ -29,6 +29,7 @@ import { NAME_RE } from '/core/ident.js';
 import { projectNameError, projectNameFrom, sameProject } from '/core/project-name.js';
 import { silinxFolderError, silinxFolderSkips } from '/core/project-folder.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 // Device used when no evaluation board is selected.
 const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
@@ -386,7 +387,7 @@ export function replaceGuard(title) {
 // (#1467: else it was in the new drawing's way, a clash)
 export async function closeBeforeReplace(path) {
   let owned = null;
-  if (isView(path)) { try { owned = JSON.parse(S.viewTexts?.[path] ?? '').generatedFile || null; } catch { /* not read */ } }
+  if (isView(path)) { try { owned = JSON.parse(designState.viewTexts?.[path] ?? '').generatedFile || null; } catch { /* not read */ } }
   for (const p of [path, owned].filter(Boolean)) {
     for (const d of [...S.docs]) {
       if (d.path === p || String(d.id || '').endsWith(`:${p}`)) { d.dirty = false; clearTimeout(d._autosave); await app.closeDoc(d); }
@@ -395,15 +396,15 @@ export async function closeBeforeReplace(path) {
   if (owned && (filesState.diskTree || filesState.fileTree || []).includes(owned)) await api.deleteFile(S.project.name, owned);
 }
 // a module of that name defined in another file than `path` (the file being replaced may define it)
-export const moduleElsewhere = (name, path) => S.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase() && m.file !== path
-  && S.hdlToSch?.[m.file] !== path);   // (the synchronized HDL of a schematic / chart being replaced)
+export const moduleElsewhere = (name, path) => designState.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase() && m.file !== path
+  && designState.hdlToSch?.[m.file] !== path);   // (the synchronized HDL of a schematic / chart being replaced)
 
 // the HDL file a new drawing (`path`, its module `name`) gets (drawnHdlPath, #207) is taken by a file
 // that is not its own (#230): the message that keeps the wizard on its page, or null
 export function drawnHdlTaken(path, name, lang) {
   if (!isView(path)) return null;
   const hdl = drawnHdlPath(path, name, lang);
-  if (!(filesState.diskTree || filesState.fileTree || []).includes(hdl) || S.hdlToSch?.[hdl] === path) return null;
+  if (!(filesState.diskTree || filesState.fileTree || []).includes(hdl) || designState.hdlToSch?.[hdl] === path) return null;
   return `${hdl} already exists: the HDL generated from the new source would be written there. Choose another name.`;
 }
 
@@ -455,7 +456,7 @@ export async function sourceProperties(path) {
   if (!f && !own) return;
   // (a design and simulation project: no language, its HDL hidden, #3780)
   const lang = own && !designOnly() && select([['', 'Project Preferred Language'], ['vhdl', 'VHDL'], ['verilog', 'Verilog']], own.choice);
-  const shown = (designOnly() && S.hdlToSch?.[path]) || path;   // (a design project's drawn module: its drawing, #3891)
+  const shown = (designOnly() && designState.hdlToSch?.[path]) || path;   // (a design project's drawn module: its drawing, #3891)
   const r = await dialog({
     title: `Source Properties - ${shown}`, width: 440,
     body: h('div', { class: 'form-grid' }, ...field('File:', h('span', {}, shown)), ...(designOnly() ? [] : field('Language:', lang || h('span', {}, f.lang)))),

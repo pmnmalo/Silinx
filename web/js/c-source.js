@@ -10,6 +10,7 @@ import { cReportLines, hlsClockOf, hlsFamilyOf, hlsMultsOf } from '/core/c-repor
 import { blackboxModels, undeclaredBlackboxes } from '/core/c-blackbox.js';
 import { cState } from './state-c.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 export const isC = (p) => /\.(c|cpp|cc|cxx)$/i.test(p || '');
 // (its badge: C or C++, #1590)
@@ -17,7 +18,7 @@ export const cBadge = (p) => (/\.c$/i.test(p || '') ? 'C' : 'C++');
 
 /** The HDL made from a C source, read-only, in a document of its own (made again when it is opened again). */
 export async function openCHdl(path) {
-  const src = S.sources.find((s) => s.view && s.path === path);
+  const src = designState.sources.find((s) => s.view && s.path === path);
   const id = `chdl:${path}`;
   const old = findDoc(id);
   if (old) await closeDoc(old);
@@ -33,7 +34,7 @@ export async function openCHdl(path) {
       d.editor = createEditor(host, { text: src?.text || '', lang, path: name, readOnly: true });
       el.append(d.editor.status);   // (its status line, #2763)
       // (the C saved: its HDL made again, shown here, e.g. beside the C, #1619)
-      const follow = () => { const t = S.sources.find((s) => s.view && s.path === path)?.text; if (t != null && t !== d.editor.getValue()) d.editor.setValue(t); };
+      const follow = () => { const t = designState.sources.find((s) => s.view && s.path === path)?.text; if (t != null && t !== d.editor.getValue()) d.editor.setValue(t); };
       addEventListener('silinx:design-changed', follow);
       return { lang, destroy: () => { removeEventListener('silinx:design-changed', follow); d.editor.destroy(); } };
     },
@@ -41,7 +42,7 @@ export async function openCHdl(path) {
 }
 
 /** Whether a C source's module is sequential (a state machine: its ASM chart, #1575). */
-export const cSequential = (path) => !!S.sources.find((s) => s.view && s.path === path)?.sequential;
+export const cSequential = (path) => !!designState.sources.find((s) => s.view && s.path === path)?.sequential;
 
 /** A sequential C module's machine as an ASM chart (core/c-asm.js), read-only, in a document of its own (#1575). */
 export async function openCAsm(path) {

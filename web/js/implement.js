@@ -24,6 +24,7 @@ import { jobLog } from './job-log.js';
 import { downloadUrl } from './download.js';
 import { runState } from './state-run.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 // Live per-step status from run.sh's "=== SILINX STEP <step> ===" markers and ISE WARNING/ERROR lines.
 const STEP_PROC = { synth: 'synth', translate: 'translate', map: 'map', par: 'par', trce: 'par', bitgen: 'bitgen', prombit: 'bitgen',
@@ -103,9 +104,9 @@ export function stepTracker(steps, out = logLine) {
 export async function ucfDiagnostics(text, file) {
   const pj = S.project;
   let ports = [], lang = 'vhdl';
-  if (pj.top && S.lib) {
+  if (pj.top && designState.lib) {
     try {
-      const design = elaborate(S.lib, pj.top);
+      const design = elaborate(designState.lib, pj.top);
       if (design.top) ports = design.top.ports.map(ucfPort);
       lang = moduleInfo(pj.top)?.lang || 'vhdl';
     } catch { /* no port data */ }
@@ -196,7 +197,7 @@ export async function boardConstraints(board, { emulate = false, quiet = false }
 export async function regenerateUcf(board = projectBoard()) {
   const pj = S.project;
   if (!board || !pj.top) return false;
-  const design = elaborate(S.lib, pj.top);
+  const design = elaborate(designState.lib, pj.top);
   if (!design.top) return false;
   // (core/board-constraints.js: the file the MCP's set_top update_constraints writes, #4732)
   const { text, matched, unmatched } = boardConstraintsFile(pj.top, design.top.ports.map(ucfPort), board);
@@ -378,7 +379,7 @@ export async function synthOpen(mod) {
     R = startRun({ process: SYNTH_OPEN, source: 'impl' });
     const family = S.project.device?.family || 'spartan3e';
     // (as synthesis reads them: no translate_off region, #3901)
-    const srcs = (await import('/core/translate-off.js')).synthesisSources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)));
+    const srcs = (await import('/core/translate-off.js')).synthesisSources(designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)));
     const design = elaborate(compile([...primitiveSources(srcs), ...srcs]), mod);
     const [{ synthesizeOpen, synthesisInput }, { synthEffort, synthGoal, synthesizeArea, synthesizeFast }] = await Promise.all([import('/core/synth-front.js'), import('/packages/silinx-fpga/src/index.js')]);
     const { yosysBrowser } = await import('./yosys-client.js');

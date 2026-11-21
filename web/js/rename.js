@@ -14,17 +14,18 @@ import { designOnly } from './design-only.js';
 import { pageStore, serialDrawings } from './page-store.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 // ---- Rename Symbol (F2) in an HDL editor: the name under the cursor, everywhere it means the same
 // object in the file; a port / generic also in the instances of its module in the other files
 export function renameSymbolIn(d, lang, path) {
   if (!d.editor) return;
-  const findModule = name => S.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase());
+  const findModule = name => designState.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase());
   return renameSymbolAtCursor({
     editor: d.editor, lang, path,
     // (not the HDL generated from a drawing, with a file of its own or not: it follows the drawing, read-only, #1176)
-    sources: () => S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && !s.view && !S.hdlToSch?.[s.path]).map(s => ({ ...s, text: docsState.docs.find(o => o.path === s.path && o.editor)?.editor.getValue() ?? s.text })),
-    drawings: () => S.sources.filter(s => s.view || S.hdlToSch?.[s.path]).map(s => (s.view ? s : { ...s, path: S.hdlToSch[s.path] })),
+    sources: () => designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && !s.view && !designState.hdlToSch?.[s.path]).map(s => ({ ...s, text: docsState.docs.find(o => o.path === s.path && o.editor)?.editor.getValue() ?? s.text })),
+    drawings: () => designState.sources.filter(s => s.view || designState.hdlToSch?.[s.path]).map(s => (s.view ? s : { ...s, path: designState.hdlToSch[s.path] })),
     isModule: name => !!findModule(name),
     renameModule: name => renameDialog(findModule(name)?.file || path, findModule(name)?.name || name),
     // an open file is edited in its editor (its own Undo); the others are written
@@ -32,7 +33,7 @@ export function renameSymbolIn(d, lang, path) {
       const od = docsState.docs.find(o => o.path === p && o.editor);
       if (od) { applyEdits(od.editor, edits, name); return; }
       await api.writeFile(S.project.name, p, text);
-      const src = S.sources.find(x => x.path === p);
+      const src = designState.sources.find(x => x.path === p);
       if (src) src.text = text;
       compileProject();
     },
@@ -46,7 +47,7 @@ const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 export async function renameDialog(file, mod = null) {
   if (!S.project) return;
   if (!await saveAll()) return;
-  const mods = S.modules.filter(m => m.file === file && m.kind !== 'package').map(m => m.name);
+  const mods = designState.modules.filter(m => m.file === file && m.kind !== 'package').map(m => m.name);
   const modName = mod || (mods.length === 1 ? mods[0] : null);
   const base = file.slice(dirOf(file).length, file.length - extOf(file).length);
   const fIn = h('input', { type: 'text', value: file, style: { width: '100%' } });
@@ -61,7 +62,7 @@ export async function renameDialog(file, mod = null) {
     title: 'Rename', width: 520,
     body: h('div', {},
       h('div', { class: 'form-grid' },
-        ...(mIn ? [h('label', {}, !hidden && S.modules.find(m => m.name === modName)?.lang === 'vhdl' ? 'Entity:' : 'Module:'), mIn] : []),
+        ...(mIn ? [h('label', {}, !hidden && designState.modules.find(m => m.name === modName)?.lang === 'vhdl' ? 'Entity:' : 'Module:'), mIn] : []),
         ...(hidden ? [] : [h('label', {}, 'File:'), fIn]),
         ...(mIn && !hidden ? [h('span'), h('label', {}, follow, ' File name follows the module name')] : [])),
       h('div', { class: 'hint', style: { marginTop: '8px' } }, mIn
@@ -79,7 +80,7 @@ export async function renameDialog(file, mod = null) {
         // not a reserved word of VHDL or Verilog, in any letter case (#679)
         const r = nm.toLowerCase() !== modName.toLowerCase() && reservedError(nm);
         if (r) return `${r}: choose another name.`;
-        if (nm.toLowerCase() !== modName.toLowerCase() && (S.modules.some(m => m.name.toLowerCase() === nm.toLowerCase()) || S.partModules?.has(nm.toLowerCase()))) return `A module named '${nm}' already exists.`;
+        if (nm.toLowerCase() !== modName.toLowerCase() && (designState.modules.some(m => m.name.toLowerCase() === nm.toLowerCase()) || designState.partModules?.has(nm.toLowerCase()))) return `A module named '${nm}' already exists.`;
       }
       return null;
   }

@@ -28,6 +28,7 @@ import { isName } from '/core/ident.js';
 import { designOnly, shownDiag } from './design-only.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 // ---- schematic
 // Netlist written by netgen for `step` (postsynth / posttrans / postmap / postpar) with the
@@ -72,7 +73,7 @@ async function netlistSources(step, { hier = false, action = 'Simulate', title =
   let text = verilog ? raw : scalarizeNetlist(raw);
   if (hier && !verilog) {
     try {
-      const design = elaborate(compile(S.sources.filter(x => inView(x.role, false) && (x.lang === 'vhdl' || x.lang === 'verilog'))), S.project.top);
+      const design = elaborate(compile(designState.sources.filter(x => inView(x.role, false) && (x.lang === 'vhdl' || x.lang === 'verilog'))), S.project.top);
       text = regroupNetlist(raw, (design.top?.children || []).map(c => c.name)).text;
     } catch (e) { log(`WARNING: technology schematic shown flat (${e.message})`, 'warn'); }
   }
@@ -130,7 +131,7 @@ async function openSilinxTechSchematic(mod) {
   status(`Reading the netlist of ${top}…`);
   let groups;
   try {
-    const design = elaborate(compile(S.sources.filter(x => inView(x.role, false) && (x.lang === 'vhdl' || x.lang === 'verilog'))), top);
+    const design = elaborate(compile(designState.sources.filter(x => inView(x.role, false) && (x.lang === 'vhdl' || x.lang === 'verilog'))), top);
     groups = (design.top?.children || []).map(c => c.name);
   } catch { /* the instances from the netlist's names */ }
   const { technologyNetlist } = await import('/core/fpga/techview.js');
@@ -147,8 +148,8 @@ async function openSilinxTechSchematic(mod) {
 const taskNow = () => { const d = document.documentElement.dataset; return d.layout === 'tasks' && d.task || undefined; };
 export async function openSchematic(mod, { netlist = null, task = netlist ? null : taskNow() } = {}) {
   if (!await saveAll()) return;
-  const sim = S.view === 'sim';
-  const srcs = netlist || S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
+  const sim = designState.view === 'sim';
+  const srcs = netlist || designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
   const all = withPrimitives(srcs);
   const lib = compile(all);
   const design = elaborate(lib, mod);
@@ -223,7 +224,7 @@ export async function openSchematic(mod, { netlist = null, task = netlist ? null
 
 // ---- simulation (SSim)
 async function readDataFiles() {
-  const map = new Map(S.sources.map(s => [s.path, s.text]));
+  const map = new Map(designState.sources.map(s => [s.path, s.text]));
   for (const f of filesState.fileTree.filter(f => /\.(mem|hex|txt|dat|coe|bin)$/i.test(f))) {
     try { map.set(f, await api.readFile(S.project.name, f)); } catch { /* ignore */ }
   }
@@ -250,7 +251,7 @@ async function runSimulationInner(mod, model, stale) {
   const R = startRun({ process: title, source: 'sim' });   // (its lines its own, #4749)
   R.log(`Building simulation model for top '${mod}'${model ? ` with the ${SIM_MODEL_NAMES[model].toLowerCase()} netlist of '${S.project.top}'` : ''}...`, 'hdr');
   // (no implementation-only files; the test bench's hierarchy only, #4421)
-  const srcs = [...hierarchySources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true)), mod).sources, ...(net || [])];
+  const srcs = [...hierarchySources(designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, true)), mod).sources, ...(net || [])];
   const lib = compile(withPrimitives(srcs));
   if (model) lib.errors = lib.errors.filter(e => !/redefined/.test(e.message));
   const design = elaborate(lib, mod);
@@ -288,7 +289,7 @@ async function runSimulationInner(mod, model, stale) {
         onSaveTestbench: m => saveStimTestbench(inst === design.top ? mod : inst.module, inst, m),
       };
       // (the project's test benches in its tree, another one simulated in a document of its own: #1161)
-      const benches = () => S.modules.filter(m => m.role === 'sim').map(m => m.name).sort(naturalCompare);
+      const benches = () => designState.modules.filter(m => m.role === 'sim').map(m => m.name).sort(naturalCompare);
       const view = mountISim(el, { design, sim, title: mod, initialRun: 1_000_000, stimuli, wcfg: wcfgFiles(mod), onOpenSource: ref => ref?.file && openFile(ref.file, ref.line),
         benches, onBench: name => { const d = findDoc(`isim:${name}`); if (d) openDoc({ id: d.id }); else runSimulation(name); },
         // (each row's types: [Waveform], the simulation's own view, marked, its waveform brought to the front; then the
@@ -299,7 +300,7 @@ async function runSimulationInner(mod, model, stale) {
             open: () => { const i = moduleInfo(name); if (i) openFile(i.file, i.line, undefined, { task: 'sim' }); } }))],
         // (the Tasks interface: a test bench's menu, the tree's empty space's, and the commands above the tree, as
         // Design's: #1385; web/css/tasks.css shows the bar there only)
-        benchMenu: name => (tasksOn() && S.modules.some(m => m.name === name && m.role === 'sim') ? asSsim(benchItems(app, name)) : []),
+        benchMenu: name => (tasksOn() && designState.modules.some(m => m.name === name && m.role === 'sim') ? asSsim(benchItems(app, name)) : []),
         treeMenu: () => (tasksOn() ? asSsim(treeItems(app)) : null), goToSource: () => (tasksOn() ? openModuleSource : null) });
       const tree = el.querySelector('.isim-inst-panel');
       let pages = null;
@@ -374,7 +375,7 @@ async function confirmElabErrors(title, lib, design) {
 const enginePref = () => { try { return localStorage.getItem(prefKey(ENGINE_KEY)); } catch { return null; } };
 const setEnginePref = (e) => { try { localStorage.setItem(prefKey(ENGINE_KEY), e); } catch { /* ignore */ } };
 // the design as the emulator runs it: its sources and its pins (#1401)
-const designNow = () => JSON.stringify([S.sources.filter(s => s.lang === 'vhdl' || s.lang === 'verilog').map(s => [s.path, s.text]), filesState.ucfText || '']);
+const designNow = () => JSON.stringify([designState.sources.filter(s => s.lang === 'vhdl' || s.lang === 'verilog').map(s => [s.path, s.text]), filesState.ucfText || '']);
 // `quiet`: run again on a change of the design (#1401), behind the document in front, no dialog
 export async function openEmulator(mod, { scale, model = null, engine = null, quiet = false } = {}) {
   if (!mod) { logInfo('Select the top module first'); return; }
@@ -396,7 +397,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
   try { rep = await api.reports(S.project.name); } catch { /* standalone / no build */ }
   const models = Object.keys(SIM_MODEL_NAMES).filter(k => rep?.simModels?.[k] && rep.top === mod);
   // the implemented design (the top's hierarchy, #4421)
-  const srcs = net || hierarchySources(S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)), mod).sources;
+  const srcs = net || hierarchySources(designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, false)), mod).sources;
   const { timingGenerics, autoTimeScale, scaledGenerics } = await import('/core/emulate.js');
   let design, lib, gens = [];
   try {

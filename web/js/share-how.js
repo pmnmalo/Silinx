@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { h } from './ui.js';
 import { S } from './app.js';
 import { getLanguage } from './i18n.js';
+import { designState } from './state-design.js';
 
 /** The window's width, a copy's and Live's (#4617): one size (its height app.css's .share-dlg), so that switching
  *  between them does not resize the window. */
@@ -35,7 +36,7 @@ export function liveProblem(module = null) {
   if (!api.collab && !api.standalone) return 'This edition of Silinx does not share a project live.';
   if (location.protocol === 'file:') return 'A Silinx opened from a file has no address that others can open: open Silinx from its site to share a project live.';
   if (api.following) return 'You are following another\'s project: stop following it to share one live.';
-  if (module && (S.modules || []).some(m => m.name === module && m.role === 'sim')) return 'A test bench is shared as a copy only.';
+  if (module && (designState.modules || []).some(m => m.name === module && m.role === 'sim')) return 'A test bench is shared as a copy only.';
   return null;
 }
 

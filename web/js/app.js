@@ -55,6 +55,7 @@ import { panes } from './state-panes.js';
 import { startState } from './state-start.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -69,17 +70,20 @@ export const S = {
   get git() { return filesState.git; }, set git(v) { filesState.git = v; },
   get reloadChain() { return filesState.reloadChain; }, set reloadChain(v) { filesState.reloadChain = v; },
   get opChain() { return filesState.opChain; }, set opChain(v) { filesState.opChain = v; },
-  // the compiled design
-  view: 'impl', sources: [], lib: null, modules: [],
-  viewSources: undefined,     // the drawings' generated HDL, compiled with the sources (app.js compileProject)
-  viewTexts: undefined,       // a drawing's file -> its text (project.js, app.js)
-  viewElsewhere: undefined,   // a drawing whose module another file defines -> that module (app.js compileProject)
-  viewModule: undefined,      // a drawing's file -> its module (project.js)
-  schOwners: undefined,       // a drawing linked to its HDL file -> that file (project.js)
-  hdlToSch: undefined,        // a drawing's HDL file -> the drawing (project.js)
-  symbolFiles: undefined,     // a symbol file -> its text (project.js, symbol-doc.js)
-  partModules: undefined,     // a circuit's parts as modules (app.js compileProject)
-  failedDrawings: undefined,  // the drawings whose module cannot be made (#3934)
+  // the compiled design: web/js/state-design.js's slice (#4767), its fields here as getters and setters onto it
+  get view() { return designState.view; }, set view(v) { designState.view = v; },
+  get sources() { return designState.sources; }, set sources(v) { designState.sources = v; },
+  get lib() { return designState.lib; }, set lib(v) { designState.lib = v; },
+  get modules() { return designState.modules; }, set modules(v) { designState.modules = v; },
+  get viewSources() { return designState.viewSources; }, set viewSources(v) { designState.viewSources = v; },
+  get viewTexts() { return designState.viewTexts; }, set viewTexts(v) { designState.viewTexts = v; },
+  get viewElsewhere() { return designState.viewElsewhere; }, set viewElsewhere(v) { designState.viewElsewhere = v; },
+  get viewModule() { return designState.viewModule; }, set viewModule(v) { designState.viewModule = v; },
+  get schOwners() { return designState.schOwners; }, set schOwners(v) { designState.schOwners = v; },
+  get hdlToSch() { return designState.hdlToSch; }, set hdlToSch(v) { designState.hdlToSch = v; },
+  get symbolFiles() { return designState.symbolFiles; }, set symbolFiles(v) { designState.symbolFiles = v; },
+  get partModules() { return designState.partModules; }, set partModules(v) { designState.partModules = v; },
+  get failedDrawings() { return designState.failedDrawings; }, set failedDrawings(v) { designState.failedDrawings = v; },
   // the C sources': web/js/state-c.js's slice (#4767), its fields here as getters and setters onto it
   get hls() { return cState.hls; }, set hls(v) { cState.hls = v; },
   get bbUndeclared() { return cState.bbUndeclared; }, set bbUndeclared(v) { cState.bbUndeclared = v; },
@@ -142,16 +146,16 @@ export const withPrimitives = srcs => [...primitiveSources(srcs), ...srcs];
 export const hdlInProject = f => (filesState.fileTree || []).includes(f);
 export function compileProject() {
   if (!S.project) return;
-  const srcs = S.sources.filter(s => !s.view && (s.lang === 'vhdl' || s.lang === 'verilog'));
+  const srcs = designState.sources.filter(s => !s.view && (s.lang === 'vhdl' || s.lang === 'verilog'));
   // the drawn sources without an HDL file (#177): their HDL, made here, compiled with the rest (a module
   // of the project, which can be the top, be simulated and implemented, with no file)
-  S.viewSources = [];
-  S.viewElsewhere = {};
-  const views = Object.entries(S.viewTexts || {}).filter(([f]) => !S.schOwners?.[f]);
+  designState.viewSources = [];
+  designState.viewElsewhere = {};
+  const views = Object.entries(designState.viewTexts || {}).filter(([f]) => !designState.schOwners?.[f]);
   // the modules of the HDL files, compiled once for the drawings below (#402)
   let hdlModules = null;
   const failedC = [];   // (a C source whose HDL cannot be made: its row and its errors, #2995)
-  S.failedDrawings = [];   // (a drawing whose module cannot be made: Check Syntax says its errors, #3934)
+  designState.failedDrawings = [];   // (a drawing whose module cannot be made: Check Syntax says its errors, #3934)
   if (views.length) {
     let mods = {}, lib0 = null;
     try { lib0 = compile(srcs); mods = modulesFromLibrary(lib0, { sources: Object.fromEntries(srcs.map(s => [s.path, s.text])) }); } catch { /* none */ }
@@ -162,17 +166,17 @@ export function compileProject() {
     // (a drawing whose HDL file is gone, deleted or removed from the project, is one without it: #231)
     for (const [f, t] of views) {
       const r = viewHdl(f, t, { modules: mods, linked: hdlInProject, lang: S.project.preferredLanguage, clock: hlsClock(), family: hlsFamily(), hls: cState.hls, mults: hlsMults() });
-      if (!r?.text) { if (isC(f)) failedC.push([f, r]); else if (r?.errors?.length) S.failedDrawings.push({ path: f, module: r.module, errors: r.errors }); continue; }
-      if (!hdlMods.has(String(r.module).toLowerCase())) { S.viewSources.push({ path: f, lang: r.lang, text: r.text, role: 'design', view: true, module: r.module, errors: r.errors.length, lost: r.lost || null, ...(r.sequential ? { sequential: true } : {}) }); continue; }
+      if (!r?.text) { if (isC(f)) failedC.push([f, r]); else if (r?.errors?.length) designState.failedDrawings.push({ path: f, module: r.module, errors: r.errors }); continue; }
+      if (!hdlMods.has(String(r.module).toLowerCase())) { designState.viewSources.push({ path: f, lang: r.lang, text: r.text, role: 'design', view: true, module: r.module, errors: r.errors.length, lost: r.lost || null, ...(r.sequential ? { sequential: true } : {}) }); continue; }
       const m = !r.errors.length && [...(lib0?.modules.values() || [])].find(x => x.name.toLowerCase() === String(r.module).toLowerCase());
-      if (m) S.viewElsewhere[f] = { module: r.module, lang: r.lang, file: m.archFile || m.file, lost: r.lost || null };
+      if (m) designState.viewElsewhere[f] = { module: r.module, lang: r.lang, file: m.archFile || m.file, lost: r.lost || null };
     }
   }
   noteFailedC(failedC, Object.fromEntries(views.filter(([f]) => isC(f))));
   // the linked drawings that cannot generate their HDL file (errors: a project opened with one, #303), each
   // text once (an edit in its editor says it as it syncs)
   let lazyMods = hdlModules;
-  for (const [f, t] of Object.entries(S.viewTexts || {})) {
+  for (const [f, t] of Object.entries(designState.viewTexts || {})) {
     if (syncState.staleSeen?.get(f) === t) continue;
     let m;
     try { m = JSON.parse(t); } catch { continue; }
@@ -184,18 +188,18 @@ export function compileProject() {
     if (r?.errors?.length) staleHdl(m.generatedFile, f, `it has errors: ${r.errors.map(e => e.replace(`${f}: `, '')).join('; ')}`);
     else if (r) freshHdl(m.generatedFile);
   }
-  // (in S.sources too, so that every compile of the project (simulation, checks, RTL views) has them)
-  S.sources = [...S.sources.filter(s => !s.view), ...S.viewSources];
-  S.lib = compile([...srcs, ...S.viewSources]);
+  // (in designState.sources too, so that every compile of the project (simulation, checks, RTL views) has them)
+  designState.sources = [...S.sources.filter(s => !s.view), ...S.viewSources];
+  designState.lib = compile([...srcs, ...S.viewSources]);
   // open schematics: their palette (Project modules) and module symbols follow the sources
   // (and their Device Primitives the project's part's, #791)
   if (docsState.docs.some(d => d.schEditor)) schModules().then(mods => { for (const d of docsState.docs) { d.schEditor?.setModules(mods); d.schEditor?.setDevice?.(projectPart()); } }).catch(() => {});
   // module info for editor completion / templates
   const fileOf = new Map();
-  for (const p of S.lib.parsed) for (const u of p.units) if (u.kind === 'module' || u.kind === 'package') fileOf.set(u.name, p);
+  for (const p of designState.lib.parsed) for (const u of p.units) if (u.kind === 'module' || u.kind === 'package') fileOf.set(u.name, p);
   // (a circuit's ICs' modules, in its generated HDL, are the circuit's, not the project's: no row, no picker's, #4216)
-  S.partModules = circuitPartModules(S.lib, S.sources);
-  S.modules = [...S.lib.modules.values()].filter(m => !S.partModules.has(m.name.toLowerCase())).map(m => ({
+  designState.partModules = circuitPartModules(designState.lib, designState.sources);
+  designState.modules = [...S.lib.modules.values()].filter(m => !designState.partModules.has(m.name.toLowerCase())).map(m => ({
     name: m.name, lang: m.lang, file: m.archFile || m.file, line: m.loc?.line || 1, kind: m.lang === 'vhdl' ? 'entity' : 'module',
     role: S.project.files.find(f => f.path === m.file)?.role || 'design',
     portList: m.ports.map(p => ({ name: p.name, dir: p.dir, type: typeText(p.type, m.lang) })),
@@ -203,7 +207,7 @@ export function compileProject() {
     ports: m.ports.map(p => `${p.dir.padEnd(5)} ${p.name} : ${typeText(p.type, m.lang)}`).join('\n'),
     mod: m,
   }));
-  return S.lib;
+  return designState.lib;
 }
 
 // The project's board with the variant (pin overrides) that matches the selected part.
@@ -215,12 +219,12 @@ export function projectBoard(pj = S.project) {
   return { ...b, device: { ...(v?.device || b.device) }, resources: b.resources.map(r => (ov[r.name] ? { ...r, ...ov[r.name] } : r)) };
 }
 
-export function moduleInfo(name) { return S.modules.find(m => m.name === name) || S.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase()); }
+export function moduleInfo(name) { return designState.modules.find(m => m.name === name) || designState.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase()); }
 
 // The modules at the root of a view's hierarchy: those of its role no module of it instantiates; in the
 // Implementation view the top first, a root even when instantiated (#2877; core/elaborate.js implRoots)
 export function viewRoots(sim) {
-  const lib = S.lib;
+  const lib = designState.lib;
   if (!lib) return [];
   const visible = name => inView(moduleInfo(name)?.role || 'design', sim);
   return sim ? topCandidates(lib).filter(visible) : implRoots(lib, { top: S.project?.top, visible });
@@ -231,7 +235,7 @@ export function viewRoots(sim) {
 // when it changed. (Not while a source of the project still declares it, nor a C source's module not made, #2995.)
 export async function fixMissingTops() {
   const cMade = name => Object.values(cState.cFailed || {}).some(c => String(c.module || '').toLowerCase() === String(name).toLowerCase());
-  const has = name => !!moduleInfo(name) || (S.sources || []).some(f => declares(f.text, name)) || cMade(name);
+  const has = name => !!moduleInfo(name) || (designState.sources || []).some(f => declares(f.text, name)) || cMade(name);
   const { set, messages } = missingTops(S.project, { has, roots: viewRoots });
   Object.assign(S.project, set);
   for (const m of messages) log(m.text, m.level);
@@ -469,9 +473,9 @@ export async function flushDoc(doc, opts) {
     // as it has no errors (#207)
     const vp = docPath(doc);
     if (isLabFile(vp) && S.project) import('./lab-view.js').then(m => m.labFileSaved(vp)).catch(() => {});   // (a guided lab checked as it is edited, #3179)
-    if (vp && /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(vp) && !S.schOwners?.[vp] && S.project) {
+    if (vp && /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(vp) && !designState.schOwners?.[vp] && S.project) {
       try {
-        S.viewTexts = { ...(S.viewTexts || {}), [vp]: await api.readFile(S.project.name, vp) }; compileProject();
+        designState.viewTexts = { ...(designState.viewTexts || {}), [vp]: await api.readFile(S.project.name, vp) }; compileProject();
         if (await adoptDrawnHdl()) { await reloadProject(false); markStale(); } else { await drawnHdlClashes(); renderHierarchy(); }
       } catch { /* read later */ }
     }
@@ -533,7 +537,7 @@ export async function openFile(path, line, col, { task } = {}) {
       id, path, task, title: path.split('/').pop(), tooltip: path, icon: lang === 'vhdl' ? 'vhdl' : lang === 'verilog' ? 'verilog' : lang === 'ucf' ? 'ucf' : 'file',
       create(el, d) {
         // the HDL generated from a drawing is read-only: the drawing is the base, edited instead (#1176)
-        const generated = () => !!S.hdlToSch?.[path] || (following() && !editsHere(path));   // (a project followed, #3181: read only too, but an editor's text files, #3182)
+        const generated = () => !!designState.hdlToSch?.[path] || (following() && !editsHere(path));   // (a project followed, #3181: read only too, but an editor's text files, #3182)
         const tplBtn = h('button', { class: 'btn', style: { minWidth: '0' }, title: 'Language Templates' }, 'Templates ▾');
         // (no Undo / Redo, the main toolbar's; no path, the tab's tip: #2514)
         const editing = [];
@@ -551,14 +555,14 @@ export async function openFile(path, line, col, { task } = {}) {
             ...snippetsFor(lang, path).map(s => ({ label: s.name, action: () => d.editor.insertText(s.text) })),
             lang === 'c' ? null : '-',
             lang === 'c' ? null : primTemplatesMenu(d, lang),
-            lang === 'c' ? null : { label: 'Instantiate module', submenu: S.modules.filter(m => m.file !== path).map(m => ({ label: m.name, action: () => d.editor.insertText(instTemplate(m, lang) + '$0') })) },
+            lang === 'c' ? null : { label: 'Instantiate module', submenu: designState.modules.filter(m => m.file !== path).map(m => ({ label: m.name, action: () => d.editor.insertText(instTemplate(m, lang) + '$0') })) },
           ], r.left, r.bottom);
         });
         const host = h('div', { class: 'editor-host' });
         el.append(bar, host);
         d.editor = createEditor(host, {
           text, lang, path, readOnly: generated(),
-          project: () => ({ modules: S.modules }),
+          project: () => ({ modules: designState.modules }),
           onChange: (info) => { setDirty(d, !d.editor.isClean(), info); if (lang === 'ucf') liveUcf(); else if (lang === 'vhdl' || lang === 'verilog') liveHdl(); },
           onSave: () => flushDoc(d),
           onGotoDefinition: ({ file, line: ln }) => openFile(file, ln),
@@ -596,7 +600,7 @@ export async function openFile(path, line, col, { task } = {}) {
           e.preventDefault();
           const hdl = lang === 'vhdl' || lang === 'verilog';
           const hasSel = ed.somethingSelected();
-          const sch = S.hdlToSch?.[path];
+          const sch = designState.hdlToSch?.[path];
           const at = ed.posAt(e.clientX, e.clientY);
           const edit = hdl && !sch;   // (the HDL generated from a drawing: read-only, #1176)
           popupMenu([
@@ -615,7 +619,7 @@ export async function openFile(path, line, col, { task } = {}) {
             edit ? '-' : null,
             edit || lang === 'c' ? { label: 'Language Templates', submenu: snippetsFor(lang, path).map(sn => ({ label: sn.name, action: () => d.editor.insertText(sn.text) })) } : null,
             edit ? primTemplatesMenu(d, lang) : null,
-            edit ? { label: 'Instantiate module', submenu: S.modules.filter(m => m.file !== path).map(m => ({ label: m.name, action: () => d.editor.insertText(instTemplate(m, lang) + '$0') })) } : null,
+            edit ? { label: 'Instantiate module', submenu: designState.modules.filter(m => m.file !== path).map(m => ({ label: m.name, action: () => d.editor.insertText(instTemplate(m, lang) + '$0') })) } : null,
             hdl ? '-' : null,
             hdl ? { label: 'Check Syntax', action: () => checkFileSyntax(path) } : null,
             lang === 'c' ? { label: 'Check Syntax', action: () => checkFileSyntax(path) } : null,   // (Silinx HLS, #1524)
@@ -637,8 +641,8 @@ export async function openFile(path, line, col, { task } = {}) {
             // (only the text written is clean: an edit made meanwhile is saved next, see flushDoc)
             if (d.editor.getValue() === text) d.editor.markClean();
             setDirty(d, false);
-            const src = S.sources.find(s => s.path === path && !s.view);
-            if (isC(path)) S.viewTexts[path] = text; else if (src) src.text = text;   // (a C source: its HDL made again, #1531)
+            const src = designState.sources.find(s => s.path === path && !s.view);
+            if (isC(path)) designState.viewTexts[path] = text; else if (src) src.text = text;   // (a C source: its HDL made again, #1531)
             else await reloadProject(false);
             await refreshBlackboxes(path);   // (an RTL blackbox's module or C model: the C sources' HDL made with it, #2342)
             compileProject(); renderHierarchy(); markStale();
@@ -782,15 +786,15 @@ async function deleteFolder(dir) {
 export function renderLibsPage() {
   const host = $('libs-page');
   host.innerHTML = '';
-  if (!S.lib) return;
+  if (!designState.lib) return;
   const tree = h('ul', { class: 'tree', role: 'tree', 'aria-label': 'Libraries' });
   const work = treeItem({ label: 'work', ico: 'folder', open: true, key: 'lib:work' });
   tree.append(work.li);
-  for (const m of S.modules) {
+  for (const m of designState.modules) {
     const it = treeItem({ label: m.name, meta: `(${m.file})`, ico: m.lang === 'vhdl' ? 'vhdl' : 'verilog', key: `lib:${m.name}`, onOpen: () => openFile(m.file, m.line) });
     it.setLeaf(); work.ul.append(it.li);
   }
-  for (const p of S.lib.packages.values()) {
+  for (const p of designState.lib.packages.values()) {
     const it = treeItem({ label: p.name, meta: '(package)', ico: 'vhdl', key: `lib:p:${p.name}`, onOpen: () => openFile(p.file, p.loc?.line) });
     it.setLeaf(); work.ul.append(it.li);
   }
@@ -805,7 +809,7 @@ function showInSim(mod) {
   setView('sim');
   // (the Silinx interface, the Tasks layout: the test bench Simulate's, the one it runs, #1161)
   if (document.documentElement.dataset.layout === 'tasks') {
-    const m = S.modules.find(x => x.name === mod);
+    const m = designState.modules.find(x => x.name === mod);
     if (m) select({ type: 'module', module: mod, file: m.file });   // (its processes: the Simulation view's)
     return setTop(mod, true);
   }
@@ -814,7 +818,7 @@ function showInSim(mod) {
 }
 
 export function setView(v) {
-  S.view = v;
+  designState.view = v;
   document.querySelectorAll('input[name=view]').forEach(r => { r.checked = r.value === v; });
   panes.selKey = null;
   renderHierarchy();

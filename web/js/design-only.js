@@ -5,6 +5,7 @@
 import { DESIGN_ONLY_MESSAGES, addRefusal, hdlSideFile, isDesignOnly } from '/core/project-kind.js';
 import { S, status } from './app.js';
 import { logError, logInfo } from './console.js';
+import { designState } from './state-design.js';
 
 /** Whether the open project is a design and simulation project. */
 export const designOnly = () => isDesignOnly(S.project);
@@ -27,7 +28,7 @@ export const hdlWarning = (text, drawing, why) => (designOnly() ? `WARNING: ${dr
  *  drawing's), the checker Silinx. */
 export function shownDiag(d) {
   if (!designOnly()) return d;
-  const drawing = hdlSideFile(d.file) && S.hdlToSch?.[d.file];
+  const drawing = hdlSideFile(d.file) && designState.hdlToSch?.[d.file];
   return { ...d, ...(drawing ? { file: drawing, line: 0 } : {}), tool: !d.tool || d.tool === 'HDLCompiler' ? 'Silinx' : d.tool };
 }
 /** Check Syntax's name: Check Design in a design project (its sources are drawings). */
@@ -41,7 +42,7 @@ export function refusedHere(path) {
 /** An HDL file opened in a design project (a message's link, a search's result): its drawing opened instead, else why
  *  not (the MCP server's read_file says the same). */
 export async function hiddenHdl(path) {
-  const drawing = S.hdlToSch?.[path];
+  const drawing = designState.hdlToSch?.[path];
   if (drawing) return (await import('./drawings.js')).openView(drawing);
   logInfo(DESIGN_ONLY_MESSAGES.hidden(path));
 }

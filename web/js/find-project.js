@@ -13,6 +13,7 @@ import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
+import { designState } from './state-design.js';
 
 /** The project's texts to search: [{ path, text, drawing, generated }], the open editors' as they are. */
 async function projectTexts() {
@@ -20,12 +21,12 @@ async function projectTexts() {
   // (the project's files: its sources, its drawings (not in its files' list), its constraints)
   const out = [];
   for (const { path, drawing } of findPaths(filesState.fileTree || [], pj.files || [], pj.constraints)) {
-    if (drawing) { const t = S.viewTexts?.[path]; if (t != null) out.push({ path, text: t, drawing: true }); continue; }
+    if (drawing) { const t = designState.viewTexts?.[path]; if (t != null) out.push({ path, text: t, drawing: true }); continue; }
     if (designOnly() && hdlSideFile(path)) continue;   // (a design project's HDL never searched nor shown, #3891)
     const ed = findDoc(`file:${path}`)?.editor;
-    let text = ed ? ed.getValue() : S.sources.find(s => s.path === path)?.text;
+    let text = ed ? ed.getValue() : designState.sources.find(s => s.path === path)?.text;
     if (text == null) { try { text = await api.readFile(pj.name, path); } catch { continue; } }
-    out.push({ path, text, drawing: false, generated: !!S.hdlToSch?.[path] });
+    out.push({ path, text, drawing: false, generated: !!designState.hdlToSch?.[path] });
   }
   return out;
 }

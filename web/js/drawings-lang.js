@@ -9,11 +9,12 @@ import { drawingInLanguage, modelLanguage } from '/core/view-hdl.js';
 import { S, findDoc, flushDoc } from './app.js';
 import { saveProjectJson } from './design.js';
 import { syncDrawingHdl, viewKind } from './drawings.js';
+import { designState } from './state-design.js';
 
 // Returns the drawings it changed.
 export async function drawingsInLanguage(lang) {
   const changed = [];
-  for (const f of Object.keys(S.viewTexts || {})) {
+  for (const f of Object.keys(designState.viewTexts || {})) {
     if (S.project.sourceLanguage?.[f]) continue;
     if (await drawingToLanguage(f, lang)) changed.push(f);
   }
@@ -32,11 +33,11 @@ async function drawingToLanguage(f, lang) {
   const m = { ...r.model, generatedFile: r.from || undefined };
   const text = JSON.stringify(m, null, viewKind(f) === 'sch' ? 1 : 2);
   await api.writeFile(S.project.name, f, text);
-  S.viewTexts[f] = text;
+  designState.viewTexts[f] = text;
   if (ed?.setDoc) ed.setDoc(m); else ed?.setModel?.(m);
   // (a table's schematic, when open, follows: #2257, this is now the only way to change the table's language)
   if (viewKind(f) === 'tt') (await import('./drawings-tt.js')).refreshTtSchematic(f, m);
-  if (r.from && S.schOwners?.[f] === r.from) await syncDrawingHdl(f);
+  if (r.from && designState.schOwners?.[f] === r.from) await syncDrawingHdl(f);
   return true;
 }
 
@@ -45,7 +46,7 @@ const preferred = () => (S.project.preferredLanguage === 'verilog' ? 'verilog' :
 // What Source Properties offers for `path` (a drawing or its HDL file): { drawing, choice: '' (the project's) | 'vhdl' |
 // 'verilog' }; null for a source with no choice (HDL written by hand, a drawing made from its HDL).
 export async function sourceLanguageChoice(path) {
-  const drawing = S.hdlToSch?.[path] || (S.viewTexts?.[path] !== undefined ? path : null);
+  const drawing = designState.hdlToSch?.[path] || (designState.viewTexts?.[path] !== undefined ? path : null);
   if (!drawing) return null;
   const d = findDoc(`${viewKind(drawing)}:${drawing}`);
   if (d) await flushDoc(d);

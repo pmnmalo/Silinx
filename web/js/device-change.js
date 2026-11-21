@@ -9,6 +9,7 @@ import { compile, elaborate } from '/core/compile.js';
 import { resourcesOf, deviceChangeIssues, primitiveInstances, usedOfReport } from '/packages/silinx-fpga/src/parts.js';
 import { S, app, withPrimitives } from './app.js';
 import { inView } from './design.js';
+import { designState } from './state-design.js';
 
 /** The issues of the project's design on the device `next` ({ family, part, package }): their messages ([] when
  *  it fits, or the part is not in the database). db: the device database (S.devices). */
@@ -21,7 +22,7 @@ async function deviceChangeMessages(pj, next, db) {
   let instances = [], ports = 0;
   if (pj.top) {
     try {
-      const srcs = S.sources.filter(s => inView(s.role, false) && (s.lang === 'vhdl' || s.lang === 'verilog'));
+      const srcs = designState.sources.filter(s => inView(s.role, false) && (s.lang === 'vhdl' || s.lang === 'verilog'));
       const top = elaborate(compile(withPrimitives(srcs)), pj.top).top;
       instances = primitiveInstances(top);
       ports = (top?.ports || []).reduce((n, p) => n + (p.sig?.t?.w || 1), 0);

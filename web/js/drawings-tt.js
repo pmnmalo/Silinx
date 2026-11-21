@@ -16,6 +16,7 @@ import { designSources as ttDesignSources } from './tbwizard.js';
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
 import { syncState } from './state-sync.js';
 import { panes } from './state-panes.js';
+import { designState } from './state-design.js';
 
 // ---- truth tables (.bool.json, .tt.json): table -> HDL module, synchronized like ASM charts
 // The generated HDL module is linked by generatedFile: every change of the table rewrites it (its HDL
@@ -38,7 +39,7 @@ export async function openTt(path) {
       const ed = mountTtEditor(host, {
         model,   // (its ⋮ menu: its Notation, no HDL Language, #4159: Source Properties choose it)
         onChange: (m, o) => { setDirty(d, true, o); refreshTtSchematic(path, m); },
-        linkInfo: () => { const f = S.schOwners?.[path]; return f ? { file: f, why: syncState.outOfSync?.[f] } : null; },
+        linkInfo: () => { const f = designState.schOwners?.[path]; return f ? { file: f, why: syncState.outOfSync?.[f] } : null; },
         onOpenFile: f => openFile(f),
         onFromModule: () => loadTtFromModule(path),
         log: (text, cls) => log(text, cls),   // (its notes: no K-map past 6 inputs, a result not proven minimal, #3939)
@@ -61,13 +62,13 @@ const ttModel = async path => { const d = findDoc(`tt:${path}`); if (d?.ttEditor
 // the table `old` made again from its HDL module (by exhaustive simulation of it, the don't cares
 // written in its comments kept); throws why it cannot be
 export async function ttFromHdl(hdlPath, old) {
-  const mods = S.modules.filter(m => m.file === hdlPath && m.kind !== 'package');
+  const mods = designState.modules.filter(m => m.file === hdlPath && m.kind !== 'package');
   const mod = mods.find(m => m.name.toLowerCase() === String(old.name || '').toLowerCase()) || mods[0];
   if (!mod) throw new Error(`${hdlPath.split('/').pop()} has no module`);
   const { truthTableFromModule, dontCaresInHdl, normalizeTable, MAX_EDIT_INPUTS } = await import('/core/logic.js');
   const t = truthTableFromModule(ttDesignSources(), mod.name, { maxInputs: MAX_EDIT_INPUTS });
   // don't cares written in the HDL comments ("don't care: f = d(3, 5)")
-  const dcs = dontCaresInHdl(S.sources.find(x => x.path === hdlPath)?.text);
+  const dcs = dontCaresInHdl(designState.sources.find(x => x.path === hdlPath)?.text);
   for (const o of t.outputs) for (const r of dcs[o.toLowerCase()] || []) if (r >= 0 && r < t.table[o].length) t.table[o] = t.table[o].slice(0, r) + 'X' + t.table[o].slice(r + 1);
   const exprs = {};
   for (const o of t.outputs) if (old.exprs?.[o] && old.table?.[o] === t.table[o] && JSON.stringify(old.inputs) === JSON.stringify(t.inputs)) exprs[o] = old.exprs[o];
@@ -76,7 +77,7 @@ export async function ttFromHdl(hdlPath, old) {
 
 // pick a combinational module of the project
 async function pickModule(title, exclude) {
-  const mods = S.modules.filter(m => m.role === 'design' && m.kind !== 'package' && m.file !== exclude);
+  const mods = designState.modules.filter(m => m.role === 'design' && m.kind !== 'package' && m.file !== exclude);
   if (!mods.length) { commandError(title, 'The project has no design modules.'); return null; }
   const { MAX_EDIT_INPUTS } = await import('/core/logic.js');   // (the limit truthTableFromModule is given, #4117)
   const sel = h('select', { style: { width: '100%' } }, ...mods.map(m => h('option', { value: m.name, selected: m.name === panes.sel?.module }, `${m.name} (${m.file})`)));
@@ -155,7 +156,7 @@ export function refreshTtSchematic(ttPath, model) {
 export function ttContextMenu(e, file) {
   popupMenu([
     { label: 'Open', action: () => openTt(file) },
-    S.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
+    designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
     clashItem(file),
     { label: 'Remove from Project', action: () => removeModule(file) },

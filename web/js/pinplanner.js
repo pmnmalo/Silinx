@@ -20,6 +20,7 @@ import { S, app, setDirty } from './app.js';
 import { statusLine } from './status-line.js';
 import { logError, logWarning } from './console.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 export function mountPinPlanner(el, doc, top) {
   const pj = S.project;
@@ -29,12 +30,12 @@ export function mountPinPlanner(el, doc, top) {
   el.append(root);
 
   // ports of the top module (elaborated to get real widths)
-  const design = elaborate(S.lib, top);
+  const design = elaborate(designState.lib, top);
   // a top the project does not have (its source removed), or one that does not elaborate: said so,
   // not an empty table (#253)
   if (!design.top) {
     const err = (design.diags || []).find(d => d.severity === 'error');
-    const known = S.modules?.some(m => m.name.toLowerCase() === String(top).toLowerCase());
+    const known = designState.modules?.some(m => m.name.toLowerCase() === String(top).toLowerCase());
     root.append(h('div', { class: 'pp-missing' },
       h('p', {}, known ? `The ports of the top-level module '${top}' cannot be read: ${err?.message || 'it does not elaborate'}.` : `The top-level module '${top}' is not in the project.`),
       h('p', {}, known ? 'Correct its errors (Check Syntax), then open I/O Pin Planning again.' : 'Set the top module (a module\'s right-click menu: Set as Top Module), then open I/O Pin Planning again.')));

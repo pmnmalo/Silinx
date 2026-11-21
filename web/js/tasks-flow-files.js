@@ -11,6 +11,7 @@ import { icon, icons } from './icons.js';
 import { designKind } from './project-kind-flag.js';
 import { flowFiles } from '../../core/flow-files.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 let page = 'procs';   // ('procs': the task's processes; 'files')
 let app = null;
@@ -48,7 +49,7 @@ export function renderFlowFiles() {
   for (const ul of document.querySelectorAll('.task-flow-files')) {
     const files = S?.project ? flowFiles(S.project, filesState.fileTree || []) : [];
     const top = files.length && S.project.top ? S.project.top : '';
-    const topFile = top ? (S.modules || []).find(m => m.name.toLowerCase() === top.toLowerCase())?.file || '' : '';
+    const topFile = top ? (designState.modules || []).find(m => m.name.toLowerCase() === top.toLowerCase())?.file || '' : '';
     const key = [top, topFile, ...files.map(f => f.path)].join();
     if (ul.dataset.key === key && ul.childElementCount === (top ? 1 : files.length)) continue;
     ul.dataset.key = key;

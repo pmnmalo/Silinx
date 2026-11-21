@@ -10,6 +10,7 @@ import { icon } from './icons.js';
 import { benchSelect, modelSelect, promptChoices, refreshBench, simChoices, simTarget } from './tasks-sim.js';
 import { benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
+import { designState } from './state-design.js';
 
 /** The panel, appended to the work area: `simulate` runs the test bench chosen. */
 export function mountSimPanel(app, { simulate }) {
@@ -47,14 +48,14 @@ export function mountSimPanel(app, { simulate }) {
     /** Its rows as the project is now (`shown`: the panel shown, else as it is). */
     refresh(shown = !panel.hidden) {
       pages.refresh();
-      const S = app.S, names = S.project ? simChoices(S.project, S.modules).benches : [];
+      const S = app.S, names = S.project ? simChoices(S.project, designState.modules).benches : [];
       promptChoices(shown && !names.length);
       panel.hidden = !shown;
       choices.hidden = !!names.length;
       benches.hidden = !names.length;
       refreshBench(app);
       if (benches.dataset.key !== names.join()) { benches.dataset.key = names.join(); benches.replaceChildren(...names.map(bench)); }
-      const cur = S.project ? simTarget(S.project, S.modules) : null;
+      const cur = S.project ? simTarget(S.project, designState.modules) : null;
       for (const li of benches.children) li.firstChild.classList.toggle('sel', li.dataset.bench === cur);
     },
   };

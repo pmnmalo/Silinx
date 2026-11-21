@@ -15,6 +15,7 @@ import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewher
 import { S, app } from './app.js';
 import { cleanLoc, namedPages } from './wizard-util.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 const LANGS = [['vhdl', 'VHDL'], ['verilog', 'Verilog']];
 const INIT_RE = /\.(mem|coe)$/i;
@@ -60,7 +61,7 @@ export async function blockMemoryWizard({ name = '', location = 'src', lang = nu
   if (!old && name) spec.name = name;   // the file name typed in New Source (#958)
   const guard = replaceGuard('Block Memory');
   // a module changed by hand since the wizard wrote it (from the file's contents of then): said
-  const edited = editPath && await (async () => (S.sources || []).find(s => s.path === editPath)?.text !== memoryModule(old, (await contentsOf(old)).words).code)();
+  const edited = editPath && await (async () => (designState.sources || []).find(s => s.path === editPath)?.text !== memoryModule(old, (await contentsOf(old)).words).code)();
   // ------------------------------------------------------------ page 1: name, language, location
   const nameIn = h('input', { type: 'text', class: 'bw-name', value: spec.name });
   const langSel = select(LANGS, spec.lang);

@@ -13,10 +13,11 @@ import { elaborate } from '/core/compile.js';
 import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { S, app } from './app.js';
 import { filesState } from './state-files.js';
+import { designState } from './state-design.js';
 
 // the ports of module `name` as I/O Pin Planning reads them (web/js/pinplanner.js), or the error that stops it
 function portsOf(name) {
-  const design = elaborate(S.lib, name);
+  const design = elaborate(designState.lib, name);
   if (!design.top) return { error: `The ports of '${name}' cannot be read: ${(design.diags || []).find(d => d.severity === 'error')?.message || 'it does not elaborate'}.` };
   return { ports: design.top.ports.map(p => {
     const t = p.sig.t;
@@ -45,7 +46,7 @@ export async function ucfWizard({ path, back = null }) {
   const can = ['ucf', 'xdc'].includes(format) ? {} : PIN_ATTRS[format];
   const COLS = [['iostandard', 'I/O Std.', can.iostandard], ['pull', 'Pull', can.pull], ['drive', 'Drive', can.drive]].filter(c => c[2]);
   const standardOf = pin => { for (const r of board?.resources || []) if (r.pins.includes(pin)) return r.pinIostandards?.[pin] || r.iostandard; return null; };
-  const mods = S.modules.filter(m => m.role === 'design');
+  const mods = designState.modules.filter(m => m.role === 'design');
   let top = (mods.find(m => m.name === pj.top) || mods[0])?.name || '';
   let ports = [], err = null, asg = {}, clocks = [];
   const modSel = h('select', { class: 'uw-module', 'data-no-i18n': '' }, ...mods.map(m => h('option', { value: m.name, selected: m.name === top }, m.name)));
