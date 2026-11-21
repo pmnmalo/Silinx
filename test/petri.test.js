@@ -6,7 +6,8 @@ import {
   newPetri, normalizePetri, validatePetri, initialMarking, enabledTransitions, isEnabled, fire, clockStep, isDeadlock,
   outputsOf, generatePetri, toPnml, fromPnml,
 } from '../core/petri.js';
-import { simulate } from '../core/compile.js';
+import { simulate, compile, elaborate } from '../core/compile.js';
+import { designChecks } from '../core/lint.js';
 import { checkPetri } from '../core/petri-analysis.js';
 
 // a producer / consumer over a buffer of 3, pulses when one is put, the buffer's state as outputs
@@ -116,6 +117,22 @@ test('the HDL simulates like the net: VHDL and Verilog, random inputs (counters,
       const got = r.sim.log.map(e => String(e.text).trim()).filter(s => /^[01xz_]+$/.test(s));
       assert.deepEqual(got, want, `${m.name} ${lang}`);
     }
+  }
+});
+
+// #5113: the HDL has no design check's finding (the Verilog's step a combinational block, its blocking assignments
+// there; the clocked block non-blocking only), in both languages
+test('#5113 the HDL has no design check\'s warning: VHDL and Verilog (the Verilog step combinational, registered apart)', () => {
+  for (const m of [normalizePetri(newPetri('ctl')), prodCons(), conflict()]) {
+    for (const lang of ['vhdl', 'verilog']) {
+      const g = generatePetri(m, lang);
+      const lib = compile([{ path: lang === 'vhdl' ? 'dut.vhd' : 'dut.v', lang, text: g.code }]);
+      assert.deepEqual(designChecks(lib, elaborate(lib, m.name)).map(f => `${f.check} ${f.line}: ${f.message}`), [], `${m.name} ${lang}`);
+    }
+    const v = generatePetri(m, 'verilog').code;
+    const clocked = v.slice(v.indexOf('always @(posedge'));
+    assert.doesNotMatch(clocked.slice(0, clocked.indexOf('\n  end\n')), /[^<!=]=[^=]/, `${m.name}: a blocking assignment in the clocked block`);
+    assert.match(v, /always @\(\*\) begin\n {4}v_/);
   }
 });
 
