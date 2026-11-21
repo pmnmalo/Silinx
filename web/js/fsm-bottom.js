@@ -3,19 +3,19 @@
 // run, reset, the state and outputs, the trace; its inputs' controls and its trace sim-panel.js's, shared with the ASM
 // chart's, #2880).
 import { downloadText, h } from './ui.js';
-import { encodedTable, stateTable, stepFsm, toCsv, transitionTable } from '/core/fsm.js';
+import { encodedTable, stateTable, stepFsm, toCsv } from '/core/fsm.js';
+import { transitionTableView } from './fsm-table.js';
 import { simInputControls, simTraceTable } from './sim-panel.js';
-import { showCondText } from '/core/expr-notation.js';
-import { drawBarsIn } from './overbar.js';
-import { getNotation, onNotation } from './notation.js';
+import { onNotation } from './notation.js';
 import { inputValues, traceRows } from '/core/collab-try.js';
 import { bitsText } from '/core/fsm-value.js';
 
-/** { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values). */
+/** { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values;
+ *  commit(key) a change of the model, locked() whether it may not be changed: the transition table edited in place, #4974). */
 export function mountFsmBottom(ctx) {
   const {
     opts, M, bottom, btn, destroyed, diags, fit, flash, panel, panelBody, panelTitle, panelTools, render, sim,
-    stateById, updateToolbar, setPanel, setSim, closeInline = () => {}, renderSide = () => {}
+    stateById, updateToolbar, setPanel, setSim, closeInline = () => {}, renderSide = () => {}, commit = () => {}, locked = () => true
   } = ctx;
 
   // ---------------------------------------------------------------------------- bottom panel
@@ -64,16 +64,9 @@ export function mountFsmBottom(ctx) {
         ...st.rows.map((r) => [r.state, r.code, ...r.next, ...(M().type === 'mealy' ? r.outputs : [r.moore])])];
       wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'State table'), csvButton(`${M().name}_states.csv`, csv)), t2);
     }
-    // transition table
-    // (the conditions in the Settings' notation, #3915: the drawing keeps them as typed)
-    const tt = transitionTable(M());
-    for (const r of tt.rows) if (!r.stays) r.cond = showCondText(r.cond, getNotation());
-    const t1 = h('table', { class: 'fsm-table fsm-ttable' },
-      h('tr', {}, h('th', {}, 'Present state'), showCode ? h('th', {}, 'Code') : null, h('th', {}, 'Input condition'), h('th', {}, 'Next state'), showCode ? h('th', {}, 'Next code') : null, h('th', {}, 'Outputs')),
-      ...tt.rows.map((r) => h('tr', { class: r.stays ? 'stays' : '' }, h('td', NAME, r.state), showCode ? h('td', { class: 'mono' }, r.code) : null,
-        r.cond === 'otherwise' ? h('td', { class: 'mono' }, h('i', {}, 'otherwise (stays)')) : h('td', NAME_MONO, r.cond), h('td', NAME, r.next), showCode ? h('td', { class: 'mono' }, r.nextCode) : null, h('td', NAME_MONO, r.outputs))));
-    drawBarsIn(t1, 'td.mono');   // (the bars drawn, #4058)
-    wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, [tt.columns, ...tt.rows.map((r) => [r.state, r.code, r.cond, r.next, r.nextCode, r.outputs])])), t1);
+    // transition table, edited in place (web/js/fsm-table.js, #4974)
+    const tv = transitionTableView({ M, editable: () => !locked(), commit, flash, redraw: () => renderPanel(), btn });
+    wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Transition table'), csvButton(`${M().name}_transitions.csv`, tv.csv)), tv.table, tv.add);
     // encoded table
     const et = encodedTable(M());
     if (et.error) wrap.append(h('div', { class: 'fsm-tcap' }, h('b', {}, 'Encoded transition table')), h('p', { class: 'asm-muted' }, et.error));
