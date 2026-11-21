@@ -33,7 +33,7 @@ import { openProject, closeProject, projectRequested, reloadProject, updateTitle
 import { boardUcf, checkUcfFile, regenerateUcf, stepTracker, ucfDiagnostics } from './implement.js';
 import { adoptDrawnHdl, drawnHdlClashes, freshHdl, openAsm, openFsm, openPetri, openSch,
   openTt, openTtSchematic, openView, projectPart, refreshSyncBanner, schModules, staleHdl, syncBanner, viewTitle } from './drawings.js';
-import { checkFileSyntax, hdlDiagnostics, markStale, openMode, renderProcesses, saveAll, projectTool } from './processes.js';
+import { checkFileSyntax, hdlDiagnostics, liveHdlDiagnostics, markStale, openMode, renderProcesses, saveAll, projectTool } from './processes.js';
 import { designOnly, hiddenHdl, refusedHere, shownFiles } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { fileContextMenu, inView, renderHierarchy, saveProjectJson, select, serialOp, setTop, treeItem } from './design.js';
@@ -572,9 +572,9 @@ export async function openFile(path, line, col, { task } = {}) {
         let hdlTimer = null;
         const liveHdl = () => {
           clearTimeout(hdlTimer);
-          hdlTimer = setTimeout(() => {
+          hdlTimer = setTimeout(async () => {   // (in a Web Worker, #4773: null, a newer check asked meanwhile)
             if (!d.editor || !S.project) return;
-            try { d.editor.setDiagnostics(hdlDiagnostics(path, d.editor.getValue()).filter(x => x.file === path)); } catch { /* keep the parser markers */ }
+            try { const ds = await liveHdlDiagnostics(path, d.editor.getValue()); if (ds && d.editor) d.editor.setDiagnostics(ds.filter(x => x.file === path)); } catch { /* keep the parser markers */ }
           }, 600);
         };
         if (lang === 'vhdl' || lang === 'verilog') liveHdl();

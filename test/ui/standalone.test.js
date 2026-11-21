@@ -200,6 +200,18 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.waitFor(() => window.Silinx?.project?.name === 'Solo', [], { what: 'reopened after reload' });
   await page.eval(() => window.SilinxApp.openFile('src/top.vhd'));
   await page.waitFor(() => window.Silinx.active?.editor && window.Silinx.active.editor.getValue().startsWith('-- kept in the browser\n'));
+  // the check as one types in its embedded Web Worker (#4773): an undeclared name marked, then the text as it was
+  assert.deepEqual(await page.eval(() => new Promise((resolve) => {
+    const w = new Worker(URL.createObjectURL(new Blob([window.SILINX_HDL_WORKER_SRC], { type: 'text/javascript' })));
+    w.onmessage = ({ data }) => { w.terminate(); resolve(data.diags.map((d) => d.message)); };
+    w.onerror = (e) => resolve(`failed: ${e.message}`);
+    w.postMessage({ id: 1, job: { path: 'a.v', sources: [{ path: 'a.v', lang: 'verilog', role: 'design', text: 'module a(output y); assign y = z; endmodule\n' }] } });
+  })), ["'z' is not declared"], 'the embedded worker, from file://');
+  const kept = await page.eval(() => window.Silinx.active.editor.getValue());
+  await page.eval((t) => window.Silinx.active.editor.setValue(t.replace('\nbegin\n', "\nbegin\n  nope_x <= '0';\n")), kept);
+  await page.waitFor(() => document.querySelectorAll('.doc:not([hidden]) .cm-lint-marker-error').length === 1, [], { what: 'live check (embedded worker)' });
+  await page.eval((t) => window.Silinx.active.editor.setValue(t), kept);
+  await page.waitFor(() => !document.querySelector('.doc:not([hidden]) .cm-lint-marker-error') && !window.Silinx.active.tab.classList.contains('dirty'), [], { what: 'as it was' });
   // live schematic simulation without a server: knight converted to a schematic (linked to knight.vhd)
   await page.treeRow('#hier', 'u_knight - knight', { right: true });
   await page.click('body > .menu-popup .mi', { text: 'Convert to Schematic (editable)…' });
