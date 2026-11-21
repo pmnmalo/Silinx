@@ -21,6 +21,7 @@ import { Simulator } from './simulator.js';
 import { clocksOf } from './schematic.js';
 import * as V from './values.js';
 import { arrayOf, copyName } from './sch-array.js';
+import { definesUnit } from './hdl-defines.js';
 
 // simulated time of one input change / clock half period (ps): long enough for `after` delays in
 // HDL modules to mature, the value itself is not shown as a time scale
@@ -74,11 +75,8 @@ export function parseValue(text, width, radix = 'dec') {
   return BigInt.asUintN(width, n);
 }
 
-// a module defined by a source file (so the copy the schematic replaces can be left out)
-function definesModule(text, lang, name) {
-  const n = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return lang === 'vhdl' ? new RegExp(`\\bentity\\s+${n}\\s+is\\b`, 'i').test(text) : new RegExp(`\\bmodule\\s+${n}\\b`).test(text);
-}
+// a module defined by a source file (so the copy the schematic replaces can be left out; core/hdl-defines.js, #4772)
+const definesModule = (text, lang, name) => definesUnit(text, name, lang === 'vhdl' ? 'vhdl' : 'verilog');
 // the clocks of the device primitives (a netlist's: the technology schematic, #1064): their models are native,
 // read on any edge, so a flip-flop's, a RAM's, a shift register's clock pin by its name, and the clock buffers'
 // inputs (IBUFG, BUFG…) when their output is a clock

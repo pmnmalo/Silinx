@@ -15,6 +15,7 @@ import { cToHdl } from './c-hdl.js';
 import { generateCircuit } from './circuit-hdl.js';
 import { normalizeCircuit } from './circuit.js';
 import { circuitErrors } from './circuit-check.js';
+import { definesUnit } from './hdl-defines.js';
 
 export const VIEW_RE = /\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i;
 export const isView = path => VIEW_RE.test(String(path || ''));
@@ -122,14 +123,9 @@ export function drawnHdlPath(path, module, lang) {
   return `${dir}/${module}.${lang === 'verilog' ? 'v' : 'vhd'}`;
 }
 
-const reEsc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/** Whether the HDL `text` (of the file `file`: VHDL unless .v / .sv) defines the module `module`. */
+/** Whether the HDL `text` (of the file `file`: VHDL unless .v / .sv) defines the module `module` (core/hdl-defines.js). */
 export function definesModule(text, module, file) {
-  if (!module) return false;
-  const verilog = /\.s?v$/i.test(String(file));
-  const code = String(text ?? '').replace(verilog ? /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g : /--[^\n]*/g, '');
-  return (verilog ? new RegExp(`^\\s*(?:macro)?module\\s+${reEsc(module)}\\b`, 'm') : new RegExp(`^\\s*entity\\s+${reEsc(module)}\\s+is\\b`, 'im')).test(code);
+  return definesUnit(text, module, /\.s?v$/i.test(String(file)) ? 'verilog' : 'vhdl');
 }
 
 /**
