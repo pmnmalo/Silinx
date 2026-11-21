@@ -114,7 +114,9 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   const paths = (await P.readSources(name).catch(() => [])).map(s => s.path);
   const { errors, warnings, locations } = processMessages(lines, paths);
   const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
-  return { top: pj.top, lines, errors, warnings, locations, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
+  // (when it started and ended, and each line's time: a shared project's followers see them, #5035)
+  return { top: pj.top, lines, times: job.times.slice(), startedAt: job.startedAt, endedAt: job.endedAt || new Date().toISOString(),
+    errors, warnings, locations, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
 }
 
 // run_process's bounds (#3408): how long it waits (then the process is stopped), the lines of the log returned
@@ -123,7 +125,7 @@ const PROCESS_LIMITS = Object.freeze({ timeoutS: 7200, logLines: 1000 });
 export const PROCESS_TOOLS = [
   {
     name: 'run_process', title: 'Run a process',
-    description: 'Run a process of the project\'s top module and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (Generate Post-… Simulation Model; then simulate with model). The Silinx toolchain by default; toolchain ise for Xilinx ISE when configured. A 7-series device is implemented by AMD Vivado (toolchain vivado; no simulation models), the Artix-7 and the Zynq-7000\'s logic also by the Silinx toolchain on trial (toolchain silinx, or synthesis tool silinx). Returns the errors, the warnings (locations: their files and lines) and the end of the log.',
+    description: 'Run a process of the project\'s top module and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (Generate Post-… Simulation Model; then simulate with model). The Silinx toolchain by default; toolchain ise for Xilinx ISE when configured. A 7-series device is implemented by AMD Vivado (toolchain vivado; no simulation models), the Artix-7 and the Zynq-7000\'s logic also by the Silinx toolchain on trial (toolchain silinx, or synthesis tool silinx). Returns when the run started and ended (startedAt, endedAt), the errors, the warnings (locations: their files and lines) and the end of the log.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, process: { type: 'string', enum: Object.keys(PROCESSES), description: 'The process.' },
       toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
@@ -134,13 +136,13 @@ export const PROCESS_TOOLS = [
     async run({ project: name, process: proc, toolchain, log_lines: logLines = 40, timeout_s: timeoutS = 1800 }, { signal, progress } = {}) {
       if (!Number.isInteger(logLines) || logLines < 1 || logLines > PROCESS_LIMITS.logLines) throw toolError(`log_lines: from 1 to ${PROCESS_LIMITS.logLines}`);
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > PROCESS_LIMITS.timeoutS) throw toolError(`timeout_s: from 1 to ${PROCESS_LIMITS.timeoutS} s`);
-      const { top, lines, errors, warnings, locations, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal, progress });
+      const { top, lines, times, startedAt, endedAt, errors, warnings, locations, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal, progress });
       // (a project shared live: its followers see the run, #4002)
-      await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc], ok, warnings, lines }).catch(() => {});
+      await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc], ok, warnings, lines, times }).catch(() => {});
       const pj = { top };
       const head = `Process "${proc}" of <${pj.top}> ${ok ? `completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''}` : `failed (${errors.length} error(s), ${warnings.length} warning(s))`} (${TOOLCHAIN_NAMES[tc]}).`;
       return { text: processText({ errors, warnings, lines, head, logLines }),
-        data: { project: name, process: proc, toolchain: tc, ok, errors, warnings, locations, log: lines.slice(-Math.max(1, logLines)) }, isError: !ok,
+        data: { project: name, process: proc, toolchain: tc, ok, startedAt, endedAt, errors, warnings, locations, log: lines.slice(-Math.max(1, logLines)) }, isError: !ok,
         // (a failure's errors and log quote the design's names and files: the project's own text, #3681)
         untrusted: ok ? undefined : 'the process\'s messages, which quote the design\'s names and files' };
     },

@@ -459,7 +459,7 @@ export function withSharing(name, r) {
 /** A run of run_process on a project this MCP server shares (#4002): sent to its followers as a page sends its runs
  *  (core/collab-runs.js), its steps' marks (the last one's: warn with warnings; every one's: err when it failed), its
  *  log's end, its Design Summary. Nothing when the project is not shared. */
-export async function sharedRun(name, { steps, ok, warnings = [], lines = [] }) {
+export async function sharedRun(name, { steps, ok, warnings = [], lines = [], times = [] }) {
   const s = shares.get(name);
   if (!s || s.session.closed()) return false;
   s.runs = (s.runs || 0) + 1;
@@ -471,7 +471,7 @@ export async function sharedRun(name, { steps, ok, warnings = [], lines = [] }) 
   const secrets = await ownerSecrets();
   let summary = null;
   try { const r = await (await import('./impl-routes.js')).projectReports(name); summary = r?.available === false ? null : redactAll(r, secrets); } catch { /* none */ }
-  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map(l => [redact(l, secrets), { error: 'err', warning: 'warn' }[severityOf(l)] || '', 'impl']), summary }));
+  return s.session.publish('runs', runsActivity({ id: s.runs, status, lines: lines.map((l, i) => [redact(l, secrets), { error: 'err', warning: 'warn' }[severityOf(l)] || '', 'impl', times[i] || Date.now()]), summary }));
 }
 
 // an editor's write (#3182, #3183): a text file's text (core/collab-doc.js editFile), or a drawing's JSON merged

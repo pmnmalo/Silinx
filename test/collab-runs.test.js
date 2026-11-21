@@ -28,7 +28,7 @@ test('redact: the server\'s own list (its folders, the home folder, the ISE host
 
 test('runs: the marks of the processes (others left out), the lines kept from the run\'s end, the summary when small enough', () => {
   // (each line's source, its message's, #4749)
-  const lines = Array.from({ length: 30 }, (_, i) => [`line ${i}`, i % 2 ? 'warn' : '', i % 3 ? 'impl' : 'app']);
+  const lines = Array.from({ length: 30 }, (_, i) => [`line ${i}`, i % 2 ? 'warn' : '', i % 3 ? 'impl' : 'app', 1763700000000 + i * 1000]);   // (and its time, #5035)
   const v = runsActivity({ id: 3, status: { synth: 'ok', map: 'warn', 'sim-run': 'running', impl: null, Bad: 'ok', par: 'great' }, lines, summary: { top: 'top' } }, { ...RUN_LIMITS, lines: 10 });
   assert.equal(v.id, 3);
   assert.deepEqual(v.status, { synth: 'ok', map: 'warn', 'sim-run': 'running' });
@@ -36,19 +36,19 @@ test('runs: the marks of the processes (others left out), the lines kept from th
   assert.deepEqual(v.lines, lines.slice(20));
   assert.deepEqual(v.summary, { top: 'top' });
   // (the bytes' limit, a line's length, a class of no line's, a source of none: the application's)
-  const b = runsActivity({ lines: [['x'.repeat(50), 'hdr'], ['y'.repeat(5000), 'bogus', 'nope'], ['z', 'ok', 'sim']] }, { ...RUN_LIMITS, line: 100, linesBytes: 120 });
-  assert.deepEqual(b.lines, [['y'.repeat(100), '', 'app'], ['z', 'ok', 'sim']]);
+  const b = runsActivity({ lines: [['x'.repeat(50), 'hdr'], ['y'.repeat(5000), 'bogus', 'nope', 1.5], ['z', 'ok', 'sim', 1763700000000]] }, { ...RUN_LIMITS, line: 100, linesBytes: 120 });
+  assert.deepEqual(b.lines, [['y'.repeat(100), '', 'app', 0], ['z', 'ok', 'sim', 1763700000000]]);   // (a time of no instant: 0, not known)
   assert.equal(b.from, 1);
   assert.equal(runsActivity({ summary: { big: 'x'.repeat(RUN_LIMITS.summary) } }).summary, null, 'a summary too large: none');
   assert.deepEqual(runsActivity({}), { id: 0, status: {}, from: 0, lines: [], summary: null });
 });
 
 test('runs taken back: what is not one left out; not one at all: null', () => {
-  assert.deepEqual(followedRuns({ id: 2, status: { synth: 'ok', x: 'nope', 'A': 'ok' }, from: 5, lines: [['a', 'err', 'impl'], 'b', [7, ''], ['c', '<script>', 'x'], ['d', 'ok']], summary: [1] }),
-    { id: 2, status: { synth: 'ok' }, from: 5, lines: [['a', 'err', 'impl'], ['c', '', 'app'], ['d', 'ok', 'app']], summary: null });
+  assert.deepEqual(followedRuns({ id: 2, status: { synth: 'ok', x: 'nope', 'A': 'ok' }, from: 5, lines: [['a', 'err', 'impl', 1763700000000], 'b', [7, ''], ['c', '<script>', 'x', 'noon'], ['d', 'ok']], summary: [1] }),
+    { id: 2, status: { synth: 'ok' }, from: 5, lines: [['a', 'err', 'impl', 1763700000000], ['c', '', 'app', 0], ['d', 'ok', 'app', 0]], summary: null });
   for (const bad of [null, 'x', [], { id: -1 }, { id: 1.5 }, { status: {} }]) assert.equal(followedRuns(bad), null, JSON.stringify(bad));
   assert.deepEqual(followedRuns({ id: 0, from: -3 }), { id: 0, status: {}, from: 0, lines: [], summary: null });
-  const v = runsActivity({ id: 1, status: { synth: 'ok' }, lines: [['Started : "Synthesize".', 'hdr']], summary: { top: 't' } });
+  const v = runsActivity({ id: 1, status: { synth: 'ok' }, lines: [['Started : "Synthesize".', 'hdr', 'impl', 1763700000000]], summary: { top: 't' } });
   assert.deepEqual(followedRuns(v), v, 'the owner\'s value taken as it is');
 });
 

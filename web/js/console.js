@@ -11,7 +11,7 @@ import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
 import { severityOf } from '/core/log-severity.js';
 import { messageLocation, projectPath } from '/core/message-location.js';
-import { makeMessage, severityOfClass } from '/core/message.js';
+import { consoleTime, makeMessage, severityOfClass } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow } from './messages.js';
 
 const $ = id => document.getElementById(id);
@@ -37,8 +37,11 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // Each line is a message (#4749, core/message.js), made here, its source decided here once (not read again from its
 // text by the message centre): its line's data-src, its entry's src, what the watchers get; the line's element holds it.
 // run / process: the run the line is of (#4749: a run's own, startRun; none: the one whose header came last)
-export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined } = {}) {
+// time: when it was written (#5035: a shared project's follower's line, the owner's), else now: shown before it, muted
+// (data-time, drawn by the stylesheet: not its text, which searches and the line's message keep as they are)
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, time = null } = {}) {
   const el = $('console-log');
+  const at = Number.isFinite(time) ? time : Date.now();
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
   if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
@@ -50,11 +53,11 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
     let source = src;
     if (!source) [source, lineCur] = lineSource(line, lineCur);
     // (its action: the first of the line's, #4962)
-    const msg = makeMessage({ text: line, severity: severityOfClass(cls), source, action: i === lines.length - 1 ? [action].flat().find(Boolean) ?? null : null, process: lineProcess, run: lineRun });
-    const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, line);
+    const msg = makeMessage({ text: line, severity: severityOfClass(cls), source, action: i === lines.length - 1 ? [action].flat().find(Boolean) ?? null : null, process: lineProcess, run: lineRun, time: at });
+    const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}), ...timeAttrs(at) }, line);
     div.message = msg;
     el.append(div);
-    if (diag) consoleMessage(line, cls, source, goto, lineRun);
+    if (diag) consoleMessage(line, cls, source, goto, lineRun, at);
     if (run === undefined && RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls, msg); } catch { /* a watcher's own error: not the console's */ } }
   });
@@ -108,7 +111,7 @@ const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.
 let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
-function consoleMessage(line, cls, src, goto, run = consoleRun) {
+function consoleMessage(line, cls, src, goto, run = consoleRun, time = Date.now()) {
   if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
   if (lastConsoleDiag && !cls && continuesDiag(lastConsoleDiag, line)) {
     lastConsoleDiag.message += ' ' + line.trim();
@@ -122,7 +125,7 @@ function consoleMessage(line, cls, src, goto, run = consoleRun) {
   if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
   else if (/=== SILINX FAILED/.test(line)) return;
   if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console', run, src, ...(goto ? { goto } : located(message)) };
+  const d = { severity, tool, message, file: null, line: 0, source: 'console', run, src, time, ...(goto ? { goto } : located(message)) };
   if (run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
@@ -149,13 +152,23 @@ export function simDiagnostics(run) {
   return e => {
     const severity = SIM_SEVERITY[e?.kind];
     if (!severity || seen.size >= SIM_ENTRIES) return;
-    const d = { severity, tool: 'SSim', message: String(e.text ?? ''), file: e.file || null, line: e.line || 0, source: 'sim', run, src: 'sim' };   // (src: Simulation's filter, #4749)
+    const d = { severity, tool: 'SSim', message: String(e.text ?? ''), file: e.file || null, line: e.line || 0, source: 'sim', run, src: 'sim', time: Date.now() };   // (src: Simulation's filter, #4749)
     if (seen.has(diagKey(d))) return;
     seen.add(diagKey(d));
     S.diags.push(d);
     renderDiagnosticsSoon();
   };
 }
+
+// A line's or an entry's time, drawn before it (#5035, web/css/app.css: [data-time]::before, muted): its text for the
+// stylesheet, its instant for the day's change (the date shown once it is another day's)
+const timeAttrs = time => (Number.isFinite(time) ? { 'data-time': consoleTime(time), 'data-ts': String(time) } : {});
+let today = new Date().toDateString();
+setInterval(() => {
+  if (new Date().toDateString() === today) return;
+  today = new Date().toDateString();
+  for (const el of document.querySelectorAll('#console-body [data-ts]')) el.dataset.time = consoleTime(+el.dataset.ts);
+}, 60_000).unref?.();   // (a page's only: nothing kept running elsewhere)
 
 let diagTimer = null;
 function renderDiagnosticsSoon() {
@@ -227,7 +240,9 @@ export function showConsolePage(page) {
 
 // Diagnostics (Errors / Warnings tabs)
 export function setDiagnostics(diags, { keepConsole = true } = {}) {
-  diags = diags.map(shownDiag);   // (a design project's: its drawings', never its HDL's, #3891)
+  // (a design project's: its drawings', never its HDL's, #3891; each with the time it was found, #5035)
+  const now = Date.now();
+  diags = diags.map(shownDiag).map(d => (Number.isFinite(d.time) ? d : { ...d, time: now }));
   // a check replaces its own entries; warnings/errors collected from the console (e.g. a running
   // implementation) are kept unless keepConsole is false, and the open editors' problems (editor-problems.js) always
   S.diags = [...diags, ...S.diags.filter(d => (keepConsole && (d.source === 'console' || d.source === 'sim')) || d.source === 'editor')];
@@ -263,7 +278,7 @@ export function renderDiagnostics({ quiet = false } = {}) {
     if (!list.length) { el.append(h('div', { class: 'ln info' }, t('No messages.'))); return; }
     for (const d of list) {
       const hint = hintRow(d);   // plain-language explanation + fix, expandable under the message
-      const row = h('div', { class: 'diag' }, icon(ico),
+      const row = h('div', { class: 'diag', ...timeAttrs(d.time) }, icon(ico),
         h('span', {}, `${sevWord(d)}:${d.tool || 'HDLCompiler'} - `),
         d.file && !d.inText ? h('span', { class: 'loc' }, d.line ? `"${d.file}" Line ${d.line}` : `"${d.file}"`) : null,
         h('span', { 'data-no-i18n': true }, d.file && !d.inText ? `: ${d.message}` : d.message), hint?.toggle,

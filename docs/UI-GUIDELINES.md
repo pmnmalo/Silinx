@@ -140,6 +140,8 @@ viewer of its own:
   (`web/js/messages.js`: `log(…)`, `WARNING: …`, `ERROR: …`), its Errors and Warnings tabs listing them, a click on
   one going to its place in the document. No problems panel, message box, log or warning line inside an editor or a
   viewer, and no `alert()` (#2718).
+- **Every line and entry says when it was written** (#5035): `14:03:27` before it, the date too (`20/11 23:58:01`) for
+  another day's, in the theme's muted colour; drawn by the stylesheet (`data-time`), never part of its text.
 - **A check ends with its tab in front** (#2803): its Errors tab if it found errors, else its Warnings tab if it found
   warnings (`showProblems` of `web/js/console.js`), run again too; a drawing's check is a `Check` (`Validate` for the
   ASM chart) of its toolbar, the shared check icon, after its settings, hidden in a read-only view.

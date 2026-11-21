@@ -18,7 +18,7 @@ export function editorProblems({ file, tool, what = 'Validate', goto }) {
   const mine = (d) => d.source === 'editor' && d.file === file;
   const set = (diags) => {
     S.diags = [...S.diags.filter((d) => !mine(d)), ...diags.filter((d) => d.severity === 'error' || d.severity === 'warning')
-      .map((d) => ({ severity: d.severity, tool, message: d.message, file, line: 0, source: 'editor', goto: () => goto(d) }))];
+      .map((d) => ({ severity: d.severity, tool, message: d.message, file, line: 0, source: 'editor', time: Date.now(), goto: () => goto(d) }))];   // (its time, #5035)
     renderDiagnostics();
   };
   return {

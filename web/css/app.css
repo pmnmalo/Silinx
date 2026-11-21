@@ -122,6 +122,10 @@ html[data-no-project] #left #left-tabs[data-fit] .tab:not(.active, #task-procs-t
 .console-page { position: absolute; inset: 0; overflow: auto; padding: 2px 4px; white-space: pre-wrap; }
 .console-page[hidden] { display: none; }
 .console-page .ln { line-height: 16px; }
+/* a line's and an entry's time (#5035, web/js/console.js data-time): before it, muted, not its text (searches and the
+   line's message keep it as it is) */
+.console-page [data-time]::before { content: attr(data-time) ' '; color: var(--muted); font-weight: normal; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.console-page .diag[data-time]::before { flex: none; }
 /* a line's button: what it asks of the user (Trust Project, #2830) */
 .console-page .ln .ln-action { padding: 0 8px; margin-left: 6px; line-height: 14px; font-size: inherit; }
 .console-page .diag .ln-action { flex: none; align-self: center; padding: 0 8px; margin-left: 6px; line-height: 14px; font-size: inherit; }   /* (an Errors tab's Trust Project, #4589) */

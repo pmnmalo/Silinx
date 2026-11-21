@@ -34,15 +34,19 @@ export function createJob(kind, fn, { meta } = {}) {
     error: null,
     cancelled: false,
     lines: [],
+    times: [],               // when each line was written (ms), as lines (#5035: the console's and the followers' time)
     dropped: 0,              // number of lines dropped from the front
     procs: new Set(),        // child processes, killed on cancel
     log(line) {
+      const now = Date.now();
       for (const l of String(line).split(/\r?\n/)) {
         this.lines.push(l);
+        this.times.push(now);
       }
       if (this.lines.length > MAX_LINES) {
         const n = this.lines.length - MAX_LINES;
         this.lines.splice(0, n);
+        this.times.splice(0, n);
         this.dropped += n;
       }
     },

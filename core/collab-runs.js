@@ -5,13 +5,15 @@
 // not one left out); the lines and the reports without the owner's computer's names (redact: its home folder, the ISE
 // host it reaches over SSH, as the MCP's run_process gives them: server/mcp-util.js redactor).
 
-import { MESSAGE_SOURCES } from './message.js';
+import { MESSAGE_SOURCES, consoleTime } from './message.js';
 
 /** The limits of what a run's follower gets: the lines of a run (kept from its end), a line's length, the Design
  *  Summary's JSON, a report's text, the reports' together (bytes). */
 export const RUN_LIMITS = Object.freeze({ lines: 1000, line: 1000, linesBytes: 256 << 10, summary: 256 << 10, report: 512 << 10, reports: 768 << 10 });
 const STATES = ['running', 'ok', 'warn', 'err', 'stale'];
 const CLASSES = ['', 'hdr', 'ok', 'err', 'warn', 'info'];
+// (a line's time: a whole number of ms, 0 when not known: the follower's then)
+const lineTime = t => (Number.isSafeInteger(t) && t > 0 ? t : 0);
 const PROC_RE = /^[a-z][a-z0-9-]{0,31}$/;
 // (a report of the build: build/<its path>, no hidden part, no '..')
 const REPORT_RE = /^build\/(?:[\w-][\w.-]*\/){0,3}[\w-][\w.-]{0,127}$/;
@@ -42,7 +44,8 @@ export const redactAll = (v, secrets = []) => (typeof v === 'string' ? redact(v,
   : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [redact(k, secrets), redactAll(x, secrets)])) : v);
 
 /** The `runs` value: { id (the run's number), status: { process: state }, from (the index of the run's first line
- *  kept), lines: [[text, class, source]] (#4749: its message's source, core/message.js; the application's when not one), summary (the Design Summary's data, null: none or too large) }; the lines kept from
+ *  kept), lines: [[text, class, source, time]] (#4749: its message's source, core/message.js, the application's when not
+ *  one; #5035: when it was written, ms, 0 when not known), summary (the Design Summary's data, null: none or too large) }; the lines kept from
  *  the run's end within RUN_LIMITS. */
 export function runsActivity({ id = 0, status = {}, lines = [], summary = null }, limits = RUN_LIMITS) {
   const st = {};
@@ -50,8 +53,8 @@ export function runsActivity({ id = 0, status = {}, lines = [], summary = null }
   const kept = [];
   let size = 0, from = lines.length;
   for (let i = lines.length - 1; i >= 0 && kept.length < limits.lines; i--) {
-    const [text, cls, src] = lines[i];
-    const line = [String(text).slice(0, limits.line), CLASSES.includes(cls) ? cls : '', MESSAGE_SOURCES.includes(src) ? src : 'app'];
+    const [text, cls, src, time] = lines[i];
+    const line = [String(text).slice(0, limits.line), CLASSES.includes(cls) ? cls : '', MESSAGE_SOURCES.includes(src) ? src : 'app', lineTime(time)];
     size += bytes(line[0]) + 8;
     if (size > limits.linesBytes) break;
     kept.unshift(line);
@@ -66,7 +69,7 @@ export function followedRuns(v, limits = RUN_LIMITS) {
   if (!v || typeof v !== 'object' || Array.isArray(v) || !Number.isSafeInteger(v.id) || v.id < 0) return null;
   const status = {};
   if (v.status && typeof v.status === 'object' && !Array.isArray(v.status)) for (const [k, s] of Object.entries(v.status)) if (PROC_RE.test(k) && STATES.includes(s)) status[k] = s;
-  const lines = Array.isArray(v.lines) ? v.lines.slice(0, limits.lines).filter(l => Array.isArray(l) && typeof l[0] === 'string').map(([t, c, src]) => [t.slice(0, limits.line), CLASSES.includes(c) ? c : '', MESSAGE_SOURCES.includes(src) ? src : 'app']) : [];
+  const lines = Array.isArray(v.lines) ? v.lines.slice(0, limits.lines).filter(l => Array.isArray(l) && typeof l[0] === 'string').map(([t, c, src, time]) => [t.slice(0, limits.line), CLASSES.includes(c) ? c : '', MESSAGE_SOURCES.includes(src) ? src : 'app', lineTime(time)]) : [];
   const from = Number.isSafeInteger(v.from) && v.from >= 0 ? v.from : 0;
   const summary = v.summary && typeof v.summary === 'object' && !Array.isArray(v.summary) ? v.summary : null;
   return { id: v.id, status, from, lines, summary };
@@ -101,6 +104,6 @@ export function runLines(v, last = 10) {
   const marks = Object.entries(r.status).map(([k, s]) => `${k} ${s}`);
   return [
     ...(marks.length ? [`Their processes: ${marks.join(', ')}.`] : []),
-    ...(r.lines.length ? [`The end of their last run's log:`, ...r.lines.slice(-last).map(([t]) => `  ${t}`)] : []),
+    ...(r.lines.length ? [`The end of their last run's log:`, ...r.lines.slice(-last).map(([t, , , time]) => `  ${time ? `${consoleTime(time)} ` : ''}${t}`)] : []),
   ];
 }
