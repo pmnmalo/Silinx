@@ -7,6 +7,7 @@
 import { S, findDoc, openFile } from './app.js';
 import { drawingPath, pathNames } from '/core/path-drawing.js';
 import { drawingKind } from './related-views.js';
+import { docsState } from './state-docs.js';
 
 // an element of each type in the editors' drawings
 const SELECTOR = { state: id => `[data-state="${CSS.escape(id)}"]`, trans: id => `[data-trans="${CSS.escape(id)}"]`,
@@ -52,7 +53,7 @@ export async function showInDrawings(p, files) {
     const items = drawingPath(drawingKind(dr), model, pathNames(p, f));
     out[dr] = items;
     await openFile(dr);
-    const d = findDoc(`${drawingKind(dr)}:${dr}`) || S.docs?.find(x => x.path === dr);
+    const d = findDoc(`${drawingKind(dr)}:${dr}`) || docsState.docs?.find(x => x.path === dr);
     if (d?.el) mark(d.el, items);
   }
   return out;

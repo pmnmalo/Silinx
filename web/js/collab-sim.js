@@ -5,9 +5,10 @@
 // runs the simulation again when the owner's drawn stimuli change.
 import { S } from './app.js';
 import { followedSim, simActivity, simDocActivity, stimKey } from '/core/collab-sim.js';
+import { docsState } from './state-docs.js';
 
 const FIRST_RUN_MS = 3000;
-const ssims = () => S.docs.filter(d => /^isim:/.test(d.id) && d.view?.getState);
+const ssims = () => docsState.docs.filter(d => /^isim:/.test(d.id) && d.view?.getState);
 
 /** The owner's `sim` value: its open simulations. */
 export const simNow = () => simActivity(ssims().map(d => [d.id, simDocActivity(d.view.getState(), d.view.now, stimKey(d.view.state?.stim?.m))]));

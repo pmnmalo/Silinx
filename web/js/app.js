@@ -54,6 +54,7 @@ import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { startState } from './state-start.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -100,8 +101,9 @@ export const S = {
   get menus() { return panes.menus; }, set menus(v) { panes.menus = v; },
   get procCollapsed() { return panes.procCollapsed; }, set procCollapsed(v) { panes.procCollapsed = v; },
   get treeOpen() { return panes.treeOpen; }, set treeOpen(v) { panes.treeOpen = v; },
-  // the documents
-  docs: [], active: null,
+  // the documents: web/js/state-docs.js's slice (#4767), its fields here as getters and setters onto it
+  get docs() { return docsState.docs; }, set docs(v) { docsState.docs = v; },
+  get active() { return docsState.active; }, set active(v) { docsState.active = v; },
   // the processes and their results
   status: {}, diags: [], busy: false,
   diagsCleared: 0,            // how many times the Errors / Warnings tabs were cleared (a project opened or closed)
@@ -121,7 +123,7 @@ const $ = id => document.getElementById(id);
 // the messages of one file checked again (after a quick fix), when the tabs list some of them
 function recheckFile(path) {
   if (!S.project || !S.diags.some(x => x.file === path)) return;
-  const doc = S.docs.find(o => o.path === path && o.editor);
+  const doc = docsState.docs.find(o => o.path === path && o.editor);
   let fresh;
   try { fresh = hdlDiagnostics(path, doc ? doc.editor.getValue() : null).filter(x => x.file === path); } catch { return; }
   S.diags = [...S.diags.filter(x => x.file !== path), ...fresh];
@@ -187,7 +189,7 @@ export function compileProject() {
   S.lib = compile([...srcs, ...S.viewSources]);
   // open schematics: their palette (Project modules) and module symbols follow the sources
   // (and their Device Primitives the project's part's, #791)
-  if (S.docs.some(d => d.schEditor)) schModules().then(mods => { for (const d of S.docs) { d.schEditor?.setModules(mods); d.schEditor?.setDevice?.(projectPart()); } }).catch(() => {});
+  if (docsState.docs.some(d => d.schEditor)) schModules().then(mods => { for (const d of docsState.docs) { d.schEditor?.setModules(mods); d.schEditor?.setDevice?.(projectPart()); } }).catch(() => {});
   // module info for editor completion / templates
   const fileOf = new Map();
   for (const p of S.lib.parsed) for (const u of p.units) if (u.kind === 'module' || u.kind === 'package') fileOf.set(u.name, p);
@@ -275,7 +277,7 @@ export const history = createHistory(api, {
     const reopen = [];
     for (const d of [...S.docs]) {
       const p = docPath(d);
-      if (p && paths.includes(p)) { if (S.active === d) reopen.unshift(p); else reopen.push(p); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
+      if (p && paths.includes(p)) { if (docsState.active === d) reopen.unshift(p); else reopen.push(p); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
     }
     await reloadProject();
     for (const p of reopen.reverse()) if ((filesState.diskTree || []).includes(p)) await openFile(p).catch(() => {});
@@ -300,8 +302,8 @@ function primTemplatesMenu(d, lang) {
 }
 // (a read-only document, the HDL generated from a drawing (#1176): none, its Undo / Redo greyed out, #1192)
 export const docEditor = d => d && (d.editor ? (d.editor.readOnly?.() ? null : { undo: () => d.editor.exec('undo'), redo: () => d.editor.exec('redo') }) : d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor || d.symEditor || d.pinPlanner || null);
-export const undoesProject = () => history.canUndo() && !(S.active?._editedAt > history.lastAt() && docEditor(S.active));
-export const redoesProject = () => history.canRedo() && !(S.active?._editedAt > history.redoAt() && docEditor(S.active));
+export const undoesProject = () => history.canUndo() && !(docsState.active?._editedAt > history.lastAt() && docEditor(docsState.active));
+export const redoesProject = () => history.canRedo() && !(docsState.active?._editedAt > history.redoAt() && docEditor(docsState.active));
 export async function projectUndo() {
   const e = await history.undo();
   if (e) log(`Undo: ${e.label}.`, 'ok');
@@ -312,8 +314,8 @@ export async function projectRedo() {
   if (e) log(`Redo: ${e.label}.`, 'ok');
   refreshSteps();
 }
-export const undoAny = () => (undoesProject() ? projectUndo() : docEditor(S.active)?.undo());
-export const redoAny = () => (redoesProject() ? projectRedo() : docEditor(S.active)?.redo());
+export const undoAny = () => (undoesProject() ? projectUndo() : docEditor(docsState.active)?.undo());
+export const redoAny = () => (redoesProject() ? projectRedo() : docEditor(docsState.active)?.redo());
 
 // Cut / Copy / Paste / Delete (Edit menu, toolbar, #677): the active editor's. A text editor's selection through
 // the app's clipboard (web/js/clipboard.js); a drawing editor's by its own copy / paste (its selection, pasted
@@ -354,13 +356,13 @@ const clipEditor = d => {
   const x = d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor;
   return x?.copy ? x : null;
 };
-export const canCopyAny = () => !!clipEditor(S.active)?.canCopy();
-export const canPasteAny = () => !!clipEditor(S.active)?.canPaste();
-export const canDeleteAny = () => { const c = clipEditor(S.active); return !!c && !!(c.canDelete ? c.canDelete() : c.canCopy()); };
-export const cutAny = () => clipEditor(S.active)?.cut();
-export const copyAny = () => clipEditor(S.active)?.copy();
-export const pasteAny = () => clipEditor(S.active)?.paste();
-export const deleteAny = () => clipEditor(S.active)?.deleteSelection();
+export const canCopyAny = () => !!clipEditor(docsState.active)?.canCopy();
+export const canPasteAny = () => !!clipEditor(docsState.active)?.canPaste();
+export const canDeleteAny = () => { const c = clipEditor(docsState.active); return !!c && !!(c.canDelete ? c.canDelete() : c.canCopy()); };
+export const cutAny = () => clipEditor(docsState.active)?.cut();
+export const copyAny = () => clipEditor(docsState.active)?.copy();
+export const pasteAny = () => clipEditor(docsState.active)?.paste();
+export const deleteAny = () => clipEditor(docsState.active)?.deleteSelection();
 
 // put a file of the project folder (back) into the project
 export function addToProject(file) { return refusedHere(file) ? Promise.resolve(false) : serialOp(() => addNow(file)); }   // (no HDL in a design project, #3780)
@@ -385,7 +387,7 @@ function docTab(doc) {
     e.preventDefault();
     popupMenu([
       { label: 'Close', action: () => closeDoc(doc) },
-      { label: 'Close Others', action: () => S.docs.filter(d => d !== doc).forEach(closeDoc) },
+      { label: 'Close Others', action: () => docsState.docs.filter(d => d !== doc).forEach(closeDoc) },
       { label: 'Close All', action: () => [...S.docs].forEach(closeDoc) },
       ...splitItems(doc),   // (two documents side by side, #1619)
       // (a text file in the user's editor, at the cursor's line, #4017)
@@ -396,7 +398,7 @@ function docTab(doc) {
   return tab;
 }
 
-export function findDoc(id) { return S.docs.find(d => d.id === id); }
+export function findDoc(id) { return docsState.docs.find(d => d.id === id); }
 
 // doc: { id, title, icon, create(el) -> controller }, controller: { onActivate, save, destroy, editor }
 // (a diagram editor fits its view once, when its canvas first has a size, never on activation: the
@@ -410,7 +412,7 @@ export function openDoc(spec) {
   $('workspace').append(doc.el);
   doc.tab = docTab(doc);
   $('doc-tabs').append(doc.tab);
-  S.docs.push(doc);
+  docsState.docs.push(doc);
   activateDoc(doc, spec);
   Object.assign(doc, spec.create(doc.el, doc) || {});
   doc.onActivate?.();
@@ -421,8 +423,8 @@ export function openDoc(spec) {
 
 // background: opened with the project, not by the user (a narrow screen's drawer stays open)
 export function activateDoc(doc, { background = false } = {}) {
-  S.active = doc;
-  for (const d of S.docs) { d.el.hidden = d !== doc; d.tab.classList.toggle('active', d === doc); d.tab.setAttribute('aria-selected', String(d === doc)); }
+  docsState.active = doc;
+  for (const d of docsState.docs) { d.el.hidden = d !== doc; d.tab.classList.toggle('active', d === doc); d.tab.setAttribute('aria-selected', String(d === doc)); }
   placeSplit(doc);   // (on its side, the other side's document shown beside it, #1619, #1652)
   // (its tab in sight in a full strip, once the Tasks layout and the split have placed it: web/js/tab-sight.js, #3304)
   tabInSight();
@@ -491,9 +493,9 @@ export async function closeDoc(doc) {
   doc.closed = true;
   doc.destroy?.();
   doc.el.remove(); doc.tab.remove();
-  S.docs = S.docs.filter(d => d !== doc);
+  docsState.docs = docsState.docs.filter(d => d !== doc);
   const other = splitClosed(doc);   // (its side's next document in front, #1619, #1652)
-  if (S.active === doc) { const last = other || S.docs[S.docs.length - 1]; if (last) activateDoc(last); else S.active = null; }
+  if (docsState.active === doc) { const last = other || docsState.docs[docsState.docs.length - 1]; if (last) activateDoc(last); else docsState.active = null; }
   saveViewState();
   return true;
 }
@@ -642,7 +644,7 @@ export async function openFile(path, line, col, { task } = {}) {
             compileProject(); renderHierarchy(); markStale();
             status(`Saved ${path}`);
             // the other open editors depend on this file (ports, instances): check them again
-            for (const od of S.docs) if (od !== d) od.liveCheck?.();
+            for (const od of docsState.docs) if (od !== d) od.liveCheck?.();
           },
           destroy: () => d.editor.destroy(),
         };
@@ -862,7 +864,7 @@ async function boot() {
     // Ctrl/Cmd+Shift+F: Find in Project (#1430)
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F') && S.project && !document.querySelector('.dlg-overlay')) { e.preventDefault(); import('./find-project.js').then(f => f.openFindInProject()); return; }
     if (!e.defaultPrevented && (e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P') && printable()) { e.preventDefault(); printActive(); return; }
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); if (S.active) flushDoc(S.active); }  // nothing to do: edits are saved automatically
+    if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); if (docsState.active) flushDoc(docsState.active); }  // nothing to do: edits are saved automatically
     // Ctrl/Cmd+Z outside an editor or text field (the diagram editors handle their own keys): undo the
     // project's last command when it is newer than the active document's last edit
     const outside = !e.defaultPrevented && !e.target.closest?.('.cm-editor, input, textarea, select, [contenteditable], .sch-editor, .asm-editor, .fsm-editor, .tt-editor, .petri-editor, .pin-planner') && !document.querySelector('.dlg-overlay');
@@ -872,8 +874,8 @@ async function boot() {
   });
   // a copy made by the browser in a text editor (Ctrl+C, its context menu): the app's clipboard follows it, for
   // Edit ▸ Paste where the system clipboard cannot be read (#677)
-  for (const ev of ['copy', 'cut']) addEventListener(ev, e => { const ed = S.active?.editor; if (ed && e.target.closest?.('.cm-editor') && ed.somethingSelected()) noteCopy(ed.getSelection()); }, true);
-  addEventListener('beforeunload', e => { if (S.docs.some(d => d.dirty)) { e.preventDefault(); e.returnValue = ''; } });
+  for (const ev of ['copy', 'cut']) addEventListener(ev, e => { const ed = docsState.active?.editor; if (ed && e.target.closest?.('.cm-editor') && ed.somethingSelected()) noteCopy(ed.getSelection()); }, true);
+  addEventListener('beforeunload', e => { if (docsState.docs.some(d => d.dirty)) { e.preventDefault(); e.returnValue = ''; } });
   watchStale({ logWarning, confirmDlg });   // (a server of another version: a reload offered, #4754)
 
   updateTitle();

@@ -45,6 +45,7 @@ import { ownerActivity } from './collab-activity.js';
 import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 import { collabLog } from './collab-log.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 export const NAME_KEY = prefKey('silinx.collab.name');
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; } };
@@ -247,7 +248,7 @@ export async function stopSharing(why = null) {
   unbindAll(s.bound);
   unbindDrawings(s.drawn);
   s.restore();
-  for (const o of S.docs) o.editor?.setPeers?.([]);
+  for (const o of docsState.docs) o.editor?.setPeers?.([]);
   Object.assign(collab, { role: null, owner: '', project: null, session: null });
   setPresenceRoles(null);
   await s.session.close().catch(() => {});
@@ -325,15 +326,15 @@ function onEvent(ev) {
 function track() {
   if (!share) return;
   if (S.project?.name !== share.project) { stopSharing(`Stopped sharing "${share.project}": another project was opened.`); return; }
-  keepBound(share.bound, S.docs, share.doc.getMap('files'), editableHere, { mine: true });   // (its text editors, live, #3182)
-  keepDrawingsBound(share.drawn, S.docs, share.doc, drawingHere, { mine: true, say: sayLine });   // (its drawings, #3183)
-  const d = S.active, path = d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
+  keepBound(share.bound, docsState.docs, share.doc.getMap('files'), editableHere, { mine: true });   // (its text editors, live, #3182)
+  keepDrawingsBound(share.drawn, docsState.docs, share.doc, drawingHere, { mine: true, say: sayLine });   // (its drawings, #3183)
+  const d = docsState.active, path = d?.path || (/^(sch|asm|tt|fsm|pn):/.test(String(d?.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
   const c = path && d.editor?.getCursor ? d.editor.getCursor() : null;
   share.session.setView(path ? { path, line: c?.line ?? null, ch: c?.ch ?? null, sel: selectionOfDoc(d) } : null);   // (its selection, #4192)
   share.activity.publish();   // (#4002: where it is, its Design pane, its runs)
   // (the followers' cursors, in the text editors they look at)
   const peers = share.session.peers();
-  for (const o of S.docs) o.editor?.setPeers?.(peers.filter(x => x.view?.path === o.path && x.view.line !== null).map(x => ({ name: x.name, color: x.color, line: x.view.line, ch: x.view.ch ?? 0 })));
+  for (const o of docsState.docs) o.editor?.setPeers?.(peers.filter(x => x.view?.path === o.path && x.view.line !== null).map(x => ({ name: x.name, color: x.color, line: x.view.line, ch: x.view.ch ?? 0 })));
 }
 
 // what changes on disk outside the page (#2843): read again into the document
@@ -397,7 +398,7 @@ async function onEdits(s, ev) {
     read: async () => { const { fileTree, ...json } = await api.project(s.project); return { json, fileTree }; },
     write: async (path, text) => {
       await s.orig.writeFile(s.project, path, text);
-      for (const d of S.docs) if (d.path === path && d.editor?.getValue() === text) { d.editor.markClean?.(); app.setDirty(d, false); }
+      for (const d of docsState.docs) if (d.path === path && d.editor?.getValue() === text) { d.editor.markClean?.(); app.setDirty(d, false); }
     },
     remove: path => s.orig.deleteFile(s.project, path, { trash }),
     saveJson: json => s.orig.saveProject(s.project, json),
@@ -464,7 +465,7 @@ async function writeMerged(s, path, { edited = false } = {}) {
   await s.orig.writeFile(s.project, path, gated);
   s.bases.set(path, gated);
   putFile(s.doc, path, gated);
-  const d = S.docs.find(x => x.path === path && editorOf(x));
+  const d = docsState.docs.find(x => x.path === path && editorOf(x));
   if (d && sameDrawing(drawingText(path, modelOf(editorOf(d))), gated)) app.setDirty(d, false);
   const m = await import('./drawings.js');
   // (its HDL made again, as its save does: core/drawing-sync.js, #4750)

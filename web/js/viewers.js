@@ -27,6 +27,7 @@ import { pinsReady } from './pins-check.js';
 import { isName } from '/core/ident.js';
 import { designOnly, shownDiag } from './design-only.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 // ---- schematic
 // Netlist written by netgen for `step` (postsynth / posttrans / postmap / postpar) with the
@@ -433,7 +434,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
     return { netlist, reason, design: d, scale: k };
   }
   const id = 'emulator';
-  const old = findDoc(id), front = S.active;
+  const old = findDoc(id), front = docsState.active;
   if (old) await closeDoc(old);
   const ran = designNow();
   openDoc({
@@ -482,5 +483,5 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
     },
   });
   // (run again behind the document in front: that one stays in front, and its task)
-  if (quiet && front && front !== S.active && S.docs.includes(front)) activateDoc(front, { background: true });
+  if (quiet && front && front !== docsState.active && docsState.docs.includes(front)) activateDoc(front, { background: true });
 }

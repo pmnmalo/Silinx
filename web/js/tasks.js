@@ -43,6 +43,7 @@ import { prefKey } from './prefs.js';
 import { isNarrow } from './narrow.js';
 import { ISE, allTasks, hasTask } from './tool-descriptors.js';
 import { panes } from './state-panes.js';
+import { docsState } from './state-docs.js';
 
 // the tasks, from the tools' descriptors (#2311; a tool shows its own: refreshDots)
 const TASK_DEFS = allTasks();
@@ -194,9 +195,9 @@ function setTask(t, { fromDoc = false } = {}) {
   state.task = t;
   keep();
   if (!fromDoc && app) {
-    const S = app.S, docs = S.docs.filter(d => taskOf(d) === t);
+    const S = app.S, docs = docsState.docs.filter(d => taskOf(d) === t);
     const want = docs.find(d => d.id === state.tasks[t].doc) || docs.at(-1);
-    if (want && want !== S.active) app.openDoc({ id: want.id });
+    if (want && want !== docsState.active) app.openDoc({ id: want.id });
     // the task's own page, cheap to open: the Design Summary, iMPACT
     // (once it is loaded: if the viewer is still in Implement, #4021)
     else if (!want && S.project?.top && t === 'impl') app.openSummary({ wanted: () => current() === 'impl' });   // (none with no top module: #1287)
@@ -260,7 +261,7 @@ function tagDocs() {
   if (!S) return;
   placeSimToolbar(on(), S, app.projectTool?.());   // (SSim's toolbar in its wave window's line: #1026; its model, #1353)
   let mine = 0, only = null;
-  for (const d of S.docs) {
+  for (const d of docsState.docs) {
     const t = taskOf(d);
     if (d.el.dataset.task !== t) d.el.dataset.task = t;
     if (d.tab.dataset.task !== t) d.tab.dataset.task = t;

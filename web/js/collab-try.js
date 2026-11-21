@@ -9,10 +9,11 @@
 import { S } from './app.js';
 import { followedTry, tryActivity } from '/core/collab-try.js';
 import { collabLog } from './collab-log.js';
+import { docsState } from './state-docs.js';
 
 // (a schematic view's read-only editor too: an RTL schematic's, viewers.js)
 const editorOf = d => d?.fsmEditor || d?.asmEditor || d?.petriEditor || d?.schEditor || d?.circuitEditor || d?.viewer || null;
-const tryEditors = () => S.docs.map(d => [d, editorOf(d)]).filter(([, ed]) => ed?.tryState && ed.setTryState);
+const tryEditors = () => docsState.docs.map(d => [d, editorOf(d)]).filter(([, ed]) => ed?.tryState && ed.setTryState);
 
 /** The owner's `try` value: its open documents' Try it. */
 export const tryNow = () => tryActivity(tryEditors().map(([d, ed]) => [d.id, ed.tryState()]));

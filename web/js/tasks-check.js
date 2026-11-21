@@ -4,6 +4,7 @@
 // (docs/UI-GUIDELINES.md, Messages): it sends a 'silinx-diagnostics' event (web/js/sch-try.js showDiags).
 // checkLines has no DOM and is unit tested (test/tasks.test.js).
 import { t, onLanguageChange } from './i18n.js';
+import { docsState } from './state-docs.js';
 
 const SHOW = 'Show it in the drawing';
 const SEVERITY = { error: ['ERROR', 'err'], warning: ['WARNING', 'warn'] };
@@ -39,8 +40,8 @@ export function initCheckMessages(showConsole, log) {
   });
   // (the drawing brought to the front first: an entry of the Errors tab is clicked with another document in front)
   const show = (el, then) => import('./app.js').then(({ S, activateDoc }) => {
-    const doc = S.docs.find(d => d.el?.contains(el));
-    if (doc && S.active !== doc) activateDoc(doc);
+    const doc = docsState.docs.find(d => d.el?.contains(el));
+    if (doc && docsState.active !== doc) activateDoc(doc);
     then();
   });
   onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link')) ln.title = t(SHOW); });

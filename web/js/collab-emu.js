@@ -6,8 +6,9 @@
 import { S } from './app.js';
 import { viewKeyOf } from './view-state.js';
 import { emuActivity, followedEmu } from '/core/collab-emu.js';
+import { docsState } from './state-docs.js';
 
-const emulators = () => S.docs.filter(d => /^emulator:/.test(viewKeyOf(d) || '') && d.view?.inputElements);
+const emulators = () => docsState.docs.filter(d => /^emulator:/.test(viewKeyOf(d) || '') && d.view?.inputElements);
 
 /** The owner's `emu` value: its open emulators. */
 export const emuNow = () => emuActivity(emulators().map(d => [viewKeyOf(d), { inputs: d.view.inputs, powered: d.view.powered, running: d.view.running, speed: d.view.speed }]));

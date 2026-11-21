@@ -13,13 +13,14 @@
 import { h } from './ui.js';
 import { simModelsOf } from './tool-descriptors.js';
 import { naturalCompare } from '../../core/hier-order.js';
+import { docsState } from './state-docs.js';
 
 /** SSim's toolbar in its wave window's line, where its name ("Default.wcfg") and the cursor's text were (`tasks`: the
  *  Tasks interface, #1026; web/css/tasks.css hides them), its stimuli bar under it (#1270), else both back under its title
  *  bar, as SSim made them; its model's choices the project's tool's (`tool`, #3707). */
 export function placeSimToolbar(tasks, S = null, tool = null) {
   if (!tasks) for (const f of document.querySelectorAll('#workspace .isim-toolbar .isim-model-field')) f.remove();   // (the Tasks interface's only)
-  else if (S) for (const d of S.docs) if (/^isim:/.test(d.id)) placeModel(d, tasks, tool);
+  else if (S) for (const d of docsState.docs) if (/^isim:/.test(d.id)) placeModel(d, tasks, tool);
   for (const root of document.querySelectorAll('#workspace .isim')) {
     watchSide(root.querySelector('.isim-left'));
     const tb = root.querySelector('.isim-toolbar'), cap = root.querySelector('.isim-wavewin > .caption');
@@ -73,11 +74,11 @@ export function fitSimTabs() {
  *  panel (the Simulation tree, the Objects) stays shown at its left (`data-sim-side`, web/css/tasks.css, #1343). */
 let simSide = null;
 export function placeSimSide(S, sim) {
-  const isim = d => /^isim(:|$)/.test(d?.id || ''), a = S.active;
+  const isim = d => /^isim(:|$)/.test(d?.id || ''), a = docsState.active;
   if (isim(a)) simSide = a;
-  if (simSide && !S.docs.includes(simSide)) simSide = null;
-  const side = sim && a && !isim(a) && a.el.dataset.task === 'sim' ? simSide || S.docs.filter(isim).at(-1) || null : null;
-  for (const d of S.docs) if (d === side) { if (!('simSide' in d.el.dataset)) d.el.dataset.simSide = ''; } else if ('simSide' in d.el.dataset) delete d.el.dataset.simSide;
+  if (simSide && !docsState.docs.includes(simSide)) simSide = null;
+  const side = sim && a && !isim(a) && a.el.dataset.task === 'sim' ? simSide || docsState.docs.filter(isim).at(-1) || null : null;
+  for (const d of docsState.docs) if (d === side) { if (!('simSide' in d.el.dataset)) d.el.dataset.simSide = ''; } else if ('simSide' in d.el.dataset) delete d.el.dataset.simSide;
 }
 // (measured again when a side panel is shown, folded or resized by its splitter)
 const watched = new WeakSet();

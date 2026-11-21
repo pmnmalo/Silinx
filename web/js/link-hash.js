@@ -17,6 +17,7 @@ import { confirmDlg } from './ui.js';
 import { collab } from './collab-state.js';
 import { runState } from './state-run.js';
 import { startState } from './state-start.js';
+import { docsState } from './state-docs.js';
 
 const TOKEN = /^#(?:token|code)=/, FOLLOW = /^#(?:view|follow|edit)=/;   // (#view=, a viewer's, #4073; #follow=, the links before it)
 let queue = Promise.resolve();
@@ -67,7 +68,7 @@ async function linkChanged(hash = location.hash) {
 // the student's work saved before anything is replaced or compared: a document that cannot be saved stops the link
 async function saved(what) {
   await app.saveAll({ quiet: true });   // (its own message below)
-  const unsaved = S.docs.filter(d => d.dirty);
+  const unsaved = docsState.docs.filter(d => d.dirty);
   if (unsaved.length) { appLog(`ERROR: ${what}: ${unsaved.map(d => d.path || d.title).join(', ')} could not be saved: the link was not opened; your changes are kept.`, 'err'); return false; }
   return true;
 }
@@ -75,7 +76,7 @@ const clearHash = () => history.replaceState(null, '', location.pathname + locat
 // a shared project's link read: the user asked before the documents with changes not saved yet are saved, then saved ->
 // true, false (not saved), or 'cancelled'
 async function followAgreed(what) {
-  if (S.docs.some(x => x.dirty)) {
+  if (docsState.docs.some(x => x.dirty)) {
     const yes = await confirmDlg('Follow a Shared Project', 'This link follows a project someone shares. Your open documents have changes not saved yet: save them, then follow it?', { yes: 'Save and Follow', no: 'Cancel' });
     if (!yes) return 'cancelled';
   }
@@ -84,7 +85,7 @@ async function followAgreed(what) {
 // a design's link read (d: link-open.js designOf's): the user asked before the documents with changes not saved yet are
 // saved (a zip's link asked already, before its fetch), then saved -> true, false (not saved), or 'cancelled'
 async function agreed(d, source, what) {
-  if (source.kind !== 'url' && S.docs.some(x => x.dirty)) {
+  if (source.kind !== 'url' && docsState.docs.some(x => x.dirty)) {
     const yes = await confirmDlg('Open from a Link', `This link opens '${d.name}'. Your open documents have changes not saved yet: save them, then open it?`, { yes: 'Save and Open', no: 'Cancel' });
     if (!yes) return 'cancelled';
   }

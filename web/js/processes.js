@@ -34,6 +34,7 @@ import { cState } from './state-c.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -295,7 +296,7 @@ export function diagsFor(lib, design, extra = []) {
 // older file on disk is not what the editor shows (#4722)
 export async function saveAll({ quiet = false } = {}) {
   const unsaved = [];
-  for (const d of S.docs) if (!await flushDoc(d) && !(d.project && d.project !== S.project?.name)) unsaved.push(d.path || d.title);
+  for (const d of docsState.docs) if (!await flushDoc(d) && !(d.project && d.project !== S.project?.name)) unsaved.push(d.path || d.title);
   if (unsaved.length && !quiet) log(`ERROR: ${unsaved.join(', ')} could not be saved: stopped, so as not to use the older ${unsaved.length > 1 ? 'files' : 'file'} on disk`, 'err');
   return !unsaved.length;
 }

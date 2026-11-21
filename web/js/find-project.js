@@ -12,6 +12,7 @@ import { findPattern, findPaths, findInProject, replaceInText } from '/core/find
 import { designOnly } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { filesState } from './state-files.js';
+import { docsState } from './state-docs.js';
 
 /** The project's texts to search: [{ path, text, drawing, generated }], the open editors' as they are. */
 async function projectTexts() {
@@ -32,7 +33,7 @@ async function projectTexts() {
 /** Opens Find in Project (with the text selected in the editor in front, when there is one). */
 export function openFindInProject() {
   if (!S.project) { logInfo('Open a project first'); return; }
-  const sel = S.active?.editor?.getSelection?.() || '';
+  const sel = docsState.active?.editor?.getSelection?.() || '';
   const d = openDoc({ id: 'find', title: 'Find in Project', icon: 'find', create: el => mountFind(el) });
   if (sel && !/\n/.test(sel)) d.setText?.(sel);
   d.focus?.();

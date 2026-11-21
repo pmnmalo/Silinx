@@ -19,6 +19,7 @@ import { statusLine } from './status-line.js';
 import { toolbarMenu } from './toolbar-menu.js';
 import { PROCESSES } from '/core/labs-check.js';
 import { PROGRESS_FILE, checkLines, checkStep, labFileLines, labProgress, listLabs, localize, nextOpen, parseLab, parseProgress, progressText, recordTry } from '/core/labs.js';
+import { docsState } from './state-docs.js';
 
 export const STEPS_KEY = 'silinx.narrow.labsteps';   // (the Steps panel shown on a narrow screen)
 const lang = () => (getLanguage() === 'pt' ? 'pt' : 'en');
@@ -77,7 +78,7 @@ export async function checkLabFile(path) {
  *  document of it reads it again (#3330: its steps, texts and checks; its progress kept). */
 export async function labFileSaved(path) {
   const { lab, problems } = parseLab(await api.readFile(S.project.name, path), path);
-  if (lab) for (const d of S.docs.filter(d => d.labSource === path && d.reload)) d.reload(lab, path);
+  if (lab) for (const d of docsState.docs.filter(d => d.labSource === path && d.reload)) d.reload(lab, path);
   const key = problems.join('\n');
   if (saidProblems.get(path) === key || (!saidProblems.has(path) && !problems.length)) { saidProblems.set(path, key); return; }
   saidProblems.set(path, key);

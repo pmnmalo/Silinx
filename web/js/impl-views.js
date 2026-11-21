@@ -8,6 +8,7 @@ import { FLOW_UP_TO, runImpl } from './implement.js';
 import { projectTool } from './processes.js';
 import { S, activateDoc, closeDoc, findDoc, instancesOf, moduleInfo, openDoc } from './app.js';
 import { panes } from './state-panes.js';
+import { docsState } from './state-docs.js';
 
 // ---- View Implemented Design (FPGA): web/js/fpgaview.js over the XDL of the routed design
 // The hierarchy paths of the design as XST names them ('Inst_data/u1', from the top's instance
@@ -79,17 +80,17 @@ function selectHierarchyPath(path) {
 // it still is (the Tasks layout's Implement brought forward: still in front); resolved once the summary is drawn with the
 // reports as they are now (#4287: not its drawing of before, from the project's opening)
 export async function openSummary({ background = false, wanted } = {}) {
-  const was = S.active;
+  const was = docsState.active;
   const { mountSummary } = await import('./summary.js');
   if (wanted && !wanted()) return;
   // another document brought to the front meanwhile (by the user, or the project's opened with it): it stays in front,
   // the summary opened behind it, not over it (#4021: over the UCF just opened, a simulation just started)
-  const keep = S.active && S.active !== was && S.active.id !== 'summary' ? S.active : null;
+  const keep = docsState.active && docsState.active !== was && docsState.active.id !== 'summary' ? docsState.active : null;
   const old = findDoc('summary');
   if (keep && old) { await old.refresh?.(); return; }
   const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el) });
   const drawn = d.refresh?.();
-  if (keep && S.docs.includes(keep)) activateDoc(keep);
+  if (keep && docsState.docs.includes(keep)) activateDoc(keep);
   await drawn;
 }
 export function refreshSummary() { const d = findDoc('summary'); d?.refresh?.(); }

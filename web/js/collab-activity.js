@@ -21,6 +21,7 @@ import { followSim, simNow } from './collab-sim.js';
 import { emuNow, followEmu, watchBoards } from './collab-emu.js';
 import { followTry, tryNow } from './collab-try.js';
 import { panes } from './state-panes.js';
+import { docsState } from './state-docs.js';
 
 /** The owner's page: its activity sent (each channel only when it changed: core/collab-client.js publish), by
  *  publish() in its sharing's tracking; stop() at its end. */
@@ -80,7 +81,7 @@ export async function followActivity(st, get, live = () => true) {
 async function applyUi(st, { view: v, layout }, get, live) {
   if (v.view && v.view !== S.view) setView(v.view);
   if (v.page && v.page !== panes.leftPage) showLeftPage(v.page);
-  const have = new Set(S.docs.map(viewKeyOf));
+  const have = new Set(docsState.docs.map(viewKeyOf));
   for (const id of v.open) {
     if (!have.has(id) && (await openReport(id, get) || await reopenDoc(id))) st.opened.add(id);
     if (!live()) return;   // (the follower's own document in front meanwhile stays there, #4865)
@@ -90,10 +91,10 @@ async function applyUi(st, { view: v, layout }, get, live) {
     if (st.opened.has(k) && !v.open.includes(k)) { st.opened.delete(k); await closeDoc(d); }
   }
   if (!live()) return;
-  const find = k => S.docs.find(d => viewKeyOf(d) === k);
+  const find = k => docsState.docs.find(d => viewKeyOf(d) === k);
   restoreSplit(v.split, find, v.open);
   const front = v.active && find(v.active);
-  if (front && S.active !== front) activateDoc(front);
+  if (front && docsState.active !== front) activateDoc(front);
   if (layout) applyLayout(layout);
 }
 

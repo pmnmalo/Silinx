@@ -7,6 +7,7 @@ import { h, dialog } from './ui.js';
 import { BUILD, REPOSITORY } from '/core/version.js';
 import { pointerTestDialog } from './devmenu-pointer.js';
 import { S } from './app.js';
+import { docsState } from './state-docs.js';
 
 const TYPES = ['feature', 'bugfix', 'other'];
 const HEADINGS = { feature: 'Features', bugfix: 'Bug fixes', other: 'Other changes' };
@@ -48,7 +49,7 @@ export function developmentMenu(build = BUILD) {
     // the handwritten input, a preview (#1055, #1098): on the open truth table or schematic (the expressions in the
     // truth table editor's toolbar, #2010)
     '-',
-    { label: 'Handwritten Boolean Algebra…', disabled: !S.active?.ttEditor, action: () => S.active?.ttEditor?.handwrittenTable() },
-    { label: 'Handwritten Schematic…', disabled: !S.active?.schEditor?.handwritten, action: () => S.active?.schEditor?.handwritten() },
+    { label: 'Handwritten Boolean Algebra…', disabled: !docsState.active?.ttEditor, action: () => docsState.active?.ttEditor?.handwrittenTable() },
+    { label: 'Handwritten Schematic…', disabled: !docsState.active?.schEditor?.handwritten, action: () => docsState.active?.schEditor?.handwritten() },
   ] };
 }
