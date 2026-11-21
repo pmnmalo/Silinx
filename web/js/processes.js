@@ -14,6 +14,7 @@ import { designDiags, sevWord } from './diaghelp.js';
 import { S, flushDoc, openFile, openFpgaView, openImpact, openPinPlanner, openSummary, openUcf,
   status, viewRoots, withPrimitives } from './app.js';
 import { log, logError, logInfo, showProblems, setDiagnostics, startRun } from './console.js';
+import { diagLocation } from '/core/message.js';
 import { backAnnotatePins, checkUcfFile, generateSimModel, postParTiming, runImpl, stopProcesses,
   synthOpen, textPowerReport, worst } from './implement.js';
 import { isAsm, isFsm, isPn, isTt, openAsm, openFsm, openPetri, openSch, openTt } from './drawings.js';
@@ -332,7 +333,7 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   const diags = (hierarchy ? hierarchyDiags(all, lib, mod, owners) : all).map(shownDiag);
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false, location: diagLocation(d) });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
   if (ne) { R.log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
   R.log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
@@ -372,7 +373,7 @@ export async function checkFileSyntax(path) {
   for (const l of info) R.log(l);
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false });
+  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false, location: diagLocation(d) });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
   if (ne) { R.log(`\nProcess "Check Syntax" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); status(`Check Syntax: ${ne} error(s)`); return false; }
   R.log(`\nProcess "Check Syntax" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
