@@ -180,6 +180,12 @@ const emuWorkerRes = await esbuild.build({
   bundle: true, format: 'esm', minify: true, write: false, target: 'es2022', plugins: [plugin], logLevel: 'warning', platform: 'browser', define,
 });
 const emuWorkerJs = emuWorkerRes.outputFiles[0].text;
+// the check of an HDL file as one types (web/js/hdl-check-worker.js, #4773), embedded the same way
+const hdlWorkerRes = await esbuild.build({
+  entryPoints: [path.join(ROOT, 'web/js/hdl-check-worker.js')],
+  bundle: true, format: 'esm', minify: true, write: false, target: 'es2022', plugins: [plugin], logLevel: 'warning', platform: 'browser', define,
+});
+const hdlWorkerJs = hdlWorkerRes.outputFiles[0].text;
 
 // ---- inline everything into index.html
 let html = rd('web/index.html');
@@ -198,7 +204,7 @@ html = html.replace(/<!-- the editor \(CodeMirror 6[\s\S]*?<script type="importm
 if (html.includes('importmap')) throw new Error('web/index.html: the import map was not removed');
 // replacer functions: the inserted code may contain `$'`, `$&`… which a replacement string would expand
 html = html.replace('<script type="module" src="/js/app.js"></script>',
-  () => `<script>window.SILINX_STANDALONE = true;\nwindow.SILINX_ASSET_LAYOUT = ${safeJs(JSON.stringify(LAYOUT))};\nwindow.SILINX_FLOW_WORKER_SRC = ${safeJs(JSON.stringify(workerJs))};\nwindow.SILINX_EMU_WORKER_SRC = ${safeJs(JSON.stringify(emuWorkerJs))};</script>\n<script type="module">${safeJs(appJs)}</script>`);
+  () => `<script>window.SILINX_STANDALONE = true;\nwindow.SILINX_ASSET_LAYOUT = ${safeJs(JSON.stringify(LAYOUT))};\nwindow.SILINX_FLOW_WORKER_SRC = ${safeJs(JSON.stringify(workerJs))};\nwindow.SILINX_EMU_WORKER_SRC = ${safeJs(JSON.stringify(emuWorkerJs))};\nwindow.SILINX_HDL_WORKER_SRC = ${safeJs(JSON.stringify(hdlWorkerJs))};</script>\n<script type="module">${safeJs(appJs)}</script>`);
 const TITLE = '<title>Silinx</title>';
 if (!html.includes(TITLE)) throw new Error(`web/index.html: no ${TITLE} to mark (standalone)`);
 html = html.replace(TITLE, () => '<title>Silinx (standalone)</title>');

@@ -10,7 +10,9 @@ import { naturalCompare } from '/core/hier-order.js';
 import { checkC } from '/core/c-check.js';
 import { blackboxChecks } from '/core/c-blackbox.js';
 import * as wiz from './wizards.js';
-import { designDiags, sevWord } from './diaghelp.js';
+import { designDiags, lintEnabled, sevWord } from './diaghelp.js';
+import { hdlCheck } from '/core/hdl-check.js';
+import { checkLive } from './hdl-check-client.js';
 import { S, flushDoc, openFile, openFpgaView, openImpact, openPinPlanner, openSummary, openUcf,
   status, viewRoots, withPrimitives } from './app.js';
 import { log, logError, logInfo, showProblems, setDiagnostics, startRun } from './console.js';
@@ -340,25 +342,27 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
 }
 
 // Check Syntax of one HDL file (editor toolbar / right-click): parses the project, elaborates every
-// module the file defines and reports the diagnostics.
+// module the file defines and reports the diagnostics (core/hdl-check.js).
 // Diagnostics of one HDL file in the context of the project (text: the editor's current text).
 export function hdlDiagnostics(path, text, info = []) {
-  const fi = S.project.files.find(f => f.path === path);
-  const sim = fi?.role === 'sim';
+  const r = hdlCheck(hdlJob(path, text));
+  info.push(...r.info);
+  return diagsFor({ errors: r.diags }, null);
+}
+/** The same as one types (#4773): in a Web Worker (web/js/hdl-check-client.js), the file's modules elaborated once it
+ *  reads without an error; null when a newer check of the file was asked meanwhile. */
+export async function liveHdlDiagnostics(path, text) {
+  const r = await checkLive({ ...hdlJob(path, text), clean: true });
+  return r && diagsFor({ errors: r.diags }, null);
+}
+// the check's data (plain, for the worker): the sources in the file's view, the primitives' models with them
+function hdlJob(path, text) {
+  const sim = S.project.files.find(f => f.path === path)?.role === 'sim';
   const srcs = S.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && (inView(s.role, sim) || s.path === path))
     .map(s => (s.path === path && text != null ? { ...s, text } : s));
-  const lib = compile(withPrimitives(srcs));
-  const units = (lib.parsed.find(p => p.file === path)?.units || []).filter(u => u.kind === 'module');
-  // (+ its modules named with a reserved word, #679)
-  let diags = [...lib.errors, ...reservedModuleDiags(units.map(u => ({ name: u.name, file: path, line: u.loc?.line })))];
-  for (const u of units) {
-    let design;
-    try { design = elaborate(lib, u.name); } catch (e) { diags.push({ file: path, line: u.loc?.line || 1, col: 1, severity: 'error', message: e.message }); continue; }
-    diags.push(...design.diags, ...designDiags(lib, design));
-    if (design.top) info.push(`Elaborating module <${u.name}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
-  }
-  return diagsFor({ errors: diags }, null);
+  return { path, sources: withPrimitives(srcs).map(plainSource), lint: lintEnabled() };
 }
+const plainSource = ({ path, lang, role, text }) => ({ path, lang, role, text });
 
 export async function checkFileSyntax(path) {
   if (!await saveAll()) return false;
