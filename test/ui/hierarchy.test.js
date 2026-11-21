@@ -289,10 +289,10 @@ uiTest('every source has its HDL (#207): a schematic without an HDL file gets it
     '  chip xc3s250e-4-cp132',
     '    moduleTop esq [Schematic*] [VHDL] (esq.sch.json)',
     // (the decoder's block: its composition, not the HDL entity generated for it, esq_d2_4e, #4984)
-    '      schematic xlxi_1 - D2_4E [Composition*] (composition)',
-    '        schematic U0 - D1_2E [Composition*] (composition)',
-    '        schematic U1 - D1_2E [Composition*] (composition)',
-    '        schematic U2 - D1_2E [Composition*] (composition)',
+    '      schematic xlxi_1 - D2_4E [Schematic*] [VHDL] (composition)',
+    '        schematic U0 - D1_2E [Schematic*] [VHDL] (composition)',
+    '        schematic U1 - D1_2E [Schematic*] [VHDL] (composition)',
+    '        schematic U2 - D1_2E [Schematic*] [VHDL] (composition)',
   ]);
   // opened again: nothing more to generate, the same rows
   await page.openProject('teste');

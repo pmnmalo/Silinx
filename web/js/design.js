@@ -74,6 +74,7 @@ export function renderHierarchy() {
     const isTop = !instName && isTopName(modName);   // (the root's row only: the top's instances are plain rows, #2877)
     // (a palette symbol's block, its HDL generated: shown as its composition, #4984)
     const blk = instName && compositionOf(info);
+    if (blk && !blk.comp) return;   // (an atomic symbol's, a flip-flop's: no row, as a gate, #5033)
     if (blk) { compositionRows(parentUl, { blk, instName, path, depth, treeItem, select: () => select({ type: 'module', module: modName, file: info.file, path, instName }) }); return; }
     const file = info?.file || '?';
     // "label - module" like ISE; just the name when the instance is labelled with the module name

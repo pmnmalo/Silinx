@@ -98,3 +98,39 @@ export async function openComposition(sym, from = null, at = []) {
     },
   });
 }
+
+/** The HDL of a level of a composition, `module`, in `lang`, as generated from its drawing (#5033): read-only, in a
+ *  document of its own; its notice links to the level's drawing. */
+export async function openCompositionHdl(sym, module, lang) {
+  const L = await import('/core/symlib.js');
+  const comp = L.composition(sym.type, sym.params);
+  const m = comp && L.moduleHdls(comp, lang).find(x => x.name === module);
+  if (!m) return null;
+  const { createEditor } = await import('./editor.js');
+  const id = `comphdl:${comp.top}:${module}:${lang}`;
+  const old = findDoc(id);
+  if (old) await closeDoc(old);
+  return openDoc({
+    id, title: m.path, tooltip: `${m.path}, generated from ${module} (composition)`, icon: lang,
+    create(el, d) {
+      const link = h('a', { onclick: () => openComposition(sym, null, pathTo(comp, module)) }, `${module} (composition)`);
+      const bar = h('div', { class: 'editor-bar' }, h('span', { class: 'gen-banner read-only' }, 'Read-only, generated from ', link));
+      const host = h('div', { class: 'editor-host' });
+      el.append(bar, host);
+      d.editor = createEditor(host, { text: m.code, lang, path: m.path, readOnly: true });
+      el.append(d.editor.status);
+      return { lang, destroy: () => d.editor.destroy() };
+    },
+  });
+}
+
+// the instances pushed into from a composition's top to the first instance of `module`: ['U1', 'U2'] ([] for the top)
+function pathTo(comp, module) {
+  const find = (name, at) => {
+    if (name === module) return at;
+    const lv = comp.modules.find(m => m.name === name);
+    for (const s of lv.doc.symbols.filter(x => x.type === 'module')) { const r = find(s.params.module, [...at, s.name]); if (r) return r; }
+    return null;
+  };
+  return find(comp.top, []) || [];
+}
