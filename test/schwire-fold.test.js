@@ -1,7 +1,7 @@
 // Copyright 2026 Pedro Maló
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// #4920: a schematic's wires drawn twice over (core/schwire-fold.js, by normalizeDoc after every edit): two wires meeting
+// #4920, #5042: a schematic's wires drawn twice over (core/schwire-fold.js, by normalizeDoc after every edit): two wires meeting
 // end to end, the one's end segment lying on the other's (a segment dragged onto the wire it continues), trimmed to meet
 // at the far end of the overlap; a wire turning back on itself; at a junction dot (the shorter one's doubled part
 // removed when it ends in nothing, a doubled wire that goes on left with its dot); the net names on the doubled part kept on the wire; the
@@ -182,4 +182,49 @@ test('#4920 a bus: a doubled stub at its dot removed, the bus whole; a curved wi
   const cn = normalizeDoc(c);
   assert.deepEqual(wires(cn), { W1: '100,100 150,100', W2: '150,100 150,200' });
   assert.equal(cn.wires.find(w => w.id === 'W2').curve, undefined);
+});
+
+// #5042: the wire into U1's input in two pieces, W2 and W3, meeting at (340, 180) (what deleting a wire that ended there
+// leaves); W1 from in1 to W2's start at (280, 180), its vertical segment then dragged onto (340, 180), its end kept at
+// (280, 180): W1 and W2 doubled over the same length, W1 (W3's end on its bend) not trimmed, W2 (the stub piece) removed
+function split() {
+  const doc = pedro();
+  doc.wires = [{ id: 'W1', points: [P(210, 120), P(280, 120), P(280, 180)] }, { id: 'W2', points: [P(280, 180), P(340, 180)] },
+    { id: 'W3', points: [P(340, 180), P(340, 340), P(500, 340)] }, { id: 'W4', points: [P(580, 340), P(620, 340)] }];
+  return normalizeDoc(doc);
+}
+// every order of the document's wires (each wire's points as they are)
+function* orders(list) {
+  if (list.length <= 1) { yield list; return; }
+  for (let i = 0; i < list.length; i++) for (const rest of orders([...list.slice(0, i), ...list.slice(i + 1)])) yield [list[i], ...rest];
+}
+const shapes = doc => doc.wires.map(w => str(w.points)).sort();
+
+test('#5042 doubled pieces of the same length, the stub piece ending on the other\'s bend: the stub removed, whatever the wires\' order', () => {
+  const doc = split();
+  assert.deepEqual(diags(doc), []);
+  // W1's last segment (its vertical) dragged 60 to the right, its end held by W2's start
+  const raw = clone(doc);
+  const w1 = raw.wires.find(w => w.id === 'W1');
+  w1.points = moveSegment(w1.points, 1, 60, { keepA: true, keepB: true });
+  assert.equal(str(w1.points), '210,120 340,120 340,180 280,180', 'the drag turns W1 back over W2');
+  for (const ws of orders(raw.wires)) {
+    const after = normalizeDoc({ ...raw, wires: clone(ws) });
+    assert.deepEqual(shapes(after), ['210,120 340,120 340,180', '340,180 340,340 500,340', '580,340 620,340'], ws.map(w => w.id).join(' '));
+    assert.deepEqual(doubled(after), []);
+    sameDesign(doc, after, `the wires in the order ${ws.map(w => w.id).join(' ')}`);
+  }
+});
+
+test('#5042 the clean-up does not depend on the wires\' order: the same drawing for every order, in each case of #4920', () => {
+  const cases = [];
+  const a = pedro(); a.wires.find(w => w.id === 'W3').points = [P(340, 180), P(280, 180), P(280, 340), P(500, 340)]; cases.push(a);
+  const b = pedro(); b.wires.find(w => w.id === 'W3').points = [P(340, 180), P(300, 180), P(300, 340), P(500, 340)]; cases.push(b);
+  const c = tee(); c.wires.push({ id: 'W9', points: [P(200, 200), P(200, 250)] }); cases.push(c);
+  const d = tee(); d.wires.push({ id: 'W9', points: [P(200, 200), P(260, 200)] }); cases.push(d);
+  const e = newDoc('two', 'vhdl'); e.wires.push({ id: 'W1', points: [P(100, 100), P(200, 100)] }, { id: 'W2', points: [P(200, 100), P(100, 100), P(100, 200)] }); cases.push(e);
+  for (const [k, raw] of cases.entries()) {
+    const want = shapes(normalizeDoc(raw));
+    for (const ws of orders(raw.wires)) assert.deepEqual(shapes(normalizeDoc({ ...raw, wires: clone(ws) })), want, `case ${k}: ${ws.map(w => w.id).join(' ')}`);
+  }
 });

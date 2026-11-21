@@ -103,3 +103,31 @@ uiTest('#4920 schematic: a segment dragged onto the wire it continues leaves no 
   await page.waitFor(() => window.Silinx.active.schEditor.getDoc().wires.find((w) => w.id === 'W3').points[0].x === 280, [], { what: 'redone' });
   assert.deepEqual(await wires(), after);
 });
+
+// #5042: the wire into U1's input in two pieces meeting at (340, 180), as deleting a wire that ended there leaves it; W1
+// from in1 to the first piece's start (280, 180), its vertical segment dragged onto (340, 180): no stub left (the first
+// piece, doubled by W1, removed), whatever the wires' order in the file; the HDL the same, no warnings
+uiTest('#5042 schematic: a segment dragged onto a wire split where it lands leaves no stub; the HDL the same', E, async (page) => {
+  const doc = newDoc('split', 'vhdl');
+  doc.symbols.push({ id: 'S1', type: 'inv', x: 500, y: 330, rot: 0, mirror: false, name: 'U1', params: { width: 1 } });
+  doc.ports.push({ id: 'P1', name: 'in1', dir: 'in', width: 1, x: 210, y: 120 }, { id: 'P2', name: 'y', dir: 'out', width: 1, x: 620, y: 340 });
+  doc.wires.push({ id: 'W1', points: [P(210, 120), P(280, 120), P(280, 180)] }, { id: 'W2', points: [P(280, 180), P(340, 180)] },
+    { id: 'W3', points: [P(340, 180), P(340, 340), P(500, 340)] }, { id: 'W4', points: [P(580, 340), P(620, 340)] });
+  await makeProject(env, { name: 'SplitPj', files: { 'src/split.sch.json': JSON.stringify(doc) } });
+  await page.openProject('SplitPj');
+  await page.eval(() => window.SilinxApp.openSch('src/split.sch.json'));
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym`).length === 1, [ED], { what: 'drawn' });
+  const at = (x, y) => page.eval((ed, px, py) => { const l = document.querySelector(`${ed} svg [data-kind=wire] .whit`); const p = l.ownerSVGElement.createSVGPoint(); p.x = px; p.y = py; const q = p.matrixTransform(l.getScreenCTM()); return { x: q.x, y: q.y }; }, ED, x, y);
+  const getDoc = () => page.eval(() => window.Silinx.active.schEditor.getDoc());
+  // (the wires as drawn: the editor's own state)
+  const drawn = () => page.eval((ed) => Object.fromEntries([...document.querySelectorAll(`${ed} svg [data-kind=wire]`)].map((g) => [g.dataset.id, g.querySelector('.whit').getAttribute('points').trim().replace(/\s+/g, ' ')])), ED);
+  const hdl0 = generateHdl(doc, { lang: 'vhdl' }).code;
+  assert.deepEqual(netlist(await getDoc()).diagnostics.map((x) => x.message), [], 'the drawing: no warnings');
+
+  await page.drag(await at(280, 150), await at(340, 150));
+  await page.waitFor((ed) => !document.querySelector(`${ed} svg [data-kind=wire][data-id=W2]`), [ED], { what: 'the stub piece removed' });
+  assert.deepEqual(await drawn(), { W1: '210,120 340,120 340,180', W3: '340,180 340,340 500,340', W4: '580,340 620,340' });
+  const d = await getDoc();
+  assert.deepEqual(netlist(d).diagnostics.map((x) => x.message), [], 'no warnings');
+  assert.equal(generateHdl(d, { lang: 'vhdl' }).code, hdl0, 'the same HDL');
+});
