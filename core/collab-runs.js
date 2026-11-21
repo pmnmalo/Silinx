@@ -5,7 +5,7 @@
 // not one left out); the lines and the reports without the owner's computer's names (redact: its home folder, the ISE
 // host it reaches over SSH, as the MCP's run_process gives them: server/mcp-util.js redactor).
 
-import { MESSAGE_SOURCES } from './message.js';
+import { MESSAGE_SOURCES, lineMessage, messageData } from './message.js';
 
 /** The limits of what a run's follower gets: the lines of a run (kept from its end), a line's length, the Design
  *  Summary's JSON, a report's text, the reports' together (bytes). */
@@ -104,3 +104,7 @@ export function runLines(v, last = 10) {
     ...(r.lines.length ? [`The end of their last run's log:`, ...r.lines.slice(-last).map(([t]) => `  ${t}`)] : []),
   ];
 }
+
+/** The runs' lines as messages (#4749: the MCP's follow_project): each one's as a follower's console makes it
+ *  (core/message.js lineMessage), its source the owner's, its location a file of the shared project (`paths`), as data. */
+export const runMessages = (r, paths = []) => (r?.lines || []).map(([text, cls, source]) => messageData(lineMessage(text, { cls, source, paths })));
