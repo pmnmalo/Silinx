@@ -31,7 +31,7 @@ export async function run(dir, project, steps = ['synth', 'translate', 'par', 't
   } catch (e) { return { lines, error: e }; }
 }
 // each example's pins (its ports with a pin in the XDC, a bit each), the same on every board
-export const PINS = { gates: 6, breadboard: 11, traffic: 24, blinky: 27, pong: 27, stopwatch: 26, clock: 27, vga: 16, isqrt: 23, uart: 24, micro80: 29 };
+export const PINS = { gates: 6, breadboard: 11, traffic: 24, blinky: 27, pong: 27, stopwatch: 26, clock: 27, vga: 16, isqrt: 23, uart: 24, micro80: 29, lock: 28 };
 export const warnings = lines => lines.join('\n').split('\n').filter(l => /WARNING|ERROR/.test(l));
 
 /** The tests of every example on each target: parts (each target's part, by its name: part, slices, regs, iobs, bitPart,

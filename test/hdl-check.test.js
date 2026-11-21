@@ -38,7 +38,7 @@ function exampleSources(name) {
   return (pj.files || []).filter(f => /\.(vhdl?|v)$/i.test(f.path) && fs.existsSync(path.join(dir, f.path)))
     .map(f => ({ path: f.path, lang: /\.v$/i.test(f.path) ? 'verilog' : 'vhdl', role: f.role || 'design', text: fs.readFileSync(path.join(dir, f.path), 'utf8') }));
 }
-const EXAMPLES = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80'];
+const EXAMPLES = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'];
 
 test('#4773 hdlCheck: the diagnostics and the elaboration lines of the page\'s former check, every HDL file of the examples, lint on and off', () => {
   let files = 0;

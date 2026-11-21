@@ -92,10 +92,10 @@ test('openSteps: the 7-series\' list (nextpnr maps in its Place & Route); the Sp
 const QUALITY = {
   basys3: { gates: [1, 0, null], breadboard: [4, 8, 241.02], traffic: [79, 60, 142.63], blinky: [79, 96, 167.7],
     pong: [252, 215, 102.07], stopwatch: [169, 207, 101.21], clock: [141, 164, 132.75], vga: [115, 58, 136.72],
-    isqrt: [69, 87, 154.68], uart: [105, 142, 161.76], micro80: [157, 187, 112.91] },
+    isqrt: [69, 87, 154.68], uart: [105, 142, 161.76], micro80: [157, 187, 112.91], lock: [108, 179, 134.86] },
   'nexys-a7': { gates: [1, 0, null], breadboard: [4, 8, 249.81], traffic: [81, 60, 142.61], blinky: [79, 96, 176.71],
     pong: [251, 215, 107.42], stopwatch: [170, 207, 100.84], clock: [141, 164, 133.9], vga: [115, 58, 131.8],
-    isqrt: [69, 87, 157.93], uart: [107, 142, 156.27], micro80: [157, 187, 113.83] },
+    isqrt: [69, 87, 157.93], uart: [107, 142, 156.27], micro80: [157, 187, 113.83], lock: [108, 179, 139.61] },
 };
 
 xc7ExampleTests(XC7_TARGETS, { parts: PARTS, quality: QUALITY });

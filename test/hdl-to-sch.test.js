@@ -361,7 +361,9 @@ for (const name of EXAMPLES) {
     const w0 = waves(all, ex.project.simTop, base.now);
     const lib = compile(ex.sources);
     const files = new Map(ex.sources.map(s => [s.path, s]));
-    const mods = [...lib.modules.values()].filter(m => files.has(m.archFile || m.file));
+    // (a digital circuit's HDL is the circuit's, its modules no schematic's: lock's sync, #3901, #5111)
+    const circuits = new Set(fs.readdirSync(`${ex.dir}/src`).filter(f => f.endsWith('.circ.json')).map(f => JSON.parse(fs.readFileSync(`${ex.dir}/src/${f}`, 'utf8')).generatedFile));
+    const mods = [...lib.modules.values()].filter(m => files.has(m.archFile || m.file) && !circuits.has(m.archFile || m.file));
     assert.ok(mods.length >= 2);
     for (const m of mods) {
       const file = m.archFile || m.file;

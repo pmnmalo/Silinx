@@ -14,10 +14,10 @@ import { zynqTargets, zynqParts, SLOW_ONES } from './zynq-examples-lib.mjs';
 const QUALITY = {
   'zybo-z7-20': { gates: [1, 0, null], breadboard: [4, 8, 250.82], traffic: [74, 60, 145.73], blinky: [79, 96, 181.69],
     pong: [265, 219, 101.24], stopwatch: [175, 212, 100.02], clock: [150, 168, 135.81], vga: [116, 59, 149.43],
-    isqrt: [68, 87, 202.76], uart: [104, 143, 177.3], micro80: [153, 187, 108.65] },
+    isqrt: [68, 87, 202.76], uart: [104, 143, 177.3], micro80: [153, 187, 108.65], lock: [110, 181, 144.53] },
   'zybo-z7-10': { gates: [1, 0, null], breadboard: [4, 8, 241.25], traffic: [78, 60, 142.59], blinky: [79, 96, 174.03],
     pong: [267, 219, 97.05], stopwatch: [176, 212, 97.35], clock: [150, 168, 136.69], vga: [116, 59, 157.55],
-    isqrt: [68, 87, 186.88], uart: [104, 143, 175.01], micro80: [151, 187, 106.04] },
+    isqrt: [68, 87, 186.88], uart: [104, 143, 175.01], micro80: [151, 187, 106.04], lock: [110, 181, 145.62] },
 };
 // the warnings of the examples below the 125 MHz clock (#4877); no hold violation (the Z7-20's stopwatch's, its clock's tree
 // balanced in nextpnr-himbaechel-xc7 0.5.0, #4878)

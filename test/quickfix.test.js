@@ -476,6 +476,8 @@ test('the examples: every end, endcase, endmodule… and every ";" at the end of
   // (where the parser stops far from the cause, no fix: an `end process;` missing before a process)
   assert.deepEqual(none, ["blinky/sim/tb_top.vhd:34: unexpected 'process' in sequential statement",
     "isqrt/src/isqrt_top.vhd:73: unexpected 'entity' in sequential statement",
+    "lock/src/top.vhd:97: unexpected 'entity' in sequential statement",
+    "lock/sim/tb_lock.vhd:57: unexpected 'process' in sequential statement",
     "micro80/src/micro80_top.vhd:73: unexpected 'entity' in sequential statement",
     "micro80/src/micro80_top.vhd:114: unexpected 'entity' in sequential statement",
     "stopwatch/src/stopwatch.vhd:114: unexpected 'entity' in sequential statement",

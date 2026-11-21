@@ -147,7 +147,7 @@ web/js/        the Project Navigator: app.js (the shell, Design pane, processes,
 server/        the local server: projects, the ISE flow, AMD Vivado's (vivado.js), the Silinx flow, programmers, the MCP
                server (mcp*.js), the sharing relay (collab-relay.js), Open in VS Code (open-editor.js)
 test/ui/       UI tests on headless Chrome over CDP (harness.js); Firefox / WebKit via Playwright
-examples/      gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80: the test designs
+examples/      gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80, lock: the test designs
 research/      synthesis quality, handwriting models; the toolchain's research is in packages/silinx-fpga/research
 docs/          the user's guide (user/en, user/pt, its images/), the developers' documents (docs/README.md lists them)
 ```

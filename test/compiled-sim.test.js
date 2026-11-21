@@ -847,7 +847,7 @@ test('#670 activity: the work of a step, as the profile estimates it, of every e
   // clock's enable, which changes at every other step, nearly everywhere: unguarded; isqrt's machine, called again and again,
   // changes its state at every step: unguarded too; breadboard's counter, its enable the button's edge, read at every
   // step: 2 of its 7)
-  const most = { gates: 0.1, breadboard: 0.3, traffic: 0.2, blinky: 0.2, pong: 0.15, stopwatch: 0.1, clock: 0.15, vga: 1, isqrt: 1, uart: 0.2, micro80: 1 };
+  const most = { gates: 0.1, breadboard: 0.3, traffic: 0.2, blinky: 0.2, pong: 0.15, stopwatch: 0.1, clock: 0.15, vga: 1, isqrt: 1, uart: 0.2, micro80: 1, lock: 1 };
   for (const name of EXAMPLES) {
     const ex = example(name);
     const { json, top, warnings } = await netlistOf(designOf(ex.design, ex.project.top), { run: yosysNode });

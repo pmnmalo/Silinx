@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "kind": "fsm",
+  "name": "lock",
+  "lang": "vhdl",
+  "type": "moore",
+  "clock": "clk",
+  "reset": {
+    "name": "rst",
+    "active": "high",
+    "sync": true
+  },
+  "encoding": "binary",
+  "style": "3process",
+  "inputs": [
+    {
+      "name": "enter",
+      "width": 1
+    },
+    {
+      "name": "clear",
+      "width": 1
+    },
+    {
+      "name": "ok",
+      "width": 1
+    },
+    {
+      "name": "done",
+      "width": 1
+    },
+    {
+      "name": "alarm",
+      "width": 1
+    }
+  ],
+  "outputs": [
+    {
+      "name": "pos",
+      "width": 2,
+      "default": "0"
+    },
+    {
+      "name": "opened",
+      "width": 1,
+      "default": "0"
+    },
+    {
+      "name": "fail",
+      "width": 1,
+      "default": "0"
+    },
+    {
+      "name": "hold",
+      "width": 1,
+      "default": "0"
+    },
+    {
+      "name": "locked",
+      "width": 1,
+      "default": "0"
+    }
+  ],
+  "states": [
+    {
+      "id": "s1",
+      "name": "D0",
+      "x": 120,
+      "y": 120,
+      "outputs": {
+        "pos": "0"
+      },
+      "comment": "no digit typed yet: the first one is checked"
+    },
+    {
+      "id": "s2",
+      "name": "D1",
+      "x": 340,
+      "y": 120,
+      "outputs": {
+        "pos": "1"
+      },
+      "comment": "the first digit right"
+    },
+    {
+      "id": "s3",
+      "name": "D2",
+      "x": 560,
+      "y": 120,
+      "outputs": {
+        "pos": "2"
+      },
+      "comment": "two digits right"
+    },
+    {
+      "id": "s4",
+      "name": "D3",
+      "x": 780,
+      "y": 120,
+      "outputs": {
+        "pos": "3"
+      },
+      "comment": "three digits right"
+    },
+    {
+      "id": "s5",
+      "name": "OPEN",
+      "x": 780,
+      "y": 360,
+      "outputs": {
+        "pos": "0",
+        "opened": "1"
+      },
+      "comment": "the four digits right: open until Clear"
+    },
+    {
+      "id": "s6",
+      "name": "FAIL",
+      "x": 340,
+      "y": 360,
+      "outputs": {
+        "pos": "0",
+        "fail": "1",
+        "locked": "1"
+      },
+      "comment": "a digit wrong: one clock cycle, a failure for the Petri net"
+    },
+    {
+      "id": "s7",
+      "name": "HOLD",
+      "x": 120,
+      "y": 360,
+      "outputs": {
+        "pos": "0",
+        "hold": "1",
+        "locked": "1"
+      },
+      "comment": "locked out: the timer counts the penalty down"
+    },
+    {
+      "id": "s8",
+      "name": "ALARM",
+      "x": 120,
+      "y": 560,
+      "outputs": {
+        "pos": "0",
+        "locked": "1"
+      },
+      "comment": "the third failure: locked until reset"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "t1",
+      "from": "s1",
+      "to": "s6",
+      "cond": "enter && !ok",
+      "outputs": {}
+    },
+    {
+      "id": "t2",
+      "from": "s1",
+      "to": "s2",
+      "cond": "enter && ok",
+      "outputs": {}
+    },
+    {
+      "id": "t3",
+      "from": "s2",
+      "to": "s1",
+      "cond": "clear",
+      "outputs": {}
+    },
+    {
+      "id": "t4",
+      "from": "s2",
+      "to": "s6",
+      "cond": "enter && !ok",
+      "outputs": {}
+    },
+    {
+      "id": "t5",
+      "from": "s2",
+      "to": "s3",
+      "cond": "enter && ok",
+      "outputs": {}
+    },
+    {
+      "id": "t6",
+      "from": "s3",
+      "to": "s1",
+      "cond": "clear",
+      "outputs": {}
+    },
+    {
+      "id": "t7",
+      "from": "s3",
+      "to": "s6",
+      "cond": "enter && !ok",
+      "outputs": {}
+    },
+    {
+      "id": "t8",
+      "from": "s3",
+      "to": "s4",
+      "cond": "enter && ok",
+      "outputs": {}
+    },
+    {
+      "id": "t9",
+      "from": "s4",
+      "to": "s1",
+      "cond": "clear",
+      "outputs": {}
+    },
+    {
+      "id": "t10",
+      "from": "s4",
+      "to": "s6",
+      "cond": "enter && !ok",
+      "outputs": {}
+    },
+    {
+      "id": "t11",
+      "from": "s4",
+      "to": "s5",
+      "cond": "enter && ok",
+      "outputs": {}
+    },
+    {
+      "id": "t12",
+      "from": "s5",
+      "to": "s1",
+      "cond": "clear",
+      "outputs": {}
+    },
+    {
+      "id": "t13",
+      "from": "s6",
+      "to": "s7",
+      "cond": "",
+      "outputs": {}
+    },
+    {
+      "id": "t14",
+      "from": "s7",
+      "to": "s8",
+      "cond": "alarm",
+      "outputs": {}
+    },
+    {
+      "id": "t15",
+      "from": "s7",
+      "to": "s1",
+      "cond": "done",
+      "outputs": {}
+    }
+  ],
+  "initial": "s1",
+  "description": "The lock's controller: a digit is typed with Enter, and checked against the code at its position (pos, the\ntruth table digit_ok says ok). Four right open the lock (opened) until Clear; a wrong one is a failure (fail, one clock\ncycle: the Petri net alarm counts it), then the lock is held (hold) while the timer counts the penalty down (done);\nthe third failure (alarm) keeps it locked until reset. Clear starts the code again.",
+  "generatedFile": "src/lock.vhd"
+}

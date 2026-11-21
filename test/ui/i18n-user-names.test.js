@@ -13,7 +13,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 // the examples' names and words of the interface's dictionary ('clock': relógio, 'Counter': Contador, 'Top': Topo…)
-const EXAMPLES = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80'];
+const EXAMPLES = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'];
 const WORDS = ['Counter', 'Top', 'Display', 'input', 'enable'];
 const NAMES = [...EXAMPLES, ...WORDS];
 const RECENT = ['clock', 'Counter', 'Top', 'input'];

@@ -76,7 +76,7 @@ test('#3710 every clocked example\'s top for the Mimas V2 and the Nexys3: the bo
   // (isqrt and micro80 have switches only, uart a button only; gates, a combinational schematic, and breadboard, a
   // circuit of 74LS chips, none of them)
   const ALL = ['CLK_HZ', 'BTN_LOW', 'SW_LOW'];
-  const MIMAS = { traffic: ALL, blinky: ALL, pong: ALL, stopwatch: ALL, clock: ALL, vga: ALL, isqrt: ['CLK_HZ', 'SW_LOW'], uart: ['CLK_HZ', 'BTN_LOW'], micro80: ['CLK_HZ', 'SW_LOW'] };
+  const MIMAS = { traffic: ALL, blinky: ALL, pong: ALL, stopwatch: ALL, clock: ALL, vga: ALL, isqrt: ['CLK_HZ', 'SW_LOW'], uart: ['CLK_HZ', 'BTN_LOW'], micro80: ['CLK_HZ', 'SW_LOW'], lock: ALL };
   for (const name of EXAMPLES) {
     const ex = example(name);
     for (const board of ['mimas-v2', 'nexys3']) {
@@ -178,7 +178,7 @@ test('#3884 the digit enables\' level: AN_LOW false where the board says activeH
 });
 
 test('#3884 every example with a display made for the EDGE: AN_LOW false, in VHDL and Verilog, elaborated with no error or warning', () => {
-  const WITH = ['traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'isqrt', 'uart', 'micro80'];
+  const WITH = ['traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'isqrt', 'uart', 'micro80', 'lock'];
   for (const name of EXAMPLES) {
     const ex = example(name);
     const top = topForBoard(ex.design, ex.project.top, EDGE);
@@ -228,7 +228,7 @@ endmodule
 ` });
 
 test('#3884 every example\'s display at both levels: AN_LOW true (the Basys2), a digit on at 0; false (the EDGE), at 1', () => {
-  const OPEN = { traffic: ['sw', 'btn'], blinky: ['sw', 'btn'], pong: ['sw', 'btn'], stopwatch: ['sw', 'btn'], clock: ['sw', 'btn'], isqrt: ['sw'], uart: ['rx', 'btn'], micro80: ['sw'] };
+  const OPEN = { traffic: ['sw', 'btn'], blinky: ['sw', 'btn'], pong: ['sw', 'btn'], stopwatch: ['sw', 'btn'], clock: ['sw', 'btn'], isqrt: ['sw'], uart: ['rx', 'btn'], micro80: ['sw'], lock: ['sw', 'btn'] };
   const turns = values => [...values, ...values].map(v => `an=${v}`);
   for (const [name, open] of Object.entries(OPEN)) {
     const ex = example(name);

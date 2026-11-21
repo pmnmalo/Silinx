@@ -57,6 +57,11 @@
       "routed": "a06daf23dc98d46e21d7a945ed46c80603b50a5ce600b7bb759eff927cee053f",
       "fs": "e76c6c2a34499adbdfaa4056556cfd7db359e9c234dc5b6fc508afaf11d06537",
       "fsBytes": 3556680
+    },
+    "lock": {
+      "routed": "e3583fc1a13f6048b0b41c53cfe81376043b40b978963989a333b02e66f81fc5",
+      "fs": "f30323fa246bec11980522c664584dbbecf104a91438fe8086d8ed3fa78a6a7d",
+      "fsBytes": 2069320
     }
   },
   "designs": {

@@ -283,11 +283,12 @@ const EXAMPLE_PACK = {
   isqrt: { slices: 30, X: 17, L: 13, M: 0, luts: 74, ffs: 86, warnings: 0 },
   uart: { slices: 52, X: 33, L: 19, M: 0, luts: 140, ffs: 138, warnings: 0 },
   micro80: { slices: 65, X: 45, L: 18, M: 2, luts: 180, ffs: 185, warnings: 0 },   // (#3710: 63, 43, 172 before its CLK_HZ)
+  lock: { slices: 58, X: 31, L: 27, M: 0, luts: 134, ffs: 175, warnings: 0 },
 };
 // with LUT combining (combine: 'area'): the slices, never more than without, and the same warnings (isqrt: 29 when
 // the combining came before the storage elements, which then filled the slices it emptied again, #2636)
 // (blinky: 54 with 21-bit debouncers, #3922, 55 with 22-bit; 40 with 2-bit, in ticks, #4377)
-const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 80, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63 };
+const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 80, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63, lock: 57 };
 // the SLICELs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31 now)
 const NIGHT1_L = { blinky: 29 };
 // map's packing of the same netlists on ISE (packages/silinx-fpga/research/s6/measured/night1.json, night 1): its SLICELs are the packer's

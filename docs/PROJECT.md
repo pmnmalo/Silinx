@@ -48,7 +48,7 @@ reload (#4754).
 | Method | Path | Description |
 |---|---|---|
 | GET | /projects | list `[{ name, device, top, board, modified }]` |
-| POST | /projects | `{ name, template?: 'empty' or an example (GET /templates: gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80), device?, board? }` create |
+| POST | /projects | `{ name, template?: 'empty' or an example (GET /templates: gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80, lock), device?, board? }` create |
 | GET | /projects/:p | project json + `fileTree` |
 | PUT | /projects/:p | replace project json |
 | DELETE | /projects/:p | move project to `.trash` inside workspace |

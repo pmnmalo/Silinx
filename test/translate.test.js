@@ -34,6 +34,7 @@ function run(ex, sources) {
 // the example's HDL sources that cannot be translated, and why (test benches with tasks, waits with a timeout…)
 const UNTRANSLATABLE = {
   'traffic/sim/tb_traffic.vhd': "line 49: the function 'bits' (its parameter 'v' is unconstrained, of a width not known) cannot be translated to Verilog",
+  'lock/sim/tb_lock.vhd': "line 37: the function 'bits' (its parameter 'v' is unconstrained, of a width not known) cannot be translated to Verilog",
   'blinky/sim/tb_top.vhd': "line 58: the procedure 'read_display' cannot be translated to Verilog",
   'pong/sim/tb_pong.v': "line 27: a declaration of kind 'task' cannot be translated to VHDL",
   'stopwatch/sim/tb_stopwatch.vhd': "line 54: the procedure 'press' cannot be translated to Verilog",

@@ -90,7 +90,7 @@ npm run build:standalone    # writes dist/Silinx.html (~5 MB)
 
 One file, no server: open it in a browser or share it. It includes the editor, schematics, ASM
 editor, simulation/SSim, pin planner and ISE project import/export; the examples (*gates*, *breadboard*, *traffic*,
-*blinky*, *pong*, *stopwatch*, *clock*, *vga*, *isqrt*, *uart*, *micro80*) are embedded. Projects are stored in the browser (*File ▸ Export Project (.zip)…* / *Import Project…* to move
+*blinky*, *pong*, *stopwatch*, *clock*, *vga*, *isqrt*, *uart*, *micro80*, *lock*) are embedded. Projects are stored in the browser (*File ▸ Export Project (.zip)…* / *Import Project…* to move
 them), or, in Chrome / Edge, in a folder on the disk (*File ▸ Open Workspace Folder…*: the File
 System Access API; each project a folder as the full application writes it, so the same folder opens
 there; web/js/project-store.js). `--site <dir>` also writes the GitHub Pages site: the page and its `assets/` (the device
@@ -123,7 +123,9 @@ examples/   example projects (for the Basys2; each built by the Silinx toolchain
             with the buttons), vga (VHDL, a picture on a VGA monitor),
             isqrt (a C function made into hardware by Silinx HLS, on the display),
             uart (VHDL, serial communication with a terminal),
-            micro80 (VHDL, a microprocessor, light8080, running a program from block RAM); each with a self-checking testbench
+            micro80 (VHDL, a microprocessor, light8080, running a program from block RAM),
+            lock (a combination lock made of every kind of source: VHDL, Verilog, a schematic, a state diagram, a
+            truth table, a Petri net, an ASM chart, a digital circuit, C and C++); each with a self-checking testbench
 docs/       ARCHITECTURE.md (Silinx's architecture as a whole: the editions, the layers, each part and its
             files), user/ (the user's guide, in English and Portuguese), IR.md (parser intermediate
             representation), PROJECT.md (project model and API), OPEN-TOOLCHAIN.md (how the open

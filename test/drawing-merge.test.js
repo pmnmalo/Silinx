@@ -25,7 +25,7 @@ const collsOf = (d) => Object.entries(d).filter(([, v]) => Array.isArray(v) && v
 test('drawingKind: a drawing\'s kind by its name', () => {
   assert.deepEqual(['a.sch.json', 'src/x.asm.json', 'X.FSM.JSON', 't.tt.json', 'f.bool.json', 'n.pn.json', 'b.circ.json', 'a.json', 'a.vhd', null].map(drawingKind), ['sch', 'asm', 'fsm', 'tt', 'bool', 'pn', 'circ', null, null, null]);
   assert.ok(DRAWINGS.length >= 15, DRAWINGS.length);
-  assert.deepEqual([...new Set(DRAWINGS.map(drawingKind))].sort(), ['asm', 'bool', 'circ', 'fsm', 'sch']);
+  assert.deepEqual([...new Set(DRAWINGS.map(drawingKind))].sort(), ['asm', 'bool', 'circ', 'fsm', 'pn', 'sch']);
 });
 
 test('diffDrawings on every drawing: nothing against itself; an object added, removed, moved, changed; a property', () => {

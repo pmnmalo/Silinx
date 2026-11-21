@@ -18,7 +18,7 @@ const src = (p) => ex.sources.find((s) => s.path === p).text;
 const ok = (bytes) => bytes.map((byte) => ({ byte, error: false }));
 
 test('the examples list it after isqrt, before micro80 (#2544)', () => {
-  assert.deepEqual(EXAMPLES.slice(-3), ['isqrt', 'uart', 'micro80']);
+  assert.deepEqual(EXAMPLES.slice(-4, -1), ['isqrt', 'uart', 'micro80']);   // (then lock, #5111)
 });
 
 // a mutation of the design makes the testbench fail: it does check what it says

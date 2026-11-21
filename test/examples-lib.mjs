@@ -15,15 +15,15 @@ import { topForBoard } from '../core/board-generics.js';
 import { synthesisSources } from '../core/translate-off.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const EXAMPLES = EXAMPLE_ORDER;   // gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80
+export const EXAMPLES = EXAMPLE_ORDER;   // gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80, lock
 // the examples of the ISE records made before isqrt (#1966): the Spartan-6's night 1 (packages/silinx-fpga/research/s6/
 // measured), XPower's fit (test/fixtures/power); isqrt, uart (#2537), micro80 (#2544) and breadboard (#3901) are checked against
-// ISE in test/ise/examples.test.js
+// ISE in test/ise/examples.test.js (lock, #5111, too)
 // the examples whose HDL is generated from a digital circuit (#3901): the circuit is their drawing, their modules
 // (an entity per IC, two models each) no schematic's; Convert to Schematic of a circuit is #3901's phase 4c
 export const CIRCUIT_EXAMPLES = ['breadboard'];
 export const HDL_EXAMPLES = EXAMPLES.filter(n => !CIRCUIT_EXAMPLES.includes(n));
-export const ISE_RECORDED = EXAMPLES.filter(n => n !== 'breadboard' && n !== 'isqrt' && n !== 'uart' && n !== 'micro80');
+export const ISE_RECORDED = EXAMPLES.filter(n => n !== 'breadboard' && n !== 'isqrt' && n !== 'uart' && n !== 'micro80' && n !== 'lock');
 // the boards (and variants) of the devices of the Silinx toolchain: the examples run on all of them; the Spartan-3E's
 // also through ISE (test/ise/examples.test.js, the power estimates), the Spartan-6's (#732, no variants; the Atlys's
 // seven-segment display and VGA on its VHDCI connector) checked against ISE in packages/silinx-fpga/research/s6 so far

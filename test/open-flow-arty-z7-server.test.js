@@ -13,10 +13,10 @@ import { zynqTargets, zynqParts, SLOW_ONES } from './zynq-examples-lib.mjs';
 const QUALITY = {
   'arty-z7-20': { gates: [1, 0, null], breadboard: [4, 8, 241.25], traffic: [76, 60, 131.2], blinky: [79, 96, 168.15],
     pong: [267, 219, 111.3], stopwatch: [177, 212, 100.8], clock: [150, 168, 133.99], vga: [116, 59, 153.49],
-    isqrt: [68, 87, 179.73], uart: [105, 143, 174.49], micro80: [153, 187, 114.16] },
+    isqrt: [68, 87, 179.73], uart: [105, 143, 174.49], micro80: [153, 187, 114.16], lock: [110, 181, 136.59] },
   'arty-z7-10': { gates: [1, 0, null], breadboard: [4, 8, 237.14], traffic: [76, 60, 134.44], blinky: [79, 96, 165.76],
     pong: [268, 219, 105.39], stopwatch: [174, 212, 101.17], clock: [150, 168, 130.99], vga: [116, 59, 147.82],
-    isqrt: [69, 87, 182.68], uart: [103, 143, 166.03], micro80: [151, 187, 111.46] },
+    isqrt: [69, 87, 182.68], uart: [103, 143, 166.03], micro80: [151, 187, 111.46], lock: [110, 181, 140.61] },
 };
 // the warnings of the examples below the 125 MHz clock (#4877)
 const EXPECTED = { 'arty-z7-20': SLOW_ONES, 'arty-z7-10': SLOW_ONES };
