@@ -303,11 +303,14 @@ export function generatePetri(model, lang, { source } = {}) {
     for (const p of m.places) L.push(`  reg ${vlogRange(W(p))}${reg(p)} = ${num(p.tokens, W(p))};`);
     for (const t of m.transitions) if (Object.keys(t.outputs).length) L.push(`  reg ${fr(t)} = 1'b0;`);
     for (const p of m.places) L.push(`  reg [8:0] v_${p.name}, add_${p.name};`);
-    L.push('', `  always @(posedge ${m.clock}) begin`, `    if (${rstOn}) begin`);
-    for (const p of m.places) L.push(`      ${reg(p)} <= ${num(p.tokens, W(p))};`);
-    for (const t of m.transitions) if (Object.keys(t.outputs).length) L.push(`      ${fr(t)} <= 1'b0;`);
-    L.push('    end else begin');
-    for (const p of m.places) L.push(`      v_${p.name} = ${reg(p)};`, `      add_${p.name} = 9'd0;`);
+    const pulsed = m.transitions.filter(t => Object.keys(t.outputs).length);
+    if (pulsed.length) L.push(`  reg ${pulsed.map(t => `go_${t.name}`).join(', ')};`);
+    // the step, combinational (blocking assignments, #5113): v_ what is left to take, add_ what is put, go_ a transition
+    // that fires; the clocked block below only registers the new marking (non-blocking)
+    const step = m.places.length || m.transitions.length;
+    if (step) L.push('', '  always @(*) begin');
+    for (const p of m.places) L.push(`    v_${p.name} = ${reg(p)};`, `    add_${p.name} = 9'd0;`);
+    for (const t of pulsed) L.push(`    go_${t.name} = 1'b0;`);
     for (const t of m.transitions) {
       const pre = preset(m, t.id), post = postset(m, t.id);
       const P = id => placeOf(m, id);
@@ -318,13 +321,19 @@ export function generatePetri(model, lang, { source } = {}) {
         const back = pre.filter(b => b.place === a.place && !b.inhibitor).reduce((s, b) => s + b.weight, 0);
         conds.push(`(v_${P(a.place).name} + add_${P(a.place).name} + ${a.weight} <= ${P(a.place).capacity + back})`);
       }
-      L.push(`      // ${t.name}`, `      if (${conds.length ? conds.join(' && ') : "1'b1"}) begin`);
-      for (const a of pre) if (!a.inhibitor) L.push(`        v_${P(a.place).name} = v_${P(a.place).name} - ${a.weight};`);
-      for (const a of post) L.push(`        add_${P(a.place).name} = add_${P(a.place).name} + ${a.weight};`);
-      if (Object.keys(t.outputs).length) L.push(`        ${fr(t)} <= 1'b1;`, '      end else begin', `        ${fr(t)} <= 1'b0;`);
-      L.push('      end');
+      L.push(`    // ${t.name}`, `    if (${conds.length ? conds.join(' && ') : "1'b1"}) begin`);
+      for (const a of pre) if (!a.inhibitor) L.push(`      v_${P(a.place).name} = v_${P(a.place).name} - ${a.weight};`);
+      for (const a of post) L.push(`      add_${P(a.place).name} = add_${P(a.place).name} + ${a.weight};`);
+      if (Object.keys(t.outputs).length) L.push(`      go_${t.name} = 1'b1;`);
+      L.push('    end');
     }
+    if (step) L.push('  end');
+    L.push('', `  always @(posedge ${m.clock}) begin`, `    if (${rstOn}) begin`);
+    for (const p of m.places) L.push(`      ${reg(p)} <= ${num(p.tokens, W(p))};`);
+    for (const t of pulsed) L.push(`      ${fr(t)} <= 1'b0;`);
+    L.push('    end else begin');
     for (const p of m.places) L.push(`      ${reg(p)} <= v_${p.name} + add_${p.name};`);
+    for (const t of pulsed) L.push(`      ${fr(t)} <= go_${t.name};`);
     L.push('    end', '  end', '');
     for (const o of m.outputs) {
       const w = ow.get(o.name);
