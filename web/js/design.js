@@ -30,6 +30,7 @@ import { removeFromProject as removeEntries, topRefusal } from '/core/project-en
 import { HDL_RE } from '/core/file-kinds.js';
 import { flowFileRows } from './flow-files-tree.js';
 import { renderFlowFiles } from './tasks-flow-files.js';
+import { compositionOf, compositionRows } from './design-comp.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -71,6 +72,9 @@ export function renderHierarchy() {
     const prim = !info && isUnisimPrimitive(modName);
     if (prim) modName = String(modName).toUpperCase();
     const isTop = !instName && isTopName(modName);   // (the root's row only: the top's instances are plain rows, #2877)
+    // (a palette symbol's block, its HDL generated: shown as its composition, #4984)
+    const blk = instName && compositionOf(info);
+    if (blk) { compositionRows(parentUl, { blk, instName, path, depth, treeItem, select: () => select({ type: 'module', module: modName, file: info.file, path, instName }) }); return; }
     const file = info?.file || '?';
     // "label - module" like ISE; just the name when the instance is labelled with the module name
     const label = instName && instName.toLowerCase() !== String(modName).toLowerCase() ? `${instName} - ${modName}` : modName;

@@ -207,3 +207,45 @@ uiTest('#4981 a double-click on an ADD8 enters its composition; on a gate, its P
   await page.waitFor((ed) => document.activeElement?.closest?.(`${ed} .se-props`) && document.activeElement.tagName === 'INPUT', [ED], { what: 'the gate\'s first field' });
   assert.equal(await page.eval(() => window.Silinx.active.id), 'sch:src/top.sch.json');
 });
+
+// #4984: the Design pane shows a palette symbol's block as its composition (ADD8, then its ADD4s, then their FA1s), not
+// as the HDL generated for it; a row opens the composition at its level; in Portuguese
+uiTest('#4984 the Design pane: an ADD8 of the top schematic as its composition, each level a row opening it there; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'CompHier', files: { 'src/top.sch.json': JSON.stringify(adderDoc()) }, top: 'top' });
+  await page.openProject('CompHier');
+  const rows = () => page.eval(() => [...document.querySelectorAll('#hier .row')].map((r) => {
+    let d = 0;
+    for (let u = r.parentElement.parentElement; u && u.id !== 'hier'; u = u.parentElement) if (u.tagName === 'UL') d++;
+    const b = [...r.querySelectorAll('.badge')].map((x) => `[${x.textContent}${x.classList.contains('base') ? '*' : ''}]`);
+    return `${'  '.repeat(d - 1)}${r.querySelector('.lbl').textContent}${b.length ? ` ${b.join(' ')}` : ''}${r.querySelector('.meta') ? ` ${r.querySelector('.meta').textContent}` : ''}`;
+  }));
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent === 'u1 - ADD8'), [], { what: 'its composition\'s row' });
+  const all = await rows();
+  const at = all.findIndex((r) => r.trim().startsWith('u1 - ADD8'));
+  assert.deepEqual(all.slice(at, at + 11).map((r) => r.slice(all[at].indexOf('u1'))), [
+    'u1 - ADD8 [Composition*] (composition)',
+    '  U0 - ADD4 [Composition*] (composition)', '    U0 - FA1 [Composition*] (composition)', '    U1 - FA1 [Composition*] (composition)', '    U2 - FA1 [Composition*] (composition)', '    U3 - FA1 [Composition*] (composition)',
+    '  U1 - ADD4 [Composition*] (composition)', '    U0 - FA1 [Composition*] (composition)', '    U1 - FA1 [Composition*] (composition)', '    U2 - FA1 [Composition*] (composition)', '    U3 - FA1 [Composition*] (composition)']);
+  assert.ok(!all.some((r) => /top_add/i.test(r)), 'not the HDL generated for it');
+  // the FA1 U2 of the ADD4 U1, opened: the composition there
+  await page.eval(() => {
+    const lis = [...document.querySelectorAll('#hier li')];
+    const u1 = lis.find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
+    u1.querySelector(':scope > .row .twisty')?.click();
+  });
+  const fa = await page.eval(() => {
+    const u1 = [...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
+    return [...u1.querySelectorAll('li > .row')].find((r) => r.querySelector('.lbl').textContent === 'U2 - FA1').querySelector('.badge').getBoundingClientRect().width > 0;
+  });
+  assert.ok(fa, 'its FA1 U2 shown');
+  await page.eval(() => {
+    const u1 = [...document.querySelectorAll('#hier li')].find((li) => li.querySelector(':scope > .row .lbl')?.textContent === 'U1 - ADD4');
+    [...u1.querySelectorAll('li > .row')].find((r) => r.querySelector('.lbl').textContent === 'U2 - FA1').querySelector('.badge').click();
+  });
+  await page.waitFor(() => window.Silinx.active?.id === 'comp:ADD8' && window.Silinx.active.composition?.path.join('/') === 'ADD8/ADD4/FA1', [], { what: 'opened at U1 › U2' });
+  assert.equal((await comp(page)).banner, 'Read-only, how ADD8 is built: ADD8 › U1 (ADD4) › U2 (FA1)');
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row')].some((r) => r.querySelector('.lbl').textContent === 'u1 - ADD8' && /Composição/.test(r.textContent) && /\(composição\)/.test(r.textContent)), [], { what: 'its rows in Portuguese' });
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+});

@@ -14,9 +14,10 @@ export function liveUpdated(editor) {
 
 /**
  * Open the composition of a palette symbol { type, params } in a tab of its own; `from`: { editor, symId, instance,
- * docName } the symbol in a schematic whose Try it gives it its values. Resolves to the tab, or null (no composition).
+ * docName } the symbol in a schematic whose Try it gives it its values; `at`: the level shown first, by the instances
+ * pushed into from the top (['U1', 'U2'], the Design pane's row, #4984). Resolves to the tab, or null (no composition).
  */
-export async function openComposition(sym, from = null) {
+export async function openComposition(sym, from = null, at = []) {
   const [L, LV, { mountSchEditor }] = await Promise.all([import('/core/symlib.js'), import('/core/symlib-live.js'), import('./sch-editor.js')]);
   const comp = L.composition(sym.type, sym.params);
   if (!comp) return null;
@@ -84,6 +85,14 @@ export async function openComposition(sym, from = null) {
       const up = () => { if (path.length > 1) go(path.slice(0, -1)); };
       drawBar(); banner();
       docRef.composition = { symbol: comp.symbol, path: path.map(x => x.module) };
+      // (a level below the top asked for: the instances pushed into, as far as they are found)
+      const steps = [...path];
+      for (const inst of at) {
+        const s = levelOf(steps[steps.length - 1].module).doc.symbols.find(x => x.type === 'module' && x.name === inst);
+        if (!s) break;
+        steps.push({ module: s.params.module, instance: s.name });
+      }
+      if (steps.length > 1) go(steps);
       if (tab.from) refresh();
       return { destroy: () => { clearTimeout(timer); tabs.delete(tab); ed.destroy?.(); } };
     },
