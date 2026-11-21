@@ -199,10 +199,10 @@ async function renewLink(name, cur) {
 export const COLLAB_TOOLS = [
   {
     name: 'share_project', title: 'Share a project live',
-    description: 'Share a project live, as Share Project… with Live chosen (Share Module… with top). start: the follow link, read only (in Silinx or follow_project), its files and drawings as they change on disk; with editors: true an editor\'s link too (default none, promote then refused). status: who follows (viewer or editor, p2p or relay), what they look at, the share\'s mode. promote / demote (user): as the Sharing menu; a demotion renews the editors\' link. renew (#4745): as Renew Editor Link, a new editors\' link; the editors not in the share edit no more, those in it keep editing. stop ends it. Through a running Silinx server\'s relay (server; another computer\'s only when config.json\'s relay.relays names it), end-to-end encrypted: the relay reads nothing. build/ is not shared. A lost connection resumes on its own.',
+    description: 'Share a project live, as Share Project… with Live chosen (Share Module… with top). start: the follow link, read only (in Silinx or follow_project), its files and drawings as they change on disk; with editors: true an editor\'s link too (default none, promote then refused). status: who follows (viewer or editor, p2p or relay), what they look at, the share\'s mode. promote / demote (user), renew: as the Sharing menu; a demotion renews the editors\' link. stop ends it. Through a running Silinx server\'s relay (server; another computer\'s only when config.json\'s relay.relays names it), end-to-end encrypted: the relay reads nothing. build/ is not shared. A lost connection resumes on its own.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
-      action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'renew', 'stop'], description: 'start (default), status, promote, demote, renew or stop.' },
+      action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'renew', 'stop'], description: 'start (default), status, promote, demote, renew or stop. renew (#4745): a new editors\' link, as Renew Editor Link; the editors not in the share edit no more, those in it keep editing.' },
       user: STR('promote, demote: the participant, by the name status lists (a share with editors only).'),
       name: STR('The name the followers see (default: "MCP agent").'),
       server: STR(`The address of the Silinx server whose relay shares it (default ${DEFAULT_SERVER}).`),
