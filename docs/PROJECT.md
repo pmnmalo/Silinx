@@ -28,6 +28,9 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   Zynq-7000's XC7Z010 / XC7Z020's default, #4680, the Spartan-7's, Kintex-7's and the other Zynq-7000 parts' only one, #3895); without it, the mode of Toolchain Settings.
 * `kind`: `"design"` for a design and simulation project (no FPGA: drawings and simulation, no board, no implementation;
   #3891, #4103); absent, an FPGA project.
+  `"codesign"` for a co-design project (#5041, roadmap #4695; not made yet): its top is its one System document,
+  `<name>.sys.json` (`core/system-doc.js`, checked by `core/system-check.js`, #4697), its nodes and links; it has no
+  `board`: each FPGA node is a module of the project on a board of its own (`board`, `variant`, its ports' `pins`).
 * `topSourceType`: the Top-Level Source Type (#4105): `hdl` (absent too), `sch`, `fsm`, `asm`, `tt`, `petri`, `circuit`,
   `c` or `cpp` (`core/top-types.js`); a design and simulation project's is a drawing's.
 * `impl.optMode` and `impl.optLevel`: ISE's Optimization Goal and Effort, and the project's Optimization (#2470):
