@@ -24,6 +24,7 @@
   "examples/clock": [],
   "examples/gates": [],
   "examples/isqrt": [],
+  "examples/lock": [],
   "examples/micro80": [],
   "examples/pong": [],
   "examples/stopwatch": [],

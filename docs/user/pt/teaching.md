@@ -23,6 +23,7 @@ Vão das primeiras portas lógicas a um microprocessador:
 | **isqrt** | uma função em C transformada em hardware |
 | **uart** | comunicação série com um terminal |
 | **micro80** | um microprocessador a correr um programa de uma RAM de blocos |
+| **lock** | uma fechadura de código feita de todos os tipos de fonte ao mesmo tempo: VHDL, Verilog, um esquemático, um diagrama de estados, uma tabela de verdade, uma rede de Petri, um ASM, um circuito digital, C e C++ |
 
 *Novo Projeto…* começa a partir de qualquer um deles.
 

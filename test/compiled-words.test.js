@@ -183,6 +183,7 @@ const EXPECTED = {
   isqrt: { chains: 1, registers: 1, cells: [342, 289] },
   uart: { chains: 3, registers: 3, cells: [588, 445] },
   micro80: { chains: 2, registers: 2, cells: [762, 628] },
+  lock: { chains: 4, registers: 4, cells: [737, 453] },
 };
 // (#659, #670: the equalities with a constant; the tables (their inputs at most, their words, their outputs), the
 // cells before and after; the registers wordLevel made again of the flip-flops the tables feed)
@@ -198,12 +199,13 @@ const TABLES = {
   isqrt: [1, { tables: 35, inputs: 12, words: 22512, outputs: 78, cells: [285, 131] }, 6],
   uart: [6, { tables: 50, inputs: 11, words: 23536, outputs: 96, cells: [433, 222] }, 6],
   micro80: [2, { tables: 119, inputs: 10, words: 51752, outputs: 196, cells: [617, 439] }, 5],
+  lock: [4, { tables: 78, inputs: 12, words: 18936, outputs: 110, cells: [429, 227] }, 8],
 };
 // (#670: the part of its operations a step evaluates at most, as the profile estimates it: clock's and vga's models,
 // their display's and their pixel clock's logic changing at every other step, unguarded; blinky's display refresh
 // counter at every step, #983; isqrt's machine, called again and again, at every step; micro80's processor too)
 // (traffic: its display's and its timer's counters, of its own generics, at every step, #3710)
-const WORK = { gates: 1, breadboard: 1, traffic: 1, blinky: 0.45, pong: 0.5, stopwatch: 0.2, clock: 1, vga: 1, isqrt: 1, uart: 1, micro80: 1 };
+const WORK = { gates: 1, breadboard: 1, traffic: 1, blinky: 0.45, pong: 0.5, stopwatch: 0.2, clock: 1, vga: 1, isqrt: 1, uart: 1, micro80: 1, lock: 1 };
 test('#650 #659 every example\'s Post-Synthesis Simulation Model at word level, its irregular logic as tables: the same outputs as bit by bit', { timeout: 600000 }, async () => {
   for (const name of EXAMPLES) {
     const { postsynth } = await models(name, ['postsynth']);

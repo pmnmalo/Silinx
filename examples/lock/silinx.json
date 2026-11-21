@@ -1,0 +1,73 @@
+{
+  "name": "lock",
+  "version": 1,
+  "device": {
+    "family": "spartan3e",
+    "part": "xc3s250e",
+    "package": "cp132",
+    "speed": "-4"
+  },
+  "board": "basys2",
+  "top": "top",
+  "simTop": "tb_lock",
+  "files": [
+    {
+      "path": "src/sync.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/debounce.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/digit_ok.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/lock.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/alarm.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/timer.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/control.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/sevenseg.v",
+      "lang": "verilog",
+      "role": "design"
+    },
+    {
+      "path": "src/top.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "sim/tb_lock.vhd",
+      "lang": "vhdl",
+      "role": "sim"
+    }
+  ],
+  "constraints": "constraints/lock.ucf",
+  "stimuli": {},
+  "impl": {
+    "optMode": "Speed",
+    "optLevel": 1,
+    "startupClk": "JtagClk"
+  },
+  "preferredLanguage": "vhdl"
+}

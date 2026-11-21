@@ -8,5 +8,6 @@ export const S3A_HEADER_BITS = {
   gates: [], breadboard: [], traffic: [...SEG, 'dp', ...AN], blinky: ['btn<1>', ...SEG, 'dp', ...AN], pong: [...BTN, ...SEG, ...AN, 'dp'],
   stopwatch: [...BTN, ...SEG, 'dp', ...AN], clock: [...BTN, ...SEG, ...AN, 'dp'], vga: BTN, isqrt: [...SW, ...SEG, 'dp', ...AN],
   uart: [...SEG, 'dp', ...AN], micro80: [...SW, ...SEG, 'dp', ...AN],
+  lock: ['btn<1>', 'btn<2>', ...SEG, 'dp', ...AN],
 };
 export const s3aHeaderWarnings = name => S3A_HEADER_BITS[name].map((b, i) => `${b}: the s3a-starter has no pin for it; it is on the header pin ${POOL[i]} (the board's constraints)`);

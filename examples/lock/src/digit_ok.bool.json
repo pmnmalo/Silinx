@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "digit_ok",
+  "inputs": [
+    "pos1",
+    "pos0",
+    "d3",
+    "d2",
+    "d1",
+    "d0"
+  ],
+  "outputs": [
+    "ok"
+  ],
+  "table": {
+    "ok": "0010000000000000100000000000000000100000000000000000001000000000"
+  },
+  "exprs": {},
+  "notes": "The lock's code, 2 0 2 6: ok is 1 when the digit d (d3 the MSB) is the code's digit at the position pos (0: the first digit typed). A digit of 10 to 15 is never right.",
+  "form": "sop",
+  "lang": "vhdl",
+  "generatedFile": "src/digit_ok.vhd"
+}

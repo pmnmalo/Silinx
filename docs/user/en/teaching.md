@@ -23,6 +23,7 @@ the first gates to a microprocessor:
 | **isqrt** | a C function made into hardware |
 | **uart** | serial communication with a terminal |
 | **micro80** | a microprocessor running a program from a block RAM |
+| **lock** | a combination lock made of every kind of source at once: VHDL, Verilog, a schematic, a state diagram, a truth table, a Petri net, an ASM chart, a digital circuit, C and C++ |
 
 *New Project…* starts from any of them.
 
