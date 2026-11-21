@@ -10,7 +10,7 @@
 //   fifoPort(f, 'dout' | 'empty_n' | 'read' | 'din' | 'full_n' | 'write') -> a stream's signal, for the test bench
 import { structPragmas } from './c-aggregate.js';
 import { fifoSuffix } from './c-fifo.js';
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vhdlEntity, vhdlType, vhdlWidthPorts, vlogModule, vlogRange, vlogWidthPorts } from './hdl-emit.js';
 
 const SIDE = { __proto__: null, data: 'TDATA', keep: 'TKEEP', strb: 'TSTRB', user: 'TUSER', last: 'TLAST', id: 'TID', dest: 'TDEST' };
 const modeOf = (a) => String(a.mode || Object.keys(a).find((k) => /^(ap_|s_axi|m_axi|axis|bram)/.test(k)) || '').toLowerCase();
@@ -169,9 +169,8 @@ export function axisTop(gen, names, lang, side) {
 function vhdlTop(name, core, ports, map, word) {
   const T = vhdlType;
   const L = [`-- ${name}: Vitis HLS's AXI4-Stream ports (axis) and active-low reset, around ${core}`,
-    'library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${name} is`, '  port ('];
-  ports.forEach((p, k) => L.push(`    ${p.name} : ${p.dir} ${T(p.w)}${k < ports.length - 1 ? ';' : ''}`));
-  L.push('  );', `end ${name};`, '', `architecture behav of ${name} is`, '  signal ap_rst_i : std_logic;');
+    'library ieee;', 'use ieee.std_logic_1164.all;', '', ...vhdlEntity(name, { ports: vhdlWidthPorts(ports), end: 'name' })];
+  L.push('', `architecture behav of ${name} is`, '  signal ap_rst_i : std_logic;');
   for (const x of word) L.push(`  signal ${x.sig} : ${T(x.w)};`);
   L.push('begin', '  ap_rst_i <= not ap_rst_n;');
   for (const x of word) {
@@ -184,9 +183,8 @@ function vhdlTop(name, core, ports, map, word) {
 
 function verilogTop(name, core, ports, map, word) {
   const R = vlogRange;
-  const L = [`// ${name}: Vitis HLS's AXI4-Stream ports (axis) and active-low reset, around ${core}`, `module ${name} (`];
-  ports.forEach((p, k) => L.push(`  ${p.dir === 'in' ? 'input ' : 'output'} wire ${R(p.w)}${p.name}${k < ports.length - 1 ? ',' : ''}`));
-  L.push(');', '  wire ap_rst_i = ~ap_rst_n;');
+  const L = [`// ${name}: Vitis HLS's AXI4-Stream ports (axis) and active-low reset, around ${core}`, ...vlogModule(name, { ports: vlogWidthPorts(ports), dirWidth: 6, kind: 'wire' })];
+  L.push('  wire ap_rst_i = ~ap_rst_n;');
   for (const x of word) {
     if (x.dir === 'in') L.push(`  wire ${R(x.w)}${x.sig} = {${[...x.parts].reverse().map((p) => p.name).join(', ')}};`);
     else {

@@ -9,7 +9,7 @@
 //   wordAdapter(name, word, lang, stall) -> the adapter's module, its lines
 //     word: { dir: 'in' | 'out', w, members: [{ off, w }] } (its ports w_dout / w_empty_n / w_read, or w_din / w_full_n /
 //     w_write; each member k's m<k>_dout / m<k>_empty_n / m<k>_read, or m<k>_din / m<k>_full_n / m<k>_write)
-import { vhdlType, vlogRange } from './hdl-emit.js';
+import { vhdlEntity, vhdlType, vhdlWidthPorts, vlogModule, vlogRange, vlogWidthPorts } from './hdl-emit.js';
 
 /** The adapter's ports: [name, dir, w], the clock's first. */
 export function wordPorts(word, stall = false) {
@@ -34,9 +34,8 @@ function vhdlWord(name, word, stall) {
   const bits = (s, m) => (m.w === 1 && word.w === 1 ? s : m.w === 1 ? `${s}(${m.off})` : `${s}(${m.off + m.w - 1} downto ${m.off})`);
   const ce = stall ? " and ap_ce = '1'" : '';
   const L = [`-- a stream of structs of the top, one word (#pragma HLS DATAFLOW): its members' FIFOs, ${word.dir === 'in' ? 'each read once a word' : 'each held until all are written'}`,
-    'library ieee;', 'use ieee.std_logic_1164.all;', '', `entity ${name} is`, '  port ('];
-  ps.forEach(([n, d, w], i) => L.push(`    ${n} : ${d} ${T(w)}${i < ps.length - 1 ? ';' : ''}`));
-  L.push('  );', `end ${name};`, '', `architecture behav of ${name} is`, '  signal ap_all : std_logic;');
+    'library ieee;', 'use ieee.std_logic_1164.all;', '', ...vhdlEntity(name, { ports: vhdlWidthPorts(ps.map(([n, d, w]) => ({ name: n, dir: d, w }))), end: 'name' })];
+  L.push('', `architecture behav of ${name} is`, '  signal ap_all : std_logic;');
   if (word.dir === 'in') {
     L.push(`  signal ${ks.map((k) => `m${k}_taken`).join(', ')} : std_logic := '0';`, '  signal w_take : std_logic;', 'begin');
     for (const [k, m] of word.members.entries()) L.push(`  m${k}_dout <= ${bits('w_dout', m)};`, `  m${k}_empty_n <= w_empty_n and not m${k}_taken;`);
@@ -66,7 +65,7 @@ function verilogWord(name, word, stall) {
   const bits = (s, m) => (word.w === 1 ? s : m.w === 1 ? `${s}[${m.off}]` : `${s}[${m.off + m.w - 1}:${m.off}]`);
   const ce = stall ? ' && ap_ce' : '';
   const L = [`// a stream of structs of the top, one word (#pragma HLS DATAFLOW): its members' FIFOs, ${word.dir === 'in' ? 'each read once a word' : 'each held until all are written'}`,
-    `module ${name} (${ps.map(([n, d, w]) => `${d === 'in' ? 'input' : 'output'} wire ${W(w)}${n}`).join(', ')});`];
+    ...vlogModule(name, { inline: true, ports: vlogWidthPorts(ps.map(([n, d, w]) => ({ name: n, dir: d, w }))), kind: 'wire' })];
   if (word.dir === 'in') {
     L.push(`  reg ${ks.map((k) => `m${k}_taken = 1'b0`).join(', ')};`);
     for (const [k, m] of word.members.entries()) L.push(`  assign m${k}_dout = ${bits('w_dout', m)};`, `  assign m${k}_empty_n = w_empty_n & ~m${k}_taken;`);
