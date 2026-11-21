@@ -185,6 +185,7 @@ uiTest('#3196 the browser edition in Portuguese: the Git commands; Store Project
   await boot(page);
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Fresh');
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.dialogButton('Next >');
@@ -275,6 +276,7 @@ uiTest('#3534 #4619 the browser edition: Sign in with GitHub… in the Collabora
   await page.eval(() => { localStorage.removeItem('silinx.github-token'); sessionStorage.removeItem('silinx.github-token'); });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'SignTree');
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.dialogButton('Next >');

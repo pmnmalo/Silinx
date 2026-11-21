@@ -74,6 +74,7 @@ uiTest('#4105 New Project: a Petri Net, a Circuit, a C function as the top; Port
     const name = `NewTop_${type}`;
     await page.menu('File', 'New Project…');
     await page.waitDialog('New Project Wizard');
+    await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
     await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
     await page.dialogButton('Next >');
     await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');

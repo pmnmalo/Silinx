@@ -217,6 +217,7 @@ uiTest('dialogs close with Escape and only the topmost dialog handles Enter / Es
   await makeProject(env, { name: 'Dup' });
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Dup');
   await page.dialogButton('Next >');
   await page.waitDialog('Replace Project');

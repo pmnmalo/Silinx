@@ -38,10 +38,12 @@ const warnings = async page => (await page.consoleText()).split('\n').filter(l =
 uiTest('#3780 New Project: Design and simulation only, no board, no device, no HDL; the flow left out', E, async (page) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  // (its kind first, #5041: No FPGA; then its name alone: no example to start from, no Project Kind field)
+  await page.click('.dlg-overlay .kind-card[data-kind=design] input');
+  await page.dialogButton('Next >');
+  await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Create New Project');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Drawn');
-  const kinds = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select')][1].options.length);
-  assert.equal(kinds, 2);
-  await page.fill('.dlg-overlay .wiz-main select', 'design', { index: 1 });
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent)), ['Name:', 'Location:']);
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
   // (its fields: the Top-Level Source Type alone, a drawing: no HDL)
@@ -164,7 +166,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   assert.equal(await page.eval(() => window.Silinx.project.kind), undefined);
 });
 
-uiTest('#3780 in Portuguese: New Project\'s Project Kind, the refusal of an HDL file', E, async (page) => {
+uiTest('#3780 in Portuguese: the refusal of an HDL file (New Project\'s kind in Portuguese: test/ui/project-kind-step.test.js)', E, async (page) => {
   await makeProject(env, { name: 'DrawnPt', kind: 'design', files: { 'src/traffic.fsm.json': FSM }, top: 'traffic' });
   await page.openProject('DrawnPt');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
@@ -172,15 +174,6 @@ uiTest('#3780 in Portuguese: New Project\'s Project Kind, the refusal of an HDL 
     await writeWs(env, 'DrawnPt', 'src/extra.vhd', 'entity extra is end;\n');
     await page.eval(async () => (await import('/js/app.js')).addToProject('src/extra.vhd'));
     await page.waitConsole(/ERROR: src\/extra\.vhd: um projeto só de desenho e simulação tem apenas desenhos: escolha uma placa nas Propriedades do Desenho para acrescentar fontes HDL/);
-    page.eval(async () => (await import('/js/wizards.js')).newProjectWizard()).catch(() => {});
-    await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main'), [], { what: 'New Project' });
-    const kind = await page.eval(() => {
-      const l = [...document.querySelectorAll('.dlg-overlay .form-grid > label')].find(x => x.textContent === 'Tipo de Projeto:');
-      return l && [...l.nextElementSibling.options].map(o => o.textContent);
-    });
-    assert.deepEqual(kind, ['Projeto para FPGA (uma placa e um dispositivo)', 'Só desenho e simulação (sem FPGA)']);
-    await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].pop().click());
-    await page.waitNoDialog();
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }

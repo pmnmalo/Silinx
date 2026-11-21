@@ -15,6 +15,7 @@ import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
 import { KIND_OPTIONS, kindFields, makeDesignProject } from './project-kind-ui.js';
+import { kindStep } from './project-kind-step.js';
 import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
 import { topSourceFiles } from '/core/top-source.js';
 import { DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
@@ -171,12 +172,10 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       : { location: 'this browser: ', browser: true, hint: kept.supported ? "Projects are kept in this browser's storage (File ▸ Open Workspace Folder… keeps them in a folder on the disk)." : "Projects are kept in this browser's storage (a folder on the disk needs Chrome or Edge)." };
   const name = h('input', { type: 'text', value: st.name, placeholder: 'project name' });
   const tplSel = select([['empty', 'Empty project'], ...templates.map(t => [t, `Example: ${t}`]), ...tests.map(t => [t, `Test design: ${t}`])], template);
-  // the project's kind (#3780): an FPGA project, or a design and simulation one (no board, no device, no HDL); an example's
-  // an FPGA project
-  const kindSel = select(KIND_OPTIONS, 'fpga');
-  const syncKindSel = () => { kindSel.disabled = tplSel.value !== 'empty'; if (kindSel.disabled) kindSel.value = 'fpga'; };
-  tplSel.addEventListener('change', syncKindSel);
-  syncKindSel();
+  // the project's kind, asked first (#5041, #3780): with no FPGA (a design and simulation project: no board, no device, no
+  // HDL), with an FPGA, or co-design (not yet); an example's an FPGA project (Start from not shown with no FPGA)
+  const kinds = kindStep('fpga', () => syncKind());
+  const tplField = field('Start from:', tplSel);
   const p1 = {
     title: 'Create New Project',
     render: () => h('div', {},
@@ -184,8 +183,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       h('div', { class: 'form-grid' },
         ...field('Name:', name),
         ...field('Location:', h('input', { type: 'text', value: where.location + (st.name || '…'), disabled: true })),
-        ...field('Start from:', tplSel),
-        ...field('Project Kind:', kindSel)),
+        ...tplField),
       // (in the browser's storage, in red: clearing the browser's data loses them, #4957)
       h('div', { class: where.browser ? 'hint storage-browser' : 'hint', style: { marginTop: '14px' } }, where.hint)),
     validate: async () => {
@@ -226,9 +224,13 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   };
   topType.addEventListener('change', syncTop);
   const catSel = select(['All'], 'All'), simSel = select(['SSim (VHDL/Verilog; Silinx Simulator)'], ''), stdSel = select(['VHDL-93', 'VHDL-2008'], 'VHDL-93');
-  const isDesign = () => kindSel.value === DESIGN_KIND && tplSel.value === 'empty';
-  const syncKind = kindFields(isDesign, [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel], topType);
-  kindSel.addEventListener('change', syncKind);
+  const isDesign = () => kinds.design() && tplSel.value === 'empty';
+  const fpgaFields = kindFields(isDesign, [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel], topType);
+  const syncKind = () => {
+    if (kinds.design()) tplSel.value = 'empty';
+    for (const x of tplField) x.style.display = kinds.design() ? 'none' : '';
+    fpgaFields();
+  };
   const p2 = {
     title: 'Project Settings',
     render: () => h('div', {},
@@ -268,7 +270,8 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
         `Flow:\n  Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topType.value).label}\n  Synthesis Tool:     ${synthSel.selectedOptions[0]?.textContent || synthSel.value}\n  Simulator:          SSim (Silinx behavioural simulator)\n  Preferred Language: ${langSel.value.toUpperCase()}`));
     },
   };
-  const ok = await wizard('New Project Wizard', [p1, p2, p3]);
+  // (an example asked for: an FPGA project, its kind's page passed)
+  const ok = await wizard('New Project Wizard', [kinds.page, p1, p2, p3], { start: template !== 'empty' ? 1 : 0 });
   if (!ok) return;
   try {
     if (st.replace) await removeExistingProject(name.value.trim());

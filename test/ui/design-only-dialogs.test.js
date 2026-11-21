@@ -72,8 +72,9 @@ uiTest('#3891 a design project\'s wizards: no Language, no HDL in their hints an
   // New Project, a design project: its note without the HDL module
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.click('.dlg-overlay .kind-card[data-kind=design] input');   // (its kind first: No FPGA, #5041)
+  await page.dialogButton('Next >');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Drawn2');
-  await page.fill('.dlg-overlay .wiz-main select', 'design', { index: 1 });
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main .hint[style*="grid-column"]')?.textContent), 'The project starts with src/top.sch.json (the top module \'top\').');

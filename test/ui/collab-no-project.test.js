@@ -121,6 +121,7 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   // a project with no repository: Store Project in a GitHub Repository… enabled in the tab, not on the Start page
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'NoRepo');
   await page.dialogButton('Next >');
   await page.dialogButton('Next >');

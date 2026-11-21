@@ -51,7 +51,9 @@ const newProject = async (page, name, pt = false) => {
   // (a menu shown, the ISE style's: its item as shown; one hidden, the Silinx style's: by its English label)
   if (pt) await page.menu('Ficheiro', 'New Project…').catch(() => page.menu('Ficheiro', 'Novo Projeto…'));
   else await page.menu('File', 'New Project…');
-  await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main input[type=text]'), [], { what: 'the New Project Wizard' });
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main .kind-cards'), [], { what: 'the New Project Wizard' });
+  await page.click('.dlg-overlay .dlg-buttons button', { index: 1 });   // (Next >: its kind, With an FPGA, #5041)
+  await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main input[type=text]'), [], { what: 'its name' });
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.click('.dlg-overlay .dlg-buttons button', { index: 1 });   // (Next >)

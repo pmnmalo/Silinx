@@ -31,6 +31,7 @@ const warnings = async page => (await page.consoleText()).split('\n').filter(l =
 uiTest('#3895 New Project: the Spartan-7, the Kintex-7 and the Zynq-7000, experimental; their parts; AMD Vivado alone, locked; the Artix-7\'s and the XC7Z010 / XC7Z020\'s two tools (#4680)', E, async (page) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'S7New');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');

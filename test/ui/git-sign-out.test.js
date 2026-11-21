@@ -34,6 +34,7 @@ const newProject = async (page, name, lang = 'en') => {
   // (File ▸ New Project…, by the menu's own item: its labels the same in either language)
   await page.eval(() => { window.SilinxApp.S.menus.find((m) => m.label === 'File').items().find((x) => x?.label === 'New Project…').action(); });
   await page.waitDialog(wizard);
+  await page.dialogButton(next);   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.dialogButton(next);
   await page.dialogButton(next);
@@ -132,6 +133,7 @@ uiTest('#4256 Sign out of GitHub after the device flow (File ▸ Git): its dialo
   await boot(page);
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'SignOutDev');
   await page.fill('.dlg-overlay .wiz-main select', 'gates', { index: 0 });
   await page.dialogButton('Next >');

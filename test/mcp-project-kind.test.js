@@ -1,4 +1,5 @@
-// The MCP server's project kind (#4103, after #3780): new_project and set_design_properties take kind (fpga, design), as
+// The MCP server's project kind (#4103, after #3780): new_project and set_design_properties take kind (fpga, design; new_project's
+// codesign refused until it can be made, #5041), as
 // New Project's and Design Properties' Project Kind; design_only its deprecated alias; the same checks and messages as
 // the interface's (test/ui/design-only.test.js): a design project made and back, refused with HDL of its own or a board.
 import { test, before, after } from 'node:test';
@@ -42,7 +43,22 @@ test('new_project kind: design, fpga (its default); design_only its deprecated a
   assert.equal((await P.readProject((await ok('new_project', { name: 'k3', design_only: true })).data.project)).kind, 'design');
   await fails('new_project', { name: 'k4', kind: 'design', board: 'basys2' }, 'a design and simulation project has no board: give kind design or a board, not both');
   await fails('new_project', { name: 'k5', kind: 'design', design_only: true }, 'give kind, not design_only too (design_only is kind\'s deprecated alias)');
-  await fails('new_project', { name: 'k6', kind: 'none' }, 'kind: one of fpga, design');
+  await fails('new_project', { name: 'k6', kind: 'none' }, 'kind: one of fpga, design, codesign');
+});
+
+test('#5041 new_project kind codesign: refused with New Project\'s reason (its card not chosen yet); its description says the three kinds as the dialog', async () => {
+  const { CODESIGN_NOT_YET, PROJECT_KINDS } = await import('../core/project-kind.js');
+  await fails('new_project', { name: 'c1', kind: 'codesign' }, `kind codesign: ${CODESIGN_NOT_YET}`);
+  assert.equal(CODESIGN_NOT_YET, 'Not available yet: a co-design project needs the System document and its editor, still being built.');
+  assert.ok(!(await P.listProjects()).some(p => p.name === 'c1'), 'no project made');
+  const tools = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/list', params: {} })).result.tools;
+  const np = tools.find(t => t.name === 'new_project');
+  assert.deepEqual(np.inputSchema.properties.kind.enum, ['fpga', 'design', 'codesign']);
+  // (each kind's name and words, the dialog's cards')
+  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'No FPGA'], ['fpga', 'With an FPGA'], ['codesign', 'Co-design']]);
+  for (const k of PROJECT_KINDS) assert.ok(np.inputSchema.properties.kind.description.includes(`${k.id} (${k.name}: ${k.about})`), k.id);
+  assert.ok(np.inputSchema.properties.kind.description.endsWith(`codesign: ${CODESIGN_NOT_YET}`));
+  assert.match(np.description, /kind, as New Project's first page \(#5041\): fpga \(With an FPGA, the default\), design \(No FPGA/);
 });
 
 test('set_design_properties kind design: a design project made, as Design Properties\' Project Kind; again, or with a board, refused', async () => {

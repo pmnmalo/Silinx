@@ -33,6 +33,7 @@ const record = (page, name) => page.eval((n) => JSON.parse(localStorage.getItem(
 const make = async (page, name, days) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');

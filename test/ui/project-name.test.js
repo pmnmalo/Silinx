@@ -18,6 +18,7 @@ const wizError = page => page.eval(() => document.querySelector('.dlg-overlay .w
 async function firstPage(page, name) {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
+  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.dialogButton('Next >');
 }
