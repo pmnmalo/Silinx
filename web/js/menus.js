@@ -223,8 +223,8 @@ export function setupToolbar() {
     btn('run', 'Implement Top Module', () => S.project?.top && !S.busy && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen'])),
     btn('stop', 'Stop the running process', () => stopProcesses()),
     btn('wave', 'Simulate Behavioral Model', () => panes.sel?.module && runSimulation(panes.sel.module)),
-    // the Processes pane's Emulate on Board ▸ Emulate Behavioral Model (RTL): the top module's, enabled as it is (#5114)
-    btn('board', 'Emulate Behavioral Model (RTL)', () => openEmulator(S.project.top), () => !!S.project?.top && toolHas('emu')),
+    // the Processes pane's Emulate on Board ▸ Emulate Behavioral Model (RTL), named without its "(RTL)": the top module's, enabled as it is (#5114)
+    btn('board', 'Emulate Behavioral Model', () => openEmulator(S.project.top), () => !!S.project?.top && toolHas('emu')),
     btn('impact', 'Configure Target Device (iMPACT)', () => openImpact()),
     h('div', { class: 'tb-sep' }),
     btn('gear', 'Toolchain Settings', () => wiz.toolchainDialog()),
