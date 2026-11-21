@@ -38,7 +38,7 @@ const warnings = async page => (await page.consoleText()).split('\n').filter(l =
 uiTest('#3780 New Project: Design and simulation only, no board, no device, no HDL; the flow left out', E, async (page) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
-  // (its kind first, #5041: No FPGA; then its name alone: no example to start from, no Project Kind field)
+  // (its kind first, #5041: Digital Logic, #5133; then its name alone: no example to start from, no Project Kind field)
   await page.click('.dlg-overlay .kind-card[data-kind=design] input');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Create New Project');
@@ -56,7 +56,7 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Summary');
   const summary = await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent);
-  assert.match(summary, /\n {2}Kind: {9}Design and simulation only \(no FPGA\)\n/);
+  assert.match(summary, /\n {2}Kind: {9}Digital Logic\n/);
   assert.doesNotMatch(summary, /Device|Board|Language|Synthesis/);
   await page.dialogButton('Finish');
   await page.waitNoDialog();
@@ -129,7 +129,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   const pick = v => (v === 'design' ? choose('Project Kind:', 'design') : choose('Project Kind:', 'fpga').then(() => choose('Evaluation Development Board:', v)));
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['No FPGA', 'With an FPGA', 'Co-design (not available yet)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
+  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['Digital Logic', 'FPGA', 'Co-design (not available yet)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
   await pick('basys2');
   assert.ok((await dialogFields()).shown.includes('Device:') && (await dialogFields()).shown.includes('Evaluation Development Board:'));
   await page.dialogButton('OK');
@@ -166,7 +166,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   }), ['the project \'OwnHdl\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/top.v)', true, true, true]);
   await page.key('Enter');   // (Enter does not press a disabled OK)
   assert.equal(await page.topDialogTitle(), 'Design Properties');
-  // back to With an FPGA: OK again
+  // back to FPGA: OK again
   await pick('basys2');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .dlg-buttons .btn.primary').disabled), false);
   await page.dialogButton('Cancel');

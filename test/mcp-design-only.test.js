@@ -40,12 +40,12 @@ async function designProject(name) {
 test('new_project design_only: no board, no device, no constraints; refused with a board', async () => {
   const r = await ok('new_project', { name: 'd0', design_only: true });
   // (design_only, kind's deprecated name: kind design, said, #4752)
-  assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give kind (true is kind design).\nEmpty design and simulation project \'d0\' made (no FPGA). Add its drawings with new_source, then set_top.');
+  assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give kind (true is kind design).\nEmpty Digital Logic project \'d0\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
   assert.deepEqual(r.data, { project: 'd0', kind: 'design', board: null, device: null, trusted: false });
   const pj = await P.readProject('d0');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   assert.equal(fs.existsSync(path.join(P.projectDir('d0'), 'constraints')), false, 'no constraints folder');
-  await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a design and simulation project has no board: give kind design or a board, not both');
+  await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a Digital Logic project (kind design) has no board: give kind design or a board, not both');
   // (an FPGA project as before)
   const f = await ok('new_project', { name: 'f0' });
   assert.equal((await P.readProject('f0')).kind, undefined);

@@ -41,7 +41,7 @@ test('new_project kind: design, fpga (its default); design_only its deprecated a
   assert.equal((await P.readProject('k1')).kind, 'design');
   assert.equal((await P.readProject((await ok('new_project', { name: 'k2', kind: 'fpga' })).data.project)).kind, undefined);
   assert.equal((await P.readProject((await ok('new_project', { name: 'k3', design_only: true })).data.project)).kind, 'design');
-  await fails('new_project', { name: 'k4', kind: 'design', board: 'basys2' }, 'a design and simulation project has no board: give kind design or a board, not both');
+  await fails('new_project', { name: 'k4', kind: 'design', board: 'basys2' }, 'a Digital Logic project (kind design) has no board: give kind design or a board, not both');
   await fails('new_project', { name: 'k5', kind: 'design', design_only: true }, 'give kind, not design_only too (design_only is kind\'s deprecated alias)');
   await fails('new_project', { name: 'k6', kind: 'none' }, 'kind: one of fpga, design, codesign');
 });
@@ -55,10 +55,10 @@ test('#5041 new_project kind codesign: refused with New Project\'s reason (its c
   const np = tools.find(t => t.name === 'new_project');
   assert.deepEqual(np.inputSchema.properties.kind.enum, ['fpga', 'design', 'codesign']);
   // (each kind's name and words, the dialog's cards')
-  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'No FPGA'], ['fpga', 'With an FPGA'], ['codesign', 'Co-design']]);
+  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['codesign', 'Co-design']]);
   // (the dialog's names, in few words: the MCP's size limits, #4752, #5097)
-  assert.equal(np.inputSchema.properties.kind.description, 'Its kind, New Project\'s first page: design (No FPGA: drawings and simulation, no board, no HDL shown), fpga (With an FPGA: the default), codesign (Co-design: not available yet, refused).');
-  assert.match(np.description, / kind: New Project's first page \(fpga, design, codesign\)\. kind design: /);
+  assert.equal(np.inputSchema.properties.kind.description, 'Its kind, New Project\'s first page: design (Digital Logic: drawings and simulation, no board, no HDL shown), fpga (FPGA: the default), codesign (Co-design: not available yet, refused).');
+  assert.match(np.description, / kind: New Project's first page \(fpga, design, codesign\)\. kind design \(Digital Logic\): /);
 });
 
 test('set_design_properties kind design: a design project made, as Design Properties\' Project Kind; again, or with a board, refused', async () => {
