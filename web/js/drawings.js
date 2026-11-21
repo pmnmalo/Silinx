@@ -9,7 +9,7 @@ import { modulesFromLibrary } from '/core/schdoc.js';
 import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
-import { commandError, commandWarning, log, logError, logWarning } from './console.js';
+import { commandError, commandWarning, dropRun, log, logError, logWarning } from './console.js';
 import { newerDrawing } from '/core/doc-format.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { getNotation } from './notation.js';
@@ -94,6 +94,9 @@ export async function openAsm(path) {
 // drawing does (a schematic net with two drivers, its HDL as it was before)
 export function staleHdl(target, from, why) { (syncState.staleHdl ||= {})[target] = { from, why }; }
 export function freshHdl(target) { if (syncState.staleHdl) delete syncState.staleHdl[target]; }
+// (its warnings, a run of their own: in the Warnings tab until the HDL file is made again, then dropped, the Console's
+// lines kept, #5008; an editor's save of an unfinished drawing no longer leaves "not updated" listed once it is done)
+const syncRun = (target) => `HDL of ${target}`;
 
 // A drawing's HDL file made again from it as its editor saves it (#4750): core/drawing-sync.js syncDrawing, the MCP
 // server's, with its messages; a drawing in another language than its file's gets its HDL file in that language, the
@@ -119,7 +122,7 @@ export function syncDrawingHdl(path) {
     }
     if (r.stale) {
       const why = `the ${STALE_NOUN[viewKind(path)]} has errors: ${r.stale}`;
-      if (syncState.outOfSync[target] !== why) for (const m of r.messages) log(m, 'warn');
+      if (syncState.outOfSync[target] !== why) for (const m of r.messages) log(m, 'warn', { run: syncRun(target) });
       syncState.outOfSync[target] = why;
       staleHdl(target, path, `it has errors: ${r.stale}`);
       findDoc(`sch:${path}`)?.schEditor?.check();
@@ -131,6 +134,7 @@ export function syncDrawingHdl(path) {
     // (its HDL not made in the drawing's language: that file there already)
     if (!r.written && r.messages.length) { for (const m of r.messages) log(m, 'warn'); return r; }
     freshHdl(target);
+    dropRun(syncRun(target));
     if (syncState.outOfSync[target]) { delete syncState.outOfSync[target]; refreshSyncBanner(target); relink(); }
     if (!r.written) return r;
     const text = await api.readFile(S.project.name, target);

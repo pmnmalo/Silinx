@@ -91,7 +91,9 @@ function startsRun(line) {
   consoleProcess = m[1];
   dropRun(consoleRun);
 }
-function dropRun(run) {
+/** The Errors / Warnings tabs' entries of a run dropped (its Console lines kept): a rerun's (#4728), or a group of lines
+ *  given a run of their own whose cause is gone (a drawing's HDL made again, #5008). */
+export function dropRun(run) {
   const n = S.diags.length;
   S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === run));
   lastConsoleDiag = null;
