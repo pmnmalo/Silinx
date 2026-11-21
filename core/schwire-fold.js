@@ -91,7 +91,6 @@ function overlapOnce(doc, pinPts) {
         if (!straight(p, q) || !straight(L.P[0], L.P[1])) continue;
         const u = dir(p, q), v = dir(L.P[0], L.P[1]);
         if (u.x !== v.x || u.y !== v.y || len(p, q) > len(L.P[0], L.P[1])) continue;
-        if (len(p, q) === len(L.P[0], L.P[1]) && x > y) continue;   // (the same length: the first one is s)
         // q a bend of s: nothing else may be there (it would be connected); on the doubled part, nothing either
         const qEnd = S.P.length === 2;
         const atQ = attachedAt(doc, pinPts, q, [S.w, L.w]);
