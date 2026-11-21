@@ -16,13 +16,14 @@ import { readKicadSymLib } from '/core/kicad-sym.js';
 import { SEXPR_LIMITS } from '/core/sexpr.js';
 import { PARTS, PART_ORDER } from '/core/circuit-parts.js';
 import { DISCRETE } from '/core/circuit-kicad-parts.js';
+import { filesState } from './state-files.js';
 
 // the project's files through the page's store, as core/drawing-sync.js reads a project (kicadStore: the catalogue's too)
 export const kicadStore = () => store();
 const store = () => ({
-  fileTree: async () => S.fileTree || [],
+  fileTree: async () => filesState.fileTree || [],
   readFile: (name, path) => api.readFile(name, path),
-  writeFile: async (name, path, text) => { await api.writeFile(name, path, text); if (S.fileTree && !S.fileTree.includes(path)) S.fileTree.push(path); },
+  writeFile: async (name, path, text) => { await api.writeFile(name, path, text); if (filesState.fileTree && !filesState.fileTree.includes(path)) filesState.fileTree.push(path); },
 });
 
 /** The project's KiCad parts read and set (before a circuit is opened); its files not read said in the console. */
@@ -55,7 +56,7 @@ export async function importKicadDialog() {
   const name = S.project.name;
   // (the project's footprints: a symbol's places may come from them)
   const footprints = {};
-  for (const f of (S.fileTree || []).filter((x) => isKicadPartFile(x) && x.endsWith('.kicad_mod'))) { try { footprints[f] = await api.readFile(name, f); } catch { /* unreadable */ } }
+  for (const f of (filesState.fileTree || []).filter((x) => isKicadPartFile(x) && x.endsWith('.kicad_mod'))) { try { footprints[f] = await api.readFile(name, f); } catch { /* unreadable */ } }
   const file = h('input', { type: 'file', accept: '.kicad_sym,.kicad_mod,.zip', 'data-field': 'kicad-file' });
   const folder = h('input', { type: 'file', webkitdirectory: true, multiple: true, 'data-field': 'kicad-folder' });   // (a .kicad_symdir, #4285)
   const table = h('table', { class: 'kicad-symbols' });
@@ -149,7 +150,7 @@ export async function importKicadDialog() {
   if (picked.pkg) return importPackage(name, picked, given);
   const rel = kicadImportPath(picked.base);
   let replace = false;
-  if ((S.fileTree || []).includes(rel)) {
+  if ((filesState.fileTree || []).includes(rel)) {
     if (!await confirmDlg('Import KiCad Part', `${rel} is in the project already. Replace it?`)) return null;
     replace = true;
   }

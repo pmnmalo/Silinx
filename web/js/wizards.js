@@ -28,6 +28,7 @@ import { safeReleaseUrl } from './release-url.js';
 import { NAME_RE } from '/core/ident.js';
 import { projectNameError, projectNameFrom, sameProject } from '/core/project-name.js';
 import { silinxFolderError, silinxFolderSkips } from '/core/project-folder.js';
+import { filesState } from './state-files.js';
 
 // Device used when no evaluation board is selected.
 const DEFAULT_DEVICE = { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' };
@@ -377,7 +378,7 @@ export async function zipFolderSelection(fileList, software = 'xilinx') { // exp
 export function replaceGuard(title) {
   const ok = new Set();
   return async (path) => {
-    if (!(S.diskTree || S.fileTree).includes(path) || ok.has(path)) return null;   // on disk (also a file removed from the project)
+    if (!(filesState.diskTree || filesState.fileTree).includes(path) || ok.has(path)) return null;   // on disk (also a file removed from the project)
     if (await confirmDlg(title, `${path} already exists.\n\nReplace it? Its current contents will be lost.`, { yes: 'Replace', no: 'Cancel' })) { ok.add(path); return null; }
     return `${path} already exists: choose another name.`;
   };
@@ -393,7 +394,7 @@ export async function closeBeforeReplace(path) {
       if (d.path === p || String(d.id || '').endsWith(`:${p}`)) { d.dirty = false; clearTimeout(d._autosave); await app.closeDoc(d); }
     }
   }
-  if (owned && (S.diskTree || S.fileTree || []).includes(owned)) await api.deleteFile(S.project.name, owned);
+  if (owned && (filesState.diskTree || filesState.fileTree || []).includes(owned)) await api.deleteFile(S.project.name, owned);
 }
 // a module of that name defined in another file than `path` (the file being replaced may define it)
 export const moduleElsewhere = (name, path) => S.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase() && m.file !== path
@@ -404,7 +405,7 @@ export const moduleElsewhere = (name, path) => S.modules.find(m => m.name.toLowe
 export function drawnHdlTaken(path, name, lang) {
   if (!isView(path)) return null;
   const hdl = drawnHdlPath(path, name, lang);
-  if (!(S.diskTree || S.fileTree || []).includes(hdl) || S.hdlToSch?.[hdl] === path) return null;
+  if (!(filesState.diskTree || filesState.fileTree || []).includes(hdl) || S.hdlToSch?.[hdl] === path) return null;
   return `${hdl} already exists: the HDL generated from the new source would be written there. Choose another name.`;
 }
 
@@ -435,7 +436,7 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
     if (c.refused) { await commandError(title, c.message); continue; }
     if (refusedHere(c.path)) continue;   // (an HDL file in a design and simulation project, #3780: the console says why)
     if (c.warning) appLog(`WARNING: ${c.warning}`, 'warn');
-    if ((S.diskTree || S.fileTree).includes(c.path) && !await confirmDlg(title, `${c.path} already exists in the project. Replace it with the copy of ${f.name}?`)) continue;
+    if ((filesState.diskTree || filesState.fileTree).includes(c.path) && !await confirmDlg(title, `${c.path} already exists in the project. Replace it with the copy of ${f.name}?`)) continue;
     await api.writeFile(S.project.name, c.path, c.text);
     written.push(c.path);
   }
@@ -536,7 +537,7 @@ export async function projectProperties() {
   pj.device = dp.value();
   pj.preferredLanguage = lang.value;
   pj.synthTool = synth.value;
-  constraintsForDevice(pj, S.fileTree, app.log);
+  constraintsForDevice(pj, filesState.fileTree, app.log);
   await app.saveProjectJson();
   topLine();
   // every drawing in the new language, its HDL file made again in it (#1477)
@@ -554,7 +555,7 @@ export async function projectProperties() {
   if (changed && board && pj.top && await confirmDlg('Update Constraints',
     `The target changed to the ${board.name}.\nPin locations (LOC) in the constraints file are board specific.\n\nRegenerate ${pj.constraints || 'the UCF'} from the ${board.name} pin table? (ports are matched by name: clk, led, sw, btn, seg, an…)`)) {
     await app.regenerateUcf(board);
-  } else if (changed && !board && S.fileTree.includes(pj.constraints)) {
+  } else if (changed && !board && filesState.fileTree.includes(pj.constraints)) {
     appLog(`WARNING: check the pin locations in ${pj.constraints} — they must exist on the ${pj.device.package.toUpperCase()} package.`, 'warn');
   }
 }

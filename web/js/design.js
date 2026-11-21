@@ -34,6 +34,7 @@ import { compositionOf, compositionRows } from './design-comp.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -58,7 +59,7 @@ export function renderHierarchy() {
   const one = oneTree(), sim = S.view === 'sim' && !one;
   const tree = h('ul', { class: 'tree', role: 'tree', tabindex: '0', 'aria-label': 'Design hierarchy', onkeydown: treeKeys });
   const dev = `${pj.device.part}${pj.device.speed}-${pj.device.package}`;
-  const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(S.git ? S.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
+  const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(filesState.git ? filesState.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
   tree.append(root.li);
   // (a design and simulation project, #3780: no device; its drawings and test benches under Design)
   const devItem = treeItem({ label: designOnly() ? 'Design' : !sim ? dev : 'Behavioral', ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: e => projectContextMenu(e) });
@@ -141,28 +142,28 @@ export function renderHierarchy() {
     const it = treeItem({ label: p.name, meta: `(${p.file.split('/').pop()})`, ico: 'vhdl', key: `pkg:${p.name}`, onSelect: () => select({ type: 'file', file: p.file }), onOpen: () => openFile(p.file, p.loc?.line), onContext: e => fileContextMenu(e, p.file) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (S.fileTree || []).filter(f => /\.sch\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.sch\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
     const owned = null;
     const it = treeItem({ label: f.split('/').pop(), meta: owned ? `(→ ${owned.split('/').pop()})` : '', ico: 'schematic', key: `sch:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'sch', file: f }), onOpen: () => openSch(f), onContext: e => schContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (S.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'asm', key: `asm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'asm', file: f }), onOpen: () => openAsm(f), onContext: e => asmContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (S.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'algebra', key: `tt:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'tt', file: f }), onOpen: () => openTt(f), onContext: e => ttContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (S.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'fsm', key: `fsm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'fsm', file: f }), onOpen: () => openFsm(f), onContext: e => fsmContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (S.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (S.fileTree || []).filter(f => isCirc(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {   // (a circuit, #3897)
+  for (const f of (filesState.fileTree || []).filter(f => isCirc(f) && !S.schOwners?.[f] && !S.modules.some(m => m.file === f))) {   // (a circuit, #3897)
     const it = treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
@@ -407,7 +408,7 @@ function moduleContextMenu(e, mod, file) {
 // a file the user's editor opens as text (#4017): not a drawing, a symbol, an image, a design project's HDL
 const textFile = file => !/\.(json|png|jpe?g|gif|bmp|svg|pdf|zip|bit|bin|wcfg|xise)$/i.test(file) && !(designOnly() && hdlSideFile(file));
 export function fileContextMenu(e, file) {
-  if (!S.fileTree.includes(file)) {   // a file of the folder that is not in the project
+  if (!filesState.fileTree.includes(file)) {   // a file of the folder that is not in the project
     popupMenu([
       { label: 'Add to Project', action: () => addToProject(file).then(added => added !== false && log(`${file} added to the project.`, 'ok')) },
       { label: 'Open', action: () => openFile(file) },
@@ -454,8 +455,8 @@ async function deleteFile(file) {
 /** Add to Project…: the files of the project folder that are not in the project, chosen and added (#1214). */
 export async function addFromFolderDialog() {
   if (!S.project) return;
-  const listed = new Set(S.fileTree);
-  const free = shownFiles((S.diskTree || []).filter(f => !listed.has(f))).sort((a, b) => a.localeCompare(b));   // (no HDL in a design project, #3780)
+  const listed = new Set(filesState.fileTree);
+  const free = shownFiles((filesState.diskTree || []).filter(f => !listed.has(f))).sort((a, b) => a.localeCompare(b));   // (no HDL in a design project, #3780)
   if (!free.length) return commandInfo('Add to Project', 'Every file of the project folder is in the project.');
   const boxes = free.map(f => h('input', { type: 'checkbox', value: f }));
   const r = await dialog({
@@ -527,8 +528,8 @@ export const projectSaved = () => projectSaves;
 // is still being saved waits for it
 export function serialOp(fn) {
   const run = () => fn();
-  S.opChain = (S.opChain || Promise.resolve()).then(run, run);
-  return S.opChain;
+  filesState.opChain = (filesState.opChain || Promise.resolve()).then(run, run);
+  return filesState.opChain;
 }
 
 // (a design project's hidden HDL file, a test bench's: its module named, #3891)

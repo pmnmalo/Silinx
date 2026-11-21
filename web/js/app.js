@@ -53,6 +53,7 @@ import { cState } from './state-c.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
 import { startState } from './state-start.js';
+import { filesState } from './state-files.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -60,12 +61,13 @@ import { startState } from './state-start.js';
 export const S = {
   // the project and its files
   project: null, devices: null, toolchain: null,
-  diskTree: undefined,        // the project folder's files (project.js)
-  fileTree: undefined,        // the files shown: the folder's, less the HDL the project leaves out (project.js)
-  ucfText: undefined,         // the constraints file's text (project.js, implement.js)
-  git: undefined,             // the project's repository status, or null (git.js)
-  reloadChain: undefined,     // reloadProject's calls one after another (project.js)
-  opChain: undefined,         // the Design pane's commands one after another (design.js serialOp)
+  // its files: web/js/state-files.js's slice (#4767), its fields here as getters and setters onto it
+  get diskTree() { return filesState.diskTree; }, set diskTree(v) { filesState.diskTree = v; },
+  get fileTree() { return filesState.fileTree; }, set fileTree(v) { filesState.fileTree = v; },
+  get ucfText() { return filesState.ucfText; }, set ucfText(v) { filesState.ucfText = v; },
+  get git() { return filesState.git; }, set git(v) { filesState.git = v; },
+  get reloadChain() { return filesState.reloadChain; }, set reloadChain(v) { filesState.reloadChain = v; },
+  get opChain() { return filesState.opChain; }, set opChain(v) { filesState.opChain = v; },
   // the compiled design
   view: 'impl', sources: [], lib: null, modules: [],
   viewSources: undefined,     // the drawings' generated HDL, compiled with the sources (app.js compileProject)
@@ -135,7 +137,7 @@ export function status(text) { $('status-text').textContent = text; }
 // list (compileProject) is compiled without them: the primitives are not project modules.
 export const withPrimitives = srcs => [...primitiveSources(srcs), ...srcs];
 // whether a drawing's HDL file (generatedFile) is there, in the project (#231: else it has none)
-export const hdlInProject = f => (S.fileTree || []).includes(f);
+export const hdlInProject = f => (filesState.fileTree || []).includes(f);
 export function compileProject() {
   if (!S.project) return;
   const srcs = S.sources.filter(s => !s.view && (s.lang === 'vhdl' || s.lang === 'verilog'));
@@ -264,7 +266,7 @@ const NOT_RECORDED = /^(Implement|Generate Programming File|Synthesize|Simulate|
 const docPath = d => d.path || (/^(file|sch|asm|tt|fsm):/.test(String(d.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
 export const history = createHistory(api, {
   project: () => S.project?.name,
-  files: () => S.diskTree || S.fileTree || [],
+  files: () => filesState.diskTree || filesState.fileTree || [],
   settings: () => { if (!S.project) return null; const pj = { ...S.project }; delete pj.fileTree; return JSON.stringify(pj); },
   flush: () => saveAll({ quiet: true }),
   before: (changed) => confirmDlg('Undo / Redo', `Changed since:\n${changed.slice(0, 12).join('\n')}${changed.length > 12 ? '\n…' : ''}\n\nUndo / Redo anyway (those changes are lost)?`),
@@ -276,7 +278,7 @@ export const history = createHistory(api, {
       if (p && paths.includes(p)) { if (S.active === d) reopen.unshift(p); else reopen.push(p); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
     }
     await reloadProject();
-    for (const p of reopen.reverse()) if ((S.diskTree || []).includes(p)) await openFile(p).catch(() => {});
+    for (const p of reopen.reverse()) if ((filesState.diskTree || []).includes(p)) await openFile(p).catch(() => {});
   },
 });
 // the messages of ui.js's menus and of the editors (#3591): lines of the console
@@ -662,7 +664,7 @@ export async function openFile(path, line, col, { task } = {}) {
 export async function openUcf() {
   const pj = S.project;
   if (!pj.constraints) { pj.constraints = 'constraints/top.ucf'; await saveProjectJson(); }
-  if (!S.fileTree.includes(pj.constraints)) {
+  if (!filesState.fileTree.includes(pj.constraints)) {
     const { ucfTemplate } = await import('./templates.js');
     await api.writeFile(pj.name, pj.constraints, ucfTemplate(pj));
     await reloadProject(false);
@@ -698,8 +700,8 @@ export function renderFilesPage() {
   const tbl = h('table', { class: 'grid' }, h('tr', {}, h('th', {}, 'File Name'), h('th', {}, 'Association'), lang ? h('th', {}, 'Language') : null));
   // files sorted by path, each folder as a row of its own (right-click: rename / delete the folder)
   const reg = new Map(S.project.files.map(f => [f.path, f]));
-  const inProject = new Set(S.fileTree);
-  const paths = shownFiles([...new Set([...S.project.files.map(f => f.path), ...(S.diskTree || S.fileTree)])]).sort((a, b) => a.localeCompare(b));   // (no HDL in a design project, #3780)
+  const inProject = new Set(filesState.fileTree);
+  const paths = shownFiles([...new Set([...S.project.files.map(f => f.path), ...(filesState.diskTree || filesState.fileTree)])]).sort((a, b) => a.localeCompare(b));   // (no HDL in a design project, #3780)
   const shown = new Set();
   for (const path of paths) {
     const parts = path.split('/');
@@ -737,10 +739,10 @@ async function renameFolder(dir) {
   if (!to || to === dir) return;
   if (to.startsWith('/') || to.split('/').some(x => !x || x === '..' || x === '.')) return commandError('Rename Folder', 'Enter a folder path inside the project.');
   if (to.startsWith(`${dir}/`)) return commandError('Rename Folder', 'A folder cannot be moved into itself.');
-  if (S.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return commandError('Rename Folder', `'${to}' already exists.`);
+  if (filesState.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return commandError('Rename Folder', `'${to}' already exists.`);
   if (!await saveAll()) return;
   const remap = p => (p && p.startsWith(`${dir}/`) ? to + p.slice(dir.length) : p);
-  const views = S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f));
+  const views = filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f));
   // the editors of moved files are closed and reopened at their new paths
   const reopen = [];
   for (const d of [...S.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { reopen.push(remap(d.path)); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
@@ -759,7 +761,7 @@ async function renameFolder(dir) {
     log(`Folder ${dir} renamed to ${to}.`, 'ok');
   } catch (e) { log(`ERROR: cannot rename folder ${dir}: ${e.message}`, 'err'); }
   await reloadProject();
-  for (const p of reopen) if (S.fileTree.includes(p)) await openFile(p);
+  for (const p of reopen) if (filesState.fileTree.includes(p)) await openFile(p);
 }
 
 async function deleteFolder(dir) {

@@ -10,6 +10,7 @@ import { schModules } from './drawings.js';
 import { reloadProject } from './project.js';
 import { following, followNotice } from './collab-state.js';
 import { findMod, newSymbol, readSymbol, symbolFileOf, symbolText } from '/core/schdoc.js';
+import { filesState } from './state-files.js';
 
 /** Edit Symbol of the module `name`: its symbol file opened, made first when it has none. */
 export async function editSymbol(name) {
@@ -17,7 +18,7 @@ export async function editSymbol(name) {
   const m = findMod(await schModules(), name);
   if (!m) { logError(`Edit Symbol: no module '${name}' in the project's sources`); return; }
   const path = m.symbolFile || symbolFileOf(m.file, m.name);
-  if (!S.fileTree.includes(path)) {
+  if (!filesState.fileTree.includes(path)) {
     if (following()) { logError(`Edit Symbol: module '${m.name}' has no symbol of its own (a followed project is read only)`); return; }
     const text = symbolText(newSymbol(m));
     await api.writeFile(S.project.name, path, text);

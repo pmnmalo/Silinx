@@ -19,6 +19,7 @@ import { boardRemove } from '/core/pin-board.js';
 import { S, app, setDirty } from './app.js';
 import { statusLine } from './status-line.js';
 import { logError, logWarning } from './console.js';
+import { filesState } from './state-files.js';
 
 export function mountPinPlanner(el, doc, top) {
   const pj = S.project;
@@ -79,7 +80,7 @@ export function mountPinPlanner(el, doc, top) {
     else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); e.stopPropagation(); doc.pinPlanner.redo(); }
   });
   const load = async () => {
-    if (pj.constraints && S.fileTree.includes(pj.constraints)) {
+    if (pj.constraints && filesState.fileTree.includes(pj.constraints)) {
       try {
         // the bits of the buses written x[1] or x(1) become x<1>; any other name stays as written (#63)
         const u = readPins(pj.device, await api.readFile(pj.name, pj.constraints), { ports });

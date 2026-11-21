@@ -11,6 +11,7 @@ import { icLibrary, partsPackage, EXPORTED_ICS, EXPORTED_PARTS } from '/core/kic
 import { isKicadPartFile } from '/core/circuit-kicad.js';
 import { browserCodec } from '/core/zip.js';
 import { PARTS, partDef } from '/core/circuit-parts.js';
+import { filesState } from './state-files.js';
 
 // the library's ICs a circuit uses (its KiCad parts: the ICs they behave as)
 const icsOf = (m) => [...new Set(m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic').map((d) => d.behaves ?? d.type))].filter((t) => PARTS[t]);
@@ -44,7 +45,7 @@ export async function exportPackageDialog() {
   const radio = (k, checked = false) => h('input', { type: 'radio', name: 'kicad-with', checked, 'data-field': k });
   const none = radio('with-none', true), withIcs = radio('with-ics'), withLib = radio('with-library');
   const chosen = () => (withLib.checked ? { parts: EXPORTED_PARTS } : withIcs.checked ? { ics: EXPORTED_ICS } : {});
-  const files = (S.fileTree || []).filter(isKicadPartFile);
+  const files = (filesState.fileTree || []).filter(isKicadPartFile);
   let bytes = null;
   const make = async () => {
     try {

@@ -12,6 +12,7 @@ import { isName } from '/core/ident.js';
 import { hdlSideFile } from '/core/project-kind.js';
 import { designOnly } from './design-only.js';
 import { pageStore, serialDrawings } from './page-store.js';
+import { filesState } from './state-files.js';
 
 // ---- Rename Symbol (F2) in an HDL editor: the name under the cursor, everywhere it means the same
 // object in the file; a port / generic also in the instances of its module in the other files
@@ -71,7 +72,7 @@ export async function renameDialog(file, mod = null) {
   function check() {
       const to = fIn.value.trim(), nm = mIn?.value.trim();
       if (!to || to.startsWith('/') || to.split('/').includes('..')) return 'Enter a file path inside the project.';
-      if (to !== file && S.fileTree.some(f => f.toLowerCase() === to.toLowerCase()) && to.toLowerCase() !== file.toLowerCase()) return `${to} already exists.`;
+      if (to !== file && filesState.fileTree.some(f => f.toLowerCase() === to.toLowerCase()) && to.toLowerCase() !== file.toLowerCase()) return `${to} already exists.`;
       if (mIn) {
         if (!isName(nm)) return 'The module name must start with a letter and contain only letters, digits and _.';
         // not a reserved word of VHDL or Verilog, in any letter case (#679)
@@ -128,7 +129,7 @@ async function renameSource(from, to, oldMod, newMod) {
   try {
     if (to && to !== from) {
       moved.set(from, to);
-      for (const f of S.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
+      for (const f of filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
         let d;
         try { d = JSON.parse(await api.readFile(pj.name, f)); } catch { continue; }
         if (d.generatedFile === from) { d.generatedFile = to; changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1)); }

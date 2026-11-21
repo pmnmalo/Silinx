@@ -30,6 +30,7 @@ import { relayEntries } from './relay-setup.js';
 import { foldList } from '/core/list-fold.js';
 import { roleSwitch } from './collab-roles.js';
 import { panes } from './state-panes.js';
+import { filesState } from './state-files.js';
 
 // the last GitHub Checks' answer, its project's (File ▸ Git ▸ GitHub Checks or the tab's)
 let checks = null;
@@ -83,7 +84,7 @@ function boxes() {
 // server editions' git signs in itself), the remote and the branch, the commands of a repository, GitHub Checks and the
 // last push's checks; none: Open from GitHub Repository…, Store Project in a GitHub Repository…
 function repositoryBox(items, init, open) {
-  const g = S.git;
+  const g = filesState.git;
   const sign = items.find(it => /^Sign (in|out)/.test(it.label));
   const signIn = sign ? cmd(sign) : hint('git signs in to GitHub with its own credentials.');
   if (!g) {
