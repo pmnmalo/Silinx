@@ -28,6 +28,7 @@ import { failedModule, withDrawingErrors } from '/core/drawing-diags.js';
 import { hierarchyDiags } from '/core/top-hierarchy.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
+import { runState } from './state-run.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -223,7 +224,7 @@ function renderProcessTree(host, defs) {
       popupMenu([
         { label: 'Run', action: () => runProcess(p), disabled: !p.run || p.disabled || (S.busy && ISE_PROCS.includes(p.id)) },
         { label: 'Rerun', action: () => runProcess(p), disabled: !p.run || p.disabled || (S.busy && ISE_PROCS.includes(p.id)) },
-        { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: !S.currentJob },
+        { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: !runState.currentJob },
         '-',
         { label: 'Process Properties…', action: () => wiz.implProperties(), disabled: !['synth', 'impl', 'bitgen', 'map', 'par', 'translate'].includes(p.id) },
       ], e.clientX, e.clientY);
@@ -407,7 +408,7 @@ function sourcesFingerprint() {
 
 // the synthesis's own inputs (#280): the design sources (not the test benches, not the constraints), the
 // top, the device, the synthesis tool and its effort (#282); the run that synthesized them ok is kept
-// (S.synthDone: { fingerprint, status }), so that Implement Design with the Silinx toolchain starts at
+// (runState.synthDone: { fingerprint, status }), so that Implement Design with the Silinx toolchain starts at
 // Translate while they are the same
 export function synthFingerprint(sources) {
   const ucf = S.project.constraints;
@@ -431,14 +432,14 @@ export async function saveImplStatus() {
   try {
     await loadUcfText();
     const status = Object.fromEntries(IMPL_IDS.filter(id => S.status[id] && S.status[id] !== 'running').map(id => [id, S.status[id]]));
-    await api.writeFile(S.project.name, STATUS_FILE, JSON.stringify({ top: S.project.top, fingerprint: sourcesFingerprint(), time: new Date().toISOString(), status, ...(S.synthDone && { synth: S.synthDone }) }, null, 2));
+    await api.writeFile(S.project.name, STATUS_FILE, JSON.stringify({ top: S.project.top, fingerprint: sourcesFingerprint(), time: new Date().toISOString(), status, ...(runState.synthDone && { synth: runState.synthDone }) }, null, 2));
   } catch { /* best effort */ }
 }
 
 // fromReports: a run made outside the page (the MCP server, #2843): its marks from its reports, not the page's
 // saved ones (of an earlier run)
 export async function restoreImplStatus({ fromReports = false } = {}) {
-  S.synthDone = null;
+  runState.synthDone = null;
   await loadUcfText();
   if (!S.project?.top) return;
   let saved = null;
@@ -446,7 +447,7 @@ export async function restoreImplStatus({ fromReports = false } = {}) {
   else try { saved = JSON.parse(await api.readFile(S.project.name, STATUS_FILE)); } catch { /* none */ }
   await loadUcfText();
   let status = {};
-  S.synthDone = saved?.top === S.project.top && saved.synth?.fingerprint ? saved.synth : null;
+  runState.synthDone = saved?.top === S.project.top && saved.synth?.fingerprint ? saved.synth : null;
   if (saved && saved.top === S.project.top) status = saved.status || {};
   else {
     // derive from ISE's reports (builds made before status saving, or by run.sh elsewhere)

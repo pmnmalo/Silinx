@@ -29,6 +29,7 @@ import { printActive, printable } from './print-doc.js';
 import { hasGit, hookGitStatus, openFromRepositoryDialog, gitMenuItems } from './git.js';
 import { besideItems, splitState, toggleSplit } from './split-view.js';
 import { downloadBlob } from './download.js';
+import { runState } from './state-run.js';
 // (Print: the document in front, whichever it is, #1509)
 export { printActive, printable };
 
@@ -153,7 +154,7 @@ export function setupMenus() {
     ] },
     { label: 'Process', items: () => [
       ...flowOnly({ label: 'Implement Top Module', icon: icon('run'), action: () => S.project?.top && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen']), disabled: () => !S.project?.top || S.busy || !toolHas('impl') }),
-      { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: () => !S.currentJob },
+      { label: 'Stop', icon: icon('stop'), action: () => stopProcesses(), disabled: () => !runState.currentJob },
       { label: 'Run', action: () => S.selProc && runProcess(S.selProc), disabled: () => !S.selProc?.run },
       { label: checkLabel(), action: () => S.sel?.module && checkSyntax(S.sel.module, S.view === 'sim'), disabled: () => !S.sel?.module },
       { label: 'Simulate Behavioral Model', icon: icon('wave'), action: () => S.sel?.module && runSimulation(S.sel.module), disabled: () => !S.sel?.module },

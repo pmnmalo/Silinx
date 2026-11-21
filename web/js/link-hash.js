@@ -15,6 +15,7 @@ import { S, app } from './app.js';
 import { appLog } from './console.js';   // (the application's lines, under every filter, #4729)
 import { confirmDlg } from './ui.js';
 import { collab } from './collab-state.js';
+import { runState } from './state-run.js';
 
 const TOKEN = /^#(?:token|code)=/, FOLLOW = /^#(?:view|follow|edit)=/;   // (#view=, a viewer's, #4073; #follow=, the links before it)
 let queue = Promise.resolve();
@@ -31,7 +32,7 @@ export function watchLinks(target = window, seen) {
 async function linkChanged(hash = location.hash) {
   if (hash.length <= 1 || TOKEN.test(hash)) return false;
   const what = FOLLOW.test(hash) ? 'Follow a shared project' : 'Open from a link';
-  if (S.busy || S.currentJob) { appLog(`ERROR: ${what}: an implementation is running: stop it (or wait for it to finish), then open the link again.`, 'err'); return false; }
+  if (S.busy || runState.currentJob) { appLog(`ERROR: ${what}: an implementation is running: stop it (or wait for it to finish), then open the link again.`, 'err'); return false; }
   // (a shared project's link: collab-follow.js followPasted, which loads the page again, but not in the page that shares
   // one, which the console warns about, #3318, #3331; read first, #3531: a broken one said, the hash cleared, and
   // nothing saved, nor in the page that shares; the work saved before the load, the user asked first as for a design)
