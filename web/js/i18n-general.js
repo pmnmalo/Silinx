@@ -86,7 +86,7 @@ export const PT = {
   'Design hierarchy': 'Hierarquia do projeto',
   // toolbar / panels
   'New Project': 'Novo Projeto', 'Open Project': 'Abrir Projeto', 'Cut': 'Cortar', 'Copy': 'Copiar',
-  'Paste': 'Colar', 'Find': 'Procurar', 'View RTL Schematic': 'Ver Esquemático RTL', 'New ASM State Diagram': 'Novo Diagrama de Estados ASM',
+  'Paste': 'Colar', 'Find': 'Procurar', 'View RTL Schematic': 'Ver Esquemático RTL',
   'Configure Target Device (iMPACT)': 'Configurar Dispositivo (iMPACT)', 'Toolchain Settings': 'Definições da Toolchain', 'About': 'Acerca de',
   // narrow screens (#266): the drawer of the left side, the editors' panels over the canvas
   'Show / hide the side panel (Design, Files, Processes)': 'Mostrar / esconder o painel lateral (Projeto, Ficheiros, Processos)',
