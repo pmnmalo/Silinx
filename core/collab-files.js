@@ -42,9 +42,13 @@ export function renameFile(doc, from, to) {
 // (#5064: and under a key of this participant's own, which only it sets: the owner's description published again at the
 // same time wins the shared value, whose concurrent writes keep one, and would hide this change; the owner applies the
 // editor's own, watchDoc's `description`)
+// (#5103: none when it is the document's already, nothing of it changed here: Rename saves the description it read, whose
+// files the owner renames on its side; proposed, it would put the old name back over the owner's rename)
 export const setDescription = (doc, json) => {
   const { fileTree, ...pj } = json || {};   // eslint-disable-line no-unused-vars
-  doc.transact(() => { putProject(doc, json); doc.getMap('project').set(`edit:${doc.clientID}`, JSON.stringify(pj)); });
+  const text = JSON.stringify(pj);
+  if (doc.getMap('project').get('json') === text) return;
+  doc.transact(() => { putProject(doc, json); doc.getMap('project').set(`edit:${doc.clientID}`, text); });
 };
 
 // the project's description in the document (null: none, or not one)
@@ -141,7 +145,7 @@ export async function applyEdits(doc, { changes = [], project = false, descripti
     if (out.refused) { out.undone.push(c.path); continue; }
     try { await store.remove(c.path); out.removed.push(c.path); } catch (e) { warn(`${c.path}: an editor's deletion not made: ${e.message}`); out.refused = true; }
   }
-  if (project) {
+  if (project) { console.log('DBG', JSON.stringify({ changes, description: description && JSON.parse(description).files?.map(f => f.path), json: JSON.parse(doc.getMap('project').get('json') ?? 'null')?.files?.map(f => f.path) }));
     const next = editorDescription(disk.json, typeof description === 'string' ? description : doc.getMap('project').get('json') ?? '');
     if (!next) out.undone.push('silinx.json');
     else if (fieldsOf(next) !== fieldsOf(disk.json)) {
