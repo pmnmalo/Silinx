@@ -645,7 +645,9 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
       'file:src/top.vhd': { kind: 'fsm', sum: {} },
     } });
     const link = followLink(`${base}/`, owner.room, owner.key);
-    const f = await ok('follow_project', { link, name: 'Bot' });
+    let f = await ok('follow_project', { link, name: 'Bot' });
+    // (the owner's activity comes after the document, which follow_project waits for: each channel once it is there)
+    for (let t = Date.now(); Date.now() - t < 5000 && !(f.data.ownerActivity?.emu && f.data.ownerActivity?.sim && f.data.ownerActivity?.try);) { await new Promise(r => setTimeout(r, 50)); f = await ok('follow_project', { link }); }
     assert.deepEqual(f.data.ownerActivity, {
       view: { open: ['file:src/top.vhd', 'isim:tb'], active: 'isim:tb', split: null, page: 'design', view: 'sim' },
       layout: { task: 'sim', side: true, console: true, max: false },

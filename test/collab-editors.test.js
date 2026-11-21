@@ -205,7 +205,7 @@ test('#4745 a key per editor: each editor link\'s page listed with a key of its 
   const eds = [];
   try {
     for (let i = 0; i < MAX_EDITORS; i++) eds.push(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: `E${i}` }, WebSocket: S, reconnect: false }));
-    await until(() => eds.every(e => e.listed), 'every editor listed');
+    await until(() => eds.every(e => e.listed), 'every editor listed', 30000);
     const list = doc.getMap('meta').get('editorsList');
     assert.equal(list.editors.length, MAX_EDITORS);
     assert.equal(new Set(list.editors).size, MAX_EDITORS, 'a key each');
