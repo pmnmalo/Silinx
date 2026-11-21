@@ -12,7 +12,7 @@ import { isTrusted, refusedProject } from '/core/trust.js';
 import { severityOf } from '/core/log-severity.js';
 import { messageLocation, projectPath } from '/core/message-location.js';
 import { makeMessage, severityOfClass } from '/core/message.js';
-import { lineSource, isShown, shownSourcesNow } from './messages.js';
+import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
 
 const $ = id => document.getElementById(id);
 
@@ -280,7 +280,7 @@ export function renderDiagnostics({ quiet = false } = {}) {
   fill($('console-warnings'), shownWarns, 'warn');
   $('err-count').textContent = shownErrs.length ? `(${shownErrs.length})` : '';
   $('warn-count').textContent = shownWarns.length ? `(${shownWarns.length})` : '';
-  focusNewDiagnostics(shownErrs, shownWarns, quiet);
+  focusNewDiagnostics(errs, warns, shown, quiet);
 }
 
 // A new error brings the Errors tab forward, else a new warning the Warnings one (#2733), whoever wrote it: once per
@@ -295,7 +295,9 @@ const seenConsoleDiags = new WeakSet();
 const diagKey = d => `${d.severity}|${d.tool || ''}|${d.file || ''}|${d.line || 0}|${d.message}`;
 const pageShown = () => document.querySelector('#console-tabs .tab.active')?.dataset.page;
 // (quiet: the filter changed, the entries it shows again not new: no tab brought forward)
-function focusNewDiagnostics(errs, warns, quiet = false) {
+// (every entry counted, those the filter hides too, #5074: one of them new turns the filter to its source, as a process
+// started does, #1852, and its tab is brought forward listing it; a filter's change, quiet, is no entry's news)
+function focusNewDiagnostics(errs, warns, shown, quiet = false) {
   const before = listedDiags;
   listedDiags = new Map();   // (each message's count: one listed more times than before is new)
   const isNew = d => {
@@ -305,13 +307,16 @@ function focusNewDiagnostics(errs, warns, quiet = false) {
     if (d.source === 'console') seenConsoleDiags.add(d);
     return n > (before.get(k) || 0) || fresh;
   };
-  const newErr = errs.map(isNew).some(Boolean), newWarn = warns.map(d => isNew(d) && d.severity === 'warning').some(Boolean);
+  const newErrs = errs.filter(isNew), newWarns = warns.filter(d => isNew(d) && d.severity === 'warning');
   if (quiet) return;
-  const page = newErr ? 'errors' : newWarn && !(errs.length && pageShown() === 'errors') ? 'warnings' : null;
+  const shownErrs = errs.filter(shown), shownWarns = warns.filter(shown);
+  const page = newErrs.length ? 'errors' : newWarns.length && !(shownErrs.length && pageShown() === 'errors') ? 'warnings' : null;
   if (!page) {
-    if (broughtForward && pageShown() === broughtForward && !(broughtForward === 'errors' ? errs : warns).length) showConsolePage('console');
+    if (broughtForward && pageShown() === broughtForward && !(broughtForward === 'errors' ? shownErrs : shownWarns).length) showConsolePage('console');
     return;
   }
+  const news = page === 'errors' ? newErrs : newWarns;
+  if (!news.some(shown)) showCommandLines(news.find(d => d.src)?.src);   // (its source shown: the tab lists it)
   bringForward(page);
 }
 function bringForward(page) {
