@@ -14,7 +14,9 @@
 //                   (open-source driver for the Digilent Adept USB of the Basys2: github.com/mwkmwkmwk/adepttool,
 //                    installed by scripts/install-adepttool.sh into ~/.silinx/adepttool)
 //
-// Positions: iMPACT numbers chain devices from 1; xc3sprog, djtgcfg and openFPGALoader from 0.
+// Positions: iMPACT numbers chain devices from 1; xc3sprog, djtgcfg and openFPGALoader from 0. A request's position (the
+// Program view's, program_board's) is iMPACT's, its "position N"; toolPosition makes it the tool's (#4940). The boards'
+// programmer defaults (core/boards.js) are already the tool's own.
 
 import fs from 'node:fs/promises';
 import fss from 'node:fs';
@@ -182,6 +184,16 @@ export function buildCommands(op, { tool, cable, device, position, bitfile, fpga
 // Option resolution
 // ---------------------------------------------------------------------------------------------
 
+/** A request's chain position (iMPACT's numbering, 1-based: the Program view's "position N", program_board's) as the
+ *  tool's: iMPACT's as it is, openFPGALoader's --index-chain, xc3sprog's -p and djtgcfg's -i counted from 0 (#4940);
+ *  none given: null. */
+export function toolPosition(tool, position) {
+  if (position === undefined || position === null || position === '') return null;
+  const p = parseInt(position, 10);
+  if (!Number.isInteger(p) || p < 1 || p > 32) throw Object.assign(new Error(`invalid chain position '${position}'`), { status: 400 });
+  return tool === 'impact' ? p : p - 1;
+}
+
 /**
  * Merge request options with board defaults and the global config.
  * Precedence: explicit request > board programmer defaults > config.programmer.
@@ -205,7 +217,7 @@ export function resolveOptions(req, cfg, boardId) {
     cable: req.cable || bd.cable || (cfg?.programmer?.tool === tool ? cfg.programmer.cable : '') || (tool === 'impact' ? 'auto' : ''),
     device: req.device || bd.device || '',
     fpgaBoard: req.fpgaBoard || bd.board || '',
-    position: req.position ?? bd.position ?? (tool === 'impact' ? 1 : 0),
+    position: toolPosition(tool, req.position) ?? bd.position ?? (tool === 'impact' ? 1 : 0),
     board: b?.id || null,
     note: bd.note || null,
     verified: bd.verified !== false,
@@ -402,7 +414,7 @@ async function programOpen(job, o, cfg, req, family) {
 
 /**
  * Job body for POST /program.
- * @param {object} req  { tool?, cable?, device?, position?, board?, bitfile (absolute), expectDevice?, force? }
+ * @param {object} req  { tool?, cable?, device?, position? (iMPACT's, 1-based), board?, bitfile (absolute), expectDevice?, force? }
  */
 export async function programJob(job, req) {
   const cfg = await loadConfig();

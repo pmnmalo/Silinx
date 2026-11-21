@@ -48,6 +48,8 @@ test('program_board: destructive, the project required; its programmers', () => 
   assert.deepEqual(t.annotations, { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false });
   assert.deepEqual(t.inputSchema.required, ['project']);
   assert.deepEqual(t.inputSchema.properties.tool.enum, ['openFPGALoader', 'xc3sprog', 'djtgcfg', 'impact', 'adepttool']);
+  assert.deepEqual([t.inputSchema.properties.position.type, t.inputSchema.properties.position.minimum], ['integer', 1]);
+  assert.match(t.inputSchema.properties.position.description, /iMPACT's numbering from 1/);
 });
 
 test('program_board: an ECP5\'s .bit into the ULX3S\'s SRAM, with openFPGALoader -b ulx3s -m; no warning', { skip: POSIX_ONLY }, async () => {
@@ -96,6 +98,23 @@ test('program_board: a Spartan-3E\'s .bit with the board\'s programmer, or the o
   assert.equal(r.isError, false, r.text);
   assert.deepEqual([r.data.tool, r.data.warnings], ['djtgcfg', []]);
   assert.match(await progLog(), /^djtgcfg prog -d Basys2 -i 0 -f .*top\.bit$/m);
+});
+
+// #4940: program_board's position is iMPACT's, as the Program view's: the Nexys2's FPGA position 1 (djtgcfg's -i 0, iMPACT's
+// -p 1), its PROM position 2 (-i 1); none given: the board's FPGA
+test('#4940 program_board: the chain position as iMPACT numbers it, djtgcfg\'s -i from 0', { skip: POSIX_ONLY }, async () => {
+  process.env.FAKE_PROG_LOG = path.join(tmp, 'pos.log');
+  await project('N2', 'nexys2', { family: 'spartan3e', part: 'xc3s500e', package: 'fg320', speed: '-4' }, 'top.bit', makeBit({ part: '3s500efg320' }));
+  for (const [position, i] of [[undefined, 0], [1, 0], [2, 1]]) {
+    await fs.rm(process.env.FAKE_PROG_LOG, { force: true });
+    const r = await call('program_board', { project: 'N2', tool: 'djtgcfg', ...(position && { position }) });
+    assert.equal(r.isError, false, r.text);
+    assert.deepEqual(r.data.warnings, []);
+    assert.deepEqual(r.data.commands.map(c => c.args.slice(0, 5)), [['prog', '-d', 'Nexys2', '-i', String(i)]], String(position));
+    assert.match(await progLog(), new RegExp(`^djtgcfg prog -d Nexys2 -i ${i} -f .*top\\.bit$`, 'm'));
+  }
+  const bad = await call('program_board', { project: 'N2', tool: 'djtgcfg', position: 0 });
+  assert.equal(bad.isError, true);
 });
 
 test('program_board\'s refusals: untrusted, no top, no file yet, the programmer failing', { skip: POSIX_ONLY }, async () => {
