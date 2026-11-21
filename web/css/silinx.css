@@ -185,8 +185,8 @@ html[data-ui="silinx"] #top-actions { margin-left: auto; display: flex; align-it
 html[data-ui="silinx"] #toolbar { height: 44px; gap: 2px; padding: 0 12px; background: var(--m-surface); border-bottom: 1px solid var(--m-border); flex: none; }
 html[data-ui="silinx"] .tb-btn { width: var(--m-ctl-h); height: var(--m-ctl-h); border-radius: 6px; border: none; color: var(--m-fg); cursor: pointer; }
 html[data-ui="silinx"] .tb-btn:hover { background: var(--m-hover); border: none; }
-html[data-ui="silinx"] .tb-btn[data-cmd="asm"], html[data-ui="silinx"] .tb-btn[data-cmd="run"], html[data-ui="silinx"] .tb-btn[data-cmd="wave"],
-html[data-ui="silinx"] .tb-btn[data-cmd="impact"] { display: none; }
+html[data-ui="silinx"] .tb-btn[data-cmd="run"], html[data-ui="silinx"] .tb-btn[data-cmd="wave"],
+html[data-ui="silinx"] .tb-btn[data-cmd="board"], html[data-ui="silinx"] .tb-btn[data-cmd="impact"] { display: none; }
 html[data-ui="silinx"] .tb-sep { height: 20px; background: var(--m-border); box-shadow: none; margin: 0 6px; }
 html[data-ui="silinx"] .tb-sep:has(+ .tb-sep) { display: none; }
 html[data-ui="silinx"] .tb-btn:disabled { opacity: .4; cursor: default; }

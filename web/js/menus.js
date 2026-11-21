@@ -220,11 +220,11 @@ export function setupToolbar() {
     btn('paste', 'Paste', () => pasteAny(), canPasteAny),
     btn('find', 'Find in Project', () => openFindInProject(), () => !!S.project),   // (every source of the project, #1430; an editor's own Find in its bar)
     h('div', { class: 'tb-sep' }),
-    btn('asm', 'New ASM State Diagram', () => S.project && wiz.newSourceWizard({ type: 'asm' })),
-    h('div', { class: 'tb-sep' }),
     btn('run', 'Implement Top Module', () => S.project?.top && !S.busy && runImpl(S.project.top, ['synth', 'translate', 'map', 'par', 'bitgen'])),
     btn('stop', 'Stop the running process', () => stopProcesses()),
     btn('wave', 'Simulate Behavioral Model', () => panes.sel?.module && runSimulation(panes.sel.module)),
+    // the Processes pane's Emulate on Board ▸ Emulate Behavioral Model (RTL): the top module's, enabled as it is (#5114)
+    btn('board', 'Emulate Behavioral Model (RTL)', () => openEmulator(S.project.top), () => !!S.project?.top && toolHas('emu')),
     btn('impact', 'Configure Target Device (iMPACT)', () => openImpact()),
     h('div', { class: 'tb-sep' }),
     btn('gear', 'Toolchain Settings', () => wiz.toolchainDialog()),
@@ -267,11 +267,11 @@ export function refreshSteps() {
     b.hidden = FLOW_STEPS.includes(b.dataset.step) && designOnly();
     if (b.dataset.step === 'check') setText(b, 'title', `${checkLabel()} of the selected module`);
   }
-  for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=run], [data-cmd=impact], [data-cmd=gear])')) b.hidden = designOnly();   // (the gear: the toolchain's, #3891)
+  for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=run], [data-cmd=board], [data-cmd=impact], [data-cmd=gear])')) b.hidden = designOnly();   // (the gear: the toolchain's, #3891)
   // (the Design pane's view: Design for Implementation in a design project, #3891)
   const impl = document.querySelector('#view-switch input[value=impl], input[name=view][value=impl]')?.parentElement;
   if (impl?.lastChild?.nodeType === 3) setText(impl, 'label', designOnly() ? 'Design' : 'Implementation', t => { impl.lastChild.textContent = t; });
-  for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=cut], [data-cmd=copy], [data-cmd=paste], [data-cmd=undo], [data-cmd=redo], [data-cmd=print], [data-cmd=share], [data-cmd=closeProject])')) b.disabled = !b._enabled();
+  for (const b of document.querySelectorAll('#toolbar .tb-btn:is([data-cmd=cut], [data-cmd=copy], [data-cmd=paste], [data-cmd=undo], [data-cmd=redo], [data-cmd=print], [data-cmd=share], [data-cmd=closeProject], [data-cmd=board])')) b.disabled = !b._enabled();
 }
 
 // Command palette: every enabled menu command and every project file
