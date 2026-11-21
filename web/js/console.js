@@ -6,12 +6,10 @@ import { quickFixes } from '/core/quickfix.js';
 import { t, onLanguageChange } from './i18n.js';
 import { hintRow, sevWord } from './diaghelp.js';
 import { S, app } from './app.js';
-import { MESSAGE_LINE } from './tool-descriptors.js';
 import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
 import { severityOf } from '/core/log-severity.js';
-import { messageLocation, projectPath } from '/core/message-location.js';
-import { makeMessage, severityOfClass } from '/core/message.js';
+import { lineMessage, entryOf } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
 
 const $ = id => document.getElementById(id);
@@ -37,12 +35,20 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // Each line is a message (#4749, core/message.js), made here, its source decided here once (not read again from its
 // text by the message centre): its line's data-src, its entry's src, what the watchers get; the line's element holds it.
 // run / process: the run the line is of (#4749: a run's own, startRun; none: the one whose header came last)
-export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined } = {}) {
+// location: the project's file and line the line is of, its writer's (#4749: SSim's line of an assertion); none: the
+// ones its text names. Its entry of the Errors / Warnings tabs is made from its message (core/message.js entryOf: its
+// tool, location and action), its text not read again.
+// Returns the lines' elements.
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
-  if (refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust !== refused) action = trustAction(refused);
-  const lines = String(text).split('\n');
+  // (a refusal's line right after another of the same project's shares its button, and its action: its entry's too)
+  const shared = refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust === refused;
+  const msgAction = refused ? trustAction(refused) : [action].flat().find(Boolean) ?? null;
+  if (refused && !shared) action = msgAction;
+  const lines = String(text).split('\n'), divs = [];
+  const paths = (S.sources || []).map(s => s.path);
   lines.forEach((line, i) => {
     if (run === undefined) startsRun(line);
     else if (RUN_HEADER.test(line)) dropRun(run);   // (a run's own header: its last run's entries dropped, #4728)
@@ -50,11 +56,12 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
     let source = src;
     if (!source) [source, lineCur] = lineSource(line, lineCur);
     // (its action: the first of the line's, #4962)
-    const msg = makeMessage({ text: line, severity: severityOfClass(cls), source, action: i === lines.length - 1 ? [action].flat().find(Boolean) ?? null : null, process: lineProcess, run: lineRun });
+    const msg = lineMessage(line, { cls, source, location, paths, action: i === lines.length - 1 ? msgAction : null, process: lineProcess, run: lineRun });
     const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, line);
     div.message = msg;
     el.append(div);
-    if (diag) consoleMessage(line, cls, source, goto, lineRun);
+    divs.push(div);
+    if (diag) consoleMessage(msg, goto);
     if (run === undefined && RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls, msg); } catch { /* a watcher's own error: not the console's */ } }
   });
@@ -72,6 +79,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   }
   while (el.childElementCount > 5000) el.firstChild.remove();
   if (atBottom) el.scrollTop = el.scrollHeight;
+  return divs;
 }
 
 // The run that writes the console's lines (#4728): a process's header ("Started : "Check Schematic" of gates.") starts
@@ -100,41 +108,31 @@ function dropRun(run) {
 const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.message === b.message;
 
 // Every warning/error shown in the console also goes to the Warnings / Errors tabs (but a run's result, "Process "…"
-// failed", and the scripts' "=== SILINX FAILED step" marker, #4728: the errors are their own lines).
-// Recognised forms: "ERROR:Tool:123 - msg", "WARNING:Tool - msg", "ERROR: msg", "WARNING: msg";
+// failed", and the scripts' "=== SILINX FAILED step" marker, #4728: the errors are their own lines), its entry made from
+// its message (#4749, core/message.js entryOf: "ERROR:Tool:123 - msg", "WARNING:Tool - msg", "ERROR: msg"…);
 // indented lines right after one are its continuation (ISE wraps long messages) — unless the
 // message is already complete (ends a sentence) or the line is report output (XST's indented
 // "Found finite state machine…", tables, rules), which would otherwise be glued to the warning.
 let lastConsoleDiag = null;
 const continuesDiag = (d, line) => /^\s{2,}\S/.test(line) && !/[.!?:]\s*$/.test(d.message)
   && !/^\s*([|=+-]{2,}|\||Found\b|Summary:|Unit\b|Synthesizing\b|inferred\b)/.test(line);
-function consoleMessage(line, cls, src, goto, run = consoleRun) {
+function consoleMessage(msg, goto) {
+  const line = msg.text;
   if (RUN_SUMMARY.test(line)) return;   // (its errors are listed already: their own lines, #4728)
-  if (lastConsoleDiag && !cls && continuesDiag(lastConsoleDiag, line)) {
+  if (lastConsoleDiag && msg.severity === 'text' && continuesDiag(lastConsoleDiag, line)) {
     lastConsoleDiag.message += ' ' + line.trim();
     renderDiagnosticsSoon();
     return;
   }
   lastConsoleDiag = null;
-  if (cls !== 'err' && cls !== 'warn') return;
-  const m = MESSAGE_LINE.exec(line);
-  let severity = cls === 'err' ? 'error' : 'warning', tool = 'Silinx', message = line.trim();
-  if (m) { severity = /error|fatal/i.test(m[1]) ? 'error' : 'warning'; tool = m[2] || 'Silinx'; message = m[3]; }
-  else if (/=== SILINX FAILED/.test(line)) return;
-  if (!message) return;
-  const d = { severity, tool, message, file: null, line: 0, source: 'console', run, src, ...(goto ? { goto } : located(message)) };
-  if (run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
+  const e = entryOf(msg);
+  if (!e) return;
+  // (a drawing's Check: its item shown, not a file opened)
+  const d = { ...e, source: 'console', ...(goto ? { goto, file: null, line: 0, inText: false } : {}) };
+  if (e.run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
   S.diags.push(d);
   lastConsoleDiag = d;
   renderDiagnosticsSoon();
-}
-
-// the project's file and line a message names (#4746: ISE's `"…/f.vhd" Line 12`, Vivado's `[…/f.vhd:12]`, a
-// compiler's `f.vhd:12:5:`), its row clicked opening it; written in its text already (inText: not again before it)
-function located(message) {
-  const at = messageLocation(message);
-  const file = at && projectPath(at.file, (S.sources || []).map(s => s.path));
-  return file ? { file, line: at.line, ...(at.col ? { col: at.col } : {}), inText: true } : {};
 }
 
 // A simulation's messages in the Errors / Warnings tabs (#4746): its assertions' and reports' errors and failures
@@ -237,18 +235,21 @@ export function setDiagnostics(diags, { keepConsole = true } = {}) {
   for (const doc of S.docs) if (doc.editor) doc.editor.setDiagnostics(diags.filter(d => d.file === doc.path && d.source !== 'parse'));
 }
 
-// an untrusted project's refusal in the Errors tab (#4589: the tab a refusal brings to the front): its Trust Project
-// button, as the console's line; disabled once the project open is trusted
-function trustButton(d) {
-  const name = d.severity === 'error' && refusedProject(d.message);
-  if (!name) return null;
-  const b = h('button', { type: 'button', class: 'btn ln-action ln-trust', onclick: async e => {
+// an entry's action (#4749: its message's, the console line's first; #4589: an untrusted project's refusal, its Trust
+// Project button, as the console's line, in the tab a refusal brings to the front): disabled once run, and a Trust
+// Project's once the project open is trusted
+function actionButton(d) {
+  const a = d.action;
+  if (!a) return null;
+  const b = h('button', { type: 'button', class: `btn ln-action${a.trust !== undefined ? ' ln-trust' : ''}`, onclick: async e => {
     e.stopPropagation();
     b.disabled = true;
-    try { if (await trustAction(name).run() === false) b.disabled = false; } catch (err) { b.disabled = false; log(`ERROR: ${err.message}`, 'err'); }
-  } }, t('Trust Project'));
-  b.dataset.trust = name;
-  b.disabled = S.project?.name === name && isTrusted(S.project);
+    try { if (await a.run() === false) b.disabled = false; } catch (err) { b.disabled = false; log(`ERROR: ${err.message}`, 'err'); }
+  } }, t(a.label));
+  if (a.trust !== undefined) {
+    b.dataset.trust = a.trust;
+    b.disabled = S.project?.name === a.trust && isTrusted(S.project);
+  }
   return b;
 }
 
@@ -268,7 +269,7 @@ export function renderDiagnostics({ quiet = false } = {}) {
         d.file && !d.inText ? h('span', { class: 'loc' }, d.line ? `"${d.file}" Line ${d.line}` : `"${d.file}"`) : null,
         h('span', { 'data-no-i18n': true }, d.file && !d.inText ? `: ${d.message}` : d.message), hint?.toggle,
         ...diagFixes(d).map(f => h('span', { class: 'diag-fix', role: 'button', 'data-no-i18n': true, onclick: e => { e.stopPropagation(); applyDiagFix(d, f); } }, `${t('Fix:')} ${t(f.title)}`)),
-        trustButton(d));
+        actionButton(d));
       // (an editor's problem: its item selected, editor-problems.js)
       row.addEventListener('click', () => (d.goto ? d.goto() : d.file && app.openFile(d.file, d.line, d.col)));
       el.append(row);

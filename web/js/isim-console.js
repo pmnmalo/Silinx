@@ -3,6 +3,7 @@
 // mountConsole(ctx) is called by mountISim where this code was, with what it uses of the simulator window.
 import { h } from './dom.js';
 import { fmtTime, parseTime, formatValue, parseValue } from './isim.js';
+import { makeMessage } from '/core/message.js';
 
 /** The Console of the SSim window: { logLine(text, kind), echo(cmd), execCommand(line) }. */
 export function mountConsole(ctx) {
@@ -10,10 +11,13 @@ export function mountConsole(ctx) {
     addInstance, addForce, removeForces, addMarker, zoomFit, zoomAt } = ctx;
   const KIND_LABEL = { note: 'Note', warning: 'Warning', error: 'Error', failure: 'Failure' };
   let consoleLines = 0;
+  const KIND_SEVERITY = { 'k-error': 'error', 'k-failure': 'error', 'k-warning': 'warning', 'k-cmd': 'header', 'k-info': 'info' };
   function appendConsole(text, cls, src) {
     const atBottom = cons.scrollHeight - cons.scrollTop - cons.clientHeight < 30;
     const d = h('div', { class: 'isim-ln ' + (cls || '') });
     d.textContent = text;
+    // (its message, #4749: the console's copy of the line is made from it, its location the assertion's)
+    d.message = makeMessage({ text, severity: KIND_SEVERITY[cls] ?? 'text', source: 'sim', location: src?.file ? { file: src.file, line: src.line } : null });
     if (src && src.file && onOpenSource) {
       d.classList.add('link'); d.title = `${src.file}:${src.line ?? ''}`;
       d.addEventListener('dblclick', () => onOpenSource({ file: src.file, line: src.line || 1 }));

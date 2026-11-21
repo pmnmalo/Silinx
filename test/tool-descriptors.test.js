@@ -233,7 +233,9 @@ test('#2311 each descriptor\'s messages: the log\'s lines read, the markers the 
   assert.deepEqual(m('ERROR: plain'), ['ERROR', undefined, 'plain']);
   assert.deepEqual(m('CRITICAL WARNING: x'), ['CRITICAL WARNING', undefined, 'x']);
   assert.equal(m('Info: nothing'), null);
-  assert.match(read('web/js/console.js'), /MESSAGE_LINE\.exec\(line\)/);
+  // (read once, where a line's message is made, #4749: core/message.js; the console reads no line again)
+  assert.match(read('core/message.js'), /const m = MESSAGE_LINE\.exec\(text\);/);
+  assert.doesNotMatch(read('web/js/console.js'), /MESSAGE_LINE/);
   const tracker = read('web/js/implement.js');
   for (const tool of TOOLS) {
     assert.equal(tool.messages.line, MESSAGE_LINE, tool.id);

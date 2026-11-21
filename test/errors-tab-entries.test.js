@@ -33,6 +33,6 @@ test('console.js: a run\'s header drops its previous entries; its result and SIL
   const src = read('console.js');
   assert.match(src, /S\.diags = S\.diags\.filter\(d => !\(d\.source === 'console' && d\.run === run\)\);/);   // (dropRun, #4749)
   assert.match(src, /if \(RUN_SUMMARY\.test\(line\)\) return;/);
-  assert.match(src, /else if \(\/=== SILINX FAILED\/\.test\(line\)\) return;/);
+  assert.match(readFileSync(new URL('../core/message.js', import.meta.url), 'utf8'), /if \(!m && \/=== SILINX FAILED\/\.test\(msg\.text\)\) return null;/);   // (entryOf, #4749)
   assert.match(read('project-rename.js'), /if \(no\) \{ logInfo\(`Rename Project: \$\{no\}\.`\); return; \}/);
 });
