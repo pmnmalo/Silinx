@@ -56,9 +56,9 @@ test('#5041 new_project kind codesign: refused with New Project\'s reason (its c
   assert.deepEqual(np.inputSchema.properties.kind.enum, ['fpga', 'design', 'codesign']);
   // (each kind's name and words, the dialog's cards')
   assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'No FPGA'], ['fpga', 'With an FPGA'], ['codesign', 'Co-design']]);
-  for (const k of PROJECT_KINDS) assert.ok(np.inputSchema.properties.kind.description.includes(`${k.id} (${k.name}: ${k.about})`), k.id);
-  assert.ok(np.inputSchema.properties.kind.description.endsWith(`codesign: ${CODESIGN_NOT_YET}`));
-  assert.match(np.description, /kind, as New Project's first page \(#5041\): fpga \(With an FPGA, the default\), design \(No FPGA/);
+  // (the dialog's names, in few words: the MCP's size limits, #4752, #5097)
+  assert.equal(np.inputSchema.properties.kind.description, 'Its kind, New Project\'s first page: design (No FPGA: drawings and simulation, no board, no HDL shown), fpga (With an FPGA: the default), codesign (Co-design: not available yet, refused).');
+  assert.match(np.description, / kind: New Project's first page \(fpga, design, codesign\)\. kind design: /);
 });
 
 test('set_design_properties kind design: a design project made, as Design Properties\' Project Kind; again, or with a board, refused', async () => {
